@@ -46,6 +46,7 @@ typedef int (*w_journal_get_data)(sd_journal * j,
 typedef void (*w_journal_restart_data)(sd_journal * j);                                  ///< sd_journal_restart_data
 typedef int (*w_journal_enumerate_date)(sd_journal * j, const void ** data, size_t * l); ///< sd_journal_enumerate_data
 typedef int (*w_journal_process)(sd_journal* j);                                         ///< sd_journal_process
+typedef int (*w_journal_get_fd)(sd_journal* j);                                          ///< sd_journal_get_fd
 
 /**
  * @brief Journal log library
@@ -71,7 +72,8 @@ struct w_journal_lib_t {
     w_journal_enumerate_date enumerate_date; ///< Enumerate the available data in the current entry
     void * handle;                           ///< Handle of the library
     // Rotation detection function
-    w_journal_process process; ///< Indicates what kind of change has been detected
+    w_journal_process process;               ///< Indicates what kind of change has been detected
+    w_journal_get_fd get_fd;                 ///< Returns a file descriptor signaled with journal changes.
 };
 
 /**********************************************************
@@ -251,7 +253,8 @@ STATIC INLINE w_journal_lib_t * w_journal_lib_init() {
         && load_and_validate_function(lib->handle, "sd_journal_enumerate_data", (void **) &lib->enumerate_date)
         && load_and_validate_function(
             lib->handle, "sd_journal_get_cutoff_realtime_usec", (void **) &lib->get_cutoff_timestamp)
-        && load_and_validate_function(lib->handle, "sd_journal_process", (void **) &lib->process);
+        && load_and_validate_function(lib->handle, "sd_journal_process", (void **) &lib->process)
+        && load_and_validate_function(lib->handle, "sd_journal_get_fd", (void **) &lib->get_fd);
 
     if (!ok) {
         dlclose(lib->handle);
@@ -721,11 +724,10 @@ bool w_journal_rotation_detected(w_journal_context_t *ctx) {
         return false;
     }
 
-    //TODO: delete
-    // int fd = ctx->lib->get_fd(ctx->journal);
-    // if (fd < 0) {
-    //     return false;
-    // }
+    int fd = ctx->lib->get_fd(ctx->journal);
+    if (fd < 0) {
+        return false;
+    }
 
     int r = ctx->lib->process(ctx->journal);
 

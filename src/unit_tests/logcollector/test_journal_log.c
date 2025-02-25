@@ -102,6 +102,8 @@ int __wrap_sd_journal_get_cutoff_realtime_usec(sd_journal * j, uint64_t * from, 
 
 int __wrap_sd_journal_process(sd_journal * j) { return mock_type(int); }
 
+int __wrap_sd_journal_get_fd(sd_journal * j) { return mock_type(int); }
+
 extern unsigned int __real_gmtime_r(const time_t * t, struct tm * tm);
 unsigned int __wrap_gmtime_r(__attribute__((__unused__)) const time_t * t, __attribute__((__unused__)) struct tm * tm) {
     unsigned int mock = mock_type(unsigned int);
@@ -532,6 +534,8 @@ static void setup_dlsym_expectations(const char * symbol) {
         mock_function = (void *) __wrap_sd_journal_get_cutoff_realtime_usec;
     } else if (strcmp(symbol, "sd_journal_process") == 0) {
         mock_function = (void *) __wrap_sd_journal_process;
+    } else if (strcmp(symbol, "sd_journal_get_fd") == 0) {
+        mock_function = (void *) __wrap_sd_journal_get_fd;
     } else {
         // Invalid symbol
         assert_true(false);
@@ -590,6 +594,7 @@ static void test_w_journal_lib_init_success(void ** state) {
     setup_dlsym_expectations("sd_journal_enumerate_data");
     setup_dlsym_expectations("sd_journal_get_cutoff_realtime_usec");
     setup_dlsym_expectations("sd_journal_process");
+    setup_dlsym_expectations("sd_journal_get_fd");
 
     // Act
     w_journal_lib_t * result = w_journal_lib_init();
@@ -652,6 +657,7 @@ static void test_w_journal_context_create_success(void ** state) {
     setup_dlsym_expectations("sd_journal_enumerate_data");
     setup_dlsym_expectations("sd_journal_get_cutoff_realtime_usec");
     setup_dlsym_expectations("sd_journal_process");
+    setup_dlsym_expectations("sd_journal_get_fd");
 
     // Open the journal
     will_return(__wrap_sd_journal_open, 0);
@@ -750,6 +756,7 @@ static void test_w_journal_context_create_journal_open_fail(void ** state) {
     setup_dlsym_expectations("sd_journal_enumerate_data");
     setup_dlsym_expectations("sd_journal_get_cutoff_realtime_usec");
     setup_dlsym_expectations("sd_journal_process");
+    setup_dlsym_expectations("sd_journal_get_fd");
 
     will_return(__wrap_sd_journal_open, -1); // Fail w_journal_lib_open
     expect_string(__wrap__mwarn, formatted_msg, "(8010): Failed open journal log: 'Operation not permitted'.");
@@ -829,6 +836,7 @@ static void test_w_journal_context_free_valid(void ** state) {
     setup_dlsym_expectations("sd_journal_enumerate_data");
     setup_dlsym_expectations("sd_journal_get_cutoff_realtime_usec");
     setup_dlsym_expectations("sd_journal_process");
+    setup_dlsym_expectations("sd_journal_get_fd");
 
     will_return(__wrap_sd_journal_open, 0);
     w_journal_context_create(&ctx);
@@ -897,6 +905,7 @@ static void test_w_journal_context_update_timestamp_success(void ** state) {
     setup_dlsym_expectations("sd_journal_enumerate_data");
     setup_dlsym_expectations("sd_journal_get_cutoff_realtime_usec");
     setup_dlsym_expectations("sd_journal_process");
+    setup_dlsym_expectations("sd_journal_get_fd");
 
     will_return(__wrap_sd_journal_open, 0);
     w_journal_context_create(&ctx);
@@ -977,6 +986,7 @@ static void test_w_journal_context_update_timestamp_fail(void ** state) {
     setup_dlsym_expectations("sd_journal_enumerate_data");
     setup_dlsym_expectations("sd_journal_get_cutoff_realtime_usec");
     setup_dlsym_expectations("sd_journal_process");
+    setup_dlsym_expectations("sd_journal_get_fd");
 
     will_return(__wrap_sd_journal_open, 0);
     w_journal_context_create(&ctx);
@@ -1051,6 +1061,7 @@ static void test_w_journal_context_seek_most_recent_update_tamestamp(void ** sta
     setup_dlsym_expectations("sd_journal_enumerate_data");
     setup_dlsym_expectations("sd_journal_get_cutoff_realtime_usec");
     setup_dlsym_expectations("sd_journal_process");
+    setup_dlsym_expectations("sd_journal_get_fd");
 
     will_return(__wrap_sd_journal_open, 0);
     w_journal_context_create(&ctx);
@@ -1124,6 +1135,7 @@ static void test_w_journal_context_seek_most_recent_seek_tail_fail(void ** state
     setup_dlsym_expectations("sd_journal_enumerate_data");
     setup_dlsym_expectations("sd_journal_get_cutoff_realtime_usec");
     setup_dlsym_expectations("sd_journal_process");
+    setup_dlsym_expectations("sd_journal_get_fd");
 
     will_return(__wrap_sd_journal_open, 0);
     w_journal_context_create(&ctx);
@@ -1195,6 +1207,7 @@ static void test_w_journal_context_seek_most_recent_success(void ** state) {
     setup_dlsym_expectations("sd_journal_enumerate_data");
     setup_dlsym_expectations("sd_journal_get_cutoff_realtime_usec");
     setup_dlsym_expectations("sd_journal_process");
+    setup_dlsym_expectations("sd_journal_get_fd");
 
     will_return(__wrap_sd_journal_open, 0);
     w_journal_context_create(&ctx);
@@ -1286,6 +1299,7 @@ static void test_w_journal_context_seek_timestamp_future_timestamp(void ** state
     setup_dlsym_expectations("sd_journal_enumerate_data");
     setup_dlsym_expectations("sd_journal_get_cutoff_realtime_usec");
     setup_dlsym_expectations("sd_journal_process");
+    setup_dlsym_expectations("sd_journal_get_fd");
 
     will_return(__wrap_sd_journal_open, 0);
     w_journal_context_create(&ctx);
@@ -1362,6 +1376,7 @@ static void test_w_journal_context_seek_timestamp_fail_read_old_ts(void ** state
     setup_dlsym_expectations("sd_journal_enumerate_data");
     setup_dlsym_expectations("sd_journal_get_cutoff_realtime_usec");
     setup_dlsym_expectations("sd_journal_process");
+    setup_dlsym_expectations("sd_journal_get_fd");
 
     will_return(__wrap_sd_journal_open, 0);
     w_journal_context_create(&ctx);
@@ -1442,6 +1457,7 @@ static void test_w_journal_context_seek_timestamp_change_ts(void ** state) {
     setup_dlsym_expectations("sd_journal_enumerate_data");
     setup_dlsym_expectations("sd_journal_get_cutoff_realtime_usec");
     setup_dlsym_expectations("sd_journal_process");
+    setup_dlsym_expectations("sd_journal_get_fd");
 
     will_return(__wrap_sd_journal_open, 0);
     w_journal_context_create(&ctx);
@@ -1523,6 +1539,7 @@ static void test_w_journal_context_seek_timestamp_seek_timestamp_fail(void ** st
     setup_dlsym_expectations("sd_journal_enumerate_data");
     setup_dlsym_expectations("sd_journal_get_cutoff_realtime_usec");
     setup_dlsym_expectations("sd_journal_process");
+    setup_dlsym_expectations("sd_journal_get_fd");
 
     will_return(__wrap_sd_journal_open, 0);
     w_journal_context_create(&ctx);
@@ -1599,6 +1616,7 @@ static void test_w_journal_context_seek_timestamp_fail_seek(void ** state) {
     setup_dlsym_expectations("sd_journal_enumerate_data");
     setup_dlsym_expectations("sd_journal_get_cutoff_realtime_usec");
     setup_dlsym_expectations("sd_journal_process");
+    setup_dlsym_expectations("sd_journal_get_fd");
 
     will_return(__wrap_sd_journal_open, 0);
     w_journal_context_create(&ctx);
@@ -1675,6 +1693,7 @@ static void test_w_journal_context_seek_timestamp_next_fail(void ** state) {
     setup_dlsym_expectations("sd_journal_enumerate_data");
     setup_dlsym_expectations("sd_journal_get_cutoff_realtime_usec");
     setup_dlsym_expectations("sd_journal_process");
+    setup_dlsym_expectations("sd_journal_get_fd");
 
     will_return(__wrap_sd_journal_open, 0);
     w_journal_context_create(&ctx);
@@ -1752,6 +1771,7 @@ static void test_w_journal_context_seek_timestamp_success(void ** state) {
     setup_dlsym_expectations("sd_journal_enumerate_data");
     setup_dlsym_expectations("sd_journal_get_cutoff_realtime_usec");
     setup_dlsym_expectations("sd_journal_process");
+    setup_dlsym_expectations("sd_journal_get_fd");
 
     will_return(__wrap_sd_journal_open, 0);
     w_journal_context_create(&ctx);
@@ -1828,6 +1848,7 @@ static void test_w_journal_context_seek_timestamp_success_new_entry(void ** stat
     setup_dlsym_expectations("sd_journal_enumerate_data");
     setup_dlsym_expectations("sd_journal_get_cutoff_realtime_usec");
     setup_dlsym_expectations("sd_journal_process");
+    setup_dlsym_expectations("sd_journal_get_fd");
 
     will_return(__wrap_sd_journal_open, 0);
     w_journal_context_create(&ctx);
@@ -1919,6 +1940,7 @@ static void test_w_journal_context_next_newest_update_timestamp(void ** state) {
     setup_dlsym_expectations("sd_journal_enumerate_data");
     setup_dlsym_expectations("sd_journal_get_cutoff_realtime_usec");
     setup_dlsym_expectations("sd_journal_process");
+    setup_dlsym_expectations("sd_journal_get_fd");
 
     will_return(__wrap_sd_journal_open, 0);
     w_journal_context_create(&ctx);
@@ -1992,6 +2014,7 @@ static void test_w_journal_context_next_newest_success(void ** state) {
     setup_dlsym_expectations("sd_journal_enumerate_data");
     setup_dlsym_expectations("sd_journal_get_cutoff_realtime_usec");
     setup_dlsym_expectations("sd_journal_process");
+    setup_dlsym_expectations("sd_journal_get_fd");
 
     will_return(__wrap_sd_journal_open, 0);
     w_journal_context_create(&ctx);
@@ -2061,6 +2084,7 @@ void test_w_journal_filter_apply_fail_get_data_ignore_test(void ** state) {
     setup_dlsym_expectations("sd_journal_enumerate_data");
     setup_dlsym_expectations("sd_journal_get_cutoff_realtime_usec");
     setup_dlsym_expectations("sd_journal_process");
+    setup_dlsym_expectations("sd_journal_get_fd");
     will_return(__wrap_sd_journal_open, 0);
     w_journal_context_create(&ctx);
     // <<<< End init conetxt
@@ -2140,6 +2164,7 @@ void test_w_journal_filter_apply_fail_parse(void ** state) {
     setup_dlsym_expectations("sd_journal_enumerate_data");
     setup_dlsym_expectations("sd_journal_get_cutoff_realtime_usec");
     setup_dlsym_expectations("sd_journal_process");
+    setup_dlsym_expectations("sd_journal_get_fd");
     will_return(__wrap_sd_journal_open, 0);
     w_journal_context_create(&ctx);
     // <<<< End init conetxt
@@ -2210,6 +2235,7 @@ void test_w_journal_filter_apply_empty_field(void ** state) {
     setup_dlsym_expectations("sd_journal_enumerate_data");
     setup_dlsym_expectations("sd_journal_get_cutoff_realtime_usec");
     setup_dlsym_expectations("sd_journal_process");
+    setup_dlsym_expectations("sd_journal_get_fd");
     will_return(__wrap_sd_journal_open, 0);
     w_journal_context_create(&ctx);
     // <<<< End init conetxt
@@ -2280,6 +2306,7 @@ void test_w_journal_filter_apply_match_fail(void ** state) {
     setup_dlsym_expectations("sd_journal_enumerate_data");
     setup_dlsym_expectations("sd_journal_get_cutoff_realtime_usec");
     setup_dlsym_expectations("sd_journal_process");
+    setup_dlsym_expectations("sd_journal_get_fd");
     will_return(__wrap_sd_journal_open, 0);
     w_journal_context_create(&ctx);
     // <<<< End init conetxt
@@ -2350,6 +2377,7 @@ void test_w_journal_filter_apply_match_success(void ** state) {
     setup_dlsym_expectations("sd_journal_enumerate_data");
     setup_dlsym_expectations("sd_journal_get_cutoff_realtime_usec");
     setup_dlsym_expectations("sd_journal_process");
+    setup_dlsym_expectations("sd_journal_get_fd");
     will_return(__wrap_sd_journal_open, 0);
     w_journal_context_create(&ctx);
     // <<<< End init conetxt
@@ -2434,6 +2462,7 @@ static void test_w_journal_context_next_newest_filtered_null_filters(void ** sta
     setup_dlsym_expectations("sd_journal_enumerate_data");
     setup_dlsym_expectations("sd_journal_get_cutoff_realtime_usec");
     setup_dlsym_expectations("sd_journal_process");
+    setup_dlsym_expectations("sd_journal_get_fd");
 
     will_return(__wrap_sd_journal_open, 0);
     w_journal_context_create(&ctx);
@@ -2505,6 +2534,7 @@ static void test_w_journal_context_next_newest_filtered_no_filters(void ** state
     setup_dlsym_expectations("sd_journal_enumerate_data");
     setup_dlsym_expectations("sd_journal_get_cutoff_realtime_usec");
     setup_dlsym_expectations("sd_journal_process");
+    setup_dlsym_expectations("sd_journal_get_fd");
 
     will_return(__wrap_sd_journal_open, 0);
     w_journal_context_create(&ctx);
@@ -2576,6 +2606,7 @@ static void test_w_journal_context_next_newest_filtered_one_filter(void ** state
     setup_dlsym_expectations("sd_journal_enumerate_data");
     setup_dlsym_expectations("sd_journal_get_cutoff_realtime_usec");
     setup_dlsym_expectations("sd_journal_process");
+    setup_dlsym_expectations("sd_journal_get_fd");
 
     will_return(__wrap_sd_journal_open, 0);
     w_journal_context_create(&ctx);
@@ -2654,6 +2685,7 @@ static void test_w_journal_context_next_newest_filtered_is_debug(void ** state) 
     setup_dlsym_expectations("sd_journal_enumerate_data");
     setup_dlsym_expectations("sd_journal_get_cutoff_realtime_usec");
     setup_dlsym_expectations("sd_journal_process");
+    setup_dlsym_expectations("sd_journal_get_fd");
 
     will_return(__wrap_sd_journal_open, 0);
     w_journal_context_create(&ctx);
@@ -2740,6 +2772,7 @@ static void test_w_journal_context_next_newest_filtered_is_debug_false(void ** s
     setup_dlsym_expectations("sd_journal_enumerate_data");
     setup_dlsym_expectations("sd_journal_get_cutoff_realtime_usec");
     setup_dlsym_expectations("sd_journal_process");
+    setup_dlsym_expectations("sd_journal_get_fd");
 
     will_return(__wrap_sd_journal_open, 0);
     w_journal_context_create(&ctx);
@@ -2822,6 +2855,7 @@ static void test_w_journal_context_next_newest_filtered_filter_apply(void ** sta
     setup_dlsym_expectations("sd_journal_enumerate_data");
     setup_dlsym_expectations("sd_journal_get_cutoff_realtime_usec");
     setup_dlsym_expectations("sd_journal_process");
+    setup_dlsym_expectations("sd_journal_get_fd");
 
     will_return(__wrap_sd_journal_open, 0);
     w_journal_context_create(&ctx);
@@ -2914,6 +2948,7 @@ static void test_w_journal_context_next_newest_filtered_filter_apply_fail(void *
     setup_dlsym_expectations("sd_journal_enumerate_data");
     setup_dlsym_expectations("sd_journal_get_cutoff_realtime_usec");
     setup_dlsym_expectations("sd_journal_process");
+    setup_dlsym_expectations("sd_journal_get_fd");
 
     will_return(__wrap_sd_journal_open, 0);
     w_journal_context_create(&ctx);
@@ -2996,6 +3031,7 @@ void test_entry_as_json_empty(void ** state) {
     setup_dlsym_expectations("sd_journal_enumerate_data");
     setup_dlsym_expectations("sd_journal_get_cutoff_realtime_usec");
     setup_dlsym_expectations("sd_journal_process");
+    setup_dlsym_expectations("sd_journal_get_fd");
     will_return(__wrap_sd_journal_open, 0);
     w_journal_context_create(&ctx);
     // <<<< End init conetxt
@@ -3056,6 +3092,7 @@ void test_entry_as_json_fail_parse_field(void ** state) {
     setup_dlsym_expectations("sd_journal_enumerate_data");
     setup_dlsym_expectations("sd_journal_get_cutoff_realtime_usec");
     setup_dlsym_expectations("sd_journal_process");
+    setup_dlsym_expectations("sd_journal_get_fd");
     will_return(__wrap_sd_journal_open, 0);
     w_journal_context_create(&ctx);
     // <<<< End init conetxt
@@ -3118,6 +3155,7 @@ void test_entry_as_json_success(void ** state) {
     setup_dlsym_expectations("sd_journal_enumerate_data");
     setup_dlsym_expectations("sd_journal_get_cutoff_realtime_usec");
     setup_dlsym_expectations("sd_journal_process");
+    setup_dlsym_expectations("sd_journal_get_fd");
     will_return(__wrap_sd_journal_open, 0);
     w_journal_context_create(&ctx);
     // <<<< End init conetxt
@@ -3196,6 +3234,7 @@ void test_get_field_ptr_fail_get_data(void ** state) {
     setup_dlsym_expectations("sd_journal_enumerate_data");
     setup_dlsym_expectations("sd_journal_get_cutoff_realtime_usec");
     setup_dlsym_expectations("sd_journal_process");
+    setup_dlsym_expectations("sd_journal_get_fd");
     will_return(__wrap_sd_journal_open, 0);
     w_journal_context_create(&ctx);
     // <<<< End init conetxt
@@ -3253,6 +3292,7 @@ void test_get_field_ptr_fail_parse(void ** state) {
     setup_dlsym_expectations("sd_journal_enumerate_data");
     setup_dlsym_expectations("sd_journal_get_cutoff_realtime_usec");
     setup_dlsym_expectations("sd_journal_process");
+    setup_dlsym_expectations("sd_journal_get_fd");
     will_return(__wrap_sd_journal_open, 0);
     w_journal_context_create(&ctx);
     // <<<< End init conetxt
@@ -3311,6 +3351,7 @@ void test_get_field_ptr_empty_field(void ** state) {
     setup_dlsym_expectations("sd_journal_enumerate_data");
     setup_dlsym_expectations("sd_journal_get_cutoff_realtime_usec");
     setup_dlsym_expectations("sd_journal_process");
+    setup_dlsym_expectations("sd_journal_get_fd");
     will_return(__wrap_sd_journal_open, 0);
     w_journal_context_create(&ctx);
     // <<<< End init conetxt
@@ -3372,6 +3413,7 @@ void test_get_field_ptr_success(void ** state) {
     setup_dlsym_expectations("sd_journal_enumerate_data");
     setup_dlsym_expectations("sd_journal_get_cutoff_realtime_usec");
     setup_dlsym_expectations("sd_journal_process");
+    setup_dlsym_expectations("sd_journal_get_fd");
     will_return(__wrap_sd_journal_open, 0);
     w_journal_context_create(&ctx);
     // <<<< End init conetxt
@@ -3451,6 +3493,7 @@ void test_entry_as_syslog_success(void ** state) {
     setup_dlsym_expectations("sd_journal_enumerate_data");
     setup_dlsym_expectations("sd_journal_get_cutoff_realtime_usec");
     setup_dlsym_expectations("sd_journal_process");
+    setup_dlsym_expectations("sd_journal_get_fd");
     will_return(__wrap_sd_journal_open, 0);
     w_journal_context_create(&ctx);
     // <<<< End init conetxt
@@ -3531,6 +3574,7 @@ void test_entry_as_syslog_success_system_pid(void ** state) {
     setup_dlsym_expectations("sd_journal_enumerate_data");
     setup_dlsym_expectations("sd_journal_get_cutoff_realtime_usec");
     setup_dlsym_expectations("sd_journal_process");
+    setup_dlsym_expectations("sd_journal_get_fd");
     will_return(__wrap_sd_journal_open, 0);
     w_journal_context_create(&ctx);
     // <<<< End init conetxt
@@ -3614,6 +3658,7 @@ void test_entry_as_syslog_success_no_pid(void ** state) {
     setup_dlsym_expectations("sd_journal_enumerate_data");
     setup_dlsym_expectations("sd_journal_get_cutoff_realtime_usec");
     setup_dlsym_expectations("sd_journal_process");
+    setup_dlsym_expectations("sd_journal_get_fd");
     will_return(__wrap_sd_journal_open, 0);
     w_journal_context_create(&ctx);
     // <<<< End init conetxt
@@ -3697,6 +3742,7 @@ void test_entry_as_syslog_missing_hostname(void ** state) {
     setup_dlsym_expectations("sd_journal_enumerate_data");
     setup_dlsym_expectations("sd_journal_get_cutoff_realtime_usec");
     setup_dlsym_expectations("sd_journal_process");
+    setup_dlsym_expectations("sd_journal_get_fd");
     will_return(__wrap_sd_journal_open, 0);
     w_journal_context_create(&ctx);
     // <<<< End init conetxt
@@ -3779,6 +3825,7 @@ void test_entry_as_syslog_missing_tag(void ** state) {
     setup_dlsym_expectations("sd_journal_enumerate_data");
     setup_dlsym_expectations("sd_journal_get_cutoff_realtime_usec");
     setup_dlsym_expectations("sd_journal_process");
+    setup_dlsym_expectations("sd_journal_get_fd");
     will_return(__wrap_sd_journal_open, 0);
     w_journal_context_create(&ctx);
     // <<<< End init conetxt
@@ -3860,6 +3907,7 @@ void test_entry_as_syslog_missing_message(void ** state) {
     setup_dlsym_expectations("sd_journal_enumerate_data");
     setup_dlsym_expectations("sd_journal_get_cutoff_realtime_usec");
     setup_dlsym_expectations("sd_journal_process");
+    setup_dlsym_expectations("sd_journal_get_fd");
     will_return(__wrap_sd_journal_open, 0);
     w_journal_context_create(&ctx);
     // <<<< End init conetxt
@@ -3944,6 +3992,7 @@ void test_entry_as_syslog_missing_timestamp(void ** state) {
     setup_dlsym_expectations("sd_journal_enumerate_data");
     setup_dlsym_expectations("sd_journal_get_cutoff_realtime_usec");
     setup_dlsym_expectations("sd_journal_process");
+    setup_dlsym_expectations("sd_journal_get_fd");
     will_return(__wrap_sd_journal_open, 0);
     w_journal_context_create(&ctx);
     // <<<< End init conetxt
@@ -4035,6 +4084,7 @@ void test_w_journal_entry_dump_invalid_type(void ** state) {
     setup_dlsym_expectations("sd_journal_enumerate_data");
     setup_dlsym_expectations("sd_journal_get_cutoff_realtime_usec");
     setup_dlsym_expectations("sd_journal_process");
+    setup_dlsym_expectations("sd_journal_get_fd");
     will_return(__wrap_sd_journal_open, 0);
     w_journal_context_create(&ctx);
     // <<<< End init conetxt
@@ -4097,6 +4147,7 @@ void test_w_journal_entry_dump_json_success(void ** state) {
     setup_dlsym_expectations("sd_journal_enumerate_data");
     setup_dlsym_expectations("sd_journal_get_cutoff_realtime_usec");
     setup_dlsym_expectations("sd_journal_process");
+    setup_dlsym_expectations("sd_journal_get_fd");
     will_return(__wrap_sd_journal_open, 0);
     w_journal_context_create(&ctx);
     // <<<< End init conetxt
@@ -4184,6 +4235,7 @@ void test_w_journal_entry_dump_syslog_fail_json(void ** state) {
     setup_dlsym_expectations("sd_journal_enumerate_data");
     setup_dlsym_expectations("sd_journal_get_cutoff_realtime_usec");
     setup_dlsym_expectations("sd_journal_process");
+    setup_dlsym_expectations("sd_journal_get_fd");
     will_return(__wrap_sd_journal_open, 0);
     w_journal_context_create(&ctx);
     // <<<< End init conetxt
@@ -4250,6 +4302,7 @@ void test_w_journal_entry_dump_syslog_success(void ** state) {
     setup_dlsym_expectations("sd_journal_enumerate_data");
     setup_dlsym_expectations("sd_journal_get_cutoff_realtime_usec");
     setup_dlsym_expectations("sd_journal_process");
+    setup_dlsym_expectations("sd_journal_get_fd");
     will_return(__wrap_sd_journal_open, 0);
     w_journal_context_create(&ctx);
     // <<<< End init conetxt
@@ -4335,6 +4388,7 @@ void test_w_journal_entry_dump_syslog_fail(void ** state) {
     setup_dlsym_expectations("sd_journal_enumerate_data");
     setup_dlsym_expectations("sd_journal_get_cutoff_realtime_usec");
     setup_dlsym_expectations("sd_journal_process");
+    setup_dlsym_expectations("sd_journal_get_fd");
     will_return(__wrap_sd_journal_open, 0);
     w_journal_context_create(&ctx);
     // <<<< End init conetxt
@@ -4423,6 +4477,7 @@ void test_w_journal_entry_to_string_syslog(void ** state) {
     setup_dlsym_expectations("sd_journal_enumerate_data");
     setup_dlsym_expectations("sd_journal_get_cutoff_realtime_usec");
     setup_dlsym_expectations("sd_journal_process");
+    setup_dlsym_expectations("sd_journal_get_fd");
     will_return(__wrap_sd_journal_open, 0);
     w_journal_context_create(&ctx);
     // <<<< End init conetxt
