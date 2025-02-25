@@ -57,7 +57,7 @@ extern void mock_assert(const int result, const char* const expression,
 #endif
 
 void wdbi_report_removed(const char* agent_id, wdb_component_t component, sqlite3_stmt* stmt) {
-    if (!router_fim_events_handle && !router_inventory_events_handle) {
+    if (!router_fim_events_handle || !router_inventory_events_handle) {
         mdebug2("Router handle not available.");
         return;
     }
