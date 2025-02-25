@@ -233,8 +233,7 @@ def update_file_sources(executor: Executor, new_version: Optional[str] = None, n
     patterns_installer_nsi = {
         "version_1": (re.compile(fr'(^!define VERSION\s+")({PATTERN_VERSION})("$)', re.MULTILINE), fr'\g<1>{new_version}\g<3>' if new_version else None),
         "version_2": (re.compile(fr'(^VIProductVersion\s+")({PATTERN_VERSION})(.+"$)', re.MULTILINE), fr'\g<1>{new_version}\g<3>' if new_version else None),
-        "stage_1": (re.compile(r'(^!define REVISION\s+")(.+)("$)', re.MULTILINE), fr'\g<1>{new_stage}\g<3>' if new_stage else None),
-        "stage_2": (re.compile(fr'(^VIProductVersion\s+"{PATTERN_VERSION}\.)(.+)("$)', re.MULTILINE), fr'\g<1>{new_stage}\g<3>' if new_stage else None)
+        "stage_1": (re.compile(r'(^!define REVISION\s+")(.+)("$)', re.MULTILINE), fr'\g<1>{new_stage}\g<3>' if new_stage else None)
     }
     update_file(executor, DIR_SRC / 'win32/wazuh-installer.nsi',
                 patterns_installer_nsi)
@@ -253,8 +252,7 @@ def update_file_sources(executor: Executor, new_version: Optional[str] = None, n
 
     patterns_version_rc = {
         "version_1": (re.compile(fr'(^#define VER_PRODUCTVERSION_STR v)({PATTERN_VERSION})($)', re.MULTILINE), fr'\g<1>{new_version}\g<3>' if new_version else None),
-        "version_2": (re.compile(fr'(^#define VER_PRODUCTVERSION\s+)(\d+,\d+,\d+)(,\d+$)', re.MULTILINE), fr'\g<1>{new_version.replace(".", ",")}\g<3>' if new_version else None),
-        "stage": (re.compile(fr'(^#define VER_PRODUCTVERSION\s+\d+,\d+,\d+,)(\d+)($)', re.MULTILINE), fr'\g<1>{new_stage}\g<3>' if new_stage else None)
+        "version_2": (re.compile(fr'(^#define VER_PRODUCTVERSION\s+)(\d+,\d+,\d+)(,\d+$)', re.MULTILINE), fr'\g<1>{new_version.replace(".", ",")}\g<3>' if new_version else None)
     }
     update_file(executor, DIR_SRC / 'win32/version.rc', patterns_version_rc)
 
