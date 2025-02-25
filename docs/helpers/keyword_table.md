@@ -1,19 +1,27 @@
 # By Keyword
 | Helper | Keywords |
 | ------ | -------- |
+| [array_contains](documentation.md#array_contains) | array |
+| [array_contains_any](documentation.md#array_contains_any) | array |
+| [array_not_contains](documentation.md#array_not_contains) | array |
+| [array_not_contains_any](documentation.md#array_not_contains_any) | array |
 | [binary_and](documentation.md#binary_and) | undefined |
 | [contains](documentation.md#contains) | undefined |
 | [ends_with](documentation.md#ends_with) | string |
 | [exists](documentation.md#exists) | undefined |
 | [exists_key_in](documentation.md#exists_key_in) | undefined |
+| [has_keys](documentation.md#has_keys) | array, object |
 | [int_equal](documentation.md#int_equal) | comparison, integer |
 | [int_greater](documentation.md#int_greater) | comparison, integer |
+| [int_greater_or_equal](documentation.md#int_greater_or_equal) | comparison, integer |
 | [int_less](documentation.md#int_less) | comparison, integer |
 | [int_less_or_equal](documentation.md#int_less_or_equal) | comparison, integer |
 | [int_not_equal](documentation.md#int_not_equal) | comparison, integer |
 | [ip_cidr_match](documentation.md#ip_cidr_match) | undefined |
 | [is_array](documentation.md#is_array) | undefined |
 | [is_boolean](documentation.md#is_boolean) | undefined |
+| [is_ipv4](documentation.md#is_ipv4) | undefined |
+| [is_ipv6](documentation.md#is_ipv6) | undefined |
 | [is_not_array](documentation.md#is_not_array) | undefined |
 | [is_not_boolean](documentation.md#is_not_boolean) | undefined |
 | [is_not_object](documentation.md#is_not_object) | undefined |
@@ -22,6 +30,7 @@
 | [is_object](documentation.md#is_object) | undefined |
 | [is_public_ip](documentation.md#is_public_ip) | undefined |
 | [is_string](documentation.md#is_string) | undefined |
+| [is_test_session](documentation.md#is_test_session) | undefined |
 | [kvdb_match](documentation.md#kvdb_match) | kvdb |
 | [kvdb_not_match](documentation.md#kvdb_not_match) | kvdb |
 | [match_value](documentation.md#match_value) | undefined |
@@ -32,7 +41,6 @@
 | [string_less](documentation.md#string_less) | comparison, string |
 | [string_less_or_equal](documentation.md#string_less_or_equal) | comparison, string |
 | [string_not_equal](documentation.md#string_not_equal) | comparison, string |
-| [active_response_send](documentation.md#active_response_send) | undefined |
 | [as](documentation.md#as) | max_min_db |
 | [concat](documentation.md#concat) | different_types |
 | [concat_any](documentation.md#concat_any) | different_types |
@@ -47,13 +55,11 @@
 | [ip_version](documentation.md#ip_version) | ip |
 | [join](documentation.md#join) | undefined |
 | [regex_extract](documentation.md#regex_extract) | undefined |
-| [send_upgrade_confirmation](documentation.md#send_upgrade_confirmation) | undefined |
 | [sha1](documentation.md#sha1) | undefined |
 | [system_epoch](documentation.md#system_epoch) | time |
+| [to_int](documentation.md#to_int) | double, float, integer |
 | [to_string](documentation.md#to_string) | undefined |
 | [upcase](documentation.md#upcase) | string |
-| [wdb_query](documentation.md#wdb_query) | wdb |
-| [wdb_update](documentation.md#wdb_update) | wdb |
 | [array_append](documentation.md#array_append) | array |
 | [array_append_any](documentation.md#array_append_any) | array |
 | [array_append_unique](documentation.md#array_append_unique) | array |
