@@ -48,7 +48,7 @@ jobs:
 
       - name: Set TAG
         run: |
-          VERSION=$(sed 's/.*\([0-9]\.[0-9]*\.[0-9]*\).*/\1/' ./src/VERSION)
+          VERSION=`grep '"version"' VERSION.json | sed -E 's/.*"version": *"([^"]+)".*/\1/'`
           if [ "${{ inputs.docker_image_tag }}" == "auto" ]; then
             echo "TAG=$VERSION" >> $GITHUB_ENV;
           elif [ "${{ inputs.docker_image_tag }}" == "developer" ]; then

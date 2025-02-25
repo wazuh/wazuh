@@ -65,7 +65,7 @@ jobs:
       - name: Create .msi package
         run: |
           cd C:\win-agent-base\src\win32
-          $VERSION = Get-Content ..\VERSION
+          $VERSION = Get-Content ..\..\VERSION.json | Select-String '"version"' | ForEach-Object { $_ -match '"version": *"([^"]+)"' ; $matches[1] }
           .\wazuh-installer-build-msi.bat $VERSION 0
           cp *.msi C:\win-agent-base\
       - name: Run tests
