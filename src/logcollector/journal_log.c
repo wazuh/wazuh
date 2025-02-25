@@ -22,6 +22,9 @@
 #define INLINE inline
 #endif
 
+// SD_JOURNAL_INVALIDATE indicates the journal files have changed on disk.
+#define SD_JOURNAL_INVALIDATE 2
+
 STATIC const int W_SD_JOURNAL_LOCAL_ONLY = 1 << 0;     ///< Open the journal log for the local machine
 STATIC const char * W_LIB_SYSTEMD = "libsystemd.so.0"; ///< Name of the systemd library
 
@@ -42,6 +45,7 @@ typedef int (*w_journal_get_data)(sd_journal * j,
                                   size_t * l);                                           ///< sd_journal_get_data
 typedef void (*w_journal_restart_data)(sd_journal * j);                                  ///< sd_journal_restart_data
 typedef int (*w_journal_enumerate_date)(sd_journal * j, const void ** data, size_t * l); ///< sd_journal_enumerate_data
+typedef int (*w_journal_process)(sd_journal* j);                                         ///< sd_journal_process
 
 /**
  * @brief Journal log library
@@ -66,6 +70,8 @@ struct w_journal_lib_t {
     w_journal_restart_data restart_data;     ///< Restart the enumeration of the available data
     w_journal_enumerate_date enumerate_date; ///< Enumerate the available data in the current entry
     void * handle;                           ///< Handle of the library
+    // Rotation detection function
+    w_journal_process process; ///< Indicates what kind of change has been detected
 };
 
 /**********************************************************
@@ -244,7 +250,8 @@ STATIC INLINE w_journal_lib_t * w_journal_lib_init() {
         && load_and_validate_function(lib->handle, "sd_journal_restart_data", (void **) &lib->restart_data)
         && load_and_validate_function(lib->handle, "sd_journal_enumerate_data", (void **) &lib->enumerate_date)
         && load_and_validate_function(
-            lib->handle, "sd_journal_get_cutoff_realtime_usec", (void **) &lib->get_cutoff_timestamp);
+            lib->handle, "sd_journal_get_cutoff_realtime_usec", (void **) &lib->get_cutoff_timestamp)
+        && load_and_validate_function(lib->handle, "sd_journal_process", (void **) &lib->process);
 
     if (!ok) {
         dlclose(lib->handle);
@@ -706,6 +713,24 @@ int w_journal_filter_apply(w_journal_context_t * ctx, w_journal_filter_t * filte
     }
 
     return 1; // Match
+}
+
+bool w_journal_rotation_detected(w_journal_context_t *ctx) {
+
+    if (ctx == NULL || ctx->journal == NULL) {
+        return false;
+    }
+
+    //TODO: delete
+    // int fd = ctx->lib->get_fd(ctx->journal);
+    // if (fd < 0) {
+    //     return false;
+    // }
+
+    int r = ctx->lib->process(ctx->journal);
+
+    // SD_JOURNAL_INVALIDATE indicates the journal files have changed on disk
+    return (r == SD_JOURNAL_INVALIDATE);
 }
 
 #endif

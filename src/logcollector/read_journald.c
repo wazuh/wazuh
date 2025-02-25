@@ -118,6 +118,11 @@ bool w_journald_can_read(unsigned long owner_id) {
 
     } else if (gs_journald_global.owner_id != owner_id) {
         return false;
+    } else if (w_journal_rotation_detected(gs_journald_global.journal_ctx)) {
+        minfo(LOGCOLLECTOR_ROTATION_DETECTED);
+        gs_journald_global.journal_ctx = NULL;
+        gs_journald_global.owner_id = 0;
+        return false;
     }
 
     return true;

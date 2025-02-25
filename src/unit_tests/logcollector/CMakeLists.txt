@@ -131,7 +131,7 @@ else()
                                     -Wl,--wrap,sd_journal_open -Wl,--wrap,sd_journal_close -Wl,--wrap,sd_journal_previous \
                                     -Wl,--wrap,sd_journal_next -Wl,--wrap,sd_journal_seek_tail \
                                     -Wl,--wrap,sd_journal_seek_realtime_usec -Wl,--wrap,sd_journal_get_realtime_usec \
-                                    -Wl,--wrap,sd_journal_get_data -Wl,--wrap,sd_journal_restart_data \
+                                    -Wl,--wrap,sd_journal_process -Wl,--wrap,sd_journal_get_data -Wl,--wrap,sd_journal_restart_data \
                                     -Wl,--wrap,sd_journal_enumerate_data -Wl,--wrap,sd_journal_get_cutoff_realtime_usec \
                                     -Wl,--wrap,cJSON_CreateObject -Wl,--wrap,cJSON_AddArrayToObject -Wl,--wrap,cJSON_AddStringToObject \
                                     -Wl,--wrap,cJSON_AddStringToObject -Wl,--wrap,cJSON_AddItemToArray -Wl,--wrap,pthread_rwlock_wrlock \
