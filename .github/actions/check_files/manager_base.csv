@@ -540,6 +540,7 @@ full_filename,owner_name,group_name,mode,type,prot_permissions,size_bytes,size_e
 /var/ossec/ruleset/sca/cis_win2016.yml*,root,wazuh,640,file,-rw-r-----,,
 /var/ossec/ruleset/sca/cis_win2019.yml*,root,wazuh,640,file,-rw-r-----,,
 /var/ossec/ruleset/sca/cis_win2022.yml*,root,wazuh,640,file,-rw-r-----,,
+/var/ossec/ruleset/sca/cis_win2025.yml*,root,wazuh,640,file,-rw-r-----,,
 /var/ossec/ruleset/sca/sca_distro_independent_linux.yml*,root,wazuh,640,file,-rw-r-----,,
 /var/ossec/ruleset/sca/web_vulnerabilities.yml*,root,wazuh,640,file,-rw-r-----,,
 /var/ossec/templates/vd_states_template.json,root,wazuh,440,file,-r--r-----,,
