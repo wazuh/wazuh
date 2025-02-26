@@ -310,8 +310,7 @@ class JWTConfig(WazuhConfigBaseModel, ValidateFilePathMixin):
         str
             JWT key path.
         """
-        if info.data['private_key'] and info.data['public_key']:
-            cls._validate_file_path(path, info.field_name)
+        cls._validate_file_path(path, info.field_name)
         return path
 
 
