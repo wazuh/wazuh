@@ -696,6 +696,11 @@ void fim_diff_process_delete_value(const char *key_name, const char *value_name,
  *
  */
 void fim_initialize();
+
+/**
+ * @brief Initializes Windows whodata thread, or send signal to start audit threat in Linux
+ *
+ */
 int fim_whodata_initialize();
 
 /**

@@ -14,6 +14,7 @@
 #include "integrity_op.h"
 #include "time_op.h"
 #include "db/include/db.h"
+#include "ebpf/include/ebpf_whodata.h"
 #include "registry/registry.h"
 
 #ifdef WAZUH_UNIT_TESTING
@@ -1792,7 +1793,7 @@ void update_wildcards_config() {
             }
 #endif
 #if ENABLE_AUDIT
-            if (FIM_MODE(dir_it->options) == FIM_WHODATA) {
+            if ((FIM_MODE(dir_it->options) == FIM_WHODATA) && (dir_it->options & AUDIT_DRIVER)) {
                 remove_audit_rule_syscheck(dir_it->path);
             }
 #endif
