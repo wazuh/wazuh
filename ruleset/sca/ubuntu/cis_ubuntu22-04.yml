@@ -82,7 +82,7 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
     condition: all
     rules:
-      - 'not c:findmnt -kn /tmp -> r:\s*/tmp\s && !r:nodev'
+      - "c:findmnt -kn /tmp -> r:nodev"
 
   # 1.1.2.1.3 Ensure nosuid option set on /tmp partition. (Automated)
   - id: 18509
@@ -106,7 +106,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'not c:findmnt -kn /tmp -> r:\s*/tmp\s && !r:nosuid'
+      - "c:findmnt -kn /tmp -> r:nosuid"
 
   # 1.1.2.1.4 Ensure noexec option set on /tmp partition. (Automated)
   - id: 18510
@@ -131,7 +131,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'not c:findmnt -kn /tmp -> r:\s*/tmp\s && !r:noexec'
+      - "c:findmnt -kn /tmp -> r:noexec"
 
   # 1.1.2.2.1 Ensure /dev/shm is a separate partition. (Automated)
   - id: 18511
@@ -181,7 +181,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'not c:findmnt -kn /dev/shm -> r:\s*/dev/shm\s && !r:nodev'
+      - "c:findmnt -kn /dev/shm -> r:nodev"
 
   # 1.1.2.2.3 Ensure nosuid option set on /dev/shm partition. (Automated)
   - id: 18513
@@ -205,7 +205,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'not c:findmnt -kn /dev/shm -> r:\s*/dev/shm\s && !r:nosuid'
+      - "c:findmnt -kn /dev/shm -> r:nosuid"
 
   # 1.1.2.2.4 Ensure noexec option set on /dev/shm partition. (Automated)
   - id: 18514
@@ -229,7 +229,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'not c:findmnt -kn /dev/shm -> r:\s*/dev/shm\s && !r:noexec'
+      - "c:findmnt -kn /dev/shm -> r:noexec"
 
   # 1.1.2.3.1 Ensure separate partition exists for /home. (Automated)
   - id: 18515
@@ -280,7 +280,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'not c:findmnt -kn /home -> r:\s*/home\s && !r:nodev'
+      - "c:findmnt -kn /home -> r:nodev"
 
   # 1.1.2.3.3 Ensure nosuid option set on /home partition. (Automated)
   - id: 18517
@@ -304,7 +304,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'not c:findmnt -kn /home -> r:\s*/home\s && !r:nosuid'
+      - "c:findmnt -kn /home -> r:nosuid"
 
   # 1.1.2.4.1 Ensure separate partition exists for /var. (Automated)
   - id: 18518
@@ -355,7 +355,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'not c:findmnt -kn /var -> r:\s*/var\s && !r:nodev'
+      - "c:findmnt -kn /var -> r:nodev"
 
   # 1.1.2.4.3 Ensure nosuid option set on /var partition. (Automated)
   - id: 18520
@@ -379,7 +379,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'not c:findmnt -kn /var -> r:\s*/var\s && !r:nosuid'
+      - "c:findmnt -kn /var -> r:nosuid"
 
   # 1.1.2.5.1 Ensure separate partition exists for /var/tmp. (Automated)
   - id: 18521
@@ -430,7 +430,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'not c:findmnt -kn /var/tmp -> r:\s*/var/tmp\s && !r:nodev'
+      - "c:findmnt -kn /var/tmp -> r:nodev"
 
   # 1.1.2.5.3 Ensure nosuid option set on /var/tmp partition. (Automated)
   - id: 18523
@@ -454,7 +454,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'not c:findmnt -kn /var/tmp -> r:\s*/var/tmp\s && !r:nosuid'
+      - "c:findmnt -kn /var/tmp -> r:nosuid"
 
   # 1.1.2.5.4 Ensure noexec option set on /var/tmp partition. (Automated)
   - id: 18524
@@ -478,7 +478,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'not c:findmnt -kn /var/tmp -> r:\s*/var/tmp\s && !r:noexec'
+      - "c:findmnt -kn /var/tmp -> r:noexec"
 
   # 1.1.2.6.1 Ensure separate partition exists for /var/log. (Automated)
   - id: 18525
@@ -525,7 +525,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'not c:findmnt -kn /var/log -> r:\s*/var/log\s && !r:nodev'
+      - "c:findmnt -kn /var/log -> r:nodev"
 
   # 1.1.2.6.3 Ensure nosuid option set on /var/log partition. (Automated)
   - id: 18527
@@ -549,7 +549,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'not c:findmnt -kn /var/log -> r:\s*/var/log\s && !r:nosuid'
+      - "c:findmnt -kn /var/log -> r:nosuid"
 
   # 1.1.2.6.4 Ensure noexec option set on /var/log partition. (Automated)
   - id: 18528
@@ -573,7 +573,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'not c:findmnt -kn /var/log -> r:\s*/var/log\s && !r:noexec'
+      - "c:findmnt -kn /var/log -> r:noexec"
 
   # 1.1.2.7.1 Ensure separate partition exists for /var/log/audit. (Automated)
   - id: 18529
@@ -620,7 +620,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'not c:findmnt -kn /var/log/audit -> r:\s*/var/log/audit\s && !r:nodev'
+      - "c:findmnt -kn /var/log/audit -> r:nodev"
 
   # 1.1.2.7.3 Ensure nosuid option set on /var/log/audit partition. (Automated)
   - id: 18531
@@ -644,7 +644,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'not c:findmnt -kn /var/log/audit -> r:\s*/var/log/audit\s && !r:nosuid'
+      - "c:findmnt -kn /var/log/audit -> r:nosuid"
 
   # 1.1.2.7.4 Ensure noexec option set on /var/log/audit partition. (Automated)
   - id: 18532
@@ -668,7 +668,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'not c:findmnt -kn /var/log/audit -> r:\s*/var/log/audit\s && !r:noexec'
+      - "c:findmnt -kn /var/log/audit -> r:noexec"
 
   # 1.2.1.1 Ensure GPG keys are configured. (Manual) - Not Implemented
   # 1.2.1.2 Ensure package manager repositories are configured. (Manual) - Not Implemented
@@ -725,7 +725,6 @@ checks:
       - 'f:/boot/grub/grub.cfg -> r:^\s*\t*linux && !r:security=apparmor'
 
   # 1.3.1.3 Ensure all AppArmor Profiles are in enforce or complain mode. (Automated) - Not Implemented
-
   # 1.3.1.4 Ensure all AppArmor Profiles are enforcing. (Automated) - Not Implemented
 
   # 1.4.1 Ensure bootloader password is set. (Automated)
@@ -965,7 +964,7 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
     condition: all
     rules:
-      - "not c:dpkg-query -s gdm3 -> r:gdm3 is installed"
+      - "not c:dpkg-query -s gdm3 -> r:install ok installed"
 
   # 1.7.2 Ensure GDM login banner is configured. (Automated) - Not Implemented
   # 1.7.3 Ensure GDM disable-user-list option is enabled. (Automated) - Not Implemented
