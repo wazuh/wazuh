@@ -19,6 +19,7 @@
 #define WM_MS_GRAPH_DEFAULT_ENABLED true
 #define WM_MS_GRAPH_DEFAULT_ONLY_FUTURE_EVENTS true
 #define WM_MS_GRAPH_DEFAULT_CURL_MAX_SIZE 1048576L
+#define WM_MS_GRAPH_DEFAULT_DELAY 30
 #define WM_MS_GRAPH_DEFAULT_RUN_ON_START true
 #define WM_MS_GRAPH_DEFAULT_VERSION "v1.0"
 
@@ -73,6 +74,7 @@ typedef struct wm_ms_graph {
 	bool only_future_events;
 	ssize_t curl_max_size;
 	unsigned int page_size;
+	time_t time_delay;
 	bool run_on_start;
 	char* version;
 	sched_scan_config scan_config;
