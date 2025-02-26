@@ -195,14 +195,33 @@ jobs:
           pip install -r src/wazuh_modules/inventory_harvester/qa/requirements.txt
 
       - name: Run tests
+        env:
+          REPORT_OUTPUT: report.md
         run: |
           cd src
+          echo "REPORT_FILE=${{ env.REPORT_OUTPUT }}" >> "$GITHUB_ENV"
           echo "{}" > states_update_mappings.json
-          python -m pytest -vv -rA wazuh_modules/inventory_harvester/qa/ --log-cli-level=DEBUG
+          python -m pytest -rA --html=report.html --self-contained-html --md-report --md-report-verbose=1 --md-report-zeros empty --md-report-color never --md-report-output "$REPORT_OUTPUT" -vv wazuh_modules/inventory_harvester/qa/ --log-cli-level=DEBUG
 
       - name: Upload artifacts
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: inventory-harvester-qa-logs
-          path: log_*.out
+          path: src/log_*.out
+
+      - name: Output reports to the job summary
+        if: always()
+        shell: bash
+        run: |
+          cd src
+          cat "$REPORT_FILE" >> $GITHUB_STEP_SUMMARY
+
+      - name: Upload HTML report
+        if: always()
+        env:
+          REPORT_FILENAME: report.html
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.REPORT_FILENAME }}
+          path: src/${{ env.REPORT_FILENAME }}
