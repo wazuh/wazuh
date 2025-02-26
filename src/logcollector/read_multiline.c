@@ -33,7 +33,7 @@ void *read_multiline(logreader *lf, int *rc, int drop_it) {
     int64_t current_position = w_ftell(lf->fp);
     bool is_valid_context_file = w_get_hash_context(lf, &context, current_position);
 
-    for (offset = w_ftell(lf->fp); can_read() && fgets(str, OS_MAX_LOG_SIZE, lf->fp) != NULL && (!maximum_lines || lines < maximum_lines) && offset >= 0; offset += rbytes) {
+    for (offset = w_ftell(lf->fp); can_read() && (!maximum_lines || lines < maximum_lines) && offset >= 0 && fgets(str, OS_MAX_LOG_SIZE, lf->fp); offset += rbytes) {
         rbytes = w_ftell(lf->fp) - offset;
         lines++;
         linesgot++;

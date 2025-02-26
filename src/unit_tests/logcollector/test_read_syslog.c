@@ -1,26 +1,19 @@
-/*
- * Copyright (C) 2015, Wazuh Inc.
- *
- * This program is free software; you can redistribute it
- * and/or modify it under the terms of the GNU General Public
- * License (version 2) as published by the FSF - Free Software
- * Foundation.
- */
-
 #include <stdarg.h>
 #include <stddef.h>
 #include <setjmp.h>
 #include <cmocka.h>
+#include <stdlib.h>
 #include <stdio.h>
-#include <time.h>
+#include <stdbool.h>
 
 #include "../../logcollector/logcollector.h"
 #include "../../headers/shared.h"
 #include "../wrappers/common.h"
 #include "../wrappers/wazuh/shared/file_op_wrappers.h"
 #include "../wrappers/libc/stdio_wrappers.h"
+#include "../wrappers/libc/string_wrappers.h"
 
-/* Globals */
+/* Globals*/
 
 extern int maximum_lines;
 
@@ -37,6 +30,7 @@ static int group_teardown(void ** state) {
 }
 
 /* Wraps */
+
 int __wrap_can_read() {
     return mock_type(int);
 }
@@ -60,12 +54,9 @@ void __wrap_OS_SHA1_Stream(EVP_MD_CTX *c, os_sha1 output, char * buf) {
 
 /* Tests */
 
-void test_buffer_space(void ** state) {
-    logreader lf = { .file = "test", .linecount = 3 };
+void test_read_syslog_empty_file(void **state) {
+    logreader lf = { .file = "test.log" };
     int rc;
-    char * input_str = malloc(OS_MAX_LOG_SIZE);
-    memset(input_str, '.', OS_MAX_LOG_SIZE - 1);
-    input_str[OS_MAX_LOG_SIZE - 1] = '\0';
 
     expect_any(__wrap_w_ftell, x);
     will_return(__wrap_w_ftell, (int64_t) 0);
@@ -78,62 +69,23 @@ void test_buffer_space(void ** state) {
     will_return(__wrap_can_read, 1);
 
     expect_any(__wrap_fgets, __stream);
-    will_return(__wrap_fgets, input_str);
-
-    expect_any(__wrap_w_ftell, x);
-    will_return(__wrap_w_ftell, (int64_t) OS_MAX_LOG_SIZE - 1);
-
-    expect_function_call(__wrap_OS_SHA1_Stream);
-
-    will_return(__wrap_can_read, 1);
-
-    expect_any(__wrap_fgets, __stream);
-    will_return(__wrap_fgets, "\n");
-
-    expect_any(__wrap_w_ftell, x);
-    will_return(__wrap_w_ftell, (int64_t) OS_MAX_LOG_SIZE);
-
-    expect_function_call(__wrap_OS_SHA1_Stream);
-
-    will_return(__wrap_can_read, 1);
-
-    expect_any(__wrap_fgets, __stream);
-    will_return(__wrap_fgets, input_str);
-
-    expect_any(__wrap_w_ftell, x);
-    will_return(__wrap_w_ftell, (int64_t) (OS_MAX_LOG_SIZE) * 2 - 1);
-
-    expect_function_call(__wrap_OS_SHA1_Stream);
-
-    expect_any(__wrap__merror, formatted_msg);
-
-    expect_any(__wrap_fgets, __stream);
     will_return(__wrap_fgets, NULL);
-
-    expect_any(__wrap_w_ftell, x);
-    will_return(__wrap_w_ftell, (int64_t) (OS_MAX_LOG_SIZE) * 2 - 1);
-
-    will_return(__wrap_can_read, 0);
 
     will_return(__wrap_w_update_file_status, true);
     will_return(__wrap_w_update_file_status, 0);
 
-    read_multiline(&lf, &rc, 1);
-
-    free(input_str);
+    read_syslog(&lf, &rc, 1);
 }
 
-void test_buffer_space_invalid_context(void ** state) {
-    logreader lf = { .file = "test", .linecount = 3 };
+void test_read_syslog_success(void **state) {
+    logreader lf = { .file = "test.log" };
+    char line[] = "test line\n";
     int rc;
-    char * input_str = malloc(OS_MAX_LOG_SIZE);
-    memset(input_str, '.', OS_MAX_LOG_SIZE - 1);
-    input_str[OS_MAX_LOG_SIZE - 1] = '\0';
 
     expect_any(__wrap_w_ftell, x);
     will_return(__wrap_w_ftell, (int64_t) 0);
 
-    will_return(__wrap_w_get_hash_context, false);
+    will_return(__wrap_w_get_hash_context, true);
 
     expect_any(__wrap_w_ftell, x);
     will_return(__wrap_w_ftell, (int64_t) 0);
@@ -141,44 +93,29 @@ void test_buffer_space_invalid_context(void ** state) {
     will_return(__wrap_can_read, 1);
 
     expect_any(__wrap_fgets, __stream);
-    will_return(__wrap_fgets, input_str);
+    will_return(__wrap_fgets, line);
 
     expect_any(__wrap_w_ftell, x);
-    will_return(__wrap_w_ftell, (int64_t) OS_MAX_LOG_SIZE - 1);
+    will_return(__wrap_w_ftell, (int64_t) strlen(line));
+
+    expect_function_call(__wrap_OS_SHA1_Stream);
+
+    expect_any(__wrap_w_ftell, x);
+    will_return(__wrap_w_ftell, (int64_t) strlen(line));
 
     will_return(__wrap_can_read, 1);
-
-    expect_any(__wrap_fgets, __stream);
-    will_return(__wrap_fgets, "\n");
-
-    expect_any(__wrap_w_ftell, x);
-    will_return(__wrap_w_ftell, (int64_t) OS_MAX_LOG_SIZE);
-
-    will_return(__wrap_can_read, 1);
-
-    expect_any(__wrap_fgets, __stream);
-    will_return(__wrap_fgets, input_str);
-
-    expect_any(__wrap_w_ftell, x);
-    will_return(__wrap_w_ftell, (int64_t) (OS_MAX_LOG_SIZE) * 2 - 1);
-
-    expect_any(__wrap__merror, formatted_msg);
 
     expect_any(__wrap_fgets, __stream);
     will_return(__wrap_fgets, NULL);
 
-    expect_any(__wrap_w_ftell, x);
-    will_return(__wrap_w_ftell, (int64_t) (OS_MAX_LOG_SIZE) * 2 - 1);
+    will_return(__wrap_w_update_file_status, true);
+    will_return(__wrap_w_update_file_status, 0);
 
-    will_return(__wrap_can_read, 0);
-
-    read_multiline(&lf, &rc, 1);
-
-    free(input_str);
+    read_syslog(&lf, &rc, 1);
 }
 
 void test_maximum_lines(void ** state) {
-    logreader lf = { .file = "test", .linecount = 3 };
+    logreader lf = { .file = "test" };
     int rc;
     char line1[] = "Line 1\n";
     char line2[] = "Line 2\n";
@@ -203,6 +140,9 @@ void test_maximum_lines(void ** state) {
 
     expect_function_call(__wrap_OS_SHA1_Stream);
 
+    expect_any(__wrap_w_ftell, x);
+    will_return(__wrap_w_ftell, (int64_t) strlen(line1));
+
     will_return(__wrap_can_read, 1);
 
     expect_any(__wrap_fgets, __stream);
@@ -213,12 +153,15 @@ void test_maximum_lines(void ** state) {
 
     expect_function_call(__wrap_OS_SHA1_Stream);
 
+    expect_any(__wrap_w_ftell, x);
+    will_return(__wrap_w_ftell, (int64_t) strlen(line1) + strlen(line2));
+
     will_return(__wrap_can_read, 1);
 
     will_return(__wrap_w_update_file_status, true);
     will_return(__wrap_w_update_file_status, 0);
 
-    read_multiline(&lf, &rc, 1);
+    read_syslog(&lf, &rc, 1);
 }
 
 void test_maximum_lines_disabled(void ** state) {
@@ -247,6 +190,9 @@ void test_maximum_lines_disabled(void ** state) {
 
     expect_function_call(__wrap_OS_SHA1_Stream);
 
+    expect_any(__wrap_w_ftell, x);
+    will_return(__wrap_w_ftell, (int64_t) strlen(line1));
+
     will_return(__wrap_can_read, 1);
 
     expect_any(__wrap_fgets, __stream);
@@ -256,6 +202,9 @@ void test_maximum_lines_disabled(void ** state) {
     will_return(__wrap_w_ftell, (int64_t) strlen(line1) + strlen(line2));
 
     expect_function_call(__wrap_OS_SHA1_Stream);
+
+    expect_any(__wrap_w_ftell, x);
+    will_return(__wrap_w_ftell, (int64_t) strlen(line1) + strlen(line2));
 
     will_return(__wrap_can_read, 1);
 
@@ -278,13 +227,13 @@ void test_maximum_lines_disabled(void ** state) {
     will_return(__wrap_w_update_file_status, true);
     will_return(__wrap_w_update_file_status, 0);
 
-    read_multiline(&lf, &rc, 1);
+    read_syslog(&lf, &rc, 1);
 }
 
 int main(void) {
     const struct CMUnitTest tests[] = {
-        cmocka_unit_test(test_buffer_space),
-        cmocka_unit_test(test_buffer_space_invalid_context),
+        cmocka_unit_test(test_read_syslog_empty_file),
+        cmocka_unit_test(test_read_syslog_success),
         cmocka_unit_test(test_maximum_lines),
         cmocka_unit_test(test_maximum_lines_disabled)
     };

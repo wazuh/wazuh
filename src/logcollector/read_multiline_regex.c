@@ -153,8 +153,9 @@ void * read_multiline_regex(logreader * lf, int * rc, int drop_it) {
     read_buffer[OS_MAXSTR] = '\0';
     *rc = 0;
 
-    while (rlines = multiline_getlog(read_buffer, max_line_len, lf->fp, lf->multiline),
-           rlines > 0 && (maximum_lines == 0 || count_lines < maximum_lines)) {
+    while ((maximum_lines == 0 || count_lines < maximum_lines) &&
+            (rlines = multiline_getlog(read_buffer, max_line_len, lf->fp, lf->multiline), rlines > 0)) {
+
 
         /* Check ignore and restrict log regex, if configured. */
         if (drop_it == 0 && !check_ignore_and_restrict(lf->regex_ignore, lf->regex_restrict, read_buffer)) {
