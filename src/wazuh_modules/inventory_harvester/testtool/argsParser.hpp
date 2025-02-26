@@ -12,6 +12,7 @@
 #ifndef _CMD_ARGS_PARSER_HPP_
 #define _CMD_ARGS_PARSER_HPP_
 
+#include <algorithm>
 #include <filesystem>
 #include <iostream>
 #include <sstream>
@@ -158,6 +159,9 @@ private:
             {
                 actionsValues.push_back(entry.path().string());
             }
+
+            // Order the files alphabetically
+            std::sort(actionsValues.begin(), actionsValues.end());
 
             return actionsValues;
         }
