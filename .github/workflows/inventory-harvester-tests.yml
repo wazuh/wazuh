@@ -198,4 +198,11 @@ jobs:
         run: |
           cd src
           echo "{}" > states_update_mappings.json
-          python -m pytest -vv wazuh_modules/inventory_harvester/qa/ --log-cli-level=DEBUG
+          python -m pytest -vv -rA wazuh_modules/inventory_harvester/qa/ --log-cli-level=DEBUG
+
+      - name: Upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: inventory-harvester-qa-logs
+          path: log_*.out
