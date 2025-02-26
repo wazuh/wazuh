@@ -1,0 +1,23 @@
+[
+    {
+        "index_name": "wazuh-states-system-cluster01",
+        "data": [
+            {
+                "agent": {
+                    "id": "001"
+                },
+                "host": {
+                    "architecture": "x86_64",
+                    "hostname": "debian",
+                    "os": {
+                        "kernel": "5.4.0-155-generic",
+                        "name": "Debian",
+                        "platform": "debian",
+                        "type": "Linux",
+                        "version": "Trusty Tahr"
+                    }
+                }
+            }
+        ]
+    }
+]
