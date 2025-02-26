@@ -1,6 +1,27 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## [v4.11.1]
+
+### Manager
+
+#### Fixed
+
+- Build OS CPE for package scans with data from Wazuh-DB. ([#28294](https://github.com/wazuh/wazuh/pull/28294))
+- Add delete by query logic when indexer is disabled. ([#28292](https://github.com/wazuh/wazuh/pull/28292))
+- Fixed heap buffer overflow in Analysisd rule parser. ([#28396](https://github.com/wazuh/wazuh/pull/28396))
+
+### Agent
+
+#### Fixed
+
+- Improve agent connectivity. ([#28339](https://github.com/wazuh/wazuh/pull/28339))
+
+#### Changed
+
+- Change ms-graph page size to 50. ([#28075](https://github.com/wazuh/wazuh/pull/28075))
+- Remove "ca.com" domain filter from Rootcheck malware ruleset. ([#28045](https://github.com/wazuh/wazuh/pull/28045))
+
 ## [v4.11.0]
 
 ### Manager
