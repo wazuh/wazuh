@@ -16,24 +16,14 @@ class Policy:
 
 
 @dataclass
-class Rule:
-    """Rule defines conditions under which policies apply."""
-
-    id: str = None
-    name: str = None
-    rule: str = None
-    created_at: datetime = None
-
-
-@dataclass
 class Role:
     """Role encapsulates access rights for the users."""
 
     id: str = None
     name: str = None
     level: int = None
-    policies: list[Policy] = None
-    rules: list[Rule] = None
+    policies: list[str] = None
+    rules: list[str] = None
     created_at: datetime = None
 
     def to_dict(self) -> dict:

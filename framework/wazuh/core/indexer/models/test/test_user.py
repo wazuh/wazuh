@@ -1,5 +1,5 @@
 import pytest
-from wazuh.core.indexer.models.users import User
+from wazuh.core.indexer.models.user import User
 
 
 class TestUser:
@@ -11,7 +11,7 @@ class TestUser:
             (
                 {
                     'id': '1',
-                    'username': 'test',
+                    'name': 'test',
                     'password': 'test',
                     'allow_run_as': False,
                     'roles': [{'id': '1'}],
@@ -19,7 +19,7 @@ class TestUser:
                 },
                 {
                     'id': '1',
-                    'username': 'test',
+                    'name': 'test',
                     'password': 'test',
                     'allow_run_as': False,
                     'roles': [{'id': '1'}],
@@ -29,12 +29,12 @@ class TestUser:
             (
                 {
                     'id': '1',
-                    'username': 'test',
+                    'name': 'test',
                     'password': None,
                 },
                 {
                     'id': '1',
-                    'username': 'test',
+                    'name': 'test',
                 },
             ),
         ],

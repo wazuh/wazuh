@@ -1,9 +1,9 @@
 import pytest
-from wazuh.core.indexer.models.roles import Role
+from wazuh.core.indexer.models.rule import Rule
 
 
-class TestRole:
-    """Validate the correct functionality of the `Role` class."""
+class TestRule:
+    """Validate the correct functionality of the `Rule` class."""
 
     @pytest.mark.parametrize(
         'data,expected',
@@ -12,17 +12,13 @@ class TestRole:
                 {
                     'id': '1',
                     'name': 'test',
-                    'level': 1,
-                    'policies': [{'id': '1'}],
-                    'rules': [{'id': '1'}],
+                    'body': {},
                     'created_at': 0,
                 },
                 {
                     'id': '1',
                     'name': 'test',
-                    'level': 1,
-                    'policies': [{'id': '1'}],
-                    'rules': [{'id': '1'}],
+                    'body': {},
                     'created_at': 0,
                 },
             ),
@@ -30,7 +26,7 @@ class TestRole:
                 {
                     'id': '1',
                     'name': 'test',
-                    'level': None,
+                    'created_at': None,
                 },
                 {
                     'id': '1',
@@ -41,5 +37,5 @@ class TestRole:
     )
     def test_to_dict(self, data: dict, expected):
         """Check the correct function if `to_dict` method."""
-        role = Role(**data)
-        assert role.to_dict() == expected
+        rule = Rule(**data)
+        assert rule.to_dict() == expected
