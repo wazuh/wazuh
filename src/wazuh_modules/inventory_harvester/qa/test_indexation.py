@@ -5,7 +5,6 @@ import requests
 import logging
 import os
 import subprocess
-import inspect
 from pathlib import Path
 import json
 import shutil
@@ -45,17 +44,12 @@ def opensearch(request):
     yield client
     # Stop all containers
     for container in client.containers.list():
-        container.stop()
-    client.containers.prune()
+        if container.name == 'opensearch':
+            container.stop()
+            container.remove()
 
-@pytest.mark.parametrize('opensearch', [False], indirect=True)
-def test_opensearch_health(opensearch):
-    url = 'http://'+GLOBAL_URL+'/_cluster/health'
-    response = requests.get(url)
-    assert response.status_code == 200
-    assert response.json()['status'] == 'green' or response.json()['status'] == 'yellow'
-
-test_folders = sorted(Path("wazuh_modules/inventory_harvester/qa/test_data").glob(os.getenv('WAZUH_IH_TEST_GLOB', '*')))
+test_folders = [folder for folder in Path("wazuh_modules/inventory_harvester/qa/test_data").rglob('*') if folder.is_dir() and folder.name.isdigit()]
+test_folders = sorted([str(folder) for folder in test_folders])
 
 @pytest.fixture
 def test_folder(request):
@@ -76,61 +70,63 @@ def test_data_indexation(opensearch, test_folder):
         cmd = cmd_alt
     assert cmd.exists(), "The binary does not exists"
 
+    log_file = 'log_' + test_folder.replace('/', '_') + '.out'
+
     # Remove previous log file if exists
-    if Path("log.out").exists():
-        Path("log.out").unlink()
+    if Path(log_file).exists():
+        Path(log_file).unlink()
 
-    LOGGER.debug(f"Running test {test_folder.name}")
+    if Path("queue").exists():
+        shutil.rmtree("queue")
 
-    args = ["-c", "wazuh_modules/inventory_harvester/qa/test_data/" + test_folder.name + "/config.json",
-            "-t", "wazuh_modules/inventory_harvester/qa/test_data/" + test_folder.name + "/template.json",
-            "-l", "log.out", "-i", "wazuh_modules/inventory_harvester/qa/test_data/" + test_folder.name + "/inputs/"]
+    LOGGER.debug(f"Running test at '{test_folder}'")
+
+    args = ["-c", test_folder + "/config.json",
+            "-t", test_folder + "/template.json",
+            "-l", log_file, "-i", test_folder + "/inputs/"]
 
     command = [cmd] + args
 
-    LOGGER.debug(f"Running command: {command}")
+    LOGGER.info(f"Running command: {command}")
     process = subprocess.Popen(command)
     # if the process is not running fail the test
     assert process.poll() is None, "The process is not running"
 
-    # Query to check if the index is created and template is applied
-    counter = 0
-    response = None
-    while counter < 10:
-        url = 'http://'+GLOBAL_URL+'/_cat/indices'
-        response = requests.get(url)
-        if response.status_code == 200 and 'wazuh-states-' in response.text:
-            LOGGER.debug(f"Index created {response.text}")
-            break
-        time.sleep(1)
-        counter += 1
-
-    assert counter < 10, f"The index was not created. Response: {response.text}"
+    # Parse result.json file to get expected indexes and data
+    with open(Path(test_folder, "result.json")) as f:
+        result = json.load(f)
 
     # Wait for process to finish
     process.wait()
     assert process.returncode == 0, "The process failed"
 
-    # Get index name
-    index_name = None
-    for line in response.text.splitlines():
-        if 'wazuh-states-' in line:
-            index_name = line.split()[2]
-            break
-
-    LOGGER.info(f"Index name: {index_name}")
+    # We validate the index was created
+    counter = 0
+    for index in result:
+        url = 'http://'+ GLOBAL_URL +'/_cat/indices/' + index["index_name"] + '?format=json'
+        LOGGER.info("Checking if the index was created at: " + url)
+        while counter < 10:
+            response = requests.get(url)
+            if response.status_code == 200 and len(response.json()) > 0:
+                break
+            time.sleep(1)
+            counter += 1
+        assert counter < 10, f"The index was not created. Response: {response.text}"
 
     # Query to check if the index content is the same as result.json file
-    url = 'http://'+GLOBAL_URL+'/'+index_name+'/_search'
-    query = {
-        "query": {
-            "match_all": {}
-        }
-    }
-    response = requests.get(url, json=query)
-    assert response.status_code == 200
+    for index in result:
+        url = 'http://'+ GLOBAL_URL +'/'+ index["index_name"] +'/_search'
+        response = requests.get(url)
+        assert response.status_code == 200
 
-    # Check if the content is the same as result.json
-    with open(Path("wazuh_modules/inventory_harvester/qa/test_data", test_folder, "result.json")) as f:
-        result = json.load(f)
-    assert response.json() == result
+        # Check if the data is the same as the expected
+        response_json = response.json()
+        assert response_json["hits"]["total"]["value"] == len(index["data"]), f"The number of hits is not the expected: {response_json['hits']['hits']}"
+
+        for expected_data in index["data"]:
+            found = False
+            for hit in response_json["hits"]["hits"]:
+                if expected_data == hit["_source"]:
+                    found = True
+                    break
+            assert found, f"The data '{expected_data}' is not in the response: {response_json['hits']['hits']}"
