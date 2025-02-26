@@ -78,6 +78,7 @@ legacy="$6"
 src="$7"
 
 build_dir="/build_wazuh"
+short_commit_hash=""
 
 source helper_function.sh
 
@@ -105,7 +106,7 @@ fi
 source_dir=$(build_directories "$build_dir/${BUILD_TARGET}" "wazuh*" $future)
 
 # Write short commit has to VERSION.json
-sed -i "/\"stage\"/s/$/,/; /\"stage\"/a\ \ \ \ \"commit\": \"${short_commit_hash}\"" source_dir/VERSION.json
+sed -i "/\"stage\"/s/$/,/; /\"stage\"/a\ \ \ \ \"commit\": \"${short_commit_hash}\"" ${source_dir}/VERSION.json
 
 wazuh_version=`grep '"version"' ${wazuh_dir}/VERSION.json | sed -E 's/.*"version": *"([^"]+)".*/\1/'`
 # TODO: Improve how we handle package_name
