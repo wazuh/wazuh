@@ -479,6 +479,7 @@ full_filename,owner_name,group_name,mode,type,prot_permissions,size_bytes,size_e
 /var/ossec/ruleset/rules/0998-aws-security-hub-rules.xml,root,wazuh,640,file,-rw-r-----,,
 /var/ossec/ruleset/sca/cis_alma_linux_8.yml*,root,wazuh,640,file,-rw-r-----,,
 /var/ossec/ruleset/sca/cis_alma_linux_9.yml*,root,wazuh,640,file,-rw-r-----,,
+/var/ossec/ruleset/sca/cis_alma_linux_10.yml*,root,wazuh,640,file,-rw-r-----,,
 /var/ossec/ruleset/sca/cis_amazon_linux_1.yml*,root,wazuh,640,file,-rw-r-----,,
 /var/ossec/ruleset/sca/cis_amazon_linux_2.yml*,root,wazuh,640,file,-rw-r-----,,
 /var/ossec/ruleset/sca/cis_amazon_linux_2023.yml*,root,wazuh,640,file,-rw-r-----,,
