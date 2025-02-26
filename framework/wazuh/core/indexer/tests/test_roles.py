@@ -4,7 +4,7 @@ import pytest
 from opensearchpy import exceptions
 from wazuh.core.exception import WazuhError, WazuhResourceNotFound
 from wazuh.core.indexer.base import IndexerKey
-from wazuh.core.indexer.models.roles import Role
+from wazuh.core.indexer.models.role import Role
 from wazuh.core.indexer.roles import ROLE_KEY, RolesIndex
 
 
@@ -65,7 +65,7 @@ class TestRolesIndex:
         """Validate the `create` method error handling."""
         client_mock.index.side_effect = exceptions.ConflictError
 
-        with pytest.raises(WazuhError, match='.*4026.*'):
+        with pytest.raises(WazuhError, match='.*4028.*'):
             await index_instance.create(Role(**self.role))
 
     async def test_delete(self, index_instance: RolesIndex, client_mock: mock.AsyncMock):
@@ -96,7 +96,7 @@ class TestRolesIndex:
         """Validate the `get` method error handling."""
         client_mock.get.side_effect = exceptions.NotFoundError
 
-        with pytest.raises(WazuhResourceNotFound, match='.*4027.*'):
+        with pytest.raises(WazuhResourceNotFound, match='.*4029.*'):
             await index_instance.get(Role(**self.role))
 
     async def test_search(self, index_instance: RolesIndex, client_mock: mock.AsyncMock):

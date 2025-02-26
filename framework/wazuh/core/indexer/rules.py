@@ -1,56 +1,56 @@
 from opensearchpy import exceptions
 from wazuh.core.exception import WazuhError, WazuhResourceNotFound
 from wazuh.core.indexer.base import BaseIndex, IndexerKey
-from wazuh.core.indexer.models.user import User
+from wazuh.core.indexer.models.rule import Rule
 from wazuh.core.indexer.utils import get_source_items
 
-USER_KEY = 'user'
+RULE_KEY = 'rule'
 
 
-class UsersIndex(BaseIndex):
-    """Set of methods to interact with the `users` index."""
+class RulesIndex(BaseIndex):
+    """Set of methods to interact with the `rules` index."""
 
-    INDEX = 'users'
+    INDEX = 'rules'
 
-    async def create(self, user: User) -> User:
-        """Create a new user.
+    async def create(self, rule: Rule) -> Rule:
+        """Create a new rule.
 
         Parameters
         ----------
-        user : User
-            User instance containing its details.
+        rule : Rule
+            Rule instance containing its details.
 
         Raises
         ------
-        WazuhError(4026)
-            If a user with the provided ID already exists.
+        WazuhError(4032)
+            If a rule with the provided ID already exists.
 
         Returns
         -------
-        User
-            The created user instance.
+        Rule
+            The created rule instance.
         """
         try:
             await self._client.index(
-                index=self.INDEX, id=user.id, body={USER_KEY: user.to_dict()}, op_type='create', refresh='true'
+                index=self.INDEX, id=rule.id, body={RULE_KEY: rule.to_dict()}, op_type='create', refresh='true'
             )
         except exceptions.ConflictError:
-            raise WazuhError(4026, extra_message=user.id)
+            raise WazuhError(4032, extra_message=rule.id)
 
-        return user
+        return rule
 
     async def delete(self, ids: list[str]) -> list[str]:
-        """Delete multiple users that match with the given parameters.
+        """Delete multiple rules that match with the given parameters.
 
         Parameters
         ----------
         ids : list[str]
-            User identifiers.
+            Rule identifiers.
 
         Returns
         -------
         list[str]
-            Deleted user IDs.
+            Deleted rule IDs.
         """
         body = {IndexerKey.QUERY: {IndexerKey.TERMS: {IndexerKey._ID: ids}}}
         parameters = {IndexerKey.INDEX: self.INDEX, IndexerKey.BODY: body, IndexerKey.CONFLICTS: 'proceed'}
@@ -59,30 +59,30 @@ class UsersIndex(BaseIndex):
 
         return ids
 
-    async def get(self, id: str) -> User:
-        """Retrieve a user.
+    async def get(self, id: str) -> Rule:
+        """Retrieve a rule.
 
         Parameters
         ----------
         id : str
-            User identifier.
+            Rule identifier.
 
         Raises
         ------
-        WazuhResourceNotFound(4027)
-            If no users exist with the UUID provided.
+        WazuhResourceNotFound(4033)
+            If no rules exist with the UUID provided.
 
         Returns
         -------
-        User
-            User object.
+        Rule
+            Rule object.
         """
         try:
             data = await self._client.get(index=self.INDEX, id=id)
         except exceptions.NotFoundError:
-            raise WazuhResourceNotFound(4027)
+            raise WazuhResourceNotFound(4033)
 
-        return User(**data[IndexerKey._SOURCE][USER_KEY])
+        return Rule(**data[IndexerKey._SOURCE][RULE_KEY])
 
     async def search(
         self,
@@ -92,7 +92,7 @@ class UsersIndex(BaseIndex):
         offset: int | None = None,
         limit: int | None = None,
         sort: str | None = None,
-    ) -> list[User]:
+    ) -> list[Rule]:
         """Perform a search operation with the given query.
 
         Parameters
@@ -119,25 +119,25 @@ class UsersIndex(BaseIndex):
         results = await self._client.search(
             **parameters, _source_includes=select, _source_excludes=exclude, size=limit, from_=offset, sort=sort
         )
-        return [User(**item[USER_KEY]) for item in get_source_items(results)]
+        return [Rule(**item[RULE_KEY]) for item in get_source_items(results)]
 
-    async def update(self, id: str, user: User) -> None:
-        """Update a user.
+    async def update(self, id: str, rule: Rule) -> None:
+        """Update a rule.
 
         Parameters
         ----------
         id : str
-            User identifier.
-        user : User
-            User fields. Only specified fields are updated.
+            Rule identifier.
+        rule : Rule
+            Rule fields. Only specified fields are updated.
 
         Raises
         ------
-        WazuhResourceNotFound(4027)
-            If no users exist with the UUID provided.
+        WazuhResourceNotFound(4033)
+            If no rules exist with the UUID provided.
         """
         try:
-            body = {IndexerKey.DOC: {USER_KEY: user.to_dict()}}
+            body = {IndexerKey.DOC: {RULE_KEY: rule.to_dict()}}
             await self._client.update(index=self.INDEX, id=id, body=body)
         except exceptions.NotFoundError:
-            raise WazuhResourceNotFound(4027)
+            raise WazuhResourceNotFound(4033)
