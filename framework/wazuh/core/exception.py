@@ -407,7 +407,22 @@ class WazuhException(Exception):
         4026: {'message': 'There is a user with the same ID', 'remediation': 'Please choose another ID'},
         4027: {
             'message': 'User does not exist',
-            'remediation': 'Please, use `GET /securiuty/users` to find all available users',
+            'remediation': 'Please, use `GET /security/users` to find all available users',
+        },
+        4028: {'message': 'There is a role with the same ID', 'remediation': 'Please choose another ID'},
+        4029: {
+            'message': 'Role does not exist',
+            'remediation': 'Please, use `GET /security/roles` to find all available roles',
+        },
+        4030: {'message': 'There is a policy with the same ID', 'remediation': 'Please choose another ID'},
+        4031: {
+            'message': 'Policy does not exist',
+            'remediation': 'Please, use `GET /security/policies` to find all available policies',
+        },
+        4032: {'message': 'There is a rule with the same ID', 'remediation': 'Please choose another ID'},
+        4033: {
+            'message': 'Rule does not exist',
+            'remediation': 'Please, use `GET /security/rules` to find all available rules',
         },
         4500: {
             'message': 'The specified resources are invalid',

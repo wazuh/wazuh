@@ -1,56 +1,56 @@
 from opensearchpy import exceptions
 from wazuh.core.exception import WazuhError, WazuhResourceNotFound
 from wazuh.core.indexer.base import BaseIndex, IndexerKey
-from wazuh.core.indexer.models.user import User
+from wazuh.core.indexer.models.policy import Policy
 from wazuh.core.indexer.utils import get_source_items
 
-USER_KEY = 'user'
+POLICY_KEY = 'policy'
 
 
-class UsersIndex(BaseIndex):
-    """Set of methods to interact with the `users` index."""
+class PoliciesIndex(BaseIndex):
+    """Set of methods to interact with the `roles` index."""
 
-    INDEX = 'users'
+    INDEX = 'roles'
 
-    async def create(self, user: User) -> User:
-        """Create a new user.
+    async def create(self, policy: Policy) -> Policy:
+        """Create a new policy.
 
         Parameters
         ----------
-        user : User
-            User instance containing its details.
+        policy : Policy
+            Policy instance containing its details.
 
         Raises
         ------
-        WazuhError(4026)
-            If a user with the provided ID already exists.
+        WazuhError(4030)
+            If a policy with the provided ID already exists.
 
         Returns
         -------
-        User
-            The created user instance.
+        Policy
+            The created policy instance.
         """
         try:
             await self._client.index(
-                index=self.INDEX, id=user.id, body={USER_KEY: user.to_dict()}, op_type='create', refresh='true'
+                index=self.INDEX, id=policy.id, body={POLICY_KEY: policy.to_dict()}, op_type='create', refresh='true'
             )
         except exceptions.ConflictError:
-            raise WazuhError(4026, extra_message=user.id)
+            raise WazuhError(4030, extra_message=policy.id)
 
-        return user
+        return policy
 
     async def delete(self, ids: list[str]) -> list[str]:
-        """Delete multiple users that match with the given parameters.
+        """Delete multiple roles that match with the given parameters.
 
         Parameters
         ----------
         ids : list[str]
-            User identifiers.
+            Policy identifiers.
 
         Returns
         -------
         list[str]
-            Deleted user IDs.
+            Deleted policy IDs.
         """
         body = {IndexerKey.QUERY: {IndexerKey.TERMS: {IndexerKey._ID: ids}}}
         parameters = {IndexerKey.INDEX: self.INDEX, IndexerKey.BODY: body, IndexerKey.CONFLICTS: 'proceed'}
@@ -59,30 +59,30 @@ class UsersIndex(BaseIndex):
 
         return ids
 
-    async def get(self, id: str) -> User:
-        """Retrieve a user.
+    async def get(self, id: str) -> Policy:
+        """Retrieve a policy.
 
         Parameters
         ----------
         id : str
-            User identifier.
+            Policy identifier.
 
         Raises
         ------
-        WazuhResourceNotFound(4027)
-            If no users exist with the UUID provided.
+        WazuhResourceNotFound(4031)
+            If no roles exist with the UUID provided.
 
         Returns
         -------
-        User
-            User object.
+        Policy
+            Policy object.
         """
         try:
             data = await self._client.get(index=self.INDEX, id=id)
         except exceptions.NotFoundError:
-            raise WazuhResourceNotFound(4027)
+            raise WazuhResourceNotFound(4031)
 
-        return User(**data[IndexerKey._SOURCE][USER_KEY])
+        return Policy(**data[IndexerKey._SOURCE][POLICY_KEY])
 
     async def search(
         self,
@@ -92,7 +92,7 @@ class UsersIndex(BaseIndex):
         offset: int | None = None,
         limit: int | None = None,
         sort: str | None = None,
-    ) -> list[User]:
+    ) -> list[Policy]:
         """Perform a search operation with the given query.
 
         Parameters
@@ -119,25 +119,25 @@ class UsersIndex(BaseIndex):
         results = await self._client.search(
             **parameters, _source_includes=select, _source_excludes=exclude, size=limit, from_=offset, sort=sort
         )
-        return [User(**item[USER_KEY]) for item in get_source_items(results)]
+        return [Policy(**item[POLICY_KEY]) for item in get_source_items(results)]
 
-    async def update(self, id: str, user: User) -> None:
-        """Update a user.
+    async def update(self, id: str, policy: Policy) -> None:
+        """Update a policy.
 
         Parameters
         ----------
         id : str
-            User identifier.
-        user : User
-            User fields. Only specified fields are updated.
+            Policy identifier.
+        policy : Policy
+            Policy fields. Only specified fields are updated.
 
         Raises
         ------
-        WazuhResourceNotFound(4027)
-            If no users exist with the UUID provided.
+        WazuhResourceNotFound(4031)
+            If no roles exist with the UUID provided.
         """
         try:
-            body = {IndexerKey.DOC: {USER_KEY: user.to_dict()}}
+            body = {IndexerKey.DOC: {POLICY_KEY: policy.to_dict()}}
             await self._client.update(index=self.INDEX, id=id, body=body)
         except exceptions.NotFoundError:
-            raise WazuhResourceNotFound(4027)
+            raise WazuhResourceNotFound(4031)

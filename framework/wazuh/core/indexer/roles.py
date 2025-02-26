@@ -1,7 +1,7 @@
 from opensearchpy import exceptions
 from wazuh.core.exception import WazuhError, WazuhResourceNotFound
 from wazuh.core.indexer.base import BaseIndex, IndexerKey
-from wazuh.core.indexer.models.roles import Role
+from wazuh.core.indexer.models.role import Role
 from wazuh.core.indexer.utils import get_source_items
 
 ROLE_KEY = 'role'
@@ -22,7 +22,7 @@ class RolesIndex(BaseIndex):
 
         Raises
         ------
-        WazuhError(4026)
+        WazuhError(4028)
             If a role with the provided ID already exists.
 
         Returns
@@ -35,7 +35,7 @@ class RolesIndex(BaseIndex):
                 index=self.INDEX, id=role.id, body={ROLE_KEY: role.to_dict()}, op_type='create', refresh='true'
             )
         except exceptions.ConflictError:
-            raise WazuhError(4026, extra_message=role.id)
+            raise WazuhError(4028, extra_message=role.id)
 
         return role
 
@@ -69,7 +69,7 @@ class RolesIndex(BaseIndex):
 
         Raises
         ------
-        WazuhResourceNotFound(4027)
+        WazuhResourceNotFound(4029)
             If no roles exist with the UUID provided.
 
         Returns
@@ -80,7 +80,7 @@ class RolesIndex(BaseIndex):
         try:
             data = await self._client.get(index=self.INDEX, id=id)
         except exceptions.NotFoundError:
-            raise WazuhResourceNotFound(4027)
+            raise WazuhResourceNotFound(4029)
 
         return Role(**data[IndexerKey._SOURCE][ROLE_KEY])
 
@@ -133,11 +133,11 @@ class RolesIndex(BaseIndex):
 
         Raises
         ------
-        WazuhResourceNotFound(4027)
+        WazuhResourceNotFound(4029)
             If no roles exist with the UUID provided.
         """
         try:
             body = {IndexerKey.DOC: {ROLE_KEY: role.to_dict()}}
             await self._client.update(index=self.INDEX, id=id, body=body)
         except exceptions.NotFoundError:
-            raise WazuhResourceNotFound(4027)
+            raise WazuhResourceNotFound(4029)
