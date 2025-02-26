@@ -231,6 +231,7 @@ rm -fr %{buildroot}
 %{_init_scripts}/*
 
 %dir %attr(750, root, wazuh) %{_localstatedir}
+%attr(440, wazuh, wazuh) %{_localstatedir}/VERSION.json
 %attr(750, root, wazuh) %{_localstatedir}/agentless
 %dir %attr(770, root, wazuh) %{_localstatedir}/.ssh
 %dir %attr(750, root, wazuh) %{_localstatedir}/active-response

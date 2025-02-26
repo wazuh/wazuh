@@ -135,6 +135,7 @@ full_filename,owner_name,group_name,mode,type,prot_permissions,size_bytes,size_e
 /var/ossec/logs/active-responses.log,wazuh,wazuh,660,file,-rw-rw----,0,0.1
 /var/ossec/logs/ossec.log,root,wazuh,660,file,-rw-rw----,0,0.1
 /var/ossec/queue/syscollector/norm_config.json,root,wazuh,640,file,-rw-r-----,4206,0.1
+/var/ossec/VERSION.json,wazuh,wazuh,440,file,-r--r-----,79,0.1
 /var/ossec/wodles/utils.py,root,wazuh,750,file,-rwxr-x---,3567,0.1
 /var/ossec/wodles/__init__.py,root,wazuh,750,file,-rwxr-x---,177,0.1
 /var/ossec/wodles/gcloud/tools.py,root,wazuh,750,file,-rwxr-x---,4420,0.1
