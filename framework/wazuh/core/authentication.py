@@ -16,11 +16,13 @@ def check_jwt_keys(api_config: WazuhConfigBaseModel):
     config = CentralizedConfig.get_server_config()
     if config.jwt.private_key and config.jwt.public_key:
         return
+
+    # Generate keys from defined SSL key path
+    generate_jwt_public_key(JWT_PUBLIC_KEY_PATH, api_config.ssl.key)
+
     # Assign API SSL key as JWT private key and default JWT Public Key path
     config.jwt.private_key = api_config.ssl.key
     config.jwt.public_key = JWT_PUBLIC_KEY_PATH
-    # Generate keys from defined SSL key path
-    generate_jwt_public_key(config.jwt.public_key, config.jwt.private_key)
 
 
 def generate_jwt_public_key(public_key_path: str, private_key_path: str):
@@ -35,6 +37,7 @@ def generate_jwt_public_key(public_key_path: str, private_key_path: str):
         .decode('utf-8')
     )
 
+    # If the file already exists, it will be overwritten.
     with open(public_key_path, mode='w') as public_key_file:
         public_key_file.write(public_key)
 

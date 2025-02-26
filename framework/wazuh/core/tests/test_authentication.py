@@ -1,8 +1,10 @@
 import pytest
-from unittest.mock import MagicMock, call, patch, mock_open
-from framework.wazuh.core.authentication import check_jwt_keys, generate_jwt_public_key, JWT_PUBLIC_KEY_PATH
-from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric import rsa
+from unittest.mock import MagicMock, mock_open, patch, call
+
+from framework.wazuh.core.authentication import check_jwt_keys, generate_jwt_public_key, JWT_PUBLIC_KEY_PATH
+
 
 with patch('wazuh.core.common.wazuh_uid'):
     with patch('wazuh.core.common.wazuh_gid'):
@@ -58,7 +60,7 @@ def test_check_jwt_keys_generate_when_missing():
     mock_config.jwt.private_key = None
     mock_config.jwt.public_key = None
 
-    with patch("wazuh.core.config.client.CentralizedConfig.get_server_config", return_value=mock_config) as mock_get_config, \
+    with patch("wazuh.core.config.client.CentralizedConfig.get_server_config", return_value=mock_config), \
          patch("framework.wazuh.core.authentication.generate_jwt_public_key") as mock_generate:
 
         check_jwt_keys(mock_api_config)
