@@ -81,7 +81,14 @@ from . import TEST_CASES_PATH, CONFIGS_PATH
 
 
 # Pytest marks to run on any service type on linux or windows.
-pytestmark = [pytest.mark.agent, pytest.mark.linux, pytest.mark.win32, pytest.mark.tier(level=0)]
+pytestmark = [
+    pytest.mark.agent,
+    pytest.mark.linux,
+    pytest.mark.win32,
+    pytest.mark.tier(level=0),
+    pytest.mark.skipif(sys.platform.startswith("win"), reason="Unstable behavior when deleting monitored folder in Windows")
+]
+
 
 # Test metadata, configuration and ids.
 cases_path = Path(TEST_CASES_PATH, 'cases_delete_directory.yaml')
@@ -153,8 +160,6 @@ def test_delete_dir(test_configuration, test_metadata, set_wazuh_configuration, 
         - scheduled
         - realtime
     '''
-    if sys.platform == WINDOWS:
-        pytest.skip(reason="Unstable behavior when deleting monitored folder")
 
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
     fim_mode = test_metadata.get('fim_mode')
