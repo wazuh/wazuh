@@ -187,4 +187,12 @@ char * w_journal_entry_to_string(w_journal_entry_t * entry);
  */
 int w_journal_filter_apply(w_journal_context_t * ctx, w_journal_filter_t * filter);
 
+/**
+ * @brief Detects changes on the journald files
+ *
+ * The context pointer is invalid after the call.
+ * @param ctx Journal log context
+*/
+bool w_journal_rotation_detected(w_journal_context_t *ctx);
+
 #endif // w_journal_H
