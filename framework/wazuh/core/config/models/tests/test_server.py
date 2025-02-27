@@ -395,7 +395,7 @@ def test_jwt_config_default_values(file_exists_mock, init_values):
     jwt_config = JWTConfig(**init_values)
 
     assert jwt_config.private_key == init_values['private_key']
-    assert jwt_config.public_key == init_values['public_key']
+    assert jwt_config.get_public_key() == init_values['public_key']
 
 
 @pytest.mark.parametrize(
@@ -403,7 +403,6 @@ def test_jwt_config_default_values(file_exists_mock, init_values):
     [
         {},
         {'private_key': 'key_example'},
-        {'public_key': 'key_example'},
     ],
 )
 def test_jwt_config_fails_without_values(init_values):

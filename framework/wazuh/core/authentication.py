@@ -18,15 +18,21 @@ def check_jwt_keys(api_config: WazuhConfigBaseModel):
         return
 
     # Generate keys from defined SSL key path
-    generate_jwt_public_key(JWT_PUBLIC_KEY_PATH, api_config.ssl.key)
+    public_key = generate_jwt_public_key(api_config.ssl.key)
 
     # Assign API SSL key as JWT private key and default JWT Public Key path
     config.jwt.private_key = api_config.ssl.key
-    config.jwt.public_key = JWT_PUBLIC_KEY_PATH
+    config.jwt.set_public_key(public_key)
 
 
-def generate_jwt_public_key(public_key_path: str, private_key_path: str):
-    """Generate public key for JWT from the API SSL certificate private key."""
+def generate_jwt_public_key(private_key_path: str) -> str:
+    """Generate public key for JWT from the API SSL certificate private key.
+
+    Returns
+    -------
+    str
+        Public key.
+    """
     with open(private_key_path, mode='r') as key_file:
         private_key_content = key_file.read()
         private_key = serialization.load_pem_private_key(private_key_content.encode('utf-8'), password=None)
@@ -37,16 +43,7 @@ def generate_jwt_public_key(public_key_path: str, private_key_path: str):
         .decode('utf-8')
     )
 
-    # If the file already exists, it will be overwritten.
-    with open(public_key_path, mode='w') as public_key_file:
-        public_key_file.write(public_key)
-
-    # Set permissions for the key files. The private key file is supposed to have it.
-    with contextlib.suppress(PermissionError):
-        os.chown(private_key_path, common.wazuh_uid(), common.wazuh_gid())
-        os.chown(public_key_path, common.wazuh_uid(), common.wazuh_gid())
-        os.chmod(private_key_path, 0o640)
-        os.chmod(public_key_path, 0o640)
+    return public_key
 
 
 def get_keypair() -> tuple[str, str]:
@@ -63,7 +60,6 @@ def get_keypair() -> tuple[str, str]:
 
     with open(config.jwt.private_key, mode='r') as key_file:
         private_key = key_file.read()
-    with open(config.jwt.public_key, mode='r') as key_file:
-        public_key = key_file.read()
+    public_key = config.jwt.get_public_key()
 
     return private_key, public_key
