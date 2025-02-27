@@ -282,7 +282,7 @@ class JWTConfig(WazuhConfigBaseModel, ValidateFilePathMixin):
     private_key : str
         The path to the private JTW key file.
     _public_key : str
-        The path to the public JTW key file.
+        The public JTW key.
     """
 
     private_key: str = ''
