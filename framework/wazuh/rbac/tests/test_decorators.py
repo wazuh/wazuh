@@ -5,31 +5,15 @@
 import json
 import os
 import re
-from importlib import reload
 from unittest.mock import patch
 
 import pytest
-from sqlalchemy import create_engine
+import wazuh.rbac.decorators as decorator
 from wazuh.core.exception import WazuhError
 from wazuh.core.results import AffectedItemsWazuhResult
-from wazuh.rbac.tests.utils import init_db
 
 test_path = os.path.dirname(os.path.realpath(__file__))
 test_data_path = os.path.join(test_path, 'data/')
-
-
-@pytest.fixture(scope='function')
-def db_setup():
-    with patch('wazuh.core.common.wazuh_uid'), patch('wazuh.core.common.wazuh_gid'):
-        with patch('sqlalchemy.create_engine', return_value=create_engine('sqlite://')):
-            with patch('shutil.chown'), patch('os.chmod'):
-                import wazuh.rbac.decorators as decorator
-
-    init_db('schema_security_test.sql', test_data_path)
-    reload(decorator)
-
-    yield decorator
-
 
 permissions = list()
 results = list()
@@ -71,6 +55,7 @@ with open(test_data_path + 'RBAC_decorators_resourceless_black.json') as f:
 
 
 def get_identifier(resources):
+    """Get resource identifier."""
     list_params = list()
     for resource in resources:
         resource = resource.split('&')
@@ -88,10 +73,11 @@ def get_identifier(resources):
     configurations_black + configurations_white,
 )
 async def test_expose_resources(
-    db_setup, decorator_params, function_params, rbac, fake_system_resources, allowed_resources, result, mode
+    decorator_params, function_params, rbac, fake_system_resources, allowed_resources, result, mode
 ):
+    """Validate that the `expose_resources` decorator works as expected."""
     rbac['rbac_mode'] = mode
-    db_setup.rbac.set(rbac)
+    decorator.rbac.set(rbac)
 
     def mock_expand_resource(resource):
         fake_values = fake_system_resources.get(resource, resource.split(':')[-1])
@@ -99,7 +85,7 @@ async def test_expose_resources(
 
     with patch('wazuh.rbac.decorators._expand_resource', side_effect=mock_expand_resource):
 
-        @db_setup.expose_resources(**decorator_params)
+        @decorator.expose_resources(**decorator_params)
         async def framework_dummy(**kwargs):
             for target_param, allowed_resource in zip(get_identifier(decorator_params['resources']), allowed_resources):
                 assert set(kwargs[target_param]) == set(allowed_resource)
@@ -120,16 +106,17 @@ async def test_expose_resources(
 @pytest.mark.parametrize(
     'decorator_params, rbac, allowed, mode', configurations_resourceless_white + configurations_resourceless_black
 )
-async def test_expose_resourcesless(db_setup, decorator_params, rbac, allowed, mode):
+async def test_expose_resourcesless(decorator_params, rbac, allowed, mode):
+    """Validate that the `expose_resources` decorator works as expected when no resources are required."""
     rbac['rbac_mode'] = mode
-    db_setup.rbac.set(rbac)
+    decorator.rbac.set(rbac)
 
     def mock_expand_resource(resource):
         return {'*'}
 
     with patch('wazuh.rbac.decorators._expand_resource', side_effect=mock_expand_resource):
 
-        @db_setup.expose_resources(**decorator_params)
+        @decorator.expose_resources(**decorator_params)
         async def framework_dummy():
             pass
 
