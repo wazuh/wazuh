@@ -102,7 +102,7 @@ async def test_login_user(mock_token, mock_exc, mock_dapi, mock_remove, mock_dfu
         f=preprocessor.get_permissions,
         f_kwargs=mock_remove.return_value,
         request_type='local_master',
-        is_async=False,
+        is_async=True,
         logger=ANY,
     )
     mock_remove.assert_called_once_with(f_kwargs)
@@ -130,7 +130,7 @@ async def test_login_user_ko(mock_token, mock_exc, mock_dapi, mock_remove, mock_
         f=preprocessor.get_permissions,
         f_kwargs=mock_remove.return_value,
         request_type='local_master',
-        is_async=False,
+        is_async=True,
         logger=ANY,
     )
     mock_exc.assert_has_calls([call(mock_dfunc.return_value), call(mock_token.side_effect)])
@@ -157,7 +157,7 @@ async def test_run_as_login(mock_token, mock_exc, mock_dapi, mock_remove, mock_d
         f=preprocessor.get_permissions,
         f_kwargs=mock_remove.return_value,
         request_type='local_master',
-        is_async=False,
+        is_async=True,
         logger=ANY,
     )
     mock_remove.assert_called_once_with(f_kwargs)
@@ -187,7 +187,7 @@ async def test_run_as_login_ko(mock_token, mock_exc, mock_dapi, mock_remove, moc
         f=preprocessor.get_permissions,
         f_kwargs=mock_remove.return_value,
         request_type='local_master',
-        is_async=False,
+        is_async=True,
         logger=ANY,
     )
     mock_exc.assert_has_calls([call(mock_dfunc.return_value), call(mock_token.side_effect)])

@@ -6,12 +6,14 @@ import re
 from typing import Union
 
 from wazuh.core.exception import WazuhError, WazuhPermissionError
+from wazuh.core.indexer import get_indexer_client
 from wazuh.core.results import WazuhResult
 from wazuh.rbac.auth_context import RBAChecker, get_policies_from_roles
-from wazuh.rbac.orm import AuthenticationManager
 
 
 class PreProcessor:
+    """Transform, optimize and sanitize the information before its evaluation."""
+
     def __init__(self):
         self.odict = dict()
 
@@ -96,7 +98,14 @@ class PreProcessor:
                 self.remove_previous_elements(resource, action)
                 self.odict[action]['&'.join(resource)] = policy['effect']
 
-    def get_optimize_dict(self):
+    def get_optimize_dict(self) -> dict:
+        """Get the optimized dictionary.
+
+        Returns
+        -------
+        dict
+            Optimized dictionary.
+        """
         return self.odict
 
 
@@ -122,7 +131,7 @@ def optimize_resources(roles: list = None) -> dict:
     return preprocessor.get_optimize_dict()
 
 
-def get_roles(auth_context: Union[dict, str] = None, user_id: int = None) -> list:
+async def get_roles(auth_context: Union[dict, str] = None, user_id: int = None) -> list:
     """Obtain the roles of a user using auth_context or user_id.
 
     Parameters
@@ -137,20 +146,21 @@ def get_roles(auth_context: Union[dict, str] = None, user_id: int = None) -> lis
     list
         List of roles.
     """
-    with AuthenticationManager() as am:
-        user_id = am.get_user(username=user_id)['id']
-    rbac = RBAChecker(auth_context=auth_context, user_id=user_id)
+    async with get_indexer_client() as indexer_client:
+        user = await indexer_client.users.get(user_id)
+
+    rbac = RBAChecker(auth_context=auth_context, user_id=user.id)
     # Authorization Context method
     if auth_context:
         roles = rbac.run_auth_context_roles()
     # User-role link method
     else:
-        roles = rbac.run_user_role_link_roles(user_id)
+        roles = rbac.run_user_role_link_roles(user.id)
 
     return roles
 
 
-def get_permissions(user_id: int = None, auth_context: Union[dict, str] = None) -> WazuhResult:
+async def get_permissions(user_id: int = None, auth_context: Union[dict, str] = None) -> WazuhResult:
     """Obtain the permissions of a user using auth_context or user_id.
 
     Parameters
@@ -170,13 +180,15 @@ def get_permissions(user_id: int = None, auth_context: Union[dict, str] = None) 
     WazuhResult
         WazuhResult object with the user permissions.
     """
-    with AuthenticationManager() as auth:
-        if not auth.user_allow_run_as(user_id) and auth_context:
+    async with get_indexer_client() as indexer_client:
+        user = await indexer_client.users.get(user_id)
+
+        if not user.allow_run_as and auth_context:
             raise WazuhPermissionError(6004)
-        elif auth.user_allow_run_as(user_id):
-            roles = get_roles(auth_context=auth_context, user_id=user_id)
+        elif user.allow_run_as:
+            roles = await get_roles(auth_context=auth_context, user_id=user_id)
         else:
-            roles = get_roles(user_id=user_id)
+            roles = await get_roles(user_id=user_id)
 
         result = {'roles': roles}
 
