@@ -120,7 +120,7 @@ else()
                                     -Wl,--wrap,w_journal_entry_to_string -Wl,--wrap,w_journal_entry_free \
                                     -Wl,--wrap,w_journal_context_next_newest_filtered -Wl,--wrap,_merror -Wl,--wrap,_minfo \
                                     -Wl,--wrap,_mdebug1 -Wl,--wrap,_mdebug2 -Wl,--wrap,isDebug -Wl,--wrap,w_msg_hash_queues_push \
-                                    -Wl,--wrap,can_read -Wl,--wrap,w_journal_rotation_detected")
+                                    -Wl,--wrap,can_read -Wl,--wrap,w_journal_rotation_detected -Wl,--wrap,w_journal_context_recreate")
 
     list(APPEND logcollector_names "test_journal_log")
     list(APPEND logcollector_flags "-Wl,--wrap,stat -Wl,--wrap,_mwarn -Wl,--wrap,dlsym -Wl,--wrap,dlerror -Wl,--wrap,gettimeofday \

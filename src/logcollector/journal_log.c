@@ -22,8 +22,9 @@
 #define INLINE inline
 #endif
 
-// SD_JOURNAL_INVALIDATE indicates the journal files have changed on disk.
-#define SD_JOURNAL_INVALIDATE 2
+STATIC const int W_SD_JOURNAL_NOP = 0;        ///< The journal did not change since the last invocation.
+STATIC const int W_SD_JOURNAL_APPEND = 1;     ///< New entries have been appended to the end of the journal.
+STATIC const int W_SD_JOURNAL_INVALIDATE = 2; ///< Indicates the journal files have changed on disk.
 
 STATIC const int W_SD_JOURNAL_LOCAL_ONLY = 1 << 0;     ///< Open the journal log for the local machine
 STATIC const char * W_LIB_SYSTEMD = "libsystemd.so.0"; ///< Name of the systemd library
@@ -420,6 +421,13 @@ int w_journal_context_get_oldest_timestamp(w_journal_context_t * ctx, uint64_t *
     return ctx->lib->get_cutoff_timestamp(ctx->journal, timestamp, NULL);
 }
 
+int w_journal_context_recreate(w_journal_context_t** ctx)
+{
+    w_journal_context_free((*ctx));
+
+    return w_journal_context_create(ctx);
+}
+
 /**********************************************************
  *                   Entry related
  **********************************************************/
@@ -731,8 +739,7 @@ bool w_journal_rotation_detected(w_journal_context_t *ctx) {
 
     int r = ctx->lib->process(ctx->journal);
 
-    // SD_JOURNAL_INVALIDATE indicates the journal files have changed on disk
-    return (r == SD_JOURNAL_INVALIDATE);
+    return (r == W_SD_JOURNAL_INVALIDATE);
 }
 
 #endif

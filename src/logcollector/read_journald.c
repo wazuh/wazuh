@@ -119,10 +119,29 @@ bool w_journald_can_read(unsigned long owner_id) {
     } else if (gs_journald_global.owner_id != owner_id) {
         return false;
     } else if (w_journal_rotation_detected(gs_journald_global.journal_ctx)) {
+
+        if (w_journal_context_recreate(&gs_journald_global.journal_ctx) != 0) {
+            merror(LOGCOLLECTOR_JOURNAL_LOG_DISABLING);
+            gs_journald_global.is_disabled = true;
+            return false;
+        }
+
+        // Set the pointer to the journal log
+        w_mutex_lock(&gs_journald_ofe.mutex);
+        uint64_t lr_ts = gs_journald_ofe.last_read_timestamp;
+        w_mutex_unlock(&gs_journald_ofe.mutex);
+
+        int ret = gs_journald_ofe.only_future_events
+                      ? w_journal_context_seek_most_recent(gs_journald_global.journal_ctx)
+                      : w_journal_context_seek_timestamp(gs_journald_global.journal_ctx, lr_ts);
+
+        if (ret < 0) {
+            merror(LOGCOLLECTOR_JOURNAL_LOG_FAIL_SEEK, strerror(-ret));
+            gs_journald_global.is_disabled = true;
+            return false;
+        }
+
         minfo(LOGCOLLECTOR_ROTATION_DETECTED);
-        gs_journald_global.journal_ctx = NULL;
-        gs_journald_global.owner_id = 0;
-        return false;
     }
 
     return true;

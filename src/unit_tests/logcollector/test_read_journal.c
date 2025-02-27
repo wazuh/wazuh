@@ -61,6 +61,8 @@ void __wrap_w_journal_entry_free(w_journal_entry_t * entry) { function_called();
 
 bool __wrap_w_journal_rotation_detected(w_journal_context_t* ctx) { return mock_type(bool); }
 
+int __wrap_w_journal_context_recreate(w_journal_context_t ** ctx) { return mock_type(int); }
+
 /* Aux setters */
 void set_gs_journald_ofe(bool exist, bool ofe, uint64_t timestamp);
 bool journald_isDisabled();
@@ -154,8 +156,7 @@ void test_w_journald_can_read_first_time_init_ofe_no(void ** state) {
     assert_false(journald_isDisabled());
 }
 
-void test_w_journald_rotation_detected(void** state)
-{
+void test_w_journald_rotation_succeeded(void** state) {
     int tid = 3;
 
     w_journal_context_t ctxt = {0};
@@ -163,11 +164,29 @@ void test_w_journald_rotation_detected(void** state)
     set_gs_journald_ofe(true, false, 123);
 
     will_return(__wrap_w_journal_rotation_detected, true);
+    will_return(__wrap_w_journal_context_recreate, 0);
+    expect_value(__wrap_w_journal_context_seek_timestamp, timestamp, 123);
+    will_return(__wrap_w_journal_context_seek_timestamp, 0);
 
     expect_string(__wrap__minfo, formatted_msg, "(9204): 'Journald' files rotation detected.");
 
-    assert_false(w_journald_can_read(tid));
+    assert_true(w_journald_can_read(tid));
     assert_false(journald_isDisabled());
+}
+
+void test_w_journald_rotation_failed(void** state) {
+    int tid = 3;
+
+    w_journal_context_t ctxt = {0};
+    set_gs_journald_global(3, false, &ctxt);
+    set_gs_journald_ofe(true, false, 123);
+
+    will_return(__wrap_w_journal_rotation_detected, true);
+    will_return(__wrap_w_journal_context_recreate, -1);
+    expect_string(__wrap__merror, formatted_msg, "(1608): Failed to connect to the journal, disabling journal log.");
+
+    assert_false(w_journald_can_read(tid));
+    assert_true(journald_isDisabled());
 }
 
 /* w_journald_set_ofe */
@@ -354,7 +373,8 @@ int main(void) {
         cmocka_unit_test(test_w_journald_can_read_first_time_init_fail_seek),
         cmocka_unit_test(test_w_journald_can_read_first_time_init_ofe_yes),
         cmocka_unit_test(test_w_journald_can_read_first_time_init_ofe_no),
-        cmocka_unit_test(test_w_journald_rotation_detected),
+        cmocka_unit_test(test_w_journald_rotation_succeeded),
+        cmocka_unit_test(test_w_journald_rotation_failed),
         /* Test read_journald */
         cmocka_unit_test(test_read_journald_can_read_false),
         cmocka_unit_test(test_read_journald_next_entry_error),

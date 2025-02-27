@@ -121,6 +121,15 @@ int w_journal_context_next_newest_filtered(w_journal_context_t * ctx, w_journal_
  */
 int w_journal_context_get_oldest_timestamp(w_journal_context_t * ctx, uint64_t * timestamp);
 
+/**
+ * @brief Closes and reopens the context
+ *
+ * The caller is responsible for freeing the returned context.
+ * @param ctx Journal log context
+ * @return int 0 on success or -1 on error
+ * @note The context should be created and used by a single thread only.
+ */
+int w_journal_context_recreate(w_journal_context_t** ctx);
 /**********************************************************
  *                   Entry related
  **********************************************************/
