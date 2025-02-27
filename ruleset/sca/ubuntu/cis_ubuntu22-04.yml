@@ -994,7 +994,7 @@ checks:
       - mitre_techniques: ["T1068", "T1203", "T1211", "T1212"]
     condition: any
     rules:
-      - "not c: dpkg-query -s autofs -> r:autofs is installed"
+      - "not c: dpkg-query -s autofs -> r:install ok installed"
       - 'not c:sh -c "systemctl is-enabled autofs.service & systemctl is-active autofs.service" -> r:^active$|^enabled$'
 
   # 2.1.2 Ensure avahi daemon services are not in use. (Automated)
@@ -1018,7 +1018,7 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
     condition: any
     rules:
-      - "not c:dpkg-query -s avahi-daemon -> r:avahi-daemon is installed"
+      - "not c:dpkg-query -s avahi-daemon -> r:install ok installed"
       - 'not c:sh -c "systemctl is-enabled avahi-daemon.socket avahi-daemon.service & systemctl is-active avahi-daemon.socket avahi-daemon.service" -> r:^active$|^enabled$'
 
   # 2.1.3 Ensure dhcp server services are not in use. (Automated)
@@ -1044,7 +1044,7 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
     condition: any
     rules:
-      - "not c:dpkg-query -s isc-dhcp-server -> r:isc-dhcp-server is installed"
+      - "not c:dpkg-query -s isc-dhcp-server -> r:install ok installed"
       - 'not c:sh -c "systemctl is-enabled isc-dhcp-server.service isc-dhcp-server6.service & systemctl is-active isc-dhcp-server.service isc-dhcp-server6.service" -> r:^active$|^enabled$'
 
   # 2.1.4 Ensure dns server services are not in use. (Automated)
@@ -1068,7 +1068,7 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
     condition: any
     rules:
-      - "not c:dpkg-query -s bind9 -> r:bind9 is installed"
+      - "not c:dpkg-query -s bind9 -> r:install ok installed"
       - 'not c:sh -c "systemctl is-enabled bind9.service & systemctl is-active bind9.service" -> r:^active$|^enabled$'
 
   # 2.1.5 Ensure dnsmasq services are not in use. (Automated)
@@ -1092,7 +1092,7 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
     condition: any
     rules:
-      - "not c:dpkg-query -s dnsmasq -> r:dnsmasq is installed"
+      - "not c:dpkg-query -s dnsmasq -> r:install ok installed"
       - 'not c:sh -c "systemctl is-enabled dnsmasq.service & systemctl is-active dnsmasq.service" -> r:^active$|^enabled$'
 
   # 2.1.6 Ensure ftp server services are not in use. (Automated)
@@ -1116,8 +1116,8 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
     condition: any
     rules:
-      - "not c:dpkg-query -s vsftpd -> r:vsftpd is installed"
-      - 'not c:sh -c "systemctl is-enabled dnsmasq.service & systemctl is-active dnsmasq.service" -> r:^active$|^enabled$'
+      - "not c:dpkg-query -s vsftpd -> r:install ok installed"
+      - 'not c:sh -c "systemctl is-enabled vsftpd.service & systemctl is-active vsftpd.service" -> r:^active$|^enabled$'
 
   # 2.1.7 Ensure ldap server services are not in use. (Automated)
   - id: 18569
@@ -1142,7 +1142,7 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
     condition: any
     rules:
-      - "not c:dpkg-query -s slapd -> r:slapd is installed"
+      - "not c:dpkg-query -s slapd -> r:install ok installed"
       - 'not c:sh -c "systemctl is-enabled slapd.service & systemctl is-active slapd.service" -> r:^active$|^enabled$'
 
   # 2.1.8 Ensure message access server services are not in use. (Automated)
@@ -1166,7 +1166,7 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
     condition: any
     rules:
-      - "not c:dpkg-query -s dovecot-imapd dovecot-pop3d -> r:dovecot-imapd is installed|dovecot-pop3d is installed"
+      - "not c:dpkg-query -s dovecot-imapd dovecot-pop3d -> r:install ok installed|install ok installed"
       - 'not c:sh -c "systemctl is-enabled dovecot.socket dovecot.service & systemctl is-active dovecot.socket dovecot.service" -> r:^active$|^enabled$'
 
   # 2.1.9 Ensure network file system services are not in use. (Automated)
@@ -1190,7 +1190,7 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
     condition: any
     rules:
-      - "not c:dpkg-query -s nfs-kernel-server -> r:nfs-kernel-server is installed"
+      - "not c:dpkg-query -s nfs-kernel-server -> r:install ok installed"
       - 'not c:sh -c "systemctl is-enabled nfs-server.service & systemctl is-active nfs-server.service" -> r:^active$|^enabled$'
 
   # 2.1.10 Ensure nis server services are not in use. (Automated)
@@ -1214,7 +1214,7 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
     condition: any
     rules:
-      - "not c:dpkg-query -s ypserv -> r:ypserv is installed"
+      - "not c:dpkg-query -s ypserv -> r:install ok installed"
       - 'not c:sh -c "systemctl is-enabled ypserv.service & systemctl is-active ypserv.service" -> r:^active$|^enabled$'
 
   # 2.1.11 Ensure print server services are not in use. (Automated)
@@ -1240,7 +1240,7 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
     condition: any
     rules:
-      - "not c:dpkg-query -s cups -> r:cups is installed"
+      - "not c:dpkg-query -s cups -> r:install ok installed"
       - 'not c:sh -c "systemctl is-enabled cups.socket cups.service & systemctl is-active cups.socket cups.service" -> r:^active$|^enabled$'
 
   # 2.1.12 Ensure rpcbind services are not in use. (Automated)
@@ -1264,7 +1264,7 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
     condition: any
     rules:
-      - "not c:dpkg-query -s rpcbind -> r:rpcbind is installed"
+      - "not c:dpkg-query -s rpcbind -> r:install ok installed"
       - 'not c:sh -c "systemctl is-enabled rpcbind.socket rpcbind.service & systemctl is-active rpcbind.socket rpcbind.service" -> r:^active$|^enabled$'
 
   # 2.1.13 Ensure rsync services are not in use. (Automated)
@@ -1288,7 +1288,7 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
     condition: any
     rules:
-      - "not c:dpkg-query -s rsync -> r:rsync is installed"
+      - "not c:dpkg-query -s rsync -> r:install ok installed"
       - 'not c:sh -c "systemctl is-enabled rsync.service & systemctl is-active rsync.service" -> r:^active$|^enabled$'
 
   # 2.1.14 Ensure samba file server services are not in use. (Automated)
@@ -1311,7 +1311,7 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
     condition: any
     rules:
-      - "not c:dpkg-query -s samba -> r:samba is installed"
+      - "not c:dpkg-query -s samba -> r:install ok installed"
       - 'not c:sh -c "systemctl is-enabled smbd.service & systemctl is-active smbd.service" -> r:^active$|^enabled$'
 
   # 2.1.15 Ensure snmp services are not in use. (Automated)
@@ -1335,7 +1335,7 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
     condition: any
     rules:
-      - "not c:dpkg-query -s snmpd -> r:snmpd is installed"
+      - "not c:dpkg-query -s snmpd -> r:install ok installed"
       - 'not c:sh -c "systemctl is-enabled snmpd.service & systemctl is-active snmpd.service" -> r:^active$|^enabled$'
 
   # 2.1.16 Ensure tftp server services are not in use. (Automated)
@@ -1359,7 +1359,7 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
     condition: any
     rules:
-      - "not c:dpkg-query -s tftpd-hpa -> r:tftpd-hpa is installed"
+      - "not c:dpkg-query -s tftpd-hpa -> r:install ok installed"
       - 'not c:sh -c "systemctl is-enabled tftpd-hpa.service & systemctl is-active tftpd-hpa.service" -> r:^active$|^enabled$'
 
   # 2.1.17 Ensure web proxy server services are not in use. (Automated)
@@ -1383,7 +1383,7 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
     condition: any
     rules:
-      - "not c:dpkg-query -s squid -> r:squid is installed"
+      - "not c:dpkg-query -s squid -> r:install ok installed"
       - 'not c:sh -c "systemctl is-enabled squid.service & systemctl is-active squid.service" -> r:^active$|^enabled$'
 
   # 2.1.18 Ensure web server services are not in use. (Automated)
@@ -1407,7 +1407,7 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
     condition: any
     rules:
-      - "not c:dpkg-query -s apache2 nginx -> r:apache2 is installed|nginx is installed"
+      - "not c:dpkg-query -s apache2 nginx -> r:install ok installed"
       - 'not c:sh -c "systemctl is-enabled apache2.socket apache2.service nginx.service & systemctl is-active apache2.socket apache2.service nginx.service" -> r:^active$|^enabled$'
 
   # 2.1.19 Ensure xinetd services are not in use. (Automated)
@@ -1431,7 +1431,7 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
     condition: any
     rules:
-      - "not c:dpkg-query -s xinetd -> r:xinetd is installed"
+      - "not c:dpkg-query -s xinetd -> r:install ok installed"
       - 'not c:sh -c "systemctl is-enabled xinetd.service & systemctl is-active xinetd.service" -> r:^active$|^enabled$'
 
   # 2.1.20 Ensure X window server services are not in use. (Automated)
@@ -1455,7 +1455,7 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
     condition: all
     rules:
-      - "not c:dpkg-query -s xserver-common -> r:xserver-common is installed"
+      - "not c:dpkg-query -s xserver-common -> r:install ok installed"
 
   # 2.1.21 Ensure mail transfer agent is configured for local-only mode. (Automated)
   - id: 18583
@@ -1502,7 +1502,7 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
     condition: all
     rules:
-      - "not c:dpkg-query -s nis -> r:nis is installed"
+      - "not c:dpkg-query -s nis -> r:install ok installed"
 
   # 2.2.2 Ensure rsh client is not installed. (Automated)
   - id: 18586
@@ -1525,7 +1525,7 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
     condition: all
     rules:
-      - "not c:dpkg-query -s rsh-client -> r:rsh-client is installed"
+      - "not c:dpkg-query -s rsh-client -> r:install ok installed"
 
   # 2.2.3 Ensure talk client is not installed. (Automated)
   - id: 18587
@@ -1548,7 +1548,7 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
     condition: all
     rules:
-      - "not c:dpkg-query -s talk -> r:talk is installed"
+      - "not c:dpkg-query -s talk -> r:install ok installed"
 
   # 2.2.4 Ensure telnet client is not installed. (Automated)
   - id: 18588
@@ -1571,7 +1571,7 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
     condition: all
     rules:
-      - "not c:dpkg-query -s telnet -> r:telnet is installed"
+      - "not c:dpkg-query -s telnet -> r:install ok installed"
 
   # 2.2.5 Ensure ldap client is not installed. (Automated)
   - id: 18589
@@ -1594,7 +1594,7 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
     condition: all
     rules:
-      - "not c:dpkg-query -s ldap-utils -> r:ldap-utils is installed"
+      - "not c:dpkg-query -s ldap-utils -> r:install ok installed"
 
   # 2.2.6 Ensure ftp client is not installed. (Automated)
   - id: 18590
@@ -1616,7 +1616,7 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
     condition: all
     rules:
-      - "not c:dpkg-query -s ftp -> r:ftp is installed"
+      - "not c:dpkg-query -s ftp -> r:install ok installed"
 
   # 2.3.1.1 Ensure a single time synchronization daemon is in use. (Automated) - Not Implemented
   # 2.3.2.1 Ensure systemd-timesyncd configured with authorized timeserver. (Automated) - Not Implemented
@@ -1905,7 +1905,7 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
     condition: any
     rules:
-      - "not c:dpkg-query -s bluez -> r:bluez is installed"
+      - "not c:dpkg-query -s bluez -> r:install ok installed"
       - 'not c:sh -c "systemctl is-enabled bluetooth.service & systemctl is-active bluetooth.service" -> r:^active$|^enabled$'
 
   # 3.2.1 Ensure dccp kernel module is not available. (Automated) - Not Implemented
@@ -1945,7 +1945,7 @@ checks:
       - soc_2: ["CC6.6"]
     condition: all
     rules:
-      - "c:dpkg-query -s ufw -> r:ufw is installed"
+      - "c:dpkg-query -s ufw -> r:install ok installed"
 
   # 4.1.2 Ensure iptables-persistent is not installed with ufw. (Automated)
   - id: 18625
