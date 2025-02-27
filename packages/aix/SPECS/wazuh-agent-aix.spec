@@ -45,7 +45,7 @@ echo 'USER_UPDATE="n"' >> ./etc/preloaded-vars.conf
 echo 'USER_AGENT_SERVER_IP="MANAGER_IP"' >> ./etc/preloaded-vars.conf
 echo 'USER_CA_STORE="/path/to/my_cert.pem"' >> ./etc/preloaded-vars.conf
 echo 'USER_AUTO_START="n"' >> ./etc/preloaded-vars.conf
-./install.sh
+./install.sh || { echo "install.sh failed! Aborting." >&2; exit 1; }
 
 # Remove unnecessary files or directories
 rm -rf %{_localstatedir}/selinux
@@ -74,10 +74,6 @@ cp -pr etc/templates/config/generic/localfile-logs/* ${RPM_BUILD_ROOT}%{_localst
 # Support scripts for post installation
 mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/src/init
 cp src/init/*.sh ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/src/init
-
-# Add installation scripts
-cp src/VERSION ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/src/
-cp src/REVISION ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/src/
 
 exit 0
 
@@ -231,6 +227,7 @@ rm -fr %{buildroot}
 %{_init_scripts}/*
 
 %dir %attr(750, root, wazuh) %{_localstatedir}
+%attr(440, wazuh, wazuh) %{_localstatedir}/VERSION.json
 %attr(750, root, wazuh) %{_localstatedir}/agentless
 %dir %attr(770, root, wazuh) %{_localstatedir}/.ssh
 %dir %attr(750, root, wazuh) %{_localstatedir}/active-response
@@ -273,8 +270,6 @@ rm -fr %{buildroot}
 %attr(750, root,system) %config(missingok) %{_localstatedir}/tmp/etc/templates/config/generic/*.template
 %attr(750, root,system) %config(missingok) %{_localstatedir}/tmp/etc/templates/config/generic/localfile-logs/*.template
 %attr(750, root,system) %config(missingok) %{_localstatedir}/tmp/src/init/*.sh
-%attr(750, root,system) %config(missingok) %{_localstatedir}/tmp/src/VERSION
-%attr(750, root,system) %config(missingok) %{_localstatedir}/tmp/src/REVISION
 %dir %attr(750, root, wazuh) %{_localstatedir}/var
 %dir %attr(770, root, wazuh) %{_localstatedir}/var/incoming
 %dir %attr(770, root, wazuh) %{_localstatedir}/var/run
