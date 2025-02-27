@@ -1,3 +1,5 @@
+from datetime import datetime, timezone
+
 from opensearchpy import exceptions
 from wazuh.core.exception import WazuhError, WazuhResourceNotFound
 from wazuh.core.indexer.base import BaseIndex, IndexerKey
@@ -12,13 +14,25 @@ class UsersIndex(BaseIndex):
 
     INDEX = 'users'
 
-    async def create(self, user: User) -> User:
+    async def create(
+        self,
+        id: str,
+        name: str,
+        password: str,
+        allow_run_as: bool,
+    ) -> User:
         """Create a new user.
 
         Parameters
         ----------
-        user : User
-            User instance containing its details.
+        id : str
+            User ID.
+        name : str
+            User name.
+        password : str
+            User password.
+        allow_run_as : bool
+            Allow running as other users.
 
         Raises
         ------
@@ -30,6 +44,9 @@ class UsersIndex(BaseIndex):
         User
             The created user instance.
         """
+        now = datetime.now(timezone.utc)
+        user = User(id=id, name=name, raw_password=password, allow_run_as=allow_run_as, created_at=now)
+
         try:
             await self._client.index(
                 index=self.INDEX, id=user.id, body={USER_KEY: user.to_dict()}, op_type='create', refresh='true'

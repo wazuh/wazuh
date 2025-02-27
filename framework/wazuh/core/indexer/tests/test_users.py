@@ -17,8 +17,6 @@ class TestUsersIndex:
         'name': 'test',
         'password': 'test',
         'allow_run_as': False,
-        'roles': [{'id': '1'}],
-        'created_at': 0,
     }
 
     @pytest.fixture
@@ -50,7 +48,7 @@ class TestUsersIndex:
 
     async def test_create(self, index_instance: UsersIndex, client_mock: mock.AsyncMock):
         """Validate the `create` method functionality."""
-        new_user = await index_instance.create(User(**self.user))
+        new_user = await index_instance.create(**self.user)
         assert isinstance(new_user, User)
 
         client_mock.index.assert_called_once_with(
@@ -66,7 +64,7 @@ class TestUsersIndex:
         client_mock.index.side_effect = exceptions.ConflictError
 
         with pytest.raises(WazuhError, match='.*4026.*'):
-            await index_instance.create(User(**self.user))
+            await index_instance.create(**self.user)
 
     async def test_delete(self, index_instance: UsersIndex, client_mock: mock.AsyncMock):
         """Validate the `delete` method functionality."""

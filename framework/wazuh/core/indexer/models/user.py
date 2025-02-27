@@ -1,8 +1,10 @@
-from dataclasses import asdict, dataclass
+from base64 import b64decode, b64encode
+from dataclasses import InitVar, asdict, dataclass
 from datetime import datetime
+from hmac import compare_digest
 
 from wazuh.core.indexer.models.role import Role
-from wazuh.core.indexer.utils import convert_enums
+from wazuh.core.indexer.utils import convert_enums, generate_salt, hash_key
 
 
 @dataclass
@@ -16,6 +18,14 @@ class User:
     roles: list[Role] = None
     created_at: datetime = None
 
+    raw_password: InitVar[str | None] = None
+
+    def __post_init__(self, raw_password: str | None):
+        if raw_password is not None:
+            salt = generate_salt()
+            key_hash = hash_key(raw_password, salt)
+            self.password = b64encode(salt + key_hash).decode('latin-1')
+
     def to_dict(self) -> dict:
         """Translate the instance to a dictionary ready to be indexed.
 
@@ -25,3 +35,21 @@ class User:
             The translated data.
         """
         return asdict(self, dict_factory=convert_enums)
+
+    def check_password(self, password: str) -> bool:
+        """Validate the given password with the stored hash password.
+
+        Parameters
+        ----------
+        password : str
+            Value to check.
+
+        Returns
+        -------
+        bool
+            True if the hashes are equal, else False.
+        """
+        stored_key = self.password.encode('latin-1')
+        stored_key = b64decode(stored_key)
+        salt, key_hash = stored_key[:16], stored_key[16:]
+        return compare_digest(key_hash, hash_key(password, salt))
