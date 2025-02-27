@@ -888,6 +888,36 @@ InstallCommon()
         fi
     fi
 
+    if [ ${NUNAME} != 'Darwin' ]
+    then
+    	if [ -f syscheckd/build/lib/libfimebpf.so ]
+    	then
+       		${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} syscheckd/build/lib/libfimebpf.so ${INSTALLDIR}/lib
+
+       		if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]) && [ ${DIST_VER} -le 5 ]; then
+       		    chcon -t textrel_shlib_t ${INSTALLDIR}/lib/libfimebpf.so
+       		fi
+	fi
+
+	if [ -f external/libbpf_boostrap/build/libbpf/libbpf.so ]
+    	then
+       		${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} external/libbpf_boostrap/build/libbpf/libbpf.so ${INSTALLDIR}/lib
+
+       		if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]) && [ ${DIST_VER} -le 5 ]; then
+       		    chcon -t textrel_shlib_t ${INSTALLDIR}/lib/libbpf.so
+       		fi
+	fi
+
+	if [ -f external/libbpf_boostrap/build/modern.bpf.o ]
+    	then
+       		${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} external/libbpf_boostrap/build/modern.bpf.o ${INSTALLDIR}/bin
+
+       		if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]) && [ ${DIST_VER} -le 5 ]; then
+       		    chcon -t textrel_shlib_t ${INSTALLDIR}/bin/modern.bpf.o
+       		fi
+	fi
+    fi
+
     if [ ${NUNAME} = 'Darwin' ]
     then
         if [ -f wazuh_modules/syscollector/build/lib/libsyscollector.dylib ]
