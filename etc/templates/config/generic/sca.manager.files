@@ -19,6 +19,7 @@ applications/web_vulnerabilities.yml
 centos/6/cis_centos6_linux.yml
 centos/7/cis_centos7_linux.yml
 centos/8/cis_centos8_linux.yml
+centos/10/cis_centos10_linux.yml
 darwin/15/cis_apple_macOS_10.11.yml
 darwin/16/cis_apple_macOS_10.12.yml
 darwin/17/cis_apple_macOS_10.13.yml
