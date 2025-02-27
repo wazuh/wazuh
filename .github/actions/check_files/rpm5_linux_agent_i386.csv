@@ -32,9 +32,11 @@ full_filename,owner_name,group_name,mode,type,prot_permissions,size_bytes,size_e
 /var/ossec/tmp/sca-4.*-*.el5-tmp/centos/8/cis_centos8_linux.yml,root,wazuh,640,file,-rw-r-----,336834,0.1
 /var/ossec/tmp/sca-4.*-*.el5-tmp/centos/10/sca.files,root,wazuh,640,file,-rw-r-----,33,0.1
 /var/ossec/tmp/sca-4.*-*.el5-tmp/centos/10/cis_centos10_linux.yml,root,wazuh,640,file,-rw-r-----,336924,0.1
-/var/ossec/tmp/sca-4.*-*.el5-tmp/rhel/sca.files,root,wazuh,640,file,-rw-r-----,27,0.1
+/var/ossec/tmp/sca-4.*-*.el5-tmp/rhel/sca.files,root,wazuh,640,file,-rw-r-----,29,0.1
 /var/ossec/tmp/sca-4.*-*.el5-tmp/rhel/5/cis_rhel5_linux.yml,root,wazuh,640,file,-rw-r-----,56850,0.1
 /var/ossec/tmp/sca-4.*-*.el5-tmp/rhel/5/sca.files,root,wazuh,640,file,-rw-r-----,26,0.1
+/var/ossec/tmp/sca-4.*-*.el5-tmp/rhel/10/sca.files,root,wazuh,640,file,-rw-r-----,29,0.1
+/var/ossec/tmp/sca-4.*-*.el5-tmp/rhel/10/cis_rhel10_linux.yml,root,wazuh,640,file,-rw-r-----,276547,0.1
 /var/ossec/tmp/sca-4.*-*.el5-tmp/rhel/9/sca.files,root,wazuh,640,file,-rw-r-----,27,0.1
 /var/ossec/tmp/sca-4.*-*.el5-tmp/rhel/9/cis_rhel9_linux.yml,root,wazuh,640,file,-rw-r-----,276441,0.1
 /var/ossec/tmp/sca-4.*-*.el5-tmp/rhel/6/sca.files,root,wazuh,640,file,-rw-r-----,26,0.1

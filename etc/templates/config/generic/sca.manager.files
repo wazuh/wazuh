@@ -45,6 +45,7 @@ rhel/6/cis_rhel6_linux.yml
 rhel/7/cis_rhel7_linux.yml
 rhel/8/cis_rhel8_linux.yml
 rhel/9/cis_rhel9_linux.yml
+rhel/10/cis_rhel10_linux.yml
 rocky/cis_rocky_linux_9.yml
 rocky/cis_rocky_linux_8.yml
 sles/11/cis_sles11_linux.yml
