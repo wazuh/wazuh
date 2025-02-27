@@ -38,12 +38,14 @@ typedef struct {
     unsigned long owner_id;            ///< Owner ID of the journal log
     bool is_disabled;                  ///< Flag to disable the journal log, error on initialization
     w_journal_context_t * journal_ctx; ///< Journal log context
+    bool did_rotate;                   ///< Flag to perform recreate after rotation.
 } w_journald_global_t;                 ///< Current configuration and status of the journal log
 
 STATIC w_journald_global_t gs_journald_global = {
     .owner_id = 0,
     .is_disabled = false,
     .journal_ctx = NULL,
+    .did_rotate = false,
 }; ///< Current configuration and status of the journal log
 
 /**
@@ -71,10 +73,11 @@ void set_gs_journald_ofe(bool exist, bool ofe, uint64_t timestamp) {
     gs_journald_ofe.last_read_timestamp = timestamp;
 }
 
-void set_gs_journald_global(unsigned long owner_id, bool is_disabled, void * journal_ctx) {
+void set_gs_journald_global(unsigned long owner_id, bool is_disabled, void * journal_ctx, bool did_rotate) {
     gs_journald_global.owner_id = owner_id;
     gs_journald_global.is_disabled = is_disabled;
     gs_journald_global.journal_ctx = journal_ctx;
+    gs_journald_global.did_rotate = did_rotate;
 }
 
 bool journald_isDisabled() {
@@ -118,7 +121,16 @@ bool w_journald_can_read(unsigned long owner_id) {
 
     } else if (gs_journald_global.owner_id != owner_id) {
         return false;
-    } else if (w_journal_rotation_detected(gs_journald_global.journal_ctx)) {
+    }
+
+    if (w_journal_rotation_detected(gs_journald_global.journal_ctx)) {
+
+        gs_journald_global.did_rotate = true;
+        minfo(LOGCOLLECTOR_ROTATION_DETECTED);
+
+    } else if (gs_journald_global.did_rotate) {
+        // clean flag
+        gs_journald_global.did_rotate = false;
 
         if (w_journal_context_recreate(&gs_journald_global.journal_ctx) != 0) {
             merror(LOGCOLLECTOR_JOURNAL_LOG_DISABLING);
@@ -141,7 +153,7 @@ bool w_journald_can_read(unsigned long owner_id) {
             return false;
         }
 
-        minfo(LOGCOLLECTOR_ROTATION_DETECTED);
+        minfo(LOGCOLLECTOR_CONTEXT_RECREATION);
     }
 
     return true;
