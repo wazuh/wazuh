@@ -12,13 +12,14 @@
 #include <cstdio>
 #include <cstdlib>
 #include <unistd.h>
-#include <bpf/libbpf.h>
-#include <bpf/bpf.h>
+#include "modern.skel.h"
 #include <fstream>
 #include <iostream>
 #include <string>
 
 #include "ebpf_whodata.hpp"
+#include "bpf_helpers.h"
+
 
 #ifndef PATH_MAX
 #define PATH_MAX 4096
@@ -27,10 +28,13 @@
 #define TASK_COMM_LEN 32
 #define EBPF_HC_FILE "tmp/ebpf_hc"
 
+
 // Global
 static volatile bool epbf_hc_created = false;
 static volatile bool event_received = false;
 static bpf_object* global_obj = nullptr;
+w_bpf_helpers_t * bpf_helpers = NULL;
+
 
 struct file_event {
     __u32 pid;
@@ -91,45 +95,109 @@ int healthcheck_event(void* ctx, void* data, size_t data_sz) {
     return 0;
 }
 
+
 int initialize_bpf_object(ring_buffer** rb, ring_buffer_sample_fn sample_cb) {
     bpf_object* obj = nullptr;
     int err;
     auto logFn = fimebpf::instance().m_loggingFunction;
 
-    obj = bpf_object__open_file("/var/ossec/bin/modern.bpf.o", nullptr);
+    bpf_helpers = (w_bpf_helpers_t *)calloc(1, sizeof(w_bpf_helpers_t));
+    bpf_helpers->module = dlopen("/var/ossec/lib/libbpf.so", RTLD_LAZY);
+
+
+    if (bpf_helpers->module) {
+        bpf_helpers->bpf_object_destroy_skeleton = (bpf_object__destroy_skeleton_t)dlsym(bpf_helpers->module, "bpf_object__destroy_skeleton");
+        bpf_helpers->bpf_object_open_skeleton = (bpf_object__open_skeleton_t)dlsym(bpf_helpers->module, "bpf_object__open_skeleton");
+        bpf_helpers->bpf_object_load_skeleton = (bpf_object__load_skeleton_t)dlsym(bpf_helpers->module, "bpf_object__load_skeleton");
+        bpf_helpers->bpf_object_attach_skeleton = (bpf_object__attach_skeleton_t)dlsym(bpf_helpers->module, "bpf_object__attach_skeleton");
+        bpf_helpers->bpf_object_detach_skeleton = (bpf_object__detach_skeleton_t)dlsym(bpf_helpers->module, "bpf_object__detach_skeleton");
+
+        bpf_helpers->bpf_object_open_file = (bpf_object__open_file_t)dlsym(bpf_helpers->module, "bpf_object__open_file");
+        bpf_helpers->bpf_object_load = (bpf_object__load_t)dlsym(bpf_helpers->module, "bpf_object__load");
+        bpf_helpers->ring_buffer_new = (ring_buffer__new_t)dlsym(bpf_helpers->module, "ring_buffer__new");
+        bpf_helpers->ring_buffer_poll = (ring_buffer__poll_t)dlsym(bpf_helpers->module, "ring_buffer__poll");
+        bpf_helpers->ring_buffer_free = (ring_buffer__free_t)dlsym(bpf_helpers->module, "ring_buffer__free");
+        bpf_helpers->bpf_object_close = (bpf_object__close_t)dlsym(bpf_helpers->module, "bpf_object__close");
+        bpf_helpers->bpf_object_next_program = (bpf_object__next_program_t)dlsym(bpf_helpers->module, "bpf_object__next_program");
+        bpf_helpers->bpf_program_attach = (bpf_program__attach_t)dlsym(bpf_helpers->module, "bpf_program__attach");
+        bpf_helpers->bpf_object_find_map_fd_by_name = (bpf_object__find_map_fd_by_name_t)dlsym(bpf_helpers->module, "bpf_object__find_map_fd_by_name");
+
+        // Check if all functions were loaded successfully
+        if (bpf_helpers->bpf_object_open_file != NULL &&
+            bpf_helpers->bpf_object_load != NULL &&
+            bpf_helpers->ring_buffer_new != NULL &&
+            bpf_helpers->ring_buffer_poll != NULL &&
+            bpf_helpers->ring_buffer_free != NULL &&
+            bpf_helpers->bpf_object_close != NULL &&
+            bpf_helpers->bpf_object_next_program != NULL &&
+            bpf_helpers->bpf_program_attach != NULL &&
+            bpf_helpers->bpf_object_find_map_fd_by_name != NULL &&
+            bpf_helpers->bpf_object_open_skeleton != NULL &&
+            bpf_helpers->bpf_object_destroy_skeleton != NULL &&
+            bpf_helpers->bpf_object_load_skeleton != NULL &&
+            bpf_helpers->bpf_object_attach_skeleton != NULL &&
+            bpf_helpers->bpf_object_detach_skeleton != NULL){
+            logFn(LOG_INFO, "All functions loaded successfully from libbpf.so");
+        } else {
+            logFn(LOG_ERROR, "Failed to load some functions from libbpf.so");
+            w_bpf_deinit(bpf_helpers);
+            free(bpf_helpers);
+            bpf_helpers = NULL;
+        }
+    } else {
+        logFn(LOG_ERROR, "Unable to open libbpf.so");
+        free(bpf_helpers);
+        bpf_helpers = NULL;
+    }
+    obj = bpf_helpers->bpf_object_open_file("/var/ossec/bin/modern.bpf.o", nullptr);
     if (!obj) {
         logFn(LOG_ERROR, "Opening BPF object file failed.");
+        w_bpf_deinit(bpf_helpers);
+        free(bpf_helpers);
+        bpf_helpers = NULL;
         return 1;
     }
     global_obj = obj;
 
-    err = bpf_object__load(obj);
+    err = bpf_helpers->bpf_object_load(obj);
     if (err) {
         logFn(LOG_ERROR, "Loading BPF object file failed.");
-        bpf_object__close(obj);
+        bpf_helpers->bpf_object_close(obj);
+        w_bpf_deinit(bpf_helpers);
+        free(bpf_helpers);
+        bpf_helpers = NULL;
         return 1;
     }
 
     bpf_program* prog;
-    bpf_object__for_each_program(prog, obj) {
-        if (!bpf_program__attach(prog)) {
+    bpf_object__for_each_program(bpf_helpers, prog, obj) {
+        if (!bpf_helpers->bpf_program_attach(prog)) {
             logFn(LOG_ERROR, "Attaching BPF program failed.");
-            bpf_object__close(obj);
+            bpf_helpers->bpf_object_close(obj);
+            w_bpf_deinit(bpf_helpers);
+            free(bpf_helpers);
+            bpf_helpers = NULL;
             return 1;
         }
     }
 
-    int rb_fd = bpf_object__find_map_fd_by_name(obj, "rb");
+    int rb_fd = bpf_helpers->bpf_object_find_map_fd_by_name(obj, "rb");
     if (rb_fd < 0) {
         logFn(LOG_ERROR, "Finding ring buffer map failed.");
-        bpf_object__close(obj);
+        bpf_helpers->bpf_object_close(obj);
+        w_bpf_deinit(bpf_helpers);
+        free(bpf_helpers);
+        bpf_helpers = NULL;
         return 1;
     }
 
-    *rb = ring_buffer__new(rb_fd, sample_cb, nullptr, nullptr);
+    *rb = bpf_helpers->ring_buffer_new(rb_fd, sample_cb, nullptr, nullptr);
     if (!*rb) {
         logFn(LOG_ERROR, "Creating ring buffer failed.");
-        bpf_object__close(obj);
+        bpf_helpers->bpf_object_close(obj);
+        w_bpf_deinit(bpf_helpers);
+        free(bpf_helpers);
+        bpf_helpers = NULL;
         return 1;
     }
     return 0;
@@ -174,7 +242,7 @@ int ebpf_whodata_healthcheck() {
             file.close();
             epbf_hc_created = true;
         }
-        err = ring_buffer__poll(rb, 100);
+        err = bpf_helpers->ring_buffer_poll(rb, 100);
         if (err < 0) {
             logFn(LOG_ERROR, "Polling ring buffer failed.");
             break;
@@ -188,8 +256,8 @@ int ebpf_whodata_healthcheck() {
     if (std::remove(ebpf_hc_abs_path) != 0) {
         logFn(LOG_ERROR, "Healthcheck file can't be removed.");
     }
-    ring_buffer__free(rb);
-    bpf_object__close(global_obj);
+    bpf_helpers->ring_buffer_free(rb);
+    bpf_helpers->bpf_object_close(global_obj);
 
     if (!event_received) {
         return 1;
@@ -209,15 +277,18 @@ int ebpf_whodata() {
     }
 
     while (true) {
-        err = ring_buffer__poll(rb, 100);
+        err = bpf_helpers->ring_buffer_poll(rb, 100);
         if (err < 0) {
             logFn(LOG_INFO, "Polling ring buffer failed.");
             break;
         }
     }
 
-    ring_buffer__free(rb);
-    bpf_object__close(global_obj);
+    bpf_helpers->ring_buffer_free(rb);
+    bpf_helpers->bpf_object_close(global_obj);
+    w_bpf_deinit(bpf_helpers);
+    free(bpf_helpers);
+    bpf_helpers = NULL;
     return 0;
 }
 
