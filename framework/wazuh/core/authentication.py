@@ -11,7 +11,13 @@ JWT_ISSUER = 'wazuh'
 
 
 def check_jwt_keys(api_config: WazuhConfigBaseModel):
-    """Verify if JWT key files are configured and generate them if not."""
+    """Verify if JWT key files are configured and generate them if not.
+
+    Parameters
+    ----------
+    api_config : WazuhConfigBaseModel
+        The configuration object with the JWT information.
+    """
     config = CentralizedConfig.get_server_config()
     if config.jwt.private_key and config.jwt.public_key:
         return
@@ -26,6 +32,11 @@ def check_jwt_keys(api_config: WazuhConfigBaseModel):
 
 def generate_jwt_public_key(private_key_path: str) -> str:
     """Generate public key for JWT from the API SSL certificate private key.
+
+    Parameters
+    ----------
+    private_key_path : str
+        The path to the JWT private key.
 
     Returns
     -------
