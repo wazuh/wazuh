@@ -1333,9 +1333,8 @@ components:
           type: string
           description: "API version in the manager"
         revision:
-          type: integer
+          type: string
           description: "API revision"
-          format: int32
         license_name:
           type: string
           description: "API license name"

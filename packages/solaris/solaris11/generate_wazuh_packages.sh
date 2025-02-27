@@ -26,8 +26,8 @@ control_binary=""
 trap ctrl_c INT
 
 set_control_binary() {
-    if [ -e ${SOURCE}/src/VERSION ]; then
-        wazuh_version=`cat ${SOURCE}/src/VERSION`
+    if [ -e ${SOURCE}/VERSION.json ]; then
+        wazuh_version="v$(grep '"version"' $SOURCE/VERSION.json | sed -E 's/.*"version": *"([^"]+)".*/\1/')"
         number_version=`echo "${wazuh_version}" | cut -d v -f 2`
         major=`echo $number_version | cut -d . -f 1`
         minor=`echo $number_version | cut -d . -f 2`
@@ -93,8 +93,8 @@ build_environment() {
 }
 
 compute_version_revision() {
-    wazuh_version=$(cat ${SOURCE}/src/VERSION | cut -d "-" -f1 | cut -c 2-)
-    revision="$(cat ${SOURCE}/src/REVISION)"
+    wazuh_version="$(grep '"version"' $SOURCE/VERSION.json | sed -E 's/.*"version": *"([^"]+)".*/\1/')"
+    revision=`grep '"stage"' VERSION.json | sed -E 's/.*"stage": *"([^"]+)".*/\1/'`
 
     echo $wazuh_version > /tmp/VERSION
     echo $revision > /tmp/REVISION
@@ -128,7 +128,7 @@ compile() {
     export LD_LIBRARY_PATH=/usr/local/gcc-5.5.0/lib
 
     cd ${current_path}
-    VERSION=`cat $SOURCE/src/VERSION`
+    VERSION="v$(grep '"version"' $SOURCE/VERSION.json | sed -E 's/.*"version": *"([^"]+)".*/\1/')"
     number_version=`echo "$VERSION" | cut -d v -f 2`
     major_version=`echo ${number_version} | cut -d . -f 1`
     minor_version=`echo ${number_version} | cut -d . -f 2`

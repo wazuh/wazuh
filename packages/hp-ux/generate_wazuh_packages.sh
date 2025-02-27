@@ -92,7 +92,8 @@ config() {
 }
 
 compute_version_revision() {
-    wazuh_version=$(cat ${source_directory}/src/VERSION | cut -d "-" -f1 | cut -c 2-)
+    wazuh_version="$(grep '"version"' $source_directory/VERSION.json | sed -E 's/.*"version": *"([^"]+)".*/\1/')"
+    wazuh_revision=`grep '"stage"' VERSION.json | sed -E 's/.*"stage": *"([^"]+)".*/\1/'`
 
     echo ${wazuh_version} > /tmp/VERSION
     echo ${wazuh_revision} > /tmp/REVISION
@@ -109,7 +110,7 @@ download_source() {
 }
 
 check_version() {
-    wazuh_version=`cat ${source_directory}/src/VERSION`
+    wazuh_version="v$(grep '"version"' $source_directory/VERSION.json | sed -E 's/.*"version": *"([^"]+)".*/\1/')"
     number_version=`echo "${wazuh_version}" | cut -d v -f 2`
     major=`echo $number_version | cut -d . -f 1`
     minor=`echo $number_version | cut -d . -f 2`
@@ -157,8 +158,8 @@ create_package() {
 }
 
 set_control_binary() {
-    if [ -e ${source_directory}/src/VERSION ]; then
-        wazuh_version=`cat ${source_directory}/src/VERSION`
+    if [ -e ${source_directory}/VERSION.json ]; then
+        wazuh_version="v$(grep '"version"' VERSION.json | sed -E 's/.*"version": *"([^"]+)".*/\1/')"
         number_version=`echo "${wazuh_version}" | cut -d v -f 2`
         major=`echo $number_version | cut -d . -f 1`
         minor=`echo $number_version | cut -d . -f 2`

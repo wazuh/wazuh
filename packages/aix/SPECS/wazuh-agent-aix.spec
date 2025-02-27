@@ -64,6 +64,7 @@ cp -pr %{_localstatedir}/* ${RPM_BUILD_ROOT}%{_localstatedir}/
 mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/
 cp gen_ossec.sh ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/
 cp add_localfiles.sh ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/
+cp VERSION.json ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/
 
 # Support files for dynamic creation of configuraiton file
 mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/etc/templates/config/generic
@@ -74,10 +75,6 @@ cp -pr etc/templates/config/generic/localfile-logs/* ${RPM_BUILD_ROOT}%{_localst
 # Support scripts for post installation
 mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/src/init
 cp src/init/*.sh ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/src/init
-
-# Add installation scripts
-cp src/VERSION ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/src/
-cp src/REVISION ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/src/
 
 exit 0
 
@@ -271,11 +268,10 @@ rm -fr %{buildroot}
 %dir %attr(1750, root, wazuh) %config(missingok) %{_localstatedir}/tmp
 %attr(750, root,system) %config(missingok) %{_localstatedir}/tmp/add_localfiles.sh
 %attr(750, root,system) %config(missingok) %{_localstatedir}/tmp/gen_ossec.sh
+%attr(440, wazuh, wazuh) %config(missingok) %{_localstatedir}/tmp/VERSION.json
 %attr(750, root,system) %config(missingok) %{_localstatedir}/tmp/etc/templates/config/generic/*.template
 %attr(750, root,system) %config(missingok) %{_localstatedir}/tmp/etc/templates/config/generic/localfile-logs/*.template
 %attr(750, root,system) %config(missingok) %{_localstatedir}/tmp/src/init/*.sh
-%attr(750, root,system) %config(missingok) %{_localstatedir}/tmp/src/VERSION
-%attr(750, root,system) %config(missingok) %{_localstatedir}/tmp/src/REVISION
 %dir %attr(750, root, wazuh) %{_localstatedir}/var
 %dir %attr(770, root, wazuh) %{_localstatedir}/var/incoming
 %dir %attr(770, root, wazuh) %{_localstatedir}/var/run
