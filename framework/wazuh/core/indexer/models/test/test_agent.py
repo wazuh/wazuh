@@ -2,10 +2,13 @@ import base64
 from unittest import mock
 
 import pytest
-from wazuh.core.indexer.models.agent import HASH_ALGO, ITERATIONS, Agent
+from wazuh.core.indexer.models.agent import Agent
+from wazuh.core.indexer.utils import HASH_ALGO, ITERATIONS
 
 
 class TestAgent:
+    """Validate the correct functionality of the `Agent` class."""
+
     model = Agent
     id = '0191480e-7f67-7fd3-8c52-f49a3176360c'
     key = '015fb915771223a3fdd7c0c0a5adcab8'
