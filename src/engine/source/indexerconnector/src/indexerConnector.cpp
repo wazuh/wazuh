@@ -35,66 +35,6 @@ constexpr auto MERGED_CA_PATH {"/var/lib/wazuh-server/tmp/root-ca-merged.pem"};
 // Single thread in case the events needs to be processed in order.
 constexpr auto SINGLE_ORDERED_DISPATCHING = 1;
 
-/**
- * @brief Merges the CA root certificates into a single file.
- * @param filePaths The list of CA root certificates file paths.
- * @param caRootCertificate The path to the merged CA root certificate.
- * @throws std::runtime_error If the CA root certificate file does not exist, could not be opened, written or the
- * ownership could not be changed.
- */
-static void mergeCaRootCertificates(const std::vector<std::string>& filePaths, std::string& caRootCertificate)
-{
-    std::string caRootCertificateContentMerged;
-
-    for (const auto& filePath : filePaths)
-    {
-        if (!std::filesystem::exists(filePath))
-        {
-            throw std::runtime_error("The CA root certificate file: '" + filePath + "' does not exist.");
-        }
-
-        std::ifstream file(filePath);
-        if (!file.is_open())
-        {
-            throw std::runtime_error("Could not open CA root certificate file: '" + filePath + "'.");
-        }
-
-        caRootCertificateContentMerged.append((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
-    }
-
-    caRootCertificate = MERGED_CA_PATH;
-
-    if (std::filesystem::path dirPath = std::filesystem::path(caRootCertificate).parent_path();
-        !std::filesystem::exists(dirPath) && !std::filesystem::create_directories(dirPath))
-    {
-        throw std::runtime_error("Could not create the directory for the CA root merged file");
-    }
-
-    std::ofstream outputFile(caRootCertificate);
-    if (!outputFile.is_open())
-    {
-        throw std::runtime_error("Could not write the CA root merged file");
-    }
-
-    outputFile << caRootCertificateContentMerged;
-    outputFile.close();
-
-    struct passwd* pwd = getpwnam(WAZUH_OWNER);
-    struct group* grp = getgrnam(WAZUH_GROUP);
-
-    if (pwd == nullptr && grp == nullptr)
-    {
-        throw std::runtime_error("Could not get the user and group information.");
-    }
-
-    if (chown(caRootCertificate.c_str(), pwd->pw_uid, grp->gr_gid) != 0)
-    {
-        throw std::runtime_error("Could not change the ownership of the CA root merged file");
-    }
-
-    LOG_DEBUG("All CA files merged into '{}' successfully.", caRootCertificate.c_str());
-}
-
 static void initConfiguration(SecureCommunication& secureCommunication, const IndexerConnectorOptions& config)
 {
     std::string caRootCertificate;
@@ -103,13 +43,9 @@ static void initConfiguration(SecureCommunication& secureCommunication, const In
     std::string username;
     std::string password;
 
-    if (config.sslOptions.cacert.size() > 1)
+    if (!config.sslOptions.cacert.empty())
     {
-        mergeCaRootCertificates(config.sslOptions.cacert, caRootCertificate);
-    }
-    else if (!config.sslOptions.cacert.empty())
-    {
-        caRootCertificate = config.sslOptions.cacert.front();
+        caRootCertificate = config.sslOptions.cacert;
     }
     else
     {

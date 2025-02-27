@@ -104,10 +104,10 @@ void fillConfiguration(IndexerConnectorOptions& indexerConnectorOptions, const n
 
     if (config.contains("ssl"))
     {
-        if (config.at("ssl").contains("certificate_authorities")
-            && !config.at("ssl").at("certificate_authorities").empty())
+        if (config.at("ssl").contains("certificate_authorities_bundle")
+            && !config.at("ssl").at("certificate_authorities_bundle").empty())
         {
-            indexerConnectorOptions.sslOptions.cacert = config.at("ssl").at("certificate_authorities");
+            indexerConnectorOptions.sslOptions.cacert = config.at("ssl").at("certificate_authorities_bundle");
         }
 
         if (config.at("ssl").contains("certificate"))
