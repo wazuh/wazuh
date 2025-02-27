@@ -197,7 +197,7 @@ void wm_ms_graph_scan_relationships(wm_ms_graph* ms_graph, wm_ms_graph_auth* aut
     char end_time_str[WM_MS_GRAPH_TIMESTAMP_SIZE_80] = { '\0' };
     struct tm tm_aux = { .tm_sec = 0 };
     wm_ms_graph_state_t relationship_state_struc;
-    time_t now;
+    time_t scan_time;
     bool fail;
     bool next_page;
     bool inventory = false;
@@ -239,15 +239,15 @@ void wm_ms_graph_scan_relationships(wm_ms_graph* ms_graph, wm_ms_graph_auth* aut
                     memset(&relationship_state_struc, 0, sizeof(relationship_state_struc));
                 }
 
-                now = time(0);
+                scan_time = time(0) - ms_graph->time_delay;
 
                 if ((initial_scan && (!relationship_state_struc.next_time || ms_graph->only_future_events)) ||
                     (!initial_scan && !relationship_state_struc.next_time)) {
-                    relationship_state_struc.next_time = now;
+                    relationship_state_struc.next_time = scan_time;
                     if (wm_state_io(relationship_state_name, WM_IO_WRITE, &relationship_state_struc, sizeof(relationship_state_struc)) < 0) {
                         mterror(WM_MS_GRAPH_LOGTAG, "Couldn't save running state.");
                     } else if (isDebug()) {
-                        gmtime_r(&now, &tm_aux);
+                        gmtime_r(&scan_time, &tm_aux);
                         strftime(start_time_str, sizeof(start_time_str), "%Y-%m-%dT%H:%M:%SZ", &tm_aux);
                         mtdebug1(WM_MS_GRAPH_LOGTAG, "Bookmark updated to '%s' for tenant '%s' resource '%s' and relationship '%s', waiting '%d' seconds to run first scan.",
                             start_time_str, auth_config->tenant_id, ms_graph->resources[resource_num].name, ms_graph->resources[resource_num].relationships[relationship_num], ms_graph->scan_config.interval);
@@ -258,7 +258,7 @@ void wm_ms_graph_scan_relationships(wm_ms_graph* ms_graph, wm_ms_graph_auth* aut
                 gmtime_r(&relationship_state_struc.next_time, &tm_aux);
                 strftime(start_time_str, sizeof(start_time_str), "%Y-%m-%dT%H:%M:%SZ", &tm_aux);
 
-                gmtime_r(&now, &tm_aux);
+                gmtime_r(&scan_time, &tm_aux);
                 strftime(end_time_str, sizeof(end_time_str), "%Y-%m-%dT%H:%M:%SZ", &tm_aux);
             }
 
@@ -381,7 +381,7 @@ void wm_ms_graph_scan_relationships(wm_ms_graph* ms_graph, wm_ms_graph_auth* aut
             }
 
             if (!inventory && !fail) {
-                relationship_state_struc.next_time = now;
+                relationship_state_struc.next_time = scan_time;
                 if (wm_state_io(relationship_state_name, WM_IO_WRITE, &relationship_state_struc, sizeof(relationship_state_struc)) < 0) {
                     mterror(WM_MS_GRAPH_LOGTAG, "Couldn't save running state.");
                 } else {
@@ -502,6 +502,9 @@ cJSON* wm_ms_graph_dump(const wm_ms_graph* ms_graph) {
     }
     if (ms_graph->page_size) {
         cJSON_AddNumberToObject(ms_graph_info, "page_size", ms_graph->page_size);
+    }
+    if (ms_graph->time_delay) {
+        cJSON_AddNumberToObject(ms_graph_info, "time_delay", ms_graph->time_delay);
     }
     if (ms_graph->run_on_start) {
         cJSON_AddStringToObject(ms_graph_info, "run_on_start", "yes");
