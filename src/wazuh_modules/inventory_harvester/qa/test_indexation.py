@@ -48,7 +48,7 @@ def opensearch(request):
             container.stop()
             container.remove()
 
-test_folders = [folder for folder in Path("wazuh_modules/inventory_harvester/qa/test_data").rglob('*') if folder.is_dir() and folder.name.isdigit()]
+test_folders = [folder for folder in Path("wazuh_modules/inventory_harvester/qa/test_data").rglob('*') if folder.is_dir() and str(folder.name)[0].isdigit()]
 test_folders = sorted([str(folder) for folder in test_folders])
 
 @pytest.fixture

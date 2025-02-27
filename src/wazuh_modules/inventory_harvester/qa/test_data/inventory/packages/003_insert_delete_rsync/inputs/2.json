@@ -1,0 +1,14 @@
+{
+  "agent_info": {
+    "agent_id": "001"
+  },
+  "action": "deletePackage",
+  "data": {
+    "name": "curl",
+    "version": "8.5.0-2ubuntu10.6",
+    "architecture": "amd64",
+    "format": "deb",
+    "location": " ",
+    "item_id": "7c6a8a5156cf128b6b678b363d102c6947a7101e"
+  }
+}
