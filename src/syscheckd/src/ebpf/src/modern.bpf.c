@@ -93,12 +93,12 @@ struct {
  * It traverses the dentry hierarchy and stores the constructed path in a per-CPU buffer.
  * The resulting pointer is returned via path_str.
  */
-statfunc long get_path_str_from_path(u_char **path_str, struct path *path, struct buffer *out_buf) {
+statfunc long get_path_str_from_path(unsigned char **path_str, struct path *path, struct buffer *out_buf) {
     long ret;
     struct dentry *dentry, *dentry_parent, *dentry_mnt;
     struct vfsmount *vfsmnt;
     struct mount *mnt, *mnt_parent;
-    const u_char *name;
+    const unsigned char *name;
     size_t name_len;
 
     dentry = BPF_CORE_READ(path, dentry);
@@ -125,7 +125,7 @@ statfunc long get_path_str_from_path(u_char **path_str, struct path *path, struc
             break;
         }
         name_len = LIMIT_PATH_SIZE(BPF_CORE_READ(dentry, d_name.len));
-        name = (const u_char *)BPF_CORE_READ(dentry, d_name.name);
+        name = (const unsigned char *)BPF_CORE_READ(dentry, d_name.name);
         name_len = name_len + 1;
         if (name_len > buf_off)
             break;
