@@ -1,3 +1,25 @@
+"""
+Integration Test for the Inventory Harvester with OpenSearch
+
+This test suite uses pytest and Docker to:
+1. Spin up an OpenSearch container (single-node, security disabled).
+2. Index test data using the 'inventory_harvester_testtool'.
+3. Validate that the expected indexes and data are properly created in OpenSearch.
+
+Usage:
+- Adjust the 'GLOBAL_URL' and container environment variables as needed.
+- Provide test data in subfolders under 'wazuh_modules/inventory_harvester/qa/test_data'
+  with names starting with digits (e.g., '000_test' or '100_featureX').
+
+Dependencies:
+- pytest
+- docker (Docker SDK for Python)
+- requests
+
+Run the test:
+    python3 -m pytest -xvv wazuh_modules/inventory_harvester/qa/ --log-cli-level=DEBUG
+"""
+
 import pytest
 import docker
 import time
@@ -5,128 +27,230 @@ import requests
 import logging
 import os
 import subprocess
-from pathlib import Path
-import json
 import shutil
+import json
+import re
+from pathlib import Path
 
 LOGGER = logging.getLogger(__name__)
+
+#: OpenSearch URL used by the tests.
 GLOBAL_URL = 'localhost:9200'
 
-def init_opensearch(low_resources):
+
+def wait_for_opensearch(url: str, timeout: int = 60) -> None:
+    """
+    Repeatedly checks if OpenSearch is ready by sending an HTTP GET request.
+
+    :param url: The base URL for checking OpenSearch health.
+    :param timeout: Maximum wait time in seconds before giving up.
+    :raises RuntimeError: If OpenSearch does not respond in the given timeout.
+    """
+    for _ in range(timeout):
+        try:
+            response = requests.get(url)
+            if response.status_code == 200:
+                LOGGER.info("OpenSearch is ready.")
+                return
+        except requests.exceptions.ConnectionError:
+            pass
+        time.sleep(1)
+    raise RuntimeError(f"OpenSearch not ready after {timeout} seconds.")
+
+
+def init_opensearch(low_resources: bool) -> docker.DockerClient:
+    """
+    Initializes and runs an OpenSearch container in single-node mode.
+
+    :param low_resources: Whether to set a lower content-length limit.
+    :return: Docker client instance with the container running.
+    :raises docker.errors.ContainerError: If container fails to start.
+    :raises docker.errors.APIError: If Docker engine encounters an error.
+    """
     client = docker.from_env()
     env_vars = {
-            'discovery.type': 'single-node',
-            'plugins.security.disabled': 'true',
-            'OPENSEARCH_INITIAL_ADMIN_PASSWORD': 'WazuhTest99$'
-        }
+        'discovery.type': 'single-node',
+        'plugins.security.disabled': 'true',
+        'OPENSEARCH_INITIAL_ADMIN_PASSWORD': 'WazuhTest99$'
+    }
 
     if low_resources:
         env_vars['http.max_content_length'] = '4mb'
 
-    client.containers.run("opensearchproject/opensearch", detach=True, ports={'9200/tcp': 9200},
-                          environment=env_vars, name='opensearch', stdout=True, stderr=True)
-    ## Wait for the container is running and opensearch is ready
-    while True:
-        try:
-            response = requests.get('http://'+GLOBAL_URL+'')
-            if response.status_code == 200:
-                break
-        except requests.exceptions.ConnectionError:
-            pass
-        time.sleep(1)
+    # If a container named 'opensearch' is running, remove it to avoid naming conflicts
+    existing = client.containers.list(all=True, filters={"name": "opensearch"})
+    for cnt in existing:
+        LOGGER.warning("Removing existing container named 'opensearch'")
+        cnt.stop()
+        cnt.remove()
+
+    LOGGER.info("Pulling and running opensearchproject/opensearch container...")
+    client.containers.run(
+        "opensearchproject/opensearch",
+        detach=True,
+        ports={'9200/tcp': 9200},
+        environment=env_vars,
+        name='opensearch',
+        stdout=True,
+        stderr=True
+    )
+
+    # Wait until OpenSearch is ready to accept connections
+    wait_for_opensearch(f"http://{GLOBAL_URL}")
     return client
 
 
 @pytest.fixture(scope='function')
 def opensearch(request):
+    """
+    Pytest fixture to manage the lifecycle of the OpenSearch container.
+
+    Param:
+    - request.param (bool): If True, limits max content length in the container.
+
+    Yields:
+    - docker.DockerClient: The Docker client with the OpenSearch container running.
+
+    Teardown:
+    - Stops and removes the container named 'opensearch'.
+    """
     low_resources = request.param
     client = init_opensearch(low_resources)
     yield client
-    # Stop all containers
+
+    LOGGER.info("Stopping and removing the 'opensearch' container...")
     for container in client.containers.list():
         if container.name == 'opensearch':
             container.stop()
             container.remove()
 
-test_folders = [folder for folder in Path("wazuh_modules/inventory_harvester/qa/test_data").rglob('*') if folder.is_dir() and folder.name.isdigit()]
-test_folders = sorted([str(folder) for folder in test_folders])
+
+def is_test_folder_name(name: str) -> bool:
+    """
+    Checks if the folder name starts with one or more digits (e.g., '000_test').
+
+    :param name: The folder name.
+    :return: True if the folder name starts with digits, otherwise False.
+    """
+    return bool(re.match(r'^\d+', name))
+
+
+# Collect test folders whose names start with digits (e.g., '000_test')
+test_data_path = Path("wazuh_modules/inventory_harvester/qa/test_data")
+test_folders = [
+    folder for folder in test_data_path.rglob('*')
+    if folder.is_dir() and is_test_folder_name(folder.name)
+]
+test_folders = sorted(str(folder) for folder in test_folders)
+
 
 @pytest.fixture
 def test_folder(request):
+    """
+    Fixture that returns the current test folder path.
+    """
     return request.param
+
 
 @pytest.mark.parametrize('opensearch', [False], indirect=True)
 @pytest.mark.parametrize("test_folder", test_folders, indirect=True)
 def test_data_indexation(opensearch, test_folder):
+    """
+    End-to-end test to verify data indexation in OpenSearch.
+
+    1. Switches to the repository root directory.
+    2. Locates the 'inventory_harvester_testtool' binary.
+    3. Cleans up logs/queues and runs the test tool with the specified config/template.
+    4. Validates index creation and document insertion in OpenSearch.
+    """
+    # Move to the repository root directory
     os.chdir(Path(__file__).parent.parent.parent.parent)
     LOGGER.debug(f"Current directory: {os.getcwd()}")
 
-    # Run indexer connector testtool out of the container
-    cmd = Path("build/wazuh_modules/inventory_harvester/testtool/", "inventory_harvester_testtool")
-    cmd_alt = Path("wazuh_modules/inventory_harvester/build/testtool/", "inventory_harvester_testtool")
+    # Attempt to locate the binary in two possible build paths
+    cmd = Path(
+        "build/wazuh_modules/inventory_harvester/testtool/inventory_harvester_testtool")
+    cmd_alt = Path(
+        "wazuh_modules/inventory_harvester/build/testtool/inventory_harvester_testtool")
 
-    # Ensure the binary exists
     if not cmd.exists():
         cmd = cmd_alt
-    assert cmd.exists(), "The binary does not exists"
+    assert cmd.exists(), "The 'inventory_harvester_testtool' binary does not exist."
 
-    log_file = 'log_' + test_folder.replace('/', '_') + '.out'
+    # Prepare the log file name
+    log_file = f"log_{test_folder.replace('/', '_')}.out"
 
-    # Remove previous log file if exists
+    # Clean up any previous log file or queue folder
     if Path(log_file).exists():
         Path(log_file).unlink()
-
     if Path("queue").exists():
         shutil.rmtree("queue")
 
-    LOGGER.debug(f"Running test at '{test_folder}'")
+    LOGGER.debug(f"Running test in folder: '{test_folder}'")
+    
+    input_dir = Path(test_folder, "inputs/")
 
-    args = ["-c", test_folder + "/config.json",
-            "-t", test_folder + "/template.json",
-            "-l", log_file, "-i", test_folder + "/inputs/"]
+    # Build the command with arguments
+    args = [
+        "-c", str(Path(test_folder, "config.json")),
+        "-t", str(Path(test_folder, "template.json")),
+        "-l", log_file,
+        "-i", str(input_dir)
+    ]
+    command = [str(cmd)] + args
 
-    command = [cmd] + args
-
-    LOGGER.info(f"Running command: {command}")
+    LOGGER.info(f"Executing command: {command}")
     process = subprocess.Popen(command)
-    # if the process is not running fail the test
-    assert process.poll() is None, "The process is not running"
 
-    # Parse result.json file to get expected indexes and data
-    with open(Path(test_folder, "result.json")) as f:
-        result = json.load(f)
+    # Ensure the process actually started
+    assert process.poll() is None, "The inventory harvester test tool failed to start."
 
-    # Wait for process to finish
+    # Load expected result data
+    result_json_path = Path(test_folder, "result.json")
+    with open(result_json_path, encoding="utf-8") as f:
+        result_data = json.load(f)
+
+    # Wait for the process to complete
     process.wait()
-    assert process.returncode == 0, "The process failed"
+    assert process.returncode == 0, "The test tool process exited with an error."
 
-    # We validate the index was created
-    counter = 0
-    for index in result:
-        url = 'http://'+ GLOBAL_URL +'/_cat/indices/' + index["index_name"] + '?format=json'
-        LOGGER.info("Checking if the index was created at: " + url)
-        while counter < 10:
-            response = requests.get(url)
-            if response.status_code == 200 and len(response.json()) > 0:
+    # Check each index definition in result.json
+    for index_info in result_data:
+        index_name = index_info["index_name"]
+        index_url = f"http://{GLOBAL_URL}/_cat/indices/{index_name}?format=json"
+        LOGGER.info(f"Validating index creation: {index_url}")
+
+        # Poll OpenSearch to ensure the index is created
+        for attempt in range(10):
+            resp = requests.get(index_url)
+            if resp.status_code == 200 and len(resp.json()) > 0:
                 break
             time.sleep(1)
-            counter += 1
-        assert counter < 10, f"The index was not created. Response: {response.text}"
+        else:
+            pytest.fail(
+                f"The index '{index_name}' was not created within the expected time. "
+                f"Response: {resp.text}"
+            )
 
-    # Query to check if the index content is the same as result.json file
-    for index in result:
-        url = 'http://'+ GLOBAL_URL +'/'+ index["index_name"] +'/_search'
-        response = requests.get(url)
-        assert response.status_code == 200
+    # Validate the number of documents indexed matches expected data
+    for index_info in result_data:
+        index_name = index_info["index_name"]
+        index_url = f"http://{GLOBAL_URL}/{index_name}/_search"
+        resp = requests.get(index_url)
+        assert resp.status_code == 200, f"Search request to index '{index_name}' failed."
+        hits = resp.json()["hits"]
 
-        # Check if the data is the same as the expected
-        response_json = response.json()
-        assert response_json["hits"]["total"]["value"] == len(index["data"]), f"The number of hits is not the expected: {response_json['hits']['hits']}"
+        expected_size = len(index_info["data"])
+        actual_size = hits["total"]["value"]
+        assert actual_size == expected_size, (
+            f"Mismatch in document count for index '{index_name}'. "
+            f"Expected {expected_size}, got {actual_size}."
+        )
 
-        for expected_data in index["data"]:
-            found = False
-            for hit in response_json["hits"]["hits"]:
-                if expected_data == hit["_source"]:
-                    found = True
-                    break
-            assert found, f"The data '{expected_data}' is not in the response: {response_json['hits']['hits']}"
+        # Verify each expected document is present in the hits
+        for expected_doc in index_info["data"]:
+            found = any(expected_doc == hit["_source"] for hit in hits["hits"])
+            assert found, (
+                f"Expected document '{expected_doc}' not found in index '{index_name}'. "
+                f"Actual hits: {hits['hits']}"
+            )
