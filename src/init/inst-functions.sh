@@ -775,7 +775,16 @@ InstallCommon()
     ./init/adduser.sh ${WAZUH_USER} ${WAZUH_GROUP} ${INSTALLDIR}
 
   ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/
+
+  # Install VERSION.json and append commit id if any
   ${INSTALL} -m 440 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ../VERSION.json ${INSTALLDIR}/VERSION.json
+
+  # Check if git shell command is available
+  if command -v git &> /dev/null; then
+    short_commit_hash="$(git rev-parse --short HEAD)"
+    sed -i '/"stage":/s/$/,/; /"stage":/a \    "commit": "'"$short_commit_hash"'"' ${INSTALLDIR}/VERSION.json
+  fi
+
   ${INSTALL} -d -m 0770 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/logs
   ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/logs/wazuh
   ${INSTALL} -m 0660 -o ${WAZUH_USER} -g ${WAZUH_GROUP} /dev/null ${INSTALLDIR}/logs/ossec.log

@@ -65,7 +65,7 @@ override_dh_install:
 	USER_AUTO_START="n" \
 	USER_CREATE_SSL_CERT="n" \
 	DOWNLOAD_CONTENT="y" \
-	./install.sh
+	./install.sh || { echo "install.sh failed! Aborting." >&2; exit 1; }
 
 	# Copying init.d script
 	mkdir -p ${TARGET_DIR}/etc/init.d/

@@ -88,7 +88,7 @@ echo 'USER_GENERATE_AUTHD_CERT="y"' >> ./etc/preloaded-vars.conf
 echo 'USER_AUTO_START="n"' >> ./etc/preloaded-vars.conf
 echo 'USER_CREATE_SSL_CERT="n"' >> ./etc/preloaded-vars.conf
 echo 'DOWNLOAD_CONTENT="y"' >> ./etc/preloaded-vars.conf
-./install.sh
+./install.sh || { echo "install.sh failed! Aborting." >&2; exit 1; }
 
 # Create directories
 mkdir -p ${RPM_BUILD_ROOT}%{_initrddir}

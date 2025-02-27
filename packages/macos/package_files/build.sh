@@ -53,7 +53,7 @@ function build() {
     done
 
     echo "Running install script"
-    ${SOURCES_PATH}/install.sh
+    ${SOURCES_PATH}/install.sh || { echo "install.sh failed! Aborting." >&2; exit 1; }
 
     find ${DESTINATION_PATH}/ruleset/sca/ -type f -exec rm -f {} \;
 

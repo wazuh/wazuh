@@ -124,7 +124,7 @@ compile() {
     check_version
     gmake deps RESOURCES_URL=http://packages.wazuh.com/deps/${deps_version} TARGET=agent
     gmake TARGET=agent USE_SELINUX=no
-    bash ${source_directory}/install.sh
+    bash ${source_directory}/install.sh || { echo "install.sh failed! Aborting." >&2; exit 1; }
     # Install std libs needed to run the agent
     cp -f ${build_tools_path}/bootstrap-gcc/gcc94_prefix/lib/libstdc++.so.6.28 ${install_path}/lib
     cp -f ${build_tools_path}/bootstrap-gcc/gcc94_prefix/lib/libgcc_s.so.0 ${install_path}/lib

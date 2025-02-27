@@ -94,7 +94,7 @@ echo 'USER_UPDATE="n"' >> ./etc/preloaded-vars.conf
 echo 'USER_AGENT_SERVER_IP="MANAGER_IP"' >> ./etc/preloaded-vars.conf
 echo 'USER_CA_STORE="/path/to/my_cert.pem"' >> ./etc/preloaded-vars.conf
 echo 'USER_AUTO_START="n"' >> ./etc/preloaded-vars.conf
-./install.sh
+./install.sh || { echo "install.sh failed! Aborting." >&2; exit 1; }
 
 %if 0%{?el} < 6 || 0%{?rhel} < 6
   mkdir -p ${RPM_BUILD_ROOT}%{_sysconfdir}
