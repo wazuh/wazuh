@@ -49,6 +49,11 @@
 #define WM_MS_GRAPH_RELATIONSHIP_MANAGED_DEVICES "managedDevices"
 #define WM_MS_GRAPH_RELATIONSHIP_DETECTED_APPS "detectedApps"
 
+// Identity protection
+#define WM_MS_GRAPH_RESOURCE_IDENTITY_PROTECTION "identityProtection"
+#define WM_MS_GRAPH_RELATIONSHIP_RISK_DETECTIONS "riskDetections"
+#define WM_MS_GRAPH_RELATIONSHIP_SERVICE_PRINCIPAL_RISK_DETECTIONS "servicePrincipalRiskDetections"
+
 typedef struct wm_ms_graph_state_t {
 	time_t next_time;
 } wm_ms_graph_state_t;

@@ -866,7 +866,7 @@
 <!--End of Alerts&Incidents -->
 
 
-<!--MDM Intune 99651-99700-->
+<!--MDM Intune 99651-99655-->
 
 
     <rule id="99651" level="3">
@@ -897,6 +897,31 @@
         <description>MS Graph message: MDM Intune app.</description>
     </rule>
 
-<!--MDM Intune 99651-99700-->
+<!--MDM Intune 99651-99655-->
+
+<!--Identity protection 99656-99700-->
+
+    <rule id="99656" level="3">
+        <if_sid>99500</if_sid>
+        <options>no_full_log</options>
+        <field name="ms-graph.resource">identityProtection</field>
+        <description>MS Graph message: Identity protection event.</description>
+    </rule>
+
+    <rule id="99657" level="3">
+        <if_sid>99656</if_sid>
+        <options>no_full_log</options>
+        <field name="ms-graph.relationship">riskDetections</field>
+        <description>MS Graph message: Risk detection event.</description>
+    </rule>
+
+    <rule id="99658" level="3">
+        <if_sid>99656</if_sid>
+        <options>no_full_log</options>
+        <field name="ms-graph.relationship">servicePrincipalRiskDetections</field>
+        <description>MS Graph message: Service principal risk detection event.</description>
+    </rule>
+
+<!--Identity protection 99656-99700-->
 
 </group>
