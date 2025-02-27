@@ -48,7 +48,7 @@ int wm_ms_graph_read(const OS_XML* xml, xml_node** nodes, wmodule* module) {
 	ms_graph->only_future_events = WM_MS_GRAPH_DEFAULT_ONLY_FUTURE_EVENTS;
 	ms_graph->curl_max_size = WM_MS_GRAPH_DEFAULT_CURL_MAX_SIZE;
 	ms_graph->page_size = WM_MS_GRAPH_ITEM_PER_PAGE;
-    ms_graph->time_delay = WM_MS_GRAPH_DEFAULT_DELAY;
+	ms_graph->time_delay = WM_MS_GRAPH_DEFAULT_DELAY;
 	ms_graph->run_on_start = WM_MS_GRAPH_DEFAULT_RUN_ON_START;
 	os_strdup(WM_MS_GRAPH_DEFAULT_VERSION, ms_graph->version);
 
