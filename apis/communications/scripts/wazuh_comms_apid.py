@@ -39,7 +39,7 @@ from server_management_api.configuration import generate_private_key, generate_s
 from server_management_api.middlewares import SecureHeadersMiddleware
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from wazuh.core import common, pyDaemonModule, utils
-from wazuh.core.authentication import check_jwt_keys
+from wazuh.core.authentication import load_jwt_keys
 from wazuh.core.batcher.mux_demux import MuxDemuxManager, MuxDemuxQueue
 from wazuh.core.cluster.utils import print_version
 from wazuh.core.config.client import CentralizedConfig
@@ -326,7 +326,7 @@ if __name__ == '__main__':
     try:
         app = create_app(mux_demux_manager.get_queue(), commands_manager)
         options = get_gunicorn_options(pid, log_config_dict, comms_api_config)
-        check_jwt_keys(comms_api_config)
+        load_jwt_keys(comms_api_config)
         StandaloneApplication(app, options).run()
     except WazuhCommsAPIError as e:
         logger.error(f'Error when trying to start the Wazuh Communications API. {e}')

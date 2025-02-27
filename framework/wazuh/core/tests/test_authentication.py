@@ -4,8 +4,8 @@ from cryptography.hazmat.primitives.asymmetric import rsa
 from unittest.mock import MagicMock, mock_open, patch, call
 
 from framework.wazuh.core.authentication import (
-    check_jwt_keys,
-    generate_jwt_public_key,
+    load_jwt_keys,
+    derive_public_key,
     get_keypair,
 )
 
@@ -46,7 +46,7 @@ def test_get_keypair(mock_open_obj, get_server_config_mock):
     assert public_key == "dummy_public_key"
 
 
-def test_check_jwt_keys_already_configured():
+def test_load_jwt_keys_already_configured():
     """Verify no key generation occurs if JWT keys are already configured."""
     mock_api_config = MagicMock()
     mock_config = MagicMock()
@@ -57,15 +57,15 @@ def test_check_jwt_keys_already_configured():
         "wazuh.core.config.client.CentralizedConfig.get_server_config",
         return_value=mock_config,
     ) as mock_get_config, patch(
-        "framework.wazuh.core.authentication.generate_jwt_public_key"
+        "framework.wazuh.core.authentication.derive_public_key"
     ) as mock_generate:
-        check_jwt_keys(mock_api_config)
+        load_jwt_keys(mock_api_config)
 
         mock_get_config.assert_called_once()
         mock_generate.assert_not_called()
 
 
-def test_check_jwt_keys_generate_when_missing():
+def test_load_jwt_keys_generate_when_missing():
     """Verify key generation occurs if JWT keys are missing."""
     mock_api_config = MagicMock()
     mock_api_config.ssl.key = "ssl_private_key_path"
@@ -74,15 +74,15 @@ def test_check_jwt_keys_generate_when_missing():
     mock_config.jwt.private_key = None
     mock_config.jwt.public_key = None
 
-    # Patch generate_jwt_public_key to return a dummy public key.
+    # Patch derive_public_key to return a dummy public key.
     with patch(
         "wazuh.core.config.client.CentralizedConfig.get_server_config",
         return_value=mock_config,
     ) as mock_get_config, patch(
-        "framework.wazuh.core.authentication.generate_jwt_public_key",
+        "framework.wazuh.core.authentication.derive_public_key",
         return_value="generated_public_key",
     ) as mock_generate:
-        check_jwt_keys(mock_api_config)
+        load_jwt_keys(mock_api_config)
 
         assert mock_config.jwt.private_key == "ssl_private_key_path"
         # Verify that set_public_key was called with the generated public key.
@@ -90,21 +90,21 @@ def test_check_jwt_keys_generate_when_missing():
         mock_generate.assert_called_once_with("ssl_private_key_path")
 
 
-def test_generate_jwt_public_key(mock_private_key_pem):
-    """Verify that generate_jwt_public_key opens the file correctly and returns a valid public key."""
+def test_derive_public_key(mock_private_key_pem):
+    """Verify that derive_public_key opens the file correctly and returns a valid public key."""
     m_open = mock_open(read_data=mock_private_key_pem)
     with patch("builtins.open", m_open):
-        public_key = generate_jwt_public_key("dummy_private_key_path")
+        public_key = derive_public_key("dummy_private_key_path")
         m_open.assert_called_once_with("dummy_private_key_path", mode="r")
         # Verify that the returned public key contains the PEM header.
         assert "BEGIN PUBLIC KEY" in public_key
 
 
-def test_generate_jwt_public_key_read_error():
+def test_derive_public_key_read_error():
     """Verify function raises FileNotFoundError when private key file is missing."""
     m_open = mock_open()
     m_open.side_effect = FileNotFoundError
 
     with patch("builtins.open", m_open):
         with pytest.raises(FileNotFoundError):
-            generate_jwt_public_key("non_existent_path")
+            derive_public_key("non_existent_path")

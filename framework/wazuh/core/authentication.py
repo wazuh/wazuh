@@ -10,8 +10,8 @@ JWT_ALGORITHM = 'RS256'
 JWT_ISSUER = 'wazuh'
 
 
-def check_jwt_keys(api_config: WazuhConfigBaseModel):
-    """Verify if JWT key files are configured and generate them if not.
+def load_jwt_keys(api_config: WazuhConfigBaseModel):
+    """Load JWT keys into the configuration.
 
     Parameters
     ----------
@@ -23,15 +23,15 @@ def check_jwt_keys(api_config: WazuhConfigBaseModel):
         return
 
     # Generate keys from defined SSL key path
-    public_key = generate_jwt_public_key(api_config.ssl.key)
+    public_key = derive_public_key(api_config.ssl.key)
 
     # Assign API SSL key as JWT private key and default JWT Public Key path
     config.jwt.private_key = api_config.ssl.key
     config.jwt.set_public_key(public_key)
 
 
-def generate_jwt_public_key(private_key_path: str) -> str:
-    """Generate public key for JWT from the API SSL certificate private key.
+def derive_public_key(private_key_path: str) -> str:
+    """Derive public key from the API SSL certificate private key.
 
     Parameters
     ----------
