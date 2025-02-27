@@ -1,12 +1,62 @@
-from typing import Tuple
+import contextlib
+import os
 
+from cryptography.hazmat.primitives import serialization
+from wazuh.core import common
 from wazuh.core.config.client import CentralizedConfig
+from wazuh.core.config.models.base import WazuhConfigBaseModel
 
-JWT_ALGORITHM = 'ES256'
+JWT_ALGORITHM = 'RS256'
 JWT_ISSUER = 'wazuh'
 
 
-def get_keypair() -> Tuple[str, str]:
+def load_jwt_keys(api_config: WazuhConfigBaseModel):
+    """Load JWT keys into the configuration.
+
+    Parameters
+    ----------
+    api_config : WazuhConfigBaseModel
+        The configuration object with the JWT information.
+    """
+    config = CentralizedConfig.get_server_config()
+    if config.jwt.private_key and config.jwt.public_key:
+        return
+
+    # Generate keys from defined SSL key path
+    public_key = derive_public_key(api_config.ssl.key)
+
+    # Assign API SSL key as JWT private key and default JWT Public Key path
+    config.jwt.private_key = api_config.ssl.key
+    config.jwt.set_public_key(public_key)
+
+
+def derive_public_key(private_key_path: str) -> str:
+    """Derive public key from the API SSL certificate private key.
+
+    Parameters
+    ----------
+    private_key_path : str
+        The path to the JWT private key.
+
+    Returns
+    -------
+    str
+        Public key.
+    """
+    with open(private_key_path, mode='r') as key_file:
+        private_key_content = key_file.read()
+        private_key = serialization.load_pem_private_key(private_key_content.encode('utf-8'), password=None)
+
+    public_key = (
+        private_key.public_key()
+        .public_bytes(encoding=serialization.Encoding.PEM, format=serialization.PublicFormat.SubjectPublicKeyInfo)
+        .decode('utf-8')
+    )
+
+    return public_key
+
+
+def get_keypair() -> tuple[str, str]:
     """Return key files to keep safe or load existing public and private keys.
 
     Returns
@@ -20,7 +70,6 @@ def get_keypair() -> Tuple[str, str]:
 
     with open(config.jwt.private_key, mode='r') as key_file:
         private_key = key_file.read()
-    with open(config.jwt.public_key, mode='r') as key_file:
-        public_key = key_file.read()
+    public_key = config.jwt.get_public_key()
 
     return private_key, public_key
