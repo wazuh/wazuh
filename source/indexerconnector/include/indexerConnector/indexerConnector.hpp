@@ -41,11 +41,11 @@ struct IndexerConnectorOptions
 
     struct
     {
-        std::vector<std::string> cacert; ///< The list of CA certificates to trust.
-        std::string cert;                ///< The certificate to connect to OpenSearch.
-        std::string key;                 ///< The key to connect to OpenSearch.
-        bool skipVerifyPeer;             ///< Skip peer verification. (insecure mode)
-    } sslOptions;                        ///< The SSL options to connect to OpenSearch.
+        std::string cacert;  ///< Path to the CA bundle file.
+        std::string cert;    ///< The certificate to connect to OpenSearch.
+        std::string key;     ///< The key to connect to OpenSearch.
+        bool skipVerifyPeer; ///< Skip peer verification. (insecure mode)
+    } sslOptions;            ///< The SSL options to connect to OpenSearch.
 
     uint32_t timeout = 60000u;  ///< The timeout in milliseconds to connect to OpenSearch.
     uint8_t workingThreads = 1; ///< The number of threads to dequeue and send the data.

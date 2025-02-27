@@ -153,7 +153,7 @@ int main(int argc, char* argv[])
             icConfig.password = confManager.get<std::string>(conf::key::INDEXER_PASSWORD);
             if (confManager.get<bool>(conf::key::INDEXER_SSL_USE_SSL))
             {
-                icConfig.sslOptions.cacert = confManager.get<std::vector<std::string>>(conf::key::INDEXER_SSL_CA_LIST);
+                icConfig.sslOptions.cacert = confManager.get<std::string>(conf::key::INDEXER_SSL_CA_BUNDLE);
                 icConfig.sslOptions.cert = confManager.get<std::string>(conf::key::INDEXER_SSL_CERTIFICATE);
                 icConfig.sslOptions.key = confManager.get<std::string>(conf::key::INDEXER_SSL_KEY);
             }
@@ -281,7 +281,7 @@ int main(int argc, char* argv[])
             icConfig.password = confManager.get<std::string>(conf::key::INDEXER_PASSWORD);
             if (confManager.get<bool>(conf::key::INDEXER_SSL_USE_SSL))
             {
-                icConfig.sslOptions.cacert = confManager.get<std::vector<std::string>>(conf::key::INDEXER_SSL_CA_LIST);
+                icConfig.sslOptions.cacert = confManager.get<std::string>(conf::key::INDEXER_SSL_CA_BUNDLE);
                 icConfig.sslOptions.cert = confManager.get<std::string>(conf::key::INDEXER_SSL_CERTIFICATE);
                 icConfig.sslOptions.key = confManager.get<std::string>(conf::key::INDEXER_SSL_KEY);
                 icConfig.sslOptions.skipVerifyPeer = !confManager.get<bool>(conf::key::INDEXER_SSL_VERIFY_CERTS);

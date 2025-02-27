@@ -250,7 +250,7 @@ TEST_F(IndexerConnectorTest, DISABLED_ConnectionWithSslCredentials)
 {
     IndexerConnectorOptions indexerConfig {.name = INDEXER_NAME,
                                            .hosts = {A_ADDRESS},
-                                           .sslOptions = {.cacert = {"/etc/filebeat/certs/root-ca.pem"},
+                                           .sslOptions = {.cacert = "/etc/filebeat/certs/root-ca.pem",
                                                           .cert = "/etc/filebeat/certs/filebeat.pem",
                                                           .key = "/etc/filebeat/certs/filebeat-key.pem"},
                                            .timeout = INDEXER_TIMEOUT};
@@ -266,66 +266,18 @@ TEST_F(IndexerConnectorTest, DISABLED_ConnectionWithSslCredentials)
  * the test coverage.
  *
  */
-TEST_F(IndexerConnectorTest, DISABLED_ConnectionWithCertsArray)
+TEST_F(IndexerConnectorTest, ConnectionWithCertNoFile)
 {
-    // Setup for the test
-    const std::string certFileOne = "./root-ca-one.pem";
-    const std::string certFileTwo = "./root-ca-two.pem";
-    const std::string mergedCertFile = "/var/lib/wazuh-server/tmp/root-ca-merged.pem";
-
-    // Create the first certificate file
-    std::ofstream outputFile(certFileOne);
-    outputFile << "CERT-ONE\n";
-    outputFile.close();
-
-    // Create the second certificate file
-    std::ofstream outputFileSecond(certFileTwo);
-    outputFileSecond << "CERT-TWO\n";
-    outputFileSecond.close();
-
-    // Indexer configuration with SSL options
     IndexerConnectorOptions indexerConfig {.name = INDEXER_NAME,
                                            .hosts = {A_ADDRESS},
-                                           .sslOptions = {.cacert = {certFileOne, certFileTwo},
+                                           .sslOptions = {.cacert = "/etc/filebeat/certs/root-ca.pem",
                                                           .cert = "/etc/filebeat/certs/filebeat.pem",
                                                           .key = "/etc/filebeat/certs/filebeat-key.pem"},
                                            .timeout = INDEXER_TIMEOUT};
 
-    // Attempt to create the connector and expect no exceptions for valid certificates
-    ASSERT_NO_THROW({ IndexerConnector indexerConnector(indexerConfig); });
-
-    // Check that the content of the merged file is as expected
-    std::ifstream file(mergedCertFile);
-    std::string content((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
-    file.close();
-
-    ASSERT_EQ(content, "CERT-ONE\nCERT-TWO\n");
-
-    // Clean up files
-    std::filesystem::remove(certFileOne);
-    std::filesystem::remove(certFileTwo);
-}
-
-/**
- * @brief Test the connection to an available server with SSL credentials.
- *
- * @note The SSL data is a dummy one and there are no functionality checks here. The target of this test is to increase
- * the test coverage.
- *
- */
-TEST_F(IndexerConnectorTest, ConnectionWithCertsArrayNoFiles)
-{
-    IndexerConnectorOptions indexerConfig {
-        .name = INDEXER_NAME,
-        .hosts = {A_ADDRESS},
-        .sslOptions = {.cacert = {"/etc/filebeat/certs/root-ca.pem", "/etc/filebeat/certs/root-ca-two.pem"},
-                       .cert = "/etc/filebeat/certs/filebeat.pem",
-                       .key = "/etc/filebeat/certs/filebeat-key.pem"},
-        .timeout = INDEXER_TIMEOUT};
-
     // Create connector and wait until the connection is established.
-    // Throw is expected if the certs are not found.
-    EXPECT_THROW(auto indexerConnector {IndexerConnector(indexerConfig)}, std::runtime_error);
+    // No throw is expected if the certificates are not found.
+    EXPECT_NO_THROW(auto indexerConnector {IndexerConnector(indexerConfig)});
 }
 
 /**
