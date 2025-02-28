@@ -70,6 +70,29 @@ def test_data_indexation(opensearch, test_folder):
         cmd = cmd_alt
     assert cmd.exists(), "The binary does not exists"
 
+    # Verity if pre_existing_data.json exists
+    if Path(test_folder, "pre_existing_data.json").exists():
+        LOGGER.info("Loading pre-existing data")
+        with open(Path(test_folder, "pre_existing_data.json")) as f:
+            pre_existing_data = json.load(f)
+
+        # Create indexes
+        args = ["-c", test_folder + "/config.json",
+                "-t", test_folder + "/template.json"]
+        command = [cmd] + args
+        process = subprocess.Popen(command)
+        process.wait()
+        assert process.returncode == 0, f"The process failed ({process.returncode}): {process.stderr}."
+        LOGGER.info("Indexes created")
+
+        # Load pre-existing data into opensearch
+        for index in pre_existing_data:
+            url = 'http://'+ GLOBAL_URL +'/' + index["index_name"] + '/_doc'
+            for doc in index["data"]:
+                LOGGER.debug(f"Loading doc: {doc}")
+                response = requests.post(url, json=doc)
+                assert response.status_code == 201, f"Failed to load pre-existing data: {response.text}"
+
     log_file = 'log_' + test_folder.replace('/', '_') + '.out'
 
     # Remove previous log file if exists
@@ -98,7 +121,7 @@ def test_data_indexation(opensearch, test_folder):
 
     # Wait for process to finish
     process.wait()
-    assert process.returncode == 0, "The process failed"
+    assert process.returncode == 0, f"The process failed ({process.returncode}): {process.stderr}."
 
     # We validate the index was created
     counter = 0
