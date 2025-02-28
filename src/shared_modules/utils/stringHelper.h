@@ -567,7 +567,13 @@ namespace Utils
             tokens.push_back(token);
             str.remove_prefix(pos + 1);
         }
-        tokens.push_back(str);
+
+        // Add the remaining part of the string as the last token
+        if (!str.empty())
+        {
+            tokens.push_back(str);
+        }
+
         return tokens;
     }
 #endif
