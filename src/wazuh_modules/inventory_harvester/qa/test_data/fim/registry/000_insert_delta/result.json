@@ -1,0 +1,24 @@
+[
+    {
+        "index_name": "wazuh-states-registries-cluster01",
+        "data": [
+            {
+                "agent": {
+                    "id": "002",
+                    "ip": "any",
+                    "name": "DESKTOP-5RL9J34",
+                    "version": "v4.7.2"
+                },
+                "registry": {
+                    "key": "Software/Microsoft/Active Setup/Installed Components/aaaocta",
+                    "hive": "HKLM",
+                    "gid": "S-1-5-21-1245906424-2878732365-1129427271-513",
+                    "uid": "S-1-5-32-544",
+                    "owner": "Administrators",
+                    "arch": "[x64]",
+                    "mtime": "2025-01-26T23:36:58.000Z"
+                }
+            }
+        ]
+    }
+]
