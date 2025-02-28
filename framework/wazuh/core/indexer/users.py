@@ -1,18 +1,16 @@
 from datetime import datetime, timezone
 
 from opensearchpy import exceptions
-from wazuh.core.exception import WazuhError, WazuhResourceNotFound
-from wazuh.core.indexer.base import BaseIndex, IndexerKey
+from wazuh.core.exception import WazuhError
 from wazuh.core.indexer.models.rbac import User
-from wazuh.core.indexer.utils import get_source_items
-
-USER_KEY = 'user'
+from wazuh.core.indexer.rbac import RBACIndex
 
 
-class UsersIndex(BaseIndex):
+class UsersIndex(RBACIndex):
     """Set of methods to interact with the `users` index."""
 
     INDEX = 'users'
+    KEY = 'user'
 
     async def create(
         self,
@@ -49,10 +47,11 @@ class UsersIndex(BaseIndex):
 
         try:
             await self._client.index(
-                index=self.INDEX, id=user.id, body={USER_KEY: user.to_dict()}, op_type='create', refresh='true'
+                index=self.INDEX, id=user.id, body={self.KEY: user.to_dict()}, op_type='create', refresh='true'
             )
         except exceptions.ConflictError:
-            raise WazuhError(4026, extra_message=user.id)
+            extra_info = {'entity': self.KEY, 'id': user.id}
+            raise WazuhError(4026, extra_message=extra_info)
 
         return user
 
@@ -69,11 +68,7 @@ class UsersIndex(BaseIndex):
         list[str]
             Deleted user IDs.
         """
-        body = {IndexerKey.QUERY: {IndexerKey.TERMS: {IndexerKey._ID: ids}}}
-        parameters = {IndexerKey.INDEX: self.INDEX, IndexerKey.BODY: body, IndexerKey.CONFLICTS: 'proceed'}
-
-        await self._client.delete_by_query(**parameters, refresh='true')
-
+        await super().delete(ids)
         return ids
 
     async def get(self, id: str) -> User:
@@ -94,12 +89,7 @@ class UsersIndex(BaseIndex):
         User
             User object.
         """
-        try:
-            data = await self._client.get(index=self.INDEX, id=id)
-        except exceptions.NotFoundError:
-            raise WazuhResourceNotFound(4027)
-
-        return User(**data[IndexerKey._SOURCE][USER_KEY])
+        return await super().get(id)
 
     async def search(
         self,
@@ -132,29 +122,27 @@ class UsersIndex(BaseIndex):
         dict
             The search result.
         """
-        parameters = {IndexerKey.INDEX: self.INDEX, IndexerKey.BODY: query}
-        results = await self._client.search(
-            **parameters, _source_includes=select, _source_excludes=exclude, size=limit, from_=offset, sort=sort
-        )
-        return [User(**item[USER_KEY]) for item in get_source_items(results)]
+        return await super().search(query, select, exclude, offset, limit, sort)
 
-    async def update(self, id: str, user: User) -> None:
+    async def update(
+        self,
+        id: str,
+        name: str = None,
+        password: str = None,
+        allow_run_as: bool = None,
+    ) -> None:
         """Update a user.
 
         Parameters
         ----------
         id : str
             User identifier.
-        user : User
-            User fields. Only specified fields are updated.
-
-        Raises
-        ------
-        WazuhResourceNotFound(4027)
-            If no users exist with the UUID provided.
+        name : str
+            User name.
+        password : str
+            User password.
+        allow_run_as : bool
+            Allow running as other users.
         """
-        try:
-            body = {IndexerKey.DOC: {USER_KEY: user.to_dict()}}
-            await self._client.update(index=self.INDEX, id=id, body=body)
-        except exceptions.NotFoundError:
-            raise WazuhResourceNotFound(4027)
+        user = User(id=id, name=name, raw_password=password, allow_run_as=allow_run_as)
+        await super().update(id, user)

@@ -5,7 +5,7 @@ from opensearchpy import exceptions
 from wazuh.core.exception import WazuhError, WazuhResourceNotFound
 from wazuh.core.indexer.base import IndexerKey
 from wazuh.core.indexer.models.rbac import Role
-from wazuh.core.indexer.roles import ROLE_KEY, RolesIndex
+from wazuh.core.indexer.roles import RolesIndex
 
 
 class TestRolesIndex:
@@ -16,8 +16,8 @@ class TestRolesIndex:
         'id': '0191480e-7f67-7fd3-8c52-f49a3176360b',
         'name': 'test',
         'level': 1,
-        'policies': [{'id': '1'}],
-        'rules': [{'id': '1'}],
+        'policies': ['1'],
+        'rules': ['1'],
         'created_at': 0,
     }
 
@@ -56,7 +56,7 @@ class TestRolesIndex:
         client_mock.index.assert_called_once_with(
             index=index_instance.INDEX,
             id=self.role.get('id'),
-            body={ROLE_KEY: new_role.to_dict()},
+            body={index_instance.KEY: new_role.to_dict()},
             op_type='create',
             refresh='true',
         )
@@ -65,7 +65,7 @@ class TestRolesIndex:
         """Validate the `create` method error handling."""
         client_mock.index.side_effect = exceptions.ConflictError
 
-        with pytest.raises(WazuhError, match='.*4028.*'):
+        with pytest.raises(WazuhError, match='.*4026.*'):
             await index_instance.create(Role(**self.role))
 
     async def test_delete(self, index_instance: RolesIndex, client_mock: mock.AsyncMock):
@@ -84,19 +84,23 @@ class TestRolesIndex:
         """Validate the `get` method functionality."""
         id = '0191480e-7f67-7fd3-8c52-f49a3176360b'
         name = 'test'
-        get_result = {IndexerKey._ID: id, IndexerKey._SOURCE: {ROLE_KEY: {'id': id, 'name': name}}}
+        policies = ['1']
+        get_result = {
+            IndexerKey._ID: id,
+            IndexerKey._SOURCE: {index_instance.KEY: {'id': id, 'name': name, 'policies': policies}},
+        }
         client_mock.get.return_value = get_result
 
         role = await index_instance.get(id)
 
-        assert Role(id=id, name=name) == role
+        assert Role(id=id, name=name, policies=policies) == role
         client_mock.get.assert_called_once_with(index=index_instance.INDEX, id=id)
 
     async def test_get_ko(self, index_instance: RolesIndex, client_mock: mock.AsyncMock):
         """Validate the `get` method error handling."""
         client_mock.get.side_effect = exceptions.NotFoundError
 
-        with pytest.raises(WazuhResourceNotFound, match='.*4029.*'):
+        with pytest.raises(WazuhResourceNotFound, match='.*4027.*'):
             await index_instance.get(Role(**self.role))
 
     async def test_search(self, index_instance: RolesIndex, client_mock: mock.AsyncMock):
@@ -107,15 +111,17 @@ class TestRolesIndex:
         limit = 10
         offset = 1
         sort = 'name'
-        search_result = [{ROLE_KEY: {'name': 'test', 'id': '0191dd54-bd16-7025-80e6-ae49bc101c7a'}}]
+        search_result = [
+            {index_instance.KEY: {'id': '0191dd54-bd16-7025-80e6-ae49bc101c7a', 'name': 'test', 'policies': ['1']}}
+        ]
         client_mock.search.return_value = search_result
 
-        with mock.patch('wazuh.core.indexer.roles.get_source_items', return_value=search_result):
+        with mock.patch('wazuh.core.indexer.rbac.get_source_items', return_value=search_result):
             result = await index_instance.search(
                 query=query, select=select, exclude=exclude, limit=limit, offset=offset, sort=sort
             )
 
-        assert result == [Role(**item[ROLE_KEY]) for item in search_result]
+        assert result == [Role(**item[index_instance.KEY]) for item in search_result]
         client_mock.search.assert_called_once_with(
             index=index_instance.INDEX,
             body=query,
@@ -133,5 +139,5 @@ class TestRolesIndex:
 
         await index_instance.update(id=id, role=Role(name=new_name))
 
-        query = {IndexerKey.DOC: {ROLE_KEY: {'name': new_name}}}
+        query = {IndexerKey.DOC: {index_instance.KEY: {'name': new_name}}}
         client_mock.update.assert_called_once_with(index=index_instance.INDEX, id=id, body=query)

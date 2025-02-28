@@ -5,7 +5,7 @@ from opensearchpy import exceptions
 from wazuh.core.exception import WazuhError, WazuhResourceNotFound
 from wazuh.core.indexer.base import IndexerKey
 from wazuh.core.indexer.models.rbac import Rule
-from wazuh.core.indexer.rules import RULE_KEY, RulesIndex
+from wazuh.core.indexer.rules import RulesIndex
 
 
 class TestRulesIndex:
@@ -54,7 +54,7 @@ class TestRulesIndex:
         client_mock.index.assert_called_once_with(
             index=index_instance.INDEX,
             id=self.rule.get('id'),
-            body={RULE_KEY: new_rule.to_dict()},
+            body={index_instance.KEY: new_rule.to_dict()},
             op_type='create',
             refresh='true',
         )
@@ -63,7 +63,7 @@ class TestRulesIndex:
         """Validate the `create` method error handling."""
         client_mock.index.side_effect = exceptions.ConflictError
 
-        with pytest.raises(WazuhError, match='.*4032.*'):
+        with pytest.raises(WazuhError, match='.*4026.*'):
             await index_instance.create(Rule(**self.rule))
 
     async def test_delete(self, index_instance: RulesIndex, client_mock: mock.AsyncMock):
@@ -82,19 +82,23 @@ class TestRulesIndex:
         """Validate the `get` method functionality."""
         id = '0191480e-7f67-7fd3-8c52-f49a3176360b'
         name = 'test'
-        get_result = {IndexerKey._ID: id, IndexerKey._SOURCE: {RULE_KEY: {'id': id, 'name': name}}}
+        body = {}
+        get_result = {
+            IndexerKey._ID: id,
+            IndexerKey._SOURCE: {index_instance.KEY: {'id': id, 'name': name, 'body': {}}},
+        }
         client_mock.get.return_value = get_result
 
         rule = await index_instance.get(id)
 
-        assert Rule(id=id, name=name) == rule
+        assert Rule(id=id, name=name, body=body) == rule
         client_mock.get.assert_called_once_with(index=index_instance.INDEX, id=id)
 
     async def test_get_ko(self, index_instance: RulesIndex, client_mock: mock.AsyncMock):
         """Validate the `get` method error handling."""
         client_mock.get.side_effect = exceptions.NotFoundError
 
-        with pytest.raises(WazuhResourceNotFound, match='.*4033.*'):
+        with pytest.raises(WazuhResourceNotFound, match='.*4027.*'):
             await index_instance.get(Rule(**self.rule))
 
     async def test_search(self, index_instance: RulesIndex, client_mock: mock.AsyncMock):
@@ -105,15 +109,17 @@ class TestRulesIndex:
         limit = 10
         offset = 1
         sort = 'name'
-        search_result = [{RULE_KEY: {'name': 'test', 'id': '0191dd54-bd16-7025-80e6-ae49bc101c7a'}}]
+        search_result = [
+            {index_instance.KEY: {'id': '0191dd54-bd16-7025-80e6-ae49bc101c7a', 'name': 'test', 'body': {}}}
+        ]
         client_mock.search.return_value = search_result
 
-        with mock.patch('wazuh.core.indexer.rules.get_source_items', return_value=search_result):
+        with mock.patch('wazuh.core.indexer.rbac.get_source_items', return_value=search_result):
             result = await index_instance.search(
                 query=query, select=select, exclude=exclude, limit=limit, offset=offset, sort=sort
             )
 
-        assert result == [Rule(**item[RULE_KEY]) for item in search_result]
+        assert result == [Rule(**item[index_instance.KEY]) for item in search_result]
         client_mock.search.assert_called_once_with(
             index=index_instance.INDEX,
             body=query,
@@ -131,5 +137,5 @@ class TestRulesIndex:
 
         await index_instance.update(id=id, rule=Rule(name=new_name))
 
-        query = {IndexerKey.DOC: {RULE_KEY: {'name': new_name}}}
+        query = {IndexerKey.DOC: {index_instance.KEY: {'name': new_name}}}
         client_mock.update.assert_called_once_with(index=index_instance.INDEX, id=id, body=query)
