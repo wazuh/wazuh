@@ -8,9 +8,9 @@ POLICY_KEY = 'policy'
 
 
 class PoliciesIndex(BaseIndex):
-    """Set of methods to interact with the `roles` index."""
+    """Set of methods to interact with the `policies` index."""
 
-    INDEX = 'roles'
+    INDEX = 'policies'
 
     async def create(self, policy: Policy) -> Policy:
         """Create a new policy.
@@ -40,7 +40,7 @@ class PoliciesIndex(BaseIndex):
         return policy
 
     async def delete(self, ids: list[str]) -> list[str]:
-        """Delete multiple roles that match with the given parameters.
+        """Delete multiple policies that match with the given parameters.
 
         Parameters
         ----------
@@ -70,7 +70,7 @@ class PoliciesIndex(BaseIndex):
         Raises
         ------
         WazuhResourceNotFound(4031)
-            If no roles exist with the UUID provided.
+            If no policies exist with the UUID provided.
 
         Returns
         -------
@@ -134,7 +134,7 @@ class PoliciesIndex(BaseIndex):
         Raises
         ------
         WazuhResourceNotFound(4031)
-            If no roles exist with the UUID provided.
+            If no policies exist with the UUID provided.
         """
         try:
             body = {IndexerKey.DOC: {POLICY_KEY: policy.to_dict()}}
