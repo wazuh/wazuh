@@ -87,7 +87,7 @@ class User:
     name: str = None
     password: str = None
     allow_run_as: bool = None
-    roles: list[Role] = None
+    roles: list[str] = None
     created_at: datetime = None
 
     raw_password: InitVar[str | None] = None

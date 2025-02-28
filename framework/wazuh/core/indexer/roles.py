@@ -1,16 +1,12 @@
-from opensearchpy import exceptions
-from wazuh.core.exception import WazuhError, WazuhResourceNotFound
-from wazuh.core.indexer.base import BaseIndex, IndexerKey
 from wazuh.core.indexer.models.rbac import Role
-from wazuh.core.indexer.utils import get_source_items
-
-ROLE_KEY = 'role'
+from wazuh.core.indexer.rbac import RBACIndex
 
 
-class RolesIndex(BaseIndex):
+class RolesIndex(RBACIndex):
     """Set of methods to interact with the `roles` index."""
 
     INDEX = 'roles'
+    KEY = 'role'
 
     async def create(self, role: Role) -> Role:
         """Create a new role.
@@ -20,24 +16,12 @@ class RolesIndex(BaseIndex):
         role : Role
             Role instance containing its details.
 
-        Raises
-        ------
-        WazuhError(4028)
-            If a role with the provided ID already exists.
-
         Returns
         -------
         Role
             The created role instance.
         """
-        try:
-            await self._client.index(
-                index=self.INDEX, id=role.id, body={ROLE_KEY: role.to_dict()}, op_type='create', refresh='true'
-            )
-        except exceptions.ConflictError:
-            raise WazuhError(4028, extra_message=role.id)
-
-        return role
+        return await super().create(role)
 
     async def delete(self, ids: list[str]) -> list[str]:
         """Delete multiple roles that match with the given parameters.
@@ -52,11 +36,7 @@ class RolesIndex(BaseIndex):
         list[str]
             Deleted role IDs.
         """
-        body = {IndexerKey.QUERY: {IndexerKey.TERMS: {IndexerKey._ID: ids}}}
-        parameters = {IndexerKey.INDEX: self.INDEX, IndexerKey.BODY: body, IndexerKey.CONFLICTS: 'proceed'}
-
-        await self._client.delete_by_query(**parameters, refresh='true')
-
+        await super().delete(ids)
         return ids
 
     async def get(self, id: str) -> Role:
@@ -67,22 +47,12 @@ class RolesIndex(BaseIndex):
         id : str
             Role identifier.
 
-        Raises
-        ------
-        WazuhResourceNotFound(4029)
-            If no roles exist with the UUID provided.
-
         Returns
         -------
         Role
             Role object.
         """
-        try:
-            data = await self._client.get(index=self.INDEX, id=id)
-        except exceptions.NotFoundError:
-            raise WazuhResourceNotFound(4029)
-
-        return Role(**data[IndexerKey._SOURCE][ROLE_KEY])
+        return await super().get(id)
 
     async def search(
         self,
@@ -115,11 +85,7 @@ class RolesIndex(BaseIndex):
         dict
             The search result.
         """
-        parameters = {IndexerKey.INDEX: self.INDEX, IndexerKey.BODY: query}
-        results = await self._client.search(
-            **parameters, _source_includes=select, _source_excludes=exclude, size=limit, from_=offset, sort=sort
-        )
-        return [Role(**item[ROLE_KEY]) for item in get_source_items(results)]
+        return await super().search(query, select, exclude, offset, limit, sort)
 
     async def update(self, id: str, role: Role) -> None:
         """Update a role.
@@ -130,14 +96,5 @@ class RolesIndex(BaseIndex):
             Role identifier.
         role : Role
             Role fields. Only specified fields are updated.
-
-        Raises
-        ------
-        WazuhResourceNotFound(4029)
-            If no roles exist with the UUID provided.
         """
-        try:
-            body = {IndexerKey.DOC: {ROLE_KEY: role.to_dict()}}
-            await self._client.update(index=self.INDEX, id=id, body=body)
-        except exceptions.NotFoundError:
-            raise WazuhResourceNotFound(4029)
+        await super().update(id, role)

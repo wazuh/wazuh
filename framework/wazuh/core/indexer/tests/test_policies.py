@@ -5,7 +5,7 @@ from opensearchpy import exceptions
 from wazuh.core.exception import WazuhError, WazuhResourceNotFound
 from wazuh.core.indexer.base import IndexerKey
 from wazuh.core.indexer.models.rbac import Effect, Policy
-from wazuh.core.indexer.policies import POLICY_KEY, PoliciesIndex
+from wazuh.core.indexer.policies import PoliciesIndex
 
 
 class TestPoliciesIndex:
@@ -57,7 +57,7 @@ class TestPoliciesIndex:
         client_mock.index.assert_called_once_with(
             index=index_instance.INDEX,
             id=self.policy.get('id'),
-            body={POLICY_KEY: new_policy.to_dict()},
+            body={index_instance.KEY: new_policy.to_dict()},
             op_type='create',
             refresh='true',
         )
@@ -66,7 +66,7 @@ class TestPoliciesIndex:
         """Validate the `create` method error handling."""
         client_mock.index.side_effect = exceptions.ConflictError
 
-        with pytest.raises(WazuhError, match='.*4030.*'):
+        with pytest.raises(WazuhError, match='.*4026.*'):
             await index_instance.create(Policy(**self.policy))
 
     async def test_delete(self, index_instance: PoliciesIndex, client_mock: mock.AsyncMock):
@@ -85,7 +85,7 @@ class TestPoliciesIndex:
         """Validate the `get` method functionality."""
         id = '0191480e-7f67-7fd3-8c52-f49a3176360b'
         name = 'test'
-        get_result = {IndexerKey._ID: id, IndexerKey._SOURCE: {POLICY_KEY: {'id': id, 'name': name}}}
+        get_result = {IndexerKey._ID: id, IndexerKey._SOURCE: {index_instance.KEY: {'id': id, 'name': name}}}
         client_mock.get.return_value = get_result
 
         policy = await index_instance.get(id)
@@ -97,7 +97,7 @@ class TestPoliciesIndex:
         """Validate the `get` method error handling."""
         client_mock.get.side_effect = exceptions.NotFoundError
 
-        with pytest.raises(WazuhResourceNotFound, match='.*4031.*'):
+        with pytest.raises(WazuhResourceNotFound, match='.*4027.*'):
             await index_instance.get(Policy(**self.policy))
 
     async def test_search(self, index_instance: PoliciesIndex, client_mock: mock.AsyncMock):
@@ -108,15 +108,15 @@ class TestPoliciesIndex:
         limit = 10
         offset = 1
         sort = 'name'
-        search_result = [{POLICY_KEY: {'name': 'test', 'id': '0191dd54-bd16-7025-80e6-ae49bc101c7a'}}]
+        search_result = [{index_instance.KEY: {'name': 'test', 'id': '0191dd54-bd16-7025-80e6-ae49bc101c7a'}}]
         client_mock.search.return_value = search_result
 
-        with mock.patch('wazuh.core.indexer.policies.get_source_items', return_value=search_result):
+        with mock.patch('wazuh.core.indexer.rbac.get_source_items', return_value=search_result):
             result = await index_instance.search(
                 query=query, select=select, exclude=exclude, limit=limit, offset=offset, sort=sort
             )
 
-        assert result == [Policy(**item[POLICY_KEY]) for item in search_result]
+        assert result == [Policy(**item[index_instance.KEY]) for item in search_result]
         client_mock.search.assert_called_once_with(
             index=index_instance.INDEX,
             body=query,
@@ -134,5 +134,5 @@ class TestPoliciesIndex:
 
         await index_instance.update(id=id, policy=Policy(name=new_name))
 
-        query = {IndexerKey.DOC: {POLICY_KEY: {'name': new_name}}}
+        query = {IndexerKey.DOC: {index_instance.KEY: {'name': new_name}}}
         client_mock.update.assert_called_once_with(index=index_instance.INDEX, id=id, body=query)
