@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 from opensearchpy import exceptions
 from wazuh.core.exception import WazuhError, WazuhResourceNotFound
 from wazuh.core.indexer.base import BaseIndex, IndexerKey
-from wazuh.core.indexer.models.user import User
+from wazuh.core.indexer.models.rbac import User
 from wazuh.core.indexer.utils import get_source_items
 
 USER_KEY = 'user'

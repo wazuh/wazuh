@@ -1,9 +1,6 @@
 from unittest.mock import patch
 
-from wazuh.core.indexer.models.policy import Policy
-from wazuh.core.indexer.models.role import Role
-from wazuh.core.indexer.models.rule import Rule
-from wazuh.core.indexer.models.user import User
+from wazuh.core.indexer.models.rbac import Policy, Role, Rule, User
 from wazuh.core.rbac import get_policies, get_roles, get_rules, get_users
 
 

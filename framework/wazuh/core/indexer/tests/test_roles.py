@@ -4,7 +4,7 @@ import pytest
 from opensearchpy import exceptions
 from wazuh.core.exception import WazuhError, WazuhResourceNotFound
 from wazuh.core.indexer.base import IndexerKey
-from wazuh.core.indexer.models.role import Role
+from wazuh.core.indexer.models.rbac import Role
 from wazuh.core.indexer.roles import ROLE_KEY, RolesIndex
 
 

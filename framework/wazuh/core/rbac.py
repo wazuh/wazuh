@@ -1,9 +1,6 @@
 from wazuh.core.indexer import get_indexer_client
 from wazuh.core.indexer.base import IndexerKey
-from wazuh.core.indexer.models.policy import Policy
-from wazuh.core.indexer.models.role import Role
-from wazuh.core.indexer.models.rule import Rule
-from wazuh.core.indexer.models.user import User
+from wazuh.core.indexer.models.rbac import Policy, Role, Rule, User
 
 MATCH_ALL_QUERY = {IndexerKey.MATCH_ALL: {}}
 
