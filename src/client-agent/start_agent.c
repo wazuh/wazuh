@@ -178,11 +178,6 @@ void start_agent(int is_startup)
         } else {
             current_server_id = 0;
             mwarn("Unable to connect to any server.");
-            if (!is_startup && agt->flags.auto_restart) {
-                minfo("Agent is restarting because there may be a problem with the previous connection.");
-                restartAgent();
-                sleep(10);
-            }
         }
     }
 }
