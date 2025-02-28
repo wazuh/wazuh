@@ -1,3 +1,19 @@
+"""
+Integration Test Suite for the Inventory Harvester with Pre-Existing Data in OpenSearch
+
+Enhancement:
+- Clear all indices in OpenSearch before each test runs, ensuring a clean slate.
+
+Usage:
+    python3 -m pytest -vv path/to/tests.py --log-cli-level=DEBUG
+
+Dependencies:
+- Python 3
+- pytest
+- docker (Docker SDK for Python)
+- requests
+"""
+
 import pytest
 import docker
 import time
@@ -5,151 +21,283 @@ import requests
 import logging
 import os
 import subprocess
-from pathlib import Path
 import json
 import shutil
+from pathlib import Path
 
 LOGGER = logging.getLogger(__name__)
+
+#: URL for the OpenSearch container
 GLOBAL_URL = 'localhost:9200'
 
-def init_opensearch(low_resources):
-    client = docker.from_env()
-    env_vars = {
-            'discovery.type': 'single-node',
-            'plugins.security.disabled': 'true',
-            'OPENSEARCH_INITIAL_ADMIN_PASSWORD': 'WazuhTest99$'
-        }
 
-    if low_resources:
-        env_vars['http.max_content_length'] = '4mb'
-
-    client.containers.run("opensearchproject/opensearch", detach=True, ports={'9200/tcp': 9200},
-                          environment=env_vars, name='opensearch', stdout=True, stderr=True)
-    ## Wait for the container is running and opensearch is ready
-    while True:
+def wait_for_opensearch(url: str, timeout: int = 60) -> None:
+    """
+    Polls the given URL until OpenSearch responds or until the timeout is reached.
+    Raises RuntimeError if OpenSearch does not become ready in time.
+    """
+    for _ in range(timeout):
         try:
-            response = requests.get('http://'+GLOBAL_URL+'')
+            response = requests.get(url)
             if response.status_code == 200:
-                break
+                LOGGER.info("OpenSearch is ready.")
+                return
         except requests.exceptions.ConnectionError:
             pass
         time.sleep(1)
-    return client
+    raise RuntimeError(f"OpenSearch was not ready after {timeout} seconds.")
 
 
-@pytest.fixture(scope='function')
-def opensearch(request):
-    low_resources = request.param
-    client = init_opensearch(low_resources)
-    yield client
-    # Stop all containers
-    for container in client.containers.list():
-        if container.name == 'opensearch':
-            container.stop()
-            container.remove()
+@pytest.fixture(scope='session')
+def opensearch():
+    """
+    Starts a single OpenSearch container (single-node mode) for the entire test session.
+    Removes the container after all tests have finished.
 
-test_folders = [folder for folder in Path("wazuh_modules/inventory_harvester/qa/test_data").rglob('*') if folder.is_dir() and str(folder.name)[0].isdigit()]
-test_folders = sorted([str(folder) for folder in test_folders])
+    Yields:
+        docker.DockerClient: Docker client with the OpenSearch container running.
+    """
+    client = docker.from_env()
+
+    # Remove any container named 'opensearch' if it exists, to avoid conflicts
+    existing = client.containers.list(all=True, filters={"name": "opensearch"})
+    for cnt in existing:
+        LOGGER.warning("Removing existing container named 'opensearch'.")
+        cnt.stop()
+        cnt.remove()
+
+    env_vars = {
+        'discovery.type': 'single-node',
+        'plugins.security.disabled': 'true',
+        'OPENSEARCH_INITIAL_ADMIN_PASSWORD': 'WazuhTest99$'
+    }
+
+    LOGGER.info(
+        "Starting a single-node OpenSearch container for the test session.")
+    client.containers.run(
+        "opensearchproject/opensearch",
+        detach=True,
+        ports={'9200/tcp': 9200},
+        environment=env_vars,
+        name='opensearch',
+        stdout=True,
+        stderr=True
+    )
+
+    try:
+        wait_for_opensearch(f"http://{GLOBAL_URL}")
+        LOGGER.info("OpenSearch container is up for the session.")
+        yield client
+    finally:
+        LOGGER.info(
+            "Stopping and removing the 'opensearch' container after all tests.")
+        for container in client.containers.list():
+            if container.name == 'opensearch':
+                container.stop()
+                container.remove()
+
+
+@pytest.fixture(scope='function', autouse=True)
+def clear_all_indices():
+    """
+    Automatically deletes all indexes before each test,
+    ensuring each test begins with a clean OpenSearch state.
+    """
+    delete_url = f"http://{GLOBAL_URL}/_all"
+    try:
+        LOGGER.info("Deleting all indices from OpenSearch before test.")
+        resp = requests.delete(delete_url)
+        # 200 OK or 404 Not Found are typically acceptable responses when deleting
+        if resp.status_code not in (200, 404):
+            raise RuntimeError(
+                f"Failed to delete all indices. Status: {resp.status_code}, body: {resp.text}"
+            )
+    except requests.exceptions.RequestException as e:
+        raise RuntimeError(f"Error deleting all indices: {e}")
+    yield
+    # No teardown needed; we only clear before the test.
+
+
+def is_test_folder_name(name: str) -> bool:
+    """
+    Returns True if the folder name begins with digits (e.g., '000_test').
+    """
+    return name and name[0].isdigit()
+
+
+# Locate test folders under 'wazuh_modules/inventory_harvester/qa/test_data'
+# whose names begin with digits (e.g., '000_test')
+test_data_path = Path("wazuh_modules/inventory_harvester/qa/test_data")
+test_folders = [
+    folder for folder in test_data_path.rglob('*')
+    if folder.is_dir() and is_test_folder_name(folder.name)
+]
+test_folders = sorted(str(folder) for folder in test_folders)
+
 
 @pytest.fixture
 def test_folder(request):
+    """
+    Provides the path to the current test folder.
+    """
     return request.param
 
-@pytest.mark.parametrize('opensearch', [False], indirect=True)
+
 @pytest.mark.parametrize("test_folder", test_folders, indirect=True)
 def test_data_indexation(opensearch, test_folder):
+    """
+    Integration test that verifies data indexation in OpenSearch, optionally loading pre-existing data.
+
+    Steps:
+        1. Move to the repository root directory.
+        2. (Optional) If 'pre_existing_data.json' exists, create required indexes
+           and insert that data into OpenSearch before running the main test.
+        3. Run the 'inventory_harvester_testtool' with the specified config, template, and inputs.
+        4. Validate that the final indexes match the expected documents in 'result.json'.
+
+    Logs and 'queue' directories are retained only if the test fails; otherwise, they are removed.
+    """
+    # Change working directory to the repository root
     os.chdir(Path(__file__).parent.parent.parent.parent)
-    LOGGER.debug(f"Current directory: {os.getcwd()}")
+    LOGGER.debug(f"Current working directory: {os.getcwd()}")
 
-    # Run indexer connector testtool out of the container
-    cmd = Path("build/wazuh_modules/inventory_harvester/testtool/", "inventory_harvester_testtool")
-    cmd_alt = Path("wazuh_modules/inventory_harvester/build/testtool/", "inventory_harvester_testtool")
+    # Locate the test tool binary in one of two possible paths
+    cmd_primary = Path(
+        "build/wazuh_modules/inventory_harvester/testtool/inventory_harvester_testtool")
+    cmd_alternate = Path(
+        "wazuh_modules/inventory_harvester/build/testtool/inventory_harvester_testtool")
+    cmd = cmd_primary if cmd_primary.exists() else cmd_alternate
+    assert cmd.exists(), "The 'inventory_harvester_testtool' binary does not exist."
 
-    # Ensure the binary exists
-    if not cmd.exists():
-        cmd = cmd_alt
-    assert cmd.exists(), "The binary does not exists"
+    log_file = f"log_{test_folder.replace('/', '_')}.out"
+    queue_dir = Path("queue")
+    pre_existing_file = Path(test_folder, "pre_existing_data.json")
 
-    # Verity if pre_existing_data.json exists
-    if Path(test_folder, "pre_existing_data.json").exists():
-        LOGGER.info("Loading pre-existing data")
-        with open(Path(test_folder, "pre_existing_data.json")) as f:
-            pre_existing_data = json.load(f)
+    try:
+        # Clean up logs and queue from any previous runs
+        if Path(log_file).exists():
+            Path(log_file).unlink()
+        if queue_dir.exists():
+            shutil.rmtree(queue_dir)
 
-        # Create indexes
-        args = ["-c", test_folder + "/config.json",
-                "-t", test_folder + "/template.json"]
-        command = [cmd] + args
-        process = subprocess.Popen(command)
-        process.wait()
-        assert process.returncode == 0, f"The process failed ({process.returncode}): {process.stderr}."
-        LOGGER.info("Indexes created")
+        # If pre_existing_data.json exists, load its data before running the main test
+        if pre_existing_file.exists():
+            LOGGER.info(
+                f"Pre-existing data file found: '{pre_existing_file}'. Loading data...")
 
-        # Load pre-existing data into opensearch
-        for index in pre_existing_data:
-            url = 'http://'+ GLOBAL_URL +'/' + index["index_name"] + '/_doc'
-            for doc in index["data"]:
-                LOGGER.debug(f"Loading doc: {doc}")
-                response = requests.post(url, json=doc)
-                assert response.status_code == 201, f"Failed to load pre-existing data: {response.text}"
+            # First, create indexes using config and template
+            create_command = [
+                str(cmd),
+                "-c", str(Path(test_folder, "config.json")),
+                "-t", str(Path(test_folder, "template.json"))
+            ]
+            LOGGER.debug(f"Creating indexes with: {create_command}")
+            proc_create = subprocess.Popen(
+                create_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            proc_create.wait()
+            stderr_create = proc_create.stderr.read().decode('utf-8')
+            assert proc_create.returncode == 0, (
+                f"Failed to create indexes. Return code: {proc_create.returncode}\n"
+                f"Stderr: {stderr_create}"
+            )
+            LOGGER.info(
+                "Indexes created successfully for pre-existing data insertion.")
 
-    log_file = 'log_' + test_folder.replace('/', '_') + '.out'
+            # Insert documents from pre_existing_data.json
+            with pre_existing_file.open('r', encoding='utf-8') as f:
+                pre_existing_data = json.load(f)
 
-    # Remove previous log file if exists
-    if Path(log_file).exists():
-        Path(log_file).unlink()
+            for idx in pre_existing_data:
+                index_name = idx["index_name"]
+                index_url = f"http://{GLOBAL_URL}/{index_name}/_doc"
+                for doc in idx["data"]:
+                    LOGGER.debug(
+                        f"Inserting document into '{index_name}': {doc}")
+                    resp = requests.post(index_url, json=doc)
+                    assert resp.status_code == 201, (
+                        f"Failed to load pre-existing data into '{index_name}'. "
+                        f"Status: {resp.status_code}, Response: {resp.text}"
+                    )
+            LOGGER.info("Pre-existing data loaded successfully.")
 
-    if Path("queue").exists():
-        shutil.rmtree("queue")
+        # Prepare main command
+        main_command = [
+            str(cmd),
+            "-c", f"{test_folder}/config.json",
+            "-t", f"{test_folder}/template.json",
+            "-l", log_file,
+            "-i", f"{test_folder}/inputs/"
+        ]
+        LOGGER.info(f"Running main test command: {main_command}")
+        proc_test = subprocess.Popen(
+            main_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        assert proc_test.poll() is None, "The inventory harvester test tool failed to start."
 
-    LOGGER.debug(f"Running test at '{test_folder}'")
+        # Load the expected results
+        result_file = Path(test_folder, "result.json")
+        with result_file.open('r', encoding='utf-8') as f:
+            expected_results = json.load(f)
 
-    args = ["-c", test_folder + "/config.json",
-            "-t", test_folder + "/template.json",
-            "-l", log_file, "-i", test_folder + "/inputs/"]
+        # Wait for the test tool process to complete
+        proc_test.wait()
+        stderr_output = proc_test.stderr.read().decode('utf-8')
+        assert proc_test.returncode == 0, (
+            f"Test tool process exited with code {proc_test.returncode}.\n"
+            f"Stderr: {stderr_output}"
+        )
 
-    command = [cmd] + args
-
-    LOGGER.info(f"Running command: {command}")
-    process = subprocess.Popen(command)
-    # if the process is not running fail the test
-    assert process.poll() is None, "The process is not running"
-
-    # Parse result.json file to get expected indexes and data
-    with open(Path(test_folder, "result.json")) as f:
-        result = json.load(f)
-
-    # Wait for process to finish
-    process.wait()
-    assert process.returncode == 0, f"The process failed ({process.returncode}): {process.stderr}."
-
-    # We validate the index was created
-    counter = 0
-    for index in result:
-        url = 'http://'+ GLOBAL_URL +'/_cat/indices/' + index["index_name"] + '?format=json'
-        LOGGER.info("Checking if the index was created at: " + url)
-        while counter < 10:
-            response = requests.get(url)
-            if response.status_code == 200 and len(response.json()) > 0:
-                break
-            time.sleep(1)
-            counter += 1
-        assert counter < 10, f"The index was not created. Response: {response.text}"
-
-    # Query to check if the index content is the same as result.json file
-    for index in result:
-        url = 'http://'+ GLOBAL_URL +'/'+ index["index_name"] +'/_search'
-        response = requests.get(url)
-        assert response.status_code == 200
-
-        # Check if the data is the same as the expected
-        response_json = response.json()
-        assert response_json["hits"]["total"]["value"] == len(index["data"]), f"The number of hits is not the expected: {response_json['hits']['hits']}"
-
-        for expected_data in index["data"]:
-            found = False
-            for hit in response_json["hits"]["hits"]:
-                if expected_data == hit["_source"]:
-                    found = True
+        # Validate index creation
+        for idx_def in expected_results:
+            index_name = idx_def["index_name"]
+            cat_url = f"http://{GLOBAL_URL}/_cat/indices/{index_name}?format=json"
+            LOGGER.info(
+                f"Verifying creation of index '{index_name}' at: {cat_url}")
+            found_index = False
+            for _ in range(10):
+                resp_cat = requests.get(cat_url)
+                if resp_cat.status_code == 200 and len(resp_cat.json()) > 0:
+                    found_index = True
                     break
-            assert found, f"The data '{expected_data}' is not in the response: {response_json['hits']['hits']}"
+                time.sleep(1)
+            assert found_index, (
+                f"Index '{index_name}' was not created within the expected time. "
+                f"Response: {resp_cat.text}"
+            )
+
+        # Validate document counts and contents
+        for idx_def in expected_results:
+            index_name = idx_def["index_name"]
+            search_url = f"http://{GLOBAL_URL}/{index_name}/_search"
+            LOGGER.debug(
+                f"Searching documents in index '{index_name}' at: {search_url}")
+            resp_search = requests.get(search_url)
+            assert resp_search.status_code == 200, (
+                f"Search request for index '{index_name}' failed (status {resp_search.status_code})."
+            )
+
+            hits_obj = resp_search.json()["hits"]
+            actual_count = hits_obj["total"]["value"]
+            expected_count = len(idx_def["data"])
+            assert actual_count == expected_count, (
+                f"Mismatch in document count for index '{index_name}': "
+                f"expected {expected_count}, got {actual_count}."
+            )
+
+            # Check if each expected document is present
+            for expected_doc in idx_def["data"]:
+                if not any(expected_doc == hit["_source"] for hit in hits_obj["hits"]):
+                    pytest.fail(
+                        f"Document {expected_doc} not found in index '{index_name}'. "
+                        f"Actual hits: {hits_obj['hits']}"
+                    )
+
+    except Exception as exc:
+        LOGGER.error(f"Test for '{test_folder}' failed: {exc}")
+        # Preserve logs and queue directory for debugging
+        raise
+    else:
+        # Test passed: remove logs and queue directory to keep workspace clean
+        if Path(log_file).exists():
+            Path(log_file).unlink()
+        if queue_dir.exists():
+            shutil.rmtree(queue_dir)

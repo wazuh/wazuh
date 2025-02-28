@@ -1,21 +1,73 @@
-## Inventory harvester QA tests
+# Inventory Harvester QA Tests
 
-These tests are meant to verify that after a certain operations, the affected indexes contain the required elements or the lack of them.
+These tests verify that after certain operations are performed, the affected indexes in OpenSearch (Wazuh indexer) contain the expected elements or properly exclude unwanted items.
 
-### Considerations to create new tests
+## Creating New Tests
 
-- Each test is stored in a new numbered folder, but it can be under any arbitrary sub-folders that organize the test according to capabilities, topic, or another criteria.
-- Each folder contains:
-    - An `inputs` folder with all the events to inject. Make sure that they begin with a number that defines the order, and include the word `delta` or `rsync` in the file name when it corresponds. The JSON events don't require that word in the file name.
-    - A Readme.md document that briefly explains the test.
-    - A `result.json` file that consists in an array of elements. Each element contains the index name and the expected `data` for that index. The `data` array contains one element for each expected indexed document.
-    - The `config.json` and `template.json` that the test tool will use for that case.
+1. **Folder Structure**
+   - Test are divided by module, **`fim`**, **`inventory`** and **`wazuh_db`**.
+   - Each test resides in a unique numbered folder underscore the test scenario (e.g., `000_delete_agent`) on the corresponding module component.
+2. **Folder Contents**
+   - **`inputs/`**: Contains all event JSON files to be injected by the test tool.
+     - File names should begin with a number indicating the processing order.
+     - If the event relates to a delta-based or rsync-based operation, include the corresponding word (`delta`, `rsync`) in the filename for clarity. (The JSON content itself does not require this keyword.)
+   - **`result.json`**: An array of objects defining the expected indexes and the exact documents to be present in each index. Each object has:
+     ```json
+     {
+       "index_name": "some_index",
+       "data": [
+         { "field1": "value1", "field2": "value2" },
+         ...
+       ]
+     }
+     ```
+   - **`config.json` and `template.json`**: Configuration files used by the `inventory_harvester_testtool` for that specific test.
 
-### Local run
+## Running Tests Locally
 
-Make sure to have docker enabled.
+1. **Docker Requirements**  
+   Ensure Docker is running on your system since the tests rely on containerized environments.
 
-- Change dir to `src/` and create an update mappings file `echo "{}" > states_update_mappings.json`
-- Compile the server
-- Run with `python -m pytest -vv wazuh_modules/inventory_harvester/qa/ --log-cli-level=DEBUG`
-- You can filter tests using pytest `-k` option
+2. **Source Directory**  
+   You must be in the `src/` directory when running these tests.
+
+3. **Python Virtual Environment**  
+   For better isolation, create and activate a virtual environment, then install the required dependencies:
+
+   ```bash
+   python3 -m venv venv
+   source venv/bin/activate
+   pip install -r src/wazuh_modules/inventory_harvester/qa/requirements.txt
+   ```
+
+4. **Preparation**
+
+   - Create an update mappings file (if needed):
+     ```bash
+     echo "{}" > states_update_mappings.json
+     ```
+   - Compile the server:
+     ```bash
+     make clean && make TARGET=server DEBUG=1 -j$(nproc)
+     ```
+   - **AddressSanitizer Notice**: If you compiled with `TESTS=1` and encounter an `AddressSanitizer` error, run:
+     ```bash
+     export LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libasan.so.8
+     ```
+
+5. **Executing the Tests**
+   From the `src/` directory, run:
+   ```bash
+   python -m pytest -vv wazuh_modules/inventory_harvester/qa/ --log-cli-level=DEBUG
+   ```
+
+## Running a Single Test
+
+You can target a specific test by adding `-k <keyword>` to the pytest command. For example, to run only the tests in the `fim` folder:
+
+```bash
+python -m pytest -vv wazuh_modules/inventory_harvester/qa/ -k fim --log-cli-level=DEBUG
+```
+
+> [!TIP]
+> You can list all the available tests with `python3 -m pytest -vv --collect-only  wazuh_modules/inventory_harvester/qa/`
