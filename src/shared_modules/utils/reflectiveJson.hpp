@@ -212,6 +212,7 @@ std::string jsonFieldToString(const std::unordered_map<K, V>& map)
             {
                 json.append("0");
             }
+            std::fill(buffer, buffer + sizeof(buffer), '\0');
         }
         else
         {
@@ -266,8 +267,8 @@ std::enable_if_t<IsReflectable<T>::value, void> serializeToJSON(const T& obj, st
                              json.push_back('"');
                          }
                          else if constexpr ((std::is_arithmetic_v<std::decay_t<decltype(data)>> ||
-                                             std::is_same_v<double, std::decay_t<decltype(data)>>)&&!std::
-                                                is_same_v<bool, std::decay_t<decltype(data)>>)
+                                             std::is_same_v<double, std::decay_t<decltype(data)>>) &&
+                                            !std::is_same_v<bool, std::decay_t<decltype(data)>>)
                          {
 
                              auto [ptr, ec] = std::to_chars(buffer, buffer + sizeof(buffer), data);
@@ -279,6 +280,7 @@ std::enable_if_t<IsReflectable<T>::value, void> serializeToJSON(const T& obj, st
                              {
                                  json.append("0");
                              }
+                             std::fill(buffer, buffer + sizeof(buffer), '\0');
                          }
                          else if constexpr (std::is_same_v<bool, std::decay_t<decltype(data)>>)
                          {
@@ -313,8 +315,8 @@ std::enable_if_t<IsReflectable<T>::value, void> serializeToJSON(const T& obj, st
                                      json.push_back('\"');
                                  }
                                  else if constexpr ((std::is_arithmetic_v<std::decay_t<decltype(value)>> ||
-                                                     std::is_same_v<double, std::decay_t<decltype(value)>>)&&!std::
-                                                        is_same_v<bool, std::decay_t<decltype(value)>>)
+                                                     std::is_same_v<double, std::decay_t<decltype(value)>>) &&
+                                                    !std::is_same_v<bool, std::decay_t<decltype(value)>>)
                                  {
                                      auto [ptr, ec] = std::to_chars(buffer, buffer + sizeof(buffer), value);
                                      if (ec == std::errc())
@@ -325,6 +327,7 @@ std::enable_if_t<IsReflectable<T>::value, void> serializeToJSON(const T& obj, st
                                      {
                                          json.push_back('0');
                                      }
+                                     std::fill(buffer, buffer + sizeof(buffer), '\0');
                                  }
                                  else if constexpr (std::is_same_v<bool, std::decay_t<decltype(value)>>)
                                  {
@@ -362,8 +365,8 @@ std::enable_if_t<IsReflectable<T>::value, void> serializeToJSON(const T& obj, st
                                      json.push_back('\"');
                                  }
                                  else if constexpr ((std::is_arithmetic_v<decltype(v)> ||
-                                                     std::is_same_v<const double&, decltype(v)>)&&!std::
-                                                        is_same_v<bool, std::decay_t<decltype(v)>>)
+                                                     std::is_same_v<const double&, decltype(v)>) &&
+                                                    !std::is_same_v<bool, std::decay_t<decltype(v)>>)
                                  {
                                      auto [ptr, ec] = std::to_chars(buffer, buffer + sizeof(buffer), v);
                                      if (ec == std::errc())
@@ -374,6 +377,7 @@ std::enable_if_t<IsReflectable<T>::value, void> serializeToJSON(const T& obj, st
                                      {
                                          json.push_back('0');
                                      }
+                                     std::fill(buffer, buffer + sizeof(buffer), '\0');
                                  }
                                  else if constexpr (std::is_same_v<bool, std::decay_t<decltype(v)>>)
                                  {
@@ -440,8 +444,8 @@ std::enable_if_t<IsReflectable<T>::value, std::string> serializeToJSON(const T& 
                              json.push_back('"');
                          }
                          else if constexpr ((std::is_arithmetic_v<std::decay_t<decltype(data)>> ||
-                                             std::is_same_v<double, std::decay_t<decltype(data)>>)&&!std::
-                                                is_same_v<bool, std::decay_t<decltype(data)>>)
+                                             std::is_same_v<double, std::decay_t<decltype(data)>>) &&
+                                            !std::is_same_v<bool, std::decay_t<decltype(data)>>)
                          {
 
                              auto [ptr, ec] = std::to_chars(buffer, buffer + sizeof(buffer), data);
@@ -453,6 +457,7 @@ std::enable_if_t<IsReflectable<T>::value, std::string> serializeToJSON(const T& 
                              {
                                  json.append("0");
                              }
+                             std::fill(buffer, buffer + sizeof(buffer), '\0');
                          }
                          else if constexpr (std::is_same_v<bool, std::decay_t<decltype(data)>>)
                          {
@@ -487,8 +492,8 @@ std::enable_if_t<IsReflectable<T>::value, std::string> serializeToJSON(const T& 
                                      json.push_back('\"');
                                  }
                                  else if constexpr ((std::is_arithmetic_v<std::decay_t<decltype(value)>> ||
-                                                     std::is_same_v<double, std::decay_t<decltype(value)>>)&&!std::
-                                                        is_same_v<bool, std::decay_t<decltype(value)>>)
+                                                     std::is_same_v<double, std::decay_t<decltype(value)>>) &&
+                                                    !std::is_same_v<bool, std::decay_t<decltype(value)>>)
                                  {
                                      auto [ptr, ec] = std::to_chars(buffer, buffer + sizeof(buffer), value);
                                      if (ec == std::errc())
@@ -499,6 +504,7 @@ std::enable_if_t<IsReflectable<T>::value, std::string> serializeToJSON(const T& 
                                      {
                                          json.push_back('0');
                                      }
+                                     std::fill(buffer, buffer + sizeof(buffer), '\0');
                                  }
                                  else if constexpr (std::is_same_v<bool, std::decay_t<decltype(value)>>)
                                  {
@@ -529,9 +535,8 @@ std::enable_if_t<IsReflectable<T>::value, std::string> serializeToJSON(const T& 
                                              json.push_back('\"');
                                          }
                                          else if constexpr ((std::is_arithmetic_v<std::decay_t<decltype(value)>> ||
-                                                             std::is_same_v<double,
-                                                                            std::decay_t<decltype(value)>>)&&!std::
-                                                                is_same_v<bool, std::decay_t<decltype(value)>>)
+                                                             std::is_same_v<double, std::decay_t<decltype(value)>>) &&
+                                                            !std::is_same_v<bool, std::decay_t<decltype(value)>>)
                                          {
                                              auto [ptr, ec] = std::to_chars(buffer, buffer + sizeof(buffer), v);
                                              if (ec == std::errc())
@@ -542,6 +547,7 @@ std::enable_if_t<IsReflectable<T>::value, std::string> serializeToJSON(const T& 
                                              {
                                                  json.push_back('0');
                                              }
+                                             std::fill(buffer, buffer + sizeof(buffer), '\0');
                                          }
                                          else if constexpr (std::is_same_v<bool, std::decay_t<decltype(v)>>)
                                          {
