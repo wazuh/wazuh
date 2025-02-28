@@ -21,7 +21,6 @@ jobs:
       # Build wazuh agent for linux.
       - name: Build wazuh agent for linux
         run: |
-          rm -rf src/VERSION
           make deps -C src TARGET=agent -j2
           make -C src build_syscollector TARGET=agent -j2
       - name: Install dependencies

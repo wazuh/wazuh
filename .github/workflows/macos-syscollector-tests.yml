@@ -19,7 +19,6 @@ jobs:
       # Build wazuh agent for macOS.
       - name: Build wazuh agent for macOS
         run: |
-          rm -rf src/VERSION
           make deps -C src TARGET=agent -j4
           make -C src build_syscollector TARGET=agent -j4
       - name: Install dependencies
