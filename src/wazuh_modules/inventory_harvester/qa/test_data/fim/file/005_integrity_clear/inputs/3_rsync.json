@@ -1,0 +1,13 @@
+{
+  "agent_info": {
+    "agent_id": "003",
+    "agent_name": "DESKTOP-R8MRG1I",
+    "agent_ip": "any",
+    "agent_version": "v4.7.5"
+  },
+  "data_type": "integrity_clear",
+  "data": {
+    "attributes_type": "fim_file",
+    "id": 1740672008
+  }
+}
