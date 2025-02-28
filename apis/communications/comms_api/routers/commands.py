@@ -10,7 +10,7 @@ from comms_api.routers.exceptions import HTTPError
 from comms_api.routers.utils import timeout
 
 
-@timeout(30)
+@timeout(1200)
 async def get_commands(token: Annotated[str, Depends(JWTBearer())], request: Request) -> Commands:
     """Get commands endpoint handler.
 
