@@ -10,6 +10,8 @@ class WazuhConfigBaseModel(BaseModel):
 
 
 class ValidateFilePathMixin:
+    """Mixin to validate configuration file paths."""
+
     @classmethod
     def _validate_file_path(cls, path: str, field_name: str):
         """Validate that a single file path is non-empty and points to an existing file.
