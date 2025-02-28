@@ -1,0 +1,9 @@
+{
+  "agent_info": {
+    "agent_id": "002"
+  },
+  "action": "deleteRegistryKey",
+  "data": {
+    "path": "HKEY_LOCAL_MACHINE\\Software\\Microsoft\\Active Setup\\Installed Components\\FFFocta"
+  }
+}
