@@ -4,7 +4,7 @@ import pytest
 from opensearchpy import exceptions
 from wazuh.core.exception import WazuhError, WazuhResourceNotFound
 from wazuh.core.indexer.base import IndexerKey
-from wazuh.core.indexer.models.rule import Rule
+from wazuh.core.indexer.models.rbac import Rule
 from wazuh.core.indexer.rules import RULE_KEY, RulesIndex
 
 

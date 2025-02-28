@@ -1,7 +1,7 @@
 from opensearchpy import exceptions
 from wazuh.core.exception import WazuhError, WazuhResourceNotFound
 from wazuh.core.indexer.base import BaseIndex, IndexerKey
-from wazuh.core.indexer.models.role import Role
+from wazuh.core.indexer.models.rbac import Role
 from wazuh.core.indexer.utils import get_source_items
 
 ROLE_KEY = 'role'
