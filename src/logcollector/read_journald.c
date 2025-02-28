@@ -37,15 +37,13 @@
 typedef struct {
     unsigned long owner_id;            ///< Owner ID of the journal log
     bool is_disabled;                  ///< Flag to disable the journal log, error on initialization
-    w_journal_context_t * journal_ctx; ///< Journal log context
-    bool did_rotate;                   ///< Flag to perform recreate after rotation.
+    w_journal_context_t* journal_ctx;  ///< Journal log context
 } w_journald_global_t;                 ///< Current configuration and status of the journal log
 
 STATIC w_journald_global_t gs_journald_global = {
     .owner_id = 0,
     .is_disabled = false,
     .journal_ctx = NULL,
-    .did_rotate = false,
 }; ///< Current configuration and status of the journal log
 
 /**
@@ -73,11 +71,11 @@ void set_gs_journald_ofe(bool exist, bool ofe, uint64_t timestamp) {
     gs_journald_ofe.last_read_timestamp = timestamp;
 }
 
-void set_gs_journald_global(unsigned long owner_id, bool is_disabled, void * journal_ctx, bool did_rotate) {
+void set_gs_journald_global(unsigned long owner_id, bool is_disabled, void* journal_ctx)
+{
     gs_journald_global.owner_id = owner_id;
     gs_journald_global.is_disabled = is_disabled;
     gs_journald_global.journal_ctx = journal_ctx;
-    gs_journald_global.did_rotate = did_rotate;
 }
 
 bool journald_isDisabled() {
@@ -102,18 +100,8 @@ bool w_journald_can_read(unsigned long owner_id) {
             return false;
         }
 
-        // Set the pointer to the journal log
-        w_mutex_lock(&gs_journald_ofe.mutex);
-        uint64_t lr_ts = gs_journald_ofe.last_read_timestamp;
-        w_mutex_unlock(&gs_journald_ofe.mutex);
-
-        int ret = gs_journald_ofe.only_future_events
-                      ? w_journal_context_seek_most_recent(gs_journald_global.journal_ctx)
-                      : w_journal_context_seek_timestamp(gs_journald_global.journal_ctx, lr_ts);
-
-        if (ret < 0) {
-            merror(LOGCOLLECTOR_JOURNAL_LOG_FAIL_SEEK, strerror(-ret));
-            gs_journald_global.is_disabled = true;
+        if (seek_and_refresh_timestamp() < 0)
+        {
             return false;
         }
 
@@ -125,35 +113,12 @@ bool w_journald_can_read(unsigned long owner_id) {
 
     if (w_journal_rotation_detected(gs_journald_global.journal_ctx)) {
 
-        gs_journald_global.did_rotate = true;
-        minfo(LOGCOLLECTOR_ROTATION_DETECTED);
-
-    } else if (gs_journald_global.did_rotate) {
-        // clean flag
-        gs_journald_global.did_rotate = false;
-
-        if (w_journal_context_recreate(&gs_journald_global.journal_ctx) != 0) {
-            merror(LOGCOLLECTOR_JOURNAL_LOG_DISABLING);
-            gs_journald_global.is_disabled = true;
+        if (seek_and_refresh_timestamp() < 0)
+        {
             return false;
         }
 
-        // Set the pointer to the journal log
-        w_mutex_lock(&gs_journald_ofe.mutex);
-        uint64_t lr_ts = gs_journald_ofe.last_read_timestamp;
-        w_mutex_unlock(&gs_journald_ofe.mutex);
-
-        int ret = gs_journald_ofe.only_future_events
-                      ? w_journal_context_seek_most_recent(gs_journald_global.journal_ctx)
-                      : w_journal_context_seek_timestamp(gs_journald_global.journal_ctx, lr_ts);
-
-        if (ret < 0) {
-            merror(LOGCOLLECTOR_JOURNAL_LOG_FAIL_SEEK, strerror(-ret));
-            gs_journald_global.is_disabled = true;
-            return false;
-        }
-
-        minfo(LOGCOLLECTOR_CONTEXT_RECREATION);
+        minfo(LOGCOLLECTOR_TIMESTAMP_REFRESHED);
     }
 
     return true;
@@ -269,6 +234,26 @@ void w_journald_set_status_from_JSON(cJSON * global_json) {
     w_mutex_unlock(&gs_journald_ofe.mutex);
 
     mdebug2(LOGCOLLECTOR_JOURNAL_LOG_SET_LAST, timestamp_uint);
+}
+
+int seek_and_refresh_timestamp()
+{
+    // Set the pointer to the journal log
+    w_mutex_lock(&gs_journald_ofe.mutex);
+    uint64_t lr_ts = gs_journald_ofe.last_read_timestamp;
+    w_mutex_unlock(&gs_journald_ofe.mutex);
+
+    int ret = gs_journald_ofe.only_future_events
+                  ? w_journal_context_seek_most_recent(gs_journald_global.journal_ctx)
+                  : w_journal_context_seek_timestamp(gs_journald_global.journal_ctx, lr_ts);
+
+    if (ret < 0)
+    {
+        merror(LOGCOLLECTOR_JOURNAL_LOG_FAIL_SEEK, strerror(-ret));
+        gs_journald_global.is_disabled = true;
+    }
+
+    return ret;
 }
 
 #endif

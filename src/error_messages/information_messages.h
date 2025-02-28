@@ -77,8 +77,7 @@
 #define LOGCOLLECTOR_ONLY_MACOS             "(9201): 'macos' log format is only supported on macOS."
 #define LOGCOLLECTOR_JOURNALD_ONLY_LINUX    "(9202): 'Journald' log format is only available on Linux."
 #define LOGCOLLECTOR_JOURNALD_MONITORING    "(9203): Monitoring journal entries."
-#define LOGCOLLECTOR_ROTATION_DETECTED      "(9204): 'Journald' files rotation detected."
-#define LOGCOLLECTOR_CONTEXT_RECREATION     "(9205): 'Journald' context was recreated."
+#define LOGCOLLECTOR_TIMESTAMP_REFRESHED    "(9204): 'Journald' timestamp was refreshed due to rotation."
 
 /* Agent info messages */
 #define AG_UNINSTALL_VALIDATION_START       "(9500): Starting user validation to uninstall the Wazuh agent package."

@@ -421,13 +421,6 @@ int w_journal_context_get_oldest_timestamp(w_journal_context_t * ctx, uint64_t *
     return ctx->lib->get_cutoff_timestamp(ctx->journal, timestamp, NULL);
 }
 
-int w_journal_context_recreate(w_journal_context_t** ctx)
-{
-    w_journal_context_free((*ctx));
-
-    return w_journal_context_create(ctx);
-}
-
 /**********************************************************
  *                   Entry related
  **********************************************************/
