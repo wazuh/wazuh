@@ -1,0 +1,42 @@
+{
+  "agent_info": {
+    "agent_id": "001",
+    "agent_ip": "any",
+    "agent_name": "c0ce505227a4",
+    "agent_version": "v4.11.0"
+  },
+  "data_type": "dbsync_processes",
+  "data": {
+    "argvs": "-f logs/ossec.log",
+    "checksum": "bf0815829a599aa3d1e1e915441b5d0f91945bd8",
+    "cmd": "tail",
+    "egroup": "root",
+    "euser": "root",
+    "fgroup": "root",
+    "name": "tail",
+    "nice": 0,
+    "nlwp": 1,
+    "pgrp": 176,
+    "pid": "176",
+    "ppid": 9,
+    "priority": 20,
+    "processor": 3,
+    "resident": 1536,
+    "rgroup": "root",
+    "ruser": "root",
+    "scan_time": "2025/02/27 16:00:07",
+    "session": 9,
+    "sgroup": "root",
+    "share": 384,
+    "size": 682,
+    "start_time": 1740671934,
+    "state": "S",
+    "stime": 0,
+    "suser": "root",
+    "tgid": 176,
+    "tty": 34817,
+    "utime": 0,
+    "vm_size": 2728
+  },
+  "operation": "INSERTED"
+}

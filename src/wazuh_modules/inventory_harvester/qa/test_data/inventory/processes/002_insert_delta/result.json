@@ -1,0 +1,27 @@
+[
+    {
+        "index_name": "wazuh-states-processes-cluster01",
+        "data": [
+            {
+                "agent": {
+                    "id": "001",
+                    "ip": "any",
+                    "name": "c0ce505227a4",
+                    "version": "v4.11.0"
+                },
+                "process": {
+                    "args": [
+                        "-f",
+                        "logs/ossec.log"
+                    ],
+                    "args_count": 2,
+                    "command_line": "tail",
+                    "name": "tail",
+                    "pid": 176,
+                    "ppid": 9,
+                    "start": "2025-02-27T15:58:54.000Z"
+                }
+            }
+        ]
+    }
+]
