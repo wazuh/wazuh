@@ -1,0 +1,100 @@
+{
+  "agent_info": {
+    "agent_id": "002",
+    "agent_ip": "any",
+    "agent_name": "DESKTOP-5RL9J34",
+    "agent_version": "v4.7.2"
+  },
+  "data_type": "event",
+  "data": {
+    "path": "HKEY_LOCAL_MACHINE\\Software\\Microsoft\\Active Setup\\Installed Components\\aaaocta",
+    "index": "2587562564587d9acea3eef5113d22ff551d150b",
+    "version": 3,
+    "mode": "scheduled",
+    "type": "added",
+    "arch": "[x64]",
+    "timestamp": 1737934629,
+    "attributes": {
+      "type": "registry_key",
+      "perm": {
+        "S-1-5-32-545": {
+          "name": "Users",
+          "allowed": [
+            "read_control",
+            "read_data",
+            "read_ea",
+            "write_ea"
+          ]
+        },
+        "S-1-5-32-544": {
+          "name": "Administrators",
+          "allowed": [
+            "delete",
+            "read_control",
+            "write_dac",
+            "write_owner",
+            "read_data",
+            "write_data",
+            "append_data",
+            "read_ea",
+            "write_ea",
+            "execute"
+          ]
+        },
+        "S-1-5-18": {
+          "name": "SYSTEM",
+          "allowed": [
+            "delete",
+            "read_control",
+            "write_dac",
+            "write_owner",
+            "read_data",
+            "write_data",
+            "append_data",
+            "read_ea",
+            "write_ea",
+            "execute"
+          ]
+        },
+        "S-1-3-0": {
+          "name": "CREATOR OWNER",
+          "allowed": [
+            "delete",
+            "read_control",
+            "write_dac",
+            "write_owner",
+            "read_data",
+            "write_data",
+            "append_data",
+            "read_ea",
+            "write_ea",
+            "execute"
+          ]
+        },
+        "S-1-15-2-1": {
+          "name": "ALL APPLICATION PACKAGES",
+          "allowed": [
+            "read_control",
+            "read_data",
+            "read_ea",
+            "write_ea"
+          ]
+        },
+        "S-1-15-3-1024-1065365936-1281604716-3511738428-1654721687-432734479-3232135806-4053264122-3456934681": {
+          "allowed": [
+            "read_control",
+            "read_data",
+            "read_ea",
+            "write_ea"
+          ]
+        }
+      },
+      "uid": "S-1-5-32-544",
+      "user_name": "Administrators",
+      "gid": "S-1-5-21-1245906424-2878732365-1129427271-513",
+      "group_name": "",
+      "mtime": 1737934618,
+      "checksum": "619c556002fcd03b3e7b56cc88a7eb85f302855d"
+    }
+  }
+}

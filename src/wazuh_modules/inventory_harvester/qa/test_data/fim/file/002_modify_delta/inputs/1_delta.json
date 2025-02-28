@@ -1,0 +1,140 @@
+{
+  "agent_info": {
+    "agent_id": "003",
+    "agent_name": "DESKTOP-R8MRG1I",
+    "agent_ip": "any",
+    "agent_version": "v4.7.5"
+  },
+  "data_type": "event",
+  "data": {
+    "attributes": {
+      "attributes": "ARCHIVE",
+      "checksum": "18f4de0680ed068e0c779a33695ffebf662b13a2",
+      "hash_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "hash_sha1": "da39a3ee5e6b4b0d3255bfef95601890afd80709",
+      "hash_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "inode": 0,
+      "mtime": 1739847196,
+      "perm": {
+        "S-1-5-32-544": {
+          "name": "Administrators",
+          "allowed": [
+            "delete",
+            "read_control",
+            "write_dac",
+            "write_owner",
+            "synchronize",
+            "read_data",
+            "write_data",
+            "append_data",
+            "read_ea",
+            "write_ea",
+            "execute",
+            "read_attributes",
+            "write_attributes"
+          ]
+        },
+        "S-1-5-21-3622736456-3345462557-1602827630-1001": {
+          "name": "uadmin",
+          "allowed": [
+            "delete",
+            "read_control",
+            "write_dac",
+            "write_owner",
+            "synchronize",
+            "read_data",
+            "write_data",
+            "append_data",
+            "read_ea",
+            "write_ea",
+            "execute",
+            "read_attributes",
+            "write_attributes"
+          ]
+        },
+        "S-1-5-18": {
+          "name": "SYSTEM",
+          "allowed": [
+            "delete",
+            "read_control",
+            "write_dac",
+            "write_owner",
+            "synchronize",
+            "read_data",
+            "write_data",
+            "append_data",
+            "read_ea",
+            "write_ea",
+            "execute",
+            "read_attributes",
+            "write_attributes"
+          ]
+        },
+        "S-1-5-4": {
+          "name": "INTERACTIVE",
+          "allowed": [
+            "delete",
+            "read_control",
+            "synchronize",
+            "read_data",
+            "write_data",
+            "append_data",
+            "read_ea",
+            "write_ea",
+            "execute",
+            "read_attributes",
+            "write_attributes"
+          ]
+        },
+        "S-1-5-6": {
+          "name": "SERVICE",
+          "allowed": [
+            "delete",
+            "read_control",
+            "synchronize",
+            "read_data",
+            "write_data",
+            "append_data",
+            "read_ea",
+            "write_ea",
+            "execute",
+            "read_attributes",
+            "write_attributes"
+          ]
+        },
+        "S-1-5-3": {
+          "name": "BATCH",
+          "allowed": [
+            "delete",
+            "read_control",
+            "synchronize",
+            "read_data",
+            "write_data",
+            "append_data",
+            "read_ea",
+            "write_ea",
+            "execute",
+            "read_attributes",
+            "write_attributes"
+          ]
+        }
+      },
+      "size": 0,
+      "type": "file",
+      "uid": "S-1-5-21-3622736456-3345462557-1602827630-1001",
+      "user_name": "uadmin"
+    },
+    "mode": "whodata",
+    "path": "c:\\users\\public\\documents\\newFile.txt",
+    "timestamp": 1739847203,
+    "type": "added",
+    "version": "2.0",
+    "audit": {
+      "user_id": "S-1-5-21-3622736456-3345462557-1602827630-1001",
+      "user_name": "uadmin",
+      "process_name": "C:\\Windows\\explorer.exe",
+      "process_id": 5928
+    }
+  },
+  "type": "event"
+}
