@@ -7,19 +7,10 @@ if (NOT SRC_FOLDER)
     get_filename_component(SRC_FOLDER     ${CMAKE_SOURCE_DIR}/../../../ ABSOLUTE)
 endif()
 
-include_directories(${SRC_FOLDER}/headers/)
-include_directories(${SRC_FOLDER}/external/cJSON/)
-include_directories(${SRC_FOLDER}/external/libbpf_boostrap/build/)
-include_directories(${SRC_FOLDER}/shared_modules/common/)
-include_directories(${SRC_FOLDER}/syscheckd/include/)
+include_directories(${SRC_FOLDER}/external/libbpf-bootstrap/build/)
 include_directories(${CMAKE_SOURCE_DIR}/include)
 include_directories(${CMAKE_SOURCE_DIR}/src/db/include/)
 include_directories(${CMAKE_SOURCE_DIR}/src/ebpf/include/)
-
-
-link_directories(${SRC_FOLDER}/shared_modules/dbsync/build/lib/)
-link_directories(${SRC_FOLDER}/shared_modules/rsync/build/lib/)
-link_directories(${SRC_FOLDER}/)
 
 set(LIB_DIR ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${LIB_DIR})

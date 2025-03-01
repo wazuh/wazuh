@@ -1457,6 +1457,12 @@ ifneq (${TARGET},winagent)
 endif
 endif
 
+ifneq (${TARGET},server)
+ifeq (${TARGET},agent)
+       EXTERNAL_RES += libbpf-bootstrap
+endif
+endif
+
 EXTERNAL_DIR := $(EXTERNAL_RES:%=external/%)
 EXTERNAL_TAR := $(EXTERNAL_RES:%=external/%.tar.gz)
 

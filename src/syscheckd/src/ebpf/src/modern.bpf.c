@@ -265,6 +265,11 @@ int kprobe__vfs_write(struct pt_regs *ctx)
     if (!f_inode)
         return 0;
 
+    __u32 f_mode = 0;
+    bpf_probe_read_kernel(&f_mode, sizeof(f_mode), &file->f_mode);
+    if ((f_mode & FMODE_CREATED))
+        return 0;
+
     __u32 mode = 0;
     bpf_probe_read_kernel(&mode, sizeof(mode), &f_inode->i_mode);
 
