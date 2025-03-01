@@ -141,7 +141,7 @@ void runOffsetUpdate(const std::string& topicName)
         std::cout << msg << ": " << responseCode << std::endl;
     };
 
-    UNIXSocketRequest::instance().put(RequestParameters {.url = HttpUnixSocketURL(ONDEMAND_SOCK, putUrl), .data = data},
+    UNIXSocketRequest::instance().put(RequestParametersJson {.url = HttpUnixSocketURL(ONDEMAND_SOCK, putUrl), .data = data},
                                       PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
                                       ConfigurationParameters {});
 }
