@@ -239,8 +239,8 @@ nlohmann::json IndexerConnector::getAgentDocumentsIds(const std::string& url,
             throw std::runtime_error(error);
         };
 
-        HTTPRequest::instance().post(RequestParameters {.url = HttpURL(url + "/" + m_indexName + "/_search?scroll=1m"),
-                                                        .data = postData.dump(),
+        HTTPRequest::instance().post(RequestParametersJson {.url = HttpURL(url + "/" + m_indexName + "/_search?scroll=1m"),
+                                                        .data = postData,
                                                         .secureCommunication = secureCommunication},
                                      PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
                                      ConfigurationParameters {});
@@ -439,14 +439,14 @@ void IndexerConnector::initialize(const nlohmann::json& templateData,
 
     // Initialize template.
     HTTPRequest::instance().put(
-        RequestParameters {.url = HttpURL(selector->getNext() + "/_index_template/" + m_indexName + "_template"),
+        RequestParametersJson {.url = HttpURL(selector->getNext() + "/_index_template/" + m_indexName + "_template"),
                            .data = templateData,
                            .secureCommunication = secureCommunication},
         PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
         ConfigurationParameters {});
 
     // Initialize Index.
-    HTTPRequest::instance().put(RequestParameters {.url = HttpURL(selector->getNext() + "/" + m_indexName),
+    HTTPRequest::instance().put(RequestParametersJson {.url = HttpURL(selector->getNext() + "/" + m_indexName),
                                                    .data = templateData.at("template"),
                                                    .secureCommunication = secureCommunication},
                                 PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
@@ -456,7 +456,7 @@ void IndexerConnector::initialize(const nlohmann::json& templateData,
     if (!updateMappingsData.empty())
     {
         HTTPRequest::instance().put(
-            RequestParameters {.url = HttpURL(selector->getNext() + "/" + m_indexName + "/_mapping"),
+            RequestParametersJson {.url = HttpURL(selector->getNext() + "/" + m_indexName + "/_mapping"),
                                .data = updateMappingsData,
                                .secureCommunication = secureCommunication},
             PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
