@@ -25,13 +25,13 @@ These tests verify that after certain operations are performed, the affected ind
 
 ## Running Tests Locally
 
-1. **Docker Requirements**  
+1. **Docker Requirements**
    Ensure Docker is running on your system since the tests rely on containerized environments.
 
-2. **Source Directory**  
+2. **Source Directory**
    You must be in the `src/` directory when running these tests.
 
-3. **Python Virtual Environment**  
+3. **Python Virtual Environment**
    For better isolation, create and activate a virtual environment, then install the required dependencies:
 
    ```bash
@@ -48,7 +48,7 @@ These tests verify that after certain operations are performed, the affected ind
      ```
    - Compile the server:
      ```bash
-     make clean && make TARGET=server DEBUG=1 -j$(nproc)
+     make clean-internals && make deps TARGET=server && make TARGET=server DEBUG=1 -j$(nproc)
      ```
    - **AddressSanitizer Notice**: If you compiled with `TESTS=1` and encounter an `AddressSanitizer` error, run:
      ```bash
@@ -58,7 +58,7 @@ These tests verify that after certain operations are performed, the affected ind
 5. **Executing the Tests**
    From the `src/` directory, run:
    ```bash
-   python -m pytest -vv wazuh_modules/inventory_harvester/qa/ --log-cli-level=DEBUG
+   python -m pytest -vv -rA wazuh_modules/inventory_harvester/qa/ --log-cli-level=DEBUG
    ```
 
 ## Running a Single Test
