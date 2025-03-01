@@ -695,6 +695,8 @@ rm -fr %{buildroot}
 %attr(750, root, wazuh) %{_localstatedir}/lib/libstdc++.so.6
 %attr(750, root, wazuh) %{_localstatedir}/lib/libgcc_s.so.1
 %attr(750, root, wazuh) %{_localstatedir}/lib/libfimdb.so
+%attr(750, root, wazuh) %{_localstatedir}/lib/libfimebpf.so
+%attr(750, root, wazuh) %{_localstatedir}/lib/libbpf.so
 %dir %attr(750, wazuh, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp
 %dir %attr(750, wazuh, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/generic
 %attr(640, root, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/generic/*

@@ -671,6 +671,7 @@ rm -fr %{buildroot}
 %attr(750, root, root) %{_localstatedir}/bin/wazuh-remoted
 %attr(750, root, root) %{_localstatedir}/bin/wazuh-reportd
 %attr(750, root, root) %{_localstatedir}/bin/wazuh-syscheckd
+%attr(750, root, root) %{_localstatedir}/bin/modern.bpf.o
 %attr(750, root, wazuh) %{_localstatedir}/bin/verify-agent-conf
 %attr(750, root, wazuh) %{_localstatedir}/bin/wazuh-apid
 %attr(750, root, wazuh) %{_localstatedir}/bin/wazuh-clusterd
@@ -726,6 +727,8 @@ rm -fr %{buildroot}
 %attr(750, root, wazuh) %{_localstatedir}/lib/libstdc++.so.6
 %attr(750, root, wazuh) %{_localstatedir}/lib/libgcc_s.so.1
 %attr(750, root, wazuh) %{_localstatedir}/lib/libfimdb.so
+%attr(750, root, wazuh) %{_localstatedir}/lib/libfimebpf.so
+%attr(750, root, wazuh) %{_localstatedir}/lib/libbpf.so
 %attr(750, root, wazuh) %{_localstatedir}/lib/libcontent_manager.so
 %attr(750, root, wazuh) %{_localstatedir}/lib/libindexer_connector.so
 %attr(750, root, wazuh) %{_localstatedir}/lib/librocksdb.so.8
