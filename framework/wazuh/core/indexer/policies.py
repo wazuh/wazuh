@@ -23,22 +23,6 @@ class PoliciesIndex(RBACIndex):
         """
         return await super().create(policy)
 
-    async def delete(self, ids: list[str]) -> list[str]:
-        """Delete multiple policies that match with the given parameters.
-
-        Parameters
-        ----------
-        ids : list[str]
-            Policy identifiers.
-
-        Returns
-        -------
-        list[str]
-            Deleted policy IDs.
-        """
-        await super().delete(ids)
-        return ids
-
     async def get(self, id: str) -> Policy:
         """Retrieve a policy.
 

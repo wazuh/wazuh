@@ -55,22 +55,6 @@ class UsersIndex(RBACIndex):
 
         return user
 
-    async def delete(self, ids: list[str]) -> list[str]:
-        """Delete multiple users that match with the given parameters.
-
-        Parameters
-        ----------
-        ids : list[str]
-            User identifiers.
-
-        Returns
-        -------
-        list[str]
-            Deleted user IDs.
-        """
-        await super().delete(ids)
-        return ids
-
     async def get(self, id: str) -> User:
         """Retrieve a user.
 

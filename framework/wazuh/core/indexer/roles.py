@@ -23,22 +23,6 @@ class RolesIndex(RBACIndex):
         """
         return await super().create(role)
 
-    async def delete(self, ids: list[str]) -> list[str]:
-        """Delete multiple roles that match with the given parameters.
-
-        Parameters
-        ----------
-        ids : list[str]
-            Role identifiers.
-
-        Returns
-        -------
-        list[str]
-            Deleted role IDs.
-        """
-        await super().delete(ids)
-        return ids
-
     async def get(self, id: str) -> Role:
         """Retrieve a role.
 
