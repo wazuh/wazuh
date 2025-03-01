@@ -23,22 +23,6 @@ class RulesIndex(RBACIndex):
         """
         return await super().create(rule)
 
-    async def delete(self, ids: list[str]) -> list[str]:
-        """Delete multiple rules that match with the given parameters.
-
-        Parameters
-        ----------
-        ids : list[str]
-            Rule identifiers.
-
-        Returns
-        -------
-        list[str]
-            Deleted rule IDs.
-        """
-        await super().delete(ids)
-        return ids
-
     async def get(self, id: str) -> Rule:
         """Retrieve a rule.
 

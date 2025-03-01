@@ -51,7 +51,7 @@ class RBACIndex(BaseIndex):
         return entity
 
     async def delete(self, ids: list[str]) -> list[str]:
-        """Delete multiple policies that match with the given parameters.
+        """Delete multiple entities that match with the given parameters.
 
         Parameters
         ----------
