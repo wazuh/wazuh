@@ -1,0 +1,18 @@
+[
+    {
+        "index_name": "wazuh-states-packages-cluster01",
+        "data": []
+    },
+    {
+        "index_name": "wazuh-states-system-cluster01",
+        "data": []
+    },
+    {
+        "index_name": "wazuh-states-registries-cluster01",
+        "data": []
+    },
+    {
+        "index_name": "wazuh-states-files-cluster01",
+        "data": []
+    }
+]

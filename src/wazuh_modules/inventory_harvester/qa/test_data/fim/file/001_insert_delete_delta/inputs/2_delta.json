@@ -1,0 +1,31 @@
+{
+  "agent_info": {
+    "agent_id": "002",
+    "agent_ip": "any",
+    "agent_name": "agent_test",
+    "agent_version": "v4.10.1"
+  },
+  "data_type": "event",
+  "data": {
+    "path": "/home/folderB/AFileInB.txt",
+    "version": 2,
+    "mode": "realtime",
+    "type": "deleted",
+    "timestamp": 1740677067,
+    "attributes": {
+      "type": "file",
+      "size": 0,
+      "perm": "rw-r--r--",
+      "uid": "0",
+      "gid": "0",
+      "user_name": "root",
+      "group_name": "root",
+      "inode": 28183416,
+      "mtime": 1740677067,
+      "hash_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "hash_sha1": "da39a3ee5e6b4b0d3255bfef95601890afd80709",
+      "hash_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "checksum": "2f88e3f414fef3175799031fadfc8390c5090b92"
+    }
+  }
+}
