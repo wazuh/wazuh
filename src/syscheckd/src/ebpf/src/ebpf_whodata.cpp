@@ -88,10 +88,10 @@ int handle_event(void* ctx, void* data, size_t data_sz) {
 int healthcheck_event(void* ctx, void* data, size_t data_sz) {
     (void)ctx; (void)data_sz;
     file_event* e = static_cast<file_event*>(data);
+
     if (strstr(e->filename, EBPF_HC_FILE)) {
         event_received = true;
     }
-    event_received = true;
     return 0;
 }
 

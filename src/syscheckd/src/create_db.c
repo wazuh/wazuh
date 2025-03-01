@@ -1195,10 +1195,6 @@ directory_t *fim_configuration_directory(const char *path) {
         os_free(real_path);
     }
 
-    if (dir == NULL) {
-        mdebug2(FIM_CONFIGURATION_NOTFOUND, "file", path);
-    }
-
     return dir;
 }
 
