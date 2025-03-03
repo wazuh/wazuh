@@ -62,7 +62,7 @@ struct loader_bpf {
 #endif /* __cplusplus */
 };
 
-// Definir tipos de funciones de libbpf que se están utilizando
+// Define the function types of libbpf that are being used
 extern void (*bpf_object__destroy_skeleton)(struct bpf_object_skeleton *obj);
 extern int (*bpf_object__open_skeleton)(struct bpf_object_skeleton *obj, const struct bpf_object_open_opts *opts);
 extern int (*bpf_object__load_skeleton)(struct bpf_object_skeleton *obj);
@@ -70,4 +70,3 @@ extern int (*bpf_object__attach_skeleton)(struct bpf_object_skeleton *obj);
 extern void (*bpf_object__detach_skeleton)(struct bpf_object_skeleton *obj);
 
 #endif /* BPF_OBJECT_SKELETON_H */
-
