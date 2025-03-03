@@ -191,6 +191,13 @@ IndexerConnector::IndexerConnector(const IndexerConnectorOptions& indexerConnect
                         continue;
                     }
 
+                    if (parsedData.contains("index"))
+                    {
+                        indexNameCurrentDate = parsedData.at("index").get<std::string>();
+                        base::utils::string::replaceAll(
+                            indexNameCurrentDate, "$(date)", base::utils::time::getCurrentDate("."));
+                    }
+
                     const auto dataString = parsedData.at("data").dump();
                     builderBulkIndex(bulkData, id, indexNameCurrentDate, dataString);
                 }
