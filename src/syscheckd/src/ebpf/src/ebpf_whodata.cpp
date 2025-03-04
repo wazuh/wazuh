@@ -26,6 +26,7 @@
 #endif
 
 #define TASK_COMM_LEN 32
+#define MAX_PATH_LEN 256
 #define EBPF_HC_FILE "tmp/ebpf_hc"
 
 
@@ -35,17 +36,21 @@ static volatile bool event_received = false;
 static bpf_object* global_obj = nullptr;
 w_bpf_helpers_t * bpf_helpers = NULL;
 
-
 struct file_event {
     __u32 pid;
+    __u32 ppid;
     __u32 uid;
     __u32 gid;
-    char comm[TASK_COMM_LEN];
-    char filename[256];
-    char event_type[16];
     __u64 inode;
     __u64 dev;
+    char comm[TASK_COMM_LEN];
+    char filename[MAX_PATH_LEN];
+    char event_type[16];
+    char cwd[MAX_PATH_LEN];
+    char parent_cwd[MAX_PATH_LEN];
+    char parent_comm[TASK_COMM_LEN];
 };
+
 
 static char* uint_to_str(unsigned int num) {
     std::string s = std::to_string(num);
@@ -59,17 +64,32 @@ static char* ulong_to_str(unsigned long long num) {
 int handle_event(void* ctx, void* data, size_t data_sz) {
     (void)ctx; (void)data_sz;
     file_event* e = static_cast<file_event*>(data);
+    auto logFn = fimebpf::instance().m_loggingFunction;
 
-    std::printf("Event: %s | PID: %u | UID: %u | GID: %u | Comm: %s | File: %s | inode: %llu | dev: %llu\n",
+    if (strstr(e->filename, "/var/ossec"))
+        return 0;
+
+    char log_message[1024];
+    snprintf(log_message, sizeof(log_message),
+        "Event: %s | PID: %u | UID: %u | GID: %u | Comm: %s | File: %s | inode: %llu | dev: %llu | ppid: %d | cwd: %s | parent_cwd: %s | parent_comm: %s",
         e->event_type, e->pid, e->uid, e->gid, e->comm,
         e->filename,
         (unsigned long long)e->inode,
-        (unsigned long long)e->dev);
+        (unsigned long long)e->dev,
+        e->ppid,
+        e->cwd,
+        e->parent_cwd,
+        e->parent_comm);
+    logFn(LOG_INFO, log_message);
 
     // Si encaja con tu config whodata
     directory_t* config = fimebpf::instance().m_fim_configuration_directory(e->filename);
     if (config && (config->options & WHODATA_ACTIVE) && (config->options & EBPF_DRIVER)) {
-        whodata_evt* w_evt = new whodata_evt;
+        whodata_evt* w_evt = (whodata_evt*) calloc(1, sizeof(whodata_evt));
+        if (!w_evt) {
+            logFn(LOG_ERROR, "Error allocating memory for whodata_evt structure.");
+            return 1;
+        }
         w_evt->path = strdup(e->filename);
         w_evt->process_name = strdup(e->comm);
         w_evt->user_id = uint_to_str(e->uid);
@@ -79,8 +99,19 @@ int handle_event(void* ctx, void* data, size_t data_sz) {
         w_evt->inode = ulong_to_str(e->inode);
         w_evt->dev = ulong_to_str(e->dev);
         w_evt->process_id = e->pid;
+        w_evt->ppid = e->ppid;
+        w_evt->cwd = strdup(e->cwd);
+        w_evt->parent_cwd = strdup(e->parent_cwd);
+        w_evt->parent_name = strdup(e->parent_comm);
+
+        char evt_message[1024];
+        snprintf(evt_message, sizeof(evt_message),
+            "path: %s | process_name: %s | user_id: %s | user_name: %s | group_id: %s | group_name: %s | inode: %s | dev: %s | process_id: %d | ppid: %d | cwd: %s | parent_cwd: %s | parent_name: %s",
+            w_evt->path, w_evt->process_name, w_evt->user_id, w_evt->user_name, w_evt->group_id, w_evt->group_name, w_evt->inode, w_evt->dev, w_evt->process_id, w_evt->ppid, w_evt->cwd, w_evt->parent_cwd, w_evt->parent_name);
+        logFn(LOG_INFO, evt_message);
 
         fimebpf::instance().m_fim_whodata_event(w_evt);
+        fimebpf::instance().m_free_whodata_event(w_evt);
     }
     return 0;
 }
@@ -211,11 +242,12 @@ void fimebpf_initialize(directory_t *(*fim_conf)(const char *),
                         char *(*getUser)(int),
                         char *(*getGroup)(int),
                         void (*fimWhodataEvent)(whodata_evt *),
+                        void (*freeWhodataEvent)(whodata_evt *),
                         void (*loggingFn)(modules_log_level_t, const char *),
                         char *(*abspathFn)(const char *, char *, size_t))
 {
-    fimebpf::instance().initialize(fim_conf, getUser, getGroup, fimWhodataEvent,
-                                loggingFn, abspathFn);
+    fimebpf::instance().initialize(fim_conf, getUser, getGroup, fimWhodataEvent, freeWhodataEvent,
+                                   loggingFn, abspathFn);
 }
 
 int ebpf_whodata_healthcheck() {
