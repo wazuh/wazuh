@@ -19,13 +19,17 @@
 
 struct file_event {
     __u32 pid;
+    __u32 ppid;
     __u32 uid;
     __u32 gid;
+    __u64 inode;
+    __u64 dev;
     char comm[TASK_COMM_LEN];
     char filename[MAX_PATH_LEN];
     char event_type[16];
-    __u64 inode;
-    __u64 dev;
+    char cwd[MAX_PATH_LEN];
+    char parent_cwd[MAX_PATH_LEN];
+    char parent_name[TASK_COMM_LEN];
 };
 
 struct {
@@ -36,14 +40,14 @@ struct {
 struct {
     __uint(type, BPF_MAP_TYPE_HASH);
     __type(key, __u32);
-    __type(value, char[ MAX_PATH_LEN ]);
+    __type(value, char[MAX_PATH_LEN]);
     __uint(max_entries, 1024);
 } open_path_map SEC(".maps");
 
 struct {
     __uint(type, BPF_MAP_TYPE_HASH);
     __type(key, __u32);
-    __type(value, char[ MAX_PATH_LEN ]);
+    __type(value, char[MAX_PATH_LEN]);
     __uint(max_entries, 1024);
 } unlink_path_map SEC(".maps");
 
@@ -89,9 +93,9 @@ struct {
 } cwd_heap SEC(".maps");
 
 /*
- * Function to reconstruct the full absolute path from a given struct path.
- * It traverses the dentry hierarchy and stores the constructed path in a per-CPU buffer.
- * The resulting pointer is returned via path_str.
+ * This function reconstructs the full absolute path from a struct path
+ * and stores it in out_buf. The pointer to the resulting string is
+ * returned via path_str.
  */
 statfunc long get_path_str_from_path(unsigned char **path_str, struct path *path, struct buffer *out_buf) {
     long ret;
@@ -157,7 +161,9 @@ statfunc long get_path_str_from_path(unsigned char **path_str, struct path *path
     return HALF_PERCPU_ARRAY_SIZE - buf_off - 1;
 }
 
-// Helper to safely extract inode and device information
+/*
+ * Reads inode and device info safely from the given inode pointer.
+ */
 static __always_inline void get_inode_dev(struct inode *inode_ptr, __u64 *inode, __u64 *dev) {
     if (!inode_ptr)
         return;
@@ -173,7 +179,37 @@ static __always_inline void get_inode_dev(struct inode *inode_ptr, __u64 *inode,
     }
 }
 
+/*
+ * Retrieves the working directory path for a given task.
+ * Stores the result into 'dest' if successful.
+ */
+static __always_inline int get_task_cwd(char *dest, int size, struct task_struct *task) {
+    if (!task)
+        return -1;
 
+    struct fs_struct *fs = BPF_CORE_READ(task, fs);
+    if (!fs)
+        return -1;
+
+    struct path pwd = BPF_CORE_READ(fs, pwd);
+
+    struct buffer *buf = bpf_map_lookup_elem(&cwd_heap, &(u32){0});
+    if (!buf)
+        return -1;
+
+    unsigned char *cwd_path = NULL;
+    if (get_path_str_from_path(&cwd_path, &pwd, buf) < 0)
+        return -1;
+
+    // Copy the reconstructed cwd into the destination buffer
+    bpf_probe_read_kernel_str(dest, size, (const char *)cwd_path);
+    return 0;
+}
+
+/*
+ * This function reserves space in the ring buffer for file_event,
+ * populates it with basic information.
+ */
 static __always_inline void submit_event(const char *etype,
                                          const char *filename,
                                          __u64 ino,
@@ -183,22 +219,54 @@ static __always_inline void submit_event(const char *etype,
     if (!evt)
         return;
 
-    __u64 pid_tgid = bpf_get_current_pid_tgid();
-    evt->pid = pid_tgid >> 32;
+    // Get current task to read real PID and comm, instead of possibly short-lived parent's
+    struct task_struct *current_task = (struct task_struct *)bpf_get_current_task();
 
+    // Store the PID from the task_struct
+    evt->pid = BPF_CORE_READ(current_task, tgid);
+
+    // Also store UID and GID
     __u64 uid_gid = bpf_get_current_uid_gid();
     evt->uid = uid_gid >> 32;
     evt->gid = uid_gid;
 
-    bpf_get_current_comm(evt->comm, sizeof(evt->comm));
+    // Read the comm from current_task->comm (this should match the actual command, e.g. "echo")
+    __builtin_memset(evt->comm, 0, TASK_COMM_LEN);
+    bpf_probe_read_kernel_str(evt->comm, TASK_COMM_LEN,
+                              (const char *)BPF_CORE_READ(current_task, comm));
 
+    // Copy event type
     __builtin_memcpy(evt->event_type, etype, 16);
 
+    // Copy the filename/path
     bpf_probe_read_kernel_str(evt->filename, MAX_PATH_LEN, filename);
 
+    // Inode and dev
     evt->inode = ino;
     evt->dev   = dev;
 
+    // Current process cwd
+    __builtin_memset(evt->cwd, 0, MAX_PATH_LEN);
+    get_task_cwd(evt->cwd, MAX_PATH_LEN, current_task);
+
+    // Parent process info
+    __builtin_memset(evt->parent_cwd, 0, MAX_PATH_LEN);
+    __builtin_memset(evt->parent_name, 0, TASK_COMM_LEN);
+    evt->ppid = 0;
+
+    struct task_struct *parent_task = BPF_CORE_READ(current_task, real_parent);
+    if (parent_task) {
+        evt->ppid = BPF_CORE_READ(parent_task, tgid);
+
+        // Read parent's comm
+        bpf_probe_read_kernel_str(evt->parent_name, TASK_COMM_LEN,
+                                  (const char *)BPF_CORE_READ(parent_task, comm));
+
+        // Try to retrieve parent cwd
+        get_task_cwd(evt->parent_cwd, MAX_PATH_LEN, parent_task);
+    }
+
+    // Submit the event to the ring buffer
     bpf_ringbuf_submit(evt, 0);
 }
 
@@ -206,8 +274,8 @@ SEC("kprobe/vfs_open")
 int kprobe__vfs_open(struct pt_regs *ctx)
 {
     struct path *path = (struct path *)PT_REGS_PARM1(ctx);
-     if (!path)
-         return 0;
+    if (!path)
+        return 0;
 
     struct file *file = (struct file *)PT_REGS_PARM2(ctx);
     if (!file)
@@ -221,9 +289,8 @@ int kprobe__vfs_open(struct pt_regs *ctx)
 
     struct dentry *dentry = NULL;
     bpf_probe_read_kernel(&dentry, sizeof(dentry), &path->dentry);
-    if (!dentry) {
+    if (!dentry)
         return 0;
-    }
 
     struct inode *d_inode = NULL;
     bpf_probe_read_kernel(&d_inode, sizeof(d_inode), &dentry->d_inode);
@@ -233,6 +300,7 @@ int kprobe__vfs_open(struct pt_regs *ctx)
     __u32 mode = 0;
     bpf_probe_read_kernel(&mode, sizeof(mode), &d_inode->i_mode);
 
+    // Only consider regular files
     if (((mode & 00170000) != 0100000))
         return 0;
 
@@ -248,7 +316,8 @@ int kprobe__vfs_open(struct pt_regs *ctx)
     __u64 inode = 0, dev = 0;
     get_inode_dev(d_inode, &inode, &dev);
 
-    submit_event("create", (const char*) full_path, inode, dev);
+    // Submit event
+    submit_event("create", (const char *)full_path, inode, dev);
 
     return 0;
 }
@@ -273,6 +342,7 @@ int kprobe__vfs_write(struct pt_regs *ctx)
     __u32 mode = 0;
     bpf_probe_read_kernel(&mode, sizeof(mode), &f_inode->i_mode);
 
+    // Only consider regular files
     if (((mode & 00170000) != 0100000))
         return 0;
 
@@ -289,7 +359,8 @@ int kprobe__vfs_write(struct pt_regs *ctx)
     __u64 inode = 0, dev = 0;
     get_inode_dev(f_inode, &inode, &dev);
 
-    submit_event("modify", (const char*) full_path, inode, dev);
+    // Submit event
+    submit_event("modify", (const char *)full_path, inode, dev);
 
     return 0;
 }
@@ -320,16 +391,17 @@ int kprobe__vfs_unlink(struct pt_regs *ctx)
     if (!dentry)
         return 0;
 
-   struct inode *d_inode = NULL;
-   bpf_probe_read_kernel(&d_inode, sizeof(d_inode), &dentry->d_inode);
-   if (!d_inode)
-       return 0;
+    struct inode *d_inode = NULL;
+    bpf_probe_read_kernel(&d_inode, sizeof(d_inode), &dentry->d_inode);
+    if (!d_inode)
+        return 0;
 
-   __u32 mode = 0;
-   bpf_probe_read_kernel(&mode, sizeof(mode), &d_inode->i_mode);
+    __u32 mode = 0;
+    bpf_probe_read_kernel(&mode, sizeof(mode), &d_inode->i_mode);
 
-   if (((mode & 00170000) != 0100000))
-       return 0;
+    // Only consider regular files
+    if (((mode & 00170000) != 0100000))
+        return 0;
 
     __u64 pid_tgid = bpf_get_current_pid_tgid();
     __u32 tid = (__u32)pid_tgid;
