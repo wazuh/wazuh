@@ -27,6 +27,7 @@ public:
     using get_user_t = char* (*)(int);
     using get_group_t = char* (*)(int);
     using fim_whodata_event_t = void (*)(whodata_evt*);
+    using free_whodata_event_t = void (*)(whodata_evt*);
     using loggingFunction_t = void (*)(modules_log_level_t, const char*);
     using abspath_t = char* (*)(const char*, char*, size_t);
 
@@ -35,6 +36,7 @@ public:
                     get_user_t get_user,
                     get_group_t get_group,
                     fim_whodata_event_t fim_whodata_event,
+                    free_whodata_event_t free_whodata_event,
                     loggingFunction_t loggingFunction,
                     abspath_t abspath)
     {
@@ -42,6 +44,7 @@ public:
         m_get_user = get_user;
         m_get_group = get_group;
         m_fim_whodata_event = fim_whodata_event;
+        m_free_whodata_event = free_whodata_event;
         m_loggingFunction = loggingFunction;
         m_abspath = abspath;
     }
@@ -57,6 +60,7 @@ public:
     get_user_t m_get_user = nullptr;
     get_group_t m_get_group = nullptr;
     fim_whodata_event_t m_fim_whodata_event = nullptr;
+    free_whodata_event_t m_free_whodata_event = nullptr;
     loggingFunction_t m_loggingFunction = nullptr;
     abspath_t m_abspath = nullptr;
 };
