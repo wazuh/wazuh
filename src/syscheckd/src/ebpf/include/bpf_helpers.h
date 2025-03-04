@@ -29,7 +29,12 @@ typedef struct bpf_program *(*bpf_object__next_program_t)(const struct bpf_objec
 typedef int (*bpf_program__attach_t)(struct bpf_program *prog);
 typedef int (*bpf_object__find_map_fd_by_name_t)(struct bpf_object *obj, const char *name);
 
-
+// Function pointers to execute stateless requests to BPF
+void (*bpf_object__destroy_skeleton)(struct bpf_object_skeleton *obj) = NULL;
+int (*bpf_object__open_skeleton)(struct bpf_object_skeleton *obj, const struct bpf_object_open_opts *opts) = NULL;
+int (*bpf_object__load_skeleton)(struct bpf_object_skeleton *obj) = NULL;
+int (*bpf_object__attach_skeleton)(struct bpf_object_skeleton *obj) = NULL;
+void (*bpf_object__detach_skeleton)(struct bpf_object_skeleton *obj) = NULL;
 
 /**
  * @brief Store helpers to execute stateless requests to BPF
