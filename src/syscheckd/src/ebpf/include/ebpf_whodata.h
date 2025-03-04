@@ -25,6 +25,7 @@ extern "C" {
  * @param getUser Pointer to get_user.
  * @param getGroup Pointer to get_group.
  * @param fimWhodataEvent Pointer to fim_whodata_event.
+ * @param freeWhodataEvent Pointer to free_whodata_event.
  * @param loggingFn Pointer to loggingFunction.
  * @param abspathFn Pointer to abspath.
  */
@@ -32,6 +33,7 @@ void fimebpf_initialize(directory_t *(*fim_conf)(const char *),
                         char *(*getUser)(int),
                         char *(*getGroup)(int),
                         void (*fimWhodataEvent)(whodata_evt *),
+                        void (*freeWhodataEvent)(whodata_evt *),
                         void (*loggingFn)(modules_log_level_t, const char *),
                         char *(*abspathFn)(const char *, char *, size_t));
 

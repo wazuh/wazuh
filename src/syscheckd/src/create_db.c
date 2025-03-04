@@ -689,6 +689,7 @@ void fim_checker(const char *path,
             return;
         }
 
+        mwarn("fim_checker1");
         // Delete alerts in scheduled scan is triggered in the transaction delete rows operation.
         if (evt_data->mode != FIM_SCHEDULED) {
             evt_data->type = FIM_DELETE;
@@ -697,11 +698,13 @@ void fim_checker(const char *path,
                 .config = configuration,
                 .path = path
             };
+            mwarn("fim_checker2");
             callback_context_t callback_data;
             callback_data.callback = process_delete_event;
             callback_data.context = &ctx;
             fim_db_get_path(path, callback_data);
 
+            mwarn("fim_checker3");
             if (configuration->options & CHECK_SEECHANGES)
             {
                 fim_diff_process_delete_file(path);
@@ -829,6 +832,7 @@ void fim_event_callback(void* data, void * ctx)
     struct create_json_event_ctx* ctx_data = (struct create_json_event_ctx*)ctx;
     cJSON* json_event = (cJSON*)data;
 
+    mwarn("fim_event_callback1");
     if (json_event != NULL) {
         cJSON* data_json = cJSON_GetObjectItem(json_event, "data");
         char* path;
@@ -870,7 +874,9 @@ void fim_event_callback(void* data, void * ctx)
             cJSON_ReplaceItemInObject(old_attributes_json, "perm", cJSON_Parse(old_perm_string));
         }
 #endif
+        mwarn("fim_event_callback2");
         send_syscheck_msg(json_event);
+        mwarn("fim_event_callback3");
     }
 }
 
@@ -912,7 +918,9 @@ void fim_file(const char *path,
         callback_data.callback = fim_event_callback;
         callback_data.context = &ctx;
 
+        mwarn("pre-fim_db_file_update");
         fim_db_file_update(&new_entry, callback_data);
+        mwarn("post-fim_db_file_update");
         free_file_data(new_entry.file_entry.data);
     }
 
@@ -1612,21 +1620,26 @@ cJSON * fim_json_compare_attrs(const fim_file_data * old_data, const fim_file_da
 cJSON * fim_audit_json(const whodata_evt * w_evt) {
     cJSON * fim_audit = cJSON_CreateObject();
 
-    cJSON_AddStringToObject(fim_audit, "user_id", w_evt->user_id);
-    cJSON_AddStringToObject(fim_audit, "user_name", w_evt->user_name);
-    cJSON_AddStringToObject(fim_audit, "process_name", w_evt->process_name);
+    mwarn("fim_audit_json1");
+    if (w_evt->user_id) cJSON_AddStringToObject(fim_audit, "user_id", w_evt->user_id);
+    if (w_evt->user_name) cJSON_AddStringToObject(fim_audit, "user_name", w_evt->user_name);
+    if (w_evt->process_name) cJSON_AddStringToObject(fim_audit, "process_name", w_evt->process_name);
     cJSON_AddNumberToObject(fim_audit, "process_id", w_evt->process_id);
+    mwarn("fim_audit_json2");
 #ifndef WIN32
-    cJSON_AddStringToObject(fim_audit, "cwd", w_evt->cwd);
-    cJSON_AddStringToObject(fim_audit, "group_id", w_evt->group_id);
-    cJSON_AddStringToObject(fim_audit, "group_name", w_evt->group_name);
-    cJSON_AddStringToObject(fim_audit, "audit_uid", w_evt->audit_uid);
-    cJSON_AddStringToObject(fim_audit, "audit_name", w_evt->audit_name);
-    cJSON_AddStringToObject(fim_audit, "effective_uid", w_evt->effective_uid);
-    cJSON_AddStringToObject(fim_audit, "effective_name", w_evt->effective_name);
-    cJSON_AddStringToObject(fim_audit, "parent_name", w_evt->parent_name);
-    cJSON_AddStringToObject(fim_audit, "parent_cwd", w_evt->parent_cwd);
+    mwarn("fim_audit_json3");
+    if (w_evt->cwd) cJSON_AddStringToObject(fim_audit, "cwd", w_evt->cwd);
+    if (w_evt->group_id) cJSON_AddStringToObject(fim_audit, "group_id", w_evt->group_id);
+    if (w_evt->group_name) cJSON_AddStringToObject(fim_audit, "group_name", w_evt->group_name);
+    if (w_evt->audit_uid) cJSON_AddStringToObject(fim_audit, "audit_uid", w_evt->audit_uid);
+    mwarn("fim_audit_json4");
+    if (w_evt->audit_name) cJSON_AddStringToObject(fim_audit, "audit_name", w_evt->audit_name);
+    if (w_evt->effective_uid) cJSON_AddStringToObject(fim_audit, "effective_uid", w_evt->effective_uid);
+    if (w_evt->effective_name) cJSON_AddStringToObject(fim_audit, "effective_name", w_evt->effective_name);
+    if (w_evt->parent_name) cJSON_AddStringToObject(fim_audit, "parent_name", w_evt->parent_name);
+    if (w_evt->parent_cwd) cJSON_AddStringToObject(fim_audit, "parent_cwd", w_evt->parent_cwd);
     cJSON_AddNumberToObject(fim_audit, "ppid", w_evt->ppid);
+    mwarn("fim_audit_json5");
 #endif
 
     return fim_audit;
