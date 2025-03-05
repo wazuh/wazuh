@@ -68,7 +68,7 @@ int handle_event(void* ctx, void* data, size_t data_sz) {
     if (config && (config->options & WHODATA_ACTIVE) && (config->options & EBPF_DRIVER)) {
         whodata_evt* w_evt = (whodata_evt*) calloc(1, sizeof(whodata_evt));
         if (!w_evt) {
-            logFn(LOG_ERROR, "Error allocating memory for whodata_evt structure.");
+            logFn(LOG_ERROR, FIM_ERROR_EBPF_ALLOC_W_EVT);
             return 1;
         }
         w_evt->path = strdup(e->filename);
@@ -149,21 +149,23 @@ int initialize_bpf_object(ring_buffer** rb, ring_buffer_sample_fn sample_cb) {
             bpf_helpers->bpf_object_load_skeleton != NULL &&
             bpf_helpers->bpf_object_attach_skeleton != NULL &&
             bpf_helpers->bpf_object_detach_skeleton != NULL){
-            logFn(LOG_INFO, "All functions loaded successfully from libbpf.so");
+            logFn(LOG_DEBUG_VERBOSE, FIM_EBPF_LIB_LOADED);
         } else {
-            logFn(LOG_ERROR, "Failed to load some functions from libbpf.so");
+            logFn(LOG_ERROR, FIM_ERROR_EBPF_LIB_LOAD);
             w_bpf_deinit(bpf_helpers);
             free(bpf_helpers);
             bpf_helpers = NULL;
         }
     } else {
-        logFn(LOG_ERROR, "Unable to open libbpf.so");
+        logFn(LOG_ERROR, FIM_ERROR_EBPF_LIB_OPEN);
         free(bpf_helpers);
         bpf_helpers = NULL;
     }
     obj = bpf_helpers->bpf_object_open_file(bpfobj_path, nullptr);
     if (!obj) {
-        logFn(LOG_ERROR, "Opening BPF object file failed.");
+        char error_message[1024];
+        snprintf(error_message, sizeof(error_message), FIM_ERROR_EBPF_OBJ_OPEN, bpfobj_path);
+        logFn(LOG_ERROR, error_message);
         w_bpf_deinit(bpf_helpers);
         free(bpf_helpers);
         bpf_helpers = NULL;
@@ -173,7 +175,7 @@ int initialize_bpf_object(ring_buffer** rb, ring_buffer_sample_fn sample_cb) {
 
     err = bpf_helpers->bpf_object_load(obj);
     if (err) {
-        logFn(LOG_ERROR, "Loading BPF object file failed.");
+        logFn(LOG_ERROR, FIM_ERROR_EBPF_OBJ_LOAD);
         bpf_helpers->bpf_object_close(obj);
         w_bpf_deinit(bpf_helpers);
         free(bpf_helpers);
@@ -184,7 +186,7 @@ int initialize_bpf_object(ring_buffer** rb, ring_buffer_sample_fn sample_cb) {
     bpf_program* prog;
     bpf_object__for_each_program(bpf_helpers, prog, obj) {
         if (!bpf_helpers->bpf_program_attach(prog)) {
-            logFn(LOG_ERROR, "Attaching BPF program failed.");
+            logFn(LOG_ERROR, FIM_ERROR_EBPF_OBJ_ATTACH);
             bpf_helpers->bpf_object_close(obj);
             w_bpf_deinit(bpf_helpers);
             free(bpf_helpers);
@@ -195,7 +197,7 @@ int initialize_bpf_object(ring_buffer** rb, ring_buffer_sample_fn sample_cb) {
 
     int rb_fd = bpf_helpers->bpf_object_find_map_fd_by_name(obj, "rb");
     if (rb_fd < 0) {
-        logFn(LOG_ERROR, "Finding ring buffer map failed.");
+        logFn(LOG_ERROR, FIM_ERROR_EBPF_RINGBUFF_MAP);
         bpf_helpers->bpf_object_close(obj);
         w_bpf_deinit(bpf_helpers);
         free(bpf_helpers);
@@ -205,7 +207,7 @@ int initialize_bpf_object(ring_buffer** rb, ring_buffer_sample_fn sample_cb) {
 
     *rb = bpf_helpers->ring_buffer_new(rb_fd, sample_cb, nullptr, nullptr);
     if (!*rb) {
-        logFn(LOG_ERROR, "Creating ring buffer failed.");
+        logFn(LOG_ERROR, FIM_ERROR_EBPF_RINGBUFF_NEW);
         bpf_helpers->bpf_object_close(obj);
         w_bpf_deinit(bpf_helpers);
         free(bpf_helpers);
@@ -237,6 +239,7 @@ int ebpf_whodata_healthcheck() {
     char ebpf_hc_abs_path[PATH_MAX] = {0};
     auto logFn = fimebpf::instance().m_loggingFunction;
     auto abspathFn = fimebpf::instance().m_abspath;
+    char error_message[1024];
 
     if (initialize_bpf_object(&rb, healthcheck_event)) {
         return 1;
@@ -244,30 +247,32 @@ int ebpf_whodata_healthcheck() {
 
     time_t start_time = time(nullptr);
     while (!event_received) {
+        err = bpf_helpers->ring_buffer_poll(rb, 100);
+        if (err < 0) {
+            logFn(LOG_ERROR, FIM_ERROR_EBPF_RINGBUFF_POLL);
+            break;
+        }
+        if (time(nullptr) - start_time >= 10) {
+            logFn(LOG_ERROR, FIM_ERROR_EBPF_HEALTHCHECK_TIMEOUT);
+            break;
+        }
         if (!epbf_hc_created) {
             abspathFn(EBPF_HC_FILE, ebpf_hc_abs_path, sizeof(ebpf_hc_abs_path));
             std::ofstream file(ebpf_hc_abs_path);
             if (!file.is_open()) {
-                logFn(LOG_ERROR, "Could not create healthcheck file.");
+                snprintf(error_message, sizeof(error_message), FIM_ERROR_EBPF_HEALTHCHECK_FILE, ebpf_hc_abs_path);
+                logFn(LOG_ERROR, error_message);
                 break;
             }
             file << "Testing eBPF healthcheck\n";
             file.close();
             epbf_hc_created = true;
         }
-        err = bpf_helpers->ring_buffer_poll(rb, 100);
-        if (err < 0) {
-            logFn(LOG_ERROR, "Polling ring buffer failed.");
-            break;
-        }
-        if (time(nullptr) - start_time >= 10) {
-            logFn(LOG_ERROR, "Timeout healthcheck.");
-            break;
-        }
     }
 
     if (std::remove(ebpf_hc_abs_path) != 0) {
-        logFn(LOG_ERROR, "Healthcheck file can't be removed.");
+        snprintf(error_message, sizeof(error_message), FIM_ERROR_EBPF_HEALTHCHECK_FILE_DEL, ebpf_hc_abs_path);
+        logFn(LOG_ERROR, error_message);
     }
     bpf_helpers->ring_buffer_free(rb);
     bpf_helpers->bpf_object_close(global_obj);
@@ -276,7 +281,7 @@ int ebpf_whodata_healthcheck() {
         return 1;
     }
 
-    logFn(LOG_INFO, "Healthcheck for eBPF FIM whodata module success.");
+    logFn(LOG_INFO, FIM_EBPF_HEALTHCHECK_SUCCESS);
     return 0;
 }
 
@@ -292,7 +297,7 @@ int ebpf_whodata() {
     while (true) {
         err = bpf_helpers->ring_buffer_poll(rb, 100);
         if (err < 0) {
-            logFn(LOG_INFO, "Polling ring buffer failed.");
+            logFn(LOG_INFO, FIM_ERROR_EBPF_RINGBUFF_POLL);
             break;
         }
     }

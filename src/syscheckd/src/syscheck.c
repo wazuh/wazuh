@@ -342,6 +342,7 @@ void check_ebpf_availability() {
         }
 
         syscheck.enable_whodata_ebpf = 0;
+        syscheck.enable_whodata_audit = 1;
     }
 }
 #endif /* WIN32 */
