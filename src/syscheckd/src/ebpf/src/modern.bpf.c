@@ -32,7 +32,7 @@
 #define LIMIT_HALF_PERCPU_ARRAY_SIZE(x) ((x) & (HALF_PERCPU_ARRAY_SIZE - 1))
 
 /* Always-inline attribute for helper functions. */
-#define statfunc static __attribute__((__always_inline__))
+#define statfunc static inline
 
 /*
 * Used to hold all file-related event information
@@ -154,8 +154,9 @@ statfunc long get_path_str_from_path(unsigned char **path_str,
             break;
 
         volatile size_t new_buf_off = buf_off - name_len;
-        ret = bpf_probe_read_kernel_str(&(out_buf->data[LIMIT_HALF_PERCPU_ARRAY_SIZE(new_buf_off)]),
-                                        name_len, (const char *)name);
+        ret = bpf_probe_read_kernel_str(
+                  &(out_buf->data[LIMIT_HALF_PERCPU_ARRAY_SIZE(new_buf_off)]),
+                  name_len, (const char *)name);
         if (ret < 0)
             return ret;
 
@@ -250,9 +251,7 @@ statfunc void submit_event(const char *filename,
     evt->gid = uid_gid;
 
     /* Command name of the current task */
-    __builtin_memset(evt->comm, 0, TASK_COMM_LEN);
-    bpf_probe_read_kernel_str(evt->comm, TASK_COMM_LEN,
-                              (const char *)BPF_CORE_READ(current_task, comm));
+    bpf_probe_read_kernel_str(evt->comm, TASK_COMM_LEN, (const char *)BPF_CORE_READ(current_task, comm));
 
     /* Copy the path/filename */
     bpf_probe_read_kernel_str(evt->filename, MAX_PATH_LEN, filename);
@@ -261,15 +260,16 @@ statfunc void submit_event(const char *filename,
     evt->inode = ino;
     evt->dev   = dev;
 
-    /* CWD of current process */
-    __builtin_memset(evt->cwd, 0, MAX_PATH_LEN);
+    /* Clear buffers safely */
+    bpf_probe_read_kernel_str(evt->cwd, MAX_PATH_LEN, "");
+    bpf_probe_read_kernel_str(evt->parent_cwd, MAX_PATH_LEN, "");
+    bpf_probe_read_kernel_str(evt->parent_name, TASK_COMM_LEN, "");
+
+    /* Get process cwd */
     get_task_cwd(evt->cwd, MAX_PATH_LEN, current_task);
 
     /* Parent process info */
-    __builtin_memset(evt->parent_cwd, 0, MAX_PATH_LEN);
-    __builtin_memset(evt->parent_name, 0, TASK_COMM_LEN);
     evt->ppid = 0;
-
     struct task_struct *parent_task = BPF_CORE_READ(current_task, real_parent);
     if (parent_task) {
         evt->ppid = BPF_CORE_READ(parent_task, tgid);
@@ -301,9 +301,6 @@ int kprobe__vfs_open(struct pt_regs *ctx)
     /* Check if this file is truly created (FMODE_CREATED). */
     __u32 f_mode = 0;
     bpf_probe_read_kernel(&f_mode, sizeof(f_mode), &file->f_mode);
-
-    if (!(f_mode & FMODE_CREATED))
-        return 0;
 
     /* Retrieve the dentry. */
     struct dentry *dentry = NULL;
@@ -343,53 +340,6 @@ int kprobe__vfs_open(struct pt_regs *ctx)
 }
 
 /*
-* Intercepts vfs_write calls to detect modifications (modify).
-*/
-SEC("kprobe/vfs_write")
-int kprobe__vfs_write(struct pt_regs *ctx)
-{
-    struct file *file = (struct file *)PT_REGS_PARM1(ctx);
-    if (!file)
-        return 0;
-
-    struct inode *f_inode = NULL;
-    bpf_probe_read_kernel(&f_inode, sizeof(f_inode), &file->f_inode);
-    if (!f_inode)
-        return 0;
-
-    /* If it is a brand new file (FMODE_CREATED), skip here (already reported). */
-    __u32 f_mode = 0;
-    bpf_probe_read_kernel(&f_mode, sizeof(f_mode), &file->f_mode);
-    if (f_mode & FMODE_CREATED)
-        return 0;
-
-    /* Only consider regular files. */
-    __u32 mode = 0;
-    bpf_probe_read_kernel(&mode, sizeof(mode), &f_inode->i_mode);
-    if (((mode & 00170000) != 0100000))
-        return 0;
-
-    /* Reconstruct the path. */
-    struct path fpath = BPF_CORE_READ(file, f_path);
-    struct buffer *string_buf = bpf_map_lookup_elem(&heaps_map, &(u32){0});
-    if (!string_buf)
-        return 0;
-
-    u8 *full_path = NULL;
-    if (get_path_str_from_path(&full_path, &fpath, string_buf) < 0)
-        return 0;
-
-    /* Extract inode/device. */
-    __u64 inode = 0, dev = 0;
-    get_inode_dev(f_inode, &inode, &dev);
-
-    /* Report file modification. */
-    submit_event((const char *)full_path, inode, dev);
-
-    return 0;
-}
-
-/*
 * Caches the user-supplied path for an unlink operation in unlink_path_map
 * so we can retrieve it on vfs_unlink.
 */
@@ -403,11 +353,19 @@ int tracepoint__syscalls__sys_enter_unlinkat(struct trace_event_raw_sys_enter *c
     __u64 pid_tgid = bpf_get_current_pid_tgid();
     __u32 tid = (__u32)pid_tgid;
 
-    char path_buf[MAX_PATH_LEN];
-    __builtin_memset(path_buf, 0, sizeof(path_buf));
-    bpf_probe_read_user_str(path_buf, sizeof(path_buf), user_filename);
+    /* We avoid large stack usage by using our heaps_map buffer. */
+    struct buffer *tmp_buf = bpf_map_lookup_elem(&heaps_map, &(u32){0});
+    if (!tmp_buf)
+        return 0;
 
-    bpf_map_update_elem(&unlink_path_map, &tid, path_buf, BPF_ANY);
+    /* Use bpf_probe_read_kernel_str() with an empty string to clear the buffer safely */
+    bpf_probe_read_kernel_str(tmp_buf->data, MAX_PATH_LEN, "");
+
+    /* Read the user filename into our buffer */
+    bpf_probe_read_user_str(tmp_buf->data, MAX_PATH_LEN, user_filename);
+
+    /* Now store that path in the unlink_path_map. */
+    bpf_map_update_elem(&unlink_path_map, &tid, tmp_buf->data, BPF_ANY);
     return 0;
 }
 
