@@ -756,7 +756,7 @@ STATIC void fim_link_update(const char *new_path, directory_t *configuration) {
     if (in_configuration == false) {
 #ifdef ENABLE_AUDIT
         // Remove the audit rule for the previous link only if the path is not configured in other entry.
-        if ((configuration->options & WHODATA_ACTIVE) && (dir_it->options & AUDIT_DRIVER)) {
+        if ((configuration->options & WHODATA_ACTIVE) && (configuration->options & AUDIT_DRIVER)) {
             remove_audit_rule_syscheck(configuration->symbolic_links);
         }
 #endif

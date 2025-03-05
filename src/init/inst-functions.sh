@@ -906,10 +906,10 @@ InstallCommon()
 
       if [ -f external/libbpf-bootstrap/build/modern.bpf.o ]
           then
-              ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} external/libbpf-bootstrap/build/modern.bpf.o ${INSTALLDIR}/bin
+              ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} external/libbpf-bootstrap/build/modern.bpf.o ${INSTALLDIR}/lib
 
               if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]) && [ ${DIST_VER} -le 5 ]; then
-                  chcon -t textrel_shlib_t ${INSTALLDIR}/bin/modern.bpf.o
+                  chcon -t textrel_shlib_t ${INSTALLDIR}/lib/modern.bpf.o
               fi
       fi
     fi

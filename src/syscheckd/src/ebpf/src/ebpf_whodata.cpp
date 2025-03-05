@@ -25,6 +25,8 @@
 
 #define TASK_COMM_LEN 32
 #define EBPF_HC_FILE "tmp/ebpf_hc"
+#define LIB_INSTALL_PATH "lib/libbpf.so"
+#define BPF_OBJ_INSTALL_PATH "lib/modern.bpf.o"
 
 
 // Global
@@ -104,9 +106,15 @@ int initialize_bpf_object(ring_buffer** rb, ring_buffer_sample_fn sample_cb) {
     bpf_object* obj = nullptr;
     int err;
     auto logFn = fimebpf::instance().m_loggingFunction;
+    auto abspathFn = fimebpf::instance().m_abspath;
+    char libbpf_path[PATH_MAX] = {0};
+    char bpfobj_path[PATH_MAX] = {0};
+
+    abspathFn(LIB_INSTALL_PATH, libbpf_path, sizeof(libbpf_path));
+    abspathFn(BPF_OBJ_INSTALL_PATH, bpfobj_path, sizeof(bpfobj_path));
 
     bpf_helpers = (w_bpf_helpers_t *)calloc(1, sizeof(w_bpf_helpers_t));
-    bpf_helpers->module = dlopen("/var/ossec/lib/libbpf.so", RTLD_LAZY);
+    bpf_helpers->module = dlopen(libbpf_path, RTLD_LAZY);
 
 
     if (bpf_helpers->module) {
@@ -153,7 +161,7 @@ int initialize_bpf_object(ring_buffer** rb, ring_buffer_sample_fn sample_cb) {
         free(bpf_helpers);
         bpf_helpers = NULL;
     }
-    obj = bpf_helpers->bpf_object_open_file("/var/ossec/bin/modern.bpf.o", nullptr);
+    obj = bpf_helpers->bpf_object_open_file(bpfobj_path, nullptr);
     if (!obj) {
         logFn(LOG_ERROR, "Opening BPF object file failed.");
         w_bpf_deinit(bpf_helpers);
