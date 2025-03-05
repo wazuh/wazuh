@@ -1363,7 +1363,7 @@ checks:
       - 'not c:sh -c "systemctl is-enabled tftpd-hpa.service & systemctl is-active tftpd-hpa.service" -> r:^active$|^enabled$'
 
   # 2.1.17 Ensure web proxy server services are not in use. (Automated)
-  - id: 28555
+  - id: 28562
     title: "Ensure web proxy server services are not in use."
     description: "Squid is a standard proxy server used in many distributions and environments."
     rationale: "Unless a system is specifically set up to act as a proxy server, it is recommended that the squid package be removed to reduce the potential attack surface. Note: Several HTTP proxy servers exist. These should be checked and removed unless required."
@@ -1387,7 +1387,7 @@ checks:
       - 'not c:sh -c "systemctl is-enabled squid.service & systemctl is-active squid.service" -> r:^active$|^enabled$'
 
   # 2.1.18 Ensure web server services are not in use. (Automated)
-  - id: 28562
+  - id: 28559
     title: "Ensure web server services are not in use."
     description: "Web servers provide the ability to host web site content."
     rationale: "Unless there is a local site approved requirement to run a web server service on the system, web server packages should be removed to reduce the potential attack surface."
@@ -1642,8 +1642,8 @@ checks:
       - soc_2: ["CC4.1", "CC5.2"]
     condition: all
     rules:
-      - 'c:systemctl is-enabled systemd-timesyncd.service" -> r:^enabled$'
-      - 'c:"systemctl is-active systemd-timesyncd.service" -> r:^active$'
+      - "c:systemctl is-enabled systemd-timesyncd.service -> r:^enabled$"
+      - "c:systemctl is-active systemd-timesyncd.service -> r:^active$"
 
   # 2.3.3.1 Ensure chrony is configured with authorized timeserver. (Manual) - Not Implemented
 
@@ -2463,7 +2463,7 @@ checks:
       - 'f:/etc/ssh/sshd_config -> r:^\s*\t*Allowusers\s*\t*\w+|^\s*\t*Denyusers\s*\t*\w+|^\s*\t*Allowgroups\s*\t*\w+|^\s*\t*Denygroups\s*\t*\w+'
 
   # 5.1.5 Ensure sshd Banner is configured. (Automated)
-  - id: 28599
+  - id: 28648
     title: "Ensure sshd Banner is configured."
     description: "The Banner parameter specifies a file whose contents must be sent to the remote user before authentication is permitted. By default, no banner is displayed."
     rationale: "Banners are used to warn connecting users of the particular site's policy regarding connection. Presenting a warning message prior to the normal user login may assist the prosecution of trespassers on the computer system."
@@ -3259,6 +3259,7 @@ checks:
       - soc_2: ["CC6.1"]
     condition: all
     rules:
+      - "d:/etc/security/"
       - 'not d:/etc/security/pwquality.conf.d -> r:\.*.conf -> !r:^# && r:^\s*\t*ucredit && n:\s*\t*=\s*\t*(\d+) compare > 0'
       - 'not d:/etc/security/pwquality.conf.d -> r:\.*.conf -> !r:^# && r:^\s*\t*lcredit && n:\s*\t*=\s*\t*(\d+) compare > 0'
       - 'not d:/etc/security/pwquality.conf.d -> r:\.*.conf -> !r:^# && r:^\s*\t*dcredit && n:\s*\t*=\s*\t*(\d+) compare > 0'
@@ -3284,6 +3285,7 @@ checks:
       - soc_2: ["CC6.1"]
     condition: all
     rules:
+      - "d:/etc/security/"
       - 'd:/etc/security/pwquality.conf.d -> r:\.*.conf -> !r:^# && r:^\s*\t*maxrepeat && n:\s*\t*=\s*\t*(\d+) compare <= 3'
       - 'd:/etc/security/pwquality.conf.d -> r:\.*.conf -> !r:^# && r:^\s*\t*maxrepeat && n:\s*\t*=\s*\t*(\d+) compare != 0'
       - 'not f:/etc/pam.d/common-password -> !r:^# && r:^\s*\t*maxrepeat'
@@ -3307,6 +3309,7 @@ checks:
       - soc_2: ["CC6.1"]
     condition: all
     rules:
+      - "d:/etc/security/"
       - 'd:/etc/security/pwquality.conf.d -> r:\.*.conf -> !r:^# && r:^\s*\t*maxsequence && n:\s*\t*=\s*\t*(\d+) compare <= 3'
       - 'd:/etc/security/pwquality.conf.d -> r:\.*.conf -> !r:^# && r:^\s*\t*maxsequence && n:\s*\t*=\s*\t*(\d+) compare != 0'
       - 'not f:/etc/pam.d/common-password -> !r:^# && r:^\s*\t*maxsequence'
@@ -3368,7 +3371,7 @@ checks:
       - soc_2: ["CC6.1"]
     condition: all
     rules:
-      - 'd:/etc/security/pwquality.conf.d -> !r:^# && r:\.*.conf -> r:^\s*\t*enforce_for_root'
+      - 'd:/etc/security/pwquality.conf.d -> r:\.*.conf -> !r:^# &&  r:^\s*\t*enforce_for_root'
 
   # 5.3.3.3.1 Ensure password history remember is configured. (Automated)
   - id: 28733
@@ -3925,10 +3928,10 @@ checks:
       - nist_sp_800-53: ["AU-7"]
       - pci_dss_v3.2.1: ["10.2", "10.3"]
       - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
-    condition: none
+    condition: any
     rules:
-      - 'f:/etc/systemd/journald.conf -> !r:^# && r:ForwardToSyslog\s*=\s*yes'
-      - 'd:/etc/systemd/journald.conf.d -> r:\.*.conf -> !r:^# && r:ForwardToSyslog\s*=\s*yes'
+      - 'f:/etc/systemd/journald.conf -> !r:^# && r:ForwardToSyslog\s*=\s*no'
+      - 'd:/etc/systemd/journald.conf.d -> r:\.*.conf -> !r:^# && r:ForwardToSyslog\s*=\s*no'
 
   # 6.2.1.1.5 Ensure journald Storage is configured. (Automated)
   - id: 28618
@@ -4592,9 +4595,9 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition: none
+    condition: all
     rules:
-      - 'f:/etc/audit/auditd.conf -> r:log_group\s*\t*= && !r:adm|root'
+      - 'not f:/etc/audit/auditd.conf -> r:log_group\s*\t*= && !r:adm|root'
 
   # 6.3.4.4 Ensure the audit log file directory mode is configured. (Automated) - Not Implemented
 
