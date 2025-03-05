@@ -315,7 +315,11 @@ void start_daemon()
 
     // Launch Whodata ebpf real-time thread
     if(syscheck.enable_whodata_ebpf) {
+#ifdef __linux__
         w_create_thread(ebpf_whodata, NULL);
+#else
+        merror(FIM_ERROR_EBPF_NOT_SUPPORTED);
+#endif
     }
 
     // Before entering in daemon mode itself

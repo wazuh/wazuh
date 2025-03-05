@@ -882,7 +882,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                 goto out_free;
             }
         }
-        /* Check whodata */
+        /* Check whodata driver */
         else if (strcmp(*attrs, xml_driver) == 0) {
 #ifdef __linux__
             if (strcmp(*values, "ebpf") == 0) {
@@ -896,7 +896,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                 goto out_free;
             }
 #else
-            mdebug1("Option '%s' is only available on Linux systems.", xml_check_attrs);
+            mwarn("Option '%s' is only available on Linux systems.", xml_check_attrs);
 #endif
         }
         /* Check permission */

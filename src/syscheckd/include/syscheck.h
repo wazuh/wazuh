@@ -914,4 +914,10 @@ void fim_send_sync_state(const char *location, const char* msg);
  */
 bool fim_shutdown_process_on();
 
+#ifdef __linux__
+/**
+ * @brief Initializes eBPF and does the healthcheck to check availability.
+ */
+void check_ebpf_availability();
+#endif
 #endif /* SYSCHECK_H */

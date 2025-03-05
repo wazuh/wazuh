@@ -334,6 +334,7 @@ static void transaction_callback(ReturnTypeCallback resultType, const cJSON* res
     }
 
     if (configuration = fim_configuration_directory(path), configuration == NULL) {
+        mdebug2(FIM_CONFIGURATION_NOTFOUND, "file", path);
         goto end;
     }
 
@@ -647,6 +648,7 @@ void fim_checker(const char *path,
 
     configuration = fim_configuration_directory(path);
     if (configuration == NULL) {
+        mdebug2(FIM_CONFIGURATION_NOTFOUND, "file", path);
         return;
     }
 
@@ -689,7 +691,6 @@ void fim_checker(const char *path,
             return;
         }
 
-        mwarn("fim_checker1");
         // Delete alerts in scheduled scan is triggered in the transaction delete rows operation.
         if (evt_data->mode != FIM_SCHEDULED) {
             evt_data->type = FIM_DELETE;
@@ -698,13 +699,11 @@ void fim_checker(const char *path,
                 .config = configuration,
                 .path = path
             };
-            mwarn("fim_checker2");
             callback_context_t callback_data;
             callback_data.callback = process_delete_event;
             callback_data.context = &ctx;
             fim_db_get_path(path, callback_data);
 
-            mwarn("fim_checker3");
             if (configuration->options & CHECK_SEECHANGES)
             {
                 fim_diff_process_delete_file(path);
@@ -832,7 +831,6 @@ void fim_event_callback(void* data, void * ctx)
     struct create_json_event_ctx* ctx_data = (struct create_json_event_ctx*)ctx;
     cJSON* json_event = (cJSON*)data;
 
-    mwarn("fim_event_callback1");
     if (json_event != NULL) {
         cJSON* data_json = cJSON_GetObjectItem(json_event, "data");
         char* path;
@@ -874,9 +872,7 @@ void fim_event_callback(void* data, void * ctx)
             cJSON_ReplaceItemInObject(old_attributes_json, "perm", cJSON_Parse(old_perm_string));
         }
 #endif
-        mwarn("fim_event_callback2");
         send_syscheck_msg(json_event);
-        mwarn("fim_event_callback3");
     }
 }
 
@@ -918,9 +914,7 @@ void fim_file(const char *path,
         callback_data.callback = fim_event_callback;
         callback_data.context = &ctx;
 
-        mwarn("pre-fim_db_file_update");
         fim_db_file_update(&new_entry, callback_data);
-        mwarn("post-fim_db_file_update");
         free_file_data(new_entry.file_entry.data);
     }
 
@@ -1033,6 +1027,7 @@ void fim_process_missing_entry(char * pathname, fim_event_mode mode, whodata_evt
 
     configuration = fim_configuration_directory(pathname);
     if (NULL == configuration) {
+        mdebug2(FIM_CONFIGURATION_NOTFOUND, "file", path);
         return;
     }
 
