@@ -9,7 +9,7 @@ from wazuh.core.indexer.rbac import RBACIndex
 class UsersIndex(RBACIndex):
     """Set of methods to interact with the `users` index."""
 
-    INDEX = 'users'
+    INDEX = 'wazuh-users'
     KEY = 'user'
 
     async def create(
