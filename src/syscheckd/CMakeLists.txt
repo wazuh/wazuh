@@ -73,7 +73,6 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "HP-UX")
 endif(APPLE)
 
 add_subdirectory("src/db")
-add_subdirectory("src/ebpf")
 
 file(GLOB SYSCHECKD_SRC
      "${CMAKE_SOURCE_DIR}/src/*.c"
@@ -89,7 +88,7 @@ else()
     add_executable(wazuh-syscheckd ${SYSCHECKD_SRC})
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
-target_link_libraries(wazuh-syscheckd fimdb fimebpf wazuhext pthread wazuh rootcheck)
+target_link_libraries(wazuh-syscheckd fimdb wazuhext pthread wazuh rootcheck)
 
 if (UNIX)
     target_link_libraries(wazuh-syscheckd dl)
@@ -112,6 +111,10 @@ if (UNIX)
     else()
         string(APPEND CMAKE_EXE_LINKER_FLAGS " -Wl,-rpath,@executable_path/../lib")
     endif(NOT APPLE)
+    if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+        add_subdirectory("src/ebpf")
+        target_link_libraries(wazuh-syscheckd fimebpf)
+    endif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
 endif(UNIX)
 
 if(UNIT_TEST)
