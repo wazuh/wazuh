@@ -3883,7 +3883,7 @@ checks:
       - "f:/etc/aide/aide.conf -> r:/sbin/augenrules p+i+n+u+g+s+b+acl+xattrs+sha512"
 
   # 6.2.1.1.1 Ensure journald service is enabled and active. (Automated)
-  - id: 28614
+  - id: 28616
     title: "Ensure journald service is enabled and active."
     description: "Ensure that the systemd-journald service is enabled to allow capturing of logging events."
     rationale: "If the systemd-journald service is not enabled to start on boot, the system will not capture logging events."
@@ -3983,7 +3983,7 @@ checks:
       - 'd:/etc/systemd/journald.conf.d -> r:\.*.conf -> r:^Compress=yes'
 
   # 6.2.1.2.1 Ensure systemd-journal-remote is installed. (Automated)
-  - id: 28616
+  - id: 28614
     title: "Ensure systemd-journal-remote is installed."
     description: "Journald systemd-journal-remote supports the ability to send log events it gathers to a remote log host or to receive messages from remote hosts, thus enabling centralized log management."
     rationale: "Storing log data on a remote host protects log integrity from local attacks. If an attacker gains root access on the local system, they could tamper with or remove log data that is stored on the local system."
