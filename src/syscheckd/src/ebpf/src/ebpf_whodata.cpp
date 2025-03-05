@@ -167,7 +167,13 @@ int initialize_bpf_object(ring_buffer** rb, ring_buffer_sample_fn sample_cb) {
         free(bpf_helpers);
         bpf_helpers = NULL;
     }
-    obj = bpf_helpers->bpf_object_open_file(bpfobj_path, nullptr);
+
+    if (bpf_helpers != NULL) {
+        obj = bpf_helpers->bpf_object_open_file(bpfobj_path, nullptr);
+    } else {
+        logFn(LOG_ERROR,"Error: bpf_helpers is NULL");
+    }
+
     if (!obj) {
         char error_message[1024];
         snprintf(error_message, sizeof(error_message), FIM_ERROR_EBPF_OBJ_OPEN, bpfobj_path);
@@ -240,7 +246,7 @@ void ebpf_pop_events() {
         }
 
         if (event) {
-            whodata_evt* w_evt = new whodata_evt{};
+            whodata_evt* w_evt = new whodata_evt();
 
             w_evt->path = strdup(event->filename);
             w_evt->process_name = strdup(event->comm);
