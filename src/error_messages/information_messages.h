@@ -64,6 +64,7 @@
 #define FIM_AUDIT_QUEUE_SIZE                "(6046): Internal audit queue size set to '%d'."
 
 #define FIM_EBPF_INIT                       "(6047): Initializing eBPF driver for FIM whodata."
+#define FIM_EBPF_HEALTHCHECK_SUCCESS        "(6048): Healthcheck for eBPF FIM whodata module success."
 
 /* wazuh-logtest information messages */
 #define LOGTEST_INITIALIZED                 "(7200): Logtest started"

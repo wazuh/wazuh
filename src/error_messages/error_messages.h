@@ -477,6 +477,18 @@
 
 #define FIM_ERROR_EBPF_NOT_SUPPORTED                "(6966): Wrong configuration. eBPF is not available on non-Linux systems."
 #define FIM_ERROR_EBPF_HEALTHCHECK                  "(6967): The eBPF healthcheck has failed. Switching all whodata eBPF configuration to audit."
+#define FIM_ERROR_EBPF_ALLOC_W_EVT                  "(6968): Error allocating memory for whodata_evt structure."
+#define FIM_ERROR_EBPF_LIB_LOAD                     "(6969): Failed to load some functions from libbpf.so."
+#define FIM_ERROR_EBPF_LIB_OPEN                     "(6970): Unable to open libbpf.so."
+#define FIM_ERROR_EBPF_OBJ_OPEN                     "(6971): Opening BPF object file failed. Path: %s"
+#define FIM_ERROR_EBPF_OBJ_LOAD                     "(6972): Loading BPF object file failed."
+#define FIM_ERROR_EBPF_OBJ_ATTACH                   "(6973): Attaching BPF program failed."
+#define FIM_ERROR_EBPF_RINGBUFF_MAP                 "(6974): Finding ring buffer map failed."
+#define FIM_ERROR_EBPF_RINGBUFF_NEW                 "(6975): Creating ring buffer failed."
+#define FIM_ERROR_EBPF_HEALTHCHECK_FILE             "(6976): Could not create healthcheck file. Path: %s"
+#define FIM_ERROR_EBPF_RINGBUFF_POLL                "(6977): Polling ring buffer failed."
+#define FIM_ERROR_EBPF_HEALTHCHECK_TIMEOUT          "(6978): eBPF healthcheck timeout."
+#define FIM_ERROR_EBPF_HEALTHCHECK_FILE_DEL         "(6979): Healthcheck file can't be removed. Path: %s"
 
 /* Wazuh Logtest error messsages */
 #define LOGTEST_ERROR_BIND_SOCK                     "(7300): Unable to bind to socket '%s'. Errno: (%d) %s"
