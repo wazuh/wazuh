@@ -172,7 +172,7 @@ full_filename,owner_name,group_name,mode,type,prot_permissions,size_bytes,size_e
 /var/ossec/integrations/virustotal.py,root,wazuh,750,file,-rwxr-x---,,
 /var/ossec/lib/libbpf.so,root,wazuh,750,file,-rwxr-x---,,
 /var/ossec/lib/libfimebpf.so,root,wazuh,750,file,-rwxr-x---,,
-/var/ossec/bin/modern.bpf.o,root,wazuh,750,file,-rwxr-x---,,
+/var/ossec/lib/modern.bpf.o,root,wazuh,750,file,-rwxr-x---,,
 /var/ossec/lib/libcontent_manager.so,root,wazuh,750,file,-rwxr-x---,,
 /var/ossec/lib/libdbsync.so,root,wazuh,750,file,-rwxr-x---,,
 /var/ossec/lib/libfimdb.so,root,wazuh,750,file,-rwxr-x---,,
