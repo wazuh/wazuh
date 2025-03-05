@@ -5,8 +5,8 @@ from wazuh.core.indexer.rbac import RBACIndex
 class RulesIndex(RBACIndex):
     """Set of methods to interact with the `rules` index."""
 
+    INDEX = 'wazuh-rules'
     KEY = 'rule'
-    INDEX = 'rules'
 
     async def create(self, rule: Rule) -> Rule:
         """Create a new rule.

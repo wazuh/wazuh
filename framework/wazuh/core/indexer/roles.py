@@ -5,7 +5,7 @@ from wazuh.core.indexer.rbac import RBACIndex
 class RolesIndex(RBACIndex):
     """Set of methods to interact with the `roles` index."""
 
-    INDEX = 'roles'
+    INDEX = 'wazuh-roles'
     KEY = 'role'
 
     async def create(self, role: Role) -> Role:

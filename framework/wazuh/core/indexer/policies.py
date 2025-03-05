@@ -5,7 +5,7 @@ from wazuh.core.indexer.rbac import RBACIndex
 class PoliciesIndex(RBACIndex):
     """Set of methods to interact with the `policies` index."""
 
-    INDEX = 'policies'
+    INDEX = 'wazuh-policies'
     KEY = 'policy'
 
     async def create(self, policy: Policy) -> Policy:
