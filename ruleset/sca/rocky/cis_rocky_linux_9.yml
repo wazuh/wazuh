@@ -2441,9 +2441,14 @@ checks:
       - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition: none
+    condition: all
     rules:
-      - 'c:stat -c "%n %a" /sbin/auditctl /sbin/aureport /sbin/ausearch /sbin/autrace /sbin/auditd /sbin/augenrules -> r:\w+ && !r:000|010|040|050|001|011|041|051|004|014|044|054|005|015|045|055|700|710|740|750|701|711|741|751|704|714|744|754|705|715|745|755'
+      - 'c:stat -c "%n %a" /sbin/auditctl -> r:\w+ && r:000|010|040|050|001|011|041|051|004|014|044|054|005|015|045|055|700|710|740|750|701|711|741|751|704|714|744|754|705|715|745|755'
+      - 'c:stat -c "%n %a" /sbin/aureport -> r:\w+ && r:000|010|040|050|001|011|041|051|004|014|044|054|005|015|045|055|700|710|740|750|701|711|741|751|704|714|744|754|705|715|745|755'
+      - 'c:stat -c "%n %a" /sbin/ausearch -> r:\w+ && r:000|010|040|050|001|011|041|051|004|014|044|054|005|015|045|055|700|710|740|750|701|711|741|751|704|714|744|754|705|715|745|755'
+      - 'c:stat -c "%n %a" /sbin/autrace -> r:\w+ && r:000|010|040|050|001|011|041|051|004|014|044|054|005|015|045|055|700|710|740|750|701|711|741|751|704|714|744|754|705|715|745|755'
+      - 'c:stat -c "%n %a" /sbin/auditd -> r:\w+ && r:000|010|040|050|001|011|041|051|004|014|044|054|005|015|045|055|700|710|740|750|701|711|741|751|704|714|744|754|705|715|745|755'
+      - 'c:stat -c "%n %a" /sbin/augenrules -> r:\w+ && r:000|010|040|050|001|011|041|051|004|014|044|054|005|015|045|055|700|710|740|750|701|711|741|751|704|714|744|754|705|715|745|755'
 
   # 4.1.4.9 Ensure audit tools are owned by root. (Automated)
   - id: 31598
@@ -2464,9 +2469,14 @@ checks:
       - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition: none
+    condition: all
     rules:
-      - 'c:stat -c "%n %U" /sbin/auditctl /sbin/aureport /sbin/ausearch /sbin/autrace /sbin/auditd /sbin/augenrules -> !r:root|\\s*'
+      - 'c:stat -c "%n %U" /sbin/auditctl -> r:root$'
+      - 'c:stat -c "%n %U" /sbin/aureport -> r:root$'
+      - 'c:stat -c "%n %U" /sbin/ausearch -> r:root$'
+      - 'c:stat -c "%n %U" /sbin/autrace -> r:root$'
+      - 'c:stat -c "%n %U" /sbin/auditd -> r:root$'
+      - 'c:stat -c "%n %U" /sbin/augenrules -> r:root$'
 
   # 4.1.4.10 Ensure audit tools belong to group root. (Automated)
   - id: 31599
@@ -2487,9 +2497,14 @@ checks:
       - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition: none
+    condition: all
     rules:
-      - 'c:stat -c "%n %a %U %G" /sbin/auditctl /sbin/aureport /sbin/ausearch /sbin/autrace /sbin/auditd /sbin/augenrules -> !r:000|010|040|050|001|011|041|051|004|014|044|054|005|015|045|055|700|710|740|750|701|711|741|751|704|714|744|754|705|715|745|755 && r:\s*\t*root\s*\t*root'
+      - 'c:stat -c "%n %G" /sbin/auditctl -> r:root$'
+      - 'c:stat -c "%n %G" /sbin/aureport -> r:root$'
+      - 'c:stat -c "%n %G" /sbin/ausearch -> r:root$'
+      - 'c:stat -c "%n %G" /sbin/autrace -> r:root$'
+      - 'c:stat -c "%n %G" /sbin/auditd -> r:root$'
+      - 'c:stat -c "%n %G" /sbin/augenrules -> r:root$'
 
   ###############################################
   # 4.2 Configure Logging
@@ -3924,7 +3939,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'c:stat /etc/group- -> r:Access:\s*\(0644/-rw-------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat -Lc "%n %a %u %U %g %G" /etc/group- -> r:0 root 0 root && r:644|640|604|600|400|500'
 
   # 6.1.5 Ensure permissions on /etc/shadow are configured. (Automated)
   - id: 31660
