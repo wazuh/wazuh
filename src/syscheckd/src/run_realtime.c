@@ -301,6 +301,7 @@ int realtime_update_watch(const char *wd, const char *dir) {
     configuration = fim_configuration_directory(dir);
 
     if (configuration == NULL) {
+        mdebug2(FIM_CONFIGURATION_NOTFOUND, "file", dir);
         inotify_rm_watch(syscheck.realtime->fd, atoi(wd));
         free(OSHash_Delete_ex(syscheck.realtime->dirtb, wd));
         return 0;
