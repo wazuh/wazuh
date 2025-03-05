@@ -11,14 +11,15 @@ if(NOT WAZUHEXT)
     message(FATAL_ERROR "libwazuhext not found! Aborting...")
 endif()
 
-# # Add compiling flags and set tests dependencies
+# Add compiling flags and set tests dependencies
 if(${uname} STREQUAL "Darwin")
     set(TEST_DEPS ${WAZUHLIB} ${WAZUHEXT} -lpthread -ldl -fprofile-arcs -ftest-coverage)
     add_compile_options(-ggdb -O0 -g -coverage -DTEST_AGENT -I/usr/local/include -DENABLE_SYSC -DWAZUH_UNIT_TESTING)
 else()
+    link_directories("${SRC_FOLDER}/syscheckd/build/lib/")
     add_compile_options(-ggdb -O0 -g -coverage -DTEST_AGENT -DENABLE_AUDIT -DINOTIFY_ENABLED -fsanitize=address -fsanitize=undefined)
     link_libraries(-fsanitize=address -fsanitize=undefined)
-    set(TEST_DEPS ${WAZUHLIB} ${WAZUHEXT} -lpthread -lcmocka -ldl -fprofile-arcs -ftest-coverage)
+    set(TEST_DEPS ${WAZUHLIB} ${WAZUHEXT} -lpthread -lcmocka -ldl -lfimebpf -fprofile-arcs -ftest-coverage)
 endif()
 
 if(NOT ${uname} STREQUAL "Darwin")

@@ -125,7 +125,16 @@ static int init_libbpf() {
     }
 
     bpf_helpers->module = dlopen(libbpf_path, RTLD_LAZY);
-    if (!bpf_helpers->module) {
+    if (bpf_helpers != NULL) {
+        obj = bpf_helpers->bpf_object_open_file(bpfobj_path, nullptr);
+    } else {
+        logFn(LOG_ERROR,"Error: bpf_helpers is NULL");
+        free(bpf_helpers);
+        bpf_helpers = NULL;
+        return 1;
+    }
+
+    if (!obj) {
         free(bpf_helpers);
         bpf_helpers = NULL;
         return 1;
@@ -295,7 +304,7 @@ void whodata_pop_events() {
         }
 
         if (event) {
-            whodata_evt* w_evt = new whodata_evt{};
+            whodata_evt* w_evt = new whodata_evt();
 
             w_evt->path = strdup(event->filename);
             w_evt->process_name = strdup(event->comm);
