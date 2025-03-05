@@ -67,7 +67,9 @@ COPY --from=builder --chown=${USER}:${GROUP} /var/lib/wazuh-server /var/lib/wazu
 COPY --from=builder --chown=${USER}:${GROUP} /usr/share/wazuh-server /usr/share/wazuh-server
 
 # Install debugging tools
-RUN apt update && apt install -y vim curl sqlite3
+RUN apt update && apt install -y vim curl sqlite3 jq
+
+COPY scripts/rbac-setup.sh /scripts/rbac-setup.sh
 
 COPY scripts/entrypoint.sh /scripts/entrypoint.sh
 

@@ -21,6 +21,12 @@ fi
 
 chown -R wazuh-server:wazuh-server /etc/wazuh-server/certs
 
+# Create default RBAC resources
+if [ "$3" == "manager" ]
+then
+    /scripts/rbac-setup.sh
+fi
+
 /usr/share/wazuh-server/bin/wazuh-server start &
 
 wait $!
