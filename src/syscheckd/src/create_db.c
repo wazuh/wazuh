@@ -1027,7 +1027,7 @@ void fim_process_missing_entry(char * pathname, fim_event_mode mode, whodata_evt
 
     configuration = fim_configuration_directory(pathname);
     if (NULL == configuration) {
-        mdebug2(FIM_CONFIGURATION_NOTFOUND, "file", path);
+        mdebug2(FIM_CONFIGURATION_NOTFOUND, "file", pathname);
         return;
     }
 
@@ -1615,26 +1615,21 @@ cJSON * fim_json_compare_attrs(const fim_file_data * old_data, const fim_file_da
 cJSON * fim_audit_json(const whodata_evt * w_evt) {
     cJSON * fim_audit = cJSON_CreateObject();
 
-    mwarn("fim_audit_json1");
     if (w_evt->user_id) cJSON_AddStringToObject(fim_audit, "user_id", w_evt->user_id);
     if (w_evt->user_name) cJSON_AddStringToObject(fim_audit, "user_name", w_evt->user_name);
     if (w_evt->process_name) cJSON_AddStringToObject(fim_audit, "process_name", w_evt->process_name);
     cJSON_AddNumberToObject(fim_audit, "process_id", w_evt->process_id);
-    mwarn("fim_audit_json2");
 #ifndef WIN32
-    mwarn("fim_audit_json3");
     if (w_evt->cwd) cJSON_AddStringToObject(fim_audit, "cwd", w_evt->cwd);
     if (w_evt->group_id) cJSON_AddStringToObject(fim_audit, "group_id", w_evt->group_id);
     if (w_evt->group_name) cJSON_AddStringToObject(fim_audit, "group_name", w_evt->group_name);
     if (w_evt->audit_uid) cJSON_AddStringToObject(fim_audit, "audit_uid", w_evt->audit_uid);
-    mwarn("fim_audit_json4");
     if (w_evt->audit_name) cJSON_AddStringToObject(fim_audit, "audit_name", w_evt->audit_name);
     if (w_evt->effective_uid) cJSON_AddStringToObject(fim_audit, "effective_uid", w_evt->effective_uid);
     if (w_evt->effective_name) cJSON_AddStringToObject(fim_audit, "effective_name", w_evt->effective_name);
     if (w_evt->parent_name) cJSON_AddStringToObject(fim_audit, "parent_name", w_evt->parent_name);
     if (w_evt->parent_cwd) cJSON_AddStringToObject(fim_audit, "parent_cwd", w_evt->parent_cwd);
     cJSON_AddNumberToObject(fim_audit, "ppid", w_evt->ppid);
-    mwarn("fim_audit_json5");
 #endif
 
     return fim_audit;
