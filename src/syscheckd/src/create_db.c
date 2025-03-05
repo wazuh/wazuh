@@ -14,8 +14,10 @@
 #include "integrity_op.h"
 #include "time_op.h"
 #include "db/include/db.h"
-#include "ebpf/include/ebpf_whodata.h"
 #include "registry/registry.h"
+#ifdef __linux__
+#include "ebpf/include/ebpf_whodata.h"
+#endif /* __linux__ */
 
 #ifdef WAZUH_UNIT_TESTING
 #ifdef WIN32
@@ -622,8 +624,11 @@ time_t fim_scan() {
         fim_print_info(start, end, cputime_start); // LCOV_EXCL_LINE
     }
     audit_queue_full_reported = 0;
+
+#ifdef __linux__
     ebpf_kernel_queue_full_reported = 0;
     ebpf_whodata_queue_full_reported = 0;
+#endif  /* __linux__ */
 
     return end_of_scan;
 }
