@@ -16,7 +16,8 @@ from connexion.exceptions import Unauthorized
 from wazuh.core.authentication import JWT_ALGORITHM, JWT_ISSUER, get_keypair
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
 from wazuh.core.config.client import CentralizedConfig
-from wazuh.rbac.orm import AuthenticationManager, TokenManager, UserRolesManager
+from wazuh.core.indexer import get_indexer_client
+from wazuh.core.indexer.base import IndexerKey
 from wazuh.rbac.preprocessor import optimize_resources
 
 from server_management_api.util import raise_if_exc
@@ -26,14 +27,14 @@ EXPIRED_TOKEN = 'Token expired'
 pool = ThreadPoolExecutor(max_workers=1)
 
 
-def check_user_master(user: str, password: str) -> dict:
+async def check_user_master(name: str, password: str) -> dict:
     """Validate a username-password pair.
 
     This function must be executed in the master node.
 
     Parameters
     ----------
-    user : str
+    name : str
         Unique username.
     password : str
         User password.
@@ -43,21 +44,27 @@ def check_user_master(user: str, password: str) -> dict:
     dict
         Dictionary with the result of the query.
     """
-    with AuthenticationManager() as auth_:
-        if auth_.check_user(user, password):
-            return {'result': True}
+    async with get_indexer_client() as indexer_client:
+        users_query = {IndexerKey.TERM: {'user.name': name}}
+        users = await indexer_client.users.search({IndexerKey.QUERY: users_query}, limit=1)
+        if len(users) == 0:
+            return {'result': False}
 
-    return {'result': False}
+        user = users[0]
+        if not user.check_password(password):
+            return {'result': False}
+
+        return {'result': True}
 
 
-def check_user(user: str, password: str, required_scopes=None) -> Union[dict, None]:
+def check_user(name: str, password: str) -> Union[dict, None]:
     """Validate a username-password pair.
 
     Convenience method to use in OpenAPI specification.
 
     Parameters
     ----------
-    user : str
+    name : str
         Unique username.
     password : str
         User password.
@@ -69,7 +76,7 @@ def check_user(user: str, password: str, required_scopes=None) -> Union[dict, No
     """
     dapi = DistributedAPI(
         f=check_user_master,
-        f_kwargs={'user': user, 'password': password},
+        f_kwargs={'name': name, 'password': password},
         request_type='local_master',
         is_async=False,
         wait_for_complete=False,
@@ -78,7 +85,7 @@ def check_user(user: str, password: str, required_scopes=None) -> Union[dict, No
     data = raise_if_exc(pool.submit(asyncio.run, dapi.distribute_function()).result())
 
     if data['result']:
-        return {'sub': user, 'active': True}
+        return {'sub': name, 'active': True}
 
 
 def get_security_conf() -> dict:
@@ -143,7 +150,7 @@ def generate_token(user_id: str = None, data: dict = None, auth_context: dict = 
 
 
 @rbac_utils.token_cache(rbac_utils.tokens_cache)
-def check_token(username: str, roles: tuple, token_nbf_time: int, run_as: bool) -> dict:
+async def check_token(username: str, roles: tuple, token_nbf_time: int, run_as: bool) -> dict:
     """Check the validity of a token with the current time and the generation time of the token.
 
     Parameters
@@ -163,22 +170,23 @@ def check_token(username: str, roles: tuple, token_nbf_time: int, run_as: bool) 
         Dictionary with the result.
     """
     # Check that the user exists
-    with AuthenticationManager() as am:
-        user = am.get_user(username=username)
-        if not user:
+    async with get_indexer_client() as indexer_client:
+        users_query = {
+            IndexerKey.QUERY: {IndexerKey.BOOL: {IndexerKey.FILTER: {IndexerKey.TERM: {'user.name': username}}}}
+        }
+        users = await indexer_client.users.search(users_query, limit=1)
+        if len(users) == 0:
             return {'valid': False}
-        user_id = user['id']
 
-        with UserRolesManager() as urm:
-            user_roles = [role.id for role in urm.get_all_roles_from_user(user_id=user_id)]
-            if not am.user_allow_run_as(user['username']) and set(user_roles) != set(roles):
-                return {'valid': False}
-            with TokenManager() as tm:
-                for role in user_roles:
-                    if not tm.is_token_valid(
-                        role_id=role, user_id=user_id, token_nbf_time=int(token_nbf_time), run_as=run_as
-                    ):
-                        return {'valid': False}
+        user = users[0]
+
+        roles_query = {
+            IndexerKey.QUERY: {IndexerKey.BOOL: {IndexerKey.FILTER: {IndexerKey.TERMS: {IndexerKey._ID: user.roles}}}}
+        }
+        user_roles = await indexer_client.roles.search({IndexerKey.QUERY: roles_query})
+
+        if not user.allow_run_as and set(user_roles) != set(roles):
+            return {'valid': False}
 
     policies = optimize_resources(roles)
 
@@ -221,7 +229,7 @@ def decode_token(token: str) -> dict:
                 'origin_node_type': server_config.node.type,
             },
             request_type='local_master',
-            is_async=False,
+            is_async=True,
             wait_for_complete=False,
             logger=logging.getLogger('wazuh-api'),
         )
