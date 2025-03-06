@@ -8,11 +8,39 @@ from datetime import datetime, timezone
 from unittest.mock import ANY, patch
 from uuid import uuid4
 
-import httpx
+from wazuh.core.config.client import CentralizedConfig, Config
+from wazuh.core.config.models.server import ServerConfig, ValidateFilePathMixin, SSLConfig, NodeConfig, NodeType
+from wazuh.core.config.models.indexer import IndexerConfig, IndexerNode
+
 import pytest
 
 with patch('wazuh.core.common.wazuh_uid'):
     with patch('wazuh.core.common.wazuh_gid'):
+        with patch.object(ValidateFilePathMixin, '_validate_file_path', return_value=None):
+            default_config = Config(
+                server=ServerConfig(
+                    nodes=['0'],
+                    node=NodeConfig(
+                        name='node_name',
+                        type=NodeType.MASTER,
+                        ssl=SSLConfig(
+                            key='example',
+                            cert='example',
+                            ca='example'
+                        )
+                    )
+                ),
+                indexer=IndexerConfig(
+                    hosts=[IndexerNode(
+                        host='example',
+                        port=1516
+                    )],
+                    username='wazuh',
+                    password='wazuh'
+                )
+            )
+            CentralizedConfig._config = default_config
+
         from wazuh.core.manager import *
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data', 'manager')

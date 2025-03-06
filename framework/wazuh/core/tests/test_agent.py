@@ -7,6 +7,8 @@ import os
 import sqlite3
 import sys
 from copy import copy
+from datetime import datetime
+from json import dumps
 from shutil import rmtree
 from unittest.mock import AsyncMock, patch
 
@@ -1067,7 +1069,7 @@ async def test_agent_get_agent_groups(create_indexer_mock):
     create_indexer_mock.return_value.agents.get.return_value = IndexerAgent(groups=','.join(groups))
     agent_groups = await Agent.get_agent_groups(agent_id)
 
-    assert agent_groups == groups
+    assert agent_groups == ','.join(groups)
 
 
 @pytest.mark.asyncio
@@ -1122,39 +1124,6 @@ async def test_agent_set_agent_group_relationship_ko(get_client_mock):
     """Test if set_agent_group_relationship() raises expected exception."""
     with pytest.raises(WazuhInternalError, match='.* 2200 .*'):
         await Agent.set_agent_group_relationship('002', 'test_group')
-
-
-@patch('wazuh.core.wazuh_socket.WazuhSocket')
-@patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
-@patch('socket.socket.connect')
-def test_agent_get_config(socket_mock, send_mock, mock_wazuh_socket):
-    """Test getconfig method returns expected message."""
-    agent = Agent('001')
-    mock_wazuh_socket.return_value.receive.return_value = b'ok {"test": "conf"}'
-    result = agent.get_config('com', 'active-response', 'Wazuh v4.0.0')
-    assert result == {'test': 'conf'}, 'Result message is not as expected.'
-
-
-@patch('wazuh.core.wazuh_socket.WazuhSocket')
-@patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
-@patch('socket.socket.connect')
-def test_agent_get_config_ko(socket_mock, send_mock, mock_wazuh_socket):
-    """Test getconfig method raises expected exceptions."""
-    # Invalid component
-    agent = Agent('003')
-    with pytest.raises(WazuhError, match='.* 1101 .*'):
-        agent.get_config('invalid_component', 'active-response', 'Wazuh v4.0.0')
-
-    # Component or config is none
-    agent = Agent('003')
-    with pytest.raises(WazuhError, match='.* 1307 .*'):
-        agent.get_config('com', None, 'Wazuh v4.0.0')
-        agent.get_config(None, 'active-response', 'Wazuh v4.0.0')
-
-    # Agent Wazuh version is lower than ACTIVE_CONFIG_VERSION
-    agent = Agent('002')
-    with pytest.raises(WazuhInternalError, match='.* 1735 .*'):
-        agent.get_config('com', 'active-response', 'Wazuh v3.6.0')
 
 
 @patch('wazuh.core.indexer.create_indexer')
