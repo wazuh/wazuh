@@ -7263,7 +7263,7 @@ paths:
               example:
                 title: "Wazuh API"
                 api_version: "v4.5.0"
-                revision: '40100'
+                revision: 'alpha1'
                 license_name: "GPL 2.0"
                 license_url: "https://github.com/wazuh/wazuh/blob/v4.12.0/LICENSE"
                 hostname: "wazuh"

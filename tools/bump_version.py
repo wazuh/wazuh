@@ -5,7 +5,6 @@ import sys
 import difflib
 from datetime import datetime
 from pathlib import Path
-from typing import Tuple, Optional
 
 
 # Define directories and files
@@ -50,7 +49,7 @@ class Command:
         self._backup_text = backup_text
         self._new_text = new_text
 
-    def do(self) -> Optional[str]:
+    def do(self) -> str | None:
         try:
             self._file.write_text(self._new_text)
             print_v(f"Updated {self._file}")
@@ -60,7 +59,7 @@ class Command:
 
         return None
 
-    def undo(self) -> Optional[str]:
+    def undo(self) -> str | None:
         try:
             self._file.write_text(self._backup_text)
             print_v(f"Reverted {self._file}")
@@ -134,15 +133,17 @@ def validate_date(date: str) -> None:
     Raises:
         ValueError: If date is invalid.
     """
+    try:
+        datetime.strptime(date, "%Y-%m-%d")
+    except ValueError:
+        raise ValueError(f"Invalid date value '{date}'")
 
-    pass
 
-
-def load_version(version_file_path: Path) -> Tuple[str, str]:
+def load_version(version_file_path: Path) -> tuple[str, str]:
     """Load version and stage from VERSION.json.
 
     Returns:
-        Tuple[str, str]: (version, stage)
+        tuple[str, str]: (version, stage)
 
     Raises:
         FileNotFoundError: If VERSION.json does not exist.
@@ -171,14 +172,14 @@ def load_version(version_file_path: Path) -> Tuple[str, str]:
     return version, stage
 
 
-def update_file_version(executor: Executor, file_path: Path, new_version: Optional[str] = None, new_stage: Optional[str] = None) -> None:
+def update_file_version(executor: Executor, file_path: Path, new_version: str | None = None, new_stage: str | None = None) -> None:
     """Update version file
 
     Args:
         executor (Executor): Executor to handle commands.
         file_path (Path): Path to file.
-        new_version (Optional[str], optional): Defaults to None.
-        new_stage (Optional[str], optional): Defaults to None.
+        new_version (str | None, optional): Defaults to None.
+        new_stage (str | None, optional): Defaults to None.
 
     Raises:
         Exception: If failed to create a command.
@@ -200,7 +201,7 @@ def update_file_version(executor: Executor, file_path: Path, new_version: Option
             Command(file_path, current, json.dumps(updated, indent=4)))
 
 
-def update_file(executor: Executor, file_path: Path, patterns: dict[str, tuple[re.Pattern, Optional[str]]]) -> None:
+def update_file(executor: Executor, file_path: Path, patterns: dict[str, tuple[re.Pattern, str | None]]) -> None:
     """Helper function to update patterns in a given file."""
     content = file_path.read_text()
     updated_content = content
@@ -214,7 +215,7 @@ def update_file(executor: Executor, file_path: Path, patterns: dict[str, tuple[r
         executor.add_command(Command(file_path, content, updated_content))
 
 
-def update_file_sources(executor: Executor, new_version: Optional[str] = None, new_stage: Optional[str] = None) -> None:
+def update_file_sources(executor: Executor, new_version: str | None = None, new_stage: str | None = None) -> None:
     """Update source files with new version and stage."""
     if not new_version and not new_stage:
         return
@@ -258,26 +259,29 @@ def update_file_sources(executor: Executor, new_version: Optional[str] = None, n
     update_file(executor, DIR_SRC / 'win32/version.rc', patterns_version_rc)
 
 
-def update_file_framework(executor: Executor, new_version: Optional[str] = None, new_stage: Optional[str] = None) -> None:
+def update_file_framework(executor: Executor, new_version: str | None = None, new_stage: str | None = None) -> None:
     """Update framework files with new version and stage."""
     if not new_version and not new_stage:
         return
 
+    version_pattern = (re.compile(
+        fr'(^__version__\s+=\s+\')({PATTERN_VERSION})(\'$)', re.MULTILINE), fr'\g<1>{new_version}\g<3>' if new_version else None)
+
     patterns_framework = {
-        "version": (re.compile(fr'(^__version__\s+=\s+\')({PATTERN_VERSION})(\'$)', re.MULTILINE), fr'\g<1>{new_version}\g<3>' if new_version else None)
+        "version": version_pattern
     }
     update_file(executor, DIR_FRAMEWORK /
                 'wazuh/__init__.py', patterns_framework)
 
     patterns_cluster = {
-        "version": (re.compile(fr'(^__version__\s+=\s+\')({PATTERN_VERSION})(\'$)', re.MULTILINE), fr'\g<1>{new_version}\g<3>' if new_version else None),
+        "version": version_pattern,
         "stage": (re.compile(fr'(^__revision__\s+=\s+\')(.+)(\'$)', re.MULTILINE), fr'\g<1>{new_stage}\g<3>' if new_stage else None)
     }
     update_file(executor, DIR_FRAMEWORK /
                 'wazuh/core/cluster/__init__.py', patterns_cluster)
 
 
-def update_file_api(executor: Executor, new_version: Optional[str] = None, new_stage: Optional[str] = None) -> None:
+def update_file_api(executor: Executor, new_version: str | None = None, new_stage: str | None = None) -> None:
     """Update API files with new version and stage."""
     if not new_version and not new_stage:
         return
@@ -345,15 +349,15 @@ def update_file_packages(executor: Executor, new_version: str, new_stage: str, n
         update_file(executor, pkginfo_file, patterns)
 
 
-def update_version(current_version: str, current_stage: str, new_version: Optional[str] = None, new_stage: Optional[str] = None, new_date: Optional[str] = None) -> None:
+def update_version(current_version: str, current_stage: str, new_version: str | None = None, new_stage: str | None = None, new_date: str | None = None) -> None:
     """Update version to a specific version.
 
     Args:
         current_version (str): Current version.
         current_stage (str): Current stage.
         new_version (str): New version.
-        new_stage (Optional[str]): New stage to set.
-        new_date (Optional[str]): New date to set.
+        new_stage (str | None): New stage to set.
+        new_date (str | None): New date to set.
     """
     if new_version:
         validate_version(new_version)
@@ -379,7 +383,7 @@ def update_version(current_version: str, current_stage: str, new_version: Option
     executor.execute(DRY_RUN)
 
 
-def parse_args() -> Tuple[Optional[str], Optional[str], Optional[str], bool, bool]:
+def parse_args() -> tuple[str | None, str | None, str | None, bool, bool]:
     parser = argparse.ArgumentParser(
         description='Bump version, stage and date for all packages')
 
