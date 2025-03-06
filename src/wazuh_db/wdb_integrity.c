@@ -66,7 +66,6 @@ void wdbi_report_removed(const char* agent_id, wdb_component_t component, sqlite
     cJSON* j_agent_info = NULL;
     cJSON* j_data = NULL;
     char* msg_to_send = NULL;
-    char* type = NULL;
     int result = SQLITE_ERROR;
 
     do{

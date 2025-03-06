@@ -561,7 +561,6 @@ exit_fail:
 int fim_alert (char *f_name, sk_sum_t *oldsum, sk_sum_t *newsum, Eventinfo *lf, _sdb *localsdb, syscheck_event_t event_type) {
     int changes = 0;
     char msg_type[OS_FLSIZE];
-    char buf_ptr[26];
 
     if (event_type == FIM_DELETED) {
         snprintf(msg_type, sizeof(msg_type), "was deleted.");
