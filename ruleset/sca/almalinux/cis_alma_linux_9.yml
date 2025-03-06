@@ -21,7 +21,7 @@ policy:
 requirements:
   title: "Check Alma Linux platform."
   description: "Requirements for running the policy against Alma Linux 9."
-  condition: any
+  condition: all
   rules:
     - "f:/etc/redhat-release -> r:^AlmaLinux && r:release 9"
 

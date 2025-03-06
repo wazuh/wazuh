@@ -1219,6 +1219,8 @@ void test_setup_complete(void **state) {
     module_data->enabled = true;
     module_data->only_future_events = false;
     module_data->curl_max_size = 1024L;
+    module_data->page_size = 100;
+    module_data->time_delay = 10;
     module_data->run_on_start = true;
     os_strdup("v1.0", module_data->version);
     os_strdup("example_string", module_data->auth_config[0]->client_id);
@@ -1264,6 +1266,8 @@ void test_main_token(void **state) {
     module_data->enabled = true;
     module_data->only_future_events = false;
     module_data->curl_max_size = 1024L;
+    module_data->page_size = 100;
+    module_data->time_delay = 10;
     module_data->run_on_start = true;
     os_strdup("v1.0", module_data->version);
     os_strdup("example_client", module_data->auth_config[0]->client_id);
@@ -1340,6 +1344,8 @@ void test_main_relationships(void **state) {
     module_data->enabled = true;
     module_data->only_future_events = false;
     module_data->curl_max_size = 1024L;
+    module_data->page_size = 100;
+    module_data->time_delay = 10;
     module_data->run_on_start = true;
     module_data->scan_config.interval = 60;
     os_strdup("v1.0", module_data->version);
@@ -1459,6 +1465,8 @@ void test_dump(void **state) {
     <enabled>yes</enabled>
     <only_future_events>no</only_future_events>
     <curl_max_size>1M</curl_max_size>
+    <page_size>100</page_size>
+    <time_delay>10</time_delay>
     <run_on_start>yes</run_on_start>
     <version>v1.0</version>
     <api_auth>
@@ -1478,6 +1486,8 @@ void test_dump(void **state) {
     module_data->enabled = true;
     module_data->only_future_events = false;
     module_data->curl_max_size = 1024L;
+    module_data->page_size = 100;
+    module_data->time_delay = 10;
     module_data->run_on_start = true;
     os_strdup("v1.0", module_data->version);
     os_strdup("example_string", module_data->auth_config[0]->client_id);
@@ -1495,7 +1505,7 @@ void test_dump(void **state) {
     cJSON* dump = wm_ms_graph_dump(module_data);
     char* dump_text = cJSON_PrintUnformatted(dump);
 
-    assert_string_equal(dump_text, "{\"ms_graph\":{\"enabled\":\"yes\",\"only_future_events\":\"no\",\"curl_max_size\":1024,\"run_on_start\":\"yes\",\"version\":\"v1.0\",\"wday\":\"sunday\",\"api_auth\":{\"client_id\":\"example_string\",\"tenant_id\":\"example_string\",\"secret_value\":\"example_string\",\"api_type\":\"global\",\"name\":\"security\"},\"resources\":[{\"relationship\":\"alerts_v2\"}]}}");
+    assert_string_equal(dump_text, "{\"ms_graph\":{\"enabled\":\"yes\",\"only_future_events\":\"no\",\"curl_max_size\":1024,\"page_size\":100,\"time_delay\":10,\"run_on_start\":\"yes\",\"version\":\"v1.0\",\"wday\":\"sunday\",\"api_auth\":{\"client_id\":\"example_string\",\"tenant_id\":\"example_string\",\"secret_value\":\"example_string\",\"api_type\":\"global\",\"name\":\"security\"},\"resources\":[{\"relationship\":\"alerts_v2\"}]}}");
 
     cJSON_Delete(dump);
     os_free(dump_text);
@@ -1506,6 +1516,8 @@ void test_dump_gcc_configuration(void **state) {
     <enabled>no</enabled>
     <only_future_events>yes</only_future_events>
     <curl_max_size>1M</curl_max_size>
+    <page_size>100</page_size>
+    <time_delay>10</time_delay>
     <run_on_start>no</run_on_start>
     <version>v1.0</version>
     <api_auth>
@@ -1523,6 +1535,8 @@ void test_dump_gcc_configuration(void **state) {
     module_data->enabled = false;
     module_data->only_future_events = true;
     module_data->curl_max_size = 1024L;
+    module_data->page_size = 100;
+    module_data->time_delay = 10;
     module_data->run_on_start = false;
     os_strdup("v1.0", module_data->version);
     os_strdup("example_string", module_data->auth_config[0]->client_id);
@@ -1537,7 +1551,7 @@ void test_dump_gcc_configuration(void **state) {
     cJSON* dump = wm_ms_graph_dump(module_data);
     char* dump_text = cJSON_PrintUnformatted(dump);
 
-    assert_string_equal(dump_text, "{\"ms_graph\":{\"enabled\":\"no\",\"only_future_events\":\"yes\",\"curl_max_size\":1024,\"run_on_start\":\"no\",\"version\":\"v1.0\",\"wday\":\"sunday\",\"api_auth\":{\"client_id\":\"example_string\",\"tenant_id\":\"example_string\",\"secret_value\":\"example_string\",\"api_type\":\"gcc-high\"}}}");
+    assert_string_equal(dump_text, "{\"ms_graph\":{\"enabled\":\"no\",\"only_future_events\":\"yes\",\"curl_max_size\":1024,\"page_size\":100,\"time_delay\":10,\"run_on_start\":\"no\",\"version\":\"v1.0\",\"wday\":\"sunday\",\"api_auth\":{\"client_id\":\"example_string\",\"tenant_id\":\"example_string\",\"secret_value\":\"example_string\",\"api_type\":\"gcc-high\"}}}");
 
     cJSON_Delete(dump);
     os_free(dump_text);
@@ -1551,6 +1565,8 @@ void test_dump_dod_configuration(void **state) {
     <enabled>no</enabled>
     <only_future_events>yes</only_future_events>
     <curl_max_size>1M</curl_max_size>
+    <page_size>100</page_size>
+    <time_delay>10</time_delay>
     <run_on_start>no</run_on_start>
     <version>v1.0</version>
     <api_auth>
@@ -1568,6 +1584,8 @@ void test_dump_dod_configuration(void **state) {
     module_data->enabled = false;
     module_data->only_future_events = true;
     module_data->curl_max_size = 1024L;
+    module_data->page_size = 100;
+    module_data->time_delay = 10;
     module_data->run_on_start = false;
     os_strdup("v1.0", module_data->version);
     os_strdup("example_string", module_data->auth_config[0]->client_id);
@@ -1579,7 +1597,7 @@ void test_dump_dod_configuration(void **state) {
     cJSON* dump = wm_ms_graph_dump(module_data);
     char* dump_text = cJSON_PrintUnformatted(dump);
 
-    assert_string_equal(dump_text, "{\"ms_graph\":{\"enabled\":\"no\",\"only_future_events\":\"yes\",\"curl_max_size\":1024,\"run_on_start\":\"no\",\"version\":\"v1.0\",\"wday\":\"sunday\",\"api_auth\":{\"client_id\":\"example_string\",\"tenant_id\":\"example_string\",\"secret_value\":\"example_string\",\"api_type\":\"dod\"}}}");
+    assert_string_equal(dump_text, "{\"ms_graph\":{\"enabled\":\"no\",\"only_future_events\":\"yes\",\"curl_max_size\":1024,\"page_size\":100,\"time_delay\":10,\"run_on_start\":\"no\",\"version\":\"v1.0\",\"wday\":\"sunday\",\"api_auth\":{\"client_id\":\"example_string\",\"tenant_id\":\"example_string\",\"secret_value\":\"example_string\",\"api_type\":\"dod\"}}}");
 
     cJSON_Delete(dump);
     os_free(dump_text);
@@ -1590,6 +1608,8 @@ void test_wm_ms_graph_get_access_token_no_response(void **state) {
     <enabled>yes</enabled>
     <only_future_events>no</only_future_events>
     <curl_max_size>1M</curl_max_size>
+    <page_size>100</page_size>
+    <time_delay>10</time_delay>
     <run_on_start>yes</run_on_start>
     <version>v1.0</version>
     <api_auth>
@@ -1609,6 +1629,8 @@ void test_wm_ms_graph_get_access_token_no_response(void **state) {
     module_data->enabled = true;
     module_data->only_future_events = false;
     module_data->curl_max_size = 1024L;
+    module_data->page_size = 100;
+    module_data->time_delay = 10;
     module_data->run_on_start = true;
     os_strdup("v1.0", module_data->version);
     os_strdup("example_client", module_data->auth_config[0]->client_id);
@@ -1649,6 +1671,8 @@ void test_wm_ms_graph_get_access_token_unsuccessful_status_code(void **state) {
     <enabled>yes</enabled>
     <only_future_events>no</only_future_events>
     <curl_max_size>1M</curl_max_size>
+    <page_size>100</page_size>
+    <time_delay>10</time_delay>
     <run_on_start>yes</run_on_start>
     <version>v1.0</version>
     <api_auth>
@@ -1668,6 +1692,8 @@ void test_wm_ms_graph_get_access_token_unsuccessful_status_code(void **state) {
     module_data->enabled = true;
     module_data->only_future_events = false;
     module_data->curl_max_size = 1024L;
+    module_data->page_size = 100;
+    module_data->time_delay = 10;
     module_data->run_on_start = true;
     os_strdup("v1.0", module_data->version);
     os_strdup("example_client", module_data->auth_config[0]->client_id);
@@ -1714,6 +1740,8 @@ void test_wm_ms_graph_get_access_token_curl_max_size(void **state) {
     <enabled>yes</enabled>
     <only_future_events>no</only_future_events>
     <curl_max_size>1M</curl_max_size>
+    <page_size>100</page_size>
+    <time_delay>10</time_delay>
     <run_on_start>yes</run_on_start>
     <version>v1.0</version>
     <api_auth>
@@ -1733,6 +1761,8 @@ void test_wm_ms_graph_get_access_token_curl_max_size(void **state) {
     module_data->enabled = true;
     module_data->only_future_events = false;
     module_data->curl_max_size = 1024L;
+    module_data->page_size = 100;
+    module_data->time_delay = 10;
     module_data->run_on_start = true;
     os_strdup("v1.0", module_data->version);
     os_strdup("example_client", module_data->auth_config[0]->client_id);
@@ -1779,6 +1809,8 @@ void test_wm_ms_graph_get_access_token_parse_json_fail(void **state) {
     <enabled>yes</enabled>
     <only_future_events>no</only_future_events>
     <curl_max_size>1M</curl_max_size>
+    <page_size>100</page_size>
+    <time_delay>10</time_delay>
     <run_on_start>yes</run_on_start>
     <version>v1.0</version>
     <api_auth>
@@ -1798,6 +1830,8 @@ void test_wm_ms_graph_get_access_token_parse_json_fail(void **state) {
     module_data->enabled = true;
     module_data->only_future_events = false;
     module_data->curl_max_size = 1024L;
+    module_data->page_size = 100;
+    module_data->time_delay = 10;
     module_data->run_on_start = true;
     os_strdup("v1.0", module_data->version);
     os_strdup("example_client", module_data->auth_config[0]->client_id);
@@ -1844,6 +1878,8 @@ void test_wm_ms_graph_get_access_token_success(void **state) {
     <enabled>yes</enabled>
     <only_future_events>no</only_future_events>
     <curl_max_size>1M</curl_max_size>
+    <page_size>100</page_size>
+    <time_delay>10</time_delay>
     <run_on_start>yes</run_on_start>
     <version>v1.0</version>
     <api_auth>
@@ -1863,6 +1899,8 @@ void test_wm_ms_graph_get_access_token_success(void **state) {
     module_data->enabled = true;
     module_data->only_future_events = false;
     module_data->curl_max_size = 1024L;
+    module_data->page_size = 100;
+    module_data->time_delay = 10;
     module_data->run_on_start = true;
     os_strdup("v1.0", module_data->version);
     os_strdup("example_client", module_data->auth_config[0]->client_id);
@@ -1913,6 +1951,8 @@ void test_wm_ms_graph_get_access_token_no_access_token(void **state) {
     <enabled>yes</enabled>
     <only_future_events>no</only_future_events>
     <curl_max_size>1M</curl_max_size>
+    <page_size>100</page_size>
+    <time_delay>10</time_delay>
     <run_on_start>yes</run_on_start>
     <version>v1.0</version>
     <api_auth>
@@ -1932,6 +1972,8 @@ void test_wm_ms_graph_get_access_token_no_access_token(void **state) {
     module_data->enabled = true;
     module_data->only_future_events = false;
     module_data->curl_max_size = 1024L;
+    module_data->page_size = 100;
+    module_data->time_delay = 10;
     module_data->run_on_start = true;
     os_strdup("v1.0", module_data->version);
     os_strdup("example_client", module_data->auth_config[0]->client_id);
@@ -1977,6 +2019,8 @@ void test_wm_ms_graph_get_access_token_no_expire_time(void **state) {
     <enabled>yes</enabled>
     <only_future_events>no</only_future_events>
     <curl_max_size>1M</curl_max_size>
+    <page_size>100</page_size>
+    <time_delay>10</time_delay>
     <run_on_start>yes</run_on_start>
     <version>v1.0</version>
     <api_auth>
@@ -1996,6 +2040,8 @@ void test_wm_ms_graph_get_access_token_no_expire_time(void **state) {
     module_data->enabled = true;
     module_data->only_future_events = false;
     module_data->curl_max_size = 1024L;
+    module_data->page_size = 100;
+    module_data->time_delay = 10;
     module_data->run_on_start = true;
     os_strdup("v1.0", module_data->version);
     os_strdup("example_client", module_data->auth_config[0]->client_id);
@@ -2041,6 +2087,8 @@ void test_wm_ms_graph_scan_relationships_single_initial_only_no(void **state) {
     <enabled>yes</enabled>
     <only_future_events>no</only_future_events>
     <curl_max_size>1M</curl_max_size>
+    <page_size>100</page_size>
+    <time_delay>10</time_delay>
     <run_on_start>yes</run_on_start>
     <version>v1.0</version>
     <api_auth>
@@ -2060,6 +2108,8 @@ void test_wm_ms_graph_scan_relationships_single_initial_only_no(void **state) {
     module_data->enabled = true;
     module_data->only_future_events = false;
     module_data->curl_max_size = 1024L;
+    module_data->page_size = 100;
+    module_data->time_delay = 10;
     module_data->run_on_start = true;
     module_data->scan_config.interval = 60;
     os_strdup("v1.0", module_data->version);
@@ -2114,6 +2164,8 @@ void test_wm_ms_graph_scan_relationships_single_initial_only_yes_fail_write(void
     <enabled>yes</enabled>
     <only_future_events>yes</only_future_events>
     <curl_max_size>1M</curl_max_size>
+    <page_size>100</page_size>
+    <time_delay>10</time_delay>
     <run_on_start>yes</run_on_start>
     <version>v1.0</version>
     <api_auth>
@@ -2133,6 +2185,8 @@ void test_wm_ms_graph_scan_relationships_single_initial_only_yes_fail_write(void
     module_data->enabled = true;
     module_data->only_future_events = true;
     module_data->curl_max_size = 1024L;
+    module_data->page_size = 100;
+    module_data->time_delay = 10;
     module_data->run_on_start = true;
     module_data->scan_config.interval = 60;
     os_strdup("v1.0", module_data->version);
@@ -2179,6 +2233,8 @@ void test_wm_ms_graph_scan_relationships_single_initial_only_no_next_time_no_res
     <enabled>yes</enabled>
     <only_future_events>no</only_future_events>
     <curl_max_size>1M</curl_max_size>
+    <page_size>50</page_size>
+    <time_delay>5</time_delay>
     <run_on_start>yes</run_on_start>
     <version>v1.0</version>
     <api_auth>
@@ -2200,6 +2256,8 @@ void test_wm_ms_graph_scan_relationships_single_initial_only_no_next_time_no_res
     module_data->enabled = true;
     module_data->only_future_events = false;
     module_data->curl_max_size = 1024L;
+    module_data->page_size = 50;
+    module_data->time_delay = 5;
     module_data->run_on_start = true;
     module_data->scan_config.interval = 60;
     os_strdup("v1.0", module_data->version);
@@ -2244,7 +2302,7 @@ void test_wm_ms_graph_scan_relationships_single_initial_only_no_next_time_no_res
     will_return(__wrap_strftime, 20);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Log URL: 'https://graph.microsoft.com/v1.0/security/alerts_v2?$top=100&$filter=createdDateTime+ge+2023-02-08T12:24:56Z+and+createdDateTime+lt+2023-02-08T12:25:56Z'");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Log URL: 'https://graph.microsoft.com/v1.0/security/alerts_v2?$top=50&$filter=createdDateTime+ge+2023-02-08T12:24:56Z+and+createdDateTime+lt+2023-02-08T12:25:56Z'");
 
     expect_any(__wrap_wurl_http_request, method);
     expect_any(__wrap_wurl_http_request, header);
@@ -2266,6 +2324,8 @@ void test_wm_ms_graph_scan_relationships_single_no_initial_no_timestamp(void **s
     <enabled>yes</enabled>
     <only_future_events>no</only_future_events>
     <curl_max_size>1M</curl_max_size>
+    <page_size>50</page_size>
+    <time_delay>5</time_delay>
     <run_on_start>yes</run_on_start>
     <version>v1.0</version>
     <api_auth>
@@ -2287,6 +2347,8 @@ void test_wm_ms_graph_scan_relationships_single_no_initial_no_timestamp(void **s
     module_data->enabled = true;
     module_data->only_future_events = false;
     module_data->curl_max_size = 1024L;
+    module_data->page_size = 50;
+    module_data->time_delay = 5;
     module_data->run_on_start = true;
     module_data->scan_config.interval = 60;
     os_strdup("v1.0", module_data->version);
@@ -2341,6 +2403,8 @@ void test_wm_ms_graph_scan_relationships_single_unsuccessful_status_code(void **
     <enabled>yes</enabled>
     <only_future_events>no</only_future_events>
     <curl_max_size>1M</curl_max_size>
+    <page_size>50</page_size>
+    <time_delay>5</time_delay>
     <run_on_start>yes</run_on_start>
     <version>v1.0</version>
     <api_auth>
@@ -2362,6 +2426,8 @@ void test_wm_ms_graph_scan_relationships_single_unsuccessful_status_code(void **
     module_data->enabled = true;
     module_data->only_future_events = false;
     module_data->curl_max_size = 1024L;
+    module_data->page_size = 50;
+    module_data->time_delay = 5;
     module_data->run_on_start = true;
     module_data->scan_config.interval = 60;
     os_strdup("v1.0", module_data->version);
@@ -2411,7 +2477,7 @@ void test_wm_ms_graph_scan_relationships_single_unsuccessful_status_code(void **
     will_return(__wrap_strftime, 20);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Log URL: 'https://graph.microsoft.com/v1.0/security/alerts_v2?$top=100&$filter=createdDateTime+ge+2023-02-08T12:24:56Z+and+createdDateTime+lt+2023-02-08T12:25:56Z'");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Log URL: 'https://graph.microsoft.com/v1.0/security/alerts_v2?$top=50&$filter=createdDateTime+ge+2023-02-08T12:24:56Z+and+createdDateTime+lt+2023-02-08T12:25:56Z'");
 
     expect_any(__wrap_wurl_http_request, method);
     expect_any(__wrap_wurl_http_request, header);
@@ -2433,6 +2499,8 @@ void test_wm_ms_graph_scan_relationships_single_reached_curl_size(void **state) 
     <enabled>yes</enabled>
     <only_future_events>no</only_future_events>
     <curl_max_size>1M</curl_max_size>
+    <page_size>50</page_size>
+    <time_delay>5</time_delay>
     <run_on_start>yes</run_on_start>
     <version>v1.0</version>
     <api_auth>
@@ -2454,6 +2522,8 @@ void test_wm_ms_graph_scan_relationships_single_reached_curl_size(void **state) 
     module_data->enabled = true;
     module_data->only_future_events = false;
     module_data->curl_max_size = 1024L;
+    module_data->page_size = 50;
+    module_data->time_delay = 5;
     module_data->run_on_start = true;
     module_data->scan_config.interval = 60;
     os_strdup("v1.0", module_data->version);
@@ -2504,7 +2574,7 @@ void test_wm_ms_graph_scan_relationships_single_reached_curl_size(void **state) 
     will_return(__wrap_strftime, 20);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Log URL: 'https://graph.microsoft.com/v1.0/security/alerts_v2?$top=100&$filter=createdDateTime+ge+2023-02-08T12:24:56Z+and+createdDateTime+lt+2023-02-08T12:25:56Z'");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Log URL: 'https://graph.microsoft.com/v1.0/security/alerts_v2?$top=50&$filter=createdDateTime+ge+2023-02-08T12:24:56Z+and+createdDateTime+lt+2023-02-08T12:25:56Z'");
 
     expect_any(__wrap_wurl_http_request, method);
     expect_any(__wrap_wurl_http_request, header);
@@ -2526,6 +2596,8 @@ void test_wm_ms_graph_scan_relationships_single_failed_parse(void **state) {
     <enabled>yes</enabled>
     <only_future_events>no</only_future_events>
     <curl_max_size>1M</curl_max_size>
+    <page_size>25</page_size>
+    <time_delay>2</time_delay>
     <run_on_start>yes</run_on_start>
     <version>v1.0</version>
     <api_auth>
@@ -2547,6 +2619,8 @@ void test_wm_ms_graph_scan_relationships_single_failed_parse(void **state) {
     module_data->enabled = true;
     module_data->only_future_events = false;
     module_data->curl_max_size = 1024L;
+    module_data->page_size = 25;
+    module_data->time_delay = 2;
     module_data->run_on_start = true;
     module_data->scan_config.interval = 60;
     os_strdup("v1.0", module_data->version);
@@ -2597,7 +2671,7 @@ void test_wm_ms_graph_scan_relationships_single_failed_parse(void **state) {
     will_return(__wrap_strftime, 20);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Log URL: 'https://graph.microsoft.com/v1.0/security/alerts_v2?$top=100&$filter=createdDateTime+ge+2023-02-08T12:24:56Z+and+createdDateTime+lt+2023-02-08T12:25:56Z'");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Log URL: 'https://graph.microsoft.com/v1.0/security/alerts_v2?$top=25&$filter=createdDateTime+ge+2023-02-08T12:24:56Z+and+createdDateTime+lt+2023-02-08T12:25:56Z'");
 
     expect_any(__wrap_wurl_http_request, method);
     expect_any(__wrap_wurl_http_request, header);
@@ -2619,6 +2693,8 @@ void test_wm_ms_graph_scan_relationships_single_no_logs(void **state) {
     <enabled>yes</enabled>
     <only_future_events>no</only_future_events>
     <curl_max_size>1M</curl_max_size>
+    <page_size>25</page_size>
+    <time_delay>2</time_delay>
     <run_on_start>yes</run_on_start>
     <version>v1.0</version>
     <api_auth>
@@ -2640,6 +2716,8 @@ void test_wm_ms_graph_scan_relationships_single_no_logs(void **state) {
     module_data->enabled = true;
     module_data->only_future_events = false;
     module_data->curl_max_size = 1024L;
+    module_data->page_size = 25;
+    module_data->time_delay = 2;
     module_data->run_on_start = true;
     module_data->scan_config.interval = 60;
     os_strdup("v1.0", module_data->version);
@@ -2690,7 +2768,7 @@ void test_wm_ms_graph_scan_relationships_single_no_logs(void **state) {
     will_return(__wrap_strftime, 20);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Log URL: 'https://graph.microsoft.com/v1.0/security/alerts_v2?$top=100&$filter=createdDateTime+ge+2023-02-08T12:24:56Z+and+createdDateTime+lt+2023-02-08T12:25:56Z'");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Log URL: 'https://graph.microsoft.com/v1.0/security/alerts_v2?$top=25&$filter=createdDateTime+ge+2023-02-08T12:24:56Z+and+createdDateTime+lt+2023-02-08T12:25:56Z'");
 
     expect_any(__wrap_wurl_http_request, method);
     expect_any(__wrap_wurl_http_request, header);
@@ -2721,6 +2799,8 @@ void test_wm_ms_graph_scan_relationships_single_success_one_log(void **state) {
     <enabled>yes</enabled>
     <only_future_events>no</only_future_events>
     <curl_max_size>1M</curl_max_size>
+    <page_size>10</page_size>
+    <time_delay>1</time_delay>
     <run_on_start>yes</run_on_start>
     <version>v1.0</version>
     <api_auth>
@@ -2742,6 +2822,8 @@ void test_wm_ms_graph_scan_relationships_single_success_one_log(void **state) {
     module_data->enabled = true;
     module_data->only_future_events = false;
     module_data->curl_max_size = 1024L;
+    module_data->page_size = 10;
+    module_data->time_delay = 1;
     module_data->run_on_start = true;
     module_data->scan_config.interval = 60;
     os_strdup("v1.0", module_data->version);
@@ -2793,7 +2875,7 @@ void test_wm_ms_graph_scan_relationships_single_success_one_log(void **state) {
     will_return(__wrap_strftime, 20);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Log URL: 'https://graph.microsoft.com/v1.0/security/alerts_v2?$top=100&$filter=createdDateTime+ge+2023-02-08T12:24:56Z+and+createdDateTime+lt+2023-02-08T12:25:56Z'");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Log URL: 'https://graph.microsoft.com/v1.0/security/alerts_v2?$top=10&$filter=createdDateTime+ge+2023-02-08T12:24:56Z+and+createdDateTime+lt+2023-02-08T12:25:56Z'");
 
     expect_any(__wrap_wurl_http_request, method);
     expect_any(__wrap_wurl_http_request, header);
@@ -2833,6 +2915,8 @@ void test_wm_ms_graph_scan_relationships_single_success_two_logs(void **state) {
     <enabled>yes</enabled>
     <only_future_events>no</only_future_events>
     <curl_max_size>1M</curl_max_size>
+    <page_size>10</page_size>
+    <time_delay>1</time_delay>
     <run_on_start>yes</run_on_start>
     <version>v1.0</version>
     <api_auth>
@@ -2852,6 +2936,8 @@ void test_wm_ms_graph_scan_relationships_single_success_two_logs(void **state) {
     module_data->enabled = true;
     module_data->only_future_events = false;
     module_data->curl_max_size = 1024L;
+    module_data->page_size = 10;
+    module_data->time_delay = 1;
     module_data->run_on_start = true;
     module_data->scan_config.interval = 60;
     os_strdup("v1.0", module_data->version);
@@ -2898,7 +2984,7 @@ void test_wm_ms_graph_scan_relationships_single_success_two_logs(void **state) {
 #endif
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Log URL: 'https://graph.microsoft.com/v1.0/deviceManagement/detectedApps?$top=100'");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Log URL: 'https://graph.microsoft.com/v1.0/deviceManagement/detectedApps?$top=10'");
 
     expect_any(__wrap_wurl_http_request, method);
     expect_any(__wrap_wurl_http_request, header);
@@ -2934,7 +3020,7 @@ void test_wm_ms_graph_scan_relationships_single_success_two_logs(void **state) {
     expect_string(__wrap__mterror, formatted_msg, "(1210): Queue 'queue/sockets/queue' not accessible: 'Error'");
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Log URL: 'https://graph.microsoft.com/v1.0/deviceManagement/detectedApps/12345/managedDevices?$top=100&$select=id,deviceName'");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Log URL: 'https://graph.microsoft.com/v1.0/deviceManagement/detectedApps/12345/managedDevices?$top=10&$select=id,deviceName'");
 
     expect_any(__wrap_wurl_http_request, method);
     expect_any(__wrap_wurl_http_request, header);
@@ -2983,6 +3069,8 @@ void test_wm_ms_graph_scan_relationships_single_success_two_pages(void **state) 
     <enabled>yes</enabled>
     <only_future_events>no</only_future_events>
     <curl_max_size>1M</curl_max_size>
+    <page_size>200</page_size>
+    <time_delay>20</time_delay>
     <run_on_start>yes</run_on_start>
     <version>v1.0</version>
     <api_auth>
@@ -3002,6 +3090,8 @@ void test_wm_ms_graph_scan_relationships_single_success_two_pages(void **state) 
     module_data->enabled = true;
     module_data->only_future_events = false;
     module_data->curl_max_size = 1024L;
+    module_data->page_size = 200;
+    module_data->time_delay = 20;
     module_data->run_on_start = true;
     module_data->scan_config.interval = 60;
     os_strdup("v1.0", module_data->version);
@@ -3041,7 +3131,7 @@ void test_wm_ms_graph_scan_relationships_single_success_two_pages(void **state) 
     os_strdup("test2", response2->header);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Log URL: 'https://graph.microsoft.com/v1.0/deviceManagement/managedDevices?$top=100'");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Log URL: 'https://graph.microsoft.com/v1.0/deviceManagement/managedDevices?$top=200'");
 
     expect_any(__wrap_wurl_http_request, method);
     expect_any(__wrap_wurl_http_request, header);
@@ -3133,6 +3223,8 @@ void test_wm_ms_graph_scan_relationships_single_success_two_resources(void **sta
     <enabled>yes</enabled>
     <only_future_events>no</only_future_events>
     <curl_max_size>1M</curl_max_size>
+    <page_size>200</page_size>
+    <time_delay>20</time_delay>
     <run_on_start>yes</run_on_start>
     <version>v1.0</version>
     <api_auth>
@@ -3142,8 +3234,8 @@ void test_wm_ms_graph_scan_relationships_single_success_two_resources(void **sta
       <api_type>global</api_type>
     </api_auth>
     <resource>
-      <name>security</name>
-      <relationship>alerts_v2</relationship>
+      <name>identityProtection</name>
+      <relationship>riskDetections</relationship>
     </resource>
     <resource>
       <name>deviceManagement</name>
@@ -3160,6 +3252,8 @@ void test_wm_ms_graph_scan_relationships_single_success_two_resources(void **sta
     module_data->enabled = true;
     module_data->only_future_events = false;
     module_data->curl_max_size = 1024L;
+    module_data->page_size = 200;
+    module_data->time_delay = 20;
     module_data->run_on_start = true;
     module_data->scan_config.interval = 60;
     os_strdup("v1.0", module_data->version);
@@ -3169,11 +3263,11 @@ void test_wm_ms_graph_scan_relationships_single_success_two_resources(void **sta
     os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, module_data->auth_config[0]->login_fqdn);
     os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config[0]->query_fqdn);
     os_malloc(sizeof(wm_ms_graph_resource) * 2, module_data->resources);
-    os_strdup("security", module_data->resources[0].name);
+    os_strdup("identityProtection", module_data->resources[0].name);
     os_strdup("deviceManagement", module_data->resources[1].name);
     module_data->num_resources = 2;
     os_malloc(sizeof(char*) * 2, module_data->resources[0].relationships);
-    os_strdup("alerts_v2", module_data->resources[0].relationships[0]);
+    os_strdup("riskDetections", module_data->resources[0].relationships[0]);
     module_data->resources[0].num_relationships = 1;
     os_malloc(sizeof(char*) * 2, module_data->resources[1].relationships);
     os_strdup("auditEvents", module_data->resources[1].relationships[0]);
@@ -3195,7 +3289,7 @@ void test_wm_ms_graph_scan_relationships_single_success_two_resources(void **sta
     will_return(__wrap_os_random, 12345);
 #endif
 
-    expect_string(__wrap_wm_state_io, tag, "ms-graph-example_tenant-security-alerts_v2");
+    expect_string(__wrap_wm_state_io, tag, "ms-graph-example_tenant-identityProtection-riskDetections");
     expect_value(__wrap_wm_state_io, op, WM_IO_READ);
     expect_any(__wrap_wm_state_io, state);
     expect_any(__wrap_wm_state_io, size);
@@ -3215,7 +3309,7 @@ void test_wm_ms_graph_scan_relationships_single_success_two_resources(void **sta
     will_return(__wrap_strftime, 20);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Log URL: 'https://graph.microsoft.com/v1.0/security/alerts_v2?$top=100&$filter=createdDateTime+ge+2023-02-08T12:24:56Z+and+createdDateTime+lt+2023-02-08T12:25:56Z'");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Log URL: 'https://graph.microsoft.com/v1.0/identityProtection/riskDetections?$top=200&$filter=activityDateTime+ge+2023-02-08T12:24:56Z+and+activityDateTime+lt+2023-02-08T12:25:56Z'");
 
     expect_any(__wrap_wurl_http_request, method);
     expect_any(__wrap_wurl_http_request, header);
@@ -3227,24 +3321,24 @@ void test_wm_ms_graph_scan_relationships_single_success_two_resources(void **sta
     will_return(__wrap_wurl_http_request, response);
 
     expect_string(__wrap__mtdebug2, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mtdebug2, formatted_msg, "Sending log: '{\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log1\",\"resource\":\"security\",\"relationship\":\"alerts_v2\"}}'");
+    expect_string(__wrap__mtdebug2, formatted_msg, "Sending log: '{\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log1\",\"resource\":\"identityProtection\",\"relationship\":\"riskDetections\"}}'");
 
     queue_fd = 0;
     expect_value(__wrap_wm_sendmsg, usec, 1000000);
     expect_value(__wrap_wm_sendmsg, queue, queue_fd);
-    expect_string(__wrap_wm_sendmsg, message, "{\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log1\",\"resource\":\"security\",\"relationship\":\"alerts_v2\"}}");
+    expect_string(__wrap_wm_sendmsg, message, "{\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log1\",\"resource\":\"identityProtection\",\"relationship\":\"riskDetections\"}}");
     expect_string(__wrap_wm_sendmsg, locmsg, "ms-graph");
     expect_value(__wrap_wm_sendmsg, loc, LOCALFILE_MQ);
     will_return(__wrap_wm_sendmsg, 1);
 
-    expect_string(__wrap_wm_state_io, tag, "ms-graph-example_tenant-security-alerts_v2");
+    expect_string(__wrap_wm_state_io, tag, "ms-graph-example_tenant-identityProtection-riskDetections");
     expect_value(__wrap_wm_state_io, op, WM_IO_WRITE);
     expect_any(__wrap_wm_state_io, state);
     expect_any(__wrap_wm_state_io, size);
     will_return(__wrap_wm_state_io, 1);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mtdebug1, formatted_msg, "Bookmark updated to '2023-02-08T12:25:56Z' for tenant 'example_tenant' resource 'security' and relationship 'alerts_v2', waiting '60' seconds to run next scan.");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Bookmark updated to '2023-02-08T12:25:56Z' for tenant 'example_tenant' resource 'identityProtection' and relationship 'riskDetections', waiting '60' seconds to run next scan.");
 
     // resource auditlogs
     os_calloc(1, sizeof(curl_response), response);
@@ -3273,7 +3367,7 @@ void test_wm_ms_graph_scan_relationships_single_success_two_resources(void **sta
     will_return(__wrap_strftime, 20);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Log URL: 'https://graph.microsoft.com/v1.0/deviceManagement/auditEvents?$top=100&$filter=activityDateTime+ge+2023-02-08T12:24:56Z+and+activityDateTime+lt+2023-02-08T12:25:56Z'");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Log URL: 'https://graph.microsoft.com/v1.0/deviceManagement/auditEvents?$top=200&$filter=activityDateTime+ge+2023-02-08T12:24:56Z+and+activityDateTime+lt+2023-02-08T12:25:56Z'");
 
     expect_any(__wrap_wurl_http_request, method);
     expect_any(__wrap_wurl_http_request, header);

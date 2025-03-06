@@ -120,7 +120,7 @@ else()
                                     -Wl,--wrap,w_journal_entry_to_string -Wl,--wrap,w_journal_entry_free \
                                     -Wl,--wrap,w_journal_context_next_newest_filtered -Wl,--wrap,_merror -Wl,--wrap,_minfo \
                                     -Wl,--wrap,_mdebug1 -Wl,--wrap,_mdebug2 -Wl,--wrap,isDebug -Wl,--wrap,w_msg_hash_queues_push \
-                                    -Wl,--wrap,can_read")
+                                    -Wl,--wrap,can_read -Wl,--wrap,w_journal_rotation_detected")
 
     list(APPEND logcollector_names "test_journal_log")
     list(APPEND logcollector_flags "-Wl,--wrap,stat -Wl,--wrap,_mwarn -Wl,--wrap,dlsym -Wl,--wrap,dlerror -Wl,--wrap,gettimeofday \
@@ -131,11 +131,21 @@ else()
                                     -Wl,--wrap,sd_journal_open -Wl,--wrap,sd_journal_close -Wl,--wrap,sd_journal_previous \
                                     -Wl,--wrap,sd_journal_next -Wl,--wrap,sd_journal_seek_tail \
                                     -Wl,--wrap,sd_journal_seek_realtime_usec -Wl,--wrap,sd_journal_get_realtime_usec \
-                                    -Wl,--wrap,sd_journal_get_data -Wl,--wrap,sd_journal_restart_data \
-                                    -Wl,--wrap,sd_journal_enumerate_data -Wl,--wrap,sd_journal_get_cutoff_realtime_usec \
-                                    -Wl,--wrap,cJSON_CreateObject -Wl,--wrap,cJSON_AddArrayToObject -Wl,--wrap,cJSON_AddStringToObject \
-                                    -Wl,--wrap,cJSON_AddStringToObject -Wl,--wrap,cJSON_AddItemToArray -Wl,--wrap,pthread_rwlock_wrlock \
-                                    -Wl,--wrap,cJSON_PrintUnformatted -Wl,--wrap,cJSON_Delete")
+                                    -Wl,--wrap,sd_journal_process -Wl,--wrap,sd_journal_get_fd -Wl,--wrap,sd_journal_get_data \
+                                    -Wl,--wrap,sd_journal_restart_data -Wl,--wrap,sd_journal_enumerate_data \
+                                    -Wl,--wrap,sd_journal_get_cutoff_realtime_usec -Wl,--wrap,cJSON_CreateObject \
+                                    -Wl,--wrap,cJSON_AddArrayToObject -Wl,--wrap,cJSON_AddStringToObject \
+                                    -Wl,--wrap,cJSON_AddItemToArray -Wl,--wrap,pthread_rwlock_wrlock -Wl,--wrap,cJSON_PrintUnformatted \
+                                    -Wl,--wrap,cJSON_Delete")
+
+    list(APPEND logcollector_names "test_read_syslog")
+    list(APPEND logcollector_flags "-Wl,--wrap,fopen -Wl,--wrap,popen -Wl,--wrap,fclose -Wl,--wrap,fflush -Wl,--wrap,fgets \
+                                    -Wl,--wrap,fread -Wl,--wrap,fwrite -Wl,--wrap,remove -Wl,--wrap,fseek -Wl,--wrap=fgetc \
+                                    -Wl,--wrap,time -Wl,--wrap,can_read -Wl,--wrap,w_ftell -Wl,--wrap,w_expression_match \
+                                    -Wl,--wrap,fgetpos -Wl,--wrap=w_update_file_status -Wl,--wrap,_merror \
+                                    -Wl,--wrap=w_get_hash_context -Wl,--wrap=_fseeki64 -Wl,--wrap=OS_SHA1_Stream \
+                                    -Wl,--wrap=w_fseek -Wl,--wrap,wfopen")
+
 endif()
 
 list(LENGTH logcollector_names count)

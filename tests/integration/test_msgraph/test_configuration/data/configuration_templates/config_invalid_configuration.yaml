@@ -9,6 +9,10 @@
             value: 'INTERVAL'
         - curl_max_size:
             value: 'CURL_MAX_SIZE'
+        - page_size:
+            value: 'PAGE_SIZE'
+        - time_delay:
+            value: 'TIME_DELAY'
         - run_on_start:
             value: 'RUN_ON_START'
         - version:

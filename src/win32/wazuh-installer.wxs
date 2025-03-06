@@ -452,6 +452,10 @@
                                 <File Id="SCA_WIN2022" Name="cis_win2022.yml" Source="..\..\ruleset\sca\windows\cis_win2022.yml" />
                                 <Condition>BUILDVERSION &gt; 20000 AND MsiNTProductType &gt; 1</Condition>
                             </Component>
+                            <Component Id="SCA_WIN2025" DiskId="1" Guid="0C466900-EB75-46E1-97F3-14DB39E77412">
+                                <File Id="SCA_WIN2025" Name="cis_win2025.yml" Source="..\..\ruleset\sca\windows\cis_win2025.yml" />
+                                <Condition>BUILDVERSION &gt; 20000 AND MsiNTProductType &gt; 1</Condition>
+                            </Component>
                         </Directory>
                     </Directory>
                     <Directory Id="TMP" Name="tmp" />
@@ -672,6 +676,7 @@
             <ComponentRef Id="SCA_WIN2016" />
             <ComponentRef Id="SCA_WIN2019" />
             <ComponentRef Id="SCA_WIN2022" />
+            <ComponentRef Id="SCA_WIN2025" />
             <ComponentRef Id="CMP_BOOKMARKS" />
             <ComponentRef Id="CMP_LOGS" />
             <ComponentRef Id="CMP_WODLES" />
@@ -710,7 +715,7 @@
         <Binary Id="CustomImage" SourceFile="ui\bannrbmp.jpg" />
         <UI>
 	        <Dialog Id="CustomCheckDialog" Width="370" Height="270" Title="Wazuh Agent Setup">
-                <Control Id="BannerBitmap" Type="Bitmap" X="0" Y="0" Width="370" Height="44" 
+                <Control Id="BannerBitmap" Type="Bitmap" X="0" Y="0" Width="370" Height="44"
                     Text="CustomImage" />
 
                 <Control Id="Description" Type="Text" X="20" Y="60" Width="330" Height="60"

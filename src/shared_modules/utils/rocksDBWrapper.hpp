@@ -29,8 +29,6 @@
 #include <utility>
 #include <vector>
 
-constexpr auto BATCH_SIZE = 10000;
-
 namespace Utils
 {
     class RocksDBTransaction;
@@ -61,49 +59,6 @@ namespace Utils
     template<typename T = rocksdb::DB>
     class TRocksDBWrapper : public IRocksDBWrapper
     {
-
-    private:
-            /**
-         * @brief Auxiliary function to delete all key-value pairs from the database.
-         * @param columnHandle Column handle to delete from.
-         */
-        void deleteAllFromColumn(rocksdb::ColumnFamilyHandle* columnHandle)
-        {
-            rocksdb::WriteOptions writeOptions;
-            rocksdb::WriteBatch batch;
-            std::unique_ptr<rocksdb::Iterator> it(m_db->NewIterator(rocksdb::ReadOptions(), columnHandle));
-            size_t currentBatchSize = 0;
-
-            it->SeekToFirst();
-            while (it->Valid())
-            {
-                batch.Delete(columnHandle, it->key());
-                ++currentBatchSize;
-
-                if (currentBatchSize >= BATCH_SIZE)
-                {
-                    auto status = m_db->Write(writeOptions, &batch);
-                    if (!status.ok())
-                    {
-                        throw std::runtime_error("Error writing batch: " + status.ToString());
-                    }
-
-                    batch.Clear();
-                    currentBatchSize = 0;
-                }
-
-                it->Next();
-            }
-
-            if (currentBatchSize > 0)
-            {
-                auto status = m_db->Write(writeOptions, &batch);
-                if (!status.ok())
-                {
-                    throw std::runtime_error("Error writing final batch: " + status.ToString());
-                }
-            }
-        }
 
     public:
         /**
@@ -558,13 +513,42 @@ namespace Utils
          */
         void deleteAll() override
         {
+            std::vector<std::string> columnsNames;
             auto it = m_columnsInstances.begin();
 
             while (it != m_columnsInstances.end())
             {
+                if ((*it)->GetName() != rocksdb::kDefaultColumnFamilyName)
+                {
+                    it->drop();
+                    columnsNames.push_back((*it)->GetName());
+                    it = m_columnsInstances.erase(it);
+                }
+                else
+                {
+                    rocksdb::WriteBatch batch;
+                    std::unique_ptr<rocksdb::Iterator> itDefault(
+                        m_db->NewIterator(rocksdb::ReadOptions(), it->handle()));
 
-                deleteAllFromColumn(it->handle());
-                ++it;
+                    itDefault->SeekToFirst();
+                    while (itDefault->Valid())
+                    {
+                        batch.Delete(it->handle(), itDefault->key());
+                        itDefault->Next();
+                    }
+
+                    if (const auto status = m_db->Write(rocksdb::WriteOptions(), &batch); !status.ok())
+                    {
+                        throw std::runtime_error("Error deleting data: " + status.ToString());
+                    }
+
+                    ++it;
+                }
+            }
+
+            for (const auto& columnName : columnsNames)
+            {
+                createColumn(columnName);
             }
         }
 
@@ -574,9 +558,43 @@ namespace Utils
          */
         void deleteAll(const std::string& columnName)
         {
+            // Delete all data from the specified column
             const auto& columnHandle = getColumnFamilyBasedOnName(columnName);
+            if (columnHandle->GetName() != rocksdb::kDefaultColumnFamilyName)
+            {
+                // Find the column handle on the list and drop it
+                const auto it =
+                    std::find_if(m_columnsInstances.begin(),
+                                 m_columnsInstances.end(),
+                                 [&columnName](const auto& handle) { return columnName == handle->GetName(); });
 
-            deleteAllFromColumn(columnHandle.handle());
+                // Check if the column exists
+                if (it != m_columnsInstances.end())
+                {
+                    it->drop();
+                    m_columnsInstances.erase(it);
+
+                    createColumn(columnName);
+                }
+            }
+            else
+            {
+                rocksdb::WriteBatch batch;
+                std::unique_ptr<rocksdb::Iterator> itDefault(
+                    m_db->NewIterator(rocksdb::ReadOptions(), columnHandle.handle()));
+
+                itDefault->SeekToFirst();
+                while (itDefault->Valid())
+                {
+                    batch.Delete(columnHandle.handle(), itDefault->key());
+                    itDefault->Next();
+                }
+
+                if (auto status = m_db->Write(rocksdb::WriteOptions(), &batch); !status.ok())
+                {
+                    throw std::runtime_error("Error deleting data: " + status.ToString());
+                }
+            }
         }
 
         /**
