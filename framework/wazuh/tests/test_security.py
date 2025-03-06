@@ -73,8 +73,6 @@ def db_setup():
     with (
         patch('wazuh.core.common.wazuh_uid'),
         patch('wazuh.core.common.wazuh_gid'),
-        # TODO: Fix in #26725
-        patch('wazuh.core.utils.load_wazuh_xml'),
     ):
         with patch('sqlalchemy.create_engine', return_value=create_engine('sqlite://')):
             with patch('shutil.chown'), patch('os.chmod'):

@@ -24,9 +24,22 @@ with patch('wazuh.common.wazuh_uid'):
         from wazuh import WazuhException
 
 from wazuh.core.exception import WazuhClusterError
+from wazuh.core.config.models.server import ServerConfig, NodeConfig, NodeType, SSLConfig, ValidateFilePathMixin
 
-cluster_items = {'intervals': {'worker': {'keep_alive': 1, 'max_failed_keepalive_attempts': 0, 'connection_retry': 2}}}
-configuration = {'node_name': 'manager', 'nodes': [0], 'port': 1515}
+#configuration = {'node_name': 'manager', 'nodes': [0], 'port': 1515}
+with patch.object(ValidateFilePathMixin, '_validate_file_path', return_value=None):
+    configuration = ServerConfig(
+        nodes=['0'],
+        node=NodeConfig(
+            name='node_name',
+            type=NodeType.MASTER,
+            ssl=SSLConfig(
+                key='example',
+                cert='example',
+                ca='example'
+            )
+        )
+    )
 
 
 class FutureMock:
@@ -57,12 +70,11 @@ class LoopMock:
 
 future_mock = FutureMock()
 abstract_client = client.AbstractClient(
-    loop=None, on_con_lost=future_mock, name='name', logger=None, manager=None, cluster_items=cluster_items
+    server_config=configuration ,loop=None, on_con_lost=future_mock, name='name', logger=None, manager=None
 )
 with patch('asyncio.get_running_loop'):
     abstract_client_manager = client.AbstractClientManager(
-        configuration=configuration,
-        cluster_items=cluster_items,
+        server_config=configuration,
         performance_test=10,
         concurrency_test=10,
         file='/file/path',
@@ -77,7 +89,6 @@ def test_acm_init():
     """Check the correct initialization of the AbstractClientManager object."""
     assert abstract_client_manager.name == 'manager'
     assert abstract_client_manager.configuration == configuration
-    assert abstract_client_manager.cluster_items == cluster_items
     assert abstract_client_manager.performance_test == 10
     assert abstract_client_manager.concurrency_test == 10
     assert abstract_client_manager.file == '/file/path'

@@ -11,8 +11,37 @@ import pytest
 import scripts.wazuh_server as wazuh_server
 from wazuh.core import pyDaemonModule
 from wazuh.core.cluster.utils import HAPROXY_DISABLED, HAPROXY_HELPER
+from wazuh.core.config.client import CentralizedConfig, Config
+from wazuh.core.config.models.server import ServerConfig, ValidateFilePathMixin, SSLConfig, NodeConfig, NodeType
+from wazuh.core.config.models.indexer import IndexerConfig, IndexerNode
+
 
 wazuh_server.pyDaemonModule = pyDaemonModule
+
+with patch.object(ValidateFilePathMixin, '_validate_file_path', return_value=None):
+    default_config = Config(
+        server=ServerConfig(
+            nodes=['0'],
+            node=NodeConfig(
+                name='node_name',
+                type=NodeType.MASTER,
+                ssl=SSLConfig(
+                    key='example',
+                    cert='example',
+                    ca='example'
+                )
+            )
+        ),
+        indexer=IndexerConfig(
+            hosts=[IndexerNode(
+                host='example',
+                port=1516
+            )],
+            username='wazuh',
+            password='wazuh'
+        )
+    )
+    CentralizedConfig._config = default_config
 
 
 def test_set_logging():
@@ -21,13 +50,7 @@ def test_set_logging():
 
     wazuh_server.cluster_utils = cluster_utils
     with patch.object(cluster_utils, 'ClusterLogger') as clusterlogger_mock:
-        assert wazuh_server.set_logging(foreground_mode=False, debug_mode=0)
-        clusterlogger_mock.assert_called_once_with(
-            foreground_mode=False,
-            log_path='cluster.log',
-            debug_level=0,
-            tag='%(asctime)s %(levelname)s: [%(tag)s] [%(subtag)s] %(message)s',
-        )
+        assert wazuh_server.set_logging(debug_mode=0)
 
 
 @patch('builtins.print')
@@ -227,7 +250,7 @@ async def test_master_main(helper_disabled: bool):
         patch('wazuh.core.cluster.hap_helper.hap_helper.HAPHelper', HAPHElperMock),
     ):
         await wazuh_server.master_main(
-            args=args, cluster_config=cluster_config, cluster_items={'node': 'item'}, logger='test_logger'
+            args=args, server_config=default_config.server, logger='test_logger'
         )
 
 
@@ -339,17 +362,14 @@ async def test_worker_main(asyncio_sleep_mock):
             'start',
             [
                 'func',
-                'foreground',
                 'performance_test',
                 'concurrency_test',
                 'send_string',
                 'send_file',
                 'root',
-                'config_file',
-                'test_config',
             ],
         ),
-        ('stop', ['func', 'foreground']),
+        ('stop', ['func']),
         ('status', ['func']),
     ],
 )
@@ -359,13 +379,12 @@ def test_get_script_arguments(command, expected_args):
 
     wazuh_server.common = common
 
-    expected_args.extend(['version', 'debug_level'])
+    expected_args.extend(['version'])
     with patch('argparse._sys.argv', ['wazuh_server.py', command]):
-        with patch.object(wazuh_server.common, 'WAZUH_CONF', 'testing/path'):
-            parsed_args = wazuh_server.get_script_arguments().parse_args()
+        parsed_args = wazuh_server.get_script_arguments().parse_args()
 
-            for arg in expected_args:
-                assert hasattr(parsed_args, arg)
+        for arg in expected_args:
+            assert hasattr(parsed_args, arg)
 
 
 @patch('scripts.wazuh_server.sys.exit', side_effect=sys.exit)
@@ -406,20 +425,18 @@ def test_start(print_mock, path_exists_mock, chown_mock, chmod_mock, setuid_mock
     with (
         patch.object(common, 'wazuh_uid', return_value='uid_test'),
         patch.object(common, 'wazuh_gid', return_value='gid_test'),
-        patch.object(wazuh_server.cluster_utils, 'read_config', return_value={'node_type': 'master'}),
         patch.object(wazuh_server.main_logger, 'error') as main_logger_mock,
         patch.object(wazuh_server.main_logger, 'info') as main_logger_info_mock,
     ):
-        with patch.object(wazuh_server.cluster_utils, 'read_config', side_effect=Exception):
-            with pytest.raises(SystemExit):
-                wazuh_server.start()
-            main_logger_mock.assert_called_once()
-            main_logger_mock.reset_mock()
-            path_exists_mock.assert_any_call(wazuh_server.CLUSTER_LOG)
-            chown_mock.assert_called_with(wazuh_server.CLUSTER_LOG, 'uid_test', 'gid_test')
-            chmod_mock.assert_called_with(wazuh_server.CLUSTER_LOG, 432)
-            exit_mock.assert_called_once_with(1)
-            exit_mock.reset_mock()
+        with pytest.raises(SystemExit):
+            wazuh_server.start()
+        main_logger_mock.assert_called_once()
+        main_logger_mock.reset_mock()
+        path_exists_mock.assert_any_call(wazuh_server.CLUSTER_LOG)
+        chown_mock.assert_called_with(wazuh_server.CLUSTER_LOG, 'uid_test', 'gid_test')
+        chmod_mock.assert_called_with(wazuh_server.CLUSTER_LOG, 432)
+        exit_mock.assert_called_once_with(1)
+        exit_mock.reset_mock()
 
         with patch('wazuh.core.cluster.cluster.check_cluster_config', side_effect=IndexError):
             with pytest.raises(SystemExit):
@@ -733,7 +750,6 @@ async def test_check_for_server_readiness_ko(sleep_mock, daemon_exists, children
 
 @pytest.mark.asyncio
 @patch('scripts.wazuh_server.stop_loop', side_effect=RuntimeError)
-@patch('scripts.wazuh_server.check_for_server_state')
 @patch('scripts.wazuh_server.check_daemon', side_effect=(None, None, wazuh_server.WazuhDaemonError(code='Test error.')))
 @patch('scripts.wazuh_server.asyncio.sleep')
 async def test_monitor_server_daemons(sleep_mock, check_daemon_mock, check_for_server_state_mock, stop_loop_mock):

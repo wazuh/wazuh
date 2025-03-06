@@ -18,20 +18,18 @@ from wazuh.core import exception
 
 with patch('wazuh.core.common.wazuh_uid'):
     with patch('wazuh.core.common.wazuh_gid'):
-        # TODO: Fix in #26725
-        with patch('wazuh.core.utils.load_wazuh_xml'):
-            sys.modules['wazuh.rbac.orm'] = MagicMock()
-            import wazuh.rbac.decorators
+        sys.modules['wazuh.rbac.orm'] = MagicMock()
+        import wazuh.rbac.decorators
 
-            del sys.modules['wazuh.rbac.orm']
-            from wazuh.tests.util import RBAC_bypasser
+        del sys.modules['wazuh.rbac.orm']
+        from wazuh.tests.util import RBAC_bypasser
 
-            wazuh.rbac.decorators.expose_resources = RBAC_bypasser
-            from wazuh.core import common
-            from wazuh.core.cluster import client, master
-            from wazuh.core.cluster import common as cluster_common
-            from wazuh.core.cluster.dapi import dapi
-            from wazuh.core.cluster.master import DEFAULT_DATE
+        wazuh.rbac.decorators.expose_resources = RBAC_bypasser
+        from wazuh.core import common
+        from wazuh.core.cluster import client, master
+        from wazuh.core.cluster import common as cluster_common
+        from wazuh.core.cluster.dapi import dapi
+        from wazuh.core.cluster.master import DEFAULT_DATE
 
 # Global variables
 

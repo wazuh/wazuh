@@ -10,12 +10,39 @@ import socket
 import sys
 from unittest.mock import MagicMock, patch
 
+from wazuh.core.config.client import CentralizedConfig, Config
+from wazuh.core.config.models.server import ServerConfig, ValidateFilePathMixin, SSLConfig, NodeConfig, NodeType
+from wazuh.core.config.models.indexer import IndexerConfig, IndexerNode
+
 import pytest
 
 with patch('wazuh.core.common.wazuh_uid'):
     with patch('wazuh.core.common.wazuh_gid'):
-        # TODO: Fix in #26725
-        with patch('wazuh.core.utils.load_wazuh_xml'):
+        with patch.object(ValidateFilePathMixin, '_validate_file_path', return_value=None):
+            default_config = Config(
+                server=ServerConfig(
+                    nodes=['0'],
+                    node=NodeConfig(
+                        name='node_name',
+                        type=NodeType.MASTER,
+                        ssl=SSLConfig(
+                            key='example',
+                            cert='example',
+                            ca='example'
+                        )
+                    )
+                ),
+                indexer=IndexerConfig(
+                    hosts=[IndexerNode(
+                        host='example',
+                        port=1516
+                    )],
+                    username='wazuh',
+                    password='wazuh'
+                )
+            )
+            CentralizedConfig._config = default_config
+
             sys.modules['wazuh.rbac.orm'] = MagicMock()
             import wazuh.rbac.decorators
             from wazuh.tests.util import RBAC_bypasser
@@ -23,7 +50,6 @@ with patch('wazuh.core.common.wazuh_uid'):
             del sys.modules['wazuh.rbac.orm']
             wazuh.rbac.decorators.expose_resources = RBAC_bypasser
 
-            from wazuh import WazuhInternalError
             from wazuh.core.manager import LoggingFormat
             from wazuh.core.tests.test_manager import get_logs
             from wazuh.manager import *

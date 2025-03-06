@@ -16,14 +16,12 @@ sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '../..
 
 with patch('wazuh.core.common.wazuh_uid'):
     with patch('wazuh.core.common.wazuh_gid'):
-        # TODO: Fix in #26725
-        with patch('wazuh.core.utils.load_wazuh_xml'):
-            sys.modules['wazuh.rbac.orm'] = MagicMock()
-            import wazuh.rbac.decorators
-            from wazuh.tests.util import RBAC_bypasser
+        sys.modules['wazuh.rbac.orm'] = MagicMock()
+        import wazuh.rbac.decorators
+        from wazuh.tests.util import RBAC_bypasser
 
-            del sys.modules['wazuh.rbac.orm']
-            wazuh.rbac.decorators.expose_resources = RBAC_bypasser
+        del sys.modules['wazuh.rbac.orm']
+        wazuh.rbac.decorators.expose_resources = RBAC_bypasser
 
         from server_management_api.util import remove_nones_to_dict
         from wazuh import WazuhError, WazuhException, WazuhInternalError
