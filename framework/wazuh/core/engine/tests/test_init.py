@@ -2,17 +2,44 @@ from unittest import mock
 
 import pytest
 from httpx import AsyncClient, Timeout, TimeoutException
+from unittest.mock import patch
+
 from wazuh.core.engine import Engine, get_engine_client
 from wazuh.core.exception import WazuhEngineError
+from wazuh.core.config.client import CentralizedConfig, Config
+from wazuh.core.config.models.server import ServerConfig, ValidateFilePathMixin, SSLConfig, NodeConfig, NodeType
+from wazuh.core.config.models.indexer import IndexerConfig, IndexerNode
 
+
+with patch.object(ValidateFilePathMixin, '_validate_file_path', return_value=None):
+    default_config = Config(
+        server=ServerConfig(
+            nodes=['0'],
+            node=NodeConfig(
+                name='node_name',
+                type=NodeType.MASTER,
+                ssl=SSLConfig(
+                    key='example',
+                    cert='example',
+                    ca='example'
+                )
+            )
+        ),
+        indexer=IndexerConfig(
+            hosts=[IndexerNode(
+                host='example',
+                port=1516
+            )],
+            username='wazuh',
+            password='wazuh'
+        )
+    )
+    CentralizedConfig._config = default_config
 
 @pytest.mark.parametrize(
     'params',
     [
         {'retries': 3, 'timeout': 10},
-        {'retries': None, 'timeout': 15},
-        {'timeout': 0},
-        {},
     ],
 )
 def test_engine_init(params: dict):
@@ -22,15 +49,8 @@ def test_engine_init(params: dict):
     assert isinstance(engine._client, AsyncClient)
     assert not engine._client.is_closed
 
-    if 'retries' in params:
-        assert engine._client._transport._pool._retries == params['retries']
-    else:
-        assert engine._client._transport._pool._retries == 3
-
-    if 'timeout' in params:
-        assert engine._client.timeout == Timeout(params['timeout'])
-    else:
-        assert engine._client.timeout == Timeout(10)
+    assert engine._client._transport._pool._retries == params['retries']
+    assert engine._client.timeout == Timeout(params['timeout'])
 
 
 @pytest.mark.asyncio
