@@ -22,8 +22,6 @@
 #define INLINE inline
 #endif
 
-STATIC const int W_SD_JOURNAL_NOP = 0;        ///< The journal did not change since the last invocation.
-STATIC const int W_SD_JOURNAL_APPEND = 1;     ///< New entries have been appended to the end of the journal.
 STATIC const int W_SD_JOURNAL_INVALIDATE = 2; ///< Indicates the journal files have changed on disk.
 
 STATIC const int W_SD_JOURNAL_LOCAL_ONLY = 1 << 0;     ///< Open the journal log for the local machine
