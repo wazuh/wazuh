@@ -16,7 +16,6 @@ using EventT = std::tuple<std::string, Expc>;
 
 class NdJsonParserTest : public ::testing::TestWithParam<EventT>
 {
-    void SetUp() override { logging::testInit(logging::Level::Debug); }
 };
 
 template<size_t repeatedEvents = 1, typename... Args>
@@ -128,7 +127,7 @@ INSTANTIATE_TEST_SUITE_P(
                              R"({"original":"event"})"),
                SUCCESS(makeResult<2>(
                    R"({"event":{"module":"module","collector":"collector"},"original":"event","header":"header"})"))),
-        // Success Mixed subheader with empty lines
+        // Failure Mixed subheader with empty lines
         EventT(makeRawNdJson(R"({"header":"header"})",
                              R"({"module":"module", "collector":"collector"})",
                              R"({"original":"event"})",
@@ -138,8 +137,7 @@ INSTANTIATE_TEST_SUITE_P(
                              "",
                              R"({"original":"event"})",
                              R"({"module":"module", "collector":"collector"})"),
-               SUCCESS(makeResult<3>(
-                   R"({"event":{"module":"module","collector":"collector"},"original":"event","header":"header"})"))),
+               FAILURE()),
         // Failure empty
         EventT("", FAILURE()),
         // Failure not min size
@@ -149,14 +147,13 @@ INSTANTIATE_TEST_SUITE_P(
                FAILURE()),
         // Failure invalid subheader
         EventT(makeRawNdJson(R"({"header":"header"})", "subheader", R"({"original":"event"})"), FAILURE()),
-        // Success invalid event (empty result)
+        // Failure invalid event (empty result)
         EventT(makeRawNdJson(R"({"header":"header"})", R"({"module":"module", "collector":"collector"})", "event"),
-               SUCCESS({})),
-        // Success invalid mixed subheader (all events use the same subheader)
+               FAILURE()),
+        // Failure invalid mixed subheader (all events would use the same subheader)
         EventT(makeRawNdJson(R"({"header":"header"})",
                              R"({"module":"module", "collector":"collector"})",
                              R"({"original":"event"})",
                              R"({"module)",
                              R"({"original":"event"})"),
-               SUCCESS(makeResult<2>(
-                   R"({"event":{"module":"module","collector":"collector"},"original":"event","header":"header"})")))));
+               FAILURE())));

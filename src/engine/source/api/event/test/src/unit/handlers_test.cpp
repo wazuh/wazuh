@@ -59,8 +59,8 @@ INSTANTIATE_TEST_SUITE_P(Api,
                                  []()
                                  {
                                      httplib::Request req;
-                                     req.headers.emplace("Content-Type", "plain/text");
-                                     req.body = "invalid event";
+                                     req.headers.emplace("Content-Type", "application/json");
+                                     req.body = "{\"error\": \"error\", \"code\": 400}";
 
                                      return req;
                                  },
@@ -73,7 +73,8 @@ INSTANTIATE_TEST_SUITE_P(Api,
                                  []()
                                  {
                                      httplib::Response res;
-                                     res.status = httplib::StatusCode::OK_200;
+                                     res.status = httplib::StatusCode::BadRequest_400;
+                                     res.set_content("{\"error\": \"error\", \"code\": 400}", "application/json");
                                      return res;
                                  },
                                  [](auto& mock) {}),
