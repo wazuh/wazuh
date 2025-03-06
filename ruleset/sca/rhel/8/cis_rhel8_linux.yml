@@ -1088,7 +1088,7 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
     condition: none
     rules:
-      - "c:rpm -q setroubleshoot -> r:setroubleshoot"
+      - "c:rpm -q setroubleshoot -> r:setroubleshoot-"
 
   # 1.6.1.8 Ensure the MCS Translation Service (mcstrans) is not installed. (Automated)
   - id: 5049
@@ -1107,7 +1107,7 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
     condition: none
     rules:
-      - "c:rpm -q mcstrans -> r:mcstrans"
+      - "c:rpm -q mcstrans -> r:mcstrans-"
 
   ###############################################
   # 1.7  Warning Banners
@@ -1340,9 +1340,9 @@ checks:
       - cmmc_v2.0: ["MP.L2-3.8.7"]
       - hipaa: ["164.310(d)(1)"]
       - iso_27001-2013: ["A.12.2.1"]
-    condition: all
+    condition: none
     rules:
-      - "c:gsettings get org.gnome.desktop.media-handling automount -> r:false"
+      - "c:gsettings get org.gnome.desktop.media-handling automount -> r:true"
 
   # 1.9 Ensure updates, patches, and additional security software are installed. (Manual) - Not Implemented
 
@@ -1742,7 +1742,7 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
     condition: all
     rules:
-      - 'c:ss -lntu -> r:\.*:25\.* && !r:\s*127.0.0.1:25\s*|\s*::1:25\s*'
+      - 'not c:ss -lntu -> r:\.*:25\.* && r:\s*127.0.0.1:25\s*|\s*::1:25\s*'
 
   # 2.2.18 Ensure nfs-utils is not installed or the nfs-server service is masked. (Automated)
   - id: 5082
@@ -1783,7 +1783,7 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
     condition: any
     rules:
-      - "c:rpm -q -> r:rpcbind package rpcbind is not installed"
+      - "c:rpm -q rpcbind -> r:package rpcbind is not installed"
       - "c:systemctl is-enabled rpcbind rpcbind.socket -> r:masked"
 
   # 2.2.20 Ensure rsync is not installed or the rsyncd service is masked. (Automated)
@@ -1827,9 +1827,9 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition: none
+    condition: all
     rules:
-      - "c:rpm -q ypbind -> r:^package ypbind is not installed"
+      - "c:rpm -q ypbind -> r:package ypbind is not installed"
 
   # 2.3.2 Ensure rsh client is not installed. (Automated)
   - id: 5086
@@ -1847,9 +1847,9 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition: none
+    condition: all
     rules:
-      - "c:rpm -q rsh -> r:^package rsh is not installed"
+      - "c:rpm -q rsh -> r:package rsh is not installed"
 
   # 2.3.3 Ensure talk client is not installed. (Automated)
   - id: 5087
@@ -1867,9 +1867,9 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition: none
+    condition: all
     rules:
-      - "c:rpm -q talk -> r:^package talk is not installed"
+      - "c:rpm -q talk -> r:package talk is not installed"
 
   # 2.3.4 Ensure telnet client is not installed. (Automated)
   - id: 5088
@@ -1939,25 +1939,7 @@ checks:
   # 3.1 Uncommon Network Protocols
   ###############################################
 
-  # 3.1.1 Verify if IPv6 is enabled on the system. (Manual)
-  - id: 5091
-    title: "Verify if IPv6 is enabled on the system."
-    description: "Internet Protocol Version 6 (IPv6) is the most recent version of Internet Protocol (IP). It's designed to supply IP addressing and additional security to support the predicted growth of connected devices."
-    rationale: "It is recommended that either IPv6 settings are configured OR IPv6 be disabled to reduce the attack surface of the system."
-    impact: "IETF RFC 4038 recommends that applications are built with an assumption of dual stack. If IPv6 is disabled through sysctl config, SSH X11forwarding may no longer function as expected. We recommend that SSH X11fowarding be disabled, but if required, the following will allow for SSH X11forwarding with IPv6 disabled through sysctl config: Add the following line the /etc/ssh/sshd_config file: AddressFamily inet Run the following command to re-start the openSSH server: # systemctl restart sshd."
-    remediation: 'If IPv6 is to be disabled, use one of the two following methods to disable IPv6 on the system: To disable IPv6 through the GRUB2 config, run the following command to add ipv6.disable=1 to the GRUB_CMDLINE_LINUX parameters: grubby --update-kernel ALL --args ''ipv6.disable=1'' OR To disable IPv6 through sysctl settings, set the following parameters in /etc/sysctl.conf or a /etc/sysctl.d/* file: Example: # printf " net.ipv6.conf.all.disable_ipv6 = 1 net.ipv6.conf.default.disable_ipv6 = 1 " >> /etc/sysctl.d/60-disable_ipv6.conf Run the following command to set the active kernel parameters: # { sysctl -w net.ipv6.conf.all.disable_ipv6=1 sysctl -w net.ipv6.conf.default.disable_ipv6=1 sysctl -w net.ipv6.route.flush=1 }.'
-    compliance:
-      - cis: ["3.1.1"]
-      - cis_csc_v8: ["4.8"]
-      - cis_csc_v7: ["9.4"]
-      - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
-      - iso_27001-2013: ["A.13.1.1"]
-      - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
-      - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
-      - soc_2: ["CC6.3", "CC6.6"]
-    condition: all
-    rules:
-      - 'f:/boot/grub2/grubenv -> r:^\s*kernelopts=\.+ipv6.disable=1'
+  # 3.1.1 Verify if IPv6 is enabled on the system. (Manual) - Not Implemented
 
   # 3.1.2 Ensure SCTP is disabled. (Automated)
   - id: 5092
@@ -2701,10 +2683,8 @@ checks:
       - soc_2: ["CC5.2", "CC7.2"]
     condition: all
     rules:
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:exit,always|always,exit && r:-F arch=b64 && r:-C euid!=uid|-C uid!=euid  && r:-F auid!=unset|-F auid!=1|-F auid!=4294967295 && r:-S execve && r:-k user_emulation|key=user_emulation'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:exit,always|always,exit && r:-F arch=b32 && r:-C euid!=uid|-C uid!=euid  && r:-F auid!=unset|-F auid!=1|-F auid!=4294967295 && r:-S execve && r:-k user_emulation|key=user_emulation'
-      - "c:auditctl -l -> r:^-a && r:exit,always|always,exit && r:-F arch=b64 && r:-C euid!=uid|-C uid!=euid && r:-F auid!=unset|-F auid!=1|-F auid!=4294967295 && r:-S execve && r:-k user_emulation|key=user_emulation"
-      - "c:auditctl -l -> r:^-a && r:exit,always|always,exit && r:-F arch=b32 && r:-C euid!=uid|-C uid!=euid && r:-F auid!=unset|-F auid!=1|-F auid!=4294967295 && r:-S execve && r:-k user_emulation|key=user_emulation"
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:exit,always|always,exit && r:-F arch=b64|-F arch=b32 && r:-S execve && r:-k user_emulation|key=user_emulation'
+      - "c:auditctl -l -> r:^-a && r:exit,always|always,exit && r:-F arch=b64|-F arch=b32 && r:-S execve && r:-k user_emulation|key=user_emulation"
 
   # 4.1.3.3 Ensure events that modify the sudo log file are collected. (Automated) - Not Implemented
 
