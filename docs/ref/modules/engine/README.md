@@ -8,6 +8,61 @@ The data flow begins when an event enters the orchestrator and continues until i
 
 <flowchart_placeholder>
 
+```mermaid
+flowchart LR
+
+classDef EventBoxClass font-size: 15px,stroke-width:2px, color:#fff, fill:#3f51b5
+
+%% Router Table
+subgraph routerTable["Router Table"]
+  direction TB
+
+  routeC
+  routeB
+  routeA
+
+
+  subgraph routeA["Route prod"]
+   direction LR
+   policyA("Security Policy")
+   filterA{"Filter"}
+   filterA -.-> policyA
+  end
+
+  subgraph routeB["Route QA"]
+   direction LR
+   policyB("Security Policy")
+   filterB{"Filter"}
+   filterB -.-> policyB
+  end
+
+  subgraph routeC["Route Dev"]
+   direction LR
+   policyC("Security Policy")
+   filterC{"Filter"}
+   filterC -.-> policyC
+  end
+end
+
+%% Orchestrator
+subgraph orchestrator["Orchestrator (Simplified)"]
+  direction LR
+  %% Router Table
+
+  routeSelector("Route</br>selector")
+  routerTable
+end
+
+
+%% Routes
+eventA@{ shape: doc, label: "Incoming</br>event" }
+eventA:::EventBoxClass
+eventA-->routeSelector
+routeSelector-.->filterA & filterB & filterC
+
+
+```
+
 To understand how the engine is structured, it's important to identify the key components involved in this process. When a new event arrives, the engine directs it to different policies for processing. The orchestrator manages these policies at runtime.
 
 The orchestrator routes events to a policy and is composed of the following elements:
@@ -24,11 +79,89 @@ Each policy can be tailored to specific use cases.
 
 <flowchart_placeholder>
 
+
+```mermaid
+---
+title: Security policy dataflow
+---
+flowchart LR
+
+classDef EventBoxClass font-size: 15px,stroke-width:2px, color:#fff, fill:#3f51b5
+classDef TreeBoxClass font-size: 15px,stroke-width:2px,stroke-dasharray: 5 5
+
+ subgraph decoTree["Decoders"]
+  direction TB
+
+  deco01(" ")
+  deco02(" ")
+  deco03(" ")
+  deco04(" ")
+  deco05(" ")
+  deco06(" ")
+  deco07(" ")
+  deco08(" ")
+
+  deco01 --> deco02 & deco03 & deco04
+  deco02 --> deco05
+  deco03 --> deco06 & deco07
+  deco04 --> deco08
+ end
+
+ subgraph ruleTree["Rules"]
+  direction TB
+
+  rule01(" ")
+  rule02(" ")
+  rule03(" ")
+  rule04(" ")
+  rule05(" ")
+  rule06(" ")
+  rule07(" ")
+  rule08(" ")
+
+  rule01 --> rule02 & rule03 & rule04
+  rule02 --> rule05
+  rule03 --> rule06 & rule07
+  rule04 --> rule08
+ end
+
+ subgraph outputTree["Outputs"]
+  direction TB
+
+  output01(" ")
+  output02(" ")
+  output03(" ")
+  output04(" ")
+  output05(" ")
+  output06(" ")
+  output07(" ")
+  output08(" ")
+
+  output01 --> output02 & output03 & output04
+  output02 --> output05
+  output03 --> output06 & output07
+  output04 --> output08
+
+ end
+
+ decoTree:::TreeBoxClass
+ ruleTree:::TreeBoxClass
+ outputTree:::TreeBoxClass
+ eventInput:::EventBoxClass
+ eventOutput:::EventBoxClass
+
+ %% Pipeline
+ eventInput@{shape: doc, label: "Event</br>Input"}==>decoTree==>ruleTree==>outputTree==>eventOutput@{shape: doc, label: "Enriched</br>Event"}
+
+
+
+```
+
 ### Event
 The purpose of the Engine is to convert unstructured or semi-structured logs into normalized and enriched events. The agent transmits logs within a JSON payload, which includes additional metadata such as OS information, log source, and other relevant details. The Engine processes these logs and generates a structured JSON event, incorporating all relevant information in accordance with the defined [schema](#).
 
 Input event example:
-```
+```json
 {
   "@timestamp": "2025-01-23T17:40:37Z",
   "agent": {
@@ -66,7 +199,7 @@ Input event example:
 ```
 
 Processed event:
-```
+```json
 {
   "@timestamp": "2025-01-23T17:40:37Z",
   "agent": {
@@ -147,6 +280,39 @@ A closer examination of the predefined decoders reveals the following structure:
 
 <flowchart_placeholder>
 
+```mermaid
+flowchart TD
+
+%% Style
+classDef AssetSuccessClass fill:#2196f3,stroke-width:2px,fill-opacity:0.8
+classDef AssetFailClass fill:#f50057,stroke-width:2px,fill-opacity:0.8
+classDef AssetNotExecutedClass fill:#90a4ae,stroke-width:2px,fill-opacity:0.8
+
+
+%% First Level
+decoderR("root decoder"):::AssetSuccessClass
+decoderR --x decoder1
+decoderR --> decoder2 --> decoder21
+decoderR -.-> decoder3 -.-> decoder31
+
+decoder1("decoder 1"):::AssetFailClass
+decoder2("decoder 2"):::AssetSuccessClass
+
+decoder1 -.-> decoder11 & decoder12
+decoder2 -.-> decoder22
+
+decoder11("decoder 1-1"):::AssetNotExecutedClass
+decoder12("decoder 1-2"):::AssetNotExecutedClass
+decoder21("decoder 2-1"):::AssetSuccessClass
+decoder22("decoder 2-2"):::AssetNotExecutedClass
+decoder3("decoder 3"):::AssetNotExecutedClass
+decoder31("decoder 3-1"):::AssetNotExecutedClass
+linkStyle 0 stroke:#f50057,stroke-width:2px
+
+
+
+```
+
 ### Security enrichment process
 The analysis process evaluates all event fields to identify security concerns, represented as threat indicators within the common schema. These indicators are later examined in the Wazuh Indexer for threat hunting and security issue detection.
 
@@ -155,6 +321,36 @@ All decoded events pass through the analysis pipeline, where the root rule deter
 A closer look at the predefined rules reveals the following structure:
 
 <flowchart_placeholder>
+```mermaid
+flowchart TD
+
+%% Style
+  classDef AssetSuccessClass fill:#2196f3,stroke-width:2px,fill-opacity:0.8
+  classDef AssetFailClass fill:#f50057,stroke-width:2px,fill-opacity:0.8
+  classDef AssetNotExecutedClass fill:#90a4ae,stroke-width:2px,fill-opacity:0.8
+  ruleR("root rule (geo)") --x rule1("rule 1")
+  rule1 -.-> rule11("rule 1-1") & rule12("rule 1-2")
+  ruleR --> rule2("rule 2")
+  rule2 --> rule21("rule 2-1")
+  rule2 --x rule22("rule 2-2")
+  rule2 --> rule23("rule 2-3")
+  ruleR --> rule3("rule 3")
+  rule3 --> rule31("rule 3-1")
+
+  ruleR:::AssetSuccessClass
+  rule1:::AssetFailClass
+  rule11:::AssetNotExecutedClass
+  rule12:::AssetNotExecutedClass
+  rule2:::AssetSuccessClass
+  rule21:::AssetSuccessClass
+  rule22:::AssetFailClass
+  rule23:::AssetSuccessClass
+  rule3:::AssetSuccessClass
+  rule31:::AssetSuccessClass
+  linkStyle 0,5 stroke:#f50057,stroke-width:2px
+
+
+```
 
 ### Archiving and alerting process
 Once an event has completed processing through the decoder and rule pipelines, it enters the output pipeline. Similar to previous stages, the event first passes through the root output, which determines the appropriate output(s) for further processing. Multiple outputs can be selected, enabling flexible storage and distribution policies.
