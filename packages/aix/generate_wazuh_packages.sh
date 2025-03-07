@@ -199,7 +199,7 @@ build_package() {
   rm -f wazuh.tar.gz && curl -L ${source_code} -k -o wazuh.tar.gz -s
   rm -rf wazuh-wazuh-* wazuh-agent-*
   extracted_directory=$(gunzip -c wazuh.tar.gz | tar -xvf - | tail -n 1 | cut -d' ' -f2 | cut -d'/' -f1)
-  wazuh_version=$(cat ${extracted_directory}/src/VERSION | cut -d'v' -f2)
+  wazuh_version="$(grep '"version"' $extracted_directory/VERSION.json | sed -E 's/.*"version": *"([^"]+)".*/\1/')"
   cp -pr ${extracted_directory} wazuh-agent-${wazuh_version}
 
   rpm_build_dir="/opt/freeware/src/packages"

@@ -58,7 +58,7 @@ override_dh_install:
 	USER_AGENT_SERVER_IP="MANAGER_IP" \
 	USER_CA_STORE="/path/to/my_cert.pem" \
 	USER_AUTO_START="n" \
-	./install.sh
+	./install.sh || { echo "install.sh failed! Aborting." >&2; exit 1; }
 
 	# Copying init.d script
 	mkdir -p ${TARGET_DIR}/etc/init.d/
@@ -92,10 +92,9 @@ override_dh_install:
 	mkdir -p ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/
 	cp gen_ossec.sh ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/
 	cp add_localfiles.sh ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/
+	cp VERSION.json ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/
 
 	mkdir -p ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/src
-	cp src/VERSION ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/src/
-	cp src/REVISION ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/src/
 
 	# Install configuration assesment files and files templates
 	mkdir -p ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/applications
