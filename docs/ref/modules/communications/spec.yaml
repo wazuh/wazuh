@@ -1,0 +1,491 @@
+openapi: 3.1.0
+info:
+  title: FastAPI
+  version: 0.1.0
+paths:
+  /api/v1/authentication:
+    post:
+      summary: Authentication
+      description: "Authentication endpoint handler.\n\nParameters\n----------\ncredentials\
+        \ : Credentials\n    Agent credentials.\n\nRaises\n------\nHTTPError\n   \
+        \ If there is an error during the authentication.\n\nReturns\n-------\nTokenResponse\n\
+        \    JWT token."
+      operationId: authentication_api_v1_authentication_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Credentials'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/commands:
+    get:
+      summary: Get Commands
+      description: "Get commands endpoint handler.\n\nParameters\n----------\ntoken\
+        \ : str\n    JWT token.\nrequest : Request\n    Incoming HTTP request.\n\n\
+        Raises\n------\nHTTPError\n    If there is any system or validation error.\n\
+        \nReturns\n-------\nCommands\n    List of commands."
+      operationId: get_commands_api_v1_commands_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Commands'
+      security:
+      - JWTBearer: []
+  /api/v1/events/stateful:
+    post:
+      summary: Post Stateful Events
+      description: "Handle posting stateful events.\n\nParameters\n----------\nrequest\
+        \ : Request\n    Incoming HTTP request.\n\nRaises\n------\nHTTPError\n   \
+        \ If there is an error when indexing the events.\n\nReturns\n-------\nJSONResponse\n\
+        \    Response from the Indexer."
+      operationId: post_stateful_events_api_v1_events_stateful_post
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatefulEventsResponse'
+      security:
+      - JWTBearer: []
+  /api/v1/events/stateless:
+    post:
+      summary: Post Stateless Events
+      description: "Post stateless events handler.\n\nParameters\n----------\nrequest\
+        \ : Request\n    Incoming HTTP request.\n\nRaises\n------\nHTTPError\n   \
+        \ If there is any error when communicating with the engine.\n\nReturns\n-------\n\
+        Response\n    HTTP OK empty response."
+      operationId: post_stateless_events_api_v1_events_stateless_post
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+      security:
+      - JWTBearer: []
+  /api/v1/files:
+    get:
+      summary: Get Files
+      description: "Get files endpoint handler.\n\nParameters\n----------\nfile_name\
+        \ : str\n    File name.\n\nRaises\n------\nHTTPError\n    If there is any\
+        \ system or validation error.\n\nReturns\n-------\nFileResponse\n    File\
+        \ content response."
+      operationId: get_files_api_v1_files_get
+      security:
+      - JWTBearer: []
+      parameters:
+      - name: file_name
+        in: query
+        required: true
+        schema:
+          type: string
+          title: File Name
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/vulnerability/scan:
+    post:
+      summary: Post Scan Request
+      description: "Send a vulnerability scan request to the engine.\n\nParameters\n\
+        ----------\nscan_request : ScanRequest\n    Vulnerability scan request.\n\n\
+        Raises\n------\nHTTPError\n    If there is any error when communicating with\
+        \ the engine.\n\nReturns\n-------\nScanResponse | Response | ErrorResponse\n\
+        \    The scan request response, an HTTP OK empty response or an error response."
+      operationId: post_scan_request_api_v1_vulnerability_scan_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ScanRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - JWTBearer: []
+  /api/v1/:
+    get:
+      summary: Home
+      operationId: home_api_v1__get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+components:
+  schemas:
+    Action:
+      properties:
+        name:
+          type: string
+          title: Name
+        version:
+          type: string
+          title: Version
+        args:
+          type: object
+          title: Args
+      type: object
+      required:
+      - name
+      - version
+      title: Action
+    Agent:
+      properties:
+        id:
+          type: string
+          title: Id
+      type: object
+      title: Agent
+    Command:
+      properties:
+        document_id:
+          type: string
+          title: Document Id
+        request_id:
+          type: string
+          title: Request Id
+        order_id:
+          type: string
+          title: Order Id
+        source:
+          $ref: '#/components/schemas/Source'
+        user:
+          type: string
+          title: User
+        target:
+          $ref: '#/components/schemas/Target'
+        action:
+          $ref: '#/components/schemas/Action'
+        timeout:
+          type: integer
+          title: Timeout
+        status:
+          $ref: '#/components/schemas/Status'
+        result:
+          $ref: '#/components/schemas/Result'
+      type: object
+      title: Command
+    Commands:
+      properties:
+        commands:
+          items:
+            $ref: '#/components/schemas/Command'
+          type: array
+          title: Commands
+      type: object
+      required:
+      - commands
+      title: Commands
+    Credentials:
+      properties:
+        uuid:
+          type: string
+          title: Uuid
+        key:
+          type: string
+          title: Key
+      type: object
+      required:
+      - uuid
+      - key
+      title: Credentials
+    HTTPValidationError:
+      properties:
+        detail:
+          items:
+            $ref: '#/components/schemas/ValidationError'
+          type: array
+          title: Detail
+      type: object
+      title: HTTPValidationError
+    OS:
+      properties:
+        architecture:
+          type: string
+          title: Architecture
+        checksum:
+          type: string
+          title: Checksum
+        hostname:
+          type: string
+          title: Hostname
+        codename:
+          type: string
+          title: Codename
+        major_version:
+          type: string
+          title: Major Version
+        minor_version:
+          type: string
+          title: Minor Version
+        name:
+          type: string
+          title: Name
+        patch:
+          type: string
+          title: Patch
+        platform:
+          type: string
+          title: Platform
+        version:
+          type: string
+          title: Version
+        scan_time:
+          type: string
+          title: Scan Time
+        kernel_release:
+          type: string
+          title: Kernel Release
+        kernel_name:
+          type: string
+          title: Kernel Name
+        kernel_version:
+          type: string
+          title: Kernel Version
+      type: object
+      title: OS
+    Package:
+      properties:
+        architecture:
+          type: string
+          title: Architecture
+        checksum:
+          type: string
+          title: Checksum
+        description:
+          type: string
+          title: Description
+        format:
+          type: string
+          title: Format
+        groups:
+          type: string
+          title: Groups
+        item_id:
+          type: string
+          title: Item Id
+        multiarch:
+          type: string
+          title: Multiarch
+        name:
+          type: string
+          title: Name
+        priority:
+          type: string
+          title: Priority
+        scan_time:
+          type: string
+          title: Scan Time
+        size:
+          type: integer
+          title: Size
+        source:
+          type: string
+          title: Source
+        vendor:
+          type: string
+          title: Vendor
+        version:
+          type: string
+          title: Version
+      type: object
+      required:
+      - architecture
+      - checksum
+      - description
+      - format
+      - groups
+      - item_id
+      - multiarch
+      - name
+      - priority
+      - scan_time
+      - size
+      - source
+      - vendor
+      - version
+      title: Package
+    Result:
+      properties:
+        code:
+          type: integer
+          title: Code
+        message:
+          type: string
+          title: Message
+        data:
+          type: string
+          title: Data
+      type: object
+      title: Result
+    ScanRequest:
+      properties:
+        type:
+          $ref: '#/components/schemas/Type'
+        packages:
+          items:
+            $ref: '#/components/schemas/Package'
+          type: array
+          title: Packages
+        agent:
+          $ref: '#/components/schemas/Agent'
+        hotfixes:
+          items:
+            type: string
+          type: array
+          title: Hotfixes
+        os:
+          $ref: '#/components/schemas/OS'
+      type: object
+      required:
+      - type
+      - packages
+      title: ScanRequest
+    Source:
+      type: string
+      enum:
+      - Users/Services
+      - Engine
+      - Content manager
+      title: Source
+      description: Command source enum.
+    StatefulEventsResponse:
+      properties:
+        results:
+          items:
+            $ref: '#/components/schemas/TaskResult'
+          type: array
+          title: Results
+      type: object
+      required:
+      - results
+      title: StatefulEventsResponse
+    Status:
+      type: string
+      enum:
+      - pending
+      - sent
+      - success
+      - failed
+      title: Status
+      description: Command status enum.
+    Target:
+      properties:
+        id:
+          type: string
+          title: Id
+        type:
+          $ref: '#/components/schemas/TargetType'
+      type: object
+      required:
+      - id
+      - type
+      title: Target
+    TargetType:
+      type: string
+      enum:
+      - agent
+      - group
+      - server
+      title: TargetType
+      description: Command target type enum.
+    TaskResult:
+      properties:
+        index:
+          type: string
+          title: Index
+        id:
+          type: string
+          title: Id
+        result:
+          type: string
+          title: Result
+        status:
+          type: integer
+          title: Status
+      type: object
+      required:
+      - index
+      - id
+      - result
+      - status
+      title: TaskResult
+      description: Stateful event bulk task result data model.
+    TokenResponse:
+      properties:
+        token:
+          type: string
+          title: Token
+      type: object
+      required:
+      - token
+      title: TokenResponse
+    Type:
+      type: string
+      enum:
+      - packagelist
+      - fullscan
+      title: Type
+      description: Vulnerability scan type enumeration.
+    ValidationError:
+      properties:
+        loc:
+          items:
+            anyOf:
+            - type: string
+            - type: integer
+          type: array
+          title: Location
+        msg:
+          type: string
+          title: Message
+        type:
+          type: string
+          title: Error Type
+      type: object
+      required:
+      - loc
+      - msg
+      - type
+      title: ValidationError
+  securitySchemes:
+    JWTBearer:
+      type: http
+      scheme: bearer
