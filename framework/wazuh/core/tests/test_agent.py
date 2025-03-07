@@ -8,10 +8,14 @@ from shutil import rmtree
 from unittest.mock import AsyncMock, patch
 
 import pytest
+from wazuh.core.cluster.tests.conftest import get_default_configuration
 from wazuh.core.config.client import CentralizedConfig
 
 with patch('wazuh.core.common.wazuh_uid'):
     with patch('wazuh.core.common.wazuh_gid'):
+        default_config = get_default_configuration()
+        CentralizedConfig._config = default_config
+
         from wazuh.core.agent import (
             delete_single_group,
             expand_group,

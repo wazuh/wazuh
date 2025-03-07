@@ -18,7 +18,6 @@ with patch('wazuh.core.common.wazuh_uid'):
     with patch('wazuh.core.common.wazuh_gid'):
         from wazuh import WazuhException
         from wazuh.core import exception, utils
-        from wazuh.core.common import AGENT_NAME_LEN_LIMIT
 
 # all necessary params
 
@@ -127,23 +126,6 @@ mock_array_missing_key = [
     },
 ]
 
-mock_keys = ['rx_bytes', 'rx_packets', 'scan_id', 'scan_time', 'mac', 'agent_id']
-
-mock_not_nested_dict = {
-    'ram_free': '1669524',
-    'board_serial': 'BSS-0123456789',
-    'cpu_name': 'Intel(R) Core(TM) i7-4700MQ CPU @ 2.40GHz',
-    'cpu_cores': '4',
-    'ram_total': '2045956',
-    'cpu_mhz': '2394.464',
-}
-
-mock_nested_dict = {
-    'ram': {'total': '2045956', 'free': '1669524'},
-    'cpu': {'cores': '4', 'mhz': '2394.464', 'name': 'Intel(R) Core(TM) i7-4700MQ CPU @ 2.40GHz'},
-    'board_serial': 'BSS-0123456789',
-}
-
 test_yaml = """
 key: value
 """
@@ -198,25 +180,6 @@ def test_assign_wazuh_ownership_write_file(mock_gid, mock_uid, mock_chown):
                 mock_open.assert_called_once_with(filename, 'w')
 
             mock_chown.assert_called_once_with(filename, mock_uid(), mock_gid())
-
-
-@pytest.mark.parametrize('month', [1, 2, -1])
-def test_previous_moth(month):
-    """Test previous_moth function."""
-    result = utils.previous_month(month)
-
-    assert isinstance(result, utils.datetime)
-
-
-@pytest.mark.parametrize(
-    'string, substring, n, expected_index',
-    [('string_1_', '_', 1, 6), ('string_2_', '_', 2, 8), ('string_3_', '_', 3, -1), ('string4', '_', 1, -1)],
-)
-def test_find_nth(string, substring, n, expected_index):
-    """Test find_nth function."""
-    result = utils.find_nth(string, substring, n)
-
-    assert result == expected_index
 
 
 @pytest.mark.parametrize(
@@ -644,41 +607,12 @@ def test_search_array(array, text, negation, length):
     assert len(result) == length
 
 
-def test_filemode():
-    """Test filemode function."""
-    result = utils.filemode(40960)
-
-    assert isinstance(result, str)
-
-
 def test_tail():
     """Test tail function."""
     result = utils.tail(os.path.join(test_data_path, 'test_log.log'))
 
     assert isinstance(result, list)
     assert len(result) == 20
-
-
-@patch('wazuh.core.utils.chmod')
-def test_chmod_r(mock_chmod):
-    """Tests chmod_r function."""
-    with TemporaryDirectory() as tmpdirname:
-        tmpfile = NamedTemporaryFile(dir=tmpdirname, delete=False)
-        TemporaryDirectory(dir=tmpdirname)
-        utils.chmod_r(tmpdirname, 0o777)
-        mock_chmod.assert_any_call(tmpdirname, 0o777)
-        mock_chmod.assert_any_call(os.path.join(tmpdirname, tmpfile.name), 0o777)
-
-
-@patch('wazuh.core.utils.chown')
-def test_chown_r(mock_chown):
-    """Test chown_r function."""
-    with TemporaryDirectory() as tmp_dirname:
-        tmp_file = NamedTemporaryFile(dir=tmp_dirname, delete=False)
-        TemporaryDirectory(dir=tmp_dirname)
-        utils.chown_r(tmp_dirname, 'test_user', 'test_group')
-        mock_chown.assert_any_call(tmp_dirname, 'test_user', 'test_group')
-        mock_chown.assert_any_call(os.path.join(tmp_dirname, tmp_file.name), 'test_user', 'test_group')
 
 
 @pytest.mark.parametrize(
@@ -745,19 +679,6 @@ def test_mkdir_with_mode_ko(mock_mkdir, dir_name, exists):
 
 @patch('wazuh.core.utils.open')
 @patch('wazuh.core.utils.iter', return_value=['1', '2'])
-def test_md5(mock_iter, mock_open):
-    """Test md5 function."""
-    with patch('wazuh.core.utils.hashlib.md5') as md:
-        md.return_value.update.side_effect = None
-        result = utils.md5('test')
-
-        assert isinstance(result, MagicMock)
-        assert isinstance(result.return_value, MagicMock)
-        mock_open.assert_called_once_with('test', 'rb')
-
-
-@patch('wazuh.core.utils.open')
-@patch('wazuh.core.utils.iter', return_value=['1', '2'])
 def test_blake2b(mock_iter, mock_open):
     """Test md5 function."""
     with patch('wazuh.core.utils.hashlib.blake2b') as blake2b_mock:
@@ -805,31 +726,6 @@ def test_get_hash_ko(mock_iter, mock_open):
         mock_open.assert_called_once_with('test_file', 'rb')
 
 
-def test_get_hash_str():
-    """Test get_hash_str function work."""
-    result = utils.get_hash_str('test')
-
-    assert isinstance(result, str)
-    assert all(ord(char) < AGENT_NAME_LEN_LIMIT for char in result)
-
-
-def test_get_fields_to_nest():
-    """Test get_fields_to_nest function."""
-    result_nested, result_non_nested = utils.get_fields_to_nest(mock_keys)
-
-    assert isinstance(result_nested, list)
-    assert isinstance(result_non_nested, set)
-    assert result_nested[0][0] + '_' + list(result_nested[0][1])[0][0] == list(result_nested[0][1])[0][1]
-
-
-def test_plain_dict_to_nested_dict():
-    """Test plain_dict_to_nested_dict function work."""
-    result = utils.plain_dict_to_nested_dict(data=mock_not_nested_dict)
-
-    assert isinstance(result, dict)
-    assert result == mock_nested_dict
-
-
 def test_basic_load_wazuh_yaml():
     """Test basic `load_wazuh_yaml` functionality."""
     with patch('wazuh.core.utils.open') as f:
@@ -861,135 +757,6 @@ def test_get_group_file_path():
     path = utils.get_group_file_path(group_id)
 
     assert path == expected_path
-
-
-@pytest.mark.parametrize(
-    'version1, version2',
-    [
-        ('Wazuh v3.5.0', 'Wazuh v3.5.2'),
-        ('Wazuh v3.6.1', 'Wazuh v3.6.3'),
-        ('Wazuh v3.7.2', 'Wazuh v3.8.0'),
-        ('Wazuh v3.8.0', 'Wazuh v3.8.1'),
-        ('Wazuh v3.9.0', 'Wazuh v3.9.2'),
-        ('Wazuh v3.9.10', 'Wazuh v3.9.14'),
-        ('Wazuh v3.10.1', 'Wazuh v3.10.10'),
-        ('Wazuh v4.10.10', 'Wazuh v4.11.0'),
-        ('Wazuh v5.1.15', 'Wazuh v5.2.0'),
-        ('v3.6.0', 'v3.6.1'),
-        ('v3.9.1', 'v3.9.2'),
-        ('v4.0.0', 'v4.0.1'),
-        ('3.6.0', '3.6.1'),
-        ('3.9.0', '3.9.2'),
-        ('4.0.0', '4.0.1'),
-    ],
-)
-def test_version_ok(version1, version2):
-    """Test WazuhVersion class."""
-    current_version = utils.WazuhVersion(version1)
-    new_version = utils.WazuhVersion(version2)
-
-    assert current_version < new_version
-    assert current_version <= new_version
-    assert new_version > current_version
-    assert new_version >= current_version
-    assert current_version != new_version
-    assert not (current_version == new_version)
-
-    assert isinstance(current_version.to_array(), list)
-    assert isinstance(new_version.to_array(), list)
-
-
-@pytest.mark.parametrize(
-    'version1, version2',
-    [
-        ('v3.6.0', 'v.3.6.1'),
-        ('Wazuh v4', 'Wazuh v5'),
-        ('Wazuh v3.9', 'Wazuh v3.10'),
-        ('ABC v3.10.1', 'ABC v3.10.12'),
-        ('Wazuhv3.9.0', 'Wazuhv3.9.2'),
-        ('3.9', '3.10'),
-        ('3.9.0', '3.10'),
-        ('3.10', '4.2'),
-        ('3', '3.9.1'),
-    ],
-)
-def test_version_ko(version1, version2):
-    """Test WazuhVersion class."""
-    try:
-        utils.WazuhVersion(version1)
-        utils.WazuhVersion(version2)
-    except ValueError:
-        return
-
-
-@pytest.mark.parametrize(
-    'version1, version2',
-    [
-        ('Wazuh v3.10.10', 'Wazuh v3.10.10'),
-        ('Wazuh v5.1.15', 'Wazuh v5.1.15'),
-        ('v3.6.0', 'v3.6.0'),
-        ('v3.9.2', 'v3.9.2'),
-    ],
-)
-def test_same_version(version1, version2):
-    """Test WazuhVersion class."""
-    current_version = utils.WazuhVersion(version1)
-    new_version = utils.WazuhVersion(version2)
-
-    assert current_version == new_version
-    assert not (current_version < new_version)
-    assert current_version <= new_version
-    assert not (new_version > current_version)
-    assert new_version >= current_version
-    assert not (current_version != new_version)
-
-    assert isinstance(current_version.to_array(), list)
-    assert isinstance(new_version.to_array(), list)
-
-
-def test_WazuhVersion_to_array():
-    """Test WazuhVersion.to_array function."""
-    version = utils.WazuhVersion('Wazuh v3.10.0-alpha4')
-
-    assert isinstance(version.to_array(), list)
-
-
-def test_WazuhVersion__str__():
-    """Test WazuhVersion.__str__ function."""
-    version = utils.WazuhVersion('Wazuh v3.10.0-alpha4')
-
-    assert isinstance(version.__str__(), str)
-
-
-@pytest.mark.parametrize(
-    'version1, version2',
-    [
-        ('Wazuh v3.5.2', 'Wazuh v4.0.0'),
-        ('Wazuh v3.10.0-alpha', 'Wazuh v3.10.0'),
-        ('Wazuh v3.10.0-alpha4', 'Wazuh v3.10.0-beta4'),
-        ('Wazuh v3.10.0-alpha3', 'Wazuh v3.10.0-alpha4'),
-    ],
-)
-def test_WazuhVersion__ge__(version1, version2):
-    """Test WazuhVersion.__ge__ function."""
-    current_version = utils.WazuhVersion(version1)
-    new_version = utils.WazuhVersion(version2)
-
-    assert not current_version >= new_version
-
-
-@pytest.mark.parametrize('time', ['10s', '20m', '30h', '5d', '10'])
-def test_get_timeframe_in_seconds(time):
-    """Test get_timeframe_in_seconds function."""
-    result = utils.get_timeframe_in_seconds(time)
-
-    assert isinstance(result, int)
-
-
-def test_failed_test_get_timeframe_in_seconds():
-    """Test get_timeframe_in_seconds function exceptions."""
-    with pytest.raises(exception.WazuhException, match='.* 1411 .*'):
-        utils.get_timeframe_in_seconds('error')
 
 
 @pytest.mark.parametrize(
