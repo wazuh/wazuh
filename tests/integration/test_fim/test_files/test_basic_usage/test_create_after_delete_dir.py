@@ -82,7 +82,13 @@ from . import TEST_CASES_PATH, CONFIGS_PATH
 
 
 # Pytest marks to run on any service type on linux or windows.
-pytestmark = [pytest.mark.agent, pytest.mark.linux, pytest.mark.win32, pytest.mark.tier(level=1)]
+pytestmark = [
+    pytest.mark.agent,
+    pytest.mark.linux,
+    pytest.mark.win32,
+    pytest.mark.tier(level=1),
+    pytest.mark.skipif(sys.platform.startswith("win"), reason="Unstable behavior when deleting monitored folder in Windows")
+]
 
 # Test metadata, configuration and ids.
 cases_path = Path(TEST_CASES_PATH, 'cases_create_after_delete.yaml')
@@ -156,8 +162,6 @@ def test_create_after_delete(test_configuration, test_metadata, configure_local_
         - realtime
         - who_data
     '''
-    if sys.platform == WINDOWS:
-        pytest.skip(reason="Unstable behavior when deleting monitored folder")
 
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
 
