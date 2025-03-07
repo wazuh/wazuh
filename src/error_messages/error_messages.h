@@ -486,7 +486,7 @@
 #define FIM_ERROR_EBPF_RINGBUFF_MAP                 "(6974): Finding ring buffer map failed."
 #define FIM_ERROR_EBPF_RINGBUFF_NEW                 "(6975): Creating ring buffer failed."
 #define FIM_ERROR_EBPF_HEALTHCHECK_FILE             "(6976): Could not create healthcheck file. Path: %s"
-#define FIM_ERROR_EBPF_RINGBUFF_POLL                "(6977): Polling ring buffer failed."
+#define FIM_ERROR_EBPF_RINGBUFF_CONSUME             "(6977): Consuming ring buffer failed."
 #define FIM_ERROR_EBPF_HEALTHCHECK_TIMEOUT          "(6978): eBPF healthcheck timeout."
 #define FIM_ERROR_EBPF_HEALTHCHECK_FILE_DEL         "(6979): Healthcheck file can't be removed. Path: %s"
 
