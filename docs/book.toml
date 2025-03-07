@@ -5,3 +5,13 @@ authors = ["Facundo Dalmau"]
 multilingual = false
 src = "."
 language = "en"
+
+[preprocessor]
+
+[preprocessor.mermaid]
+command = "mdbook-mermaid"
+
+[output]
+
+[output.html]
+additional-js = ["mermaid.min.js", "mermaid-init.js"]
