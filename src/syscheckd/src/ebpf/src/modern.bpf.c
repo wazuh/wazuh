@@ -16,15 +16,9 @@
 #define MAX_PATH_LEN                    4096
 #define TASK_COMM_LEN                   32
 
-/* This flag in file->f_flags means the file was opened with O_CREAT. */
-#define O_CREAT                         0100
-
-/* This flag in file->f_mode indicates the file was actually created. */
-#define FMODE_CREATED                   0x100000
-
 /* These define general path extraction and buffer limits. */
 #define LIMIT_PATH_SIZE(x)              ((x) & (MAX_PATH_LEN - 1))
-#define MAX_PATH_COMPONENTS             20
+#define MAX_PATH_COMPONENTS             320
 
 #define MAX_PERCPU_ARRAY_SIZE           (1 << 15)
 #define HALF_PERCPU_ARRAY_SIZE          (MAX_PERCPU_ARRAY_SIZE >> 1)
@@ -66,7 +60,7 @@ struct buffer {
 */
 struct {
     __uint(type, BPF_MAP_TYPE_RINGBUF);
-    __uint(max_entries, 1 << 23);
+    __uint(max_entries, 1 << 20);
 } rb SEC(".maps");
 
 /*
@@ -256,6 +250,15 @@ statfunc void submit_event(const char *filename,
     /* Copy the path/filename */
     bpf_probe_read_kernel_str(evt->filename, MAX_PATH_LEN, filename);
 
+    if (evt->filename[0] == '/' &&
+        evt->filename[1] == 'p' &&
+        evt->filename[2] == 'r' &&
+        evt->filename[3] == 'o' &&
+        evt->filename[4] == 'c' &&
+        evt->filename[5] == '/') {
+        return;  // Ignore /proc related events
+    }
+
     /* Inode and device */
     evt->inode = ino;
     evt->dev   = dev;
@@ -284,8 +287,7 @@ statfunc void submit_event(const char *filename,
 }
 
 /*
-* Intercepts vfs_open calls to detect actual file creation (add)
-* when FMODE_CREATED is set (only then we report an event).
+* Intercepts vfs_open calls to detect actual file events.
 */
 SEC("kprobe/vfs_open")
 int kprobe__vfs_open(struct pt_regs *ctx)
@@ -297,10 +299,6 @@ int kprobe__vfs_open(struct pt_regs *ctx)
     struct file *file = (struct file *)PT_REGS_PARM2(ctx);
     if (!file)
         return 0;
-
-    /* Check if this file is truly created (FMODE_CREATED). */
-    __u32 f_mode = 0;
-    bpf_probe_read_kernel(&f_mode, sizeof(f_mode), &file->f_mode);
 
     /* Retrieve the dentry. */
     struct dentry *dentry = NULL;
@@ -351,7 +349,7 @@ int tracepoint__syscalls__sys_enter_unlinkat(struct trace_event_raw_sys_enter *c
         return 0;
 
     __u64 pid_tgid = bpf_get_current_pid_tgid();
-    __u32 tid = (__u32)pid_tgid;
+    __u32 tgid = (__u32)pid_tgid;
 
     /* We avoid large stack usage by using our heaps_map buffer. */
     struct buffer *tmp_buf = bpf_map_lookup_elem(&heaps_map, &(u32){0});
@@ -365,7 +363,7 @@ int tracepoint__syscalls__sys_enter_unlinkat(struct trace_event_raw_sys_enter *c
     bpf_probe_read_user_str(tmp_buf->data, MAX_PATH_LEN, user_filename);
 
     /* Now store that path in the unlink_path_map. */
-    bpf_map_update_elem(&unlink_path_map, &tid, tmp_buf->data, BPF_ANY);
+    bpf_map_update_elem(&unlink_path_map, &tgid, tmp_buf->data, BPF_ANY);
     return 0;
 }
 
@@ -391,9 +389,9 @@ int kprobe__vfs_unlink(struct pt_regs *ctx)
         return 0;
 
     __u64 pid_tgid = bpf_get_current_pid_tgid();
-    __u32 tid = (__u32)pid_tgid;
+    __u32 tgid = (__u32)pid_tgid;
 
-    char *stored_path = bpf_map_lookup_elem(&unlink_path_map, &tid);
+    char *stored_path = bpf_map_lookup_elem(&unlink_path_map, &tgid);
     if (!stored_path)
         return 0;
 
@@ -405,7 +403,7 @@ int kprobe__vfs_unlink(struct pt_regs *ctx)
     submit_event(stored_path, inode, dev);
 
     /* Clean up the map entry for this thread. */
-    bpf_map_delete_elem(&unlink_path_map, &tid);
+    bpf_map_delete_elem(&unlink_path_map, &tgid);
 
     return 0;
 }
