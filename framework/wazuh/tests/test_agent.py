@@ -6,7 +6,6 @@
 import os
 import sys
 from grp import getgrnam
-from json import dumps
 from pwd import getpwnam
 from unittest.mock import AsyncMock, MagicMock, call, patch
 
@@ -30,32 +29,31 @@ with patch('wazuh.core.common.wazuh_uid'):
             del sys.modules['wazuh.rbac.orm']
             wazuh.rbac.decorators.expose_resources = RBAC_bypasser
 
-            from server_management_api.util import remove_nones_to_dict
-            from wazuh import WazuhError, WazuhException, WazuhInternalError
-            from wazuh.agent import (
-                add_agent,
-                build_agents_query,
-                create_group,
-                delete_agents,
-                delete_groups,
-                get_agent_groups,
-                get_agents,
-                get_agents_in_group,
-                get_group_conf,
-                reconnect_agents,
-                remove_agents_from_group,
-                restart_agents,
-                update_group_file,
-            )
-            from wazuh.core.agent import Agent
-            from wazuh.core.exception import WazuhResourceNotFound
-            from wazuh.core.indexer.base import IndexerKey
-            from wazuh.core.indexer.commands import CommandsManager
-            from wazuh.core.indexer.models.agent import Agent as IndexerAgent
-            from wazuh.core.indexer.models.commands import CreateCommandResponse, ResponseResult
-            from wazuh.core.results import AffectedItemsWazuhResult, WazuhResult
-            from wazuh.core.tests.test_agent import InitAgent
-            from wazuh.core.utils import GROUP_FILE_EXT
+        from wazuh import WazuhError, WazuhException, WazuhInternalError
+        from wazuh.agent import (
+            add_agent,
+            build_agents_query,
+            create_group,
+            delete_agents,
+            delete_groups,
+            get_agent_groups,
+            get_agents,
+            get_agents_in_group,
+            get_group_conf,
+            reconnect_agents,
+            remove_agents_from_group,
+            restart_agents,
+            update_group_file,
+        )
+        from wazuh.core.agent import Agent
+        from wazuh.core.exception import WazuhResourceNotFound
+        from wazuh.core.indexer.base import IndexerKey
+        from wazuh.core.indexer.commands import CommandsManager
+        from wazuh.core.indexer.models.agent import Agent as IndexerAgent
+        from wazuh.core.indexer.models.commands import CreateCommandResponse, ResponseResult
+        from wazuh.core.results import AffectedItemsWazuhResult, WazuhResult
+        from wazuh.core.tests.test_agent import InitAgent
+        from wazuh.core.utils import GROUP_FILE_EXT
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
 test_agent_path = os.path.join(test_data_path, 'agent')
@@ -67,19 +65,11 @@ full_agent_list = ['001', '002', '003', '004', '005', '006', '007', '008', '009'
 short_agent_list = ['001', '002', '003', '004', '005']
 
 
-def send_msg_to_wdb(msg, raw=False):
-    """Mock message delivery to the database."""
-    query = ' '.join(msg.split(' ')[2:])
-    result = list(map(remove_nones_to_dict, map(dict, test_data.cur.execute(query).fetchall())))
-    return ['ok', dumps(result)] if raw else result
-
-
 @pytest.mark.parametrize(
     'agent_list, expected_items, error_code', [(['001', '002'], ['001', '002'], None), (['001', '500'], ['001'], 1701)]
 )
 @patch('wazuh.core.agent.Agent.reconnect')
 @patch('wazuh.agent.get_agents_info', return_value=short_agent_list)
-@patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
 @pytest.mark.skip('Remove tested function or update it to use the indexer.')
 def test_agent_reconnect_agents(
@@ -634,77 +624,14 @@ async def test_agent_get_group_conf(group_list):
 @pytest.mark.parametrize('group_list', [['update']])
 @patch('wazuh.core.common.WAZUH_GROUPS', new=test_groups_path)
 @patch('wazuh.core.configuration.update_group_configuration')
-async def test_agent_upload_group_file(mock_update, group_list):
-    """Test `upload_group_file` function from agent module.
-
-    Parameters
-    ----------
-    group_list : List of str
-        List of group names.
-    """
+async def test_agent_update_group_file(mock_update, group_list):
+    """Test `update_group_file` function from agent module."""
     expected_msg = 'Agent configuration was successfully updated'
     mock_update.return_value = expected_msg
     result = await update_group_file(group_list=group_list, file_data='sample')
     assert isinstance(result, WazuhResult), 'The returned object is not an "WazuhResult" instance.'
     assert 'message' in result.dikt
     assert result.dikt['message'] == expected_msg
-
-
-@pytest.fixture(scope='module')
-def insert_agents_db(n_agents=100000):
-    """Insert n_agents in the global.db test database.
-
-    All the tests using this fixture should be run in the last place, since
-    agent's database is modified.
-
-    Parameters
-    ----------
-    n_agents : int
-        Total number of agents that must be inside the db after running this function.
-    """
-    last_inserted_id = next(map(list, test_data.cur.execute('select max(id) from agent')), 0)[0]
-    for agent_id in range(last_inserted_id + 1, n_agents):
-        msg = f"INSERT INTO agent (id, name, ip, date_add) VALUES ({agent_id}, 'test_{agent_id}', 'any', 1621925385)"
-        test_data.cur.execute(msg)
-
-
-@pytest.mark.parametrize(
-    'agent_list, params, expected_ids',
-    [
-        (range(1, 500), {}, range(1, 500)),
-        (range(1, 1000), {}, range(1, 501)),
-        (range(1000, 2000), {}, range(1000, 1500)),
-        (range(1, 100000), {'limit': 1000}, range(1, 1001)),
-        (range(1, 100000), {'offset': 50000}, range(50000, 50501)),
-        (range(1, 1000), {'limit': 100, 'offset': 500}, range(500, 601)),
-        (range(1, 100000), {'limit': 1000, 'offset': 80000}, range(80000, 81001)),
-    ],
-)
-@patch('wazuh.agent.get_agents_info', return_value=['test', 'test2'])
-@patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
-@patch('socket.socket.connect')
-@pytest.mark.skip('Define if we will keep this function')
-def test_get_agents_big_env(mock_conn, mock_send, mock_get_agents, insert_agents_db, agent_list, params, expected_ids):
-    """Check that the expected number of items is returned when limit is greater than 500.
-
-    Parameters
-    ----------
-    agent_list : list
-        Agents to retrieve.
-    params : dict
-        Parameters to be passed to get_agents function.
-    expected_ids
-        IDs that should be returned.
-    """
-
-    def agent_ids_format(ids_list):
-        return [str(agent_id).zfill(3) for agent_id in ids_list]
-
-    with patch('wazuh.agent.get_agents_info', return_value=set(agent_ids_format(range(1, 100000)))):
-        result = get_agents(agent_list=agent_ids_format(agent_list), **params).render()
-        expected_ids = agent_ids_format(expected_ids)
-        for item in result['data']['affected_items']:
-            assert item['id'] in expected_ids, f'Received ID {item["id"]} is not within expected IDs {expected_ids}.'
 
 
 @pytest.mark.parametrize(
