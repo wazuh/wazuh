@@ -17,7 +17,6 @@ with patch('wazuh.core.common.wazuh_uid'):
             get_agents_info,
             get_group_file_path,
             get_groups,
-            get_rbac_filters,
             group_exists,
         )
         from wazuh.core.common import reset_context_cache
@@ -138,37 +137,3 @@ async def test_expand_group(create_indexer_mock, group, group_agents, expected_a
     create_indexer_mock.return_value.agents.get_group_agents = agents_in_group_mock
 
     assert await expand_group(group) == expected_agents
-
-
-@pytest.mark.parametrize(
-    'system_resources, permitted_resources, filters, expected_result',
-    [
-        (
-            {'001', '002', '003', '004'},
-            ['001', '002', '005', '006'],
-            None,
-            {'filters': {'rbac_ids': ['004', '003']}, 'rbac_negate': True},
-        ),
-        ({'001'}, ['002', '005', '006'], None, {'filters': {'rbac_ids': ['001']}, 'rbac_negate': True}),
-        (
-            {'group1', 'group3', 'group4'},
-            ['group1', 'group2', 'group5', 'group6'],
-            None,
-            {'filters': {'rbac_ids': ['group3', 'group4']}, 'rbac_negate': True},
-        ),
-        (
-            {'group1', 'group2', 'group3', 'group4', 'group5', 'group6'},
-            ['group1'],
-            {'testing': 'first'},
-            {'filters': {'rbac_ids': {'group1'}, 'testing': 'first'}, 'rbac_negate': False},
-        ),
-    ],
-)
-def test_get_rbac_filters(system_resources, permitted_resources, filters, expected_result):
-    """Check that the function get_rbac_filters calculates correctly the list of allowed or denied."""
-    result = get_rbac_filters(
-        system_resources=system_resources, permitted_resources=permitted_resources, filters=filters
-    )
-    result['filters']['rbac_ids'] = set(result['filters']['rbac_ids'])
-    expected_result['filters']['rbac_ids'] = set(expected_result['filters']['rbac_ids'])
-    assert result == expected_result

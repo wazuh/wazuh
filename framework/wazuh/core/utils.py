@@ -7,14 +7,12 @@ import hashlib
 import operator
 import os
 import re
-import stat
 import sys
 import typing
 from copy import deepcopy
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from functools import wraps
-from itertools import chain, groupby
-from os import chmod, chown, curdir, listdir, mkdir, path, rename, utime
+from os import chmod, chown, curdir, mkdir, path, rename, utime
 from pathlib import Path
 from shutil import copy2, move
 from signal import SIGALRM, SIGKILL, alarm, signal
@@ -92,51 +90,6 @@ def clean_pid_files(daemon: str) -> None:
                 print(f'{daemon}: Non existent process {pid}, removing from {common.WAZUH_RUN}...')
             finally:
                 os.remove(path.join(common.WAZUH_RUN, pid_file))
-
-
-def find_nth(string: str, substring: str, n: int) -> int:
-    """Return the index corresponding to the n'th occurrence of a substring within a string.
-
-    Parameters
-    ----------
-    string : str
-        String where the substring is searched.
-    substring : str
-        String to be found in "string".
-    n : int
-        Occurrence to be found.
-
-    Returns
-    -------
-    int
-        Index of the n'th occurrence of a substring within a string.
-    """
-    start = string.find(substring)
-    while start >= 0 and n > 1:
-        start = string.find(substring, start + len(substring))
-        n -= 1
-    return start
-
-
-def previous_month(n: int = 1) -> datetime.date:
-    """Return the first date of the previous n month.
-
-    Parameters
-    ----------
-    n : int
-        Number of months.
-
-    Returns
-    -------
-    datetime.date
-        First date of the previous n month.
-    """
-    date = get_utc_now().replace(day=1)  # First day of current month
-
-    for i in range(0, int(n)):
-        date = (date - timedelta(days=1)).replace(day=1)  # (first_day - 1) = previous month
-
-    return date.replace(hour=00, minute=00, second=00, microsecond=00)
 
 
 def process_array(
@@ -544,51 +497,6 @@ def select_array(
     return result_list
 
 
-_filemode_table = (
-    (
-        (stat.S_IFLNK, 'l'),
-        (stat.S_IFREG, '-'),
-        (stat.S_IFBLK, 'b'),
-        (stat.S_IFDIR, 'd'),
-        (stat.S_IFCHR, 'c'),
-        (stat.S_IFIFO, 'p'),
-    ),
-    ((stat.S_IRUSR, 'r'),),
-    ((stat.S_IWUSR, 'w'),),
-    ((stat.S_IXUSR | stat.S_ISUID, 's'), (stat.S_ISUID, 'S'), (stat.S_IXUSR, 'x')),
-    ((stat.S_IRGRP, 'r'),),
-    ((stat.S_IWGRP, 'w'),),
-    ((stat.S_IXGRP | stat.S_ISGID, 's'), (stat.S_ISGID, 'S'), (stat.S_IXGRP, 'x')),
-    ((stat.S_IROTH, 'r'),),
-    ((stat.S_IWOTH, 'w'),),
-    ((stat.S_IXOTH | stat.S_ISVTX, 't'), (stat.S_ISVTX, 'T'), (stat.S_IXOTH, 'x')),
-)
-
-
-def filemode(mode: int) -> str:
-    """Convert a file's mode to a string of the form '-rwxrwxrwx'.
-
-    Parameters
-    ----------
-    mode : int
-        Mode.
-
-    Returns
-    -------
-    str
-        String.
-    """
-    perm = []
-    for table in _filemode_table:
-        for bit, char in table:
-            if mode & bit == bit:
-                perm.append(char)
-                break
-        else:
-            perm.append('-')
-    return ''.join(perm)
-
-
 def tail(filename: str, n: int = 20) -> list:
     """Returns last 'n' lines of the file 'filename'.
 
@@ -630,50 +538,6 @@ def tail(filename: str, n: int = 20) -> list:
         all_read_text = ''.join(reversed(blocks))
 
     return all_read_text.splitlines()[-total_lines_wanted:]
-
-
-def chmod_r(file_path: str, mode: int):
-    """Recursive chmod.
-
-    Parameters
-    ----------
-    file_path: str
-        Path to the file.
-    mode: int
-        File mode in octal.
-    """
-    if path.isdir(file_path):
-        for item in listdir(file_path):
-            item_path = path.join(file_path, item)
-            if path.isfile(item_path):
-                chmod(item_path, mode)
-            elif path.isdir(item_path):
-                chmod_r(item_path, mode)
-
-    chmod(file_path, mode)
-
-
-def chown_r(file_path: str, uid: int, gid: int):
-    """Recursive chown.
-
-    Parameters
-    ----------
-    file_path: str
-        Path to the file.
-    uid: int
-        User ID.
-    gid: int
-        Group ID.
-    """
-    chown(file_path, uid, gid)
-
-    if path.isdir(file_path):
-        for item in listdir(file_path):
-            item_path = path.join(file_path, item)
-            if path.isfile(item_path):
-                chown(item_path, uid, gid)
-            elif path.isdir(item_path):
-                chown_r(item_path, uid, gid)
 
 
 def safe_move(source: str, target: str, ownership: tuple = None, time: tuple = None, permissions: int = None):
@@ -751,14 +615,6 @@ def mkdir_with_mode(name: str, mode: int = 0o770):
     chmod(name, mode)
 
 
-def md5(fname):
-    hash_md5 = hashlib.md5()
-    with open(fname, 'rb') as f:
-        for chunk in iter(lambda: f.read(4096), b''):
-            hash_md5.update(chunk)
-    return hash_md5.hexdigest()
-
-
 def blake2b(fname):
     hash_blake2b = hashlib.blake2b()
     with open(fname, 'rb') as f:
@@ -787,93 +643,6 @@ def get_hash(filename, hash_algorithm='md5', return_hex=True):
         return None
 
     return hashing.hexdigest() if return_hex else hashing.digest()
-
-
-def get_hash_str(my_str, hash_algorithm='md5'):
-    hashing = _get_hashing_algorithm(hash_algorithm)
-    hashing.update(my_str.encode())
-    return hashing.hexdigest()
-
-
-def get_fields_to_nest(fields, force_fields=[], split_character='_'):
-    nest = {
-        k: set(filter(lambda x: x != k, chain.from_iterable(g)))
-        for k, g in groupby(map(lambda x: x.split(split_character), sorted(fields)), key=lambda x: x[0])
-    }
-    nested = filter(lambda x: len(x[1]) > 1 or x[0] in force_fields, nest.items())
-    nested = [
-        (field, {(subfield, split_character.join([field, subfield])) for subfield in subfields})
-        for field, subfields in nested
-    ]
-    non_nested = set(filter(lambda x: x.split(split_character)[0] not in map(operator.itemgetter(0), nested), fields))
-    return nested, non_nested
-
-
-def plain_dict_to_nested_dict(data, nested=None, non_nested=None, force_fields=[], split_character='_'):
-    """Turns an input dictionary with "nested" fields in form
-                field_subfield
-    into a real nested dictionary in form
-                field {subfield}
-    For example, the following input dictionary
-    data = {
-       "ram_free": "1669524",
-       "board_serial": "BSS-0123456789",
-       "cpu_name": "Intel(R) Core(TM) i7-4700MQ CPU @ 2.40GHz",
-       "cpu_cores": "4",
-       "ram_total": "2045956",
-       "cpu_mhz": "2394.464"
-    }
-    will output this way:
-    data = {
-      "ram": {
-         "total": "2045956",
-         "free": "1669524"
-      },
-      "cpu": {
-         "cores": "4",
-         "mhz": "2394.464",
-         "name": "Intel(R) Core(TM) i7-4700MQ CPU @ 2.40GHz"
-      },
-      "board_serial": "BSS-0123456789"
-    }
-    :param data: dictionary to nest
-    :param nested: fields to nest
-    :param force_fields: fields to force nesting in.
-    """
-    # separate fields and subfields:
-    # nested = {'board': ['serial'], 'cpu': ['cores', 'mhz', 'name'], 'ram': ['free', 'total']}
-    nested = {
-        k: list(filter(lambda x: x != k, chain.from_iterable(g)))
-        for k, g in groupby(map(lambda x: x.split(split_character), sorted(data.keys())), key=lambda x: x[0])
-    }
-
-    # create a nested dictionary with those fields that have subfields
-    # (board_serial won't be added because it only has one subfield)
-    #  nested_dict = {
-    #       'cpu': {
-    #           'cores': '4',
-    #           'mhz': '2394.464',
-    #           'name': 'Intel(R) Core(TM) i7-4700MQ CPU @ 2.40GHz'
-    #       },
-    #       'ram': {
-    #           'free': '1669524',
-    #           'total': '2045956'
-    #       }
-    #    }
-    nested_dict = {
-        f: {sf: data['{0}{2}{1}'.format(f, sf, split_character)] for sf in sfl}
-        for f, sfl in nested.items()
-        if len(sfl) > 1 or f in force_fields
-    }
-
-    # create a dictionary with the non nested fields
-    # non_nested_dict = {'board_serial': 'BSS-0123456789'}
-    non_nested_dict = {f: data[f] for f in data.keys() if f.split(split_character)[0] not in nested_dict.keys()}
-
-    # append both dictionaries
-    nested_dict.update(non_nested_dict)
-
-    return nested_dict
 
 
 def validate_wazuh_configuration(data: str):
@@ -927,7 +696,7 @@ def load_wazuh_yaml(filepath: str, data: str = None) -> dict:
 
 
 def get_group_file_path(group_id: str) -> str:
-    """Returns the path to the group configuration file.
+    """Return the path to the group configuration file.
 
     Parameters
     ----------
@@ -940,108 +709,6 @@ def get_group_file_path(group_id: str) -> str:
         Group configuration file path.
     """
     return path.join(common.WAZUH_GROUPS, group_id + GROUP_FILE_EXT)
-
-
-class WazuhVersion:
-    def __init__(self, version):
-        pattern = r'(?:Wazuh )?v?(\d+)\.(\d+)\.(\d+)\-?(alpha|beta|rc)?(\d*)'
-        m = re.match(pattern, version)
-
-        if m:
-            self.__mayor = int(m.group(1))
-            self.__minor = int(m.group(2))
-            self.__patch = int(m.group(3))
-            self.__dev = m.group(4)
-            self.__dev_ver = m.group(5)
-        else:
-            raise ValueError('Invalid version format.')
-
-    def to_array(self):
-        array = [str(self.__mayor)]
-        array.extend(str(self.__minor))
-        array.extend(str(self.__patch))
-        if self.__dev:
-            array.append(self.__dev)
-        if self.__dev_ver:
-            array.append(self.__dev_ver)
-        return array
-
-    def __to_string(self):
-        ver_string = '{0}.{1}.{2}'.format(self.__mayor, self.__minor, self.__patch)
-        if self.__dev:
-            ver_string = '{0}-{1}{2}'.format(ver_string, self.__dev, self.__dev_ver)
-        return ver_string
-
-    def __str__(self):
-        return self.__to_string()
-
-    def __eq__(self, new_version):
-        return self.__to_string() == new_version.__to_string()
-
-    def __ne__(self, new_version):
-        return self.__to_string() != new_version.__to_string()
-
-    def __ge__(self, new_version):
-        if self.__mayor < new_version.__mayor:
-            return False
-        elif self.__mayor == new_version.__mayor:
-            if self.__minor < new_version.__minor:
-                return False
-            elif self.__minor == new_version.__minor:
-                if self.__patch < new_version.__patch:
-                    return False
-                elif self.__patch == new_version.__patch:
-                    if (self.__dev) and not (new_version.__dev):
-                        return False
-                    elif (self.__dev) and (new_version.__dev):
-                        if ord(self.__dev[0]) < ord(new_version.__dev[0]):
-                            return False
-                        elif ord(self.__dev[0]) == ord(new_version.__dev[0]) and self.__dev_ver < new_version.__dev_ver:
-                            return False
-
-        return True
-
-    def __lt__(self, new_version):
-        return not (self >= new_version)
-
-    def __gt__(self, new_version):
-        return self >= new_version and self != new_version
-
-    def __le__(self, new_version):
-        return not (self > new_version) or self == new_version
-
-
-def get_timeframe_in_seconds(timeframe: str) -> int:
-    """Get number of seconds from a timeframe.
-
-    Parameters
-    ----------
-    timeframe : str
-        Time in seconds | "[n_days]d" | "[n_hours]h" | "[n_minutes]m" | "[n_seconds]s".
-
-    Raises
-    ------
-    WazuhError(1411)
-        The timeframe value is not valid.
-
-    Returns
-    -------
-    int
-        Time in seconds.
-    """
-    if not timeframe.isdigit():
-        if 'h' not in timeframe and 'd' not in timeframe and 'm' not in timeframe and 's' not in timeframe:
-            raise WazuhError(1411, timeframe)
-
-        regex, seconds = re.compile(r'(\d+)(\w)'), 0
-        time_equivalence_seconds = {'d': 86400, 'h': 3600, 'm': 60, 's': 1}
-        for time, unit in regex.findall(timeframe):
-            # it's not necessarry to check whether the unit is in the dictionary, because it's been validated before.
-            seconds += int(time) * time_equivalence_seconds[unit]
-    else:
-        seconds = int(timeframe)
-
-    return seconds
 
 
 def filter_array_by_query(q: str, input_array: typing.List) -> typing.List:
