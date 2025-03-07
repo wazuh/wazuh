@@ -493,6 +493,39 @@ void test_w_enrollment_connect_socket_error(void **state) {
     assert_int_equal(ret, ENROLLMENT_CONNECTION_FAILURE);
 }
 
+void test_w_enrollment_connect_set_timeout_error(void **state) {
+    w_enrollment_ctx *cfg = *state;
+    SSL_CTX *ctx = get_ssl_context(DEFAULT_CIPHERS, 0);
+    // GetHost
+    expect_string(__wrap_OS_GetHost, host, cfg->target_cfg->manager_name);
+    will_return(__wrap_OS_GetHost, strdup("127.0.0.1"));
+    // os_ssl_keys
+    expect_value(__wrap_os_ssl_keys, is_server, 0);
+    expect_value(__wrap_os_ssl_keys, os_dir, NULL);
+    expect_string(__wrap_os_ssl_keys, ciphers, DEFAULT_CIPHERS);
+    expect_string(__wrap_os_ssl_keys, cert, "CERT");
+    expect_string(__wrap_os_ssl_keys, key, "KEY");
+    expect_string(__wrap_os_ssl_keys, ca_cert, "CA_CERT");
+    expect_value(__wrap_os_ssl_keys, auto_method, 0);
+    will_return(__wrap_os_ssl_keys, ctx);
+    // OS_ConnectTCP
+    expect_value(__wrap_OS_ConnectTCP, _port, 1234);
+    expect_string(__wrap_OS_ConnectTCP, _ip, "127.0.0.1");
+    expect_value(__wrap_OS_ConnectTCP, ipv6, 0);
+    will_return(__wrap_OS_ConnectTCP, 5);
+    // OS_SetRecvTimeout
+    will_return(__wrap_OS_SetRecvTimeout, -1);
+
+    expect_string(__wrap__merror, formatted_msg, "(1339) Cannot set timeout.");
+
+    // Close socket
+    expect_value(__wrap_OS_CloseSocket, sock, 5);
+    will_return(__wrap_OS_CloseSocket, 0);
+
+    int ret = w_enrollment_connect(cfg, cfg->target_cfg->manager_name, 0);
+    assert_int_equal(ret, ENROLLMENT_CONNECTION_FAILURE);
+}
+
 void test_w_enrollment_connect_SSL_connect_error(void **state) {
     w_enrollment_ctx *cfg = *state;
     SSL_CTX *ctx = get_ssl_context(DEFAULT_CIPHERS, 0);
@@ -1252,6 +1285,7 @@ int main() {
         cmocka_unit_test_setup_teardown(test_w_enrollment_connect_invalid_hostname, test_setup_context, test_teardown_context),
         cmocka_unit_test_setup_teardown(test_w_enrollment_connect_could_not_setup, test_setup_context, test_teardown_context),
         cmocka_unit_test_setup_teardown(test_w_enrollment_connect_socket_error, test_setup_context, test_teardown_context),
+        cmocka_unit_test_setup_teardown(test_w_enrollment_connect_set_timeout_error, test_setup_context, test_teardown_context),
         cmocka_unit_test_setup_teardown(test_w_enrollment_connect_SSL_connect_error, test_setup_context, test_teardown_context),
         cmocka_unit_test_setup_teardown(test_w_enrollment_connect_success, test_setup_context, test_teardown_context),
         // w_enrollment_send_message
