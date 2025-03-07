@@ -1,28 +1,27 @@
 name: Create Latest Package
 
 on:
-  push:
+  workflow_run:
+    workflows: ["packages-build-server.yml"]
+    types:
+      - completed
     branches:
       - '[0-9]+.[0-9]+.[0-9]+'
       - 'main'
       - 'enhancement/28404-add-latest-package'
 
 jobs:
-  build-package:
-    uses: ./.github/workflows/packages-build-server.yml
-
   create-latest:
-    needs: build-package
     runs-on: ubuntu-latest
     steps:
-      - name: Download built package
+      - name: Download latest built package
         uses: actions/download-artifact@v4
         with:
           path: /tmp/
 
       - name: Find the package name
         run: |
-          PACKAGE_NAME=$(ls /tmp | grep -E 'wazuh-server_.*\.(deb|rpm)')
+          PACKAGE_NAME=$(ls -t /tmp | grep -E 'wazuh-server_.*\.(deb|rpm)' | head -n 1)
           LATEST_PACKAGE_NAME=$(echo $PACKAGE_NAME | sed 's/[a-f0-9]\{7,\}/latest/')
           cp /tmp/$PACKAGE_NAME /tmp/$LATEST_PACKAGE_NAME
           echo "LATEST_PACKAGE_NAME=$LATEST_PACKAGE_NAME" >> $GITHUB_ENV
