@@ -50,6 +50,26 @@ All notable changes to this project will be documented in this file.
 
 - SCA rule Improvement for MacOS 15 SCA. ([#26982](https://github.com/wazuh/wazuh/issues/26982))
 
+## [v4.11.1]
+
+### Manager
+
+#### Fixed
+
+- Fixed the OS CPE build for package scans with data from Wazuh-DB. ([#28294](https://github.com/wazuh/wazuh/pull/28294))
+- Added delete by query logic when indexer is disabled. ([#28292](https://github.com/wazuh/wazuh/pull/28292))
+- Fixed heap buffer overflow in Analysisd rule parser. ([#28396](https://github.com/wazuh/wazuh/pull/28396))
+
+### Agent
+
+#### Fixed
+
+- Improved agent connectivity. ([#28339](https://github.com/wazuh/wazuh/pull/28339))
+
+#### Changed
+
+- Changed ms-graph page size to 50. ([#28075](https://github.com/wazuh/wazuh/pull/28075))
+- Removed "ca.com" domain filter from Rootcheck malware ruleset. ([#28045](https://github.com/wazuh/wazuh/pull/28045))
 
 ## [v4.11.0]
 

@@ -1470,7 +1470,6 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
 
                         if (mitre_opt == NULL) {
                             smwarn(log_msg, "Empty Mitre information for rule '%d'", config_ruleinfo->sigid);
-                            k++;
                             continue;
                         }
 

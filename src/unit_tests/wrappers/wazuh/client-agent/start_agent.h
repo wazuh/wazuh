@@ -9,9 +9,6 @@
 #ifndef UNIT_TEST_START_AGENT
 #define UNIT_TEST_START_AGENT
 
-int wrap_closesocket(int fd);
-
 ssize_t wrap_recv(int __fd, void *__buf, size_t __n, int __flags);
-
 
 #endif
