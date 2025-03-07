@@ -38,7 +38,7 @@
 <!-- SYSCALL - exe -->
 <decoder name="auditd-syscall">
   <parent>auditd</parent>
-  <regex offset="after_regex">exe=\p(\S+)\p</regex>
+  <regex offset="after_regex" type="pcre2">exe=["'](\S+)["']</regex>
   <order>audit.exe</order>
 </decoder>
 
@@ -332,7 +332,7 @@
 
 <decoder name="auditd-generic">
   <parent>auditd</parent>
-  <regex>exe=\p(\S+)\p</regex>
+  <regex type="pcre2">exe=["'](\S+)["']</regex>
   <order>audit.exe</order>
 </decoder>
 
