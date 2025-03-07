@@ -296,7 +296,7 @@ async def test_agent_delete_agents(create_indexer_mock, agent_list, available_ag
     ],
 )
 @patch('wazuh.core.indexer.create_indexer')
-@patch('wazuh.core.agent.Agent.group_exists', return_value=True)
+@patch('wazuh.core.agent.group_exists', return_value=True)
 async def test_agent_add_agent(
     mock_group_exists,
     create_indexer_mock,
@@ -339,7 +339,7 @@ async def test_agent_add_agent(
     ],
 )
 @patch('wazuh.core.indexer.create_indexer')
-@patch('wazuh.core.agent.Agent.group_exists', return_value=True)
+@patch('wazuh.core.agent.group_exists', return_value=True)
 async def test_agent_add_agent_ko(mock_group_exists, create_indexer_mock, name, id, key, type, version):
     """Test `add_agent` from agent module.
 
@@ -419,17 +419,17 @@ async def test_create_group(chown_mock, uid_mock, gid_mock, group_id):
     try:
         result = await create_group(group_id)
         assert isinstance(result, WazuhResult), 'The returned object is not an "WazuhResult" instance.'
-        assert (
-            len(result.dikt) == 1
-        ), f'Result dikt length is "{len(result.dikt)}" instead of "1". Result dikt content is: {result.dikt}'
+        assert len(result.dikt) == 1, (
+            f'Result dikt length is "{len(result.dikt)}" instead of "1". Result dikt content is: {result.dikt}'
+        )
         assert result.dikt['message'] == expected_msg, (
             f'The "result.dikt[\'message\']" received is not the expected.\n'
             f'Expected: "{expected_msg}"\n'
             f'Received: "{result.dikt["message"]}"'
         )
-        assert os.path.exists(
-            path_to_group
-        ), f'The path "{path_to_group}" does not exists and should be created by "create_group" function.'
+        assert os.path.exists(path_to_group), (
+            f'The path "{path_to_group}" does not exists and should be created by "create_group" function.'
+        )
     finally:
         # Remove the new file to avoid affecting other tests
         if os.path.exists(path_to_group):
@@ -474,7 +474,7 @@ async def test_create_group_exceptions(group_id, exception, exception_code):
 @pytest.mark.asyncio
 @pytest.mark.parametrize('group_list', [['group-1'], ['group-1', 'group-2']])
 @patch('wazuh.agent.get_groups')
-@patch('wazuh.agent.Agent.delete_single_group')
+@patch('wazuh.agent.delete_single_group')
 @patch('wazuh.core.indexer.create_indexer')
 async def test_agent_delete_groups(create_indexer_mock, mock_delete, mock_get_groups, group_list):
     """Test `delete_groups` function from agent module.
