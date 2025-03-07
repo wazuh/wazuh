@@ -513,6 +513,8 @@ void test_w_enrollment_connect_SSL_connect_error(void **state) {
     expect_string(__wrap_OS_ConnectTCP, _ip, "127.0.0.1");
     expect_value(__wrap_OS_ConnectTCP, ipv6, 0);
     will_return(__wrap_OS_ConnectTCP, 5);
+    // OS_SetRecvTimeout
+    will_return(__wrap_OS_SetRecvTimeout, 0);
     // Connect SSL
     expect_value(__wrap_SSL_new, ctx, ctx);
     cfg->ssl = __real_SSL_new(ctx);
@@ -551,6 +553,8 @@ void test_w_enrollment_connect_success(void **state) {
     expect_string(__wrap_OS_ConnectTCP, _ip, "127.0.0.1");
     expect_value(__wrap_OS_ConnectTCP, ipv6, 0);
     will_return(__wrap_OS_ConnectTCP, 5);
+    // OS_SetRecvTimeout
+    will_return(__wrap_OS_SetRecvTimeout, 0);
     // Connect SSL
     expect_value(__wrap_SSL_new, ctx, ctx);
     cfg->ssl = __real_SSL_new(ctx);
@@ -1039,6 +1043,8 @@ void test_w_enrollment_request_key(void **state) {
         expect_string(__wrap_OS_ConnectTCP, _ip, "192.168.1.1");
         expect_value(__wrap_OS_ConnectTCP, ipv6, 0);
         will_return(__wrap_OS_ConnectTCP, 5);
+        // OS_SetRecvTimeout
+        will_return(__wrap_OS_SetRecvTimeout, 0);
         // Connect SSL
         expect_value(__wrap_SSL_new, ctx, ctx);
         cfg->ssl = __real_SSL_new(ctx);
