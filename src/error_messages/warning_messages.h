@@ -74,6 +74,7 @@
 #define FIM_INVALID_FILE_NAME                   "(6955): Ignoring file '%s' due to unsupported name (non-UTF8)."
 #define FIM_FULL_AUDIT_QUEUE                    "(6956): Internal audit queue is full. Some events may be lost. Next scheduled scan will recover lost data."
 #define FIM_REALTIME_FILE_NOT_SUPPORTED         "(6957): Realtime mode only supports directories, not files. Switching to scheduled mode. File: '%s'"
+#define FIM_FULL_EBPF_QUEUE                     "(6958): Internal ebpf queue is full. Some events may be lost. Next scheduled scan will recover lost data."
 
 /* Monitord warning messages */
 #define ROTATE_LOG_LONG_PATH                    "(7500): The path of the rotated log is too long."
