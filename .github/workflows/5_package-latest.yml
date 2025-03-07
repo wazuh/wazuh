@@ -1,4 +1,4 @@
-name: Create Latest Package
+name: Package - Upload Wazuh Server Latest
 
 on:
   workflow_run:
@@ -6,8 +6,8 @@ on:
     types:
       - completed
     branches:
-      - '[0-9]+.[0-9]+.[0-9]+'
-      - 'main'
+      # - '[0-9]+.[0-9]+.[0-9]+'
+      # - 'main'
       - 'enhancement/28404-add-latest-package'
 
 jobs:
