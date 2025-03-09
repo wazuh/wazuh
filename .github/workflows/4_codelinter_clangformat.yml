@@ -1,0 +1,22 @@
+name: 4_codelinter_clangformat
+
+on:
+  workflow_dispatch:
+  pull_request:
+    # Pull request events
+    types: [synchronize, opened, reopened, ready_for_review]
+
+jobs:
+  style:
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Inventory harvester - Coding style
+        uses: ./.github/actions/clang_format
+        with:
+          path: src/wazuh_modules/inventory_harvester
