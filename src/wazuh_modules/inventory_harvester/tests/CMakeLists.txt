@@ -43,3 +43,4 @@ target_link_libraries(inventory_harvester_utest
 
 target_include_directories(inventory_harvester_utest PRIVATE ${TEST_SRC_DIR} ${TEST_MOCK_DIR})
 add_test(NAME inventory_harvester_utest COMMAND inventory_harvester_utest)
+set_tests_properties(inventory_harvester_utest PROPERTIES LABELS "inventory_harvester_utest")

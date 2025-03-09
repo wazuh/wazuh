@@ -11,6 +11,12 @@ jobs:
     runs-on: ubuntu-22.04
 
     steps:
+      - name: Cancel previous runs
+        uses: fkirc/skip-duplicate-actions@master
+        with:
+          cancel_others: 'true'
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          skip_after_successful_duplicate: 'false'
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
