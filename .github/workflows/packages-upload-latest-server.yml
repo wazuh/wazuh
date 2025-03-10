@@ -1,14 +1,15 @@
 name: Package - Upload Wazuh Server Latest
 
 on:
+  push:
+    branches:
+    # - '[0-9]+.[0-9]+.[0-9]+'
+    # - 'main'
+    - 'enhancement/28404-add-latest-package'
   workflow_run:
     workflows: ["Build Wazuh server"]
     types:
       - completed
-    branches:
-      # - '[0-9]+.[0-9]+.[0-9]+'
-      - 'main'
-      - 'enhancement/28404-add-latest-package'
   workflow_dispatch:
 
 jobs:
