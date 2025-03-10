@@ -12,9 +12,37 @@ import pytest
 from freezegun import freeze_time
 from uvloop import EventLoopPolicy
 
+from wazuh.core.config.client import CentralizedConfig, Config
+from wazuh.core.config.models.server import ServerConfig, ValidateFilePathMixin, SSLConfig, NodeConfig, NodeType
+from wazuh.core.config.models.indexer import IndexerConfig, IndexerNode
+
+
 with patch('wazuh.common.wazuh_uid'):
     with patch('wazuh.common.wazuh_gid'):
-        from wazuh.core.cluster import common as c_common
+        with patch.object(ValidateFilePathMixin, '_validate_file_path', return_value=None):
+            default_config = Config(
+                server=ServerConfig(
+                    nodes=['0'],
+                    node=NodeConfig(
+                        name='node_name',
+                        type=NodeType.MASTER,
+                        ssl=SSLConfig(
+                            key='example',
+                            cert='example',
+                            ca='example'
+                        )
+                    )
+                ),
+                indexer=IndexerConfig(
+                    hosts=[IndexerNode(
+                        host='example',
+                        port=1516
+                    )],
+                    username='wazuh',
+                    password='wazuh'
+                )
+            )
+            CentralizedConfig._config = default_config
         from wazuh.core.cluster.server import *
         from wazuh.core.exception import WazuhClusterError, WazuhError, WazuhResourceNotFound
 
@@ -26,7 +54,7 @@ async def test_AbstractServerHandler_init(event_loop):
     """Check the correct initialization of the AbstractServerHandler object."""
     with patch('wazuh.core.cluster.server.context_tag', ContextVar('tag', default='')) as mock_contextvar:
         abstract_server_handler = AbstractServerHandler(
-            server='Test', loop=event_loop, cluster_items={'test': 'server'}
+            server='Test', loop=event_loop, server_config=default_config.server
         )
         assert abstract_server_handler.server == 'Test'
         assert abstract_server_handler.loop == event_loop
@@ -40,7 +68,7 @@ async def test_AbstractServerHandler_init(event_loop):
         abstract_server_handler = AbstractServerHandler(
             server='Test',
             loop=event_loop,
-            cluster_items={'test': 'server'},
+            server_config=default_config.server,
             logger=Logger(name='test_logger'),
             tag='NoClient',
         )
@@ -56,7 +84,7 @@ async def test_AbstractServerHandler_init(event_loop):
 @pytest.mark.asyncio
 async def test_AbstractServerHandler_to_dict(event_loop):
     """Check the correct transformation of an AbstractServerHandler to a dict."""
-    abstract_server_handler = AbstractServerHandler(server='Test', loop=event_loop, cluster_items={'test': 'server'})
+    abstract_server_handler = AbstractServerHandler(server='Test', loop=event_loop, server_config=default_config.server)
     abstract_server_handler.ip = '111.111.111.111'
     abstract_server_handler.name = 'to_dict_testing'
     assert abstract_server_handler.to_dict() == {'info': {'ip': '111.111.111.111', 'name': 'to_dict_testing'}}
@@ -73,7 +101,7 @@ def test_AbstractServerHandler_connection_made(event_loop):
     with patch('logging.getLogger', return_value=logger):
         with patch.object(logger, 'info') as mock_logger:
             abstract_server_handler = AbstractServerHandler(
-                server='Test', loop=event_loop, cluster_items={'test': 'server'}
+                server='Test', loop=event_loop, server_config=default_config.server
             )
             with patch.object(asyncio.Transport, 'get_extra_info', get_extra_info):
                 abstract_server_handler.connection_made(transport=transport)
@@ -88,7 +116,7 @@ def test_AbstractServerHandler_connection_made(event_loop):
 @patch('wazuh.core.cluster.common.Handler.process_request')
 async def test_AbstractServerHandler_process_request(mock_process_request, mock_echo_master, mock_hello, event_loop):
     """Check the behavior of the process_request function for the different commands that can be sent to it."""
-    abstract_server_handler = AbstractServerHandler(server='Test', loop=event_loop, cluster_items={'test': 'server'})
+    abstract_server_handler = AbstractServerHandler(server='Test', loop=event_loop, server_config=default_config.server)
 
     abstract_server_handler.process_request(command=b'echo-c', data=b'wazuh')
     mock_echo_master.assert_called_once_with(b'wazuh')
@@ -104,7 +132,7 @@ async def test_AbstractServerHandler_process_request(mock_process_request, mock_
 @freeze_time('1970-01-01')
 async def test_AbstractServerHandler_echo_master(event_loop):
     """Check that the echo_master function updates the last_keepalive variable and returns a confirmation message."""
-    abstract_server_handler = AbstractServerHandler(server='Test', loop=event_loop, cluster_items={'test': 'server'})
+    abstract_server_handler = AbstractServerHandler(server='Test', loop=event_loop, server_config=default_config.server)
 
     assert abstract_server_handler.echo_master(data=b'wazuh') == (b'ok-m ', b'wazuh')
     abstract_server_handler.echo_master(data=b'wazuh')
@@ -121,7 +149,7 @@ def test_AbstractServerHandler_hello(event_loop):
             self.configuration = {'node_name': 'elif_test'}
 
     event_loop.create_task = Mock()
-    abstract_server_handler = AbstractServerHandler(server='Test', loop=event_loop, cluster_items={'test': 'server'})
+    abstract_server_handler = AbstractServerHandler(server='Test', loop=event_loop, server_config=default_config.server)
     abstract_server_handler.server = ServerMock()
     abstract_server_handler.tag = 'FixBehaviour'
     abstract_server_handler.broadcast_reader = Mock()
@@ -137,9 +165,11 @@ def test_AbstractServerHandler_hello(event_loop):
         assert mock_contextvar.get() == abstract_server_handler.tag
         event_loop.create_task.assert_called_once()
 
+    abstract_server_handler.server_config.node.name = 'fail_same_name'
     with pytest.raises(WazuhClusterError, match='.* 3029 .*'):
-        abstract_server_handler.hello(b'elif_test')
+        abstract_server_handler.hello(b'fail_same_name')
 
+    abstract_server_handler.name = 'if_test'
     abstract_server_handler.server.clients['if_test'] = 'testing'
     with pytest.raises(WazuhClusterError, match='.* 3028 .* if_test'):
         abstract_server_handler.hello(b'if_test')
@@ -150,7 +180,7 @@ def test_AbstractServerHandler_hello(event_loop):
 @patch('wazuh.core.cluster.common.Handler.process_response')
 async def test_AbstractServerHandler_process_response(process_response_mock, event_loop):
     """Check that the process_response function processes the response according to the command sent."""
-    abstract_server_handler = AbstractServerHandler(server='Test', loop=event_loop, cluster_items={'test': 'server'})
+    abstract_server_handler = AbstractServerHandler(server='Test', loop=event_loop, server_config=default_config.server)
     assert (
         abstract_server_handler.process_response(command=b'ok-c', payload=b'test')
         == b'Successful response from client: test'
@@ -172,7 +202,7 @@ async def test_AbstractServerHandler_connection_lost(event_loop):
     logger = Logger('test_connection_made')
     with patch('logging.getLogger', return_value=logger):
         abstract_server_handler = AbstractServerHandler(
-            server='Test', loop=event_loop, cluster_items={'test': 'server'}
+            server='Test', loop=event_loop, server_config=default_config.server
         )
         with patch.object(logger, 'error') as mock_error_logger:
             abstract_server_handler.connection_lost(exc=None)
@@ -208,7 +238,7 @@ async def test_AbstractServerHandler_connection_lost(event_loop):
 @patch('wazuh.core.cluster.server.functools')
 async def test_AbstractServerHandler_add_request(functools_mock, queue_mock, event_loop):
     """Check that requests are added to asyncio queue with expected parameters."""
-    abstract_server_handler = AbstractServerHandler(server='Test', loop=event_loop, cluster_items={'test': 'server'})
+    abstract_server_handler = AbstractServerHandler(server='Test', loop=event_loop, server_config=default_config.server)
     abstract_server_handler.add_request('test_id', 'test_f', 'test_param', keyword_param='test')
     queue_mock.return_value.put_nowait.assert_called_with({'broadcast_id': 'test_id', 'func': ANY})
     functools_mock.partial.assert_called_with('test_f', abstract_server_handler, 'test_param', keyword_param='test')
@@ -228,7 +258,7 @@ async def test_AbstractServerHandler_broadcast_reader(event_loop):
     logger_mock = Mock()
     server_mock.broadcast_results = {'test1': {'worker1': {}}, 'test2': {'worker1': {}}, 'test3': {'worker1': {}}}
     abstract_server_handler = AbstractServerHandler(
-        server=server_mock, loop=event_loop, cluster_items={'test': 'server'}, logger=logger_mock
+        server=server_mock, loop=event_loop, server_config=default_config.server, logger=logger_mock
     )
     abstract_server_handler.name = 'worker1'
 
@@ -260,14 +290,12 @@ def test_AbstractServer_init(AbstractServerHandler_mock, keepalive_mock):
     """Check the correct initialization of the AbstractServer object."""
     with patch('wazuh.core.cluster.server.context_tag', ContextVar('tag', default='')) as mock_contextvar:
         abstract_server = AbstractServer(
-            performance_test=1, concurrency_test=2, configuration={'test3': 3}, cluster_items={'test4': 4}
+            performance_test=1, concurrency_test=2, server_config=default_config.server
         )
 
         assert abstract_server.clients == {}
         assert abstract_server.performance == 1
         assert abstract_server.concurrency == 2
-        assert abstract_server.configuration == {'test3': 3}
-        assert abstract_server.cluster_items == {'test4': 4}
         assert abstract_server.tag == 'Abstract Server'
         assert mock_contextvar.get() == 'Abstract Server'
         assert isinstance(abstract_server.logger, Logger)
@@ -276,8 +304,7 @@ def test_AbstractServer_init(AbstractServerHandler_mock, keepalive_mock):
         abstract_server = AbstractServer(
             performance_test=1,
             concurrency_test=2,
-            configuration={'test3': 3},
-            cluster_items={'test4': 4},
+            server_config=default_config.server,
             logger=logger,
             tag='test',
         )
@@ -302,8 +329,7 @@ def test_AbstractServer_broadcast(AbstractServerHandler_mock, asynckeepalive_moc
     abstract_server = AbstractServer(
         performance_test=1,
         concurrency_test=2,
-        configuration={'test3': 3},
-        cluster_items={'test4': 4},
+        server_config=default_config.server,
         logger=logger_mock,
     )
     abstract_server.clients = {'worker1': worker1_instance, 'worker2': worker2_instance}
@@ -324,8 +350,7 @@ def test_AbstractServer_broadcast_ko():
     abstract_server = AbstractServer(
         performance_test=1,
         concurrency_test=2,
-        configuration={'test3': 3},
-        cluster_items={'test4': 4},
+        server_config=default_config.server,
         logger=logger_mock,
     )
     abstract_server.clients = {'worker1': 'test'}
@@ -351,8 +376,7 @@ def test_AbstractServer_broadcast_add(uuid_mock):
     abstract_server = AbstractServer(
         performance_test=1,
         concurrency_test=2,
-        configuration={'test3': 3},
-        cluster_items={'test4': 4},
+        server_config=default_config.server,
         logger=logger_mock,
     )
     abstract_server.broadcast_results = {}
@@ -374,8 +398,7 @@ def test_AbstractServer_broadcast_add_ko(uuid_mock):
     abstract_server = AbstractServer(
         performance_test=1,
         concurrency_test=2,
-        configuration={'test3': 3},
-        cluster_items={'test4': 4},
+        server_config=default_config.server,
         logger=logger_mock,
     )
     abstract_server.broadcast_results = {}
@@ -409,8 +432,7 @@ def test_AbstractServer_broadcast_pop(broadcast_results, expected_response):
     abstract_server = AbstractServer(
         performance_test=1,
         concurrency_test=2,
-        configuration={'test3': 3},
-        cluster_items={'test4': 4},
+        server_config=default_config.server,
         logger=logger_mock,
     )
     abstract_server.broadcast_results = broadcast_results
@@ -422,11 +444,11 @@ def test_AbstractServer_broadcast_pop(broadcast_results, expected_response):
 @patch('asyncio.get_running_loop', new=Mock())
 def test_AbstractServer_to_dict():
     """Check the correct transformation of an AbstractServer to a dict."""
-    configuration = {'test_to_dict': 0, 'nodes': [0, 1], 'node_name': 'worker2'}
     abstract_server = AbstractServer(
-        performance_test=1, concurrency_test=2, configuration=configuration, cluster_items={'test4': 4}
+        performance_test=1, concurrency_test=2, server_config=default_config.server
     )
-    assert abstract_server.to_dict() == {'info': {'ip': configuration['nodes'][0], 'name': configuration['node_name']}}
+    assert abstract_server.to_dict() == {'info': {'ip': default_config.server.nodes[0],
+                                                  'name': default_config.server.node.name}}
 
 
 @patch('asyncio.get_running_loop', new=Mock())
@@ -434,7 +456,7 @@ def test_AbstractServer_setup_task_logger():
     """Check that a logger is created with a specific tag."""
     logger = Logger('setup_task_logger')
     abstract_server = AbstractServer(
-        performance_test=1, concurrency_test=2, configuration={'test3': 3}, cluster_items={'test4': 4}, logger=logger
+        performance_test=1, concurrency_test=2, server_config=default_config.server, logger=logger
     )
     assert abstract_server.setup_task_logger(task_tag='zxf').name == 'setup_task_logger.zxf'
 
@@ -450,7 +472,7 @@ def test_AbstractServer_get_connected_nodes(mock_process_array):
     function to return all the information of the connected nodes.
     """
     abstract_server = AbstractServer(
-        performance_test=1, concurrency_test=2, configuration={'test3': 3}, cluster_items={'test4': 4}
+        performance_test=1, concurrency_test=2, server_config=default_config.server
     )
     basic_dict = {'info': {'first': 'test'}}
 
@@ -480,7 +502,7 @@ def test_AbstractServer_get_connected_nodes(mock_process_array):
 def test_AbstractServer_get_connected_nodes_ko(mock_process_array):
     """Check all exceptions that can be returned by the get_connected_nodes function."""
     abstract_server = AbstractServer(
-        performance_test=1, concurrency_test=2, configuration={'test3': 3}, cluster_items={'test4': 4}
+        performance_test=1, concurrency_test=2, server_config=default_config.server
     )
     basic_dict = {'info': {'first': 'test'}}
 
@@ -505,7 +527,7 @@ def test_AbstractServer_get_connected_nodes_ko(mock_process_array):
         with pytest.raises(WazuhError, match='.* 1728 .*'):
             abstract_server.get_connected_nodes(filter_type='None')
 
-        abstract_server.configuration = {'node_name': 'master'}
+        abstract_server.server_config.node.name = 'master'
         with pytest.raises(WazuhResourceNotFound, match='.* 1730 .*'):
             abstract_server.get_connected_nodes(filter_node='worker')
 
@@ -534,24 +556,16 @@ async def test_AbstractServer_check_clients_keepalive(sleep_mock):
                 abstract_server = AbstractServer(
                     performance_test=1,
                     concurrency_test=2,
-                    configuration={'test3': 3},
-                    cluster_items={'test4': 4},
+                    server_config=default_config.server,
                     logger=logger,
                 )
-                tester = 'check_clients_keepalive'
-                abstract_server.cluster_items = {'intervals': {'master': {'check_worker_lastkeepalive': tester}}}
                 try:
                     await abstract_server.check_clients_keepalive()
                 except IndexError:
                     pass
                 mock_debug.assert_has_calls([call('Calculated.'), call('Calculating.')], any_order=True)
-                sleep_mock.assert_called_once_with(tester)
+                sleep_mock.assert_called_once_with(default_config.server.master.intervals.check_worker_last_keep_alive)
 
-                abstract_server.cluster_items = {
-                    'intervals': {
-                        'master': {'max_allowed_time_without_keepalive': 0, 'check_worker_lastkeepalive': tester}
-                    }
-                }
                 abstract_server.clients = {'worker_test': ClientMock()}
                 try:
                     await abstract_server.check_clients_keepalive()
@@ -582,8 +596,7 @@ async def test_AbstractServer_performance_test(perf_counter_mock, sleep_mock):
         abstract_server = AbstractServer(
             performance_test=1,
             concurrency_test=2,
-            configuration={'test3': 3},
-            cluster_items={'test4': 4},
+            server_config=default_config.server,
             logger=logger,
         )
         abstract_server.clients = {b'worker_test': ClientMock()}
@@ -614,8 +627,7 @@ async def test_AbstractServer_concurrency_test(perf_counter_mock, sleep_mock):
         abstract_server = AbstractServer(
             performance_test=1,
             concurrency_test=2,
-            configuration={'test3': 3},
-            cluster_items={'test4': 4},
+            server_config=default_config.server,
             logger=logger,
         )
         abstract_server.clients = {b'worker_test': ClientMock()}
@@ -655,24 +667,15 @@ async def test_AbstractServer_start(keepalive_mock, mock_path_join):
     loop.create_server = AsyncMock(side_effect=create_server)
     loop.set_exception_handler = MagicMock()
     ssl_mock = SSLMock()
-    cafile = '/test/path/CAcert.pem'
-    certfile = '/test/path/cert.pem'
-    keyfile = '/test/path/key.pem'
-    password = 'test_password'
+    cafile = default_config.server.node.ssl.ca
+    certfile = default_config.server.node.ssl.cert
+    keyfile = default_config.server.node.ssl.key
+    password = default_config.server.node.ssl.keyfile_password
 
-    cluster_items = {'intervals': {'master': {'check_worker_lastkeepalive': 987}}}
     abstract_server = AbstractServer(
         performance_test=1,
         concurrency_test=2,
-        configuration={
-            'bind_addr': 'localhost',
-            'port': 10000,
-            'cafile': cafile,
-            'certfile': certfile,
-            'keyfile': keyfile,
-            'keyfile_password': password,
-        },
-        cluster_items=cluster_items,
+        server_config=default_config.server,
         logger=logger,
     )
     with (
@@ -726,15 +729,7 @@ async def test_AbstractServer_start_ko(
             abstract_server = AbstractServer(
                 performance_test=1,
                 concurrency_test=2,
-                configuration={
-                    'bind_addr': 3,
-                    'port': 10000,
-                    'cafile': '/test/path/CAcert.pem',
-                    'certfile': '/test/path/cert.pem',
-                    'keyfile': '/test/path/key.pem',
-                    'keyfile_password': '',
-                },
-                cluster_items={'intervals': {'master': {'check_worker_lastkeepalive': 987}}},
+                server_config=default_config.server,
                 logger=logger,
             )
             await abstract_server.start()

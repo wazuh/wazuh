@@ -19,46 +19,50 @@ import pytest
 from uvloop import EventLoopPolicy, new_event_loop
 from wazuh import Wazuh
 from wazuh.core import exception
+from wazuh.core.config.client import CentralizedConfig, Config
+from wazuh.core.config.models.server import ServerConfig, ValidateFilePathMixin, SSLConfig, NodeConfig, NodeType
+from wazuh.core.config.models.indexer import IndexerConfig, IndexerNode
+
 
 with patch('wazuh.common.wazuh_uid'):
     with patch('wazuh.common.wazuh_gid'):
-        sys.modules['wazuh.rbac.orm'] = MagicMock()
-        import wazuh.rbac.decorators
+        with patch.object(ValidateFilePathMixin, '_validate_file_path', return_value=None):
+            default_config = Config(
+                server=ServerConfig(
+                    nodes=['0'],
+                    node=NodeConfig(
+                        name='node_name',
+                        type=NodeType.MASTER,
+                        ssl=SSLConfig(
+                            key='example',
+                            cert='example',
+                            ca='example'
+                        )
+                    )
+                ),
+                indexer=IndexerConfig(
+                    hosts=[IndexerNode(
+                        host='example',
+                        port=1516
+                    )],
+                    username='wazuh',
+                    password='wazuh'
+                )
+            )
+            CentralizedConfig._config = default_config
 
-        del sys.modules['wazuh.rbac.orm']
-        from wazuh.tests.util import RBAC_bypasser
+            sys.modules['wazuh.rbac.orm'] = MagicMock()
+            import wazuh.rbac.decorators
 
-        wazuh.rbac.decorators.expose_resources = RBAC_bypasser
-        import wazuh.core.cluster.common as cluster_common
-        import wazuh.core.results as wresults
-        from wazuh.core import common
+            del sys.modules['wazuh.rbac.orm']
+            from wazuh.tests.util import RBAC_bypasser
+
+            wazuh.rbac.decorators.expose_resources = RBAC_bypasser
+            import wazuh.core.cluster.common as cluster_common
+            import wazuh.core.results as wresults
+            from wazuh.core import common
 
 # Globals
-cluster_items = {
-    'etc/': {
-        'permissions': '0o640',
-        'source': 'master',
-        'files': ['client.keys'],
-        'description': 'client keys file database',
-    },
-    'intervals': {
-        'worker': {'sync_integrity': 9, 'keep_alive': 60, 'connection_retry': 10, 'max_failed_keepalive_attempts': 2},
-        'master': {
-            'recalculate_integrity': 8,
-            'check_worker_lastkeepalive': 60,
-            'max_allowed_time_without_keepalive': 120,
-        },
-        'communication': {
-            'timeout_cluster_request': 20,
-            'timeout_dapi_request': 200,
-            'timeout_receiving_file': 120,
-            'max_zip_size': 1073741824,
-            'min_zip_size': 31457280,
-            'zip_limit_tolerance': 0.2,
-        },
-    },
-}
-
 wazuh_common = cluster_common.WazuhCommon()
 in_buffer = cluster_common.InBuffer()
 
@@ -269,7 +273,7 @@ def test_handler_init():
             pass
 
     with patch('wazuh.core.cluster.utils.context_tag', ContextVar('', default='')) as cv:
-        handler = cluster_common.Handler(cluster_items)
+        handler = cluster_common.Handler(server_config=default_config.server)
 
         assert isinstance(handler.counter, int)
         assert handler.box == {}
@@ -284,18 +288,17 @@ def test_handler_init():
         assert handler.request_chunk == 5242880
         assert handler.logger == logging.getLogger('wazuh')
         assert handler.tag == 'Handler'
-        assert handler.cluster_items == cluster_items
         assert handler.transport is None
         assert handler.interrupted_tasks == set()
         assert cv.get() == handler.tag
 
     # Check logger
-    assert isinstance(cluster_common.Handler(cluster_items, logger=LoggerMock()).logger, LoggerMock)
+    assert isinstance(cluster_common.Handler(server_config=default_config.server, logger=LoggerMock()).logger, LoggerMock)
 
 
 def test_handler_push():
     """Test if a message is being properly sent to peer."""
-    handler = cluster_common.Handler(cluster_items)
+    handler = cluster_common.Handler(server_config=default_config.server)
 
     handler.transport = asyncio.WriteTransport
     with patch('asyncio.WriteTransport.write') as write_mock:
@@ -305,7 +308,7 @@ def test_handler_push():
 
 def test_handler_next_counter():
     """Test if the counter is being properly increased."""
-    handler = cluster_common.Handler(cluster_items)
+    handler = cluster_common.Handler(server_config=default_config.server)
 
     assert handler.next_counter() == (handler.counter + 1) % (2**32) - 1
 
@@ -313,7 +316,7 @@ def test_handler_next_counter():
 @patch('struct.pack', return_value=b'v1')
 def test_handler_msg_build_ok(pack_mock):
     """Test if a message is being built with the right header and payload."""
-    handler = cluster_common.Handler(cluster_items)
+    handler = cluster_common.Handler(server_config=default_config.server)
 
     # Test first if
     assert isinstance(handler.msg_build(b'command', 12345, b'data'), list)
@@ -331,7 +334,7 @@ def test_handler_msg_build_ok(pack_mock):
 
 def test_handler_msg_build_ko():
     """Test the 'message_build' method and check if it is raising the exceptions properly."""
-    handler = cluster_common.Handler(cluster_items)
+    handler = cluster_common.Handler(server_config=default_config.server)
 
     with pytest.raises(exception.WazuhClusterError, match=r'.* 3024 .*'):
         handler.msg_build(b'much much longer command', 12345, b'data')
@@ -339,7 +342,7 @@ def test_handler_msg_build_ko():
 
 def test_handler_msg_parse():
     """Test if an incoming message is being properly parsed."""
-    handler = cluster_common.Handler(cluster_items)
+    handler = cluster_common.Handler(server_config=default_config.server)
 
     # self.in_buffer is False
     assert handler.msg_parse() is False
@@ -358,7 +361,7 @@ def test_handler_msg_parse():
 
 def test_handler_get_messages_ok():
     """Test the proper decryption of the received data and returns it in separate yields."""
-    handler = cluster_common.Handler(cluster_items)
+    handler = cluster_common.Handler(server_config=default_config.server)
     yield_value = None
 
     with patch('wazuh.core.cluster.common.Handler.msg_parse', return_value=True) as handler_mock:
@@ -390,14 +393,14 @@ async def test_handler_send_request_ok(msg_build_mock, next_counter_mock, push_m
     async def delay():
         await asyncio.sleep(0.5)
 
-    handler = cluster_common.Handler(cluster_items)
+    handler = cluster_common.Handler(server_config=default_config.server)
 
     with patch('wazuh.core.cluster.common.Response.read', return_value='some value') as read_mock:
         assert await handler.send_request(b'some bytes', b'some data') == 'some value'
         assert next_counter_mock.return_value not in handler.box
         read_mock.assert_awaited_once()
 
-    handler.cluster_items['intervals']['communication']['timeout_cluster_request'] = 0.01
+    handler.server_config.communications.timeouts.cluster_request = 0.01
     with patch('wazuh.core.cluster.common.Response.read', side_effect=delay):
         with pytest.raises(exception.WazuhClusterError, match=r'\b3020\b'):
             await handler.send_request(b'some bytes', b'some data')
@@ -413,7 +416,7 @@ async def test_handler_send_request_ok(msg_build_mock, next_counter_mock, push_m
 @pytest.mark.asyncio
 async def test_handler_send_request_ko():
     """Test the 'send_request' method proper exception raise."""
-    handler = cluster_common.Handler(cluster_items)
+    handler = cluster_common.Handler(server_config=default_config.server)
 
     with patch('wazuh.core.cluster.common.Handler.msg_build', side_effect=MemoryError):
         with pytest.raises(exception.WazuhClusterError, match=r'.* 3026 .*'):
@@ -442,7 +445,7 @@ async def test_handler_send_file_ok(send_request_mock, os_path_exists_mock):
             """Auxiliary method."""
             return b''
 
-    handler = cluster_common.Handler(cluster_items)
+    handler = cluster_common.Handler(server_config=default_config.server)
     handler.request_chunk = 17
     handler.interrupted_tasks.add(b'abcd')
 
@@ -458,7 +461,7 @@ async def test_handler_send_file_ok(send_request_mock, os_path_exists_mock):
 @pytest.mark.asyncio
 async def test_handler_send_file_ko():
     """Test the 'send_file' method exception raise."""
-    handler = cluster_common.Handler(cluster_items)
+    handler = cluster_common.Handler(server_config=default_config.server)
 
     with pytest.raises(exception.WazuhClusterError, match=r'.* 3034 .*'):
         await handler.send_file('some_file.txt')
@@ -467,7 +470,7 @@ async def test_handler_send_file_ko():
 @pytest.mark.asyncio
 async def test_handler_send_string():
     """Test if a large string can be correctly sent to peer."""
-    handler = cluster_common.Handler(cluster_items)
+    handler = cluster_common.Handler(server_config=default_config.server)
 
     with patch('wazuh.core.cluster.common.Handler.send_request', return_value=b'some data'):
         assert await handler.send_string(b'something') == b'some data'
@@ -482,7 +485,7 @@ async def test_handler_send_string():
 
 def test_handler_get_manager():
     """Test if the exception is being properly raised."""
-    handler = cluster_common.Handler(cluster_items)
+    handler = cluster_common.Handler(server_config=default_config.server)
 
     with pytest.raises(NotImplementedError):
         handler.get_manager()
@@ -508,7 +511,7 @@ async def test_handler_forward_dapi_response_ok():
             async def send_request(data, res):
                 return res
 
-    handler = cluster_common.Handler(cluster_items)
+    handler = cluster_common.Handler(server_config=default_config.server)
     handler.in_str = {b'string_id': in_buffer, b'other_string': 'some value'}
     mock_manager = ParentManager()
 
@@ -533,7 +536,7 @@ async def test_handler_forward_dapi_response_ko():
             async def send_string(data):
                 return data
 
-    handler = cluster_common.Handler(cluster_items)
+    handler = cluster_common.Handler(server_config=default_config.server)
     handler.in_str = {b'string_id': in_buffer, b'other_string': 'some value'}
     mock_manager = ParentManager()
 
@@ -558,7 +561,7 @@ async def test_handler_forward_dapi_response_ko():
 
 def test_handler_data_received_ok():
     """Test if the data received from other peers is being properly handled."""
-    handler = cluster_common.Handler(cluster_items)
+    handler = cluster_common.Handler(server_config=default_config.server)
 
     # Test first if
     with patch('wazuh.core.cluster.common.Handler.get_messages', return_value=[(b'bytes1', 123, b'bytes2', b'd')]):
@@ -595,7 +598,7 @@ def test_handler_data_received_ok():
 @patch('wazuh.core.cluster.common.Handler.process_request', return_value=(b'command', b'payload'))
 def test_handler_dispatch(process_request_mock, push_mock, msg_build_mock):
     """Test if a message is properly processed and a response is sent."""
-    handler = cluster_common.Handler(cluster_items)
+    handler = cluster_common.Handler(server_config=default_config.server)
 
     # Test the first try and if
     handler.dispatch(b'command', 123, b'payload')
@@ -617,7 +620,7 @@ def test_handler_dispatch(process_request_mock, push_mock, msg_build_mock):
 
 def test_handler_close():
     """Test if the connection is properly closed."""
-    handler = cluster_common.Handler(cluster_items)
+    handler = cluster_common.Handler(server_config=default_config.server)
 
     class TransportMock:
         def __init__(self):
@@ -636,7 +639,7 @@ def test_handler_close():
 
 def test_handler_process_request():
     """Check if request commands are correctly defined."""
-    handler = cluster_common.Handler(cluster_items)
+    handler = cluster_common.Handler(server_config=default_config.server)
 
     with patch('wazuh.core.cluster.common.Handler.echo') as echo_mock:
         handler.process_request(b'echo', b'data')
@@ -672,7 +675,7 @@ def test_handler_process_request():
 
 def test_handler_process_response():
     """Check if response commands are correctly defined."""
-    handler = cluster_common.Handler(cluster_items)
+    handler = cluster_common.Handler(server_config=default_config.server)
 
     assert handler.process_response(b'ok', b'payload') == b'payload'
 
@@ -684,14 +687,14 @@ def test_handler_process_response():
 
 def test_handler_echo():
     """Test if response command to 'echo' are defined."""
-    handler = cluster_common.Handler(cluster_items)
+    handler = cluster_common.Handler(server_config=default_config.server)
 
     assert handler.echo(b'data') == (b'ok', b'data')
 
 
 def test_handler_receive_file():
     """Test if a descriptor file is created for an incoming file."""
-    handler = cluster_common.Handler(cluster_items)
+    handler = cluster_common.Handler(server_config=default_config.server)
 
     with patch('wazuh.core.cluster.common.open') as open_mock:
         assert handler.receive_file(b'data') == (b'ok ', b'Ready to receive new file')
@@ -703,7 +706,7 @@ def test_handler_receive_file():
 
 def test_handler_update_file():
     """Test if a file's content is being updated."""
-    handler = cluster_common.Handler(cluster_items)
+    handler = cluster_common.Handler(server_config=default_config.server)
 
     with patch('builtins.open'):
         with open(os.path.join(os.getcwd(), 'no_file.txt')) as f:
@@ -713,7 +716,7 @@ def test_handler_update_file():
 
 def test_handler_end_file():
     """Test if a file descriptor is closed and MD5 checked."""
-    handler = cluster_common.Handler(cluster_items)
+    handler = cluster_common.Handler(server_config=default_config.server)
 
     class ChecksumMock:
         def __init__(self):
@@ -741,7 +744,7 @@ def test_handler_end_file():
 @patch('json.loads')
 def test_handler_cancel_task(json_loads_mock, task_name):
     """Test if task_id is added to handler.interrupted_tasks when cancel_task() is executed."""
-    handler = cluster_common.Handler(cluster_items)
+    handler = cluster_common.Handler(server_config=default_config.server)
 
     assert handler.cancel_task(f'{task_name} error_details'.encode()) == (b'ok', b'Request received correctly')
     json_loads_mock.assert_called_once_with(b'error_details', object_hook=ANY)
@@ -753,7 +756,7 @@ def test_handler_cancel_task(json_loads_mock, task_name):
 
 def test_handler_receive_str():
     """Test if a bytearray is created with the string size."""
-    handler = cluster_common.Handler(cluster_items)
+    handler = cluster_common.Handler(server_config=default_config.server)
 
     reply, name = handler.receive_str(b'10')
     assert reply == b'ok'
@@ -763,7 +766,7 @@ def test_handler_receive_str():
 
 def test_handler_str_upd():
     """Test if a string content is updated."""
-    handler = cluster_common.Handler(cluster_items)
+    handler = cluster_common.Handler(server_config=default_config.server)
 
     with patch('wazuh.core.cluster.common.InBuffer.receive_data'):
         handler.in_str = {b'string_id': in_buffer}
@@ -772,7 +775,7 @@ def test_handler_str_upd():
 
 def test_handler_process_error_str():
     """Test if an item is being deleted from self.in_str."""
-    handler = cluster_common.Handler(cluster_items)
+    handler = cluster_common.Handler(server_config=default_config.server)
 
     # Test no conditioned return
     assert handler.process_error_str(b'120') == (b'ok', b'None')
@@ -786,14 +789,14 @@ def test_handler_process_error_str():
 
 def test_handler_process_unknown_cmd():
     """Test if a message is defined when an unknown command is received."""
-    handler = cluster_common.Handler(cluster_items)
+    handler = cluster_common.Handler(server_config=default_config.server)
 
     assert handler.process_unknown_cmd(b'unknown') == (b'err', "unknown command 'b'unknown''".encode())
 
 
 def test_handler_process_dapi_error():
     """Test if 'dapi_err' command is properly handled in 'process_dapi_error'."""
-    handler = cluster_common.Handler(cluster_items)
+    handler = cluster_common.Handler(server_config=default_config.server)
 
     class ClientsMock:
         """Auxiliary class."""
@@ -842,7 +845,7 @@ def test_handler_process_dapi_error_ko():
         def __init__(self):
             self.local_server = LocalServerDapiMock()
 
-    handler = cluster_common.Handler(cluster_items)
+    handler = cluster_common.Handler(server_config=default_config.server)
     with pytest.raises(exception.WazuhClusterError, match=r'.* 3032 .*'):
         handler.server = ManagerMock()
         handler.process_dapi_error(data=b'data 2')
@@ -850,7 +853,7 @@ def test_handler_process_dapi_error_ko():
 
 def test_handler_process_error_from_peer():
     """Test if errors in requests are properly handled."""
-    handler = cluster_common.Handler(cluster_items)
+    handler = cluster_common.Handler(server_config=default_config.server)
 
     with patch('json.loads', return_value='some value'):
         assert handler.process_error_from_peer(b'data to decode') == 'some value'
@@ -860,7 +863,7 @@ def test_handler_process_error_from_peer():
 
 def test_handler_setup_task_logger():
     """Test if a logger is being defined."""
-    handler = cluster_common.Handler(cluster_items)
+    handler = cluster_common.Handler(server_config=default_config.server)
 
     class TaskLoggerMock:
         def __init__(self):
@@ -894,8 +897,8 @@ async def test_handler_wait_for_file():
         event.set()
 
     file_event = asyncio.Event()
-    handler = cluster_common.Handler(cluster_items)
-    handler.cluster_items['intervals']['communication']['timeout_receiving_file'] = 10
+    handler = cluster_common.Handler(server_config=default_config.server)
+    handler.server_config.communications.timeouts.receiving_file = 10
     await asyncio.gather(handler.wait_for_file(file_event, 'test'), unlock_file(file_event))
 
 
@@ -911,8 +914,8 @@ async def test_handler_wait_for_file_ko(send_request_mock):
         await asyncio.sleep(0.5)
 
     send_request_mock.return_value = ''
-    handler = cluster_common.Handler(cluster_items)
-    handler.cluster_items['intervals']['communication']['timeout_receiving_file'] = 0.4
+    handler = cluster_common.Handler(server_config=default_config.server)
+    handler.server_config.communications.timeouts.receiving_file = 0.4
     file_event = AsyncMock()
     with pytest.raises(exception.WazuhClusterError, match=r'.* 3039 .*'):
         with patch.object(file_event, 'wait', side_effect=delay):
@@ -1192,7 +1195,7 @@ def test_as_wazuh_object_ko():
 
 def get_handler():
     """Return a Handler object. This is an auxiliary method."""
-    return cluster_common.Handler(cluster_items=cluster_items, logger=logging.getLogger('wazuh'))
+    return cluster_common.Handler(server_config=default_config.server, logger=logging.getLogger('wazuh'))
 
 
 # Test SyncTask class methods
@@ -1266,9 +1269,9 @@ async def test_sync_files_sync_ok(log_subprocess_mock, compress_files_mock, unli
             self.name = 'Testing'
             self.count = 1
             self.loop = loop
-            self.current_zip_limit = cluster_items['intervals']['communication']['max_zip_size']
+            self.current_zip_limit = default_config.server.communications.zip.max_size
             self.interrupted_tasks = {b'OK', b'abcd'}
-            self.cluster_items = cluster_items
+            self.server_config = default_config.server
 
         async def send_request(self, command, data):
             """Decide with will be the right output depending on the scenario."""
@@ -1399,9 +1402,8 @@ async def test_sync_files_sync_ok(log_subprocess_mock, compress_files_mock, unli
 @pytest.mark.asyncio
 @patch('wazuh.core.cluster.cluster.open')
 @patch('wazuh.core.cluster.cluster.mkdir_with_mode')
-@patch('wazuh.core.cluster.cluster.get_cluster_items')
 @patch('wazuh.core.cluster.common.Handler.send_request', side_effect=Exception())
-async def test_sync_files_sync_ko(send_request_mock, get_cluster_items_mock, mkdir_with_mode_mock, open_mock):
+async def test_sync_files_sync_ko(send_request_mock, mkdir_with_mode_mock, open_mock):
     """Test if the right exceptions are being risen when necessary."""
     files_to_sync = {'path1': 'metadata1'}
     files_metadata = {'path2': 'metadata2'}

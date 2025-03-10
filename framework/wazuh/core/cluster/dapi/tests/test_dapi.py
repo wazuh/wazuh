@@ -68,13 +68,6 @@ logger = logging.getLogger('wazuh')
 
 DEFAULT_REQUEST_TIMEOUT = 10
 
-
-@pytest.fixture(scope='module', autouse=True)
-def path_get_cluset_items():
-    with patch('wazuh.core.cluster.utils.get_cluster_items'):
-        yield
-
-
 async def raise_if_exc_routine(dapi_kwargs, expected_error=None):
     dapi = DistributedAPI(**dapi_kwargs)
     try:
@@ -403,6 +396,7 @@ def test_DistributedAPI_get_client(loop_mock):
     class Node:
         def __init__(self):
             self.cluster_items = {'cluster_items': ['worker1', 'worker2']}
+            self.server_config = default_config.server
 
         def get_node(self):
             pass
@@ -411,8 +405,7 @@ def test_DistributedAPI_get_client(loop_mock):
     dapi = DistributedAPI(f=agent.get_agents, logger=logger)
     assert isinstance(dapi.get_client(), local_client.LocalClient)
 
-    node = Node()
-    dapi = DistributedAPI(f=agent.get_agents, node=node, logger=logger)
+    dapi = DistributedAPI(f=agent.get_agents, node=None, logger=logger)
     assert dapi.get_client()
 
 

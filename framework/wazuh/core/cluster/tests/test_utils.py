@@ -9,24 +9,51 @@ import sys
 from unittest.mock import MagicMock, patch
 
 import pytest
+from wazuh.core.config.client import CentralizedConfig, Config
+from wazuh.core.config.models.server import ServerConfig, ValidateFilePathMixin, SSLConfig, NodeConfig, NodeType
+from wazuh.core.config.models.indexer import IndexerConfig, IndexerNode
 
 with patch('wazuh.core.common.getgrnam'):
     with patch('wazuh.core.common.getpwnam'):
         with patch('wazuh.core.common.wazuh_uid'):
             with patch('wazuh.core.common.wazuh_gid'):
-                sys.modules['wazuh.rbac.orm'] = MagicMock()
+                with patch.object(ValidateFilePathMixin, '_validate_file_path', return_value=None):
+                    default_config = Config(
+                        server=ServerConfig(
+                            nodes=['0'],
+                            node=NodeConfig(
+                                name='node_name',
+                                type=NodeType.MASTER,
+                                ssl=SSLConfig(
+                                    key='example',
+                                    cert='example',
+                                    ca='example'
+                                )
+                            )
+                        ),
+                        indexer=IndexerConfig(
+                            hosts=[IndexerNode(
+                                host='example',
+                                port=1516
+                            )],
+                            username='wazuh',
+                            password='wazuh'
+                        )
+                    )
+                    CentralizedConfig._config = default_config
+                    sys.modules['wazuh.rbac.orm'] = MagicMock()
 
-                from wazuh.core import common
-                from wazuh.core.cluster import utils
-                from wazuh.core.exception import (
-                    WazuhError,
-                    WazuhException,
-                    WazuhHAPHelperError,
-                    WazuhInternalError,
-                    WazuhPermissionError,
-                    WazuhResourceNotFound,
-                )
-                from wazuh.core.results import WazuhResult
+                    from wazuh.core import common
+                    from wazuh.core.cluster import utils
+                    from wazuh.core.exception import (
+                        WazuhError,
+                        WazuhException,
+                        WazuhHAPHelperError,
+                        WazuhInternalError,
+                        WazuhPermissionError,
+                        WazuhResourceNotFound,
+                    )
+                    from wazuh.core.results import WazuhResult
 
 default_cluster_config = {
     'node_type': 'master',
@@ -362,20 +389,22 @@ async def test_forward_function(distributed_api_mock, concurrent_mock):
 
 
 @pytest.mark.parametrize(
-    'cluster_config,expected',
+    'node_type,expected',
     (
-        [{'node_type': 'master'}, True],
-        [{'node_type': 'worker'}, False],
+        ['master', True],
+        ['worker', False],
     ),
 )
-@patch('wazuh.core.cluster.utils.read_cluster_config')
-def test_running_on_master_node(read_cluster_config_mock, cluster_config, expected):
+def test_running_on_master_node(node_type, expected):
     """Test that running_on_master function returns the expected value,
     based on combinations of disabled/enabled and node type.
     """
-    read_cluster_config_mock.return_value = cluster_config
+    with patch.object(CentralizedConfig, 'get_server_config', return_value=None) as server_config_mock:
+        config = MagicMock()
+        config.node.type = node_type
+        server_config_mock.return_value = config
 
-    assert utils.running_in_master_node() == expected
+        assert utils.running_in_master_node() == expected
 
 
 @pytest.mark.parametrize(

@@ -8,25 +8,51 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from wazuh.core.exception import WazuhClusterError
+from wazuh.core.config.client import CentralizedConfig, Config
+from wazuh.core.config.models.server import ServerConfig, ValidateFilePathMixin, SSLConfig, NodeConfig, NodeType
+from wazuh.core.config.models.indexer import IndexerConfig, IndexerNode
 
 with patch('wazuh.common.getgrnam'):
     with patch('wazuh.common.getpwnam'):
         with patch('wazuh.common.wazuh_uid'):
             with patch('wazuh.common.wazuh_gid'):
-                sys.modules['wazuh.rbac.orm'] = MagicMock()
+                with patch.object(ValidateFilePathMixin, '_validate_file_path', return_value=None):
+                    default_config = Config(
+                        server=ServerConfig(
+                            nodes=['0'],
+                            node=NodeConfig(
+                                name='node_name',
+                                type=NodeType.MASTER,
+                                ssl=SSLConfig(
+                                    key='example',
+                                    cert='example',
+                                    ca='example'
+                                )
+                            )
+                        ),
+                        indexer=IndexerConfig(
+                            hosts=[IndexerNode(
+                                host='example',
+                                port=1516
+                            )],
+                            username='wazuh',
+                            password='wazuh'
+                        )
+                    )
+                    CentralizedConfig._config = default_config
 
-                from wazuh.core.cluster import control
-                from wazuh.core.cluster.local_client import LocalClient
+                    sys.modules['wazuh.rbac.orm'] = MagicMock()
+
+                    from wazuh.core.cluster import control
+                    from wazuh.core.cluster.local_client import LocalClient
 
 
 async def async_local_client(command, data):
     return None
 
 
-@patch('wazuh.core.cluster.utils.get_cluster_items')
-@patch('wazuh.core.cluster.utils.read_config')
 @pytest.mark.asyncio
-async def test_get_nodes(read_config_mock, get_cluster_items_mock):
+async def test_get_nodes():
     """Verify that get_nodes function returns the cluster nodes list."""
     local_client = LocalClient()
     with patch('wazuh.core.cluster.local_client.LocalClient.execute', side_effect=async_local_client):
@@ -50,10 +76,8 @@ async def test_get_nodes(read_config_mock, get_cluster_items_mock):
             await control.get_nodes(lc=local_client)
 
 
-@patch('wazuh.core.cluster.utils.get_cluster_items')
-@patch('wazuh.core.cluster.utils.read_config')
 @pytest.mark.asyncio
-async def test_get_node(read_config_mock, get_cluster_items_mock):
+async def test_get_node():
     """Verify that get_node function returns the current node name."""
     local_client = LocalClient()
     with patch('wazuh.core.cluster.local_client.LocalClient.execute', side_effect=async_local_client):
@@ -78,10 +102,8 @@ async def test_get_node(read_config_mock, get_cluster_items_mock):
             await control.get_node(lc=local_client)
 
 
-@patch('wazuh.core.cluster.utils.get_cluster_items')
-@patch('wazuh.core.cluster.utils.read_config')
 @pytest.mark.asyncio
-async def test_get_health(read_config_mock, get_cluster_items_mock):
+async def test_get_health():
     """Verify that get_health function returns the current node health."""
     local_client = LocalClient()
     with patch('wazuh.core.cluster.local_client.LocalClient.execute', side_effect=async_local_client):
@@ -103,10 +125,8 @@ async def test_get_health(read_config_mock, get_cluster_items_mock):
             await control.get_health(lc=local_client)
 
 
-@patch('wazuh.core.cluster.utils.get_cluster_items')
-@patch('wazuh.core.cluster.utils.read_config')
 @pytest.mark.asyncio
-async def test_get_agents(read_config_mock, get_cluster_items_mock):
+async def test_get_agents():
     """Verify that get_agents function returns the health of the agents connected through the current node."""
     local_client = LocalClient()
     with patch('wazuh.core.cluster.local_client.LocalClient.execute', side_effect=async_local_client):
@@ -128,10 +148,8 @@ async def test_get_agents(read_config_mock, get_cluster_items_mock):
             await control.get_agents(lc=local_client)
 
 
-@patch('wazuh.core.cluster.utils.get_cluster_items')
-@patch('wazuh.core.cluster.utils.read_config')
 @pytest.mark.asyncio
-async def test_get_system_nodes(read_config_mock, get_cluster_items_mock):
+async def test_get_system_nodes():
     """Verify that get_system_nodes function returns the name of all cluster nodes."""
     with patch('wazuh.core.cluster.local_client.LocalClient.execute', side_effect=async_local_client):
         expected_result = [{'items': [{'name': 'master'}]}]
