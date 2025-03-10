@@ -281,6 +281,9 @@ A closer examination of the predefined decoders reveals the following structure:
 <flowchart_placeholder>
 
 ```mermaid
+---
+title: Decoder tree
+---
 flowchart TD
 
 %% Style
@@ -313,6 +316,62 @@ linkStyle 0 stroke:#f50057,stroke-width:2px
 
 ```
 
+```mermaid
+---
+title: Event flow on decoders
+---
+flowchart LR
+
+ classDef EventBoxClass font-size: 15px,stroke-width:2px, color:#fff, fill:#3f51b5
+ classDef TreeBoxClass font-size: 15px,stroke-width:2px,stroke-dasharray: 5 5
+
+ subgraph decoTree["First layer - Internal decoders"]
+    direction TB
+    deco01(" ")
+    deco02(" ")
+    deco03(" ")
+    deco04("Integration Decoder")
+    deco05(" ")
+    deco06(" ")
+    deco07(" ")
+
+    deco01 --> deco02 & deco03 & deco04
+    deco02 --> deco05
+    deco03 --> deco06 & deco07
+  end
+
+  deco04 -..-> decoIntegration["Integration Decoder"]:::TreeBoxClass
+  eventInput@{shape: doc, label: "Event</br>Input"} ==> decoTree
+  decoTree:::TreeBoxClass
+
+ subgraph userDecoTree["Integrations & User decoders"]
+    direction TB
+    userDeco01(" ")
+    userDeco02(" ")
+    userDeco03(" ")
+    userDeco04(" ")
+    userDeco05(" ")
+    userDeco06(" ")
+    userDeco07(" ")
+    userDeco08(" ")
+
+    userDeco01 --> userDeco02 & userDeco03 & userDeco04
+    userDeco02 --> userDeco05
+    userDeco03 --> userDeco06 & userDeco07
+    userDeco04 --> userDeco08
+  end
+
+
+
+%% decoIntegration --> userDecoTree
+decoIntegration --> userDeco01
+userDecoTree ----> eventOutput@{shape: doc, label: "Normalized</br>event"}
+
+userDecoTree:::TreeBoxClass
+eventInput:::EventBoxClass
+eventOutput:::EventBoxClass
+```
+
 ### Security enrichment process
 The analysis process evaluates all event fields to identify security concerns, represented as threat indicators within the common schema. These indicators are later examined in the Wazuh Indexer for threat hunting and security issue detection.
 
@@ -322,6 +381,9 @@ A closer look at the predefined rules reveals the following structure:
 
 <flowchart_placeholder>
 ```mermaid
+---
+title: Rules tree
+---
 flowchart TD
 
 %% Style
@@ -352,10 +414,345 @@ flowchart TD
 
 ```
 
+
+```mermaid
+---
+title: Event flow on rules
+---
+flowchart LR
+
+classDef EventBoxClass font-size: 15px,stroke-width:2px, color:#fff, fill:#3f51b5
+classDef TreeBoxClass font-size: 15px,stroke-width:2px,stroke-dasharray: 5 5
+
+ subgraph firstLayerRulesTree["First layer Rules:</br>Geo enrichment</br>General IoCs"]
+  direction TB
+
+  firstLayerRules01(" ")
+  firstLayerRules02(" ")
+  firstLayerRules03(" ")
+  firstLayerRules04(" ")
+  firstLayerRules05(" ")
+  firstLayerRules06(" ")
+  firstLayerRules07(" ")
+  firstLayerRules08(" ")
+
+  firstLayerRules01 --> firstLayerRules02 & firstLayerRules03 & firstLayerRules04
+  firstLayerRules02 --> firstLayerRules05
+  firstLayerRules03 --> firstLayerRules06 & firstLayerRules07
+  firstLayerRules04 --> firstLayerRules08
+ end
+
+ subgraph wazuhRulesTree["Wazuh Rules"]
+  direction TB
+
+  wazuhRules01(" ")
+  wazuhRules02(" ")
+  wazuhRules03(" ")
+  wazuhRules04(" ")
+  wazuhRules05(" ")
+  wazuhRules06(" ")
+  wazuhRules07(" ")
+  wazuhRules08(" ")
+
+  wazuhRules01 --> wazuhRules02 & wazuhRules03 & wazuhRules04
+  wazuhRules02 --> wazuhRules05
+  wazuhRules03 --> wazuhRules06 & wazuhRules07
+  wazuhRules04 --> wazuhRules08
+ end
+
+ subgraph userRulesTree["User rules"]
+  direction TB
+
+  userRules01(" ")
+  userRules02(" ")
+  userRules03(" ")
+  userRules04(" ")
+  userRules05(" ")
+  userRules06(" ")
+  userRules07(" ")
+  userRules08(" ")
+
+  userRules01 --> userRules02 & userRules03 & userRules04
+  userRules02 --> userRules05
+  userRules03 --> userRules06 & userRules07
+  userRules04 --> userRules08
+
+ end
+
+ firstLayerRulesTree:::TreeBoxClass
+ wazuhRulesTree:::TreeBoxClass
+ userRulesTree:::TreeBoxClass
+ eventInput:::EventBoxClass
+ eventOutput:::EventBoxClass
+
+ %% Pipeline
+ eventInput@{shape: doc, label: "Normalized</br>Event"}==>firstLayerRulesTree==>wazuhRulesTree & userRulesTree-.->eventOutput@{shape: doc, label: "Security</br>event"}
+
+```
+
 ### Archiving and alerting process
 Once an event has completed processing through the decoder and rule pipelines, it enters the output pipeline. Similar to previous stages, the event first passes through the root output, which determines the appropriate output(s) for further processing. Multiple outputs can be selected, enabling flexible storage and distribution policies.
 
 The output process in Wazuh is designed to efficiently distribute alerts through broadcasting, with each output capable of filtering alerts to support customized distribution:
+
+```mermaid
+---
+title: Event flow on outputs
+---
+flowchart TD
+
+    outputR --> output1("Indexer alert output") & output2("File alerts output")
+    outputR("Broadcaster output") --x output3("File archive output")
+    outputR("Broadcaster output") --x output4("Other output")
+
+     outputR:::AssetSuccessClass
+     output1:::AssetSuccessClass
+     output2:::AssetSuccessClass
+     output3:::AssetFailClass
+     output4:::AssetSuccessClass
+    classDef AssetSuccessClass fill:#3f51b5,stroke-width:2px,fill-opacity:0.5
+    classDef AssetFailClass fill:#f44336,stroke-width:2px,fill-opacity:0.5
+    classDef AssetNotExecutedClass fill:#9e9e9e,stroke-width:2px,fill-opacity:0.5
+    linkStyle 2 stroke:#D50000,fill:none
+```
+
+
+**TODO: Move this graphs**
+
+```mermaid
+---
+title: Decoder schema
+---
+kanban
+  Decoder[Decoder schema]
+    assetMetadata["metadata"]@{ priority: 'Very Low'}
+    assetParents["parents"]
+    assetChecks["checks"]
+    decoParsers["parser"]
+    decoNormalize["normalize"]
+```
+
+```mermaid
+---
+title: Rule schema
+---
+kanban
+  Rule[Rule schema]
+    assetMetadata["metadata"]@{ priority: 'Very Low'}
+    assetParents["parents"]
+    assetChecks["checks"]
+    ruleNormalize["rule_enrichment"]
+```
+
+
+```mermaid
+---
+title: Output schema
+---
+kanban
+  Output[Output schema]
+    assetMetadata["metadata"]@{ priority: 'Very Low'}
+    assetParents["parents"]
+    assetChecks["checks"]
+    OutputNormalize["output stage"]
+```
+
+```mermaid
+flowchart TD
+
+ classDef EventBoxClass font-size: 15px,stroke-width:2px, color:#fff, fill:#3f51b5
+ classDef TreeBoxClass font-size: 15px,stroke-width:2px,stroke-dasharray: 5 5
+ classDef ModuleArchClass fill:#673ab7,stroke-width:2px,fill-opacity:0.5, font-size: 20px
+ classDef SubModuleArchClass fill:#673ab7,stroke-width:2px,fill-opacity:0.5, font-size: 15px
+
+%% --------------------------------------
+%%           Decoding Stage
+%% --------------------------------------
+
+ subgraph decoTree["First layer - Internal decoders"]
+    direction TB
+    decoInputRoot(" ")
+    deco02(" ")
+    deco03(" ")
+    integrationDecoder("Integration Decoder")
+    deco05(" ")
+    deco06(" ")
+    deco07(" ")
+
+    decoInputRoot --> deco02 & deco03 & integrationDecoder
+    deco02 --> deco05
+    deco03 --> deco06 & deco07
+  end
+
+  integrationDecoder -..-> userDecoRoot:::TreeBoxClass
+
+
+ subgraph userDecoTree["Integrations & User decoders"]
+    direction TB
+    userDecoRoot(" ")
+    userDeco02(" ")
+    userDeco03(" ")
+    userDeco04(" ")
+    userDeco05(" ")
+    userDeco06(" ")
+    userDeco07(" ")
+    userDeco08(" ")
+
+    userDecoRoot --> userDeco02 & userDeco03 & userDeco04
+    userDeco02 --> userDeco05
+    userDeco03 --> userDeco06 & userDeco07
+    userDeco04 --> userDeco08
+  end
+
+%% Stage block
+subgraph decoderStage["Decoding Stage"]
+    decoTree:::TreeBoxClass
+    userDecoTree:::TreeBoxClass
+end
+
+
+
+%% Output decoder stage 
+eventNormalized@{shape: doc, label: "Normalized</br>event"}
+eventNormalized:::EventBoxClass
+
+%% Pipieline
+routeSelector ==> decoInputRoot
+userDecoTree ====> eventNormalized
+
+%% --------------------------------------
+%%           Rules Stage
+%% --------------------------------------
+
+subgraph firstLayerRulesTree["First layer Rules:</br>Geo enrichment</br>General IoCs"]
+  direction TB
+
+  firstLayerRules01(" ")
+  firstLayerRules02(" ")
+  firstLayerRules03(" ")
+  firstLayerRules04(" ")
+  firstLayerRules05(" ")
+  firstLayerRules06(" ")
+  firstLayerRules07(" ")
+  firstLayerRules08(" ")
+
+  firstLayerRules01 --> firstLayerRules02 & firstLayerRules03 & firstLayerRules04
+  firstLayerRules02 --> firstLayerRules05
+  firstLayerRules03 --> firstLayerRules06 & firstLayerRules07
+  firstLayerRules04 --> firstLayerRules08
+ end
+
+ subgraph wazuhRulesTree["Wazuh Rules"]
+  direction TB
+
+  wazuhRules01(" ")
+  wazuhRules02(" ")
+  wazuhRules03(" ")
+  wazuhRules04(" ")
+  wazuhRules05(" ")
+  wazuhRules06(" ")
+  wazuhRules07(" ")
+  wazuhRules08(" ")
+
+  wazuhRules01 --> wazuhRules02 & wazuhRules03 & wazuhRules04
+  wazuhRules02 --> wazuhRules05
+  wazuhRules03 --> wazuhRules06 & wazuhRules07
+  wazuhRules04 --> wazuhRules08
+ end
+
+ subgraph userRulesTree["User rules"]
+  direction TB
+
+  userRules01(" ")
+  userRules02(" ")
+  userRules03(" ")
+  userRules04(" ")
+  userRules05(" ")
+  userRules06(" ")
+  userRules07(" ")
+  userRules08(" ")
+
+  userRules01 --> userRules02 & userRules03 & userRules04
+  userRules02 --> userRules05
+  userRules03 --> userRules06 & userRules07
+  userRules04 --> userRules08
+
+ end
+
+
+
+subgraph ruleStage["Rules Stage"]
+ firstLayerRulesTree:::TreeBoxClass
+ wazuhRulesTree:::TreeBoxClass
+ userRulesTree:::TreeBoxClass
+end
+
+%% Output stage rules
+securityEvent@{shape: doc, label: "Security</br>event"}
+securityEvent:::EventBoxClass
+
+%% Pipieline
+eventNormalized==>firstLayerRulesTree==>wazuhRulesTree & userRulesTree-.->securityEvent
+
+%% --------------------------------------
+%%           Output Stage
+%% --------------------------------------
+ subgraph outputTree["Outputs"]
+  direction TB
+
+  output01(" ")
+  output02(" ")
+  output03(" ")
+  output04(" ")
+  output05(" ")
+  output06(" ")
+  output07(" ")
+  output08(" ")
+
+  output01 --> output02 & output03 & output04
+  output02 --> output05
+  output03 --> output06 & output07
+  output04 --> output08
+
+ end
+ outputTree:::TreeBoxClass
+
+%% Pipieline output
+ securityEvent ==> outputTree
+
+
+%% --------------------------------------
+%%           Default Policy
+%% --------------------------------------
+subgraph defaultPolicy["Default policy"]
+  decoderStage
+  eventNormalized
+  ruleStage
+  securityEvent
+  outputTree
+end
+defaultPolicy:::SubModuleArchClass
+
+
+%% --------------------------------------
+%%           Engine
+%% --------------------------------------
+%% Input Decodeing Stage
+eventInput@{shape: doc, label: "Incoming event</br>from endpoint"}
+eventInput:::EventBoxClass
+
+subgraph engine["engine"]
+  defaultPolicy
+  routeSelector(["Orchestrator: Router (Route selector)"])
+end
+engine:::ModuleArchClass
+
+eventInput ===> routeSelector
+
+
+
+```
+
 
 
 ### Asset processing
