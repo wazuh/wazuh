@@ -37,7 +37,7 @@ inline void registerHandlers(const std::shared_ptr<::router::ITesterAPI>& tester
 
     // Add ndjson parser with forceSubheader set to false
     server->addRoute(
-        httpsrv::Method::POST, "/tester/run/post", runPost(tester, store, event::protocol::getNDJsonParser(false)));
+        httpsrv::Method::POST, "/tester/run/post", runPost(tester, store, event::protocol::getNDJsonParser()));
 }
 
 } // namespace api::tester::handlers
