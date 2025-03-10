@@ -114,7 +114,7 @@ class TestUsersIndex:
         ]
         client_mock.search.return_value = search_result
 
-        with mock.patch('wazuh.core.indexer.rbac.get_source_items', return_value=search_result):
+        with mock.patch('wazuh.core.indexer.users.get_source_items', return_value=search_result):
             result = await index_instance.search(
                 query=query, select=select, exclude=exclude, limit=limit, offset=offset, sort=sort
             )

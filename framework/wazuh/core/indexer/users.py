@@ -1,12 +1,13 @@
 from datetime import datetime, timezone
 
 from opensearchpy import exceptions
-from wazuh.core.exception import WazuhError
+from wazuh.core.exception import WazuhError, WazuhResourceNotFound
+from wazuh.core.indexer.base import BaseIndex, IndexerKey
 from wazuh.core.indexer.models.rbac import User
-from wazuh.core.indexer.rbac import RBACIndex
+from wazuh.core.indexer.utils import get_source_items
 
 
-class UsersIndex(RBACIndex):
+class UsersIndex(BaseIndex):
     """Set of methods to interact with the `users` index."""
 
     INDEX = 'wazuh-users'
@@ -55,6 +56,26 @@ class UsersIndex(RBACIndex):
 
         return user
 
+    async def delete(self, ids: list[str]) -> list[str]:
+        """Delete multiple entities that match with the given parameters.
+
+        Parameters
+        ----------
+        ids : list[str]
+            Entity identifiers.
+
+        Returns
+        -------
+        list[str]
+            Deleted entity IDs.
+        """
+        body = {IndexerKey.QUERY: {IndexerKey.TERMS: {IndexerKey._ID: ids}}}
+        parameters = {IndexerKey.INDEX: self.INDEX, IndexerKey.BODY: body, IndexerKey.CONFLICTS: 'proceed'}
+
+        await self._client.delete_by_query(**parameters, refresh='true')
+
+        return ids
+
     async def get(self, id: str) -> User:
         """Retrieve a user.
 
@@ -73,7 +94,16 @@ class UsersIndex(RBACIndex):
         User
             User object.
         """
-        return await super().get(id)
+        try:
+            data = await self._client.get(index=self.INDEX, id=id)
+        except exceptions.NotFoundError:
+            extra_info = {
+                'entity': self.KEY.title(),
+                'entities': f'{self.KEY}s',
+            }
+            raise WazuhResourceNotFound(4027, extra_message=extra_info)
+
+        return User(**data[IndexerKey._SOURCE][self.KEY])
 
     async def search(
         self,
@@ -106,7 +136,11 @@ class UsersIndex(RBACIndex):
         dict
             The search result.
         """
-        return await super().search(query, select, exclude, offset, limit, sort)
+        parameters = {IndexerKey.INDEX: self.INDEX, IndexerKey.BODY: query}
+        results = await self._client.search(
+            **parameters, _source_includes=select, _source_excludes=exclude, size=limit, from_=offset, sort=sort
+        )
+        return [User(**item[self.KEY]) for item in get_source_items(results)]
 
     async def update(
         self,
@@ -129,4 +163,12 @@ class UsersIndex(RBACIndex):
             Allow running as other users.
         """
         user = User(id=id, name=name, raw_password=password, allow_run_as=allow_run_as)
-        await super().update(id, user)
+        try:
+            body = {IndexerKey.DOC: {self.KEY: user.to_dict()}}
+            await self._client.update(index=self.INDEX, id=id, body=body)
+        except exceptions.NotFoundError:
+            extra_info = {
+                'entity': self.KEY.title(),
+                'entities': f'{self.KEY}s',
+            }
+            raise WazuhResourceNotFound(4027, extra_message=extra_info)

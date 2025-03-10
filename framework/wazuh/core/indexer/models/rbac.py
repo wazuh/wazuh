@@ -38,14 +38,12 @@ class Policy:
 
 
 @dataclass
-class Role:
-    """Role encapsulates access rights for the users."""
+class Rule:
+    """Rule defines conditions under which policies apply."""
 
     id: str = None
     name: str = None
-    level: int = None
-    policies: list[str] = None
-    rules: list[str] = None
+    body: dict = None
     created_at: datetime = None
 
     def to_dict(self) -> dict:
@@ -60,12 +58,14 @@ class Role:
 
 
 @dataclass
-class Rule:
-    """Rule defines conditions under which policies apply."""
+class Role:
+    """Role encapsulates access rights for the users."""
 
     id: str = None
     name: str = None
-    body: dict = None
+    level: int = None
+    policies: list[Policy] = None
+    rules: list[Rule] = None
     created_at: datetime = None
 
     def to_dict(self) -> dict:
@@ -87,7 +87,7 @@ class User:
     name: str = None
     password: str = None
     allow_run_as: bool = None
-    roles: list[str] = None
+    roles: list[Role] = None
     created_at: datetime = None
 
     raw_password: InitVar[str | None] = None
