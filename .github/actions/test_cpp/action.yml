@@ -36,9 +36,9 @@ runs:
           cd $SRC_FOLDER/build
 
           if [[ "${{ inputs.valgrind }}" != "false" ]]; then
-            ctest --output-on-failure -L ${{ inputs.target }}
+            valgrind ctest --output-on-failure -L ${{ inputs.target }}
           else
             # Run for valgrind and coverage
-            valgrind ctest --output-on-failure -L ${{ inputs.target }}
+            ctest --output-on-failure -L ${{ inputs.target }}
           fi
         shell: bash
