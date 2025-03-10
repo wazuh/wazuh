@@ -9,6 +9,7 @@ on:
       # - '[0-9]+.[0-9]+.[0-9]+'
       # - 'main'
       - 'enhancement/28404-add-latest-package'
+  workflow_dispatch:
 
 jobs:
   create-latest:
