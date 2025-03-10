@@ -116,6 +116,10 @@ int initialize_bpf_object(ring_buffer** rb, ring_buffer_sample_fn sample_cb) {
     char libbpf_path[PATH_MAX] = {0};
     char bpfobj_path[PATH_MAX] = {0};
 
+    if (!abspathFn) {
+        logFn(LOG_ERROR, FIM_ERROR_EBPF_ABSPATH_LOAD);
+        return 1;
+    }
     abspathFn(LIB_INSTALL_PATH, libbpf_path, sizeof(libbpf_path));
     abspathFn(BPF_OBJ_INSTALL_PATH, bpfobj_path, sizeof(bpfobj_path));
 

@@ -62,6 +62,7 @@
     FREQUENCY: 43200 # As default 12 hs
     FIM_MODE:
       whodata: 'yes'
+      driver: "audit"
   metadata:
     symlink:  !!python/object/apply:os.path.join
               args: [!!python/object/apply:os.getcwd [], symlink]
