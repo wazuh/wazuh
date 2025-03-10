@@ -1,13 +1,20 @@
-name: "Coverage"
+name: "Coverage CPP"
 description: "Calculates the coverage for a module located on a given path"
 
 inputs:
   path:
     required: true
     description: "Path to the module"
+  test_directory:
+    required: true
+    description: "Directory where the tests are located"
   id:
     required: true
     description: "Module identifier, used to name the artifact"
+  threshold:
+    required: false
+    description: "Threshold for the coverage"
+    default: "90"
 
 runs:
   using: "composite"
@@ -33,31 +40,17 @@ runs:
       - name: Generate coverage files
         shell: bash
         run: |
-
+          BUILD_DIR=$(pwd)/src/build
           cd ${{ inputs.path }}
 
           # Set arguments
           arguments="--capture "
 
           # Set working directory
-          if [[ -d "build/tests/unit" ]]; then
-            arguments+="--directory build/tests/unit "
-          fi
-
-          if [[ -d "build/tests/component" ]]; then
-            arguments+="--directory build/tests/component "
-          fi
-
-          if [[ ${{ inputs.path }} =~ "shared_modules/utils" ]]; then
-            arguments+="--directory build/tests "
-          fi
-
-          if [[ ${{ inputs.path }} =~ "inventory_harvester" ]]; then
-            arguments+="--directory build/tests "
-          fi
+          arguments+="--directory $BUILD_DIR "
 
           # Set output file
-          arguments+="--output-file build/coverage.info "
+          arguments+="--output-file $BUILD_DIR/coverage.info "
 
           # # Disable branch coverage
           arguments+="-rc lcov_branch_coverage=0 "
@@ -79,9 +72,6 @@ runs:
           done
           arguments+="$include_files"
 
-          # Exclude scanContext.hpp
-          arguments+="--exclude=*/scanContext.hpp "
-
           echo "Executing: lcov $arguments"
           lcov $arguments
 
@@ -89,8 +79,7 @@ runs:
       - name: Generate coverage report
         shell: bash
         run: |
-
-          cd ${{ inputs.path }}/build
+          cd $(pwd)/src/build
 
           # Generate HTML report
           genhtml coverage.info --output-directory coverage_report
@@ -101,7 +90,7 @@ runs:
         uses: actions/upload-artifact@v4
         with:
           name: Coverage Report - ${{ inputs.id }}
-          path: ./${{ inputs.path }}/build/coverage_report
+          path: ./src/build/coverage_report
           retention-days: 1
 
       # Check whether the coverage is greater than 90% both for lines and functions
@@ -109,35 +98,35 @@ runs:
         shell: bash
         run: |
 
-          cd ${{ inputs.path }}
+          cd $(pwd)/src/
 
           # Obtain the coverage data
           coverageData=($(lcov --list build/coverage.info | tail -n1 | grep -oE '[0-9.]+%'))
 
-          # Check if lines the coverage is greater than 90%
+          # Check if lines the coverage is greater than the threadhold
           linesCoverage=$(echo "${coverageData[0]}" | sed 's/%//')
           echo "Lines coverage is: $linesCoverage %"
-          if ! (( $(echo "$linesCoverage > 90" | bc -l) )); then
+          if ! (( $(echo "$linesCoverage > ${{ inputs.threshold }}" | bc -l) )); then
             echo "----------------------------------------"
-            echo "FAILED: Lines coverage is lower than 90%"
+            echo "FAILED: Lines coverage is lower than ${{ inputs.threshold }}%"
             echo "----------------------------------------"
             exit 1
           else
             echo "------------------------------------------"
-            echo "PASSED: Lines coverage is greater than 90%"
+            echo "PASSED: Lines coverage is greater than ${{ inputs.threshold }}%"
             echo "------------------------------------------"
           fi
 
-          # Check if functions coverage is greater than 90%
+          # Check if functions coverage is greater than the threadhold
           functionsCoverage=$(echo "${coverageData[1]}" | sed 's/%//')
           echo "Functions coverage is: $functionsCoverage %"
-          if ! (( $(echo "$functionsCoverage > 90" | bc -l) )); then
+          if ! (( $(echo "$functionsCoverage > ${{ inputs.threshold }}" | bc -l) )); then
             echo "---------------------------------------------"
-            echo "FAILED: Functions coverage is lower than 90%"
+            echo "FAILED: Functions coverage is lower than ${{ inputs.threshold }}%"
             echo "--------------------------------------------"
             exit 1
           else
             echo "----------------------------------------------"
-            echo "PASSED: Functions coverage is greater than 90%"
+            echo "PASSED: Functions coverage is greater than ${{ inputs.threshold }}%"
             echo "----------------------------------------------"
           fi
