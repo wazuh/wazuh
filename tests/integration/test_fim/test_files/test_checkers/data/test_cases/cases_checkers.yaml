@@ -6,6 +6,7 @@
     FREQUENCY: 43200 # As default 12 hs
     ATTRIBUTES:
       - whodata: 'yes'
+      - driver: "audit"
       - check_all: 'no'
   metadata:
     folder_to_monitor: !!python/object/apply:os.path.join [/test_dir]

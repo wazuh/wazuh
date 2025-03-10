@@ -26,6 +26,7 @@
     FREQUENCY: 43200 # As default 12 hs
     FIM_MODE:
       whodata: 'yes'
+      driver: "audit"
     FILE_LIMIT:
         elements:
           - enabled:

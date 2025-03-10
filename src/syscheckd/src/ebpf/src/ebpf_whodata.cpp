@@ -106,6 +106,15 @@ static int init_libbpf() {
     auto abspathFn = fimebpf::instance().m_abspath;
     char libbpf_path[PATH_MAX] = {0};
 
+    if (!logFn) {
+         // Log function pointer is NULL
+         return 1;
+    }
+
+    if (!abspathFn) {
+        logFn(LOG_ERROR, FIM_ERROR_EBPF_ABSPATH_LOAD);
+        return 1;
+    }
     abspathFn(LIB_INSTALL_PATH, libbpf_path, sizeof(libbpf_path));
 
     bpf_helpers = (w_bpf_helpers_t *)calloc(1, sizeof(w_bpf_helpers_t));
