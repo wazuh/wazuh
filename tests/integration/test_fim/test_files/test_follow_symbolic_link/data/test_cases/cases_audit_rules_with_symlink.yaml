@@ -36,6 +36,7 @@
     FREQUENCY: 43200 # As default 12 hs
     FIM_MODE:
       whodata: 'yes'
+      driver: "audit"
   metadata:
     folder_to_monitor: !!python/object/apply:os.path.join [/test_dir]
     symlink:  !!python/object/apply:os.path.join [/test_dir, symlink]
@@ -51,6 +52,7 @@
     FREQUENCY: 43200 # As default 12 hs
     FIM_MODE:
       whodata: 'yes'
+      driver: "audit"
   metadata:
     folder_to_monitor: !!python/object/apply:os.path.join [/test_dir]
     symlink:  !!python/object/apply:os.path.join [/test_dir, symlink]
