@@ -378,7 +378,7 @@ def load_indexer_output(engine_handler: EngineHandler) -> None:
         "outputs": [
             {
                 "wazuh-indexer": {
-                    "index": "alerts"
+                    "index": Constants.INDEX_PATTERN
                 }
             }
         ]

@@ -367,6 +367,42 @@ TEST_F(IndexerConnectorTest, Publish)
     ASSERT_NO_THROW(waitUntil([&callbackCalled]() { return callbackCalled.load(); }, MAX_INDEXER_PUBLISH_TIME_MS));
 }
 
+TEST_F(IndexerConnectorTest, PublishWithIndexName)
+{
+    nlohmann::json expectedMetadata;
+    expectedMetadata["index"]["_index"] = "specific_index";
+    expectedMetadata["index"]["_id"] = INDEX_ID_A;
+
+    // Callback that checks the expected data to be published.
+    // The format of the data published is divided in two lines:
+    // First line: JSON data with the metadata (indexer name, index ID)
+    // Second line: Index data.
+    constexpr auto INDEX_DATA {"content"};
+    auto callbackCalled {false};
+    const auto checkPublishedData {[&expectedMetadata, &callbackCalled, &INDEX_DATA](const std::string& data)
+                                   {
+                                       const auto splitData {base::utils::string::split(data, '\n')};
+                                       ASSERT_EQ(nlohmann::json::parse(splitData.front()), expectedMetadata);
+                                       ASSERT_EQ(nlohmann::json::parse(splitData.back()), INDEX_DATA);
+                                       callbackCalled = true;
+                                   }};
+    m_indexerServers[A_IDX]->setPublishCallback(checkPublishedData);
+
+    // Create connector and wait until the connection is established.
+    IndexerConnectorOptions indexerConfig {
+        .name = INDEXER_NAME, .hosts = {A_ADDRESS}, .timeout = INDEXER_TIMEOUT, .databasePath = DATABASE_BASE_PATH};
+    auto indexerConnector {IndexerConnector(indexerConfig)};
+
+    // Publish content and wait until the publication finishes.
+    nlohmann::json publishData;
+    publishData["id"] = INDEX_ID_A;
+    publishData["operation"] = "INSERT";
+    publishData["index"] = "specific_index";
+    publishData["data"] = INDEX_DATA;
+    ASSERT_NO_THROW(indexerConnector.publish(publishData.dump()));
+    ASSERT_NO_THROW(waitUntil([&callbackCalled]() { return callbackCalled; }, MAX_INDEXER_PUBLISH_TIME_MS));
+}
+
 /**
  * @brief Test the connection and posterior data publication into a server. The published data is checked against the
  * expected one. The publication contains a DELETED operation.
