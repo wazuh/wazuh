@@ -95,6 +95,7 @@ build_pkg() {
         -e IS_STAGE="${IS_STAGE}" \
         -e WAZUH_BRANCH="${BRANCH}" \
         -e WAZUH_VERBOSE="${VERBOSE}" \
+        -e WAZUH_SHORT_COMMIT="${SHORT_COMMIT}" \
         ${CUSTOM_CODE_VOL} \
         ${CONTAINER_NAME}:${DOCKER_TAG} \
         ${REVISION} ${JOBS} ${DEBUG} \
@@ -123,6 +124,7 @@ help() {
     echo "    -d, --debug                [Optional] Build the binaries with debug flags (without optimizations). By default: no."
     echo "    -c, --checksum             [Optional] Generate checksum on the same directory than the package. By default: no."
     echo "    -l, --legacy               [Optional only for RPM] Build package for CentOS 5."
+    echo "    --short-commit <commit>    [Optional] Specify short commit hash to be included in VERSION.json."
     echo "    --dont-build-docker        [Optional] Locally built docker image will be used instead of generating a new one."
     echo "    --tag                      [Optional] Tag to use with the docker image."
     echo "    --sources <path>           [Optional] Absolute path containing wazuh source code. This option will use local source code instead of downloading it from GitHub. By default use the script path."
@@ -203,6 +205,14 @@ main() {
         "-c"|"--checksum")
             CHECKSUM="yes"
             shift 1
+            ;;
+        "--short-commit")
+            if [ -n "$2" ]; then
+                SHORT_COMMIT="$2"
+                shift 2
+            else
+                help 1
+            fi
             ;;
         "--dont-build-docker")
             BUILD_DOCKER="no"

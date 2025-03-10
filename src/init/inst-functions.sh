@@ -779,10 +779,9 @@ InstallCommon()
   # Install VERSION.json and append commit id if any
   ${INSTALL} -m 440 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ../VERSION.json ${INSTALLDIR}/VERSION.json
 
-  # Check if git shell command is available
-  if command -v git &> /dev/null; then
-    short_commit_hash="$(git rev-parse --short HEAD)"
-    sed -i '/"stage":/s/$/,/; /"stage":/a \    "commit": "'"$short_commit_hash"'"' ${INSTALLDIR}/VERSION.json
+  # Check if short commit is available
+  if [ ! -z "$WAZUH_SHORT_COMMIT"]; then
+    sed -i '/"stage":/s/$/,/; /"stage":/a \    "commit": "'"$WAZUH_SHORT_COMMIT"'"' ${INSTALLDIR}/VERSION.json
   fi
 
   ${INSTALL} -d -m 0770 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/logs
