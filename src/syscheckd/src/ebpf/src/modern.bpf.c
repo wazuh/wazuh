@@ -15,6 +15,8 @@
 
 #define MAX_PATH_LEN                    4096
 #define TASK_COMM_LEN                   32
+#define FMODE_CREATED                   0x4000
+#define O_CREAT                         0100
 
 /* These define general path extraction and buffer limits. */
 #define LIMIT_PATH_SIZE(x)              ((x) & (MAX_PATH_LEN - 1))
@@ -60,7 +62,7 @@ struct buffer {
 */
 struct {
     __uint(type, BPF_MAP_TYPE_RINGBUF);
-    __uint(max_entries, 1 << 20);
+    __uint(max_entries, 1 << 24);
 } rb SEC(".maps");
 
 /*
@@ -236,6 +238,7 @@ statfunc void submit_event(const char *filename,
     if (!evt)
         return;
 
+    /* Read current task to fill metadata */
     struct task_struct *current_task = (struct task_struct *)bpf_get_current_task();
 
     /* PID and UID/GID */
@@ -249,15 +252,6 @@ statfunc void submit_event(const char *filename,
 
     /* Copy the path/filename */
     bpf_probe_read_kernel_str(evt->filename, MAX_PATH_LEN, filename);
-
-    if (evt->filename[0] == '/' &&
-        evt->filename[1] == 'p' &&
-        evt->filename[2] == 'r' &&
-        evt->filename[3] == 'o' &&
-        evt->filename[4] == 'c' &&
-        evt->filename[5] == '/') {
-        return;  // Ignore /proc related events
-    }
 
     /* Inode and device */
     evt->inode = ino;
@@ -287,7 +281,8 @@ statfunc void submit_event(const char *filename,
 }
 
 /*
-* Intercepts vfs_open calls to detect actual file events.
+* Intercepts vfs_open calls. Now it only reports if the file was newly created
+* (FMODE_CREATED or O_CREAT set), for regular files.
 */
 SEC("kprobe/vfs_open")
 int kprobe__vfs_open(struct pt_regs *ctx)
@@ -299,6 +294,19 @@ int kprobe__vfs_open(struct pt_regs *ctx)
     struct file *file = (struct file *)PT_REGS_PARM2(ctx);
     if (!file)
         return 0;
+
+    /* Check if the file is newly created */
+    fmode_t f_mode = 0;
+    bpf_probe_read_kernel(&f_mode, sizeof(f_mode), &file->f_mode);
+
+    /* Also retrieve f_flags to handle creation if FMODE_CREATED fails */
+    __u32 f_flags = 0;
+    bpf_probe_read_kernel(&f_flags, sizeof(f_flags), &file->f_flags);
+
+    /* If not created, skip */
+    if (!(f_mode & FMODE_CREATED) && !(f_flags & O_CREAT)) {
+        return 0;
+    }
 
     /* Retrieve the dentry. */
     struct dentry *dentry = NULL;
@@ -331,7 +339,65 @@ int kprobe__vfs_open(struct pt_regs *ctx)
     __u64 inode = 0, dev = 0;
     get_inode_dev(d_inode, &inode, &dev);
 
-    /* Report file add event. */
+    /* Report file creation event. */
+    submit_event((const char *)full_path, inode, dev);
+
+    return 0;
+}
+
+SEC("kprobe/security_inode_setattr")
+int kprobe__security_inode_setattr(struct pt_regs *ctx) {
+    struct dentry *dentry = (struct dentry *)PT_REGS_PARM1(ctx);
+    if (!dentry)
+        return 0;
+
+    struct inode *d_inode = NULL;
+    bpf_probe_read_kernel(&d_inode, sizeof(d_inode), &dentry->d_inode);
+    if (!d_inode)
+        return 0;
+
+    __u32 mode = 0;
+    bpf_probe_read_kernel(&mode, sizeof(mode), &d_inode->i_mode);
+
+    // Only monitor regular files (S_IFREG = 0100000)
+    if ((mode & 00170000) != 0100000)
+        return 0;
+
+    // Extract filesystem information
+    struct super_block *sb = NULL;
+    bpf_probe_read_kernel(&sb, sizeof(sb), &d_inode->i_sb);
+    if (!sb)
+        return 0;
+
+    struct mount *mnt_ptr = NULL;
+    bpf_probe_read_kernel(&mnt_ptr, sizeof(mnt_ptr), &sb->s_fs_info);
+    if (!mnt_ptr)
+        return 0;
+
+    struct vfsmount *mnt = NULL;
+    bpf_probe_read_kernel(&mnt, sizeof(mnt), &mnt_ptr->mnt);
+    if (!mnt)
+        return 0;
+
+    // Construct path
+    struct path path = {
+        .dentry = dentry,
+        .mnt    = mnt
+    };
+
+    struct buffer *string_buf = bpf_map_lookup_elem(&heaps_map, &(u32){0});
+    if (!string_buf)
+        return 0;
+
+    u8 *full_path = NULL;
+    if (get_path_str_from_path(&full_path, &path, string_buf) < 0)
+        return 0;
+
+    // Extract inode and device
+    __u64 inode = 0, dev = 0;
+    get_inode_dev(d_inode, &inode, &dev);
+
+    // Submit event
     submit_event((const char *)full_path, inode, dev);
 
     return 0;
@@ -388,19 +454,45 @@ int kprobe__vfs_unlink(struct pt_regs *ctx)
     if (((mode & 00170000) != 0100000))
         return 0;
 
+    struct super_block *sb = NULL;
+    bpf_probe_read_kernel(&sb, sizeof(sb), &d_inode->i_sb);
+    if (!sb)
+        return 0;
+
+    struct mount *mnt_ptr = NULL;
+    bpf_probe_read_kernel(&mnt_ptr, sizeof(mnt_ptr), &sb->s_fs_info);
+    if (!mnt_ptr)
+        return 0;
+
+    struct vfsmount *mnt = NULL;
+    bpf_probe_read_kernel(&mnt, sizeof(mnt), &mnt_ptr->mnt);
+    if (!mnt)
+        return 0;
+
+    /* Build a path struct from dentry + mnt. */
+    struct path path = {
+        .dentry = dentry,
+        .mnt    = mnt
+    };
+
+    struct buffer *string_buf = bpf_map_lookup_elem(&heaps_map, &(u32){0});
+    if (!string_buf)
+        return 0;
+
+    u8 *full_path = NULL;
+    if (get_path_str_from_path(&full_path, &path, string_buf) < 0)
+        return 0;
+
+    /* Also retrieve the user-supplied path from unlink_path_map if needed. */
     __u64 pid_tgid = bpf_get_current_pid_tgid();
     __u32 tgid = (__u32)pid_tgid;
-
     char *stored_path = bpf_map_lookup_elem(&unlink_path_map, &tgid);
-    if (!stored_path)
-        return 0;
 
     /* Extract inode/device. */
     __u64 inode = 0, dev = 0;
     get_inode_dev(d_inode, &inode, &dev);
 
-    /* Report file removal. */
-    submit_event(stored_path, inode, dev);
+    submit_event((const char *)full_path, inode, dev);
 
     /* Clean up the map entry for this thread. */
     bpf_map_delete_elem(&unlink_path_map, &tgid);
