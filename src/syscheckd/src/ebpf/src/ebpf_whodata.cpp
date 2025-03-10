@@ -116,6 +116,10 @@ int initialize_bpf_object(ring_buffer** rb, ring_buffer_sample_fn sample_cb) {
     char libbpf_path[PATH_MAX] = {0};
     char bpfobj_path[PATH_MAX] = {0};
 
+    if (!abspathFn) {
+        logFn(LOG_ERROR, FIM_ERROR_EBPF_ABSPATH_LOAD);
+        return 1;
+    }
     abspathFn(LIB_INSTALL_PATH, libbpf_path, sizeof(libbpf_path));
     abspathFn(BPF_OBJ_INSTALL_PATH, bpfobj_path, sizeof(bpfobj_path));
 
@@ -167,7 +171,13 @@ int initialize_bpf_object(ring_buffer** rb, ring_buffer_sample_fn sample_cb) {
         free(bpf_helpers);
         bpf_helpers = NULL;
     }
-    obj = bpf_helpers->bpf_object_open_file(bpfobj_path, nullptr);
+
+    if (bpf_helpers != NULL) {
+        obj = bpf_helpers->bpf_object_open_file(bpfobj_path, nullptr);
+    } else {
+        logFn(LOG_ERROR,"Error: bpf_helpers is NULL");
+    }
+
     if (!obj) {
         char error_message[1024];
         snprintf(error_message, sizeof(error_message), FIM_ERROR_EBPF_OBJ_OPEN, bpfobj_path);
@@ -240,7 +250,7 @@ void ebpf_pop_events() {
         }
 
         if (event) {
-            whodata_evt* w_evt = new whodata_evt{};
+            whodata_evt* w_evt = new whodata_evt();
 
             w_evt->path = strdup(event->filename);
             w_evt->process_name = strdup(event->comm);

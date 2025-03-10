@@ -313,7 +313,9 @@ int Start_win32_Syscheck() {
 
     return 0;
 }
-#else
+#endif /* WIN32 */
+
+#ifdef __linux__
 void check_ebpf_availability() {
     minfo(FIM_EBPF_INIT);
     fimebpf_initialize(fim_configuration_directory, get_user, get_group, fim_whodata_event,
@@ -345,4 +347,4 @@ void check_ebpf_availability() {
         syscheck.enable_whodata_audit = 1;
     }
 }
-#endif /* WIN32 */
+#endif /* __linux__ */
