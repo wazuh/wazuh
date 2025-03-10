@@ -1,7 +1,9 @@
 openapi: 3.1.0
 info:
-  title: FastAPI
-  version: 0.1.0
+  title: Communications API REST
+  description: The Communications API is an open-source RESTful API that allows the
+    agents communications with the manager.
+  version: 5.0.0
 paths:
   /api/v1/authentication:
     post:
