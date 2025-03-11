@@ -1070,7 +1070,7 @@ endif
 #### libbpf-bootstrap #########
 
 $(LIBBPF_LIB):
-	cd $(EXTERNAL_LIBBPF) && cmake -B build && cmake --build build
+	cd $(EXTERNAL_LIBBPF) && mkdir -p build && cd build && cmake .. && ${MAKE}
 
 ### rocks db ###
 
