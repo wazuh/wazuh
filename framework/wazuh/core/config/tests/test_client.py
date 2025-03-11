@@ -10,7 +10,7 @@ from wazuh.core.config.models.central_config import (
     IndexerConfig,
     ManagementAPIConfig,
 )
-from wazuh.core.config.models.server import DEFAULT_SERVER_INTERNAL_CONFIG, ServerConfig
+from wazuh.core.config.models.server import DEFAULT_SERVER_INTERNAL_CONFIG, ServerConfig, ValidateFilePathMixin
 
 mock_config_data = {
     'server': {
@@ -39,15 +39,17 @@ mock_config_data = {
 @pytest.fixture
 def patch_load():
     with patch.object(CentralizedConfig, 'load', return_value=None):
-        CentralizedConfig._config = Config(**mock_config_data)
-        yield
-        CentralizedConfig._config = None
+        with patch.object(ValidateFilePathMixin, '_validate_file_path', return_value=None):
+            CentralizedConfig._config = Config(**mock_config_data)
+            yield
+            CentralizedConfig._config = None
 
 
 def test_get_comms_api_config(patch_load):
     """Check the correct behavior of the `get_comms_api_config` class method."""
-    comms_api_config = CentralizedConfig.get_comms_api_config()
-    assert comms_api_config == CommsAPIConfig(**mock_config_data['communications_api'])
+    with patch.object(ValidateFilePathMixin, '_validate_file_path', return_value=None):
+        comms_api_config = CentralizedConfig.get_comms_api_config()
+        assert comms_api_config == CommsAPIConfig(**mock_config_data['communications_api'])
 
 
 def test_get_management_api_config(patch_load):

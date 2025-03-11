@@ -392,17 +392,20 @@ async def test_query_update_check_service_returns_correct_data_on_error(installa
 async def test_query_update_check_service_request(installation_uid, client_session_get_mock):
     """Test that query_update_check_service function make request to the URL with the correct headers."""
     version = '4.8.0'
-    with patch('framework.wazuh.core.manager.wazuh.__version__', version):
-        await query_update_check_service(installation_uid)
 
-        client_session_get_mock.assert_called()
+    with patch.object(CentralizedConfig, 'load', return_value=None):
+        CentralizedConfig._config = default_config
+        with patch('framework.wazuh.core.manager.wazuh.__version__', version):
+            await query_update_check_service(installation_uid)
 
-        client_session_get_mock.assert_called_with(
-            RELEASE_UPDATES_URL,
-            headers={
-                WAZUH_UID_KEY: installation_uid,
-                WAZUH_TAG_KEY: f'v{version}',
-                USER_AGENT_KEY: f'Wazuh UpdateCheckService/v{version}',
-            },
-            follow_redirects=True,
-        )
+            client_session_get_mock.assert_called()
+
+            client_session_get_mock.assert_called_with(
+                RELEASE_UPDATES_URL,
+                headers={
+                    WAZUH_UID_KEY: installation_uid,
+                    WAZUH_TAG_KEY: f'v{version}',
+                    USER_AGENT_KEY: f'Wazuh UpdateCheckService/v{version}',
+                },
+                follow_redirects=True,
+            )

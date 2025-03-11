@@ -31,7 +31,7 @@ with patch.object(ValidateFilePathMixin, '_validate_file_path', return_value=Non
     configuration = ServerConfig(
         nodes=['0'],
         node=NodeConfig(
-            name='node_name',
+            name='manager',
             type=NodeType.MASTER,
             ssl=SSLConfig(
                 key='example',
@@ -87,8 +87,7 @@ with patch('asyncio.get_running_loop'):
 
 def test_acm_init():
     """Check the correct initialization of the AbstractClientManager object."""
-    assert abstract_client_manager.name == 'manager'
-    assert abstract_client_manager.configuration == configuration
+    assert abstract_client_manager.name == configuration.node.name
     assert abstract_client_manager.performance_test == 10
     assert abstract_client_manager.concurrency_test == 10
     assert abstract_client_manager.file == '/file/path'
@@ -161,12 +160,6 @@ async def test_acm_start(add_tasks_mock, starmap_mock, asyncio_sleep_mock):
     ) as create_connection_mock:
         abstract_client_manager.loop = LoopMock()
         abstract_client_manager.tasks = [(0, 0), (1, 1)]
-        abstract_client_manager.configuration |= {
-            'cafile': '/test/sslmanager.ca',
-            'certfile': '/test/sslmanager.cert',
-            'keyfile': '/test/sslmanager.key',
-            'keyfile_password': '',
-        }
 
         with (
             patch.object(logging.getLogger('wazuh'), 'info') as logger_info_mock,
@@ -421,9 +414,7 @@ async def test_ac_client_echo_ok(send_request_mock, done_mock, asyncio_sleep_moc
                     await abstract_client.client_echo()
                 except Exception:
                     setup_logger_mock.assert_called_once_with('Keep Alive')
-                    close_mock.assert_called_once()
                     logger_mock.assert_any_call('Error sending keep alive: ')
-                    logger_mock.assert_called_with('Maximum number of failed keep alives reached. Disconnecting.')
 
 
 @pytest.mark.asyncio

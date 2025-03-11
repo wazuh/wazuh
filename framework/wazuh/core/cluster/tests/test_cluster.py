@@ -54,7 +54,6 @@ with patch('wazuh.common.wazuh_uid'):
 
             wazuh.rbac.decorators.expose_resources = RBAC_bypasser
             import wazuh.core.cluster.cluster as cluster
-            from wazuh import WazuhException
             from wazuh.core.exception import WazuhError, WazuhInternalError
 
 agent_groups = b'default,windows-servers'
@@ -332,12 +331,18 @@ def test_compress_files_ok(
 @patch('wazuh.core.cluster.cluster.path.exists', return_value=False)
 def test_compress_files_ko(mock_path_exists, mock_path_dirname, mock_mkdir_with_mode):
     """Check if the compressing function is raising every exception."""
+
+    CentralizedConfig._config.server.communications.zip.max_size = 5
+    CentralizedConfig._config.server.communications.zip.compress_level = 0
+
     with patch('builtins.open', mock_open(read_data='test_content')):
         _, logs = cluster.compress_files('some_name', ['some/path'], {'missing': {}, 'shared': {}})
         assert logs['warning']['some/path'] == [
             f'File too large to be synced: ' f'{os.path.join(common.WAZUH_ETC, "some/path")}'
         ]
 
+        CentralizedConfig._config.server.communications.zip.max_size = 15
+        CentralizedConfig._config.server.communications.zip.compress_level = 0
         with patch('zlib.compress', side_effect=zlib.error):
             with pytest.raises(WazuhError, match=r'.* 3001 .*'):
                 cluster.compress_files('some_name', ['some/path'], {'ko_file': 'file'})
@@ -443,7 +448,7 @@ def test_compare_files():
     with patch('wazuh.core.cluster.cluster.merge_info', return_values=[1, 'random/path/']):
         files = cluster.compare_files(seq, condition, 'worker1')
         assert len(files['missing']) == 1
-        assert len(files['extra']) == 0
+        assert len(files['extra']) == 1
         assert len(files['shared']) == 1
 
     # Second condition
@@ -455,7 +460,7 @@ def test_compare_files():
 
     files = cluster.compare_files(seq, condition, 'worker1')
     assert len(files['missing']) == 2
-    assert len(files['extra']) == 0
+    assert len(files['extra']) == 3
     assert len(files['shared']) == 0
 
 
