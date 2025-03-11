@@ -490,7 +490,6 @@
 #define FIM_ERROR_EBPF_RINGBUFF_CONSUME             "(6977): Consuming ring buffer failed."
 #define FIM_ERROR_EBPF_HEALTHCHECK_TIMEOUT          "(6978): eBPF healthcheck timeout."
 #define FIM_ERROR_EBPF_HEALTHCHECK_FILE_DEL         "(6979): Healthcheck file can't be removed. Path: %s"
-#define FIM_ERROR_EBPF_ABSPATH_LOAD                 "(6980): Loading BPF absolute path failed."
 
 /* Wazuh Logtest error messsages */
 #define LOGTEST_ERROR_BIND_SOCK                     "(7300): Unable to bind to socket '%s'. Errno: (%d) %s"
