@@ -68,6 +68,7 @@ build_environment() {
     pkg install system/header
 
     #Install tools
+    /opt/csw/bin/pkgutil -y -i coreutils
     /opt/csw/bin/pkgutil -y -i git
     /opt/csw/bin/pkgutil -y -i gmake
     /opt/csw/bin/pkgutil -y -i gcc5core
