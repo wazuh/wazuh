@@ -1,0 +1,56 @@
+name: 4_testintegration_inventory-harvester
+
+on:
+  workflow_dispatch:
+  pull_request:
+  # Pull request events
+    types: [synchronize, opened, reopened, ready_for_review]
+  # Path filtering
+    paths:
+      - ".github/workflows/inventory-harvester-tests.yml"
+      - ".github/actions/compile_and_test/action.yml"
+      - ".github/actions/clang_format/action.yml"
+      - ".github/actions/doxygen/action.yml"
+      - ".github/actions/vulnerability_scanner_deps/action.yml"
+      - "src/shared_modules/router/**"
+      - "src/shared_modules/indexer_connector/**"
+      - "src/wazuh_modules/http-request/**"
+      - "src/shared_modules/utils/**"
+
+jobs:
+  inventory-harvester-qa:
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Cancel previous runs
+        uses: fkirc/skip-duplicate-actions@master
+        with:
+          cancel_others: 'true'
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          skip_after_successful_duplicate: 'false'
+
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          submodules: recursive
+
+      - name: Project dependencies
+        uses: ./.github/actions/vulnerability_scanner_deps
+
+      - name: Inventory harvester - Build tooling
+        uses: ./.github/actions/build_target_cpp
+        with:
+          target: "inventory_harvester_testtool"
+          test: "false"
+          asan: "false"
+
+      # Install python dependencies
+      - name: Install dependencies
+        run: |
+          pip install -r src/wazuh_modules/inventory_harvester/qa/requirements.txt
+
+      - name: Run tests
+        run: |
+          cd src
+          echo "{}" > states_update_mappings.json
+          python -m pytest -vv wazuh_modules/inventory_harvester/qa/ --log-cli-level=DEBUG
