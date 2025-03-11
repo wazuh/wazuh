@@ -95,10 +95,10 @@ static int setup_syscheck_dir_links(void **state) {
 
     syscheck.audit_key = CUSTOM_KEY;
 
-    directory_t *directory0 = fim_create_directory("/test0", WHODATA_ACTIVE, NULL, 512,
+    directory_t *directory0 = fim_create_directory("/test0", WHODATA_ACTIVE | AUDIT_DRIVER, NULL, 512,
                                                 NULL, -1, 0);
 
-    directory_t *directory1 = fim_create_directory("/test1", WHODATA_ACTIVE, NULL, 512,
+    directory_t *directory1 = fim_create_directory("/test1", WHODATA_ACTIVE | AUDIT_DRIVER, NULL, 512,
                                                 NULL, -1, 0);
 
     syscheck.directories = OSList_Create();
@@ -1222,14 +1222,23 @@ void test_audit_rules_to_realtime_first_search_audit_rule_fail(void **state) {
 
     audit_rules_to_realtime();
 
-    // Check that the options have been correctly changed
-    if (((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0))->options & ~WHODATA_ACTIVE) {
+    // Verify that Whodata has been disabled and Realtime enabled for directory 1.
+    if (((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 1))->options & WHODATA_ACTIVE){
+	// Whodata is active; it should have been switched to Realtime.
+	fail();
+    }else{
+	// Whodata is inactive; verify that Realtime was activated.
+	if (!(((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 1))->options & REALTIME_ACTIVE)){
+                // Realtime was not activated.
+		fail();
+	}
+    }
+
+    // Verify that Whodata remains active for directory 0.
+    if (!(((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0))->options & WHODATA_ACTIVE)){
         fail();
     }
 
-    if (((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 1))->options & WHODATA_ACTIVE) {
-        fail();
-    }
 }
 
 void test_audit_rules_to_realtime_second_search_audit_rule_fail(void **state) {
@@ -1254,12 +1263,20 @@ void test_audit_rules_to_realtime_second_search_audit_rule_fail(void **state) {
 
     audit_rules_to_realtime();
 
-    // Check that the options have been correctly changed
-    if (((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0))->options & WHODATA_ACTIVE) {
-        fail();
+    // Verify that Whodata has been disabled and Realtime enabled for directory 0.
+    if (((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0))->options & WHODATA_ACTIVE){
+	// Whodata is active; it should have been switched to Realtime.
+	fail();
+    }else{
+	// Whodata is inactive; verify that Realtime was activated.
+	if (!(((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0))->options & REALTIME_ACTIVE)){
+                // Realtime was not activated.
+		fail();
+	}
     }
 
-    if (((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 1))->options & ~WHODATA_ACTIVE) {
+   // Verify that Whodata remains active for directory 1.
+    if (!(((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 1))->options & WHODATA_ACTIVE)){
         fail();
     }
 }

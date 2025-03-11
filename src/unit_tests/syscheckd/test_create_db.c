@@ -264,7 +264,7 @@ static int setup_group(void **state) {
 #else
     char *path = "/a/random/path";
 #endif
-    directory_t *directory0 = fim_create_directory(path, WHODATA_ACTIVE, NULL, 512, NULL, 1024, 1);
+    directory_t *directory0 = fim_create_directory(path, WHODATA_ACTIVE | AUDIT_DRIVER, NULL, 512, NULL, 1024, 1);
 
     OSList_InsertData(removed_entries, NULL, directory0);
 
@@ -292,11 +292,11 @@ static int setup_wildcards(void **state) {
 
     char buffer1[20] = "/testdir?";
     char buffer2[20] = "/*/path";
-    int options = WHODATA_ACTIVE | CHECK_FOLLOW;
+    int options = WHODATA_ACTIVE | CHECK_FOLLOW | AUDIT_DRIVER;
 #else
     char buffer1[20] = "c:\\testdir?";
     char buffer2[20] = "c:\\*\\path";
-    int options = WHODATA_ACTIVE;
+    int options = WHODATA_ACTIVE | AUDIT_DRIVER;
 #endif
 
     directory_t *wildcard0 = fim_create_directory(buffer1, options, NULL, 512,
@@ -3688,6 +3688,7 @@ static void test_update_wildcards_config_remove_config() {
 #ifndef TEST_WINAGENT
     expect_string(__wrap_remove_audit_rule_syscheck, path, resolvedpath1);
     expect_string(__wrap_remove_audit_rule_syscheck, path, resolvedpath2);
+
 #endif
 
     // Remove configuration loop
