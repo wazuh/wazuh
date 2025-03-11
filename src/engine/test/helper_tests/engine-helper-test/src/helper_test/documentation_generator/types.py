@@ -32,11 +32,11 @@ class Restriction:
 
 
 class Example:
-    def __init__(self, arguments, should_pass, description, skipped=False, expected=None):
+    def __init__(self, arguments, should_pass, description, target_field=False, expected=None):
         self.arguments = arguments
         self.should_pass = should_pass
         self.description = description
-        self.skipped = skipped
+        self.target_field = target_field
         self.expected = expected
 
 
