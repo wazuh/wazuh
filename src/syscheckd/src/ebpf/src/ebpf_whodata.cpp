@@ -113,7 +113,6 @@ int healthcheck_event(void* ctx, void* data, size_t data_sz) {
 }
 
 static int init_libbpf() {
-    bpf_object* obj = nullptr;
     auto logFn = fimebpf::instance().m_loggingFunction;
     auto abspathFn = fimebpf::instance().m_abspath;
     char libbpf_path[PATH_MAX] = {0};
@@ -148,8 +147,6 @@ static int init_libbpf() {
     bpf_helpers->bpf_object_next_program     = (bpf_object__next_program_t)dlsym(bpf_helpers->module, "bpf_object__next_program");
     bpf_helpers->bpf_program_attach          = (bpf_program__attach_t)dlsym(bpf_helpers->module, "bpf_program__attach");
     bpf_helpers->bpf_object_find_map_fd_by_name = (bpf_object__find_map_fd_by_name_t)dlsym(bpf_helpers->module, "bpf_object__find_map_fd_by_name");
-
-    auto logFn = fimebpf::instance().m_loggingFunction;
 
     if (!bpf_helpers->bpf_object_open_file ||
         !bpf_helpers->bpf_object_load ||
@@ -290,24 +287,6 @@ void ebpf_pop_events() {
                     whodataEventQueue.push(std::move(event));
                     whodataEventCondition.notify_one();
                 }
-                whodata_evt* w_evt = new whodata_evt{};
-
-                w_evt->path = strdup(event->filename);
-                w_evt->process_name = strdup(event->comm);
-                w_evt->user_id = uint_to_str(event->uid);
-                w_evt->user_name = fimebpf::instance().m_get_user(event->uid);
-                w_evt->group_id = uint_to_str(event->gid);
-                w_evt->group_name = fimebpf::instance().m_get_group(event->gid);
-                w_evt->inode = ulong_to_str(event->inode);
-                w_evt->dev = ulong_to_str(event->dev);
-                w_evt->process_id = event->pid;
-                w_evt->ppid = event->ppid;
-                w_evt->cwd = strdup(event->cwd);
-                w_evt->parent_cwd = strdup(event->parent_cwd);
-                w_evt->parent_name = strdup(event->parent_comm);
-
-                fimebpf::instance().m_fim_whodata_event(w_evt);
-                fimebpf::instance().m_free_whodata_event(w_evt);
             }
         }
     }
@@ -441,7 +420,7 @@ int ebpf_whodata() {
     whodata_pop_thread.detach();
 
     while (!is_fim_shutdown) {
-        ret = bpf_helpers->ring_buffer_poll(rb, 200);
+        ret = bpf_helpers->ring_buffer_poll(rb, 50);
         if (ret < 0) {
             logFn(LOG_ERROR, FIM_ERROR_EBPF_RINGBUFF_CONSUME);
             break;
