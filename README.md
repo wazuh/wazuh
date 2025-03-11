@@ -612,7 +612,7 @@ end
 
 
 
-%% Output decoder stage 
+%% Output decoder stage
 eventNormalized@{shape: doc, label: "Normalized</br>event"}
 eventNormalized:::EventBoxClass
 
@@ -755,9 +755,169 @@ eventInput ===> routeSelector
 
 
 
-### Asset processing
-- Adding an asset architecture diagram, parts and asset chain op execution tree
-- basic explanation of assets in general
+## Assets
+In the Wazuh Engine, assets represent the fundamental components of security policies and are the smallest unit within such a policy.
+
+Each asset is organized into various stages that dictate operational procedures when processing an event. These stages provide a structured and semantically meaningful sequence of operations, enhancing the engine's capability to execute these operations efficiently based on predefined execution strategies.
+
+Do not confuse stages with attributes, which are configuration details and metadata about the asset.
+
+<workflow_placeholder>
+
+### Attributes
+Attributes are configuration details. Although the order of definition does not matter, we follow the convention of defining them in the order of name, metadata, and parents.
+- **Name**: Identifies the asset and follows the pattern <asset_type>/<name>/<version>.
+- **Metadata**: Contains all information about the asset. The exact subfields depend on the asset type.
+- **Parents**: When applicable to the asset, this defines the order in the asset graph. The exact child selection depends on the specific asset graph type.
+- **Definitions**: Defines symbols that will be replaced throughout the document in its occurrences.
+
+### Stages
+The stages define the operation chain and flow the asset performs on events. Each stage is executed in the order of definition:
+
+<workflow_placeholder>
+
+When a stage is executed, it can either fail or succeed, depending on the logic of the stage and the operations performed. Each stage is sequentially executed only if the previous stage succeeds.
+
+Stages:
+- **Check/Allow**: Allows conditional operations to be made on the event.
+- **Parse**: Parses fields on the event, acting both as a condition and normalization.
+- **Map**: Allows mapping and transformation operations on the event.
+- **Normalize**: Defines blocks with a combination of check, parse, and map stages.
+- **Output**: Allows operations to communicate outside the Engine, typically used to send events outward.
+
+### Asset types
+The type of asset is an allowed combination of certain stages. The following table outlines the stages available for each type of asset:
+
+| Asset Type | Allowed Stages |
+|-|-|
+|Decoders|check, parse, map, normalize|
+|Rules|check, map, normalize|
+|Outputs|check, output|
+|Filters|allow|
+
+Each asset has a name and metadata, with custom metadata suited to its specific needs. Additionally, each asset can have parents.
+
+### Operations
+Operations are the fundamental units within the operation graph. Each operation can succeed or fail, forming the basis for defining the graph by combining operations based on their execution results.
+
+Operations are always defined as:
+```yaml
+target_field: operation
+```
+
+Where the operation can be:
+- **Literal Value**: A direct check or map operation depending on the stage it is defined. This can be any of the YAML native values (string, number, boolean, etc.).
+- **Reference**: Denoted by $field_name, it performs a direct check or map operation using the referenced value.
+- **Helper**: Denoted by helper_name(args), it performs a check or map operation depending on the called helper.
+
+When building an asset, the process can fail if there is any operation that contains a:
+- **Syntax Error**: Errors in the target_field or operation syntax.
+- **Schema Validation Failure**: Errors such as mapping a boolean into a keyword field, which violates the schema validation rules.
+- **Semantic Error**: Incorrect usage, such as using a conditional helper in a map stage.
+These errors will be notified when trying to upload the asset to the catalog.
+
+### Execution Graph Summary
+With a basic understanding of a policy and its components, we can look at the global picture of how the operation graph is defined.
+Within the policy, we have subgraphs, each corresponding to an asset type:
+- Decoders
+- Rules
+- Outputs
+
+<workflow_placeholder>
+
+Every event traverses each subgraph independently, forming a chain of subgraphs.
+
+Each graph is composed of assets defined by parent relationships. An event moves down in the graph based on the asset's logical output. If an asset operation succeeds, the event is sent to its child assets.
+
+The traversal of each subgraph follows these rules:
+- **Decoders**: If the current decoder asset succeeds, the event is sent to its first child. If it fails, the event is sent to the next sibling of the parent decoder (logical OR between children).
+- **Rules**: If the current rule asset succeeds, the event is broadcast to all its child assets.
+- **Outputs**: Events are broadcast to all defined output assets.
+
+An asset is considered successful if it accepts the event, meaning all conditional stages have succeeded, regardless of the outcome of transformational stages. This ensures that events are processed through the appropriate path based on successful acceptance checks.
+
+A stage succeeds if the logical combination of its operations succeeds. The exact combination logic is determined by the stage itself. This ensures that each stage can apply its own logic to decide whether it has successfully processed an event.
+
+<workflow_placeholder>
+
+### Helper functions
+Implement all the high level operations available to the user when developing the ruleset. Each function defines its signature, its mode of operation and its error management. Users cannot change the behavior of a helper function, and cannot combine two functions into a single expression.
+
+There are two intrinsic operations which do not require additional syntax:
+- Comparison of values or references inside a check stage.
+- Value or reference assignment inside a map stage.
+
+All other operations are accessed through the helper functions.
+
+The syntax for calling a helper function is `helper_name(args...)`. They can be used in both check operations and map operations. Helper functions are classified into two categories:
+- **Conditionals**: Used in check operations to test complex conditions.
+- **Transformational**: Used in map operations to transform data.
+
+Check the helper standard library for a complete list of available helper functions.
+
+#### Condition Helpers
+When using conditional helpers, the syntax is:
+```yaml
+target_field: condition_helper(args)
+```
+
+The helper will always test a condition on *target_field*. If the condition passes, the operation succeeds; otherwise, it fails.
+
+#### Transform Helpers
+When using transformational helpers, the syntax is:
+```yaml
+target_field: transform_helper(args)
+```
+
+The helper will transform the *target_field* if the operation succeeds. If the operation fails, the *target_field* remains unchanged.
+
+A transformational helper may fail due to implicit conditions, such as expecting a specific type for the target field, missing a reference passed as an argument, etc.
+
+***It is important to understand that every operation can succeed or fail, and this is the foundation for defining the operation graph.***
+
+#### Parsing rules
+When using a helper function in a map or check operation:
+```yaml
+target.field: helper_name(args...)
+```
+
+Each argument is tried to be parsed in the following order:
+- **Quoted argument**: `'value'` if it starts with a single quote it parses until the closing single quote, allowed scaped characters are: `\` and `'`.
+- **Reference**: `$reference` if it starts with the dollar symbol a reference is parsed, which is any alphanumeric plus the extended symbols `#`, `_`, `@`, and `-` separated by dots.
+- **JSON value**: parses a JSON string, any JSON string with JSON escaping rules.
+- **Raw string**: if the other parsers fail a string value will be assigned, here we allow the escaping of the symbols: `$`, `'`, `,`, `)`, `\` and whitespace.
+
+Invalid escape sequences will always fail.
+
+When parsing a helper function inside a logical check expression the same rules apply adding that at least one argument is expected for the helper, specifying the target field:
+```yaml
+check: helper_name($target.field, args...)
+```
+
+Added we can specify comparison helpers as operators:
+```yaml
+check: $target.field <op> <value>
+```
+
+Where value is parsed as a single helper argument following the same escaping rules and order.
+
+Where op is any of the following:
+- `==`
+- `!=`
+- `<`
+- `<=`
+- `>`
+- `>=`
+
+When using any operator that is not the equality operator only string or integer values are allowed.
+
+When using the default map or filter functions for string operations, values are parsed according to standard YAML (or JSON) types. If a value is a string and begins with the reference symbol `$`, it is treated as a potential reference. If the reference is invalid the operation building fails.
+```yaml
+check:
+  - target.field: <yaml_type>|<$ref>
+map:
+  - target.field: <yaml_type>|<$ref>
+```
 
 
 #### Decoder Asset
