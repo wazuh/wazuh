@@ -113,17 +113,19 @@ int healthcheck_event(void* ctx, void* data, size_t data_sz) {
 }
 
 static int init_libbpf() {
-    if (bpf_helpers != NULL) {
-        // Already initialized, do nothing
-        return 0;
-    }
+    bpf_object* obj = nullptr;
+    auto logFn = fimebpf::instance().m_loggingFunction;
+    auto abspathFn = fimebpf::instance().m_abspath;
+    char libbpf_path[PATH_MAX] = {0};
+
+    abspathFn(LIB_INSTALL_PATH, libbpf_path, sizeof(libbpf_path));
 
     bpf_helpers = (w_bpf_helpers_t *)calloc(1, sizeof(w_bpf_helpers_t));
     if (!bpf_helpers) {
         return 1;
     }
 
-    bpf_helpers->module = dlopen(LIB_INSTALL_PATH, RTLD_LAZY);
+    bpf_helpers->module = dlopen(libbpf_path, RTLD_LAZY);
     if (!bpf_helpers->module) {
         free(bpf_helpers);
         bpf_helpers = NULL;
@@ -199,7 +201,7 @@ static int open_bpf_object_map(ring_buffer** rb, ring_buffer_sample_fn sample_cb
     bpf_object* obj = bpf_helpers->bpf_object_open_file(bpfobj_path, nullptr);
     if (!obj) {
         char error_message[1024];
-        snprintf(error_message, sizeof(error_message), FIM_ERROR_EBPF_OBJ_OPEN, bpfobj_path);
+        snprintf(error_message, sizeof(error_message), FIM_ERROR_EBPF_OBJ_OPEN, bpfobj_path, strerror(errno));
         logFn(LOG_ERROR, error_message);
         return 1;
     }
