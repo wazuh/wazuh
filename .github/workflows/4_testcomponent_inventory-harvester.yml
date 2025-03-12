@@ -9,7 +9,7 @@ on:
     paths:
       - ".github/workflows/4_testcomponent_inventory-harvester.yml"
       - "src/shared_modules/utils/**"
-      - "src/wazuh_modules/inventory-harvester/**"
+      - "src/wazuh_modules/inventory_harvester/**"
 
 jobs:
   inventory-harvester-modules:
