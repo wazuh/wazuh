@@ -40,10 +40,13 @@ from starlette.middleware.cors import CORSMiddleware
 from wazuh.core import common, pyDaemonModule, utils
 from wazuh.core.authentication import load_jwt_keys
 from wazuh.core.cluster.utils import print_version
+from wazuh.core.commands_manager import CommandsManager
 from wazuh.core.common import WAZUH_SERVER_YML
 from wazuh.core.config.client import CentralizedConfig
 from wazuh.core.config.models.central_config import ManagementAPIConfig
 from wazuh.core.config.models.ssl_config import APISSLConfig
+from wazuh.core.unix_server.commands import post_commands
+from wazuh.core.unix_server.server import HTTPUnixServer
 from wazuh.rbac.orm import check_database_integrity
 
 SSL_DEPRECATED_MESSAGE = 'The `{ssl_protocol}` SSL protocol is deprecated.'
@@ -196,13 +199,19 @@ def start(params: dict, config: ManagementAPIConfig):
             )
         )
 
+    # Start commands manager and unix server
+    commands_manager = CommandsManager()
+    unix_server = HTTPUnixServer(socket_path=common.MANAGEMENT_API_SOCKET_PATH, commands_manager=commands_manager)
+    unix_server.add_route('/commands', post_commands, ['POST'])
+    unix_server.start()
+
     # Set up API
     app = AsyncApp(
         __name__,
         specification_dir=os.path.join(api_path[0], 'spec'),
         swagger_ui_options=SwaggerUIOptions(swagger_ui=False),
         pythonic_params=True,
-        lifespan=lifespan_handler,
+        lifespan=partial(lifespan_handler, commands_manager=commands_manager),
         uri_parser_class=APIUriParser,
     )
     app.add_api(

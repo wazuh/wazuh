@@ -12,6 +12,7 @@ from typing import Callable
 from connexion import ConnexionMiddleware
 from wazuh.core import common
 from wazuh.core.cluster.utils import running_in_master_node
+from wazuh.core.commands_manager import CommandsManager
 from wazuh.core.config.client import CentralizedConfig
 from wazuh.core.configuration import update_check_is_enabled
 from wazuh.core.manager import query_update_check_service
@@ -30,7 +31,7 @@ cti_context = {}
 
 
 def cancel_signal_handler(func: Callable) -> Callable:
-    """Decorator to handle asyncio.CancelledError for signals coroutines.
+    """Handle asyncio.CancelledError for signals coroutines.
 
     Parameters
     ----------
@@ -82,8 +83,16 @@ async def get_update_information() -> None:
 
 
 @contextlib.asynccontextmanager
-async def lifespan_handler(_: ConnexionMiddleware):
-    """Logs the API startup/shutdown messages, register background tasks and initialize indexer client."""
+async def lifespan_handler(_: ConnexionMiddleware, commands_manager: CommandsManager):
+    """Log the API startup/shutdown messages, register background tasks and initialize indexer client.
+
+    Parameters
+    ----------
+    _ : ConnexionMiddleware
+        Framework middleware.
+    commands_manager : CommandsManager
+        Commands manager.
+    """
     tasks: list[asyncio.Task] = []
 
     if running_in_master_node():
@@ -95,7 +104,7 @@ async def lifespan_handler(_: ConnexionMiddleware):
     management_api_config = CentralizedConfig.get_management_api_config()
     logger.info(f'Listening on {management_api_config.host}:{management_api_config.port}.')
 
-    yield
+    yield {'commands_manager': commands_manager}
 
     for task in tasks:
         task.cancel()
