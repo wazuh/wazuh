@@ -59,6 +59,7 @@ All notable changes to this project will be documented in this file.
 - Fixed the OS CPE build for package scans with data from Wazuh-DB. ([#28294](https://github.com/wazuh/wazuh/pull/28294))
 - Added delete by query logic when indexer is disabled. ([#28292](https://github.com/wazuh/wazuh/pull/28292))
 - Fixed heap buffer overflow in Analysisd rule parser. ([#28396](https://github.com/wazuh/wazuh/pull/28396))
+- Fixed unnecesary data copy during the curl calls. ([#28429](https://github.com/wazuh/wazuh/pull/28429))
 
 ### Agent
 
