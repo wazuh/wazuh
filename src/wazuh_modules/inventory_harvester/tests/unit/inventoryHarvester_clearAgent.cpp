@@ -82,9 +82,15 @@ TEST_F(InventoryHarvesterClearAgent, HandleRequest_SystemContextSuccess)
     const auto& constIndexerConnectors = indexerConnectors;
     ClearAgent<MockSystemContext, MockIndexerConnector> clearAgent(constIndexerConnectors);
 
-    EXPECT_CALL(*indexerConnectors[MockAffectedComponentType::Package], publish("{\"id\":\"001\",\"operation\":\"DELETED_BY_QUERY\"}")).Times(1);
-    EXPECT_CALL(*indexerConnectors[MockAffectedComponentType::Process], publish("{\"id\":\"001\",\"operation\":\"DELETED_BY_QUERY\"}")).Times(1);
-    EXPECT_CALL(*indexerConnectors[MockAffectedComponentType::System], publish("{\"id\":\"001\",\"operation\":\"DELETED_BY_QUERY\"}")).Times(1);
+    EXPECT_CALL(*indexerConnectors[MockAffectedComponentType::Package],
+                publish("{\"id\":\"001\",\"operation\":\"DELETED_BY_QUERY\"}"))
+        .Times(1);
+    EXPECT_CALL(*indexerConnectors[MockAffectedComponentType::Process],
+                publish("{\"id\":\"001\",\"operation\":\"DELETED_BY_QUERY\"}"))
+        .Times(1);
+    EXPECT_CALL(*indexerConnectors[MockAffectedComponentType::System],
+                publish("{\"id\":\"001\",\"operation\":\"DELETED_BY_QUERY\"}"))
+        .Times(1);
 
     EXPECT_CALL(*context, agentId()).Times(3).WillRepeatedly(Return("001"));
 
