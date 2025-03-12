@@ -390,7 +390,7 @@ flowchart TD
   classDef AssetSuccessClass fill:#2196f3,stroke-width:2px,fill-opacity:0.8
   classDef AssetFailClass fill:#f50057,stroke-width:2px,fill-opacity:0.8
   classDef AssetNotExecutedClass fill:#90a4ae,stroke-width:2px,fill-opacity:0.8
-  ruleR("root rule (geo)") --x rule1("rule 1")
+  ruleR("root rule") --x rule1("rule 1")
   rule1 -.-> rule11("rule 1-1") & rule12("rule 1-2")
   ruleR --> rule2("rule 2")
   rule2 --> rule21("rule 2-1")
@@ -424,7 +424,7 @@ flowchart LR
 classDef EventBoxClass font-size: 15px,stroke-width:2px, color:#fff, fill:#3f51b5
 classDef TreeBoxClass font-size: 15px,stroke-width:2px,stroke-dasharray: 5 5
 
- subgraph firstLayerRulesTree["First layer Rules:</br>Geo enrichment</br>General IoCs"]
+ subgraph firstLayerRulesTree["First layer: Geo enrichment"]
   direction TB
 
   firstLayerRules01(" ")
@@ -749,6 +749,229 @@ engine:::ModuleArchClass
 
 eventInput ===> routeSelector
 
+
+
+```
+
+```mermaid
+---
+config:
+  nodeSpacing: 30
+  rankSpacing: 25
+  flowchart:
+    subGraphTitleMargin:
+      top: 20
+      bottom: 20
+---
+flowchart TB
+
+
+classDef AssetsClass fill:#3f51b5,stroke-width:2px,fill-opacity:0.5, font-size: 20px, min-width:350px
+classDef partsAssetsClass font-size:15px,stroke-width:2px,stroke-dasharray:10px,rx:15,ry:15, min-width:250px
+classDef AttributesClass min-width: 200px
+
+ subgraph assetSchema["Asset Schema"]
+    direction TB
+    attributes:::partsAssetsClass ~~~ stages:::partsAssetsClass
+ end
+ assetSchema:::AssetsClass
+
+ subgraph attributes["Attributes"]
+    direction LR
+    attr_1(["&emsp;&emsp;&emsp;&emsp;&emsp;...&emsp;&emsp;&emsp;&emsp;&emsp;"]):::AttributesClass
+    attr_2(["&emsp;&emsp;&emsp;&emsp;&emsp;...&emsp;&emsp;&emsp;&emsp;&emsp;"]):::AttributesClass
+    attr_3(["&emsp;&emsp;&emsp;&emsp;&emsp;...&emsp;&emsp;&emsp;&emsp;&emsp;"]):::AttributesClass
+    attr_4(["&emsp;&emsp;&emsp;&emsp;&emsp;...&emsp;&emsp;&emsp;&emsp;&emsp;"]):::AttributesClass
+  end
+
+ subgraph stages["Stages"]
+    direction LR
+    stage_1(["&emsp;&emsp;&emsp;&emsp;&emsp;...&emsp;&emsp;&emsp;&emsp;&emsp;"]):::AttributesClass
+    stage_2(["&emsp;&emsp;&emsp;&emsp;&emsp;...&emsp;&emsp;&emsp;&emsp;&emsp;"]):::AttributesClass
+    stage_3(["&emsp;&emsp;&emsp;&emsp;&emsp;...&emsp;&emsp;&emsp;&emsp;&emsp;"]):::AttributesClass
+    stage_4(["&emsp;&emsp;&emsp;&emsp;&emsp;...&emsp;&emsp;&emsp;&emsp;&emsp;"]):::AttributesClass
+  end
+
+
+```
+
+```mermaid
+---
+config:
+  nodeSpacing: 30
+  rankSpacing: 25
+  flowchart:
+    subGraphTitleMargin:
+      top: 20
+      bottom: 20
+---
+flowchart TB
+
+classDef partsAssetsClass font-size:15px,stroke-width:2px,stroke-dasharray:10px,rx:15,ry:15
+classDef EventBoxClass font-size: 15px,stroke-width:2px, color:#fff, fill:#3f51b5
+classDef stateFailClass fill:#f50057,stroke-width:2px,fill-opacity:0.5
+classDef stateSuccessClass fill:#2196f3,stroke-width:2px,fill-opacity:0.8
+
+eventInput@{ shape: doc, label:"Event input"}
+eventInput:::EventBoxClass ---> stage_1
+
+
+subgraph stages["Stages"]
+   direction TB
+   stage_1(["Process stage 1"])
+   stage_2(["Process stage 2"])
+   stage_3(["Process stage ..."])
+   stage_4(["Process stage n"])
+   stage_1 --->|success| stage_2
+   stage_2 --->|success| stage_3
+   stage_3 --->|success| stage_4
+end
+stages:::partsAssetsClass
+
+failedState@{ shape: dbl-circ, label: "Asset fail" }
+failedState:::stateFailClass
+stage_1 --->|failed|failedState
+stage_2 --->|failed|failedState
+stage_3 --->|failed|failedState
+
+successState@{ shape: dbl-circ, label: "Asset success" }
+successState:::stateSuccessClass
+stage_4 --->|success| successState
+```
+
+```mermaid
+---
+config:
+  nodeSpacing: 30
+  rankSpacing: 25
+  flowchart:
+    curve: stepAfter
+    subGraphTitleMargin:
+      top: 20
+      bottom: 20
+---
+flowchart LR
+
+classDef SubmoduleClass font-size:15px,stroke-width:2px,stroke-dasharray:10px,rx:15,ry:15
+classDef ModuleClass  font-size:15px,stroke-width:2px,rx:15,ry:15
+
+
+%% ----------------------------------
+%%                  API
+%% ----------------------------------
+
+
+subgraph apiModule["API"]
+   direction LR
+   api_orchestrator@{ shape: stadium, label: "Orchestrador manager" }
+   api_kvdb@{ shape: stadium, label: "KVDB manager" }
+   api_metrics@{ shape: stadium, label: "Metric manager" }
+   api_geo@{ shape: stadium, label: "Geo manager" }
+   api_orchestrator ~~~ api_kvdb
+   api_metrics ~~~ api_geo
+
+   api_catalog@{ shape: disk, label: "Catalog of assets" }
+   api_policies@{ shape: disk, label: "Policies" }
+   api_policies ~~~ api_catalog
+end
+apiModule:::ModuleClass
+
+
+%% ----------------------------------
+%%                  Geo module
+%% ----------------------------------
+subgraph geoModule["Geolocator"]
+  geo_mmdb@{ shape: disk, label: "MaxMind DBs" }
+end
+geoModule:::ModuleClass
+
+%% ----------------------------------
+%%                  KVDB
+%% ----------------------------------
+subgraph kvdbModule["KVDB"]
+    direction TB
+    kvdb_db_2@{ shape: docs, label: "Key-Value DataBases" }
+end
+kvdbModule:::ModuleClass
+
+
+%% ----------------------------------
+%%              Global module
+%% ----------------------------------
+subgraph globalModule["Global"]
+    global_metrics("Metrics")
+    global_logger("Logger")
+end
+globalModule:::ModuleClass
+
+
+%% ----------------------------------
+%%                  Server
+%% ----------------------------------
+
+subgraph serverModule["Server"]
+   direction RL
+   server_API>Server API]
+   server_engine>Server engine]
+end
+serverModule:::ModuleClass
+
+
+%% ----------------------------------
+%%           Storage
+%% ----------------------------------
+storageModule@{ shape: cyl, label: "Persistent</br>Storage" }
+storageModule:::ModuleClass
+
+%% ----------------------------------
+%%           Builder
+%% ----------------------------------
+subgraph builderModule["Builder"]
+ builder_asset@{ shape: stadium, label: "Builder asset" }
+ builder_policy@{ shape: stadium, label: "Builder policy" }
+ builder_parser@{ shape: stadium, label: "Builder parser" }
+ builder_hp@{ shape: stadium, label: "Builder helper function" }
+
+builder_policy ~~~ builder_asset --- builder_parser & builder_hp
+
+ builder_parser --- builder_catalog_hf@{ shape: disk, label: "Catalog of helper functions" }
+ builder_hp --- builder_catalog_parser@{ shape: disk, label: "Catalog of parser" }
+
+end
+builderModule:::ModuleClass 
+
+%% ----------------------------------
+%%           Orchestrator
+%% ----------------------------------
+subgraph orchestratorModule["Orchestrator"]
+   direction RL
+   orchestrator_router@{ shape: stadium, label: "Router" }
+   orchestrator_tester@{ shape: stadium, label: "Tester" }
+   orchestrator_routerTable@{ shape: disk, label: "Routes" }
+   orchestrator_sessionTable@{ shape: disk, label: "Session" }
+   orchestrator_router --- orchestrator_routerTable
+   orchestrator_tester --- orchestrator_sessionTable
+end
+orchestratorModule:::ModuleClass
+
+subgraph backendModule["Backend"]
+
+end
+
+%% ----------------------------------
+%%           Modules conexion
+%% ----------------------------------
+%%% orchestratorModule --- builderModule
+serverModule ------- orchestratorModule & apiModule
+orchestratorModule:::ModuleClass ---- backendModule
+builderModule & apiModule --- geoModule & kvdbModule
+apiModule --- storageModule
+
+apiModule ------ builderModule
+
+orchestratorModule  ------ builderModule
+orchestratorModule ----- apiModule
+storageModule --- builderModule
 
 
 ```
