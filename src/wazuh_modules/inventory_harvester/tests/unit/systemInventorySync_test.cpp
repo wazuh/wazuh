@@ -150,4 +150,3 @@ INSTANTIATE_TEST_SUITE_P(InventorySyncByAffectedComponentType,
                                            MockSystemContext::AffectedComponentType::Process,
                                            MockSystemContext::AffectedComponentType::System,
                                            MockSystemContext::AffectedComponentType::Invalid));
-
