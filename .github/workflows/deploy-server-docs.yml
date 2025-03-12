@@ -1,0 +1,43 @@
+run-name: Server Docs - Build and Deploy
+name:  Deploy Server Docs Github Pages
+
+on:
+  push:
+    branches:
+      - main # The name of the principal branch is being modified in #28029
+  workflow_dispatch:
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+jobs:
+  build:
+    runs-on: ubuntu-20.04
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup mdBook
+        uses: jontze/action-mdbook@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          use-mermaid: true
+      - run: mdbook build
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: './book'
+
+  deploy:
+    needs: build
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
