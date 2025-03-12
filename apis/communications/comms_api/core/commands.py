@@ -1,95 +1,11 @@
-import asyncio
-from multiprocessing.managers import SyncManager
-from multiprocessing.synchronize import Event
-from typing import Dict, List, Optional
+from typing import List
 
 from fastapi import status
 from uuid6 import UUID
+from wazuh.core.commands_manager import CommandsManager
 from wazuh.core.indexer.models.commands import Command
 
 from comms_api.routers.exceptions import HTTPError
-
-
-class CommandsManager:
-    """Expose commands received from the local server to the Communications API worker processes."""
-
-    def __init__(self):
-        self._manager: SyncManager = SyncManager()
-        self._manager.start()
-        self._commands: Dict[str, List[Command]] = self._manager.dict()
-        self._subscriptions: Dict[str, Event] = self._manager.dict()
-
-    def add_commands(self, commands: List[Command]) -> List[Command]:
-        """Add a command to the dictionary and call the corresponding subscribers callbacks.
-
-        Parameters
-        ----------
-        commands : List[Command]
-            Commands list.
-
-        Returns
-        -------
-        List[str]
-            List of the processed commands.
-        """
-        processed_commands = []
-        for command in commands:
-            agent_id = command.target.id
-
-            if agent_id not in self._subscriptions:
-                continue
-
-            if agent_id not in self._commands:
-                self._commands[agent_id] = [command]
-                processed_commands.append(command)
-                continue
-
-            # Using self._commands[agent_id].append() doesn't work because
-            # it doesn't hold the reference of nested objects
-            command_list = self._commands[agent_id]
-            command_list.append(command)
-            self._commands[agent_id] = command_list
-            processed_commands.append(command)
-
-        for agent_id in self._subscriptions.keys():
-            if agent_id in self._subscriptions:
-                self._subscriptions[agent_id].set()
-
-        return processed_commands
-
-    async def get_commands(self, agent_id: UUID) -> Optional[List[Command]]:
-        """Get commands from the manager.
-
-        It returns immediately if there are commands for the agent specified, otherwise it waits for new commands until
-        the timeout is reached.
-
-        Parameters
-        ----------
-        agent_id : UUID
-            Agent ID.
-        timeout : float
-            Timeout in seconds.
-
-        Returns
-        -------
-        Optional[List[Command]]
-            Commands list or None if the timeout is reached.
-        """
-        if agent_id not in self._commands:
-            event = asyncio.Event()
-            self._subscriptions.update({agent_id: event})
-
-            signaled = await event.wait()
-
-            self._subscriptions.pop(agent_id, None)
-            if not signaled:
-                return
-
-        return self._commands.pop(agent_id, None)
-
-    def shutdown(self):
-        """Shutdown sync manager."""
-        self._manager.shutdown()
 
 
 async def pull_commands(commands_manager: CommandsManager, agent_id: UUID) -> List[Command]:
