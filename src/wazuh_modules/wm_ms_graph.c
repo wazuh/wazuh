@@ -197,10 +197,11 @@ void wm_ms_graph_scan_relationships(wm_ms_graph* ms_graph, wm_ms_graph_auth* aut
     char end_time_str[WM_MS_GRAPH_TIMESTAMP_SIZE_80] = { '\0' };
     struct tm tm_aux = { .tm_sec = 0 };
     wm_ms_graph_state_t relationship_state_struc;
-    time_t now;
+    time_t scan_time;
     bool fail;
     bool next_page;
-    bool inventory = false;
+    bool inventory;
+    bool activityFilter;
 
 #ifndef WIN32
     int id = os_random();
@@ -221,10 +222,19 @@ void wm_ms_graph_scan_relationships(wm_ms_graph* ms_graph, wm_ms_graph_auth* aut
 
         for (unsigned int relationship_num = 0; relationship_num < ms_graph->resources[resource_num].num_relationships; relationship_num++) {
 
+            inventory = false;
+            activityFilter = false;
             if (!strcmp(ms_graph->resources[resource_num].name, WM_MS_GRAPH_RESOURCE_DEVICE_MANAGEMENT)) {
                 // If not auditEvents, treat as inventory
                 if (strcmp(ms_graph->resources[resource_num].relationships[relationship_num], WM_MS_GRAPH_RELATIONSHIP_AUDIT_EVENTS)) {
                     inventory = true;
+                } else {
+                    activityFilter = true;
+                }
+            } else if (!strcmp(ms_graph->resources[resource_num].name, WM_MS_GRAPH_RESOURCE_IDENTITY_PROTECTION)) {
+                if (!strcmp(ms_graph->resources[resource_num].relationships[relationship_num], WM_MS_GRAPH_RELATIONSHIP_RISK_DETECTIONS) ||
+                    !strcmp(ms_graph->resources[resource_num].relationships[relationship_num], WM_MS_GRAPH_RELATIONSHIP_SERVICE_PRINCIPAL_RISK_DETECTIONS)) {
+                    activityFilter = true;
                 }
             }
 
@@ -239,15 +249,15 @@ void wm_ms_graph_scan_relationships(wm_ms_graph* ms_graph, wm_ms_graph_auth* aut
                     memset(&relationship_state_struc, 0, sizeof(relationship_state_struc));
                 }
 
-                now = time(0);
+                scan_time = time(0) - ms_graph->time_delay;
 
                 if ((initial_scan && (!relationship_state_struc.next_time || ms_graph->only_future_events)) ||
                     (!initial_scan && !relationship_state_struc.next_time)) {
-                    relationship_state_struc.next_time = now;
+                    relationship_state_struc.next_time = scan_time;
                     if (wm_state_io(relationship_state_name, WM_IO_WRITE, &relationship_state_struc, sizeof(relationship_state_struc)) < 0) {
                         mterror(WM_MS_GRAPH_LOGTAG, "Couldn't save running state.");
                     } else if (isDebug()) {
-                        gmtime_r(&now, &tm_aux);
+                        gmtime_r(&scan_time, &tm_aux);
                         strftime(start_time_str, sizeof(start_time_str), "%Y-%m-%dT%H:%M:%SZ", &tm_aux);
                         mtdebug1(WM_MS_GRAPH_LOGTAG, "Bookmark updated to '%s' for tenant '%s' resource '%s' and relationship '%s', waiting '%d' seconds to run first scan.",
                             start_time_str, auth_config->tenant_id, ms_graph->resources[resource_num].name, ms_graph->resources[resource_num].relationships[relationship_num], ms_graph->scan_config.interval);
@@ -258,33 +268,22 @@ void wm_ms_graph_scan_relationships(wm_ms_graph* ms_graph, wm_ms_graph_auth* aut
                 gmtime_r(&relationship_state_struc.next_time, &tm_aux);
                 strftime(start_time_str, sizeof(start_time_str), "%Y-%m-%dT%H:%M:%SZ", &tm_aux);
 
-                gmtime_r(&now, &tm_aux);
+                gmtime_r(&scan_time, &tm_aux);
                 strftime(end_time_str, sizeof(end_time_str), "%Y-%m-%dT%H:%M:%SZ", &tm_aux);
             }
 
             snprintf(auth_header, OS_SIZE_8192 - 1, "Authorization: Bearer %s", auth_config->access_token);
             os_strdup(auth_header, headers[0]);
 
-            if (!strcmp(ms_graph->resources[resource_num].name, WM_MS_GRAPH_RESOURCE_DEVICE_MANAGEMENT)) {
-                if (!strcmp(ms_graph->resources[resource_num].relationships[relationship_num], WM_MS_GRAPH_RELATIONSHIP_AUDIT_EVENTS)) {
-                    snprintf(url, OS_SIZE_8192 - 1, WM_MS_GRAPH_API_URL_FILTER_ACTIVITY_DATE,
-                    auth_config->query_fqdn,
-                    ms_graph->version,
-                    WM_MS_GRAPH_RESOURCE_DEVICE_MANAGEMENT,
-                    WM_MS_GRAPH_RELATIONSHIP_AUDIT_EVENTS,
-                    ms_graph->page_size,
-                    start_time_str,
-                    end_time_str);
-                } else {
-                    snprintf(url, OS_SIZE_8192 - 1, WM_MS_GRAPH_API_URL,
-                    auth_config->query_fqdn,
-                    ms_graph->version,
-                    WM_MS_GRAPH_RESOURCE_DEVICE_MANAGEMENT,
-                    ms_graph->resources[resource_num].relationships[relationship_num],
-                    ms_graph->page_size);
-                }
+            if (inventory) {
+                snprintf(url, OS_SIZE_8192 - 1, WM_MS_GRAPH_API_URL,
+                auth_config->query_fqdn,
+                ms_graph->version,
+                ms_graph->resources[resource_num].name,
+                ms_graph->resources[resource_num].relationships[relationship_num],
+                ms_graph->page_size);
             } else {
-                snprintf(url, OS_SIZE_8192 - 1, WM_MS_GRAPH_API_URL_FILTER_CREATED_DATE,
+                snprintf(url, OS_SIZE_8192 - 1, activityFilter ? WM_MS_GRAPH_API_URL_FILTER_ACTIVITY_DATE : WM_MS_GRAPH_API_URL_FILTER_CREATED_DATE,
                 auth_config->query_fqdn,
                 ms_graph->version,
                 ms_graph->resources[resource_num].name,
@@ -381,7 +380,7 @@ void wm_ms_graph_scan_relationships(wm_ms_graph* ms_graph, wm_ms_graph_auth* aut
             }
 
             if (!inventory && !fail) {
-                relationship_state_struc.next_time = now;
+                relationship_state_struc.next_time = scan_time;
                 if (wm_state_io(relationship_state_name, WM_IO_WRITE, &relationship_state_struc, sizeof(relationship_state_struc)) < 0) {
                     mterror(WM_MS_GRAPH_LOGTAG, "Couldn't save running state.");
                 } else {
@@ -502,6 +501,9 @@ cJSON* wm_ms_graph_dump(const wm_ms_graph* ms_graph) {
     }
     if (ms_graph->page_size) {
         cJSON_AddNumberToObject(ms_graph_info, "page_size", ms_graph->page_size);
+    }
+    if (ms_graph->time_delay) {
+        cJSON_AddNumberToObject(ms_graph_info, "time_delay", ms_graph->time_delay);
     }
     if (ms_graph->run_on_start) {
         cJSON_AddStringToObject(ms_graph_info, "run_on_start", "yes");

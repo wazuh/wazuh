@@ -32,13 +32,6 @@ extern bool agent_handshake_to_server(int server_id, bool is_startup);
 extern void send_agent_stopped_message();
 extern int _s_verify_counter;
 
-#ifndef TEST_WINAGENT
-int __wrap_close(int fd) {
-    check_expected(fd);
-    return 0;
-}
-#endif
-
 int __wrap_send_msg(const char *msg, ssize_t msg_length) {
     check_expected(msg);
     return 0;
@@ -182,11 +175,8 @@ static void test_connect_server(void **state) {
     expect_any(__wrap_OS_ConnectTCP, _ip);
     expect_any(__wrap_OS_ConnectTCP, ipv6);
     will_return(__wrap_OS_ConnectTCP, 12);
-#ifndef TEST_WINAGENT
-    expect_value(__wrap_close, fd, 11);
-#else
-    expect_value(wrap_closesocket, fd, 11);
-#endif
+    expect_value(__wrap_OS_CloseSocket, sock, 11);
+    will_return(__wrap_OS_CloseSocket, 0);
 
     expect_any_count(__wrap__minfo, formatted_msg, 2);
 
@@ -198,11 +188,8 @@ static void test_connect_server(void **state) {
     /* Connect to third server (UDP), valid host name*/
     will_return(__wrap_getDefine_Int, 5);
     will_return(__wrap_OS_ConnectUDP, 13);
-#ifndef TEST_WINAGENT
-    expect_value(__wrap_close, fd, 12);
-#else
-    expect_value(wrap_closesocket, fd, 12);
-#endif
+    expect_value(__wrap_OS_CloseSocket, sock, 12);
+    will_return(__wrap_OS_CloseSocket, 0);
 
     expect_any_count(__wrap__minfo, formatted_msg, 2);
 
@@ -213,11 +200,8 @@ static void test_connect_server(void **state) {
 
     /* Connect to fourth server (UDP), invalid host name*/
     will_return(__wrap_getDefine_Int, 5);
-#ifndef TEST_WINAGENT
-    expect_value(__wrap_close, fd, 13);
-#else
-    expect_value(wrap_closesocket, fd, 13);
-#endif
+    expect_value(__wrap_OS_CloseSocket, sock, 13);
+    will_return(__wrap_OS_CloseSocket, 0);
 
     expect_any(__wrap__minfo, formatted_msg);
     expect_any(__wrap__merror, formatted_msg);
@@ -270,11 +254,8 @@ static void test_agent_handshake_to_server(void **state) {
     expect_any(__wrap_OS_ConnectTCP, _ip);
     expect_any(__wrap_OS_ConnectTCP, ipv6);
     will_return(__wrap_OS_ConnectTCP, 22);
-#ifndef TEST_WINAGENT
-    expect_value(__wrap_close, fd, 21);
-#else
-    expect_value(wrap_closesocket, fd, 21);
-#endif
+    expect_value(__wrap_OS_CloseSocket, sock, 21);
+    will_return(__wrap_OS_CloseSocket, 0);
     will_return(__wrap_wnet_select, 1);
     expect_any(__wrap_OS_RecvSecureTCP, sock);
     expect_any(__wrap_OS_RecvSecureTCP, size);
@@ -299,11 +280,8 @@ static void test_agent_handshake_to_server(void **state) {
     expect_any(__wrap_OS_ConnectTCP, _ip);
     expect_any(__wrap_OS_ConnectTCP, ipv6);
     will_return(__wrap_OS_ConnectTCP, 23);
-#ifndef TEST_WINAGENT
-    expect_value(__wrap_close, fd, 22);
-#else
-    expect_value(wrap_closesocket, fd, 22);
-#endif
+    expect_value(__wrap_OS_CloseSocket, sock, 22);
+    will_return(__wrap_OS_CloseSocket, 0);
     will_return(__wrap_wnet_select, 1);
     expect_any(__wrap_OS_RecvSecureTCP, sock);
     expect_any(__wrap_OS_RecvSecureTCP, size);
@@ -325,11 +303,8 @@ static void test_agent_handshake_to_server(void **state) {
     expect_string(__wrap_OS_GetHost, host, agt->server[0].rip);
     will_return(__wrap_OS_GetHost, strdup("127.0.0.1"));
     will_return(__wrap_OS_ConnectUDP, -1);
-#ifndef TEST_WINAGENT
-    expect_value(__wrap_close, fd, 23);
-#else
-    expect_value(wrap_closesocket, fd, 23);
-#endif
+    expect_value(__wrap_OS_CloseSocket, sock, 23);
+    will_return(__wrap_OS_CloseSocket, 0);
 
     expect_any(__wrap__minfo, formatted_msg);
     expect_any(__wrap__merror, formatted_msg);
@@ -355,11 +330,11 @@ static void test_agent_handshake_to_server(void **state) {
     expect_string(__wrap_OS_GetHost, host, agt->server[0].rip);
     will_return(__wrap_OS_GetHost, strdup("127.0.0.1"));
     will_return(__wrap_OS_ConnectUDP, 24);
+    expect_value(__wrap_OS_CloseSocket, sock, 23);
+    will_return(__wrap_OS_CloseSocket, 0);
 #ifndef TEST_WINAGENT
-    expect_value(__wrap_close, fd, 23);
     will_return(__wrap_recv, SERVER_WRONG_ACK);
 #else
-    expect_value(wrap_closesocket, fd, 23);
     will_return(wrap_recv, SERVER_WRONG_ACK);
 #endif
     will_return(__wrap_wnet_select, 1);
@@ -373,7 +348,6 @@ static void test_agent_handshake_to_server(void **state) {
 
     return;
 }
-
 
 static void test_agent_handshake_to_server_invalid_version(void **state) {
     bool handshaked = false;

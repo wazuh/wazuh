@@ -125,11 +125,6 @@ int __wrap_wnet_select(__attribute__((unused)) int sock,
     return (int)mock();
 }
 
-int __wrap_OS_CloseSocket(int sock) {
-    check_expected(sock);
-    return mock();
-}
-
 uint32_t __wrap_wnet_order(uint32_t value) {
     check_expected(value);
     return mock();
@@ -215,5 +210,10 @@ int __wrap_OS_RecvSecureClusterTCP(int sock, char *ret, size_t length) {
 
     strncpy(ret, mock_type(char*), length);
 
+    return mock();
+}
+
+int __wrap_OS_CloseSocket(int sock) {
+    check_expected(sock);
     return mock();
 }

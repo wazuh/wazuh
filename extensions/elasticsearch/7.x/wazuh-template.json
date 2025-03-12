@@ -2505,6 +2505,9 @@
               },
               "cve_version": {
                 "type": "keyword"
+              },
+              "scanner.reference": {
+                "type": "keyword"
               }
             }
           },
