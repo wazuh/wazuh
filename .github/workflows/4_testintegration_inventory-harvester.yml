@@ -12,7 +12,7 @@ on:
       - ".github/actions/build_target_cpp/action.yml"
       - "src/shared_modules/router/**"
       - "src/shared_modules/indexer_connector/**"
-      - "src/wazuh_modules/inventory-harvester/**"
+      - "src/wazuh_modules/inventory_harvester/**"
       - "src/shared_modules/utils/**"
 
 jobs:
