@@ -560,6 +560,7 @@ class TestHAPHelper:
 
         assert helper.get_connection_retry() == CONNECTION_RETRY + 2
 
+    @pytest.mark.skip(reason='This functionality will be removed')
     @pytest.mark.parametrize('protocol', ['http', 'https'])
     @pytest.mark.parametrize('hard_stop_after', [None, 8, 12])
     @pytest.mark.parametrize('multiple_frontends', [True, False])

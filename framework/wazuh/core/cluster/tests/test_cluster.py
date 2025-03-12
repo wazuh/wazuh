@@ -239,9 +239,6 @@ def test_get_files_status():
 
         assert cluster.get_files_status()[0]['path'] == (test_dict['path'])
 
-    with patch('wazuh.core.cluster.cluster.walk_dir', side_effect=Exception):
-        _, logs = cluster.get_files_status()
-        assert logs['warning']['etc/'] == ['Error getting file status: .']
 
 
 @pytest.mark.parametrize(

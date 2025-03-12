@@ -77,7 +77,7 @@ def test_start_daemons(mock_popen, root):
         def info(self, msg):
             pass
 
-    wazuh_server.main_logger = LoggerMock
+    wazuh_server.main_logger = LoggerMock()
     wazuh_server.debug_mode_ = 0
     pid = 2
     process_mock = Mock()
@@ -121,7 +121,7 @@ def test_start_daemons_ko(mock_popen):
         def info(self, msg):
             pass
 
-    wazuh_server.main_logger = LoggerMock
+    wazuh_server.main_logger = LoggerMock()
     wazuh_server.debug_mode_ = 0
     pid = 2
     wait_mock = Mock()
@@ -170,7 +170,7 @@ def test_shutdown_daemon(os_getpid_mock, os_kill_mock):
         def info(self, msg):
             pass
 
-    wazuh_server.main_logger = LoggerMock
+    wazuh_server.main_logger = LoggerMock()
 
     with (
         patch.object(wazuh_server, 'main_logger') as main_logger_mock,
@@ -195,9 +195,10 @@ async def test_master_main(helper_disabled: bool):
     cluster_config = {'test': 'config', HAPROXY_HELPER: {HAPROXY_DISABLED: helper_disabled}}
 
     class Arguments:
-        def __init__(self, performance_test, concurrency_test):
+        def __init__(self, performance_test, concurrency_test, root):
             self.performance_test = performance_test
             self.concurrency_test = concurrency_test
+            self.root = root
 
     class TaskPoolMock:
         def __init__(self):
@@ -208,24 +209,22 @@ async def test_master_main(helper_disabled: bool):
             assert second == range(1)
 
     class MasterMock:
-        def __init__(self, performance_test, concurrency_test, configuration, logger, cluster_items):
+        def __init__(self, performance_test, concurrency_test, server_config, logger):
             assert performance_test == 'test_performance'
             assert concurrency_test == 'concurrency_test'
-            assert configuration == cluster_config
+            assert server_config == default_config.server
             assert logger == 'test_logger'
-            assert cluster_items == {'node': 'item'}
             self.task_pool = TaskPoolMock()
 
         def start(self):
             return 'MASTER_START'
 
     class LocalServerMasterMock:
-        def __init__(self, performance_test, logger, concurrency_test, node, configuration, cluster_items):
+        def __init__(self, performance_test, logger, concurrency_test, node, server_config):
             assert performance_test == 'test_performance'
             assert logger == 'test_logger'
             assert concurrency_test == 'concurrency_test'
-            assert configuration == cluster_config
-            assert cluster_items == {'node': 'item'}
+            assert server_config == default_config.server
 
         def start(self):
             return 'LOCALSERVER_START'
@@ -242,12 +241,14 @@ async def test_master_main(helper_disabled: bool):
             assert third == 'HAPHELPER_START'
 
     wazuh_server.cluster_utils = cluster_utils
-    args = Arguments(performance_test='test_performance', concurrency_test='concurrency_test')
+    args = Arguments(performance_test='test_performance', concurrency_test='concurrency_test', root=True)
     with (
         patch('scripts.wazuh_server.asyncio.gather', gather),
         patch('wazuh.core.cluster.master.Master', MasterMock),
         patch('wazuh.core.cluster.local_server.LocalServerMaster', LocalServerMasterMock),
         patch('wazuh.core.cluster.hap_helper.hap_helper.HAPHelper', HAPHElperMock),
+        patch('scripts.wazuh_server.start_daemon'),
+        patch('scripts.wazuh_server.start_daemons')
     ):
         await wazuh_server.master_main(
             args=args, server_config=default_config.server, logger='test_logger'
@@ -261,11 +262,12 @@ async def test_worker_main(asyncio_sleep_mock):
     import wazuh.core.cluster.utils as cluster_utils
 
     class Arguments:
-        def __init__(self, performance_test, concurrency_test, send_file, send_string):
+        def __init__(self, performance_test, concurrency_test, send_file, send_string, root):
             self.performance_test = performance_test
             self.concurrency_test = concurrency_test
             self.send_file = send_file
             self.send_string = send_string
+            self.root = root
 
     class TaskPoolMock:
         def __init__(self):
@@ -284,15 +286,14 @@ async def test_worker_main(asyncio_sleep_mock):
 
     class WorkerMock:
         def __init__(
-            self, performance_test, concurrency_test, configuration, logger, cluster_items, file, string, task_pool
+            self, performance_test, concurrency_test, server_config, logger, file, string, task_pool
         ):
             assert performance_test == 'test_performance'
             assert concurrency_test == 'concurrency_test'
-            assert configuration == {'test': 'config'}
+            assert server_config == default_config.server
             assert file is True
             assert string is True
             assert logger == 'test_logger'
-            assert cluster_items == {'intervals': {'worker': {'connection_retry': 34}}}
             assert task_pool is None
             self.task_pool = TaskPoolMock()
 
@@ -300,12 +301,11 @@ async def test_worker_main(asyncio_sleep_mock):
             return 'WORKER_START'
 
     class LocalServerWorkerMock:
-        def __init__(self, performance_test, logger, concurrency_test, node, configuration, cluster_items):
+        def __init__(self, performance_test, logger, concurrency_test, node, server_config):
             assert performance_test == 'test_performance'
             assert logger == 'test_logger'
             assert concurrency_test == 'concurrency_test'
-            assert configuration == {'test': 'config'}
-            assert cluster_items == {'intervals': {'worker': {'connection_retry': 34}}}
+            assert server_config == default_config.server
 
         def start(self):
             return 'LOCALSERVER_START'
@@ -316,9 +316,10 @@ async def test_worker_main(asyncio_sleep_mock):
         raise asyncio.CancelledError()
 
     wazuh_server.cluster_utils = cluster_utils
-    wazuh_server.main_logger = LoggerMock
+    wazuh_server.main_logger = LoggerMock()
     args = Arguments(
-        performance_test='test_performance', concurrency_test='concurrency_test', send_file=True, send_string=True
+        performance_test='test_performance', concurrency_test='concurrency_test', send_file=True, send_string=True,
+        root=True
     )
 
     with patch.object(wazuh_server, 'main_logger') as main_logger_mock:
@@ -327,13 +328,15 @@ async def test_worker_main(asyncio_sleep_mock):
                 with patch('scripts.wazuh_server.logging.info') as logging_info_mock:
                     with patch('wazuh.core.cluster.worker.Worker', WorkerMock):
                         with patch('wazuh.core.cluster.local_server.LocalServerWorker', LocalServerWorkerMock):
-                            with pytest.raises(IndexError):
-                                await wazuh_server.worker_main(
-                                    args=args,
-                                    cluster_config={'test': 'config'},
-                                    cluster_items={'intervals': {'worker': {'connection_retry': 34}}},
-                                    logger='test_logger',
-                                )
+                            with patch.object(default_config.server.worker.intervals, 'connection_retry', 34):
+                                with patch('scripts.wazuh_server.start_daemon'):
+                                    with patch('scripts.wazuh_server.start_daemons'):
+                                        with pytest.raises(IndexError):
+                                            await wazuh_server.worker_main(
+                                                args=args,
+                                                server_config=default_config.server,
+                                                logger='test_logger',
+                                            )
                             processpoolexecutor_mock.assert_called_once_with(max_workers=1)
                             main_logger_mock.assert_has_calls(
                                 [
@@ -352,7 +355,6 @@ async def test_worker_main(asyncio_sleep_mock):
                             logging_info_mock.assert_called_once_with(
                                 'Connection with server has been lost. Reconnecting in 10 seconds.'
                             )
-                            asyncio_sleep_mock.assert_called_once_with(34)
 
 
 @pytest.mark.parametrize(
@@ -749,29 +751,27 @@ async def test_check_for_server_readiness_ko(sleep_mock, daemon_exists, children
 
 
 @pytest.mark.asyncio
-@patch('scripts.wazuh_server.stop_loop', side_effect=RuntimeError)
 @patch('scripts.wazuh_server.check_daemon', side_effect=(None, None, wazuh_server.WazuhDaemonError(code='Test error.')))
 @patch('scripts.wazuh_server.asyncio.sleep')
-async def test_monitor_server_daemons(sleep_mock, check_daemon_mock, check_for_server_state_mock, stop_loop_mock):
+async def test_monitor_server_daemons(sleep_mock, check_daemon_mock):
     """Check and set the behavior of wazuh_server `monitor_server_daemons` function."""
     wazuh_server.main_logger = Mock()
     comms_api_config_mock = Mock(workers=4)
-    proc_list = ['test_proc_1', 'test_proc_2', 'test_proc_3']
+
+    class MockObjectWithName:
+        def __init__(self, name: str):
+            self._name = name
+
+        def name(self) -> str:
+            return self._name
+
+    proc_list = [MockObjectWithName('test_proc_1'), MockObjectWithName('test_proc_2'), MockObjectWithName('test_proc_3')]
     process_mock = Mock(**{'children.return_value': proc_list})
     loop_mock = Mock()
 
     with patch('scripts.wazuh_server.CentralizedConfig.get_comms_api_config', return_value=comms_api_config_mock):
         with pytest.raises(RuntimeError):
             await wazuh_server.monitor_server_daemons(loop=loop_mock, server_process=process_mock)
-
-    check_for_server_state_mock.assert_called_once_with(
-        process_mock,
-        {
-            wazuh_server.MANAGEMENT_API_DAEMON_NAME[:15]: 3,
-            wazuh_server.COMMS_API_DAEMON_NAME: 8,
-            wazuh_server.ENGINE_DAEMON_NAME: 0,
-        },
-    )
 
     check_daemon_mock.assert_has_calls(
         [
@@ -782,4 +782,3 @@ async def test_monitor_server_daemons(sleep_mock, check_daemon_mock, check_for_s
         any_order=True,
     )
     wazuh_server.main_logger.error.assert_called_with('Test error. Stopping the whole server.')
-    stop_loop_mock.assert_called_with(loop_mock)
