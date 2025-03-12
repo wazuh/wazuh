@@ -1,10 +1,16 @@
 from fastapi import Request
+from pydantic import BaseModel
+from wazuh.core.indexer.models.commands import Command
 
-from comms_api.models.commands import Commands
+
+class Commands(BaseModel):
+    """Body containing a list of commands."""
+
+    commands: list[Command]
 
 
 async def post_commands(request: Request, commands: Commands) -> Commands:
-    """Post commands to the Communications API.
+    """Post commands to the API unix server.
 
     Parameters
     ----------
