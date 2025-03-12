@@ -12,6 +12,7 @@
 #ifndef _CMD_ARGS_PARSER_HPP_
 #define _CMD_ARGS_PARSER_HPP_
 
+#include <filesystem>
 #include <iostream>
 #include <sstream>
 #include <string>
@@ -144,6 +145,23 @@ private:
         }
 
         std::vector<std::string> actionsValues;
+
+        if (values.find(".json") == std::string::npos)
+        {
+            std::filesystem::path path {values};
+            if (!std::filesystem::exists(path))
+            {
+                throw std::runtime_error {"Input files path: " + values + " not found."};
+            }
+
+            for (const auto& entry : std::filesystem::directory_iterator(values))
+            {
+                actionsValues.push_back(entry.path().string());
+            }
+
+            return actionsValues;
+        }
+
         std::stringstream ss {values};
 
         while (ss.good())
