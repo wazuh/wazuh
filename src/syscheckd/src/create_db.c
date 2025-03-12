@@ -622,7 +622,8 @@ time_t fim_scan() {
         fim_print_info(start, end, cputime_start); // LCOV_EXCL_LINE
     }
     audit_queue_full_reported = 0;
-    ebpf_queue_full_reported = 0;
+    ebpf_kernel_queue_full_reported = 0;
+    ebpf_whodata_queue_full_reported = 0;
 
     return end_of_scan;
 }

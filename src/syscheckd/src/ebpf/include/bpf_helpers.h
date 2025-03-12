@@ -30,7 +30,7 @@ typedef struct bpf_object *(*bpf_object__open_file_t)(const char *path, const st
 typedef int (*bpf_object__load_t)(struct bpf_object *obj);
 typedef int (*ring_buffer_sample_fn)(void *ctx, void *data, size_t size);
 typedef struct ring_buffer *(*ring_buffer__new_t)(int fd, ring_buffer_sample_fn sample_cb, void *ctx, void *flags);
-typedef int (*ring_buffer__consume_t)(struct ring_buffer *rb);
+typedef int (*ring_buffer__poll_t)(struct ring_buffer *rb, int timeout);
 typedef void (*ring_buffer__free_t)(struct ring_buffer *rb);
 typedef void (*bpf_object__close_t)(struct bpf_object *obj);
 typedef struct bpf_program *(*bpf_object__next_program_t)(const struct bpf_object *obj, struct bpf_program *prog);
@@ -55,7 +55,7 @@ typedef struct {
     bpf_object__open_file_t bpf_object_open_file;
     bpf_object__load_t bpf_object_load;
     ring_buffer__new_t ring_buffer_new;
-    ring_buffer__consume_t ring_buffer_consume;
+    ring_buffer__poll_t ring_buffer_poll;
     ring_buffer__free_t ring_buffer_free;
     bpf_object__close_t bpf_object_close;
     bpf_object__next_program_t bpf_object_next_program;
@@ -92,7 +92,7 @@ bool w_bpf_deinit(w_bpf_helpers_t *bpf_helpers) {
         bpf_helpers->bpf_object_open_file = NULL;
         bpf_helpers->bpf_object_load = NULL;
         bpf_helpers->ring_buffer_new = NULL;
-        bpf_helpers->ring_buffer_consume = NULL;
+        bpf_helpers->ring_buffer_poll = NULL;
         bpf_helpers->ring_buffer_free = NULL;
         bpf_helpers->bpf_object_close = NULL;
         bpf_helpers->bpf_object_next_program = NULL;

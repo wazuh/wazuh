@@ -39,8 +39,8 @@ static volatile bool epbf_hc_created = false;
 static volatile bool event_received = false;
 static bpf_object* global_obj = nullptr;
 w_bpf_helpers_t * bpf_helpers = NULL;
-extern int ebpf_queue_full_reported;
-int ebpf_queue_full_reported = 0;
+int ebpf_kernel_queue_full_reported = 0;
+int ebpf_whodata_queue_full_reported = 0;
 
 struct file_event {
     __u32 pid;
@@ -56,47 +56,52 @@ struct file_event {
     char parent_comm[TASK_COMM_LEN];
 };
 
-std::queue<std::unique_ptr<file_event>> eventQueue;
-std::mutex queueMutex;
-std::condition_variable eventCondition;
+std::queue<std::unique_ptr<file_event>> kernelEventQueue;
+std::queue<std::unique_ptr<file_event>> whodataEventQueue;
+std::mutex kernelQueueMutex;
+std::mutex whodataQueueMutex;
+std::condition_variable kernelEventCondition;
+std::condition_variable whodataEventCondition;
 extern bool is_fim_shutdown;
 
 static char* uint_to_str(unsigned int num) {
     std::string s = std::to_string(num);
     return strdup(s.c_str());
 }
+
 static char* ulong_to_str(unsigned long long num) {
     std::string s = std::to_string(num);
     return strdup(s.c_str());
 }
 
+/* Callback for normal whodata events */
 int handle_event(void* ctx, void* data, size_t data_sz) {
-    (void)ctx; (void)data_sz;
+    (void)ctx;
+    (void)data_sz;
+
     file_event* e = static_cast<file_event*>(data);
     auto new_event = std::make_unique<file_event>(*e);
     auto logFn = fimebpf::instance().m_loggingFunction;
 
     {
-        std::lock_guard<std::mutex> lock(queueMutex);
+        std::lock_guard<std::mutex> lock(kernelQueueMutex);
 
-        if (eventQueue.size() >= syscheck.queue_size) {
-            eventQueue.pop();
-            if (!ebpf_queue_full_reported) {
-                logFn(LOG_WARNING, FIM_FULL_EBPF_QUEUE);
-                ebpf_queue_full_reported = 1;
+        if (kernelEventQueue.size() >= syscheck.queue_size) {
+            kernelEventQueue.pop();
+            if (!ebpf_kernel_queue_full_reported) {
+                logFn(LOG_WARNING, FIM_FULL_EBPF_KERNEL_QUEUE);
+                ebpf_kernel_queue_full_reported = 1;
             }
         }
 
-        directory_t* config = fimebpf::instance().m_fim_configuration_directory(new_event->filename);
-        if (config && (config->options & WHODATA_ACTIVE) && (config->options & EBPF_DRIVER)) {
-            eventQueue.push(std::move(new_event));
-            eventCondition.notify_one();
-        }
+        kernelEventQueue.push(std::move(new_event));
+        kernelEventCondition.notify_one();
     }
 
     return 0;
 }
 
+/* Callback for healthcheck */
 int healthcheck_event(void* ctx, void* data, size_t data_sz) {
     (void)ctx; (void)data_sz;
     file_event* e = static_cast<file_event*>(data);
@@ -107,85 +112,104 @@ int healthcheck_event(void* ctx, void* data, size_t data_sz) {
     return 0;
 }
 
-
-int initialize_bpf_object(ring_buffer** rb, ring_buffer_sample_fn sample_cb) {
-    bpf_object* obj = nullptr;
-    int err;
-    auto logFn = fimebpf::instance().m_loggingFunction;
-    auto abspathFn = fimebpf::instance().m_abspath;
-    char libbpf_path[PATH_MAX] = {0};
-    char bpfobj_path[PATH_MAX] = {0};
-
-    abspathFn(LIB_INSTALL_PATH, libbpf_path, sizeof(libbpf_path));
-    abspathFn(BPF_OBJ_INSTALL_PATH, bpfobj_path, sizeof(bpfobj_path));
+static int init_libbpf() {
+    if (bpf_helpers != NULL) {
+        // Already initialized, do nothing
+        return 0;
+    }
 
     bpf_helpers = (w_bpf_helpers_t *)calloc(1, sizeof(w_bpf_helpers_t));
-    bpf_helpers->module = dlopen(libbpf_path, RTLD_LAZY);
-
-
-    if (bpf_helpers->module) {
-        bpf_helpers->bpf_object_destroy_skeleton = (bpf_object__destroy_skeleton_t)dlsym(bpf_helpers->module, "bpf_object__destroy_skeleton");
-        bpf_helpers->bpf_object_open_skeleton = (bpf_object__open_skeleton_t)dlsym(bpf_helpers->module, "bpf_object__open_skeleton");
-        bpf_helpers->bpf_object_load_skeleton = (bpf_object__load_skeleton_t)dlsym(bpf_helpers->module, "bpf_object__load_skeleton");
-        bpf_helpers->bpf_object_attach_skeleton = (bpf_object__attach_skeleton_t)dlsym(bpf_helpers->module, "bpf_object__attach_skeleton");
-        bpf_helpers->bpf_object_detach_skeleton = (bpf_object__detach_skeleton_t)dlsym(bpf_helpers->module, "bpf_object__detach_skeleton");
-
-        bpf_helpers->bpf_object_open_file = (bpf_object__open_file_t)dlsym(bpf_helpers->module, "bpf_object__open_file");
-        bpf_helpers->bpf_object_load = (bpf_object__load_t)dlsym(bpf_helpers->module, "bpf_object__load");
-        bpf_helpers->ring_buffer_new = (ring_buffer__new_t)dlsym(bpf_helpers->module, "ring_buffer__new");
-        bpf_helpers->ring_buffer_consume = (ring_buffer__consume_t)dlsym(bpf_helpers->module, "ring_buffer__consume");
-        bpf_helpers->ring_buffer_free = (ring_buffer__free_t)dlsym(bpf_helpers->module, "ring_buffer__free");
-        bpf_helpers->bpf_object_close = (bpf_object__close_t)dlsym(bpf_helpers->module, "bpf_object__close");
-        bpf_helpers->bpf_object_next_program = (bpf_object__next_program_t)dlsym(bpf_helpers->module, "bpf_object__next_program");
-        bpf_helpers->bpf_program_attach = (bpf_program__attach_t)dlsym(bpf_helpers->module, "bpf_program__attach");
-        bpf_helpers->bpf_object_find_map_fd_by_name = (bpf_object__find_map_fd_by_name_t)dlsym(bpf_helpers->module, "bpf_object__find_map_fd_by_name");
-
-        // Check if all functions were loaded successfully
-        if (bpf_helpers->bpf_object_open_file != NULL &&
-            bpf_helpers->bpf_object_load != NULL &&
-            bpf_helpers->ring_buffer_new != NULL &&
-            bpf_helpers->ring_buffer_consume != NULL &&
-            bpf_helpers->ring_buffer_free != NULL &&
-            bpf_helpers->bpf_object_close != NULL &&
-            bpf_helpers->bpf_object_next_program != NULL &&
-            bpf_helpers->bpf_program_attach != NULL &&
-            bpf_helpers->bpf_object_find_map_fd_by_name != NULL &&
-            bpf_helpers->bpf_object_open_skeleton != NULL &&
-            bpf_helpers->bpf_object_destroy_skeleton != NULL &&
-            bpf_helpers->bpf_object_load_skeleton != NULL &&
-            bpf_helpers->bpf_object_attach_skeleton != NULL &&
-            bpf_helpers->bpf_object_detach_skeleton != NULL){
-            logFn(LOG_DEBUG_VERBOSE, FIM_EBPF_LIB_LOADED);
-        } else {
-            logFn(LOG_ERROR, FIM_ERROR_EBPF_LIB_LOAD);
-            w_bpf_deinit(bpf_helpers);
-            free(bpf_helpers);
-            bpf_helpers = NULL;
-        }
-    } else {
-        logFn(LOG_ERROR, FIM_ERROR_EBPF_LIB_OPEN);
-        free(bpf_helpers);
-        bpf_helpers = NULL;
+    if (!bpf_helpers) {
+        return 1;
     }
-    obj = bpf_helpers->bpf_object_open_file(bpfobj_path, nullptr);
-    if (!obj) {
-        char error_message[1024];
-        snprintf(error_message, sizeof(error_message), FIM_ERROR_EBPF_OBJ_OPEN, bpfobj_path);
-        logFn(LOG_ERROR, error_message);
-        w_bpf_deinit(bpf_helpers);
+
+    bpf_helpers->module = dlopen(LIB_INSTALL_PATH, RTLD_LAZY);
+    if (!bpf_helpers->module) {
         free(bpf_helpers);
         bpf_helpers = NULL;
         return 1;
     }
+
+    /* Load all required symbols */
+    bpf_helpers->bpf_object_destroy_skeleton = (bpf_object__destroy_skeleton_t)dlsym(bpf_helpers->module, "bpf_object__destroy_skeleton");
+    bpf_helpers->bpf_object_open_skeleton    = (bpf_object__open_skeleton_t)dlsym(bpf_helpers->module, "bpf_object__open_skeleton");
+    bpf_helpers->bpf_object_load_skeleton    = (bpf_object__load_skeleton_t)dlsym(bpf_helpers->module, "bpf_object__load_skeleton");
+    bpf_helpers->bpf_object_attach_skeleton  = (bpf_object__attach_skeleton_t)dlsym(bpf_helpers->module, "bpf_object__attach_skeleton");
+    bpf_helpers->bpf_object_detach_skeleton  = (bpf_object__detach_skeleton_t)dlsym(bpf_helpers->module, "bpf_object__detach_skeleton");
+
+    bpf_helpers->bpf_object_open_file        = (bpf_object__open_file_t)dlsym(bpf_helpers->module, "bpf_object__open_file");
+    bpf_helpers->bpf_object_load             = (bpf_object__load_t)dlsym(bpf_helpers->module, "bpf_object__load");
+    bpf_helpers->ring_buffer_new             = (ring_buffer__new_t)dlsym(bpf_helpers->module, "ring_buffer__new");
+    bpf_helpers->ring_buffer_poll            = (ring_buffer__poll_t)dlsym(bpf_helpers->module, "ring_buffer__poll");
+    bpf_helpers->ring_buffer_free            = (ring_buffer__free_t)dlsym(bpf_helpers->module, "ring_buffer__free");
+    bpf_helpers->bpf_object_close            = (bpf_object__close_t)dlsym(bpf_helpers->module, "bpf_object__close");
+    bpf_helpers->bpf_object_next_program     = (bpf_object__next_program_t)dlsym(bpf_helpers->module, "bpf_object__next_program");
+    bpf_helpers->bpf_program_attach          = (bpf_program__attach_t)dlsym(bpf_helpers->module, "bpf_program__attach");
+    bpf_helpers->bpf_object_find_map_fd_by_name = (bpf_object__find_map_fd_by_name_t)dlsym(bpf_helpers->module, "bpf_object__find_map_fd_by_name");
+
+    auto logFn = fimebpf::instance().m_loggingFunction;
+
+    if (!bpf_helpers->bpf_object_open_file ||
+        !bpf_helpers->bpf_object_load ||
+        !bpf_helpers->ring_buffer_new ||
+        !bpf_helpers->ring_buffer_poll ||
+        !bpf_helpers->ring_buffer_free ||
+        !bpf_helpers->bpf_object_close ||
+        !bpf_helpers->bpf_object_next_program ||
+        !bpf_helpers->bpf_program_attach ||
+        !bpf_helpers->bpf_object_find_map_fd_by_name ||
+        !bpf_helpers->bpf_object_open_skeleton ||
+        !bpf_helpers->bpf_object_destroy_skeleton ||
+        !bpf_helpers->bpf_object_load_skeleton ||
+        !bpf_helpers->bpf_object_attach_skeleton ||
+        !bpf_helpers->bpf_object_detach_skeleton)
+    {
+        logFn(LOG_ERROR, FIM_ERROR_EBPF_LIB_LOAD);
+        dlclose(bpf_helpers->module);
+        free(bpf_helpers);
+        bpf_helpers = NULL;
+        return 1;
+    }
+
+    // Successfully loaded libbpf
+    logFn(LOG_DEBUG_VERBOSE, FIM_EBPF_LIB_LOADED);
+    return 0;
+}
+
+static void close_libbpf_at_end() {
+    if (bpf_helpers) {
+        if (bpf_helpers->module) {
+            dlclose(bpf_helpers->module);
+        }
+        free(bpf_helpers);
+        bpf_helpers = NULL;
+    }
+}
+
+static int open_bpf_object_map(ring_buffer** rb, ring_buffer_sample_fn sample_cb) {
+    auto logFn = fimebpf::instance().m_loggingFunction;
+    auto abspathFn = fimebpf::instance().m_abspath;
+    char bpfobj_path[PATH_MAX] = {0};
+    abspathFn(BPF_OBJ_INSTALL_PATH, bpfobj_path, sizeof(bpfobj_path));
+
+    if (!bpf_helpers) {
+        return 1;
+    }
+
+    bpf_object* obj = bpf_helpers->bpf_object_open_file(bpfobj_path, nullptr);
+    if (!obj) {
+        char error_message[1024];
+        snprintf(error_message, sizeof(error_message), FIM_ERROR_EBPF_OBJ_OPEN, bpfobj_path);
+        logFn(LOG_ERROR, error_message);
+        return 1;
+    }
     global_obj = obj;
 
-    err = bpf_helpers->bpf_object_load(obj);
+    int err = bpf_helpers->bpf_object_load(obj);
     if (err) {
         logFn(LOG_ERROR, FIM_ERROR_EBPF_OBJ_LOAD);
         bpf_helpers->bpf_object_close(obj);
-        w_bpf_deinit(bpf_helpers);
-        free(bpf_helpers);
-        bpf_helpers = NULL;
+        global_obj = nullptr;
         return 1;
     }
 
@@ -194,9 +218,7 @@ int initialize_bpf_object(ring_buffer** rb, ring_buffer_sample_fn sample_cb) {
         if (!bpf_helpers->bpf_program_attach(prog)) {
             logFn(LOG_ERROR, FIM_ERROR_EBPF_OBJ_ATTACH);
             bpf_helpers->bpf_object_close(obj);
-            w_bpf_deinit(bpf_helpers);
-            free(bpf_helpers);
-            bpf_helpers = NULL;
+            global_obj = nullptr;
             return 1;
         }
     }
@@ -205,9 +227,7 @@ int initialize_bpf_object(ring_buffer** rb, ring_buffer_sample_fn sample_cb) {
     if (rb_fd < 0) {
         logFn(LOG_ERROR, FIM_ERROR_EBPF_RINGBUFF_MAP);
         bpf_helpers->bpf_object_close(obj);
-        w_bpf_deinit(bpf_helpers);
-        free(bpf_helpers);
-        bpf_helpers = NULL;
+        global_obj = nullptr;
         return 1;
     }
 
@@ -215,27 +235,97 @@ int initialize_bpf_object(ring_buffer** rb, ring_buffer_sample_fn sample_cb) {
     if (!*rb) {
         logFn(LOG_ERROR, FIM_ERROR_EBPF_RINGBUFF_NEW);
         bpf_helpers->bpf_object_close(obj);
-        w_bpf_deinit(bpf_helpers);
-        free(bpf_helpers);
-        bpf_helpers = NULL;
+        global_obj = nullptr;
         return 1;
     }
+
     return 0;
 }
 
+static void close_bpf_object_map(ring_buffer* rb) {
+    if (bpf_helpers && rb) {
+        bpf_helpers->ring_buffer_free(rb);
+    }
+    if (bpf_helpers && global_obj) {
+        bpf_helpers->bpf_object_close(global_obj);
+        global_obj = nullptr;
+    }
+}
+
+/* Worker thread to pop events from kernelEventQueue */
 void ebpf_pop_events() {
+    auto logFn = fimebpf::instance().m_loggingFunction;
     while (!is_fim_shutdown) {
         std::unique_ptr<file_event> event;
 
         {
-            std::unique_lock<std::mutex> lock(queueMutex);
-            eventCondition.wait_for(lock, std::chrono::milliseconds(100), []{ return !eventQueue.empty() || is_fim_shutdown; });
+            std::unique_lock<std::mutex> lock(kernelQueueMutex);
+            kernelEventCondition.wait_for(lock, std::chrono::milliseconds(100),
+                                    []{ return !kernelEventQueue.empty() || is_fim_shutdown; });
 
             if (is_fim_shutdown) return;
 
-            if (!eventQueue.empty()) {
-                event = std::move(eventQueue.front());
-                eventQueue.pop();
+            if (!kernelEventQueue.empty()) {
+                event = std::move(kernelEventQueue.front());
+                kernelEventQueue.pop();
+            }
+        }
+
+        if (event) {
+            directory_t* config = fimebpf::instance().m_fim_configuration_directory(event->filename);
+            if (config && (config->options & WHODATA_ACTIVE) && (config->options & EBPF_DRIVER)) {
+                {
+                    std::lock_guard<std::mutex> lock(whodataQueueMutex);
+
+                    if (whodataEventQueue.size() >= syscheck.queue_size) {
+                        whodataEventQueue.pop();
+                        if (!ebpf_whodata_queue_full_reported) {
+                            logFn(LOG_WARNING, FIM_FULL_EBPF_WHODATA_QUEUE);
+                            ebpf_whodata_queue_full_reported = 1;
+                        }
+                    }
+
+                    whodataEventQueue.push(std::move(event));
+                    whodataEventCondition.notify_one();
+                }
+                whodata_evt* w_evt = new whodata_evt{};
+
+                w_evt->path = strdup(event->filename);
+                w_evt->process_name = strdup(event->comm);
+                w_evt->user_id = uint_to_str(event->uid);
+                w_evt->user_name = fimebpf::instance().m_get_user(event->uid);
+                w_evt->group_id = uint_to_str(event->gid);
+                w_evt->group_name = fimebpf::instance().m_get_group(event->gid);
+                w_evt->inode = ulong_to_str(event->inode);
+                w_evt->dev = ulong_to_str(event->dev);
+                w_evt->process_id = event->pid;
+                w_evt->ppid = event->ppid;
+                w_evt->cwd = strdup(event->cwd);
+                w_evt->parent_cwd = strdup(event->parent_cwd);
+                w_evt->parent_name = strdup(event->parent_comm);
+
+                fimebpf::instance().m_fim_whodata_event(w_evt);
+                fimebpf::instance().m_free_whodata_event(w_evt);
+            }
+        }
+    }
+}
+
+/* Worker thread to pop events from whodataEventQueue */
+void whodata_pop_events() {
+    while (!is_fim_shutdown) {
+        std::unique_ptr<file_event> event;
+
+        {
+            std::unique_lock<std::mutex> lock(whodataQueueMutex);
+            whodataEventCondition.wait_for(lock, std::chrono::milliseconds(100),
+                                    []{ return !whodataEventQueue.empty() || is_fim_shutdown; });
+
+            if (is_fim_shutdown) return;
+
+            if (!whodataEventQueue.empty()) {
+                event = std::move(whodataEventQueue.front());
+                whodataEventQueue.pop();
             }
         }
 
@@ -272,34 +362,32 @@ void fimebpf_initialize(directory_t *(*fim_conf)(const char *),
                         void (*fimWhodataEvent)(whodata_evt *),
                         void (*freeWhodataEvent)(whodata_evt *),
                         void (*loggingFn)(modules_log_level_t, const char *),
-                        char *(*abspathFn)(const char *, char *, size_t))
-{
+                        char *(*abspathFn)(const char *, char *, size_t)) {
     fimebpf::instance().initialize(fim_conf, getUser, getGroup, fimWhodataEvent, freeWhodataEvent,
                                    loggingFn, abspathFn);
 }
 
 int ebpf_whodata_healthcheck() {
-    int ret;
     ring_buffer* rb = nullptr;
-    char ebpf_hc_abs_path[PATH_MAX] = {0};
     auto logFn = fimebpf::instance().m_loggingFunction;
     auto abspathFn = fimebpf::instance().m_abspath;
+    char ebpf_hc_abs_path[PATH_MAX] = {0};
     char error_message[1024];
 
-    if (initialize_bpf_object(&rb, healthcheck_event)) {
+    if (init_libbpf() != 0) {
+        return 1;
+    }
+    if (open_bpf_object_map(&rb, healthcheck_event) != 0) {
         return 1;
     }
 
     time_t start_time = time(nullptr);
     while (!event_received) {
-        ret = bpf_helpers->ring_buffer_consume(rb);
-        if (ret == 0) {
-            usleep(200);
-        } else if (ret < 0) {
-            logFn(LOG_INFO, FIM_ERROR_EBPF_RINGBUFF_CONSUME);
+        int ret = bpf_helpers->ring_buffer_poll(rb, 200);
+        if (ret < 0) {
+            logFn(LOG_ERROR, FIM_ERROR_EBPF_RINGBUFF_CONSUME);
             break;
         }
-
         if (time(nullptr) - start_time >= 10) {
             logFn(LOG_ERROR, FIM_ERROR_EBPF_HEALTHCHECK_TIMEOUT);
             break;
@@ -319,12 +407,13 @@ int ebpf_whodata_healthcheck() {
         }
     }
 
+    // remove the tmp file
     if (std::remove(ebpf_hc_abs_path) != 0) {
         snprintf(error_message, sizeof(error_message), FIM_ERROR_EBPF_HEALTHCHECK_FILE_DEL, ebpf_hc_abs_path);
         logFn(LOG_ERROR, error_message);
     }
-    bpf_helpers->ring_buffer_free(rb);
-    bpf_helpers->bpf_object_close(global_obj);
+
+    close_bpf_object_map(rb);
 
     if (!event_received) {
         return 1;
@@ -335,33 +424,34 @@ int ebpf_whodata_healthcheck() {
 }
 
 int ebpf_whodata() {
-    int ret;
-    ring_buffer* rb = nullptr;
     auto logFn = fimebpf::instance().m_loggingFunction;
+    ring_buffer* rb = nullptr;
+    int ret;
 
-    if (initialize_bpf_object(&rb, handle_event)) {
+    if (open_bpf_object_map(&rb, handle_event) != 0) {
         return 1;
     }
 
     std::thread ebpf_pop_thread(ebpf_pop_events);
     ebpf_pop_thread.detach();
 
+    std::thread whodata_pop_thread(whodata_pop_events);
+    whodata_pop_thread.detach();
+
     while (!is_fim_shutdown) {
-        ret = bpf_helpers->ring_buffer_consume(rb);
-        if (ret == 0) {
-            usleep(200);
-        } else if (ret < 0) {
-            logFn(LOG_INFO, FIM_ERROR_EBPF_RINGBUFF_CONSUME);
+        ret = bpf_helpers->ring_buffer_poll(rb, 200);
+        if (ret < 0) {
+            logFn(LOG_ERROR, FIM_ERROR_EBPF_RINGBUFF_CONSUME);
             break;
         }
     }
 
-    eventCondition.notify_all();
-    bpf_helpers->ring_buffer_free(rb);
-    bpf_helpers->bpf_object_close(global_obj);
+    kernelEventCondition.notify_all();
+    whodataEventCondition.notify_all();
+    close_bpf_object_map(rb);
     w_bpf_deinit(bpf_helpers);
-    free(bpf_helpers);
-    bpf_helpers = NULL;
+    close_libbpf_at_end();
+
     return 0;
 }
 
