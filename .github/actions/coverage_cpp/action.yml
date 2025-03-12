@@ -1,0 +1,132 @@
+name: "Coverage CPP"
+description: "Calculates the coverage for a module located on a given path"
+
+inputs:
+  path:
+    required: true
+    description: "Path to the module"
+  test_directory:
+    required: true
+    description: "Directory where the tests are located"
+  id:
+    required: true
+    description: "Module identifier, used to name the artifact"
+  threshold:
+    required: false
+    description: "Threshold for the coverage"
+    default: "90"
+
+runs:
+  using: "composite"
+  steps:
+      - name: Dependencies for local execution
+        if: env.ACT # Only run for local execution
+        shell: bash
+        run: |
+
+          # Update packages
+          sudo apt-get update
+          sudo apt-get install -y bc
+
+      # Dependencies for testing:
+      # - lcov
+      - name: Install dependencies
+        uses: awalsh128/cache-apt-pkgs-action@v1.4.3
+        with:
+          packages: lcov
+          version: 1.0
+
+      # Generate the coverage files
+      - name: Generate coverage files
+        shell: bash
+        run: |
+          BUILD_DIR=$(pwd)/src/build
+          cd ${{ inputs.path }}
+
+          # Set arguments
+          arguments="--capture "
+
+          # Set working directory
+          arguments+="--directory $BUILD_DIR "
+
+          # Set output file
+          arguments+="--output-file $BUILD_DIR/coverage.info "
+
+          # # Disable branch coverage
+          arguments+="-rc lcov_branch_coverage=0 "
+
+          # Include test files
+          include_files=""
+          if [[ ${{ inputs.path }} =~ "shared_modules/utils" ]]; then
+            paths="."
+          else
+            paths="src/ include/"
+          fi
+
+          for file in $(find $paths -type f -regextype posix-extended -regex ".*/*\.(hpp|cpp|h|c)")
+          do
+            file=$(echo $file | sed 's/\.\///g')
+            if [[ ! "$file" =~ "_generated.h" ]]; then
+              include_files+="--include=$(pwd)$dir/$file "
+            fi
+          done
+          arguments+="$include_files"
+
+          echo "Executing: lcov $arguments"
+          lcov $arguments
+
+      # Generate the HTML coverage report
+      - name: Generate coverage report
+        shell: bash
+        run: |
+          cd $(pwd)/src/build
+
+          # Generate HTML report
+          genhtml coverage.info --output-directory coverage_report
+
+      # Upload the coverage report as an artifact
+      - name: Uploading coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Coverage Report - ${{ inputs.id }}
+          path: ./src/build/coverage_report
+          retention-days: 1
+
+      # Check whether the coverage is greater than 90% both for lines and functions
+      - name: Validate coverage
+        shell: bash
+        run: |
+
+          cd $(pwd)/src/
+
+          # Obtain the coverage data
+          coverageData=($(lcov --list build/coverage.info | tail -n1 | grep -oE '[0-9.]+%'))
+
+          # Check if lines the coverage is greater than the threadhold
+          linesCoverage=$(echo "${coverageData[0]}" | sed 's/%//')
+          echo "Lines coverage is: $linesCoverage %"
+          if ! (( $(echo "$linesCoverage > ${{ inputs.threshold }}" | bc -l) )); then
+            echo "----------------------------------------"
+            echo "FAILED: Lines coverage is lower than ${{ inputs.threshold }}%"
+            echo "----------------------------------------"
+            exit 1
+          else
+            echo "------------------------------------------"
+            echo "PASSED: Lines coverage is greater than ${{ inputs.threshold }}%"
+            echo "------------------------------------------"
+          fi
+
+          # Check if functions coverage is greater than the threadhold
+          functionsCoverage=$(echo "${coverageData[1]}" | sed 's/%//')
+          echo "Functions coverage is: $functionsCoverage %"
+          if ! (( $(echo "$functionsCoverage > ${{ inputs.threshold }}" | bc -l) )); then
+            echo "---------------------------------------------"
+            echo "FAILED: Functions coverage is lower than ${{ inputs.threshold }}%"
+            echo "--------------------------------------------"
+            exit 1
+          else
+            echo "----------------------------------------------"
+            echo "PASSED: Functions coverage is greater than ${{ inputs.threshold }}%"
+            echo "----------------------------------------------"
+          fi

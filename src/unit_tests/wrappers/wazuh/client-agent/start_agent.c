@@ -15,11 +15,6 @@
 #include <setjmp.h>
 #include <cmocka.h>
 
-int wrap_closesocket(int fd) {
-    check_expected(fd);
-    return 0;
-}
-
 ssize_t wrap_recv(__attribute__((unused)) int __fd, __attribute__((unused)) void *__buf,
                   __attribute__((unused)) size_t __n, __attribute__((unused)) int __flags) {
     char* rcv = (char*) mock_ptr_type(char*);

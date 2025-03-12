@@ -44,7 +44,6 @@ int Read_Cluster(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unus
     static const char *client_cert = "client_cert";
     static const char *client_cert_key = "client_cert_key";
     static const char *client_cert_password = "client_cert_password";
-    static const char *api_port = "api_port";
     static const char *excluded_nodes = "excluded_nodes";
     static const char *frequency = "frequency";
     static const char *agent_chunk_size = "agent_chunk_size";

@@ -22,7 +22,7 @@
 #include "../wrappers/common.h"
 
 bool w_journald_can_read(unsigned long owner_id);
-void set_gs_journald_global(unsigned long owner_id, bool is_disabled, void * journal_ctx);
+void set_gs_journald_global(unsigned long owner_id, bool is_disabled, void* journal_ctx);
 
 /* setup/teardown */
 
@@ -59,6 +59,8 @@ char * __wrap_w_journal_entry_to_string(w_journal_entry_t * entry) { return mock
 
 void __wrap_w_journal_entry_free(w_journal_entry_t * entry) { function_called(); }
 
+bool __wrap_w_journal_rotation_detected(w_journal_context_t* ctx) { return mock_type(bool); }
+
 /* Aux setters */
 void set_gs_journald_ofe(bool exist, bool ofe, uint64_t timestamp);
 bool journald_isDisabled();
@@ -84,6 +86,7 @@ void test_w_journald_can_read_disable(void ** state) {
 void test_w_journald_can_read_check_owner(void ** state) {
     set_gs_journald_global(2, false, NULL);
     assert_false(w_journald_can_read(1));
+    will_return(__wrap_w_journal_rotation_detected, false);
     assert_true(w_journald_can_read(2));
 }
 
@@ -129,6 +132,7 @@ void test_w_journald_can_read_first_time_init_ofe_yes(void ** state) {
     will_return(__wrap_w_journal_context_seek_most_recent, 0);
 
     expect_string(__wrap__minfo, formatted_msg, "(9203): Monitoring journal entries.");
+    will_return(__wrap_w_journal_rotation_detected, false);
 
     assert_true(w_journald_can_read(tid));
     assert_false(journald_isDisabled());
@@ -146,6 +150,45 @@ void test_w_journald_can_read_first_time_init_ofe_no(void ** state) {
     will_return(__wrap_w_journal_context_seek_timestamp, 0);
 
     expect_string(__wrap__minfo, formatted_msg, "(9203): Monitoring journal entries.");
+    will_return(__wrap_w_journal_rotation_detected, false);
+
+    assert_true(w_journald_can_read(tid));
+    assert_false(journald_isDisabled());
+}
+
+void test_w_journald_rotation_failed(void** state) {
+    int tid = 3;
+
+    w_journal_context_t ctxt = {0};
+    set_gs_journald_global(3, false, &ctxt);
+    set_gs_journald_ofe(true, false, 123);
+
+    will_return(__wrap_w_journal_rotation_detected, true);
+
+    expect_value(__wrap_w_journal_context_seek_timestamp, timestamp, 123);
+    will_return(__wrap_w_journal_context_seek_timestamp, -1);
+
+    expect_string(__wrap__merror,
+                  formatted_msg,
+                  "(1609): Failed to move to the end of the journal, disabling journal log: Operation not permitted.");
+
+    assert_false(w_journald_can_read(tid));
+    assert_true(journald_isDisabled());
+}
+
+void test_w_journald_rotation_succeeded(void** state) {
+    int tid = 3;
+
+    w_journal_context_t ctxt = {0};
+    set_gs_journald_global(3, false, &ctxt);
+    set_gs_journald_ofe(true, false, 123);
+
+    will_return(__wrap_w_journal_rotation_detected, true);
+
+    expect_value(__wrap_w_journal_context_seek_timestamp, timestamp, 123);
+    will_return(__wrap_w_journal_context_seek_timestamp, 0);
+
+    expect_string(__wrap__minfo, formatted_msg, "(9204): 'Journald' timestamp was refreshed due to rotation.");
 
     assert_true(w_journald_can_read(tid));
     assert_false(journald_isDisabled());
@@ -335,6 +378,8 @@ int main(void) {
         cmocka_unit_test(test_w_journald_can_read_first_time_init_fail_seek),
         cmocka_unit_test(test_w_journald_can_read_first_time_init_ofe_yes),
         cmocka_unit_test(test_w_journald_can_read_first_time_init_ofe_no),
+        cmocka_unit_test(test_w_journald_rotation_failed),
+        cmocka_unit_test(test_w_journald_rotation_succeeded),
         /* Test read_journald */
         cmocka_unit_test(test_read_journald_can_read_false),
         cmocka_unit_test(test_read_journald_next_entry_error),

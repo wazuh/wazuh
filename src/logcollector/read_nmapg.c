@@ -148,7 +148,7 @@ void *read_nmapg(logreader *lf, int *rc, int drop_it) {
     int64_t current_position = w_ftell(lf->fp);
     bool is_valid_context_file = w_get_hash_context(lf, &context, current_position);
 
-    while (can_read() && fgets(str, sizeof(str), lf->fp) != NULL && (!maximum_lines || lines < maximum_lines)) {
+    while (can_read() && (!maximum_lines || lines < maximum_lines) && fgets(str, sizeof(str), lf->fp)) {
 
         lines++;
 

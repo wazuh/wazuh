@@ -6,7 +6,22 @@ enable_testing()
 
 add_definitions(-DPROMISE_TYPE=PromiseType::NORMAL)
 
+include_directories(${SRC_FOLDER})
+include_directories(${SRC_FOLDER}/headers)
 include_directories(${SRC_FOLDER}/external/flatbuffers/include)
+include_directories(${SRC_FOLDER}/external/nlohmann)
+include_directories(${SRC_FOLDER}/external/cJSON)
+include_directories(${SRC_FOLDER}/external/rocksdb/include)
+
+include_directories(${SRC_FOLDER}/shared_modules/common)
+include_directories(${SRC_FOLDER}/shared_modules/utils)
+include_directories(${SRC_FOLDER}/shared_modules/router/include)
+include_directories(${SRC_FOLDER}/shared_modules/indexer_connector/include)
+
+link_directories(${SRC_FOLDER}/shared_modules/router/build)
+link_directories(${SRC_FOLDER}/shared_modules/indexer_connector/build)
+link_directories(${SRC_FOLDER}/external/flatbuffers/build/)
+link_directories(${SRC_FOLDER}/external/rocksdb/build)
 
 # If VERSION and REVISION are manually set, use them.
 if (VERSION AND REVISION)
@@ -33,7 +48,11 @@ set_target_properties(inventory_harvester PROPERTIES
         BUILD_RPATH "$ORIGIN/../lib"
 )
 
-add_dependencies(inventory_harvester compile_schemas_input)
+if (TARGET compile_schemas_input)
+    # If target isn't defined, only this project is being built and not the whole Wazuh project.
+    # The schemas must be compiled manually before building this project in that case.
+    add_dependencies(inventory_harvester compile_schemas_input)
+endif()
 
 add_subdirectory(testtool)
 

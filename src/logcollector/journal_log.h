@@ -121,6 +121,12 @@ int w_journal_context_next_newest_filtered(w_journal_context_t * ctx, w_journal_
  */
 int w_journal_context_get_oldest_timestamp(w_journal_context_t * ctx, uint64_t * timestamp);
 
+/**
+ * @brief seeks timestamp for journald messages.
+ *
+ * @return int 0 on success or -1 on error
+ */
+int seek_and_refresh_timestamp();
 /**********************************************************
  *                   Entry related
  **********************************************************/
@@ -186,5 +192,13 @@ char * w_journal_entry_to_string(w_journal_entry_t * entry);
  * @return int positive number of entries matched, 0 if no entries matched, or a negative errno-style error code.
  */
 int w_journal_filter_apply(w_journal_context_t * ctx, w_journal_filter_t * filter);
+
+/**
+ * @brief Detects changes on the journald files
+ *
+ * The context pointer is invalid after the call.
+ * @param ctx Journal log context
+*/
+bool w_journal_rotation_detected(w_journal_context_t *ctx);
 
 #endif // w_journal_H
