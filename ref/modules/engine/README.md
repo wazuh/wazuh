@@ -753,7 +753,15 @@ eventInput ===> routeSelector
 
 ```
 
+## Schema
 
+## Managing the Engine's processing
+
+### Namespaces
+
+### Assets Catalog
+
+### Policies and Routes
 
 ## Assets
 In the Wazuh Engine, assets represent the fundamental components of security policies and are the smallest unit within such a policy.
@@ -919,86 +927,56 @@ map:
   - target.field: <yaml_type>|<$ref>
 ```
 
-
-#### Decoder Asset
-Some specialization of the asset as decoder
-
-#### Filter Asset
-
-Some specialization of the asset as filter, like for example the `filter`  cannot parser or map fields.
-
-#### Rules Asset
-Some specialization of the asset as rules, i.e. Cannot parser o map outside of schema.
-
-#### Outputs Asset
-
-## How it work
-
 ### Definitions
 
-### Parsers
+### Variables
 
-Explanation of how parsers work
+### Log Parsing
 
-- link to new document inside this module with all parsers
+### Key Value Databases
 
-### Helper funntions
+### Dates and Timestamps
+
+### Geolocation
+
+### Decoders
+
+### Rules
+
+### Outputs
+
+### Filters
+
+## Orchestrator
+
+## Server
+
+## Metrics
+
+## Builder
+
+## Stages
+
+### Check/Allow
+
+### Parse
+
+### Map
+
+### Normalize/Enrichment
+
+### Output
+
+## Helper functions
 
 Explanation of how herlper work, format, types, etc.
 
 - link to new document inside this module with all helpers functions
 
-### Variables
+## Debugging
 
-I think we should eliminate this concept
+### Logs
 
-### Schemas
+### Tester
 
-what is each one used for and what is the format
-
-#### Wazuh Schema + Custom Schema
-
-#### Logpar override Schema
-
-#### Others schemas
-
-
-## Catalog
-
-intro + api catalog link
-
-### Nampeaces
-
-### Integrations
-
-
-## Event processing
-
-Protocol, log, etc.
-
-
-## Metrics
-
-How metrics are generated and how they are used
-
-I think we should leave this short until future definitions.
-
-## Queues
-
-I think we should leave this empty until future definitions.
-
-## Time Zones
-
-## GEOIP
-
-## KVDB
-I think we should leave this empty until future definitions.
-
-
-## Tester
-
-How testing work in orchestrator
-
-### Sessions
-
-### Traces and logs
+### Traces
