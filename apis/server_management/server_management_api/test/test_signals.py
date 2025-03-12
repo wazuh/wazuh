@@ -1,5 +1,6 @@
 import asyncio
 import os
+from functools import partial
 from unittest.mock import AsyncMock, patch
 from uuid import uuid4
 
@@ -21,7 +22,7 @@ from server_management_api.signals import (
 # Fixtures
 @pytest.fixture
 def installation_uid_mock():
-    """Mock the installation UID path."""
+    """Installation UID mock fixture."""
     with patch(
         'server_management_api.signals.INSTALLATION_UID_PATH', os.path.join('/tmp', INSTALLATION_UID_KEY)
     ) as path_mock:
@@ -32,7 +33,7 @@ def installation_uid_mock():
 
 @pytest.fixture
 def query_update_check_service_mock():
-    """Mock the `query_update_check_service` function."""
+    """Query update check service mock fixture."""
     with patch('server_management_api.signals.query_update_check_service') as mock:
         yield mock
 
@@ -42,7 +43,7 @@ def query_update_check_service_mock():
 
 @pytest.mark.asyncio
 async def test_cancel_signal_handler_catch_cancelled_error_and_dont_rise():
-    """Test `cancel_signal_handler` does not propagate the error."""
+    """Validate that the `cancel_signal_handler` catches cancel errors."""
     coroutine_mock = AsyncMock(side_effect=asyncio.CancelledError)
     await cancel_signal_handler(coroutine_mock)()
 
@@ -57,7 +58,7 @@ async def test_cancel_signal_handler_catch_cancelled_error_and_dont_rise():
 async def test_check_installation_uid_populate_uid_if_not_exists(
     uid_mock, gid_mock, chown_mock, chmod_mock, installation_uid_mock
 ):
-    """Test `check_installation_uid` when the uid doesn't exist."""
+    """Validatre that the `check_installation_uid` function stores the UID in a file."""
     uid = gid = 999
     uid_mock.return_value = uid
     gid_mock.return_value = gid
@@ -73,7 +74,7 @@ async def test_check_installation_uid_populate_uid_if_not_exists(
 
 @pytest.mark.asyncio
 async def test_check_installation_uid_get_uid_from_file(installation_uid_mock):
-    """Test `check_installation_uid` when the uid exists."""
+    """Validatre that the `check_installation_uid` function gets the UID from the file."""
     installation_uid = str(uuid4())
     with open(installation_uid_mock, 'w') as file:
         file.write(installation_uid)
@@ -85,7 +86,7 @@ async def test_check_installation_uid_get_uid_from_file(installation_uid_mock):
 
 @pytest.mark.asyncio
 async def test_get_update_information_injects_correct_data_into_app_context(query_update_check_service_mock):
-    """Test `get_update_information` inserts data as expected."""
+    """Validatre that the `get_update_information` function works as expected."""
     response_data = {
         'last_check_date': '2023-10-11T16:47:13.066946+00:00',
         'current_version': 'v4.8.0',
@@ -127,7 +128,7 @@ async def test_get_update_information_injects_correct_data_into_app_context(quer
 
 @pytest.mark.asyncio
 async def test_get_update_information_schedule(query_update_check_service_mock):
-    """Test `get_update_information` is scheduled as expected."""
+    """Validatre that the `get_update_information` is scheduled as expected."""
     cti_context[INSTALLATION_UID_KEY] = str(uuid4())
     with patch('server_management_api.signals.asyncio') as sleep_mock:
         task = asyncio.create_task(get_update_information())
@@ -161,7 +162,7 @@ async def test_register_background_tasks(
     update_check_config,
     registered_tasks,
 ):
-    """Test `register_background_tasks` functionality."""
+    """Validate that the background tasks registration is performed properly."""
 
     class AwaitableMock(AsyncMock):
         def __await__(self):
@@ -174,8 +175,9 @@ async def test_register_background_tasks(
     with patch('server_management_api.signals.asyncio') as create_task_mock:
         create_task_mock.create_task.return_value = AwaitableMock(spec=asyncio.Task)
         create_task_mock.create_task.return_value.cancel = AsyncMock()
+        commands_manager_mock = AsyncMock()
 
-        with TestClient(Starlette(lifespan=lifespan_handler)):
+        with TestClient(Starlette(lifespan=partial(lifespan_handler, commands_manager=commands_manager_mock))):
             assert create_task_mock.create_task.call_count == registered_tasks
 
         assert create_task_mock.create_task.return_value.cancel.call_count == registered_tasks
