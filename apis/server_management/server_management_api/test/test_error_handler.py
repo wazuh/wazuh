@@ -22,6 +22,35 @@ from server_management_api.error_handler import (
     unauthorized_error_handler,
 )
 from server_management_api.middlewares import LOGIN_ENDPOINT, RUN_AS_LOGIN_ENDPOINT
+from wazuh.core.config.client import CentralizedConfig, Config
+from wazuh.core.config.models.server import ServerConfig, ValidateFilePathMixin, SSLConfig, NodeConfig, NodeType
+from wazuh.core.config.models.indexer import IndexerConfig, IndexerNode
+
+
+with patch.object(ValidateFilePathMixin, '_validate_file_path', return_value=None):
+    default_config = Config(
+        server=ServerConfig(
+            nodes=['0'],
+            node=NodeConfig(
+                name='node_name',
+                type=NodeType.MASTER,
+                ssl=SSLConfig(
+                    key='example',
+                    cert='example',
+                    ca='example'
+                )
+            )
+        ),
+        indexer=IndexerConfig(
+            hosts=[IndexerNode(
+                host='example',
+                port=1516
+            )],
+            username='wazuh',
+            password='wazuh'
+        )
+    )
+    CentralizedConfig._config = default_config
 
 
 @pytest.fixture
@@ -119,13 +148,15 @@ async def test_unauthorized_error_handler(path, method, token_info, mock_request
             problem['detail'] = detail
             mock_request.context = {}
 
+    default_config.management_api.access.max_login_attempts = 1000
     with (
+        patch.object(CentralizedConfig.get_management_api_config().access, 'max_login_attempts', 1000),
         patch('server_management_api.error_handler.prevent_bruteforce_attack') as mock_pbfa,
-        patch('server_management_api.configuration.api_conf', new={'access': {'max_login_attempts': 1000}}),
     ):
         response = await unauthorized_error_handler(mock_request, exc)
         if path in {LOGIN_ENDPOINT, RUN_AS_LOGIN_ENDPOINT} and method in {'GET', 'POST'}:
-            mock_pbfa.assert_called_once_with(request=mock_request, attempts=1000)
+            mock_pbfa.assert_called_once_with(request=mock_request,
+                                              attempts=default_config.management_api.access.max_login_attempts)
         datetime(1970, 1, 1, 0, 0, 10).timestamp()
     body = json.loads(response.body)
     assert body == problem

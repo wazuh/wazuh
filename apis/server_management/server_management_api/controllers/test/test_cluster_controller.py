@@ -9,30 +9,58 @@ import pytest
 from connexion.lifecycle import ConnexionResponse
 
 from server_management_api.controllers.test.utils import CustomAffectedItems
+from wazuh.core.config.client import CentralizedConfig, Config
+from wazuh.core.config.models.server import ServerConfig, ValidateFilePathMixin, SSLConfig, NodeConfig, NodeType
+from wazuh.core.config.models.indexer import IndexerConfig, IndexerNode
 
 with patch('wazuh.common.wazuh_uid'):
     with patch('wazuh.common.wazuh_gid'):
-        sys.modules['wazuh.rbac.orm'] = MagicMock()
-        import wazuh.rbac.decorators
-        from wazuh import cluster, manager
-        from wazuh.tests.util import RBAC_bypasser
+        with patch.object(ValidateFilePathMixin, '_validate_file_path', return_value=None):
+            default_config = Config(
+                server=ServerConfig(
+                    nodes=['0'],
+                    node=NodeConfig(
+                        name='node_name',
+                        type=NodeType.MASTER,
+                        ssl=SSLConfig(
+                            key='example',
+                            cert='example',
+                            ca='example'
+                        )
+                    )
+                ),
+                indexer=IndexerConfig(
+                    hosts=[IndexerNode(
+                        host='example',
+                        port=1516
+                    )],
+                    username='wazuh',
+                    password='wazuh'
+                )
+            )
+            CentralizedConfig._config = default_config
 
-        from server_management_api.controllers.cluster_controller import (
-            get_cluster_nodes,
-            get_conf_validation,
-            get_configuration_node,
-            get_healthcheck,
-            get_info_node,
-            get_log_node,
-            get_log_summary_node,
-            get_status,
-            get_status_node,
-            put_restart,
-            update_configuration,
-        )
+            sys.modules['wazuh.rbac.orm'] = MagicMock()
+            import wazuh.rbac.decorators
+            from wazuh import cluster, manager
+            from wazuh.tests.util import RBAC_bypasser
 
-        wazuh.rbac.decorators.expose_resources = RBAC_bypasser
-        del sys.modules['wazuh.rbac.orm']
+            from server_management_api.controllers.cluster_controller import (
+                get_cluster_nodes,
+                get_conf_validation,
+                get_configuration_node,
+                get_healthcheck,
+                get_info_node,
+                get_log_node,
+                get_log_summary_node,
+                get_status,
+                get_status_node,
+                put_restart,
+                update_configuration,
+            )
+
+            wazuh.rbac.decorators.expose_resources = RBAC_bypasser
+            del sys.modules['wazuh.rbac.orm']
 
 
 @pytest.mark.asyncio
