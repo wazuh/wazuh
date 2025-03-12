@@ -223,6 +223,8 @@ CONFIG_SERVER_SOCKET_PATH = WAZUH_RUN / CONFIG_SERVER_SOCKET
 
 COMMS_API_SOCKET = 'comms-api.sock'
 COMMS_API_SOCKET_PATH = WAZUH_RUN / COMMS_API_SOCKET
+MANAGEMENT_API_SOCKET = 'management-api.sock'
+MANAGEMENT_API_SOCKET_PATH = WAZUH_RUN / MANAGEMENT_API_SOCKET
 
 
 # ============================================= Wazuh constants - Commands =============================================

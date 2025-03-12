@@ -20,8 +20,6 @@ from typing import Any, Callable
 
 from brotli_asgi import BrotliMiddleware
 from comms_api.core.batcher import create_batcher_process
-from comms_api.core.commands import CommandsManager
-from comms_api.core.unix_server.server import start_unix_server
 from comms_api.middlewares.logging import LoggingMiddleware
 from comms_api.routers.exceptions import (
     HTTPError,
@@ -42,10 +40,13 @@ from wazuh.core import common, pyDaemonModule, utils
 from wazuh.core.authentication import load_jwt_keys
 from wazuh.core.batcher.mux_demux import MuxDemuxManager, MuxDemuxQueue
 from wazuh.core.cluster.utils import print_version
+from wazuh.core.commands_manager import CommandsManager
 from wazuh.core.config.client import CentralizedConfig
 from wazuh.core.config.models.comms_api import CommsAPIConfig
 from wazuh.core.config.models.logging import APILoggingConfig
 from wazuh.core.exception import WazuhCommsAPIError
+from wazuh.core.unix_server.commands import post_commands
+from wazuh.core.unix_server.server import HTTPUnixServer
 
 MAIN_PROCESS = 'wazuh-comms-apid'
 LOGGING_TAG = 'Communications API'
@@ -204,17 +205,27 @@ def get_script_arguments() -> Namespace:
 
 
 class StandaloneApplication(BaseApplication):
+    """Gunicorn standalone application."""
+
     def __init__(self, app: Callable, options: dict[str, Any] = None):
         self.options = options or {}
         self.app = app
         super().__init__()
 
     def load_config(self):
+        """Load server configuration."""
         config = {key: value for key, value in self.options.items() if key in self.cfg.settings and value is not None}
         for key, value in config.items():
             self.cfg.set(key.lower(), value)
 
     def load(self):
+        """Load application.
+
+        Returns
+        -------
+        Callable
+            Application instance.
+        """
         return self.app
 
 
@@ -305,7 +316,9 @@ if __name__ == '__main__':
 
     # Start HTTP over unix socket server
     commands_manager = CommandsManager()
-    start_unix_server(commands_manager)
+    unix_server = HTTPUnixServer(socket_path=common.COMMS_API_SOCKET_PATH, commands_manager=commands_manager)
+    unix_server.add_route('/commands', post_commands, ['POST'])
+    unix_server.start()
 
     pid = os.getpid()
     signal.signal(
