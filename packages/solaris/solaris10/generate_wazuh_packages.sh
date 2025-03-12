@@ -34,7 +34,7 @@ fi
 
 set_control_binary() {
   if [ -e ${SOURCE}/VERSION.json ]; then
-    wazuh_version="v$(grep '"version"' ${SOURCE}/VERSION.json | sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')"
+    wazuh_version="v$(sed -n 's/.*"version"[ \t]*:[ \t]*"\([^"]*\)".*/\1/p' ${SOURCE}/VERSION.json)"
     number_version=`echo "${wazuh_version}" | cut -d v -f 2`
     major=`echo $number_version | cut -d . -f 1`
     minor=`echo $number_version | cut -d . -f 2`
@@ -199,8 +199,8 @@ installation(){
 
 compute_version_revision()
 {
-    wazuh_version="$(grep '"version"' ${SOURCE}/VERSION.json | sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')"
-    revision=`grep '"stage"' ${SOURCE}/VERSION.json | sed 's/.*"stage": *"\([^"]*\)".*/\1/'`
+    wazuh_version="$(sed -n 's/.*"version"[ \t]*:[ \t]*"\([^"]*\)".*/\1/p' ${SOURCE}/VERSION.json)"
+    revision=$(sed -n 's/.*"stage": *"\([^"]*\)".*/\1/p' ${SOURCE}/VERSION.json)
 
     echo $wazuh_version > /tmp/VERSION
     echo $revision > /tmp/REVISION
@@ -282,7 +282,7 @@ build(){
 
     cd ${CURRENT_PATH}
 
-    VERSION="v$(grep '"version"' ${SOURCE}/VERSION.json | sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')"
+    VERSION="v$(sed -n 's/.*"version"[ \t]*:[ \t]*"\([^"]*\)".*/\1/p' ${SOURCE}/VERSION.json)"
     echo "------------"
     echo "| Building |"
     echo "------------"
