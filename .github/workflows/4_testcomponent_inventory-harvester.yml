@@ -1,0 +1,79 @@
+name: 4_testcomponent_inventory-harvester
+
+on:
+  workflow_dispatch:
+  pull_request:
+  # Pull request events
+    types: [synchronize, opened, reopened, ready_for_review]
+  # Path filtering
+    paths:
+      - ".github/workflows/4_testcomponent_inventory-harvester.yml"
+      - "src/shared_modules/utils/**"
+      - "src/wazuh_modules/inventory-harvester/**"
+
+jobs:
+  inventory-harvester-modules:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Cancel previous runs
+        uses: fkirc/skip-duplicate-actions@master
+        with:
+          cancel_others: 'true'
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          skip_after_successful_duplicate: 'false'
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Project dependencies
+        uses: ./.github/actions/vulnerability_scanner_deps
+
+      - name: Inventory harvester - Build tests
+        uses: ./.github/actions/build_target_cpp
+        with:
+          target: "inventory_harvester_ctest"
+          test: "true"
+          asan: "false"
+
+      - name: Inventory harvester - Run tests
+        uses: ./.github/actions/test_cpp
+        with:
+          target: "inventory_harvester_ctest"
+          valgrind: "true"
+
+
+  inventory-harvester-asan:
+    strategy:
+      matrix:
+        os: [ ubuntu-24.04, ubuntu-22.04 ]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Cancel previous runs
+        uses: fkirc/skip-duplicate-actions@master
+        with:
+          cancel_others: 'true'
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          skip_after_successful_duplicate: 'false'
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Project dependencies
+        uses: ./.github/actions/vulnerability_scanner_deps
+
+      - name: Inventory harvester - Build tests
+        uses: ./.github/actions/build_target_cpp
+        with:
+          target: "inventory_harvester_ctest"
+          test: "true"
+          asan: "true"
+
+      - name: Inventory harvester - Run tests
+        uses: ./.github/actions/test_cpp
+        with:
+          target: "inventory_harvester_ctest"
+          valgrind: "false"

@@ -1,0 +1,55 @@
+name: "Build target CPP"
+description: "Build target CPP"
+
+inputs:
+  target:
+    required: true
+    description: "target"
+    default: "none"
+  asan:
+    required: false
+    description: "Enable address sanitizer"
+    default: "false"
+  test:
+    required: false
+    description: "Run tests"
+    default: "true"
+  flags:
+    required: false
+    description: "Compilation flags directly passed to cmake. For example -DFLAG=VALUE"
+    default: ""
+
+runs:
+  using: "composite"
+  steps:
+      - name: build_target_cpp
+        run: |
+          SRC_FOLDER=$(pwd)/src
+
+          # Read version and revision file.
+          VERSION=$(cat src/VERSION)
+          echo $VERSION
+          REVISION=$(cat src/REVISION)
+          echo $REVISION
+
+          cd $SRC_FOLDER
+          mkdir -p build && cd build
+
+          if [[ ${{ inputs.test }} == "false" ]]; then
+            echo "Compiling without tests"
+            cmake -DVERSION="$VERSION" -DREVISION="$REVISION" ${{ inputs.flags }} .. && cmake --build . --target ${{ inputs.target }}
+          else
+            if [[ "${{ inputs.asan }}" != "false" ]]; then
+              # Compile for ASAN
+              echo "Compiling for ASAN"
+              export COMPILATION_FLAGS="-g -fsanitize=address -fsanitize=undefined -fsanitize=leak"
+            else
+              # Compile for valgrind and coverage
+              echo "Compiling for valgrind and coverage"
+              export COMPILATION_FLAGS="-fprofile-arcs -ftest-coverage -lgcov --coverage"
+            fi
+
+            cmake -DCMAKE_CXX_FLAGS="$COMPILATION_FLAGS" -DUNIT_TEST=ON -DVERSION="$VERSION" -DREVISION="$REVISION" ${{ inputs.flags }} .. && cmake --build . --target ${{ inputs.target }}
+          fi
+
+        shell: bash
