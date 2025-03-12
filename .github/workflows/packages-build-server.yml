@@ -212,3 +212,33 @@ jobs:
           aws s3 cp /tmp/${{ env.PACKAGE_SYMBOLS_NAME }} s3://packages-dev.internal.wazuh.com/development/wazuh/5.x/main/packages/
           symbols="s3://packages-dev.internal.wazuh.com/development/wazuh/5.x/main/packages/${symbols_name}"
           echo "S3 symbols URI: ${symbols}"
+
+      - name: Create latest package copy
+        if: ${{ github.ref == 'refs/heads/enhancement/28404-add-latest-package' }}
+        run: |
+          LATEST_PACKAGE_NAME=$(echo ${{ env.PACKAGE_NAME }} | sed 's/[a-f0-9]\{7,\}/latest/')
+          cp /tmp/${{ env.PACKAGE_NAME }} /tmp/$LATEST_PACKAGE_NAME
+          echo "LATEST_PACKAGE_NAME=$LATEST_PACKAGE_NAME" >> $GITHUB_ENV
+
+      - name: Upload latest package to GitHub
+        if: ${{ github.ref == 'refs/heads/enhancement/28404-add-latest-package' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.LATEST_PACKAGE_NAME }}
+          path: /tmp/${{ env.LATEST_PACKAGE_NAME }}
+          if-no-files-found: error
+
+      - name: Upload latest package to S3
+        if: ${{ github.ref == 'refs/heads/enhancement/28404-add-latest-package' }}
+        working-directory: packages
+        run: |
+          aws s3 cp /tmp/${{ env.LATEST_PACKAGE_NAME }} s3://packages-dev.internal.wazuh.com/development/wazuh/5.x/main/packages/
+          s3uri="s3://packages-dev.internal.wazuh.com/development/wazuh/5.x/main/packages/${{ env.LATEST_PACKAGE_NAME }}"
+          echo "S3 latest package URI: ${s3uri}"
+
+      - name: Upload latest checksum to S3
+        if: ${{ github.ref == 'refs/heads/enhancement/28404-add-latest-package' && inputs.checksum }}
+        run: |
+          aws s3 cp /tmp/${{ env.LATEST_PACKAGE_NAME }}.sha512 s3://packages-dev.internal.wazuh.com/development/wazuh/5.x/main/packages/
+          s3uri="s3://packages-dev.internal.wazuh.com/development/wazuh/5.x/main/packages/${{ env.LATEST_PACKAGE_NAME }}.sha512"
+          echo "S3 latest checksum URI: ${s3uri}"
