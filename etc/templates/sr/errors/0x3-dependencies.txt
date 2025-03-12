@@ -1,2 +1,0 @@
-Greška 0x3.
-Treba ti kompajler (kao gcc ili cc) da nastaviš sa instalacijom.

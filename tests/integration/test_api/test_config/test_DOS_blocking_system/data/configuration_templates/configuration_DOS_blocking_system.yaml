@@ -1,3 +1,0 @@
-- blocks:
-    access:
-      max_request_per_minute: MAX_REQUEST_PER_MINUTE

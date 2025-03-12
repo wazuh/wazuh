@@ -1,3 +1,0 @@
- 
- Erro 0x2.
- Você necessita ser root para rodar este script.

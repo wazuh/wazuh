@@ -1,3 +1,0 @@
-
- Error 0x4.
- Tipo de instalación no válida. Debe ser agente, servidor o local.

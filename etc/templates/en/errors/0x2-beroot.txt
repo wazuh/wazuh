@@ -1,3 +1,0 @@
- 
- Error 0x2.
- You must be root to use this script.

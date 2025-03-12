@@ -1,2 +1,0 @@
-Greška 0x4.
-Pogrešan tip instalacije. Može biti jedino agent, server ili lokalna.

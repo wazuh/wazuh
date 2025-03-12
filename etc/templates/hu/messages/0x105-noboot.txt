@@ -1,4 +1,0 @@
-
- - Nem történt intézkedés az Wazuh bootoláskor
-   történő automatikus indításának beállítása érdekében.
-   Adja hozzá a következő sort az ön init scriptjéhez.

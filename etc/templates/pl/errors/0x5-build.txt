@@ -1,3 +1,0 @@
-
- Błąd 0x5.
- Błąd kompilacji. Nie można zakończyć instalacji.

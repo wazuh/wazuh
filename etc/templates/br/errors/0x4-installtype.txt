@@ -1,3 +1,0 @@
-
- Erro 0x4.
- Modalidade de instalação errada. Deve ser apenas [S]ervidor, [A]gente ou [L]ocal.

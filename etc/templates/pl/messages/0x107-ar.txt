@@ -1,4 +1,0 @@
-
-  3.5- Aktywna ochrona pozwala na wykonywanie określonych
-       komend w zależności od otrzymanego sygnału.
-       Domyślnie aktywnych odpowiedzi są zdefiniowane.

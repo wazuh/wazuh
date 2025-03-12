@@ -1,4 +1,0 @@
- 
- Error 0x3.
- Kuruluma devam edebilmek için bir derleyiciye (gcc veya cc gibi)
- ihtiyacınız var.
