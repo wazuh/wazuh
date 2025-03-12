@@ -39,15 +39,19 @@ runs:
       run: |
         if [[ "${{ inputs.target }}" == "winagent" ]]; then
           echo "Installing CMocka by sources with 'winagent' required flags"
-          cd /tmp
-          curl -L https://git.cryptomilk.org/projects/cmocka.git/snapshot/stable-1.1.tar.gz | \
-          tar zvx -C /tmp/ && \
-          sed -i "s|ON|OFF|g" /tmp/stable-1.1/DefineOptions.cmake && \
-          mkdir /tmp/stable-1.1/build && \
-          cd /tmp/stable-1.1/build && \
-          cmake -DCMAKE_C_COMPILER=i686-w64-mingw32-gcc -DCMAKE_C_LINK_EXECUTABLE=i686-w64-mingw32-ld -DCMAKE_INSTALL_PREFIX=/usr/i686-w64-mingw32/ -DCMAKE_SYSTEM_NAME=Windows -DCMAKE_BUILD_TYPE=Release .. && \
-          make && \
-          sudo make install && \
+          curl -L --retry 3 --retry-delay 2 -o /tmp/stable-1.1.tar.gz https://git.cryptomilk.org/projects/cmocka.git/snapshot/stable-1.1.tar.gz
+          # Verify if the download was successful
+          if [ $? -ne 0 ]; then
+              echo "Error during download. Exiting..."
+              exit 1
+          fi
+          tar -zxf /tmp/stable-1.1.tar.gz -C /tmp/
+          sed -i "s|ON|OFF|g" /tmp/stable-1.1/DefineOptions.cmake
+          mkdir /tmp/stable-1.1/build
+          cd /tmp/stable-1.1/build
+          cmake -DCMAKE_C_COMPILER=i686-w64-mingw32-gcc -DCMAKE_C_LINK_EXECUTABLE=i686-w64-mingw32-ld -DCMAKE_INSTALL_PREFIX=/usr/i686-w64-mingw32/ -DCMAKE_SYSTEM_NAME=Windows -DCMAKE_BUILD_TYPE=Release ..
+          make
+          sudo make install
           cd $GITHUB_WORKSPACE
         else
           echo "Installing CMocka directly from apt-get"

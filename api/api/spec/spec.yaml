@@ -40,12 +40,12 @@ info:
 
     <SecurityDefinitions />
 
-  version: '4.12.0'
-  x-revision: '41200'
+  version: '4.13.0'
+  x-revision: '41300'
   title: 'Wazuh API REST'
   license:
     name: 'GPL 2.0'
-    url: 'https://github.com/wazuh/wazuh/blob/v4.12.0/LICENSE'
+    url: 'https://github.com/wazuh/wazuh/blob/v4.13.0/LICENSE'
 
 servers:
   - url: '{protocol}://{host}:{port}'
@@ -571,7 +571,7 @@ components:
             detail: "Permission denied: Resource type: *:*"
             remediation: "Please, make sure you have permissions to execute the current request. For more information
             on how to set up permissions, please visit
-            https://documentation.wazuh.com/4.12/user-manual/api/rbac/configuration.html"
+            https://documentation.wazuh.com/4.13/user-manual/api/rbac/configuration.html"
             error: 4000
             dapi_errors:
               unknown-node:
@@ -638,7 +638,7 @@ components:
             title: "Wazuh Error"
             detail: "Maximum number of requests per minute reached"
             remediation: "This limit can be changed in api.yaml file. More information here:
-            https://documentation.wazuh.com/4.12/user-manual/api/security/configuration.html"
+            https://documentation.wazuh.com/4.13/user-manual/api/security/configuration.html"
             code: 6001
 
     ResourceNotFoundResponse:
@@ -651,7 +651,7 @@ components:
             title: "Resource Not Found"
             detail: "The group does not exist"
             remediation: "Please, use `GET /groups` to find all available groups:
-            https://documentation.wazuh.com/4.12/user-manual/api/rbac/configuration.html"
+            https://documentation.wazuh.com/4.13/user-manual/api/rbac/configuration.html"
             code: 1710
             dapi_errors:
               unknown-node:
@@ -4037,7 +4037,7 @@ components:
           type: number
           format: float
           description: "Same as `alerts_written` but focusing on [FTS alerts]
-          (https://documentation.wazuh.com/4.12/user-manual/ruleset/ruleset-xml-syntax/decoders.html?highlight=fts
+          (https://documentation.wazuh.com/4.13/user-manual/ruleset/ruleset-xml-syntax/decoders.html?highlight=fts
           #fts)"
         hostinfo_queue_size:
           type: number
@@ -7266,7 +7266,7 @@ paths:
                 api_version: "v4.5.0"
                 revision: '40100'
                 license_name: "GPL 2.0"
-                license_url: "https://github.com/wazuh/wazuh/blob/v4.12.0/LICENSE"
+                license_url: "https://github.com/wazuh/wazuh/blob/v4.13.0/LICENSE"
                 hostname: "wazuh"
                 timestamp: "2019-04-02T08:08:11Z"
 
@@ -8893,8 +8893,8 @@ paths:
                           code: 1707
                           message: "Cannot send request, agent is not active"
                           remediation: "Please, check non-active agents connection and try again.
-                           Visit https://documentation.wazuh.com/4.12/user-manual/registering/index.html
-                           and https://documentation.wazuh.com/4.12/user-manual/agents/agent-connection.html
+                           Visit https://documentation.wazuh.com/4.13/user-manual/registering/index.html
+                           and https://documentation.wazuh.com/4.13/user-manual/agents/agent-connection.html
                            to obtain more information on registering and connecting agents"
                         id:
                           - '009'
@@ -19120,4 +19120,4 @@ paths:
 
 externalDocs:
   description: "Learn more about the Wazuh API"
-  url: 'https://documentation.wazuh.com/4.12/user-manual/api/index.html'
+  url: 'https://documentation.wazuh.com/4.13/user-manual/api/index.html'

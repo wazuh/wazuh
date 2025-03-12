@@ -20,6 +20,10 @@
 #include "../wrappers/wazuh/shared/file_op_wrappers.h"
 #include "../wrappers/libc/stdio_wrappers.h"
 
+/* Globals */
+
+extern int maximum_lines;
+
 /* Setup & Teardown */
 
 static int group_setup(void ** state) {
@@ -173,10 +177,116 @@ void test_buffer_space_invalid_context(void ** state) {
     free(input_str);
 }
 
+void test_maximum_lines(void ** state) {
+    logreader lf = { .file = "test", .linecount = 3 };
+    int rc;
+    char line1[] = "Line 1\n";
+    char line2[] = "Line 2\n";
+    char line3[] = "Line 3\n";
+    maximum_lines = 2;
+
+    expect_any(__wrap_w_ftell, x);
+    will_return(__wrap_w_ftell, (int64_t) 0);
+
+    will_return(__wrap_w_get_hash_context, true);
+
+    expect_any(__wrap_w_ftell, x);
+    will_return(__wrap_w_ftell, (int64_t) 0);
+
+    will_return(__wrap_can_read, 1);
+
+    expect_any(__wrap_fgets, __stream);
+    will_return(__wrap_fgets, line1);
+
+    expect_any(__wrap_w_ftell, x);
+    will_return(__wrap_w_ftell, (int64_t) strlen(line1));
+
+    expect_function_call(__wrap_OS_SHA1_Stream);
+
+    will_return(__wrap_can_read, 1);
+
+    expect_any(__wrap_fgets, __stream);
+    will_return(__wrap_fgets, line2);
+
+    expect_any(__wrap_w_ftell, x);
+    will_return(__wrap_w_ftell, (int64_t) strlen(line1) + strlen(line2));
+
+    expect_function_call(__wrap_OS_SHA1_Stream);
+
+    will_return(__wrap_can_read, 1);
+
+    will_return(__wrap_w_update_file_status, true);
+    will_return(__wrap_w_update_file_status, 0);
+
+    read_multiline(&lf, &rc, 1);
+}
+
+void test_maximum_lines_disabled(void ** state) {
+    logreader lf = { .file = "test", .linecount = 3 };
+    int rc;
+    char line1[] = "Line 1\n";
+    char line2[] = "Line 2\n";
+    char line3[] = "Line 3\n";
+    maximum_lines = 0;
+
+    expect_any(__wrap_w_ftell, x);
+    will_return(__wrap_w_ftell, (int64_t) 0);
+
+    will_return(__wrap_w_get_hash_context, true);
+
+    expect_any(__wrap_w_ftell, x);
+    will_return(__wrap_w_ftell, (int64_t) 0);
+
+    will_return(__wrap_can_read, 1);
+
+    expect_any(__wrap_fgets, __stream);
+    will_return(__wrap_fgets, line1);
+
+    expect_any(__wrap_w_ftell, x);
+    will_return(__wrap_w_ftell, (int64_t) strlen(line1));
+
+    expect_function_call(__wrap_OS_SHA1_Stream);
+
+    will_return(__wrap_can_read, 1);
+
+    expect_any(__wrap_fgets, __stream);
+    will_return(__wrap_fgets, line2);
+
+    expect_any(__wrap_w_ftell, x);
+    will_return(__wrap_w_ftell, (int64_t) strlen(line1) + strlen(line2));
+
+    expect_function_call(__wrap_OS_SHA1_Stream);
+
+    will_return(__wrap_can_read, 1);
+
+    expect_any(__wrap_fgets, __stream);
+    will_return(__wrap_fgets, line3);
+
+    expect_any(__wrap_w_ftell, x);
+    will_return(__wrap_w_ftell, (int64_t) strlen(line1) + strlen(line2) + strlen(line3));
+
+    expect_function_call(__wrap_OS_SHA1_Stream);
+
+    expect_any(__wrap_w_ftell, x);
+    will_return(__wrap_w_ftell, (int64_t) strlen(line1) + strlen(line2) + strlen(line3));
+
+    will_return(__wrap_can_read, 1);
+
+    expect_any(__wrap_fgets, __stream);
+    will_return(__wrap_fgets, NULL);
+
+    will_return(__wrap_w_update_file_status, true);
+    will_return(__wrap_w_update_file_status, 0);
+
+    read_multiline(&lf, &rc, 1);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_buffer_space),
         cmocka_unit_test(test_buffer_space_invalid_context),
+        cmocka_unit_test(test_maximum_lines),
+        cmocka_unit_test(test_maximum_lines_disabled)
     };
 
     return cmocka_run_group_tests(tests, group_setup, group_teardown);

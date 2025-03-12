@@ -125,8 +125,7 @@ Here you can find all the automation tools maintained by the Wazuh team.
 
 ## Branches
 
-* `master` branch contains the latest code, be aware of possible bugs on this branch.
-* `stable` branch on correspond to the last Wazuh stable version.
+* `main` branch contains the latest code, be aware of possible bugs on this branch.
 
 ## Software and libraries used
 

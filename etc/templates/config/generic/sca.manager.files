@@ -1,6 +1,7 @@
 generic/sca_distro_independent_linux.yml
 almalinux/cis_alma_linux_8.yml
 almalinux/cis_alma_linux_9.yml
+almalinux/cis_alma_linux_10.yml
 amazon/cis_amazon_linux_1.yml
 amazon/cis_amazon_linux_2.yml
 amazon/cis_amazon_linux_2023.yml
@@ -18,6 +19,7 @@ applications/web_vulnerabilities.yml
 centos/6/cis_centos6_linux.yml
 centos/7/cis_centos7_linux.yml
 centos/8/cis_centos8_linux.yml
+centos/10/cis_centos10_linux.yml
 darwin/15/cis_apple_macOS_10.11.yml
 darwin/16/cis_apple_macOS_10.12.yml
 darwin/17/cis_apple_macOS_10.13.yml
@@ -43,6 +45,7 @@ rhel/6/cis_rhel6_linux.yml
 rhel/7/cis_rhel7_linux.yml
 rhel/8/cis_rhel8_linux.yml
 rhel/9/cis_rhel9_linux.yml
+rhel/10/cis_rhel10_linux.yml
 rocky/cis_rocky_linux_9.yml
 rocky/cis_rocky_linux_8.yml
 sles/11/cis_sles11_linux.yml
@@ -63,3 +66,4 @@ windows/cis_win2012_non_r2.yml
 windows/cis_win2016.yml
 windows/cis_win2019.yml
 windows/cis_win2022.yml
+windows/cis_win2025.yml
