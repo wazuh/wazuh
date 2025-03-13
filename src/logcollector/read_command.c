@@ -40,7 +40,7 @@ void *read_command(logreader *lf, int *rc, int drop_it) {
              : lf->command);
     cmd_size = strlen(str);
 
-    while (can_read() && fgets(str + cmd_size, OS_MAXSTR - OS_LOG_HEADER - 256, cmd_output) != NULL && (!maximum_lines || lines < maximum_lines)) {
+    while (can_read() && (!maximum_lines || lines < maximum_lines) && fgets(str + cmd_size, OS_MAXSTR - OS_LOG_HEADER - 256, cmd_output)) {
 
         lines++;
         /* Get the last occurrence of \n */

@@ -97,7 +97,7 @@ void *read_djbmultilog(logreader *lf, int *rc, int drop_it) {
     bool is_valid_context_file = w_get_hash_context(lf, &context, current_position);
 
     /* Get new entry */
-    while (can_read() && fgets(str, OS_MAX_LOG_SIZE, lf->fp) != NULL && (!maximum_lines || lines < maximum_lines)) {
+    while (can_read() && (!maximum_lines || lines < maximum_lines) && fgets(str, OS_MAX_LOG_SIZE, lf->fp)) {
 
         if (is_valid_context_file) {
             OS_SHA1_Stream(context, NULL, str);

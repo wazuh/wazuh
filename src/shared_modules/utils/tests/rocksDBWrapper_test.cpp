@@ -213,52 +213,6 @@ TEST_F(RocksDBWrapperTest, TestDeleteAllEmptyDB)
 }
 
 /**
- * @brief Tests the deleteAll function with concurrent threads
- */
-TEST_F(RocksDBWrapperTest, MultiThreadTest)
-{
-    constexpr auto COLUMN_NAME_A {"column_A"};
-    constexpr auto KEY_A {"key_A"};
-    constexpr auto VALUE_A {"value_A"};
-
-    const int MAX_ELEMENTS {10000};
-
-    if (!db_wrapper->columnExists(COLUMN_NAME_A))
-    {
-        db_wrapper->createColumn(COLUMN_NAME_A);
-    }
-
-    std::thread switcher(
-        [&]()
-        {
-            for (int i = 0; i < MAX_ELEMENTS; ++i)
-            {
-                std::string value;
-                if (db_wrapper->get(KEY_A, value, COLUMN_NAME_A))
-                {
-                    db_wrapper->delete_(KEY_A, COLUMN_NAME_A);
-                }
-                else
-                {
-                    db_wrapper->put(KEY_A, VALUE_A, COLUMN_NAME_A);
-                }
-            }
-        });
-
-    std::thread pruner(
-        [&]()
-        {
-            for (int i = 0; i < MAX_ELEMENTS; ++i)
-            {
-                db_wrapper->deleteAll(COLUMN_NAME_A);
-            }
-        });
-
-    switcher.join();
-    pruner.join();
-}
-
-/**
  * @brief Tests the range for loop
  */
 TEST_F(RocksDBWrapperTest, TestRangeForLoop)

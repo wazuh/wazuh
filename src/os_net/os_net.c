@@ -252,8 +252,8 @@ static int OS_Connect(u_int16_t _port, unsigned int protocol, const char *_ip, i
 {
     int ossock;
     int max_msg_size = OS_MAXSTR + 512;
-    struct sockaddr_in server;
-    struct sockaddr_in6 server6;
+    struct sockaddr_in server, local_addr;
+    struct sockaddr_in6 server6, local_addr6;
 
     if (protocol == IPPROTO_TCP) {
         if ((ossock = socket(ipv6 == 1 ? AF_INET6 : AF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0) {
@@ -273,25 +273,61 @@ static int OS_Connect(u_int16_t _port, unsigned int protocol, const char *_ip, i
     }
 
     if (ipv6 == 1) {
+        bool is_link_local = false;
+        if (strncmp(_ip, IPV6_LINK_LOCAL_PREFIX, 20) == 0) {
+            if (network_interface <= 0) {
+                minfo("No network interface provided to use with link-local IPv6 address.");
+            }
+            is_link_local = true;
+        }
+
+        // Force a new ephemeral port before connecting (IPv6)
+        memset(&local_addr6, 0, sizeof(local_addr6));
+        local_addr6.sin6_family = AF_INET6;
+        local_addr6.sin6_addr = in6addr_any;
+        local_addr6.sin6_port = 0;
+
+        if (is_link_local && network_interface > 0) {
+            local_addr6.sin6_scope_id = network_interface;
+        }
+
+        if (bind(ossock, (struct sockaddr *)&local_addr6, sizeof(local_addr6)) < 0) {
+            OS_CloseSocket(ossock);
+            return (OS_SOCKTERR);
+        }
+
         memset(&server6, 0, sizeof(server6));
         server6.sin6_family = AF_INET6;
         server6.sin6_port = htons( _port );
 
-        if (strncmp(_ip, IPV6_LINK_LOCAL_PREFIX, 20) == 0) {
-            if (network_interface <= 0) {
-                minfo("No network interface provided to use with link-local IPv6 address.");
-            } else {
-                server6.sin6_scope_id = network_interface;
-            }
+        if (is_link_local && network_interface > 0) {
+            server6.sin6_scope_id = network_interface;
         }
 
         get_ipv6_numeric(_ip, &server6.sin6_addr);
 
         if (connect(ossock, (struct sockaddr *)&server6, sizeof(server6)) < 0) {
+#ifdef WIN32
+            int error = WSAGetLastError();
+#endif
             OS_CloseSocket(ossock);
+#ifdef WIN32
+            WSASetLastError(error);
+#endif
             return (OS_SOCKTERR);
         }
     } else {
+        // Force a new ephemeral port before connecting (IPv4)
+        memset(&local_addr, 0, sizeof(local_addr));
+        local_addr.sin_family = AF_INET;
+        local_addr.sin_addr.s_addr = htonl(INADDR_ANY);
+        local_addr.sin_port = 0;
+
+        if (bind(ossock, (struct sockaddr *)&local_addr, sizeof(local_addr)) < 0) {
+            OS_CloseSocket(ossock);
+            return (OS_SOCKTERR);
+        }
+
         memset(&server, 0, sizeof(server));
         server.sin_family = AF_INET;
         server.sin_port = htons( _port );
@@ -564,8 +600,10 @@ char *OS_GetHost(const char *host, unsigned int attempts)
 int OS_CloseSocket(int socket)
 {
 #ifdef WIN32
+    shutdown(socket, SD_BOTH);
     return (closesocket(socket));
 #else
+    shutdown(socket, SHUT_RDWR);
     return (close(socket));
 #endif /* WIN32 */
 }
