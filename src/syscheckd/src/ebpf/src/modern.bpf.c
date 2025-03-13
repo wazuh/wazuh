@@ -62,7 +62,7 @@ struct buffer {
 */
 struct {
     __uint(type, BPF_MAP_TYPE_RINGBUF);
-    __uint(max_entries, 1 << 24);
+    __uint(max_entries, 1 << 22);
 } rb SEC(".maps");
 
 /*
