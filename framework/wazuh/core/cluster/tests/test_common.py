@@ -20,9 +20,8 @@ from uvloop import EventLoopPolicy, new_event_loop
 from wazuh import Wazuh
 from wazuh.core import exception
 from wazuh.core.config.client import CentralizedConfig, Config
-from wazuh.core.config.models.server import ServerConfig, ValidateFilePathMixin, SSLConfig, NodeConfig, NodeType
 from wazuh.core.config.models.indexer import IndexerConfig, IndexerNode
-
+from wazuh.core.config.models.server import NodeConfig, NodeType, ServerConfig, SSLConfig, ValidateFilePathMixin
 
 with patch('wazuh.common.wazuh_uid'):
     with patch('wazuh.common.wazuh_gid'):
@@ -33,21 +32,12 @@ with patch('wazuh.common.wazuh_uid'):
                     node=NodeConfig(
                         name='node_name',
                         type=NodeType.MASTER,
-                        ssl=SSLConfig(
-                            key='example',
-                            cert='example',
-                            ca='example'
-                        )
-                    )
+                        ssl=SSLConfig(key='example', cert='example', ca='example'),
+                    ),
                 ),
                 indexer=IndexerConfig(
-                    hosts=[IndexerNode(
-                        host='example',
-                        port=1516
-                    )],
-                    username='wazuh',
-                    password='wazuh'
-                )
+                    hosts=[IndexerNode(host='example', port=1516)], username='wazuh', password='wazuh'
+                ),
             )
             CentralizedConfig._config = default_config
 
@@ -293,7 +283,9 @@ def test_handler_init():
         assert cv.get() == handler.tag
 
     # Check logger
-    assert isinstance(cluster_common.Handler(server_config=default_config.server, logger=LoggerMock()).logger, LoggerMock)
+    assert isinstance(
+        cluster_common.Handler(server_config=default_config.server, logger=LoggerMock()).logger, LoggerMock
+    )
 
 
 def test_handler_push():
@@ -551,12 +543,12 @@ async def test_handler_forward_dapi_response_ko():
                         await handler.forward_dapi_response(b'client string_id')
                         assert handler.in_str == {b'other_string': 'some value'}
                         logger_mock.assert_called_once_with(
-                            f'Error sending API response to local client: ' f'{exception.WazuhException(1001)}'
+                            f'Error sending API response to local client: {exception.WazuhException(1001)}'
                         )
 
                         send_string_mock.side_effect = Exception
                         await handler.forward_dapi_response(b'client string_id')
-                        logger_mock.assert_called_with('Error sending API response to local client: ' "b'string_id'")
+                        logger_mock.assert_called_with("Error sending API response to local client: b'string_id'")
 
 
 def test_handler_data_received_ok():
@@ -1357,7 +1349,7 @@ async def test_sync_files_sync_ok(log_subprocess_mock, compress_files_mock, unli
                 )
                 log_subprocess_mock.assert_called()
                 logger_error_mock.assert_called_once_with(
-                    f"Error sending zip file: {exception.WazuhException(3016, 'cmd_e')}"
+                    f'Error sending zip file: {exception.WazuhException(3016, "cmd_e")}'
                 )
                 compress_files_mock.assert_called_once_with(
                     'Testing', {'path1': 'metadata1'}, {'path2': 'metadata2'}, None
@@ -1427,7 +1419,7 @@ async def test_sync_files_sync_ko(send_request_mock, mkdir_with_mode_mock, open_
             with patch.object(logger, 'error') as logger_mock:
                 await sync_files.sync(files_to_sync, files_metadata, 1, task_pool=None)
                 logger_mock.assert_called_with(
-                    f'File {compressed_data} could not be removed/not found. ' f'May be due to a lost connection.'
+                    f'File {compressed_data} could not be removed/not found. May be due to a lost connection.'
                 )
 
 

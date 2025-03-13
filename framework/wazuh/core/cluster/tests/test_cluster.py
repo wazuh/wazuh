@@ -14,9 +14,8 @@ import pytest
 from jsonschema import validators
 from wazuh.core import common
 from wazuh.core.config.client import CentralizedConfig, Config
-from wazuh.core.config.models.server import ServerConfig, ValidateFilePathMixin, SSLConfig, NodeConfig, NodeType
 from wazuh.core.config.models.indexer import IndexerConfig, IndexerNode
-
+from wazuh.core.config.models.server import NodeConfig, NodeType, ServerConfig, SSLConfig, ValidateFilePathMixin
 
 with patch('wazuh.common.wazuh_uid'):
     with patch('wazuh.common.wazuh_gid'):
@@ -27,21 +26,12 @@ with patch('wazuh.common.wazuh_uid'):
                     node=NodeConfig(
                         name='node_name',
                         type=NodeType.MASTER,
-                        ssl=SSLConfig(
-                            key='example',
-                            cert='example',
-                            ca='example'
-                        )
-                    )
+                        ssl=SSLConfig(key='example', cert='example', ca='example'),
+                    ),
                 ),
                 indexer=IndexerConfig(
-                    hosts=[IndexerNode(
-                        host='example',
-                        port=1516
-                    )],
-                    username='wazuh',
-                    password='wazuh'
-                )
+                    hosts=[IndexerNode(host='example', port=1516)], username='wazuh', password='wazuh'
+                ),
             )
             CentralizedConfig._config = default_config
 
@@ -240,7 +230,6 @@ def test_get_files_status():
         assert cluster.get_files_status()[0]['path'] == (test_dict['path'])
 
 
-
 @pytest.mark.parametrize(
     'failed_item, exists, expected_result',
     [
@@ -303,9 +292,7 @@ def test_update_cluster_control(failed_item, exists, expected_result):
 @patch('wazuh.core.cluster.cluster.mkdir_with_mode')
 @patch('wazuh.core.cluster.cluster.path.dirname', return_value='/some/path')
 @patch('wazuh.core.cluster.cluster.path.exists', return_value=False)
-def test_compress_files_ok(
-    mock_path_exists, mock_path_dirname, mock_mkdir_with_mode, mock_zlib
-):
+def test_compress_files_ok(mock_path_exists, mock_path_dirname, mock_mkdir_with_mode, mock_zlib):
     """Check if the compressing function is working properly."""
     with patch('builtins.open', mock_open(read_data='test_content')) as open_mock:
         assert isinstance(
@@ -328,14 +315,13 @@ def test_compress_files_ok(
 @patch('wazuh.core.cluster.cluster.path.exists', return_value=False)
 def test_compress_files_ko(mock_path_exists, mock_path_dirname, mock_mkdir_with_mode):
     """Check if the compressing function is raising every exception."""
-
     CentralizedConfig._config.server.communications.zip.max_size = 5
     CentralizedConfig._config.server.communications.zip.compress_level = 0
 
     with patch('builtins.open', mock_open(read_data='test_content')):
         _, logs = cluster.compress_files('some_name', ['some/path'], {'missing': {}, 'shared': {}})
         assert logs['warning']['some/path'] == [
-            f'File too large to be synced: ' f'{os.path.join(common.WAZUH_ETC, "some/path")}'
+            f'File too large to be synced: {os.path.join(common.WAZUH_ETC, "some/path")}'
         ]
 
         CentralizedConfig._config.server.communications.zip.max_size = 15
@@ -464,7 +450,6 @@ def test_compare_files():
 @patch.object(wazuh.core.cluster.cluster.logger, 'error')
 def test_compare_files_ko(logger_mock):
     """Check the different outputs of the compare_files function."""
-
     seq = {
         'some/path3/': {'cluster_item_key': 'key', 'blake_hash': 'blake_hash value'},
         'some/path2/': {'cluster_item_key': 'key', 'blake_hash': 'blake_hash value'},
@@ -514,7 +499,7 @@ def test_clean_up_ko():
     """Check if the cleaning function raising the exceptions properly."""
     error_cleaning = 'Error cleaning up: stat: path should be string, bytes, os.PathLike or integer, not type.'
     error_removing = (
-        f"Error removing '{Exception}': " f"'stat: path should be string, bytes, os.PathLike or integer, not type'."
+        f"Error removing '{Exception}': 'stat: path should be string, bytes, os.PathLike or integer, not type'."
     )
 
     with patch('os.path.join') as path_join_mock:

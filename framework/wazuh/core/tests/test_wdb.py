@@ -15,6 +15,7 @@ from wazuh.core.wdb import AsyncWazuhDBConnection, WazuhDBConnection
 
 
 def format_msg(msg):
+    """Format a message in bytes"""
     return struct.pack('<I', len(bytes(msg)))
 
 
@@ -221,6 +222,7 @@ def test_remove_agents_database(send_mock, connect_mock, content):
 @patch('socket.socket.connect')
 @patch('socket.socket.send')
 def test_query_input_validation_private(send_mock, connect_mock, error_query):
+    """Tests input validation for private queries to ensure invalid queries raise the correct exception."""
     mywdb = WazuhDBConnection()
     with pytest.raises(exception.WazuhException, match='.* 2004 .*'):
         mywdb.execute(error_query)
@@ -229,6 +231,7 @@ def test_query_input_validation_private(send_mock, connect_mock, error_query):
 @patch('socket.socket.connect')
 @patch('socket.socket.send')
 def test_query_lower_private(send_mock, connect_mock):
+    """Tests that lowercase SQL queries raise the correct exception for invalid input."""
     mywdb = WazuhDBConnection()
     with pytest.raises(exception.WazuhException, match='.* 2004 .*'):
         mywdb.execute("Agent sql select 'test'")
@@ -238,6 +241,8 @@ def test_query_lower_private(send_mock, connect_mock):
 @patch('socket.socket.send')
 @patch('wazuh.core.wdb.WazuhDBConnection._send')
 def test_execute(send_mock, socket_send_mock, connect_mock):
+    """Tests the execution of valid SQL queries with various operations (delete, update, select)."""
+
     def send_mock(obj, msg, raw=False):
         return ['ok', '{"total": 5}'] if raw else [{'total': 5}]
 
@@ -253,6 +258,7 @@ def test_execute(send_mock, socket_send_mock, connect_mock):
 @patch('socket.socket.connect')
 @patch('socket.socket.send')
 def test_execute_pagination(socket_send_mock, connect_mock):
+    """Tests pagination functionality in SQL queries and handles pagination errors."""
     mywdb = WazuhDBConnection()
 
     # Test pagination
@@ -287,6 +293,7 @@ def test_execute_pagination(socket_send_mock, connect_mock):
 @patch('socket.socket.connect')
 @patch('socket.socket.send')
 def test_failed_execute(send_mock, connect_mock, error_query, error_type, expected_exception, delete, update):
+    """Tests the handling of failed SQL queries with various error types and expected exceptions."""
     mywdb = WazuhDBConnection()
     if not error_type:
         with pytest.raises(exception.WazuhException, match=f'.* {expected_exception} .*'):

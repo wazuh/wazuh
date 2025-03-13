@@ -1,5 +1,6 @@
-import pytest
 from unittest.mock import patch
+
+import pytest
 from wazuh.core.config.models.central_config import (
     CommsAPIConfig,
     Config,

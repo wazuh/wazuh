@@ -14,6 +14,9 @@ from connexion.testing import TestContext
 from freezegun import freeze_time
 from starlette.responses import Response
 from wazuh.core.authentication import JWT_ALGORITHM
+from wazuh.core.config.client import CentralizedConfig, Config
+from wazuh.core.config.models.indexer import IndexerConfig, IndexerNode
+from wazuh.core.config.models.server import NodeConfig, NodeType, ServerConfig, SSLConfig, ValidateFilePathMixin
 
 from server_management_api.api_exception import ExpectFailedException
 from server_management_api.middlewares import (
@@ -31,33 +34,16 @@ from server_management_api.middlewares import (
     check_rate_limit,
     secure_headers,
 )
-from wazuh.core.config.client import CentralizedConfig, Config
-from wazuh.core.config.models.server import ServerConfig, ValidateFilePathMixin, SSLConfig, NodeConfig, NodeType
-from wazuh.core.config.models.indexer import IndexerConfig, IndexerNode
-
 
 with patch.object(ValidateFilePathMixin, '_validate_file_path', return_value=None):
     default_config = Config(
         server=ServerConfig(
             nodes=['0'],
             node=NodeConfig(
-                name='node_name',
-                type=NodeType.MASTER,
-                ssl=SSLConfig(
-                    key='example',
-                    cert='example',
-                    ca='example'
-                )
-            )
+                name='node_name', type=NodeType.MASTER, ssl=SSLConfig(key='example', cert='example', ca='example')
+            ),
         ),
-        indexer=IndexerConfig(
-            hosts=[IndexerNode(
-                host='example',
-                port=1516
-            )],
-            username='wazuh',
-            password='wazuh'
-        )
+        indexer=IndexerConfig(hosts=[IndexerNode(host='example', port=1516)], username='wazuh', password='wazuh'),
     )
     CentralizedConfig._config = default_config
 
@@ -195,7 +181,6 @@ async def test_check_rate_limits_middleware_ko(endpoint, return_code_general, re
     mock_req.url = MagicMock()
     mock_req.url.path = endpoint
     rq_x_min = 10000
-    api_conf = {'access': {'max_request_per_minute': rq_x_min}}
     with (
         TestContext(operation=operation),
         patch(

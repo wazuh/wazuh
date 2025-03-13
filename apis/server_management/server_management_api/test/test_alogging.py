@@ -72,7 +72,7 @@ def test_custom_logging(path, hash_auth_context, body, loggerlevel):
                 body = {'events': len(events)}
                 json_info['body'] = body
         log_info += (
-            f'with parameters {json.dumps(query)} and body' f' {json.dumps(body)} done in {elapsed_time:.3f}s: {status}'
+            f'with parameters {json.dumps(query)} and body {json.dumps(body)} done in {elapsed_time:.3f}s: {status}'
         )
         log_info_mock.info.has_calls([call(log_info, {'log_type': 'log'}), call(json_info, {'log_type': 'json'})])
         log_info_mock.debug2.assert_called_with(f'Receiving headers {headers}')

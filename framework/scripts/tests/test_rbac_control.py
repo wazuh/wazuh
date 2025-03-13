@@ -4,14 +4,16 @@
 
 import sys
 from unittest.mock import AsyncMock, MagicMock, patch
-from wazuh.core.config.client import CentralizedConfig, Config
-from wazuh.core.config.models.server import ServerConfig, ValidateFilePathMixin, SSLConfig, NodeConfig, NodeType
-from wazuh.core.config.models.indexer import IndexerConfig, IndexerNode
 
 import pytest
+from wazuh.core.config.client import CentralizedConfig, Config
+from wazuh.core.config.models.indexer import IndexerConfig, IndexerNode
+from wazuh.core.config.models.server import NodeConfig, NodeType, ServerConfig, SSLConfig, ValidateFilePathMixin
 
 
 class Arguments:
+    """Holds command-line arguments for script execution."""
+
     def __init__(self, reset_force=False, func=None):
         self.reset_force = reset_force
         self.func = func
@@ -26,21 +28,12 @@ with patch('wazuh.core.common.wazuh_uid'):
                     node=NodeConfig(
                         name='node_name',
                         type=NodeType.MASTER,
-                        ssl=SSLConfig(
-                            key='example',
-                            cert='example',
-                            ca='example'
-                        )
-                    )
+                        ssl=SSLConfig(key='example', cert='example', ca='example'),
+                    ),
                 ),
                 indexer=IndexerConfig(
-                    hosts=[IndexerNode(
-                        host='example',
-                        port=1516
-                    )],
-                    username='wazuh',
-                    password='wazuh'
-                )
+                    hosts=[IndexerNode(host='example', port=1516)], username='wazuh', password='wazuh'
+                ),
             )
             CentralizedConfig._config = default_config
             sys.modules['wazuh.rbac.orm'] = MagicMock()

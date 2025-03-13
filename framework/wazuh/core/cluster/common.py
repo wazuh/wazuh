@@ -1065,7 +1065,7 @@ class WazuhCommon:
                     os.remove(self.sync_tasks[task_id].filename)
                 except Exception as e:
                     self.get_logger(logger_tag).error(
-                        f'Attempt to delete file {self.sync_tasks[task_id].filename} ' f'failed: {e}'
+                        f'Attempt to delete file {self.sync_tasks[task_id].filename} failed: {e}'
                     )
             self.sync_tasks[task_id].filename = error_details_json
             self.sync_tasks[task_id].received_information.set()
@@ -1177,9 +1177,7 @@ class SyncFiles(SyncTask):
         zip_limit_tolerance = self.server.server_config.communications.zip.limit_tolerance
         timeout_receiving_file = self.server.server_config.communications.timeouts.receiving_file
 
-        self.logger.debug(
-            f"Compressing {'files and ' if files else ''}" f"'files_metadata.json' of {metadata_len} files."
-        )
+        self.logger.debug(f"Compressing {'files and ' if files else ''}'files_metadata.json' of {metadata_len} files.")
         compressed_data, logs = await cluster.run_in_pool(
             self.server.loop, task_pool, cluster.compress_files, self.server.name, files, files_metadata, zip_limit
         )
@@ -1232,7 +1230,7 @@ class SyncFiles(SyncTask):
                         max_zip_size, self.server.current_zip_limit * (1 / (1 - zip_limit_tolerance))
                     )
                     self.logger.debug(
-                        f'Increasing sync size limit to {self.server.current_zip_limit / (1024**2):.2f}' f' MB.'
+                        f'Increasing sync size limit to {self.server.current_zip_limit / (1024**2):.2f} MB.'
                     )
 
             try:
@@ -1240,7 +1238,7 @@ class SyncFiles(SyncTask):
                 os.unlink(compressed_data)
             except FileNotFoundError:
                 self.logger.error(
-                    f'File {compressed_data} could not be removed/not found. ' f'May be due to a lost connection.'
+                    f'File {compressed_data} could not be removed/not found. May be due to a lost connection.'
                 )
 
 
@@ -1259,7 +1257,7 @@ def asyncio_exception_handler(loop, context: Dict):
         https://docs.python.org/3/library/asyncio-eventloop.html#asyncio.loop.call_exception_handler.
     """
     logging.error(
-        f"Unhandled exception: {context['exception']} {context['message']}\n" ''.join(
+        f'Unhandled exception: {context["exception"]} {context["message"]}\n'.join(
             traceback.format_tb(context['exception'].__traceback__)
         )
     )

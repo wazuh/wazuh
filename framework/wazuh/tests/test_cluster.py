@@ -6,11 +6,9 @@ import sys
 from unittest.mock import MagicMock, patch
 
 import pytest
-
 from wazuh.core.config.client import CentralizedConfig, Config
-from wazuh.core.config.models.server import ServerConfig, ValidateFilePathMixin, SSLConfig, NodeConfig, NodeType
 from wazuh.core.config.models.indexer import IndexerConfig, IndexerNode
-
+from wazuh.core.config.models.server import NodeConfig, NodeType, ServerConfig, SSLConfig, ValidateFilePathMixin
 
 with patch('wazuh.core.common.wazuh_uid'):
     with patch('wazuh.core.common.wazuh_gid'):
@@ -21,21 +19,12 @@ with patch('wazuh.core.common.wazuh_uid'):
                     node=NodeConfig(
                         name='node_name',
                         type=NodeType.MASTER,
-                        ssl=SSLConfig(
-                            key='example',
-                            cert='example',
-                            ca='example'
-                        )
-                    )
+                        ssl=SSLConfig(key='example', cert='example', ca='example'),
+                    ),
                 ),
                 indexer=IndexerConfig(
-                    hosts=[IndexerNode(
-                        host='example',
-                        port=1516
-                    )],
-                    username='wazuh',
-                    password='wazuh'
-                )
+                    hosts=[IndexerNode(host='example', port=1516)], username='wazuh', password='wazuh'
+                ),
             )
             CentralizedConfig._config = default_config
 

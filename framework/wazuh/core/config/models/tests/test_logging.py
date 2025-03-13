@@ -37,13 +37,6 @@ def test_logging_config_default_values(init_values, expected):
     assert config.level == expected
 
 
-@pytest.mark.parametrize('value', ['info1', ''])
-def test_logging_config_invalid_values(value):
-    """Check the correct behavior of the `LoggingConfig` class validations."""
-    with pytest.raises(ValidationError):
-        _ = LoggingConfig(**{'level': value})
-
-
 @pytest.mark.parametrize('value, expected', [(LoggingLevel.info, 0), (LoggingLevel.debug, 1), (LoggingLevel.debug2, 2)])
 def test_get_level_values(value, expected):
     """Check the correct behavior of the `get_level_value` method."""

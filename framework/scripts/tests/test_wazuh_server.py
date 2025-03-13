@@ -12,9 +12,8 @@ import scripts.wazuh_server as wazuh_server
 from wazuh.core import pyDaemonModule
 from wazuh.core.cluster.utils import HAPROXY_DISABLED, HAPROXY_HELPER
 from wazuh.core.config.client import CentralizedConfig, Config
-from wazuh.core.config.models.server import ServerConfig, ValidateFilePathMixin, SSLConfig, NodeConfig, NodeType
 from wazuh.core.config.models.indexer import IndexerConfig, IndexerNode
-
+from wazuh.core.config.models.server import NodeConfig, NodeType, ServerConfig, SSLConfig, ValidateFilePathMixin
 
 wazuh_server.pyDaemonModule = pyDaemonModule
 
@@ -23,23 +22,10 @@ with patch.object(ValidateFilePathMixin, '_validate_file_path', return_value=Non
         server=ServerConfig(
             nodes=['0'],
             node=NodeConfig(
-                name='node_name',
-                type=NodeType.MASTER,
-                ssl=SSLConfig(
-                    key='example',
-                    cert='example',
-                    ca='example'
-                )
-            )
+                name='node_name', type=NodeType.MASTER, ssl=SSLConfig(key='example', cert='example', ca='example')
+            ),
         ),
-        indexer=IndexerConfig(
-            hosts=[IndexerNode(
-                host='example',
-                port=1516
-            )],
-            username='wazuh',
-            password='wazuh'
-        )
+        indexer=IndexerConfig(hosts=[IndexerNode(host='example', port=1516)], username='wazuh', password='wazuh'),
     )
     CentralizedConfig._config = default_config
 
@@ -193,8 +179,6 @@ async def test_master_main(helper_disabled: bool):
     """Check and set the behavior of master_main function."""
     import wazuh.core.cluster.utils as cluster_utils
 
-    cluster_config = {'test': 'config', HAPROXY_HELPER: {HAPROXY_DISABLED: helper_disabled}}
-
     class Arguments:
         def __init__(self, performance_test, concurrency_test, root):
             self.performance_test = performance_test
@@ -249,11 +233,9 @@ async def test_master_main(helper_disabled: bool):
         patch('wazuh.core.cluster.local_server.LocalServerMaster', LocalServerMasterMock),
         patch('wazuh.core.cluster.hap_helper.hap_helper.HAPHelper', HAPHElperMock),
         patch('scripts.wazuh_server.start_daemon'),
-        patch('scripts.wazuh_server.start_daemons')
+        patch('scripts.wazuh_server.start_daemons'),
     ):
-        await wazuh_server.master_main(
-            args=args, server_config=default_config.server, logger='test_logger'
-        )
+        await wazuh_server.master_main(args=args, server_config=default_config.server, logger='test_logger')
 
 
 @pytest.mark.asyncio
@@ -287,9 +269,7 @@ async def test_worker_main(asyncio_sleep_mock):
             pass
 
     class WorkerMock:
-        def __init__(
-            self, performance_test, concurrency_test, server_config, logger, file, string, task_pool
-        ):
+        def __init__(self, performance_test, concurrency_test, server_config, logger, file, string, task_pool):
             assert performance_test == 'test_performance'
             assert concurrency_test == 'concurrency_test'
             assert server_config == default_config.server
@@ -320,8 +300,11 @@ async def test_worker_main(asyncio_sleep_mock):
     wazuh_server.cluster_utils = cluster_utils
     wazuh_server.main_logger = LoggerMock()
     args = Arguments(
-        performance_test='test_performance', concurrency_test='concurrency_test', send_file=True, send_string=True,
-        root=True
+        performance_test='test_performance',
+        concurrency_test='concurrency_test',
+        send_file=True,
+        send_string=True,
+        root=True,
     )
 
     with patch.object(wazuh_server, 'main_logger') as main_logger_mock:
@@ -400,8 +383,17 @@ def test_get_script_arguments(command, expected_args):
 @patch('scripts.wazuh_server.os.path.exists', return_value=True)
 @patch('builtins.print')
 @pytest.mark.skip(reason='This test will be refactored')
-def test_start(print_mock, path_exists_mock, chown_mock, chmod_mock, setuid_mock, setgid_mock, getpid_mock, exit_mock,
-               mkdir_wazuh_dir_mock):
+def test_start(
+    print_mock,
+    path_exists_mock,
+    chown_mock,
+    chmod_mock,
+    setuid_mock,
+    setgid_mock,
+    getpid_mock,
+    exit_mock,
+    mkdir_wazuh_dir_mock,
+):
     """Check and set the behavior of the `start` function."""
     import wazuh.core.cluster.utils as cluster_utils
     from wazuh.core import common
@@ -513,7 +505,7 @@ def test_start(print_mock, path_exists_mock, chown_mock, chmod_mock, setuid_mock
                 with patch('scripts.wazuh_server.master_main', side_effect=MemoryError('TESTING')):
                     wazuh_server.start()
                     main_logger_mock.assert_any_call(
-                        "Directory '/tmp' needs read, write & execution " "permission for 'wazuh' user"
+                        "Directory '/tmp' needs read, write & execution permission for 'wazuh' user"
                     )
 
                 error_message = 'Some daemon fail to start'
@@ -771,7 +763,11 @@ async def test_monitor_server_daemons(sleep_mock, check_daemon_mock, readiness_m
         def name(self) -> str:
             return self._name
 
-    proc_list = [MockObjectWithName('test_proc_1'), MockObjectWithName('test_proc_2'), MockObjectWithName('test_proc_3')]
+    proc_list = [
+        MockObjectWithName('test_proc_1'),
+        MockObjectWithName('test_proc_2'),
+        MockObjectWithName('test_proc_3'),
+    ]
     process_mock = Mock(**{'children.return_value': proc_list})
     loop_mock = Mock()
 

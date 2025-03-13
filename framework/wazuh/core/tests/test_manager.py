@@ -8,11 +8,10 @@ from datetime import datetime, timezone
 from unittest.mock import ANY, patch
 from uuid import uuid4
 
-from wazuh.core.config.client import CentralizedConfig, Config
-from wazuh.core.config.models.server import ServerConfig, ValidateFilePathMixin, SSLConfig, NodeConfig, NodeType
-from wazuh.core.config.models.indexer import IndexerConfig, IndexerNode
-
 import pytest
+from wazuh.core.config.client import CentralizedConfig, Config
+from wazuh.core.config.models.indexer import IndexerConfig, IndexerNode
+from wazuh.core.config.models.server import NodeConfig, NodeType, ServerConfig, SSLConfig, ValidateFilePathMixin
 
 with patch('wazuh.core.common.wazuh_uid'):
     with patch('wazuh.core.common.wazuh_gid'):
@@ -23,21 +22,12 @@ with patch('wazuh.core.common.wazuh_uid'):
                     node=NodeConfig(
                         name='node_name',
                         type=NodeType.MASTER,
-                        ssl=SSLConfig(
-                            key='example',
-                            cert='example',
-                            ca='example'
-                        )
-                    )
+                        ssl=SSLConfig(key='example', cert='example', ca='example'),
+                    ),
                 ),
                 indexer=IndexerConfig(
-                    hosts=[IndexerNode(
-                        host='example',
-                        port=1516
-                    )],
-                    username='wazuh',
-                    password='wazuh'
-                )
+                    hosts=[IndexerNode(host='example', port=1516)], username='wazuh', password='wazuh'
+                ),
             )
             CentralizedConfig._config = default_config
 
@@ -50,13 +40,14 @@ ossec_log_json_path = '{0}/ossec_log.log'.format(test_data_path)
 
 class InitManager:
     def __init__(self):
-        """Sets up necessary environment to test manager functions."""
+        """Initializes the environment for testing manager functions."""
         # path for temporary API files
         self.api_tmp_path = os.path.join(test_data_path, 'tmp')
 
 
 @pytest.fixture(scope='module')
 def test_manager():
+    """Fixture to initialize and return an instance of InitManager for testing."""
     # Set up
     test_manager = InitManager()
     return test_manager
@@ -64,16 +55,19 @@ def test_manager():
 
 @pytest.fixture
 def client_session_get_mock():
+    """Fixture to mock the `httpx.AsyncClient.get` method for testing."""
     with patch('httpx.AsyncClient.get') as get_mock:
         yield get_mock
 
 
 @pytest.fixture
 def installation_uid():
+    """Fixture to generate and return a unique installation UID for testing."""
     return str(uuid4())
 
 
 def get_logs(json_log: bool = False):
+    """Reads and returns logs from the specified file (JSON or plain text)."""
     with open(ossec_log_json_path if json_log else ossec_log_path) as f:
         return f.read()
 
@@ -172,6 +166,7 @@ def test_get_logs_summary(mock_exists, mock_active_logging_format):
 @patch('wazuh.core.manager.exists', return_value=True)
 @patch('wazuh.core.manager.WazuhSocket')
 def test_validate_ossec_conf(mock_wazuhsocket, mock_exists):
+    """Test validate_ossec_conf functionality"""
     with patch('socket.socket'):
         # Mock sock response
         json_response = json.dumps({'error': 0, 'message': ''}).encode()
@@ -184,6 +179,7 @@ def test_validate_ossec_conf(mock_wazuhsocket, mock_exists):
 
 @patch('wazuh.core.manager.exists', return_value=True)
 def test_validation_ko(mock_exists):
+    """Test validate_ossec_conf raises an error"""
     # Socket creation raise socket.error
     with patch('socket.socket', side_effect=socket.error):
         with pytest.raises(WazuhInternalError, match='.* 1013 .*'):

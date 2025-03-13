@@ -12,11 +12,10 @@ from unittest.mock import MagicMock, call, patch
 
 import pytest
 import wazuh.core.exception as exception
-from wazuh.core.config.client import CentralizedConfig, Config
-from wazuh.core.config.models.server import ServerConfig, ValidateFilePathMixin, SSLConfig, NodeConfig, NodeType
-from wazuh.core.config.models.indexer import IndexerConfig, IndexerNode
 from freezegun import freeze_time
-
+from wazuh.core.config.client import CentralizedConfig, Config
+from wazuh.core.config.models.indexer import IndexerConfig, IndexerNode
+from wazuh.core.config.models.server import NodeConfig, NodeType, ServerConfig, SSLConfig, ValidateFilePathMixin
 
 with patch('wazuh.core.common.wazuh_uid'):
     with patch('wazuh.core.common.wazuh_gid'):
@@ -27,21 +26,12 @@ with patch('wazuh.core.common.wazuh_uid'):
                     node=NodeConfig(
                         name='node_name',
                         type=NodeType.MASTER,
-                        ssl=SSLConfig(
-                            key='example',
-                            cert='example',
-                            ca='example'
-                        )
-                    )
+                        ssl=SSLConfig(key='example', cert='example', ca='example'),
+                    ),
                 ),
                 indexer=IndexerConfig(
-                    hosts=[IndexerNode(
-                        host='example',
-                        port=1516
-                    )],
-                    username='wazuh',
-                    password='wazuh'
-                )
+                    hosts=[IndexerNode(host='example', port=1516)], username='wazuh', password='wazuh'
+                ),
             )
             CentralizedConfig._config = default_config
 
@@ -58,6 +48,7 @@ with patch('wazuh.core.common.wazuh_uid'):
             from wazuh.core.cluster import common as cluster_common
 
 logger = logging.getLogger('wazuh')
+
 
 def get_worker_handler(loop):
     """Return the needed WorkerHandler object. This is an auxiliary method."""
@@ -79,7 +70,7 @@ def get_worker_handler(loop):
         name='Testing',
         logger=logger,
         manager=abstract_client,
-        server_config=default_config.server
+        server_config=default_config.server,
     )
 
 
@@ -735,7 +726,6 @@ async def test_worker_handler_update_master_files_in_worker_ok(
 
     worker_handler = get_worker_handler(event_loop)
 
-
     # Test the first for: for -> if -> for -> try
     # In the nested method, with the first value sent to the 'update_master_files_in_worker' (shared), we
     # are testing the if, meanwhile with the second (missing), we are testing the else.
@@ -789,8 +779,8 @@ async def test_worker_handler_update_master_files_in_worker_ok(
     )
 
     assert result_logs['error'] == {
-        'shared': ["Error processing shared file 'filename1': " 'string indices must be integers'],
-        'missing': ["Error processing missing file 'filename2': " 'string indices must be integers'],
+        'shared': ["Error processing shared file 'filename1': string indices must be integers"],
+        'missing': ["Error processing missing file 'filename2': string indices must be integers"],
     }
 
     assert result_logs['debug2'] == {
@@ -832,8 +822,8 @@ async def test_worker_handler_update_master_files_in_worker_ok(
     )
 
     assert result_logs['error'] == {
-        'shared': ["Error processing shared file 'filename1': " 'string indices must be integers'],
-        'missing': ["Error processing missing file 'filename2': " 'string indices must be integers'],
+        'shared': ["Error processing shared file 'filename1': string indices must be integers"],
+        'missing': ["Error processing missing file 'filename2': string indices must be integers"],
     }
     assert result_logs['debug2'] == {
         'filename1': ['Processing file filename1'],
@@ -859,7 +849,6 @@ async def test_worker_handler_update_master_files_in_worker_ok(
     # Reset all mocks
     for mock in all_mocks:
         mock.reset_mock()
-
 
     # Test the try
     with patch('os.listdir', return_value='dir_files') as listdir_mock:
@@ -891,14 +880,15 @@ async def test_worker_handler_update_master_files_in_worker_ok(
 
     # Test the exception
     result_logs = worker_handler.update_master_files_in_worker(
-        {'extra': {'filename3': {'cluster_item_key': 'cluster_item_key'}}}, '/zip/path',
+        {'extra': {'filename3': {'cluster_item_key': 'cluster_item_key'}}},
+        '/zip/path',
         server_config=default_config.server,
     )
 
     assert result_logs['error'] == defaultdict(list)
     assert result_logs['debug2'] == {
         'filename3': ["Remove file: 'filename3'", "File filename3 doesn't exist."],
-        '': ["Error removing directory '': [Errno 2] No such file or directory: " "'queue/testing_mock/'"],
+        '': ["Error removing directory '': [Errno 2] No such file or directory: 'queue/testing_mock/'"],
     }
     assert result_logs['generic_errors'] == ['Found errors: 0 overwriting, 0 creating and 1 removing']
 

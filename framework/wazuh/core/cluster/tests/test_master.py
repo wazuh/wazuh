@@ -16,9 +16,8 @@ import uvloop
 from freezegun import freeze_time
 from wazuh.core import exception
 from wazuh.core.config.client import CentralizedConfig, Config
-from wazuh.core.config.models.server import ServerConfig, ValidateFilePathMixin, SSLConfig, NodeConfig, NodeType
 from wazuh.core.config.models.indexer import IndexerConfig, IndexerNode
-
+from wazuh.core.config.models.server import NodeConfig, NodeType, ServerConfig, SSLConfig, ValidateFilePathMixin
 
 with patch('wazuh.core.common.wazuh_uid'):
     with patch('wazuh.core.common.wazuh_gid'):
@@ -29,21 +28,12 @@ with patch('wazuh.core.common.wazuh_uid'):
                     node=NodeConfig(
                         name='node_name',
                         type=NodeType.MASTER,
-                        ssl=SSLConfig(
-                            key='example',
-                            cert='example',
-                            ca='example'
-                        )
-                    )
+                        ssl=SSLConfig(key='example', cert='example', ca='example'),
+                    ),
                 ),
                 indexer=IndexerConfig(
-                    hosts=[IndexerNode(
-                        host='example',
-                        port=1516
-                    )],
-                    username='wazuh',
-                    password='wazuh'
-                )
+                    hosts=[IndexerNode(host='example', port=1516)], username='wazuh', password='wazuh'
+                ),
             )
             CentralizedConfig._config = default_config
 
@@ -77,7 +67,11 @@ def get_master_handler():
             string=20,
         )
 
-    return master.MasterHandler(server=abstract_client, loop=loop, server_config=default_config.server,)
+    return master.MasterHandler(
+        server=abstract_client,
+        loop=loop,
+        server_config=default_config.server,
+    )
 
 
 def get_master():
@@ -400,7 +394,7 @@ def test_master_handler_process_request(logger_mock):
             call("Command received: b'dapi_res'"),
             call("Command received: b'get_nodes'"),
             call("Command received: b'get_health'"),
-            call("Command received: b'random'")
+            call("Command received: b'random'"),
         ]
     )
 
@@ -802,7 +796,7 @@ async def test_master_handler_sync_worker_files_ok(run_in_pool_mock, decompress_
         decompress_files_mock.return_value[1],
         default_config.server,
         master_handler.name,
-        default_config.server.master.intervals.timeout_extra_valid
+        default_config.server.master.intervals.timeout_extra_valid,
     )
 
 
@@ -1363,7 +1357,7 @@ def test_master_to_dict(get_running_loop_mock):
 @pytest.mark.asyncio
 @freeze_time('2021-11-02')
 @patch('asyncio.sleep')
-async def test_master_file_status_update_ok(sleep_mock):
+async def test_master_file_status_update(sleep_mock):
     """Check if the file status is properly obtained."""
     master_class = get_master()
 
@@ -1501,16 +1495,16 @@ def test_master_get_health(get_running_loop_mock, get_agent_overview_mock):
     assert master_class.get_health({'jey': 'value', 'hoy': 'value'}) == {'n_connected_nodes': 0, 'nodes': {}}
     assert master_class.get_health(None) == {
         'n_connected_nodes': 1,
-        "nodes": {
-            "1": {
-                "info": {"n_active_agents": 5, "type": "worker"},
-                "status": {"last_keep_alive": "1970-01-01T00:00:00.000000Z"},
+        'nodes': {
+            '1': {
+                'info': {'n_active_agents': 5, 'type': 'worker'},
+                'status': {'last_keep_alive': '1970-01-01T00:00:00.000000Z'},
             },
-            "node_name": {
-                "info": {"n_active_agents": 5, "type": "master"},
-                "testing": "get_health",
+            'node_name': {
+                'info': {'n_active_agents': 5, 'type': 'master'},
+                'testing': 'get_health',
             },
-        }
+        },
     }
 
 

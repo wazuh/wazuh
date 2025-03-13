@@ -23,54 +23,55 @@ with patch('wazuh.common.wazuh_uid'):
         import wazuh.core.cluster.client as client
         from wazuh import WazuhException
 
+from wazuh.core.config.models.server import NodeConfig, NodeType, ServerConfig, SSLConfig, ValidateFilePathMixin
 from wazuh.core.exception import WazuhClusterError
-from wazuh.core.config.models.server import ServerConfig, NodeConfig, NodeType, SSLConfig, ValidateFilePathMixin
 
-#configuration = {'node_name': 'manager', 'nodes': [0], 'port': 1515}
+# configuration = {'node_name': 'manager', 'nodes': [0], 'port': 1515}
 with patch.object(ValidateFilePathMixin, '_validate_file_path', return_value=None):
     configuration = ServerConfig(
         nodes=['0'],
         node=NodeConfig(
-            name='manager',
-            type=NodeType.MASTER,
-            ssl=SSLConfig(
-                key='example',
-                cert='example',
-                ca='example'
-            )
-        )
+            name='manager', type=NodeType.MASTER, ssl=SSLConfig(key='example', cert='example', ca='example')
+        ),
     )
 
 
 class FutureMock:
     def __init__(self):
+        """Initializes a FutureMock instance with a default value."""
         self.value = True
 
     def done(self):
+        """Returns the completion status of the future."""
         return self.value
 
     def set_result(self, set):
+        """Sets the result of the future (not implemented)."""
         pass
 
 
 class LoopMock:
     def __init__(self):
+        """Initializes a LoopMock instance."""
         pass
 
     @staticmethod
     async def create_connection(protocol_factory, host, port, ssl):
+        """Simulates the creation of an asynchronous connection."""
         return 'transport', 'protocol'
 
     def set_exception_handler(self, exc_handler):
+        """Sets an exception handler for the loop."""
         pass
 
     def create_future(self):
+        """Creates and returns a future associated with the loop (not implemented)."""
         pass
 
 
 future_mock = FutureMock()
 abstract_client = client.AbstractClient(
-    server_config=configuration ,loop=None, on_con_lost=future_mock, name='name', logger=None, manager=None
+    server_config=configuration, loop=None, on_con_lost=future_mock, name='name', logger=None, manager=None
 )
 with patch('asyncio.get_running_loop'):
     abstract_client_manager = client.AbstractClientManager(
@@ -406,7 +407,7 @@ async def test_ac_client_echo_ok(send_request_mock, done_mock, asyncio_sleep_moc
         with patch(
             'wazuh.core.cluster.common.Handler.setup_task_logger', return_value=logging.getLogger('wazuh')
         ) as setup_logger_mock:
-            with patch.object(TransportMock, 'close') as close_mock:
+            with patch.object(TransportMock, 'close'):
                 abstract_client.transport = TransportMock()
                 done_mock.return_value = False
                 send_request_mock.side_effect = Exception()

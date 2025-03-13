@@ -16,8 +16,8 @@ from connexion import ProblemException
 from sqlalchemy.exc import OperationalError
 from wazuh.core import common
 from wazuh.core.config.client import CentralizedConfig, Config
-from wazuh.core.config.models.server import ServerConfig, ValidateFilePathMixin, SSLConfig, NodeConfig, NodeType
 from wazuh.core.config.models.indexer import IndexerConfig, IndexerNode
+from wazuh.core.config.models.server import NodeConfig, NodeType, ServerConfig, SSLConfig, ValidateFilePathMixin
 
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '../../../../../../api'))
 
@@ -30,21 +30,12 @@ with patch('wazuh.common.wazuh_uid'):
                     node=NodeConfig(
                         name='node_name',
                         type=NodeType.MASTER,
-                        ssl=SSLConfig(
-                            key='example',
-                            cert='example',
-                            ca='example'
-                        )
-                    )
+                        ssl=SSLConfig(key='example', cert='example', ca='example'),
+                    ),
                 ),
                 indexer=IndexerConfig(
-                    hosts=[IndexerNode(
-                        host='example',
-                        port=1516
-                    )],
-                    username='wazuh',
-                    password='wazuh'
-                )
+                    hosts=[IndexerNode(host='example', port=1516)], username='wazuh', password='wazuh'
+                ),
             )
             CentralizedConfig._config = default_config
 
@@ -68,7 +59,9 @@ logger = logging.getLogger('wazuh')
 
 DEFAULT_REQUEST_TIMEOUT = 10
 
+
 async def raise_if_exc_routine(dapi_kwargs, expected_error=None):
+    """Test raise_if_exc_routine functionality."""
     dapi = DistributedAPI(**dapi_kwargs)
     try:
         raise_if_exc(await dapi.distribute_function())
@@ -101,12 +94,15 @@ class TestingLogger:
         self.parent = TestingLoggerParent()
 
     def error(self, message):
+        """Error level log"""
         pass
 
     def debug(self, message):
+        """Debug level log"""
         pass
 
     def debug2(self, message):
+        """Debug2 level log"""
         pass
 
 
@@ -696,7 +692,7 @@ async def test_APIRequestQueue_run(loop_mock, import_module_mock):
         with pytest.raises(Exception, match='.*break while true.*'):
             await apirequest.run()
         logger_mock.assert_called_once_with(
-            'Error in DAPI request. The destination node is ' "not connected or does not exist: 'wazuh'."
+            "Error in DAPI request. The destination node is not connected or does not exist: 'wazuh'."
         )
 
         node = NodeMock()

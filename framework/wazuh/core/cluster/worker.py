@@ -167,8 +167,8 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         """
         integrity_logger = self.task_loggers['Integrity check']
         integrity_logger.info(
-            f"Finished in {(get_utc_now().timestamp() - self.integrity_check_status['date_start']):.3f}s. "
-            f"Sync required."
+            f'Finished in {(get_utc_now().timestamp() - self.integrity_check_status["date_start"]):.3f}s. '
+            f'Sync required.'
         )
         self.check_integrity_free = False
         return super().setup_receive_file(receive_task_class=ReceiveIntegrityTask, logger_tag='Integrity sync')
@@ -222,8 +222,8 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         """
         integrity_logger = self.task_loggers['Integrity check']
         integrity_logger.info(
-            f"Finished in {(get_utc_now().timestamp() - self.integrity_check_status['date_start']):.3f}s. "
-            f"Sync not required."
+            f'Finished in {(get_utc_now().timestamp() - self.integrity_check_status["date_start"]):.3f}s. '
+            f'Sync not required.'
         )
         return b'ok', b'Thanks'
 
@@ -313,7 +313,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                 task_pool=self.server.task_pool,
             )
             logger.debug(f'Finished sending extra valid files in {(perf_counter() - start_time):.3f}s.')
-            logger.info(f"Finished in {(get_utc_now().timestamp() - self.integrity_sync_status['date_start']):.3f}s.")
+            logger.info(f'Finished in {(get_utc_now().timestamp() - self.integrity_sync_status["date_start"]):.3f}s.')
 
         # If exception is raised during sync process, notify the master, so it removes the file if received.
         except Exception as e:
@@ -369,8 +369,8 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                 self.loop, self.server.task_pool, cluster.decompress_files, received_filename
             )
             logger.info(
-                f"Files to create: {len(ko_files['missing'])} | Files to update: {len(ko_files['shared'])} "
-                f"| Files to delete: {len(ko_files['extra'])}"
+                f'Files to create: {len(ko_files["missing"])} | Files to update: {len(ko_files["shared"])} '
+                f'| Files to delete: {len(ko_files["extra"])}'
             )
 
             if ko_files['shared'] or ko_files['missing'] or ko_files['extra']:
@@ -388,7 +388,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                 log_subprocess_execution(self.task_loggers['Integrity sync'], logs)
                 logger.debug('Updating local files: End.')
 
-            logger.info(f"Finished in {get_utc_now().timestamp() - self.integrity_sync_status['date_start']:.3f}s.")
+            logger.info(f'Finished in {get_utc_now().timestamp() - self.integrity_sync_status["date_start"]:.3f}s.')
         except Exception as e:
             logger.error(f'Error synchronizing files: {e}')
             if isinstance(e, exception.WazuhException):
@@ -478,7 +478,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                         overwrite_or_create_files(filename, data)
                     except Exception as e:
                         errors[filetype] += 1
-                        result_logs['error'][filetype].append(f'Error processing {filetype} ' f"file '{filename}': {e}")
+                        result_logs['error'][filetype].append(f"Error processing {filetype} file '{filename}': {e}")
                         continue
             # Remove local files marked as extra.
             elif filetype == 'extra':
@@ -490,15 +490,13 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                             os.remove(file_path)
                         except OSError as e:
                             if e.errno == errno.ENOENT:
-                                result_logs['debug2'][file_to_remove].append(
-                                    f'File {file_to_remove} ' f"doesn't exist."
-                                )
+                                result_logs['debug2'][file_to_remove].append(f"File {file_to_remove} doesn't exist.")
                                 continue
                             else:
                                 raise e
                     except Exception as e:
                         errors['extra'] += 1
-                        result_logs['debug2'][file_to_remove].append(f'Error removing file ' f"'{file_to_remove}': {e}")
+                        result_logs['debug2'][file_to_remove].append(f"Error removing file '{file_to_remove}': {e}")
                         continue
 
         # Once files are deleted, check and remove subdirectories which are now empty, as specified in cluster.json.
@@ -522,9 +520,9 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
 
         if sum(errors.values()) > 0:
             result_logs['generic_errors'].append(
-                f"Found errors: {errors['shared']} overwriting, "
-                f"{errors['missing']} creating and "
-                f"{errors['extra']} removing"
+                f'Found errors: {errors["shared"]} overwriting, '
+                f'{errors["missing"]} creating and '
+                f'{errors["extra"]} removing'
             )
         return result_logs
 

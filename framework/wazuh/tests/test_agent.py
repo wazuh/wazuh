@@ -12,8 +12,8 @@ from unittest.mock import AsyncMock, MagicMock, call, patch
 
 import pytest
 from wazuh.core.config.client import CentralizedConfig, Config
-from wazuh.core.config.models.server import ServerConfig, ValidateFilePathMixin, SSLConfig, NodeConfig, NodeType
 from wazuh.core.config.models.indexer import IndexerConfig, IndexerNode
+from wazuh.core.config.models.server import NodeConfig, NodeType, ServerConfig, SSLConfig, ValidateFilePathMixin
 
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '../..'))
 
@@ -26,21 +26,12 @@ with patch('wazuh.core.common.wazuh_uid'):
                     node=NodeConfig(
                         name='node_name',
                         type=NodeType.MASTER,
-                        ssl=SSLConfig(
-                            key='example',
-                            cert='example',
-                            ca='example'
-                        )
-                    )
+                        ssl=SSLConfig(key='example', cert='example', ca='example'),
+                    ),
                 ),
                 indexer=IndexerConfig(
-                    hosts=[IndexerNode(
-                        host='example',
-                        port=1516
-                    )],
-                    username='wazuh',
-                    password='wazuh'
-                )
+                    hosts=[IndexerNode(host='example', port=1516)], username='wazuh', password='wazuh'
+                ),
             )
             CentralizedConfig._config = default_config
 
@@ -89,6 +80,7 @@ short_agent_list = ['001', '002', '003', '004', '005']
 
 
 def send_msg_to_wdb(msg, raw=False):
+    """Mocks message delivery to the database."""
     query = ' '.join(msg.split(' ')[2:])
     result = list(map(remove_nones_to_dict, map(dict, test_data.cur.execute(query).fetchall())))
     return ['ok', dumps(result)] if raw else result
@@ -445,17 +437,17 @@ async def test_create_group(chown_mock, uid_mock, gid_mock, group_id):
     try:
         result = await create_group(group_id)
         assert isinstance(result, WazuhResult), 'The returned object is not an "WazuhResult" instance.'
-        assert (
-            len(result.dikt) == 1
-        ), f'Result dikt length is "{len(result.dikt)}" instead of "1". Result dikt content is: {result.dikt}'
+        assert len(result.dikt) == 1, (
+            f'Result dikt length is "{len(result.dikt)}" instead of "1". Result dikt content is: {result.dikt}'
+        )
         assert result.dikt['message'] == expected_msg, (
             f'The "result.dikt[\'message\']" received is not the expected.\n'
             f'Expected: "{expected_msg}"\n'
             f'Received: "{result.dikt["message"]}"'
         )
-        assert os.path.exists(
-            path_to_group
-        ), f'The path "{path_to_group}" does not exists and should be created by "create_group" function.'
+        assert os.path.exists(path_to_group), (
+            f'The path "{path_to_group}" does not exists and should be created by "create_group" function.'
+        )
     finally:
         # Remove the new file to avoid affecting other tests
         if os.path.exists(path_to_group):

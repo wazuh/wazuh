@@ -303,8 +303,7 @@ class CheckExpectHeaderMiddleware(BaseHTTPMiddleware):
                     raise ExpectFailedException(
                         status=417,
                         title='Expectation failed',
-                        detail=f'Maximum content size limit ({max_upload_size}) exceeded '
-                        f'({content_length} bytes read)',
+                        detail=f'Maximum content size limit ({max_upload_size}) exceeded ({content_length} bytes read)',
                     )
 
         response = await call_next(request)

@@ -1,11 +1,11 @@
 import json
-from unittest.mock import AsyncMock, MagicMock, call, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from fastapi import FastAPI, Request
 from starlette.requests import ClientDisconnect
 from wazuh.core.batcher.client import BatcherClient
-from wazuh.core.batcher.mux_demux import Packet, Item
+from wazuh.core.batcher.mux_demux import Item, Packet
 from wazuh.core.exception import WazuhError
 from wazuh.core.indexer.bulk import Operation
 from wazuh.core.indexer.commands import CommandsManager
@@ -102,8 +102,9 @@ async def test_send_stateful_events(send_events_mock, batcher_client_mock):
     batcher_client_mock.return_value = batcher_client
     send_events_mock.return_value = expected
 
-    events = StatefulEvents(agent_metadata=agent_metadata, headers=headers,
-                            data=[json.dumps(item).encode('utf-8') for item in data])
+    events = StatefulEvents(
+        agent_metadata=agent_metadata, headers=headers, data=[json.dumps(item).encode('utf-8') for item in data]
+    )
     result = await send_stateful_events(events, batcher_queue)
 
     send_events_mock.assert_called_once_with(
@@ -189,10 +190,10 @@ async def test_parse_stateful_events_ko(disconnect_client, expected_code):
 @patch('asyncio.create_task')
 @patch('asyncio.gather', new_callable=AsyncMock)
 async def test_send_events(gather_mock, create_task_mock, parse_tasks_results_mock, batcher_client_mock):
-    # Configura get_response para que sea awaitable
-    batcher_client_mock.get_response = AsyncMock(return_value=Packet(
-        items=[Item(id=1, operation='CREATE', content=b'example')]
-    ))
+    """Check that the `send_events` function works as expected."""
+    batcher_client_mock.get_response = AsyncMock(
+        return_value=Packet(items=[Item(id=1, operation='CREATE', content=b'example')])
+    )
 
     events = StatefulEvents(
         agent_metadata=AgentMetadata(

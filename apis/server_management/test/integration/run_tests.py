@@ -105,7 +105,7 @@ def collect_non_excluded_tests() -> list:
     done_tests = glob.glob('test_*')
     os.chdir(TESTS_PATH)
     collected_tests = sorted(
-        [test for test in glob.glob('test_*') if f"{test.rstrip('.tavern.yaml')}" not in done_tests]
+        [test for test in glob.glob('test_*') if f'{test.rstrip(".tavern.yaml")}' not in done_tests]
     )
     print(f'Collected tests [{len(collected_tests)}]:')
     print('{}\n\n'.format(', '.join(collected_tests)))
@@ -134,7 +134,7 @@ def run_tests(collected_tests: list, n_iterations: int = 1):
         iteration : int
             Number indicating the iteration to be run.
         """
-        test_name = f'{test.rsplit(".")[0]}' f'{iteration if iteration != 1 else ""}'
+        test_name = f'{test.rsplit(".")[0]}{iteration if iteration != 1 else ""}'
         html_params = [f'--html={RESULTS_FOLDER}/html_reports/{test_name}.html', '--self-contained-html']
         with open(os.path.join(RESULTS_FOLDER, test_name), 'w') as f:
             command = PYTEST_COMMAND.split(' ') + html_params + [test]

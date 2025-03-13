@@ -10,9 +10,8 @@ from unittest.mock import AsyncMock, call, patch
 import pytest
 from uvloop import EventLoopPolicy, new_event_loop
 from wazuh.core.config.client import CentralizedConfig, Config
-from wazuh.core.config.models.server import ServerConfig, ValidateFilePathMixin, SSLConfig, NodeConfig, NodeType
 from wazuh.core.config.models.indexer import IndexerConfig, IndexerNode
-
+from wazuh.core.config.models.server import NodeConfig, NodeType, ServerConfig, SSLConfig, ValidateFilePathMixin
 
 with patch('wazuh.common.wazuh_uid'):
     with patch('wazuh.common.wazuh_gid'):
@@ -23,21 +22,12 @@ with patch('wazuh.common.wazuh_uid'):
                     node=NodeConfig(
                         name='node_name',
                         type=NodeType.MASTER,
-                        ssl=SSLConfig(
-                            key='example',
-                            cert='example',
-                            ca='example'
-                        )
-                    )
+                        ssl=SSLConfig(key='example', cert='example', ca='example'),
+                    ),
                 ),
                 indexer=IndexerConfig(
-                    hosts=[IndexerNode(
-                        host='example',
-                        port=1516
-                    )],
-                    username='wazuh',
-                    password='wazuh'
-                )
+                    hosts=[IndexerNode(host='example', port=1516)], username='wazuh', password='wazuh'
+                ),
             )
             CentralizedConfig._config = default_config
 
@@ -51,8 +41,9 @@ loop = new_event_loop()
 
 def test_localclienthandler_initialization():
     """Check the correct initialization of the LocalClientHandler object."""
-    lc = LocalClientHandler(loop=None, on_con_lost=None, name='Unittest', logger=None, manager=None,
-                            server_config=default_config)
+    lc = LocalClientHandler(
+        loop=None, on_con_lost=None, name='Unittest', logger=None, manager=None, server_config=default_config
+    )
     """Check the correct initialization of the LocalClientHandler object."""
     assert isinstance(lc.response_available, Event)
     assert lc.response == b''
@@ -60,8 +51,9 @@ def test_localclienthandler_initialization():
 
 def test_localclienthandler_connection_made():
     """Check that the connection_made function sets the transport parameter correctly."""
-    lc = LocalClientHandler(loop=None, on_con_lost=None, name='Unittest', logger=None, manager=None,
-                            server_config=default_config)
+    lc = LocalClientHandler(
+        loop=None, on_con_lost=None, name='Unittest', logger=None, manager=None, server_config=default_config
+    )
 
     assert lc.transport is None
     lc.connection_made(Transport())
@@ -70,16 +62,18 @@ def test_localclienthandler_connection_made():
 
 def test_localclienthandler_cancel_all_tasks():
     """Check the proper functionality of the _cancel_all_tasks function."""
-    lc = LocalClientHandler(loop=None, on_con_lost=None, name='Unittest', logger=None, manager=None,
-                            server_config=default_config)
+    lc = LocalClientHandler(
+        loop=None, on_con_lost=None, name='Unittest', logger=None, manager=None, server_config=default_config
+    )
     assert lc._cancel_all_tasks() is None
 
 
 @patch('asyncio.Event.set')
 def test_localclienthandler_process_request(mock_set):
     """Check each of the possible behaviors inside the _process_request function."""
-    lc = LocalClientHandler(loop=None, on_con_lost=None, name='Unittest', logger=None, manager=None,
-                            server_config=default_config)
+    lc = LocalClientHandler(
+        loop=None, on_con_lost=None, name='Unittest', logger=None, manager=None, server_config=default_config
+    )
     command = b'dapi_res'
     assert lc.process_request(command=command, data=b'Error') == (b'err', b'Error')
     assert lc.process_request(command=command, data=b'Testing') == (
@@ -120,8 +114,9 @@ def test_localclienthandler_process_request(mock_set):
 @patch('asyncio.Event.set')
 def test_localclienthandler_process_error_from_peer(mock_set):
     """Run the _process_error_from_peer function and check the correct value assignment for the response attribute."""
-    lc = LocalClientHandler(loop=None, on_con_lost=None, name='Unittest', logger=None, manager=None,
-                            server_config=default_config)
+    lc = LocalClientHandler(
+        loop=None, on_con_lost=None, name='Unittest', logger=None, manager=None, server_config=default_config
+    )
     assert lc.process_error_from_peer(data=b'None') == b'None'
     assert lc.response == b'None'
     mock_set.assert_called_once()
@@ -130,8 +125,12 @@ def test_localclienthandler_process_error_from_peer(mock_set):
 def test_localclienthandler_connection_lost():
     """Check that the set_result method of the on_con_lost object is called once with the defined parameters."""
     lc = LocalClientHandler(
-        loop=None, on_con_lost=asyncio.Future(loop=loop), name='Unittest', logger=None, manager=None,
-        server_config=default_config
+        loop=None,
+        on_con_lost=asyncio.Future(loop=loop),
+        name='Unittest',
+        logger=None,
+        manager=None,
+        server_config=default_config,
     )
     with patch.object(lc.on_con_lost, 'set_result') as mock_set_result:
         lc.connection_lost(Exception())
@@ -249,7 +248,6 @@ async def test_localclient_send_api_request_ko(mock_get_running_loop):
     class Protocol:
         def __init__(self):
             self.response_available = asyncio.Event()
-
 
     lc = LocalClient()
     lc.protocol = Protocol()

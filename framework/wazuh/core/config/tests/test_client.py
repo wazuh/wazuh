@@ -38,6 +38,7 @@ mock_config_data = {
 
 @pytest.fixture
 def patch_load():
+    """Patch the load method in CentralizedConfig"""
     with patch.object(CentralizedConfig, 'load', return_value=None):
         with patch.object(ValidateFilePathMixin, '_validate_file_path', return_value=None):
             CentralizedConfig._config = Config(**mock_config_data)
@@ -96,7 +97,7 @@ def test_get_server_internal_config(patch_load):
 @patch('yaml.dump')
 @patch('builtins.open', new_callable=mock_open)
 def test_update_security_conf(mock_open_file, mock_yaml_dump, patch_load, updated_values, expected_yaml_update):
-    """Check the correct behavior of the `get_internal_server_config` class method."""
+    """Check the correct behavior of the `test_update_security_conf` class method."""
     CentralizedConfig.update_security_conf(updated_values)
 
     assert (
@@ -119,7 +120,7 @@ def test_get_config_json(patch_load):
 @patch('yaml.dump')
 @patch.object(CentralizedConfig, 'load')
 @patch.object(CentralizedConfig, '_config', create=True)
-def test_update_security_conf(mock_config, mock_load, mock_yaml_dump, mock_open):
+def test_update_security_conf_ok(mock_config, mock_load, mock_yaml_dump, mock_open):
     """Check the correct behavior of the `test_update_security_conf` class method."""
     mock_config.management_api.jwt_expiration_timeout = 3600
     mock_config.management_api.rbac_mode = 'disabled'

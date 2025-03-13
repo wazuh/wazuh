@@ -10,6 +10,8 @@ from wazuh.core.indexer.models.agent import Agent, Status
 
 
 class TestAgentIndex:
+    """Test class for the AgentIndex functionality."""
+
     index_class = AgentsIndex
     create_id = '0191480e-7f67-7fd3-8c52-f49a3176360b'
     create_params = {
@@ -21,10 +23,12 @@ class TestAgentIndex:
 
     @pytest.fixture
     def client_mock(self) -> mock.AsyncMock:
+        """Provides a mock client instance for testing."""
         return mock.AsyncMock()
 
     @pytest.fixture
     def index_instance(self, client_mock) -> AgentsIndex:
+        """Provides an instance of AgentsIndex with a mocked client for testing."""
         return self.index_class(client=client_mock)
 
     async def test_create(self, index_instance: AgentsIndex, client_mock: mock.AsyncMock):

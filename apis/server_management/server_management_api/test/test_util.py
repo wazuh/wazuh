@@ -181,9 +181,9 @@ def test_to_relative_path(mock_real_path):
     [
         (ValueError, 100, ValueError(100), ValueError),
         (WazuhError, 1000, 400, ProblemException),
-        (WazuhPermissionError, 4000,  403, ProblemException),
-        (WazuhResourceNotFound, 1710,  404, ProblemException),
-        (WazuhInternalError, 1000,  500, ProblemException),
+        (WazuhPermissionError, 4000, 403, ProblemException),
+        (WazuhResourceNotFound, 1710, 404, ProblemException),
+        (WazuhInternalError, 1000, 500, ProblemException),
     ],
 )
 def test_create_problem(exception_type, code, returned_code, returned_exception):

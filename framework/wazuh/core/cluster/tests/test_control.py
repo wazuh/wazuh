@@ -7,10 +7,10 @@ import sys
 from unittest.mock import MagicMock, patch
 
 import pytest
-from wazuh.core.exception import WazuhClusterError
 from wazuh.core.config.client import CentralizedConfig, Config
-from wazuh.core.config.models.server import ServerConfig, ValidateFilePathMixin, SSLConfig, NodeConfig, NodeType
 from wazuh.core.config.models.indexer import IndexerConfig, IndexerNode
+from wazuh.core.config.models.server import NodeConfig, NodeType, ServerConfig, SSLConfig, ValidateFilePathMixin
+from wazuh.core.exception import WazuhClusterError
 
 with patch('wazuh.common.getgrnam'):
     with patch('wazuh.common.getpwnam'):
@@ -23,21 +23,12 @@ with patch('wazuh.common.getgrnam'):
                             node=NodeConfig(
                                 name='node_name',
                                 type=NodeType.MASTER,
-                                ssl=SSLConfig(
-                                    key='example',
-                                    cert='example',
-                                    ca='example'
-                                )
-                            )
+                                ssl=SSLConfig(key='example', cert='example', ca='example'),
+                            ),
                         ),
                         indexer=IndexerConfig(
-                            hosts=[IndexerNode(
-                                host='example',
-                                port=1516
-                            )],
-                            username='wazuh',
-                            password='wazuh'
-                        )
+                            hosts=[IndexerNode(host='example', port=1516)], username='wazuh', password='wazuh'
+                        ),
                     )
                     CentralizedConfig._config = default_config
 
@@ -48,6 +39,7 @@ with patch('wazuh.common.getgrnam'):
 
 
 async def async_local_client(command, data):
+    """Simulates a local client"""
     return None
 
 

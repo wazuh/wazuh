@@ -1,40 +1,26 @@
 from unittest import mock
+from unittest.mock import patch
 
 import pytest
 from httpx import AsyncClient, Timeout, TimeoutException
-from unittest.mock import patch
-
+from wazuh.core.config.client import CentralizedConfig, Config
+from wazuh.core.config.models.indexer import IndexerConfig, IndexerNode
+from wazuh.core.config.models.server import NodeConfig, NodeType, ServerConfig, SSLConfig, ValidateFilePathMixin
 from wazuh.core.engine import Engine, get_engine_client
 from wazuh.core.exception import WazuhEngineError
-from wazuh.core.config.client import CentralizedConfig, Config
-from wazuh.core.config.models.server import ServerConfig, ValidateFilePathMixin, SSLConfig, NodeConfig, NodeType
-from wazuh.core.config.models.indexer import IndexerConfig, IndexerNode
-
 
 with patch.object(ValidateFilePathMixin, '_validate_file_path', return_value=None):
     default_config = Config(
         server=ServerConfig(
             nodes=['0'],
             node=NodeConfig(
-                name='node_name',
-                type=NodeType.MASTER,
-                ssl=SSLConfig(
-                    key='example',
-                    cert='example',
-                    ca='example'
-                )
-            )
+                name='node_name', type=NodeType.MASTER, ssl=SSLConfig(key='example', cert='example', ca='example')
+            ),
         ),
-        indexer=IndexerConfig(
-            hosts=[IndexerNode(
-                host='example',
-                port=1516
-            )],
-            username='wazuh',
-            password='wazuh'
-        )
+        indexer=IndexerConfig(hosts=[IndexerNode(host='example', port=1516)], username='wazuh', password='wazuh'),
     )
     CentralizedConfig._config = default_config
+
 
 @pytest.mark.parametrize(
     'params',

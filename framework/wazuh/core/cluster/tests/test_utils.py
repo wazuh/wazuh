@@ -10,8 +10,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from wazuh.core.config.client import CentralizedConfig, Config
-from wazuh.core.config.models.server import ServerConfig, ValidateFilePathMixin, SSLConfig, NodeConfig, NodeType
 from wazuh.core.config.models.indexer import IndexerConfig, IndexerNode
+from wazuh.core.config.models.server import NodeConfig, NodeType, ServerConfig, SSLConfig, ValidateFilePathMixin
 
 with patch('wazuh.core.common.getgrnam'):
     with patch('wazuh.core.common.getpwnam'):
@@ -24,21 +24,12 @@ with patch('wazuh.core.common.getgrnam'):
                             node=NodeConfig(
                                 name='node_name',
                                 type=NodeType.MASTER,
-                                ssl=SSLConfig(
-                                    key='example',
-                                    cert='example',
-                                    ca='example'
-                                )
-                            )
+                                ssl=SSLConfig(key='example', cert='example', ca='example'),
+                            ),
                         ),
                         indexer=IndexerConfig(
-                            hosts=[IndexerNode(
-                                host='example',
-                                port=1516
-                            )],
-                            username='wazuh',
-                            password='wazuh'
-                        )
+                            hosts=[IndexerNode(host='example', port=1516)], username='wazuh', password='wazuh'
+                        ),
                     )
                     CentralizedConfig._config = default_config
                     sys.modules['wazuh.rbac.orm'] = MagicMock()
@@ -334,10 +325,10 @@ def test_log_subprocess_execution():
         patch.object(utils.logger, 'error') as error_logger,
     ):
         utils.log_subprocess_execution(utils.logger, logs)
-        debug_logger.assert_called_with(f"{dict(logs['debug'])}")
-        debug2_logger.assert_called_with(f"{dict(logs['debug2'])}")
-        warning_logger.assert_called_with(f"{dict(logs['warning'])}")
-        error_logger.assert_any_call(f"{dict(logs['error'])}")
+        debug_logger.assert_called_with(f'{dict(logs["debug"])}')
+        debug2_logger.assert_called_with(f'{dict(logs["debug2"])}')
+        warning_logger.assert_called_with(f'{dict(logs["warning"])}')
+        error_logger.assert_any_call(f'{dict(logs["error"])}')
         for error in logs['generic_errors']:
             error_logger.assert_any_call(error, exc_info=False)
 

@@ -10,11 +10,9 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from uvloop import Loop
-
 from wazuh.core.config.client import CentralizedConfig, Config
-from wazuh.core.config.models.server import ServerConfig, ValidateFilePathMixin, SSLConfig, NodeConfig, NodeType
 from wazuh.core.config.models.indexer import IndexerConfig, IndexerNode
-
+from wazuh.core.config.models.server import NodeConfig, NodeType, ServerConfig, SSLConfig, ValidateFilePathMixin
 
 with patch('wazuh.common.wazuh_uid'):
     with patch('wazuh.common.wazuh_gid'):
@@ -25,21 +23,12 @@ with patch('wazuh.common.wazuh_uid'):
                     node=NodeConfig(
                         name='node_name',
                         type=NodeType.MASTER,
-                        ssl=SSLConfig(
-                            key='example',
-                            cert='example',
-                            ca='example'
-                        )
-                    )
+                        ssl=SSLConfig(key='example', cert='example', ca='example'),
+                    ),
                 ),
                 indexer=IndexerConfig(
-                    hosts=[IndexerNode(
-                        host='example',
-                        port=1516
-                    )],
-                    username='wazuh',
-                    password='wazuh'
-                )
+                    hosts=[IndexerNode(host='example', port=1516)], username='wazuh', password='wazuh'
+                ),
             )
             CentralizedConfig._config = default_config
 
@@ -55,6 +44,7 @@ with patch('wazuh.common.wazuh_uid'):
 
 
 async def wait_function_called(func_mock):
+    """Waits until the provided mock function is called at least once."""
     while not func_mock.call_count:
         await asyncio.sleep(0.01)
 
@@ -71,8 +61,9 @@ async def test_LocalServerHandler_connection_made(event_loop):
     logger = logging.getLogger('connection_made')
     with patch.object(logger, 'debug') as logger_debug_mock:
         with patch('wazuh.core.cluster.local_server.context_tag', ContextVar('tag', default='')) as mock_contextvar:
-            lsh = LocalServerHandler(server=ServerMock(), loop=event_loop,
-                                     server_config=default_config.server, logger=logger)
+            lsh = LocalServerHandler(
+                server=ServerMock(), loop=event_loop, server_config=default_config.server, logger=logger
+            )
             lsh.connection_made(transport=transport)
             assert isinstance(lsh.name, str)
             assert lsh.transport == transport
@@ -202,8 +193,9 @@ async def test_LocalServerHandler_send_res_callback(event_loop):
         with patch.object(future, 'exception', return_value=exc):
             logger = logging.getLogger('connection_made')
             with patch.object(logger, 'error') as logger_error_mock:
-                lsh = LocalServerHandler(server=None, loop=event_loop,
-                                         server_config=default_config.server, logger=logger)
+                lsh = LocalServerHandler(
+                    server=None, loop=event_loop, server_config=default_config.server, logger=logger
+                )
                 lsh.send_res_callback(future=future)
 
                 logger_error_mock.assert_called_once_with(exc, exc_info=False)
@@ -254,12 +246,10 @@ async def test_LocalServer_start(join_mock, gather_mock, event_loop):
     async def create_unix_server_mock(protocol_factory, path):
         return LocalServerMock()
 
-
     logger = logging.getLogger('connection_made')
     with patch.object(logger, 'error') as logger_error_mock:
         ls = LocalServer(
-            node=NodeMock(), performance_test=0, concurrency_test=0,
-            server_config=default_config.server, logger=logger
+            node=NodeMock(), performance_test=0, concurrency_test=0, server_config=default_config.server, logger=logger
         )
 
     with patch.object(event_loop, 'create_unix_server', create_unix_server_mock):
@@ -433,8 +423,9 @@ async def test_LocalServerHandlerWorker_process_request(process_request_mock, ev
 
     logger = LoggerMock()
     server_mock = ServerMock()
-    lshw = LocalServerHandlerWorker(server=server_mock, loop=event_loop,
-                                    server_config=default_config.server, logger=logger)
+    lshw = LocalServerHandlerWorker(
+        server=server_mock, loop=event_loop, server_config=default_config.server, logger=logger
+    )
 
     with patch('wazuh.core.cluster.local_server.context_tag', ContextVar('tag', default='')) as mock_contextvar:
         lshw.name = 'test1'

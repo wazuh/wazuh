@@ -11,11 +11,9 @@ from unittest.mock import ANY, AsyncMock, MagicMock, Mock, call, patch
 import pytest
 from freezegun import freeze_time
 from uvloop import EventLoopPolicy
-
 from wazuh.core.config.client import CentralizedConfig, Config
-from wazuh.core.config.models.server import ServerConfig, ValidateFilePathMixin, SSLConfig, NodeConfig, NodeType
 from wazuh.core.config.models.indexer import IndexerConfig, IndexerNode
-
+from wazuh.core.config.models.server import NodeConfig, NodeType, ServerConfig, SSLConfig, ValidateFilePathMixin
 
 with patch('wazuh.common.wazuh_uid'):
     with patch('wazuh.common.wazuh_gid'):
@@ -26,21 +24,12 @@ with patch('wazuh.common.wazuh_uid'):
                     node=NodeConfig(
                         name='node_name',
                         type=NodeType.MASTER,
-                        ssl=SSLConfig(
-                            key='example',
-                            cert='example',
-                            ca='example'
-                        )
-                    )
+                        ssl=SSLConfig(key='example', cert='example', ca='example'),
+                    ),
                 ),
                 indexer=IndexerConfig(
-                    hosts=[IndexerNode(
-                        host='example',
-                        port=1516
-                    )],
-                    username='wazuh',
-                    password='wazuh'
-                )
+                    hosts=[IndexerNode(host='example', port=1516)], username='wazuh', password='wazuh'
+                ),
             )
             CentralizedConfig._config = default_config
         from wazuh.core.cluster.server import *
@@ -279,7 +268,7 @@ async def test_AbstractServerHandler_broadcast_reader(event_loop):
             'test3': {'worker1': ANY},
         }
         logger_mock.error.assert_called_once_with(
-            "Error while broadcasting function. ID: test3. Error: 'str' object" ' is not callable.'
+            "Error while broadcasting function. ID: test3. Error: 'str' object is not callable."
         )
 
 
@@ -289,9 +278,7 @@ async def test_AbstractServerHandler_broadcast_reader(event_loop):
 def test_AbstractServer_init(AbstractServerHandler_mock, keepalive_mock):
     """Check the correct initialization of the AbstractServer object."""
     with patch('wazuh.core.cluster.server.context_tag', ContextVar('tag', default='')) as mock_contextvar:
-        abstract_server = AbstractServer(
-            performance_test=1, concurrency_test=2, server_config=default_config.server
-        )
+        abstract_server = AbstractServer(performance_test=1, concurrency_test=2, server_config=default_config.server)
 
         assert abstract_server.clients == {}
         assert abstract_server.performance == 1
@@ -357,7 +344,7 @@ def test_AbstractServer_broadcast_ko():
 
     abstract_server.broadcast('test_f', 'test_param', keyword_param='param')
     logger_mock.error.assert_called_once_with(
-        "Error while adding broadcast request in worker1: 'str' object " "has no attribute 'add_request'",
+        "Error while adding broadcast request in worker1: 'str' object has no attribute 'add_request'",
         exc_info=False,
     )
 
@@ -406,7 +393,7 @@ def test_AbstractServer_broadcast_add_ko(uuid_mock):
 
     assert abstract_server.broadcast_add('test_f', 'test_param', keyword_param='param') is None
     logger_mock.error.assert_called_once_with(
-        "Error while adding broadcast request in worker1: 'str' object " "has no attribute 'add_request'",
+        "Error while adding broadcast request in worker1: 'str' object has no attribute 'add_request'",
         exc_info=False,
     )
     assert abstract_server.broadcast_results == {}
@@ -444,11 +431,10 @@ def test_AbstractServer_broadcast_pop(broadcast_results, expected_response):
 @patch('asyncio.get_running_loop', new=Mock())
 def test_AbstractServer_to_dict():
     """Check the correct transformation of an AbstractServer to a dict."""
-    abstract_server = AbstractServer(
-        performance_test=1, concurrency_test=2, server_config=default_config.server
-    )
-    assert abstract_server.to_dict() == {'info': {'ip': default_config.server.nodes[0],
-                                                  'name': default_config.server.node.name}}
+    abstract_server = AbstractServer(performance_test=1, concurrency_test=2, server_config=default_config.server)
+    assert abstract_server.to_dict() == {
+        'info': {'ip': default_config.server.nodes[0], 'name': default_config.server.node.name}
+    }
 
 
 @patch('asyncio.get_running_loop', new=Mock())
@@ -471,9 +457,7 @@ def test_AbstractServer_get_connected_nodes(mock_process_array):
     """Check that all the necessary data is sent to the utils.process_array
     function to return all the information of the connected nodes.
     """
-    abstract_server = AbstractServer(
-        performance_test=1, concurrency_test=2, server_config=default_config.server
-    )
+    abstract_server = AbstractServer(performance_test=1, concurrency_test=2, server_config=default_config.server)
     basic_dict = {'info': {'first': 'test'}}
 
     with patch.object(abstract_server, 'to_dict', return_value=basic_dict):
@@ -501,9 +485,7 @@ def test_AbstractServer_get_connected_nodes(mock_process_array):
 @patch('asyncio.get_running_loop', new=Mock())
 def test_AbstractServer_get_connected_nodes_ko(mock_process_array):
     """Check all exceptions that can be returned by the get_connected_nodes function."""
-    abstract_server = AbstractServer(
-        performance_test=1, concurrency_test=2, server_config=default_config.server
-    )
+    abstract_server = AbstractServer(performance_test=1, concurrency_test=2, server_config=default_config.server)
     basic_dict = {'info': {'first': 'test'}}
 
     with patch.object(abstract_server, 'to_dict', return_value=basic_dict):

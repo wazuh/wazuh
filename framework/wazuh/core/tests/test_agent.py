@@ -14,8 +14,8 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 from wazuh.core.config.client import CentralizedConfig, Config
-from wazuh.core.config.models.server import ServerConfig, ValidateFilePathMixin, SSLConfig, NodeConfig, NodeType
 from wazuh.core.config.models.indexer import IndexerConfig, IndexerNode
+from wazuh.core.config.models.server import NodeConfig, NodeType, ServerConfig, SSLConfig, ValidateFilePathMixin
 
 with patch('wazuh.core.common.wazuh_uid'):
     with patch('wazuh.core.common.wazuh_gid'):
@@ -26,21 +26,12 @@ with patch('wazuh.core.common.wazuh_uid'):
                     node=NodeConfig(
                         name='node_name',
                         type=NodeType.MASTER,
-                        ssl=SSLConfig(
-                            key='example',
-                            cert='example',
-                            ca='example'
-                        )
-                    )
+                        ssl=SSLConfig(key='example', cert='example', ca='example'),
+                    ),
                 ),
                 indexer=IndexerConfig(
-                    hosts=[IndexerNode(
-                        host='example',
-                        port=1516
-                    )],
-                    username='wazuh',
-                    password='wazuh'
-                )
+                    hosts=[IndexerNode(host='example', port=1516)], username='wazuh', password='wazuh'
+                ),
             )
             CentralizedConfig._config = default_config
 
@@ -94,6 +85,8 @@ wpk_versions = [
 
 
 class InitAgent:
+    """Sets up necessary test environment for agents"""
+
     def __init__(self, data_path=test_data_path, db_name='schema_global_test.sql'):
         """Sets up necessary test environment for agents:
             * One active agent.
@@ -270,9 +263,9 @@ def test_WazuhDBQueryAgents_format_data_into_dictionary(mock_socket_conn, data):
 
     assert res['id'] == str(d['id']).zfill(3), 'ID is not as expected'
     assert res['status'] == d['status'], 'status is not as expected'
-    assert isinstance(res['group'], list) and len(res['group']) == len(
-        d['group'].split(',')
-    ), "'group' has different type or length than expected"
+    assert isinstance(res['group'], list) and len(res['group']) == len(d['group'].split(',')), (
+        "'group' has different type or length than expected"
+    )
     assert isinstance(res['dateAdd'], datetime), 'Not date type'
     assert res['manager'] == d['manager']
     assert (
@@ -288,9 +281,9 @@ def test_WazuhDBQueryAgents_parse_legacy_filters(mock_socket_conn):
     query_agent = WazuhDBQueryAgents(filters={'older_than': 'test'})
     query_agent._parse_legacy_filters()
 
-    assert (
-        '(lastKeepAlive>test;status!=never_connected,dateAdd>test;status=never_connected)' in query_agent.q
-    ), 'Query returned does not match the expected one'
+    assert '(lastKeepAlive>test;status!=never_connected,dateAdd>test;status=never_connected)' in query_agent.q, (
+        'Query returned does not match the expected one'
+    )
 
 
 @pytest.mark.parametrize(
@@ -337,9 +330,9 @@ def test_WazuhDBQueryAgents_process_filter(mock_socket_conn, field_name, field_f
         else:
             pytest.fail('Unexpected operator')
     else:
-        assert (
-            'agentos_name LIKE :field COLLATE NOCASE' in query_agent.query
-        ), 'Query returned does not match the expected one'
+        assert 'agentos_name LIKE :field COLLATE NOCASE' in query_agent.query, (
+            'Query returned does not match the expected one'
+        )
 
 
 @pytest.mark.parametrize('value', [True, OSError])
@@ -502,9 +495,9 @@ def test_agent__init__(mock_add, id, ip, name, key):
     """
     agent = Agent(id=id, ip=ip, name=name, key=key)
 
-    assert (
-        agent.id == id and agent.ip == ip and agent.name == name and agent.internal_key == key
-    ), 'Query returned does not match the expected one'
+    assert agent.id == id and agent.ip == ip and agent.name == name and agent.internal_key == key, (
+        'Query returned does not match the expected one'
+    )
 
 
 def test_agent__str__():
@@ -586,9 +579,9 @@ def test_agent_get_basic_information(socket_mock, send_mock, id, select):
 
     assert isinstance(result, dict), 'Result is not a dict'
     if select is not None:
-        assert all((x in select for x in result.keys())) and len(result.keys()) == len(
-            select
-        ), 'Result does not contain expected keys.'
+        assert all((x in select for x in result.keys())) and len(result.keys()) == len(select), (
+            'Result does not contain expected keys.'
+        )
 
 
 @pytest.mark.parametrize(
