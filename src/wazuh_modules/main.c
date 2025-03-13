@@ -80,8 +80,10 @@ int main(int argc, char **argv)
     mdebug1(WAZUH_HOMEDIR, home_path);
     os_free(home_path);
 
-    // Setup daemon
+    // Signal management initialization must be before wm_setup()
+    wm_signals_configure();
 
+    // Setup daemon
     wm_setup();
 
     if (test_config)
@@ -90,7 +92,6 @@ int main(int argc, char **argv)
     minfo(STARTUP_MSG, (int)getpid());
 
     // Run modules
-
     for (cur_module = wmodules; cur_module; cur_module = cur_module->next) {
         if (CreateThreadJoinable(&cur_module->thread, cur_module->context->start, cur_module->data) < 0) {
             merror_exit("CreateThreadJoinable() for '%s': %s", cur_module->tag, strerror(errno));
@@ -101,11 +102,7 @@ int main(int argc, char **argv)
     // Start com request thread
     w_create_thread(wmcom_main, NULL);
 
-    // Signal management
-    wm_signals_configure();
-
     // Wait for threads
-
     for (cur_module = wmodules; cur_module; cur_module = cur_module->next) {
         pthread_join(cur_module->thread, NULL);
     }
