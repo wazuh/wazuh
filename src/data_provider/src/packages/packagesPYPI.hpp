@@ -20,12 +20,15 @@
 #include "stringHelper.h"
 #include <iostream>
 #include <set>
+#include "packageLinuxDataRetriever.h"
 
 const static std::map<std::string, std::string> FILE_MAPPING_PYPI {{"egg-info", "PKG-INFO"}, {"dist-info", "METADATA"}};
 
 template<typename TFileSystem = RealFileSystem, typename TFileIO = FileIO>
 class PYPI final : public TFileSystem, public TFileIO
 {
+        std::unordered_set<std::string> excludedPaths;
+
         void parseMetadata(const std::filesystem::path& path, std::function<void(nlohmann::json&)>& callback)
         {
             // Map to match fields
@@ -90,18 +93,24 @@ class PYPI final : public TFileSystem, public TFileIO
                 {
                     if (filename.find(key) != std::string::npos)
                     {
+                        std::filesystem::path correctPath;
                         if (TFileSystem::is_regular_file(path))
                         {
-                            parseMetadata(path, callback);
+                            correctPath = path;
                         }
                         else if (TFileSystem::is_directory(path))
                         {
-                            parseMetadata(path / value, callback);
+                            correctPath = path / value;
                         }
                         else
                         {
-                            // Do nothing
+                            return;
                         }
+                        if (excludedPaths.find(correctPath.string()) != excludedPaths.end())
+                        {
+                            return;
+                        }
+                        parseMetadata(correctPath, callback);
                     }
                 }
             }
@@ -136,6 +145,7 @@ class PYPI final : public TFileSystem, public TFileIO
     public:
         void getPackages(const std::set<std::string>& osRootFolders, std::function<void(nlohmann::json&)> callback)
         {
+            excludedPaths = getDpkgPythonPackages();
 
             for (const auto& osFolder : osRootFolders)
             {
