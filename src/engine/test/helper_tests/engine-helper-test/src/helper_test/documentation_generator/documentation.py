@@ -36,14 +36,14 @@ def parse_yaml_to_documentation(parser: Parser):
         target_field = TargetField(
             parser.get_target_field_type(), parser.get_target_field_subset())
 
-    # TODO: Implement this
-    # examples = [
-    #     Example(
-    #         test['arguments'],
-    #         test['should_pass'],
-    #         test['description'],
-    #         test.get('skipped', False),
-    #         test.get('expected')) for test in parser.get_tests()]
+    tests = parser.get_tests() or []
+    examples = [
+        Example(
+            test.get('arguments', {}),
+            test['should_pass'],
+            test['description'],
+            test.get('target_field', None),
+            test.get('expected')) for test in tests]
 
     documentation = Documentation(
         name=parser.get_name(),
@@ -54,7 +54,7 @@ def parse_yaml_to_documentation(parser: Parser):
         output=output,
         target_field=target_field,
         general_restrictions=parser.get_general_restrictions_details(),
-        examples=[]
+        examples=examples
     )
 
     return documentation
