@@ -74,6 +74,8 @@ public:
     MOCK_METHOD(std::string_view, processStartISO8601, (), (const));
     MOCK_METHOD(uint64_t, processParentID, (), (const));
 
+    MOCK_METHOD(AffectedComponentType, affectedComponentType, (), (const));
+
     std::string m_serializedElement;
 
     // /**
