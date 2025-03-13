@@ -210,10 +210,11 @@ install -m 0640 src/init/*.sh ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/
 cp src/VERSION ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/agent_installation_scripts/src/
 cp src/REVISION ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/agent_installation_scripts/src/
 
+rm ${RPM_BUILD_ROOT}%{_localstatedir}/lib/modern.bpf.o
 %if 0%{?el} >= 6 || 0%{?rhel} >= 6
 %{_rpmconfigdir}/find-debuginfo.sh
 %endif
-
+cp %{_localstatedir}/lib/modern.bpf.o ${RPM_BUILD_ROOT}%{_localstatedir}/lib
 
 exit 0
 
@@ -697,6 +698,7 @@ rm -fr %{buildroot}
 %attr(750, root, wazuh) %{_localstatedir}/lib/libfimdb.so
 %attr(750, root, wazuh) %{_localstatedir}/lib/libfimebpf.so
 %attr(750, root, wazuh) %{_localstatedir}/lib/libbpf.so
+%attr(750, root, wazuh) %{_localstatedir}/lib/modern.bpf.o
 %dir %attr(750, wazuh, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp
 %dir %attr(750, wazuh, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/generic
 %attr(640, root, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/generic/*
