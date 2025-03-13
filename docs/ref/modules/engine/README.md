@@ -938,7 +938,7 @@ builder_policy ~~~ builder_asset --- builder_parser & builder_hp
  builder_hp --- builder_catalog_parser@{ shape: disk, label: "Catalog of parser" }
 
 end
-builderModule:::ModuleClass 
+builderModule:::ModuleClass
 
 %% ----------------------------------
 %%           Orchestrator
@@ -977,6 +977,45 @@ storageModule --- builderModule
 ```
 
 ## Schema
+
+A schema defines a structured format for data, ensuring consistency, interoperability, and efficient querying. It establishes a common set of field names, data types, and relationships that standardize log and event data across different sources.
+
+The Engine ensures that all operations—parsing, normalization, and enrichment—aim to transform unstructured data into structured data that adheres to the schema. This structured approach enhances data integrity, improves search performance, and enables seamless correlation across multiple data sources.
+
+- Consistency: Standardized field names prevent discrepancies when integrating data from different sources.
+- Interoperability: Facilitates integration with various tools and analytics platforms.
+- Efficient Querying: Optimizes indexing and search performance.
+- Data Enrichment: Enables meaningful correlations by aligning logs with predefined categories (e.g., network, process, user activity).
+
+For example, a network event log structured according to the schema might look like this:
+```json
+{
+  "event": {
+    "category": "network",
+    "type": "connection",
+    "action": "network_connection"
+  },
+  "source": {
+    "ip": "192.168.1.10",
+    "port": 443
+  },
+  "destination": {
+    "ip": "10.0.0.5",
+    "port": 8080
+  },
+  "user": {
+    "name": "admin"
+  }
+}
+```
+
+### Configuration
+
+Explain how it is configured and the structure of the schema file.
+
+### Implications
+
+Explain how the schema affects the building and processing.
 
 ## Managing the Engine's processing
 
@@ -1151,12 +1190,105 @@ map:
 ```
 
 ### Definitions
+To facilitate the reuse of constructors when building large assets—such as parsing code for events with common headers or repeated constructs like IP/port definitions—definitions can be introduced at the specification level. For example:
+```yaml
+definitions:
+  header: <timestamp> <host.hostname> <daemon>:
+  source: <source.ip>:<source.port>
+  destination: <destination.ip>:<destination.port>
+  a-list:
+    - item1: value1
+    - item2: value2
+```
+
+These definitions can then be referenced elsewhere:
+```yaml
+parse|field:
+    - <$header> from <$source> to <$destination> deny
+```
+
+This approach enables text reuse within an asset. Definitions are applied at build time through interpolation and do not function as runtime variables, i.e., cannot be modified once declared.
+
+#### Restrictions
+- **Naming Conflicts**: Definitions cannot have the same name as a schema field. Doing so will result in a failure to build the asset.
+- **Precedence**: Definitions take precedence over custom fields. If a definition exists with the same name as a custom field, all references to the field will be replaced by the definition's value.
+- **Chaining Definitions**: Definitions can use other definitions in their values as long as they are defined beforehand.
+- **Context**: Definitions can only appear on the right side of operations, meaning we can't define the structure of the document with definitions or be used inside non operational stages.
+
+#### Use Cases
+- **Parsing Complex Logs**
+  - Logs with extensive or structured headers can be broken into reusable definitions for clarity and to avoid redundancy.
+  - **Example**: Defining reusable components (TYPE_FIELD, MSG_FIELD) for parsing various log formats.
+- **Handling Large Value Lists**
+  - When working with extensive arrays (e.g., banned IPs), definitions keep the configuration readable and maintainable.
+  - **Example**: Using a predefined list of banned IPs to check against source IPs in a normalize stage.
+- **Small Key-Value Databases (kvdbs)**
+  - When small mappings are needed but don’t justify a full kvdb, definitions provide a lightweight alternative.
+  - **Example**: Mapping log levels or event IDs to structured categories, types, and outcomes for normalization.
 
 ### Variables
 
 ### Log Parsing
+Log parsing transforms raw log entries into structured data using parser expressions. These expressions serve as an alternative to Grok, eliminating the need for explicit type declarations by leveraging predefined schema-based parsing. Instead of regular expressions, they use specialized parsers for improved accuracy and efficiency.
+
+Key Components:
+- Literals: Direct character matches with escape rules for special characters.
+- Fields: Extract structured data, including:
+  - Schema fields (predefined in the schema)
+  - Custom fields (user-defined, defaulting to text)
+  - Optional fields (ignored if missing)
+  - Field choices (choosing between multiple fields)
+- Wildcards: Capture patterns without mapping data to fields.
+- Optional Groups: Make subexpressions optional for flexible parsing.
+- Schema Parsers: Automatically applied when a field of a known type is used, ensuring compatibility with Wazuh Indexer.
+
+Example:
+This expression captures an IP or hostname into `client.ip` or `client.address` and, if present, captures a port into `server.port`:
+
+```yaml
+parse|event.original:
+  - "<client.ip>?<client.address> connected to <server.ip>(?:<server.port>)"
+```
+
+For a log entry:
+```
+192.168.1.10 connected to 10.0.0.5:443
+```
+
+It extracts:
+```json
+{
+  "client.ip": "192.168.1.10",
+  "server.ip": "10.0.0.5",
+  "server.port": "443"
+}
+```
+
+Parsers are also available as helper functions for use in map and check operations. For a detailed explanation, see the Parser Stage and Parser Helper Functions sections.
 
 ### Key Value Databases
+The engine allows the definition of JSON key-value databases, making them available in the assets through helper functions. These databases can be used to map large serializable data and check Indicators of Compromise (IoCs) or extensive key databases that require constant management. This approach separates the maintenance of such data from the decoder, streamlining the process and ensuring efficient data handling.
+
+For more details on managing kvdbs, refer to the How to Manage kvdb section and the kvdb Library helper functions.
+
+#### Use cases
+**Normalizing Large Serializable Data**: Maps event IDs to predefined categorization fields using a kvdb, simplifying event classification. Example:
+```yaml
+normalize:
+  - map:
+      - event: kvdb_get_merge(windows_security_eventid_to_category_type_action, $event.code)
+```
+
+This retrieves event categories, types, and actions based on the event ID.
+
+**Checking Indicators of Compromise (IoCs)**: Compares log entries against a kvdb of known malicious IPs to identify potential threats. Example:
+```yaml
+normalize:
+  - check:
+      - source.ip: kvdb_match(known_malicious_ips)
+```
+
+If a match is found, security-related data is mapped to the event.
 
 ### Dates and Timestamps
 
@@ -1179,14 +1311,163 @@ map:
 ## Builder
 
 ## Stages
+Briefly explain estages, flow of operations and relations between stages (check as firs or inside a normalize).
 
 ### Check/Allow
+The check stage is a preliminary stage in the asset processing sequence, designed to assess whether an event meets specific conditions without modifying the event itself. Filters events based on predefined criteria, ensuring that only relevant events trigger the subsequent stages like parse or normalize.
+
+There are two ways to define conditions in a stage check: through a condition list or a conditional expression string.
+
+#### Condition list
+In a condition list, each condition is described with a pair `property:value`. Here, `property` is the name of any field, and `value` is the condition that the field must meet.
+
+The event is filtered through all listed conditions, and only events that satisfy all conditions in order are processed further.
+
+Depending on the value, the condition to test is:
+- **JSON value**: Tests that the field contains a specific value.
+- **Field reference**: Checks that the event contains the field denoted by the reference, and both fields have the same value. A reference is formatted as `$field.name`.
+- **Helper function**: Executes a conditional operation on the field, specified by `helper_name(args…)`.
+
+Example checklist:
+```yaml
+check:
+  - event.format: text
+  - user.name: $root_user
+  - event.original: exists()
+  - event.id: 1234
+```
+
+#### Conditional expression
+For scenarios requiring complex conditions, especially in rules, a conditional expression allows for more nuanced logic. This string uses a subset of first-order logic language, including logical connectives and support for grouping through parentheses.
+
+Logical Connectives:
+- Negation (NOT)
+- Conjunction (AND)
+- Disjunction (OR)
+
+These connectives facilitate writing conditions between terms where a term can be:
+- Value comparison: Formatted as `<$field><op><value>`.
+- Helper function: Expressed as `<helper_name>(<field>, args...)`, except for the “exists” helper, which can be denoted by the field name alone.
+
+Supported Operators:
+- Comparison operators `!=` and `==` are applicable to all data types.
+- Operators `<=`, `<`, `>=`, `>` are supported for numbers and strings (lexicographically).
+
+Examples of conditional expressions:
+```yaml
+check: $event.category=="registry" AND $event.type=="change" AND ($registry.path=="/some/path" OR $registry.path=="/some/other/path")
+```
+
+```yaml
+check: int_less($http.response.status_code, 400)
+```
+
+```yaml
+check: $wazuh.origin == /var/log/apache2/access.log OR $wazuh.origin == /var/log/httpd/access_log
+```
 
 ### Parse
+Executes a series of parsing expressions that transform the event's original message into clearly defined data fields. The parsing operations are processed in sequence, with each operation attempted until one succeeds. If an operation succeeds, subsequent operations in the list are skipped.
+
+If all operations fail, the execution of the stage is marked as failed, the processing of the event could continue with the next substage only if it is within a normalize.
+
+#### Parser expression
+Parser expressions facilitate the transformation of log entries into structured objects, offering an alternative to Grok by eliminating the need for explicit type declarations as these are predefined in the schema. Instead of regular expressions, these expressions utilize tailored parsers, enhancing precision.
+
+The parser expressions are composed of various tokens or expressions, where these expressions can be any one of the following:
+- **Literals**, Direct characters that match input text exactly. with certain reserved characters that require escaping (used in other tokens), with the character `\` , precisely: `<>?\(`
+
+  E.g.: The following expression will match exactly that in the log line
+`[Fri Sep 09 10:42:29.902022 2011] [core:error]`
+- **Fields**, are expressions of the form  `<[?]field_name[/param1…]>`, where we can identify 4 different types of field expressions:
+  - **Schema fields**: Directly correspond to fields defined in the schema, with the engine automatically applying the appropriate parser and can have parameters depending on the parser.
+
+     E.g.: `<source.ip>` will match any IPv4 or IPv6 and map it to the field `source.ip`.
+  - **Custom fields**: Are those that are not in the schema, in contrast to schema fields, custom fields use the text parser unless specified otherwise by the parameters. These are intended for temporary/auxiliary use.
+
+    Custom fields are indexed as text by default in open search, depending on the configuration open search may try to detect and index as other types.
+
+    E.g.: `<custom_field/long>` will match any number and map it to the field `custom_field`.
+  - **Optional fields**: we indicate that a field parse expression is optional writing the interrogation symbol `?` at the beginning of the expression. If the parsing fails it will continue with the next expressions.
+
+    E.g.: `<field1>|<?field2>|<field3>` will match anything between `|` symbols three times, and the second may be empty or not.
+  - **Field choice**: Expresses a choice between two field expressions, meaning one of the fields must match. We write two field expressions splitted by the interrogation symbol `?`. As the first choice we can only use parsers that do not require end token, if we use one that does the expression will fail to compile because the end tokens are not sent to the parser.
+
+    E.g.: `<source.ip>?<~/literal/->` will match an IP and map it to source ip or a hyphen, skipping it.
+
+    Note: `?` only needs to be scaped when it appears right after a field expression: `<source.ip>\?...`
+- `Wildcards`, follows the same syntax and behaves the same as a custom field but has no name and does not map to any field. It is used to parse some pattern without extracting. Can be a optional or in a field choice also.
+
+  E.g.:`<~/byte>` will parse a byte value and continue.
+
+  E.g.:`Error Code: <~/long> Description: <message>` Here, `<~/long>` uses a wildcard to parse an integer error code that isn’t mapped to any field, essentially ignoring it while capturing the subsequent error description into message.
+- **Optional groups**, make a logpar subexpression optional. The optional expression is denoted with `(?sub_expression)`. Used to make some more complex patterns optional where a simple optional field won’t suffice. It can contains any valid logpar expression with the exception of another optional group. An optional group can not contains another group, and two optional groups may not appear in a row.
+
+  E.g.:`[<source.ip>(?:<source.port>)]` will match any ip address optionally followed by a port separated by double dots, and being between brackets.
+
+**Examples**:
+
+This expression will capture an IP address or hostname into `client.ip` or `client.address`, and optionally capture a port into `server.port` if it is present.
+```yaml
+<client.ip>?<client.address> connected to <server.ip>(?:<server.port>)
+```
+
+Apache error parser:
+```yaml
+# [Mon Dec 26 16:15:55.103522 2016] [mpm_prefork:notice] [pid 11379] AH00163: Apache/2.4.23 (Unix) configured -- resuming normal operations
+# [Mon Dec 26 16:15:55.103786 2016] [core:notice] [pid 11379] AH00094: Command line: '/usr/local/Cellar/httpd24/2.4.23_2/bin/httpd'
+# [Wed Oct 20 19:20:59.121211 2021] [rewrite:trace3] [pid 121591:tid 140413273032448] mod_rewrite.c(470): [client 10.121.192.8:38350] 10.121.192.8 - - [dev.elastic.co/sid#55a374e851c8][rid#7fb438083ac0/initial] applying pattern '^/import/?(.*)$' to uri '/'
+# [Wed Oct 20 19:20:59.121211 2021] [rewrite:trace3] [pid 121591:tid 140413273032448] mod_rewrite.c(470): [client milo.dom.com:513] 10.121.192.8 - - [dev.elastic.co/sid#55a374e851c8][rid#7fb438083ac0/initial] applying pattern '^/import/?(.*)$' to uri '/'
+# [Mon Dec 26 16:22:08 2016] [error] [client 192.168.33.1] File does not exist: /var/www/favicon.ico
+# [Fri Sep 09 10:42:29.902022 2011] [core:error] [pid 35708:tid 4328636416] [client 89.160.20.112] File does not exist: /usr/local/apache2/htdocs/favicon.ico
+# [Thu Jun 27 06:58:09.169510 2019] [include:warn] [pid 15934] [client 67.43.156.12:12345] AH01374: mod_include: Options +Includes (or IncludesNoExec) wasn't set, INCLUDES filter removed: /test.html
+# [Mon Dec 26 16:17:53 2016] [notice] Apache/2.2.22 (Ubuntu) configured -- resuming normal operations
+# [Mon Dec 26 16:22:00 2016] [error] [client 192.168.33.1] File does not exist: /var/www/favicon.ico, referer: http://192.168.33.72/
+# [Mon Dec 26 16:22:08 2016] [error] [client 192.168.33.1] File does not exist: /var/www/favicon.ico
+parse|event.original:
+    - "[<@timestamp/Mon Dec 26 16:22:00 2016>] [<log.level>] [client <source.address>(?:<source.port>)] <message>"
+
+    - "[<@timestamp/%a %b %d %T %Y/en_US.UTF-8>] [<~apache.error.module>:<log.level>] [pid <process.pid>(?:tid <process.thread.id>)] [client <source.address>(?:<source.port>)] <message>"
+
+    - "[<@timestamp/%a %b %d %T %Y/en_US.UTF-8>] [<~apache.error.module>:<log.level>] [pid <process.pid>(?:tid <process.thread.id>)] <message>"
+```
 
 ### Map
+Executes each operation of the list in order until the last operation. If any operation fails, it continues with the next one.
+
+If all operations fail the stage is not marked as failed and  continues to the next stage.
+```yaml
+- map:
+    - event.kind: event
+    - event.dataset: apache.access
+    - event.category: +array_append/web
+    - event.module: apache
+    - service.type: apache
+    - event.outcome: success
+```
+
 
 ### Normalize/Enrichment
+The normalize stage is where the event undergoes transformations and adjustments after passing through the check and parse stages successfully. Composed of a list of sub-stages that are executed in the specified order. These sub-stages can include operations such as check, map, and parse.
+- **Check**: Applies conditional checks within the normalize context to determine if subsequent mappings or parsing should be executed.
+- **Map**: Transforms and assigns new values to fields in the event based on predefined rules.
+- **Parse**: Further decomposes and extracts fields from the event data if required.
+
+Each block of sub-stages is processed sequentially. If a check within a normalize block is successful, the corresponding map or parse operations are then executed.
+
+Example:
+```yaml
+normalize:
+ - map:
+	- wazuh.decoders: array_append(windows-sysmon)
+	- event.dataset: sysmon
+	- event.kind: event
+
+ # Only maps network.procol if event.code is 22
+ - check: $event.code == '22'
+   map:
+	- network.protocol: dns
+```
 
 ### Output
 
