@@ -277,7 +277,7 @@ statfunc void submit_event(const char *filename,
         get_task_cwd(evt->parent_cwd, MAX_PATH_LEN, parent_task);
     }
 
-    bpf_ringbuf_submit(evt, BPF_RB_FORCE_WAKEUP);
+    bpf_ringbuf_submit(evt, 0);
 }
 
 /*
