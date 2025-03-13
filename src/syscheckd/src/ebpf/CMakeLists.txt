@@ -21,3 +21,13 @@ add_library(fimebpf SHARED src/ebpf_whodata.cpp)
 
 # Set additional compile flags for the loader (if needed)
 target_compile_options(fimebpf PRIVATE -Wall -Wextra)
+
+if(UNIT_TEST)
+  if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    target_link_libraries(fimebpf -fprofile-arcs)
+  else()
+    target_link_libraries(fimebpf gcov)
+  endif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+
+  add_subdirectory(tests)
+endif(UNIT_TEST)
