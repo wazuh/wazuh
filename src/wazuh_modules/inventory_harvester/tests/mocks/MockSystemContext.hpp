@@ -37,6 +37,14 @@ public:
         Invalid
     };
 
+    enum class AffectedComponentType : std::uint8_t
+    {
+        Package,
+        Process,
+        System,
+        Invalid
+    };
+
     MOCK_METHOD(OriginTable, originTable, (), (const));
     MOCK_METHOD(std::string_view, agentId, (), (const));
     MOCK_METHOD(std::string_view, packageItemId, (), (const));
