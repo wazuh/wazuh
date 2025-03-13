@@ -41,7 +41,7 @@ info:
     <SecurityDefinitions />
 
   version: '4.12.0'
-  x-revision: '41200'
+  x-revision: 'alpha0'
   title: 'Wazuh API REST'
   license:
     name: 'GPL 2.0'
@@ -1333,9 +1333,8 @@ components:
           type: string
           description: "API version in the manager"
         revision:
-          type: integer
+          type: string
           description: "API revision"
-          format: int32
         license_name:
           type: string
           description: "API license name"
@@ -7264,7 +7263,7 @@ paths:
               example:
                 title: "Wazuh API"
                 api_version: "v4.5.0"
-                revision: '40100'
+                revision: 'alpha1'
                 license_name: "GPL 2.0"
                 license_url: "https://github.com/wazuh/wazuh/blob/v4.12.0/LICENSE"
                 hostname: "wazuh"

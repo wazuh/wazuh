@@ -15,7 +15,7 @@ build_directories() {
   local future="$3"
 
   mkdir -p "${build_folder}"
-  wazuh_version="$(cat wazuh*/src/VERSION| cut -d 'v' -f 2)"
+  wazuh_version="$(grep '"version"' wazuh*/VERSION.json | sed -E 's/.*"version": *"([^"]+)".*/\1/')"
 
   if [[ "$future" == "yes" ]]; then
     wazuh_version="$(future_version "$build_folder" "$wazuh_dir" $wazuh_version)"
@@ -104,7 +104,7 @@ fi
 # Build directories
 source_dir=$(build_directories "$build_dir/${BUILD_TARGET}" "wazuh*" $future)
 
-wazuh_version="$(cat $source_dir/src/VERSION| cut -d 'v' -f 2)"
+wazuh_version="$(grep '"version"' $source_dir/VERSION.json | sed -E 's/.*"version": *"([^"]+)".*/\1/')"
 # TODO: Improve how we handle package_name
 # Changing the "-" to "_" between target and version breaks the convention for RPM or DEB packages.
 # For now, I added extra code that fixes it.

@@ -53,7 +53,7 @@ function build() {
     done
 
     echo "Running install script"
-    ${SOURCES_PATH}/install.sh
+    ${SOURCES_PATH}/install.sh || { echo "install.sh failed! Aborting." >&2; exit 1; }
 
     find ${DESTINATION_PATH}/ruleset/sca/ -type f -exec rm -f {} \;
 
@@ -61,6 +61,7 @@ function build() {
     mkdir -p ${INSTALLATION_SCRIPTS_DIR}/
     cp ${SOURCES_PATH}/gen_ossec.sh ${INSTALLATION_SCRIPTS_DIR}/
     cp ${SOURCES_PATH}/add_localfiles.sh ${INSTALLATION_SCRIPTS_DIR}/
+    cp ${SOURCES_PATH}/VERSION.json ${INSTALLATION_SCRIPTS_DIR}/
 
     mkdir -p ${INSTALLATION_SCRIPTS_DIR}/src/init
     mkdir -p ${INSTALLATION_SCRIPTS_DIR}/etc/templates/config/{generic,darwin}
@@ -80,9 +81,6 @@ function build() {
     for n in $(seq 15 24); do
         cp ${SOURCES_PATH}/etc/templates/config/darwin/$n/sca.files ${INSTALLATION_SCRIPTS_DIR}/sca/darwin/$n/
     done
-
-    cp ${SOURCES_PATH}/src/VERSION ${INSTALLATION_SCRIPTS_DIR}/src/
-    cp ${SOURCES_PATH}/src/REVISION ${INSTALLATION_SCRIPTS_DIR}/src/
 }
 
 build
