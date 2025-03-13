@@ -1661,34 +1661,7 @@ checks:
   # 3.2 Network Parameters (Host Only)
   ##################################################
 
-  # 3.2.1 Ensure IP forwarding is disabled. (Automated)
-  - id: 6076
-    title: "Ensure IP forwarding is disabled."
-    description: "The net.ipv4.ip_forward and net.ipv6.conf.all.forwarding flags are used to tell the system whether it can forward packets or not."
-    rationale: "Setting the flags to 0 ensures that a system with multiple interfaces (for example, a hard proxy), will never be able to forward packets, and therefore, never serve as a router."
-    remediation: "Run the following commands to restore the default parameters and set the active kernel parameters: # grep -Els \"^\\s*net\\.ipv4\\.ip_forward\\s*=\\s*1\" /etc/sysctl.conf /etc/sysctl.d/*.conf /usr/lib/sysctl.d/*.conf /run/sysctl.d/*.conf | while read filename; do sed -ri \"s/^\\s*(net\\.ipv4\\.ip_forward\\s*)(=)(\\s*\\S+\\b).*$/# *REMOVED* \\1/\" $filename; done; sysctl -w net.ipv4.ip_forward=0; sysctl -w net.ipv4.route.flush=1 # grep -Els \"^\\s*net\\.ipv6\\.conf\\.all\\.forwarding\\s*=\\s*1\" /etc/sysctl.conf /etc/sysctl.d/*.conf /usr/lib/sysctl.d/*.conf /run/sysctl.d/*.conf | while read filename; do sed -ri \"s/^\\s*(net\\.ipv6\\.conf\\.all\\.forwarding\\s*)(=)(\\s*\\S+\\b).*$/# *REMOVED* \\1/\" $filename; done; sysctl -w net.ipv6.conf.all.forwarding=0; sysctl -w net.ipv6.route.flush=1."
-    compliance:
-      - cis: ["3.2.1"]
-      - cis_csc_v8: ["4.1"]
-      - cis_csc_v7: ["5.1"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7"]
-      - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
-      - nist_sp_800-53: ["CM-7(1)", "CM-9", "SA-10"]
-      - pci_dss_v3.2.1: ["11.5", "2.2"]
-      - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
-      - soc_2: ["CC7.1", "CC8.1"]
-    condition: all
-    rules:
-      - 'c:sysctl net.ipv4.ip_forward -> r:^net.ipv4.ip_forward\s*=\s*0$'
-      - 'f:/etc/sysctl.conf -> r:^net.ipv4.ip_forward\s*=\s*1$'
-      - 'd:->/etc/sysctl.d/ -> r:\.*.conf -> r:^net.ipv4.ip_forward\s*=\s*1$'
-      - 'd:->/usr/lib/sysctl.d/ -> r:\.*.conf -> r:^net.ipv4.ip_forward\s*=\s*1$'
-      - 'd:->/run/sysctl.d/ -> r:\.*.conf -> r:^net.ipv4.ip_forward\s*=\s*1$'
-      - 'c:sysctl net.ipv6.conf.all.forwarding -> r:^net.ipv6.conf.all.forwarding\s*=\s*0$'
-      - 'f:/etc/sysctl.conf -> r:^net.ipv4.ip_forward\s*=\s*1$'
-      - 'd:->/etc/sysctl.d/ -> r:\.*.conf -> r:^net.ipv6.conf.all.forwarding\s*=\s*1$'
-      - 'd:->/usr/lib/sysctl.d/ -> r:\.*.conf -> r:^net.ipv6.conf.all.forwarding\s*=\s*1$'
-      - 'd:->/run/sysctl.d/ -> r:\.*.conf -> r:^net.ipv6.conf.all.forwarding\s*=\s*1$'
+  # 3.2.1 Ensure IP forwarding is disabled. (Automated) - Not Implemented
 
   # 3.2.2 Ensure packet redirect sending is disabled. (Automated)
   - id: 6077
@@ -1752,44 +1725,7 @@ checks:
       - 'd:->/usr/lib/sysctl.d/ -> r:\.*.conf -> r:^net.ipv4.conf.default.accept_source_route\s*=\s*0$'
       - 'd:->/run/sysctl.d/ -> r:\.*.conf -> r:^net.ipv4.conf.default.accept_source_route\s*=\s*0$'
 
-  # 3.3.2 Ensure ICMP redirects are not accepted. (Automated)
-  - id: 6079
-    title: "Ensure ICMP redirects are not accepted."
-    description: "ICMP redirect messages are packets that convey routing information and tell your host (acting as a router) to send packets via an alternate path. It is a way of allowing an outside routing device to update your system routing tables. By setting net.ipv4.conf.all.accept_redirects and net.ipv6.conf.all.accept_redirects to 0, the system will not accept any ICMP redirect messages, and therefore, won't allow outsiders to update the system's routing tables."
-    rationale: "Attackers could use bogus ICMP redirect messages to maliciously alter the system routing tables and get them to send packets to incorrect networks and allow your system packets to be captured."
-    remediation: "Set the following parameters in /etc/sysctl.conf or a /etc/sysctl.d/* file: net.ipv4.conf.all.accept_redirects = 0 net.ipv4.conf.default.accept_redirects = 0 Run the following commands to set the active kernel parameters: # sysctl -w net.ipv4.conf.all.accept_redirects=0 # sysctl -w net.ipv4.conf.default.accept_redirects=0 # sysctl -w net.ipv4.route.flush=1 IF IPv6 is not disabled Set the following parameters in /etc/sysctl.conf or a /etc/sysctl.d/* file: net.ipv6.conf.all.accept_redirects = 0 net.ipv6.conf.default.accept_redirects = 0 Run the following commands to set the active kernel parameters: # sysctl -w net.ipv6.conf.all.accept_redirects=0 # sysctl -w net.ipv6.conf.default.accept_redirects=0 # sysctl -w net.ipv6.route.flush=1."
-    compliance:
-      - cis: ["3.3.2"]
-      - cis_csc_v8: ["4.1"]
-      - cis_csc_v7: ["5.1"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7"]
-      - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
-      - nist_sp_800-53: ["CM-7(1)", "CM-9", "SA-10"]
-      - pci_dss_v3.2.1: ["11.5", "2.2"]
-      - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
-      - soc_2: ["CC7.1", "CC8.1"]
-    condition: all
-    rules:
-      - 'c:sysctl net.ipv4.conf.all.accept_redirects -> r:^net.ipv4.conf.all.accept_redirects\s*=\s*0$'
-      - 'c:sysctl net.ipv4.conf.default.accept_redirects -> r:^net.ipv4.conf.default.accept_redirects\s*=\s*0$'
-      - 'f:/etc/sysctl.conf -> r:^net.ipv4.conf.all.accept_redirects\s*=\s*0$'
-      - 'd:->/etc/sysctl.d/ -> r:\.*.conf -> r:^net.ipv4.conf.all.accept_redirects\s*=\s*0$'
-      - 'd:->/usr/lib/sysctl.d/ -> r:\.*.conf -> r:^net.ipv4.conf.all.accept_redirects\s*=\s*0$'
-      - 'd:->/run/sysctl.d/ -> r:\.*.conf -> r:^net.ipv4.conf.all.accept_redirects\s*=\s*0$'
-      - 'f:/etc/sysctl.conf -> r:^net.ipv4.conf.default.accept_redirects\s*=\s*0$'
-      - 'd:->/etc/sysctl.d/ -> r:\.*.conf -> r:^net.ipv4.conf.default.accept_redirects\s*=\s*0$'
-      - 'd:->/usr/lib/sysctl.d/ -> r:\.*.conf -> r:^net.ipv4.conf.default.accept_redirects\s*=\s*0$'
-      - 'd:->/run/sysctl.d/ -> r:\.*.conf -> r:^net.ipv4.conf.default.accept_redirects\s*=\s*0$'
-      - 'c:sysctl net.ipv6.conf.all.accept_redirects -> r:^net.ipv6.conf.all.accept_redirects\s*=\s*0$'
-      - 'c:sysctl net.ipv6.conf.default.accept_redirects -> r:^net.ipv6.conf.default.accept_redirects\s*=\s*0$'
-      - 'f:/etc/sysctl.conf -> r:^net.ipv6.conf.all.accept_redirects\s*=\s*0$'
-      - 'd:->/etc/sysctl.d/ -> r:\.*.conf -> r:^net.ipv6.conf.all.accept_redirects\s*=\s*0$'
-      - 'd:->/usr/lib/sysctl.d/ -> r:\.*.conf -> r:^net.ipv6.conf.all.accept_redirects\s*=\s*0$'
-      - 'd:->/run/sysctl.d/ -> r:\.*.conf -> r:^net.ipv6.conf.all.accept_redirects\s*=\s*0$'
-      - 'f:/etc/sysctl.conf -> r:^net.ipv6.conf.default.accept_redirects\s*=\s*0$'
-      - 'd:->/etc/sysctl.d/ -> r:\.*.conf -> r:^net.ipv6.conf.default.accept_redirects\s*=\s*0$'
-      - 'd:->/usr/lib/sysctl.d/ -> r:\.*.conf -> r:^net.ipv6.conf.default.accept_redirects\s*=\s*0$'
-      - 'd:->/run/sysctl.d/ -> r:\.*.conf -> r:^net.ipv6.conf.default.accept_redirects\s*=\s*0$'
+  # 3.3.2 Ensure ICMP redirects are not accepted. (Automated) - Not Implemented
 
   # 3.3.3 Ensure secure ICMP redirects are not accepted. (Automated)
   - id: 6080
@@ -2728,9 +2664,12 @@ checks:
       - soc_2: ["CC5.2", "CC7.2"]
     condition: all
     rules:
-      - 'd:/etc/audit/rules.d/ -> r:\.*.rules -> r:-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S adjtimex && r:-S settimeofday && r:-S stime && r:-k time-change'
-      - 'd:/etc/audit/rules.d/ -> r:\.*.rules -> r:-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S clock_settime && r:-k time-change'
-      - 'd:/etc/audit/rules.d/ -> r:\.*.rules -> r:-w /etc/localtime && r:-p wa && r:-k time-change'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b64|-F arch=b32 && r:-S && r:adjtimex && r:settimeofday|settimeofday -S stime && r:-k time-change|key=time-change'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b64|-F arch=b32 && r:clock_settime && r:-k time-change|key=time-change'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/localtime && r:-p wa && r:-k time-change|key=time-change'
+      - "c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b64|-F arch=b32 && r:-S && r:adjtimex && r:settimeofday|settimeofday -S stime && r:-k time-change|key=time-change"
+      - "c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b64|-F arch=b32 && r:clock_settime && r:-k time-change|key=time-change"
+      - "c:auditctl -l -> r:^-w && r:/etc/localtime && r:-p wa && r:-k time-change|key=time-change"
 
   # 4.1.4 Ensure events that modify user/group information are collected. (Automated)
   - id: 6121
@@ -2821,7 +2760,7 @@ checks:
     condition: all
     rules:
       - 'd:/etc/audit/rules.d/ -> r:\.*.rules -> r:-w /var/log/lastlog && r:-p wa && r:-k logins'
-      - 'd:/etc/audit/rules.d/ -> r:\.*.rules -> r:-w /var/run/faillog/ && r:-p wa && r:-k logins'
+      - 'd:/etc/audit/rules.d/ -> r:\.*.rules -> r:-w /var/run/faillock/ && r:-p wa && r:-k logins'
 
   # 4.1.8 Ensure session initiation information is collected. (Automated)
   - id: 6125
@@ -2863,9 +2802,9 @@ checks:
       - soc_2: ["CC5.2", "CC7.2"]
     condition: all
     rules:
-      - 'd:/etc/audit/rules.d/ -> r:\.*.rules -> r:-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S chmod && r:-S fchmod && r:-S fchmodat && r:-F auid>=1000 && r:-F auid!=4294967295 && r:-k perm_mod'
-      - 'd:/etc/audit/rules.d/ -> r:\.*.rules -> r:-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S chown && r:-S fchown && r:-S fchownat && r:-S lchown && r:-F auid>=1000 && r:-F auid!=4294967295 && r:-k perm_mod'
-      - 'd:/etc/audit/rules.d/ -> r:\.*.rules -> r:-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S setxattr && r:-S lsetxattr && r:-S fsetxattr && r:-S removexattr && r:-S lremovexattr && r:-S fremovexattr && r:-F auid>=1000 && r:-F auid!=4294967295 && r:-k perm_mod'
+      - 'd:/etc/audit/rules.d/ -> r:\.*.rules -> r:-a && r:always,exit|exit,always && r:-F arch=b32|-F arch=b64 && r:-S chmod && r:-S fchmod && r:-S fchmodat && r:-F auid>=1000 && r:-F auid!=4294967295 && r:-k perm_mod'
+      - 'd:/etc/audit/rules.d/ -> r:\.*.rules -> r:-a && r:always,exit|exit,always && r:-F arch=b32|-F arch=b64 && r:-S chown && r:-S fchown && r:-S fchownat && r:-S lchown && r:-F auid>=1000 && r:-F auid!=4294967295 && r:-k perm_mod'
+      - 'd:/etc/audit/rules.d/ -> r:\.*.rules -> r:-a && r:always,exit|exit,always && r:-F arch=b32|-F arch=b64 && r:-S setxattr && r:-S lsetxattr && r:-S fsetxattr && r:-S removexattr && r:-S lremovexattr && r:-S fremovexattr && r:-F auid>=1000 && r:-F auid!=4294967295 && r:-k perm_mod'
 
   # 4.1.10 Ensure unsuccessful unauthorized file access attempts are collected. (Automated)
   - id: 6127
@@ -2885,8 +2824,8 @@ checks:
       - soc_2: ["CC5.2", "CC7.2"]
     condition: all
     rules:
-      - 'd:/etc/audit/rules.d/ -> r:\.*.rules -> r:-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S creat && r:-S open && r:-S openat && r:-S truncate && r:-S ftruncate && r:-F exit=-EACCES && r:-F auid>=1000 && r:-F auid!=4294967295 && r:-k access'
-      - 'd:/etc/audit/rules.d/ -> r:\.*.rules -> r:-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S creat && r:-S open && r:-S openat && r:-S truncate && r:-S ftruncate && r:-F exit=-EPERM && r:-F auid>=1000 && r:-F auid!=4294967295 && r:-k access'
+      - 'd:/etc/audit/rules.d/ -> r:\.*.rules -> r:-a && r:always,exit|exit,always && r:-F arch=b32|-F arch=b64 && r:-S creat && r:-S open && r:-S openat && r:-S truncate && r:-S ftruncate && r:-F exit=-EACCES && r:-F auid>=1000 && r:-F auid!=4294967295 && r:-k access'
+      - 'd:/etc/audit/rules.d/ -> r:\.*.rules -> r:-a && r:always,exit|exit,always && r:-F arch=b32|-F arch=b64 && r:-S creat && r:-S open && r:-S openat && r:-S truncate && r:-S ftruncate && r:-F exit=-EPERM && r:-F auid>=1000 && r:-F auid!=4294967295 && r:-k access'
 
   # 4.1.11 Ensure use of privileged commands is collected. (Automated) - Not Implemented
 
@@ -2928,7 +2867,7 @@ checks:
       - soc_2: ["CC5.2", "CC7.2"]
     condition: all
     rules:
-      - 'd:/etc/audit/rules.d/ -> r:\.*.rules -> r:-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S unlink && r:-S unlinkat && r:-S rename && r:-S renameat && r:-F auid>=1000 && r:-F auid!=4294967295 && r:-k delete'
+      - 'd:/etc/audit/rules.d/ -> r:\.*.rules -> r:-a && r:always,exit|exit,always && r:-F arch=b32|-F arch=b64 && r:-S unlink && r:-S unlinkat && r:-S rename && r:-S renameat && r:-F auid>=1000 && r:-F auid!=4294967295 && r:-k delete'
 
   # 4.1.14 Ensure changes to system administration scope (sudoers) is collected. (Automated)
   - id: 6130
@@ -2969,7 +2908,7 @@ checks:
       - soc_2: ["CC5.2", "CC7.2"]
     condition: all
     rules:
-      - 'd:/etc/audit/rules.d/ -> r:\.*.rules -> r:-a exit,always -F arch=b32 -C euid!=uid -F euid=0 -Fauid>=1000 -F auid!=4294967295 -S execve -k actions'
+      - 'd:/etc/audit/rules.d/ -> r:\.*.rules -> r:-a && r:exit,always|always,exit && r:-F arch=b32|-F arch=b64 && r:-C euid!=uid|uid!=euid && r:-F euid=0 && r:-F auid>=1000 && r:-F auid!=4294967295 && r:-S execve && r:-k actions'
 
   # 4.1.16 Ensure kernel module loading and unloading is collected. (Automated)
   - id: 6132
@@ -2992,7 +2931,7 @@ checks:
       - 'd:/etc/audit/rules.d/ -> r:\.*.rules -> r:-w /sbin/insmod && r:-p x && r:-k modules'
       - 'd:/etc/audit/rules.d/ -> r:\.*.rules -> r:-w /sbin/rmmod && r:-p x && r:-k modules'
       - 'd:/etc/audit/rules.d/ -> r:\.*.rules -> r:-w /sbin/modprobe && r:-p x && r:-k modules'
-      - 'd:/etc/audit/rules.d/ -> r:\.*.rules -> r:-a && r:always,exit|exit,always && r:-F arch=b\d\d && r:-S init_module && r:-S delete_module && r:-k modules'
+      - 'd:/etc/audit/rules.d/ -> r:\.*.rules -> r:-a && r:always,exit|exit,always && r:-F arch=b32|-F arch=b64 && r:-S init_module && r:-S delete_module && r:-k modules'
 
   # 4.1.17 Ensure the audit configuration is immutable. (Automated)
   - id: 6133
@@ -3547,7 +3486,7 @@ checks:
     condition: all
     rules:
       - 'c:sshd -T -C user=root -> r:^\s*LogLevel\s+VERBOSE|^\s*LogLevel\s+INFO'
-      - 'f:/etc/ssh/sshd_config ->!r:^# && r:loglevel\s*(VERBOSE|INFO)'
+      - 'f:/etc/ssh/sshd_config ->!r:^# && r:loglevel\s* && r:VERBOSE|INFO'
 
   # 5.3.6 Ensure SSH X11 forwarding is disabled. (Automated)
   - id: 6158
@@ -3568,7 +3507,7 @@ checks:
     condition: all
     rules:
       - 'c:sshd -T -C user=root -> r:^\s*x11forwarding\s*no'
-      - 'not f:/etc/ssh/sshd_config -> r:^\s*x11forwarding\s+yes'
+      - 'not f:/etc/ssh/sshd_config -> r:^\s*x11forwarding\s*yes'
 
   # 5.3.7 Ensure SSH MaxAuthTries is set to 4 or less. (Automated)
   - id: 6159
