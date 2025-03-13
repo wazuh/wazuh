@@ -13,6 +13,7 @@
 #define _PACKAGE_LINUX_DATA_RETRIEVER_H
 
 #include <memory>
+#include <unordered_set>
 #include "filesystemHelper.h"
 #include "json.hpp"
 #include "sharedDefs.h"
@@ -43,6 +44,12 @@ void getRpmInfoLegacy(std::function<void(nlohmann::json&)> callback);
  * @param callback Callback to be called for every single element being found
  */
 void getDpkgInfo(const std::string& libPath, std::function<void(nlohmann::json&)> callback);
+
+/**
+ * @brief Get all python packages installed by dpkg
+ * @return A set with all python packages installed by dpkg
+ */
+std::unordered_set<std::string> getDpkgPythonPackages(void);
 
 /**
  * @brief Fills a JSON object with all available apk-related information
