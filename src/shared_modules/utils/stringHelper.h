@@ -567,6 +567,7 @@ namespace Utils
             tokens.push_back(token);
             str.remove_prefix(pos + 1);
         }
+        tokens.push_back(str);
         return tokens;
     }
 #endif
