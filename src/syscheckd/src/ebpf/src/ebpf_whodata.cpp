@@ -334,8 +334,8 @@ int ebpf_whodata_healthcheck() {
     char ebpf_hc_abs_path[PATH_MAX] = {0};
     char error_message[1024];
 
-    kernelEventQueue.setMaxSize(syscheck.queue_size);
-    whodataEventQueue.setMaxSize(syscheck.queue_size);
+    kernelEventQueue.setMaxSize(fimebpf::instance().m_syscheck.queue_size);
+    whodataEventQueue.setMaxSize(fimebpf::instance().m_syscheck.queue_size);
 
     if (!logFn || init_libbpf() || init_bpfobj() || init_ring_buffer(&rb, healthcheck_event)) {
         return 1;
