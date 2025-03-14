@@ -17,4 +17,4 @@ jobs:
         with:
           # Trick to avoid running the linter and failing in this stage
           args: check --show-settings
-      - run: ruff check $(git diff --name-only ${{ github.event.pull_request.base.sha }} -- '*.py')
+      - run: ruff check $(git diff --diff-filter=d --name-only ${{ github.event.pull_request.base.sha }} -- '*.py')
