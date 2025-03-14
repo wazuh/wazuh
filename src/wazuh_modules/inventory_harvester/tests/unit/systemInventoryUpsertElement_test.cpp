@@ -143,5 +143,5 @@ TEST_F(SystemInventoryUpsertElement, validAgentID_Processes)
 
     EXPECT_EQ(
         context->m_serializedElement,
-        R"({"id":"001_1234","operation":"INSERTED","data":{"process":{"args":["processName"],"args_count":1,"command_line":"processCmdline","name":"processName","pid":1234,"start":"processStartISO8601","ppid":1234},"agent":{"id":"001","name":"agentName","ip":"agentIp","version":"agentVersion"}}})");
+        R"({"id":"001_1234","operation":"INSERTED","data":{"process":{"args":["processName"],"args_count":1,"command_line":"processCmdline","name":"processName","pid":1234,"start":"processStartISO8601","ppid":1},"agent":{"id":"001","name":"agentName","ip":"agentIp","version":"agentVersion"}}})");
 }

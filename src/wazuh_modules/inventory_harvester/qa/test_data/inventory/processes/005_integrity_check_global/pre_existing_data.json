@@ -1,0 +1,39 @@
+[
+    {
+        "index_name": "wazuh-states-processes-cluster01",
+        "data": [
+            {
+                "agent": {
+                    "id": "001",
+                    "ip": "any",
+                    "name": "c0ce505227a4",
+                    "version": "v4.11.0"
+                },
+                "process": {
+                    "args_count": 0,
+                    "command_line": "/usr/bin/program",
+                    "name": "program",
+                    "pid": 13,
+                    "ppid": 1,
+                    "start": "2025-02-26T23:44:59.000Z"
+                }
+            },
+            {
+                "agent": {
+                    "id": "002",
+                    "ip": "any",
+                    "name": "name2",
+                    "version": "v4.11.0"
+                },
+                "process": {
+                    "args_count": 0,
+                    "command_line": "/usr/bin/program2",
+                    "name": "program2",
+                    "pid": 13,
+                    "ppid": 1,
+                    "start": "2025-02-26T23:44:59.000Z"
+                }
+            }
+        ]
+    }
+]
