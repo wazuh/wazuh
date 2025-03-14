@@ -9,24 +9,15 @@ from unittest.mock import Mock, call, patch
 
 import pytest
 import scripts.wazuh_server as wazuh_server
+from scripts.tests.conftest import get_default_configuration
 from wazuh.core import pyDaemonModule
-from wazuh.core.cluster.utils import HAPROXY_DISABLED, HAPROXY_HELPER
-from wazuh.core.config.client import CentralizedConfig, Config
-from wazuh.core.config.models.indexer import IndexerConfig, IndexerNode
-from wazuh.core.config.models.server import NodeConfig, NodeType, ServerConfig, SSLConfig, ValidateFilePathMixin
+from wazuh.core.config.client import CentralizedConfig
+from wazuh.core.config.models.server import ValidateFilePathMixin
 
 wazuh_server.pyDaemonModule = pyDaemonModule
 
 with patch.object(ValidateFilePathMixin, '_validate_file_path', return_value=None):
-    default_config = Config(
-        server=ServerConfig(
-            nodes=['0'],
-            node=NodeConfig(
-                name='node_name', type=NodeType.MASTER, ssl=SSLConfig(key='example', cert='example', ca='example')
-            ),
-        ),
-        indexer=IndexerConfig(hosts=[IndexerNode(host='example', port=1516)], username='wazuh', password='wazuh'),
-    )
+    default_config = get_default_configuration()
     CentralizedConfig._config = default_config
 
 

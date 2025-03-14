@@ -14,10 +14,10 @@ from sqlalchemy import create_engine
 from sqlalchemy import orm as sqlalchemy_orm
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.sql import text
-from wazuh.core.config.client import CentralizedConfig, Config
-from wazuh.core.config.models.indexer import IndexerConfig, IndexerNode
-from wazuh.core.config.models.server import NodeConfig, NodeType, ServerConfig, SSLConfig, ValidateFilePathMixin
+from wazuh.core.config.client import CentralizedConfig
+from wazuh.core.config.models.server import ValidateFilePathMixin
 from wazuh.core.exception import WazuhError
+from wazuh.tests.util import get_default_configuration
 from yaml import safe_load
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data', 'security/')
@@ -80,19 +80,7 @@ def db_setup():
         with patch('sqlalchemy.create_engine', return_value=create_engine('sqlite://')):
             with patch('shutil.chown'), patch('os.chmod'):
                 with patch.object(ValidateFilePathMixin, '_validate_file_path', return_value=None):
-                    default_config = Config(
-                        server=ServerConfig(
-                            nodes=['0'],
-                            node=NodeConfig(
-                                name='node_name',
-                                type=NodeType.MASTER,
-                                ssl=SSLConfig(key='example', cert='example', ca='example'),
-                            ),
-                        ),
-                        indexer=IndexerConfig(
-                            hosts=[IndexerNode(host='example', port=1516)], username='wazuh', password='wazuh'
-                        ),
-                    )
+                    default_config = get_default_configuration()
                     CentralizedConfig._config = default_config
 
                     import wazuh.rbac.orm as orm

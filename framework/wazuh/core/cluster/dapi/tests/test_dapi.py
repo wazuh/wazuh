@@ -15,28 +15,16 @@ import pytest
 from connexion import ProblemException
 from sqlalchemy.exc import OperationalError
 from wazuh.core import common
-from wazuh.core.config.client import CentralizedConfig, Config
-from wazuh.core.config.models.indexer import IndexerConfig, IndexerNode
-from wazuh.core.config.models.server import NodeConfig, NodeType, ServerConfig, SSLConfig, ValidateFilePathMixin
+from wazuh.core.cluster.tests.conftest import get_default_configuration
+from wazuh.core.config.client import CentralizedConfig
+from wazuh.core.config.models.server import ValidateFilePathMixin
 
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '../../../../../../api'))
 
 with patch('wazuh.common.wazuh_uid'):
     with patch('wazuh.common.wazuh_gid'):
         with patch.object(ValidateFilePathMixin, '_validate_file_path', return_value=None):
-            default_config = Config(
-                server=ServerConfig(
-                    nodes=['0'],
-                    node=NodeConfig(
-                        name='node_name',
-                        type=NodeType.MASTER,
-                        ssl=SSLConfig(key='example', cert='example', ca='example'),
-                    ),
-                ),
-                indexer=IndexerConfig(
-                    hosts=[IndexerNode(host='example', port=1516)], username='wazuh', password='wazuh'
-                ),
-            )
+            default_config = get_default_configuration()
             CentralizedConfig._config = default_config
 
             sys.modules['wazuh.rbac.orm'] = MagicMock()
