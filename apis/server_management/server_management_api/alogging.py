@@ -160,9 +160,7 @@ def custom_logging(
             body = {'events': len(events)}
             json_info['body'] = body
 
-    log_info += (
-        f'with parameters {json.dumps(query)} and body ' f'{json.dumps(body)} done in {elapsed_time:.3f}s: {status}'
-    )
+    log_info += f'with parameters {json.dumps(query)} and body {json.dumps(body)} done in {elapsed_time:.3f}s: {status}'
 
     logger.info(log_info, extra={'log_type': 'log'})
     logger.info(json_info, extra={'log_type': 'json'})

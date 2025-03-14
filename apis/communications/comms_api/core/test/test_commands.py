@@ -59,6 +59,7 @@ def test_commands_manager_shutdown(sync_manager_mock):
 @pytest.mark.asyncio
 @patch('comms_api.core.commands.CommandsManager')
 async def test_pull_commands(commands_manager_mock):
+    """Check that the `get_commands` method works as expected."""
     get_commands_mock = AsyncMock(return_value=[COMMAND])
     commands_manager_mock.get_commands = get_commands_mock
     commands = await pull_commands(commands_manager_mock, AGENT_ID)

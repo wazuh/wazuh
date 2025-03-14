@@ -56,7 +56,7 @@ def create_and_send_query(agent_info_file):
                             for key, value in agent['agent'].items()
                         ]
                     )
-                    + f" WHERE id = {agent['extra_params']['agent_id']}"
+                    + f' WHERE id = {agent["extra_params"]["agent_id"]}'
                 )
                 # Send query to wdb
                 f.write(str(send_msg('global sql ' + query)) + '\n')

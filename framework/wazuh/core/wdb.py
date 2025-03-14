@@ -343,7 +343,7 @@ class WazuhDBConnection:
                 - DB waiting for deletion
                 - DB not found
         """
-        return self._send(f"wazuhdb remove {' '.join(agents_id)}")
+        return self._send(f'wazuhdb remove {" ".join(agents_id)}')
 
     def send(self, query: str, raw: bool = True) -> Union[str, dict]:
         """Send a message to the wdb socket.

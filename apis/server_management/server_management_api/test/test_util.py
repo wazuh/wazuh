@@ -177,24 +177,22 @@ def test_to_relative_path(mock_real_path):
 
 
 @pytest.mark.parametrize(
-    'exception_type, code, extra_fields, returned_code, returned_exception',
+    'exception_type, code, returned_code, returned_exception',
     [
-        (ValueError, 100, None, ValueError(100), ValueError),
-        (WazuhError, 1000, ['remediation', 'code'], 400, ProblemException),
-        (WazuhPermissionError, 4000, ['remediation', 'code'], 403, ProblemException),
-        (WazuhResourceNotFound, 1710, ['remediation', 'code'], 404, ProblemException),
-        (WazuhInternalError, 1000, ['remediation', 'code'], 500, ProblemException),
+        (ValueError, 100, ValueError(100), ValueError),
+        (WazuhError, 1000, 400, ProblemException),
+        (WazuhPermissionError, 4000, 403, ProblemException),
+        (WazuhResourceNotFound, 1710, 404, ProblemException),
+        (WazuhInternalError, 1000, 500, ProblemException),
     ],
 )
-def test_create_problem(exception_type, code, extra_fields, returned_code, returned_exception):
+def test_create_problem(exception_type, code, returned_code, returned_exception):
     """Check that _create_problem returns exception with expected data."""
     with pytest.raises(returned_exception) as exc_info:
         util._create_problem(exception_type(code))
 
     if returned_exception == ProblemException:
         assert exc_info.value.status == returned_code
-    if extra_fields:
-        assert all(x in exc_info.value.ext.keys() for x in extra_fields)
         assert None not in exc_info.value.ext.values()
 
 

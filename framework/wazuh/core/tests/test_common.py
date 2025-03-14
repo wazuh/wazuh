@@ -32,21 +32,25 @@ from wazuh.core.common import (
     ],
 )
 def test_find_wazuh_path(fake_path, expected):
+    """Tests the `find_wazuh_path` function with various fake paths."""
     with patch('wazuh.core.common.__file__', new=fake_path):
         assert find_wazuh_path.__wrapped__() == expected
 
 
 def test_find_wazuh_path_relative_path():
+    """Tests the `find_wazuh_path` function with a relative path."""
     with patch('os.path.abspath', return_value='~/framework'):
         assert find_wazuh_path.__wrapped__() == '~'
 
 
 def test_wazuh_uid():
+    """Tests the `wazuh_uid` function by mocking the `getpwnam` call."""
     with patch('wazuh.core.common.getpwnam', return_value=getpwnam('root')):
         wazuh_uid()
 
 
 def test_wazuh_gid():
+    """Tests the `wazuh_gid` function by mocking the `getgrnam` call."""
     with patch('wazuh.core.common.getgrnam', return_value=getgrnam('root')):
         wazuh_gid()
 
@@ -101,17 +105,17 @@ def test_context_cached():
     assert isinstance(get_context_cache()[json.dumps({'key': 'foobar', 'args': [], 'kwargs': {}})], ContextVar)
 
     # foo called with an argument
-    assert (
-        foo('other_arg') == 'other_arg' and test_context_cached.calls_to_foo == 2
-    ), '"other_arg" should be returned with 2 calls to foo. '
+    assert foo('other_arg') == 'other_arg' and test_context_cached.calls_to_foo == 2, (
+        '"other_arg" should be returned with 2 calls to foo. '
+    )
     assert isinstance(
         get_context_cache()[json.dumps({'key': 'foobar', 'args': ['other_arg'], 'kwargs': {}})], ContextVar
     )
 
     # foo called with the same argument as default, a new context var is created in the cache
-    assert (
-        foo('bar') == 'bar' and test_context_cached.calls_to_foo == 3
-    ), '"bar" should be returned with 3 calls to foo. '
+    assert foo('bar') == 'bar' and test_context_cached.calls_to_foo == 3, (
+        '"bar" should be returned with 3 calls to foo. '
+    )
     assert isinstance(get_context_cache()[json.dumps({'key': 'foobar', 'args': ['bar'], 'kwargs': {}})], ContextVar)
 
     # Reset cache and calls to foo
@@ -119,9 +123,9 @@ def test_context_cached():
     test_context_cached.calls_to_foo = 0
 
     # foo called with kwargs, a new context var is created with kwargs not empty
-    assert (
-        foo(data='bar') == 'bar' and test_context_cached.calls_to_foo == 1
-    ), '"bar" should be returned with 1 calls to foo. '
+    assert foo(data='bar') == 'bar' and test_context_cached.calls_to_foo == 1, (
+        '"bar" should be returned with 1 calls to foo. '
+    )
     assert isinstance(
         get_context_cache()[json.dumps({'key': 'foobar', 'args': [], 'kwargs': {'data': 'bar'}})], ContextVar
     )

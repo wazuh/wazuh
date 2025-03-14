@@ -748,7 +748,7 @@ async def remove_agents_from_group(agent_list: list = None, group_list: list = N
             commands = []
             for agent in agents:
                 if agent.groups is None or group_id not in agent.groups:
-                    result.add_failed_item(not_found_id, error=WazuhError(1734))
+                    result.add_failed_item(agent.id, error=WazuhError(1734))
                     continue
 
                 agent.groups.remove(group_id)

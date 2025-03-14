@@ -5,7 +5,7 @@ on:
   pull_request:
     paths:
       - '.github/workflows/comms-api-unit-tests.yml'
-      - 'apis/comms_api/**'
+      - 'apis/communications/**'
       - 'src/Makefile'
 
 jobs:

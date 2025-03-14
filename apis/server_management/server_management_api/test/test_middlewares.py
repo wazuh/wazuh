@@ -14,8 +14,11 @@ from connexion.testing import TestContext
 from freezegun import freeze_time
 from starlette.responses import Response
 from wazuh.core.authentication import JWT_ALGORITHM
+from wazuh.core.config.client import CentralizedConfig
+from wazuh.core.config.models.server import ValidateFilePathMixin
 
 from server_management_api.api_exception import ExpectFailedException
+from server_management_api.controllers.test.utils import get_default_configuration
 from server_management_api.middlewares import (
     LOGIN_ENDPOINT,
     MAX_REQUESTS_EVENTS_DEFAULT,
@@ -31,6 +34,10 @@ from server_management_api.middlewares import (
     check_rate_limit,
     secure_headers,
 )
+
+with patch.object(ValidateFilePathMixin, '_validate_file_path', return_value=None):
+    default_config = get_default_configuration()
+    CentralizedConfig._config = default_config
 
 
 @pytest.fixture
@@ -123,11 +130,10 @@ async def test_check_rate_limits_middleware(endpoint, mock_req):
     mock_req.url = MagicMock()
     mock_req.url.path = endpoint
     rq_x_min = 10000
-    api_conf = {'access': {'max_request_per_minute': rq_x_min}}
+    default_config.management_api.access.max_request_per_minute = rq_x_min
     with (
         TestContext(operation=operation),
         patch('server_management_api.middlewares.check_rate_limit', return_value=0) as mock_check,
-        patch('server_management_api.middlewares.configuration.api_conf', new=api_conf),
     ):
         await middleware.dispatch(request=mock_req, call_next=dispatch_mock)
         if endpoint == '/events':
@@ -167,13 +173,11 @@ async def test_check_rate_limits_middleware_ko(endpoint, return_code_general, re
     mock_req.url = MagicMock()
     mock_req.url.path = endpoint
     rq_x_min = 10000
-    api_conf = {'access': {'max_request_per_minute': rq_x_min}}
     with (
         TestContext(operation=operation),
         patch(
             'server_management_api.middlewares.ConnexionRequest.from_starlette_request', return_value=mock_req
         ) as mock_from,
-        patch('server_management_api.middlewares.configuration.api_conf', api_conf),
         patch('server_management_api.middlewares.check_rate_limit', side_effect=check_rate_limit_side_effect),
         pytest.raises(ProblemException) as exc_info,
     ):

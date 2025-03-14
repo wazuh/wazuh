@@ -15,11 +15,16 @@ import pytest
 import uvloop
 from freezegun import freeze_time
 from wazuh.core import exception
+from wazuh.core.cluster.tests.conftest import get_default_configuration
+from wazuh.core.config.client import CentralizedConfig
+from wazuh.core.config.models.server import ValidateFilePathMixin
 
 with patch('wazuh.core.common.wazuh_uid'):
     with patch('wazuh.core.common.wazuh_gid'):
-        # TODO: Fix in #26725
-        with patch('wazuh.core.utils.load_wazuh_xml'):
+        with patch.object(ValidateFilePathMixin, '_validate_file_path', return_value=None):
+            default_config = get_default_configuration()
+            CentralizedConfig._config = default_config
+
             sys.modules['wazuh.rbac.orm'] = MagicMock()
             import wazuh.rbac.decorators
 
@@ -34,28 +39,6 @@ with patch('wazuh.core.common.wazuh_uid'):
             from wazuh.core.cluster.master import DEFAULT_DATE
 
 # Global variables
-
-cluster_items = {
-    'node': 'master-node',
-    'intervals': {
-        'worker': {'connection_retry': 1, 'sync_integrity': 2},
-        'communication': {
-            'timeout_receiving_file': 1,
-            'timeout_dapi_request': 1,
-            'max_zip_size': 1073741824,
-            'min_zip_size': 31457280,
-            'zip_limit_tolerance': 0.2,
-        },
-        'master': {
-            'max_locked_integrity_time': 0,
-            'timeout_extra_valid': 0,
-            'process_pool_size': 10,
-            'recalculate_integrity': 0,
-        },
-    },
-    'files': {'cluster_item_key': {'remove_subdirs_if_empty': True, 'permissions': 'value'}},
-}
-
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 loop = asyncio.new_event_loop()
 
@@ -64,8 +47,7 @@ def get_master_handler():
     """Auxiliary function."""
     with patch('asyncio.get_running_loop', return_value=loop):
         abstract_client = client.AbstractClientManager(
-            configuration={'node_name': 'master', 'nodes': ['master'], 'port': 1111},
-            cluster_items={'node': 'master-node', 'intervals': {'worker': {'connection_retry': 1}}},
+            server_config=default_config.server,
             performance_test=False,
             logger=None,
             concurrency_test=False,
@@ -73,7 +55,11 @@ def get_master_handler():
             string=20,
         )
 
-    return master.MasterHandler(server=abstract_client, loop=loop, cluster_items=cluster_items)
+    return master.MasterHandler(
+        server=abstract_client,
+        loop=loop,
+        server_config=default_config.server,
+    )
 
 
 def get_master():
@@ -82,8 +68,7 @@ def get_master():
         return master.Master(
             performance_test=False,
             concurrency_test=False,
-            configuration={'node_name': 'master', 'nodes': ['master'], 'port': 1111, 'node_type': 'master'},
-            cluster_items=cluster_items,
+            server_config=default_config.server,
         )
 
 
@@ -247,7 +232,6 @@ def test_master_handler_init():
         assert master_handler.node_type == ''
         assert master_handler.task_loggers == {}
         assert master_handler.tag == 'Worker'
-        assert master_handler.current_zip_limit == cluster_items['intervals']['communication']['max_zip_size']
         assert cv.get() == master_handler.tag
 
 
@@ -398,7 +382,6 @@ def test_master_handler_process_request(logger_mock):
             call("Command received: b'dapi_res'"),
             call("Command received: b'get_nodes'"),
             call("Command received: b'get_health'"),
-            call("Command received: b'dist_orders'"),
             call("Command received: b'random'"),
         ]
     )
@@ -496,7 +479,7 @@ async def test_master_handler_execute_ko(uuid4_mock):
         await master_handler.execute(command=b'dapi_fwd', data=b'client request', wait_for_complete=True)
 
     # Test the second exception
-    master_handler.cluster_items['intervals']['communication']['timeout_dapi_request'] = 0.1
+    master_handler.server_config.communications.timeouts.dapi_request = 0.1
     with patch('wazuh.core.cluster.master.MasterHandler.send_request', return_value=b'result'):
         with pytest.raises(exception.WazuhClusterError, match=r'.* 3021 .*'):
             await master_handler.execute(command=b'dapi', data=b'client request', wait_for_complete=False)
@@ -799,9 +782,9 @@ async def test_master_handler_sync_worker_files_ok(run_in_pool_mock, decompress_
         master_handler.process_files_from_worker,
         decompress_files_mock.return_value[0],
         decompress_files_mock.return_value[1],
-        master_handler.cluster_items,
+        default_config.server,
         master_handler.name,
-        master_handler.cluster_items['intervals']['master']['timeout_extra_valid'],
+        default_config.server.master.intervals.timeout_extra_valid,
     )
 
 
@@ -1054,7 +1037,7 @@ def test_master_handler_process_files_from_worker_ok(gid_mock, uid_mock, safe_mo
                 result = master_handler.process_files_from_worker(
                     files_metadata=files_metadata,
                     decompressed_files_path=decompressed_files_path,
-                    cluster_items=cluster_items,
+                    server_config=default_config.server,
                     worker_name=worker_name,
                     timeout=timeout,
                 )
@@ -1080,7 +1063,7 @@ def test_master_handler_process_files_from_worker_ok(gid_mock, uid_mock, safe_mo
                 result = master_handler.process_files_from_worker(
                     files_metadata=files_metadata,
                     decompressed_files_path=decompressed_files_path,
-                    cluster_items=cluster_items,
+                    server_config=default_config.server,
                     worker_name=worker_name,
                     timeout=timeout,
                 )
@@ -1108,7 +1091,7 @@ def test_master_handler_process_files_from_worker_ok(gid_mock, uid_mock, safe_mo
                 result = master_handler.process_files_from_worker(
                     files_metadata=files_metadata,
                     decompressed_files_path=decompressed_files_path,
-                    cluster_items=cluster_items,
+                    server_config=default_config.server,
                     worker_name=worker_name,
                     timeout=timeout,
                 )
@@ -1139,7 +1122,7 @@ def test_master_handler_process_files_from_worker_ok(gid_mock, uid_mock, safe_mo
             result = master_handler.process_files_from_worker(
                 files_metadata=files_metadata,
                 decompressed_files_path=decompressed_files_path,
-                cluster_items=cluster_items,
+                server_config=default_config.server,
                 worker_name=worker_name,
                 timeout=timeout,
             )
@@ -1155,7 +1138,7 @@ def test_master_handler_process_files_from_worker_ok(gid_mock, uid_mock, safe_mo
             result = master_handler.process_files_from_worker(
                 files_metadata=files_metadata,
                 decompressed_files_path=decompressed_files_path,
-                cluster_items=cluster_items,
+                server_config=default_config.server,
                 worker_name=worker_name,
                 timeout=timeout,
             )
@@ -1173,7 +1156,7 @@ def test_master_handler_process_files_from_worker_ok(gid_mock, uid_mock, safe_mo
     result = master_handler.process_files_from_worker(
         files_metadata=files_metadata,
         decompressed_files_path=decompressed_files_path,
-        cluster_items=cluster_items,
+        server_config=default_config.server,
         worker_name=worker_name,
         timeout=timeout,
     )
@@ -1189,7 +1172,7 @@ def test_master_handler_process_files_from_worker_ok(gid_mock, uid_mock, safe_mo
     result = master_handler.process_files_from_worker(
         files_metadata=files_metadata,
         decompressed_files_path=decompressed_files_path,
-        cluster_items=cluster_items,
+        server_config=default_config.server,
         worker_name=worker_name,
         timeout=timeout,
     )
@@ -1204,7 +1187,7 @@ def test_master_handler_process_files_from_worker_ok(gid_mock, uid_mock, safe_mo
     result = master_handler.process_files_from_worker(
         files_metadata=files_metadata,
         decompressed_files_path=decompressed_files_path,
-        cluster_items=cluster_items,
+        server_config=default_config.server,
         worker_name=worker_name,
         timeout=timeout,
     )
@@ -1286,8 +1269,7 @@ def test_master_init(pool_executor_mock, get_running_loop_mock, warning_mock):
     master_class = master.Master(
         performance_test=False,
         concurrency_test=False,
-        configuration={'node_name': 'master', 'nodes': ['master'], 'port': 1111},
-        cluster_items=cluster_items,
+        server_config=default_config.server,
     )
 
     assert master_class.integrity_control == {}
@@ -1305,8 +1287,7 @@ def test_master_init(pool_executor_mock, get_running_loop_mock, warning_mock):
     master_class = master.Master(
         performance_test=False,
         concurrency_test=False,
-        configuration={'node_name': 'master', 'nodes': ['master'], 'port': 1111},
-        cluster_items=cluster_items,
+        server_config=default_config.server,
     )
 
     warning_mock.assert_has_calls(
@@ -1325,8 +1306,7 @@ def test_master_init(pool_executor_mock, get_running_loop_mock, warning_mock):
     master_class = master.Master(
         performance_test=False,
         concurrency_test=False,
-        configuration={'node_name': 'master', 'nodes': ['master'], 'port': 1111},
-        cluster_items=cluster_items,
+        server_config=default_config.server,
     )
 
     warning_mock.assert_has_calls(
@@ -1349,16 +1329,15 @@ def test_master_to_dict(get_running_loop_mock):
     master_class = master.Master(
         performance_test=False,
         concurrency_test=False,
-        configuration={'node_name': 'master', 'nodes': ['master'], 'port': 1111, 'node_type': 'master'},
-        cluster_items=cluster_items,
+        server_config=default_config.server,
     )
 
     assert master_class.to_dict() == {
         'info': {
-            'name': master_class.configuration['node_name'],
-            'type': master_class.configuration['node_type'],
+            'name': master_class.server_config.node.name,
+            'type': master_class.server_config.node.type,
             'version': '1.0.0',
-            'ip': master_class.configuration['nodes'][0],
+            'ip': master_class.server_config.nodes[0],
         }
     }
 
@@ -1366,66 +1345,13 @@ def test_master_to_dict(get_running_loop_mock):
 @pytest.mark.asyncio
 @freeze_time('2021-11-02')
 @patch('asyncio.sleep')
-async def test_master_file_status_update_ok(sleep_mock):
-    """Check if the file status is properly obtained."""
-    master_class = get_master()
-
-    class LoggerMock:
-        """Auxiliary class."""
-
-        def __init__(self):
-            self._info = []
-            self._error = []
-            self.counter = 0
-
-        def info(self, data):
-            """Auxiliary method."""
-            self._info.append(data)
-
-        def error(self, data):
-            """Auxiliary method."""
-            self._error.append(data)
-            self.counter += 1
-            if self.counter >= 2:
-                raise Exception('Stop while true')
-
-    counter = 0
-
-    async def run_in_pool(loop, pool, f, *args, **kwargs):
-        nonlocal counter
-        counter += 1
-        if counter >= 2:
-            raise Exception('Stop run_in_pool')
-
-        return ['info']
-
-    logger_mock = LoggerMock()
-
-    with patch('wazuh.core.cluster.master.cluster.run_in_pool', side_effect=run_in_pool):
-        with patch(
-            'wazuh.core.cluster.master.Master.setup_task_logger', return_value=logger_mock
-        ) as setup_task_logger_mock:
-            with pytest.raises(Exception, match='Stop while true'):
-                await master_class.file_status_update()
-
-            assert 'Starting.' in logger_mock._info
-            assert 'Finished in 0.000s. Calculated metadata of 1 files.' in logger_mock._info
-            assert 'Error calculating local file integrity: Stop run_in_pool' in logger_mock._error
-            setup_task_logger_mock.assert_called_once_with('Local integrity')
-            assert master_class.integrity_control == ['info']
-
-
-@pytest.mark.asyncio
-@freeze_time('2021-11-02')
-@patch('asyncio.sleep')
 @patch('wazuh.core.cluster.master.cluster.run_in_pool', return_value={})
-async def test_master_file_status_update_ok(run_in_pool_mock, asyncio_sleep_mock):
+async def test_master_file_status_update(run_in_pool_mock, asyncio_sleep_mock):
     """Check if the file status is properly obtained."""
     master_class = master.Master(
         performance_test=False,
         concurrency_test=False,
-        configuration={'node_name': 'master', 'nodes': ['master'], 'port': 1111, 'node_type': 'master'},
-        cluster_items=cluster_items,
+        server_config=default_config.server,
     )
 
     class LoggerMock:
@@ -1498,8 +1424,7 @@ def test_master_get_health(get_running_loop_mock, get_agent_overview_mock):
     master_class = MockMaster(
         performance_test=False,
         concurrency_test=False,
-        configuration={'node_name': 'master', 'nodes': ['master'], 'port': 1111, 'node_type': 'master'},
-        cluster_items=cluster_items,
+        server_config=default_config.server,
     )
     master_class.clients = {'1': MockDict({'testing': 'dict'})}
 
@@ -1511,7 +1436,10 @@ def test_master_get_health(get_running_loop_mock, get_agent_overview_mock):
                 'info': {'n_active_agents': 5, 'type': 'worker'},
                 'status': {'last_keep_alive': '1970-01-01T00:00:00.000000Z'},
             },
-            'master': {'testing': 'get_health', 'info': {'type': 'master', 'n_active_agents': 5}},
+            'node_name': {
+                'info': {'n_active_agents': 5, 'type': 'master'},
+                'testing': 'get_health',
+            },
         },
     }
 
@@ -1522,11 +1450,10 @@ def test_master_get_node(get_running_loop_mock):
     master_class = master.Master(
         performance_test=False,
         concurrency_test=False,
-        configuration={'node_name': 'master', 'nodes': ['master'], 'port': 1111, 'node_type': 'master'},
-        cluster_items=cluster_items,
+        server_config=default_config.server,
     )
 
     assert master_class.get_node() == {
-        'type': master_class.configuration['node_type'],
-        'node': master_class.configuration['node_name'],
+        'type': master_class.server_config.node.type,
+        'node': master_class.server_config.node.name,
     }

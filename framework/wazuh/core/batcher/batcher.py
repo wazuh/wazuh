@@ -112,7 +112,7 @@ class Batcher:
             logger.error(f'Error sending opensearch request: {exc}')
         except Exception as e:
             tb_str = traceback.format_exception(etype=type(e), value=e, tb=e.__traceback__)
-            logger.error(f"Error sending item to buffer: {''.join(tb_str)}")
+            logger.error(f'Error sending item to buffer: {"".join(tb_str)}')
 
     def flush_buffer(self):
         """Create a task to flush the current buffer and reset it. This task sends the buffered items to the indexer
@@ -165,7 +165,7 @@ class Batcher:
 
         except Exception as e:
             tb_str = traceback.format_exception(etype=type(e), value=e, tb=e.__traceback__)
-            logger.error(f"Error in batcher loop:{''.join(tb_str)}")
+            logger.error(f'Error in batcher loop:{"".join(tb_str)}')
         finally:
             # Ensure all tasks are properly cancelled
             for task in asyncio.all_tasks():

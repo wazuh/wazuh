@@ -184,6 +184,7 @@ get_rbac_actions:
         related_endpoints:
           - GET /cluster/nodes
           - GET /cluster/healthcheck
+          - GET /cluster/{node_id}/daemons/stats
           - GET /cluster/{node_id}/status
           - GET /cluster/{node_id}/info
           - GET /cluster/{node_id}/configuration

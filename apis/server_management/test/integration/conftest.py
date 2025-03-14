@@ -28,8 +28,8 @@ results = dict()
 
 with open(common_file, 'r') as stream:
     common = yaml.safe_load(stream)['variables']
-login_url = f"{common['protocol']}://{common['host']}:{common['port']}/{common['login_endpoint']}"
-basic_auth = f"{common['user']}:{common['pass']}".encode()
+login_url = f'{common["protocol"]}://{common["host"]}:{common["port"]}/{common["login_endpoint"]}'
+basic_auth = f'{common["user"]}:{common["pass"]}'.encode()
 login_headers = {'Content-Type': 'application/json', 'Authorization': f'Basic {b64encode(basic_auth).decode()}'}
 environment_status = None
 env_cluster_nodes = ['master', 'worker1', 'worker2']
@@ -321,8 +321,8 @@ def save_logs(test_name: str):
         for log in logs:
             try:
                 subprocess.check_output(
-                    f"docker cp env-wazuh-{node}-1:{os.path.join(logs_path, log)} "
-                    f"{os.path.join(test_logs_path, f'test_{test_name}-{node}-{log}')}",
+                    f'docker cp env-wazuh-{node}-1:{os.path.join(logs_path, log)} '
+                    f'{os.path.join(test_logs_path, f"test_{test_name}-{node}-{log}")}',
                     shell=True,
                 )
             except subprocess.CalledProcessError:
@@ -332,8 +332,8 @@ def save_logs(test_name: str):
     for agent in agent_names:
         try:
             subprocess.check_output(
-                f"docker cp env-wazuh-{agent}-1:{os.path.join(logs_path, 'ossec.log')} "
-                f"{os.path.join(test_logs_path, f'test_{test_name}-{agent}-ossec.log')}",
+                f'docker cp env-wazuh-{agent}-1:{os.path.join(logs_path, "ossec.log")} '
+                f'{os.path.join(test_logs_path, f"test_{test_name}-{agent}-ossec.log")}',
                 shell=True,
             )
         except subprocess.CalledProcessError:
@@ -362,7 +362,7 @@ def api_test(request: _pytest.fixtures.SubRequest):
         """Clean temporary folder, save environment logs and status; and stop and remove all Docker containers."""
         clean_tmp_folder()
         if request.session.testsfailed > 0:
-            save_logs(f"{rbac_mode}_{module.split('.')[0]}" if rbac_mode else f"{module.split('.')[0]}")
+            save_logs(f'{rbac_mode}_{module.split(".")[0]}' if rbac_mode else f'{module.split(".")[0]}')
 
         # Get the environment current status
         global environment_status
@@ -431,7 +431,7 @@ def get_health():
     """
     health = '\nEnvironment final status\n'
     health += subprocess.check_output(
-        "docker ps --format 'table {{.Names}}\t{{.RunningFor}}\t{{.Status}}'" ' --filter name=^env-wazuh', shell=True
+        "docker ps --format 'table {{.Names}}\t{{.RunningFor}}\t{{.Status}}' --filter name=^env-wazuh", shell=True
     ).decode()
     health += '\n'
 

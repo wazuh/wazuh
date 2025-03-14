@@ -5,9 +5,15 @@ from unittest.mock import MagicMock, patch
 import pytest
 from fastapi import status
 from freezegun import freeze_time
+from wazuh.core.config.client import CentralizedConfig
+from wazuh.core.config.models.server import ValidateFilePathMixin
 
-# TODO: Fix in #26725
-with patch('wazuh.core.utils.load_wazuh_xml'):
+from comms_api.authentication.test.conftest import get_default_configuration
+
+with patch.object(ValidateFilePathMixin, '_validate_file_path', return_value=None):
+    default_config = get_default_configuration()
+    CentralizedConfig._config = default_config
+
     from server_management_api.authentication import JWT_ISSUER
     from wazuh.core.exception import WazuhCommsAPIError
 
@@ -20,13 +26,13 @@ with patch('wazuh.core.utils.load_wazuh_xml'):
     )
     from comms_api.routers.exceptions import HTTPError
 
-payload = {
-    'iss': JWT_ISSUER,
-    'aud': JWT_AUDIENCE,
-    'iat': 0,
-    'exp': 0 + JWT_EXPIRATION,
-    'uuid': '019113d7-d428-725e-a87a-a7661cf5f641',
-}
+    payload = {
+        'iss': JWT_ISSUER,
+        'aud': JWT_AUDIENCE,
+        'iat': 0,
+        'exp': 0 + JWT_EXPIRATION,
+        'uuid': '019113d7-d428-725e-a87a-a7661cf5f641',
+    }
 
 
 @pytest.mark.asyncio
@@ -82,7 +88,7 @@ async def test_generate_token(mock_get_keypair, mock_encode):
 
     # Check all functions are called with expected params
     mock_get_keypair.assert_called_once()
-    mock_encode.assert_called_once_with(payload, '-----BEGIN PRIVATE KEY-----', algorithm='ES256')
+    mock_encode.assert_called_once_with(payload, '-----BEGIN PRIVATE KEY-----', algorithm='RS256')
 
 
 @freeze_time(datetime(1970, 1, 1))

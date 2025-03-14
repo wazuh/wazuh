@@ -32,9 +32,9 @@ def get_status() -> AffectedItemsWazuhResult:
         Affected items.
     """
     result = AffectedItemsWazuhResult(
-        all_msg=f"Processes status was successfully read" f"{' in specified node' if node_id != 'manager' else ''}",
+        all_msg=f'Processes status was successfully read{" in specified node" if node_id != "manager" else ""}',
         some_msg='Could not read basic information in some nodes',
-        none_msg=f"Could not read processes status" f"{' in specified node' if node_id != 'manager' else ''}",
+        none_msg=f'Could not read processes status{" in specified node" if node_id != "manager" else ""}',
     )
 
     result.affected_items.append(status())
@@ -93,9 +93,9 @@ def ossec_log(
         Affected items.
     """
     result = AffectedItemsWazuhResult(
-        all_msg=f"Logs were successfully read" f"{' in specified node' if node_id != 'manager' else ''}",
+        all_msg=f'Logs were successfully read{" in specified node" if node_id != "manager" else ""}',
         some_msg='Could not read logs in some nodes',
-        none_msg=f"Could not read logs" f"{' in specified node' if node_id != 'manager' else ''}",
+        none_msg=f'Could not read logs{" in specified node" if node_id != "manager" else ""}',
     )
     logs = get_ossec_logs()
 
@@ -135,9 +135,9 @@ def ossec_log_summary() -> AffectedItemsWazuhResult:
         Affected items.
     """
     result = AffectedItemsWazuhResult(
-        all_msg=f"Log was successfully summarized" f"{' in specified node' if node_id != 'manager' else ''}",
+        all_msg=f'Log was successfully summarized{" in specified node" if node_id != "manager" else ""}',
         some_msg='Could not summarize the log in some nodes',
-        none_msg=f"Could not summarize the log" f"{' in specified node' if node_id != 'manager' else ''}",
+        none_msg=f'Could not summarize the log{" in specified node" if node_id != "manager" else ""}',
     )
 
     logs_summary = get_logs_summary()
@@ -151,7 +151,7 @@ def ossec_log_summary() -> AffectedItemsWazuhResult:
 
 
 _restart_default_result_kwargs = {
-    'all_msg': f"Restart request sent to {'all specified nodes' if node_id != 'manager' else ''}",
+    'all_msg': f'Restart request sent to {"all specified nodes" if node_id != "manager" else ""}',
     'some_msg': 'Could not send restart request to some specified nodes',
     'none_msg': 'Could not send restart request to any node',
     'sort_casting': ['str'],
@@ -184,9 +184,9 @@ def restart() -> AffectedItemsWazuhResult:
 
 
 _validation_default_result_kwargs = {
-    'all_msg': f"Validation was successfully checked{' in all nodes' if node_id != 'manager' else ''}",
+    'all_msg': f'Validation was successfully checked{" in all nodes" if node_id != "manager" else ""}',
     'some_msg': 'Could not check validation in some nodes',
-    'none_msg': f"Could not check validation{' in any node' if node_id != 'manager' else ''}",
+    'none_msg': f'Could not check validation{" in any node" if node_id != "manager" else ""}',
     'sort_fields': ['name'],
     'sort_casting': ['str'],
 }
@@ -259,9 +259,9 @@ def get_basic_info() -> AffectedItemsWazuhResult:
         Affected items.
     """
     result = AffectedItemsWazuhResult(
-        all_msg=f"Basic information was successfully read" f"{' in specified node' if node_id != 'manager' else ''}",
+        all_msg=f'Basic information was successfully read{" in specified node" if node_id != "manager" else ""}',
         some_msg='Could not read basic information in some nodes',
-        none_msg=f"Could not read basic information" f"{' in specified node' if node_id != 'manager' else ''}",
+        none_msg=f'Could not read basic information{" in specified node" if node_id != "manager" else ""}',
     )
 
     try:

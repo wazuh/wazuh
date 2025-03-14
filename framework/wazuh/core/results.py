@@ -42,7 +42,7 @@ class AbstractWazuhResult(collections.abc.MutableMapping):
         else:
             raise wexception.WazuhInternalError(
                 1000,
-                extra_message=f'dct param must be a dict or ' f'an AbstractWazuhResult subclass, ' f'not a {type(dct)}',
+                extra_message=f'dct param must be a dict or an AbstractWazuhResult subclass, not a {type(dct)}',
             )
 
     def __getitem__(self, item):

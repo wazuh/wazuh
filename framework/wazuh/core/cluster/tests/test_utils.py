@@ -9,24 +9,30 @@ import sys
 from unittest.mock import MagicMock, patch
 
 import pytest
+from wazuh.core.cluster.tests.conftest import get_default_configuration
+from wazuh.core.config.client import CentralizedConfig
+from wazuh.core.config.models.server import ValidateFilePathMixin
 
 with patch('wazuh.core.common.getgrnam'):
     with patch('wazuh.core.common.getpwnam'):
         with patch('wazuh.core.common.wazuh_uid'):
             with patch('wazuh.core.common.wazuh_gid'):
-                sys.modules['wazuh.rbac.orm'] = MagicMock()
+                with patch.object(ValidateFilePathMixin, '_validate_file_path', return_value=None):
+                    default_config = get_default_configuration()
+                    CentralizedConfig._config = default_config
+                    sys.modules['wazuh.rbac.orm'] = MagicMock()
 
-                from wazuh.core import common
-                from wazuh.core.cluster import utils
-                from wazuh.core.exception import (
-                    WazuhError,
-                    WazuhException,
-                    WazuhHAPHelperError,
-                    WazuhInternalError,
-                    WazuhPermissionError,
-                    WazuhResourceNotFound,
-                )
-                from wazuh.core.results import WazuhResult
+                    from wazuh.core import common
+                    from wazuh.core.cluster import utils
+                    from wazuh.core.exception import (
+                        WazuhError,
+                        WazuhException,
+                        WazuhHAPHelperError,
+                        WazuhInternalError,
+                        WazuhPermissionError,
+                        WazuhResourceNotFound,
+                    )
+                    from wazuh.core.results import WazuhResult
 
 default_cluster_config = {
     'node_type': 'master',
@@ -307,10 +313,10 @@ def test_log_subprocess_execution():
         patch.object(utils.logger, 'error') as error_logger,
     ):
         utils.log_subprocess_execution(utils.logger, logs)
-        debug_logger.assert_called_with(f"{dict(logs['debug'])}")
-        debug2_logger.assert_called_with(f"{dict(logs['debug2'])}")
-        warning_logger.assert_called_with(f"{dict(logs['warning'])}")
-        error_logger.assert_any_call(f"{dict(logs['error'])}")
+        debug_logger.assert_called_with(f'{dict(logs["debug"])}')
+        debug2_logger.assert_called_with(f'{dict(logs["debug2"])}')
+        warning_logger.assert_called_with(f'{dict(logs["warning"])}')
+        error_logger.assert_any_call(f'{dict(logs["error"])}')
         for error in logs['generic_errors']:
             error_logger.assert_any_call(error, exc_info=False)
 
@@ -362,20 +368,22 @@ async def test_forward_function(distributed_api_mock, concurrent_mock):
 
 
 @pytest.mark.parametrize(
-    'cluster_config,expected',
+    'node_type,expected',
     (
-        [{'node_type': 'master'}, True],
-        [{'node_type': 'worker'}, False],
+        ['master', True],
+        ['worker', False],
     ),
 )
-@patch('wazuh.core.cluster.utils.read_cluster_config')
-def test_running_on_master_node(read_cluster_config_mock, cluster_config, expected):
+def test_running_on_master_node(node_type, expected):
     """Test that running_on_master function returns the expected value,
     based on combinations of disabled/enabled and node type.
     """
-    read_cluster_config_mock.return_value = cluster_config
+    with patch.object(CentralizedConfig, 'get_server_config', return_value=None) as server_config_mock:
+        config = MagicMock()
+        config.node.type = node_type
+        server_config_mock.return_value = config
 
-    assert utils.running_in_master_node() == expected
+        assert utils.running_in_master_node() == expected
 
 
 @pytest.mark.parametrize(

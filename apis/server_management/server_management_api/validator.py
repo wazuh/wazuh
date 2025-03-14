@@ -49,7 +49,7 @@ _timeframe_type = re.compile(r'^(\d+[dhms]?)$')
 _type_format = re.compile(r'^xml$|^json$')
 _wpk_path = re.compile(r'^[\w\-.\\/:\s]*[^\/]\.wpk$')
 _yes_no_boolean = re.compile(r'^yes$|^no$')
-_active_response_command = re.compile(f"^!?{_paths.pattern.lstrip('^')}")
+_active_response_command = re.compile(f'^!?{_paths.pattern.lstrip("^")}')
 
 security_config_schema = {
     'type': 'object',

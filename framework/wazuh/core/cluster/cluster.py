@@ -396,7 +396,7 @@ def compress_files(name, list_path, cluster_control_json=None, max_zip_size=None
                     new_file = rf.read()
                     if len(new_file) > max_zip_size:
                         result_logs['warning'][file].append(
-                            f'File too large to be synced: ' f'{path.join(common.WAZUH_ETC, file)}'
+                            f'File too large to be synced: {path.join(common.WAZUH_ETC, file)}'
                         )
                         update_cluster_control(file, cluster_control_json)
                         continue

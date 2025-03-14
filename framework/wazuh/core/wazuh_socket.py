@@ -34,7 +34,7 @@ class WazuhSocket:
             raise WazuhInternalError(1013, extra_message=os.path.basename(self.path))
         except ConnectionRefusedError:
             raise WazuhInternalError(
-                1121, extra_message=f"Socket '{os.path.basename(self.path)}' cannot receive " 'connections'
+                1121, extra_message=f"Socket '{os.path.basename(self.path)}' cannot receive connections"
             )
         except Exception as e:
             raise WazuhException(1013, str(e))

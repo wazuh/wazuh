@@ -327,7 +327,7 @@ def sort_array(
             incorrect_fields = ', '.join(sort_by - allowed_sort_fields)
             raise WazuhError(
                 1403,
-                extra_remediation='Allowed sort fields: {0}. ' 'Wrong fields: {1}'.format(
+                extra_remediation='Allowed sort fields: {0}. Wrong fields: {1}'.format(
                     ', '.join(allowed_sort_fields), incorrect_fields
                 ),
             )
@@ -1176,7 +1176,7 @@ def filter_array_by_query(q: str, input_array: typing.List) -> typing.List:
         r'\.?([\w.]*)?'
         +
         # Operator: looks for '=', '!=', '<', '>' or '~'.
-        rf"([{''.join(operators)}]{{1,2}})"
+        rf'([{"".join(operators)}]{{1,2}})'
         +
         # Value: A string.
         r"((?:(?:\((?:\[[\[\]\w _\-.,:?\\/'\"=@%<>{}]*]|[\[\]\w _\-.:?\\/'\"=@%<>{}]*)\))*"
@@ -1271,7 +1271,7 @@ class WazuhDBBackend(AbstractDatabaseBackend):
                         values.append(element)
                     else:
                         values.append(f"'{element}'")
-                value = f"{','.join(values)}"
+                value = f'{",".join(values)}'
             elif isinstance(v, (int, float)):
                 value = f'{v}'
             elif isinstance(v, str):
@@ -1399,7 +1399,7 @@ class WazuhDBQuery(object):
             r'([\w.]+)'
             +
             # Operator: looks for '=', '!=', '<', '>' or '~'.
-            rf"([{''.join(self.query_operators.keys())}]{{1,2}})"
+            rf'([{"".join(self.query_operators.keys())}]{{1,2}})'
             +
             # Value: A string.
             r"((?:(?:\((?:\[[\[\]\w _\-.,:?\\/'\"=@%<>{}]*]|[\[\]\w _\-.:?\\/'\"=@%<>{}$]*)\))*"
@@ -1408,7 +1408,7 @@ class WazuhDBQuery(object):
             # One or more ) characters.
             r'(\)+)?' +
             # Separator: looks for ';', ',' or nothing.
-            rf"([{''.join(self.query_separators.keys())}])?"
+            rf'([{"".join(self.query_separators.keys())}])?'
         )
         self.date_fields = date_fields
         self.extra_fields = extra_fields
@@ -1595,7 +1595,7 @@ class WazuhDBQuery(object):
             # If it matches the same format as DB (timestamp integer), filter directly by value (next if cond).
             self._filter_date(q_filter, field_name)
         elif 'rbac' in field_name:
-            self.query += f"{field_name.lstrip('rbac_')} {q_filter['operator']} (:{field_filter})"
+            self.query += f'{field_name.lstrip("rbac_")} {q_filter["operator"]} (:{field_filter})'
             self.request[field_filter] = q_filter['value']
         else:
             if q_filter['value'] is not None:
@@ -1673,7 +1673,7 @@ class WazuhDBQuery(object):
         if date_filter['value'].isdigit() or re.match(r'\d+[dhms]', date_filter['value']):
             query_operator = '>' if date_filter['operator'] == '<' or date_filter['operator'] == '=' else '<'
             self.request[date_filter['field']] = get_timeframe_in_seconds(date_filter['value'])
-            self.query += '{0} IS NOT NULL AND {0} {1}' " strftime('%s', 'now') - :{2} ".format(
+            self.query += "{0} IS NOT NULL AND {0} {1} strftime('%s', 'now') - :{2} ".format(
                 self.fields[filter_db_name], query_operator, date_filter['field']
             )
         elif re.match(r'\d{4}-\d{2}-\d{2}([ T]\d{2}:\d{2}:\d{2}(.\d{1,6})?Z?)?', date_filter['value']):

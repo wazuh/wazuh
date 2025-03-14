@@ -13,11 +13,16 @@ from unittest.mock import MagicMock, call, patch
 import pytest
 import wazuh.core.exception as exception
 from freezegun import freeze_time
+from wazuh.core.cluster.tests.conftest import get_default_configuration
+from wazuh.core.config.client import CentralizedConfig
+from wazuh.core.config.models.server import ValidateFilePathMixin
 
 with patch('wazuh.core.common.wazuh_uid'):
     with patch('wazuh.core.common.wazuh_gid'):
-        # TODO: Fix in #26725
-        with patch('wazuh.core.utils.load_wazuh_xml'):
+        with patch.object(ValidateFilePathMixin, '_validate_file_path', return_value=None):
+            default_config = get_default_configuration()
+            CentralizedConfig._config = default_config
+
             sys.modules['wazuh.rbac.orm'] = MagicMock()
             import wazuh.rbac.decorators
 
@@ -31,29 +36,13 @@ with patch('wazuh.core.common.wazuh_uid'):
             from wazuh.core.cluster import common as cluster_common
 
 logger = logging.getLogger('wazuh')
-cluster_items = {
-    'node': 'master-node',
-    'intervals': {
-        'worker': {'connection_retry': 1, 'sync_integrity': 2},
-        'communication': {
-            'timeout_receiving_file': 1,
-            'max_zip_size': 1000,
-            'min_zip_size': 0,
-            'zip_limit_tolerance': 0.2,
-            'timeout_cluster_request': 20,
-        },
-    },
-    'files': {'cluster_item_key': {'remove_subdirs_if_empty': True, 'permissions': 'value'}},
-}
-configuration = {'node_name': 'master', 'nodes': ['master'], 'port': 1111, 'name': 'wazuh', 'node_type': 'master'}
 
 
 def get_worker_handler(loop):
     """Return the needed WorkerHandler object. This is an auxiliary method."""
     with patch('asyncio.get_running_loop', return_value=loop):
         abstract_client = client.AbstractClientManager(
-            configuration=configuration,
-            cluster_items=cluster_items,
+            server_config=default_config.server,
             performance_test=False,
             logger=None,
             concurrency_test=False,
@@ -69,7 +58,7 @@ def get_worker_handler(loop):
         name='Testing',
         logger=logger,
         manager=abstract_client,
-        cluster_items=cluster_items,
+        server_config=default_config.server,
     )
 
 
@@ -562,7 +551,7 @@ async def test_worker_handler_process_files_from_master_ok(
         await asyncio.gather(
             worker_handler.process_files_from_master(name='task_id', file_received=event), unlock_event(event)
         )
-        update_files_mock.assert_called_once_with(ko_files[0], zip_path, cluster_items)
+        update_files_mock.assert_called_once_with(ko_files[0], zip_path, default_config.server)
         send_request_mock.assert_not_called()
         logger_debug_mock.assert_has_calls(
             [
@@ -592,7 +581,7 @@ async def test_worker_handler_process_files_from_master_ok(
             worker_handler.process_files_from_master(name='task_id', file_received=event), unlock_event(event=event)
         )
 
-        update_files_mock.assert_called_once_with(ko_files[1], zip_path, cluster_items)
+        update_files_mock.assert_called_once_with(ko_files[1], zip_path, default_config.server)
         send_request_mock.assert_not_called()
         logger_debug_mock.assert_has_calls(
             [
@@ -679,7 +668,8 @@ async def test_worker_handler_process_files_from_master_ko(send_request_mock, js
     )
     send_request_mock.assert_called_with(command=b'syn_i_w_m_r', data=b'None ')
 
-    worker_handler.cluster_items['intervals']['communication']['timeout_receiving_file'] = 0.1
+    worker_handler.server.server_config.communications.timeouts.receiving_file = 0.1
+
     event = asyncio.Event()
     with pytest.raises(exception.WazuhClusterError, match=r'.* 3039 .*'):
         await asyncio.gather(worker_handler.process_files_from_master(name='task_id', file_received=event))
@@ -724,9 +714,6 @@ async def test_worker_handler_update_master_files_in_worker_ok(
 
     worker_handler = get_worker_handler(event_loop)
 
-    # As the method has two large for, we will make the condition for the first one equal to something empty
-    worker_handler.cluster_items['files']['cluster_item_key']['remove_subdirs_if_empty'] = {}
-
     # Test the first for: for -> if -> for -> try
     # In the nested method, with the first value sent to the 'update_master_files_in_worker' (shared), we
     # are testing the if, meanwhile with the second (missing), we are testing the else.
@@ -739,7 +726,7 @@ async def test_worker_handler_update_master_files_in_worker_ok(
                     'extra': {'filename3': {'cluster_item_key': 'cluster_item_key'}},
                 },
                 zip_path='/zip/path',
-                cluster_items=cluster_items,
+                server_config=default_config.server,
             )
 
             os_remove_mock.assert_any_call('queue/testing/')
@@ -776,12 +763,12 @@ async def test_worker_handler_update_master_files_in_worker_ok(
             'extra': {'filename3': {'cluster_item_key': 'cluster_item_key'}},
         },
         '/zip/path',
-        cluster_items=cluster_items,
+        server_config=default_config.server,
     )
 
     assert result_logs['error'] == {
-        'shared': ["Error processing shared file 'filename1': " 'string indices must be integers'],
-        'missing': ["Error processing missing file 'filename2': " 'string indices must be integers'],
+        'shared': ["Error processing shared file 'filename1': string indices must be integers"],
+        'missing': ["Error processing missing file 'filename2': string indices must be integers"],
     }
 
     assert result_logs['debug2'] == {
@@ -819,12 +806,12 @@ async def test_worker_handler_update_master_files_in_worker_ok(
             'extra': {'filename3': {'cluster_item_key': 'cluster_item_key'}},
         },
         '/zip/path',
-        cluster_items=cluster_items,
+        server_config=default_config.server,
     )
 
     assert result_logs['error'] == {
-        'shared': ["Error processing shared file 'filename1': " 'string indices must be integers'],
-        'missing': ["Error processing missing file 'filename2': " 'string indices must be integers'],
+        'shared': ["Error processing shared file 'filename1': string indices must be integers"],
+        'missing': ["Error processing missing file 'filename2': string indices must be integers"],
     }
     assert result_logs['debug2'] == {
         'filename1': ['Processing file filename1'],
@@ -851,17 +838,13 @@ async def test_worker_handler_update_master_files_in_worker_ok(
     for mock in all_mocks:
         mock.reset_mock()
 
-    # Now, we are going to test the second for
-    worker_handler.cluster_items['files']['cluster_item_key']['remove_subdirs_if_empty'] = {'dir1': 'value1'}
-    worker_handler.cluster_items['files']['excluded_files'] = 'dir_files'
-
     # Test the try
     with patch('os.listdir', return_value='dir_files') as listdir_mock:
         with patch('shutil.rmtree') as rmtree_mock:
             result_logs = worker_handler.update_master_files_in_worker(
                 {'extra': {'filename3': {'cluster_item_key': 'cluster_item_key'}}},
                 '/zip/path',
-                cluster_items=cluster_items,
+                server_config=default_config.server,
             )
             rmtree_mock.assert_called_once()
             listdir_mock.assert_called_once()
@@ -885,13 +868,15 @@ async def test_worker_handler_update_master_files_in_worker_ok(
 
     # Test the exception
     result_logs = worker_handler.update_master_files_in_worker(
-        {'extra': {'filename3': {'cluster_item_key': 'cluster_item_key'}}}, '/zip/path', cluster_items=cluster_items
+        {'extra': {'filename3': {'cluster_item_key': 'cluster_item_key'}}},
+        '/zip/path',
+        server_config=default_config.server,
     )
 
     assert result_logs['error'] == defaultdict(list)
     assert result_logs['debug2'] == {
         'filename3': ["Remove file: 'filename3'", "File filename3 doesn't exist."],
-        '': ["Error removing directory '': [Errno 2] No such file or directory: " "'queue/testing_mock/'"],
+        '': ["Error removing directory '': [Errno 2] No such file or directory: 'queue/testing_mock/'"],
     }
     assert result_logs['generic_errors'] == ['Found errors: 0 overwriting, 0 creating and 1 removing']
 
@@ -921,8 +906,7 @@ async def test_worker_init(api_request_queue, event_loop):
     """Check if the object Worker is being properly initialized."""
     task_pool = {'task_pool': ''}
     nested_worker = worker.Worker(
-        configuration=configuration,
-        cluster_items=cluster_items,
+        server_config=default_config.server,
         performance_test=False,
         logger=None,
         concurrency_test=False,
@@ -962,8 +946,7 @@ async def test_worker_add_tasks(api_request_queue, acm_mock, event_loop):
     task_pool = {'task_pool': ''}
 
     nested_worker = worker.Worker(
-        configuration=configuration,
-        cluster_items=cluster_items,
+        server_config=default_config.server,
         performance_test=False,
         logger=None,
         concurrency_test=False,
@@ -984,8 +967,7 @@ async def test_worker_get_node(api_request_queue, event_loop):
     task_pool = {'task_pool': ''}
 
     nested_worker = worker.Worker(
-        configuration=configuration,
-        cluster_items=cluster_items,
+        server_config=default_config.server,
         performance_test=False,
         logger=None,
         concurrency_test=False,
@@ -995,7 +977,7 @@ async def test_worker_get_node(api_request_queue, event_loop):
     )
 
     assert nested_worker.get_node() == {
-        'type': nested_worker.configuration['node_type'],
-        'node': nested_worker.configuration['node_name'],
+        'type': nested_worker.server_config.node.type,
+        'node': nested_worker.server_config.node.name,
     }
     api_request_queue.assert_called_once_with(server=nested_worker)
