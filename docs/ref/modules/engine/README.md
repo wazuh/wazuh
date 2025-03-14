@@ -1010,20 +1010,109 @@ For example, a network event log structured according to the schema might look l
 ```
 
 ### Configuration
+The schema configuration for the engine follows a structured format where each field is defined with specific attributes. The schema consists of a JSON object with the following key elements:
 
-Explain how it is configured and the structure of the schema file.
+- Fields Definition:
+  - The fields object contains a list of field names as keys.
+  - Each field has a corresponding object defining its properties.
+- Field Properties:
+  Each field in the schema contains two primary properties:
+  - `type`: Specifies the OpenSearch field type, such as date, keyword, text, integer, etc.
+  - `array`: A boolean value (true or false) indicating whether the field can store multiple values (i.e., an array) or just a single value.
+
+```json
+{
+  "name": "schema/engine-schema/0",
+  "fields": {
+    "@timestamp": {
+      "type": "date",
+      "array": false
+    },
+    "agent.build.original": {
+      "type": "keyword",
+      "array": false
+    },
+    "agent.ephemeral_id": {
+      "type": "keyword",
+      "array": false
+    },
+    "agent.id": {
+      "type": "keyword",
+      "array": false
+    }
+  }
+}
+```
 
 ### Implications
-
-Explain how the schema affects the building and processing.
+- Operational Graph and Consistency Enforcement
+  - The schema is used during the construction of the operational graph to ensure that all operations are valid based on the defined field types and structures.
+  - Whenever possible, schema validation is performed at build time to prevent misconfigurations before execution.
+  - If an operation's consistency cannot be fully validated at build time, additional runtime checks are applied to ensure adherence to the schema.
+- Consistency and Normalization in Dashboards
+  - The schema ensures that data displayed in dashboards follows a consistent structure.
+  - This enables seamless aggregation, filtering, and visualization by maintaining a predictable and normalized data format.
 
 ## Managing the Engine's processing
+Now that we've explored what the Engine does and how its processing works, we’ll introduce key elements involved in managing and defining the operational graph—specifically, routes, policies, and assets.
+
+All management is performed through the API (refer to the API documentation for a complete list of available calls). Before defining the operational graph, all policies and assets must first be loaded into the Engine’s catalog. This ensures that all assets are validated and ready for use before they are referenced in processing.
 
 ### Namespaces
+To organize assets efficiently, the Engine categorizes them into namespaces. Internally, assets are stored directly under a specific namespace, allowing for structured management and role-based segregation of policies.
+
+The default policy asset namespaces in the Engine are:
+- `system` – Core assets responsible for handling internal event processing and ensuring basic event normalization.
+- `wazuh` – Default integrations developed and maintained by Wazuh.
+- `user` – A default namespace for end-user-defined assets.
+
+While these are the predefined namespaces, the Engine allows creating as many namespaces as needed, enabling flexibility in asset management.
 
 ### Assets Catalog
 
+The Catalog is responsible for managing the Engine’s assets, organizing them under namespaces. Each asset is uniquely identified by its name, following the convention:
+```
+<type>/<name>/<version>
+```
+
+This naming structure ensures clear versioning and categorization of assets. The following asset types are defined:
+- **decoders** – Responsible for normalizing events, transforming raw data into a structured format.
+- **rules** – Handle security analysis and event enrichment, identifying threats and adding contextual information.
+- **outputs** – Define storage policies for processed events, determining how and where data is stored.
+- **filters** – Used for event routing, ensuring events are correctly directed to the appropriate policies.
+- **integrations** – Serve as manifests for other assets, grouping related assets that support a common goal. Typically used to bundle all assets required for specific services.
+
+All API calls to the Catalog support name-path operations, allowing users to manage specific assets or entire groups efficiently. (Refer to the API documentation for a full list of available catalog operations.)
+
 ### Policies and Routes
+
+With all assets defined and stored in the Catalog, the next step is to define policies, specifying exactly what functionality we want to apply. A policy organizes assets hierarchically, defining how events are processed.
+
+The API allows users to configure all decoders, rules, and outputs for a policy, along with default management settings—such as defining default asset parents for specific namespaces. (For a complete list of API calls, refer to the documentation.)
+
+Each policy contains references to asset names, and during the building process, the Engine retrieves these assets from the Catalog. The graph is then built following the parent relationships defined in the assets, ensuring a valid structure. If the relationships are invalid or incomplete, the build process will fail, preventing misconfigurations.
+
+Following the same Catalog-first approach, policies are stored before they are actually used. Policies are only referenced when defining routes, ensuring that all assets and relationships are pre-validated before execution.
+
+The Orchestrator is responsible for pairing filters with policies, ensuring that specific types of events are processed by the appropriate policies. It also manages loaded policies, routing priority and some event processing configuration.
+
+The Engine also introduces the concept of testing sessions, which are specialized policies designed for processing test events via the API. These sessions allow users to validate how their policies will behave before deploying them in production, ensuring correctness and expected functionality.
+
+For a complete list of API calls related to routing and policy management, refer to the documentation.
+
+#### Architecture
+
+The Engine is composed of distinct modules, each responsible for managing a specific aspect of event processing:
+- Catalog → Manages assets (decoders, rules, filters, outputs, integrations).
+- Policy → Manages policies, defining how assets are organized and processed.
+- Orchestrator → Manages routes, pairing filters with policies to control event processing.
+
+All modules follow the same naming convention, ensuring that every item—whether an asset, policy, or route—can be stored and identified homogeneously by the Store module.
+
+<flowchart_placeholder>
+
+- The APIs provide external communication, allowing users to interact with and configure the system.
+- The Store module handles internal data retrieval, ensuring assets, policies, and routes can be efficiently accessed by their respective modules.
 
 ## Assets
 In the Wazuh Engine, assets represent the fundamental components of security policies and are the smallest unit within such a policy.
@@ -1119,9 +1208,10 @@ There are two intrinsic operations which do not require additional syntax:
 
 All other operations are accessed through the helper functions.
 
-The syntax for calling a helper function is `helper_name(args...)`. They can be used in both check operations and map operations. Helper functions are classified into two categories:
+The syntax for calling a helper function is `helper_name(args...)`. They can be used in both check operations and map operations. Helper functions are classified into three categories:
 - **Conditionals**: Used in check operations to test complex conditions.
 - **Transformational**: Used in map operations to transform data.
+- **Mapping**: A subset of transformational operations scoped to modifying only the target field.
 
 Check the helper standard library for a complete list of available helper functions.
 
@@ -1228,6 +1318,15 @@ This approach enables text reuse within an asset. Definitions are applied at bui
 
 ### Variables
 
+Variables are temporary fields scoped to the current asset that is processing an event. They are identified by prefixing their name with an underscore `_`, following the standard field naming convention and supporting any operation just like fields.
+```
+_field.name
+```
+
+Key characteristics:
+- Scoped to the current asset – Variables exist only within the asset processing the event and do not persist beyond it.
+- Runtime Modifiable – Unlike definitions, which are static, variables can be modified during event processing.
+
 ### Log Parsing
 Log parsing transforms raw log entries into structured data using parser expressions. These expressions serve as an alternative to Grok, eliminating the need for explicit type declarations by leveraging predefined schema-based parsing. Instead of regular expressions, they use specialized parsers for improved accuracy and efficiency.
 
@@ -1291,8 +1390,14 @@ normalize:
 If a match is found, security-related data is mapped to the event.
 
 ### Dates and Timestamps
+Assets are capable of handling dates in various formats and time zones. This flexibility is achieved through configurable parsers (refer to the date parser documentation for more details).
+
+Once a date is parsed, the Engine normalizes it to UTC. This ensures that all timestamps are stored and processed homogeneously, maintaining consistency across event processing and dashboard visualization.
 
 ### Geolocation
+Assets are capable of enriching events with geolocation information, enhancing event data with location-based context. This is achieved by using GeoLite databases, which provide location data based on IP addresses. For more details, see the geo location helper documentation.
+
+The GeoLite databases are configured through the API, allowing you to specify the relevant databases to be used for geolocation enrichment. For more information on how to configure these databases, refer to the API documentation.
 
 ### Decoders
 
@@ -1302,16 +1407,7 @@ If a match is found, security-related data is mapped to the event.
 
 ### Filters
 
-## Orchestrator
-
-## Server
-
-## Metrics
-
-## Builder
-
 ## Stages
-Briefly explain estages, flow of operations and relations between stages (check as firs or inside a normalize).
 
 ### Check/Allow
 The check stage is a preliminary stage in the asset processing sequence, designed to assess whether an event meets specific conditions without modifying the event itself. Filters events based on predefined criteria, ensuring that only relevant events trigger the subsequent stages like parse or normalize.
@@ -1370,6 +1466,8 @@ check: $wazuh.origin == /var/log/apache2/access.log OR $wazuh.origin == /var/log
 Executes a series of parsing expressions that transform the event's original message into clearly defined data fields. The parsing operations are processed in sequence, with each operation attempted until one succeeds. If an operation succeeds, subsequent operations in the list are skipped.
 
 If all operations fail, the execution of the stage is marked as failed, the processing of the event could continue with the next substage only if it is within a normalize.
+
+For a complete list of parsers check the Parsers reference.
 
 #### Parser expression
 Parser expressions facilitate the transformation of log entries into structured objects, offering an alternative to Grok by eliminating the need for explicit type declarations as these are predefined in the schema. Instead of regular expressions, these expressions utilize tailored parsers, enhancing precision.
@@ -1432,6 +1530,29 @@ parse|event.original:
     - "[<@timestamp/%a %b %d %T %Y/en_US.UTF-8>] [<~apache.error.module>:<log.level>] [pid <process.pid>(?:tid <process.thread.id>)] <message>"
 ```
 
+#### Schema fields and parsers
+Fields within the schema are bound to specific parsers that ensure the data matches the expected format. For example, date fields may require a specific time format, which is denoted using parameters following the field name in the format `<field_name/param_0/param_n>`. This allows for flexible data validation against predefined types or custom formats specified by additional parameters.
+
+For standard fields defined in the schema, each field type has an associated parser. For instance, a field of type long (like `event.severity`) will utilize a numeric parser.
+
+Custom fields not defined in the schema default to using the text parser, which continues parsing until a specified delimiter or the end of the log entry. Fields at the end of a parser expression are interpreted as catch-all, capturing all remaining text in the log entry. This approach facilitates partial parsing where full matching is not required, ensuring flexibility in log analysis.
+
+For example,  the case of `<tmp_field>c` this will parse everything until character `c` is found. It is possible to specify the parser name as the first argument, for example `<tmp_field/ip>c` will use the ip parser instead of the text parser. It is also possible to pass parameters to the parser, for example `<tmp_field/date/RFC822>c` parses the timestamp using the RFC822 format.
+
+#### End tokens and field expressions
+Some parsers need an anchor token to stop parsing, i.e. the text parser used by default in all custom fields will parse any character until the end token is found. The end token is the literal following the field expression, or if the field expression is at the end it will parse the remaining string.
+
+E.g.:`<header>:<message>` will parse and capture any text up to a double dots in the header field, and the remaining of the log will be captured in the message field.
+
+This implicates that two field expressions must be splited by a literal unless the first one does not need an end token, while `<custom/long><~>` is valid, as the long parsers does not need end token, `<text><~>` will be invalid.
+
+In choice expressions the end token is the same for both field expressions, it is the literal right after the second field expression. E.g, `<custom_ip>?<~>|` will be valid, as both parsers require an end token, in this case the literal `|`. This implies the same as before, if one of the choices needs an end token, it must be followed by a literal.
+
+In optional group expressions, i.e. when a field is followed by an optional group, there are multiple end tokens. The literal at the beginning of the optional group and the literal right after the group, meaning if a field needs an end token and is followed by an optional group, the group must start with a literal and a literal must appear right after the group.
+
+E.g.: `<custom_text>(?|<opt/long>):`, in this case the text parser will try to search for a `|`, so the optional group can be parsed, and if the optional group fails, then the text parser will use the symbol `:` as end token.
+
+
 ### Map
 Executes each operation of the list in order until the last operation. If any operation fails, it continues with the next one.
 
@@ -1450,10 +1571,10 @@ If all operations fail the stage is not marked as failed and  continues to the n
 ### Normalize/Enrichment
 The normalize stage is where the event undergoes transformations and adjustments after passing through the check and parse stages successfully. Composed of a list of sub-stages that are executed in the specified order. These sub-stages can include operations such as check, map, and parse.
 - **Check**: Applies conditional checks within the normalize context to determine if subsequent mappings or parsing should be executed.
-- **Map**: Transforms and assigns new values to fields in the event based on predefined rules.
 - **Parse**: Further decomposes and extracts fields from the event data if required.
+- **Map**: Transforms and assigns new values to fields in the event based on predefined rules.
 
-Each block of sub-stages is processed sequentially. If a check within a normalize block is successful, the corresponding map or parse operations are then executed.
+Each set of sub-stages is processed sequentially. If a check and parse within a normalization block is successful, the corresponding map is executed, replicating the check, parse, and normalize stages of the asset.
 
 Example:
 ```yaml
@@ -1467,9 +1588,61 @@ normalize:
  - check: $event.code == '22'
    map:
 	- network.protocol: dns
+
+ # Only maps resources if the check and parse stages succeeded
+ - check: $event.outcome == failure
+   parse|message:
+     - "[<error.code/int>]<details>"
+   map:
+     - resources: split($details, ",")
 ```
 
 ### Output
+The Output Stage allows you to specify and configure the different outputs, defining the final destinations for events before they leave the Engine.
+```yaml
+outputs:
+  - output_name: configuration
+```
+
+For more details on the available output types and configurations, refer to the appropriate documentation:
+- Indexer
+- File
+
+## Parsers
+
+### Schema parsers
+These parsers are used automatically when a field of its type is used in a logpar expression.
+
+For example, if you use the field `<event.start>` which is of type `date`, it will be parsed automatically by the date parser.
+
+These parsers will generate fields which are type-compatible with Wazuh Indexer.
+
+| Type        | Parser       | Description                                                                                          |
+|-------------|--------------|------------------------------------------------------------------------------------------------------|
+| null        | -            | A null field can’t be indexed or searched. When a field is set to null, OpenSearch behaves as if that field has no values. |
+| boolean     | bool         | OpenSearch accepts true and false as boolean values. An empty string is equal to false.               |
+| float       | float        | Codified as decimal representation in string format. A single-precision 32-bit IEEE 754 floating point number, restricted to finite values. |
+| scaled_float| scaled_float | Codified as decimal representation in string format. The scaling factor is defined in the schema.    |
+| double      | double       | Codified as decimal representation in string format. A double-precision 64-bit IEEE 754 floating point number, restricted to finite values. |
+| long        | long         | Codified as decimal representation in string format. A signed 64-bit integer with a minimum value of `-2^63` and a maximum value of `2^63-1`. |
+| byte        | byte         | Codified as a decimal representation in string format. A signed 8-bit integer with a minimum value of `-128` and a maximum value of `127`. |
+| object      | -            | -                                                                                                    |
+| array       | -            | -                                                                                                    |
+| nested      | -            | -                                                                                                    |
+| text        | text         | A string sequence of characters that represent full-text values.                                     |
+| keyword     | text         | A string sequence of characters that represent full-text values.                                     |
+| ip          | ip           | A string with IPv4 or IPv6 address.                                                                  |
+| date        | date         | Date codified as string. All dates are converted to a unified date in UTC timezone.                  |
+| geo_point   | -            | -                                                                                                    |
+| binary      | binary       | A codified base64 string.                                                                            |
+
+Aditionally we define some types for the purpose to use specific parsers, normally used to parse objects or structured types from an input text. This is the case for `url` field for example.
+
+| Type        | Parser     | Description                                                                                           |
+|-------------|------------|-------------------------------------------------------------------------------------------------------|
+| url         | uri        | Parses URI text and generates the URL object with all the parsed parts.                               |
+| useragent   | useragent  | Parses a user agent string. It does not build the user agent object; this can be done with the OpenSearch plugin. |
+
 
 ## Helper functions
 
