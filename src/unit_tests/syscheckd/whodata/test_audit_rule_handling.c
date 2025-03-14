@@ -49,13 +49,13 @@ static int setup_group(void **state) {
     expect_function_call_any(__wrap_pthread_mutex_unlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
 
-    directory_t *directory0 = fim_create_directory("/testdir0", CHECK_ALL | WHODATA_ACTIVE, NULL, 512, NULL, 1024, 0);
-    directory_t *directory1 = fim_create_directory("/testdir1", CHECK_ALL | WHODATA_ACTIVE, NULL, 512, NULL, 1024, 0);
-    directory_t *directory2 = fim_create_directory("/testdir2", CHECK_ALL | WHODATA_ACTIVE, NULL, 512, NULL, 1024, 0);
-    directory_t *directory3 = fim_create_directory("/testdir3", CHECK_ALL | WHODATA_ACTIVE, NULL, 512, NULL, 1024, 0);
-    directory_t *directory4 = fim_create_directory("/testdir4", CHECK_ALL | WHODATA_ACTIVE, NULL, 512, NULL, 1024, 0);
-    directory_t *directory5 = fim_create_directory("/testdir5", CHECK_ALL | WHODATA_ACTIVE, NULL, 512, NULL, 1024, 0);
-    directory_t *directory6 = fim_create_directory("/etc", CHECK_ALL | WHODATA_ACTIVE, NULL, 512, NULL, 1024, 0);
+    directory_t *directory0 = fim_create_directory("/testdir0", CHECK_ALL | AUDIT_DRIVER | WHODATA_ACTIVE, NULL, 512, NULL, 1024, 0);
+    directory_t *directory1 = fim_create_directory("/testdir1", CHECK_ALL | AUDIT_DRIVER | WHODATA_ACTIVE, NULL, 512, NULL, 1024, 0);
+    directory_t *directory2 = fim_create_directory("/testdir2", CHECK_ALL | AUDIT_DRIVER | WHODATA_ACTIVE, NULL, 512, NULL, 1024, 0);
+    directory_t *directory3 = fim_create_directory("/testdir3", CHECK_ALL | AUDIT_DRIVER | WHODATA_ACTIVE, NULL, 512, NULL, 1024, 0);
+    directory_t *directory4 = fim_create_directory("/testdir4", CHECK_ALL | AUDIT_DRIVER | WHODATA_ACTIVE, NULL, 512, NULL, 1024, 0);
+    directory_t *directory5 = fim_create_directory("/testdir5", CHECK_ALL | AUDIT_DRIVER | WHODATA_ACTIVE, NULL, 512, NULL, 1024, 0);
+    directory_t *directory6 = fim_create_directory("/etc", CHECK_ALL | AUDIT_DRIVER | WHODATA_ACTIVE, NULL, 512, NULL, 1024, 0);
 
     directory_t *general_directory0 = fim_copy_directory(directory0);
     directory_t *general_directory1 = fim_copy_directory(directory1);

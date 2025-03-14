@@ -1006,7 +1006,9 @@ endif
 
 ifeq (${uname_S},Linux)
 ifneq ($(CHECK_CENTOS5),YES)
+ifneq (${TARGET},winagent)
 external: ${LIBBPF_LIB}
+endif
 endif
 endif
 
@@ -1466,6 +1468,15 @@ ifneq (${TARGET},agent)
 ifneq (${TARGET},winagent)
 	# Manager extra dependency
 	EXTERNAL_RES += $(CPYTHON) jemalloc flatbuffers
+endif
+endif
+
+# Check the target and remove libbpf-bootstrap if the target is winagent OR non-Linux OS
+ifeq (${TARGET}, winagent)
+	EXTERNAL_RES := $(filter-out libbpf-bootstrap, $(EXTERNAL_RES))
+else
+ifneq (${uname_S}, Linux)
+	EXTERNAL_RES := $(filter-out libbpf-bootstrap, $(EXTERNAL_RES))
 endif
 endif
 

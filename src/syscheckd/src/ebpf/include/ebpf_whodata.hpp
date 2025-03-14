@@ -37,7 +37,9 @@ public:
                     fim_whodata_event_t fim_whodata_event,
                     free_whodata_event_t free_whodata_event,
                     loggingFunction_t loggingFunction,
-                    abspath_t abspath)
+                    abspath_t abspath,
+                    bool is_fim_shutdown,
+                    syscheck_config syscheck)
     {
         m_fim_configuration_directory = fim_conf;
         m_get_user = get_user;
@@ -46,6 +48,8 @@ public:
         m_free_whodata_event = free_whodata_event;
         m_loggingFunction = loggingFunction;
         m_abspath = abspath;
+        m_syscheck = syscheck;
+        m_is_fim_shutdown = is_fim_shutdown;
     }
 
 private:
@@ -62,6 +66,8 @@ public:
     free_whodata_event_t m_free_whodata_event = nullptr;
     loggingFunction_t m_loggingFunction = nullptr;
     abspath_t m_abspath = nullptr;
+    syscheck_config m_syscheck;
+    bool m_is_fim_shutdown;
 };
 
 #endif // EBPF_WHODATA_HPP

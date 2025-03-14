@@ -18,7 +18,7 @@
 #include <mutex>
 #include <memory>
 #include <thread>
-#include <condition_variable>
+#include <bounded_queue.hpp>
 
 #include "ebpf_whodata.hpp"
 #include "bpf_helpers.h"
@@ -32,6 +32,7 @@
 #define EBPF_HC_FILE "tmp/ebpf_hc"
 #define LIB_INSTALL_PATH "lib/libbpf.so"
 #define BPF_OBJ_INSTALL_PATH "lib/modern.bpf.o"
+#define WAIT_MS 500
 
 
 // Global
@@ -56,12 +57,8 @@ struct file_event {
     char parent_comm[TASK_COMM_LEN];
 };
 
-std::queue<std::unique_ptr<file_event>> kernelEventQueue;
-std::queue<std::unique_ptr<file_event>> whodataEventQueue;
-std::mutex kernelQueueMutex;
-std::mutex whodataQueueMutex;
-std::condition_variable kernelEventCondition;
-std::condition_variable whodataEventCondition;
+fim::BoundedQueue<std::unique_ptr<file_event>> kernelEventQueue;
+fim::BoundedQueue<std::unique_ptr<file_event>> whodataEventQueue;
 extern bool is_fim_shutdown;
 
 static char* uint_to_str(unsigned int num) {
@@ -83,20 +80,12 @@ int handle_event(void* ctx, void* data, size_t data_sz) {
     auto new_event = std::make_unique<file_event>(*e);
     auto logFn = fimebpf::instance().m_loggingFunction;
 
-    {
-        std::lock_guard<std::mutex> lock(kernelQueueMutex);
-
-        if (kernelEventQueue.size() >= syscheck.queue_size) {
-            kernelEventQueue.pop();
-            if (!ebpf_kernel_queue_full_reported) {
-                logFn(LOG_WARNING, FIM_FULL_EBPF_KERNEL_QUEUE);
-                ebpf_kernel_queue_full_reported = 1;
-            }
+    if (!kernelEventQueue.push(std::move(new_event))) {
+        if (!ebpf_kernel_queue_full_reported) {
+            logFn(LOG_WARNING, FIM_FULL_EBPF_KERNEL_QUEUE);
+            ebpf_kernel_queue_full_reported = 1;
         }
-
-        kernelEventQueue.push(std::move(new_event));
     }
-    kernelEventCondition.notify_one();
 
     return 0;
 }
@@ -117,6 +106,11 @@ static int init_libbpf() {
     auto abspathFn = fimebpf::instance().m_abspath;
     char libbpf_path[PATH_MAX] = {0};
 
+    if (!logFn || !abspathFn) {
+        // Log function pointer is NULL
+        return 1;
+    }
+
     abspathFn(LIB_INSTALL_PATH, libbpf_path, sizeof(libbpf_path));
 
     bpf_helpers = (w_bpf_helpers_t *)calloc(1, sizeof(w_bpf_helpers_t));
@@ -126,6 +120,7 @@ static int init_libbpf() {
 
     bpf_helpers->module = dlopen(libbpf_path, RTLD_LAZY);
     if (!bpf_helpers->module) {
+        logFn(LOG_ERROR,"Error: bpf_helpers is NULL");
         free(bpf_helpers);
         bpf_helpers = NULL;
         return 1;
@@ -189,8 +184,13 @@ static int init_bpfobj() {
     auto logFn = fimebpf::instance().m_loggingFunction;
     auto abspathFn = fimebpf::instance().m_abspath;
     char bpfobj_path[PATH_MAX] = {0};
-    abspathFn(BPF_OBJ_INSTALL_PATH, bpfobj_path, sizeof(bpfobj_path));
 
+    if (!logFn || !abspathFn ) {
+         return 1;
+    }
+
+    abspathFn(BPF_OBJ_INSTALL_PATH, bpfobj_path, sizeof(bpfobj_path));
+    
     bpf_object* obj = bpf_helpers->bpf_object_open_file(bpfobj_path, nullptr);
     if (!obj) {
         char error_message[1024];
@@ -223,6 +223,9 @@ static int init_bpfobj() {
 
 static int init_ring_buffer(ring_buffer** rb, ring_buffer_sample_fn sample_cb) {
     auto logFn = fimebpf::instance().m_loggingFunction;
+    if (!logFn) {
+        return 1;
+    }
 
     int rb_fd = bpf_helpers->bpf_object_find_map_fd_by_name(global_obj, "rb");
     if (rb_fd < 0) {
@@ -246,35 +249,28 @@ static int init_ring_buffer(ring_buffer** rb, ring_buffer_sample_fn sample_cb) {
 /* Worker thread to pop events from kernelEventQueue */
 void ebpf_pop_events() {
     auto logFn = fimebpf::instance().m_loggingFunction;
-    while (!is_fim_shutdown) {
+    if (!logFn) {
+        return ;
+    }
+
+    while (!fimebpf::instance().m_is_fim_shutdown) {
         std::unique_ptr<file_event> event;
 
-        {
-            std::unique_lock<std::mutex> lock(kernelQueueMutex);
-            kernelEventCondition.wait(lock, []{return !kernelEventQueue.empty() || is_fim_shutdown;});
-
-            if (is_fim_shutdown) return;
-            event = std::move(kernelEventQueue.front());
-            kernelEventQueue.pop();
+        if (!kernelEventQueue.pop(event, WAIT_MS)) {
+            if (fimebpf::instance().m_is_fim_shutdown) {
+                return;
+            }
         }
 
         if (event) {
             directory_t* config = fimebpf::instance().m_fim_configuration_directory(event->filename);
             if (config && (config->options & WHODATA_ACTIVE) && (config->options & EBPF_DRIVER)) {
-                {
-                    std::lock_guard<std::mutex> lock(whodataQueueMutex);
-
-                    if (whodataEventQueue.size() >= syscheck.queue_size) {
-                        whodataEventQueue.pop();
-                        if (!ebpf_whodata_queue_full_reported) {
-                            logFn(LOG_WARNING, FIM_FULL_EBPF_WHODATA_QUEUE);
-                            ebpf_whodata_queue_full_reported = 1;
-                        }
+                if (!whodataEventQueue.push(std::move(event))) {
+                    if (!ebpf_whodata_queue_full_reported) {
+                        logFn(LOG_WARNING, FIM_FULL_EBPF_WHODATA_QUEUE);
+                        ebpf_whodata_queue_full_reported = 1;
                     }
-
-                    whodataEventQueue.push(std::move(event));
                 }
-                whodataEventCondition.notify_one();
             }
         }
     }
@@ -282,20 +278,17 @@ void ebpf_pop_events() {
 
 /* Worker thread to pop events from whodataEventQueue */
 void whodata_pop_events() {
-    while (!is_fim_shutdown) {
+    while (!fimebpf::instance().m_is_fim_shutdown) {
         std::unique_ptr<file_event> event;
 
-        {
-            std::unique_lock<std::mutex> lock(whodataQueueMutex);
-            whodataEventCondition.wait(lock, []{return !whodataEventQueue.empty() || is_fim_shutdown;});
-
-            if (is_fim_shutdown) return;
-            event = std::move(whodataEventQueue.front());
-            whodataEventQueue.pop();
+        if (!whodataEventQueue.pop(event, WAIT_MS)) {
+            if (fimebpf::instance().m_is_fim_shutdown) {
+                return;
+            }
         }
 
         if (event) {
-            whodata_evt* w_evt = new whodata_evt{};
+            whodata_evt* w_evt = new whodata_evt();
 
             w_evt->path = strdup(event->filename);
             w_evt->process_name = strdup(event->comm);
@@ -327,9 +320,11 @@ void fimebpf_initialize(directory_t *(*fim_conf)(const char *),
                         void (*fimWhodataEvent)(whodata_evt *),
                         void (*freeWhodataEvent)(whodata_evt *),
                         void (*loggingFn)(modules_log_level_t, const char *),
-                        char *(*abspathFn)(const char *, char *, size_t)) {
+                        char *(*abspathFn)(const char *, char *, size_t),
+                        bool is_fim_shutdown,
+                        syscheck_config syscheck) {
     fimebpf::instance().initialize(fim_conf, getUser, getGroup, fimWhodataEvent, freeWhodataEvent,
-                                   loggingFn, abspathFn);
+                                   loggingFn, abspathFn, is_fim_shutdown, syscheck);
 }
 
 int ebpf_whodata_healthcheck() {
@@ -339,13 +334,16 @@ int ebpf_whodata_healthcheck() {
     char ebpf_hc_abs_path[PATH_MAX] = {0};
     char error_message[1024];
 
-    if (init_libbpf() || init_bpfobj() || init_ring_buffer(&rb, healthcheck_event)) {
+    kernelEventQueue.setMaxSize(fimebpf::instance().m_syscheck.queue_size);
+    whodataEventQueue.setMaxSize(fimebpf::instance().m_syscheck.queue_size);
+
+    if (!logFn || init_libbpf() || init_bpfobj() || init_ring_buffer(&rb, healthcheck_event)) {
         return 1;
     }
 
     time_t start_time = time(nullptr);
     while (!event_received) {
-        int ret = bpf_helpers->ring_buffer_poll(rb, 500);
+        int ret = bpf_helpers->ring_buffer_poll(rb, WAIT_MS);
         if (ret < 0) {
             logFn(LOG_ERROR, FIM_ERROR_EBPF_RINGBUFF_CONSUME);
             break;
@@ -391,26 +389,24 @@ int ebpf_whodata() {
     ring_buffer* rb = nullptr;
     int ret;
 
-    if (init_ring_buffer(&rb, handle_event)) {
+    if (!logFn || init_ring_buffer(&rb, handle_event)) {
         return 1;
     }
-
+    
     std::thread ebpf_pop_thread(ebpf_pop_events);
     ebpf_pop_thread.detach();
 
     std::thread whodata_pop_thread(whodata_pop_events);
     whodata_pop_thread.detach();
 
-    while (!is_fim_shutdown) {
-        ret = bpf_helpers->ring_buffer_poll(rb, 500);
+    while (!fimebpf::instance().m_is_fim_shutdown) {
+        ret = bpf_helpers->ring_buffer_poll(rb, WAIT_MS);
         if (ret < 0) {
             logFn(LOG_ERROR, FIM_ERROR_EBPF_RINGBUFF_CONSUME);
             break;
         }
     }
 
-    kernelEventCondition.notify_all();
-    whodataEventCondition.notify_all();
     bpf_helpers->ring_buffer_free(rb);
     bpf_helpers->bpf_object_close(global_obj);
     global_obj = nullptr;
