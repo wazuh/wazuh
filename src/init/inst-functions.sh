@@ -27,7 +27,6 @@ InstallCommon()
   WAZUH_GROUP='wazuh-server'
   WAZUH_USER='wazuh-server'
   INSTALL="install"
-  WAZUH_CONTROL_SRC='./init/wazuh-server.sh'
 
   ./init/adduser.sh ${WAZUH_USER} ${WAZUH_GROUP} ${INSTALLDIR}
 }
@@ -64,18 +63,20 @@ InstallPythonDependencies()
 InstallServer()
 {
     PYTHON_BIN_PATH=${INSTALLDIR}usr/share/wazuh-server/framework/python/bin/python3
+    SHARE_INSTALLDIR="/usr/share/wazuh-server"
 
-    ${MAKEBIN} --quiet -C ../framework install INSTALLDIR=/usr/share/wazuh-server
+    ${MAKEBIN} --quiet -C ../framework install SHARE_INSTALLDIR=${SHARE_INSTALLDIR}
     ${PYTHON_BIN_PATH} -m pip install ../framework/
 
     ## Install Server management API
-    ${MAKEBIN} --quiet -C ../apis/server_management install INSTALLDIR=/usr/share/wazuh-server
+    ${MAKEBIN} --quiet -C ../apis/server_management install SHARE_INSTALLDIR=${SHARE_INSTALLDIR}
     ${PYTHON_BIN_PATH} -m pip install ../apis/server_management
 
     ## Install Communications API
-    ${MAKEBIN} --quiet -C ../apis/communications install INSTALLDIR=/usr/share/wazuh-server
+    ${MAKEBIN} --quiet -C ../apis/communications install SHARE_INSTALLDIR=${SHARE_INSTALLDIR}
     ${PYTHON_BIN_PATH} -m pip install ../apis/communications
 
+    ${INSTALL} -m 440 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ../VERSION.json ${SHARE_INSTALLDIR}/VERSION.json
 }
 
 checkDownloadContent()
