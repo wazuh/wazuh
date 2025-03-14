@@ -158,10 +158,7 @@ namespace Utils
 
         while (std::getline(tokenStream, token, delimiter))
         {
-            if (!token.empty())
-            {
-                tokens.push_back(token);
-            }
+            tokens.push_back(token);
         }
 
         return tokens;
@@ -567,16 +564,10 @@ namespace Utils
         while ((pos = str.find(delimiter)) != std::string::npos)
         {
             token = str.substr(0, pos);
-            if (!token.empty())
-            {
-                tokens.push_back(token);
-            }
+            tokens.push_back(token);
             str.remove_prefix(pos + 1);
         }
-        if (!str.empty())
-        {
-            tokens.push_back(str);
-        }
+        tokens.push_back(str);
         return tokens;
     }
 #endif

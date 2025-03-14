@@ -84,9 +84,10 @@ TEST_F(StringUtilsTest, SplitDelimiterCoincidence)
 TEST_F(StringUtilsTest, SplitDelimiterAtTheBeginningCoincidence)
 {
     const auto splitTextVector {Utils::split(".hello.world", '.')};
-    EXPECT_EQ(2ull, splitTextVector.size());
-    EXPECT_EQ(splitTextVector[0], "hello");
-    EXPECT_EQ(splitTextVector[1], "world");
+    EXPECT_EQ(3ull, splitTextVector.size());
+    EXPECT_EQ(splitTextVector[0], "");
+    EXPECT_EQ(splitTextVector[1], "hello");
+    EXPECT_EQ(splitTextVector[2], "world");
 }
 
 TEST_F(StringUtilsTest, SplitDelimiterAtTheEndCoincidence)
@@ -666,7 +667,8 @@ TEST_F(StringUtilsTest, splitToNumbers)
 TEST_F(StringUtilsTest, SplitEmptyStringSV)
 {
     auto splitTextVector {Utils::splitView(""sv, '.')};
-    EXPECT_EQ(0ull, splitTextVector.size());
+    EXPECT_EQ(1ull, splitTextVector.size());
+    EXPECT_EQ(splitTextVector[0], "");
 }
 
 TEST_F(StringUtilsTest, SplitDelimiterNoCoincidenceSV)
@@ -686,17 +688,19 @@ TEST_F(StringUtilsTest, SplitDelimiterCoincidenceSV)
 TEST_F(StringUtilsTest, SplitDelimiterAtTheBeginningCoincidenceSV)
 {
     const auto splitTextVector {Utils::splitView(".hello.world"sv, '.')};
-    EXPECT_EQ(2ull, splitTextVector.size());
-    EXPECT_EQ(splitTextVector[0], "hello");
-    EXPECT_EQ(splitTextVector[1], "world");
+    EXPECT_EQ(3ull, splitTextVector.size());
+    EXPECT_EQ(splitTextVector[0], "");
+    EXPECT_EQ(splitTextVector[1], "hello");
+    EXPECT_EQ(splitTextVector[2], "world");
 }
 
 TEST_F(StringUtilsTest, SplitDelimiterAtTheEndCoincidenceSV)
 {
     const auto splitTextVector {Utils::splitView("hello.world."sv, '.')};
-    EXPECT_EQ(2ull, splitTextVector.size());
+    EXPECT_EQ(3ull, splitTextVector.size());
     EXPECT_EQ(splitTextVector[0], "hello");
     EXPECT_EQ(splitTextVector[1], "world");
+    EXPECT_EQ(splitTextVector[2], "");
 }
 
 TEST_F(StringUtilsTest, StartsWithSV)
