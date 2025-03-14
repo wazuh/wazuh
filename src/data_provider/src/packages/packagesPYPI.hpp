@@ -102,10 +102,7 @@ class PYPI final : public TFileSystem, public TFileIO
                         {
                             correctPath = path / value;
                         }
-                        else
-                        {
-                            return;
-                        }
+
                         if (excludedPaths.find(correctPath.string()) != excludedPaths.end())
                         {
                             return;
@@ -145,7 +142,15 @@ class PYPI final : public TFileSystem, public TFileIO
     public:
         void getPackages(const std::set<std::string>& osRootFolders, std::function<void(nlohmann::json&)> callback)
         {
-            excludedPaths = getDpkgPythonPackages();
+            if (Utils::existsDir(DPKG_PATH))
+            {
+                getDpkgPythonPackages(excludedPaths);
+            }
+
+            if (Utils::existsDir(RPM_PATH))
+            {
+                getRpmPythonPackages(excludedPaths);
+            }
 
             for (const auto& osFolder : osRootFolders)
             {
