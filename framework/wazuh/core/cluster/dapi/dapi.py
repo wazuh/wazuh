@@ -295,7 +295,7 @@ class DistributedAPI:
             except process.BrokenProcessPool:
                 raise exception.WazuhInternalError(900)
 
-            self.debug_log(f"Time calculating request result: {time.time() - before:.3f}s")
+            self.debug_log(f"Time calculating request ({self.f.__name__}) result: {time.time() - before:.3f}s")
             return data
         except exception.WazuhInternalError as e:
             e.dapi_errors = self.get_error_info(e)
