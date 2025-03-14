@@ -17,17 +17,23 @@ fi
 
 if [ -z "${BRANCH}"]; then
     mkdir /wazuh-local-src
-    cp -r /local-src/* /wazuh-local-src
+    cp -r /local-src/. /wazuh-local-src
 else
-    URL_REPO=https://github.com/wazuh/wazuh/archive/${BRANCH}.zip
-
-    # Download the wazuh repository
-    wget -O wazuh.zip ${URL_REPO} && unzip wazuh.zip
+    git clone --depth=1 https://github.com/wazuh/wazuh.git -b ${BRANCH}
 fi
 
-bash -c "make -C /wazuh-*/src deps TARGET=winagent ${FLAGS}"
-bash -c "make -C /wazuh-*/src TARGET=winagent ${FLAGS}"
+# Add commit hash information to VERSION.json
+pushd /wazuh*
+SHORT_COMMIT=$(git rev-parse --short HEAD)
+if [ -z "$SHORT_COMMIT" ]; then echo "No commit found"; exit 1; fi
+echo "Found commit: $SHORT_COMMIT"
+sed -i '/"stage":/s/$/,/; /"stage":/a \    "commit": "'"$SHORT_COMMIT"'"' VERSION.json || exit 1
+cat VERSION.json
+popd
 
-rm -rf /wazuh-*/src/external
+bash -c "make -C /wazuh*/src deps TARGET=winagent ${FLAGS}"
+bash -c "make -C /wazuh*/src TARGET=winagent ${FLAGS}"
 
-zip -r /shared/${ZIP_NAME} /wazuh-*
+rm -rf /wazuh*/src/external
+
+zip -r /shared/${ZIP_NAME} /wazuh*

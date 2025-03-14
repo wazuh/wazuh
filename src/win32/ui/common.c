@@ -180,6 +180,28 @@ void init_config()
     }
 }
 
+/* Read version/revision from JSON file */
+char *read_version_file_field(const char *field_name)
+{
+    cJSON *root = json_fread(VERSION_FILE, 0);
+    if (!root)
+    {
+        return NULL;
+    }
+
+    cJSON *version_json = cJSON_GetObjectItemCaseSensitive(root, field_name);
+    if (!cJSON_IsString(version_json) || (version_json->valuestring == NULL))
+    {
+        cJSON_Delete(root);
+        return NULL;
+    }
+
+    char *version_copy = strdup(version_json->valuestring);
+    cJSON_Delete(root);
+
+    return version_copy;
+}
+
 /* Read ossec config */
 int config_read(__attribute__((unused)) HWND hwnd)
 {
@@ -197,14 +219,23 @@ int config_read(__attribute__((unused)) HWND hwnd)
     }
 
     /* Get version/revision */
+    if ((tmp_str = read_version_file_field("version"), tmp_str))
+    {
+        // The old VERSION file had a 'v' prefix. The new VERSION.json does not.
+        if (tmp_str[0] != 'v') {
+            size_t len = strlen(tmp_str);
+            char prefixed_version[len + 2];
+            snprintf(prefixed_version, sizeof(prefixed_version), "v%s", tmp_str);
+            snprintf(buffer, sizeof(buffer), "Wazuh %s", prefixed_version);
+        } else {
+            snprintf(buffer, sizeof(buffer), "Wazuh %s", tmp_str);
+        }
 
-    if (tmp_str = cat_file(VERSION_FILE, NULL), tmp_str) {
-        snprintf(buffer, sizeof(buffer), "Wazuh %s", tmp_str);
         os_strdup(buffer, config_inst.version);
     }
 
     free(tmp_str);
-    if (tmp_str = cat_file(REVISION_FILE, NULL), tmp_str) {
+    if (tmp_str = read_version_file_field("stage"), tmp_str) {
         snprintf(buffer, sizeof(buffer), "Revision %s", tmp_str);
         os_strdup(buffer, config_inst.revision);
     }

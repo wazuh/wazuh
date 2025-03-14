@@ -42,7 +42,7 @@ def test_win_upgrade():
         f"start /wait msiexec /i {str(base_msi.resolve())} /qn /l*v {BASE_PATH}win-agent-base.log")
 
     # Unzip base .msi to folder
-    os.system(f'7z e {str(base_msi.resolve())} "-o{BASE_PATH}"')
+    os.system(f'7z e {str(base_msi.resolve())} "-o{BASE_PATH}" -y')
 
     # List all .exe and .dll files in of the unzipped folder
     exe_to_install = list(pathlib.Path(BASE_PATH).glob('*.exe'))
