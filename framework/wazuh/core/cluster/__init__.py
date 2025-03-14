@@ -3,7 +3,7 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 __version__ = '5.0.0'
-__revision__ = '50000'
+__revision__ = 'alpha1'
 __author__ = 'Wazuh Inc'
 __wazuh_name__ = 'Wazuh'
 __licence__ = '\
