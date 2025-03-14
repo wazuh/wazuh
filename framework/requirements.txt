@@ -1,10 +1,8 @@
 anyio==4.1.0
 asgiref==3.7.2
 attrs==23.1.0
-azure-common==1.1.25
 azure-core==1.30.2
 azure-storage-blob==12.20.0
-azure-storage-common==2.1.0
 boto3==1.34.135
 botocore==1.34.135
 cachetools==4.1.0
