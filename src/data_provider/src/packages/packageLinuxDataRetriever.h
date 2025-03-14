@@ -33,6 +33,12 @@ void getPacmanInfo(const std::string& libPath, std::function<void(nlohmann::json
 void getRpmInfo(std::function<void(nlohmann::json&)> callback);
 
 /**
+ * @brief Get all python packages installed by rpm
+ * @param pythonPackages Set to be filled with all python packages found
+ */
+void getRpmPythonPackages(std::unordered_set<std::string>& pythonPackages);
+
+/**
  * @brief Fills a JSON object with all available rpm-related information for legacy Linux.
  * @param callback Callback to be called for every single element being found
  */
@@ -47,9 +53,9 @@ void getDpkgInfo(const std::string& libPath, std::function<void(nlohmann::json&)
 
 /**
  * @brief Get all python packages installed by dpkg
- * @return A set with all python packages installed by dpkg
+ * @param pythonPackages Set to be filled with all python packages found
  */
-std::unordered_set<std::string> getDpkgPythonPackages(void);
+void getDpkgPythonPackages(std::unordered_set<std::string>& pythonPackages);
 
 /**
  * @brief Fills a JSON object with all available apk-related information

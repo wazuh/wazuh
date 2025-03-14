@@ -51,10 +51,9 @@ void getDpkgInfo(const std::string& fileName, std::function<void(nlohmann::json&
     }
 }
 
-std::unordered_set<std::string> getDpkgPythonPackages()
+void getDpkgPythonPackages(std::unordered_set<std::string>& pythonPackages)
 {
-    std::unordered_set<std::string> pythonFiles;
-    std::regex list_pattern(R"(^python.*\.list$)");
+    std::regex listPattern(R"(^python.*\.list$)");
     const auto PYTHON_INFO_FILES = std::array {std::make_pair(std::regex(R"(^.*\.egg-info$)"), "/PKG-INFO"),
                                                std::make_pair(std::regex(R"(^.*\.dist-info$)"), "/METADATA")};
 
@@ -63,34 +62,38 @@ std::unordered_set<std::string> getDpkgPythonPackages()
         for (const auto& entry : std::filesystem::directory_iterator(DPKG_INFO_PATH))
         {
             if (std::filesystem::is_regular_file(entry) &&
-                std::regex_search(entry.path().filename().string(), list_pattern))
+                    std::regex_search(entry.path().filename().string(), listPattern))
             {
                 std::ifstream file(entry.path());
                 std::string line;
+
                 while (std::getline(file, line))
                 {
                     std::smatch match;
-                    for (const auto& [pattern, extra_file] : PYTHON_INFO_FILES)
+
+                    for (const auto& [pattern, extraFile] : PYTHON_INFO_FILES)
                     {
                         if (std::regex_search(line, match, pattern))
                         {
-                            std::string base_info_path = match.str(0);
+                            std::string baseInfoPath = match.str(0);
 
-                            if (std::filesystem::is_regular_file(base_info_path))
+                            if (std::filesystem::is_regular_file(baseInfoPath))
                             {
-                                pythonFiles.insert(base_info_path);
+                                pythonPackages.insert(baseInfoPath);
                             }
                             else
                             {
-                                std::string full_path = base_info_path + extra_file;
-                                if (std::filesystem::exists(full_path))
+                                std::string fullPath = baseInfoPath + extraFile;
+
+                                if (std::filesystem::exists(fullPath))
                                 {
-                                    pythonFiles.insert(full_path);
+                                    pythonPackages.insert(fullPath);
                                 }
                             }
                         }
                     }
                 }
+
                 file.close();
             }
         }
@@ -99,5 +102,4 @@ std::unordered_set<std::string> getDpkgPythonPackages()
     {
         std::cerr << "Filesystem error: " << ex.what() << std::endl;
     }
-    return pythonFiles;
 }
