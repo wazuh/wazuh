@@ -37,8 +37,12 @@ class FimInventoryOrchestrator final
     void
     run(const std::variant<const SyscheckDeltas::Delta*, const Synchronization::SyncMsg*, const nlohmann::json*>& data)
     {
-        logDebug2(LOGGER_DEFAULT_TAG, "FimInventoryOrchestrator::run");
         auto context = std::make_shared<FimContext>(data);
+        logDebug2(LOGGER_DEFAULT_TAG,
+                  "FimInventoryOrchestrator::run for agent: '%s', operation: '%u', component: '%u'",
+                  context->agentId().data(),
+                  context->operation(),
+                  context->affectedComponentType());
         m_orchestrations[context->operation()]->handleRequest(context);
     }
 

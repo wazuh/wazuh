@@ -7,12 +7,13 @@
  * Foundation.
  */
 
-#include <cmocka.h>
 #include <setjmp.h>
 #include <stdarg.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
+
+#include <cmocka.h>
 
 #include "../../headers/shared.h"
 #include "../../remoted/remoted.h"
@@ -2173,14 +2174,80 @@ void test_router_message_forward_valid_integrity_check_right(void** state)
     router_message_forward(message, data->agent_id, data->agent_ip, data->agent_name);
 }
 
-void test_router_message_forward_valid_integrity_clear(void** state)
+void test_router_message_forward_valid_integrity_clear_hardware_provider(void** state)
 {
     test_agent_info* data = (test_agent_info*)(*state);
     char* message = "5:syscollector:{\"component\":\"syscollector_hwinfo\",\"data\":{\"id\":1693338619},\"type\":"
-                    "\"integrity_check_clear\"}";
+                    "\"integrity_clear\"}";
     char* expected_message = "{\"agent_info\":{\"agent_id\":\"001\",\"agent_ip\":\"192.168.33.20\",\"agent_name\":"
-                             "\"focal\"},\"data_type\":\"integrity_check_clear\",\"data\":"
+                             "\"focal\"},\"data_type\":\"integrity_clear\",\"data\":"
                              "{\"attributes_type\":\"syscollector_hwinfo\",\"id\":1693338619}}";
+
+    router_rsync_handle = (ROUTER_PROVIDER_HANDLE)(1);
+
+    expect_string(__wrap_router_provider_send_fb, msg, expected_message);
+    expect_string(__wrap_router_provider_send_fb, schema, rsync_SCHEMA);
+    will_return(__wrap_router_provider_send_fb, 0);
+
+    will_return(__wrap_OSHash_Get_ex_dup, NULL);
+    expect_value(__wrap_OSHash_Get_ex_dup, self, (OSHash*)1);
+    expect_string(__wrap_OSHash_Get_ex_dup, key, data->agent_id);
+
+    router_message_forward(message, data->agent_id, data->agent_ip, data->agent_name);
+}
+
+void test_router_message_forward_valid_integrity_clear_os_provider(void** state)
+{
+    test_agent_info* data = (test_agent_info*)(*state);
+    char* message = "5:syscollector:{\"component\":\"syscollector_osinfo\",\"data\":{\"id\":1693338619},\"type\":"
+                    "\"integrity_clear\"}";
+    char* expected_message = "{\"agent_info\":{\"agent_id\":\"001\",\"agent_ip\":\"192.168.33.20\",\"agent_name\":"
+                             "\"focal\"},\"data_type\":\"integrity_clear\",\"data\":"
+                             "{\"attributes_type\":\"syscollector_osinfo\",\"id\":1693338619}}";
+
+    router_rsync_handle = (ROUTER_PROVIDER_HANDLE)(1);
+
+    expect_string(__wrap_router_provider_send_fb, msg, expected_message);
+    expect_string(__wrap_router_provider_send_fb, schema, rsync_SCHEMA);
+    will_return(__wrap_router_provider_send_fb, 0);
+
+    will_return(__wrap_OSHash_Get_ex_dup, NULL);
+    expect_value(__wrap_OSHash_Get_ex_dup, self, (OSHash*)1);
+    expect_string(__wrap_OSHash_Get_ex_dup, key, data->agent_id);
+
+    router_message_forward(message, data->agent_id, data->agent_ip, data->agent_name);
+}
+
+void test_router_message_forward_valid_integrity_clear_packages_provider(void** state)
+{
+    test_agent_info* data = (test_agent_info*)(*state);
+    char* message = "5:syscollector:{\"component\":\"syscollector_packages\",\"data\":{\"id\":1693338619},\"type\":"
+                    "\"integrity_clear\"}";
+    char* expected_message = "{\"agent_info\":{\"agent_id\":\"001\",\"agent_ip\":\"192.168.33.20\",\"agent_name\":"
+                             "\"focal\"},\"data_type\":\"integrity_clear\",\"data\":"
+                             "{\"attributes_type\":\"syscollector_packages\",\"id\":1693338619}}";
+
+    router_rsync_handle = (ROUTER_PROVIDER_HANDLE)(1);
+
+    expect_string(__wrap_router_provider_send_fb, msg, expected_message);
+    expect_string(__wrap_router_provider_send_fb, schema, rsync_SCHEMA);
+    will_return(__wrap_router_provider_send_fb, 0);
+
+    will_return(__wrap_OSHash_Get_ex_dup, NULL);
+    expect_value(__wrap_OSHash_Get_ex_dup, self, (OSHash*)1);
+    expect_string(__wrap_OSHash_Get_ex_dup, key, data->agent_id);
+
+    router_message_forward(message, data->agent_id, data->agent_ip, data->agent_name);
+}
+
+void test_router_message_forward_valid_integrity_clear_processes_provider(void** state)
+{
+    test_agent_info* data = (test_agent_info*)(*state);
+    char* message = "5:syscollector:{\"component\":\"syscollector_processes\",\"data\":{\"id\":1693338619},\"type\":"
+                    "\"integrity_clear\"}";
+    char* expected_message = "{\"agent_info\":{\"agent_id\":\"001\",\"agent_ip\":\"192.168.33.20\",\"agent_name\":"
+                             "\"focal\"},\"data_type\":\"integrity_clear\",\"data\":"
+                             "{\"attributes_type\":\"syscollector_processes\",\"id\":1693338619}}";
 
     router_rsync_handle = (ROUTER_PROVIDER_HANDLE)(1);
 
@@ -2702,7 +2769,16 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_router_message_forward_valid_integrity_check_right,
                                         setup_remoted_configuration,
                                         teardown_remoted_configuration),
-        cmocka_unit_test_setup_teardown(test_router_message_forward_valid_integrity_clear,
+        cmocka_unit_test_setup_teardown(test_router_message_forward_valid_integrity_clear_hardware_provider,
+                                        setup_remoted_configuration,
+                                        teardown_remoted_configuration),
+        cmocka_unit_test_setup_teardown(test_router_message_forward_valid_integrity_clear_os_provider,
+                                        setup_remoted_configuration,
+                                        teardown_remoted_configuration),
+        cmocka_unit_test_setup_teardown(test_router_message_forward_valid_integrity_clear_packages_provider,
+                                        setup_remoted_configuration,
+                                        teardown_remoted_configuration),
+        cmocka_unit_test_setup_teardown(test_router_message_forward_valid_integrity_clear_processes_provider,
                                         setup_remoted_configuration,
                                         teardown_remoted_configuration),
         cmocka_unit_test_setup_teardown(test_router_message_forward_create_delta_handle_fail,
