@@ -40,7 +40,7 @@ info:
     <SecurityDefinitions />
 
   version: '5.0.0'
-  x-revision: '50000'
+  x-revision: 'alpha1'
   title: 'Server Management API REST'
   license:
     name: 'GPL 2.0'
@@ -1817,7 +1817,7 @@ components:
       name: older_than
       description: "Filter out agents whose time lapse from last keep alive signal is longer than specified. Time in
       seconds, ‘[n_days]d’, ‘[n_hours]h’, ‘[n_minutes]m’ or ‘[n_seconds]s’. For never_connected agents, uses the
-      enrollment date. For example, `7d`, `10s` and `10` are valid values. If no time unit is specified, 
+      enrollment date. For example, `7d`, `10s` and `10` are valid values. If no time unit is specified,
       seconds are used"
       schema:
         type: string
