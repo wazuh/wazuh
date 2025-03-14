@@ -53,7 +53,12 @@ int Read_Syscheck_Config(const char *cfgfile)
 
         // Check directories options to determine whether to start the whodata thread or not
         if (dir_it->options & WHODATA_ACTIVE) {
-            syscheck.enable_whodata = 1;
+            if (dir_it->options & AUDIT_DRIVER) {
+                syscheck.enable_whodata_audit = 1;
+            }
+            if (dir_it->options & EBPF_DRIVER) {
+                syscheck.enable_whodata_ebpf = 1;
+            }
         }
     }
 

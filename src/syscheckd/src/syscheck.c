@@ -17,7 +17,10 @@
 #include "../rootcheck/rootcheck.h"
 #include "db/include/db.h"
 #include "db/include/fimCommonDefs.h"
+#include "ebpf/include/ebpf_whodata.h"
+
 // Global variables
+extern bool is_fim_shutdown;
 syscheck_config syscheck;
 int sys_debug_level;
 int audit_queue_full_reported = 0;
@@ -312,3 +315,37 @@ int Start_win32_Syscheck() {
     return 0;
 }
 #endif /* WIN32 */
+
+#ifdef __linux__
+void check_ebpf_availability() {
+    minfo(FIM_EBPF_INIT);
+    fimebpf_initialize(fim_configuration_directory, get_user, get_group, fim_whodata_event,
+                       free_whodata_event, loggingFunction, abspath, is_fim_shutdown, syscheck);
+    if (ebpf_whodata_healthcheck()) {
+        directory_t *dir_it;
+        OSListNode *node_it;
+
+        merror(FIM_ERROR_EBPF_HEALTHCHECK);
+
+        // Switch whodata eBPF to whodata audit
+        OSList_foreach(node_it, syscheck.directories) {
+            dir_it = node_it->data;
+            if ((dir_it->options & WHODATA_ACTIVE) && (dir_it->options & EBPF_DRIVER)) {
+                dir_it->options &= ~EBPF_DRIVER;
+                dir_it->options |= AUDIT_DRIVER;
+            }
+        }
+
+        OSList_foreach(node_it, syscheck.wildcards) {
+            dir_it = node_it->data;
+            if ((dir_it->options & WHODATA_ACTIVE) && (dir_it->options & EBPF_DRIVER)) {
+                dir_it->options &= ~EBPF_DRIVER;
+                dir_it->options |= AUDIT_DRIVER;
+            }
+        }
+
+        syscheck.enable_whodata_ebpf = 0;
+        syscheck.enable_whodata_audit = 1;
+    }
+}
+#endif /* __linux__ */

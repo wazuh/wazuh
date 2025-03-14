@@ -7,6 +7,7 @@
           value: TEST_DIR_1
           attributes:
             - whodata: 'yes'
+            - driver: "audit"
       - directories:
           value: TEST_DIR_2
           attributes:
