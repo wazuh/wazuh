@@ -1,0 +1,198 @@
+{
+  "index_patterns": [
+    "wazuh-states-fim-registries*"
+  ],
+  "priority": 1,
+  "template": {
+    "settings": {
+      "index": {
+        "number_of_replicas": "0",
+        "number_of_shards": "1",
+        "query.default_field": [
+          "agent.host.architecture",
+          "agent.host.ip",
+          "agent.id",
+          "agent.name",
+          "agent.version",
+          "data_stream.type",
+          "event.action",
+          "event.category",
+          "event.type",
+          "registry.data.type",
+          "registry.gid",
+          "registry.group",
+          "registry.data.hash.md5",
+          "registry.data.hash.sha1",
+          "registry.data.hash.sha256",
+          "registry.hive",
+          "registry.inode",
+          "registry.key",
+          "registry.mtime",
+          "registry.owner",
+          "registry.path",
+          "registry.size",
+          "registry.uid",
+          "registry.value"
+        ],
+        "refresh_interval": "5s"
+      }
+    },
+    "mappings": {
+      "date_detection": false,
+      "dynamic": "strict",
+      "properties": {
+        "@timestamp": {
+          "type": "date"
+        },
+        "agent": {
+          "properties": {
+            "host": {
+              "properties": {
+                "architecture": {
+                  "ignore_above": 1024,
+                  "type": "keyword"
+                },
+                "ip": {
+                  "type": "ip"
+                }
+              }
+            },
+            "id": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            },
+            "name": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            },
+            "version": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            }
+          }
+        },
+        "data_stream": {
+          "properties": {
+            "type": {
+              "type": "keyword"
+            }
+          }
+        },
+        "event": {
+          "properties": {
+            "action": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            },
+            "category": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            },
+            "type": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            }
+          }
+        },
+        "operation": {
+          "properties": {
+            "name": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            }
+          }
+        },
+        "registry": {
+          "properties": {
+            "data": {
+              "properties": {
+                "hash": {
+                  "properties": {
+                    "md5": {
+                      "ignore_above": 1024,
+                      "type": "keyword"
+                    },
+                    "sha1": {
+                      "ignore_above": 1024,
+                      "type": "keyword"
+                    },
+                    "sha256": {
+                      "ignore_above": 1024,
+                      "type": "keyword"
+                    }
+                  }
+                },
+                "type": {
+                  "ignore_above": 1024,
+                  "type": "keyword"
+                }
+              }
+            },
+            "gid": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            },
+            "group": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            },
+            "hive": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            },
+            "key": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            },
+            "mtime": {
+              "type": "long"
+            },
+            "owner": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            },
+            "path": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            },
+            "size": {
+              "type": "long"
+            },
+            "uid": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            },
+            "value": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            }
+          }
+        },
+        "wazuh": {
+          "properties": {
+            "cluster": {
+              "properties": {
+                "name": {
+                  "ignore_above": 1024,
+                  "type": "keyword"
+                },
+                "node": {
+                  "ignore_above": 1024,
+                  "type": "keyword"
+                }
+              }
+            },
+            "schema": {
+              "properties": {
+                "version": {
+                  "ignore_above": 1024,
+                  "type": "keyword"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

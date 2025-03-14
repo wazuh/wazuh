@@ -1,0 +1,128 @@
+{
+  "index_patterns": [
+    "wazuh-states-inventory-protocols*"
+  ],
+  "priority": 1,
+  "template": {
+    "settings": {
+      "index": {
+        "number_of_replicas": "0",
+        "number_of_shards": "1",
+        "query.default_field": [
+          "agent.id",
+          "agent.host.ip",
+          "observer.ingress.interface.name",
+          "observer.ingress.interface.id"
+        ],
+        "refresh_interval": "5s"
+      }
+    },
+    "mappings": {
+      "date_detection": false,
+      "dynamic": "strict",
+      "properties": {
+        "@timestamp": {
+          "type": "date"
+        },
+        "agent": {
+          "properties": {
+            "host": {
+              "properties": {
+                "architecture": {
+                  "ignore_above": 1024,
+                  "type": "keyword"
+                },
+                "ip": {
+                  "type": "ip"
+                }
+              }
+            },
+            "id": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            },
+            "name": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            },
+            "version": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            }
+          }
+        },
+        "network": {
+          "properties": {
+            "dhcp": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            },
+            "gateway": {
+              "type": "ip"
+            },
+            "metric": {
+              "type": "long"
+            },
+            "type": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            }
+          }
+        },
+        "observer": {
+          "properties": {
+            "ingress": {
+              "properties": {
+                "interface": {
+                  "properties": {
+                    "id": {
+                      "ignore_above": 1024,
+                      "type": "keyword"
+                    },
+                    "name": {
+                      "ignore_above": 1024,
+                      "type": "keyword"
+                    }
+                  }
+                }
+              },
+              "type": "object"
+            }
+          }
+        },
+        "operation": {
+          "properties": {
+            "name": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            }
+          }
+        },
+        "wazuh": {
+          "properties": {
+            "cluster": {
+              "properties": {
+                "name": {
+                  "ignore_above": 1024,
+                  "type": "keyword"
+                },
+                "node": {
+                  "ignore_above": 1024,
+                  "type": "keyword"
+                }
+              }
+            },
+            "schema": {
+              "properties": {
+                "version": {
+                  "ignore_above": 1024,
+                  "type": "keyword"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
