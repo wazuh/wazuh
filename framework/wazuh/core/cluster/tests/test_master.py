@@ -1345,9 +1345,14 @@ def test_master_to_dict(get_running_loop_mock):
 @pytest.mark.asyncio
 @freeze_time('2021-11-02')
 @patch('asyncio.sleep')
-async def test_master_file_status_update(sleep_mock):
+@patch('wazuh.core.cluster.master.cluster.run_in_pool', return_value={})
+async def test_master_file_status_update(run_in_pool_mock, asyncio_sleep_mock):
     """Check if the file status is properly obtained."""
-    master_class = get_master()
+    master_class = master.Master(
+        performance_test=False,
+        concurrency_test=False,
+        server_config=default_config.server,
+    )
 
     class LoggerMock:
         """Auxiliary class."""
@@ -1355,7 +1360,6 @@ async def test_master_file_status_update(sleep_mock):
         def __init__(self):
             self._info = []
             self._error = []
-            self.counter = 0
 
         def info(self, data):
             """Auxiliary method."""
@@ -1364,34 +1368,41 @@ async def test_master_file_status_update(sleep_mock):
         def error(self, data):
             """Auxiliary method."""
             self._error.append(data)
-            self.counter += 1
-            if self.counter >= 2:
-                raise Exception('Stop while true')
 
-    counter = 0
+    class IntegrityExecutedMock:
+        """Auxiliary class."""
 
-    async def run_in_pool(loop, pool, f, *args, **kwargs):
-        nonlocal counter
-        counter += 1
-        if counter >= 2:
-            raise Exception('Stop run_in_pool')
+        def __init__(self):
+            self._clear = False
 
-        return ['info']
+        def clear(self):
+            self._clear = True
+
+    async def sleep_mock(recalculate_integrity):
+        raise Exception()
 
     logger_mock = LoggerMock()
+    master_class.integrity_already_executed = IntegrityExecutedMock()
+    asyncio_sleep_mock.side_effect = sleep_mock
 
-    with patch('wazuh.core.cluster.master.cluster.run_in_pool', side_effect=run_in_pool):
-        with patch(
-            'wazuh.core.cluster.master.Master.setup_task_logger', return_value=logger_mock
-        ) as setup_task_logger_mock:
-            with pytest.raises(Exception, match='Stop while true'):
-                await master_class.file_status_update()
-
+    with patch(
+        'wazuh.core.cluster.master.Master.setup_task_logger', return_value=logger_mock
+    ) as setup_task_logger_mock:
+        # Test the 'try'
+        try:
+            await master_class.file_status_update()
+        except Exception:
             assert 'Starting.' in logger_mock._info
-            assert 'Finished in 0.000s. Calculated metadata of 1 files.' in logger_mock._info
-            assert 'Error calculating local file integrity: Stop run_in_pool' in logger_mock._error
+            assert 'Finished in 0.000s. Calculated metadata of 0 files.' in logger_mock._info
             setup_task_logger_mock.assert_called_once_with('Local integrity')
-            assert master_class.integrity_control == ['info']
+            assert master_class.integrity_control == run_in_pool_mock.return_value
+
+        # Test the 'except'
+        run_in_pool_mock.side_effect = Exception
+        try:
+            await master_class.file_status_update()
+        except Exception:
+            assert 'Error calculating local file integrity: ' in logger_mock._error
 
 
 @patch('asyncio.get_running_loop', return_value=loop)
