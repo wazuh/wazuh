@@ -6,7 +6,7 @@ from wazuh.core.indexer.models.commands import Source
 
 @pytest.fixture
 def search_result():
-    """MOcks the search results of the Indexer"""
+    """Mocks the search results of the Indexer"""
     return {
         IndexerKey.HITS: {
             IndexerKey.HITS: [
