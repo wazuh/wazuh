@@ -839,142 +839,6 @@ successState:::stateSuccessClass
 stage_4 --->|success| successState
 ```
 
-```mermaid
----
-config:
-  nodeSpacing: 30
-  rankSpacing: 25
-  flowchart:
-    curve: stepAfter
-    subGraphTitleMargin:
-      top: 20
-      bottom: 20
----
-flowchart LR
-
-classDef SubmoduleClass font-size:15px,stroke-width:2px,stroke-dasharray:10px,rx:15,ry:15
-classDef ModuleClass  font-size:15px,stroke-width:2px,rx:15,ry:15
-
-
-%% ----------------------------------
-%%                  API
-%% ----------------------------------
-
-
-subgraph apiModule["API"]
-   direction LR
-   api_orchestrator@{ shape: stadium, label: "Orchestrador manager" }
-   api_kvdb@{ shape: stadium, label: "KVDB manager" }
-   api_metrics@{ shape: stadium, label: "Metric manager" }
-   api_geo@{ shape: stadium, label: "Geo manager" }
-   api_orchestrator ~~~ api_kvdb
-   api_metrics ~~~ api_geo
-
-   api_catalog@{ shape: disk, label: "Catalog of assets" }
-   api_policies@{ shape: disk, label: "Policies" }
-   api_policies ~~~ api_catalog
-end
-apiModule:::ModuleClass
-
-
-%% ----------------------------------
-%%                  Geo module
-%% ----------------------------------
-subgraph geoModule["Geolocator"]
-  geo_mmdb@{ shape: disk, label: "MaxMind DBs" }
-end
-geoModule:::ModuleClass
-
-%% ----------------------------------
-%%                  KVDB
-%% ----------------------------------
-subgraph kvdbModule["KVDB"]
-    direction TB
-    kvdb_db_2@{ shape: docs, label: "Key-Value DataBases" }
-end
-kvdbModule:::ModuleClass
-
-
-%% ----------------------------------
-%%              Global module
-%% ----------------------------------
-subgraph globalModule["Global"]
-    global_metrics("Metrics")
-    global_logger("Logger")
-end
-globalModule:::ModuleClass
-
-
-%% ----------------------------------
-%%                  Server
-%% ----------------------------------
-
-subgraph serverModule["Server"]
-   direction RL
-   server_API>Server API]
-   server_engine>Server engine]
-end
-serverModule:::ModuleClass
-
-
-%% ----------------------------------
-%%           Storage
-%% ----------------------------------
-storageModule@{ shape: cyl, label: "Persistent</br>Storage" }
-storageModule:::ModuleClass
-
-%% ----------------------------------
-%%           Builder
-%% ----------------------------------
-subgraph builderModule["Builder"]
- builder_asset@{ shape: stadium, label: "Builder asset" }
- builder_policy@{ shape: stadium, label: "Builder policy" }
- builder_parser@{ shape: stadium, label: "Builder parser" }
- builder_hp@{ shape: stadium, label: "Builder helper function" }
-
-builder_policy ~~~ builder_asset --- builder_parser & builder_hp
-
- builder_parser --- builder_catalog_hf@{ shape: disk, label: "Catalog of helper functions" }
- builder_hp --- builder_catalog_parser@{ shape: disk, label: "Catalog of parser" }
-
-end
-builderModule:::ModuleClass
-
-%% ----------------------------------
-%%           Orchestrator
-%% ----------------------------------
-subgraph orchestratorModule["Orchestrator"]
-   direction RL
-   orchestrator_router@{ shape: stadium, label: "Router" }
-   orchestrator_tester@{ shape: stadium, label: "Tester" }
-   orchestrator_routerTable@{ shape: disk, label: "Routes" }
-   orchestrator_sessionTable@{ shape: disk, label: "Session" }
-   orchestrator_router --- orchestrator_routerTable
-   orchestrator_tester --- orchestrator_sessionTable
-end
-orchestratorModule:::ModuleClass
-
-subgraph backendModule["Backend"]
-
-end
-
-%% ----------------------------------
-%%           Modules conexion
-%% ----------------------------------
-%%% orchestratorModule --- builderModule
-serverModule ------- orchestratorModule & apiModule
-orchestratorModule:::ModuleClass ---- backendModule
-builderModule & apiModule --- geoModule & kvdbModule
-apiModule --- storageModule
-
-apiModule ------ builderModule
-
-orchestratorModule  ------ builderModule
-orchestratorModule ----- apiModule
-storageModule --- builderModule
-
-
-```
 
 ## Schema
 
@@ -1657,3 +1521,9 @@ Explanation of how herlper work, format, types, etc.
 ### Tester
 
 ### Traces
+
+
+## F.A.Q
+- A explanation of the time zone and how it works in the engine.
+- A explanation of diferent timestamp fields and how they are used.
+
