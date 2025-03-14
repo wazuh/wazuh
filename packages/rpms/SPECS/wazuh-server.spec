@@ -253,6 +253,7 @@ rm -fr %{buildroot}
 %{_localstatedir}var/lib/wazuh-server/engine/kvdb/*
 %dir %attr(750, %{_wazuh_user}, %{_wazuh_group}) %{_localstatedir}var/lib/wazuh-server/indexer-connector
 
+%attr(440, %{_wazuh_user}, %{_wazuh_group}) %{_localstatedir}/VERSION.json
 %attr(750, %{_wazuh_user}, %{_wazuh_group}) %{_localstatedir}usr/share/wazuh-server/bin/wazuh-engine
 %attr(750, %{_wazuh_user}, %{_wazuh_group}) %{_localstatedir}usr/share/wazuh-server/bin/wazuh-server-management-apid
 %attr(750, %{_wazuh_user}, %{_wazuh_group}) %{_localstatedir}usr/share/wazuh-server/bin/wazuh-comms-apid
