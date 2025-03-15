@@ -181,7 +181,7 @@ export PATH=$VCPKG_ROOT:$PATH
 ```bash
 git clone --recurse-submodules https://github.com/wazuh/wazuh.git  
 cd wazuh/src/engine
-cmake --preset=release
+cmake --preset=relwithdebinfo
 cmake --build build -j$(nproc)
 ```
 
