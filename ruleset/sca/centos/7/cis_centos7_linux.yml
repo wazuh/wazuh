@@ -3046,10 +3046,10 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition: all
+    condition: any
     rules:
-      - 'f:/etc/rsyslog.conf -> r:^\$FileCreateMode 06\d0|^\$FileCreateMode 04\d0|^\$FileCreateMode 02\d0|^\$FileCreateMode 00\d0 && r:^\$FileCreateMode 0\d40|^\$FileCreateMode 0\d00'
-      - 'd:/etc/rsyslog.d/ -> r:\.*.conf -> r:^\$FileCreateMode 06\d0|^\$FileCreateMode 04\d0|^\$FileCreateMode 02\d0|^\$FileCreateMode 00\d0 && r:^\$FileCreateMode 0\d40|^\$FileCreateMode 0\d00'
+      - 'd:/etc/rsyslog.d -> r:\.*.conf -> r:^\$FileCreateMode && r:0640|0600|0400'
+      - 'f:/etc/rsyslog.conf -> r:^\$FileCreateMode && r:0640|0600|0400'
 
   # 4.2.1.4 Ensure logging is configured. (Manual) - Not Implemented
 
@@ -3686,8 +3686,8 @@ checks:
       - pci_dss_v4.0: ["2.2.7", "4.1.1", "4.2.1", "4.2.1.2", "4.2.2", "8.3.2"]
     condition: all
     rules:
-      - "c: sshd -T -C user=root -> r:3des-cbc|aes128-cbc|aes192-cbc|aes256-cbc|arcfour|arcfour128|arcfour256|blowfish-cbc|cast128-cbc|rijndael-cbc@lysator.liu.se"
-      - "not f:/etc/ssh/sshd_config -> r:3des-cbc|aes128-cbc|aes192-cbc|aes256-cbc|arcfour|arcfour128|arcfour256|blowfish-cbc|cast128-cbc|rijndael-cbc@lysator.liu.se"
+      - "not c: sshd -T -C user=root -> r:3des-cbc|aes128-cbc|aes192-cbc|aes256-cbc|arcfour|arcfour128|arcfour256|blowfish-cbc|cast128-cbc|rijndael-cbc@lysator.liu.se"
+      - "not f:/etc/ssh/sshd_config -> !r:^# && r:3des-cbc|aes128-cbc|aes192-cbc|aes256-cbc|arcfour|arcfour128|arcfour256|blowfish-cbc|cast128-cbc|rijndael-cbc@lysator.liu.se"
 
   # 5.3.14 Ensure only strong MAC algorithms are used. (Automated)
   - id: 6166
@@ -3709,8 +3709,8 @@ checks:
       - soc_2: ["CC7.1", "CC8.1"]
     condition: all
     rules:
-      - "c: sshd -T -C user=root -> r:hmac-md5|hmac-md5-96|hmac-ripemd160|hmac-sha1|hmac-sha1-96|umac-64@openssh.com|hmac-md5-etm@openssh.com|hmac-md5-96-etm@openssh.com|hmac-ripemd160-etm@openssh.com|hmac-sha1-etm@openssh.com|hmac-sha1-96-etm@openssh.com|umac-64-etm@openssh.com|umac-128-etm@openssh.com"
-      - "not f:/etc/ssh/sshd_config -> r:hmac-md5|hmac-md5-96|hmac-ripemd160|hmac-sha1|hmac-sha1-96|umac-64@openssh.com|hmac-md5-etm@openssh.com|hmac-md5-96-etm@openssh.com|hmac-ripemd160-etm@openssh.com|hmac-sha1-etm@openssh.com|hmac-sha1-96-etm@openssh.com|umac-64-etm@openssh.com|umac-128-etm@openssh.com"
+      - "not c: sshd -T -C user=root -> r:hmac-md5|hmac-md5-96|hmac-ripemd160|hmac-sha1|hmac-sha1-96|umac-64@openssh.com|hmac-md5-etm@openssh.com|hmac-md5-96-etm@openssh.com|hmac-ripemd160-etm@openssh.com|hmac-sha1-etm@openssh.com|hmac-sha1-96-etm@openssh.com|umac-64-etm@openssh.com|umac-128-etm@openssh.com"
+      - "not f:/etc/ssh/sshd_config -> !r:^# && r:hmac-md5|hmac-md5-96|hmac-ripemd160|hmac-sha1|hmac-sha1-96|umac-64@openssh.com|hmac-md5-etm@openssh.com|hmac-md5-96-etm@openssh.com|hmac-ripemd160-etm@openssh.com|hmac-sha1-etm@openssh.com|hmac-sha1-96-etm@openssh.com|umac-64-etm@openssh.com|umac-128-etm@openssh.com"
 
   # 5.3.15 Ensure only strong Key Exchange algorithms are used. (Automated)
   - id: 6167
@@ -3730,8 +3730,8 @@ checks:
       - soc_2: ["CC7.1", "CC8.1"]
     condition: all
     rules:
-      - "c: sshd -T -C user=root -> r:diffie-hellman-group1-sha1|diffie-hellman-group14-sha1|diffie-hellman-group-exchange-sha1"
-      - "not f:/etc/ssh/sshd_config -> r:diffie-hellman-group1-sha1|diffie-hellman-group14-sha1|diffie-hellman-group-exchange-sha1"
+      - "not c: sshd -T -C user=root -> r:diffie-hellman-group1-sha1|diffie-hellman-group14-sha1|diffie-hellman-group-exchange-sha1"
+      - "not f:/etc/ssh/sshd_config -> !r:^# && r:diffie-hellman-group1-sha1|diffie-hellman-group14-sha1|diffie-hellman-group-exchange-sha1"
 
   # 5.3.16 Ensure SSH Idle Timeout Interval is configured. (Automated)
   - id: 6168
@@ -3754,9 +3754,11 @@ checks:
       - soc_2: ["CC7.1", "CC8.1"]
     condition: all
     rules:
-      - 'c:sshd -T -C user=root -> n:^\s*clientaliveinterval\s*\t*(\d+) compare => 1 &&  n:^\s*clientaliveinterval\s*\t*(\d+) compare <= 900'
+      - 'c:sshd -T -C user=root -> n:^\s*clientaliveinterval\s*\t*(\d+) compare >= 1'
+      - 'c:sshd -T -C user=root -> n:^\s*clientaliveinterval\s*\t*(\d+) compare <= 900'
       - 'c:sshd -T -C user=root -> n:^\s*clientalivecountmax\s*\t*(\d+) compare == 0'
-      - 'f:/etc/ssh/sshd_config -> n:^\s*clientaliveinterval\s*\t*(\d+) compare => 1 &&  n:^\s*clientaliveinterval\s*\t*(\d+) compare <= 900'
+      - 'f:/etc/ssh/sshd_config -> n:^\s*clientaliveinterval\s*\t*(\d+) compare >= 1'
+      - 'f:/etc/ssh/sshd_config -> n:^\s*clientaliveinterval\s*\t*(\d+) compare <= 900'
       - 'f:/etc/ssh/sshd_config -> n:^\s*clientalivecountmax\s*\t*(\d+) compare == 0'
 
   # 5.3.17 Ensure SSH LoginGraceTime is set to one minute or less. (Automated)
@@ -3777,8 +3779,10 @@ checks:
       - soc_2: ["CC7.1", "CC8.1"]
     condition: all
     rules:
-      - 'c:sshd -T -C user=root -> n:^\s*logingracetime\s*\t*(\d+) compare => 1 &&  n:^\s*logingracetime\s*\t*(\d+) compare <= 60'
-      - 'f:/etc/ssh/sshd_config -> n:^\s*logingracetime\s*\t*(\d+) compare => 1 &&  n:^\s*logingracetime\s*\t*(\d+) compare <= 60'
+      - 'c:sshd -T -C user=root -> n:^\s*logingracetime\s*\t*(\d+) compare >= 1'
+      - 'c:sshd -T -C user=root -> n:^\s*logingracetime\s*\t*(\d+) compare <= 60'
+      - 'f:/etc/ssh/sshd_config -> n:^\s*logingracetime\s*\t*(\d+) compare >= 1'
+      - 'f:/etc/ssh/sshd_config -> n:^\s*logingracetime\s*\t*(\d+) compare <= 60'
 
   # 5.3.18 Ensure SSH warning banner is configured. (Automated)
   - id: 6170
@@ -3864,8 +3868,12 @@ checks:
       - soc_2: ["CC7.1", "CC8.1"]
     condition: all
     rules:
-      - 'c:sshd -T -C user=root -> r:^\s*maxstartups\s*10:30:60'
-      - 'f:/etc/ssh/sshd_config -> n:^\s*maxstartups\s*(\d+):\S*:\S* compare <=10 && n:^\s*maxstartups\s*\S*:(\d+):\S* compare <=30 && n:^\s*maxstartups\s*\S*:\S*:(\d+) compare <=60'
+      - 'c:sshd -T -C user=root -> n:^\s*maxstartups\s+(\d+):\d+:\d+ compare <= 10'
+      - 'c:sshd -T -C user=root -> n:^\s*maxstartups\s+\d+:(\d+):\d+ compare <= 30'
+      - 'c:sshd -T -C user=root -> n:^\s*maxstartups\s+\d+:\d+:(\d+) compare <= 60'
+      - 'f:/etc/ssh/sshd_config -> n:^\s*maxstartups\s+(\d+):\d+:\d+ compare <= 10'
+      - 'f:/etc/ssh/sshd_config -> n:^\s*maxstartups\s+\d+:(\d+):\d+ compare <= 30'
+      - 'f:/etc/ssh/sshd_config -> n:^\s*maxstartups\s+\d+:\d+:(\d+) compare <= 60'
 
   # 5.3.22 Ensure SSH MaxSessions is limited. (Automated)
   - id: 6174
@@ -3906,10 +3914,12 @@ checks:
       - iso_27001-2013: ["A.9.4.3"]
       - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
       - soc_2: ["CC6.1"]
-    condition: any
+    condition: all
     rules:
-      - 'f:/etc/security/pwquality.conf -> n:^\s*minlen\s*=\s*(\d+) compare >= 14 && n:^\s*minclass\s*=\s*(\d+) compare == 4'
-      - 'f:/etc/security/pwquality.conf -> r:dcredit\s*=\s*-1s*|\s*ucredit\s*=\s*-1\s*|\s*lcredit\s*=\s*-1\s*|\s*ocredit\s*=\s*-1'
+      - "f:/etc/pam.d/password-auth -> r:pam_pwquality.so && r:requisite && r:try_first_pass"
+      - "f:/etc/pam.d/system-auth -> r:pam_pwquality.so && r:requisite && r:try_first_pass"
+      - 'f:/etc/security/pwquality.conf -> n:^\s*minlen\s*\t*=\s*\t*(\d+) compare >= 14'
+      - 'f:/etc/security/pwquality.conf -> n:^\s*minclass\s*=\s*(\d+) compare == 4'
 
   # 5.4.2 Ensure lockout for failed password attempts is configured. (Automated)
   - id: 6176
@@ -3975,12 +3985,10 @@ checks:
       - cmmc_v2.0: ["IA.L2-3.5.7"]
       - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
       - soc_2: ["CC6.1"]
-    condition: any
+    condition: all
     rules:
-      - 'f:/etc/pam.d/system-auth -> n:\s*password\s+\(requisite|required\)\s+pam_pwhistory.so\s*remember=(\d+) compare >= 5'
-      - 'f:/etc/pam.d/password-auth -> n:\s*password\s+\(requisite|required\)\s+pam_pwhistory.so\s*remember=(\d+) compare >= 5'
-      - 'f:/etc/pam.d/system-auth -> n:\s*password\s+\(requisite|required\)\s+pam_pwhistory.so\s*remember=(\d+) compare >= 5'
-      - 'f:/etc/pam.d/password-auth -> n:\s*password\s+\(requisite|required\)\s+pam_pwhistory.so\s*remember=(\d+) compare >= 5'
+      - 'f:/etc/pam.d/system-auth -> r:^\s*password && r:required|sufficient && r:pam_pwhistory.so|pam_unix.so && n:remember=(\d+) compare >= 5'
+      - 'f:/etc/pam.d/password-auth -> r:^\s*password && r:required|sufficient && r:pam_pwhistory.so|pam_unix.so && n:remember=(\d+) compare >= 5'
 
   # 5.5.1.1 Ensure password expiration is 365 days or less. (Automated)
   - id: 6179
