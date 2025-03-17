@@ -73,6 +73,12 @@ export VCPKG_ROOT="/root/vcpkg"
 export PATH="${PATH}:${VCPKG_ROOT}"
 scl enable devtoolset-11 ./install.sh || { echo "install.sh failed! Aborting." >&2; exit 1; }
 
+SHORT_COMMIT=$(git rev-parse --short HEAD)
+echo "Found commit: $SHORT_COMMIT"
+if [ -z "$SHORT_COMMIT" ]; then echo "No commit found"; exit 1; fi
+sed -i '/"stage":/s/$/,/; /"stage":/a \    "commit": "'"$SHORT_COMMIT"'"' $(INSTALLATION_DIR)usr/share/wazuh-server/VERSION.json || exit 1
+cat $%{_localstatedir}usr/share/wazuh-server/VERSION.json
+
 # Create directories
 mkdir -p ${RPM_BUILD_ROOT}%{_initrddir}
 
