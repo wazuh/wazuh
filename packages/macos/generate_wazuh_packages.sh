@@ -171,7 +171,7 @@ function build_package() {
     WAZUH_PACKAGES_PATH="${WAZUH_PATH}/packages/macos"
     ENTITLEMENTS_PATH="${WAZUH_PACKAGES_PATH}/entitlements.plist"
 
-    VERSION="$(grep '"version"' $WAZUH_PATH/VERSION.json | sed -E 's/.*"version": *"([^"]+)".*/\1/')"
+    VERSION="$(awk -F'"' '/"version"[ \t]*:/ {print $4}' $WAZUH_PATH/VERSION.json)"
 
     # Define output package name
     if [ $IS_STAGE == "no" ]; then
