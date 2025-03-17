@@ -199,7 +199,7 @@ function build_package() {
     if munkipkg $CURRENT_PATH/wazuh-agent ; then
         echo "The wazuh agent package for macOS has been successfully built."
         mv $CURRENT_PATH/wazuh-agent/build/* $DESTINATION/
-        symbols_pkg_name="${pkg_name}_debug_symbols"
+        symbols_pkg_name="wazuh-agent-debug-symbols-${VERSION}-${REVISION}-${ARCH}-macos"
         cp -R "${WAZUH_PATH}/src/symbols"  "${DESTINATION}"
         zip -r "${DESTINATION}/${symbols_pkg_name}.zip" "${DESTINATION}/symbols"
         rm -rf "${DESTINATION}/symbols"
