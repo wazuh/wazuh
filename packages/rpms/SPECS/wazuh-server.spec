@@ -71,7 +71,7 @@ echo 'USER_CREATE_SSL_CERT="n"' >> ./etc/preloaded-vars.conf
 echo 'DOWNLOAD_CONTENT="y"' >> ./etc/preloaded-vars.conf
 export VCPKG_ROOT="/root/vcpkg"
 export PATH="${PATH}:${VCPKG_ROOT}"
-scl enable devtoolset-11 ./install.sh
+scl enable devtoolset-11 ./install.sh || { echo "install.sh failed! Aborting." >&2; exit 1; }
 
 # Create directories
 mkdir -p ${RPM_BUILD_ROOT}%{_initrddir}
