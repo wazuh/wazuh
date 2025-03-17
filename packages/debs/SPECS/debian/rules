@@ -58,6 +58,12 @@ override_dh_install:
 	DOWNLOAD_CONTENT="y" \
 	./install.sh || { echo "install.sh failed! Aborting." >&2; exit 1; }
 
+	SHORT_COMMIT=$(git rev-parse --short HEAD)
+	echo "Found commit: $SHORT_COMMIT"
+	if [ -z "$SHORT_COMMIT" ]; then echo "No commit found"; exit 1; fi
+	sed -i '/"stage":/s/$/,/; /"stage":/a \    "commit": "'"$SHORT_COMMIT"'"' $(INSTALLATION_DIR)usr/share/wazuh-server/VERSION.json || exit 1
+	cat $(INSTALLATION_DIR)usr/share/wazuh-server/VERSION.json
+
 	# Copying to target
 	mkdir -p $(TARGET_DIR)$(INSTALLATION_DIR)/tmp
 	mkdir -p $(TARGET_DIR)$(INSTALLATION_DIR)/run

@@ -79,11 +79,6 @@ InstallServer()
     # Install VERSION.json and append commit id if any
     ${INSTALL} -m 440 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ../VERSION.json ${SHARE_INSTALLDIR}/VERSION.json
 
-    # Check if git shell command is available
-    if command -v git &> /dev/null; then
-      short_commit_hash="$(git rev-parse --short HEAD)"
-      sed -i '/"stage":/s/$/,/; /"stage":/a \    "commit": "'"$short_commit_hash"'"' ${SHARE_INSTALLDIR}/VERSION.json
-    fi
 }
 
 checkDownloadContent()
