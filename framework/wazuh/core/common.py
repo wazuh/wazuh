@@ -135,7 +135,6 @@ origin_module: ContextVar[str] = ContextVar('origin_module', default='framework'
 try:
     mp_pools: ContextVar[Dict] = ContextVar('mp_pools', default={
         'process_pool': ProcessPoolExecutor(max_workers=1),
-        'authentication_pool': ProcessPoolExecutor(max_workers=10),
         'events_pool': ProcessPoolExecutor(max_workers=1)
     })
 # Handle exception when the user running Wazuh cannot access /dev/shm.

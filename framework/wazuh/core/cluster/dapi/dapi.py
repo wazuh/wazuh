@@ -11,7 +11,7 @@ import operator
 import os
 import time
 from collections import defaultdict
-from concurrent.futures import process
+from concurrent.futures import process, ProcessPoolExecutor
 from copy import copy, deepcopy
 from functools import reduce, partial
 from operator import or_
@@ -32,10 +32,20 @@ from wazuh.core.cluster.cluster import check_cluster_status
 from wazuh.core.exception import WazuhException, WazuhClusterError, WazuhError
 from wazuh.core.wazuh_socket import wazuh_sendsync
 
-pools = common.mp_pools.get()
 
 authentication_funcs = {'check_token', 'check_user_master', 'get_permissions', 'get_security_conf'}
 events_funcs = {"send_event_to_analysisd"}
+
+try:
+    pools = common.mp_pools.get()
+    pools.update({'authentication_pool': ProcessPoolExecutor(
+        max_workers=wazuh.core.cluster.utils.get_cluster_items()['intervals']['master']['authentication_pool_size'],
+        initializer=wazuh.core.cluster.utils.init_auth_worker
+    )})
+# Handle exception when the user running Wazuh cannot access /dev/shm.
+except (FileNotFoundError, PermissionError):
+    pass
+
 
 class DistributedAPI:
     """Represents a distributed API request."""

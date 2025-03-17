@@ -555,3 +555,9 @@ def raise_if_exc(result: object) -> None:
     """
     if isinstance(result, Exception):
         raise result
+
+
+def init_auth_worker():
+    """Set authentication pool worker to ignore SIGINT signals to avoid 
+    throwing exceptions when shutting down the API in foreground mode."""
+    signal.signal(signal.SIGINT, signal.SIG_IGN)
