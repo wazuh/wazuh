@@ -519,43 +519,9 @@ flowchart TD
 
 **TODO: Move this graphs**
 
-```mermaid
----
-title: Decoder schema
----
-kanban
-  Decoder[Decoder schema]
-    assetMetadata["metadata"]@{ priority: 'Very Low'}
-    assetParents["parents"]
-    assetChecks["checks"]
-    decoParsers["parser"]
-    decoNormalize["normalize"]
-```
-
-```mermaid
----
-title: Rule schema
----
-kanban
-  Rule[Rule schema]
-    assetMetadata["metadata"]@{ priority: 'Very Low'}
-    assetParents["parents"]
-    assetChecks["checks"]
-    ruleNormalize["rule_enrichment"]
-```
 
 
-```mermaid
----
-title: Output schema
----
-kanban
-  Output[Output schema]
-    assetMetadata["metadata"]@{ priority: 'Very Low'}
-    assetParents["parents"]
-    assetChecks["checks"]
-    OutputNormalize["output stage"]
-```
+
 
 ```mermaid
 flowchart TD
@@ -753,91 +719,6 @@ eventInput ===> routeSelector
 
 ```
 
-```mermaid
----
-config:
-  nodeSpacing: 30
-  rankSpacing: 25
-  flowchart:
-    subGraphTitleMargin:
-      top: 20
-      bottom: 20
----
-flowchart TB
-
-
-classDef AssetsClass fill:#3f51b5,stroke-width:2px,fill-opacity:0.5, font-size: 20px, min-width:350px
-classDef partsAssetsClass font-size:15px,stroke-width:2px,stroke-dasharray:10px,rx:15,ry:15, min-width:250px
-classDef AttributesClass min-width: 200px
-
- subgraph assetSchema["Asset Schema"]
-    direction TB
-    attributes:::partsAssetsClass ~~~ stages:::partsAssetsClass
- end
- assetSchema:::AssetsClass
-
- subgraph attributes["Attributes"]
-    direction LR
-    attr_1(["&emsp;&emsp;&emsp;&emsp;&emsp;...&emsp;&emsp;&emsp;&emsp;&emsp;"]):::AttributesClass
-    attr_2(["&emsp;&emsp;&emsp;&emsp;&emsp;...&emsp;&emsp;&emsp;&emsp;&emsp;"]):::AttributesClass
-    attr_3(["&emsp;&emsp;&emsp;&emsp;&emsp;...&emsp;&emsp;&emsp;&emsp;&emsp;"]):::AttributesClass
-    attr_4(["&emsp;&emsp;&emsp;&emsp;&emsp;...&emsp;&emsp;&emsp;&emsp;&emsp;"]):::AttributesClass
-  end
-
- subgraph stages["Stages"]
-    direction LR
-    stage_1(["&emsp;&emsp;&emsp;&emsp;&emsp;...&emsp;&emsp;&emsp;&emsp;&emsp;"]):::AttributesClass
-    stage_2(["&emsp;&emsp;&emsp;&emsp;&emsp;...&emsp;&emsp;&emsp;&emsp;&emsp;"]):::AttributesClass
-    stage_3(["&emsp;&emsp;&emsp;&emsp;&emsp;...&emsp;&emsp;&emsp;&emsp;&emsp;"]):::AttributesClass
-    stage_4(["&emsp;&emsp;&emsp;&emsp;&emsp;...&emsp;&emsp;&emsp;&emsp;&emsp;"]):::AttributesClass
-  end
-
-
-```
-
-```mermaid
----
-config:
-  nodeSpacing: 30
-  rankSpacing: 25
-  flowchart:
-    subGraphTitleMargin:
-      top: 20
-      bottom: 20
----
-flowchart TB
-
-classDef partsAssetsClass font-size:15px,stroke-width:2px,stroke-dasharray:10px,rx:15,ry:15
-classDef EventBoxClass font-size: 15px,stroke-width:2px, color:#fff, fill:#3f51b5
-classDef stateFailClass fill:#f50057,stroke-width:2px,fill-opacity:0.5
-classDef stateSuccessClass fill:#2196f3,stroke-width:2px,fill-opacity:0.8
-
-eventInput@{ shape: doc, label:"Event input"}
-eventInput:::EventBoxClass ---> stage_1
-
-
-subgraph stages["Stages"]
-   direction TB
-   stage_1(["Process stage 1"])
-   stage_2(["Process stage 2"])
-   stage_3(["Process stage ..."])
-   stage_4(["Process stage n"])
-   stage_1 --->|success| stage_2
-   stage_2 --->|success| stage_3
-   stage_3 --->|success| stage_4
-end
-stages:::partsAssetsClass
-
-failedState@{ shape: dbl-circ, label: "Asset fail" }
-failedState:::stateFailClass
-stage_1 --->|failed|failedState
-stage_2 --->|failed|failedState
-stage_3 --->|failed|failedState
-
-successState@{ shape: dbl-circ, label: "Asset success" }
-successState:::stateSuccessClass
-stage_4 --->|success| successState
-```
 
 
 ## Schema
@@ -985,7 +866,48 @@ Each asset is organized into various stages that dictate operational procedures 
 
 Do not confuse stages with attributes, which are configuration details and metadata about the asset.
 
-<workflow_placeholder>
+
+```mermaid
+---
+config:
+  nodeSpacing: 30
+  rankSpacing: 25
+  flowchart:
+    subGraphTitleMargin:
+      top: 20
+      bottom: 20
+---
+flowchart TB
+
+
+classDef AssetsClass fill:#3f51b5,stroke-width:2px,fill-opacity:0.5, font-size: 20px, min-width:350px
+classDef partsAssetsClass font-size:15px,stroke-width:2px,stroke-dasharray:10px,rx:15,ry:15, min-width:250px
+classDef AttributesClass min-width: 200px
+
+ subgraph assetSchema["Asset Schema"]
+    direction TB
+    attributes:::partsAssetsClass ~~~ stages:::partsAssetsClass
+ end
+ assetSchema:::AssetsClass
+
+ subgraph attributes["Attributes"]
+    direction LR
+    attr_1(["&emsp;&emsp;&emsp;&emsp;&emsp;...&emsp;&emsp;&emsp;&emsp;&emsp;"]):::AttributesClass
+    attr_2(["&emsp;&emsp;&emsp;&emsp;&emsp;...&emsp;&emsp;&emsp;&emsp;&emsp;"]):::AttributesClass
+    attr_3(["&emsp;&emsp;&emsp;&emsp;&emsp;...&emsp;&emsp;&emsp;&emsp;&emsp;"]):::AttributesClass
+    attr_4(["&emsp;&emsp;&emsp;&emsp;&emsp;...&emsp;&emsp;&emsp;&emsp;&emsp;"]):::AttributesClass
+  end
+
+ subgraph stages["Stages"]
+    direction LR
+    stage_1(["&emsp;&emsp;&emsp;&emsp;&emsp;...&emsp;&emsp;&emsp;&emsp;&emsp;"]):::AttributesClass
+    stage_2(["&emsp;&emsp;&emsp;&emsp;&emsp;...&emsp;&emsp;&emsp;&emsp;&emsp;"]):::AttributesClass
+    stage_3(["&emsp;&emsp;&emsp;&emsp;&emsp;...&emsp;&emsp;&emsp;&emsp;&emsp;"]):::AttributesClass
+    stage_4(["&emsp;&emsp;&emsp;&emsp;&emsp;...&emsp;&emsp;&emsp;&emsp;&emsp;"]):::AttributesClass
+  end
+
+
+```
 
 ### Attributes
 Attributes are configuration details. Although the order of definition does not matter, we follow the convention of defining them in the order of name, metadata, and parents.
@@ -997,16 +919,61 @@ Attributes are configuration details. Although the order of definition does not 
 ### Stages
 The stages define the operation chain and flow the asset performs on events. Each stage is executed in the order of definition:
 
-<workflow_placeholder>
+
+
+```mermaid
+---
+config:
+  nodeSpacing: 30
+  rankSpacing: 25
+  flowchart:
+    subGraphTitleMargin:
+      top: 20
+      bottom: 20
+---
+flowchart TB
+
+classDef partsAssetsClass font-size:15px,stroke-width:2px,stroke-dasharray:10px,rx:15,ry:15
+classDef EventBoxClass font-size: 15px,stroke-width:2px, color:#fff, fill:#3f51b5
+classDef stateFailClass fill:#f50057,stroke-width:2px,fill-opacity:0.5
+classDef stateSuccessClass fill:#2196f3,stroke-width:2px,fill-opacity:0.8
+
+eventInput@{ shape: doc, label: "Event input"}
+eventInput:::EventBoxClass
+eventInput ---> stage_1
+
+
+subgraph stages["Stages"]
+   direction TB
+   stage_1(["Process stage 1"])
+   stage_2(["Process stage 2"])
+   stage_3(["Process stage ..."])
+   stage_4(["Process stage n"])
+   stage_1 --->|success| stage_2
+   stage_2 --->|success| stage_3
+   stage_3 --->|success| stage_4
+end
+stages:::partsAssetsClass
+
+failedState@{ shape: dbl-circ, label: "Asset fail" }
+failedState:::stateFailClass
+stage_1 --->|failed|failedState
+stage_2 --->|failed|failedState
+stage_3 --->|failed|failedState
+
+successState@{ shape: dbl-circ, label: "Asset success" }
+successState:::stateSuccessClass
+stage_4 --->|success| successState
+```
 
 When a stage is executed, it can either fail or succeed, depending on the logic of the stage and the operations performed. Each stage is sequentially executed only if the previous stage succeeds.
 
 Stages:
-- **Check/Allow**: Allows conditional operations to be made on the event.
+- **Check/Allow**: Allows conditional operations to be made on the event. Cannot modify the event.
 - **Parse**: Parses fields on the event, acting both as a condition and normalization.
 - **Map**: Allows mapping and transformation operations on the event.
 - **Normalize**: Defines blocks with a combination of check, parse, and map stages.
-- **Output**: Allows operations to communicate outside the Engine, typically used to send events outward.
+- **Output**: Allows operations to communicate outside the Engine, typically used to send events outward. Cannot modify the event.
 
 ### Asset types
 The type of asset is an allowed combination of certain stages. The following table outlines the stages available for each type of asset:
@@ -1014,7 +981,7 @@ The type of asset is an allowed combination of certain stages. The following tab
 | Asset Type | Allowed Stages |
 |-|-|
 |Decoders|check, parse, map, normalize|
-|Rules|check, map, normalize|
+|Rules|check, map, normalize_rule|
 |Outputs|check, output|
 |Filters|allow|
 
@@ -1265,11 +1232,138 @@ The GeoLite databases are configured through the API, allowing you to specify th
 
 ### Decoders
 
+Decoders are the first layer of assets that pass through the event when it is processed by a security policy. They are responsible for normalizing the event, transforming it into a structured event.
+
+All events enter the pipeline through the root decoder, which selects the appropriate decoder to process the event. Each subsequent decoder processes the event as much as it can and then passes it to the next suitable decoder. This continues until no more decoders can process the event. A decoder can only select one next decoder from the available ones.
+
+
+```mermaid
+---
+title: Decoder schema
+---
+kanban
+  Decoder[Decoder schema]
+    assetMetadata["metadata"]@{ priority: 'Very Low'}
+    assetParents["parents"]
+    assetChecks["checks"]
+    decoParsers["parser"]
+    decoNormalize["normalize"]
+```
+
+- **Metadata**: Each decoder has metadata that provides information about the decoder, such as the supported products,
+  versions, and formats. This metadata does not affect the processing stages. (TODO IMPROVE)
+
+- **Parents**: Defines the order in the decoder graph, establishing the parent-child relationship between decoders.
+  A decoder can have multiple parents, when an event is successfully processed in a decoder, it will evaluate the
+  children, one by one, until it finds a decoder that successfully processes the event.
+
+> [!IMPORTANT]
+> There is no order of priority when evaluating the children, and it cannot be assumed that a sibling decoder will be evaluated before another one.
+
+- **Checks**: The checks stage is a preliminary stage in the asset processing sequence, designed to assess whether an
+  event meets specific conditions without modifying the event itself.
+  More information on the checks stage can be found in the [Check section](#checkallow).
+
+
 ### Rules
+
+Rules are the second layer of assets that process events in a security policy. They are responsible for analyzing the
+normalized event, when the decoding stage is finished, to add context, security indicators, and threat intelligence.
+Unlike decoders,  the rule cannot modify the decoded event, but it can add new certain fields to enrich the event, this
+prevents the rules from being used to decode events.
+
+
+
+```mermaid
+---
+title: Rule schema
+---
+kanban
+  Rule[Rule schema]
+    assetMetadata["metadata"]@{ priority: 'Very Low'}
+    assetParents["parents"]
+    assetChecks["checks"]
+    ruleNormalize["rule_enrichment"]
+```
+
+- **Metadata**: Each rule has metadata that provides information about the rule, such as the supported products,
+  versions, and formats. This metadata does not affect the processing stages. (TODO IMPROVE)
+
+- **Parents**: Defines the order in the rule graph, establishing the parent-child relationship between rules, a rule can
+  have multiple parents, when an event is successfully processed in a rule (rule matches), it will evaluate all the
+  children. Unlike decoders, and all children will be evaluated.
+
+- **Checks**: The checks stage is a preliminary stage in the asset processing sequence, designed to assess whether an
+  event meets specific conditions. On the rules, the checks stage is used to evaluate the conditions that the event must
+  meet to be considered a security event. More information on the checks stage can be found in the [Check section](#checkallow).
+
+- **Rule Enrichment**: The rule enrichment stage is used to add context, security indicators, and threat intelligence to
+  the normalized event. This stage is used to add new fields to the event, but it cannot modify the normalized event, it
+  like the `map` stage, but with the restriction that it cannot modify the normalized event, only rule fields can be added.
 
 ### Outputs
 
+Outputs are the last layer of assets that process events in a security policy. They are responsible for storing the
+security events in a storage system, sending them to a wazuh-indexer, a file, or sending them to a third-party system.
+
+
+```mermaid
+---
+title: Output schema
+---
+kanban
+  Output[Output schema]
+    assetMetadata["metadata"]@{ priority: 'Very Low'}
+    assetParents["parents"]
+    assetChecks["checks"]
+    OutputNormalize["output stage"]
+```
+
+- **Metadata**: Each output has metadata that provides information about the output, such as the destination, version,
+  and format. This metadata does not affect the processing stages. (TODO IMPROVE)
+
+- **Parents**: Defines the order in the output graph, establishing the parent-child relationship between outputs.
+  An output can have multiple parents, when an event is successfully processed in an output, it will evaluate all the
+  children. Usually, the outputs are the last assets in the policy, so they do not have children.
+
+- **Checks**: The checks stage is a stage in the output asset used to evaluate the conditions that the event must meet to
+  be sent to the output. More information on the checks stage can be found in the [Check section](#checkallow).
+
 ### Filters
+
+The filters are assets with a single stage, the check stage, used to evaluate the conditions without modifying the event.
+
+The filters are used to:
+
+1. Route events to the correct policy in the orchestrator (Most common use case).
+2. Filter a event between parent assets and child assets.
+
+
+```mermaid
+---
+title: Filter schema
+---
+kanban
+  Output[Output schema]
+    assetMetadata["metadata"]@{ priority: 'Very Low'}
+    assetParents["parents"]
+    assetChecks["checks"]
+```
+
+- **Metadata**: Each filter has metadata that provides information about the filter, such as the proposed use case, version,
+  and format. This metadata does not affect the processing stages. (TODO IMPROVE)
+
+- **check**: The checks stage is a stage in the filter asset used to evaluate the conditions that the event must meet to
+  pass the filter. More information on the checks stage can be found in the [Check section](#checkallow).
+
+- **Parents**: Defines the order in the filter graph, establishing the parent-child relationship between assets and filters.
+  When children are used in the safety policy, they can be located under any decoder, ruler or output. When an asset is evaluated and succeeds, it evaluates the filter that has it as a parent and if it passes the filter, the children of the passet are evaluated.
+
+  <placeholder_graph_filter>
+
+> [!NOTE]
+> When filter assets are used in the orchestrator, the don't have parents, they are a check stage that is evaluated before
+> the event is sent to the policy.
 
 ## Stages
 
@@ -1526,4 +1620,3 @@ Explanation of how herlper work, format, types, etc.
 ## F.A.Q
 - A explanation of the time zone and how it works in the engine.
 - A explanation of diferent timestamp fields and how they are used.
-
