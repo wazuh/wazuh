@@ -23,12 +23,12 @@ class TestAgentIndex:
 
     @pytest.fixture
     def client_mock(self) -> mock.AsyncMock:
-        """Provides a mock client instance for testing."""
+        """Provide a mock client instance for testing."""
         return mock.AsyncMock()
 
     @pytest.fixture
     def index_instance(self, client_mock) -> AgentsIndex:
-        """Provides an instance of AgentsIndex with a mocked client for testing."""
+        """Provide an instance of AgentsIndex with a mocked client for testing."""
         return self.index_class(client=client_mock)
 
     async def test_create(self, index_instance: AgentsIndex, client_mock: mock.AsyncMock):

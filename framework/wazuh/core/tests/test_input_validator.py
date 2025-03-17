@@ -12,7 +12,7 @@ class TestInputValidator(TestCase):
     """Test class for validating input using the InputValidator class."""
 
     def test_check_name(self):
-        """Tests the `check_name` method with valid and invalid inputs."""
+        """Test the `check_name` method with valid and invalid inputs."""
         result = InputValidator().check_name('test')
         self.assertEqual(result, True)
 
@@ -23,7 +23,7 @@ class TestInputValidator(TestCase):
         self.assertEqual(result, False)
 
     def test_check_length(self):
-        """Tests the `check_length` method with various length constraints."""
+        """Test the `check_length` method with various length constraints."""
         result = InputValidator().check_length('test')
         self.assertEqual(result, True)
 
@@ -34,7 +34,7 @@ class TestInputValidator(TestCase):
         self.assertEqual(result, True)
 
     def test_group(self):
-        """Tests the `group` method with valid and invalid group names."""
+        """Test the `group` method with valid and invalid group names."""
         result = InputValidator().group('test')
         self.assertEqual(result, True)
 

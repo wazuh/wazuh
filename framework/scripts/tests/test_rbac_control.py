@@ -12,7 +12,7 @@ from wazuh.core.config.models.server import ValidateFilePathMixin
 
 
 class Arguments:
-    """Holds command-line arguments for script execution."""
+    """Class to hold command-line arguments for script execution."""
 
     def __init__(self, reset_force=False, func=None):
         self.reset_force = reset_force

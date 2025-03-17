@@ -32,7 +32,7 @@ with patch('wazuh.common.wazuh_uid'):
 
 
 async def wait_function_called(func_mock):
-    """Waits until the provided mock function is called at least once."""
+    """Wait until the provided mock function is called at least once."""
     while not func_mock.call_count:
         await asyncio.sleep(0.01)
 

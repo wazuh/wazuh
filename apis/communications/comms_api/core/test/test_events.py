@@ -192,7 +192,7 @@ async def test_parse_stateful_events_ko(disconnect_client, expected_code):
 async def test_send_events(gather_mock, create_task_mock, parse_tasks_results_mock, batcher_client_mock):
     """Check that the `send_events` function works as expected."""
     batcher_client_mock.get_response = AsyncMock(
-        return_value=Packet(items=[Item(id=1, operation='CREATE', content=b'example')])
+        return_value=Packet(items=[Item(id=1, operation=Operation.CREATE, content=b'example')])
     )
 
     events = StatefulEvents(

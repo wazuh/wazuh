@@ -49,7 +49,7 @@ DEFAULT_REQUEST_TIMEOUT = 10
 
 
 async def raise_if_exc_routine(dapi_kwargs, expected_error=None):
-    """Test raise_if_exc_routine functionality."""
+    """Test the `raise_if_exc_routine` functionality."""
     dapi = DistributedAPI(**dapi_kwargs)
     try:
         raise_if_exc(await dapi.distribute_function())
@@ -82,15 +82,15 @@ class TestingLogger:
         self.parent = TestingLoggerParent()
 
     def error(self, message):
-        """Error level log"""
+        """Error level log."""
         pass
 
     def debug(self, message):
-        """Debug level log"""
+        """Debug level log."""
         pass
 
     def debug2(self, message):
-        """Debug2 level log"""
+        """Debug2 level log."""
         pass
 
 

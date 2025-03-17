@@ -10,7 +10,7 @@ from wazuh.core.indexer import Indexer, create_indexer, get_indexer_client
 
 @pytest.fixture
 def indexer_instance_with_mocked_client() -> Indexer:
-    """Mocks the Indexer client."""
+    """Mock the Indexer client."""
     indexer_instance = Indexer(hosts=['test'], ports=[9200], user='user_test', password='password_test', use_ssl=False)
     indexer_instance._client = mock.AsyncMock()
     return indexer_instance

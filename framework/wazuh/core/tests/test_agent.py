@@ -73,7 +73,7 @@ wpk_versions = [
 
 
 class InitAgent:
-    """Sets up necessary test environment for agents"""
+    """Class to set up the necessary test environment for agents."""
 
     def __init__(self, data_path=test_data_path, db_name='schema_global_test.sql'):
         """Sets up necessary test environment for agents:

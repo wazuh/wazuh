@@ -38,34 +38,34 @@ with patch.object(ValidateFilePathMixin, '_validate_file_path', return_value=Non
 
 class FutureMock:
     def __init__(self):
-        """Initializes a FutureMock instance with a default value."""
+        """Initialize a FutureMock instance with a default value."""
         self.value = True
 
     def done(self):
-        """Returns the completion status of the future."""
+        """Return the completion status of the future."""
         return self.value
 
     def set_result(self, set):
-        """Sets the result of the future (not implemented)."""
+        """Set the result of the future (not implemented)."""
         pass
 
 
 class LoopMock:
     def __init__(self):
-        """Initializes a LoopMock instance."""
+        """Initialize a LoopMock instance."""
         pass
 
     @staticmethod
     async def create_connection(protocol_factory, host, port, ssl):
-        """Simulates the creation of an asynchronous connection."""
+        """Simulate the creation of an asynchronous connection."""
         return 'transport', 'protocol'
 
     def set_exception_handler(self, exc_handler):
-        """Sets an exception handler for the loop."""
+        """Set an exception handler for the loop."""
         pass
 
     def create_future(self):
-        """Creates and returns a future associated with the loop (not implemented)."""
+        """Create and return a future associated with the loop (not implemented)."""
         pass
 
 

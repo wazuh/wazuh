@@ -32,25 +32,25 @@ from wazuh.core.common import (
     ],
 )
 def test_find_wazuh_path(fake_path, expected):
-    """Tests the `find_wazuh_path` function with various fake paths."""
+    """Test the `find_wazuh_path` function with various fake paths."""
     with patch('wazuh.core.common.__file__', new=fake_path):
         assert find_wazuh_path.__wrapped__() == expected
 
 
 def test_find_wazuh_path_relative_path():
-    """Tests the `find_wazuh_path` function with a relative path."""
+    """Test the `find_wazuh_path` function with a relative path."""
     with patch('os.path.abspath', return_value='~/framework'):
         assert find_wazuh_path.__wrapped__() == '~'
 
 
 def test_wazuh_uid():
-    """Tests the `wazuh_uid` function by mocking the `getpwnam` call."""
+    """Test the `wazuh_uid` function by mocking the `getpwnam` call."""
     with patch('wazuh.core.common.getpwnam', return_value=getpwnam('root')):
         wazuh_uid()
 
 
 def test_wazuh_gid():
-    """Tests the `wazuh_gid` function by mocking the `getgrnam` call."""
+    """Test the `wazuh_gid` function by mocking the `getgrnam` call."""
     with patch('wazuh.core.common.getgrnam', return_value=getgrnam('root')):
         wazuh_gid()
 

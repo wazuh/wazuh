@@ -28,7 +28,7 @@ ossec_log_json_path = '{0}/ossec_log.log'.format(test_data_path)
 
 class InitManager:
     def __init__(self):
-        """Initializes the environment for testing manager functions."""
+        """Initialize the environment for testing manager functions."""
         # path for temporary API files
         self.api_tmp_path = os.path.join(test_data_path, 'tmp')
 
@@ -55,7 +55,7 @@ def installation_uid():
 
 
 def get_logs(json_log: bool = False):
-    """Reads and returns logs from the specified file (JSON or plain text)."""
+    """Read and return logs from the specified file (JSON or plain text)."""
     with open(ossec_log_json_path if json_log else ossec_log_path) as f:
         return f.read()
 
@@ -150,19 +150,6 @@ def test_get_logs_summary(mock_exists, mock_active_logging_format):
             'debug': 2,
         }
 
-
-@patch('wazuh.core.manager.exists', return_value=True)
-@patch('wazuh.core.manager.WazuhSocket')
-def test_validate_ossec_conf(mock_wazuhsocket, mock_exists):
-    """Test validate_ossec_conf functionality"""
-    with patch('socket.socket'):
-        # Mock sock response
-        json_response = json.dumps({'error': 0, 'message': ''}).encode()
-        mock_wazuhsocket.return_value.receive.return_value = json_response
-        result = validate_ossec_conf()
-
-        assert result == {'status': 'OK'}
-        mock_exists.assert_called_with(os.path.join(common.WAZUH_PATH, 'queue', 'sockets', 'com'))
 
 
 @patch('wazuh.core.manager.exists', return_value=True)

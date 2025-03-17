@@ -383,7 +383,7 @@ def start():
     except KeyboardInterrupt:
         main_logger.info('SIGINT received. Shutting down...')
     except MemoryError:
-        main_logger.error("Directory '/tmp' needs read, write & execution permission for 'wazuh' user")
+        main_logger.error("Directory '/tmp' needs read, write & execution permission for 'wazuh-server' user")
     except WazuhDaemonError as e:
         main_logger.error(e)
     except RuntimeError:

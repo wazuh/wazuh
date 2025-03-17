@@ -68,7 +68,7 @@ short_agent_list = ['001', '002', '003', '004', '005']
 
 
 def send_msg_to_wdb(msg, raw=False):
-    """Mocks message delivery to the database."""
+    """Mock message delivery to the database."""
     query = ' '.join(msg.split(' ')[2:])
     result = list(map(remove_nones_to_dict, map(dict, test_data.cur.execute(query).fetchall())))
     return ['ok', dumps(result)] if raw else result

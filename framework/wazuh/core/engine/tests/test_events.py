@@ -12,12 +12,12 @@ class TestEventsModule:
 
     @pytest.fixture
     def client_mock(self) -> mock.AsyncMock:
-        """Provides a mock client instance for testing."""
+        """Provide a mock client instance for testing."""
         return mock.AsyncMock()
 
     @pytest.fixture
     def module_instance(self, client_mock) -> EventsModule:
-        """Provides an instance of EventsModule with a mocked client for testing."""
+        """Provide an instance of VulnerabilityModule with a mocked client for testing."""
         return self.module_class(client=client_mock)
 
     async def test_send(self, client_mock, module_instance: EventsModule):

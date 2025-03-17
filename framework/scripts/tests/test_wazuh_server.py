@@ -496,7 +496,7 @@ def test_start(
                 with patch('scripts.wazuh_server.master_main', side_effect=MemoryError('TESTING')):
                     wazuh_server.start()
                     main_logger_mock.assert_any_call(
-                        "Directory '/tmp' needs read, write & execution permission for 'wazuh' user"
+                        "Directory '/tmp' needs read, write & execution permission for 'wazuh-server' user"
                     )
 
                 error_message = 'Some daemon fail to start'

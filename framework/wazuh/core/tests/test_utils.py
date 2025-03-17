@@ -2341,7 +2341,7 @@ def test_filter_array_by_query(q, return_length):
     ],
 )
 def test_select_array(select, required_fields, expected_result):
-    """Test select_array functionality"""
+    """Test select_array functionality."""
     array = [
         {
             'required': None,
