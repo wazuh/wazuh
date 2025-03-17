@@ -2,39 +2,39 @@ server:
   nodes:
     - master
   node:
-    name: server_01
+    name: server-1
     type: master
     ssl:
-      key: /etc/wazuh-server/certs/server-key.pem
-      cert: /etc/wazuh-server/certs/server.pem
+      key: /etc/wazuh-server/certs/server-1-key.pem
+      cert: /etc/wazuh-server/certs/server-1.pem
       ca: /etc/wazuh-server/certs/root-ca.pem
 indexer:
   hosts:
-    - host: localhost
+    - host: 127.0.0.1
       port: 9200
   username: admin
   password: admin
   ssl:
     use_ssl: true
-    key: /etc/wazuh-server/certs/server-key.pem
-    certificate: /etc/wazuh-server/certs/server.pem
+    key: /etc/wazuh-server/certs/server-1-key.pem
+    certificate: /etc/wazuh-server/certs/server-1.pem
     certificate_authorities:
       - /etc/wazuh-server/certs/root-ca.pem
 communications_api:
-  host: localhost
+  host: 0.0.0.0
   port: 27000
   ssl:
-    key: /etc/wazuh-server/certs/server-key.pem
-    cert: /etc/wazuh-server/certs/server.pem
+    key: /etc/wazuh-server/certs/server-1-key.pem
+    cert: /etc/wazuh-server/certs/server-1.pem
     use_ca: false
     ca: /etc/wazuh-server/certs/root-ca.pem
 management_api:
   host:
-    - localhost
-    - ::1
+    - "0.0.0.0"
+    - "::"
   port: 55000
   ssl:
-    key: /etc/wazuh-server/certs/server-key.pem
-    cert: /etc/wazuh-server/certs/server.pem
+    key: /etc/wazuh-server/certs/server-1-key.pem
+    cert: /etc/wazuh-server/certs/server-1.pem
     use_ca: false
     ca: /etc/wazuh-server/certs/root-ca.pem
