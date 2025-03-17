@@ -34,17 +34,17 @@ from wazuh.core.wazuh_socket import wazuh_sendsync
 
 
 authentication_funcs = {'check_token', 'check_user_master', 'get_permissions', 'get_security_conf'}
-events_funcs = {"send_event_to_analysisd"}
+events_funcs = {'send_event_to_analysisd'}
 
-try:
-    pools = common.mp_pools.get()
-    pools.update({'authentication_pool': ProcessPoolExecutor(
-        max_workers=wazuh.core.cluster.utils.get_cluster_items()['intervals']['master']['authentication_pool_size'],
-        initializer=wazuh.core.cluster.utils.init_auth_worker
-    )})
-# Handle exception when the user running Wazuh cannot access /dev/shm.
-except (FileNotFoundError, PermissionError):
-    pass
+node_info = wazuh.core.cluster.cluster.get_node()
+pools = common.mp_pools.get()
+if node_info['type'] == 'master':
+    # Suppress exception when the user running Wazuh cannot access /dev/shm.
+    with contextlib.suppress(FileNotFoundError, PermissionError):
+        pools.update({'authentication_pool': ProcessPoolExecutor(
+            max_workers=wazuh.core.cluster.utils.get_cluster_items()['intervals']['master']['authentication_pool_size'],
+            initializer=wazuh.core.cluster.utils.init_auth_worker
+        )})
 
 
 class DistributedAPI:
@@ -101,7 +101,7 @@ class DistributedAPI:
         self.node = node if node is not None else local_client
         self.cluster_items = wazuh.core.cluster.utils.get_cluster_items() if node is None else node.cluster_items
         self.debug = debug
-        self.node_info = wazuh.core.cluster.cluster.get_node() if node is None else node.get_node()
+        self.node_info = node_info if node is None else node.get_node()
         self.request_type = request_type
         self.wait_for_complete = wait_for_complete
         self.from_cluster = from_cluster
