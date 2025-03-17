@@ -26,6 +26,7 @@
   - [Engine](ref/modules/engine/README.md)
     - [Architecture](ref/modules/engine/architecture.md)
     - [API Reference](ref/modules/engine/api-reference.md)
+    - [Catalog of outputs](ref/modules/engine/lib-outputs.md)
   - [Management API](ref/modules/management/README.md)
     - [Architecture](ref/modules/management/architecture.md)
     - [API Reference](ref/modules/management/api-reference.md)
