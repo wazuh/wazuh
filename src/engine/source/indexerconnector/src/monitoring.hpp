@@ -182,9 +182,9 @@ public:
                     if (!m_stop)
                     {
                         // Check the health of the servers.
+                        std::lock_guard lock(m_mutex);
                         for (const auto& [serverAddress, _] : m_servers)
                         {
-                            std::lock_guard lock(m_mutex);
                             healthCheck(serverAddress, authentication);
                         }
                     }
@@ -201,7 +201,7 @@ public:
      */
     bool isAvailable(const std::string& serverAddress)
     {
-        std::lock_guard lock(m_mutex);
+        std::scoped_lock lock(m_mutex);
         return m_servers.at(serverAddress);
     }
 };
