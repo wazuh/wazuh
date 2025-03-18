@@ -9,9 +9,9 @@
  * Foundation.
  */
 
+#include "MockIndexerConnector.hpp"
+#include "MockSystemContext.hpp"
 #include "common/clearElements.hpp"
-#include "mockIndexerConnector.hpp"
-#include "mockSystemContext.hpp"
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
