@@ -5,7 +5,7 @@
 # Author: Daniel B. Cid <daniel.cid@gmail.com>
 
 ### Setting up variables
-VERSION=$(awk -F'"' '/"version"[ \t]*:/ {print $4}' VERSION.json)
+VERSION="v$(awk -F'"' '/"version"[ \t]*:/ {print $4}' VERSION.json)"
 REVISION=$(awk -F'"' '/"stage"[ \t]*:/ {print $4}' VERSION.json)
 UNAME=`uname -snr`
 NUNAME=`uname`

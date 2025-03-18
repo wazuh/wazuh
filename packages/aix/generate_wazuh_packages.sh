@@ -14,7 +14,7 @@ set -x
 
 current_path="$( cd $(dirname $0) ; pwd -P )"
 install_path="/var/ossec"
-reference="master"
+reference="main"
 revision="1"
 target_dir="${current_path}/output/"
 compute_checksums="no"

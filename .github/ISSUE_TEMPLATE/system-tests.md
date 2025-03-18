@@ -35,7 +35,7 @@ To run tests in an AWS EC2 virtual environment, the following requirements will 
 
 These requirements should be requested to the @wazuh/devel-devops team via https://github.com/wazuh/internal-devel-requests.
 
-For further information, check https://github.com/wazuh/wazuh-qa/tree/master/tests/system/README.md
+For further information, check https://github.com/wazuh/wazuh-qa/tree/main/tests/system/README.md
 
 ## Test report procedure
 All individual test checks must be marked as:

@@ -25,7 +25,7 @@ short_version=""
 trap ctrl_c INT
 
 if [ -z "${wazuh_branch}" ]; then
-    wazuh_branch="master"
+    wazuh_branch="main"
 fi
 
 if [ -z "$ARCH" ]; then
