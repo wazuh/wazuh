@@ -62,19 +62,8 @@ struct buffer {
 */
 struct {
     __uint(type, BPF_MAP_TYPE_RINGBUF);
-    __uint(max_entries, 1 << 22);
+    __uint(max_entries, 1 << 23);
 } rb SEC(".maps");
-
-/*
-* A temporary map (per-thread) to store paths
-* that user space wants to unlink.
-*/
-struct {
-    __uint(type, BPF_MAP_TYPE_HASH);
-    __type(key, __u32);
-    __type(value, char[MAX_PATH_LEN]);
-    __uint(max_entries, 1024);
-} unlink_path_map SEC(".maps");
 
 /*
 * Per-CPU array used for storing paths during path reconstruction.
@@ -404,36 +393,6 @@ int kprobe__security_inode_setattr(struct pt_regs *ctx) {
 }
 
 /*
-* Caches the user-supplied path for an unlink operation in unlink_path_map
-* so we can retrieve it on vfs_unlink.
-*/
-SEC("tracepoint/syscalls/sys_enter_unlinkat")
-int tracepoint__syscalls__sys_enter_unlinkat(struct trace_event_raw_sys_enter *ctx)
-{
-    const char *user_filename = (const char *)ctx->args[1];
-    if (!user_filename)
-        return 0;
-
-    __u64 pid_tgid = bpf_get_current_pid_tgid();
-    __u32 tgid = (__u32)pid_tgid;
-
-    /* We avoid large stack usage by using our heaps_map buffer. */
-    struct buffer *tmp_buf = bpf_map_lookup_elem(&heaps_map, &(u32){0});
-    if (!tmp_buf)
-        return 0;
-
-    /* Use bpf_probe_read_kernel_str() with an empty string to clear the buffer safely */
-    bpf_probe_read_kernel_str(tmp_buf->data, MAX_PATH_LEN, "");
-
-    /* Read the user filename into our buffer */
-    bpf_probe_read_user_str(tmp_buf->data, MAX_PATH_LEN, user_filename);
-
-    /* Now store that path in the unlink_path_map. */
-    bpf_map_update_elem(&unlink_path_map, &tgid, tmp_buf->data, BPF_ANY);
-    return 0;
-}
-
-/*
 * Intercepts vfs_unlink calls to detect file removal (delete).
 * The path is retrieved from unlink_path_map to record which file was removed.
 */
@@ -483,20 +442,11 @@ int kprobe__vfs_unlink(struct pt_regs *ctx)
     if (get_path_str_from_path(&full_path, &path, string_buf) < 0)
         return 0;
 
-    /* Also retrieve the user-supplied path from unlink_path_map if needed. */
-    __u64 pid_tgid = bpf_get_current_pid_tgid();
-    __u32 tgid = (__u32)pid_tgid;
-    char *stored_path = bpf_map_lookup_elem(&unlink_path_map, &tgid);
-
     /* Extract inode/device. */
     __u64 inode = 0, dev = 0;
     get_inode_dev(d_inode, &inode, &dev);
 
     submit_event((const char *)full_path, inode, dev);
-
-    /* Clean up the map entry for this thread. */
-    bpf_map_delete_elem(&unlink_path_map, &tgid);
-
     return 0;
 }
 
