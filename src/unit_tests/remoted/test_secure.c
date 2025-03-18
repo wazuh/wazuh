@@ -1005,6 +1005,8 @@ void test_HandleSecureMessage_close_idle_sock(void** state)
 
     expect_function_call(__wrap_rem_inc_recv_evt);
 
+    expect_string(__wrap__mdebug2, formatted_msg, "001 message not recognized 12!");
+
     HandleSecureMessage(&message, &wdb_sock);
 
     os_free(key->id);
@@ -1096,6 +1098,8 @@ void test_HandleSecureMessage_close_idle_sock_2(void** state)
     will_return(__wrap_SendMSG, 0);
 
     expect_function_call(__wrap_rem_inc_recv_evt);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "001 message not recognized AAA");
 
     HandleSecureMessage(&message, &wdb_sock);
 
@@ -1630,6 +1634,8 @@ void test_HandleSecureMessage_close_same_sock(void** state)
 
     expect_function_call(__wrap_rem_inc_recv_evt);
 
+    expect_string(__wrap__mdebug2, formatted_msg, "001 message not recognized 12!");
+
     HandleSecureMessage(&message, &wdb_sock);
 
     os_free(key->id);
@@ -1699,6 +1705,8 @@ void test_HandleSecureMessage_close_same_sock_2(void** state)
     will_return(__wrap_SendMSG, 0);
 
     expect_function_call(__wrap_rem_inc_recv_evt);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "001 message not recognized AAA");
 
     HandleSecureMessage(&message, &wdb_sock);
 
@@ -2043,7 +2051,8 @@ void test_router_message_forward_non_syscollector_message(void** state)
     test_agent_info* data = (test_agent_info*)(*state);
     char* message = "1:nonsyscollector:{\"message\":\"test\"}";
 
-    // No function call is expected in this case
+    expect_string(__wrap__mdebug2, formatted_msg, "001 message not recognized 1:nonsyscollector:{\"message\":\"test\"}");
+
     router_message_forward(message, data->agent_id, NULL, NULL);
 }
 
@@ -2085,7 +2094,7 @@ void test_router_message_forward_invalid_sync_json_message(void** state)
                   formatted_msg,
                   "Unable to forward message "
                   "'{\"agent_info\":{\"agent_id\":\"001\",\"agent_ip\":\"192.168.33.20\",\"agent_name\":\"focal\"}}' "
-                  "for agent 001");
+                  "for agent '001'.");
 
     will_return(__wrap_OSHash_Get_ex_dup, NULL);
     expect_value(__wrap_OSHash_Get_ex_dup, self, (OSHash*)1);
@@ -2292,20 +2301,7 @@ void test_router_message_forward_invalid_delta_json_message(void** state)
 
     router_syscollector_handle = (ROUTER_PROVIDER_HANDLE)(1);
 
-    expect_string(__wrap_router_provider_send_fb, msg, expected_message);
-    expect_string(__wrap_router_provider_send_fb, schema, syscollector_deltas_SCHEMA);
-    will_return(__wrap_router_provider_send_fb, -1);
-
-    expect_string(__wrap__mdebug2,
-                  formatted_msg,
-                  "Unable to forward message "
-                  "'{\"agent_info\":{\"agent_id\":\"001\",\"agent_ip\":\"192.168.33.20\",\"agent_name\":\"focal\"}}' "
-                  "for agent 001");
-
-    will_return(__wrap_OSHash_Get_ex_dup, NULL);
-    expect_value(__wrap_OSHash_Get_ex_dup, self, (OSHash*)1);
-    expect_string(__wrap_OSHash_Get_ex_dup, key, data->agent_id);
-
+    // This type of message must be discarded
     router_message_forward(message, data->agent_id, data->agent_ip, data->agent_name);
 }
 
@@ -2689,7 +2685,7 @@ void test_router_message_forward_sync_package_negative_size_json_message(void** 
         "(library)\",\"format\":\"deb\",\"groups\":\"libs\",\"item_id\":\"ec465b7eb5fa011a336e95614072e4c7f1a65a53\","
         "\"multiarch\":\"same\",\"name\":\"libgif7\",\"priority\":\"optional\",\"scan_time\":\"2023/08/04 "
         "19:56:11\",\"size\":-608905503,\"source\":\"giflib\",\"vendor\":\"Ubuntu Developers "
-        "<ubuntu-devel-discuss@lists.ubuntu.com>\",\"version\":\"5.1.9-1\"}}' for agent 001");
+        "<ubuntu-devel-discuss@lists.ubuntu.com>\",\"version\":\"5.1.9-1\"}}' for agent '001'.");
 
     will_return(__wrap_OSHash_Get_ex_dup, NULL);
     expect_value(__wrap_OSHash_Get_ex_dup, self, (OSHash*)1);
