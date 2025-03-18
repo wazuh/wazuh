@@ -9,6 +9,7 @@
 #include "mockBuildCtx.hpp"
 #include "mockRegistry.hpp"
 
+#include <builder/mockAllowedFields.hpp>
 #include <defs/mockDefinitions.hpp>
 #include <schemf/mockSchema.hpp>
 
@@ -37,6 +38,7 @@ struct BuildersMocks
     std::shared_ptr<MockSchema> validator;
     std::shared_ptr<MockMetaRegistry<OpBuilderEntry, StageBuilder>> registry;
     std::shared_ptr<MockDefinitions> definitions;
+    std::shared_ptr<MockAllowedFields> allowedFields;
     Context context;
 };
 
@@ -53,10 +55,12 @@ protected:
         mocks->validator = std::make_shared<MockSchema>();
         mocks->registry = MockMetaRegistry<OpBuilderEntry, StageBuilder>::createMock();
         mocks->definitions = std::make_shared<MockDefinitions>();
+        mocks->allowedFields = std::make_shared<MockAllowedFields>();
 
         ON_CALL(*mocks->ctx, context()).WillByDefault(testing::ReturnRef(mocks->context));
         ON_CALL(*mocks->ctx, runState()).WillByDefault(testing::Return(mocks->runState));
         ON_CALL(*mocks->ctx, validator()).WillByDefault(testing::ReturnRef(*(mocks->validator)));
+        ON_CALL(*mocks->ctx, allowedFields()).WillByDefault(testing::ReturnRef(*(mocks->allowedFields)));
     }
 
     void expectBuildSuccess()

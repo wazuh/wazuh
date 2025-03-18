@@ -22,6 +22,8 @@ private:
 
     std::shared_ptr<const schemf::ISchema> m_schema; // Schema
 
+    std::shared_ptr<const builder::IAllowedFields> m_allowedFields; // Allowed fields
+
 public:
     BuildCtx()
     {
@@ -30,6 +32,7 @@ public:
         m_registry = nullptr;
         m_definitions = nullptr;
         m_schemaValidator = nullptr;
+        m_allowedFields = nullptr;
     }
 
     ~BuildCtx() = default;
@@ -38,12 +41,14 @@ public:
              const Context& context,
              const std::shared_ptr<const RegistryType>& registry,
              const std::shared_ptr<defs::IDefinitions>& definitions,
-             const std::shared_ptr<const schemf::IValidator>& schemaValidator)
+             const std::shared_ptr<const schemf::IValidator>& schemaValidator,
+             const std::shared_ptr<const builder::IAllowedFields>& allowedFields)
         : m_runState(runState)
         , m_context(context)
         , m_registry(registry)
         , m_definitions(definitions)
         , m_schemaValidator(schemaValidator)
+        , m_allowedFields(allowedFields)
     {
     }
 
@@ -72,6 +77,12 @@ public:
 
     inline std::shared_ptr<const RunState> runState() const override { return m_runState; }
     inline RunState& runState() { return *m_runState; }
+
+    inline const builder::IAllowedFields& allowedFields() const override { return *m_allowedFields; }
+    inline void setAllowedFields(const std::shared_ptr<const builder::IAllowedFields>& allowedFields) override
+    {
+        m_allowedFields = allowedFields;
+    }
 };
 
 } // namespace builder::builders
