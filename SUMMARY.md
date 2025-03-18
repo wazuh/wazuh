@@ -27,6 +27,7 @@
     - [Architecture](ref/modules/engine/architecture.md)
     - [API Reference](ref/modules/engine/api-reference.md)
     - [Outputs Reference](ref/modules/engine/ref-output.md)
+    - [Parsers Reference](ref/modules/engine/ref-parser.md)
   - [Management API](ref/modules/management/README.md)
     - [Architecture](ref/modules/management/architecture.md)
     - [API Reference](ref/modules/management/api-reference.md)
