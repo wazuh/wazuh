@@ -1700,12 +1700,133 @@ Aditionally we define some types for the purpose to use specific parsers, normal
 
 ## Debugging
 
-### Logs
+By default, the Engine's log information is recorded in journald when launching the wazuh-manager service.
 
-### Tester
+### Filtering Logs by Executable Name
+You can retrieve logs specifically for the Engine using journald’s _COMM field:
+
+```bash
+journalctl _COMM=wazuh-engine
+```
+
+For real-time monitoring of errors:
+```bash
+journalctl -f _COMM=wazuh-engine
+```
+
+### Filtering Logs by Severity
+To refine logs based on severity levels you can combine grep:
+```bash
+journalctl _COMM=wazuh-engine | grep info
+
+Dec 18 14:59:22 WazPc env[12974]: 2024-12-18 14:59:22.663 12974:12974 info: Logging initialized.
+Dec 18 14:59:22 WazPc env[12974]: 2024-12-18 14:59:22.668 12974:12974 fileDriver.cpp:231 at readCol(): debug: FileDriver readCol name: 'namespaces/system/decoder/core-hostinfo'.
+Dec 18 14:59:22 WazPc env[12974]: 2024-12-18 14:59:22.669 12974:12974 main.cpp:166 at main(): info: Store initialized.
+Dec 18 14:59:22 WazPc env[12974]: 2024-12-18 14:59:22.669 12974:12974 main.cpp:172 at main(): info: RBAC initialized.
+```
+
+Available severity levels:
+- **trace** – Provides highly detailed debugging information, useful for deep troubleshooting.
+- **debug** – Contains diagnostic messages intended for developers to track execution flow.
+- **info** – General operational logs that indicate normal Engine activity.
+- **warning** – Highlights potential issues that do not impact functionality but may require attention.
+- **error** – Reports issues that may cause incorrect behavior but do not stop the Engine.
+- **critical** – Indicates severe failures that may result in the Engine stopping or becoming unstable.
 
 ### Traces
+Traces allow you to inspect the operational graph behavior, providing insights into how events are processed within the Engine. By using the tester endpoint (refer to the API documentation for details), you can specify several options to debug event processing effectively.
 
+Available trace options:
+- **Namespaces** – Filters traces to show only the assets under a specified namespace.
+- **Graph History** – Displays all assets that processed a given event, allowing a complete view of its journey.
+- **Traces** – Provides a detailed history of all operations performed by each asset (or a specified set of assets).
+
+Here is a test example showing the graph history:
+```
+traces:
+[🔴] decoder/zeek-x509/0 -> failed
+[🔴] decoder/zeek-weird/0 -> failed
+[🔴] decoder/zeek-traceroute/0 -> failed
+[🔴] decoder/zeek-stats/0 -> failed
+[🔴] decoder/zeek-software/0 -> failed
+[🔴] decoder/zeek-socks/0 -> failed
+[🔴] decoder/zeek-snmp/0 -> failed
+[🔴] decoder/zeek-smb_mapping/0 -> failed
+[🔴] decoder/zeek-smb_files/0 -> failed
+[🔴] decoder/apache-error/0 -> failed
+[🔴] decoder/zeek-smb_cmd/0 -> failed
+[🔴] decoder/zeek-ssl/0 -> failed
+[🔴] decoder/snort-json/0 -> failed
+[🔴] decoder/squid-access/0 -> failed
+[🔴] decoder/zeek-known_certs/0 -> failed
+[🔴] decoder/suricata/0 -> failed
+[🔴] decoder/zeek-irc/0 -> failed
+[🔴] decoder/microsoft-exchange-server-smtp/0 -> failed
+[🔴] decoder/snort-plaintext/0 -> failed
+[🔴] decoder/pfsense-firewall/0 -> failed
+[🔴] decoder/pfsense-dhcp/0 -> failed
+[🔴] decoder/apache-access/0 -> failed
+[🔴] decoder/snort-plaintext-csv/0 -> failed
+[🔴] decoder/zeek-sip/0 -> failed
+[🔴] decoder/pfsense-unbound/0 -> failed
+[🔴] decoder/iis/0 -> failed
+[🔴] decoder/zeek-signature/0 -> failed
+[🔴] decoder/modsecurity-nginx/0 -> failed
+[🔴] decoder/microsoft-dhcpv6/0 -> failed
+[🔴] decoder/zeek-conn/0 -> failed
+[🔴] decoder/zeek-modbus/0 -> failed
+[🔴] decoder/microsoft-exchange-server-imap4-pop3/0 -> failed
+[🔴] decoder/pfsense-php-fpm/0 -> failed
+[🔴] decoder/microsoft-exchange-server-messagetracking/0 -> failed
+[🔴] decoder/microsoft-exchange-server-httpproxy/0 -> failed
+[🔴] decoder/zeek-kerberos/0 -> failed
+[🔴] decoder/modsecurity-apache/0 -> failed
+[🔴] decoder/microsoft-dhcp/0 -> failed
+[🔴] decoder/zeek-pe/0 -> failed
+[🔴] decoder/windows-event/0 -> failed
+[🔴] decoder/zeek-capture_loss/0 -> failed
+[🔴] decoder/zeek-dhcp/0 -> failed
+[🔴] decoder/zeek-dnp3/0 -> failed
+[🔴] decoder/zeek-dns/0 -> failed
+[🔴] decoder/zeek-smtp/0 -> failed
+[🔴] decoder/zeek-http/0 -> failed
+[🔴] decoder/zeek-rfb/0 -> failed
+[🔴] decoder/zeek-files/0 -> failed
+[🔴] decoder/zeek-ftp/0 -> failed
+[🔴] decoder/zeek-ssh/0 -> failed
+[🔴] decoder/zeek-ocsp/0 -> failed
+[🔴] decoder/zeek-dce_rpc/0 -> failed
+[🔴] decoder/zeek-intel/0 -> failed
+[🔴] decoder/zeek-syslog/0 -> failed
+[🔴] decoder/zeek-known_hosts/0 -> failed
+[🔴] decoder/zeek-dpd/0 -> failed
+[🔴] decoder/zeek-known_services/0 -> failed
+[🔴] decoder/zeek-mysql/0 -> failed
+[🔴] decoder/zeek-ntlm/0 -> failed
+[🔴] decoder/zeek-tunnel/0 -> failed
+[🔴] decoder/zeek-notice/0 -> failed
+[🔴] decoder/zeek-ntp/0 -> failed
+[🔴] decoder/zeek-radius/0 -> failed
+[🟢] decoder/syslog/0 -> success
+[🔴] decoder/sysmon-linux/0 -> failed
+[🔴] decoder/system-auth/0 -> failed
+[🔴] decoder/snort-plaintext-syslog/0 -> failed
+[🔴] decoder/wazuh-dashboard/0 -> failed
+```
+
+Showing full traces:
+```
+traces:
+[🟢] decoder/syslog/0 -> success
+  ↳ [/event/original: <event.start/Jun 14 15:16:01> <host.hostname> <TAG/alphanumeric/->[<process.pid>]:<~/ignore/ ><message>] -> Failure: Parse operation failed: Parser <event.start/Jun 14 15:16:01> failed at: 2018-08-14T14:30:02.203151+02:00 linux-sqrz systemd[4179]: Stopped target Basic System.
+  ↳ [/event/original: <event.start/Jun 14 15:16:01> <host.hostname> <TAG/alphanumeric/->:<~/ignore/ ><message>] -> Failure: Parse operation failed: Parser <event.start/Jun 14 15:16:01> failed at: 2018-08-14T14:30:02.203151+02:00 linux-sqrz systemd[4179]: Stopped target Basic System.
+  ↳ [/event/original: <event.start/2018-08-14T14:30:02.203151+02:00> <host.hostname> <TAG/alphanumeric/->[<process.pid>]: <message>] -> Success
+  ↳ event.kind: map("event") -> Success
+  ↳ wazuh.decoders: array_append("syslog") -> Success
+  ↳ related.hosts: array_append($host.hostname) -> Success
+  ↳ process.name: rename($TAG) -> Success
+  ↳ host.ip: array_append($tmp.host_ip) -> Failure: 'tmp.host_ip' not found
+```
 
 ## F.A.Q
 - A explanation of the time zone and how it works in the engine.
