@@ -1047,10 +1047,11 @@ checks:
       - soc_2: ["CC7.1", "CC8.1"]
     condition: all
     rules:
+      - "f:/etc/dconf/profile/gdm"
       - "f:/etc/dconf/profile/gdm -> r:user-db:user"
       - "f:/etc/dconf/profile/gdm -> r:system-db:gdm"
       - "f:/etc/dconf/profile/gdm -> r:file-db:/usr/share/gdm/greeter-dconf-defaults"
-      - 'd:/etc/dconf/db/gdm.d/ -> r:\. -> r:disable-user-list=true'
+      - 'd:/etc/dconf/db/gdm.d/ -> r:\.* -> r:disable-user-list=true'
 
   # 1.8.4 Ensure XDCMP is not enabled. (Automated)
   - id: 6046
@@ -1169,7 +1170,6 @@ checks:
       - 'f:/etc/ntp.conf -> r:^restrict\s+-4\s+default|^restrict\s+default && r:\s+kod\s+ && r:\s+nomodify\s+ && r:\s+notrap\s+ && r:\s+nopeer\s+ && r:\s+noquery'
       - 'f:/etc/ntp.conf -> r:^restrict\s+-6\s+default && r:\s+kod\s+ && r:\s+nomodify\s+ && r:\s+notrap\s+ && r:\s+nopeer\s+ && r:\s+noquery'
       - 'f:/etc/ntp.conf -> r:^server\.+|^pool\.+'
-      - 'f:/etc/sysconfig/ntpd -> r:^OPTIONS\s*=\s* && r:-u ntp:ntp'
 
   # 2.2.2 Ensure X11 Server components are not installed. (Automated)
   - id: 6051
@@ -3376,8 +3376,9 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - "c:stat /etc/at.deny -> r:No such file or directory$"
-      - 'c:stat /etc/at.allow -> r:^Access: \(0600/-rw-------\)\s*Uid: \(\s*0/\s*root\)\s*Gid: \(\s*0/\s*root\)$'
+      - "not f:/etc/at.deny"
+      - "f:/etc/at.allow"
+      - 'c:stat -Lc "%n %a %u %U %g %G" /etc/at.allow -> r:0 root 0 root && r:600'
 
   ###############################################
   # 5.2 Configure Sudo
@@ -4009,7 +4010,6 @@ checks:
     condition: all
     rules:
       - 'f:/etc/login.defs -> n:^\s*PASS_MAX_DAYS\s*\t*(\d+) compare <= 365'
-      - 'not f:/etc/shadow -> !r:^\w+:!|^\w+:\p: && n:^\w+:\S*:\S*:\S*:(\d+):\S*:\S*:\S*:\S* compare > 365'
 
   # 5.5.1.2 Ensure minimum days between password changes is configured. (Automated)
   - id: 6180
@@ -4030,8 +4030,6 @@ checks:
     condition: all
     rules:
       - 'f:/etc/login.defs -> n:^\s*PASS_MIN_DAYS\s*\t*(\d+) compare >= 1'
-      - 'not f:/etc/shadow -> n:^\w+:\S*:\S*:(\d+):\S*:\S*:\S*:\S*:\S* compare < 1'
-      - 'not f:/etc/shadow -> r:^\w+:\S*:\S*::\S*:\S*:\S*:\S*:\S*'
 
   # 5.5.1.3 Ensure password expiration warning days is 7 or more. (Automated)
   - id: 6181
@@ -4052,8 +4050,6 @@ checks:
     condition: all
     rules:
       - 'f:/etc/login.defs -> n:^\s*PASS_WARN_AGE\s*\t*(\d+) compare >= 7'
-      - 'f:/etc/shadow -> n:^\w+:\S*:\S*:\S*:\S*:(\d+):\S*:\S*:\S* compare >= 7'
-      - 'not f:/etc/shadow -> r:^\w+:\S*:\S*:\S*:\S*::\S*:\S*:\S*'
 
   # 5.5.1.4 Ensure inactive password lock is 30 days or less. (Automated)
   - id: 6182
@@ -4173,7 +4169,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'c:stat /etc/passwd- -> r:Access:\s*\(0644/-rw-------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat /etc/passwd- -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
   # 6.1.4 Ensure permissions on /etc/shadow are configured. (Automated)
   - id: 6187
@@ -4346,7 +4342,7 @@ checks:
       - iso_27001-2013: ["A.9.4.3"]
       - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
       - soc_2: ["CC6.1"]
-    condition: all
+    condition: none
     rules:
       - 'f:/etc/shadow -> !r:^# && r:^\w+::'
 

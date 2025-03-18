@@ -3536,7 +3536,7 @@ checks:
     rules:
       - "not f:/etc/at.deny"
       - "f:/etc/at.allow"
-      - 'c:stat -Lc "%n %a %u %U %g %G" /etc/at.allow -> r:0 root 0 root && r:600|400|200|000'
+      - 'c:stat -Lc "%n %a %u %U %g %G" /etc/at.allow -> r:0 root 0 root && r:600'
 
   ###############################################
   # 5.2 Configure SSH
