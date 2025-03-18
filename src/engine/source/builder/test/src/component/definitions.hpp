@@ -2,6 +2,7 @@
 #define _BUILDER_TEST_DEFINITIONS_HPP
 
 #include <base/behaviour.hpp>
+#include <builder/allowedFields.hpp>
 #include <builder/builder.hpp>
 #include <defs/mockDefinitions.hpp>
 #include <logpar/logpar.hpp>
@@ -340,8 +341,10 @@ public:
         builderDeps.kvdbScopeName = "builder";
         builderDeps.kvdbManager = nullptr;
 
+        auto emptyAllowedFields = std::make_shared<builder::AllowedFields>();
+
         m_spBuilder = std::make_shared<builder::Builder>(
-            m_spMocks->m_spStore, m_spMocks->m_spSchemf, m_spMocks->m_spDefBuilder, builderDeps);
+            m_spMocks->m_spStore, m_spMocks->m_spSchemf, m_spMocks->m_spDefBuilder, emptyAllowedFields, builderDeps);
     }
 };
 
