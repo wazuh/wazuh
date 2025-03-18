@@ -12,7 +12,7 @@ The `file` output sends alerts to a file. The file is created if it does not exi
 
 ```yaml
 file:
-    path: ${PATH}$
+    path: ${PATH}
 ```
 
 ### Parameters
