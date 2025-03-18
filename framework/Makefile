@@ -19,7 +19,8 @@ CFLAGS       = -pipe -Wall -Wextra
 THREAD_FLAGS = -pthread
 MV_FILE      = mv -f
 RM_FILE      = rm -f
-INSTALL_DIR  = install -o ${WAZUH_USER} -g ${WAZUH_GROUP} -m 0750  -d
+INSTALL_REGULAR_DIR  = install -o ${WAZUH_USER} -g ${WAZUH_GROUP} -m 0750  -d
+INSTALL_RESTRICTED_DIR  = install -o ${WAZUH_USER} -g ${WAZUH_GROUP} -m 0500  -d
 INSTALL_EXEC = install -o ${WAZUH_USER} -g ${WAZUH_GROUP} -m 0750
 INSTALL_FILE = install -o ${WAZUH_USER} -g ${WAZUH_GROUP} -m 0640
 
@@ -37,22 +38,22 @@ all: build
 
 install:
 	# SHARE
-	$(INSTALL_DIR) $(BIN_INSTALLDIR)
-	$(INSTALL_DIR) $(SHARE_INSTALLDIR)/framework
-	$(INSTALL_DIR) $(SHARE_INSTALLDIR)/framework/scripts
-	$(INSTALL_DIR) $(SHARE_INSTALLDIR)/framework/wazuh
-	$(INSTALL_DIR) $(SHARE_INSTALLDIR)/framework/wazuh/core/cluster
-	$(INSTALL_DIR) $(SHARE_INSTALLDIR)/framework/wazuh/core/cluster/dapi
-	$(INSTALL_DIR) $(SHARE_INSTALLDIR)/framework/wazuh/core/cluster/hap_helper
+	$(INSTALL_REGULAR_DIR) $(BIN_INSTALLDIR)
+	$(INSTALL_REGULAR_DIR) $(SHARE_INSTALLDIR)/framework
+	$(INSTALL_REGULAR_DIR) $(SHARE_INSTALLDIR)/framework/scripts
+	$(INSTALL_REGULAR_DIR) $(SHARE_INSTALLDIR)/framework/wazuh
+	$(INSTALL_REGULAR_DIR) $(SHARE_INSTALLDIR)/framework/wazuh/core/cluster
+	$(INSTALL_REGULAR_DIR) $(SHARE_INSTALLDIR)/framework/wazuh/core/cluster/dapi
+	$(INSTALL_REGULAR_DIR) $(SHARE_INSTALLDIR)/framework/wazuh/core/cluster/hap_helper
 
 	# LOGS
-	$(INSTALL_DIR) $(LOG_INSTALLDIR)
+	$(INSTALL_REGULAR_DIR) $(LOG_INSTALLDIR)
 
 	# ETC
-	$(INSTALL_DIR) $(ETC_INSTALLDIR)
-	$(INSTALL_DIR) $(ETC_INSTALLDIR)/cluster
-	$(INSTALL_DIR) $(ETC_INSTALLDIR)/certs
-	$(INSTALL_DIR) $(ETC_INSTALLDIR)/groups
+	$(INSTALL_REGULAR_DIR) $(ETC_INSTALLDIR)
+	$(INSTALL_REGULAR_DIR) $(ETC_INSTALLDIR)/cluster
+	$(INSTALL_RESTRICTED_DIR) $(ETC_INSTALLDIR)/certs
+	$(INSTALL_REGULAR_DIR) $(ETC_INSTALLDIR)/groups
 
 	# SHARE
 	$(INSTALL_EXEC) scripts/wazuh_server.py ${SHARE_INSTALLDIR}/framework/scripts/wazuh-server.py
@@ -73,7 +74,7 @@ install:
 	$(RM_FILE) ${BIN_INSTALLDIR}/__init__
 
 examples: install
-	$(INSTALL_DIR) $(INSTALLDIR)/framework/examples
+	$(INSTALL_REGULAR_DIR) $(INSTALLDIR)/framework/examples
 	$(INSTALL_EXEC) examples/*.py ${INSTALLDIR}/framework/examples
 
 clean:
