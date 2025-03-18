@@ -95,6 +95,33 @@ compute_version_revision() {
     wazuh_version="$(awk -F'"' '/"version"[ \t]*:/ {print $4}' $source_directory/VERSION.json)"
     wazuh_revision=$(awk -F'"' '/"stage"[ \t]*:/ {print $4}' $source_directory/VERSION.json)
 
+    # Add commit hash to the VERSION.json file
+    short_commit_hash=$(/usr/local/bin/curl -ks "https://api.github.com/repos/wazuh/wazuh/commits/${wazuh_branch}" | awk -F '"' '/"sha":/ {print substr($4, 1, 7); exit}')
+    awk -v commit="$short_commit_hash" '
+    {
+        lines[NR] = $0  # Store lines in an array
+    }
+    END {
+        last_index = NR  # Save the last line index
+        for (i = 1; i <= last_index; i++) {
+            if (i == last_index) {  # When reaching the last line (assumed to be "}")
+                if (lines[i-1] !~ /,$/)  # If the previous line does not end with a comma, add one
+                    lines[i-1] = lines[i-1] ",";
+
+                print lines[i-1];  # Print the modified previous line
+                print "    \"commit\": \"" commit "\"";  # Insert commit using the passed variable
+                print lines[i];  # Print the closing brace
+            } else if (i < last_index - 1) {
+                print lines[i];  # Print all other lines unchanged
+            }
+        }
+    }
+    ' $source_directory/VERSION.json > $source_directory/VERSION.json.tmp && mv $source_directory/VERSION.json.tmp $source_directory/VERSION.json
+    cat $source_directory/VERSION.json
+
+    # Remove the temporary file after processing (if any remains)
+    [ -f $source_directory/VERSION.json.tmp ] && rm $source_directory/VERSION.json.tmp
+
     echo ${wazuh_version} > /tmp/VERSION
     echo ${wazuh_revision} > /tmp/REVISION
 
