@@ -4,6 +4,7 @@
 
 #include <store/utils.hpp>
 
+#include "allowedFields.hpp"
 #include "builders/ibuildCtx.hpp"
 #include "policy/assetBuilder.hpp"
 #include "policy/factory.hpp"
@@ -21,10 +22,12 @@ class Builder::Registry final : public builders::RegistryType
 Builder::Builder(const std::shared_ptr<store::IStore>& storeRead,
                  const std::shared_ptr<schemf::IValidator>& schema,
                  const std::shared_ptr<defs::IDefinitionsBuilder>& definitionsBuilder,
+                 const std::shared_ptr<IAllowedFields>& allowedFields,
                  const BuilderDeps& builderDeps)
     : m_storeRead {storeRead}
     , m_schema {schema}
     , m_definitionsBuilder {definitionsBuilder}
+    , m_allowedFields {allowedFields}
 {
     if (!m_storeRead)
     {
