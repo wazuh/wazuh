@@ -509,17 +509,7 @@ async def test_DistributedAPI_tmp_file_cluster_error():
     'wazuh.core.cluster.local_client.LocalClient.execute',
     new=AsyncMock(return_value='{"items": [{"name": "master"}], "totalItems": 1}'),
 )
-@patch(
-    'wazuh.agent.Agent.get_agents_overview',
-    return_value={
-        'items': [
-            {'id': '001', 'node_name': 'master'},
-            {'id': '002', 'node_name': 'master'},
-            {'id': '003', 'node_name': 'unknown'},
-        ]
-    },
-)
-async def test_DistributedAPI_get_solver_node(mock_agents_overview):
+async def test_DistributedAPI_get_solver_node():
     """Test `get_solver_node` function."""
     nodes_info_result = AffectedItemsWazuhResult()
     nodes_info_result.affected_items.append({'name': 'master'})

@@ -106,29 +106,6 @@ async def test_get_health():
 
 
 @pytest.mark.asyncio
-async def test_get_agents():
-    """Verify that get_agents function returns the health of the agents connected through the current node."""
-    local_client = LocalClient()
-    with patch('wazuh.core.cluster.local_client.LocalClient.execute', side_effect=async_local_client):
-        expected_result = [{'items': [{'name': 'master'}]}, {'items': []}]
-        for expected in expected_result:
-            with patch('json.loads', return_value=expected):
-                result = await control.get_agents(lc=local_client)
-                assert result == expected
-
-        with patch('json.loads', return_value=KeyError(1)):
-            with pytest.raises(KeyError):
-                await control.get_agents(lc=local_client)
-
-    with patch('wazuh.core.cluster.local_client.LocalClient.execute', side_effect=[WazuhClusterError(3020), 'error']):
-        with pytest.raises(WazuhClusterError):
-            await control.get_agents(lc=local_client)
-
-        with pytest.raises(json.JSONDecodeError):
-            await control.get_agents(lc=local_client)
-
-
-@pytest.mark.asyncio
 async def test_get_system_nodes():
     """Verify that get_system_nodes function returns the name of all cluster nodes."""
     with patch('wazuh.core.cluster.local_client.LocalClient.execute', side_effect=async_local_client):

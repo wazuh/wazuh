@@ -6,9 +6,8 @@ import json
 
 from wazuh import WazuhInternalError
 from wazuh.core import common
-from wazuh.core.agent import Agent
 from wazuh.core.cluster import local_client
-from wazuh.core.cluster.common import WazuhJSONEncoder, as_wazuh_object
+from wazuh.core.cluster.common import as_wazuh_object
 from wazuh.core.utils import filter_array_by_query
 
 
@@ -154,50 +153,6 @@ async def get_health(lc: local_client.LocalClient, filter_node=None):
     if isinstance(result, Exception):
         raise result
 
-    return result
-
-
-async def get_agents(lc: local_client.LocalClient, filter_node=None, filter_status=None):
-    """Get list of agents and which node they are connected to.
-
-    Parameters
-    ----------
-    lc : LocalClient object
-        LocalClient with which to send the 'get_nodes' request.
-    filter_node : list
-        Node to return.
-    filter_status : list
-        Agent connection status to filter by.
-
-    Returns
-    -------
-    result : dict
-        Agent's basic information.
-    """
-    filter_status = ['all'] if not filter_status else filter_status
-    filter_node = ['all'] if not filter_node else filter_node
-    select_fields = {'id', 'ip', 'name', 'status', 'node_name', 'version'}
-
-    input_json = {
-        'f': Agent.get_agents_overview,
-        'f_kwargs': {
-            'filters': {'status': ','.join(filter_status), 'node_name': ','.join(filter_node)},
-            'limit': None,
-            'select': list(select_fields),
-        },
-        'from_cluster': False,
-        'wait_for_complete': False,
-    }
-
-    response = await lc.execute(command=b'dapi', data=json.dumps(input_json, cls=WazuhJSONEncoder).encode())
-    result = json.loads(response, object_hook=as_wazuh_object)
-
-    if isinstance(result, Exception):
-        raise result
-    # add unknown value to unfilled variables in result. For example, never_connected agents will miss the 'version'
-    # variable.
-    filled_result = [{**r, **{key: 'unknown' for key in select_fields - r.keys()}} for r in result['items']]
-    result['items'] = filled_result
     return result
 
 

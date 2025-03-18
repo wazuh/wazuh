@@ -1406,9 +1406,9 @@ async def test_master_file_status_update(run_in_pool_mock, asyncio_sleep_mock):
 
 
 @patch('asyncio.get_running_loop', return_value=loop)
-@patch('wazuh.core.agent.Agent.get_agents_overview', return_value={'totalItems': 5})
+@patch('wazuh.core.agent.get_agents_info', return_value=['1' * 5])
 @pytest.mark.skip('Remove function on cluster removal.')
-def test_master_get_health(get_running_loop_mock, get_agent_overview_mock):
+def test_master_get_health(get_running_loop_mock, get_agents_info_mock):
     """Check if nodes and the synchronization information is properly obtained."""
 
     class MockDict(Dict):
