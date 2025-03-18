@@ -20,7 +20,6 @@
 #include "ebpf/include/ebpf_whodata.h"
 
 // Global variables
-extern bool is_fim_shutdown;
 syscheck_config syscheck;
 int sys_debug_level;
 int audit_queue_full_reported = 0;
@@ -320,7 +319,7 @@ int Start_win32_Syscheck() {
 void check_ebpf_availability() {
     minfo(FIM_EBPF_INIT);
     fimebpf_initialize(fim_configuration_directory, get_user, get_group, fim_whodata_event,
-                       free_whodata_event, loggingFunction, abspath, is_fim_shutdown, syscheck);
+                       free_whodata_event, loggingFunction, abspath, fim_shutdown_process_on, syscheck.queue_size);
     if (ebpf_whodata_healthcheck()) {
         directory_t *dir_it;
         OSListNode *node_it;

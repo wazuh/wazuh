@@ -29,6 +29,7 @@ public:
     using free_whodata_event_t = void (*)(whodata_evt*);
     using loggingFunction_t = void (*)(modules_log_level_t, const char*);
     using abspath_t = char* (*)(const char*, char*, size_t);
+    using fimShutdownProcessOn_t = bool (*)();
 
     // Initialize the class with pointers to the C functions
     void initialize(fim_configuration_directory_t fim_conf,
@@ -38,8 +39,8 @@ public:
                     free_whodata_event_t free_whodata_event,
                     loggingFunction_t loggingFunction,
                     abspath_t abspath,
-                    bool is_fim_shutdown,
-                    syscheck_config syscheck)
+                    fimShutdownProcessOn_t fimShutdownProcessOn,
+                    unsigned int syscheckQueueSize)
     {
         m_fim_configuration_directory = fim_conf;
         m_get_user = get_user;
@@ -48,8 +49,8 @@ public:
         m_free_whodata_event = free_whodata_event;
         m_loggingFunction = loggingFunction;
         m_abspath = abspath;
-        m_syscheck = syscheck;
-        m_is_fim_shutdown = is_fim_shutdown;
+        m_queue_size = syscheckQueueSize;
+        m_fim_shutdown_process_on = fimShutdownProcessOn;
     }
 
 private:
@@ -66,8 +67,8 @@ public:
     free_whodata_event_t m_free_whodata_event = nullptr;
     loggingFunction_t m_loggingFunction = nullptr;
     abspath_t m_abspath = nullptr;
-    syscheck_config m_syscheck;
-    bool m_is_fim_shutdown;
+    unsigned int m_queue_size;
+    fimShutdownProcessOn_t m_fim_shutdown_process_on;
 };
 
 #endif // EBPF_WHODATA_HPP
