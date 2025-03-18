@@ -45,14 +45,12 @@ with patch('wazuh.core.common.wazuh_uid'):
             restart_agents,
             update_group_file,
         )
-        from wazuh.core.agent import Agent
         from wazuh.core.exception import WazuhResourceNotFound
         from wazuh.core.indexer.base import IndexerKey
         from wazuh.core.indexer.commands import CommandsManager
         from wazuh.core.indexer.models.agent import Agent as IndexerAgent
         from wazuh.core.indexer.models.commands import CreateCommandResponse, ResponseResult
         from wazuh.core.results import AffectedItemsWazuhResult, WazuhResult
-        from wazuh.core.tests.test_agent import InitAgent
         from wazuh.core.utils import GROUP_FILE_EXT
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
@@ -60,7 +58,6 @@ test_agent_path = os.path.join(test_data_path, 'agent')
 test_groups_path = os.path.join(test_agent_path, 'groups')
 test_global_bd_path = os.path.join(test_data_path, 'global.db')
 
-test_data = InitAgent(data_path=test_data_path)
 full_agent_list = ['001', '002', '003', '004', '005', '006', '007', '008', '009']
 short_agent_list = ['001', '002', '003', '004', '005']
 
@@ -136,7 +133,7 @@ async def test_agent_restart_agents(create_indexer_mock, agent_list, expected_it
         '01928c6a-3069-736d-a641-647352e4fd0d',
         '01928c6a-3069-719c-a32c-44671da04717',
     ]
-    agents_search_mock = AsyncMock(return_value=[Agent(id=agent_id) for agent_id in all_agent_ids])
+    agents_search_mock = AsyncMock(return_value=[IndexerAgent(id=agent_id) for agent_id in all_agent_ids])
     create_indexer_mock.return_value.agents.search = agents_search_mock
 
     create_response = CreateCommandResponse(
@@ -264,7 +261,7 @@ async def test_agent_delete_agents(create_indexer_mock, agent_list, available_ag
         List of expected agent ID's returned by
     """
     filters = {}
-    agents_search_mock = AsyncMock(return_value=[Agent(id=agent_id) for agent_id in available_agents])
+    agents_search_mock = AsyncMock(return_value=[IndexerAgent(id=agent_id) for agent_id in available_agents])
     agents_delete_mock = AsyncMock(return_value=expected_items)
 
     create_indexer_mock.return_value.agents.search = agents_search_mock

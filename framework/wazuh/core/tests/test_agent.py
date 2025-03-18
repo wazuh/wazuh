@@ -10,24 +10,25 @@ from unittest.mock import AsyncMock, patch
 import pytest
 from wazuh.core.cluster.tests.conftest import get_default_configuration
 from wazuh.core.config.client import CentralizedConfig
+from wazuh.core.config.models.server import ValidateFilePathMixin
 
 with patch('wazuh.core.common.wazuh_uid'):
     with patch('wazuh.core.common.wazuh_gid'):
-        default_config = get_default_configuration()
-        CentralizedConfig._config = default_config
+        with patch.object(ValidateFilePathMixin, '_validate_file_path', return_value=None):
+            default_config = get_default_configuration()
+            CentralizedConfig._config = default_config
 
-        from wazuh.core.agent import (
-            delete_single_group,
-            expand_group,
-            get_agents_info,
-            get_group_file_path,
-            get_groups,
-            get_rbac_filters,
-            group_exists,
-        )
-        from wazuh.core.common import reset_context_cache
-        from wazuh.core.exception import WazuhError
-        from wazuh.core.indexer.agent import Agent as IndexerAgent
+            from wazuh.core.agent import (
+                delete_single_group,
+                expand_group,
+                get_agents_info,
+                get_group_file_path,
+                get_groups,
+                group_exists,
+            )
+            from wazuh.core.common import reset_context_cache
+            from wazuh.core.exception import WazuhError
+            from wazuh.core.indexer.agent import Agent as IndexerAgent
 
 # all necessary params
 
@@ -54,24 +55,12 @@ async def test_agent_delete_single_group(
     mock_remove.assert_called_once_with(get_group_file_path(group))
 
 
-@pytest.mark.parametrize(
-    'group_exists',
-    [
-        True,
-        False,
-    ],
-)
-def test_agent_group_exists(group_exists):
-    """Test if group_exists() returns True when time from last connection is greater than <seconds>.
-
-    Parameters
-    ----------
-    group_exists : bool
-        Expected result
-    """
-    with patch('os.path.exists', return_value=group_exists):
+@pytest.mark.parametrize('expected_value', [True, False])
+def test_agent_group_exists(expected_value):
+    """Validate that `group_exists` returns whether the group exists or not."""
+    with patch('os.path.exists', return_value=expected_value):
         result = group_exists('default')
-        assert result == group_exists, f'Group exists should return {group_exists}'
+        assert result == expected_value, f'Group exists should return {expected_value}'
 
 
 def test_agent_group_exists_ko():
@@ -147,37 +136,3 @@ async def test_expand_group(create_indexer_mock, group, group_agents, expected_a
         create_indexer_mock.return_value.agents.get_group_agents = agents_in_group_mock
 
         assert await expand_group(group) == expected_agents
-
-
-@pytest.mark.parametrize(
-    'system_resources, permitted_resources, filters, expected_result',
-    [
-        (
-            {'001', '002', '003', '004'},
-            ['001', '002', '005', '006'],
-            None,
-            {'filters': {'rbac_ids': ['004', '003']}, 'rbac_negate': True},
-        ),
-        ({'001'}, ['002', '005', '006'], None, {'filters': {'rbac_ids': ['001']}, 'rbac_negate': True}),
-        (
-            {'group1', 'group3', 'group4'},
-            ['group1', 'group2', 'group5', 'group6'],
-            None,
-            {'filters': {'rbac_ids': ['group3', 'group4']}, 'rbac_negate': True},
-        ),
-        (
-            {'group1', 'group2', 'group3', 'group4', 'group5', 'group6'},
-            ['group1'],
-            {'testing': 'first'},
-            {'filters': {'rbac_ids': {'group1'}, 'testing': 'first'}, 'rbac_negate': False},
-        ),
-    ],
-)
-def test_get_rbac_filters(system_resources, permitted_resources, filters, expected_result):
-    """Check that the function get_rbac_filters calculates correctly the list of allowed or denied."""
-    result = get_rbac_filters(
-        system_resources=system_resources, permitted_resources=permitted_resources, filters=filters
-    )
-    result['filters']['rbac_ids'] = set(result['filters']['rbac_ids'])
-    expected_result['filters']['rbac_ids'] = set(expected_result['filters']['rbac_ids'])
-    assert result == expected_result
