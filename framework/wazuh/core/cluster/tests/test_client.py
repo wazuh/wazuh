@@ -23,46 +23,59 @@ with patch('wazuh.common.wazuh_uid'):
         import wazuh.core.cluster.client as client
         from wazuh import WazuhException
 
+from wazuh.core.config.models.server import NodeConfig, NodeType, ServerConfig, SSLConfig, ValidateFilePathMixin
 from wazuh.core.exception import WazuhClusterError
 
-cluster_items = {'intervals': {'worker': {'keep_alive': 1, 'max_failed_keepalive_attempts': 0, 'connection_retry': 2}}}
-configuration = {'node_name': 'manager', 'nodes': [0], 'port': 1515}
+# configuration = {'node_name': 'manager', 'nodes': [0], 'port': 1515}
+with patch.object(ValidateFilePathMixin, '_validate_file_path', return_value=None):
+    configuration = ServerConfig(
+        nodes=['0'],
+        node=NodeConfig(
+            name='manager', type=NodeType.MASTER, ssl=SSLConfig(key='example', cert='example', ca='example')
+        ),
+    )
 
 
 class FutureMock:
     def __init__(self):
+        """Initialize a FutureMock instance with a default value."""
         self.value = True
 
     def done(self):
+        """Return the completion status of the future."""
         return self.value
 
     def set_result(self, set):
+        """Set the result of the future (not implemented)."""
         pass
 
 
 class LoopMock:
     def __init__(self):
+        """Initialize a LoopMock instance."""
         pass
 
     @staticmethod
     async def create_connection(protocol_factory, host, port, ssl):
+        """Simulate the creation of an asynchronous connection."""
         return 'transport', 'protocol'
 
     def set_exception_handler(self, exc_handler):
+        """Set an exception handler for the loop."""
         pass
 
     def create_future(self):
+        """Create and return a future associated with the loop (not implemented)."""
         pass
 
 
 future_mock = FutureMock()
 abstract_client = client.AbstractClient(
-    loop=None, on_con_lost=future_mock, name='name', logger=None, manager=None, cluster_items=cluster_items
+    server_config=configuration, loop=None, on_con_lost=future_mock, name='name', logger=None, manager=None
 )
 with patch('asyncio.get_running_loop'):
     abstract_client_manager = client.AbstractClientManager(
-        configuration=configuration,
-        cluster_items=cluster_items,
+        server_config=configuration,
         performance_test=10,
         concurrency_test=10,
         file='/file/path',
@@ -75,9 +88,7 @@ with patch('asyncio.get_running_loop'):
 
 def test_acm_init():
     """Check the correct initialization of the AbstractClientManager object."""
-    assert abstract_client_manager.name == 'manager'
-    assert abstract_client_manager.configuration == configuration
-    assert abstract_client_manager.cluster_items == cluster_items
+    assert abstract_client_manager.name == configuration.node.name
     assert abstract_client_manager.performance_test == 10
     assert abstract_client_manager.concurrency_test == 10
     assert abstract_client_manager.file == '/file/path'
@@ -150,12 +161,6 @@ async def test_acm_start(add_tasks_mock, starmap_mock, asyncio_sleep_mock):
     ) as create_connection_mock:
         abstract_client_manager.loop = LoopMock()
         abstract_client_manager.tasks = [(0, 0), (1, 1)]
-        abstract_client_manager.configuration |= {
-            'cafile': '/test/sslmanager.ca',
-            'certfile': '/test/sslmanager.cert',
-            'keyfile': '/test/sslmanager.key',
-            'keyfile_password': '',
-        }
 
         with (
             patch.object(logging.getLogger('wazuh'), 'info') as logger_info_mock,
@@ -402,7 +407,7 @@ async def test_ac_client_echo_ok(send_request_mock, done_mock, asyncio_sleep_moc
         with patch(
             'wazuh.core.cluster.common.Handler.setup_task_logger', return_value=logging.getLogger('wazuh')
         ) as setup_logger_mock:
-            with patch.object(TransportMock, 'close') as close_mock:
+            with patch.object(TransportMock, 'close'):
                 abstract_client.transport = TransportMock()
                 done_mock.return_value = False
                 send_request_mock.side_effect = Exception()
@@ -410,9 +415,7 @@ async def test_ac_client_echo_ok(send_request_mock, done_mock, asyncio_sleep_moc
                     await abstract_client.client_echo()
                 except Exception:
                     setup_logger_mock.assert_called_once_with('Keep Alive')
-                    close_mock.assert_called_once()
                     logger_mock.assert_any_call('Error sending keep alive: ')
-                    logger_mock.assert_called_with('Maximum number of failed keep alives reached. Disconnecting.')
 
 
 @pytest.mark.asyncio

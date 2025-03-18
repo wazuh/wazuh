@@ -14,7 +14,10 @@ from sqlalchemy import create_engine
 from sqlalchemy import orm as sqlalchemy_orm
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.sql import text
+from wazuh.core.config.client import CentralizedConfig
+from wazuh.core.config.models.server import ValidateFilePathMixin
 from wazuh.core.exception import WazuhError
+from wazuh.tests.util import get_default_configuration
 from yaml import safe_load
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data', 'security/')
@@ -73,32 +76,34 @@ def db_setup():
     with (
         patch('wazuh.core.common.wazuh_uid'),
         patch('wazuh.core.common.wazuh_gid'),
-        # TODO: Fix in #26725
-        patch('wazuh.core.utils.load_wazuh_xml'),
     ):
         with patch('sqlalchemy.create_engine', return_value=create_engine('sqlite://')):
             with patch('shutil.chown'), patch('os.chmod'):
-                import wazuh.rbac.orm as orm
+                with patch.object(ValidateFilePathMixin, '_validate_file_path', return_value=None):
+                    default_config = get_default_configuration()
+                    CentralizedConfig._config = default_config
 
-                # Clear mappers
-                sqlalchemy_orm.clear_mappers()
-                # Invalidate in-memory database
-                orm.db_manager.close_sessions()
-                orm.db_manager.connect(orm.DB_FILE)
-                orm.db_manager.sessions[orm.DB_FILE].close()
-                orm.db_manager.engines[orm.DB_FILE].dispose()
+                    import wazuh.rbac.orm as orm
 
-                reload(orm)
-                orm.db_manager.connect(orm.DB_FILE)
-                orm.db_manager.create_database(orm.DB_FILE)
-                orm.db_manager.insert_default_resources(orm.DB_FILE)
-                import wazuh.rbac.decorators as decorators
-                from wazuh.tests.util import RBAC_bypasser
+                    # Clear mappers
+                    sqlalchemy_orm.clear_mappers()
+                    # Invalidate in-memory database
+                    orm.db_manager.close_sessions()
+                    orm.db_manager.connect(orm.DB_FILE)
+                    orm.db_manager.sessions[orm.DB_FILE].close()
+                    orm.db_manager.engines[orm.DB_FILE].dispose()
 
-                decorators.expose_resources = RBAC_bypasser
-                from wazuh import security
-                from wazuh.core import security as core_security
-                from wazuh.core.results import WazuhResult
+                    reload(orm)
+                    orm.db_manager.connect(orm.DB_FILE)
+                    orm.db_manager.create_database(orm.DB_FILE)
+                    orm.db_manager.insert_default_resources(orm.DB_FILE)
+                    import wazuh.rbac.decorators as decorators
+                    from wazuh.tests.util import RBAC_bypasser
+
+                    decorators.expose_resources = RBAC_bypasser
+                    from wazuh import security
+                    from wazuh.core import security as core_security
+                    from wazuh.core.results import WazuhResult
     try:
         create_memory_db('schema_security_test.sql', orm.db_manager.sessions[orm.DB_FILE])
     except OperationalError:

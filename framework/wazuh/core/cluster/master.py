@@ -557,13 +557,12 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         # Get the total number of files that require some change.
         if not functools.reduce(operator.add, map(len, files_classif.values())):
             logger.info(
-                f'Finished in {total_time:.3f}s. Received metadata of {len(files_metadata)} files. '
-                f'Sync not required.'
+                f'Finished in {total_time:.3f}s. Received metadata of {len(files_metadata)} files. Sync not required.'
             )
             await self.send_request(command=b'syn_m_c_ok', data=b'')
         else:
             logger.info(
-                f'Finished in {total_time:.3f}s. Received metadata of {len(files_metadata)} files. ' f'Sync required.'
+                f'Finished in {total_time:.3f}s. Received metadata of {len(files_metadata)} files. Sync required.'
             )
             await self.integrity_sync(files_classif)
 
@@ -589,9 +588,9 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             }
         )
         logger.info(
-            f"Files to create in worker: {len(files_classif['missing'])} | "
-            f"Files to update in worker: {len(files_classif['shared'])} | "
-            f"Files to delete in worker: {len(files_classif['extra'])}"
+            f'Files to create in worker: {len(files_classif["missing"])} | '
+            f'Files to update in worker: {len(files_classif["shared"])} | '
+            f'Files to delete in worker: {len(files_classif["extra"])}'
         )
 
         # Send files and metadata to the worker node.
@@ -666,7 +665,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         # Log any possible error found in the process.
         self.integrity_sync_status['total_extra_valid'] = result['total_updated']
         if result['errors_per_folder']:
-            logger.error(f"Errors updating worker files: {dict(result['errors_per_folder'])}", exc_info=False)
+            logger.error(f'Errors updating worker files: {dict(result["errors_per_folder"])}', exc_info=False)
         for error in result['generic_errors']:
             logger.error(error, exc_info=False)
 
@@ -887,7 +886,7 @@ class Master(server.AbstractServer):
                 self.integrity_already_executed.clear()
             after = perf_counter()
             file_integrity_logger.info(
-                f'Finished in {(after - before):.3f}s. Calculated ' f'metadata of {len(self.integrity_control)} files.'
+                f'Finished in {(after - before):.3f}s. Calculated metadata of {len(self.integrity_control)} files.'
             )
 
             await asyncio.sleep(self.server_config.master.intervals.recalculate_integrity)

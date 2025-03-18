@@ -127,9 +127,9 @@ def test_select_distinct_nested_sca_checks(response, select_key):
     for item in response.json()['data']['affected_items']:
         # Check that there are no keys in the item that are not specified in 'select_keys'
         set1 = main_keys.symmetric_difference(set(item.keys()))
-        assert set1 == set() or set1 == set1.intersection(
-            main_keys
-        ), f'Select keys are {main_keys}, but an item contains the keys: {set(item.keys())}'
+        assert set1 == set() or set1 == set1.intersection(main_keys), (
+            f'Select keys are {main_keys}, but an item contains the keys: {set(item.keys())}'
+        )
 
 
 def test_select_key_affected_items_with_agent_id(response, select_key):
@@ -272,9 +272,9 @@ def test_expected_value(response, key, expected_values, empty_response_possible=
 
     for item in affected_items:
         response_set = set(map(str, item[key])) if isinstance(item[key], list) else {str(item[key])}
-        assert bool(
-            expected_values.intersection(response_set)
-        ), f'Expected values {expected_values} not found in {item[key]}'
+        assert bool(expected_values.intersection(response_set)), (
+            f'Expected values {expected_values} not found in {item[key]}'
+        )
 
 
 def test_response_is_different(response, response_value, unexpected_value):
@@ -315,14 +315,14 @@ def test_validate_group_configuration(response, expected_field, expected_value):
     ), 'No config or localfile fields were found in the affected_items. Response: {}'.format(response_json)
 
     response_config = response_json['data']['affected_items'][0]['config']['localfile'][0]
-    assert expected_field in set(
-        response_config.keys()
-    ), 'The expected config key is not present in the received response.'
+    assert expected_field in set(response_config.keys()), (
+        'The expected config key is not present in the received response.'
+    )
 
-    assert (
-        response_config[expected_field] == expected_value
-    ), 'The received value for query does not match with the expected one. Received: {}. Expected: {}'.format(
-        response_config[expected_field], expected_value
+    assert response_config[expected_field] == expected_value, (
+        'The received value for query does not match with the expected one. Received: {}. Expected: {}'.format(
+            response_config[expected_field], expected_value
+        )
     )
 
 

@@ -15,12 +15,18 @@ import pytest
 from connexion import ProblemException
 from sqlalchemy.exc import OperationalError
 from wazuh.core import common
+from wazuh.core.cluster.tests.conftest import get_default_configuration
+from wazuh.core.config.client import CentralizedConfig
+from wazuh.core.config.models.server import ValidateFilePathMixin
 
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '../../../../../../api'))
 
 with patch('wazuh.common.wazuh_uid'):
     with patch('wazuh.common.wazuh_gid'):
-        with patch('wazuh.core.utils.load_wazuh_xml'):
+        with patch.object(ValidateFilePathMixin, '_validate_file_path', return_value=None):
+            default_config = get_default_configuration()
+            CentralizedConfig._config = default_config
+
             sys.modules['wazuh.rbac.orm'] = MagicMock()
             import wazuh.rbac.decorators
 
@@ -28,27 +34,22 @@ with patch('wazuh.common.wazuh_uid'):
 
             from wazuh.tests.util import RBAC_bypasser
 
-        wazuh.rbac.decorators.expose_resources = RBAC_bypasser
-        from server_management_api.util import raise_if_exc
-        from wazuh import WazuhError, WazuhInternalError, agent, cluster, manager
-        from wazuh.core.cluster import local_client
-        from wazuh.core.cluster.dapi.dapi import APIRequestQueue, DistributedAPI
-        from wazuh.core.exception import WazuhClusterError
-        from wazuh.core.manager import get_manager_status
-        from wazuh.core.results import AffectedItemsWazuhResult, WazuhResult
+            wazuh.rbac.decorators.expose_resources = RBAC_bypasser
+            from server_management_api.util import raise_if_exc
+            from wazuh import WazuhError, WazuhInternalError, agent, cluster, manager
+            from wazuh.core.cluster import local_client
+            from wazuh.core.cluster.dapi.dapi import APIRequestQueue, DistributedAPI
+            from wazuh.core.exception import WazuhClusterError
+            from wazuh.core.manager import get_manager_status
+            from wazuh.core.results import AffectedItemsWazuhResult, WazuhResult
 
 logger = logging.getLogger('wazuh')
 
 DEFAULT_REQUEST_TIMEOUT = 10
 
 
-@pytest.fixture(scope='module', autouse=True)
-def path_get_cluset_items():
-    with patch('wazuh.core.cluster.utils.get_cluster_items'):
-        yield
-
-
 async def raise_if_exc_routine(dapi_kwargs, expected_error=None):
+    """Test the `raise_if_exc_routine` functionality."""
     dapi = DistributedAPI(**dapi_kwargs)
     try:
         raise_if_exc(await dapi.distribute_function())
@@ -81,12 +82,15 @@ class TestingLogger:
         self.parent = TestingLoggerParent()
 
     def error(self, message):
+        """Error level log."""
         pass
 
     def debug(self, message):
+        """Debug level log."""
         pass
 
     def debug2(self, message):
+        """Debug2 level log."""
         pass
 
 
@@ -376,6 +380,7 @@ def test_DistributedAPI_get_client(loop_mock):
     class Node:
         def __init__(self):
             self.cluster_items = {'cluster_items': ['worker1', 'worker2']}
+            self.server_config = default_config.server
 
         def get_node(self):
             pass
@@ -384,8 +389,7 @@ def test_DistributedAPI_get_client(loop_mock):
     dapi = DistributedAPI(f=agent.get_agents, logger=logger)
     assert isinstance(dapi.get_client(), local_client.LocalClient)
 
-    node = Node()
-    dapi = DistributedAPI(f=agent.get_agents, node=node, logger=logger)
+    dapi = DistributedAPI(f=agent.get_agents, node=None, logger=logger)
     assert dapi.get_client()
 
 
@@ -676,7 +680,7 @@ async def test_APIRequestQueue_run(loop_mock, import_module_mock):
         with pytest.raises(Exception, match='.*break while true.*'):
             await apirequest.run()
         logger_mock.assert_called_once_with(
-            'Error in DAPI request. The destination node is ' "not connected or does not exist: 'wazuh'."
+            "Error in DAPI request. The destination node is not connected or does not exist: 'wazuh'."
         )
 
         node = NodeMock()

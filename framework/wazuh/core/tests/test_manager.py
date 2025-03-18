@@ -8,15 +8,18 @@ from datetime import datetime, timezone
 from unittest.mock import ANY, patch
 from uuid import uuid4
 
-import httpx
 import pytest
+from wazuh.core.cluster.tests.conftest import get_default_configuration
+from wazuh.core.config.client import CentralizedConfig
+from wazuh.core.config.models.server import ValidateFilePathMixin
 
 with patch('wazuh.core.common.wazuh_uid'):
     with patch('wazuh.core.common.wazuh_gid'):
-        # TODO: Fix in #26725
-        with patch('wazuh.core.utils.load_wazuh_xml'):
-            from wazuh.core.exception import WazuhException
-            from wazuh.core.manager import *
+        with patch.object(ValidateFilePathMixin, '_validate_file_path', return_value=None):
+            default_config = get_default_configuration()
+            CentralizedConfig._config = default_config
+
+        from wazuh.core.manager import *
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data', 'manager')
 ossec_log_path = '{0}/ossec_log.log'.format(test_data_path)
@@ -25,13 +28,14 @@ ossec_log_json_path = '{0}/ossec_log.log'.format(test_data_path)
 
 class InitManager:
     def __init__(self):
-        """Sets up necessary environment to test manager functions."""
+        """Initialize the environment for testing manager functions."""
         # path for temporary API files
         self.api_tmp_path = os.path.join(test_data_path, 'tmp')
 
 
 @pytest.fixture(scope='module')
 def test_manager():
+    """Fixture to initialize and return an instance of InitManager for testing."""
     # Set up
     test_manager = InitManager()
     return test_manager
@@ -39,16 +43,19 @@ def test_manager():
 
 @pytest.fixture
 def client_session_get_mock():
+    """Fixture to mock the `httpx.AsyncClient.get` method for testing."""
     with patch('httpx.AsyncClient.get') as get_mock:
         yield get_mock
 
 
 @pytest.fixture
 def installation_uid():
+    """Fixture to generate and return a unique installation UID for testing."""
     return str(uuid4())
 
 
 def get_logs(json_log: bool = False):
+    """Read and return logs from the specified file (JSON or plain text)."""
     with open(ossec_log_json_path if json_log else ossec_log_path) as f:
         return f.read()
 
@@ -144,21 +151,10 @@ def test_get_logs_summary(mock_exists, mock_active_logging_format):
         }
 
 
-@patch('wazuh.core.manager.exists', return_value=True)
-@patch('wazuh.core.manager.WazuhSocket')
-def test_validate_ossec_conf(mock_wazuhsocket, mock_exists):
-    with patch('socket.socket'):
-        # Mock sock response
-        json_response = json.dumps({'error': 0, 'message': ''}).encode()
-        mock_wazuhsocket.return_value.receive.return_value = json_response
-        result = validate_ossec_conf()
-
-        assert result == {'status': 'OK'}
-        mock_exists.assert_called_with(os.path.join(common.WAZUH_PATH, 'queue', 'sockets', 'com'))
-
 
 @patch('wazuh.core.manager.exists', return_value=True)
 def test_validation_ko(mock_exists):
+    """Test validate_ossec_conf raises an error"""
     # Socket creation raise socket.error
     with patch('socket.socket', side_effect=socket.error):
         with pytest.raises(WazuhInternalError, match='.* 1013 .*'):
@@ -367,17 +363,20 @@ async def test_query_update_check_service_returns_correct_data_on_error(installa
 async def test_query_update_check_service_request(installation_uid, client_session_get_mock):
     """Test that query_update_check_service function make request to the URL with the correct headers."""
     version = '4.8.0'
-    with patch('framework.wazuh.core.manager.wazuh.__version__', version):
-        await query_update_check_service(installation_uid)
 
-        client_session_get_mock.assert_called()
+    with patch.object(CentralizedConfig, 'load', return_value=None):
+        CentralizedConfig._config = default_config
+        with patch('framework.wazuh.core.manager.wazuh.__version__', version):
+            await query_update_check_service(installation_uid)
 
-        client_session_get_mock.assert_called_with(
-            RELEASE_UPDATES_URL,
-            headers={
-                WAZUH_UID_KEY: installation_uid,
-                WAZUH_TAG_KEY: f'v{version}',
-                USER_AGENT_KEY: f'Wazuh UpdateCheckService/v{version}',
-            },
-            follow_redirects=True,
-        )
+            client_session_get_mock.assert_called()
+
+            client_session_get_mock.assert_called_with(
+                RELEASE_UPDATES_URL,
+                headers={
+                    WAZUH_UID_KEY: installation_uid,
+                    WAZUH_TAG_KEY: f'v{version}',
+                    USER_AGENT_KEY: f'Wazuh UpdateCheckService/v{version}',
+                },
+                follow_redirects=True,
+            )

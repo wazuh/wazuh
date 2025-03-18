@@ -181,9 +181,8 @@ async def edit_run_as(user_id: str = None, allow_run_as: bool = False) -> Affect
         Status message.
     """
     result = AffectedItemsWazuhResult(
-        none_msg=f"The parameter allow_run_as could not be "
-        f"{'enabled' if allow_run_as else 'disabled'} for the user",
-        all_msg=f"Parameter allow_run_as has been " f"{'enabled' if allow_run_as else 'disabled'} for the user",
+        none_msg=f'The parameter allow_run_as could not be {"enabled" if allow_run_as else "disabled"} for the user',
+        all_msg=f'Parameter allow_run_as has been {"enabled" if allow_run_as else "disabled"} for the user',
     )
     with AuthenticationManager() as auth:
         user_id = int(user_id)

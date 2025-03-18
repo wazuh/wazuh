@@ -7,36 +7,42 @@ from unittest.mock import ANY, AsyncMock, MagicMock, patch
 
 import pytest
 from connexion.lifecycle import ConnexionResponse
+from wazuh.core.config.client import CentralizedConfig
+from wazuh.core.config.models.server import ValidateFilePathMixin
 
-from server_management_api.controllers.test.utils import CustomAffectedItems
+from server_management_api.controllers.test.utils import CustomAffectedItems, get_default_configuration
 
 with patch('wazuh.common.wazuh_uid'):
     with patch('wazuh.common.wazuh_gid'):
-        sys.modules['wazuh.rbac.orm'] = MagicMock()
-        import wazuh.rbac.decorators
-        from wazuh import agent
-        from wazuh.core.common import DATABASE_LIMIT
-        from wazuh.tests.util import RBAC_bypasser
+        with patch.object(ValidateFilePathMixin, '_validate_file_path', return_value=None):
+            default_config = get_default_configuration()
+            CentralizedConfig._config = default_config
 
-        from server_management_api.controllers.agent_controller import (
-            add_agent,
-            delete_agents,
-            delete_groups,
-            delete_multiple_agent_single_group,
-            get_agents,
-            get_agents_in_group,
-            get_group_config,
-            get_list_group,
-            post_group,
-            put_group_config,
-            put_multiple_agent_single_group,
-            reconnect_agents,
-            restart_agent,
-            restart_agents,
-        )
+            sys.modules['wazuh.rbac.orm'] = MagicMock()
+            import wazuh.rbac.decorators
+            from wazuh import agent
+            from wazuh.core.common import DATABASE_LIMIT
+            from wazuh.tests.util import RBAC_bypasser
 
-        wazuh.rbac.decorators.expose_resources = RBAC_bypasser
-        del sys.modules['wazuh.rbac.orm']
+            from server_management_api.controllers.agent_controller import (
+                add_agent,
+                delete_agents,
+                delete_groups,
+                delete_multiple_agent_single_group,
+                get_agents,
+                get_agents_in_group,
+                get_group_config,
+                get_list_group,
+                post_group,
+                put_group_config,
+                put_multiple_agent_single_group,
+                reconnect_agents,
+                restart_agent,
+                restart_agents,
+            )
+
+            wazuh.rbac.decorators.expose_resources = RBAC_bypasser
+            del sys.modules['wazuh.rbac.orm']
 
 
 @pytest.mark.asyncio
@@ -91,14 +97,13 @@ async def test_delete_agents(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize('mock_request', ['agent_controller'], indirect=True)
-@patch('server_management_api.configuration.api_conf')
 @patch(
     'server_management_api.controllers.agent_controller.DistributedAPI.distribute_function', return_value=AsyncMock()
 )
 @patch('server_management_api.controllers.agent_controller.remove_nones_to_dict')
 @patch('server_management_api.controllers.agent_controller.DistributedAPI.__init__', return_value=None)
 @patch('server_management_api.controllers.agent_controller.raise_if_exc', return_value=CustomAffectedItems())
-async def test_get_agents(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_exp, mock_request):
+async def test_get_agents(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request):
     """Verify 'get_agents' endpoint is working as expected."""
     result = await get_agents()
 
@@ -136,14 +141,13 @@ async def test_get_agents(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_exp
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize('mock_request', ['agent_controller'], indirect=True)
-@patch('server_management_api.configuration.api_conf')
 @patch(
     'server_management_api.controllers.agent_controller.DistributedAPI.distribute_function', return_value=AsyncMock()
 )
 @patch('server_management_api.controllers.agent_controller.remove_nones_to_dict')
 @patch('server_management_api.controllers.agent_controller.DistributedAPI.__init__', return_value=None)
 @patch('server_management_api.controllers.agent_controller.raise_if_exc', return_value=CustomAffectedItems())
-async def test_add_agent(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_exp, mock_request):
+async def test_add_agent(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request):
     """Verify 'add_agent' endpoint is working as expected."""
     with patch('server_management_api.controllers.agent_controller.Body.validate_content_type'):
         with patch(
@@ -168,14 +172,13 @@ async def test_add_agent(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_exp,
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize('mock_request', ['agent_controller'], indirect=True)
-@patch('server_management_api.configuration.api_conf')
 @patch(
     'server_management_api.controllers.agent_controller.DistributedAPI.distribute_function', return_value=AsyncMock()
 )
 @patch('server_management_api.controllers.agent_controller.remove_nones_to_dict')
 @patch('server_management_api.controllers.agent_controller.DistributedAPI.__init__', return_value=None)
 @patch('server_management_api.controllers.agent_controller.raise_if_exc', return_value=CustomAffectedItems())
-async def test_reconnect_agents(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_exp, mock_request):
+async def test_reconnect_agents(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request):
     """Verify 'reconnect_agents' endpoint is working as expected."""
     result = await reconnect_agents()
     f_kwargs = {'agent_list': '*'}
@@ -196,14 +199,13 @@ async def test_reconnect_agents(mock_exc, mock_dapi, mock_remove, mock_dfunc, mo
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize('mock_request', ['agent_controller'], indirect=True)
-@patch('server_management_api.configuration.api_conf')
 @patch(
     'server_management_api.controllers.agent_controller.DistributedAPI.distribute_function', return_value=AsyncMock()
 )
 @patch('server_management_api.controllers.agent_controller.remove_nones_to_dict')
 @patch('server_management_api.controllers.agent_controller.DistributedAPI.__init__', return_value=None)
 @patch('server_management_api.controllers.agent_controller.raise_if_exc', return_value=CustomAffectedItems())
-async def test_restart_agents(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_exp, mock_request):
+async def test_restart_agents(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request):
     """Verify 'restart_agents' endpoint is working as expected."""
     result = await restart_agents()
     mock_dapi.assert_called_once_with(
@@ -222,7 +224,6 @@ async def test_restart_agents(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize('mock_request', ['agent_controller'], indirect=True)
-@patch('server_management_api.configuration.api_conf')
 @patch(
     'server_management_api.controllers.agent_controller.DistributedAPI.distribute_function', return_value=AsyncMock()
 )
@@ -230,7 +231,7 @@ async def test_restart_agents(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock
 @patch('server_management_api.controllers.agent_controller.DistributedAPI.__init__', return_value=None)
 @patch('server_management_api.controllers.agent_controller.raise_if_exc', return_value=CustomAffectedItems())
 @pytest.mark.skip('To be implemented')
-async def test_restart_agent(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_exp, mock_request):
+async def test_restart_agent(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request):
     """Verify 'restart_agent' endpoint is working as expected."""
     result = await restart_agent(agent_id='001')
     f_kwargs = {'agent_list': ['001']}
@@ -250,7 +251,6 @@ async def test_restart_agent(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize('mock_request', ['agent_controller'], indirect=True)
-@patch('server_management_api.configuration.api_conf')
 @patch(
     'server_management_api.controllers.agent_controller.DistributedAPI.distribute_function', return_value=AsyncMock()
 )
@@ -259,7 +259,7 @@ async def test_restart_agent(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_
 @patch('server_management_api.controllers.agent_controller.raise_if_exc', return_value=CustomAffectedItems())
 @pytest.mark.parametrize('mock_alist', ['001', 'all'])
 async def test_delete_multiple_agent_single_group(
-    mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_exp, mock_alist, mock_request
+    mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_alist, mock_request
 ):
     """Verify 'delete_multiple_agent_single_group' endpoint is working as expected."""
     result = await delete_multiple_agent_single_group(agents_list=mock_alist, group_id='001')
@@ -282,14 +282,13 @@ async def test_delete_multiple_agent_single_group(
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize('mock_request', ['agent_controller'], indirect=True)
-@patch('server_management_api.configuration.api_conf')
 @patch(
     'server_management_api.controllers.agent_controller.DistributedAPI.distribute_function', return_value=AsyncMock()
 )
 @patch('server_management_api.controllers.agent_controller.remove_nones_to_dict')
 @patch('server_management_api.controllers.agent_controller.DistributedAPI.__init__', return_value=None)
 @patch('server_management_api.controllers.agent_controller.raise_if_exc', return_value=CustomAffectedItems())
-async def test_put_multiple_agent_single_group(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_exp, mock_request):
+async def test_put_multiple_agent_single_group(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request):
     """Verify 'put_multiple_agent_single_group' endpoint is working as expected."""
     result = await put_multiple_agent_single_group(group_id='001', agents_list='001')
     f_kwargs = {'agent_list': '001', 'group_list': ['001'], 'replace': False}
@@ -309,7 +308,6 @@ async def test_put_multiple_agent_single_group(mock_exc, mock_dapi, mock_remove,
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize('mock_request', ['agent_controller'], indirect=True)
-@patch('server_management_api.configuration.api_conf')
 @patch(
     'server_management_api.controllers.agent_controller.DistributedAPI.distribute_function', return_value=AsyncMock()
 )
@@ -317,7 +315,7 @@ async def test_put_multiple_agent_single_group(mock_exc, mock_dapi, mock_remove,
 @patch('server_management_api.controllers.agent_controller.DistributedAPI.__init__', return_value=None)
 @patch('server_management_api.controllers.agent_controller.raise_if_exc', return_value=CustomAffectedItems())
 @pytest.mark.parametrize('mock_alist', ['001', 'all'])
-async def test_delete_groups(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_exp, mock_alist, mock_request):
+async def test_delete_groups(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_alist, mock_request):
     """Verify 'delete_groups' endpoint is working as expected."""
     result = await delete_groups(groups_list=mock_alist)
     if 'all' in mock_alist:
@@ -339,14 +337,13 @@ async def test_delete_groups(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize('mock_request', ['agent_controller'], indirect=True)
-@patch('server_management_api.configuration.api_conf')
 @patch(
     'server_management_api.controllers.agent_controller.DistributedAPI.distribute_function', return_value=AsyncMock()
 )
 @patch('server_management_api.controllers.agent_controller.remove_nones_to_dict')
 @patch('server_management_api.controllers.agent_controller.DistributedAPI.__init__', return_value=None)
 @patch('server_management_api.controllers.agent_controller.raise_if_exc', return_value=CustomAffectedItems())
-async def test_get_list_group(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_exp, mock_request):
+async def test_get_list_group(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request):
     """Verify 'get_list_group' endpoint is working as expected."""
     result = await get_list_group()
     hash_ = mock_request.query_params.get('hash', 'md5')
@@ -379,14 +376,13 @@ async def test_get_list_group(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize('mock_request', ['agent_controller'], indirect=True)
-@patch('server_management_api.configuration.api_conf')
 @patch(
     'server_management_api.controllers.agent_controller.DistributedAPI.distribute_function', return_value=AsyncMock()
 )
 @patch('server_management_api.controllers.agent_controller.remove_nones_to_dict')
 @patch('server_management_api.controllers.agent_controller.DistributedAPI.__init__', return_value=None)
 @patch('server_management_api.controllers.agent_controller.raise_if_exc', return_value=CustomAffectedItems())
-async def test_get_agents_in_group(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_exp, mock_request):
+async def test_get_agents_in_group(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request):
     """Verify 'get_agents_in_group' endpoint is working as expected."""
     result = await get_agents_in_group(group_id='001')
     f_kwargs = {
@@ -417,14 +413,13 @@ async def test_get_agents_in_group(mock_exc, mock_dapi, mock_remove, mock_dfunc,
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize('mock_request', ['agent_controller'], indirect=True)
-@patch('server_management_api.configuration.api_conf')
 @patch(
     'server_management_api.controllers.agent_controller.DistributedAPI.distribute_function', return_value=AsyncMock()
 )
 @patch('server_management_api.controllers.agent_controller.remove_nones_to_dict')
 @patch('server_management_api.controllers.agent_controller.DistributedAPI.__init__', return_value=None)
 @patch('server_management_api.controllers.agent_controller.raise_if_exc', return_value=CustomAffectedItems())
-async def test_post_group(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_exp, mock_request):
+async def test_post_group(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request):
     """Verify 'post_group' endpoint is working as expected."""
     with patch('server_management_api.controllers.agent_controller.Body.validate_content_type'):
         with patch(
@@ -447,14 +442,13 @@ async def test_post_group(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_exp
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize('mock_request', ['agent_controller'], indirect=True)
-@patch('server_management_api.configuration.api_conf')
 @patch(
     'server_management_api.controllers.agent_controller.DistributedAPI.distribute_function', return_value=AsyncMock()
 )
 @patch('server_management_api.controllers.agent_controller.remove_nones_to_dict')
 @patch('server_management_api.controllers.agent_controller.DistributedAPI.__init__', return_value=None)
 @patch('server_management_api.controllers.agent_controller.raise_if_exc', return_value=CustomAffectedItems())
-async def test_get_group_config(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_exp, mock_request):
+async def test_get_group_config(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request):
     """Verify 'get_group_config' endpoint is working as expected."""
     result = await get_group_config(group_id='001')
     f_kwargs = {'group_list': ['001']}
@@ -474,14 +468,13 @@ async def test_get_group_config(mock_exc, mock_dapi, mock_remove, mock_dfunc, mo
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize('mock_request', ['agent_controller'], indirect=True)
-@patch('server_management_api.configuration.api_conf')
 @patch(
     'server_management_api.controllers.agent_controller.DistributedAPI.distribute_function', return_value=AsyncMock()
 )
 @patch('server_management_api.controllers.agent_controller.remove_nones_to_dict')
 @patch('server_management_api.controllers.agent_controller.DistributedAPI.__init__', return_value=None)
 @patch('server_management_api.controllers.agent_controller.raise_if_exc', return_value=CustomAffectedItems())
-async def test_put_group_config(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_exp, mock_request):
+async def test_put_group_config(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request):
     """Verify 'put_group_config' endpoint is working as expected."""
     with patch('server_management_api.controllers.agent_controller.Body.validate_content_type'):
         with patch('server_management_api.controllers.agent_controller.Body.decode_body') as mock_dbody:

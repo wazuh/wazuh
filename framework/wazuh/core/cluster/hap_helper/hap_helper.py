@@ -131,7 +131,7 @@ class HAPHelper:
             self.logger.info(f"Server '{node_name}' has not been disconnected enough time to remove it")
             return False
         self.logger.info(
-            f"Server '{node_name}' has been disconnected for over {self.remove_disconnected_node_after} " 'minutes'
+            f"Server '{node_name}' has been disconnected for over {self.remove_disconnected_node_after} minutes"
         )
         return True
 
@@ -300,7 +300,7 @@ class HAPHelper:
             self.logger.debug('There are not connections at the moment')
             return {}
         self.logger.debug(
-            'Checking for agent balance. Current connections distribution: ' f'{current_connections_distribution}'
+            f'Checking for agent balance. Current connections distribution: {current_connections_distribution}'
         )
 
         total_agents = sum(current_connections_distribution.values())
@@ -381,7 +381,7 @@ class HAPHelper:
                 )
                 if nodes_to_add or nodes_to_remove:
                     self.logger.info(
-                        'Detected changes in Wazuh cluster nodes. Current cluster: ' f'{current_wazuh_cluster}'
+                        f'Detected changes in Wazuh cluster nodes. Current cluster: {current_wazuh_cluster}'
                     )
                     self.logger.info('Attempting to update proxy backend')
 
@@ -405,7 +405,7 @@ class HAPHelper:
                 )
                 if not unbalanced_connections:
                     self.logger.debug(
-                        'Current backend stats: ' f'{await self.proxy.get_wazuh_backend_server_connections()}'
+                        f'Current backend stats: {await self.proxy.get_wazuh_backend_server_connections()}'
                     )
                     self.logger.info('Load balancer backend is balanced')
                 else:

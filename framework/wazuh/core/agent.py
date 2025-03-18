@@ -249,18 +249,18 @@ class WazuhDBQueryAgents(WazuhDBQuery):
 
             if q_filter['operator'] == '=':
                 self.query += f"(',' || {self.fields[field_name]} || ',') LIKE :{field_filter}"
-                self.request[field_filter] = f"%,{q_filter['value']},%"
+                self.request[field_filter] = f'%,{q_filter["value"]},%'
             elif q_filter['operator'] == '!=':
                 self.query += f"NOT (',' || {self.fields[field_name]} || ',') LIKE :{field_filter}"
-                self.request[field_filter] = f"%,{q_filter['value']},%"
+                self.request[field_filter] = f'%,{q_filter["value"]},%'
             elif q_filter['operator'] == 'LIKE':
                 self.query += f'{self.fields[field_name]} LIKE :{field_filter}'
-                self.request[field_filter] = f"%{q_filter['value']}%"
+                self.request[field_filter] = f'%{q_filter["value"]}%'
             else:
                 raise WazuhError(
                     1409,
                     f"Valid operators for 'group' field: {', '.join(valid_group_operators)}. "
-                    f"Used operator: {q_filter['operator']}",
+                    f'Used operator: {q_filter["operator"]}',
                 )
         else:
             WazuhDBQuery._process_filter(self, field_name, field_filter, q_filter)
@@ -1147,9 +1147,9 @@ def unify_wazuh_version_format(filters: dict):
     wv = filters.get('version')
     if wv is not None:
         if re.match(r'^v?\d+\.\d+\.\d+$', wv, re.IGNORECASE):
-            filters['version'] = f"wazuh {'v' if 'v' not in wv else ''}{wv}"
+            filters['version'] = f'wazuh {"v" if "v" not in wv else ""}{wv}'
         elif re.match(r'^wazuh \d+\.\d+\.\d+$', wv, re.IGNORECASE):
-            filters['version'] = f"{wv.replace(' ', ' v')}"
+            filters['version'] = f'{wv.replace(" ", " v")}'
 
 
 def format_fields(field_name: str, value: str) -> str:

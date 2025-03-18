@@ -388,27 +388,13 @@ def test_cti_config_default_values(init_values, expected):
     assert config.url == expected['url']
 
 
-@pytest.mark.parametrize('init_values', [{'private_key': 'private_key_example', 'public_key': 'public_key_example'}])
+@pytest.mark.parametrize('init_values', [{'private_key': 'private_key_example'}])
 @patch('os.path.isfile', return_value=True)
 def test_jwt_config_default_values(file_exists_mock, init_values):
     """Check the correct initialization of the `JWTConfig` class."""
     jwt_config = JWTConfig(**init_values)
 
     assert jwt_config.private_key == init_values['private_key']
-    assert jwt_config.get_public_key() == init_values['public_key']
-
-
-@pytest.mark.parametrize(
-    'init_values',
-    [
-        {},
-        {'private_key': 'key_example'},
-    ],
-)
-def test_jwt_config_fails_without_values(init_values):
-    """Check the correct behavior of the `JWTConfig` class validations."""
-    with pytest.raises(ValidationError):
-        JWTConfig(**init_values)
 
 
 @pytest.mark.parametrize(

@@ -1,8 +1,4 @@
-import contextlib
-import os
-
 from cryptography.hazmat.primitives import serialization
-from wazuh.core import common
 from wazuh.core.config.client import CentralizedConfig
 from wazuh.core.config.models.base import WazuhConfigBaseModel
 

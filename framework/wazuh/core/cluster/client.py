@@ -225,8 +225,8 @@ class AbstractClient(common.Handler):
             self.logger.info('The master closed the connection')
         else:
             self.logger.error(
-                f"Connection closed due to an unhandled error: {exc}\n"
-                f"{''.join(traceback.format_tb(exc.__traceback__))}",
+                f'Connection closed due to an unhandled error: {exc}\n'
+                f'{"".join(traceback.format_tb(exc.__traceback__))}',
                 exc_info=False,
             )
 

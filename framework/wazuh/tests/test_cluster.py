@@ -6,11 +6,16 @@ import sys
 from unittest.mock import MagicMock, patch
 
 import pytest
+from wazuh.core.config.client import CentralizedConfig
+from wazuh.core.config.models.server import ValidateFilePathMixin
+from wazuh.tests.util import get_default_configuration
 
 with patch('wazuh.core.common.wazuh_uid'):
     with patch('wazuh.core.common.wazuh_gid'):
-        # TODO: Fix in #26725
-        with patch('wazuh.core.utils.load_wazuh_xml'):
+        with patch.object(ValidateFilePathMixin, '_validate_file_path', return_value=None):
+            default_config = get_default_configuration()
+            CentralizedConfig._config = default_config
+
             sys.modules['wazuh.rbac.orm'] = MagicMock()
             import wazuh.rbac.decorators
 
@@ -25,24 +30,11 @@ with patch('wazuh.core.common.wazuh_uid'):
             from wazuh.core.exception import WazuhError, WazuhResourceNotFound
             from wazuh.core.results import WazuhResult
 
-default_config = {
-    'disabled': True,
-    'node_type': 'master',
-    'name': 'wazuh',
-    'node_name': 'node01',
-    'key': '',
-    'port': 1516,
-    'bind_addr': 'localhost',
-    'nodes': ['127.0.0.1'],
-    'hidden': 'no',
-}
 
-
-@patch('wazuh.cluster.read_config', return_value=default_config)
-async def test_node_wrapper(mock_read_config):
+async def test_node_wrapper():
     """Verify that the node_wrapper returns the default node information."""
     result = await cluster.get_node_wrapper()
-    assert result.affected_items == [{'node': default_config['node_name'], 'type': default_config['node_type']}]
+    assert result.affected_items == [{'node': default_config.server.node.name, 'type': default_config.server.node.type}]
 
 
 @patch('wazuh.cluster.get_node', side_effect=WazuhError(1001))
@@ -60,9 +52,8 @@ async def test_get_status_json():
 
 
 @pytest.mark.asyncio
-@patch('wazuh.core.cluster.utils.get_cluster_items')
 @patch('wazuh.core.cluster.local_client.LocalClient.start', side_effect=None)
-async def test_get_health_nodes(mock_unix_connection, get_cluster_items_mock):
+async def test_get_health_nodes(mock_unix_connection):
     """Verify that get_health_nodes returns the health of all nodes."""
 
     async def async_mock(lc=None, filter_node=None):
@@ -77,8 +68,7 @@ async def test_get_health_nodes(mock_unix_connection, get_cluster_items_mock):
 
 
 @pytest.mark.asyncio
-@patch('wazuh.core.cluster.utils.get_cluster_items')
-async def test_get_nodes_info(get_cluster_items):
+async def test_get_nodes_info():
     """Verify that get_nodes_info returns the information of all nodes."""
 
     async def valid_node(lc=None, filter_node=None):

@@ -143,7 +143,7 @@ class AbstractServerHandler(c_common.Handler):
         if self.name in self.server.clients:
             self.name = ''
             raise exception.WazuhClusterError(3028, extra_message=data.decode())
-        elif self.name == self.server.server_config.node.name:
+        elif self.name == self.server_config.node.name:
             raise exception.WazuhClusterError(3029)
         else:
             self.server.clients[self.name] = self
@@ -188,7 +188,7 @@ class AbstractServerHandler(c_common.Handler):
             else:
                 self.logger.error(
                     f"Error during connection with '{self.name}': {exc}.\n"
-                    f"{''.join(traceback.format_tb(exc.__traceback__))}",
+                    f'{"".join(traceback.format_tb(exc.__traceback__))}',
                     exc_info=False,
                 )
             if self.name in self.server.clients:
@@ -197,8 +197,8 @@ class AbstractServerHandler(c_common.Handler):
                 task.cancel()
         elif exc is not None:
             self.logger.error(
-                f"Error during handshake with incoming connection: {exc}. \n"
-                f"{''.join(traceback.format_tb(exc.__traceback__))}",
+                f'Error during handshake with incoming connection: {exc}. \n'
+                f'{"".join(traceback.format_tb(exc.__traceback__))}',
                 exc_info=False,
             )
         else:
@@ -240,7 +240,7 @@ class AbstractServerHandler(c_common.Handler):
                 else:
                     result = q_item['func']()
             except Exception as e:
-                self.logger.error(f"Error while broadcasting function. ID: {q_item['broadcast_id']}. Error: {e}.")
+                self.logger.error(f'Error while broadcasting function. ID: {q_item["broadcast_id"]}. Error: {e}.')
                 result = e
 
             with contextlib.suppress(KeyError):
@@ -552,7 +552,7 @@ class AbstractServer:
                         await client.send_request(b'echo', f'concurrency {i} client {client_name}'.encode())
                     except Exception as e:
                         self.logger.error(
-                            f'Error during concurrency test ({i+1}/{self.concurrency}, {client_name}): ' f'{e}'
+                            f'Error during concurrency test ({i + 1}/{self.concurrency}, {client_name}): {e}'
                         )
             after = perf_counter()
             self.logger.info(f'Time sending {self.concurrency} messages: {after - before}')

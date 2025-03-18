@@ -16,6 +16,7 @@ with patch('wazuh.common.wazuh_uid'):
 
 
 def custom_hook(dct):
+    """Converts a JSON string to the expected dictionary"""
     if 'id' in dct:
         return Agent(**dct)
 

@@ -6,9 +6,10 @@ from wazuh.core.config.models.indexer import IndexerConfig, IndexerNode
 from wazuh.core.config.models.ssl_config import IndexerSSLConfig
 
 with patch('os.path.isfile', return_value=True):
-    SSL_CONFIG = IndexerSSLConfig(
-        use_ssl=True, key='key_example', certificate='cert_example', certificate_authorities=['ca_example']
-    )
+    with patch.object(IndexerSSLConfig, 'create_ca_bundle', return_value=None):
+        SSL_CONFIG = IndexerSSLConfig(
+            use_ssl=True, key='key_example', certificate='cert_example', certificate_authorities=['ca_example']
+        )
 
 
 @pytest.mark.parametrize(

@@ -21,6 +21,7 @@ from server_management_api.signals import (
 # Fixtures
 @pytest.fixture
 def installation_uid_mock():
+    """Mock the installation UID path."""
     with patch(
         'server_management_api.signals.INSTALLATION_UID_PATH', os.path.join('/tmp', INSTALLATION_UID_KEY)
     ) as path_mock:
@@ -31,6 +32,7 @@ def installation_uid_mock():
 
 @pytest.fixture
 def query_update_check_service_mock():
+    """Mock the `query_update_check_service` function."""
     with patch('server_management_api.signals.query_update_check_service') as mock:
         yield mock
 
@@ -40,6 +42,7 @@ def query_update_check_service_mock():
 
 @pytest.mark.asyncio
 async def test_cancel_signal_handler_catch_cancelled_error_and_dont_rise():
+    """Test `cancel_signal_handler` does not propagate the error."""
     coroutine_mock = AsyncMock(side_effect=asyncio.CancelledError)
     await cancel_signal_handler(coroutine_mock)()
 
@@ -54,6 +57,7 @@ async def test_cancel_signal_handler_catch_cancelled_error_and_dont_rise():
 async def test_check_installation_uid_populate_uid_if_not_exists(
     uid_mock, gid_mock, chown_mock, chmod_mock, installation_uid_mock
 ):
+    """Test `check_installation_uid` when the uid doesn't exist."""
     uid = gid = 999
     uid_mock.return_value = uid
     gid_mock.return_value = gid
@@ -69,6 +73,7 @@ async def test_check_installation_uid_populate_uid_if_not_exists(
 
 @pytest.mark.asyncio
 async def test_check_installation_uid_get_uid_from_file(installation_uid_mock):
+    """Test `check_installation_uid` when the uid exists."""
     installation_uid = str(uuid4())
     with open(installation_uid_mock, 'w') as file:
         file.write(installation_uid)
@@ -80,6 +85,7 @@ async def test_check_installation_uid_get_uid_from_file(installation_uid_mock):
 
 @pytest.mark.asyncio
 async def test_get_update_information_injects_correct_data_into_app_context(query_update_check_service_mock):
+    """Test `get_update_information` inserts data as expected."""
     response_data = {
         'last_check_date': '2023-10-11T16:47:13.066946+00:00',
         'current_version': 'v4.8.0',
@@ -121,6 +127,7 @@ async def test_get_update_information_injects_correct_data_into_app_context(quer
 
 @pytest.mark.asyncio
 async def test_get_update_information_schedule(query_update_check_service_mock):
+    """Test `get_update_information` is scheduled as expected."""
     cti_context[INSTALLATION_UID_KEY] = str(uuid4())
     with patch('server_management_api.signals.asyncio') as sleep_mock:
         task = asyncio.create_task(get_update_information())
@@ -154,6 +161,8 @@ async def test_register_background_tasks(
     update_check_config,
     registered_tasks,
 ):
+    """Test `register_background_tasks` functionality."""
+
     class AwaitableMock(AsyncMock):
         def __await__(self):
             self.await_count += 1

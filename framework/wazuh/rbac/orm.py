@@ -1419,8 +1419,7 @@ class RolesManager(RBACManager):
 
             if status == SecurityError.ALREADY_EXIST:
                 logger.warning(
-                    f'Role {role.id} ({role.name}) is part of the new default roles. '
-                    f"Renaming it to '{role.name}_user'"
+                    f"Role {role.id} ({role.name}) is part of the new default roles. Renaming it to '{role.name}_user'"
                 )
 
                 self.add_role(

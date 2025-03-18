@@ -5,7 +5,7 @@ on:
   pull_request:
     paths:
       - '.github/workflows/api-unit-tests.yml'
-      - 'api/**'
+      - 'apis/server_management/**'
       - 'src/Makefile'
 
 jobs:

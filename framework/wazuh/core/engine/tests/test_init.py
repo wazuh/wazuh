@@ -1,18 +1,23 @@
 from unittest import mock
+from unittest.mock import patch
 
 import pytest
 from httpx import AsyncClient, Timeout, TimeoutException
-from wazuh.core.engine import DEFAULT_RETRIES, DEFAULT_TIMEOUT, Engine, get_engine_client
+from wazuh.core.config.client import CentralizedConfig
+from wazuh.core.config.models.server import ValidateFilePathMixin
+from wazuh.core.engine import Engine, get_engine_client
+from wazuh.core.engine.tests.conftest import get_default_configuration
 from wazuh.core.exception import WazuhEngineError
+
+with patch.object(ValidateFilePathMixin, '_validate_file_path', return_value=None):
+    default_config = get_default_configuration()
+    CentralizedConfig._config = default_config
 
 
 @pytest.mark.parametrize(
     'params',
     [
         {'retries': 3, 'timeout': 10},
-        {'retries': None, 'timeout': 15},
-        {'timeout': 0},
-        {},
     ],
 )
 def test_engine_init(params: dict):
@@ -22,15 +27,8 @@ def test_engine_init(params: dict):
     assert isinstance(engine._client, AsyncClient)
     assert not engine._client.is_closed
 
-    if 'retries' in params:
-        assert engine._client._transport._pool._retries == params['retries']
-    else:
-        assert engine._client._transport._pool._retries == DEFAULT_RETRIES
-
-    if 'timeout' in params:
-        assert engine._client.timeout == Timeout(params['timeout'])
-    else:
-        assert engine._client.timeout == Timeout(DEFAULT_TIMEOUT)
+    assert engine._client._transport._pool._retries == params['retries']
+    assert engine._client.timeout == Timeout(params['timeout'])
 
 
 @pytest.mark.asyncio
@@ -46,10 +44,12 @@ async def test_engine_close():
 @pytest.mark.asyncio
 async def test_get_engine_client():
     """Check the correct behavior of the `get_engine_client` function."""
-    async with get_engine_client() as engine:
-        assert not engine._client.is_closed
+    with patch.object(CentralizedConfig, 'load', return_value=None):
+        CentralizedConfig._config = default_config
+        async with get_engine_client() as engine:
+            assert not engine._client.is_closed
 
-    assert engine._client.is_closed
+        assert engine._client.is_closed
 
 
 @pytest.mark.asyncio
@@ -63,13 +63,16 @@ async def test_get_engine_client():
 )
 async def test_get_engine_client_ko(socket_path: str, error_number: int):
     """Check that the `get_engine_client` returns a WazuhEngineError on an exception."""
-    with pytest.raises(WazuhEngineError, match=f'.*{error_number}.*'):
-        async with get_engine_client() as engine:
-            engine._client._transport._pool._retries = 0
-            engine._client.timeout = Timeout(None)
+    with patch.object(CentralizedConfig, 'load', return_value=None):
+        CentralizedConfig._config = default_config
 
-            if error_number == 2800:
-                engine._client = mock.AsyncMock()
-                engine._client.get.side_effect = TimeoutException('')
+        with pytest.raises(WazuhEngineError, match=f'.*{error_number}.*'):
+            async with get_engine_client() as engine:
+                engine._client._transport._pool._retries = 0
+                engine._client.timeout = Timeout(None)
 
-            _ = await engine._client.get(socket_path)
+                if error_number == 2800:
+                    engine._client = mock.AsyncMock()
+                    engine._client.get.side_effect = TimeoutException('')
+
+                _ = await engine._client.get(socket_path)

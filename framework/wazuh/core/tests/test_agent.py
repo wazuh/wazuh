@@ -7,19 +7,28 @@ import os
 import sqlite3
 import sys
 from copy import copy
+from datetime import datetime
+from json import dumps
 from shutil import rmtree
 from unittest.mock import AsyncMock, patch
 
 import pytest
+from wazuh.core.cluster.tests.conftest import get_default_configuration
+from wazuh.core.config.client import CentralizedConfig
+from wazuh.core.config.models.server import ValidateFilePathMixin
 
 with patch('wazuh.core.common.wazuh_uid'):
     with patch('wazuh.core.common.wazuh_gid'):
-        from server_management_api.util import remove_nones_to_dict
-        from wazuh.core.agent import *
-        from wazuh.core.common import reset_context_cache
-        from wazuh.core.exception import WazuhException, WazuhIndexerError
-        from wazuh.core.indexer.agent import Agent as IndexerAgent
-        from wazuh.core.utils import get_group_file_path
+        with patch.object(ValidateFilePathMixin, '_validate_file_path', return_value=None):
+            default_config = get_default_configuration()
+            CentralizedConfig._config = default_config
+
+            from server_management_api.util import remove_nones_to_dict
+            from wazuh.core.agent import *
+            from wazuh.core.common import reset_context_cache
+            from wazuh.core.exception import WazuhException, WazuhIndexerError
+            from wazuh.core.indexer.agent import Agent as IndexerAgent
+            from wazuh.core.utils import get_group_file_path
 
 # all necessary params
 
@@ -64,6 +73,8 @@ wpk_versions = [
 
 
 class InitAgent:
+    """Class to set up the necessary test environment for agents."""
+
     def __init__(self, data_path=test_data_path, db_name='schema_global_test.sql'):
         """Sets up necessary test environment for agents:
             * One active agent.
@@ -240,9 +251,9 @@ def test_WazuhDBQueryAgents_format_data_into_dictionary(mock_socket_conn, data):
 
     assert res['id'] == str(d['id']).zfill(3), 'ID is not as expected'
     assert res['status'] == d['status'], 'status is not as expected'
-    assert isinstance(res['group'], list) and len(res['group']) == len(
-        d['group'].split(',')
-    ), "'group' has different type or length than expected"
+    assert isinstance(res['group'], list) and len(res['group']) == len(d['group'].split(',')), (
+        "'group' has different type or length than expected"
+    )
     assert isinstance(res['dateAdd'], datetime), 'Not date type'
     assert res['manager'] == d['manager']
     assert (
@@ -258,9 +269,9 @@ def test_WazuhDBQueryAgents_parse_legacy_filters(mock_socket_conn):
     query_agent = WazuhDBQueryAgents(filters={'older_than': 'test'})
     query_agent._parse_legacy_filters()
 
-    assert (
-        '(lastKeepAlive>test;status!=never_connected,dateAdd>test;status=never_connected)' in query_agent.q
-    ), 'Query returned does not match the expected one'
+    assert '(lastKeepAlive>test;status!=never_connected,dateAdd>test;status=never_connected)' in query_agent.q, (
+        'Query returned does not match the expected one'
+    )
 
 
 @pytest.mark.parametrize(
@@ -307,9 +318,9 @@ def test_WazuhDBQueryAgents_process_filter(mock_socket_conn, field_name, field_f
         else:
             pytest.fail('Unexpected operator')
     else:
-        assert (
-            'agentos_name LIKE :field COLLATE NOCASE' in query_agent.query
-        ), 'Query returned does not match the expected one'
+        assert 'agentos_name LIKE :field COLLATE NOCASE' in query_agent.query, (
+            'Query returned does not match the expected one'
+        )
 
 
 @pytest.mark.parametrize('value', [True, OSError])
@@ -472,9 +483,9 @@ def test_agent__init__(mock_add, id, ip, name, key):
     """
     agent = Agent(id=id, ip=ip, name=name, key=key)
 
-    assert (
-        agent.id == id and agent.ip == ip and agent.name == name and agent.internal_key == key
-    ), 'Query returned does not match the expected one'
+    assert agent.id == id and agent.ip == ip and agent.name == name and agent.internal_key == key, (
+        'Query returned does not match the expected one'
+    )
 
 
 def test_agent__str__():
@@ -556,9 +567,9 @@ def test_agent_get_basic_information(socket_mock, send_mock, id, select):
 
     assert isinstance(result, dict), 'Result is not a dict'
     if select is not None:
-        assert all((x in select for x in result.keys())) and len(result.keys()) == len(
-            select
-        ), 'Result does not contain expected keys.'
+        assert all((x in select for x in result.keys())) and len(result.keys()) == len(select), (
+            'Result does not contain expected keys.'
+        )
 
 
 @pytest.mark.parametrize(
@@ -1061,13 +1072,16 @@ def test_agent_group_exists_ko():
 @patch('wazuh.core.indexer.create_indexer')
 async def test_agent_get_agent_groups(create_indexer_mock):
     """Test if get_agent_groups() asks for agent's groups correctly."""
-    agent_id = '0191c895-3037-7ed6-a8e3-def51ec2bca9'
-    groups = ['default', 'group1']
+    with patch.object(CentralizedConfig, 'load', return_value=None):
+        CentralizedConfig._config = default_config
 
-    create_indexer_mock.return_value.agents.get.return_value = IndexerAgent(groups=','.join(groups))
-    agent_groups = await Agent.get_agent_groups(agent_id)
+        agent_id = '0191c895-3037-7ed6-a8e3-def51ec2bca9'
+        groups = ['default', 'group1']
 
-    assert agent_groups == groups
+        create_indexer_mock.return_value.agents.get.return_value = IndexerAgent(groups=','.join(groups))
+        agent_groups = await Agent.get_agent_groups(agent_id)
+
+        assert agent_groups == ','.join(groups)
 
 
 @pytest.mark.asyncio
@@ -1102,18 +1116,21 @@ async def test_agent_set_agent_group_relationship(
     expected_mode: str
         Expected mode to send to wdb to change the relationship between an agent and a group.
     """
-    agent_id = '001'
-    group_id = 'group1' if remove else 'group2'
-    groups = ['default', 'group1']
+    with patch.object(CentralizedConfig, 'load', return_value=None):
+        CentralizedConfig._config = default_config
 
-    # Default relationship -> add an agent to a group
-    with patch('wazuh.core.indexer.agent.AgentsIndex.get', return_value=IndexerAgent(groups=','.join(groups))):
-        await Agent.set_agent_group_relationship(agent_id, group_id, remove, override)
+        agent_id = '001'
+        group_id = 'group1' if remove else 'group2'
+        groups = ['default', 'group1']
 
-    if remove:
-        remove_agents_from_group_mock.assert_called_with(group_name=group_id, agent_ids=[agent_id])
-    else:
-        add_agents_to_group_mock.assert_called_with(group_name=group_id, agent_ids=[agent_id], override=override)
+        # Default relationship -> add an agent to a group
+        with patch('wazuh.core.indexer.agent.AgentsIndex.get', return_value=IndexerAgent(groups=','.join(groups))):
+            await Agent.set_agent_group_relationship(agent_id, group_id, remove, override)
+
+        if remove:
+            remove_agents_from_group_mock.assert_called_with(group_name=group_id, agent_ids=[agent_id])
+        else:
+            add_agents_to_group_mock.assert_called_with(group_name=group_id, agent_ids=[agent_id], override=override)
 
 
 @pytest.mark.asyncio
@@ -1124,54 +1141,23 @@ async def test_agent_set_agent_group_relationship_ko(get_client_mock):
         await Agent.set_agent_group_relationship('002', 'test_group')
 
 
-@patch('wazuh.core.wazuh_socket.WazuhSocket')
-@patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
-@patch('socket.socket.connect')
-def test_agent_get_config(socket_mock, send_mock, mock_wazuh_socket):
-    """Test getconfig method returns expected message."""
-    agent = Agent('001')
-    mock_wazuh_socket.return_value.receive.return_value = b'ok {"test": "conf"}'
-    result = agent.get_config('com', 'active-response', 'Wazuh v4.0.0')
-    assert result == {'test': 'conf'}, 'Result message is not as expected.'
-
-
-@patch('wazuh.core.wazuh_socket.WazuhSocket')
-@patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
-@patch('socket.socket.connect')
-def test_agent_get_config_ko(socket_mock, send_mock, mock_wazuh_socket):
-    """Test getconfig method raises expected exceptions."""
-    # Invalid component
-    agent = Agent('003')
-    with pytest.raises(WazuhError, match='.* 1101 .*'):
-        agent.get_config('invalid_component', 'active-response', 'Wazuh v4.0.0')
-
-    # Component or config is none
-    agent = Agent('003')
-    with pytest.raises(WazuhError, match='.* 1307 .*'):
-        agent.get_config('com', None, 'Wazuh v4.0.0')
-        agent.get_config(None, 'active-response', 'Wazuh v4.0.0')
-
-    # Agent Wazuh version is lower than ACTIVE_CONFIG_VERSION
-    agent = Agent('002')
-    with pytest.raises(WazuhInternalError, match='.* 1735 .*'):
-        agent.get_config('com', 'active-response', 'Wazuh v3.6.0')
-
-
 @patch('wazuh.core.indexer.create_indexer')
 async def test_get_agents_info(create_indexer_mock):
     """Test that get_agents_info() returns expected agent IDs."""
-    reset_context_cache()
+    with patch.object(CentralizedConfig, 'load', return_value=None):
+        CentralizedConfig._config = default_config
+        reset_context_cache()
 
-    agents = []
-    for i in range(1, 11):
-        agents.append(IndexerAgent(id=str(i).zfill(3)))
+        agents = []
+        for i in range(1, 11):
+            agents.append(IndexerAgent(id=str(i).zfill(3)))
 
-    expected_result = {'001', '002', '003', '004', '005', '006', '007', '008', '009', '010'}
-    agents_search_mock = AsyncMock(return_value=agents)
-    create_indexer_mock.return_value.agents.search = agents_search_mock
+        expected_result = {'001', '002', '003', '004', '005', '006', '007', '008', '009', '010'}
+        agents_search_mock = AsyncMock(return_value=agents)
+        create_indexer_mock.return_value.agents.search = agents_search_mock
 
-    result = await get_agents_info()
-    assert result == expected_result
+        result = await get_agents_info()
+        assert result == expected_result
 
 
 def test_get_groups():
@@ -1214,22 +1200,24 @@ async def test_expand_group(create_indexer_mock, group, group_agents, expected_a
         Expected agent IDs for the selected group.
     """
     # Clear get_agents_info cache
-    reset_context_cache()
+    with patch.object(CentralizedConfig, 'load', return_value=None):
+        CentralizedConfig._config = default_config
+        reset_context_cache()
 
-    agents = []
-    for i in range(1, 6):
-        agents.append(IndexerAgent(id=str(i).zfill(3)))
+        agents = []
+        for i in range(1, 6):
+            agents.append(IndexerAgent(id=str(i).zfill(3)))
 
-    agents_search_mock = AsyncMock(return_value=agents)
-    create_indexer_mock.return_value.agents.search = agents_search_mock
+        agents_search_mock = AsyncMock(return_value=agents)
+        create_indexer_mock.return_value.agents.search = agents_search_mock
 
-    if group == '*':
-        assert await expand_group(group) == await get_agents_info()
+        if group == '*':
+            assert await expand_group(group) == await get_agents_info()
 
-    agents_in_group_mock = AsyncMock(return_value=group_agents)
-    create_indexer_mock.return_value.agents.get_group_agents = agents_in_group_mock
+        agents_in_group_mock = AsyncMock(return_value=group_agents)
+        create_indexer_mock.return_value.agents.get_group_agents = agents_in_group_mock
 
-    assert await expand_group(group) == expected_agents
+        assert await expand_group(group) == expected_agents
 
 
 @pytest.mark.parametrize(

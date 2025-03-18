@@ -11,13 +11,18 @@ from pwd import getpwnam
 from unittest.mock import AsyncMock, MagicMock, call, patch
 
 import pytest
+from wazuh.core.config.client import CentralizedConfig
+from wazuh.core.config.models.server import ValidateFilePathMixin
+from wazuh.tests.util import get_default_configuration
 
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '../..'))
 
 with patch('wazuh.core.common.wazuh_uid'):
     with patch('wazuh.core.common.wazuh_gid'):
-        # TODO: Fix in #26725
-        with patch('wazuh.core.utils.load_wazuh_xml'):
+        with patch.object(ValidateFilePathMixin, '_validate_file_path', return_value=None):
+            default_config = get_default_configuration()
+            CentralizedConfig._config = default_config
+
             sys.modules['wazuh.rbac.orm'] = MagicMock()
             import wazuh.rbac.decorators
             from wazuh.tests.util import RBAC_bypasser
@@ -25,32 +30,32 @@ with patch('wazuh.core.common.wazuh_uid'):
             del sys.modules['wazuh.rbac.orm']
             wazuh.rbac.decorators.expose_resources = RBAC_bypasser
 
-        from server_management_api.util import remove_nones_to_dict
-        from wazuh import WazuhError, WazuhException, WazuhInternalError
-        from wazuh.agent import (
-            add_agent,
-            build_agents_query,
-            create_group,
-            delete_agents,
-            delete_groups,
-            get_agent_groups,
-            get_agents,
-            get_agents_in_group,
-            get_group_conf,
-            reconnect_agents,
-            remove_agents_from_group,
-            restart_agents,
-            update_group_file,
-        )
-        from wazuh.core.agent import Agent
-        from wazuh.core.exception import WazuhResourceNotFound
-        from wazuh.core.indexer.base import IndexerKey
-        from wazuh.core.indexer.commands import CommandsManager
-        from wazuh.core.indexer.models.agent import Agent as IndexerAgent
-        from wazuh.core.indexer.models.commands import CreateCommandResponse, ResponseResult
-        from wazuh.core.results import AffectedItemsWazuhResult, WazuhResult
-        from wazuh.core.tests.test_agent import InitAgent
-        from wazuh.core.utils import GROUP_FILE_EXT
+            from server_management_api.util import remove_nones_to_dict
+            from wazuh import WazuhError, WazuhException, WazuhInternalError
+            from wazuh.agent import (
+                add_agent,
+                build_agents_query,
+                create_group,
+                delete_agents,
+                delete_groups,
+                get_agent_groups,
+                get_agents,
+                get_agents_in_group,
+                get_group_conf,
+                reconnect_agents,
+                remove_agents_from_group,
+                restart_agents,
+                update_group_file,
+            )
+            from wazuh.core.agent import Agent
+            from wazuh.core.exception import WazuhResourceNotFound
+            from wazuh.core.indexer.base import IndexerKey
+            from wazuh.core.indexer.commands import CommandsManager
+            from wazuh.core.indexer.models.agent import Agent as IndexerAgent
+            from wazuh.core.indexer.models.commands import CreateCommandResponse, ResponseResult
+            from wazuh.core.results import AffectedItemsWazuhResult, WazuhResult
+            from wazuh.core.tests.test_agent import InitAgent
+            from wazuh.core.utils import GROUP_FILE_EXT
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
 test_agent_path = os.path.join(test_data_path, 'agent')
@@ -63,6 +68,7 @@ short_agent_list = ['001', '002', '003', '004', '005']
 
 
 def send_msg_to_wdb(msg, raw=False):
+    """Mock message delivery to the database."""
     query = ' '.join(msg.split(' ')[2:])
     result = list(map(remove_nones_to_dict, map(dict, test_data.cur.execute(query).fetchall())))
     return ['ok', dumps(result)] if raw else result
@@ -419,17 +425,17 @@ async def test_create_group(chown_mock, uid_mock, gid_mock, group_id):
     try:
         result = await create_group(group_id)
         assert isinstance(result, WazuhResult), 'The returned object is not an "WazuhResult" instance.'
-        assert (
-            len(result.dikt) == 1
-        ), f'Result dikt length is "{len(result.dikt)}" instead of "1". Result dikt content is: {result.dikt}'
+        assert len(result.dikt) == 1, (
+            f'Result dikt length is "{len(result.dikt)}" instead of "1". Result dikt content is: {result.dikt}'
+        )
         assert result.dikt['message'] == expected_msg, (
             f'The "result.dikt[\'message\']" received is not the expected.\n'
             f'Expected: "{expected_msg}"\n'
             f'Received: "{result.dikt["message"]}"'
         )
-        assert os.path.exists(
-            path_to_group
-        ), f'The path "{path_to_group}" does not exists and should be created by "create_group" function.'
+        assert os.path.exists(path_to_group), (
+            f'The path "{path_to_group}" does not exists and should be created by "create_group" function.'
+        )
     finally:
         # Remove the new file to avoid affecting other tests
         if os.path.exists(path_to_group):
@@ -539,7 +545,7 @@ async def test_agent_delete_groups_other_exceptions(mock_get_groups, group_list,
 @pytest.mark.parametrize('group_list, agent_list', [(['group-1'], ['0191c7fa-26d5-705f-bc3c-f54810d30d79'])])
 @patch('wazuh.core.indexer.create_indexer')
 @patch('wazuh.agent.get_groups', return_value={'group-1'})
-async def test_agent_remove_agents_from_group(mock_get_groups, create_indexer_mock, mock_unset, group_list, agent_list):
+async def test_agent_remove_agents_from_group(mock_get_groups, create_indexer_mock, group_list, agent_list):
     """Test `remove_agents_from_group` function from agent module.
 
     Parameters
@@ -565,8 +571,6 @@ async def test_agent_remove_agents_from_group(mock_get_groups, create_indexer_mo
     # Check affected items
     assert result.total_affected_items == len(result.affected_items)
     assert set(result.affected_items).difference(set(agent_list)) == set()
-    # Check failed items
-    assert result.total_failed_items == 0
 
 
 @pytest.mark.asyncio

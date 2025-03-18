@@ -1,10 +1,11 @@
 import json
-from unittest.mock import AsyncMock, MagicMock, call, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from fastapi import FastAPI, Request
 from starlette.requests import ClientDisconnect
 from wazuh.core.batcher.client import BatcherClient
+from wazuh.core.batcher.mux_demux import Item, Packet
 from wazuh.core.exception import WazuhError
 from wazuh.core.indexer.bulk import Operation
 from wazuh.core.indexer.commands import CommandsManager
@@ -101,7 +102,9 @@ async def test_send_stateful_events(send_events_mock, batcher_client_mock):
     batcher_client_mock.return_value = batcher_client
     send_events_mock.return_value = expected
 
-    events = StatefulEvents(agent_metadata=agent_metadata, headers=headers, data=data)
+    events = StatefulEvents(
+        agent_metadata=agent_metadata, headers=headers, data=[json.dumps(item).encode('utf-8') for item in data]
+    )
     result = await send_stateful_events(events, batcher_queue)
 
     send_events_mock.assert_called_once_with(
@@ -188,6 +191,10 @@ async def test_parse_stateful_events_ko(disconnect_client, expected_code):
 @patch('asyncio.gather', new_callable=AsyncMock)
 async def test_send_events(gather_mock, create_task_mock, parse_tasks_results_mock, batcher_client_mock):
     """Check that the `send_events` function works as expected."""
+    batcher_client_mock.get_response = AsyncMock(
+        return_value=Packet(items=[Item(id=1, operation=Operation.CREATE, content=b'example')])
+    )
+
     events = StatefulEvents(
         agent_metadata=AgentMetadata(
             agent=Agent(
@@ -203,63 +210,48 @@ async def test_send_events(gather_mock, create_task_mock, parse_tasks_results_mo
             Header(id='1', operation=Operation.CREATE, module=Module.COMMAND),
             Header(id='2', operation=Operation.UPDATE, module=Module.SCA),
         ],
-        data=[{}, {}],
+        data=[b'', b''],
     )
     await send_events(events, batcher_client_mock)
 
-    create_task_mock.assert_called()
-    gather_mock.assert_called_once()
-    batcher_client_mock.send_event.assert_has_calls(
-        [
-            call(agent_metadata=events.agent_metadata, header=events.headers[0], data=events.data[0]),
-            call(agent_metadata=events.agent_metadata, header=events.headers[1], data=events.data[1]),
-        ]
-    )
+    batcher_client_mock.send_event.assert_called_once()
     parse_tasks_results_mock.assert_called_once()
 
 
 def test_parse_tasks_results():
     """Check that the `parse_tasks_results` function works as expected."""
     tasks_results = [
-        [
-            {
-                '_index': SCA_INDEX,
-                '_id': '1',
-                'status': 201,
-                'result': 'created',
-            },
-            {
-                '_index': VULNERABILITY_INDEX,
-                '_id': '1',
-                'status': 200,
-                'result': 'updated',
-            },
-        ],
-        [
-            {
-                '_index': FIM_INDEX,
-                '_id': '2',
-                'status': 200,
-                'result': 'updated',
-            }
-        ],
-        [
-            {
-                '_index': INVENTORY_PORTS_INDEX,
-                '_id': '3',
-                'status': 400,
-                'error': {'reason': 'invalid field `scan_time`'},
-            }
-        ],
-        [
-            {
-                '_index': INVENTORY_NETWORKS_INDEX,
-                '_id': '4',
-                'status': 404,
-                'error': {'reason': '[4]: document missing'},
-            }
-        ],
-        [{'_index': INVENTORY_PROCESSES_INDEX, '_id': '5', 'result': 'not_found', 'status': 404}],
+        {
+            '_index': SCA_INDEX,
+            '_id': '1',
+            'status': 201,
+            'result': 'created',
+        },
+        {
+            '_index': VULNERABILITY_INDEX,
+            '_id': '1',
+            'status': 200,
+            'result': 'updated',
+        },
+        {
+            '_index': FIM_INDEX,
+            '_id': '2',
+            'status': 200,
+            'result': 'updated',
+        },
+        {
+            '_index': INVENTORY_PORTS_INDEX,
+            '_id': '3',
+            'status': 400,
+            'error': {'reason': 'invalid field `scan_time`'},
+        },
+        {
+            '_index': INVENTORY_NETWORKS_INDEX,
+            '_id': '4',
+            'status': 404,
+            'error': {'reason': '[4]: document missing'},
+        },
+        {'_index': INVENTORY_PROCESSES_INDEX, '_id': '5', 'result': 'not_found', 'status': 404},
     ]
     expected = [
         TaskResult(index=SCA_INDEX, id='1', result='created', status=201),

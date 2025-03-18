@@ -35,6 +35,7 @@ FAILED_AGENT_ID = '999'
 
 @pytest.fixture(scope='function')
 def get_wazuh_result():
+    """Mock the get_wazuh_result function."""
     return WazuhResult(
         dct={'data': {'items': [{'item1': 'data1'}, {'item2': 'OK'}], 'message': 'Everything ok'}},
         str_priority=['KO', 'OK'],
@@ -43,6 +44,8 @@ def get_wazuh_result():
 
 @pytest.fixture(scope='function')
 def get_wazuh_affected_item():
+    """Mock the _get_affected function."""
+
     def _get_affected(params=None):
         kwargs = {p_name: param for p_name, param in zip(param_name, params)}
         return AffectedItemsWazuhResult(**kwargs)
@@ -52,6 +55,7 @@ def get_wazuh_affected_item():
 
 @pytest.fixture(scope='function')
 def get_wazuh_failed_item():
+    """Mock the get_wazuh_failed_item function."""
     item = AffectedItemsWazuhResult()
     item.add_failed_item(id_=FAILED_AGENT_ID, error=WazuhException(WAZUH_EXCEPTION_CODE))
     return item

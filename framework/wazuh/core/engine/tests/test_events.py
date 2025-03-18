@@ -6,14 +6,18 @@ from wazuh.core.exception import WazuhError
 
 
 class TestEventsModule:
+    """Test class for the EventsModule functionality."""
+
     module_class = EventsModule
 
     @pytest.fixture
     def client_mock(self) -> mock.AsyncMock:
+        """Provide a mock client instance for testing."""
         return mock.AsyncMock()
 
     @pytest.fixture
     def module_instance(self, client_mock) -> EventsModule:
+        """Provide an instance of VulnerabilityModule with a mocked client for testing."""
         return self.module_class(client=client_mock)
 
     async def test_send(self, client_mock, module_instance: EventsModule):

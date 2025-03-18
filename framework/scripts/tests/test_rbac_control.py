@@ -6,9 +6,14 @@ import sys
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from scripts.tests.conftest import get_default_configuration
+from wazuh.core.config.client import CentralizedConfig
+from wazuh.core.config.models.server import ValidateFilePathMixin
 
 
 class Arguments:
+    """Class to hold command-line arguments for script execution."""
+
     def __init__(self, reset_force=False, func=None):
         self.reset_force = reset_force
         self.func = func
@@ -16,14 +21,17 @@ class Arguments:
 
 with patch('wazuh.core.common.wazuh_uid'):
     with patch('wazuh.core.common.wazuh_gid'):
-        sys.modules['wazuh.rbac.orm'] = MagicMock()
-        import wazuh.rbac.decorators
-        from wazuh.tests.util import RBAC_bypasser
+        with patch.object(ValidateFilePathMixin, '_validate_file_path', return_value=None):
+            default_config = get_default_configuration()
+            CentralizedConfig._config = default_config
+            sys.modules['wazuh.rbac.orm'] = MagicMock()
+            import wazuh.rbac.decorators
+            from wazuh.tests.util import RBAC_bypasser
 
-        del sys.modules['wazuh.rbac.orm']
-        wazuh.rbac.decorators.expose_resources = RBAC_bypasser
-        from scripts import rbac_control
-        from wazuh.tests.test_security import db_setup  # noqa
+            del sys.modules['wazuh.rbac.orm']
+            wazuh.rbac.decorators.expose_resources = RBAC_bypasser
+            from scripts import rbac_control
+            from wazuh.tests.test_security import db_setup  # noqa
 
 
 @patch('scripts.rbac_control.sys.exit')

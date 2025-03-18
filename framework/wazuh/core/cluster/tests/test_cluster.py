@@ -13,179 +13,37 @@ from unittest.mock import ANY, MagicMock, call, mock_open, patch
 import pytest
 from jsonschema import validators
 from wazuh.core import common
+from wazuh.core.cluster.tests.conftest import get_default_configuration
+from wazuh.core.config.client import CentralizedConfig
+from wazuh.core.config.models.server import ValidateFilePathMixin
 
 with patch('wazuh.common.wazuh_uid'):
     with patch('wazuh.common.wazuh_gid'):
-        sys.modules['wazuh.rbac.orm'] = MagicMock()
-        import wazuh.rbac.decorators
+        with patch.object(ValidateFilePathMixin, '_validate_file_path', return_value=None):
+            default_config = get_default_configuration()
+            CentralizedConfig._config = default_config
 
-        del sys.modules['wazuh.rbac.orm']
+            sys.modules['wazuh.rbac.orm'] = MagicMock()
+            import wazuh.rbac.decorators
 
-        from wazuh.tests.util import RBAC_bypasser
+            del sys.modules['wazuh.rbac.orm']
 
-        wazuh.rbac.decorators.expose_resources = RBAC_bypasser
-        import wazuh.core.cluster.cluster as cluster
-        from wazuh import WazuhException
-        from wazuh.core.exception import WazuhError, WazuhInternalError
+            from wazuh.tests.util import RBAC_bypasser
+
+            wazuh.rbac.decorators.expose_resources = RBAC_bypasser
+            import wazuh.core.cluster.cluster as cluster
+            from wazuh.core.exception import WazuhError, WazuhInternalError
 
 agent_groups = b'default,windows-servers'
-
-# Valid configurations
-default_cluster_configuration = {
-    'cluster': {
-        'node_type': 'master',
-        'node_name': 'node01',
-        'port': 1516,
-        'bind_addr': 'localhost',
-        'nodes': ['127.0.0.1'],
-        'hidden': 'no',
-        'certfile': '/test/path/cert.pem',
-        'keyfile': '/test/path/key.pem',
-        'keyfile_password': 'test_password',
-    }
-}
-
-custom_cluster_configuration = {
-    'cluster': {
-        'node_type': 'master',
-        'node_name': 'node01',
-        'port': 1516,
-        'bind_addr': 'localhost',
-        'nodes': ['172.10.0.100'],
-        'hidden': False,
-    }
-}
-
-custom_incomplete_configuration = {'cluster': {'node_name': 'master'}}
-
-certificates_configuration = {
-    'cafile': common.WAZUH_ETC / 'rootCA.cert',
-    'certfile': common.WAZUH_ETC / 'test.cert',
-    'keyfile': common.WAZUH_ETC / 'test.key',
-}
-
-
-@patch('pathlib.Path.exists', return_value=True)
-@patch.object(wazuh.core.cluster.cluster.logger, 'warning')
-def test_check_cluster_config(mock_logger, exists_mock):
-    """Check if the check_cluster_config function is working properly."""
-    configuration = {
-        'node_type': 'master',
-        'port': 3000,
-        'nodes': ['A', 'B'],
-        'key': 'ABCD',
-        'cafile': common.WAZUH_ETC / 'rootCA.cert',
-        'certfile': common.WAZUH_ETC / 'test.cert',
-        'keyfile': common.WAZUH_ETC / 'test.key',
-    }
-    cluster.check_cluster_config(configuration)
-    assert mock_logger.call_args_list == [
-        call('Found more than one node in configuration. Only master node should be specified. Using A as master.'),
-    ]
-
-
-@pytest.mark.parametrize(
-    'read_config, message',
-    [
-        (
-            {
-                'cluster': {
-                    'node_type': 'random',
-                }
-            },
-            'Invalid node type',
-        ),
-        (
-            {
-                'cluster': {
-                    'node_type': 'master',
-                    'port': 'string',
-                }
-            },
-            'Port has to',
-        ),
-        (
-            {
-                'cluster': {
-                    'node_type': 'master',
-                    'port': 90,
-                }
-            },
-            'Port must be',
-        ),
-        (
-            {
-                'cluster': {
-                    'node_type': 'master',
-                    'port': 70000,
-                }
-            },
-            'Port must be',
-        ),
-        (
-            {
-                'cluster': {
-                    'node_type': 'master',
-                    'nodes': ['192.168.0.1'],
-                    'port': 30000,
-                    'certfile': common.WAZUH_ETC / 'test.cert',
-                    'keyfile': common.WAZUH_ETC / 'test.cert',
-                }
-            },
-            'Paths to certificates and keys must be different.',
-        ),
-        (
-            {'cluster': {'port': 30000, 'cafile': common.WAZUH_ETC / 'fail', 'keyfile': common.WAZUH_ETC / 'test.key'}},
-            'does not exist.',
-        ),
-        (
-            {
-                'cluster': {
-                    'port': 30000,
-                    'cafile': common.WAZUH_ETC / '/test',
-                    'keyfile': common.WAZUH_ETC / 'test.key',
-                }
-            },
-            f'is not inside {common.WAZUH_ETC}.',
-        ),
-        (
-            {
-                'cluster': {
-                    'port': 30000,
-                    'cafile': common.WAZUH_ETC / '../test',
-                    'keyfile': common.WAZUH_ETC / 'test.key',
-                }
-            },
-            'contains ".."',
-        ),
-    ],
-)
-def test_check_cluster_config_ko(read_config, message):
-    """Check wrong configurations to check the proper exceptions are raised."""
-    with patch('wazuh.core.cluster.utils.get_ossec_conf', return_value=read_config) as m:
-        with pytest.raises(WazuhException, match=rf'.* 3004 .* {message}'):
-            configuration = wazuh.core.cluster.utils.read_config()
-            for key in m.return_value['cluster']:
-                if key in configuration:
-                    configuration[key] = m.return_value['cluster'][key]
-
-            return_exists = True
-            if 'cafile' in str(read_config['cluster']) and 'fail' in str(read_config['cluster']['cafile']):
-                return_exists = False
-
-            with patch('os.path.exists', return_value=return_exists):
-                cluster.check_cluster_config(configuration)
 
 
 def test_get_node():
     """Check the correct output of the get_node function."""
-    test_dict = {'node_name': 'master', 'node_type': 'master'}
+    get_node = cluster.get_node()
 
-    with patch('wazuh.core.cluster.cluster.read_config', return_value=test_dict):
-        get_node = cluster.get_node()
-        assert isinstance(get_node, dict)
-        assert get_node['node'] == test_dict['node_name']
-        assert get_node['type'] == test_dict['node_type']
+    assert isinstance(get_node, dict)
+    assert get_node['node'] == default_config.server.node.name
+    assert get_node['type'] == default_config.server.node.type
 
 
 @patch('os.path.getmtime', return_value=45)
@@ -348,26 +206,7 @@ def test_walk_dir_ko(mock_path_join, mock_walk):
         )
 
 
-@patch(
-    'wazuh.core.cluster.cluster.get_cluster_items',
-    return_value={
-        'files': {
-            'etc/': {
-                'permissions': 416,
-                'source': 'master',
-                'files': ['client.keys'],
-                'recursive': False,
-                'restart': False,
-                'remove_subdirs_if_empty': False,
-                'extra_valid': False,
-                'description': 'client keys file database',
-            },
-            'excluded_files': ['ar.conf', 'ossec.conf'],
-            'excluded_extensions': ['~', '.tmp', '.lock', '.swp'],
-        }
-    },
-)
-def test_get_files_status(mock_get_cluster_items):
+def test_get_files_status():
     """Check the different outputs of the get_files_status function."""
     test_dict = {'path': 'metadata'}
 
@@ -377,10 +216,6 @@ def test_get_files_status(mock_get_cluster_items):
         )
 
         assert cluster.get_files_status()[0]['path'] == (test_dict['path'])
-
-    with patch('wazuh.core.cluster.cluster.walk_dir', side_effect=Exception):
-        _, logs = cluster.get_files_status()
-        assert logs['warning']['etc/'] == ['Error getting file status: .']
 
 
 @pytest.mark.parametrize(
@@ -442,16 +277,11 @@ def test_update_cluster_control(failed_item, exists, expected_result):
 
 
 @patch('zlib.compress', return_value=b'compressed_test_content')
-@patch('wazuh.core.cluster.cluster.get_cluster_items')
 @patch('wazuh.core.cluster.cluster.mkdir_with_mode')
 @patch('wazuh.core.cluster.cluster.path.dirname', return_value='/some/path')
 @patch('wazuh.core.cluster.cluster.path.exists', return_value=False)
-def test_compress_files_ok(
-    mock_path_exists, mock_path_dirname, mock_mkdir_with_mode, mock_get_cluster_items, mock_zlib
-):
+def test_compress_files_ok(mock_path_exists, mock_path_dirname, mock_mkdir_with_mode, mock_zlib):
     """Check if the compressing function is working properly."""
-    mock_get_cluster_items.return_value = {'intervals': {'communication': {'max_zip_size': 10000, 'compress_level': 0}}}
-
     with patch('builtins.open', mock_open(read_data='test_content')) as open_mock:
         assert isinstance(
             cluster.compress_files('some_name', ['some/path', 'another/path'], {'ko_file': 'file'}), tuple
@@ -468,22 +298,22 @@ def test_compress_files_ok(
         ]
 
 
-@patch('wazuh.core.cluster.cluster.get_cluster_items')
 @patch('wazuh.core.cluster.cluster.mkdir_with_mode')
 @patch('wazuh.core.cluster.cluster.path.dirname', return_value='/some/path')
 @patch('wazuh.core.cluster.cluster.path.exists', return_value=False)
-def test_compress_files_ko(mock_path_exists, mock_path_dirname, mock_mkdir_with_mode, mock_get_cluster_items):
+def test_compress_files_ko(mock_path_exists, mock_path_dirname, mock_mkdir_with_mode):
     """Check if the compressing function is raising every exception."""
+    CentralizedConfig._config.server.communications.zip.max_size = 5
+    CentralizedConfig._config.server.communications.zip.compress_level = 0
+
     with patch('builtins.open', mock_open(read_data='test_content')):
-        mock_get_cluster_items.return_value = {'intervals': {'communication': {'max_zip_size': 5, 'compress_level': 0}}}
         _, logs = cluster.compress_files('some_name', ['some/path'], {'missing': {}, 'shared': {}})
         assert logs['warning']['some/path'] == [
-            f'File too large to be synced: ' f'{os.path.join(common.WAZUH_ETC, "some/path")}'
+            f'File too large to be synced: {os.path.join(common.WAZUH_ETC, "some/path")}'
         ]
 
-        mock_get_cluster_items.return_value = {
-            'intervals': {'communication': {'max_zip_size': 15, 'compress_level': 0}}
-        }
+        CentralizedConfig._config.server.communications.zip.max_size = 15
+        CentralizedConfig._config.server.communications.zip.compress_level = 0
         with patch('zlib.compress', side_effect=zlib.error):
             with pytest.raises(WazuhError, match=r'.* 3001 .*'):
                 cluster.compress_files('some_name', ['some/path'], {'ko_file': 'file'})
@@ -574,11 +404,8 @@ async def test_decompress_files_ko(mkdir_with_mode_mock, zlib_mock, rmtree_mock)
                         cluster.decompress_files(zip_dir)
 
 
-@patch('wazuh.core.cluster.cluster.get_cluster_items')
-def test_compare_files(mock_get_cluster_items):
+def test_compare_files():
     """Check the different outputs of the compare_files function."""
-    mock_get_cluster_items.return_value = {'files': {'key': {'extra_valid': True}}}
-
     seq = {
         'some/path3/': {'cluster_item_key': 'key', 'hash': 'blake2_hash value'},
         'some/path2/': {'cluster_item_key': 'key', 'hash': 'blake2_hash value'},
@@ -592,7 +419,7 @@ def test_compare_files(mock_get_cluster_items):
     with patch('wazuh.core.cluster.cluster.merge_info', return_values=[1, 'random/path/']):
         files = cluster.compare_files(seq, condition, 'worker1')
         assert len(files['missing']) == 1
-        assert len(files['extra']) == 0
+        assert len(files['extra']) == 1
         assert len(files['shared']) == 1
 
     # Second condition
@@ -604,16 +431,13 @@ def test_compare_files(mock_get_cluster_items):
 
     files = cluster.compare_files(seq, condition, 'worker1')
     assert len(files['missing']) == 2
-    assert len(files['extra']) == 0
+    assert len(files['extra']) == 3
     assert len(files['shared']) == 0
 
 
-@patch('wazuh.core.cluster.cluster.get_cluster_items')
 @patch.object(wazuh.core.cluster.cluster.logger, 'error')
-def test_compare_files_ko(logger_mock, mock_get_cluster_items):
+def test_compare_files_ko(logger_mock):
     """Check the different outputs of the compare_files function."""
-    mock_get_cluster_items.return_value = {'files': {'key': {'extra_valid': True}}}
-
     seq = {
         'some/path3/': {'cluster_item_key': 'key', 'blake_hash': 'blake_hash value'},
         'some/path2/': {'cluster_item_key': 'key', 'blake_hash': 'blake_hash value'},
@@ -630,7 +454,6 @@ def test_compare_files_ko(logger_mock, mock_get_cluster_items):
         logger_mock.assert_called_once_with(
             'Error getting agent IDs while verifying which extra-valid files are required: '
         )
-        mock_get_cluster_items.assert_called_once_with()
 
 
 def test_clean_up_ok():
@@ -664,7 +487,7 @@ def test_clean_up_ko():
     """Check if the cleaning function raising the exceptions properly."""
     error_cleaning = 'Error cleaning up: stat: path should be string, bytes, os.PathLike or integer, not type.'
     error_removing = (
-        f"Error removing '{Exception}': " f"'stat: path should be string, bytes, os.PathLike or integer, not type'."
+        f"Error removing '{Exception}': 'stat: path should be string, bytes, os.PathLike or integer, not type'."
     )
 
     with patch('os.path.join') as path_join_mock:

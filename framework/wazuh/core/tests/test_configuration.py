@@ -26,6 +26,7 @@ tmp_path = 'tests/data'
 
 
 def test_get_group_conf():
+    """Test get_group_conf functionality."""
     with pytest.raises(WazuhError, match='.* 1710 .*'):
         configuration.get_group_conf(group_id='noexists')
 
@@ -43,6 +44,7 @@ def test_get_group_conf():
 @patch('wazuh.core.configuration.common.wazuh_uid')
 @patch('builtins.open')
 def test_update_group_configuration(mock_open, mock_wazuh_uid, mock_wazuh_gid):
+    """Test update_group_configuration functionality."""
     with pytest.raises(WazuhError, match='.* 1710 .*'):
         configuration.update_group_configuration('noexists', 'noexists')
 
@@ -60,6 +62,7 @@ def test_update_group_configuration(mock_open, mock_wazuh_uid, mock_wazuh_gid):
 @patch('wazuh.core.configuration.common.wazuh_uid')
 @patch('builtins.open')
 def test_update_group_file(mock_open, mock_wazuh_uid, mock_wazuh_gid):
+    """Test update_group_file functionality."""
     with pytest.raises(WazuhError, match='.* 1710 .*'):
         configuration.update_group_file('noexists', 'given')
 
@@ -198,63 +201,76 @@ def test_get_active_configuration_ko(
 
 
 @pytest.mark.parametrize(
-    'update_check_config,expected',
-    (
-        [{configuration.GLOBAL_KEY: {configuration.UPDATE_CHECK_OSSEC_FIELD: 'yes'}}, True],
-        [{configuration.GLOBAL_KEY: {configuration.UPDATE_CHECK_OSSEC_FIELD: 'no'}}, False],
-        [{configuration.GLOBAL_KEY: {}}, True],
-        [{}, True],
-        [{'ossec_config': {}}, True],
-    ),
+    'update_check_value, expected',
+    [
+        (True, True),
+        (False, False),
+    ],
 )
-@patch('wazuh.core.configuration.get_ossec_conf')
-def test_update_check_is_enabled(get_ossec_conf_mock, update_check_config, expected):
-    """Test that update_check_is_enabled function returns the expected value,
-    based on the value of UPDATE_CHECK_OSSEC_FIELD.
-    """
-    get_ossec_conf_mock.return_value = update_check_config
+def test_update_check_is_enabled(update_check_value, expected):
+    """Test that update_check_is_enabled returns the expected value based on update_check."""
+    with patch('wazuh.core.config.client.CentralizedConfig.get_server_config') as mock_get_server_config:
+        cti_mock = MagicMock()
+        cti_mock.update_check = update_check_value
+        server_config_mock = MagicMock()
+        server_config_mock.cti = cti_mock
+        mock_get_server_config.return_value = server_config_mock
 
-    assert configuration.update_check_is_enabled() == expected
+        result = configuration.update_check_is_enabled()
+        assert result == expected
 
 
-@pytest.mark.parametrize('error_id, value', [(1101, None), (1103, None), (1106, True)])
-def test_update_check_is_enabled_exceptions(error_id, value):
-    """Test update_check_is_enabled exception handling."""
-    with patch('wazuh.core.configuration.get_ossec_conf', side_effect=WazuhError(error_id), return_value=value):
-        if value is not None:
-            assert configuration.update_check_is_enabled() == value
+@pytest.mark.parametrize(
+    'error_code, expected',
+    [
+        (1101, None),
+        (1103, None),
+        (1106, True),
+    ],
+)
+def test_update_check_is_enabled_exceptions(error_code, expected):
+    """Test that update_check_is_enabled properly handles exceptions."""
+    with patch('wazuh.core.config.client.CentralizedConfig.get_server_config', side_effect=WazuhError(error_code)):
+        if expected is not None:
+            assert configuration.update_check_is_enabled() == expected
         else:
-            with pytest.raises(WazuhError, match=f'.* {error_id} .*'):
+            with pytest.raises(WazuhError, match=f'.* {error_code} .*'):
                 configuration.update_check_is_enabled()
 
 
 @pytest.mark.parametrize(
-    'config, expected',
-    (
-        [
-            {configuration.GLOBAL_KEY: {configuration.CTI_URL_FIELD: configuration.DEFAULT_CTI_URL}},
-            configuration.DEFAULT_CTI_URL,
-        ],
-        [{configuration.GLOBAL_KEY: {configuration.CTI_URL_FIELD: 'https://test-cti.com'}}, 'https://test-cti.com'],
-        [{configuration.GLOBAL_KEY: {}}, configuration.DEFAULT_CTI_URL],
-        [{}, configuration.DEFAULT_CTI_URL],
-        [{'ossec_config': {}}, configuration.DEFAULT_CTI_URL],
-    ),
+    'cti_url, expected',
+    [
+        ('https://default-cti.com', 'https://default-cti.com'),
+        ('https://test-cti.com', 'https://test-cti.com'),
+    ],
 )
-@patch('wazuh.core.configuration.get_ossec_conf')
-def test_get_cti_url(get_ossec_conf_mock, config, expected):
-    """Check that get_cti_url function returns the expected value, based on the CTI_URL_FIELD."""
-    get_ossec_conf_mock.return_value = config
+def test_get_cti_url(cti_url, expected):
+    """Test that get_cti_url returns the expected URL based on configuration."""
+    with patch('wazuh.core.config.client.CentralizedConfig.get_server_config') as mock_get_server_config:
+        cti_mock = MagicMock()
+        cti_mock.url = cti_url
+        server_config_mock = MagicMock()
+        server_config_mock.cti = cti_mock
+        mock_get_server_config.return_value = server_config_mock
 
-    assert configuration.get_cti_url() == expected
+        result = configuration.get_cti_url()
+        assert result == expected
 
 
-@pytest.mark.parametrize('error_id, value', [(1101, None), (1103, None), (1106, configuration.DEFAULT_CTI_URL)])
-def test_get_cti_url_exceptions(error_id, value):
-    """Test get_cti_url exception handling."""
-    with patch('wazuh.core.configuration.get_ossec_conf', side_effect=WazuhError(error_id), return_value=value):
-        if value is not None:
-            assert configuration.get_cti_url() == value
+@pytest.mark.parametrize(
+    'error_code, expected',
+    [
+        (1101, None),
+        (1103, None),
+        (1106, configuration.DEFAULT_CTI_URL),
+    ],
+)
+def test_get_cti_url_exceptions(error_code, expected):
+    """Test that get_cti_url properly handles exceptions."""
+    with patch('wazuh.core.config.client.CentralizedConfig.get_server_config', side_effect=WazuhError(error_code)):
+        if expected is not None:
+            assert configuration.get_cti_url() == expected
         else:
-            with pytest.raises(WazuhError, match=f'.* {error_id} .*'):
+            with pytest.raises(WazuhError, match=f'.* {error_code} .*'):
                 configuration.get_cti_url()

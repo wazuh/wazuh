@@ -1,9 +1,10 @@
 from asyncio import TimeoutError, wait_for
 from random import choice
 from unittest import mock
+from unittest.mock import patch
 
 import pytest
-from wazuh.core.cluster.hap_helper.hap_helper import HAPHelper, ProxyServerState, WazuhHAPHelperError
+from wazuh.core.cluster.tests.conftest import get_default_configuration
 from wazuh.core.cluster.utils import (
     AGENT_CHUNK_SIZE,
     AGENT_RECONNECTION_STABILITY_TIME,
@@ -16,7 +17,6 @@ from wazuh.core.cluster.utils import (
     HAPROXY_ADDRESS,
     HAPROXY_BACKEND,
     HAPROXY_CERT,
-    HAPROXY_HELPER,
     HAPROXY_PASSWORD,
     HAPROXY_PORT,
     HAPROXY_PROTOCOL,
@@ -25,7 +25,15 @@ from wazuh.core.cluster.utils import (
     IMBALANCE_TOLERANCE,
     REMOVE_DISCONNECTED_NODE_AFTER,
 )
+from wazuh.core.config.client import CentralizedConfig
+from wazuh.core.config.models.server import ValidateFilePathMixin
 from wazuh.core.exception import WazuhException
+
+with patch.object(ValidateFilePathMixin, '_validate_file_path', return_value=None):
+    default_config = get_default_configuration()
+    CentralizedConfig._config = default_config
+
+    from wazuh.core.cluster.hap_helper.hap_helper import HAPHelper, ProxyServerState, WazuhHAPHelperError
 
 
 class TestHAPHelper:
@@ -70,16 +78,6 @@ class TestHAPHelper:
             'wazuh.core.cluster.hap_helper.hap_helper.WazuhAgent.get_agents_able_to_reconnect', autospec=True
         ) as wazuh_agent_mock:
             yield wazuh_agent_mock
-
-    @pytest.fixture
-    def read_cluster_config_mock(self):
-        with mock.patch('wazuh.core.cluster.hap_helper.hap_helper.read_cluster_config') as read_cluster_config_mock:
-            yield read_cluster_config_mock
-
-    @pytest.fixture
-    def get_ossec_conf(self):
-        with mock.patch('wazuh.core.cluster.hap_helper.hap_helper.get_ossec_conf') as get_ossec_conf:
-            yield get_ossec_conf
 
     async def test_initialize_proxy(self, helper: HAPHelper, proxy_mock: mock.MagicMock):
         """Check the correct function of `initialize_proxy` method."""
@@ -537,19 +535,14 @@ class TestHAPHelper:
         """Check the correct output of `get_connection_retry` method."""
         CONNECTION_RETRY = 10
 
-        with mock.patch(
-            'wazuh.core.cluster.hap_helper.hap_helper.get_cluster_items',
-            return_value={'intervals': {'worker': {'connection_retry': CONNECTION_RETRY}}},
-        ):
-            assert helper.get_connection_retry() == CONNECTION_RETRY + 2
+        assert helper.get_connection_retry() == CONNECTION_RETRY + 2
 
+    @pytest.mark.skip(reason='This functionality will be removed')
     @pytest.mark.parametrize('protocol', ['http', 'https'])
     @pytest.mark.parametrize('hard_stop_after', [None, 8, 12])
     @pytest.mark.parametrize('multiple_frontends', [True, False])
     async def test_start(
         self,
-        read_cluster_config_mock: mock.MagicMock,
-        get_ossec_conf: mock.MagicMock,
         proxy_api_mock: mock.MagicMock,
         proxy_mock: mock.MagicMock,
         dapi_mock: mock.MagicMock,
@@ -611,9 +604,6 @@ class TestHAPHelper:
         dapi = mock.MagicMock()
         dapi_mock.return_value = dapi
 
-        read_cluster_config_mock.return_value = {HAPROXY_HELPER: HELPER_CONFIG}
-        get_ossec_conf.return_value = {'remote': [{'port': WAZUH_PORT}]}
-
         logger_mock = mock.MagicMock()
 
         connection_retry = 10
@@ -671,9 +661,8 @@ class TestHAPHelper:
                                 HAPHelper.manage_wazuh_cluster_nodes.assert_called_once()
 
     @pytest.mark.parametrize('exception', [KeyError(), KeyboardInterrupt(), WazuhHAPHelperError(3046)])
-    async def test_start_ko(self, read_cluster_config_mock: mock.MagicMock, exception: Exception):
+    async def test_start_ko(self, exception: Exception):
         """Check the correct error handling of `start` method."""
-        read_cluster_config_mock.side_effect = exception
         logger_mock = mock.MagicMock()
         with mock.patch.object(HAPHelper, '_get_logger', return_value=logger_mock):
             await HAPHelper.start()

@@ -52,6 +52,7 @@ original_payload = {
 
 
 def test_check_user_master():
+    """Check that the `check_user_master` function works as expected."""
     result = authentication.check_user_master('test_user', 'test_pass')
     assert result == {'result': True}
 
@@ -123,11 +124,12 @@ async def test_generate_token(
         if auth_context is not None
         else {}
     )
-    mock_encode.assert_called_once_with(expected_payload, '-----BEGIN PRIVATE KEY-----', algorithm='ES256')
+    mock_encode.assert_called_once_with(expected_payload, '-----BEGIN PRIVATE KEY-----', algorithm='RS256')
 
 
 @patch('server_management_api.authentication.TokenManager')
 def test_check_token(mock_tokenmanager):
+    """Check that the `check_token` function works as expected."""
     result = authentication.check_token(
         username='wazuh_user', roles=tuple([1]), token_nbf_time=3600, run_as=False, origin_node_type='master'
     )
@@ -144,6 +146,7 @@ def test_check_token(mock_tokenmanager):
 @patch('wazuh.core.cluster.dapi.dapi.DistributedAPI.distribute_function', return_value=True)
 @patch('server_management_api.authentication.raise_if_exc', side_effect=None)
 async def test_decode_token(mock_raise_if_exc, mock_distribute_function, mock_dapi, mock_get_keypair, mock_decode):
+    """Check that the `decode_token` function works as expected."""
     mock_decode.return_value = deepcopy(original_payload)
     mock_raise_if_exc.side_effect = [
         WazuhResult({'valid': True, 'policies': {'value': 'test'}}),
@@ -174,7 +177,7 @@ async def test_decode_token(mock_raise_if_exc, mock_distribute_function, mock_da
     mock_dapi.assert_has_calls(calls)
     mock_get_keypair.assert_called_once()
     mock_decode.assert_called_once_with(
-        'test_token', '-----BEGIN PUBLIC KEY-----', algorithms=['ES256'], audience='Wazuh API REST'
+        'test_token', '-----BEGIN PUBLIC KEY-----', algorithms=['RS256'], audience='Wazuh API REST'
     )
     assert mock_distribute_function.call_count == 2
     assert mock_raise_if_exc.call_count == 2
