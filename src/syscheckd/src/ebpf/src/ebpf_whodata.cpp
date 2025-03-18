@@ -187,7 +187,7 @@ static int init_bpfobj() {
          return 1;
     }
     abspathFn(BPF_OBJ_INSTALL_PATH, bpfobj_path, sizeof(bpfobj_path));
-    
+
     bpf_object* obj = bpf_helpers->bpf_object_open_file(bpfobj_path, nullptr);
     if (!obj) {
         char error_message[1024];
@@ -389,7 +389,7 @@ int ebpf_whodata() {
     if (!logFn || init_ring_buffer(&rb, handle_event)) {
         return 1;
     }
-    
+
     std::thread ebpf_pop_thread(ebpf_pop_events);
     ebpf_pop_thread.detach();
 
