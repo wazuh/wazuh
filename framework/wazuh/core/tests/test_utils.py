@@ -78,6 +78,13 @@ class ClassTest(object):
         self.job = job
 
     def to_dict(self):
+        """Convert object into a dictionary.
+
+        Returns
+        -------
+        dict
+            Dictionary containing the key values.
+        """
         return {'name': self.name, 'job': self.job}
 
 
@@ -711,7 +718,7 @@ def test_get_hash(mock_open):
     with patch('wazuh.core.utils.iter', return_value=[]):
         result = utils.get_hash(filename='test_file', return_hex=False)
 
-        assert type(result) == bytes
+        assert type(result) is bytes
 
 
 @patch('wazuh.core.utils.open')
@@ -879,9 +886,9 @@ def test_full_copy():
 
         for attribute in dir(original_stat):
             if attribute.startswith('st_') and attribute not in non_copyable_attributes:
-                assert getattr(original_stat, attribute) == getattr(copy_stat, attribute), (
-                    f'Attribute {attribute} is not equal between original and copy files'
-                )
+                assert getattr(original_stat, attribute) == getattr(
+                    copy_stat, attribute
+                ), f'Attribute {attribute} is not equal between original and copy files'
     finally:
         os.path.exists(test_file) and os.remove(test_file)
         os.path.exists(copied_test_file) and os.remove(copied_test_file)

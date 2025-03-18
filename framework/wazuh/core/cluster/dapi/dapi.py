@@ -134,7 +134,7 @@ class DistributedAPI:
         else:
             self.logger.debug(message)
 
-    async def distribute_function(self) -> [Dict, exception.WazuhException]:
+    async def distribute_function(self) -> Dict | exception.WazuhException:  # noqa: C901
         """Distribute an API call.
 
         Returns
@@ -249,7 +249,7 @@ class DistributedAPI:
         common.reset_context_cache()
         return data
 
-    async def execute_local_request(self) -> str:
+    async def execute_local_request(self) -> str:  # noqa: C901
         """Execute an API request locally.
 
         Returns
@@ -362,6 +362,13 @@ class DistributedAPI:
         return client
 
     def to_dict(self):
+        """Convert object into a dictionary.
+
+        Returns
+        -------
+        dict
+            Dictionary containing the key values.
+        """
         return {
             'f': self.f,
             'f_kwargs': self.f_kwargs,
@@ -378,12 +385,13 @@ class DistributedAPI:
             'api_timeout': self.api_request_timeout,
         }
 
-    async def get_error_info(self, e) -> Dict:
+    async def get_error_info(self, e: Exception) -> Dict:
         """Build a response given an Exception.
 
         Parameters
         ----------
         e : Exception
+            Exception to parse.
 
         Returns
         -------
@@ -415,7 +423,14 @@ class DistributedAPI:
 
         return result
 
-    async def send_tmp_file(self, node_name=None):
+    async def send_tmp_file(self, node_name: Tuple = None):
+        """Send temporay file to node.
+
+        Parameters
+        ----------
+        node_name : Tuple
+            Target node name.
+        """
         # POST/agent/group/:group_id/configuration and POST/agent/group/:group_id/file/:file_name API calls write
         # a temporary file in /var/ossec/tmp which needs to be sent to the master before forwarding the request
         client = self.get_client()
@@ -442,7 +457,7 @@ class DistributedAPI:
         )
         return json.loads(node_response, object_hook=c_common.as_wazuh_object)
 
-    async def forward_request(self) -> [wresults.AbstractWazuhResult, exception.WazuhException]:
+    async def forward_request(self) -> wresults.AbstractWazuhResult | exception.WazuhException:  # noqa: C901
         """Forward a request to the node who has all available information to answer it.
 
         This function is called when a distributed_master function is used. Only the master node calls this function.
@@ -453,7 +468,7 @@ class DistributedAPI:
         wresults.AbstractWazuhResult or exception.WazuhException
         """
 
-        async def forward(node_name: Tuple) -> [wresults.AbstractWazuhResult, exception.WazuhException]:
+        async def forward(node_name: Tuple) -> wresults.AbstractWazuhResult | exception.WazuhException:
             """Forward a request to a node.
 
             Parameters
@@ -644,6 +659,7 @@ class APIRequestQueue(WazuhRequestQueue):
         self.logger.addFilter(wazuh.core.cluster.utils.ClusterFilter(tag='Cluster', subtag='D API'))
 
     async def run(self):
+        """Run API request queue."""
         while True:
             names, request = (await self.request_queue.get()).split(' ', 1)
             names = names.split('*', 1)

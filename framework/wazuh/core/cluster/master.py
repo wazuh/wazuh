@@ -670,7 +670,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             logger.error(error, exc_info=False)
 
     @staticmethod
-    def process_files_from_worker(
+    def process_files_from_worker(  # noqa: C901
         files_metadata: Dict, decompressed_files_path: str, server_config: ServerConfig, worker_name: str, timeout: int
     ):
         """Iterate over received files from worker and updates the local ones.

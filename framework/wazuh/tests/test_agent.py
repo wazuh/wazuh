@@ -72,17 +72,7 @@ short_agent_list = ['001', '002', '003', '004', '005']
 def test_agent_reconnect_agents(
     socket_mock, send_mock, agents_info_mock, reconnect_mock, agent_list, expected_items, error_code
 ):
-    """Test `reconnect_agents` function from agent module.
-
-    Parameters
-    ----------
-    agent_list : List of str
-        List of agent ID's.
-    expected_items : List of str
-        List of expected agent ID's returned by 'reconnect_agents'.
-    error_code : int
-        The expected error code.
-    """
+    """Test `reconnect_agents` function from agent module."""
     result = reconnect_agents(agent_list)
     assert isinstance(result, AffectedItemsWazuhResult), 'The returned object is not an "AffectedItemsWazuhResult".'
     assert result.affected_items == expected_items, f'"Affected_items" does not match. Should be "{expected_items}".'
@@ -117,17 +107,7 @@ def test_agent_reconnect_agents(
 )
 @patch('wazuh.core.indexer.create_indexer')
 async def test_agent_restart_agents(create_indexer_mock, agent_list, expected_items, fail):
-    """Test `restart_agents` function from agent module.
-
-    Parameters
-    ----------
-    agent_list : List of str
-        List of agent ID's.
-    expected_items : List of str
-        List of expected agent ID's returned by 'restart_agents'.
-    error_code : int
-        The expected error code.
-    """
+    """Test `restart_agents` function from agent module."""
     all_agent_ids = [
         '01928c6a-3069-7056-80d0-eb397a8fec78',
         '01928c6a-3069-736d-a641-647352e4fd0d',
@@ -183,15 +163,7 @@ async def test_agent_restart_agents(create_indexer_mock, agent_list, expected_it
 async def test_agent_get_agents(
     create_indexer_mock, build_agents_query_mock, agent_list, expected_items, filters, params
 ):
-    """Test `get_agents` function from agent module.
-
-    Parameters
-    ----------
-    agent_list : List of str
-        List of agent ID's.
-    expected_items : List of str
-        List of expected agent ID's returned by 'get_agents'.
-    """
+    """Test `get_agents` function from agent module."""
     agents_search_mock = AsyncMock(return_value=expected_items)
     create_indexer_mock.return_value.agents.search = agents_search_mock
 
@@ -211,17 +183,7 @@ async def test_agent_get_agents(
 @patch('wazuh.agent.get_groups')
 @patch('wazuh.core.indexer.create_indexer')
 async def test_agent_get_agents_in_group(create_indexer_mock, mock_get_groups, group, group_exists, expected_agents):
-    """Test `get_agents_in_group` from agent module.
-
-    Parameters
-    ----------
-    group : str
-        Name of the group to which the agent belongs.
-    group_exists : bool
-        Value to be returned by the mocked function 'group_exists'.
-    expected_agents : List of str
-        List of agent ID's that belongs to a given group.
-    """
+    """Test `get_agents_in_group` from agent module."""
     mock_get_groups.return_value = ['default']
     get_group_agents_mock = AsyncMock(return_value=[{'id': '0191c7fa-26d5-705f-bc3c-f54810d30d79'}])
     create_indexer_mock.return_value.agents.get_group_agents = get_group_agents_mock
@@ -251,15 +213,7 @@ async def test_agent_get_agents_in_group(create_indexer_mock, mock_get_groups, g
 )
 @patch('wazuh.core.indexer.create_indexer')
 async def test_agent_delete_agents(create_indexer_mock, agent_list, available_agents, expected_items):
-    """Test `delete_agents` function from agent module.
-
-    Parameters
-    ----------
-    agent_list : List of str
-        List of agent ID's.
-    expected_items : List of str
-        List of expected agent ID's returned by
-    """
+    """Test `delete_agents` function from agent module."""
     filters = {}
     agents_search_mock = AsyncMock(return_value=[IndexerAgent(id=agent_id) for agent_id in available_agents])
     agents_delete_mock = AsyncMock(return_value=expected_items)
@@ -334,17 +288,7 @@ async def test_agent_add_agent(
 @patch('wazuh.core.indexer.create_indexer')
 @patch('wazuh.core.agent.group_exists', return_value=True)
 async def test_agent_add_agent_ko(mock_group_exists, create_indexer_mock, name, id, key, type, version):
-    """Test `add_agent` from agent module.
-
-    Parameters
-    ----------
-    id : str
-        ID of the agent.
-    name : str
-        Name of the agent.
-    key : str
-        The agent key.
-    """
+    """Test `add_agent` from agent module."""
     with pytest.raises(WazuhError, match='.* 1738 .*'):
         await add_agent(name=name * 128, id=id, key=key, type=type, version=version)
 
@@ -361,17 +305,7 @@ async def test_agent_add_agent_ko(mock_group_exists, create_indexer_mock, name, 
 )
 @patch('wazuh.core.common.WAZUH_GROUPS', new=test_groups_path)
 async def test_agent_get_agent_groups(group_list, q, expected_result):
-    """Test `get_agent_groups` from agent module.
-
-    This will check if the provided groups exists.
-
-    Parameters
-    ----------
-    group_list : List of str
-        List of groups to check if they exists.
-    expected_result : List of str
-        List of expected groups to be returned by 'get_agent_groups'.
-    """
+    """Test `get_agent_groups` from agent module."""
     group_result = await get_agent_groups(group_list, q=q)
     assert len(group_result.affected_items) == len(expected_result)
     for item, group_name in zip(group_result.affected_items, group_list):
@@ -398,31 +332,23 @@ async def test_agent_get_agent_groups_exceptions(mock_get_groups, system_groups,
 @patch('wazuh.core.common.wazuh_uid', return_value=getpwnam('root'))
 @patch('wazuh.agent.chown')
 async def test_create_group(chown_mock, uid_mock, gid_mock, group_id):
-    """Test `create_group` function from agent module.
-
-    When a group is created a folder with the same name is created in `common.WAZUH_GROUPS`.
-
-    Parameters
-    ----------
-    group_id : str
-        Name of the group to be created.
-    """
+    """Test `create_group` function from agent module."""
     expected_msg = f"Group '{group_id}' created."
     path_to_group = os.path.join(test_groups_path, f'{group_id}{GROUP_FILE_EXT}')
     try:
         result = await create_group(group_id)
         assert isinstance(result, WazuhResult), 'The returned object is not an "WazuhResult" instance.'
-        assert len(result.dikt) == 1, (
-            f'Result dikt length is "{len(result.dikt)}" instead of "1". Result dikt content is: {result.dikt}'
-        )
+        assert (
+            len(result.dikt) == 1
+        ), f'Result dikt length is "{len(result.dikt)}" instead of "1". Result dikt content is: {result.dikt}'
         assert result.dikt['message'] == expected_msg, (
             f'The "result.dikt[\'message\']" received is not the expected.\n'
             f'Expected: "{expected_msg}"\n'
             f'Received: "{result.dikt["message"]}"'
         )
-        assert os.path.exists(path_to_group), (
-            f'The path "{path_to_group}" does not exists and should be created by "create_group" function.'
-        )
+        assert os.path.exists(
+            path_to_group
+        ), f'The path "{path_to_group}" does not exists and should be created by "create_group" function.'
     finally:
         # Remove the new file to avoid affecting other tests
         if os.path.exists(path_to_group):
@@ -470,13 +396,7 @@ async def test_create_group_exceptions(group_id, exception, exception_code):
 @patch('wazuh.agent.delete_single_group')
 @patch('wazuh.core.indexer.create_indexer')
 async def test_agent_delete_groups(create_indexer_mock, mock_delete, mock_get_groups, group_list):
-    """Test `delete_groups` function from agent module.
-
-    Parameters
-    ----------
-    group_list : List of str
-        List of groups to be deleted.
-    """
+    """Test `delete_groups` function from agent module."""
 
     def groups():
         return set(group_list)
@@ -508,15 +428,8 @@ async def test_agent_delete_groups(create_indexer_mock, mock_delete, mock_get_gr
 )
 @patch('wazuh.agent.get_groups')
 async def test_agent_delete_groups_other_exceptions(mock_get_groups, group_list, expected_errors):
-    """Test `delete_groups` function from agent module returns the expected exceptions when using invalid group lists.
-
-    Parameters
-    ----------
-    group_list : List of str
-        List of groups to be deleted.
-    expected_errors : list of WazuhError
-        List of expected WazuhError to be raised by delete_groups if a group is not valid. An exception will be returned
-        for each invalid group.
+    """Test `delete_groups` function from agent module returns the expected exceptions when using invalid group
+    lists.
     """
     mock_get_groups.side_effect = {'default'}
     result = await delete_groups(group_list)
@@ -533,15 +446,7 @@ async def test_agent_delete_groups_other_exceptions(mock_get_groups, group_list,
 @patch('wazuh.core.indexer.create_indexer')
 @patch('wazuh.agent.get_groups', return_value={'group-1'})
 async def test_agent_remove_agents_from_group(mock_get_groups, create_indexer_mock, group_list, agent_list):
-    """Test `remove_agents_from_group` function from agent module.
-
-    Parameters
-    ----------
-    group_list : List of str
-        List of group names from where the agents will be removed. The list must contain only one group name.
-    agent_list : List of str
-        List of agent ID's.
-    """
+    """Test `remove_agents_from_group` function from agent module."""
     search_mock = AsyncMock(return_value=[IndexerAgent(id='0191c7fa-26d5-705f-bc3c-f54810d30d79')])
     create_indexer_mock.return_value.agents.search = search_mock
 
@@ -574,18 +479,6 @@ async def test_agent_remove_agents_from_group_exceptions(
 ):
     """Test `remove_agents_from_group` function from agent module raises the expected exceptions when using invalid
     parameters.
-
-    Parameters
-    ----------
-    group_list : List of str
-        List of group names from where the agents will be removed.
-    agent_list : List of str
-        List of agent ID's.
-    expected_error : WazuhError
-        The expected error to be raised or returned by the function.
-    catch_exception : bool
-        True if the exception will be raised by the function and must be caught. False if the function must return an
-        `AffectedItemsWazuhResult` containing the exceptions in its 'failed_items'.
     """
     try:
         result = await remove_agents_from_group(group_list=group_list, agent_list=agent_list)

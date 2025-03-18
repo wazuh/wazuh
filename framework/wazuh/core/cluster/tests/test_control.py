@@ -27,7 +27,7 @@ with patch('wazuh.common.getgrnam'):
 
 
 async def async_local_client(command, data):
-    """Simulates a local client"""
+    """Simulate a local client."""
     return None
 
 

@@ -92,7 +92,7 @@ def clean_pid_files(daemon: str) -> None:
                 os.remove(path.join(common.WAZUH_RUN, pid_file))
 
 
-def process_array(
+def process_array(  # noqa: C901
     array: list,
     search_text: str = None,
     complementary_search: bool = False,
@@ -243,7 +243,7 @@ def cut_array(array: list, offset: int = 0, limit: int = common.DATABASE_LIMIT) 
         return array[offset : offset + limit]
 
 
-def sort_array(
+def sort_array(  # noqa: C901
     array: list, sort_by: list = None, sort_ascending: bool = True, allowed_sort_fields: list = None
 ) -> list:
     """Sort an array.
@@ -421,7 +421,7 @@ def search_array(
     return found
 
 
-def select_array(
+def select_array(  # noqa: C901
     array: list, select: list = None, required_fields: set = None, allowed_select_fields: list = None
 ) -> list:
     """Get only those values from each element in the array that matches the select values.
@@ -498,7 +498,7 @@ def select_array(
 
 
 def tail(filename: str, n: int = 20) -> list:
-    """Returns last 'n' lines of the file 'filename'.
+    """Return last 'n' lines of the file 'filename'.
 
     Parameters
     ----------
@@ -615,9 +615,21 @@ def mkdir_with_mode(name: str, mode: int = 0o770):
     chmod(name, mode)
 
 
-def blake2b(fname):
+def blake2b(file_path: str) -> str:
+    """Get a file's content blake2b hash.
+
+    Parameters
+    ----------
+    file_path : str
+        File path.
+
+    Returns
+    -------
+    str
+        File content hash.
+    """
     hash_blake2b = hashlib.blake2b()
-    with open(fname, 'rb') as f:
+    with open(file_path, 'rb') as f:
         for chunk in iter(lambda: f.read(4096), b''):
             hash_blake2b.update(chunk)
     return hash_blake2b.hexdigest()
@@ -632,7 +644,23 @@ def _get_hashing_algorithm(hash_algorithm):
     return hashlib.new(hash_algorithm)
 
 
-def get_hash(filename, hash_algorithm='md5', return_hex=True):
+def get_hash(filename, hash_algorithm='md5', return_hex=True) -> str | bytes:
+    """Get a file's content hash.
+
+    Parameters
+    ----------
+    filename : str
+        File name.
+    hash_algorithm : str
+        Hash algorithm used. Default is md5.
+    return_hex : bool
+        Whether the returned string should be in hexadecimal. True by default.
+
+    Returns
+    -------
+    str | bytes
+        Digest value.
+    """
     hashing = _get_hashing_algorithm(hash_algorithm)
 
     try:
@@ -711,7 +739,7 @@ def get_group_file_path(group_id: str) -> str:
     return path.join(common.WAZUH_GROUPS, group_id + GROUP_FILE_EXT)
 
 
-def filter_array_by_query(q: str, input_array: typing.List) -> typing.List:
+def filter_array_by_query(q: str, input_array: typing.List) -> typing.List:  # noqa: C901
     """Filter a list of dictionaries by 'q' parameter, like as a SQL query.
 
     Parameters
@@ -950,6 +978,7 @@ class Timeout:
         self.error_message = error_message
 
     def handle_timeout(self, signum, frame):
+        """Raise timeout error."""
         raise TimeoutError(self.error_message)
 
     def __enter__(self):
@@ -961,7 +990,7 @@ class Timeout:
 
 
 def get_date_from_timestamp(timestamp: float) -> datetime:
-    """Function to return the date in datetime format and UTC timezone.
+    """Get the date in datetime format and UTC timezone.
 
     Parameters
     ----------
@@ -977,7 +1006,7 @@ def get_date_from_timestamp(timestamp: float) -> datetime:
 
 
 def get_utc_now() -> datetime:
-    """Function to return the current date.
+    """Get the current date.
 
     Returns
     -------
@@ -988,7 +1017,7 @@ def get_utc_now() -> datetime:
 
 
 def get_utc_strptime(date: str, datetime_format: str) -> datetime:
-    """Function to transform str to date.
+    """Transform str to date.
 
     Parameters
     ----------
