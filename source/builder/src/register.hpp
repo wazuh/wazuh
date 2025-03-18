@@ -345,6 +345,7 @@ void registerStageBuilders(const std::shared_ptr<Registry>& registry, const Buil
     registry->template add<builders::StageBuilder>(syntax::asset::CHECK_KEY, builders::checkBuilder);
     registry->template add<builders::StageBuilder>(syntax::asset::MAP_KEY, builders::mapBuilder);
     registry->template add<builders::StageBuilder>(syntax::asset::NORMALIZE_KEY, builders::normalizeBuilder);
+    registry->template add<builders::StageBuilder>(syntax::asset::RULE_NORMALIZE_KEY, builders::normalizeBuilder);
     registry->template add<builders::StageBuilder>(syntax::asset::PARSE_KEY,
                                                    builders::getParseBuilder(deps.logpar, deps.logparDebugLvl));
     registry->template add<builders::StageBuilder>(syntax::asset::OUTPUTS_KEY, builders::outputsBuilder);
