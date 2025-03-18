@@ -198,8 +198,6 @@ chown -R %{_wazuh_user}:%{_wazuh_group} %{_localstatedir}var/lib/wazuh-server
 find %{_localstatedir}var/lib/wazuh-server -type d -exec chmod 750 {} \; -o -type f -exec chmod 640 {} \;
 chown -R %{_wazuh_user}:%{_wazuh_group} %{_localstatedir}usr/share/wazuh-server
 find %{_localstatedir}usr/share/wazuh-server -type d -exec chmod 755 {} \; -o -type f -exec chmod 644 {} \;
-chown -R %{_wazuh_user}:%{_wazuh_group} %{_localstatedir}etc/wazuh-server
-find %{_localstatedir}etc/wazuh-server -type d -exec chmod 755 {} \; -o -type f -exec chmod 644 {} \;
 
 # Binaries
 chmod 750 %{_localstatedir}usr/share/wazuh-server/bin/wazuh-engine
@@ -238,14 +236,14 @@ rm -fr %{buildroot}
 %dir %attr(750, %{_wazuh_user}, %{_wazuh_group}) %{_localstatedir}var/lib/wazuh-server/engine
 %dir %attr(750, %{_wazuh_user}, %{_wazuh_group}) %{_localstatedir}var/lib/wazuh-server/engine/tzdb
 %dir %attr(750, %{_wazuh_user}, %{_wazuh_group}) %{_localstatedir}etc/wazuh-server
-%dir %attr(750, %{_wazuh_user}, %{_wazuh_group}) %{_localstatedir}etc/wazuh-server/certs
+%attr(640, %{_wazuh_user}, %{_wazuh_group}) %{_localstatedir}etc/wazuh-server/wazuh-server.yml
+%dir %attr(500, %{_wazuh_user}, %{_wazuh_group}) %{_localstatedir}etc/wazuh-server/certs
 %dir %attr(750, %{_wazuh_user}, %{_wazuh_group}) %{_localstatedir}etc/wazuh-server/cluster
 %dir %attr(750, %{_wazuh_user}, %{_wazuh_group}) %{_localstatedir}etc/wazuh-server/groups
 %dir %attr(750, %{_wazuh_user}, %{_wazuh_group}) %{_localstatedir}usr/share/wazuh-server/lib
 %dir %attr(750, %{_wazuh_user}, %{_wazuh_group}) %{_localstatedir}usr/share/wazuh-server/framework
 %dir %attr(750, %{_wazuh_user}, %{_wazuh_group}) %{_localstatedir}usr/share/wazuh-server/apis
 %{_localstatedir}var/lib/wazuh-server/engine/tzdb/*
-%{_localstatedir}etc/wazuh-server/*
 %{_localstatedir}usr/share/wazuh-server/lib/*
 %{_localstatedir}usr/share/wazuh-server/framework/*
 %{_localstatedir}usr/share/wazuh-server/apis/*
