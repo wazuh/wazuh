@@ -225,6 +225,9 @@ build_package() {
   }
   ' VERSION.json > VERSION.json.tmp && mv VERSION.json.tmp VERSION.json
   cat VERSION.json
+
+  # Remove the temporary file after processing (if any remains)
+  [ -f VERSION.json.tmp ] && rm VERSION.json.tmp
   popd
 
   cp -pr ${extracted_directory} wazuh-agent-${wazuh_version}
