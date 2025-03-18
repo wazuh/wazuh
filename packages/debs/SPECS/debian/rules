@@ -94,8 +94,6 @@ override_dh_fixperms:
 	find $(TARGET_DIR)$(INSTALLATION_DIR)var/lib/wazuh-server -type d -exec chmod 750 {} \; -o -type f -exec chmod 640 {} \;
 	chown -R $(WAZUH_USER):$(WAZUH_GROUP) $(TARGET_DIR)$(INSTALLATION_DIR)usr/share/wazuh-server
 	find $(TARGET_DIR)$(INSTALLATION_DIR)usr/share/wazuh-server -type d -exec chmod 750 {} \; -o -type f -exec chmod 640 {} \;
-	chown -R $(WAZUH_USER):$(WAZUH_GROUP) $(TARGET_DIR)$(INSTALLATION_DIR)etc/wazuh-server
-	find $(TARGET_DIR)$(INSTALLATION_DIR)etc/wazuh-server -type d -exec chmod 750 {} \; -o -type f -exec chmod 640 {} \;
 
 	# Binaries
 	chown $(WAZUH_USER):$(WAZUH_GROUP) $(TARGET_DIR)$(INSTALLATION_DIR)usr/share/wazuh-server/bin/wazuh-keystore
