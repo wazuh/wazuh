@@ -39,7 +39,11 @@ class SystemInventoryOrchestrator final
             data)
     {
         auto context = std::make_shared<SystemContext>(data);
-
+        logDebug2(LOGGER_DEFAULT_TAG,
+                  "SystemInventoryOrchestrator::run for agent: '%s', operation: '%u', component: '%u'",
+                  context->agentId().data(),
+                  context->operation(),
+                  context->affectedComponentType());
         m_orchestrations.at(context->operation())->handleRequest(context);
     }
 

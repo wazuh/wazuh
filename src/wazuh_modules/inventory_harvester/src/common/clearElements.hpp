@@ -18,10 +18,10 @@
 #include <map>
 #include <memory>
 
-template<typename TContext>
+template<typename TContext, typename TIndexerConnector = IndexerConnector>
 class ClearElements final : public AbstractHandler<std::shared_ptr<TContext>>
 {
-    const std::map<typename TContext::AffectedComponentType, std::unique_ptr<IndexerConnector>, std::less<>>&
+    const std::map<typename TContext::AffectedComponentType, std::unique_ptr<TIndexerConnector>, std::less<>>&
         m_indexerConnectorInstances;
 
 public:
@@ -33,7 +33,7 @@ public:
     ~ClearElements() = default;
 
     explicit ClearElements(
-        const std::map<typename TContext::AffectedComponentType, std::unique_ptr<IndexerConnector>, std::less<>>&
+        const std::map<typename TContext::AffectedComponentType, std::unique_ptr<TIndexerConnector>, std::less<>>&
             indexerConnectorInstances)
         : m_indexerConnectorInstances(indexerConnectorInstances)
     {
@@ -48,10 +48,10 @@ public:
      */
     std::shared_ptr<TContext> handleRequest(std::shared_ptr<TContext> data) override
     {
-        NoDataHarvester deleteAgent;
-        deleteAgent.operation = "DELETED_BY_QUERY";
-        deleteAgent.id = data->agentId();
-        m_indexerConnectorInstances.at(data->affectedComponentType())->publish(serializeToJSON(deleteAgent));
+        NoDataHarvester deleteElements;
+        deleteElements.operation = "DELETED_BY_QUERY";
+        deleteElements.id = data->agentId();
+        m_indexerConnectorInstances.at(data->affectedComponentType())->publish(serializeToJSON(deleteElements));
         return AbstractHandler<std::shared_ptr<TContext>>::handleRequest(std::move(data));
     }
 };
