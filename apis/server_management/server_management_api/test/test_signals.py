@@ -58,7 +58,7 @@ async def test_cancel_signal_handler_catch_cancelled_error_and_dont_rise():
 async def test_check_installation_uid_populate_uid_if_not_exists(
     uid_mock, gid_mock, chown_mock, chmod_mock, installation_uid_mock
 ):
-    """Validatre that the `check_installation_uid` function stores the UID in a file."""
+    """Validate that the `check_installation_uid` function stores the UID in a file."""
     uid = gid = 999
     uid_mock.return_value = uid
     gid_mock.return_value = gid
@@ -74,7 +74,7 @@ async def test_check_installation_uid_populate_uid_if_not_exists(
 
 @pytest.mark.asyncio
 async def test_check_installation_uid_get_uid_from_file(installation_uid_mock):
-    """Validatre that the `check_installation_uid` function gets the UID from the file."""
+    """Validate that the `check_installation_uid` function gets the UID from the file."""
     installation_uid = str(uuid4())
     with open(installation_uid_mock, 'w') as file:
         file.write(installation_uid)
@@ -86,7 +86,7 @@ async def test_check_installation_uid_get_uid_from_file(installation_uid_mock):
 
 @pytest.mark.asyncio
 async def test_get_update_information_injects_correct_data_into_app_context(query_update_check_service_mock):
-    """Validatre that the `get_update_information` function works as expected."""
+    """Validate that the `get_update_information` function works as expected."""
     response_data = {
         'last_check_date': '2023-10-11T16:47:13.066946+00:00',
         'current_version': 'v4.8.0',
@@ -128,7 +128,7 @@ async def test_get_update_information_injects_correct_data_into_app_context(quer
 
 @pytest.mark.asyncio
 async def test_get_update_information_schedule(query_update_check_service_mock):
-    """Validatre that the `get_update_information` is scheduled as expected."""
+    """Validate that the `get_update_information` is scheduled as expected."""
     cti_context[INSTALLATION_UID_KEY] = str(uuid4())
     with patch('server_management_api.signals.asyncio') as sleep_mock:
         task = asyncio.create_task(get_update_information())
