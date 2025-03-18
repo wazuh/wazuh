@@ -34,8 +34,8 @@ void fimebpf_initialize(directory_t *(*fim_conf)(const char *),
                         void (*freeWhodataEvent)(whodata_evt *),
                         void (*loggingFn)(modules_log_level_t, const char *),
                         char *(*abspathFn)(const char *, char *, size_t),
-                        bool is_fim_shutdown,
-                        syscheck_config syscheck);
+                        bool (*fimShutdownProcessOn)(),
+                        unsigned int syscheckQueueSize);
 
 /**
  * @brief eBPF whodata healthcheck
