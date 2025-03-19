@@ -92,7 +92,7 @@ if [ ! -d "/wazuh-local-src" ] ; then
                           | grep '"sha"' | head -n 1| cut -d '"' -f 4 | cut -c 1-7)"
 else
     if [ "${legacy}" = "no" ]; then
-      short_commit_hash="$(cd /wazuh-local-src && git rev-parse --short HEAD)"
+      short_commit_hash="$(cd /wazuh-local-src && git rev-parse --short=7 HEAD)"
     else
       # Git package is not available in the CentOS 5 repositories.
       head=$(cat /wazuh-local-src/.git/HEAD)

@@ -206,7 +206,7 @@ compute_version_revision()
     echo $revision > /tmp/REVISION
 
     pushd ${SOURCE}
-    short_commit_hash="$(git rev-parse --short HEAD)"
+    short_commit_hash="$(git rev-parse --short=7 HEAD)"
 
     /usr/bin/nawk -v commit="$short_commit_hash" '
     {

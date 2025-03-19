@@ -102,7 +102,7 @@ compute_version_revision() {
     echo $revision > /tmp/REVISION
 
     pushd ${SOURCE}
-    short_commit_hash="$(git rev-parse --short HEAD)"
+    short_commit_hash="$(git rev-parse --short=7 HEAD)"
     jq --arg commit "$short_commit_hash" '. + {commit: $commit}' VERSION.json > VERSION.json.tmp && mv VERSION.json.tmp VERSION.json
     cat VERSION.json
     popd

@@ -24,7 +24,7 @@ fi
 
 # Add commit hash information to VERSION.json
 pushd /wazuh*
-SHORT_COMMIT=$(git rev-parse --short HEAD)
+SHORT_COMMIT=$(git rev-parse --short=7 HEAD)
 if [ -z "$SHORT_COMMIT" ]; then echo "No commit found"; exit 1; fi
 echo "Found commit: $SHORT_COMMIT"
 sed -i '/"stage":/s/$/,/; /"stage":/a \    "commit": "'"$SHORT_COMMIT"'"' VERSION.json || exit 1

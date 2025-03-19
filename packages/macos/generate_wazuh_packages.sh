@@ -165,7 +165,7 @@ function build_package() {
     else
         WAZUH_PATH="${CURRENT_PATH}/../.."
     fi
-    short_commit_hash="$(cd "${WAZUH_PATH}" && git rev-parse --short HEAD)"
+    short_commit_hash="$(cd "${WAZUH_PATH}" && git rev-parse --short=7 HEAD)"
 
     export CONFIG="${WAZUH_PATH}/etc/preloaded-vars.conf"
     WAZUH_PACKAGES_PATH="${WAZUH_PATH}/packages/macos"
