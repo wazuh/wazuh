@@ -5,7 +5,7 @@
 # Wazuh Solaris 11 Package builder.
 
 REPOSITORY="https://github.com/wazuh/wazuh"
-wazuh_branch="master"
+wazuh_branch="main"
 install_path="/var/ossec"
 THREADS="4"
 TARGET="agent"
@@ -73,6 +73,7 @@ build_environment() {
     /opt/csw/bin/pkgutil -y -i gmake
     /opt/csw/bin/pkgutil -y -i gcc5core
     /opt/csw/bin/pkgutil -y -i gcc5g++
+    /opt/csw/bin/pkgutil -y -i jq
 
     # Install precompiled gcc-5.5
     curl -LO http://packages-dev.wazuh.com/deps/solaris/precompiled-solaris-gcc-5.5.0.tar.gz
@@ -100,6 +101,12 @@ compute_version_revision() {
     echo $wazuh_version > /tmp/VERSION
     echo $revision > /tmp/REVISION
 
+    pushd ${SOURCE}
+    short_commit_hash="$(git rev-parse --short=7 HEAD)"
+    jq --arg commit "$short_commit_hash" '. + {commit: $commit}' VERSION.json > VERSION.json.tmp && mv VERSION.json.tmp VERSION.json
+    cat VERSION.json
+    popd
+
     return 0
 }
 
@@ -108,7 +115,7 @@ download_source() {
     cd ${current_path}
     git clone $REPOSITORY $SOURCE
 
-    if [[ "${wazuh_branch}" != "trunk" ]] || [[ "${wazuh_branch}" != "master" ]]; then
+    if [[ "${wazuh_branch}" != "trunk" ]] || [[ "${wazuh_branch}" != "main" ]]; then
         cd $SOURCE
         git checkout $wazuh_branch
     fi

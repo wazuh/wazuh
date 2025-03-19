@@ -20,7 +20,7 @@
 /* Default values */
 #define CONFIG          "ossec.conf"
 #define LASTCONFIG      "last-ossec.conf"
-#define VERSION_FILE    "VERSION"
+#define VERSION_FILE    "VERSION.json"
 #define REVISION_FILE   "REVISION"
 #define OSSECLOGS       "ossec.log"
 #define HELPTXT         "help.txt"
