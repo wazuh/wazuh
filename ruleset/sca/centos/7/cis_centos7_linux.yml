@@ -2911,9 +2911,9 @@ checks:
     condition: all
     rules:
       - 'd:/etc/audit/rules.d/ -> r:\.*.rules -> r:-w /etc/sudoers && r:-p wa && r:-k scope'
-      - 'd:/etc/audit/rules.d/ -> r:\.*.rules -> r:-w /etc/sudoers.d/ && r:-p wa && r:-k scope'
+      - 'd:/etc/audit/rules.d/ -> r:\.*.rules -> r:-w /etc/sudoers.d && r:-p wa && r:-k scope'
       - "c:auditctl -l -> r:-w /etc/sudoers && r:-p wa && r:-k scope"
-      - "c:auditctl -l -> r:-w /etc/sudoers.d/ && r:-p wa && r:-k scope"
+      - "c:auditctl -l -> r:-w /etc/sudoers.d && r:-p wa && r:-k scope"
 
   # 4.1.15 Ensure system administrator command executions (sudo) are collected. (Automated)
   - id: 6131
