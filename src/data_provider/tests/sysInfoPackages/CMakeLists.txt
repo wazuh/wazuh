@@ -11,16 +11,12 @@ file(GLOB sysinfo_UNIT_TEST_SRC
     "*.cpp")
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
-    file(GLOB LINUX_SRC
-        "${CMAKE_SOURCE_DIR}/src/utilsWrapperLinux.cpp"
-        "${CMAKE_SOURCE_DIR}/src/packages/packageLinuxParserRpm.cpp"
-        "${CMAKE_SOURCE_DIR}/src/packages/packageLinuxParserDeb.cpp"
-        "${CMAKE_SOURCE_DIR}/src/packages/rpm*.cpp")
+    file(GLOB UTILS_SRC "${CMAKE_SOURCE_DIR}/src/utilsWrapperLinux.cpp")
 endif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
 
 add_executable(sysInfoPackages_unit_test
     ${sysinfo_UNIT_TEST_SRC}
-    ${LINUX_SRC})
+    ${UTILS_SRC})
 
 target_link_libraries(sysInfoPackages_unit_test
     debug gtestd
@@ -33,11 +29,5 @@ target_link_libraries(sysInfoPackages_unit_test
     optimized gmock_main
     pthread
 )
-
-if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
-    target_link_libraries(sysInfoPackages_unit_test
-        db
-        wazuhext)
-endif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
 
 add_test(NAME sysInfoPackages_unit_test COMMAND sysInfoPackages_unit_test)
