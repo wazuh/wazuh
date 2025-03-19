@@ -12,7 +12,7 @@
 
 #include "ebpf_whodata.h"
 
-class fimebpf final
+class fimebpf
 {
 public:
     static fimebpf& instance()

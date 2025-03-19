@@ -51,6 +51,12 @@ int ebpf_whodata_healthcheck();
  */
 int ebpf_whodata();
 
+
+int init_libbpf();
+
+int init_bpfobj();
+
+
 #ifdef __cplusplus
 }
 #endif // _cplusplus
