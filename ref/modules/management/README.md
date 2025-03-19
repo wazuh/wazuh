@@ -5,7 +5,7 @@
 The REST API allows the remote management of the Wazuh infrastructure such as:
  - CRUD operations for agents
  - CRUD operations for groups
- - Agents assigments to groups
+ - Agent's assignments to groups
  - CRUD operations for security entities(Users, Roles, Rules and Policies)
  - Restarting the node(s) or agent(s)
 

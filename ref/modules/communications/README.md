@@ -2,11 +2,11 @@
 
 ## Introduction
 
-The REST API is responsible of manage the agents communications with the server.
+The REST API is responsible for managing the agent's communications with the server.
 It allows:
-    - Receive differents events types, such as stateless and stateful.
+    - Receive different event types, such as stateless and stateful.
     - Retrieve files and commands available for an agent.
-    - Act as an intermediary toward the engine, by example executing a VD scan on demand.
+    - Act as an intermediary toward the engine, for example executing a VD scan on demand.
 
 ## Configuration
 
