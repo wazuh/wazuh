@@ -10,6 +10,7 @@
  */
 
 #include "reflectiveJson_test.hpp"
+#if defined(DHAS_TO_CHARS_FLOAT) && DHAS_TO_CHARS_FLOAT == true
 #include "reflectiveJson.hpp"
 
 void ReflectiveJsonTest::SetUp() {};
@@ -214,3 +215,4 @@ TEST_F(ReflectiveJsonTest, NumericBufferZeroing)
     EXPECT_EQ(json.front(), '{');
     EXPECT_EQ(json.back(), '}');
 }
+#endif
