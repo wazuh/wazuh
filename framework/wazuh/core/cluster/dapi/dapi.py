@@ -42,7 +42,7 @@ if node_info['type'] == 'master':
     # Suppress exception when the user running Wazuh cannot access /dev/shm.
     with contextlib.suppress(FileNotFoundError, PermissionError):
         pools.update({'authentication_pool': ProcessPoolExecutor(
-            max_workers=wazuh.core.cluster.utils.get_cluster_items()['intervals']['master']['authentication_pool_size'],
+            max_workers=aconf.api_conf['authentication_pool_size'],
             initializer=wazuh.core.cluster.utils.init_auth_worker
         )})
 

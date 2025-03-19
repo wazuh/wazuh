@@ -92,7 +92,6 @@
         },
 
         "master": {
-            "authentication_pool_size": 2,
             "process_pool_size": 2,
             "sync_agent_groups": 10,
             "timeout_extra_valid": 40,
