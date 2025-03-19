@@ -886,6 +886,7 @@ stages:
                   max_request_per_minute: !anyint
                 drop_privileges: !anybool
                 experimental_features: !anybool
+                authentication_pool_size: !anyint
                 upload_configuration:
                   remote_commands:
                     localfile:
