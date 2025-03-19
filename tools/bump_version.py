@@ -88,6 +88,8 @@ class Command:
 
 
 class Executor:
+    """Represent a command executor."""
+
     def __init__(self):
         self._commands = []
         self._do_errors = []
@@ -414,6 +416,13 @@ def update_version(
 
 
 def parse_args() -> tuple[str | None, str | None, str | None, bool, bool]:
+    """Parse CLI arguments.
+
+    Returns
+    -------
+    tuple[str | None, str | None, str | None, bool, bool]
+        The parsed aguments.
+    """
     parser = argparse.ArgumentParser(description='Bump version, stage and date for all packages')
 
     parser.add_argument('--version', help='Update version')
