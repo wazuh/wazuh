@@ -2,7 +2,7 @@
 >[!NOTE]
 > - The parsers always take a string as input and return a value of a specific type.
 > - The parsers are case-sensitive (Unless otherwise specified).
-> - Check the parsing rules here (TODO ADD LINK)
+> - Check how parsers are used in the [parsers section](README.md#parse)
 
 # Schema parser reference
 
@@ -14,8 +14,8 @@ as boolean types in the schema.
 
 ### Behavior
 
-- The Boolean parser strictly matches "true" or "false" without supporting parameters or alternative representations 
-    like "yes"/"no" or "on"/"off".
+- The Boolean parser strictly matches "true" or "false" without supporting parameters or alternative representations
+  like "yes"/"no" or "on"/"off".
 - Is key insensitive.
 - The parser does not require an end token.
 
@@ -846,7 +846,7 @@ Input event
 Failed parsing, the input is not a valid date, missing timezone.
 
 
-### Example 2: With locale
+### Examples: With locale
 
 **Parser configuration**
 
@@ -900,7 +900,7 @@ communication contexts. Automatically used for schema fields defined as type `bi
 
 - Validates base64 encoded strings, ensuring they conform to the base64 encoding standard.
     ensuring the character set includes only A-Z, a-z, 0-9, '+', '/', and '=' for end padding.
-- Does not require a specific end token. TODO CHECK
+- Does not require a specific end token.
 
 ### Signature
 
@@ -1007,7 +1007,7 @@ deny from <src.ip>
 >[!NOTE]
 > Both forms are used to parse logs like `deny from 66.249.66.167` to extract and store the IP address in src.ip.
 
-### Example
+### Example withot explicit storage (Common case)
 
 **Parser configuration**
 
@@ -1033,7 +1033,7 @@ parse|event.original:
 }
 ```
 
-### Example with explicit usage
+### Example with explicit storage
 
 **Parser configuration**
 
@@ -1081,7 +1081,7 @@ The `quoted` parser is designed to extract sequences of characters that are encl
 - `esc_char`: The character used to escape the delimiter within the string, allowing the delimiter to be used as part of
     the string content. The default is the backslash (`\`).
 
-### Examples
+### Examples with default delimiter and escape character
 
 **Parser configuration**
 
@@ -1108,7 +1108,7 @@ Output after parse
 }
 ```
 
-### Example with custom delimiter and escape character
+### Examples with custom delimiter and escape character
 
 **Parser configuration**
 
@@ -2132,6 +2132,8 @@ Output after parse
 The `useragent` Parser is tailored for extracting user agent strings from log data and mapping them directly to a
 designated field without alteration. It is designed to capture the user agent string in its entirety, preserving all
 original information for analytical or tracking purposes.
+
+### Behavior
 
 - The parser takes the content of input field and checks if it is a string.
 - If valid, the string is directly mapped to output field under the sub-field original to emphasize that the content is
