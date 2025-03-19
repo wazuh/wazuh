@@ -49,6 +49,7 @@ file(GLOB UTIL_CXX_UNITTEST_LINUX_SRC
     "rsaHelper_test.cpp"
     "evpHelper_test.cpp"
     "socketServer_test.cpp"
+    "reflectiveJson_test.cpp"
 )
 
 file(COPY input_files DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
