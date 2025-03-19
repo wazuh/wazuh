@@ -93,18 +93,25 @@ int main(const int argc, const char* argv[])
             vsnprintf(formattedStr, MAX_LEN, message.c_str(), args);
 
             std::lock_guard lock(G_MUTEX);
+            // Create a timestamp for the log
+            std::time_t t = std::time(nullptr);
+            auto timestamp = std::put_time(std::localtime(&t), "%H:%M:%S");
+
             if (logLevel != LOG_ERROR)
             {
-                std::cout << tag << ":" << fileName << ":" << line << " " << func << " : " << formattedStr << "\n";
+                std::cout << timestamp << " " << tag << ":" << fileName << ":" << line << " " << func << " : "
+                          << formattedStr << "\n";
             }
             else
             {
-                std::cerr << tag << ":" << fileName << ":" << line << " " << func << " : " << formattedStr << "\n";
+                std::cerr << timestamp << " " << tag << ":" << fileName << ":" << line << " " << func << " : "
+                          << formattedStr << "\n";
             }
 
             if (logFile.is_open())
             {
-                logFile << tag << ":" << fileName << ":" << line << " " << func << " : " << formattedStr << "\n";
+                logFile << timestamp << " " << tag << ":" << fileName << ":" << line << " " << func << " : "
+                        << formattedStr << "\n";
             }
             // Flush the log file every time a message is written.
             logFile.flush();
@@ -133,8 +140,8 @@ int main(const int argc, const char* argv[])
 
                 InputType inputType = InputType::Invalid;
 
-                // If the file start with deltas_... it is a delta file.
-                if (std::filesystem::path(inputFile).filename().string().find("deltas_") != std::string::npos)
+                // If the file contains 'delta' it is a delta file.
+                if (std::filesystem::path(inputFile).filename().string().find("delta") != std::string::npos)
                 {
                     if (parser.Parse(syscollector_deltas_SCHEMA) && (parser.Parse(jsonInputFile.c_str())))
                     {
@@ -152,7 +159,7 @@ int main(const int argc, const char* argv[])
                         throw std::runtime_error("Error parser flatbuffers(deltas): " + parser.error_);
                     }
                 }
-                else if (std::filesystem::path(inputFile).filename().string().find("rsync_") != std::string::npos)
+                else if (std::filesystem::path(inputFile).filename().string().find("rsync") != std::string::npos)
                 {
                     if (parser.Parse(rsync_SCHEMA) && (parser.Parse(jsonInputFile.c_str())))
                     {
@@ -201,7 +208,7 @@ int main(const int argc, const char* argv[])
         }
 
         std::cout << "Waiting before exit...\n";
-        std::this_thread::sleep_for(std::chrono::seconds(5));
+        std::this_thread::sleep_for(std::chrono::seconds(10));
 
         routerProviderDeltasSyscollector.stop();
         routerProviderDeltasSyscheck.stop();

@@ -1,0 +1,27 @@
+[
+    {
+        "index_name": "wazuh-states-files-cluster01",
+        "data": [
+            {
+                "agent": {
+                    "id": "004",
+                    "name": "DESKTOP-R8MRG1I",
+                    "ip": "any",
+                    "version": "v4.7.5"
+                },
+                "file": {
+                    "hash": {
+                        "md5": "7815696ecbf1c96e6894b779456d330e",
+                        "sha1": "f10e2821bbbea527ea02200352313bc059445190",
+                        "sha256": "688787d8ff144c502c7f5cffaafe2cc588d86079f9de88304c26b0cb99ce91c6"
+                    },
+                    "mtime": "2025-01-27T03:54:31.000Z",
+                    "owner": "dwordcito",
+                    "path": "c:/temp/octa128.txt",
+                    "size": 3,
+                    "uid": "S-1-5-21-1245906424-2878732365-1129427271-1001"
+                }
+            }
+        ]
+    }
+]

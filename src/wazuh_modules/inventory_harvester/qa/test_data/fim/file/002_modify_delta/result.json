@@ -1,0 +1,27 @@
+[
+    {
+        "index_name": "wazuh-states-files-cluster01",
+        "data": [
+            {
+                "agent": {
+                    "id": "003",
+                    "name": "DESKTOP-R8MRG1I",
+                    "ip": "any",
+                    "version": "v4.7.5"
+                },
+                "file": {
+                    "hash": {
+                        "md5": "6074c6aa3488f3c2dddff2a7ca821aab",
+                        "sha1": "ab874467a7d1ff5fc71a4ade87dc0e098b458aae",
+                        "sha256": "c1f330d0aff31c1c87403f1e4347bcc21aff7c179908723535f2b31723702525"
+                    },
+                    "mtime": "2025-02-18T02:36:16.000Z",
+                    "owner": "uadmin",
+                    "path": "c:/users/public/documents/newFile.txt",
+                    "size": 4,
+                    "uid": "S-1-5-21-3622736456-3345462557-1602827630-1001"
+                }
+            }
+        ]
+    }
+]

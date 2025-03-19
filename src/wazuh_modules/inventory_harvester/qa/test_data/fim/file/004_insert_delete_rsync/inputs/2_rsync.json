@@ -1,0 +1,9 @@
+{
+  "agent_info": {
+    "agent_id": "003"
+  },
+  "action": "deleteFile",
+  "data": {
+    "path": "c:\\temp\\octa128.txt"
+  }
+}
