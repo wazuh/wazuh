@@ -11,8 +11,7 @@
         "query.default_field": [
           "agent.id",
           "agent.host.ip",
-          "observer.ingress.interface.name",
-          "observer.ingress.interface.id"
+          "observer.ingress.interface.name"
         ],
         "refresh_interval": "5s"
       }
@@ -54,8 +53,7 @@
         "network": {
           "properties": {
             "dhcp": {
-              "ignore_above": 1024,
-              "type": "keyword"
+              "type": "boolean"
             },
             "gateway": {
               "type": "ip"
@@ -75,10 +73,6 @@
               "properties": {
                 "interface": {
                   "properties": {
-                    "id": {
-                      "ignore_above": 1024,
-                      "type": "keyword"
-                    },
                     "name": {
                       "ignore_above": 1024,
                       "type": "keyword"
@@ -87,14 +81,6 @@
                 }
               },
               "type": "object"
-            }
-          }
-        },
-        "operation": {
-          "properties": {
-            "name": {
-              "ignore_above": 1024,
-              "type": "keyword"
             }
           }
         },

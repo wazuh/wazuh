@@ -51,25 +51,17 @@
             }
           }
         },
-        "operation": {
-          "properties": {
-            "name": {
-              "ignore_above": 1024,
-              "type": "keyword"
-            }
-          }
-        },
         "package": {
           "properties": {
             "architecture": {
               "ignore_above": 1024,
               "type": "keyword"
             },
-            "description": {
+            "category": {
               "ignore_above": 1024,
               "type": "keyword"
             },
-            "groups": {
+            "description": {
               "ignore_above": 1024,
               "type": "keyword"
             },

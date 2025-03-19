@@ -15,7 +15,6 @@
           "agent.name",
           "agent.version",
           "data_stream.type",
-          "event.action",
           "event.category",
           "event.type",
           "registry.data.type",
@@ -89,14 +88,6 @@
               "type": "keyword"
             },
             "type": {
-              "ignore_above": 1024,
-              "type": "keyword"
-            }
-          }
-        },
-        "operation": {
-          "properties": {
-            "name": {
               "ignore_above": 1024,
               "type": "keyword"
             }

@@ -61,14 +61,6 @@
             }
           }
         },
-        "device": {
-          "properties": {
-            "id": {
-              "ignore_above": 1024,
-              "type": "keyword"
-            }
-          }
-        },
         "file": {
           "properties": {
             "inode": {
@@ -110,14 +102,6 @@
         "network": {
           "properties": {
             "transport": {
-              "ignore_above": 1024,
-              "type": "keyword"
-            }
-          }
-        },
-        "operation": {
-          "properties": {
-            "name": {
               "ignore_above": 1024,
               "type": "keyword"
             }

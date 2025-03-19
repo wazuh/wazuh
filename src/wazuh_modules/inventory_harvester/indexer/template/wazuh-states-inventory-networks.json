@@ -9,9 +9,8 @@
         "number_of_replicas": "0",
         "number_of_shards": "1",
         "query.default_field": [
-          "event.id",
-          "host.ip",
-          "observer.ingress.interface.name"
+          "network.ip",
+          "network.name"
         ],
         "refresh_interval": "5s"
       }
@@ -50,62 +49,28 @@
             }
           }
         },
-        "event": {
-          "properties": {
-            "id": {
-              "ignore_above": 1024,
-              "type": "keyword"
-            }
-          }
-        },
-        "host": {
-          "properties": {
-            "ip": {
-              "type": "ip"
-            }
-          }
-        },
         "network": {
           "properties": {
             "broadcast": {
               "type": "ip"
             },
             "dhcp": {
-              "ignore_above": 1024,
-              "type": "keyword"
+              "type": "boolean"
+            },
+            "ip": {
+              "type": "ip"
             },
             "metric": {
               "type": "long"
+            },
+            "name": {
+              "ignore_above": 1024,
+              "type": "keyword"
             },
             "netmask": {
               "type": "ip"
             },
             "protocol": {
-              "ignore_above": 1024,
-              "type": "keyword"
-            }
-          }
-        },
-        "observer": {
-          "properties": {
-            "ingress": {
-              "properties": {
-                "interface": {
-                  "properties": {
-                    "name": {
-                      "ignore_above": 1024,
-                      "type": "keyword"
-                    }
-                  }
-                }
-              },
-              "type": "object"
-            }
-          }
-        },
-        "operation": {
-          "properties": {
-            "name": {
               "ignore_above": 1024,
               "type": "keyword"
             }
