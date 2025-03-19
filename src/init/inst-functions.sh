@@ -65,15 +65,15 @@ InstallServer()
     PYTHON_BIN_PATH=${INSTALLDIR}usr/share/wazuh-server/framework/python/bin/python3
     SHARE_INSTALLDIR="/usr/share/wazuh-server"
 
-    ${MAKEBIN} --quiet -C ../framework install SHARE_INSTALLDIR=${SHARE_INSTALLDIR}
+    ${MAKEBIN} --quiet -C ../framework install ${SHARE_INSTALLDIR}
     ${PYTHON_BIN_PATH} -m pip install ../framework/
 
     ## Install Server management API
-    ${MAKEBIN} --quiet -C ../apis/server_management install SHARE_INSTALLDIR=${SHARE_INSTALLDIR}
+    ${MAKEBIN} --quiet -C ../apis/server_management install ${SHARE_INSTALLDIR}
     ${PYTHON_BIN_PATH} -m pip install ../apis/server_management
 
     ## Install Communications API
-    ${MAKEBIN} --quiet -C ../apis/communications install SHARE_INSTALLDIR=${SHARE_INSTALLDIR}
+    ${MAKEBIN} --quiet -C ../apis/communications install ${SHARE_INSTALLDIR}
     ${PYTHON_BIN_PATH} -m pip install ../apis/communications
 
     # Install VERSION.json and append commit id if any
