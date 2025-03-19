@@ -6,7 +6,6 @@ The engine is responsible for transforming raw data into standardized schema doc
 ## Data flow
 The data flow begins when an event enters the orchestrator and continues until it is processed by the security policy. Below is a high-level flowchart illustrating this process.
 
-<flowchart_placeholder>
 
 ```mermaid
 flowchart LR
@@ -76,86 +75,6 @@ A policy defines the processing pipeline of the events and is composed of:
 - Outputs: Send normalized and enriched events to the indexer and other defined outputs.
 
 Each policy can be tailored to specific use cases.
-
-<flowchart_placeholder>
-
-
-```mermaid
----
-title: Security policy dataflow
----
-flowchart LR
-
-classDef EventBoxClass font-size: 15px,stroke-width:2px, color:#fff, fill:#3f51b5
-classDef TreeBoxClass font-size: 15px,stroke-width:2px,stroke-dasharray: 5 5
-
- subgraph decoTree["Decoders"]
-  direction TB
-
-  deco01(" ")
-  deco02(" ")
-  deco03(" ")
-  deco04(" ")
-  deco05(" ")
-  deco06(" ")
-  deco07(" ")
-  deco08(" ")
-
-  deco01 --> deco02 & deco03 & deco04
-  deco02 --> deco05
-  deco03 --> deco06 & deco07
-  deco04 --> deco08
- end
-
- subgraph ruleTree["Rules"]
-  direction TB
-
-  rule01(" ")
-  rule02(" ")
-  rule03(" ")
-  rule04(" ")
-  rule05(" ")
-  rule06(" ")
-  rule07(" ")
-  rule08(" ")
-
-  rule01 --> rule02 & rule03 & rule04
-  rule02 --> rule05
-  rule03 --> rule06 & rule07
-  rule04 --> rule08
- end
-
- subgraph outputTree["Outputs"]
-  direction TB
-
-  output01(" ")
-  output02(" ")
-  output03(" ")
-  output04(" ")
-  output05(" ")
-  output06(" ")
-  output07(" ")
-  output08(" ")
-
-  output01 --> output02 & output03 & output04
-  output02 --> output05
-  output03 --> output06 & output07
-  output04 --> output08
-
- end
-
- decoTree:::TreeBoxClass
- ruleTree:::TreeBoxClass
- outputTree:::TreeBoxClass
- eventInput:::EventBoxClass
- eventOutput:::EventBoxClass
-
- %% Pipeline
- eventInput@{shape: doc, label: "Event</br>Input"}==>decoTree==>ruleTree==>outputTree==>eventOutput@{shape: doc, label: "Enriched</br>Event"}
-
-
-
-```
 
 ### Event
 The purpose of the Engine is to convert unstructured or semi-structured logs into normalized and enriched events. The agent transmits logs within a JSON payload, which includes additional metadata such as OS information, log source, and other relevant details. The Engine processes these logs and generates a structured JSON event, incorporating all relevant information in accordance with the defined [schema](#).
@@ -263,13 +182,87 @@ Processed event:
 ### Policy processing
 The policy is the operational graph applied to each event, structured into decoders, rules, and outputs, each related to normalizing, enriching, and delivery respectively.
 
-<flowchart_placeholder>
+
+```mermaid
+---
+title: Security policy dataflow
+---
+flowchart LR
+
+classDef EventBoxClass font-size: 15px,stroke-width:2px, color:#fff, fill:#3f51b5
+classDef TreeBoxClass font-size: 15px,stroke-width:2px,stroke-dasharray: 5 5
+
+ subgraph decoTree["Decoders"]
+  direction TB
+
+  deco01(" ")
+  deco02(" ")
+  deco03(" ")
+  deco04(" ")
+  deco05(" ")
+  deco06(" ")
+  deco07(" ")
+  deco08(" ")
+
+  deco01 --> deco02 & deco03 & deco04
+  deco02 --> deco05
+  deco03 --> deco06 & deco07
+  deco04 --> deco08
+ end
+
+ subgraph ruleTree["Rules"]
+  direction TB
+
+  rule01(" ")
+  rule02(" ")
+  rule03(" ")
+  rule04(" ")
+  rule05(" ")
+  rule06(" ")
+  rule07(" ")
+  rule08(" ")
+
+  rule01 --> rule02 & rule03 & rule04
+  rule02 --> rule05
+  rule03 --> rule06 & rule07
+  rule04 --> rule08
+ end
+
+ subgraph outputTree["Outputs"]
+  direction TB
+
+  output01(" ")
+  output02(" ")
+  output03(" ")
+  output04(" ")
+  output05(" ")
+  output06(" ")
+  output07(" ")
+  output08(" ")
+
+  output01 --> output02 & output03 & output04
+  output02 --> output05
+  output03 --> output06 & output07
+  output04 --> output08
+
+ end
+
+ decoTree:::TreeBoxClass
+ ruleTree:::TreeBoxClass
+ outputTree:::TreeBoxClass
+ eventInput:::EventBoxClass
+ eventOutput:::EventBoxClass
+
+ %% Pipeline
+ eventInput@{shape: doc, label: "Event</br>Input"}==>decoTree==>ruleTree==>outputTree==>eventOutput@{shape: doc, label: "Enriched</br>Event"}
+
+```
 
 Wazuh comes with a predefined policy that enables all its components to work properly and it is structured on top of Wazuh-supported log sources.
 
 Each source does have a particular way to format and send logs to the engine. The default policy takes care of that, allowing the users to focus on their integrations and not on the nuances of the logs transports for each source.
 
-<flowchart_placeholder>
+<flowchart_placeholder>  // TODO Agent or endpoint (like syslog client, aws s3) to engine dataflow
 
 ### Decoding process
 The decoding process converts unstructured data received by the engine into schema-based JSON events.
@@ -278,7 +271,6 @@ All events enter the pipeline through the root decoder, which determines the app
 
 A closer examination of the predefined decoders reveals the following structure:
 
-<flowchart_placeholder>
 
 ```mermaid
 ---
@@ -316,9 +308,17 @@ linkStyle 0 stroke:#f50057,stroke-width:2px
 
 ```
 
+The event is evaluated by a decoder to determine if it matches the conditions defined within the decoder. If the decoder rejects the event, it is passed to the next sibling decoder within the same hierarchy for evaluation. This process continues until a decoder accepts the event or no more sibling decoders are available.
+
+When a decoder accepts an event, it may modify the event by normalizing or enriching its data. After this, the event is passed to the child decoders of the accepted decoder for further processing. Each child decoder evaluates the event using the same logic, ensuring a hierarchical and iterative approach to event processing.
+
+This hierarchical evaluation ensures that events are processed efficiently and routed through the appropriate decoders based on their structure and content.
+
+The following diagram illustrates the event flow on the decoder tree of default policy:
+
 ```mermaid
 ---
-title: Event flow on decoders
+title: Event flow on decoder tree
 ---
 flowchart LR
 
@@ -372,14 +372,24 @@ eventInput:::EventBoxClass
 eventOutput:::EventBoxClass
 ```
 
+In the default policy, the first layer is for internal decoders, which are responsible for normalizing events.
+The second layer is for integrations and user-defined decoders, which are used to process events from specific
+sources or applications.
+
 ### Security enrichment process
-The analysis process evaluates all event fields to identify security concerns, represented as threat indicators within the common schema. These indicators are later examined in the Wazuh Indexer for threat hunting and security issue detection.
+The analysis process evaluates all event fields to identify potential security concerns, which are represented as threat
+indicators within the common schema. These indicators are later stored in the Wazuh Indexer, where they can be used for
+threat hunting and detecting security issues.
 
-All decoded events pass through the analysis pipeline, where the root rule determines the next appropriate rule for processing. This continues until no further rules can be applied. Unlike decoding, a rule can trigger multiple subsequent rules, each contributing to the event's analysis by adding relevant threat indicators.
+All decoded events pass through the analysis pipeline, starting with the root rule. The root rule determines the next
+appropriate rule for processing the event. If a rule matches, it triggers all its child rules for evaluation in a
+broadcast manner. Each child rule is independently evaluated, contributing additional threat indicators to the event's
+analysis. If a rule does not match, its child rules are not evaluated, ensuring efficient processing.
 
-A closer look at the predefined rules reveals the following structure:
+This hierarchical and broadcast-based evaluation allows the analysis pipeline to enrich events with relevant security
+context while maintaining performance and scalability.
 
-<flowchart_placeholder>
+
 ```mermaid
 ---
 title: Rules tree
@@ -414,6 +424,7 @@ flowchart TD
 
 ```
 
+The following diagram illustrates the event flow on the rules tree of the default policy:
 
 ```mermaid
 ---
@@ -490,10 +501,24 @@ classDef TreeBoxClass font-size: 15px,stroke-width:2px,stroke-dasharray: 5 5
 
 ```
 
-### Archiving and alerting process
-Once an event has completed processing through the decoder and rule pipelines, it enters the output pipeline. Similar to previous stages, the event first passes through the root output, which determines the appropriate output(s) for further processing. Multiple outputs can be selected, enabling flexible storage and distribution policies.
+The analysis pipeline is divided into three layers:
 
-The output process in Wazuh is designed to efficiently distribute alerts through broadcasting, with each output capable of filtering alerts to support customized distribution:
+- **First layer**: Responsible for geo-enrichment and general IoCs.
+- **Wazuh Rules**: Contains the default rules provided by Wazuh.
+- **User Rules**: Contains user-defined rules.
+
+The event always starts at the first layer, where it is enriched with geo-location information and general IoCs.
+Then both the Wazuh and user rules are applied to the event.
+
+
+### Archiving and alerting process
+
+Once an event has completed processing through the decoder and rule pipelines, it enters the output pipeline.
+Similar to previous stages, the event first passes through the root output, which determines the appropriate output(s)
+for further processing. Multiple outputs can be selected, enabling flexible storage and distribution policies.
+
+The output process in Wazuh is designed to efficiently distribute alerts through broadcasting, with each output capable
+of filtering alerts to support customized distribution:
 
 ```mermaid
 ---
@@ -517,11 +542,10 @@ flowchart TD
 ```
 
 
-**TODO: Move this graphs**
+### Full pipeline
 
-
-
-
+The following diagram illustrates the full pipeline of the default policy, including the decoding, rule, and output
+stages:
 
 ```mermaid
 flowchart TD
@@ -714,8 +738,6 @@ end
 engine:::ModuleArchClass
 
 eventInput ===> routeSelector
-
-
 
 ```
 
@@ -1039,7 +1061,7 @@ There are two intrinsic operations which do not require additional syntax:
 
 All other operations are accessed through the helper functions.
 
-The syntax for calling a helper function is `helper_name(args...)`. They can be used in both check operations and map operations. Helper functions are classified into three categories:
+The syntax for calling a helper function is `helper_name(args…)`. They can be used in both check operations and map operations. Helper functions are classified into three categories:
 - **Conditionals**: Used in check operations to test complex conditions.
 - **Transformational**: Used in map operations to transform data.
 - **Mapping**: A subset of transformational operations scoped to modifying only the target field.
@@ -1069,7 +1091,7 @@ A transformational helper may fail due to implicit conditions, such as expecting
 #### Parsing rules
 When using a helper function in a map or check operation:
 ```yaml
-target.field: helper_name(args...)
+target.field: helper_name(args…)
 ```
 
 Each argument is tried to be parsed in the following order:
@@ -1082,7 +1104,7 @@ Invalid escape sequences will always fail.
 
 When parsing a helper function inside a logical check expression the same rules apply adding that at least one argument is expected for the helper, specifying the target field:
 ```yaml
-check: helper_name($target.field, args...)
+check: helper_name($target.field, args…)
 ```
 
 Added we can specify comparison helpers as operators:
