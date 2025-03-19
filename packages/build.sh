@@ -89,7 +89,7 @@ fi
 if [ ! -d "/wazuh-local-src" ] ; then
     curl -sL https://github.com/wazuh/wazuh/tarball/${WAZUH_BRANCH} | tar zx
     short_commit_hash="$(curl -s https://api.github.com/repos/wazuh/wazuh/commits/${WAZUH_BRANCH} \
-                          | grep '"sha"' | head -n 1| cut -d '"' -f 4 | cut -c 1-11)"
+                          | grep '"sha"' | head -n 1| cut -d '"' -f 4 | cut -c 1-7)"
 else
     if [ "${legacy}" = "no" ]; then
       short_commit_hash="$(cd /wazuh-local-src && git rev-parse --short HEAD)"
@@ -97,7 +97,7 @@ else
       # Git package is not available in the CentOS 5 repositories.
       head=$(cat /wazuh-local-src/.git/HEAD)
       hash_commit=$(echo "$head" | grep "ref: " >/dev/null && cat /wazuh-local-src/.git/$(echo $head | cut -d' ' -f2) || echo $head)
-      short_commit_hash="$(cut -c 1-11 <<< $hash_commit)"
+      short_commit_hash="$(cut -c 1-7 <<< $hash_commit)"
     fi
 fi
 
