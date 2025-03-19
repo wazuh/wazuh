@@ -1,0 +1,157 @@
+{
+  "index_patterns": [
+    "wazuh-states-inventory-interfaces*"
+  ],
+  "priority": 1,
+  "template": {
+    "settings": {
+      "index": {
+        "number_of_replicas": "0",
+        "number_of_shards": "1",
+        "query.default_field": [
+          "agent.id",
+          "agent.ip",
+          "observer.ingress.interface.name",
+          "observer.ingress.interface.alias"
+        ],
+        "refresh_interval": "5s"
+      }
+    },
+    "mappings": {
+      "date_detection": false,
+      "dynamic": "strict",
+      "properties": {
+        "@timestamp": {
+          "type": "date"
+        },
+        "agent": {
+          "properties": {
+            "host": {
+              "properties": {
+                "architecture": {
+                  "ignore_above": 1024,
+                  "type": "keyword"
+                },
+                "ip": {
+                  "type": "ip"
+                }
+              }
+            },
+            "id": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            },
+            "name": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            },
+            "version": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            }
+          }
+        },
+        "host": {
+          "properties": {
+            "mac": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            },
+            "network": {
+              "properties": {
+                "egress": {
+                  "properties": {
+                    "bytes": {
+                      "type": "long"
+                    },
+                    "drops": {
+                      "type": "long"
+                    },
+                    "errors": {
+                      "type": "long"
+                    },
+                    "packets": {
+                      "type": "long"
+                    }
+                  }
+                },
+                "ingress": {
+                  "properties": {
+                    "bytes": {
+                      "type": "long"
+                    },
+                    "drops": {
+                      "type": "long"
+                    },
+                    "errors": {
+                      "type": "long"
+                    },
+                    "packets": {
+                      "type": "long"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "observer": {
+          "properties": {
+            "ingress": {
+              "properties": {
+                "interface": {
+                  "properties": {
+                    "alias": {
+                      "ignore_above": 1024,
+                      "type": "keyword"
+                    },
+                    "mtu": {
+                      "type": "long"
+                    },
+                    "name": {
+                      "ignore_above": 1024,
+                      "type": "keyword"
+                    },
+                    "state": {
+                      "ignore_above": 1024,
+                      "type": "keyword"
+                    },
+                    "type": {
+                      "ignore_above": 1024,
+                      "type": "keyword"
+                    }
+                  }
+                }
+              },
+              "type": "object"
+            }
+          }
+        },
+        "wazuh": {
+          "properties": {
+            "cluster": {
+              "properties": {
+                "name": {
+                  "ignore_above": 1024,
+                  "type": "keyword"
+                },
+                "node": {
+                  "ignore_above": 1024,
+                  "type": "keyword"
+                }
+              }
+            },
+            "schema": {
+              "properties": {
+                "version": {
+                  "ignore_above": 1024,
+                  "type": "keyword"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

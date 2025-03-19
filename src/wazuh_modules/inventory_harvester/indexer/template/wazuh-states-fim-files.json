@@ -1,0 +1,170 @@
+{
+  "index_patterns": [
+    "wazuh-states-fim-files*"
+  ],
+  "priority": 1,
+  "template": {
+    "settings": {
+      "index": {
+        "number_of_replicas": "0",
+        "number_of_shards": "1",
+        "query.default_field": [
+          "agent.host.architecture",
+          "agent.host.ip",
+          "agent.id",
+          "agent.name",
+          "agent.version",
+          "data_stream.type",
+          "event.action",
+          "event.type",
+          "file.gid",
+          "file.group",
+          "file.hash.md5",
+          "file.hash.sha1",
+          "file.hash.sha256",
+          "file.inode",
+          "file.mtime",
+          "file.owner",
+          "file.path",
+          "file.size",
+          "file.uid"
+        ],
+        "refresh_interval": "5s"
+      }
+    },
+    "mappings": {
+      "date_detection": false,
+      "dynamic": "strict",
+      "properties": {
+        "@timestamp": {
+          "type": "date"
+        },
+        "agent": {
+          "properties": {
+            "host": {
+              "properties": {
+                "architecture": {
+                  "ignore_above": 1024,
+                  "type": "keyword"
+                },
+                "ip": {
+                  "type": "ip"
+                }
+              }
+            },
+            "id": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            },
+            "name": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            },
+            "version": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            }
+          }
+        },
+        "data_stream": {
+          "properties": {
+            "type": {
+              "type": "keyword"
+            }
+          }
+        },
+        "event": {
+          "properties": {
+            "category": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            },
+            "type": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            }
+          }
+        },
+        "file": {
+          "properties": {
+            "gid": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            },
+            "group": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            },
+            "hash": {
+              "properties": {
+                "md5": {
+                  "ignore_above": 1024,
+                  "type": "keyword"
+                },
+                "sha1": {
+                  "ignore_above": 1024,
+                  "type": "keyword"
+                },
+                "sha256": {
+                  "ignore_above": 1024,
+                  "type": "keyword"
+                }
+              }
+            },
+            "inode": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            },
+            "mtime": {
+              "type": "date"
+            },
+            "owner": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            },
+            "path": {
+              "fields": {
+                "text": {
+                  "type": "text"
+                }
+              },
+              "ignore_above": 1024,
+              "type": "keyword"
+            },
+            "size": {
+              "type": "long"
+            },
+            "uid": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            }
+          }
+        },
+        "wazuh": {
+          "properties": {
+            "cluster": {
+              "properties": {
+                "name": {
+                  "ignore_above": 1024,
+                  "type": "keyword"
+                },
+                "node": {
+                  "ignore_above": 1024,
+                  "type": "keyword"
+                }
+              }
+            },
+            "schema": {
+              "properties": {
+                "version": {
+                  "ignore_above": 1024,
+                  "type": "keyword"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
