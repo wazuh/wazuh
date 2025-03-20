@@ -34,6 +34,7 @@ public:
      * @param definitionsBuilder Definitions builder
      * @param registry Registry instance
      * @param schema Schema validator instance
+     * @param allowedFields Allowed fields instance
      * @param trace Indicates whether to enable or disable the trace
      * @param sandbox If it is set to true, it indicates a test environment and if it is set to false, it indicates a
      * production environment.
@@ -43,6 +44,7 @@ public:
            const std::shared_ptr<defs::IDefinitionsBuilder>& definitionsBuilder,
            const std::shared_ptr<builders::RegistryType>& registry,
            const std::shared_ptr<schemf::IValidator>& schema,
+           const std::shared_ptr<IAllowedFields>& allowedFields,
            const bool trace = false,
            const bool sandbox = false);
 
