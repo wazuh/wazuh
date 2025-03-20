@@ -40,7 +40,7 @@ public:
     BuildCtx(const std::shared_ptr<RunState>& runState,
              const Context& context,
              const std::shared_ptr<const RegistryType>& registry,
-             const std::shared_ptr<defs::IDefinitions>& definitions,
+             const std::shared_ptr<const defs::IDefinitions>& definitions,
              const std::shared_ptr<const schemf::IValidator>& schemaValidator,
              const std::shared_ptr<const builder::IAllowedFields>& allowedFields)
         : m_runState(runState)
@@ -54,7 +54,11 @@ public:
 
     BuildCtx(const BuildCtx&) = default;
 
-    inline std::shared_ptr<IBuildCtx> clone() const override { return std::make_shared<BuildCtx>(*this); }
+    inline std::shared_ptr<IBuildCtx> clone() const override
+    {
+        return std::make_shared<BuildCtx>(
+            m_runState, m_context, m_registry, m_definitions, m_schemaValidator, m_allowedFields);
+    }
 
     inline const RegistryType& registry() const override { return *m_registry; }
     inline void setRegistry(const std::shared_ptr<const RegistryType>& registry) override { m_registry = registry; }
