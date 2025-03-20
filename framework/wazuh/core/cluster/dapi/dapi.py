@@ -4,13 +4,10 @@
 
 import asyncio
 import contextlib
-import itertools
 import json
 import logging
-import operator
 import os
 import time
-from collections import defaultdict
 from concurrent.futures import process
 from copy import copy, deepcopy
 from functools import partial, reduce
@@ -22,7 +19,6 @@ import wazuh.core.cluster.utils
 import wazuh.core.manager
 import wazuh.core.results as wresults
 from sqlalchemy.exc import OperationalError
-from wazuh import agent
 from wazuh.cluster import get_node_wrapper, get_nodes_info
 from wazuh.core import common, exception
 from wazuh.core.cluster import common as c_common
@@ -138,7 +134,7 @@ class DistributedAPI:
         else:
             self.logger.debug(message)
 
-    async def distribute_function(self) -> [Dict, exception.WazuhException]:
+    async def distribute_function(self) -> Dict | exception.WazuhException:  # noqa: C901
         """Distribute an API call.
 
         Returns
@@ -253,7 +249,7 @@ class DistributedAPI:
         common.reset_context_cache()
         return data
 
-    async def execute_local_request(self) -> str:
+    async def execute_local_request(self) -> str:  # noqa: C901
         """Execute an API request locally.
 
         Returns
@@ -366,6 +362,13 @@ class DistributedAPI:
         return client
 
     def to_dict(self):
+        """Convert object into a dictionary.
+
+        Returns
+        -------
+        dict
+            Dictionary containing the key values.
+        """
         return {
             'f': self.f,
             'f_kwargs': self.f_kwargs,
@@ -382,12 +385,13 @@ class DistributedAPI:
             'api_timeout': self.api_request_timeout,
         }
 
-    async def get_error_info(self, e) -> Dict:
+    async def get_error_info(self, e: Exception) -> Dict:
         """Build a response given an Exception.
 
         Parameters
         ----------
         e : Exception
+            Exception to parse.
 
         Returns
         -------
@@ -419,7 +423,14 @@ class DistributedAPI:
 
         return result
 
-    async def send_tmp_file(self, node_name=None):
+    async def send_tmp_file(self, node_name: Tuple = None):
+        """Send temporay file to node.
+
+        Parameters
+        ----------
+        node_name : Tuple
+            Target node name.
+        """
         # POST/agent/group/:group_id/configuration and POST/agent/group/:group_id/file/:file_name API calls write
         # a temporary file in /var/ossec/tmp which needs to be sent to the master before forwarding the request
         client = self.get_client()
@@ -446,7 +457,7 @@ class DistributedAPI:
         )
         return json.loads(node_response, object_hook=c_common.as_wazuh_object)
 
-    async def forward_request(self) -> [wresults.AbstractWazuhResult, exception.WazuhException]:
+    async def forward_request(self) -> wresults.AbstractWazuhResult | exception.WazuhException:  # noqa: C901
         """Forward a request to the node who has all available information to answer it.
 
         This function is called when a distributed_master function is used. Only the master node calls this function.
@@ -457,7 +468,7 @@ class DistributedAPI:
         wresults.AbstractWazuhResult or exception.WazuhException
         """
 
-        async def forward(node_name: Tuple) -> [wresults.AbstractWazuhResult, exception.WazuhException]:
+        async def forward(node_name: Tuple) -> wresults.AbstractWazuhResult | exception.WazuhException:
             """Forward a request to a node.
 
             Parameters
@@ -615,55 +626,7 @@ class DistributedAPI:
         dict
             Dict with node names with agents.
         """
-        select_node = ['node_name']
-        if 'agent_id' in self.f_kwargs or 'agent_list' in self.f_kwargs:
-            # Group requested agents by node_name
-            requested_agents = self.f_kwargs.get('agent_list', None) or [self.f_kwargs['agent_id']]
-            # Filter by node_name if we receive a node_id
-            if 'node_id' in self.f_kwargs:
-                requested_nodes = self.f_kwargs.get('node_list', None) or [self.f_kwargs['node_id']]
-                filters = {'node_name': requested_nodes}
-            elif requested_agents != '*':
-                filters = {'id': requested_agents}
-            else:
-                filters = None
-
-            system_agents = agent.Agent.get_agents_overview(select=select_node, limit=None, filters=filters)['items']
-            node_name = defaultdict(list)
-            for element in system_agents:
-                node_name[element.get('node_name', '')].append(element['id'])
-
-            # Update node_name in case it is empty or a node has no agents
-            if 'node_id' in self.f_kwargs:
-                if self.f_kwargs['node_id'] not in node_name:
-                    node_name.update({self.f_kwargs['node_id']: []})
-
-            if requested_agents != '*':  # When all agents are requested cannot be non existent ids
-                # Add non existing ids in the master's dictionary entry
-                non_existent_ids = list(set(requested_agents) - set(map(operator.itemgetter('id'), system_agents)))
-                if non_existent_ids:
-                    if self.node_info['node'] in node_name:
-                        node_name[self.node_info['node']].extend(non_existent_ids)
-                    else:
-                        node_name[self.node_info['node']] = non_existent_ids
-
-            return node_name
-
-        elif 'node_id' in self.f_kwargs or ('node_list' in self.f_kwargs and self.f_kwargs['node_list'] != '*'):
-            requested_nodes = self.f_kwargs.get('node_list', None) or [self.f_kwargs['node_id']]
-            return {node_id: [] for node_id in requested_nodes}
-
-        else:
-            if self.broadcasting:
-                node_name = {}
-            else:
-                # agents, syscheck and syscollector
-                # API calls that affect all agents. For example, PUT/agents/restart, etc...
-                agents = agent.Agent.get_agents_overview(
-                    select=select_node, limit=None, sort={'fields': ['node_name'], 'order': 'desc'}
-                )['items']
-                node_name = {k: [] for k, _ in itertools.groupby(agents, key=operator.itemgetter('node_name'))}
-            return node_name
+        return {'master': []}
 
 
 class WazuhRequestQueue:
@@ -696,6 +659,7 @@ class APIRequestQueue(WazuhRequestQueue):
         self.logger.addFilter(wazuh.core.cluster.utils.ClusterFilter(tag='Cluster', subtag='D API'))
 
     async def run(self):
+        """Run API request queue."""
         while True:
             names, request = (await self.request_queue.get()).split(' ', 1)
             names = names.split('*', 1)

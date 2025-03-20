@@ -17,7 +17,7 @@ from uuid import uuid4
 
 from wazuh.core import cluster as metadata
 from wazuh.core import common, exception, utils
-from wazuh.core.agent import Agent
+from wazuh.core.agent import get_agents_info
 from wazuh.core.cluster import cluster, server
 from wazuh.core.cluster import common as c_common
 from wazuh.core.cluster.dapi import dapi
@@ -670,7 +670,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             logger.error(error, exc_info=False)
 
     @staticmethod
-    def process_files_from_worker(
+    def process_files_from_worker(  # noqa: C901
         files_metadata: Dict, decompressed_files_path: str, server_config: ServerConfig, worker_name: str, timeout: int
     ):
         """Iterate over received files from worker and updates the local ones.
@@ -915,9 +915,7 @@ class Master(server.AbstractServer):
 
         # Get active agents by node and format last keep alive date format
         for node_name in workers_info.keys():
-            active_agents = Agent.get_agents_overview(
-                filters={'status': 'active', 'node_name': node_name}, limit=None, count=True, get_data=False
-            ).get('totalItems', 0)
+            active_agents = len(get_agents_info())
             workers_info[node_name]['info']['n_active_agents'] = active_agents
             if workers_info[node_name]['info']['type'] != 'master':
                 workers_info[node_name]['status']['last_keep_alive'] = str(

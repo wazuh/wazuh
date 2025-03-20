@@ -7,11 +7,7 @@ from typing import Optional, Union
 
 from server_management_api.models.agent_enrollment_model import Host
 from wazuh.core import common, configuration
-from wazuh.core.agent import (
-    Agent,
-    get_agents_info,
-    get_groups,
-)
+from wazuh.core.agent import AGENT_FIELDS, delete_single_group, get_groups, group_exists
 from wazuh.core.cluster.cluster import get_node
 from wazuh.core.exception import WazuhError, WazuhException, WazuhInternalError, WazuhResourceNotFound
 from wazuh.core.indexer import get_indexer_client
@@ -23,7 +19,6 @@ from wazuh.core.indexer.models.commands import ResponseResult
 from wazuh.core.InputValidator import InputValidator
 from wazuh.core.results import AffectedItemsWazuhResult, WazuhResult
 from wazuh.core.utils import get_group_file_path, get_hash, process_array
-from wazuh.core.wazuh_queue import WazuhQueue
 from wazuh.rbac.decorators import expose_resources
 
 node_id = get_node().get('node')
@@ -81,27 +76,29 @@ def reconnect_agents(agent_list: Union[list, str] = None) -> AffectedItemsWazuhR
     AffectedItemsWazuhResult
         Affected items.
     """
-    result = AffectedItemsWazuhResult(
-        all_msg='Force reconnect command was sent to all agents',
-        some_msg='Force reconnect command was not sent to some agents',
-        none_msg='Force reconnect command was not sent to any agent',
-    )
+    raise NotImplementedError
 
-    system_agents = get_agents_info()
-    with WazuhQueue(common.AR_SOCKET) as wq:
-        for agent_id in agent_list:
-            try:
-                if agent_id not in system_agents:
-                    raise WazuhResourceNotFound(1701)
-                Agent(agent_id).reconnect(wq)
-                result.affected_items.append(agent_id)
-            except WazuhException as e:
-                result.add_failed_item(id_=agent_id, error=e)
+    # TODO: Update to use commands
+    # result = AffectedItemsWazuhResult(
+    #     all_msg='Force reconnect command was sent to all agents',
+    #     some_msg='Force reconnect command was not sent to some agents',
+    #     none_msg='Force reconnect command was not sent to any agent',
+    # )
+    # system_agents = get_agents_info()
+    # with WazuhQueue(common.AR_SOCKET) as wq:
+    #     for agent_id in agent_list:
+    #         try:
+    #             if agent_id not in system_agents:
+    #                 raise WazuhResourceNotFound(1701)
+    #             Agent(agent_id).reconnect(wq)
+    #             result.affected_items.append(agent_id)
+    #         except WazuhException as e:
+    #             result.add_failed_item(id_=agent_id, error=e)
 
-    result.total_affected_items = len(result.affected_items)
-    result.affected_items.sort(key=int)
+    # result.total_affected_items = len(result.affected_items)
+    # result.affected_items.sort(key=int)
 
-    return result
+    # return result
 
 
 @expose_resources(
@@ -284,8 +281,8 @@ async def get_agents_in_group(
         q=q,
         select=select,
         distinct=distinct,
-        allowed_select_fields=Agent.new_fields,
-        allowed_sort_fields=Agent.new_fields,
+        allowed_select_fields=AGENT_FIELDS,
+        allowed_sort_fields=AGENT_FIELDS,
     )
 
     result.affected_items = data['items']
@@ -592,7 +589,7 @@ async def delete_groups(group_list: list = None) -> AffectedItemsWazuhResult:
 
                 await indexer_client.agents.delete_group(group_name=group_id)
 
-            await Agent.delete_single_group(group_id)
+            await delete_single_group(group_id)
             result.affected_items.append(group_id)
         except WazuhException as e:
             result.add_failed_item(id_=group_id, error=e)
@@ -644,7 +641,7 @@ async def assign_agents_to_group(
         none_msg='No agents were assigned to {0}'.format(group_id),
     )
     # Check if the group exists
-    if not Agent.group_exists(group_id):
+    if not group_exists(group_id):
         raise WazuhResourceNotFound(1710)
 
     if len(agent_list) == 0:
