@@ -42,14 +42,14 @@ jobs:
           aws-access-key-id: ${{ secrets.CI_INTERNAL_DEVELOPMENT_BUCKET_USER_ACCESS_KEY }}
           aws-secret-access-key: ${{ secrets.CI_INTERNAL_DEVELOPMENT_BUCKET_USER_SECRET_KEY }}
           aws-region: ${{ secrets.CI_AWS_REGION }}
-        
+
       # Set wazuh-server package name
       - name: Set package name
         id: package_name
         run: |
           short_commit=$(curl -s https://api.github.com/repos/wazuh/wazuh/commits?sha=$PACKAGE_REFERENCE | jq -r '.[0].sha[:7]')
-          full_version=$(curl -s https://raw.githubusercontent.com/wazuh/wazuh/$PACKAGE_REFERENCE/src/VERSION)
-          version=$(sed -E 's/^v([0-9]+\.[0-9]+\.[0-9]+)$/\1/' <<< $full_version)
+          full_version=$(curl -s https://raw.githubusercontent.com/wazuh/wazuh/$PACKAGE_REFERENCE/VERSION.json)
+          version=$(echo $full_version | grep '"version"' | sed -E 's/.*"version": *"([^"]+)".*/\1/')
           echo "name=wazuh-server_${version}-0_amd64_${short_commit}.deb" >> $GITHUB_OUTPUT
 
       - name: Check if wazuh-server package exists
@@ -65,7 +65,7 @@ jobs:
   generate_package:
     name: Trigger package generation workflow
     needs: check_package_existence
-    if: ${{ github.event_name == 'workflow_dispatch' && needs.check_package_existence.outputs.exists == 'false' }} 
+    if: ${{ github.event_name == 'workflow_dispatch' && needs.check_package_existence.outputs.exists == 'false' }}
     secrets: inherit
     uses: ./.github/workflows/packages-build-server.yml
     with:
@@ -76,7 +76,7 @@ jobs:
   wait_package:
     name: Wait for wazuh-server package generation workflow
     needs: check_package_existence
-    if: ${{ github.event_name == 'pull_request' && needs.check_package_existence.outputs.exists == 'false' }} 
+    if: ${{ github.event_name == 'pull_request' && needs.check_package_existence.outputs.exists == 'false' }}
     runs-on: ubuntu-latest
     steps:
     - name: Wait for wazuh-server package generation workflow
@@ -93,7 +93,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [check_package_existence, generate_package, wait_package]
     if: always() && (needs.generate_package.result == 'success' || needs.wait_package.result == 'success' || needs.check_package_existence.outputs.exists == 'true')
-    env: 
+    env:
       PACKAGE_NAME: ${{ needs.check_package_existence.outputs.name }}
     steps:
       # Check tests tiers input
@@ -119,14 +119,14 @@ jobs:
           aws-access-key-id: ${{ secrets.CI_INTERNAL_DEVELOPMENT_BUCKET_USER_ACCESS_KEY }}
           aws-secret-access-key: ${{ secrets.CI_INTERNAL_DEVELOPMENT_BUCKET_USER_SECRET_KEY }}
           aws-region: ${{ secrets.CI_AWS_REGION }}
-      
+
       # Fetch wazuh-server package
-      - name: Fetch wazuh-server package 
+      - name: Fetch wazuh-server package
         run: |
           aws s3 cp ${{ env.S3_BUCKET_PATH }}/${{env.PACKAGE_NAME}} ${GITHUB_WORKSPACE}/${{env.PACKAGE_NAME}}
 
       # Install wazuh-server package
-      - name: Install wazuh-server 
+      - name: Install wazuh-server
         run: sudo apt install ${GITHUB_WORKSPACE}/${{env.PACKAGE_NAME}}
 
       # Download and install integration tests framework.
