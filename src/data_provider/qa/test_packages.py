@@ -7,7 +7,87 @@ import pytest
 import sys
 from jsonschema import validate
 from jsonschema.exceptions import ValidationError
+import re
+import os
 
+DPKG_INFO_PATH = "/var/lib/dpkg/info"  # Path to dpkg info directory
+
+def get_dpkg_packages_python():
+    """Get the list of Python packages installed from dpkg."""
+    python_packages = set()
+    list_pattern = re.compile(r"^python.*\.list$")
+    python_info_files = [
+        (re.compile(r"^.*\.egg-info$"), "/PKG-INFO"),
+        (re.compile(r"^.*\.dist-info$"), "/METADATA"),
+    ]
+
+    try:
+        if not os.path.exists(DPKG_INFO_PATH):
+            return python_packages
+
+        for entry in os.scandir(DPKG_INFO_PATH):
+            if entry.is_file() and list_pattern.search(entry.name):
+                with open(entry.path, "r") as file:
+                    for line in file:
+                        for pattern, extra_file in python_info_files:
+                            match = pattern.search(line)
+                            if match:
+                                base_info_path = match.group(0)
+                                full_path = os.path.join(DPKG_INFO_PATH, base_info_path)
+                                if os.path.isfile(full_path):
+                                    python_packages.add(full_path)
+                                else:
+                                    full_path_extra = os.path.join(DPKG_INFO_PATH, base_info_path + extra_file)
+                                    if os.path.exists(full_path_extra):
+                                        python_packages.add(full_path_extra)
+    except OSError as e:
+        print(f"Filesystem error: {e}")
+    return python_packages
+
+def get_rpm_packages_python():
+    """Get the list of Python packages installed from rpm."""
+    python_packages = set()
+    python_info_files = [
+        (re.compile(r"^.*\.egg-info$"), "/PKG-INFO"),
+        (re.compile(r"^.*\.dist-info$"), "/METADATA"),
+    ]
+
+    try:
+        result = subprocess.run(
+            "rpm -qa | grep -E 'python.*' | xargs -I {} rpm -ql {} | grep -E '\\.egg-info$|\\.dist-info$'",
+            shell=True,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        rpm_output = result.stdout.strip()
+        if rpm_output:
+            rows = rpm_output.splitlines()
+            for row in rows:
+                for pattern, extra_file in python_info_files:
+                    match = pattern.search(row)
+                    if match:
+                        base_info_path = match.group(0)
+                        if os.path.isfile(base_info_path):
+                            python_packages.add(base_info_path)
+                        else:
+                            full_path = base_info_path + extra_file
+                            if os.path.exists(full_path):
+                                python_packages.add(full_path)
+    except subprocess.CalledProcessError as e:
+        print(f"RPM command failed: {e}")
+    return python_packages
+
+def get_package_name_from_path(package_path):
+    """Extracts the package name from a PKG-INFO or METADATA file."""
+    try:
+        with open(package_path, "r") as file:
+            for line in file:
+                if line.startswith("Name: "):
+                    return line[6:].strip()
+    except FileNotFoundError:
+        return None
+    return None
 
 def call_binary(binary_path, parameter):
     try:
@@ -78,13 +158,27 @@ def test_packages_pypi():
         ["pip3", "list", "--format", "json"], capture_output=True, check=False, text=True)
     pip_output = result.stdout.strip()
 
+    # Get dpkg packages names
+    dpkg_package_paths = get_dpkg_packages_python()
+    dpkg_packages = {get_package_name_from_path(path) for path in dpkg_package_paths if get_package_name_from_path(path)}
+
+    #Get rpm packages names
+    rpm_package_paths = get_rpm_packages_python()
+    rpm_packages = {get_package_name_from_path(path) for path in rpm_package_paths if get_package_name_from_path(path)}
+
+    # Combine dpkg and rpm packages
+    all_system_packages = dpkg_packages.union(rpm_packages)
+
     # Compare the list of installed packages with the list from the binary
     try:
         pip_json_data = json.loads(pip_output)
         json_data = json.loads(output)
 
-        # Check if each element of pip_json_data exists in json_data array.
-        for pkg in pip_json_data:
+        # Filter pip_json_data
+        filtered_pip_json_data = [pkg for pkg in pip_json_data if pkg['name'] not in all_system_packages]
+
+        # Check if each element of filtered_pip_json_data exists in json_data array.
+        for pkg in filtered_pip_json_data:
             found = False
             for pkg2 in json_data['packages']:
                 if pkg['name'] == pkg2['name'] and pkg['version'] == pkg2['version']:

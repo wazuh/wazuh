@@ -92,5 +92,9 @@ void getRpmInfo(std::function<void(nlohmann::json&)> callback)
         {
             rpmDefaultQuery(callback);
         }
+
     }
+
+
+
 }
