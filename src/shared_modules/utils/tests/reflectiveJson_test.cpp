@@ -10,7 +10,8 @@
  */
 
 #include "reflectiveJson_test.hpp"
-#if defined(DHAS_TO_CHARS_FLOAT) && DHAS_TO_CHARS_FLOAT == true
+#if defined(HAS_TO_CHARS_FLOAT) && HAS_TO_CHARS_FLOAT == true
+#include "json.hpp"
 #include "reflectiveJson.hpp"
 
 void ReflectiveJsonTest::SetUp() {};
@@ -45,30 +46,37 @@ TEST_F(ReflectiveJsonTest, SingleStringEntry)
 TEST_F(ReflectiveJsonTest, MultipleStringEntries)
 {
     std::unordered_map<std::string, std::string> map {{"key1", "value1"}, {"key2", "value2"}};
+
     std::string result = jsonFieldToString(map);
 
-    // Order of fields in an unordered_map is not guaranteed.
-    // We check for both valid permutations.
-    bool validPermutation1 = (result == R"({"key1":"value1","key2":"value2"})");
-    bool validPermutation2 = (result == R"({"key2":"value2","key1":"value1"})");
-    EXPECT_TRUE(validPermutation1 || validPermutation2);
+    // Validate JSON structure using nlohmann::json
+    nlohmann::json parsedJson;
+    ASSERT_NO_THROW(parsedJson = nlohmann::json::parse(result)) << "Invalid JSON output: " << result;
+
+    // Parse expected JSON into nlohmann::json
+    nlohmann::json expectedJson = map;
+
+    // Compare structured JSON objects instead of raw strings
+    EXPECT_EQ(parsedJson, expectedJson) << "JSON mismatch!\nExpected: " << expectedJson.dump(4)
+                                        << "\nActual: " << parsedJson.dump(4);
 }
 
 TEST_F(ReflectiveJsonTest, NumericValues)
 {
     std::unordered_map<std::string, int> map {{"intVal", 42}, {"zeroVal", 0}, {"negativeVal", -10}};
+
     std::string result = jsonFieldToString(map);
 
-    // Possible orders in the JSON:
-    // {"intVal":42,"zeroVal":0,"negativeVal":-10}
-    // {"intVal":42,"negativeVal":-10,"zeroVal":0}
-    // etc.
-    // We check presence of all fields with correct values.
-    EXPECT_NE(result.find(R"("intVal":42)"), std::string::npos);
-    EXPECT_NE(result.find(R"("zeroVal":0)"), std::string::npos);
-    EXPECT_NE(result.find(R"("negativeVal":-10)"), std::string::npos);
-    EXPECT_EQ(result.front(), '{');
-    EXPECT_EQ(result.back(), '}');
+    // Validate JSON structure using nlohmann::json
+    nlohmann::json parsedJson;
+    ASSERT_NO_THROW(parsedJson = nlohmann::json::parse(result)) << "Invalid JSON output: " << result;
+
+    // Parse expected JSON into nlohmann::json
+    nlohmann::json expectedJson = map;
+
+    // Compare structured JSON objects instead of raw strings
+    EXPECT_EQ(parsedJson, expectedJson) << "JSON mismatch!\nExpected: " << expectedJson.dump(4)
+                                        << "\nActual: " << parsedJson.dump(4);
 }
 
 TEST_F(ReflectiveJsonTest, NestedMap)
@@ -172,18 +180,31 @@ TEST_F(ReflectiveJsonTest, BooleanValues)
     EXPECT_NE(json.find(R"("fieldThree":true)"), std::string::npos);
 }
 
-TEST_F(ReflectiveJsonTest, SpecialCharactersInKeysAndValues)
+TEST_F(ReflectiveJsonTest, FullEscapeTableCoverage)
 {
-    std::unordered_map<std::string, std::string> map {{"newline", "Line1\nLine2"},
-                                                      {"tabbed", "A\tB\tC"},
-                                                      {"backslash", "Path\\To\\File"},
-                                                      {"quote", "\"Quoted text\""}};
+    std::unordered_map<std::string, std::string> map {
+        {"quote", "\"Quoted text\""},
+        {"backslash", "Path\\To\\File"},
+        {"backspace", "Text\bBack"},
+        {"formfeed", "Page\fBreak"},
+        {"newline", "Line1\nLine2"},
+        {"carriage_return", "Line\rReset"},
+        {"tabbed", "A\tB\tC"},
+        {"ET", "🏠"} // Unicode emoji
+    };
+
     std::string result = jsonFieldToString(map);
 
-    EXPECT_NE(result.find(R"("newline":"Line1\nLine2")"), std::string::npos);
-    EXPECT_NE(result.find(R"("tabbed":"A\tB\tC")"), std::string::npos);
-    EXPECT_NE(result.find(R"("backslash":"Path\\To\\File")"), std::string::npos);
-    EXPECT_NE(result.find(R"("quote":"\"Quoted text\"")"), std::string::npos);
+    // Validate JSON structure using nlohmann::json
+    nlohmann::json parsedJson;
+    ASSERT_NO_THROW(parsedJson = nlohmann::json::parse(result)) << "Invalid JSON output: " << result;
+
+    // Parse expected JSON into nlohmann::json
+    nlohmann::json expectedJson = map;
+
+    // Compare structured JSON objects instead of raw strings
+    EXPECT_EQ(parsedJson, expectedJson) << "JSON mismatch!\nExpected: " << expectedJson.dump(4)
+                                        << "\nActual: " << parsedJson.dump(4);
 }
 
 TEST_F(ReflectiveJsonTest, NumericBufferZeroing)
