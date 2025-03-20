@@ -38,9 +38,9 @@ runs:
         run: |
           SRC_FOLDER=$(pwd)/src
 
-          VERSION=$(cat src/VERSION)
+          VERSION="v$(grep '"version"' VERSION.json | sed -E 's/.*"version": *"([^"]+)".*/\1/')"
           echo $VERSION
-          REVISION=$(cat src/REVISION)
+          REVISION=`grep '"stage"' VERSION.json | sed -E 's/.*"stage": *"([^"]+)".*/\1/'`
           echo $REVISION
 
           cd ${{ inputs.path }}
