@@ -206,7 +206,7 @@ function build_package() {
         sign_pkg
         if [[ "${CHECKSUM}" == "yes" ]]; then
             shasum -a512 "${DESTINATION}/${pkg_name}.pkg" > "${DESTINATION}/${pkg_name}.pkg.sha512"
-            shasum -a512 "${DESTINATION}/${symbols_pkg_name}.zip" > "${DESTINATION}/${symbols_pkg_name}.sha512"
+            shasum -a512 "${DESTINATION}/${symbols_pkg_name}.zip" > "${DESTINATION}/${symbols_pkg_name}.zip.sha512"
         fi
         clean_and_exit 0
     else
