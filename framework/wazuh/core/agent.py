@@ -108,6 +108,11 @@ class WazuhDBQueryAgents(WazuhDBQuery):
         if field == 'os.version':
             # Order by os major version and os minor version
             return "CAST(os_major AS INTEGER) {0}, CAST(os_minor AS INTEGER) {0}".format(self.sort['order'])
+        elif field == 'version':
+            return  ("CAST(substr(trim(version, 'Wazuh v'), 1, instr(trim(version, 'Wazuh v'), '.') - 1) as INTEGER) {0}, "
+                     "CAST(rtrim(substr(trim(version, 'Wazuh v'), instr(trim(version, 'Wazuh v'), '.') + 1, 2 ), '.') as INTEGER) {0}, "
+                     "CAST(REPLACE(version, 'Wazuh v'|| substr(trim(version, 'Wazuh v'), 1, instr(trim(version, 'Wazuh v'), '.') - 1) || '.' || rtrim(substr(trim(version, 'Wazuh v'), instr(trim(version, 'Wazuh v'), '.') + 1, 2 ), '.') || '.' , '') as INTEGER) {0}"
+                     ).format(self.sort['order'])
         return WazuhDBQuery._sort_query(self, field)
 
     def _add_search_to_query(self):
