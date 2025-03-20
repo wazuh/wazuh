@@ -1,4 +1,4 @@
-FROM opensearchproject/opensearch:2.18.0
+FROM opensearchproject/opensearch:2.19.1
 
 COPY --chown=opensearch:opensearch . .
 
