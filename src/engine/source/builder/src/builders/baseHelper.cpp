@@ -144,6 +144,16 @@ TransformBuilder mapToTransform(const MapBuilder& builder, const Reference& targ
                                   const std::vector<OpArg>& opArgs,
                                   const std::shared_ptr<const IBuildCtx>& buildCtx) -> TransformOp
     {
+        // Check allowed fields for map operation first
+        auto assetType = base::Name(buildCtx->context().assetName).parts()[0];
+        if (!buildCtx->allowedFields().check(assetType, targetField.dotPath()))
+        {
+            throw std::runtime_error(fmt::format("Map operation '{}' not allowed on target field '{}'",
+                                                 buildCtx->context().opName,
+                                                 targetField.dotPath()));
+        }
+
+        // Build the map operation
         auto mapOp = builder(opArgs, buildCtx);
 
         // Wrapper TransformOp

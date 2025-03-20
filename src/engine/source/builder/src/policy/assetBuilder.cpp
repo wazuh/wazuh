@@ -75,7 +75,8 @@ std::vector<base::Name> AssetBuilder::getParents(const json::Json& value) const
 base::Expression AssetBuilder::buildExpression(const base::Name& name,
                                                std::vector<std::tuple<std::string, json::Json>>& objDoc) const
 {
-    auto newContext = std::make_shared<builders::BuildCtx>(*m_buildCtx);
+    auto newContext = m_buildCtx->clone();
+    newContext->context().assetName = name.fullName();
 
     // Get definitions (optional, may appear anywhere in the asset)
     auto definitionsPos = std::find_if(
