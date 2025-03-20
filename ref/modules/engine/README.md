@@ -876,10 +876,7 @@ The Engine is composed of distinct modules, each responsible for managing a spec
 
 All modules follow the same naming convention, ensuring that every item—whether an asset, policy, or route—can be stored and identified homogeneously by the Store module.
 
-<flowchart_placeholder>
-
-- The APIs provide external communication, allowing users to interact with and configure the system.
-- The Store module handles internal data retrieval, ensuring assets, policies, and routes can be efficiently accessed by their respective modules.
+For more information on the Engine’s architecture and how the modules interact, refer to [architecture documentation](architecture.md).
 
 ## Assets
 In the Wazuh Engine, assets represent the fundamental components of security policies and are the smallest unit within such a policy.
@@ -933,7 +930,7 @@ classDef AttributesClass min-width: 200px
 
 ### Attributes
 Attributes are configuration details. Although the order of definition does not matter, we follow the convention of defining them in the order of name, metadata, and parents.
-- **Name**: Identifies the asset and follows the pattern <asset_type>/<name>/<version>.
+- **Name**: Identifies the asset and follows the pattern `<asset_type>/<name>/<version>`.
 - **Metadata**: Contains all information about the asset. The exact subfields depend on the asset type.
 - **Parents**: When applicable to the asset, this defines the order in the asset graph. The exact child selection depends on the specific asset graph type.
 - **Definitions**: Defines symbols that will be replaced throughout the document in its occurrences.
@@ -1020,7 +1017,7 @@ target_field: operation
 Where the operation can be:
 - **Literal Value**: A direct check or map operation depending on the stage it is defined. This can be any of the YAML native values (string, number, boolean, etc.).
 - **Reference**: Denoted by $field_name, it performs a direct check or map operation using the referenced value.
-- **Helper**: Denoted by helper_name(args), it performs a check or map operation depending on the called helper.
+- **Helper Function**: Denoted by helper_name(args), it performs a check or map operation depending on the called helper.
 
 When building an asset, the process can fail if there is any operation that contains a:
 - **Syntax Error**: Errors in the target_field or operation syntax.
@@ -1066,7 +1063,7 @@ The syntax for calling a helper function is `helper_name(args…)`. They can be 
 - **Transformational**: Used in map operations to transform data.
 - **Mapping**: A subset of transformational operations scoped to modifying only the target field.
 
-Check the helper standard library for a complete list of available helper functions.
+Check the [helper standard library](ref-helper-functions.md) for a complete list of available helper functions.
 
 #### Condition Helpers
 When using conditional helpers, the syntax is:
@@ -1075,6 +1072,14 @@ target_field: condition_helper(args)
 ```
 
 The helper will always test a condition on *target_field*. If the condition passes, the operation succeeds; otherwise, it fails.
+
+#### Mapping Helpers
+When using mapping helpers, the syntax is:
+```yaml
+target_field: map_helper(args)
+```
+
+The helper will always map the *target_field* if the operation succeeds. If the operation fails, the *target_field* remains unchanged.
 
 #### Transform Helpers
 When using transformational helpers, the syntax is:
@@ -1094,15 +1099,34 @@ When using a helper function in a map or check operation:
 target.field: helper_name(args…)
 ```
 
-Each argument is tried to be parsed in the following order:
-- **Quoted argument**: `'value'` if it starts with a single quote it parses until the closing single quote, allowed scaped characters are: `\` and `'`.
-- **Reference**: `$reference` if it starts with the dollar symbol a reference is parsed, which is any alphanumeric plus the extended symbols `#`, `_`, `@`, and `-` separated by dots.
-- **JSON value**: parses a JSON string, any JSON string with JSON escaping rules.
-- **Raw string**: if the other parsers fail a string value will be assigned, here we allow the escaping of the symbols: `$`, `'`, `,`, `)`, `\` and whitespace.
+The arguments for `helper_name` can be references to other fields, or JSON values (string, number, boolean, array, or object). Multiple arguments should be separated by commas.
+
+When the helper function is built, arguments are parsed in the following order:
+- **Quoted argument**: `'value'` starts and ends with a single quote. `\` and `'` can be escaped.
+- **Reference**: `$reference` starts with `$`, followed by alphanumerics plus `#`, `_`, `@`, and `-`, separated by dots.
+- **JSON value**: An attempt is made to parse the argument as JSON (any valid JSON type).
+- **Raw string**: If none of the above apply, the argument is handled as a string value, with escapes allowed for `$`, `'`, `,`, `)`, `\`, and whitespace.
 
 Invalid escape sequences will always fail.
 
-When parsing a helper function inside a logical check expression the same rules apply adding that at least one argument is expected for the helper, specifying the target field:
+For example:
+```yaml
+target.field: helper_name('string', $reference, 123, {"key": "value"})
+```
+
+This call applies `helper_name` to the `target.field` with arguments:
+- `'string'`: A string value.
+- `$reference`: A reference to another field.
+- `123`: A numeric value (valid JSON).
+- `{"key": "value"}`: A JSON object.
+
+
+>[!NOTE]
+> `123` is a valid json, not only the objects are valid jsons according to the JSON standard,
+> but also the numbers, strings, booleans and null values are valid JSON values.
+
+When parsing a helper function inside a logical check expression the same rules apply adding that at least one argument
+is expected for the helper, specifying the target field:
 ```yaml
 check: helper_name($target.field, args…)
 ```
@@ -1124,13 +1148,30 @@ Where op is any of the following:
 
 When using any operator that is not the equality operator only string or integer values are allowed.
 
-When using the default map or filter functions for string operations, values are parsed according to standard YAML (or JSON) types. If a value is a string and begins with the reference symbol `$`, it is treated as a potential reference. If the reference is invalid the operation building fails.
+When using the default map or filter functions for string operations, values are parsed according to standard YAML
+(or JSON) types. If a value is a string and begins with the reference symbol `$`, it is treated as a potential
+reference. If the reference is invalid the operation building fails.
 ```yaml
 check:
   - target.field: <yaml_type>|<$ref>
 map:
   - target.field: <yaml_type>|<$ref>
 ```
+
+Below are some usage examples:
+
+```yaml
+# Example 1: Simple equality check
+check: http.method == "GET"
+
+# Example 2: Comparison with an integer value
+check: $event.severity > 3
+
+# Example 3: Using a helper function in check
+check: cidr_match($source.ip, "192.168.0.0", 24)
+
+```
+
 
 ### Definitions
 To facilitate the reuse of constructors when building large assets—such as parsing code for events with common headers or repeated constructs like IP/port definitions—definitions can be introduced at the specification level. For example:
@@ -1152,11 +1193,16 @@ parse|field:
 
 This approach enables text reuse within an asset. Definitions are applied at build time through interpolation and do not function as runtime variables, i.e., cannot be modified once declared.
 
+>[!NOTE]
+> The definitions are typed, respecting JSON/YAML data types. For example, you can define a YAML object or a
+> numeric value and use it as an argument for helper functions, not just strings for parsing.
+
 #### Restrictions
 - **Naming Conflicts**: Definitions cannot have the same name as a schema field. Doing so will result in a failure to build the asset.
 - **Precedence**: Definitions take precedence over custom fields. If a definition exists with the same name as a custom field, all references to the field will be replaced by the definition's value.
 - **Chaining Definitions**: Definitions can use other definitions in their values as long as they are defined beforehand.
 - **Context**: Definitions can only appear on the right side of operations, meaning we can't define the structure of the document with definitions or be used inside non operational stages.
+- **Scope**: Definitions are scoped to the asset where they are defined. They cannot be shared across assets.
 
 #### Use Cases
 - **Parsing Complex Logs**
@@ -1243,14 +1289,19 @@ normalize:
 If a match is found, security-related data is mapped to the event.
 
 ### Dates and Timestamps
-Assets are capable of handling dates in various formats and time zones. This flexibility is achieved through configurable parsers (refer to the date parser documentation for more details).
+Assets are capable of handling dates in various formats and time zones. This flexibility is achieved through configurable
+parsers (refer to the [date parser documentation](ref-parser.html#date-parser) for more details).
 
-Once a date is parsed, the Engine normalizes it to UTC. This ensures that all timestamps are stored and processed homogeneously, maintaining consistency across event processing and dashboard visualization.
+Once a date is parsed, the Engine normalizes it to UTC. This ensures that all timestamps are stored and processed
+homogeneously, maintaining consistency across event processing and dashboard visualization.
 
 ### Geolocation
-Assets are capable of enriching events with geolocation information, enhancing event data with location-based context. This is achieved by using GeoLite databases, which provide location data based on IP addresses. For more details, see the geo location helper documentation.
+Assets are capable of enriching events with geolocation information, enhancing event data with location-based context.
+This is achieved by using [Maxmind - GeoLite databases](https://www.maxmind.com/), which provide location data based on
+IP addresses. For more details, see the [geo location](ref-helper-functions.md#geoip) helper documentation.
 
-The GeoLite databases are configured through the API, allowing you to specify the relevant databases to be used for geolocation enrichment. For more information on how to configure these databases, refer to the API documentation.
+The GeoLite databases are configured through the API, allowing you to specify the relevant databases to be used for
+geolocation enrichment. For more information on how to configure these databases, refer to the API documentation.
 
 ### Decoders
 
@@ -1273,7 +1324,10 @@ kanban
 ```
 
 - **Metadata**: Each decoder has metadata that provides information about the decoder, such as the supported products,
-  versions, and formats. This metadata does not affect the processing stages. (TODO IMPROVE)
+  versions, and formats. This metadata does not affect the processing stages. 
+    The metadata fields are:
+    - `description` (string): A brief description of the decoder.
+    - TODO: Add more fields when the metadata is defined.
 
 - **Parents**: Defines the order in the decoder graph, establishing the parent-child relationship between decoders.
   A decoder can have multiple parents, when an event is successfully processed in a decoder, it will evaluate the
@@ -1309,7 +1363,10 @@ kanban
 ```
 
 - **Metadata**: Each rule has metadata that provides information about the rule, such as the supported products,
-  versions, and formats. This metadata does not affect the processing stages. (TODO IMPROVE)
+  versions, and formats. This metadata does not affect the processing stages.
+    The metadata fields are:
+    - `description` (string): A brief description of the rule.
+    - TODO: Add more fields when the metadata is defined.
 
 - **Parents**: Defines the order in the rule graph, establishing the parent-child relationship between rules, a rule can
   have multiple parents, when an event is successfully processed in a rule (rule matches), it will evaluate all the
@@ -1342,7 +1399,10 @@ kanban
 ```
 
 - **Metadata**: Each output has metadata that provides information about the output, such as the destination, version,
-  and format. This metadata does not affect the processing stages. (TODO IMPROVE)
+  and format. This metadata does not affect the processing stages.
+  The metadata fields are:
+    - `description`: A brief description of the output.
+    - TODO: Add more fields when the metadata is defined.
 
 - **Parents**: Defines the order in the output graph, establishing the parent-child relationship between outputs.
   An output can have multiple parents, when an event is successfully processed in an output, it will evaluate all the
@@ -1368,18 +1428,18 @@ title: Filter schema
 kanban
   Output[Output schema]
     assetMetadata["metadata"]@{ priority: 'Very Low'}
-    assetParents["parents"]
-    assetChecks["checks"]
+    %% assetParents["parents"]
+    assetChecks["allow"]
 ```
 
 - **Metadata**: Each filter has metadata that provides information about the filter, such as the proposed use case, version,
-  and format. This metadata does not affect the processing stages. (TODO IMPROVE)
+  and format. This metadata does not affect the processing stages.
+  The metadata fields are:
+    - `description`: A brief description of the filter.
+    - TODO: Add more fields when the metadata is defined.
 
-- **check**: The checks stage is a stage in the filter asset used to evaluate the conditions that the event must meet to
-  pass the filter. More information on the checks stage can be found in the [Check section](#checkallow).
-
-- **Parents**: Defines the order in the filter graph, establishing the parent-child relationship between assets and filters.
-  When children are used in the safety policy, they can be located under any decoder, ruler or output. When an asset is evaluated and succeeds, it evaluates the filter that has it as a parent and if it passes the filter, the children of the passet are evaluated.
+- **Allow**: The allow stage is a stage in the filter asset used to evaluate the conditions that the event must meet to
+  pass the filter. More information on the checks stage can be found in the [Check/allow section](#checkallow).
 
   <placeholder_graph_filter>
 
@@ -1392,7 +1452,7 @@ kanban
 ### Check/Allow
 The check stage is a preliminary stage in the asset processing sequence, designed to assess whether an event meets specific conditions without modifying the event itself. Filters events based on predefined criteria, ensuring that only relevant events trigger the subsequent stages like parse or normalize.
 
-There are two ways to define conditions in a stage check: through a condition list or a conditional expression string.
+There are two ways to define conditions in a stage check: through a **condition list** or a **conditional expression** string.
 
 #### Condition list
 In a condition list, each condition is described with a pair `property:value`. Here, `property` is the name of any field, and `value` is the condition that the field must meet.
@@ -1413,13 +1473,18 @@ check:
   - event.id: 1234
 ```
 
+All conditions must be met for the event to pass through the check stage. If any condition fails, the event is not processed further.
+
+> [!NOTE]
+> `event.id: 1234` is not the same as `event.id: "1234"` because the first one is a number and the second one is a string.
+
 #### Conditional expression
 For scenarios requiring complex conditions, especially in rules, a conditional expression allows for more nuanced logic. This string uses a subset of first-order logic language, including logical connectives and support for grouping through parentheses.
 
 Logical Connectives:
-- Negation (NOT)
-- Conjunction (AND)
-- Disjunction (OR)
+- Negation (`NOT`)
+- Conjunction (`AND`)
+- Disjunction (`OR`)
 
 These connectives facilitate writing conditions between terms where a term can be:
 - Value comparison: Formatted as `<$field><op><value>`.
@@ -1447,7 +1512,7 @@ Executes a series of parsing expressions that transform the event's original mes
 
 If all operations fail, the execution of the stage is marked as failed, the processing of the event could continue with the next substage only if it is within a normalize.
 
-For a complete list of parsers check the Parsers reference.
+For a complete list of parsers check the [Parsers](ref-parser.md) reference.
 
 #### Parser expression
 Parser expressions facilitate the transformation of log entries into structured objects, offering an alternative to Grok by eliminating the need for explicit type declarations as these are predefined in the schema. Instead of regular expressions, these expressions utilize tailored parsers, enhancing precision.
@@ -1536,7 +1601,18 @@ E.g.: `<custom_text>(?|<opt/long>):`, in this case the text parser will try to s
 ### Map
 Executes each operation of the list in order until the last operation. If any operation fails, it continues with the next one.
 
-If all operations fail the stage is not marked as failed and  continues to the next stage.
+If all operations fail the stage is not marked as failed and continues to the next stage.
+
+**Type Validation**:
+- When mapping a custom field (not defined in the schema), it can store any value without additional type checks.
+- When mapping a field that belongs to the schema, a validation is performed based on the field’s type (e.g.,
+  `source.ip` → IP, `event.start` → timestamp).
+  - If a fixed value is provided at build time and its type is invalid, the asset build fails immediately.
+  - If the value is dynamically obtained, for example from a helper or another schema field, and it eventually fails
+    type validation, it will fail at runtime. The field is then left unmapped to maintain the event’s integrity.
+
+Example:
+
 ```yaml
 - map:
     - event.kind: event
@@ -1584,9 +1660,7 @@ outputs:
   - output_name: configuration
 ```
 
-For more details on the available output types and configurations, refer to the appropriate documentation:
-- Indexer
-- File
+For more details on the available output types and configurations, refer to [output documentation](ref-output.md).
 
 ## Parsers
 
@@ -1623,12 +1697,6 @@ Aditionally we define some types for the purpose to use specific parsers, normal
 | url         | uri        | Parses URI text and generates the URL object with all the parsed parts.                               |
 | useragent   | useragent  | Parses a user agent string. It does not build the user agent object; this can be done with the OpenSearch plugin. |
 
-
-## Helper functions
-
-Explanation of how herlper work, format, types, etc.
-
-- link to new document inside this module with all helpers functions
 
 ## Debugging
 
