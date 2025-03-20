@@ -64,7 +64,7 @@ drwxr-xr-x 7 wazuh wazuh     4096 Nov 28 09:01 ..
 -rw-r--r-- 1 wazuh wazuh     1415 Nov 28 13:12 wazuh-worker2.pem
 ```
 
-> In case the JWT keys are required as part of the Server configuration, use the `--with-jwt` option when running the script. The key files `public-key.pem` and `private-key.pem` will be generated.
+> In case the JWT keys are required as part of the Server configuration, use the `--with-jwt` option when running the script. The key file `private-key.pem` will be generated.
 
 ### Setting up indexer plugins
 
