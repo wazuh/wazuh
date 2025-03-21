@@ -1,8 +1,9 @@
-from helper_test.documentation_generator.types import Documentation
+from helper_test.documentation_generator.types import Documentation, Example
 from helper_test.documentation_generator.exporter import *
 from collections import defaultdict
 from pathlib import Path
-
+from typing import List
+import json
 
 class MarkdownGenerator(IExporter):
     def __init__(self):
@@ -113,6 +114,92 @@ class MarkdownGenerator(IExporter):
         self.content.append('\n'.join([header_row, separator_row] + data_rows))
         self.content.append("\n")
 
+    def create_tests_table(self, doc: Documentation):
+        """
+        Creates a human-readable report for test cases with examples, descriptions, usage, and expected results.
+        :param doc: Documentation object containing examples, arguments, and metadata of the helper.
+        """
+
+        helper_type = doc.helper_type
+        self.content.append(f"## Examples\n")
+
+        is_variadic = any(arg_name.endswith("...") for arg_name in doc.arguments.keys())
+        variadic_base_name = None
+        if is_variadic:
+            variadic_base_name = [arg_name[:-3] for arg_name in doc.arguments.keys() if arg_name.endswith("...")][0]
+
+        for idx, example in enumerate(doc.examples, start=1):
+            self.content.append(f"### Example {idx}\n")
+
+            description = example.description or "No description provided."
+
+            args_values = []
+            event_data = {}
+
+            if doc.arguments:
+                for key, arg in example.arguments.items():
+                    arg_key_for_source = key
+                    if is_variadic and key.startswith(variadic_base_name):
+                        arg_key_for_source = variadic_base_name + "..."
+
+                    arg_def = doc.arguments.get(arg_key_for_source, None)
+                    arg_source = getattr(arg_def, "source", "value") if arg_def else "value"
+
+                    if isinstance(arg, dict) and "source" in arg:
+                        if arg["source"] == "reference":
+                            args_values.append(f"${key}")
+                            event_data[key] = arg.get("value")
+                        else:
+                            args_values.append(repr(arg.get("value")))
+                    else:
+                        if arg_source == "reference":
+                            args_values.append(f"${key}")
+                            event_data[key] = arg
+                        elif arg_source == "both":
+                            if idx % 2 == 1:
+                                args_values.append(repr(arg))
+                            else:
+                                args_values.append(f"${key}")
+                                event_data[key] = arg
+                        else:
+                            args_values.append(repr(arg))
+
+            if getattr(example, "target_field", None):
+                event_data["target_field"] = example.target_field
+
+            call_str = f"{doc.name}({', '.join(args_values)})" if args_values else f"{doc.name}()"
+
+            self.content.append(f"{description}\n")
+            self.content.append(f"**Asset**\n")
+
+            if helper_type == "filter":
+                self.content.append("```yaml\ncheck:\n  - target_field: " + call_str + "\n```\n")
+            else:
+                self.content.append("```yaml\nnormalize:\n  - map:\n      - target_field: " + call_str + "\n```\n")
+
+            self.content.append("### Input Event\n")
+            self.content.append("```json\n" + json.dumps(event_data, indent=2) + "\n```\n")
+
+            if helper_type == "filter":
+                result_msg = "The check was successful" if example.should_pass else "The check was performed with errors"
+                self.content.append(f"*{result_msg}*\n")
+            else:
+                final_event = dict(event_data)
+                if example.expected is not None:
+                    if example.should_pass or doc.helper_type == "transformation":
+                        final_event["target_field"] = example.expected
+
+                if all(v is None for v in final_event.values()):
+                    final_event = {}
+
+                self.content.append("### Outcome Event\n")
+                self.content.append("```json\n" + json.dumps(final_event, indent=2) + "\n```\n")
+
+                result_msg = "The operation was successful" if example.should_pass else "The operation was performed with errors"
+                self.content.append(f"*{result_msg}*\n")
+
+        self.content.append("\n")
+
     def create_document(self, doc: Documentation):
         """
         Creates a Markdown document for a given helper function's documentation.
@@ -158,6 +245,9 @@ class MarkdownGenerator(IExporter):
             for general_restriction in doc.general_restrictions:
                 self.content.append(f"- {general_restriction}\n")
 
+        if doc.examples:
+            self.create_tests_table(doc)
+
         self.all_contents[doc.helper_type][doc.name] = {
             "keywords": doc.keywords,
             "content": '\n'.join(self.content)
@@ -175,7 +265,7 @@ class MarkdownGenerator(IExporter):
                         documentation files should be saved.
         """
         output_dir.mkdir(parents=True, exist_ok=True)
-        documentation_file = output_dir / "README.md"
+        documentation_file = output_dir / "ref-helper-functions.md"
 
         with open(documentation_file, 'w') as file:
             file.write("# Summary\n")
@@ -197,14 +287,15 @@ class MarkdownGenerator(IExporter):
                     file.write(helper_info["content"])
                     file.write("\n---\n")
 
-        keyword_file = output_dir / "keyword_table.md"
-        with open(keyword_file, 'w') as file:
-            file.write("# By Keyword\n")
-            file.write("| Helper | Keywords |\n")
-            file.write("| ------ | -------- |\n")
+        # TODO: temporary disability
+        # keyword_file = output_dir / "keyword_table.md"
+        # with open(keyword_file, 'w') as file:
+        #     file.write("# By Keyword\n")
+        #     file.write("| Helper | Keywords |\n")
+        #     file.write("| ------ | -------- |\n")
 
-            for helper_type, helpers in sorted(self.all_contents.items()):
-                for helper_name, helper_info in sorted(helpers.items()):
-                    keywords = ', '.join(sorted(set(helper_info["keywords"])))
-                    file.write(
-                        f"| [{helper_name}](documentation.md#{helper_name.lower()}) | {keywords} |\n")
+        #     for helper_type, helpers in sorted(self.all_contents.items()):
+        #         for helper_name, helper_info in sorted(helpers.items()):
+        #             keywords = ', '.join(sorted(set(helper_info["keywords"])))
+        #             file.write(
+        #                 f"| [{helper_name}](ref-helper-functions.md#{helper_name.lower()}) | {keywords} |\n")

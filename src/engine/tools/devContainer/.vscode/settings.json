@@ -126,5 +126,6 @@
     "editor.rulers": [80, 90, 120],
     "workbench.colorCustomizations": {
         "editorRuler.foreground": "#7220a8"
-    }
+    },
+    "remote.localPortHost": "allInterfaces"
 }

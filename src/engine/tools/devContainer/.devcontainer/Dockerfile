@@ -14,4 +14,12 @@ RUN if [ "${REINSTALL_CMAKE_VERSION_FROM_SOURCE}" != "none" ]; then \
 # RUN su vscode -c "${VCPKG_ROOT}/vcpkg install <your-port-name-here>"
 
 RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
-    && apt-get -y install --no-install-recommends lcov docker-compose bc clang-format jq lzip
+    && apt-get -y install --no-install-recommends lcov docker-compose bc clang-format jq lzip \
+    inetutils-ping inetutils-telnet inetutils-tools nmap
+
+
+# Install mdbook
+RUN curl https://sh.rustup.rs -sSf | sh -s -- -y
+ENV PATH="/root/.cargo/bin:${PATH}"
+RUN cargo install mdbook
+RUN cargo install mdbook-mermaid
