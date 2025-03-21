@@ -262,7 +262,28 @@ Wazuh comes with a predefined policy that enables all its components to work pro
 
 Each source does have a particular way to format and send logs to the engine. The default policy takes care of that, allowing the users to focus on their integrations and not on the nuances of the logs transports for each source.
 
-<flowchart_placeholder>  // TODO Agent or endpoint (like syslog client, aws s3) to engine dataflow
+```mermaid
+graph LR;
+    subgraph Endpoint
+        Service["Service"]
+        WazuhAgent["Wazuh agent"]
+        Service --- WazuhAgent
+    end
+
+    WazuhAgent -.-> Orchestrator["Orchestrator: Router"]
+
+    subgraph WazuhServer["Wazuh server"]
+
+        subgraph Engine
+            Orchestrator --> Route["Route"]
+            Route --> Decoding["Decoding Stage"]
+            subgraph SecurityPolicy["Security Policy"]
+                Decoding --> Rule["Rule Stage"]
+                Rule --> OutputStage["Output Stage"]
+            end
+        end
+    end
+```
 
 ### Decoding process
 The decoding process converts unstructured data received by the engine into schema-based JSON events.
@@ -435,24 +456,6 @@ flowchart LR
 classDef EventBoxClass font-size: 15px,stroke-width:2px, color:#fff, fill:#3f51b5
 classDef TreeBoxClass font-size: 15px,stroke-width:2px,stroke-dasharray: 5 5
 
- subgraph firstLayerRulesTree["First layer: Geo enrichment"]
-  direction TB
-
-  firstLayerRules01(" ")
-  firstLayerRules02(" ")
-  firstLayerRules03(" ")
-  firstLayerRules04(" ")
-  firstLayerRules05(" ")
-  firstLayerRules06(" ")
-  firstLayerRules07(" ")
-  firstLayerRules08(" ")
-
-  firstLayerRules01 --> firstLayerRules02 & firstLayerRules03 & firstLayerRules04
-  firstLayerRules02 --> firstLayerRules05
-  firstLayerRules03 --> firstLayerRules06 & firstLayerRules07
-  firstLayerRules04 --> firstLayerRules08
- end
-
  subgraph wazuhRulesTree["Wazuh Rules"]
   direction TB
 
@@ -490,24 +493,21 @@ classDef TreeBoxClass font-size: 15px,stroke-width:2px,stroke-dasharray: 5 5
 
  end
 
- firstLayerRulesTree:::TreeBoxClass
  wazuhRulesTree:::TreeBoxClass
  userRulesTree:::TreeBoxClass
  eventInput:::EventBoxClass
  eventOutput:::EventBoxClass
 
  %% Pipeline
- eventInput@{shape: doc, label: "Normalized</br>Event"}==>firstLayerRulesTree==>wazuhRulesTree & userRulesTree-.->eventOutput@{shape: doc, label: "Security</br>event"}
+ eventInput@{shape: doc, label: "Normalized</br>Event"}==>wazuhRulesTree & userRulesTree-.->eventOutput@{shape: doc, label: "Security</br>event"}
 
 ```
 
-The analysis pipeline is divided into three layers:
+The analysis pipeline is divided into two layers:
 
-- **First layer**: Responsible for geo-enrichment and general IoCs.
 - **Wazuh Rules**: Contains the default rules provided by Wazuh.
 - **User Rules**: Contains user-defined rules.
 
-The event always starts at the first layer, where it is enriched with geo-location information and general IoCs.
 Then both the Wazuh and user rules are applied to the event.
 
 
@@ -614,24 +614,6 @@ userDecoTree ====> eventNormalized
 %%           Rules Stage
 %% --------------------------------------
 
-subgraph firstLayerRulesTree["First layer Rules:</br>Geo enrichment</br>General IoCs"]
-  direction TB
-
-  firstLayerRules01(" ")
-  firstLayerRules02(" ")
-  firstLayerRules03(" ")
-  firstLayerRules04(" ")
-  firstLayerRules05(" ")
-  firstLayerRules06(" ")
-  firstLayerRules07(" ")
-  firstLayerRules08(" ")
-
-  firstLayerRules01 --> firstLayerRules02 & firstLayerRules03 & firstLayerRules04
-  firstLayerRules02 --> firstLayerRules05
-  firstLayerRules03 --> firstLayerRules06 & firstLayerRules07
-  firstLayerRules04 --> firstLayerRules08
- end
-
  subgraph wazuhRulesTree["Wazuh Rules"]
   direction TB
 
@@ -672,7 +654,6 @@ subgraph firstLayerRulesTree["First layer Rules:</br>Geo enrichment</br>General 
 
 
 subgraph ruleStage["Rules Stage"]
- firstLayerRulesTree:::TreeBoxClass
  wazuhRulesTree:::TreeBoxClass
  userRulesTree:::TreeBoxClass
 end
@@ -682,7 +663,7 @@ securityEvent@{shape: doc, label: "Security</br>event"}
 securityEvent:::EventBoxClass
 
 %% Pipieline
-eventNormalized==>firstLayerRulesTree==>wazuhRulesTree & userRulesTree-.->securityEvent
+eventNormalized==>wazuhRulesTree & userRulesTree-.->securityEvent
 
 %% --------------------------------------
 %%           Output Stage
@@ -1441,8 +1422,6 @@ kanban
 - **Allow**: The allow stage is a stage in the filter asset used to evaluate the conditions that the event must meet to
   pass the filter. More information on the checks stage can be found in the [Check/allow section](#checkallow).
 
-  <placeholder_graph_filter>
-
 > [!NOTE]
 > When filter assets are used in the orchestrator, the don't have parents, they are a check stage that is evaluated before
 > the event is sent to the policy.
@@ -1635,22 +1614,22 @@ Each set of sub-stages is processed sequentially. If a check and parse within a 
 Example:
 ```yaml
 normalize:
- - map:
-	- wazuh.decoders: array_append(windows-sysmon)
-	- event.dataset: sysmon
-	- event.kind: event
+  - map:
+      - wazuh.decoders: array_append(windows-sysmon)
+      - event.dataset: sysmon
+      - event.kind: event
 
- # Only maps network.procol if event.code is 22
- - check: $event.code == '22'
-   map:
-	- network.protocol: dns
+  # Only maps network.protocol if event.code is 22
+  - check: $event.code == '22'
+    map:
+      - network.protocol: dns
 
- # Only maps resources if the check and parse stages succeeded
- - check: $event.outcome == failure
-   parse|message:
-     - "[<error.code/int>]<details>"
-   map:
-     - resources: split($details, ",")
+  # Only maps resources if the check and parse stages succeeded
+  - check: $event.outcome == failure
+    parse|message:
+      - "[<error.code/int>]<details>"
+    map:
+      - resources: split($details, ",")
 ```
 
 ### Output
