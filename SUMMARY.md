@@ -29,6 +29,7 @@
     - [Outputs Reference](ref/modules/engine/ref-output.md)
     - [Parsers Reference](ref/modules/engine/ref-parser.md)
     - [Helper Functions Reference](ref/modules/engine/ref-helper-functions.md)
+    - [Dev internal tools](ref/modules/engine/internal-tools.md)
   - [Management API](ref/modules/management/README.md)
     - [Architecture](ref/modules/management/architecture.md)
     - [API Reference](ref/modules/management/api-reference.md)

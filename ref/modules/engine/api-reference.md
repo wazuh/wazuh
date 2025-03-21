@@ -16,6 +16,7 @@ This endpoint receives events to be processed by the Wazuh-Engine security polic
 - New Subheader (Optional): If encountered, it replaces the previous subheader for the following event logs.
 
 The subheader's fields are applied to all subsequent event logs until a new subheader is encountered.
+
 ---
 
 ## Endpoint
