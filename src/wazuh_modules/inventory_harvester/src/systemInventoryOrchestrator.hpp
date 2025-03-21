@@ -99,6 +99,11 @@ public:
             PolicyHarvesterManager::instance().buildIndexerTemplatePath("ports"),
             PolicyHarvesterManager::instance().buildIndexerUpdateTemplatePath("ports"),
             Log::GLOBAL_LOG_FUNCTION);
+        m_indexerConnectorInstances[SystemContext::AffectedComponentType::Hotfix] = std::make_unique<IndexerConnector>(
+            PolicyHarvesterManager::instance().buildIndexerConfig("hotfix"),
+            PolicyHarvesterManager::instance().buildIndexerTemplatePath("hotfix"),
+            PolicyHarvesterManager::instance().buildIndexerUpdateTemplatePath("hotfix"),
+            Log::GLOBAL_LOG_FUNCTION);
 
         m_orchestrations[SystemContext::Operation::Upsert] =
             SystemFactoryOrchestrator::create(SystemContext::Operation::Upsert, m_indexerConnectorInstances);

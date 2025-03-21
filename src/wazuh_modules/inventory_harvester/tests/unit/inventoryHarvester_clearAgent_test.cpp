@@ -78,6 +78,7 @@ TEST_F(InventoryHarvesterClearAgent, HandleRequest_SystemContextSuccess)
     indexerConnectors.emplace(MockAffectedComponentType::Process, std::move(mockIndexerProcesses));
     indexerConnectors.emplace(MockAffectedComponentType::System, std::move(mockIndexerSystem));
     indexerConnectors.emplace(MockAffectedComponentType::Port, std::move(mockIndexerPorts));
+    indexerConnectors.emplace(MockAffectedComponentType::Hotfix, std::move(mockIndexerHotfixes));
 
     auto context = std::make_shared<MockSystemContext>();
 
@@ -95,6 +96,9 @@ TEST_F(InventoryHarvesterClearAgent, HandleRequest_SystemContextSuccess)
         .Times(1);
     EXPECT_CALL(*indexerConnectors[MockAffectedComponentType::Port],
                 publish("{\"id\":\"001\",\"operation\":\"DELETED_BY_QUERY\"}"))
+        .Times(1);
+    EXPECT_CALL(*indexerConnectors[MockAffectedComponentType::Hotfix],
+                publish("{\"id\":\"001\",\"operation\":\"DELETE_BY_QUERY\"}"))
         .Times(1);
 
     EXPECT_CALL(*context, agentId()).Times(4).WillRepeatedly(Return("001"));
