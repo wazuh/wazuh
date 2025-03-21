@@ -71,7 +71,10 @@ echo 'USER_CREATE_SSL_CERT="n"' >> ./etc/preloaded-vars.conf
 echo 'DOWNLOAD_CONTENT="y"' >> ./etc/preloaded-vars.conf
 export VCPKG_ROOT="/root/vcpkg"
 export PATH="${PATH}:${VCPKG_ROOT}"
-scl enable devtoolset-11 ./install.sh
+scl enable devtoolset-11 ./install.sh || { echo "install.sh failed! Aborting." >&2; exit 1; }
+
+sed -i '/"stage":/s/$/,/; /"stage":/a \    "commit": "'"%{_hashcommit}"'"' %{_localstatedir}usr/share/wazuh-server/VERSION.json
+cat %{_localstatedir}usr/share/wazuh-server/VERSION.json
 
 # Create directories
 mkdir -p ${RPM_BUILD_ROOT}%{_initrddir}
@@ -253,6 +256,7 @@ rm -fr %{buildroot}
 %{_localstatedir}var/lib/wazuh-server/engine/kvdb/*
 %dir %attr(750, %{_wazuh_user}, %{_wazuh_group}) %{_localstatedir}var/lib/wazuh-server/indexer-connector
 
+%attr(440, %{_wazuh_user}, %{_wazuh_group}) %{_localstatedir}usr/share/wazuh-server/VERSION.json
 %attr(750, %{_wazuh_user}, %{_wazuh_group}) %{_localstatedir}usr/share/wazuh-server/bin/wazuh-engine
 %attr(750, %{_wazuh_user}, %{_wazuh_group}) %{_localstatedir}usr/share/wazuh-server/bin/wazuh-server-management-apid
 %attr(750, %{_wazuh_user}, %{_wazuh_group}) %{_localstatedir}usr/share/wazuh-server/bin/wazuh-comms-apid

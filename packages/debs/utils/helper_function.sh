@@ -17,6 +17,7 @@ setup_build(){
     build_dir="$3"
     package_name="$4"
     debug="$5"
+    short_commit_hash="$6"
 
     cp -pr ${specs_path}/debian ${sources_dir}/debian
     cp -p /tmp/gen_permissions.sh ${sources_dir}
@@ -32,6 +33,7 @@ setup_build(){
     sed -i "s#export LD_LIBRARY_PATH=.*#export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}#g" ${sources_dir}/debian/rules
     sed -i "s:export INSTALLATION_DIR=.*:export INSTALLATION_DIR=${INSTALLATION_PATH}:g" ${sources_dir}/debian/rules
     sed -i "s:DIR=\"/\":DIR=\"${INSTALLATION_PATH}\":g" ${sources_dir}/debian/{preinst,postinst,prerm,postrm}
+    sed -i "s:export SHORT_COMMIT_HASH=.*:export SHORT_COMMIT_HASH=${short_commit_hash}:g" ${sources_dir}/debian/rules
 }
 
 set_debug(){

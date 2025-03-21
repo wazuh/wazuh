@@ -27,6 +27,7 @@ export PATH="${PATH}"
 export LD_LIBRARY_PATH=""
 export WAZUH_USER="wazuh-server"
 export WAZUH_GROUP="wazuh-server"
+export SHORT_COMMIT_HASH=""
 
 %:
 	dh $@
@@ -56,7 +57,11 @@ override_dh_install:
 	USER_AUTO_START="n" \
 	USER_CREATE_SSL_CERT="n" \
 	DOWNLOAD_CONTENT="y" \
-	./install.sh
+	./install.sh || { echo "install.sh failed! Aborting." >&2; exit 1; }
+
+	echo "Short commit hash: ${SHORT_COMMIT_HASH}"
+	sed -i '/"stage":/s/$$/,/; /"stage":/a \    "commit": "'"${SHORT_COMMIT_HASH}"'"' $(INSTALLATION_DIR)usr/share/wazuh-server/VERSION.json
+	cat $(INSTALLATION_DIR)usr/share/wazuh-server/VERSION.json
 
 	# Copying to target
 	mkdir -p $(TARGET_DIR)$(INSTALLATION_DIR)/tmp

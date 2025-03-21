@@ -12,11 +12,13 @@ from server_management_api.models.base_model_ import Model
 
 
 class BasicInfo(Model):
+    """Represent the basic info for the API."""
+
     def __init__(
         self,
         title: str = None,
         api_version: str = None,
-        revision: int = None,
+        revision: str = None,
         license_name: str = None,
         license_url: str = None,
         hostname: str = None,
@@ -48,7 +50,7 @@ class BasicInfo(Model):
         self.swagger_types = {
             'title': str,
             'api_version': str,
-            'revision': int,
+            'revision': str,
             'license_name': str,
             'license_url': str,
             'hostname': str,
@@ -75,7 +77,7 @@ class BasicInfo(Model):
 
     @classmethod
     def from_dict(cls, dikt) -> 'BasicInfo':
-        """Returns the dict as a model.
+        """Return the dict as a model.
 
         :param dikt: A dict.
         :type: dict
@@ -86,7 +88,7 @@ class BasicInfo(Model):
 
     @property
     def title(self) -> str:
-        """Gets the title of this BasicInfo.
+        """Get the title of this BasicInfo.
 
         :return: The title of this BasicInfo.
         :rtype: str
@@ -95,7 +97,7 @@ class BasicInfo(Model):
 
     @title.setter
     def title(self, title: str):
-        """Sets the title of this BasicInfo.
+        """Set the title of this BasicInfo.
 
         :param title: The title of this BasicInfo.
         :type title: str
@@ -113,7 +115,7 @@ class BasicInfo(Model):
 
     @api_version.setter
     def api_version(self, api_version: str):
-        """Sets the api_version of this BasicInfo.
+        """Set the api_version of this BasicInfo.
 
         :param api_version: The api_version of this BasicInfo.
         :type api_version: str
@@ -121,20 +123,20 @@ class BasicInfo(Model):
         self._api_version = api_version
 
     @property
-    def revision(self) -> int:
+    def revision(self) -> str:
         """Gets the revision of this BasicInfo.
 
         :return: The revision of this BasicInfo.
-        :rtype: int
+        :rtype: str
         """
         return self._revision
 
     @revision.setter
-    def revision(self, revision: int):
-        """Sets the revision of this BasicInfo.
+    def revision(self, revision: str):
+        """Set the revision of this BasicInfo.
 
         :param revision: The revision of this BasicInfo.
-        :type revision: int
+        :type revision: str
         """
         self._revision = revision
 
@@ -149,7 +151,7 @@ class BasicInfo(Model):
 
     @license_name.setter
     def license_name(self, license_name: str):
-        """Sets the license_name of this BasicInfo.
+        """Set the license_name of this BasicInfo.
 
         :param license_name: The license_name of this BasicInfo.
         :type license_name: str
@@ -167,7 +169,7 @@ class BasicInfo(Model):
 
     @license_url.setter
     def license_url(self, license_url: str):
-        """Sets the license_url of this BasicInfo.
+        """Set the license_url of this BasicInfo.
 
         :param license_url: The license_url of this BasicInfo.
         :type license_url: str
@@ -185,7 +187,7 @@ class BasicInfo(Model):
 
     @hostname.setter
     def hostname(self, hostname: str):
-        """Sets the hostname of this BasicInfo.
+        """Set the hostname of this BasicInfo.
 
         :param hostname: The hostname of this BasicInfo.
         :type hostname: str
@@ -203,7 +205,7 @@ class BasicInfo(Model):
 
     @timestamp.setter
     def timestamp(self, timestamp: str):
-        """Sets the timestamp of this BasicInfo.
+        """Set the timestamp of this BasicInfo.
 
         :param timestamp: The timestamp of this BasicInfo.
         :type timestamp: str
