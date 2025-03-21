@@ -4,6 +4,7 @@
 #include <memory>
 #include <string>
 
+#include <builder/iallowedFields.hpp>
 #include <defs/idefinitions.hpp>
 #include <schemf/ivalidator.hpp>
 
@@ -56,6 +57,9 @@ public:
     virtual Context& context() = 0;
 
     virtual std::shared_ptr<const RunState> runState() const = 0;
+
+    virtual const builder::IAllowedFields& allowedFields() const = 0;
+    virtual void setAllowedFields(const std::shared_ptr<const builder::IAllowedFields>& allowedFields) = 0;
 };
 
 } // namespace builder::builders

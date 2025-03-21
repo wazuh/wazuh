@@ -12,6 +12,7 @@
 #include <schemf/ivalidator.hpp>
 #include <store/istore.hpp>
 
+#include <builder/iallowedFields.hpp>
 #include <builder/ibuilder.hpp>
 #include <builder/ivalidator.hpp>
 
@@ -39,6 +40,7 @@ private:
     std::shared_ptr<store::IStore> m_storeRead;                      ///< Store reader interface
     std::shared_ptr<schemf::IValidator> m_schema;                    ///< Schema validator
     std::shared_ptr<defs::IDefinitionsBuilder> m_definitionsBuilder; ///< Definitions builder
+    std::shared_ptr<IAllowedFields> m_allowedFields; ///< Manages wich fields can be modified by different assets
 
     std::shared_ptr<Registry> m_registry; ///< builders registry
 
@@ -49,6 +51,7 @@ public:
     Builder(const std::shared_ptr<store::IStore>& storeRead,
             const std::shared_ptr<schemf::IValidator>& schema,
             const std::shared_ptr<defs::IDefinitionsBuilder>& definitionsBuilder,
+            const std::shared_ptr<IAllowedFields>& allowedFields,
             const BuilderDeps& builderDeps);
 
     std::shared_ptr<IPolicy>
