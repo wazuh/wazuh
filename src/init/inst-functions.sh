@@ -76,7 +76,6 @@ InstallServer()
     ${MAKEBIN} --quiet -C ../apis/communications install ${SHARE_INSTALLDIR}
     ${PYTHON_BIN_PATH} -m pip install ../apis/communications
 
-    # Install VERSION.json and append commit id if any
     ${INSTALL} -m 440 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ../VERSION.json ${SHARE_INSTALLDIR}/VERSION.json
 
 }
