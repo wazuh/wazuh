@@ -5,12 +5,17 @@
 
 ## Description
 
-This endpoint receives events to be processed by the Wazuh-Engine security policy.
-It accepts an **NDJSON payload**, where each line represents an object, following a strict protocol:
+This endpoint receives events to be processed by the Wazuh-Engine security policy. It accepts an NDJSON payload, where each line represents an object, following a strict structure:
 
-1. **First JSON**: Contains information about the `header`.
-2. **Second JSON**: Must include the `collector` and `module` keys.
-3. **Third JSON** (and subsequent ones): Represents log events.
+- Agent Metadata (First JSON Line): Contains agent-related metadata.
+
+- Subheader (Second JSON Line): Includes mandatory module and collector fields.
+
+- Event Logs (Third and Subsequent JSON Lines): Individual log events enriched with the agent metadata and subheader information.
+
+- New Subheader (Optional): If encountered, it replaces the previous subheader for the following event logs.
+
+The subheader's fields are applied to all subsequent event logs until a new subheader is encountered.
 ---
 
 ## Endpoint
@@ -19,7 +24,25 @@ It accepts an **NDJSON payload**, where each line represents an object, followin
 
 ## Request Body
 
-The request must be a valid **NDJSON** (Newline Delimited JSON), where each line represents a separate JSON object.
+The request must be a valid **NDJSON** (Newline Delimited JSON).
+
+## Processing Flow
+
+- The server extracts JSON objects from the NDJSON batch.
+
+- It verifies that at least three lines exist (agent metadata, subheader, and at least one event log).
+
+- The agent metadata is stored and used for event enrichment.
+
+- The subheader is validated to ensure it contains both /module and /collector fields.
+
+- Each log event is merged with:
+
+   - The agent metadata.
+
+   - The module and collector values from the subheader.
+
+- If a new subheader appears within the batch, it is applied to subsequent events.
 
 ## Response Body
 
@@ -36,9 +59,78 @@ The request must be a valid **NDJSON** (Newline Delimited JSON), where each line
 #### Request Body
 
 ```json
-{"message": "hello"}
+{"agent":{"id":"2887e1cf-9bf2-431a-b066-a46860080f56","name":"javier","type":"endpoint","version":"5.0.0","groups":["group1","group2"],"host":{"hostname":"myhost","os":{"name":"Amazon Linux 2","platform":"Linux"},"ip":["192.168.1.21"],"architecture":"x86_64"}}}
 {"module":"logcollector","collector":"file"}
-{"message": "hello"}
+{"log":{"file":{"path":"/var/log/syslog"}},"tags":["production"],"event":{"original":"System started.","created":"2023-12-26T09:22:14.000Z"}}
+{"module":"logcollector","collector":"file"}
+{"log":{"file":{"path":"/var/log/syslog"}},"tags":["production"],"event":{"original":"System stopped.","created":"2023-12-26T09:27:24.000Z"}}
+```
+
+#### Queued events
+
+```json
+[
+    {
+        "agent": {
+            "id":"2887e1cf-9bf2-431a-b066-a46860080f56",
+            "name":"javier",
+            "type":"endpoint",
+            "version":"5.0.0",
+            "groups":["group1","group2"],
+            "host": {
+                "hostname":"myhost",
+                "os": {
+                    "name":"Amazon Linux 2",
+                    "platform":"Linux"
+                    },
+                "ip":["192.168.1.21"],
+                "architecture":"x86_64"
+            }
+        },
+        "event": {
+            "collector": "file",
+            "created":"2023-12-26T09:22:14.000Z",
+            "module": "logcollector",
+            "original":"System started."
+        },
+        "log": {
+            "file": {
+                "path": "/var/log/syslog"
+            }
+        },
+        "tags":["production"]
+    },
+    {
+        "agent": {
+            "id":"2887e1cf-9bf2-431a-b066-a46860080f56",
+            "name":"javier",
+            "type":"endpoint",
+            "version":"5.0.0",
+            "groups":["group1","group2"],
+            "host": {
+                "hostname":"myhost",
+                "os": {
+                    "name":"Amazon Linux 2",
+                    "platform":"Linux"
+                    },
+                "ip":["192.168.1.21"],
+                "architecture":"x86_64"
+            }
+        },
+        "event": {
+            "collector": "file",
+            "created":"2023-12-26T09:27:24.000Z",
+            "module": "logcollector",
+            "original":"System stopped."
+        },
+        "log": {
+            "file": {
+                "path": "/var/log/syslog"
+            }
+        },
+        "tags":["production"]
+    }
+]
 ```
 
 #### Response Body
