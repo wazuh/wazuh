@@ -1088,7 +1088,7 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
     condition: none
     rules:
-      - "c:rpm -q setroubleshoot -> r:setroubleshoot"
+      - "c:rpm -q setroubleshoot -> r:setroubleshoot-"
 
   # 1.6.1.8 Ensure the MCS Translation Service (mcstrans) is not installed. (Automated)
   - id: 5049
@@ -1107,7 +1107,7 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
     condition: none
     rules:
-      - "c:rpm -q mcstrans -> r:mcstrans"
+      - "c:rpm -q mcstrans -> r:mcstrans-"
 
   ###############################################
   # 1.7  Warning Banners
@@ -1340,9 +1340,9 @@ checks:
       - cmmc_v2.0: ["MP.L2-3.8.7"]
       - hipaa: ["164.310(d)(1)"]
       - iso_27001-2013: ["A.12.2.1"]
-    condition: all
+    condition: none
     rules:
-      - "c:gsettings get org.gnome.desktop.media-handling automount -> r:false"
+      - "c:gsettings get org.gnome.desktop.media-handling automount -> r:true"
 
   # 1.9 Ensure updates, patches, and additional security software are installed. (Manual) - Not Implemented
 
@@ -1742,7 +1742,7 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
     condition: all
     rules:
-      - 'c:ss -lntu -> r:\.*:25\.* && !r:\s*127.0.0.1:25\s*|\s*::1:25\s*'
+      - 'not c:ss -lntu -> r:\.*:25\.* && r:\s*127.0.0.1:25\s*|\s*::1:25\s*'
 
   # 2.2.18 Ensure nfs-utils is not installed or the nfs-server service is masked. (Automated)
   - id: 5082
@@ -1783,7 +1783,7 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
     condition: any
     rules:
-      - "c:rpm -q -> r:rpcbind package rpcbind is not installed"
+      - "c:rpm -q rpcbind -> r:package rpcbind is not installed"
       - "c:systemctl is-enabled rpcbind rpcbind.socket -> r:masked"
 
   # 2.2.20 Ensure rsync is not installed or the rsyncd service is masked. (Automated)
@@ -1827,9 +1827,9 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition: none
+    condition: all
     rules:
-      - "c:rpm -q ypbind -> r:^package ypbind is not installed"
+      - "c:rpm -q ypbind -> r:package ypbind is not installed"
 
   # 2.3.2 Ensure rsh client is not installed. (Automated)
   - id: 5086
@@ -1847,9 +1847,9 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition: none
+    condition: all
     rules:
-      - "c:rpm -q rsh -> r:^package rsh is not installed"
+      - "c:rpm -q rsh -> r:package rsh is not installed"
 
   # 2.3.3 Ensure talk client is not installed. (Automated)
   - id: 5087
@@ -1867,9 +1867,9 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition: none
+    condition: all
     rules:
-      - "c:rpm -q talk -> r:^package talk is not installed"
+      - "c:rpm -q talk -> r:package talk is not installed"
 
   # 2.3.4 Ensure telnet client is not installed. (Automated)
   - id: 5088
@@ -1939,25 +1939,7 @@ checks:
   # 3.1 Uncommon Network Protocols
   ###############################################
 
-  # 3.1.1 Verify if IPv6 is enabled on the system. (Manual)
-  - id: 5091
-    title: "Verify if IPv6 is enabled on the system."
-    description: "Internet Protocol Version 6 (IPv6) is the most recent version of Internet Protocol (IP). It's designed to supply IP addressing and additional security to support the predicted growth of connected devices."
-    rationale: "It is recommended that either IPv6 settings are configured OR IPv6 be disabled to reduce the attack surface of the system."
-    impact: "IETF RFC 4038 recommends that applications are built with an assumption of dual stack. If IPv6 is disabled through sysctl config, SSH X11forwarding may no longer function as expected. We recommend that SSH X11fowarding be disabled, but if required, the following will allow for SSH X11forwarding with IPv6 disabled through sysctl config: Add the following line the /etc/ssh/sshd_config file: AddressFamily inet Run the following command to re-start the openSSH server: # systemctl restart sshd."
-    remediation: 'If IPv6 is to be disabled, use one of the two following methods to disable IPv6 on the system: To disable IPv6 through the GRUB2 config, run the following command to add ipv6.disable=1 to the GRUB_CMDLINE_LINUX parameters: grubby --update-kernel ALL --args ''ipv6.disable=1'' OR To disable IPv6 through sysctl settings, set the following parameters in /etc/sysctl.conf or a /etc/sysctl.d/* file: Example: # printf " net.ipv6.conf.all.disable_ipv6 = 1 net.ipv6.conf.default.disable_ipv6 = 1 " >> /etc/sysctl.d/60-disable_ipv6.conf Run the following command to set the active kernel parameters: # { sysctl -w net.ipv6.conf.all.disable_ipv6=1 sysctl -w net.ipv6.conf.default.disable_ipv6=1 sysctl -w net.ipv6.route.flush=1 }.'
-    compliance:
-      - cis: ["3.1.1"]
-      - cis_csc_v8: ["4.8"]
-      - cis_csc_v7: ["9.4"]
-      - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
-      - iso_27001-2013: ["A.13.1.1"]
-      - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
-      - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
-      - soc_2: ["CC6.3", "CC6.6"]
-    condition: all
-    rules:
-      - 'f:/boot/grub2/grubenv -> r:^\s*kernelopts=\.+ipv6.disable=1'
+  # 3.1.1 Verify if IPv6 is enabled on the system. (Manual) - Not Implemented
 
   # 3.1.2 Ensure SCTP is disabled. (Automated)
   - id: 5092
@@ -2108,8 +2090,8 @@ checks:
       - soc_2: ["CC6.6"]
     condition: all
     rules:
-      - "p:firewalld"
-      - "c:firewall-cmd --state -> r:running"
+      - "c:systemctl is-enabled firewalld -> r:^enabled"
+      - "c:firewall-cmd --state -> r:^running"
 
   # 3.4.1.5 Ensure firewalld default zone is set. (Automated) Not Implemented
   # 3.4.1.6 Ensure network interfaces are assigned to appropriate zone. (Manual) Not Implemented
@@ -2701,12 +2683,10 @@ checks:
       - soc_2: ["CC5.2", "CC7.2"]
     condition: all
     rules:
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:exit,always|always,exit && r:-F arch=b64 && r:-C euid!=uid|-C uid!=euid  && r:-F auid!=unset|-F auid!=1|-F auid!=4294967295 && r:-S execve && r:-k user_emulation|key=user_emulation'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:exit,always|always,exit && r:-F arch=b32 && r:-C euid!=uid|-C uid!=euid  && r:-F auid!=unset|-F auid!=1|-F auid!=4294967295 && r:-S execve && r:-k user_emulation|key=user_emulation'
-      - "c:auditctl -l -> r:^-a && r:exit,always|always,exit && r:-F arch=b64 && r:-C euid!=uid|-C uid!=euid && r:-F auid!=unset|-F auid!=1|-F auid!=4294967295 && r:-S execve && r:-k user_emulation|key=user_emulation"
-      - "c:auditctl -l -> r:^-a && r:exit,always|always,exit && r:-F arch=b32 && r:-C euid!=uid|-C uid!=euid && r:-F auid!=unset|-F auid!=1|-F auid!=4294967295 && r:-S execve && r:-k user_emulation|key=user_emulation"
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:exit,always|always,exit && r:-F arch=b64|-F arch=b32 && r:-C uid!=euid|-C euid!=uid && r:-F auid!=unset|-F auid!=-1|-F auid!=4294967295 && r:-S execve && r:-k user_emulation|key=user_emulation'
+      - "c:auditctl -l -> r:^-a && r:exit,always|always,exit && r:-F arch=b64|-F arch=b32 && r:-C uid!=euid|-C euid!=uid && r:-F auid!=unset|-F auid!=-1|-F auid!=4294967295 && r:-S execve && r:-k user_emulation|key=user_emulation"
 
-  # 4.1.3.3 Ensure events that modify the sudo log file are collected. (Automated) - Not Implemented
+  # 4.1.3.3 Ensure events that modify the sudo log file are collected. (Automated) - Not  Implemented
 
   # 4.1.3.4 Ensure events that modify date and time information are collected. (Automated)
   - id: 5125
@@ -2726,13 +2706,9 @@ checks:
       - soc_2: ["CC5.2", "CC7.2"]
     condition: all
     rules:
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-a always,exit -F arch=b32 -S adjtimex -S settimeofday -S stime -k time-change'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-a always,exit -F arch=b32 -S clock_settime -k time-change'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-a always,exit -F arch=b64 -S adjtimex -S settimeofday -S stime -k time-change'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-a always,exit -F arch=b64 -S clock_settime -k time-change'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-w /etc/localtime -p wa -k time-change'
-      - "c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S && r:adjtimex && r:settimeofday && r:clock_settime && r:-k time-change|key=time-change"
-      - "c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S && r:adjtimex && r:settimeofday && r:clock_settime && r:-k time-change|key=time-change"
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b64|-F arch=b32 && r:-S && r:adjtimex && r:settimeofday && r:clock_settime && r:-k time-change|key=time-change'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/localtime && r:-p wa && r:-k time-change|key=time-change'
+      - "c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b64|-F arch=b32 && r:-S && r:adjtimex && r:settimeofday && r:clock_settime && r:-k time-change|key=time-change"
       - "c:auditctl -l -> r:^-w && r:/etc/localtime && r:-p wa && r:-k time-change|key=time-change"
 
   # 4.1.3.5 Ensure events that modify the system's network environment are collected. (Automated)
@@ -2747,15 +2723,13 @@ checks:
       - iso_27001-2013: ["A.12.1.2"]
     condition: all
     rules:
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-a always,exit -F arch=b32 -S sethostname -S setdomainname -k system-locale'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-a always,exit -F arch=b64 -S sethostname -S setdomainname -k system-locale'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-w /etc/issue -p wa -k system-locale'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-w /etc/issue.net -p wa -k system-locale'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-w /etc/hosts -p wa -k system-locale'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-w /etc/sysconfig/network -p wa -k system-locale'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-w /etc/sysconfig/network-scripts/ -p wa -k system-locale'
-      - "c:auditctl -l -> r:^-a && r:exit,always|always,exit && r:-F arch=b64 && r:-S && r:sethostname && r:setdomainname && r:-k system-locale|-F key=system-locale"
-      - "c:auditctl -l -> r:^-a && r:exit,always|always,exit && r:-F arch=b32 && r:-S && r:sethostname && r:setdomainname && r:-k system-locale|-F key=system-locale"
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:exit,always|always,exit && r:-F arch=b64|-F arch=b32 && r:-S && r:sethostname && r:setdomainname && r:-k system-locale|-F key=system-locale'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-w /etc/issue && r:-p wa && r:-k system-locale'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-w /etc/issue.net && r:-p wa && r:-k system-locale|key=system-locale'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-w /etc/hosts && r:-p wa && r:-k system-locale|key=system-locale'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-w /etc/sysconfig/network && r:-p wa && r:-k system-locale|key=system-locale'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-w /etc/sysconfig/network-scripts/ && r:-p wa && r:-k system-locale|key=system-locale'
+      - "c:auditctl -l -> r:^-a && r:exit,always|always,exit && r:-F arch=b64|-F arch=b32 && r:-S && r:sethostname && r:setdomainname && r:-k system-locale|-F key=system-locale"
       - "c:auditctl -l -> r:^-w && r:/etc/issue && r:-p wa && r:-k system-locale|key=system-locale"
       - "c:auditctl -l -> r:^-w && r:/etc/issue.net && r:-p wa && r:-k system-locale|key=system-locale"
       - "c:auditctl -l -> r:^-w && r:/etc/hosts && r:-p wa && r:-k system-locale|key=system-locale"
@@ -2776,14 +2750,10 @@ checks:
       - iso_27001-2013: ["A.12.4.3"]
     condition: all
     rules:
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> -a always,exit -F arch=b32 -S creat -S open -S openat -S truncate -S ftruncate -F exit=-EACCES -F auid>=1000 -F auid!=4294967295 -k access'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> -a always,exit -F arch=b32 -S creat -S open -S openat -S truncate -S ftruncate -F exit=-EPERM -F auid>=1000 -F auid!=4294967295 -k access'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> -a always,exit -F arch=b64 -S creat -S open -S openat -S truncate -S ftruncate -F exit=-EACCES -F auid>=1000 -F auid!=4294967295 -k access'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> -a always,exit -F arch=b64 -S creat -S open -S openat -S truncate -S ftruncate -F exit=-EPERM -F auid>=1000 -F auid!=4294967295 -k access'
-      - 'c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S && r:creat && r:open && r:openat && r:truncate && r:ftruncate && r:-F exit=-EACCES && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k access|key=access'
-      - 'c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S && r:creat && r:open && r:openat && r:truncate && r:ftruncate && r:-F exit=-EACCES && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k access|key=access'
-      - 'c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S && r:creat && r:open && r:openat && r:truncate && r:ftruncate && r:-F exit=-EPERM && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k access|key=access'
-      - 'c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S && r:creat && r:open && r:openat && r:truncate && r:ftruncate && r:-F exit=-EPERM && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k access|key=access'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b32|-F arch=b64 && r:-S && r:creat && r:open && r:openat && r:truncate && r:ftruncate && r:-F exit=-EACCES && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k access|key=access'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b32|-F arch=b64 && r:-S && r:creat && r:open && r:openat && r:truncate && r:ftruncate && r:-F exit=-EPERM && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k access|key=access'
+      - 'c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b32|-F arch=b64 && r:-S && r:creat && r:open && r:openat && r:truncate && r:ftruncate && r:-F exit=-EACCES && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k access|key=access'
+      - 'c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b32|-F arch=b64 && r:-S && r:creat && r:open && r:openat && r:truncate && r:ftruncate && r:-F exit=-EPERM && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k access|key=access'
 
   # 4.1.3.8 Ensure events that modify user/group information are collected. (Automated)
   - id: 5128
@@ -2797,11 +2767,11 @@ checks:
       - iso_27001-2013: ["A.12.4.3"]
     condition: all
     rules:
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> -w /etc/group -p wa -k identity'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> -w /etc/passwd -p wa -k identity'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> -w /etc/gshadow -p wa -k identity'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> -w /etc/shadow -p wa -k identity'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> -w /etc/security/opasswd -p wa -k identity'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-w /etc/group && r:-p wa && r:-k identity|key=identity'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-w /etc/passwd && r:-p wa && r:-k identity|key=identity'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-w /etc/gshadow && r:-p wa && r:-k identity|key=identity'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-w /etc/shadow && r:-p wa && r:-k identity|key=identity'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-w /etc/security/opasswd && r:-p wa && r:-k identity|key=identity'
       - "c:auditctl -l -> r:^-w && r:/etc/group && r:-p wa && r:-k identity|key=identity"
       - "c:auditctl -l -> r:^-w && r:/etc/passwd && r:-p wa && r:-k identity|key=identity"
       - "c:auditctl -l -> r:^-w && r:/etc/gshadow && r:-p wa && r:-k identity|key=identity"
@@ -2822,10 +2792,8 @@ checks:
       - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
     condition: all
     rules:
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> -a always,exit -F arch=b32 -S mount -F auid>=1000 -F auid!=4294967295 -k mounts'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> -a always,exit -F arch=b64 -S mount -F auid>=1000 -F auid!=4294967295 -k mounts'
-      - 'c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S mount && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k mounts|key=mounts'
-      - 'c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S mount && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k mounts|key=mounts'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b64|-F arch=b32 && r:-S mount && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k mounts|key=mounts'
+      - 'c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b64|-F arch=b32 && r:-S mount && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k mounts|key=mounts'
 
   # 4.1.3.11 Ensure session initiation information is collected. (Automated)
   - id: 5130
@@ -2845,9 +2813,9 @@ checks:
       - soc_2: ["CC5.2", "CC7.2"]
     condition: all
     rules:
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-w /var/run/utmp -p wa -k session'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-w /var/log/wtmp -p wa -k logins'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-w /var/log/btmp -p wa -k logins'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/var/run/utmp && r:-p wa && r:-k session|key=session'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/var/log/wtmp && r:-p wa && r:-k session|key=session'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/var/log/btmp && r:-p wa && r:-k session|key=session'
       - "c:auditctl -l -> r:^-w && r:/var/run/utmp && r:-p wa && r:-k session|key=session"
       - "c:auditctl -l -> r:^-w && r:/var/log/wtmp && r:-p wa && r:-k session|key=session"
       - "c:auditctl -l -> r:^-w && r:/var/log/btmp && r:-p wa && r:-k session|key=session"
@@ -2870,8 +2838,8 @@ checks:
       - soc_2: ["CC5.2", "CC7.2"]
     condition: all
     rules:
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-w /var/log/lastlog -p wa -k logins'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-w /var/run/faillock/ -p wa -k logins'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/var/log/lastlog && r:-p wa && r:-k logins|key=logins'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/var/run/faillock && r:-p wa && r:-k logins|key=logins'
       - "c:auditctl -l -> r:^-w && r:/var/log/lastlog && r:-p wa && r:-k logins|key=logins"
       - "c:auditctl -l -> r:^-w && r:/var/run/faillock && r:-p wa && r:-k logins|key=logins"
 
@@ -2886,10 +2854,8 @@ checks:
       - cis_csc_v7: ["13"]
     condition: all
     rules:
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> -a always,exit -F arch=b32 -S unlink -S unlinkat -S rename -S renameat -F auid>=1000 -F auid!=4294967295 -k delete'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> -a always,exit -F arch=b64 -S unlink -S unlinkat -S rename -S renameat -F auid>=1000 -F auid!=4294967295 -k delete'
-      - 'c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S && r:unlink && r:unlinkat && r:rename && r:renameat && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k delete|key=delete'
-      - 'c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S && r:unlink && r:unlinkat && r:rename && r:renameat && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k delete|key=delete'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b64|-F arch=b32 && r:-S && r:unlink && r:unlinkat && r:rename && r:renameat && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k delete|key=delete'
+      - 'c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b64|-F arch=b32 && r:-S && r:unlink && r:unlinkat && r:rename && r:renameat && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k delete|key=delete'
 
   # 4.1.3.14 Ensure events that modify the system's Mandatory Access Controls are collected. (Automated)
   - id: 5133
@@ -2909,8 +2875,8 @@ checks:
       - soc_2: ["CC5.2", "CC7.2"]
     condition: all
     rules:
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-w /etc/selinux/ -p wa -k MAC-policy'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-w /usr/share/selinux/ -p wa -k MAC-policy'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/selinux && r:-p wa && r:-k MAC-policy|key=MAC-policy'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/usr/share/selinux && r:-p wa && r:-k MAC-policy|key=MAC-policy'
       - "c:auditctl -l -> r:^-w && r:/etc/selinux && r:-p wa && r:-k MAC-policy|key=MAC-policy"
       - "c:auditctl -l -> r:^-w && r:/usr/share/selinux && r:-p wa && r:-k MAC-policy|key=MAC-policy"
 
@@ -2974,8 +2940,8 @@ checks:
       - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
     condition: all
     rules:
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F path=/usr/bin/chacl && r:-F perm=x && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k priv_cmd|-F key=priv_cmd'
-      - 'c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F path=/usr/bin/chacl && r:-F perm=x && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k priv_cmd|-F key=priv_cmd'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F path=/usr/bin/chacl && r:-F perm=x && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k priv_cmd|-F key=priv_cmd|-k perm_chng|-F key=perm_chng'
+      - 'c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F path=/usr/bin/chacl && r:-F perm=x && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k priv_cmd|-F key=priv_cmd|-k perm_chng|-F key=perm_chng'
 
   # 4.1.3.18 Ensure successful and unsuccessful attempts to use the usermod command are recorded. (Automated)
   - id: 5137
@@ -3040,7 +3006,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'not d:/etc/audit/rules.d -> r:\.+.rules$ -> !r:\s*\t*-e 2$'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-e\s+2$'
 
   # 4.1.3.21 Ensure the running and on disk configuration is the same. (Manual)
   - id: 5140
@@ -3104,7 +3070,7 @@ checks:
       - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
     condition: all
     rules:
-      - "p:rsyslog"
+      - "c:systemctl is-enabled rsyslog -> r:^enabled"
 
   # 4.2.1.3 Ensure journald is configured to send logs to rsyslog. (Manual)
   - id: 5143
@@ -3147,8 +3113,8 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: any
     rules:
-      - 'f:/etc/rsyslog.conf -> r:^\$FileCreateMode 06\d0|^\$FileCreateMode 04\d0|^\$FileCreateMode 02\d0|^\$FileCreateMode 00\d0'
-      - 'f:/etc/rsyslog.conf -> r:^\$FileCreateMode 0\d40|^\$FileCreateMode 0\d20|^\$FileCreateMode 0\d00'
+      - 'd:/etc/rsyslog.d -> r:\.*.conf -> r:^\$FileCreateMode && r:0640|0600|0400'
+      - 'f:/etc/rsyslog.conf -> r:^\$FileCreateMode && r:0640|0600|0400'
 
   # 4.2.1.5 Ensure logging is configured. (Manual) - Not Implemented
 
@@ -3370,9 +3336,9 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition: none
+    condition: all
     rules:
-      - 'c:find /var/log -type f -ls -> r:-\w\w\w\ww\w\w\w\w|-\w\w\w\w\wx\w\w\w|-\w\w\w\w\w\w\ww\w|-\w\w\w\w\w\wr\w\w|-\w\w\w\w\w\w\w\wx'
+      - 'not c:sh -c "find /var/log/ -type f -perm /g+wx,o+rwx -exec ls -l "{}" +" -> r:\w+'
 
   # 4.3 Ensure logrotate is configured. (Manual) - Not Implemented
 
@@ -3568,8 +3534,9 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - "c:stat -L /etc/at.deny -> r:No such file or directory$"
-      - 'c:stat -L /etc/at.allow -> r:^Access: \(0\d00/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
+      - "not f:/etc/at.deny"
+      - "f:/etc/at.allow"
+      - 'c:stat -Lc "%n %a %u %U %g %G" /etc/at.allow -> r:0 root 0 root && r:600'
 
   ###############################################
   # 5.2 Configure SSH
@@ -4265,8 +4232,7 @@ checks:
       - soc_2: ["CC6.1"]
     condition: all
     rules:
-      - 'f:/etc/pam.d/system-auth -> r:^\s*password\.+requisite\.+pam_pwquality\.so\.+ && n:remember=(\d+) compare >= 5'
-      - 'f:/etc/pam.d/system-auth -> r:^\s*password\.+sufficient\.+pam_unix\.so\.+ && n:remember=(\d+) compare >= 5'
+      - 'f:/etc/pam.d/system-auth -> r:^\s*password && r:requisite|sufficient && r:pam_pwhistory.so|pam_unix.so && n:remember=(\d+) compare >= 5'
 
   # 5.5.4 Ensure password hashing algorithm is SHA-512. (Automated)
   - id: 5196
@@ -4381,7 +4347,7 @@ checks:
   # 5.6.3 Ensure default user shell timeout is 900 seconds or less. (Automated)
   - id: 5201
     title: "Ensure default user shell timeout is 900 seconds or less."
-    description: "TMOUT is an environmental setting that determines the timeout of a shell in seconds. - TMOUT=n - Sets the shell timeout to n seconds. A setting of TMOUT=0 disables - timeout. readonly TMOUT- Sets the TMOUT environmental variable as readonly, preventing unwanted modification during run-time. - export TMOUT - exports the TMOUT variable System Wide Shell Configuration Files: - /etc/profile - used to set system wide environmental variables on users shells. The variables are sometimes the same ones that are in the .bash_profile, however this file is used to set an initial PATH or PS1 for all shell users of the system. is only executed for interactive login shells, or shells executed with the --login parameter. - /etc/profile.d - /etc/profile will execute the scripts within /etc/profile.d/*.sh. It is recommended to place your configuration in a shell script within /etc/profile.d to set your own system wide environmental variables. - /etc/bashrc - System wide version of .bashrc. In Fedora derived distributions, etc/bashrc also invokes /etc/profile.d/*.sh if non-login shell, but redirects output to /dev/null if non-interactive. Is only executed for interactive shells or if BASH_ENV is set to /etc/bashrc."
+    description: "TMOUT is an environmental setting that determines the timeout of a shell in seconds. - TMOUT=n - Sets the shell timeout to n seconds. A setting of TMOUT=0 disables - timeout. readonly TMOUT - Sets the TMOUT environmental variable as readonly, preventing unwanted modification during run-time. - export TMOUT - exports the TMOUT variable System Wide Shell Configuration Files: - /etc/profile - used to set system wide environmental variables on users shells. The variables are sometimes the same ones that are in the .bash_profile, however this file is used to set an initial PATH or PS1 for all shell users of the system. is only executed for interactive login shells, or shells executed with the --login parameter. - /etc/profile.d - /etc/profile will execute the scripts within /etc/profile.d/*.sh. It is recommended to place your configuration in a shell script within /etc/profile.d to set your own system wide environmental variables. - /etc/bashrc - System wide version of .bashrc. In Fedora derived distributions, etc/bashrc also invokes /etc/profile.d/*.sh if non-login shell, but redirects output to /dev/null if non-interactive. Is only executed for interactive shells or if BASH_ENV is set to /etc/bashrc."
     rationale: "Setting a timeout value reduces the window of opportunity for unauthorized user access to another user's shell session that has been left unattended. It also ends the inactive session and releases the resources associated with that session."
     remediation: "Review /etc/bashrc, /etc/profile, and all files ending in *.sh in the /etc/profile.d/ directory and remove or edit all TMOUT=_n_ entries to follow local site policy. TMOUT should not exceed 900 or be equal to 0. Configure TMOUT in one of the following files: - A file in the /etc/profile.d/ directory ending in .sh - /etc/profile - /etc/bashrc TMOUT configuration examples: - As multiple lines: TMOUT=900 readonly TMOUT export TMOUT - As a single line: readonly TMOUT=900 ; export TMOUT."
     compliance:
@@ -4394,12 +4360,11 @@ checks:
       - nist_sp_800-53: ["AC-11", "AC-11(1)", "AC-12", "AC-2(5)"]
       - pci_dss_v3.2.1: ["8.1.8"]
       - pci_dss_v4.0: ["8.2.8"]
-    condition: all
+    condition: any
     rules:
-      - 'not f:/etc/bashrc -> !r:^# && n:TMOUT\s*\t*=\s*\t*(\d+) compare > 900'
-      - 'not c:grep -Rh TMOUT /etc/profile /etc/profile.d/*.sh -> !r:^# && n:TMOUT\s*\t*=\s*\t*(\d+) compare > 900'
-      - 'f:/etc/bashrc -> !r:^# && n:readonly TMOUT\s*=\s*(\d+)\s*; compare <= 900 && r:export TMOUT\s*$'
-      - 'c:grep -Rh TMOUT /etc/profile /etc/profile.d/*.sh -> !r:^# && n:readonly TMOUT\s*=\s*(\d+)\s*; compare <= 900 && r:export TMOUT\s*$'
+      - 'f:/etc/bashrc -> !r:^# && n:TMOUT\s*\t*=\s*\t*(\d+) compare <= 900 && n:TMOUT\s*\t*=\s*\t*(\d+) compare != 0'
+      - 'f:/etc/profile -> !r:^# && n:TMOUT\s*\t*=\s*\t*(\d+) compare <= 900 && n:TMOUT\s*\t*=\s*\t*(\d+) compare != 0'
+      - 'd:/etc/profile.d -> !r:^# && n:TMOUT\s*\t*=\s*\t*(\d+) compare <= 900 && n:TMOUT\s*\t*=\s*\t*(\d+) compare != 0'
 
   # 5.6.4 Ensure default group for the root account is GID 0. (Automated)
   - id: 5202
@@ -4560,7 +4525,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'c:stat -L /etc/passwd- -> r:Access:\s*\(0\d00/-\w\w-------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat -L /etc/passwd- -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
   # 6.1.8 Ensure permissions on /etc/shadow- are configured. (Automated)
   - id: 5209
