@@ -1,0 +1,13 @@
+{
+  "agent_info": {
+    "agent_id": "003",
+    "agent_ip": "any",
+    "agent_name": "DESKTOP-EQ4F57D",
+    "agent_version": "v4.9.2"
+  },
+  "data_type": "integrity_clear",
+  "data": {
+    "attributes_type": "syscollector_ports",
+    "id": 1740672008
+  }
+}
