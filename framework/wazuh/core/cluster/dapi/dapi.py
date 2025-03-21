@@ -41,10 +41,13 @@ pools = common.mp_pools.get()
 if node_info['type'] == 'master':
     # Suppress exception when the user running Wazuh cannot access /dev/shm.
     with contextlib.suppress(FileNotFoundError, PermissionError):
-        pools.update({'authentication_pool': ProcessPoolExecutor(
-            max_workers=aconf.api_conf['authentication_pool_size'],
-            initializer=wazuh.core.cluster.utils.init_auth_worker
-        )})
+        pools.update({'authentication_pool': {
+            'pool': ProcessPoolExecutor(
+                        max_workers=aconf.api_conf['authentication_pool_size'],
+                        initializer=wazuh.core.cluster.utils.init_auth_worker
+                    ),
+            'size': aconf.api_conf['authentication_pool_size']
+        }})
 
 
 class DistributedAPI:
@@ -279,15 +282,15 @@ class DistributedAPI:
                 else:
                     loop = asyncio.get_event_loop()
                     if 'thread_pool' in pools:
-                        pool = pools.get('thread_pool')
+                        pool_info = pools.get('thread_pool')
                     elif self.f.__name__ in authentication_funcs:
-                        pool = pools.get('authentication_pool')
+                        pool_info = pools.get('authentication_pool')
                     elif self.f.__name__ in events_funcs:
-                        pool = pools.get('events_pool')
+                        pool_info = pools.get('events_pool')
                     else:
-                        pool = pools.get('process_pool')
+                        pool_info = pools.get('process_pool')
 
-                    task = loop.run_in_executor(pool, partial(self.run_local, self.f, self.f_kwargs,
+                    task = loop.run_in_executor(pool_info.get('pool'), partial(self.run_local, self.f, self.f_kwargs,
                                                               self.rbac_permissions, self.broadcasting, self.nodes,
                                                               self.current_user, self.origin_module))
                 try:

@@ -168,9 +168,11 @@ def start(params: dict):
     if 'thread_pool' not in common.mp_pools.get():
         loop = asyncio.get_event_loop()
         loop.run_until_complete(
-            asyncio.wait([loop.run_in_executor(pool,
+            asyncio.wait([loop.run_in_executor(pool_info.get('pool'),
                                                getattr(sys.modules[__name__], f'spawn_{name}'))
-                          for name, pool in common.mp_pools.get().items()]))
+                          for name, pool_info in common.mp_pools.get().items()
+                          for _ in range(pool_info.get('size'))
+                          ]))
 
     # Set up API
     app = AsyncApp(

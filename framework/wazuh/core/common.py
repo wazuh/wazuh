@@ -134,13 +134,22 @@ cluster_nodes: ContextVar[list] = ContextVar('cluster_nodes', default=list())
 origin_module: ContextVar[str] = ContextVar('origin_module', default='framework')
 try:
     mp_pools: ContextVar[Dict] = ContextVar('mp_pools', default={
-        'process_pool': ProcessPoolExecutor(max_workers=1),
-        'events_pool': ProcessPoolExecutor(max_workers=1)
+        'process_pool': {
+            'pool': ProcessPoolExecutor(max_workers=1),
+            'size':1
+        },
+        'events_pool':  {
+            'pool': ProcessPoolExecutor(max_workers=1),
+            'size': 1
+        }
     })
 # Handle exception when the user running Wazuh cannot access /dev/shm.
 except (FileNotFoundError, PermissionError):
     mp_pools: ContextVar[Dict] = ContextVar('mp_pools', default={
-        'thread_pool': ThreadPoolExecutor(max_workers=1)
+        'thread_pool': {   
+            'pool': ThreadPoolExecutor(max_workers=1),
+            'size': 1
+        }
     })
 _context_cache = dict()
 
