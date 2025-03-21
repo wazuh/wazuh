@@ -103,7 +103,7 @@ jobs:
       SHOULD_UPLOAD_CHECKSUM: ${{ inputs.checksum && inputs.upload_package }}
 
     runs-on: ${{ (inputs.architecture == 'arm64' || inputs.architecture == 'aarch64') && 'wz-linux-arm64' || 'ubuntu-22.04' }}
-    timeout-minutes: 50
+    timeout-minutes: 120
     name: Build ${{ inputs.system }} wazuh-manager on ${{ inputs.architecture }}
 
     steps:
@@ -217,6 +217,96 @@ jobs:
             echo "Uninstallation successfully."
           else
             echo "The uninstallation could not be completed.";
+            sudo docker stop $CONTAINER_ID && sudo docker rm $CONTAINER_ID
+            exit 1;
+          fi
+
+          sudo docker stop $CONTAINER_ID && sudo docker rm $CONTAINER_ID
+
+      - name: Get previous version from Git
+        run: |
+          TAGS=$(git tag --list "v4.[0-9]*.[0-9]*")
+          BRANCHES=$(git branch -r | grep "origin/4\.[0-9]\+\.[0-9]\+$" | sed 's|origin/||' | sed 's/^[ \t]*//;s/[ \t]*$//')
+
+          CURRENT_VERSION=$(cat $GITHUB_WORKSPACE/src/VERSION)
+          echo "CURRENT_VERSION=$CURRENT_VERSION"
+          PREVIOUS_VERSION=""
+
+          MAJOR_MINOR=$(echo "$CURRENT_VERSION" | grep -oE 'v?[0-9]+\.[0-9]+')
+          PATCH=$(echo "$CURRENT_VERSION" | grep -oE '[0-9]+$')
+
+          if [[ "$PATCH" == "0" ]]; then
+              MAJOR=$(echo "$MAJOR_MINOR" | cut -d'.' -f1 | grep -oE '[0-9]+')
+              MINOR=$(echo "$MAJOR_MINOR" | cut -d'.' -f2)
+              PREVIOUS_MAJOR_MINOR="$MAJOR.$((MINOR - 1))"
+
+              LATEST_BRANCH=$(echo "$BRANCHES" | grep -E "^${PREVIOUS_MAJOR_MINOR}\.[0-9]+$" | sort -V | tail -1)
+              PREVIOUS_VERSION="$LATEST_BRANCH"
+          else
+              PREVIOUS_VERSION=$(echo "$TAGS" | grep -E "^v?${MAJOR_MINOR}\.[0-9]+$" | sort -V | grep -B1 "^$CURRENT_VERSION$" | head -n 1)
+          fi
+
+          if [[ -z "$PREVIOUS_VERSION" ]]; then
+              echo "Error: No previous version found!"
+              exit 1
+          fi
+
+          echo "PREVIOUS_VERSION=$PREVIOUS_VERSION" >> $GITHUB_ENV
+          echo "Previous version selected: $PREVIOUS_VERSION"
+
+
+      - name: Install previous version of Wazuh manager
+        working-directory: packages
+        run: |
+          TESTS_PATH=$GITHUB_WORKSPACE/.github/actions/test-install-components/
+          if [ -z "${{ env.PREVIOUS_VERSION }}" ]; then 
+            echo "No previous version found!";
+            exit 1;
+          fi
+
+          echo "Building previous version package: ${{ env.PREVIOUS_VERSION }}"
+          bash generate_package.sh -a ${{ env.ARCH }} --tag ${{ env.PREVIOUS_VERSION }} --system ${{ inputs.system }} $FLAGS
+
+          echo "Available packages in /tmp:"
+          find /tmp -name "wazuh-manager*${{ inputs.system }}"
+
+          # Start the container with the previous version
+          CONTAINER_ID=$(sudo docker run -d -v $TESTS_PATH/:/tests -v /tmp/:/packages -v /var/ossec:/var/ossec \
+            --entrypoint '/bin/sh' $CONTAINER_NAME:${{ env.TAG }} -c "tail -f /dev/null")
+
+          echo "Installing previous version of Wazuh manager: ${{ env.PREVIOUS_VERSION }}"
+
+          echo "Available packages in the container:"
+          sudo docker exec $CONTAINER_ID ls -l /packages/
+
+          sudo docker exec $CONTAINER_ID /tests/install_component.sh "wazuh-manager-${{ env.PREVIOUS_VERSION }}.deb" manager
+
+          if grep -iq " installed.*wazuh-manager" /tmp/status.log ; then
+            echo "Previous version installed successfully."
+          else
+            echo "Failed to install previous version."
+            sudo docker stop $CONTAINER_ID && sudo docker rm $CONTAINER_ID
+            exit 1
+          fi
+
+          echo "CONTAINER_ID=$CONTAINER_ID" >> $GITHUB_ENV
+
+      - name: Test upgrade to latest version
+        run: |
+          if [ -z "${{ env.CONTAINER_ID }}" ] || [ -z "${{ env.PACKAGE_NAME }}" ]; then
+            echo "No container ID or package name found!"
+            exit 1
+          fi
+
+          echo "Upgrading Wazuh manager from previous version to latest..."
+
+          sudo docker exec $CONTAINER_ID chmod +x /tests/upgrade_component.sh
+          sudo docker exec $CONTAINER_ID /tests/upgrade_component.sh $PACKAGE_NAME manager
+
+          if grep -iq " upgraded.*wazuh-manager" /tmp/status.log ; then
+            echo "Upgrade successfully."
+          else
+            echo "The upgrade could not be completed."
             sudo docker stop $CONTAINER_ID && sudo docker rm $CONTAINER_ID
             exit 1;
           fi
