@@ -76,13 +76,13 @@ public:
         logDebug2(LOGGER_DEFAULT_TAG, "FimInventoryOrchestrator constructor");
         m_indexerConnectorInstances[FimContext::AffectedComponentType::File] = std::make_unique<IndexerConnector>(
             PolicyHarvesterManager::instance().buildIndexerConfig("files"),
-            PolicyHarvesterManager::instance().buildIndexerTemplatePath("files"),
-            PolicyHarvesterManager::instance().buildIndexerUpdateTemplatePath("files"),
+            PolicyHarvesterManager::instance().buildIndexerTemplatePath("files", InventoryType::FIM),
+            PolicyHarvesterManager::instance().buildIndexerUpdateTemplatePath("files", InventoryType::FIM),
             Log::GLOBAL_LOG_FUNCTION);
         m_indexerConnectorInstances[FimContext::AffectedComponentType::Registry] = std::make_unique<IndexerConnector>(
             PolicyHarvesterManager::instance().buildIndexerConfig("registries"),
-            PolicyHarvesterManager::instance().buildIndexerTemplatePath("registries"),
-            PolicyHarvesterManager::instance().buildIndexerUpdateTemplatePath("registries"),
+            PolicyHarvesterManager::instance().buildIndexerTemplatePath("registries", InventoryType::FIM),
+            PolicyHarvesterManager::instance().buildIndexerUpdateTemplatePath("registries", InventoryType::FIM),
             Log::GLOBAL_LOG_FUNCTION);
 
         m_orchestrations[FimContext::Operation::Upsert] =

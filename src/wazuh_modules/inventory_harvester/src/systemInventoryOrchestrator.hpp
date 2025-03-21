@@ -81,18 +81,21 @@ public:
 
         m_indexerConnectorInstances[SystemContext::AffectedComponentType::Package] = std::make_unique<IndexerConnector>(
             PolicyHarvesterManager::instance().buildIndexerConfig("packages"),
-            PolicyHarvesterManager::instance().buildIndexerTemplatePath("packages"),
-            PolicyHarvesterManager::instance().buildIndexerUpdateTemplatePath("packages"),
+            PolicyHarvesterManager::instance().buildIndexerTemplatePath("packages", InventoryType::SYSTEM_INVENTORY),
+            PolicyHarvesterManager::instance().buildIndexerUpdateTemplatePath("packages",
+                                                                              InventoryType::SYSTEM_INVENTORY),
             Log::GLOBAL_LOG_FUNCTION);
         m_indexerConnectorInstances[SystemContext::AffectedComponentType::System] = std::make_unique<IndexerConnector>(
             PolicyHarvesterManager::instance().buildIndexerConfig("system"),
-            PolicyHarvesterManager::instance().buildIndexerTemplatePath("system"),
-            PolicyHarvesterManager::instance().buildIndexerUpdateTemplatePath("system"),
+            PolicyHarvesterManager::instance().buildIndexerTemplatePath("system", InventoryType::SYSTEM_INVENTORY),
+            PolicyHarvesterManager::instance().buildIndexerUpdateTemplatePath("system",
+                                                                              InventoryType::SYSTEM_INVENTORY),
             Log::GLOBAL_LOG_FUNCTION);
         m_indexerConnectorInstances[SystemContext::AffectedComponentType::Process] = std::make_unique<IndexerConnector>(
             PolicyHarvesterManager::instance().buildIndexerConfig("processes"),
-            PolicyHarvesterManager::instance().buildIndexerTemplatePath("processes"),
-            PolicyHarvesterManager::instance().buildIndexerUpdateTemplatePath("processes"),
+            PolicyHarvesterManager::instance().buildIndexerTemplatePath("processes", InventoryType::SYSTEM_INVENTORY),
+            PolicyHarvesterManager::instance().buildIndexerUpdateTemplatePath("processes",
+                                                                              InventoryType::SYSTEM_INVENTORY),
             Log::GLOBAL_LOG_FUNCTION);
 
         m_orchestrations[SystemContext::Operation::Upsert] =

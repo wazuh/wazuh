@@ -21,6 +21,15 @@
 constexpr auto UNKNOWN_VALUE {" "};
 constexpr auto STATES_INDEX_NAME_PREFIX {"wazuh-states-"};
 
+enum class InventoryType : std::uint8_t
+{
+    FIM,
+    SYSTEM_INVENTORY
+};
+
+static const std::map<InventoryType, std::string> INVENTORY_TYPES {{InventoryType::FIM, "fim"},
+                                                                   {InventoryType::SYSTEM_INVENTORY, "inventory"}};
+
 /**
  * @brief PolicyHarvesterManager class.
  *
@@ -281,11 +290,12 @@ public:
         return config;
     }
 
-    std::string buildIndexerTemplatePath(const std::string& name) const
+    std::string buildIndexerTemplatePath(const std::string& name, const InventoryType type) const
     {
         if (!m_configuration.at("indexer").contains("template_path"))
         {
-            return "templates/" + name + "_states_template.json";
+            return "templates/" + std::string(STATES_INDEX_NAME_PREFIX) + INVENTORY_TYPES.at(type) + "-" + name +
+                   ".json";
         }
         else
         {
@@ -293,11 +303,12 @@ public:
         }
     }
 
-    std::string buildIndexerUpdateTemplatePath(const std::string& name) const
+    std::string buildIndexerUpdateTemplatePath(const std::string& name, const InventoryType type) const
     {
         if (!m_configuration.at("indexer").contains("update_template_path"))
         {
-            return "templates/" + name + "_states_update_mappings.json";
+            return "templates/" + std::string(STATES_INDEX_NAME_PREFIX) + INVENTORY_TYPES.at(type) + "-" + name +
+                   ".json";
         }
         else
         {
