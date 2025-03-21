@@ -12,7 +12,10 @@
 3. [Installation](#installation)
 
 ## Summary
-The `engine-suite` python package contains various scripts to help developing content for the Engine.
+
+The `engine-suite` python package contains a set of tools that allow you to manage and interact with the Wazuh engine.
+These tools are designed to facilitate the management of assets, policies, integrations, and other elements of the
+Wazuh environment, providing a centralized and efficient way to perform these tasks.
 
 # Directory structure
 
