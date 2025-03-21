@@ -9,6 +9,7 @@
  * Foundation.
  */
 
+#include "cJSON.h"
 #include "wdb.h"
 
 // List of agent information fields in global DB
@@ -1058,17 +1059,45 @@ wdbc_result wdb_global_sync_agent_info_get(wdb_t *wdb, int* last_agent_id, char 
 }
 
 char* wdb_global_calculate_agent_group_csv(wdb_t *wdb, int id) {
-    cJSON* j_agent_groups = wdb_global_select_group_belong(wdb, id);
     char* result = NULL;
-    if (j_agent_groups) {
-        cJSON* j_group_name = NULL;
-        cJSON_ArrayForEach(j_group_name, j_agent_groups) {
-            wm_strcat(&result, cJSON_GetStringValue(j_group_name), MULTIGROUP_SEPARATOR);
-        }
-        cJSON_Delete(j_agent_groups);
+    sqlite3_stmt *stmt = NULL;
+
+    if (!wdb->transaction && wdb_begin2(wdb) < 0) {
+        mdebug1("Cannot begin transaction");
+        return NULL;
     }
-    else {
-        mdebug1("Unable to get groups of agent '%03d'", id);
+
+    if (wdb_stmt_cache(wdb, WDB_STMT_GLOBAL_SELECT_GROUP_BELONG) < 0) {
+        mdebug1("Cannot cache statement");
+        return NULL;
+    }
+
+    stmt = wdb->stmt[WDB_STMT_GLOBAL_SELECT_GROUP_BELONG];
+
+    if (sqlite3_bind_int(stmt, 1, id) != SQLITE_OK) {
+        merror("DB(%s) sqlite3_bind_int(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+        return NULL;
+    }
+
+    int _status = SQLITE_ROW;
+
+    while ((_status = wdb_step(stmt)) == SQLITE_ROW) {
+        char * group_hash = (char *) sqlite3_column_text(stmt, 0);
+
+        if (group_hash == NULL) {
+            mdebug1("Group hash is NULL");
+            continue;
+        }
+
+        if (result != NULL && WDB_MAX_RESPONSE_SIZE < strlen(result) + strlen(group_hash) + 1) {
+            mdebug1("The agent's groups exceed the socket maximum response size.");
+            break;
+        }
+        wm_strcat(&result, group_hash, MULTIGROUP_SEPARATOR);
+    }
+
+    if (SQLITE_DONE != _status) {
+        mdebug1("SQL statement execution failed");
     }
     return result;
 }
@@ -1407,7 +1436,7 @@ int wdb_global_recalculate_agent_groups_hash(wdb_t* wdb, int agent_id, char* syn
     return result;
 }
 
-int wdb_global_recalculate_agent_groups_hash_without_sync_status(wdb_t* wdb, int agent_id) {
+int wdb_global_recalculate_agent_groups_hash_without_sync_status(wdb_t* wdb, int agent_id, char* group) {
     int result = WDBC_OK;
     char* agent_groups_csv = wdb_global_calculate_agent_group_csv(wdb, agent_id);
     char groups_hash[WDB_GROUP_HASH_SIZE+1] = {0};
@@ -1418,9 +1447,12 @@ int wdb_global_recalculate_agent_groups_hash_without_sync_status(wdb_t* wdb, int
         mdebug1("No groups in belongs table for agent '%03d'", agent_id);
     }
 
-    if (WDBC_ERROR == wdb_global_set_agent_group_hash(wdb, agent_id, agent_groups_csv, agent_groups_csv ? groups_hash : NULL)) {
-        result = WDBC_ERROR;
-        merror("There was an error assigning the groups hash to agent '%03d'", agent_id);
+    // if the previous group is different from the new one, we update the agent group context
+    if ((group && !agent_groups_csv) || (!group && agent_groups_csv) || (group && agent_groups_csv && strcmp(group, agent_groups_csv))) {
+        if (WDBC_ERROR == wdb_global_set_agent_group_hash(wdb, agent_id, agent_groups_csv, agent_groups_csv ? groups_hash : NULL)) {
+            result = WDBC_ERROR;
+            merror("There was an error assigning the groups hash to agent '%03d'", agent_id);
+        }
     }
 
     os_free(agent_groups_csv);
@@ -1437,11 +1469,11 @@ int wdb_global_recalculate_all_agent_groups_hash(wdb_t* wdb) {
         return OS_INVALID;
     }
 
-    if (wdb_stmt_cache(wdb, WDB_STMT_GLOBAL_GET_AGENTS) < 0) {
+    if (wdb_stmt_cache(wdb, WDB_STMT_GLOBAL_GET_AGENTS_AND_GROUP) < 0) {
         mdebug1("Cannot cache statement");
         return OS_INVALID;
     }
-    sqlite3_stmt* stmt = wdb->stmt[WDB_STMT_GLOBAL_GET_AGENTS];
+    sqlite3_stmt* stmt = wdb->stmt[WDB_STMT_GLOBAL_GET_AGENTS_AND_GROUP];
 
     if (sqlite3_bind_int(stmt, 1, 0) != SQLITE_OK) {
         merror("DB(%s) sqlite3_bind_int(): %s", wdb->id, sqlite3_errmsg(wdb->db));
@@ -1449,24 +1481,21 @@ int wdb_global_recalculate_all_agent_groups_hash(wdb_t* wdb) {
     }
 
     //Get agents to recalculate hash
-    cJSON* j_stmt_result = wdb_exec_stmt(stmt);
-    cJSON* agent = NULL;
-    cJSON_ArrayForEach(agent, j_stmt_result) {
-        cJSON* id = cJSON_GetObjectItem(agent, "id");
-        if (cJSON_IsNumber(id)) {
-            if (WDBC_ERROR == wdb_global_recalculate_agent_groups_hash_without_sync_status(wdb, id->valueint)) {
-                merror("Couldn't recalculate hash group for agent: '%03d'", id->valueint);
-                cJSON_Delete(j_stmt_result);
-                return OS_INVALID;
-            }
-        }
-        else {
-            merror("Invalid element returned by get all agents query");
-            cJSON_Delete(j_stmt_result);
+    int _status = SQLITE_ROW;
+
+    while ((_status = wdb_step(stmt)) == SQLITE_ROW) {
+        int id = sqlite3_column_int(stmt, 0);
+        char * group = (char *) sqlite3_column_text(stmt, 1);
+
+        if (WDBC_ERROR == wdb_global_recalculate_agent_groups_hash_without_sync_status(wdb, id, group)) {
+            merror("Couldn't recalculate hash group for agent: '%03d'", id);
             return OS_INVALID;
         }
     }
-    cJSON_Delete(j_stmt_result);
+
+    if (SQLITE_DONE != _status) {
+        mdebug1("SQL statement execution failed");
+    }
 
     return OS_SUCCESS;
 }

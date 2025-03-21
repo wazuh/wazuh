@@ -61,7 +61,6 @@ wdb_t * wdb_pool_get_or_create(const char * name) {
     node->refcount++;
     w_mutex_unlock(&wdb_pool.mutex);
     w_mutex_lock(&node->mutex);
-
     return node;
 }
 
