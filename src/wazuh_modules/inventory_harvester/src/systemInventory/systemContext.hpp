@@ -45,6 +45,7 @@ public:
         Package,
         Process,
         System,
+        Hotfix,
         Invalid
     };
 
@@ -53,6 +54,7 @@ public:
         Packages,
         Processes,
         Os,
+        Hotfixes,
         Hw,
         Invalid
     };
@@ -1079,6 +1081,30 @@ public:
         return installTimeRaw;
     }
 
+    std::string_view hotfix()
+    {
+        if (m_type == VariantType::Delta)
+        {
+            if (m_delta->data_as_dbsync_hotfixes() && m_delta->data_as_dbsync_hotfixes()->hotfix())
+            {
+                return m_delta->data_as_dbsync_hotfixes()->hotfix()->string_view();
+            }
+        }
+        else if (m_type == VariantType::SyncMsg)
+        {
+            if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_hotfixes() &&
+                m_syncMsg->data_as_state()->attributes_as_syscollector_hotfixes()->hotfix())
+            {
+                return m_syncMsg->data_as_state()->attributes_as_syscollector_hotfixes()->hotfix()->string_view();
+            }
+        }
+        else
+        {
+            return "";
+        }
+        return "";
+    }
+
     Operation operation() const
     {
         return m_operation;
@@ -1151,6 +1177,11 @@ private:
                 m_affectedComponentType = AffectedComponentType::Process;
                 m_originTable = OriginTable::Processes;
             }
+            else if (delta->data_type() == SyscollectorDeltas::Provider_dbsync_hotfixes)
+            {
+                m_affectedComponentType = AffectedComponentType::Hotfix;
+                m_originTable = OriginTable::Hotfixes;
+            }
             else
             {
                 // TO DO: Add log.
@@ -1188,6 +1219,13 @@ private:
                 m_affectedComponentType = AffectedComponentType::Process;
                 m_originTable = OriginTable::Processes;
             }
+            else if (syncMsg->data_as_state()->attributes_type() ==
+                     Synchronization::AttributesUnion_syscollector_hotfixes)
+            {
+                m_operation = Operation::Upsert;
+                m_affectedComponentType = AffectedComponentType::Hotfix;
+                m_originTable = OriginTable::Hotfixes;
+            }
             else
             {
                 // TO DO: Add log.
@@ -1216,6 +1254,12 @@ private:
                     m_operation = Operation::DeleteAllEntries;
                     m_affectedComponentType = AffectedComponentType::Process;
                     m_originTable = OriginTable::Processes;
+                }
+                else if (attributesTypeStr.compare("syscollector_hotfixes") == 0)
+                {
+                    m_operation = Operation::DeleteAllEntries;
+                    m_affectedComponentType = AffectedComponentType::Hotfix;
+                    m_originTable = OriginTable::Hotfixes;
                 }
                 else
                 {
@@ -1251,6 +1295,12 @@ private:
                     m_affectedComponentType = AffectedComponentType::Process;
                     m_originTable = OriginTable::Processes;
                 }
+                else if (attributesTypeStr.compare("sycollector_hotfixes") == 0)
+                {
+                    m_operation = Operation::IndexSync;
+                    m_affectedComponentType = AffectedComponentType::Hotfix;
+                    m_originTable = OriginTable::Hotfixes;
+                }
                 else
                 {
                     // TO DO: Add log.
@@ -1282,6 +1332,12 @@ private:
             m_operation = Operation::Delete;
             m_affectedComponentType = AffectedComponentType::Process;
             m_originTable = OriginTable::Processes;
+        }
+        else if (action.compare("deleteHotfix") == 0)
+        {
+            m_operation = Operation::Delete;
+            m_affectedComponentType = AffectedComponentType::Hotfix;
+            m_originTable = OriginTable::Hotfixes;
         }
         else
         {
