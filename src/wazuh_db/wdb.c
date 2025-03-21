@@ -332,11 +332,17 @@ STATIC int wdb_write_state_transaction(wdb_t * wdb, uint8_t state, wdb_ptr_any_t
 // Opens global database and stores it in DB pool. It returns a locked database or NULL
 wdb_t * wdb_open_global() {
     char path[PATH_MAX + 1] = "";
+    struct timespec ts_start, ts_end;
+
+    gettime(&ts_start);
     wdb_t * wdb = wdb_pool_get_or_create(WDB_GLOB_NAME);
+    gettime(&ts_end);
+    mdebug2("DWORDCITO %lu wdb_pool_get_or_create time: %.3f ms.", pthread_self(),time_diff(&ts_start, &ts_end) * 1e3);
 
     if (wdb->db == NULL) {
         // Try to open DB
         snprintf(path, sizeof(path), "%s/%s.db", WDB2_DIR, WDB_GLOB_NAME);
+        mdebug1("DWORDCITO: Try to open %s.", path);
 
         if (sqlite3_open_v2(path, &wdb->db, SQLITE_OPEN_READWRITE, NULL)) {
             mdebug1("Global database not found, creating.");

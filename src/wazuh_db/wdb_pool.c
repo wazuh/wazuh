@@ -49,19 +49,35 @@ wdb_t * wdb_pool_get(const char * name) {
 // Find a node in the pool by name, or create if it does not exist.
 
 wdb_t * wdb_pool_get_or_create(const char * name) {
+    struct timespec ts_start, ts_end;
+
+    gettime(&ts_start);
     w_mutex_lock(&wdb_pool.mutex);
+    gettime(&ts_end);
+    mdebug2("DWORDCITO %lu wdb_pool.mutex lock: %.3f ms.", pthread_self(), time_diff(&ts_start, &ts_end) * 1e3);
+    gettime(&ts_start);
     wdb_t * node = rbtree_get(wdb_pool.nodes, name);
+    gettime(&ts_end);
+    mdebug2("DWORDCITO %lu rbtree_get: %.3f ms.", pthread_self(), time_diff(&ts_start, &ts_end) * 1e3);
 
     if (node == NULL) {
+        gettime(&ts_start);
         node = wdb_init(name);
+        gettime(&ts_end);
+        mdebug2("DWORDCITO %lu wdb_init: %.3f ms.", pthread_self(), time_diff(&ts_start, &ts_end) * 1e3);
+        gettime(&ts_start);
         rbtree_insert(wdb_pool.nodes, name, node);
+        gettime(&ts_end);
+        mdebug2("DWORDCITO %lu rbtree_insert: %.3f ms.", pthread_self(), time_diff(&ts_start, &ts_end) * 1e3);
         wdb_pool.size++;
     }
 
     node->refcount++;
     w_mutex_unlock(&wdb_pool.mutex);
+    gettime(&ts_start);
     w_mutex_lock(&node->mutex);
-
+    gettime(&ts_end);
+    mdebug2("DWORDCITO %lu node->mutex lock: %.3f ms.", pthread_self(), time_diff(&ts_start, &ts_end) * 1e3);
     return node;
 }
 
