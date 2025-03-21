@@ -626,7 +626,6 @@ time_t fim_scan() {
     audit_queue_full_reported = 0;
 
 #ifdef __linux__
-    ebpf_kernel_queue_full_reported = 0;
     ebpf_whodata_queue_full_reported = 0;
 #endif  /* __linux__ */
 
