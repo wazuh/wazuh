@@ -1297,6 +1297,7 @@ title: Decoder schema
 ---
 kanban
   Decoder[Decoder schema]
+    assetName["name"]@{ priority: 'Very Low'}
     assetMetadata["metadata"]@{ priority: 'Very Low'}
     assetParents["parents"]
     assetChecks["checks"]
@@ -1304,11 +1305,31 @@ kanban
     decoNormalize["normalize"]
 ```
 
+- **Name**: Identifies the decoder and follows the pattern `<asset_type>/<name>/<version>`. The name is unique and cannot
+  be repeated. The naming convention for components is `<type>/<name>/<version>`. The component type is `decoder`, and
+  the version must be 0, since versioning is not implemented:
+
 - **Metadata**: Each decoder has metadata that provides information about the decoder, such as the supported products,
-  versions, and formats. This metadata does not affect the processing stages. 
+  versions, and formats. This metadata does not affect the processing stages.
     The metadata fields are:
+    - `module` (string): The module that the decoder is associated with. I.e., `syslog`, `windows`, `apache`, etc.
+    - `title` (string): The title of the decoder. I.e., `Windows Event Log Decoder`, `Linux audit system log decoder`, etc.
     - `description` (string): A brief description of the decoder.
-    - TODO: Add more fields when the metadata is defined.
+    - `compatibility` (string): A description of the compatibility of the decoder with different products, versions, and formats.
+      i.e `The Apache datasets were tested with Apache 2.4.12 and 2.4.46 and are expected to work with all versions >= 2.2.31 and >= 2.4.16 (independent from operating system)`
+    - `version` (array): A list of versions for which the logs have been tested and supported. I.e., `2.2.x`, `3.x`, etc.
+    - `author` (object): The author of the decoder, ie:
+        ```yaml
+        name: Wazuh, Inc.
+        email: info@wazuh.com
+        url: https://wazuh.com
+        date: 2022-11-15
+        ```
+    - `reference` (array): A list of references to the documentation, i.e.:
+      ```yaml
+      - https://httpd.apache.org/docs/2.2/logs.html
+      - https://httpd.apache.org/docs/2.4/logs.html
+      ```
 
 - **Parents**: Defines the order in the decoder graph, establishing the parent-child relationship between decoders.
   A decoder can have multiple parents, when an event is successfully processed in a decoder, it will evaluate the
@@ -1337,17 +1358,22 @@ title: Rule schema
 ---
 kanban
   Rule[Rule schema]
+    assetName["name"]@{ priority: 'Very Low'}
     assetMetadata["metadata"]@{ priority: 'Very Low'}
     assetParents["parents"]
     assetChecks["checks"]
     ruleNormalize["rule_enrichment"]
 ```
 
+- **Name**: Identifies the rule and follows the pattern `<asset_type>/<name>/<version>`. The name is unique and cannot
+  be repeated. The naming convention for components is `<type>/<name>/<version>`. The component type is `rule`, and
+  the version must be 0, since versioning is not implemented:
+
 - **Metadata**: Each rule has metadata that provides information about the rule, such as the supported products,
   versions, and formats. This metadata does not affect the processing stages.
     The metadata fields are:
     - `description` (string): A brief description of the rule.
-    - TODO: Add more fields when the metadata is defined.
+    - `TODO: Add more fields when the metadata is defined.`
 
 - **Parents**: Defines the order in the rule graph, establishing the parent-child relationship between rules, a rule can
   have multiple parents, when an event is successfully processed in a rule (rule matches), it will evaluate all the
@@ -1373,11 +1399,15 @@ title: Output schema
 ---
 kanban
   Output[Output schema]
+    assetName["name"]@{ priority: 'Very Low'}
     assetMetadata["metadata"]@{ priority: 'Very Low'}
     assetParents["parents"]
     assetChecks["checks"]
     OutputNormalize["output stage"]
 ```
+- **Name**: Identifies the output and follows the pattern `<asset_type>/<name>/<version>`. The name is unique and cannot
+  be repeated. The naming convention for components is `<type>/<name>/<version>`. The component type is `output`, and
+  the version must be 0, since versioning is not implemented:
 
 - **Metadata**: Each output has metadata that provides information about the output, such as the destination, version,
   and format. This metadata does not affect the processing stages.
@@ -1408,10 +1438,15 @@ title: Filter schema
 ---
 kanban
   Output[Output schema]
+    assetName["name"]@{ priority: 'Very Low'}
     assetMetadata["metadata"]@{ priority: 'Very Low'}
     %% assetParents["parents"]
     assetChecks["allow"]
 ```
+
+- **Name**: Identifies the filter and follows the pattern `<asset_type>/<name>/<version>`. The name is unique and cannot
+  be repeated. The naming convention for components is `<type>/<name>/<version>`. The component type is `filter`, and
+  the version must be 0, since versioning is not implemented:
 
 - **Metadata**: Each filter has metadata that provides information about the filter, such as the proposed use case, version,
   and format. This metadata does not affect the processing stages.
