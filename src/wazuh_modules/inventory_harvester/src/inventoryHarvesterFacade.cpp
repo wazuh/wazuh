@@ -87,7 +87,8 @@ void InventoryHarvesterFacade::initRsyncSubscription()
                     }
                     else if (data->data_as_state()->attributes_as_syscollector_packages() ||
                              data->data_as_state()->attributes_as_syscollector_processes() ||
-                             data->data_as_state()->attributes_as_syscollector_osinfo())
+                             data->data_as_state()->attributes_as_syscollector_osinfo() ||
+                             data->data_as_state()->attributes_as_syscollector_ports())
                     {
                         pushSystemEvent(message, BufferType::BufferType_RSync);
                     }
@@ -102,7 +103,8 @@ void InventoryHarvesterFacade::initRsyncSubscription()
                     }
                     else if (attributesType.compare("syscollector_packages") == 0 ||
                              attributesType.compare("syscollector_processes") == 0 ||
-                             attributesType.compare("syscollector_osinfo") == 0)
+                             attributesType.compare("syscollector_osinfo") == 0 ||
+                             attributesType.compare("syscollector_ports") == 0)
                     {
                         pushSystemEvent(message, BufferType::BufferType_RSync);
                     }
@@ -117,7 +119,8 @@ void InventoryHarvesterFacade::initRsyncSubscription()
                     }
                     else if (attributesType.compare("syscollector_packages") == 0 ||
                              attributesType.compare("syscollector_processes") == 0 ||
-                             attributesType.compare("syscollector_osinfo") == 0)
+                             attributesType.compare("syscollector_osinfo") == 0 ||
+                             attributesType.compare("syscollector_ports") == 0)
                     {
                         pushSystemEvent(message, BufferType::BufferType_RSync);
                     }

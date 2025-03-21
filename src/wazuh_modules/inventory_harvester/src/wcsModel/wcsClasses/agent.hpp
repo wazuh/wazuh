@@ -12,6 +12,7 @@
 #ifndef _AGENT_WCS_MODEL_HPP
 #define _AGENT_WCS_MODEL_HPP
 
+#include "host.hpp"
 #include "reflectiveJson.hpp"
 #include <string_view>
 #include <vector>

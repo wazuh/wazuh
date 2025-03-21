@@ -1,0 +1,46 @@
+[
+    {
+        "index_name": "wazuh-states-ports-cluster01",
+        "data": [
+            {
+                "agent": {
+                    "id": "002",
+                    "name": "b593602240f5",
+                    "version": "v4.11.1",
+                    "ip": "any"
+                },
+                "destination": {
+                    "ip": "0.0.0.0",
+                    "port": 0
+                },
+                "file": {
+                    "inode": "15543485"
+                },
+                "host": {
+                    "network": {
+                        "egress": {
+                            "queue": 0
+                        },
+                        "ingress": {
+                            "queue": 0
+                        }
+                    }
+                },
+                "interface": {
+                    "state": "listening"
+                },
+                "network": {
+                    "transport": "tcp"
+                },
+                "process": {
+                    "name": "python3",
+                    "pid": 6457
+                },
+                "source": {
+                    "ip": "0.0.0.0",
+                    "port": 8000
+                }
+            }
+        ]
+    }
+]
