@@ -42,6 +42,7 @@ public:
         Package,
         Process,
         System,
+        Hardware,
         Invalid
     };
 
@@ -73,6 +74,14 @@ public:
     MOCK_METHOD(std::string_view, processName, (), (const));
     MOCK_METHOD(std::string_view, processStartISO8601, (), (const));
     MOCK_METHOD(uint64_t, processParentID, (), (const));
+
+    MOCK_METHOD(std::string_view, boardInfo, (), (const));
+    MOCK_METHOD(uint64_t, cpuCores, (), (const));
+    MOCK_METHOD(std::string_view, cpuName, (), (const));
+    MOCK_METHOD(double, cpuFrequency, (), (const));
+    MOCK_METHOD(uint64_t, freeMem, (), (const));
+    MOCK_METHOD(uint64_t, totalMem, (), (const));
+    MOCK_METHOD(uint64_t, usedMem, (), (const));
 
     MOCK_METHOD(AffectedComponentType, affectedComponentType, (), (const));
 

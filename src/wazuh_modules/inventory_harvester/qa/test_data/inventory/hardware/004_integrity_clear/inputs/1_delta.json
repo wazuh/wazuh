@@ -1,0 +1,20 @@
+{
+  "agent_info": {
+    "agent_id": "001",
+    "agent_ip": "any",
+    "agent_name": "WazuhAgent",
+    "agent_version": "v4.11.0"
+  },
+  "data_type": "dbsync_hwinfo",
+  "data": {
+    "board_serial": "A320",
+    "checksum": "bcf950cf3d9b725b6b4b1759cd9ff2f4cb967b14",
+    "cpu_cores": 8,
+    "cpu_mhz": 3800.0,
+    "cpu_name": "Intel(R) Core(TM) i7-10700K CPU @ 3.80GHz",
+    "ram_free": 16777216,
+    "ram_total": 33554432,
+    "ram_usage": 16777216
+  },
+  "operation": "INSERTED"
+}

@@ -122,6 +122,31 @@ TEST_F(SystemInventoryDeleteElement, validAgentID_Processes)
     EXPECT_EQ(context->m_serializedElement, R"({"id":"001_12345","operation":"DELETED"})");
 }
 
+TEST_F(SystemInventoryDeleteElement, emptyAgentID_Hardware)
+{
+    auto context = std::make_shared<MockSystemContext>();
+    auto deleteElement = std::make_shared<DeleteSystemElement<MockSystemContext>>();
+
+    EXPECT_CALL(*context, agentId()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, originTable()).WillOnce(testing::Return(MockSystemContext::OriginTable::Hw));
+
+    EXPECT_ANY_THROW(deleteElement->handleRequest(context));
+}
+
+TEST_F(SystemInventoryDeleteElement, validAgentID_Hardware)
+{
+    auto context = std::make_shared<MockSystemContext>();
+    auto deleteElement = std::make_shared<DeleteSystemElement<MockSystemContext>>();
+
+    EXPECT_CALL(*context, agentId()).WillOnce(testing::Return("001"));
+    EXPECT_CALL(*context, originTable()).WillOnce(testing::Return(MockSystemContext::OriginTable::Hw));
+    EXPECT_CALL(*context, boardInfo()).WillOnce(testing::Return("AA320"));
+
+    EXPECT_NO_THROW(deleteElement->handleRequest(context));
+
+    EXPECT_EQ(context->m_serializedElement, R"({"id":"001_AA320","operation":"DELETED"})");
+}
+
 TEST_F(SystemInventoryDeleteElement, invalidOriginTable)
 {
     auto context = std::make_shared<MockSystemContext>();
