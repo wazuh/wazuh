@@ -94,6 +94,12 @@ public:
             PolicyHarvesterManager::instance().buildIndexerTemplatePath("processes"),
             PolicyHarvesterManager::instance().buildIndexerUpdateTemplatePath("processes"),
             Log::GLOBAL_LOG_FUNCTION);
+        m_indexerConnectorInstances[SystemContext::AffectedComponentType::Hardware] =
+            std::make_unique<IndexerConnector>(
+                PolicyHarvesterManager::instance().buildIndexerConfig("hardware"),
+                PolicyHarvesterManager::instance().buildIndexerTemplatePath("hardware"),
+                PolicyHarvesterManager::instance().buildIndexerUpdateTemplatePath("hardware"),
+                Log::GLOBAL_LOG_FUNCTION);
 
         m_orchestrations[SystemContext::Operation::Upsert] =
             SystemFactoryOrchestrator::create(SystemContext::Operation::Upsert, m_indexerConnectorInstances);

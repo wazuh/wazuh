@@ -1,0 +1,25 @@
+{
+    "agent_info": {
+        "agent_id": "002",
+        "agent_ip": "any",
+        "agent_name": "WazuhAgent",
+        "agent_version": "v4.11.0"
+    },
+    "data_type": "state",
+    "data": {
+        "attributes_type": "syscollector_hwinfo",
+        "attributes": {
+            "board_serial": "A320",
+            "checksum": "bcf950cf3d9b725b6b4b1759cd9ff2f4cb967b14",
+            "cpu_cores": 2,
+            "cpu_mhz": 2497.0,
+            "cpu_name": "Intel(R) Core(TM) i9-10500H CPU @ 2.50GHz",
+            "ram_free": 2515832,
+            "ram_total": 3062624,
+            "ram_usage": 1862624,
+            "scan_time": "2025/03/21 02:04:08"
+        },
+        "index": "f825a912fb60c89e421a526ba6bcef010cee7315",
+        "timestamp": ""
+    }
+}
