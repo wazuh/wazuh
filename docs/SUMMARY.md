@@ -19,6 +19,7 @@
   - [InventoryHarvester](ref/modules/inventory-harvester/README.md)
     - [Architecture](ref/modules/inventory-harvester/architecture.md)
     - [API Reference](ref/modules/inventory-harvester/api-reference.md)
+    - [Description](ref/modules/inventory-harvester/description.md)
   - [Flatbuffers](ref/modules/flatbuffers.md)
 - [Upgrade](ref/upgrade.md)
 - [Uninstall](ref/uninstall.md)
