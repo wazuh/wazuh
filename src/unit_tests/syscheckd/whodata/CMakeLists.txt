@@ -110,6 +110,20 @@ if(NOT ${TARGET} STREQUAL "winagent")
 
     target_link_libraries(test_audit_parse "${AUDIT_PARSE_FLAGS}")
     add_test(NAME test_audit_parse COMMAND test_audit_parse)
+
+    # test_syscheck_ebpf tests
+    add_executable(test_syscheck_ebpf test_syscheck_ebpf.c ${SRC_FOLDER}/unit_tests/wrappers/linux/ebpf_wrappers.c)
+    target_compile_options(test_syscheck_ebpf PRIVATE "-Wall")
+    set(SYSCHECK_EBPF_FLAGS "-Wl,--wrap,fimebpf_initialize"
+                            "-Wl,--wrap,ebpf_whodata_healthcheck"
+			    "-Wl,--wrap=_minfo -Wl,--wrap,_merror"
+                            ${DEBUG_OP_WRAPPERS})
+
+    target_link_libraries(test_syscheck_ebpf SYSCHECK_O ${TEST_DEPS} fimdb)
+
+    target_link_libraries(test_syscheck_ebpf "${SYSCHECK_EBPF_FLAGS}")
+    add_test(NAME test_syscheck_ebpf COMMAND test_syscheck_ebpf)
+
 else()
     link_directories(${SRC_FOLDER}/syscheckd/build/bin)
     add_executable(test_win_whodata test_win_whodata.c)
@@ -137,4 +151,5 @@ else()
 
     target_link_libraries(test_win_whodata "${WIN_WHODATA_FLAGS}")
     add_test(NAME test_win_whodata COMMAND test_win_whodata)
+
 endif()
