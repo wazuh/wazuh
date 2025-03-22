@@ -45,6 +45,7 @@ public:
         Package,
         Process,
         System,
+        Port,
         Invalid
     };
 
@@ -54,6 +55,7 @@ public:
         Processes,
         Os,
         Hw,
+        Ports,
         Invalid
     };
     explicit SystemContext(
@@ -1079,6 +1081,297 @@ public:
         return installTimeRaw;
     }
 
+    std::string_view portProtocol() const
+    {
+        if (m_type == VariantType::Delta)
+        {
+            if (m_delta->data_as_dbsync_ports() && m_delta->data_as_dbsync_ports()->protocol())
+            {
+                return m_delta->data_as_dbsync_ports()->protocol()->string_view();
+            }
+        }
+        else if (m_type == VariantType::SyncMsg)
+        {
+            if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_ports() &&
+                m_syncMsg->data_as_state()->attributes_as_syscollector_ports()->protocol())
+            {
+                return m_syncMsg->data_as_state()->attributes_as_syscollector_ports()->protocol()->string_view();
+            }
+        }
+        else
+        {
+            return "";
+        }
+        return "";
+    }
+
+    std::string_view portLocalIp() const
+    {
+        if (m_type == VariantType::Delta)
+        {
+            if (m_delta->data_as_dbsync_ports() && m_delta->data_as_dbsync_ports()->local_ip())
+            {
+                return m_delta->data_as_dbsync_ports()->local_ip()->string_view();
+            }
+        }
+        else if (m_type == VariantType::SyncMsg)
+        {
+            if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_ports() &&
+                m_syncMsg->data_as_state()->attributes_as_syscollector_ports()->local_ip())
+            {
+                return m_syncMsg->data_as_state()->attributes_as_syscollector_ports()->local_ip()->string_view();
+            }
+        }
+        else
+        {
+            return "";
+        }
+        return "";
+    }
+
+    int64_t portLocalPort() const
+    {
+        if (m_type == VariantType::Delta)
+        {
+            if (m_delta->data_as_dbsync_ports() && m_delta->data_as_dbsync_ports()->local_port())
+            {
+                return m_delta->data_as_dbsync_ports()->local_port();
+            }
+        }
+        else if (m_type == VariantType::SyncMsg)
+        {
+            if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_ports() &&
+                m_syncMsg->data_as_state()->attributes_as_syscollector_ports()->local_port())
+            {
+                return m_syncMsg->data_as_state()->attributes_as_syscollector_ports()->local_port();
+            }
+        }
+        else
+        {
+            return 0;
+        }
+        return 0;
+    }
+
+    std::string_view portRemoteIp() const
+    {
+        if (m_type == VariantType::Delta)
+        {
+            if (m_delta->data_as_dbsync_ports() && m_delta->data_as_dbsync_ports()->remote_ip())
+            {
+                return m_delta->data_as_dbsync_ports()->remote_ip()->string_view();
+            }
+        }
+        else if (m_type == VariantType::SyncMsg)
+        {
+            if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_ports() &&
+                m_syncMsg->data_as_state()->attributes_as_syscollector_ports()->remote_ip())
+            {
+                return m_syncMsg->data_as_state()->attributes_as_syscollector_ports()->remote_ip()->string_view();
+            }
+        }
+        else
+        {
+            return "";
+        }
+        return "";
+    }
+
+    int64_t portRemotePort() const
+    {
+        if (m_type == VariantType::Delta)
+        {
+            if (m_delta->data_as_dbsync_ports() && m_delta->data_as_dbsync_ports()->remote_port())
+            {
+                return m_delta->data_as_dbsync_ports()->remote_port();
+            }
+        }
+        else if (m_type == VariantType::SyncMsg)
+        {
+            if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_ports() &&
+                m_syncMsg->data_as_state()->attributes_as_syscollector_ports()->remote_port())
+            {
+                return m_syncMsg->data_as_state()->attributes_as_syscollector_ports()->remote_port();
+            }
+        }
+        else
+        {
+            return 0;
+        }
+        return 0;
+    }
+
+    int64_t portInode() const
+    {
+        if (m_type == VariantType::Delta)
+        {
+            if (m_delta->data_as_dbsync_ports() && m_delta->data_as_dbsync_ports()->inode())
+            {
+                return m_delta->data_as_dbsync_ports()->inode();
+            }
+        }
+        else if (m_type == VariantType::SyncMsg)
+        {
+            if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_ports() &&
+                m_syncMsg->data_as_state()->attributes_as_syscollector_ports()->inode())
+            {
+                return m_syncMsg->data_as_state()->attributes_as_syscollector_ports()->inode();
+            }
+        }
+        else
+        {
+            return 0;
+        }
+        return 0;
+    }
+
+    int64_t portTxQueue() const
+    {
+        if (m_type == VariantType::Delta)
+        {
+            if (m_delta->data_as_dbsync_ports() && m_delta->data_as_dbsync_ports()->tx_queue())
+            {
+                return m_delta->data_as_dbsync_ports()->tx_queue();
+            }
+        }
+        else if (m_type == VariantType::SyncMsg)
+        {
+            if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_ports() &&
+                m_syncMsg->data_as_state()->attributes_as_syscollector_ports()->tx_queue())
+            {
+                return m_syncMsg->data_as_state()->attributes_as_syscollector_ports()->tx_queue();
+            }
+        }
+        else
+        {
+            return 0;
+        }
+        return 0;
+    }
+
+    int64_t portRxQueue() const
+    {
+        if (m_type == VariantType::Delta)
+        {
+            if (m_delta->data_as_dbsync_ports() && m_delta->data_as_dbsync_ports()->rx_queue())
+            {
+                return m_delta->data_as_dbsync_ports()->rx_queue();
+            }
+        }
+        else if (m_type == VariantType::SyncMsg)
+        {
+            if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_ports() &&
+                m_syncMsg->data_as_state()->attributes_as_syscollector_ports()->rx_queue())
+            {
+                return m_syncMsg->data_as_state()->attributes_as_syscollector_ports()->rx_queue();
+            }
+        }
+        else
+        {
+            return 0;
+        }
+        return 0;
+    }
+
+    std::string_view portState() const
+    {
+        if (m_type == VariantType::Delta)
+        {
+            if (m_delta->data_as_dbsync_ports() && m_delta->data_as_dbsync_ports()->state())
+            {
+                return m_delta->data_as_dbsync_ports()->state()->string_view();
+            }
+        }
+        else if (m_type == VariantType::SyncMsg)
+        {
+            if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_ports() &&
+                m_syncMsg->data_as_state()->attributes_as_syscollector_ports()->state())
+            {
+                return m_syncMsg->data_as_state()->attributes_as_syscollector_ports()->state()->string_view();
+            }
+        }
+        else
+        {
+            return "";
+        }
+        return "";
+    }
+
+    std::string_view portProcess() const
+    {
+        if (m_type == VariantType::Delta)
+        {
+            if (m_delta->data_as_dbsync_ports() && m_delta->data_as_dbsync_ports()->process())
+            {
+                return m_delta->data_as_dbsync_ports()->process()->string_view();
+            }
+        }
+        else if (m_type == VariantType::SyncMsg)
+        {
+            if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_ports() &&
+                m_syncMsg->data_as_state()->attributes_as_syscollector_ports()->process())
+            {
+                return m_syncMsg->data_as_state()->attributes_as_syscollector_ports()->process()->string_view();
+            }
+        }
+        else
+        {
+            return "";
+        }
+        return "";
+    }
+
+    int64_t portPid() const
+    {
+        if (m_type == VariantType::Delta)
+        {
+            if (m_delta->data_as_dbsync_ports() && m_delta->data_as_dbsync_ports()->pid())
+            {
+                return m_delta->data_as_dbsync_ports()->pid();
+            }
+        }
+        else if (m_type == VariantType::SyncMsg)
+        {
+            if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_ports() &&
+                m_syncMsg->data_as_state()->attributes_as_syscollector_ports()->pid())
+            {
+                return m_syncMsg->data_as_state()->attributes_as_syscollector_ports()->pid();
+            }
+        }
+        else
+        {
+            return 0;
+        }
+        return 0;
+    }
+
+    std::string_view portItemId() const
+    {
+        if (m_type == VariantType::Delta)
+        {
+            if (m_delta->data_as_dbsync_ports() && m_delta->data_as_dbsync_ports()->item_id())
+            {
+                return m_delta->data_as_dbsync_ports()->item_id()->string_view();
+            }
+        }
+        else if (m_type == VariantType::SyncMsg)
+        {
+            if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_ports() &&
+                m_syncMsg->data_as_state()->attributes_as_syscollector_ports()->item_id())
+            {
+                return m_syncMsg->data_as_state()->attributes_as_syscollector_ports()->item_id()->string_view();
+            }
+        }
+        else
+        {
+            if (m_jsonData->contains("/data/item_id"_json_pointer))
+            {
+                return m_jsonData->at("/data/item_id"_json_pointer).get<std::string_view>();
+            }
+        }
+        return "";
+    }
+
     Operation operation() const
     {
         return m_operation;
@@ -1151,6 +1444,12 @@ private:
                 m_affectedComponentType = AffectedComponentType::Process;
                 m_originTable = OriginTable::Processes;
             }
+            else if (delta->data_type() == SyscollectorDeltas::Provider_dbsync_ports)
+            {
+                m_affectedComponentType = AffectedComponentType::Port;
+                m_originTable = OriginTable::Ports;
+            }
+
             else
             {
                 // TO DO: Add log.
@@ -1188,6 +1487,12 @@ private:
                 m_affectedComponentType = AffectedComponentType::Process;
                 m_originTable = OriginTable::Processes;
             }
+            else if (syncMsg->data_as_state()->attributes_type() == Synchronization::AttributesUnion_syscollector_ports)
+            {
+                m_operation = Operation::Upsert;
+                m_affectedComponentType = AffectedComponentType::Port;
+                m_originTable = OriginTable::Ports;
+            }
             else
             {
                 // TO DO: Add log.
@@ -1216,6 +1521,12 @@ private:
                     m_operation = Operation::DeleteAllEntries;
                     m_affectedComponentType = AffectedComponentType::Process;
                     m_originTable = OriginTable::Processes;
+                }
+                else if (attributesTypeStr.compare("syscollector_ports") == 0)
+                {
+                    m_operation = Operation::DeleteAllEntries;
+                    m_affectedComponentType = AffectedComponentType::Port;
+                    m_originTable = OriginTable::Ports;
                 }
                 else
                 {
@@ -1251,6 +1562,12 @@ private:
                     m_affectedComponentType = AffectedComponentType::Process;
                     m_originTable = OriginTable::Processes;
                 }
+                else if (attributesTypeStr.compare("syscollector_ports") == 0)
+                {
+                    m_operation = Operation::IndexSync;
+                    m_affectedComponentType = AffectedComponentType::Port;
+                    m_originTable = OriginTable::Ports;
+                }
                 else
                 {
                     // TO DO: Add log.
@@ -1282,6 +1599,12 @@ private:
             m_operation = Operation::Delete;
             m_affectedComponentType = AffectedComponentType::Process;
             m_originTable = OriginTable::Processes;
+        }
+        else if (action.compare("deletePort") == 0)
+        {
+            m_operation = Operation::Delete;
+            m_affectedComponentType = AffectedComponentType::Port;
+            m_originTable = OriginTable::Ports;
         }
         else
         {

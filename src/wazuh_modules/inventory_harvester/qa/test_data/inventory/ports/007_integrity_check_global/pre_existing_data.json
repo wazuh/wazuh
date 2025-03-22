@@ -1,0 +1,85 @@
+[
+    {
+        "index_name": "wazuh-states-ports-cluster01",
+        "data": [
+            {
+                "agent": {
+                    "id": "002",
+                    "name": "b593602240f5",
+                    "version": "v4.11.1",
+                    "ip": "any"
+                },
+                "destination": {
+                    "ip": "1.1.1.1",
+                    "port": 123
+                },
+                "file": {
+                    "inode": "1234"
+                },
+                "host": {
+                    "network": {
+                        "egress": {
+                            "queue": 100
+                        },
+                        "ingress": {
+                            "queue": 100
+                        }
+                    }
+                },
+                "interface": {
+                    "state": "listening"
+                },
+                "network": {
+                    "transport": "tcp"
+                },
+                "process": {
+                    "name": "wazuh",
+                    "pid": 777
+                },
+                "source": {
+                    "ip": "127.0.0.1",
+                    "port": 1234
+                }
+            },
+            {
+                "agent_info": {
+                    "agent_id": "003",
+                    "agent_ip": "any",
+                    "agent_name": "DESKTOP-EQ4F57D",
+                    "agent_version": "v4.9.2"
+                },
+                "destination": {
+                    "ip": "1.1.1.1",
+                    "port": 123
+                },
+                "file": {
+                    "inode": "1234"
+                },
+                "host": {
+                    "network": {
+                        "egress": {
+                            "queue": 100
+                        },
+                        "ingress": {
+                            "queue": 100
+                        }
+                    }
+                },
+                "interface": {
+                    "state": "listening"
+                },
+                "network": {
+                    "transport": "tcp"
+                },
+                "process": {
+                    "name": "wazuh",
+                    "pid": 777
+                },
+                "source": {
+                    "ip": "127.0.0.1",
+                    "port": 1234
+                }
+            }
+        ]
+    }
+]

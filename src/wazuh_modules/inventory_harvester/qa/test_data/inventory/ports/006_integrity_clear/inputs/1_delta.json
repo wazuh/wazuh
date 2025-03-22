@@ -1,0 +1,26 @@
+{
+  "agent_info": {
+    "agent_id": "002",
+    "agent_ip": "any",
+    "agent_name": "b593602240f5",
+    "agent_version": "v4.11.1"
+  },
+  "data_type": "dbsync_ports",
+  "data": {
+    "checksum": "c13a7528210234983cf6fee4bfce2cf1cd99e34c",
+    "inode": 15543485,
+    "item_id": "b9ce16c7c8d82ab1d4df21518fd85fc8d0672396",
+    "local_ip": "0.0.0.0",
+    "local_port": 8000,
+    "pid": 6457,
+    "process": "python3",
+    "protocol": "tcp",
+    "remote_ip": "0.0.0.0",
+    "remote_port": 0,
+    "rx_queue": 0,
+    "scan_time": "2025/03/21 02:13:27",
+    "state": "listening",
+    "tx_queue": 0
+  },
+  "operation": "INSERTED"
+}

@@ -15,6 +15,7 @@
 #include "chainOfResponsability.hpp"
 #include "elements/osElement.hpp"
 #include "elements/packageElement.hpp"
+#include "elements/portElement.hpp"
 #include "elements/processElement.hpp"
 #include "loggerHelper.h"
 
@@ -49,6 +50,10 @@ public:
         else if (originTable == TContext::OriginTable::Processes)
         {
             data->m_serializedElement = serializeToJSON(ProcessElement<TContext>::deleteElement(data.get()));
+        }
+        else if (originTable == TContext::OriginTable::Ports)
+        {
+            data->m_serializedElement = serializeToJSON(PortElement<TContext>::deleteElement(data.get()));
         }
         else
         {

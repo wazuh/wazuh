@@ -149,4 +149,5 @@ INSTANTIATE_TEST_SUITE_P(InventorySyncByAffectedComponentType,
                          ::testing::Values(MockSystemContext::AffectedComponentType::Package,
                                            MockSystemContext::AffectedComponentType::Process,
                                            MockSystemContext::AffectedComponentType::System,
+                                           MockSystemContext::AffectedComponentType::Port,
                                            MockSystemContext::AffectedComponentType::Invalid));
