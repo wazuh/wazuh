@@ -436,6 +436,47 @@ std::optional<std::vector<std::tuple<std::string, Json>>> Json::getObject(std::s
     throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, path));
 }
 
+std::optional<std::vector<std::string>> Json::getFields() const
+{
+    std::optional<std::vector<std::string>> retval {std::nullopt};
+
+    if (m_document.IsObject())
+    {
+        std::vector<std::string> result;
+        auto nested = [&](const auto& self, const rapidjson::Value& value, const std::string& path = "") -> void
+        {
+            for (auto& [key, value] : value.GetObject())
+            {
+                std::string newPath = [&]() -> std::string
+                {
+                    if (path.empty())
+                    {
+                        return key.GetString();
+                    }
+                    else
+                    {
+                        return path + "." + key.GetString();
+                    }
+                }();
+
+                if (value.IsObject())
+                {
+                    self(self, value, newPath);
+                }
+                else
+                {
+                    result.push_back(newPath);
+                }
+            }
+        };
+
+        nested(nested, m_document);
+        retval = std::move(result);
+    }
+
+    return retval;
+}
+
 std::string Json::prettyStr() const
 {
     rapidjson::StringBuffer buffer;

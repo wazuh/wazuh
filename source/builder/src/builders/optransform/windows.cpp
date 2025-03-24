@@ -57,6 +57,14 @@ TransformBuilder getWindowsSidListDescHelperBuilder(const std::shared_ptr<kvdbMa
         utils::assertValue(opArgs, 0);
         utils::assertRef(opArgs, 1);
 
+        // Allowed fields check
+        const auto assetType = base::Name(buildCtx->context().assetName).parts().front();
+        if (!buildCtx->allowedFields().check(assetType, targetField.dotPath()))
+        {
+            throw std::runtime_error(
+                fmt::format("Field '{}' is not allowed in '{}'", targetField.dotPath(), assetType));
+        }
+
         const auto& kvdbNameArg = *std::static_pointer_cast<Value>(opArgs[0]);
         if (!kvdbNameArg.value().isString())
         {

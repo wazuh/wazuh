@@ -53,6 +53,15 @@ INSTANTIATE_TEST_SUITE_P(
         TransformT({makeValue(R"({"key": "value"})"), makeRef("ref")},
                    opBuilderHelperGetValue,
                    SUCCESS(customRefExpected("ref"))),
+        TransformT({makeRef("obj"), makeRef("key")},
+                   opBuilderHelperGetValue,
+                   FAILURE(
+                       [](const auto& mocks)
+                       {
+                           EXPECT_CALL(*mocks.allowedFields, check(testing::_, DotPath("targetField")))
+                               .WillOnce(testing::Return(false));
+                           return None {};
+                       })),
         /*** Merge Value ***/
         TransformT({}, opBuilderHelperMergeValue, FAILURE()),
         TransformT({makeValue(R"({})")}, opBuilderHelperMergeValue, FAILURE()),
@@ -78,6 +87,15 @@ INSTANTIATE_TEST_SUITE_P(
                                .WillOnce(testing::Return(false));
                            return None {};
                        })),
+        TransformT({makeRef("obj"), makeRef("key")},
+                   opBuilderHelperMergeValue,
+                   FAILURE(
+                       [](const auto& mocks)
+                       {
+                           EXPECT_CALL(*mocks.allowedFields, check(testing::_, DotPath("targetField")))
+                               .WillOnce(testing::Return(false));
+                           return None {};
+                       })),
         /*** Merge Recursive Value ***/
         TransformT({}, opBuilderHelperMergeRecursiveValue, FAILURE()),
         TransformT({makeValue(R"({})")}, opBuilderHelperMergeRecursiveValue, FAILURE()),
@@ -100,6 +118,15 @@ INSTANTIATE_TEST_SUITE_P(
                        {
                            customRefExpected("ref")(mocks);
                            EXPECT_CALL(*mocks.validator, hasField(DotPath("targetField")))
+                               .WillOnce(testing::Return(false));
+                           return None {};
+                       })),
+        TransformT({makeRef("obj"), makeRef("key")},
+                   opBuilderHelperMergeRecursiveValue,
+                   FAILURE(
+                       [](const auto& mocks)
+                       {
+                           EXPECT_CALL(*mocks.allowedFields, check(testing::_, DotPath("targetField")))
                                .WillOnce(testing::Return(false));
                            return None {};
                        }))),
@@ -149,6 +176,19 @@ INSTANTIATE_TEST_SUITE_P(
                    "target",
                    {makeRef("ref2"), makeRef("ref1")},
                    FAILURE(customRefExpected("ref1", "ref2"))),
+        TransformT(R"({"ref1": "key", "ref2": {"key": {"a": "value"}}})",
+                   opBuilderHelperGetValue,
+                   "target",
+                   {makeRef("ref2"), makeRef("ref1")},
+                   FAILURE(
+                       [](const auto& mocks)
+                       {
+                           EXPECT_CALL(*mocks.allowedFields, check(testing::_, DotPath("target")))
+                               .WillOnce(testing::Return(true));
+                           EXPECT_CALL(*mocks.allowedFields, check(testing::_, DotPath("target.a")))
+                               .WillOnce(testing::Return(false));
+                           return None {};
+                       })),
         /*** Merge Value ***/
         TransformT(R"({"ref": "key", "target": {"k0": "v0"}})",
                    opBuilderHelperMergeValue,
@@ -225,6 +265,19 @@ INSTANTIATE_TEST_SUITE_P(
                    "target",
                    {makeRef("ref2"), makeRef("ref1")},
                    FAILURE(customRefExpected("ref1", "ref2", "target"))),
+        TransformT(R"({"ref1": "key", "ref2": {"key": {"a": "value"}}})",
+                   opBuilderHelperMergeValue,
+                   "target",
+                   {makeRef("ref2"), makeRef("ref1")},
+                   FAILURE(
+                       [](const auto& mocks)
+                       {
+                           EXPECT_CALL(*mocks.allowedFields, check(testing::_, DotPath("target")))
+                               .WillOnce(testing::Return(true));
+                           EXPECT_CALL(*mocks.allowedFields, check(testing::_, DotPath("target.a")))
+                               .WillOnce(testing::Return(false));
+                           return None {};
+                       })),
         /*** Merge Recursive Value ***/
         TransformT(R"({"ref": "key", "target": {"k0": "v0", "nested": {"k1": "v1"}}})",
                    opBuilderHelperMergeRecursiveValue,
@@ -249,6 +302,19 @@ INSTANTIATE_TEST_SUITE_P(
                     R"({"ref1": "key", "ref2": {"key": {"nested": {"k0": "v0"}}}, "target": {"nested": {"k1": "v1", "k0": "v0"}}})"),
                 "ref1",
                 "ref2",
-                "target")))),
+                "target"))),
+        TransformT(R"({"ref1": "key", "ref2": {"key": {"a": "value"}}})",
+                   opBuilderHelperMergeRecursiveValue,
+                   "target",
+                   {makeRef("ref2"), makeRef("ref1")},
+                   FAILURE(
+                       [](const auto& mocks)
+                       {
+                           EXPECT_CALL(*mocks.allowedFields, check(testing::_, DotPath("target")))
+                               .WillOnce(testing::Return(true));
+                           EXPECT_CALL(*mocks.allowedFields, check(testing::_, DotPath("target.a")))
+                               .WillOnce(testing::Return(false));
+                           return None {};
+                       }))),
     testNameFormatter<TransformOperationTest>("ObjectGet"));
 } // namespace transformoperatestest

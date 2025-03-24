@@ -166,7 +166,16 @@ INSTANTIATE_TEST_SUITE_P(
                                                    expectKvdbGet(detail::DOM_SPC_SID_KEY,
                                                                  R"({"key": "value"})")(kvdbHandler);
                                                }),
-                       SUCCESS(jTypeRefExpected("ref", json::Json::Type::String)))),
+                       SUCCESS(jTypeRefExpected("ref", json::Json::Type::String))),
+        TransformDepsT({makeValue(R"("dbname")"), makeRef("ref")},
+                       getBuilder(),
+                       FAILURE(
+                           [](const auto& mocks)
+                           {
+                               EXPECT_CALL(*mocks.allowedFields, check(testing::_, DotPath("targetField")))
+                                   .WillOnce(testing::Return(false));
+                               return None {};
+                           }))),
     testNameFormatter<TransformBuilderWithDepsTest>("Win"));
 } // namespace transformbuildtest
 

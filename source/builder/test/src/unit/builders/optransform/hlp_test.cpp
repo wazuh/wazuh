@@ -110,7 +110,16 @@ INSTANTIATE_TEST_SUITE_P(
         TransformT({makeRef("ref"), makeValue(R"("value")"), makeValue(R"("value")")},
                    getBuilder(),
                    SUCCESS(expectCustomRef("ref"))),
-        TransformT({makeRef("ref")}, getBuilderParserBuilderThrows(), FAILURE())),
+        TransformT({makeRef("ref")}, getBuilderParserBuilderThrows(), FAILURE()),
+        TransformT({makeRef("ref"), makeValue(R"("value")"), makeValue(R"("value")")},
+                   getBuilder(),
+                   FAILURE(
+                       [](const auto& mocks)
+                       {
+                           EXPECT_CALL(*mocks.allowedFields, check(testing::_, DotPath("targetField")))
+                               .WillOnce(testing::Return(false));
+                           return None {};
+                       }))),
     testNameFormatter<TransformBuilderTest>("HLP"));
 } // namespace transformbuildtest
 
