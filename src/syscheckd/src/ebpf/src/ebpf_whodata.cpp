@@ -9,6 +9,7 @@
 
 #include <cstdio>
 #include <cstdlib>
+#include <sstream>
 #include <unistd.h>
 #include "modern.skel.h"
 #include <fstream>
@@ -30,6 +31,7 @@
 #endif
 
 #define TASK_COMM_LEN 32
+#define KERNEL_VERSION_FILE "/proc/sys/kernel/osrelease"
 #define EBPF_HC_FILE "tmp/ebpf_hc"
 #define LIB_INSTALL_PATH "lib/libbpf.so"
 #define BPF_OBJ_INSTALL_PATH "lib/modern.bpf.o"
@@ -101,6 +103,45 @@ int healthcheck_event(void* ctx, void* data, size_t data_sz) {
         event_received = true;
     }
     return 0;
+}
+
+int check_invalid_kernel_version() {
+    auto logFn = fimebpf::instance().m_loggingFunction;
+    std::ifstream file(KERNEL_VERSION_FILE);
+
+    if (!file) {
+        return 1;
+    }
+
+    std::string version;
+    file >> version;
+    std::istringstream versionStream(version);
+    std::vector<int> versionNumbers;
+    std::string segment;
+    
+    while (std::getline(versionStream, segment, '.')) {
+        try {
+            versionNumbers.push_back(std::stoi(segment));
+        } catch (...) {
+            break;
+        }
+    }
+
+    // Check we got minor and major versions
+    if (versionNumbers.size() < 2) {
+        return 1;
+    }
+
+    int major = versionNumbers[0];
+    int minor = versionNumbers[1];
+
+    if ((major < 5) || (major == 5 && minor < 8)) {
+        logFn(LOG_ERROR, FIM_EBPF_INVALID_KERNEL);
+        return 1;
+    }
+    else {
+        return 0;
+    }
 }
 
 static int init_libbpf() {
@@ -340,7 +381,7 @@ int ebpf_whodata_healthcheck() {
     kernelEventQueue.setMaxSize(fimebpf::instance().m_queue_size);
     whodataEventQueue.setMaxSize(fimebpf::instance().m_queue_size);
 
-    if (!logFn || init_libbpf() || init_bpfobj() || init_ring_buffer(&rb, healthcheck_event)) {
+    if (!logFn || check_invalid_kernel_version() || init_libbpf() || init_bpfobj() || init_ring_buffer(&rb, healthcheck_event)) {
         return 1;
     }
 
