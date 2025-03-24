@@ -168,7 +168,8 @@ jobs:
               PACKAGE_NAME="$file"
             fi
           done
-
+          
+          echo "FLAGS=$FLAGS" >> $GITHUB_ENV
           echo "PACKAGE_NAME=${PACKAGE_NAME}" | tee -a $GITHUB_ENV
           echo "PACKAGE_SYMBOLS_NAME=${PACKAGE_SYMBOLS_NAME}" | tee -a $GITHUB_ENV
 
