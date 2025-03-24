@@ -13,7 +13,19 @@ AllowedFields::AllowedFields(const json::Json& definition)
         throw std::runtime_error {"Allowed fields definition must be an object"};
     }
 
-    auto asObj = definition.getObject().value();
+    auto name = definition.getString(syntax::allowedfields::NAME_PATH);
+    if (!name)
+    {
+        throw std::runtime_error {"Allowed fields definition must have a name"};
+    }
+
+    auto allowedFields = definition.getObject(syntax::allowedfields::ALLOWED_FIELDS_PATH);
+    if (!allowedFields)
+    {
+        throw std::runtime_error {"Allowed fields definition must have allowed_fields entry"};
+    }
+
+    auto asObj = allowedFields.value();
     for (auto [key, value] : asObj)
     {
         if (!syntax::name::isDecoder(base::Name {key}, false) && !syntax::name::isRule(base::Name {key}, false)

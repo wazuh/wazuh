@@ -13,10 +13,13 @@ TEST(AllowedFieldsTest, Constructor)
 {
     json::Json definition {
         R"({
+        "name": "schema/allowed-fields/0",
+        "allowed_fields": {
             "decoder": ["field1", "field2"],
             "rule": ["field1", "field2"],
             "filter": ["field1", "field2"],
             "output": ["field1", "field2"]
+        }
         })"};
 
     ASSERT_NO_THROW(AllowedFields {definition});
@@ -29,16 +32,53 @@ TEST(AllowedFieldsTest, ConstructorNotObject)
     ASSERT_THROW(AllowedFields {definition}, std::runtime_error);
 }
 
+TEST(AllowedFieldsTest, ConstructorMissingName)
+{
+    json::Json definition {
+        R"({
+        "allowed_fields": {
+            "decoder": ["field1", "field2"],
+            "rule": ["field1", "field2"],
+            "filter": ["field1", "field2"],
+            "output": ["field1", "field2"]
+        }
+        })"};
+
+    ASSERT_THROW(AllowedFields {definition}, std::runtime_error);
+}
+
+TEST(AllowedFieldsTest, ConstructorNotAllowedFieldsObject)
+{
+    json::Json definition1 {
+        R"({
+        "name": "schema/allowed-fields/0",
+        "allowed_fields": "decoder"
+        })"};
+    json::Json definition2 {
+        R"({
+        "name": "schema/allowed-fields/0"
+    })"};
+
+    ASSERT_THROW(AllowedFields {definition1}, std::runtime_error);
+    ASSERT_THROW(AllowedFields {definition2}, std::runtime_error);
+}
+
 TEST(AllowedFieldsTest, ConstructorNotFieldArray)
 {
     json::Json definition1 {
         R"({
-            "decoder": "field1"
+            "name": "schema/allowed-fields/0",
+            "allowed_fields": {
+                "decoder": "field1"
+            }
         })"};
     json::Json definition2 {
         R"({
-            "decoder": ["field1"],
-            "rule": "field1"
+            "name": "schema/allowed-fields/0",
+            "allowed_fields": {
+                "decoder": ["field1"],
+                "rule": "field1"
+            }
         })"};
 
     ASSERT_THROW(AllowedFields {definition1}, std::runtime_error);
@@ -49,12 +89,18 @@ TEST(AllowedFieldsTest, ConstructorNotFieldString)
 {
     json::Json definition1 {
         R"({
-            "decoder": [1]
+            "name": "schema/allowed-fields/0",
+            "allowed_fields": {
+                "decoder": [1]
+            }
         })"};
     json::Json definition2 {
         R"({
-            "decoder": ["field1"],
-            "rule": [1]
+            "name": "schema/allowed-fields/0",
+            "allowed_fields": {
+                "decoder": ["field1"],
+                "rule": [1]
+            }
         })"};
 
     ASSERT_THROW(AllowedFields {definition1}, std::runtime_error);
@@ -65,13 +111,19 @@ TEST(AllowedFieldsTest, ConstructorUnknownAsset)
 {
     json::Json definition1 {
         R"({
-            "unknown": ["field1"]
+            "name": "schema/allowed-fields/0",
+            "allowed_fields": {
+                "unknown": ["field1"]
+            }
         })"};
 
     json::Json definition2 {
         R"({
-            "decoder": ["field1"],
-            "unknown": ["field1"]
+            "name": "schema/allowed-fields/0",
+            "allowed_fields": {
+                "decoder": ["field1"],
+                "unknown": ["field1"]
+            }
         })"};
 
     ASSERT_THROW(AllowedFields {definition1}, std::runtime_error);
@@ -82,10 +134,13 @@ TEST(AllowedFieldsTest, Check)
 {
     json::Json definition {
         R"({
-            "decoder": ["field1", "field2"],
-            "rule": ["field1", "field2"],
-            "filter": ["field1", "field2"],
-            "output": ["field1", "field2"]
+            "name": "schema/allowed-fields/0",
+            "allowed_fields": {
+                "decoder": ["field1", "field2"],
+                "rule": ["field1", "field2"],
+                "filter": ["field1", "field2"],
+                "output": ["field1", "field2"]
+            }
         })"};
 
     AllowedFields allowedFields {definition};
@@ -104,10 +159,13 @@ TEST(AllowedFieldsTest, CheckUnknownAsset)
 {
     json::Json definition {
         R"({
-            "decoder": ["field1", "field2"],
-            "rule": ["field1", "field2"],
-            "filter": ["field1", "field2"],
-            "output": ["field1", "field2"]
+            "name": "schema/allowed-fields/0",
+            "allowed_fields": {
+                "decoder": ["field1", "field2"],
+                "rule": ["field1", "field2"],
+                "filter": ["field1", "field2"],
+                "output": ["field1", "field2"]
+            }
         })"};
 
     AllowedFields allowedFields {definition};
@@ -119,10 +177,13 @@ TEST(AllowedFieldsTest, CheckNotAllowed)
 {
     json::Json definition {
         R"({
-            "decoder": ["field1", "field2"],
-            "rule": ["field1", "field2"],
-            "filter": ["field1", "field2"],
-            "output": ["field1", "field2"]
+            "name": "schema/allowed-fields/0",
+            "allowed_fields": {
+                "decoder": ["field1", "field2"],
+                "rule": ["field1", "field2"],
+                "filter": ["field1", "field2"],
+                "output": ["field1", "field2"]
+            }
         })"};
 
     AllowedFields allowedFields {definition};
