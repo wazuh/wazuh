@@ -255,6 +255,9 @@ jobs:
           echo "PREVIOUS_VERSION=$PREVIOUS_VERSION" >> $GITHUB_ENV
           echo "Previous version selected: $PREVIOUS_VERSION"
 
+      - name: Download docker image for previous version
+        run: |
+          bash $GITHUB_WORKSPACE/.github/actions/ghcr-pull-and-push/pull_image_from_ghcr.sh ${{ secrets.GITHUB_TOKEN }} ${{ github.actor}} $CONTAINER_NAME ${{ env.PREVIOUS_VERSION }}
 
       - name: Install previous version of Wazuh manager
         working-directory: packages
@@ -273,7 +276,7 @@ jobs:
 
           # Start the container with the previous version
           CONTAINER_ID=$(sudo docker run -d -v $TESTS_PATH/:/tests -v /tmp/:/packages -v /var/ossec:/var/ossec \
-            --entrypoint '/bin/sh' $CONTAINER_NAME:${{ env.TAG }} -c "tail -f /dev/null")
+            --entrypoint '/bin/sh' $CONTAINER_NAME:${{ env.PREVIOUS_VERSION }} -c "tail -f /dev/null")
 
           echo "Installing previous version of Wazuh manager: ${{ env.PREVIOUS_VERSION }}"
 
