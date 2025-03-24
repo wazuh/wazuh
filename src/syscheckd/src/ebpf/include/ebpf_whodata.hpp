@@ -11,6 +11,8 @@
 #define EBPF_WHODATA_HPP
 
 #include "ebpf_whodata.h"
+#include "dynamic_library_wrapper.h"
+#include <memory>
 
 class fimebpf
 {
@@ -70,5 +72,8 @@ public:
     unsigned int m_queue_size;
     fimShutdownProcessOn_t m_fim_shutdown_process_on;
 };
+
+int init_libbpf(std::unique_ptr<DynamicLibraryWrapper> sym_load);
+
 
 #endif // EBPF_WHODATA_HPP

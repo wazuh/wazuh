@@ -22,7 +22,6 @@
 #include <bounded_queue.hpp>
 #include <functional>
 
-#include "sym_load.h"
 #include "ebpf_whodata.hpp"
 #include "bpf_helpers.h"
 
@@ -42,9 +41,13 @@
 static volatile bool epbf_hc_created = false;
 static volatile bool event_received = false;
 static bpf_object* global_obj = nullptr;
-w_bpf_helpers_t * bpf_helpers = NULL;
+
+std::unique_ptr<w_bpf_helpers_t> bpf_helpers = nullptr;
+std::unique_ptr<DefaultDynamicLibraryWrapper> sym_load;
+
 int ebpf_kernel_queue_full_reported = 0;
 int ebpf_whodata_queue_full_reported = 0;
+
 
 struct file_event {
     __u32 pid;
@@ -144,48 +147,46 @@ int check_invalid_kernel_version() {
     }
 }
 
-int init_libbpf() {
+int init_libbpf(std::unique_ptr<DynamicLibraryWrapper> sym_load) {
     auto logFn = fimebpf::instance().m_loggingFunction;
     auto abspathFn = fimebpf::instance().m_abspath;
     char libbpf_path[PATH_MAX] = {0};
+    bpf_helpers = std::make_unique<w_bpf_helpers_t>();
 
-    if (!logFn || !abspathFn) {
+    if (!logFn || !abspathFn || !bpf_helpers) {
         return 1;
     }
 
     abspathFn(LIB_INSTALL_PATH, libbpf_path, sizeof(libbpf_path));
 
-    bpf_helpers = (w_bpf_helpers_t *)calloc(1, sizeof(w_bpf_helpers_t));
-    if (!bpf_helpers) {
-        return 1;
-    }
 
-    bpf_helpers->module = so_get_module_handle(libbpf_path);
+    bpf_helpers->module = sym_load->getModuleHandle(libbpf_path);
     if (!bpf_helpers->module) {
-        free(bpf_helpers);
-        bpf_helpers = NULL;
+	bpf_helpers.reset();
         return 1;
     }
 
-    bpf_helpers->bpf_object_destroy_skeleton = (bpf_object__destroy_skeleton_t)so_get_function_sym(bpf_helpers->module, "bpf_object__destroy_skeleton");
-    bpf_helpers->bpf_object_open_skeleton    = (bpf_object__open_skeleton_t)so_get_function_sym(bpf_helpers->module, "bpf_object__open_skeleton");
-    bpf_helpers->bpf_object_load_skeleton    = (bpf_object__load_skeleton_t)so_get_function_sym(bpf_helpers->module, "bpf_object__load_skeleton");
-    bpf_helpers->bpf_object_attach_skeleton  = (bpf_object__attach_skeleton_t)so_get_function_sym(bpf_helpers->module, "bpf_object__attach_skeleton");
-    bpf_helpers->bpf_object_detach_skeleton  = (bpf_object__detach_skeleton_t)so_get_function_sym(bpf_helpers->module, "bpf_object__detach_skeleton");
+    bpf_helpers->init_ring_buffer	     = (init_ring_buffer_t)init_ring_buffer;
+    bpf_helpers->bpf_object_destroy_skeleton = (bpf_object__destroy_skeleton_t)sym_load->getFunctionSymbol(bpf_helpers->module, "bpf_object__destroy_skeleton");
+    bpf_helpers->bpf_object_open_skeleton    = (bpf_object__open_skeleton_t)sym_load->getFunctionSymbol(bpf_helpers->module, "bpf_object__open_skeleton");
+    bpf_helpers->bpf_object_load_skeleton    = (bpf_object__load_skeleton_t)sym_load->getFunctionSymbol(bpf_helpers->module, "bpf_object__load_skeleton");
+    bpf_helpers->bpf_object_attach_skeleton  = (bpf_object__attach_skeleton_t)sym_load->getFunctionSymbol(bpf_helpers->module, "bpf_object__attach_skeleton");
+    bpf_helpers->bpf_object_detach_skeleton  = (bpf_object__detach_skeleton_t)sym_load->getFunctionSymbol(bpf_helpers->module, "bpf_object__detach_skeleton");
 
-    bpf_helpers->bpf_object_open_file        = (bpf_object__open_file_t)so_get_function_sym(bpf_helpers->module, "bpf_object__open_file");
-    bpf_helpers->bpf_object_load             = (bpf_object__load_t)so_get_function_sym(bpf_helpers->module, "bpf_object__load");
-    bpf_helpers->ring_buffer_new             = (ring_buffer__new_t)so_get_function_sym(bpf_helpers->module, "ring_buffer__new");
-    bpf_helpers->ring_buffer_poll            = (ring_buffer__poll_t)so_get_function_sym(bpf_helpers->module, "ring_buffer__poll");
-    bpf_helpers->ring_buffer_free            = (ring_buffer__free_t)so_get_function_sym(bpf_helpers->module, "ring_buffer__free");
-    bpf_helpers->bpf_object_close            = (bpf_object__close_t)so_get_function_sym(bpf_helpers->module, "bpf_object__close");
-    bpf_helpers->bpf_object_next_program     = (bpf_object__next_program_t)so_get_function_sym(bpf_helpers->module, "bpf_object__next_program");
-    bpf_helpers->bpf_program_attach          = (bpf_program__attach_t)so_get_function_sym(bpf_helpers->module, "bpf_program__attach");
-    bpf_helpers->bpf_object_find_map_fd_by_name = (bpf_object__find_map_fd_by_name_t)so_get_function_sym(bpf_helpers->module, "bpf_object__find_map_fd_by_name");
+    bpf_helpers->bpf_object_open_file        = (bpf_object__open_file_t)sym_load->getFunctionSymbol(bpf_helpers->module, "bpf_object__open_file");
+    bpf_helpers->bpf_object_load             = (bpf_object__load_t)sym_load->getFunctionSymbol(bpf_helpers->module, "bpf_object__load");
+    bpf_helpers->ring_buffer_new             = (ring_buffer__new_t)sym_load->getFunctionSymbol(bpf_helpers->module, "ring_buffer__new");
+    bpf_helpers->ring_buffer_poll            = (ring_buffer__poll_t)sym_load->getFunctionSymbol(bpf_helpers->module, "ring_buffer__poll");
+    bpf_helpers->ring_buffer_free            = (ring_buffer__free_t)sym_load->getFunctionSymbol(bpf_helpers->module, "ring_buffer__free");
+    bpf_helpers->bpf_object_close            = (bpf_object__close_t)sym_load->getFunctionSymbol(bpf_helpers->module, "bpf_object__close");
+    bpf_helpers->bpf_object_next_program     = (bpf_object__next_program_t)sym_load->getFunctionSymbol(bpf_helpers->module, "bpf_object__next_program");
+    bpf_helpers->bpf_program_attach          = (bpf_program__attach_t)sym_load->getFunctionSymbol(bpf_helpers->module, "bpf_program__attach");
+    bpf_helpers->bpf_object_find_map_fd_by_name = (bpf_object__find_map_fd_by_name_t)sym_load->getFunctionSymbol(bpf_helpers->module, "bpf_object__find_map_fd_by_name");
 
 
     /* Load all required symbols */
-    if (!bpf_helpers->bpf_object_open_file ||
+    if (!bpf_helpers->init_ring_buffer ||
+        !bpf_helpers->bpf_object_open_file ||
         !bpf_helpers->bpf_object_load ||
         !bpf_helpers->ring_buffer_new ||
         !bpf_helpers->ring_buffer_poll ||
@@ -201,9 +202,8 @@ int init_libbpf() {
         !bpf_helpers->bpf_object_detach_skeleton)
     {
         logFn(LOG_ERROR, FIM_ERROR_EBPF_LIB_LOAD);
-        so_free_library(bpf_helpers->module);
-        free(bpf_helpers);
-        bpf_helpers = NULL;
+        sym_load->freeLibrary(bpf_helpers->module);
+        bpf_helpers.reset();
         return 1;
     }
 
@@ -212,13 +212,12 @@ int init_libbpf() {
     return 0;
 }
 
-static void close_libbpf() {
+void close_libbpf(std::unique_ptr<DynamicLibraryWrapper> sym_load) {
     if (bpf_helpers) {
         if (bpf_helpers->module) {
-            so_free_library(bpf_helpers->module);
+            sym_load->freeLibrary(bpf_helpers->module);
         }
-        free(bpf_helpers);
-        bpf_helpers = NULL;
+	bpf_helpers.reset();
     }
 }
 
@@ -262,7 +261,7 @@ int init_bpfobj() {
     return 0;
 }
 
-static int init_ring_buffer(ring_buffer** rb, ring_buffer_sample_fn sample_cb) {
+int init_ring_buffer(ring_buffer** rb, ring_buffer_sample_fn sample_cb) {
     auto logFn = fimebpf::instance().m_loggingFunction;
     if (!logFn) {
         return 1;
@@ -382,7 +381,7 @@ int ebpf_whodata_healthcheck() {
     kernelEventQueue.setMaxSize(fimebpf::instance().m_queue_size);
     whodataEventQueue.setMaxSize(fimebpf::instance().m_queue_size);
 
-    if (!logFn || check_invalid_kernel_version() || init_libbpf() || init_bpfobj() || init_ring_buffer(&rb, healthcheck_event)) {
+    if (!logFn || check_invalid_kernel_version() || init_libbpf(std::move(sym_load)) || init_bpfobj() || bpf_helpers->init_ring_buffer(&rb, healthcheck_event)) {
         return 1;
     }
 
@@ -434,7 +433,7 @@ int ebpf_whodata() {
     ring_buffer* rb = nullptr;
     int ret;
 
-    if (!logFn || init_ring_buffer(&rb, handle_event)) {
+    if (!logFn || bpf_helpers->init_ring_buffer(&rb, handle_event)) {
         return 1;
     }
 
@@ -456,7 +455,7 @@ int ebpf_whodata() {
     bpf_helpers->bpf_object_close(global_obj);
     global_obj = nullptr;
     w_bpf_deinit(bpf_helpers);
-    close_libbpf();
+    close_libbpf(std::move(sym_load));
 
     return 0;
 }
