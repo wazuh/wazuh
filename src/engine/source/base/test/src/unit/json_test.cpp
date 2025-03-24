@@ -2259,6 +2259,44 @@ TEST_F(getJsonTest, getObjectOk)
     ASSERT_EQ(j.getJson("/key3"), jExpected);
 }
 
+TEST_F(getJsonTest, getFields)
+{
+    Json j {R"({
+        "key1": "value1",
+        "key5": {
+            "key6": {
+                "key7": "value7"
+            }
+        },
+        "key2": "value2",
+        "key3": {
+            "key4": "value4"
+        }
+    })"};
+
+    std::vector<std::string> expectedFields = {"key1", "key5.key6.key7", "key2", "key3.key4"};
+
+    ASSERT_EQ(j.getFields().value(), expectedFields);
+}
+
+TEST_F(getJsonTest, getFieldsNotObject)
+{
+    Json j {R"([
+        "value1",
+        "value2",
+        "value3"
+    ])"};
+
+    ASSERT_FALSE(j.getFields().has_value());
+}
+
+TEST_F(getJsonTest, getFieldsEmpty)
+{
+    Json j {"{}"};
+
+    ASSERT_EQ(j.getFields().value(), std::vector<std::string>());
+}
+
 TEST_F(getJsonTest, getArrayOk)
 {
     Json j {R"({

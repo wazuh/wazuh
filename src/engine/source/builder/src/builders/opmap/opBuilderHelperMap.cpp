@@ -642,6 +642,13 @@ TransformOp opBuilderHelperStringTrim(const Reference& targetField,
                                       const std::vector<OpArg>& opArgs,
                                       const std::shared_ptr<const IBuildCtx>& buildCtx)
 {
+    // Check Allowed field
+    const auto assetType = base::Name(buildCtx->context().assetName).parts().front();
+    if (!buildCtx->allowedFields().check(assetType, targetField.dotPath()))
+    {
+        throw std::runtime_error(fmt::format("Field '{}' is not allowed", targetField.dotPath()));
+    }
+
     // Assert expected number of parameters
     builder::builders::utils::assertSize(opArgs, 2);
     // Parameter type check
@@ -1168,6 +1175,13 @@ TransformOp opBuilderHelperStringReplace(const Reference& targetField,
                                          const std::vector<OpArg>& opArgs,
                                          const std::shared_ptr<const IBuildCtx>& buildCtx)
 {
+    // Check Allowed field
+    const auto assetType = base::Name(buildCtx->context().assetName).parts().front();
+    if (!buildCtx->allowedFields().check(assetType, targetField.dotPath()))
+    {
+        throw std::runtime_error(fmt::format("Field '{}' is not allowed", targetField.dotPath()));
+    }
+
     // Assert expected number of parameters
     builder::builders::utils::assertSize(opArgs, 2);
     builder::builders::utils::assertValue(opArgs);
@@ -1399,6 +1413,13 @@ TransformOp opBuilderHelperMergeRecursively(const Reference& targetField,
                                             const std::vector<OpArg>& opArgs,
                                             const std::shared_ptr<const IBuildCtx>& buildCtx)
 {
+    // Check Allowed field
+    const auto assetType = base::Name(buildCtx->context().assetName).parts().front();
+    if (!buildCtx->allowedFields().check(assetType, targetField.dotPath()))
+    {
+        throw std::runtime_error(fmt::format("Field '{}' is not allowed", targetField.dotPath()));
+    }
+
     // Assert expected number of parameters
     builder::builders::utils::assertSize(opArgs, 1);
     // Parameter type check
@@ -1413,11 +1434,15 @@ TransformOp opBuilderHelperMergeRecursively(const Reference& targetField,
     const auto failureTrace2 = fmt::format("{} -> Source field '{}' not found", name, refField.dotPath());
     const auto failureTrace3 = fmt::format("{} -> Field types do not match", name);
     const auto failureTrace4 = fmt::format("{} -> Field types not supported", name);
+    const auto failureTrace5 = fmt::format(
+        "{} -> Cannot map subfields of {} because is not allowed for {}", name, targetField.dotPath(), assetType);
 
     // Return Op
     return [=,
             runState = buildCtx->runState(),
             targetField = targetField.jsonPath(),
+            targetFieldDotPath = targetField.dotPath(),
+            allowedFields = buildCtx->allowedFieldsPtr(),
             fieldReference = refField.jsonPath()](base::Event event) -> TransformResult
     {
         // Check target and reference field exists
@@ -1440,6 +1465,19 @@ TransformOp opBuilderHelperMergeRecursively(const Reference& targetField,
         if (targetType != json::Json::Type::Array && targetType != json::Json::Type::Object)
         {
             RETURN_FAILURE(runState, event, failureTrace4);
+        }
+
+        if (targetType == json::Json::Type::Object)
+        {
+            auto ref = event->getJson(fieldReference).value();
+            auto fields = ref.getFields().value();
+            for (const auto& field : fields)
+            {
+                if (!allowedFields->check(assetType, targetFieldDotPath + "." + field))
+                {
+                    RETURN_FAILURE(runState, event, failureTrace5)
+                }
+            }
         }
 
         // Merge
@@ -1484,6 +1522,13 @@ TransformOp opBuilderHelperAppendSplitString(const Reference& targetField,
                                              const std::vector<OpArg>& opArgs,
                                              const std::shared_ptr<const IBuildCtx>& buildCtx)
 {
+    // Check Allowed field
+    const auto assetType = base::Name(buildCtx->context().assetName).parts().front();
+    if (!buildCtx->allowedFields().check(assetType, targetField.dotPath()))
+    {
+        throw std::runtime_error(fmt::format("Field '{}' is not allowed", targetField.dotPath()));
+    }
+
     // Assert expected number of parameters
     builder::builders::utils::assertSize(opArgs, 2);
     // Parameter type check
@@ -1551,6 +1596,13 @@ TransformOp opBuilderHelperMerge(const Reference& targetField,
                                  const std::vector<OpArg>& opArgs,
                                  const std::shared_ptr<const IBuildCtx>& buildCtx)
 {
+    // Check Allowed field
+    const auto assetType = base::Name(buildCtx->context().assetName).parts().front();
+    if (!buildCtx->allowedFields().check(assetType, targetField.dotPath()))
+    {
+        throw std::runtime_error(fmt::format("Field '{}' is not allowed", targetField.dotPath()));
+    }
+
     // Assert expected number of parameters
     builder::builders::utils::assertSize(opArgs, 1);
     // Parameter type check
@@ -1565,11 +1617,15 @@ TransformOp opBuilderHelperMerge(const Reference& targetField,
     const auto failureTrace2 = fmt::format("{} -> Source field '{}' not found", name, refField.dotPath());
     const auto failureTrace3 = fmt::format("{} -> Field types do not match", name);
     const auto failureTrace4 = fmt::format("{} -> Field types not supported", name);
+    const auto failureTrace5 = fmt::format(
+        "{} -> Cannot map subfields of {} because is not allowed for {}", name, targetField.dotPath(), assetType);
 
     // Return Op
     return [=,
             runState = buildCtx->runState(),
             targetField = targetField.jsonPath(),
+            targetFieldDotPath = targetField.dotPath(),
+            allowedFields = buildCtx->allowedFieldsPtr(),
             fieldReference = refField.jsonPath()](base::Event event) -> TransformResult
     {
         // Check target and reference field exists
@@ -1594,6 +1650,19 @@ TransformOp opBuilderHelperMerge(const Reference& targetField,
             RETURN_FAILURE(runState, event, failureTrace4);
         }
 
+        if (targetType == json::Json::Type::Object)
+        {
+            auto ref = event->getJson(fieldReference).value();
+            auto fields = ref.getFields().value();
+            for (const auto& field : fields)
+            {
+                if (!allowedFields->check(assetType, targetFieldDotPath + "." + field))
+                {
+                    RETURN_FAILURE(runState, event, failureTrace5)
+                }
+            }
+        }
+
         // Merge
         event->merge(json::NOT_RECURSIVE, fieldReference, targetField);
 
@@ -1610,6 +1679,12 @@ TransformOp opBuilderHelperDeleteField(const Reference& targetField,
                                        const std::vector<OpArg>& opArgs,
                                        const std::shared_ptr<const IBuildCtx>& buildCtx)
 {
+    // Check Allowed field
+    const auto assetType = base::Name(buildCtx->context().assetName).parts().front();
+    if (!buildCtx->allowedFields().check(assetType, targetField.dotPath()))
+    {
+        throw std::runtime_error(fmt::format("Field '{}' is not allowed", targetField.dotPath()));
+    }
 
     // Assert expected number of parameters
     builder::builders::utils::assertSize(opArgs, 0);
@@ -1658,6 +1733,18 @@ TransformOp opBuilderHelperRenameField(const Reference& targetField,
     builder::builders::utils::assertRef(opArgs);
 
     const auto& srcField = *std::static_pointer_cast<Reference>(opArgs[0]);
+
+    // Check Allowed field
+    const auto assetType = base::Name(buildCtx->context().assetName).parts().front();
+    if (!buildCtx->allowedFields().check(assetType, srcField.dotPath()))
+    {
+        throw std::runtime_error(fmt::format("Field '{}' is not allowed", srcField.dotPath()));
+    }
+
+    if (!buildCtx->allowedFields().check(assetType, targetField.dotPath()))
+    {
+        throw std::runtime_error(fmt::format("Field '{}' is not allowed", targetField.dotPath()));
+    }
 
     // Format name for the tracer
     const auto name = buildCtx->context().opName;
@@ -1983,6 +2070,13 @@ TransformOp opBuilderHelperGetValueGeneric(const Reference& targetField,
                                            bool isMerge,
                                            bool isRecursive)
 {
+    // Check Allowed field
+    const auto assetType = base::Name(buildCtx->context().assetName).parts().front();
+    if (!buildCtx->allowedFields().check(assetType, targetField.dotPath()))
+    {
+        throw std::runtime_error(fmt::format("Field '{}' is not allowed", targetField.dotPath()));
+    }
+
     // TODO: add runtime validation
     // Assert expected number of parameters
     builder::builders::utils::assertSize(opArgs, 2);
@@ -2057,11 +2151,15 @@ TransformOp opBuilderHelperGetValueGeneric(const Reference& targetField,
     const auto failureTrace6 = fmt::format("{} -> Key not found", name);
     const auto failureTrace7 = fmt::format("{} -> Merge error: ", name);
     const auto failureTrace8 = fmt::format("{} -> Validator error: ", name);
+    const auto failureTrace9 = fmt::format(
+        "{} -> Cannot map subfields of {} because is not allowed for {}", name, targetField.dotPath(), assetType);
 
     // Return Op
     return [=,
             runState = buildCtx->runState(),
             targetField = targetField.jsonPath(),
+            targetFieldDotPath = targetField.dotPath(),
+            allowedFields = buildCtx->allowedFieldsPtr(),
             parameter = opArgs[0],
             key = keyRef.jsonPath()](base::Event event) -> TransformResult
     {
@@ -2126,6 +2224,18 @@ TransformOp opBuilderHelperGetValueGeneric(const Reference& targetField,
             if (base::isError(res))
             {
                 RETURN_FAILURE(runState, event, failureTrace8 + base::getError(res).message);
+            }
+        }
+
+        if (resolvedValue.value().isObject())
+        {
+            auto fields = resolvedValue.value().getFields().value();
+            for (const auto& field : fields)
+            {
+                if (!allowedFields->check(assetType, targetFieldDotPath + "." + field))
+                {
+                    RETURN_FAILURE(runState, event, failureTrace9)
+                }
             }
         }
 

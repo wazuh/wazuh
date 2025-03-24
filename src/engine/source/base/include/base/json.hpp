@@ -414,6 +414,13 @@ public:
     std::optional<std::vector<std::tuple<std::string, Json>>> getObject(std::string_view path = "") const;
 
     /**
+     * @brief Get a list of fields from a json object.
+     *
+     * @return std::optional<std::vector<std::string>> The list of fields or nothing if the Json is not an object.
+     */
+    std::optional<std::vector<std::string>> getFields() const;
+
+    /**
      * @brief Get Json prettyfied string.
      *
      * @return std::string The Json prettyfied string.

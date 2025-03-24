@@ -62,6 +62,9 @@ protected:
         ON_CALL(*mocks->ctx, validator()).WillByDefault(testing::ReturnRef(*(mocks->validator)));
         ON_CALL(*mocks->ctx, allowedFields()).WillByDefault(testing::ReturnRef(*(mocks->allowedFields)));
 
+        ON_CALL(*mocks->allowedFields, check(testing::_, testing::_)).WillByDefault(testing::Return(true));
+        ON_CALL(*mocks->ctx, allowedFieldsPtr()).WillByDefault(testing::Return(mocks->allowedFields));
+
         mocks->context.policyName = "policy/name/0";
         mocks->context.assetName = "asset/name/0";
     }

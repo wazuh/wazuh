@@ -24,6 +24,7 @@ public:
     MOCK_METHOD((std::shared_ptr<const RunState>), runState, (), (const));
     MOCK_METHOD((const builder::IAllowedFields&), allowedFields, (), (const));
     MOCK_METHOD(void, setAllowedFields, (const std::shared_ptr<const builder::IAllowedFields>& allowedFields), ());
+    MOCK_METHOD((std::shared_ptr<const builder::IAllowedFields>), allowedFieldsPtr, (), (const));
 };
 
 } // namespace builder::builders::mocks

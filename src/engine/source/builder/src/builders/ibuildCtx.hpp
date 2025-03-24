@@ -59,6 +59,7 @@ public:
     virtual std::shared_ptr<const RunState> runState() const = 0;
 
     virtual const builder::IAllowedFields& allowedFields() const = 0;
+    virtual std::shared_ptr<const builder::IAllowedFields> allowedFieldsPtr() const = 0;
     virtual void setAllowedFields(const std::shared_ptr<const builder::IAllowedFields>& allowedFields) = 0;
 };
 

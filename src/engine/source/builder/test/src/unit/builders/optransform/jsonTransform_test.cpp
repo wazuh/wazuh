@@ -28,21 +28,68 @@ INSTANTIATE_TEST_SUITE_P(
         TransformT({}, opBuilderHelperDeleteField, SUCCESS()),
         TransformT({makeValue(R"("value")")}, opBuilderHelperDeleteField, FAILURE()),
         TransformT({makeRef("ref")}, opBuilderHelperDeleteField, FAILURE()),
+        TransformT({},
+                   opBuilderHelperDeleteField,
+                   FAILURE(
+                       [](const auto& mocks)
+                       {
+                           EXPECT_CALL(*mocks.allowedFields, check(testing::_, DotPath("targetField")))
+                               .WillOnce(testing::Return(false));
+                           return None {};
+                       })),
         /*** Rename Field ***/
         TransformT({}, opBuilderHelperRenameField, FAILURE()),
         TransformT({makeValue(R"("value")")}, opBuilderHelperRenameField, FAILURE()),
         TransformT({makeRef("ref")}, opBuilderHelperRenameField, SUCCESS()),
         TransformT({makeRef("ref"), makeRef("ref")}, opBuilderHelperRenameField, FAILURE()),
+        TransformT({makeRef("ref")},
+                   opBuilderHelperRenameField,
+                   FAILURE(
+                       [](const auto& mocks)
+                       {
+                           EXPECT_CALL(*mocks.allowedFields, check(testing::_, DotPath("ref")))
+                               .WillOnce(testing::Return(true));
+                           EXPECT_CALL(*mocks.allowedFields, check(testing::_, DotPath("targetField")))
+                               .WillOnce(testing::Return(false));
+                           return None {};
+                       })),
+        TransformT({makeRef("ref")},
+                   opBuilderHelperRenameField,
+                   FAILURE(
+                       [](const auto& mocks)
+                       {
+                           EXPECT_CALL(*mocks.allowedFields, check(testing::_, DotPath("ref")))
+                               .WillOnce(testing::Return(false));
+                           return None {};
+                       })),
         /*** Merge ***/
         TransformT({}, opBuilderHelperMerge, FAILURE()),
         TransformT({makeValue(R"("value")")}, opBuilderHelperMerge, FAILURE()),
         TransformT({makeRef("ref")}, opBuilderHelperMerge, SUCCESS()),
         TransformT({makeRef("ref"), makeRef("ref")}, opBuilderHelperMerge, FAILURE()),
+        TransformT({makeRef("ref")},
+                   opBuilderHelperMerge,
+                   FAILURE(
+                       [](const auto& mocks)
+                       {
+                           EXPECT_CALL(*mocks.allowedFields, check(testing::_, DotPath("targetField")))
+                               .WillOnce(testing::Return(false));
+                           return None {};
+                       })),
         /*** Merge Recursive ***/
         TransformT({}, opBuilderHelperMergeRecursively, FAILURE()),
         TransformT({makeValue(R"("value")")}, opBuilderHelperMergeRecursively, FAILURE()),
         TransformT({makeRef("ref")}, opBuilderHelperMergeRecursively, SUCCESS()),
         TransformT({makeRef("ref"), makeRef("ref")}, opBuilderHelperMergeRecursively, FAILURE()),
+        TransformT({makeRef("ref")},
+                   opBuilderHelperMergeRecursively,
+                   FAILURE(
+                       [](const auto& mocks)
+                       {
+                           EXPECT_CALL(*mocks.allowedFields, check(testing::_, DotPath("targetField")))
+                               .WillOnce(testing::Return(false));
+                           return None {};
+                       })),
         /*** Erase Custom Fields ***/
         TransformT({},
                    opBuilderHelperEraseCustomFields,
@@ -163,6 +210,19 @@ INSTANTIATE_TEST_SUITE_P(
         TransformT(R"({"target": 1.1, "ref": {}})", opBuilderHelperMerge, "target", {makeRef("ref")}, FAILURE()),
         TransformT(R"({"target": true, "ref": {}})", opBuilderHelperMerge, "target", {makeRef("ref")}, FAILURE()),
         TransformT(R"({"target": null, "ref": {}})", opBuilderHelperMerge, "target", {makeRef("ref")}, FAILURE()),
+        TransformT(R"({"target": {"a": {"b": "c"}}, "ref": {"a": {"d": "e"}}})",
+                   opBuilderHelperMerge,
+                   "target",
+                   {makeRef("ref")},
+                   FAILURE(
+                       [](const auto& mocks)
+                       {
+                           EXPECT_CALL(*mocks.allowedFields, check(testing::_, DotPath("target")))
+                               .WillOnce(testing::Return(true));
+                           EXPECT_CALL(*mocks.allowedFields, check(testing::_, DotPath("target.a.d")))
+                               .WillOnce(testing::Return(false));
+                           return None {};
+                       })),
         /*** Merge Recursive ***/
         TransformT(R"({"target": [1, 3], "ref": [2, 4]})",
                    opBuilderHelperMergeRecursively,
@@ -209,6 +269,19 @@ INSTANTIATE_TEST_SUITE_P(
             R"({"target": true, "ref": {}})", opBuilderHelperMergeRecursively, "target", {makeRef("ref")}, FAILURE()),
         TransformT(
             R"({"target": null, "ref": {}})", opBuilderHelperMergeRecursively, "target", {makeRef("ref")}, FAILURE()),
+        TransformT(R"({"target": {"a": {"b": "c"}}, "ref": {"a": {"d": "e"}}})",
+                   opBuilderHelperMergeRecursively,
+                   "target",
+                   {makeRef("ref")},
+                   FAILURE(
+                       [](const auto& mocks)
+                       {
+                           EXPECT_CALL(*mocks.allowedFields, check(testing::_, DotPath("target")))
+                               .WillOnce(testing::Return(true));
+                           EXPECT_CALL(*mocks.allowedFields, check(testing::_, DotPath("target.a.d")))
+                               .WillOnce(testing::Return(false));
+                           return None {};
+                       })),
         /*** Erase Custom Fields ***/
         TransformT(R"({"target": "value"})",
                    opBuilderHelperEraseCustomFields,

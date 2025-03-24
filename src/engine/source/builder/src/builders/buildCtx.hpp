@@ -83,6 +83,7 @@ public:
     inline RunState& runState() { return *m_runState; }
 
     inline const builder::IAllowedFields& allowedFields() const override { return *m_allowedFields; }
+    inline std::shared_ptr<const builder::IAllowedFields> allowedFieldsPtr() const override { return m_allowedFields; }
     inline void setAllowedFields(const std::shared_ptr<const builder::IAllowedFields>& allowedFields) override
     {
         m_allowedFields = allowedFields;

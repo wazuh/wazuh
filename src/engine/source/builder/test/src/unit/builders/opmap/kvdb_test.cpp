@@ -368,6 +368,15 @@ INSTANTIATE_TEST_SUITE_P(
         TransformDepsT({makeValue(R"("dbname")"), makeValue(R"("key")")},
                        getTrBuilderExpectHandlerError(getOpBuilderKVDBGet, "dbname"),
                        FAILURE()),
+        TransformDepsT({makeValue(R"("dbname")"), makeValue(R"("key")")},
+                       getTrBuilder(getOpBuilderKVDBGet),
+                       FAILURE(
+                           [](const auto& mocks)
+                           {
+                               EXPECT_CALL(*mocks.allowedFields, check(testing::_, DotPath("targetField")))
+                                   .WillOnce(testing::Return(false));
+                               return None {};
+                           })),
         /*** GET MERGE ***/
         TransformDepsT({}, getTrBuilder(getOpBuilderKVDBGetMerge), FAILURE()),
         TransformDepsT({makeValue(R"("dbname")")}, getTrBuilder(getOpBuilderKVDBGetMerge), FAILURE()),
@@ -400,6 +409,15 @@ INSTANTIATE_TEST_SUITE_P(
         TransformDepsT({makeValue(R"("dbname")"), makeValue(R"("key")")},
                        getTrBuilderExpectHandlerError(getOpBuilderKVDBGetMerge, "dbname"),
                        FAILURE()),
+        TransformDepsT({makeValue(R"("dbname")"), makeValue(R"("key")")},
+                       getTrBuilder(getOpBuilderKVDBGetMerge),
+                       FAILURE(
+                           [](const auto& mocks)
+                           {
+                               EXPECT_CALL(*mocks.allowedFields, check(testing::_, DotPath("targetField")))
+                                   .WillOnce(testing::Return(false));
+                               return None {};
+                           })),
         /*** GET MERGE RECURSIVE***/
         TransformDepsT({}, getTrBuilder(getOpBuilderKVDBGetMergeRecursive), FAILURE()),
         TransformDepsT({makeValue(R"("dbname")")}, getTrBuilder(getOpBuilderKVDBGetMergeRecursive), FAILURE()),
@@ -434,6 +452,15 @@ INSTANTIATE_TEST_SUITE_P(
         TransformDepsT({makeValue(R"("dbname")"), makeValue(R"("key")")},
                        getTrBuilderExpectHandlerError(getOpBuilderKVDBGetMergeRecursive, "dbname"),
                        FAILURE()),
+        TransformDepsT({makeValue(R"("dbname")"), makeValue(R"("key")")},
+                       getTrBuilder(getOpBuilderKVDBGetMergeRecursive),
+                       FAILURE(
+                           [](const auto& mocks)
+                           {
+                               EXPECT_CALL(*mocks.allowedFields, check(testing::_, DotPath("targetField")))
+                                   .WillOnce(testing::Return(false));
+                               return None {};
+                           })),
         /*** SET ***/
         TransformDepsT({}, getTrBuilder(getOpBuilderKVDBSet), FAILURE()),
         TransformDepsT({makeValue(R"("dbname")")}, getTrBuilder(getOpBuilderKVDBSet), FAILURE()),
@@ -473,6 +500,15 @@ INSTANTIATE_TEST_SUITE_P(
         TransformDepsT({makeValue(R"("dbname")"), makeValue(R"("key")"), makeValue(R"("value")")},
                        getTrBuilderExpectHandlerError(getOpBuilderKVDBSet, "dbname"),
                        FAILURE()),
+        TransformDepsT({makeValue(R"("dbname")"), makeRef("keyRef"), makeRef("valueRef")},
+                       getTrBuilder(getOpBuilderKVDBSet),
+                       FAILURE(
+                           [](const auto& mocks)
+                           {
+                               EXPECT_CALL(*mocks.allowedFields, check(testing::_, DotPath("targetField")))
+                                   .WillOnce(testing::Return(false));
+                               return None {};
+                           })),
         /*** DELETE ***/
         TransformDepsT({}, getTrBuilder(getOpBuilderKVDBDelete), FAILURE()),
         TransformDepsT({makeValue(R"("dbname")")}, getTrBuilder(getOpBuilderKVDBDelete), FAILURE()),
@@ -503,6 +539,15 @@ INSTANTIATE_TEST_SUITE_P(
         TransformDepsT({makeValue(R"("dbname")"), makeValue(R"("key")")},
                        getTrBuilderExpectHandlerError(getOpBuilderKVDBDelete, "dbname"),
                        FAILURE()),
+        TransformDepsT({makeValue(R"("dbname")"), makeValue(R"("key")")},
+                       getTrBuilder(getOpBuilderKVDBDelete),
+                       FAILURE(
+                           [](const auto& mocks)
+                           {
+                               EXPECT_CALL(*mocks.allowedFields, check(testing::_, DotPath("targetField")))
+                                   .WillOnce(testing::Return(false));
+                               return None {};
+                           })),
         /*** GET ARRAY ***/
         TransformDepsT({}, getTrBuilder(getOpBuilderKVDBGetArray), FAILURE()),
         TransformDepsT({makeValue(R"("dbname")")}, getTrBuilder(getOpBuilderKVDBGetArray), FAILURE()),
@@ -552,6 +597,15 @@ INSTANTIATE_TEST_SUITE_P(
         TransformDepsT({makeValue(R"("dbname")"), makeValue(R"(["k0", "k1"])")},
                        getTrBuilderExpectHandlerError(getOpBuilderKVDBGetArray, "dbname"),
                        FAILURE()),
+        TransformDepsT({makeValue(R"("dbname")"), makeValue(R"("key")")},
+                       getTrBuilder(getOpBuilderKVDBGetArray),
+                       FAILURE(
+                           [](const auto& mocks)
+                           {
+                               EXPECT_CALL(*mocks.allowedFields, check(testing::_, DotPath("targetField")))
+                                   .WillOnce(testing::Return(false));
+                               return None {};
+                           })),
         /*** BITMASK TO TABLE ***/
         TransformDepsT({}, getTrBuilder(getOpBuilderHelperKVDBDecodeBitmask), FAILURE()),
         TransformDepsT({makeValue(R"("dbname")")}, getTrBuilder(getOpBuilderHelperKVDBDecodeBitmask), FAILURE()),
@@ -696,7 +750,16 @@ INSTANTIATE_TEST_SUITE_P(
                        getTrBuilderExpectHandler(getOpBuilderHelperKVDBDecodeBitmask,
                                                  "dbname",
                                                  expectKvdbGetValue("key", R"({"00001": "heterogeneus", "00002": 2})")),
-                       FAILURE(customRefExpected("targetField", "ref")))),
+                       FAILURE(customRefExpected("targetField", "ref"))),
+        TransformDepsT({makeValue(R"("dbname")"), makeValue(R"("key")"), makeRef("ref")},
+                       getTrBuilder(getOpBuilderHelperKVDBDecodeBitmask),
+                       FAILURE(
+                           [](const auto& mocks)
+                           {
+                               EXPECT_CALL(*mocks.allowedFields, check(testing::_, DotPath("targetField")))
+                                   .WillOnce(testing::Return(false));
+                               return None {};
+                           }))),
     testNameFormatter<TransformBuilderWithDepsTest>("KVDB"));
 } // namespace transformbuildtest
 
@@ -745,6 +808,21 @@ INSTANTIATE_TEST_SUITE_P(
             "target",
             {makeValue(R"("dbname")"), makeRef("ref")},
             FAILURE(customRefExpected("target", "ref"))),
+        TransformDepsT(R"({"ref": "key"})",
+                       getTrBuilderExpectHandler(
+                           getOpBuilderKVDBGet, "dbname", expectKvdbGetValue("key", R"({"notAllowed": "value"})")),
+                       "target",
+                       {makeValue(R"("dbname")"), makeRef("ref")},
+                       FAILURE(
+                           [](const BuildersMocks& mocks)
+                           {
+                               customRefExpected("ref", "target")(mocks);
+                               EXPECT_CALL(*mocks.allowedFields, check(testing::_, DotPath("target")))
+                                   .WillOnce(testing::Return(true));
+                               EXPECT_CALL(*mocks.allowedFields, check(testing::_, DotPath("target.notAllowed")))
+                                   .WillOnce(testing::Return(false));
+                               return None {};
+                           })),
         /*** GET MERGE ***/
         TransformDepsT(
             R"({"target": [0, 2]})",
@@ -781,6 +859,21 @@ INSTANTIATE_TEST_SUITE_P(
             "target",
             {makeValue(R"("dbname")"), makeValue(R"("key")")},
             FAILURE()),
+        TransformDepsT(R"({"ref": "key"})",
+                       getTrBuilderExpectHandler(
+                           getOpBuilderKVDBGetMerge, "dbname", expectKvdbGetValue("key", R"({"notAllowed": "value"})")),
+                       "target",
+                       {makeValue(R"("dbname")"), makeRef("ref")},
+                       FAILURE(
+                           [](const BuildersMocks& mocks)
+                           {
+                               customRefExpected("ref", "target")(mocks);
+                               EXPECT_CALL(*mocks.allowedFields, check(testing::_, DotPath("target")))
+                                   .WillOnce(testing::Return(true));
+                               EXPECT_CALL(*mocks.allowedFields, check(testing::_, DotPath("target.notAllowed")))
+                                   .WillOnce(testing::Return(false));
+                               return None {};
+                           })),
         /*** SET ***/
         TransformDepsT(R"({})",
                        getTrBuilderExpectHandler(getOpBuilderKVDBSet, "dbname", expectKvdbSet("key", R"("value")")),
