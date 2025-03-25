@@ -676,67 +676,9 @@ checks:
     rules:
       - "c:findmnt -kn /var/log/audit -> r:noexec"
 
-  # 1.2.1.1 Ensure GPG keys are configured. (Manual)
-  - id: 18536
-    title: "Ensure GPG keys are configured."
-    description: "Most package managers implement GPG key signing to verify package integrity during installation."
-    rationale: "It is important to ensure that updates are obtained from a valid source to protect against spoofing that could lead to the inadvertent installation of malware on the system."
-    remediation: "Update your package manager GPG keys in accordance with site policy."
-    references:
-      - "https://manpages.debian.org/stretch/apt/sources.list.5.en.html"
-    compliance:
-      - cis: ["1.2.1.1"]
-      - cis_csc_v8: ["7.3", "7.4"]
-      - cis_csc_v7: ["3.4", "3.5"]
-      - cmmc_v2.0: ["SI.L1-3.14.1"]
-      - mitre_mitigations: ["M1051"]
-      - mitre_tactics: ["TA0001"]
-      - mitre_techniques: ["T1195", "T1195.001", "T1195.002"]
-      - nist_sp_800-53: ["SI-2(2)"]
-      - pci_dss_v3.2.1: ["6.2"]
-      - soc_2: ["CC7.1"]
-    condition:
-    rules:
-
-  # 1.2.1.2 Ensure package manager repositories are configured. (Manual)
-  - id: 18537
-    title: "Ensure package manager repositories are configured."
-    description: "Systems need to have package manager repositories configured to ensure they receive the latest patches and updates."
-    rationale: "If a system's package repositories are misconfigured important patches may not be identified or a rogue repository could introduce compromised software."
-    remediation: "Configure your package manager repositories according to site policy."
-    compliance:
-      - cis: ["1.2.1.2"]
-      - cis_csc_v8: ["7.3", "7.4"]
-      - cis_csc_v7: ["3.4", "3.5"]
-      - cmmc_v2.0: ["SI.L1-3.14.1"]
-      - mitre_mitigations: ["M1051"]
-      - mitre_tactics: ["TA0001"]
-      - mitre_techniques: ["T1195", "T1195.001", "T1195.002"]
-      - nist_sp_800-53: ["SI-2(2)"]
-      - pci_dss_v3.2.1: ["6.2"]
-      - soc_2: ["CC7.1"]
-    condition:
-    rules:
-
-  # 1.2.2.1 Ensure updates, patches, and additional security software are installed. (Manual)
-  - id: 18538
-    title: "Ensure updates, patches, and additional security software are installed."
-    description: "Periodically patches are released for included software either due to security flaws or to include additional functionality."
-    rationale: "Newer patches may contain security enhancements that would not be available through the latest full update. As a result, it is recommended that the latest software patches be used to take advantage of the latest functionality. As with any software installation, organizations need to determine if a given update meets their requirements and verify the compatibility and supportability of any additional software against the update revision that is selected."
-    remediation: "Run the following command to update all packages following local site policy guidance on applying updates and patches: # apt update # apt upgrade - OR - # apt dist-upgrade."
-    compliance:
-      - cis: ["1.2.2.1"]
-      - cis_csc_v8: ["7.3", "7.4"]
-      - cis_csc_v7: ["3.4", "3.5"]
-      - cmmc_v2.0: ["SI.L1-3.14.1"]
-      - mitre_mitigations: ["M1051"]
-      - mitre_tactics: ["TA0005"]
-      - mitre_techniques: ["T1195", "T1195.001"]
-      - nist_sp_800-53: ["SI-2(2)"]
-      - pci_dss_v3.2.1: ["6.2"]
-      - soc_2: ["CC7.1"]
-    condition:
-    rules:
+  # 1.2.1.1 Ensure GPG keys are configured. (Manual) - Not Implemented
+  # 1.2.1.2 Ensure package manager repositories are configured. (Manual) - Not Implemented
+  # 1.2.2.1 Ensure updates, patches, and additional security software are installed. (Manual) - Not Implemented
 
   # 1.3.1.1 Ensure AppArmor is installed. (Automated)
   - id: 18539
@@ -758,8 +700,10 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - "c:dpkg-query -s apparmor -> r:install ok installed"
+      - "c:dpkg-query -s apparmor-utils -> r:install ok installed"
 
   # 1.3.1.2 Ensure AppArmor is enabled in the bootloader configuration. (Automated)
   - id: 18540
@@ -781,53 +725,13 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: none
     rules:
+      - 'f:/boot/grub/grub.cfg -> r:^\s*\t*linux && !r:apparmor=1'
+      - 'f:/boot/grub/grub.cfg -> r:^\s*\t*linux && !r:security=apparmor'
 
-  # 1.3.1.3 Ensure all AppArmor Profiles are in enforce or complain mode. (Automated)
-  - id: 18541
-    title: "Ensure all AppArmor Profiles are in enforce or complain mode."
-    description: "AppArmor profiles define what resources applications are able to access."
-    rationale: "Security configuration requirements vary from site to site. Some sites may mandate a policy that is stricter than the default policy, which is perfectly acceptable. This item is intended to ensure that any policies that exist on the system are activated."
-    remediation: "Run the following command to set all profiles to enforce mode: # aa-enforce /etc/apparmor.d/* - OR - Run the following command to set all profiles to complain mode: # aa-complain /etc/apparmor.d/* Note: Any unconfined processes may need to have a profile created or activated for them and then be restarted."
-    compliance:
-      - cis: ["1.3.1.3"]
-      - cis_csc_v8: ["3.3"]
-      - cis_csc_v7: ["14.6"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
-      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-      - iso_27001-2013: ["A.9.1.1"]
-      - mitre_tactics: ["TA0005"]
-      - mitre_techniques: ["T1497"]
-      - nist_sp_800-53: ["AC-5", "AC-6"]
-      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-      - pci_dss_v4.0: ["1.3.1", "7.1"]
-      - soc_2: ["CC5.2", "CC6.1"]
-    condition:
-    rules:
-
-  # 1.3.1.4 Ensure all AppArmor Profiles are enforcing. (Automated)
-  - id: 18542
-    title: "Ensure all AppArmor Profiles are enforcing."
-    description: "AppArmor profiles define what resources applications are able to access."
-    rationale: "Security configuration requirements vary from site to site. Some sites may mandate a policy that is stricter than the default policy, which is perfectly acceptable. This item is intended to ensure that any policies that exist on the system are activated."
-    remediation: "Run the following command to set all profiles to enforce mode: # aa-enforce /etc/apparmor.d/* Note: Any unconfined processes may need to have a profile created or activated for them and then be restarted."
-    compliance:
-      - cis: ["1.3.1.4"]
-      - cis_csc_v8: ["3.3"]
-      - cis_csc_v7: ["14.6"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
-      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-      - iso_27001-2013: ["A.9.1.1"]
-      - mitre_mitigations: ["M1048"]
-      - mitre_tactics: ["TA0005"]
-      - mitre_techniques: ["T1068", "T1565", "T1565.001", "T1565.003"]
-      - nist_sp_800-53: ["AC-5", "AC-6"]
-      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-      - pci_dss_v4.0: ["1.3.1", "7.1"]
-      - soc_2: ["CC5.2", "CC6.1"]
-    condition:
-    rules:
+  # 1.3.1.3 Ensure all AppArmor Profiles are in enforce or complain mode. (Automated) - Not Implemented
+  # 1.3.1.4 Ensure all AppArmor Profiles are enforcing. (Automated) - Not Implemented
 
   # 1.4.1 Ensure bootloader password is set. (Automated)
   - id: 18543
@@ -850,8 +754,10 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'f:/boot/grub/grub.cfg -> r:^\s*\t*set superusers='
+      - 'f:/boot/grub/grub.cfg -> r:^\s*\t*password_pbkdf2\s*\t*\w+'
 
   # 1.4.2 Ensure access to bootloader config is configured. (Automated)
   - id: 18544
@@ -873,67 +779,13 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:stat -Lc "%n %a %u %U %g %G" /boot/grub/grub.cfg -> r:0 root 0 root && r:600'
 
-  # 1.5.1 Ensure address space layout randomization is enabled. (Automated)
-  - id: 18545
-    title: "Ensure address space layout randomization is enabled."
-    description: "Address space layout randomization (ASLR) is an exploit mitigation technique which randomly arranges the address space of key data areas of a process."
-    rationale: "Randomly placing virtual memory regions will make it difficult to write memory page exploits as the memory placement will be consistently shifting."
-    remediation: "Set the following parameter in /etc/sysctl.conf or a file in /etc/sysctl.d/ ending in .conf: - kernel.randomize_va_space = 2 Example: # printf \"%s\\n\" \"kernel.randomize_va_space = 2\" >> /etc/sysctl.d/60- kernel_sysctl.conf Run the following command to set the active kernel parameter: # sysctl -w kernel.randomize_va_space=2 Note: If these settings appear in a canonically later file, or later in the same file, these settings will be overwritten."
-    references:
-      - "http://manpages.ubuntu.com/manpages/focal/man5/sysctl.d.5.html"
-    compliance:
-      - cis: ["1.5.1"]
-      - cis_csc_v8: ["10.5"]
-      - cis_csc_v7: ["8.3"]
-      - mitre_mitigations: ["M1050"]
-      - mitre_tactics: ["TA0002"]
-      - mitre_techniques: ["T1068"]
-      - nist_sp_800-53: ["SI-16"]
-      - pci_dss_v3.2.1: ["1.4"]
-      - soc_2: ["CC6.8"]
-    condition:
-    rules:
-
-  # 1.5.2 Ensure ptrace_scope is restricted. (Automated)
-  - id: 18546
-    title: "Ensure ptrace_scope is restricted."
-    description: 'The ptrace() system call provides a means by which one process (the "tracer") may observe and control the execution of another process (the "tracee"), and examine and change the tracee''s memory and registers. The sysctl settings (writable only with CAP_SYS_PTRACE) are: - 0 - classic ptrace permissions: a process can PTRACE_ATTACH to any other process running under the same uid, as long as it is dumpable (i.e. did not transition uids, start privileged, or have called prctl(PR_SET_DUMPABLE...) already). Similarly, PTRACE_TRACEME is unchanged. - 1 - restricted ptrace: a process must have a predefined relationship with the inferior it wants to call PTRACE_ATTACH on. By default, this relationship is that of only its descendants when the above classic criteria is also met. To change the relationship, an inferior can call prctl(PR_SET_PTRACER, debugger, ...) to declare an allowed debugger PID to call PTRACE_ATTACH on the inferior. Using PTRACE_TRACEME is unchanged. - 2 - admin-only attach: only processes with CAP_SYS_PTRACE may use ptrace with PTRACE_ATTACH, or through children calling PTRACE_TRACEME. - 3 - no attach: no processes may use ptrace with PTRACE_ATTACH nor via PTRACE_TRACEME. Once set, this sysctl value cannot be changed.'
-    rationale: "If one application is compromised, it would be possible for an attacker to attach to other running processes (e.g. Bash, Firefox, SSH sessions, GPG agent, etc) to extract additional credentials and continue to expand the scope of their attack. Enabling restricted mode will limit the ability of a compromised process to PTRACE_ATTACH on other processes running under the same user. With restricted mode, ptrace will continue to work with root user."
-    remediation: "Set the kernel.yama.ptrace_scope parameter in /etc/sysctl.conf or a file in /etc/sysctl.d/ ending in .conf to a value of 1, 2, or 3: kernel.yama.ptrace_scope = 1 - OR - kernel.yama.ptrace_scope = 2 - OR - kernel.yama.ptrace_scope = 3 Example: # printf \"%s\\n\" \"kernel.yama.ptrace_scope = 1\" >> /etc/sysctl.d/60- kernel_sysctl.conf Run the following command to set the active kernel parameter: # sysctl -w kernel.yama.ptrace_scope=1 Note: - - If a value of 2 or 3 is preferred, or required by local site policy, replace the 1 with the desired value of 2 or 3 in the example above If this setting appears in a canonically later file, or later in the same file, the setting will be overwritten."
-    references:
-      - "https://www.kernel.org/doc/Documentation/security/Yama.txt"
-      - "https://github.com/raj3shp/termspy"
-    compliance:
-      - cis: ["1.5.2"]
-      - cis_csc_v8: ["4.8"]
-      - cis_csc_v7: ["9.2"]
-      - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
-      - iso_27001-2013: ["A.13.1.3"]
-      - mitre_mitigations: ["M1040"]
-      - mitre_tactics: ["TA0005"]
-      - mitre_techniques: ["T1055", "T1055.008"]
-      - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
-      - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
-      - soc_2: ["CC6.3", "CC6.6"]
-    condition:
-    rules:
-
-  # 1.5.3 Ensure core dumps are restricted. (Automated)
-  - id: 18547
-    title: "Ensure core dumps are restricted."
-    description: "A core dump is the memory of an executable program. It is generally used to determine why a program aborted. It can also be used to glean confidential information from a core file. The system provides the ability to set a soft limit for core dumps, but this can be overridden by the user."
-    rationale: "Setting a hard limit on core dumps prevents users from overriding the soft variable. If core dumps are required, consider setting limits for user groups (see limits.conf(5) ). In addition, setting the fs.suid_dumpable variable to 0 will prevent setuid programs from dumping core."
-    remediation: "Add the following line to /etc/security/limits.conf or a /etc/security/limits.d/* file: * hard core 0 Set the following parameter in /etc/sysctl.conf or a file in /etc/sysctl.d/ ending in .conf: - fs.suid_dumpable = 0 Example: # printf \"\\n%s\" \"fs.suid_dumpable = 0\" >> /etc/sysctl.d/60-fs_sysctl.conf Run the following command to set the active kernel parameter: # sysctl -w fs.suid_dumpable=0 Note: If these settings appear in a canonically later file, or later in the same file, these settings will be overwritten -IF- systemd-coredump is installed: edit /etc/systemd/coredump.conf and add/modify the following lines: Storage=none ProcessSizeMax=0 Run the command: systemctl daemon-reload."
-    compliance:
-      - cis: ["1.5.3"]
-      - mitre_mitigations: ["M1057"]
-      - mitre_tactics: ["TA0007"]
-      - mitre_techniques: ["T1005"]
-    condition:
-    rules:
+  # 1.5.1 Ensure address space layout randomization is enabled. (Automated) - Not Implemented
+  # 1.5.2 Ensure ptrace_scope is restricted. (Automated) - Not Implemented
+  # 1.5.3 Ensure core dumps are restricted. (Automated) - Not Implemented
 
   # 1.6.1 Ensure message of the day is configured properly. (Automated)
   - id: 18548
@@ -945,8 +797,10 @@ checks:
       - cis: ["1.6.1"]
       - mitre_tactics: ["TA0007"]
       - mitre_techniques: ["T1082", "T1592", "T1592.004"]
-    condition:
+    condition: any
     rules:
+      - "not f:/etc/motd"
+      - 'not f:/etc/motd -> r:\\v|\\r|\\m|\s|Debian|Ubuntu'
 
   # 1.6.2 Ensure local login warning banner is configured properly. (Automated)
   - id: 18549
@@ -958,8 +812,9 @@ checks:
       - cis: ["1.6.2"]
       - mitre_tactics: ["TA0007"]
       - mitre_techniques: ["T1082", "T1592", "T1592.004"]
-    condition:
+    condition: all
     rules:
+      - 'not f:/etc/issue -> r:\\v|\\r|\\m|\\s|Debian|Ubuntu'
 
   # 1.6.3 Ensure remote login warning banner is configured properly. (Automated)
   - id: 18550
@@ -971,8 +826,9 @@ checks:
       - cis: ["1.6.3"]
       - mitre_tactics: ["TA0007"]
       - mitre_techniques: ["T1018", "T1082", "T1592", "T1592.004"]
-    condition:
+    condition: all
     rules:
+      - 'not f:/etc/issue.net -> r:\\v|\\r|\\m|\\s|Debian|Ubuntu'
 
   # 1.6.4 Ensure access to /etc/motd is configured. (Automated)
   - id: 18551
@@ -994,8 +850,10 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: any
     rules:
+      - "not f:/etc/motd"
+      - 'c:stat -Lc "%n %a %u %U %g %G" /etc/motd -> r:0 root 0 root && r:644|640|600|400'
 
   # 1.6.5 Ensure access to /etc/issue is configured. (Automated)
   - id: 18552
@@ -1017,8 +875,9 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:stat -Lc "%n %a %u %U %g %G" /etc/issue -> r:0 root 0 root && r:644|640|600|400'
 
   # 1.6.6 Ensure access to /etc/issue.net is configured. (Automated)
   - id: 18553
@@ -1040,8 +899,9 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:stat -Lc "%n %a %u %U %g %G" /etc/issue.net -> r:0 root 0 root && r:644|640|600|400'
 
   # 1.7.1 Ensure GDM is removed. (Automated)
   - id: 18554
@@ -1062,189 +922,19 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - "not c:dpkg-query -s gdm3 -> r:install ok installed"
 
-  # 1.7.2 Ensure GDM login banner is configured. (Automated)
-  - id: 18555
-    title: "Ensure GDM login banner is configured."
-    description: "GDM is the GNOME Display Manager which handles graphical login for GNOME based systems."
-    rationale: "Warning messages inform users who are attempting to login to the system of their legal status regarding the system and must include the name of the organization that owns the system and any monitoring policies that are in place."
-    remediation: "- IF - A user profile is already created run the following commands to set and enable the text banner message on the login screen: # gsettings set org.gnome.login-screen banner-message-text 'Authorized uses only. All activity may be monitored and reported' # gsettings set org.gnome.login-screen banner-message-enable true Note: - banner-message-text may be set in accordance with local site policy - gsettings commands in this section MUST be done from a command window on a graphical desktop or an error will be returned. - The system must be restarted after all gsettings configurations have been set - in order for CIS-CAT Assessor to appropriately assess. If the dconf database is not updating correctly due to umask requirements contain in the benchmark, then use (umask 0022 && gsetting set) commands from above to temporarily set umask ensuring that any files or directories created by gsettings will have the required permissions. - OR/IF - A user profile does not exist: 1. Create or edit the gdm profile in the /etc/dconf/profile/gdm with the following lines: user-db:user system-db:gdm file-db:/usr/share/gdm/greeter-dconf-defaults Note: gdm is the name of a dconf database. 2. Create a gdm keyfile for machine-wide settings in /etc/dconf/db/gdm.d/01- banner-message: [org/gnome/login-screen] banner-message-enable=true banner-message-text='Type the banner message here.' 3. Update the system databases # dconf update Note: - Users must log out and back in again before the system-wide settings take effect. - There is no character limit for the banner message. gnome-shell autodetects longer stretches of text and enters two column mode. - The banner message cannot be read from an external file."
-    references:
-      - "https://help.gnome.org/admin/system-admin-guide/stable/login-banner.html.en"
-    compliance:
-      - cis: ["1.7.2"]
-      - mitre_mitigations: ["M1028"]
-      - mitre_tactics: ["TA0007"]
-      - mitre_techniques: ["T1078", "T1078.001", "T1078.002", "T1078.003", "T1087", "T1087.001", "T1087.002"]
-    condition:
-    rules:
-
-  # 1.7.3 Ensure GDM disable-user-list option is enabled. (Automated)
-  - id: 18556
-    title: "Ensure GDM disable-user-list option is enabled."
-    description: "GDM is the GNOME Display Manager which handles graphical login for GNOME based systems. The disable-user-list option controls if a list of users is displayed on the login screen."
-    rationale: "Displaying the user list eliminates half of the Userid/Password equation that an unauthorized person would need to log on."
-    remediation: "- IF - A user profile exists run the following command to enable the disable-user- list: # gsettings set org.gnome.login-screen disable-user-list true Note: - gsettings commands in this section MUST be done from a command window on a graphical desktop or an error will be returned. - The system must be restarted after all gsettings configurations have been set - in order for CIS-CAT Assessor to appropriately assess. If the dconf database is not updating correctly due to umask requirements contain in the benchmark, then use (umask 0022 && gsetting set) commands from above to temporarily set umask ensuring that any files or directories created by gsettings will have the required permissions. - OR/IF - A user profile does not exist: 1. Create or edit the gdm profile in /etc/dconf/profile/gdm with the following lines: user-db:user system-db:gdm file-db:/usr/share/gdm/greeter-dconf-defaults Note: gdm is the name of a dconf database. 2. Create a gdm keyfile for machine-wide settings in /etc/dconf/db/gdm.d/00- login-screen: [org/gnome/login-screen] # Do not show the user list disable-user-list=true 3. Update the system databases: # dconf update Note: When the user profile is created or changed, the user will need to log out and log in again before the changes will be applied."
-    references:
-      - "https://help.gnome.org/admin/system-admin-guide/stable/login-userlist-"
-    compliance:
-      - cis: ["1.7.3"]
-      - mitre_mitigations: ["M1028"]
-      - mitre_tactics: ["TA0007"]
-      - mitre_techniques: ["T1078", "T1078.001", "T1078.002", "T1078.003", "T1087", "T1087.001", "T1087.002"]
-    condition:
-    rules:
-
-  # 1.7.4 Ensure GDM screen locks when the user is idle. (Automated)
-  - id: 18557
-    title: "Ensure GDM screen locks when the user is idle."
-    description: "GNOME Desktop Manager can make the screen lock automatically whenever the user is idle for some amount of time."
-    rationale: "Setting a lock-out value reduces the window of opportunity for unauthorized user access to another user's session that has been left unattended."
-    remediation: "- IF - A user profile is already created run the following commands to enable screen locks when the user is idle: # gsettings set org.gnome.desktop.screensaver lock-delay 5 # gsettings set org.gnome.desktop.session idle-delay 900 Note: - gsettings commands in this section MUST be done from a command window on a graphical desktop or an error will be returned. - The system must be restarted after all gsettings configurations have been set - in order for CIS-CAT Assessor to appropriately assess. If the dconf database is not updating correctly due to umask requirements contain in the benchmark, then use (umask 0022 && gsetting set) commands from above to temporarily set umask ensuring that any files or directories created by gsettings will have the required permissions. - OR/IF- A user profile does not exist: 1. Create or edit the user profile in the /etc/dconf/profile/ and verify it includes the following: user-db:user system-db:{NAME_OF_DCONF_DATABASE} Note: local is the name of a dconf database used in the examples. 2. Create the directory /etc/dconf/db/local.d/ if it doesn't already exist: 3. Create the key file /etc/dconf/db/local.d/00-screensaver to provide information for the local database: Example key file: # Specify the dconf path [org/gnome/desktop/session] # Number of seconds of inactivity before the screen goes blank # Set to 0 seconds if you want to deactivate the screensaver. idle-delay=uint32 180 # Specify the dconf path [org/gnome/desktop/screensaver] # Number of seconds after the screen is blank before locking the screen lock-delay=uint32 0 Note: You must include the uint32 along with the integer key values as shown. 4. Run the following command to update the system databases: # dconf update 5. Users must log out and back in again before the system-wide settings take effect."
-    references:
-      - "https://help.gnome.org/admin/system-admin-guide/stable/desktop-"
-    compliance:
-      - cis: ["1.7.4"]
-      - cis_csc_v8: ["4.3"]
-      - cis_csc_v7: ["16.11"]
-      - cmmc_v2.0: ["AC.L2-3.1.10", "AC.L2-3.1.11"]
-      - hipaa: ["164.312(a)(2)(iii)"]
-      - iso_27001-2013: ["A.8.1.3"]
-      - mitre_mitigations: ["M1012"]
-      - mitre_tactics: ["TA0027"]
-      - mitre_techniques: ["T1461"]
-      - nist_sp_800-53: ["AC-11", "AC-11(1)", "AC-12", "AC-2(5)"]
-      - pci_dss_v3.2.1: ["8.1.8"]
-      - pci_dss_v4.0: ["8.2.8"]
-    condition:
-    rules:
-
-  # 1.7.5 Ensure GDM screen locks cannot be overridden. (Automated)
-  - id: 18558
-    title: "Ensure GDM screen locks cannot be overridden."
-    description: "GNOME Desktop Manager can lock down specific settings by using the lockdown mode in dconf to prevent users from changing specific settings. To lock down a dconf key or subpath, create a locks subdirectory in the keyfile directory. The files inside this directory contain a list of keys or subpaths to lock. Just as with the keyfiles, you may add any number of files to this directory."
-    rationale: "Setting a lock-out value reduces the window of opportunity for unauthorized user access to another user's session that has been left unattended. Without locking down the system settings, user settings take precedence over the system settings."
-    remediation: "1. To prevent the user from overriding these settings, create the file /etc/dconf/db/local.d/locks/00-screensaver with the following content: # Lock desktop screensaver settings /org/gnome/desktop/session/idle-delay /org/gnome/desktop/screensaver/lock-delay 2. Update the system databases: # dconf update Note: - A user profile must exist in order to apply locks. - Users must log out and back in again before the system-wide settings take effect."
-    references:
-      - "https://help.gnome.org/admin/system-admin-guide/stable/desktop-"
-      - "https://help.gnome.org/admin/system-admin-guide/stable/dconf-lockdown.html.en"
-    compliance:
-      - cis: ["1.7.5"]
-      - cis_csc_v8: ["4.3"]
-      - cis_csc_v7: ["16.11"]
-      - cmmc_v2.0: ["AC.L2-3.1.10", "AC.L2-3.1.11"]
-      - hipaa: ["164.312(a)(2)(iii)"]
-      - iso_27001-2013: ["A.8.1.3"]
-      - mitre_mitigations: ["M1001"]
-      - mitre_tactics: ["TA0027"]
-      - mitre_techniques: ["T1456"]
-      - nist_sp_800-53: ["AC-11", "AC-11(1)", "AC-12", "AC-2(5)"]
-      - pci_dss_v3.2.1: ["8.1.8"]
-      - pci_dss_v4.0: ["8.2.8"]
-    condition:
-    rules:
-
-  # 1.7.6 Ensure GDM automatic mounting of removable media is disabled. (Automated)
-  - id: 18559
-    title: "Ensure GDM automatic mounting of removable media is disabled."
-    description: "By default GNOME automatically mounts removable media when inserted as a convenience to the user."
-    rationale: "With automounting enabled anyone with physical access could attach a USB drive or disc and have its contents available in system even if they lacked permissions to mount it themselves."
-    impact: "The use of portable hard drives is very common for workstation users. If your organization allows the use of portable storage or media on workstations and physical access controls to workstations is considered adequate there is little value add in turning off automounting."
-    remediation: "- IF - A user profile exists run the following commands to ensure automatic mounting is disabled: # gsettings set org.gnome.desktop.media-handling automount false # gsettings set org.gnome.desktop.media-handling automount-open false Note: - gsettings commands in this section MUST be done from a command window on a graphical desktop or an error will be returned. - The system must be restarted after all gsettings configurations have been set - in order for CIS-CAT Assessor to appropriately assess. If the dconf database is not updating correctly due to umask requirements contain in the benchmark, then use (umask 0022 && gsetting set) commands from above to temporarily set umask ensuring that any files or directories created by gsettings will have the required permissions. - OR/IF - A user profile does not exist: 1. Create a file /etc/dconf/db/local.d/00-media-automount with following content: [org/gnome/desktop/media-handling] automount=false automount-open=false 2. After creating the file, apply the changes using below command : # dconf update Note: Users must log out and back in again before the system-wide settings take effect."
-    references:
-      - "https://access.redhat.com/solutions/20107"
-    compliance:
-      - cis: ["1.7.6"]
-      - cis_csc_v8: ["10.3"]
-      - cis_csc_v7: ["8.5"]
-      - cmmc_v2.0: ["MP.L2-3.8.7"]
-      - hipaa: ["164.310(d)(1)"]
-      - iso_27001-2013: ["A.12.2.1"]
-      - mitre_mitigations: ["M1042"]
-      - mitre_tactics: ["TA0008"]
-      - mitre_techniques: ["T1091"]
-    condition:
-    rules:
-
-  # 1.7.7 Ensure GDM disabling automatic mounting of removable media is not overridden. (Automated)
-  - id: 18560
-    title: "Ensure GDM disabling automatic mounting of removable media is not overridden."
-    description: "By default GNOME automatically mounts removable media when inserted as a convenience to the user. By using the lockdown mode in dconf, you can prevent users from changing specific settings. To lock down a dconf key or subpath, create a locks subdirectory in the keyfile directory. The files inside this directory contain a list of keys or subpaths to lock. Just as with the keyfiles, you may add any number of files to this directory."
-    rationale: "With automounting enabled anyone with physical access could attach a USB drive or disc and have its contents available in system even if they lacked permissions to mount it themselves."
-    impact: "The use of portable hard drives is very common for workstation users."
-    remediation: "1. To prevent the user from overriding these settings, create the file /etc/dconf/db/local.d/locks/00-media-automount with the following content: [org/gnome/desktop/media-handling] automount=false automount-open=false 2. Update the systems databases: # dconf update Note: - A user profile must exist in order to apply locks. - Users must log out and back in again before the system-wide settings take effect."
-    references:
-      - "https://help.gnome.org/admin/system-admin-guide/stable/dconf-lockdown.html.en"
-      - "https://manpages.ubuntu.com/manpages/trusty/man1/gsettings.1.html"
-      - "https://access.redhat.com/solutions/20107"
-    compliance:
-      - cis: ["1.7.7"]
-      - mitre_mitigations: ["M1042"]
-      - mitre_tactics: ["TA0001", "TA0008"]
-      - mitre_techniques: ["T1091"]
-    condition:
-    rules:
-
-  # 1.7.8 Ensure GDM autorun-never is enabled. (Automated)
-  - id: 18561
-    title: "Ensure GDM autorun-never is enabled."
-    description: "The autorun-never setting allows the GNOME Desktop Display Manager to disable autorun through GDM."
-    rationale: "Malware on removable media may taking advantage of Autorun features when the media is inserted into a system and execute."
-    remediation: "- IF - A user profile exists run the following command to set autorun-never to true for GDM users: # gsettings set org.gnome.desktop.media-handling autorun-never true Note: - gsettings commands in this section MUST be done from a command window on a graphical desktop or an error will be returned. - The system must be restarted after all gsettings configurations have been set - in order for CIS-CAT Assessor to appropriately assess. If the dconf database is not updating correctly due to umask requirements contain in the benchmark, then use (umask 0022 && gsetting set) commands from above to temporarily set umask ensuring that any files or directories created by gsettings will have the required permissions. - OR/IF - A lock does not exist: 1. create the file /etc/dconf/db/local.d/locks/00-media-autorun with the following content: [org/gnome/desktop/media-handling] autorun-never=true 2. Update the systems databases: # dconf update Note: Users must log out and back in again before the system-wide settings take effect."
-    compliance:
-      - cis: ["1.7.8"]
-      - cis_csc_v8: ["10.3"]
-      - cis_csc_v7: ["8.5"]
-      - cmmc_v2.0: ["MP.L2-3.8.7"]
-      - hipaa: ["164.310(d)(1)"]
-      - iso_27001-2013: ["A.12.2.1"]
-      - mitre_mitigations: ["M1042"]
-      - mitre_tactics: ["TA0001", "TA0008"]
-      - mitre_techniques: ["T1091"]
-    condition:
-    rules:
-
-  # 1.7.9 Ensure GDM autorun-never is not overridden. (Automated)
-  - id: 18562
-    title: "Ensure GDM autorun-never is not overridden."
-    description: "The autorun-never setting allows the GNOME Desktop Display Manager to disable autorun through GDM. By using the lockdown mode in dconf, you can prevent users from changing specific settings. To lock down a dconf key or subpath, create a locks subdirectory in the keyfile directory. The files inside this directory contain a list of keys or subpaths to lock. Just as with the keyfiles, you may add any number of files to this directory."
-    rationale: "Malware on removable media may taking advantage of Autorun features when the media is inserted into a system and execute."
-    remediation: "1. To prevent the user from overriding these settings, create the file /etc/dconf/db/local.d/locks/00-media-autorun with the following content: [org/gnome/desktop/media-handling] autorun-never=true 2. Update the systems databases: # dconf update Note: - A user profile must exist in order to apply locks. - Users must log out and back in again before the system-wide settings take effect."
-    compliance:
-      - cis: ["1.7.9"]
-      - cis_csc_v8: ["10.3"]
-      - cis_csc_v7: ["8.5"]
-      - cmmc_v2.0: ["MP.L2-3.8.7"]
-      - hipaa: ["164.310(d)(1)"]
-      - iso_27001-2013: ["A.12.2.1"]
-      - mitre_mitigations: ["M1028"]
-      - mitre_tactics: ["TA0001", "TA0008"]
-      - mitre_techniques: ["T1091"]
-    condition:
-    rules:
-
-  # 1.7.10 Ensure XDMCP is not enabled. (Automated)
-  - id: 18563
-    title: "Ensure XDMCP is not enabled."
-    description: "X Display Manager Control Protocol (XDMCP) is designed to provide authenticated access to display management services for remote displays."
-    rationale: "XDMCP is inherently insecure. - XDMCP is not a ciphered protocol. This may allow an attacker to capture keystrokes entered by a user - XDMCP is vulnerable to man-in-the-middle attacks. This may allow an attacker to steal the credentials of legitimate users by impersonating the XDMCP server."
-    remediation: "Edit all files returned by the audit and remove or commend out the Enable=true line in the [xdmcp] block: Example file: # GDM configuration storage # # See /usr/share/gdm/gdm.schemas for a list of available options. [daemon] # Uncomment the line below to force the login screen to use Xorg #WaylandEnable=false # Enabling automatic login # AutomaticLoginEnable = true # AutomaticLogin = user1 # Enabling timed login # TimedLoginEnable = true # TimedLogin = user1 # TimedLoginDelay = 10 [security] [xdmcp] # Enable=true <- **This line should be removed or commented out** [chooser] [debug] # Uncomment the line below to turn on debugging # More verbose logs # Additionally lets the X server dump core if it crashes #Enable=true."
-    compliance:
-      - cis: ["1.7.10"]
-      - cis_csc_v8: ["4.8"]
-      - cis_csc_v7: ["9.2"]
-      - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
-      - iso_27001-2013: ["A.13.1.3"]
-      - mitre_mitigations: ["M1050"]
-      - mitre_tactics: ["TA0002"]
-      - mitre_techniques: ["T1040", "T1056", "T1056.001", "T1557"]
-      - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
-      - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
-      - soc_2: ["CC6.3", "CC6.6"]
-    condition:
-    rules:
+  # 1.7.2 Ensure GDM login banner is configured. (Automated) - Not Implemented
+  # 1.7.3 Ensure GDM disable-user-list option is enabled. (Automated) - Not Implemented
+  # 1.7.4 Ensure GDM screen locks when the user is idle. (Automated) - Not Implemented
+  # 1.7.5 Ensure GDM screen locks cannot be overridden. (Automated) - Not Implemented
+  # 1.7.6 Ensure GDM automatic mounting of removable media is disabled. (Automated) - Not Implemented
+  # 1.7.7 Ensure GDM disabling automatic mounting of removable media is not overridden. (Automated) - Not Implemented
+  # 1.7.8 Ensure GDM autorun-never is enabled. (Automated) - Not Implemented
+  # 1.7.9 Ensure GDM autorun-never is not overridden. (Automated) - Not Implemented
+  # 1.7.10 Ensure XDMCP is not enabled. (Automated) - Not Implemented
 
   # 2.1.1 Ensure autofs services are not in use. (Automated)
   - id: 18564
@@ -1261,8 +951,10 @@ checks:
       - hipaa: ["164.310(d)(1)"]
       - iso_27001-2013: ["A.12.2.1"]
       - mitre_techniques: ["T1068", "T1203", "T1211", "T1212"]
-    condition:
+    condition: any
     rules:
+      - "not c: dpkg-query -s autofs -> r:install ok installed"
+      - 'not c:sh -c "systemctl is-enabled autofs.service & systemctl is-active autofs.service" -> r:^active$|^enabled$'
 
   # 2.1.2 Ensure avahi daemon services are not in use. (Automated)
   - id: 18565
