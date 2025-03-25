@@ -235,23 +235,22 @@ class PYPI final : public TFileSystem, public TFileIO
         }
 
     public:
-        void getPackages(const std::set<std::string>& osRootFolders, std::function<void(nlohmann::json&)> callback)
+        void getPackages(const std::set<std::string>& osRootFolders, std::function<void(nlohmann::json&)> callback, bool excludePaths = false)
         {
-#ifdef __linux__
-
-            excludedPaths.clear();
-
-            if (TFileSystem::exists(DPKG_PATH))
+            if(excludePaths)
             {
-                getDpkgPythonPackages(excludedPaths);
-            }
+                excludedPaths.clear();
 
-            if (TFileSystem::exists(RPM_PATH))
-            {
-                getRpmPythonPackages(excludedPaths);
-            }
+                if (TFileSystem::exists(DPKG_PATH))
+                {
+                    getDpkgPythonPackages(excludedPaths);
+                }
 
-#endif
+                if (TFileSystem::exists(RPM_PATH))
+                {
+                    getRpmPythonPackages(excludedPaths);
+                }
+            }
 
             for (const auto& osFolder : osRootFolders)
             {
