@@ -6,19 +6,18 @@ The REST API allows the remote management of the Wazuh infrastructure such as:
  - CRUD operations for agents
  - CRUD operations for groups
  - Agent's assignments to groups
- - CRUD operations for security entities(Users, Roles, Rules and Policies)
+ - CRUD operations for security entities (Users, Roles, Rules and Policies)
  - Restarting the node(s) or agent(s)
 
  ## Configuration
 
 | Option | Description | Mandatory | Default |
 |--------|-------------|-----------|---------|
-| host | The host address for the communications API |  | localhost |
+| host | The host address for the communications API |  | 0.0.0.0 |
 | post | The port number for the communications API |  | 55000 |
 | drop_privileges | Whether to drop privileges after starting the API | | true |
 | max_upload_size | The maximum upload size in bytes | | 10485760 |
 | jwt_expiration_timeout | The expiration timeout for JWT in seconds | | 900 |
-| rbac_mode | The role-based access control mode. Accepted values: white, black | | white |
 
 ### Intervals
 
@@ -33,9 +32,9 @@ The REST API allows the remote management of the Wazuh infrastructure such as:
 | key | The path to the SSL key file | Yes |  |
 | cert | The path to the SSL certificate file | Yes |  |
 | use_ca | Whether to use a CA certificate |  | False |
-| ca | The path to the CA certificate file |  | '' |
+| ca | The path to the CA certificate file |  | " " |
 | ssl_protocol | The SSL protocol to use. Accepted values: TLS, TLSv1, TLSv1.1, TLSv1.2, auto |  | auto |
-| ssl_ciphers | The SSL ciphers to use |  | '' |
+| ssl_ciphers | The SSL ciphers to use |  | " " |
 
 ### Logging
 
@@ -44,7 +43,7 @@ The REST API allows the remote management of the Wazuh infrastructure such as:
 | level | The logging level. Accepted values: debug, info, warning, error, critical |  | debug |
 | format | The format for logging output. Accepted value: plain |  | plain |
 
-### Cors
+### CORS
 
 | Option | Description | Mandatory | Default |
 |--------|-------------|-----------|---------|
@@ -65,14 +64,14 @@ The REST API allows the remote management of the Wazuh infrastructure such as:
 ```yaml
 management_api:
   host:
-    - localhost
+    - 0.0.0.0
     - ::1
   port: 55000
   intervals:
     request_timeout: 10
   ssl:
-    key: /etc/wazuh-server/certs/server-key.pem
-    cert: /etc/wazuh-server/certs/server.pem
+    key: /etc/wazuh-server/certs/server-1-key.pem
+    cert: /etc/wazuh-server/certs/server-1.pem
     use_ca: false
     ca: /etc/wazuh-server/certs/root-ca.pem
   logging:
