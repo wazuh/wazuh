@@ -24,7 +24,7 @@
 class PYPI
 {
     public:
-        void getPackages(const std::set<std::string>& /*paths*/, std::function<void(nlohmann::json&)> /*callback*/);
+        void getPackages(const std::set<std::string>& /*paths*/, std::function<void(nlohmann::json&)> /*callback*/, bool /*excludePaths*/ = false);
 };
 class NPM
 {
@@ -48,9 +48,9 @@ template <>
 class ModernFactoryPackagesCreator<true> final
 {
     public:
-        static void getPackages(const std::map<std::string, std::set<std::string>>& paths, std::function<void(nlohmann::json&)> callback)
+        static void getPackages(const std::map<std::string, std::set<std::string>>& paths, std::function<void(nlohmann::json&)> callback, bool excludePaths = false)
         {
-            PYPI().getPackages(paths.at("PYPI"), callback);
+            PYPI().getPackages(paths.at("PYPI"), callback, excludePaths);
             NPM().getPackages(paths.at("NPM"), callback);
         }
 };
