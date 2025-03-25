@@ -1362,4 +1362,18 @@
     </mitre>
   </rule>
 
+<!-- Ignore Login events, type 5 for:
+    -  SYSTEM, LOCAL SERVICE and NETWORK SERVICE.
+    -->
+
+  <rule id="60232" level="0">
+    <if_sid>60106</if_sid>
+    <field name="win.system.eventID">^4624$</field>
+    <field name="win.eventdata.logonType">^5$</field>
+    <field name="win.eventdata.targetUserName">^LOCAL SERVICE|^NETWORK SERVICE|^SYSTEM</field>
+    <description>Windows Logon Success 2 (ignored)</description>
+    <options>no_full_log</options>
+    <group>pci_dss_10.2.5,gpg13_7.1,gpg13_7.2,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.9,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+  </rule>
+
 </group>
