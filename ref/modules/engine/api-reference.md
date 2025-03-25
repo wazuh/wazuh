@@ -1,9 +1,8 @@
 # API Reference
 
-
 ## Events stateless
 
-## Description
+### Description
 
 This endpoint receives events to be processed by the Wazuh-Engine security policy. It accepts an NDJSON payload, where each line represents an object, following a strict structure:
 
@@ -19,15 +18,15 @@ The subheader's fields are applied to all subsequent event logs until a new subh
 
 ---
 
-## Endpoint
+### Endpoint
 
 `POST /run/wazuh-server/engine.socket/events/stateless`
 
-## Request Body
+### Request Body
 
 The request must be a valid **NDJSON** (Newline Delimited JSON).
 
-## Processing Flow
+### Processing Flow
 
 - The server extracts JSON objects from the NDJSON batch.
 
@@ -45,7 +44,7 @@ The request must be a valid **NDJSON** (Newline Delimited JSON).
 
 - If a new subheader appears within the batch, it is applied to subsequent events.
 
-## Response Body
+### Response Body
 
 | Field               | Type   | Description                                    |
 |---------------------|--------|------------------------------------------------|
@@ -53,11 +52,11 @@ The request must be a valid **NDJSON** (Newline Delimited JSON).
 | `code`          | String | Error message if status is ERROR.                            |
 
 
-## Example of success cases
+### Example of success cases
 
-### Equeue a valid NDJSON
+#### Equeue a valid NDJSON
 
-#### Request Body
+##### Request Body
 
 ```json
 {"agent":{"id":"2887e1cf-9bf2-431a-b066-a46860080f56","name":"javier","type":"endpoint","version":"5.0.0","groups":["group1","group2"],"host":{"hostname":"myhost","os":{"name":"Amazon Linux 2","platform":"Linux"},"ip":["192.168.1.21"],"architecture":"x86_64"}}}
@@ -67,7 +66,7 @@ The request must be a valid **NDJSON** (Newline Delimited JSON).
 {"log":{"file":{"path":"/var/log/syslog"}},"tags":["production"],"event":{"original":"System stopped.","created":"2023-12-26T09:27:24.000Z"}}
 ```
 
-#### Queued events
+##### Queued events
 
 ```json
 [
@@ -134,15 +133,15 @@ The request must be a valid **NDJSON** (Newline Delimited JSON).
 ]
 ```
 
-#### Response Body
+##### Response Body
 HTTP/1.1 200 OK
 
 
-## Example of failed cases
+### Example of failed cases
 
-### The header is invalid
+#### The header is invalid
 
-#### Request Body
+##### Request Body
 
 ```json
 header
@@ -150,7 +149,7 @@ header
 {"message": "hello"}
 ```
 
-#### Response Body
+##### Response Body
 HTTP/1.1 400 Bad Request
 ```json
 {
@@ -159,16 +158,16 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-### The minimum number of jsons in the NDJSON is not met.
+#### The minimum number of jsons in the NDJSON is not met.
 
-#### Request Body
+##### Request Body
 
 ```json
 {"agent":{"id":"2887e1cf-9bf2-431a-b066-a46860080f56"}}
 {"module":"logcollector","collector":"file"}
 ```
 
-#### Response Body
+##### Response Body
 HTTP/1.1 400 Bad Request
 ```json
 {
@@ -177,9 +176,9 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-### After the header there is no subheader
+#### After the header there is no subheader
 
-#### Request Body
+##### Request Body
 
 ```json
 {"message": "hello"}
@@ -187,7 +186,7 @@ HTTP/1.1 400 Bad Request
 {"module":"logcollector","collector":"file"}
 ```
 
-#### Response Body
+##### Response Body
 HTTP/1.1 400 Bad Request
 ```json
 {
@@ -196,9 +195,9 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-### One of the events is not a valid json
+#### One of the events is not a valid json
 
-#### Request Body
+##### Request Body
 
 ```json
 {"message": "hello"}
@@ -206,7 +205,7 @@ HTTP/1.1 400 Bad Request
 text message
 ```
 
-#### Response Body
+##### Response Body
 HTTP/1.1 400 Bad Request
 ```json
 {
@@ -215,9 +214,9 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-### Invalid subheader
+#### Invalid subheader
 
-#### Request Body
+##### Request Body
 
 ```json
 {"message": "hello"}
@@ -225,7 +224,7 @@ HTTP/1.1 400 Bad Request
 {"message": "hello"}
 ```
 
-#### Response Body
+##### Response Body
 HTTP/1.1 400 Bad Request
 ```json
 {
@@ -234,22 +233,22 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-# Post a resource in the catalog
+## Post a resource in the catalog
 
-## Description
+### Description
 
 Retrieve a specific resource stored in the catalog, based on its name, type, and namespace. This endpoint allows querying for different kinds of resources (e.g., rules, decoders, outputs, filters) in a structured way.
 It returns the content of the resource if it exists, or an error message if the resource is not found.
 
 ---
 
-## Endpoint
+### Endpoint
 
 `POST /run/wazuh-server/engine-api.socket/catalog/resource/post`
 
 ---
 
-## Request Body
+### Request Body
 
 | Field               | Type   | Description                                    |
 |---------------------|--------|------------------------------------------------|
@@ -258,7 +257,7 @@ It returns the content of the resource if it exists, or an error message if the 
 | `content`    | String | Content of the resource |
 | `namespaceid`             | String  | Namespace where the resource will be created. |
 
-## Response Body
+### Response Body
 
 | Field               | Type   | Description                                    |
 |---------------------|--------|------------------------------------------------|
@@ -266,11 +265,11 @@ It returns the content of the resource if it exists, or an error message if the 
 | `error`          | String | Error message if status is ERROR.                            |
 
 
-## Example of success cases
+### Example of success cases
 
-### Post a decoder
+#### Post a decoder
 
-#### Request Body
+##### Request Body
 
 ```json
 {
@@ -281,7 +280,7 @@ It returns the content of the resource if it exists, or an error message if the 
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 200 OK
 {
@@ -289,11 +288,11 @@ HTTP/1.1 200 OK
 }
 ```
 
-## Example of failed cases
+### Example of failed cases
 
-### Missing any of the fields in the request
+#### Missing any of the fields in the request
 
-#### Request Body
+##### Request Body
 ```json
 {
     "format": "yaml",
@@ -302,7 +301,7 @@ HTTP/1.1 200 OK
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -311,9 +310,9 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-### The requested collection does not exist
+#### The requested collection does not exist
 
-#### Request Body
+##### Request Body
 ```json
 {
     "type": "non-exist",
@@ -323,7 +322,7 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -332,9 +331,9 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-### The requested format does not exist
+#### The requested format does not exist
 
-#### Request Body
+##### Request Body
 ```json
 {
     "type": "decoder",
@@ -344,7 +343,7 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -353,9 +352,9 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-### The asset content does not have a name
+#### The asset content does not have a name
 
-#### Request Body
+##### Request Body
 ```json
 {
     "type": "decoder",
@@ -365,7 +364,7 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -374,9 +373,9 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-### The asset name in the content does not match the asset type
+#### The asset name in the content does not match the asset type
 
-#### Request Body
+##### Request Body
 ```json
 {
     "type": "decoder",
@@ -386,7 +385,7 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -395,9 +394,9 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-### The asset already exists currently
+#### The asset already exists currently
 
-#### Request Body
+##### Request Body
 ```json
 {
     "type": "decoder",
@@ -407,7 +406,7 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -416,21 +415,21 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-# Put a resource in the catalog
+## Put a resource in the catalog
 
-## Description
+### Description
 
 This endpoint allows adding or updating a resource in the catalog. The resource is identified by its name and must be provided in a supported format (yaml or json). The resource is stored within a specified namespace, ensuring proper organization and retrieval.
 
 ---
 
-## Endpoint
+### Endpoint
 
 `POST /run/wazuh-server/engine-api.socket/catalog/resource/put`
 
 ---
 
-## Request Body
+### Request Body
 
 | Field               | Type   | Description                                    |
 |---------------------|--------|------------------------------------------------|
@@ -439,7 +438,7 @@ This endpoint allows adding or updating a resource in the catalog. The resource 
 | `content`    | String | Content of the resource |
 | `namespaceid`             | String  | Namespace where the resource will be created. |
 
-## Response Body
+### Response Body
 
 | Field               | Type   | Description                                    |
 |---------------------|--------|------------------------------------------------|
@@ -447,11 +446,11 @@ This endpoint allows adding or updating a resource in the catalog. The resource 
 | `error`          | String | Error message if status is ERROR.                            |
 
 
-## Example of success cases
+### Example of success cases
 
-### Put a decoder
+#### Put a decoder
 
-#### Request Body
+##### Request Body
 
 ```json
 {
@@ -462,7 +461,7 @@ This endpoint allows adding or updating a resource in the catalog. The resource 
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 200 OK
 {
@@ -470,11 +469,11 @@ HTTP/1.1 200 OK
 }
 ```
 
-## Example of failed cases
+### Example of failed cases
 
-### Missing any of the fields in the request
+#### Missing any of the fields in the request
 
-#### Request Body
+##### Request Body
 ```json
 {
     "name": "decoder/documentation/0",
@@ -484,7 +483,7 @@ HTTP/1.1 200 OK
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -493,9 +492,9 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-### The requested format does not exist
+#### The requested format does not exist
 
-#### Request Body
+##### Request Body
 ```json
 {
     "name": "decoder/documentation/0",
@@ -505,7 +504,7 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -514,9 +513,9 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-### The new content does not have an asset name
+#### The new content does not have an asset name
 
-#### Request Body
+##### Request Body
 ```json
 {
     "name": "decoder/documentation/0",
@@ -526,7 +525,7 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -535,9 +534,9 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-### The asset does not exist in the indicated namespace
+#### The asset does not exist in the indicated namespace
 
-#### Request Body
+##### Request Body
 ```json
 {
     "name": "decoder/documentation/0",
@@ -547,7 +546,7 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -556,21 +555,21 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-# Get a resource in the catalog
+## Get a resource in the catalog
 
-## Description
+### Description
 
 This endpoint allows retrieving a specific resource stored in the catalog based on its name, format, and namespace. The resources can be of different types, such as decoders, rules, filters, and outputs. By providing the correct parameters, you can query the catalog for the resource and its associated content. If the resource is found, the content is returned; if not, an error message is provided.
 
 ---
 
-## Endpoint
+### Endpoint
 
 `POST /run/wazuh-server/engine-api.socket/catalog/resource/get`
 
 ---
 
-## Request Body
+### Request Body
 
 | Field               | Type   | Description                                    |
 |---------------------|--------|------------------------------------------------|
@@ -578,7 +577,7 @@ This endpoint allows retrieving a specific resource stored in the catalog based 
 | `format`          | String | Format of the resource (yaml, json).                             |
 | `namespaceid`             | String  | Namespace where the resource was created. |
 
-## Response Body
+### Response Body
 
 | Field               | Type   | Description                                    |
 |---------------------|--------|------------------------------------------------|
@@ -586,11 +585,11 @@ This endpoint allows retrieving a specific resource stored in the catalog based 
 | `error`          | String | Error message if status is ERROR.                            |
 | `content`          | String | Content of the resource if status is OK.                           |
 
-## Example of success cases
+### Example of success cases
 
-### Get a collection
+#### Get a collection
 
-#### Request Body
+##### Request Body
 
 ```json
 {
@@ -600,7 +599,7 @@ This endpoint allows retrieving a specific resource stored in the catalog based 
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 200 OK
 {
@@ -609,9 +608,9 @@ HTTP/1.1 200 OK
 }
 ```
 
-### Get a specific asset
+#### Get a specific asset
 
-#### Request Body
+##### Request Body
 
 ```json
 {
@@ -621,7 +620,7 @@ HTTP/1.1 200 OK
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 200 OK
 {
@@ -630,18 +629,18 @@ HTTP/1.1 200 OK
 }
 ```
 
-## Example of failed cases
+### Example of failed cases
 
-### Missing any of the fields in the request
+#### Missing any of the fields in the request
 
-#### Request Body
+##### Request Body
 ```json
 {
     "name": "decoder"
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -650,9 +649,9 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-### The requested collection does not exist
+#### The requested collection does not exist
 
-#### Request Body
+##### Request Body
 ```json
 {
     "name": "non-exist",
@@ -661,7 +660,7 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -670,9 +669,9 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-### The requested format does not exist
+#### The requested format does not exist
 
-#### Request Body
+##### Request Body
 ```json
 {
     "name": "decoder",
@@ -681,7 +680,7 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -690,9 +689,9 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-### The requested asset name has an invalid format
+#### The requested asset name has an invalid format
 
-#### Request Body
+##### Request Body
 ```json
 {
     "name": "decoder/core-wazuh-message/0/other",
@@ -701,7 +700,7 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -710,39 +709,39 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-# Delete a resource in the catalog
+## Delete a resource in the catalog
 
-## Description
+### Description
 
 This endpoint allows the deletion of a specific resource from the catalog based on its name and the namespace it resides in. The resource can be a collection, decoder, rule, or any other catalog asset. Upon successful deletion, the resource is removed from the catalog. If the resource is not found or an invalid request is made, an error message is returned.
 
 ---
 
-## Endpoint
+### Endpoint
 
 `POST /run/wazuh-server/engine-api.socket/catalog/resource/delete`
 
 ---
 
-## Request Body
+### Request Body
 
 | Field               | Type   | Description                                    |
 |---------------------|--------|------------------------------------------------|
 | `name`               | String | Name of the resource                              |
 | `namespaceid`             | String  | Namespace where the resource was created. |
 
-## Response Body
+### Response Body
 
 | Field               | Type   | Description                                    |
 |---------------------|--------|------------------------------------------------|
 | `status`               | String | Status of the query (OK, ERROR)                             |
 | `error`          | String | Error message if status is ERROR.                            |
 
-## Example of success cases
+### Example of success cases
 
-### Delete a collection
+#### Delete a collection
 
-#### Request Body
+##### Request Body
 
 ```json
 {
@@ -752,7 +751,7 @@ This endpoint allows the deletion of a specific resource from the catalog based 
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 200 OK
 {
@@ -760,9 +759,9 @@ HTTP/1.1 200 OK
 }
 ```
 
-### Delete a decoder
+#### Delete a decoder
 
-#### Request Body
+##### Request Body
 
 ```json
 {
@@ -771,7 +770,7 @@ HTTP/1.1 200 OK
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 200 OK
 {
@@ -779,11 +778,11 @@ HTTP/1.1 200 OK
 }
 ```
 
-## Example of failed cases
+### Example of failed cases
 
-### Delete a collection in a namespace that does not exist
+#### Delete a collection in a namespace that does not exist
 
-#### Request Body
+##### Request Body
 ```json
 {
     "name": "decoder",
@@ -791,7 +790,7 @@ HTTP/1.1 200 OK
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -800,9 +799,9 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-### Delete a decoder in a namespace that does not exist
+#### Delete a decoder in a namespace that does not exist
 
-#### Request Body
+##### Request Body
 ```json
 {
     "name": "decoder/documentation/0",
@@ -810,7 +809,7 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -819,16 +818,16 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-### Missing any of the fields in the request
+#### Missing any of the fields in the request
 
-#### Request Body
+##### Request Body
 ```json
 {
     "name": "decoder/documentation/0",
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -837,9 +836,9 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-### Invalid format of the asset name
+#### Invalid format of the asset name
 
-#### Request Body
+##### Request Body
 ```json
 {
     "name": "decoder/documentation/0/0",
@@ -847,7 +846,7 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -856,22 +855,22 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-# Validate a resource in the catalog
+## Validate a resource in the catalog
 
-## Description
+### Description
 
 This endpoint allows the validation of a specific resource in the catalog. The validation checks the resource's name, format, content, and namespace. If the resource is valid, a success response is returned. If there are any issues, such as missing or incorrect parameters or invalid content, an error message is provided.
 
 ---
 
-## Endpoint
+### Endpoint
 
 `POST /run/wazuh-server/engine-api.socket/catalog/resource/validate`
 
 ---
 
 
-## Request Body
+### Request Body
 
 | Field               | Type   | Description                                    |
 |---------------------|--------|------------------------------------------------|
@@ -880,18 +879,18 @@ This endpoint allows the validation of a specific resource in the catalog. The v
 | `content`    | String | Content of the resource |
 | `namespaceid`             | String  | Namespace where the resource will be created. |
 
-## Response Body
+### Response Body
 
 | Field               | Type   | Description                                    |
 |---------------------|--------|------------------------------------------------|
 | `status`               | String | Status of the query (OK, ERROR)                             |
 | `error`          | String | Error message if status is ERROR.                            |
 
-## Example of success cases
+### Example of success cases
 
-### Validate a decoder
+#### Validate a decoder
 
-#### Request Body
+##### Request Body
 
 ```json
 {
@@ -902,7 +901,7 @@ This endpoint allows the validation of a specific resource in the catalog. The v
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 200 OK
 {
@@ -910,12 +909,12 @@ HTTP/1.1 200 OK
 }
 ```
 
-## Example of failed cases
+### Example of failed cases
 
 
-### Missing any of the fields in the request
+#### Missing any of the fields in the request
 
-#### Request Body
+##### Request Body
 ```json
 {
     "name": "decoder/documentation/0",
@@ -924,7 +923,7 @@ HTTP/1.1 200 OK
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -933,9 +932,9 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-### Invalid helper function
+#### Invalid helper function
 
-#### Request Body
+##### Request Body
 ```json
 {
     "name": "decoder/documentation/0",
@@ -945,7 +944,7 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -954,9 +953,9 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-### Invalid map structure
+#### Invalid map structure
 
-#### Request Body
+##### Request Body
 ```json
 {
     "name": "decoder/documentation/0",
@@ -966,7 +965,7 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -975,26 +974,26 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-# Get namespace a resource in the catalog
+## Get namespace a resource in the catalog
 
-## Description
+### Description
 This endpoint retrieves the list of namespaces in which resources are cataloged. It does not require any input parameters in the request body. The response includes the status of the query and a list of available namespaces.
 
 ---
 
-## Endpoint
+### Endpoint
 
 `POST /run/wazuh-server/engine-api.socket/catalog/namespaces/get`
 
 ---
 
-## Request Body
+### Request Body
 
 ```
 empty
 ```
 
-## Response Body
+### Response Body
 
 | Field               | Type   | Description                                    |
 |---------------------|--------|------------------------------------------------|
@@ -1002,17 +1001,17 @@ empty
 | `error`          | String | Error message if status is ERROR.                            |
 | `namespaces`          | Array String | List of all namespaces.                            |
 
-## Example of success cases
+### Example of success cases
 
-### Validate a decoder
+#### Validate a decoder
 
-#### Request Body
+##### Request Body
 
 ```json
 {}
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 200 OK
 {
@@ -1021,47 +1020,47 @@ HTTP/1.1 200 OK
 }
 ```
 
-## Example of failed cases
+### Example of failed cases
 
 ```
 No errors occur
 ```
 
-# Create a policy
+## Create a policy
 
-## Description
+### Description
 
 This endpoint allows the creation of a new policy in the catalog. The user specifies the policy name, and the system will process the request accordingly. If successful, it will return an OK status. If any issues occur (such as missing or invalid fields), an error message will be returned.
 
 ---
 
-## Endpoint
+### Endpoint
 
 `POST /run/wazuh-server/engine-api.socket/policy/store/post`
 
 ---
 
-## Request Body
+### Request Body
 
-## Request Body
+### Request Body
 
 | Field               | Type   | Description                                    |
 |---------------------|--------|------------------------------------------------|
 | `policy`               | String | Policy name                              |
 
 
-## Response Body
+### Response Body
 
 | Field               | Type   | Description                                    |
 |---------------------|--------|------------------------------------------------|
 | `status`               | String | Status of the query (OK, ERROR)                             |
 | `error`          | String | Error message if status is ERROR.                            |
 
-## Example of success cases
+### Example of success cases
 
-### Validate a decoder
+#### Validate a decoder
 
-#### Request Body
+##### Request Body
 
 ```json
 {
@@ -1069,7 +1068,7 @@ This endpoint allows the creation of a new policy in the catalog. The user speci
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 200 OK
 {
@@ -1077,19 +1076,19 @@ HTTP/1.1 200 OK
 }
 ```
 
-## Example of failed cases
+### Example of failed cases
 
 
-### Missing any of the fields in the request
+#### Missing any of the fields in the request
 
-#### Request Body
+##### Request Body
 ```json
 {
     "name": "policy/wazuh/0",
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -1098,16 +1097,16 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-### Invalid policy name
+#### Invalid policy name
 
-#### Request Body
+##### Request Body
 ```json
 {
     "policy": "policy/wazuh/0/other"
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -1116,16 +1115,16 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-### Policy already exists
+#### Policy already exists
 
-#### Request Body
+##### Request Body
 ```json
 {
     "policy": "policy/wazuh/0"
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -1134,23 +1133,23 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-# Get a policy
+## Get a policy
 
-## Description
+### Description
 
 This endpoint retrieves the details of a specific policy from the catalog, based on the policy name and an optional list of namespaces. It returns information about the assets associated with the policy in the indicated namespaces or an error if any issues are found with the request.
 
 ---
 
-## Endpoint
+### Endpoint
 
 `POST /run/wazuh-server/engine-api.socket/policy/store/get`
 
 ---
 
-## Request Body
+### Request Body
 
-## Request Body
+### Request Body
 
 | Field               | Type   | Description                                    |
 |---------------------|--------|------------------------------------------------|
@@ -1158,7 +1157,7 @@ This endpoint retrieves the details of a specific policy from the catalog, based
 | `namespaces`               | Arry String | List of namespaces to filter in the policy                              |
 
 
-## Response Body
+### Response Body
 
 | Field               | Type   | Description                                    |
 |---------------------|--------|------------------------------------------------|
@@ -1166,11 +1165,11 @@ This endpoint retrieves the details of a specific policy from the catalog, based
 | `error`          | String | Error message if status is ERROR.                            |
 | `data`          | String | Information about the assets associated with the policy in the indicated namespaces                            |
 
-## Example of success cases
+### Example of success cases
 
-### Validate a decoder
+#### Validate a decoder
 
-#### Request Body
+##### Request Body
 
 ```json
 {
@@ -1179,7 +1178,7 @@ This endpoint retrieves the details of a specific policy from the catalog, based
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 200 OK
 {
@@ -1188,19 +1187,19 @@ HTTP/1.1 200 OK
 }
 ```
 
-## Example of failed cases
+### Example of failed cases
 
 
-### Missing any of the fields in the request
+#### Missing any of the fields in the request
 
-#### Request Body
+##### Request Body
 ```json
 {
     "name": "policy/wazuh/0",
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -1209,9 +1208,9 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-### Invalid policy name
+#### Invalid policy name
 
-#### Request Body
+##### Request Body
 ```json
 {
     "policy": "policy/wazuh/0/other",
@@ -1219,7 +1218,7 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -1228,9 +1227,9 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-### Empty namespaces
+#### Empty namespaces
 
-#### Request Body
+##### Request Body
 ```json
 {
     "policy": "policy/wazuh/0",
@@ -1238,7 +1237,7 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -1247,30 +1246,30 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-# Delete a policy
+## Delete a policy
 
-## Description
+### Description
 
 This endpoint allows you to delete a specific policy stored in the catalog, based on its name. If the policy exists, it will be deleted. If the policy doesn't exist, an error message will be returned.
 
 ---
 
-## Endpoint
+### Endpoint
 
 `POST /run/wazuh-server/engine-api.socket/policy/store/delete`
 
 ---
 
-## Request Body
+### Request Body
 
-## Request Body
+### Request Body
 
 | Field               | Type   | Description                                    |
 |---------------------|--------|------------------------------------------------|
 | `policy`               | String | Policy name                              |
 
 
-## Response Body
+### Response Body
 
 | Field               | Type   | Description                                    |
 |---------------------|--------|------------------------------------------------|
@@ -1278,11 +1277,11 @@ This endpoint allows you to delete a specific policy stored in the catalog, base
 | `error`          | String | Error message if status is ERROR.                            |
 
 
-## Example of success cases
+### Example of success cases
 
-### Validate a decoder
+#### Validate a decoder
 
-#### Request Body
+##### Request Body
 
 ```json
 {
@@ -1290,7 +1289,7 @@ This endpoint allows you to delete a specific policy stored in the catalog, base
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 200 OK
 {
@@ -1298,19 +1297,19 @@ HTTP/1.1 200 OK
 }
 ```
 
-## Example of failed cases
+### Example of failed cases
 
 
-### Missing any of the fields in the request
+#### Missing any of the fields in the request
 
-#### Request Body
+##### Request Body
 ```json
 {
     "name": "policy/wazuh/0",
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -1319,16 +1318,16 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-### Invalid policy name
+#### Invalid policy name
 
-#### Request Body
+##### Request Body
 ```json
 {
     "policy": "policy/wazuh/0/other"
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -1337,16 +1336,16 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-### Policy does not exist
+#### Policy does not exist
 
-#### Request Body
+##### Request Body
 ```json
 {
     "policy": "policy/wazuh/0"
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -1355,23 +1354,23 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-# Post asset in policy
+## Post asset in policy
 
-## Description
+### Description
 
 This endpoint allows posting an asset into a specific policy. It requires the policy name, the asset name, and the namespace of the asset. If the asset is valid and the policy exists, it will be added to the policy. If the asset doesn't exist, a warning message will be returned.
 
 ---
 
-## Endpoint
+### Endpoint
 
 `POST /run/wazuh-server/engine-api.socket/policy/asset/post`
 
 ---
 
-## Request Body
+### Request Body
 
-## Request Body
+### Request Body
 
 | Field               | Type   | Description                                    |
 |---------------------|--------|------------------------------------------------|
@@ -1379,7 +1378,7 @@ This endpoint allows posting an asset into a specific policy. It requires the po
 | `asset`               | String | Asset name                              |
 | `namespace`               | String | Namespace of the asset                              |
 
-## Response Body
+### Response Body
 
 | Field               | Type   | Description                                    |
 |---------------------|--------|------------------------------------------------|
@@ -1388,11 +1387,11 @@ This endpoint allows posting an asset into a specific policy. It requires the po
 | `warning`          | String | Warning message if validation errors.                            |
 
 
-## Example of success cases
+### Example of success cases
 
-### Post an existing asset
+#### Post an existing asset
 
-#### Request Body
+##### Request Body
 
 ```json
 {
@@ -1401,7 +1400,7 @@ This endpoint allows posting an asset into a specific policy. It requires the po
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 200 OK
 {
@@ -1409,9 +1408,9 @@ HTTP/1.1 200 OK
 }
 ```
 
-### Post an non-existent asset
+#### Post an non-existent asset
 
-#### Request Body
+##### Request Body
 
 ```json
 {
@@ -1420,7 +1419,7 @@ HTTP/1.1 200 OK
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 200 OK
 {
@@ -1429,19 +1428,19 @@ HTTP/1.1 200 OK
 }
 ```
 
-## Example of failed cases
+### Example of failed cases
 
 
-### Missing any of the fields in the request
+#### Missing any of the fields in the request
 
-#### Request Body
+##### Request Body
 ```json
 {
     "name": "policy/wazuh/0",
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -1450,16 +1449,16 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-### Invalid policy name
+#### Invalid policy name
 
-#### Request Body
+##### Request Body
 ```json
 {
     "policy": "policy/wazuh/0/other"
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -1468,16 +1467,16 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-### Policy does not exist
+#### Policy does not exist
 
-#### Request Body
+##### Request Body
 ```json
 {
     "policy": "policy/wazuh/0"
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -1486,16 +1485,16 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-### Policy does not exist
+#### Policy does not exist
 
-#### Request Body
+##### Request Body
 ```json
 {
     "policy": "policy/wazuh/0"
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -1504,30 +1503,30 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-# Get assets in policy
+## Get assets in policy
 
-## Description
+### Description
 
 This endpoint retrieves a list of assets in a specific policy. It requires the policy name and the namespace of the asset. If the policy and namespace exist, it will return a list of the assets. If any errors occur, an appropriate error message will be returned.
 
 ---
 
-## Endpoint
+### Endpoint
 
 `POST /run/wazuh-server/engine-api.socket/policy/asset/get`
 
 ---
 
-## Request Body
+### Request Body
 
-## Request Body
+### Request Body
 
 | Field               | Type   | Description                                    |
 |---------------------|--------|------------------------------------------------|
 | `policy`               | String | Policy name                              |
 | `namespace`               | String | Namespace of the asset                              |
 
-## Response Body
+### Response Body
 
 | Field               | Type   | Description                                    |
 |---------------------|--------|------------------------------------------------|
@@ -1536,11 +1535,11 @@ This endpoint retrieves a list of assets in a specific policy. It requires the p
 | `data`          | Array String | List of assets.                            |
 
 
-## Example of success cases
+### Example of success cases
 
-### Post an existing asset
+#### Post an existing asset
 
-#### Request Body
+##### Request Body
 
 ```json
 {
@@ -1549,7 +1548,7 @@ This endpoint retrieves a list of assets in a specific policy. It requires the p
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 200 OK
 {
@@ -1558,9 +1557,9 @@ HTTP/1.1 200 OK
 }
 ```
 
-### Post an non-existent asset
+#### Post an non-existent asset
 
-#### Request Body
+##### Request Body
 
 ```json
 {
@@ -1569,7 +1568,7 @@ HTTP/1.1 200 OK
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 200 OK
 {
@@ -1578,19 +1577,19 @@ HTTP/1.1 200 OK
 }
 ```
 
-## Example of failed cases
+### Example of failed cases
 
 
-### Missing any of the fields in the request
+#### Missing any of the fields in the request
 
-#### Request Body
+##### Request Body
 ```json
 {
     "name": "policy/wazuh/0",
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -1599,16 +1598,16 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-### Invalid policy name
+#### Invalid policy name
 
-#### Request Body
+##### Request Body
 ```json
 {
     "policy": "policy/wazuh/0/other"
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -1617,9 +1616,9 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-### Policy does not exist
+#### Policy does not exist
 
-#### Request Body
+##### Request Body
 ```json
 {
     "policy": "policy/wazuh/0",
@@ -1627,7 +1626,7 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -1636,9 +1635,9 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-### Asset does not exist
+#### Asset does not exist
 
-#### Request Body
+##### Request Body
 ```json
 {
     "policy": "policy/wazuh/0",
@@ -1646,7 +1645,7 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -1656,23 +1655,23 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-# Delete assets in policy
+## Delete assets in policy
 
-## Description
+### Description
 
 This endpoint is used to delete an asset from a specific policy. It requires the policy name, asset name, and namespace. If the asset and policy exist, the asset will be deleted. If any errors occur, an appropriate error message will be returned.
 
 ---
 
-## Endpoint
+### Endpoint
 
 `POST /run/wazuh-server/engine-api.socket/policy/asset/delete`
 
 ---
 
-## Request Body
+### Request Body
 
-## Request Body
+### Request Body
 
 | Field               | Type   | Description                                    |
 |---------------------|--------|------------------------------------------------|
@@ -1680,7 +1679,7 @@ This endpoint is used to delete an asset from a specific policy. It requires the
 | `asset`               | String | Asset name                              |
 | `namespace`               | String | Namespace of the asset                              |
 
-## Response Body
+### Response Body
 
 | Field               | Type   | Description                                    |
 |---------------------|--------|------------------------------------------------|
@@ -1689,11 +1688,11 @@ This endpoint is used to delete an asset from a specific policy. It requires the
 | `warning`          | String | Warning message if validation errors.                            |
 
 
-## Example of success cases
+### Example of success cases
 
-### Delete an existing asset
+#### Delete an existing asset
 
-#### Request Body
+##### Request Body
 
 ```json
 {
@@ -1703,7 +1702,7 @@ This endpoint is used to delete an asset from a specific policy. It requires the
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 200 OK
 {
@@ -1711,12 +1710,12 @@ HTTP/1.1 200 OK
 }
 ```
 
-## Example of failed cases
+### Example of failed cases
 
 
-### Missing any of the fields in the request
+#### Missing any of the fields in the request
 
-#### Request Body
+##### Request Body
 ```json
 {
     "asset": "decoder/documentation/0",
@@ -1724,7 +1723,7 @@ HTTP/1.1 200 OK
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -1733,9 +1732,9 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-### Invalid policy name
+#### Invalid policy name
 
-#### Request Body
+##### Request Body
 ```json
 {
     "policy": "policy/wazuh/0/other",
@@ -1744,7 +1743,7 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -1753,9 +1752,9 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-### Policy does not exist
+#### Policy does not exist
 
-#### Request Body
+##### Request Body
 ```json
 {
     "policy": "policy/wazuh/0",
@@ -1764,7 +1763,7 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -1773,9 +1772,9 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-### Asset does not exist
+#### Asset does not exist
 
-#### Request Body
+##### Request Body
 ```json
 {
     "policy": "policy/wazuh/0",
@@ -1784,7 +1783,7 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -1793,29 +1792,29 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-# Clean policy
+## Clean policy
 
-## Description
+### Description
 
 This endpoint is used to clean up a policy by removing any deleted assets that are still listed within it. It requires the policy name and returns a list of assets that were successfully cleaned, or validation errors if any occurred.
 
 ---
 
-## Endpoint
+### Endpoint
 
 `POST /run/wazuh-server/engine-api.socket/policy/asset/clean_deleted`
 
 ---
 
-## Request Body
+### Request Body
 
-## Request Body
+### Request Body
 
 | Field               | Type   | Description                                    |
 |---------------------|--------|------------------------------------------------|
 | `policy`               | String | Policy name                              |
 
-## Response Body
+### Response Body
 
 | Field               | Type   | Description                                    |
 |---------------------|--------|------------------------------------------------|
@@ -1824,11 +1823,11 @@ This endpoint is used to clean up a policy by removing any deleted assets that a
 | `data`          | String | Assets deleted and validation errors.                            |
 
 
-## Example of success cases
+### Example of success cases
 
-### Clean an existing policy
+#### Clean an existing policy
 
-#### Request Body
+##### Request Body
 
 ```json
 {
@@ -1836,7 +1835,7 @@ This endpoint is used to clean up a policy by removing any deleted assets that a
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 200 OK
 {
@@ -1845,17 +1844,17 @@ HTTP/1.1 200 OK
 }
 ```
 
-## Example of failed cases
+### Example of failed cases
 
 
-### Missing any of the fields in the request
+#### Missing any of the fields in the request
 
-#### Request Body
+##### Request Body
 ```json
 {}
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -1864,16 +1863,16 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-### Invalid policy name
+#### Invalid policy name
 
-#### Request Body
+##### Request Body
 ```json
 {
     "policy": "policy/wazuh/0/other"
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -1882,9 +1881,9 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-### Policy does not exist
+#### Policy does not exist
 
-#### Request Body
+##### Request Body
 ```json
 {
     "policy": "policy/wazuh/0",
@@ -1893,7 +1892,7 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -1902,9 +1901,9 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-### There are no deleted assets to be cleaned from the policy
+#### There are no deleted assets to be cleaned from the policy
 
-#### Request Body
+##### Request Body
 ```json
 {
     "policy": "policy/wazuh/0",
@@ -1913,7 +1912,7 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -1923,23 +1922,23 @@ HTTP/1.1 400 Bad Request
 ```
 
 
-# Add default parent
+## Add default parent
 
-## Description
+### Description
 
 This endpoint allows you to set the default parent for a specific namespace within a given policy. The default parent must be a valid decoder or rule. If the parent is not a valid type, the system will return a warning but still save the policy.
 
 ---
 
-## Endpoint
+### Endpoint
 
 `POST /run/wazuh-server/engine-api.socket/policy/default_parent/post`
 
 ---
 
-## Request Body
+### Request Body
 
-## Request Body
+### Request Body
 
 | Field               | Type   | Description                                    |
 |---------------------|--------|------------------------------------------------|
@@ -1947,7 +1946,7 @@ This endpoint allows you to set the default parent for a specific namespace with
 | `namespace`               | String | Namespace of the assets                              |
 | `parent`               | String | Default parent of the namespace                              |
 
-## Response Body
+### Response Body
 
 | Field               | Type   | Description                                    |
 |---------------------|--------|------------------------------------------------|
@@ -1956,11 +1955,11 @@ This endpoint allows you to set the default parent for a specific namespace with
 | `warning`          | String | Warning message if validation errors.                            |
 
 
-## Example of success cases
+### Example of success cases
 
-### Add default parent
+#### Add default parent
 
-#### Request Body
+##### Request Body
 
 ```json
 {
@@ -1970,7 +1969,7 @@ This endpoint allows you to set the default parent for a specific namespace with
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 200 OK
 {
@@ -1978,9 +1977,9 @@ HTTP/1.1 200 OK
 }
 ```
 
-### Set a default parent that is neither a rule nor a decoder
+#### Set a default parent that is neither a rule nor a decoder
 
-#### Request Body
+##### Request Body
 ```json
 {
     "policy": "policy/wazuh/0",
@@ -1989,7 +1988,7 @@ HTTP/1.1 200 OK
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -1998,12 +1997,12 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-## Example of failed cases
+### Example of failed cases
 
 
-### Missing any of the fields in the request
+#### Missing any of the fields in the request
 
-#### Request Body
+##### Request Body
 ```json
 {
     "namespace": "system",
@@ -2011,7 +2010,7 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -2020,9 +2019,9 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-### Invalid policy name
+#### Invalid policy name
 
-#### Request Body
+##### Request Body
 ```json
 {
     "policy": "policy/wazuh/0/other",
@@ -2031,7 +2030,7 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -2040,9 +2039,9 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-### Policy does not exist
+#### Policy does not exist
 
-#### Request Body
+##### Request Body
 ```json
 {
     "policy": "policy/wazuh/0",
@@ -2051,7 +2050,7 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -2060,29 +2059,29 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-# Get default parent
+## Get default parent
 
-## Description
+### Description
 
 This endpoint retrieves the default parent for a specific namespace within a given policy. The default parent must be set previously in the system, and the response will return the associated parent for the namespace.
 
 ---
 
-## Endpoint
+### Endpoint
 
 `POST /run/wazuh-server/engine-api.socket/policy/default_parent/get`
 
 ---
 
 
-## Request Body
+### Request Body
 
 | Field               | Type   | Description                                    |
 |---------------------|--------|------------------------------------------------|
 | `policy`               | String | Policy name                              |
 | `namespace`               | String | Namespace of the assets                              |
 
-## Response Body
+### Response Body
 
 | Field               | Type   | Description                                    |
 |---------------------|--------|------------------------------------------------|
@@ -2091,11 +2090,11 @@ This endpoint retrieves the default parent for a specific namespace within a giv
 | `namespace`               | Array String | Default parent of the namespace                              |
 
 
-## Example of success cases
+### Example of success cases
 
-### Get default parent
+#### Get default parent
 
-#### Request Body
+##### Request Body
 
 ```json
 {
@@ -2104,7 +2103,7 @@ This endpoint retrieves the default parent for a specific namespace within a giv
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 200 OK
 {
@@ -2113,19 +2112,19 @@ HTTP/1.1 200 OK
 }
 ```
 
-## Example of failed cases
+### Example of failed cases
 
 
-### Missing any of the fields in the request
+#### Missing any of the fields in the request
 
-#### Request Body
+##### Request Body
 ```json
 {
     "namespace": "system"
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -2134,9 +2133,9 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-### Invalid policy name
+#### Invalid policy name
 
-#### Request Body
+##### Request Body
 ```json
 {
     "policy": "policy/wazuh/0/other",
@@ -2144,7 +2143,7 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -2153,9 +2152,9 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-### Policy does not exist
+#### Policy does not exist
 
-#### Request Body
+##### Request Body
 ```json
 {
     "policy": "policy/wazuh/0",
@@ -2163,7 +2162,7 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -2172,22 +2171,22 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-# Delete default parent
+## Delete default parent
 
-## Description
+### Description
 
 This endpoint deletes the default parent for a specific namespace within a given policy. The default parent to be deleted must be previously set in the system, and this operation removes it from the namespace configuration.
 
 ---
 
-## Endpoint
+### Endpoint
 
 `POST /run/wazuh-server/engine-api.socket/policy/default_parent/delete`
 
 ---
 
 
-## Request Body
+### Request Body
 
 | Field               | Type   | Description                                    |
 |---------------------|--------|------------------------------------------------|
@@ -2195,7 +2194,7 @@ This endpoint deletes the default parent for a specific namespace within a given
 | `namespace`               | String | Namespace of the assets                              |
 | `parent`               | String | Namespace of the parent                              |
 
-## Response Body
+### Response Body
 
 | Field               | Type   | Description                                    |
 |---------------------|--------|------------------------------------------------|
@@ -2204,11 +2203,11 @@ This endpoint deletes the default parent for a specific namespace within a given
 | `warning`          | String | Warning message if validation errors.                            |
 
 
-## Example of success cases
+### Example of success cases
 
-### Delete default parent
+#### Delete default parent
 
-#### Request Body
+##### Request Body
 
 ```json
 {
@@ -2218,7 +2217,7 @@ This endpoint deletes the default parent for a specific namespace within a given
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 200 OK
 {
@@ -2226,12 +2225,12 @@ HTTP/1.1 200 OK
 }
 ```
 
-## Example of failed cases
+### Example of failed cases
 
 
-### Missing any of the fields in the request
+#### Missing any of the fields in the request
 
-#### Request Body
+##### Request Body
 ```json
 {
     "parent": "decoder/documentation-parent/0",
@@ -2239,7 +2238,7 @@ HTTP/1.1 200 OK
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -2248,9 +2247,9 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-### Invalid policy name
+#### Invalid policy name
 
-#### Request Body
+##### Request Body
 ```json
 {
     "policy": "policy/wazuh/0/other",
@@ -2259,7 +2258,7 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -2268,9 +2267,9 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-### Policy does not exist
+#### Policy does not exist
 
-#### Request Body
+##### Request Body
 ```json
 {
     "policy": "policy/wazuh/0",
@@ -2279,7 +2278,7 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -2288,9 +2287,9 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-### Default parent does not exist
+#### Default parent does not exist
 
-#### Request Body
+##### Request Body
 ```json
 {
     "policy": "policy/wazuh/0",
@@ -2299,7 +2298,7 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -2308,28 +2307,28 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-# List policies
+## List policies
 
-## Description
+### Description
 
 This endpoint retrieves the list of available policies. It returns all the policies that are stored within the system.
 
 ---
 
-## Endpoint
+### Endpoint
 
 `POST /run/wazuh-server/engine-api.socket/policy/list`
 
 ---
 
 
-## Request Body
+### Request Body
 
 ```
 empty
 ```
 
-## Response Body
+### Response Body
 
 | Field               | Type   | Description                                    |
 |---------------------|--------|------------------------------------------------|
@@ -2338,17 +2337,17 @@ empty
 | `data`          | Array String | List of policies.                            |
 
 
-## Example of success cases
+### Example of success cases
 
-### List policies
+#### List policies
 
-#### Request Body
+##### Request Body
 
 ```json
 {}
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 200 OK
 {
@@ -2357,35 +2356,35 @@ HTTP/1.1 200 OK
 }
 ```
 
-## Example of failed cases
+### Example of failed cases
 
 ```
 No errors occur
 ```
 
-# List namespaces in the policy
+## List namespaces in the policy
 
-## Description
+### Description
 
 This endpoint retrieves the list of namespaces available in a given policy. It returns all the namespaces associated with the specified policy.
 
 ---
 
-## Endpoint
+### Endpoint
 
 `POST /run/wazuh-server/engine-api.socket/policy/namespaces/list`
 
 ---
 
 
-## Request Body
+### Request Body
 
 | Field               | Type   | Description                                    |
 |---------------------|--------|------------------------------------------------|
 | `policy`               | String | Policy name                             |
 
 
-## Response Body
+### Response Body
 
 | Field               | Type   | Description                                    |
 |---------------------|--------|------------------------------------------------|
@@ -2394,11 +2393,11 @@ This endpoint retrieves the list of namespaces available in a given policy. It r
 | `data`          | Array String | List of policies.                            |
 
 
-## Example of success cases
+### Example of success cases
 
 ### List namespaces
 
-#### Request Body
+##### Request Body
 
 ```json
 {
@@ -2406,7 +2405,7 @@ This endpoint retrieves the list of namespaces available in a given policy. It r
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 200 OK
 {
@@ -2416,17 +2415,17 @@ HTTP/1.1 200 OK
 ```
 
 
-## Example of failed cases
+### Example of failed cases
 
 
 ### Missing any of the fields in the request
 
-#### Request Body
+##### Request Body
 ```json
 {}
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -2437,14 +2436,14 @@ HTTP/1.1 400 Bad Request
 
 ### Invalid policy name
 
-#### Request Body
+##### Request Body
 ```json
 {
     "policy": "policy/wazuh/0/other"
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -2455,14 +2454,14 @@ HTTP/1.1 400 Bad Request
 
 ### Policy does not exist
 
-#### Request Body
+##### Request Body
 ```json
 {
     "policy": "policy/wazuh/0"
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -2471,22 +2470,22 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-# Add a mmdb to the geo manager
+## Add a mmdb to the geo manager
 
-## Description
+### Description
 
 This endpoint allows you to add a new MMDB (MaxMind Database) file to the geo manager. It supports two types of databases: ASN (Autonomous System Number) and City databases.
 
 ---
 
-## Endpoint
+### Endpoint
 
 `POST /run/wazuh-server/engine-api.socket/geo/db/add`
 
 ---
 
 
-## Request Body
+### Request Body
 
 | Field               | Type   | Description                                    |
 |---------------------|--------|------------------------------------------------|
@@ -2495,7 +2494,7 @@ This endpoint allows you to add a new MMDB (MaxMind Database) file to the geo ma
 
 
 
-## Response Body
+### Response Body
 
 | Field               | Type   | Description                                    |
 |---------------------|--------|------------------------------------------------|
@@ -2503,13 +2502,13 @@ This endpoint allows you to add a new MMDB (MaxMind Database) file to the geo ma
 | `error`          | String | Error message if status is ERROR.                            |
 
 
-## Example of success cases
+### Example of success cases
 
-### Add a asn mmddb
+#### Add a asn mmddb
 
 This is assuming that there is an mmdb database in the indicated path.
 
-#### Request Body
+##### Request Body
 
 ```json
 {
@@ -2518,7 +2517,7 @@ This is assuming that there is an mmdb database in the indicated path.
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 200 OK
 {
@@ -2526,11 +2525,11 @@ HTTP/1.1 200 OK
 }
 ```
 
-### Add a city mmddb
+#### Add a city mmddb
 
 This is assuming that there is an mmdb database in the indicated path.
 
-#### Request Body
+##### Request Body
 
 ```json
 {
@@ -2539,7 +2538,7 @@ This is assuming that there is an mmdb database in the indicated path.
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 200 OK
 {
@@ -2548,17 +2547,17 @@ HTTP/1.1 200 OK
 ```
 
 
-## Example of failed cases
+### Example of failed cases
 
 
-### Missing any of the fields in the request
+#### Missing any of the fields in the request
 
-#### Request Body
+##### Request Body
 ```json
 {}
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -2567,9 +2566,9 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-### Type non-exist
+#### Type non-exist
 
-#### Request Body
+##### Request Body
 ```json
 {
     "path": "/tmp/other-base.mmdb",
@@ -2577,7 +2576,7 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -2586,11 +2585,11 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-### Name repeated in databases
+#### Name repeated in databases
 
 Assuming a database called base.mmdb already exists
 
-#### Request Body
+##### Request Body
 ```json
 {
     "path": "/tmp/base.mmdb",
@@ -2598,7 +2597,7 @@ Assuming a database called base.mmdb already exists
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -2607,11 +2606,11 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-### The type already exists in some database
+#### The type already exists in some database
 
 Assuming a database called base.mmdb of type city already exists
 
-#### Request Body
+##### Request Body
 ```json
 {
     "path": "/tmp/other-base.mmdb",
@@ -2619,7 +2618,7 @@ Assuming a database called base.mmdb of type city already exists
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -2628,11 +2627,11 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-### The specified path does not contain an mmdb
+#### The specified path does not contain an mmdb
 
 Assuming there is no mmdb called base.mmdb nor a database of type city
 
-#### Request Body
+##### Request Body
 ```json
 {
     "path": "/tmp/base.mmdb",
@@ -2640,7 +2639,7 @@ Assuming there is no mmdb called base.mmdb nor a database of type city
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -2649,22 +2648,22 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-# Remote upsert
+## Remote upsert
 
-## Description
+### Description
 
 This endpoint allows for the addition or update of a geolocation MMDB (MaxMind Database) on the server from a remote location. It requires the path to the MMDB file, the type of database (either "city" or "asn"), and URLs for the database and its integrity hash. This operation ensures that the geolocation data is up-to-date by either adding a new MMDB or replacing an existing one, depending on whether the type and name match with the current database configuration.
 
 ---
 
-## Endpoint
+### Endpoint
 
 `POST /run/wazuh-server/engine-api.socket/geo/db/remoteUpsert`
 
 ---
 
 
-## Request Body
+### Request Body
 
 | Field               | Type   | Description                                    |
 |---------------------|--------|------------------------------------------------|
@@ -2674,7 +2673,7 @@ This endpoint allows for the addition or update of a geolocation MMDB (MaxMind D
 | `hashUrl`       | String | Hash URL for integrity verification..                              |
 
 
-## Response Body
+### Response Body
 
 | Field               | Type   | Description                                    |
 |---------------------|--------|------------------------------------------------|
@@ -2682,13 +2681,13 @@ This endpoint allows for the addition or update of a geolocation MMDB (MaxMind D
 | `error`          | String | Error message if status is ERROR.                            |
 
 
-## Example of success cases
+### Example of success cases
 
-### Add a asn mmddb
+#### Add a asn mmddb
 
 This is assuming that there is an mmdb database in the indicated path.
 
-#### Request Body
+##### Request Body
 
 ```json
 {
@@ -2699,7 +2698,7 @@ This is assuming that there is an mmdb database in the indicated path.
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 200 OK
 {
@@ -2707,19 +2706,19 @@ HTTP/1.1 200 OK
 }
 ```
 
-## Example of failed cases
+### Example of failed cases
 
 
-### Missing any of the fields in the request
+#### Missing any of the fields in the request
 
-#### Request Body
+##### Request Body
 ```json
 {
     "type": "asn"
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -2730,7 +2729,7 @@ HTTP/1.1 400 Bad Request
 
 ### Type non-exist
 
-#### Request Body
+##### Request Body
 ```json
 {
     "path": "/tmp/other-base.mmdb",
@@ -2740,7 +2739,7 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -2749,11 +2748,11 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-### Update an mmdb with an incorrect type
+#### Update an mmdb with an incorrect type
 
 Assuming that base.mmdb exists and is of type asn
 
-#### Request Body
+##### Request Body
 ```json
 {
     "path": "/tmp/base.mmdb",
@@ -2763,7 +2762,7 @@ Assuming that base.mmdb exists and is of type asn
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -2772,11 +2771,11 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-### The type already exists in some database
+#### The type already exists in some database
 
 Assuming a database called base.mmdb of type city already exists
 
-#### Request Body
+##### Request Body
 ```json
 {
     "path": "/tmp/other-base.mmdb",
@@ -2784,7 +2783,7 @@ Assuming a database called base.mmdb of type city already exists
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -2793,11 +2792,11 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-### The specified path does not contain an mmdb
+#### The specified path does not contain an mmdb
 
 Assuming there is no mmdb called base.mmdb nor a database of type city
 
-#### Request Body
+##### Request Body
 ```json
 {
     "path": "/tmp/base.mmdb",
@@ -2807,7 +2806,7 @@ Assuming there is no mmdb called base.mmdb nor a database of type city
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -2816,29 +2815,29 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-# Delete mmdb
+## Delete mmdb
 
-## Description
+### Description
 
 This endpoint allows for the removal of a geolocation MMDB (MaxMind Database) from the server. This operation requires the path of the MMDB file to be deleted. If the specified MMDB does not exist or the path is invalid, the operation will return an error.
 
 ---
 
-## Endpoint
+### Endpoint
 
 `POST /run/wazuh-server/engine-api.socket/geo/db/del`
 
 ---
 
 
-## Request Body
+### Request Body
 
 | Field               | Type   | Description                                    |
 |---------------------|--------|------------------------------------------------|
 | `path`               | String | Path of the MMDB database file to add.                              |
 
 
-## Response Body
+### Response Body
 
 | Field               | Type   | Description                                    |
 |---------------------|--------|------------------------------------------------|
@@ -2846,13 +2845,13 @@ This endpoint allows for the removal of a geolocation MMDB (MaxMind Database) fr
 | `error`          | String | Error message if status is ERROR.                            |
 
 
-## Example of success cases
+### Example of success cases
 
-### Delete a asn mmddb
+#### Delete a asn mmddb
 
 This is assuming that there is an mmdb database in the indicated path.
 
-#### Request Body
+##### Request Body
 
 ```json
 {
@@ -2860,7 +2859,7 @@ This is assuming that there is an mmdb database in the indicated path.
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 200 OK
 {
@@ -2868,17 +2867,17 @@ HTTP/1.1 200 OK
 }
 ```
 
-## Example of failed cases
+### Example of failed cases
 
 
-### Missing any of the fields in the request
+#### Missing any of the fields in the request
 
-#### Request Body
+##### Request Body
 ```json
 {}
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -2887,18 +2886,18 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-### Database does not exist
+#### Database does not exist
 
 Assuming that base.mmdb exists and is of type asn
 
-#### Request Body
+##### Request Body
 ```json
 {
     "path": "/tmp/base.mmdb"
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -2907,28 +2906,28 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-# List mmdb
+## List mmdb
 
-## Description
+### Description
 
 This endpoint provides a list of all the geolocation MMDB databases currently stored in the server. It returns a collection of entries, each representing a database with its associated name, path, and type (either ASN or CITY). This operation does not require any parameters in the request body.
 
 ---
 
-## Endpoint
+### Endpoint
 
 `POST /run/wazuh-server/engine-api.socket/geo/db/list`
 
 ---
 
 
-## Request Body
+### Request Body
 
 ```
 empty
 ```
 
-## Response Body
+### Response Body
 
 | Field               | Type   | Description                                    |
 |---------------------|--------|------------------------------------------------|
@@ -2945,19 +2944,19 @@ empty
 | `type`          | String | MMDB database type [city|asn].                           |
 
 
-## Example of success cases
+### Example of success cases
 
-### List databases
+#### List databases
 
 This is assuming that there are two databases, one of type ASN and one of type CITY.
 
-#### Request Body
+##### Request Body
 
 ```json
 {}
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 200 OK
 {
@@ -2977,28 +2976,28 @@ HTTP/1.1 200 OK
 }
 ```
 
-## Example of failed cases
+### Example of failed cases
 
 ```
 No errors occur
 ```
 
-# Create a route
+## Create a route
 
-## Description
+### Description
 
 This endpoint allows the creation of a new route in the Wazuh Engine API. A route is a rule that determines how requests are processed based on a specified policy, filter, and priority. The route must have a unique name, an associated policy, and a filter to define its behavior. The priority value determines the order of execution when multiple routes exist. The API validates the request to ensure that the policy and filter exist before allowing the creation of a route.
 
 ---
 
-## Endpoint
+### Endpoint
 
 `POST /run/wazuh-server/engine-api.socket/router/route/post`
 
 ---
 
 
-## Request Body
+### Request Body
 
 | Field               | Type   | Description                                    |
 |---------------------|--------|------------------------------------------------|
@@ -3015,18 +3014,18 @@ This endpoint allows the creation of a new route in the Wazuh Engine API. A rout
 | `priority`               | Unsigned Integer | Priority of the route                              |
 | `description`               | String | Description of the route                              |
 
-## Response Body
+### Response Body
 
 | Field               | Type   | Description                                    |
 |---------------------|--------|------------------------------------------------|
 | `status`               | String | Status of the query (OK, ERROR)                             |
 | `error`          | String | Error message if status is ERROR.                            |
 
-## Example of success cases
+### Example of success cases
 
-### Create a route
+#### Create a route
 
-#### Request Body
+##### Request Body
 
 ```json
 {
@@ -3039,7 +3038,7 @@ This endpoint allows the creation of a new route in the Wazuh Engine API. A rout
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 200 OK
 {
@@ -3047,17 +3046,17 @@ HTTP/1.1 200 OK
 }
 ```
 
-## Example of failed cases
+### Example of failed cases
 
 
-### Missing any of the fields in the request
+#### Missing any of the fields in the request
 
-#### Request Body
+##### Request Body
 ```json
 {}
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -3066,7 +3065,7 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-#### Request Body
+##### Request Body
 ```json
 {
     "route": {
@@ -3077,7 +3076,7 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -3086,11 +3085,11 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-### Policy does not exist
+#### Policy does not exist
 
 The error occurs when sending the route creation request without first creating the policy.
 
-#### Request Body
+##### Request Body
 ```json
 {
     "route": {
@@ -3102,7 +3101,7 @@ The error occurs when sending the route creation request without first creating 
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -3111,11 +3110,11 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-### Policy has not assets
+#### Policy has not assets
 
 The error occurs when sending the route creation request without first having loaded any asset into the policy.
 
-#### Request Body
+##### Request Body
 ```json
 {
     "route": {
@@ -3127,7 +3126,7 @@ The error occurs when sending the route creation request without first having lo
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -3136,11 +3135,11 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-### Filter does not exist
+#### Filter does not exist
 
 The error occurs when sending the route creation request without first creating the filter.
 
-#### Request Body
+##### Request Body
 ```json
 {
     "route": {
@@ -3152,7 +3151,7 @@ The error occurs when sending the route creation request without first creating 
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -3161,11 +3160,11 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-### Set priority to 0
+#### Set priority to 0
 
 This error occurs considering that there is no route with the same name.
 
-#### Request Body
+##### Request Body
 ```json
 {
     "route": {
@@ -3177,7 +3176,7 @@ This error occurs considering that there is no route with the same name.
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -3186,11 +3185,11 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-### Set priority to 1000
+#### Set priority to 1000
 
 This error occurs considering that there is no route with the same name.
 
-#### Request Body
+##### Request Body
 ```json
 {
     "route": {
@@ -3202,7 +3201,7 @@ This error occurs considering that there is no route with the same name.
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -3211,11 +3210,11 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-### Create a route with a priority in use
+#### Create a route with a priority in use
 
 This error occurs because the policy and filter have already been created and a route with the same priority already exists.
 
-#### Request Body
+##### Request Body
 ```json
 {
     "route": {
@@ -3227,7 +3226,7 @@ This error occurs because the policy and filter have already been created and a 
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -3236,11 +3235,11 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-### Route name already exist
+#### Route name already exist
 
 This error occurs considering that the policy and filter have already been created and there is a route with the same name created.
 
-#### Request Body
+##### Request Body
 ```json
 {
     "route": {
@@ -3252,7 +3251,7 @@ This error occurs considering that the policy and filter have already been creat
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -3261,29 +3260,29 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-# Get a route
+## Get a route
 
-## Description
+### Description
 
 This endpoint allows retrieving detailed information about a specific route in the Wazuh Engine API. The user must provide the name of the route, and if it exists, the API will return its details, including policy, filter, priority, status, and other metadata.
 
 ---
 
-## Endpoint
+### Endpoint
 
 `POST /run/wazuh-server/engine-api.socket/router/route/get`
 
 ---
 
 
-## Request Body
+### Request Body
 
 | Field               | Type   | Description                                    |
 |---------------------|--------|------------------------------------------------|
 | `name`               | String | Name of the route to get                              |
 
 
-## Response Body
+### Response Body
 
 | Field               | Type   | Description                                    |
 |---------------------|--------|------------------------------------------------|
@@ -3304,11 +3303,11 @@ This endpoint allows retrieving detailed information about a specific route in t
 | `entry_status`               | String | Status of the entry [STATE_UNKNOWN|DISABLED|ENABLED]                              |
 | `uptime`               | Unsigned Integer | Last update of the route                              |
 
-## Example of success cases
+### Example of success cases
 
-### Get a route
+#### Get a route
 
-#### Request Body
+##### Request Body
 
 ```json
 {
@@ -3316,7 +3315,7 @@ This endpoint allows retrieving detailed information about a specific route in t
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 200 OK
 {
@@ -3333,17 +3332,17 @@ HTTP/1.1 200 OK
 }
 ```
 
-## Example of failed cases
+### Example of failed cases
 
 
-### Missing any of the fields in the request
+#### Missing any of the fields in the request
 
-#### Request Body
+##### Request Body
 ```json
 {}
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -3352,18 +3351,18 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-### Route does not exist
+#### Route does not exist
 
 This error occurs considering that the route has not yet been created.
 
-#### Request Body
+##### Request Body
 ```json
 {
     "name": "documentation"
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -3372,30 +3371,30 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-# Delete a route
+## Delete a route
 
-## Description
+### Description
 
 This endpoint allows deleting a specific route in the Wazuh Engine API. The user must provide the name of the route to be deleted. If the route exists, it will be removed, and the API will return a success response.
 
 
 ---
 
-## Endpoint
+### Endpoint
 
 `POST /run/wazuh-server/engine-api.socket/router/route/delete`
 
 ---
 
 
-## Request Body
+### Request Body
 
 | Field               | Type   | Description                                    |
 |---------------------|--------|------------------------------------------------|
 | `name`               | String | Name of the route to get                              |
 
 
-## Response Body
+### Response Body
 
 | Field               | Type   | Description                                    |
 |---------------------|--------|------------------------------------------------|
@@ -3403,11 +3402,11 @@ This endpoint allows deleting a specific route in the Wazuh Engine API. The user
 | `error`          | String | Error message if status is ERROR.                            |
 
 
-## Example of success cases
+### Example of success cases
 
-### Delete a route
+#### Delete a route
 
-#### Request Body
+##### Request Body
 
 ```json
 {
@@ -3415,7 +3414,7 @@ This endpoint allows deleting a specific route in the Wazuh Engine API. The user
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 200 OK
 {
@@ -3423,17 +3422,17 @@ HTTP/1.1 200 OK
 }
 ```
 
-## Example of failed cases
+### Example of failed cases
 
 
-### Missing any of the fields in the request
+#### Missing any of the fields in the request
 
-#### Request Body
+##### Request Body
 ```json
 {}
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -3442,18 +3441,18 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-### Route does not exist
+#### Route does not exist
 
 This error occurs considering that the route has not yet been created.
 
-#### Request Body
+##### Request Body
 ```json
 {
     "name": "documentation"
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -3462,29 +3461,29 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-# Reload a route
+## Reload a route
 
-## Description
+### Description
 
 This endpoint allows reloading a specific route in the Wazuh Engine API. The user must provide the name of the route to be reloaded. If the route exists and is valid, it will be reloaded successfully, and the API will return a success response. Otherwise, an error message will be returned indicating the issue, such as a missing route or validation errors in its associated assets.
 
 ---
 
-## Endpoint
+### Endpoint
 
 `POST /run/wazuh-server/engine-api.socket/router/route/reload`
 
 ---
 
 
-## Request Body
+### Request Body
 
 | Field               | Type   | Description                                    |
 |---------------------|--------|------------------------------------------------|
 | `name`               | String | Name of the route to get                              |
 
 
-## Response Body
+### Response Body
 
 | Field               | Type   | Description                                    |
 |---------------------|--------|------------------------------------------------|
@@ -3492,11 +3491,11 @@ This endpoint allows reloading a specific route in the Wazuh Engine API. The use
 | `error`          | String | Error message if status is ERROR.                            |
 
 
-## Example of success cases
+### Example of success cases
 
-### Delete a route
+#### Delete a route
 
-#### Request Body
+##### Request Body
 
 ```json
 {
@@ -3504,7 +3503,7 @@ This endpoint allows reloading a specific route in the Wazuh Engine API. The use
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 200 OK
 {
@@ -3512,17 +3511,17 @@ HTTP/1.1 200 OK
 }
 ```
 
-## Example of failed cases
+### Example of failed cases
 
 
-### Missing any of the fields in the request
+#### Missing any of the fields in the request
 
-#### Request Body
+##### Request Body
 ```json
 {}
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -3531,18 +3530,18 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-### Route does not exist
+#### Route does not exist
 
 This error occurs considering that the route has not yet been created.
 
-#### Request Body
+##### Request Body
 ```json
 {
     "name": "documentation"
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -3551,19 +3550,19 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-### Some asset has validation errors
+#### Some asset has validation errors
 
 This error occurs considering that there was a change in some asset of the policy or filter that was not validated correctly.
 In this case, the 'name' attribute was misspelled.
 
-#### Request Body
+##### Request Body
 ```json
 {
     "name": "documentation"
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -3572,22 +3571,22 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-# Patch priority
+## Patch priority
 
-## Description
+### Description
 
 This endpoint allows updating the priority of a specific route in the Wazuh Engine API. The user must provide the name of the route along with the new priority value. If the route exists and the priority value is within the allowed range, the update will be successful. Otherwise, an error message will be returned indicating the issue, such as an invalid priority value or a non-existent route.
 
 ---
 
-## Endpoint
+### Endpoint
 
 `POST /run/wazuh-server/engine-api.socket/router/route/patchPriority`
 
 ---
 
 
-## Request Body
+### Request Body
 
 | Field               | Type   | Description                                    |
 |---------------------|--------|------------------------------------------------|
@@ -3595,7 +3594,7 @@ This endpoint allows updating the priority of a specific route in the Wazuh Engi
 | `priority`               | Unsigned Integer | Priority of the route to update                              |
 
 
-## Response Body
+### Response Body
 
 | Field               | Type   | Description                                    |
 |---------------------|--------|------------------------------------------------|
@@ -3603,11 +3602,11 @@ This endpoint allows updating the priority of a specific route in the Wazuh Engi
 | `error`          | String | Error message if status is ERROR.                            |
 
 
-## Example of success cases
+### Example of success cases
 
-### Delete a route
+#### Delete a route
 
-#### Request Body
+##### Request Body
 
 ```json
 {
@@ -3616,7 +3615,7 @@ This endpoint allows updating the priority of a specific route in the Wazuh Engi
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 200 OK
 {
@@ -3624,17 +3623,17 @@ HTTP/1.1 200 OK
 }
 ```
 
-## Example of failed cases
+### Example of failed cases
 
 
-### Missing any of the fields in the request
+#### Missing any of the fields in the request
 
-#### Request Body
+##### Request Body
 ```json
 {}
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -3643,18 +3642,18 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-### Route does not exist
+#### Route does not exist
 
 This error occurs considering that the route has not yet been created.
 
-#### Request Body
+##### Request Body
 ```json
 {
     "name": "documentation"
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -3663,11 +3662,11 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-### Set priority to 1000
+#### Set priority to 1000
 
 This error occurs when trying to update an existing route.
 
-#### Request Body
+##### Request Body
 ```json
 {
     "name": "documentation",
@@ -3675,7 +3674,7 @@ This error occurs when trying to update an existing route.
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -3684,11 +3683,11 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-### Set priority to 0
+#### Set priority to 0
 
 This error occurs when trying to update an existing route.
 
-#### Request Body
+##### Request Body
 ```json
 {
     "name": "documentation",
@@ -3696,7 +3695,7 @@ This error occurs when trying to update an existing route.
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -3705,29 +3704,29 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-# Get table
+## Get table
 
-## Description
+### Description
 
 This endpoint retrieves the list of existing routes in the Wazuh Engine API. The response includes details such as the route name, associated policy and filter, priority, status, and last update time. If no routes are available, the response will return an empty table. The request does not require any parameters.
 
 ---
 
-## Endpoint
+### Endpoint
 
 `POST /run/wazuh-server/engine-api.socket/router/table/get`
 
 ---
 
 
-## Request Body
+### Request Body
 
 ```
 empty
 ```
 
 
-## Response Body
+### Response Body
 
 | Field               | Type   | Description                                    |
 |---------------------|--------|------------------------------------------------|
@@ -3748,17 +3747,17 @@ empty
 | `entry_status`               | String | Status of the entry [STATE_UNKNOWN|DISABLED|ENABLED]                              |
 | `uptime`               | Unsigned Integer | Last update of the route                              |
 
-## Example of success cases
+### Example of success cases
 
-### Get table
+#### Get table
 
-#### Request Body
+##### Request Body
 
 ```json
 {}
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 200 OK
 {
@@ -3777,28 +3776,28 @@ HTTP/1.1 200 OK
 }
 ```
 
-## Example of failed cases
+### Example of failed cases
 
 ```
 No errors occur
 ```
 
-# Change EPS setting
+## Change EPS setting
 
-## Description
+### Description
 
 This endpoint allows users to change the Event Per Second (EPS) limit and the refresh interval for the system. The EPS limit defines the maximum number of events that the system can process per second. The refresh interval determines how frequently the system will update or refresh the configuration. This change is crucial for adjusting system performance and ensuring efficient event processing.
 
 ---
 
-## Endpoint
+### Endpoint
 
 `POST /run/wazuh-server/engine-api.socket/router/eps/changeSettings`
 
 ---
 
 
-## Request Body
+### Request Body
 
 | Field               | Type   | Description                                    |
 |---------------------|--------|------------------------------------------------|
@@ -3806,7 +3805,7 @@ This endpoint allows users to change the Event Per Second (EPS) limit and the re
 | `refresh_interval`   | Unsigned Integer | New refresh interval                              |
 
 
-## Response Body
+### Response Body
 
 | Field               | Type   | Description                                    |
 |---------------------|--------|------------------------------------------------|
@@ -3814,11 +3813,11 @@ This endpoint allows users to change the Event Per Second (EPS) limit and the re
 | `error`          | String | Error message if status is ERROR.                            |
 
 
-## Example of success cases
+### Example of success cases
 
-### Change setting
+#### Change setting
 
-#### Request Body
+##### Request Body
 
 ```json
 {
@@ -3827,7 +3826,7 @@ This endpoint allows users to change the Event Per Second (EPS) limit and the re
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 200 OK
 {
@@ -3835,16 +3834,16 @@ HTTP/1.1 200 OK
 }
 ```
 
-## Example of failed cases
+### Example of failed cases
 
-### Missing any of the fields in the request
+#### Missing any of the fields in the request
 
-#### Request Body
+##### Request Body
 ```json
 {}
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -3853,9 +3852,9 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-### Set eps less than 0
+#### Set eps less than 0
 
-#### Request Body
+##### Request Body
 ```json
 {
     "eps": -10,
@@ -3863,7 +3862,7 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -3872,9 +3871,9 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-### Set refresh_interval less than 0
+#### Set refresh_interval less than 0
 
-#### Request Body
+##### Request Body
 ```json
 {
     "eps": 10,
@@ -3882,7 +3881,7 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -3891,27 +3890,27 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-# Get EPS setting
+## Get EPS setting
 
-## Description
+### Description
 
 This endpoint allows users to retrieve the current Event Per Second (EPS) limit and the refresh interval settings of the system. It also provides the status of the EPS limiter, indicating whether the EPS limiter is currently enabled or not.
 ---
 
-## Endpoint
+### Endpoint
 
 `POST /run/wazuh-server/engine-api.socket/router/eps/getSettings`
 
 ---
 
 
-## Request Body
+### Request Body
 
 ```
 empty
 ```
 
-## Response Body
+### Response Body
 
 | Field               | Type   | Description                                    |
 |---------------------|--------|------------------------------------------------|
@@ -3921,17 +3920,17 @@ empty
 | `refresh_interval`   | Unsigned Integer | New refresh interval                              |
 | `enable`   | Bool | EPS limiter status                              |
 
-## Example of success cases
+### Example of success cases
 
-### Get setting
+#### Get setting
 
-#### Request Body
+##### Request Body
 
 ```json
 {}
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 200 OK
 {
@@ -3942,51 +3941,51 @@ HTTP/1.1 200 OK
 }
 ```
 
-## Example of failed cases
+### Example of failed cases
 
 ```
 No errors occur
 ```
 
-# EPS activate
+## EPS activate
 
-## Description
+### Description
 
 This endpoint allows users to activate the Event Per Second (EPS) limiter in the system. When activated, the system starts enforcing the EPS limit, ensuring that no more than the specified number of events are processed per second.
 
 ---
 
-## Endpoint
+### Endpoint
 
 `POST /run/wazuh-server/engine-api.socket/router/eps/activate`
 
 ---
 
 
-## Request Body
+### Request Body
 
 ```
 empty
 ```
 
-## Response Body
+### Response Body
 
 | Field               | Type   | Description                                    |
 |---------------------|--------|------------------------------------------------|
 | `status`               | String | Status of the query (OK, ERROR)                             |
 | `error`          | String | Error message if status is ERROR.                            |
 
-## Example of success cases
+### Example of success cases
 
-### EPS activate
+#### EPS activate
 
-#### Request Body
+##### Request Body
 
 ```json
 {}
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 200 OK
 {
@@ -3994,18 +3993,18 @@ HTTP/1.1 200 OK
 }
 ```
 
-## Example of failed cases
+### Example of failed cases
 
-### EPS already activate
+#### EPS already activate
 
 This error occurs if the EPS is already active
 
-#### Request Body
+##### Request Body
 ```json
 {}
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -4014,45 +4013,45 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-# EPS deactivate
+## EPS deactivate
 
-## Description
+### Description
 
 This endpoint allows users to deactivate the Event Per Second (EPS) limiter in the system. When deactivated, the system will no longer enforce the EPS limit, allowing the system to process events without restriction. This operation is useful when the user no longer needs to restrict the event processing rate.
 
 ---
 
-## Endpoint
+### Endpoint
 
 `POST /run/wazuh-server/engine-api.socket/router/eps/deactivate`
 
 ---
 
 
-## Request Body
+### Request Body
 
 ```
 empty
 ```
 
-## Response Body
+### Response Body
 
 | Field               | Type   | Description                                    |
 |---------------------|--------|------------------------------------------------|
 | `status`               | String | Status of the query (OK, ERROR)                             |
 | `error`          | String | Error message if status is ERROR.                            |
 
-## Example of success cases
+### Example of success cases
 
-### EPS deactivate
+#### EPS deactivate
 
-#### Request Body
+##### Request Body
 
 ```json
 {}
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 200 OK
 {
@@ -4060,18 +4059,18 @@ HTTP/1.1 200 OK
 }
 ```
 
-## Example of failed cases
+### Example of failed cases
 
-### EPS already deactivate
+#### EPS already deactivate
 
 This error occurs if the EPS is already deactive
 
-#### Request Body
+##### Request Body
 ```json
 {}
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -4080,22 +4079,22 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-# Create a session
+## Create a session
 
-## Description
+### Description
 
 This endpoint allows users to create a new testing session in the system. A session is associated with a policy and includes a lifetime duration, as well as a description for the session. The session will be used for testing purposes, and its configuration can be customized according to specific needs.
 
 ---
 
-## Endpoint
+### Endpoint
 
 `POST /run/wazuh-server/engine-api.socket/tester/session/post`
 
 ---
 
 
-## Request Body
+### Request Body
 
 | Field               | Type   | Description                                    |
 |---------------------|--------|------------------------------------------------|
@@ -4111,20 +4110,20 @@ This endpoint allows users to create a new testing session in the system. A sess
 | `lifetime`               | Unsigned Integer | Lifetime of the session                              |
 | `description`               | String | Description of the session                             |
 
-## Response Body
+### Response Body
 
 | Field               | Type   | Description                                    |
 |---------------------|--------|------------------------------------------------|
 | `status`               | String | Status of the query (OK, ERROR)                             |
 | `error`          | String | Error message if status is ERROR.                            |
 
-## Example of success cases
+### Example of success cases
 
-### Create a session
+#### Create a session
 
 This query assumes that a policy is already created
 
-#### Request Body
+##### Request Body
 
 ```json
 {
@@ -4137,7 +4136,7 @@ This query assumes that a policy is already created
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 200 OK
 {
@@ -4145,17 +4144,17 @@ HTTP/1.1 200 OK
 }
 ```
 
-## Example of failed cases
+### Example of failed cases
 
 
-### Missing any of the fields in the request
+#### Missing any of the fields in the request
 
-#### Request Body
+##### Request Body
 ```json
 {}
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -4164,7 +4163,7 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-#### Request Body
+##### Request Body
 ```json
 {
     "route": {
@@ -4174,7 +4173,7 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -4183,11 +4182,11 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-### Policy does not exist
+#### Policy does not exist
 
 The error occurs when sending the session creation request without first creating the policy.
 
-#### Request Body
+##### Request Body
 ```json
 {
     "session": {
@@ -4198,7 +4197,7 @@ The error occurs when sending the session creation request without first creatin
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -4207,11 +4206,11 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-### Policy has not assets
+#### Policy has not assets
 
 The error occurs when sending the route creation request without first having loaded any asset into the policy.
 
-#### Request Body
+##### Request Body
 ```json
 {
     "route": {
@@ -4222,7 +4221,7 @@ The error occurs when sending the route creation request without first having lo
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -4231,11 +4230,11 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-### Session name already exist
+#### Session name already exist
 
 This error occurs considering that a session with the same name already exists.
 
-#### Request Body
+##### Request Body
 ```json
 {
     "route": {
@@ -4246,7 +4245,7 @@ This error occurs considering that a session with the same name already exists.
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -4255,29 +4254,29 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-# Get a session
+## Get a session
 
-## Description
+### Description
 
 This endpoint allows users to retrieve the details of an existing testing session by providing the session's name. The session information returned includes details such as the associated policy, the session's lifetime, the synchronization status of the policy, the entry status, and the last time the session was used.
 
 ---
 
-## Endpoint
+### Endpoint
 
 `POST /run/wazuh-server/engine-api.socket/tester/session/get`
 
 ---
 
 
-## Request Body
+### Request Body
 
 | Field               | Type   | Description                                    |
 |---------------------|--------|------------------------------------------------|
 | `name`               | String | Test session name                              |
 
 
-## Response Body
+### Response Body
 
 | Field               | Type   | Description                                    |
 |---------------------|--------|------------------------------------------------|
@@ -4297,13 +4296,13 @@ This endpoint allows users to retrieve the details of an existing testing sessio
 | `entry_status`               | String | Status of the entry [STATE_UNKNOWN|DISABLED|ENABLED]                              |
 | `last_use`               | Unsigned Integer | Last use of the session                              |
 
-## Example of success cases
+### Example of success cases
 
-### Get a session
+#### Get a session
 
 It is assumed that a session called "documentation" was created previously
 
-#### Request Body
+##### Request Body
 
 ```json
 {
@@ -4311,7 +4310,7 @@ It is assumed that a session called "documentation" was created previously
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 200 OK
 {
@@ -4327,17 +4326,17 @@ HTTP/1.1 200 OK
 }
 ```
 
-## Example of failed cases
+### Example of failed cases
 
 
-### Missing any of the fields in the request
+#### Missing any of the fields in the request
 
-#### Request Body
+##### Request Body
 ```json
 {}
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -4346,16 +4345,16 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-### Session non-exist
+#### Session non-exist
 
-#### Request Body
+##### Request Body
 ```json
 {
     "name": "non-exist-session",
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -4364,28 +4363,28 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-# Delete a session
+## Delete a session
 
-## Description
+### Description
 
 This endpoint allows users to delete a testing session by specifying the session's name. If the session exists, it will be removed, and the response will indicate a successful deletion. If the session does not exist or the name is missing, the response will return an error message specifying the issue, such as "The testing environment does not exist" or "Name cannot be empty."
 ---
 
-## Endpoint
+### Endpoint
 
 `POST /run/wazuh-server/engine-api.socket/tester/session/delete`
 
 ---
 
 
-## Request Body
+### Request Body
 
 | Field               | Type   | Description                                    |
 |---------------------|--------|------------------------------------------------|
 | `name`               | String | Test session name                              |
 
 
-## Response Body
+### Response Body
 
 | Field               | Type   | Description                                    |
 |---------------------|--------|------------------------------------------------|
@@ -4393,13 +4392,13 @@ This endpoint allows users to delete a testing session by specifying the session
 | `error`          | String | Error message if status is ERROR.                            |
 
 
-## Example of success cases
+### Example of success cases
 
-### Delete a session
+#### Delete a session
 
 It is assumed that a session called "documentation" was created previously
 
-#### Request Body
+##### Request Body
 
 ```json
 {
@@ -4407,7 +4406,7 @@ It is assumed that a session called "documentation" was created previously
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 200 OK
 {
@@ -4415,17 +4414,17 @@ HTTP/1.1 200 OK
 }
 ```
 
-## Example of failed cases
+### Example of failed cases
 
 
-### Missing any of the fields in the request
+#### Missing any of the fields in the request
 
-#### Request Body
+##### Request Body
 ```json
 {}
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -4434,16 +4433,16 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-### Session non-exist
+#### Session non-exist
 
-#### Request Body
+##### Request Body
 ```json
 {
     "name": "non-exist-session",
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -4452,29 +4451,29 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-# Reload a session
+## Reload a session
 
-## Description
+### Description
 
 This endpoint allows users to reload a testing session by specifying the session's name. If the session exists, the system will reload it and return a successful response with the status "OK." If the session does not exist or the name is missing, an error message will be returned specifying the issue. Additionally, if there are validation errors in the session's associated assets, such as a misspelled attribute, the response will indicate a failure to reload the session due to those validation errors.
 
 ---
 
-## Endpoint
+### Endpoint
 
 `POST /run/wazuh-server/engine-api.socket/tester/session/reload`
 
 ---
 
 
-## Request Body
+### Request Body
 
 | Field               | Type   | Description                                    |
 |---------------------|--------|------------------------------------------------|
 | `name`               | String | Test session name                              |
 
 
-## Response Body
+### Response Body
 
 | Field               | Type   | Description                                    |
 |---------------------|--------|------------------------------------------------|
@@ -4482,13 +4481,13 @@ This endpoint allows users to reload a testing session by specifying the session
 | `error`          | String | Error message if status is ERROR.                            |
 
 
-## Example of success cases
+### Example of success cases
 
-### Reload a session
+#### Reload a session
 
 It is assumed that a session called "documentation" was created previously
 
-#### Request Body
+##### Request Body
 
 ```json
 {
@@ -4496,7 +4495,7 @@ It is assumed that a session called "documentation" was created previously
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 200 OK
 {
@@ -4504,17 +4503,17 @@ HTTP/1.1 200 OK
 }
 ```
 
-## Example of failed cases
+### Example of failed cases
 
 
-### Missing any of the fields in the request
+#### Missing any of the fields in the request
 
-#### Request Body
+##### Request Body
 ```json
 {}
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -4523,16 +4522,16 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-### Session non-exist
+#### Session non-exist
 
-#### Request Body
+##### Request Body
 ```json
 {
     "name": "non-exist-session",
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -4541,19 +4540,19 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-### Some asset has validation errors
+#### Some asset has validation errors
 
 This error occurs considering that there was a change in some asset of the policy that was not validated correctly.
 In this case, the 'name' attribute was misspelled.
 
-#### Request Body
+##### Request Body
 ```json
 {
     "name": "documentation"
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -4562,29 +4561,29 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-# Get table
+## Get table
 
-## Description
+### Description
 
 This endpoint allows the user to retrieve information about the current sessions in the system. It queries the active sessions and provides their details, such as name, associated policy, synchronization status, and last usage.
 
 ---
 
-## Endpoint
+### Endpoint
 
 `POST /run/wazuh-server/engine-api.socket/tester/table/get`
 
 ---
 
 
-## Request Body
+### Request Body
 
 ```
 empty
 ```
 
 
-## Response Body
+### Response Body
 
 | Field               | Type   | Description                                    |
 |---------------------|--------|------------------------------------------------|
@@ -4603,17 +4602,17 @@ empty
 | `entry_status`               | String | Status of the entry [STATE_UNKNOWN|DISABLED|ENABLED]                              |
 | `last_use`               | Unsigned Integer | Last use of the session                              |
 
-## Example of success cases
+### Example of success cases
 
-### Get table
+#### Get table
 
-#### Request Body
+##### Request Body
 
 ```json
 {}
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 200 OK
 {
@@ -4631,28 +4630,28 @@ HTTP/1.1 200 OK
 }
 ```
 
-## Example of failed cases
+### Example of failed cases
 
 ```
 No errors occur
 ```
 
-# Run test
+## Run test
 
-## Description
+### Description
 
 This endpoint allows the execution of a test on an event with configurable trace levels. The results of the test, including any asset traces, will be returned.
 
 ---
 
-## Endpoint
+### Endpoint
 
 `POST /run/wazuh-server/engine-api.socket/tester/run/post`
 
 ---
 
 
-## Request Body
+### Request Body
 
 | Field               | Type   | Description                                    |
 |---------------------|--------|------------------------------------------------|
@@ -4663,7 +4662,7 @@ This endpoint allows the execution of a test on an event with configurable trace
 | `namespaces`               | Array String | Namespaces where are the assets to test                              |
 
 
-## Response Body
+### Response Body
 
 | Field               | Type   | Description                                    |
 |---------------------|--------|------------------------------------------------|
@@ -4687,13 +4686,13 @@ This endpoint allows the execution of a test on an event with configurable trace
 | `traces`       | Array String | Traces of the asset                              |
 
 
-## Example of success cases
+### Example of success cases
 
-### Run test without trace level
+#### Run test without trace level
 
 It is assumed that a session called "documentation" was created previously
 
-#### Request Body
+##### Request Body
 
 ```json
 {
@@ -4703,7 +4702,7 @@ It is assumed that a session called "documentation" was created previously
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 200 OK
 {
@@ -4715,11 +4714,11 @@ HTTP/1.1 200 OK
 }
 ```
 
-### Run test with only asset trace level
+#### Run test with only asset trace level
 
 It is assumed that a session called "documentation" was created previously
 
-#### Request Body
+##### Request Body
 
 ```json
 {
@@ -4730,7 +4729,7 @@ It is assumed that a session called "documentation" was created previously
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 200 OK
 {
@@ -4748,11 +4747,11 @@ HTTP/1.1 200 OK
 }
 ```
 
-### Run test with all trace level
+#### Run test with all trace level
 
 It is assumed that a session called "documentation" was created previously
 
-#### Request Body
+##### Request Body
 
 ```json
 {
@@ -4763,7 +4762,7 @@ It is assumed that a session called "documentation" was created previously
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 200 OK
 {
@@ -4783,17 +4782,17 @@ HTTP/1.1 200 OK
 }
 ```
 
-## Example of failed cases
+### Example of failed cases
 
 
-### Missing any of the fields in the request
+#### Missing any of the fields in the request
 
-#### Request Body
+##### Request Body
 ```json
 {}
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -4802,16 +4801,16 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-### Session non-exist
+#### Session non-exist
 
-#### Request Body
+##### Request Body
 ```json
 {
     "name": "non-exist-session",
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -4820,11 +4819,11 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-### Some asset has validation errors
+#### Some asset has validation errors
 
 Assuming we have a session document created, this error occurs when a store asset is modified incorrectly and then when restarting the engine the session is set to inactive state waiting for a correction of the asset and the subsequent reload.
 
-#### Request Body
+##### Request Body
 ```json
 {
     "name": "documentation",
@@ -4833,7 +4832,7 @@ Assuming we have a session document created, this error occurs when a store asse
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -4842,11 +4841,11 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-### Namespace not found when requesting traces
+#### Namespace not found when requesting traces
 
 Assuming we have a session document created, this error occurs when we set a trace level different from NONE and do not set a namespace.
 
-#### Request Body
+##### Request Body
 ```json
 {
     "name": "documentation",
@@ -4855,7 +4854,7 @@ Assuming we have a session document created, this error occurs when we set a tra
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -4864,12 +4863,12 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-### Errors with the protocol
+#### Errors with the protocol
 
 Assuming we have a session document created, this error occurs when the minimum batch size of 3 is not respected.
 That is, there must be at least 3 NDJSONs.
 
-#### Request Body
+##### Request Body
 ```json
 {
     "name": "documentation",
@@ -4877,7 +4876,7 @@ That is, there must be at least 3 NDJSONs.
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -4888,7 +4887,7 @@ HTTP/1.1 400 Bad Request
 
 Assuming we have a session document created, this error occurs when the subheader is not correct, since the presence of the collector and module fields in the second NDJSON is mandatory.
 
-#### Request Body
+##### Request Body
 ```json
 {
     "name": "documentation",
@@ -4896,7 +4895,7 @@ Assuming we have a session document created, this error occurs when the subheade
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -4905,22 +4904,22 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-# Add key-value to database
+## Add key-value to database
 
-## Description
+### Description
 
 This endpoint allows adding a new key-value database (kvdb) by specifying the database name and, optionally, a JSON file to define the key-value pairs. If a JSON file is provided, it will be used to create the database. If a database with the same name already exists, the request will return an error.
 
 ---
 
-## Endpoint
+### Endpoint
 
 `POST /run/wazuh-server/engine-api.socket/kvdb/manager/post`
 
 ---
 
 
-## Request Body
+### Request Body
 
 | Field               | Type   | Description                                    |
 |---------------------|--------|------------------------------------------------|
@@ -4929,7 +4928,7 @@ This endpoint allows adding a new key-value database (kvdb) by specifying the da
 
 
 
-## Response Body
+### Response Body
 
 | Field               | Type   | Description                                    |
 |---------------------|--------|------------------------------------------------|
@@ -4937,13 +4936,13 @@ This endpoint allows adding a new key-value database (kvdb) by specifying the da
 | `error`          | String | Error message if status is ERROR.                            |
 
 
-## Example of success cases
+### Example of success cases
 
-### Add a empty kvdb
+#### Add a empty kvdb
 
 This is assuming that there is no kvdb with the same name.
 
-#### Request Body
+##### Request Body
 
 ```json
 {
@@ -4951,7 +4950,7 @@ This is assuming that there is no kvdb with the same name.
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 200 OK
 {
@@ -4959,11 +4958,11 @@ HTTP/1.1 200 OK
 }
 ```
 
-### Add a kvdb using a file
+#### Add a kvdb using a file
 
 This is assuming that there is no kvdb with the same name.
 
-#### Request Body
+##### Request Body
 
 ```json
 {
@@ -4981,7 +4980,7 @@ This is assuming that there is no kvdb with the same name.
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 200 OK
 {
@@ -4990,17 +4989,17 @@ HTTP/1.1 200 OK
 ```
 
 
-## Example of failed cases
+### Example of failed cases
 
 
-### Missing name attribute in the request
+#### Missing name attribute in the request
 
-#### Request Body
+##### Request Body
 ```json
 {}
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -5009,11 +5008,11 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-### Indicate in the path a file that is not a json
+#### Indicate in the path a file that is not a json
 
 Assuming there is no other database with the same name
 
-#### Request Body
+##### Request Body
 ```json
 {
     "name": "documentation",
@@ -5021,7 +5020,7 @@ Assuming there is no other database with the same name
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -5030,11 +5029,11 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-### Database already exist
+#### Database already exist
 
 Assuming there is another database with the same name
 
-#### Request Body
+##### Request Body
 ```json
 {
     "name": "documentation",
@@ -5042,7 +5041,7 @@ Assuming there is another database with the same name
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -5051,11 +5050,11 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-### The path does not exist
+#### The path does not exist
 
 Assuming there is no other database with the same name
 
-#### Request Body
+##### Request Body
 ```json
 {
     "name": "documentation",
@@ -5063,7 +5062,7 @@ Assuming there is no other database with the same name
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -5072,22 +5071,22 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-# Delete key-value database
+## Delete key-value database
 
-## Description
+### Description
 
 This operation allows deleting an existing key-value database (kvdb) by specifying the database name. If the database exists, it will be removed. If the database does not exist, the operation will return an error.
 
 ---
 
-## Endpoint
+### Endpoint
 
 `POST /run/wazuh-server/engine-api.socket/kvdb/manager/delete`
 
 ---
 
 
-## Request Body
+### Request Body
 
 | Field               | Type   | Description                                    |
 |---------------------|--------|------------------------------------------------|
@@ -5095,7 +5094,7 @@ This operation allows deleting an existing key-value database (kvdb) by specifyi
 
 
 
-## Response Body
+### Response Body
 
 | Field               | Type   | Description                                    |
 |---------------------|--------|------------------------------------------------|
@@ -5103,13 +5102,13 @@ This operation allows deleting an existing key-value database (kvdb) by specifyi
 | `error`          | String | Error message if status is ERROR.                            |
 
 
-## Example of success cases
+### Example of success cases
 
-### Delete database
+#### Delete database
 
 Assuming a database with the required name exists
 
-#### Request Body
+##### Request Body
 
 ```json
 {
@@ -5117,7 +5116,7 @@ Assuming a database with the required name exists
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 200 OK
 {
@@ -5126,17 +5125,17 @@ HTTP/1.1 200 OK
 ```
 
 
-## Example of failed cases
+### Example of failed cases
 
 
-### Missing name attribute in the request
+#### Missing name attribute in the request
 
-#### Request Body
+##### Request Body
 ```json
 {}
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -5145,18 +5144,18 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-### Indicate in the path a file that is not a json
+#### Indicate in the path a file that is not a json
 
 Assuming there is no other database with the same name
 
-#### Request Body
+##### Request Body
 ```json
 {
     "name": "documentation"
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -5166,22 +5165,22 @@ HTTP/1.1 400 Bad Request
 ```
 
 
-# Get key-value database
+## Get key-value database
 
-## Description
+### Description
 
 This API allows you to retrieve a list of key-value databases that are currently managed by the system. You can optionally filter the databases by their name or only return those that are currently loaded.
 
 ---
 
-## Endpoint
+### Endpoint
 
 `POST /run/wazuh-server/engine-api.socket/kvdb/manager/get`
 
 ---
 
 
-## Request Body
+### Request Body
 
 | Field               | Type   | Description                                    |
 |---------------------|--------|------------------------------------------------|
@@ -5189,7 +5188,7 @@ This API allows you to retrieve a list of key-value databases that are currently
 | `filter_by_name`               | String | If not empty, only the DBs with this name will be returned.                              |
 
 
-## Response Body
+### Response Body
 
 | Field               | Type   | Description                                    |
 |---------------------|--------|------------------------------------------------|
@@ -5197,19 +5196,19 @@ This API allows you to retrieve a list of key-value databases that are currently
 | `error`          | String | Error message if status is ERROR.                            |
 | `dbs`          | Array String | List of DBs if status is OK (only the name).|
 
-## Example of success cases
+### Example of success cases
 
-### Get all databases
+#### Get all databases
 
 Assuming I have two databases loaded
 
-#### Request Body
+##### Request Body
 
 ```json
 {}
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 200 OK
 {
@@ -5222,28 +5221,28 @@ HTTP/1.1 200 OK
 ```
 
 
-## Example of failed cases
+### Example of failed cases
 
 ```
 No errors occur
 ```
 
-# Dump key-value database
+## Dump key-value database
 
-## Description
+### Description
 
 This API allows you to dump the contents of a specific key-value database. It supports pagination to retrieve the data in chunks, making it easier to handle large databases. Each entry in the database is returned with its key and value in JSON format.
 
 ---
 
-## Endpoint
+### Endpoint
 
 `POST /run/wazuh-server/engine-api.socket/kvdb/manager/dump`
 
 ---
 
 
-## Request Body
+### Request Body
 
 | Field               | Type   | Description                                    |
 |---------------------|--------|------------------------------------------------|
@@ -5252,7 +5251,7 @@ This API allows you to dump the contents of a specific key-value database. It su
 | `records`               | Unsigned Integer | Number of records per page.                              |
 
 
-## Response Body
+### Response Body
 
 | Field               | Type   | Description                                    |
 |---------------------|--------|------------------------------------------------|
@@ -5267,13 +5266,13 @@ This API allows you to dump the contents of a specific key-value database. It su
 | `key`               | String | Key of the entry                             |
 | `value`          | Json | JSON value of the entry                            |
 
-## Example of success cases
+### Example of success cases
 
-### Dump database
+#### Dump database
 
 Assuming a database with the required name exists
 
-#### Request Body
+##### Request Body
 
 ```json
 {
@@ -5281,7 +5280,7 @@ Assuming a database with the required name exists
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 200 OK
 {
@@ -5296,17 +5295,17 @@ HTTP/1.1 200 OK
 ```
 
 
-## Example of failed cases
+### Example of failed cases
 
 
-### Missing name attribute in the request
+#### Missing name attribute in the request
 
-#### Request Body
+##### Request Body
 ```json
 {}
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -5316,11 +5315,11 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-### Field page must be greater than 0
+#### Field page must be greater than 0
 
 Assuming a database with that name exists
 
-#### Request Body
+##### Request Body
 ```json
 {
     "name": "documentation",
@@ -5328,7 +5327,7 @@ Assuming a database with that name exists
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -5337,11 +5336,11 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-### Field page must be greater than 0
+#### Field page must be greater than 0
 
 Assuming a database with that name exists
 
-#### Request Body
+##### Request Body
 ```json
 {
     "name": "documentation",
@@ -5349,7 +5348,7 @@ Assuming a database with that name exists
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -5358,11 +5357,11 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-### Database does not exist
+#### Database does not exist
 
 Assuming that the queried database does not exist
 
-#### Request Body
+##### Request Body
 ```json
 {
     "name": "documentation",
@@ -5370,7 +5369,7 @@ Assuming that the queried database does not exist
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -5380,22 +5379,22 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-# Get an entry from a DB
+## Get an entry from a DB
 
-## Description
+### Description
 
 This API allows you to retrieve a specific entry from a given key-value database by specifying the database name and the key of the entry you want to retrieve. The entry is returned as a JSON object associated with the provided key.
 
 ---
 
-## Endpoint
+### Endpoint
 
 `POST /run/wazuh-server/engine-api.socket/kvdb/db/get`
 
 ---
 
 
-## Request Body
+### Request Body
 
 | Field               | Type   | Description                                    |
 |---------------------|--------|------------------------------------------------|
@@ -5403,7 +5402,7 @@ This API allows you to retrieve a specific entry from a given key-value database
 | `key`               | String | Key of the entry to get.                              |
 
 
-## Response Body
+### Response Body
 
 | Field               | Type   | Description                                    |
 |---------------------|--------|------------------------------------------------|
@@ -5411,9 +5410,9 @@ This API allows you to retrieve a specific entry from a given key-value database
 | `error`          | String | Error message if status is ERROR.                            |
 | `value`          | Json | JSON value of the entry.|
 
-## Example of success cases
+### Example of success cases
 
-### Get all databases
+#### Get all databases
 
 Assuming that the database consulted has the following content:
 
@@ -5425,7 +5424,7 @@ Assuming that the database consulted has the following content:
 }
 ```
 
-#### Request Body
+##### Request Body
 
 ```json
 {
@@ -5434,7 +5433,7 @@ Assuming that the database consulted has the following content:
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 200 OK
 {
@@ -5446,16 +5445,16 @@ HTTP/1.1 200 OK
 ```
 
 
-## Example of failed cases
+### Example of failed cases
 
-### Missing name attribute in the request
+#### Missing name attribute in the request
 
-#### Request Body
+##### Request Body
 ```json
 {}
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -5465,11 +5464,11 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-### Database does not exist
+#### Database does not exist
 
 Assuming that the queried database does not exist
 
-#### Request Body
+##### Request Body
 ```json
 {
     "name": "documentation",
@@ -5477,7 +5476,7 @@ Assuming that the queried database does not exist
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -5487,22 +5486,22 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-# Delete an entry from a DB
+## Delete an entry from a DB
 
-## Description
+### Description
 
 This API allows you to delete a specific entry from a given key-value database by specifying the database name and the key of the entry you want to delete. If the entry exists, it will be removed from the database. If the entry does not exist, no action will be performed.
 
 ---
 
-## Endpoint
+### Endpoint
 
 `POST /run/wazuh-server/engine-api.socket/kvdb/db/delete`
 
 ---
 
 
-## Request Body
+### Request Body
 
 | Field               | Type   | Description                                    |
 |---------------------|--------|------------------------------------------------|
@@ -5510,16 +5509,16 @@ This API allows you to delete a specific entry from a given key-value database b
 | `key`               | String | Key of the entry to delete.                              |
 
 
-## Response Body
+### Response Body
 
 | Field               | Type   | Description                                    |
 |---------------------|--------|------------------------------------------------|
 | `status`               | String | Status of the query (OK, ERROR)                             |
 | `error`          | String | Error message if status is ERROR.                            |
 
-## Example of success cases
+### Example of success cases
 
-### Get all databases
+#### Get all databases
 
 Assuming that the database consulted has the following content:
 
@@ -5532,7 +5531,7 @@ Assuming that the database consulted has the following content:
 }
 ```
 
-#### Request Body
+##### Request Body
 
 ```json
 {
@@ -5541,7 +5540,7 @@ Assuming that the database consulted has the following content:
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 200 OK
 {
@@ -5549,11 +5548,11 @@ HTTP/1.1 200 OK
 }
 ```
 
-### Key does not exist
+#### Key does not exist
 
 Assuming that the key in the queried database does not exist
 
-#### Request Body
+##### Request Body
 ```json
 {
     "name": "documentation",
@@ -5561,7 +5560,7 @@ Assuming that the key in the queried database does not exist
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 200 OK
 {
@@ -5569,16 +5568,16 @@ HTTP/1.1 200 OK
 }
 ```
 
-## Example of failed cases
+### Example of failed cases
 
-### Missing name attribute in the request
+#### Missing name attribute in the request
 
-#### Request Body
+##### Request Body
 ```json
 {}
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -5587,11 +5586,11 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-### Database does not exist
+#### Database does not exist
 
 Assuming that the queried database does not exist
 
-#### Request Body
+##### Request Body
 ```json
 {
     "name": "documentation",
@@ -5599,7 +5598,7 @@ Assuming that the queried database does not exist
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -5608,22 +5607,22 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-# Put an entry from a DB
+## Put an entry from a DB
 
-## Description
+### Description
 
 This API allows you to insert a new entry or update an existing entry in a specified key-value database. The entry is identified by its key, and it is associated with a JSON value. If the entry with the same key already exists, it will be overwritten with the new value.
 
 ---
 
-## Endpoint
+### Endpoint
 
 `POST /run/wazuh-server/engine-api.socket/kvdb/db/put`
 
 ---
 
 
-## Request Body
+### Request Body
 
 | Field               | Type   | Description                                    |
 |---------------------|--------|------------------------------------------------|
@@ -5639,16 +5638,16 @@ This API allows you to insert a new entry or update an existing entry in a speci
 | `value`               | Json | JSON value of the entry                              |
 
 
-## Response Body
+### Response Body
 
 | Field               | Type   | Description                                    |
 |---------------------|--------|------------------------------------------------|
 | `status`               | String | Status of the query (OK, ERROR)                             |
 | `error`          | String | Error message if status is ERROR.                            |
 
-## Example of success cases
+### Example of success cases
 
-### Get all databases
+#### Get all databases
 
 Assuming that the database consulted has the following content:
 
@@ -5661,7 +5660,7 @@ Assuming that the database consulted has the following content:
 }
 ```
 
-#### Request Body
+##### Request Body
 
 ```json
 {
@@ -5675,7 +5674,7 @@ Assuming that the database consulted has the following content:
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 200 OK
 {
@@ -5683,16 +5682,16 @@ HTTP/1.1 200 OK
 }
 ```
 
-## Example of failed cases
+### Example of failed cases
 
-### Missing name attribute in the request
+#### Missing name attribute in the request
 
-#### Request Body
+##### Request Body
 ```json
 {}
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -5702,11 +5701,11 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-### Key is empty
+#### Key is empty
 
 Assuming that the queried database does not exist
 
-#### Request Body
+##### Request Body
 ```json
 {
     "name": "documentation",
@@ -5719,7 +5718,7 @@ Assuming that the queried database does not exist
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -5728,11 +5727,11 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-### Value is not present
+#### Value is not present
 
 Assuming that the queried database does not exist
 
-#### Request Body
+##### Request Body
 ```json
 {
     "name": "documentation",
@@ -5742,7 +5741,7 @@ Assuming that the queried database does not exist
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -5751,11 +5750,11 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-### Database does not exist
+#### Database does not exist
 
 Assuming that the queried database does not exist
 
-#### Request Body
+##### Request Body
 ```json
 {
     "name": "documentation",
@@ -5768,7 +5767,7 @@ Assuming that the queried database does not exist
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -5777,22 +5776,22 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-# Get an entries filtered from a DB
+## Get an entries filtered from a DB
 
-## Description
+### Description
 
 This API allows you to search for entries in a specified key-value database by using a prefix filter. The response will contain the entries that match the prefix. If no entries match the filter, an empty list will be returned.
 
 ---
 
-## Endpoint
+### Endpoint
 
 `POST /run/wazuh-server/engine-api.socket/kvdb/db/search`
 
 ---
 
 
-## Request Body
+### Request Body
 
 | Field               | Type   | Description                                    |
 |---------------------|--------|------------------------------------------------|
@@ -5802,7 +5801,7 @@ This API allows you to search for entries in a specified key-value database by u
 | `records`               | Unsigned Integer | Number of records per page.                              |
 
 
-## Response Body
+### Response Body
 
 | Field               | Type   | Description                                    |
 |---------------------|--------|------------------------------------------------|
@@ -5817,9 +5816,9 @@ This API allows you to search for entries in a specified key-value database by u
 | `key`               | String | Key of the entry.                              |
 | `value`               | Json | JSON value of the entry                              |
 
-## Example of success cases
+### Example of success cases
 
-### Get all databases
+#### Get all databases
 
 Assuming that the database consulted has the following content:
 
@@ -5832,7 +5831,7 @@ Assuming that the database consulted has the following content:
 }
 ```
 
-#### Request Body
+##### Request Body
 
 ```json
 {
@@ -5841,7 +5840,7 @@ Assuming that the database consulted has the following content:
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 200 OK
 {
@@ -5855,18 +5854,18 @@ HTTP/1.1 200 OK
 }
 ```
 
-## Example of failed cases
+### Example of failed cases
 
-### Missing name attribute in the request
+#### Missing name attribute in the request
 
-#### Request Body
+##### Request Body
 ```json
 {
     "name": "documentation"
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -5876,11 +5875,11 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-### Prefix is empty
+#### Prefix is empty
 
 Assuming that the queried database does not exist
 
-#### Request Body
+##### Request Body
 ```json
 {
     "name": "documentation",
@@ -5888,7 +5887,7 @@ Assuming that the queried database does not exist
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -5897,11 +5896,11 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-### Field page must be greater than 0
+#### Field page must be greater than 0
 
 Assuming a database with that name exists
 
-#### Request Body
+##### Request Body
 ```json
 {
     "name": "documentation",
@@ -5910,7 +5909,7 @@ Assuming a database with that name exists
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -5919,11 +5918,11 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-### Field page must be greater than 0
+#### Field page must be greater than 0
 
 Assuming a database with that name exists
 
-#### Request Body
+##### Request Body
 ```json
 {
     "name": "documentation",
@@ -5932,7 +5931,7 @@ Assuming a database with that name exists
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
@@ -5941,11 +5940,11 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-### Database does not exist
+#### Database does not exist
 
 Assuming that the queried database does not exist
 
-#### Request Body
+##### Request Body
 ```json
 {
     "name": "documentation",
@@ -5953,7 +5952,7 @@ Assuming that the queried database does not exist
 }
 ```
 
-#### Response Body
+##### Response Body
 ```json
 HTTP/1.1 400 Bad Request
 {
