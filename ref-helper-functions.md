@@ -1,8 +1,11 @@
 # Summary
+
 This documentation provides an overview of the auxiliary functions available. Auxiliary functions are modular components designed to perform specific operations on decoders or rules. Depending on their purpose, they are categorized into transformation, filter, or mapping functions.
 
-# Index
-## Filter
+## Index
+
+### Filter
+
 - [array_contains](#array_contains)
 - [array_contains_any](#array_contains_any)
 - [array_not_contains](#array_not_contains)
@@ -43,7 +46,9 @@ This documentation provides an overview of the auxiliary functions available. Au
 - [string_less](#string_less)
 - [string_less_or_equal](#string_less_or_equal)
 - [string_not_equal](#string_not_equal)
-## Map
+
+### Map
+
 - [as](#as)
 - [concat](#concat)
 - [concat_any](#concat_any)
@@ -63,7 +68,9 @@ This documentation provides an overview of the auxiliary functions available. Au
 - [to_int](#to_int)
 - [to_string](#to_string)
 - [upcase](#upcase)
-## Transformation
+
+### Transformation
+
 - [array_append](#array_append)
 - [array_append_any](#array_append_any)
 - [array_append_unique](#array_append_unique)
@@ -103,6 +110,7 @@ This documentation provides an overview of the auxiliary functions available. Au
 - [replace](#replace)
 - [split](#split)
 - [trim](#trim)
+
 # array_contains
 
 ## Signature
@@ -136,7 +144,7 @@ If at least one element is missing, the validation fails.
 This behavior makes it useful for filtering lists based on the presence of specific values.
 
 
-**Keywords**
+## Keywords
 
 - `array` 
 
@@ -146,14 +154,14 @@ This behavior makes it useful for filtering lists based on the presence of speci
 
 All specified elements are present in the target array.
 
-**Asset**
+#### Asset
 
 ```yaml
 check:
   - target_field: array_contains('dracut', 'vz-start', 'thin-provisioning-tools')
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -175,14 +183,14 @@ check:
 
 At least one specified element ("iscsi") is missing from the target array.
 
-**Asset**
+#### Asset
 
 ```yaml
 check:
   - target_field: array_contains($element, 'vz-start', 'iscsi')
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -205,14 +213,14 @@ check:
 
 All specified numbers are present in the target array.
 
-**Asset**
+#### Asset
 
 ```yaml
 check:
   - target_field: array_contains(2, 1, 5)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -232,14 +240,14 @@ check:
 
 All specified objects are present in the target array.
 
-**Asset**
+#### Asset
 
 ```yaml
 check:
   - target_field: array_contains($element, {'key1': 'value1'}, {'key2': 'value2'})
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -266,14 +274,14 @@ check:
 
 At least one specified object is missing from the target array.
 
-**Asset**
+#### Asset
 
 ```yaml
 check:
   - target_field: array_contains({'key': 'value'}, {'key-non-exists': 'value-non-exists'}, {'keyn': 'valuen'})
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -297,14 +305,14 @@ check:
 
 The specified object, number, and string are all present in the target array.
 
-**Asset**
+#### Asset
 
 ```yaml
 check:
   - target_field: array_contains($element, 1, 'value')
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -359,7 +367,7 @@ If none of the elements are found, the validation fails.
 This behavior makes it useful for filtering lists based on partial matches.
 
 
-**Keywords**
+## Keywords
 
 - `array` 
 
@@ -369,14 +377,14 @@ This behavior makes it useful for filtering lists based on partial matches.
 
 All specified elements are present in the target array.
 
-**Asset**
+#### Asset
 
 ```yaml
 check:
   - target_field: array_contains_any('dracut', 'vz-start', 'thin-provisioning-tools')
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -398,14 +406,14 @@ check:
 
 At least one specified element ("dracut") is present in the target array.
 
-**Asset**
+#### Asset
 
 ```yaml
 check:
   - target_field: array_contains_any($element, 'hello', 'wazuh')
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -428,14 +436,14 @@ check:
 
 At least one specified number (1) is present in the target array.
 
-**Asset**
+#### Asset
 
 ```yaml
 check:
   - target_field: array_contains_any(7, 1, 8)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -455,14 +463,14 @@ check:
 
 At least one specified object is present in the target array.
 
-**Asset**
+#### Asset
 
 ```yaml
 check:
   - target_field: array_contains_any($element, {'key-non-exists': 'value-non-exists'}, {'keyn': 'valuen'})
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -489,14 +497,14 @@ check:
 
 At least one specified element (1000) is present in the target array.
 
-**Asset**
+#### Asset
 
 ```yaml
 check:
   - target_field: array_contains_any({'keyn': 'valuen'}, 1000, 'valuen')
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -548,7 +556,7 @@ If all elements in the array are found, validation fails.
 This behavior is useful for filtering lists by excluding specific values.
 
 
-**Keywords**
+## Keywords
 
 - `array` 
 
@@ -558,14 +566,14 @@ This behavior is useful for filtering lists by excluding specific values.
 
 All specified elements are present in the target array.
 
-**Asset**
+#### Asset
 
 ```yaml
 check:
   - target_field: array_not_contains('dracut', 'vz-start', 'thin-provisioning-tools')
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -587,14 +595,14 @@ check:
 
 At least one specified element ("iscsi") is missing from the target array.
 
-**Asset**
+#### Asset
 
 ```yaml
 check:
   - target_field: array_not_contains($element, 'vz-start', 'iscsi')
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -617,14 +625,14 @@ check:
 
 All specified numbers are present in the target array.
 
-**Asset**
+#### Asset
 
 ```yaml
 check:
   - target_field: array_not_contains(2, 1, 5)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -644,14 +652,14 @@ check:
 
 All specified objects are present in the target array, causing the test to fail.
 
-**Asset**
+#### Asset
 
 ```yaml
 check:
   - target_field: array_not_contains($element, {'key1': 'value1'}, {'key2': 'value2'})
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -678,14 +686,14 @@ check:
 
 At least one specified object is missing from the target array.
 
-**Asset**
+#### Asset
 
 ```yaml
 check:
   - target_field: array_not_contains({'key': 'value'}, {'key-non-exists': 'value-non-exists'}, {'keyn': 'valuen'})
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -709,14 +717,14 @@ check:
 
 The specified object, number, and string are all present in the target array.
 
-**Asset**
+#### Asset
 
 ```yaml
 check:
   - target_field: array_not_contains($element, 1, 'value')
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -771,7 +779,7 @@ If at least one element is found, the validation fails.
 This behavior makes it useful for filtering lists to exclude specific values.
 
 
-**Keywords**
+## Keywords
 
 - `array` 
 
@@ -781,14 +789,14 @@ This behavior makes it useful for filtering lists to exclude specific values.
 
 All specified elements are present in the target array.
 
-**Asset**
+#### Asset
 
 ```yaml
 check:
   - target_field: array_not_contains_any('dracut', 'vz-start', 'thin-provisioning-tools')
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -810,14 +818,14 @@ check:
 
 At least one specified element ("dracut") is present in the target array.
 
-**Asset**
+#### Asset
 
 ```yaml
 check:
   - target_field: array_not_contains_any($element, 'hello', 'wazuh')
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -840,14 +848,14 @@ check:
 
 At least one specified number (1) is present in the target array.
 
-**Asset**
+#### Asset
 
 ```yaml
 check:
   - target_field: array_not_contains_any(7, 1, 8)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -867,14 +875,14 @@ check:
 
 At least one specified object is present in the target array.
 
-**Asset**
+#### Asset
 
 ```yaml
 check:
   - target_field: array_not_contains_any($element, {'key-non-exists': 'value-non-exists'}, {'keyn': 'valuen'})
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -901,14 +909,14 @@ check:
 
 At least one specified element (1000) is present in the target array.
 
-**Asset**
+#### Asset
 
 ```yaml
 check:
   - target_field: array_not_contains_any({'keyn': 'valuen'}, 1000, 'valuen')
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -928,14 +936,14 @@ check:
 
 No elements are present in the array.
 
-**Asset**
+#### Asset
 
 ```yaml
 check:
   - target_field: array_not_contains_any($element, 10, 'valuen')
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -986,7 +994,7 @@ Transforms the hexadecimal value into an unsigned integer and performs the AND b
 transformed to unsigned int. If it is other than 0x0 then the operation evaluates to true.
 
 
-**Keywords**
+## Keywords
 
 - `undefined` 
 
@@ -996,14 +1004,14 @@ transformed to unsigned int. If it is other than 0x0 then the operation evaluate
 
 Success binary and
 
-**Asset**
+#### Asset
 
 ```yaml
 check:
   - target_field: binary_and('0x4F1')
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -1046,7 +1054,7 @@ If they're not, the function evaluates to false.
 In case of error, the function will evaluate to false.
 
 
-**Keywords**
+## Keywords
 
 - `undefined` 
 
@@ -1056,14 +1064,14 @@ In case of error, the function will evaluate to false.
 
 Success contains
 
-**Asset**
+#### Asset
 
 ```yaml
 check:
   - target_field: contains('hello')
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -1077,14 +1085,14 @@ check:
 
 Failure contains
 
-**Asset**
+#### Asset
 
 ```yaml
 check:
   - target_field: contains($searched_value)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -1099,14 +1107,14 @@ check:
 
 Failure contains
 
-**Asset**
+#### Asset
 
 ```yaml
 check:
   - target_field: contains('world')
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -1148,7 +1156,7 @@ Checks if the string stored in the field ends with the value provided.
 If they're not, the function evaluates to false. In case of error, the function will evaluate to false.
 
 
-**Keywords**
+## Keywords
 
 - `string` 
 
@@ -1158,14 +1166,14 @@ If they're not, the function evaluates to false. In case of error, the function 
 
 Success ends with
 
-**Asset**
+#### Asset
 
 ```yaml
 check:
   - target_field: ends_with('wazuh!!')
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -1179,14 +1187,14 @@ check:
 
 Failure ends with
 
-**Asset**
+#### Asset
 
 ```yaml
 check:
   - target_field: ends_with($conteined)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -1201,14 +1209,14 @@ check:
 
 Failure ends with
 
-**Asset**
+#### Asset
 
 ```yaml
 check:
   - target_field: ends_with('hello')
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -1244,7 +1252,7 @@ If it does, the function will evaluate to true, otherwise it will be false.
 This helper function is used in the check stage.
 
 
-**Keywords**
+## Keywords
 
 - `undefined` 
 
@@ -1254,14 +1262,14 @@ This helper function is used in the check stage.
 
 Target Field exist
 
-**Asset**
+#### Asset
 
 ```yaml
 check:
   - target_field: exists()
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -1305,7 +1313,7 @@ If the object contains the key, then the function will evaluate to true, otherwi
 This helper function is typically used in the check stage.
 
 
-**Keywords**
+## Keywords
 
 - `undefined` 
 
@@ -1315,14 +1323,14 @@ This helper function is typically used in the check stage.
 
 Compare two different integers
 
-**Asset**
+#### Asset
 
 ```yaml
 check:
   - target_field: exists_key_in({'key': 'value'})
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -1336,14 +1344,14 @@ check:
 
 Compare two equals integers
 
-**Asset**
+#### Asset
 
 ```yaml
 check:
   - target_field: exists_key_in($object)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -1394,7 +1402,7 @@ This helper is particularly useful for ensuring that all required keys are prese
 are strictly enforced in the list.
 
 
-**Keywords**
+## Keywords
 
 - `array` 
 
@@ -1406,14 +1414,14 @@ are strictly enforced in the list.
 
 Success keys in list
 
-**Asset**
+#### Asset
 
 ```yaml
 check:
   - target_field: has_keys(['ts', 'host'])
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -1430,14 +1438,14 @@ check:
 
 There are elements in the list that are missing from the target field
 
-**Asset**
+#### Asset
 
 ```yaml
 check:
   - target_field: has_keys($elements)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -1459,14 +1467,14 @@ check:
 
 There are keys in the target field that are missing from the list
 
-**Asset**
+#### Asset
 
 ```yaml
 check:
   - target_field: has_keys(['ts', 'host'])
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -1484,14 +1492,14 @@ check:
 
 Element in array is not a string
 
-**Asset**
+#### Asset
 
 ```yaml
 check:
   - target_field: has_keys($elements)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -1542,7 +1550,7 @@ If they're not, the function evaluates to false. In case of error, the function 
 This helper function is typically used in the check stage
 
 
-**Keywords**
+## Keywords
 
 - `integer` 
 
@@ -1554,14 +1562,14 @@ This helper function is typically used in the check stage
 
 Compare two different integers
 
-**Asset**
+#### Asset
 
 ```yaml
 check:
   - target_field: int_equal(22)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -1575,14 +1583,14 @@ check:
 
 Compare two equals integers
 
-**Asset**
+#### Asset
 
 ```yaml
 check:
   - target_field: int_equal($any_number)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -1626,7 +1634,7 @@ If they're not, the function evaluates to false. In case of error, the function 
 This helper function is typically used in the check stage
 
 
-**Keywords**
+## Keywords
 
 - `integer` 
 
@@ -1638,14 +1646,14 @@ This helper function is typically used in the check stage
 
 Success int greater
 
-**Asset**
+#### Asset
 
 ```yaml
 check:
   - target_field: int_greater(1)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -1659,14 +1667,14 @@ check:
 
 Failure int greater
 
-**Asset**
+#### Asset
 
 ```yaml
 check:
   - target_field: int_greater($any_number)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -1681,14 +1689,14 @@ check:
 
 Failure int greater
 
-**Asset**
+#### Asset
 
 ```yaml
 check:
   - target_field: int_greater(1000)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -1731,7 +1739,7 @@ If they're not, the function evaluates to false. In case of error, the function 
 This helper function is typically used in the check stage
 
 
-**Keywords**
+## Keywords
 
 - `integer` 
 
@@ -1743,14 +1751,14 @@ This helper function is typically used in the check stage
 
 Failure int greater or equal
 
-**Asset**
+#### Asset
 
 ```yaml
 check:
   - target_field: int_greater_or_equal(22)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -1764,14 +1772,14 @@ check:
 
 Success int greater or equal
 
-**Asset**
+#### Asset
 
 ```yaml
 check:
   - target_field: int_greater_or_equal($any_number)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -1786,14 +1794,14 @@ check:
 
 Success int greater or equal
 
-**Asset**
+#### Asset
 
 ```yaml
 check:
   - target_field: int_greater_or_equal(2)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -1836,7 +1844,7 @@ If they're not, the function evaluates to false. In case of error, the function 
 This helper function is typically used in the check stage
 
 
-**Keywords**
+## Keywords
 
 - `integer` 
 
@@ -1848,14 +1856,14 @@ This helper function is typically used in the check stage
 
 Success int less
 
-**Asset**
+#### Asset
 
 ```yaml
 check:
   - target_field: int_less(22)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -1869,14 +1877,14 @@ check:
 
 Failure int less
 
-**Asset**
+#### Asset
 
 ```yaml
 check:
   - target_field: int_less($any_number)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -1891,14 +1899,14 @@ check:
 
 Failure int less
 
-**Asset**
+#### Asset
 
 ```yaml
 check:
   - target_field: int_less(100)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -1941,7 +1949,7 @@ If they're not, the function evaluates to false. In case of error, the function 
 This helper function is typically used in the check stage
 
 
-**Keywords**
+## Keywords
 
 - `integer` 
 
@@ -1953,14 +1961,14 @@ This helper function is typically used in the check stage
 
 Success int less or equal
 
-**Asset**
+#### Asset
 
 ```yaml
 check:
   - target_field: int_less_or_equal(22)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -1974,14 +1982,14 @@ check:
 
 Success int less or equal
 
-**Asset**
+#### Asset
 
 ```yaml
 check:
   - target_field: int_less_or_equal($any_number)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -1996,14 +2004,14 @@ check:
 
 Failure int less or equal
 
-**Asset**
+#### Asset
 
 ```yaml
 check:
   - target_field: int_less_or_equal(2)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -2046,7 +2054,7 @@ If they're not, the function evaluates to false. In case of error, the function 
 This helper function is typically used in the check stage
 
 
-**Keywords**
+## Keywords
 
 - `integer` 
 
@@ -2058,14 +2066,14 @@ This helper function is typically used in the check stage
 
 Success int not equal
 
-**Asset**
+#### Asset
 
 ```yaml
 check:
   - target_field: int_not_equal(22)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -2079,14 +2087,14 @@ check:
 
 Failure int not equal
 
-**Asset**
+#### Asset
 
 ```yaml
 check:
   - target_field: int_not_equal($any_number)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -2135,7 +2143,7 @@ where ddd is a decimal number of up to three digits in the range  0  to  255.
 This helper function is typically used in the check stage
 
 
-**Keywords**
+## Keywords
 
 - `undefined` 
 
@@ -2145,14 +2153,14 @@ This helper function is typically used in the check stage
 
 Match IP CIDR
 
-**Asset**
+#### Asset
 
 ```yaml
 check:
   - target_field: ip_cidr_match('192.168.0.0', '192.168.0.11')
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -2166,14 +2174,14 @@ check:
 
 Don't match IP CIDR
 
-**Asset**
+#### Asset
 
 ```yaml
 check:
   - target_field: ip_cidr_match('192.168.0.0', '192.168.0.11')
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -2209,7 +2217,7 @@ If they're not, the function evaluates to false. In case of error, the function 
 This helper function is typically used in the check stage
 
 
-**Keywords**
+## Keywords
 
 - `undefined` 
 
@@ -2219,14 +2227,14 @@ This helper function is typically used in the check stage
 
 Is array
 
-**Asset**
+#### Asset
 
 ```yaml
 check:
   - target_field: is_array()
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -2245,14 +2253,14 @@ check:
 
 Not is array
 
-**Asset**
+#### Asset
 
 ```yaml
 check:
   - target_field: is_array()
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {}
@@ -2264,14 +2272,14 @@ check:
 
 Not is array
 
-**Asset**
+#### Asset
 
 ```yaml
 check:
   - target_field: is_array()
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -2307,7 +2315,7 @@ If they're not, the function evaluates to false. In case of error, the function 
 This helper function is typically used in the check stage
 
 
-**Keywords**
+## Keywords
 
 - `undefined` 
 
@@ -2317,14 +2325,14 @@ This helper function is typically used in the check stage
 
 Is boolean
 
-**Asset**
+#### Asset
 
 ```yaml
 check:
   - target_field: is_boolean()
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -2338,14 +2346,14 @@ check:
 
 Is boolean
 
-**Asset**
+#### Asset
 
 ```yaml
 check:
   - target_field: is_boolean()
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {}
@@ -2357,14 +2365,14 @@ check:
 
 Not is boolean
 
-**Asset**
+#### Asset
 
 ```yaml
 check:
   - target_field: is_boolean()
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -2404,7 +2412,7 @@ IPv4:
 This helper function is typically used in the check stage
 
 
-**Keywords**
+## Keywords
 
 - `undefined` 
 
@@ -2414,14 +2422,14 @@ This helper function is typically used in the check stage
 
 Invalid IPv4. It's an IPv6
 
-**Asset**
+#### Asset
 
 ```yaml
 check:
   - target_field: is_ipv4()
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -2435,14 +2443,14 @@ check:
 
 Valid special IPv4
 
-**Asset**
+#### Asset
 
 ```yaml
 check:
   - target_field: is_ipv4()
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -2456,14 +2464,14 @@ check:
 
 Valid special IPv4
 
-**Asset**
+#### Asset
 
 ```yaml
 check:
   - target_field: is_ipv4()
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -2477,14 +2485,14 @@ check:
 
 Valid public IPv4
 
-**Asset**
+#### Asset
 
 ```yaml
 check:
   - target_field: is_ipv4()
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -2523,7 +2531,7 @@ IPv6:
 This helper function is typically used in the check stage
 
 
-**Keywords**
+## Keywords
 
 - `undefined` 
 
@@ -2533,14 +2541,14 @@ This helper function is typically used in the check stage
 
 Invalid IPv6. It's an IPv4
 
-**Asset**
+#### Asset
 
 ```yaml
 check:
   - target_field: is_ipv6()
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -2554,14 +2562,14 @@ check:
 
 Valid special IPv6
 
-**Asset**
+#### Asset
 
 ```yaml
 check:
   - target_field: is_ipv6()
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -2575,14 +2583,14 @@ check:
 
 Valid special IPv6
 
-**Asset**
+#### Asset
 
 ```yaml
 check:
   - target_field: is_ipv6()
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -2596,14 +2604,14 @@ check:
 
 Valid public IPv6
 
-**Asset**
+#### Asset
 
 ```yaml
 check:
   - target_field: is_ipv6()
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -2639,7 +2647,7 @@ If they're not, the function evaluates to false. In case of error, the function 
 This helper function is typically used in the check stage
 
 
-**Keywords**
+## Keywords
 
 - `undefined` 
 
@@ -2649,14 +2657,14 @@ This helper function is typically used in the check stage
 
 Is array
 
-**Asset**
+#### Asset
 
 ```yaml
 check:
   - target_field: is_not_array()
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -2675,14 +2683,14 @@ check:
 
 Not is array
 
-**Asset**
+#### Asset
 
 ```yaml
 check:
   - target_field: is_not_array()
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -2696,14 +2704,14 @@ check:
 
 Not is array
 
-**Asset**
+#### Asset
 
 ```yaml
 check:
   - target_field: is_not_array()
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -2741,7 +2749,7 @@ If they're not, the function evaluates to false. In case of error, the function 
 This helper function is typically used in the check stage
 
 
-**Keywords**
+## Keywords
 
 - `undefined` 
 
@@ -2751,14 +2759,14 @@ This helper function is typically used in the check stage
 
 Is boolean
 
-**Asset**
+#### Asset
 
 ```yaml
 check:
   - target_field: is_not_boolean()
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -2772,14 +2780,14 @@ check:
 
 Not is boolean
 
-**Asset**
+#### Asset
 
 ```yaml
 check:
   - target_field: is_not_boolean()
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -2793,14 +2801,14 @@ check:
 
 Not is boolean
 
-**Asset**
+#### Asset
 
 ```yaml
 check:
   - target_field: is_not_boolean()
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -2838,7 +2846,7 @@ If they're not, the function evaluates to false. In case of error, the function 
 This helper function is typically used in the check stage
 
 
-**Keywords**
+## Keywords
 
 - `undefined` 
 
@@ -2848,14 +2856,14 @@ This helper function is typically used in the check stage
 
 Is object
 
-**Asset**
+#### Asset
 
 ```yaml
 check:
   - target_field: is_not_object()
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -2871,14 +2879,14 @@ check:
 
 Not is object
 
-**Asset**
+#### Asset
 
 ```yaml
 check:
   - target_field: is_not_object()
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -2892,14 +2900,14 @@ check:
 
 Not is object
 
-**Asset**
+#### Asset
 
 ```yaml
 check:
   - target_field: is_not_object()
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -2940,7 +2948,7 @@ If they're not, the function evaluates to false. In case of error, the function 
 This helper function is typically used in the check stage
 
 
-**Keywords**
+## Keywords
 
 - `undefined` 
 
@@ -2950,14 +2958,14 @@ This helper function is typically used in the check stage
 
 Not is string
 
-**Asset**
+#### Asset
 
 ```yaml
 check:
   - target_field: is_not_string()
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -2973,14 +2981,14 @@ check:
 
 Not is string
 
-**Asset**
+#### Asset
 
 ```yaml
 check:
   - target_field: is_not_string()
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -2999,14 +3007,14 @@ check:
 
 Is string
 
-**Asset**
+#### Asset
 
 ```yaml
 check:
   - target_field: is_not_string()
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -3042,7 +3050,7 @@ If they're not, the function evaluates to false. In case of error, the function 
 This helper function is typically used in the check stage
 
 
-**Keywords**
+## Keywords
 
 - `undefined` 
 
@@ -3052,14 +3060,14 @@ This helper function is typically used in the check stage
 
 Is object
 
-**Asset**
+#### Asset
 
 ```yaml
 check:
   - target_field: is_number()
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -3075,14 +3083,14 @@ check:
 
 Is array
 
-**Asset**
+#### Asset
 
 ```yaml
 check:
   - target_field: is_number()
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -3101,14 +3109,14 @@ check:
 
 Not is string
 
-**Asset**
+#### Asset
 
 ```yaml
 check:
   - target_field: is_number()
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -3122,14 +3130,14 @@ check:
 
 Not is boolean
 
-**Asset**
+#### Asset
 
 ```yaml
 check:
   - target_field: is_number()
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -3143,14 +3151,14 @@ check:
 
 Is number
 
-**Asset**
+#### Asset
 
 ```yaml
 check:
   - target_field: is_number()
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -3164,14 +3172,14 @@ check:
 
 Is number
 
-**Asset**
+#### Asset
 
 ```yaml
 check:
   - target_field: is_number()
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -3207,7 +3215,7 @@ If they're not, the function evaluates to false. In case of error, the function 
 This helper function is typically used in the check stage
 
 
-**Keywords**
+## Keywords
 
 - `undefined` 
 
@@ -3217,14 +3225,14 @@ This helper function is typically used in the check stage
 
 Is object
 
-**Asset**
+#### Asset
 
 ```yaml
 check:
   - target_field: is_object()
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -3240,14 +3248,14 @@ check:
 
 Is object
 
-**Asset**
+#### Asset
 
 ```yaml
 check:
   - target_field: is_object()
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -3266,14 +3274,14 @@ check:
 
 Not is object
 
-**Asset**
+#### Asset
 
 ```yaml
 check:
   - target_field: is_object()
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -3318,7 +3326,7 @@ IPv6:
 This helper function is typically used in the check stage
 
 
-**Keywords**
+## Keywords
 
 - `undefined` 
 
@@ -3328,14 +3336,14 @@ This helper function is typically used in the check stage
 
 Check IP valid
 
-**Asset**
+#### Asset
 
 ```yaml
 check:
   - target_field: is_public_ip()
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -3349,14 +3357,14 @@ check:
 
 Check IP valid
 
-**Asset**
+#### Asset
 
 ```yaml
 check:
   - target_field: is_public_ip()
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -3370,14 +3378,14 @@ check:
 
 Check IP invalid
 
-**Asset**
+#### Asset
 
 ```yaml
 check:
   - target_field: is_public_ip()
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -3413,7 +3421,7 @@ If they're not, the function evaluates to false. In case of error, the function 
 This helper function is typically used in the check stage
 
 
-**Keywords**
+## Keywords
 
 - `undefined` 
 
@@ -3423,14 +3431,14 @@ This helper function is typically used in the check stage
 
 Not is string
 
-**Asset**
+#### Asset
 
 ```yaml
 check:
   - target_field: is_string()
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -3446,14 +3454,14 @@ check:
 
 Not is string
 
-**Asset**
+#### Asset
 
 ```yaml
 check:
   - target_field: is_string()
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -3472,14 +3480,14 @@ check:
 
 Is string
 
-**Asset**
+#### Asset
 
 ```yaml
 check:
   - target_field: is_string()
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -3514,7 +3522,7 @@ Check if the environment in use is testing or production.
 This helper function is typically used in the check stage
 
 
-**Keywords**
+## Keywords
 
 - `undefined` 
 
@@ -3524,14 +3532,14 @@ This helper function is typically used in the check stage
 
 Is test session
 
-**Asset**
+#### Asset
 
 ```yaml
 check:
   - target_field: is_test_session()
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -3574,7 +3582,7 @@ field: kvdb_match(db-name)
 Checks if a given key exist in the DB named db-name. This helper function is typically used in the check stage.
 
 
-**Keywords**
+## Keywords
 
 - `kvdb` 
 
@@ -3584,14 +3592,14 @@ Checks if a given key exist in the DB named db-name. This helper function is typ
 
 Key found in kvdb
 
-**Asset**
+#### Asset
 
 ```yaml
 check:
   - target_field: kvdb_match('testing')
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -3605,14 +3613,14 @@ check:
 
 Key not found in kvdb
 
-**Asset**
+#### Asset
 
 ```yaml
 check:
   - target_field: kvdb_match('testing')
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -3653,7 +3661,7 @@ field: kvdb_not_match(db-name)
 Checks if a given key does not exist in the DB named db-name. This helper function is typically used in the check stage.
 
 
-**Keywords**
+## Keywords
 
 - `kvdb` 
 
@@ -3663,14 +3671,14 @@ Checks if a given key does not exist in the DB named db-name. This helper functi
 
 Key found in kvdb
 
-**Asset**
+#### Asset
 
 ```yaml
 check:
   - target_field: kvdb_not_match('testing')
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -3684,14 +3692,14 @@ check:
 
 Key not found in kvdb
 
-**Asset**
+#### Asset
 
 ```yaml
 check:
   - target_field: kvdb_not_match('testing')
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -3735,7 +3743,7 @@ If the array contains the value, then the function will evaluate to true, otherw
 This helper function is typically used in the check stage.
 
 
-**Keywords**
+## Keywords
 
 - `undefined` 
 
@@ -3745,14 +3753,14 @@ This helper function is typically used in the check stage.
 
 Value is in array
 
-**Asset**
+#### Asset
 
 ```yaml
 check:
   - target_field: match_value([1, 2, 3, 4])
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -3766,14 +3774,14 @@ check:
 
 Value not is in array
 
-**Asset**
+#### Asset
 
 ```yaml
 check:
   - target_field: match_value($array)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -3790,14 +3798,14 @@ check:
 
 Value is in array
 
-**Asset**
+#### Asset
 
 ```yaml
 check:
   - target_field: match_value([{'key': 'value'}])
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -3813,14 +3821,14 @@ check:
 
 Value is in array
 
-**Asset**
+#### Asset
 
 ```yaml
 check:
   - target_field: match_value($array)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -3877,7 +3885,7 @@ RE2 syntax: https://github.com/google/re2/wiki/Syntax
 This helper function is typically used in the check stage.
 
 
-**Keywords**
+## Keywords
 
 - `undefined` 
 
@@ -3887,14 +3895,14 @@ This helper function is typically used in the check stage.
 
 Match regular expression
 
-**Asset**
+#### Asset
 
 ```yaml
 check:
   - target_field: regex_match('^(bye pcre\\d)$')
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -3908,14 +3916,14 @@ check:
 
 Don't match regular expression
 
-**Asset**
+#### Asset
 
 ```yaml
 check:
   - target_field: regex_match('^(bye pcre\\d)$')
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -3957,7 +3965,7 @@ Checks if the value stored in the field starts with the value provided.
 If they're not, the function evaluates to false. In case of error, the function will evaluate to false.
 
 
-**Keywords**
+## Keywords
 
 - `undefined` 
 
@@ -3967,14 +3975,14 @@ If they're not, the function evaluates to false. In case of error, the function 
 
 Success start with
 
-**Asset**
+#### Asset
 
 ```yaml
 check:
   - target_field: starts_with('hello')
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -3988,14 +3996,14 @@ check:
 
 Failure start with
 
-**Asset**
+#### Asset
 
 ```yaml
 check:
   - target_field: starts_with($conteined)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -4010,14 +4018,14 @@ check:
 
 Failure start with
 
-**Asset**
+#### Asset
 
 ```yaml
 check:
   - target_field: starts_with('wazuh!')
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -4060,7 +4068,7 @@ If they're not, the function evaluates to false. In case of error, the function 
 This helper function is typically used in the check stage
 
 
-**Keywords**
+## Keywords
 
 - `string` 
 
@@ -4072,14 +4080,14 @@ This helper function is typically used in the check stage
 
 Compare two different strings
 
-**Asset**
+#### Asset
 
 ```yaml
 check:
   - target_field: string_equal('hello world!')
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -4093,14 +4101,14 @@ check:
 
 Compare two equals strings
 
-**Asset**
+#### Asset
 
 ```yaml
 check:
   - target_field: string_equal($any_string)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -4144,7 +4152,7 @@ If they're not, the function evaluates to false. In case of error, the function 
 This helper function is typically used in the check stage
 
 
-**Keywords**
+## Keywords
 
 - `string` 
 
@@ -4156,14 +4164,14 @@ This helper function is typically used in the check stage
 
 Success string greater
 
-**Asset**
+#### Asset
 
 ```yaml
 check:
   - target_field: string_greater('hello world!')
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -4177,14 +4185,14 @@ check:
 
 Failure string greater
 
-**Asset**
+#### Asset
 
 ```yaml
 check:
   - target_field: string_greater($any_string)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -4199,14 +4207,14 @@ check:
 
 Failure string greater
 
-**Asset**
+#### Asset
 
 ```yaml
 check:
   - target_field: string_greater('hello world!')
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -4249,7 +4257,7 @@ If they're not, the function evaluates to false. In case of error, the function 
 This helper function is typically used in the check stage
 
 
-**Keywords**
+## Keywords
 
 - `string` 
 
@@ -4261,14 +4269,14 @@ This helper function is typically used in the check stage
 
 Success string less
 
-**Asset**
+#### Asset
 
 ```yaml
 check:
   - target_field: string_less('wazuh')
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -4282,14 +4290,14 @@ check:
 
 Failure string less
 
-**Asset**
+#### Asset
 
 ```yaml
 check:
   - target_field: string_less($any_string)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -4304,14 +4312,14 @@ check:
 
 Failure string less
 
-**Asset**
+#### Asset
 
 ```yaml
 check:
   - target_field: string_less('hello world!')
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -4354,7 +4362,7 @@ If they're not, the function evaluates to false. In case of error, the function 
 This helper function is typically used in the check stage
 
 
-**Keywords**
+## Keywords
 
 - `string` 
 
@@ -4366,14 +4374,14 @@ This helper function is typically used in the check stage
 
 Success string less or equal
 
-**Asset**
+#### Asset
 
 ```yaml
 check:
   - target_field: string_less_or_equal('wazuh')
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -4387,14 +4395,14 @@ check:
 
 Failure string less or equal
 
-**Asset**
+#### Asset
 
 ```yaml
 check:
   - target_field: string_less_or_equal($any_string)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -4409,14 +4417,14 @@ check:
 
 Success string less or equal
 
-**Asset**
+#### Asset
 
 ```yaml
 check:
   - target_field: string_less_or_equal('hello world!')
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -4459,7 +4467,7 @@ If they're not, the function evaluates to false. In case of error, the function 
 This helper function is typically used in the check stage
 
 
-**Keywords**
+## Keywords
 
 - `string` 
 
@@ -4471,14 +4479,14 @@ This helper function is typically used in the check stage
 
 Success string not equal
 
-**Asset**
+#### Asset
 
 ```yaml
 check:
   - target_field: string_not_equal('hello world!')
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -4492,14 +4500,14 @@ check:
 
 Failure string not equal
 
-**Asset**
+#### Asset
 
 ```yaml
 check:
   - target_field: string_not_equal($any_string)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -4545,7 +4553,7 @@ In case of success it will return an object with the following fields:
   - organization.name: mapping of the 'autonomous_system_organization' field of the mmdb entry.
 
 
-**Keywords**
+## Keywords
 
 - `max_min_db` 
 
@@ -4555,7 +4563,7 @@ In case of success it will return an object with the following fields:
 
 Get as of public ip
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -4563,7 +4571,7 @@ normalize:
       - target_field: as($ip)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -4571,7 +4579,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -4621,7 +4629,7 @@ The function receives two or more operands and concatenates them in the order th
 The result of the concatenation is stored in the field `field`.
 
 
-**Keywords**
+## Keywords
 
 - `different_types` 
 
@@ -4631,7 +4639,7 @@ The result of the concatenation is stored in the field `field`.
 
 Concatenate a string with another empty one
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -4639,13 +4647,13 @@ normalize:
       - target_field: concat('yes', ' ', 'no', 'hello', 'yes')
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {}
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -4659,7 +4667,7 @@ normalize:
 
 Trying to concatenate a value with a reference does not exist
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -4667,7 +4675,7 @@ normalize:
       - target_field: concat($operand_left, 'hello')
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -4675,7 +4683,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {}
@@ -4687,7 +4695,7 @@ normalize:
 
 Concat object, number and string
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -4695,7 +4703,7 @@ normalize:
       - target_field: concat($operand_left, 2, $operand_right_1)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -4706,7 +4714,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -4754,7 +4762,7 @@ The function receives two or more operands and concatenates them in the order th
 The result of the concatenation is stored in the field `field`.
 
 
-**Keywords**
+## Keywords
 
 - `different_types` 
 
@@ -4764,7 +4772,7 @@ The result of the concatenation is stored in the field `field`.
 
 Concatenate a string with another empty one
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -4772,13 +4780,13 @@ normalize:
       - target_field: concat_any('hello', ' ', 'yes')
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {}
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -4792,7 +4800,7 @@ normalize:
 
 Try to concatenate an existing reference with a non-existing reference
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -4800,7 +4808,7 @@ normalize:
       - target_field: concat_any($operand_left, $operand_right)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -4809,7 +4817,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -4825,7 +4833,7 @@ normalize:
 
 Trying to concatenate a value with a reference does not exist
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -4833,7 +4841,7 @@ normalize:
       - target_field: concat_any($operand_left, 'hello')
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -4841,7 +4849,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -4884,7 +4892,7 @@ Date from epoch will convert the input value, can be a reference or a value repr
 Transforms UNIX epoch time to a human readable date time in the format of 'YYYY-MM-DDTHH:MM:SSZ'.
 
 
-**Keywords**
+## Keywords
 
 - `undefined` 
 
@@ -4894,7 +4902,7 @@ Transforms UNIX epoch time to a human readable date time in the format of 'YYYY-
 
 Get date using initial epoch
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -4902,7 +4910,7 @@ normalize:
       - target_field: date_from_epoch($epoch)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -4910,7 +4918,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -4925,7 +4933,7 @@ normalize:
 
 Get date using any epoch
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -4933,7 +4941,7 @@ normalize:
       - target_field: date_from_epoch($epoch)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -4941,7 +4949,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -4984,7 +4992,7 @@ The operation transforms a string of hexa digits into an ASCII string. The resul
 If the “field” already exists, then it will be replaced. In case of errors “field” will not be modified.
 
 
-**Keywords**
+## Keywords
 
 - `undefined` 
 
@@ -4994,7 +5002,7 @@ If the “field” already exists, then it will be replaced. In case of errors �
 
 Convert base 16 to decimal
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -5002,7 +5010,7 @@ normalize:
       - target_field: decode_base16($hex)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -5010,7 +5018,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -5054,7 +5062,7 @@ The result of the lowercase (+downcase) operation is mapped to “field”.
 If the field field already exists, then it will be replaced. In case of errors “field” will not be modified.
 
 
-**Keywords**
+## Keywords
 
 - `string` 
 
@@ -5064,7 +5072,7 @@ If the field field already exists, then it will be replaced. In case of errors �
 
 Change string to downcase
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -5072,13 +5080,13 @@ normalize:
       - target_field: downcase('ABCD')
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {}
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -5092,7 +5100,7 @@ normalize:
 
 Change string to downcase
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -5100,7 +5108,7 @@ normalize:
       - target_field: downcase($upper_characters)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -5108,7 +5116,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -5123,7 +5131,7 @@ normalize:
 
 Change string to downcase
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -5131,13 +5139,13 @@ normalize:
       - target_field: downcase('aBcDECF')
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {}
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -5184,7 +5192,7 @@ The result of the operation is stored in the field `field`.
 The function supports the following operators: `sum` (addition), `sub` (subtraction), `mul` (multiplication), and `div` (division).
 
 
-**Keywords**
+## Keywords
 
 - `math` 
 
@@ -5200,7 +5208,7 @@ The function supports the following operators: `sum` (addition), `sub` (subtract
 
 Sum that produces overflow. The limit for a double is exceeded.
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -5208,13 +5216,13 @@ normalize:
       - target_field: float_calculate('sum', 1.7976931348623157e+308, 1.7976931348623157e+308)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {}
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {}
@@ -5226,7 +5234,7 @@ normalize:
 
 Sum that produces overflow. The limit for a double is exceeded.
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -5234,7 +5242,7 @@ normalize:
       - target_field: float_calculate('sum', $operand_left, $operand_right)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -5243,7 +5251,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -5258,7 +5266,7 @@ normalize:
 
 Subtraction that produces overflow. The limit for a double is exceeded.
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -5266,13 +5274,13 @@ normalize:
       - target_field: float_calculate('sub', 1.7976931348623157e+308, -1.7976931348623157e+308)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {}
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {}
@@ -5284,7 +5292,7 @@ normalize:
 
 Subtraction that produces overflow. The limit for a double is exceeded.
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -5292,7 +5300,7 @@ normalize:
       - target_field: float_calculate('sub', $operand_left, $operand_right)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -5301,7 +5309,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -5316,7 +5324,7 @@ normalize:
 
 Multiplication that produces overflow. The limit for a double is exceeded.
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -5324,13 +5332,13 @@ normalize:
       - target_field: float_calculate('mul', 1.7976931348623157e+308, 2.0)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {}
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {}
@@ -5342,7 +5350,7 @@ normalize:
 
 Multiplication that produces overflow. The limit for a double is exceeded.
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -5350,7 +5358,7 @@ normalize:
       - target_field: float_calculate('mul', $operand_left, $operand_right)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -5359,7 +5367,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -5374,7 +5382,7 @@ normalize:
 
 Any division with a numerator equal to zero results in zero as long as the denominator is different from 0.
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -5382,13 +5390,13 @@ normalize:
       - target_field: float_calculate('div', 0.0, 8)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {}
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -5402,7 +5410,7 @@ normalize:
 
 Any division with a denominator equal to zero is an indeterminate operation.
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -5410,7 +5418,7 @@ normalize:
       - target_field: float_calculate('div', $operand_left, $operand_right)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -5419,7 +5427,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -5434,7 +5442,7 @@ normalize:
 
 Sum float with integer
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -5442,13 +5450,13 @@ normalize:
       - target_field: float_calculate('sum', -1.53, 1)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {}
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -5462,7 +5470,7 @@ normalize:
 
 Sum integer with integer
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -5470,7 +5478,7 @@ normalize:
       - target_field: float_calculate('sum', $operand_left, $operand_right)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -5479,7 +5487,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -5495,7 +5503,7 @@ normalize:
 
 Sum float with float
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -5503,13 +5511,13 @@ normalize:
       - target_field: float_calculate('sum', 2.676, 3.756)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {}
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -5523,7 +5531,7 @@ normalize:
 
 Sub float with integer
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -5531,7 +5539,7 @@ normalize:
       - target_field: float_calculate('sub', $operand_left, $operand_right)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -5540,7 +5548,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -5556,7 +5564,7 @@ normalize:
 
 Sub integer with integer
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -5564,13 +5572,13 @@ normalize:
       - target_field: float_calculate('sub', -1, -1)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {}
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -5584,7 +5592,7 @@ normalize:
 
 Sub float with float
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -5592,7 +5600,7 @@ normalize:
       - target_field: float_calculate('sub', $operand_left, $operand_right)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -5601,7 +5609,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -5617,7 +5625,7 @@ normalize:
 
 Mul float with integer
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -5625,13 +5633,13 @@ normalize:
       - target_field: float_calculate('mul', 12.53, -3)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {}
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -5645,7 +5653,7 @@ normalize:
 
 Mul integer with integer
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -5653,7 +5661,7 @@ normalize:
       - target_field: float_calculate('mul', $operand_left, $operand_right)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -5662,7 +5670,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -5678,7 +5686,7 @@ normalize:
 
 Mul float with float
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -5686,13 +5694,13 @@ normalize:
       - target_field: float_calculate('mul', -2.676, -3.756)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {}
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -5706,7 +5714,7 @@ normalize:
 
 Div float with integer
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -5714,7 +5722,7 @@ normalize:
       - target_field: float_calculate('div', $operand_left, $operand_right)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -5723,7 +5731,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -5739,7 +5747,7 @@ normalize:
 
 Div integer with integer
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -5747,13 +5755,13 @@ normalize:
       - target_field: float_calculate('div', -45, 2)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {}
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -5767,7 +5775,7 @@ normalize:
 
 Div float with float
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -5775,7 +5783,7 @@ normalize:
       - target_field: float_calculate('div', $operand_left, $operand_right)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -5784,7 +5792,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -5840,7 +5848,7 @@ In case of success it will return an object with the following fields:
   - region_name: mapping of the 'subdivisions.0.names.en' field of the mmdb entry.
 
 
-**Keywords**
+## Keywords
 
 - `max_min_db` 
 
@@ -5850,7 +5858,7 @@ In case of success it will return an object with the following fields:
 
 Get geo of public ip
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -5858,7 +5866,7 @@ normalize:
       - target_field: geoip($ip)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -5866,7 +5874,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -5913,7 +5921,7 @@ field: get_date()
 Get the current date in the format "%Y-%m-%dT%H:%M:%SZ". The date is generated in UTC time zone.
 
 
-**Keywords**
+## Keywords
 
 - `time` 
 
@@ -5948,7 +5956,7 @@ The result of the operation is mapped to “field”. If the “field” already
 In case of errors “field” will not be modified.
 
 
-**Keywords**
+## Keywords
 
 - `undefined` 
 
@@ -5958,7 +5966,7 @@ In case of errors “field” will not be modified.
 
 Convert hexadecimal to decimal
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -5966,7 +5974,7 @@ normalize:
       - target_field: hex_to_number($hex)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -5974,7 +5982,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -5989,7 +5997,7 @@ normalize:
 
 Converts hexadecimal to int64
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -5997,7 +6005,7 @@ normalize:
       - target_field: hex_to_number($hex)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -6005,7 +6013,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -6053,7 +6061,7 @@ The result of the operation is stored in the field `field`.
 The function supports the following operators: `sum` (addition), `sub` (subtraction), `mul` (multiplication), and `div` (division).
 
 
-**Keywords**
+## Keywords
 
 - `math` 
 
@@ -6069,7 +6077,7 @@ The function supports the following operators: `sum` (addition), `sub` (subtract
 
 Sum that produces overflow. the limit for a 64-bit integer is exceeded
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -6077,13 +6085,13 @@ normalize:
       - target_field: int_calculate('sum', 1, 9223372036854775807)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {}
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {}
@@ -6095,7 +6103,7 @@ normalize:
 
 Sum that produces overflow. the limit for a 64-bit integer is exceeded
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -6103,7 +6111,7 @@ normalize:
       - target_field: int_calculate('sum', $operand_left, $operand_right)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -6112,7 +6120,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -6127,7 +6135,7 @@ normalize:
 
 Sub that produces overflow. the limit for a 64-bit integer is exceeded
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -6135,13 +6143,13 @@ normalize:
       - target_field: int_calculate('sub', 9223372036854775807, -1)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {}
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {}
@@ -6153,7 +6161,7 @@ normalize:
 
 Sub that produces overflow. the limit for a 64-bit integer is exceeded
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -6161,7 +6169,7 @@ normalize:
       - target_field: int_calculate('sub', $operand_left, $operand_right)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -6170,7 +6178,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -6185,7 +6193,7 @@ normalize:
 
 Mul that produces overflow. the limit for a 64-bit integer is exceeded
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -6193,13 +6201,13 @@ normalize:
       - target_field: int_calculate('mul', 4611686018427387904, 2)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {}
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {}
@@ -6211,7 +6219,7 @@ normalize:
 
 Mul that produces overflow. the limit for a 64-bit integer is exceeded
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -6219,7 +6227,7 @@ normalize:
       - target_field: int_calculate('mul', $operand_left, $operand_right)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -6228,7 +6236,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -6243,7 +6251,7 @@ normalize:
 
 Any division with a numerator equal to zero results in zero as long as the denominator is different from 0.
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -6251,13 +6259,13 @@ normalize:
       - target_field: int_calculate('div', 0, 8)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {}
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -6271,7 +6279,7 @@ normalize:
 
 Any division with a denominator equal to zero is an indeterminate operation.
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -6279,7 +6287,7 @@ normalize:
       - target_field: int_calculate('div', $operand_left, $operand_right)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -6288,7 +6296,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -6334,7 +6342,7 @@ If the field field already exists, then it will be replaced. In case of errors t
   - IPv6: support RFC 2373 representation of addresses
 
 
-**Keywords**
+## Keywords
 
 - `ip` 
 
@@ -6344,7 +6352,7 @@ If the field field already exists, then it will be replaced. In case of errors t
 
 Get the version type of an ip
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -6352,7 +6360,7 @@ normalize:
       - target_field: ip_version($ip)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -6360,7 +6368,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -6375,7 +6383,7 @@ normalize:
 
 Get the version type of an ip
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -6383,7 +6391,7 @@ normalize:
       - target_field: ip_version($ip)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -6391,7 +6399,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -6436,7 +6444,7 @@ The result of the string concatenation (join) operation is mapped to “field”
 If the “field” already exists, then it will be replaced. In case of errors “field” will not be modified.
 
 
-**Keywords**
+## Keywords
 
 - `undefined` 
 
@@ -6446,7 +6454,7 @@ If the “field” already exists, then it will be replaced. In case of errors �
 
 Join a string using space like separator
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -6454,7 +6462,7 @@ normalize:
       - target_field: join($array, ' ')
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -6468,7 +6476,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -6489,7 +6497,7 @@ normalize:
 
 Join a string using a string like separator
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -6497,7 +6505,7 @@ normalize:
       - target_field: join($array, 'separator')
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -6511,7 +6519,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -6566,7 +6574,7 @@ RE2 syntax: https://github.com/google/re2/wiki/Syntax
 This helper function is used in the map stage
 
 
-**Keywords**
+## Keywords
 
 - `undefined` 
 
@@ -6576,7 +6584,7 @@ This helper function is used in the map stage
 
 Match regular expression
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -6584,7 +6592,7 @@ normalize:
       - target_field: regex_extract($fieldToMatch, '^(bye pcre\\d)$')
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -6592,7 +6600,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -6607,7 +6615,7 @@ normalize:
 
 Don't match regular expression
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -6615,7 +6623,7 @@ normalize:
       - target_field: regex_extract($fieldToMatch, '^(bye pcre\\d)$')
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -6623,7 +6631,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -6667,7 +6675,7 @@ In case of errors “field” will not be modified.
 This helper function is typically used in the map stage
 
 
-**Keywords**
+## Keywords
 
 - `undefined` 
 
@@ -6677,7 +6685,7 @@ This helper function is typically used in the map stage
 
 Get hash of string
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -6685,7 +6693,7 @@ normalize:
       - target_field: sha1($any_string)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -6693,7 +6701,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -6729,7 +6737,7 @@ Get unix epoch time in seconds from system clock. The result operation is mapped
 If the “field” already exists, then it will be replaced.
 
 
-**Keywords**
+## Keywords
 
 - `time` 
 
@@ -6766,7 +6774,7 @@ The result of the to_int operation is mapped to “target_field”. In case of e
 This helper function is typically used in the map stage
 
 
-**Keywords**
+## Keywords
 
 - `double` 
 
@@ -6780,7 +6788,7 @@ This helper function is typically used in the map stage
 
 Truncates a negative float, ignoring the fractional part.
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -6788,7 +6796,7 @@ normalize:
       - target_field: to_int($number_to_transform, 'truncate')
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -6796,7 +6804,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -6811,7 +6819,7 @@ normalize:
 
 Round a negative float.
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -6819,7 +6827,7 @@ normalize:
       - target_field: to_int($number_to_transform, 'round')
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -6827,7 +6835,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -6842,7 +6850,7 @@ normalize:
 
 Rounds a negative float to the nearest integer.
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -6850,7 +6858,7 @@ normalize:
       - target_field: to_int($number_to_transform, 'round')
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -6858,7 +6866,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -6873,7 +6881,7 @@ normalize:
 
 Truncates a positive float less than 1 to 0.
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -6881,7 +6889,7 @@ normalize:
       - target_field: to_int($number_to_transform, 'truncate')
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -6889,7 +6897,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -6904,7 +6912,7 @@ normalize:
 
 Rounds a positive float greater than 0.5 to 1.
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -6912,7 +6920,7 @@ normalize:
       - target_field: to_int($number_to_transform, 'round')
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -6920,7 +6928,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -6935,7 +6943,7 @@ normalize:
 
 Truncates a positive float with a fractional part of 0.5.
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -6943,7 +6951,7 @@ normalize:
       - target_field: to_int($number_to_transform, 'truncate')
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -6951,7 +6959,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -6966,7 +6974,7 @@ normalize:
 
 Truncates a positive float just below 1.5 to 1.
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -6974,7 +6982,7 @@ normalize:
       - target_field: to_int($number_to_transform, 'truncate')
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -6982,7 +6990,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -6997,7 +7005,7 @@ normalize:
 
 Rounds a positive float just below 1.5 to 2.
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -7005,7 +7013,7 @@ normalize:
       - target_field: to_int($number_to_transform, 'round')
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -7013,7 +7021,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -7028,7 +7036,7 @@ normalize:
 
 Rounds a positive float below 1.5 but closer to 1 to 1.
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -7036,7 +7044,7 @@ normalize:
       - target_field: to_int($number_to_transform, 'round')
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -7044,7 +7052,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -7059,7 +7067,7 @@ normalize:
 
 Rounds a positive integer
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -7067,7 +7075,7 @@ normalize:
       - target_field: to_int($number_to_transform, 'round')
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -7075,7 +7083,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -7118,7 +7126,7 @@ Transforms a number into a string with that number.
 This helper function is typically used in the map stage
 
 
-**Keywords**
+## Keywords
 
 - `undefined` 
 
@@ -7128,7 +7136,7 @@ This helper function is typically used in the map stage
 
 Success to_string
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -7136,7 +7144,7 @@ normalize:
       - target_field: to_string($any_number)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -7144,7 +7152,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -7159,7 +7167,7 @@ normalize:
 
 Success to_string
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -7167,7 +7175,7 @@ normalize:
       - target_field: to_string($any_number)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -7175,7 +7183,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -7190,7 +7198,7 @@ normalize:
 
 Failure to_string
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -7198,7 +7206,7 @@ normalize:
       - target_field: to_string($any_number)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -7206,7 +7214,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -7249,7 +7257,7 @@ The result of the uppercase (upcase) operation is mapped to “field”.
 If the “field” already exists, then it will be replaced. In case of errors “field” will not be modified.
 
 
-**Keywords**
+## Keywords
 
 - `string` 
 
@@ -7259,7 +7267,7 @@ If the “field” already exists, then it will be replaced. In case of errors �
 
 Change string to uppercase
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -7267,13 +7275,13 @@ normalize:
       - target_field: upcase('abcd')
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {}
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -7287,7 +7295,7 @@ normalize:
 
 Change string to uppercase
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -7295,7 +7303,7 @@ normalize:
       - target_field: upcase($lower_characters)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -7303,7 +7311,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -7318,7 +7326,7 @@ normalize:
 
 Change string to uppercase
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -7326,13 +7334,13 @@ normalize:
       - target_field: upcase('aBcDECF')
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {}
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -7379,7 +7387,7 @@ The type of the first element contained in the array will always be taken or, fa
 element to be added.
 
 
-**Keywords**
+## Keywords
 
 - `array` 
 
@@ -7389,7 +7397,7 @@ element to be added.
 
 The type of the value matches the type of the elements of the array
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -7397,7 +7405,7 @@ normalize:
       - target_field: array_append(5)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -7410,7 +7418,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -7430,7 +7438,7 @@ normalize:
 
 The type of the value does not match the type of the array elements
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -7438,7 +7446,7 @@ normalize:
       - target_field: array_append($any_object)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -7452,7 +7460,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -7472,7 +7480,7 @@ normalize:
 
 The type of the value does not match the type of the array elements
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -7480,7 +7488,7 @@ normalize:
       - target_field: array_append([1, 2])
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -7493,7 +7501,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -7512,7 +7520,7 @@ normalize:
 
 The type of the value does match the type of the array elements
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -7520,7 +7528,7 @@ normalize:
       - target_field: array_append($any_object)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -7534,7 +7542,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -7588,7 +7596,7 @@ As it is an array, only elements of the same type can be added. The type of the 
 will always be taken or, failing that, the type of the first element to be added.
 
 
-**Keywords**
+## Keywords
 
 - `array` 
 
@@ -7598,7 +7606,7 @@ will always be taken or, failing that, the type of the first element to be added
 
 The type of the value matches the type of the elements of the array
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -7606,7 +7614,7 @@ normalize:
       - target_field: array_append_any(5, 6)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -7619,7 +7627,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -7640,7 +7648,7 @@ normalize:
 
 The type of the value matches the type of the elements of the array
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -7648,7 +7656,7 @@ normalize:
       - target_field: array_append_any($any_object, $any_object_2)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -7663,7 +7671,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -7685,7 +7693,7 @@ normalize:
 
 The type of the value matches the type of the elements of the array
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -7693,7 +7701,7 @@ normalize:
       - target_field: array_append_any(5, $any_object_2)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -7707,7 +7715,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -7759,7 +7767,7 @@ Currently this operations will fails as soon as one reference parameter is not f
 added already exists in the array.
 
 
-**Keywords**
+## Keywords
 
 - `array` 
 
@@ -7769,7 +7777,7 @@ added already exists in the array.
 
 Failure array append unique
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -7777,7 +7785,7 @@ normalize:
       - target_field: array_append_unique('hello')
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -7790,7 +7798,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -7809,7 +7817,7 @@ normalize:
 
 Failure array append unique
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -7817,7 +7825,7 @@ normalize:
       - target_field: array_append_unique($any_object)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -7832,7 +7840,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -7853,7 +7861,7 @@ normalize:
 
 Success array append unique
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -7861,7 +7869,7 @@ normalize:
       - target_field: array_append_unique(5)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -7874,7 +7882,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -7925,7 +7933,7 @@ This operation will not fail if a reference parameter is not found, any paramete
 it will be added to the target field.
 
 
-**Keywords**
+## Keywords
 
 - `array` 
 
@@ -7935,7 +7943,7 @@ it will be added to the target field.
 
 The type of the value matches the type of the elements of the array
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -7943,7 +7951,7 @@ normalize:
       - target_field: array_append_unique_any(5, 6)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -7957,7 +7965,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -7978,7 +7986,7 @@ normalize:
 
 The type of the value matches the type of the elements of the array
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -7986,7 +7994,7 @@ normalize:
       - target_field: array_append_unique_any($any_object, $any_object_2)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -8002,7 +8010,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -8024,7 +8032,7 @@ normalize:
 
 The type of the value matches the type of the elements of the array
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -8032,7 +8040,7 @@ normalize:
       - target_field: array_append_unique_any(5, $any_object_2)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -8046,7 +8054,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -8088,7 +8096,7 @@ Deletes the key named “field” from the event. If it does not exist, the func
 This helper function is typically used in the map stage.
 
 
-**Keywords**
+## Keywords
 
 - `delete` 
 
@@ -8098,7 +8106,7 @@ This helper function is typically used in the map stage.
 
 Success delete
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -8106,7 +8114,7 @@ normalize:
       - target_field: delete()
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -8114,7 +8122,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -8128,7 +8136,7 @@ normalize:
 
 Success delete
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -8136,7 +8144,7 @@ normalize:
       - target_field: delete()
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -8146,7 +8154,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -8160,7 +8168,7 @@ normalize:
 
 Success delete
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -8168,7 +8176,7 @@ normalize:
       - target_field: delete()
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -8181,7 +8189,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -8216,7 +8224,7 @@ This operation removes all fields that do not belong to the schema.
 Typically used with field = ".", the root element.
 
 
-**Keywords**
+## Keywords
 
 - `delete` 
 
@@ -8226,7 +8234,7 @@ Typically used with field = ".", the root element.
 
 Success erase custom file
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -8234,7 +8242,7 @@ normalize:
       - target_field: erase_custom_fields()
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -8242,7 +8250,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -8256,7 +8264,7 @@ normalize:
 
 Success erase custum file
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -8264,7 +8272,7 @@ normalize:
       - target_field: erase_custom_fields()
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -8274,7 +8282,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -8288,7 +8296,7 @@ normalize:
 
 Success erase custom file
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -8296,7 +8304,7 @@ normalize:
       - target_field: erase_custom_fields()
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -8309,7 +8317,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -8354,7 +8362,7 @@ The object parameter must be a definition object or a reference to a field conta
 This helper function is typically used in the map stage.
 
 
-**Keywords**
+## Keywords
 
 - `undefined` 
 
@@ -8364,7 +8372,7 @@ This helper function is typically used in the map stage.
 
 The value to replace was found
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -8372,7 +8380,7 @@ normalize:
       - target_field: get_key_in({'key': 'name', 'key2': 'surname'}, $key)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -8381,7 +8389,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -8396,7 +8404,7 @@ normalize:
 
 The value to replace was found
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -8404,7 +8412,7 @@ normalize:
       - target_field: get_key_in($any_object, $key)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -8420,7 +8428,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -8493,7 +8501,7 @@ This table is generated from a object json stored in KVDB
     If the resulting array is empty, the function fails, and it neither creates nor overwrites the value of field.
 
 
-**Keywords**
+## Keywords
 
 - `kvdb` 
 
@@ -8503,7 +8511,7 @@ This table is generated from a object json stored in KVDB
 
 Success decode bitmask
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -8511,7 +8519,7 @@ normalize:
       - target_field: kvdb_decode_bitmask('testing', 'test_bitmask', $mask)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -8520,7 +8528,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -8537,7 +8545,7 @@ normalize:
 
 Failure decode bitmask. Values is out of range 0-0xFFFFFFFFFFFFFFFF
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -8545,7 +8553,7 @@ normalize:
       - target_field: kvdb_decode_bitmask('testing', 'test_bitmask', $mask)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -8554,7 +8562,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -8598,7 +8606,7 @@ Removes a key of the database. If the key does not exist, it returns an error.
 If it was able to be removed, then map `true` into the field. This helper function is typically used in the map stage
 
 
-**Keywords**
+## Keywords
 
 - `kvdb` 
 
@@ -8608,7 +8616,7 @@ If it was able to be removed, then map `true` into the field. This helper functi
 
 Succes kvdb delete key
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -8616,7 +8624,7 @@ normalize:
       - target_field: kvdb_delete('testing', 'key1')
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -8624,7 +8632,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -8667,7 +8675,7 @@ Gets the value of a given key in the DB named db-name and if its successful it s
 Key value type can be string, number, object, array or null. This helper function is typically used in the map stage
 
 
-**Keywords**
+## Keywords
 
 - `kvdb` 
 
@@ -8677,7 +8685,7 @@ Key value type can be string, number, object, array or null. This helper functio
 
 Try get non exist key
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -8685,7 +8693,7 @@ normalize:
       - target_field: kvdb_get('testing', 'NON-EXIST-KEY')
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -8693,7 +8701,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -8707,7 +8715,7 @@ normalize:
 
 Get an exist key
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -8715,7 +8723,7 @@ normalize:
       - target_field: kvdb_get('testing', $key)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -8724,7 +8732,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -8768,7 +8776,7 @@ Looks in the database for each key found in $array_ref, and appends the values t
 Best effort, if a key is not present in the DB, skip it.
 
 
-**Keywords**
+## Keywords
 
 - `kvdb` 
 
@@ -8778,7 +8786,7 @@ Best effort, if a key is not present in the DB, skip it.
 
 Success kvdb get array
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -8786,7 +8794,7 @@ normalize:
       - target_field: kvdb_get_array('testing', ['test'])
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -8794,7 +8802,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -8839,7 +8847,7 @@ Key value type can be string, number, object, array or null and it must match wi
 value type hold by field. This helper function is typically used in the map stage.
 
 
-**Keywords**
+## Keywords
 
 - `kvdb` 
 
@@ -8849,7 +8857,7 @@ value type hold by field. This helper function is typically used in the map stag
 
 Failure kvdb get merge
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -8857,7 +8865,7 @@ normalize:
       - target_field: kvdb_get_merge('testing', 'key')
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -8865,7 +8873,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -8910,7 +8918,7 @@ Key value type can be string, number, object, array, or null, and it must match 
 This helper function is typically used in the map stage.
 
 
-**Keywords**
+## Keywords
 
 - `kvdb` 
 
@@ -8922,7 +8930,7 @@ This helper function is typically used in the map stage.
 
 Failure kvdb get merge
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -8930,7 +8938,7 @@ normalize:
       - target_field: kvdb_get_merge_recursive('testing', 'key')
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -8938,7 +8946,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -8984,7 +8992,7 @@ If it was able to insert the value, then map `true` into field, if not, then map
 Value type can be string, number, object, array or null. This helper function is typically used in the map stage
 
 
-**Keywords**
+## Keywords
 
 - `kvdb` 
 
@@ -8994,7 +9002,7 @@ Value type can be string, number, object, array or null. This helper function is
 
 Success kvdb set
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -9002,7 +9010,7 @@ normalize:
       - target_field: kvdb_set('testing', 'new_key', 'any_value')
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -9010,7 +9018,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -9024,7 +9032,7 @@ normalize:
 
 Failure kvdb set
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -9032,7 +9040,7 @@ normalize:
       - target_field: kvdb_set('testing', $key, $value)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -9042,7 +9050,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -9091,7 +9099,7 @@ and will be not duplicated.
 This helper function is typically used in the map stage
 
 
-**Keywords**
+## Keywords
 
 - `undefined` 
 
@@ -9101,7 +9109,7 @@ This helper function is typically used in the map stage
 
 JSON objects merged
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -9109,7 +9117,7 @@ normalize:
       - target_field: merge($any_object)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -9126,7 +9134,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -9154,7 +9162,7 @@ normalize:
 
 JSON objects merged
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -9162,7 +9170,7 @@ normalize:
       - target_field: merge($any_object)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -9179,7 +9187,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -9235,7 +9243,7 @@ The object parameter must be a definition object or a reference to a field conta
 This helper function is typically used in the map stage.
 
 
-**Keywords**
+## Keywords
 
 - `undefined` 
 
@@ -9245,7 +9253,7 @@ This helper function is typically used in the map stage.
 
 The merge was success
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -9253,7 +9261,7 @@ normalize:
       - target_field: merge_key_in({'input_key_1': {'v1': 'k1'}, 'input_key_2': {'v2': 'k2'}}, $key)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -9264,7 +9272,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -9282,7 +9290,7 @@ normalize:
 
 The input key was not found
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -9290,7 +9298,7 @@ normalize:
       - target_field: merge_key_in($any_object, $key)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -9309,7 +9317,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -9334,7 +9342,7 @@ normalize:
 
 The value from the specified key `input_key_1` is not merged into `target_field`, due to the need for recursion.
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -9342,7 +9350,7 @@ normalize:
       - target_field: merge_key_in({'input_key_1': {'v1': 'k1', 'nested': {'n1': 'value1'}}, 'input_key_2': {'v2': 'k2'}}, $key)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -9356,7 +9364,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -9377,7 +9385,7 @@ normalize:
 
 Success merge in object with same keys
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -9385,7 +9393,7 @@ normalize:
       - target_field: merge_key_in($any_object, $key)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -9403,7 +9411,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -9460,7 +9468,7 @@ The object parameter must be a definition object or a reference to a field conta
 This helper function is typically used in the map stage to ensure deep merging of complex objects.
 
 
-**Keywords**
+## Keywords
 
 - `undefined` 
 
@@ -9470,7 +9478,7 @@ This helper function is typically used in the map stage to ensure deep merging o
 
 The value from the specified key `input_key_1` is merged into `target_field`, including nested structures.
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -9478,7 +9486,7 @@ normalize:
       - target_field: merge_recursive_key_in({'input_key_1': {'v1': 'k1', 'nested': {'n1': 'value1'}}, 'input_key_2': {'v2': 'k2'}}, $key)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -9492,7 +9500,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -9514,7 +9522,7 @@ normalize:
 
 The value from the specified key `input_key_1`, including a different nested structure (`other_nested`), is merged into `target_field`.
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -9522,7 +9530,7 @@ normalize:
       - target_field: merge_recursive_key_in($any_object, $key)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -9547,7 +9555,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -9582,7 +9590,7 @@ normalize:
 
 The `nested` content from the specified key `input_key_1` is merged into `target_field`, preserving existing fields.
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -9590,7 +9598,7 @@ normalize:
       - target_field: merge_recursive_key_in({'input_key_1': {'v1': 'k1', 'nested': {'n1': 'value1'}}, 'input_key_2': {'v2': 'k2'}}, $key)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -9604,7 +9612,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -9625,7 +9633,7 @@ normalize:
 
 The specified key `input_key_not_exists` does not exist in `any_object`, so no merge is performed, and the test fails as expected.
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -9633,7 +9641,7 @@ normalize:
       - target_field: merge_recursive_key_in($any_object, $key)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -9658,7 +9666,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -9717,7 +9725,7 @@ Checks if an input matches an alphanumeric string, and if so, it evaluates to tr
 contained in a JSON object is stored in the output field; otherwise, it evaluates to false.
 
 
-**Keywords**
+## Keywords
 
 - `parser` 
 
@@ -9727,7 +9735,7 @@ contained in a JSON object is stored in the output field; otherwise, it evaluate
 
 Success alphanumeric parse
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -9735,7 +9743,7 @@ normalize:
       - target_field: parse_alphanumeric($field_to_parse)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -9744,7 +9752,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -9759,7 +9767,7 @@ normalize:
 
 Failure alphanumeric parse
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -9767,7 +9775,7 @@ normalize:
       - target_field: parse_alphanumeric($field_to_parse)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -9776,7 +9784,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -9822,7 +9830,7 @@ with the `end` delimiter. If so, it extracts the text found between these delimi
 and stores this extracted substring in `field`
 
 
-**Keywords**
+## Keywords
 
 - `parser` 
 
@@ -9832,7 +9840,7 @@ and stores this extracted substring in `field`
 
 Success between parse
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -9840,7 +9848,7 @@ normalize:
       - target_field: parse_between($input_field, '[', ']')
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -9849,7 +9857,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -9864,7 +9872,7 @@ normalize:
 
 Failure between parse
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -9872,7 +9880,7 @@ normalize:
       - target_field: parse_between($input_field, '(', ')')
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -9881,7 +9889,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -9896,7 +9904,7 @@ normalize:
 
 Success between parse
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -9904,7 +9912,7 @@ normalize:
       - target_field: parse_between($input_field, 'Start', 'End')
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -9913,7 +9921,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -9957,7 +9965,7 @@ It checks the string for compliance with the base64 encoding standards, includin
 If the string is a valid base64 encoded string, it stores the same string in `field` without modification.
 
 
-**Keywords**
+## Keywords
 
 - `parser` 
 
@@ -9967,7 +9975,7 @@ If the string is a valid base64 encoded string, it stores the same string in `fi
 
 Success binary parse
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -9975,7 +9983,7 @@ normalize:
       - target_field: parse_binary($input_field)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -9984,7 +9992,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -9999,7 +10007,7 @@ normalize:
 
 Failure binary parse
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -10007,7 +10015,7 @@ normalize:
       - target_field: parse_binary($input_field)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -10016,7 +10024,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -10031,7 +10039,7 @@ normalize:
 
 Failure binary parse
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -10039,7 +10047,7 @@ normalize:
       - target_field: parse_binary($input_field)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -10050,7 +10058,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -10067,7 +10075,7 @@ normalize:
 
 Failure binary parse
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -10075,7 +10083,7 @@ normalize:
       - target_field: parse_binary($input_field)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -10086,7 +10094,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -10103,7 +10111,7 @@ normalize:
 
 Failure binary parse
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -10111,7 +10119,7 @@ normalize:
       - target_field: parse_binary($input_field)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -10120,7 +10128,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -10163,7 +10171,7 @@ Checks if an input is the “true” or “false” string and store a boolean v
 The operation es key insensitive Fail if other value is store in $inField or not exist.
 
 
-**Keywords**
+## Keywords
 
 - `parser` 
 
@@ -10173,7 +10181,7 @@ The operation es key insensitive Fail if other value is store in $inField or not
 
 Success bool parse
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -10181,7 +10189,7 @@ normalize:
       - target_field: parse_bool($input_field)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -10190,7 +10198,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -10205,7 +10213,7 @@ normalize:
 
 Failure bool parse
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -10213,7 +10221,7 @@ normalize:
       - target_field: parse_bool($input_field)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -10222,7 +10230,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -10237,7 +10245,7 @@ normalize:
 
 Failure bool parse
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -10245,7 +10253,7 @@ normalize:
       - target_field: parse_bool($input_field)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -10256,7 +10264,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -10273,7 +10281,7 @@ normalize:
 
 Failure bool parse
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -10281,7 +10289,7 @@ normalize:
       - target_field: parse_bool($input_field)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -10292,7 +10300,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -10338,7 +10346,7 @@ If the numeric value is within the range of -128 to 127 (inclusive)
 it truncates the number to fit into a byte data type and stores the result in `field`. The operation is case-sensitive.
 
 
-**Keywords**
+## Keywords
 
 - `parser` 
 
@@ -10348,7 +10356,7 @@ it truncates the number to fit into a byte data type and stores the result in `f
 
 Success byte parse
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -10356,7 +10364,7 @@ normalize:
       - target_field: parse_byte($input_field)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -10365,7 +10373,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -10380,7 +10388,7 @@ normalize:
 
 Failure byte parse
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -10388,7 +10396,7 @@ normalize:
       - target_field: parse_byte($input_field)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -10397,7 +10405,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -10412,7 +10420,7 @@ normalize:
 
 Failure byte parse
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -10420,7 +10428,7 @@ normalize:
       - target_field: parse_byte($input_field)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -10431,7 +10439,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -10448,7 +10456,7 @@ normalize:
 
 Failure byte parse
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -10456,7 +10464,7 @@ normalize:
       - target_field: parse_byte($input_field)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -10467,7 +10475,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -10522,7 +10530,7 @@ The “escaping” character is used to escape the “quoting” characters that
 This helper function is typically used in the map stage.
 
 
-**Keywords**
+## Keywords
 
 - `parser` 
 
@@ -10532,7 +10540,7 @@ This helper function is typically used in the map stage.
 
 Success csv parse
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -10540,7 +10548,7 @@ normalize:
       - target_field: parse_csv($input_field, 'out1', 'out2', 'out3')
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -10549,7 +10557,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -10568,7 +10576,7 @@ normalize:
 
 Failure csv parse
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -10576,7 +10584,7 @@ normalize:
       - target_field: parse_csv($input_field, 'out1', 'out2', 'out3')
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -10585,7 +10593,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -10630,7 +10638,7 @@ as double-precision floating-point numbers are capable of representing a wide ra
 significant precision.
 
 
-**Keywords**
+## Keywords
 
 - `undefined` 
 
@@ -10640,7 +10648,7 @@ significant precision.
 
 Success double parse
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -10648,7 +10656,7 @@ normalize:
       - target_field: parse_double($input_field)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -10657,7 +10665,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -10672,7 +10680,7 @@ normalize:
 
 Failure double parse
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -10680,7 +10688,7 @@ normalize:
       - target_field: parse_double($input_field)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -10689,7 +10697,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -10743,7 +10751,7 @@ The “escaping” character is used to escape the “quoting” characters that
 This helper function is typically used in the map stage.
 
 
-**Keywords**
+## Keywords
 
 - `parser` 
 
@@ -10753,7 +10761,7 @@ This helper function is typically used in the map stage.
 
 Success dsv parse
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -10761,7 +10769,7 @@ normalize:
       - target_field: parse_dsv($input_field, '|', "'", '\\', 'out1', 'out2')
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -10770,7 +10778,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -10788,7 +10796,7 @@ normalize:
 
 Failure dsv parse
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -10796,7 +10804,7 @@ normalize:
       - target_field: parse_dsv($input_field, '|', '\\', "'", 'out1', 'out2')
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -10805,7 +10813,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -10848,7 +10856,7 @@ Checks whether an input contains a valid file path and, if so,  it evaluates to 
 in a JSON object is then stored on the field, otherwise it evaluates to false.
 
 
-**Keywords**
+## Keywords
 
 - `parser` 
 
@@ -10858,7 +10866,7 @@ in a JSON object is then stored on the field, otherwise it evaluates to false.
 
 Success file parse
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -10866,7 +10874,7 @@ normalize:
       - target_field: parse_file($input_field)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -10875,7 +10883,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -10923,7 +10931,7 @@ Evaluates if the content of the input field is a string that can be successfully
 It converts and stores the floating-point number in `field`, as floating-point numbers inherently support decimals.
 
 
-**Keywords**
+## Keywords
 
 - `parser` 
 
@@ -10933,7 +10941,7 @@ It converts and stores the floating-point number in `field`, as floating-point n
 
 Success float parse
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -10941,7 +10949,7 @@ normalize:
       - target_field: parse_float($input_field)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -10950,7 +10958,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -10965,7 +10973,7 @@ normalize:
 
 Failure float parse
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -10973,7 +10981,7 @@ normalize:
       - target_field: parse_float($input_field)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -10982,7 +10990,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -10997,7 +11005,7 @@ normalize:
 
 Failure float parse
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -11005,7 +11013,7 @@ normalize:
       - target_field: parse_float($input_field)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -11016,7 +11024,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -11033,7 +11041,7 @@ normalize:
 
 Failure float parse
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -11041,7 +11049,7 @@ normalize:
       - target_field: parse_float($input_field)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -11052,7 +11060,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -11099,7 +11107,7 @@ Checks whether an input contains a valid domain name format and, if so, it evalu
 stored on the field, otherwise it evaluates to false.
 
 
-**Keywords**
+## Keywords
 
 - `parser` 
 
@@ -11109,7 +11117,7 @@ stored on the field, otherwise it evaluates to false.
 
 Success fqdn parse
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -11117,7 +11125,7 @@ normalize:
       - target_field: parse_fqdn($input_field)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -11126,7 +11134,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -11141,7 +11149,7 @@ normalize:
 
 Failure fqdn parse
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -11149,7 +11157,7 @@ normalize:
       - target_field: parse_fqdn($input_field)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -11158,7 +11166,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -11173,7 +11181,7 @@ normalize:
 
 Failure fqdn parse
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -11181,7 +11189,7 @@ normalize:
       - target_field: parse_fqdn($input_field)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -11192,7 +11200,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -11209,7 +11217,7 @@ normalize:
 
 Failure fqdn parse
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -11217,7 +11225,7 @@ normalize:
       - target_field: parse_fqdn($input_field)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -11228,7 +11236,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -11277,7 +11285,7 @@ and the correct format for IPv6 (eight groups of four hexadecimal digits separat
 If the string is a valid IP address, it stores the same string in `field` without modification.
 
 
-**Keywords**
+## Keywords
 
 - `parser` 
 
@@ -11287,7 +11295,7 @@ If the string is a valid IP address, it stores the same string in `field` withou
 
 Success ip parse
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -11295,7 +11303,7 @@ normalize:
       - target_field: parse_ip($input_field)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -11304,7 +11312,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -11319,7 +11327,7 @@ normalize:
 
 Success ip parse
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -11327,7 +11335,7 @@ normalize:
       - target_field: parse_ip($input_field)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -11336,7 +11344,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -11351,7 +11359,7 @@ normalize:
 
 Failure ip parse
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -11359,7 +11367,7 @@ normalize:
       - target_field: parse_ip($input_field)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -11370,7 +11378,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -11387,7 +11395,7 @@ normalize:
 
 Failure ip parse
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -11395,7 +11403,7 @@ normalize:
       - target_field: parse_ip($input_field)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -11406,7 +11414,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -11454,7 +11462,7 @@ If the validation is successful, the input is transformed into a JSON object
 which is then assigned to the specified field. If the input is not valid JSON, the parser does not modify the output.
 
 
-**Keywords**
+## Keywords
 
 - `parser` 
 
@@ -11464,7 +11472,7 @@ which is then assigned to the specified field. If the input is not valid JSON, t
 
 Success json parse
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -11472,7 +11480,7 @@ normalize:
       - target_field: parse_json($input_field)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -11481,7 +11489,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -11500,7 +11508,7 @@ normalize:
 
 Failure json parse
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -11508,7 +11516,7 @@ normalize:
       - target_field: parse_json($input_field)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -11519,7 +11527,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -11576,7 +11584,7 @@ This helper function is typically used in the map stage.
 Checks whether an input fits a keys-values list format and, if it does, such pairs of keys and values are stored as new fields of the event.
 
 
-**Keywords**
+## Keywords
 
 - `parser` 
 
@@ -11586,7 +11594,7 @@ Checks whether an input fits a keys-values list format and, if it does, such pai
 
 Success key value parse
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -11594,7 +11602,7 @@ normalize:
       - target_field: parse_key_value($input_field, '=', ' ', '\\', "'")
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -11603,7 +11611,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -11622,7 +11630,7 @@ normalize:
 
 Failure key value parse
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -11630,7 +11638,7 @@ normalize:
       - target_field: parse_key_value($input_field, '=', ' ', '\\', "'")
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -11639,7 +11647,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -11684,7 +11692,7 @@ Evaluates the content of the input field to extract text that is enclosed in the
 considering any `escape` characters used to include the quotation character within the quoted text.
 
 
-**Keywords**
+## Keywords
 
 - `parser` 
 
@@ -11694,7 +11702,7 @@ considering any `escape` characters used to include the quotation character with
 
 Success quoted parse
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -11702,7 +11710,7 @@ normalize:
       - target_field: parse_quoted($input_field)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -11711,7 +11719,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -11726,7 +11734,7 @@ normalize:
 
 Failure quoted parse
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -11734,7 +11742,7 @@ normalize:
       - target_field: parse_quoted($input_field)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -11743,7 +11751,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -11758,7 +11766,7 @@ normalize:
 
 Failure quoted parse
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -11766,7 +11774,7 @@ normalize:
       - target_field: parse_quoted($input_field)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -11775,7 +11783,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -11820,7 +11828,7 @@ Checks whether an input contains a valid URI format and, if so, it evaluates to 
 it to a ECS url object encoded as a JSON string which is then stored on the field, otherwise it evaluates to false.
 
 
-**Keywords**
+## Keywords
 
 - `parser` 
 
@@ -11830,7 +11838,7 @@ it to a ECS url object encoded as a JSON string which is then stored on the fiel
 
 Success uri parse
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -11838,7 +11846,7 @@ normalize:
       - target_field: parse_uri($input_field)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -11847,7 +11855,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -11867,7 +11875,7 @@ normalize:
 
 Failure uri parse
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -11875,7 +11883,7 @@ normalize:
       - target_field: parse_uri($input_field)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -11884,7 +11892,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -11899,7 +11907,7 @@ normalize:
 
 Failure uri parse
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -11907,7 +11915,7 @@ normalize:
       - target_field: parse_uri($input_field)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -11916,7 +11924,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -11931,7 +11939,7 @@ normalize:
 
 Failure uri parse
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -11939,7 +11947,7 @@ normalize:
       - target_field: parse_uri($input_field)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -11950,7 +11958,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -11999,7 +12007,7 @@ It directly maps this string to `field` without any modification or parsing.
 This function is particularly useful for logging or analyzing user agent strings in their original format.
 
 
-**Keywords**
+## Keywords
 
 - `parser` 
 
@@ -12009,7 +12017,7 @@ This function is particularly useful for logging or analyzing user agent strings
 
 Success useragent parse
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -12017,7 +12025,7 @@ normalize:
       - target_field: parse_useragent($input_field)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -12026,7 +12034,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -12072,7 +12080,7 @@ It preserves the structure of the original XML in the default mode and provides 
 transformation for Windows Event Log XML when the optional "windows" argument is used.
 
 
-**Keywords**
+## Keywords
 
 - `parser` 
 
@@ -12082,7 +12090,7 @@ transformation for Windows Event Log XML when the optional "windows" argument is
 
 Success xml parse
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -12090,7 +12098,7 @@ normalize:
       - target_field: parse_xml($input_field)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -12099,7 +12107,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -12118,7 +12126,7 @@ normalize:
 
 Invalid XML
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -12126,7 +12134,7 @@ normalize:
       - target_field: parse_xml($input_field)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -12135,7 +12143,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -12178,7 +12186,7 @@ Moves existing “input_field” to the field name provided (field). Replace if 
 This helper function is used in the map stage.
 
 
-**Keywords**
+## Keywords
 
 - `undefined` 
 
@@ -12188,7 +12196,7 @@ This helper function is used in the map stage.
 
 Target field 'target_field' already exists
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -12196,7 +12204,7 @@ normalize:
       - target_field: rename($input_field)
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -12205,7 +12213,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -12250,7 +12258,7 @@ In case of errors “field” will not be modified.
 This helper function is typically used in the map stage
 
 
-**Keywords**
+## Keywords
 
 - `string` 
 
@@ -12260,7 +12268,7 @@ This helper function is typically used in the map stage
 
 The value to replace was found
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -12268,7 +12276,7 @@ normalize:
       - target_field: replace('hello', 'hi')
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -12276,7 +12284,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -12290,7 +12298,7 @@ normalize:
 
 The value to replace was not found
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -12298,7 +12306,7 @@ normalize:
       - target_field: replace('non exist', 'hi')
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -12306,7 +12314,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -12351,7 +12359,7 @@ If the “field” already exists, then it will be replaced. In case of errors �
 This helper function is typically used in the map stage
 
 
-**Keywords**
+## Keywords
 
 - `string` 
 
@@ -12361,7 +12369,7 @@ This helper function is typically used in the map stage
 
 Success split
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -12369,7 +12377,7 @@ normalize:
       - target_field: split($input_field, '|')
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -12377,7 +12385,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -12426,7 +12434,7 @@ The result of the trim (trim) operation is mapped to “field”. In case of err
 This helper function is typically used in the map stage
 
 
-**Keywords**
+## Keywords
 
 - `string` 
 
@@ -12436,7 +12444,7 @@ This helper function is typically used in the map stage
 
 Success trim
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -12444,7 +12452,7 @@ normalize:
       - target_field: trim('end', '-')
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -12452,7 +12460,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -12466,7 +12474,7 @@ normalize:
 
 Success trim
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -12474,7 +12482,7 @@ normalize:
       - target_field: trim('begin', '-')
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -12482,7 +12490,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
@@ -12496,7 +12504,7 @@ normalize:
 
 Success trim
 
-**Asset**
+#### Asset
 
 ```yaml
 normalize:
@@ -12504,7 +12512,7 @@ normalize:
       - target_field: trim('both', '-')
 ```
 
-### Input Event
+#### Input Event
 
 ```json
 {
@@ -12512,7 +12520,7 @@ normalize:
 }
 ```
 
-### Outcome Event
+#### Outcome Event
 
 ```json
 {
