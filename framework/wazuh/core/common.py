@@ -4,7 +4,7 @@
 
 import json
 import os
-from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor
 from contextvars import ContextVar
 from copy import deepcopy
 from functools import lru_cache, wraps
@@ -133,10 +133,7 @@ broadcast: ContextVar[bool] = ContextVar('broadcast', default=False)
 cluster_nodes: ContextVar[list] = ContextVar('cluster_nodes', default=list())
 origin_module: ContextVar[str] = ContextVar('origin_module', default='framework')
 try:
-    mp_pools: ContextVar[Dict] = ContextVar('mp_pools', default={
-        'process_pool': ProcessPoolExecutor(max_workers=1),
-        'events_pool': ProcessPoolExecutor(max_workers=1)
-    })
+    mp_pools: ContextVar[Dict] = ContextVar('mp_pools',default={})
 # Handle exception when the user running Wazuh cannot access /dev/shm.
 except (FileNotFoundError, PermissionError):
     mp_pools: ContextVar[Dict] = ContextVar('mp_pools', default={

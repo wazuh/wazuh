@@ -557,7 +557,12 @@ def raise_if_exc(result: object) -> None:
         raise result
 
 
-def init_auth_worker():
-    """Set authentication pool worker to ignore SIGINT signals to avoid 
-    throwing exceptions when shutting down the API in foreground mode."""
+def spawn_authentication_pool():
+    """Spawn authentication process pool child."""
+
+    API_AUTHENTICATION_PROCESS = 'wazuh-apid_auth'
+
+    auth_pid = os.getpid()
+    pyDaemonModule.create_pid(API_AUTHENTICATION_PROCESS, auth_pid)
+
     signal.signal(signal.SIGINT, signal.SIG_IGN)

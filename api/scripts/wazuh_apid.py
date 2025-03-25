@@ -9,21 +9,22 @@ import os
 import signal
 import sys
 import warnings
+from concurrent.futures import ProcessPoolExecutor
+import contextlib
 
 SSL_DEPRECATED_MESSAGE = 'The `{ssl_protocol}` SSL protocol is deprecated.'
 CACHE_DELETED_MESSAGE = 'The `cache` API configuration option no longer takes effect since {release} and will ' \
                         'be completely removed in the next major release.'
 
 API_MAIN_PROCESS = 'wazuh-apid'
-API_LOCAL_REQUEST_PROCESS = 'wazuh-apid_exec'
-API_AUTHENTICATION_PROCESS = 'wazuh-apid_auth'
-API_SECURITY_EVENTS_PROCESS = 'wazuh-apid_events'
 
 logger = None
 
 
-def spawn_process_pool():
+def spawn_process_worker():
     """Spawn general process pool child."""
+
+    API_LOCAL_REQUEST_PROCESS = 'wazuh-apid_exec'
 
     exec_pid = os.getpid()
     pyDaemonModule.create_pid(API_LOCAL_REQUEST_PROCESS, exec_pid)
@@ -31,20 +32,13 @@ def spawn_process_pool():
     signal.signal(signal.SIGINT, signal.SIG_IGN)
 
 
-def spawn_events_pool():
+def spawn_events_worker():
     """Spawn events process pool child."""
+
+    API_SECURITY_EVENTS_PROCESS = 'wazuh-apid_events'
 
     events_pid = os.getpid()
     pyDaemonModule.create_pid(API_SECURITY_EVENTS_PROCESS, events_pid)
-
-    signal.signal(signal.SIGINT, signal.SIG_IGN)
-
-
-def spawn_authentication_pool():
-    """Spawn authentication process pool child."""
-
-    auth_pid = os.getpid()
-    pyDaemonModule.create_pid(API_AUTHENTICATION_PROCESS, auth_pid)
 
     signal.signal(signal.SIGINT, signal.SIG_IGN)
 
@@ -164,12 +158,24 @@ def start(params: dict):
     except Exception as db_integrity_exc:
         raise APIError(2012, details=str(db_integrity_exc)) from db_integrity_exc
 
-    # Spawn child processes with their own needed imports
+    pools = common.mp_pools.get()
+    with contextlib.suppress(FileNotFoundError, PermissionError):
+        pools.update({'process_pool': ProcessPoolExecutor(
+            max_workers=1,
+            initializer=spawn_process_worker
+        )})
+
+        pools.update({'events_pool': ProcessPoolExecutor(
+            max_workers=1,
+            initializer=spawn_events_worker
+        )})
+
+
+    # Log the pool creation
     if 'thread_pool' not in common.mp_pools.get():
         loop = asyncio.get_event_loop()
         loop.run_until_complete(
-            asyncio.wait([loop.run_in_executor(pool,
-                                               getattr(sys.modules[__name__], f'spawn_{name}'))
+            asyncio.wait([loop.run_in_executor(pool, lambda: logger.debug2(f'Creating "{name}" process pool'))
                           for name, pool in common.mp_pools.get().items()]))
 
     # Set up API
