@@ -258,7 +258,7 @@ jobs:
       - name: Download docker image for previous version
         run: |
           echo "TAG=${{ env.PREVIOUS_VERSION }}" >> $GITHUB_ENV
-          bash $GITHUB_WORKSPACE/.github/actions/ghcr-pull-and-push/pull_image_from_ghcr.sh ${{ secrets.GITHUB_TOKEN }} ${{ github.actor}} $CONTAINER_NAME ${{ env.TAG }}
+          bash $GITHUB_WORKSPACE/.github/actions/ghcr-pull-and-push/pull_image_from_ghcr.sh ${{ secrets.GITHUB_TOKEN }} ${{ github.actor}} $CONTAINER_NAME ${{ env.PREVIOUS_VERSION }}
 
       - name: Install previous version of Wazuh manager
         working-directory: packages
