@@ -79,7 +79,7 @@ def get_endpoint(message: Message) -> Tuple[Optional[str], str]:
     if isinstance(message, policy.AssetGet_Request):
         return None, 'policy/asset/get'
     if isinstance(message, policy.AssetCleanDeleted_Request):
-        return None, 'policy/asset/cleanDeleted'
+        return None, 'policy/asset/clean_deleted'
 
     if isinstance(message, policy.DefaultParentGet_Request):
         return None, 'policy/default_parent/get'
