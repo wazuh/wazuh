@@ -86,10 +86,10 @@ jobs:
       # Download and install integration tests framework.
       - name: Download and install qa-integration-framework
         run: |
-          if (git ls-remote https://github.com/wazuh/qa-integration-framework.git $env:BRANCH_NAME) {
-              $QA_BRANCH = $env:BRANCH_NAME
-          } elseif (git ls-remote https://github.com/wazuh/qa-integration-framework.git $env:BRANCH_BASE) {
+          if (git ls-remote https://github.com/wazuh/qa-integration-framework.git $env:BRANCH_BASE) {
               $QA_BRANCH = $env:BRANCH_BASE
+          } elseif (git ls-remote https://github.com/wazuh/qa-integration-framework.git $env:BRANCH_NAME) {
+              $QA_BRANCH = $env:BRANCH_NAME
           } else {
               $QA_BRANCH = "main"
           }
