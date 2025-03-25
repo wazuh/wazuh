@@ -21,7 +21,7 @@
 #include "utilsWrapperLinux.hpp"
 #include <iostream>
 #include <set>
-#include <unordered_set>
+#include "packageExclude.hpp"
 
 const static std::map<std::string, std::string> FILE_MAPPING_PYPI {{"egg-info", "PKG-INFO"}, {"dist-info", "METADATA"}};
 
@@ -141,115 +141,15 @@ class PYPI final : public TFileSystem, public TFileIO
                 }
             }
         }
-        void getDpkgPythonPackages(std::unordered_set<std::string>& pythonPackages)
-        {
-            std::regex listPattern(R"(^python.*\.list$)");
-            const auto PYTHON_INFO_FILES = std::array {std::make_pair(std::regex(R"(^.*\.egg-info$)"), "/PKG-INFO"),
-                                                       std::make_pair(std::regex(R"(^.*\.dist-info$)"), "/METADATA")};
-
-            try
-            {
-                for (const auto& entry : std::filesystem::directory_iterator(DPKG_INFO_PATH))
-                {
-                    if (std::filesystem::is_regular_file(entry) &&
-                            std::regex_search(entry.path().filename().string(), listPattern))
-                    {
-                        std::ifstream file(entry.path());
-                        std::string line;
-
-                        while (std::getline(file, line))
-                        {
-                            std::smatch match;
-
-                            for (const auto& [pattern, extraFile] : PYTHON_INFO_FILES)
-                            {
-                                if (std::regex_search(line, match, pattern))
-                                {
-                                    std::string baseInfoPath = match.str(0);
-
-                                    if (std::filesystem::is_regular_file(baseInfoPath))
-                                    {
-                                        pythonPackages.insert(baseInfoPath);
-                                    }
-                                    else
-                                    {
-                                        std::string fullPath = baseInfoPath + extraFile;
-
-                                        if (std::filesystem::exists(fullPath))
-                                        {
-                                            pythonPackages.insert(fullPath);
-                                        }
-                                    }
-                                }
-                            }
-                        }
-
-                        file.close();
-                    }
-                }
-            }
-            catch (const std::filesystem::filesystem_error& ex)
-            {
-                std::cerr << "Filesystem error: " << ex.what() << std::endl;
-            }
-        }
-        void getRpmPythonPackages(std::unordered_set<std::string>& pythonPackages)
-        {
-            const auto PYTHON_INFO_FILES = std::array {std::make_pair(std::regex(R"(^.*\.egg-info$)"), "/PKG-INFO"),
-                                                       std::make_pair(std::regex(R"(^.*\.dist-info$)"), "/METADATA")};
-
-            const auto rawPythonPackagesList {UtilsWrapperLinux::exec(
-                                                  "rpm -qa | grep -E 'python.*' | xargs -I {} rpm -ql {} | grep -E '\\.egg-info$|\\.dist-info$'")};
-
-            if (!rawPythonPackagesList.empty())
-            {
-                const auto rows {Utils::split(rawPythonPackagesList, '\n')};
-
-                for (const auto& row : rows)
-                {
-                    std::smatch match;
-
-                    for (const auto& [pattern, extraFile] : PYTHON_INFO_FILES)
-                    {
-                        if (std::regex_search(row, match, pattern))
-                        {
-                            std::string baseInfoPath = match.str(0);
-
-                            if (std::filesystem::is_regular_file(baseInfoPath))
-                            {
-                                pythonPackages.insert(baseInfoPath);
-                            }
-                            else
-                            {
-                                std::string fullPath = baseInfoPath + extraFile;
-
-                                if (std::filesystem::exists(fullPath))
-                                {
-                                    pythonPackages.insert(fullPath);
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
 
     public:
         void getPackages(const std::set<std::string>& osRootFolders, std::function<void(nlohmann::json&)> callback, bool excludePaths = false)
         {
-            if(excludePaths)
+            if (excludePaths)
             {
                 excludedPaths.clear();
 
-                if (TFileSystem::exists(DPKG_PATH))
-                {
-                    getDpkgPythonPackages(excludedPaths);
-                }
-
-                if (TFileSystem::exists(RPM_PATH))
-                {
-                    getRpmPythonPackages(excludedPaths);
-                }
+                getExcludePackages(excludedPaths);
             }
 
             for (const auto& osFolder : osRootFolders)
