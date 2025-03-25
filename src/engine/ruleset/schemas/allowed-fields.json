@@ -1,0 +1,34 @@
+{
+    "name": "schema/allowed-fields/0",
+    "allowed_fields": {
+        "filter": [],
+        "output": [],
+        "rule": [
+            "event.risk_score",
+
+            "rule.description",
+            "rule.license",
+            "rule.name",
+
+            "threat.enrichments",
+            "threat.framework_version",
+            "threat.framework",
+
+            "threat.tactic.id",
+            "threat.tactic.name",
+            "threat.tactic.reference",
+
+            "threat.technique.id",
+            "threat.technique.name.text",
+            "threat.technique.reference",
+            "threat.technique.subtechnique.id",
+            "threat.technique.subtechnique.name.text",
+            "threat.technique.subtechnique.name",
+            "threat.technique.subtechnique.reference",
+
+            "vulnerability.severity",
+
+            "wazuh.rules"
+        ]
+    }
+}

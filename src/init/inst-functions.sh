@@ -102,17 +102,20 @@ installFallbackStore()
     local SCHEMA_PATH=${STORE_PATH}/schema
     local ENGINE_SCHEMA_PATH=${SCHEMA_PATH}/engine-schema/
     local ENGINE_LOGPAR_TYPE_PATH=${SCHEMA_PATH}/wazuh-logpar-overrides
+    local ENGINE_ALLOWED_FIELDS_PATH=${SCHEMA_PATH}/allowed-fields
 
     mkdir -p "${KVDB_PATH}"
     mkdir -p "${ENGINE_SCHEMA_PATH}"
     mkdir -p "${ENGINE_LOGPAR_TYPE_PATH}"
+    mkdir -p "${ENGINE_ALLOWED_FIELDS_PATH}"
 
     # Copying the store files
     echo "Copying store files..."
     cp "${ENGINE_SRC_PATH}/ruleset/schemas/engine-schema.json" "${ENGINE_SCHEMA_PATH}/0"
     cp "${ENGINE_SRC_PATH}/ruleset/schemas/wazuh-logpar-overrides.json" "${ENGINE_LOGPAR_TYPE_PATH}/0"
+    cp "${ENGINE_SRC_PATH}/ruleset/schemas/allowed-fields.json" "${ENGINE_ALLOWED_FIELDS_PATH}/0"
 
-    if [ ! -f "${ENGINE_SCHEMA_PATH}/0" ] || [ ! -f "${ENGINE_LOGPAR_TYPE_PATH}/0" ]; then
+    if [ ! -f "${ENGINE_SCHEMA_PATH}/0" ] || [ ! -f "${ENGINE_LOGPAR_TYPE_PATH}/0" ] || [ ! -f "${ENGINE_ALLOWED_FIELDS_PATH}/0" ]; then
         echo "Error: Failed to copy store files."
         exit 1
     fi
