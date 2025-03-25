@@ -312,7 +312,7 @@ void ebpf_pop_events(fim::BoundedQueue<std::unique_ptr<file_event>>& local_kerne
 
         if (event) {
             directory_t* config = fimebpf::instance().m_fim_configuration_directory(event->filename);
-            if (config && (config->options & WHODATA_ACTIVE) && (config->options & EBPF_DRIVER)) {
+            if (config && (config->options & WHODATA_ACTIVE)) {
                 whodata_evt* w_evt = (whodata_evt*)calloc(1, sizeof(whodata_evt));
                 w_evt->path = strdup(event->filename);
                 w_evt->process_name = strdup(event->comm);

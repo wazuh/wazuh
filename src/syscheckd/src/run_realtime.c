@@ -129,7 +129,7 @@ int realtime_adddir(const char *dir, directory_t *configuration) {
     int mode = FIM_MODE(configuration->options);
 
 #ifdef ENABLE_AUDIT
-    if ((mode == FIM_WHODATA) && (configuration->options & AUDIT_DRIVER)){
+    if ((mode == FIM_WHODATA) && syscheck.whodata_provider == AUDIT_PROVIDER) {
         add_whodata_directory(dir);
         return 1;
     }

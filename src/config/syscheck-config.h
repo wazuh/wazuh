@@ -100,8 +100,8 @@ typedef enum fdb_stmt {
 #define WHODATA_ACTIVE      00200000
 #define SCHEDULED_ACTIVE    00400000
 #define CHECK_TYPE          01000000
-#define EBPF_DRIVER         02000000
-#define AUDIT_DRIVER        04000000
+#define EBPF_PROVIDER       00000000
+#define AUDIT_PROVIDER      00000001
 
 #ifdef WIN32
 #define REGISTRY_CHECK_ALL                                                                                  \
@@ -375,8 +375,8 @@ typedef struct _config {
     int time;                                          /* frequency (secs) for syscheck to run */
     int queue;                                         /* file descriptor of socket to write to queue */
     unsigned int restart_audit:1;                      /* Allow Syscheck restart Auditd */
-    unsigned int enable_whodata_audit:1;               /* At least one directory configured with whodata audit */
-    unsigned int enable_whodata_ebpf:1;                /* At least one directory configured with whodata ebpf */
+    unsigned int enable_whodata:1;                     /* At least one directory configured with whodata */
+    unsigned int whodata_provider:1;                   /* Select the whodata provider */
     unsigned int enable_synchronization:1;             /* Enable database synchronization */
     unsigned int enable_registry_synchronization:1;    /* Enable registry database synchronization */
     unsigned int realtime_change:1;                    /* Variable to activate the change to realtime from a whodata monitoring*/
