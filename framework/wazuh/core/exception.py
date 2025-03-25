@@ -404,6 +404,11 @@ class WazuhException(Exception):
             'POST /security/roles/{role_id}/rules',
         },
         4025: {'message': 'The specify relationship could not be removed'},
+        4026: {'message': 'There is a {entity} with the same ID: {id}', 'remediation': 'Please choose another ID'},
+        4027: {
+            'message': '{entity} does not exist',
+            'remediation': 'Please, use `GET /security/{entities}` to find all available {entities}',
+        },
         4500: {
             'message': 'The specified resources are invalid',
             'remediation': 'Please, make sure permissions are properly defined, '
@@ -652,7 +657,7 @@ class WazuhException(Exception):
         return self._dapi_errors
 
     @dapi_errors.setter
-    def dapi_errors(self, value):
+    def dapi_errors(self, value: dict | Any):
         self._dapi_errors = value
 
     @property
