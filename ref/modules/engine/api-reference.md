@@ -2418,7 +2418,7 @@ HTTP/1.1 200 OK
 ### Example of failed cases
 
 
-### Missing any of the fields in the request
+#### Missing any of the fields in the request
 
 ##### Request Body
 ```json
@@ -2434,7 +2434,7 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-### Invalid policy name
+#### Invalid policy name
 
 ##### Request Body
 ```json
@@ -2452,7 +2452,7 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-### Policy does not exist
+#### Policy does not exist
 
 ##### Request Body
 ```json
@@ -2727,7 +2727,7 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-### Type non-exist
+#### Type non-exist
 
 ##### Request Body
 ```json
@@ -2935,7 +2935,7 @@ empty
 | `error`          | String | Error message if status is ERROR.                            |
 | `entries`          | Object | List of entries of a db in the geo manager.                            |
 
-## Entries object
+### Entries object
 
 | Field               | Type   | Description                                    |
 |---------------------|--------|------------------------------------------------|
@@ -3004,7 +3004,7 @@ This endpoint allows the creation of a new route in the Wazuh Engine API. A rout
 | `route`               | Object | Route to add                              |
 
 
-## Route Object
+### Route Object
 
 | Field               | Type   | Description                                    |
 |---------------------|--------|------------------------------------------------|
@@ -3290,7 +3290,7 @@ This endpoint allows retrieving detailed information about a specific route in t
 | `error`          | String | Error message if status is ERROR.                            |
 | `route`          | Object | Route queried if status is OK                            |
 
-## Route Object
+### Route Object
 
 | Field               | Type   | Description                                    |
 |---------------------|--------|------------------------------------------------|
@@ -3376,7 +3376,6 @@ HTTP/1.1 400 Bad Request
 ### Description
 
 This endpoint allows deleting a specific route in the Wazuh Engine API. The user must provide the name of the route to be deleted. If the route exists, it will be removed, and the API will return a success response.
-
 
 ---
 
@@ -3734,7 +3733,7 @@ empty
 | `error`          | String | Error message if status is ERROR.                            |
 | `table`          | Array Object | Routes queried if status is OK and table is not empty.                            |
 
-## table Object
+### table Object
 
 | Field               | Type   | Description                                    |
 |---------------------|--------|------------------------------------------------|
@@ -3895,6 +3894,7 @@ HTTP/1.1 400 Bad Request
 ### Description
 
 This endpoint allows users to retrieve the current Event Per Second (EPS) limit and the refresh interval settings of the system. It also provides the status of the EPS limiter, indicating whether the EPS limiter is currently enabled or not.
+
 ---
 
 ### Endpoint
@@ -4101,7 +4101,7 @@ This endpoint allows users to create a new testing session in the system. A sess
 | `session`               | Object | Session to add                              |
 
 
-## Session Object
+### Session Object
 
 | Field               | Type   | Description                                    |
 |---------------------|--------|------------------------------------------------|
@@ -4284,7 +4284,7 @@ This endpoint allows users to retrieve the details of an existing testing sessio
 | `error`          | String | Error message if status is ERROR.                            |
 | `session`          | Object | Session data if status is OK                          |
 
-## Session Object
+### Session Object
 
 | Field               | Type   | Description                                    |
 |---------------------|--------|------------------------------------------------|
@@ -4591,7 +4591,7 @@ empty
 | `error`          | String | Error message if status is ERROR.                            |
 | `table`          | Array Object | Sessions queried if status is OK and table is not empty.                            |
 
-## table Object
+### table Object
 
 | Field               | Type   | Description                                    |
 |---------------------|--------|------------------------------------------------|
@@ -4670,14 +4670,14 @@ This endpoint allows the execution of a test on an event with configurable trace
 | `error`          | String | Error message if status is ERROR.                            |
 | `result`          | Object | Result of the test.                            |
 
-## Result object
+### Result object
 
 | Field               | Type   | Description                                    |
 |---------------------|--------|------------------------------------------------|
 | `output`               | String | JSON output of the event                             |
 | `asset_traces`       | Object | Asset traces                              |
 
-## Asset trace object
+### Asset trace object
 
 | Field               | Type   | Description                                    |
 |---------------------|--------|------------------------------------------------|
@@ -5259,7 +5259,7 @@ This API allows you to dump the contents of a specific key-value database. It su
 | `error`          | String | Error message if status is ERROR.                            |
 | `entries`          | Array Object | List of entries if status is OK (Empty on error).                            |
 
-## Entry object
+### Entry object
 
 | Field               | Type   | Description                                    |
 |---------------------|--------|------------------------------------------------|
@@ -5630,7 +5630,7 @@ This API allows you to insert a new entry or update an existing entry in a speci
 | `entry`               | Object | Entry to insert                              |
 
 
-## Entry object
+### Entry object
 
 | Field               | Type   | Description                                    |
 |---------------------|--------|------------------------------------------------|
@@ -5809,7 +5809,7 @@ This API allows you to search for entries in a specified key-value database by u
 | `error`          | String | Error message if status is ERROR.                            |
 | `entries`          | Array Object | List of entries if status is OK (Empty on error).                            |
 
-## Entry object
+### Entry object
 
 | Field               | Type   | Description                                    |
 |---------------------|--------|------------------------------------------------|
