@@ -170,14 +170,14 @@ class MarkdownGenerator(IExporter):
             call_str = f"{doc.name}({', '.join(args_values)})" if args_values else f"{doc.name}()"
 
             self.content.append(f"{description}\n")
-            self.content.append(f"**Asset**\n")
+            self.content.append(f"#### Asset\n")
 
             if helper_type == "filter":
                 self.content.append("```yaml\ncheck:\n  - target_field: " + call_str + "\n```\n")
             else:
                 self.content.append("```yaml\nnormalize:\n  - map:\n      - target_field: " + call_str + "\n```\n")
 
-            self.content.append("### Input Event\n")
+            self.content.append("#### Input Event\n")
             self.content.append("```json\n" + json.dumps(event_data, indent=2) + "\n```\n")
 
             if helper_type == "filter":
@@ -192,7 +192,7 @@ class MarkdownGenerator(IExporter):
                 if all(v is None for v in final_event.values()):
                     final_event = {}
 
-                self.content.append("### Outcome Event\n")
+                self.content.append("#### Outcome Event\n")
                 self.content.append("```json\n" + json.dumps(final_event, indent=2) + "\n```\n")
 
                 result_msg = "The operation was successful" if example.should_pass else "The operation was performed with errors"
@@ -236,7 +236,7 @@ class MarkdownGenerator(IExporter):
 
         self.content.append(f"## Description\n")
         self.content.append(f"{doc.description}\n")
-        self.content.append(f"**Keywords**\n")
+        self.content.append(f"## Keywords\n")
         for keyword in doc.keywords:
             self.content.append(f"- `{keyword}` \n")
 
@@ -268,19 +268,20 @@ class MarkdownGenerator(IExporter):
         documentation_file = output_dir / "ref-helper-functions.md"
 
         with open(documentation_file, 'w') as file:
-            file.write("# Summary\n")
+            file.write("# Summary\n\n")
             file.write(
                 "This documentation provides an overview of the auxiliary functions available. "
                 "Auxiliary functions are modular components designed to perform specific operations on "
                 "decoders or rules. Depending on their purpose, they are categorized "
                 "into transformation, filter, or mapping functions.\n\n"
             )
-            file.write("# Index\n")
+            file.write("## Index\n\n")
 
             for helper_type, helpers in sorted(self.all_contents.items()):
-                file.write(f"## {helper_type.capitalize()}\n")
+                file.write(f"### {helper_type.capitalize()}\n\n")
                 for helper_name in sorted(helpers.keys()):
                     file.write(f"- [{helper_name}](#{helper_name.lower()})\n")
+                file.write("\n")
 
             for helper_type, helpers in sorted(self.all_contents.items()):
                 for helper_name, helper_info in sorted(helpers.items()):
