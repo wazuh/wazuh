@@ -50,6 +50,7 @@
 extern syscheck_config syscheck;
 extern int sys_debug_level;
 extern int audit_queue_full_reported;
+extern int ebpf_kernel_queue_full_reported;
 extern int ebpf_whodata_queue_full_reported;
 
 typedef enum fim_event_type {

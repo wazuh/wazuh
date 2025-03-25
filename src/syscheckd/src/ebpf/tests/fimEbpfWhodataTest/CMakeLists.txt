@@ -11,7 +11,7 @@ link_directories(${SRC_FOLDER}/external/googletest/lib/)
 set(TEST_FILES
     ebpf_whodata_test.cpp
     init_libbpf_test.cpp
-    helthcheck_event_test.cpp
+    healthcheck_event_test.cpp
     init_ring_buffer_test.cpp
     init_bpf_obj_test.cpp
     close_libbpf_test.cpp

@@ -17,15 +17,24 @@ public:
     static fimebpf::free_whodata_event_t mock_free_whodata_event;
     static fimebpf::loggingFunction_t mock_loggingFunction;
     static fimebpf::abspath_t mock_abspath;
+    MOCK_METHOD(bool, mock_fim_shutdown_process_on, ());
+
+    static MockFimebpf& GetInstance() {
+        static MockFimebpf instance;
+        return instance;
+    }
 
     static void SetMockFunctions() {
-	fimebpf::instance().m_fim_configuration_directory = mock_fim_conf;
+        fimebpf::instance().m_fim_configuration_directory = mock_fim_conf;
         fimebpf::instance().m_get_user = mock_get_user;
         fimebpf::instance().m_get_group = mock_get_group;
         fimebpf::instance().m_fim_whodata_event = mock_fim_whodata_event;
         fimebpf::instance().m_free_whodata_event = mock_free_whodata_event;
         fimebpf::instance().m_loggingFunction = mock_loggingFunction;
         fimebpf::instance().m_abspath = mock_abspath;
+        fimebpf::instance().m_fim_shutdown_process_on = []() {
+            return MockFimebpf::GetInstance().mock_fim_shutdown_process_on();
+        };
     }
 };
 
@@ -77,6 +86,8 @@ void mock_bpf_object_close(void* obj) [[maybe_unused]] {}
 void mock_w_bpf_deinit(void* helpers) [[maybe_unused]] {}
 int mock_init_ring_buffer_success(ring_buffer** rb, ring_buffer_sample_fn sample_cb) [[maybe_unused]] { return 0; }
 int mock_init_ring_buffer_failure(ring_buffer** rb, ring_buffer_sample_fn sample_cb) [[maybe_unused]] { return 1; }
+void mock_ebpf_pop_events() [[maybe_unused]] { return; }
+void mock_whodata_pop_events() [[maybe_unused]] { return; }
 
 
 #endif // BPF_HELPERS_TEST_H

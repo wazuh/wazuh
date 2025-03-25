@@ -4,8 +4,8 @@
 #include "dynamic_library_wrapper.h"
 #include "ebpf_mock_utils.hpp"
 
-bool event_received = false;
-const char* EBPF_HC_FILE = "healthcheck.txt";
+extern volatile bool event_received;
+const char* EBPF_HC_FILE = "tmp/ebpf_hc";
 
 
 #define TASK_COMM_LEN 32
@@ -38,16 +38,16 @@ protected:
 
 // Need to review why strstr is returning true when it shouldn't, for the condition:
 //  if (strstr(e->filename, EBPF_HC_FILE))
-/*
+
 TEST_F(HealthcheckEventTest, TestEventReceivedWhenFileNameContainsEBPF_HC_FILE) {
     file_event e;
-    snprintf(e.filename, sizeof(e.filename), "%s", "path/to/healthcheck.txt");
+    snprintf(e.filename, sizeof(e.filename), "%s", EBPF_HC_FILE);
 
     healthcheck_event(nullptr, &e, sizeof(e));
 
     EXPECT_TRUE(event_received);
 }
-*/
+
 
 TEST_F(HealthcheckEventTest, TestEventNotReceivedWhenFileNameDoesNotContainEBPF_HC_FILE) {
     file_event e;

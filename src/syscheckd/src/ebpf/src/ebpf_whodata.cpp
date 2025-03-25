@@ -39,7 +39,6 @@
 
 // Global
 static volatile bool epbf_hc_created = false;
-static volatile bool event_received = false;
 static bpf_object* global_obj = nullptr;
 
 std::unique_ptr<w_bpf_helpers_t> bpf_helpers = nullptr;
@@ -166,7 +165,9 @@ int init_libbpf(std::unique_ptr<DynamicLibraryWrapper> sym_load) {
         return 1;
     }
 
-    bpf_helpers->init_ring_buffer	     = (init_ring_buffer_t)init_ring_buffer;
+    bpf_helpers->init_ring_buffer            = (init_ring_buffer_t)init_ring_buffer;
+    bpf_helpers->ebpf_pop_events             = (pop_events_t)ebpf_pop_events;
+    bpf_helpers->whodata_pop_events          = (pop_events_t)whodata_pop_events;
     bpf_helpers->bpf_object_destroy_skeleton = (bpf_object__destroy_skeleton_t)sym_load->getFunctionSymbol(bpf_helpers->module, "bpf_object__destroy_skeleton");
     bpf_helpers->bpf_object_open_skeleton    = (bpf_object__open_skeleton_t)sym_load->getFunctionSymbol(bpf_helpers->module, "bpf_object__open_skeleton");
     bpf_helpers->bpf_object_load_skeleton    = (bpf_object__load_skeleton_t)sym_load->getFunctionSymbol(bpf_helpers->module, "bpf_object__load_skeleton");
@@ -186,6 +187,8 @@ int init_libbpf(std::unique_ptr<DynamicLibraryWrapper> sym_load) {
 
     /* Load all required symbols */
     if (!bpf_helpers->init_ring_buffer ||
+        !bpf_helpers->ebpf_pop_events ||
+        !bpf_helpers->whodata_pop_events ||
         !bpf_helpers->bpf_object_open_file ||
         !bpf_helpers->bpf_object_load ||
         !bpf_helpers->ring_buffer_new ||
@@ -437,10 +440,10 @@ int ebpf_whodata() {
         return 1;
     }
 
-    std::thread ebpf_pop_thread(ebpf_pop_events);
+    std::thread ebpf_pop_thread(bpf_helpers->ebpf_pop_events);
     ebpf_pop_thread.detach();
 
-    std::thread whodata_pop_thread(whodata_pop_events);
+    std::thread whodata_pop_thread(bpf_helpers->whodata_pop_events);
     whodata_pop_thread.detach();
 
     while (!fimebpf::instance().m_fim_shutdown_process_on()) {

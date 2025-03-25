@@ -52,6 +52,7 @@ int (*bpf_object__attach_skeleton)(struct bpf_object_skeleton *obj) = NULL;
 void (*bpf_object__detach_skeleton)(struct bpf_object_skeleton *obj) = NULL;
 
 typedef int(*init_ring_buffer_t)(ring_buffer** rb, ring_buffer_sample_fn sample_cb);
+typedef void(*pop_events_t)();
 
 /**
  * @brief Store helpers to execute stateless requests to BPF
@@ -77,6 +78,8 @@ typedef struct {
     bpf_object__detach_skeleton_t bpf_object_detach_skeleton;
 
     init_ring_buffer_t init_ring_buffer;
+    pop_events_t ebpf_pop_events;
+    pop_events_t whodata_pop_events;
 
 } w_bpf_helpers_t;
 
@@ -116,7 +119,9 @@ inline bool w_bpf_deinit(std::unique_ptr<w_bpf_helpers_t>& bpf_helpers) {
         bpf_helpers->bpf_object_attach_skeleton = NULL;
         bpf_helpers->bpf_object_detach_skeleton = NULL;
 
-	bpf_helpers->init_ring_buffer = NULL;
+	    bpf_helpers->init_ring_buffer = NULL;
+	    bpf_helpers->ebpf_pop_events = NULL;
+	    bpf_helpers->whodata_pop_events = NULL;
         result = true;
     }
 
@@ -125,6 +130,8 @@ inline bool w_bpf_deinit(std::unique_ptr<w_bpf_helpers_t>& bpf_helpers) {
 
 
 int init_ring_buffer(ring_buffer** rb, ring_buffer_sample_fn sample_cb);
+void ebpf_pop_events();
+void whodata_pop_events();
 
 
 #endif // BPF_HELPERS_H

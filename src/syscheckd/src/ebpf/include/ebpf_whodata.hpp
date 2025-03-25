@@ -14,6 +14,8 @@
 #include "dynamic_library_wrapper.h"
 #include <memory>
 
+volatile bool event_received = false;
+
 class fimebpf
 {
 public:
@@ -55,7 +57,7 @@ public:
         m_fim_shutdown_process_on = fimShutdownProcessOn;
     }
 
-private:
+protected:
     fimebpf() = default;
     ~fimebpf() = default;
     fimebpf(const fimebpf&) = delete;
