@@ -53,6 +53,9 @@ void (*bpf_object__detach_skeleton)(struct bpf_object_skeleton *obj) = NULL;
 
 typedef int(*init_ring_buffer_t)(ring_buffer** rb, ring_buffer_sample_fn sample_cb);
 typedef void(*pop_events_t)();
+typedef int(*check_invalid_kernel_version_t)();
+typedef int(*init_libbpf_t)(std::unique_ptr<DynamicLibraryWrapper> sym_load);
+typedef int(*init_bpfobj_t)();
 
 /**
  * @brief Store helpers to execute stateless requests to BPF
@@ -80,6 +83,9 @@ typedef struct {
     init_ring_buffer_t init_ring_buffer;
     pop_events_t ebpf_pop_events;
     pop_events_t whodata_pop_events;
+    check_invalid_kernel_version_t check_invalid_kernel_version;
+    init_libbpf_t init_libbpf;
+    init_bpfobj_t init_bpfobj;
 
 } w_bpf_helpers_t;
 
@@ -119,9 +125,14 @@ inline bool w_bpf_deinit(std::unique_ptr<w_bpf_helpers_t>& bpf_helpers) {
         bpf_helpers->bpf_object_attach_skeleton = NULL;
         bpf_helpers->bpf_object_detach_skeleton = NULL;
 
+        // eBPF FIM generic functions
 	    bpf_helpers->init_ring_buffer = NULL;
 	    bpf_helpers->ebpf_pop_events = NULL;
 	    bpf_helpers->whodata_pop_events = NULL;
+	    bpf_helpers->check_invalid_kernel_version = NULL;
+	    bpf_helpers->init_libbpf = NULL;
+	    bpf_helpers->init_bpfobj = NULL;
+
         result = true;
     }
 
@@ -132,6 +143,9 @@ inline bool w_bpf_deinit(std::unique_ptr<w_bpf_helpers_t>& bpf_helpers) {
 int init_ring_buffer(ring_buffer** rb, ring_buffer_sample_fn sample_cb);
 void ebpf_pop_events();
 void whodata_pop_events();
+int check_invalid_kernel_version();
+int init_libbpf(std::unique_ptr<DynamicLibraryWrapper> sym_load);
+int init_bpfobj();
 
 
 #endif // BPF_HELPERS_H

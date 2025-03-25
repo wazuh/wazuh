@@ -38,11 +38,11 @@
 #define WAIT_MS 500
 
 // Global
-static volatile bool epbf_hc_created = false;
 static bpf_object* global_obj = nullptr;
 
 std::unique_ptr<w_bpf_helpers_t> bpf_helpers = nullptr;
 std::unique_ptr<DefaultDynamicLibraryWrapper> sym_load;
+time_t (*w_time)(time_t*) = time;
 
 int ebpf_kernel_queue_full_reported = 0;
 int ebpf_whodata_queue_full_reported = 0;
@@ -168,6 +168,9 @@ int init_libbpf(std::unique_ptr<DynamicLibraryWrapper> sym_load) {
     bpf_helpers->init_ring_buffer            = (init_ring_buffer_t)init_ring_buffer;
     bpf_helpers->ebpf_pop_events             = (pop_events_t)ebpf_pop_events;
     bpf_helpers->whodata_pop_events          = (pop_events_t)whodata_pop_events;
+    bpf_helpers->check_invalid_kernel_version  = (check_invalid_kernel_version_t)check_invalid_kernel_version;
+    bpf_helpers->init_libbpf                 = (init_libbpf_t)init_libbpf;
+    bpf_helpers->init_bpfobj                 = (init_bpfobj_t)init_bpfobj;
     bpf_helpers->bpf_object_destroy_skeleton = (bpf_object__destroy_skeleton_t)sym_load->getFunctionSymbol(bpf_helpers->module, "bpf_object__destroy_skeleton");
     bpf_helpers->bpf_object_open_skeleton    = (bpf_object__open_skeleton_t)sym_load->getFunctionSymbol(bpf_helpers->module, "bpf_object__open_skeleton");
     bpf_helpers->bpf_object_load_skeleton    = (bpf_object__load_skeleton_t)sym_load->getFunctionSymbol(bpf_helpers->module, "bpf_object__load_skeleton");
@@ -189,6 +192,9 @@ int init_libbpf(std::unique_ptr<DynamicLibraryWrapper> sym_load) {
     if (!bpf_helpers->init_ring_buffer ||
         !bpf_helpers->ebpf_pop_events ||
         !bpf_helpers->whodata_pop_events ||
+        !bpf_helpers->check_invalid_kernel_version ||
+        !bpf_helpers->init_libbpf ||
+        !bpf_helpers->init_bpfobj ||
         !bpf_helpers->bpf_object_open_file ||
         !bpf_helpers->bpf_object_load ||
         !bpf_helpers->ring_buffer_new ||
@@ -220,7 +226,7 @@ void close_libbpf(std::unique_ptr<DynamicLibraryWrapper> sym_load) {
         if (bpf_helpers->module) {
             sym_load->freeLibrary(bpf_helpers->module);
         }
-	bpf_helpers.reset();
+	    bpf_helpers.reset();
     }
 }
 
@@ -384,18 +390,18 @@ int ebpf_whodata_healthcheck() {
     kernelEventQueue.setMaxSize(fimebpf::instance().m_queue_size);
     whodataEventQueue.setMaxSize(fimebpf::instance().m_queue_size);
 
-    if (!logFn || check_invalid_kernel_version() || init_libbpf(std::move(sym_load)) || init_bpfobj() || bpf_helpers->init_ring_buffer(&rb, healthcheck_event)) {
+    if (!logFn || bpf_helpers->check_invalid_kernel_version() || bpf_helpers->init_libbpf(std::move(sym_load)) || bpf_helpers->init_bpfobj() || bpf_helpers->init_ring_buffer(&rb, healthcheck_event)) {
         return 1;
     }
 
-    time_t start_time = time(nullptr);
+    time_t start_time = w_time(nullptr);
     while (!event_received) {
         int ret = bpf_helpers->ring_buffer_poll(rb, WAIT_MS);
         if (ret < 0) {
             logFn(LOG_ERROR, FIM_ERROR_EBPF_RINGBUFF_CONSUME);
             break;
         }
-        if (time(nullptr) - start_time >= 10) {
+        if (w_time(nullptr) - start_time >= 10) {
             logFn(LOG_ERROR, FIM_ERROR_EBPF_HEALTHCHECK_TIMEOUT);
             break;
         }

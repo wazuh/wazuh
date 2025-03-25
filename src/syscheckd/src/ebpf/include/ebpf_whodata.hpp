@@ -15,6 +15,7 @@
 #include <memory>
 
 volatile bool event_received = false;
+volatile bool epbf_hc_created = false;
 
 class fimebpf
 {

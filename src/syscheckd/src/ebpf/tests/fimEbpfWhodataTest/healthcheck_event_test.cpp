@@ -36,9 +36,6 @@ protected:
     void TearDown() override {}
 };
 
-// Need to review why strstr is returning true when it shouldn't, for the condition:
-//  if (strstr(e->filename, EBPF_HC_FILE))
-
 TEST_F(HealthcheckEventTest, TestEventReceivedWhenFileNameContainsEBPF_HC_FILE) {
     file_event e;
     snprintf(e.filename, sizeof(e.filename), "%s", EBPF_HC_FILE);

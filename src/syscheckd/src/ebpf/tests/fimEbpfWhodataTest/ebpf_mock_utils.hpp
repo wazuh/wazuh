@@ -53,12 +53,10 @@ char* mock_get_group([[maybe_unused]] int gid) { return strdup("mock_group"); }
 void mock_fim_whodata_event([[maybe_unused]] whodata_evt* event) { return; }
 void mock_free_whodata_event([[maybe_unused]] whodata_evt* event) { return; }
 void mock_loggingFunction([[maybe_unused]] modules_log_level_t level, [[maybe_unused]] const char* msg) { return; }
-
 char* mock_abspath([[maybe_unused]] const char* path, char* buffer, [[maybe_unused]] size_t size) {
-    std::strcpy(buffer, "/mock/path");
+    std::strcpy(buffer, "/tmp/ebpf_hc");
     return buffer;
 }
-
 void* mock_bpf_object_open_file_success([[maybe_unused]] const char* filename, [[maybe_unused]] void* opts) { return (void*)1; }
 void* mock_bpf_object_open_file_failure([[maybe_unused]] const char* filename, [[maybe_unused]] void* opts) { return nullptr; }
 int mock_bpf_object_load_success([[maybe_unused]] void* obj) { return 0; }
@@ -88,6 +86,9 @@ int mock_init_ring_buffer_success(ring_buffer** rb, ring_buffer_sample_fn sample
 int mock_init_ring_buffer_failure(ring_buffer** rb, ring_buffer_sample_fn sample_cb) [[maybe_unused]] { return 1; }
 void mock_ebpf_pop_events() [[maybe_unused]] { return; }
 void mock_whodata_pop_events() [[maybe_unused]] { return; }
+int mock_check_invalid_kernel_version() [[maybe_unused]] { return 0; }
+int mock_init_libbpf(std::unique_ptr<DynamicLibraryWrapper> sym_load) [[maybe_unused]] { return 0; }
+int mock_init_bpfobj() [[maybe_unused]] { return 0; }
 
 
 #endif // BPF_HELPERS_TEST_H
