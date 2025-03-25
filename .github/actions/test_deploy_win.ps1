@@ -5,12 +5,30 @@
 # License (version 2) as published by the FSF - Free Software
 # Foundation.
 
-(Get-Content VERSION.json) -match '"version":\s*"([^"]+)"' | Out-Null
-$VERSION = "$($matches[1])"
-[version]$VERSION = $VERSION
-$MAJOR=$VERSION.Major
-$MINOR=$VERSION.Minor
-$SHA= git rev-parse --short $args[0]
+$VERSION_JSON = (Get-Content VERSION.json) -join "`n"
+
+if ($VERSION_JSON -match '"version":\s*"([^"]+)"') {
+    $VERSION = $matches[1]
+
+    try {
+        [version]$VERSION_OBJ = $VERSION
+        $MAJOR = $VERSION_OBJ.Major
+        $MINOR = $VERSION_OBJ.Minor
+    } catch {
+        Write-Output "Invalid version format: $VERSION"
+        exit 1
+    }
+
+    try {
+        $SHA= git rev-parse --short $args[0]
+    } catch {
+        Write-Output "Failed to extract commit hash from git"
+        exit 1
+    }
+} else {
+    Write-Output "Failed to extract version from VERSION.json"
+    exit 1
+}
 
 $TEST_ARRAY=@(
               @("WAZUH_MANAGER ", "1.1.1.1", "<address>", "</address>"),
