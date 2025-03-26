@@ -66,26 +66,26 @@ def verify(all_assets: dict, ruleset_path: Path):
             expected_json_files = find_expected_json_files(test_folder)
             if not expected_json_files:
                 sys.exit(f"No '_expected.json' files found in '{test_folder}' or its subfolders.")
-            
-            verify_event_processing(all_assets, expected_json_files)
-    
-    rules_path = ruleset_path / 'rules'
-    if not rules_path.exists() or not rules_path.is_dir():
-        sys.exit(f"Error: '{rules_path}' directory does not exist or not found.")
 
-    for rule_folder in rules_path.iterdir():
+            verify_event_processing(all_assets, expected_json_files)
+
+    integrations_rules_path = ruleset_path / 'integrations-rules'
+    if not integrations_rules_path.exists() or not integrations_rules_path.is_dir():
+        sys.exit(f"Error: '{integrations_rules_path}' directory does not exist or not found.")
+
+    for integration in integrations_rules_path.iterdir():
         if not integration.is_dir():
             continue
 
-        if rule_folder.name != INTEGRATION_WITHOUT_TESTS:
-            test_folder = rule_folder / 'test'
+        if integration.name != INTEGRATION_WITHOUT_TESTS:
+            test_folder = integration / 'test'
             if not test_folder.exists() or not test_folder.is_dir():
                 sys.exit(f"No 'test' folder found in '{integration}'.")
 
             expected_json_files = find_expected_json_files(test_folder)
             if not expected_json_files:
                 sys.exit(f"No '_expected.json' files found in '{test_folder}' or its subfolders.")
-            
+
             verify_event_processing(all_assets, expected_json_files)
 
     missing_assets = []

@@ -42,7 +42,6 @@ def load_rules(ruleset_path: Path, engine_handler: EngineHandler) -> None:
 
 def load_policy(ruleset_path: Path, engine_handler: EngineHandler, stop_on_warn: bool) -> None:
     request = api_policy.DefaultParentPost_Request()
-    request.parent = "rule/enrichment/0"
     request.namespace = "wazuh"
     request.policy = "policy/wazuh/0"
     print(f"Setting default parent...\n{request}")
@@ -59,7 +58,6 @@ def load_policy(ruleset_path: Path, engine_handler: EngineHandler, stop_on_warn:
 
     # Add enrichment rule
     request = api_policy.AssetPost_Request()
-    request.asset = "rule/enrichment/0"
     request.policy = "policy/wazuh/0"
     request.namespace = "system"
     print(f"Adding enrichment rule...\n{request}")

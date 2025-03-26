@@ -122,8 +122,9 @@ def validate_decoders(decoders_to_process, api_socket, kvdbs, executor, resource
 
 def validator(args, ruleset_path: Path, resource_handler: rs.ResourceHandler, api_socket: str):
     integration = args.get('integration')
+    integration-rules = args.get('integration-rules')
     decoder = args.get('decoder')
-    rule_folder = args.get('rule_folder')
+    rule = args.get('rule')
 
     request = dict()
     request['must_be_loaded'] = False
@@ -153,12 +154,12 @@ def validator(args, ruleset_path: Path, resource_handler: rs.ResourceHandler, ap
         integrations_to_process = [integration_path]
         validate_integrations(integrations_to_process, api_socket, kvdbs, ruleset_path, executor, resource_handler)
 
-    elif rule_folder:
-        rule_folder_path = ruleset_path / 'rules' / rule_folder
-        if not rule_folder_path.exists() or not rule_folder_path.is_dir():
-            sys.exit(f"Rules folder '{rule_folder}' not found in '{ruleset_path / 'rules'}'.")
-        rules_to_process = [rule_folder_path]
-        validate_rules(rules_to_process, api_socket, kvdbs, executor, resource_handler)
+    elif integration-rules:
+        integration_path = ruleset_path / 'integrations-rules' / integration
+        if not integration_path.exists() or not integration_path.is_dir():
+            sys.exit(f"Integration '{integration}' not found in '{ruleset_path / 'integrations-rules'}'.")
+        integrations_to_process = [integration_path]
+        validate_integrations(integrations_to_process, api_socket, kvdbs, ruleset_path, executor, resource_handler)
 
     elif decoder:
         print("Validating decoder only.")
@@ -181,6 +182,13 @@ def validator(args, ruleset_path: Path, resource_handler: rs.ResourceHandler, ap
         if decoder and not found_decoder:
             sys.exit(f"Error: Decoder '{decoder}' not found in the provided decoders directory.")
 
+    elif rule:
+        rule_folder_path = ruleset_path / 'rules' / rule_folder
+        if not rule_folder_path.exists() or not rule_folder_path.is_dir():
+            sys.exit(f"Rules folder '{rule_folder}' not found in '{ruleset_path / 'rules'}'.")
+        rules_to_process = [rule_folder_path]
+        validate_rules(rules_to_process, api_socket, kvdbs, executor, resource_handler)
+
     else:
         integrations_path = ruleset_path / 'integrations'
         if not integrations_path.exists() or not integrations_path.is_dir():
@@ -188,10 +196,10 @@ def validator(args, ruleset_path: Path, resource_handler: rs.ResourceHandler, ap
         integrations_to_process = [d for d in integrations_path.iterdir() if d.is_dir()]
         validate_integrations(integrations_to_process, api_socket, kvdbs, ruleset_path, executor, resource_handler)
 
-        rules_path = ruleset_path / 'rules'
-        if not rules_path.exists() or not rules_path.is_dir():
+        integrations_rules_path = ruleset_path / 'integrations-rules'
+        if not integrations_rules_path.exists() or not integrations_rules_path.is_dir():
             sys.exit(f"Rules directory not found in '{ruleset_path}'.")
-        rules_to_process = [d for d in rules_path.iterdir() if d.is_dir()]
+        rules_to_process = [d for d in integrations_rules_path.iterdir() if d.is_dir()]
         validate_rules(rules_to_process, api_socket, kvdbs, executor, resource_handler)
 
     print('\nTasks:')
