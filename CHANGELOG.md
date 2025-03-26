@@ -3,6 +3,12 @@ All notable changes to this project will be documented in this file.
 
 ## [v4.11.2]
 
+### Manager
+
+#### Changed
+
+- Improved Wazuh DB performance using built-in types. ([#28797](https://github.com/wazuh/wazuh/pull/28797))
+
 ### RESTful API
 
 #### Added
