@@ -86,7 +86,7 @@ class Result:
 
 
 ASSETS_IN_SYSTEM = ["decoder/core-wazuh-message/0", "decoder/integrations/0",
-                    "rule/enrichment/0", "output/file-output-integrations/0"]
+                    "output/file-output-integrations/0"]
 
 
 def print_coverity_results(asset_traces_by_stage: dict, output_file: Path):
