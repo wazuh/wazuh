@@ -12,6 +12,7 @@
 #ifndef _REFLECTIVE_JSON_HPP
 #define _REFLECTIVE_JSON_HPP
 
+#include <array>
 #include <charconv>
 #include <map>
 #include <string>
@@ -22,6 +23,8 @@
 #include <vector>
 
 constexpr auto DEFAULT_INT_VALUE = INT64_MIN;
+constexpr auto CHAR_SIZE {256};
+constexpr auto BUFFER_SIZE {32};
 
 #define REFLECTABLE(...)                                                                                               \
     static constexpr auto fields()                                                                                     \
@@ -29,15 +32,15 @@ constexpr auto DEFAULT_INT_VALUE = INT64_MIN;
         return std::make_tuple(__VA_ARGS__);                                                                           \
     }
 
-static std::array<const char*, 256> ESCAPE_TABLE = []
+static std::array<const char*, CHAR_SIZE> ESCAPE_TABLE = []
 {
-    std::array<const char*, 256> table {};
-    for (int i = 0; i < 256; ++i)
+    std::array<const char*, CHAR_SIZE> table {};
+    for (int i = 0; i < CHAR_SIZE; ++i)
     {
         table[i] = nullptr;
     }
 
-    table['"'] = R"("\"")";
+    table['"'] = R"(\")";
     table['\\'] = R"(\\)";
     table['\b'] = "\\b";
     table['\f'] = "\\f";
@@ -49,7 +52,7 @@ static std::array<const char*, 256> ESCAPE_TABLE = []
     {
         if (!table[i])
         {
-            static char buffer[256][7];
+            static char buffer[CHAR_SIZE][7];
             snprintf(buffer[i], 7, "\\u%04x", i);
             table[i] = buffer[i];
         }
@@ -127,22 +130,18 @@ struct IsReflectable<T, std::void_t<decltype(T::fields())>> : std::true_type
 
 template<typename T>
 constexpr bool IS_REFLECTABLE_MEMBER =
-    std::is_same_v<T, std::string_view> ||
-    std::is_same_v<T, std::string> ||
-    std::is_same_v<T, double> ||
-    std::is_same_v<T, bool> ||
-    IsMap<std::decay_t<T>>::value ||
-    IsVector<std::decay_t<T>>::value ||
-    IsReflectable<T>::value ||
-    std::is_same_v<T, std::int64_t>;
+    std::is_same_v<T, std::string_view> || std::is_same_v<T, std::string> || std::is_same_v<T, double> ||
+    std::is_same_v<T, bool> || IsMap<std::decay_t<T>>::value || IsVector<std::decay_t<T>>::value ||
+    IsReflectable<T>::value || std::is_same_v<T, std::int64_t>;
 
 template<typename C, typename T>
-constexpr auto makeFieldChecked(const char* keyLiteral, const char* keyLiteralField, T C::* member) {
+constexpr auto makeFieldChecked(const char* keyLiteral, const char* keyLiteralField, T C::*member)
+{
     static_assert(IS_REFLECTABLE_MEMBER<T>, "Invalid member type for reflection");
     return std::make_tuple(std::string_view {keyLiteral}, std::string_view {keyLiteralField}, member);
 }
-#define MAKE_FIELD(keyLiteral, memberPtr)                                                                              \
-    makeFieldChecked(keyLiteral, "\"" keyLiteral "\":", memberPtr)
+
+#define MAKE_FIELD(keyLiteral, memberPtr) makeFieldChecked(keyLiteral, "\"" keyLiteral "\":", memberPtr)
 
 template<typename T>
 std::enable_if_t<std::is_arithmetic_v<T> || std::is_same_v<double, T>, bool> isEmpty(T value)
@@ -197,7 +196,7 @@ std::string jsonFieldToString(const std::unordered_map<K, V>& map)
 {
     std::string json = "{";
     size_t count = 0;
-    char buffer[32] = {};
+    char buffer[BUFFER_SIZE] = {};
     for (const auto& [key, value] : map)
     {
         if (count++ > 0)
@@ -235,6 +234,7 @@ std::string jsonFieldToString(const std::unordered_map<K, V>& map)
             {
                 json.append("0");
             }
+            std::fill(buffer, buffer + sizeof(buffer), '\0');
         }
         else
         {
@@ -255,7 +255,7 @@ std::enable_if_t<IsReflectable<T>::value, void> serializeToJSON(const T& obj, st
 {
     json.push_back('{');
     constexpr auto fields = T::fields();
-    char buffer[32] = {};
+    char buffer[BUFFER_SIZE] = {};
 
     size_t count = 0;
     std::apply(
@@ -302,6 +302,7 @@ std::enable_if_t<IsReflectable<T>::value, void> serializeToJSON(const T& obj, st
                              {
                                  json.append("0");
                              }
+                             std::fill(buffer, buffer + sizeof(buffer), '\0');
                          }
                          else if constexpr (std::is_same_v<bool, std::decay_t<decltype(data)>>)
                          {
@@ -397,6 +398,8 @@ std::enable_if_t<IsReflectable<T>::value, void> serializeToJSON(const T& obj, st
                                      {
                                          json.push_back('0');
                                      }
+
+                                     std::fill(buffer, buffer + sizeof(buffer), '\0');
                                  }
                                  else if constexpr (std::is_same_v<bool, std::decay_t<decltype(v)>>)
                                  {
@@ -429,7 +432,7 @@ std::enable_if_t<IsReflectable<T>::value, std::string> serializeToJSON(const T& 
     json.reserve(1024);
     json.push_back('{');
     constexpr auto fields = T::fields();
-    char buffer[32] = {};
+    char buffer[BUFFER_SIZE] = {};
 
     size_t count = 0;
     std::apply(
@@ -476,6 +479,8 @@ std::enable_if_t<IsReflectable<T>::value, std::string> serializeToJSON(const T& 
                              {
                                  json.append("0");
                              }
+
+                             std::fill(buffer, buffer + sizeof(buffer), '\0');
                          }
                          else if constexpr (std::is_same_v<bool, std::decay_t<decltype(data)>>)
                          {
@@ -565,6 +570,7 @@ std::enable_if_t<IsReflectable<T>::value, std::string> serializeToJSON(const T& 
                                              {
                                                  json.push_back('0');
                                              }
+                                             std::fill(buffer, buffer + sizeof(buffer), '\0');
                                          }
                                          else if constexpr (std::is_same_v<bool, std::decay_t<decltype(v)>>)
                                          {
