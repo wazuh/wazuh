@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.10)
 project(fim_ebpf_whodata_test)
 
+set(CMAKE_CXX_FLAGS_DEBUG "-g --coverage")
+
 set(CMAKE_CXX_STANDARD 14)
 
 include_directories(${SRC_FOLDER}/external/googletest/googletest/include/)
@@ -32,9 +34,12 @@ foreach(TEST_FILE ${TEST_FILES})
         optimized gmock
         optimized gtest_main
         optimized gmock_main
-	pthread
+	    pthread
         fimebpf
         -fsanitize=address
         -fsanitize=undefined
     )
+
+    add_test(NAME ${TEST_NAME}
+    COMMAND ${TEST_NAME})
 endforeach()

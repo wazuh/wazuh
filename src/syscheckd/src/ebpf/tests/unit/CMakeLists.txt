@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.10)
-project(BoundedQueueTest)
+project(bounded_queue_test)
 
 set(CMAKE_CXX_STANDARD 14)
 
@@ -14,3 +14,6 @@ target_link_libraries(bounded_queue_test
     optimized gtest
     optimized gtest_main
 )
+
+add_test(NAME bounded_queue_test
+         COMMAND bounded_queue_test)

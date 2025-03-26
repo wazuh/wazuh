@@ -32,5 +32,6 @@ if(UNIT_TEST)
     target_link_libraries(fimebpf gcov)
   endif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 
-  add_subdirectory(tests)
+  add_subdirectory(tests/fimEbpfWhodataTest)
+  add_subdirectory(tests/unit)
 endif(UNIT_TEST)

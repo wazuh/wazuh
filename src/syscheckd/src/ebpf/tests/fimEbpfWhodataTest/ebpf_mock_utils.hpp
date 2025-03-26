@@ -50,9 +50,9 @@ fimebpf::abspath_t MockFimebpf::mock_abspath = nullptr;
 
 directory_t* mock_fim_conf_failure([[maybe_unused]] const char* config_path) { return nullptr; }
 directory_t* mock_fim_conf_success([[maybe_unused]] const char* config_path) {
-    directory_t *mockDirectory;
-    mockDirectory->options = WHODATA_ACTIVE | EBPF_DRIVER;
-    return mockDirectory;
+    static directory_t mockDirectory;
+    mockDirectory.options = WHODATA_ACTIVE | EBPF_DRIVER;
+    return &mockDirectory;
 }
 char* mock_get_user([[maybe_unused]] int uid) { return strdup("mock_user"); }
 char* mock_get_group([[maybe_unused]] int gid) { return strdup("mock_group"); }
@@ -82,18 +82,18 @@ ring_buffer* mock_ring_buffer_new_failure([[maybe_unused]] int fd, [[maybe_unuse
     return nullptr;
 }
 
-int mock_ring_buffer_poll_success(ring_buffer* rb, int timeout_ms) [[maybe_unused]] { return 1; }
-int mock_ring_buffer_poll_failure(ring_buffer* rb, int timeout_ms) [[maybe_unused]] { return -1; }
-void mock_ring_buffer_free(ring_buffer* rb) [[maybe_unused]] {}
-void mock_bpf_object_close(void* obj) [[maybe_unused]] {}
-void mock_w_bpf_deinit(void* helpers) [[maybe_unused]] {}
-int mock_init_ring_buffer_success(ring_buffer** rb, ring_buffer_sample_fn sample_cb) [[maybe_unused]] { return 0; }
-int mock_init_ring_buffer_failure(ring_buffer** rb, ring_buffer_sample_fn sample_cb) [[maybe_unused]] { return 1; }
-void mock_ebpf_pop_events() [[maybe_unused]] { return; }
-void mock_whodata_pop_events() [[maybe_unused]] { return; }
-int mock_check_invalid_kernel_version() [[maybe_unused]] { return 0; }
-int mock_init_libbpf(std::unique_ptr<DynamicLibraryWrapper> sym_load) [[maybe_unused]] { return 0; }
-int mock_init_bpfobj() [[maybe_unused]] { return 0; }
+int mock_ring_buffer_poll_success([[maybe_unused]]ring_buffer* rb, [[maybe_unused]]int timeout_ms) { return 1; }
+int mock_ring_buffer_poll_failure([[maybe_unused]]ring_buffer* rb, [[maybe_unused]]int timeout_ms) { return -1; }
+void mock_ring_buffer_free([[maybe_unused]]ring_buffer* rb) {}
+void mock_bpf_object_close([[maybe_unused]]void* obj) {}
+void mock_w_bpf_deinit([[maybe_unused]]void* helpers) {}
+int mock_init_ring_buffer_success([[maybe_unused]]ring_buffer** rb, [[maybe_unused]]ring_buffer_sample_fn sample_cb) { return 0; }
+int mock_init_ring_buffer_failure([[maybe_unused]]ring_buffer** rb, [[maybe_unused]]ring_buffer_sample_fn sample_cb) { return 1; }
+void mock_ebpf_pop_events() { return; }
+void mock_whodata_pop_events() { return; }
+int mock_check_invalid_kernel_version() { return 0; }
+int mock_init_libbpf([[maybe_unused]]std::unique_ptr<DynamicLibraryWrapper> sym_load) { return 0; }
+int mock_init_bpfobj() { return 0; }
 
 
 #endif // BPF_HELPERS_TEST_H

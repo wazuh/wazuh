@@ -72,7 +72,7 @@ TEST_F(PopEventsTest, PopSucceedsWithEvent) {
     EXPECT_CALL(mock_queue, pop(::testing::_, ::testing::_))
        .WillOnce(::testing::DoAll(
         ::testing::Invoke(
-            [&](std::unique_ptr<whodata_evt, whodata_deleter>& event_arg, int timeout_arg) {
+            [&](std::unique_ptr<whodata_evt, whodata_deleter>& event_arg, [[maybe_unused]]int timeout_arg) {
 		std::unique_ptr<whodata_evt, whodata_deleter> new_event = std::make_unique<whodata_evt>();
                 event_arg = std::make_unique<whodata_evt>();
             }
@@ -117,7 +117,7 @@ TEST_F(PopEventsTest, EbpPopFailsAndShutdown) {
     EXPECT_CALL(mock_kernel_queue, pop(::testing::_, ::testing::_))
        .WillOnce(::testing::DoAll(
         ::testing::Invoke(
-            [&](std::unique_ptr<file_event>& event_arg, int timeout_arg) {
+            [&](std::unique_ptr<file_event>& event_arg, [[maybe_unused]]int timeout_arg) {
 		std::cout << "Update data" << std::endl;
 		std::unique_ptr<file_event> new_event = std::make_unique<file_event>();
                 event_arg = std::make_unique<file_event>();
@@ -142,7 +142,7 @@ TEST_F(PopEventsTest, EbpPopWithEvent) {
     EXPECT_CALL(mock_kernel_queue, pop(::testing::_, ::testing::_))
        .WillOnce(::testing::DoAll(
         ::testing::Invoke(
-            [&](std::unique_ptr<file_event>& event_arg, int timeout_arg) {
+            [&](std::unique_ptr<file_event>& event_arg, [[maybe_unused]]int timeout_arg) {
 		        std::unique_ptr<file_event> new_event = std::make_unique<file_event>();
                 event_arg = std::make_unique<file_event>();
             }

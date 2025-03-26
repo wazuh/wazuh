@@ -26,6 +26,11 @@ public:
     explicit BoundedQueue(size_t max_size = 0) : m_max_size(max_size) {}
 
     /**
+     * @brief Virtual destructor.
+     */
+    virtual ~BoundedQueue() = default;
+
+    /**
      * @brief Set the maximum size of the queue.
      *
      * If the current size of the queue exceeds the new maximum size, the oldest
