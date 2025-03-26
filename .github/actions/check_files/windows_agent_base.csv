@@ -35,4 +35,4 @@ C:\Program Files (x86)\ossec-agent\shared\rootkit_trojans.txt,,,666,file,-rw-rw-
 C:\Program Files (x86)\ossec-agent\shared\win_applications_rcl.txt,,,666,file,-rw-rw-rw-,,
 C:\Program Files (x86)\ossec-agent\shared\win_audit_rcl.txt,,,666,file,-rw-rw-rw-,,
 C:\Program Files (x86)\ossec-agent\shared\win_malware_rcl.txt,,,666,file,-rw-rw-rw-,,
-C:\Program Files (x86)\ossec-agent\VERSION.json,,,440,file,-r--r-----,,
+C:\Program Files (x86)\ossec-agent\VERSION.json,,,666,file,-rw-rw-rw-,,
