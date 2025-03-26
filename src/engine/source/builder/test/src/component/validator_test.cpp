@@ -363,15 +363,6 @@ INSTANTIATE_TEST_SUITE_P(
                                          const std::shared_ptr<MockDefinitionsBuilder>& defBuild,
                                          const std::shared_ptr<defs::mocks::MockDefinitions>& def)
                                       { return "Integration name not found"; })),
-        ValidateI(json::Json {INTEGRATION_INVALID_FORMAT_JSON},
-                  "wazuh",
-                  FAILURE_INTEGRATION(
-                      [](const std::shared_ptr<MockStore>& store,
-                         const std::shared_ptr<MockDefinitionsBuilder>& defBuild,
-                         const std::shared_ptr<defs::mocks::MockDefinitions>& def)
-                      {
-                          return "Invalid not string entry in '/decoders' array for integration 'integration/test/0'";
-                      })),
         ValidateI(json::Json {INTEGRATION_INVALID_FORMAT_NAME_JSON},
                   "wazuh",
                   FAILURE_INTEGRATION(
@@ -381,6 +372,17 @@ INSTANTIATE_TEST_SUITE_P(
                       {
                           return "Invalid asset name 'decoder//' in integration 'integration/test/0': Name cannot have "
                                  "empty parts";
+                      })),
+        ValidateI(json::Json {INTEGRATION_INVALID_FORMAT_JSON},
+                  "wazuh",
+                  FAILURE_INTEGRATION(
+                      [](const std::shared_ptr<MockStore>& store,
+                         const std::shared_ptr<MockDefinitionsBuilder>& defBuild,
+                         const std::shared_ptr<defs::mocks::MockDefinitions>& def)
+                      {
+                          auto retMsg =
+                              "Invalid not string entry in '/decoders' array for integration 'integration/test/0'";
+                          return retMsg;
                       })),
         ValidateI(json::Json {INTEGRATION_INVALID_ASSET_TYPE_JSON},
                   "wazuh",

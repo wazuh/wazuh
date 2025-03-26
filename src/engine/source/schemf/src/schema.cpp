@@ -136,6 +136,11 @@ Field Schema::get(const DotPath& name) const
 
 bool Schema::hasField(const DotPath& name) const
 {
+    if (name.isRoot())
+    {
+        return false;
+    }
+
     const auto* current = &m_fields;
     auto isParentSchema = false;
     for (auto it = name.cbegin(); it != name.cend(); ++it)
