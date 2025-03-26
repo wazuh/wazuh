@@ -26,7 +26,7 @@ AllowedFields::AllowedFields(const json::Json& definition)
     }
 
     auto asObj = allowedFields.value();
-    for (auto [key, value] : asObj)
+    for (const auto& [key, value] : asObj)
     {
         if (!syntax::name::isDecoder(base::Name {key}, false) && !syntax::name::isRule(base::Name {key}, false)
             && !syntax::name::isOutput(base::Name {key}, false) && !syntax::name::isFilter(base::Name {key}, false))
@@ -58,6 +58,12 @@ bool AllowedFields::check(const base::Name& assetType, const DotPath& field) con
     auto it = m_fields.find(assetType);
     // No restrictions for this asset type
     if (it == m_fields.end())
+    {
+        return true;
+    }
+
+    // Always allow root field
+    if (field.parts().empty())
     {
         return true;
     }

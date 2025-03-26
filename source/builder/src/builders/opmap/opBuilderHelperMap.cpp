@@ -1473,7 +1473,7 @@ TransformOp opBuilderHelperMergeRecursively(const Reference& targetField,
             auto fields = ref.getFields().value();
             for (const auto& field : fields)
             {
-                if (!allowedFields->check(assetType, targetFieldDotPath + "." + field))
+                if (!allowedFields->check(assetType, DotPath::append(targetFieldDotPath, field)))
                 {
                     RETURN_FAILURE(runState, event, failureTrace5)
                 }
@@ -1656,7 +1656,7 @@ TransformOp opBuilderHelperMerge(const Reference& targetField,
             auto fields = ref.getFields().value();
             for (const auto& field : fields)
             {
-                if (!allowedFields->check(assetType, targetFieldDotPath + "." + field))
+                if (!allowedFields->check(assetType, DotPath::append(targetFieldDotPath, field)))
                 {
                     RETURN_FAILURE(runState, event, failureTrace5)
                 }
@@ -2232,7 +2232,7 @@ TransformOp opBuilderHelperGetValueGeneric(const Reference& targetField,
             auto fields = resolvedValue.value().getFields().value();
             for (const auto& field : fields)
             {
-                if (!allowedFields->check(assetType, targetFieldDotPath + "." + field))
+                if (!allowedFields->check(assetType, DotPath::append(targetFieldDotPath, field)))
                 {
                     RETURN_FAILURE(runState, event, failureTrace9)
                 }
