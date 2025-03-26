@@ -43,27 +43,31 @@ public:
         element.data.agent.id = agentId;
         element.data.agent.name = data->agentName();
         element.data.agent.version = data->agentVersion();
-        element.data.agent.ip = data->agentIp();
 
-        // 22.04.5 LTS (Jammy Jellyfish), 15.1.1, 10.0.19045.5371
-        element.data.host.os.version = data->osVersion();
+        if (auto agentIp = data->agentIp(); agentIp.compare("any") != 0)
+        {
+            element.data.agent.host.ip = data->agentIp();
+        }
 
-        // Ex: macOS, Ubuntu, Microsoft Windows 10 Pro
-        element.data.host.os.name = data->osName();
+        // // 22.04.5 LTS (Jammy Jellyfish), 15.1.1, 10.0.19045.5371
+        // element.data.host.os.version = data->osVersion();
 
-        // Ex: 4.15.0-112-generic, 24.1.0 (for macos)
-        element.data.host.os.kernel = data->osKernelRelease();
+        // // Ex: macOS, Ubuntu, Microsoft Windows 10 Pro
+        // element.data.host.os.name = data->osName();
 
-        // TODO: windows not report anything in this field.
-        // Ex: ubuntu, centos, darwin
-        element.data.host.os.platform = data->osPlatform();
+        // // Ex: 4.15.0-112-generic, 24.1.0 (for macos)
+        // element.data.host.os.kernel = data->osKernelRelease();
 
-        // TODO: windows not report anything in this field.
-        // Ex: Linux, Windows NT, Darwin
-        element.data.host.os.type = data->osKernelSysName();
+        // // TODO: windows not report anything in this field.
+        // // Ex: ubuntu, centos, darwin
+        // element.data.host.os.platform = data->osPlatform();
 
-        // Ex: x86_64, arm64
-        element.data.host.architecture = data->osArchitecture();
+        // // TODO: windows not report anything in this field.
+        // // Ex: Linux, Windows NT, Darwin
+        // element.data.host.os.type = data->osKernelSysName();
+
+        // // Ex: x86_64, arm64
+        // element.data.host.architecture = data->osArchitecture();
 
         // Ex: DESKTOP-5RL9J34, Octavios-MacBook-Pro.local, dwordcito-MS-7D25
         element.data.host.hostname = data->osHostName();

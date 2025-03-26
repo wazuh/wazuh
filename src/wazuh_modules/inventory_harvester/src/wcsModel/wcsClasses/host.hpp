@@ -20,10 +20,12 @@ struct Host final
 {
     std::string_view architecture;
     std::string_view hostname;
+    std::string_view ip;
     OS os;
 
     REFLECTABLE(MAKE_FIELD("architecture", &Host::architecture),
                 MAKE_FIELD("hostname", &Host::hostname),
+                MAKE_FIELD("ip", &Host::ip),
                 MAKE_FIELD("os", &Host::os));
 };
 

@@ -22,7 +22,7 @@ struct Package final
     std::string_view installed;
     std::string_view name;
     std::string_view path;
-    std::uint32_t size = 0;
+    std::int64_t size = DEFAULT_INT_VALUE;
     std::string_view type;
     std::string_view version;
     std::string_view vendor;

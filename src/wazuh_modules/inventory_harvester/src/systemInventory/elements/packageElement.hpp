@@ -51,15 +51,19 @@ public:
         element.data.agent.id = agentId;
         element.data.agent.name = data->agentName();
         element.data.agent.version = data->agentVersion();
-        element.data.agent.ip = data->agentIp();
+
+        if (auto agentIp = data->agentIp(); agentIp.compare("any") != 0)
+        {
+            element.data.agent.host.ip = data->agentIp();
+        }
 
         element.data.package.architecture = data->packageArchitecture();
         element.data.package.name = data->packageName();
         element.data.package.version = data->packageVersion();
         element.data.package.vendor = data->packageVendor();
         element.data.package.installed = data->packageInstallTime();
-        element.data.package.size = data->packageSize();
-        element.data.package.type = data->packageFormat();
+        //element.data.package.size = data->packageSize();
+        //element.data.package.type = data->packageFormat();
         element.data.package.description = data->packageDescription();
         element.data.package.path = data->packageLocation();
 

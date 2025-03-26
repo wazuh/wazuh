@@ -21,7 +21,7 @@ struct Server final
 {
     // Add ECS Server fields here
     std::string_view address;
-    std::uint32_t bytes;
+    std::int64_t bytes = DEFAULT_INT_VALUE;
     std::string_view domain;
     std::string_view ip;
     std::string_view mac;

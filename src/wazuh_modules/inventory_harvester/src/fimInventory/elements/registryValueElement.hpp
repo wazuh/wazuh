@@ -40,7 +40,11 @@ public:
         element.data.agent.id = data->agentId();
         element.data.agent.name = data->agentName();
         element.data.agent.version = data->agentVersion();
-        element.data.agent.ip = data->agentIp();
+
+        if (auto agentIp = data->agentIp(); agentIp.compare("any") != 0)
+        {
+            element.data.agent.host.ip = data->agentIp();
+        }
 
         element.data.registry.hive = data->hive();
         element.data.registry.key = data->key();

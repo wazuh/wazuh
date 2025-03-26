@@ -999,7 +999,7 @@ public:
         return "";
     }
 
-    uint64_t processParentID() const
+    int64_t processParentID() const
     {
         if (m_type == VariantType::Delta)
         {
@@ -1023,7 +1023,7 @@ public:
         return 0;
     }
 
-    uint64_t processStartRaw() const
+    int64_t processStartRaw() const
     {
         if (m_type == VariantType::Delta)
         {
