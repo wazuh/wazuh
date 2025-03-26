@@ -1,0 +1,12 @@
+{
+  "indexer": {
+    "enabled": "yes",
+    "hosts": [
+      "http://localhost:9200"
+    ],
+    "username": "admin",
+    "password": "WazuhTest99$",
+    "update_template_path": "./states_update_mappings.json"
+  },
+  "clusterName": "cluster01"
+}
