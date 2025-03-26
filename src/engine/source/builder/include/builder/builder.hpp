@@ -48,18 +48,45 @@ public:
     Builder() = default;
     ~Builder() = default;
 
+    /**
+     * @brief Construct a new Builder object
+     *
+     * @param storeRead Store reader interface
+     * @param schema Schema validator
+     * @param definitionsBuilder Definitions builder
+     * @param allowedFields Manages wich fields can be modified by different assets
+     * @param builderDeps Builders dependencies
+     */
     Builder(const std::shared_ptr<store::IStore>& storeRead,
             const std::shared_ptr<schemf::IValidator>& schema,
             const std::shared_ptr<defs::IDefinitionsBuilder>& definitionsBuilder,
             const std::shared_ptr<IAllowedFields>& allowedFields,
             const BuilderDeps& builderDeps);
 
+    /**
+     * @copydoc IBuilder::buildPolicy
+     */
     std::shared_ptr<IPolicy>
     buildPolicy(const base::Name& name, bool trace = false, bool sandbox = false) const override;
+
+    /**
+     * @copydoc IBuilder::buildAsset
+     */
     base::Expression buildAsset(const base::Name& name) const override;
 
+    /**
+     * @copydoc IBuilder::validateIntegration
+     */
     base::OptError validateIntegration(const json::Json& json, const std::string& namespaceId) const override;
+
+    /**
+     * @copydoc IBuilder::validateAsset
+     */
     base::OptError validateAsset(const json::Json& json) const override;
+
+    /**
+     * @copydoc IBuilder::validatePolicy
+     */
     base::OptError validatePolicy(const json::Json& json) const override;
 };
 
