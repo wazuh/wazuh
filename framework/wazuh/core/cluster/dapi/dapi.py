@@ -30,6 +30,7 @@ from wazuh.core import common, exception
 from wazuh.core.cluster import local_client, common as c_common
 from wazuh.core.cluster.cluster import check_cluster_status
 from wazuh.core.exception import WazuhException, WazuhClusterError, WazuhError
+from wazuh.core.pyDaemonModule import spawn_process_pool_worker, API_AUTHENTICATION_PROCESS
 from wazuh.core.wazuh_socket import wazuh_sendsync
 
 
@@ -43,7 +44,7 @@ if node_info['type'] == 'master':
     with contextlib.suppress(FileNotFoundError, PermissionError):
         pools.update({'authentication_pool': ProcessPoolExecutor(
             max_workers=aconf.api_conf['authentication_pool_size'],
-            initializer=wazuh.core.cluster.utils.init_auth_worker
+            initializer=partial(spawn_process_pool_worker, API_AUTHENTICATION_PROCESS)
         )})
 
 
