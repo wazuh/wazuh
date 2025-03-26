@@ -323,14 +323,23 @@ INSTANTIATE_TEST_SUITE_P(
                                .WillOnce(testing::Return(mocks.m_mockDefs));
                            return None {};
                        })),
-        BuildExprT(AV {"parse|"}, // Throws
-                   FAILURE(
-                       [](Mocks mocks)
-                       {
-                           EXPECT_CALL(*mocks.m_mockDefBuilder, build(testing::_))
-                               .WillOnce(testing::Return(mocks.m_mockDefs));
-                           return None {};
-                       })),
+        BuildExprT(
+            AV {"parse|"}, // Not throws, parse root event
+            SUCCESS(
+                [](Mocks mocks)
+                {
+                    EXPECT_CALL(*mocks.m_mockDefBuilder, build(testing::_)).WillOnce(testing::Return(mocks.m_mockDefs));
+                    auto parseExpr = base::Term<base::EngineOp>::create(
+                        "parse", [](auto e) { return base::result::makeSuccess(e, "SUCCESS"); });
+                    EXPECT_CALL(mocks.m_mockRegistry->getRegistry<StageBuilder>(), get("parse"))
+                        .WillOnce(
+                            testing::Return([parseExpr](const json::Json& value,
+                                                        const std::shared_ptr<const IBuildCtx>& ctx) -> base::Expression
+                                            { return parseExpr; }));
+
+                    auto condition = base::And::create(base::Name("condition"), {parseExpr, traceExpr});
+                    return base::And::create(base::Name("name"), {condition});
+                })),
         BuildExprT(
             AV {"check", "parse|field"},
             SUCCESS(

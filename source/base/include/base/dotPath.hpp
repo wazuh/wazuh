@@ -29,6 +29,19 @@ private:
     void parse()
     {
         m_parts.clear();
+
+        // Remove optional leading dot
+        if (base::utils::string::startsWith(m_str, "."))
+        {
+            m_str = m_str.substr(1);
+        }
+
+        // Handle root path (empty string)
+        if (m_str.empty())
+        {
+            return;
+        }
+
         m_parts = base::utils::string::splitEscaped(m_str, '.', '\\');
 
         for (auto part : m_parts)
@@ -55,6 +68,18 @@ private:
 public:
     DotPath() = default;
     ~DotPath() = default;
+
+    /**
+     * @brief Create a new DotPath by appending two paths.
+     *
+     * @param lhs
+     * @param rhs
+     * @return DotPath
+     */
+    static DotPath append(const DotPath& lhs, const DotPath& rhs)
+    {
+        return DotPath(fmt::format("{}.{}", lhs.str(), rhs.str()));
+    }
 
     /**
      * @brief Construct a new Dot Path object
