@@ -12,10 +12,34 @@
 
 #include <dlfcn.h>
 #include "logging_helper.h"
+#include <bounded_queue.hpp>
 #include <memory>
+
+using whodata_deleter = std::function<void(whodata_evt*)>;
 
 typedef __attribute__((aligned(4))) unsigned int __u32;
 typedef __attribute__((aligned(8))) unsigned long long __u64;
+
+#ifndef PATH_MAX
+#define PATH_MAX 4096
+#endif
+
+#define TASK_COMM_LEN 32
+
+
+struct file_event {
+    __u32 pid;
+    __u32 ppid;
+    __u32 uid;
+    __u32 gid;
+    __u64 inode;
+    __u64 dev;
+    char comm[TASK_COMM_LEN];
+    char filename[PATH_MAX];
+    char cwd[PATH_MAX];
+    char parent_cwd[PATH_MAX];
+    char parent_comm[TASK_COMM_LEN];
+};
 
 struct ring_buffer {
         struct epoll_event *events;
@@ -52,7 +76,8 @@ int (*bpf_object__attach_skeleton)(struct bpf_object_skeleton *obj) = NULL;
 void (*bpf_object__detach_skeleton)(struct bpf_object_skeleton *obj) = NULL;
 
 typedef int(*init_ring_buffer_t)(ring_buffer** rb, ring_buffer_sample_fn sample_cb);
-typedef void(*pop_events_t)();
+typedef void(*whodata_pop_events_t)(fim::BoundedQueue<std::unique_ptr<whodata_evt, whodata_deleter>>& queue);
+typedef void(*ebpf_pop_events_t)(fim::BoundedQueue<std::unique_ptr<file_event>>& kernel_queue, fim::BoundedQueue<std::unique_ptr<whodata_evt, whodata_deleter>>& queue);
 typedef int(*check_invalid_kernel_version_t)();
 typedef int(*init_libbpf_t)(std::unique_ptr<DynamicLibraryWrapper> sym_load);
 typedef int(*init_bpfobj_t)();
@@ -81,8 +106,8 @@ typedef struct {
     bpf_object__detach_skeleton_t bpf_object_detach_skeleton;
 
     init_ring_buffer_t init_ring_buffer;
-    pop_events_t ebpf_pop_events;
-    pop_events_t whodata_pop_events;
+    ebpf_pop_events_t ebpf_pop_events;
+    whodata_pop_events_t whodata_pop_events;
     check_invalid_kernel_version_t check_invalid_kernel_version;
     init_libbpf_t init_libbpf;
     init_bpfobj_t init_bpfobj;
@@ -141,8 +166,8 @@ inline bool w_bpf_deinit(std::unique_ptr<w_bpf_helpers_t>& bpf_helpers) {
 
 
 int init_ring_buffer(ring_buffer** rb, ring_buffer_sample_fn sample_cb);
-void ebpf_pop_events();
-void whodata_pop_events();
+void ebpf_pop_events(fim::BoundedQueue<std::unique_ptr<file_event>>& kernel_queue, fim::BoundedQueue<std::unique_ptr<whodata_evt, whodata_deleter>>& queue);
+void whodata_pop_events(fim::BoundedQueue<std::unique_ptr<whodata_evt, whodata_deleter>>& queue);
 int check_invalid_kernel_version();
 int init_libbpf(std::unique_ptr<DynamicLibraryWrapper> sym_load);
 int init_bpfobj();

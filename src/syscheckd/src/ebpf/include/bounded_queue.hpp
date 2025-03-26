@@ -63,7 +63,7 @@ public:
      * @param value Element to be pushed.
      * @return true if the element was successfully pushed, false if the queue is full.
      */
-    bool push(T&& value) {
+    virtual bool push(T&& value) {
         std::unique_lock<std::mutex> lock(m_mutex);
         if (m_queue.size() >= m_max_size) {
             return false; // Queue is full
@@ -80,7 +80,7 @@ public:
      * @param timeout_ms Timeout in milliseconds.
      * @return true if an element was successfully popped, false if timeout occurred.
      */
-    bool pop(T& out_value, int timeout_ms) {
+    virtual bool pop(T& out_value, int timeout_ms) {
         std::unique_lock<std::mutex> lock(m_mutex);
         if (!m_cond_var.wait_for(lock, std::chrono::milliseconds(timeout_ms), [this] { return !m_queue.empty(); })) {
             return false; // Timeout

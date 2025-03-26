@@ -14,10 +14,11 @@ public:
     static fimebpf::get_user_t mock_get_user;
     static fimebpf::get_group_t mock_get_group;
     static fimebpf::fim_whodata_event_t mock_fim_whodata_event;
-    static fimebpf::free_whodata_event_t mock_free_whodata_event;
     static fimebpf::loggingFunction_t mock_loggingFunction;
     static fimebpf::abspath_t mock_abspath;
     MOCK_METHOD(bool, mock_fim_shutdown_process_on, ());
+    MOCK_METHOD(void, m_fim_whodata_event, (whodata_evt*), ());
+
 
     static MockFimebpf& GetInstance() {
         static MockFimebpf instance;
@@ -28,13 +29,15 @@ public:
         fimebpf::instance().m_fim_configuration_directory = mock_fim_conf;
         fimebpf::instance().m_get_user = mock_get_user;
         fimebpf::instance().m_get_group = mock_get_group;
-        fimebpf::instance().m_fim_whodata_event = mock_fim_whodata_event;
-        fimebpf::instance().m_free_whodata_event = mock_free_whodata_event;
         fimebpf::instance().m_loggingFunction = mock_loggingFunction;
         fimebpf::instance().m_abspath = mock_abspath;
         fimebpf::instance().m_fim_shutdown_process_on = []() {
             return MockFimebpf::GetInstance().mock_fim_shutdown_process_on();
         };
+	fimebpf::instance().m_fim_whodata_event = [](whodata_evt* event) {
+            MockFimebpf::GetInstance().m_fim_whodata_event(event);
+        };
+
     }
 };
 
@@ -42,16 +45,18 @@ fimebpf::fim_configuration_directory_t MockFimebpf::mock_fim_conf = nullptr;
 fimebpf::get_user_t MockFimebpf::mock_get_user = nullptr;
 fimebpf::get_group_t MockFimebpf::mock_get_group = nullptr;
 fimebpf::fim_whodata_event_t MockFimebpf::mock_fim_whodata_event = nullptr;
-fimebpf::free_whodata_event_t MockFimebpf::mock_free_whodata_event = nullptr;
 fimebpf::loggingFunction_t MockFimebpf::mock_loggingFunction = nullptr;
 fimebpf::abspath_t MockFimebpf::mock_abspath = nullptr;
 
-directory_t* mock_fim_conf([[maybe_unused]] const char* config_path) { return nullptr; }
-
+directory_t* mock_fim_conf_failure([[maybe_unused]] const char* config_path) { return nullptr; }
+directory_t* mock_fim_conf_success([[maybe_unused]] const char* config_path) {
+    directory_t *mockDirectory;
+    mockDirectory->options = WHODATA_ACTIVE | EBPF_DRIVER;
+    return mockDirectory;
+}
 char* mock_get_user([[maybe_unused]] int uid) { return strdup("mock_user"); }
 char* mock_get_group([[maybe_unused]] int gid) { return strdup("mock_group"); }
 void mock_fim_whodata_event([[maybe_unused]] whodata_evt* event) { return; }
-void mock_free_whodata_event([[maybe_unused]] whodata_evt* event) { return; }
 void mock_loggingFunction([[maybe_unused]] modules_log_level_t level, [[maybe_unused]] const char* msg) { return; }
 char* mock_abspath([[maybe_unused]] const char* path, char* buffer, [[maybe_unused]] size_t size) {
     std::strcpy(buffer, "/tmp/ebpf_hc");

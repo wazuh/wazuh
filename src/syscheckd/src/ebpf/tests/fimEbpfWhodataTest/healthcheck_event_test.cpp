@@ -7,23 +7,6 @@
 extern volatile bool event_received;
 const char* EBPF_HC_FILE = "tmp/ebpf_hc";
 
-
-#define TASK_COMM_LEN 32
-#define PATH_MAX 4096
-struct file_event {
-    __u32 pid;
-    __u32 ppid;
-    __u32 uid;
-    __u32 gid;
-    __u64 inode;
-    __u64 dev;
-    char comm[TASK_COMM_LEN];
-    char filename[PATH_MAX];
-    char cwd[PATH_MAX];
-    char parent_cwd[PATH_MAX];
-    char parent_comm[TASK_COMM_LEN];
-};
-
 void ResetEventReceived() {
     event_received = false;
 }

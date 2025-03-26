@@ -15,7 +15,9 @@ set(TEST_FILES
     init_ring_buffer_test.cpp
     init_bpf_obj_test.cpp
     close_libbpf_test.cpp
+    pop_event_test.cpp
 )
+
 
 # Create an executable for each test file
 foreach(TEST_FILE ${TEST_FILES})
@@ -30,6 +32,7 @@ foreach(TEST_FILE ${TEST_FILES})
         optimized gmock
         optimized gtest_main
         optimized gmock_main
+	pthread
         fimebpf
         -fsanitize=address
         -fsanitize=undefined

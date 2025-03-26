@@ -26,14 +26,16 @@
 #include "bpf_helpers.h"
 
 
+/*
 #ifndef PATH_MAX
 #define PATH_MAX 4096
 #endif
+*/
 
-#define TASK_COMM_LEN 32
+//#define TASK_COMM_LEN 32
 #define KERNEL_VERSION_FILE "/proc/sys/kernel/osrelease"
 #define EBPF_HC_FILE "tmp/ebpf_hc"
-#define LIB_INSTALL_PATH "lib/libbpf.so"
+#define LIB_INSTALL_PATH "bpf"
 #define BPF_OBJ_INSTALL_PATH "lib/modern.bpf.o"
 #define WAIT_MS 500
 
@@ -47,7 +49,7 @@ time_t (*w_time)(time_t*) = time;
 int ebpf_kernel_queue_full_reported = 0;
 int ebpf_whodata_queue_full_reported = 0;
 
-
+/*
 struct file_event {
     __u32 pid;
     __u32 ppid;
@@ -61,9 +63,9 @@ struct file_event {
     char parent_cwd[PATH_MAX];
     char parent_comm[TASK_COMM_LEN];
 };
+*/
 
 fim::BoundedQueue<std::unique_ptr<file_event>> kernelEventQueue;
-
 using whodata_deleter = std::function<void(whodata_evt*)>;
 fim::BoundedQueue<std::unique_ptr<whodata_evt, whodata_deleter>> whodataEventQueue;
 
@@ -150,26 +152,22 @@ int init_libbpf(std::unique_ptr<DynamicLibraryWrapper> sym_load) {
     auto logFn = fimebpf::instance().m_loggingFunction;
     auto abspathFn = fimebpf::instance().m_abspath;
     char libbpf_path[PATH_MAX] = {0};
-    bpf_helpers = std::make_unique<w_bpf_helpers_t>();
 
     if (!logFn || !abspathFn || !bpf_helpers) {
         return 1;
     }
 
-    abspathFn(LIB_INSTALL_PATH, libbpf_path, sizeof(libbpf_path));
+    if (!sym_load) {
+	sym_load = std::make_unique<DefaultDynamicLibraryWrapper>();
+    }
 
-
-    bpf_helpers->module = sym_load->getModuleHandle(libbpf_path);
     if (!bpf_helpers->module) {
-	bpf_helpers.reset();
-        return 1;
+	bpf_helpers->module = sym_load->getModuleHandle(LIB_INSTALL_PATH);
     }
 
     bpf_helpers->init_ring_buffer            = (init_ring_buffer_t)init_ring_buffer;
-    bpf_helpers->ebpf_pop_events             = (pop_events_t)ebpf_pop_events;
-    bpf_helpers->whodata_pop_events          = (pop_events_t)whodata_pop_events;
-    bpf_helpers->check_invalid_kernel_version  = (check_invalid_kernel_version_t)check_invalid_kernel_version;
-    bpf_helpers->init_libbpf                 = (init_libbpf_t)init_libbpf;
+    bpf_helpers->ebpf_pop_events             = (ebpf_pop_events_t)ebpf_pop_events;
+    bpf_helpers->whodata_pop_events          = (whodata_pop_events_t)whodata_pop_events;
     bpf_helpers->init_bpfobj                 = (init_bpfobj_t)init_bpfobj;
     bpf_helpers->bpf_object_destroy_skeleton = (bpf_object__destroy_skeleton_t)sym_load->getFunctionSymbol(bpf_helpers->module, "bpf_object__destroy_skeleton");
     bpf_helpers->bpf_object_open_skeleton    = (bpf_object__open_skeleton_t)sym_load->getFunctionSymbol(bpf_helpers->module, "bpf_object__open_skeleton");
@@ -192,8 +190,6 @@ int init_libbpf(std::unique_ptr<DynamicLibraryWrapper> sym_load) {
     if (!bpf_helpers->init_ring_buffer ||
         !bpf_helpers->ebpf_pop_events ||
         !bpf_helpers->whodata_pop_events ||
-        !bpf_helpers->check_invalid_kernel_version ||
-        !bpf_helpers->init_libbpf ||
         !bpf_helpers->init_bpfobj ||
         !bpf_helpers->bpf_object_open_file ||
         !bpf_helpers->bpf_object_load ||
@@ -296,7 +292,7 @@ int init_ring_buffer(ring_buffer** rb, ring_buffer_sample_fn sample_cb) {
 }
 
 /* Worker thread to pop events from kernelEventQueue */
-void ebpf_pop_events() {
+void ebpf_pop_events(fim::BoundedQueue<std::unique_ptr<file_event>>& kernelEventQueue, fim::BoundedQueue<std::unique_ptr<whodata_evt, whodata_deleter>>& queue) {
     auto logFn = fimebpf::instance().m_loggingFunction;
     if (!logFn) {
         return;
@@ -334,7 +330,7 @@ void ebpf_pop_events() {
                 w_evt->parent_name = strdup(event->parent_comm);
 
                 auto new_event = std::unique_ptr<whodata_evt, whodata_deleter>(w_evt, deleter);
-                if (!whodataEventQueue.push(std::move(new_event))) {
+                if (!queue.push(std::move(new_event))) {
                     if (!ebpf_whodata_queue_full_reported) {
                         logFn(LOG_WARNING, FIM_FULL_EBPF_WHODATA_QUEUE);
                         ebpf_whodata_queue_full_reported = 1;
@@ -346,11 +342,11 @@ void ebpf_pop_events() {
 }
 
 /* Worker thread to pop events from whodataEventQueue */
-void whodata_pop_events() {
+void whodata_pop_events(fim::BoundedQueue<std::unique_ptr<whodata_evt, whodata_deleter>>& queue) {
     while (!fimebpf::instance().m_fim_shutdown_process_on()) {
         std::unique_ptr<whodata_evt, whodata_deleter> event;
 
-        if (!whodataEventQueue.pop(event, WAIT_MS)) {
+        if (!queue.pop(event, WAIT_MS)) {
             if (fimebpf::instance().m_fim_shutdown_process_on()) {
                 return;
             }
@@ -386,6 +382,22 @@ int ebpf_whodata_healthcheck() {
     auto abspathFn = fimebpf::instance().m_abspath;
     char ebpf_hc_abs_path[PATH_MAX] = {0};
     char error_message[1024];
+
+    if (!bpf_helpers) {
+        bpf_helpers = std::make_unique<w_bpf_helpers_t>();
+    }
+
+    if (!bpf_helpers) {
+        return 1;
+    }
+
+    if (!bpf_helpers->init_libbpf) {
+        bpf_helpers->init_libbpf = (init_libbpf_t)init_libbpf;
+    }
+
+    if (!bpf_helpers->check_invalid_kernel_version) {
+        bpf_helpers->check_invalid_kernel_version  = (check_invalid_kernel_version_t)check_invalid_kernel_version;
+    }
 
     kernelEventQueue.setMaxSize(fimebpf::instance().m_queue_size);
     whodataEventQueue.setMaxSize(fimebpf::instance().m_queue_size);
@@ -446,10 +458,14 @@ int ebpf_whodata() {
         return 1;
     }
 
-    std::thread ebpf_pop_thread(bpf_helpers->ebpf_pop_events);
+    std::thread ebpf_pop_thread([&]() {
+        bpf_helpers->ebpf_pop_events(kernelEventQueue, whodataEventQueue);
+    });
     ebpf_pop_thread.detach();
 
-    std::thread whodata_pop_thread(bpf_helpers->whodata_pop_events);
+    std::thread whodata_pop_thread([&]() {
+	    bpf_helpers->whodata_pop_events(whodataEventQueue);
+    });
     whodata_pop_thread.detach();
 
     while (!fimebpf::instance().m_fim_shutdown_process_on()) {
