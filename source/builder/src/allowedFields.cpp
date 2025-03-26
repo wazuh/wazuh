@@ -63,7 +63,7 @@ bool AllowedFields::check(const base::Name& assetType, const DotPath& field) con
     }
 
     // Always allow root field
-    if (field.parts().empty())
+    if (field.isRoot())
     {
         return true;
     }

@@ -70,18 +70,6 @@ public:
     ~DotPath() = default;
 
     /**
-     * @brief Create a new DotPath by appending two paths.
-     *
-     * @param lhs
-     * @param rhs
-     * @return DotPath
-     */
-    static DotPath append(const DotPath& lhs, const DotPath& rhs)
-    {
-        return DotPath(fmt::format("{}.{}", lhs.str(), rhs.str()));
-    }
-
-    /**
      * @brief Construct a new Dot Path object
      *
      * @param str
@@ -209,6 +197,14 @@ public:
     const std::vector<std::string>& parts() const { return m_parts; }
 
     /**
+     * @brief Check if the path is the root path
+     *
+     * @return true
+     * @return false
+     */
+    bool isRoot() const { return m_parts.empty(); }
+
+    /**
      * @brief Transform pointer path string to dot path string
      *
      * @param jsonPath Pointer path string
@@ -256,6 +252,18 @@ public:
                        });
 
         return DotPath(parts.begin(), parts.end());
+    }
+
+    /**
+     * @brief Create a new DotPath by appending two paths.
+     *
+     * @param lhs
+     * @param rhs
+     * @return DotPath
+     */
+    static DotPath append(const DotPath& lhs, const DotPath& rhs)
+    {
+        return DotPath(fmt::format("{}.{}", lhs.str(), rhs.str()));
     }
 };
 

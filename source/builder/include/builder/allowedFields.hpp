@@ -28,7 +28,6 @@ public:
      */
     AllowedFields(const json::Json& definition);
 
-
     /**
      * @copydoc IAllowedFields::check
      */
