@@ -11,8 +11,13 @@
 #define EBPF_WHODATA_HPP
 
 #include "ebpf_whodata.h"
+#include "dynamic_library_wrapper.h"
+#include <memory>
 
-class fimebpf final
+volatile bool event_received = false;
+volatile bool epbf_hc_created = false;
+
+class fimebpf
 {
 public:
     static fimebpf& instance()
@@ -53,7 +58,7 @@ public:
         m_fim_shutdown_process_on = fimShutdownProcessOn;
     }
 
-private:
+protected:
     fimebpf() = default;
     ~fimebpf() = default;
     fimebpf(const fimebpf&) = delete;
@@ -70,5 +75,8 @@ public:
     unsigned int m_queue_size;
     fimShutdownProcessOn_t m_fim_shutdown_process_on;
 };
+
+int init_libbpf(std::unique_ptr<DynamicLibraryWrapper> sym_load);
+
 
 #endif // EBPF_WHODATA_HPP

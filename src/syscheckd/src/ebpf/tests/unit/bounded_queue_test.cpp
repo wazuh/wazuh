@@ -41,7 +41,7 @@ TEST(BoundedQueueTest, SetMaxSize) {
     EXPECT_FALSE(queue.push(3)); // Queue is full
 
     queue.setMaxSize(1);
-    EXPECT_EQ(queue.size(), 1);
+    EXPECT_EQ(queue.size(), 1u);
 
     int value;
     EXPECT_TRUE(queue.pop(value, 100));
@@ -53,16 +53,16 @@ TEST(BoundedQueueTest, EmptyAndSize) {
     BoundedQueue<int> queue(3);
 
     EXPECT_TRUE(queue.empty());
-    EXPECT_EQ(queue.size(), 0);
+    EXPECT_EQ(queue.size(), 0u);
 
     EXPECT_TRUE(queue.push(1));
     EXPECT_FALSE(queue.empty());
-    EXPECT_EQ(queue.size(), 1);
+    EXPECT_EQ(queue.size(), 1u);
 
     int value;
     EXPECT_TRUE(queue.pop(value, 100));
     EXPECT_TRUE(queue.empty());
-    EXPECT_EQ(queue.size(), 0);
+    EXPECT_EQ(queue.size(), 0u);
 }
 
 TEST(BoundedQueueTest, Timeout) {
