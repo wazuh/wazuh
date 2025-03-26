@@ -73,13 +73,19 @@ foreach(loop_var ${EXTERNAL_RES})
     check_and_download_dep(${loop_var} ${RESOURCES_URL})
 endforeach(loop_var)
 
-# Read VERSION and REVISION file and set variable with the content.
-file(READ ${SRC_FOLDER}/VERSION VERSION_FILE)
-string(STRIP ${VERSION_FILE} VERSION_FILE)
-add_definitions(-DVERSION="${VERSION_FILE}")
+# Read the VERSION JSON file
+file(READ "${SRC_FOLDER}/../VERSION.json" VERSION_JSON)
 
-file(READ ${SRC_FOLDER}/REVISION REVISION_FILE)
-string(STRIP ${REVISION_FILE} REVISION_FILE)
+# Extract "version"
+string(REGEX MATCH "\"version\"[ \t]*:[ \t]*\"([^\"]+)\"" _ ${VERSION_JSON})
+set(VERSION_FILE "v${CMAKE_MATCH_1}")  # <-- Add "v" prefix since old VERSION file had it
+
+# Extract "stage" as revision
+string(REGEX MATCH "\"stage\"[ \t]*:[ \t]*\"([^\"]+)\"" _ ${VERSION_JSON})
+set(REVISION_FILE "${CMAKE_MATCH_1}")
+
+# Define preprocessor macros
+add_definitions(-DVERSION="${VERSION_FILE}")
 add_definitions(-DREVISION="${REVISION_FILE}")
 
 ## If REVISION OR FILE is empty fail
