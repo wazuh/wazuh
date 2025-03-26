@@ -892,8 +892,6 @@ winagent: external win32/libwinpthread-1.dll win32/libwinpthreadpatched.a ${WAZU
 	cd win32/ && ./unix2dos.pl ../../etc/internal_options.conf > internal_options.conf
 	cd win32/ && ./unix2dos.pl ../../etc/local_internal_options-win.conf > default-local_internal_options.conf
 	cd win32/ && ./unix2dos.pl ../../LICENSE > LICENSE.txt
-	cd win32/ && ./unix2dos.pl ../VERSION > VERSION
-	cd win32/ && ./unix2dos.pl ../REVISION > REVISION
 	cd win32/ && ./unix2dos.pl ../../VERSION.json > VERSION.json
 	cd win32/ && makensis wazuh-installer.nsi
 
@@ -2891,8 +2889,6 @@ clean-windows:
 	rm -f win32/libwinpthread-1.dll
 	rm -f win32/*.o
 	rm -f win32/version-*.o
-	rm -f win32/VERSION
-	rm -f win32/REVISION
 	rm -f win32/VERSION.json
 	rm -f win32/libstdc++-6.dll
 	rm -f win32/libgcc_s_dw2-1.dll
