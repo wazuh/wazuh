@@ -41,7 +41,7 @@ info:
 
   version: '5.0.0'
   x-revision: '50000'
-  title: 'Wazuh API REST'
+  title: 'Server Management API REST'
   license:
     name: 'GPL 2.0'
     url: 'https://github.com/wazuh/wazuh/blob/v5.0.0/LICENSE'

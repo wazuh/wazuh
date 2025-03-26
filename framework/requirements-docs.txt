@@ -1,0 +1,5 @@
+-r requirements-dev.txt
+
+framework/
+apis/communications
+apis/server_management
