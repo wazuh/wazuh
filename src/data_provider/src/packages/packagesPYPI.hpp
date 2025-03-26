@@ -21,14 +21,14 @@
 #include "utilsWrapperLinux.hpp"
 #include <iostream>
 #include <set>
-#include "packageExclude.hpp"
+#include <unordered_set>
 
 const static std::map<std::string, std::string> FILE_MAPPING_PYPI {{"egg-info", "PKG-INFO"}, {"dist-info", "METADATA"}};
 
 template<typename TFileSystem = RealFileSystem, typename TFileIO = FileIO>
 class PYPI final : public TFileSystem, public TFileIO
 {
-        std::unordered_set<std::string> excludedPaths;
+        std::unordered_set<std::string> m_pathsToExclude;
 
         void parseMetadata(const std::filesystem::path& path, std::function<void(nlohmann::json&)>& callback)
         {
@@ -105,7 +105,7 @@ class PYPI final : public TFileSystem, public TFileIO
                             correctPath = path / value;
                         }
 
-                        if (excludedPaths.find(correctPath.string()) != excludedPaths.end())
+                        if (m_pathsToExclude.find(correctPath.string()) != m_pathsToExclude.end())
                         {
                             return;
                         }
@@ -143,14 +143,11 @@ class PYPI final : public TFileSystem, public TFileIO
         }
 
     public:
-        void getPackages(const std::set<std::string>& osRootFolders, std::function<void(nlohmann::json&)> callback, bool excludePaths = false)
+        void getPackages(const std::set<std::string>& osRootFolders,
+                         std::function<void(nlohmann::json&)> callback,
+                         const std::unordered_set<std::string>& excludePaths = {})
         {
-            if (excludePaths)
-            {
-                excludedPaths.clear();
-
-                getExcludePackages(excludedPaths);
-            }
+            m_pathsToExclude = excludePaths;
 
             for (const auto& osFolder : osRootFolders)
             {
