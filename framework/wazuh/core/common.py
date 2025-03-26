@@ -4,7 +4,6 @@
 
 import json
 import os
-from concurrent.futures import ThreadPoolExecutor
 from contextvars import ContextVar
 from copy import deepcopy
 from functools import lru_cache, wraps

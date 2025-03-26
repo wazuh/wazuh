@@ -43,7 +43,7 @@ if node_info['type'] == 'master':
     with contextlib.suppress(FileNotFoundError, PermissionError):
         pools.update({'authentication_pool': ProcessPoolExecutor(
             max_workers=aconf.api_conf['authentication_pool_size'],
-            initializer=wazuh.core.cluster.utils.spawn_authentication_pool
+            initializer=wazuh.core.cluster.utils.spawn_authentication_worker
         )})
 
 

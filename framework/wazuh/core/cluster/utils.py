@@ -557,8 +557,8 @@ def raise_if_exc(result: object) -> None:
         raise result
 
 
-def spawn_authentication_pool():
-    """Spawn authentication process pool child."""
+def spawn_authentication_worker():
+    """Spawn authentication process worker."""
 
     API_AUTHENTICATION_PROCESS = 'wazuh-apid_auth'
 
