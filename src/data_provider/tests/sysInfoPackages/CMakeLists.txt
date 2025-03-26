@@ -23,7 +23,6 @@ target_link_libraries(sysInfoPackages_unit_test
     optimized gtest_main
     optimized gmock_main
     pthread
-    sysinfo
 )
 
 add_test(NAME sysInfoPackages_unit_test COMMAND sysInfoPackages_unit_test)
