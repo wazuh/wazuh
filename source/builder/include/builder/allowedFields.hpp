@@ -11,17 +11,27 @@
 
 namespace builder
 {
+
 class AllowedFields final : public IAllowedFields
 {
 private:
-    std::unordered_map<base::Name, std::unordered_set<DotPath>> m_fields;
+    std::unordered_map<base::Name, std::unordered_set<DotPath>> m_fields; ///< Map of asset types to allowed fields.
 
 public:
     AllowedFields() = default;
     ~AllowedFields() override = default;
 
+    /**
+     * @brief Construct a new Allowed Fields object
+     *
+     * @param definition
+     */
     AllowedFields(const json::Json& definition);
 
+
+    /**
+     * @copydoc IAllowedFields::check
+     */
     bool check(const base::Name& assetType, const DotPath& field) const override;
 };
 } // namespace builder
