@@ -9,8 +9,7 @@ import os
 import signal
 import sys
 import warnings
-from concurrent.futures import ProcessPoolExecutor
-import contextlib
+from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 
 SSL_DEPRECATED_MESSAGE = 'The `{ssl_protocol}` SSL protocol is deprecated.'
 CACHE_DELETED_MESSAGE = 'The `cache` API configuration option no longer takes effect since {release} and will ' \
@@ -159,7 +158,8 @@ def start(params: dict):
         raise APIError(2012, details=str(db_integrity_exc)) from db_integrity_exc
 
     pools = common.mp_pools.get()
-    with contextlib.suppress(FileNotFoundError, PermissionError):
+
+    try:
         pools.update({'process_pool': ProcessPoolExecutor(
             max_workers=1,
             initializer=spawn_process_worker
@@ -169,14 +169,17 @@ def start(params: dict):
             max_workers=1,
             initializer=spawn_events_worker
         )})
+    # Handle exception when the user running Wazuh cannot access /dev/shm.
+    except (FileNotFoundError, PermissionError):
+        pools.update({'thread_pool': ThreadPoolExecutor(max_workers=1)})
 
 
-    # Log the pool creation
+    # Log the pool creation to force processes creation
     if 'thread_pool' not in common.mp_pools.get():
         loop = asyncio.get_event_loop()
         loop.run_until_complete(
-            asyncio.wait([loop.run_in_executor(pool, lambda: logger.debug2(f'Creating "{name}" process pool'))
-                          for name, pool in common.mp_pools.get().items()]))
+            asyncio.wait([loop.run_in_executor(pool, logger.debug2, f"Creating '{name}' process pool")
+                            for name, pool in common.mp_pools.get().items()]))
 
     # Set up API
     app = AsyncApp(

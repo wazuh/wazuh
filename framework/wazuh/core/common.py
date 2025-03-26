@@ -132,13 +132,8 @@ current_user: ContextVar[str] = ContextVar('current_user', default='')
 broadcast: ContextVar[bool] = ContextVar('broadcast', default=False)
 cluster_nodes: ContextVar[list] = ContextVar('cluster_nodes', default=list())
 origin_module: ContextVar[str] = ContextVar('origin_module', default='framework')
-try:
-    mp_pools: ContextVar[Dict] = ContextVar('mp_pools',default={})
-# Handle exception when the user running Wazuh cannot access /dev/shm.
-except (FileNotFoundError, PermissionError):
-    mp_pools: ContextVar[Dict] = ContextVar('mp_pools', default={
-        'thread_pool': ThreadPoolExecutor(max_workers=1)
-    })
+mp_pools: ContextVar[Dict] = ContextVar('mp_pools',default={})
+
 _context_cache = dict()
 
 
