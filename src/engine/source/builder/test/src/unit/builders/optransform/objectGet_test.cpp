@@ -278,6 +278,16 @@ INSTANTIATE_TEST_SUITE_P(
                                .WillOnce(testing::Return(false));
                            return None {};
                        })),
+        TransformT(R"({"ref": "key"})",
+                   opBuilderHelperMergeValue,
+                   ".",
+                   {makeValue(R"({"key": {"key1": "value"}})"), makeRef("ref")},
+                   SUCCESS(
+                       [](const BuildersMocks& mocks)
+                       {
+                           customRefExpected("ref", ".")(mocks);
+                           return makeEvent(R"({"key1": "value", "ref": "key"})");
+                       })),
         /*** Merge Recursive Value ***/
         TransformT(R"({"ref": "key", "target": {"k0": "v0", "nested": {"k1": "v1"}}})",
                    opBuilderHelperMergeRecursiveValue,
@@ -315,6 +325,16 @@ INSTANTIATE_TEST_SUITE_P(
                            EXPECT_CALL(*mocks.allowedFields, check(testing::_, DotPath("target.a")))
                                .WillOnce(testing::Return(false));
                            return None {};
+                       })),
+        TransformT(R"({"key1": {"key2": "value"}, "ref": "key"})",
+                   opBuilderHelperMergeRecursiveValue,
+                   ".",
+                   {makeValue(R"({"key": {"key1": {"key3": "value"}}})"), makeRef("ref")},
+                   SUCCESS(
+                       [](const BuildersMocks& mocks)
+                       {
+                           customRefExpected("ref", ".")(mocks);
+                           return makeEvent(R"({"key1": {"key2": "value", "key3": "value"}, "ref": "key"})");
                        }))),
     testNameFormatter<TransformOperationTest>("ObjectGet"));
 } // namespace transformoperatestest

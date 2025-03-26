@@ -193,3 +193,35 @@ TEST(AllowedFieldsTest, CheckNotAllowed)
     ASSERT_FALSE(allowedFields.check("filter", "field3"));
     ASSERT_FALSE(allowedFields.check("output", "field3"));
 }
+
+TEST(AllowedFieldsTest, CheckRootField)
+{
+    DotPath rootPath {"."};
+    json::Json definition {
+        R"({
+            "name": "schema/allowed-fields/0",
+            "allowed_fields": {
+                "decoder": ["field1", "field2"],
+                "rule": ["field1", "field2"],
+                "filter": ["field1", "field2"],
+                "output": ["field1", "field2"]
+            }
+        })"};
+
+    AllowedFields allowedFields {definition};
+
+    ASSERT_TRUE(allowedFields.check("decoder", rootPath));
+    ASSERT_TRUE(allowedFields.check("rule", rootPath));
+    ASSERT_TRUE(allowedFields.check("filter", rootPath));
+    ASSERT_TRUE(allowedFields.check("output", rootPath));
+
+    ASSERT_TRUE(allowedFields.check("decoder", DotPath::append(rootPath, "field1")));
+    ASSERT_TRUE(allowedFields.check("rule", DotPath::append(rootPath, "field1")));
+    ASSERT_TRUE(allowedFields.check("filter", DotPath::append(rootPath, "field1")));
+    ASSERT_TRUE(allowedFields.check("output", DotPath::append(rootPath, "field1")));
+
+    ASSERT_FALSE(allowedFields.check("decoder", DotPath::append(rootPath, "field3")));
+    ASSERT_FALSE(allowedFields.check("rule", DotPath::append(rootPath, "field3")));
+    ASSERT_FALSE(allowedFields.check("filter", DotPath::append(rootPath, "field3")));
+    ASSERT_FALSE(allowedFields.check("output", DotPath::append(rootPath, "field3")));
+}

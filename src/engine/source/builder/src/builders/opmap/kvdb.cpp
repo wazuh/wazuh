@@ -184,7 +184,7 @@ TransformOp KVDBGet(std::shared_ptr<IKVDBManager> kvdbManager,
                 auto fields = value.getFields().value();
                 for (const auto& field : fields)
                 {
-                    if (!allowedFields->check(assetType, targetFieldDotPath + "." + field))
+                    if (!allowedFields->check(assetType, DotPath::append(targetFieldDotPath, field)))
                     {
                         RETURN_FAILURE(runState, event, failureTrace8)
                     }

@@ -874,6 +874,17 @@ INSTANTIATE_TEST_SUITE_P(
                                    .WillOnce(testing::Return(false));
                                return None {};
                            })),
+        TransformDepsT(R"({"ref": "key"})",
+                       getTrBuilderExpectHandler(
+                           getOpBuilderKVDBGetMerge, "dbname", expectKvdbGetValue("key", R"({"key": "value"})")),
+                       ".",
+                       {makeValue(R"("dbname")"), makeRef("ref")},
+                       SUCCESS(
+                           [](const BuildersMocks& mocks)
+                           {
+                               customRefExpected("ref", ".")(mocks);
+                               return makeEvent(R"({"key": "value", "ref": "key"})");
+                           })),
         /*** SET ***/
         TransformDepsT(R"({})",
                        getTrBuilderExpectHandler(getOpBuilderKVDBSet, "dbname", expectKvdbSet("key", R"("value")")),
