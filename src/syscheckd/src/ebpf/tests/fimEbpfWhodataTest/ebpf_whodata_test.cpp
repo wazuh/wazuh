@@ -5,7 +5,7 @@
 #include "bpf_helpers.h"
 
 extern volatile bool event_received;
-extern volatile bool epbf_hc_created;
+extern volatile bool ebpf_hc_created;
 time_t fake_time_now = 0;
 extern time_t (*w_time)(time_t*);
 

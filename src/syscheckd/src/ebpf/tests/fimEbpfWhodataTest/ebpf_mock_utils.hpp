@@ -51,7 +51,7 @@ fimebpf::abspath_t MockFimebpf::mock_abspath = nullptr;
 directory_t* mock_fim_conf_failure([[maybe_unused]] const char* config_path) { return nullptr; }
 directory_t* mock_fim_conf_success([[maybe_unused]] const char* config_path) {
     static directory_t mockDirectory;
-    mockDirectory.options = WHODATA_ACTIVE | EBPF_DRIVER;
+    mockDirectory.options = WHODATA_ACTIVE;
     return &mockDirectory;
 }
 char* mock_get_user([[maybe_unused]] int uid) { return strdup("mock_user"); }

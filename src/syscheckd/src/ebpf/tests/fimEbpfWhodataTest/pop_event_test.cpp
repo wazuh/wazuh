@@ -106,7 +106,7 @@ TEST_F(PopEventsTest, ShutdownProcessTrue) {
     ebpf_pop_events(mock_kernel_queue, mock_whodata_queue);
 }
 
-TEST_F(PopEventsTest, EbpPopFailsAndShutdown) {
+TEST_F(PopEventsTest, EbpfPopFailsAndShutdown) {
     MockBoundedQueue<std::unique_ptr<file_event>> mock_kernel_queue;
     MockBoundedQueue<std::unique_ptr<whodata_evt, whodata_deleter>> mock_whodata_queue;
 
@@ -129,7 +129,7 @@ TEST_F(PopEventsTest, EbpPopFailsAndShutdown) {
     ebpf_pop_events(mock_kernel_queue, mock_whodata_queue);
 }
 
-TEST_F(PopEventsTest, EbpPopWithEvent) {
+TEST_F(PopEventsTest, EbpfPopWithEvent) {
     MockBoundedQueue<std::unique_ptr<file_event>> mock_kernel_queue;
     MockBoundedQueue<std::unique_ptr<whodata_evt, whodata_deleter>> mock_whodata_queue;
     MockFimebpf::mock_fim_conf = mock_fim_conf_failure;
