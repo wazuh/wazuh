@@ -5,8 +5,6 @@
     "wazuh-states-packages-*",
     "wazuh-states-system-*",
     "wazuh-states-processes-*",
-    "wazuh-states-ports-*",
-    "wazuh-states-hotfixes-*",
     "wazuh-states-hardware-*"
   ],
   "priority": 1,

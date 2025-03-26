@@ -108,6 +108,7 @@ INSTANTIATE_TEST_SUITE_P(ClearElementsDifferentComponents,
                                            MockSystemContext::AffectedComponentType::System,
                                            MockSystemContext::AffectedComponentType::Port,
                                            MockSystemContext::AffectedComponentType::Hotfix,
+                                           MockSystemContext::AffectedComponentType::Hardware,
                                            MockSystemContext::AffectedComponentType::Invalid));
 
 INSTANTIATE_TEST_SUITE_P(ClearElementsDifferentComponentsNoAgent,
@@ -117,4 +118,5 @@ INSTANTIATE_TEST_SUITE_P(ClearElementsDifferentComponentsNoAgent,
                                            MockSystemContext::AffectedComponentType::System,
                                            MockSystemContext::AffectedComponentType::Port,
                                            MockSystemContext::AffectedComponentType::Hotfix,
+                                           MockSystemContext::AffectedComponentType::Hardware,
                                            MockSystemContext::AffectedComponentType::Invalid));

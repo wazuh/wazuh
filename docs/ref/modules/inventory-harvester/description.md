@@ -49,6 +49,35 @@ This is an example of the indexed ports format:
         "ip": "0.0.0.0",
         "port": 8000
     }
+```
+
+### Hardware
+
+This is an example of the indexed hardware format:
+
+```json
+{
+  "agent": {
+    "id": "002",
+    "ip": "any",
+    "name": "b593602240f5",
+    "version": "v4.11.1"
+  },
+  "host": {
+    "cpu": {
+      "cores": 12,
+      "name": "Intel(R) Core(TM) i5-10500H CPU @ 2.50GHz",
+      "speed": 2501
+    },
+    "memory": {
+      "free": 5289812,
+      "total": 16286860,
+      "used": 68286860
+    },
+    "observer": {
+      "serial_number": "PF3JXBEZ"
+    }
+  }
 }
 ```
 
