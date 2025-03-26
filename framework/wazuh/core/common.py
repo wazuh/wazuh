@@ -132,7 +132,6 @@ broadcast: ContextVar[bool] = ContextVar('broadcast', default=False)
 cluster_nodes: ContextVar[list] = ContextVar('cluster_nodes', default=list())
 origin_module: ContextVar[str] = ContextVar('origin_module', default='framework')
 mp_pools: ContextVar[Dict] = ContextVar('mp_pools',default={})
-
 _context_cache = dict()
 
 

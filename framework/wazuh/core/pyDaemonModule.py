@@ -6,12 +6,18 @@ import glob
 import logging
 import os
 import sys
+import signal
 from os import path
 
 import psutil
 
 from wazuh.core import common
 from wazuh.core.exception import WazuhInternalError
+
+API_MAIN_PROCESS = 'wazuh-apid'
+API_LOCAL_REQUEST_PROCESS = 'wazuh-apid_exec'
+API_SECURITY_EVENTS_PROCESS = 'wazuh-apid_events'
+API_AUTHENTICATION_PROCESS = 'wazuh-apid_auth'
 
 
 def pyDaemon():
@@ -129,3 +135,18 @@ def delete_child_pids(name: str, ppid: int, logger: logging.Logger):
                 except OSError:
                     pass
                 filenames.remove(filename)
+
+
+def spawn_process_pool_worker(process_name: str) -> None:
+    """Spawn process pool worker.
+
+    Parameters
+    ----------
+    process_name : str
+        Process name.
+    """
+
+    process_pid = os.getpid()
+    create_pid(process_name, process_pid)
+
+    signal.signal(signal.SIGINT, signal.SIG_IGN)

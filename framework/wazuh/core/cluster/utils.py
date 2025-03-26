@@ -555,14 +555,3 @@ def raise_if_exc(result: object) -> None:
     """
     if isinstance(result, Exception):
         raise result
-
-
-def spawn_authentication_worker():
-    """Spawn authentication process worker."""
-
-    API_AUTHENTICATION_PROCESS = 'wazuh-apid_auth'
-
-    auth_pid = os.getpid()
-    pyDaemonModule.create_pid(API_AUTHENTICATION_PROCESS, auth_pid)
-
-    signal.signal(signal.SIGINT, signal.SIG_IGN)
