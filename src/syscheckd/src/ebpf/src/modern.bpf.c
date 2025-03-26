@@ -86,6 +86,9 @@ struct {
     __uint(max_entries, 1);
 } cwd_heap SEC(".maps");
 
+// Kernel version check
+extern int LINUX_KERNEL_VERSION __kconfig;
+
 /*
 * Reconstructs the full absolute path from a struct path and stores it
 * in out_buf->data. The result (pointer to the path string) is returned via path_str.
@@ -399,9 +402,16 @@ int kprobe__security_inode_setattr(struct pt_regs *ctx) {
 SEC("kprobe/vfs_unlink")
 int kprobe__vfs_unlink(struct pt_regs *ctx)
 {
-    struct dentry *dentry = (struct dentry *)PT_REGS_PARM3(ctx);
-    if (!dentry)
-        return 0;
+    struct dentry *dentry;
+    if (LINUX_KERNEL_VERSION >= KERNEL_VERSION(5, 12, 0)) {
+        dentry = (struct dentry *)PT_REGS_PARM3(ctx);
+        if (!dentry) // This condition is necessary to open the BPF program
+            return 0;
+    } else {
+        dentry = (struct dentry *)PT_REGS_PARM2(ctx);
+        if (!dentry) // This condition is necessary to open the BPF program
+            return 0;
+    }
 
     struct inode *d_inode = NULL;
     bpf_probe_read_kernel(&d_inode, sizeof(d_inode), &dentry->d_inode);
