@@ -301,6 +301,7 @@ class AWSCloudWatchLogs(aws_service.AWSService):
                 aws_tools.debug('+++ Sending events to Analysisd...', 1)
                 for event in response['events']:
                     event_msg = event['message']
+                    json_event = None
                     try:
                         json_event = json.loads(event_msg)
                         if self.event_should_be_skipped(json_event):
@@ -325,7 +326,8 @@ class AWSCloudWatchLogs(aws_service.AWSService):
                                   f'The event will be processed.', 3)
                     aws_tools.debug('The message is "{}"'.format(event_msg), 2)
                     aws_tools.debug('The message\'s timestamp is {}'.format(event["timestamp"]), 3)
-                    self.send_msg(event_msg, dump_json=False)
+                    self.send_msg(dict({'integration': 'aws', 'source': 'cloudwatch', 'log_group': log_group},
+                                       **json_event if json_event else {'message': event_msg}), dump_json=False)
                     sent_events += 1
 
                     if min_start_time is None:
