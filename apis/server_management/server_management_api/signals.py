@@ -16,6 +16,8 @@ from wazuh.core.commands_manager import CommandsManager
 from wazuh.core.config.client import CentralizedConfig
 from wazuh.core.configuration import update_check_is_enabled
 from wazuh.core.manager import query_update_check_service
+from wazuh.core.rbac import RBACManager
+from wazuh.core.task.rbac import get_rbac_info
 
 from server_management_api.constants import (
     INSTALLATION_UID_KEY,
@@ -83,7 +85,7 @@ async def get_update_information() -> None:
 
 
 @contextlib.asynccontextmanager
-async def lifespan_handler(_: ConnexionMiddleware, commands_manager: CommandsManager):
+async def lifespan_handler(_: ConnexionMiddleware, commands_manager: CommandsManager, rbac_manager: RBACManager):
     """Log the API startup/shutdown messages, register background tasks and initialize indexer client.
 
     Parameters
@@ -92,8 +94,11 @@ async def lifespan_handler(_: ConnexionMiddleware, commands_manager: CommandsMan
         Framework middleware.
     commands_manager : CommandsManager
         Commands manager.
+    rbac_manager : RBACManager
+        RBAC manager.
     """
     tasks: list[asyncio.Task] = []
+    tasks.append(asyncio.create_task(get_rbac_info(logger, commands_manager, rbac_manager)))
 
     if running_in_master_node():
         tasks.append(asyncio.create_task(check_installation_uid()))
@@ -104,7 +109,7 @@ async def lifespan_handler(_: ConnexionMiddleware, commands_manager: CommandsMan
     management_api_config = CentralizedConfig.get_management_api_config()
     logger.info(f'Listening on {management_api_config.host}:{management_api_config.port}.')
 
-    yield {'commands_manager': commands_manager}
+    yield {'commands_manager': commands_manager, 'rbac_manager': rbac_manager}
 
     for task in tasks:
         task.cancel()
