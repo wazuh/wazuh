@@ -1,0 +1,30 @@
+[
+    {
+        "index_name": "wazuh-states-hardware-cluster01",
+        "data": [
+            {
+                "agent": {
+                    "id": "002",
+                    "ip": "any",
+                    "name": "WazuhAgent",
+                    "version": "v4.11.0"
+                },
+                "host": {
+                    "cpu": {
+                        "cores": 2,
+                        "name": "Intel(R) Core(TM) i9-10500H CPU @ 2.50GHz",
+                        "speed": 2497
+                    },
+                    "memory": {
+                        "free": 2515832,
+                        "total": 3062624,
+                        "used": 1862624
+                    }
+                },
+                "observer": {
+                    "serial_number": "A320"
+                }
+            }
+        ]
+    }
+]

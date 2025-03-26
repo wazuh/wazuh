@@ -1,0 +1,53 @@
+[
+    {
+        "index_name": "wazuh-states-hardware-cluster01",
+        "data": [
+            {
+                "agent": {
+                    "id": "001",
+                    "name": "WazuhAgent",
+                    "version": "v4.11.1",
+                    "ip": "any"
+                },
+                "host": {
+                    "cpu": {
+                        "cores": 8,
+                        "name": "Intel(R) Core(TM) i7-10700K CPU @ 3.80GHz",
+                        "speed": 3800
+                    },
+                    "memory": {
+                        "free": 1234,
+                        "total": 33554432,
+                        "used": 16777216
+                    }
+                },
+                "observer": {
+                    "serial_number": "ABC123XYZ789"
+                }
+            },
+            {
+                "agent": {
+                    "id": "002",
+                    "name": "WazuhAgent",
+                    "version": "v4.11.1",
+                    "ip": "any"
+                },
+                "host": {
+                    "cpu": {
+                        "cores": 8,
+                        "name": "Intel(R) Core(TM) i7-10700K CPU @ 3.80GHz",
+                        "speed": 3800
+                    },
+                    "memory": {
+                        "free": 16777216,
+                        "total": 33554432,
+                        "used": 16777216
+                    }
+                },
+                "observer": {
+                    "serial_number": "AAA111BBB222"
+                }
+            }
+        ]
+    }
+]
