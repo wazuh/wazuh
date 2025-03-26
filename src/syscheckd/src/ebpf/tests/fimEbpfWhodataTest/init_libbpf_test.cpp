@@ -15,9 +15,9 @@ extern int init_libbpf(std::unique_ptr<DynamicLibraryWrapper> sym_load);
 
 class MockDynamicLibraryWrapper : public DynamicLibraryWrapper {
 public:
-    MOCK_METHOD(void*, getModuleHandle, (const char* so), (override)); 
-    MOCK_METHOD(void*, getFunctionSymbol, (void* handle, const char* function_name), (override)); 
-    MOCK_METHOD(int, freeLibrary, (void* handle), (override)); 
+    MOCK_METHOD(void*, so__get_module_handle, (const char* so), (override));
+    MOCK_METHOD(void*, getFunctionSymbol, (void* handle, const char* function_name), (override));
+    MOCK_METHOD(int, freeLibrary, (void* handle), (override));
 };
 
 
@@ -40,10 +40,10 @@ TEST_F(InitLibbpfTest, InitLibbpfTestOK) {
     MockFimebpf::mock_abspath = mock_abspath;
     MockFimebpf::SetMockFunctions();
 
-    EXPECT_CALL(*mock_sym_load, getModuleHandle(::testing::_))
+    EXPECT_CALL(*mock_sym_load, so__get_module_handle(::testing::_))
        .WillOnce(::testing::Return((void*)0x1000));
     EXPECT_CALL(*mock_sym_load, getFunctionSymbol(::testing::_, ::testing::_))
-        .WillRepeatedly(::testing::Return((void*)0x1001)); 
+        .WillRepeatedly(::testing::Return((void*)0x1001));
 
     int result = init_libbpf(std::move(mock_sym_load));
 
@@ -65,7 +65,7 @@ TEST_F(InitLibbpfTest, InitLibbpfTestFailed) {
 
     MockFimebpf::SetMockFunctions();
 
-    EXPECT_CALL(*mock_sym_load, getModuleHandle(::testing::_))
+    EXPECT_CALL(*mock_sym_load, so__get_module_handle(::testing::_))
        .WillOnce(::testing::Return((void*)0x1000));
     EXPECT_CALL(*mock_sym_load, getFunctionSymbol(::testing::_, ::testing::_))
         .WillOnce(::testing::Return(nullptr))

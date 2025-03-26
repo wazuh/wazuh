@@ -162,7 +162,7 @@ int init_libbpf(std::unique_ptr<DynamicLibraryWrapper> sym_load) {
     }
 
     if (!bpf_helpers->module) {
-	bpf_helpers->module = sym_load->getModuleHandle(LIB_INSTALL_PATH);
+	bpf_helpers->module = sym_load->so__get_module_handle(LIB_INSTALL_PATH);
     }
 
     bpf_helpers->init_ring_buffer            = (init_ring_buffer_t)init_ring_buffer;

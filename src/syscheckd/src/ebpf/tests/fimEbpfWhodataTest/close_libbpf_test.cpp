@@ -11,7 +11,7 @@ void close_libbpf(std::unique_ptr<DynamicLibraryWrapper> sym_load);
 
 class MockDynamicLibraryWrapper : public DynamicLibraryWrapper {
 public:
-    MOCK_METHOD(void*, getModuleHandle, (const char* so), (override));
+    MOCK_METHOD(void*, so__get_module_handle, (const char* so), (override));
     MOCK_METHOD(void*, getFunctionSymbol, (void* handle, const char* function_name), (override));
     MOCK_METHOD(int, freeLibrary, (void* handle), (override));
 };
@@ -51,7 +51,7 @@ TEST_F(CloseLibbpfTest, HelpersNull) {
     bpf_helpers.reset();
     EXPECT_CALL(*mock_sym_load, freeLibrary(::testing::_)).Times(0);
     close_libbpf(std::move(mock_sym_load));
-    EXPECT_EQ(bpf_helpers, nullptr); 
+    EXPECT_EQ(bpf_helpers, nullptr);
 }
 
 

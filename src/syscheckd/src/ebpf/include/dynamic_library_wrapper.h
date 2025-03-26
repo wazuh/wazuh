@@ -8,14 +8,14 @@
 class DynamicLibraryWrapper {
 public:
     virtual ~DynamicLibraryWrapper() = default;
-    virtual void* getModuleHandle(const char* so) = 0;
+    virtual void* so__get_module_handle(const char* so) = 0;
     virtual void* getFunctionSymbol(void* handle, const char* function_name) = 0;
     virtual int freeLibrary(void* handle) = 0;
 };
 
 class DefaultDynamicLibraryWrapper : public DynamicLibraryWrapper {
 public:
-    void* getModuleHandle(const char* so) override {
+    void* so__get_module_handle(const char* so) override {
         return so_get_module_handle(so);
     }
 
