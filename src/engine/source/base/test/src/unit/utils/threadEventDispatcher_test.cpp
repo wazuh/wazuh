@@ -89,7 +89,7 @@ TEST_F(ThreadEventDispatcherTest, ConstructorTestMultiThread)
     {
         std::atomic<size_t> counter {0};
         std::promise<void> promise;
-        auto index {0};
+        std::atomic<size_t> index {0};
 
         ThreadEventDispatcher<std::string, std::function<void(std::queue<std::string>&)>> dispatcher(
             [&counter, &index, &MESSAGES_TO_SEND, &promise](std::queue<std::string>& data)
@@ -117,6 +117,50 @@ TEST_F(ThreadEventDispatcherTest, ConstructorTestMultiThread)
         {
             dispatcher.push(std::to_string(i));
         }
+        promise.get_future().wait_for(std::chrono::seconds(10));
+        EXPECT_EQ(MESSAGES_TO_SEND, counter);
+    }
+}
+
+TEST_F(ThreadEventDispatcherTest, ConstructorTestMultiThreadStartWorker)
+{
+    static const std::vector<int> MESSAGES_TO_SEND_LIST {120, 100};
+
+    for (auto MESSAGES_TO_SEND : MESSAGES_TO_SEND_LIST)
+    {
+        std::atomic<size_t> counter {0};
+        std::promise<void> promise;
+        std::atomic<size_t> index {0};
+
+        ThreadEventDispatcher<std::string, std::function<void(std::queue<std::string>&)>> dispatcher(
+            {.dbPath = TEST_DB,
+             .bulkSize = BULK_SIZE,
+             .maxQueueSize = UNLIMITED_QUEUE_SIZE,
+             .dispatcherType = ThreadEventDispatcherType::MULTI_THREADED_UNORDERED});
+
+        for (int i = 0; i < MESSAGES_TO_SEND; ++i)
+        {
+            dispatcher.push(std::to_string(i));
+        }
+
+        dispatcher.startWorker(
+            [&counter, &index, &MESSAGES_TO_SEND, &promise](std::queue<std::string>& data)
+            {
+                counter += data.size();
+                while (!data.empty())
+                {
+                    auto value = data.front();
+                    data.pop();
+                    EXPECT_EQ(std::to_string(index), value);
+                    ++index;
+                }
+
+                if (counter == MESSAGES_TO_SEND)
+                {
+                    promise.set_value();
+                }
+            });
+
         promise.get_future().wait_for(std::chrono::seconds(10));
         EXPECT_EQ(MESSAGES_TO_SEND, counter);
     }
@@ -208,12 +252,11 @@ TEST_F(ThreadEventDispatcherTest, ConstructorTestMultiThreadDifferentTypeExcepti
             {
                 ++loops;
                 counter += data.size();
+                std::lock_guard<std::mutex> lock(mutex);
                 while (!data.empty())
                 {
                     auto& value = data.front();
-                    data.pop();
                     {
-                        std::lock_guard<std::mutex> lock(mutex);
                         if (std::stoi(value.ToString()) % CONDITION == 0)
                         {
                             try
@@ -225,11 +268,13 @@ TEST_F(ThreadEventDispatcherTest, ConstructorTestMultiThreadDifferentTypeExcepti
                                 // The log message is resposibility of the lambda function.
                                 ++dropped;
                                 messagesDiscarded.push_back(std::stoi(value.ToString()));
+                                data.pop();
                                 throw std::runtime_error(e.what());
                             }
                         }
                         messagesProcessed.push_back(std::stoi(value.ToString()));
                     }
+                    data.pop();
                 }
 
                 // We need to wait until the reinserted events are processed.
