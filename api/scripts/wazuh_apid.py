@@ -5,12 +5,12 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import argparse
-from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
-from functools import partial
 import os
 import signal
 import sys
 import warnings
+from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
+from functools import partial
 
 SSL_DEPRECATED_MESSAGE = 'The `{ssl_protocol}` SSL protocol is deprecated.'
 CACHE_DELETED_MESSAGE = 'The `cache` API configuration option no longer takes effect since {release} and will ' \

@@ -5,8 +5,8 @@
 import glob
 import logging
 import os
-import sys
 import signal
+import sys
 from os import path
 
 import psutil
