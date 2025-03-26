@@ -4,7 +4,8 @@
     "wazuh-states-registries-*",
     "wazuh-states-packages-*",
     "wazuh-states-system-*",
-    "wazuh-states-processes-*"
+    "wazuh-states-processes-*",
+    "wazuh-states-hotfixes-*"
   ],
   "priority": 1,
   "template": {
