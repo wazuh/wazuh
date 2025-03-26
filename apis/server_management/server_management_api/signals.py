@@ -111,8 +111,11 @@ async def lifespan_handler(_: ConnexionMiddleware, commands_manager: CommandsMan
 
     yield {'commands_manager': commands_manager, 'rbac_manager': rbac_manager}
 
+    logger.info('Shutdown wazuh-server-management-apid server.')
+
     for task in tasks:
         task.cancel()
         await task
 
-    logger.info('Shutdown wazuh-server-management-apid server.')
+    commands_manager.shutdown()
+    rbac_manager.shutdown()
