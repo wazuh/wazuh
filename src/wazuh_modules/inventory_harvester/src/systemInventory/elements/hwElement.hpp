@@ -34,12 +34,12 @@ public:
         auto agentId = data->agentId();
         if (agentId.empty())
         {
-            throw std::runtime_error("Agent ID is empty, cannot upsert system element.");
+            throw std::runtime_error("Agent ID is empty, cannot upsert hardware element.");
         }
         auto boardId = data->boardInfo();
         if (boardId.empty())
         {
-            throw std::runtime_error("Board ID is empty, cannot upsert system element.");
+            throw std::runtime_error("Board ID is empty, cannot upsert hardware element.");
         }
 
         DataHarvester<InventoryHardwareHarvester> element;
@@ -81,13 +81,13 @@ public:
         auto agentId = data->agentId();
         if (agentId.empty())
         {
-            throw std::runtime_error("Agent ID is empty, cannot delete system element.");
+            throw std::runtime_error("Agent ID is empty, cannot delete hardware element.");
         }
 
         auto boardId = data->boardInfo();
         if (boardId.empty())
         {
-            throw std::runtime_error("Board ID is empty, cannot delete system element.");
+            throw std::runtime_error("Board ID is empty, cannot delete hardware element.");
         }
 
         NoDataHarvester element;
