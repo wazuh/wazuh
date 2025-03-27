@@ -26,7 +26,7 @@ def load_policy(ruleset_path: Path, engine_handler: EngineHandler, stop_on_warn:
         if integration_dir.name == 'wazuh-core':
             continue
 
-        integration_name = f'integration/rule-{integration_dir.name}/0'
+        integration_name = f'integration/{integration_dir.name}-rules/0'
         request = api_policy.AssetPost_Request()
         request.asset = integration_name
         request.policy = "policy/wazuh/0"
