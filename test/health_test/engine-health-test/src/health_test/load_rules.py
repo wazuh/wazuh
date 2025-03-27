@@ -4,98 +4,44 @@ from pathlib import Path
 from google.protobuf.json_format import ParseDict
 
 from engine_handler.handler import EngineHandler
-from api_communication.proto import catalog_pb2 as api_catalog
 from api_communication.proto import engine_pb2 as api_engine
 from api_communication.proto import policy_pb2 as api_policy
 
+import shared.resource_handler as ResourceHandler
+from engine_integration.cmds.add import add_integration as engine_integration_add
 
 def load_rules(ruleset_path: Path, engine_handler: EngineHandler) -> None:
-    rules_directory = ruleset_path / 'rules'
+    for integration_dir in (ruleset_path / 'integrations-rules').iterdir():
+        ns = "system" if integration_dir.name == 'wazuh-core' else "wazuh"
 
-    if not rules_directory.exists() or not rules_directory.is_dir():
-        sys.exit(f"The directory {rules_directory} was not found.")
-
-    for subdirectory in rules_directory.iterdir():
-        if subdirectory.is_dir():
-            for rule_file in subdirectory.glob('*.yml'):
-                request = api_catalog.ResourcePost_Request()
-                request.type = api_catalog.ResourceType.rule
-                if subdirectory.name == 'wazuh-core':
-                    request.namespaceid = "system"
-                else:
-                    request.namespaceid = "wazuh"
-                request.content = rule_file.read_text()
-                request.format = api_catalog.ResourceFormat.yml
-
-                print(f"Loading rule...\n{request}")
-                error, response = engine_handler.api_client.send_recv(request)
-
-                if error:
-                    sys.exit(error)
-
-                parsed_response = ParseDict(response, api_engine.GenericStatus_Response())
-                if parsed_response.status == api_engine.ERROR:
-                    sys.exit(parsed_response.error)
-
-                print(f"Rules loaded.")
-
+        # Load integration
+        print(f"Loading integrations rules...\n")
+        rs = ResourceHandler.ResourceHandler()
+        engine_integration_add(engine_handler.api_socket_path, ns, integration_dir.resolve().as_posix(), False, rs, False)
+        print(f"Integration loaded.")
 
 def load_policy(ruleset_path: Path, engine_handler: EngineHandler, stop_on_warn: bool) -> None:
-    request = api_policy.DefaultParentPost_Request()
-    request.namespace = "wazuh"
-    request.policy = "policy/wazuh/0"
-    print(f"Setting default parent...\n{request}")
-    error, response = engine_handler.api_client.send_recv(request)
-    if error:
-        sys.exit(error)
-    parsed_response = ParseDict(
-        response, api_policy.DefaultParentPost_Response())
-    if parsed_response.status == api_engine.ERROR:
-        sys.exit(parsed_response.error)
-    if len(parsed_response.warning) > 0 and stop_on_warn:
-        sys.exit(parsed_response.warning)
-    print("Default parent set.")
-
-    # Add enrichment rule
-    request = api_policy.AssetPost_Request()
-    request.policy = "policy/wazuh/0"
-    request.namespace = "system"
-    print(f"Adding enrichment rule...\n{request}")
-    error, response = engine_handler.api_client.send_recv(request)
-    if error:
-        sys.exit(error)
-    parsed_response = ParseDict(response, api_policy.AssetPost_Response())
-    if parsed_response.status == api_engine.ERROR:
-        sys.exit(parsed_response.error)
-    if len(parsed_response.warning) > 0 and stop_on_warn:
-        sys.exit(parsed_response.warning)
-    print("enrichment rule added.")
-
-    # Add rest of rules
-    for ruleset_dir in (ruleset_path / 'rules').iterdir():
-        if ruleset_dir.name == 'wazuh-core':
+    # Add all rules
+    for integration_dir in (ruleset_path / 'integrations-rules').iterdir():
+        if integration_dir.name == 'wazuh-core':
             continue
 
-        for yaml_file in ruleset_dir.glob("*.yml"):
-            with open(yaml_file, 'r') as f:
-                content = yaml.safe_load(f)
-                rule_name = content['name']
-
-            request = api_policy.AssetPost_Request()
-            request.asset = rule_name
-            request.policy = "policy/wazuh/0"
-            request.namespace = "wazuh"
-            print(f"Adding {rule_name}...\n{request}")
-            error, response = engine_handler.api_client.send_recv(request)
-            if error:
-                sys.exit(error)
-            parsed_response = ParseDict(
-                response, api_policy.AssetPost_Response())
-            if parsed_response.status == api_engine.ERROR:
-                sys.exit(parsed_response.error)
-            if len(parsed_response.warning) > 0 and stop_on_warn:
-                sys.exit(parsed_response.warning)
-            print(f"{rule_name} added.")
+        integration_name = f'integration/rule-{integration_dir.name}/0'
+        request = api_policy.AssetPost_Request()
+        request.asset = integration_name
+        request.policy = "policy/wazuh/0"
+        request.namespace = "wazuh"
+        print(f"Adding {integration_name}...\n{request}")
+        error, response = engine_handler.api_client.send_recv(request)
+        if error:
+            sys.exit(error)
+        parsed_response = ParseDict(
+            response, api_policy.AssetPost_Response())
+        if parsed_response.status == api_engine.ERROR:
+            sys.exit(parsed_response.error)
+        if len(parsed_response.warning) > 0 and stop_on_warn:
+            sys.exit(parsed_response.warning)
+        print(f"{integration_name} added.")
 
 
 def run(args):
