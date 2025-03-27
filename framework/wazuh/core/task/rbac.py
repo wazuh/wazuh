@@ -27,7 +27,7 @@ async def get_rbac_info(logger: Logger, commands_manager: CommandsManager, rbac_
             await rbac_manager.update()
 
             # Block until a RBAC command is received
-            _ = await commands_manager.get_commands(TARGET_ID)
+            _ = commands_manager.get_commands(TARGET_ID)
 
         except (WazuhError, WazuhIndexerError) as e:
             logger.error(f'Failed updating RBAC information: {str(e)}', exc_info=False)

@@ -7,6 +7,7 @@ import logging
 import os
 import uuid
 from functools import wraps
+from threading import Thread
 from typing import Callable
 
 from connexion import ConnexionMiddleware
@@ -97,8 +98,10 @@ async def lifespan_handler(_: ConnexionMiddleware, commands_manager: CommandsMan
     rbac_manager : RBACManager
         RBAC manager.
     """
+    t = Thread(target=asyncio.run, args=(get_rbac_info(logger, commands_manager, rbac_manager),))
+    t.start()
+
     tasks: list[asyncio.Task] = []
-    tasks.append(asyncio.create_task(get_rbac_info(logger, commands_manager, rbac_manager)))
 
     if running_in_master_node():
         tasks.append(asyncio.create_task(check_installation_uid()))
