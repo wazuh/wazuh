@@ -20,8 +20,10 @@ class RBACManager:
 
     async def update(self):
         """Retrieve users' data and update the in memory dictionaries."""
+        query = {IndexerKey.QUERY: {IndexerKey.MATCH_ALL: {}}}
+
         async with get_indexer_client() as indexer_client:
-            users = await indexer_client.users.search(query={IndexerKey.MATCH_ALL: {}})
+            users = await indexer_client.users.search(query=query)
             self._users = {user.id: user for user in users}
 
             # Reset dictionaries and replace information
