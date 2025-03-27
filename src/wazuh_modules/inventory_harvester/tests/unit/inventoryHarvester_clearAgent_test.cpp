@@ -72,7 +72,7 @@ TEST_F(InventoryHarvesterClearAgent, HandleRequest_SystemContextSuccess)
     auto mockIndexerPackages = std::make_unique<StrictMock<MockIndexerConnector>>();
     auto mockIndexerProcesses = std::make_unique<StrictMock<MockIndexerConnector>>();
     auto mockIndexerSystem = std::make_unique<StrictMock<MockIndexerConnector>>();
-    auto mockIndexerPorts = std::make_unique < StrictMock<MockIndexerConnector>();
+    auto mockIndexerPorts = std::make_unique<StrictMock<MockIndexerConnector>>();
 
     indexerConnectors.emplace(MockAffectedComponentType::Package, std::move(mockIndexerPackages));
     indexerConnectors.emplace(MockAffectedComponentType::Process, std::move(mockIndexerProcesses));
@@ -95,6 +95,7 @@ TEST_F(InventoryHarvesterClearAgent, HandleRequest_SystemContextSuccess)
         .Times(1);
     EXPECT_CALL(*indexerConnectors[MockAffectedComponentType::Port],
                 publish("{\"id\":\"001\",\"operation\":\"DELETED_BY_QUERY\"}"))
+        .Times(1);
 
     EXPECT_CALL(*context, agentId()).Times(4).WillRepeatedly(Return("001"));
 
