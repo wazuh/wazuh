@@ -42,6 +42,13 @@ class Role:
     policies: list[Policy] = None
     rules: list[Rule] = None
 
+    def __post_init__(self):
+        if isinstance(self.policies, (list, tuple)):
+            setattr(self, 'policies', [Policy(**x) if isinstance(x, dict) else x for x in self.policies])
+
+        if isinstance(self.rules, (list, tuple)):
+            setattr(self, 'rules', [Rule(**x) if isinstance(x, dict) else x for x in self.rules])
+
 
 @dataclass
 class User:
@@ -61,6 +68,9 @@ class User:
             salt = generate_salt()
             key_hash = hash_key(raw_password, salt)
             self.password = b64encode(salt + key_hash).decode('latin-1')
+
+        if isinstance(self.roles, (list, tuple)):
+            setattr(self, 'roles', [Role(**x) if isinstance(x, dict) else x for x in self.roles])
 
     def to_dict(self) -> dict:
         """Translate the instance to a dictionary ready to be indexed.

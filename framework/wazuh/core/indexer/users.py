@@ -154,10 +154,11 @@ class UsersIndex(BaseIndex):
             sort=sort,
         )
 
-        source_users = internal_users + custom_users
         users: list[User] = []
+        for item in get_source_items(internal_users):
+            users.append(User(**item[self.KEY]))
 
-        for item in get_source_items(source_users):
+        for item in get_source_items(custom_users):
             users.append(User(**item[self.KEY]))
 
         return users
