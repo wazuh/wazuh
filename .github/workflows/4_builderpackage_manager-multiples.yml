@@ -34,7 +34,7 @@ on:
 jobs:
    Build-manager-amd64-deb:
     if: ${{ inputs.build-amd64-deb == true }}
-    uses: ./.github/workflows/packages-build-manager.yml
+    uses: ./.github/workflows/4_builderpackage_manager.yml 
     with:
         docker_image_tag: auto
         architecture: amd64
@@ -46,7 +46,7 @@ jobs:
 
    Build-manager-x86_64-rpm:
     if: ${{ inputs.build-x86_64-rpm == true }}
-    uses: ./.github/workflows/packages-build-manager.yml
+    uses: ./.github/workflows/4_builderpackage_manager.yml 
     with:
         docker_image_tag: auto
         architecture: x86_64

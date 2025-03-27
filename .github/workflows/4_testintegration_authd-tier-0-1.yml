@@ -9,7 +9,7 @@ on:
         default: 'main'
   pull_request:
     paths:
-        - ".github/workflows/integration-tests-authd-tier-0-1.yml"
+        - ".github/workflows/4_testintegration_authd-tier-0-1.yml"
         - "src/config/authd-config.c"
         - "src/config/authd-config.h"
         - "src/config/authd-key-request-config.c"

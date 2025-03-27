@@ -10,7 +10,7 @@ on:
       - "src/wazuh_modules/vulnerability_scanner/testtool/**"
       - "src/wazuh_modules/vulnerability_scanner/src/**"
       - "src/wazuh_modules/vulnerability_scanner/include/**"
-      - ".github/workflows/vdscanner_tools_delivery.yml"
+      - ".github/workflows/4_builderprecompiled_vdscanner-testtools.yml"
       - "src/wazuh_modules/vulnerability_scanner/schemas/**"
 
   # Trigger when a pull request is merged into main
@@ -21,7 +21,7 @@ on:
       - "src/wazuh_modules/vulnerability_scanner/testtool/**"
       - "src/wazuh_modules/vulnerability_scanner/src/**"
       - "src/wazuh_modules/vulnerability_scanner/include/**"
-      - ".github/workflows/vdscanner_tools_delivery.yml"
+      - ".github/workflows/4_builderprecompiled_vdscanner-testtools.yml"
       - "src/wazuh_modules/vulnerability_scanner/schemas/**"
 
   # Allows manual trigger.
