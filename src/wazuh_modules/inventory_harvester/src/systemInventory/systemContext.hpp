@@ -163,6 +163,10 @@ public:
                 return m_syncMsg->data_as_state()->attributes_as_syscollector_hwinfo()->cpu_cores();
             }
         }
+        else
+        {
+            return 0;
+        }
         return 0;
     }
 
@@ -182,6 +186,10 @@ public:
             {
                 return static_cast<int64_t>(m_syncMsg->data_as_state()->attributes_as_syscollector_hwinfo()->cpu_mhz());
             }
+        }
+        else
+        {
+            return 0;
         }
         return 0;
     }
@@ -203,6 +211,10 @@ public:
                 return m_syncMsg->data_as_state()->attributes_as_syscollector_hwinfo()->cpu_name()->string_view();
             }
         }
+        else
+        {
+            return "";
+        }
         return "";
     }
 
@@ -222,6 +234,10 @@ public:
             {
                 return m_syncMsg->data_as_state()->attributes_as_syscollector_hwinfo()->ram_free();
             }
+        }
+        else
+        {
+            return 0;
         }
         return 0;
     }
@@ -243,6 +259,10 @@ public:
                 return m_syncMsg->data_as_state()->attributes_as_syscollector_hwinfo()->ram_total();
             }
         }
+        else
+        {
+            return 0;
+        }
         return 0;
     }
 
@@ -262,6 +282,10 @@ public:
             {
                 return m_syncMsg->data_as_state()->attributes_as_syscollector_hwinfo()->ram_usage();
             }
+        }
+        else
+        {
+            return 0;
         }
         return 0;
     }
