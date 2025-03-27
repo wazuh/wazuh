@@ -53,15 +53,18 @@ public:
         element.data.agent.id = agentId;
         element.data.agent.name = data->agentName();
         element.data.agent.version = data->agentVersion();
-        element.data.agent.ip = data->agentIp();
+
+        if (auto agentIp = data->agentIp(); agentIp.compare("any") != 0)
+        {
+            element.data.agent.host.ip = data->agentIp();
+        }
 
         element.data.process.args = data->processArguments();
-        element.data.process.args_count = element.data.process.args.size();
         element.data.process.command_line = data->processCmdline();
         element.data.process.name = data->processName();
         element.data.process.pid = std::stoull(std::string(processId));
-        element.data.process.start = data->processStartISO8601();
-        element.data.process.ppid = data->processParentID();
+        //element.data.process.start = data->processStartISO8601();
+        element.data.process.parent.pid = data->processParentID();
 
         return element;
     }
