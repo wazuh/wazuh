@@ -35,11 +35,12 @@ static int teardown_group(void **state) {
 
 static int setup_syscheck_dir_links(void **state) {
 
-    directory_t *directory0 = fim_create_directory("/test0", WHODATA_ACTIVE | EBPF_DRIVER, NULL, 512,
+    directory_t *directory0 = fim_create_directory("/test0", WHODATA_ACTIVE, NULL, 512,
                                                 NULL, -1, 0);
-    directory_t *directory1 = fim_create_directory("/test1", WHODATA_ACTIVE | EBPF_DRIVER, NULL, 512,
+    directory_t *directory1 = fim_create_directory("/test1", WHODATA_ACTIVE, NULL, 512,
                                                 NULL, -1, 0);
 
+    syscheck.whodata_provider = EBPF_PROVIDER;
     syscheck.directories = OSList_Create();
     if (syscheck.directories == NULL) {
         return (1);
@@ -83,13 +84,13 @@ void test_check_ebpf_availability_true(void **state) {
 
     check_ebpf_availability();
 
-    // Verify that EBP_DRIVER was disable
-    if (((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0))->options & EBPF_DRIVER){
-	fail();
+    // Verify that EBPF_PROVIDER was disable
+    if (syscheck.whodata_provider == EBPF_PROVIDER){
+        fail();
     }
 
-    // Check that they have been switched to AUDIT_DRIVER.
-    if (!(((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 1))->options & AUDIT_DRIVER)){
+    // Check that they have been switched to AUDIT_PROVIDER.
+    if (syscheck.whodata_provider != AUDIT_PROVIDER){
         fail();
     }
 
@@ -102,13 +103,13 @@ void test_check_ebpf_availability_false(void **state) {
 
     check_ebpf_availability();
 
-    // Verify that EBP_DRIVER was not disable
-    if (!((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0))->options & EBPF_DRIVER){
-	fail();
+    // Verify EBPF_PROVIDER
+    if (syscheck.whodata_provider != EBPF_PROVIDER){
+        fail();
     }
 
-    // Continue with AUDIT_DRIVER.
-    if (((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 1))->options & AUDIT_DRIVER){
+    // Check that they have not been switched to AUDIT_PROVIDER.
+    if (syscheck.whodata_provider == AUDIT_PROVIDER){
         fail();
     }
 }

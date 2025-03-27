@@ -264,7 +264,7 @@ static int setup_group(void **state) {
 #else
     char *path = "/a/random/path";
 #endif
-    directory_t *directory0 = fim_create_directory(path, WHODATA_ACTIVE | AUDIT_DRIVER, NULL, 512, NULL, 1024, 1);
+    directory_t *directory0 = fim_create_directory(path, WHODATA_ACTIVE, NULL, 512, NULL, 1024, 1);
 
     OSList_InsertData(removed_entries, NULL, directory0);
 
@@ -292,11 +292,11 @@ static int setup_wildcards(void **state) {
 
     char buffer1[20] = "/testdir?";
     char buffer2[20] = "/*/path";
-    int options = WHODATA_ACTIVE | CHECK_FOLLOW | AUDIT_DRIVER;
+    int options = WHODATA_ACTIVE | CHECK_FOLLOW;
 #else
     char buffer1[20] = "c:\\testdir?";
     char buffer2[20] = "c:\\*\\path";
-    int options = WHODATA_ACTIVE | AUDIT_DRIVER;
+    int options = WHODATA_ACTIVE;
 #endif
 
     directory_t *wildcard0 = fim_create_directory(buffer1, options, NULL, 512,
