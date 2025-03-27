@@ -1,0 +1,55 @@
+name: External integrations unit tests
+
+on:
+  workflow_dispatch:
+    inputs:
+      generate_report:
+        description: 'Generate test report'
+        required: false
+        type: boolean
+        default: false
+      qa_branch:
+        description: 'QA repository branch'
+        required: false
+        default: 'main'
+  pull_request:
+    paths:
+      - '.github/workflows/4_testunit_external-integrations.yml'
+      - 'integrations/**'
+      - 'src/Makefile'
+
+jobs:
+  build: 
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.10']
+    env:
+      PYTHONPATH: /home/runner/work/wazuh/wazuh/api:/home/runner/work/wazuh/wazuh/framework
+      TEST_REPORT_PATH: /home/runner/work/test_report.txt
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: 'pip'
+          cache-dependency-path: 'framework/requirements-dev.txt'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip wheel
+          pip install -r framework/requirements-dev.txt --no-build-isolation
+
+      - name: Run External integrations tests
+        run: |
+          set -o pipefail
+          python -m pytest integrations -vv --ignore=tests --cov=integrations | tee ${TEST_REPORT_PATH}
+      
+      - name: Generate test report
+        if: inputs.generate_report
+        run: |
+          git clone -b ${{ inputs.qa_branch }} --single-branch https://github.com/wazuh/qa-integration-framework.git
+          python qa-integration-framework/src/wazuh_testing/scripts/pytest_results_parser.py -f ${TEST_REPORT_PATH}
