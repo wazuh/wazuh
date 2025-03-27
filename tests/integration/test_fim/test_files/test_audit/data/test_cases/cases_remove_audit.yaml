@@ -2,6 +2,5 @@
   description: When Auditd is removed, whodata thread cannot start and monitoring is done in realtime
   configuration_parameters:
     WHODATA: 'yes'
-    DRIVER: "audit"
   metadata:
     fim_mode: whodata
