@@ -282,6 +282,7 @@ adapter::RouteHandler sessionGet(const std::shared_ptr<::router::ITesterAPI>& te
         auto entry = tester->getTestEntry(protoReq.name());
         if (base::isError(entry))
         {
+            res = adapter::userErrorResponse<ResponseType>(base::getError(entry).message);
             return;
         }
 
