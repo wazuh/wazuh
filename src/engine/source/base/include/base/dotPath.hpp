@@ -29,6 +29,19 @@ private:
     void parse()
     {
         m_parts.clear();
+
+        // Remove optional leading dot
+        if (base::utils::string::startsWith(m_str, "."))
+        {
+            m_str = m_str.substr(1);
+        }
+
+        // Handle root path (empty string)
+        if (m_str.empty())
+        {
+            return;
+        }
+
         m_parts = base::utils::string::splitEscaped(m_str, '.', '\\');
 
         for (auto part : m_parts)
@@ -184,6 +197,14 @@ public:
     const std::vector<std::string>& parts() const { return m_parts; }
 
     /**
+     * @brief Check if the path is the root path
+     *
+     * @return true
+     * @return false
+     */
+    bool isRoot() const { return m_parts.empty(); }
+
+    /**
      * @brief Transform pointer path string to dot path string
      *
      * @param jsonPath Pointer path string
@@ -231,6 +252,18 @@ public:
                        });
 
         return DotPath(parts.begin(), parts.end());
+    }
+
+    /**
+     * @brief Create a new DotPath by appending two paths.
+     *
+     * @param lhs
+     * @param rhs
+     * @return DotPath
+     */
+    static DotPath append(const DotPath& lhs, const DotPath& rhs)
+    {
+        return DotPath(fmt::format("{}.{}", lhs.str(), rhs.str()));
     }
 };
 

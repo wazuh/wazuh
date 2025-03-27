@@ -4,6 +4,7 @@
 
 #include <store/utils.hpp>
 
+#include "allowedFields.hpp"
 #include "builders/ibuildCtx.hpp"
 #include "policy/assetBuilder.hpp"
 #include "policy/factory.hpp"
@@ -21,10 +22,12 @@ class Builder::Registry final : public builders::RegistryType
 Builder::Builder(const std::shared_ptr<store::IStore>& storeRead,
                  const std::shared_ptr<schemf::IValidator>& schema,
                  const std::shared_ptr<defs::IDefinitionsBuilder>& definitionsBuilder,
+                 const std::shared_ptr<IAllowedFields>& allowedFields,
                  const BuilderDeps& builderDeps)
     : m_storeRead {storeRead}
     , m_schema {schema}
     , m_definitionsBuilder {definitionsBuilder}
+    , m_allowedFields {allowedFields}
 {
     if (!m_storeRead)
     {
@@ -39,6 +42,11 @@ Builder::Builder(const std::shared_ptr<store::IStore>& storeRead,
     if (!m_definitionsBuilder)
     {
         throw std::runtime_error {"Definitions builder is null"};
+    }
+
+    if (!m_allowedFields)
+    {
+        throw std::runtime_error {"Allowed fields is null"};
     }
 
     // Registry
@@ -61,6 +69,7 @@ std::shared_ptr<IPolicy> Builder::buildPolicy(const base::Name& name, bool trace
                                                    m_definitionsBuilder,
                                                    m_registry,
                                                    m_schema,
+                                                   m_allowedFields,
                                                    trace,
                                                    sandbox);
 
@@ -78,6 +87,7 @@ base::Expression Builder::buildAsset(const base::Name& name) const
     auto buildCtx = std::make_shared<builders::BuildCtx>();
     buildCtx->setRegistry(m_registry);
     buildCtx->setValidator(m_schema);
+    buildCtx->setAllowedFields(m_allowedFields);
     buildCtx->runState().trace = false;
     buildCtx->runState().sandbox = false;
 
@@ -139,6 +149,7 @@ base::OptError Builder::validateIntegration(const json::Json& json, const std::s
     auto buildCtx = std::make_shared<builders::BuildCtx>();
     buildCtx->setRegistry(m_registry);
     buildCtx->setValidator(m_schema);
+    buildCtx->setAllowedFields(m_allowedFields);
     buildCtx->runState().trace = true;
 
     auto assetBuilder = std::make_shared<policy::AssetBuilder>(buildCtx, m_definitionsBuilder);
@@ -162,6 +173,7 @@ base::OptError Builder::validateAsset(const json::Json& json) const
         auto buildCtx = std::make_shared<builders::BuildCtx>();
         buildCtx->setRegistry(m_registry);
         buildCtx->setValidator(m_schema);
+        buildCtx->setAllowedFields(m_allowedFields);
         auto assetBuilder = std::make_shared<policy::AssetBuilder>(buildCtx, m_definitionsBuilder);
         auto asset = (*assetBuilder)(json);
     }
@@ -177,7 +189,8 @@ base::OptError Builder::validatePolicy(const json::Json& json) const
 {
     try
     {
-        auto policy = std::make_shared<policy::Policy>(json, m_storeRead, m_definitionsBuilder, m_registry, m_schema);
+        auto policy = std::make_shared<policy::Policy>(
+            json, m_storeRead, m_definitionsBuilder, m_registry, m_schema, m_allowedFields);
     }
     catch (const std::exception& e)
     {

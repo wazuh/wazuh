@@ -105,6 +105,15 @@ INSTANTIATE_TEST_SUITE_P(
         TransformT({makeRef("ref"), makeValue(R"("a")")},
                    opBuilderHelperAppendSplitString,
                    FAILURE(jTypeRefExpected(json::Json::Type::Number))),
+        TransformT({makeRef("ref"), makeValue(R"("a")")},
+                   opBuilderHelperAppendSplitString,
+                   FAILURE(
+                       [](const auto& mocks)
+                       {
+                           EXPECT_CALL(*mocks.allowedFields, check(testing::_, DotPath("targetField")))
+                               .WillOnce(testing::Return(false));
+                           return None {};
+                       })),
         /*** Append ***/
         TransformT({}, optransform::getArrayAppendBuilder(), FAILURE()),
         TransformT({makeRef("ref")}, optransform::getArrayAppendBuilder(), SUCCESS(customTargetExpected())),
@@ -141,6 +150,15 @@ INSTANTIATE_TEST_SUITE_P(
         TransformT({makeRef("ref"), makeValue(R"("a")")},
                    optransform::getArrayAppendBuilder(),
                    SUCCESS(arrayTargetExpected())),
+        TransformT({makeValue(R"(1)")},
+                   optransform::getArrayAppendBuilder(),
+                   FAILURE(
+                       [](const auto& mocks)
+                       {
+                           EXPECT_CALL(*mocks.allowedFields, check(testing::_, DotPath("targetField")))
+                               .WillOnce(testing::Return(false));
+                           return None {};
+                       })),
         /*** Append Unique ***/
         TransformT({}, optransform::getArrayAppendBuilder(true), FAILURE()),
         TransformT({makeRef("ref")}, optransform::getArrayAppendBuilder(true), SUCCESS(customTargetExpected())),
@@ -176,7 +194,16 @@ INSTANTIATE_TEST_SUITE_P(
         TransformT({makeValue(R"({})")}, optransform::getArrayAppendBuilder(true), FAILURE(arrayTargetExpected())),
         TransformT({makeRef("ref"), makeValue(R"("a")")},
                    optransform::getArrayAppendBuilder(true),
-                   SUCCESS(arrayTargetExpected()))),
+                   SUCCESS(arrayTargetExpected())),
+        TransformT({makeValue(R"(1)")},
+                   optransform::getArrayAppendBuilder(true),
+                   FAILURE(
+                       [](const auto& mocks)
+                       {
+                           EXPECT_CALL(*mocks.allowedFields, check(testing::_, DotPath("targetField")))
+                               .WillOnce(testing::Return(false));
+                           return None {};
+                       }))),
     testNameFormatter<TransformBuilderTest>("ArrayAppend"));
 } // namespace transformbuildtest
 

@@ -62,6 +62,15 @@ INSTANTIATE_TEST_SUITE_P(
         TransformT({makeRef("ref"), makeRef("ref")}, opBuilderHelperStringTrim, FAILURE()),
         TransformT({makeRef("ref"), makeValue(R"("c")")}, opBuilderHelperStringTrim, FAILURE()),
         TransformT({makeValue(R"("begin")"), makeRef("ref")}, opBuilderHelperStringTrim, FAILURE()),
+        TransformT({makeValue(R"("begin")"), makeValue(R"("c")")},
+                   opBuilderHelperStringTrim,
+                   FAILURE(
+                       [](const auto& mocks)
+                       {
+                           EXPECT_CALL(*mocks.allowedFields, check(testing::_, DotPath("targetField")))
+                               .WillOnce(testing::Return(false));
+                           return None {};
+                       })),
         /*** Replace ***/
         TransformT({}, opBuilderHelperStringReplace, FAILURE()),
         TransformT({makeValue(R"("a")")}, opBuilderHelperStringReplace, FAILURE()),
@@ -74,7 +83,16 @@ INSTANTIATE_TEST_SUITE_P(
         TransformT({makeRef("ref"), makeValue(R"("b")")}, opBuilderHelperStringReplace, FAILURE()),
         TransformT({makeValue(R"("a")"), makeRef("ref")}, opBuilderHelperStringReplace, FAILURE()),
         TransformT({makeValue(R"("")"), makeValue(R"("b")")}, opBuilderHelperStringReplace, FAILURE()),
-        TransformT({makeValue(R"("a")"), makeValue(R"("")")}, opBuilderHelperStringReplace, SUCCESS())),
+        TransformT({makeValue(R"("a")"), makeValue(R"("")")}, opBuilderHelperStringReplace, SUCCESS()),
+        TransformT({makeValue(R"("begin")"), makeValue(R"("c")")},
+                   opBuilderHelperStringReplace,
+                   FAILURE(
+                       [](const auto& mocks)
+                       {
+                           EXPECT_CALL(*mocks.allowedFields, check(testing::_, DotPath("targetField")))
+                               .WillOnce(testing::Return(false));
+                           return None {};
+                       }))),
     testNameFormatter<TransformBuilderTest>("StrTransform"));
 } // namespace transformbuildtest
 

@@ -15,6 +15,7 @@
 #include <base/utils/singletonLocator.hpp>
 #include <base/utils/singletonLocatorStrategies.hpp>
 #include <bk/rx/controller.hpp>
+#include <builder/allowedFields.hpp>
 #include <builder/builder.hpp>
 #include <conf/conf.hpp>
 #include <conf/keys.hpp>
@@ -329,7 +330,25 @@ int main(int argc, char* argv[])
             builderDeps.geoManager = geoManager;
             builderDeps.iConnector = iConnector;
             auto defs = std::make_shared<defs::DefinitionsBuilder>();
-            builder = std::make_shared<builder::Builder>(store, schema, defs, builderDeps);
+
+            // Build allowed fields
+            std::shared_ptr<builder::IAllowedFields> allowedFields;
+            auto allowedFieldsDoc = store->readInternalDoc("schema/allowed-fields/0");
+            if (std::holds_alternative<base::Error>(allowedFieldsDoc))
+            {
+                LOG_DEBUG("Could not load 'schema/allowed-fields/0' document, {}",
+                          std::get<base::Error>(allowedFieldsDoc).message);
+                LOG_WARNING("Allowed fields not found, assets will not have restrictions.");
+
+                allowedFields = std::make_shared<builder::AllowedFields>();
+            }
+            else
+            {
+                allowedFields =
+                    std::make_shared<builder::AllowedFields>(base::getResponse<store::Doc>(allowedFieldsDoc));
+            }
+
+            builder = std::make_shared<builder::Builder>(store, schema, defs, allowedFields, builderDeps);
             LOG_INFO("Builder initialized.");
         }
 

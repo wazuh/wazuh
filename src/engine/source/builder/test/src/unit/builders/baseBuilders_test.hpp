@@ -9,6 +9,7 @@
 #include "mockBuildCtx.hpp"
 #include "mockRegistry.hpp"
 
+#include <builder/mockAllowedFields.hpp>
 #include <defs/mockDefinitions.hpp>
 #include <schemf/mockSchema.hpp>
 
@@ -37,6 +38,7 @@ struct BuildersMocks
     std::shared_ptr<MockSchema> validator;
     std::shared_ptr<MockMetaRegistry<OpBuilderEntry, StageBuilder>> registry;
     std::shared_ptr<MockDefinitions> definitions;
+    std::shared_ptr<MockAllowedFields> allowedFields;
     Context context;
 };
 
@@ -53,18 +55,24 @@ protected:
         mocks->validator = std::make_shared<MockSchema>();
         mocks->registry = MockMetaRegistry<OpBuilderEntry, StageBuilder>::createMock();
         mocks->definitions = std::make_shared<MockDefinitions>();
+        mocks->allowedFields = std::make_shared<MockAllowedFields>();
 
         ON_CALL(*mocks->ctx, context()).WillByDefault(testing::ReturnRef(mocks->context));
         ON_CALL(*mocks->ctx, runState()).WillByDefault(testing::Return(mocks->runState));
         ON_CALL(*mocks->ctx, validator()).WillByDefault(testing::ReturnRef(*(mocks->validator)));
+        ON_CALL(*mocks->ctx, allowedFields()).WillByDefault(testing::ReturnRef(*(mocks->allowedFields)));
+
+        ON_CALL(*mocks->allowedFields, check(testing::_, testing::_)).WillByDefault(testing::Return(true));
+        ON_CALL(*mocks->ctx, allowedFieldsPtr()).WillByDefault(testing::Return(mocks->allowedFields));
+
+        mocks->context.policyName = "policy/name/0";
+        mocks->context.assetName = "asset/name/0";
     }
 
     void expectBuildSuccess()
     {
         EXPECT_CALL(*mocks->ctx, context()).Times(testing::AtLeast(1));
-        EXPECT_CALL(*mocks->ctx, runState())
-            .Times(testing::AtLeast(1))
-            .WillRepeatedly(testing::Return(mocks->runState));
+        EXPECT_CALL(*mocks->ctx, runState()).Times(testing::AtLeast(1));
     }
 };
 
@@ -287,6 +295,10 @@ auto expectMapHelper(const std::string& name, Builder builder)
         EXPECT_CALL(*ctx, context()).WillRepeatedly(testing::ReturnRefOfCopy(mocks.context));
         std::shared_ptr<const MockBuildCtx> constCtx = ctx;
         EXPECT_CALL(*constCtx, context()).WillRepeatedly(testing::ReturnRefOfCopy(mocks.context));
+
+        EXPECT_CALL(*constCtx, allowedFields()).WillOnce(testing::ReturnRef(*mocks.allowedFields));
+        EXPECT_CALL(*mocks.allowedFields, check(testing::_, testing::_)).WillOnce(testing::Return(true));
+
         EXPECT_CALL(*ctx, validator()).Times(testing::AtLeast(1)).WillRepeatedly(testing::ReturnRef(*mocks.validator));
         EXPECT_CALL(*mocks.validator, validate(testing::_, testing::_))
             .Times(testing::AtLeast(1))
@@ -354,6 +366,10 @@ auto expectAnyMapHelper(Builders... builders)
         EXPECT_CALL(*ctx, context()).WillRepeatedly(testing::ReturnRefOfCopy(mocks.context));
         std::shared_ptr<const MockBuildCtx> constCtx = ctx;
         EXPECT_CALL(*constCtx, context()).WillRepeatedly(testing::ReturnRefOfCopy(mocks.context));
+
+        EXPECT_CALL(*constCtx, allowedFields()).WillRepeatedly(testing::ReturnRef(*mocks.allowedFields));
+        EXPECT_CALL(*mocks.allowedFields, check(testing::_, testing::_)).WillRepeatedly(testing::Return(true));
+
         EXPECT_CALL(*ctx, validator()).Times(testing::AtLeast(1)).WillRepeatedly(testing::ReturnRef(*mocks.validator));
         EXPECT_CALL(*mocks.validator, validate(testing::_, testing::_))
             .Times(testing::AtLeast(1))

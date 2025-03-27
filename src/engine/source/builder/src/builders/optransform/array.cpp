@@ -11,6 +11,14 @@ TransformBuilder getArrayAppendBuilder(bool unique, bool atleastOne)
         // Check parameters
         utils::assertSize(opArgs, 1, utils::MAX_OP_ARGS);
 
+        // Allowed fields
+        auto assetType = base::Name(buildCtx->context().assetName).parts().front();
+        if (!buildCtx->allowedFields().check(assetType, targetField.dotPath()))
+        {
+            throw std::runtime_error(
+                fmt::format("Field '{}' is not allowed in '{}'", targetField.dotPath(), assetType));
+        }
+
         // Validation
         auto result = buildCtx->validator().validate(targetField.dotPath(), schemf::isArrayToken());
         if (base::isError(result))

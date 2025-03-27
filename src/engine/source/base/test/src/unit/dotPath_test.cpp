@@ -69,7 +69,6 @@ TEST_P(BuildsStr, Builds)
     {
         ASSERT_NO_THROW(DotPath {path});
         DotPath dp(path);
-        ASSERT_EQ(dp.str(), path);
         ASSERT_EQ(dp.parts().size(), parts.size());
         for (auto i = 0; i < parts.size(); ++i)
         {
@@ -120,10 +119,10 @@ INSTANTIATE_TEST_SUITE_P(DotPathTest,
                          ::testing::Values(BuildsStrTuple("a", {"a"}, true),
                                            BuildsStrTuple("a.b", {"a", "b"}, true),
                                            BuildsStrTuple("a.b.c", {"a", "b", "c"}, true),
-                                           BuildsStrTuple(".", {"", ""}, true),
-                                           BuildsStrTuple("", {}, false),
+                                           BuildsStrTuple(".", {}, true),
+                                           BuildsStrTuple("", {}, true),
                                            BuildsStrTuple("a.", {}, false),
-                                           BuildsStrTuple(".a", {}, false),
+                                           BuildsStrTuple(".a", {"a"}, true),
                                            BuildsStrTuple("a..b", {}, false),
                                            BuildsStrTuple("a\\.b", {"a.b"}, true),
                                            BuildsStrTuple("a\\.b.c", {"a.b", "c"}, true),
