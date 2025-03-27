@@ -19,7 +19,6 @@
               args: [!!python/object/apply:os.getcwd [], testdir1]
     FIM_MODE:
       whodata: 'yes'
-      driver: "audit"
     MAX_EPS: 10
   metadata:
     folder_to_monitor: !!python/object/apply:os.path.join
@@ -48,7 +47,6 @@
               args: [!!python/object/apply:os.getcwd [], testdir1]
     FIM_MODE:
       whodata: 'yes'
-      driver: "audit"
     MAX_EPS: 50
   metadata:
     folder_to_monitor: !!python/object/apply:os.path.join

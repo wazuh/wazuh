@@ -1799,7 +1799,7 @@ void update_wildcards_config() {
             }
 #endif
 #if ENABLE_AUDIT
-            if ((FIM_MODE(dir_it->options) == FIM_WHODATA) && (dir_it->options & AUDIT_DRIVER)) {
+            if ((FIM_MODE(dir_it->options) == FIM_WHODATA) && syscheck.whodata_provider == AUDIT_PROVIDER) {
                 remove_audit_rule_syscheck(dir_it->path);
             }
 #endif

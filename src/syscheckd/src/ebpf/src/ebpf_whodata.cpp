@@ -298,7 +298,9 @@ void ebpf_pop_events(fim::BoundedQueue<std::unique_ptr<file_event>>& local_kerne
     }
 
     auto deleter = [](whodata_evt* evt) {
-        fimebpf::instance().m_free_whodata_event(evt);
+        if (fimebpf::instance().m_free_whodata_event) {
+            fimebpf::instance().m_free_whodata_event(evt);
+        }
     };
 
     while (!fimebpf::instance().m_fim_shutdown_process_on()) {
@@ -312,7 +314,7 @@ void ebpf_pop_events(fim::BoundedQueue<std::unique_ptr<file_event>>& local_kerne
 
         if (event) {
             directory_t* config = fimebpf::instance().m_fim_configuration_directory(event->filename);
-            if (config && (config->options & WHODATA_ACTIVE) && (config->options & EBPF_DRIVER)) {
+            if (config && (config->options & WHODATA_ACTIVE)) {
                 whodata_evt* w_evt = (whodata_evt*)calloc(1, sizeof(whodata_evt));
                 w_evt->path = strdup(event->filename);
                 w_evt->process_name = strdup(event->comm);
@@ -417,7 +419,7 @@ int ebpf_whodata_healthcheck() {
             break;
         }
 
-        if (!epbf_hc_created) {
+        if (!ebpf_hc_created) {
             abspathFn(EBPF_HC_FILE, ebpf_hc_abs_path, sizeof(ebpf_hc_abs_path));
             std::ofstream file(ebpf_hc_abs_path);
             if (!file.is_open()) {
@@ -427,7 +429,7 @@ int ebpf_whodata_healthcheck() {
             }
             file << "Testing eBPF healthcheck\n";
             file.close();
-            epbf_hc_created = true;
+            ebpf_hc_created = true;
         }
     }
 

@@ -7,7 +7,6 @@
             value: /testdir1
             attributes:
               - whodata: WHODATA
-              - driver: DRIVER
 
     - section: sca
       elements:

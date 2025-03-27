@@ -103,7 +103,7 @@ int fim_rules_initial_load() {
     OSList_foreach(node_it, syscheck.directories) {
         dir_it = node_it->data;
         // Check if dir[i] is set in whodata mode
-        if ((dir_it->options & WHODATA_ACTIVE) && (dir_it->options & AUDIT_DRIVER)) {
+        if ((dir_it->options & WHODATA_ACTIVE)) {
 
             directory = fim_get_real_path(dir_it);
             if (*directory == '\0') {

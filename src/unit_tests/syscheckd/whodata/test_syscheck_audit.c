@@ -95,10 +95,10 @@ static int setup_syscheck_dir_links(void **state) {
 
     syscheck.audit_key = CUSTOM_KEY;
 
-    directory_t *directory0 = fim_create_directory("/test0", WHODATA_ACTIVE | AUDIT_DRIVER, NULL, 512,
+    directory_t *directory0 = fim_create_directory("/test0", WHODATA_ACTIVE, NULL, 512,
                                                 NULL, -1, 0);
 
-    directory_t *directory1 = fim_create_directory("/test1", WHODATA_ACTIVE | AUDIT_DRIVER, NULL, 512,
+    directory_t *directory1 = fim_create_directory("/test1", WHODATA_ACTIVE, NULL, 512,
                                                 NULL, -1, 0);
 
     syscheck.directories = OSList_Create();

@@ -327,24 +327,7 @@ void check_ebpf_availability() {
         merror(FIM_ERROR_EBPF_HEALTHCHECK);
 
         // Switch whodata eBPF to whodata audit
-        OSList_foreach(node_it, syscheck.directories) {
-            dir_it = node_it->data;
-            if ((dir_it->options & WHODATA_ACTIVE) && (dir_it->options & EBPF_DRIVER)) {
-                dir_it->options &= ~EBPF_DRIVER;
-                dir_it->options |= AUDIT_DRIVER;
-            }
-        }
-
-        OSList_foreach(node_it, syscheck.wildcards) {
-            dir_it = node_it->data;
-            if ((dir_it->options & WHODATA_ACTIVE) && (dir_it->options & EBPF_DRIVER)) {
-                dir_it->options &= ~EBPF_DRIVER;
-                dir_it->options |= AUDIT_DRIVER;
-            }
-        }
-
-        syscheck.enable_whodata_ebpf = 0;
-        syscheck.enable_whodata_audit = 1;
+        syscheck.whodata_provider = AUDIT_PROVIDER;
     }
 }
 #endif /* __linux__ */
