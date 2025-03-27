@@ -9,7 +9,7 @@ on:
         default: 'main'
   pull_request:
     paths:
-        - ".github/workflows/integration-tests-logcollector-tier-0-1-macos.yml"
+        - ".github/workflows/4_testintegration_logcollector-tier-0-1-macos.yml"
         - "src/config/localfile-config.c"
         - "src/config/localfile-config.h"
         - "src/logcollector/**"

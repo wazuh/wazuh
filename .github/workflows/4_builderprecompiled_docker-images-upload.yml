@@ -125,28 +125,28 @@ jobs:
       - name: Request pkg_deb_manager_builder_amd64 update
         if: steps.changes.outputs.pkg_deb_manager_builder_amd64 == 'true'
         run: |
-          gh workflow run packages-upload-manager-images.yml -r ${{ github.ref_name }} -f architecture=amd64 -f docker_image_tag=${{ env.TAG }} -f system=deb -f source_reference=${{ github.ref_name }}
+          gh workflow run 4_builderprecompiled_docker-images-upload-manager.yml -r ${{ github.ref_name }} -f architecture=amd64 -f docker_image_tag=${{ env.TAG }} -f system=deb -f source_reference=${{ github.ref_name }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Request pkg_rpm_manager_builder_amd64 update
         if: steps.changes.outputs.pkg_rpm_manager_builder_amd64 == 'true'
         run: |
-          gh workflow run packages-upload-manager-images.yml -r ${{ github.ref_name }} -f architecture=amd64 -f docker_image_tag=${{ env.TAG }} -f system=rpm -f source_reference=${{ github.ref_name }}
+          gh workflow run 4_builderprecompiled_docker-images-upload-manager.yml -r ${{ github.ref_name }} -f architecture=amd64 -f docker_image_tag=${{ env.TAG }} -f system=rpm -f source_reference=${{ github.ref_name }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Request pkg_deb_manager_builder_arm64 update
         if: steps.changes.outputs.pkg_deb_manager_builder_amd64 == 'true'
         run: |
-          gh workflow run packages-upload-manager-images.yml -r ${{ github.ref_name }} -f architecture=arm64 -f docker_image_tag=${{ env.TAG }} -f system=deb -f source_reference=${{ github.ref_name }}
+          gh workflow run 4_builderprecompiled_docker-images-upload-manager.yml -r ${{ github.ref_name }} -f architecture=arm64 -f docker_image_tag=${{ env.TAG }} -f system=deb -f source_reference=${{ github.ref_name }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Request pkg_rpm_manager_builder_arm64 update
         if: steps.changes.outputs.pkg_rpm_manager_builder_amd64 == 'true'
         run: |
-          gh workflow run packages-upload-manager-images.yml -r ${{ github.ref_name }} -f architecture=arm64 -f docker_image_tag=${{ env.TAG }} -f system=rpm -f source_reference=${{ github.ref_name }}
+          gh workflow run 4_builderprecompiled_docker-images-upload-manager.yml -r ${{ github.ref_name }} -f architecture=arm64 -f docker_image_tag=${{ env.TAG }} -f system=rpm -f source_reference=${{ github.ref_name }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

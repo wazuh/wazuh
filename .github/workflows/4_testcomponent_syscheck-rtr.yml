@@ -9,7 +9,7 @@ on:
       - "src/syscheckd/**"
       - "src/unit_tests/syscheckd/**"
       - "src/Makefile"
-      - ".github/workflows/rtr_syscheck.yml"
+      - ".github/workflows/4_testcomponent_syscheck-rtr.yml"
       - ".github/actions/**"
 
 jobs:

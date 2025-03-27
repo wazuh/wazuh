@@ -4,7 +4,7 @@ on:
   pull_request:
     paths:
       - "src/**"
-      - ".github/workflows/windows-file-details.yml"
+      - ".github/workflows/4_testcomponent_windows-files.yml"
 
 jobs:
   build:

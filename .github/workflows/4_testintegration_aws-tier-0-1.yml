@@ -13,7 +13,7 @@ on:
         default: 'main'
   pull_request:
     paths:
-      - ".github/workflows/integration-tests-aws-tier-0-1.yml"
+      - ".github/workflows/4_testintegration_aws-tier-0-1.yml"
       - "wodles/aws/**"
 
 jobs:
