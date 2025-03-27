@@ -1,5 +1,5 @@
 /*
- * Wazuh Vulnerability scanner
+ * Wazuh Inventory Harvester - System Factory Orchestrator
  * Copyright (C) 2015, Wazuh Inc.
  * January 22, 2025.
  *

@@ -1,5 +1,5 @@
 /*
- * Wazuh inventory harvester
+ * Wazuh inventory harvester - System context
  * Copyright (C) 2015, Wazuh Inc.
  * January 21, 2025.
  *
@@ -1102,7 +1102,10 @@ public:
         }
         else
         {
-            return "";
+            if (m_jsonData->contains("/data/hotfix"_json_pointer))
+            {
+                return m_jsonData->at("/data/hotfix"_json_pointer).get<std::string_view>();
+            }
         }
         return "";
     }
@@ -1611,7 +1614,7 @@ private:
                     m_affectedComponentType = AffectedComponentType::Port;
                     m_originTable = OriginTable::Ports;
                 }
-                else if (attributesTypeStr.compare("sycollector_hotfixes") == 0)
+                else if (attributesTypeStr.compare("syscollector_hotfixes") == 0)
                 {
                     m_operation = Operation::IndexSync;
                     m_affectedComponentType = AffectedComponentType::Hotfix;

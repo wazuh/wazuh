@@ -1,5 +1,5 @@
 /*
- * Wazuh Vulnerability scanner - Scan Orchestrator
+ * Wazuh Inventory Harvester - Hotfix element
  * Copyright (C) 2015, Wazuh Inc.
  * March 21, 2025.
  *
