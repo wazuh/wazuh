@@ -34,6 +34,7 @@ public:
         Processes,
         Os,
         Hw,
+        NetworkProtocol,
         Invalid
     };
 
@@ -42,6 +43,7 @@ public:
         Package,
         Process,
         System,
+        NetProto,
         Invalid
     };
 
@@ -73,6 +75,12 @@ public:
     MOCK_METHOD(std::string_view, processName, (), (const));
     MOCK_METHOD(std::string_view, processStartISO8601, (), (const));
     MOCK_METHOD(uint64_t, processParentID, (), (const));
+    MOCK_METHOD(std::string_view, netProtoIface, (), (const));
+    MOCK_METHOD(std::string_view, netProtoType, (), (const));
+    MOCK_METHOD(std::string_view, netProtoGateway, (), (const));
+    MOCK_METHOD(std::string_view, netProtoDhcp, (), (const));
+    MOCK_METHOD(std::string_view, netProtoMetric, (), (const));
+    MOCK_METHOD(std::string_view, netProtoItemId, (), (const));
 
     MOCK_METHOD(AffectedComponentType, affectedComponentType, (), (const));
 

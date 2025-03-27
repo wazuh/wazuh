@@ -145,3 +145,50 @@ TEST_F(SystemInventoryUpsertElement, validAgentID_Processes)
         context->m_serializedElement,
         R"({"id":"001_1234","operation":"INSERTED","data":{"process":{"args":["processName"],"args_count":1,"command_line":"processCmdline","name":"processName","pid":1234,"start":"processStartISO8601","ppid":1},"agent":{"id":"001","name":"agentName","ip":"agentIp","version":"agentVersion"}}})");
 }
+
+TEST_F(SystemInventoryUpsertElement, emptyAgentID_NetworkProtocol)
+{
+    auto context = std::make_shared<MockSystemContext>();
+    auto upsertElement = std::make_shared<UpsertSystemElement<MockSystemContext>>();
+
+    EXPECT_CALL(*context, agentId()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, originTable()).WillOnce(testing::Return(MockSystemContext::OriginTable::NetworkProtocol));
+
+    EXPECT_ANY_THROW(upsertElement->handleRequest(context));
+}
+
+TEST_F(SystemInventoryUpsertElement, emptyNetProtoItemID_NetworkProtocol)
+{
+    auto context = std::make_shared<MockSystemContext>();
+    auto upsertElement = std::make_shared<UpsertSystemElement<MockSystemContext>>();
+
+    EXPECT_CALL(*context, agentId()).WillOnce(testing::Return("001"));
+    EXPECT_CALL(*context, netProtoItemId()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, originTable()).WillOnce(testing::Return(MockSystemContext::OriginTable::NetworkProtocol));
+
+    EXPECT_ANY_THROW(upsertElement->handleRequest(context));
+}
+
+TEST_F(SystemInventoryUpsertElement, validAgentID_NetworkProtocol)
+{
+    auto context = std::make_shared<MockSystemContext>();
+    auto upsertElement = std::make_shared<UpsertSystemElement<MockSystemContext>>();
+
+    EXPECT_CALL(*context, agentId()).WillOnce(testing::Return("001"));
+    EXPECT_CALL(*context, agentName()).WillOnce(testing::Return("agentName"));
+    EXPECT_CALL(*context, agentVersion()).WillOnce(testing::Return("agentVersion"));
+    EXPECT_CALL(*context, agentIp()).WillOnce(testing::Return("agentIp"));
+    EXPECT_CALL(*context, netProtoItemId()).WillOnce(testing::Return("netProtoItemId"));
+    EXPECT_CALL(*context, netProtoIface()).WillOnce(testing::Return("netProtoIface"));
+    EXPECT_CALL(*context, netProtoType()).WillOnce(testing::Return("netProtoType"));
+    EXPECT_CALL(*context, netProtoGateway()).WillOnce(testing::Return("netProtoGateway"));
+    EXPECT_CALL(*context, netProtoDhcp()).WillOnce(testing::Return("netProtoDhcp"));
+    EXPECT_CALL(*context, netProtoMetric()).WillOnce(testing::Return("netProtoMetric"));
+    EXPECT_CALL(*context, originTable()).WillOnce(testing::Return(MockSystemContext::OriginTable::NetworkProtocol));
+
+    EXPECT_NO_THROW(upsertElement->handleRequest(context));
+
+    EXPECT_EQ(
+        context->m_serializedElement,
+        R"({"id":"001_netProtoItemId","operation":"INSERTED","data":{"network":{"dhcp":"netProtoDhcp","gateway":"netProtoGateway","metric":"netProtoMetric","type":"netProtoType"},"observer":{"ingress":{"interface":{"name":"netProtoIface"}}},"agent":{"id":"001","name":"agentName","ip":"agentIp","version":"agentVersion"}}})");
+}

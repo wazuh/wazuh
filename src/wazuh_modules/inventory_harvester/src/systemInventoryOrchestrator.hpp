@@ -94,6 +94,12 @@ public:
             PolicyHarvesterManager::instance().buildIndexerTemplatePath("processes"),
             PolicyHarvesterManager::instance().buildIndexerUpdateTemplatePath("processes"),
             Log::GLOBAL_LOG_FUNCTION);
+        m_indexerConnectorInstances[SystemContext::AffectedComponentType::NetProto] =
+            std::make_unique<IndexerConnector>(
+                PolicyHarvesterManager::instance().buildIndexerConfig("protocols"),
+                PolicyHarvesterManager::instance().buildIndexerTemplatePath("protocols"),
+                PolicyHarvesterManager::instance().buildIndexerUpdateTemplatePath("protocols"),
+                Log::GLOBAL_LOG_FUNCTION);
 
         m_orchestrations[SystemContext::Operation::Upsert] =
             SystemFactoryOrchestrator::create(SystemContext::Operation::Upsert, m_indexerConnectorInstances);
