@@ -41,6 +41,20 @@ struct file_event {
     char parent_comm[TASK_COMM_LEN];
 };
 
+struct dynamic_file_event {
+    std::string filename;
+    std::string cwd;
+    std::string parent_cwd;
+    std::string comm;
+    std::string parent_comm;
+    uint32_t pid;
+    uint32_t ppid;
+    uint32_t uid;
+    uint32_t gid;
+    uint64_t inode;
+    uint64_t dev;
+};
+
 struct ring_buffer {
         struct epoll_event *events;
         struct ring **rings;
@@ -77,7 +91,7 @@ void (*bpf_object__detach_skeleton)(struct bpf_object_skeleton *obj) = NULL;
 
 typedef int(*init_ring_buffer_t)(ring_buffer** rb, ring_buffer_sample_fn sample_cb);
 typedef void(*whodata_pop_events_t)(fim::BoundedQueue<std::unique_ptr<whodata_evt, whodata_deleter>>& queue);
-typedef void(*ebpf_pop_events_t)(fim::BoundedQueue<std::unique_ptr<file_event>>& kernel_queue, fim::BoundedQueue<std::unique_ptr<whodata_evt, whodata_deleter>>& queue);
+typedef void(*ebpf_pop_events_t)(fim::BoundedQueue<std::unique_ptr<dynamic_file_event>>& kernel_queue, fim::BoundedQueue<std::unique_ptr<whodata_evt, whodata_deleter>>& queue);
 typedef int(*check_invalid_kernel_version_t)();
 typedef int(*init_libbpf_t)(std::unique_ptr<DynamicLibraryWrapper> sym_load);
 typedef int(*init_bpfobj_t)();
@@ -166,7 +180,7 @@ inline bool w_bpf_deinit(std::unique_ptr<w_bpf_helpers_t>& bpf_helpers) {
 
 
 int init_ring_buffer(ring_buffer** rb, ring_buffer_sample_fn sample_cb);
-void ebpf_pop_events(fim::BoundedQueue<std::unique_ptr<file_event>>& kernel_queue, fim::BoundedQueue<std::unique_ptr<whodata_evt, whodata_deleter>>& queue);
+void ebpf_pop_events(fim::BoundedQueue<std::unique_ptr<dynamic_file_event>>& kernel_queue, fim::BoundedQueue<std::unique_ptr<whodata_evt, whodata_deleter>>& queue);
 void whodata_pop_events(fim::BoundedQueue<std::unique_ptr<whodata_evt, whodata_deleter>>& queue);
 int check_invalid_kernel_version();
 int init_libbpf(std::unique_ptr<DynamicLibraryWrapper> sym_load);
