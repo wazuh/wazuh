@@ -126,12 +126,6 @@ inline bool w_bpf_deinit(std::unique_ptr<w_bpf_helpers_t>& bpf_helpers) {
     bool result = false;
 
     if (bpf_helpers) {
-        // Free the loaded module (library)
-        if (bpf_helpers->module != NULL) {
-            dlclose(bpf_helpers->module);
-            bpf_helpers.reset();
-        }
-
         // Reset function pointers to NULL
         bpf_helpers->bpf_object_open_file = NULL;
         bpf_helpers->bpf_object_load = NULL;
@@ -157,6 +151,12 @@ inline bool w_bpf_deinit(std::unique_ptr<w_bpf_helpers_t>& bpf_helpers) {
 	    bpf_helpers->check_invalid_kernel_version = NULL;
 	    bpf_helpers->init_libbpf = NULL;
 	    bpf_helpers->init_bpfobj = NULL;
+
+        // Free the loaded module (library)
+        if (bpf_helpers->module != NULL) {
+            dlclose(bpf_helpers->module);
+            bpf_helpers.reset();
+        }
 
         result = true;
     }
