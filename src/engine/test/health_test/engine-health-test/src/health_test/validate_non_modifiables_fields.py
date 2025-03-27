@@ -128,17 +128,17 @@ def integration_validator(
 
 def rules_validator(
         args, ruleset_path: Path, resource_handler: rs.ResourceHandler, non_modifiables_fields, error_reporter):
-    integration_rules = args.get('integration_rules')
+    integration_rules = args.get('integration_rule')
 
     if integration_rules:
         integration_rules_path = ruleset_path / 'integrations-rules' / integration_rules
         if not integration_rules_path.exists() or not integration_rules_path.is_dir():
-            sys.exit(f"Rule folder '{integration_rules}' not found in '{ruleset_path / 'integrations-rules'}'.")
+            sys.exit(f"Integration rule '{integration_rules}' not found in '{ruleset_path / 'integrations-rules'}'.")
         rules_to_process = [integration_rules_path]
     else:
         rules_path = ruleset_path / 'integrations-rules'
         if not rules_path.exists() or not rules_path.is_dir():
-            sys.exit(f"Rules directory not found in '{ruleset_path}'.")
+            sys.exit(f"Integration rule directory not found in '{ruleset_path}'.")
         rules_to_process = [d for d in rules_path.iterdir() if d.is_dir()]
 
     for integration_rules in rules_to_process:
@@ -157,12 +157,12 @@ def run(args):
 
     error_reporter = ErrorReporter("Validation")
     integration_arg = args.get('integration')
-    integration_rules_arg = args.get('integration_rules')
+    integration_rules_arg = args.get('integration_rule')
 
     specified_args = [arg for arg in [integration_arg, integration_rules_arg] if arg]
 
     if len(specified_args) > 1:
-        sys.exit("Error: Only one of 'integration' or 'integration_rules' can be specified at a time.")
+        sys.exit("Error: Only one of 'integration' or 'integration_rule' can be specified at a time.")
 
     try:
         print("Running non modifiable fields tests.")
