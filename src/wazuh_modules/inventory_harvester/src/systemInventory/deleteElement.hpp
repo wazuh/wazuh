@@ -13,6 +13,7 @@
 #define _DELETE_SYSTEM_ELEMENT_HPP
 
 #include "chainOfResponsability.hpp"
+#include "elements/netIfaceElement.hpp"
 #include "elements/osElement.hpp"
 #include "elements/packageElement.hpp"
 #include "elements/processElement.hpp"
@@ -49,6 +50,10 @@ public:
         else if (originTable == TContext::OriginTable::Processes)
         {
             data->m_serializedElement = serializeToJSON(ProcessElement<TContext>::deleteElement(data.get()));
+        }
+        else if (originTable == TContext::OriginTable::NetIfaces)
+        {
+            data->m_serializedElement = serializeToJSON(NetIfaceElement<TContext>::deleteElement(data.get()));
         }
         else
         {

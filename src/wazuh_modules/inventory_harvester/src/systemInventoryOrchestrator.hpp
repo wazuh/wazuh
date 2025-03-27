@@ -94,6 +94,11 @@ public:
             PolicyHarvesterManager::instance().buildIndexerTemplatePath("processes"),
             PolicyHarvesterManager::instance().buildIndexerUpdateTemplatePath("processes"),
             Log::GLOBAL_LOG_FUNCTION);
+        m_indexerConnectorInstances[SystemContext::AffectedComponentType::NetIface] = std::make_unique<IndexerConnector>(
+            PolicyHarvesterManager::instance().buildIndexerConfig("netifaces"),
+            PolicyHarvesterManager::instance().buildIndexerTemplatePath("netifaces"),
+            PolicyHarvesterManager::instance().buildIndexerUpdateTemplatePath("netifaces"),
+            Log::GLOBAL_LOG_FUNCTION);
 
         m_orchestrations[SystemContext::Operation::Upsert] =
             SystemFactoryOrchestrator::create(SystemContext::Operation::Upsert, m_indexerConnectorInstances);
