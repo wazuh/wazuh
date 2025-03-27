@@ -214,7 +214,7 @@ def validator(args, ruleset_path: Path, resource_handler: rs.ResourceHandler, ap
         if not integrations_rules_path.exists() or not integrations_rules_path.is_dir():
             sys.exit(f"Integrations rule directory not found in '{integrations_rules_path}'.")
         rules_to_process = [d for d in integrations_rules_path.iterdir() if d.is_dir()]
-        validate_rules(rules_to_process, api_socket, kvdbs, executor, resource_handler)
+        validate_integrations(rules_to_process, api_socket, kvdbs, ruleset_path, executor, resource_handler)
 
     print('\nTasks:')
     executor.list_tasks()
