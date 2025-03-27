@@ -8,7 +8,7 @@ on:
         default: 'main'
   pull_request:
     paths:
-      - '.github/workflows/python-unit-tests-coverage.yml'
+      - '.github/workflows/4_testunit_python-coverage.yml'
 jobs:
   build:
     env:

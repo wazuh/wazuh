@@ -10,7 +10,7 @@ on:
       - "src/shared_modules/**"
       - "src/wazuh_modules/syscollector/**"
       - "src/Makefile"
-      - ".github/workflows/rtr_syscollector.yml"
+      - ".github/workflows/4_testcomponent_syscollector-rtr.yml"
       - ".github/actions/**"
 
 jobs:

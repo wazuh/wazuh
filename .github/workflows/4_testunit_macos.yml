@@ -5,7 +5,7 @@ on:
   pull_request:
     paths:
       - "src/**"
-      - ".github/workflows/macos-unit-tests.yml"
+      - ".github/workflows/4_testunit_macos.yml"
 
 jobs:
   build-ventura:

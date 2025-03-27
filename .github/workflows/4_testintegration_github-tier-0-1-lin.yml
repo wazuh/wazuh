@@ -9,7 +9,7 @@ on:
         default: 'main'
   pull_request:
     paths:
-        - ".github/workflows/integration-tests-github-tier-0-1-lin.yml"
+        - ".github/workflows/4_testintegration_github-tier-0-1-lin.yml"
         - "src/config/wmodules-github.c"
         - "src/wazuh_modules/wm_github.h"
         - "src/wazuh_modules/wm_github.c"

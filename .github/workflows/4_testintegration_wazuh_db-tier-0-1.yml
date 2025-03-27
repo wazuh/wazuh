@@ -9,7 +9,7 @@ on:
         default: 'main'
   pull_request:
     paths:
-        - ".github/workflows/integration-tests-wazuh_db-tier-0-1.yml"
+        - ".github/workflows/4_testintegration_wazuh_db-tier-0-1.yml"
         - "src/config/wazuh_db-config.c"
         - "src/config/wazuh_db-config.h"
         - "src/wazuh_db/**"
