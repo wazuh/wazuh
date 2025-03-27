@@ -34,13 +34,13 @@ public:
         auto agentId = data->agentId();
         if (agentId.empty())
         {
-            throw std::runtime_error("Agent ID is empty, cannot upsert system element.");
+            throw std::runtime_error("Agent ID is empty, cannot upsert port element.");
         }
 
         auto portItemId = data->portItemId();
         if (portItemId.empty())
         {
-            throw std::runtime_error("Port item ID is empty, cannot upsert system element.");
+            throw std::runtime_error("Item ID is empty, cannot upsert port element.");
         }
 
         DataHarvester<InventoryPortHarvester> element;
@@ -72,13 +72,13 @@ public:
         auto agentId = data->agentId();
         if (agentId.empty())
         {
-            throw std::runtime_error("Agent ID is empty, cannot delete system element.");
+            throw std::runtime_error("Agent ID is empty, cannot delete port element.");
         }
 
         auto portItemId = data->portItemId();
         if (portItemId.empty())
         {
-            throw std::runtime_error("Port item ID is empty, cannot delete system element.");
+            throw std::runtime_error("Item ID is empty, cannot delete port element.");
         }
 
         NoDataHarvester element;
