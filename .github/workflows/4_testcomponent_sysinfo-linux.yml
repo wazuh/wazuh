@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   pull_request:
     paths:
-        - ".github/workflows/ubuntu-syscollector-tests.yml"
+        - ".github/workflows/4_testcomponent_sysinfo-linux.yml"
         - "src/data_provider/**"
         - "src/shared_modules/**"
         - "src/wazuh_modules/syscollector/**"

@@ -8,7 +8,7 @@ on:
     paths:
       - "src/**"
       - "packages/**"
-      - ".github/workflows/manager-build-package.yml"
+      - ".github/workflows/4_builderpackage_manager-multiples-2.yml"
 
 jobs:
   Generate-Packages:
@@ -19,7 +19,7 @@ jobs:
         uses: actions/github-script@v6
         with:
           script: |
-            const workflowFile = "packages-build-manager.yml";
+            const workflowFile = "4_builderpackage_manager.yml ";
             const branchRef = process.env.GITHUB_HEAD_REF || process.env.GITHUB_REF_NAME;
             const timeoutMinutes = 60;
             const pollingIntervalMs = 30 * 1000;
@@ -115,7 +115,7 @@ jobs:
         uses: actions/github-script@v6
         with:
           script: |
-            const workflowFile = "packages-build-manager.yml";
+            const workflowFile = "4_builderpackage_manager.yml ";
             const branchRef = process.env.GITHUB_HEAD_REF || process.env.GITHUB_REF_NAME;
             const timeoutMinutes = 60;
             const pollingIntervalMs = 30 * 1000;

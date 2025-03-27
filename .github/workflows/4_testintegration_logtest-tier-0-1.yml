@@ -9,7 +9,7 @@ on:
         default: 'main'
   pull_request:
     paths:
-        - ".github/workflows/integration-tests-logtest-tier-0-1.yml"
+        - ".github/workflows/4_testintegration_logtest-tier-0-1.yml"
         - "src/analysisd/logtest.c"
         - "src/analysisd/logtest.h"
         - "src/config/logtest-config.c"

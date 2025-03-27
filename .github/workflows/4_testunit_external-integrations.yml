@@ -14,7 +14,7 @@ on:
         default: 'main'
   pull_request:
     paths:
-      - '.github/workflows/external-integrations-unit-tests.yml'
+      - '.github/workflows/4_testunit_external-integrations.yml'
       - 'integrations/**'
       - 'src/Makefile'
 

@@ -5,7 +5,7 @@ on:
   pull_request:
     paths:
       - "src/**"
-      - ".github/workflows/windows-dll-hijack.yml"
+      - ".github/workflows/4_testcomponent_windows-dll-hijack.yml"
 
 jobs:
   build:

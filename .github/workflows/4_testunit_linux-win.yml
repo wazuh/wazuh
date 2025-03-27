@@ -10,7 +10,7 @@ on:
   pull_request:
     paths:
         - "src/**"
-        - ".github/workflows/legacy-unit-tests.yml"
+        - ".github/workflows/4_testunit_linux-win.yml"
 
 jobs:
   Unit-Tests:
