@@ -25,14 +25,6 @@
 #include "ebpf_whodata.hpp"
 #include "bpf_helpers.h"
 
-
-/*
-#ifndef PATH_MAX
-#define PATH_MAX 4096
-#endif
-*/
-
-//#define TASK_COMM_LEN 32
 #define KERNEL_VERSION_FILE "/proc/sys/kernel/osrelease"
 #define EBPF_HC_FILE "tmp/ebpf_hc"
 #define LIB_INSTALL_PATH "bpf"
@@ -48,22 +40,6 @@ time_t (*w_time)(time_t*) = time;
 
 int ebpf_kernel_queue_full_reported = 0;
 int ebpf_whodata_queue_full_reported = 0;
-
-/*
-struct file_event {
-    __u32 pid;
-    __u32 ppid;
-    __u32 uid;
-    __u32 gid;
-    __u64 inode;
-    __u64 dev;
-    char comm[TASK_COMM_LEN];
-    char filename[PATH_MAX];
-    char cwd[PATH_MAX];
-    char parent_cwd[PATH_MAX];
-    char parent_comm[TASK_COMM_LEN];
-};
-*/
 
 fim::BoundedQueue<std::unique_ptr<file_event>> kernelEventQueue;
 using whodata_deleter = std::function<void(whodata_evt*)>;

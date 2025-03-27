@@ -11,6 +11,7 @@
 #define BPF_HELPERS_H
 
 #include <dlfcn.h>
+#include <stdint.h>
 #include "logging_helper.h"
 #include <bounded_queue.hpp>
 #include <memory>
@@ -18,7 +19,6 @@
 using whodata_deleter = std::function<void(whodata_evt*)>;
 
 typedef __attribute__((aligned(4))) unsigned int __u32;
-typedef __attribute__((aligned(8))) unsigned long long __u64;
 
 #ifndef PATH_MAX
 #define PATH_MAX 4096
@@ -32,8 +32,8 @@ struct file_event {
     __u32 ppid;
     __u32 uid;
     __u32 gid;
-    __u64 inode;
-    __u64 dev;
+    uint64_t inode;
+    uint64_t dev;
     char comm[TASK_COMM_LEN];
     char filename[PATH_MAX];
     char cwd[PATH_MAX];
