@@ -45,6 +45,7 @@ from wazuh.core.common import WAZUH_SERVER_YML
 from wazuh.core.config.client import CentralizedConfig
 from wazuh.core.config.models.central_config import ManagementAPIConfig
 from wazuh.core.config.models.ssl_config import APISSLConfig
+from wazuh.core.rbac import RBACManager
 from wazuh.core.unix_server.commands import post_commands
 from wazuh.core.unix_server.server import HTTPUnixServer
 from wazuh.rbac.orm import check_database_integrity
@@ -199,7 +200,7 @@ def start(params: dict, config: ManagementAPIConfig):
             )
         )
 
-    # Start commands manager and unix server
+    rbac_manager = RBACManager()
     commands_manager = CommandsManager()
     unix_server = HTTPUnixServer(socket_path=common.MANAGEMENT_API_SOCKET_PATH, commands_manager=commands_manager)
     unix_server.add_route('/commands', post_commands, ['POST'])
@@ -211,7 +212,7 @@ def start(params: dict, config: ManagementAPIConfig):
         specification_dir=os.path.join(api_path[0], 'spec'),
         swagger_ui_options=SwaggerUIOptions(swagger_ui=False),
         pythonic_params=True,
-        lifespan=partial(lifespan_handler, commands_manager=commands_manager),
+        lifespan=partial(lifespan_handler, commands_manager=commands_manager, rbac_manager=rbac_manager),
         uri_parser_class=APIUriParser,
     )
     app.add_api(

@@ -2,11 +2,12 @@ import base64
 from unittest import mock
 
 import pytest
-from wazuh.core.indexer.models.agent import HASH_ALGO, ITERATIONS, Agent
+from wazuh.core.indexer.models.agent import Agent
+from wazuh.core.indexer.utils import HASH_ALGO, ITERATIONS
 
 
 class TestAgent:
-    """Test class for the Agent functionality."""
+    """Validate the correct functionality of the `Agent` class."""
 
     model = Agent
     id = '0191480e-7f67-7fd3-8c52-f49a3176360c'
@@ -20,7 +21,7 @@ class TestAgent:
             hash_key_mock.assert_called_once_with(self.key)
 
     @mock.patch('os.urandom')
-    @mock.patch('hashlib.pbkdf2_hmac')
+    @mock.patch('wazuh.core.indexer.utils.pbkdf2_hmac')
     def test_hash_key(self, pbkdf2_hmac_mock, urandom_mock):
         """Check the correct function of `hash_key` method."""
         salt = b'\xe5\xf3\x8c-\x97\r\xacL\xc2\\9:\xc8 \xe4F'
