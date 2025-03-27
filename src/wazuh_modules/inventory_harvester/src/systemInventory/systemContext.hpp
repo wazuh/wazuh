@@ -49,6 +49,7 @@ public:
         Hotfix,
         Hardware,
         NetProto,
+        NetIface,
         Invalid
     };
 
@@ -61,6 +62,7 @@ public:
         Hw,
         Ports,
         NetworkProtocol,
+        NetIfaces,
         Invalid
     };
     explicit SystemContext(
@@ -1715,6 +1717,362 @@ public:
         return "";
     }
 
+    // NetIface
+
+    std::string_view netIfaceName() const
+    {
+        if (m_type == VariantType::Delta)
+        {
+            if (m_delta->data_as_dbsync_network_iface() && m_delta->data_as_dbsync_network_iface()->name())
+            {
+                return m_delta->data_as_dbsync_network_iface()->name()->string_view();
+            }
+        }
+        else if (m_type == VariantType::SyncMsg)
+        {
+            if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_network_iface() &&
+                m_syncMsg->data_as_state()->attributes_as_syscollector_network_iface()->name())
+            {
+                return m_syncMsg->data_as_state()->attributes_as_syscollector_network_iface()->name()->string_view();
+            }
+        }
+        else
+        {
+            return "";
+        }
+        return "";
+    }
+
+    std::string_view netIfaceMac() const
+    {
+        if (m_type == VariantType::Delta)
+        {
+            if (m_delta->data_as_dbsync_network_iface() && m_delta->data_as_dbsync_network_iface()->mac())
+            {
+                return m_delta->data_as_dbsync_network_iface()->mac()->string_view();
+            }
+        }
+        else if (m_type == VariantType::SyncMsg)
+        {
+            if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_network_iface() &&
+                m_syncMsg->data_as_state()->attributes_as_syscollector_network_iface()->mac())
+            {
+                return m_syncMsg->data_as_state()->attributes_as_syscollector_network_iface()->mac()->string_view();
+            }
+        }
+        else
+        {
+            return "";
+        }
+        return "";
+    }
+
+    int64_t netIfaceRxBytes() const
+    {
+        if (m_type == VariantType::Delta)
+        {
+            if (m_delta->data_as_dbsync_network_iface())
+            {
+                return m_delta->data_as_dbsync_network_iface()->rx_bytes();
+            }
+        }
+        else if (m_type == VariantType::SyncMsg)
+        {
+            if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_network_iface())
+            {
+                return m_syncMsg->data_as_state()->attributes_as_syscollector_network_iface()->rx_bytes();
+            }
+        }
+        else
+        {
+            return 0;
+        }
+        return 0;
+    }
+
+    int64_t netIfaceRxDrops() const
+    {
+        if (m_type == VariantType::Delta)
+        {
+            if (m_delta->data_as_dbsync_network_iface())
+            {
+                return m_delta->data_as_dbsync_network_iface()->rx_dropped();
+            }
+        }
+        else if (m_type == VariantType::SyncMsg)
+        {
+            if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_network_iface())
+            {
+                return m_syncMsg->data_as_state()->attributes_as_syscollector_network_iface()->rx_dropped();
+            }
+        }
+        else
+        {
+            return 0;
+        }
+        return 0;
+    }
+
+    int64_t netIfaceRxErrors() const
+    {
+        if (m_type == VariantType::Delta)
+        {
+            if (m_delta->data_as_dbsync_network_iface())
+            {
+                return m_delta->data_as_dbsync_network_iface()->rx_errors();
+            }
+        }
+        else if (m_type == VariantType::SyncMsg)
+        {
+            if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_network_iface())
+            {
+                return m_syncMsg->data_as_state()->attributes_as_syscollector_network_iface()->rx_errors();
+            }
+        }
+        else
+        {
+            return 0;
+        }
+        return 0;
+    }
+
+    int64_t netIfaceRxPackets() const
+    {
+        if (m_type == VariantType::Delta)
+        {
+            if (m_delta->data_as_dbsync_network_iface())
+            {
+                return m_delta->data_as_dbsync_network_iface()->rx_packets();
+            }
+        }
+        else if (m_type == VariantType::SyncMsg)
+        {
+            if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_network_iface())
+            {
+                return m_syncMsg->data_as_state()->attributes_as_syscollector_network_iface()->rx_packets();
+            }
+        }
+        else
+        {
+            return 0;
+        }
+        return 0;
+    }
+
+    int64_t netIfaceTxBytes() const
+    {
+        if (m_type == VariantType::Delta)
+        {
+            if (m_delta->data_as_dbsync_network_iface())
+            {
+                return m_delta->data_as_dbsync_network_iface()->tx_bytes();
+            }
+        }
+        else if (m_type == VariantType::SyncMsg)
+        {
+            if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_network_iface())
+            {
+                return m_syncMsg->data_as_state()->attributes_as_syscollector_network_iface()->tx_bytes();
+            }
+        }
+        else
+        {
+            return 0;
+        }
+        return 0;
+    }
+
+    int64_t netIfaceTxDrops() const
+    {
+        if (m_type == VariantType::Delta)
+        {
+            if (m_delta->data_as_dbsync_network_iface())
+            {
+                return m_delta->data_as_dbsync_network_iface()->tx_dropped();
+            }
+        }
+        else if (m_type == VariantType::SyncMsg)
+        {
+            if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_network_iface())
+            {
+                return m_syncMsg->data_as_state()->attributes_as_syscollector_network_iface()->tx_dropped();
+            }
+        }
+        else
+        {
+            return 0;
+        }
+        return 0;
+    }
+
+    int64_t netIfaceTxErrors() const
+    {
+        if (m_type == VariantType::Delta)
+        {
+            if (m_delta->data_as_dbsync_network_iface())
+            {
+                return m_delta->data_as_dbsync_network_iface()->tx_errors();
+            }
+        }
+        else if (m_type == VariantType::SyncMsg)
+        {
+            if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_network_iface())
+            {
+                return m_syncMsg->data_as_state()->attributes_as_syscollector_network_iface()->tx_errors();
+            }
+        }
+        else
+        {
+            return 0;
+        }
+        return 0;
+    }
+
+    int64_t netIfaceTxPackets() const
+    {
+        if (m_type == VariantType::Delta)
+        {
+            if (m_delta->data_as_dbsync_network_iface())
+            {
+                return m_delta->data_as_dbsync_network_iface()->tx_packets();
+            }
+        }
+        else if (m_type == VariantType::SyncMsg)
+        {
+            if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_network_iface())
+            {
+                return m_syncMsg->data_as_state()->attributes_as_syscollector_network_iface()->tx_packets();
+            }
+        }
+        else
+        {
+            return 0;
+        }
+        return 0;
+    }
+
+    std::string_view netIfaceAdapter() const
+    {
+        if (m_type == VariantType::Delta)
+        {
+            if (m_delta->data_as_dbsync_network_iface() && m_delta->data_as_dbsync_network_iface()->adapter())
+            {
+                return m_delta->data_as_dbsync_network_iface()->adapter()->string_view();
+            }
+        }
+        else if (m_type == VariantType::SyncMsg)
+        {
+            if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_network_iface() &&
+                m_syncMsg->data_as_state()->attributes_as_syscollector_network_iface()->adapter())
+            {
+                return m_syncMsg->data_as_state()->attributes_as_syscollector_network_iface()->adapter()->string_view();
+            }
+        }
+        else
+        {
+            return "";
+        }
+        return "";
+    }
+
+    int64_t netIfaceMtu() const
+    {
+        if (m_type == VariantType::Delta)
+        {
+            if (m_delta->data_as_dbsync_network_iface())
+            {
+                return m_delta->data_as_dbsync_network_iface()->mtu();
+            }
+        }
+        else if (m_type == VariantType::SyncMsg)
+        {
+            if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_network_iface())
+            {
+                return m_syncMsg->data_as_state()->attributes_as_syscollector_network_iface()->mtu();
+            }
+        }
+        else
+        {
+            return 0;
+        }
+        return 0;
+    }
+
+    std::string_view netIfaceState() const
+    {
+        if (m_type == VariantType::Delta)
+        {
+            if (m_delta->data_as_dbsync_network_iface() && m_delta->data_as_dbsync_network_iface()->state())
+            {
+                return m_delta->data_as_dbsync_network_iface()->state()->string_view();
+            }
+        }
+        else if (m_type == VariantType::SyncMsg)
+        {
+            if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_network_iface() &&
+                m_syncMsg->data_as_state()->attributes_as_syscollector_network_iface()->state())
+            {
+                return m_syncMsg->data_as_state()->attributes_as_syscollector_network_iface()->state()->string_view();
+            }
+        }
+        else
+        {
+            return "";
+        }
+        return "";
+    }
+
+    std::string_view netIfaceType() const
+    {
+        if (m_type == VariantType::Delta)
+        {
+            if (m_delta->data_as_dbsync_network_iface() && m_delta->data_as_dbsync_network_iface()->type())
+            {
+                return m_delta->data_as_dbsync_network_iface()->type()->string_view();
+            }
+        }
+        else if (m_type == VariantType::SyncMsg)
+        {
+            if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_network_iface() &&
+                m_syncMsg->data_as_state()->attributes_as_syscollector_network_iface()->type())
+            {
+                return m_syncMsg->data_as_state()->attributes_as_syscollector_network_iface()->type()->string_view();
+            }
+        }
+        else
+        {
+            return "";
+        }
+        return "";
+    }
+
+    std::string_view netIfaceItemId() const
+    {
+        if (m_type == VariantType::Delta)
+        {
+            if (m_delta->data_as_dbsync_network_iface() && m_delta->data_as_dbsync_network_iface()->item_id())
+            {
+                return m_delta->data_as_dbsync_network_iface()->item_id()->string_view();
+            }
+        }
+        else if (m_type == VariantType::SyncMsg)
+        {
+            if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_network_iface() &&
+                m_syncMsg->data_as_state()->attributes_as_syscollector_network_iface()->item_id())
+            {
+                return m_syncMsg->data_as_state()->attributes_as_syscollector_network_iface()->item_id()->string_view();
+            }
+        }
+        else
+        {
+            if (m_jsonData->contains("/data/item_id"_json_pointer))
+            {
+                return m_jsonData->at("/data/item_id"_json_pointer).get<std::string_view>();
+            }
+        }
+        return "";
+    }
+
     Operation operation() const
     {
         return m_operation;
@@ -1807,6 +2165,11 @@ private:
                 m_affectedComponentType = AffectedComponentType::NetProto;
                 m_originTable = OriginTable::NetworkProtocol;
             }
+            else if (delta->data_type() == SyscollectorDeltas::Provider_dbsync_network_iface)
+            {
+                m_affectedComponentType = AffectedComponentType::NetIface;
+                m_originTable = OriginTable::NetIfaces;
+            }
             else
             {
                 // TO DO: Add log.
@@ -1871,6 +2234,13 @@ private:
                 m_affectedComponentType = AffectedComponentType::NetProto;
                 m_originTable = OriginTable::NetworkProtocol;
             }
+            else if (syncMsg->data_as_state()->attributes_type() ==
+                     Synchronization::AttributesUnion_syscollector_network_iface)
+            {
+                m_operation = Operation::Upsert;
+                m_affectedComponentType = AffectedComponentType::NetIface;
+                m_originTable = OriginTable::NetIfaces;
+            }
             else
             {
                 throw std::runtime_error("Attributes type not found in sync message. => " +
@@ -1923,6 +2293,12 @@ private:
                     m_operation = Operation::DeleteAllEntries;
                     m_affectedComponentType = AffectedComponentType::NetProto;
                     m_originTable = OriginTable::NetworkProtocol;
+                }
+                else if (attributesTypeStr.compare("syscollector_network_iface") == 0)
+                {
+                    m_operation = Operation::DeleteAllEntries;
+                    m_affectedComponentType = AffectedComponentType::NetIface;
+                    m_originTable = OriginTable::NetIfaces;
                 }
                 else
                 {
@@ -1981,6 +2357,12 @@ private:
                     m_affectedComponentType = AffectedComponentType::NetProto;
                     m_originTable = OriginTable::NetworkProtocol;
                 }
+                else if (attributesTypeStr.compare("syscollector_network_iface") == 0)
+                {
+                    m_operation = Operation::IndexSync;
+                    m_affectedComponentType = AffectedComponentType::NetIface;
+                    m_originTable = OriginTable::NetIfaces;
+                }
                 else
                 {
                     // TO DO: Add log.
@@ -2036,6 +2418,12 @@ private:
             m_operation = Operation::Delete;
             m_affectedComponentType = AffectedComponentType::NetProto;
             m_originTable = OriginTable::NetworkProtocol;
+        }
+        else if (action.compare("deleteNetIface") == 0)
+        {
+            m_operation = Operation::Delete;
+            m_affectedComponentType = AffectedComponentType::NetIface;
+            m_originTable = OriginTable::NetIfaces;
         }
         else
         {

@@ -37,6 +37,7 @@ public:
         Hw,
         Ports,
         NetworkProtocol,
+        NetIfaces,
         Invalid
     };
 
@@ -49,6 +50,7 @@ public:
         Hotfix,
         Hardware,
         NetProto,
+        NetIface,
         Invalid
     };
 
@@ -111,50 +113,24 @@ public:
 
     MOCK_METHOD(AffectedComponentType, affectedComponentType, (), (const));
 
+    // NetIface
+    MOCK_METHOD(std::string_view, netIfaceName, (), (const));
+    MOCK_METHOD(std::string_view, netIfaceMac, (), (const));
+    MOCK_METHOD(int64_t, netIfaceRxBytes, (), (const));
+    MOCK_METHOD(int64_t, netIfaceRxDrops, (), (const));
+    MOCK_METHOD(int64_t, netIfaceRxErrors, (), (const));
+    MOCK_METHOD(int64_t, netIfaceRxPackets, (), (const));
+    MOCK_METHOD(int64_t, netIfaceTxBytes, (), (const));
+    MOCK_METHOD(int64_t, netIfaceTxDrops, (), (const));
+    MOCK_METHOD(int64_t, netIfaceTxErrors, (), (const));
+    MOCK_METHOD(int64_t, netIfaceTxPackets, (), (const));
+    MOCK_METHOD(std::string_view, netIfaceAdapter, (), (const));
+    MOCK_METHOD(int64_t, netIfaceMtu, (), (const));
+    MOCK_METHOD(std::string_view, netIfaceState, (), (const));
+    MOCK_METHOD(std::string_view, netIfaceType, (), (const));
+    MOCK_METHOD(std::string_view, netIfaceItemId, (), (const));
+
     std::string m_serializedElement;
-
-    // /**
-    //  * @brief Mock method
-    //  */
-    // MOCK_METHOD(void, vendorMaps, (const nlohmann::json& vendor));
-
-    // /**
-    //  * @brief Mock method
-    //  */
-    // MOCK_METHOD(void, osCpeMaps, (const nlohmann::json& osCpe));
-
-    // /**
-    //  * @brief Mock method
-    //  */
-    // MOCK_METHOD(void, cnaMappings, (const nlohmann::json& cna));
-
-    // /**
-    //  * @brief Mock method
-    //  *
-    //  * @return nlohmann::json
-    //  */
-    // MOCK_METHOD(const nlohmann::json&, vendorMaps, (), (const));
-
-    // /**
-    //  * @brief Mock method
-    //  *
-    //  * @return nlohmann::json
-    //  */
-    // MOCK_METHOD(const nlohmann::json&, osCpeMaps, (), (const));
-
-    // /**
-    //  * @brief Mock method
-    //  *
-    //  * @return nlohmann::json
-    //  */
-    // MOCK_METHOD(const nlohmann::json&, cnaMappings, (), (const));
-
-    // /**
-    //  * @brief Mock method
-    //  *
-    //  * @return std::string
-    //  */
-    // MOCK_METHOD(const std::string&, managerName, (), (const));
 };
 
 #endif // _MOCK_SYSTEM_CONTEXT_HPP
