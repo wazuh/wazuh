@@ -90,7 +90,8 @@ void InventoryHarvesterFacade::initRsyncSubscription()
                              data->data_as_state()->attributes_as_syscollector_osinfo() ||
                              data->data_as_state()->attributes_as_syscollector_ports() ||
                              data->data_as_state()->attributes_as_syscollector_hotfixes() ||
-                             data->data_as_state()->attributes_as_syscollector_hwinfo())
+                             data->data_as_state()->attributes_as_syscollector_hwinfo() ||
+                             data->data_as_state()->attributes_as_syscollector_network_protocol())
                     {
                         pushSystemEvent(message, BufferType::BufferType_RSync);
                     }
@@ -109,9 +110,10 @@ void InventoryHarvesterFacade::initRsyncSubscription()
                              attributesType.compare("syscollector_ports") == 0 ||
                              attributesType.compare("syscollector_hotfixes") == 0 ||
                              attributesType.compare("syscollector_hwinfo") == 0)
-                    {
-                        pushSystemEvent(message, BufferType::BufferType_RSync);
-                    }
+                        attributesType.compare("syscollector_network_protocol") == 0 ||
+                        {
+                            pushSystemEvent(message, BufferType::BufferType_RSync);
+                        }
                 }
                 else if (data->data_type() == Synchronization::DataUnion_integrity_check_global)
                 {
@@ -126,7 +128,8 @@ void InventoryHarvesterFacade::initRsyncSubscription()
                              attributesType.compare("syscollector_osinfo") == 0 ||
                              attributesType.compare("syscollector_ports") == 0 ||
                              attributesType.compare("syscollector_hotfixes") == 0 ||
-                             attributesType.compare("syscollector_hwinfo") == 0)
+                             attributesType.compare("syscollector_hwinfo") == 0 ||
+                             attributesType.compare("syscollector_network_protocol") == 0)
                     {
                         pushSystemEvent(message, BufferType::BufferType_RSync);
                     }

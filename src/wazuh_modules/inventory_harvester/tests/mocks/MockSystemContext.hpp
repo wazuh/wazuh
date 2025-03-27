@@ -36,6 +36,7 @@ public:
         Hotfixes,
         Hw,
         Ports,
+        NetworkProtocol,
         Invalid
     };
 
@@ -47,6 +48,7 @@ public:
         Port,
         Hotfix,
         Hardware,
+        NetProto,
         Invalid
     };
 
@@ -100,6 +102,12 @@ public:
     MOCK_METHOD(int64_t, freeMem, (), (const));
     MOCK_METHOD(int64_t, totalMem, (), (const));
     MOCK_METHOD(int64_t, usedMem, (), (const));
+    MOCK_METHOD(std::string_view, netProtoIface, (), (const));
+    MOCK_METHOD(std::string_view, netProtoType, (), (const));
+    MOCK_METHOD(std::string_view, netProtoGateway, (), (const));
+    MOCK_METHOD(std::string_view, netProtoDhcp, (), (const));
+    MOCK_METHOD(std::string_view, netProtoMetric, (), (const));
+    MOCK_METHOD(std::string_view, netProtoItemId, (), (const));
 
     MOCK_METHOD(AffectedComponentType, affectedComponentType, (), (const));
 

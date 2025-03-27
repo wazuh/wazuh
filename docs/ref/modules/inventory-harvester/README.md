@@ -43,6 +43,7 @@ The **InventoryHarvester** module receives inventory data through flatbuffer mes
    - Programs: Installed programs in the agent endpoint.
    - Processes: Running programs in the agent endpoint at the moment of the scan.
    - Hotfixes: Installed vulnerability and fix patches for Windows system endpoints.
+   - Network Protocol: Network protocol shows information for detected network interfaces.
 
 2. **File Integrity Monitoring**
 

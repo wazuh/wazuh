@@ -48,6 +48,7 @@ public:
         Port,
         Hotfix,
         Hardware,
+        NetProto,
         Invalid
     };
 
@@ -59,6 +60,7 @@ public:
         Hotfixes,
         Hw,
         Ports,
+        NetworkProtocol,
         Invalid
     };
     explicit SystemContext(
@@ -1545,6 +1547,170 @@ public:
         }
         return "";
     }
+    std::string_view netProtoIface()
+    {
+        if (m_type == VariantType::Delta)
+        {
+            if (m_delta->data_as_dbsync_network_protocol() && m_delta->data_as_dbsync_network_protocol()->iface())
+            {
+                return m_delta->data_as_dbsync_network_protocol()->iface()->string_view();
+            }
+        }
+        else if (m_type == VariantType::SyncMsg)
+        {
+            if (m_syncMsg->data_as_state() &&
+                m_syncMsg->data_as_state()->attributes_as_syscollector_network_protocol() &&
+                m_syncMsg->data_as_state()->attributes_as_syscollector_network_protocol()->iface())
+            {
+                return m_syncMsg->data_as_state()
+                    ->attributes_as_syscollector_network_protocol()
+                    ->iface()
+                    ->string_view();
+            }
+        }
+        else
+        {
+            return "";
+        }
+        return "";
+    }
+
+    std::string_view netProtoType()
+    {
+        if (m_type == VariantType::Delta)
+        {
+            if (m_delta->data_as_dbsync_network_protocol() && m_delta->data_as_dbsync_network_protocol()->type())
+            {
+                return m_delta->data_as_dbsync_network_protocol()->type()->string_view();
+            }
+        }
+        else if (m_type == VariantType::SyncMsg)
+        {
+            if (m_syncMsg->data_as_state() &&
+                m_syncMsg->data_as_state()->attributes_as_syscollector_network_protocol() &&
+                m_syncMsg->data_as_state()->attributes_as_syscollector_network_protocol()->type())
+            {
+                return m_syncMsg->data_as_state()->attributes_as_syscollector_network_protocol()->type()->string_view();
+            }
+        }
+        else
+        {
+            return "";
+        }
+        return "";
+    }
+
+    std::string_view netProtoGateway()
+    {
+        if (m_type == VariantType::Delta)
+        {
+            if (m_delta->data_as_dbsync_network_protocol() && m_delta->data_as_dbsync_network_protocol()->gateway())
+            {
+                return m_delta->data_as_dbsync_network_protocol()->gateway()->string_view();
+            }
+        }
+        else if (m_type == VariantType::SyncMsg)
+        {
+            if (m_syncMsg->data_as_state() &&
+                m_syncMsg->data_as_state()->attributes_as_syscollector_network_protocol() &&
+                m_syncMsg->data_as_state()->attributes_as_syscollector_network_protocol()->gateway())
+            {
+                return m_syncMsg->data_as_state()
+                    ->attributes_as_syscollector_network_protocol()
+                    ->gateway()
+                    ->string_view();
+            }
+        }
+        else
+        {
+            return "";
+        }
+        return "";
+    }
+
+    std::string_view netProtoDhcp()
+    {
+        if (m_type == VariantType::Delta)
+        {
+            if (m_delta->data_as_dbsync_network_protocol() && m_delta->data_as_dbsync_network_protocol()->dhcp())
+            {
+                return m_delta->data_as_dbsync_network_protocol()->dhcp()->string_view();
+            }
+        }
+        else if (m_type == VariantType::SyncMsg)
+        {
+            if (m_syncMsg->data_as_state() &&
+                m_syncMsg->data_as_state()->attributes_as_syscollector_network_protocol() &&
+                m_syncMsg->data_as_state()->attributes_as_syscollector_network_protocol()->dhcp())
+            {
+                return m_syncMsg->data_as_state()->attributes_as_syscollector_network_protocol()->dhcp()->string_view();
+            }
+        }
+        else
+        {
+            return "";
+        }
+        return "";
+    }
+
+    std::string_view netProtoMetric()
+    {
+        if (m_type == VariantType::Delta)
+        {
+            if (m_delta->data_as_dbsync_network_protocol() && m_delta->data_as_dbsync_network_protocol()->metric())
+            {
+                return m_delta->data_as_dbsync_network_protocol()->metric()->string_view();
+            }
+        }
+        else if (m_type == VariantType::SyncMsg)
+        {
+            if (m_syncMsg->data_as_state() &&
+                m_syncMsg->data_as_state()->attributes_as_syscollector_network_protocol() &&
+                m_syncMsg->data_as_state()->attributes_as_syscollector_network_protocol()->metric())
+            {
+                return m_syncMsg->data_as_state()
+                    ->attributes_as_syscollector_network_protocol()
+                    ->metric()
+                    ->string_view();
+            }
+        }
+        else
+        {
+            return "";
+        }
+        return "";
+    }
+
+    std::string_view netProtoItemId()
+    {
+        if (m_type == VariantType::Delta)
+        {
+            if (m_delta->data_as_dbsync_network_protocol() && m_delta->data_as_dbsync_network_protocol()->item_id())
+            {
+                return m_delta->data_as_dbsync_network_protocol()->item_id()->string_view();
+            }
+        }
+        else if (m_type == VariantType::SyncMsg)
+        {
+            if (m_syncMsg->data_as_state() &&
+                m_syncMsg->data_as_state()->attributes_as_syscollector_network_protocol() &&
+                m_syncMsg->data_as_state()->attributes_as_syscollector_network_protocol()->item_id())
+            {
+                return m_syncMsg->data_as_state()
+                    ->attributes_as_syscollector_network_protocol()
+                    ->item_id()
+                    ->string_view();
+            }
+        }
+        else
+        {
+            if (m_jsonData->contains("/data/item_id"_json_pointer))
+            {
+                return m_jsonData->at("/data/item_id"_json_pointer).get<std::string_view>();
+            }
+        }
+        return "";
+    }
 
     Operation operation() const
     {
@@ -1633,6 +1799,11 @@ private:
                 m_affectedComponentType = AffectedComponentType::Hardware;
                 m_originTable = OriginTable::Hw;
             }
+            else if (delta->data_type() == SyscollectorDeltas::Provider_dbsync_network_protocol)
+            {
+                m_affectedComponentType = AffectedComponentType::NetProto;
+                m_originTable = OriginTable::NetworkProtocol;
+            }
             else
             {
                 // TO DO: Add log.
@@ -1690,6 +1861,13 @@ private:
                 m_affectedComponentType = AffectedComponentType::Hotfix;
                 m_originTable = OriginTable::Hotfixes;
             }
+            else if (syncMsg->data_as_state()->attributes_type() ==
+                     Synchronization::AttributesUnion_syscollector_network_protocol)
+            {
+                m_operation = Operation::Upsert;
+                m_affectedComponentType = AffectedComponentType::NetProto;
+                m_originTable = OriginTable::NetworkProtocol;
+            }
             else
             {
                 throw std::runtime_error("Attributes type not found in sync message. => " +
@@ -1736,6 +1914,12 @@ private:
                     m_operation = Operation::DeleteAllEntries;
                     m_affectedComponentType = AffectedComponentType::Hotfix;
                     m_originTable = OriginTable::Hotfixes;
+                }
+                else if (attributesTypeStr.compare("syscollector_network_protocol") == 0)
+                {
+                    m_operation = Operation::DeleteAllEntries;
+                    m_affectedComponentType = AffectedComponentType::NetProto;
+                    m_originTable = OriginTable::NetworkProtocol;
                 }
                 else
                 {
@@ -1788,6 +1972,12 @@ private:
                     m_affectedComponentType = AffectedComponentType::Hotfix;
                     m_originTable = OriginTable::Hotfixes;
                 }
+                else if (attributesTypeStr.compare("syscollector_network_protocol") == 0)
+                {
+                    m_operation = Operation::IndexSync;
+                    m_affectedComponentType = AffectedComponentType::NetProto;
+                    m_originTable = OriginTable::NetworkProtocol;
+                }
                 else
                 {
                     // TO DO: Add log.
@@ -1837,6 +2027,12 @@ private:
             m_operation = Operation::Delete;
             m_affectedComponentType = AffectedComponentType::Hotfix;
             m_originTable = OriginTable::Hotfixes;
+        }
+        else if (action.compare("deleteNetProto") == 0)
+        {
+            m_operation = Operation::Delete;
+            m_affectedComponentType = AffectedComponentType::NetProto;
+            m_originTable = OriginTable::NetworkProtocol;
         }
         else
         {
