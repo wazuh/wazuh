@@ -421,10 +421,11 @@ Graph<base::Name, Asset> buildSubgraph(const std::string& subgraphName,
         if (!subgraph.hasNode(parent))
         {
             auto childrenNames = std::string("[");
-            childrenNames += std::accumulate(children.cbegin() + 1,
-                                             children.cend(),
-                                             children.front(),
-                                             [](auto& acc, auto& child) { return acc.toStr() + ", " + child.toStr(); });
+            childrenNames += std::accumulate<decltype(children.cbegin()), std::string>(
+                children.cbegin() + 1,
+                children.cend(),
+                children.front(),
+                [](std::string& acc, auto& child) { return acc + ", " + child.toStr(); });
             childrenNames += "]";
             throw std::runtime_error(fmt::format("Parent '{}' does not exist, required by {}", parent, childrenNames));
         }
