@@ -88,11 +88,8 @@ void InventoryHarvesterFacade::initRsyncSubscription()
                     else if (data->data_as_state()->attributes_as_syscollector_packages() ||
                              data->data_as_state()->attributes_as_syscollector_processes() ||
                              data->data_as_state()->attributes_as_syscollector_osinfo() ||
-<<<<<<< HEAD
-                             data->data_as_state()->attributes_as_syscollector_ports())
-=======
+                             data->data_as_state()->attributes_as_syscollector_ports() ||
                              data->data_as_state()->attributes_as_syscollector_hwinfo())
->>>>>>> 370c6bfc61 (add(inventoryHarvester): Adding hardware info to IH)
                     {
                         pushSystemEvent(message, BufferType::BufferType_RSync);
                     }

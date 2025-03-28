@@ -55,6 +55,7 @@ public:
         else if (originTable == TContext::OriginTable::Ports)
         {
             data->m_serializedElement = serializeToJSON(PortElement<TContext>::build(data.get()));
+        }
         else if (originTable == TContext::OriginTable::Hw)
         {
             data->m_serializedElement = serializeToJSON(HwElement<TContext>::build(data.get()));
