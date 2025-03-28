@@ -1173,6 +1173,8 @@ InstallLocal()
     ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/protocols-index-template.json ${INSTALLDIR}/templates/protocols_states_template.json
     ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/netifaces-index-template.json ${INSTALLDIR}/templates/netifaces_states_template.json
 
+    ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/networks-index-template.json ${INSTALLDIR}/templates/networks_states_template.json
+
     ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/vulnerability_scanner/indexer/template/update-mappings.json ${INSTALLDIR}/templates/vd_states_update_mappings.json
     ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/files-update-mappings.json ${INSTALLDIR}/templates/files_states_update_mappings.json
     ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/registries-update-mappings.json ${INSTALLDIR}/templates/registries_states_update_mappings.json
@@ -1184,6 +1186,8 @@ InstallLocal()
     ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/hardware-update-mappings.json ${INSTALLDIR}/templates/hardware_states_update_mappings.json
     ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/protocols-update-mappings.json ${INSTALLDIR}/templates/protocols_states_update_mappings.json
     ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/netifaces-update-mappings.json ${INSTALLDIR}/templates/netifaces_states_update_mappings.json
+
+    ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/networks-update-mappings.json ${INSTALLDIR}/templates/networks_states_update_mappings.json
 
     # Install Task Manager files
     ${INSTALL} -d -m 0770 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/tasks

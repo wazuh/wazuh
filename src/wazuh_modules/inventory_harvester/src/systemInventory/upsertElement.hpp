@@ -15,8 +15,12 @@
 #include "chainOfResponsability.hpp"
 #include "elements/hotfixElement.hpp"
 #include "elements/hwElement.hpp"
+<<<<<<< HEAD
 #include "elements/netIfaceElement.hpp"
 #include "elements/networkProtocolElement.hpp"
+=======
+#include "elements/netElement.hpp"
+>>>>>>> cdc943812e (add(inventoryHarvester): Adding netaddress info to IH)
 #include "elements/osElement.hpp"
 #include "elements/packageElement.hpp"
 #include "elements/portElement.hpp"
@@ -74,6 +78,10 @@ public:
         else if (originTable == TContext::OriginTable::NetIfaces)
         {
             data->m_serializedElement = serializeToJSON(NetIfaceElement<TContext>::build(data.get()));
+        }
+        else if (originTable == TContext::OriginTable::Net)
+        {
+            data->m_serializedElement = serializeToJSON(NetElement<TContext>::build(data.get()));
         }
         else
         {
