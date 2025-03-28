@@ -1,0 +1,46 @@
+[
+    {
+        "index_name": "wazuh-states-ports-cluster01",
+        "data": [
+            {
+                "agent": {
+                    "id": "003",
+                    "name": "DESKTOP-EQ4F57D",
+                    "version": "v4.9.2",
+                    "ip": "any"
+                },
+                "destination": {
+                    "ip": "::",
+                    "port": 0
+                },
+                "file": {
+                    "inode": "0"
+                },
+                "host": {
+                    "network": {
+                        "egress": {
+                            "queue": 0
+                        },
+                        "ingress": {
+                            "queue": 0
+                        }
+                    }
+                },
+                "interface": {
+                    "state": "listening"
+                },
+                "network": {
+                    "transport": "tcp6"
+                },
+                "process": {
+                    "name": "lsass.exe",
+                    "pid": 668
+                },
+                "source": {
+                    "ip": "::",
+                    "port": 49664
+                }
+            }
+        ]
+    }
+]

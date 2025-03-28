@@ -1,0 +1,30 @@
+{
+  "agent_info": {
+    "agent_id": "002",
+    "agent_ip": "any",
+    "agent_name": "b593602240f5",
+    "agent_version": "v4.11.1"
+  },
+  "data_type": "state",
+  "data": {
+    "attributes_type": "syscollector_ports",
+    "attributes": {
+      "checksum": "40a5e41e48ab0305046a78aee07a379fa3d31bdf",
+      "inode": 15526675,
+      "item_id": "06c15b8bd4d8ea4db9ce38e4918752f228930fe7",
+      "local_ip": "0.0.0.0",
+      "local_port": 8000,
+      "pid": 6124,
+      "process": "python3",
+      "protocol": "tcp",
+      "remote_ip": "0.0.0.0",
+      "remote_port": 0,
+      "rx_queue": 0,
+      "scan_time": "2025/03/21 02:08:02",
+      "state": "listening",
+      "tx_queue": 0
+    },
+    "index": "06c15b8bd4d8ea4db9ce38e4918752f228930fe7",
+    "timestamp": ""
+  }
+}

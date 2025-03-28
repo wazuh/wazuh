@@ -20,8 +20,7 @@ message("[?] Unit test directory: " ${UNIT_SRC_DIR})
 message("[?] Component tests directory: " ${COMPONENT_SRC_DIR})
 
 file(GLOB UNIT_SRC_FILES
-    ${UNIT_SRC_DIR}/*_test.cpp
-    ${UNIT_SRC_DIR}/logger.cpp
+    ${UNIT_SRC_DIR}/*.cpp
     )
 
 message("[?] Files to compile: " ${UNIT_SRC_FILES})
@@ -47,8 +46,7 @@ set_tests_properties(inventory_harvester_utest PROPERTIES LABELS "inventory_harv
 
 
 file(GLOB COMPONENT_SRC_FILES
-    ${COMPONENT_SRC_DIR}/*_test.cpp
-    ${COMPONENT_SRC_DIR}/logger.cpp
+    ${COMPONENT_SRC_DIR}/*.cpp
     )
 
 message("[?] Files to compile: " ${COMPONENT_SRC_FILES})
