@@ -45,7 +45,7 @@ class TestUser:
                     'name': 'test',
                     'password': 'test',
                     'allow_run_as': False,
-                    'roles': [{'id': '1'}],
+                    'roles': [{'name': '1'}],
                     'created_at': 0,
                 },
                 {
@@ -53,7 +53,7 @@ class TestUser:
                     'name': 'test',
                     'password': 'test',
                     'allow_run_as': False,
-                    'roles': [{'id': '1'}],
+                    'roles': [{'name': '1'}],
                     'created_at': 0,
                 },
             ),

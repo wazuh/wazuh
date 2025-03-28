@@ -119,7 +119,6 @@ class TestUsersIndex:
                 query=query, select=select, exclude=exclude, limit=limit, offset=offset, sort=sort
             )
 
-        assert result == [User(**item[index_instance.KEY]) for item in search_result]
         client_mock.search.assert_has_calls(
             [
                 mock.call(
@@ -140,6 +139,7 @@ class TestUsersIndex:
                 ),
             ]
         )
+        assert result == [User(**item[index_instance.KEY]) for item in search_result * 2]
 
     async def test_update(self, index_instance: UsersIndex, client_mock: mock.AsyncMock):
         """Validate the `update` method functionality."""
