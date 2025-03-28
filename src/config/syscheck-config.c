@@ -92,6 +92,7 @@ int initialize_syscheck_configuration(syscheck_config *syscheck) {
     syscheck->enable_synchronization          = 1;
     syscheck->restart_audit                   = 1;
     syscheck->enable_whodata                  = 0;
+    syscheck->whodata_provider                = AUDIT_PROVIDER;
     syscheck->realtime                        = NULL;
     syscheck->audit_healthcheck               = 1;
     syscheck->process_priority                = 10;
@@ -1664,6 +1665,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
 #endif
     const char *xml_whodata_options = "whodata";
     const char *xml_audit_key = "audit_key";
+    const char *xml_provider = "provider";
     const char *xml_audit_hc = "startup_healthcheck";
     const char *xml_process_priority = "process_priority";
     const char *xml_synchronization = "synchronization";
@@ -2115,6 +2117,17 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
                         OS_ClearNode(children);
                         return(OS_INVALID);
                     }
+                } else if (strcmp(children[j]->element, xml_provider) == 0) {
+                    if(strcmp(children[j]->content, "ebpf") == 0)
+                        syscheck->whodata_provider = EBPF_PROVIDER;
+                    else if(strcmp(children[j]->content, "audit") == 0)
+                        syscheck->whodata_provider = AUDIT_PROVIDER;
+                    else
+                    {
+                        mwarn(XML_VALUEERR,children[j]->element,children[j]->content);
+                        OS_ClearNode(children);
+                        return(OS_INVALID);
+                    }
 #ifndef WIN32
                 } else if (strcmp(children[j]->element, xml_queue_size) == 0) {
                     char * end;
@@ -2268,6 +2281,7 @@ char *syscheck_opts2str(char *buf, int buflen, int opts) {
         REALTIME_ACTIVE,
         WHODATA_ACTIVE,
         SCHEDULED_ACTIVE,
+        CHECK_TYPE,
 	    0
 	};
     char *check_strings[] = {
@@ -2286,6 +2300,7 @@ char *syscheck_opts2str(char *buf, int buflen, int opts) {
         "realtime",
         "whodata",
         "scheduled",
+        "reg_value_type",
 	    NULL
 	};
 

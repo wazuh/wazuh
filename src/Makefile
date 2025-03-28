@@ -85,6 +85,7 @@ EXTERNAL_JEMALLOC=external/jemalloc/
 ifeq (${uname_S},Linux)
 EXTERNAL_RPM=external/rpm/
 EXTERNAL_POPT=external/popt/
+EXTERNAL_LIBBPF=external/libbpf-bootstrap/
 endif
 # XXX Becareful NO EXTRA Spaces here
 PG_CONFIG?=pg_config
@@ -947,6 +948,7 @@ ROCKSDB_LIB = $(EXTERNAL_ROCKSDB)build/librocksdb.so
 FLATBUFFERS_LIB = $(EXTERNAL_FLATBUFFERS)build/libflatbuffers.a
 LZMA_LIB = $(EXTERNAL_LZMA)build/liblzma.a
 LUA_LIB = ${EXTERNAL_LUA}install/lib/liblua.a
+LIBBPF_LIB = $(EXTERNAL_LIBBPF)build/modern.bpf.o
 
 EXTERNAL_LIBS := $(JSON_LIB) $(ZLIB_LIB) $(OPENSSL_LIB) $(CRYPTO_LIB) $(SQLITE_LIB) $(LIBYAML_LIB) $(LIBPCRE2_LIB)
 
@@ -999,6 +1001,14 @@ endif
 
 ifeq (${TARGET},server)
 external: $(ROCKSDB_LIB)
+endif
+
+ifeq (${uname_S},Linux)
+ifneq ($(CHECK_CENTOS5),YES)
+ifneq (${TARGET},winagent)
+external: ${LIBBPF_LIB}
+endif
+endif
 endif
 
 ifneq (${TARGET},winagent)
@@ -1057,6 +1067,11 @@ endif
 endif
 endif
 endif
+
+#### libbpf-bootstrap #########
+
+$(LIBBPF_LIB):
+	cd $(EXTERNAL_LIBBPF) && mkdir -p build && cd build && cmake .. && ${MAKE}
 
 ### rocks db ###
 
@@ -1447,11 +1462,20 @@ PRECOMPILED_RES := $(PRECOMPILED_OS)$(PRECOMPILED_ARCH)
 endif
 
 # Agent dependencies
-EXTERNAL_RES := cJSON curl libdb libffi libyaml openssl procps sqlite zlib audit-userspace msgpack bzip2 nlohmann googletest libpcre2 libplist pacman libarchive popt lua rpm rocksdb lzma cpp-httplib benchmark
+EXTERNAL_RES := cJSON curl libdb libffi libyaml openssl procps sqlite zlib audit-userspace msgpack bzip2 nlohmann googletest libpcre2 libplist pacman libarchive popt lua rpm rocksdb lzma cpp-httplib benchmark libbpf-bootstrap
 ifneq (${TARGET},agent)
 ifneq (${TARGET},winagent)
 	# Manager extra dependency
 	EXTERNAL_RES += $(CPYTHON) jemalloc flatbuffers
+endif
+endif
+
+# Check the target and remove libbpf-bootstrap if the target is winagent OR non-Linux OS
+ifeq (${TARGET}, winagent)
+	EXTERNAL_RES := $(filter-out libbpf-bootstrap, $(EXTERNAL_RES))
+else
+ifneq (${uname_S}, Linux)
+	EXTERNAL_RES := $(filter-out libbpf-bootstrap, $(EXTERNAL_RES))
 endif
 endif
 
@@ -2732,6 +2756,7 @@ ifneq ($(wildcard external/*/*),)
 	rm -rf $(EXTERNAL_GOOGLE_TEST)build
 	rm -rf $(EXTERNAL_GOOGLE_BENCHMARK)build
 	rm -rf $(EXTERNAL_ROCKSDB)build
+	rm -rf $(EXTERNAL_LIBBPF)build
 	rm -rf $(EXTERNAL_FLATBUFFERS)build
 	rm -rf $(EXTERNAL_LZMA)build
 	-cd ${EXTERNAL_LIBPLIST} && ${MAKE} clean && rm -rf bin/*

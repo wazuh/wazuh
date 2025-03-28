@@ -199,7 +199,9 @@ cp -rp  etc/templates/config/rhel/* ${RPM_BUILD_ROOT}%{_localstatedir}/packages_
 install -m 0440 VERSION.json ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/manager_installation_scripts/
 install -m 0640 src/init/*.sh ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/manager_installation_scripts/src/init
 
+rm ${RPM_BUILD_ROOT}%{_localstatedir}/lib/modern.bpf.o
 %{_rpmconfigdir}/find-debuginfo.sh
+cp %{_localstatedir}/lib/modern.bpf.o ${RPM_BUILD_ROOT}%{_localstatedir}/lib
 
 exit 0
 
@@ -724,6 +726,9 @@ rm -fr %{buildroot}
 %attr(750, root, wazuh) %{_localstatedir}/lib/libstdc++.so.6
 %attr(750, root, wazuh) %{_localstatedir}/lib/libgcc_s.so.1
 %attr(750, root, wazuh) %{_localstatedir}/lib/libfimdb.so
+%attr(750, root, wazuh) %{_localstatedir}/lib/libfimebpf.so
+%attr(750, root, wazuh) %{_localstatedir}/lib/libbpf.so
+%attr(750, root, wazuh) %{_localstatedir}/lib/modern.bpf.o
 %attr(750, root, wazuh) %{_localstatedir}/lib/libcontent_manager.so
 %attr(750, root, wazuh) %{_localstatedir}/lib/libindexer_connector.so
 %attr(750, root, wazuh) %{_localstatedir}/lib/librocksdb.so.8
