@@ -87,7 +87,7 @@ static struct column_list const TABLE_NETPROTO[NETPROTO_FIELD_COUNT+1] = {
     { .value = { FIELD_TEXT, 3, false, true, NULL, "type", {.text = ""}, true}, .next = &TABLE_NETPROTO[3]},
     { .value = { FIELD_TEXT, 4, false, false, NULL, "gateway", {.text = ""}, true}, .next = &TABLE_NETPROTO[4]},
     { .value = { FIELD_TEXT, 5, false, false, NULL, "dhcp", {.text = ""}, false}, .next = &TABLE_NETPROTO[5]},
-    { .value = { FIELD_INTEGER, 6, false, false, NULL, "metric", {.integer = 0}, true}, .next = &TABLE_NETPROTO[6]},
+    { .value = { FIELD_INTEGER_LONG, 6, false, false, NULL, "metric", {.integer = 0}, true}, .next = &TABLE_NETPROTO[6]},
     { .value = { FIELD_TEXT, 7, false, false, NULL, "checksum", {.text = ""}, false}, .next = &TABLE_NETPROTO[7]},
     { .value = { FIELD_TEXT, 8, false, false, NULL, "item_id", {.text = ""}, true}, .next = NULL }
 };
@@ -2146,7 +2146,7 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
         if (scan_id->valueint < 0) {
             mdebug1("Malformed JSON: field 'id' cannot be negative");
             snprintf(output, OS_MAXSTR + 1, "err Invalid Security Configuration Assessment query syntax, near '%.32s'", curr);
-            cJSON_Delete(event);            
+            cJSON_Delete(event);
             return OS_INVALID;
         }
 
@@ -3269,7 +3269,7 @@ int wdb_parse_netproto(wdb_t * wdb, char * input, char * output) {
     char * iface;
     int type;
     char * gateway;
-    int metric;
+    long metric;
     char * dhcp;
     int result;
 
@@ -5542,7 +5542,7 @@ int wdb_parse_global_delete_agent(wdb_t * wdb, char * input, char * output) {
         j_msg_to_send = cJSON_CreateObject();
         j_agent_info = cJSON_CreateObject();
 
-        
+
         cJSON_AddStringToObject(j_agent_info, "agent_id", padded_agent_id);
         cJSON_AddItemToObject(j_msg_to_send, "agent_info", j_agent_info);
 
