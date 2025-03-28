@@ -44,6 +44,7 @@ public:
         Process,
         System,
         Port,
+        Hardware,
         Invalid
     };
 
@@ -88,6 +89,14 @@ public:
     MOCK_METHOD(std::string_view, portProcess, (), (const));
     MOCK_METHOD(int64_t, portPid, (), (const));
     MOCK_METHOD(std::string_view, portItemId, (), (const));
+
+    MOCK_METHOD(std::string_view, boardInfo, (), (const));
+    MOCK_METHOD(int64_t, cpuCores, (), (const));
+    MOCK_METHOD(std::string_view, cpuName, (), (const));
+    MOCK_METHOD(int64_t, cpuFrequency, (), (const));
+    MOCK_METHOD(int64_t, freeMem, (), (const));
+    MOCK_METHOD(int64_t, totalMem, (), (const));
+    MOCK_METHOD(int64_t, usedMem, (), (const));
 
     MOCK_METHOD(AffectedComponentType, affectedComponentType, (), (const));
 

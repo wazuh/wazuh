@@ -13,6 +13,7 @@
 #define _BUILD_SYSTEM_ELEMENT_HPP
 
 #include "chainOfResponsability.hpp"
+#include "elements/hwElement.hpp"
 #include "elements/osElement.hpp"
 #include "elements/packageElement.hpp"
 #include "elements/portElement.hpp"
@@ -54,6 +55,10 @@ public:
         else if (originTable == TContext::OriginTable::Ports)
         {
             data->m_serializedElement = serializeToJSON(PortElement<TContext>::build(data.get()));
+        }
+        else if (originTable == TContext::OriginTable::Hw)
+        {
+            data->m_serializedElement = serializeToJSON(HwElement<TContext>::build(data.get()));
         }
         else
         {

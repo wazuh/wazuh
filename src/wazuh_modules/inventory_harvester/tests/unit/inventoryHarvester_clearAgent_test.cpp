@@ -73,11 +73,13 @@ TEST_F(InventoryHarvesterClearAgent, HandleRequest_SystemContextSuccess)
     auto mockIndexerProcesses = std::make_unique<StrictMock<MockIndexerConnector>>();
     auto mockIndexerSystem = std::make_unique<StrictMock<MockIndexerConnector>>();
     auto mockIndexerPorts = std::make_unique<StrictMock<MockIndexerConnector>>();
+    auto mockIndexerHardware = std::make_unique<StrictMock<MockIndexerConnector>>();
 
     indexerConnectors.emplace(MockAffectedComponentType::Package, std::move(mockIndexerPackages));
     indexerConnectors.emplace(MockAffectedComponentType::Process, std::move(mockIndexerProcesses));
     indexerConnectors.emplace(MockAffectedComponentType::System, std::move(mockIndexerSystem));
     indexerConnectors.emplace(MockAffectedComponentType::Port, std::move(mockIndexerPorts));
+    indexerConnectors.emplace(MockAffectedComponentType::Hardware, std::move(mockIndexerHardware));
 
     auto context = std::make_shared<MockSystemContext>();
 
@@ -93,11 +95,16 @@ TEST_F(InventoryHarvesterClearAgent, HandleRequest_SystemContextSuccess)
     EXPECT_CALL(*indexerConnectors[MockAffectedComponentType::System],
                 publish("{\"id\":\"001\",\"operation\":\"DELETED_BY_QUERY\"}"))
         .Times(1);
+
     EXPECT_CALL(*indexerConnectors[MockAffectedComponentType::Port],
                 publish("{\"id\":\"001\",\"operation\":\"DELETED_BY_QUERY\"}"))
         .Times(1);
 
-    EXPECT_CALL(*context, agentId()).Times(4).WillRepeatedly(Return("001"));
+    EXPECT_CALL(*indexerConnectors[MockAffectedComponentType::Hardware],
+                publish("{\"id\":\"001\",\"operation\":\"DELETED_BY_QUERY\"}"))
+        .Times(1);
+
+    EXPECT_CALL(*context, agentId()).Times(5).WillRepeatedly(Return("001"));
 
     clearAgent.handleRequest(context);
 }
