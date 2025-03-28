@@ -5,12 +5,12 @@ from wazuh.core.exception import WazuhError, WazuhIndexerError
 from wazuh.core.task.rbac import TARGET_ID, get_rbac_info
 
 
-@patch('wazuh.core.task.rbac.CommandsManager', new_callable=AsyncMock)
+@patch('wazuh.core.task.rbac.CommandsManager')
 @patch('wazuh.core.task.rbac.RBACManager', new_callable=AsyncMock)
 async def test_get_rbac_info(rbac_manager_mock, commands_manager_mock):
     """Check the correct functionality of the `get_rbac_info` function."""
     logger_mock = MagicMock()
-    commands_manager_mock.get_commands.side_effect = (None, StopAsyncIteration)
+    rbac_manager_mock.update.side_effect = (None, None, StopAsyncIteration)
     rbac_manager_mock.return_value.update = AsyncMock()
 
     with pytest.raises(StopAsyncIteration):
@@ -27,7 +27,7 @@ async def test_get_rbac_info(rbac_manager_mock, commands_manager_mock):
         (WazuhError, 1761),
     ],
 )
-@patch('wazuh.core.task.rbac.CommandsManager', new_callable=AsyncMock)
+@patch('wazuh.core.task.rbac.CommandsManager')
 @patch('wazuh.core.task.rbac.RBACManager', new_callable=AsyncMock)
 async def test_get_rbac_info_ko(rbac_manager_mock, commands_manager_mock, exception, code):
     """Check the error handling of the `get_rbac_info` method."""
@@ -43,3 +43,15 @@ async def test_get_rbac_info_ko(rbac_manager_mock, commands_manager_mock, except
         code = f'Error {code} - Error sending request to the indexer'
 
     logger_mock.error.assert_called_with(f'Failed updating RBAC information: {code}', exc_info=False)
+
+
+@patch('wazuh.core.task.rbac.CommandsManager')
+@patch('wazuh.core.task.rbac.RBACManager', new_callable=AsyncMock)
+async def test_get_rbac_info_eof_ko(rbac_manager_mock, commands_manager_mock):
+    """Check the EOF error handling of the `get_rbac_info` method."""
+    commands_manager_mock.get_commands.side_effect = EOFError()
+    logger_mock = MagicMock()
+
+    await get_rbac_info(logger_mock, commands_manager_mock, rbac_manager_mock)
+
+    logger_mock.info.assert_called_with('Cancelling RBAC task')

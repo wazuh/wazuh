@@ -1,4 +1,3 @@
-from asyncio import CancelledError
 from logging import Logger
 
 from wazuh.core.commands_manager import CommandsManager
@@ -31,6 +30,6 @@ async def get_rbac_info(logger: Logger, commands_manager: CommandsManager, rbac_
 
         except (WazuhError, WazuhIndexerError) as e:
             logger.error(f'Failed updating RBAC information: {str(e)}', exc_info=False)
-        except CancelledError:
+        except EOFError:
             logger.info('Cancelling RBAC task')
             return
