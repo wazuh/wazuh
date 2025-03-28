@@ -108,6 +108,12 @@ void wdbi_report_removed(const char* agent_id, wdb_component_t component, sqlite
                 cJSON_AddItemToObject(j_data, "item_id", cJSON_CreateString(sqlite3_column_text(stmt, 4)));
                 router_handle = router_inventory_events_handle;
                 break;
+            case WDB_SYSCOLLECTOR_HWINFO:
+                cJSON_AddStringToObject(j_msg_to_send, "action", "deleteHardware");
+                cJSON_AddItemToObject(j_data, "board_serial", cJSON_CreateString((const char*) sqlite3_column_text(stmt, 0)));
+            case WDB_SYSCOLLECTOR_NETADDRESS:
+                cJSON_AddStringToObject(j_msg_to_send, "action", "deleteNetwork");
+                cJSON_AddItemToObject(j_data, "item_id", cJSON_CreateString((const char*) sqlite3_column_text(stmt, 0)));
             case WDB_FIM:
             case WDB_FIM_FILE:
                 cJSON_AddStringToObject(j_msg_to_send, "action", "deleteFile");

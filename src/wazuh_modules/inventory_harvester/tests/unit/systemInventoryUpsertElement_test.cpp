@@ -176,17 +176,6 @@ TEST_F(SystemInventoryUpsertElement, validAgentID_Ports)
         R"({"id":"001_portItemId","operation":"INSERTED","data":{"agent":{"id":"001","name":"agentName","ip":"agentIp","version":"agentVersion"},"destination":{"ip":"portRemoteIp","port":1234},"file":{"inode":"1111"},"host":{"network":{"egress":{"queue":7000},"ingress":{"queue":11000}}},"interface":{"state":"portState"},"network":{"transport":"portProtocol"},"process":{"name":"portProcess","pid":4321},"source":{"ip":"portLocalIp","port":7777}}})");
 }
 
-TEST_F(SystemInventoryUpsertElement, emptyAgentID_Ports)
-{
-    auto context = std::make_shared<MockSystemContext>();
-    auto upsertElement = std::make_shared<UpsertSystemElement<MockSystemContext>>();
-
-    EXPECT_CALL(*context, agentId()).WillOnce(testing::Return(""));
-    EXPECT_CALL(*context, originTable()).WillOnce(testing::Return(MockSystemContext::OriginTable::Ports));
-
-    EXPECT_ANY_THROW(upsertElement->handleRequest(context));
-}
-
 TEST_F(SystemInventoryUpsertElement, emptyItemId_Ports)
 {
     auto context = std::make_shared<MockSystemContext>();
@@ -197,4 +186,42 @@ TEST_F(SystemInventoryUpsertElement, emptyItemId_Ports)
     EXPECT_CALL(*context, originTable()).WillOnce(testing::Return(MockSystemContext::OriginTable::Ports));
 
     EXPECT_ANY_THROW(upsertElement->handleRequest(context));
+}
+
+TEST_F(SystemInventoryUpsertElement, emptyAgentID_Network)
+{
+    auto context = std::make_shared<MockSystemContext>();
+    auto upsertElement = std::make_shared<UpsertSystemElement<MockSystemContext>>();
+
+    EXPECT_CALL(*context, agentId()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, originTable()).WillOnce(testing::Return(MockSystemContext::OriginTable::Net));
+
+    EXPECT_ANY_THROW(upsertElement->handleRequest(context));
+}
+
+TEST_F(SystemInventoryUpsertElement, validAgentID_Network)
+{
+    auto context = std::make_shared<MockSystemContext>();
+    auto upsertElement = std::make_shared<UpsertSystemElement<MockSystemContext>>();
+
+    EXPECT_CALL(*context, agentId()).WillOnce(testing::Return("001"));
+    EXPECT_CALL(*context, netAddressItemId()).WillOnce(testing::Return("netAddressItemId"));
+    EXPECT_CALL(*context, agentIp()).WillRepeatedly(testing::Return("192.168.0.1"));
+    EXPECT_CALL(*context, originTable()).WillOnce(testing::Return(MockSystemContext::OriginTable::Net));
+    EXPECT_CALL(*context, agentName()).WillOnce(testing::Return("agentName"));
+    EXPECT_CALL(*context, agentVersion()).WillOnce(testing::Return("agentVersion"));
+    EXPECT_CALL(*context, broadcast()).WillOnce(testing::Return("192.168.0.255"));
+    EXPECT_CALL(*context, dhcp()).WillOnce(testing::Return("true"));
+    EXPECT_CALL(*context, metric()).WillOnce(testing::Return("1000"));
+    EXPECT_CALL(*context, name()).WillOnce(testing::Return("eth0"));
+    EXPECT_CALL(*context, netmask()).WillOnce(testing::Return("255.255.255.0"));
+    EXPECT_CALL(*context, protocol()).WillOnce(testing::Return(0));
+
+    EXPECT_NO_THROW(upsertElement->handleRequest(context));
+
+    std::cerr << context->m_serializedElement << std::endl;
+
+    EXPECT_EQ(
+        context->m_serializedElement,
+        R"({"id":"001_netAddressItemId","operation":"INSERTED","data":{"network":{"broadcast":"192.168.0.255","dhcp":"true","ip":"192.168.0.1","metric":"1000","name":"eth0","netmask":"255.255.255.0","protocol":"IPv4"},"agent":{"id":"001","name":"agentName","ip":"192.168.0.1","version":"agentVersion"}}})");
 }

@@ -99,6 +99,11 @@ public:
             PolicyHarvesterManager::instance().buildIndexerTemplatePath("ports"),
             PolicyHarvesterManager::instance().buildIndexerUpdateTemplatePath("ports"),
             Log::GLOBAL_LOG_FUNCTION);
+        m_indexerConnectorInstances[SystemContext::AffectedComponentType::Network] = std::make_unique<IndexerConnector>(
+            PolicyHarvesterManager::instance().buildIndexerConfig("network"),
+            PolicyHarvesterManager::instance().buildIndexerTemplatePath("network"),
+            PolicyHarvesterManager::instance().buildIndexerUpdateTemplatePath("network"),
+            Log::GLOBAL_LOG_FUNCTION);
 
         m_orchestrations[SystemContext::Operation::Upsert] =
             SystemFactoryOrchestrator::create(SystemContext::Operation::Upsert, m_indexerConnectorInstances);

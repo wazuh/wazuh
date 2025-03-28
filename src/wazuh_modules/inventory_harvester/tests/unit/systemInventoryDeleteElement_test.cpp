@@ -133,7 +133,18 @@ TEST_F(SystemInventoryDeleteElement, emptyAgentID_Ports)
     EXPECT_ANY_THROW(deleteElement->handleRequest(context));
 }
 
-TEST_F(SystemInventoryDeleteElement, emptyItemIdPorts)
+TEST_F(SystemInventoryDeleteElement, emptyAgentID_Network)
+{
+    auto context = std::make_shared<MockSystemContext>();
+    auto deleteElement = std::make_shared<DeleteSystemElement<MockSystemContext>>();
+
+    EXPECT_CALL(*context, agentId()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, originTable()).WillOnce(testing::Return(MockSystemContext::OriginTable::Net));
+
+    EXPECT_ANY_THROW(deleteElement->handleRequest(context));
+}
+
+TEST_F(SystemInventoryDeleteElement, emptyIPAddress_Port)
 {
     auto context = std::make_shared<MockSystemContext>();
     auto deleteElement = std::make_shared<DeleteSystemElement<MockSystemContext>>();
@@ -157,6 +168,32 @@ TEST_F(SystemInventoryDeleteElement, validAgentID_Ports)
     EXPECT_NO_THROW(deleteElement->handleRequest(context));
 
     EXPECT_EQ(context->m_serializedElement, R"({"id":"001_1234","operation":"DELETED"})");
+}
+
+TEST_F(SystemInventoryDeleteElement, validAgentIp_Network)
+{
+    auto context = std::make_shared<MockSystemContext>();
+    auto deleteElement = std::make_shared<DeleteSystemElement<MockSystemContext>>();
+
+    EXPECT_CALL(*context, agentId()).WillOnce(testing::Return("001"));
+    EXPECT_CALL(*context, netAddressItemId()).WillOnce(testing::Return("ABC"));
+    EXPECT_CALL(*context, originTable()).WillOnce(testing::Return(MockSystemContext::OriginTable::Net));
+
+    EXPECT_NO_THROW(deleteElement->handleRequest(context));
+
+    EXPECT_EQ(context->m_serializedElement, R"({"id":"001_ABC","operation":"DELETED"})");
+}
+
+TEST_F(SystemInventoryDeleteElement, emptyNetAddressItemId_Network)
+{
+    auto context = std::make_shared<MockSystemContext>();
+    auto deleteElement = std::make_shared<DeleteSystemElement<MockSystemContext>>();
+
+    EXPECT_CALL(*context, agentId()).WillOnce(testing::Return("001"));
+    EXPECT_CALL(*context, netAddressItemId()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, originTable()).WillOnce(testing::Return(MockSystemContext::OriginTable::Net));
+
+    EXPECT_ANY_THROW(deleteElement->handleRequest(context));
 }
 
 TEST_F(SystemInventoryDeleteElement, invalidOriginTable)
