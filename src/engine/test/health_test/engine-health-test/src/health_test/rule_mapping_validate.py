@@ -74,6 +74,6 @@ class UnitResult(UnitResultInterface):
             return f"Error loading allowed rule mapping from '{allowed_rule_mapping_path}': {e}"
 
 def run(args):
-    if not args["rule_folder"]:
+    if not args["integration_rule"]:
         args["target"] = "rule"
     return suite_run(args, UnitResult, debug_mode="-dd")

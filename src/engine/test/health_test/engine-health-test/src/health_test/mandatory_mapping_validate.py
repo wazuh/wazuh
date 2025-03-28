@@ -24,7 +24,7 @@ def transform_dict_to_list(d):
             else:
                 result.append(new_prefix)
         return result
-    
+
     return extract_keys(d)
 
 def verify_mandatory_mapping(expected_json_files, mandatory_mapping, integration_name, reporter, key):
@@ -34,7 +34,7 @@ def verify_mandatory_mapping(expected_json_files, mandatory_mapping, integration
     Report missing fields once per expected JSON file.
     """
     mandatory_mapping_set = set(mandatory_mapping.get(key, []))
-    
+
     for json_file in expected_json_files:
         try:
             with open(json_file, 'r') as f:
@@ -43,7 +43,7 @@ def verify_mandatory_mapping(expected_json_files, mandatory_mapping, integration
                 for expected in expected_data:
                     extracted_fields = transform_dict_to_list(expected)
                     missing_fields.update(mandatory for mandatory in mandatory_mapping_set if mandatory not in extracted_fields)
-                
+
                 if missing_fields:
                     for field in missing_fields:
                         reporter.add_error(integration_name, json_file, f"{field}")
@@ -54,7 +54,7 @@ def find_expected_json_files(test_folder):
     return list(test_folder.rglob('*_expected.json'))
 
 def verify(mandatory_mapping_path, integration: Path, reporter, key):
-    mandatory_mapping = load_mandatory_mapping(mandatory_mapping_path)    
+    mandatory_mapping = load_mandatory_mapping(mandatory_mapping_path)
     if integration.name != 'wazuh-core':
         test_folder = integration / 'test'
         if not test_folder.exists() or not test_folder.is_dir():
@@ -73,7 +73,7 @@ def integration_validator(ruleset_path: Path, integration: str, reporter):
     Accumulate and report errors at the end of the validation.
     """
     integration_path = ruleset_path / 'integrations'
-    
+
     if not integration_path.exists() or not integration_path.is_dir():
         sys.exit(f"Error: '{integration_path}' directory does not exist or not found.")
 
@@ -91,38 +91,38 @@ def integration_validator(ruleset_path: Path, integration: str, reporter):
             if integration.is_dir():
                 verify(mandatory_mapping_path, integration, reporter, 'decoder')
 
-def rules_validator(ruleset_path: Path, rule_folder: str, reporter):
-    rules_path = ruleset_path / 'rules'
-    if not rules_path.exists() or not rules_path.is_dir():
-        reporter.add_error("Rules Validator", str(rules_path), "Error: 'rules' directory does not exist.")
+def rules_validator(ruleset_path: Path, integrations_rules: str, reporter):
+    integration_rule_path = ruleset_path / 'integrations-rules'
+    if not integration_rule_path.exists() or not integration_rule_path.is_dir():
+        reporter.add_error("Rules Validator", str(integration_rule_path), "Error: 'rules' directory does not exist.")
         return
 
     mandatory_mapping_path = ruleset_path / 'base-rules' / 'mandatory_mapping.yml'
     if not mandatory_mapping_path.exists():
         sys.exit(f'Error: {mandatory_mapping_path} file does not exist.')
 
-    if rule_folder:
-        rule = rules_path / rule_folder
+    if integrations_rules:
+        rule = integration_rule_path / integrations_rules
         if not rule.exists():
             sys.exit(f"Rule folder {rule} does not exist.")
-        verify(mandatory_mapping_path, rules_path / rule_folder, reporter, 'rule')
+        verify(mandatory_mapping_path, integration_rule_path / integrations_rules, reporter, 'rule')
     else:
-        for rule_folder in rules_path.iterdir():
-            if rule_folder.is_dir():
-                verify(mandatory_mapping_path, rule_folder, reporter, 'rule')
+        for integrations_rules in integration_rule_path.iterdir():
+            if integrations_rules.is_dir():
+                verify(mandatory_mapping_path, integrations_rules, reporter, 'rule')
 
 def run(args):
     ruleset_path = Path(args['ruleset']).resolve()
     integration = args['integration']
-    rule_folder = args['rule_folder']
+    integrations_rules = args['integration_rule']
 
     if not ruleset_path.is_dir():
         sys.exit(f"Engine ruleset not found: {ruleset_path}")
 
     reporter = ErrorReporter("Validation")
 
-    if rule_folder and integration:
-        sys.exit("Error: Only one of 'integration' or 'rule_folder' can be specified at a time.")
+    if integrations_rules and integration:
+        sys.exit("Error: Only one of 'integration' or 'integrations_rules' can be specified at a time.")
 
     try:
         print("Running mandatory mapping tests.")
@@ -131,18 +131,18 @@ def run(args):
             print("Validating integration only.")
             integration_validator(ruleset_path, integration, reporter)
 
-        elif rule_folder:
+        elif integrations_rules:
             print("Validating rules only.")
-            rules_validator(ruleset_path, rule_folder, reporter)
+            rules_validator(ruleset_path, integrations_rules, reporter)
 
         else:
             print("Validating both integration and rules.")
             integration_validator(ruleset_path, integration, reporter)
-            rules_validator(ruleset_path, rule_folder, reporter)
+            rules_validator(ruleset_path, integrations_rules, reporter)
 
         # After both validators have run, check if there are errors and exit if necessary
         reporter.exit_with_errors("There are fields that should be mapped and are not present in the expected event", ruleset_path)
-        
+
         print("Success execution")
     except Exception as e:
         sys.exit(f"Error running test: {e}")

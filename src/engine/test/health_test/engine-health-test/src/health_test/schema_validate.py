@@ -220,27 +220,28 @@ def integration_validator(schema, ruleset_path: Path, integration: str, reporter
                 verify(schema, integration, reporter)
 
 
-def rules_validator(schema, ruleset_path: Path, rule_folder: str, reporter):
-    rules_path = ruleset_path / 'rules'
-    if not rules_path.exists() or not rules_path.is_dir():
-        reporter.add_error("Rules Validator", str(rules_path), "Error: 'rules' directory does not exist.")
+def rules_validator(schema, ruleset_path: Path, integration_rule: str, reporter):
+    rule_integration_path = ruleset_path / 'integrations'
+    if not rule_integration_path.exists() or not rule_integration_path.is_dir():
+        reporter.add_error("Integration Validator", str(rule_integration_path),
+                           "Error: 'integrations' directory does not exist.")
         return
 
-    if rule_folder:
-        rule = rules_path / rule_folder
-        if not rule.exists():
-            sys.exit(f"Rule folder {rule} does not exist.")
-        verify(schema, rules_path / rule_folder, reporter)
+    if integration_rule:
+        folder = rule_integration_path / integration_rule
+        if not folder.exists():
+            sys.exit(f"Integration {integration_rule} does not exist.")
+        verify(schema, rule_integration_path / integration_rule, reporter)
     else:
-        for rule_folder in rules_path.iterdir():
-            if rule_folder.is_dir():
-                verify(schema, rule_folder, reporter)
+        for integration in rule_integration_path.iterdir():
+            if integration.is_dir():
+                verify(schema, integration, reporter)
 
 
 def run(args):
     ruleset_path = Path(args['ruleset']).resolve()
     integration = args.get('integration')
-    rule_folder = args.get('rule_folder')
+    integration_rule = args.get('integration_rule')
 
     if not ruleset_path.is_dir():
         sys.exit(f"Engine ruleset not found: {ruleset_path}")
@@ -248,8 +249,8 @@ def run(args):
     schema = ruleset_path / "schemas/engine-schema.json"
     reporter = ErrorReporter("Validation")
 
-    if rule_folder and integration:
-        sys.exit("Error: Only one of 'integration' or 'rule_folder' can be specified at a time.")
+    if integration_rule and integration:
+        sys.exit("Error: Only one of 'integration' or 'integration_rule' can be specified at a time.")
 
     try:
         print("Running schema tests.")
@@ -258,14 +259,14 @@ def run(args):
             print("Validating integration only.")
             integration_validator(schema, ruleset_path, integration, reporter)
 
-        elif rule_folder:
+        elif integration_rule:
             print("Validating rules only.")
-            rules_validator(schema, ruleset_path, rule_folder, reporter)
+            rules_validator(schema, ruleset_path, integration_rule, reporter)
 
         else:
             print("Validating both integration and rules.")
             integration_validator(schema, ruleset_path, integration, reporter)
-            rules_validator(schema, ruleset_path, rule_folder, reporter)
+            rules_validator(schema, ruleset_path, integration_rule, reporter)
 
         reporter.exit_with_errors(
             "There are fields present in the expected event that are not in the schema and were not defined as custom",

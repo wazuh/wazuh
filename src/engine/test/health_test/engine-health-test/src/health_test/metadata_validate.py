@@ -29,10 +29,10 @@ def validate_metadata(content, entry, error_reporter):
     for field in ['name', 'date']:
         if not isinstance(author_metadata.get(field), str):
             error_reporter.add_error('metadata', entry, f"'{field}' in author metadata must be of type string")
-    
+
     if not isinstance(metadata.get('versions', None), list):
         error_reporter.add_error('metadata', entry, "'versions' must be of type list")
-    
+
     if not isinstance(metadata.get('references', None), list):
         error_reporter.add_error('metadata', entry, "'references' must be of type list")
 
@@ -44,27 +44,32 @@ def process_entry(entry, resource_handler: rs.ResourceHandler, error_reporter):
     original = resource_handler.load_file(entry)
     validate_metadata(original, entry, error_reporter)
 
-def decoder_validator(args, ruleset_path: Path, resource_handler: rs.ResourceHandler, error_reporter):
-    decoder = args.get('decoder')
-    found_decoder = False
-    decoders_path = ruleset_path / 'decoders'
-    if not decoders_path.exists() or not decoders_path.is_dir():
+def asset_validator(args, ruleset_path: Path, resource_handler: rs.ResourceHandler, asset_type, error_reporter):
+    found_asset = False
+    asset_path = ''
+    if asset_type =='decoder':
+        asset_path = ruleset_path / 'decoders'
+    else:
+        asset_path = ruleset_path / 'rules'
+
+    asset = args[asset_type]
+    if not asset_path.exists() or not asset_path.is_dir():
         sys.exit(f"Decoders directory not found in '{ruleset_path}'.")
 
-    yml_files = list(decoders_path.rglob('*.yml'))
+    yml_files = list(asset_path.rglob('*.yml'))
     for entry in yml_files:
         original = resource_handler.load_file(entry)
         name = original['name']
 
-        if decoder:
-            if name != decoder:
+        if asset:
+            if name != asset:
                 continue
-            found_decoder = True
+            found_asset = True
 
         process_entry(entry, resource_handler, error_reporter)
 
-    if decoder and not found_decoder:
-        sys.exit(f"Error: Decoder '{decoder}' not found in the provided decoders directory.")
+    if asset and not found_asset:
+        sys.exit(f"Error: Asset '{asset}' not found in the provided directory.")
 
     return error_reporter.has_errors()
 
@@ -137,30 +142,33 @@ def run(args):
 
     error_reporter = ErrorReporter("Validation")
     integration_arg = args.get('integration')
-    rule_folder_arg = args.get('rule_folder')
+    integration_rule_arg = args.get('integration_rule')
     decoder_arg = args.get('decoder')
+    rule_arg = args.get('rule')
 
-    specified_args = [arg for arg in [integration_arg, rule_folder_arg, decoder_arg] if arg]
-    
+    specified_args = [arg for arg in [integration_arg, integration_rule_arg, rule_arg, decoder_arg] if arg]
+
     if len(specified_args) > 1:
-        sys.exit("Error: Only one of 'integration', 'rule_folder', or 'decoder' can be specified at a time.")
+        sys.exit("Error: Only one of 'integration', 'rule_folder', 'rule' or 'decoder' can be specified at a time.")
 
     try:
         print("Running metadata tests.")
-        if rule_folder_arg:
-            print("Validating rules only.")
+        if integration_rule_arg:
+            print("Validating integrations rules only.")
             rules_validator(args, ruleset_path, resource_handler, error_reporter)
         elif integration_arg:
             print("Validating integration only.")
             integration_validator(args, ruleset_path, resource_handler, error_reporter)
         elif decoder_arg:
             print("Validating decoder only.")
-            decoder_validator(args, ruleset_path, resource_handler, error_reporter)
+            asset_validator(args, ruleset_path, resource_handler, 'decoder', error_reporter)
+        elif rule_arg:
+            print("Validating decoder only.")
+            asset_validator(args, ruleset_path, resource_handler, 'rule', error_reporter)
         else:
             print("No specific arguments provided, validating both integration and rules.")
             integration_validator(args, ruleset_path, resource_handler, error_reporter)
             rules_validator(args, ruleset_path, resource_handler, error_reporter)
-            decoder_validator(args, ruleset_path, resource_handler, error_reporter)
 
         if error_reporter.has_errors():
             error_reporter.exit_with_errors("There are mandatory fields in the metadata field that are not present", ruleset_path)

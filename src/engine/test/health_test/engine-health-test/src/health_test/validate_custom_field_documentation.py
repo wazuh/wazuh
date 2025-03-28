@@ -95,10 +95,10 @@ def integration_validator(ruleset_path: Path, integration: str, reporter):
             if integration.is_dir():
                 verify(integration, allowed_types, reporter)
 
-def rules_validator(ruleset_path: Path, rule_folder: str, reporter):
-    rules_path = ruleset_path / 'rules'
-    if not rules_path.exists() or not rules_path.is_dir():
-        reporter.add_error("Rules Validator", str(rules_path), "Error: 'rules' directory does not exist.")
+def integration_rules_validator(ruleset_path: Path, integration_rules: str, reporter):
+    integration_rules_path = ruleset_path / 'integrations-rules'
+    if not integration_rules_path.exists() or not integration_rules_path.is_dir():
+        reporter.add_error("Rules Validator", str(integration_rules_path), "Error: 'rules' directory does not exist.")
         return
 
     schema = ruleset_path / "schemas/engine-schema.json"
@@ -110,28 +110,28 @@ def rules_validator(ruleset_path: Path, rule_folder: str, reporter):
 
     allowed_types = {field_info["type"] for field_info in schema_data["fields"].values()}
 
-    if rule_folder:
-        rule = rules_path / rule_folder
+    if integration_rules:
+        rule = integration_rules_path / integration_rules
         if not rule.exists():
-            sys.exit(f"Rule folder {rule} does not exist.")
-        verify(rules_path / rule_folder, allowed_types, reporter)
+            sys.exit(f"Integration rule {rule} does not exist.")
+        verify(integration_rules_path / integration_rules, allowed_types, reporter)
     else:
-        for rule_folder in rules_path.iterdir():
-            if rule_folder.is_dir():
-                verify(rule_folder, allowed_types, reporter)
+        for integration_rules in integration_rules_path.iterdir():
+            if integration_rules.is_dir():
+                verify(integration_rules, allowed_types, reporter)
 
 def run(args):
     ruleset_path = Path(args['ruleset']).resolve()
     integration = args['integration']
-    rule_folder = args['rule_folder']
+    integration_rule = args['integration_rule']
 
     if not ruleset_path.is_dir():
         sys.exit(f"Engine ruleset not found: {ruleset_path}")
 
     reporter = ErrorReporter("Validation")
 
-    if rule_folder and integration:
-        sys.exit("Error: Only one of 'integration' or 'rule_folder' can be specified at a time.")
+    if integration_rule and integration:
+        sys.exit("Error: Only one of 'integration' or 'integration_rule' can be specified at a time.")
 
     try:
         print("Running custom field documentation tests.")
@@ -140,14 +140,14 @@ def run(args):
             print("Validating integration only.")
             integration_validator(ruleset_path, integration, reporter)
 
-        elif rule_folder:
+        elif integration_rule:
             print("Validating rules only.")
-            rules_validator(ruleset_path, rule_folder, reporter)
+            integration_rules_validator(ruleset_path, integration_rule, reporter)
 
         else:
             print("Validating both integration and rules.")
             integration_validator(ruleset_path, integration, reporter)
-            rules_validator(ruleset_path, rule_folder, reporter)
+            integration_rules_validator(ruleset_path, integration_rule, reporter)
 
         # After both validators have run, check if there are errors and exit if necessary
         reporter.exit_with_errors("There are fields that should be mapped and are not present in the expected event", ruleset_path)

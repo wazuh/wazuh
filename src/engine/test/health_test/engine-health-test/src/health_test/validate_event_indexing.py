@@ -602,9 +602,9 @@ def rule_health_test(env_path: Path, ruleset_name: Optional[str] = None, skip: O
     if not bin_path.is_file():
         sys.exit(f"Engine binary not found: {bin_path}")
 
-    rules_path = (env_path / "ruleset/rules").resolve()
-    if not rules_path.exists():
-        sys.exit(f"Rules directory not found: {rules_path}")
+    integration_rule_path = (env_path / "ruleset/integrations-rules").resolve()
+    if not integration_rule_path.exists():
+        sys.exit(f"Rules directory not found: {integration_rule_path}")
     print("Environment validated.")
 
     print("Starting engine...")
@@ -619,12 +619,12 @@ def rule_health_test(env_path: Path, ruleset_name: Optional[str] = None, skip: O
     try:
         if ruleset_name is not None:
             print(f"Specific ruleset: {ruleset_name}")
-            ruleset_path = rules_path / ruleset_name
+            ruleset_path = integration_rule_path / ruleset_name
             if not ruleset_path.exists():
-                sys.exit(f"Ruleset {ruleset_name} not found.")
+                sys.exit(f"Integration rule {ruleset_name} not found.")
             rules.append(ruleset_path)
         else:
-            for ruleset_path in rules_path.iterdir():
+            for ruleset_path in integration_rule_path.iterdir():
                 if not ruleset_path.is_dir():
                     continue
                 print(f'Discovered ruleset: {ruleset_path.name}')
@@ -681,16 +681,16 @@ def rule_health_test(env_path: Path, ruleset_name: Optional[str] = None, skip: O
 def run(args):
     env_path = Path(args['environment'])
     integration_name = args.get('integration')
-    rule_folder = args.get('rule_folder')
+    integration_rule = args.get('integration_rule')
     target = args.get('target')
     skip = args['skip']
 
-    provided_args = sum([bool(integration_name), bool(rule_folder), bool(target)])
+    provided_args = sum([bool(integration_name), bool(integration_rule), bool(target)])
     if provided_args > 1:
-        sys.exit("It is only possible to specify one of the following arguments: 'target', 'integration' or 'rule_folder'")
+        sys.exit("It is only possible to specify one of the following arguments: 'target', 'integration' or 'integration_rule'")
 
-    if rule_folder:
-        return rule_health_test(env_path, rule_folder, skip)
+    if integration_rule:
+        return rule_health_test(env_path, integration_rule, skip)
 
     elif integration_name:
         return decoder_health_test(env_path, integration_name, skip)
@@ -699,9 +699,9 @@ def run(args):
         if target == 'decoder':
             return decoder_health_test(env_path, integration_name, skip)
         elif target == 'rule':
-            return rule_health_test(env_path, rule_folder, skip)
+            return rule_health_test(env_path, integration_rule, skip)
         else:
             sys.exit(f"The {target} target is not currently supported")
 
     else:
-        sys.exit("At least one of the following arguments must be specified: 'target', 'integration' or 'rule_folder'")
+        sys.exit("At least one of the following arguments must be specified: 'target', 'integration' or 'integration_rule'")

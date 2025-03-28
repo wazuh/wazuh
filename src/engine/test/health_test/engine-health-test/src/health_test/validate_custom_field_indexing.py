@@ -685,7 +685,7 @@ def decoder_health_test(env_path: Path, integration_name: Optional[str] = None, 
         sys.exit(1)
 
 
-def rule_health_test(env_path: Path, ruleset_name: Optional[str] = None, skip: Optional[List[str]] = None):
+def rule_health_test(env_path: Path, integration_rule: Optional[str] = None, skip: Optional[List[str]] = None):
     print("Validating environment for rules...")
     conf_path = (env_path / "config.env").resolve()
     if not conf_path.is_file():
@@ -695,9 +695,9 @@ def rule_health_test(env_path: Path, ruleset_name: Optional[str] = None, skip: O
     if not bin_path.is_file():
         sys.exit(f"Engine binary not found: {bin_path}")
 
-    rules_path = (env_path / "ruleset/rules").resolve()
-    if not rules_path.exists():
-        sys.exit(f"Rules directory not found: {rules_path}")
+    integrations_rules_path = (env_path / "ruleset/integrations-rules").resolve()
+    if not integrations_rules_path.exists():
+        sys.exit(f"Integrations rules directory not found: {integrations_rules_path}")
     print("Environment validated.")
 
     schema = env_path / "ruleset/schemas/engine-schema.json"
@@ -717,19 +717,19 @@ def rule_health_test(env_path: Path, ruleset_name: Optional[str] = None, skip: O
     original_log_level = ""
 
     try:
-        if ruleset_name is not None:
-            print(f"Specific ruleset: {ruleset_name}")
-            ruleset_path = rules_path / ruleset_name
+        if integration_rule is not None:
+            print(f"Specific ruleset: {integration_rule}")
+            ruleset_path = integrations_rules_path / integration_rule
             if not ruleset_path.exists():
-                sys.exit(f"Ruleset {ruleset_name} not found.")
+                sys.exit(f"Ruleset {integration_rule} not found.")
             rules.append(ruleset_path)
         else:
-            for ruleset_path in rules_path.iterdir():
+            for ruleset_path in integrations_rules_path.iterdir():
                 if not ruleset_path.is_dir():
                     continue
-                print(f'Discovered ruleset: {ruleset_path.name}')
+                print(f'Discovered integration rule: {ruleset_path.name}')
                 if skip and ruleset_path.name in skip:
-                    print(f'Skipping ruleset: {ruleset_path.name}')
+                    print(f'Skipping integration rule: {ruleset_path.name}')
                     continue
                 rules.append(ruleset_path)
 
@@ -777,16 +777,16 @@ def rule_health_test(env_path: Path, ruleset_name: Optional[str] = None, skip: O
 def run(args):
     env_path = Path(args['environment'])
     integration_name = args.get('integration')
-    rule_folder = args.get('rule_folder')
+    integration_rule = args.get('integration_rule')
     target = args.get('target')
     skip = args['skip']
 
-    provided_args = sum([bool(integration_name), bool(rule_folder), bool(target)])
+    provided_args = sum([bool(integration_name), bool(integration_rule), bool(target)])
     if provided_args > 1:
-        sys.exit("It is only possible to specify one of the following arguments: 'target', 'integration' or 'rule_folder'")
+        sys.exit("It is only possible to specify one of the following arguments: 'target', 'integration' or 'integration_rule'")
 
-    if rule_folder:
-        return rule_health_test(env_path, rule_folder, skip)
+    if integration_rule:
+        return rule_health_test(env_path, integration_rule, skip)
 
     elif integration_name:
         return decoder_health_test(env_path, integration_name, skip)
@@ -795,7 +795,7 @@ def run(args):
         if target == 'decoder':
             return decoder_health_test(env_path, integration_name, skip)
         elif target == 'rule':
-            return rule_health_test(env_path, rule_folder, skip)
+            return rule_health_test(env_path, integration_rule, skip)
         else:
             sys.exit(f"The {target} target is not currently supported")
 
