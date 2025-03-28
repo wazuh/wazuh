@@ -35,6 +35,22 @@ The **InventoryHarvester** module receives inventory data through flatbuffer mes
 
 ---
 
+### Supported modules
+
+1. **System inventory**
+
+   - System: Operating system information.
+   - Programs: Installed programs in the agent endpoint.
+   - Processes: Running programs in the agent endpoint at the moment of the scan.
+   - Hotfixes: Installed vulnerability and fix patches for Windows system endpoints.
+
+2. **File Integrity Monitoring**
+
+   - Files: Monitored files
+   - Registries: Monitored registries for Windows system endpoints.
+
+---
+
 ## Related Epic
 
 FIM (File Integrity Monitoring) and Inventory modules can leverage global queries in the Wazuh Indexer to perform complex searches and filtering on collected data. This capability significantly enhances Wazuh’s security and compliance features.

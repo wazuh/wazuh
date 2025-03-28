@@ -1134,6 +1134,7 @@ InstallLocal()
     ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/processes-index-template.json ${INSTALLDIR}/templates/processes_states_template.json
     ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/system-index-template.json ${INSTALLDIR}/templates/system_states_template.json
     ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/ports-index-template.json ${INSTALLDIR}/templates/ports_states_template.json
+    ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/hotfixes-index-template.json ${INSTALLDIR}/templates/hotfixes_states_template.json
 
     ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/vulnerability_scanner/indexer/template/update-mappings.json ${INSTALLDIR}/templates/vd_states_update_mappings.json
     ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/files-update-mappings.json ${INSTALLDIR}/templates/files_states_update_mappings.json
@@ -1142,6 +1143,7 @@ InstallLocal()
     ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/processes-update-mappings.json ${INSTALLDIR}/templates/processes_states_update_mappings.json
     ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/system-update-mappings.json ${INSTALLDIR}/templates/system_states_update_mappings.json
     ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/ports-update-mappings.json ${INSTALLDIR}/templates/ports_states_update_mappings.json
+    ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/hotfixes-update-mappings.json ${INSTALLDIR}/templates/hotfixes_states_update_mappings.json
 
     # Install Task Manager files
     ${INSTALL} -d -m 0770 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/tasks

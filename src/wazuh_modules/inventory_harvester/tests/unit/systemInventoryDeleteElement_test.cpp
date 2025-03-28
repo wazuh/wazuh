@@ -129,7 +129,6 @@ TEST_F(SystemInventoryDeleteElement, emptyAgentID_Ports)
 
     EXPECT_CALL(*context, agentId()).WillOnce(testing::Return(""));
     EXPECT_CALL(*context, originTable()).WillOnce(testing::Return(MockSystemContext::OriginTable::Ports));
-
     EXPECT_ANY_THROW(deleteElement->handleRequest(context));
 }
 
@@ -157,6 +156,41 @@ TEST_F(SystemInventoryDeleteElement, validAgentID_Ports)
     EXPECT_NO_THROW(deleteElement->handleRequest(context));
 
     EXPECT_EQ(context->m_serializedElement, R"({"id":"001_1234","operation":"DELETED"})");
+}
+TEST_F(SystemInventoryDeleteElement, emptyAgentID_Hotfixes)
+{
+    auto context = std::make_shared<MockSystemContext>();
+    auto deleteElement = std::make_shared<DeleteSystemElement<MockSystemContext>>();
+
+    EXPECT_CALL(*context, agentId()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, originTable()).WillOnce(testing::Return(MockSystemContext::OriginTable::Hotfixes));
+    EXPECT_ANY_THROW(deleteElement->handleRequest(context));
+}
+
+TEST_F(SystemInventoryDeleteElement, emptyHotfix_Hotfixes)
+{
+    auto context = std::make_shared<MockSystemContext>();
+    auto deleteElement = std::make_shared<DeleteSystemElement<MockSystemContext>>();
+
+    EXPECT_CALL(*context, agentId()).WillOnce(testing::Return("001"));
+    EXPECT_CALL(*context, hotfixName()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, originTable()).WillOnce(testing::Return(MockSystemContext::OriginTable::Hotfixes));
+
+    EXPECT_ANY_THROW(deleteElement->handleRequest(context));
+}
+
+TEST_F(SystemInventoryDeleteElement, validAgentID_Hotfixes)
+{
+    auto context = std::make_shared<MockSystemContext>();
+    auto deleteElement = std::make_shared<DeleteSystemElement<MockSystemContext>>();
+
+    EXPECT_CALL(*context, agentId()).WillOnce(testing::Return("001"));
+    EXPECT_CALL(*context, hotfixName()).WillOnce(testing::Return("KB12345"));
+    EXPECT_CALL(*context, originTable()).WillOnce(testing::Return(MockSystemContext::OriginTable::Hotfixes));
+
+    EXPECT_NO_THROW(deleteElement->handleRequest(context));
+
+    EXPECT_EQ(context->m_serializedElement, R"({"id":"001_KB12345","operation":"DELETED"})");
 }
 
 TEST_F(SystemInventoryDeleteElement, invalidOriginTable)

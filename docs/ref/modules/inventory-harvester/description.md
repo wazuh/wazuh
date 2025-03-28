@@ -1,12 +1,12 @@
 # Description
 
+The following sections present representative examples of the supported modules in the WCS schema.
+
 ## FIM
 
 ## Inventory
 
 ### Ports
-
-
 
 This is an example of the indexed ports format:
 
@@ -49,5 +49,29 @@ This is an example of the indexed ports format:
         "ip": "0.0.0.0",
         "port": 8000
     }
+}
+```
+
+### Hotfixes
+
+Here is an example of the indexed hotfixes format. The event ID consists of the agent ID and the hotfix ID.
+
+```json
+{
+  "id": "001_KB12345",
+  "operation": "INSERTED",
+  "data": {
+    "package": {
+      "hotfix": {
+        "name": "KB12345"
+      }
+    },
+    "agent": {
+      "id": "001",
+      "name": "agentName",
+      "ip": "agentIp",
+      "version": "agentVersion"
+    }
+  }
 }
 ```
