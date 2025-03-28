@@ -221,7 +221,6 @@ Catalog::postResource(const Resource& collection, const std::string& namespaceSt
     }
 
     return base::noError();
-    ;
 }
 
 base::OptError Catalog::checkResourceInNamespace(const api::catalog::Resource& item,
@@ -346,7 +345,6 @@ base::OptError Catalog::putResource(const Resource& item, const std::string& con
     }
 
     return base::noError();
-    ;
 }
 
 base::RespOrError<store::Doc> Catalog::getDoc(const Resource& resource) const
@@ -424,6 +422,7 @@ base::RespOrError<std::string> Catalog::getResource(const Resource& resource, co
         return formatContent(content);
     }
 
+    // Document
     // Check if resource exist in the namespace requested
     auto error = checkResourceInNamespace(resource, namespaceId, "get");
     if (base::isError(error))
@@ -439,18 +438,20 @@ base::RespOrError<std::string> Catalog::getResource(const Resource& resource, co
     }
 
     auto doc = base::getResponse<store::Doc>(docResult);
-    if (doc.exists("/original"))
+
+    // Check if the document has the original content
+    if (doc.exists("/original") && doc.exists("/json"))
     {
-        auto original = doc.getJson("/json");
-        if (original)
+        // return it if it is the same format as the requested
+        if (doc.getString("/format").value() == Resource::formatToStr(resource.m_format))
         {
-            return formatContent(std::move(original.value()));
+            return doc.getString("/original").value();
         }
 
-        return base::Error {"Could not get the original content from the store"};
+        doc = doc.getJson("/json").value();
     }
-
-    // TODO: this is a workaround so tests pass. Update tests!!!
+    // If the document does not have the original content, or the format is not the same as the requested
+    // return the content in the requested format
     return formatContent(std::move(doc));
 }
 
