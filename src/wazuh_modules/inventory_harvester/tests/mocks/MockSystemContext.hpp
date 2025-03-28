@@ -12,6 +12,7 @@
 #ifndef _MOCK_SYSTEM_CONTEXT_HPP
 #define _MOCK_SYSTEM_CONTEXT_HPP
 
+#include <cstdint>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -35,6 +36,7 @@ public:
         Os,
         Hw,
         Ports,
+        Net,
         Invalid
     };
 
@@ -44,6 +46,7 @@ public:
         Process,
         System,
         Port,
+        Network,
         Invalid
     };
 
@@ -88,6 +91,13 @@ public:
     MOCK_METHOD(std::string_view, portProcess, (), (const));
     MOCK_METHOD(int64_t, portPid, (), (const));
     MOCK_METHOD(std::string_view, portItemId, (), (const));
+    MOCK_METHOD(std::string_view, netAddressItemId, (), (const));
+    MOCK_METHOD(std::string_view, broadcast, (), (const));
+    MOCK_METHOD(std::string_view, dhcp, (), (const));
+    MOCK_METHOD(std::string_view, metric, (), (const));
+    MOCK_METHOD(std::string_view, name, (), (const));
+    MOCK_METHOD(std::string_view, netmask, (), (const));
+    MOCK_METHOD(int64_t, protocol, (), (const));
 
     MOCK_METHOD(AffectedComponentType, affectedComponentType, (), (const));
 
