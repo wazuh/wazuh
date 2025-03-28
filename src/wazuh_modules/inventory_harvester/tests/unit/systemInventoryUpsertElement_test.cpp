@@ -240,7 +240,7 @@ TEST_F(SystemInventoryUpsertElement, emptyBoardId_Hw)
 
     EXPECT_CALL(*context, agentId()).WillOnce(testing::Return("001"));
     EXPECT_CALL(*context, boardInfo()).WillOnce(testing::Return(""));
-    EXPECT_CALL(*context, originTable()).WillOnce(testing::Return(MockSystemContext::OriginTable::Ports));
+    EXPECT_CALL(*context, originTable()).WillOnce(testing::Return(MockSystemContext::OriginTable::Hw));
 
     EXPECT_ANY_THROW(upsertElement->handleRequest(context));
 }
