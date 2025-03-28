@@ -1,0 +1,33 @@
+{
+  "agent_info": {
+    "agent_id": "001",
+    "agent_ip": "any",
+    "agent_name": "c0ce505227a4",
+    "agent_version": "v4.11.0"
+  },
+  "data_type": "state",
+  "data": {
+    "attributes_type": "syscollector_network_iface",
+    "attributes": {
+      "adapter": null,
+      "checksum": "c1a328807632233a9b1e01bb4386c3d75cae5c15",
+      "item_id": "d4aa8b01955e438235d586585492f3f5edceec1b",
+      "mac": "14:15:6e:37:f2:7e",
+      "mtu": 1500,
+      "name": "eth0",
+      "rx_bytes": 438322,
+      "rx_dropped": 0,
+      "rx_errors": 0,
+      "rx_packets": 555,
+      "scan_time": "2025/03/27 01:02:37",
+      "state": "up",
+      "tx_bytes": 22763,
+      "tx_dropped": 0,
+      "tx_errors": 0,
+      "tx_packets": 304,
+      "type": "ethernet"
+    },
+    "index": "d4aa8b01955e438235d586585492f3f5edceec1b",
+    "timestamp": ""
+  }
+}

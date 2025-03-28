@@ -1,10 +1,5 @@
 {
     "index_patterns": [
-      "wazuh-states-files-*",
-      "wazuh-states-registries-*",
-      "wazuh-states-packages-*",
-      "wazuh-states-system-*",
-      "wazuh-states-processes-*",
       "wazuh-states-netifaces-*"
     ],
     "priority": 1,
