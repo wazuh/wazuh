@@ -70,7 +70,8 @@ on:
 
 jobs:
   build-and-upload:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
+    container: ubuntu:20.04
     timeout-minutes: 60
 
     env:
@@ -100,16 +101,29 @@ jobs:
 
       - name: Install dependencies
         run: |
-          sudo apt update -y
-          sudo apt install -y gcc make golang-go python3-pip python3-venv
-          sudo apt install -y apt-transport-https ca-certificates curl software-properties-common
+          apt-get update -y
+          apt-get install sudo -y
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y gcc make golang-go python3-pip python3-venv
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y apt-transport-https ca-certificates curl software-properties-common
           curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
           echo "deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
-          sudo apt update -y
-          sudo apt install -y docker-ce
+          sudo apt-get update -y
+          sudo apt-get install -y docker-ce
           export PATH=$PATH:/usr/local/go/bin
-          go get -u github.com/magefile/mage
+          go install github.com/magefile/mage
           echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
+
+      - name: Compile and verify Mage
+        run: |
+          mkdir -p build
+          export PATH="$(go env GOPATH)/bin:$PATH"
+
+          $(go env GOPATH)/bin/mage -compile build/mage-linux-amd64
+          ls -l build/mage-linux-amd64 || { echo "Error: Mage binary not found"; exit 1; }
+
+          sudo cp build/mage-linux-amd64 /usr/local/bin/mage-linux-amd64
+          sudo chmod +x /usr/local/bin/mage-linux-amd64
+          echo "/usr/local/bin" >> $GITHUB_PATH
 
       - name: Apply patch for Ubuntu build
         run: |
@@ -130,13 +144,14 @@ jobs:
 
       - name: Package Filebeat
         working-directory: filebeat
+        shell: bash
         run: |
           if [[ "${{ inputs.architecture }}" == "x86_64" ||  "${{ inputs.architecture }}" == "amd64" ]]; then
             arch="amd64"
           elif [[ "${{ inputs.architecture }}" == "aarch64" || "${{ inputs.architecture }}" == "arm64" ]]; then
             arch="arm64"
           fi
-          PLATFORMS=linux/${arch} PACKAGES=${{ inputs.system }} mage package
+          PLATFORMS=linux/${arch} PACKAGES=${{ inputs.system }} /usr/local/bin/mage-linux-amd64 package
 
       - name: Upload Filebeat package to S3
         working-directory: filebeat/build/distributions
