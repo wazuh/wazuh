@@ -122,9 +122,9 @@ Here is an example of the indexed Network Protocol format. The event ID consists
       "version": "5.4.0"
     },
     "network": {
-      "dhcp": "enabled",
+      "dhcp": true,
       "gateway": "192.168.1.1",
-      "metric": "10",
+      "metric": 10,
       "type": "ethernet"
     },
     "observer": {

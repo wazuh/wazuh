@@ -55,9 +55,16 @@ public:
         element.data.agent.version = data->agentVersion();
         element.data.agent.ip = data->agentIp();
 
-        element.data.network.dhcp = data->netProtoDhcp();
+        element.data.network.dhcp = data->netProtoDhcp().compare("enabled") == 0 ? true : false;
         element.data.network.gateway = data->netProtoGateway();
-        element.data.network.metric = data->netProtoMetric();
+        element.data.network.metric = 0L;
+        try
+        {
+            element.data.network.metric = std::strtol(std::string(data->netProtoMetric()).c_str(), NULL, 10);
+        }
+        catch (...)
+        {
+        }
         element.data.network.type = data->netProtoType();
 
         element.data.observer.ingress.interface.name = data->netProtoIface();
