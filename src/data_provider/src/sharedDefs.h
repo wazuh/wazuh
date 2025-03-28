@@ -27,6 +27,7 @@ constexpr auto WM_SYS_NET_DIR {"/proc/net/" };
 constexpr auto WM_SYS_PROC_DIR {"/proc/"};
 
 constexpr auto DPKG_PATH {"/var/lib/dpkg/"};
+constexpr auto DPKG_INFO_PATH {"/var/lib/dpkg/info/"};
 constexpr auto DPKG_STATUS_PATH {"/var/lib/dpkg/status"};
 
 constexpr auto RPM_PATH {"/var/lib/rpm/"};
