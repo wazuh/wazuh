@@ -1,5 +1,5 @@
 /*
- * Wazuh Vulnerability scanner - Scan Orchestrator
+ * Wazuh Inventory Harvester - Upsert element
  * Copyright (C) 2015, Wazuh Inc.
  * January 22, 2025.
  *
@@ -13,6 +13,7 @@
 #define _BUILD_SYSTEM_ELEMENT_HPP
 
 #include "chainOfResponsability.hpp"
+#include "elements/hotfixElement.hpp"
 #include "elements/osElement.hpp"
 #include "elements/packageElement.hpp"
 #include "elements/portElement.hpp"
@@ -54,6 +55,10 @@ public:
         else if (originTable == TContext::OriginTable::Ports)
         {
             data->m_serializedElement = serializeToJSON(PortElement<TContext>::build(data.get()));
+        }
+        else if (originTable == TContext::OriginTable::Hotfixes)
+        {
+            data->m_serializedElement = serializeToJSON(HotfixElement<TContext>::build(data.get()));
         }
         else
         {

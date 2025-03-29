@@ -5,7 +5,8 @@
       "wazuh-states-packages-*",
       "wazuh-states-system-*",
       "wazuh-states-processes-*",
-      "wazuh-states-ports-*"
+      "wazuh-states-ports-*",
+      "wazuh-states-hotfixes-*"
     ],
     "priority": 1,
     "template": {

@@ -1,5 +1,5 @@
 /*
- * Wazuh inventory harvester
+ * Wazuh inventory harvester - System context
  * Copyright (C) 2015, Wazuh Inc.
  * January 21, 2025.
  *
@@ -46,6 +46,7 @@ public:
         Process,
         System,
         Port,
+        Hotfix,
         Invalid
     };
 
@@ -54,6 +55,7 @@ public:
         Packages,
         Processes,
         Os,
+        Hotfixes,
         Hw,
         Ports,
         Invalid
@@ -1081,6 +1083,33 @@ public:
         return installTimeRaw;
     }
 
+    std::string_view hotfixName()
+    {
+        if (m_type == VariantType::Delta)
+        {
+            if (m_delta->data_as_dbsync_hotfixes() && m_delta->data_as_dbsync_hotfixes()->hotfix())
+            {
+                return m_delta->data_as_dbsync_hotfixes()->hotfix()->string_view();
+            }
+        }
+        else if (m_type == VariantType::SyncMsg)
+        {
+            if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_hotfixes() &&
+                m_syncMsg->data_as_state()->attributes_as_syscollector_hotfixes()->hotfix())
+            {
+                return m_syncMsg->data_as_state()->attributes_as_syscollector_hotfixes()->hotfix()->string_view();
+            }
+        }
+        else
+        {
+            if (m_jsonData->contains("/data/hotfix"_json_pointer))
+            {
+                return m_jsonData->at("/data/hotfix"_json_pointer).get<std::string_view>();
+            }
+        }
+        return "";
+    }
+
     std::string_view portProtocol() const
     {
         if (m_type == VariantType::Delta)
@@ -1449,7 +1478,11 @@ private:
                 m_affectedComponentType = AffectedComponentType::Port;
                 m_originTable = OriginTable::Ports;
             }
-
+            else if (delta->data_type() == SyscollectorDeltas::Provider_dbsync_hotfixes)
+            {
+                m_affectedComponentType = AffectedComponentType::Hotfix;
+                m_originTable = OriginTable::Hotfixes;
+            }
             else
             {
                 // TO DO: Add log.
@@ -1493,6 +1526,13 @@ private:
                 m_affectedComponentType = AffectedComponentType::Port;
                 m_originTable = OriginTable::Ports;
             }
+            else if (syncMsg->data_as_state()->attributes_type() ==
+                     Synchronization::AttributesUnion_syscollector_hotfixes)
+            {
+                m_operation = Operation::Upsert;
+                m_affectedComponentType = AffectedComponentType::Hotfix;
+                m_originTable = OriginTable::Hotfixes;
+            }
             else
             {
                 // TO DO: Add log.
@@ -1527,6 +1567,12 @@ private:
                     m_operation = Operation::DeleteAllEntries;
                     m_affectedComponentType = AffectedComponentType::Port;
                     m_originTable = OriginTable::Ports;
+                }
+                else if (attributesTypeStr.compare("syscollector_hotfixes") == 0)
+                {
+                    m_operation = Operation::DeleteAllEntries;
+                    m_affectedComponentType = AffectedComponentType::Hotfix;
+                    m_originTable = OriginTable::Hotfixes;
                 }
                 else
                 {
@@ -1568,6 +1614,12 @@ private:
                     m_affectedComponentType = AffectedComponentType::Port;
                     m_originTable = OriginTable::Ports;
                 }
+                else if (attributesTypeStr.compare("syscollector_hotfixes") == 0)
+                {
+                    m_operation = Operation::IndexSync;
+                    m_affectedComponentType = AffectedComponentType::Hotfix;
+                    m_originTable = OriginTable::Hotfixes;
+                }
                 else
                 {
                     // TO DO: Add log.
@@ -1605,6 +1657,12 @@ private:
             m_operation = Operation::Delete;
             m_affectedComponentType = AffectedComponentType::Port;
             m_originTable = OriginTable::Ports;
+        }
+        else if (action.compare("deleteHotfix") == 0)
+        {
+            m_operation = Operation::Delete;
+            m_affectedComponentType = AffectedComponentType::Hotfix;
+            m_originTable = OriginTable::Hotfixes;
         }
         else
         {

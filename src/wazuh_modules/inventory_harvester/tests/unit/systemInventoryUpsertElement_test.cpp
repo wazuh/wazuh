@@ -198,3 +198,44 @@ TEST_F(SystemInventoryUpsertElement, emptyItemId_Ports)
 
     EXPECT_ANY_THROW(upsertElement->handleRequest(context));
 }
+TEST_F(SystemInventoryUpsertElement, emptyAgentID_Hotfixes)
+{
+    auto context = std::make_shared<MockSystemContext>();
+    auto upsertElement = std::make_shared<UpsertSystemElement<MockSystemContext>>();
+
+    EXPECT_CALL(*context, agentId()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, originTable()).WillOnce(testing::Return(MockSystemContext::OriginTable::Hotfixes));
+
+    EXPECT_ANY_THROW(upsertElement->handleRequest(context));
+}
+
+TEST_F(SystemInventoryUpsertElement, emptyHotfix_Hotfixes)
+{
+    auto context = std::make_shared<MockSystemContext>();
+    auto upsertElement = std::make_shared<UpsertSystemElement<MockSystemContext>>();
+
+    EXPECT_CALL(*context, agentId()).WillOnce(testing::Return("001"));
+    EXPECT_CALL(*context, hotfixName()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, originTable()).WillOnce(testing::Return(MockSystemContext::OriginTable::Hotfixes));
+
+    EXPECT_ANY_THROW(upsertElement->handleRequest(context));
+}
+
+TEST_F(SystemInventoryUpsertElement, validAgentID_Hotfixes)
+{
+    auto context = std::make_shared<MockSystemContext>();
+    auto upsertElement = std::make_shared<UpsertSystemElement<MockSystemContext>>();
+
+    EXPECT_CALL(*context, agentId()).WillOnce(testing::Return("001"));
+    EXPECT_CALL(*context, agentName()).WillOnce(testing::Return("agentName"));
+    EXPECT_CALL(*context, agentVersion()).WillOnce(testing::Return("agentVersion"));
+    EXPECT_CALL(*context, agentIp()).WillOnce(testing::Return("agentIp"));
+    EXPECT_CALL(*context, hotfixName()).WillOnce(testing::Return("KB12345"));
+    EXPECT_CALL(*context, originTable()).WillOnce(testing::Return(MockSystemContext::OriginTable::Hotfixes));
+
+    EXPECT_NO_THROW(upsertElement->handleRequest(context));
+
+    EXPECT_EQ(
+        context->m_serializedElement,
+        R"({"id":"001_KB12345","operation":"INSERTED","data":{"package":{"hotfix":{"name":"KB12345"}},"agent":{"id":"001","name":"agentName","ip":"agentIp","version":"agentVersion"}}})");
+}

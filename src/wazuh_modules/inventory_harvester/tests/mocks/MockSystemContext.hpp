@@ -33,6 +33,7 @@ public:
         Packages,
         Processes,
         Os,
+        Hotfixes,
         Hw,
         Ports,
         Invalid
@@ -44,6 +45,7 @@ public:
         Process,
         System,
         Port,
+        Hotfix,
         Invalid
     };
 
@@ -88,6 +90,8 @@ public:
     MOCK_METHOD(std::string_view, portProcess, (), (const));
     MOCK_METHOD(int64_t, portPid, (), (const));
     MOCK_METHOD(std::string_view, portItemId, (), (const));
+
+    MOCK_METHOD(std::string_view, hotfixName, (), (const));
 
     MOCK_METHOD(AffectedComponentType, affectedComponentType, (), (const));
 
