@@ -40,7 +40,7 @@ sudo        !satori|vejeta|conf\.inv!
 crond       !/dev/[^nt]|bash!
 gpm         !bash|mingetty!
 ifconfig    !bash|^/bin/sh|/dev/tux|session.null|/dev/[^cludisopt]!
-diff        !bash|^/bin/sh|file\.h|proc\.h|/dev/[^nf]ull|^/bin/.*sh!
+diff        !bash|^/bin/sh|file\.h|proc\.h|/dev/[^nf]|/dev/[nf][^u]|/dev/[nf]u[^l]|/dev/[nf]ul[^l]|^/bin/.*sh!
 md5sum      !bash|^/bin/sh|file\.h|proc\.h|/dev/|^/bin/.*sh!
 hdparm      !bash|/dev/ida!
 ldd         !/dev/[^n]|proc\.h|libshow.so|libproc.a!
