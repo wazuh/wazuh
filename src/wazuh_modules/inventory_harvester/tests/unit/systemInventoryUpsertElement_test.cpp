@@ -415,17 +415,13 @@ TEST_F(SystemInventoryUpsertElement, validAgentID_Network)
     EXPECT_CALL(*context, agentName()).WillOnce(testing::Return("agentName"));
     EXPECT_CALL(*context, agentVersion()).WillOnce(testing::Return("agentVersion"));
     EXPECT_CALL(*context, broadcast()).WillOnce(testing::Return("192.168.0.255"));
-    EXPECT_CALL(*context, dhcp()).WillOnce(testing::Return("true"));
-    EXPECT_CALL(*context, metric()).WillOnce(testing::Return("1000"));
-    EXPECT_CALL(*context, name()).WillOnce(testing::Return("eth0"));
+    EXPECT_CALL(*context, netAddressName()).WillOnce(testing::Return("eth0"));
     EXPECT_CALL(*context, netmask()).WillOnce(testing::Return("255.255.255.0"));
     EXPECT_CALL(*context, protocol()).WillOnce(testing::Return(0));
 
     EXPECT_NO_THROW(upsertElement->handleRequest(context));
 
-    std::cerr << context->m_serializedElement << std::endl;
-
     EXPECT_EQ(
         context->m_serializedElement,
-        R"({"id":"001_netAddressItemId","operation":"INSERTED","data":{"network":{"broadcast":"192.168.0.255","dhcp":"true","ip":"192.168.0.1","metric":"1000","name":"eth0","netmask":"255.255.255.0","protocol":"IPv4"},"agent":{"id":"001","name":"agentName","ip":"192.168.0.1","version":"agentVersion"}}})");
+        R"({"id":"001_netAddressItemId","operation":"INSERTED","data":{"network":{"broadcast":"192.168.0.255","ip":"192.168.0.1","name":"eth0","netmask":"255.255.255.0","protocol":"IPv4"},"agent":{"id":"001","name":"agentName","ip":"192.168.0.1","version":"agentVersion"}}})");
 }

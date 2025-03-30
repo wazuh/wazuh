@@ -326,7 +326,10 @@ public:
         }
         else
         {
-            return "";
+            if (m_jsonData->contains("/data/item_id"_json_pointer))
+            {
+                return m_jsonData->at("/data/item_id"_json_pointer).get<std::string_view>();
+            }
         }
         return "";
     }
@@ -359,76 +362,23 @@ public:
         return "";
     }
 
-    std::string_view dhcp()
+    std::string_view netAddressName()
     {
         if (m_type == VariantType::Delta)
         {
-            if (m_delta->data_as_dbsync_network_protocol() && m_delta->data_as_dbsync_network_protocol()->dhcp())
+            if (m_delta->data_as_dbsync_network_address() && m_delta->data_as_dbsync_network_address()->iface())
             {
-                return m_delta->data_as_dbsync_network_protocol()->dhcp()->string_view();
+                return m_delta->data_as_dbsync_network_address()->iface()->string_view();
             }
         }
         else if (m_type == VariantType::SyncMsg)
         {
             if (m_syncMsg->data_as_state() &&
-                m_syncMsg->data_as_state()->attributes_as_syscollector_network_protocol() &&
-                m_syncMsg->data_as_state()->attributes_as_syscollector_network_protocol()->dhcp())
-            {
-                return m_syncMsg->data_as_state()->attributes_as_syscollector_network_protocol()->dhcp()->string_view();
-            }
-        }
-        else
-        {
-            return "";
-        }
-        return "";
-    }
-
-    std::string_view metric()
-    {
-        if (m_type == VariantType::Delta)
-        {
-            if (m_delta->data_as_dbsync_network_protocol() && m_delta->data_as_dbsync_network_protocol()->metric())
-            {
-                return m_delta->data_as_dbsync_network_protocol()->metric()->string_view();
-            }
-        }
-        else if (m_type == VariantType::SyncMsg)
-        {
-            if (m_syncMsg->data_as_state() &&
-                m_syncMsg->data_as_state()->attributes_as_syscollector_network_protocol() &&
-                m_syncMsg->data_as_state()->attributes_as_syscollector_network_protocol()->metric())
+                m_syncMsg->data_as_state()->attributes_as_syscollector_network_address() &&
+                m_syncMsg->data_as_state()->attributes_as_syscollector_network_address()->iface())
             {
                 return m_syncMsg->data_as_state()
-                    ->attributes_as_syscollector_network_protocol()
-                    ->metric()
-                    ->string_view();
-            }
-        }
-        else
-        {
-            return "";
-        }
-        return "";
-    }
-
-    std::string_view name()
-    {
-        if (m_type == VariantType::Delta)
-        {
-            if (m_delta->data_as_dbsync_network_protocol() && m_delta->data_as_dbsync_network_protocol()->iface())
-            {
-                return m_delta->data_as_dbsync_network_protocol()->iface()->string_view();
-            }
-        }
-        else if (m_type == VariantType::SyncMsg)
-        {
-            if (m_syncMsg->data_as_state() &&
-                m_syncMsg->data_as_state()->attributes_as_syscollector_network_protocol() &&
-                m_syncMsg->data_as_state()->attributes_as_syscollector_network_protocol()->iface())
-            {
-                return m_syncMsg->data_as_state()
-                    ->attributes_as_syscollector_network_protocol()
+                    ->attributes_as_syscollector_network_address()
                     ->iface()
                     ->string_view();
             }
@@ -2649,7 +2599,7 @@ private:
             m_affectedComponentType = AffectedComponentType::NetIface;
             m_originTable = OriginTable::NetIfaces;
         }
-        else if (action.compare("deleteNetwork") == 0)
+        else if (action.compare("deleteNetworkAddress") == 0)
         {
             m_operation = Operation::Delete;
             m_affectedComponentType = AffectedComponentType::Network;

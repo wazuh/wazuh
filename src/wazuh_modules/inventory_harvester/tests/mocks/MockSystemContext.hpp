@@ -100,9 +100,7 @@ public:
     MOCK_METHOD(std::string_view, portItemId, (), (const));
     MOCK_METHOD(std::string_view, netAddressItemId, (), (const));
     MOCK_METHOD(std::string_view, broadcast, (), (const));
-    MOCK_METHOD(std::string_view, dhcp, (), (const));
-    MOCK_METHOD(std::string_view, metric, (), (const));
-    MOCK_METHOD(std::string_view, name, (), (const));
+    MOCK_METHOD(std::string_view, netAddressName, (), (const));
     MOCK_METHOD(std::string_view, netmask, (), (const));
     MOCK_METHOD(int64_t, protocol, (), (const));
 

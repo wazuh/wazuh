@@ -124,7 +124,7 @@ void wdbi_report_removed(const char* agent_id, wdb_component_t component, sqlite
                 router_handle = router_inventory_events_handle;
                 break;
             case WDB_SYSCOLLECTOR_NETADDRESS:
-                cJSON_AddStringToObject(j_msg_to_send, "action", "deleteNetwork");
+                cJSON_AddStringToObject(j_msg_to_send, "action", "deleteNetworkAddress");
                 cJSON_AddItemToObject(j_data, "item_id", cJSON_CreateString((const char*) sqlite3_column_text(stmt, 0)));
                 router_handle = router_inventory_events_handle;
                 break;

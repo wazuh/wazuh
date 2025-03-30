@@ -55,18 +55,11 @@ public:
         // Ex: 192.168.0.255
         element.data.network.broadcast = data->broadcast();
 
-        // Ex: true
-        element.data.network.dhcp = data->dhcp();
-
         // Ex: 192.168.0.30
         element.data.network.ip = data->agentIp();
-        ;
-
-        // Ex: 100
-        element.data.network.metric = data->metric();
 
         // Ex: eth0
-        element.data.network.name = data->name();
+        element.data.network.name = data->netAddressName();
 
         // 255.255.255.0
         element.data.network.netmask = data->netmask();

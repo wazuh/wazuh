@@ -1,0 +1,24 @@
+{
+  "agent_info": {
+    "agent_id": "003",
+    "agent_ip": "any",
+    "agent_name": "AAAA1234",
+    "agent_version": "v4.11.1"
+  },
+  "data_type": "state",
+  "data": {
+    "attributes_type": "syscollector_network_address",
+    "attributes": {
+      "address": "any",
+      "broadcast": "0.0.0.0",
+      "checksum": "1691178971959743855",
+      "iface": "eth0",
+      "item_id": "ABC1",
+      "netmask": "1.1.1.1",
+      "proto": 0,
+      "scan_time": "2023/08/04 19:56:11"
+    },
+    "index": "06c15b8bd4d8ea4db9ce38e4918752f228930fe7",
+    "timestamp": ""
+  }
+}
