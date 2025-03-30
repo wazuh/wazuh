@@ -46,10 +46,7 @@ public:
         Process,
         System,
         Port,
-<<<<<<< HEAD
         Hotfix,
-=======
->>>>>>> 4e243c1146 (fix(ih): Rebase errors)
         Hardware,
         Invalid
     };
@@ -1626,14 +1623,11 @@ private:
                 m_affectedComponentType = AffectedComponentType::Port;
                 m_originTable = OriginTable::Ports;
             }
-<<<<<<< HEAD
             else if (delta->data_type() == SyscollectorDeltas::Provider_dbsync_hotfixes)
             {
                 m_affectedComponentType = AffectedComponentType::Hotfix;
                 m_originTable = OriginTable::Hotfixes;
             }
-=======
->>>>>>> 4e243c1146 (fix(ih): Rebase errors)
             else if (delta->data_type() == SyscollectorDeltas::Provider_dbsync_hwinfo)
             {
                 m_affectedComponentType = AffectedComponentType::Hardware;
@@ -1688,7 +1682,6 @@ private:
                 m_operation = Operation::Upsert;
                 m_affectedComponentType = AffectedComponentType::Hardware;
                 m_originTable = OriginTable::Hw;
-<<<<<<< HEAD
             }
             else if (syncMsg->data_as_state()->attributes_type() ==
                      Synchronization::AttributesUnion_syscollector_hotfixes)
@@ -1696,8 +1689,6 @@ private:
                 m_operation = Operation::Upsert;
                 m_affectedComponentType = AffectedComponentType::Hotfix;
                 m_originTable = OriginTable::Hotfixes;
-=======
->>>>>>> 4e243c1146 (fix(ih): Rebase errors)
             }
             else
             {
@@ -1739,15 +1730,12 @@ private:
                     m_operation = Operation::DeleteAllEntries;
                     m_affectedComponentType = AffectedComponentType::Hardware;
                     m_originTable = OriginTable::Hw;
-<<<<<<< HEAD
                 }
                 else if (attributesTypeStr.compare("syscollector_hotfixes") == 0)
                 {
                     m_operation = Operation::DeleteAllEntries;
                     m_affectedComponentType = AffectedComponentType::Hotfix;
                     m_originTable = OriginTable::Hotfixes;
-=======
->>>>>>> 4e243c1146 (fix(ih): Rebase errors)
                 }
                 else
                 {
@@ -1793,15 +1781,12 @@ private:
                     m_operation = Operation::IndexSync;
                     m_affectedComponentType = AffectedComponentType::Hardware;
                     m_originTable = OriginTable::Hw;
-<<<<<<< HEAD
                 }
                 else if (attributesTypeStr.compare("syscollector_hotfixes") == 0)
                 {
                     m_operation = Operation::IndexSync;
                     m_affectedComponentType = AffectedComponentType::Hotfix;
                     m_originTable = OriginTable::Hotfixes;
-=======
->>>>>>> 4e243c1146 (fix(ih): Rebase errors)
                 }
                 else
                 {

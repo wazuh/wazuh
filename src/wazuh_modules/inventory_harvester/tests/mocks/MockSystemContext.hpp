@@ -45,11 +45,8 @@ public:
         Process,
         System,
         Port,
-<<<<<<< HEAD
         Hotfix,
-=======
         Hardware,
->>>>>>> f835eb32c7 (add(inventoryHarvester): Adding hardware info to IH)
         Invalid
     };
 
