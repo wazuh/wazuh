@@ -55,7 +55,7 @@ public:
         element.data.agent.version = data->agentVersion();
         element.data.agent.ip = data->agentIp();
 
-        element.data.network.dhcp = data->netProtoDhcp().compare("enabled") == 0 ? true : false;
+        element.data.network.dhcp = data->netProtoDhcp().compare("enabled") == 0 ? "true" : "false";
         element.data.network.gateway = data->netProtoGateway();
         element.data.network.metric = 0L;
         try
@@ -83,7 +83,7 @@ public:
         auto netProtoItemId = data->netProtoItemId();
         if (netProtoItemId.empty())
         {
-            throw std::runtime_error("Network Protocol ID is empty, cannot upsert network protocol element.");
+            throw std::runtime_error("Network Protocol ID is empty, cannot delete network protocol element.");
         }
 
         NoDataHarvester element;

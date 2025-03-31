@@ -17,7 +17,7 @@
 
 struct Network final
 {
-    bool dhcp;
+    std::string_view dhcp;
     std::string_view gateway;
     long metric;
     std::string_view type;

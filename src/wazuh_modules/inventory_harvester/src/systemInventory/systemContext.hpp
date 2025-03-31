@@ -88,7 +88,6 @@ public:
                 {
                     m_data = std::forward<decltype(arg)>(arg);
                     m_type = VariantType::Json;
-
                     buildJsonContext(std::get<const nlohmann::json*>(m_data));
                 }
                 else
