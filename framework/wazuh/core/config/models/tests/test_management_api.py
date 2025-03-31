@@ -109,7 +109,7 @@ def test_access_config_invalid_values(values):
         (
             {},
             {
-                'host': '0.0.0.0',
+                'host': 'localhost',
                 'port': 55000,
                 'drop_privileges': True,
                 'max_upload_size': 10485760,

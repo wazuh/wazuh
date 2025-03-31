@@ -44,7 +44,7 @@ class CommsAPIConfig(WazuhConfigBaseModel):
         SSL configuration for the communications API. Default is an instance of APISSLConfig.
     """
 
-    host: str = '0.0.0.0'
+    host: str = 'localhost'
     port: PositiveInt = 27000
     workers: PositiveInt = 4
 

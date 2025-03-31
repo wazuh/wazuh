@@ -97,7 +97,7 @@ class ManagementAPIConfig(WazuhConfigBaseModel):
         Logging configuration for the management API. Default is an instance of APILoggingConfig.
     """
 
-    host: str = '0.0.0.0'
+    host: str = 'localhost'
     port: PositiveInt = 55000
     drop_privileges: bool = True
     max_upload_size: PositiveInt = 10485760
