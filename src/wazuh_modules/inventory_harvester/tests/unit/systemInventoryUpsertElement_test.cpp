@@ -328,5 +328,5 @@ TEST_F(SystemInventoryUpsertElement, validAgentID_NetworkProtocol)
 
     EXPECT_EQ(
         context->m_serializedElement,
-        R"({"id":"001_netProtoItemId","operation":"INSERTED","data":{"network":{"dhcp":true,"gateway":"netProtoGateway","metric":150,"type":"netProtoType"},"observer":{"ingress":{"interface":{"name":"netProtoIface"}}},"agent":{"id":"001","name":"agentName","ip":"agentIp","version":"agentVersion"}}})");
+        R"({"id":"001_netProtoItemId","operation":"INSERTED","data":{"network":{"dhcp":"true","gateway":"netProtoGateway","metric":150,"type":"netProtoType"},"observer":{"ingress":{"interface":{"name":"netProtoIface"}}},"agent":{"id":"001","name":"agentName","ip":"agentIp","version":"agentVersion"}}})");
 }
