@@ -42,13 +42,9 @@ These tests verify that after certain operations are performed, the affected ind
 
 4. **Preparation**
 
-   - Create an update mappings file (if needed):
-     ```bash
-     echo "{}" > states_update_mappings.json
-     ```
    - Compile the server:
      ```bash
-     make clean-internals && make deps TARGET=server && make TARGET=server DEBUG=1 -j$(nproc)
+     make clean-internals && make TARGET=server DEBUG=1 -j$(nproc)
      ```
    - **AddressSanitizer Notice**: If you compiled with `TESTS=1` and encounter an `AddressSanitizer` error, run:
      ```bash
@@ -57,7 +53,9 @@ These tests verify that after certain operations are performed, the affected ind
 
 5. **Executing the Tests**
    From the `src/` directory, run:
+
    ```bash
+   echo "{}" > states_update_mappings.json
    python -m pytest -vv -rA wazuh_modules/inventory_harvester/qa/ --log-cli-level=DEBUG
    ```
 
@@ -70,4 +68,4 @@ python -m pytest -vv wazuh_modules/inventory_harvester/qa/ -k fim --log-cli-leve
 ```
 
 > [!TIP]
-> You can list all the available tests with `python3 -m pytest -vv --collect-only  wazuh_modules/inventory_harvester/qa/`
+> You can list all the available tests with `python3 -m pytest --collect-only  wazuh_modules/inventory_harvester/qa/`

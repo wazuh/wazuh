@@ -47,6 +47,7 @@ public:
         System,
         Port,
         Hotfix,
+        Hardware,
         Invalid
     };
 
@@ -141,6 +142,150 @@ public:
         else
         {
             return "";
+        }
+        return "";
+    }
+
+    int64_t cpuCores()
+    {
+        if (m_type == VariantType::Delta)
+        {
+            if (m_delta->data_as_dbsync_hwinfo() && m_delta->data_as_dbsync_hwinfo()->cpu_cores())
+            {
+                return m_delta->data_as_dbsync_hwinfo()->cpu_cores();
+            }
+        }
+        else if (m_type == VariantType::SyncMsg)
+        {
+            if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_hwinfo() &&
+                m_syncMsg->data_as_state()->attributes_as_syscollector_hwinfo()->cpu_cores())
+            {
+                return m_syncMsg->data_as_state()->attributes_as_syscollector_hwinfo()->cpu_cores();
+            }
+        }
+        return 0;
+    }
+
+    int64_t cpuFrequency()
+    {
+        if (m_type == VariantType::Delta)
+        {
+            if (m_delta->data_as_dbsync_hwinfo() && m_delta->data_as_dbsync_hwinfo()->cpu_mhz())
+            {
+                return static_cast<int64_t>(m_delta->data_as_dbsync_hwinfo()->cpu_mhz());
+            }
+        }
+        else if (m_type == VariantType::SyncMsg)
+        {
+            if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_hwinfo() &&
+                m_syncMsg->data_as_state()->attributes_as_syscollector_hwinfo()->cpu_mhz())
+            {
+                return static_cast<int64_t>(m_syncMsg->data_as_state()->attributes_as_syscollector_hwinfo()->cpu_mhz());
+            }
+        }
+        return 0;
+    }
+
+    std::string_view cpuName()
+    {
+        if (m_type == VariantType::Delta)
+        {
+            if (m_delta->data_as_dbsync_hwinfo() && m_delta->data_as_dbsync_hwinfo()->cpu_name())
+            {
+                return m_delta->data_as_dbsync_hwinfo()->cpu_name()->string_view();
+            }
+        }
+        else if (m_type == VariantType::SyncMsg)
+        {
+            if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_hwinfo() &&
+                m_syncMsg->data_as_state()->attributes_as_syscollector_hwinfo()->cpu_name())
+            {
+                return m_syncMsg->data_as_state()->attributes_as_syscollector_hwinfo()->cpu_name()->string_view();
+            }
+        }
+        return "";
+    }
+
+    int64_t freeMem()
+    {
+        if (m_type == VariantType::Delta)
+        {
+            if (m_delta->data_as_dbsync_hwinfo() && m_delta->data_as_dbsync_hwinfo()->ram_free())
+            {
+                return m_delta->data_as_dbsync_hwinfo()->ram_free();
+            }
+        }
+        else if (m_type == VariantType::SyncMsg)
+        {
+            if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_hwinfo() &&
+                m_syncMsg->data_as_state()->attributes_as_syscollector_hwinfo()->ram_free())
+            {
+                return m_syncMsg->data_as_state()->attributes_as_syscollector_hwinfo()->ram_free();
+            }
+        }
+        return 0;
+    }
+
+    int64_t totalMem()
+    {
+        if (m_type == VariantType::Delta)
+        {
+            if (m_delta->data_as_dbsync_hwinfo() && m_delta->data_as_dbsync_hwinfo()->ram_total())
+            {
+                return m_delta->data_as_dbsync_hwinfo()->ram_total();
+            }
+        }
+        else if (m_type == VariantType::SyncMsg)
+        {
+            if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_hwinfo() &&
+                m_syncMsg->data_as_state()->attributes_as_syscollector_hwinfo()->ram_total())
+            {
+                return m_syncMsg->data_as_state()->attributes_as_syscollector_hwinfo()->ram_total();
+            }
+        }
+        return 0;
+    }
+
+    int64_t usedMem()
+    {
+        if (m_type == VariantType::Delta)
+        {
+            if (m_delta->data_as_dbsync_hwinfo() && m_delta->data_as_dbsync_hwinfo()->ram_usage())
+            {
+                return m_delta->data_as_dbsync_hwinfo()->ram_usage();
+            }
+        }
+        else if (m_type == VariantType::SyncMsg)
+        {
+            if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_hwinfo() &&
+                m_syncMsg->data_as_state()->attributes_as_syscollector_hwinfo()->ram_usage())
+            {
+                return m_syncMsg->data_as_state()->attributes_as_syscollector_hwinfo()->ram_usage();
+            }
+        }
+        return 0;
+    }
+
+    std::string_view boardInfo()
+    {
+        if (m_type == VariantType::Delta)
+        {
+            if (m_delta->data_as_dbsync_hwinfo() && m_delta->data_as_dbsync_hwinfo()->board_serial())
+            {
+                return m_delta->data_as_dbsync_hwinfo()->board_serial()->string_view();
+            }
+        }
+        else if (m_type == VariantType::SyncMsg)
+        {
+            if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_hwinfo() &&
+                m_syncMsg->data_as_state()->attributes_as_syscollector_hwinfo()->board_serial())
+            {
+                return m_syncMsg->data_as_state()->attributes_as_syscollector_hwinfo()->board_serial()->string_view();
+            }
+        }
+        else if (m_jsonData->contains("/data/board_serial"_json_pointer))
+        {
+            return m_jsonData->at("/data/board_serial"_json_pointer).get<std::string_view>();
         }
         return "";
     }
@@ -1483,6 +1628,11 @@ private:
                 m_affectedComponentType = AffectedComponentType::Hotfix;
                 m_originTable = OriginTable::Hotfixes;
             }
+            else if (delta->data_type() == SyscollectorDeltas::Provider_dbsync_hwinfo)
+            {
+                m_affectedComponentType = AffectedComponentType::Hardware;
+                m_originTable = OriginTable::Hw;
+            }
             else
             {
                 // TO DO: Add log.
@@ -1527,6 +1677,13 @@ private:
                 m_originTable = OriginTable::Ports;
             }
             else if (syncMsg->data_as_state()->attributes_type() ==
+                     Synchronization::AttributesUnion_syscollector_hwinfo)
+            {
+                m_operation = Operation::Upsert;
+                m_affectedComponentType = AffectedComponentType::Hardware;
+                m_originTable = OriginTable::Hw;
+            }
+            else if (syncMsg->data_as_state()->attributes_type() ==
                      Synchronization::AttributesUnion_syscollector_hotfixes)
             {
                 m_operation = Operation::Upsert;
@@ -1535,8 +1692,8 @@ private:
             }
             else
             {
-                // TO DO: Add log.
-                // throw std::runtime_error("Attributes type not found in sync message.");{
+                throw std::runtime_error("Attributes type not found in sync message. => " +
+                                         std::to_string(syncMsg->data_as_state()->attributes_type()));
             }
         }
         else if (syncMsg->data_type() == Synchronization::DataUnion_integrity_clear)
@@ -1568,6 +1725,12 @@ private:
                     m_affectedComponentType = AffectedComponentType::Port;
                     m_originTable = OriginTable::Ports;
                 }
+                else if (attributesTypeStr.compare("syscollector_hwinfo") == 0)
+                {
+                    m_operation = Operation::DeleteAllEntries;
+                    m_affectedComponentType = AffectedComponentType::Hardware;
+                    m_originTable = OriginTable::Hw;
+                }
                 else if (attributesTypeStr.compare("syscollector_hotfixes") == 0)
                 {
                     m_operation = Operation::DeleteAllEntries;
@@ -1576,8 +1739,7 @@ private:
                 }
                 else
                 {
-                    // TO DO: Add log.
-                    // throw std::runtime_error("Attributes type not found in sync message.");
+                    throw std::runtime_error("Attributes type not found in sync message.");
                 }
             }
             else
@@ -1613,6 +1775,12 @@ private:
                     m_operation = Operation::IndexSync;
                     m_affectedComponentType = AffectedComponentType::Port;
                     m_originTable = OriginTable::Ports;
+                }
+                else if (attributesTypeStr.compare("syscollector_hwinfo") == 0)
+                {
+                    m_operation = Operation::IndexSync;
+                    m_affectedComponentType = AffectedComponentType::Hardware;
+                    m_originTable = OriginTable::Hw;
                 }
                 else if (attributesTypeStr.compare("syscollector_hotfixes") == 0)
                 {
@@ -1657,6 +1825,12 @@ private:
             m_operation = Operation::Delete;
             m_affectedComponentType = AffectedComponentType::Port;
             m_originTable = OriginTable::Ports;
+        }
+        else if (action.compare("deleteHardware") == 0)
+        {
+            m_operation = Operation::Delete;
+            m_affectedComponentType = AffectedComponentType::Hardware;
+            m_originTable = OriginTable::Hw;
         }
         else if (action.compare("deleteHotfix") == 0)
         {
