@@ -20,6 +20,15 @@ on:
         options:
           - deb
           - rpm
+      architecture:
+        description: |
+          Architecture of the package [amd64, x86_64, arm64]
+        type: choice
+        options:
+          - amd64
+          - x86_64
+          - arm64
+        required: true
       source_reference:
         description: |
           Branch from wazuh/wazuh repository to use.
@@ -27,9 +36,9 @@ on:
 
 jobs:
   Upload-package-building-images:
-    runs-on: ubuntu-latest
+    runs-on: ${{ (inputs.architecture == 'arm64' || inputs.architecture == 'aarch64') && 'wz-linux-arm64' || 'ubuntu-24.04' }}
     timeout-minutes: 140
-    name: Package - Upload pkg_${{ inputs.system }}_server_builder_amd64 with tag ${{ inputs.docker_image_tag }}
+    name: Package - Upload pkg_${{ inputs.system }}_server_builder_${{ inputs.architecture }} with tag ${{ inputs.docker_image_tag }}
 
     steps:
       - name: Checkout wazuh/wazuh repository
@@ -51,7 +60,7 @@ jobs:
 
       - name: Copy build.sh, vcpkg-configuration.json and utils to Dockerfile path
         run: |
-          dockerfile_path="packages/${{ inputs.system }}s/amd64"
+          dockerfile_path="packages/${{ inputs.system }}s/${{ inputs.architecture }}"
           echo "DOCKERFILE_PATH=$dockerfile_path" >> $GITHUB_ENV
           cp packages/build.sh $dockerfile_path
           cp packages/${{ inputs.system }}s/utils/* $dockerfile_path
@@ -60,4 +69,4 @@ jobs:
 
       - name: Build and push image pkg_${{ inputs.system }}_server_builder_amd64 with tag ${{ env.TAG }} to Github Container Registry
         run:
-          bash .github/actions/ghcr-pull-and-push/build_and_push_image_to_ghcr.sh ${{ secrets.GITHUB_TOKEN }} ${{ github.actor}} pkg_${{ inputs.system }}_server_builder_amd64 ${{ env.DOCKERFILE_PATH }} ${{ env.TAG }}
+          bash .github/actions/ghcr-pull-and-push/build_and_push_image_to_ghcr.sh ${{ secrets.GITHUB_TOKEN }} ${{ github.actor}} pkg_${{ inputs.system }}_server_builder_${{ inputs.architecture }} ${{ env.DOCKERFILE_PATH }} ${{ env.TAG }}
