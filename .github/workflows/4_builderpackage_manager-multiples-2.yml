@@ -19,7 +19,7 @@ jobs:
         uses: actions/github-script@v6
         with:
           script: |
-            const workflowFile = "4_builderpackage_manager.yml ";
+            const workflowFile = "4_builderpackage_manager.yml";
             const branchRef = process.env.GITHUB_HEAD_REF || process.env.GITHUB_REF_NAME;
             const timeoutMinutes = 60;
             const pollingIntervalMs = 30 * 1000;
@@ -115,7 +115,7 @@ jobs:
         uses: actions/github-script@v6
         with:
           script: |
-            const workflowFile = "4_builderpackage_manager.yml ";
+            const workflowFile = "4_builderpackage_manager.yml";
             const branchRef = process.env.GITHUB_HEAD_REF || process.env.GITHUB_REF_NAME;
             const timeoutMinutes = 60;
             const pollingIntervalMs = 30 * 1000;
