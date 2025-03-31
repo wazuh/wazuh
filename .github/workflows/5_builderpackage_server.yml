@@ -21,6 +21,7 @@ on:
         options:
           - amd64
           - x86_64
+          - arm64
         required: true
       system:
         description: 'Package format [deb, rpm]'
@@ -94,7 +95,7 @@ env:
 
 jobs:
   Build-server-packages:
-    runs-on: ubuntu-latest
+    runs-on: ${{ (inputs.architecture == 'arm64' || inputs.architecture == 'aarch64') && 'wz-linux-arm64' || 'ubuntu-24.04' }}
     timeout-minutes: 35
     name: Build ${{ inputs.system }} wazuh-server on ${{ inputs.architecture }}
 
@@ -146,8 +147,8 @@ jobs:
           if [ "${{ inputs.checksum }}" == "true" ]; then FLAGS+="--checksum "; fi
           if [ "${{ inputs.debug}}" == "true" ]; then FLAGS+="--debug "; fi
           # Every call to this workflow will be internally managed as amd64, which is synonymous with x86_64
-          echo "generate_package.sh -a amd64 --tag ${{ env.TAG }} --system ${{ inputs.system }} $FLAGS"
-          bash generate_package.sh -a amd64 --tag ${{ env.TAG }} --system ${{ inputs.system }} $FLAGS
+          echo "generate_package.sh -a ${{ inputs.architecture }} --tag ${{ env.TAG }} --system ${{ inputs.system }} $FLAGS"
+          bash generate_package.sh -a ${{ inputs.architecture }} --tag ${{ env.TAG }} --system ${{ inputs.system }} $FLAGS
 
           if [ "${{ inputs.system }}" == "deb" ]; then
             SYMBOLS_TAG="dbg"
