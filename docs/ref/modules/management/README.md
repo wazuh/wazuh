@@ -63,9 +63,7 @@ The REST API allows the remote management of the Wazuh infrastructure such as:
 
 ```yaml
 management_api:
-  host:
-    - 0.0.0.0
-    - ::1
+  host: 0.0.0.0
   port: 55000
   intervals:
     request_timeout: 10
