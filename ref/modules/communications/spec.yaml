@@ -161,6 +161,7 @@ components:
           type: string
           title: Version
         args:
+          additionalProperties: true
           type: object
           title: Args
       type: object
