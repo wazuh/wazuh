@@ -19,7 +19,7 @@
 #include "stringHelper.h"
 #include "rpmlib.h"
 
-void getRpmInfo(std::function<void(nlohmann::json&)> callback)
+void getRpmInfo(std::function<void(nlohmann::json&)> callback, bool addFilesList)
 {
 
     const auto rpmDefaultQuery
@@ -54,7 +54,7 @@ void getRpmInfo(std::function<void(nlohmann::json&)> callback)
 
             for (const auto& p : rpm)
             {
-                auto packageJson = PackageLinuxHelper::parseRpm(p);
+                auto packageJson = PackageLinuxHelper::parseRpm(p, addFilesList);
 
                 if (!packageJson.empty())
                 {

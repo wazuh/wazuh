@@ -29,8 +29,9 @@ void getPacmanInfo(const std::string& libPath, std::function<void(nlohmann::json
 /**
  * @brief Fills a JSON object with all available rpm-related information
  * @param callback Callback to be called for every single element being found
+ * @param addFilesList If true, the list of files will be added to the JSON object
  */
-void getRpmInfo(std::function<void(nlohmann::json&)> callback);
+void getRpmInfo(std::function<void(nlohmann::json&)> callback, bool addFilesList = false);
 
 /**
  * @brief Get all python packages installed by rpm

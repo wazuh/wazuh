@@ -22,7 +22,7 @@
 
 namespace PackageLinuxHelper
 {
-    static nlohmann::json parseRpm(const RpmPackageManager::Package& package)
+    static nlohmann::json parseRpm(const RpmPackageManager::Package& package, bool addFilesList = false)
     {
         nlohmann::json ret;
         auto version { package.version };
@@ -51,7 +51,11 @@ namespace PackageLinuxHelper
             ret["format"]       = "rpm";
             ret["vendor"]       = package.vendor.empty() ? UNKNOWN_VALUE : package.vendor;
             ret["description"]  = package.description;
-            // The multiarch field won't have a default value
+
+            if (addFilesList)
+            {
+                ret["files"] = package.files;
+            }
         }
 
         return ret;

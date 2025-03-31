@@ -47,6 +47,11 @@ class RpmLibMock : public IRpmLibWrapper
         MOCK_METHOD(rpmdbMatchIterator, rpmtsInitIterator, (const rpmts ts, rpmDbiTagVal rpmtag, const void* keypointer, size_t keylen), (override));
         MOCK_METHOD(Header, rpmdbNextIterator, (rpmdbMatchIterator mi), (override));
         MOCK_METHOD(rpmdbMatchIterator, rpmdbFreeIterator, (rpmdbMatchIterator mi), (override));
+        MOCK_METHOD(rpmfi, rpmfiNew, (rpmts ts, Header h, rpmTagVal tag, rpmfiFlags flags), (override));
+        MOCK_METHOD(rpm_count_t, rpmfiFC, (rpmfi fi), (override));
+        MOCK_METHOD(int, rpmfiNext, (rpmfi fi), (override));
+        MOCK_METHOD(const char*, rpmfiFN, (rpmfi fi), (override));
+        MOCK_METHOD(rpmfi, rpmfiFree, (rpmfi fi), (override));
 };
 
 

@@ -61,6 +61,11 @@ class RpmLibMock
         MOCK_METHOD(rpmdbMatchIterator, rpmtsInitIterator, (const rpmts ts, rpmDbiTagVal rpmtag, const void* keypointer, size_t keylen));
         MOCK_METHOD(Header, rpmdbNextIterator, (rpmdbMatchIterator mi));
         MOCK_METHOD(rpmdbMatchIterator, rpmdbFreeIterator, (rpmdbMatchIterator mi));
+        MOCK_METHOD(rpmfi, rpmfiNew, (rpmts ts, Header h, rpmTagVal tag, rpmfiFlags flags));
+        MOCK_METHOD(rpm_count_t, rpmfiFC, (rpmfi fi));
+        MOCK_METHOD(int, rpmfiNext, (rpmfi fi));
+        MOCK_METHOD(const char*, rpmfiFN, (rpmfi fi));
+        MOCK_METHOD(rpmfi, rpmfiFree, (rpmfi fi));
 };
 
 static RpmLibMock* gs_rpm_mock = NULL;
@@ -124,6 +129,26 @@ Header rpmdbNextIterator(rpmdbMatchIterator mi)
 rpmdbMatchIterator rpmdbFreeIterator(rpmdbMatchIterator mi)
 {
     return gs_rpm_mock->rpmdbFreeIterator(mi);
+}
+rpmfi rpmfiNew(rpmts ts, Header h, rpmTagVal tag, rpmfiFlags flags)
+{
+    return gs_rpm_mock->rpmfiNew(ts, h, tag, flags);
+}
+rpm_count_t rpmfiFC(rpmfi fi)
+{
+    return gs_rpm_mock->rpmfiFC(fi);
+}
+int rpmfiNext(rpmfi fi)
+{
+    return gs_rpm_mock->rpmfiNext(fi);
+}
+const char* rpmfiFN(rpmfi fi)
+{
+    return gs_rpm_mock->rpmfiFN(fi);
+}
+rpmfi rpmfiFree(rpmfi fi)
+{
+    return gs_rpm_mock->rpmfiFree(fi);
 }
 
 class LibDBMock
