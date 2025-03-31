@@ -39,7 +39,7 @@ public:
         auto netItemId = data->netAddressItemId();
         if (netItemId.empty())
         {
-            throw std::runtime_error("Net item ID is empty, cannot upsert network element.");
+            throw std::runtime_error("NetAddress item ID is empty, cannot upsert network element.");
         }
 
         DataHarvester<InventoryNetworkHarvester> element;
@@ -88,7 +88,7 @@ public:
         auto netItemId = data->netAddressItemId();
         if (netItemId.empty())
         {
-            throw std::runtime_error("Net item ID is empty, cannot delete network element.");
+            throw std::runtime_error("NetAddress item ID is empty, cannot delete network element.");
         }
 
         NoDataHarvester element;

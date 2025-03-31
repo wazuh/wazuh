@@ -50,7 +50,7 @@ public:
         Hardware,
         NetProto,
         NetIface,
-        Network,
+        NetworkAddress,
         Invalid
     };
 
@@ -64,7 +64,7 @@ public:
         Ports,
         NetworkProtocol,
         NetIfaces,
-        Net,
+        NetAddress,
         Invalid
     };
     explicit SystemContext(
@@ -2322,8 +2322,8 @@ private:
             }
             else if (delta->data_type() == SyscollectorDeltas::Provider_dbsync_network_address)
             {
-                m_affectedComponentType = AffectedComponentType::Network;
-                m_originTable = OriginTable::Net;
+                m_affectedComponentType = AffectedComponentType::NetworkAddress;
+                m_originTable = OriginTable::NetAddress;
             }
             else
             {
@@ -2393,8 +2393,8 @@ private:
             }
             {
                 m_operation = Operation::Upsert;
-                m_affectedComponentType = AffectedComponentType::Network;
-                m_originTable = OriginTable::Net;
+                m_affectedComponentType = AffectedComponentType::NetworkAddress;
+                m_originTable = OriginTable::NetAddress;
             }
             else if (syncMsg->data_as_state()->attributes_type() ==
                      Synchronization::AttributesUnion_syscollector_network_iface)
@@ -2465,8 +2465,8 @@ private:
                 else if (attributesTypeStr.compare("syscollector_network_address") == 0)
                 {
                     m_operation = Operation::DeleteAllEntries;
-                    m_affectedComponentType = AffectedComponentType::Network;
-                    m_originTable = OriginTable::Net;
+                    m_affectedComponentType = AffectedComponentType::NetworkAddress;
+                    m_originTable = OriginTable::NetAddress;
                 }
                 else
                 {
@@ -2534,8 +2534,8 @@ private:
                 else if (attributesTypeStr.compare("syscollector_network_address") == 0)
                 {
                     m_operation = Operation::IndexSync;
-                    m_affectedComponentType = AffectedComponentType::Network;
-                    m_originTable = OriginTable::Net;
+                    m_affectedComponentType = AffectedComponentType::NetworkAddress;
+                    m_originTable = OriginTable::NetAddress;
                 }
                 else
                 {
@@ -2602,8 +2602,8 @@ private:
         else if (action.compare("deleteNetworkAddress") == 0)
         {
             m_operation = Operation::Delete;
-            m_affectedComponentType = AffectedComponentType::Network;
-            m_originTable = OriginTable::Net;
+            m_affectedComponentType = AffectedComponentType::NetworkAddress;
+            m_originTable = OriginTable::NetAddress;
         }
         else
         {

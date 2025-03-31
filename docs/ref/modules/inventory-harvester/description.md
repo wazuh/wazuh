@@ -12,43 +12,46 @@ This is an example of the indexed ports format:
 
 ```json
 {
-    "agent": {
-        "id": "002",
-        "name": "b593602240f5",
-        "version": "v4.11.1",
-        "ip": "any"
-    },
-    "destination": {
-        "ip": "0.0.0.0",
-        "port": 0
-    },
-    "file": {
-        "inode": "15526675"
-    },
-    "host": {
-        "network": {
-            "egress": {
-                "queue": 0
-            },
-            "ingress": {
-                "queue": 0
-            }
-        }
-    },
-    "interface": {
-        "state": "listening"
-    },
+  "agent": {
+    "id": "002",
+    "name": "b593602240f5",
+    "version": "v4.11.1",
+    "ip": "any"
+  },
+  "destination": {
+    "ip": "0.0.0.0",
+    "port": 0
+  },
+  "file": {
+    "inode": "15526675"
+  },
+  "host": {
     "network": {
-        "transport": "tcp"
-    },
-    "process": {
-        "name": "python3",
-        "pid": 6124
-    },
-    "source": {
-        "ip": "0.0.0.0",
-        "port": 8000
+      "egress": {
+        "queue": 0
+      },
+      "ingress": {
+        "queue": 0
+      }
     }
+<<<<<<< HEAD
+=======
+  },
+  "interface": {
+    "state": "listening"
+  },
+  "network": {
+    "transport": "tcp"
+  },
+  "process": {
+    "name": "python3",
+    "pid": 6124
+  },
+  "source": {
+    "ip": "0.0.0.0",
+    "port": 8000
+  }
+>>>>>>> d7a5890497 (change(ih): Rebase and improvement of documentation and code name)
 }
 ```
 
@@ -106,6 +109,7 @@ Here is an example of the indexed hotfixes format. The event ID consists of the 
 }
 ```
 
+<<<<<<< HEAD
 ### Network Protocol
 
 Here is an example of the indexed Network Protocol format. The event ID consists of the agent ID and network interface ID.
@@ -133,6 +137,27 @@ Here is an example of the indexed Network Protocol format. The event ID consists
           "name": "eth0"
         }
       }
+=======
+### Network address
+
+This is an example of the indexed network address format:
+
+```json
+{
+  "agent": {
+    "id": "002",
+    "ip": "any",
+    "name": "b593602240f5",
+    "version": "v4.11.1"
+  },
+  "host": {
+    "network": {
+      "broadcast": "192.168.1.255",
+      "ip": "192.168.1.60",
+      "name": "eth0",
+      "netmask": "255.255.255.0",
+      "protocol": "IPv4"
+>>>>>>> d7a5890497 (change(ih): Rebase and improvement of documentation and code name)
     }
   }
 }

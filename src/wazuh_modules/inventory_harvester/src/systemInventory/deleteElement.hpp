@@ -68,6 +68,7 @@ public:
         {
             data->m_serializedElement = serializeToJSON(HotfixElement<TContext>::deleteElement(data.get()));
         }
+<<<<<<< HEAD
         else if (originTable == TContext::OriginTable::NetworkProtocol)
         {
             data->m_serializedElement = serializeToJSON(NetworkProtocolElement<TContext>::deleteElement(data.get()));
@@ -77,6 +78,9 @@ public:
             data->m_serializedElement = serializeToJSON(NetIfaceElement<TContext>::deleteElement(data.get()));
         }
         else if (originTable == TContext::OriginTable::Net)
+=======
+        else if (originTable == TContext::OriginTable::NetAddress)
+>>>>>>> d7a5890497 (change(ih): Rebase and improvement of documentation and code name)
         {
             data->m_serializedElement = serializeToJSON(NetElement<TContext>::deleteElement(data.get()));
         }

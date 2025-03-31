@@ -149,7 +149,7 @@ TEST_F(SystemInventoryDeleteElement, emptyAgentID_Network)
     auto deleteElement = std::make_shared<DeleteSystemElement<MockSystemContext>>();
 
     EXPECT_CALL(*context, agentId()).WillOnce(testing::Return(""));
-    EXPECT_CALL(*context, originTable()).WillOnce(testing::Return(MockSystemContext::OriginTable::Net));
+    EXPECT_CALL(*context, originTable()).WillOnce(testing::Return(MockSystemContext::OriginTable::NetAddress));
 
     EXPECT_ANY_THROW(deleteElement->handleRequest(context));
 }
@@ -286,7 +286,7 @@ TEST_F(SystemInventoryDeleteElement, validAgentIp_Network)
 
     EXPECT_CALL(*context, agentId()).WillOnce(testing::Return("001"));
     EXPECT_CALL(*context, netAddressItemId()).WillOnce(testing::Return("ABC"));
-    EXPECT_CALL(*context, originTable()).WillOnce(testing::Return(MockSystemContext::OriginTable::Net));
+    EXPECT_CALL(*context, originTable()).WillOnce(testing::Return(MockSystemContext::OriginTable::NetAddress));
 
     EXPECT_NO_THROW(deleteElement->handleRequest(context));
 
@@ -300,7 +300,7 @@ TEST_F(SystemInventoryDeleteElement, emptyNetAddressItemId_Network)
 
     EXPECT_CALL(*context, agentId()).WillOnce(testing::Return("001"));
     EXPECT_CALL(*context, netAddressItemId()).WillOnce(testing::Return(""));
-    EXPECT_CALL(*context, originTable()).WillOnce(testing::Return(MockSystemContext::OriginTable::Net));
+    EXPECT_CALL(*context, originTable()).WillOnce(testing::Return(MockSystemContext::OriginTable::NetAddress));
 
     EXPECT_ANY_THROW(deleteElement->handleRequest(context));
 }

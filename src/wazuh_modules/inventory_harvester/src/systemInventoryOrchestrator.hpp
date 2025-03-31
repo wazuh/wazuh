@@ -110,6 +110,7 @@ public:
                 PolicyHarvesterManager::instance().buildIndexerTemplatePath("hardware"),
                 PolicyHarvesterManager::instance().buildIndexerUpdateTemplatePath("hardware"),
                 Log::GLOBAL_LOG_FUNCTION);
+<<<<<<< HEAD
         m_indexerConnectorInstances[SystemContext::AffectedComponentType::NetProto] =
             std::make_unique<IndexerConnector>(
                 PolicyHarvesterManager::instance().buildIndexerConfig("protocols"),
@@ -123,6 +124,9 @@ public:
                 PolicyHarvesterManager::instance().buildIndexerUpdateTemplatePath("netifaces"),
                 Log::GLOBAL_LOG_FUNCTION);
         m_indexerConnectorInstances[SystemContext::AffectedComponentType::Network] = std::make_unique<IndexerConnector>(
+=======
+        m_indexerConnectorInstances[SystemContext::AffectedComponentType::NetworkAddress] = std::make_unique<IndexerConnector>(
+>>>>>>> d7a5890497 (change(ih): Rebase and improvement of documentation and code name)
             PolicyHarvesterManager::instance().buildIndexerConfig("networks"),
             PolicyHarvesterManager::instance().buildIndexerTemplatePath("networks"),
             PolicyHarvesterManager::instance().buildIndexerUpdateTemplatePath("networks"),

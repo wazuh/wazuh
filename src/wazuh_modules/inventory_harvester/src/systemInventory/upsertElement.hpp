@@ -71,6 +71,7 @@ public:
         {
             data->m_serializedElement = serializeToJSON(HotfixElement<TContext>::build(data.get()));
         }
+<<<<<<< HEAD
         else if (originTable == TContext::OriginTable::NetworkProtocol)
         {
             data->m_serializedElement = serializeToJSON(NetworkProtocolElement<TContext>::build(data.get()));
@@ -80,6 +81,9 @@ public:
             data->m_serializedElement = serializeToJSON(NetIfaceElement<TContext>::build(data.get()));
         }
         else if (originTable == TContext::OriginTable::Net)
+=======
+        else if (originTable == TContext::OriginTable::NetAddress)
+>>>>>>> d7a5890497 (change(ih): Rebase and improvement of documentation and code name)
         {
             data->m_serializedElement = serializeToJSON(NetElement<TContext>::build(data.get()));
         }

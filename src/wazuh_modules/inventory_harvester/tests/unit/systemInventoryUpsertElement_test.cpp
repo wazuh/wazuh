@@ -24,6 +24,10 @@ protected:
     // LCOV_EXCL_STOP
 };
 
+/*
+ * Test cases for SystemInventoryUpsertElement OS scenario
+ * These tests check the behavior of the UpsertSystemElement class when handling requests.
+ */
 TEST_F(SystemInventoryUpsertElement, emptyAgentID_OS)
 {
     auto context = std::make_shared<MockSystemContext>();
@@ -60,6 +64,10 @@ TEST_F(SystemInventoryUpsertElement, validAgentID_OS)
         R"({"id":"001","operation":"INSERTED","data":{"agent":{"id":"001","name":"agentName","ip":"agentIp","version":"agentVersion"},"host":{"architecture":"osArchitecture","hostname":"osHostName","os":{"kernel":"osKernelRelease","name":"osName","platform":"osPlatform","version":"osVersion","type":"osKernelSysName"}}}})");
 }
 
+/*
+ * Test cases for SystemInventoryUpsertElement package scenario
+ * These tests check the behavior of the UpsertSystemElement class when handling requests.
+ */
 TEST_F(SystemInventoryUpsertElement, emptyAgentID_Packages)
 {
     auto context = std::make_shared<MockSystemContext>();
@@ -111,6 +119,10 @@ TEST_F(SystemInventoryUpsertElement, validAgentID_Packages)
         R"({"id":"001_packageItemId","operation":"INSERTED","data":{"package":{"architecture":"packageArchitecture","description":"packageDescription","installed":"packageInstallTime","name":"packageName","path":"packageLocation","size":0,"type":"packageFormat","version":"packageVersion","vendor":"packageVendor"},"agent":{"id":"001","name":"agentName","ip":"agentIp","version":"agentVersion"}}})");
 }
 
+/*
+ * Test cases for SystemInventoryUpsertElement process scenario
+ * These tests check the behavior of the UpsertSystemElement class when handling requests.
+ */
 TEST_F(SystemInventoryUpsertElement, emptyAgentID_Processes)
 {
     auto context = std::make_shared<MockSystemContext>();
@@ -146,6 +158,10 @@ TEST_F(SystemInventoryUpsertElement, validAgentID_Processes)
         R"({"id":"001_1234","operation":"INSERTED","data":{"process":{"args":["processName"],"args_count":1,"command_line":"processCmdline","name":"processName","pid":1234,"start":"processStartISO8601","ppid":1},"agent":{"id":"001","name":"agentName","ip":"agentIp","version":"agentVersion"}}})");
 }
 
+/*
+ * Test cases for SystemInventoryUpsertElement ports scenario
+ * These tests check the behavior of the UpsertSystemElement class when handling requests.
+ */
 TEST_F(SystemInventoryUpsertElement, validAgentID_Ports)
 {
     auto context = std::make_shared<MockSystemContext>();
@@ -199,6 +215,10 @@ TEST_F(SystemInventoryUpsertElement, emptyItemId_Ports)
     EXPECT_ANY_THROW(upsertElement->handleRequest(context));
 }
 
+/*
+ * Test cases for SystemInventoryUpsertElement hotfixes scenario
+ * These tests check the behavior of the UpsertSystemElement class when handling requests.
+ */
 TEST_F(SystemInventoryUpsertElement, emptyAgentID_Hotfixes)
 {
     auto context = std::make_shared<MockSystemContext>();
@@ -206,17 +226,6 @@ TEST_F(SystemInventoryUpsertElement, emptyAgentID_Hotfixes)
 
     EXPECT_CALL(*context, agentId()).WillOnce(testing::Return(""));
     EXPECT_CALL(*context, originTable()).WillOnce(testing::Return(MockSystemContext::OriginTable::Hotfixes));
-
-    EXPECT_ANY_THROW(upsertElement->handleRequest(context));
-}
-
-TEST_F(SystemInventoryUpsertElement, emptyAgentID_Hw)
-{
-    auto context = std::make_shared<MockSystemContext>();
-    auto upsertElement = std::make_shared<UpsertSystemElement<MockSystemContext>>();
-
-    EXPECT_CALL(*context, agentId()).WillOnce(testing::Return(""));
-    EXPECT_CALL(*context, originTable()).WillOnce(testing::Return(MockSystemContext::OriginTable::Hw));
 
     EXPECT_ANY_THROW(upsertElement->handleRequest(context));
 }
@@ -229,18 +238,6 @@ TEST_F(SystemInventoryUpsertElement, emptyHotfix_Hotfixes)
     EXPECT_CALL(*context, agentId()).WillOnce(testing::Return("001"));
     EXPECT_CALL(*context, hotfixName()).WillOnce(testing::Return(""));
     EXPECT_CALL(*context, originTable()).WillOnce(testing::Return(MockSystemContext::OriginTable::Hotfixes));
-
-    EXPECT_ANY_THROW(upsertElement->handleRequest(context));
-}
-
-TEST_F(SystemInventoryUpsertElement, emptyBoardId_Hw)
-{
-    auto context = std::make_shared<MockSystemContext>();
-    auto upsertElement = std::make_shared<UpsertSystemElement<MockSystemContext>>();
-
-    EXPECT_CALL(*context, agentId()).WillOnce(testing::Return("001"));
-    EXPECT_CALL(*context, boardInfo()).WillOnce(testing::Return(""));
-    EXPECT_CALL(*context, originTable()).WillOnce(testing::Return(MockSystemContext::OriginTable::Hw));
 
     EXPECT_ANY_THROW(upsertElement->handleRequest(context));
 }
@@ -261,6 +258,33 @@ TEST_F(SystemInventoryUpsertElement, validAgentID_Hotfixes)
     EXPECT_EQ(
         context->m_serializedElement,
         R"({"id":"001_KB12345","operation":"INSERTED","data":{"package":{"hotfix":{"name":"KB12345"}},"agent":{"id":"001","name":"agentName","ip":"agentIp","version":"agentVersion"}}})");
+}
+
+/*
+ * Test cases for SystemInventoryUpsertElement hardware scenario
+ * These tests check the behavior of the UpsertSystemElement class when handling requests.
+ */
+TEST_F(SystemInventoryUpsertElement, emptyAgentID_Hw)
+{
+    auto context = std::make_shared<MockSystemContext>();
+    auto upsertElement = std::make_shared<UpsertSystemElement<MockSystemContext>>();
+
+    EXPECT_CALL(*context, agentId()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, originTable()).WillOnce(testing::Return(MockSystemContext::OriginTable::Hw));
+
+    EXPECT_ANY_THROW(upsertElement->handleRequest(context));
+}
+
+TEST_F(SystemInventoryUpsertElement, emptyBoardId_Hw)
+{
+    auto context = std::make_shared<MockSystemContext>();
+    auto upsertElement = std::make_shared<UpsertSystemElement<MockSystemContext>>();
+
+    EXPECT_CALL(*context, agentId()).WillOnce(testing::Return("001"));
+    EXPECT_CALL(*context, boardInfo()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, originTable()).WillOnce(testing::Return(MockSystemContext::OriginTable::Hw));
+
+    EXPECT_ANY_THROW(upsertElement->handleRequest(context));
 }
 
 TEST_F(SystemInventoryUpsertElement, validAgentID_Hw)
@@ -288,6 +312,7 @@ TEST_F(SystemInventoryUpsertElement, validAgentID_Hw)
         R"({"id":"001_boardInfo","operation":"INSERTED","data":{"host":{"cpu":{"cores":2,"name":"cpuName","speed":2497},"memory":{"free":0,"total":0,"used":0}},"agent":{"id":"001","name":"agentName","ip":"agentIp","version":"agentVersion"},"observer":{"serial_number":"boardInfo"}}})");
 }
 
+<<<<<<< HEAD
 TEST_F(SystemInventoryUpsertElement, emptyAgentID_NetworkProtocol)
 {
     auto context = std::make_shared<MockSystemContext>();
@@ -393,17 +418,36 @@ TEST_F(SystemInventoryUpsertElement, validAgentID_NetIface)
 }
 
 TEST_F(SystemInventoryUpsertElement, emptyAgentID_Network)
+=======
+/*
+ * Test cases for SystemInventoryUpsertElement network address scenario
+ * These tests check the behavior of the UpsertSystemElement class when handling requests.
+ */
+TEST_F(SystemInventoryUpsertElement, emptyAgentID_NetworkAddress)
+>>>>>>> d7a5890497 (change(ih): Rebase and improvement of documentation and code name)
 {
     auto context = std::make_shared<MockSystemContext>();
     auto upsertElement = std::make_shared<UpsertSystemElement<MockSystemContext>>();
 
     EXPECT_CALL(*context, agentId()).WillOnce(testing::Return(""));
-    EXPECT_CALL(*context, originTable()).WillOnce(testing::Return(MockSystemContext::OriginTable::Net));
+    EXPECT_CALL(*context, originTable()).WillOnce(testing::Return(MockSystemContext::OriginTable::NetAddress));
 
     EXPECT_ANY_THROW(upsertElement->handleRequest(context));
 }
 
-TEST_F(SystemInventoryUpsertElement, validAgentID_Network)
+TEST_F(SystemInventoryUpsertElement, emptyNetAddressID_NetworkAddress)
+{
+    auto context = std::make_shared<MockSystemContext>();
+    auto upsertElement = std::make_shared<UpsertSystemElement<MockSystemContext>>();
+
+    EXPECT_CALL(*context, agentId()).WillOnce(testing::Return("001"));
+    EXPECT_CALL(*context, netAddressItemId()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, originTable()).WillOnce(testing::Return(MockSystemContext::OriginTable::NetAddress));
+
+    EXPECT_ANY_THROW(upsertElement->handleRequest(context));
+}
+
+TEST_F(SystemInventoryUpsertElement, validAgentID_NetworkAddress)
 {
     auto context = std::make_shared<MockSystemContext>();
     auto upsertElement = std::make_shared<UpsertSystemElement<MockSystemContext>>();
@@ -411,7 +455,7 @@ TEST_F(SystemInventoryUpsertElement, validAgentID_Network)
     EXPECT_CALL(*context, agentId()).WillOnce(testing::Return("001"));
     EXPECT_CALL(*context, netAddressItemId()).WillOnce(testing::Return("netAddressItemId"));
     EXPECT_CALL(*context, agentIp()).WillRepeatedly(testing::Return("192.168.0.1"));
-    EXPECT_CALL(*context, originTable()).WillOnce(testing::Return(MockSystemContext::OriginTable::Net));
+    EXPECT_CALL(*context, originTable()).WillOnce(testing::Return(MockSystemContext::OriginTable::NetAddress));
     EXPECT_CALL(*context, agentName()).WillOnce(testing::Return("agentName"));
     EXPECT_CALL(*context, agentVersion()).WillOnce(testing::Return("agentVersion"));
     EXPECT_CALL(*context, broadcast()).WillOnce(testing::Return("192.168.0.255"));
