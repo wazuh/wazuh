@@ -13,10 +13,8 @@ RUN yum install -y \
     kernel-devel \
     perl-IPC-Cmd \
     perl-Data-Dumper \
-    epel-release \
     autoconf \
     perl \
-    lzip \
     bzip2 \
     make \
     nss-devel \
@@ -31,12 +29,11 @@ RUN yum install -y \
     curl-devel \
     xz \
     elfutils \
-    linux-libc-dev
+    scl-utils
 
-RUN yum install epel-release -y
-RUN yum install lzip -y
+RUN yum install epel-release lzip -y
 
-RUN scl enable devtoolset-11 bash
+RUN scl enable bash
 
 ADD https://github.com/git/git/archive/refs/tags/v2.18.0.tar.gz /tmp/git-2.18.0.tar.gz
 WORKDIR /tmp
