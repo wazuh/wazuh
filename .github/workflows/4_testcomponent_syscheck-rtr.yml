@@ -22,6 +22,12 @@ jobs:
     # We don't use ubuntu-latest because the install_build_deps action adds a fixed repository for Wine
     runs-on: ubuntu-24.04
     steps:
+      - name: Downgrade CMake
+        run: |
+          sudo apt-get update
+          sudo apt list cmake -a
+          sudo apt-get install -y cmake=3.22.1-1ubuntu1 cmake-data=3.22.1-1ubuntu1
+          cmake --version
       - name: Checkout Repo
         uses: actions/checkout@v3
       - name: "Install dependencies"
