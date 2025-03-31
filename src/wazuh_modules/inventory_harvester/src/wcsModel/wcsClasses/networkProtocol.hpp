@@ -19,7 +19,7 @@ struct Network final
 {
     std::string_view dhcp;
     std::string_view gateway;
-    long metric;
+    int64_t metric;
     std::string_view type;
 
     REFLECTABLE(MAKE_FIELD("dhcp", &Network::dhcp),
