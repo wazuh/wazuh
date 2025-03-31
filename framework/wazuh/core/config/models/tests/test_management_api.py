@@ -109,7 +109,7 @@ def test_access_config_invalid_values(values):
         (
             {},
             {
-                'host': ['localhost', '::1'],
+                'host': '0.0.0.0',
                 'port': 55000,
                 'drop_privileges': True,
                 'max_upload_size': 10485760,
@@ -122,7 +122,7 @@ def test_access_config_invalid_values(values):
         ),
         (
             {
-                'host': ['example', '::'],
+                'host': 'example',
                 'port': 55050,
                 'drop_privileges': False,
                 'max_upload_size': 101,
@@ -133,7 +133,7 @@ def test_access_config_invalid_values(values):
                 'access': {'max_login_attempts': 4},
             },
             {
-                'host': ['example', '::'],
+                'host': 'example',
                 'port': 55050,
                 'drop_privileges': False,
                 'max_upload_size': 101,

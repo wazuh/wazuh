@@ -37,7 +37,7 @@ def test_batcher_config_invalid_values(init_values):
 @pytest.mark.parametrize(
     'init_values, expected',
     [
-        ({}, {'host': 'localhost', 'port': 27000, 'workers': 4}),
+        ({}, {'host': '0.0.0.0', 'port': 27000, 'workers': 4}),
         ({'host': '127.0.0.1', 'port': 27001, 'workers': 2}, {'host': '127.0.0.1', 'port': 27001, 'workers': 2}),
     ],
 )
