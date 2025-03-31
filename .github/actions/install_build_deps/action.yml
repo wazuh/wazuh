@@ -12,7 +12,13 @@ runs:
       run: sudo apt-get update -y
     - name: Install tools and libraries
       shell: bash
-      run: sudo apt-get install cppcheck astyle valgrind lcov clang-tools -y
+      run: sudo apt-get install cppcheck astyle valgrind clang-tools -y
+    - name: Install lcov 1.14.2
+      run: |
+        sudo apt-get update
+        sudo apt list lcov -a
+        sudo apt-get install -y lcov=1.14.2-1ubuntu1
+        lcov --version
     - name: Install mingw
       shell: bash
       run: |
