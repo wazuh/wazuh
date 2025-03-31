@@ -1,7 +1,6 @@
 from enum import Enum
-from typing import List
 
-from pydantic import Field, PositiveInt
+from pydantic import PositiveInt
 from server_management_api.constants import API_CERT_PATH, API_KEY_PATH
 from wazuh.core.config.models.base import WazuhConfigBaseModel
 from wazuh.core.config.models.logging import APILoggingConfig
@@ -98,7 +97,7 @@ class ManagementAPIConfig(WazuhConfigBaseModel):
         Logging configuration for the management API. Default is an instance of APILoggingConfig.
     """
 
-    host: List[str] = Field(default=['localhost', '::1'], min_length=2)
+    host: str = 'localhost'
     port: PositiveInt = 55000
     drop_privileges: bool = True
     max_upload_size: PositiveInt = 10485760
