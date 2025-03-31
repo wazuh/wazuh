@@ -18,6 +18,7 @@ public:
     static fimebpf::abspath_t mock_abspath;
     MOCK_METHOD(bool, mock_fim_shutdown_process_on, ());
     MOCK_METHOD(void, m_fim_whodata_event, (whodata_evt*), ());
+    MOCK_METHOD(void, m_free_whodata_event, (whodata_evt*), ());
 
 
     static MockFimebpf& GetInstance() {
@@ -34,8 +35,27 @@ public:
         fimebpf::instance().m_fim_shutdown_process_on = []() {
             return MockFimebpf::GetInstance().mock_fim_shutdown_process_on();
         };
-	fimebpf::instance().m_fim_whodata_event = [](whodata_evt* event) {
+	    fimebpf::instance().m_fim_whodata_event = [](whodata_evt* event) {
             MockFimebpf::GetInstance().m_fim_whodata_event(event);
+        };
+	    fimebpf::instance().m_free_whodata_event = [](whodata_evt* event) {
+            if (event == NULL) return;
+            if (event->user_name) free(event->user_name);
+            if (event->cwd) free(event->cwd);
+            if (event->audit_name) free(event->audit_name);
+            if (event->audit_uid) free(event->audit_uid);
+            if (event->effective_name) free(event->effective_name);
+            if (event->effective_uid) free(event->effective_uid);
+            if (event->group_id) free(event->group_id);
+            if (event->group_name) free(event->group_name);
+            if (event->parent_name) free(event->parent_name);
+            if (event->parent_cwd) free(event->parent_cwd);
+            if (event->inode) free(event->inode);
+            if (event->dev) free(event->dev);
+            if (event->user_id) free(event->user_id);
+            if (event->path) free(event->path);
+            if (event->process_name) free(event->process_name);
+            free(event);
         };
 
     }
@@ -90,7 +110,6 @@ void mock_w_bpf_deinit([[maybe_unused]]void* helpers) {}
 int mock_init_ring_buffer_success([[maybe_unused]]ring_buffer** rb, [[maybe_unused]]ring_buffer_sample_fn sample_cb) { return 0; }
 int mock_init_ring_buffer_failure([[maybe_unused]]ring_buffer** rb, [[maybe_unused]]ring_buffer_sample_fn sample_cb) { return 1; }
 void mock_ebpf_pop_events() { return; }
-void mock_whodata_pop_events() { return; }
 int mock_check_invalid_kernel_version() { return 0; }
 int mock_init_libbpf([[maybe_unused]]std::unique_ptr<DynamicLibraryWrapper> sym_load) { return 0; }
 int mock_init_bpfobj() { return 0; }

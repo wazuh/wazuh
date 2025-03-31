@@ -1,3 +1,12 @@
+/* Copyright (C) 2015, Wazuh Inc.
+ * All rights reserved.
+ *
+ * This program is free software; you can redistribute it
+ * and/or modify it under the terms of the GNU General Public
+ * License (version 2) as published by the FSF - Free Software
+ * Foundation.
+ */
+
 #include <cstdio>
 #include <cstdlib>
 #include <sstream>
@@ -30,14 +39,7 @@ std::unique_ptr<DefaultDynamicLibraryWrapper> sym_load;
 time_t (*w_time)(time_t*) = time;
 
 int ebpf_kernel_queue_full_reported = 0;
-int ebpf_whodata_queue_full_reported = 0;
-
-// 1) Definimos la estructura dynamic_file_event ANTES de usarla en kernelEventQueue.
-
 fim::BoundedQueue<std::unique_ptr<dynamic_file_event>> kernelEventQueue;
-using whodata_deleter = std::function<void(whodata_evt*)>;
-whodata_deleter deleter;
-fim::BoundedQueue<std::unique_ptr<whodata_evt, whodata_deleter>> whodataEventQueue;
 
 static char* uint_to_str(unsigned int num) {
     std::string s = std::to_string(num);
@@ -54,10 +56,14 @@ int handle_event(void* ctx, void* data, size_t data_sz) {
     (void)ctx;
     (void)data_sz;
 
-    auto logFn = fimebpf::instance().m_loggingFunction;
     file_event* e = static_cast<file_event*>(data);
-    directory_t* config = fimebpf::instance().m_fim_configuration_directory(e->filename);
+    auto logFn = fimebpf::instance().m_loggingFunction;
+    auto confFn = fimebpf::instance().m_fim_configuration_directory;
+    if (!logFn || !confFn) {
+        return 0;
+    }
 
+    directory_t* config = confFn(e->filename);
     if (config && (config->options & WHODATA_ACTIVE)) {
         auto event = std::make_unique<dynamic_file_event>(dynamic_file_event{
             .filename    = std::string(e->filename),
@@ -151,7 +157,6 @@ int init_libbpf(std::unique_ptr<DynamicLibraryWrapper> local_sym_load) {
 
     bpf_helpers->init_ring_buffer            = (init_ring_buffer_t)init_ring_buffer;
     bpf_helpers->ebpf_pop_events             = (ebpf_pop_events_t)ebpf_pop_events;
-    bpf_helpers->whodata_pop_events          = (whodata_pop_events_t)whodata_pop_events;
     bpf_helpers->init_bpfobj                 = (init_bpfobj_t)init_bpfobj;
     bpf_helpers->bpf_object_destroy_skeleton = (bpf_object__destroy_skeleton_t)local_sym_load->getFunctionSymbol(bpf_helpers->module, "bpf_object__destroy_skeleton");
     bpf_helpers->bpf_object_open_skeleton    = (bpf_object__open_skeleton_t)local_sym_load->getFunctionSymbol(bpf_helpers->module, "bpf_object__open_skeleton");
@@ -173,7 +178,6 @@ int init_libbpf(std::unique_ptr<DynamicLibraryWrapper> local_sym_load) {
     /* Load all required symbols */
     if (!bpf_helpers->init_ring_buffer ||
         !bpf_helpers->ebpf_pop_events ||
-        !bpf_helpers->whodata_pop_events ||
         !bpf_helpers->init_bpfobj ||
         !bpf_helpers->bpf_object_open_file ||
         !bpf_helpers->bpf_object_load ||
@@ -276,7 +280,7 @@ int init_ring_buffer(ring_buffer** rb, ring_buffer_sample_fn sample_cb) {
 }
 
 /* Worker thread to pop events from kernelEventQueue */
-void ebpf_pop_events(fim::BoundedQueue<std::unique_ptr<dynamic_file_event>>& local_kernelEventQueue, fim::BoundedQueue<std::unique_ptr<whodata_evt, whodata_deleter>>& local_whodataEventQueue) {
+void ebpf_pop_events(fim::BoundedQueue<std::unique_ptr<dynamic_file_event>>& local_kernelEventQueue) {
     auto logFn = fimebpf::instance().m_loggingFunction;
     if (!logFn) {
         return;
@@ -312,24 +316,6 @@ void ebpf_pop_events(fim::BoundedQueue<std::unique_ptr<dynamic_file_event>>& loc
 
             fimebpf::instance().m_fim_whodata_event(w_evt);
             fimebpf::instance().m_free_whodata_event(w_evt);
-        }
-    }
-}
-
-/* Worker thread to pop events from whodataEventQueue */
-void whodata_pop_events(fim::BoundedQueue<std::unique_ptr<whodata_evt, whodata_deleter>>& local_whodataEventQueue) {
-    while (!fimebpf::instance().m_fim_shutdown_process_on()) {
-        std::unique_ptr<whodata_evt, whodata_deleter> event;
-
-        if (!local_whodataEventQueue.pop(event, WAIT_MS)) {
-            if (fimebpf::instance().m_fim_shutdown_process_on()) {
-                return;
-            }
-        }
-
-        if (event) {
-            whodata_evt* w_evt = event.get();
-            fimebpf::instance().m_fim_whodata_event(w_evt);
         }
     }
 }
@@ -375,7 +361,6 @@ int ebpf_whodata_healthcheck() {
     }
 
     kernelEventQueue.setMaxSize(fimebpf::instance().m_queue_size);
-    whodataEventQueue.setMaxSize(fimebpf::instance().m_queue_size);
 
     if (!logFn || bpf_helpers->check_invalid_kernel_version() || bpf_helpers->init_libbpf(std::move(sym_load)) || bpf_helpers->init_bpfobj() || bpf_helpers->init_ring_buffer(&rb, healthcheck_event)) {
         return 1;
@@ -433,22 +418,10 @@ int ebpf_whodata() {
         return 1;
     }
 
-    deleter = [](whodata_evt* evt) {
-        if (fimebpf::instance().m_free_whodata_event) {
-            fimebpf::instance().m_free_whodata_event(evt);
-        }
-    };
     std::thread ebpf_pop_thread([&]() {
-        bpf_helpers->ebpf_pop_events(kernelEventQueue, whodataEventQueue);
+        bpf_helpers->ebpf_pop_events(kernelEventQueue);
     });
     ebpf_pop_thread.detach();
-
-    /*
-    std::thread whodata_pop_thread([&]() {
-        bpf_helpers->whodata_pop_events(whodataEventQueue);
-    });
-    whodata_pop_thread.detach();
-    */
 
     while (!fimebpf::instance().m_fim_shutdown_process_on()) {
         ret = bpf_helpers->ring_buffer_poll(rb, WAIT_MS);
