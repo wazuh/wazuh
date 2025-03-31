@@ -126,7 +126,9 @@ Feature: Catalog API Management
     Then I should receive a success response
     And I should receive the next content
       """
-      name: decoder/testing/0
+      {
+        "name":"decoder/testing/0"
+      }
       """
 
 
@@ -309,9 +311,12 @@ Feature: Catalog API Management
     Then I should receive a success response
     And I should receive the next content
       """
-      name: decoder/testing/0
-      metadata:
-        description: this is a test decoder
+      {
+        "name":"decoder/testing/0",
+        "metadata": {
+          "description": "this is a test decoder"
+        }
+      }
       """
 
 
