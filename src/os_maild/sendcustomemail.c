@@ -26,7 +26,9 @@
 #define DATAMSG             "DATA\r\n"
 #define FROM                "From: " __ossec_name " <%s>\r\n"
 #define REPLYTO             "Reply-To: " __ossec_name " <%s>\r\n"
-#define TO                  "To: <%s>\r\n"
+#define TO                  "To: <%s>"
+#define TO_ADDITIONAL       ", <%s>"
+#define TO_END              "\r\n"
 #define CC                  "Cc: <%s>\r\n"
 #define SUBJECT             "Subject: %s\r\n"
 #define ENDHEADER           "\r\n"
@@ -54,6 +56,8 @@ int OS_SendCustomEmail(char **to, char *subject, char *smtpserver, char *from, c
     char *msg;
     char snd_msg[128];
     char buffer[2049];
+    size_t final_to_sz;
+    char final_to[512];
 
     buffer[2048] = '\0';
 
@@ -171,16 +175,7 @@ int OS_SendCustomEmail(char **to, char *subject, char *smtpserver, char *from, c
         free(msg);
     }
 
-    /* Build "From" and "To" in the e-mail header */
-    memset(snd_msg, '\0', 128);
-    snprintf(snd_msg, 127, TO, to[0]);
-
-    if (sendmail) {
-        fprintf(sendmail->file_in, "%s", snd_msg);
-    } else {
-        OS_SendTCP(socket, snd_msg);
-    }
-
+    /* Build "From" in the e-mail header */
     memset(snd_msg, '\0', 128);
     snprintf(snd_msg, 127, FROM, from);
 
@@ -201,24 +196,34 @@ int OS_SendCustomEmail(char **to, char *subject, char *smtpserver, char *from, c
         }
     }
 
-    /* Add CCs */
-    if (to[1]) {
-        i = 1;
+    final_to[0] = '\0';
+    final_to_sz = sizeof(final_to) - 1;
+
+    /* Add TOs */
+    if (to[0]) {
+        i = 0;
         while (1) {
             if (to[i] == NULL) {
                 break;
             }
 
             memset(snd_msg, '\0', 128);
-            snprintf(snd_msg, 127, TO, to[i]);
-
-            if (sendmail) {
-                fprintf(sendmail->file_in, "%s", snd_msg);
+            if (i == 0) {
+                snprintf(snd_msg, 127, TO, to[i]);
             } else {
-                OS_SendTCP(socket, snd_msg);
+                snprintf(snd_msg, 127, TO_ADDITIONAL, to[i]);
             }
-
+            strncat(final_to, snd_msg, final_to_sz);
+            final_to_sz -= strlen(snd_msg) + 2;
             i++;
+        }
+        if (final_to[0] != '\0') {
+            strncat(final_to, TO_END, final_to_sz);
+        }
+        if (sendmail) {
+            fprintf(sendmail->file_in, "%s", final_to);
+        } else {
+            OS_SendTCP(socket, final_to);
         }
     }
 

@@ -26,7 +26,9 @@
 #define RCPTTO              "Rcpt To: <%s>\r\n"
 #define DATAMSG             "DATA\r\n"
 #define FROM                "From: " __ossec_name " <%s>\r\n"
-#define TO                  "To: <%s>\r\n"
+#define TO                  "To: <%s>"
+#define TO_ADDITIONAL       ", <%s>"
+#define TO_END              "\r\n"
 #define REPLYTO             "Reply-To: " __ossec_name " <%s>\r\n"
 /*#define CC                "Cc: <%s>\r\n"*/
 #define SUBJECT             "Subject: %s\r\n"
@@ -177,12 +179,18 @@ int OS_Sendsms(MailConfig *mail, struct tm *p, MailMsg *sms_msg)
 
                 /* Create header for to */
                 memset(snd_msg, '\0', 128);
-                snprintf(snd_msg, 127, TO, mail->gran_to[i]);
+                if (i == 0) {
+                    snprintf(snd_msg, 127, TO, mail->gran_to[i]);
+                } else {
+                    snprintf(snd_msg, 127, TO_ADDITIONAL, mail->gran_to[i]);
+                }
                 strncat(final_to, snd_msg, final_to_sz);
                 final_to_sz -= strlen(snd_msg) + 2;
 
                 i++;
-                continue;
+            }
+            if (final_to[0] != '\0') {
+                strncat(final_to, TO_END, final_to_sz);
             }
         }
 
@@ -299,8 +307,10 @@ int OS_Sendmail(MailConfig *mail, struct tm *p)
     wfd_t *sendmail = NULL;
     int socket = -1;
     unsigned int i = 0;
+    size_t final_to_sz;
     char *msg;
     char snd_msg[256];
+    char final_to[512];
 
     MailNode *mailmsg;
 
@@ -473,18 +483,6 @@ int OS_Sendmail(MailConfig *mail, struct tm *p)
         free(msg);
     }
 
-    if (mail->to) {
-        /* Building "From" and "To" in the e-mail header */
-        memset(snd_msg, '\0', 256);
-        snprintf(snd_msg, 256, TO, mail->to[0]);
-
-        if (sendmail) {
-            fprintf(sendmail->file_in, "%s", snd_msg);
-        } else {
-            OS_SendTCP(socket, snd_msg);
-        }
-    }
-
     memset(snd_msg, '\0', 256);
     snprintf(snd_msg, 255, FROM, mail->from);
 
@@ -505,30 +503,29 @@ int OS_Sendmail(MailConfig *mail, struct tm *p)
         }
     }
 
+    /* Build "To" in the e-mail header */
+    memset(final_to, '\0', 512);
+    final_to_sz = sizeof(final_to) - 2;        
     if (mail->to) {
-        /* Add CCs */
-        if (mail->to[1]) {
-            i = 1;
-            while (1) {
-                if (mail->to[i] == NULL) {
-                    break;
-                }
-
-                memset(snd_msg, '\0', 256);
-                snprintf(snd_msg, 256, TO, mail->to[i]);
-
-                if (sendmail) {
-                    fprintf(sendmail->file_in, "%s", snd_msg);
-                } else {
-                    OS_SendTCP(socket, snd_msg);
-                }
-
-                i++;
+        /* Add TOs */
+        i = 0;
+        while (1) {
+            if (mail->to[i] == NULL) {
+                break;
             }
+            memset(snd_msg, '\0', 256);
+            if (i == 0) {
+                snprintf(snd_msg, 255, TO, mail->to[i]);
+            } else {
+                snprintf(snd_msg, 255, TO_ADDITIONAL, mail->to[i]);
+            }
+            strncat(final_to, snd_msg, final_to_sz);
+            final_to_sz -= strlen(snd_msg) + 2;
+            i++;
         }
     }
 
-    /* More CCs - from granular options */
+    /* More TOs - from granular options */
     if (mail->gran_to) {
         i = 0;
         while (mail->gran_to[i] != NULL) {
@@ -538,17 +535,25 @@ int OS_Sendmail(MailConfig *mail, struct tm *p)
             }
 
             memset(snd_msg, '\0', 256);
-            snprintf(snd_msg, 256, TO, mail->gran_to[i]);
-
-            if (sendmail) {
-                fprintf(sendmail->file_in, "%s", snd_msg);
+            if (final_to[0] == '\0') {
+                snprintf(snd_msg, 255, TO, mail->gran_to[i]);
             } else {
-                OS_SendTCP(socket, snd_msg);
+                snprintf(snd_msg, 255, TO_ADDITIONAL, mail->gran_to[i]);
             }
-
+            strncat(final_to, snd_msg, final_to_sz);
+            final_to_sz -= strlen(snd_msg) + 2;
             i++;
-            continue;
         }
+    }
+    
+    if (final_to[0] != '\0') {
+        strncat(final_to, TO_END, final_to_sz);
+    }
+
+    if (sendmail) {
+        fprintf(sendmail->file_in, "%s", final_to);
+    } else {
+        OS_SendTCP(socket, final_to);
     }
 
     /* Send date */
