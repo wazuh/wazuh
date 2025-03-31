@@ -131,7 +131,7 @@ int check_invalid_kernel_version() {
     int minor = versionNumbers[1];
 
     if ((major < 5) || (major == 5 && minor < 8)) {
-        logFn(LOG_ERROR, FIM_EBPF_INVALID_KERNEL);
+        logFn(LOG_ERROR, FIM_ERROR_EBPF_INVALID_KERNEL);
         return 1;
     }
     else {

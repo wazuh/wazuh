@@ -324,7 +324,7 @@ void check_ebpf_availability() {
         directory_t *dir_it;
         OSListNode *node_it;
 
-        merror(FIM_ERROR_EBPF_HEALTHCHECK);
+        mwarn(FIM_ERROR_EBPF_HEALTHCHECK);
 
         // Switch whodata eBPF to whodata audit
         syscheck.whodata_provider = AUDIT_PROVIDER;
