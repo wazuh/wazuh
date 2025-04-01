@@ -34,8 +34,6 @@ This is an example of the indexed ports format:
         "queue": 0
       }
     }
-<<<<<<< HEAD
-=======
   },
   "interface": {
     "state": "listening"
@@ -51,7 +49,6 @@ This is an example of the indexed ports format:
     "ip": "0.0.0.0",
     "port": 8000
   }
->>>>>>> d7a5890497 (change(ih): Rebase and improvement of documentation and code name)
 }
 ```
 
@@ -109,7 +106,6 @@ Here is an example of the indexed hotfixes format. The event ID consists of the 
 }
 ```
 
-<<<<<<< HEAD
 ### Network Protocol
 
 Here is an example of the indexed Network Protocol format. The event ID consists of the agent ID and network interface ID.
@@ -137,7 +133,11 @@ Here is an example of the indexed Network Protocol format. The event ID consists
           "name": "eth0"
         }
       }
-=======
+    }
+  }
+}
+```
+
 ### Network address
 
 This is an example of the indexed network address format:
@@ -157,7 +157,6 @@ This is an example of the indexed network address format:
       "name": "eth0",
       "netmask": "255.255.255.0",
       "protocol": "IPv4"
->>>>>>> d7a5890497 (change(ih): Rebase and improvement of documentation and code name)
     }
   }
 }

@@ -15,12 +15,9 @@
 #include "chainOfResponsability.hpp"
 #include "elements/hotfixElement.hpp"
 #include "elements/hwElement.hpp"
-<<<<<<< HEAD
 #include "elements/netIfaceElement.hpp"
 #include "elements/networkProtocolElement.hpp"
-=======
 #include "elements/netElement.hpp"
->>>>>>> cdc943812e (add(inventoryHarvester): Adding netaddress info to IH)
 #include "elements/osElement.hpp"
 #include "elements/packageElement.hpp"
 #include "elements/portElement.hpp"
@@ -71,7 +68,6 @@ public:
         {
             data->m_serializedElement = serializeToJSON(HotfixElement<TContext>::build(data.get()));
         }
-<<<<<<< HEAD
         else if (originTable == TContext::OriginTable::NetworkProtocol)
         {
             data->m_serializedElement = serializeToJSON(NetworkProtocolElement<TContext>::build(data.get()));
@@ -80,10 +76,7 @@ public:
         {
             data->m_serializedElement = serializeToJSON(NetIfaceElement<TContext>::build(data.get()));
         }
-        else if (originTable == TContext::OriginTable::Net)
-=======
         else if (originTable == TContext::OriginTable::NetAddress)
->>>>>>> d7a5890497 (change(ih): Rebase and improvement of documentation and code name)
         {
             data->m_serializedElement = serializeToJSON(NetElement<TContext>::build(data.get()));
         }

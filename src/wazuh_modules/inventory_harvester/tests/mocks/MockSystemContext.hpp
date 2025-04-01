@@ -37,13 +37,9 @@ public:
         Hotfixes,
         Hw,
         Ports,
-<<<<<<< HEAD
         NetworkProtocol,
         NetIfaces,
-        Net,
-=======
         NetAddress,
->>>>>>> d7a5890497 (change(ih): Rebase and improvement of documentation and code name)
         Invalid
     };
 
@@ -55,13 +51,9 @@ public:
         Port,
         Hotfix,
         Hardware,
-<<<<<<< HEAD
         NetProto,
         NetIface,
-        Network,
-=======
         NetworkAddress,
->>>>>>> d7a5890497 (change(ih): Rebase and improvement of documentation and code name)
         Invalid
     };
 

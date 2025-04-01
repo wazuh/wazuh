@@ -106,9 +106,6 @@ void wdbi_report_removed(const char* agent_id, wdb_component_t component, sqlite
                 cJSON_AddItemToObject(j_data, "local_port", cJSON_CreateNumber(sqlite3_column_int64(stmt, 2)));
                 cJSON_AddItemToObject(j_data, "inode", cJSON_CreateNumber(sqlite3_column_int64(stmt, 3)));
                 cJSON_AddItemToObject(j_data, "item_id", cJSON_CreateString(sqlite3_column_text(stmt, 4)));
-                router_handle = router_inventory_events_handle;
-                break;
-<<<<<<< HEAD
             case WDB_SYSCOLLECTOR_HWINFO:
                 cJSON_AddStringToObject(j_msg_to_send, "action", "deleteHardware");
                 cJSON_AddItemToObject(j_data, "board_serial", cJSON_CreateString((const char*) sqlite3_column_text(stmt, 0)));
@@ -124,8 +121,6 @@ void wdbi_report_removed(const char* agent_id, wdb_component_t component, sqlite
                 cJSON_AddItemToObject(j_data, "item_id", cJSON_CreateString((const char*) sqlite3_column_text(stmt, 0)));
                 router_handle = router_inventory_events_handle;
                 break;
-=======
->>>>>>> d7a5890497 (change(ih): Rebase and improvement of documentation and code name)
             case WDB_SYSCOLLECTOR_NETADDRESS:
                 cJSON_AddStringToObject(j_msg_to_send, "action", "deleteNetworkAddress");
                 cJSON_AddItemToObject(j_data, "item_id", cJSON_CreateString((const char*) sqlite3_column_text(stmt, 0)));

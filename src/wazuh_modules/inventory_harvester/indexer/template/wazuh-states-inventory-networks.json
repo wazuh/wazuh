@@ -55,13 +55,13 @@
               "type": "ip"
             },
             "dhcp": {
-              "type": "keyword"
+              "type": "boolean"
             },
             "ip": {
               "type": "ip"
             },
             "metric": {
-              "type": "keyword"
+              "type": "long"
             },
             "name": {
               "ignore_above": 1024,

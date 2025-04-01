@@ -377,10 +377,7 @@ public:
                 m_syncMsg->data_as_state()->attributes_as_syscollector_network_address() &&
                 m_syncMsg->data_as_state()->attributes_as_syscollector_network_address()->iface())
             {
-                return m_syncMsg->data_as_state()
-                    ->attributes_as_syscollector_network_address()
-                    ->iface()
-                    ->string_view();
+                return m_syncMsg->data_as_state()->attributes_as_syscollector_network_address()->iface()->string_view();
             }
         }
         else

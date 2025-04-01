@@ -312,7 +312,6 @@ TEST_F(SystemInventoryUpsertElement, validAgentID_Hw)
         R"({"id":"001_boardInfo","operation":"INSERTED","data":{"host":{"cpu":{"cores":2,"name":"cpuName","speed":2497},"memory":{"free":0,"total":0,"used":0}},"agent":{"id":"001","name":"agentName","ip":"agentIp","version":"agentVersion"},"observer":{"serial_number":"boardInfo"}}})");
 }
 
-<<<<<<< HEAD
 TEST_F(SystemInventoryUpsertElement, emptyAgentID_NetworkProtocol)
 {
     auto context = std::make_shared<MockSystemContext>();
@@ -417,14 +416,11 @@ TEST_F(SystemInventoryUpsertElement, validAgentID_NetIface)
         R"({"id":"001_netIfaceItemId","operation":"INSERTED","data":{"agent":{"id":"001","name":"agentName","ip":"agentIp","version":"agentVersion"},"host":{"mac":"netIfaceMac","network":{"ingress":{"bytes":1,"drops":2,"errors":3,"packets":4},"egress":{"bytes":5,"drops":6,"errors":7,"packets":8}}},"observer":{"ingress":{"interface":{"alias":"netIfaceAdapter","mtu":9,"name":"netIfaceName","state":"netIfaceState","type":"netIfaceType"}}}}})");
 }
 
-TEST_F(SystemInventoryUpsertElement, emptyAgentID_Network)
-=======
 /*
  * Test cases for SystemInventoryUpsertElement network address scenario
  * These tests check the behavior of the UpsertSystemElement class when handling requests.
  */
 TEST_F(SystemInventoryUpsertElement, emptyAgentID_NetworkAddress)
->>>>>>> d7a5890497 (change(ih): Rebase and improvement of documentation and code name)
 {
     auto context = std::make_shared<MockSystemContext>();
     auto upsertElement = std::make_shared<UpsertSystemElement<MockSystemContext>>();

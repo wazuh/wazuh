@@ -1,5 +1,5 @@
 /*
- * Wazuh Vulnerability scanner - Scan Orchestrator
+ * Wazuh Inventory Harvester - Net address element
  * Copyright (C) 2015, Wazuh Inc.
  * March 20, 2025.
  *

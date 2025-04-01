@@ -27,6 +27,8 @@ table dbsync_network_address {
     broadcast:string;
     checksum:string;
     item_id:string;
+    metric:string (deprecated);
+    dhcp:string (deprecated);
 }
 
 table dbsync_network_iface {

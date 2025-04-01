@@ -152,11 +152,7 @@ INSTANTIATE_TEST_SUITE_P(InventorySyncByAffectedComponentType,
                                            MockSystemContext::AffectedComponentType::Port,
                                            MockSystemContext::AffectedComponentType::Hotfix,
                                            MockSystemContext::AffectedComponentType::Hardware,
-<<<<<<< HEAD
                                            MockSystemContext::AffectedComponentType::NetProto,
                                            MockSystemContext::AffectedComponentType::NetIface,
-                                           MockSystemContext::AffectedComponentType::Network,
-=======
                                            MockSystemContext::AffectedComponentType::NetworkAddress,
->>>>>>> d7a5890497 (change(ih): Rebase and improvement of documentation and code name)
                                            MockSystemContext::AffectedComponentType::Invalid));
