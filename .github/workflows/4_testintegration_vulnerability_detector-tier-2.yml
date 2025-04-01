@@ -22,6 +22,8 @@ jobs:
         with:
           python-version-file: ".github/workflows/.python-version-it"
           architecture: x64
+      - name: "Install a compatible CMake"
+        uses: ./.github/actions/reinstall_cmake
       # Build wazuh server for linux.
       - name: Build wazuh server for linux
         run: |
