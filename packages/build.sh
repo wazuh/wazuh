@@ -95,6 +95,8 @@ fi
 
 # Build directories
 source_dir=$(build_directories "$build_dir/server" "wazuh*" $future)
+echo "source_dir: $source_dir"
+ls -lah "$source_dir" || echo "⚠️ source_dir is invalid or empty"
 
 wazuh_version="$(grep '"version"' $source_dir/VERSION.json | sed -E 's/.*"version": *"([^"]+)".*/\1/')"
 # TODO: Improve how we handle package_name
@@ -113,4 +115,8 @@ build_deps
 build_package $package_name $debug "$short_commit_hash" "$wazuh_version"
 
 # Post-processing
+echo "== Calling get_package_and_checksum =="
+echo "wazuh_version: $wazuh_version"
+echo "short_commit_hash: $short_commit_hash"
+echo "src: $src"
 get_package_and_checksum $wazuh_version $short_commit_hash $src

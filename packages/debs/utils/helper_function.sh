@@ -61,6 +61,7 @@ get_package_and_checksum(){
 
     deb_file="${base_name}_${ARCHITECTURE_TARGET}.deb"
     symbols_deb_file="${symbols_base_name}_${ARCHITECTURE_TARGET}.deb"
+    echo "== Inside get_package_and_checksum =="
     echo "IS_STAGE: ${IS_STAGE}"
     echo "short_commit_hash: ${short_commit_hash}"
     echo "wazuh_version: ${wazuh_version}"
