@@ -53,6 +53,9 @@ jobs:
         with:
           submodules: recursive
 
+      - name: "Install a compatible CMake"
+        uses: ./.github/actions/reinstall_cmake
+
       - name: Project dependencies
         uses: ./.github/actions/vulnerability_scanner_deps
         with:

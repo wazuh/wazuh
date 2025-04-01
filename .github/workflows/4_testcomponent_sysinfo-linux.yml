@@ -18,6 +18,8 @@ jobs:
         uses: actions/checkout@v3
         with:
           submodules: recursive
+      - name: "Install a compatible CMake"
+        uses: ./.github/actions/reinstall_cmake
       # Build wazuh agent for linux.
       - name: Build wazuh agent for linux
         run: |

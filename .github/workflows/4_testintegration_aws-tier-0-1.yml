@@ -52,6 +52,8 @@ jobs:
           sudo aws configure set aws_access_key_id ${{ secrets.IT_AWS_KEY_ID }} --profile default
           sudo aws configure set aws_secret_access_key ${{ secrets.IT_AWS_SECRET_ACCESS_KEY }} --profile default
           sudo aws configure set default.region ${AWS_DEFAULT_REGION} --profile default
+      - name: "Install a compatible CMake"
+        uses: ./.github/actions/reinstall_cmake
       # Build wazuh server for linux.
       - name: Build wazuh server for linux
         run: |

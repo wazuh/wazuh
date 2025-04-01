@@ -26,6 +26,8 @@ jobs:
         uses: ./.github/actions/install_build_deps
         with:
           target: ${{ matrix.target }}
+      - name: "Install a compatible CMake"
+        uses: ./.github/actions/reinstall_cmake
       - name: "Build wazuh"
         uses: ./.github/actions/build_test_flags
         with:
