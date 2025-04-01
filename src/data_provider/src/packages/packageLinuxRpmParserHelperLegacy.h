@@ -56,6 +56,14 @@ namespace PackageLinuxHelper
                     version += "-" + release;
                 }
 
+                if (name.rfind("python", 0) == 0)
+                {
+                    std::string files { fields.at(RPMFields::RPM_FIELDS_FILES) };
+                    std::cout << "Python package: " << name << std::endl;
+                    std::cout << "Files: " << files << std::endl;
+                    ret["files"] = files;
+                }
+
                 ret["name"]         = name;
                 ret["size"]         = size.empty() || size.compare(DEFAULT_VALUE) == 0 ? 0 : stoll(size);
                 ret["install_time"] = install_time.empty() || install_time.compare(DEFAULT_VALUE) == 0 ? UNKNOWN_VALUE : install_time;
