@@ -7,14 +7,14 @@ on:
   pull_request:
     types: [synchronize, opened, reopened, ready_for_review]
     paths:
-      - ".github/workflows/5_builderprecompiled_vdscanner-testtools.yml"
+      - ".github/workflows/4_builderprecompiled_vdscanner-testtools.yml"
 
   # Trigger when a pull request is merged into main
   push:
     branches:
       - main
     paths:
-      - ".github/workflows/5_builderprecompiled_vdscanner-testtools.yml"
+      - ".github/workflows/4_builderprecompiled_vdscanner-testtools.yml"
 
   # Allows manual trigger.
   workflow_dispatch:
