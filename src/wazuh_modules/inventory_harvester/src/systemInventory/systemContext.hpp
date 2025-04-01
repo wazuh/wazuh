@@ -1652,13 +1652,14 @@ public:
         return "";
     }
 
-    std::string_view netProtoMetric()
+    int64_t netProtoMetric()
     {
+        std::string ret;
         if (m_type == VariantType::Delta)
         {
             if (m_delta->data_as_dbsync_network_protocol() && m_delta->data_as_dbsync_network_protocol()->metric())
             {
-                return m_delta->data_as_dbsync_network_protocol()->metric()->string_view();
+                ret = m_delta->data_as_dbsync_network_protocol()->metric()->str();
             }
         }
         else if (m_type == VariantType::SyncMsg)
@@ -1667,17 +1668,15 @@ public:
                 m_syncMsg->data_as_state()->attributes_as_syscollector_network_protocol() &&
                 m_syncMsg->data_as_state()->attributes_as_syscollector_network_protocol()->metric())
             {
-                return m_syncMsg->data_as_state()
-                    ->attributes_as_syscollector_network_protocol()
-                    ->metric()
-                    ->string_view();
+                ret = m_syncMsg->data_as_state()->attributes_as_syscollector_network_protocol()->metric()->str();
             }
         }
         else
         {
-            return "";
+            ret = "";
         }
-        return "";
+
+        return std::strtol(ret.c_str(), NULL, 10);
     }
 
     std::string_view netProtoItemId()

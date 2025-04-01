@@ -322,11 +322,11 @@ TEST_F(SystemInventoryUpsertElement, validAgentID_NetworkProtocol)
     EXPECT_CALL(*context, netProtoType()).WillOnce(testing::Return("netProtoType"));
     EXPECT_CALL(*context, netProtoGateway()).WillOnce(testing::Return("netProtoGateway"));
     EXPECT_CALL(*context, netProtoDhcp()).WillOnce(testing::Return("enabled"));
-    EXPECT_CALL(*context, netProtoMetric()).WillOnce(testing::Return("150"));
+    EXPECT_CALL(*context, netProtoMetric()).WillOnce(testing::Return(150));
     EXPECT_CALL(*context, originTable()).WillOnce(testing::Return(MockSystemContext::OriginTable::NetworkProtocol));
     EXPECT_NO_THROW(upsertElement->handleRequest(context));
 
     EXPECT_EQ(
         context->m_serializedElement,
-        R"({"id":"001_netProtoItemId","operation":"INSERTED","data":{"network":{"dhcp":"true","gateway":"netProtoGateway","metric":150,"type":"netProtoType"},"observer":{"ingress":{"interface":{"name":"netProtoIface"}}},"agent":{"id":"001","name":"agentName","ip":"agentIp","version":"agentVersion"}}})");
+        R"({"id":"001_netProtoItemId","operation":"INSERTED","data":{"network":{"dhcp":true,"gateway":"netProtoGateway","metric":150,"type":"netProtoType"},"observer":{"ingress":{"interface":{"name":"netProtoIface"}}},"agent":{"id":"001","name":"agentName","ip":"agentIp","version":"agentVersion"}}})");
 }

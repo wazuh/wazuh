@@ -106,7 +106,7 @@ public:
     MOCK_METHOD(std::string_view, netProtoType, (), (const));
     MOCK_METHOD(std::string_view, netProtoGateway, (), (const));
     MOCK_METHOD(std::string_view, netProtoDhcp, (), (const));
-    MOCK_METHOD(std::string_view, netProtoMetric, (), (const));
+    MOCK_METHOD(int64_t, netProtoMetric, (), (const));
     MOCK_METHOD(std::string_view, netProtoItemId, (), (const));
 
     MOCK_METHOD(AffectedComponentType, affectedComponentType, (), (const));

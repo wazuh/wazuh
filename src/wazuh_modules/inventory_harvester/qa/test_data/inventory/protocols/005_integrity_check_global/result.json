@@ -10,7 +10,7 @@
                     "version": "v4.10.1"
                 },
                 "network": {
-                    "dhcp": "false",
+                    "dhcp": false,
                     "gateway": "10.0.2.2",
                     "metric": 100,
                     "type": "ipv4"
@@ -31,7 +31,7 @@
                     "version": "v4.10.1"
                 },
                 "network": {
-                    "dhcp": "false",
+                    "dhcp": false,
                     "gateway": "10.0.2.2",
                     "metric": 100,
                     "type": "ipv4"
