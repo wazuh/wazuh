@@ -293,9 +293,11 @@ int main(int argc, char **argv)
     // Launch Whodata ebpf real-time thread
     if (!syscheck.disabled && syscheck.enable_whodata && syscheck.whodata_provider == EBPF_PROVIDER) {
 #ifdef __linux__
+#ifdef ENABLE_AUDIT
         check_ebpf_availability();
 #else
         merror(FIM_ERROR_EBPF_NOT_SUPPORTED);
+#endif
 #endif
     }
 
