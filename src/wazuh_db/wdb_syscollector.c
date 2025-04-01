@@ -141,7 +141,7 @@ int wdb_netinfo_insert(wdb_t * wdb, const char * scan_id, const char * scan_time
 }
 
 // Save IPv4/IPv6 protocol info into DB.
-int wdb_netproto_save(wdb_t * wdb, const char * scan_id, const char * iface, int type, const char * gateway, const char * dhcp, long metric, const char * checksum, const char * item_id, const bool replace) {
+int wdb_netproto_save(wdb_t * wdb, const char * scan_id, const char * iface, int type, const char * gateway, const char * dhcp, int metric, const char * checksum, const char * item_id, const bool replace) {
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0){
         mdebug1("at wdb_netproto_save(): cannot begin transaction");
@@ -166,7 +166,7 @@ int wdb_netproto_save(wdb_t * wdb, const char * scan_id, const char * iface, int
 }
 
 // Insert IPv4/IPv6 protocol info tuple. Return 0 on success or -1 on error.
-int wdb_netproto_insert(wdb_t * wdb, const char * scan_id, const char * iface, int type, const char * gateway, const char * dhcp, long metric, const char * checksum, const char * item_id, const bool replace) {
+int wdb_netproto_insert(wdb_t * wdb, const char * scan_id, const char * iface, int type, const char * gateway, const char * dhcp, int metric, const char * checksum, const char * item_id, const bool replace) {
     sqlite3_stmt *stmt = NULL;
 
     if (NULL == iface) {
@@ -1193,7 +1193,7 @@ int wdb_syscollector_netproto_save2(wdb_t * wdb, const cJSON * attributes)
     const int type = type_string ? (strcmp(type_string, "ipv6") == 0 ? 1 : 0) : 0;
     const char * gateway = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "gateway"));
     const char * dhcp = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "dhcp"));
-    const long metric = strtol(cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "metric")), NULL, 10);
+    const int metric = cJSON_GetObjectItem(attributes, "metric") ? cJSON_GetObjectItem(attributes, "metric")->valueint : 0;
     const char * checksum = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "checksum"));
     const char * item_id = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "item_id"));
     return wdb_netproto_save(wdb, scan_id, iface, type, gateway, dhcp, metric, checksum, item_id, TRUE);
