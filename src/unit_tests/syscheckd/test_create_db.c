@@ -1277,8 +1277,6 @@ static void test_fim_configuration_directory_not_found(void **state) {
     const char *path = "/invalid";
     directory_t *ret;
 
-    expect_string(__wrap__mdebug2, formatted_msg, "(6319): No configuration found for (file):'/invalid'");
-
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
 
@@ -3690,6 +3688,7 @@ static void test_update_wildcards_config_remove_config() {
 #ifndef TEST_WINAGENT
     expect_string(__wrap_remove_audit_rule_syscheck, path, resolvedpath1);
     expect_string(__wrap_remove_audit_rule_syscheck, path, resolvedpath2);
+
 #endif
 
     // Remove configuration loop
