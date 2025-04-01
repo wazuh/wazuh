@@ -4,7 +4,7 @@ info:
     The Wazuh API is an open-source RESTful API that allows for interaction with the Wazuh manager from a web browser,
     command line tools like cURL or any script or program that can make web requests. The Wazuh WUI relies on this
     heavily and Wazuh’s goal is to accommodate complete remote management of the Wazuh infrastructure via the Wazuh WUI.
-    Use the Wazuh API to easily perform everyday actions like adding an agent, restarting the node(s) or agent(s).
+    Use the Wazuh API to easily perform everyday actions like adding an agent or restarting the agent(s).
 
     # Authentication
 
@@ -728,11 +728,6 @@ components:
       description: "Agent ID|all"
       format: uuid
 
-    NodeID:
-      type: string
-      description: "Node ID"
-      format: string
-
     ## Group models
     GroupID:
       type: string
@@ -779,119 +774,6 @@ components:
         - group_id
       example:
         group_id: NewGroup_1
-
-    ## Cluster models
-    ClusterNodeBasic:
-      type: object
-      properties:
-        type:
-          type: string
-          enum:
-          - worker
-          - master
-          description: "Node type"
-        version:
-          type: string
-          format: \d+\.\d+\.\d+
-          description: "Wazuh version installed in the node"
-        ip:
-          type: string
-          description: "IP the node is using to communicate with other nodes in the cluster"
-
-    ClusterNodeName:
-      type: string
-      description: "Node ID"
-
-    ClusterNode:
-      allOf:
-        - $ref: '#/components/schemas/ClusterNodeBasic'
-        - type: object
-          properties:
-            name:
-              $ref: '#/components/schemas/ClusterNodeName'
-
-    NodeHealthcheck:
-      type: object
-      properties:
-        name:
-          type: object
-          properties:
-            info:
-              type: object
-              properties:
-                name:
-                  $ref: '#/components/schemas/ClusterNodeName'
-                info:
-                  allOf:
-                    - $ref: '#/components/schemas/ClusterNodeBasic'
-                    - type: object
-                      properties:
-                        totalActiveAgents:
-                          type: integer
-                          format: int32
-                          minimum: 0
-                          description: "Number of agents currently reporting to that node"
-            status:
-              type: object
-              properties:
-                last_keep_alive:
-                  type: string
-                last_sync_agentinfo:
-                  type: object
-                  properties:
-                    date_start_master:
-                      type: string
-                    date_end_master:
-                      type: string
-                    n_synced_chunks:
-                      type: integer
-                      format: int32
-                last_sync_agentgroup:
-                  type: object
-                  properties:
-                    date_start:
-                      type: string
-                    date_end:
-                      type: string
-                    n_synced_chunks:
-                      type: integer
-                      format: int32
-                last_sync_full_agentgroup:
-                  type: object
-                  properties:
-                    date_start:
-                      type: string
-                    date_end:
-                      type: string
-                    n_synced_chunks:
-                      type: integer
-                      format: int32
-                last_sync_integrity:
-                  type: object
-                  properties:
-                    date_start_master:
-                        type: string
-                    date_end_master:
-                        type: string
-                    total_files:
-                      type: object
-                      properties:
-                        extra:
-                          type: integer
-                          format: int32
-                        extra_valid:
-                          type: integer
-                          format: int32
-                        missing:
-                          type: integer
-                          format: int32
-                        shared:
-                          type: integer
-                          format: int32
-                sync_agent_info_free:
-                  type: boolean
-                sync_integrity_free:
-                  type: boolean
 
     DaemonStatus:
       type: string
@@ -1122,16 +1004,6 @@ components:
         timestamp:
           type: string
           format: date-time
-
-    ValidationStatus:
-      type: object
-      properties:
-        name:
-          type: string
-          description: "Node name"
-        status:
-          type: string
-          description: "Status value"
 
     LogSummary:
       type: object
@@ -1460,21 +1332,6 @@ components:
         type: array
         items:
           $ref: '#/components/schemas/GroupIDListAll'
-    node:
-      in: query
-      name: node
-      description: "Show results filtered by node"
-      schema:
-        type: string
-        format: alphanumeric
-    nodes_list:
-      in: query
-      name: nodes_list
-      description: "List of node IDs (separated by comma), all nodes selected by default if not specified"
-      schema:
-        type: array
-        items:
-          type: string
     module:
       in: query
       name: module
@@ -1842,30 +1699,6 @@ components:
       schema:
         type: boolean
         default: false
-    node_type:
-      in: query
-      name: type
-      description: "Filter by node type"
-      schema:
-        type: string
-        enum:
-        - worker
-        - master
-    node_id:
-      in: path
-      name: node_id
-      description: "Cluster node name"
-      required: true
-      schema:
-        type: string
-        format: names
-    node_name:
-      in: query
-      name: node_name
-      description: "Filter by node name"
-      schema:
-        type: string
-        format: names
     section:
       in: query
       name: section
@@ -1879,7 +1712,6 @@ components:
         - auth
         - client
         - client_buffer
-        - cluster
         - command
         - database_output
         - email_alerts
@@ -2039,8 +1871,6 @@ tags:
     description: "Wazuh API information"
   - name: Agents
     description: "Agents management related operations"
-  - name: Cluster
-    description: "Wazuh cluster and nodes management"
   - name: Groups
     description: "Group of agents and centralized configurations"
   - name: Overview
