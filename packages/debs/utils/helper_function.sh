@@ -61,6 +61,9 @@ get_package_and_checksum(){
 
     deb_file="${base_name}_${ARCHITECTURE_TARGET}.deb"
     symbols_deb_file="${symbols_base_name}_${ARCHITECTURE_TARGET}.deb"
+    echo "IS_STAGE: ${IS_STAGE}"
+    echo "short_commit_hash: ${short_commit_hash}"
+    echo "wazuh_version: ${wazuh_version}"
 
     if [[ "${IS_STAGE}" == "no" ]]; then
         deb_file="$(sed "s/\.deb/_${short_commit_hash}&/" <<< "$deb_file")"

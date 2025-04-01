@@ -135,6 +135,16 @@ jobs:
           aws s3 cp ${{ env.S3_PRECOMPILED_STORE }} $GITHUB_WORKSPACE/${{ env.LOCAL_PRECOMPILED_STORE_PATH }}
           # Save the store in the workspace
 
+      - name: Debug input values
+        run: |
+          echo "== WORKFLOW INPUTS =="
+          echo "System: ${{ inputs.system }}"
+          echo "Architecture: ${{ inputs.architecture }}"
+          echo "Revision: ${{ inputs.revision }}"
+          echo "Is stage: ${{ inputs.is_stage }}"
+          echo "Checksum: ${{ inputs.checksum }}"
+          echo "Debug: ${{ inputs.debug }}"
+          echo "Docker tag: ${{ env.TAG }}"
 
       - name: Build ${{ inputs.system }} wazuh-server on ${{ inputs.architecture }}
         working-directory: packages
@@ -192,23 +202,23 @@ jobs:
           path: /tmp/${{ env.PACKAGE_SYMBOLS_NAME }}
           if-no-files-found: error
 
-      - name: Upload package to S3
-        working-directory: packages
-        run: |
-          aws s3 cp /tmp/${{ env.PACKAGE_NAME }} s3://packages-dev.internal.wazuh.com/development/wazuh/5.x/main/packages/
-          s3uri="s3://packages-dev.internal.wazuh.com/development/wazuh/5.x/main/packages/${{ env.PACKAGE_NAME }}"
-          echo "S3 URI: ${s3uri}"
+      # - name: Upload package to S3
+      #   working-directory: packages
+      #   run: |
+      #     aws s3 cp /tmp/${{ env.PACKAGE_NAME }} s3://packages-dev.internal.wazuh.com/development/wazuh/5.x/main/packages/
+      #     s3uri="s3://packages-dev.internal.wazuh.com/development/wazuh/5.x/main/packages/${{ env.PACKAGE_NAME }}"
+      #     echo "S3 URI: ${s3uri}"
 
-      - name: Upload checksum to S3
-        if: ${{ inputs.checksum }}
-        run: |
-          aws s3 cp /tmp/${{ env.PACKAGE_NAME }}.sha512 s3://packages-dev.internal.wazuh.com/development/wazuh/5.x/main/packages/
-          aws s3 cp /tmp/${{ env.PACKAGE_SYMBOLS_NAME }}.sha512 s3://packages-dev.internal.wazuh.com/development/wazuh/5.x/main/packages/
-          s3uri="s3://packages-dev.internal.wazuh.com/development/wazuh/5.x/main/packages/${{ env.PACKAGE_NAME }}.sha512"
-          echo "S3 sha512 URI: ${s3uri}"
+      # - name: Upload checksum to S3
+      #   if: ${{ inputs.checksum }}
+      #   run: |
+      #     aws s3 cp /tmp/${{ env.PACKAGE_NAME }}.sha512 s3://packages-dev.internal.wazuh.com/development/wazuh/5.x/main/packages/
+      #     aws s3 cp /tmp/${{ env.PACKAGE_SYMBOLS_NAME }}.sha512 s3://packages-dev.internal.wazuh.com/development/wazuh/5.x/main/packages/
+      #     s3uri="s3://packages-dev.internal.wazuh.com/development/wazuh/5.x/main/packages/${{ env.PACKAGE_NAME }}.sha512"
+      #     echo "S3 sha512 URI: ${s3uri}"
 
-      - name: Upload debug symbols to S3
-        run: |
-          aws s3 cp /tmp/${{ env.PACKAGE_SYMBOLS_NAME }} s3://packages-dev.internal.wazuh.com/development/wazuh/5.x/main/packages/
-          symbols="s3://packages-dev.internal.wazuh.com/development/wazuh/5.x/main/packages/${symbols_name}"
-          echo "S3 symbols URI: ${symbols}"
+      # - name: Upload debug symbols to S3
+      #   run: |
+      #     aws s3 cp /tmp/${{ env.PACKAGE_SYMBOLS_NAME }} s3://packages-dev.internal.wazuh.com/development/wazuh/5.x/main/packages/
+      #     symbols="s3://packages-dev.internal.wazuh.com/development/wazuh/5.x/main/packages/${symbols_name}"
+      #     echo "S3 symbols URI: ${symbols}"

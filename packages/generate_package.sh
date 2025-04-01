@@ -115,6 +115,14 @@ help() {
     exit $1
 }
 
+echo "== GENERATE PACKAGE =="
+echo "SYSTEM: $SYSTEM"
+echo "ARCHITECTURE: $ARCHITECTURE"
+echo "IS_STAGE: $IS_STAGE"
+echo "CHECKSUM: $CHECKSUM"
+echo "REVISION: $REVISION"
+echo "DEBUG: $DEBUG"
+echo "BRANCH: $BRANCH"
 
 main() {
     while [ -n "$1" ]
