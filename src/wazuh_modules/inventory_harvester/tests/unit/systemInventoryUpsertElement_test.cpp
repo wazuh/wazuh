@@ -145,3 +145,146 @@ TEST_F(SystemInventoryUpsertElement, validAgentID_Processes)
         context->m_serializedElement,
         R"({"id":"001_1234","operation":"INSERTED","data":{"process":{"args":["processName"],"args_count":1,"command_line":"processCmdline","name":"processName","pid":1234,"start":"processStartISO8601","ppid":1},"agent":{"id":"001","name":"agentName","ip":"agentIp","version":"agentVersion"}}})");
 }
+
+TEST_F(SystemInventoryUpsertElement, validAgentID_Ports)
+{
+    auto context = std::make_shared<MockSystemContext>();
+    auto upsertElement = std::make_shared<UpsertSystemElement<MockSystemContext>>();
+
+    EXPECT_CALL(*context, agentId()).WillOnce(testing::Return("001"));
+    EXPECT_CALL(*context, portItemId()).WillOnce(testing::Return("portItemId"));
+    EXPECT_CALL(*context, originTable()).WillOnce(testing::Return(MockSystemContext::OriginTable::Ports));
+    EXPECT_CALL(*context, agentName()).WillOnce(testing::Return("agentName"));
+    EXPECT_CALL(*context, agentVersion()).WillOnce(testing::Return("agentVersion"));
+    EXPECT_CALL(*context, agentIp()).WillOnce(testing::Return("agentIp"));
+    EXPECT_CALL(*context, portProtocol()).WillOnce(testing::Return("portProtocol"));
+    EXPECT_CALL(*context, portRemoteIp()).WillOnce(testing::Return("portRemoteIp"));
+    EXPECT_CALL(*context, portRemotePort()).WillOnce(testing::Return(1234));
+    EXPECT_CALL(*context, portInode()).WillOnce(testing::Return(1111));
+    EXPECT_CALL(*context, portTxQueue()).WillOnce(testing::Return(7000));
+    EXPECT_CALL(*context, portRxQueue()).WillOnce(testing::Return(11000));
+    EXPECT_CALL(*context, portState()).WillOnce(testing::Return("portState"));
+    EXPECT_CALL(*context, portProcess()).WillOnce(testing::Return("portProcess"));
+    EXPECT_CALL(*context, portPid()).WillOnce(testing::Return(4321));
+    EXPECT_CALL(*context, portLocalIp()).WillOnce(testing::Return("portLocalIp"));
+    EXPECT_CALL(*context, portLocalPort()).WillOnce(testing::Return(7777));
+
+    EXPECT_NO_THROW(upsertElement->handleRequest(context));
+
+    EXPECT_EQ(
+        context->m_serializedElement,
+        R"({"id":"001_portItemId","operation":"INSERTED","data":{"agent":{"id":"001","name":"agentName","ip":"agentIp","version":"agentVersion"},"destination":{"ip":"portRemoteIp","port":1234},"file":{"inode":"1111"},"host":{"network":{"egress":{"queue":7000},"ingress":{"queue":11000}}},"interface":{"state":"portState"},"network":{"transport":"portProtocol"},"process":{"name":"portProcess","pid":4321},"source":{"ip":"portLocalIp","port":7777}}})");
+}
+
+TEST_F(SystemInventoryUpsertElement, emptyAgentID_Ports)
+{
+    auto context = std::make_shared<MockSystemContext>();
+    auto upsertElement = std::make_shared<UpsertSystemElement<MockSystemContext>>();
+
+    EXPECT_CALL(*context, agentId()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, originTable()).WillOnce(testing::Return(MockSystemContext::OriginTable::Ports));
+
+    EXPECT_ANY_THROW(upsertElement->handleRequest(context));
+}
+
+TEST_F(SystemInventoryUpsertElement, emptyItemId_Ports)
+{
+    auto context = std::make_shared<MockSystemContext>();
+    auto upsertElement = std::make_shared<UpsertSystemElement<MockSystemContext>>();
+
+    EXPECT_CALL(*context, agentId()).WillOnce(testing::Return("001"));
+    EXPECT_CALL(*context, portItemId()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, originTable()).WillOnce(testing::Return(MockSystemContext::OriginTable::Ports));
+
+    EXPECT_ANY_THROW(upsertElement->handleRequest(context));
+}
+
+TEST_F(SystemInventoryUpsertElement, emptyAgentID_Hotfixes)
+{
+    auto context = std::make_shared<MockSystemContext>();
+    auto upsertElement = std::make_shared<UpsertSystemElement<MockSystemContext>>();
+
+    EXPECT_CALL(*context, agentId()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, originTable()).WillOnce(testing::Return(MockSystemContext::OriginTable::Hotfixes));
+
+    EXPECT_ANY_THROW(upsertElement->handleRequest(context));
+}
+
+TEST_F(SystemInventoryUpsertElement, emptyAgentID_Hw)
+{
+    auto context = std::make_shared<MockSystemContext>();
+    auto upsertElement = std::make_shared<UpsertSystemElement<MockSystemContext>>();
+
+    EXPECT_CALL(*context, agentId()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, originTable()).WillOnce(testing::Return(MockSystemContext::OriginTable::Hw));
+
+    EXPECT_ANY_THROW(upsertElement->handleRequest(context));
+}
+
+TEST_F(SystemInventoryUpsertElement, emptyHotfix_Hotfixes)
+{
+    auto context = std::make_shared<MockSystemContext>();
+    auto upsertElement = std::make_shared<UpsertSystemElement<MockSystemContext>>();
+
+    EXPECT_CALL(*context, agentId()).WillOnce(testing::Return("001"));
+    EXPECT_CALL(*context, hotfixName()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, originTable()).WillOnce(testing::Return(MockSystemContext::OriginTable::Hotfixes));
+
+    EXPECT_ANY_THROW(upsertElement->handleRequest(context));
+}
+
+TEST_F(SystemInventoryUpsertElement, emptyBoardId_Hw)
+{
+    auto context = std::make_shared<MockSystemContext>();
+    auto upsertElement = std::make_shared<UpsertSystemElement<MockSystemContext>>();
+
+    EXPECT_CALL(*context, agentId()).WillOnce(testing::Return("001"));
+    EXPECT_CALL(*context, boardInfo()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, originTable()).WillOnce(testing::Return(MockSystemContext::OriginTable::Hw));
+
+    EXPECT_ANY_THROW(upsertElement->handleRequest(context));
+}
+
+TEST_F(SystemInventoryUpsertElement, validAgentID_Hotfixes)
+{
+    auto context = std::make_shared<MockSystemContext>();
+    auto upsertElement = std::make_shared<UpsertSystemElement<MockSystemContext>>();
+
+    EXPECT_CALL(*context, agentId()).WillOnce(testing::Return("001"));
+    EXPECT_CALL(*context, agentName()).WillOnce(testing::Return("agentName"));
+    EXPECT_CALL(*context, agentVersion()).WillOnce(testing::Return("agentVersion"));
+    EXPECT_CALL(*context, agentIp()).WillOnce(testing::Return("agentIp"));
+    EXPECT_CALL(*context, hotfixName()).WillOnce(testing::Return("KB12345"));
+    EXPECT_CALL(*context, originTable()).WillOnce(testing::Return(MockSystemContext::OriginTable::Hotfixes));
+
+    EXPECT_NO_THROW(upsertElement->handleRequest(context));
+
+    EXPECT_EQ(
+        context->m_serializedElement,
+        R"({"id":"001_KB12345","operation":"INSERTED","data":{"package":{"hotfix":{"name":"KB12345"}},"agent":{"id":"001","name":"agentName","ip":"agentIp","version":"agentVersion"}}})");
+}
+
+TEST_F(SystemInventoryUpsertElement, validAgentID_Hw)
+{
+    auto context = std::make_shared<MockSystemContext>();
+    auto upsertElement = std::make_shared<UpsertSystemElement<MockSystemContext>>();
+
+    EXPECT_CALL(*context, agentId()).WillOnce(testing::Return("001"));
+    EXPECT_CALL(*context, originTable()).WillOnce(testing::Return(MockSystemContext::OriginTable::Hw));
+    EXPECT_CALL(*context, agentName()).WillOnce(testing::Return("agentName"));
+    EXPECT_CALL(*context, agentVersion()).WillOnce(testing::Return("agentVersion"));
+    EXPECT_CALL(*context, agentIp()).WillOnce(testing::Return("agentIp"));
+    EXPECT_CALL(*context, boardInfo()).WillOnce(testing::Return("boardInfo"));
+    EXPECT_CALL(*context, cpuCores()).WillOnce(testing::Return(2));
+    EXPECT_CALL(*context, cpuName()).WillOnce(testing::Return("cpuName"));
+    EXPECT_CALL(*context, cpuFrequency()).WillOnce(testing::Return(2497));
+    EXPECT_CALL(*context, freeMem()).WillOnce(testing::Return(0));
+    EXPECT_CALL(*context, totalMem()).WillOnce(testing::Return(0));
+    EXPECT_CALL(*context, usedMem()).WillOnce(testing::Return(0));
+
+    EXPECT_NO_THROW(upsertElement->handleRequest(context));
+
+    EXPECT_EQ(
+        context->m_serializedElement,
+        R"({"id":"001_boardInfo","operation":"INSERTED","data":{"host":{"cpu":{"cores":2,"name":"cpuName","speed":2497},"memory":{"free":0,"total":0,"used":0}},"agent":{"id":"001","name":"agentName","ip":"agentIp","version":"agentVersion"},"observer":{"serial_number":"boardInfo"}}})");
+}

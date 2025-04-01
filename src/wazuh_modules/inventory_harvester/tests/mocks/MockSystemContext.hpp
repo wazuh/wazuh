@@ -33,7 +33,9 @@ public:
         Packages,
         Processes,
         Os,
+        Hotfixes,
         Hw,
+        Ports,
         Invalid
     };
 
@@ -42,6 +44,9 @@ public:
         Package,
         Process,
         System,
+        Port,
+        Hotfix,
+        Hardware,
         Invalid
     };
 
@@ -73,6 +78,28 @@ public:
     MOCK_METHOD(std::string_view, processName, (), (const));
     MOCK_METHOD(std::string_view, processStartISO8601, (), (const));
     MOCK_METHOD(uint64_t, processParentID, (), (const));
+    // Ports
+    MOCK_METHOD(std::string_view, portProtocol, (), (const));
+    MOCK_METHOD(std::string_view, portLocalIp, (), (const));
+    MOCK_METHOD(int64_t, portLocalPort, (), (const));
+    MOCK_METHOD(int64_t, portInode, (), (const));
+    MOCK_METHOD(std::string_view, portRemoteIp, (), (const));
+    MOCK_METHOD(int64_t, portRemotePort, (), (const));
+    MOCK_METHOD(int64_t, portTxQueue, (), (const));
+    MOCK_METHOD(int64_t, portRxQueue, (), (const));
+    MOCK_METHOD(std::string_view, portState, (), (const));
+    MOCK_METHOD(std::string_view, portProcess, (), (const));
+    MOCK_METHOD(int64_t, portPid, (), (const));
+    MOCK_METHOD(std::string_view, portItemId, (), (const));
+
+    MOCK_METHOD(std::string_view, hotfixName, (), (const));
+    MOCK_METHOD(std::string_view, boardInfo, (), (const));
+    MOCK_METHOD(int64_t, cpuCores, (), (const));
+    MOCK_METHOD(std::string_view, cpuName, (), (const));
+    MOCK_METHOD(int64_t, cpuFrequency, (), (const));
+    MOCK_METHOD(int64_t, freeMem, (), (const));
+    MOCK_METHOD(int64_t, totalMem, (), (const));
+    MOCK_METHOD(int64_t, usedMem, (), (const));
 
     MOCK_METHOD(AffectedComponentType, affectedComponentType, (), (const));
 

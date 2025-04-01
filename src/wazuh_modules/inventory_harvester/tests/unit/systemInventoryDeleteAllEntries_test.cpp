@@ -106,6 +106,9 @@ INSTANTIATE_TEST_SUITE_P(ClearElementsDifferentComponents,
                          ::testing::Values(MockSystemContext::AffectedComponentType::Package,
                                            MockSystemContext::AffectedComponentType::Process,
                                            MockSystemContext::AffectedComponentType::System,
+                                           MockSystemContext::AffectedComponentType::Port,
+                                           MockSystemContext::AffectedComponentType::Hotfix,
+                                           MockSystemContext::AffectedComponentType::Hardware,
                                            MockSystemContext::AffectedComponentType::Invalid));
 
 INSTANTIATE_TEST_SUITE_P(ClearElementsDifferentComponentsNoAgent,
@@ -113,4 +116,7 @@ INSTANTIATE_TEST_SUITE_P(ClearElementsDifferentComponentsNoAgent,
                          ::testing::Values(MockSystemContext::AffectedComponentType::Package,
                                            MockSystemContext::AffectedComponentType::Process,
                                            MockSystemContext::AffectedComponentType::System,
+                                           MockSystemContext::AffectedComponentType::Port,
+                                           MockSystemContext::AffectedComponentType::Hotfix,
+                                           MockSystemContext::AffectedComponentType::Hardware,
                                            MockSystemContext::AffectedComponentType::Invalid));

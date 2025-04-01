@@ -97,6 +97,22 @@ public:
             PolicyHarvesterManager::instance().buildIndexerUpdateTemplatePath("processes",
                                                                               InventoryType::SYSTEM_INVENTORY),
             Log::GLOBAL_LOG_FUNCTION);
+        m_indexerConnectorInstances[SystemContext::AffectedComponentType::Port] = std::make_unique<IndexerConnector>(
+            PolicyHarvesterManager::instance().buildIndexerConfig("ports"),
+            PolicyHarvesterManager::instance().buildIndexerTemplatePath("ports"),
+            PolicyHarvesterManager::instance().buildIndexerUpdateTemplatePath("ports"),
+            Log::GLOBAL_LOG_FUNCTION);
+        m_indexerConnectorInstances[SystemContext::AffectedComponentType::Hotfix] = std::make_unique<IndexerConnector>(
+            PolicyHarvesterManager::instance().buildIndexerConfig("hotfixes"),
+            PolicyHarvesterManager::instance().buildIndexerTemplatePath("hotfixes"),
+            PolicyHarvesterManager::instance().buildIndexerUpdateTemplatePath("hotfixes"),
+            Log::GLOBAL_LOG_FUNCTION);
+        m_indexerConnectorInstances[SystemContext::AffectedComponentType::Hardware] =
+            std::make_unique<IndexerConnector>(
+                PolicyHarvesterManager::instance().buildIndexerConfig("hardware"),
+                PolicyHarvesterManager::instance().buildIndexerTemplatePath("hardware"),
+                PolicyHarvesterManager::instance().buildIndexerUpdateTemplatePath("hardware"),
+                Log::GLOBAL_LOG_FUNCTION);
 
         m_orchestrations[SystemContext::Operation::Upsert] =
             SystemFactoryOrchestrator::create(SystemContext::Operation::Upsert, m_indexerConnectorInstances);

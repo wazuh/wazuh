@@ -14,5 +14,13 @@
     {
         "index_name": "wazuh-states-files-cluster01",
         "data": []
+    },
+    {
+        "index_name": "wazuh-states-ports-cluster01",
+        "data": []
+    },
+    {
+        "index_name": "wazuh-states-hotfixes-cluster01",
+        "data": []
     }
 ]
