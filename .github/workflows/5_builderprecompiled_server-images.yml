@@ -1,5 +1,5 @@
-run-name: Package - Upload pkg_${{ inputs.system }}_server_builder_amd64 with tag ${{ inputs.docker_image_tag }}
-name: Package - Upload server images amd64
+run-name: Package - Upload pkg_${{ inputs.system }}_server_builder_${{ inputs.architecture }} with tag ${{ inputs.docker_image_tag }}
+name: Package - Upload server images
 
 on:
   workflow_dispatch:

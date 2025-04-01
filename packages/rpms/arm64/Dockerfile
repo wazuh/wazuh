@@ -9,7 +9,7 @@ RUN rpm --import RPM-GPG-KEY-oracle-ol7 && \
     rpm -i https://yum.oracle.com/repo/OracleLinux/OL7/latest/aarch64/getPackage/oracle-softwarecollection-release-el7-1.0-5.el7.aarch64.rpm
 
 RUN yum install -y \
-    devtoolset-11 \
+    devtoolset-10 \
     kernel-devel \
     perl-IPC-Cmd \
     perl-Data-Dumper \
@@ -33,7 +33,7 @@ RUN yum install -y \
 
 RUN yum install epel-release lzip -y
 
-RUN scl enable bash
+RUN scl enable devtoolset-10 bash
 
 ADD https://github.com/git/git/archive/refs/tags/v2.18.0.tar.gz /tmp/git-2.18.0.tar.gz
 WORKDIR /tmp
