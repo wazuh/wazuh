@@ -77,7 +77,7 @@ static int teardown_rules_to_realtime(void **state) {
 void test_check_ebpf_availability_true(void **state) {
 
     expect_string(__wrap__minfo, formatted_msg, FIM_EBPF_INIT);
-    expect_string(__wrap__merror, formatted_msg, FIM_ERROR_EBPF_HEALTHCHECK);
+    expect_string(__wrap__mwarn, formatted_msg, FIM_ERROR_EBPF_HEALTHCHECK);
 
     will_return(__wrap_ebpf_whodata_healthcheck, 1);
 

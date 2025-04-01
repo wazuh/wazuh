@@ -25,8 +25,6 @@ protected:
     }
 };
 
-void whodata_pop_events(fim::BoundedQueue<std::unique_ptr<whodata_evt, whodata_deleter>>& queue);
-
 template <typename T>
 class MockBoundedQueue : public fim::BoundedQueue<T> {
 public:
@@ -36,79 +34,27 @@ public:
     MOCK_METHOD(bool, push, (T&& in_value), (override));
 };
 
-
-TEST_F(PopEventsTest, ShutdownImmediately) {
-
-    MockBoundedQueue<std::unique_ptr<whodata_evt, whodata_deleter>> mock_queue;
-    EXPECT_CALL(MockFimebpf::GetInstance(), mock_fim_shutdown_process_on())
-        .WillOnce(::testing::Return(true));
-
-    whodata_pop_events(mock_queue);
-}
-
-TEST_F(PopEventsTest, PopFailsAndShutdown) {
-
-    MockBoundedQueue<std::unique_ptr<whodata_evt, whodata_deleter>> mock_queue;
-
-    EXPECT_CALL(MockFimebpf::GetInstance(), mock_fim_shutdown_process_on())
-        .WillOnce(::testing::Return(false))
-        .WillOnce(::testing::Return(true));
-
-    EXPECT_CALL(mock_queue, pop(::testing::_, ::testing::_))
-        .WillOnce(::testing::Return(false));
-
-
-    whodata_pop_events(mock_queue);
-}
-
-TEST_F(PopEventsTest, PopSucceedsWithEvent) {
-
-    MockBoundedQueue<std::unique_ptr<whodata_evt, whodata_deleter>> mock_queue;
-
-    EXPECT_CALL(MockFimebpf::GetInstance(), mock_fim_shutdown_process_on())
-        .WillOnce(::testing::Return(false))
-        .WillOnce(::testing::Return(true));
-
-    EXPECT_CALL(mock_queue, pop(::testing::_, ::testing::_))
-       .WillOnce(::testing::DoAll(
-        ::testing::Invoke(
-            [&](std::unique_ptr<whodata_evt, whodata_deleter>& event_arg, [[maybe_unused]]int timeout_arg) {
-		std::unique_ptr<whodata_evt, whodata_deleter> new_event = std::make_unique<whodata_evt>();
-                event_arg = std::make_unique<whodata_evt>();
-            }
-        ),
-        ::testing::Return(true)
-    ));
-
-    EXPECT_CALL(MockFimebpf::GetInstance(), m_fim_whodata_event(::testing::NotNull()));
-
-    whodata_pop_events(mock_queue);
-}
-
 /* TEST: ebpf_pop_events */
 
 TEST_F(PopEventsTest, LoggingPointerFailed) {
     MockFimebpf::mock_loggingFunction = nullptr;
     MockFimebpf::SetMockFunctions();
-    MockBoundedQueue<std::unique_ptr<file_event>> mock_kernel_queue;
-    MockBoundedQueue<std::unique_ptr<whodata_evt, whodata_deleter>> mock_whodata_queue;
+    MockBoundedQueue<std::unique_ptr<dynamic_file_event>> mock_kernel_queue;
 
-    ebpf_pop_events(mock_kernel_queue, mock_whodata_queue);
+    ebpf_pop_events(mock_kernel_queue);
 }
 
 TEST_F(PopEventsTest, ShutdownProcessTrue) {
-    MockBoundedQueue<std::unique_ptr<file_event>> mock_kernel_queue;
-    MockBoundedQueue<std::unique_ptr<whodata_evt, whodata_deleter>> mock_whodata_queue;
+    MockBoundedQueue<std::unique_ptr<dynamic_file_event>> mock_kernel_queue;
 
     EXPECT_CALL(MockFimebpf::GetInstance(), mock_fim_shutdown_process_on())
         .WillOnce(::testing::Return(true));
 
-    ebpf_pop_events(mock_kernel_queue, mock_whodata_queue);
+    ebpf_pop_events(mock_kernel_queue);
 }
 
 TEST_F(PopEventsTest, EbpfPopFailsAndShutdown) {
-    MockBoundedQueue<std::unique_ptr<file_event>> mock_kernel_queue;
-    MockBoundedQueue<std::unique_ptr<whodata_evt, whodata_deleter>> mock_whodata_queue;
+    MockBoundedQueue<std::unique_ptr<dynamic_file_event>> mock_kernel_queue;
 
     EXPECT_CALL(MockFimebpf::GetInstance(), mock_fim_shutdown_process_on())
         .WillOnce(::testing::Return(false))
@@ -117,23 +63,20 @@ TEST_F(PopEventsTest, EbpfPopFailsAndShutdown) {
     EXPECT_CALL(mock_kernel_queue, pop(::testing::_, ::testing::_))
        .WillOnce(::testing::DoAll(
         ::testing::Invoke(
-            [&](std::unique_ptr<file_event>& event_arg, [[maybe_unused]]int timeout_arg) {
+            [&](std::unique_ptr<dynamic_file_event>& event_arg, [[maybe_unused]]int timeout_arg) {
 		std::cout << "Update data" << std::endl;
-		std::unique_ptr<file_event> new_event = std::make_unique<file_event>();
-                event_arg = std::make_unique<file_event>();
+		std::unique_ptr<dynamic_file_event> new_event = std::make_unique<dynamic_file_event>();
+                event_arg = std::make_unique<dynamic_file_event>();
             }
         ),
         ::testing::Return(false)
     ));
 
-    ebpf_pop_events(mock_kernel_queue, mock_whodata_queue);
+    ebpf_pop_events(mock_kernel_queue);
 }
 
 TEST_F(PopEventsTest, EbpfPopWithEvent) {
-    MockBoundedQueue<std::unique_ptr<file_event>> mock_kernel_queue;
-    MockBoundedQueue<std::unique_ptr<whodata_evt, whodata_deleter>> mock_whodata_queue;
-    MockFimebpf::mock_fim_conf = mock_fim_conf_failure;
-    MockFimebpf::SetMockFunctions();
+    MockBoundedQueue<std::unique_ptr<dynamic_file_event>> mock_kernel_queue;
 
     EXPECT_CALL(MockFimebpf::GetInstance(), mock_fim_shutdown_process_on())
         .WillOnce(::testing::Return(false))
@@ -142,15 +85,18 @@ TEST_F(PopEventsTest, EbpfPopWithEvent) {
     EXPECT_CALL(mock_kernel_queue, pop(::testing::_, ::testing::_))
        .WillOnce(::testing::DoAll(
         ::testing::Invoke(
-            [&](std::unique_ptr<file_event>& event_arg, [[maybe_unused]]int timeout_arg) {
-		        std::unique_ptr<file_event> new_event = std::make_unique<file_event>();
-                event_arg = std::make_unique<file_event>();
+            [&](std::unique_ptr<dynamic_file_event>& event_arg, [[maybe_unused]]int timeout_arg) {
+		        std::unique_ptr<dynamic_file_event> new_event = std::make_unique<dynamic_file_event>();
+                event_arg = std::make_unique<dynamic_file_event>();
             }
         ),
         ::testing::Return(true)
     ));
 
-    ebpf_pop_events(mock_kernel_queue, mock_whodata_queue);
+    EXPECT_CALL(MockFimebpf::GetInstance(), m_fim_whodata_event(::testing::_))
+    .Times(::testing::AnyNumber());
+
+    ebpf_pop_events(mock_kernel_queue);
 }
 
 void SetUpModule() {}

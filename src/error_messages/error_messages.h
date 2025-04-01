@@ -477,7 +477,6 @@
 #define FIM_AUDITPOL_FINAL_FAIL                     "(6956): After %d attempts the Auditpol command could not be executed successfully."
 
 #define FIM_ERROR_EBPF_NOT_SUPPORTED                "(6966): Wrong configuration. eBPF is not available on non-Linux systems."
-#define FIM_ERROR_EBPF_HEALTHCHECK                  "(6967): The eBPF healthcheck has failed. Switching all whodata eBPF configuration to audit."
 #define FIM_ERROR_EBPF_ALLOC_W_EVT                  "(6968): Error allocating memory for whodata_evt structure."
 #define FIM_ERROR_EBPF_LIB_LOAD                     "(6969): Failed to load some functions from libbpf.so."
 #define FIM_ERROR_EBPF_LIB_OPEN                     "(6970): Unable to open libbpf.so: %s"
@@ -490,6 +489,7 @@
 #define FIM_ERROR_EBPF_RINGBUFF_CONSUME             "(6977): Consuming ring buffer failed."
 #define FIM_ERROR_EBPF_HEALTHCHECK_TIMEOUT          "(6978): eBPF healthcheck timeout."
 #define FIM_ERROR_EBPF_HEALTHCHECK_FILE_DEL         "(6979): Healthcheck file can't be removed. Path: %s"
+#define FIM_ERROR_EBPF_INVALID_KERNEL               "(6980): Invalid Kernel version detected. Must be +5.8."
 
 /* Wazuh Logtest error messsages */
 #define LOGTEST_ERROR_BIND_SOCK                     "(7300): Unable to bind to socket '%s'. Errno: (%d) %s"

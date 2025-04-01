@@ -88,7 +88,7 @@ full_filename,owner_name,group_name,mode,type,prot_permissions,size_bytes,size_e
 /var/ossec/lib/libsysinfo.so,root,wazuh,750,file,-rwxr-x---,1980344,0.1
 /var/ossec/lib/libfimdb.so,root,wazuh,750,file,-rwxr-x---,466648,0.1
 /var/ossec/lib/libbpf.so,root,wazuh,750,file,-rwxr-x---,526048,0.1
-/var/ossec/lib/libfimebpf.so,root,wazuh,750,file,-rwxr-x---,53008,0.1
+/var/ossec/lib/libfimebpf.so,root,wazuh,750,file,-rwxr-x---,44600,0.1
 /var/ossec/lib/modern.bpf.o,root,wazuh,750,file,-rwxr-x---,904720,0.1
 /var/ossec/lib/libstdc++.so.6,root,wazuh,750,file,-rwxr-x---,2009608,0.1
 /var/ossec/lib/libsyscollector.so,root,wazuh,750,file,-rwxr-x---,554376,0.1

@@ -189,7 +189,6 @@
 #define FIM_WILDCARDS_REGISTERS_FINALIZE    "(6374): Wildcard configuration successfully completed."
 #define FIM_REG_VAL_INVALID_TYPE            "(6375): Invalid registry value type for report_changes. Registry key: '%s'. Registry value: '%s'."
 #define FIM_EBPF_LIB_LOADED                 "(6376): All functions loaded successfully from libbpf.so."
-#define FIM_EBPF_INVALID_KERNEL             "(6377): Invalid Kernel version detected. Must be +5.8."
 
 /* Modules messages */
 #define WM_UPGRADE_RESULT_AGENT_INFO         "(8151): Agent Information obtained: '%s'"

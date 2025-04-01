@@ -18,7 +18,6 @@ protected:
         MockFimebpf::SetMockFunctions();
         bpf_helpers = std::make_unique<w_bpf_helpers_t>();
         bpf_helpers->ebpf_pop_events = (ebpf_pop_events_t)mock_ebpf_pop_events;
-        bpf_helpers->whodata_pop_events = (whodata_pop_events_t)mock_whodata_pop_events;
         bpf_helpers->init_ring_buffer = (init_ring_buffer_t)mock_init_ring_buffer_success;
         bpf_helpers->ring_buffer_poll = (ring_buffer__poll_t)mock_ring_buffer_poll_success;
         bpf_helpers->ring_buffer_free = (ring_buffer__free_t)mock_ring_buffer_free;
