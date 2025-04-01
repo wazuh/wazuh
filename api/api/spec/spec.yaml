@@ -4384,6 +4384,12 @@ components:
           description: "Enable features under development"
           type: boolean
           default: false
+        authentication_pool_size:
+          description: "Number of processes dedicated to processing authentication requests"
+          type: integer
+          minimum: 1
+          maximum: 50
+          default: 2
 
     LastScan:
       type: object
@@ -7270,11 +7276,7 @@ paths:
                 timestamp: "2019-04-02T08:08:11Z"
 
   /active-response:
-    put:
       tags:
-        - Active-response
-      summary: "Run command"
-      description: "Run an Active Response command on all agents or a list of them"
       operationId: api.controllers.active_response_controller.run_command
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/active-response:command'
@@ -10063,6 +10065,7 @@ paths:
                         drop_privileges: true
                         experimental_features: false
                         max_upload_size: 10485760
+                        authentication_pool_size: 2
                         intervals:
                           request_timeout: 10
                         https:
@@ -10109,6 +10112,7 @@ paths:
                         drop_privileges: true
                         experimental_features: false
                         max_upload_size: 10485760
+                        authentication_pool_size: 2
                         intervals:
                           request_timeout: 10
                         https:
@@ -10155,6 +10159,7 @@ paths:
                         drop_privileges: true
                         experimental_features: false
                         max_upload_size: 10485760
+                        authentication_pool_size: 2
                         intervals:
                           request_timeout: 10
                         https:
@@ -12913,6 +12918,7 @@ paths:
                         drop_privileges: true
                         experimental_features: false
                         max_upload_size: 10485760
+                        authentication_pool_size: 2
                         intervals:
                           request_timeout: 10
                         https:
