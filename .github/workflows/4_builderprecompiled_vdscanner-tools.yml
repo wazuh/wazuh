@@ -10,7 +10,7 @@ on:
       - "src/engine/source/vdscanner/tools/**"
       - "src/engine/source/vdscanner/src/**"
       - "src/engine/source/vdscanner/include/**"
-      - ".github/workflows/5_builderprecompiled_vdscanner-tools.yml"
+      - ".github/workflows/4_builderprecompiled_vdscanner-tools.yml"
       - "src/engine/source/feedmanager/schemas/"
 
   # Trigger when a pull request is merged into main
@@ -21,7 +21,7 @@ on:
       - "src/engine/source/vdscanner/tools/**"
       - "src/engine/source/vdscanner/src/**"
       - "src/engine/source/vdscanner/include/**"
-      - ".github/workflows/5_builderprecompiled_vdscanner-tools.yml"
+      - ".github/workflows/4_builderprecompiled_vdscanner-tools.yml"
       - "src/engine/source/feedmanager/schemas/"
 
   # Allows manual trigger.
