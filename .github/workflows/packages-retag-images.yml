@@ -24,7 +24,7 @@ on:
   push:
     branches:
       - '[0-9]+.[0-9]+.[0-9]+'
-      - 'master'
+      - 'main'
     paths:
       - 'VERSION.json'
 
@@ -50,7 +50,15 @@ jobs:
 
       - name: Get old version from VERSION.json
         run: |
-          VERSION="$(grep '"version"' $GITHUB_WORKSPACE/VERSION.json | sed -E 's/.*"version": *"([^"]+)".*/\1/')"
+          VERSION_FILE="$GITHUB_WORKSPACE/VERSION.json"
+
+          if [[ -f "$VERSION_FILE" ]]; then
+            VERSION="$(grep '"version"' $GITHUB_WORKSPACE/VERSION.json | sed -E 's/.*"version": *"([^"]+)".*/\1/')"
+          else
+            echo "Error: No version file found." >&2
+            exit 1
+          fi
+
           echo "OLD_VERSION=$VERSION" >> $GITHUB_ENV;
 
       - name: Checkout repository

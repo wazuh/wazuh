@@ -18,6 +18,38 @@ if (Test-Path "$env:windir\sysnative") {
 }
 
 
+function get-version {
+    # possible version file paths
+    $JsonFile = "VERSION.json"
+    $TextFile = "VERSION"
+    $version = $null
+
+    # first check JSON version file exists
+    if (Test-Path $JsonFile) {
+        $VERSION_JSON = Get-Content $JsonFile -Raw
+
+        if ($VERSION_JSON -match "['""]version['""]\s*:\s*['""]([^'""]+)['""]") {
+            $version = $matches[1]
+            Write-Output "$(Get-Date -format u) - Extracted version from $JsonFile : $version." >> .\upgrade\upgrade.log
+        } else {
+            Write-Output "$(Get-Date -format u) - Failed to extract version from JSON file $JsonFile." >> .\upgrade\upgrade.log
+            exit 1
+        }
+    }
+    # fallback to the plain text VERSION file
+    elseif (Test-Path $TextFile) {
+        $version = Get-Content $TextFile -Raw
+        $version = $version.Trim() -replace "^v", ""
+        Write-Output "$(Get-Date -format u) - Extracted version from $TextFile : $version." >> .\upgrade\upgrade.log
+    } else {
+        Write-Output "$(Get-Date -format u) - Error: No version file found (expected $JsonFile or $TextFile)." >> .\upgrade\upgrade.log
+        exit 1
+    }
+
+    return $version
+}
+
+
 function remove_upgrade_files {
     Remove-Item -Path ".\upgrade\*"  -Exclude "*.log", "upgrade_result" -ErrorAction SilentlyContinue
     Remove-Item -Path ".\wazuh-agent*.msi" -ErrorAction SilentlyContinue
@@ -75,14 +107,13 @@ function check-process {
 
 # Check new version and restart the Wazuh service
 function check-installation {
-
-    $actual_version = (Get-Content VERSION)
+    $actual_version = get-version
     $counter = 5
     while($actual_version -eq $current_version -And $counter -gt 0) {
         write-output "$(Get-Date -format u) - Waiting for the Wazuh-Agent installation to end." >> .\upgrade\upgrade.log
         $counter--
         Start-Sleep 2
-        $actual_version = (Get-Content VERSION)
+        $actual_version = get-version
     }
     write-output "$(Get-Date -format u) - Starting Wazuh-Agent service." >> .\upgrade\upgrade.log
     Start-Service -Name "Wazuh"
@@ -153,7 +184,7 @@ function install {
         if ($msi_new_version -ne $null -and $msi_new_version -eq $current_version) {
             write-output "$(Get-Date -format u) - Reinstalling the same version." >> .\upgrade\upgrade.log
         }
-        
+
         Start-Process -FilePath "msiexec.exe" -ArgumentList @("/i", $msiPath, '-quiet', '-norestart', '-log', 'installer.log') -Wait -NoNewWindow
 
     } catch {
@@ -177,7 +208,7 @@ if ($normalizedWazuhDir -ne $currentDir) {
 }
 
 # Get current version
-$current_version = (Get-Content VERSION)
+$current_version = get-version
 write-output "$(Get-Date -format u) - Current version: $($current_version)." >> .\upgrade\upgrade.log
 
 # Get new msi version
@@ -224,7 +255,7 @@ if ($status -ne "connected") {
 else {
     write-output "0" | out-file ".\upgrade\upgrade_result" -encoding ascii
     write-output "$(Get-Date -format u) - Upgrade finished successfully." >> .\upgrade\upgrade.log
-    $new_version = (Get-Content VERSION)
+    $new_version = get-version
     write-output "$(Get-Date -format u) - New version: $($new_version)." >> .\upgrade\upgrade.log
 }
 

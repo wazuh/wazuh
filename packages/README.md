@@ -25,25 +25,26 @@ wazuh# cd packages
 ```
 
 **Options:**
-| Option     | Description                                            | Default               |
-|------------|----------------------------------------------------------|-----------------------|
-| -b, --branch | Git branch to use (optional)                          | master                |
-| -t, --target | Target package to build (required): manager or agent    | -                     |
-| -a, --architecture | Target architecture (optional): amd64, i386, etc. | -                     |
-| -j, --jobs  | Number of parallel jobs (optional)                       | 2                     |
-| -r, --revision | Package revision (optional)                          | 0                     |
-| -s, --store  | Destination path for the package (optional)            | (output folder created) |
-| -p, --path   | Installation path for the package (optional)           | /var/ossec             |
-| -d, --debug  | Build binaries with debug symbols (optional)           | no                     |
-| -c, --checksum | Generate checksum on the same directory (optional)   | no                     |
-| -l, --legacy | Build package for CentOS 5 (RPM only) (optional)        | no                     |
-| --dont-build-docker | Use a locally built Docker image (optional)      | no   |
-| --tag        | Tag to use with the Docker image (optional)             | -                     |
-| *--sources    | Path containing local Wazuh source code (optional)       | script path            |
-| **--is_stage | Use release name in package (optional)               | no                     |
-| --src        | Generate the source package (optional)                 | no                     |
-| --system | Package format to build (optional): rpm, deb (default)| deb                    |
-| -h, --help   | Show this help message                                 | -                     |
+
+| Option               | Description                                                         | Default                 |
+|----------------------|---------------------------------------------------------------------|-------------------------|
+| -b, --branch         | Git branch to use (optional)                                        | main                    |
+| -t, --target         | Target package to build (required): manager or agent                | -                       |
+| -a, --architecture   | Target architecture (optional): amd64, i386, etc.                   | -                       |
+| -j, --jobs           | Number of parallel jobs (optional)                                  | 2                       |
+| -r, --revision       | Package revision (optional)                                         | 0                       |
+| -s, --store          | Destination path for the package (optional)                         | (output folder created) |
+| -p, --path           | Installation path for the package (optional)                        | /var/ossec              |
+| -d, --debug          | Build binaries with debug symbols (optional)                        | no                      |
+| -c, --checksum       | Generate checksum on the same directory (optional)                  | no                      |
+| -l, --legacy         | Build package for CentOS 5 (RPM only) (optional)                    | no                      |
+| --dont-build-docker  | Use a locally built Docker image (optional)                         | no                      |
+| --tag                | Tag to use with the Docker image (optional)                         | -                       |
+| *--sources           | Path containing local Wazuh source code (optional)                  | script path            |
+| **--is_stage         | Use release name in package (optional)                              | no                      |
+| --src                | Generate the source package (optional)                              | no                      |
+| --system             | Package format to build (optional): rpm, deb (default)              | deb                     |
+| -h, --help           | Show this help message                                              | -                       |
 
 ***Note1:** If we don't use this flag, will the script use the current directory where *generate_package.sh* is located.
 

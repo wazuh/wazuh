@@ -302,11 +302,8 @@
                     <Component DiskId="1" Guid="21A074CB-3BFB-45D2-A0EC-D59293950DD9" Id="HELP_WIN.TXT">
                         <File Id="HELP_WIN.TXT" Name="help.txt" Source="help_win.txt" />
                     </Component>
-                    <Component Id="VERSION" DiskId="1" Guid="8DC3D417-5663-4E53-9D8F-2CFA08A2627C">
-                        <File Id="VERSION" Name="VERSION" Source="VERSION" />
-                    </Component>
-                    <Component Id="REVISION" DiskId="1" Guid="89440258-B50F-4926-8068-D1444E31F8E0">
-                        <File Id="REVISION" Name="REVISION" Source="REVISION" />
+                    <Component Id="VERSION.JSON" DiskId="1" Guid="296571f4-2498-4cf6-b286-b2c54430678e">
+                        <File Id="VERSION.JSON" Name="VERSION.json" Source="VERSION.json" />
                     </Component>
                     <Component Id="WPK_ROOT.PEM" DiskId="1" Guid="EABF8773-57B9-4CD8-A862-87B0E060DBF8">
                         <File Id="WPK_ROOT.PEM" Name="wpk_root.pem" Source="..\..\etc\wpk_root.pem" />
@@ -688,8 +685,7 @@
             <ComponentRef Id="REMOVE_OLD_NSIS" />
             <ComponentRef Id="REMOVE_OLD_AR" />
             <ComponentRef Id="HELP_WIN.TXT" />
-            <ComponentRef Id="VERSION" />
-            <ComponentRef Id="REVISION" />
+            <ComponentRef Id="VERSION.JSON" />
             <ComponentRef Id="WPK_ROOT.PEM" />
             <ComponentRef Id="WXP_CONF_SYSCHECK" />
             <ComponentRef Id="WXP_CONF_LOCALFILE" />

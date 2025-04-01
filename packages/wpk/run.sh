@@ -23,7 +23,7 @@ help() {
     echo "Usage: ${0} [OPTIONS]"
     echo "It is required to use -k or --aws-wpk-key, --aws-wpk-cert parameters"
     echo
-    echo "    -b,   --branch <branch>      [Required] Select Git branch or tag e.g. master"
+    echo "    -b,   --branch <branch>      [Required] Select Git branch or tag e.g. main"
     echo "    -o,   --output <name>        [Required] Name to the output package."
     echo "    -pn,  --package-name <name>  [Required] Path to package file (rpm, deb, apk, msi, pkg) to pack in wpk."
     echo "    -c,   --checksum             [Optional] Whether Generate checksum or not."
