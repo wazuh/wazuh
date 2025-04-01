@@ -70,7 +70,7 @@
 		"WAZUH_REPO": "${containerWorkspaceFolder}/wazuh",
 		"ENGINE_SRC": "${containerWorkspaceFolder}/wazuh/src/engine",
 		"ENGINE_BUILD": "${containerWorkspaceFolder}/wazuh/src/engine/build",
-		"ENGINE_RULESET": "${containerWorkspaceFolder}/intelligence-data/engine",
+		"ENGINE_RULESET": "${containerWorkspaceFolder}/intelligence-data/ruleset",
 		"ENGINE_PYTHONPATH_API": "${containerWorkspaceFolder}/wazuh/src/engine/tools/api-communication/",
 		"ENGINE_PYTHONPATH_SUITE": "${containerWorkspaceFolder}/wazuh/src/engine/tools/engine-suite/",
 		"ENGINE_PYTHONPATH_TEST": "${containerWorkspaceFolder}/wazuh/src/engine/test/engine-test-utils/",
