@@ -1,0 +1,223 @@
+name: Build DEB and RPM packages for Wazuh Manager
+
+on:
+  workflow_dispatch:
+  pull_request:
+    # Pull request events
+    types: [synchronize, opened, reopened, ready_for_review]
+    paths:
+      - "src/**"
+      - "packages/**"
+      - ".github/workflows/4_builderpackage_manager-multiples-2.yml"
+
+jobs:
+  Generate-Packages:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Build DEB Manager
+        id: deb
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const workflowFile = "4_builderpackage_manager.yml";
+            const branchRef = process.env.GITHUB_HEAD_REF || process.env.GITHUB_REF_NAME;
+            const timeoutMinutes = 60;
+            const pollingIntervalMs = 30 * 1000;
+            const maxAttempts = Math.ceil((timeoutMinutes * 60 * 1000) / pollingIntervalMs);
+
+            function sleep(ms) {
+              return new Promise(resolve => setTimeout(resolve, ms));
+            }
+
+            console.log(`Triggering workflow: ${workflowFile} on branch "${branchRef}"`);
+
+            // 1. Dispatch the workflow
+            await github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: workflowFile,
+              ref: branchRef,
+              inputs: {
+                docker_image_tag: "auto",
+                architecture: "x86_64",
+                system: "deb",
+                revision: "0",
+                is_stage: false,
+                debug: false,
+                checksum: false
+              }
+            });
+
+            console.log("Workflow dispatched successfully. Waiting for the run to appear...");
+
+            await sleep(pollingIntervalMs); // Give GitHub a moment to register the new run
+
+            // Helper function: get the latest run
+            async function getLatestWorkflowRun() {
+              const response = await github.rest.actions.listWorkflowRuns({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                workflow_id: workflowFile,
+                branch: branchRef,
+                per_page: 1
+              });
+              return response.data.workflow_runs[0] || null;
+            }
+
+            // 2. Wait for the workflow run to appear
+            let run = null;
+            for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+              run = await getLatestWorkflowRun();
+              if (run) {
+                console.log(`Workflow run found: ${run.html_url}`);
+                break;
+              }
+              console.log(`Waiting for workflow run to appear... (Attempt ${attempt}/${maxAttempts})`);
+              await sleep(pollingIntervalMs);
+            }
+
+            if (!run) {
+              throw new Error(
+                `Timeout: No workflow run found for "${workflowFile}" on branch "${branchRef}" after ${timeoutMinutes} minutes.`
+              );
+            }
+
+            // 3. Wait for the workflow run to complete
+            for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+              // Refresh run status
+              run = await getLatestWorkflowRun();
+              
+              // If the run has completed, break out and check the conclusion
+              if (run.status === "completed") {
+                console.log(`Workflow completed with status: ${run.conclusion}`);
+                console.log(`Check results: ${run.html_url}`);
+
+                // Output to be consumed by subsequent steps
+                core.setOutput("workflow_status", run.conclusion);
+                core.setOutput("workflow_url", run.html_url);
+
+                if (run.conclusion !== "success") {
+                  throw new Error(`Workflow failed with conclusion: ${run.conclusion}`);
+                }
+                // If it's 'success', we can safely return/exit
+                return;
+              }
+
+              console.log(`Workflow is still "${run.status}"... (Attempt ${attempt}/${maxAttempts})`);
+              await sleep(pollingIntervalMs);
+            }
+
+            // If we reach here, the run never completed within the timeout
+            throw new Error(`Timeout: Workflow run did not complete within ${timeoutMinutes} minutes.`);
+
+      - name: Build RPM Manager
+        id: rpm
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const workflowFile = "4_builderpackage_manager.yml";
+            const branchRef = process.env.GITHUB_HEAD_REF || process.env.GITHUB_REF_NAME;
+            const timeoutMinutes = 60;
+            const pollingIntervalMs = 30 * 1000;
+            const maxAttempts = Math.ceil((timeoutMinutes * 60 * 1000) / pollingIntervalMs);
+
+            function sleep(ms) {
+              return new Promise(resolve => setTimeout(resolve, ms));
+            }
+
+            console.log(`Triggering workflow: ${workflowFile} on branch "${branchRef}"`);
+
+            // 1. Dispatch the workflow
+            await github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: workflowFile,
+              ref: branchRef,
+              inputs: {
+                docker_image_tag: "auto",
+                architecture: "x86_64",
+                system: "rpm",
+                revision: "0",
+                is_stage: false,
+                debug: false,
+                checksum: false
+              }
+            });
+
+            console.log("Workflow dispatched successfully. Waiting for the run to appear...");
+
+            await sleep(pollingIntervalMs);
+
+            // Helper function: get the latest run
+            async function getLatestWorkflowRun() {
+              const response = await github.rest.actions.listWorkflowRuns({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                workflow_id: workflowFile,
+                branch: branchRef,
+                per_page: 1
+              });
+              return response.data.workflow_runs[0] || null;
+            }
+
+            // 2. Wait for the workflow run to appear
+            let run = null;
+            for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+              run = await getLatestWorkflowRun();
+              if (run) {
+                console.log(`Workflow run found: ${run.html_url}`);
+                break;
+              }
+              console.log(`Waiting for workflow run to appear... (Attempt ${attempt}/${maxAttempts})`);
+              await sleep(pollingIntervalMs);
+            }
+
+            if (!run) {
+              throw new Error(
+                `Timeout: No workflow run found for "${workflowFile}" on branch "${branchRef}" after ${timeoutMinutes} minutes.`
+              );
+            }
+
+            // 3. Wait for the workflow run to complete
+            for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+              // Refresh run status
+              run = await getLatestWorkflowRun();
+              
+              // If the run has completed, break out and check the conclusion
+              if (run.status === "completed") {
+                console.log(`Workflow completed with status: ${run.conclusion}`);
+                console.log(`Check results: ${run.html_url}`);
+
+                // Output to be consumed by subsequent steps
+                core.setOutput("workflow_status", run.conclusion);
+                core.setOutput("workflow_url", run.html_url);
+
+                if (run.conclusion !== "success") {
+                  throw new Error(`Workflow failed with conclusion: ${run.conclusion}`);
+                }
+                // If it's 'success', we can safely return/exit
+                return;
+              }
+
+              console.log(`Workflow is still "${run.status}"... (Attempt ${attempt}/${maxAttempts})`);
+              await sleep(pollingIntervalMs);
+            }
+
+            // If we reach here, the run never completed within the timeout
+            throw new Error(`Timeout: Workflow run did not complete within ${timeoutMinutes} minutes.`);
+
+      # --------------------------------------------------
+      # SHOW RESULTS IN SUMMARY (Actions summary)
+      # --------------------------------------------------
+      - name: Show results in summary
+        if: always()
+        run: |
+          echo "## Build Summaries" >> $GITHUB_STEP_SUMMARY
+
+          echo "### DEB Build" >> $GITHUB_STEP_SUMMARY
+          echo "- **Status**: \`${{ steps.deb.outputs.workflow_status }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Workflow Summary**: [Link](${{ steps.deb.outputs.workflow_url }})" >> $GITHUB_STEP_SUMMARY
+
+          echo "### RPM Build" >> $GITHUB_STEP_SUMMARY
+          echo "- **Status**: \`${{ steps.rpm.outputs.workflow_status }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Workflow Summary**: [Link](${{ steps.rpm.outputs.workflow_url }})" >> $GITHUB_STEP_SUMMARY
