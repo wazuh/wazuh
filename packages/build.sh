@@ -15,7 +15,11 @@ build_directories() {
   local future="$3"
 
   mkdir -p "${build_folder}"
+  echo "Searching VERSION.json in $(pwd)/$wazuh_dir"
+  find $wazuh_dir -type f -name VERSION.json
   wazuh_version="$(grep '"version"' wazuh*/VERSION.json | sed -E 's/.*"version": *"([^"]+)".*/\1/')"
+  echo "Extracted wazuh_version: $wazuh_version"
+
 
   if [[ "$future" == "yes" ]]; then
     wazuh_version="$(future_version "$build_folder" "$wazuh_dir" $wazuh_version)"
@@ -98,7 +102,10 @@ source_dir=$(build_directories "$build_dir/server" "wazuh*" $future)
 echo "source_dir: $source_dir"
 ls -lah "$source_dir" || echo "⚠️ source_dir is invalid or empty"
 
+echo "Searching VERSION.json 2 in $(pwd)/$wazuh_dir"
+find $wazuh_dir -type f -name VERSION.json
 wazuh_version="$(grep '"version"' $source_dir/VERSION.json | sed -E 's/.*"version": *"([^"]+)".*/\1/')"
+echo "Extracted wazuh_version: $wazuh_version"
 # TODO: Improve how we handle package_name
 # Changing the "-" to "_" between target and version breaks the convention for RPM or DEB packages.
 # For now, I added extra code that fixes it.
