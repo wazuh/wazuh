@@ -29,7 +29,8 @@ RUN yum install -y \
     curl-devel \
     xz \
     elfutils \
-    scl-utils
+    scl-utils \
+    zlib-devel
 
 RUN yum install epel-release lzip -y
 
