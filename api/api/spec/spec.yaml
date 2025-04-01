@@ -7276,7 +7276,11 @@ paths:
                 timestamp: "2019-04-02T08:08:11Z"
 
   /active-response:
+    put:
       tags:
+        - Active-response
+      summary: "Run command"
+      description: "Run an Active Response command on all agents or a list of them"
       operationId: api.controllers.active_response_controller.run_command
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/active-response:command'
