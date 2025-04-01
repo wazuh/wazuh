@@ -8,8 +8,6 @@ on:
   # Path filtering
     paths:
       - ".github/workflows/4_testcomponent_indexer-connector.yml"
-      - ".github/workflows/-tests.yml"
-      - ".github/workflows/indexer-connector-tests.yml"
       - ".github/actions/compile_and_test/action.yml"
       - ".github/actions/indexer_connector_deps/action.yml"
       - "src/shared_modules/indexer_connector/**"
@@ -17,7 +15,7 @@ on:
 
 jobs:
   indexer_connector-qa:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-22.04
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3

@@ -56,7 +56,7 @@ runs:
           arguments+="--output-file build/coverage.info "
 
           # # Disable branch coverage
-          arguments+="-rc branch_coverage=0 "
+          arguments+="-rc lcov_branch_coverage=0 "
 
           # Include test files
           include_files=""
@@ -69,9 +69,7 @@ runs:
           for file in $(find $paths -type f -regextype posix-extended -regex ".*/*\.(hpp|cpp|h|c)")
           do
             file=$(echo $file | sed 's/\.\///g')
-            if [[ ! "$file" =~ "_generated.h" ]] &&
-               [[ ! "$file" =~ "routerFacade.hpp" ]] &&
-               [[ ! "$file" =~ "remoteProvider.hpp" ]]; then
+            if [[ ! "$file" =~ "_generated.h" ]]; then
               include_files+="--include=$(pwd)$dir/$file "
             fi
           done

@@ -41,7 +41,7 @@ jobs:
 
     # Runs only if the PR status is different to Draft
     if: ${{ !github.event.pull_request.draft }}
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-22.04
     timeout-minutes: 60
 
     steps:
