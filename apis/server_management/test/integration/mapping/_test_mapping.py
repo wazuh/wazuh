@@ -11,10 +11,10 @@ from collections import defaultdict
 from copy import copy
 from os import chdir, path, walk
 
-base = path.dirname(path.dirname(path.dirname(path.dirname(path.dirname(path.abspath(__file__))))))
+base = path.dirname(path.dirname(path.dirname(path.dirname(path.dirname(path.dirname(path.abspath(__file__)))))))
 framework = path.join(base, 'framework', 'wazuh')
-api = path.join(base, 'api', 'api')
-integration_tests = path.join(base, 'api', 'test', 'integration')
+api = path.join(base, 'apis', 'server_management')
+integration_tests = path.join(base, 'apis', 'server_management', 'test', 'integration')
 
 # Mapping file
 file_path = path.join(integration_tests, 'mapping', 'integration_test_api_endpoints.json')
@@ -52,7 +52,7 @@ def calculate_test_mappings():
 
 
 def extract_module_from_path(file_path):
-    """Extracts the module from the file path."""
+    """Extract the module from the file path."""
     parts = file_path.split('/')
     # Assuming the module is the last part of the path
     wazuh_modules = parts[-1]
