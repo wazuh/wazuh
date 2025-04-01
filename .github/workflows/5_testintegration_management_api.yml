@@ -15,7 +15,7 @@ on:
   pull_request:
     types: [synchronize, opened, reopened, ready_for_review]
     paths:
-      - ".github/workflows/5_testintegration_api.yml"
+      - ".github/workflows/5_testintegration_management_api.yml"
       - "apis/server_management/**"
       - "tests/integration/test_api/**"
 
@@ -67,7 +67,7 @@ jobs:
     needs: check_package_existence
     if: ${{ github.event_name == 'workflow_dispatch' && needs.check_package_existence.outputs.exists == 'false' }}
     secrets: inherit
-    uses: ./.github/workflows/packages-build-server.yml
+    uses: ./.github/workflows/5_builderpackage_server.yml
     with:
       architecture: amd64
       system: deb

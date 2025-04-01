@@ -1,0 +1,75 @@
+name: Engine indexer connector test
+
+on:
+  workflow_dispatch:
+  pull_request:
+  # Pull request events
+    types: [synchronize, opened, reopened, ready_for_review]
+  # Path filtering
+    paths:
+      - ".github/workflows/5_testcomponent_engine-indexer-connector.yml"
+      - ".github/actions/compile_and_test/action.yml"
+      - ".github/actions/indexer_connector_deps/action.yml"
+      - "src/engine/source/indexerconnector/**"
+      - "src/engine/source/wazuh-http-request/**"
+env:
+  BUILD_PRESET: ${{ github.event.inputs.build_preset || 'release' }}
+  ENGINE_DIR: ${{github.workspace}}/src/engine
+
+jobs:
+  indexer_connector-qa:
+    name: Engine indexer connector e2e Test
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.8
+
+      - name: Install dependencies lzip
+        run: sudo apt-get install lzip
+
+      - name: Setup VCPKG
+        uses: lukka/run-vcpkg@v11
+        with:
+          vcpkgDirectory: '${{env.ENGINE_DIR}}/vcpkg'
+          vcpkgGitCommitId: 'a42af01b72c28a8e1d7b48107b33e4f286a55ef6'
+          vcpkgJsonGlob: '${{env.ENGINE_DIR}}/vcpkg.json'
+    
+      - name: Configure CMake
+        run: cmake --preset=${{env.BUILD_PRESET}} --no-warn-unused-cli -S ${{env.ENGINE_DIR}}
+  
+      - name: Build
+        run: cmake --build ${{env.ENGINE_DIR}}/build --target indexer_connector_tool -j$(nproc)
+
+      # Install python dependencies
+      - name: Install dependencies
+        run: |
+          pip install -r ${{env.ENGINE_DIR}}/source/indexerconnector/qa/requirements.txt
+
+      # Create folder for test logs
+      - name: Create folder for test logs
+        run: |
+          mkdir -p ${{ github.workspace }}/qa_logs
+
+      # Run indexer connector tests.
+      - name: Run tests
+        env:
+          REPORT_OUTPUT: md_report.md
+        run: |
+          echo "REPORT_FILE=${REPORT_OUTPUT}" >> "$GITHUB_ENV"
+          cd src
+          python -m pytest -rA --html=report.html --self-contained-html --md-report --md-report-verbose=1 --md-report-zeros empty --md-report-color never --md-report-output "$REPORT_OUTPUT" -vv engine/source/indexerconnector/qa/ --log-cli-level=DEBUG
+          rm -rf tmp
+
+      # Upload HTML report
+      - name: Upload HTML report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: report.html
+          path: ${{ github.workspace }}/src/report.html
