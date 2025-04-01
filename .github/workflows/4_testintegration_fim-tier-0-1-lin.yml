@@ -1,4 +1,4 @@
-name: Integration tests for logcollector on MacOS - Tier 0 and 1
+name: Integration tests for FIM on Linux - Tier 0 and 1
 
 on:
   workflow_dispatch:
@@ -9,35 +9,35 @@ on:
         default: 'main'
   pull_request:
     paths:
-        - ".github/workflows/5_testintegration_logcollector-tier-0-1-macos.yml"
-        - "src/config/localfile-config.c"
-        - "src/config/localfile-config.h"
-        - "src/logcollector/**"
+        - ".github/workflows/4_testintegration_fim-tier-0-1-lin.yml"
+        - "src/config/syscheck-config.c"
+        - "src/config/syscheck-config.h"
+        - "src/syscheckd/**"
         - "src/Makefile"
         - "tests/integration/conftest.py"
-        - "tests/integration/test_logcollector/**"
+        - "tests/integration/test_fim/**"
 
 jobs:
   build:
     env:
       BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
       BRANCH_BASE: ${{ github.base_ref || inputs.base_branch }}
-    runs-on: macos-latest
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v3
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v4
         with:
           python-version-file: ".github/workflows/.python-version-it"
           architecture: x64
-      # Build wazuh agent for macOS.
-      - name: Build wazuh agent for macOS
+      # Build wazuh agent for linux.
+      - name: Build wazuh agent for linux
         run: |
           make deps -C src TARGET=agent -j2
           make -C src TARGET=agent -j2
-      # Install wazuh agent for macOS.
-      - name: Install wazuh agent for macOS
+      # Install wazuh agent for linux.
+      - name: Install wazuh agent for linux
         run: |
           echo 'USER_LANGUAGE="en"' > ./etc/preloaded-vars.conf
           echo "" >> ./etc/preloaded-vars.conf
@@ -45,7 +45,7 @@ jobs:
           echo "" >> ./etc/preloaded-vars.conf
           echo 'USER_INSTALL_TYPE="agent"' >> ./etc/preloaded-vars.conf
           echo "" >> ./etc/preloaded-vars.conf
-          echo "USER_DIR=/Library/Ossec" >> ./etc/preloaded-vars.conf
+          echo "USER_DIR=/var/ossec" >> ./etc/preloaded-vars.conf
           echo "" >> ./etc/preloaded-vars.conf
           echo 'USER_ENABLE_EMAIL="n"' >> ./etc/preloaded-vars.conf
           echo "" >> ./etc/preloaded-vars.conf
@@ -80,8 +80,13 @@ jobs:
           git clone -b ${QA_BRANCH} --single-branch https://github.com/wazuh/qa-integration-framework.git
           sudo pip install qa-integration-framework/
           sudo rm -rf qa-integration-framework/
-      # Run logcollector integration tests.
-      - name: Run logcollector integration tests
+      # Install audit required by FIM
+      - name: Install audit
+        run: |
+          sudo apt-get update
+          sudo apt-get install auditd -y
+      # Run fim integration tests.
+      - name: Run fim integration tests
         run: |
           cd tests/integration
-          sudo python -m pytest --tier 0 --tier 1 test_logcollector/
+          sudo python -m pytest --tier 0 --tier 1 test_fim/

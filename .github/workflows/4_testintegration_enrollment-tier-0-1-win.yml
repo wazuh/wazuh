@@ -1,4 +1,4 @@
-name: Integration tests for Execd on Windows - Tier 0 and 1
+name: Integration tests for enrollment on Windows - Tier 0 and 1
 
 on:
   workflow_dispatch:
@@ -9,11 +9,16 @@ on:
         default: 'main'
   pull_request:
     paths:
-        - ".github/workflows/5_testintegration_execd-tier-0-1-win.yml"
-        - "src/execd/**"
+        - ".github/workflows/4_testintegration_enrollment-tier-0-1-win.yml"
+        - "src/client-agent/**"
+        - "src/config/buffer-config.c"
+        - "src/config/client-config.c"
+        - "src/config/client-config.h"
+        - "src/os_auth/**"
+        - "src/win32/**"
         - "src/Makefile"
         - "tests/integration/conftest.py"
-        - "tests/integration/test_execd/**"
+        - "tests/integration/test_enrollment/**"
 
 jobs:
   # Build the winagent on linux.
@@ -59,6 +64,9 @@ jobs:
         with:
           python-version-file: ".github/workflows/.python-version-it"
           architecture: x64
+      - name: Add WiX toolkit to PATH
+        shell: bash
+        run: echo "${WIX}bin" >> $GITHUB_PATH
       # Download the compressed winagent build.
       - name: Download Artifact winagent
         uses: actions/download-artifact@v4
@@ -82,9 +90,9 @@ jobs:
       # Download and install integration tests framework.
       - name: Download and install qa-integration-framework
         run: |
-          if (git ls-remote https://github.com/wazuh/qa-integration-framework.git $env:BRANCH_NAME) {
+          if (git ls-remote --heads https://github.com/wazuh/qa-integration-framework.git $env:BRANCH_NAME) {
               $QA_BRANCH = $env:BRANCH_NAME
-          } elseif (git ls-remote https://github.com/wazuh/qa-integration-framework.git $env:BRANCH_BASE) {
+          } elseif (git ls-remote --heads https://github.com/wazuh/qa-integration-framework.git $env:BRANCH_BASE) {
               $QA_BRANCH = $env:BRANCH_BASE
           } else {
               $QA_BRANCH = "main"
@@ -92,8 +100,8 @@ jobs:
           git clone -b $QA_BRANCH --single-branch https://github.com/wazuh/qa-integration-framework.git
           pip install qa-integration-framework/
           rm qa-integration-framework/ -r -force
-      # Run execd integration tests.
-      - name: Run execd integration tests
+      # Run enrollment integration tests.
+      - name: Run enrollment integration tests
         run: |
           cd C:\wazuh\tests\integration
-          python -m pytest -m win32 --tier 0 --tier 1 test_execd\
+          python -m pytest --tier 0 --tier 1 test_enrollment\

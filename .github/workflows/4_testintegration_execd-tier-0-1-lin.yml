@@ -1,4 +1,4 @@
-name: Integration tests for enrollment on Linux - Tier 0 and 1
+name: Integration tests for Execd on Linux - Tier 0 and 1
 
 on:
   workflow_dispatch:
@@ -9,15 +9,11 @@ on:
         default: 'main'
   pull_request:
     paths:
-        - ".github/workflows/5_testintegration_enrollment-tier-0-1-lin.yml"
-        - "src/client-agent/**"
-        - "src/config/buffer-config.c"
-        - "src/config/client-config.c"
-        - "src/config/client-config.h"
-        - "src/os_auth/**"
+        - ".github/workflows/4_testintegration_execd-tier-0-1-lin.yml"
+        - "src/execd/**"
         - "src/Makefile"
         - "tests/integration/conftest.py"
-        - "tests/integration/test_enrollment/**"
+        - "tests/integration/test_execd/**"
 
 jobs:
   build:
@@ -42,8 +38,6 @@ jobs:
       - name: Install wazuh agent for linux
         run: |
           echo 'USER_LANGUAGE="en"' > ./etc/preloaded-vars.conf
-          echo "" >> ./etc/preloaded-vars.conf
-          echo 'USER_AGENT_SERVER_IP="127.0.0.1"' >> ./etc/preloaded-vars.conf
           echo "" >> ./etc/preloaded-vars.conf
           echo 'USER_NO_STOP="y"' >> ./etc/preloaded-vars.conf
           echo "" >> ./etc/preloaded-vars.conf
@@ -72,9 +66,9 @@ jobs:
       # Download and install integration tests framework.
       - name: Download and install integration tests framework
         run: |
-          if [ "X`git ls-remote --heads https://github.com/wazuh/qa-integration-framework.git ${BRANCH_NAME}`" != "X" ]; then
+          if [ "X`git ls-remote https://github.com/wazuh/qa-integration-framework.git ${BRANCH_NAME}`" != "X" ]; then
               QA_BRANCH=${BRANCH_NAME}
-          elif [ "X`git ls-remote --heads https://github.com/wazuh/qa-integration-framework.git ${BRANCH_BASE}`" != "X" ]; then
+          elif [ "X`git ls-remote https://github.com/wazuh/qa-integration-framework.git ${BRANCH_BASE}`" != "X" ]; then
               QA_BRANCH=${BRANCH_BASE}
           else
               QA_BRANCH="main"
@@ -82,8 +76,8 @@ jobs:
           git clone -b ${QA_BRANCH} --single-branch https://github.com/wazuh/qa-integration-framework.git
           sudo pip install qa-integration-framework/
           sudo rm -rf qa-integration-framework/
-      # Run enrollment integration tests.
-      - name: Run enrollment integration tests
+      # Run execd integration tests.
+      - name: Run execd integration tests
         run: |
           cd tests/integration
-          sudo python -m pytest --tier 0 --tier 1 test_enrollment/
+          sudo python -m pytest --tier 0 --tier 1 test_execd/

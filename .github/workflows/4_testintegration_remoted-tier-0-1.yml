@@ -1,4 +1,4 @@
-name: Integration tests for Integratord - Tier 0 and 1
+name: Integration tests for Remoted - Tier 0 and 1
 
 on:
   workflow_dispatch:
@@ -9,13 +9,13 @@ on:
         default: 'main'
   pull_request:
     paths:
-        - ".github/workflows/5_testintegration_integratord-tier-0-1.yml"
-        - "src/config/integrator-config.c"
-        - "src/config/integrator-config.h"
-        - "src/os_integrator/**"
+        - ".github/workflows/4_testintegration_remoted-tier-0-1.yml"
+        - "src/config/remote-config.c"
+        - "src/config/remote-config.h"
+        - "src/remoted/**"
         - "src/Makefile"
         - "tests/integration/conftest.py"
-        - "tests/integration/test_integratord/**"
+        - "tests/integration/test_remoted/**"
 
 jobs:
   build:
@@ -61,7 +61,7 @@ jobs:
           echo "" >> ./etc/preloaded-vars.conf
           echo 'USER_ENABLE_SYSLOG="n"' >> ./etc/preloaded-vars.conf
           echo "" >> ./etc/preloaded-vars.conf
-          echo 'USER_ENABLE_AUTHD="n"' >> ./etc/preloaded-vars.conf
+          echo 'USER_ENABLE_AUTHD="y"' >> ./etc/preloaded-vars.conf
           echo "" >> ./etc/preloaded-vars.conf
           echo 'USER_AUTO_START="y"' >> ./etc/preloaded-vars.conf
           echo "" >> ./etc/preloaded-vars.conf
@@ -80,8 +80,8 @@ jobs:
           git clone -b ${QA_BRANCH} --single-branch https://github.com/wazuh/qa-integration-framework.git
           sudo pip install qa-integration-framework/
           sudo rm -rf qa-integration-framework/
-      # Run integratord integration tests.
-      - name: Run integratord integration tests
+      # Run remoted integration tests.
+      - name: Run remoted integration tests
         run: |
           cd tests/integration
-          sudo python -m pytest --tier 0 --tier 1 test_integratord/
+          sudo python -m pytest --tier 0 --tier 1 test_remoted/

@@ -1,4 +1,4 @@
-name: Integration tests for FIM on Windows - Tier 0 and 1
+name: Integration tests for Office365 on Windows - Tier 0 and 1
 
 on:
   workflow_dispatch:
@@ -9,13 +9,12 @@ on:
         default: 'main'
   pull_request:
     paths:
-        - ".github/workflows/5_testintegration_fim-tier-0-1-win.yml"
-        - "src/config/syscheck-config.c"
-        - "src/config/syscheck-config.h"
-        - "src/syscheckd/**"
+        - ".github/workflows/4_testintegration_office365-tier-0-1-win.yml"
+        - "src/wazuh_modules/wm_office365.h"
+        - "src/wazuh_modules/wm_office365.c"
         - "src/Makefile"
         - "tests/integration/conftest.py"
-        - "tests/integration/test_fim/**"
+        - "tests/integration/test_office365/**"
 
 jobs:
   # Build the winagent on linux.
@@ -61,9 +60,6 @@ jobs:
         with:
           python-version-file: ".github/workflows/.python-version-it"
           architecture: x64
-      - name: Add WiX toolkit to PATH
-        shell: bash
-        run: echo "${WIX}bin" >> $GITHUB_PATH
       # Download the compressed winagent build.
       - name: Download Artifact winagent
         uses: actions/download-artifact@v4
@@ -87,9 +83,9 @@ jobs:
       # Download and install integration tests framework.
       - name: Download and install qa-integration-framework
         run: |
-          if (git ls-remote --heads https://github.com/wazuh/qa-integration-framework.git $env:BRANCH_NAME) {
+          if (git ls-remote https://github.com/wazuh/qa-integration-framework.git $env:BRANCH_NAME) {
               $QA_BRANCH = $env:BRANCH_NAME
-          } elseif (git ls-remote --heads https://github.com/wazuh/qa-integration-framework.git $env:BRANCH_BASE) {
+          } elseif (git ls-remote https://github.com/wazuh/qa-integration-framework.git $env:BRANCH_BASE) {
               $QA_BRANCH = $env:BRANCH_BASE
           } else {
               $QA_BRANCH = "main"
@@ -97,8 +93,8 @@ jobs:
           git clone -b $QA_BRANCH --single-branch https://github.com/wazuh/qa-integration-framework.git
           pip install qa-integration-framework/
           rm qa-integration-framework/ -r -force
-      # Run fim integration tests.
-      - name: Run fim integration tests
+      # Run office365 integration tests.
+      - name: Run office365 integration tests
         run: |
           cd C:\wazuh\tests\integration
-          python -m pytest --tier 0 --tier 1 test_fim\
+          python -m pytest --tier 0 --tier 1 test_office365\

@@ -1,4 +1,4 @@
-name: Integration tests for MsGraph on Linux - Tier 0 and 1
+name: Integration tests for enrollment on Linux - Tier 0 and 1
 
 on:
   workflow_dispatch:
@@ -9,13 +9,15 @@ on:
         default: 'main'
   pull_request:
     paths:
-        - ".github/workflows/5_testintegration_msgraph-tier-0-1-lin.yml"
-        - "src/wazuh_modules/wm_ms_graph.h"
-        - "src/wazuh_modules/wm_ms_graph.c"
-        - "src/config/wmodules-ms-graph.c"
+        - ".github/workflows/4_testintegration_enrollment-tier-0-1-lin.yml"
+        - "src/client-agent/**"
+        - "src/config/buffer-config.c"
+        - "src/config/client-config.c"
+        - "src/config/client-config.h"
+        - "src/os_auth/**"
         - "src/Makefile"
         - "tests/integration/conftest.py"
-        - "tests/integration/test_msgraph/**"
+        - "tests/integration/test_enrollment/**"
 
 jobs:
   build:
@@ -31,26 +33,21 @@ jobs:
         with:
           python-version-file: ".github/workflows/.python-version-it"
           architecture: x64
-      # Setup MSGraph Proxy
-      - name: Download m365proxy and config http for msgraph module
+      # Build wazuh agent for linux.
+      - name: Build wazuh agent for linux
         run: |
-          sed -i 's/https:\/\/%s\/%s/http:\/\/%s\/%s/g' src/wazuh_modules/wm_ms_graph.h
-          curl -L http://packages.wazuh.com/utils/m365proxy/m365proxy.tar.gz | \
-          tar zvx -C /tmp/
-
-      # Build wazuh server for linux.
-      - name: Build wazuh server for linux
-        run: |
-          make deps -C src TARGET=server -j2
-          make -C src TARGET=server -j2
-      # Install wazuh server for linux.
-      - name: Install wazuh server for linux
+          make deps -C src TARGET=agent -j2
+          make -C src TARGET=agent -j2
+      # Install wazuh agent for linux.
+      - name: Install wazuh agent for linux
         run: |
           echo 'USER_LANGUAGE="en"' > ./etc/preloaded-vars.conf
           echo "" >> ./etc/preloaded-vars.conf
+          echo 'USER_AGENT_SERVER_IP="127.0.0.1"' >> ./etc/preloaded-vars.conf
+          echo "" >> ./etc/preloaded-vars.conf
           echo 'USER_NO_STOP="y"' >> ./etc/preloaded-vars.conf
           echo "" >> ./etc/preloaded-vars.conf
-          echo 'USER_INSTALL_TYPE="server"' >> ./etc/preloaded-vars.conf
+          echo 'USER_INSTALL_TYPE="agent"' >> ./etc/preloaded-vars.conf
           echo "" >> ./etc/preloaded-vars.conf
           echo "USER_DIR=/var/ossec" >> ./etc/preloaded-vars.conf
           echo "" >> ./etc/preloaded-vars.conf
@@ -60,9 +57,7 @@ jobs:
           echo "" >> ./etc/preloaded-vars.conf
           echo 'USER_ENABLE_ROOTCHECK="n"' >> ./etc/preloaded-vars.conf
           echo "" >> ./etc/preloaded-vars.conf
-          echo 'USER_ENABLE_SYSCOLLECTOR="n"' >> ./etc/preloaded-vars.conf
-          echo "" >> ./etc/preloaded-vars.conf
-          echo 'USER_ENABLE_SCA="n"' >> ./etc/preloaded-vars.conf
+          echo 'USER_ENABLE_OPENSCAP="n"' >> ./etc/preloaded-vars.conf
           echo "" >> ./etc/preloaded-vars.conf
           echo 'USER_WHITE_LIST="n"' >> ./etc/preloaded-vars.conf
           echo "" >> ./etc/preloaded-vars.conf
@@ -77,9 +72,9 @@ jobs:
       # Download and install integration tests framework.
       - name: Download and install integration tests framework
         run: |
-          if [ "X`git ls-remote https://github.com/wazuh/qa-integration-framework.git ${BRANCH_NAME}`" != "X" ]; then
+          if [ "X`git ls-remote --heads https://github.com/wazuh/qa-integration-framework.git ${BRANCH_NAME}`" != "X" ]; then
               QA_BRANCH=${BRANCH_NAME}
-          elif [ "X`git ls-remote https://github.com/wazuh/qa-integration-framework.git ${BRANCH_BASE}`" != "X" ]; then
+          elif [ "X`git ls-remote --heads https://github.com/wazuh/qa-integration-framework.git ${BRANCH_BASE}`" != "X" ]; then
               QA_BRANCH=${BRANCH_BASE}
           else
               QA_BRANCH="main"
@@ -87,8 +82,8 @@ jobs:
           git clone -b ${QA_BRANCH} --single-branch https://github.com/wazuh/qa-integration-framework.git
           sudo pip install qa-integration-framework/
           sudo rm -rf qa-integration-framework/
-      # Run msgraph integration tests.
-      - name: Run msgraph integration tests
+      # Run enrollment integration tests.
+      - name: Run enrollment integration tests
         run: |
           cd tests/integration
-          sudo python -m pytest --tier 0 --tier 1 test_msgraph/
+          sudo python -m pytest --tier 0 --tier 1 test_enrollment/

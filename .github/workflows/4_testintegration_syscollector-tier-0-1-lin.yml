@@ -1,4 +1,4 @@
-name: Integration tests for Logtest - Tier 0 and 1
+name: Integration tests for Syscollector on Linux - Tier 0 and 1
 
 on:
   workflow_dispatch:
@@ -9,14 +9,12 @@ on:
         default: 'main'
   pull_request:
     paths:
-        - ".github/workflows/5_testintegration_logtest-tier-0-1.yml"
-        - "src/analysisd/logtest.c"
-        - "src/analysisd/logtest.h"
-        - "src/config/logtest-config.c"
-        - "src/config/logtest-config.h"
+        - ".github/workflows/4_testintegration_syscollector-tier-0-1-lin.yml"
+        - "src/config/wmodules-syscollector.c"
+        - "src/wazuh_modules/syscollector/**"
         - "src/Makefile"
         - "tests/integration/conftest.py"
-        - "tests/integration/test_logtest/**"
+        - "tests/integration/test_syscollector/**"
 
 jobs:
   build:
@@ -32,19 +30,21 @@ jobs:
         with:
           python-version-file: ".github/workflows/.python-version-it"
           architecture: x64
-      # Build wazuh server for linux.
-      - name: Build wazuh server for linux
+      # Build wazuh agent for linux.
+      - name: Build wazuh agent for linux
         run: |
-          make deps -C src TARGET=server -j2
-          make -C src TARGET=server -j2
-      # Install wazuh server for linux.
-      - name: Install wazuh server for linux
+          make deps -C src TARGET=agent -j2
+          make -C src TARGET=agent -j2
+      # Install wazuh agent for linux.
+      - name: Install wazuh agent for linux
         run: |
           echo 'USER_LANGUAGE="en"' > ./etc/preloaded-vars.conf
           echo "" >> ./etc/preloaded-vars.conf
+          echo 'USER_AGENT_SERVER_IP="127.0.0.1"' >> ./etc/preloaded-vars.conf
+          echo "" >> ./etc/preloaded-vars.conf
           echo 'USER_NO_STOP="y"' >> ./etc/preloaded-vars.conf
           echo "" >> ./etc/preloaded-vars.conf
-          echo 'USER_INSTALL_TYPE="server"' >> ./etc/preloaded-vars.conf
+          echo 'USER_INSTALL_TYPE="agent"' >> ./etc/preloaded-vars.conf
           echo "" >> ./etc/preloaded-vars.conf
           echo "USER_DIR=/var/ossec" >> ./etc/preloaded-vars.conf
           echo "" >> ./etc/preloaded-vars.conf
@@ -53,6 +53,8 @@ jobs:
           echo 'USER_ENABLE_SYSCHECK="n"' >> ./etc/preloaded-vars.conf
           echo "" >> ./etc/preloaded-vars.conf
           echo 'USER_ENABLE_ROOTCHECK="n"' >> ./etc/preloaded-vars.conf
+          echo "" >> ./etc/preloaded-vars.conf
+          echo 'USER_ENABLE_OPENSCAP="n"' >> ./etc/preloaded-vars.conf
           echo "" >> ./etc/preloaded-vars.conf
           echo 'USER_ENABLE_SYSCOLLECTOR="n"' >> ./etc/preloaded-vars.conf
           echo "" >> ./etc/preloaded-vars.conf
@@ -81,8 +83,8 @@ jobs:
           git clone -b ${QA_BRANCH} --single-branch https://github.com/wazuh/qa-integration-framework.git
           sudo pip install qa-integration-framework/
           sudo rm -rf qa-integration-framework/
-      # Run logtest integration tests.
-      - name: Run logtest integration tests
+      # Run syscollector integration tests.
+      - name: Run syscollector integration tests
         run: |
           cd tests/integration
-          sudo python -m pytest --tier 0 --tier 1 test_logtest/
+          sudo python -m pytest --tier 0 --tier 1 test_syscollector/

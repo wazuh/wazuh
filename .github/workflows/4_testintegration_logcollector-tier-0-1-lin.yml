@@ -1,4 +1,4 @@
-name: Integration tests for Office365 on Linux - Tier 0 and 1
+name: Integration tests for logcollector on Linux - Tier 0 and 1
 
 on:
   workflow_dispatch:
@@ -9,12 +9,13 @@ on:
         default: 'main'
   pull_request:
     paths:
-        - ".github/workflows/5_testintegration_office365-tier-0-1-lin.yml"
-        - "src/wazuh_modules/wm_office365.h"
-        - "src/wazuh_modules/wm_office365.c"
+        - ".github/workflows/4_testintegration_logcollector-tier-0-1-lin.yml"
+        - "src/config/localfile-config.c"
+        - "src/config/localfile-config.h"
+        - "src/logcollector/**"
         - "src/Makefile"
         - "tests/integration/conftest.py"
-        - "tests/integration/test_office365/**"
+        - "tests/integration/test_logcollector/**"
 
 jobs:
   build:
@@ -40,8 +41,6 @@ jobs:
         run: |
           echo 'USER_LANGUAGE="en"' > ./etc/preloaded-vars.conf
           echo "" >> ./etc/preloaded-vars.conf
-          echo 'USER_AGENT_SERVER_IP="1.1.1.1"' >> ./etc/preloaded-vars.conf
-          echo "" >> ./etc/preloaded-vars.conf
           echo 'USER_NO_STOP="y"' >> ./etc/preloaded-vars.conf
           echo "" >> ./etc/preloaded-vars.conf
           echo 'USER_INSTALL_TYPE="agent"' >> ./etc/preloaded-vars.conf
@@ -64,14 +63,16 @@ jobs:
           echo "" >> ./etc/preloaded-vars.conf
           echo 'USER_AUTO_START="y"' >> ./etc/preloaded-vars.conf
           echo "" >> ./etc/preloaded-vars.conf
+          echo 'USER_AGENT_SERVER_IP="127.0.0.1"' >> ./etc/preloaded-vars.conf
+          echo "" >> ./etc/preloaded-vars.conf
           sudo sh install.sh
           rm ./etc/preloaded-vars.conf
       # Download and install integration tests framework.
       - name: Download and install integration tests framework
         run: |
-          if [ "X`git ls-remote https://github.com/wazuh/qa-integration-framework.git ${BRANCH_NAME}`" != "X" ]; then
+          if [ "X`git ls-remote --heads https://github.com/wazuh/qa-integration-framework.git ${BRANCH_NAME}`" != "X" ]; then
               QA_BRANCH=${BRANCH_NAME}
-          elif [ "X`git ls-remote https://github.com/wazuh/qa-integration-framework.git ${BRANCH_BASE}`" != "X" ]; then
+          elif [ "X`git ls-remote --heads https://github.com/wazuh/qa-integration-framework.git ${BRANCH_BASE}`" != "X" ]; then
               QA_BRANCH=${BRANCH_BASE}
           else
               QA_BRANCH="main"
@@ -79,8 +80,8 @@ jobs:
           git clone -b ${QA_BRANCH} --single-branch https://github.com/wazuh/qa-integration-framework.git
           sudo pip install qa-integration-framework/
           sudo rm -rf qa-integration-framework/
-      # Run office365 integration tests.
-      - name: Run office365 integration tests
+      # Run logcollector integration tests.
+      - name: Run logcollector integration tests
         run: |
           cd tests/integration
-          sudo python -m pytest --tier 0 --tier 1 test_office365/
+          sudo python -m pytest --tier 0 --tier 1 test_logcollector/

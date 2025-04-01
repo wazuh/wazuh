@@ -9,7 +9,7 @@ on:
         default: 'main'
   pull_request:
     paths:
-        - ".github/workflows/5_testintegration_agentd-tier-0-1-win.yml"
+        - ".github/workflows/4_testintegration_agentd-tier-0-1-win.yml"
         - "src/client-agent/**"
         - "src/config/buffer-config.c"
         - "src/config/client-config.c"

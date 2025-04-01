@@ -1,4 +1,4 @@
-name: Integration tests for enrollment on Windows - Tier 0 and 1
+name: Integration tests for FIM on Windows - Tier 0 and 1
 
 on:
   workflow_dispatch:
@@ -9,16 +9,13 @@ on:
         default: 'main'
   pull_request:
     paths:
-        - ".github/workflows/5_testintegration_enrollment-tier-0-1-win.yml"
-        - "src/client-agent/**"
-        - "src/config/buffer-config.c"
-        - "src/config/client-config.c"
-        - "src/config/client-config.h"
-        - "src/os_auth/**"
-        - "src/win32/**"
+        - ".github/workflows/4_testintegration_fim-tier-0-1-win.yml"
+        - "src/config/syscheck-config.c"
+        - "src/config/syscheck-config.h"
+        - "src/syscheckd/**"
         - "src/Makefile"
         - "tests/integration/conftest.py"
-        - "tests/integration/test_enrollment/**"
+        - "tests/integration/test_fim/**"
 
 jobs:
   # Build the winagent on linux.
@@ -100,8 +97,8 @@ jobs:
           git clone -b $QA_BRANCH --single-branch https://github.com/wazuh/qa-integration-framework.git
           pip install qa-integration-framework/
           rm qa-integration-framework/ -r -force
-      # Run enrollment integration tests.
-      - name: Run enrollment integration tests
+      # Run fim integration tests.
+      - name: Run fim integration tests
         run: |
           cd C:\wazuh\tests\integration
-          python -m pytest --tier 0 --tier 1 test_enrollment\
+          python -m pytest --tier 0 --tier 1 test_fim\

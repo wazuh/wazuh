@@ -1,4 +1,4 @@
-name: Integration tests for GitHub on Windows - Tier 0 and 1
+name: Integration tests for Execd on Windows - Tier 0 and 1
 
 on:
   workflow_dispatch:
@@ -9,12 +9,11 @@ on:
         default: 'main'
   pull_request:
     paths:
-        - ".github/workflows/5_testintegration_github-tier-0-1-win.yml"
-        - "src/wazuh_modules/wm_github.h"
-        - "src/wazuh_modules/wm_github.c"
+        - ".github/workflows/4_testintegration_execd-tier-0-1-win.yml"
+        - "src/execd/**"
         - "src/Makefile"
         - "tests/integration/conftest.py"
-        - "tests/integration/test_github/**"
+        - "tests/integration/test_execd/**"
 
 jobs:
   # Build the winagent on linux.
@@ -93,8 +92,8 @@ jobs:
           git clone -b $QA_BRANCH --single-branch https://github.com/wazuh/qa-integration-framework.git
           pip install qa-integration-framework/
           rm qa-integration-framework/ -r -force
-      # Run github integration tests.
-      - name: Run github integration tests
+      # Run execd integration tests.
+      - name: Run execd integration tests
         run: |
           cd C:\wazuh\tests\integration
-          python -m pytest --tier 0 --tier 1 test_github\
+          python -m pytest -m win32 --tier 0 --tier 1 test_execd\

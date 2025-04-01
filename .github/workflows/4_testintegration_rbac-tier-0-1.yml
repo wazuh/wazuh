@@ -1,4 +1,4 @@
-name: Integration tests for SCA on Linux - Tier 0 and 1
+name: Integration tests for RBAC (Framework) - Tier 0 and 1
 
 on:
   workflow_dispatch:
@@ -9,13 +9,11 @@ on:
         default: 'main'
   pull_request:
     paths:
-        - ".github/workflows/5_testintegration_sca-tier-0-1-lin.yml"
-        - "src/config/wmodules-sca.c"
-        - "src/wazuh_modules/wm_sca.c"
-        - "src/wazuh_modules/wm_sca.h"
+        - ".github/workflows/4_testintegration_rbac-tier-0-1.yml"
+        - "framework/wazuh/rbac/"
         - "src/Makefile"
         - "tests/integration/conftest.py"
-        - "tests/integration/test_sca/**"
+        - "tests/integration/test_api/test_rbac/**"
 
 jobs:
   build:
@@ -25,27 +23,25 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version-file: ".github/workflows/.python-version-it"
           architecture: x64
-      # Build wazuh agent for linux.
-      - name: Build wazuh agent for linux
+      # Build wazuh server for linux.
+      - name: Build wazuh server for linux
         run: |
-          make deps -C src TARGET=agent -j2
-          make -C src TARGET=agent -j2
-      # Install wazuh agent for linux.
-      - name: Install wazuh agent for linux
+          make deps -C src TARGET=server -j2
+          make -C src TARGET=server -j2
+      # Install wazuh server for linux.
+      - name: Install wazuh server for linux
         run: |
           echo 'USER_LANGUAGE="en"' > ./etc/preloaded-vars.conf
           echo "" >> ./etc/preloaded-vars.conf
-          echo 'USER_AGENT_SERVER_IP="127.0.0.1"' >> ./etc/preloaded-vars.conf
-          echo "" >> ./etc/preloaded-vars.conf
           echo 'USER_NO_STOP="y"' >> ./etc/preloaded-vars.conf
           echo "" >> ./etc/preloaded-vars.conf
-          echo 'USER_INSTALL_TYPE="agent"' >> ./etc/preloaded-vars.conf
+          echo 'USER_INSTALL_TYPE="server"' >> ./etc/preloaded-vars.conf
           echo "" >> ./etc/preloaded-vars.conf
           echo "USER_DIR=/var/ossec" >> ./etc/preloaded-vars.conf
           echo "" >> ./etc/preloaded-vars.conf
@@ -54,8 +50,6 @@ jobs:
           echo 'USER_ENABLE_SYSCHECK="n"' >> ./etc/preloaded-vars.conf
           echo "" >> ./etc/preloaded-vars.conf
           echo 'USER_ENABLE_ROOTCHECK="n"' >> ./etc/preloaded-vars.conf
-          echo "" >> ./etc/preloaded-vars.conf
-          echo 'USER_ENABLE_OPENSCAP="n"' >> ./etc/preloaded-vars.conf
           echo "" >> ./etc/preloaded-vars.conf
           echo 'USER_ENABLE_SYSCOLLECTOR="n"' >> ./etc/preloaded-vars.conf
           echo "" >> ./etc/preloaded-vars.conf
@@ -74,9 +68,9 @@ jobs:
       # Download and install integration tests framework.
       - name: Download and install integration tests framework
         run: |
-          if [ "X`git ls-remote --heads https://github.com/wazuh/qa-integration-framework.git ${BRANCH_NAME}`" != "X" ]; then
+          if [ "X`git ls-remote https://github.com/wazuh/qa-integration-framework.git ${BRANCH_NAME}`" != "X" ]; then
               QA_BRANCH=${BRANCH_NAME}
-          elif [ "X`git ls-remote --heads https://github.com/wazuh/qa-integration-framework.git ${BRANCH_BASE}`" != "X" ]; then
+          elif [ "X`git ls-remote https://github.com/wazuh/qa-integration-framework.git ${BRANCH_BASE}`" != "X" ]; then
               QA_BRANCH=${BRANCH_BASE}
           else
               QA_BRANCH="main"
@@ -84,8 +78,8 @@ jobs:
           git clone -b ${QA_BRANCH} --single-branch https://github.com/wazuh/qa-integration-framework.git
           sudo pip install qa-integration-framework/
           sudo rm -rf qa-integration-framework/
-      # Run sca integration tests.
-      - name: Run sca integration tests
+      # Run integration tests.
+      - name: Run RBAC tests
         run: |
           cd tests/integration
-          sudo python -m pytest --tier 0 --tier 1 test_sca/
+          sudo python -m pytest test_api/test_rbac/ --tier 0 --tier 1

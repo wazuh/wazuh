@@ -1,4 +1,4 @@
-name: Integration tests for Execd on Linux - Tier 0 and 1
+name: Integration tests for Authd - Tier 0 and 1
 
 on:
   workflow_dispatch:
@@ -9,11 +9,14 @@ on:
         default: 'main'
   pull_request:
     paths:
-        - ".github/workflows/5_testintegration_execd-tier-0-1-lin.yml"
-        - "src/execd/**"
+        - ".github/workflows/4_testintegration_authd-tier-0-1.yml"
+        - "src/config/authd-config.c"
+        - "src/config/authd-config.h"
+        - "src/config/authd-key-request-config.c"
+        - "src/os_auth/**"
         - "src/Makefile"
         - "tests/integration/conftest.py"
-        - "tests/integration/test_execd/**"
+        - "tests/integration/test_authd/**"
 
 jobs:
   build:
@@ -29,19 +32,19 @@ jobs:
         with:
           python-version-file: ".github/workflows/.python-version-it"
           architecture: x64
-      # Build wazuh agent for linux.
-      - name: Build wazuh agent for linux
+      # Build wazuh server for linux.
+      - name: Build wazuh server for linux
         run: |
-          make deps -C src TARGET=agent -j2
-          make -C src TARGET=agent -j2
-      # Install wazuh agent for linux.
-      - name: Install wazuh agent for linux
+          make deps -C src TARGET=server -j2
+          make -C src TARGET=server -j2
+      # Install wazuh server for linux.
+      - name: Install wazuh server for linux
         run: |
           echo 'USER_LANGUAGE="en"' > ./etc/preloaded-vars.conf
           echo "" >> ./etc/preloaded-vars.conf
           echo 'USER_NO_STOP="y"' >> ./etc/preloaded-vars.conf
           echo "" >> ./etc/preloaded-vars.conf
-          echo 'USER_INSTALL_TYPE="agent"' >> ./etc/preloaded-vars.conf
+          echo 'USER_INSTALL_TYPE="server"' >> ./etc/preloaded-vars.conf
           echo "" >> ./etc/preloaded-vars.conf
           echo "USER_DIR=/var/ossec" >> ./etc/preloaded-vars.conf
           echo "" >> ./etc/preloaded-vars.conf
@@ -51,13 +54,15 @@ jobs:
           echo "" >> ./etc/preloaded-vars.conf
           echo 'USER_ENABLE_ROOTCHECK="n"' >> ./etc/preloaded-vars.conf
           echo "" >> ./etc/preloaded-vars.conf
-          echo 'USER_ENABLE_OPENSCAP="n"' >> ./etc/preloaded-vars.conf
+          echo 'USER_ENABLE_SYSCOLLECTOR="n"' >> ./etc/preloaded-vars.conf
+          echo "" >> ./etc/preloaded-vars.conf
+          echo 'USER_ENABLE_SCA="n"' >> ./etc/preloaded-vars.conf
           echo "" >> ./etc/preloaded-vars.conf
           echo 'USER_WHITE_LIST="n"' >> ./etc/preloaded-vars.conf
           echo "" >> ./etc/preloaded-vars.conf
           echo 'USER_ENABLE_SYSLOG="n"' >> ./etc/preloaded-vars.conf
           echo "" >> ./etc/preloaded-vars.conf
-          echo 'USER_ENABLE_AUTHD="n"' >> ./etc/preloaded-vars.conf
+          echo 'USER_ENABLE_AUTHD="y"' >> ./etc/preloaded-vars.conf
           echo "" >> ./etc/preloaded-vars.conf
           echo 'USER_AUTO_START="y"' >> ./etc/preloaded-vars.conf
           echo "" >> ./etc/preloaded-vars.conf
@@ -66,9 +71,9 @@ jobs:
       # Download and install integration tests framework.
       - name: Download and install integration tests framework
         run: |
-          if [ "X`git ls-remote https://github.com/wazuh/qa-integration-framework.git ${BRANCH_NAME}`" != "X" ]; then
+          if [ "X`git ls-remote --heads https://github.com/wazuh/qa-integration-framework.git ${BRANCH_NAME}`" != "X" ]; then
               QA_BRANCH=${BRANCH_NAME}
-          elif [ "X`git ls-remote https://github.com/wazuh/qa-integration-framework.git ${BRANCH_BASE}`" != "X" ]; then
+          elif [ "X`git ls-remote --heads https://github.com/wazuh/qa-integration-framework.git ${BRANCH_BASE}`" != "X" ]; then
               QA_BRANCH=${BRANCH_BASE}
           else
               QA_BRANCH="main"
@@ -76,8 +81,8 @@ jobs:
           git clone -b ${QA_BRANCH} --single-branch https://github.com/wazuh/qa-integration-framework.git
           sudo pip install qa-integration-framework/
           sudo rm -rf qa-integration-framework/
-      # Run execd integration tests.
-      - name: Run execd integration tests
+      # Run integration tests.
+      - name: Run Authd tests
         run: |
           cd tests/integration
-          sudo python -m pytest --tier 0 --tier 1 test_execd/
+          sudo python -m pytest --tier 0 --tier 1 test_authd/
