@@ -24,7 +24,7 @@
 class PYPI
 {
     public:
-        void getPackages(const std::set<std::string>& /*paths*/, std::function<void(nlohmann::json&)> /*callback*/);
+        void getPackages(const std::set<std::string>& /*paths*/, std::function<void(nlohmann::json&)> /*callback*/, const std::unordered_set<std::string>& /*excludePaths*/ = {});
 };
 class NPM
 {

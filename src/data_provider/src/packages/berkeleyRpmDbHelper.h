@@ -31,6 +31,7 @@
 #define TAG_GROUP       1016
 #define TAG_SOURCE      1044
 #define TAG_ARCH        1022
+#define TAG_FILENAMES   1027
 
 constexpr auto RPM_DATABASE {"/var/lib/rpm/Packages"};
 constexpr unsigned int FIRST_ENTRY_OFFSET { 8u };
@@ -61,7 +62,8 @@ const std::vector<std::pair<int32_t, std::string>> TAG_NAMES =
     { std::make_pair(TAG_VERSION, "version") },
     { std::make_pair(TAG_VENDOR, "vendor") },
     { std::make_pair(TAG_ITIME, "install_time") },
-    { std::make_pair(TAG_GROUP, "group") }
+    { std::make_pair(TAG_GROUP, "group") },
+    { std::make_pair(TAG_FILENAMES, "files") }
 };
 
 class BerkeleyRpmDBReader final
@@ -166,7 +168,12 @@ class BerkeleyRpmDBReader final
                         }
                         else if (STRING_VECTOR_TYPE == it->type)
                         {
-                            retVal += ucp;
+                            for (int i = 0; i < it->count; ++i)
+                            {
+                                if (i > 0) retVal += ", ";
+                                retVal += ucp;
+                                ucp += strlen(ucp) + 1;
+                            }
                         }
                     }
 
