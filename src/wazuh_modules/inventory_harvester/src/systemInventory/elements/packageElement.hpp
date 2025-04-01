@@ -62,8 +62,8 @@ public:
         element.data.package.version = data->packageVersion();
         element.data.package.vendor = data->packageVendor();
         element.data.package.installed = data->packageInstallTime();
-        //element.data.package.size = data->packageSize();
-        //element.data.package.type = data->packageFormat();
+        // element.data.package.size = data->packageSize();
+        // element.data.package.type = data->packageFormat();
         element.data.package.description = data->packageDescription();
         element.data.package.path = data->packageLocation();
 

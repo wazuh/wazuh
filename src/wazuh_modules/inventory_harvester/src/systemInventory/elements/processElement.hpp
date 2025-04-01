@@ -63,7 +63,7 @@ public:
         element.data.process.command_line = data->processCmdline();
         element.data.process.name = data->processName();
         element.data.process.pid = std::stoull(std::string(processId));
-        //element.data.process.start = data->processStartISO8601();
+        // element.data.process.start = data->processStartISO8601();
         element.data.process.parent.pid = data->processParentID();
 
         return element;

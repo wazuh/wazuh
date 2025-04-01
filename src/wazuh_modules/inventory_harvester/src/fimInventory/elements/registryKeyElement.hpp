@@ -53,7 +53,7 @@ public:
         element.data.registry.owner = data->userName();
         element.data.registry.gid = data->gid();
         element.data.registry.group = data->groupName();
-        //element.data.registry.arch = data->arch();
+        // element.data.registry.arch = data->arch();
         element.data.registry.mtime = data->mtimeISO8601();
         return element;
     }
