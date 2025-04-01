@@ -51,7 +51,11 @@ public:
         element.data.agent.id = agentId;
         element.data.agent.name = data->agentName();
         element.data.agent.version = data->agentVersion();
-        element.data.agent.ip = data->agentIp();
+
+        if (auto agentIp = data->agentIp(); agentIp.compare("any") != 0)
+        {
+            element.data.agent.host.ip = data->agentIp();
+        }
 
         element.data.destination.ip = data->portRemoteIp();
         element.data.destination.port = data->portRemotePort();

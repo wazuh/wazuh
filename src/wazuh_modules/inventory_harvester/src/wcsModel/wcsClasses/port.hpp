@@ -25,7 +25,7 @@ struct NetHost final
     {
         struct PacketCount final
         {
-            long queue;
+            int64_t queue = DEFAULT_INT_VALUE;
 
             REFLECTABLE(MAKE_FIELD("queue", &PacketCount::queue));
         };
@@ -54,7 +54,7 @@ struct PortFile final
 struct PortProcess final
 {
     std::string_view name;
-    int64_t pid;
+    int64_t pid = DEFAULT_INT_VALUE;
 
     REFLECTABLE(MAKE_FIELD("name", &PortProcess::name), MAKE_FIELD("pid", &PortProcess::pid));
 };
