@@ -128,6 +128,14 @@ jobs:
 
           sed -i '/func TestDocker(t \*testing\.T) {/,/^}$/d' dev-tools/packaging/package_test.go
 
+      - name: Modify FPM call (add revision/version)
+        run: |
+          # https://fpm.readthedocs.io/en/v1.14.0/cli-reference.html
+          LINE=716
+          FILE="dev-tools/mage/pkgtypes.go"
+          ITERATION_VALUE="${{ inputs.revision }}"
+          sed -i "${LINE} i \ \t\t\"--iteration\", \"${ITERATION_VALUE}\"," "$FILE"
+
       - name: Package Filebeat
         working-directory: filebeat
         run: |
@@ -136,12 +144,11 @@ jobs:
           elif [[ "${{ inputs.architecture }}" == "aarch64" || "${{ inputs.architecture }}" == "arm64" ]]; then
             arch="arm64"
           fi
-          PLATFORMS=linux/${arch} PACKAGES=${{ inputs.system }} mage package
+          PLATFORMS=linux/${arch} mage package
 
       - name: Upload Filebeat package to S3
         working-directory: filebeat/build/distributions
         run: |
-
           original_file="filebeat-oss-${{ env.FILEBEAT_VERSION }}-${{ inputs.architecture }}.${{ inputs.system }}"
 
           if [ "${{ inputs.is_stage }}" = "false" ]; then
@@ -168,7 +175,6 @@ jobs:
         if: ${{ inputs.checksum }}
         working-directory: filebeat/build/distributions
         run: |
-
           original_file="filebeat-oss-${{ env.FILEBEAT_VERSION }}-${{ inputs.architecture }}.${{ inputs.system }}.sha512"
 
           if [ "${{ inputs.is_stage }}" = "false" ]; then
