@@ -70,7 +70,7 @@ on:
 
 jobs:
   build-and-upload:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     timeout-minutes: 60
 
     env:
@@ -101,22 +101,19 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt update -y
-          sudo apt install -y gcc make golang-go python3-pip python3-venv
+          sudo apt install -y gcc make python3-pip python3-venv
           sudo apt install -y apt-transport-https ca-certificates curl software-properties-common
           curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
           echo "deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
           sudo apt update -y
           sudo apt install -y docker-ce
-          export PATH=$PATH:/usr/local/go/bin
-          go get -u github.com/magefile/mage
-          echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
 
       - name: Apply patch for Ubuntu build
         run: |
           sed -i 's/apt-get install -y --no-install-recommends/DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends/' filebeat/Dockerfile
 
-          sed -i "s/from: 'centos:7'/from: 'ubuntu:20.04'/g" dev-tools/packaging/packages.yml
-          sed -i "s/buildFrom: 'centos:7'/buildFrom: 'ubuntu:20.04'/g" dev-tools/packaging/packages.yml
+          sed -i "s/from: 'centos:7'/from: 'ubuntu:22.04'/g" dev-tools/packaging/packages.yml
+          sed -i "s/buildFrom: 'centos:7'/buildFrom: 'ubuntu:22.04'/g" dev-tools/packaging/packages.yml
 
           sed -i "s/microdnf install -y shadow-utils/microdnf install -y findutils shadow-utils/g" dev-tools/packaging/templates/docker/Dockerfile.elastic-agent.tmpl
           sed -i '/RUN yum -y --setopt=tsflags=nodocs update && \\/, /yum clean all/c\
@@ -139,6 +136,10 @@ jobs:
       - name: Package Filebeat
         working-directory: filebeat
         run: |
+          sudo apt install -y golang-go
+          go install github.com/magefile/mage@latest
+          export PATH=$HOME/go/bin:$PATH
+          echo 'export PATH=$HOME/go/bin:$PATH' >> ~/.profile
           if [[ "${{ inputs.architecture }}" == "x86_64" ||  "${{ inputs.architecture }}" == "amd64" ]]; then
             arch="amd64"
           elif [[ "${{ inputs.architecture }}" == "aarch64" || "${{ inputs.architecture }}" == "arm64" ]]; then
