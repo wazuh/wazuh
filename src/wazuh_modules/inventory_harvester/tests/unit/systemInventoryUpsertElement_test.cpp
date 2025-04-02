@@ -199,9 +199,9 @@ TEST_F(SystemInventoryUpsertElement, emptyAgentID_Ports)
 
     EXPECT_CALL(*context, agentId()).WillOnce(testing::Return(""));
     EXPECT_CALL(*context, originTable()).WillOnce(testing::Return(MockSystemContext::OriginTable::Ports));
+
     EXPECT_ANY_THROW(upsertElement->handleRequest(context));
 }
-
 
 TEST_F(SystemInventoryUpsertElement, emptyItemId_Ports)
 {

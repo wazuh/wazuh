@@ -12,7 +12,6 @@
 #ifndef _MOCK_SYSTEM_CONTEXT_HPP
 #define _MOCK_SYSTEM_CONTEXT_HPP
 
-#include <cstdint>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
