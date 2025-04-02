@@ -16,6 +16,6 @@ runs:
           sudo chmod +x src/engine/tools/devContainer/.devcontainer/reinstall-cmake.sh
           sudo rm /usr/local/bin/cmake || true
           sudo rm /usr/local/bin/ctest || true
-          sudo tools/devContainer/reinstall-cmake.sh ${{ inputs.version }}
+          sudo src/engine/tools/devContainer/.devcontainer/reinstall-cmake.sh ${{ inputs.version }}
           cmake --version
         shell: bash
