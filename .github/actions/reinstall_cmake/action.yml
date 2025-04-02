@@ -1,0 +1,21 @@
+name: "Reinstall CMake"
+description: "Installs a compatible CMake version."
+
+inputs:
+  version:
+    required: false
+    description: "Version to install"
+    default: 3.31.6
+
+runs:
+  using: "composite"
+  steps:
+      - name: Reinstall CMake
+        run: |
+          cmake --version
+          sudo chmod +x src/engine/tools/devContainer/.devcontainer/reinstall-cmake.sh
+          sudo rm /usr/local/bin/cmake || true
+          sudo rm /usr/local/bin/ctest || true
+          sudo tools/devContainer/reinstall-cmake.sh ${{ inputs.version }}
+          cmake --version
+        shell: bash
