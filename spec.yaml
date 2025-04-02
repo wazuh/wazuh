@@ -1,0 +1,866 @@
+openapi: 3.0.3
+info:
+  title: Wazuh-Engine Events API
+  description: API for processing security events using the Wazuh-Engine security policy.
+  version: 1.0.0
+
+servers:
+  - url: "http+unix:/run/wazuh-server/engine-api.socket"
+    description: "Wazuh server using Unix socket over HTTP"
+
+tags:
+  - name: EventStateless
+    description: "Operations for processing security events"
+  - name: Catalog
+    description: "Operations for managing catalog resources"
+  - name: Policy
+    description: "Operations for managing security policies"
+
+#################################################################################
+# Paths
+#################################################################################
+paths:
+  ################################
+  # EventStateless
+  ################################
+  /events/stateless:
+    post:
+      tags:
+        - EventStateless
+      summary: Receive and process security events
+      description: |
+        This endpoint receives events to be processed by the Wazuh-Engine security policy.
+
+      requestBody:
+        required: true
+        content:
+          application/x-ndjson:
+            schema:
+              type: string
+              description: |
+                Newline-delimited JSON (NDJSON) data
+                - **Agent Metadata (First JSON Line)**: Contains agent-related metadata.
+                - **Subheader (Second JSON Line)**: Includes mandatory module and collector fields.
+                - **Event Logs (Third and Subsequent JSON Lines)**: Individual log events enriched with the agent metadata and subheader information.
+                - **New Subheader (Optional)**: If encountered, it replaces the previous subheader for the following event logs.
+              example: |
+                {"agent":{"id":"2887e1cf-9bf2-431a-b066-a46860080f56","name":"javier","type":"endpoint","version":"5.0.0","groups":["group1","group2"],"host":{"hostname":"myhost","os":{"name":"Amazon Linux 2","platform":"Linux"},"ip":["192.168.1.21"],"architecture":"x86_64"}}}
+                {"module":"logcollector","collector":"file"}
+                {"log":{"file":{"path":"/var/log/syslog"}},"tags":["production"],"event":{"original":"System started.","created":"2023-12-26T09:22:14.000Z"}}
+
+      responses:
+        "200":
+          description: Successfully processed events
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Response"
+              example:
+                status: OK
+                error: null
+        "400":
+          $ref: "#/components/responses/BadRequest_400"
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+
+  ################################
+  # Catalog
+  ################################
+  /catalog/resource/post:
+    post:
+      tags:
+        - Catalog
+      summary: Create a new resource in the catalog
+      description: |
+        This endpoint allows you to create a new resource in the catalog.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ResourcePost_Request"
+      responses:
+        "200":
+          $ref: "#/components/responses/GenericSuccess_200"
+        "400":
+          $ref: "#/components/responses/BadRequest_400"
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+
+  /catalog/resource/get:
+    post:
+      tags:
+        - Catalog
+      summary: Retrieve a resource from the catalog
+      description: |
+        This endpoint allows you to retrieve a resource from the catalog.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ResourceGet_Request"
+      responses:
+        "200":
+          description: Get resource response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResourceGet_Response"
+              example:
+                status: OK
+                error: null
+                content: |
+                  {"name": "decoder/example/0"}
+        "400":
+          $ref: "#/components/responses/BadRequest_400"
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+
+  /catalog/resource/put:
+    post:
+      tags:
+        - Catalog
+      summary: Update an existing resource in the catalog
+      description: |
+        This endpoint allows you to update an existing resource in the catalog.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ResourcePut_Request"
+      responses:
+        "200":
+          $ref: "#/components/responses/GenericSuccess_200"
+        "400":
+          $ref: "#/components/responses/BadRequest_400"
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+
+  /catalog/resource/delete:
+    post:
+      tags:
+        - Catalog
+      summary: Delete a resource from the catalog
+      description: |
+        This endpoint allows you to delete a resource from the catalog.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ResourceDelete_Request"
+      responses:
+        "200":
+          $ref: "#/components/responses/GenericSuccess_200"
+        "400":
+          $ref: "#/components/responses/BadRequest_400"
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+
+  /catalog/resource/validate:
+    post:
+      tags:
+        - Catalog
+      summary: Validate a resource before adding it to the catalog
+      description: |
+        This endpoint allows you to validate a resource.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ResourceValidate_Request"
+      responses:
+        "200":
+          $ref: "#/components/responses/GenericSuccess_200"
+        "400":
+          $ref: "#/components/responses/BadRequest_400"
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+
+  /catalog/namespaces/get:
+    post:
+      tags:
+        - Catalog
+      summary: List all namespaces from the catalog
+      description: |
+        This endpoint allows you to list all namespaces from the catalog.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NamespacesGet_Request"
+      responses:
+        "200":
+          description: Get namespaces response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NamespacesGet_Response"
+              example:
+                status: OK
+                error: null
+                namespaces: ["namespace1", "namespace2"]
+        "400":
+          $ref: "#/components/responses/BadRequest_400"
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+
+  ################################
+  # Policy
+  ################################
+  /policy/store/post:
+    post:
+      tags:
+        - Policy
+      summary: Create a new empty policy in the store
+      description: |
+        This endpoint allows you to create a new empty policy in the store.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                policy:
+                  $ref: "#/components/schemas/PolicyName"
+      responses:
+        "200":
+          $ref: "#/components/responses/GenericSuccess_200"
+        "400":
+          $ref: "#/components/responses/BadRequest_400"
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+  /policy/store/delete:
+    post:
+      tags:
+        - Policy
+      summary: Delete a policy from the store
+      description: |
+        This endpoint allows you to delete a policy from the store.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                policy:
+                  $ref: "#/components/schemas/PolicyName"
+      responses:
+        "200":
+          $ref: "#/components/responses/GenericSuccess_200"
+        "400":
+          $ref: "#/components/responses/BadRequest_400"
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+  /policy/store/get:
+    post:
+      tags:
+        - Policy
+      summary: Retrieve a policy from the store
+      description: |
+        This endpoint allows you to retrieve a policy from the store.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                policy:
+                  $ref: "#/components/schemas/PolicyName"
+      responses:
+        "200":
+          description: Successfully retrieved policy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StoreGet_Response"
+              example:
+                status: OK
+                error: null
+                data: "Policy data"
+        "400":
+          $ref: "#/components/responses/BadRequest_400"
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+  /policy/asset/post:
+    post:
+      tags:
+        - Policy
+      summary: Add a new asset to a policy
+      description: |
+        This endpoint allows you to add a new asset to a policy.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                policy:
+                  $ref: "#/components/schemas/PolicyName"
+                asset:
+                  $ref: "#/components/schemas/ResourceName"
+                namespace:
+                  $ref: "#/components/schemas/Namespace"
+      responses:
+        "200":
+          description: Successfully added asset
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AssetPost_Response"
+              examples:
+                success:
+                  summary: Success
+                  value:
+                    status: OK
+                    error: null
+                    warning: null
+                success_with_warning:
+                  summary: Success with warning
+                  value:
+                    status: OK
+                    error: null
+                    warning: "Validation errors"
+        "400":
+          $ref: "#/components/responses/BadRequest_400"
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+  /policy/asset/delete:
+    post:
+      tags:
+        - Policy
+      summary: Delete an asset from a policy
+      description: |
+        This endpoint allows you to delete an asset from a policy.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                policy:
+                  $ref: "#/components/schemas/PolicyName"
+                asset:
+                  $ref: "#/components/schemas/ResourceName"
+                namespace:
+                  $ref: "#/components/schemas/Namespace"
+      responses:
+        "200":
+          description: Successfully deleted asset
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AssetDelete_Response"
+              examples:
+                success:
+                  summary: Success
+                  value:
+                    status: OK
+                    error: null
+                    warning: null
+                success_with_warning:
+                  summary: Success with warning
+                  value:
+                    status: OK
+                    error: null
+                    warning: "Validation errors"
+        "400":
+          $ref: "#/components/responses/BadRequest_400"
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+  /policy/asset/get:
+    post:
+      tags:
+        - Policy
+      summary: Get all assets of a namespace in a policy
+      description: |
+        This endpoint allows you to retrieve all assets of a namespace in a policy.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                policy:
+                  $ref: "#/components/schemas/PolicyName"
+                namespace:
+                  $ref: "#/components/schemas/Namespace"
+      responses:
+        "200":
+          description: Successfully retrieved assets
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AssetGet_Response"
+              example:
+                status: OK
+                error: null
+                data: ["decoder/example/0", "rule/example/0"]
+        "400":
+          $ref: "#/components/responses/BadRequest_400"
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+  /policy/asset/clean_deleted:
+    post:
+      tags:
+        - Policy
+      summary: Delete assets from policy that are deleted from the catalog
+      description: |
+        This endpoint cleans up assets from a policy that are deleted from the catalog.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                policy:
+                  $ref: "#/components/schemas/PolicyName"
+      responses:
+        "200":
+          description: Successfully cleaned deleted assets
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AssetCleanDeleted_Response"
+              example:
+                status: OK
+                error: null
+                data: "List of deleted assets if any"
+        "400":
+          $ref: "#/components/responses/BadRequest_400"
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+  /policy/default_parent/get:
+    post:
+      tags:
+        - Policy
+      summary: Get default parent of a namespace in a policy
+      description: |
+        This endpoint allows you to get the default parent of a namespace in a policy.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PolicyDefaultParentGet_Request"
+      responses:
+        "200":
+          description: Successfully retrieved default parent
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PolicyDefaultParentGet_Response"
+              example:
+                status: OK
+                error: null
+                data: ["decoder/example/0", "rule/example/0"]
+        "400":
+          $ref: "#/components/responses/BadRequest_400"
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+  /policy/default_parent/post:
+    post:
+      tags:
+        - Policy
+      summary: Set default parent of a namespace in a policy
+      description: |
+        This endpoint allows you to set the default parent of a namespace in a policy.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PolicyDefaultParentPost_Request"
+      responses:
+        "200":
+          $ref: "#/components/responses/GenericSuccess_200"
+        "400":
+          $ref: "#/components/responses/BadRequest_400"
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+  /policy/default_parent/delete:
+    post:
+      tags:
+        - Policy
+      summary: Delete default parent of a namespace in a policy
+      description: |
+        This endpoint allows you to delete the default parent of a namespace in a policy.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PolicyDefaultParentDelete_Request"
+      responses:
+        "200":
+          $ref: "#/components/responses/GenericSuccess_200"
+        "400":
+          $ref: "#/components/responses/BadRequest_400"
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+  /policy/list:
+    post:
+      tags:
+        - Policy
+      summary: Get all policies in the store
+      description: |
+        This endpoint retrieves all policies in the store.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EmptyRequest"
+      responses:
+        "200":
+          description: Successfully retrieved policies
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PolicyList_Response"
+              example:
+                status: OK
+                error: null
+                data: ["policy/example/0", "policy/example/1"]
+        "400":
+          $ref: "#/components/responses/BadRequest_400"
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+  /policy/namespaces/list:
+    post:
+      tags:
+        - Policy
+      summary: Get all namespaces in a policy
+      description: |
+        This endpoint retrieves all namespaces in a policy.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                policy:
+                  $ref: "#/components/schemas/PolicyName"
+      responses:
+        "200":
+          description: Successfully retrieved namespaces
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NamespacesGet_Response"
+              example:
+                status: OK
+                error: null
+                data: ["namespace1", "namespace2"]
+        "400":
+          $ref: "#/components/responses/BadRequest_400"
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+
+#################################################################################
+# Components
+#################################################################################
+components:
+  #################################################################################
+  # Schemas
+  #################################################################################
+  schemas:
+    ################################
+    # Common
+    ################################
+    ReturnStatus:
+      type: string
+      enum:
+        - UNKNOWN
+        - OK
+        - ERROR
+      description: "Status codes representing different return states."
+
+    ReturnError:
+      type: string
+      description: "Error message if status is ERROR"
+      nullable: true
+
+    Response:
+      type: object
+      properties:
+        status:
+          $ref: "#/components/schemas/ReturnStatus"
+        error:
+          $ref: "#/components/schemas/ReturnError"
+
+    EmptyRequest:
+      type: object
+      description: "Empty request body"
+      properties: {}
+
+    ################################
+    # Catalog
+    ################################
+    ResourceFormat:
+      type: string
+      enum:
+        - json
+        - yaml
+        - yml
+      description: "Supported formats for the resources (Case sensitive)."
+
+    ResourceType:
+      type: string
+      enum:
+        - UNKNOWN
+        - decoder
+        - rule
+        - filter
+        - output
+        - schema
+        - collection
+        - integration
+      description: "Supported types for the resources (Case sensitive)."
+
+    ResourceName:
+      type: string
+      description: "Name of the resource, a '/' separated string. Where the first part is the type, the second part is the name, and the last part is the version."
+      example: "type/name/0"
+
+    Namespace:
+      type: string
+      description: "Namespace where the resource is located"
+      example: "namespace1"
+
+    ResourcePost_Request:
+      type: object
+      properties:
+        type:
+          $ref: "#/components/schemas/ResourceType"
+        format:
+          $ref: "#/components/schemas/ResourceFormat"
+        content:
+          type: string
+          description: "Content of the resource"
+        namespaceid:
+          $ref: "#/components/schemas/Namespace"
+
+    ResourceGet_Request:
+      type: object
+      properties:
+        name:
+          $ref: "#/components/schemas/ResourceName"
+        format:
+          $ref: "#/components/schemas/ResourceFormat"
+        namespaceid:
+          $ref: "#/components/schemas/Namespace"
+
+    ResourceGet_Response:
+      allOf:
+        - $ref: "#/components/schemas/Response"
+        - type: object
+          properties:
+            content:
+              type: string
+              description: "Content of the resource if status is OK"
+              nullable: true
+
+    ResourcePut_Request:
+      type: object
+      properties:
+        name:
+          $ref: "#/components/schemas/ResourceName"
+        format:
+          $ref: "#/components/schemas/ResourceFormat"
+        content:
+          type: string
+          description: "Content of the resource"
+        namespaceid:
+          $ref: "#/components/schemas/Namespace"
+
+    ResourceDelete_Request:
+      type: object
+      properties:
+        name:
+          $ref: "#/components/schemas/ResourceName"
+        namespaceid:
+          $ref: "#/components/schemas/Namespace"
+
+    ResourceValidate_Request:
+      type: object
+      properties:
+        name:
+          $ref: "#/components/schemas/ResourceName"
+        format:
+          $ref: "#/components/schemas/ResourceFormat"
+        content:
+          type: string
+          description: "Content of the resource"
+        namespaceid:
+          $ref: "#/components/schemas/Namespace"
+
+    NamespacesGet_Request:
+      type: object
+      description: "Request to list all namespaces from the catalog."
+
+    NamespacesGet_Response:
+      allOf:
+        - $ref: "#/components/schemas/Response"
+        - type: object
+          properties:
+            namespaces:
+              type: array
+              items:
+                type: string
+              description: "List of all namespaces"
+
+    ################################
+    # Policy
+    ################################
+    Warning:
+      type: string
+      description: "Warning message if validation errors"
+      nullable: true
+
+    PolicyName:
+      type: string
+      description: "Name of the policy"
+      example: "policy/example/0"
+
+    StoreGet_Response:
+      allOf:
+        - $ref: "#/components/schemas/Response"
+        - type: object
+          properties:
+            data:
+              type: string
+              description: "Policy data"
+              nullable: true
+
+    AssetPost_Response:
+      allOf:
+        - $ref: "#/components/schemas/Response"
+        - type: object
+          properties:
+            warning:
+              $ref: "#/components/schemas/Warning"
+
+    AssetDelete_Response:
+      allOf:
+        - $ref: "#/components/schemas/Response"
+        - type: object
+          properties:
+            warning:
+              $ref: "#/components/schemas/Warning"
+
+    AssetGet_Response:
+      allOf:
+        - $ref: "#/components/schemas/Response"
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                type: string
+              description: "List of assets"
+
+    AssetCleanDeleted_Response:
+      allOf:
+        - $ref: "#/components/schemas/Response"
+        - type: object
+          properties:
+            data:
+              type: string
+              description: "Assets deleted and validation errors"
+
+    PolicyDefaultParentGet_Request:
+      type: object
+      properties:
+        policy:
+          $ref: "#/components/schemas/PolicyName"
+        namespace:
+          $ref: "#/components/schemas/Namespace"
+
+    PolicyDefaultParentGet_Response:
+      allOf:
+        - $ref: "#/components/schemas/Response"
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: "#/components/schemas/ResourceName"
+              description: "Default parents of the namespace"
+
+    PolicyDefaultParentPost_Request:
+      type: object
+      properties:
+        policy:
+          $ref: "#/components/schemas/PolicyName"
+        namespace:
+          $ref: "#/components/schemas/Namespace"
+        default_parent:
+          $ref: "#/components/schemas/ResourceName"
+
+    PolicyDefaultParentDelete_Request:
+      type: object
+      properties:
+        policy:
+          $ref: "#/components/schemas/PolicyName"
+        namespace:
+          $ref: "#/components/schemas/Namespace"
+        default_parent:
+          $ref: "#/components/schemas/ResourceName"
+
+    PolicyList_Response:
+      allOf:
+        - $ref: "#/components/schemas/Response"
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: "#/components/schemas/PolicyName"
+              description: "List of all policies in the store"
+
+  #################################################################################
+  # Responses
+  #################################################################################
+  responses:
+    InternalServerError_500:
+      description: "Internal Server Error"
+      content:
+        text/plain:
+          schema:
+            type: string
+            description: "Internal server error message"
+          example: |
+            Internal Server Error
+
+    BadRequest_400:
+      description: "Bad Request"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Response"
+          example:
+            status: ERROR
+            error: "Error message"
+
+    GenericSuccess_200:
+      description: "Generic Success"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Response"
+          example:
+            status: OK
+            error: null
