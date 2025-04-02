@@ -99,8 +99,6 @@ src/win32/route-null.cmd
 src/win32/netsh-win-2016.cmd
 src/win32/route-null-2012.cmd
 src/win32/netsh.cmd
-src/win32/VERSION
-src/win32/REVISION
 src/libwazuhshared.*
 src/libwazuhext.*
 

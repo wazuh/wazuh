@@ -21,7 +21,7 @@
 !define MUI_ICON install.ico
 !define MUI_UNICON uninstall.ico
 !define VERSION "4.13.0"
-!define REVISION "41300"
+!define REVISION "alpha0"
 !define NAME "Wazuh"
 !define SERVICE "WazuhSvc"
 
@@ -221,8 +221,7 @@ Section "Wazuh Agent (required)" MainSec
     File /oname=syscollector.dll ..\wazuh_modules\syscollector\build\bin\syscollector.dll
     File /oname=libfimdb.dll ..\syscheckd/build/bin/libfimdb.dll
     File /oname=queue\syscollector\norm_config.json ..\wazuh_modules\syscollector\norm_config.json
-    File VERSION
-    File REVISION
+    File VERSION.json
 
     ; Create empty file active-responses.log
     FileOpen $0 "$INSTDIR\active-response\active-responses.log" w

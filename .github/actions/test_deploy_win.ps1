@@ -4,15 +4,33 @@
 # and/or modify it under the terms of the GNU General Public
 # License (version 2) as published by the FSF - Free Software
 # Foundation.
+$VERSION_JSON = (Get-Content VERSION.json) -join "`n"
 
-$VERSION = Get-Content src/VERSION
-[version]$VERSION = $VERSION -replace '[v]',''
-$MAJOR=$VERSION.Major
-$MINOR=$VERSION.Minor
-$SHA= git rev-parse --short $args[0]
+if ($VERSION_JSON -match '"version":\s*"([^"]+)"') {
+    $VERSION = $matches[1]
 
-$TEST_ARRAY=@( 
-              @("WAZUH_MANAGER ", "1.1.1.1", "<address>", "</address>"), 
+    try {
+        [version]$VERSION_OBJ = $VERSION
+        $MAJOR = $VERSION_OBJ.Major
+        $MINOR = $VERSION_OBJ.Minor
+    } catch {
+        Write-Output "Invalid version format: $VERSION"
+        exit 1
+    }
+
+    try {
+        $SHA= git rev-parse --short $args[0]
+    } catch {
+        Write-Output "Failed to extract commit hash from git"
+        exit 1
+    }
+} else {
+    Write-Output "Failed to extract version from VERSION.json"
+    exit 1
+}
+
+$TEST_ARRAY=@(
+              @("WAZUH_MANAGER ", "1.1.1.1", "<address>", "</address>"),
               @("WAZUH_MANAGER_PORT ", "7777", "<port>", "</port>"),
               @("WAZUH_PROTOCOL ", "udp", "<protocol>", "</protocol>"),
               @("WAZUH_REGISTRATION_SERVER ", "2.2.2.2", "<manager_address>", "</manager_address>"),
@@ -33,7 +51,7 @@ function install_wazuh($vars)
 
     Write-Output "Testing the following variables $vars"
     Start-Process  C:\Windows\System32\msiexec.exe -ArgumentList  "/i wazuh-agent-$VERSION-0.commit$SHA.msi /qn $vars" -wait
-    
+
 }
 
 function remove_wazuh
@@ -96,8 +114,8 @@ function test($vars)
 Write-Output "Download package: https://s3.us-west-1.amazonaws.com/packages-dev.wazuh.com/warehouse/pullrequests/$MAJOR.$MINOR/windows/wazuh-agent-$VERSION-0.commit$SHA.msi"
 Invoke-WebRequest -Uri "https://s3.us-west-1.amazonaws.com/packages-dev.wazuh.com/warehouse/pullrequests/$MAJOR.$MINOR/windows/wazuh-agent-$VERSION-0.commit$SHA.msi" -OutFile "wazuh-agent-$VERSION-0.commit$SHA.msi"
 
-install_wazuh "WAZUH_MANAGER=1.1.1.1 WAZUH_MANAGER_PORT=7777 WAZUH_PROTOCOL=udp WAZUH_REGISTRATION_SERVER=2.2.2.2 WAZUH_REGISTRATION_PORT=8888 WAZUH_REGISTRATION_PASSWORD=password WAZUH_KEEP_ALIVE_INTERVAL=10 WAZUH_TIME_RECONNECT=10 WAZUH_REGISTRATION_CA=/var/ossec/etc/testsslmanager.cert WAZUH_REGISTRATION_CERTIFICATE=/var/ossec/etc/testsslmanager.cert WAZUH_REGISTRATION_KEY=/var/ossec/etc/testsslmanager.key WAZUH_AGENT_NAME=test-agent WAZUH_AGENT_GROUP=test-group ENROLLMENT_DELAY=10" 
-test "WAZUH_MANAGER WAZUH_MANAGER_PORT WAZUH_PROTOCOL WAZUH_REGISTRATION_SERVER WAZUH_REGISTRATION_PORT WAZUH_REGISTRATION_PASSWORD WAZUH_KEEP_ALIVE_INTERVAL WAZUH_TIME_RECONNECT WAZUH_REGISTRATION_CA WAZUH_REGISTRATION_CERTIFICATE WAZUH_REGISTRATION_KEY WAZUH_AGENT_NAME WAZUH_AGENT_GROUP ENROLLMENT_DELAY " 
+install_wazuh "WAZUH_MANAGER=1.1.1.1 WAZUH_MANAGER_PORT=7777 WAZUH_PROTOCOL=udp WAZUH_REGISTRATION_SERVER=2.2.2.2 WAZUH_REGISTRATION_PORT=8888 WAZUH_REGISTRATION_PASSWORD=password WAZUH_KEEP_ALIVE_INTERVAL=10 WAZUH_TIME_RECONNECT=10 WAZUH_REGISTRATION_CA=/var/ossec/etc/testsslmanager.cert WAZUH_REGISTRATION_CERTIFICATE=/var/ossec/etc/testsslmanager.cert WAZUH_REGISTRATION_KEY=/var/ossec/etc/testsslmanager.key WAZUH_AGENT_NAME=test-agent WAZUH_AGENT_GROUP=test-group ENROLLMENT_DELAY=10"
+test "WAZUH_MANAGER WAZUH_MANAGER_PORT WAZUH_PROTOCOL WAZUH_REGISTRATION_SERVER WAZUH_REGISTRATION_PORT WAZUH_REGISTRATION_PASSWORD WAZUH_KEEP_ALIVE_INTERVAL WAZUH_TIME_RECONNECT WAZUH_REGISTRATION_CA WAZUH_REGISTRATION_CERTIFICATE WAZUH_REGISTRATION_KEY WAZUH_AGENT_NAME WAZUH_AGENT_GROUP ENROLLMENT_DELAY "
 remove_wazuh
 
 install_wazuh "WAZUH_MANAGER=1.1.1.1"

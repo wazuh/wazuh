@@ -92,7 +92,35 @@ config() {
 }
 
 compute_version_revision() {
-    wazuh_version=$(cat ${source_directory}/src/VERSION | cut -d "-" -f1 | cut -c 2-)
+    wazuh_version="$(awk -F'"' '/"version"[ \t]*:/ {print $4}' $source_directory/VERSION.json)"
+    wazuh_revision=$(awk -F'"' '/"stage"[ \t]*:/ {print $4}' $source_directory/VERSION.json)
+
+    # Add commit hash to the VERSION.json file
+    short_commit_hash=$(/usr/local/bin/curl -ks "https://api.github.com/repos/wazuh/wazuh/commits/${wazuh_branch}" | awk -F '"' '/"sha":/ {print substr($4, 1, 7); exit}')
+    awk -v commit="$short_commit_hash" '
+    {
+        lines[NR] = $0  # Store lines in an array
+    }
+    END {
+        last_index = NR  # Save the last line index
+        for (i = 1; i <= last_index; i++) {
+            if (i == last_index) {  # When reaching the last line (assumed to be "}")
+                if (lines[i-1] !~ /,$/)  # If the previous line does not end with a comma, add one
+                    lines[i-1] = lines[i-1] ",";
+
+                print lines[i-1];  # Print the modified previous line
+                print "    \"commit\": \"" commit "\"";  # Insert commit using the passed variable
+                print lines[i];  # Print the closing brace
+            } else if (i < last_index - 1) {
+                print lines[i];  # Print all other lines unchanged
+            }
+        }
+    }
+    ' $source_directory/VERSION.json > $source_directory/VERSION.json.tmp && mv $source_directory/VERSION.json.tmp $source_directory/VERSION.json
+    cat $source_directory/VERSION.json
+
+    # Remove the temporary file after processing (if any remains)
+    [ -f $source_directory/VERSION.json.tmp ] && rm $source_directory/VERSION.json.tmp
 
     echo ${wazuh_version} > /tmp/VERSION
     echo ${wazuh_revision} > /tmp/REVISION
@@ -109,7 +137,7 @@ download_source() {
 }
 
 check_version() {
-    wazuh_version=`cat ${source_directory}/src/VERSION`
+    wazuh_version="v$(awk -F'"' '/"version"[ \t]*:/ {print $4}' $source_directory/VERSION.json)"
     number_version=`echo "${wazuh_version}" | cut -d v -f 2`
     major=`echo $number_version | cut -d . -f 1`
     minor=`echo $number_version | cut -d . -f 2`
@@ -124,7 +152,7 @@ compile() {
     check_version
     gmake deps RESOURCES_URL=http://packages.wazuh.com/deps/${deps_version} TARGET=agent
     gmake TARGET=agent USE_SELINUX=no
-    bash ${source_directory}/install.sh
+    bash ${source_directory}/install.sh || { echo "install.sh failed! Aborting." >&2; exit 1; }
     # Install std libs needed to run the agent
     cp -f ${build_tools_path}/bootstrap-gcc/gcc94_prefix/lib/libstdc++.so.6.28 ${install_path}/lib
     cp -f ${build_tools_path}/bootstrap-gcc/gcc94_prefix/lib/libgcc_s.so.0 ${install_path}/lib
@@ -157,8 +185,8 @@ create_package() {
 }
 
 set_control_binary() {
-    if [ -e ${source_directory}/src/VERSION ]; then
-        wazuh_version=`cat ${source_directory}/src/VERSION`
+    if [ -e ${source_directory}/VERSION.json ]; then
+        wazuh_version="v$(awk -F'"' '/"version"[ \t]*:/ {print $4}' ${source_directory}/VERSION.json)"
         number_version=`echo "${wazuh_version}" | cut -d v -f 2`
         major=`echo $number_version | cut -d . -f 1`
         minor=`echo $number_version | cut -d . -f 2`

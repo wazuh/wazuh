@@ -129,7 +129,7 @@ jobs:
 
       - name: Set tag and container name
         run: |
-          VERSION=$(sed 's/^v\([0-9]*\.[0-9]*\.[0-9]*\)/\1/' $GITHUB_WORKSPACE/src/VERSION)
+          VERSION="$(grep '"version"' $GITHUB_WORKSPACE/VERSION.json | sed -E 's/.*"version": *"([^"]+)".*/\1/')"
           if [ "${{ inputs.docker_image_tag }}" == "auto" ]; then echo "TAG=$VERSION" >> $GITHUB_ENV;
           elif [ "${{ inputs.docker_image_tag }}" == "developer" ]; then echo "TAG=$(sed 's|[/\]|--|g' <<< ${{ github.ref_name }})" >> $GITHUB_ENV;
           else echo "TAG=${{ inputs.docker_image_tag }}" >> $GITHUB_ENV; fi
@@ -139,9 +139,18 @@ jobs:
         run: |
           bash $GITHUB_WORKSPACE/.github/actions/ghcr-pull-and-push/pull_image_from_ghcr.sh ${{ secrets.GITHUB_TOKEN }} ${{ github.actor}} $CONTAINER_NAME ${{ env.TAG }}
 
+      - name: Append short commit to VERSION file
+        run: |
+          SHORT_COMMIT=$(git rev-parse --short HEAD)
+          echo "Found commit: $SHORT_COMMIT"
+          if [ -z "$SHORT_COMMIT" ]; then echo "No commit found"; exit 1; fi
+          sed -i '/"stage":/s/$/,/; /"stage":/a \    "commit": "'"$SHORT_COMMIT"'"' VERSION.json || exit 1
+          cat VERSION.json
+
       - name: Build ${{ inputs.system }} wazuh-manager on ${{ inputs.architecture }}
         working-directory: packages
         run: |
+          SHORT_COMMIT=$(git rev-parse --short HEAD)
           REVISION=${{ inputs.revision }}
           FLAGS="--verbose -t manager -s /tmp --dont-build-docker -j $(nproc) "
           if [ -z "$REVISION" ]; then FLAGS+="-r 0 "; else FLAGS+="-r $REVISION "; fi
@@ -152,7 +161,7 @@ jobs:
           echo "generate_package.sh -a ${{ env.ARCH }} --tag ${{ env.TAG }} --system ${{ inputs.system }} $FLAGS"
           bash generate_package.sh -a ${{ env.ARCH }} --tag ${{ env.TAG }} --system ${{ inputs.system }} $FLAGS
 
-          if [ "${{ inputs.system }}" == "deb" ]; then 
+          if [ "${{ inputs.system }}" == "deb" ]; then
             SYMBOLS_TAG="dbg"
           else
             SYMBOLS_TAG="debuginfo"

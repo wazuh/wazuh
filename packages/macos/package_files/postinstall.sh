@@ -76,6 +76,10 @@ chmod 770 ${DIR}/.ssh
 chmod -R 770 ${DIR}/var
 chown -R root:${GROUP} ${DIR}/var
 
+# VERSION.json
+chmod -R 440 ${DIR}/VERSION.json
+chown -R ${USER}:${GROUP} ${DIR}/VERSION.json
+
 # Check if the distribution detection script exists
 if [ -f "${INSTALLATION_SCRIPTS_DIR}/src/init/dist-detect.sh" ]; then
     echo "Running the dist-detect.sh script..."

@@ -65,7 +65,14 @@ jobs:
       - name: Create .msi package
         run: |
           cd C:\win-agent-base\src\win32
-          $VERSION = Get-Content ..\VERSION
+          $VERSION_FILE = "..\..\VERSION.json"
+          if (Test-Path $VERSION_FILE) {
+              $json = Get-Content $VERSION_FILE | ConvertFrom-Json
+              $VERSION = $json.version
+          } else {
+              Write-Host "Error: VERSION.json not found."
+              exit 1
+          }
           .\wazuh-installer-build-msi.bat $VERSION 0
           cp *.msi C:\win-agent-base\
       - name: Run tests

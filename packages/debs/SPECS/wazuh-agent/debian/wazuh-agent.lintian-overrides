@@ -7,3 +7,4 @@ wazuh-agent: non-standard-dir-in-var
 wazuh-agent: file-in-unusual-dir
 wazuh-agent: hardening-no-fortify-functions
 wazuh-agent: hardening-no-relro
+wazuh-agent: binary-from-other-architecture var/ossec/lib/modern.bpf.o

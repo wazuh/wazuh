@@ -24,9 +24,9 @@ on:
   push:
     branches:
       - '[0-9]+.[0-9]+.[0-9]+'
-      - 'master'
+      - 'main'
     paths:
-      - 'src/VERSION'
+      - 'VERSION.json'
 
 jobs:
   Upload-package-building-images:
@@ -48,17 +48,25 @@ jobs:
             fetch-depth: 2
       - run: git checkout HEAD^
 
-      - name: Get old version from src/VERSION
+      - name: Get old version from VERSION.json
         run: |
-          VERSION=$(sed 's/^v\([0-9]*\.[0-9]*\.[0-9]*\)/\1/' $GITHUB_WORKSPACE/src/VERSION)
+          VERSION_FILE="$GITHUB_WORKSPACE/VERSION.json"
+
+          if [[ -f "$VERSION_FILE" ]]; then
+            VERSION="$(grep '"version"' $GITHUB_WORKSPACE/VERSION.json | sed -E 's/.*"version": *"([^"]+)".*/\1/')"
+          else
+            echo "Error: No version file found." >&2
+            exit 1
+          fi
+
           echo "OLD_VERSION=$VERSION" >> $GITHUB_ENV;
 
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Get new version from src/VERSION
+      - name: Get new version from VERSION.json
         run: |
-          VERSION=$(sed 's/^v\([0-9]*\.[0-9]*\.[0-9]*\)/\1/' $GITHUB_WORKSPACE/src/VERSION)
+          VERSION="$(grep '"version"' $GITHUB_WORKSPACE/VERSION.json | sed -E 's/.*"version": *"([^"]+)".*/\1/')"
           echo "NEW_VERSION=$VERSION" >> $GITHUB_ENV;
 
       - name: Run retag script
