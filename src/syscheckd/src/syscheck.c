@@ -316,6 +316,7 @@ int Start_win32_Syscheck() {
 #endif /* WIN32 */
 
 #ifdef __linux__
+#ifdef ENABLE_AUDIT
 void check_ebpf_availability() {
     minfo(FIM_EBPF_INIT);
     fimebpf_initialize(fim_configuration_directory, get_user, get_group, fim_whodata_event,
@@ -330,4 +331,5 @@ void check_ebpf_availability() {
         syscheck.whodata_provider = AUDIT_PROVIDER;
     }
 }
+#endif /* ENABLE_AUDIT */
 #endif /* __linux__ */
