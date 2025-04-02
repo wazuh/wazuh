@@ -71,6 +71,7 @@ api_config_schema = {
         "drop_privileges": {"type": "boolean"},
         "experimental_features": {"type": "boolean"},
         "max_upload_size": {"type": "integer", "minimum": 0},
+        "authentication_pool_size": {"type": "integer", "minimum": 1, "maximum": 50},
         "intervals": {
             "type": "object",
             "additionalProperties": False,

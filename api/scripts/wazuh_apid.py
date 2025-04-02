@@ -9,44 +9,14 @@ import os
 import signal
 import sys
 import warnings
+from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
+from functools import partial
 
 SSL_DEPRECATED_MESSAGE = 'The `{ssl_protocol}` SSL protocol is deprecated.'
 CACHE_DELETED_MESSAGE = 'The `cache` API configuration option no longer takes effect since {release} and will ' \
                         'be completely removed in the next major release.'
 
-API_MAIN_PROCESS = 'wazuh-apid'
-API_LOCAL_REQUEST_PROCESS = 'wazuh-apid_exec'
-API_AUTHENTICATION_PROCESS = 'wazuh-apid_auth'
-API_SECURITY_EVENTS_PROCESS = 'wazuh-apid_events'
-
 logger = None
-
-
-def spawn_process_pool():
-    """Spawn general process pool child."""
-
-    exec_pid = os.getpid()
-    pyDaemonModule.create_pid(API_LOCAL_REQUEST_PROCESS, exec_pid)
-
-    signal.signal(signal.SIGINT, signal.SIG_IGN)
-
-
-def spawn_events_pool():
-    """Spawn events process pool child."""
-
-    events_pid = os.getpid()
-    pyDaemonModule.create_pid(API_SECURITY_EVENTS_PROCESS, events_pid)
-
-    signal.signal(signal.SIGINT, signal.SIG_IGN)
-
-
-def spawn_authentication_pool():
-    """Spawn authentication process pool child."""
-
-    auth_pid = os.getpid()
-    pyDaemonModule.create_pid(API_AUTHENTICATION_PROCESS, auth_pid)
-
-    signal.signal(signal.SIGINT, signal.SIG_IGN)
 
 
 def assign_wazuh_ownership(filepath: str):
@@ -164,13 +134,29 @@ def start(params: dict):
     except Exception as db_integrity_exc:
         raise APIError(2012, details=str(db_integrity_exc)) from db_integrity_exc
 
-    # Spawn child processes with their own needed imports
+    pools = common.mp_pools.get()
+
+    try:
+        pools.update({'process_pool': ProcessPoolExecutor(
+            max_workers=1,
+            initializer=partial(pyDaemonModule.spawn_process_pool_worker, pyDaemonModule.API_LOCAL_REQUEST_PROCESS)
+        )})
+
+        pools.update({'events_pool': ProcessPoolExecutor(
+            max_workers=1,
+            initializer=partial(pyDaemonModule.spawn_process_pool_worker, pyDaemonModule.API_SECURITY_EVENTS_PROCESS)
+        )})
+    # Handle exception when the user running Wazuh cannot access /dev/shm.
+    except (FileNotFoundError, PermissionError):
+        pools.update({'thread_pool': ThreadPoolExecutor(max_workers=1)})
+
+
+    # Log the pool creation to force processes creation
     if 'thread_pool' not in common.mp_pools.get():
         loop = asyncio.get_event_loop()
         loop.run_until_complete(
-            asyncio.wait([loop.run_in_executor(pool,
-                                               getattr(sys.modules[__name__], f'spawn_{name}'))
-                          for name, pool in common.mp_pools.get().items()]))
+            asyncio.wait([loop.run_in_executor(pool, logger.debug2, f"Creating '{name}' process pool")
+                            for name, pool in common.mp_pools.get().items()]))
 
     # Set up API
     app = AsyncApp(
@@ -273,8 +259,8 @@ def version():
 def exit_handler(signum, frame):
     """Try to kill API child processes and remove their PID files."""
     api_pid = os.getpid()
-    pyDaemonModule.delete_child_pids(API_MAIN_PROCESS, api_pid, logger)
-    pyDaemonModule.delete_pid(API_MAIN_PROCESS, api_pid)
+    pyDaemonModule.delete_child_pids(pyDaemonModule.API_MAIN_PROCESS, api_pid, logger)
+    pyDaemonModule.delete_pid(pyDaemonModule.API_MAIN_PROCESS, api_pid)
 
 
 def add_debug2_log_level_and_error():
@@ -411,7 +397,7 @@ if __name__ == '__main__':
         configure_ssl(uvicorn_params)
 
     # Check for unused PID files
-    utils.clean_pid_files(API_MAIN_PROCESS)
+    utils.clean_pid_files(pyDaemonModule.API_MAIN_PROCESS)
 
     # Foreground/Daemon
     if not args.foreground:
@@ -428,7 +414,7 @@ if __name__ == '__main__':
         logger.info('Starting API as root')
 
     pid = os.getpid()
-    pyDaemonModule.create_pid(API_MAIN_PROCESS, pid)
+    pyDaemonModule.create_pid(pyDaemonModule.API_MAIN_PROCESS, pid)
 
     signal.signal(signal.SIGTERM, exit_handler)
     try:
@@ -440,5 +426,5 @@ if __name__ == '__main__':
         print(f'Internal error when trying to start the Wazuh API. {e}')
         sys.exit(1)
     finally:
-        pyDaemonModule.delete_child_pids(API_MAIN_PROCESS, pid, logger)
-        pyDaemonModule.delete_pid(API_MAIN_PROCESS, pid)
+        pyDaemonModule.delete_child_pids(pyDaemonModule.API_MAIN_PROCESS, pid, logger)
+        pyDaemonModule.delete_pid(pyDaemonModule.API_MAIN_PROCESS, pid)

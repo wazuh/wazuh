@@ -52,6 +52,9 @@
 # Maximum body size that the API can accept, in bytes (0 -> limitless)
 # max_upload_size: 10485760
 
+# Number of processes dedicated to processing authentication requests.
+# authentication_pool_size: 2
+
 # Uploadable Wazuh configuration sections
 # upload_configuration:
 #   remote_commands:

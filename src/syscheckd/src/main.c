@@ -290,8 +290,17 @@ int main(int argc, char **argv)
         realtime_start();
     }
 
+    // Launch Whodata ebpf real-time thread
+    if (!syscheck.disabled && syscheck.enable_whodata && syscheck.whodata_provider == EBPF_PROVIDER) {
+#ifdef __linux__
+        check_ebpf_availability();
+#else
+        merror(FIM_ERROR_EBPF_NOT_SUPPORTED);
+#endif
+    }
+
     // Audit events thread
-    if (!syscheck.disabled && syscheck.enable_whodata) {
+    if (!syscheck.disabled && syscheck.enable_whodata && syscheck.whodata_provider == AUDIT_PROVIDER) {
 #ifdef ENABLE_AUDIT
         if (audit_init() < 0) {
             directory_t *dir_it;
@@ -303,7 +312,7 @@ int main(int argc, char **argv)
 
             OSList_foreach(node_it, syscheck.directories) {
                 dir_it = node_it->data;
-                if (dir_it->options & WHODATA_ACTIVE) {
+                if ((dir_it->options & WHODATA_ACTIVE)) {
                     dir_it->options &= ~WHODATA_ACTIVE;
                     dir_it->options |= REALTIME_ACTIVE;
                 }
@@ -311,7 +320,7 @@ int main(int argc, char **argv)
 
             OSList_foreach(node_it, syscheck.wildcards) {
                 dir_it = node_it->data;
-                if (dir_it->options & WHODATA_ACTIVE) {
+                if ((dir_it->options & WHODATA_ACTIVE)) {
                     dir_it->options &= ~WHODATA_ACTIVE;
                     dir_it->options |= REALTIME_ACTIVE;
                 }

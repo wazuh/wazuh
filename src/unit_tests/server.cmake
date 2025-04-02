@@ -10,7 +10,8 @@ endif()
 add_compile_options(-ggdb -O0 -g -coverage -DTEST_SERVER -DENABLE_AUDIT -DINOTIFY_ENABLED -fsanitize=address -fsanitize=undefined)
 link_libraries(-fsanitize=address -fsanitize=undefined)
 # Set tests dependencies
-set(TEST_DEPS ${WAZUHLIB} ${WAZUHEXT} -lpthread -ldl -lcmocka -fprofile-arcs -ftest-coverage)
+link_directories("${SRC_FOLDER}/syscheckd/build/lib/")
+set(TEST_DEPS ${WAZUHLIB} ${WAZUHEXT} -lpthread -ldl -lfimebpf -lcmocka -fprofile-arcs -ftest-coverage)
 
 add_subdirectory(analysisd)
 add_subdirectory(remoted)
