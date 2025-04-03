@@ -70,8 +70,6 @@ x-rbac-catalog:
       description: "Reference agents via agent ID (i.e. agent:id:001)"
     'group:id':
       description: "Reference agent groups via group ID (i.e. group:id:default)"
-    'node:id':
-      description: "Reference cluster nodes via node ID (i.e. node:id:worker1)"
     'policy:id':
       description: "Reference security policies via its id (i.e. policy:id:1)"
     'role:id':
@@ -173,38 +171,6 @@ x-rbac-catalog:
       example:
         actions: ['group:delete']
         resources: ['group:id:*']
-        effect: "allow"
-    'cluster:read':
-      description: "Read Wazuh's cluster nodes configuration"
-      resources:
-        - $ref: '#/x-rbac-catalog/resources/node:id'
-      example:
-        actions: ['cluster:read']
-        resources: ['node:id:worker1', 'node:id:worker3']
-        effect: "deny"
-    'cluster:update_config':
-      description: "Change the Wazuh's cluster node configuration"
-      resources:
-        - $ref: '#/x-rbac-catalog/resources/node:id'
-      example:
-        actions: [ 'cluster:update_config' ]
-        resources: ['node:id:worker1']
-        effect: "allow"
-    'cluster:restart':
-      description: "Restart Wazuh's cluster nodes"
-      resources:
-        - $ref: '#/x-rbac-catalog/resources/node:id'
-      example:
-        actions: ['cluster:restart']
-        resources: ['node:id:worker1']
-        effect: "allow"
-    'cluster:status':
-      description: "Check Wazuh's cluster general status"
-      resources:
-        - $ref: '#/x-rbac-catalog/resources/*:*'
-      example:
-        actions: ['cluster:status']
-        resources: ['*:*:*']
         effect: "allow"
     'security:create':
       description: "Create new system security resources"
@@ -1841,7 +1807,6 @@ components:
           - 'agent:group'
           - 'agent:id'
           - 'group:id'
-          - 'node:id'
           - 'policy:id'
           - 'role:id'
           - 'user:id'
@@ -3132,8 +3097,6 @@ paths:
                     description: "Reference agents via agent ID (i.e. agent:id:001)"
                   "group:id":
                     description: "Reference agent groups via group ID (i.e. group:id:default)"
-                  "node:id":
-                    description: "Reference cluster nodes via node ID (i.e. node:id:worker1)"
                   "policy:id":
                     description: "Reference security policies via its id (i.e. policy:id:1)"
                   "role:id":
