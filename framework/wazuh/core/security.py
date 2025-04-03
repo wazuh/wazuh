@@ -7,7 +7,6 @@ from functools import lru_cache
 
 import yaml
 from server_management_api import __path__ as api_path
-from wazuh.rbac.orm import DB_FILE, RolesManager, TokenManager, check_database_integrity
 
 REQUIRED_FIELDS = ['id']
 SORT_FIELDS = ['id', 'name']
@@ -36,16 +35,19 @@ def check_relationships(roles: list = None) -> set:
     users_affected = set()
     if roles:
         for role in roles:
-            with RolesManager() as rm:
-                users_affected.update(set(rm.get_role_id(role)['users']))
+            continue
+            # TODO(#28425): Update
+            # with RolesManager() as rm:
+            #     users_affected.update(set(rm.get_role_id(role)['users']))
 
     return users_affected
 
 
 def invalid_run_as_tokens():
     """Add the necessary rules to invalidate all affected run_as's tokens."""
-    with TokenManager() as tm:
-        tm.add_user_roles_rules(run_as=True)
+    # TODO(#28425): Update
+    # with TokenManager() as tm:
+    #     tm.add_user_roles_rules(run_as=True)
 
 
 def invalid_users_tokens(users: list = None):
@@ -56,8 +58,9 @@ def invalid_users_tokens(users: list = None):
     users : list
         List of modified users
     """
-    with TokenManager() as tm:
-        tm.add_user_roles_rules(users=set(users))
+    # TODO(#28425): Update
+    # with TokenManager() as tm:
+    #     tm.add_user_roles_rules(users=set(users))
 
 
 def invalid_roles_tokens(roles: list = None):
@@ -68,8 +71,9 @@ def invalid_roles_tokens(roles: list = None):
     roles : list
         List of modified roles
     """
-    with TokenManager() as tm:
-        tm.add_user_roles_rules(roles=set(roles))
+    # TODO(#28425): Update
+    # with TokenManager() as tm:
+    #     tm.add_user_roles_rules(roles=set(roles))
 
 
 def revoke_tokens() -> dict:
@@ -80,8 +84,9 @@ def revoke_tokens() -> dict:
     dict
         Confirmation message.
     """
-    with TokenManager() as tm:
-        tm.delete_all_rules()
+    # TODO(#28425): Update
+    # with TokenManager() as tm:
+    #     tm.delete_all_rules()
 
     return {'result': 'True'}
 
@@ -104,15 +109,3 @@ def sanitize_rbac_policy(policy):
     # Sanitize effect
     if 'effect' in policy:
         policy['effect'] = policy['effect'].lower()
-
-
-def rbac_db_factory_reset():
-    """Reset the RBAC database to default values."""
-    try:
-        os.remove(DB_FILE)
-    except FileNotFoundError:
-        pass
-
-    check_database_integrity()
-    revoke_tokens()
-    return {'reset': True}

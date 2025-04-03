@@ -24,17 +24,8 @@ from wazuh.core.security import (
 )
 from wazuh.core.utils import process_array
 from wazuh.rbac.decorators import expose_resources
-from wazuh.rbac.orm import (
-    MAX_ID_RESERVED,
-    AuthenticationManager,
-    PoliciesManager,
-    RolesManager,
-    RolesPoliciesManager,
-    RolesRulesManager,
-    RulesManager,
-    SecurityError,
-    UserRolesManager,
-)
+
+# TODO(#28425): Update security endpoints
 
 # Minimum eight characters, at least one uppercase letter, one lowercase letter, one number and one special character:
 _user_password = re.compile(r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$')
