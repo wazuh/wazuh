@@ -79,7 +79,7 @@ RUN git clone "https://github.com/microsoft/vcpkg.git" "$VCPKG_ROOT" \
 COPY vcpkg.json /build_deps_vcpkg/vcpkg.json
 COPY vcpkg-configuration.json /build_deps_vcpkg/vcpkg-configuration.json
 ENV PATH=$PATH:$VCPKG_ROOT
-RUN scl enable devtoolset-11 "cd /build_deps_vcpkg && vcpkg install --triplet arm64-linux --feature-flags=manifests"
+RUN scl enable devtoolset-10 "cd /build_deps_vcpkg && vcpkg install --triplet arm64-linux --feature-flags=manifests"
 
 # Add the scripts to build the RPM package
 ADD build.sh /usr/local/bin/build_package
