@@ -15,6 +15,7 @@
 #include "../../wcsModel/data.hpp"
 #include "../../wcsModel/inventorySystemHarvester.hpp"
 #include "../../wcsModel/noData.hpp"
+#include "../policyHarvesterManager.hpp"
 #include <stdexcept>
 
 template<typename TContext>
@@ -46,31 +47,28 @@ public:
 
         if (auto agentIp = data->agentIp(); agentIp.compare("any") != 0)
         {
-            element.data.agent.host.ip = data->agentIp();
+            element.data.agent.host.ip = agentIp;
         }
 
-        // // 22.04.5 LTS (Jammy Jellyfish), 15.1.1, 10.0.19045.5371
-        // element.data.host.os.version = data->osVersion();
-
-        // // Ex: macOS, Ubuntu, Microsoft Windows 10 Pro
-        // element.data.host.os.name = data->osName();
-
-        // // Ex: 4.15.0-112-generic, 24.1.0 (for macos)
-        // element.data.host.os.kernel = data->osKernelRelease();
-
-        // // TODO: windows not report anything in this field.
-        // // Ex: ubuntu, centos, darwin
-        // element.data.host.os.platform = data->osPlatform();
-
-        // // TODO: windows not report anything in this field.
-        // // Ex: Linux, Windows NT, Darwin
-        // element.data.host.os.type = data->osKernelSysName();
-
-        // // Ex: x86_64, arm64
-        // element.data.host.architecture = data->osArchitecture();
-
-        // Ex: DESKTOP-5RL9J34, Octavios-MacBook-Pro.local, dwordcito-MS-7D25
+        element.data.host.architecture = data->osArchitecture();
         element.data.host.hostname = data->osHostName();
+
+        element.data.host.os.kernel.release = data->osKernelRelease();
+        element.data.host.os.kernel.name = data->osKernelSysName();
+        element.data.host.os.kernel.version = data->osKernelVersion();
+
+        element.data.host.os.codename = data->osCodeName();
+        element.data.host.os.name = data->osName();
+        element.data.host.os.platform = data->osPlatform();
+        element.data.host.os.version = data->osVersion();
+
+        auto& instancePolicyManager = PolicyHarvesterManager::instance();
+        if (instancePolicyManager.getClusterStatus())
+        {
+            element.data.wazuh.cluster.name = instancePolicyManager.getClusterName();
+            element.data.wazuh.cluster.node = instancePolicyManager.getClusterNodeName();
+        }
+
         return element;
     }
 

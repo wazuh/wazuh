@@ -6,7 +6,6 @@
                 "agent": {
                     "id": "004",
                     "name": "DESKTOP-R8MRG1I",
-                    "ip": "any",
                     "version": "v4.7.5"
                 },
                 "file": {
@@ -20,6 +19,11 @@
                     "path": "c:/temp/octa128.txt",
                     "size": 3,
                     "uid": "S-1-5-21-1245906424-2878732365-1129427271-1001"
+                },
+                "wazuh": {
+                    "schema": {
+                        "version": "1.0"
+                    }
                 }
             }
         ]

@@ -61,9 +61,11 @@ public:
     MOCK_METHOD(std::string_view, osName, (), (const));
     MOCK_METHOD(std::string_view, osKernelRelease, (), (const));
     MOCK_METHOD(std::string_view, osKernelSysName, (), (const));
+    MOCK_METHOD(std::string_view, osKernelVersion, (), (const));
     MOCK_METHOD(std::string_view, osPlatform, (), (const));
     MOCK_METHOD(std::string_view, osArchitecture, (), (const));
     MOCK_METHOD(std::string_view, osHostName, (), (const));
+    MOCK_METHOD(std::string_view, osCodeName, (), (const));
     MOCK_METHOD(std::string_view, packageName, (), (const));
     MOCK_METHOD(std::string_view, packageVersion, (), (const));
     MOCK_METHOD(std::string_view, packageVendor, (), (const));

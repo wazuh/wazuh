@@ -26,6 +26,7 @@ struct Process final
     };
 
     std::vector<std::string_view> args;
+    std::int64_t args_count = DEFAULT_INT_VALUE;
     std::string_view command_line;
     std::string_view executable;
     std::string_view name;
@@ -34,6 +35,7 @@ struct Process final
     Parent parent;
 
     REFLECTABLE(MAKE_FIELD("args", &Process::args),
+                MAKE_FIELD("args_count", &Process::args_count),
                 MAKE_FIELD("command_line", &Process::command_line),
                 MAKE_FIELD("executable", &Process::executable),
                 MAKE_FIELD("name", &Process::name),

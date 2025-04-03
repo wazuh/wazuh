@@ -15,14 +15,17 @@
 #include "reflectiveJson.hpp"
 #include "wcsClasses/agent.hpp"
 #include "wcsClasses/package.hpp"
+#include "wcsClasses/wazuh.hpp"
 
 struct InventoryPackageHarvester final
 {
     Agent agent;
     Package package;
+    Wazuh wazuh;
 
     REFLECTABLE(MAKE_FIELD("package", &InventoryPackageHarvester::package),
-                MAKE_FIELD("agent", &InventoryPackageHarvester::agent));
+                MAKE_FIELD("agent", &InventoryPackageHarvester::agent),
+                MAKE_FIELD("wazuh", &InventoryPackageHarvester::wazuh));
 };
 
 #endif // _INVENTORY_PACKAGE_HARVESTER_HPP

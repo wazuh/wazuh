@@ -15,6 +15,7 @@
 #include "../../wcsModel/data.hpp"
 #include "../../wcsModel/inventoryHardwareHarvester.hpp"
 #include "../../wcsModel/noData.hpp"
+#include "../policyHarvesterManager.hpp"
 #include <stdexcept>
 
 template<typename TContext>
@@ -53,7 +54,7 @@ public:
 
         if (auto agentIp = data->agentIp(); agentIp.compare("any") != 0)
         {
-            element.data.agent.host.ip = data->agentIp();
+            element.data.agent.host.ip = agentIp;
         }
 
         // Ex: 2, 4 u 8
@@ -76,6 +77,13 @@ public:
 
         // Ex: AA320
         element.data.observer.serial_number = boardId;
+
+        auto& instancePolicyManager = PolicyHarvesterManager::instance();
+        if (instancePolicyManager.getClusterStatus())
+        {
+            element.data.wazuh.cluster.name = instancePolicyManager.getClusterName();
+            element.data.wazuh.cluster.node = instancePolicyManager.getClusterNodeName();
+        }
 
         return element;
     }

@@ -6,8 +6,7 @@
                 "agent": {
                     "id": "001",
                     "name": "WazuhAgent",
-                    "version": "v4.11.1",
-                    "ip": "any"
+                    "version": "v4.11.1"
                 },
                 "host": {
                     "cpu": {
@@ -23,14 +22,18 @@
                 },
                 "observer": {
                     "serial_number": "ABC123XYZ789"
+                },
+                "wazuh": {
+                    "schema": {
+                        "version": "1.0"
+                    }
                 }
             },
             {
                 "agent": {
                     "id": "002",
                     "name": "WazuhAgent",
-                    "version": "v4.11.1",
-                    "ip": "any"
+                    "version": "v4.11.1"
                 },
                 "host": {
                     "cpu": {
@@ -46,6 +49,11 @@
                 },
                 "observer": {
                     "serial_number": "AAA111BBB222"
+                },
+                "wazuh": {
+                    "schema": {
+                        "version": "1.0"
+                    }
                 }
             }
         ]

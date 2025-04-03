@@ -6,7 +6,6 @@
                 "agent": {
                     "id": "003",
                     "name": "DESKTOP-R8MRG1I",
-                    "ip": "any",
                     "version": "v4.7.5"
                 },
                 "file": {
@@ -20,6 +19,11 @@
                     "path": "c:/users/public/documents/newFile.txt",
                     "size": 4,
                     "uid": "S-1-5-21-3622736456-3345462557-1602827630-1001"
+                },
+                "wazuh": {
+                    "schema": {
+                        "version": "1.0"
+                    }
                 }
             }
         ]

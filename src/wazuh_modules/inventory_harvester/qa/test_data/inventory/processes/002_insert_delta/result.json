@@ -5,7 +5,6 @@
             {
                 "agent": {
                     "id": "001",
-                    "ip": "any",
                     "name": "c0ce505227a4",
                     "version": "v4.11.0"
                 },
@@ -17,9 +16,16 @@
                     "args_count": 2,
                     "command_line": "tail",
                     "name": "tail",
+                    "parent": {
+                        "pid": 9
+                    },
                     "pid": 176,
-                    "ppid": 9,
                     "start": "2025-02-27T15:58:54.000Z"
+                },
+                "wazuh": {
+                    "schema": {
+                        "version": "1.0"
+                    }
                 }
             }
         ]

@@ -5,7 +5,6 @@
             {
                 "agent": {
                     "id": "002",
-                    "ip": "any",
                     "name": "WazuhAgent",
                     "version": "v4.11.0"
                 },
@@ -23,6 +22,11 @@
                 },
                 "observer": {
                     "serial_number": "A320"
+                },
+                "wazuh": {
+                    "schema": {
+                        "version": "1.0"
+                    }
                 }
             }
         ]

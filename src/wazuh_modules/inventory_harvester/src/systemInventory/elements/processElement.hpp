@@ -15,6 +15,7 @@
 #include "../../wcsModel/data.hpp"
 #include "../../wcsModel/inventoryProcessHarvester.hpp"
 #include "../../wcsModel/noData.hpp"
+#include "../policyHarvesterManager.hpp"
 #include "stringHelper.h"
 #include <loggerHelper.h>
 
@@ -56,15 +57,23 @@ public:
 
         if (auto agentIp = data->agentIp(); agentIp.compare("any") != 0)
         {
-            element.data.agent.host.ip = data->agentIp();
+            element.data.agent.host.ip = agentIp;
         }
 
         element.data.process.args = data->processArguments();
+        element.data.process.args_count = element.data.process.args.size();
         element.data.process.command_line = data->processCmdline();
         element.data.process.name = data->processName();
         element.data.process.pid = std::stoull(std::string(processId));
-        // element.data.process.start = data->processStartISO8601();
+        element.data.process.start = data->processStartISO8601();
         element.data.process.parent.pid = data->processParentID();
+
+        auto& instancePolicyManager = PolicyHarvesterManager::instance();
+        if (instancePolicyManager.getClusterStatus())
+        {
+            element.data.wazuh.cluster.name = instancePolicyManager.getClusterName();
+            element.data.wazuh.cluster.node = instancePolicyManager.getClusterNodeName();
+        }
 
         return element;
     }

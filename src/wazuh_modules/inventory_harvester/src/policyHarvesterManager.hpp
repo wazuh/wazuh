@@ -122,6 +122,11 @@ private:
             newPolicy["clusterName"] = UNKNOWN_VALUE;
         }
 
+        if (!newPolicy.contains("clusterEnabled"))
+        {
+            newPolicy["clusterEnabled"] = false;
+        }
+
         return newPolicy;
     }
 
@@ -172,6 +177,7 @@ private:
     void loadConfiguration(const nlohmann::json& configuration)
     {
         m_configuration = configuration;
+        std::cout << "Configuration loaded: " << m_configuration.dump(4) << std::endl;
     }
 
 public:
@@ -259,7 +265,8 @@ public:
      */
     std::string_view getClusterNodeName() const
     {
-        return m_configuration.at("clusterNodeName").get<std::string_view>();
+        static const auto clusterNodeName = m_configuration.at("clusterNodeName").get<std::string_view>();
+        return clusterNodeName;
     }
 
     /**
@@ -269,7 +276,9 @@ public:
      */
     bool getClusterStatus() const
     {
-        return m_configuration.at("clusterEnabled").get<bool>();
+        static const auto clusterEnabled =
+            !m_configuration.contains("clusterEnabled") ? false : m_configuration.at("clusterEnabled").get<bool>();
+        return clusterEnabled;
     }
 
     /**
@@ -279,7 +288,8 @@ public:
      */
     std::string_view getClusterName() const
     {
-        return m_configuration.at("clusterName").get<std::string_view>();
+        static const auto clusterName = m_configuration.at("clusterName").get<std::string_view>();
+        return clusterName;
     }
 
     nlohmann::json buildIndexerConfig(const std::string& name) const
