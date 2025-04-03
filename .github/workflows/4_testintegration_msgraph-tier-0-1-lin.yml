@@ -37,6 +37,8 @@ jobs:
           sed -i 's/https:\/\/%s\/%s/http:\/\/%s\/%s/g' src/wazuh_modules/wm_ms_graph.h
           curl -L http://packages.wazuh.com/utils/m365proxy/m365proxy.tar.gz | \
           tar zvx -C /tmp/
+      - name: "Install a compatible CMake"
+        uses: ./.github/actions/reinstall_cmake
       # Build wazuh agent for linux.
       - name: Build wazuh agent for linux
         run: |
