@@ -59,6 +59,7 @@ async def login_user(user: str, raw: bool = False) -> ConnexionResponse:
         request_type='local_master',
         is_async=True,
         logger=logger,
+        rbac_manager=request.state.rbac_manager if request else None,
     )
     data = raise_if_exc(await dapi.distribute_function())
 
@@ -105,6 +106,7 @@ async def run_as_login(user: str, raw: bool = False) -> ConnexionResponse:
         request_type='local_master',
         is_async=True,
         logger=logger,
+        rbac_manager=request.state.rbac_manager if request else None,
     )
     data = raise_if_exc(await dapi.distribute_function())
 
