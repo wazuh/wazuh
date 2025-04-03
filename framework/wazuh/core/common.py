@@ -164,6 +164,7 @@ def get_context_cache() -> dict:
 
 # ================================================= Context variables ==================================================
 rbac: ContextVar[Dict] = ContextVar('rbac', default={'rbac_mode': 'black'})
+rbac_manager: ContextVar[Any] = ContextVar('rbac_manager', default=None)
 current_user: ContextVar[str] = ContextVar('current_user', default='')
 broadcast: ContextVar[bool] = ContextVar('broadcast', default=False)
 cluster_nodes: ContextVar[list] = ContextVar('cluster_nodes', default=list())

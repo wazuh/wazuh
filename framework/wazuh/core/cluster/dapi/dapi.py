@@ -25,6 +25,7 @@ from wazuh.core.cluster import common as c_common
 from wazuh.core.cluster import local_client
 from wazuh.core.config.client import CentralizedConfig
 from wazuh.core.exception import WazuhClusterError, WazuhError, WazuhException
+from wazuh.core.rbac import RBACManager
 
 pools = common.mp_pools.get()
 
@@ -54,6 +55,7 @@ class DistributedAPI:
         nodes: list = None,
         api_timeout: int = None,
         remove_denied_nodes: bool = False,
+        rbac_manager: RBACManager = None,
     ):
         """Class constructor.
 
@@ -93,6 +95,8 @@ class DistributedAPI:
             Timeout set in source API for the request
         remove_denied_nodes : bool
             Whether to remove denied (RBAC) nodes from response's failed items or not.
+        rbac_manager : RBACManager
+            RBAC manager.
         """
         self.logger = logger
         self.f = f
@@ -120,6 +124,7 @@ class DistributedAPI:
         api_request_timeout = CentralizedConfig.get_management_api_config().intervals.request_timeout
         self.api_request_timeout = max(api_timeout, api_request_timeout) if api_timeout else api_request_timeout
         self.remove_denied_nodes = remove_denied_nodes
+        self.rbac_manager = rbac_manager
 
     def debug_log(self, message):
         """Use debug or debug2 depending on the log type.
@@ -238,13 +243,14 @@ class DistributedAPI:
             raise exception.WazuhInternalError(1017, extra_message=extra_info)
 
     @staticmethod
-    def run_local(f, f_kwargs, rbac_permissions, broadcasting, nodes, current_user, origin_module):
+    def run_local(f, f_kwargs, rbac_permissions, broadcasting, nodes, current_user, origin_module, rbac_manager):
         """Run framework SDK function locally in another process."""
         common.rbac.set(rbac_permissions)
         common.broadcast.set(broadcasting)
         common.cluster_nodes.set(nodes)
         common.current_user.set(current_user)
         common.origin_module.set(origin_module)
+        common.rbac_manager.set(rbac_manager)
         data = f(**f_kwargs)
         common.reset_context_cache()
         return data
@@ -280,6 +286,7 @@ class DistributedAPI:
                         self.nodes,
                         self.current_user,
                         self.origin_module,
+                        self.rbac_manager,
                     )
 
                 else:
@@ -304,6 +311,7 @@ class DistributedAPI:
                             self.nodes,
                             self.current_user,
                             self.origin_module,
+                            self.rbac_manager,
                         ),
                     )
                 try:
