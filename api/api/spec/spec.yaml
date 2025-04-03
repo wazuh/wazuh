@@ -41,7 +41,7 @@ info:
     <SecurityDefinitions />
 
   version: '4.13.0'
-  x-revision: '41300'
+  x-revision: 'alpha0'
   title: 'Wazuh API REST'
   license:
     name: 'GPL 2.0'
@@ -1333,9 +1333,8 @@ components:
           type: string
           description: "API version in the manager"
         revision:
-          type: integer
+          type: string
           description: "API revision"
-          format: int32
         license_name:
           type: string
           description: "API license name"
@@ -4385,6 +4384,12 @@ components:
           description: "Enable features under development"
           type: boolean
           default: false
+        authentication_pool_size:
+          description: "Number of processes dedicated to processing authentication requests"
+          type: integer
+          minimum: 1
+          maximum: 50
+          default: 2
 
     LastScan:
       type: object
@@ -7264,7 +7269,7 @@ paths:
               example:
                 title: "Wazuh API"
                 api_version: "v4.5.0"
-                revision: '40100'
+                revision: 'alpha1'
                 license_name: "GPL 2.0"
                 license_url: "https://github.com/wazuh/wazuh/blob/v4.13.0/LICENSE"
                 hostname: "wazuh"
@@ -10064,6 +10069,7 @@ paths:
                         drop_privileges: true
                         experimental_features: false
                         max_upload_size: 10485760
+                        authentication_pool_size: 2
                         intervals:
                           request_timeout: 10
                         https:
@@ -10110,6 +10116,7 @@ paths:
                         drop_privileges: true
                         experimental_features: false
                         max_upload_size: 10485760
+                        authentication_pool_size: 2
                         intervals:
                           request_timeout: 10
                         https:
@@ -10156,6 +10163,7 @@ paths:
                         drop_privileges: true
                         experimental_features: false
                         max_upload_size: 10485760
+                        authentication_pool_size: 2
                         intervals:
                           request_timeout: 10
                         https:
@@ -12914,6 +12922,7 @@ paths:
                         drop_privileges: true
                         experimental_features: false
                         max_upload_size: 10485760
+                        authentication_pool_size: 2
                         intervals:
                           request_timeout: 10
                         https:

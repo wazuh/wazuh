@@ -164,7 +164,7 @@ def test_DistributedAPI_distribute_function(api_request, request_type, node, exp
 
     # Mock check_cluster_status and get_node
     with patch('wazuh.core.cluster.dapi.dapi.check_cluster_status', return_value=cluster_enabled):
-        with patch('wazuh.core.cluster.cluster.get_node', return_value={'type': node}):
+        with patch('wazuh.core.cluster.dapi.dapi.node_info', {'type': node}):
             dapi = DistributedAPI(f=api_request, logger=logger, request_type=request_type, f_kwargs=f_kwargs)
             data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
             assert data.render()['result'] == expected
@@ -373,10 +373,10 @@ def test_DistributedAPI_get_client(loop_mock):
     assert dapi.get_client()
 
 
-@patch('wazuh.core.cluster.cluster.get_node', return_value={'type': 'worker'})
+@patch('wazuh.core.cluster.dapi.dapi.node_info', {'type': 'worker'})
 @patch('wazuh.core.cluster.dapi.dapi.check_cluster_status', return_value=True)
 @patch('wazuh.core.cluster.local_client.LocalClient.execute', return_value='invalid_json')
-def test_DistributedAPI_remote_request_errors(mock_client_execute, mock_check_cluster_status, mock_get_node):
+def test_DistributedAPI_remote_request_errors(mock_client_execute, mock_check_cluster_status):
     """Check the behaviour when the execute_remote_request function raised an error"""
     # Test execute_remote_request when it raises a JSONDecodeError
     dapi_kwargs = {'f': manager.status, 'logger': logger, 'request_type': 'local_master'}
@@ -475,7 +475,7 @@ def test_DistributedAPI_get_solver_node(mock_cluster_status, mock_agents_overvie
     common.cluster_nodes.set(['master'])
 
     with patch('wazuh.core.cluster.dapi.dapi.get_nodes_info', new=AsyncMock(return_value=nodes_info_result)):
-        with patch('wazuh.core.cluster.cluster.get_node', return_value={'type': 'master', 'node': 'unknown'}):
+        with patch('wazuh.core.cluster.dapi.dapi.node_info', {'type': 'master', 'node': 'unknown'}):
             dapi_kwargs = {'f': manager.status, 'logger': logger, 'request_type': 'distributed_master',
                            'f_kwargs': {'agent_list': ['001', '002']}, 'nodes': ['master']}
             raise_if_exc_routine(dapi_kwargs=dapi_kwargs)
@@ -531,8 +531,8 @@ def test_DistributedAPI_check_wazuh_status(status_mock, api_request):
     'restarting',
     'stopped'
 ])
-@patch('wazuh.core.cluster.cluster.get_node', return_value={'node': 'random_node'})
-def test_DistributedAPI_check_wazuh_status_exception(node_info_mock, status_value):
+@patch('wazuh.core.cluster.dapi.dapi.node_info', {'node': 'random_node'})
+def test_DistributedAPI_check_wazuh_status_exception(status_value):
     """Test exceptions from `check_wazuh_status` method from class DistributedAPI."""
     statuses = {process: status_value for process in sorted(get_manager_status())}
     with patch('wazuh.core.manager.get_manager_status',

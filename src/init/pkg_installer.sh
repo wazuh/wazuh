@@ -56,7 +56,7 @@ elif [[ "$OS" == "Linux" ]]; then
         fi
     elif find ./var/upgrade/ -mindepth 1 -maxdepth 1 -type f -name "*.deb" | read; then
         if command -v dpkg >/dev/null 2>&1; then
-            dpkg -i ./var/upgrade/wazuh-agent* >> ./logs/upgrade.log 2>&1
+            dpkg -i --force-confdef ./var/upgrade/wazuh-agent* >> ./logs/upgrade.log 2>&1
         else
             echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade failed. DEB package found but dpkg command not found." >> ./logs/upgrade.log
             echo -ne "2" > ./var/upgrade/upgrade_result

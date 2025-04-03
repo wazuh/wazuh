@@ -15,6 +15,9 @@
 #include "time_op.h"
 #include "db/include/db.h"
 #include "registry/registry.h"
+#ifdef __linux__
+#include "ebpf/include/ebpf_whodata.h"
+#endif /* __linux__ */
 
 #ifdef WAZUH_UNIT_TESTING
 #ifdef WIN32
@@ -333,6 +336,7 @@ static void transaction_callback(ReturnTypeCallback resultType, const cJSON* res
     }
 
     if (configuration = fim_configuration_directory(path), configuration == NULL) {
+        mdebug2(FIM_CONFIGURATION_NOTFOUND, "file", path);
         goto end;
     }
 
@@ -621,6 +625,10 @@ time_t fim_scan() {
     }
     audit_queue_full_reported = 0;
 
+#ifdef __linux__
+    ebpf_kernel_queue_full_reported = 0;
+#endif  /* __linux__ */
+
     return end_of_scan;
 }
 
@@ -646,6 +654,7 @@ void fim_checker(const char *path,
 
     configuration = fim_configuration_directory(path);
     if (configuration == NULL) {
+        mdebug2(FIM_CONFIGURATION_NOTFOUND, "file", path);
         return;
     }
 
@@ -1024,6 +1033,7 @@ void fim_process_missing_entry(char * pathname, fim_event_mode mode, whodata_evt
 
     configuration = fim_configuration_directory(pathname);
     if (NULL == configuration) {
+        mdebug2(FIM_CONFIGURATION_NOTFOUND, "file", pathname);
         return;
     }
 
@@ -1192,10 +1202,6 @@ directory_t *fim_configuration_directory(const char *path) {
         }
 
         os_free(real_path);
-    }
-
-    if (dir == NULL) {
-        mdebug2(FIM_CONFIGURATION_NOTFOUND, "file", path);
     }
 
     return dir;
@@ -1615,20 +1621,20 @@ cJSON * fim_json_compare_attrs(const fim_file_data * old_data, const fim_file_da
 cJSON * fim_audit_json(const whodata_evt * w_evt) {
     cJSON * fim_audit = cJSON_CreateObject();
 
-    cJSON_AddStringToObject(fim_audit, "user_id", w_evt->user_id);
-    cJSON_AddStringToObject(fim_audit, "user_name", w_evt->user_name);
-    cJSON_AddStringToObject(fim_audit, "process_name", w_evt->process_name);
+    if (w_evt->user_id) cJSON_AddStringToObject(fim_audit, "user_id", w_evt->user_id);
+    if (w_evt->user_name) cJSON_AddStringToObject(fim_audit, "user_name", w_evt->user_name);
+    if (w_evt->process_name) cJSON_AddStringToObject(fim_audit, "process_name", w_evt->process_name);
     cJSON_AddNumberToObject(fim_audit, "process_id", w_evt->process_id);
 #ifndef WIN32
-    cJSON_AddStringToObject(fim_audit, "cwd", w_evt->cwd);
-    cJSON_AddStringToObject(fim_audit, "group_id", w_evt->group_id);
-    cJSON_AddStringToObject(fim_audit, "group_name", w_evt->group_name);
-    cJSON_AddStringToObject(fim_audit, "audit_uid", w_evt->audit_uid);
-    cJSON_AddStringToObject(fim_audit, "audit_name", w_evt->audit_name);
-    cJSON_AddStringToObject(fim_audit, "effective_uid", w_evt->effective_uid);
-    cJSON_AddStringToObject(fim_audit, "effective_name", w_evt->effective_name);
-    cJSON_AddStringToObject(fim_audit, "parent_name", w_evt->parent_name);
-    cJSON_AddStringToObject(fim_audit, "parent_cwd", w_evt->parent_cwd);
+    if (w_evt->cwd) cJSON_AddStringToObject(fim_audit, "cwd", w_evt->cwd);
+    if (w_evt->group_id) cJSON_AddStringToObject(fim_audit, "group_id", w_evt->group_id);
+    if (w_evt->group_name) cJSON_AddStringToObject(fim_audit, "group_name", w_evt->group_name);
+    if (w_evt->audit_uid) cJSON_AddStringToObject(fim_audit, "audit_uid", w_evt->audit_uid);
+    if (w_evt->audit_name) cJSON_AddStringToObject(fim_audit, "audit_name", w_evt->audit_name);
+    if (w_evt->effective_uid) cJSON_AddStringToObject(fim_audit, "effective_uid", w_evt->effective_uid);
+    if (w_evt->effective_name) cJSON_AddStringToObject(fim_audit, "effective_name", w_evt->effective_name);
+    if (w_evt->parent_name) cJSON_AddStringToObject(fim_audit, "parent_name", w_evt->parent_name);
+    if (w_evt->parent_cwd) cJSON_AddStringToObject(fim_audit, "parent_cwd", w_evt->parent_cwd);
     cJSON_AddNumberToObject(fim_audit, "ppid", w_evt->ppid);
 #endif
 
@@ -1792,7 +1798,7 @@ void update_wildcards_config() {
             }
 #endif
 #if ENABLE_AUDIT
-            if (FIM_MODE(dir_it->options) == FIM_WHODATA) {
+            if ((FIM_MODE(dir_it->options) == FIM_WHODATA) && syscheck.whodata_provider == AUDIT_PROVIDER) {
                 remove_audit_rule_syscheck(dir_it->path);
             }
 #endif

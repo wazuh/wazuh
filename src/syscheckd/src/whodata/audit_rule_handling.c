@@ -103,48 +103,47 @@ int fim_rules_initial_load() {
     OSList_foreach(node_it, syscheck.directories) {
         dir_it = node_it->data;
         // Check if dir[i] is set in whodata mode
-        if ((dir_it->options & WHODATA_ACTIVE) == 0) {
-            continue; // LCOV_EXCL_LINE
-        }
+        if ((dir_it->options & WHODATA_ACTIVE)) {
 
-        directory = fim_get_real_path(dir_it);
-        if (*directory == '\0') {
-            free(directory); // LCOV_EXCL_LINE
-            continue; // LCOV_EXCL_LINE
-        }
-
-        // Add whodata directories until max_audit_entries is reached.
-        if (rules_added >= syscheck.max_audit_entries) {
-            merror(FIM_ERROR_WHODATA_MAXNUM_WATCHES, directory, syscheck.max_audit_entries);
-            free(directory);
-            break;
-        }
-
-        _add_whodata_directory(directory);
-
-        switch (search_audit_rule(directory, WHODATA_PERMS, AUDIT_KEY)) {
-        // The rule is not in audit_rule_list
-        case 0:
-            if (retval = audit_add_rule(directory, WHODATA_PERMS, AUDIT_KEY), retval > 0) {
-                mdebug2(FIM_AUDIT_NEWRULE, directory);
-                rules_added++;
-            } else if (retval != -EEXIST) {
-                mwarn(FIM_WARN_WHODATA_ADD_RULE, directory);
-            } else {
-                mdebug2(FIM_AUDIT_ALREADY_ADDED, directory);
+            directory = fim_get_real_path(dir_it);
+            if (*directory == '\0') {
+                free(directory); // LCOV_EXCL_LINE
+                continue; // LCOV_EXCL_LINE
             }
-            break;
 
-        case 1:
-            mdebug2(FIM_AUDIT_RULEDUP, directory);
-            break;
+            // Add whodata directories until max_audit_entries is reached.
+            if (rules_added >= syscheck.max_audit_entries) {
+                merror(FIM_ERROR_WHODATA_MAXNUM_WATCHES, directory, syscheck.max_audit_entries);
+                free(directory);
+                break;
+            }
 
-        default:
-            merror(FIM_ERROR_WHODATA_CHECK_RULE);
-            break;
+            _add_whodata_directory(directory);
+
+            switch (search_audit_rule(directory, WHODATA_PERMS, AUDIT_KEY)) {
+                // The rule is not in audit_rule_list
+                case 0:
+                if (retval = audit_add_rule(directory, WHODATA_PERMS, AUDIT_KEY), retval > 0) {
+                    mdebug2(FIM_AUDIT_NEWRULE, directory);
+                    rules_added++;
+                } else if (retval != -EEXIST) {
+                    mwarn(FIM_WARN_WHODATA_ADD_RULE, directory);
+                } else {
+                    mdebug2(FIM_AUDIT_ALREADY_ADDED, directory);
+                }
+                break;
+
+                case 1:
+                mdebug2(FIM_AUDIT_RULEDUP, directory);
+                break;
+
+                default:
+                merror(FIM_ERROR_WHODATA_CHECK_RULE);
+                break;
+            }
+            // real_path can't be NULL
+            free(directory);
         }
-        // real_path can't be NULL
-        free(directory);
     }
     w_mutex_unlock(&rules_mutex);
     w_rwlock_unlock(&syscheck.directories_lock);
