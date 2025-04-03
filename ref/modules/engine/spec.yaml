@@ -15,6 +15,12 @@ tags:
     description: "Operations for managing catalog resources"
   - name: Policy
     description: "Operations for managing security policies"
+  - name: Router
+    description: "Operations for managing environments and routing"
+  - name: KVDB
+    description: "Operations for managing key-value databases"
+  - name: Tester
+    description: "Operations for testing and validating policies"
 
 #################################################################################
 # Paths
@@ -569,6 +575,671 @@ paths:
         "500":
           $ref: "#/components/responses/InternalServerError_500"
 
+  ################################
+  # Router
+  ################################
+  /router/route/post:
+    post:
+      tags:
+        - Router
+      summary: Create a new route
+      description: |
+        This endpoint allows the creation of a new route in the Wazuh Engine API.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RoutePost_Request"
+      responses:
+        "200":
+          $ref: "#/components/responses/GenericSuccess_200"
+        "400":
+          $ref: "#/components/responses/BadRequest_400"
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+
+  /router/route/delete:
+    post:
+      tags:
+        - Router
+      summary: Delete a route
+      description: |
+        This endpoint allows deleting a specific route in the Wazuh Engine API.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RouteDelete_Request"
+      responses:
+        "200":
+          $ref: "#/components/responses/GenericSuccess_200"
+        "400":
+          $ref: "#/components/responses/BadRequest_400"
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+
+  /router/route/get:
+    post:
+      tags:
+        - Router
+      summary: Retrieve a route
+      description: |
+        This endpoint allows retrieving detailed information about a specific route.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RouteGet_Request"
+      responses:
+        "200":
+          description: Successfully retrieved route
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RouteGet_Response"
+              example:
+                status: OK
+                error: null
+                route:
+                  name: "example-route"
+                  policy: "policy/example/0"
+                  filter: "filter/example/0"
+                  priority: 10
+                  description: "Example route"
+                  policy_sync: UPDATED
+                  entry_status: ENABLED
+                  uptime: 3600
+        "400":
+          $ref: "#/components/responses/BadRequest_400"
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+
+  /router/route/reload:
+    post:
+      tags:
+        - Router
+      summary: Reload a route
+      description: |
+        This endpoint allows reloading a specific route in the Wazuh Engine API.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RouteReload_Request"
+      responses:
+        "200":
+          $ref: "#/components/responses/GenericSuccess_200"
+        "400":
+          $ref: "#/components/responses/BadRequest_400"
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+
+  /router/route/patchPriority:
+    post:
+      tags:
+        - Router
+      summary: Update route priority
+      description: |
+        This endpoint allows updating the priority of a specific route.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RoutePatchPriority_Request"
+      responses:
+        "200":
+          $ref: "#/components/responses/GenericSuccess_200"
+        "400":
+          $ref: "#/components/responses/BadRequest_400"
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+
+  /router/table/get:
+    post:
+      tags:
+        - Router
+      summary: Retrieve all routes
+      description: |
+        This endpoint retrieves the list of existing routes in the Wazuh Engine API.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EmptyRequest"
+      responses:
+        "200":
+          description: Successfully retrieved routes
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TableGet_Response"
+              example:
+                status: OK
+                error: null
+                routes:
+                  - name: "example-route"
+                    policy: "policy/example/0"
+                    filter: "filter/example/0"
+                    priority: 10
+                    description: "Example route"
+                    policy_sync: UPDATED
+                    entry_status: ENABLED
+                    uptime: 3600
+        "400":
+          $ref: "#/components/responses/BadRequest_400"
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+
+  /router/queue/post:
+    post:
+      tags:
+        - Router
+      summary: Send an event to the router queue
+      description: |
+        This endpoint allows sending a Wazuh event to the router queue.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/QueuePost_Request"
+      responses:
+        "200":
+          $ref: "#/components/responses/GenericSuccess_200"
+        "400":
+          $ref: "#/components/responses/BadRequest_400"
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+
+  /router/eps/update:
+    post:
+      tags:
+        - Router
+      summary: Update EPS limiter settings
+      description: |
+        This endpoint allows updating the EPS (Events Per Second) limiter settings.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EpsUpdate_Request"
+      responses:
+        "200":
+          $ref: "#/components/responses/GenericSuccess_200"
+        "400":
+          $ref: "#/components/responses/BadRequest_400"
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+
+  /router/eps/get:
+    post:
+      tags:
+        - Router
+      summary: Retrieve EPS limiter settings
+      description: |
+        This endpoint retrieves the current EPS limiter settings.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EmptyRequest"
+      responses:
+        "200":
+          description: Successfully retrieved EPS settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EpsGet_Response"
+              example:
+                status: OK
+                error: null
+                eps: 100
+                refresh_interval: 60
+                enabled: true
+        "400":
+          $ref: "#/components/responses/BadRequest_400"
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+
+  /router/eps/activate:
+    post:
+      tags:
+        - Router
+      summary: Activate EPS limiter
+      description: |
+        This endpoint activates the EPS limiter in the system.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EmptyRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/GenericSuccess_200"
+        "400":
+          $ref: "#/components/responses/BadRequest_400"
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+
+  /router/eps/deactivate:
+    post:
+      tags:
+        - Router
+      summary: Deactivate EPS limiter
+      description: |
+        This endpoint deactivates the EPS limiter in the system.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EmptyRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/GenericSuccess_200"
+        "400":
+          $ref: "#/components/responses/BadRequest_400"
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+
+  ################################
+  # KVDB
+  ################################
+  /kvdb/db/get:
+    post:
+      tags:
+        - KVDB
+      summary: Get an entry from a database
+      description: |
+        This endpoint retrieves a specific entry from a key-value database.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/KVDBGet_Request"
+            example:
+              name: "example-db"
+              key: "example-key"
+      responses:
+        "200":
+          description: Successfully retrieved entry
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/KVDBGet_Response"
+              example:
+                status: OK
+                error: null
+                value: "value"
+        "400":
+          $ref: "#/components/responses/BadRequest_400"
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+
+  /kvdb/db/search:
+    post:
+      tags:
+        - KVDB
+      summary: Search entries in a database
+      description: |
+        This endpoint searches for entries in a key-value database based on a prefix.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/KVDBSearch_Request"
+            example:
+              name: "example-db"
+              prefix: "example-prefix"
+              page: 1
+              records: 10
+      responses:
+        "200":
+          description: Successfully retrieved entries
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/KVDBSearch_Response"
+              example:
+                status: OK
+                error: null
+                entries:
+                  - key: "example-key1"
+                    value:
+                      field1: "value1"
+                      field2: 123
+                  - key: "example-key2"
+                    value: "value3"
+        "400":
+          $ref: "#/components/responses/BadRequest_400"
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+
+  /kvdb/db/delete:
+    post:
+      tags:
+        - KVDB
+      summary: Delete an entry from a database
+      description: |
+        This endpoint deletes a specific entry from a key-value database.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/KVDBDelete_Request"
+            example:
+              name: "example-db"
+              key: "example-key"
+      responses:
+        "200":
+          $ref: "#/components/responses/GenericSuccess_200"
+        "400":
+          $ref: "#/components/responses/BadRequest_400"
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+
+  /kvdb/db/put:
+    post:
+      tags:
+        - KVDB
+      summary: Insert or update an entry in a database
+      description: |
+        This endpoint inserts or updates a specific entry in a key-value database.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/KVDBPut_Request"
+            example:
+              name: "example-db"
+              entry:
+                key: "example-key"
+                value:
+                  field1: "value1"
+                  field2: 123
+      responses:
+        "200":
+          $ref: "#/components/responses/GenericSuccess_200"
+        "400":
+          $ref: "#/components/responses/BadRequest_400"
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+
+  /kvdb/manager/get:
+    post:
+      tags:
+        - KVDB
+      summary: List all databases
+      description: |
+        This endpoint retrieves a list of all key-value databases.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/KVDBManagerGet_Request"
+            example:
+              must_be_loaded: true
+              filter_by_name: "example-db"
+      responses:
+        "200":
+          description: Successfully retrieved databases
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/KVDBManagerGet_Response"
+              example:
+                status: OK
+                error: null
+                dbs:
+                  - "example-db1"
+                  - "example-db2"
+        "400":
+          $ref: "#/components/responses/BadRequest_400"
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+
+  /kvdb/manager/post:
+    post:
+      tags:
+        - KVDB
+      summary: Create a new database
+      description: |
+        This endpoint creates a new key-value database.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/KVDBManagerPost_Request"
+            example:
+              name: "example-db"
+              path: "/path/to/database.json"
+      responses:
+        "200":
+          $ref: "#/components/responses/GenericSuccess_200"
+        "400":
+          $ref: "#/components/responses/BadRequest_400"
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+
+  /kvdb/manager/delete:
+    post:
+      tags:
+        - KVDB
+      summary: Delete a database
+      description: |
+        This endpoint deletes a specific key-value database.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/KVDBManagerDelete_Request"
+            example:
+              name: "example-db"
+      responses:
+        "200":
+          $ref: "#/components/responses/GenericSuccess_200"
+        "400":
+          $ref: "#/components/responses/BadRequest_400"
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+
+  /kvdb/manager/dump:
+    post:
+      tags:
+        - KVDB
+      summary: Dump all entries from a database
+      description: |
+        This endpoint retrieves all entries from a specific key-value database.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/KVDBManagerDump_Request"
+            example:
+              name: "example-db"
+              page: 1
+              records: 10
+      responses:
+        "200":
+          description: Successfully retrieved entries
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/KVDBManagerDump_Response"
+              example:
+                status: OK
+                error: null
+                entries:
+                  - key: "example-key1"
+                    value:
+                      field1: "value1"
+                      field2: 123
+                  - key: "example-key2"
+                    value: "value3"
+
+        "400":
+          $ref: "#/components/responses/BadRequest_400"
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+
+  ################################
+  # Tester
+  ################################
+  /tester/session/post:
+    post:
+      tags:
+        - Tester
+      summary: Create a new tester session
+      description: |
+        This endpoint allows creating a new tester session.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TesterSessionPost_Request"
+      responses:
+        "200":
+          $ref: "#/components/responses/GenericSuccess_200"
+        "400":
+          $ref: "#/components/responses/BadRequest_400"
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+
+  /tester/session/delete:
+    post:
+      tags:
+        - Tester
+      summary: Delete a tester session
+      description: |
+        This endpoint allows deleting a specific tester session.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TesterSessionDelete_Request"
+      responses:
+        "200":
+          $ref: "#/components/responses/GenericSuccess_200"
+        "400":
+          $ref: "#/components/responses/BadRequest_400"
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+
+  /tester/session/get:
+    post:
+      tags:
+        - Tester
+      summary: Retrieve a tester session
+      description: |
+        This endpoint retrieves details of a specific tester session.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TesterSessionGet_Request"
+      responses:
+        "200":
+          description: Successfully retrieved session
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TesterSessionGet_Response"
+        "400":
+          $ref: "#/components/responses/BadRequest_400"
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+
+  /tester/session/reload:
+    post:
+      tags:
+        - Tester
+      summary: Reload a tester session
+      description: |
+        This endpoint reloads a specific tester session.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TesterSessionReload_Request"
+      responses:
+        "200":
+          $ref: "#/components/responses/GenericSuccess_200"
+        "400":
+          $ref: "#/components/responses/BadRequest_400"
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+
+  /tester/run/post:
+    post:
+      tags:
+        - Tester
+      summary: Run a test in a session
+      description: |
+        This endpoint allows running a test in a specific tester session.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TesterRunPost_Request"
+      responses:
+        "200":
+          description: Successfully ran the test
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TesterRunPost_Response"
+        "400":
+          $ref: "#/components/responses/BadRequest_400"
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+
+  /tester/table/get:
+    post:
+      tags:
+        - Tester
+      summary: Retrieve all tester sessions
+      description: |
+        This endpoint retrieves a list of all tester sessions.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EmptyRequest"
+      responses:
+        "200":
+          description: Successfully retrieved sessions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TesterTableGet_Response"
+        "400":
+          $ref: "#/components/responses/BadRequest_400"
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+
 #################################################################################
 # Components
 #################################################################################
@@ -830,6 +1501,465 @@ components:
               items:
                 $ref: "#/components/schemas/PolicyName"
               description: "List of all policies in the store"
+
+    #################################
+    # Router
+    #################################
+    RouteState:
+      type: string
+      enum:
+        - STATE_UNKNOWN
+        - DISABLED
+        - ENABLED
+      description: "State of the route"
+
+    PolicySync:
+      type: string
+      enum:
+        - SYNC_UNKNOWN
+        - UPDATED
+        - OUTDATED
+        - ERROR
+      description: "Whether the loaded policy is up to date or not with the catalog"
+
+    FilterName:
+      type: string
+      description: "Name of the filter"
+      example: "filter/example/0"
+
+    RouterEntry:
+      type: object
+      properties:
+        name:
+          type: string
+          description: "Name of the route"
+        policy:
+          $ref: "#/components/schemas/PolicyName"
+        filter:
+          $ref: "#/components/schemas/FilterName"
+        priority:
+          type: integer
+          description: "Priority of the route"
+        description:
+          type: string
+          description: "Description of the route"
+        policy_sync:
+          $ref: "#/components/schemas/PolicySync"
+        entry_status:
+          $ref: "#/components/schemas/RouteState"
+        uptime:
+          type: integer
+          description: "Uptime of the route in seconds"
+
+    RoutePost_Request:
+      type: object
+      properties:
+        name:
+          type: string
+          description: "Name of the route"
+        policy:
+          $ref: "#/components/schemas/PolicyName"
+        filter:
+          $ref: "#/components/schemas/FilterName"
+        priority:
+          type: integer
+          description: "Priority of the route"
+        description:
+          type: string
+          description: "Description of the route"
+
+    RouteDelete_Request:
+      type: object
+      properties:
+        name:
+          type: string
+          description: "Name of the route"
+
+    RouteGet_Request:
+      type: object
+      properties:
+        name:
+          type: string
+          description: "Name of the route"
+
+    RouteGet_Response:
+      allOf:
+        - $ref: "#/components/schemas/Response"
+        - type: object
+          properties:
+            route:
+              $ref: "#/components/schemas/RouterEntry"
+              description: "Details of the route"
+
+    RouteReload_Request:
+      type: object
+      properties:
+        name:
+          type: string
+          description: "Name of the route"
+
+    RoutePatchPriority_Request:
+      type: object
+      properties:
+        name:
+          type: string
+          description: "Name of the route"
+        priority:
+          type: integer
+          description: "New priority of the route"
+
+    TableGet_Response:
+      allOf:
+        - $ref: "#/components/schemas/Response"
+        - type: object
+          properties:
+            routes:
+              type: array
+              items:
+                $ref: "#/components/schemas/RouterEntry"
+              description: "List of all routes in the router"
+
+    QueuePost_Request:
+      type: object
+      properties:
+        wazuh_event:
+          type: string
+          description: "Wazuh event to be processed"
+
+    EpsUpdate_Request:
+      type: object
+      properties:
+        eps:
+          type: integer
+          description: "New EPS (Events Per Second) limit value for the Engine"
+        refresh_interval:
+          type: integer
+          description: "Interval in seconds to refresh the EPS limit"
+
+    EpsGet_Response:
+      allOf:
+        - $ref: "#/components/schemas/Response"
+        - type: object
+          properties:
+            eps:
+              type: integer
+              description: "Current EPS (Events Per Second) limit value for the Engine"
+            refresh_interval:
+              type: integer
+              description: "Interval in seconds to refresh the EPS limit"
+            enabled:
+              type: boolean
+              description: "Whether the EPS limit is enabled or not"
+
+    #################################
+    # KVDB
+    #################################
+    KVDBName:
+      type: string
+      description: "Name of the database"
+
+    KVDBKey:
+      type: string
+      description: "Key of the entry"
+
+    KVDBValue:
+      description: "Value of the key"
+      oneOf:
+        - type: "string"
+          example: "example-value"
+        - type: "number"
+          example: 123.45
+        - type: "integer"
+          example: 123
+        - type: "boolean"
+          example: true
+        - type: "object"
+          additionalProperties: true
+          example:
+            field1: "value1"
+            field2: 123
+        - type: "array"
+          items: {}
+          example:
+            - "value1"
+            - "value2"
+
+    KVDBEntry:
+      type: object
+      properties:
+        key:
+          $ref: "#/components/schemas/KVDBKey"
+        value:
+          $ref: "#/components/schemas/KVDBValue"
+
+    KVDBGet_Request:
+      type: object
+      properties:
+        name:
+          $ref: "#/components/schemas/KVDBName"
+        key:
+          $ref: "#/components/schemas/KVDBKey"
+
+    KVDBGet_Response:
+      allOf:
+        - $ref: "#/components/schemas/Response"
+        - type: object
+          properties:
+            value:
+              $ref: "#/components/schemas/KVDBValue"
+
+    KVDBSearch_Request:
+      type: object
+      properties:
+        name:
+          $ref: "#/components/schemas/KVDBName"
+        prefix:
+          type: string
+          description: "Prefix of the entries to search"
+          example: "example-prefix"
+        page:
+          type: integer
+          description: "Page number for pagination"
+          example: 1
+        records:
+          type: integer
+          description: "Number of records per page"
+          example: 10
+
+    KVDBSearch_Response:
+      allOf:
+        - $ref: "#/components/schemas/Response"
+        - type: object
+          properties:
+            entries:
+              type: array
+              items:
+                $ref: "#/components/schemas/KVDBEntry"
+              description: "List of entries if status is OK"
+
+    KVDBDelete_Request:
+      type: object
+      properties:
+        name:
+          $ref: "#/components/schemas/KVDBName"
+        key:
+          $ref: "#/components/schemas/KVDBKey"
+
+    KVDBPut_Request:
+      type: object
+      properties:
+        name:
+          $ref: "#/components/schemas/KVDBName"
+        entry:
+          $ref: "#/components/schemas/KVDBEntry"
+
+    KVDBManagerGet_Request:
+      type: object
+      properties:
+        must_be_loaded:
+          type: boolean
+          description: "If true, only the loaded databases will be returned"
+          example: true
+        filter_by_name:
+          $ref: "#/components/schemas/KVDBName"
+
+    KVDBManagerGet_Response:
+      allOf:
+        - $ref: "#/components/schemas/Response"
+        - type: object
+          properties:
+            dbs:
+              type: array
+              items:
+                $ref: "#/components/schemas/KVDBName"
+              description: "List of database names if status is OK"
+
+    KVDBManagerPost_Request:
+      type: object
+      properties:
+        name:
+          $ref: "#/components/schemas/KVDBName"
+        path:
+          type: string
+          description: "Path of the JSON file used to create the database"
+          example: "/path/to/database.json"
+
+    KVDBManagerDelete_Request:
+      type: object
+      properties:
+        name:
+          $ref: "#/components/schemas/KVDBName"
+
+    KVDBManagerDump_Request:
+      type: object
+      properties:
+        name:
+          $ref: "#/components/schemas/KVDBName"
+        page:
+          type: integer
+          description: "Page number for pagination"
+          example: 1
+        records:
+          type: integer
+          description: "Number of records per page"
+          example: 10
+
+    KVDBManagerDump_Response:
+      allOf:
+        - $ref: "#/components/schemas/Response"
+        - type: object
+          properties:
+            entries:
+              type: array
+              items:
+                $ref: "#/components/schemas/KVDBEntry"
+              description: "List of entries if status is OK"
+    #################################
+    # Tester
+    #################################
+    TesterSessionName:
+      type: string
+      description: "Name of the session"
+
+    TesterLifetime:
+      type: integer
+      description: "Lifetime of the session in seconds"
+
+    TesterDescription:
+      type: string
+      description: "Optional description of the session"
+      nullable: true
+
+    TesterSessionPost:
+      type: object
+      properties:
+        name:
+          $ref: "#/components/schemas/TesterSessionName"
+        policy:
+          $ref: "#/components/schemas/PolicyName"
+        lifetime:
+          $ref: "#/components/schemas/TesterLifetime"
+        description:
+          $ref: "#/components/schemas/TesterDescription"
+
+    TesterSession:
+      type: object
+      properties:
+        name:
+          $ref: "#/components/schemas/TesterSessionName"
+        policy:
+          $ref: "#/components/schemas/PolicyName"
+        lifetime:
+          $ref: "#/components/schemas/TesterLifetime"
+        description:
+          $ref: "#/components/schemas/TesterDescription"
+        policy_sync:
+          $ref: "#/components/schemas/PolicySync"
+        entry_status:
+          $ref: "#/components/schemas/RouteState"
+        last_use:
+          type: integer
+          description: "Last use of the session in seconds since epoch"
+
+    TesterResult:
+      type: object
+      properties:
+        output:
+          type: string
+          description: "JSON output of the event"
+        asset_traces:
+          type: array
+          items:
+            type: object
+            properties:
+              asset:
+                $ref: "#/components/schemas/ResourceName"
+              success:
+                type: boolean
+                description: "If the asset was successfully decoded"
+              traces:
+                type: array
+                items:
+                  type: string
+                description: "Traces of the asset"
+
+    TesterRunPost_Request:
+      type: object
+      properties:
+        name:
+          $ref: "#/components/schemas/TesterSessionName"
+        ndjson_event:
+          type: string
+          description: "Event to test in NDJSON format"
+        trace_level:
+          type: string
+          enum:
+            - NONE
+            - ASSET_ONLY
+            - ALL
+          description: "Level of traces"
+        asset_trace:
+          type: array
+          items:
+            $ref: "#/components/schemas/ResourceName"
+          description: "Assets for which detailed traces are required"
+        namespaces:
+          type: array
+          items:
+            $ref: "#/components/schemas/Namespace"
+          description: "Namespaces where the assets to test are located"
+
+    TesterRunPost_Response:
+      allOf:
+        - $ref: "#/components/schemas/Response"
+        - type: object
+          properties:
+            result:
+              $ref: "#/components/schemas/TesterResult"
+
+    TesterTableGet_Response:
+      allOf:
+        - $ref: "#/components/schemas/Response"
+        - type: object
+          properties:
+            sessions:
+              type: array
+              items:
+                $ref: "#/components/schemas/TesterSession"
+              description: "List of sessions if status is OK"
+
+    TesterSessionReload_Request:
+      type: object
+      properties:
+        name:
+          $ref: "#/components/schemas/TesterSessionName"
+
+    TesterSessionGet_Request:
+      type: object
+      properties:
+        name:
+          $ref: "#/components/schemas/TesterSessionName"
+
+    TesterSessionGet_Response:
+      allOf:
+        - $ref: "#/components/schemas/Response"
+        - type: object
+          properties:
+            session:
+              $ref: "#/components/schemas/TesterSession"
+              description: "Details of the session"
+
+    TesterSessionDelete_Request:
+      type: object
+      properties:
+        name:
+          $ref: "#/components/schemas/TesterSessionName"
+
+    TesterSessionPost_Request:
+      type: object
+      properties:
+        session:
+          $ref: "#/components/schemas/TesterSessionPost"
 
   #################################################################################
   # Responses
