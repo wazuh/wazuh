@@ -13,12 +13,11 @@ runs:
   using: "composite"
   steps:
       - name: Dependencies for local execution
-        if: env.ACT # Only run for local execution
         shell: bash
         run: |
 
           # Update packages
-          sudo apt-get update
+          sudo apt-get update -y
           sudo apt-get install -y bc
 
       # Dependencies for testing:
