@@ -318,7 +318,7 @@ public:
         if (!m_configuration.at("indexer").contains("update_template_path"))
         {
             return "templates/" + std::string(STATES_INDEX_NAME_PREFIX) + INVENTORY_TYPES.at(type) + "-" + name +
-                   ".json";
+                   "-update.json";
         }
         else
         {
