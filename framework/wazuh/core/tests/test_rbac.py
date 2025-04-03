@@ -111,6 +111,22 @@ async def test_rbac_manager_get_user_ko(rbac_manager_mock: RBACManager):
         rbac_manager_mock.get_user(USER_ID)
 
 
+async def test_rbac_manager_get_user_by_name(rbac_manager_mock: RBACManager):
+    """Check that the `get_user_by_name` method works as expected."""
+    name = 'test'
+    rbac_manager_mock._users = {USER_ID: User(name=name)}
+    user = rbac_manager_mock.get_user_by_name(name)
+
+    assert user == rbac_manager_mock._users.get(USER_ID)
+
+
+async def test_rbac_manager_get_user_by_name_ko(rbac_manager_mock: RBACManager):
+    """Check that the `get_user_by_name` handles exceptions successfully."""
+    rbac_manager_mock._users = {}
+    with pytest.raises(WazuhResourceNotFound, match=r'4027'):
+        rbac_manager_mock.get_user_by_name(USER_ID)
+
+
 async def test_rbac_manager_get_users(rbac_manager_mock: RBACManager):
     """Check that the `get_users` method works as expected."""
     expected_users = [User(id='0'), User(id='1'), User(id='2')]
