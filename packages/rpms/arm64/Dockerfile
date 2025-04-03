@@ -9,6 +9,7 @@ RUN rpm --import RPM-GPG-KEY-oracle-ol7 && \
     rpm -i https://yum.oracle.com/repo/OracleLinux/OL7/latest/aarch64/getPackage/oracle-softwarecollection-release-el7-1.0-5.el7.aarch64.rpm
 
 RUN yum install -y \
+    gcc gcc-c++ \
     devtoolset-10 \
     kernel-devel \
     perl-IPC-Cmd \
@@ -35,6 +36,14 @@ RUN yum install -y \
 RUN yum install epel-release lzip -y
 
 RUN scl enable devtoolset-10 bash
+
+ADD https://ftp.gnu.org/gnu/gcc/gcc-11.4.0/gcc-11.4.0.tar.gz /tmp/gcc-11.4.0.tar.gz
+WORKDIR /tmp
+RUN tar -xzf gcc-11.4.0.tar.gz
+WORKDIR /tmp/gcc-11.4.0
+RUN ./contrib/download_prerequisites && ./configure --enable-languages=c,c++ --prefix=/usr --disable-multilib --disable-libsanitizer && make -j$(nproc) && make install
+WORKDIR /
+RUN rm -rf /tmp/gcc-11.4.0
 
 ADD https://github.com/git/git/archive/refs/tags/v2.18.0.tar.gz /tmp/git-2.18.0.tar.gz
 WORKDIR /tmp
@@ -79,7 +88,7 @@ RUN git clone "https://github.com/microsoft/vcpkg.git" "$VCPKG_ROOT" \
 COPY vcpkg.json /build_deps_vcpkg/vcpkg.json
 COPY vcpkg-configuration.json /build_deps_vcpkg/vcpkg-configuration.json
 ENV PATH=$PATH:$VCPKG_ROOT
-RUN scl enable devtoolset-10 "cd /build_deps_vcpkg && vcpkg install --triplet arm64-linux --feature-flags=manifests"
+RUN echo $(gcc --version) && cd /build_deps_vcpkg && vcpkg install --triplet arm64-linux --feature-flags=manifests
 
 # Add the scripts to build the RPM package
 ADD build.sh /usr/local/bin/build_package
