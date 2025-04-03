@@ -13,8 +13,6 @@ from health_test.initial_state import run as init_run
 from health_test.load_decoders import run as load_decoders_run
 from health_test.load_rules import run as load_rules_run
 from health_test.assets_validate import run as assets_validate_run
-from health_test.decoder_mapping_validate import run as decoder_mapping_validate_run
-from health_test.rule_mapping_validate import run as rule_mapping_validate_run
 from health_test.validate_successful_assets import run as validate_successful_assets_run
 from health_test.validate_non_modifiables_fields import run as validate_non_modifiables_fields_run
 from health_test.validate_custom_field_documentation import run as validate_custom_field_documentation_run
@@ -146,28 +144,6 @@ def parse_args() -> Namespace:
     validate_successful_assets_parser.add_argument(
         '--skip', help='Skip the tests with the specified name', default=None)
     validate_successful_assets_parser.set_defaults(func=validate_successful_assets_run)
-
-    # decoder mapping validate subcommand
-    validate_decoder_mapping_parser = dynamic_subparsers.add_parser(
-        'validate_decoder_mapping', help='Verifies that only certain fields are mapped in the decoders.')
-    validate_decoder_mapping_parser.add_argument(
-        '--integration',
-        help='Specify the name of the integration to test, if not specified all integration will be tested',
-        default=None)
-    validate_decoder_mapping_parser.add_argument(
-        '--skip', help='Skip the tests with the specified name', default=None)
-    validate_decoder_mapping_parser.set_defaults(func=decoder_mapping_validate_run)
-
-    # rule mapping validate subcommand
-    validate_rule_mapping_parser = dynamic_subparsers.add_parser(
-        'validate_rule_mapping', help='Verifies that only certain fields are mapped in the rules.')
-    validate_rule_mapping_parser.add_argument(
-        '--integration_rule',
-        help='Specify the name of the rules integrations rules to test, if not specified all integrations rules  will be tested',
-        default=None)
-    validate_rule_mapping_parser.add_argument(
-        '--skip', help='Skip the tests with the specified name', default=None)
-    validate_rule_mapping_parser.set_defaults(func=rule_mapping_validate_run)
 
     # validate event indexing subcommand
     validate_event_indexing_parser = dynamic_subparsers.add_parser(
