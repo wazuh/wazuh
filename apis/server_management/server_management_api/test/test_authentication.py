@@ -5,7 +5,6 @@
 import hashlib
 import json
 import os
-import sys
 from copy import deepcopy
 from unittest.mock import ANY, MagicMock, call, patch
 
@@ -13,16 +12,15 @@ from connexion.exceptions import Unauthorized
 
 with patch('wazuh.core.common.wazuh_uid'):
     with patch('wazuh.core.common.wazuh_gid'):
+        from wazuh.core.indexer.models.rbac import User
         from wazuh.core.results import WazuhResult
 
 import pytest
 
 with patch('wazuh.core.common.wazuh_uid'):
     with patch('wazuh.core.common.wazuh_gid'):
-        sys.modules['wazuh.rbac.orm'] = MagicMock()
         from server_management_api import authentication
 
-        del sys.modules['wazuh.rbac.orm']
 
 test_path = os.path.dirname(os.path.realpath(__file__))
 test_data_path = os.path.join(test_path, 'data')
@@ -51,28 +49,35 @@ original_payload = {
 }
 
 
-async def test_check_user_master():
+@patch('server_management_api.authentication.rbac_manager')
+async def test_check_user_master(rbac_manager_var_mock):
     """Validate that the `check_user_master` function works as expected."""
+    rbac_manager_mock = MagicMock()
+    rbac_manager_mock.get_users_by_name.return_value = User(name='test_user', raw_password='test_pass')
+    rbac_manager_var_mock.get.return_value = rbac_manager_mock
     result = await authentication.check_user_master('test_user', 'test_pass')
     assert result == {'result': True}
 
 
-@pytest.mark.asyncio
 @patch('wazuh.core.cluster.dapi.dapi.DistributedAPI.__init__', return_value=None)
 @patch('wazuh.core.cluster.dapi.dapi.DistributedAPI.distribute_function', side_effect=None)
 @patch('server_management_api.authentication.raise_if_exc', side_effect=None)
 async def test_check_user(mock_raise_if_exc, mock_distribute_function, mock_dapi):
     """Verify if result is as expected."""
-    result = authentication.check_user('test_user', 'test_pass')
+    mock_request = MagicMock()
+    mock_state = MagicMock()
+    mock_request.state = mock_state
+    result = authentication.check_user('test_user', 'test_pass', request=mock_request)
 
     assert result == {'sub': 'test_user', 'active': True}, 'Result is not as expected'
     mock_dapi.assert_called_once_with(
         f=ANY,
-        f_kwargs={'user': 'test_user', 'password': 'test_pass'},
+        f_kwargs={'name': 'test_user', 'password': 'test_pass'},
         request_type='local_master',
-        is_async=False,
+        is_async=True,
         wait_for_complete=False,
         logger=ANY,
+        rbac_manager=mock_state.rbac_manager,
     )
     mock_distribute_function.assert_called_once_with()
     mock_raise_if_exc.assert_called_once()
@@ -127,12 +132,13 @@ async def test_generate_token(
     mock_encode.assert_called_once_with(expected_payload, '-----BEGIN PRIVATE KEY-----', algorithm='RS256')
 
 
-@patch('server_management_api.authentication.TokenManager')
-async def test_check_token(mock_tokenmanager):
+@patch('server_management_api.authentication.rbac_manager')
+async def test_check_token(rbac_manager_var_mock):
     """Validate that the `check_token` function works as expected."""
-    result = await authentication.check_token(
-        username='wazuh_user', roles=tuple([1]), token_nbf_time=3600, run_as=False, origin_node_type='master'
-    )
+    rbac_manager_mock = MagicMock()
+    rbac_manager_mock.get_users_by_name.return_value = User(name='test_user', raw_password='test_pass')
+    rbac_manager_var_mock.get.return_value = rbac_manager_mock
+    result = await authentication.check_token(username='wazuh_user', roles=tuple(), token_nbf_time=3600, run_as=False)
     assert result == {'valid': ANY, 'policies': ANY}
 
 
@@ -152,8 +158,11 @@ async def test_decode_token(mock_raise_if_exc, mock_distribute_function, mock_da
         WazuhResult({'valid': True, 'policies': {'value': 'test'}}),
         WazuhResult(security_conf),
     ]
+    mock_request = MagicMock()
+    mock_state = MagicMock()
+    mock_request.state = mock_state
 
-    result = authentication.decode_token('test_token')
+    result = authentication.decode_token('test_token', request=mock_request)
     assert result == decoded_payload
 
     # Check all functions are called with expected params
@@ -165,12 +174,12 @@ async def test_decode_token(mock_raise_if_exc, mock_distribute_function, mock_da
                 'token_nbf_time': original_payload['nbf'],
                 'run_as': False,
                 'roles': tuple(original_payload['rbac_roles']),
-                'origin_node_type': 'master',
             },
             request_type='local_master',
-            is_async=False,
+            is_async=True,
             wait_for_complete=False,
             logger=ANY,
+            rbac_manager=mock_state.rbac_manager,
         ),
         call(f=ANY, request_type='local_master', is_async=False, wait_for_complete=False, logger=ANY),
     ]
@@ -192,8 +201,12 @@ async def test_decode_token(mock_raise_if_exc, mock_distribute_function, mock_da
 )
 async def test_decode_token_ko(mock_get_keypair, mock_raise_if_exc, mock_distribute_function):
     """Assert exceptions are handled as expected inside decode_token()."""
+    mock_request = MagicMock()
+    mock_state = MagicMock()
+    mock_request.state = mock_state
+
     with pytest.raises(Unauthorized):
-        authentication.decode_token(token='test_token')
+        authentication.decode_token(token='test_token', request=mock_request)
 
     with patch('server_management_api.authentication.jwt.decode') as mock_decode:
         with patch(
@@ -207,11 +220,11 @@ async def test_decode_token_ko(mock_get_keypair, mock_raise_if_exc, mock_distrib
 
                         with pytest.raises(Unauthorized):
                             mock_raise_if_exc.side_effect = [WazuhResult({'valid': False})]
-                            authentication.decode_token(token='test_token')
+                            authentication.decode_token(token='test_token', request=mock_request)
 
                         with pytest.raises(Unauthorized):
                             mock_raise_if_exc.side_effect = [
                                 WazuhResult({'valid': True, 'policies': {'value': 'test'}}),
                                 WazuhResult({'auth_token_exp_timeout': 900, 'rbac_mode': 'white'}),
                             ]
-                            authentication.decode_token(token='test_token')
+                            authentication.decode_token(token='test_token', request=mock_request)

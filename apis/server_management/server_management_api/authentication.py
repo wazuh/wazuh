@@ -13,11 +13,13 @@ import jwt
 import wazuh.core.utils as core_utils
 import wazuh.rbac.utils as rbac_utils
 from connexion.exceptions import Unauthorized
+from connexion.lifecycle import ConnexionRequest
 from wazuh.core.authentication import JWT_ALGORITHM, JWT_ISSUER, get_keypair
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
+from wazuh.core.common import rbac_manager
 from wazuh.core.config.client import CentralizedConfig
-from wazuh.core.indexer import get_indexer_client
-from wazuh.core.indexer.base import IndexerKey
+from wazuh.core.exception import WazuhResourceNotFound
+from wazuh.core.rbac import RBACManager
 from wazuh.rbac.preprocessor import optimize_resources
 
 from server_management_api.util import raise_if_exc
@@ -44,20 +46,20 @@ async def check_user_master(name: str, password: str) -> dict:
     dict
         Dictionary with the result of the query.
     """
-    async with get_indexer_client() as indexer_client:
-        users_query = {IndexerKey.TERM: {'user.name': name}}
-        users = await indexer_client.users.search({IndexerKey.QUERY: users_query}, limit=1)
-        if len(users) == 0:
-            return {'result': False}
+    manager: RBACManager = rbac_manager.get()
 
-        user = users[0]
-        if not user.check_password(password):
-            return {'result': False}
+    try:
+        user = manager.get_user_by_name(name)
+    except WazuhResourceNotFound:
+        return {'result': False}
 
-        return {'result': True}
+    if not user.check_password(password):
+        return {'result': False}
+
+    return {'result': True}
 
 
-def check_user(name: str, password: str) -> Union[dict, None]:
+def check_user(name: str, password: str, request: ConnexionRequest = None) -> Union[dict, None]:
     """Validate a username-password pair.
 
     Convenience method to use in OpenAPI specification.
@@ -68,6 +70,8 @@ def check_user(name: str, password: str) -> Union[dict, None]:
         Unique username.
     password : str
         User password.
+    request : ConnexionRequest
+        HTTP request.
 
     Returns
     -------
@@ -78,9 +82,10 @@ def check_user(name: str, password: str) -> Union[dict, None]:
         f=check_user_master,
         f_kwargs={'name': name, 'password': password},
         request_type='local_master',
-        is_async=False,
+        is_async=True,
         wait_for_complete=False,
         logger=logging.getLogger('wazuh-api'),
+        rbac_manager=request.state.rbac_manager if request else None,
     )
     data = raise_if_exc(pool.submit(asyncio.run, dapi.distribute_function()).result())
 
@@ -169,31 +174,18 @@ async def check_token(username: str, roles: tuple, token_nbf_time: int, run_as: 
     dict
         Dictionary with the result.
     """
-    # Check that the user exists
-    async with get_indexer_client() as indexer_client:
-        users_query = {
-            IndexerKey.QUERY: {IndexerKey.BOOL: {IndexerKey.FILTER: {IndexerKey.TERM: {'user.name': username}}}}
-        }
-        users = await indexer_client.users.search(users_query, limit=1)
-        if len(users) == 0:
-            return {'valid': False}
+    manager: RBACManager = rbac_manager.get()
 
-        user = users[0]
+    user = manager.get_user_by_name(username)
+    if not user.allow_run_as and set(user.roles) != set(roles):
+        return {'valid': False}
 
-        roles_query = {
-            IndexerKey.QUERY: {IndexerKey.BOOL: {IndexerKey.FILTER: {IndexerKey.TERMS: {IndexerKey._ID: user.roles}}}}
-        }
-        user_roles = await indexer_client.roles.search({IndexerKey.QUERY: roles_query})
-
-        if not user.allow_run_as and set(user_roles) != set(roles):
-            return {'valid': False}
-
-    policies = optimize_resources(roles)
+    policies = optimize_resources(user.roles)
 
     return {'valid': True, 'policies': policies}
 
 
-def decode_token(token: str) -> dict:
+def decode_token(token: str, request: ConnexionRequest = None) -> dict:
     """Decode a JWT formatted token and add processed policies.
     Raise an Unauthorized exception in case validation fails.
 
@@ -201,6 +193,8 @@ def decode_token(token: str) -> dict:
     ----------
     token : str
         JWT formatted token.
+    request : ConnexionRequest
+        HTTP request.
 
     Raises
     ------
@@ -217,8 +211,7 @@ def decode_token(token: str) -> dict:
         _, public_key = get_keypair()
         payload = jwt.decode(token, public_key, algorithms=[JWT_ALGORITHM], audience='Wazuh API REST')
 
-        # Check token and add processed policies in the Master node
-        server_config = CentralizedConfig.get_server_config()
+        # Check token and add processed policies
         dapi = DistributedAPI(
             f=check_token,
             f_kwargs={
@@ -226,12 +219,12 @@ def decode_token(token: str) -> dict:
                 'roles': tuple(payload['rbac_roles']),
                 'token_nbf_time': payload['nbf'],
                 'run_as': payload['run_as'],
-                'origin_node_type': server_config.node.type,
             },
             request_type='local_master',
             is_async=True,
             wait_for_complete=False,
             logger=logging.getLogger('wazuh-api'),
+            rbac_manager=request.state.rbac_manager if request else None,
         )
         data = raise_if_exc(pool.submit(asyncio.run, dapi.distribute_function()).result()).to_dict()
 
