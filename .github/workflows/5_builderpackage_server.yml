@@ -118,7 +118,7 @@ jobs:
           if [ "${{ inputs.docker_image_tag }}" == "auto" ]; then echo "TAG=$VERSION" >> $GITHUB_ENV;
           elif [ "${{ inputs.docker_image_tag }}" == "developer" ]; then echo "TAG=$(sed 's|[/\]|--|g' <<< ${{ github.ref_name }})" >> $GITHUB_ENV;
           else echo "TAG=${{ inputs.docker_image_tag }}" >> $GITHUB_ENV; fi
-          echo "CONTAINER_NAME=pkg_${{ inputs.system }}_server_builder_amd64" >> $GITHUB_ENV
+          echo "CONTAINER_NAME=pkg_${{ inputs.system }}_server_builder_${{ inputs.architecture }}" >> $GITHUB_ENV
 
       - name: Download docker image for package building
         run: |
