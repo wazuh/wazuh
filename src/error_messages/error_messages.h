@@ -116,6 +116,7 @@
 #define RWLOCK_LOCK_RD  "(1336) Cannot lock rwlock for reading: %s (%d)."
 #define RWLOCK_LOCK_WR  "(1337) Cannot lock rwlock for writing: %s (%d)."
 #define RWLOCK_UNLOCK   "(1338) Cannot unlock rwlock: %s (%d)."
+#define SET_TIMEO_ERR   "(1339) Cannot set timeout."
 
 /* Mail errors */
 #define CHLDWAIT_ERROR  "(1261): Waiting for child process. (status: %d)."
@@ -474,6 +475,21 @@
 
 #define FIM_AUDITPOL_ATTEMPT_FAIL                   "(6955): Auditpol command failed, attempt number: %d"
 #define FIM_AUDITPOL_FINAL_FAIL                     "(6956): After %d attempts the Auditpol command could not be executed successfully."
+
+#define FIM_ERROR_EBPF_NOT_SUPPORTED                "(6966): Wrong configuration. eBPF is not available on non-Linux systems."
+#define FIM_ERROR_EBPF_ALLOC_W_EVT                  "(6968): Error allocating memory for whodata_evt structure."
+#define FIM_ERROR_EBPF_LIB_LOAD                     "(6969): Failed to load some functions from libbpf.so."
+#define FIM_ERROR_EBPF_LIB_OPEN                     "(6970): Unable to open libbpf.so: %s"
+#define FIM_ERROR_EBPF_OBJ_OPEN                     "(6971): Opening BPF object file failed. Path: %s. Error: %s"
+#define FIM_ERROR_EBPF_OBJ_LOAD                     "(6972): Loading BPF object file failed."
+#define FIM_ERROR_EBPF_OBJ_ATTACH                   "(6973): Attaching BPF program failed."
+#define FIM_ERROR_EBPF_RINGBUFF_MAP                 "(6974): Finding ring buffer map failed."
+#define FIM_ERROR_EBPF_RINGBUFF_NEW                 "(6975): Creating ring buffer failed."
+#define FIM_ERROR_EBPF_HEALTHCHECK_FILE             "(6976): Could not create healthcheck file. Path: %s"
+#define FIM_ERROR_EBPF_RINGBUFF_CONSUME             "(6977): Consuming ring buffer failed."
+#define FIM_ERROR_EBPF_HEALTHCHECK_TIMEOUT          "(6978): eBPF healthcheck timeout."
+#define FIM_ERROR_EBPF_HEALTHCHECK_FILE_DEL         "(6979): Healthcheck file can't be removed. Path: %s"
+#define FIM_ERROR_EBPF_INVALID_KERNEL               "(6980): Invalid Kernel version detected. Must be +5.8."
 
 /* Wazuh Logtest error messsages */
 #define LOGTEST_ERROR_BIND_SOCK                     "(7300): Unable to bind to socket '%s'. Errno: (%d) %s"

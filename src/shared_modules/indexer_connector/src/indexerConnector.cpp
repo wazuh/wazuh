@@ -243,11 +243,12 @@ nlohmann::json IndexerConnector::getAgentDocumentsIds(const std::string& url,
             throw std::runtime_error(error);
         };
 
-        HTTPRequest::instance().post(RequestParameters {.url = HttpURL(url + "/" + m_indexName + "/_search?scroll=1m"),
-                                                        .data = postData.dump(),
-                                                        .secureCommunication = secureCommunication},
-                                     PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
-                                     ConfigurationParameters {});
+        HTTPRequest::instance().post(
+            RequestParametersJson {.url = HttpURL(url + "/" + m_indexName + "/_search?scroll=1m"),
+                                   .data = postData,
+                                   .secureCommunication = secureCommunication},
+            PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
+            ConfigurationParameters {});
     }
 
     // If the response have more than ELEMENTS_PER_QUERY elements, we need to scroll.
@@ -448,16 +449,16 @@ void IndexerConnector::initialize(const nlohmann::json& templateData,
 
     // Initialize template.
     HTTPRequest::instance().put(
-        RequestParameters {.url = HttpURL(selector->getNext() + "/_index_template/" + m_indexName + "_template"),
-                           .data = templateData,
-                           .secureCommunication = secureCommunication},
+        RequestParametersJson {.url = HttpURL(selector->getNext() + "/_index_template/" + m_indexName + "_template"),
+                               .data = templateData,
+                               .secureCommunication = secureCommunication},
         PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
         ConfigurationParameters {});
 
     // Initialize Index.
-    HTTPRequest::instance().put(RequestParameters {.url = HttpURL(selector->getNext() + "/" + m_indexName),
-                                                   .data = templateData.at("template"),
-                                                   .secureCommunication = secureCommunication},
+    HTTPRequest::instance().put(RequestParametersJson {.url = HttpURL(selector->getNext() + "/" + m_indexName),
+                                                       .data = templateData.at("template"),
+                                                       .secureCommunication = secureCommunication},
                                 PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
                                 ConfigurationParameters {});
 
@@ -465,9 +466,9 @@ void IndexerConnector::initialize(const nlohmann::json& templateData,
     if (!updateMappingsData.empty())
     {
         HTTPRequest::instance().put(
-            RequestParameters {.url = HttpURL(selector->getNext() + "/" + m_indexName + "/_mapping"),
-                               .data = updateMappingsData,
-                               .secureCommunication = secureCommunication},
+            RequestParametersJson {.url = HttpURL(selector->getNext() + "/" + m_indexName + "/_mapping"),
+                                   .data = updateMappingsData,
+                                   .secureCommunication = secureCommunication},
             PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
             ConfigurationParameters {});
     }
@@ -708,10 +709,6 @@ IndexerConnector::IndexerConnector(
                     {
                         logDebug2(IC_NAME, "Document version conflict, retrying in 1 second.");
                         throw std::runtime_error("Document version conflict, retrying in 1 second.");
-                    }
-                    else if (statusCode == HTTP_BAD_REQUEST)
-                    {
-                        logError(IC_NAME, "Error 400: %s, message is ignored", error.c_str());
                     }
                     else if (statusCode == HTTP_TOO_MANY_REQUESTS)
                     {

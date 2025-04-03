@@ -158,6 +158,9 @@ void wm_setup()
         exit(EXIT_SUCCESS);
     }
 
+    // Register cleanup function before CreatePID to avoid dangling PID files
+    atexit(wm_cleanup);
+
     // Create PID file
 
     if (CreatePID(ARGV0, getpid()) < 0)
@@ -187,7 +190,6 @@ void wm_signals_configure()
 {
     struct sigaction action = { .sa_handler = wm_handler };
 
-    atexit(wm_cleanup);
     sigaction(SIGTERM, &action, NULL);
 
     if (flag_foreground) {

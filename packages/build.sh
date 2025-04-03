@@ -15,7 +15,7 @@ build_directories() {
   local future="$3"
 
   mkdir -p "${build_folder}"
-  wazuh_version="$(cat wazuh*/src/VERSION| cut -d 'v' -f 2)"
+  wazuh_version=$(awk -F'"' '/"version"[ \t]*:/ {print $4}' wazuh*/VERSION.json)
 
   if [[ "$future" == "yes" ]]; then
     wazuh_version="$(future_version "$build_folder" "$wazuh_dir" $wazuh_version)"
@@ -89,22 +89,22 @@ fi
 if [ ! -d "/wazuh-local-src" ] ; then
     curl -sL https://github.com/wazuh/wazuh/tarball/${WAZUH_BRANCH} | tar zx
     short_commit_hash="$(curl -s https://api.github.com/repos/wazuh/wazuh/commits/${WAZUH_BRANCH} \
-                          | grep '"sha"' | head -n 1| cut -d '"' -f 4 | cut -c 1-11)"
+                          | grep '"sha"' | head -n 1| cut -d '"' -f 4 | cut -c 1-7)"
 else
     if [ "${legacy}" = "no" ]; then
-      short_commit_hash="$(cd /wazuh-local-src && git rev-parse --short HEAD)"
+      short_commit_hash="$(cd /wazuh-local-src && git rev-parse --short=7 HEAD)"
     else
       # Git package is not available in the CentOS 5 repositories.
       head=$(cat /wazuh-local-src/.git/HEAD)
       hash_commit=$(echo "$head" | grep "ref: " >/dev/null && cat /wazuh-local-src/.git/$(echo $head | cut -d' ' -f2) || echo $head)
-      short_commit_hash="$(cut -c 1-11 <<< $hash_commit)"
+      short_commit_hash="$(cut -c 1-7 <<< $hash_commit)"
     fi
 fi
 
 # Build directories
 source_dir=$(build_directories "$build_dir/${BUILD_TARGET}" "wazuh*" $future)
 
-wazuh_version="$(cat $source_dir/src/VERSION| cut -d 'v' -f 2)"
+wazuh_version=$(awk -F'"' '/"version"[ \t]*:/ {print $4}' $source_dir/VERSION.json)
 # TODO: Improve how we handle package_name
 # Changing the "-" to "_" between target and version breaks the convention for RPM or DEB packages.
 # For now, I added extra code that fixes it.

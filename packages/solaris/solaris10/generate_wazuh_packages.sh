@@ -25,7 +25,7 @@ short_version=""
 trap ctrl_c INT
 
 if [ -z "${wazuh_branch}" ]; then
-    wazuh_branch="master"
+    wazuh_branch="main"
 fi
 
 if [ -z "$ARCH" ]; then
@@ -33,8 +33,8 @@ if [ -z "$ARCH" ]; then
 fi
 
 set_control_binary() {
-  if [ -e ${SOURCE}/src/VERSION ]; then
-    wazuh_version=`cat ${SOURCE}/src/VERSION`
+  if [ -e ${SOURCE}/VERSION.json ]; then
+    wazuh_version="v$(sed -n 's/.*"version"[ \t]*:[ \t]*"\([^"]*\)".*/\1/p' ${SOURCE}/VERSION.json)"
     number_version=`echo "${wazuh_version}" | cut -d v -f 2`
     major=`echo $number_version | cut -d . -f 1`
     minor=`echo $number_version | cut -d . -f 2`
@@ -199,11 +199,41 @@ installation(){
 
 compute_version_revision()
 {
-    wazuh_version=$(cat ${SOURCE}/src/VERSION | cut -d "-" -f1 | cut -c 2-)
-    revision="$(cat ${SOURCE}/src/REVISION)"
+    wazuh_version="$(sed -n 's/.*"version"[ \t]*:[ \t]*"\([^"]*\)".*/\1/p' ${SOURCE}/VERSION.json)"
+    revision=$(sed -n 's/.*"stage": *"\([^"]*\)".*/\1/p' ${SOURCE}/VERSION.json)
 
     echo $wazuh_version > /tmp/VERSION
     echo $revision > /tmp/REVISION
+
+    pushd ${SOURCE}
+    short_commit_hash="$(git rev-parse --short=7 HEAD)"
+
+    /usr/bin/nawk -v commit="$short_commit_hash" '
+    {
+        lines[NR] = $0  # Store lines in an array
+    }
+    END {
+        last_index = NR  # Save the last line index
+        for (i = 1; i <= last_index; i++) {
+            if (i == last_index) {  # When reaching the last line (assumed to be "}")
+                if (lines[i-1] !~ /,$/)  # If the previous line does not end with a comma, add one
+                    lines[i-1] = lines[i-1] ",";
+
+                print lines[i-1];  # Print the modified previous line
+                print "    \"commit\": \"" commit "\"";  # Insert commit using the passed variable
+                print lines[i];  # Print the closing brace
+            } else if (i < last_index - 1) {
+                print lines[i];  # Print all other lines unchanged
+            }
+        }
+    }
+    ' VERSION.json > VERSION.json.tmp && mv VERSION.json.tmp VERSION.json
+
+    # Remove the temporary file after processing (if any remains)
+    [ -f VERSION.json.tmp ] && rm VERSION.json.tmp
+
+    cat VERSION.json
+    popd
 
     return 0
 }
@@ -282,7 +312,7 @@ build(){
 
     cd ${CURRENT_PATH}
 
-    VERSION=`cat $SOURCE/src/VERSION`
+    VERSION="v$(sed -n 's/.*"version"[ \t]*:[ \t]*"\([^"]*\)".*/\1/p' ${SOURCE}/VERSION.json)"
     echo "------------"
     echo "| Building |"
     echo "------------"

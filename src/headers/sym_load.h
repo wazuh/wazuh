@@ -18,8 +18,14 @@
 #include <windows.h>
 #endif
 
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 void* so_get_module_handle_on_path(const char *path, const char *so);
 void* so_get_module_handle(const char *so);
+
 /**
  * @brief Check if a module/library is already loaded. Must call a corresponding so_free_library()
  * if not used in WIN32. If RTLD_NOLOAD isn't found in the system,
@@ -30,6 +36,13 @@ void* so_get_module_handle(const char *so);
  */
 void* so_check_module_loaded(const char *so);
 void* so_get_function_sym(void *handle, const char *function_name);
+
 int so_free_library(void *handle);
+
+#ifdef __cplusplus
+}
+#endif
+
+
 
 #endif //H_SYMLOAD_OS

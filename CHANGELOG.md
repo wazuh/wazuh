@@ -54,6 +54,21 @@ All notable changes to this project will be documented in this file.
 - SCA rule Improvement for MacOS 15 SCA. ([#26982](https://github.com/wazuh/wazuh/issues/26982))
 
 
+## [v4.11.2]
+
+### Manager
+
+#### Changed
+
+- Improved Wazuh DB performance using built-in types. ([#28797](https://github.com/wazuh/wazuh/pull/28797))
+
+### RESTful API
+
+#### Added
+
+- Added the `authentication_pool_size` option to customize the number of authentication processes in the Wazuh API configuration. ([#28653](https://github.com/wazuh/wazuh/pull/28653))
+
+
 ## [v4.11.1]
 
 ### Manager
@@ -63,6 +78,7 @@ All notable changes to this project will be documented in this file.
 - Fixed the OS CPE build for package scans with data from Wazuh-DB. ([#28294](https://github.com/wazuh/wazuh/pull/28294))
 - Added delete by query logic when indexer is disabled. ([#28292](https://github.com/wazuh/wazuh/pull/28292))
 - Fixed heap buffer overflow in Analysisd rule parser. ([#28396](https://github.com/wazuh/wazuh/pull/28396))
+- Fixed unnecesary data copy during the curl calls. ([#28429](https://github.com/wazuh/wazuh/pull/28429))
 
 ### Agent
 

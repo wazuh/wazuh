@@ -129,7 +129,7 @@ int realtime_adddir(const char *dir, directory_t *configuration) {
     int mode = FIM_MODE(configuration->options);
 
 #ifdef ENABLE_AUDIT
-    if (mode == FIM_WHODATA){
+    if ((mode == FIM_WHODATA) && syscheck.whodata_provider == AUDIT_PROVIDER) {
         add_whodata_directory(dir);
         return 1;
     }
@@ -301,6 +301,7 @@ int realtime_update_watch(const char *wd, const char *dir) {
     configuration = fim_configuration_directory(dir);
 
     if (configuration == NULL) {
+        mdebug2(FIM_CONFIGURATION_NOTFOUND, "file", dir);
         inotify_rm_watch(syscheck.realtime->fd, atoi(wd));
         free(OSHash_Delete_ex(syscheck.realtime->dirtb, wd));
         return 0;

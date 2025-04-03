@@ -87,6 +87,9 @@ full_filename,owner_name,group_name,mode,type,prot_permissions,size_bytes,size_e
 /var/ossec/lib/libdbsync.so,root,wazuh,750,file,-rwxr-x---,492352,0.1
 /var/ossec/lib/libsysinfo.so,root,wazuh,750,file,-rwxr-x---,2132848,0.1
 /var/ossec/lib/libfimdb.so,root,wazuh,750,file,-rwxr-x---,491660,0.1
+/var/ossec/lib/libbpf.so,root,wazuh,750,file,-rwxr-x---,470152,0.1
+/var/ossec/lib/libfimebpf.so,root,wazuh,750,file,-rwxr-x---,43120,0.1
+/var/ossec/lib/modern.bpf.o,root,wazuh,750,file,-rwxr-x---,904752,0.1
 /var/ossec/lib/libstdc++.so.6,root,wazuh,750,file,-rwxr-x---,1984136,0.1
 /var/ossec/lib/libsyscollector.so,root,wazuh,750,file,-rwxr-x---,562192,0.1
 /var/ossec/lib/libgcc_s.so.1,root,wazuh,750,file,-rwxr-x---,111408,0.1
@@ -137,6 +140,7 @@ full_filename,owner_name,group_name,mode,type,prot_permissions,size_bytes,size_e
 /var/ossec/logs/ossec.log,root,wazuh,660,file,-rw-rw----,0,0.1
 /var/ossec/queue/syscollector/norm_config.json,root,wazuh,640,file,-rw-r-----,4206,0.1
 /var/ossec/ruleset/sca/cis_centos6_linux.yml,root,wazuh,640,file,-rw-r-----,208108,0.1
+/var/ossec/VERSION.json,wazuh,wazuh,440,file,-r--r-----,79,0.1
 /var/ossec/wodles/utils.py,root,wazuh,750,file,-rwxr-x---,3567,0.1
 /var/ossec/wodles/__init__.py,root,wazuh,750,file,-rwxr-x---,177,0.1
 /var/ossec/wodles/gcloud/tools.py,root,wazuh,750,file,-rwxr-x---,4420,0.1

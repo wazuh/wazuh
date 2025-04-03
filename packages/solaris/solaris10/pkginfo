@@ -1,6 +1,6 @@
 NAME=Wazuh - Wazuh unifies historically separate functions into a single agent and platform architecture. Providing protection for public clouds, private clouds, and on-premise data centers.
 PKG="wazuh-agent"
-VERSION="4.12.0"
+VERSION="4.13.0"
 ARCH="i386"
 CLASSES="none"
 CATEGORY="system"
