@@ -5,10 +5,12 @@
 import re
 from typing import Union
 
+from wazuh.core.common import rbac_manager
 from wazuh.core.exception import WazuhError, WazuhPermissionError
-from wazuh.core.indexer import get_indexer_client
+from wazuh.core.indexer.models.rbac import Policy, Role
+from wazuh.core.rbac import RBACManager
 from wazuh.core.results import WazuhResult
-from wazuh.rbac.auth_context import RBAChecker, get_policies_from_roles
+from wazuh.rbac.auth_context import RBAChecker
 
 
 class PreProcessor:
@@ -66,7 +68,7 @@ class PreProcessor:
 
         return False, [resource]
 
-    def process_policy(self, policy: dict):
+    def process_policy(self, policy: Policy):
         """Receive an unprocessed policy and transforms it into a specific format for treatment in the decorator.
 
         Parameters
@@ -85,10 +87,10 @@ class PreProcessor:
             r'([a-zA-Z0-9_.]+:[a-zA-Z0-9_.]+:[a-zA-Z0-9_.*/-]+))|'
             r'([a-zA-Z0-9_.]+:[a-zA-Z0-9_.]+:[a-zA-Z0-9_.*/-]+)$'
         )
-        for action in policy['actions']:
+        for action in policy.actions:
             if action not in self.odict.keys():
                 self.odict[action] = dict()
-            for resource in policy['resources']:
+            for resource in policy.resources:
                 if not re.match(resource_regex, resource):
                     raise WazuhError(4500)
                 resource_type = PreProcessor.is_combination(resource)
@@ -96,9 +98,9 @@ class PreProcessor:
                     raise WazuhError(4500, extra_remediation='The maximum length for permission combinations is two')
                 resource = resource_type[1] if resource != '*' else ['*:*:*']
                 self.remove_previous_elements(resource, action)
-                self.odict[action]['&'.join(resource)] = policy['effect']
+                self.odict[action]['&'.join(resource)] = policy.effect
 
-    def get_optimize_dict(self) -> dict:
+    def get_optimized_dict(self) -> dict:
         """Get the optimized dictionary.
 
         Returns
@@ -109,12 +111,12 @@ class PreProcessor:
         return self.odict
 
 
-def optimize_resources(roles: list = None) -> dict:
+def optimize_resources(roles: list[Role] = None) -> dict:
     """Preprocess the policies of the user for a more easy treatment in the decorator of the RBAC.
 
     Parameters
     ----------
-    roles : list
+    roles : list[Role]
         Roles of the current user.
 
     Returns
@@ -122,20 +124,21 @@ def optimize_resources(roles: list = None) -> dict:
     dict
         Final dictionary.
     """
-    policies = get_policies_from_roles(roles=roles)
-
     preprocessor = PreProcessor()
-    for policy in policies:
-        preprocessor.process_policy(policy)
+    for role in roles:
+        for policy in role.policies:
+            preprocessor.process_policy(policy)
 
-    return preprocessor.get_optimize_dict()
+    return preprocessor.get_optimized_dict()
 
 
-async def get_roles(auth_context: Union[dict, str] = None, user_id: int = None) -> list:
+async def get_roles(rbac_manager: RBACManager, auth_context: Union[dict, str] = None, user_id: int = None) -> list[str]:
     """Obtain the roles of a user using auth_context or user_id.
 
     Parameters
     ----------
+    rbac_manager : RBACManager
+        RBAC manager.
     auth_context : dict or str
         Authorization context of the current user.
     user_id : int
@@ -143,13 +146,12 @@ async def get_roles(auth_context: Union[dict, str] = None, user_id: int = None) 
 
     Returns
     -------
-    list
+    list[Role]
         List of roles.
     """
-    async with get_indexer_client() as indexer_client:
-        user = await indexer_client.users.get(user_id)
+    user = rbac_manager.get_user_by_name(user_id)
+    rbac = RBAChecker(rbac_manager=rbac_manager, auth_context=auth_context, user_id=user.id)
 
-    rbac = RBAChecker(auth_context=auth_context, user_id=user.id)
     # Authorization Context method
     if auth_context:
         roles = rbac.run_auth_context_roles()
@@ -157,7 +159,7 @@ async def get_roles(auth_context: Union[dict, str] = None, user_id: int = None) 
     else:
         roles = rbac.run_user_role_link_roles(user.id)
 
-    return roles
+    return [role.name for role in roles]
 
 
 async def get_permissions(user_id: int = None, auth_context: Union[dict, str] = None) -> WazuhResult:
@@ -180,16 +182,14 @@ async def get_permissions(user_id: int = None, auth_context: Union[dict, str] = 
     WazuhResult
         WazuhResult object with the user permissions.
     """
-    async with get_indexer_client() as indexer_client:
-        user = await indexer_client.users.get(user_id)
+    manager: RBACManager = rbac_manager.get()
 
-        if not user.allow_run_as and auth_context:
-            raise WazuhPermissionError(6004)
-        elif user.allow_run_as:
-            roles = await get_roles(auth_context=auth_context, user_id=user_id)
-        else:
-            roles = await get_roles(user_id=user_id)
+    user = manager.get_user_by_name(user_id)
+    if not user.allow_run_as and auth_context:
+        raise WazuhPermissionError(6004)
+    elif user.allow_run_as:
+        roles = await get_roles(rbac_manager=manager, auth_context=auth_context, user_id=user_id)
+    else:
+        roles = await get_roles(rbac_manager=manager, user_id=user_id)
 
-        result = {'roles': roles}
-
-        return WazuhResult(result)
+    return WazuhResult({'roles': roles})
