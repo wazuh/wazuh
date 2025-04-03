@@ -131,7 +131,7 @@
               "type": "keyword"
             },
             "mtime": {
-              "type": "long"
+              "type": "date"
             },
             "owner": {
               "ignore_above": 1024,
