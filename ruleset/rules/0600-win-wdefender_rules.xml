@@ -137,7 +137,7 @@
   <rule id="62113" level="14">
     <if_sid>62101</if_sid>
     <field name="win.system.eventID">^1006$</field>
-    <description>Windows Defender: Antimalware engine found $(win.eventdata.severityName) malware or other potentially unwanted software</description>
+    <description>Windows Defender: Antimalware engine found $(win.eventdata.severity Name) malware or other potentially unwanted software</description>
     <options>no_full_log</options>
     <group>gdpr_IV_35.7.d,gdpr_II_5.1.f,pci_dss_10.6.1,pci_dss_11.4,gpg13_10.1,hipaa_164.312.b,nist_800_53_AU.9,nist_800_53_SI.4,tsc_CC7.2,tsc_CC7.3,tsc_CC6.1,tsc_CC6.8,</group>
   </rule>
@@ -229,7 +229,7 @@
   <rule id="62122" level="12">
     <if_sid>62101</if_sid>
     <field name="win.system.eventID">^1015$</field>
-    <description>Windows Defender: Antimalware platform detected suspicious $(win.eventdata.detectionType) behaviour ($(win.eventdata.processName))</description>
+    <description>Windows Defender: Antimalware platform detected suspicious $(win.eventdata.detection Type) behaviour ($(win.eventdata.process Name))</description>
     <options>no_full_log</options>
     <group>pci_dss_5.1,pci_dss_5.2,pci_dss_10.6.1,pci_dss_11.4,gpg13_4.2,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_SI.3,nist_800_53_AU.6,nist_800_53_SI.4,tsc_A1.2,tsc_CC7.2,tsc_CC7.3,tsc_CC6.1,tsc_CC6.8,</group>
   </rule>
@@ -239,7 +239,7 @@
   <rule id="62123" level="12">
       <if_sid>62101</if_sid>
       <field name="win.system.eventID">^1116$</field>
-      <description>Windows Defender: Antimalware platform detected $(win.eventdata.severityName) potentially unwanted software ($(win.eventdata.processName))</description>
+      <description>Windows Defender: Antimalware platform detected $(win.eventdata.severity Name) potentially unwanted software ($(win.eventdata.process Name))</description>
       <options>no_full_log</options>
       <group>pci_dss_5.1,pci_dss_5.2,pci_dss_10.6.1,pci_dss_11.4,gpg13_4.2,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_SI.3,nist_800_53_AU.6,nist_800_53_SI.4,tsc_A1.2,tsc_CC7.2,tsc_CC7.3,tsc_CC6.1,tsc_CC6.8,</group>
   </rule>
@@ -249,7 +249,7 @@
   <rule id="62124" level="3">
       <if_sid>62100</if_sid>
       <field name="win.system.eventID">^1117$</field>
-      <description>Windows Defender: Antimalware platform performed an action to protect you from potentially unwanted software ($(win.eventdata.processName))</description>
+      <description>Windows Defender: Antimalware platform performed an action to protect you from potentially unwanted software ($(win.eventdata.process Name))</description>
       <options>no_full_log</options>
       <group>pci_dss_5.1,pci_dss_5.2,pci_dss_10.6.1,pci_dss_11.4,gpg13_4.2,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_SI.3,nist_800_53_AU.6,nist_800_53_SI.4,tsc_A1.2,tsc_CC7.2,tsc_CC7.3,tsc_CC6.1,tsc_CC6.8,</group>
   </rule>
@@ -259,7 +259,7 @@
   <rule id="62125" level="8">
     <if_sid>62101</if_sid>
     <field name="win.system.eventID">^1118$</field>
-    <description>Windows Defender: Antimalware platform failed performing an action to protect you from potentially unwanted software ($(win.eventdata.processName))</description>
+    <description>Windows Defender: Antimalware platform failed performing an action to protect you from potentially unwanted software ($(win.eventdata.process Name))</description>
     <options>no_full_log</options>
     <group>pci_dss_5.1,pci_dss_5.2,pci_dss_10.6.1,pci_dss_11.4,gpg13_4.2,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_SI.3,nist_800_53_AU.6,nist_800_53_SI.4,tsc_A1.2,tsc_CC7.2,tsc_CC7.3,tsc_CC6.1,tsc_CC6.8,</group>
   </rule>
@@ -269,7 +269,7 @@
   <rule id="62126" level="14">
     <if_sid>62101</if_sid>
     <field name="win.system.eventID">^1119$</field>
-    <description>Windows Defender: Antimalware platform encountered a critical error when attempting to perform an action over the  potentially unwanted software</description>
+    <description>Windows Defender: Antimalware platform encountered a critical error when attempting to perform an action over the potentially unwanted software</description>
     <options>no_full_log</options>
     <group>gdpr_IV_35.7.d,gdpr_II_5.1.f,pci_dss_10.6.1,pci_dss_11.4,gpg13_10.1,hipaa_164.312.b,nist_800_53_AU.9,nist_800_53_SI.4,tsc_CC7.2,tsc_CC7.3,tsc_CC6.1,tsc_CC6.8,</group>
   </rule>
@@ -559,7 +559,7 @@
   <rule id="62155" level="12">
     <if_sid>62101</if_sid>
     <field name="win.system.eventID">^5008$</field>
-    <description>Windows Defender: Antimalware engine encountered an error and failed because of $(win.eventdata.failureType) at $(win.eventdata.resource)</description>
+    <description>Windows Defender: Antimalware engine encountered an error and failed because of $(win.eventdata.failure Type) at $(win.eventdata.resource)</description>
     <options>no_full_log</options>
     <group>pci_dss_5.1,pci_dss_10.2.6,pci_dss_10.6.1,gpg13_4.14,gpg13_10.1,gdpr_IV_35.7.d,gdpr_II_5.1.f,hipaa_164.312.b,nist_800_53_SI.3,nist_800_53_AU.14,nist_800_53_AU.5,nist_800_53_AU.6,tsc_A1.2,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
@@ -619,7 +619,7 @@
   <rule id="62161" level="8">
     <if_sid>62101</if_sid>
     <field name="win.system.eventID">^5101$</field>
-    <description>Windows Defender: Antimalware platform is expired due to error $(win.eventdata.errorCode)</description>
+    <description>Windows Defender: Antimalware platform is expired due to error $(win.eventdata.error Code)</description>
     <options>no_full_log</options>
     <group>pci_dss_5.1,pci_dss_10.2.6,pci_dss_10.6.1,gpg13_4.14,gpg13_10.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_SI.3,nist_800_53_AU.14,nist_800_53_AU.5,nist_800_53_AU.6,tsc_A1.2,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
@@ -628,7 +628,7 @@
   <!-- ERROR 0x80508007 -->
   <rule id="62162" level="12">
     <if_sid>62102</if_sid>
-    <field name="win.eventdata.errorCode">^0x80508007$</field>
+    <field name="win.eventdata.error Code">^0x80508007$</field>
     <description>Windows Defender: ERROR: NO MEMORY</description>
     <options>no_full_log</options>
   </rule>
@@ -637,7 +637,7 @@
   <!-- ERROR 0x8050800C -->
   <rule id="62163" level="12">
     <if_sid>62102</if_sid>
-    <field name="win.eventdata.errorCode">^0x8050800C$</field>
+    <field name="win.eventdata.error Code">^0x8050800C$</field>
     <description>Windows Defender: ERROR: BAD INPUT DATA</description>
     <options>no_full_log</options>
     <group>pci_dss_6.5.5,pci_dss_10.6.1,gpg13_4.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_SA.11,nist_800_53_AU.6,tsc_CC6.6,tsc_CC7.1,tsc_CC7.2,tsc_CC7.3,</group>
@@ -647,7 +647,7 @@
   <!-- ERROR 0x80508020 -->
   <rule id="62164" level="12">
     <if_sid>62102</if_sid>
-    <field name="win.eventdata.errorCode">^0x80508020$</field>
+    <field name="win.eventdata.error Code">^0x80508020$</field>
     <description>Windows Defender: ERROR: BAD CONFIGURATION</description>
     <options>no_full_log</options>
     <group>pci_dss_6.5.5,pci_dss_10.6.1,gpg13_4.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_SA.11,nist_800_53_AU.6,tsc_CC6.6,tsc_CC7.1,tsc_CC7.2,tsc_CC7.3,</group>
@@ -657,7 +657,7 @@
   <!-- ERROR 0x805080211 -->
   <rule id="62165" level="12">
     <if_sid>62102</if_sid>
-    <field name="win.eventdata.errorCode">^0x805080211$</field>
+    <field name="win.eventdata.error Code">^0x805080211$</field>
     <description>Windows Defender: ERROR: QUARANTINE FAILED</description>
     <options>no_full_log</options>
     <group>pci_dss_6.5.5,pci_dss_10.6.1,gpg13_4.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_SA.11,nist_800_53_AU.6,tsc_CC6.6,tsc_CC7.1,tsc_CC7.2,tsc_CC7.3,</group>
@@ -667,7 +667,7 @@
   <!-- ERROR 0x80508022 -->
   <rule id="62166" level="12">
     <if_sid>62102</if_sid>
-    <field name="win.eventdata.errorCode">^0x80508022$</field>
+    <field name="win.eventdata.error Code">^0x80508022$</field>
     <description>Windows Defender: ERROR: REBOOT REQUIRED</description>
     <options>no_full_log</options>
     <group>pci_dss_6.5.5,pci_dss_10.6.1,gpg13_4.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_SA.11,nist_800_53_AU.6,tsc_CC6.6,tsc_CC7.1,tsc_CC7.2,tsc_CC7.3,</group>
@@ -677,7 +677,7 @@
   <!-- ERROR 0x80508023 -->
   <rule id="62167" level="12">
     <if_sid>62102</if_sid>
-    <field name="win.eventdata.errorCode">^0x80508023$</field>
+    <field name="win.eventdata.error Code">^0x80508023$</field>
     <description>Windows Defender: ERROR: THREAT NOT FOUND</description>
     <options>no_full_log</options>
     <group>pci_dss_6.5.5,pci_dss_10.6.1,gpg13_4.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_SA.11,nist_800_53_AU.6,tsc_CC6.6,tsc_CC7.1,tsc_CC7.2,tsc_CC7.3,</group>
@@ -687,7 +687,7 @@
   <!-- ERROR 0x80508024 -->
   <rule id="62168" level="12">
     <if_sid>62102</if_sid>
-    <field name="win.eventdata.errorCode">^0x80508024$</field>
+    <field name="win.eventdata.error Code">^0x80508024$</field>
     <description>Windows Defender: ERROR: FULL SCAN REQUIRED</description>
     <options>no_full_log</options>
     <group>pci_dss_6.5.5,pci_dss_10.6.1,gpg13_4.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_SA.11,nist_800_53_AU.6,tsc_CC6.6,tsc_CC7.1,tsc_CC7.2,tsc_CC7.3,</group>
@@ -697,7 +697,7 @@
   <!-- ERROR 0x80508025 -->
   <rule id="62169" level="12">
     <if_sid>62102</if_sid>
-    <field name="win.eventdata.errorCode">^0x80508025$</field>
+    <field name="win.eventdata.error Code">^0x80508025$</field>
     <description>Windows Defender: ERROR: MANUAL STEPS REQUIRED</description>
     <options>no_full_log</options>
     <group>pci_dss_6.5.5,pci_dss_10.6.1,gpg13_4.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_SA.11,nist_800_53_AU.6,tsc_CC6.6,tsc_CC7.1,tsc_CC7.2,tsc_CC7.3,</group>
@@ -707,7 +707,7 @@
   <!-- ERROR 0x80508026 -->
   <rule id="62170" level="12">
     <if_sid>62102</if_sid>
-    <field name="win.eventdata.errorCode">^0x80508026$</field>
+    <field name="win.eventdata.error Code">^0x80508026$</field>
     <description>Windows Defender: ERROR: REMOVE NOT SUPPORTED</description>
     <options>no_full_log</options>
     <group>pci_dss_6.5.5,pci_dss_10.6.1,gpg13_4.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_SA.11,nist_800_53_AU.6,tsc_CC6.6,tsc_CC7.1,tsc_CC7.2,tsc_CC7.3,</group>
@@ -717,7 +717,7 @@
   <!-- ERROR 0x80508027 -->
   <rule id="62171" level="12">
     <if_sid>62102</if_sid>
-    <field name="win.eventdata.errorCode">^0x80508027$</field>
+    <field name="win.eventdata.error Code">^0x80508027$</field>
     <description>Windows Defender: ERROR: REMOVE LOW MEDIUM DISABLED</description>
     <options>no_full_log</options>
     <group>pci_dss_6.5.5,pci_dss_10.6.1,gpg13_4.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_SA.11,nist_800_53_AU.6,tsc_CC6.6,tsc_CC7.1,tsc_CC7.2,tsc_CC7.3,</group>
@@ -727,7 +727,7 @@
   <!-- ERROR 0x80508029 -->
   <rule id="62172" level="12">
     <if_sid>62102</if_sid>
-    <field name="win.eventdata.errorCode">^0x80508029$</field>
+    <field name="win.eventdata.error Code">^0x80508029$</field>
     <description>Windows Defender: ERROR: RESCAN REQUIRED</description>
     <options>no_full_log</options>
     <group>pci_dss_6.5.5,pci_dss_10.6.1,gpg13_4.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_SA.11,nist_800_53_AU.6,tsc_CC6.6,tsc_CC7.1,tsc_CC7.2,tsc_CC7.3,</group>
@@ -737,7 +737,7 @@
   <!-- ERROR 0x80508030 -->
   <rule id="62173" level="12">
     <if_sid>62102</if_sid>
-    <field name="win.eventdata.errorCode">^0x80508030$</field>
+    <field name="win.eventdata.error Code">^0x80508030$</field>
     <description>Windows Defender: ERROR: CALLISTO REQUIRED</description>
     <options>no_full_log</options>
     <group>pci_dss_6.5.5,pci_dss_10.6.1,gpg13_4.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_SA.11,nist_800_53_AU.6,tsc_CC6.6,tsc_CC7.1,tsc_CC7.2,tsc_CC7.3,</group>
@@ -747,7 +747,7 @@
   <!-- ERROR 0x80508031 -->
   <rule id="62174" level="12">
     <if_sid>62102</if_sid>
-    <field name="win.eventdata.errorCode">^0x80508031$</field>
+    <field name="win.eventdata.error Code">^0x80508031$</field>
     <description>Windows Defender: ERROR: PLATFORM OUTDATED</description>
     <options>no_full_log</options>
     <group>pci_dss_6.5.5,pci_dss_10.6.1,gpg13_4.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_SA.11,nist_800_53_AU.6,tsc_CC6.6,tsc_CC7.1,tsc_CC7.2,tsc_CC7.3,</group>
@@ -757,7 +757,7 @@
   <!-- ERROR 0x80501000 -->
   <rule id="62175" level="12">
     <if_sid>62102</if_sid>
-    <field name="win.eventdata.errorCode">^0x80501000$</field>
+    <field name="win.eventdata.error Code">^0x80501000$</field>
     <description>Windows Defender: ERROR: UI CONSOLIDATION BASE</description>
     <options>no_full_log</options>
     <group>pci_dss_6.5.5,pci_dss_10.6.1,gpg13_4.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_SA.11,nist_800_53_AU.6,tsc_CC6.6,tsc_CC7.1,tsc_CC7.2,tsc_CC7.3,</group>
@@ -767,7 +767,7 @@
   <!-- ERROR 0x80501001 -->
   <rule id="62176" level="12">
     <if_sid>62102</if_sid>
-    <field name="win.eventdata.errorCode">^0x80501001$</field>
+    <field name="win.eventdata.error Code">^0x80501001$</field>
     <description>Windows Defender: ERROR: ACTIONS FAILED</description>
     <options>no_full_log</options>
     <group>pci_dss_6.5.5,pci_dss_10.6.1,gpg13_4.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_SA.11,nist_800_53_AU.6,tsc_CC6.6,tsc_CC7.1,tsc_CC7.2,tsc_CC7.3,</group>
@@ -777,7 +777,7 @@
   <!-- ERROR 0x80501002 -->
   <rule id="62177" level="12">
     <if_sid>62102</if_sid>
-    <field name="win.eventdata.errorCode">^0x80501002$</field>
+    <field name="win.eventdata.error Code">^0x80501002$</field>
     <description>Windows Defender: ERROR: NO ENGINE</description>
     <options>no_full_log</options>
     <group>pci_dss_6.5.5,pci_dss_10.6.1,gpg13_4.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_SA.11,nist_800_53_AU.6,tsc_CC6.6,tsc_CC7.1,tsc_CC7.2,tsc_CC7.3,</group>
@@ -787,7 +787,7 @@
   <!-- ERROR 0x80501003 -->
   <rule id="62178" level="12">
     <if_sid>62102</if_sid>
-    <field name="win.eventdata.errorCode">^0x80501003$</field>
+    <field name="win.eventdata.error Code">^0x80501003$</field>
     <description>Windows Defender: ERROR: ACTIVE THREATS</description>
     <options>no_full_log</options>
     <group>pci_dss_6.5.5,pci_dss_10.6.1,gpg13_4.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_SA.11,nist_800_53_AU.6,tsc_CC6.6,tsc_CC7.1,tsc_CC7.2,tsc_CC7.3,</group>
@@ -797,7 +797,7 @@
   <!-- ERROR 0x80501004 -->
   <rule id="62179" level="12">
     <if_sid>62102</if_sid>
-    <field name="win.eventdata.errorCode">^0x80501004$</field>
+    <field name="win.eventdata.error Code">^0x80501004$</field>
     <description>Windows Defender: ERROR: NO INTERNET CONNECTION</description>
     <options>no_full_log</options>
     <group>pci_dss_6.5.5,pci_dss_10.6.1,gpg13_4.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_SA.11,nist_800_53_AU.6,tsc_CC6.6,tsc_CC7.1,tsc_CC7.2,tsc_CC7.3,</group>
@@ -807,7 +807,7 @@
   <!-- ERROR 0x80501101 -->
   <rule id="62180" level="12">
     <if_sid>62102</if_sid>
-    <field name="win.eventdata.errorCode">^0x80501101$</field>
+    <field name="win.eventdata.error Code">^0x80501101$</field>
     <description>Windows Defender: ERROR: LUA CANCELLATION</description>
     <options>no_full_log</options>
     <group>pci_dss_6.5.5,pci_dss_10.6.1,gpg13_4.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_SA.11,nist_800_53_AU.6,tsc_CC6.6,tsc_CC7.1,tsc_CC7.2,tsc_CC7.3,</group>
@@ -817,7 +817,7 @@
   <!-- ERROR 0x805011011 -->
   <rule id="62181" level="12">
     <if_sid>62102</if_sid>
-    <field name="win.eventdata.errorCode">^0x805011011$</field>
+    <field name="win.eventdata.error Code">^0x805011011$</field>
     <description>Windows Defender: ERROR: CODE LUA CANCELLED</description>
     <options>no_full_log</options>
     <group>pci_dss_6.5.5,pci_dss_10.6.1,gpg13_4.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_SA.11,nist_800_53_AU.6,tsc_CC6.6,tsc_CC7.1,tsc_CC7.2,tsc_CC7.3,</group>
@@ -827,7 +827,7 @@
   <!-- ERROR 0x80501102 -->
   <rule id="62182" level="12">
     <if_sid>62102</if_sid>
-    <field name="win.eventdata.errorCode">^0x80501102$</field>
+    <field name="win.eventdata.error Code">^0x80501102$</field>
     <description>Windows Defender: ERROR: CODE ALREADY SHUTDOWN</description>
     <options>no_full_log</options>
     <group>pci_dss_6.5.5,pci_dss_10.6.1,gpg13_4.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_SA.11,nist_800_53_AU.6,tsc_CC6.6,tsc_CC7.1,tsc_CC7.2,tsc_CC7.3,</group>
@@ -837,7 +837,7 @@
   <!-- ERROR 0x80501103 -->
   <rule id="62183" level="12">
     <if_sid>62102</if_sid>
-    <field name="win.eventdata.errorCode">^0x80501103$</field>
+    <field name="win.eventdata.error Code">^0x80501103$</field>
     <description>Windows Defender: ERROR: CODE ASYNC CALL PENDING</description>
     <options>no_full_log</options>
     <group>pci_dss_6.5.5,pci_dss_10.6.1,gpg13_4.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_SA.11,nist_800_53_AU.6,tsc_CC6.6,tsc_CC7.1,tsc_CC7.2,tsc_CC7.3,</group>
@@ -847,7 +847,7 @@
   <!-- ERROR 0x80501104 -->
   <rule id="62184" level="12">
     <if_sid>62102</if_sid>
-    <field name="win.eventdata.errorCode">^0x80501104$</field>
+    <field name="win.eventdata.error Code">^0x80501104$</field>
     <description>Windows Defender: ERROR: CODE CANCELLED</description>
     <options>no_full_log</options>
     <group>pci_dss_6.5.5,pci_dss_10.6.1,gpg13_4.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_SA.11,nist_800_53_AU.6,tsc_CC6.6,tsc_CC7.1,tsc_CC7.2,tsc_CC7.3,</group>
@@ -857,7 +857,7 @@
   <!-- ERROR 0x80501105 -->
   <rule id="62185" level="12">
     <if_sid>62102</if_sid>
-    <field name="win.eventdata.errorCode">^0x80501105$</field>
+    <field name="win.eventdata.error Code">^0x80501105$</field>
     <description>Windows Defender: ERROR: CODE NO TARGETOS</description>
     <options>no_full_log</options>
     <group>pci_dss_6.5.5,pci_dss_10.6.1,gpg13_4.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_SA.11,nist_800_53_AU.6,tsc_CC6.6,tsc_CC7.1,tsc_CC7.2,tsc_CC7.3,</group>
@@ -867,7 +867,7 @@
   <!-- ERROR 0x80501106 -->
   <rule id="62186" level="12">
     <if_sid>62102</if_sid>
-    <field name="win.eventdata.errorCode">^0x80501106$</field>
+    <field name="win.eventdata.error Code">^0x80501106$</field>
     <description>Windows Defender: ERROR: CODE BAD REGEXP</description>
     <options>no_full_log</options>
     <group>pci_dss_6.5.5,pci_dss_10.6.1,gpg13_4.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_SA.11,nist_800_53_AU.6,tsc_CC6.6,tsc_CC7.1,tsc_CC7.2,tsc_CC7.3,</group>
@@ -877,7 +877,7 @@
   <!-- ERROR 0x80501107 -->
   <rule id="62187" level="12">
     <if_sid>62102</if_sid>
-    <field name="win.eventdata.errorCode">^0x80501107$</field>
+    <field name="win.eventdata.error Code">^0x80501107$</field>
     <description>Windows Defender: ERROR: TEST INDUCED ERROR</description>
     <options>no_full_log</options>
     <group>pci_dss_6.5.5,pci_dss_10.6.1,gpg13_4.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_SA.11,nist_800_53_AU.6,tsc_CC6.6,tsc_CC7.1,tsc_CC7.2,tsc_CC7.3,</group>
@@ -887,7 +887,7 @@
   <!-- ERROR 0x80501108 -->
   <rule id="62188" level="12">
     <if_sid>62102</if_sid>
-    <field name="win.eventdata.errorCode">^0x80501108$</field>
+    <field name="win.eventdata.error Code">^0x80501108$</field>
     <description>Windows Defender: ERROR: SIG BACKUP DISABLED</description>
     <options>no_full_log</options>
     <group>pci_dss_6.5.5,pci_dss_10.6.1,gpg13_4.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_SA.11,nist_800_53_AU.6,tsc_CC6.6,tsc_CC7.1,tsc_CC7.2,tsc_CC7.3,</group>
@@ -897,7 +897,7 @@
   <!-- ERROR 0x80508001 -->
   <rule id="62189" level="12">
     <if_sid>62102</if_sid>
-    <field name="win.eventdata.errorCode">^0x80508001$</field>
+    <field name="win.eventdata.error Code">^0x80508001$</field>
     <description>Windows Defender: ERROR: BAD INIT MODULES</description>
     <options>no_full_log</options>
     <group>pci_dss_6.5.5,pci_dss_10.6.1,gpg13_4.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_SA.11,nist_800_53_AU.6,tsc_CC6.6,tsc_CC7.1,tsc_CC7.2,tsc_CC7.3,</group>
@@ -907,7 +907,7 @@
   <!-- ERROR 0x80508002 -->
   <rule id="62190" level="12">
     <if_sid>62102</if_sid>
-    <field name="win.eventdata.errorCode">^0x80508002$</field>
+    <field name="win.eventdata.error Code">^0x80508002$</field>
     <description>Windows Defender: ERROR: BAD DATABASE</description>
     <options>no_full_log</options>
     <group>pci_dss_6.5.5,pci_dss_10.6.1,gpg13_4.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_SA.11,nist_800_53_AU.6,tsc_CC6.6,tsc_CC7.1,tsc_CC7.2,tsc_CC7.3,</group>
@@ -917,7 +917,7 @@
   <!-- ERROR 0x80508004 -->
   <rule id="62191" level="12">
     <if_sid>62102</if_sid>
-    <field name="win.eventdata.errorCode">^0x80508004$</field>
+    <field name="win.eventdata.error Code">^0x80508004$</field>
     <description>Windows Defender: ERROR: BAD UFS</description>
     <options>no_full_log</options>
     <group>pci_dss_6.5.5,pci_dss_10.6.1,gpg13_4.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_SA.11,nist_800_53_AU.6,tsc_CC6.6,tsc_CC7.1,tsc_CC7.2,tsc_CC7.3,</group>
@@ -927,7 +927,7 @@
   <!-- ERROR 0x8050800C -->
   <rule id="62192" level="12">
     <if_sid>62102</if_sid>
-    <field name="win.eventdata.errorCode">^0x8050800C$</field>
+    <field name="win.eventdata.error Code">^0x8050800C$</field>
     <description>Windows Defender: ERROR: BAD INPUT DATA</description>
     <options>no_full_log</options>
     <group>pci_dss_6.5.5,pci_dss_10.6.1,gpg13_4.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_SA.11,nist_800_53_AU.6,tsc_CC6.6,tsc_CC7.1,tsc_CC7.2,tsc_CC7.3,</group>
@@ -937,7 +937,7 @@
   <!-- ERROR 0x8050800D -->
   <rule id="62193" level="12">
     <if_sid>62102</if_sid>
-    <field name="win.eventdata.errorCode">^0x8050800D$</field>
+    <field name="win.eventdata.error Code">^0x8050800D$</field>
     <description>Windows Defender: ERROR: BAD GLOBAL STORAGE</description>
     <options>no_full_log</options>
     <group>pci_dss_6.5.5,pci_dss_10.6.1,gpg13_4.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_SA.11,nist_800_53_AU.6,tsc_CC6.6,tsc_CC7.1,tsc_CC7.2,tsc_CC7.3,</group>
@@ -947,7 +947,7 @@
   <!-- ERROR 0x8050800E -->
   <rule id="62194" level="12">
     <if_sid>62102</if_sid>
-    <field name="win.eventdata.errorCode">^0x8050800E$</field>
+    <field name="win.eventdata.error Code">^0x8050800E$</field>
     <description>Windows Defender: ERROR: OBSOLETE</description>
     <options>no_full_log</options>
     <group>pci_dss_6.5.5,pci_dss_10.6.1,gpg13_4.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_SA.11,nist_800_53_AU.6,tsc_CC6.6,tsc_CC7.1,tsc_CC7.2,tsc_CC7.3,</group>
@@ -957,7 +957,7 @@
   <!-- ERROR 0x8050800F -->
   <rule id="62195" level="12">
     <if_sid>62102</if_sid>
-    <field name="win.eventdata.errorCode">^0x8050800F$</field>
+    <field name="win.eventdata.error Code">^0x8050800F$</field>
     <description>Windows Defender: ERROR: NOT SUPPORTED</description>
     <options>no_full_log</options>
     <group>pci_dss_6.5.5,pci_dss_10.6.1,gpg13_4.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_SA.11,nist_800_53_AU.6,tsc_CC6.6,tsc_CC7.1,tsc_CC7.2,tsc_CC7.3,</group>
@@ -967,7 +967,7 @@
   <!-- ERROR 0x80508010 -->
   <rule id="62196" level="12">
     <if_sid>62102</if_sid>
-    <field name="win.eventdata.errorCode">^0x80508010$</field>
+    <field name="win.eventdata.error Code">^0x80508010$</field>
     <description>Windows Defender: ERROR: NO MORE ITEMS</description>
     <options>no_full_log</options>
     <group>pci_dss_6.5.5,pci_dss_10.6.1,gpg13_4.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_SA.11,nist_800_53_AU.6,tsc_CC6.6,tsc_CC7.1,tsc_CC7.2,tsc_CC7.3,</group>
@@ -977,7 +977,7 @@
   <!-- ERROR 0x80508011 -->
   <rule id="62197" level="12">
     <if_sid>62102</if_sid>
-    <field name="win.eventdata.errorCode">^0x80508011$</field>
+    <field name="win.eventdata.error Code">^0x80508011$</field>
     <description>Windows Defender: ERROR: DUPLICATE SCAN ID</description>
     <options>no_full_log</options>
     <group>pci_dss_6.5.5,pci_dss_10.6.1,gpg13_4.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_SA.11,nist_800_53_AU.6,tsc_CC6.6,tsc_CC7.1,tsc_CC7.2,tsc_CC7.3,</group>
@@ -987,7 +987,7 @@
   <!-- ERROR 0x80508012 -->
   <rule id="62198" level="12">
     <if_sid>62102</if_sid>
-    <field name="win.eventdata.errorCode">^0x80508012$</field>
+    <field name="win.eventdata.error Code">^0x80508012$</field>
     <description>Windows Defender: ERROR: BAD SCAN ID</description>
     <options>no_full_log</options>
     <group>pci_dss_6.5.5,pci_dss_10.6.1,gpg13_4.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_SA.11,nist_800_53_AU.6,tsc_CC6.6,tsc_CC7.1,tsc_CC7.2,tsc_CC7.3,</group>
@@ -997,7 +997,7 @@
   <!-- ERROR 0x80508013 -->
   <rule id="62199" level="12">
     <if_sid>62102</if_sid>
-    <field name="win.eventdata.errorCode">^0x80508013$</field>
+    <field name="win.eventdata.error Code">^0x80508013$</field>
     <description>Windows Defender: ERROR: BAD USER DB VERSION</description>
     <options>no_full_log</options>
     <group>pci_dss_6.5.5,pci_dss_10.6.1,gpg13_4.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_SA.11,nist_800_53_AU.6,tsc_CC6.6,tsc_CC7.1,tsc_CC7.2,tsc_CC7.3,</group>
@@ -1007,7 +1007,7 @@
   <!-- ERROR 0x80508014 -->
   <rule id="62200" level="12">
     <if_sid>62102</if_sid>
-    <field name="win.eventdata.errorCode">^0x80508014$</field>
+    <field name="win.eventdata.error Code">^0x80508014$</field>
     <description>Windows Defender: ERROR: RESTORE FAILED</description>
     <options>no_full_log</options>
     <group>pci_dss_6.5.5,pci_dss_10.6.1,gpg13_4.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_SA.11,nist_800_53_AU.6,tsc_CC6.6,tsc_CC7.1,tsc_CC7.2,tsc_CC7.3,</group>
@@ -1017,7 +1017,7 @@
   <!-- ERROR 0x80508016 -->
   <rule id="62201" level="12">
     <if_sid>62102</if_sid>
-    <field name="win.eventdata.errorCode">^0x80508016$</field>
+    <field name="win.eventdata.error Code">^0x80508016$</field>
     <description>Windows Defender: ERROR: BAD ACTION</description>
     <options>no_full_log</options>
     <group>pci_dss_6.5.5,pci_dss_10.6.1,gpg13_4.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_SA.11,nist_800_53_AU.6,tsc_CC6.6,tsc_CC7.1,tsc_CC7.2,tsc_CC7.3,</group>
@@ -1027,7 +1027,7 @@
   <!-- ERROR 0x80508019 -->
   <rule id="62202" level="12">
     <if_sid>62102</if_sid>
-    <field name="win.eventdata.errorCode">^0x80508019$</field>
+    <field name="win.eventdata.error Code">^0x80508019$</field>
     <description>Windows Defender: ERROR: NOT FOUND</description>
     <options>no_full_log</options>
     <group>pci_dss_6.5.5,pci_dss_10.6.1,gpg13_4.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_SA.11,nist_800_53_AU.6,tsc_CC6.6,tsc_CC7.1,tsc_CC7.2,tsc_CC7.3,</group>
@@ -1037,7 +1037,7 @@
   <!-- ERROR 0x80509001 -->
   <rule id="62203" level="12">
     <if_sid>62102</if_sid>
-    <field name="win.eventdata.errorCode">^0x80509001$</field>
+    <field name="win.eventdata.error Code">^0x80509001$</field>
     <description>Windows Defender: ERROR: BAD EHANDLE</description>
     <options>no_full_log</options>
     <group>pci_dss_6.5.5,pci_dss_10.6.1,gpg13_4.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_SA.11,nist_800_53_AU.6,tsc_CC6.6,tsc_CC7.1,tsc_CC7.2,tsc_CC7.3,</group>
@@ -1047,7 +1047,7 @@
   <!-- ERROR 0x80509003 -->
   <rule id="62204" level="12">
     <if_sid>62102</if_sid>
-    <field name="win.eventdata.errorCode">^0x80509003$</field>
+    <field name="win.eventdata.error Code">^0x80509003$</field>
     <description>Windows Defender: ERROR: RELO KERNEL NOT LOADED</description>
     <options>no_full_log</options>
     <group>pci_dss_6.5.5,pci_dss_10.6.1,gpg13_4.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_SA.11,nist_800_53_AU.6,tsc_CC6.6,tsc_CC7.1,tsc_CC7.2,tsc_CC7.3,</group>
@@ -1057,7 +1057,7 @@
   <!-- ERROR 0x8050A001 -->
   <rule id="62205" level="12">
     <if_sid>62102</if_sid>
-    <field name="win.eventdata.errorCode">^0x8050A001$</field>
+    <field name="win.eventdata.error Code">^0x8050A001$</field>
     <description>Windows Defender: ERROR: BAD DB: OPEN</description>
     <options>no_full_log</options>
     <group>pci_dss_6.5.5,pci_dss_10.6.1,gpg13_4.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_SA.11,nist_800_53_AU.6,tsc_CC6.6,tsc_CC7.1,tsc_CC7.2,tsc_CC7.3,</group>
@@ -1067,7 +1067,7 @@
   <!-- ERROR 0x8050A002 -->
   <rule id="62206" level="12">
     <if_sid>62102</if_sid>
-    <field name="win.eventdata.errorCode">^0x8050A002$</field>
+    <field name="win.eventdata.error Code">^0x8050A002$</field>
     <description>Windows Defender: ERROR: BAD DB: HEADER</description>
     <options>no_full_log</options>
     <group>pci_dss_6.5.5,pci_dss_10.6.1,gpg13_4.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_SA.11,nist_800_53_AU.6,tsc_CC6.6,tsc_CC7.1,tsc_CC7.2,tsc_CC7.3,</group>
@@ -1077,7 +1077,7 @@
   <!-- ERROR 0x8050A003 -->
   <rule id="62207" level="12">
     <if_sid>62102</if_sid>
-    <field name="win.eventdata.errorCode">^0x8050A003$</field>
+    <field name="win.eventdata.error Code">^0x8050A003$</field>
     <description>Windows Defender: ERROR: BAD DB: OLD ENGINE</description>
     <options>no_full_log</options>
     <group>pci_dss_6.5.5,pci_dss_10.6.1,gpg13_4.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_SA.11,nist_800_53_AU.6,tsc_CC6.6,tsc_CC7.1,tsc_CC7.2,tsc_CC7.3,</group>
@@ -1087,7 +1087,7 @@
   <!-- ERROR 0x8050A004 -->
   <rule id="62208" level="12">
     <if_sid>62102</if_sid>
-    <field name="win.eventdata.errorCode">^0x8050A004$</field>
+    <field name="win.eventdata.error Code">^0x8050A004$</field>
     <description>Windows Defender: ERROR: BAD DB: CONTENT</description>
     <options>no_full_log</options>
     <group>pci_dss_6.5.5,pci_dss_10.6.1,gpg13_4.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_SA.11,nist_800_53_AU.6,tsc_CC6.6,tsc_CC7.1,tsc_CC7.2,tsc_CC7.3,</group>
@@ -1097,7 +1097,7 @@
   <!-- ERROR 0x8050A005 -->
   <rule id="62209" level="12">
     <if_sid>62102</if_sid>
-    <field name="win.eventdata.errorCode">^0x8050A005$</field>
+    <field name="win.eventdata.error Code">^0x8050A005$</field>
     <description>Windows Defender: ERROR: BAD DB: NOT SIGNED</description>
     <options>no_full_log</options>
     <group>pci_dss_6.5.5,pci_dss_10.6.1,gpg13_4.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_SA.11,nist_800_53_AU.6,tsc_CC6.6,tsc_CC7.1,tsc_CC7.2,tsc_CC7.3,</group>
@@ -1107,7 +1107,7 @@
   <!-- ERROR 0x8050A002 -->
   <rule id="62210" level="12">
     <if_sid>62102</if_sid>
-    <field name="win.eventdata.errorCode">^0x8050A002$</field>
+    <field name="win.eventdata.error Code">^0x8050A002$</field>
     <description>Windows Defender: ERROR: BAD DB: HEADER</description>
     <options>no_full_log</options>
     <group>pci_dss_6.5.5,pci_dss_10.6.1,gpg13_4.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_SA.11,nist_800_53_AU.6,tsc_CC6.6,tsc_CC7.1,tsc_CC7.2,tsc_CC7.3,</group>
@@ -1117,7 +1117,7 @@
   <!-- ERROR 0x8050801 -->
   <rule id="62211" level="12">
     <if_sid>62102</if_sid>
-    <field name="win.eventdata.errorCode">^0x8050801$</field>
+    <field name="win.eventdata.error Code">^0x8050801$</field>
     <description>Windows Defender: ERROR: REMOVE FAILED</description>
     <options>no_full_log</options>
     <group>pci_dss_6.5.5,pci_dss_10.6.1,gpg13_4.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_SA.11,nist_800_53_AU.6,tsc_CC6.6,tsc_CC7.1,tsc_CC7.2,tsc_CC7.3,</group>
@@ -1127,7 +1127,7 @@
   <!-- ERROR 0x80508018 -->
   <rule id="62212" level="12">
     <if_sid>62102</if_sid>
-    <field name="win.eventdata.errorCode">^0x80508018$</field>
+    <field name="win.eventdata.error Code">^0x80508018$</field>
     <description>Windows Defender: ERROR: SCAN ABORTED</description>
     <options>no_full_log</options>
     <group>pci_dss_6.5.5,pci_dss_10.6.1,gpg13_4.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_SA.11,nist_800_53_AU.6,tsc_CC6.6,tsc_CC7.1,tsc_CC7.2,tsc_CC7.3,</group>
