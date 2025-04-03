@@ -4,7 +4,8 @@
 
 from functools import wraps
 
-from cachetools import TTLCache, cached
+from cachetools import TTLCache
+from cachetools.keys import hashkey
 from wazuh.core.common import cache_event
 from wazuh.core.config.client import CentralizedConfig
 
@@ -32,21 +33,25 @@ def token_cache(cache: TTLCache):
 
     def decorator(func):
         @wraps(func)
-        def wrapper(*args, **kwargs):
-            origin_node_type = kwargs.pop('origin_node_type')
-
+        async def wrapper(*args, **kwargs):
             if cache_event.is_set():
                 cache.clear()
                 cache_event.clear()
 
-            @cached(cache=cache)
-            def f(*_args, **_kwargs):
-                return func(*_args, **_kwargs)
+            async def f(*_args, **_kwargs):
+                k = hashkey(*_args, **_kwargs)
+                try:
+                    return cache[k]
+                except KeyError:
+                    pass  # key not found
+                v = await func(*args, **kwargs)
+                try:
+                    cache[k] = v
+                except ValueError:
+                    pass  # value too large
+                return v
 
-            if origin_node_type == 'master':
-                return f(*args, **kwargs)
-
-            return func(*args, **kwargs)
+            return await f(*args, **kwargs)
 
         return wrapper
 
