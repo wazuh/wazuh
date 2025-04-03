@@ -33,6 +33,8 @@ jobs:
         with:
           python-version-file: ".github/workflows/.python-version-it"
           architecture: x64
+      - name: "Install a compatible CMake"
+        uses: ./.github/actions/reinstall_cmake
       # Build wazuh agent for linux.
       - name: Build wazuh agent for linux
         run: |

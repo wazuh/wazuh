@@ -26,6 +26,8 @@ jobs:
       # Install wingw required to build the winagent.
       - name: Install dependencies
         run: sudo apt install gcc-mingw-w64 g++-mingw-w64-i686 g++-mingw-w64-x86-64 nsis -y
+      - name: "Install a compatible CMake"
+        uses: ./.github/actions/reinstall_cmake
       # Build winagent.
       - name: Build wazuh agent for windows
         run: |
