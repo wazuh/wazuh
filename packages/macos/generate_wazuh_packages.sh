@@ -165,13 +165,13 @@ function build_package() {
     else
         WAZUH_PATH="${CURRENT_PATH}/../.."
     fi
-    short_commit_hash="$(cd "${WAZUH_PATH}" && git rev-parse --short HEAD)"
+    short_commit_hash="$(cd "${WAZUH_PATH}" && git rev-parse --short=7 HEAD)"
 
     export CONFIG="${WAZUH_PATH}/etc/preloaded-vars.conf"
     WAZUH_PACKAGES_PATH="${WAZUH_PATH}/packages/macos"
     ENTITLEMENTS_PATH="${WAZUH_PACKAGES_PATH}/entitlements.plist"
 
-    VERSION=$(cat ${WAZUH_PATH}/src/VERSION | cut -d "-" -f1 | cut -c 2-)
+    VERSION="$(awk -F'"' '/"version"[ \t]*:/ {print $4}' $WAZUH_PATH/VERSION.json)"
 
     # Define output package name
     if [ $IS_STAGE == "no" ]; then
@@ -199,14 +199,14 @@ function build_package() {
     if munkipkg $CURRENT_PATH/wazuh-agent ; then
         echo "The wazuh agent package for macOS has been successfully built."
         mv $CURRENT_PATH/wazuh-agent/build/* $DESTINATION/
-        symbols_pkg_name="${pkg_name}_debug_symbols"
+        symbols_pkg_name="wazuh-agent-debug-symbols-${VERSION}-${REVISION}.${ARCH}-macos"
         cp -R "${WAZUH_PATH}/src/symbols"  "${DESTINATION}"
         zip -r "${DESTINATION}/${symbols_pkg_name}.zip" "${DESTINATION}/symbols"
         rm -rf "${DESTINATION}/symbols"
         sign_pkg
         if [[ "${CHECKSUM}" == "yes" ]]; then
             shasum -a512 "${DESTINATION}/${pkg_name}.pkg" > "${DESTINATION}/${pkg_name}.pkg.sha512"
-            shasum -a512 "${DESTINATION}/${symbols_pkg_name}.zip" > "${DESTINATION}/${symbols_pkg_name}.sha512"
+            shasum -a512 "${DESTINATION}/${symbols_pkg_name}.zip" > "${DESTINATION}/${symbols_pkg_name}.zip.sha512"
         fi
         clean_and_exit 0
     else

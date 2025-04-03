@@ -50,6 +50,7 @@
 extern syscheck_config syscheck;
 extern int sys_debug_level;
 extern int audit_queue_full_reported;
+extern int ebpf_kernel_queue_full_reported;
 
 typedef enum fim_event_type {
     FIM_ADD,
@@ -696,6 +697,11 @@ void fim_diff_process_delete_value(const char *key_name, const char *value_name,
  *
  */
 void fim_initialize();
+
+/**
+ * @brief Initializes Windows whodata thread, or send signal to start audit threat in Linux
+ *
+ */
 int fim_whodata_initialize();
 
 /**
@@ -909,4 +915,10 @@ void fim_send_sync_state(const char *location, const char* msg);
  */
 bool fim_shutdown_process_on();
 
+#ifdef __linux__
+/**
+ * @brief Initializes eBPF and does the healthcheck to check availability.
+ */
+void check_ebpf_availability();
+#endif
 #endif /* SYSCHECK_H */

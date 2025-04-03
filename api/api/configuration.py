@@ -4,9 +4,10 @@
 
 import copy
 import datetime
-import os
-from typing import Dict, Tuple, Any, List
 import logging
+import os
+import signal
+from typing import Dict, Tuple, Any, List
 
 import yaml
 from cryptography import x509
@@ -36,6 +37,7 @@ default_api_configuration = {
     "drop_privileges": True,
     "experimental_features": False,
     "max_upload_size": 10485760,
+    "authentication_pool_size": 2,
     "intervals": {
         "request_timeout": 10
     },
@@ -329,6 +331,12 @@ def read_yaml_config(config_file: str = CONFIG_FILE_PATH, default_conf: dict = N
     append_wazuh_prefixes(configuration, {API_SSL_PATH: [('https', 'key'), ('https', 'cert'), ('https', 'ca')]})
 
     return configuration
+
+
+def init_auth_worker():
+    """Set authentication pool worker to ignore SIGINT signals to avoid 
+    throwing exceptions when shutting down the API in foreground mode."""
+    signal.signal(signal.SIGINT, signal.SIG_IGN)
 
 
 # Check if the default configuration is valid according to its jsonschema, so we are forced to update the schema if any

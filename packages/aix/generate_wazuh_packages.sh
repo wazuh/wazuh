@@ -14,7 +14,7 @@ set -x
 
 current_path="$( cd $(dirname $0) ; pwd -P )"
 install_path="/var/ossec"
-reference="master"
+reference="main"
 revision="1"
 target_dir="${current_path}/output/"
 compute_checksums="no"
@@ -199,7 +199,37 @@ build_package() {
   rm -f wazuh.tar.gz && curl -L ${source_code} -k -o wazuh.tar.gz -s
   rm -rf wazuh-wazuh-* wazuh-agent-*
   extracted_directory=$(gunzip -c wazuh.tar.gz | tar -xvf - | tail -n 1 | cut -d' ' -f2 | cut -d'/' -f1)
-  wazuh_version=$(cat ${extracted_directory}/src/VERSION | cut -d'v' -f2)
+  wazuh_version=$(awk -F'"' '/"version"[ \t]*:/ {print $4}' $extracted_directory/VERSION.json)
+
+  # Add commit hash to the VERSION.json file
+  pushd $extracted_directory
+  short_commit_hash=$(curl -ks "https://api.github.com/repos/wazuh/wazuh/commits/${reference}" | awk -F '"' '/"sha":/ {print substr($4, 1, 7); exit}')
+  /usr/bin/nawk -v commit="$short_commit_hash" '
+  {
+      lines[NR] = $0  # Store lines in an array
+  }
+  END {
+      last_index = NR  # Save the last line index
+      for (i = 1; i <= last_index; i++) {
+          if (i == last_index) {  # When reaching the last line (assumed to be "}")
+              if (lines[i-1] !~ /,$/)  # If the previous line does not end with a comma, add one
+                  lines[i-1] = lines[i-1] ",";
+
+              print lines[i-1];  # Print the modified previous line
+              print "    \"commit\": \"" commit "\"";  # Insert commit using the passed variable
+              print lines[i];  # Print the closing brace
+          } else if (i < last_index - 1) {
+              print lines[i];  # Print all other lines unchanged
+          }
+      }
+  }
+  ' VERSION.json > VERSION.json.tmp && mv VERSION.json.tmp VERSION.json
+  cat VERSION.json
+
+  # Remove the temporary file after processing (if any remains)
+  [ -f VERSION.json.tmp ] && rm VERSION.json.tmp
+  popd
+
   cp -pr ${extracted_directory} wazuh-agent-${wazuh_version}
 
   rpm_build_dir="/opt/freeware/src/packages"
