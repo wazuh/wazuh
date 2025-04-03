@@ -3,7 +3,6 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import os
-import sys
 from unittest.mock import ANY, MagicMock, mock_open, patch
 
 import pytest
@@ -11,10 +10,7 @@ from wazuh.core.common import REMOTED_SOCKET
 
 with patch('wazuh.core.common.wazuh_uid'):
     with patch('wazuh.core.common.wazuh_gid'):
-        sys.modules['wazuh.rbac.orm'] = MagicMock()
         import wazuh.rbac.decorators
-
-        del sys.modules['wazuh.rbac.orm']
         from wazuh.tests.util import RBAC_bypasser
 
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser

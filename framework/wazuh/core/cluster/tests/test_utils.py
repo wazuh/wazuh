@@ -5,7 +5,6 @@
 import logging
 import pathlib
 import socket
-import sys
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -20,7 +19,6 @@ with patch('wazuh.core.common.getgrnam'):
                 with patch.object(ValidateFilePathMixin, '_validate_file_path', return_value=None):
                     default_config = get_default_configuration()
                     CentralizedConfig._config = default_config
-                    sys.modules['wazuh.rbac.orm'] = MagicMock()
 
                     from wazuh.core import common
                     from wazuh.core.cluster import utils
