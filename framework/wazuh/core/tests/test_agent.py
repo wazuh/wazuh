@@ -162,6 +162,12 @@ def test_WazuhDBQueryAgents_filter_date(mock_socket_conn):
     ('os.version', 'CAST(os_major AS INTEGER) asc, CAST(os_minor AS INTEGER) asc'),
     ('status', 'status asc'),
     ('id', 'id asc'),
+    ('version', ("CAST(substr(trim(version, 'Wazuh v'), 1, instr(trim(version, 'Wazuh v'), '.') - 1) as INTEGER) {0}, "
+                    "CAST(rtrim(substr(trim(version, 'Wazuh v'), instr(trim(version, 'Wazuh v'), '.') + 1, 2 ), '.') as INTEGER) {0}, "
+                    "CAST(REPLACE(version, 'Wazuh v'|| substr(trim(version, 'Wazuh v'), 1, instr(trim(version, 'Wazuh v'), '.') - 1) "
+                    "|| '.' || rtrim(substr(trim(version, 'Wazuh v'), instr(trim(version, 'Wazuh v'), '.') + 1, 2 ), '.') || '.' , '') "
+                    "as INTEGER) {0}"
+                     ).format('asc'))
 ])
 @patch('socket.socket.connect')
 def test_WazuhDBQueryAgents_sort_query(mock_socket_conn, field, expected_query):

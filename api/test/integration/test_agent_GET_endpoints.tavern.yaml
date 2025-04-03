@@ -60,6 +60,33 @@ stages:
             key: "os.name,os.major"
       status_code: 200
 
+  - name: Get all agents sorted by version
+    request:
+      verify: False
+      <<: *get_agents
+      params:
+        sort: version,id
+    response:
+      verify_response_with:
+        - function: tavern_utils:test_sort_response
+          extra_kwargs:
+            key: "version"
+      status_code: 200
+
+  - name: Get all agents sorted by version inverse order
+    request:
+      verify: False
+      <<: *get_agents
+      params:
+        sort: -version
+    response:
+      verify_response_with:
+        - function: tavern_utils:test_sort_response
+          extra_kwargs:
+            key: "version"
+            reverse: true
+      status_code: 200
+
   - name: Get all agents sorted by status
     request:
       verify: False
