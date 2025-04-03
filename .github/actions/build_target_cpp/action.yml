@@ -27,9 +27,9 @@ runs:
           SRC_FOLDER=$(pwd)/src
 
           # Read version and revision file.
-          VERSION=$(cat src/VERSION)
+          VERSION="v$(grep '"version"' VERSION.json | sed -E 's/.*"version": *"([^"]+)".*/\1/')"
           echo $VERSION
-          REVISION=$(cat src/REVISION)
+          REVISION=`grep '"stage"' VERSION.json | sed -E 's/.*"stage": *"([^"]+)".*/\1/'`
           echo $REVISION
 
           cd $SRC_FOLDER
