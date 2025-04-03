@@ -1,4 +1,4 @@
-from unittest.mock import AsyncMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from wazuh.core.indexer.models.commands import Command, Status, Target, TargetType
@@ -14,7 +14,7 @@ COMMAND = Command(document_id=DOCUMENT_ID, status=Status.PENDING, target=Target(
 @patch('comms_api.core.commands.CommandsManager')
 async def test_pull_commands(commands_manager_mock):
     """Check that the `pull_commands` function works as expected."""
-    get_commands_mock = AsyncMock(return_value=[COMMAND])
+    get_commands_mock = MagicMock(return_value=[COMMAND])
     commands_manager_mock.get_commands = get_commands_mock
     commands = await pull_commands(commands_manager_mock, AGENT_ID)
 

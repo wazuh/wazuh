@@ -1,4 +1,3 @@
-import asyncio
 from multiprocessing.managers import SyncManager
 from multiprocessing.synchronize import Event
 from typing import Dict, List, Optional
@@ -54,7 +53,7 @@ class CommandsManager:
 
         return processed_commands
 
-    async def get_commands(self, target_id: UUID) -> Optional[List[Command]]:
+    def get_commands(self, target_id: UUID) -> Optional[List[Command]]:
         """Get commands from the manager.
 
         It returns immediately if there are commands for the target specified, otherwise it waits for new commands until
@@ -73,10 +72,10 @@ class CommandsManager:
             Commands list or None if the timeout is reached.
         """
         if target_id not in self._commands:
-            event = asyncio.Event()
+            event = self._manager.Event()
             self._subscriptions.update({target_id: event})
 
-            signaled = await event.wait()
+            signaled = event.wait()
 
             self._subscriptions.pop(target_id, None)
             if not signaled:

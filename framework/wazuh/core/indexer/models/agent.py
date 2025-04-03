@@ -1,45 +1,11 @@
 import base64
-import hashlib
-import os
 from dataclasses import InitVar, asdict, dataclass
 from datetime import datetime
 from enum import Enum
 from hmac import compare_digest
 from typing import List
 
-from wazuh.core.indexer.utils import convert_enums
-
-ITERATIONS = 100_000
-HASH_ALGO = 'sha256'
-
-
-def _generate_salt() -> bytes:
-    """Generate a random salt value.
-
-    Returns
-    -------
-    bytes
-        Random salt.
-    """
-    return os.urandom(16)
-
-
-def _hash_key(key: str, salt: bytes) -> str:
-    """Hash the given key using the provided salt.
-
-    Parameters
-    ----------
-    key : str
-        Value to hash.
-    salt : bytes
-        Value to use within derivation function.
-
-    Returns
-    -------
-    str
-        The hashed key.
-    """
-    return hashlib.pbkdf2_hmac(HASH_ALGO, key.encode('utf-8'), salt, ITERATIONS)
+from wazuh.core.indexer.utils import convert_enums, generate_salt, hash_key
 
 
 class Status(str, Enum):
@@ -103,8 +69,8 @@ class Agent:
         str
             Hashed key value.
         """
-        salt = _generate_salt()
-        key_hash = _hash_key(raw_key, salt)
+        salt = generate_salt()
+        key_hash = hash_key(raw_key, salt)
         return base64.b64encode(salt + key_hash)
 
     def check_key(self, key: str) -> bool:
@@ -123,7 +89,7 @@ class Agent:
         stored_key = self.key.encode('latin-1')
         stored_key = base64.b64decode(stored_key)
         salt, key_hash = stored_key[:16], stored_key[16:]
-        return compare_digest(key_hash, _hash_key(key, salt))
+        return compare_digest(key_hash, hash_key(key, salt))
 
     def to_dict(self) -> dict:
         """Translate the instance to a dictionary ready to be indexed.

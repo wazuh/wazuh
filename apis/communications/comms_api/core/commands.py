@@ -23,7 +23,7 @@ async def pull_commands(commands_manager: CommandsManager, agent_id: UUID) -> Li
     List[Command]
         List of commands.
     """
-    commands = await commands_manager.get_commands(agent_id)
+    commands = commands_manager.get_commands(agent_id)
     if commands is None:
         raise HTTPError(
             message='Request exceeded the processing time limit',

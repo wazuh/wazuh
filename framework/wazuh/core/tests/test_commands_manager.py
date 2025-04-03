@@ -40,7 +40,7 @@ async def test_commands_manager_get_commands(sync_manager_mock):
     """Check that the `get_commands` method works as expected."""
     commands_manager = CommandsManager()
     commands_manager._commands = {AGENT_ID: [COMMAND]}
-    commands = await commands_manager.get_commands(AGENT_ID)
+    commands = commands_manager.get_commands(AGENT_ID)
 
     assert commands == [COMMAND]
 

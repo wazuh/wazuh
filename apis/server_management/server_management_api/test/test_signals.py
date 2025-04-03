@@ -1,7 +1,7 @@
 import asyncio
 import os
 from functools import partial
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
 import pytest
@@ -152,7 +152,6 @@ async def test_get_update_information_schedule(query_update_check_service_mock):
 @patch('server_management_api.signals.get_update_information')
 @patch('server_management_api.signals.update_check_is_enabled')
 @patch('server_management_api.signals.running_in_master_node')
-@pytest.mark.asyncio
 async def test_register_background_tasks(
     running_in_master_node_mock,
     update_check_mock,
@@ -175,9 +174,16 @@ async def test_register_background_tasks(
     with patch('server_management_api.signals.asyncio') as create_task_mock:
         create_task_mock.create_task.return_value = AwaitableMock(spec=asyncio.Task)
         create_task_mock.create_task.return_value.cancel = AsyncMock()
-        commands_manager_mock = AsyncMock()
+        commands_manager_mock = MagicMock()
+        rbac_manager_mock = MagicMock()
 
-        with TestClient(Starlette(lifespan=partial(lifespan_handler, commands_manager=commands_manager_mock))):
+        with TestClient(
+            Starlette(
+                lifespan=partial(
+                    lifespan_handler, commands_manager=commands_manager_mock, rbac_manager=rbac_manager_mock
+                )
+            )
+        ):
             assert create_task_mock.create_task.call_count == registered_tasks
 
         assert create_task_mock.create_task.return_value.cancel.call_count == registered_tasks

@@ -13,6 +13,7 @@ from wazuh.core.exception import WazuhIndexerError
 from wazuh.core.indexer.agent import AgentsIndex
 from wazuh.core.indexer.bulk import MixinBulk
 from wazuh.core.indexer.commands import CommandsManager
+from wazuh.core.indexer.users import UsersIndex
 
 logger = getLogger('wazuh')
 
@@ -50,6 +51,7 @@ class Indexer(MixinBulk):
         # Register indices and plugins clients here
         self.agents = AgentsIndex(client=self._client)
         self.commands_manager = CommandsManager(client=self._client)
+        self.users = UsersIndex(client=self._client)
 
     def _get_opensearch_client(self) -> AsyncOpenSearch:
         """Get a new OpenSearch client instance.
