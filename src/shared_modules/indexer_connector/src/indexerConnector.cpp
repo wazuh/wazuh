@@ -535,10 +535,10 @@ IndexerConnector::IndexerConnector(
     }
 
     // Initialize publisher.
-    auto selector {std::make_shared<ServerSelector>(config.at("hosts"), timeout, secureCommunication)};
+    static auto selector {std::make_shared<ServerSelector>(config.at("hosts"), timeout, secureCommunication)};
 
     m_dispatcher = std::make_unique<ThreadDispatchQueue>(
-        [this, selector, secureCommunication](std::queue<std::string>& dataQueue)
+        [this, secureCommunication](std::queue<std::string>& dataQueue)
         {
             std::scoped_lock lock(m_syncMutex);
 
@@ -747,7 +747,7 @@ IndexerConnector::IndexerConnector(
 
     m_syncQueue = std::make_unique<ThreadSyncQueue>(
         // coverity[missing_lock]
-        [this, selector, secureCommunication](const std::string& agentId)
+        [this, secureCommunication](const std::string& agentId)
         {
             try
             {
@@ -772,7 +772,7 @@ IndexerConnector::IndexerConnector(
 
     m_initializeThread = std::thread(
         // coverity[copy_constructor_call]
-        [this, templateData, updateMappingsData, selector, secureCommunication]()
+        [this, templateData, updateMappingsData, secureCommunication]()
         {
             auto sleepTime = std::chrono::seconds(START_TIME);
             std::unique_lock lock(m_mutex);

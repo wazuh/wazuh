@@ -1225,7 +1225,8 @@ public:
         {
             return "";
         }
-        return installTimeRaw;
+        m_installTimeISO8601 = Utils::rawTimestampToISO8601(installTimeRaw);
+        return m_installTimeISO8601;
     }
 
     std::string_view hotfixName()
@@ -1576,6 +1577,7 @@ private:
     std::string m_commandLineSanitized;
     std::string m_processStartISO8601;
     std::vector<std::string_view> m_processArguments;
+    std::string m_installTimeISO8601;
 
     /**
      * @brief Scan context.

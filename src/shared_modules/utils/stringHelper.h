@@ -570,6 +570,15 @@ namespace Utils
         tokens.push_back(str);
         return tokens;
     }
+
+    static bool isNumber(std::string_view str)
+    {
+        auto it = str.begin();
+
+        while (it != str.end() && std::isdigit(*it)) ++it;
+
+        return !str.empty() && it == str.end();
+    }
 #endif
 
 } // namespace Utils
