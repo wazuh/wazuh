@@ -130,9 +130,10 @@ struct IsReflectable<T, std::void_t<decltype(T::fields())>> : std::true_type
 
 template<typename T>
 constexpr bool IS_REFLECTABLE_MEMBER =
-    std::is_same_v<T, std::string_view> || std::is_same_v<T, std::string> || std::is_same_v<T, double> ||
-    std::is_same_v<T, bool> || IsMap<std::decay_t<T>>::value || IsVector<std::decay_t<T>>::value ||
-    IsReflectable<T>::value || std::is_same_v<T, std::int64_t>;
+    std::is_same_v<std::decay_t<T>, std::string_view> || std::is_same_v<std::decay_t<T>, std::string> ||
+    std::is_same_v<std::decay_t<T>, double> || std::is_same_v<std::decay_t<T>, bool> || IsMap<std::decay_t<T>>::value ||
+    IsVector<std::decay_t<T>>::value || IsReflectable<std::decay_t<T>>::value ||
+    std::is_same_v<std::decay_t<T>, std::int64_t>;
 
 template<typename C, typename T>
 constexpr auto makeFieldChecked(const char* keyLiteral, const char* keyLiteralField, T C::*member)

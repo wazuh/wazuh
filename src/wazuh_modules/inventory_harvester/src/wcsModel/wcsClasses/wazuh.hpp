@@ -27,7 +27,7 @@ struct Wazuh final
 
     struct Schema final
     {
-        std::string_view version = "1.0";
+        const std::string_view version = "1.0";
 
         REFLECTABLE(MAKE_FIELD("version", &Schema::version));
     };
