@@ -2002,6 +2002,26 @@ void test_wdbi_report_removed_network_protocol_success_multiple_steps(void **sta
     wdbi_report_removed(agent_id, component, stmt);
 }
 
+void test_wdbi_report_removed_netifaces_success(void **state) {
+    const char* agent_id = "001";
+    wdb_component_t component = WDB_SYSCOLLECTOR_NETINFO;
+    sqlite3_stmt* stmt = NULL;
+    router_inventory_events_handle = (ROUTER_PROVIDER_HANDLE)1;
+    router_fim_events_handle = (ROUTER_PROVIDER_HANDLE)1;
+
+    expect_value(__wrap_sqlite3_column_text, iCol, 0);
+    will_return(__wrap_sqlite3_column_text, "item_id");
+    will_return(__wrap_sqlite3_step, SQLITE_OK);
+    will_return(__wrap_sqlite3_step, SQLITE_OK);
+
+    const char* expected_message = "{\"agent_info\":{\"agent_id\":\"001\"},\"action\":\"deleteNetIface\",\"data\":{\"item_id\":\"item_id\"}}";
+    expect_string(__wrap_router_provider_send, message, expected_message);
+    expect_value(__wrap_router_provider_send, message_size, strlen(expected_message));
+    will_return(__wrap_router_provider_send, 0);
+
+    wdbi_report_removed(agent_id, component, stmt);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         //Test wdb_calculate_stmt_checksum
@@ -2112,7 +2132,8 @@ int main(void) {
         cmocka_unit_test(test_wdbi_report_removed_hotfixes_success),
         cmocka_unit_test(test_wdbi_report_removed_hotfixes_success_multiple_steps),
         cmocka_unit_test(test_wdbi_report_removed_network_protocol_success),
-        cmocka_unit_test(test_wdbi_report_removed_network_protocol_success_multiple_steps)
+        cmocka_unit_test(test_wdbi_report_removed_network_protocol_success_multiple_steps),
+        cmocka_unit_test(test_wdbi_report_removed_netifaces_success)
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }

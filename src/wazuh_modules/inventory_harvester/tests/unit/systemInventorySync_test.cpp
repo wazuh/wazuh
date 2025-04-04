@@ -153,4 +153,5 @@ INSTANTIATE_TEST_SUITE_P(InventorySyncByAffectedComponentType,
                                            MockSystemContext::AffectedComponentType::Hotfix,
                                            MockSystemContext::AffectedComponentType::Hardware,
                                            MockSystemContext::AffectedComponentType::NetProto,
+                                           MockSystemContext::AffectedComponentType::NetIface,
                                            MockSystemContext::AffectedComponentType::Invalid));

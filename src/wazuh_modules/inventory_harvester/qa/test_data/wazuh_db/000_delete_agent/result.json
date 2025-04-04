@@ -22,5 +22,13 @@
     {
         "index_name": "wazuh-states-hotfixes-cluster01",
         "data": []
+    },
+    {
+        "index_name": "wazuh-states-processes-cluster01",
+        "data": []
+    },
+    {
+        "index_name": "wazuh-states-netifaces-cluster01",
+        "data": []
     }
 ]

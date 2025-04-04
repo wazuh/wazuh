@@ -137,3 +137,43 @@ Here is an example of the indexed Network Protocol format. The event ID consists
   }
 }
 ```
+
+### Network interfaces
+
+This is an example of the indexed network interface format:
+
+```json
+{
+    "agent": {
+        "id": "001",
+        "name": "c0ce505227a4",
+        "ip": "any",
+        "version": "v4.11.0"
+    },
+    "host": {
+        "mac": "14:15:6e:37:f2:7e",
+        "network": {
+            "ingress": {
+                "bytes": 438322,
+                "drops": 0,
+                "errors": 0,
+                "packets": 555
+            },
+            "egress": {
+                "bytes": 22763,
+                "drops": 0,
+                "errors": 0,
+                "packets": 304
+            }
+        }
+    },
+    "observer": {
+        "ingress": {
+            "interface": {
+                "mtu": 1500,
+                "name": "eth0",
+                "state": "up",
+                "type": "ethernet"
+            }
+        }
+    }

@@ -330,3 +330,63 @@ TEST_F(SystemInventoryUpsertElement, validAgentID_NetworkProtocol)
         context->m_serializedElement,
         R"({"id":"001_netProtoItemId","operation":"INSERTED","data":{"network":{"dhcp":true,"gateway":"netProtoGateway","metric":150,"type":"netProtoType"},"observer":{"ingress":{"interface":{"name":"netProtoIface"}}},"agent":{"id":"001","name":"agentName","ip":"agentIp","version":"agentVersion"}}})");
 }
+
+// NetIfaces
+
+TEST_F(SystemInventoryUpsertElement, emptyAgentID_NetIface)
+{
+    auto context = std::make_shared<MockSystemContext>();
+    auto upsertElement = std::make_shared<UpsertSystemElement<MockSystemContext>>();
+
+    EXPECT_CALL(*context, agentId()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, originTable()).WillOnce(testing::Return(MockSystemContext::OriginTable::NetIfaces));
+
+    EXPECT_ANY_THROW(upsertElement->handleRequest(context));
+}
+
+TEST_F(SystemInventoryUpsertElement, emptyItemId_NetIface)
+{
+    auto context = std::make_shared<MockSystemContext>();
+    auto upsertElement = std::make_shared<UpsertSystemElement<MockSystemContext>>();
+
+    EXPECT_CALL(*context, agentId()).WillOnce(testing::Return("001"));
+    EXPECT_CALL(*context, netIfaceItemId()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, originTable()).WillOnce(testing::Return(MockSystemContext::OriginTable::NetIfaces));
+
+    EXPECT_ANY_THROW(upsertElement->handleRequest(context));
+}
+
+TEST_F(SystemInventoryUpsertElement, validAgentID_NetIface)
+{
+    auto context = std::make_shared<MockSystemContext>();
+    auto upsertElement = std::make_shared<UpsertSystemElement<MockSystemContext>>();
+
+    EXPECT_CALL(*context, agentId()).WillOnce(testing::Return("001"));
+    EXPECT_CALL(*context, agentIp()).WillOnce(testing::Return("agentIp"));
+    EXPECT_CALL(*context, agentName()).WillOnce(testing::Return("agentName"));
+    EXPECT_CALL(*context, agentVersion()).WillOnce(testing::Return("agentVersion"));
+
+    EXPECT_CALL(*context, netIfaceItemId()).WillOnce(testing::Return("netIfaceItemId"));
+    EXPECT_CALL(*context, originTable()).WillOnce(testing::Return(MockSystemContext::OriginTable::NetIfaces));
+    EXPECT_CALL(*context, netIfaceMac()).WillOnce(testing::Return("netIfaceMac"));
+    EXPECT_CALL(*context, netIfaceRxBytes()).WillOnce(testing::Return(1));
+    EXPECT_CALL(*context, netIfaceRxDrops()).WillOnce(testing::Return(2));
+    EXPECT_CALL(*context, netIfaceRxErrors()).WillOnce(testing::Return(3));
+    EXPECT_CALL(*context, netIfaceRxPackets()).WillOnce(testing::Return(4));
+    EXPECT_CALL(*context, netIfaceTxBytes()).WillOnce(testing::Return(5));
+    EXPECT_CALL(*context, netIfaceTxDrops()).WillOnce(testing::Return(6));
+    EXPECT_CALL(*context, netIfaceTxErrors()).WillOnce(testing::Return(7));
+    EXPECT_CALL(*context, netIfaceTxPackets()).WillOnce(testing::Return(8));
+
+    EXPECT_CALL(*context, netIfaceAdapter()).WillOnce(testing::Return("netIfaceAdapter"));
+    EXPECT_CALL(*context, netIfaceName()).WillOnce(testing::Return("netIfaceName"));
+    EXPECT_CALL(*context, netIfaceMtu()).WillOnce(testing::Return(9));
+    EXPECT_CALL(*context, netIfaceState()).WillOnce(testing::Return("netIfaceState"));
+    EXPECT_CALL(*context, netIfaceType()).WillOnce(testing::Return("netIfaceType"));
+
+    EXPECT_NO_THROW(upsertElement->handleRequest(context));
+
+    EXPECT_EQ(
+        context->m_serializedElement,
+        R"({"id":"001_netIfaceItemId","operation":"INSERTED","data":{"agent":{"id":"001","name":"agentName","ip":"agentIp","version":"agentVersion"},"host":{"mac":"netIfaceMac","network":{"ingress":{"bytes":1,"drops":2,"errors":3,"packets":4},"egress":{"bytes":5,"drops":6,"errors":7,"packets":8}}},"observer":{"ingress":{"interface":{"alias":"netIfaceAdapter","mtu":9,"name":"netIfaceName","state":"netIfaceState","type":"netIfaceType"}}}}})");
+}

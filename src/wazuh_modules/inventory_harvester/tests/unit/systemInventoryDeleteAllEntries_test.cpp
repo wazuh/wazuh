@@ -110,6 +110,7 @@ INSTANTIATE_TEST_SUITE_P(ClearElementsDifferentComponents,
                                            MockSystemContext::AffectedComponentType::Hotfix,
                                            MockSystemContext::AffectedComponentType::Hardware,
                                            MockSystemContext::AffectedComponentType::NetProto,
+                                           MockSystemContext::AffectedComponentType::NetIface,
                                            MockSystemContext::AffectedComponentType::Invalid));
 
 INSTANTIATE_TEST_SUITE_P(ClearElementsDifferentComponentsNoAgent,
@@ -121,4 +122,5 @@ INSTANTIATE_TEST_SUITE_P(ClearElementsDifferentComponentsNoAgent,
                                            MockSystemContext::AffectedComponentType::Hotfix,
                                            MockSystemContext::AffectedComponentType::Hardware,
                                            MockSystemContext::AffectedComponentType::NetProto,
+                                           MockSystemContext::AffectedComponentType::NetIface,
                                            MockSystemContext::AffectedComponentType::Invalid));
