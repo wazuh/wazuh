@@ -39,6 +39,7 @@
 #define FIELD_DSTGEOIP   0x8000
 #define FIELD_LOCATION   0x10000
 #define N_FIELDS         17
+#define ALL_FIELDS       ((1U << N_FIELDS) - 1) /* All merged fields 0x1FFFF */
 
 #define FIELD_DYNAMICS   0x20000
 #define FIELD_AGENT      0x40000
