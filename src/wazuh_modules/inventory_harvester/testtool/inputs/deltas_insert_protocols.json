@@ -1,0 +1,20 @@
+{
+    "agent_info": {
+        "agent_id": "001",
+        "agent_ip": "any",
+        "agent_name": "centos9",
+        "agent_version": "v4.10.1"
+    },
+    "data_type": "dbsync_network_protocol",
+    "data": {
+        "checksum": "287414ba15f71acaa58f56a2875fd62c5aa581f7",
+        "dhcp": "disabled",
+        "gateway": " ",
+        "iface": "eth1",
+        "item_id": "35c9b5749116035dea24e0c8797c8e01358081a0",
+        "metric": "101",
+        "scan_time": "2025/03/28 17:14:48",
+        "type": "ipv4"
+    },
+    "operation": "INSERTED"
+}

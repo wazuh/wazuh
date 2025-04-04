@@ -24,6 +24,10 @@ protected:
     // LCOV_EXCL_STOP
 };
 
+/*
+ * Test cases for SystemInventoryUpsertElement os scenario
+ * These tests check the behavior of the SystemInventoryDeleteElement class when handling requests.
+ */
 TEST_F(SystemInventoryDeleteElement, emptyAgentID_OS)
 {
     auto context = std::make_shared<MockSystemContext>();
@@ -48,6 +52,10 @@ TEST_F(SystemInventoryDeleteElement, validAgentID_OS)
     EXPECT_EQ(context->m_serializedElement, R"({"id":"001","operation":"DELETED"})");
 }
 
+/*
+ * Test cases for SystemInventoryUpsertElement package scenario
+ * These tests check the behavior of the SystemInventoryDeleteElement class when handling requests.
+ */
 TEST_F(SystemInventoryDeleteElement, emptyAgentID_Packages)
 {
     auto context = std::make_shared<MockSystemContext>();
@@ -85,6 +93,10 @@ TEST_F(SystemInventoryDeleteElement, validAgentID_Packages)
     EXPECT_EQ(context->m_serializedElement, R"({"id":"001_0123456789ABCDEFFEDCBA9876543210","operation":"DELETED"})");
 }
 
+/*
+ * Test cases for SystemInventoryUpsertElement process scenario
+ * These tests check the behavior of the SystemInventoryDeleteElement class when handling requests.
+ */
 TEST_F(SystemInventoryDeleteElement, emptyAgentID_Processes)
 {
     auto context = std::make_shared<MockSystemContext>();
@@ -122,30 +134,21 @@ TEST_F(SystemInventoryDeleteElement, validAgentID_Processes)
     EXPECT_EQ(context->m_serializedElement, R"({"id":"001_12345","operation":"DELETED"})");
 }
 
+/*
+ * Test cases for SystemInventoryUpsertElement ports scenario
+ * These tests check the behavior of the SystemInventoryDeleteElement class when handling requests.
+ */
 TEST_F(SystemInventoryDeleteElement, emptyAgentID_Ports)
 {
     auto context = std::make_shared<MockSystemContext>();
     auto deleteElement = std::make_shared<DeleteSystemElement<MockSystemContext>>();
 
     EXPECT_CALL(*context, agentId()).WillOnce(testing::Return(""));
-
     EXPECT_CALL(*context, originTable()).WillOnce(testing::Return(MockSystemContext::OriginTable::Ports));
     EXPECT_ANY_THROW(deleteElement->handleRequest(context));
 }
 
-TEST_F(SystemInventoryDeleteElement, emptyAgentID_Hardware)
-{
-    auto context = std::make_shared<MockSystemContext>();
-    auto deleteElement = std::make_shared<DeleteSystemElement<MockSystemContext>>();
-
-    EXPECT_CALL(*context, agentId()).WillOnce(testing::Return(""));
-
-    EXPECT_CALL(*context, originTable()).WillOnce(testing::Return(MockSystemContext::OriginTable::Hw));
-
-    EXPECT_ANY_THROW(deleteElement->handleRequest(context));
-}
-
-TEST_F(SystemInventoryDeleteElement, emptyItemIdPorts)
+TEST_F(SystemInventoryDeleteElement, emptyIPAddress_Port)
 {
     auto context = std::make_shared<MockSystemContext>();
     auto deleteElement = std::make_shared<DeleteSystemElement<MockSystemContext>>();
@@ -153,18 +156,6 @@ TEST_F(SystemInventoryDeleteElement, emptyItemIdPorts)
     EXPECT_CALL(*context, agentId()).WillOnce(testing::Return("001"));
     EXPECT_CALL(*context, portItemId()).WillOnce(testing::Return(""));
     EXPECT_CALL(*context, originTable()).WillOnce(testing::Return(MockSystemContext::OriginTable::Ports));
-
-    EXPECT_ANY_THROW(deleteElement->handleRequest(context));
-}
-
-TEST_F(SystemInventoryDeleteElement, emptyBoardIdHw)
-{
-    auto context = std::make_shared<MockSystemContext>();
-    auto deleteElement = std::make_shared<DeleteSystemElement<MockSystemContext>>();
-
-    EXPECT_CALL(*context, agentId()).WillOnce(testing::Return("001"));
-    EXPECT_CALL(*context, boardInfo()).WillOnce(testing::Return(""));
-    EXPECT_CALL(*context, originTable()).WillOnce(testing::Return(MockSystemContext::OriginTable::Hw));
 
     EXPECT_ANY_THROW(deleteElement->handleRequest(context));
 }
@@ -182,6 +173,93 @@ TEST_F(SystemInventoryDeleteElement, validAgentID_Ports)
 
     EXPECT_EQ(context->m_serializedElement, R"({"id":"001_1234","operation":"DELETED"})");
 }
+
+/*
+ * Test cases for SystemInventoryUpsertElement hardware scenario
+ * These tests check the behavior of the SystemInventoryDeleteElement class when handling requests.
+ */
+TEST_F(SystemInventoryDeleteElement, emptyAgentID_Hardware)
+{
+    auto context = std::make_shared<MockSystemContext>();
+    auto deleteElement = std::make_shared<DeleteSystemElement<MockSystemContext>>();
+
+    EXPECT_CALL(*context, agentId()).WillOnce(testing::Return(""));
+
+    EXPECT_CALL(*context, originTable()).WillOnce(testing::Return(MockSystemContext::OriginTable::Hw));
+    EXPECT_ANY_THROW(deleteElement->handleRequest(context));
+}
+
+TEST_F(SystemInventoryDeleteElement, emptyBoardIdHw)
+{
+    auto context = std::make_shared<MockSystemContext>();
+    auto deleteElement = std::make_shared<DeleteSystemElement<MockSystemContext>>();
+
+    EXPECT_CALL(*context, agentId()).WillOnce(testing::Return("001"));
+    EXPECT_CALL(*context, boardInfo()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, originTable()).WillOnce(testing::Return(MockSystemContext::OriginTable::Hw));
+
+    EXPECT_ANY_THROW(deleteElement->handleRequest(context));
+}
+
+TEST_F(SystemInventoryDeleteElement, validAgentID_Hardware)
+{
+    auto context = std::make_shared<MockSystemContext>();
+    auto deleteElement = std::make_shared<DeleteSystemElement<MockSystemContext>>();
+
+    EXPECT_CALL(*context, agentId()).WillOnce(testing::Return("001"));
+    EXPECT_CALL(*context, originTable()).WillOnce(testing::Return(MockSystemContext::OriginTable::Hw));
+    EXPECT_CALL(*context, boardInfo()).WillOnce(testing::Return("AA320"));
+
+    EXPECT_NO_THROW(deleteElement->handleRequest(context));
+
+    EXPECT_EQ(context->m_serializedElement, R"({"id":"001_AA320","operation":"DELETED"})");
+}
+
+/*
+ * Test cases for SystemInventoryUpsertElement net address scenario
+ * These tests check the behavior of the SystemInventoryDeleteElement class when handling requests.
+ */
+TEST_F(SystemInventoryDeleteElement, emptyAgentID_NetworkAddress)
+{
+    auto context = std::make_shared<MockSystemContext>();
+    auto deleteElement = std::make_shared<DeleteSystemElement<MockSystemContext>>();
+
+    EXPECT_CALL(*context, agentId()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, originTable()).WillOnce(testing::Return(MockSystemContext::OriginTable::NetAddress));
+
+    EXPECT_ANY_THROW(deleteElement->handleRequest(context));
+}
+
+TEST_F(SystemInventoryDeleteElement, validAgentIp_NetworkAddress)
+{
+    auto context = std::make_shared<MockSystemContext>();
+    auto deleteElement = std::make_shared<DeleteSystemElement<MockSystemContext>>();
+
+    EXPECT_CALL(*context, agentId()).WillOnce(testing::Return("001"));
+    EXPECT_CALL(*context, netAddressItemId()).WillOnce(testing::Return("ABC"));
+    EXPECT_CALL(*context, originTable()).WillOnce(testing::Return(MockSystemContext::OriginTable::NetAddress));
+
+    EXPECT_NO_THROW(deleteElement->handleRequest(context));
+
+    EXPECT_EQ(context->m_serializedElement, R"({"id":"001_ABC","operation":"DELETED"})");
+}
+
+TEST_F(SystemInventoryDeleteElement, emptyNetAddressItemId_NetworkAddress)
+{
+    auto context = std::make_shared<MockSystemContext>();
+    auto deleteElement = std::make_shared<DeleteSystemElement<MockSystemContext>>();
+
+    EXPECT_CALL(*context, agentId()).WillOnce(testing::Return("001"));
+    EXPECT_CALL(*context, netAddressItemId()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, originTable()).WillOnce(testing::Return(MockSystemContext::OriginTable::NetAddress));
+
+    EXPECT_ANY_THROW(deleteElement->handleRequest(context));
+}
+
+/*
+ * Test cases for SystemInventoryUpsertElement hotfix scenario
+ * These tests check the behavior of the SystemInventoryDeleteElement class when handling requests.
+ */
 TEST_F(SystemInventoryDeleteElement, emptyAgentID_Hotfixes)
 {
     auto context = std::make_shared<MockSystemContext>();
@@ -218,20 +296,51 @@ TEST_F(SystemInventoryDeleteElement, validAgentID_Hotfixes)
     EXPECT_EQ(context->m_serializedElement, R"({"id":"001_KB12345","operation":"DELETED"})");
 }
 
-TEST_F(SystemInventoryDeleteElement, validAgentID_Hardware)
+/*
+ * Test cases for SystemInventoryUpsertElement net protocol scenario
+ * These tests check the behavior of the SystemInventoryDeleteElement class when handling requests.
+ */
+TEST_F(SystemInventoryDeleteElement, emptyAgentID_NetworkProtocol)
+{
+    auto context = std::make_shared<MockSystemContext>();
+    auto deleteElement = std::make_shared<DeleteSystemElement<MockSystemContext>>();
+
+    EXPECT_CALL(*context, agentId()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, originTable()).WillOnce(testing::Return(MockSystemContext::OriginTable::NetworkProtocol));
+
+    EXPECT_ANY_THROW(deleteElement->handleRequest(context));
+}
+
+TEST_F(SystemInventoryDeleteElement, emptyNetProtoItemID_NetworkProtocol)
 {
     auto context = std::make_shared<MockSystemContext>();
     auto deleteElement = std::make_shared<DeleteSystemElement<MockSystemContext>>();
 
     EXPECT_CALL(*context, agentId()).WillOnce(testing::Return("001"));
-    EXPECT_CALL(*context, originTable()).WillOnce(testing::Return(MockSystemContext::OriginTable::Hw));
-    EXPECT_CALL(*context, boardInfo()).WillOnce(testing::Return("AA320"));
+    EXPECT_CALL(*context, netProtoItemId()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, originTable()).WillOnce(testing::Return(MockSystemContext::OriginTable::NetworkProtocol));
+
+    EXPECT_ANY_THROW(deleteElement->handleRequest(context));
+}
+
+TEST_F(SystemInventoryDeleteElement, validAgentID_NetworkProtocol)
+{
+    auto context = std::make_shared<MockSystemContext>();
+    auto deleteElement = std::make_shared<DeleteSystemElement<MockSystemContext>>();
+
+    EXPECT_CALL(*context, agentId()).WillOnce(testing::Return("001"));
+    EXPECT_CALL(*context, netProtoItemId()).WillOnce(testing::Return("12345"));
+    EXPECT_CALL(*context, originTable()).WillOnce(testing::Return(MockSystemContext::OriginTable::NetworkProtocol));
 
     EXPECT_NO_THROW(deleteElement->handleRequest(context));
 
-    EXPECT_EQ(context->m_serializedElement, R"({"id":"001_AA320","operation":"DELETED"})");
+    EXPECT_EQ(context->m_serializedElement, R"({"id":"001_12345","operation":"DELETED"})");
 }
 
+/**
+ * Test cases for SystemInventoryUpsertElement invalid scenario
+ * These tests check the behavior of the SystemInventoryDeleteElement class when handling requests.
+ */
 TEST_F(SystemInventoryDeleteElement, invalidOriginTable)
 {
     auto context = std::make_shared<MockSystemContext>();
@@ -240,4 +349,45 @@ TEST_F(SystemInventoryDeleteElement, invalidOriginTable)
     EXPECT_CALL(*context, originTable()).WillOnce(testing::Return(MockSystemContext::OriginTable::Invalid));
 
     EXPECT_NO_THROW(deleteElement->handleRequest(context));
+}
+
+// NetIfaces
+
+// NetIface
+
+TEST_F(SystemInventoryDeleteElement, emptyAgentID_NetIface)
+{
+    auto context = std::make_shared<MockSystemContext>();
+    auto deleteElement = std::make_shared<DeleteSystemElement<MockSystemContext>>();
+
+    EXPECT_CALL(*context, agentId()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, originTable()).WillOnce(testing::Return(MockSystemContext::OriginTable::NetIfaces));
+
+    EXPECT_ANY_THROW(deleteElement->handleRequest(context));
+}
+
+TEST_F(SystemInventoryDeleteElement, emptyItemId_NetIface)
+{
+    auto context = std::make_shared<MockSystemContext>();
+    auto deleteElement = std::make_shared<DeleteSystemElement<MockSystemContext>>();
+
+    EXPECT_CALL(*context, agentId()).WillOnce(testing::Return("001"));
+    EXPECT_CALL(*context, netIfaceItemId()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, originTable()).WillOnce(testing::Return(MockSystemContext::OriginTable::NetIfaces));
+
+    EXPECT_ANY_THROW(deleteElement->handleRequest(context));
+}
+
+TEST_F(SystemInventoryDeleteElement, validAgentID_NetIface)
+{
+    auto context = std::make_shared<MockSystemContext>();
+    auto deleteElement = std::make_shared<DeleteSystemElement<MockSystemContext>>();
+
+    EXPECT_CALL(*context, agentId()).WillOnce(testing::Return("001"));
+    EXPECT_CALL(*context, netIfaceItemId()).WillOnce(testing::Return("12345"));
+    EXPECT_CALL(*context, originTable()).WillOnce(testing::Return(MockSystemContext::OriginTable::NetIfaces));
+
+    EXPECT_NO_THROW(deleteElement->handleRequest(context));
+
+    EXPECT_EQ(context->m_serializedElement, R"({"id":"001_12345","operation":"DELETED"})");
 }

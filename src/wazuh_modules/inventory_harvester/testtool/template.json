@@ -7,7 +7,11 @@
     "wazuh-states-processes-*",
     "wazuh-states-ports-*",
     "wazuh-states-hotfixes-*",
-    "wazuh-states-hardware-*"
+    "wazuh-states-hardware-*",
+    "wazuh-states-protocols-*",
+    "wazuh-states-netifaces-*",
+    "wazuh-states-hardware-*",
+    "wazuh-states-networks-*"
   ],
   "priority": 1,
   "template": {
