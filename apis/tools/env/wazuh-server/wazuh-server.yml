@@ -25,8 +25,12 @@ indexer:
       - /etc/wazuh-server/certs/root-ca.pem
     verify_certificates: true
 communications_api:
-  host: '0.0.0.0'
+  host: 0.0.0.0
+  ssl:
+    key: /etc/wazuh-server/certs/server-key.pem
+    cert: /etc/wazuh-server/certs/server.pem
 management_api:
-  host:
-    - '0.0.0.0'
-    - '::'
+  host: 0.0.0.0
+  ssl:
+    key: /etc/wazuh-server/certs/server-key.pem
+    cert: /etc/wazuh-server/certs/server.pem
