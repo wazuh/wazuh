@@ -409,7 +409,8 @@ TEST(SysInfoPackageLinuxParserRPM_test, rpmFromLibRPM)
     .WillOnce(Return("10")) \
     .WillOnce(Return("source")) \
     .WillOnce(Return("2")) \
-    .WillOnce(Return("3"));
+    .WillOnce(Return("3")) \
+    .WillOnce(Return("1"));
     EXPECT_CALL(*rpm_mock, rpmtdGetNumber(_)).WillOnce(Return(5)).WillOnce(Return(9)).WillOnce(Return(4));
 
 

@@ -53,7 +53,7 @@ struct BerkeleyHeaderEntry final
     int count;
 };
 
-const std::vector<std::pair<int32_t, std::string>> TAG_NAMES =
+const std::vector<std::pair<int32_t, std::string>> TAG_PACKAGE_NAMES =
 {
     { std::make_pair(TAG_NAME, "name") },
     { std::make_pair(TAG_ARCH, "architecture") },
@@ -64,7 +64,12 @@ const std::vector<std::pair<int32_t, std::string>> TAG_NAMES =
     { std::make_pair(TAG_VERSION, "version") },
     { std::make_pair(TAG_VENDOR, "vendor") },
     { std::make_pair(TAG_ITIME, "install_time") },
-    { std::make_pair(TAG_GROUP, "group") },
+    { std::make_pair(TAG_GROUP, "group") }
+};
+
+const std::vector<std::pair<int32_t, std::string>> TAG_FILE_NAMES =
+{
+    { std::make_pair(TAG_NAME, "name") },
     { std::make_pair(TAG_DIRINDEXES, "dirindexes") },
     { std::make_pair(TAG_BASENAMES, "basenames") },
     { std::make_pair(TAG_DIRNAMES, "dirnames") }
@@ -76,7 +81,7 @@ class BerkeleyRpmDBReader final
         bool m_firstIteration;
         std::shared_ptr<IBerkeleyDbWrapper> m_dbWrapper;
 
-        std::vector<BerkeleyHeaderEntry> parseHeader(const DBT& data)
+        std::vector<BerkeleyHeaderEntry> parseHeader(const DBT& data, const std::vector<std::pair<int32_t, std::string>>& TAG_NAMES)
         {
             auto bytes { reinterpret_cast<uint8_t*>(data.data) };
             std::vector<BerkeleyHeaderEntry> retVal;
@@ -138,7 +143,7 @@ class BerkeleyRpmDBReader final
             return retVal;
         }
 
-        std::string parseBody(const std::vector<BerkeleyHeaderEntry>& header, const DBT& data)
+        std::string parseBody(const std::vector<BerkeleyHeaderEntry>& header, const DBT& data, const std::vector<std::pair<int32_t, std::string>>& TAG_NAMES)
         {
             std::string retVal;
 
@@ -185,7 +190,7 @@ class BerkeleyRpmDBReader final
             return retVal;
         }
 
-        void parsePythonFilesBody(const std::vector<BerkeleyHeaderEntry>& header, const DBT& data, std::vector<std::string>& pythonFiles)
+        void parsePythonFilesBody(const std::vector<BerkeleyHeaderEntry>& header, const DBT& data, std::vector<std::string>& pythonFiles, const std::vector<std::pair<int32_t, std::string>>& TAG_NAMES)
         {
             std::vector<std::string> dirnames;
             std::vector<int> dirindexes;
@@ -281,7 +286,7 @@ class BerkeleyRpmDBReader final
 
             if (cursorRet = m_dbWrapper->getRow(key, data), cursorRet == 0)
             {
-                retVal = parseBody(parseHeader(data), data);
+                retVal = parseBody(parseHeader(data, TAG_PACKAGE_NAMES), data, TAG_PACKAGE_NAMES);
             }
 
             return retVal;
@@ -302,7 +307,7 @@ class BerkeleyRpmDBReader final
 
             if (cursorRet = m_dbWrapper->getRow(key, data), cursorRet == 0)
             {
-                parsePythonFilesBody(parseHeader(data), data, pythonFiles);
+                parsePythonFilesBody(parseHeader(data, TAG_FILE_NAMES), data, pythonFiles, TAG_FILE_NAMES);
                 return true;
             }
 
