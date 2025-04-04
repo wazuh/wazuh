@@ -114,7 +114,7 @@ def test_update_group_file(mock_open, mock_wazuh_uid, mock_wazuh_gid):
 def test_get_active_configuration(
     mock_exists, mock_create_wazuh_socket_message, agent_id, component, socket, socket_dir, rec_msg
 ):
-    """This test checks the proper working of get_active_configuration function."""
+    """Check the proper working of the `get_active_configuration` function."""
     sockets_json_protocol = {'remote', 'analysis', 'wdb'}
     config = MagicMock()
 

@@ -14,7 +14,7 @@ tokens_cache = TTLCache(maxsize=4500, ttl=CentralizedConfig.get_management_api_c
 
 
 def clear_cache():
-    """This function clear the authorization tokens cache."""
+    """Clear the authorization tokens cache."""
     cache_event.set()
 
 

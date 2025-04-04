@@ -227,7 +227,7 @@ class RBAChecker:
                 return False
         return False
 
-    def match_item(
+    def match_item(  # noqa: C901
         self, role_chunk: Union[list, dict], auth_context: Union[list, dict] = None, mode: str = 'MATCH'
     ) -> Union[int, bool]:
         """Go through all authorization contexts and system roles recursively until it finds the
