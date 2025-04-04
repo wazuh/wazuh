@@ -8,9 +8,9 @@ from collections import defaultdict
 from functools import wraps
 
 from wazuh.core.agent import expand_group, get_agents_info, get_groups
-from wazuh.core.common import broadcast, cluster_nodes, rbac
+from wazuh.core.common import broadcast, cluster_nodes, rbac, rbac_manager
 from wazuh.core.exception import WazuhPermissionError
-from wazuh.core.rbac import get_policies, get_roles, get_rules, get_users
+from wazuh.core.rbac import RBACManager
 from wazuh.core.results import AffectedItemsWazuhResult
 
 integer_resources = ['user:id', 'role:id', 'rule:id', 'policy:id']
@@ -36,6 +36,8 @@ async def _expand_resource(resource: str) -> set:  # noqa: C901
     if resource_type == 'agent:group':
         return await expand_group(value)
 
+    manager: RBACManager = rbac_manager.get()
+
     # We need to transform the wildcard * to the resource of the system
     if value == '*':
         if resource_type == 'agent:id':
@@ -43,17 +45,17 @@ async def _expand_resource(resource: str) -> set:  # noqa: C901
         elif resource_type == 'group:id':
             return get_groups()
         elif resource_type == 'role:id':
-            roles = await get_roles()
-            return {role.id for role in roles}
-        elif resource_type == 'rule:id':
-            rules = await get_rules()
-            return {rule.id for rule in rules}
+            roles = manager.get_roles()
+            return {role.name for role in roles}
         elif resource_type == 'policy:id':
-            policies = await get_policies()
-            return {policy.id for policy in policies}
+            policies = manager.get_policies()
+            return {policy.name for policy in policies}
         elif resource_type == 'user:id':
-            users = await get_users()
+            users = manager.get_users()
             return {user.id for user in users}
+        elif resource_type == 'rule:id':
+            rules = manager.get_rules()
+            return {rule.name for rule in rules}
         elif resource_type == 'node:id':
             return set(cluster_nodes.get())
         elif resource_type == '*:*':  # Resourceless

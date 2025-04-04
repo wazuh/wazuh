@@ -10,6 +10,8 @@ from unittest.mock import patch
 import pytest
 import wazuh.rbac.decorators as decorator
 from wazuh.core.exception import WazuhError
+from wazuh.core.indexer.models.rbac import Rule
+from wazuh.core.rbac import RBACManager
 from wazuh.core.results import AffectedItemsWazuhResult
 
 test_path = os.path.dirname(os.path.realpath(__file__))
@@ -79,7 +81,7 @@ async def test_expose_resources(
     rbac['rbac_mode'] = mode
     decorator.rbac.set(rbac)
 
-    def mock_expand_resource(resource):
+    async def mock_expand_resource(resource):
         fake_values = fake_system_resources.get(resource, resource.split(':')[-1])
         return {fake_values} if isinstance(fake_values, str) else set(fake_values)
 
@@ -111,7 +113,7 @@ async def test_expose_resourcesless(decorator_params, rbac, allowed, mode):
     rbac['rbac_mode'] = mode
     decorator.rbac.set(rbac)
 
-    def mock_expand_resource(resource):
+    async def mock_expand_resource(resource):
         return {'*'}
 
     with patch('wazuh.rbac.decorators._expand_resource', side_effect=mock_expand_resource):
@@ -126,3 +128,26 @@ async def test_expose_resourcesless(decorator_params, rbac, allowed, mode):
         except WazuhError as e:
             assert not allowed
             assert e.code == 4000
+
+
+async def test__expand_resource():
+    """Validate that the `_expand_resource` function works as expected."""
+    rbac_manager = RBACManager()
+    rbac_manager._rules = {
+        'rule1': Rule(
+            name='rule1',
+            body={'FIND': {"r''^auth[a-zA-Z]+$''": ['administrator']}},
+        ),
+        'rule2': Rule(
+            name='rule2',
+            body={'FIND': {"r''^auth[a-zA-Z]+$''": ['administrator-app']}},
+        ),
+        'rule3': Rule(
+            name='rule3',
+            body={'MATCH': {'definition': 'technicalRule'}},
+        ),
+    }
+    decorator.rbac_manager.set(rbac_manager)
+
+    result = await decorator._expand_resource('rule:id:*')
+    assert {rule.name for rule in rbac_manager.get_rules()} == result
