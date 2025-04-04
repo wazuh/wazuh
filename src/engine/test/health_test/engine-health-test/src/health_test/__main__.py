@@ -17,7 +17,7 @@ from health_test.validate_successful_assets import run as validate_successful_as
 from health_test.validate_non_modifiables_fields import run as validate_non_modifiables_fields_run
 from health_test.validate_custom_field_documentation import run as validate_custom_field_documentation_run
 from health_test.coverage_validate import run as coverage_validate_run
-
+from health_test.run_all import run as run_all
 
 def parse_args() -> Namespace:
     parser = ArgumentParser(prog='engine-health-test')
@@ -25,6 +25,17 @@ def parse_args() -> Namespace:
     # dest used because of bug: https://bugs.python.org/issue29298
     subparsers = parser.add_subparsers(
         title='subcommands', required=True, dest='subcommand')
+
+    # Run all subcommand
+    run_all_parser = subparsers.add_parser(
+        'run_all', help='Run all health test')
+
+    run_all_parser.add_argument('-e', '--environment',
+                                help='Environment to run the tests in', type=str, required=True)
+    run_all_parser.add_argument('-r', '--ruleset',
+                               help='Specify the path to the ruleset directory', type=str, required=True)
+    run_all_parser.add_argument('-t', '--test-dir', help='Specify the path to the test directory', required=True)
+    run_all_parser.set_defaults(func=run_all)
 
     # Static subcommand group
     static_parser = subparsers.add_parser(

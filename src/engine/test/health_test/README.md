@@ -422,6 +422,27 @@ engine-health-test dynamic -e health_test/environment run --target rules
 engine-health-test dynamic -e health_test/environment run --target decoder --skip windows,wazuh-core
 ```
 
+### Run all
+This command runs all the health suite tests. To do this, you must first build the environment with setupEnvironment.py.
+To run this command a second time, you must delete and recreate the environment, as assets and databases are loaded during execution.
+```bash
+usage: engine-health-test run_all [-h] -e ENVIRONMENT -r RULESET -t TEST_DIR
+
+options:
+  -h, --help            show this help message and exit
+  -e ENVIRONMENT, --environment ENVIRONMENT
+                        Environment to run the tests in
+  -r RULESET, --ruleset RULESET
+                        Specify the path to the ruleset directory
+  -t TEST_DIR, --test-dir TEST_DIR
+                        Specify the path to the test directory
+```
+
+#### Usage
+```bash
+engine-health-test run_all -e health_test/environment -r ruleset -t health_test_directory
+```
+
 ### Coverage report
 A tool that measures the percentage of coverage of an asset.
 with a detailed report on the successful and failed traces for each stage of the asset.

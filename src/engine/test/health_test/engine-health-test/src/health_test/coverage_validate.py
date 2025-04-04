@@ -416,7 +416,6 @@ def decoder_health_test(env_path: Path, debug_mode: str, output_file: Path, inte
 
     if success:
         print("All tests passed.")
-        sys.exit(0)
     else:
         sys.exit(1)
 
@@ -487,7 +486,6 @@ def rule_health_test(env_path: Path, debug_mode: str, output_file: Path, integra
 
     if success:
         print("All tests passed.")
-        sys.exit(0)
     else:
         sys.exit(1)
 
