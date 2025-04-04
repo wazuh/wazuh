@@ -263,7 +263,6 @@ rm -fr %{buildroot}
 %attr(750, %{_wazuh_user}, %{_wazuh_group}) %{_localstatedir}usr/share/wazuh-server/bin/wazuh-server
 %attr(750, %{_wazuh_user}, %{_wazuh_group}) %{_localstatedir}usr/share/wazuh-server/bin/wazuh-keystore
 # This will be correctly added in #26936
-%attr(750, %{_wazuh_user}, %{_wazuh_group}) %{_localstatedir}usr/share/wazuh-server/bin/rbac_control
 %attr(640, %{_wazuh_user}, %{_wazuh_group}) %{_localstatedir}var/lib/wazuh-server/tmp/vd_1.0.0_vd_4.10.0.tar.xz
 
 %config(missingok) %{_initrddir}/wazuh-server

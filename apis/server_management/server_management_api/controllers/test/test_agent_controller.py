@@ -2,8 +2,7 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-import sys
-from unittest.mock import ANY, AsyncMock, MagicMock, patch
+from unittest.mock import ANY, AsyncMock, patch
 
 import pytest
 from connexion.lifecycle import ConnexionResponse
@@ -18,7 +17,6 @@ with patch('wazuh.common.wazuh_uid'):
             default_config = get_default_configuration()
             CentralizedConfig._config = default_config
 
-            sys.modules['wazuh.rbac.orm'] = MagicMock()
             import wazuh.rbac.decorators
             from wazuh import agent
             from wazuh.core.common import DATABASE_LIMIT
@@ -42,7 +40,6 @@ with patch('wazuh.common.wazuh_uid'):
             )
 
             wazuh.rbac.decorators.expose_resources = RBAC_bypasser
-            del sys.modules['wazuh.rbac.orm']
 
 
 @pytest.mark.asyncio

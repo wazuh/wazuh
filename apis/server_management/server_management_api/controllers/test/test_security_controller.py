@@ -2,7 +2,6 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-import sys
 from unittest.mock import ANY, AsyncMock, MagicMock, call, patch
 
 import pytest
@@ -20,7 +19,6 @@ with patch('wazuh.common.wazuh_uid'):
             default_config = get_default_configuration()
             CentralizedConfig._config = default_config
 
-            sys.modules['wazuh.rbac.orm'] = MagicMock()
             import wazuh.rbac.decorators
             from wazuh import security
             from wazuh.core.exception import WazuhException, WazuhPermissionError
@@ -67,7 +65,6 @@ with patch('wazuh.common.wazuh_uid'):
             )
 
             wazuh.rbac.decorators.expose_resources = RBAC_bypasser
-            del sys.modules['wazuh.rbac.orm']
 
 
 @pytest.fixture
@@ -82,6 +79,7 @@ def mock_request():
             m_req.query_params = MagicMock()
             m_req.query_params.get = MagicMock(return_value=None)
             m_req.context = {'token_info': {'sub': 'wazuh', 'run_as': 'manager', 'rbac_policies': {}}}
+            m_req.state = MagicMock()
             yield m_req
 
 
@@ -102,8 +100,9 @@ async def test_login_user(mock_token, mock_exc, mock_dapi, mock_remove, mock_dfu
         f=preprocessor.get_permissions,
         f_kwargs=mock_remove.return_value,
         request_type='local_master',
-        is_async=False,
+        is_async=True,
         logger=ANY,
+        rbac_manager=mock_request.state.rbac_manager,
     )
     mock_remove.assert_called_once_with(f_kwargs)
     mock_exc.assert_called_once_with(mock_dfunc.return_value)
@@ -130,8 +129,9 @@ async def test_login_user_ko(mock_token, mock_exc, mock_dapi, mock_remove, mock_
         f=preprocessor.get_permissions,
         f_kwargs=mock_remove.return_value,
         request_type='local_master',
-        is_async=False,
+        is_async=True,
         logger=ANY,
+        rbac_manager=ANY,
     )
     mock_exc.assert_has_calls([call(mock_dfunc.return_value), call(mock_token.side_effect)])
     assert mock_exc.call_count == 2
@@ -157,8 +157,9 @@ async def test_run_as_login(mock_token, mock_exc, mock_dapi, mock_remove, mock_d
         f=preprocessor.get_permissions,
         f_kwargs=mock_remove.return_value,
         request_type='local_master',
-        is_async=False,
+        is_async=True,
         logger=ANY,
+        rbac_manager=mock_request.state.rbac_manager,
     )
     mock_remove.assert_called_once_with(f_kwargs)
     mock_exc.assert_called_once_with(mock_dfunc.return_value)
@@ -187,8 +188,9 @@ async def test_run_as_login_ko(mock_token, mock_exc, mock_dapi, mock_remove, moc
         f=preprocessor.get_permissions,
         f_kwargs=mock_remove.return_value,
         request_type='local_master',
-        is_async=False,
+        is_async=True,
         logger=ANY,
+        rbac_manager=mock_request.state.rbac_manager,
     )
     mock_exc.assert_has_calls([call(mock_dfunc.return_value), call(mock_token.side_effect)])
     assert mock_exc.call_count == 2

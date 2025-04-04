@@ -67,6 +67,26 @@ class RBACManager:
 
         return self._users.get(id)
 
+    def get_user_by_name(self, name: str) -> User:
+        """Get a specific user by its name.
+
+        Parameters
+        ----------
+        name : str
+            User name.
+
+        Returns
+        -------
+        User
+            User instance.
+        """
+        users = self.get_users()
+        for user in users:
+            if user.name == name:
+                return user
+
+        raise WazuhResourceNotFound(4027, extra_message={'entity': 'user', 'entities': 'users'})
+
     def get_users(self) -> list[User]:
         """Get all users.
 

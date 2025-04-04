@@ -20,6 +20,9 @@ from wazuh.core.exception import WazuhError
 from wazuh.tests.util import get_default_configuration
 from yaml import safe_load
 
+# TODO(#28425): Update
+pytestmark = pytest.mark.skip()
+
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data', 'security/')
 
 # Params

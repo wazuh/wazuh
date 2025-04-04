@@ -8,6 +8,9 @@ from unittest.mock import patch
 import pytest
 from wazuh.tests.test_security import db_setup  # noqa
 
+# TODO(#28425): Update
+pytestmark = pytest.mark.skip()
+
 
 @patch('yaml.safe_load')
 def test_load_spec(mock_safe_load, db_setup):

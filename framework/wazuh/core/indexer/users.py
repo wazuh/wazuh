@@ -142,7 +142,12 @@ class UsersIndex(BaseIndex):
             The search result.
         """
         internal_users = await self._client.search(
-            index=self.INTERNAL_INDEX, body=query, _source_includes=select, _source_excludes=exclude, sort=sort
+            index=self.INTERNAL_INDEX,
+            body=query,
+            _source_includes=select,
+            _source_excludes=exclude,
+            sort=sort,
+            size=limit,
         )
         custom_users = await self._client.search(
             index=self.INDEX,

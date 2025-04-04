@@ -4,9 +4,8 @@
 
 import asyncio
 import logging
-import sys
 from contextvars import ContextVar
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 from uvloop import Loop
@@ -20,10 +19,7 @@ with patch('wazuh.common.wazuh_uid'):
             default_config = get_default_configuration()
             CentralizedConfig._config = default_config
 
-            sys.modules['wazuh.rbac.orm'] = MagicMock()
             import wazuh.rbac.decorators
-
-            del sys.modules['wazuh.rbac.orm']
             from wazuh.tests.util import RBAC_bypasser
 
             wazuh.rbac.decorators.expose_resources = RBAC_bypasser

@@ -4,7 +4,6 @@
 
 import asyncio
 import logging
-import sys
 import time
 from unittest.mock import MagicMock, call, patch
 
@@ -13,10 +12,7 @@ from freezegun import freeze_time
 
 with patch('wazuh.common.wazuh_uid'):
     with patch('wazuh.common.wazuh_gid'):
-        sys.modules['wazuh.rbac.orm'] = MagicMock()
         import wazuh.rbac.decorators
-
-        del sys.modules['wazuh.rbac.orm']
         from wazuh.tests.util import RBAC_bypasser
 
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser

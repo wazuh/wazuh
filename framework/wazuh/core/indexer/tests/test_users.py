@@ -127,6 +127,7 @@ class TestUsersIndex:
                     _source_includes=select,
                     _source_excludes=exclude,
                     sort=sort,
+                    size=limit,
                 ),
                 mock.call(
                     index=index_instance.INDEX,

@@ -7,8 +7,7 @@ import json
 import operator
 import os
 import socket
-import sys
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 from wazuh.core.config.client import CentralizedConfig
@@ -21,11 +20,9 @@ with patch('wazuh.core.common.wazuh_uid'):
             default_config = get_default_configuration()
             CentralizedConfig._config = default_config
 
-            sys.modules['wazuh.rbac.orm'] = MagicMock()
             import wazuh.rbac.decorators
             from wazuh.tests.util import RBAC_bypasser
 
-            del sys.modules['wazuh.rbac.orm']
             wazuh.rbac.decorators.expose_resources = RBAC_bypasser
 
             from wazuh.core.manager import LoggingFormat

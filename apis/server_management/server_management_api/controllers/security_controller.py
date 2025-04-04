@@ -57,8 +57,9 @@ async def login_user(user: str, raw: bool = False) -> ConnexionResponse:
         f=preprocessor.get_permissions,
         f_kwargs=remove_nones_to_dict(f_kwargs),
         request_type='local_master',
-        is_async=False,
+        is_async=True,
         logger=logger,
+        rbac_manager=request.state.rbac_manager if request else None,
     )
     data = raise_if_exc(await dapi.distribute_function())
 
@@ -103,8 +104,9 @@ async def run_as_login(user: str, raw: bool = False) -> ConnexionResponse:
         f=preprocessor.get_permissions,
         f_kwargs=remove_nones_to_dict(f_kwargs),
         request_type='local_master',
-        is_async=False,
+        is_async=True,
         logger=logger,
+        rbac_manager=request.state.rbac_manager if request else None,
     )
     data = raise_if_exc(await dapi.distribute_function())
 
@@ -126,7 +128,7 @@ async def run_as_login(user: str, raw: bool = False) -> ConnexionResponse:
 
 
 async def get_user_me(pretty: bool = False, wait_for_complete: bool = False) -> ConnexionResponse:
-    """Returns information about the current user.
+    """Return information about the current user.
 
     Parameters
     ----------
@@ -221,7 +223,7 @@ async def get_users(
     q: str = None,
     distinct: bool = False,
 ) -> ConnexionResponse:
-    """Returns information from all system users.
+    """Return information from all system users.
 
     Parameters
     ----------
@@ -530,7 +532,7 @@ async def add_role(pretty: bool = False, wait_for_complete: bool = False) -> Con
 async def remove_roles(
     role_ids: list = None, pretty: bool = False, wait_for_complete: bool = False
 ) -> ConnexionResponse:
-    """Removes a list of roles in the system.
+    """Remove a list of roles in the system.
 
     Parameters
     ----------
@@ -787,7 +789,7 @@ async def get_policies(
     q: str = None,
     distinct: bool = False,
 ) -> ConnexionResponse:
-    """Returns information from all system policies.
+    """Return information from all system policies.
 
     Parameters
     ----------
@@ -881,7 +883,7 @@ async def add_policy(pretty: bool = False, wait_for_complete: bool = False) -> C
 async def remove_policies(
     policy_ids: list = None, pretty: bool = False, wait_for_complete: bool = False
 ) -> ConnexionResponse:
-    """Removes a list of roles in the system.
+    """Remove a list of roles in the system.
 
     Parameters
     ----------
@@ -1189,7 +1191,7 @@ async def remove_role_rule(
 
 
 async def get_rbac_resources(resource: str = None, pretty: bool = False) -> ConnexionResponse:
-    """Gets all the current defined resources for RBAC.
+    """Get all the current defined resources for RBAC.
 
     Parameters
     ----------
@@ -1219,7 +1221,7 @@ async def get_rbac_resources(resource: str = None, pretty: bool = False) -> Conn
 
 
 async def get_rbac_actions(pretty: bool = False, endpoint: str = None) -> ConnexionResponse:
-    """Gets all the current defined actions for RBAC.
+    """Get all the current defined actions for RBAC.
 
     Parameters
     ----------
