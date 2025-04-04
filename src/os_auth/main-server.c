@@ -33,6 +33,7 @@
 #include "wazuhdb_op.h"
 #include "os_err.h"
 #include "generate_cert.h"
+#include <sys/epoll.h>
 
 /* Prototypes */
 static void help_authd(char * home_path) __attribute((noreturn));
@@ -675,13 +676,38 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
 
     mdebug1("Dispatch thread ready.");
 
+    /* Initialize epoll */
+    int epfd = epoll_create1(0);
+    struct epoll_event events[MAX_EVENTS];
+
+    if (epfd < 0) {
+        merror("Couldn't initialize epoll");
+        return NULL;
+    }
+
     while (running) {
         const struct timespec timeout = { .tv_sec = time(NULL) + 1 };
-        struct client *client = queue_pop_ex_timedwait(client_queue, &timeout);
+        struct client *temp_client = NULL;
 
-        if (!client) {
-            continue;
-        }
+        // The idea is to remove all the element from the queue to prevent suffer from the initial ordering
+        // and deletegate the task to epoll
+        while (temp_client = queue_pop_ex_timedwait(client_queue, &timeout), temp_client)
+        {
+            // Save client event
+            struct epoll_event event = {.events = EPOLLIN, .data.ptr = temp_client};
+            if (epoll_ctl(epfd, EPOLL_CTL_ADD, temp_client->socket, &event) < 0)
+            {
+                mwarn("Could add event");
+                continue;
+            }
+
+            int event_number = epoll_wait(epfd, events, MAX_EVENTS, timeout.tv_sec);
+
+            for (int i = 0; i < event_number; ++i) {
+                struct client *client = (struct client*) events[i].data.ptr;
+
+
+
 
         if (client->is_ipv6) {
             get_ipv6_string(*client->addr6, ip, IPSIZE);
@@ -832,11 +858,15 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
         os_free(key_hash);
         os_free(new_id);
         os_free(new_key);
-    }
+    }      }
+
+}
+
 
     mdebug1("Dispatch thread finished");
 
     SSL_CTX_free(ctx);
+    close(epfd);
     return NULL;
 }
 
@@ -857,6 +887,12 @@ void* run_remote_server(__attribute__((unused)) void *arg) {
     }
 
     mdebug1("Remote server ready.");
+
+    // Set remote_sock non-blocking
+    if (fcntl(remote_sock, F_SETFL, O_NONBLOCK) < 0) {
+        merror("fcntl configuration failed");
+        return NULL;
+    }
 
     while (running) {
         memset(&_nc, 0, sizeof(_nc));
