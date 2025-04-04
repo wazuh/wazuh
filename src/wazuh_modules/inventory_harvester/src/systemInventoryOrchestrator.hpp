@@ -122,6 +122,12 @@ public:
                 PolicyHarvesterManager::instance().buildIndexerTemplatePath("netifaces"),
                 PolicyHarvesterManager::instance().buildIndexerUpdateTemplatePath("netifaces"),
                 Log::GLOBAL_LOG_FUNCTION);
+        m_indexerConnectorInstances[SystemContext::AffectedComponentType::NetworkAddress] =
+            std::make_unique<IndexerConnector>(
+                PolicyHarvesterManager::instance().buildIndexerConfig("networks"),
+                PolicyHarvesterManager::instance().buildIndexerTemplatePath("networks"),
+                PolicyHarvesterManager::instance().buildIndexerUpdateTemplatePath("networks"),
+                Log::GLOBAL_LOG_FUNCTION);
 
         m_orchestrations[SystemContext::Operation::Upsert] =
             SystemFactoryOrchestrator::create(SystemContext::Operation::Upsert, m_indexerConnectorInstances);

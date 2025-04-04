@@ -38,6 +38,7 @@ public:
         Ports,
         NetworkProtocol,
         NetIfaces,
+        NetAddress,
         Invalid
     };
 
@@ -51,6 +52,7 @@ public:
         Hardware,
         NetProto,
         NetIface,
+        NetworkAddress,
         Invalid
     };
 
@@ -95,6 +97,11 @@ public:
     MOCK_METHOD(std::string_view, portProcess, (), (const));
     MOCK_METHOD(int64_t, portPid, (), (const));
     MOCK_METHOD(std::string_view, portItemId, (), (const));
+    MOCK_METHOD(std::string_view, netAddressItemId, (), (const));
+    MOCK_METHOD(std::string_view, broadcast, (), (const));
+    MOCK_METHOD(std::string_view, netAddressName, (), (const));
+    MOCK_METHOD(std::string_view, netmask, (), (const));
+    MOCK_METHOD(int64_t, protocol, (), (const));
 
     MOCK_METHOD(std::string_view, hotfixName, (), (const));
     MOCK_METHOD(std::string_view, boardInfo, (), (const));

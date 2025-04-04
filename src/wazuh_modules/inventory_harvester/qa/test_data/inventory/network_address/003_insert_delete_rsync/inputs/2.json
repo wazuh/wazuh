@@ -1,0 +1,9 @@
+{
+  "agent_info": {
+    "agent_id": "002"
+  },
+  "action": "deleteNetworkAddress",
+  "data": {
+    "item_id": "ABC1"
+  }
+}

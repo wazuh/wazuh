@@ -754,6 +754,7 @@ rm -fr %{buildroot}
 %attr(0440, root, wazuh) %{_localstatedir}/templates/hardware_states_template.json
 %attr(0440, root, wazuh) %{_localstatedir}/templates/protocols_states_template.json
 %attr(0440, root, wazuh) %{_localstatedir}/templates/netifaces_states_template.json
+%attr(0440, root, wazuh) %{_localstatedir}/templates/networks_states_template.json
 %attr(0440, root, wazuh) %{_localstatedir}/templates/vd_states_update_mappings.json
 %attr(0440, root, wazuh) %{_localstatedir}/templates/files_states_update_mappings.json
 %attr(0440, root, wazuh) %{_localstatedir}/templates/registries_states_update_mappings.json
@@ -765,6 +766,7 @@ rm -fr %{buildroot}
 %attr(0440, root, wazuh) %{_localstatedir}/templates/hardware_states_update_mappings.json
 %attr(0440, root, wazuh) %{_localstatedir}/templates/protocols_states_update_mappings.json
 %attr(0440, root, wazuh) %{_localstatedir}/templates/netifaces_states_update_mappings.json
+%attr(0440, root, wazuh) %{_localstatedir}/templates/networks_states_update_mappings.json
 %dir %attr(750, wazuh, wazuh) %{_localstatedir}/logs/api
 %dir %attr(750, wazuh, wazuh) %{_localstatedir}/logs/archives
 %dir %attr(750, wazuh, wazuh) %{_localstatedir}/logs/alerts

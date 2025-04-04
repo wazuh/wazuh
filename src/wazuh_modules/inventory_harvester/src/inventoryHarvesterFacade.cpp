@@ -92,7 +92,8 @@ void InventoryHarvesterFacade::initRsyncSubscription()
                              data->data_as_state()->attributes_as_syscollector_hotfixes() ||
                              data->data_as_state()->attributes_as_syscollector_hwinfo() ||
                              data->data_as_state()->attributes_as_syscollector_network_protocol() ||
-                             data->data_as_state()->attributes_as_syscollector_network_iface())
+                             data->data_as_state()->attributes_as_syscollector_network_iface() ||
+                             data->data_as_state()->attributes_as_syscollector_network_address())
                     {
                         pushSystemEvent(message, BufferType::BufferType_RSync);
                     }
@@ -112,7 +113,8 @@ void InventoryHarvesterFacade::initRsyncSubscription()
                              attributesType.compare("syscollector_hotfixes") == 0 ||
                              attributesType.compare("syscollector_hwinfo") == 0 ||
                              attributesType.compare("syscollector_network_protocol") == 0 ||
-                             attributesType.compare("syscollector_network_iface") == 0)
+                             attributesType.compare("syscollector_network_iface") == 0 ||
+                             attributesType.compare("syscollector_network_address") == 0)
                     {
                         pushSystemEvent(message, BufferType::BufferType_RSync);
                     }
@@ -132,7 +134,8 @@ void InventoryHarvesterFacade::initRsyncSubscription()
                              attributesType.compare("syscollector_hotfixes") == 0 ||
                              attributesType.compare("syscollector_hwinfo") == 0 ||
                              attributesType.compare("syscollector_network_protocol") == 0 ||
-                             attributesType.compare("syscollector_network_iface") == 0)
+                             attributesType.compare("syscollector_network_iface") == 0 ||
+                             attributesType.compare("syscollector_network_address") == 0)
                     {
                         pushSystemEvent(message, BufferType::BufferType_RSync);
                     }

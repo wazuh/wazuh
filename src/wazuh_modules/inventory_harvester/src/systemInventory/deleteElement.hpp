@@ -15,6 +15,7 @@
 #include "chainOfResponsability.hpp"
 #include "elements/hotfixElement.hpp"
 #include "elements/hwElement.hpp"
+#include "elements/netElement.hpp"
 #include "elements/netIfaceElement.hpp"
 #include "elements/networkProtocolElement.hpp"
 #include "elements/osElement.hpp"
@@ -74,6 +75,10 @@ public:
         else if (originTable == TContext::OriginTable::NetIfaces)
         {
             data->m_serializedElement = serializeToJSON(NetIfaceElement<TContext>::deleteElement(data.get()));
+        }
+        else if (originTable == TContext::OriginTable::NetAddress)
+        {
+            data->m_serializedElement = serializeToJSON(NetElement<TContext>::deleteElement(data.get()));
         }
         else
         {

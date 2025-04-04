@@ -111,6 +111,8 @@ INSTANTIATE_TEST_SUITE_P(ClearElementsDifferentComponents,
                                            MockSystemContext::AffectedComponentType::Hardware,
                                            MockSystemContext::AffectedComponentType::NetProto,
                                            MockSystemContext::AffectedComponentType::NetIface,
+                                           MockSystemContext::AffectedComponentType::NetworkAddress,
+                                           MockSystemContext::AffectedComponentType::NetProto,
                                            MockSystemContext::AffectedComponentType::Invalid));
 
 INSTANTIATE_TEST_SUITE_P(ClearElementsDifferentComponentsNoAgent,
@@ -123,4 +125,6 @@ INSTANTIATE_TEST_SUITE_P(ClearElementsDifferentComponentsNoAgent,
                                            MockSystemContext::AffectedComponentType::Hardware,
                                            MockSystemContext::AffectedComponentType::NetProto,
                                            MockSystemContext::AffectedComponentType::NetIface,
+                                           MockSystemContext::AffectedComponentType::NetworkAddress,
+                                           MockSystemContext::AffectedComponentType::NetProto,
                                            MockSystemContext::AffectedComponentType::Invalid));

@@ -50,6 +50,7 @@ public:
         Hardware,
         NetProto,
         NetIface,
+        NetworkAddress,
         Invalid
     };
 
@@ -63,6 +64,7 @@ public:
         Ports,
         NetworkProtocol,
         NetIfaces,
+        NetAddress,
         Invalid
     };
     explicit SystemContext(
@@ -206,6 +208,10 @@ public:
                 return m_syncMsg->data_as_state()->attributes_as_syscollector_hwinfo()->cpu_name()->string_view();
             }
         }
+        else
+        {
+            return "";
+        }
         return "";
     }
 
@@ -290,7 +296,148 @@ public:
         {
             return m_jsonData->at("/data/board_serial"_json_pointer).get<std::string_view>();
         }
+        else
+        {
+            return "";
+        }
         return "";
+    }
+
+    std::string_view netAddressItemId()
+    {
+        if (m_type == VariantType::Delta)
+        {
+            if (m_delta->data_as_dbsync_network_address() && m_delta->data_as_dbsync_network_address()->item_id())
+            {
+                return m_delta->data_as_dbsync_network_address()->item_id()->string_view();
+            }
+        }
+        else if (m_type == VariantType::SyncMsg)
+        {
+            if (m_syncMsg->data_as_state() &&
+                m_syncMsg->data_as_state()->attributes_as_syscollector_network_address() &&
+                m_syncMsg->data_as_state()->attributes_as_syscollector_network_address()->item_id())
+            {
+                return m_syncMsg->data_as_state()
+                    ->attributes_as_syscollector_network_address()
+                    ->item_id()
+                    ->string_view();
+            }
+        }
+        else
+        {
+            if (m_jsonData->contains("/data/item_id"_json_pointer))
+            {
+                return m_jsonData->at("/data/item_id"_json_pointer).get<std::string_view>();
+            }
+        }
+        return "";
+    }
+
+    std::string_view broadcast()
+    {
+        if (m_type == VariantType::Delta)
+        {
+            if (m_delta->data_as_dbsync_network_address() && m_delta->data_as_dbsync_network_address()->broadcast())
+            {
+                return m_delta->data_as_dbsync_network_address()->broadcast()->string_view();
+            }
+        }
+        else if (m_type == VariantType::SyncMsg)
+        {
+            if (m_syncMsg->data_as_state() &&
+                m_syncMsg->data_as_state()->attributes_as_syscollector_network_address() &&
+                m_syncMsg->data_as_state()->attributes_as_syscollector_network_address()->broadcast())
+            {
+                return m_syncMsg->data_as_state()
+                    ->attributes_as_syscollector_network_address()
+                    ->broadcast()
+                    ->string_view();
+            }
+        }
+        else
+        {
+            return "";
+        }
+        return "";
+    }
+
+    std::string_view netAddressName()
+    {
+        if (m_type == VariantType::Delta)
+        {
+            if (m_delta->data_as_dbsync_network_address() && m_delta->data_as_dbsync_network_address()->iface())
+            {
+                return m_delta->data_as_dbsync_network_address()->iface()->string_view();
+            }
+        }
+        else if (m_type == VariantType::SyncMsg)
+        {
+            if (m_syncMsg->data_as_state() &&
+                m_syncMsg->data_as_state()->attributes_as_syscollector_network_address() &&
+                m_syncMsg->data_as_state()->attributes_as_syscollector_network_address()->iface())
+            {
+                return m_syncMsg->data_as_state()->attributes_as_syscollector_network_address()->iface()->string_view();
+            }
+        }
+        else
+        {
+            return "";
+        }
+        return "";
+    }
+
+    std::string_view netmask()
+    {
+        if (m_type == VariantType::Delta)
+        {
+            if (m_delta->data_as_dbsync_network_address() && m_delta->data_as_dbsync_network_address()->netmask())
+            {
+                return m_delta->data_as_dbsync_network_address()->netmask()->string_view();
+            }
+        }
+        else if (m_type == VariantType::SyncMsg)
+        {
+            if (m_syncMsg->data_as_state() &&
+                m_syncMsg->data_as_state()->attributes_as_syscollector_network_address() &&
+                m_syncMsg->data_as_state()->attributes_as_syscollector_network_address()->netmask())
+            {
+                return m_syncMsg->data_as_state()
+                    ->attributes_as_syscollector_network_address()
+                    ->netmask()
+                    ->string_view();
+            }
+        }
+        else
+        {
+            return "";
+        }
+        return "";
+    }
+
+    int64_t protocol()
+    {
+        if (m_type == VariantType::Delta)
+        {
+            if (m_delta->data_as_dbsync_network_address() && m_delta->data_as_dbsync_network_address()->proto())
+            {
+                return m_delta->data_as_dbsync_network_address()->proto();
+            }
+        }
+        else if (m_type == VariantType::SyncMsg)
+        {
+            if (m_syncMsg->data_as_state() &&
+                m_syncMsg->data_as_state()->attributes_as_syscollector_network_address() &&
+                m_syncMsg->data_as_state()->attributes_as_syscollector_network_address()->proto())
+            {
+                return m_syncMsg->data_as_state()->attributes_as_syscollector_network_address()->proto();
+            }
+        }
+        else
+        {
+            return 0;
+        }
+        return 0;
     }
 
     std::string_view agentIp()
@@ -2170,6 +2317,11 @@ private:
                 m_affectedComponentType = AffectedComponentType::NetIface;
                 m_originTable = OriginTable::NetIfaces;
             }
+            else if (delta->data_type() == SyscollectorDeltas::Provider_dbsync_network_address)
+            {
+                m_affectedComponentType = AffectedComponentType::NetworkAddress;
+                m_originTable = OriginTable::NetAddress;
+            }
             else
             {
                 // TO DO: Add log.
@@ -2233,6 +2385,13 @@ private:
                 m_operation = Operation::Upsert;
                 m_affectedComponentType = AffectedComponentType::NetProto;
                 m_originTable = OriginTable::NetworkProtocol;
+            }
+            else if (syncMsg->data_as_state()->attributes_type() ==
+                     Synchronization::AttributesUnion_syscollector_network_address)
+            {
+                m_operation = Operation::Upsert;
+                m_affectedComponentType = AffectedComponentType::NetworkAddress;
+                m_originTable = OriginTable::NetAddress;
             }
             else if (syncMsg->data_as_state()->attributes_type() ==
                      Synchronization::AttributesUnion_syscollector_network_iface)
@@ -2300,6 +2459,12 @@ private:
                     m_affectedComponentType = AffectedComponentType::NetIface;
                     m_originTable = OriginTable::NetIfaces;
                 }
+                else if (attributesTypeStr.compare("syscollector_network_address") == 0)
+                {
+                    m_operation = Operation::DeleteAllEntries;
+                    m_affectedComponentType = AffectedComponentType::NetworkAddress;
+                    m_originTable = OriginTable::NetAddress;
+                }
                 else
                 {
                     throw std::runtime_error("Attributes type not found in sync message.");
@@ -2363,6 +2528,12 @@ private:
                     m_affectedComponentType = AffectedComponentType::NetIface;
                     m_originTable = OriginTable::NetIfaces;
                 }
+                else if (attributesTypeStr.compare("syscollector_network_address") == 0)
+                {
+                    m_operation = Operation::IndexSync;
+                    m_affectedComponentType = AffectedComponentType::NetworkAddress;
+                    m_originTable = OriginTable::NetAddress;
+                }
                 else
                 {
                     // TO DO: Add log.
@@ -2424,6 +2595,12 @@ private:
             m_operation = Operation::Delete;
             m_affectedComponentType = AffectedComponentType::NetIface;
             m_originTable = OriginTable::NetIfaces;
+        }
+        else if (action.compare("deleteNetworkAddress") == 0)
+        {
+            m_operation = Operation::Delete;
+            m_affectedComponentType = AffectedComponentType::NetworkAddress;
+            m_originTable = OriginTable::NetAddress;
         }
         else
         {
