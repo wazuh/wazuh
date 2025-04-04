@@ -330,7 +330,7 @@ def get_script_arguments() -> argparse.Namespace:
     return parser
 
 
-def start():
+def start():  # NOQA
     """Start function of the wazuh-server script in charge of starting the server process."""
     try:
         server_pid = pyDaemonModule.get_wazuh_server_pid(SERVER_DAEMON_NAME)
@@ -503,7 +503,7 @@ async def monitor_server_daemons(loop: asyncio.BaseEventLoop, server_process: ps
     """
     comms_api_config = CentralizedConfig.get_comms_api_config()
     process_children = {
-        MANAGEMENT_API_DAEMON_NAME[:15]: 3,
+        MANAGEMENT_API_DAEMON_NAME[:15]: 5,
         COMMS_API_DAEMON_NAME: comms_api_config.workers + 4,
         ENGINE_DAEMON_NAME: 0,
     }

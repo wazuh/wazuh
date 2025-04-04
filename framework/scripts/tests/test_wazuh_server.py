@@ -26,7 +26,7 @@ def test_set_logging():
     import wazuh.core.cluster.utils as cluster_utils
 
     wazuh_server.cluster_utils = cluster_utils
-    with patch.object(cluster_utils, 'ClusterLogger') as clusterlogger_mock:
+    with patch.object(cluster_utils, 'ClusterLogger'):
         assert wazuh_server.set_logging(debug_mode=0)
 
 
@@ -166,7 +166,7 @@ def test_shutdown_daemon(os_getpid_mock, os_kill_mock):
 @pytest.mark.asyncio
 @pytest.mark.parametrize('helper_disabled', (True, False))
 @pytest.mark.skip(reason='This test will be refactored')
-async def test_master_main(helper_disabled: bool):
+async def test_master_main(helper_disabled: bool):  # NOQA
     """Check and set the behavior of master_main function."""
     import wazuh.core.cluster.utils as cluster_utils
 
@@ -232,7 +232,7 @@ async def test_master_main(helper_disabled: bool):
 @pytest.mark.asyncio
 @patch('asyncio.sleep', side_effect=IndexError)
 @pytest.mark.skip(reason='This test will be refactored')
-async def test_worker_main(asyncio_sleep_mock):
+async def test_worker_main(asyncio_sleep_mock):  # NOQA
     """Check and set the behavior of worker_main function."""
     import wazuh.core.cluster.utils as cluster_utils
 
@@ -769,7 +769,7 @@ async def test_monitor_server_daemons(sleep_mock, check_daemon_mock, readiness_m
     readiness_mock.assert_called_once_with(
         process_mock,
         {
-            wazuh_server.MANAGEMENT_API_DAEMON_NAME[:15]: 3,
+            wazuh_server.MANAGEMENT_API_DAEMON_NAME[:15]: 5,
             wazuh_server.COMMS_API_DAEMON_NAME: 8,
             wazuh_server.ENGINE_DAEMON_NAME: 0,
         },
@@ -777,7 +777,7 @@ async def test_monitor_server_daemons(sleep_mock, check_daemon_mock, readiness_m
 
     check_daemon_mock.assert_has_calls(
         [
-            call(proc_list, wazuh_server.MANAGEMENT_API_DAEMON_NAME[:15], 3),
+            call(proc_list, wazuh_server.MANAGEMENT_API_DAEMON_NAME[:15], 5),
             call(proc_list, wazuh_server.COMMS_API_DAEMON_NAME, 8),
             call(proc_list, wazuh_server.ENGINE_DAEMON_NAME, 0),
         ],
