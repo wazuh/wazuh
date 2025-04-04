@@ -143,7 +143,7 @@ class BerkeleyRpmDBReader final
             return retVal;
         }
 
-        std::string parseBody(const std::vector<BerkeleyHeaderEntry>& header, const DBT& data, const std::vector<std::pair<int32_t, std::string>>& TAG_NAMES)
+        std::string parseBody(const std::vector<BerkeleyHeaderEntry>& header, const DBT& data)
         {
             std::string retVal;
 
@@ -151,7 +151,7 @@ class BerkeleyRpmDBReader final
             {
                 auto bytes { reinterpret_cast<char*>(data.data) + FIRST_ENTRY_OFFSET + (ENTRY_SIZE * header.size()) };
 
-                for (const auto& TAG : TAG_NAMES)
+                for (const auto& TAG : TAG_PACKAGE_NAMES)
                 {
                     const auto it
                     {
@@ -190,7 +190,7 @@ class BerkeleyRpmDBReader final
             return retVal;
         }
 
-        void parsePythonFilesBody(const std::vector<BerkeleyHeaderEntry>& header, const DBT& data, std::vector<std::string>& pythonFiles, const std::vector<std::pair<int32_t, std::string>>& TAG_NAMES)
+        void parsePythonFilesBody(const std::vector<BerkeleyHeaderEntry>& header, const DBT& data, std::vector<std::string>& pythonFiles)
         {
             std::vector<std::string> dirnames;
             std::vector<int> dirindexes;
@@ -201,7 +201,7 @@ class BerkeleyRpmDBReader final
             {
                 auto bytes { reinterpret_cast<char*>(data.data) + FIRST_ENTRY_OFFSET + (ENTRY_SIZE * header.size()) };
 
-                for (const auto& TAG : TAG_NAMES)
+                for (const auto& TAG : TAG_FILE_NAMES)
                 {
                     const auto it
                     {
@@ -286,7 +286,7 @@ class BerkeleyRpmDBReader final
 
             if (cursorRet = m_dbWrapper->getRow(key, data), cursorRet == 0)
             {
-                retVal = parseBody(parseHeader(data, TAG_PACKAGE_NAMES), data, TAG_PACKAGE_NAMES);
+                retVal = parseBody(parseHeader(data, TAG_PACKAGE_NAMES), data);
             }
 
             return retVal;
@@ -307,7 +307,7 @@ class BerkeleyRpmDBReader final
 
             if (cursorRet = m_dbWrapper->getRow(key, data), cursorRet == 0)
             {
-                parsePythonFilesBody(parseHeader(data, TAG_FILE_NAMES), data, pythonFiles, TAG_FILE_NAMES);
+                parsePythonFilesBody(parseHeader(data, TAG_FILE_NAMES), data, pythonFiles);
                 return true;
             }
 
