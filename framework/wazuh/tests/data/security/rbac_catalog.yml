@@ -170,64 +170,6 @@ get_rbac_actions:
           effect: deny
         related_endpoints:
           - PUT /groups/{group_id}/configuration
-      cluster:read:
-        description: Read Wazuh's cluster nodes configuration
-        resources:
-          - node:id
-        example:
-          actions:
-            - cluster:read
-          resources:
-            - node:id:worker1
-            - node:id:worker3
-          effect: deny
-        related_endpoints:
-          - GET /cluster/nodes
-          - GET /cluster/healthcheck
-          - GET /cluster/{node_id}/daemons/stats
-          - GET /cluster/{node_id}/status
-          - GET /cluster/{node_id}/info
-          - GET /cluster/{node_id}/configuration
-          - GET /cluster/{node_id}/logs
-          - GET /cluster/{node_id}/logs/summary
-          - PUT /cluster/restart
-          - GET /cluster/configuration/validation
-      cluster:status:
-        description: Check Wazuh's cluster general status
-        resources:
-          - "*:*"
-        example:
-          actions:
-            - cluster:status
-          resources:
-            - "*:*:*"
-          effect: allow
-        related_endpoints:
-          - GET /cluster/status
-      cluster:update_config:
-        description: Change the Wazuh's cluster node configuration
-        resources:
-          - node:id
-        example:
-          actions:
-            - cluster:update_config
-          resources:
-            - node:id:worker1
-          effect: allow
-        related_endpoints:
-          - PUT /cluster/{node_id}/configuration
-      cluster:restart:
-        description: Restart Wazuh's cluster nodes
-        resources:
-          - node:id
-        example:
-          actions:
-            - cluster:restart
-          resources:
-            - node:id:worker1
-          effect: allow
-        related_endpoints:
-          - PUT /cluster/restart
       security:edit_run_as:
         description: Change the value of the allow_run_as flag for a user
         resources:
@@ -374,8 +316,6 @@ get_rbac_resources:
         description: Reference agents via agent ID (i.e. agent:id:001)
       group:id:
         description: Reference agent groups via group ID (i.e. group:id:default)
-      node:id:
-        description: Reference cluster nodes via node ID (i.e. node:id:worker1)
       policy:id:
         description: Reference security policies via its id (i.e. policy:id:1)
       role:id:

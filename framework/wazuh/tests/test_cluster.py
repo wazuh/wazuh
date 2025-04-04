@@ -28,7 +28,6 @@ with patch('wazuh.core.common.wazuh_uid'):
             from wazuh.core import common
             from wazuh.core.cluster.local_client import LocalClient
             from wazuh.core.exception import WazuhError, WazuhResourceNotFound
-            from wazuh.core.results import WazuhResult
 
 
 async def test_node_wrapper():
@@ -42,29 +41,6 @@ async def test_node_wrapper_exception(mock_get_node):
     """Verify the exceptions raised in get_node_wrapper."""
     result = await cluster.get_node_wrapper()
     assert list(result.failed_items.keys())[0] == WazuhError(1001)
-
-
-async def test_get_status_json():
-    """Verify that get_status_json returns the default status information."""
-    result = await cluster.get_status_json()
-    expected = WazuhResult({'data': {'running': 'no'}})
-    assert result == expected
-
-
-@pytest.mark.asyncio
-@patch('wazuh.core.cluster.local_client.LocalClient.start', side_effect=None)
-async def test_get_health_nodes(mock_unix_connection):
-    """Verify that get_health_nodes returns the health of all nodes."""
-
-    async def async_mock(lc=None, filter_node=None):
-        return {'nodes': {'manager': {'info': {'name': 'master'}}}}
-
-    local_client = LocalClient()
-    with patch('wazuh.cluster.get_health', side_effect=async_mock):
-        result = await cluster.get_health_nodes(lc=local_client)
-    expected = await async_mock()
-
-    assert result.affected_items == [expected['nodes']['manager']]
 
 
 @pytest.mark.asyncio
