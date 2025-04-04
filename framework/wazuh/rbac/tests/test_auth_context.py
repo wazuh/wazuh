@@ -6,11 +6,15 @@ import json
 import os
 from unittest.mock import patch
 
+from wazuh.rbac.auth_context import RBAChecker
+
 test_path = os.path.dirname(os.path.realpath(__file__))
 test_data_path = os.path.join(test_path, 'data/')
 
 
 class Map(dict):
+    """Map contanins a mapping of the authorization contexts, roles and results."""
+
     def __init__(self, *args, **kwargs):
         super(Map, self).__init__(*args, **kwargs)
         for arg in args:
@@ -41,6 +45,7 @@ class Map(dict):
 
 
 def values():
+    """Mock values."""
     authorization_contexts = list()
     roles = list()
     results = list()
@@ -57,33 +62,36 @@ def values():
     return authorization_contexts, roles, results
 
 
-def test_load_files(db_setup):
+def test_load_files():
+    """Validate that files are parsed correctly."""
     authorization_contexts, roles, results = values()
     assert len(authorization_contexts) > 0
     assert len(roles)
     for auth in authorization_contexts:
-        assert type(auth) == Map
+        assert type(auth) is Map
     for role in roles:
-        assert type(role) == Map
+        assert type(role) is Map
 
 
-def test_auth_roles(db_setup):
+@patch('wazuh.rbac.auth_context.RBACManager')
+def test_auth_roles(rbac_manager_mock):
+    """Validate that `RBAChecker` works as expected."""
     authorization_contexts, roles, results = values()
     for index, auth in enumerate(authorization_contexts):
         for role in roles:
-            with patch('wazuh.rbac.orm.RolesManager.get_role_id') as _role_rules:
-                with patch('wazuh.rbac.orm.RulesManager.get_rule') as _rule:
-                    list_rules = [{'rule': role.rules[i]} for i, _ in enumerate(role.rules)]
-                    role.rules = list_rules
-                    _role_rules.return_value = {'rules': list_rules}
-                    _rule.side_effect = role.rules
-                    initial_index = 100
-                    for rule in role['rules']:
-                        rule['id'] = initial_index
-                        initial_index += 1
-                    test = db_setup(json.dumps(auth.auth), role)
-                    if role.name in results[index].roles:
-                        assert test.get_user_roles()[0] == role.id
-                    else:
-                        assert len(test.get_user_roles()) == 0
+            checker = RBAChecker(rbac_manager=rbac_manager_mock, auth_context=auth.auth, role=role)
+            list_rules = [{'rule': role.rules[i]} for i, _ in enumerate(role.rules)]
+            role.rules = list_rules
+
+            initial_index = 100
+            for rule in role['rules']:
+                rule['id'] = initial_index
+                initial_index += 1
+
+            if role.name in results[index].roles:
+                for rule in role.rules:
+                    if checker.check_rule(rule):
+                        assert checker.get_user_roles()[0] == role.name
+            else:
+                assert len(checker.get_user_roles()) == 0
         roles = values()[1]
