@@ -1240,6 +1240,97 @@ paths:
         "500":
           $ref: "#/components/responses/InternalServerError_500"
 
+  ################################
+  # Geo
+  ################################
+  /geo/db/add:
+    post:
+      tags:
+        - Geo
+      summary: Add a new MMDB database
+      description: |
+        This endpoint allows adding a new MMDB (MaxMind Database) file to the geo manager.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GeoDbPost_Request"
+      responses:
+        "200":
+          $ref: "#/components/responses/GenericSuccess_200"
+        "400":
+          $ref: "#/components/responses/BadRequest_400"
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+
+  /geo/db/del:
+    post:
+      tags:
+        - Geo
+      summary: Delete an MMDB database
+      description: |
+        This endpoint allows deleting an MMDB (MaxMind Database) file from the geo manager.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GeoDbDelete_Request"
+      responses:
+        "200":
+          $ref: "#/components/responses/GenericSuccess_200"
+        "400":
+          $ref: "#/components/responses/BadRequest_400"
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+
+  /geo/db/list:
+    post:
+      tags:
+        - Geo
+      summary: List all MMDB databases
+      description: |
+        This endpoint retrieves a list of all MMDB (MaxMind Database) files in the geo manager.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EmptyRequest"
+      responses:
+        "200":
+          description: Successfully retrieved MMDB databases
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GeoDbList_Response"
+        "400":
+          $ref: "#/components/responses/BadRequest_400"
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+
+  /geo/db/remoteUpsert:
+    post:
+      tags:
+        - Geo
+      summary: Add or update an MMDB database from a remote location
+      description: |
+        This endpoint allows adding or updating an MMDB (MaxMind Database) file in the geo manager from a remote location.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GeoDbRemoteUpsert_Request"
+      responses:
+        "200":
+          $ref: "#/components/responses/GenericSuccess_200"
+        "400":
+          $ref: "#/components/responses/BadRequest_400"
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+
 #################################################################################
 # Components
 #################################################################################
@@ -1960,6 +2051,66 @@ components:
       properties:
         session:
           $ref: "#/components/schemas/TesterSessionPost"
+
+    #################################
+    # Geo
+    #################################
+    GeoDbEntry:
+      type: object
+      properties:
+        name:
+          type: string
+          description: "Database name"
+        path:
+          type: string
+          description: "Path of the MMDB database file"
+        type:
+          type: string
+          description: "MMDB database type [city|asn]"
+
+    GeoDbPost_Request:
+      type: object
+      properties:
+        path:
+          type: string
+          description: "Path of the MMDB database file to add"
+        type:
+          type: string
+          description: "MMDB database type [city|asn]"
+
+    GeoDbDelete_Request:
+      type: object
+      properties:
+        path:
+          type: string
+          description: "Path of the MMDB database file to delete"
+
+    GeoDbList_Response:
+      allOf:
+        - $ref: "#/components/schemas/Response"
+        - type: object
+          properties:
+            entries:
+              type: array
+              items:
+                $ref: "#/components/schemas/GeoDbEntry"
+              description: "List of MMDB entries in the geo manager"
+
+    GeoDbRemoteUpsert_Request:
+      type: object
+      properties:
+        path:
+          type: string
+          description: "Path of the MMDB database file to add"
+        type:
+          type: string
+          description: "MMDB database type [city|asn]"
+        dbUrl:
+          type: string
+          description: "URL of the remote database"
+        hashUrl:
+          type: string
+          description: "Hash URL for integrity verification"
 
   #################################################################################
   # Responses
