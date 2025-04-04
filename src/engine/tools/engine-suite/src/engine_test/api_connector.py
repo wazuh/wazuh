@@ -52,7 +52,7 @@ class ApiConnector:
                 exit(1)
             response_post = ParseDict(response, api_tester.RunPost_Response())
             if response_post.status != api_engine.OK:
-                print("Run error: {}".format(response_post.error))
+                print("\033[91mRun error: {}\033[0m".format(response_post.error))
                 exit(1)
 
             return response_post
