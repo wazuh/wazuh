@@ -15,6 +15,7 @@
 #include "chainOfResponsability.hpp"
 #include "elements/hotfixElement.hpp"
 #include "elements/hwElement.hpp"
+#include "elements/networkProtocolElement.hpp"
 #include "elements/osElement.hpp"
 #include "elements/packageElement.hpp"
 #include "elements/portElement.hpp"
@@ -64,6 +65,10 @@ public:
         else if (originTable == TContext::OriginTable::Hotfixes)
         {
             data->m_serializedElement = serializeToJSON(HotfixElement<TContext>::build(data.get()));
+        }
+        else if (originTable == TContext::OriginTable::NetworkProtocol)
+        {
+            data->m_serializedElement = serializeToJSON(NetworkProtocolElement<TContext>::build(data.get()));
         }
         else
         {

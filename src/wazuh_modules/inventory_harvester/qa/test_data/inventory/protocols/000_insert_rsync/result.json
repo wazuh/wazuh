@@ -1,0 +1,28 @@
+[
+    {
+        "index_name": "wazuh-states-protocols-cluster01",
+        "data": [
+            {
+                "agent": {
+                    "id": "001",
+                    "ip": "any",
+                    "name": "centos9",
+                    "version": "v4.10.1"
+                },
+                "network": {
+                    "dhcp": false,
+                    "gateway": " ",
+                    "metric": 101,
+                    "type": "ipv4"
+                },
+                "observer": {
+                    "ingress": {
+                        "interface": {
+                            "name": "eth1"
+                        }
+                    }
+                }
+            }
+        ]
+    }
+]
