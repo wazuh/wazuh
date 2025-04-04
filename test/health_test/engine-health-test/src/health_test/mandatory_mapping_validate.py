@@ -113,8 +113,8 @@ def rules_validator(ruleset_path: Path, integrations_rules: str, reporter):
 
 def run(args):
     ruleset_path = Path(args['ruleset']).resolve()
-    integration = args['integration']
-    integrations_rules = args['integration_rule']
+    integration = args.get('integration')
+    integrations_rules = args.get('integration_rule')
 
     if not ruleset_path.is_dir():
         sys.exit(f"Engine ruleset not found: {ruleset_path}")
