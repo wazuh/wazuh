@@ -2786,10 +2786,10 @@ checks:
       - pci_dss_v3.2.1: ["10.2", "10.3", "7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition: all
+    condition: any
     rules:
-      - 'f:/etc/rsyslog.conf -> r:^\$FileCreateMode 06\d0|^\$FileCreateMode 04\d0|^\$FileCreateMode 02\d0|^\$FileCreateMode 00\d0'
-      - 'f:/etc/rsyslog.conf -> r:^\$FileCreateMode 0\d40|^\$FileCreateMode 0\d20|^\$FileCreateMode 0\d00'
+      - 'd:/etc/rsyslog.d -> r:\.*.conf -> r:^\$FileCreateMode && r:0640|0600|0400'
+      - 'f:/etc/rsyslog.conf -> r:^\$FileCreateMode && r:0640|0600|0400'
 
   # 4.2.1.5 Ensure logging is configured. (Manual) - Not Implemented
   # 4.2.1.6 Ensure rsyslog is configured to send logs to a remote log host. (Manual)
