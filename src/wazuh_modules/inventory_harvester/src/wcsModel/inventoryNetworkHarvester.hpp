@@ -14,13 +14,13 @@
 
 #include "reflectiveJson.hpp"
 #include "wcsClasses/agent.hpp"
-#include "wcsClasses/network.hpp"
+#include "wcsClasses/networkAddress.hpp"
 
 struct InventoryNetworkHarvester final
 {
 
     Agent agent;
-    Network network;
+    NetworkAddress network;
 
     REFLECTABLE(MAKE_FIELD("network", &InventoryNetworkHarvester::network),
                 MAKE_FIELD("agent", &InventoryNetworkHarvester::agent));

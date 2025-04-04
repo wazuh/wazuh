@@ -15,7 +15,7 @@
 #include "reflectiveJson.hpp"
 #include <string_view>
 
-struct Network final
+struct NetworkAddress final
 {
     std::string_view broadcast;
     std::string_view ip;
@@ -23,11 +23,11 @@ struct Network final
     std::string_view netmask;
     std::string_view protocol;
 
-    REFLECTABLE(MAKE_FIELD("broadcast", &Network::broadcast),
-                MAKE_FIELD("ip", &Network::ip),
-                MAKE_FIELD("name", &Network::name),
-                MAKE_FIELD("netmask", &Network::netmask),
-                MAKE_FIELD("protocol", &Network::protocol));
+    REFLECTABLE(MAKE_FIELD("broadcast", &NetworkAddress::broadcast),
+                MAKE_FIELD("ip", &NetworkAddress::ip),
+                MAKE_FIELD("name", &NetworkAddress::name),
+                MAKE_FIELD("netmask", &NetworkAddress::netmask),
+                MAKE_FIELD("protocol", &NetworkAddress::protocol));
 };
 
 #endif // _NET_WCS_MODEL_HPP

@@ -2385,9 +2385,9 @@ private:
                 m_operation = Operation::Upsert;
                 m_affectedComponentType = AffectedComponentType::NetProto;
                 m_originTable = OriginTable::NetworkProtocol;
-                     
-            else if (syncMsg->data_as_state()->attributes_type() == Synchronization::AttributesUnion_syscollector_network_address)
             }
+            else if (syncMsg->data_as_state()->attributes_type() ==
+                     Synchronization::AttributesUnion_syscollector_network_address)
             {
                 m_operation = Operation::Upsert;
                 m_affectedComponentType = AffectedComponentType::NetworkAddress;

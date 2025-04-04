@@ -18,6 +18,7 @@
 #include "elements/netIfaceElement.hpp"
 #include "elements/networkProtocolElement.hpp"
 #include "elements/netElement.hpp"
+#include "elements/networkProtocolElement.hpp"
 #include "elements/osElement.hpp"
 #include "elements/packageElement.hpp"
 #include "elements/portElement.hpp"
