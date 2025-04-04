@@ -442,6 +442,7 @@ adapter::RouteHandler runPost(const std::shared_ptr<::router::ITesterAPI>& teste
         {
             res = adapter::userErrorResponse<ResponseType>(
                 fmt::format("Can only test one event at a time, but got {}", events.size()));
+            return;
         }
 
         // Run the test
