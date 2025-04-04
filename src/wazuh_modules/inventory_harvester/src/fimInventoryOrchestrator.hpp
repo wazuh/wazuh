@@ -100,6 +100,9 @@ public:
         m_orchestrations[FimContext::Operation::IndexSync] =
             FimFactoryOrchestrator::create(FimContext::Operation::IndexSync, m_indexerConnectorInstances);
 
+        m_orchestrations[FimContext::Operation::UpgradeAgentDB] =
+            FimFactoryOrchestrator::create(FimContext::Operation::UpgradeAgentDB, m_indexerConnectorInstances);
+
         logDebug2(LOGGER_DEFAULT_TAG, "FimInventoryOrchestrator constructor finished");
     }
 };

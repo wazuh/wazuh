@@ -38,6 +38,7 @@ public:
         DeleteAgent,
         DeleteAllEntries,
         IndexSync,
+        UpgradeAgentDB,
         Invalid,
     };
     enum class AffectedComponentType : std::uint8_t
@@ -2601,6 +2602,10 @@ private:
             m_operation = Operation::Delete;
             m_affectedComponentType = AffectedComponentType::NetworkAddress;
             m_originTable = OriginTable::NetAddress;
+        }
+        else if (action.compare("upgradeAgentDB") == 0)
+        {
+            m_operation = Operation::UpgradeAgentDB;
         }
         else
         {
