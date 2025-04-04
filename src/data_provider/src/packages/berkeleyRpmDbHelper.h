@@ -31,7 +31,9 @@
 #define TAG_GROUP       1016
 #define TAG_SOURCE      1044
 #define TAG_ARCH        1022
-#define TAG_FILENAMES   1027
+#define TAG_DIRINDEXES  1116
+#define TAG_BASENAMES   1117
+#define TAG_DIRNAMES    1118
 
 constexpr auto RPM_DATABASE {"/var/lib/rpm/Packages"};
 constexpr unsigned int FIRST_ENTRY_OFFSET { 8u };
@@ -63,7 +65,9 @@ const std::vector<std::pair<int32_t, std::string>> TAG_NAMES =
     { std::make_pair(TAG_VENDOR, "vendor") },
     { std::make_pair(TAG_ITIME, "install_time") },
     { std::make_pair(TAG_GROUP, "group") },
-    { std::make_pair(TAG_FILENAMES, "files") }
+    { std::make_pair(TAG_DIRINDEXES, "dirindexes") },
+    { std::make_pair(TAG_BASENAMES, "basenames") },
+    { std::make_pair(TAG_DIRNAMES, "dirnames") }
 };
 
 class BerkeleyRpmDBReader final
@@ -168,12 +172,7 @@ class BerkeleyRpmDBReader final
                         }
                         else if (STRING_VECTOR_TYPE == it->type)
                         {
-                            for (int i = 0; i < it->count; ++i)
-                            {
-                                if (i > 0) retVal += ", ";
-                                retVal += ucp;
-                                ucp += strlen(ucp) + 1;
-                            }
+                            retVal += ucp;
                         }
                     }
 
@@ -184,6 +183,85 @@ class BerkeleyRpmDBReader final
             }
 
             return retVal;
+        }
+
+        void parsePythonFilesBody(const std::vector<BerkeleyHeaderEntry>& header, const DBT& data, std::vector<std::string>& pythonFiles)
+        {
+            std::vector<std::string> dirnames;
+            std::vector<int> dirindexes;
+            std::vector<std::string> basenames;
+            bool isPython { false };
+
+            if (!header.empty())
+            {
+                auto bytes { reinterpret_cast<char*>(data.data) + FIRST_ENTRY_OFFSET + (ENTRY_SIZE * header.size()) };
+
+                for (const auto& TAG : TAG_NAMES)
+                {
+                    const auto it
+                    {
+                        std::find_if(header.begin(),
+                                     header.end(),
+                                     [&TAG](const auto & headerEntry)
+                        {
+                            return TAG.second.compare(headerEntry.tag) == 0;
+                        })
+                    };
+
+                    if (it != header.end())
+                    {
+                        auto ucp { &bytes[it->offset] };
+
+                        if (TAG.first == TAG_NAME)
+                        {
+                            std::string name(ucp);
+
+                            if (name.rfind("python", 0) == 0)
+                            {
+                                isPython = true;
+                            }
+                        }
+                        else if (TAG.first == TAG_DIRINDEXES)
+                        {
+                            for (int i = 0; i < it->count; ++i)
+                            {
+                                dirindexes.push_back(Utils::toInt32BE(reinterpret_cast<uint8_t*>(ucp)));
+                                ucp += sizeof(int32_t);
+                            }
+                        }
+                        else if (TAG.first == TAG_BASENAMES)
+                        {
+                            for (int i = 0; i < it->count; ++i)
+                            {
+                                std::string basename(ucp);
+                                basenames.push_back(basename);
+                                ucp += basename.length() + 1;
+                            }
+                        }
+                        else if (TAG.first == TAG_DIRNAMES)
+                        {
+                            for (int i = 0; i < it->count; ++i)
+                            {
+                                std::string dirname(ucp);
+                                dirnames.push_back(dirname);
+                                ucp += dirname.length() + 1;
+                            }
+                        }
+                    }
+                }
+
+                if (isPython && !dirindexes.empty() && !dirnames.empty() && !basenames.empty())
+                {
+                    for (size_t i = 0; i < basenames.size(); ++i)
+                    {
+                        if (dirindexes[i] < static_cast<int>(dirnames.size()))
+                        {
+                            std::string fullPath = dirnames[dirindexes[i]] + basenames[i];
+                            pythonFiles.push_back(fullPath);
+                        }
+                    }
+                }
+            }
         }
 
     public:
@@ -208,6 +286,29 @@ class BerkeleyRpmDBReader final
 
             return retVal;
         }
+
+        bool getNextPythonFiles(std::vector<std::string>& pythonFiles)
+        {
+            DBT key, data;
+            int cursorRet;
+
+            if (m_firstIteration)
+            {
+                if (cursorRet = m_dbWrapper->getRow(key, data), cursorRet == 0)
+                {
+                    m_firstIteration = false;
+                }
+            }
+
+            if (cursorRet = m_dbWrapper->getRow(key, data), cursorRet == 0)
+            {
+                parsePythonFilesBody(parseHeader(data), data, pythonFiles);
+                return true;
+            }
+
+            return false;
+        }
+
         explicit BerkeleyRpmDBReader(std::shared_ptr<IBerkeleyDbWrapper> dbWrapper)
             : m_firstIteration { true }
             , m_dbWrapper { dbWrapper }
