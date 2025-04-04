@@ -38,6 +38,11 @@ class IRpmLibWrapper
         virtual rpmdbMatchIterator rpmtsInitIterator(const rpmts ts, rpmDbiTagVal rpmtag, const void* keypointer, size_t keylen) = 0;
         virtual Header rpmdbNextIterator(rpmdbMatchIterator mi) = 0;
         virtual rpmdbMatchIterator rpmdbFreeIterator(rpmdbMatchIterator mi) = 0;
+        virtual rpmfi rpmfiNew(rpmts ts, Header h, rpmTagVal tag, rpmfiFlags flags) = 0;
+        virtual rpm_count_t rpmfiFC(rpmfi fi) = 0;
+        virtual int rpmfiNext(rpmfi fi) = 0;
+        virtual const char* rpmfiFN(rpmfi fi) = 0;
+        virtual rpmfi rpmfiFree(rpmfi fi) = 0;
 };
 
 #endif // _RPMLIB_WRAPPER_H

@@ -601,7 +601,20 @@ void SysInfo::getPackages(std::function<void(nlohmann::json&)> callback) const
         {"PYPI", UNIX_PYPI_DEFAULT_BASE_DIRS},
         {"NPM", UNIX_NPM_DEFAULT_BASE_DIRS}
     };
-    ModernFactoryPackagesCreator<HAS_STDFILESYSTEM>::getPackages(searchPaths, callback);
+
+    std::unordered_set<std::string> excludePaths;
+
+    if (Utils::existsDir(DPKG_PATH))
+    {
+        getDpkgPythonPackages(excludePaths);
+    }
+
+    if (Utils::existsDir(RPM_PATH))
+    {
+        getRpmPythonPackages(excludePaths);
+    }
+
+    ModernFactoryPackagesCreator<HAS_STDFILESYSTEM>::getPackages(searchPaths, callback, excludePaths);
 }
 
 nlohmann::json SysInfo::getHotfixes() const

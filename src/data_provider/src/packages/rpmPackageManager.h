@@ -45,6 +45,7 @@ class RpmPackageManager final
             std::string source;
             std::string architecture;
             std::string description;
+            std::vector<std::string> files;
         };
 
         struct Iterator final
@@ -63,6 +64,7 @@ class RpmPackageManager final
                 Iterator(std::shared_ptr<IRpmLibWrapper>& rpmlib);
                 std::string getAttribute(rpmTag tag) const;
                 uint64_t getAttributeNumber(rpmTag tag) const;
+                std::vector<std::string> getFiles() const;
                 bool m_end = false;
                 std::shared_ptr<IRpmLibWrapper> m_rpmlib;
                 rpmts m_transactionSet = nullptr;
