@@ -587,7 +587,6 @@ def decoder_health_test(env_path: Path, integration_name: Optional[str] = None, 
 
     if success:
         print("All tests passed.")
-        sys.exit(0)
     else:
         sys.exit(1)
 
@@ -673,7 +672,6 @@ def rule_health_test(env_path: Path, ruleset_name: Optional[str] = None, skip: O
 
     if success:
         print("All tests passed.")
-        sys.exit(0)
     else:
         sys.exit(1)
 

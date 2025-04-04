@@ -260,7 +260,6 @@ def decoder_health_test(env_path: Path, unit_result: type, debug_mode: str, inte
 
     if success:
         print("All tests passed.")
-        sys.exit(0)
     else:
         sys.exit(1)
 
@@ -328,7 +327,6 @@ def rule_health_test(env_path: Path, unit_result: type, debug_mode: str, integra
 
     if success:
         print("All tests passed.")
-        sys.exit(0)
     else:
         sys.exit(1)
 
