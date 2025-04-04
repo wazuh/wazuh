@@ -5,6 +5,7 @@
 import json
 import os
 import re
+from importlib import reload
 from unittest.mock import patch
 
 import pytest
@@ -78,6 +79,7 @@ async def test_expose_resources(
     decorator_params, function_params, rbac, fake_system_resources, allowed_resources, result, mode
 ):
     """Validate that the `expose_resources` decorator works as expected."""
+    reload(decorator)
     rbac['rbac_mode'] = mode
     decorator.rbac.set(rbac)
 
@@ -110,6 +112,7 @@ async def test_expose_resources(
 )
 async def test_expose_resourcesless(decorator_params, rbac, allowed, mode):
     """Validate that the `expose_resources` decorator works as expected when no resources are required."""
+    reload(decorator)
     rbac['rbac_mode'] = mode
     decorator.rbac.set(rbac)
 
@@ -132,6 +135,7 @@ async def test_expose_resourcesless(decorator_params, rbac, allowed, mode):
 
 async def test__expand_resource():
     """Validate that the `_expand_resource` function works as expected."""
+    reload(decorator)
     rbac_manager = RBACManager()
     rbac_manager._rules = {
         'rule1': Rule(
