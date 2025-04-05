@@ -285,8 +285,21 @@ TEST_F(SystemInventoryUpsertElement, emptyBoardId_Hw)
     EXPECT_CALL(*context, agentId()).WillOnce(testing::Return("001"));
     EXPECT_CALL(*context, boardInfo()).WillOnce(testing::Return(""));
     EXPECT_CALL(*context, originTable()).WillOnce(testing::Return(MockSystemContext::OriginTable::Hw));
+    EXPECT_CALL(*context, agentName()).WillOnce(testing::Return("agentName"));
+    EXPECT_CALL(*context, agentVersion()).WillOnce(testing::Return("agentVersion"));
+    EXPECT_CALL(*context, agentIp()).WillOnce(testing::Return("agentIp"));
+    EXPECT_CALL(*context, cpuCores()).WillOnce(testing::Return(2));
+    EXPECT_CALL(*context, cpuName()).WillOnce(testing::Return("cpuName"));
+    EXPECT_CALL(*context, cpuFrequency()).WillOnce(testing::Return(2497));
+    EXPECT_CALL(*context, freeMem()).WillOnce(testing::Return(0));
+    EXPECT_CALL(*context, totalMem()).WillOnce(testing::Return(0));
+    EXPECT_CALL(*context, usedMem()).WillOnce(testing::Return(0));
 
-    EXPECT_ANY_THROW(upsertElement->handleRequest(context));
+    EXPECT_NO_THROW(upsertElement->handleRequest(context));
+
+    EXPECT_EQ(
+        context->m_serializedElement,
+        R"({"id":"001_unknown","operation":"INSERTED","data":{"host":{"cpu":{"cores":2,"name":"cpuName","speed":2497},"memory":{"free":0,"total":0,"used":0}},"agent":{"id":"001","name":"agentName","host":{"ip":"agentIp"},"version":"agentVersion"},"observer":{"serial_number":"unknown"},"wazuh":{"schema":{"version":"1.0"}}}})");
 }
 
 TEST_F(SystemInventoryUpsertElement, validAgentID_Hw)
@@ -459,13 +472,14 @@ TEST_F(SystemInventoryUpsertElement, validAgentID_NetworkAddress)
 
     EXPECT_CALL(*context, agentId()).WillOnce(testing::Return("001"));
     EXPECT_CALL(*context, netAddressItemId()).WillOnce(testing::Return("netAddressItemId"));
-    EXPECT_CALL(*context, agentIp()).WillRepeatedly(testing::Return("192.168.0.1"));
+    EXPECT_CALL(*context, agentIp()).WillOnce(testing::Return("192.168.0.1"));
     EXPECT_CALL(*context, originTable()).WillOnce(testing::Return(MockSystemContext::OriginTable::NetAddress));
     EXPECT_CALL(*context, agentName()).WillOnce(testing::Return("agentName"));
     EXPECT_CALL(*context, agentVersion()).WillOnce(testing::Return("agentVersion"));
     EXPECT_CALL(*context, broadcast()).WillOnce(testing::Return("192.168.0.255"));
     EXPECT_CALL(*context, netAddressName()).WillOnce(testing::Return("eth0"));
     EXPECT_CALL(*context, netmask()).WillOnce(testing::Return("255.255.255.0"));
+    EXPECT_CALL(*context, address()).WillOnce(testing::Return("192.168.0.1"));
     EXPECT_CALL(*context, protocol()).WillOnce(testing::Return(0));
 
     EXPECT_NO_THROW(upsertElement->handleRequest(context));
