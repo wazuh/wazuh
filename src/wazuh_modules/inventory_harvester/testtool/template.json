@@ -9,7 +9,7 @@
     "wazuh-states-hotfixes-*",
     "wazuh-states-hardware-*",
     "wazuh-states-protocols-*",
-    "wazuh-states-netifaces-*",
+    "wazuh-states-interfaces-*",
     "wazuh-states-hardware-*",
     "wazuh-states-networks-*"
   ],

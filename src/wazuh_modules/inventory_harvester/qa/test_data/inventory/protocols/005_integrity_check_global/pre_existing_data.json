@@ -5,7 +5,6 @@
             {
                 "agent": {
                     "id": "001",
-                    "ip": "any",
                     "name": "centos9",
                     "version": "v4.10.1"
                 },
@@ -21,12 +20,16 @@
                             "name": "eth1"
                         }
                     }
+                },
+                "wazuh": {
+                    "schema": {
+                        "version": "1.0"
+                    }
                 }
             },
             {
                 "agent": {
                     "id": "002",
-                    "ip": "any",
                     "name": "jammy",
                     "version": "v4.10.1"
                 },
@@ -41,6 +44,11 @@
                         "interface": {
                             "name": "eth0"
                         }
+                    }
+                },
+                "wazuh": {
+                    "schema": {
+                        "version": "1.0"
                     }
                 }
             }

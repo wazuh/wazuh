@@ -14,6 +14,11 @@
                     "type": "deb",
                     "vendor": "Debian vendor",
                     "version": "247.3-7+deb11u4"
+                },
+                "wazuh": {
+                    "schema": {
+                        "version": "1.0"
+                    }
                 }
             }
         ]

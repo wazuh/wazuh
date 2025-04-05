@@ -415,6 +415,34 @@ public:
         return "";
     }
 
+    std::string_view address()
+    {
+        if (m_type == VariantType::Delta)
+        {
+            if (m_delta->data_as_dbsync_network_address() && m_delta->data_as_dbsync_network_address()->address())
+            {
+                return m_delta->data_as_dbsync_network_address()->address()->string_view();
+            }
+        }
+        else if (m_type == VariantType::SyncMsg)
+        {
+            if (m_syncMsg->data_as_state() &&
+                m_syncMsg->data_as_state()->attributes_as_syscollector_network_address() &&
+                m_syncMsg->data_as_state()->attributes_as_syscollector_network_address()->address())
+            {
+                return m_syncMsg->data_as_state()
+                    ->attributes_as_syscollector_network_address()
+                    ->address()
+                    ->string_view();
+            }
+        }
+        else
+        {
+            return "";
+        }
+        return "";
+    }
+
     int64_t protocol()
     {
         if (m_type == VariantType::Delta)
@@ -1298,7 +1326,7 @@ public:
         return "";
     }
 
-    uint64_t processParentID() const
+    int64_t processParentID() const
     {
         if (m_type == VariantType::Delta)
         {
@@ -1322,7 +1350,7 @@ public:
         return 0;
     }
 
-    uint64_t processStartRaw() const
+    int64_t processStartRaw() const
     {
         if (m_type == VariantType::Delta)
         {
@@ -1375,7 +1403,8 @@ public:
         {
             return "";
         }
-        return installTimeRaw;
+        m_installTimeISO8601 = Utils::rawTimestampToISO8601(installTimeRaw);
+        return m_installTimeISO8601;
     }
 
     std::string_view hotfixName()
@@ -2250,6 +2279,7 @@ private:
     std::string m_commandLineSanitized;
     std::string m_processStartISO8601;
     std::vector<std::string_view> m_processArguments;
+    std::string m_installTimeISO8601;
 
     /**
      * @brief Scan context.

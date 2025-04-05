@@ -6,8 +6,7 @@
                 "agent": {
                     "id": "003",
                     "name": "DESKTOP-EQ4F57D",
-                    "version": "v4.9.2",
-                    "ip": "any"
+                    "version": "v4.9.2"
                 },
                 "destination": {
                     "port": 0
@@ -38,6 +37,11 @@
                 "source": {
                     "ip": "169.254.113.32",
                     "port": 137
+                },
+                "wazuh": {
+                    "schema": {
+                        "version": "1.0"
+                    }
                 }
             }
         ]

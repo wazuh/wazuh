@@ -5,7 +5,6 @@
             {
                 "agent": {
                     "id": "002",
-                    "ip": "any",
                     "name": "b593602240f5",
                     "version": "v4.11.1"
                 },
@@ -15,6 +14,11 @@
                     "name": "eth0",
                     "netmask": "1.1.1.1",
                     "protocol": "IPv4"
+                },
+                "wazuh": {
+                    "schema": {
+                        "version": "1.0"
+                    }
                 }
             }
         ]

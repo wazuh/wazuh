@@ -1162,32 +1162,30 @@ InstallLocal()
     # Install templates files
     ${INSTALL} -d -m 0440 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/templates
     ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/vulnerability_scanner/indexer/template/index-template.json ${INSTALLDIR}/templates/vd_states_template.json
-    ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/files-index-template.json ${INSTALLDIR}/templates/files_states_template.json
-    ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/registries-index-template.json ${INSTALLDIR}/templates/registries_states_template.json
-    ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/packages-index-template.json ${INSTALLDIR}/templates/packages_states_template.json
-    ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/processes-index-template.json ${INSTALLDIR}/templates/processes_states_template.json
-    ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/system-index-template.json ${INSTALLDIR}/templates/system_states_template.json
-    ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/ports-index-template.json ${INSTALLDIR}/templates/ports_states_template.json
-    ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/hotfixes-index-template.json ${INSTALLDIR}/templates/hotfixes_states_template.json
-    ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/hardware-index-template.json ${INSTALLDIR}/templates/hardware_states_template.json
-    ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/protocols-index-template.json ${INSTALLDIR}/templates/protocols_states_template.json
-    ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/netifaces-index-template.json ${INSTALLDIR}/templates/netifaces_states_template.json
-
-    ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/networks-index-template.json ${INSTALLDIR}/templates/networks_states_template.json
+    ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/wazuh-states-fim-files.json ${INSTALLDIR}/templates/wazuh-states-fim-files.json
+    ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/wazuh-states-fim-registries.json ${INSTALLDIR}/templates/wazuh-states-fim-registries.json
+    ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/wazuh-states-inventory-packages.json ${INSTALLDIR}/templates/wazuh-states-inventory-packages.json
+    ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/wazuh-states-inventory-processes.json ${INSTALLDIR}/templates/wazuh-states-inventory-processes.json
+    ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/wazuh-states-inventory-system.json ${INSTALLDIR}/templates/wazuh-states-inventory-system.json
+    ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/wazuh-states-inventory-hardware.json ${INSTALLDIR}/templates/wazuh-states-inventory-hardware.json
+    ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/wazuh-states-inventory-networks.json ${INSTALLDIR}/templates/wazuh-states-inventory-networks.json
+    ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/wazuh-states-inventory-protocols.json ${INSTALLDIR}/templates/wazuh-states-inventory-protocols.json
+    ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/wazuh-states-inventory-interfaces.json ${INSTALLDIR}/templates/wazuh-states-inventory-interfaces.json
+    ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/wazuh-states-inventory-hotfixes.json ${INSTALLDIR}/templates/wazuh-states-inventory-hotfixes.json
+    ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/wazuh-states-inventory-ports.json ${INSTALLDIR}/templates/wazuh-states-inventory-ports.json
 
     ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/vulnerability_scanner/indexer/template/update-mappings.json ${INSTALLDIR}/templates/vd_states_update_mappings.json
-    ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/files-update-mappings.json ${INSTALLDIR}/templates/files_states_update_mappings.json
-    ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/registries-update-mappings.json ${INSTALLDIR}/templates/registries_states_update_mappings.json
-    ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/packages-update-mappings.json ${INSTALLDIR}/templates/packages_states_update_mappings.json
-    ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/processes-update-mappings.json ${INSTALLDIR}/templates/processes_states_update_mappings.json
-    ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/system-update-mappings.json ${INSTALLDIR}/templates/system_states_update_mappings.json
-    ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/ports-update-mappings.json ${INSTALLDIR}/templates/ports_states_update_mappings.json
-    ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/hotfixes-update-mappings.json ${INSTALLDIR}/templates/hotfixes_states_update_mappings.json
-    ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/hardware-update-mappings.json ${INSTALLDIR}/templates/hardware_states_update_mappings.json
-    ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/protocols-update-mappings.json ${INSTALLDIR}/templates/protocols_states_update_mappings.json
-    ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/netifaces-update-mappings.json ${INSTALLDIR}/templates/netifaces_states_update_mappings.json
-
-    ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/networks-update-mappings.json ${INSTALLDIR}/templates/networks_states_update_mappings.json
+    ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/wazuh-states-fim-files-update.json ${INSTALLDIR}/templates/wazuh-states-fim-files-update.json
+    ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/wazuh-states-fim-registries-update.json ${INSTALLDIR}/templates/wazuh-states-fim-registries-update.json
+    ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/wazuh-states-inventory-packages-update.json ${INSTALLDIR}/templates/wazuh-states-inventory-packages-update.json
+    ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/wazuh-states-inventory-processes-update.json ${INSTALLDIR}/templates/wazuh-states-inventory-processes-update.json
+    ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/wazuh-states-inventory-system-update.json ${INSTALLDIR}/templates/wazuh-states-inventory-system-update.json
+    ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/wazuh-states-inventory-hardware-update.json ${INSTALLDIR}/templates/wazuh-states-inventory-hardware-update.json
+    ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/wazuh-states-inventory-networks-update.json ${INSTALLDIR}/templates/wazuh-states-inventory-networks-update.json
+    ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/wazuh-states-inventory-protocols-update.json ${INSTALLDIR}/templates/wazuh-states-inventory-protocols-update.json
+    ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/wazuh-states-inventory-interfaces-update.json ${INSTALLDIR}/templates/wazuh-states-inventory-interfaces-update.json
+    ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/wazuh-states-inventory-hotfixes-update.json ${INSTALLDIR}/templates/wazuh-states-inventory-hotfixes-update.json
+    ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/wazuh-states-inventory-ports-update.json ${INSTALLDIR}/templates/wazuh-states-inventory-ports-update.json
 
     # Install Task Manager files
     ${INSTALL} -d -m 0770 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/tasks

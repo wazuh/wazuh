@@ -91,7 +91,11 @@ TEST_F(TimeUtilsTest, TimestampToISO8601)
 
 TEST_F(TimeUtilsTest, RawTimestampToISO8601)
 {
-    EXPECT_EQ("2020-11-13T01:54:25.000Z", Utils::rawTimestampToISO8601("1605232465"));
-    EXPECT_EQ("", Utils::rawTimestampToISO8601(""));
-    EXPECT_EQ("", Utils::rawTimestampToISO8601("abcdefg"));
+    EXPECT_EQ("2020-11-13T01:54:25.000Z", Utils::rawTimestampToISO8601(std::string("1605232465")));
+    EXPECT_EQ("", Utils::rawTimestampToISO8601(std::string("")));
+    EXPECT_EQ("", Utils::rawTimestampToISO8601(std::string("abcdefg")));
+
+    EXPECT_EQ("2020-11-13T01:54:25.000Z", Utils::rawTimestampToISO8601(std::string_view("1605232465")));
+    EXPECT_EQ("", Utils::rawTimestampToISO8601(std::string_view("")));
+    EXPECT_EQ("", Utils::rawTimestampToISO8601(std::string_view("abcdefg")));
 }

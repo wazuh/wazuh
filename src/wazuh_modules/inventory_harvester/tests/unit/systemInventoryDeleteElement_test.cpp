@@ -198,7 +198,9 @@ TEST_F(SystemInventoryDeleteElement, emptyBoardIdHw)
     EXPECT_CALL(*context, boardInfo()).WillOnce(testing::Return(""));
     EXPECT_CALL(*context, originTable()).WillOnce(testing::Return(MockSystemContext::OriginTable::Hw));
 
-    EXPECT_ANY_THROW(deleteElement->handleRequest(context));
+    EXPECT_NO_THROW(deleteElement->handleRequest(context));
+
+    EXPECT_EQ(context->m_serializedElement, R"({"id":"001_unknown","operation":"DELETED"})");
 }
 
 TEST_F(SystemInventoryDeleteElement, validAgentID_Hardware)

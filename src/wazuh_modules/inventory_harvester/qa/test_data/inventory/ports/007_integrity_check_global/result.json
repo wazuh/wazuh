@@ -6,8 +6,7 @@
                 "agent": {
                     "id": "002",
                     "name": "b593602240f5",
-                    "version": "v4.11.1",
-                    "ip": "any"
+                    "version": "v4.11.1"
                 },
                 "destination": {
                     "ip": "0.0.0.0",
@@ -39,12 +38,16 @@
                 "source": {
                     "ip": "0.0.0.0",
                     "port": 8000
+                },
+                "wazuh": {
+                    "schema": {
+                        "version": "1.0"
+                    }
                 }
             },
             {
                 "agent_info": {
                     "agent_id": "003",
-                    "agent_ip": "any",
                     "agent_name": "DESKTOP-EQ4F57D",
                     "agent_version": "v4.9.2"
                 },
@@ -78,6 +81,11 @@
                 "source": {
                     "ip": "127.0.0.1",
                     "port": 1234
+                },
+                "wazuh": {
+                    "schema": {
+                        "version": "1.0"
+                    }
                 }
             }
         ]

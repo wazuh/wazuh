@@ -16,6 +16,7 @@
 #include "wcsClasses/agent.hpp"
 #include "wcsClasses/netIface.hpp"
 #include "wcsClasses/netpackets.hpp"
+#include "wcsClasses/wazuh.hpp"
 
 struct InventoryNetIfaceHarvester final
 {
@@ -52,10 +53,12 @@ struct InventoryNetIfaceHarvester final
     Agent agent;
     NetIfaceHost host;
     NetIfaceObserver observer;
+    Wazuh wazuh;
 
     REFLECTABLE(MAKE_FIELD("agent", &InventoryNetIfaceHarvester::agent),
                 MAKE_FIELD("host", &InventoryNetIfaceHarvester::host),
-                MAKE_FIELD("observer", &InventoryNetIfaceHarvester::observer));
+                MAKE_FIELD("observer", &InventoryNetIfaceHarvester::observer),
+                MAKE_FIELD("wazuh", &InventoryNetIfaceHarvester::wazuh));
 };
 
 #endif // _INVENTORY_NETIFACE_HARVESTER_HPP

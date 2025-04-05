@@ -5,7 +5,7 @@
     "wazuh-states-packages-*",
     "wazuh-states-system-*",
     "wazuh-states-processes-*",
-    "wazuh-states-netifaces-*"
+    "wazuh-states-interfaces-*"
   ],
   "priority": 1,
   "template": {

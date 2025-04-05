@@ -18,6 +18,10 @@
 #include <iomanip>
 #include <sstream>
 #include <string>
+#if __cplusplus >= 201703L
+#include <charconv>
+#include <string_view>
+#endif
 
 #ifdef WIN32
 
@@ -231,6 +235,45 @@ namespace Utils
         return std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch())
             .count();
     };
+
+#if __cplusplus >= 201703L
+    static std::string rawTimestampToISO8601(std::string_view timestamp)
+    {
+        if (timestamp.empty() || !Utils::isNumber(timestamp))
+        {
+            return "";
+        }
+        std::time_t time;
+
+        auto [ptr, ec] = std::from_chars(timestamp.data(), timestamp.data() + timestamp.size(), time);
+        if (ec != std::errc())
+        {
+            return "";
+        }
+
+        auto itt = std::chrono::system_clock::from_time_t(time);
+
+        std::ostringstream output;
+        struct tm buf;
+        tm* localTime = gmtime_r(&time, &buf);
+
+        if (localTime == nullptr)
+        {
+            return "";
+        }
+
+        output << std::put_time(localTime, "%FT%T");
+
+        // Get milliseconds from the current time
+        auto milliseconds =
+            std::chrono::duration_cast<std::chrono::milliseconds>(itt.time_since_epoch()).count() % 1000;
+
+        // ISO 8601
+        output << '.' << std::setfill('0') << std::setw(3) << milliseconds << 'Z';
+
+        return output.str();
+    }
+#endif
 
 #pragma GCC diagnostic pop
 } // namespace Utils

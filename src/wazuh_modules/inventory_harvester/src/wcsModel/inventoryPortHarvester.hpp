@@ -17,6 +17,7 @@
 #include "wcsClasses/interface.hpp"
 #include "wcsClasses/port.hpp"
 #include "wcsClasses/transport.hpp"
+#include "wcsClasses/wazuh.hpp"
 
 struct InventoryPortHarvester final
 {
@@ -28,6 +29,7 @@ struct InventoryPortHarvester final
     NetworkTransport network;
     PortProcess process;
     NAT source;
+    Wazuh wazuh;
 
     REFLECTABLE(MAKE_FIELD("agent", &InventoryPortHarvester::agent),
                 MAKE_FIELD("destination", &InventoryPortHarvester::destination),
@@ -36,7 +38,8 @@ struct InventoryPortHarvester final
                 MAKE_FIELD("interface", &InventoryPortHarvester::interface),
                 MAKE_FIELD("network", &InventoryPortHarvester::network),
                 MAKE_FIELD("process", &InventoryPortHarvester::process),
-                MAKE_FIELD("source", &InventoryPortHarvester::source));
+                MAKE_FIELD("source", &InventoryPortHarvester::source),
+                MAKE_FIELD("wazuh", &InventoryPortHarvester::wazuh));
 };
 
 #endif // _INVENTORY_PORT_HARVESTER_HPP

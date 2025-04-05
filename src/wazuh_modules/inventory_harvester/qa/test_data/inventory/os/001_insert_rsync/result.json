@@ -5,7 +5,6 @@
             {
                 "agent": {
                     "id": "001",
-                    "ip": "any",
                     "name": "c0ce505227a4",
                     "version": "v4.11.0"
                 },
@@ -13,11 +12,20 @@
                     "architecture": "x86_64",
                     "hostname": "c0ce505227a4",
                     "os": {
-                        "kernel": "6.6.75-2-MANJARO",
+                        "codename": "noble",
+                        "kernel": {
+                            "name": "Linux",
+                            "release": "6.6.75-2-MANJARO",
+                            "version": "#1 SMP PREEMPT_DYNAMIC Mon Feb  3 17:53:46 UTC 2025"
+                        },
                         "name": "Ubuntu",
                         "platform": "ubuntu",
-                        "type": "Linux",
                         "version": "24.04.1 LTS (Noble Numbat)"
+                    }
+                },
+                "wazuh": {
+                    "schema": {
+                        "version": "1.0"
                     }
                 }
             }

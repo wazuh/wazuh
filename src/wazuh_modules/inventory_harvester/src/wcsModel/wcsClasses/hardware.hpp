@@ -19,17 +19,17 @@ struct Hardware final
 {
     struct CPU final
     {
-        int64_t cores;
+        int64_t cores = DEFAULT_INT_VALUE;
         std::string_view name;
-        int64_t speed;
+        int64_t speed = DEFAULT_INT_VALUE;
 
         REFLECTABLE(MAKE_FIELD("cores", &CPU::cores), MAKE_FIELD("name", &CPU::name), MAKE_FIELD("speed", &CPU::speed));
     } cpu;
     struct Memory final
     {
-        int64_t free;
-        int64_t total;
-        int64_t used;
+        int64_t free = DEFAULT_INT_VALUE;
+        int64_t total = DEFAULT_INT_VALUE;
+        int64_t used = DEFAULT_INT_VALUE;
 
         REFLECTABLE(MAKE_FIELD("free", &Memory::free),
                     MAKE_FIELD("total", &Memory::total),

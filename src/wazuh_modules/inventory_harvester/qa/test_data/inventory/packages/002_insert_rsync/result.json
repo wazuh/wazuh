@@ -5,7 +5,6 @@
             {
                 "agent": {
                     "id": "001",
-                    "ip": "any",
                     "name": "c0ce505227a4",
                     "version": "v4.11.0"
                 },
@@ -18,6 +17,11 @@
                     "type": "deb",
                     "vendor": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>",
                     "version": "1.5.3-5ubuntu5.1"
+                },
+                "wazuh": {
+                    "schema": {
+                        "version": "1.0"
+                    }
                 }
             }
         ]

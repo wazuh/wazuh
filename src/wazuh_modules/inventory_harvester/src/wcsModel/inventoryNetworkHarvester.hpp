@@ -15,15 +15,18 @@
 #include "reflectiveJson.hpp"
 #include "wcsClasses/agent.hpp"
 #include "wcsClasses/networkAddress.hpp"
+#include "wcsClasses/wazuh.hpp"
 
 struct InventoryNetworkHarvester final
 {
 
     Agent agent;
     NetworkAddress network;
+    Wazuh wazuh;
 
     REFLECTABLE(MAKE_FIELD("network", &InventoryNetworkHarvester::network),
-                MAKE_FIELD("agent", &InventoryNetworkHarvester::agent));
+                MAKE_FIELD("agent", &InventoryNetworkHarvester::agent),
+                MAKE_FIELD("wazuh", &InventoryNetworkHarvester::wazuh));
 };
 
 #endif // _INVENTORY_NETWORK_HARVESTER_HPP

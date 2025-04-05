@@ -12,22 +12,21 @@
 #ifndef _AGENT_WCS_MODEL_HPP
 #define _AGENT_WCS_MODEL_HPP
 
+#include "host.hpp"
 #include "reflectiveJson.hpp"
 #include <string_view>
 #include <vector>
 
 struct Agent final
 {
-    std::vector<std::string_view> groups;
     std::string_view id;
     std::string_view name;
-    std::string_view ip;
+    Host host;
     std::string_view version;
 
-    REFLECTABLE(MAKE_FIELD("groups", &Agent::groups),
-                MAKE_FIELD("id", &Agent::id),
+    REFLECTABLE(MAKE_FIELD("id", &Agent::id),
                 MAKE_FIELD("name", &Agent::name),
-                MAKE_FIELD("ip", &Agent::ip),
+                MAKE_FIELD("host", &Agent::host),
                 MAKE_FIELD("version", &Agent::version));
 };
 

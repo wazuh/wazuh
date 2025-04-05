@@ -21,7 +21,7 @@ template<typename TData>
 struct TestData final
 {
     std::string fieldOne;
-    int fieldTwo;
+    int64_t fieldTwo;
     TData fieldThree;
 
     REFLECTABLE(MAKE_FIELD("fieldOne", &TestData::fieldOne),
@@ -98,7 +98,7 @@ TEST_F(ReflectiveJsonTest, EscapedStringValue)
 
 TEST_F(ReflectiveJsonTest, BasicStructSerialization)
 {
-    TestData<float> obj;
+    TestData<double> obj;
     obj.fieldOne = "001";
     obj.fieldTwo = 30;
     obj.fieldThree = 1.3;
@@ -116,7 +116,7 @@ TEST_F(ReflectiveJsonTest, NestedStructSerialization)
     struct NestedData
     {
         std::string innerField;
-        int innerValue;
+        int64_t innerValue;
 
         REFLECTABLE(MAKE_FIELD("innerField", &NestedData::innerField),
                     MAKE_FIELD("innerValue", &NestedData::innerValue));
@@ -150,9 +150,39 @@ TEST_F(ReflectiveJsonTest, BasicStructSerializationWithEmptyFields)
     EXPECT_EQ(json.find(R"("fieldThree":)"), std::string::npos);
 }
 
+TEST_F(ReflectiveJsonTest, BasicStructSerializationWithIntegerEmptyFields)
+{
+    TestData<std::string_view> obj;
+    obj.fieldOne = "hello";
+    obj.fieldTwo = DEFAULT_INT_VALUE;
+    obj.fieldThree = "world";
+
+    std::string json;
+    serializeToJSON(obj, json);
+
+    EXPECT_NE(json.find(R"("fieldOne":"hello")"), std::string::npos);
+    EXPECT_EQ(json.find(R"("fieldTwo":)"), std::string::npos);
+    EXPECT_NE(json.find(R"("fieldThree":"world")"), std::string::npos);
+}
+
+TEST_F(ReflectiveJsonTest, BasicStructSerializationWithAllEmptyFields)
+{
+    TestData<std::string_view> obj;
+    obj.fieldOne = "";
+    obj.fieldTwo = DEFAULT_INT_VALUE;
+    obj.fieldThree = "";
+
+    std::string json;
+    serializeToJSON(obj, json);
+
+    EXPECT_EQ(json.find(R"("fieldOne":)"), std::string::npos);
+    EXPECT_EQ(json.find(R"("fieldTwo":)"), std::string::npos);
+    EXPECT_EQ(json.find(R"("fieldThree":)"), std::string::npos);
+}
+
 TEST_F(ReflectiveJsonTest, BasicStructSerializationWithQuotes)
 {
-    TestData<float> obj;
+    TestData<double> obj;
     obj.fieldOne = "\"001\"";
     obj.fieldTwo = 30;
     obj.fieldThree = 1.3;
@@ -211,9 +241,9 @@ TEST_F(ReflectiveJsonTest, NumericBufferZeroing)
 {
     struct NumericTest
     {
-        int firstValue;
+        int64_t firstValue;
         double secondValue;
-        int thirdValue;
+        int64_t thirdValue;
 
         REFLECTABLE(MAKE_FIELD("firstValue", &NumericTest::firstValue),
                     MAKE_FIELD("secondValue", &NumericTest::secondValue),

@@ -54,14 +54,16 @@ TEST_F(SystemInventoryUpsertElement, validAgentID_OS)
     EXPECT_CALL(*context, osKernelRelease()).WillOnce(testing::Return("osKernelRelease"));
     EXPECT_CALL(*context, osPlatform()).WillOnce(testing::Return("osPlatform"));
     EXPECT_CALL(*context, osKernelSysName()).WillOnce(testing::Return("osKernelSysName"));
+    EXPECT_CALL(*context, osKernelVersion()).WillOnce(testing::Return("osKernelVersion"));
     EXPECT_CALL(*context, osArchitecture()).WillOnce(testing::Return("osArchitecture"));
+    EXPECT_CALL(*context, osCodeName()).WillOnce(testing::Return("osCodeName"));
     EXPECT_CALL(*context, osHostName()).WillOnce(testing::Return("osHostName"));
 
     EXPECT_NO_THROW(upsertElement->handleRequest(context));
 
     EXPECT_EQ(
         context->m_serializedElement,
-        R"({"id":"001","operation":"INSERTED","data":{"agent":{"id":"001","name":"agentName","ip":"agentIp","version":"agentVersion"},"host":{"architecture":"osArchitecture","hostname":"osHostName","os":{"kernel":"osKernelRelease","name":"osName","platform":"osPlatform","version":"osVersion","type":"osKernelSysName"}}}})");
+        R"({"id":"001","operation":"INSERTED","data":{"agent":{"id":"001","name":"agentName","host":{"ip":"agentIp"},"version":"agentVersion"},"host":{"architecture":"osArchitecture","hostname":"osHostName","os":{"codename":"osCodeName","kernel":{"name":"osKernelSysName","release":"osKernelRelease","version":"osKernelVersion"},"name":"osName","platform":"osPlatform","version":"osVersion"}},"wazuh":{"schema":{"version":"1.0"}}}})");
 }
 
 /*
@@ -116,7 +118,7 @@ TEST_F(SystemInventoryUpsertElement, validAgentID_Packages)
 
     EXPECT_EQ(
         context->m_serializedElement,
-        R"({"id":"001_packageItemId","operation":"INSERTED","data":{"package":{"architecture":"packageArchitecture","description":"packageDescription","installed":"packageInstallTime","name":"packageName","path":"packageLocation","size":0,"type":"packageFormat","version":"packageVersion","vendor":"packageVendor"},"agent":{"id":"001","name":"agentName","ip":"agentIp","version":"agentVersion"}}})");
+        R"({"id":"001_packageItemId","operation":"INSERTED","data":{"package":{"architecture":"packageArchitecture","description":"packageDescription","installed":"packageInstallTime","name":"packageName","path":"packageLocation","size":0,"type":"packageFormat","version":"packageVersion","vendor":"packageVendor"},"agent":{"id":"001","name":"agentName","host":{"ip":"agentIp"},"version":"agentVersion"},"wazuh":{"schema":{"version":"1.0"}}}})");
 }
 
 /*
@@ -155,7 +157,7 @@ TEST_F(SystemInventoryUpsertElement, validAgentID_Processes)
 
     EXPECT_EQ(
         context->m_serializedElement,
-        R"({"id":"001_1234","operation":"INSERTED","data":{"process":{"args":["processName"],"args_count":1,"command_line":"processCmdline","name":"processName","pid":1234,"start":"processStartISO8601","ppid":1},"agent":{"id":"001","name":"agentName","ip":"agentIp","version":"agentVersion"}}})");
+        R"({"id":"001_1234","operation":"INSERTED","data":{"process":{"args":["processName"],"args_count":1,"command_line":"processCmdline","name":"processName","pid":1234,"start":"processStartISO8601","parent":{"pid":1}},"agent":{"id":"001","name":"agentName","host":{"ip":"agentIp"},"version":"agentVersion"},"wazuh":{"schema":{"version":"1.0"}}}})");
 }
 
 /*
@@ -189,7 +191,7 @@ TEST_F(SystemInventoryUpsertElement, validAgentID_Ports)
 
     EXPECT_EQ(
         context->m_serializedElement,
-        R"({"id":"001_portItemId","operation":"INSERTED","data":{"agent":{"id":"001","name":"agentName","ip":"agentIp","version":"agentVersion"},"destination":{"ip":"portRemoteIp","port":1234},"file":{"inode":"1111"},"host":{"network":{"egress":{"queue":7000},"ingress":{"queue":11000}}},"interface":{"state":"portState"},"network":{"transport":"portProtocol"},"process":{"name":"portProcess","pid":4321},"source":{"ip":"portLocalIp","port":7777}}})");
+        R"({"id":"001_portItemId","operation":"INSERTED","data":{"agent":{"id":"001","name":"agentName","host":{"ip":"agentIp"},"version":"agentVersion"},"destination":{"ip":"portRemoteIp","port":1234},"file":{"inode":"1111"},"host":{"network":{"egress":{"queue":7000},"ingress":{"queue":11000}}},"interface":{"state":"portState"},"network":{"transport":"portProtocol"},"process":{"name":"portProcess","pid":4321},"source":{"ip":"portLocalIp","port":7777},"wazuh":{"schema":{"version":"1.0"}}}})");
 }
 
 TEST_F(SystemInventoryUpsertElement, emptyAgentID_Ports)
@@ -257,7 +259,7 @@ TEST_F(SystemInventoryUpsertElement, validAgentID_Hotfixes)
 
     EXPECT_EQ(
         context->m_serializedElement,
-        R"({"id":"001_KB12345","operation":"INSERTED","data":{"package":{"hotfix":{"name":"KB12345"}},"agent":{"id":"001","name":"agentName","ip":"agentIp","version":"agentVersion"}}})");
+        R"({"id":"001_KB12345","operation":"INSERTED","data":{"package":{"hotfix":{"name":"KB12345"}},"agent":{"id":"001","name":"agentName","host":{"ip":"agentIp"},"version":"agentVersion"},"wazuh":{"schema":{"version":"1.0"}}}})");
 }
 
 /*
@@ -283,8 +285,21 @@ TEST_F(SystemInventoryUpsertElement, emptyBoardId_Hw)
     EXPECT_CALL(*context, agentId()).WillOnce(testing::Return("001"));
     EXPECT_CALL(*context, boardInfo()).WillOnce(testing::Return(""));
     EXPECT_CALL(*context, originTable()).WillOnce(testing::Return(MockSystemContext::OriginTable::Hw));
+    EXPECT_CALL(*context, agentName()).WillOnce(testing::Return("agentName"));
+    EXPECT_CALL(*context, agentVersion()).WillOnce(testing::Return("agentVersion"));
+    EXPECT_CALL(*context, agentIp()).WillOnce(testing::Return("agentIp"));
+    EXPECT_CALL(*context, cpuCores()).WillOnce(testing::Return(2));
+    EXPECT_CALL(*context, cpuName()).WillOnce(testing::Return("cpuName"));
+    EXPECT_CALL(*context, cpuFrequency()).WillOnce(testing::Return(2497));
+    EXPECT_CALL(*context, freeMem()).WillOnce(testing::Return(0));
+    EXPECT_CALL(*context, totalMem()).WillOnce(testing::Return(0));
+    EXPECT_CALL(*context, usedMem()).WillOnce(testing::Return(0));
 
-    EXPECT_ANY_THROW(upsertElement->handleRequest(context));
+    EXPECT_NO_THROW(upsertElement->handleRequest(context));
+
+    EXPECT_EQ(
+        context->m_serializedElement,
+        R"({"id":"001_unknown","operation":"INSERTED","data":{"host":{"cpu":{"cores":2,"name":"cpuName","speed":2497},"memory":{"free":0,"total":0,"used":0}},"agent":{"id":"001","name":"agentName","host":{"ip":"agentIp"},"version":"agentVersion"},"observer":{"serial_number":"unknown"},"wazuh":{"schema":{"version":"1.0"}}}})");
 }
 
 TEST_F(SystemInventoryUpsertElement, validAgentID_Hw)
@@ -309,7 +324,7 @@ TEST_F(SystemInventoryUpsertElement, validAgentID_Hw)
 
     EXPECT_EQ(
         context->m_serializedElement,
-        R"({"id":"001_boardInfo","operation":"INSERTED","data":{"host":{"cpu":{"cores":2,"name":"cpuName","speed":2497},"memory":{"free":0,"total":0,"used":0}},"agent":{"id":"001","name":"agentName","ip":"agentIp","version":"agentVersion"},"observer":{"serial_number":"boardInfo"}}})");
+        R"({"id":"001_boardInfo","operation":"INSERTED","data":{"host":{"cpu":{"cores":2,"name":"cpuName","speed":2497},"memory":{"free":0,"total":0,"used":0}},"agent":{"id":"001","name":"agentName","host":{"ip":"agentIp"},"version":"agentVersion"},"observer":{"serial_number":"boardInfo"},"wazuh":{"schema":{"version":"1.0"}}}})");
 }
 
 /*
@@ -353,11 +368,12 @@ TEST_F(SystemInventoryUpsertElement, validAgentID_NetworkProtocol)
     EXPECT_CALL(*context, netProtoDhcp()).WillOnce(testing::Return("enabled"));
     EXPECT_CALL(*context, netProtoMetric()).WillOnce(testing::Return(150));
     EXPECT_CALL(*context, originTable()).WillOnce(testing::Return(MockSystemContext::OriginTable::NetworkProtocol));
+
     EXPECT_NO_THROW(upsertElement->handleRequest(context));
 
     EXPECT_EQ(
         context->m_serializedElement,
-        R"({"id":"001_netProtoItemId","operation":"INSERTED","data":{"network":{"dhcp":true,"gateway":"netProtoGateway","metric":150,"type":"netProtoType"},"observer":{"ingress":{"interface":{"name":"netProtoIface"}}},"agent":{"id":"001","name":"agentName","ip":"agentIp","version":"agentVersion"}}})");
+        R"({"id":"001_netProtoItemId","operation":"INSERTED","data":{"network":{"dhcp":true,"gateway":"netProtoGateway","metric":150,"type":"netProtoType"},"observer":{"ingress":{"interface":{"name":"netProtoIface"}}},"agent":{"id":"001","name":"agentName","host":{"ip":"agentIp"},"version":"agentVersion"},"wazuh":{"schema":{"version":"1.0"}}}})");
 }
 
 /*
@@ -419,7 +435,7 @@ TEST_F(SystemInventoryUpsertElement, validAgentID_NetIface)
 
     EXPECT_EQ(
         context->m_serializedElement,
-        R"({"id":"001_netIfaceItemId","operation":"INSERTED","data":{"agent":{"id":"001","name":"agentName","ip":"agentIp","version":"agentVersion"},"host":{"mac":"netIfaceMac","network":{"ingress":{"bytes":1,"drops":2,"errors":3,"packets":4},"egress":{"bytes":5,"drops":6,"errors":7,"packets":8}}},"observer":{"ingress":{"interface":{"alias":"netIfaceAdapter","mtu":9,"name":"netIfaceName","state":"netIfaceState","type":"netIfaceType"}}}}})");
+        R"({"id":"001_netIfaceItemId","operation":"INSERTED","data":{"agent":{"id":"001","name":"agentName","host":{"ip":"agentIp"},"version":"agentVersion"},"host":{"mac":"netIfaceMac","network":{"ingress":{"bytes":1,"drops":2,"errors":3,"packets":4},"egress":{"bytes":5,"drops":6,"errors":7,"packets":8}}},"observer":{"ingress":{"interface":{"alias":"netIfaceAdapter","mtu":9,"name":"netIfaceName","state":"netIfaceState","type":"netIfaceType"}}},"wazuh":{"schema":{"version":"1.0"}}}})");
 }
 
 /*
@@ -456,18 +472,19 @@ TEST_F(SystemInventoryUpsertElement, validAgentID_NetworkAddress)
 
     EXPECT_CALL(*context, agentId()).WillOnce(testing::Return("001"));
     EXPECT_CALL(*context, netAddressItemId()).WillOnce(testing::Return("netAddressItemId"));
-    EXPECT_CALL(*context, agentIp()).WillRepeatedly(testing::Return("192.168.0.1"));
+    EXPECT_CALL(*context, agentIp()).WillOnce(testing::Return("192.168.0.1"));
     EXPECT_CALL(*context, originTable()).WillOnce(testing::Return(MockSystemContext::OriginTable::NetAddress));
     EXPECT_CALL(*context, agentName()).WillOnce(testing::Return("agentName"));
     EXPECT_CALL(*context, agentVersion()).WillOnce(testing::Return("agentVersion"));
     EXPECT_CALL(*context, broadcast()).WillOnce(testing::Return("192.168.0.255"));
     EXPECT_CALL(*context, netAddressName()).WillOnce(testing::Return("eth0"));
     EXPECT_CALL(*context, netmask()).WillOnce(testing::Return("255.255.255.0"));
+    EXPECT_CALL(*context, address()).WillOnce(testing::Return("192.168.0.1"));
     EXPECT_CALL(*context, protocol()).WillOnce(testing::Return(0));
 
     EXPECT_NO_THROW(upsertElement->handleRequest(context));
 
     EXPECT_EQ(
         context->m_serializedElement,
-        R"({"id":"001_netAddressItemId","operation":"INSERTED","data":{"network":{"broadcast":"192.168.0.255","ip":"192.168.0.1","name":"eth0","netmask":"255.255.255.0","protocol":"IPv4"},"agent":{"id":"001","name":"agentName","ip":"192.168.0.1","version":"agentVersion"}}})");
+        R"({"id":"001_netAddressItemId","operation":"INSERTED","data":{"network":{"broadcast":"192.168.0.255","ip":"192.168.0.1","name":"eth0","netmask":"255.255.255.0","protocol":"IPv4"},"agent":{"id":"001","name":"agentName","host":{"ip":"192.168.0.1"},"version":"agentVersion"},"wazuh":{"schema":{"version":"1.0"}}}})");
 }

@@ -21,6 +21,15 @@
 constexpr auto UNKNOWN_VALUE {" "};
 constexpr auto STATES_INDEX_NAME_PREFIX {"wazuh-states-"};
 
+enum class InventoryType : std::uint8_t
+{
+    FIM,
+    SYSTEM_INVENTORY
+};
+
+static const std::map<InventoryType, std::string> INVENTORY_TYPES {{InventoryType::FIM, "fim"},
+                                                                   {InventoryType::SYSTEM_INVENTORY, "inventory"}};
+
 /**
  * @brief PolicyHarvesterManager class.
  *
@@ -113,6 +122,11 @@ private:
             newPolicy["clusterName"] = UNKNOWN_VALUE;
         }
 
+        if (!newPolicy.contains("clusterEnabled"))
+        {
+            newPolicy["clusterEnabled"] = false;
+        }
+
         return newPolicy;
     }
 
@@ -163,6 +177,7 @@ private:
     void loadConfiguration(const nlohmann::json& configuration)
     {
         m_configuration = configuration;
+        std::cout << "Configuration loaded: " << m_configuration.dump(4) << std::endl;
     }
 
 public:
@@ -250,7 +265,8 @@ public:
      */
     std::string_view getClusterNodeName() const
     {
-        return m_configuration.at("clusterNodeName").get<std::string_view>();
+        static const auto clusterNodeName = m_configuration.at("clusterNodeName").get<std::string_view>();
+        return clusterNodeName;
     }
 
     /**
@@ -260,7 +276,9 @@ public:
      */
     bool getClusterStatus() const
     {
-        return m_configuration.at("clusterEnabled").get<bool>();
+        static const auto clusterEnabled =
+            !m_configuration.contains("clusterEnabled") ? false : m_configuration.at("clusterEnabled").get<bool>();
+        return clusterEnabled;
     }
 
     /**
@@ -270,7 +288,8 @@ public:
      */
     std::string_view getClusterName() const
     {
-        return m_configuration.at("clusterName").get<std::string_view>();
+        static const auto clusterName = m_configuration.at("clusterName").get<std::string_view>();
+        return clusterName;
     }
 
     nlohmann::json buildIndexerConfig(const std::string& name) const
@@ -281,11 +300,12 @@ public:
         return config;
     }
 
-    std::string buildIndexerTemplatePath(const std::string& name) const
+    std::string buildIndexerTemplatePath(const std::string& name, const InventoryType type) const
     {
         if (!m_configuration.at("indexer").contains("template_path"))
         {
-            return "templates/" + name + "_states_template.json";
+            return "templates/" + std::string(STATES_INDEX_NAME_PREFIX) + INVENTORY_TYPES.at(type) + "-" + name +
+                   ".json";
         }
         else
         {
@@ -293,11 +313,12 @@ public:
         }
     }
 
-    std::string buildIndexerUpdateTemplatePath(const std::string& name) const
+    std::string buildIndexerUpdateTemplatePath(const std::string& name, const InventoryType type) const
     {
         if (!m_configuration.at("indexer").contains("update_template_path"))
         {
-            return "templates/" + name + "_states_update_mappings.json";
+            return "templates/" + std::string(STATES_INDEX_NAME_PREFIX) + INVENTORY_TYPES.at(type) + "-" + name +
+                   "-update.json";
         }
         else
         {

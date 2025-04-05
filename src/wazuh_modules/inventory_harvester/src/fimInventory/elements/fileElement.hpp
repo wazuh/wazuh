@@ -15,6 +15,7 @@
 #include "../../wcsModel/data.hpp"
 #include "../../wcsModel/fimFileHarvester.hpp"
 #include "../../wcsModel/noData.hpp"
+#include "../policyHarvesterManager.hpp"
 #include "stringHelper.h"
 #include "timeHelper.h"
 
@@ -42,7 +43,11 @@ public:
         element.data.agent.id = data->agentId();
         element.data.agent.name = data->agentName();
         element.data.agent.version = data->agentVersion();
-        element.data.agent.ip = data->agentIp();
+
+        if (auto agentIp = data->agentIp(); agentIp.compare("any") != 0)
+        {
+            element.data.agent.host.ip = agentIp;
+        }
 
         element.data.file.hash.sha1 = data->sha1();
         element.data.file.hash.sha256 = data->sha256();
@@ -55,6 +60,13 @@ public:
         element.data.file.size = data->size();
 
         element.data.file.mtime = data->mtimeISO8601();
+
+        auto& instancePolicyManager = PolicyHarvesterManager::instance();
+        if (instancePolicyManager.getClusterStatus())
+        {
+            element.data.wazuh.cluster.name = instancePolicyManager.getClusterName();
+            element.data.wazuh.cluster.node = instancePolicyManager.getClusterNodeName();
+        }
 
         return element;
     }

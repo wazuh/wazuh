@@ -15,6 +15,7 @@
 #include "../../wcsModel/data.hpp"
 #include "../../wcsModel/inventoryNetIfaceHarvester.hpp"
 #include "../../wcsModel/noData.hpp"
+#include "../policyHarvesterManager.hpp"
 #include "stringHelper.h"
 #include <loggerHelper.h>
 
@@ -53,7 +54,11 @@ public:
         element.data.agent.id = agentId;
         element.data.agent.name = data->agentName();
         element.data.agent.version = data->agentVersion();
-        element.data.agent.ip = data->agentIp();
+
+        if (auto agentIp = data->agentIp(); agentIp.compare("any") != 0)
+        {
+            element.data.agent.host.ip = agentIp;
+        }
 
         element.data.host.mac = data->netIfaceMac();
         element.data.host.network.ingress.bytes = data->netIfaceRxBytes();
@@ -70,6 +75,13 @@ public:
         element.data.observer.ingress.interface.mtu = data->netIfaceMtu();
         element.data.observer.ingress.interface.state = data->netIfaceState();
         element.data.observer.ingress.interface.type = data->netIfaceType();
+
+        auto& instancePolicyManager = PolicyHarvesterManager::instance();
+        if (instancePolicyManager.getClusterStatus())
+        {
+            element.data.wazuh.cluster.name = instancePolicyManager.getClusterName();
+            element.data.wazuh.cluster.node = instancePolicyManager.getClusterNodeName();
+        }
 
         return element;
     }

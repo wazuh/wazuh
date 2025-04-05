@@ -15,6 +15,7 @@
 #include "reflectiveJson.hpp"
 #include "wcsClasses/agent.hpp"
 #include "wcsClasses/hardware.hpp"
+#include "wcsClasses/wazuh.hpp"
 
 struct InventoryHardwareHarvester final
 {
@@ -27,10 +28,12 @@ struct InventoryHardwareHarvester final
 
     Agent agent;
     Hardware host;
+    Wazuh wazuh;
 
     REFLECTABLE(MAKE_FIELD("host", &InventoryHardwareHarvester::host),
                 MAKE_FIELD("agent", &InventoryHardwareHarvester::agent),
-                MAKE_FIELD("observer", &InventoryHardwareHarvester::observer));
+                MAKE_FIELD("observer", &InventoryHardwareHarvester::observer),
+                MAKE_FIELD("wazuh", &InventoryHardwareHarvester::wazuh));
 };
 
 #endif // _INVENTORY_HARDWARE_HARVESTER_HPP

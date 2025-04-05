@@ -18,14 +18,21 @@
 
 struct Process final
 {
+    struct Parent final
+    {
+        std::int64_t pid = DEFAULT_INT_VALUE;
+
+        REFLECTABLE(MAKE_FIELD("pid", &Parent::pid));
+    };
+
     std::vector<std::string_view> args;
-    std::uint64_t args_count = 0;
-    std::string command_line;
+    std::int64_t args_count = DEFAULT_INT_VALUE;
+    std::string_view command_line;
     std::string_view executable;
     std::string_view name;
-    std::uint64_t pid = 0;
-    std::string start;
-    std::uint64_t ppid = 0;
+    std::int64_t pid = DEFAULT_INT_VALUE;
+    std::string_view start;
+    Parent parent;
 
     REFLECTABLE(MAKE_FIELD("args", &Process::args),
                 MAKE_FIELD("args_count", &Process::args_count),
@@ -34,7 +41,7 @@ struct Process final
                 MAKE_FIELD("name", &Process::name),
                 MAKE_FIELD("pid", &Process::pid),
                 MAKE_FIELD("start", &Process::start),
-                MAKE_FIELD("ppid", &Process::ppid));
+                MAKE_FIELD("parent", &Process::parent));
 };
 
 #endif // _PROCESSES_WCS_MODEL_HPP

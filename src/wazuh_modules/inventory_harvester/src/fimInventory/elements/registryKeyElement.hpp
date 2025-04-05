@@ -15,6 +15,7 @@
 #include "../../wcsModel/data.hpp"
 #include "../../wcsModel/fimRegistryHarvester.hpp"
 #include "../../wcsModel/noData.hpp"
+#include "../policyHarvesterManager.hpp"
 #include "stringHelper.h"
 #include "timeHelper.h"
 
@@ -41,7 +42,11 @@ public:
         element.data.agent.id = data->agentId();
         element.data.agent.name = data->agentName();
         element.data.agent.version = data->agentVersion();
-        element.data.agent.ip = data->agentIp();
+
+        if (auto agentIp = data->agentIp(); agentIp.compare("any") != 0)
+        {
+            element.data.agent.host.ip = agentIp;
+        }
 
         element.data.registry.hive = data->hive();
         element.data.registry.key = data->key();
@@ -49,8 +54,15 @@ public:
         element.data.registry.owner = data->userName();
         element.data.registry.gid = data->gid();
         element.data.registry.group = data->groupName();
-        element.data.registry.arch = data->arch();
+        element.data.registry.architecture = data->arch();
         element.data.registry.mtime = data->mtimeISO8601();
+
+        auto& instancePolicyManager = PolicyHarvesterManager::instance();
+        if (instancePolicyManager.getClusterStatus())
+        {
+            element.data.wazuh.cluster.name = instancePolicyManager.getClusterName();
+            element.data.wazuh.cluster.node = instancePolicyManager.getClusterNodeName();
+        }
         return element;
     }
 

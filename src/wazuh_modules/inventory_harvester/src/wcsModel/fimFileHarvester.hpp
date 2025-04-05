@@ -15,14 +15,17 @@
 #include "reflectiveJson.hpp"
 #include "wcsClasses/agent.hpp"
 #include "wcsClasses/file.hpp"
+#include "wcsClasses/wazuh.hpp"
 
 struct FimFileInventoryHarvester final
 {
     File file;
     Agent agent;
+    Wazuh wazuh;
 
     REFLECTABLE(MAKE_FIELD("file", &FimFileInventoryHarvester::file),
-                MAKE_FIELD("agent", &FimFileInventoryHarvester::agent));
+                MAKE_FIELD("agent", &FimFileInventoryHarvester::agent),
+                MAKE_FIELD("wazuh", &FimFileInventoryHarvester::wazuh));
 };
 
 #endif // _FIM_FILE_HARVESTER_HPP

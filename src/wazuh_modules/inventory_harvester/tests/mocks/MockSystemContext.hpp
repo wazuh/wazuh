@@ -67,9 +67,11 @@ public:
     MOCK_METHOD(std::string_view, osName, (), (const));
     MOCK_METHOD(std::string_view, osKernelRelease, (), (const));
     MOCK_METHOD(std::string_view, osKernelSysName, (), (const));
+    MOCK_METHOD(std::string_view, osKernelVersion, (), (const));
     MOCK_METHOD(std::string_view, osPlatform, (), (const));
     MOCK_METHOD(std::string_view, osArchitecture, (), (const));
     MOCK_METHOD(std::string_view, osHostName, (), (const));
+    MOCK_METHOD(std::string_view, osCodeName, (), (const));
     MOCK_METHOD(std::string_view, packageName, (), (const));
     MOCK_METHOD(std::string_view, packageVersion, (), (const));
     MOCK_METHOD(std::string_view, packageVendor, (), (const));
@@ -97,11 +99,14 @@ public:
     MOCK_METHOD(std::string_view, portProcess, (), (const));
     MOCK_METHOD(int64_t, portPid, (), (const));
     MOCK_METHOD(std::string_view, portItemId, (), (const));
+
+    // Networks
     MOCK_METHOD(std::string_view, netAddressItemId, (), (const));
     MOCK_METHOD(std::string_view, broadcast, (), (const));
     MOCK_METHOD(std::string_view, netAddressName, (), (const));
     MOCK_METHOD(std::string_view, netmask, (), (const));
     MOCK_METHOD(int64_t, protocol, (), (const));
+    MOCK_METHOD(std::string_view, address, (), (const));
 
     MOCK_METHOD(std::string_view, hotfixName, (), (const));
     MOCK_METHOD(std::string_view, boardInfo, (), (const));
