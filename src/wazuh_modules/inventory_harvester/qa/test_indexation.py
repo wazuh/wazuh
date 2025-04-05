@@ -28,7 +28,7 @@ from pathlib import Path
 LOGGER = logging.getLogger(__name__)
 
 #: URL for the OpenSearch container
-GLOBAL_URL = 'localhost:9200'
+GLOBAL_URL = 'localhost:9300'
 
 
 def wait_for_opensearch(url: str, timeout: int = 60) -> None:

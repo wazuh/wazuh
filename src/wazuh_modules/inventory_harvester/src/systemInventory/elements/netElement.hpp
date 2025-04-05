@@ -15,6 +15,7 @@
 #include "../../wcsModel/data.hpp"
 #include "../../wcsModel/inventoryNetworkHarvester.hpp"
 #include "../../wcsModel/noData.hpp"
+#include "../policyHarvesterManager.hpp"
 #include <stdexcept>
 
 template<typename TContext>
@@ -50,7 +51,11 @@ public:
         element.data.agent.id = agentId;
         element.data.agent.name = data->agentName();
         element.data.agent.version = data->agentVersion();
-        element.data.agent.ip = data->agentIp();
+
+        if (auto agentIp = data->agentIp(); agentIp.compare("any") != 0)
+        {
+            element.data.agent.host.ip = agentIp;
+        }
 
         // Ex: 192.168.0.255
         element.data.network.broadcast = data->broadcast();
@@ -72,6 +77,13 @@ public:
         else
         {
             element.data.network.protocol = "IPv6";
+        }
+
+        auto& instancePolicyManager = PolicyHarvesterManager::instance();
+        if (instancePolicyManager.getClusterStatus())
+        {
+            element.data.wazuh.cluster.name = instancePolicyManager.getClusterName();
+            element.data.wazuh.cluster.node = instancePolicyManager.getClusterNodeName();
         }
 
         return element;

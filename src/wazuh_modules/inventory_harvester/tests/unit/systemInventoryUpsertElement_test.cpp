@@ -355,11 +355,12 @@ TEST_F(SystemInventoryUpsertElement, validAgentID_NetworkProtocol)
     EXPECT_CALL(*context, netProtoDhcp()).WillOnce(testing::Return("enabled"));
     EXPECT_CALL(*context, netProtoMetric()).WillOnce(testing::Return(150));
     EXPECT_CALL(*context, originTable()).WillOnce(testing::Return(MockSystemContext::OriginTable::NetworkProtocol));
+
     EXPECT_NO_THROW(upsertElement->handleRequest(context));
 
     EXPECT_EQ(
         context->m_serializedElement,
-        R"({"id":"001_netProtoItemId","operation":"INSERTED","data":{"network":{"dhcp":true,"gateway":"netProtoGateway","metric":150,"type":"netProtoType"},"observer":{"ingress":{"interface":{"name":"netProtoIface"}}},"agent":{"id":"001","name":"agentName","ip":"agentIp","version":"agentVersion"}}})");
+        R"({"id":"001_netProtoItemId","operation":"INSERTED","data":{"network":{"dhcp":true,"gateway":"netProtoGateway","metric":150,"type":"netProtoType"},"observer":{"ingress":{"interface":{"name":"netProtoIface"}}},"agent":{"id":"001","name":"agentName","host":{"ip":"agentIp"},"version":"agentVersion"},"wazuh":{"schema":{"version":"1.0"}}}})");
 }
 
 /*
@@ -421,7 +422,7 @@ TEST_F(SystemInventoryUpsertElement, validAgentID_NetIface)
 
     EXPECT_EQ(
         context->m_serializedElement,
-        R"({"id":"001_netIfaceItemId","operation":"INSERTED","data":{"agent":{"id":"001","name":"agentName","ip":"agentIp","version":"agentVersion"},"host":{"mac":"netIfaceMac","network":{"ingress":{"bytes":1,"drops":2,"errors":3,"packets":4},"egress":{"bytes":5,"drops":6,"errors":7,"packets":8}}},"observer":{"ingress":{"interface":{"alias":"netIfaceAdapter","mtu":9,"name":"netIfaceName","state":"netIfaceState","type":"netIfaceType"}}}}})");
+        R"({"id":"001_netIfaceItemId","operation":"INSERTED","data":{"agent":{"id":"001","name":"agentName","host":{"ip":"agentIp"},"version":"agentVersion"},"host":{"mac":"netIfaceMac","network":{"ingress":{"bytes":1,"drops":2,"errors":3,"packets":4},"egress":{"bytes":5,"drops":6,"errors":7,"packets":8}}},"observer":{"ingress":{"interface":{"alias":"netIfaceAdapter","mtu":9,"name":"netIfaceName","state":"netIfaceState","type":"netIfaceType"}}},"wazuh":{"schema":{"version":"1.0"}}}})");
 }
 
 /*
@@ -471,5 +472,5 @@ TEST_F(SystemInventoryUpsertElement, validAgentID_NetworkAddress)
 
     EXPECT_EQ(
         context->m_serializedElement,
-        R"({"id":"001_netAddressItemId","operation":"INSERTED","data":{"network":{"broadcast":"192.168.0.255","ip":"192.168.0.1","name":"eth0","netmask":"255.255.255.0","protocol":"IPv4"},"agent":{"id":"001","name":"agentName","ip":"192.168.0.1","version":"agentVersion"}}})");
+        R"({"id":"001_netAddressItemId","operation":"INSERTED","data":{"network":{"broadcast":"192.168.0.255","ip":"192.168.0.1","name":"eth0","netmask":"255.255.255.0","protocol":"IPv4"},"agent":{"id":"001","name":"agentName","host":{"ip":"192.168.0.1"},"version":"agentVersion"},"wazuh":{"schema":{"version":"1.0"}}}})");
 }

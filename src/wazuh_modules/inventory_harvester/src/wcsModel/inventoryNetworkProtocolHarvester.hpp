@@ -15,16 +15,19 @@
 #include "reflectiveJson.hpp"
 #include "wcsClasses/agent.hpp"
 #include "wcsClasses/networkProtocol.hpp"
+#include "wcsClasses/wazuh.hpp"
 
 struct InventoryNetworkProtocolHarvester final
 {
     Agent agent;
     Network network;
     Observer observer;
+    Wazuh wazuh;
 
     REFLECTABLE(MAKE_FIELD("network", &InventoryNetworkProtocolHarvester::network),
                 MAKE_FIELD("observer", &InventoryNetworkProtocolHarvester::observer),
-                MAKE_FIELD("agent", &InventoryNetworkProtocolHarvester::agent));
+                MAKE_FIELD("agent", &InventoryNetworkProtocolHarvester::agent),
+                MAKE_FIELD("wazuh", &InventoryNetworkProtocolHarvester::wazuh));
 };
 
 #endif // _INVENTORY_NETWORK_PROTOCOL_HARVESTER_HPP

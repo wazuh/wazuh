@@ -6,7 +6,6 @@
                 "agent": {
                     "id": "001",
                     "name": "c0ce505227a4",
-                    "ip": "any",
                     "version": "v4.11.0"
                 },
                 "host": {
@@ -35,13 +34,17 @@
                             "type": "ethernet"
                         }
                     }
+                },
+                "wazuh": {
+                    "schema": {
+                        "version": "1.0"
+                    }
                 }
             },
             {
                 "agent": {
                     "id": "002",
                     "name": "agentName",
-                    "ip": "any",
                     "version": "v4.11.0"
                 },
                 "host": {
@@ -69,6 +72,11 @@
                             "state": "up",
                             "type": "ethernet"
                         }
+                    }
+                },
+                "wazuh": {
+                    "schema": {
+                        "version": "1.0"
                     }
                 }
             }
