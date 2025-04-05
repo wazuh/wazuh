@@ -123,11 +123,11 @@ public:
                                                    "protocols", InventoryType::SYSTEM_INVENTORY),
                                                Log::GLOBAL_LOG_FUNCTION);
         m_indexerConnectorInstances[SystemContext::AffectedComponentType::NetIface] =
-            std::make_unique<IndexerConnector>(PolicyHarvesterManager::instance().buildIndexerConfig("netifaces"),
+            std::make_unique<IndexerConnector>(PolicyHarvesterManager::instance().buildIndexerConfig("interfaces"),
                                                PolicyHarvesterManager::instance().buildIndexerTemplatePath(
-                                                   "netifaces", InventoryType::SYSTEM_INVENTORY),
+                                                   "interfaces", InventoryType::SYSTEM_INVENTORY),
                                                PolicyHarvesterManager::instance().buildIndexerUpdateTemplatePath(
-                                                   "netifaces", InventoryType::SYSTEM_INVENTORY),
+                                                   "interfaces", InventoryType::SYSTEM_INVENTORY),
                                                Log::GLOBAL_LOG_FUNCTION);
         m_indexerConnectorInstances[SystemContext::AffectedComponentType::NetworkAddress] =
             std::make_unique<IndexerConnector>(PolicyHarvesterManager::instance().buildIndexerConfig("networks"),

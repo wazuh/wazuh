@@ -1,6 +1,6 @@
 [
     {
-        "index_name": "wazuh-states-netifaces-cluster01",
+        "index_name": "wazuh-states-interfaces-cluster01",
         "data": []
     }
 ]

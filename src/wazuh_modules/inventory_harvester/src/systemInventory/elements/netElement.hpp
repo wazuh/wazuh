@@ -61,7 +61,7 @@ public:
         element.data.network.broadcast = data->broadcast();
 
         // Ex: 192.168.0.30
-        element.data.network.ip = data->agentIp();
+        element.data.network.ip = data->address();
 
         // Ex: eth0
         element.data.network.name = data->netAddressName();

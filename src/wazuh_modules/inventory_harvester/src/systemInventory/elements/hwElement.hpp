@@ -37,10 +37,11 @@ public:
         {
             throw std::runtime_error("Agent ID is empty, cannot upsert hardware element.");
         }
+
         auto boardId = data->boardInfo();
         if (boardId.empty())
         {
-            throw std::runtime_error("Board ID is empty, cannot upsert hardware element.");
+            boardId = "unknown";
         }
 
         DataHarvester<InventoryHardwareHarvester> element;
@@ -99,7 +100,7 @@ public:
         auto boardId = data->boardInfo();
         if (boardId.empty())
         {
-            throw std::runtime_error("Board ID is empty, cannot delete hardware element.");
+            boardId = "unknown";
         }
 
         NoDataHarvester element;
