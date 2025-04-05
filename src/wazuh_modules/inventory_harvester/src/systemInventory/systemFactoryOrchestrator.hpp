@@ -16,6 +16,7 @@
 #include "../common/clearElements.hpp"
 #include "../common/elementDispatch.hpp"
 #include "../common/indexSync.hpp"
+#include "../common/upgradeAgentDb.hpp"
 #include "chainOfResponsability.hpp"
 #include "deleteElement.hpp"
 #include "indexerConnector.hpp"
@@ -67,6 +68,10 @@ public:
         else if (operation == SystemContext::Operation::IndexSync)
         {
             orchestration = std::make_shared<IndexSync<SystemContext>>(indexerConnectorInstances);
+        }
+        else if (operation == SystemContext::Operation::UpgradeAgentDB)
+        {
+            orchestration = std::make_shared<UpgradeAgentDB<SystemContext>>(indexerConnectorInstances);
         }
         else
         {

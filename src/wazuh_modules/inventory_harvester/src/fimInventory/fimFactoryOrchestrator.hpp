@@ -16,6 +16,7 @@
 #include "../common/clearElements.hpp"
 #include "../common/elementDispatch.hpp"
 #include "../common/indexSync.hpp"
+#include "../common/upgradeAgentDb.hpp"
 #include "chainOfResponsability.hpp"
 #include "deleteElement.hpp"
 #include "fimContext.hpp"
@@ -67,6 +68,10 @@ public:
         else if (operation == FimContext::Operation::IndexSync)
         {
             orchestration = std::make_shared<IndexSync<FimContext>>(indexerConnectorInstances);
+        }
+        else if (operation == FimContext::Operation::UpgradeAgentDB)
+        {
+            orchestration = std::make_shared<UpgradeAgentDB<FimContext>>(indexerConnectorInstances);
         }
         else
         {
