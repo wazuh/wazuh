@@ -2437,10 +2437,10 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
       - mitre_techniques: ["T1070", "T1070.002", "T1083"]
       - mitre_tactics: ["TA0007"]
-    condition: all
+    condition: any
     rules:
-      - 'f:/etc/rsyslog.conf -> r:^\$FileCreateMode 06\d0|^\$FileCreateMode 04\d0|^\$FileCreateMode 02\d0|^\$FileCreateMode 00\d0'
-      - 'f:/etc/rsyslog.conf -> r:^\$FileCreateMode 0\d40|^\$FileCreateMode 0\d20|^\$FileCreateMode 0\d00'
+      - 'd:/etc/rsyslog.d -> r:\.*.conf -> r:^\$FileCreateMode && r:0640|0600|0400'
+      - 'f:/etc/rsyslog.conf -> r:^\$FileCreateMode && r:0640|0600|0400'
 
   # 4.2.1.5 Ensure logging is configured (Manual) - Not implemented
 
@@ -3872,7 +3872,7 @@ checks:
       - mitre_mitigations: ["M1022"]
     condition: all
     rules:
-      - 'c:stat -Lc "%n %a %u/%U %g/%G" /etc/shadow- ->  r:\s0 0/root 0/root'
+      - 'c:stat -Lc "%n %a %u/%U %g/%G" /etc/shadow- -> r:\s0 0/root 0/root'
 
   # 6.1.7 Ensure permissions on /etc/gshadow are configured (Automated)
   - id: 28154
@@ -3896,7 +3896,7 @@ checks:
       - mitre_mitigations: ["M1022"]
     condition: all
     rules:
-      - 'c:stat -Lc "%n %a %u/%U %g/%G" /etc/gshadow ->  r:\s0 0/root 0/root'
+      - 'c:stat -Lc "%n %a %u/%U %g/%G" /etc/gshadow -> r:\s0 0/root 0/root'
 
   # 6.1.8 Ensure permissions on /etc/gshadow- are configured (Automated)
   - id: 28155
@@ -3920,7 +3920,7 @@ checks:
       - mitre_mitigations: ["M1022"]
     condition: all
     rules:
-      - 'c:stat -Lc "%n %a %u/%U %g/%G" /etc/gshadow- ->  r:\s0 0/root 0/root'
+      - 'c:stat -Lc "%n %a %u/%U %g/%G" /etc/gshadow- -> r:\s0 0/root 0/root'
 
   # 6.1.9 Ensure no world writable files exist (Automated) - Not implemented
   # 6.1.10 Ensure no unowned files or directories exist (Automated) - Not implemented, requires manual operation.
