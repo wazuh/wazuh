@@ -25,34 +25,12 @@ RUN yum install -y \
     elfutils \
     scl-utils \
     zlib-devel \
-    epel-release
+    epel-release \
+    git
 
 RUN yum install zlib -y
 
 RUN scl enable gcc-toolset-11 bash
-
-ADD https://github.com/git/git/archive/refs/tags/v2.18.0.tar.gz /tmp/git-2.18.0.tar.gz
-WORKDIR /tmp
-RUN tar -xzf git-2.18.0.tar.gz
-WORKDIR /tmp/git-2.18.0
-RUN make configure
-RUN ./configure --prefix=/usr
-RUN CFLAGS='-std=c99' make -j$(nproc)
-RUN make install
-WORKDIR /
-RUN rm -rf /tmp/git-2.18.0
-
-ADD http://packages.wazuh.com/utils/rpm/rpm-4.15.1.tar.bz2 /tmp/rpm-4.15.1.tar.bz2
-WORKDIR /tmp
-RUN tar -xjf rpm-4.15.1.tar.bz2
-WORKDIR /tmp/rpm-4.15.1
-RUN ./configure --without-lua && make -j$(nproc) && make install
-WORKDIR /
-RUN rm -rf /tmp/rpm-4.15.1
-
-RUN mkdir -p /usr/local/var/lib/rpm && \
-    cp /var/lib/rpm/Packages /usr/local/var/lib/rpm/Packages && \
-    /usr/local/bin/rpm --rebuilddb && rm -rf /root/rpmbuild
 
 ADD https://github.com/Kitware/CMake/releases/download/v3.30.4/cmake-3.30.4-linux-aarch64.sh /tmp/cmake-3.30.4-linux-aarch64.sh
 
