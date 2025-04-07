@@ -1,7 +1,5 @@
-from datetime import datetime, timezone
-
 from opensearchpy import exceptions
-from wazuh.core.exception import WazuhError, WazuhResourceNotFound
+from wazuh.core.exception import WazuhResourceNotFound
 from wazuh.core.indexer.base import BaseIndex, IndexerKey
 from wazuh.core.indexer.models.rbac import User
 from wazuh.core.indexer.utils import get_source_items
@@ -13,69 +11,6 @@ class UsersIndex(BaseIndex):
     INTERNAL_INDEX = 'wazuh-internal-users'
     INDEX = 'wazuh-custom-users'
     KEY = 'user'
-
-    async def create(
-        self,
-        id: str,
-        name: str,
-        password: str,
-        allow_run_as: bool,
-    ) -> User:
-        """Create a new user.
-
-        Parameters
-        ----------
-        id : str
-            User ID.
-        name : str
-            User name.
-        password : str
-            User password.
-        allow_run_as : bool
-            Allow running as other users.
-
-        Raises
-        ------
-        WazuhError(4026)
-            If a user with the provided ID already exists.
-
-        Returns
-        -------
-        User
-            The created user instance.
-        """
-        now = datetime.now(timezone.utc)
-        user = User(id=id, name=name, raw_password=password, allow_run_as=allow_run_as, created_at=now)
-
-        try:
-            await self._client.index(
-                index=self.INDEX, id=user.id, body={self.KEY: user.to_dict()}, op_type='create', refresh='true'
-            )
-        except exceptions.ConflictError:
-            extra_info = {'entity': self.KEY, 'id': user.id}
-            raise WazuhError(4026, extra_message=extra_info)
-
-        return user
-
-    async def delete(self, ids: list[str]) -> list[str]:
-        """Delete multiple entities that match with the given parameters.
-
-        Parameters
-        ----------
-        ids : list[str]
-            Entity identifiers.
-
-        Returns
-        -------
-        list[str]
-            Deleted entity IDs.
-        """
-        body = {IndexerKey.QUERY: {IndexerKey.TERMS: {IndexerKey._ID: ids}}}
-        parameters = {IndexerKey.INDEX: self.INDEX, IndexerKey.BODY: body, IndexerKey.CONFLICTS: 'proceed'}
-
-        await self._client.delete_by_query(**parameters, refresh='true')
-
-        return ids
 
     async def get(self, id: str) -> User:
         """Retrieve a user.
@@ -167,34 +102,3 @@ class UsersIndex(BaseIndex):
             users.append(User(**item[self.KEY]))
 
         return users
-
-    async def update(
-        self,
-        id: str,
-        name: str = None,
-        password: str = None,
-        allow_run_as: bool = None,
-    ) -> None:
-        """Update a user.
-
-        Parameters
-        ----------
-        id : str
-            User identifier.
-        name : str
-            User name.
-        password : str
-            User password.
-        allow_run_as : bool
-            Allow running as other users.
-        """
-        user = User(id=id, name=name, raw_password=password, allow_run_as=allow_run_as)
-        try:
-            body = {IndexerKey.DOC: {self.KEY: user.to_dict()}}
-            await self._client.update(index=self.INDEX, id=id, body=body)
-        except exceptions.NotFoundError:
-            extra_info = {
-                'entity': self.KEY.title(),
-                'entities': f'{self.KEY}s',
-            }
-            raise WazuhResourceNotFound(4027, extra_message=extra_info)
