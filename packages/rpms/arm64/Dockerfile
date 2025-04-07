@@ -13,6 +13,7 @@ RUN yum install -y \
     autoconf \
     perl \
     bzip2 \
+    bzip2-devel \
     nss-devel \
     popt-devel \
     automake \
@@ -26,9 +27,11 @@ RUN yum install -y \
     scl-utils \
     zlib-devel \
     epel-release \
-    git
+    git \
+    libarchive \
+    file
 
-RUN yum install zlib -y
+RUN yum install zlib lzip -y
 
 RUN scl enable gcc-toolset-11 bash
 
