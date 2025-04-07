@@ -664,6 +664,45 @@ def test_plain_dict_to_nested_dict():
     assert result == mock_nested_dict
 
 
+@pytest.mark.parametrize('data, allow_config, exceptions, should_raise', [
+    ("<localfile><command>rm -rf /</command></localfile>",
+     {'localfile': {'allow': False, 'exceptions': []},
+      'wodle_command': {'allow': True, 'exceptions': []}},
+     [], True),
+
+    ("<localfile><command>echo test</command></localfile>",
+     {'localfile': {'allow': False, 'exceptions': ['echo test']},
+      'wodle_command': {'allow': True, 'exceptions': []}},
+     [], False),
+
+    ('<wodle name="command"><command>ls -la</command></wodle>',
+     {'localfile': {'allow': True, 'exceptions': []},
+      'wodle_command': {'allow': False, 'exceptions': []}},
+     [], True),
+
+    ('<wodle name="command"><command>test</command></wodle>',
+     {'localfile': {'allow': True, 'exceptions': []},
+      'wodle_command': {'allow': False, 'exceptions': ['test']}},
+     [], False),
+
+    ("<other><value>test</value></other>",
+     {'localfile': {'allow': False, 'exceptions': []},
+      'wodle_command': {'allow': False, 'exceptions': []}},
+     [], False),
+])
+def test_check_remote_commands(data, allow_config, exceptions, should_raise):
+    """Tests check_remote_commands with different remote command inputs."""
+    api_conf = utils.configuration.api_conf
+    api_conf['upload_configuration']['remote_commands'].update(allow_config)
+
+    with patch('wazuh.core.utils.configuration.api_conf', new=api_conf):
+        if should_raise:
+            with pytest.raises(exception.WazuhError, match=r'.* 1124 .*'):
+                utils.check_remote_commands(data)
+        else:
+            utils.check_remote_commands(data)
+
+
 @patch('wazuh.core.utils.compile', return_value='Something')
 def test_basic_load_wazuh_xml(mock_compile):
     """Test basic load_wazuh_xml functionality."""

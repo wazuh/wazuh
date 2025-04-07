@@ -886,11 +886,11 @@ def check_remote_commands(data: str):
             pass
 
     if not blocked_configurations['remote_commands']['localfile']['allow']:
-        command_section = re.compile(r"<localfile>(.*)</localfile>", flags=re.MULTILINE | re.DOTALL)
+        command_section = re.compile(r"<localfile>(.*?)</localfile>", flags=re.MULTILINE | re.DOTALL)
         check_section(command_section, section='localfile', split_section='</localfile>')
 
     if not blocked_configurations['remote_commands']['wodle_command']['allow']:
-        command_section = re.compile(r"<wodle name=\"command\">(.*)</wodle>", flags=re.MULTILINE | re.DOTALL)
+        command_section = re.compile(r"<wodle name=\"command\">(.*?)</wodle>", flags=re.MULTILINE | re.DOTALL)
         check_section(command_section, section='wodle_command', split_section='<wodle name=\"command\">')
 
 
