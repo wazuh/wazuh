@@ -104,11 +104,13 @@ async def get_users(
     )
     affected_items = list()
 
-    with AuthenticationManager() as auth:
-        for user_id in user_ids:
-            user_id = int(user_id)
-            user = auth.get_user_id(user_id)
-            affected_items.append(user) if user else result.add_failed_item(id_=user_id, error=WazuhError(5001))
+    with get_rbac_manager() as rbac_manager:
+        users = rbac_manager.get_users()
+        for user in users:
+            if user_ids is not None and user.id not in user_ids:
+                result.add_failed_item(id_=user.id, error=WazuhError(5001))
+            else:
+                affected_items.append(user)
 
     data = process_array(
         affected_items,

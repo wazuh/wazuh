@@ -292,6 +292,7 @@ async def test_get_users(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_requ
         logger=ANY,
         wait_for_complete=False,
         rbac_permissions=mock_request.context['token_info']['rbac_policies'],
+        rbac_manager=mock_request.state.rbac_manager,
     )
     mock_exc.assert_called_once_with(mock_dfunc.return_value)
     mock_remove.assert_called_once_with(f_kwargs)

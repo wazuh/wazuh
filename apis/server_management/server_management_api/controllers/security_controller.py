@@ -276,6 +276,7 @@ async def get_users(
         logger=logger,
         wait_for_complete=wait_for_complete,
         rbac_permissions=request.context['token_info']['rbac_policies'],
+        rbac_manager=request.state.rbac_manager,
     )
     data = raise_if_exc(await dapi.distribute_function())
 
