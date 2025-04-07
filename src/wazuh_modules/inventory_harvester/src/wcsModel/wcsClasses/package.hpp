@@ -22,10 +22,18 @@ struct Package final
     std::string_view installed;
     std::string_view name;
     std::string_view path;
-    std::uint32_t size = 0;
+    std::int64_t size = DEFAULT_INT_VALUE;
     std::string_view type;
     std::string_view version;
     std::string_view vendor;
+    struct Hotfix final
+    {
+        std::string_view name;
+
+        REFLECTABLE(MAKE_FIELD("name", &Hotfix::name));
+    };
+
+    Hotfix hotfix;
 
     REFLECTABLE(MAKE_FIELD("architecture", &Package::architecture),
                 MAKE_FIELD("description", &Package::description),
@@ -35,7 +43,8 @@ struct Package final
                 MAKE_FIELD("size", &Package::size),
                 MAKE_FIELD("type", &Package::type),
                 MAKE_FIELD("version", &Package::version),
-                MAKE_FIELD("vendor", &Package::vendor));
+                MAKE_FIELD("vendor", &Package::vendor),
+                MAKE_FIELD("hotfix", &Package::hotfix));
 };
 
 #endif // _PACKAGES_WCS_MODEL_HPP

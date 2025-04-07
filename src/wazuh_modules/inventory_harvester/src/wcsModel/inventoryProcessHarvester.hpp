@@ -15,14 +15,17 @@
 #include "reflectiveJson.hpp"
 #include "wcsClasses/agent.hpp"
 #include "wcsClasses/process.hpp"
+#include "wcsClasses/wazuh.hpp"
 
 struct InventoryProcessHarvester final
 {
     Agent agent;
     Process process;
+    Wazuh wazuh;
 
     REFLECTABLE(MAKE_FIELD("process", &InventoryProcessHarvester::process),
-                MAKE_FIELD("agent", &InventoryProcessHarvester::agent));
+                MAKE_FIELD("agent", &InventoryProcessHarvester::agent),
+                MAKE_FIELD("wazuh", &InventoryProcessHarvester::wazuh));
 };
 
 #endif // _INVENTORY_PROCESS_HARVESTER_HPP

@@ -5,7 +5,6 @@
             {
                 "agent": {
                     "id": "001",
-                    "ip": "any",
                     "name": "WazuhAgent",
                     "version": "v4.11.1"
                 },
@@ -23,6 +22,11 @@
                 },
                 "observer": {
                     "serial_number": "ABC123XYZ789"
+                },
+                "wazuh": {
+                    "schema": {
+                        "version": "1.0"
+                    }
                 }
             }
         ]

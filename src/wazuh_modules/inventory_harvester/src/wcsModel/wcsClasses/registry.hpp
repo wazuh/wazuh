@@ -35,7 +35,7 @@ struct Registry final
     std::string_view group;
     std::string_view uid;
     std::string_view owner;
-    std::string_view arch;
+    std::string_view architecture;
     std::string mtime;
 
     REFLECTABLE(MAKE_FIELD("key", &Registry::key),
@@ -47,7 +47,7 @@ struct Registry final
                 MAKE_FIELD("group", &Registry::group),
                 MAKE_FIELD("uid", &Registry::uid),
                 MAKE_FIELD("owner", &Registry::owner),
-                MAKE_FIELD("arch", &Registry::arch),
+                MAKE_FIELD("architecture", &Registry::architecture),
                 MAKE_FIELD("mtime", &Registry::mtime));
 };
 

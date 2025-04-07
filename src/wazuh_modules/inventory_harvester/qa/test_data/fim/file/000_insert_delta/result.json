@@ -5,7 +5,6 @@
             {
                 "agent": {
                     "id": "002",
-                    "ip": "any",
                     "name": "agent_test",
                     "version": "v4.10.1"
                 },
@@ -22,6 +21,11 @@
                     "path": "/home/folderB/AFileInB.txt",
                     "size": 0,
                     "uid": "0"
+                },
+                "wazuh": {
+                    "schema": {
+                        "version": "1.0"
+                    }
                 }
             }
         ]

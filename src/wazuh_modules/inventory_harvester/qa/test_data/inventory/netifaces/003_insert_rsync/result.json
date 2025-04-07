@@ -1,12 +1,11 @@
 [
     {
-        "index_name": "wazuh-states-netifaces-cluster01",
+        "index_name": "wazuh-states-interfaces-cluster01",
         "data": [
             {
                 "agent": {
                     "id": "001",
                     "name": "c0ce505227a4",
-                    "ip": "any",
                     "version": "v4.11.0"
                 },
                 "host": {
@@ -34,6 +33,11 @@
                             "state": "up",
                             "type": "ethernet"
                         }
+                    }
+                },
+                "wazuh": {
+                    "schema": {
+                        "version": "1.0"
                     }
                 }
             }

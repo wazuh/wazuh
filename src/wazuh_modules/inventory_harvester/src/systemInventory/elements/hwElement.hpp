@@ -15,6 +15,7 @@
 #include "../../wcsModel/data.hpp"
 #include "../../wcsModel/inventoryHardwareHarvester.hpp"
 #include "../../wcsModel/noData.hpp"
+#include "../policyHarvesterManager.hpp"
 #include <stdexcept>
 
 template<typename TContext>
@@ -36,10 +37,11 @@ public:
         {
             throw std::runtime_error("Agent ID is empty, cannot upsert hardware element.");
         }
+
         auto boardId = data->boardInfo();
         if (boardId.empty())
         {
-            throw std::runtime_error("Board ID is empty, cannot upsert hardware element.");
+            boardId = "unknown";
         }
 
         DataHarvester<InventoryHardwareHarvester> element;
@@ -50,7 +52,11 @@ public:
         element.data.agent.id = agentId;
         element.data.agent.name = data->agentName();
         element.data.agent.version = data->agentVersion();
-        element.data.agent.ip = data->agentIp();
+
+        if (auto agentIp = data->agentIp(); agentIp.compare("any") != 0)
+        {
+            element.data.agent.host.ip = agentIp;
+        }
 
         // Ex: 2, 4 u 8
         element.data.host.cpu.cores = data->cpuCores();
@@ -73,6 +79,13 @@ public:
         // Ex: AA320
         element.data.observer.serial_number = boardId;
 
+        auto& instancePolicyManager = PolicyHarvesterManager::instance();
+        if (instancePolicyManager.getClusterStatus())
+        {
+            element.data.wazuh.cluster.name = instancePolicyManager.getClusterName();
+            element.data.wazuh.cluster.node = instancePolicyManager.getClusterNodeName();
+        }
+
         return element;
     }
 
@@ -87,7 +100,7 @@ public:
         auto boardId = data->boardInfo();
         if (boardId.empty())
         {
-            throw std::runtime_error("Board ID is empty, cannot delete hardware element.");
+            boardId = "unknown";
         }
 
         NoDataHarvester element;

@@ -15,6 +15,7 @@
 #include "../../wcsModel/data.hpp"
 #include "../../wcsModel/inventoryPortHarvester.hpp"
 #include "../../wcsModel/noData.hpp"
+#include "../policyHarvesterManager.hpp"
 #include <stdexcept>
 
 template<typename TContext>
@@ -51,7 +52,11 @@ public:
         element.data.agent.id = agentId;
         element.data.agent.name = data->agentName();
         element.data.agent.version = data->agentVersion();
-        element.data.agent.ip = data->agentIp();
+
+        if (auto agentIp = data->agentIp(); agentIp.compare("any") != 0)
+        {
+            element.data.agent.host.ip = agentIp;
+        }
 
         element.data.destination.ip = data->portRemoteIp();
         element.data.destination.port = data->portRemotePort();
@@ -64,6 +69,14 @@ public:
         element.data.process.pid = data->portPid();
         element.data.source.ip = data->portLocalIp();
         element.data.source.port = data->portLocalPort();
+
+        auto& instancePolicyManager = PolicyHarvesterManager::instance();
+        if (instancePolicyManager.getClusterStatus())
+        {
+            element.data.wazuh.cluster.name = instancePolicyManager.getClusterName();
+            element.data.wazuh.cluster.node = instancePolicyManager.getClusterNodeName();
+        }
+
         return element;
     }
 

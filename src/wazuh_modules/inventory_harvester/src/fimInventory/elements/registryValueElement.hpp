@@ -15,6 +15,7 @@
 #include "../../wcsModel/data.hpp"
 #include "../../wcsModel/fimRegistryHarvester.hpp"
 #include "../../wcsModel/noData.hpp"
+#include "../policyHarvesterManager.hpp"
 #include "stringHelper.h"
 
 template<typename TContext>
@@ -40,7 +41,11 @@ public:
         element.data.agent.id = data->agentId();
         element.data.agent.name = data->agentName();
         element.data.agent.version = data->agentVersion();
-        element.data.agent.ip = data->agentIp();
+
+        if (auto agentIp = data->agentIp(); agentIp.compare("any") != 0)
+        {
+            element.data.agent.host.ip = agentIp;
+        }
 
         element.data.registry.hive = data->hive();
         element.data.registry.key = data->key();
@@ -51,6 +56,13 @@ public:
         element.data.registry.data.hash.sha1 = data->sha1();
         element.data.registry.data.hash.sha256 = data->sha256();
         element.data.registry.data.type = data->valueType();
+
+        auto& instancePolicyManager = PolicyHarvesterManager::instance();
+        if (instancePolicyManager.getClusterStatus())
+        {
+            element.data.wazuh.cluster.name = instancePolicyManager.getClusterName();
+            element.data.wazuh.cluster.node = instancePolicyManager.getClusterNodeName();
+        }
 
         return element;
     }

@@ -13,8 +13,9 @@
 #define _OS_HOTFIX_HPP
 
 #include "../../wcsModel/data.hpp"
-#include "../../wcsModel/inventoryHotfixHarvester.hpp"
+#include "../../wcsModel/inventoryPackageHarvester.hpp"
 #include "../../wcsModel/noData.hpp"
+#include "../policyHarvesterManager.hpp"
 #include <stdexcept>
 
 template<typename TContext>
@@ -29,7 +30,7 @@ public:
     ~HotfixElement() = default;
     // LCOV_EXCL_STOP
 
-    static DataHarvester<InventoryHotfixHarvester> build(TContext* data)
+    static DataHarvester<InventoryPackageHarvester> build(TContext* data)
     {
         auto agentId = data->agentId();
         if (agentId.empty())
@@ -43,18 +44,29 @@ public:
             throw std::runtime_error("Hotfix ID is empty, cannot upsert hotfix element.");
         }
 
-        DataHarvester<InventoryHotfixHarvester> element;
+        DataHarvester<InventoryPackageHarvester> element;
         element.id = agentId;
         element.id += "_";
         element.id += hotfixName;
         element.operation = "INSERTED";
 
-        element.data.agent.ip = data->agentIp();
         element.data.agent.id = agentId;
         element.data.agent.name = data->agentName();
         element.data.agent.version = data->agentVersion();
 
+        if (auto agentIp = data->agentIp(); agentIp.compare("any") != 0)
+        {
+            element.data.agent.host.ip = agentIp;
+        }
+
         element.data.package.hotfix.name = hotfixName;
+
+        auto& instancePolicyManager = PolicyHarvesterManager::instance();
+        if (instancePolicyManager.getClusterStatus())
+        {
+            element.data.wazuh.cluster.name = instancePolicyManager.getClusterName();
+            element.data.wazuh.cluster.node = instancePolicyManager.getClusterNodeName();
+        }
 
         return element;
     }

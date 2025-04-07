@@ -37,6 +37,7 @@ private:
     std::function<void(const std::string&)> m_initIndexCallback = {};
     std::function<void(const std::string&)> m_publishCallback = {};
     std::function<std::string(const std::string&)> m_searchCallback = {};
+    std::function<void(const std::string&)> m_deleteScrollCallback = {};
 
 public:
     /**
@@ -127,6 +128,16 @@ public:
     void setSearchCallback(std::function<std::string(const std::string&)> callback)
     {
         m_searchCallback = std::move(callback);
+    }
+
+    /**
+     * @brief Sets the delete scroll callback.
+     *
+     * @param callback New callback.
+     */
+    void setDeleteScrollCallback(std::function<void(const std::string&)> callback)
+    {
+        m_deleteScrollCallback = std::move(callback);
     }
 
     /**
@@ -276,6 +287,25 @@ public:
                               res.set_content(e.what(), "text/plain");
                           }
                       });
+
+        m_server.Delete("/_search/scroll/:scroll_id",
+                        [this](const httplib::Request& req, httplib::Response& res)
+                        {
+                            try
+                            {
+                                if (m_deleteScrollCallback)
+                                {
+                                    m_deleteScrollCallback(req.path_params.at("scroll_id"));
+                                }
+                                res.status = 200;
+                                res.set_content("Scroll deleted", "text/plain");
+                            }
+                            catch (const std::exception& e)
+                            {
+                                res.status = 500;
+                                res.set_content(e.what(), "text/plain");
+                            }
+                        });
 
         m_server.set_keep_alive_max_count(1);
         m_server.listen(m_host, m_port);

@@ -10,11 +10,20 @@
                     "architecture": "x86_64",
                     "hostname": "debian",
                     "os": {
-                        "kernel": "5.4.0-155-generic",
+                        "codename": "trusty",
+                        "kernel": {
+                            "name": "Linux",
+                            "release": "5.4.0-155-generic",
+                            "version": "#172-Ubuntu SMP Fri Jul 7 16:10:02 UTC 2023"
+                        },
                         "name": "Debian",
                         "platform": "debian",
-                        "type": "Linux",
                         "version": "Trusty Tahr"
+                    }
+                },
+                "wazuh": {
+                    "schema": {
+                        "version": "1.0"
                     }
                 }
             }

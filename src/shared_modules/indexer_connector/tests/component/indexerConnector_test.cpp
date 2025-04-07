@@ -431,12 +431,22 @@ TEST_F(IndexerConnectorTest, NoPublish)
         {
             EXPECT_NE(data.find(agentId), std::string::npos);
             searchCallbackCalled = true;
-            return R"({"hits": {"total" : {"value": 0}, "hits": []}})";
+            return R"({"_scroll_id":"abcdef","hits": {"total" : {"value": 0}, "hits": []}})";
+        });
+
+    auto deleteScrollCallbackCalled {false};
+    m_indexerServers[A_IDX]->setDeleteScrollCallback(
+        [&](const std::string& data) -> std::string
+        {
+            EXPECT_EQ(data.compare("abcdef"), 0);
+            deleteScrollCallbackCalled = true;
+            return R"({"_scroll_id":"abcdef","hits": {"total" : {"value": 0}, "hits": []}})";
         });
     indexerConnector->sync(agentId);
     ASSERT_NO_THROW(waitUntil([&callbackCalled]() { return callbackCalled.load(); }, MAX_INDEXER_PUBLISH_TIME_MS));
     ASSERT_TRUE(callbackCalled);
     ASSERT_TRUE(searchCallbackCalled);
+    ASSERT_TRUE(deleteScrollCallbackCalled);
 }
 
 /**
