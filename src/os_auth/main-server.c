@@ -33,13 +33,10 @@
 #include "wazuhdb_op.h"
 #include "os_err.h"
 #include "generate_cert.h"
+#include <sys/epoll.h>
 
 /* Prototypes */
 static void help_authd(char * home_path) __attribute((noreturn));
-static int ssl_error(const SSL *ssl, int ret);
-
-/* Thread for dispatching connection pool */
-static void* run_dispatcher(void *arg);
 
 /* Thread for remote server */
 static void* run_remote_server(void *arg);
@@ -57,9 +54,8 @@ static void cleanup();
 static char *authpass = NULL;
 static SSL_CTX *ctx;
 static int remote_sock = -1;
-
-/* client queue */
-static w_queue_t *client_queue = NULL;
+static int g_epfd = -1;
+static struct client * g_client_pool[AUTH_POOL];
 
 volatile int write_pending = 0;
 volatile int running = 1;
@@ -71,6 +67,8 @@ extern struct keynode * volatile *remove_tail;
 
 pthread_mutex_t mutex_keys = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t cond_pending = PTHREAD_COND_INITIALIZER;
+
+static int g_stopFD[2] = {-1, -1};
 
 /* Print help statement */
 static void help_authd(char * home_path)
@@ -103,24 +101,10 @@ static void help_authd(char * home_path)
     exit(1);
 }
 
-/* Function to use with SSL on non blocking socket,
- * to know if SSL operation failed for good
- */
-static int ssl_error(const SSL *ssl, int ret)
-{
-    if (ret <= 0) {
-        switch (SSL_get_error(ssl, ret)) {
-            case SSL_ERROR_WANT_READ:
-            case SSL_ERROR_WANT_WRITE:
-                usleep(100 * 1000);
-                return (0);
-            default:
-                ERR_print_errors_fp(stderr);
-                return (1);
-        }
-    }
-
-    return (0);
+static void set_non_blocking(int fd) {
+    int flags = fcntl(fd, F_GETFL, 0);
+    if (flags < 0) flags = 0;
+    fcntl(fd, F_SETFL, flags | O_NONBLOCK);
 }
 
 int main(int argc, char **argv)
@@ -141,6 +125,10 @@ int main(int argc, char **argv)
     pthread_t thread_remote_server = 0;
     pthread_t thread_writer = 0;
     pthread_t thread_key_request = 0;
+
+    for (int i = 0; i < AUTH_POOL; i++) {
+        g_client_pool[i] = NULL;
+    }
 
     /* Set the name */
     OS_SetName(ARGV0);
@@ -522,6 +510,33 @@ int main(int argc, char **argv)
     fclose(fp);
 
     if (config.flags.remote_enrollment) {
+        g_epfd = epoll_create1(0);
+
+        if (g_epfd < 0) {
+            merror("Couldn't initialize epoll");
+            exit(1);
+        }
+
+        if (pipe(g_stopFD) == -1) {
+            merror("Failed to create stop pipe");
+            exit(1);
+        }
+
+        if (fcntl(g_stopFD[0], F_SETFL, O_NONBLOCK) == -1) {
+            merror("Failed to set stop pipe to non-blocking");
+            exit(1);
+        }
+
+        struct epoll_event event;
+        event.events = EPOLLIN | EPOLLET;
+        event.data.u32 = STOP_FD;
+
+        if (epoll_ctl(g_epfd, EPOLL_CTL_ADD, g_stopFD[0], &event) < 0)
+        {
+            merror("Couldn't add event");
+            exit(1);
+        }
+
         /* Start SSL */
         if (ctx = os_ssl_keys(1, home_path, config.ciphers, config.manager_cert, config.manager_key, config.agent_ca, config.flags.auto_negotiate), !ctx) {
             merror("SSL error. Exiting.");
@@ -531,6 +546,17 @@ int main(int argc, char **argv)
         /* Connect via TCP */
         if (remote_sock = OS_Bindporttcp(config.port, NULL, config.ipv6), remote_sock <= 0) {
             merror(BIND_ERROR, config.port, errno, strerror(errno));
+            exit(1);
+        }
+
+        set_non_blocking(remote_sock);
+
+        event.events = EPOLLIN;
+        event.data.u32 = 0;
+
+        if (epoll_ctl(g_epfd, EPOLL_CTL_ADD, remote_sock, &event) < 0)
+        {
+            merror("Couldn't add event");
             exit(1);
         }
 
@@ -608,12 +634,6 @@ int main(int argc, char **argv)
     }
 
     if (config.flags.remote_enrollment) {
-        client_queue = queue_init(AUTH_POOL);
-
-        if (status = pthread_create(&thread_dispatcher, NULL, (void *)&run_dispatcher, NULL), status != 0) {
-            merror("Couldn't create thread: %s", strerror(status));
-            return EXIT_FAILURE;
-        }
 
         if (status = pthread_create(&thread_remote_server, NULL, (void *)&run_remote_server, NULL), status != 0) {
             merror("Couldn't create thread: %s", strerror(status));
@@ -654,190 +674,210 @@ int main(int argc, char **argv)
         pthread_join(thread_key_request, NULL);
     }
 
-    queue_free(client_queue);
     minfo("Exiting...");
     return (0);
 }
 
-/* Thread for dispatching connection pool */
-void* run_dispatcher(__attribute__((unused)) void *arg) {
-    char ip[IPSIZE + 1];
-    int ret;
-    char* buf = NULL;
-    SSL *ssl;
-    char response[2048];
-    response[2047] = '\0';
+void delete_client(uint32_t index) {
+    if (g_client_pool[index]) {
+        epoll_ctl(g_epfd, EPOLL_CTL_DEL, g_client_pool[index]->socket, NULL);
 
-    authd_sigblock();
-
-    /* Initialize some variables */
-    memset(ip, '\0', IPSIZE + 1);
-
-    mdebug1("Dispatch thread ready.");
-
-    while (running) {
-        const struct timespec timeout = { .tv_sec = time(NULL) + 1 };
-        struct client *client = queue_pop_ex_timedwait(client_queue, &timeout);
-
-        if (!client) {
-            continue;
+        if (g_client_pool[index]->ssl) {
+            SSL_shutdown(g_client_pool[index]->ssl);
+            SSL_free(g_client_pool[index]->ssl);
+            g_client_pool[index]->ssl = NULL;
         }
 
-        if (client->is_ipv6) {
-            get_ipv6_string(*client->addr6, ip, IPSIZE);
+        if (g_client_pool[index]->is_ipv6) {
+            os_free(g_client_pool[index]->addr6);
         } else {
-            get_ipv4_string(*client->addr4, ip, IPSIZE);
-        }
-        ssl = SSL_new(ctx);
-        SSL_set_fd(ssl, client->socket);
-        ret = SSL_accept(ssl);
-
-        if (ssl_error(ssl, ret)) {
-            mdebug1("SSL Error (%d)", ret);
-            SSL_free(ssl);
-            close(client->socket);
-            if (client->is_ipv6) {
-                os_free(client->addr6);
-            } else {
-                os_free(client->addr4);
-            }
-            os_free(client);
-            continue;
+            os_free(g_client_pool[index]->addr4);
         }
 
-        minfo("New connection from %s", ip);
+        close(g_client_pool[index]->socket);
+        os_free(g_client_pool[index]);
+        g_client_pool[index] = NULL;
+    }
+    else
+    {
+        merror("Client not found in pool");
+    }
+}
+static void process_message(struct client *client) {
+    char response[2048] = {0};
+    bool enrollment_ok = FALSE;
+    char *agentname = NULL;
+    char *centralized_group = NULL;
+    char* key_hash = NULL;
+    char* new_id = NULL;
+    char* new_key = NULL;
 
-        /* Additional verification of the agent's certificate. */
+    mdebug2("Request received: <%s>", client->read_buffer);
 
-        if (config.flags.verify_host && config.agent_ca) {
-            if (check_x509_cert(ssl, ip) != VERIFY_TRUE) {
-                merror("Unable to verify client certificate.");
-                SSL_free(ssl);
-                close(client->socket);
-                if (client->is_ipv6) {
-                    os_free(client->addr6);
-                } else {
-                    os_free(client->addr4);
-                }
-                os_free(client);
-                continue;
-            }
-        }
-
-        os_calloc(OS_SIZE_65536 + OS_SIZE_4096 + 1, sizeof(char), buf);
-        buf[0] = '\0';
-        ret = wrap_SSL_read(ssl, buf, OS_SIZE_65536 + OS_SIZE_4096);
-        if (ret <= 0) {
-            switch (ssl_error(ssl, ret)) {
-            case 0:
-                minfo("Client timeout from %s", ip);
-                break;
-            default:
-                merror("SSL Error (%d)", ret);
-            }
-            SSL_free(ssl);
-            close(client->socket);
-            if (client->is_ipv6) {
-                os_free(client->addr6);
-            } else {
-                os_free(client->addr4);
-            }
-            os_free(client);
-            os_free(buf);
-            continue;
-        }
-        buf[ret] = '\0';
-
-        mdebug2("Request received: <%s>", buf);
-        bool enrollment_ok = FALSE;
-        char *agentname = NULL;
-        char *centralized_group = NULL;
-        char* key_hash = NULL;
-        char* new_id = NULL;
-        char* new_key = NULL;
-
-        if (OS_SUCCESS == w_auth_parse_data(buf, response, authpass, ip, &agentname, &centralized_group, &key_hash)) {
-            if (config.worker_node) {
-                minfo("Dispatching request to master node");
-                // The force registration settings are ignored for workers. The master decides.
-                if (0 == w_request_agent_add_clustered(response, agentname, ip, centralized_group, key_hash, &new_id, &new_key, NULL, NULL)) {
-                    enrollment_ok = TRUE;
-                }
-            }
-            else {
-                w_mutex_lock(&mutex_keys);
-                if (OS_SUCCESS == w_auth_validate_data(response, ip, agentname, centralized_group, key_hash)) {
-                    if (OS_SUCCESS == w_auth_add_agent(response, ip, agentname, &new_id, &new_key)) {
-                        enrollment_ok = TRUE;
-                    }
-                }
-                w_mutex_unlock(&mutex_keys);
-            }
-        }
-
-        if (enrollment_ok)
-        {
-            snprintf(response, 2048, "OSSEC K:'%s %s %s %s'", new_id, agentname, ip, new_key);
-            minfo("Agent key generated for '%s' (requested by %s)", agentname, ip);
-            ret = SSL_write(ssl, response, strlen(response));
-
-            if (config.worker_node) {
-                if (ret < 0) {
-                    merror("SSL write error (%d)", ret);
-
-                    ERR_print_errors_fp(stderr);
-                    if (0 != w_request_agent_remove_clustered(NULL, new_id, TRUE)) {
-                        merror("Agent key unable to be shared with %s and unable to delete from master node", agentname);
-                    }
-                    else {
-                        merror("Agent key not saved for %s", agentname);
-                    }
-                }
-            }
-            else {
-                if (ret < 0) {
-                    merror("SSL write error (%d)", ret);
-                    merror("Agent key not saved for %s", agentname);
-                    ERR_print_errors_fp(stderr);
-                    w_mutex_lock(&mutex_keys);
-                    OS_DeleteKey(&keys, keys.keyentries[keys.keysize - 1]->id, 1);
-                    w_mutex_unlock(&mutex_keys);
-                } else {
-                    /* Add pending key to write */
-                    w_mutex_lock(&mutex_keys);
-                    add_insert(keys.keyentries[keys.keysize - 1], centralized_group);
-                    write_pending = 1;
-                    w_cond_signal(&cond_pending);
-                    w_mutex_unlock(&mutex_keys);
-                }
+    if (OS_SUCCESS == w_auth_parse_data(client->read_buffer, response, authpass, client->ip, &agentname, &centralized_group, &key_hash)) {
+        if (config.worker_node) {
+            minfo("Dispatching request to master node");
+            // The force registration settings are ignored for workers. The master decides.
+            if (0 == w_request_agent_add_clustered(response, agentname, client->ip, centralized_group, key_hash, &new_id, &new_key, NULL, NULL)) {
+                enrollment_ok = TRUE;
             }
         }
         else {
-            SSL_write(ssl, response, strlen(response));
-            snprintf(response, 2048, "ERROR: Unable to add agent");
-            SSL_write(ssl, response, strlen(response));
+            w_mutex_lock(&mutex_keys);
+            if (OS_SUCCESS == w_auth_validate_data(response, client->ip, agentname, centralized_group, key_hash)) {
+                if (OS_SUCCESS == w_auth_add_agent(response, client->ip, agentname, &new_id, &new_key)) {
+                    enrollment_ok = TRUE;
+                }
+            }
+            w_mutex_unlock(&mutex_keys);
         }
-
-        SSL_free(ssl);
-        close(client->socket);
-        if (client->is_ipv6) {
-            os_free(client->addr6);
-        } else {
-            os_free(client->addr4);
-        }
-        os_free(client);
-        os_free(buf);
-        os_free(agentname);
-        os_free(centralized_group);
-        os_free(key_hash);
-        os_free(new_id);
-        os_free(new_key);
     }
 
-    mdebug1("Dispatch thread finished");
+    if (enrollment_ok)
+    {
+        snprintf(client->write_buffer, MAX_SSL_PACKET_SIZE, "OSSEC K:'%s %s %s %s'", new_id, agentname, client->ip, new_key);
+        client->write_len = strlen(client->write_buffer);
 
-    SSL_CTX_free(ctx);
-    return NULL;
+        minfo("Agent key generated for '%s' (requested by %s)", agentname, client->ip);
+
+        // TO-DO Handle this as post-processing
+        // if (config.worker_node) {
+        //     if (ret < 0) {
+        //         merror("SSL write error (%d)", ret);
+        //         ERR_print_errors_fp(stderr);
+        //         if (0 != w_request_agent_remove_clustered(NULL, new_id, TRUE)) {
+        //             merror("Agent key unable to be shared with %s and unable to delete from master node", agentname);
+        //         }
+        //         else {
+        //             merror("Agent key not saved for %s", agentname);
+        //         }
+        //     }
+        // }
+        // else {
+        //     if (ret < 0) {
+        //         merror("SSL write error (%d)", ret);
+        //         merror("Agent key not saved for %s", agentname);
+        //         ERR_print_errors_fp(stderr);
+        //         w_mutex_lock(&mutex_keys);
+        //         OS_DeleteKey(&keys, keys.keyentries[keys.keysize - 1]->id, 1);
+        //         w_mutex_unlock(&mutex_keys);
+        //     } else {
+                /* Add pending key to write */
+                w_mutex_lock(&mutex_keys);
+                add_insert(keys.keyentries[keys.keysize - 1], centralized_group);
+                write_pending = 1;
+                w_cond_signal(&cond_pending);
+                w_mutex_unlock(&mutex_keys);
+        //     }
+        // }
+    }
+    else {
+        merror("Unable to add agent %s (requested by %s) error: %s", agentname, client->ip, response);
+        snprintf(client->write_buffer, MAX_SSL_PACKET_SIZE, "ERROR: Unable to add agent");
+        client->write_offset = strlen(client->write_buffer);
+    }
+
+    os_free(agentname);
+    os_free(centralized_group);
+    os_free(key_hash);
+    os_free(new_id);
+    os_free(new_key);
+}
+
+static int handle_ssl_read(struct client *client) {
+    while (true) {
+        int ret = SSL_read(client->ssl,
+                           client->read_buffer + client->read_offset,
+                           MAX_SSL_PACKET_SIZE - client->read_offset);
+
+        if (ret > 0) {
+            client->read_offset += ret;
+            char *end = memchr(client->read_buffer, '\n', client->read_offset);
+            if (end) {
+                *end = '\0';
+                // Enable epoll for writing
+                struct epoll_event event;
+                event.events = EPOLLOUT;
+                event.data.u32 = client->index;
+                if (epoll_ctl(g_epfd, EPOLL_CTL_MOD, client->socket, &event) < 0) {
+                    merror("Couldn't modify event");
+                    return -1;
+                }
+                process_message(client);
+                break;
+            }
+
+        } else if (ret == 0) {
+            // The client closed the connection
+            mdebug2("Client closed connection ip: %s fd: %d", client->ip, client->socket);
+            return -1;
+        } else {
+            int err = SSL_get_error(client->ssl, ret);
+            if (err == SSL_ERROR_WANT_READ) {
+                mdebug2("SSL read in progress for socket=%d", client->socket);
+                return 0;
+            } else if (err == SSL_ERROR_WANT_WRITE) {
+                return 0;
+            } else {
+                merror("SSL read error (%d)", err);
+                return -1;
+            }
+        }
+
+        if (ret < (MAX_SSL_PACKET_SIZE - client->read_offset)) {
+            break;
+        }
+    }
+
+    return 0;
+}
+
+static int handle_ssl_handshake(struct client *client) {
+    int ret = SSL_accept(client->ssl);
+    if (ret == 1) {
+        client->handshake_done = true;
+        mdebug1("SSL handshake completed for socket=%d", client->socket);
+
+        /* Additional verification of the agent's certificate. */
+        if (config.flags.verify_host && config.agent_ca) {
+            if (check_x509_cert(client->ssl, client->ip) != VERIFY_TRUE) {
+                merror("Unable to verify client certificate.");
+                return -1;
+            }
+        }
+        return 1;
+    } else {
+        int err = SSL_get_error(client->ssl, ret);
+        if (err == SSL_ERROR_WANT_READ || err == SSL_ERROR_WANT_WRITE) {
+            mdebug2("SSL handshake in progress for socket=%d", client->socket);
+            return 0;
+        } else {
+            merror("SSL handshake failed for socket=%d: %s", client->socket, ERR_error_string(ERR_get_error(), NULL));
+            return -1;
+        }
+    }
+}
+
+static int handle_ssl_write(struct client *client) {
+    while (client->write_offset < client->write_len) {
+        int ret = SSL_write(client->ssl,
+                            client->write_buffer + client->write_offset,
+                            client->write_len - client->write_offset);
+
+        if (ret > 0) {
+            client->write_offset += ret;
+        } else {
+            int err = SSL_get_error(client->ssl, ret);
+            if (err == SSL_ERROR_WANT_WRITE || err == SSL_ERROR_WANT_READ) {
+                return 0;
+            } else {
+                return -1;
+            }
+        }
+    }
+
+    delete_client(client->index);
+    return 0;
 }
 
 /* Thread for remote server */
@@ -845,8 +885,6 @@ void* run_remote_server(__attribute__((unused)) void *arg) {
     int client_sock = 0;
     struct sockaddr_storage _nc;
     socklen_t _ncl;
-    fd_set fdset;
-    struct timeval timeout;
 
     authd_sigblock();
 
@@ -862,68 +900,144 @@ void* run_remote_server(__attribute__((unused)) void *arg) {
         memset(&_nc, 0, sizeof(_nc));
         _ncl = sizeof(_nc);
 
-        // Wait for socket
-        FD_ZERO(&fdset);
-        FD_SET(remote_sock, &fdset);
-        timeout.tv_sec = 1;
-        timeout.tv_usec = 0;
+        struct epoll_event events[MAX_EVENTS];
+        int event_number = epoll_wait(g_epfd, events, MAX_EVENTS, -1);
+        for (int i = 0; i < event_number; ++i)
+        {
+            uint32_t index = events[i].data.u32;
+            if (index == SERVER_INDEX)
+            {
+                if ((client_sock = accept(remote_sock, (struct sockaddr *) &_nc, &_ncl)) > 0) {
+                    struct client *new_client;
+                    os_malloc(sizeof(struct client), new_client);
+                    new_client->socket = client_sock;
 
-        switch (select(remote_sock + 1, &fdset, NULL, NULL, &timeout)) {
-        case -1:
-            if (errno != EINTR) {
-                merror_exit("at main(): select(): %s", strerror(errno));
-            }
-            continue;
-        case 0:
-            continue;
-        }
+                    memset(new_client->read_buffer, '\0', MAX_SSL_PACKET_SIZE);
+                    new_client->read_offset = 0;
+                    new_client->handshake_done = false;
 
-        if ((client_sock = accept(remote_sock, (struct sockaddr *) &_nc, &_ncl)) > 0) {
-            if (config.timeout_sec || config.timeout_usec) {
-                if (OS_SetRecvTimeout(client_sock, config.timeout_sec, config.timeout_usec) < 0) {
-                    static int reported = 0;
+                    memset(new_client->ip, '\0', IPSIZE + 1);
 
-                    if (!reported) {
-                        int error = errno;
-                        merror("Could not set timeout to network socket: %s (%d)", strerror(error), error);
-                        reported = 1;
+                    memset(new_client->write_buffer, '\0', MAX_SSL_PACKET_SIZE);
+                    new_client->write_offset = 0;
+                    new_client->write_len = 0;
+
+                    set_non_blocking(new_client->socket);
+
+                    int client_index = -1;
+                    for (int j = 1; j < AUTH_POOL; j++) {
+                        if (g_client_pool[j] == NULL) {
+                            g_client_pool[j] = new_client;
+                            client_index = j;
+                            break;
+                        }
+                    }
+
+                    if (client_index == -1) {
+                        merror("Too many connections. Rejecting.");
+                        os_free(new_client);
+                        close(client_sock);
+                        continue;
+                    }
+
+                    new_client->index = client_index;
+
+                    switch (_nc.ss_family) {
+                    case AF_INET:
+                        new_client->is_ipv6 = FALSE;
+                        os_calloc(1, sizeof(struct in_addr), new_client->addr4);
+                        memcpy(new_client->addr4, &((struct sockaddr_in *)&_nc)->sin_addr, sizeof(struct in_addr));
+                        get_ipv4_string(*new_client->addr4, new_client->ip, IPSIZE);
+                        break;
+                    case AF_INET6:
+                        new_client->is_ipv6 = TRUE;
+                        os_calloc(1, sizeof(struct in6_addr), new_client->addr6);
+                        memcpy(new_client->addr6, &((struct sockaddr_in6 *)&_nc)->sin6_addr, sizeof(struct in6_addr));
+                        get_ipv6_string(*new_client->addr6, new_client->ip, IPSIZE);
+                        break;
+                    default:
+                        merror("IP address family not supported. Rejecting.");
+                        os_free(new_client);
+                        close(client_sock);
+                        continue;
+                    }
+
+                    minfo("New connection from %s", new_client->ip);
+
+                    new_client->ssl = SSL_new(ctx);
+                    if (!new_client->ssl) {
+                        merror("SSL error. Exiting.");
+                        delete_client(client_index);
+                        continue;
+                    }
+
+                    SSL_set_fd(new_client->ssl, new_client->socket);
+                    new_client->handshake_done = false;
+
+                    struct epoll_event event = {};
+                    event.events = EPOLLIN | EPOLLET;
+                    event.data.u32 = client_index;
+
+                    if (epoll_ctl(g_epfd, EPOLL_CTL_ADD, client_sock, &event) < 0)
+                    {
+                        merror("Couldn't add event");
+                        delete_client(client_index);
+                        continue;
                     }
                 }
             }
-            struct client *new_client;
-            os_malloc(sizeof(struct client), new_client);
-            new_client->socket = client_sock;
-
-            switch (_nc.ss_family) {
-            case AF_INET:
-                new_client->is_ipv6 = FALSE;
-                os_calloc(1, sizeof(struct in_addr), new_client->addr4);
-                memcpy(new_client->addr4, &((struct sockaddr_in *)&_nc)->sin_addr, sizeof(struct in_addr));
+            else if (index == STOP_FD) {
+                mdebug1("Received stop signal");
+                running = 0;
                 break;
-            case AF_INET6:
-                new_client->is_ipv6 = TRUE;
-                os_calloc(1, sizeof(struct in6_addr), new_client->addr6);
-                memcpy(new_client->addr6, &((struct sockaddr_in6 *)&_nc)->sin6_addr, sizeof(struct in6_addr));
-                break;
-            default:
-                merror("IP address family not supported. Rejecting.");
-                os_free(new_client);
-                close(client_sock);
             }
+            else {
+                uint32_t index_client = events[i].data.u32;
+                if (g_client_pool[index_client] == NULL) {
+                    merror("Client not found");
+                    continue;
+                }
 
-            if (queue_push_ex(client_queue, new_client) == -1) {
-                merror("Too many connections. Rejecting.");
-                os_free(new_client);
-                close(client_sock);
+                if (events[i].events & EPOLLERR || events[i].events & EPOLLHUP) {
+                    delete_client(index_client);
+                    continue;
+                }
+
+                if (!g_client_pool[index_client]->handshake_done) {
+                    int ret = handle_ssl_handshake(g_client_pool[index_client]);
+                    if (ret < 0) {
+                        delete_client(index_client);
+                        continue;
+                    } else if (ret == 0) {
+                        // Handshake in progress
+                        continue;
+                    }
+                }
+
+                if (events[i].events & EPOLLIN) {
+                    int ret = handle_ssl_read(g_client_pool[index_client]);
+                    if (ret < 0) {
+                        delete_client(index_client);
+                    }
+                    continue;
+                }
+
+                if (events[i].events & EPOLLOUT) {
+                    int ret = handle_ssl_write(g_client_pool[index_client]);
+                    if (ret < 0) {
+                        delete_client(index_client);
+                    }
+                    continue;
+                }
             }
-        } else if ((errno == EBADF && running) || (errno != EBADF && errno != EINTR)) {
-            merror("at main(): accept(): %s", strerror(errno));
         }
     }
 
+    close(g_stopFD[0]);
+    close(g_stopFD[1]);
     mdebug1("Remote server thread finished");
-
     close(remote_sock);
+    SSL_CTX_free(ctx);
     return NULL;
 }
 
@@ -1097,6 +1211,8 @@ void handler(int signum) {
     case SIGHUP:
     case SIGINT:
     case SIGTERM:
+        char dummy = 'x';
+        write(g_stopFD[1], &dummy, sizeof(dummy));
         minfo(SIGNAL_RECV, signum, strsignal(signum));
         running = 0;
         break;
