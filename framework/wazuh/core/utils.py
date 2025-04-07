@@ -11,7 +11,7 @@ import sys
 import typing
 from copy import deepcopy
 from datetime import datetime, timezone
-from functools import wraps
+from functools import lru_cache, wraps
 from os import chmod, chown, curdir, mkdir, path, rename, utime
 from pathlib import Path
 from shutil import copy2, move
@@ -20,6 +20,7 @@ from signal import SIGALRM, SIGKILL, alarm, signal
 import psutil
 import yaml
 from cachetools import TTLCache, cached
+from server_management_api import __path__ as api_path
 from wazuh.core import common
 from wazuh.core.exception import WazuhError
 
@@ -1032,3 +1033,10 @@ def get_utc_strptime(date: str, datetime_format: str) -> datetime:
         The current date.
     """
     return datetime.strptime(date, datetime_format).replace(tzinfo=timezone.utc)
+
+
+@lru_cache(maxsize=None)
+def load_api_spec():
+    """Load API specification."""
+    with open(os.path.join(api_path[0], 'spec', 'spec.yaml'), 'r', encoding='utf-8') as stream:
+        return yaml.safe_load(stream)

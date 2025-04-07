@@ -886,9 +886,9 @@ def test_full_copy():
 
         for attribute in dir(original_stat):
             if attribute.startswith('st_') and attribute not in non_copyable_attributes:
-                assert getattr(original_stat, attribute) == getattr(
-                    copy_stat, attribute
-                ), f'Attribute {attribute} is not equal between original and copy files'
+                assert getattr(original_stat, attribute) == getattr(copy_stat, attribute), (
+                    f'Attribute {attribute} is not equal between original and copy files'
+                )
     finally:
         os.path.exists(test_file) and os.remove(test_file)
         os.path.exists(copied_test_file) and os.remove(copied_test_file)
@@ -917,3 +917,14 @@ def test_get_utc_now():
     date = utils.get_utc_strptime(mock_date, default_format)
     assert isinstance(date, datetime.datetime)
     assert date == datetime.datetime(1970, 1, 1, 0, 1, tzinfo=datetime.timezone.utc)
+
+
+@patch('yaml.safe_load')
+def test_load_api_spec(mock_safe_load):
+    """Validate that the function `load_api_spec` works properly."""
+    # To execute the function first it's necessary to clear the cache.
+    utils.load_api_spec.cache_clear()
+    utils.load_api_spec()
+    mock_safe_load.assert_called()
+    # Clearing the cache again since this call used mocked resources.
+    utils.load_api_spec.cache_clear()
