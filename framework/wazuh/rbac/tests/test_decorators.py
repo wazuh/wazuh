@@ -11,7 +11,7 @@ from unittest.mock import patch
 import pytest
 import wazuh.rbac.decorators as decorator
 from wazuh.core.exception import WazuhError
-from wazuh.core.indexer.models.rbac import Rule
+from wazuh.core.indexer.models.rbac import Effect, Policy, Rule
 from wazuh.core.rbac import RBACManager
 from wazuh.core.results import AffectedItemsWazuhResult
 
@@ -155,3 +155,24 @@ async def test__expand_resource():
 
     result = await decorator._expand_resource('rule:id:*')
     assert {rule.name for rule in rbac_manager.get_rules()} == result
+
+
+def test_get_rbac_manager():
+    """Validate that the `get_rbac_manager` function works as expected."""
+    policy_name = 'test'
+    rbac_manager = RBACManager()
+    rbac_manager._policies = {
+        policy_name: Policy(
+            name=policy_name,
+            actions=['group:create'],
+            resources=['*:*:*'],
+            effect=Effect.ALLOW,
+            level=0,
+        ),
+    }
+    decorator.rbac_manager.set(rbac_manager)
+
+    with decorator.get_rbac_manager() as rbac_manager:
+        policy = rbac_manager.get_policy(policy_name)
+
+    assert policy == rbac_manager._policies[policy_name]

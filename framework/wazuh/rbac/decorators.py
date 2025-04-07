@@ -5,7 +5,9 @@
 import asyncio
 import re
 from collections import defaultdict
+from contextlib import contextmanager
 from functools import wraps
+from typing import Iterator
 
 from wazuh.core.agent import expand_group, get_agents_info, get_groups
 from wazuh.core.common import broadcast, cluster_nodes, rbac, rbac_manager
@@ -512,3 +514,14 @@ def expose_resources(  # noqa: C901
         return wrapper
 
     return decorator
+
+
+@contextmanager
+def get_rbac_manager() -> Iterator[RBACManager]:
+    """Get RBAC manager from the context and iterate over it."""
+    manager: RBACManager = rbac_manager.get()
+
+    try:
+        yield manager
+    finally:
+        pass
