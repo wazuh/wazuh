@@ -208,7 +208,7 @@ async def test_run_as_login_ko(mock_token, mock_exc, mock_dapi, mock_remove, moc
 async def test_get_user_me(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request):
     """Verify 'get_user_me' endpoint is working as expected."""
     result = await get_user_me()
-    f_kwargs = {'token': mock_request.context['token_info']}
+    f_kwargs = {}
     mock_dapi.assert_called_once_with(
         f=security.get_user_me,
         f_kwargs=mock_remove.return_value,
@@ -218,6 +218,7 @@ async def test_get_user_me(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_re
         wait_for_complete=False,
         current_user=mock_request.context['token_info']['sub'],
         rbac_permissions=mock_request.context['token_info']['rbac_policies'],
+        rbac_manager=mock_request.state.rbac_manager,
     )
     mock_exc.assert_called_once_with(mock_dfunc.return_value)
     mock_remove.assert_called_once_with(f_kwargs)

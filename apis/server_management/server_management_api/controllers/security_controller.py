@@ -142,7 +142,7 @@ async def get_user_me(pretty: bool = False, wait_for_complete: bool = False) -> 
     ConnexionResponse
         API response with the user information.
     """
-    f_kwargs = {'token': request.context['token_info']}
+    f_kwargs = {}
     dapi = DistributedAPI(
         f=security.get_user_me,
         f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -152,6 +152,7 @@ async def get_user_me(pretty: bool = False, wait_for_complete: bool = False) -> 
         wait_for_complete=wait_for_complete,
         current_user=request.context['token_info']['sub'],
         rbac_permissions=request.context['token_info']['rbac_policies'],
+        rbac_manager=request.state.rbac_manager,
     )
     data = raise_if_exc(await dapi.distribute_function())
 

@@ -23,21 +23,14 @@ from wazuh.core.security import (
     sanitize_rbac_policy,
 )
 from wazuh.core.utils import process_array
-from wazuh.rbac.decorators import expose_resources
-
-# TODO(#28425): Update security endpoints
+from wazuh.rbac.decorators import expose_resources, get_rbac_manager
 
 # Minimum eight characters, at least one uppercase letter, one lowercase letter, one number and one special character:
 _user_password = re.compile(r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$')
 
 
-def get_user_me(token: dict) -> AffectedItemsWazuhResult:
-    """Get the information of the current user.
-
-    Parameters
-    ----------
-    token : dict
-        Current token information.
+def get_user_me() -> AffectedItemsWazuhResult:
+    """Get the current user information.
 
     Returns
     -------
@@ -45,29 +38,11 @@ def get_user_me(token: dict) -> AffectedItemsWazuhResult:
         User information.
     """
     result = AffectedItemsWazuhResult(all_msg='Current user information was returned')
-    affected_items = list()
-    with AuthenticationManager() as auth:
-        user_info = auth.get_user(token['sub'])
-        user_info['roles'] = list()
-    roles = token['rbac_roles']
-    for role in roles:
-        with RolesManager() as rm:
-            role = rm.get_role_id(role_id=role)
-            role.pop('users')
-            for index_r, rule_id in enumerate(role['rules']):
-                with RulesManager() as rum:
-                    role['rules'][index_r] = rum.get_rule(rule_id=int(rule_id))
-                    role['rules'][index_r].pop('roles')
-            for index_p, policy_id in enumerate(role['policies']):
-                with PoliciesManager() as pm:
-                    role['policies'][index_p] = pm.get_policy_id(policy_id=int(policy_id))
-                    role['policies'][index_p].pop('roles')
-            user_info['roles'].append(role)
 
-    affected_items.append(user_info) if user_info else result.add_failed_item(
-        id_=common.current_user.get(), error=WazuhError(5001)
-    )
-    data = process_array(affected_items)
+    with get_rbac_manager() as rbac_manager:
+        user = rbac_manager.get_user_by_name(common.current_user.get())
+
+    data = process_array([user])
     result.affected_items = data['items']
     result.total_affected_items = data['totalItems']
 
@@ -128,6 +103,7 @@ async def get_users(
         all_msg='All specified users were returned',
     )
     affected_items = list()
+
     with AuthenticationManager() as auth:
         for user_id in user_ids:
             user_id = int(user_id)
