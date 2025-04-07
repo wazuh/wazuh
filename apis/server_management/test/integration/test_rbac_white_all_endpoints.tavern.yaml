@@ -476,20 +476,6 @@ stages:
       <<: *permission_denied
 
 ---
-test_name: PUT /security/user/revoke
-
-stages:
-  - name: Try to revoke all JWT tokens
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/security/user/revoke"
-      method: PUT
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      <<: *permission_denied
-
----
 test_name: GET /security/users
 
 stages:

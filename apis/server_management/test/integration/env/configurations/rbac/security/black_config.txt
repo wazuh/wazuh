@@ -27,7 +27,6 @@
 | security:delete       | policy:id | *     |                 |
 | security:create       | *         |       | *               |
 | security:create_user  | *         | *     |                 |
-| security:revoke       | *         | *     |                 |
 | security:read_config  | *         |       | *               |
 | security:update_config| *         |       | *               |
 | security:edit_run_as  | *         |       | *               |

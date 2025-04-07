@@ -50,19 +50,6 @@ def invalid_run_as_tokens():
     #     tm.add_user_roles_rules(run_as=True)
 
 
-def invalid_users_tokens(users: list = None):
-    """Add the necessary rules to invalidate all affected user's tokens.
-
-    Parameters
-    ----------
-    users : list
-        List of modified users
-    """
-    # TODO(#28425): Update
-    # with TokenManager() as tm:
-    #     tm.add_user_roles_rules(users=set(users))
-
-
 def invalid_roles_tokens(roles: list = None):
     """Add the necessary rules to invalidate all affected role's tokens.
 
@@ -74,21 +61,6 @@ def invalid_roles_tokens(roles: list = None):
     # TODO(#28425): Update
     # with TokenManager() as tm:
     #     tm.add_user_roles_rules(roles=set(roles))
-
-
-def revoke_tokens() -> dict:
-    """Revoke all tokens in current node.
-
-    Returns
-    -------
-    dict
-        Confirmation message.
-    """
-    # TODO(#28425): Update
-    # with TokenManager() as tm:
-    #     tm.delete_all_rules()
-
-    return {'result': 'True'}
 
 
 def sanitize_rbac_policy(policy):

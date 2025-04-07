@@ -17,9 +17,7 @@ from wazuh.core.security import (
     SORT_FIELDS_GET_USERS,
     invalid_roles_tokens,
     invalid_run_as_tokens,
-    invalid_users_tokens,
     load_spec,
-    revoke_tokens,
     sanitize_rbac_policy,
 )
 from wazuh.core.utils import process_array
@@ -163,7 +161,6 @@ async def edit_run_as(user_id: str = None, allow_run_as: bool = False) -> Affect
         else:
             result.affected_items.append(auth.get_user_id(user_id))
             result.total_affected_items += 1
-            invalid_users_tokens(users=[user_id])
 
     return result
 
@@ -254,7 +251,6 @@ async def update_user(user_id: str = None, password: str = None, current_user: s
         else:
             result.affected_items.append(auth.get_user_id(int(user_id[0])))
             result.total_affected_items += 1
-            invalid_users_tokens(users=user_id)
 
     return result
 
@@ -298,7 +294,6 @@ async def remove_users(user_ids: list) -> AffectedItemsWazuhResult:
             elif query == SecurityError.RELATIONSHIP_ERROR:
                 result.add_failed_item(id_=user_id, error=WazuhError(4025))
             elif user:
-                invalid_users_tokens(users=[user_id])
                 result.affected_items.append(user)
                 result.total_affected_items += 1
 
@@ -987,7 +982,6 @@ async def set_user_role(user_id: list, role_ids: list, position: int = None) -> 
             with AuthenticationManager() as auth:
                 result.affected_items.append(auth.get_user_id(int(user_id[0])))
             result.affected_items.sort(key=str)
-            invalid_users_tokens(users=user_id)
 
     return result
 
@@ -1044,7 +1038,6 @@ async def remove_user_role(user_id: str, role_ids: list) -> AffectedItemsWazuhRe
             with AuthenticationManager() as auth:
                 result.affected_items.append(auth.get_user_id(int(user_id[0])))
             result.affected_items.sort(key=str)
-            invalid_users_tokens(users=user_id)
 
     return result
 
@@ -1296,40 +1289,6 @@ async def remove_role_policy(role_id: str, policy_ids: list) -> AffectedItemsWaz
             result.affected_items.sort(key=str)
 
     return result
-
-
-def revoke_current_user_tokens() -> WazuhResult:
-    """Revoke all current user's tokens.
-
-    Returns
-    -------
-    WazuhResult
-         Result of operation.
-    """
-    with AuthenticationManager() as am:
-        invalid_users_tokens(users=[am.get_user(common.current_user.get())['id']])
-
-    return WazuhResult({'message': f'User {common.current_user.get()} was successfully logged out'})
-
-
-@expose_resources(
-    actions=['security:revoke'],
-    resources=['*:*:*'],
-    post_proc_kwargs={
-        'default_result_kwargs': {'none_msg': 'Permission denied in all manager nodes: Resource type: *:*'}
-    },
-)
-async def wrapper_revoke_tokens() -> WazuhResult:
-    """Revoke all tokens.
-
-    Returns
-    -------
-    WazuhResult
-         Result of operation.
-    """
-    revoke_tokens()
-
-    return WazuhResult({'message': 'Tokens were successfully revoked'})
 
 
 @lru_cache(maxsize=None)

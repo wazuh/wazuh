@@ -21,8 +21,7 @@ with patch('wazuh.common.wazuh_uid'):
 
             import wazuh.rbac.decorators
             from wazuh import security
-            from wazuh.core.exception import WazuhException, WazuhPermissionError
-            from wazuh.core.results import AffectedItemsWazuhResult
+            from wazuh.core.exception import WazuhException
             from wazuh.rbac import preprocessor
             from wazuh.tests.util import RBAC_bypasser
 
@@ -44,7 +43,6 @@ with patch('wazuh.common.wazuh_uid'):
                 get_user_me_policies,
                 get_users,
                 login_user,
-                logout_user,
                 put_security_config,
                 remove_policies,
                 remove_role_policy,
@@ -52,9 +50,7 @@ with patch('wazuh.common.wazuh_uid'):
                 remove_roles,
                 remove_rules,
                 remove_user_role,
-                revoke_all_tokens,
                 run_as_login,
-                security_revoke_tokens,
                 set_role_policy,
                 set_role_rule,
                 set_user_role,
@@ -238,27 +234,6 @@ async def test_get_user_me_policies(mock_request):
                 'message': 'Current user processed policies information was returned',
             }
         )
-    assert isinstance(result, ConnexionResponse)
-
-
-@pytest.mark.asyncio
-@patch(
-    'server_management_api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock()
-)
-@patch('server_management_api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
-@patch('server_management_api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
-async def test_logout_user(mock_exc, mock_dapi, mock_dfunc, mock_request):
-    """Verify 'logout_user' endpoint is working as expected."""
-    result = await logout_user()
-    mock_dapi.assert_called_once_with(
-        f=security.revoke_current_user_tokens,
-        request_type='local_master',
-        is_async=False,
-        logger=ANY,
-        wait_for_complete=False,
-        current_user=mock_request.context['token_info']['sub'],
-    )
-    mock_exc.assert_called_once_with(mock_dfunc.return_value)
     assert isinstance(result, ConnexionResponse)
 
 
@@ -991,72 +966,6 @@ async def test_get_rbac_actions(mock_exc, mock_dapi, mock_remove, mock_dfunc):
 @patch('server_management_api.controllers.security_controller.remove_nones_to_dict')
 @patch('server_management_api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
 @patch('server_management_api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
-@patch('server_management_api.controllers.security_controller.isinstance')
-@pytest.mark.parametrize('mock_snodes', [None, AsyncMock()])
-async def test_revoke_all_tokens(mock_isins, mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_snodes, mock_request):
-    """Verify 'revoke_all_tokens' endpoint is working as expected."""
-    mock_isins.return_value = True if not mock_snodes else False
-    with patch('server_management_api.controllers.security_controller.get_system_nodes', return_value=mock_snodes):
-        result = await revoke_all_tokens()
-        if not mock_snodes:
-            mock_isins.assert_called_once()
-        mock_dapi.assert_called_once_with(
-            f=security.wrapper_revoke_tokens,
-            f_kwargs=mock_remove.return_value,
-            request_type='distributed_master' if mock_snodes is not None else 'local_any',
-            is_async=True,
-            broadcasting=mock_snodes is not None,
-            logger=ANY,
-            wait_for_complete=True,
-            rbac_permissions=mock_request.context['token_info']['rbac_policies'],
-            nodes=mock_snodes,
-        )
-        mock_exc.assert_called_once_with(mock_dfunc.return_value)
-        mock_remove.assert_called_once_with({})
-        assert isinstance(result, ConnexionResponse)
-
-
-@pytest.mark.asyncio
-@patch(
-    'server_management_api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock()
-)
-@patch('server_management_api.controllers.security_controller.remove_nones_to_dict')
-@patch('server_management_api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
-@patch('server_management_api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
-@patch('server_management_api.controllers.security_controller.type', return_value=AffectedItemsWazuhResult)
-@patch('server_management_api.controllers.security_controller.len', return_value=0)
-async def test_revoke_all_tokens_ko(mock_type, mock_len, mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request):
-    """Verify 'revoke_all_tokens' endpoint is handling WazuhPermissionError as expected."""
-    with patch(
-        'server_management_api.controllers.security_controller.get_system_nodes', return_value=AsyncMock()
-    ) as mock_snodes:
-        result = await revoke_all_tokens()
-        mock_dapi.assert_called_once_with(
-            f=security.wrapper_revoke_tokens,
-            f_kwargs=mock_remove.return_value,
-            request_type='distributed_master',
-            is_async=True,
-            broadcasting=True,
-            logger=ANY,
-            wait_for_complete=True,
-            rbac_permissions=mock_request.context['token_info']['rbac_policies'],
-            nodes=mock_snodes.return_value,
-        )
-        mock_exc.assert_has_calls(
-            [call(mock_dfunc.return_value), call(WazuhPermissionError(4000, mock_exc.return_value.message))]
-        )
-        assert mock_exc.call_count == 2
-        mock_remove.assert_called_once_with({})
-        assert isinstance(result, ConnexionResponse)
-
-
-@pytest.mark.asyncio
-@patch(
-    'server_management_api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock()
-)
-@patch('server_management_api.controllers.security_controller.remove_nones_to_dict')
-@patch('server_management_api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
-@patch('server_management_api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_get_security_config(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request):
     """Verify 'get_security_config' endpoint is working as expected."""
     result = await get_security_config()
@@ -1078,31 +987,6 @@ async def test_get_security_config(mock_exc, mock_dapi, mock_remove, mock_dfunc,
 @patch(
     'server_management_api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock()
 )
-@patch('server_management_api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
-@patch('server_management_api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
-@patch('server_management_api.controllers.security_controller.isinstance')
-@pytest.mark.parametrize('mock_snodes', [None, AsyncMock()])
-async def test_security_revoke_tokens(mock_isins, mock_exc, mock_dapi, mock_dfunc, mock_snodes):
-    """Verify 'security_revoke_tokens' endpoint is working as expected."""
-    mock_isins.return_value = True if not mock_snodes else False
-    with patch('server_management_api.controllers.security_controller.get_system_nodes', return_value=mock_snodes):
-        await security_revoke_tokens()
-        mock_dapi.assert_called_once_with(
-            f=security.revoke_tokens,
-            request_type='distributed_master' if mock_snodes is not None else 'local_any',
-            is_async=True,
-            wait_for_complete=True,
-            broadcasting=mock_snodes is not None,
-            logger=ANY,
-            nodes=mock_snodes,
-        )
-        mock_exc.assert_called_once_with(mock_dfunc.return_value)
-
-
-@pytest.mark.asyncio
-@patch(
-    'server_management_api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock()
-)
 @patch('server_management_api.controllers.security_controller.remove_nones_to_dict')
 @patch('server_management_api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
 @patch('server_management_api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
@@ -1113,23 +997,20 @@ async def test_put_security_config(mock_exc, mock_dapi, mock_remove, mock_dfunc,
             'server_management_api.controllers.security_controller.SecurityConfigurationModel.get_kwargs',
             return_value=AsyncMock(),
         ) as mock_getkwargs:
-            with patch(
-                'server_management_api.controllers.security_controller.security_revoke_tokens', return_value=AsyncMock()
-            ):
-                result = await put_security_config()
-                f_kwargs = {'updated_config': mock_getkwargs.return_value}
-                mock_dapi.assert_called_once_with(
-                    f=security.update_security_config,
-                    f_kwargs=mock_remove.return_value,
-                    request_type='local_master',
-                    is_async=True,
-                    logger=ANY,
-                    wait_for_complete=False,
-                    rbac_permissions=mock_request.context['token_info']['rbac_policies'],
-                )
-                mock_exc.assert_called_once_with(mock_dfunc.return_value)
-                mock_remove.assert_called_once_with(f_kwargs)
-                assert isinstance(result, ConnexionResponse)
+            result = await put_security_config()
+            f_kwargs = {'updated_config': mock_getkwargs.return_value}
+            mock_dapi.assert_called_once_with(
+                f=security.update_security_config,
+                f_kwargs=mock_remove.return_value,
+                request_type='local_master',
+                is_async=True,
+                logger=ANY,
+                wait_for_complete=False,
+                rbac_permissions=mock_request.context['token_info']['rbac_policies'],
+            )
+            mock_exc.assert_called_once_with(mock_dfunc.return_value)
+            mock_remove.assert_called_once_with(f_kwargs)
+            assert isinstance(result, ConnexionResponse)
 
 
 @pytest.mark.asyncio
@@ -1145,20 +1026,17 @@ async def test_delete_security_config(mock_exc, mock_dapi, mock_remove, mock_dfu
         'server_management_api.controllers.security_controller.SecurityConfigurationModel.get_kwargs',
         return_value=AsyncMock(),
     ) as mock_getkwargs:
-        with patch(
-            'server_management_api.controllers.security_controller.security_revoke_tokens', return_value=AsyncMock()
-        ):
-            result = await delete_security_config()
-            f_kwargs = {'updated_config': mock_getkwargs.return_value}
-            mock_dapi.assert_called_once_with(
-                f=security.update_security_config,
-                f_kwargs=mock_remove.return_value,
-                request_type='local_master',
-                is_async=True,
-                logger=ANY,
-                wait_for_complete=False,
-                rbac_permissions=mock_request.context['token_info']['rbac_policies'],
-            )
-            mock_exc.assert_called_once_with(mock_dfunc.return_value)
-            mock_remove.assert_called_once_with(f_kwargs)
-            assert isinstance(result, ConnexionResponse)
+        result = await delete_security_config()
+        f_kwargs = {'updated_config': mock_getkwargs.return_value}
+        mock_dapi.assert_called_once_with(
+            f=security.update_security_config,
+            f_kwargs=mock_remove.return_value,
+            request_type='local_master',
+            is_async=True,
+            logger=ANY,
+            wait_for_complete=False,
+            rbac_permissions=mock_request.context['token_info']['rbac_policies'],
+        )
+        mock_exc.assert_called_once_with(mock_dfunc.return_value)
+        mock_remove.assert_called_once_with(f_kwargs)
+        assert isinstance(result, ConnexionResponse)

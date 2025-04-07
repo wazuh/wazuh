@@ -14,8 +14,7 @@ info:
     and obtain a JWT token to run any endpoint.
 
     JWT tokens have a default duration of 900 seconds. To change this value, you must perform a call with a valid
-    JWT token to `PUT /security/config`. After this change, you will need to get a new JWT token as all previously
-    issued tokens are revoked when any change is performed on security configuration.
+    JWT token to `PUT /security/config`.
 
     Login with USER and PASSWORD:
 
@@ -2941,34 +2940,6 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
-        '405':
-          $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '429':
-          $ref: '#/components/responses/TooManyRequestsResponse'
-
-  /security/user/revoke:
-    put:
-      tags:
-        - Security
-      summary: "Revoke JWT tokens"
-      description: "This method should be called to revoke all active JWT tokens"
-      operationId: server_management_api.controllers.security_controller.revoke_all_tokens
-      responses:
-        '200':
-          description: "Tokens were successfully revoked"
-          content:
-            application/json:
-              schema:
-                type: object
-              example:
-                message: "Tokens were successfully revoked"
-                error: 0
-        '400':
-          $ref: '#/components/responses/ResponseError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedResponse'
-        '403':
-          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':

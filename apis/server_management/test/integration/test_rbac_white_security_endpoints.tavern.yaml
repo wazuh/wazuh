@@ -1041,20 +1041,3 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-
----
-test_name: REVOKE TOKENS RBAC
-
-stages:
-
-  - name: Revoke all tokens (Denied)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/security/user/revoke"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      method: PUT
-    response:
-      status_code: 403
-      json:
-        error: 4000

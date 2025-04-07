@@ -1225,28 +1225,3 @@ stages:
           total_affected_items: 5
           total_failed_items: 0
     delay_after: 20
-
----
-test_name: REVOKE TOKENS RBAC
-
-stages:
-
-  - name: Revoke all tokens (Allowed)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/security/user/revoke"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      method: PUT
-    response:
-      status_code: 200
-
-  - name: Revoke all tokens (Invalid token after previous call)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/security/user/revoke"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      method: PUT
-    response:
-      status_code: 401
