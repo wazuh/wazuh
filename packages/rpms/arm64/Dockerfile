@@ -1,27 +1,20 @@
-FROM arm64v8/centos:7
+FROM registry.access.redhat.com/ubi8/ubi:8.10
 
-RUN sed -i 's/mirrorlist/#mirrorlist/g' /etc/yum.repos.d/CentOS-*
-RUN sed -i 's|#baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g' /etc/yum.repos.d/CentOS-*
-
-ADD https://public-yum.oracle.com/RPM-GPG-KEY-oracle-ol7 /RPM-GPG-KEY-oracle-ol7
-RUN rpm --import RPM-GPG-KEY-oracle-ol7 && \
-    rpm -i https://yum.oracle.com/repo/OracleLinux/OL7/latest/aarch64/getPackage/oraclelinux-release-el7-1.0-18.el7.aarch64.rpm && \
-    rpm -i https://yum.oracle.com/repo/OracleLinux/OL7/latest/aarch64/getPackage/oracle-softwarecollection-release-el7-1.0-5.el7.aarch64.rpm
+ADD https://public-yum.oracle.com/RPM-GPG-KEY-oracle-ol8 /RPM-GPG-KEY-oracle-ol8
+RUN rpm --import RPM-GPG-KEY-oracle-ol8 && \
+    rpm -i https://public-yum.oracle.com/repo/OracleLinux/OL8/baseos/latest/aarch64/getPackage/oraclelinux-release-el8-1.0-38.el8.aarch64.rpm && \
+    rpm -i https://public-yum.oracle.com/repo/OracleLinux/OL8/baseos/latest/aarch64/getPackage/oraclelinux-developer-release-el8-1.0-7.el8.aarch64.rpm
 
 RUN yum install -y \
-    gcc gcc-c++ \
-    devtoolset-10 \
+    gcc-toolset-11 \
     kernel-devel \
     perl-IPC-Cmd \
     perl-Data-Dumper \
     autoconf \
     perl \
     bzip2 \
-    make \
     nss-devel \
-    file-devel \
     popt-devel \
-    libarchive-devel \
     automake \
     libtool \
     wget \
@@ -31,19 +24,12 @@ RUN yum install -y \
     xz \
     elfutils \
     scl-utils \
-    zlib-devel
+    zlib-devel \
+    epel-release
 
-RUN yum install epel-release lzip -y
+RUN yum install zlib -y
 
-RUN scl enable devtoolset-10 bash
-
-ADD https://ftp.gnu.org/gnu/gcc/gcc-11.4.0/gcc-11.4.0.tar.gz /tmp/gcc-11.4.0.tar.gz
-WORKDIR /tmp
-RUN tar -xzf gcc-11.4.0.tar.gz
-WORKDIR /tmp/gcc-11.4.0
-RUN ./contrib/download_prerequisites && ./configure --enable-languages=c,c++ --prefix=/usr --disable-multilib --disable-libsanitizer && make -j$(nproc) && make install
-WORKDIR /
-RUN rm -rf /tmp/gcc-11.4.0
+RUN scl enable gcc-toolset-11 bash
 
 ADD https://github.com/git/git/archive/refs/tags/v2.18.0.tar.gz /tmp/git-2.18.0.tar.gz
 WORKDIR /tmp
@@ -88,7 +74,7 @@ RUN git clone "https://github.com/microsoft/vcpkg.git" "$VCPKG_ROOT" \
 COPY vcpkg.json /build_deps_vcpkg/vcpkg.json
 COPY vcpkg-configuration.json /build_deps_vcpkg/vcpkg-configuration.json
 ENV PATH=$PATH:$VCPKG_ROOT
-RUN echo $(gcc --version) && cd /build_deps_vcpkg && vcpkg install --triplet arm64-linux --feature-flags=manifests
+RUN scl enable gcc-toolset-11 "cd /build_deps_vcpkg && vcpkg install --triplet arm64-linux --feature-flags=manifests"
 
 # Add the scripts to build the RPM package
 ADD build.sh /usr/local/bin/build_package
