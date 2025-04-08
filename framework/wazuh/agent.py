@@ -346,7 +346,10 @@ def get_agents(agent_list: list = None, offset: int = 0, limit: int = common.DAT
 
         with WazuhDBQueryAgents(offset=offset, limit=limit, sort=sort, search=search, select=select,
                                 query=q, **rbac_filters, distinct=distinct) as db_query:
-            data = db_query.run()
+            obtained_agents = db_query.run()
+
+        data = process_array(obtained_agents['items'], sort_by=sort['fields'],
+                             sort_ascending=True if sort['order'] == 'asc' else False)
 
         result.affected_items.extend(data['items'])
         result.total_affected_items = data['totalItems']

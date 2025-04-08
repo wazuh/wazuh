@@ -70,7 +70,8 @@ stages:
       verify_response_with:
         - function: tavern_utils:test_sort_response
           extra_kwargs:
-            key: "version"
+            key: "version,id"
+            reverse: false
       status_code: 200
 
   - name: Get all agents sorted by version inverse order
@@ -78,12 +79,12 @@ stages:
       verify: False
       <<: *get_agents
       params:
-        sort: -version
+        sort: -version,id
     response:
       verify_response_with:
         - function: tavern_utils:test_sort_response
           extra_kwargs:
-            key: "version"
+            key: "version,id"
             reverse: true
       status_code: 200
 

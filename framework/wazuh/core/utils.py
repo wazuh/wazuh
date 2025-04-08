@@ -290,6 +290,39 @@ def sort_array(array: list, sort_by: list = None, sort_ascending: bool = True,
                                                      'Wrong fields: {1}'.format(', '.join(allowed_sort_fields),
                                                                                 incorrect_fields))
 
+    def check_if_wazuh_version(version_str: str) -> bool:
+        """Check if the string have the expected wazuh version format.
+
+        Parameters
+        ----------
+        version_str : str
+            The wazuh version string.
+
+        Returns
+        -------
+        bool
+            True if the string has the expected wazuh version format.
+
+        """
+        return re.search(r'v(\d+)\.(\d+)\.(\d+)', version_str) is not None
+
+
+    def parse_wazuh_version(version_str: str) -> tuple:
+        """Converts the string vX.Y.Z to a tuple of type (X, Y, Z).
+
+        Parameters
+        ----------
+        version_str : str
+            The wazuh version string.
+
+        Returns
+        -------
+        tuple
+            The tuple of the wazuh version string.
+        """
+        match = re.search(r'v(\d+)\.(\d+)\.(\d+)', version_str)
+        return tuple(map(int, match.groups()))
+
     if not array:
         return array
 
@@ -307,7 +340,8 @@ def sort_array(array: list, sort_by: list = None, sort_ascending: bool = True,
             try:
                 return sorted(array,
                               key=lambda o: tuple(
-                                  o.get(a).lower() if type(o.get(a)) in (str, unicode) else o.get(a) for a in sort_by),
+                                  parse_wazuh_version(o.get(a)) if a == 'version' and check_if_wazuh_version(o.get(a))
+                                  else o.get(a).lower() if type(o.get(a)) in (str, unicode) else o.get(a) for a in sort_by),
                               reverse=not sort_ascending)
             except TypeError:
                 items_with_missing_keys = list()
@@ -317,7 +351,8 @@ def sort_array(array: list, sort_by: list = None, sort_ascending: bool = True,
                         copy_array.pop(copy_array.index(item)))
 
                 sorted_array = sorted(copy_array, key=lambda o: tuple(
-                    o.get(a).lower() if type(o.get(a)) in (str, unicode) else o.get(a) for a in sort_by),
+                    parse_wazuh_version(o.get(a)) if a == 'version' and check_if_wazuh_version(o.get(a))
+                    else o.get(a).lower() if type(getattr(o, a)) in (str, unicode) else o.get(a) for a in sort_by),
                                       reverse=not sort_ascending)
 
                 if not sort_ascending:
@@ -330,7 +365,8 @@ def sort_array(array: list, sort_by: list = None, sort_ascending: bool = True,
         else:
             return sorted(array,
                           key=lambda o: tuple(
-                              getattr(o, a).lower() if type(getattr(o, a)) in (str, unicode) else getattr(o, a)
+                              parse_wazuh_version(getattr(o, a)) if a == 'version' and check_if_wazuh_version(getattr(o, a))
+                              else getattr(o, a).lower() if type(getattr(o, a)) in (str, unicode) else getattr(o, a)
                               for a in sort_by),
                           reverse=not sort_ascending)
     else:
