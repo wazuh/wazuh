@@ -1494,7 +1494,7 @@ components:
 
     PolicyName:
       type: string
-      description: "Name of the policy"
+      description: "Name of the policy, follows the format 'policy/<name>/<version>, example: 'policy/wazuh/0'"
       example: "policy/example/0"
 
     StoreGet_Response:
@@ -1615,7 +1615,7 @@ components:
 
     FilterName:
       type: string
-      description: "Name of the filter"
+      description: "Name of the filter, follows the format 'filter/<name>/<version>', example: 'filter/allow-all/0'"
       example: "filter/example/0"
 
     RouterEntry:
