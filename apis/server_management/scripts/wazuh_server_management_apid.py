@@ -194,8 +194,8 @@ def start(params: dict, config: ManagementAPIConfig):
             )
         )
 
-    rbac_manager = RBACManager()
     commands_manager = CommandsManager()
+    rbac_manager = RBACManager()
     unix_server = HTTPUnixServer(socket_path=common.MANAGEMENT_API_SOCKET_PATH, commands_manager=commands_manager)
     unix_server.add_route('/commands', post_commands, ['POST'])
     unix_server.start()
