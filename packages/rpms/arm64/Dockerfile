@@ -29,7 +29,9 @@ RUN yum install -y \
     epel-release \
     git \
     libarchive \
-    file
+    file \
+    rpmdevtools \
+    policycoreutils-python-utils
 
 RUN yum install zlib lzip -y
 
@@ -42,6 +44,7 @@ RUN sh /tmp/cmake-3.30.4-linux-aarch64.sh --prefix=/opt/cmake --skip-license
 
 RUN ln -s /opt/cmake/bin/cmake /usr/local/bin/cmake
 RUN ln -s /opt/cmake/bin/ctest /usr/local/bin/ctest
+RUN ln -s /usr/bin/rpmbuild /usr/local/bin/rpmbuild
 
 # Install vcpkg
 ENV VCPKG_ROOT=/root/vcpkg
