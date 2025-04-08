@@ -304,7 +304,7 @@ def sort_array(array: list, sort_by: list = None, sort_ascending: bool = True,
             True if the string has the expected wazuh version format.
 
         """
-        return re.search(r'v(\d+)\.(\d+)\.(\d+)', version_str) is not None
+        return bool(re.match(r'^Wazuh v(\d+)\.(\d+)\.(\d+)', version_str))
 
 
     def parse_wazuh_version(version_str: str) -> tuple:
