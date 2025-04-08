@@ -151,6 +151,10 @@ public:
 
         m_orchestrations[SystemContext::Operation::IndexSync] =
             SystemFactoryOrchestrator::create(SystemContext::Operation::IndexSync, m_indexerConnectorInstances);
+
+        m_orchestrations[SystemContext::Operation::UpgradeAgentDB] =
+            SystemFactoryOrchestrator::create(SystemContext::Operation::UpgradeAgentDB, m_indexerConnectorInstances);
+
         logDebug2(LOGGER_DEFAULT_TAG, "SystemInventoryOrchestrator finished");
     }
 };

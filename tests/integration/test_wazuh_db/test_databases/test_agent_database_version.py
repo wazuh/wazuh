@@ -62,7 +62,7 @@ from wazuh_testing.tools.simulators import agent_simulator as ag
 pytestmark = [pytest.mark.server, pytest.mark.tier(level=0)]
 
 # Variables
-expected_database_version = '14'
+expected_database_version = '15'
 
 # Test daemons to restart.
 daemons_handler_configuration = {'all_daemons': True}
