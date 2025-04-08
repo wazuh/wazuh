@@ -6,6 +6,7 @@
 
 import argparse
 import asyncio
+import contextlib
 import logging
 import os
 import signal
@@ -16,14 +17,18 @@ from functools import partial
 from typing import Any, List
 
 import psutil
-from wazuh.core import pyDaemonModule
-from wazuh.core.cluster.cluster import clean_up
-from wazuh.core.cluster.unix_server.server import start_unix_server
-from wazuh.core.cluster.utils import ClusterLogger, context_tag, ping_unix_socket, print_version, process_spawn_sleep
+from wazuh.core.cluster.utils import (
+    ServerLogger,
+    context_tag,
+    ping_unix_socket,
+    print_version,
+    process_spawn_sleep,
+)
 from wazuh.core.common import CONFIG_SERVER_SOCKET_PATH, WAZUH_RUN, WAZUH_SHARE, wazuh_gid, wazuh_uid
 from wazuh.core.config.client import CentralizedConfig
 from wazuh.core.config.models.server import NodeType, ServerConfig
 from wazuh.core.exception import WazuhDaemonError
+from wazuh.core.server.unix_server.server import start_unix_server
 from wazuh.core.task.order import get_orders
 from wazuh.core.utils import clean_pid_files, create_wazuh_dir
 from wazuh.core.wlogging import WazuhLogger
@@ -43,7 +48,7 @@ MANAGEMENT_API_SCRIPT_PATH = WAZUH_SHARE / 'apis' / 'scripts' / f'{MANAGEMENT_AP
 
 
 def set_logging(debug_mode=0) -> WazuhLogger:
-    """Set cluster logger.
+    """Set server logger.
 
     Parameters
     ----------
@@ -53,14 +58,14 @@ def set_logging(debug_mode=0) -> WazuhLogger:
     Returns
     -------
     WazuhLogger
-        Cluster logger.
+        Server logger.
     """
-    cluster_logger = ClusterLogger(
+    server_logger = ServerLogger(
         debug_level=debug_mode,
         tag='%(asctime)s %(levelname)s: [%(tag)s] [%(subtag)s] %(message)s',
     )
-    cluster_logger.setup_logger()
-    return cluster_logger
+    server_logger.setup_logger()
+    return server_logger
 
 
 def start_daemon(name: str, args: List[str]):
@@ -332,22 +337,17 @@ def get_script_arguments() -> argparse.Namespace:
 
 def start():  # NOQA
     """Start function of the wazuh-server script in charge of starting the server process."""
-    try:
+    with contextlib.suppress(StopIteration):
         server_pid = pyDaemonModule.get_wazuh_server_pid(SERVER_DAEMON_NAME)
         if server_pid and psutil.pid_exists(server_pid):
             print(f'The server is already running on process {server_pid}')
             sys.exit(1)
-    except StopIteration:
-        pass
 
     try:
         server_config = CentralizedConfig.get_server_config()
     except Exception as e:
         main_logger.error(e)
         sys.exit(1)
-
-    # Clean cluster files from previous executions
-    clean_up()
 
     # Create /run/wazuh-server
     create_wazuh_dir(WAZUH_RUN)
