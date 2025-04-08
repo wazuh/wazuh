@@ -348,11 +348,12 @@ def get_agents(agent_list: list = None, offset: int = 0, limit: int = common.DAT
                                 query=q, **rbac_filters, distinct=distinct) as db_query:
             obtained_agents = db_query.run()
 
-        data = process_array(obtained_agents['items'], sort_by=sort['fields'],
-                            sort_ascending=True if sort['order'] == 'asc' else False) if sort else obtained_agents
+        if len(obtained_agents['items']) >= 1 and all(field in obtained_agents['items'][0].keys() for field in sort['fields']) and sort:
+            obtained_agents = process_array(obtained_agents['items'], sort_by=sort['fields'],
+                                sort_ascending=True if sort['order'] == 'asc' else False)
 
-        result.affected_items.extend(data['items'])
-        result.total_affected_items = data['totalItems']
+        result.affected_items.extend(obtained_agents['items'])
+        result.total_affected_items = obtained_agents['totalItems']
 
     return result
 
