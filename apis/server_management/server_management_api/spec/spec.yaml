@@ -1053,47 +1053,6 @@ components:
       schema:
         type: string
         format: alphanumeric
-    policy_id:
-      in: path
-      name: policy_id
-      description: "Filter by policy id"
-      required: true
-      schema:
-        type: string
-        format: alphanumeric
-    policy_id_rbac:
-      in: path
-      name: policy_id
-      description: "Specify a policy id"
-      required: true
-      schema:
-        $ref: '#/components/schemas/Policy_id'
-    policy_ids_rbac:
-      in: query
-      name: 'policy_ids'
-      description: "List of policy IDs"
-      schema:
-        type: array
-        items:
-          $ref: '#/components/schemas/Policy_id'
-    policy_ids_rbac_delete:
-      in: query
-      name: 'policy_ids'
-      description: "List of policy IDs (separated by comma), use the keyword 'all' to select all policies"
-      required: true
-      schema:
-        type: array
-        items:
-          $ref: '#/components/schemas/Policy_id_DELETE'
-    policy_ids_rbac_required:
-      in: query
-      name: 'policy_ids'
-      description: "List of policy IDs"
-      required: true
-      schema:
-        type: array
-        items:
-          $ref: '#/components/schemas/Policy_id'
     endpoint:
       in: query
       name: endpoint

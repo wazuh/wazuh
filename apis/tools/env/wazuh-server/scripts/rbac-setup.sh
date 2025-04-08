@@ -38,13 +38,6 @@ curl -X POST -H "$CONTENT_TYPE" -ksu $INDEXER_USERNAME:$INDEXER_PASSWORD -w "\n"
                         "resources": ["*:*:*"],
                         "effect": "allow",
                         "level": 0
-                    },
-                    {
-                        "name": "security_all",
-                        "actions": ["security:create", "security:create_user", "security:read_config", "security:update_config", "security:edit_run_as", "security:read", "security:update", "security:delete"],
-                        "resources": ["*:*:*"],
-                        "effect": "allow",
-                        "level": 0
                     }
                 ],
                 "rules": []
