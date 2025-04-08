@@ -73,6 +73,10 @@ struct client {
     char write_buffer[MAX_SSL_PACKET_SIZE + 1];
     int  write_offset;
     int  write_len;
+
+    char* agentname;
+    char* centralized_group;
+    char* new_id;
 };
 
 struct keynode {

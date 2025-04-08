@@ -121,7 +121,6 @@ int main(int argc, char **argv)
     char buf[4096 + 1];
 
     pthread_t thread_local_server = 0;
-    pthread_t thread_dispatcher = 0;
     pthread_t thread_remote_server = 0;
     pthread_t thread_writer = 0;
     pthread_t thread_key_request = 0;
@@ -660,7 +659,6 @@ int main(int argc, char **argv)
     /* Join threads */
     pthread_join(thread_local_server, NULL);
     if (config.flags.remote_enrollment) {
-        pthread_join(thread_dispatcher, NULL);
         pthread_join(thread_remote_server, NULL);
     }
     if (!config.worker_node) {
@@ -695,6 +693,9 @@ void delete_client(uint32_t index) {
         }
 
         close(g_client_pool[index]->socket);
+        os_free(g_client_pool[index]->agentname);
+        os_free(g_client_pool[index]->centralized_group);
+        os_free(g_client_pool[index]->new_id);
         os_free(g_client_pool[index]);
         g_client_pool[index] = NULL;
     }
@@ -706,26 +707,23 @@ void delete_client(uint32_t index) {
 static void process_message(struct client *client) {
     char response[2048] = {0};
     bool enrollment_ok = FALSE;
-    char *agentname = NULL;
-    char *centralized_group = NULL;
     char* key_hash = NULL;
-    char* new_id = NULL;
     char* new_key = NULL;
 
     mdebug2("Request received: <%s>", client->read_buffer);
 
-    if (OS_SUCCESS == w_auth_parse_data(client->read_buffer, response, authpass, client->ip, &agentname, &centralized_group, &key_hash)) {
+    if (OS_SUCCESS == w_auth_parse_data(client->read_buffer, response, authpass, client->ip, &client->agentname, &client->centralized_group, &key_hash)) {
         if (config.worker_node) {
             minfo("Dispatching request to master node");
             // The force registration settings are ignored for workers. The master decides.
-            if (0 == w_request_agent_add_clustered(response, agentname, client->ip, centralized_group, key_hash, &new_id, &new_key, NULL, NULL)) {
+            if (0 == w_request_agent_add_clustered(response, client->agentname, client->ip, client->centralized_group, key_hash, &client->new_id, &new_key, NULL, NULL)) {
                 enrollment_ok = TRUE;
             }
         }
         else {
             w_mutex_lock(&mutex_keys);
-            if (OS_SUCCESS == w_auth_validate_data(response, client->ip, agentname, centralized_group, key_hash)) {
-                if (OS_SUCCESS == w_auth_add_agent(response, client->ip, agentname, &new_id, &new_key)) {
+            if (OS_SUCCESS == w_auth_validate_data(response, client->ip, client->agentname, client->centralized_group, key_hash)) {
+                if (OS_SUCCESS == w_auth_add_agent(response, client->ip, client->agentname, &client->new_id, &new_key)) {
                     enrollment_ok = TRUE;
                 }
             }
@@ -735,52 +733,18 @@ static void process_message(struct client *client) {
 
     if (enrollment_ok)
     {
-        snprintf(client->write_buffer, MAX_SSL_PACKET_SIZE, "OSSEC K:'%s %s %s %s'", new_id, agentname, client->ip, new_key);
+        snprintf(client->write_buffer, MAX_SSL_PACKET_SIZE, "OSSEC K:'%s %s %s %s'", client->new_id, client->agentname, client->ip, new_key);
         client->write_len = strlen(client->write_buffer);
 
-        minfo("Agent key generated for '%s' (requested by %s)", agentname, client->ip);
-
-        // TO-DO Handle this as post-processing
-        // if (config.worker_node) {
-        //     if (ret < 0) {
-        //         merror("SSL write error (%d)", ret);
-        //         ERR_print_errors_fp(stderr);
-        //         if (0 != w_request_agent_remove_clustered(NULL, new_id, TRUE)) {
-        //             merror("Agent key unable to be shared with %s and unable to delete from master node", agentname);
-        //         }
-        //         else {
-        //             merror("Agent key not saved for %s", agentname);
-        //         }
-        //     }
-        // }
-        // else {
-        //     if (ret < 0) {
-        //         merror("SSL write error (%d)", ret);
-        //         merror("Agent key not saved for %s", agentname);
-        //         ERR_print_errors_fp(stderr);
-        //         w_mutex_lock(&mutex_keys);
-        //         OS_DeleteKey(&keys, keys.keyentries[keys.keysize - 1]->id, 1);
-        //         w_mutex_unlock(&mutex_keys);
-        //     } else {
-                /* Add pending key to write */
-                w_mutex_lock(&mutex_keys);
-                add_insert(keys.keyentries[keys.keysize - 1], centralized_group);
-                write_pending = 1;
-                w_cond_signal(&cond_pending);
-                w_mutex_unlock(&mutex_keys);
-        //     }
-        // }
+        minfo("Agent key generated for '%s' (requested by %s)", client->agentname, client->ip);
     }
     else {
-        merror("Unable to add agent %s (requested by %s) error: %s", agentname, client->ip, response);
+        merror("Unable to add agent %s (requested by %s) error: %s", client->agentname, client->ip, response);
         snprintf(client->write_buffer, MAX_SSL_PACKET_SIZE, "ERROR: Unable to add agent");
         client->write_offset = strlen(client->write_buffer);
     }
 
-    os_free(agentname);
-    os_free(centralized_group);
     os_free(key_hash);
-    os_free(new_id);
     os_free(new_key);
 }
 
@@ -869,15 +833,44 @@ static int handle_ssl_write(struct client *client) {
         } else {
             int err = SSL_get_error(client->ssl, ret);
             if (err == SSL_ERROR_WANT_WRITE || err == SSL_ERROR_WANT_READ) {
-                return 0;
+                return 1;
             } else {
                 return -1;
             }
         }
     }
 
-    delete_client(client->index);
     return 0;
+}
+
+void enqueue_pending_key(int ret, uint32_t index_client) {
+    if (ret < 0) {
+        if (config.worker_node) {
+            merror("SSL write error (%d)", ret);
+            ERR_print_errors_fp(stderr);
+            if (0 != w_request_agent_remove_clustered(NULL, g_client_pool[index_client]->new_id, TRUE)) {
+                merror("Agent key unable to be shared with %s and unable to delete from master node", g_client_pool[index_client]->agentname);
+            } else {
+                merror("Agent key not saved for %s", g_client_pool[index_client]->agentname);
+            }
+        } else {
+            merror("SSL write error (%d)", ret);
+            merror("Agent key not saved for %s", g_client_pool[index_client]->agentname);
+            ERR_print_errors_fp(stderr);
+            w_mutex_lock(&mutex_keys);
+            OS_DeleteKey(&keys, keys.keyentries[keys.keysize - 1]->id, 1);
+            w_mutex_unlock(&mutex_keys);
+        }
+        delete_client(index_client);
+    } else {
+        // ret == 0
+        w_mutex_lock(&mutex_keys);
+        add_insert(keys.keyentries[keys.keysize - 1], g_client_pool[index_client]->centralized_group);
+        write_pending = 1;
+        w_cond_signal(&cond_pending);
+        w_mutex_unlock(&mutex_keys);
+        delete_client(index_client);
+    }
 }
 
 /* Thread for remote server */
@@ -1024,10 +1017,12 @@ void* run_remote_server(__attribute__((unused)) void *arg) {
 
                 if (events[i].events & EPOLLOUT) {
                     int ret = handle_ssl_write(g_client_pool[index_client]);
-                    if (ret < 0) {
-                        delete_client(index_client);
+                    if (ret == 1) {
+                        // Accepted errors SSL_ERROR_WANT_WRITE || SSL_ERROR_WANT_READ
+                        continue;
+                    } else {
+                        enqueue_pending_key(ret, index_client);
                     }
-                    continue;
                 }
             }
         }
