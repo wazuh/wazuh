@@ -4,7 +4,7 @@ from typing import Any
 import uvicorn
 from fastapi import APIRouter, FastAPI
 from wazuh.core import common
-from wazuh.core.cluster.unix_server.config import get_config
+from wazuh.core.server.unix_server.config import get_config
 
 
 def get_log_config(node: str) -> dict[str, Any]:

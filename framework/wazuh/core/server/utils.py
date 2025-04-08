@@ -1,5 +1,7 @@
 import logging
+import socket
 from contextvars import ContextVar
+from pathlib import Path
 
 from wazuh.core.wlogging import WazuhLogger
 
@@ -57,3 +59,39 @@ class ServerLogger(WazuhLogger):
         )
 
         self.logger.setLevel(debug_level)
+
+
+def ping_unix_socket(socket_path: Path, timeout: int = 1):
+    """Ping a UNIX socket to check if it's available.
+
+    Parameters
+    ----------
+    socket_path : Path
+        Path to the UNIX socket file.
+    timeout : int
+        Connection timeout in seconds.
+
+    Returns
+    -------
+    bool
+        True if the socket is reachable, False otherwise.
+    """
+    if not socket_path.exists():
+        return False
+
+    try:
+        # Create a testing UNIX socket client to connect to the server socket.
+        client = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        client.settimeout(timeout)
+        client.connect(str(socket_path))
+        client.close()
+        return True
+    except (socket.timeout, socket.error):
+        return False
+
+
+def print_version():
+    """Return Wazuh version from metadata."""
+    from wazuh.core.server import __author__, __licence__, __version__, __wazuh_name__
+
+    print('\n{} {} - {}\n\n{}'.format(__wazuh_name__, __version__, __author__, __licence__))
