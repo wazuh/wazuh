@@ -15,20 +15,29 @@ from wazuh.core.exception import WazuhError, WazuhException
         (999, 'Code found with cmd_error', None, True, None, None, None, 'Error 999 - Code found with cmd_error'),
         # code found in ERRORS - dictionary entry of string type
         (999, None, None, None, None, None, None, 'Error 999 - Incompatible version of Python'),
-        # code found in ERRORS - dictionary entry of dictionary type - withouth remediation key
-        (4018, None, None, None, None, None, None, 'Error 4018 - Level cannot be a negative number'),
+        # code found in ERRORS - dictionary entry of dictionary type - without remediation key
+        (
+            3050,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            'Error 3050 - Error while sending orders to the Communications API unix server',
+        ),
         # code found in ERRORS - dictionary entry of dictionary type - with remediation key
-        (4019, None, None, None, None, None, None, 'Error 4019 - Invalid resource specified'),
+        (4000, None, None, None, None, None, None, 'Error 4000 - Permission denied'),
         # code found in ERRORS - extra_message parameter of string type
         (
-            4018,
-            'extra message',
+            4027,
+            {'entity': 'User'},
             None,
             None,
             None,
             None,
             None,
-            'Error 4018 - Level cannot be a negative number: extra message',
+            'Error 4027 - User does not exist',
         ),
         # code found in ERRORS - extra_message parameter of dictionary type
         (

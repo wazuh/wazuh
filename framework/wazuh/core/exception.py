@@ -347,109 +347,18 @@ class WazuhException(Exception):
         # Orders distribution exceptions
         3050: 'Error while sending orders to the Communications API unix server',
         # RBAC exceptions
-        # The messages of these exceptions are provisional until the RBAC documentation is published.
         4000: {
             'message': 'Permission denied',
             'remediation': 'Please, make sure you have permissions to execute the current request. '
             f'For more information on how to set up permissions, please visit https://documentation.'
             f'wazuh.com/{DOCU_VERSION}/user-manual/api/rbac/configuration.html',
         },
-        4001: {'message': 'The body of the request is empty, you must specify what you want to modify'},
-        4002: {
-            'message': 'The specified role does not exist',
-            'remediation': 'Please, create the specified role with the endpoint POST /security/roles',
-        },
-        4003: {'message': 'The specified rule is invalid', 'remediation': 'The rule must be in JSON format.'},
-        4005: {'message': 'The specified name or rule already exists'},
-        4006: {
-            'message': 'The specified policy is invalid',
-            'remediation': 'The policy must be in JSON format and its keys must be "actions", "resources" and'
-            ' "effect". The actions and resources must be split by ":". Example: agent:id:001',
-        },
-        4007: {
-            'message': 'The specified policy does not exist',
-            'remediation': 'Please, create the specified policy with the endpoint POST /security/policies',
-        },
-        4008: {'message': "The specified resource is required for a correct Wazuh's functionality"},
-        4009: {'message': 'The specified name or policy already exists'},
-        4010: {
-            'message': 'The specified role-policy relation does not exist',
-            'remediation': 'Please, create the specified role-policy relation with the endpoint '
-            'POST /security/roles/{role_id}/policies',
-        },
-        4011: {'message': 'The specified role-policy link already exist'},
-        4013: {'message': 'The specified name already exists'},
-        4016: {
-            'message': 'The specified user-role relation does not exist',
-            'remediation': 'Please, create the specified user-role relation with the endpoint '
-            'POST /security/user/{username}/roles',
-        },
-        4017: {'message': 'The specified user-role relation already exists'},
-        4018: {'message': 'Level cannot be a negative number'},
-        4019: {
-            'message': 'Invalid resource specified',
-            'remediation': f'Please, check the current RBAC resources, for more information please visit https:/'
-            f'/documentation.wazuh.com/{DOCU_VERSION}/user-manual/api/rbac/configuration.html',
-        },
-        4020: {'message': 'Invalid endpoint specified', 'remediation': 'Valid endpoints are: '},
-        4021: 'Error reading security configuration',
-        4022: {
-            'message': 'The specified security rule does not exist',
-            'remediation': 'Please, create the specified security rule with the endpoint POST /security/rules',
-        },
-        4023: {'message': 'The specified role-rule relation already exist'},
-        4024: {
-            'message': 'The specified role-rule relation does not exist',
-            'remediation': 'Please, create the specified role-rules relation with the endpoint '
-            'POST /security/roles/{role_id}/rules',
-        },
-        4025: {'message': 'The specify relationship could not be removed'},
-        4026: {'message': 'There is a {entity} with the same ID: {id}', 'remediation': 'Please choose another ID'},
-        4027: {
-            'message': '{entity} does not exist',
-            'remediation': 'Please, use `GET /security/{entities}` to find all available {entities}',
-        },
+        4027: {'message': '{entity} does not exist'},
         4500: {
             'message': 'The specified resources are invalid',
             'remediation': 'Please, make sure permissions are properly defined, '
             f'for more information on setting up permissions please visit https://documentation.'
             f'wazuh.com/{DOCU_VERSION}/user-manual/api/rbac/configuration.html',
-        },
-        # User management
-        5000: {
-            'message': 'The user could not be created',
-            'remediation': 'Please check that the user does not exist, '
-            'to do this you can use the `GET /security/users` call',
-        },
-        5001: {
-            'message': 'The user does not exist',
-            'remediation': 'The user can be created with the endpoint POST /security/users',
-        },
-        5004: {
-            'message': 'The user could not be removed or updated',
-            'remediation': 'Administrator users cannot be removed or updated',
-        },
-        5007: {
-            'message': 'Insecure user password provided',
-            'remediation': 'The password must contain at least one upper and lower case letter, a number and a symbol.',
-        },
-        5008: {
-            'message': 'The current user cannot be deleted',
-            'remediation': 'You can delete this user with the administrator user (wazuh) or '
-            'any other user with the necessary permissions',
-        },
-        5009: {
-            'message': 'Insecure user password provided',
-            'remediation': 'The password must contain a length between 8 and 64 characters.',
-        },
-        5010: {
-            'message': 'The value of the parameter allow_run_as is invalid',
-            'remediation': 'The value of the allow_run_as parameter must be true (enabled authentication through '
-            'authorization context) or false (disabled authentication through authorization context).',
-        },
-        5011: {
-            'message': 'Administrator users can only be modified by themselves',
-            'remediation': 'Log in as administrator and try again',
         },
         # Security issues
         6000: {
