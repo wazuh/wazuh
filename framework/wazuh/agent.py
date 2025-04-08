@@ -349,7 +349,7 @@ def get_agents(agent_list: list = None, offset: int = 0, limit: int = common.DAT
             obtained_agents = db_query.run()
 
         data = process_array(obtained_agents['items'], sort_by=sort['fields'],
-                             sort_ascending=True if sort['order'] == 'asc' else False)
+                            sort_ascending=True if sort['order'] == 'asc' else False) if sort else obtained_agents
 
         result.affected_items.extend(data['items'])
         result.total_affected_items = data['totalItems']
