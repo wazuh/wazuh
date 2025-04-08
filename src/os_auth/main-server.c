@@ -1029,7 +1029,6 @@ void* run_remote_server(__attribute__((unused)) void *arg) {
     }
 
     close(g_stopFD[0]);
-    close(g_stopFD[1]);
     mdebug1("Remote server thread finished");
     close(remote_sock);
     SSL_CTX_free(ctx);
@@ -1202,12 +1201,14 @@ char* strsignal(int sig)
 
 /* Signal handler */
 void handler(int signum) {
+    char dummy = '\0';
     switch (signum) {
     case SIGHUP:
     case SIGINT:
     case SIGTERM:
-        char dummy = 'x';
+        dummy = 'x';
         write(g_stopFD[1], &dummy, sizeof(dummy));
+        close(g_stopFD[1]);
         minfo(SIGNAL_RECV, signum, strsignal(signum));
         running = 0;
         break;
