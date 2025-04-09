@@ -160,6 +160,7 @@ def test_authd_use_password(test_configuration, test_metadata, set_wazuh_configu
     else:
         message = AGENT_INPUT.format(test_metadata['user'])
 
+    message += '\n'
     receiver_sockets[0].send(message, size=False)
     timeout = time.time() + 10
     response = ''

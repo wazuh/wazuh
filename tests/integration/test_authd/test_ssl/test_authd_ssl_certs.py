@@ -75,7 +75,7 @@ SSL_AGENT_PRIVATE_KEY = '/tmp/test_sslagent.key'
 AGENT_ID = 0
 AGENT_NAME = 'test_agent'
 AGENT_IP = '127.0.0.1'
-INPUT_MESSAGE = "OSSEC A:'{}_{}'"
+INPUT_MESSAGE = "OSSEC A:'{}_{}'\n"
 OUPUT_MESSAGE = "OSSEC K:'"
 
 # Simulation options

@@ -85,7 +85,7 @@ daemons_handler_configuration = {'all_daemons': True}
 
 AGENT_ID = 0
 AGENT_NAME = 'test_agent'
-INPUT_MESSAGE = "OSSEC A:'{}_{}'"
+INPUT_MESSAGE = "OSSEC A:'{}_{}'\n"
 
 
 def wait_for_tcp_port(port, host='localhost', timeout=10):
