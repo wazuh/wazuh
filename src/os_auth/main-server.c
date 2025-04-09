@@ -696,6 +696,8 @@ void delete_client(uint32_t index) {
         os_free(g_client_pool[index]->agentname);
         os_free(g_client_pool[index]->centralized_group);
         os_free(g_client_pool[index]->new_id);
+        os_free(g_client_pool[index]->read_buffer);
+        os_free(g_client_pool[index]->write_buffer);
         os_free(g_client_pool[index]);
         g_client_pool[index] = NULL;
     }
@@ -733,12 +735,12 @@ static void process_message(struct client *client) {
 
     if (client->enrollment_ok)
     {
-        snprintf(client->write_buffer, MAX_SSL_PACKET_SIZE, "OSSEC K:'%s %s %s %s'", client->new_id, client->agentname, client->ip, new_key);
+        snprintf(client->write_buffer, MAX_SSL_MSG_SIZE, "OSSEC K:'%s %s %s %s'", client->new_id, client->agentname, client->ip, new_key);
         client->write_len = strlen(client->write_buffer);
 
         minfo("Agent key generated for '%s' (requested by %s)", client->agentname, client->ip);
     } else {
-        snprintf(client->write_buffer, MAX_SSL_PACKET_SIZE, "%s. %s", response, "Unable to add agent");
+        snprintf(client->write_buffer, MAX_SSL_MSG_SIZE, "%s. %s", response, "Unable to add agent");
         client->write_len = strlen(client->write_buffer);
 
         merror("Unable to add agent %s (requested by %s) error: %s", client->agentname, client->ip, response);
@@ -752,7 +754,7 @@ static int handle_ssl_read(struct client *client) {
     while (true) {
         int ret = SSL_read(client->ssl,
                            client->read_buffer + client->read_offset,
-                           MAX_SSL_PACKET_SIZE - client->read_offset);
+                           MAX_SSL_MSG_SIZE - client->read_offset);
 
         if (ret > 0) {
             client->read_offset += ret;
@@ -910,13 +912,13 @@ void* run_remote_server(__attribute__((unused)) void *arg) {
                     os_malloc(sizeof(struct client), new_client);
                     new_client->socket = client_sock;
 
-                    memset(new_client->read_buffer, '\0', MAX_SSL_PACKET_SIZE);
+                    os_calloc(MAX_SSL_MSG_SIZE + 1, sizeof(char), new_client->read_buffer);
                     new_client->read_offset = 0;
                     new_client->handshake_done = false;
 
                     memset(new_client->ip, '\0', IPSIZE + 1);
 
-                    memset(new_client->write_buffer, '\0', MAX_SSL_PACKET_SIZE);
+                    os_calloc(MAX_SSL_MSG_SIZE + 1, sizeof(char), new_client->write_buffer);
                     new_client->write_offset = 0;
                     new_client->write_len = 0;
 
@@ -933,6 +935,8 @@ void* run_remote_server(__attribute__((unused)) void *arg) {
 
                     if (client_index == -1) {
                         merror("Too many connections. Rejecting.");
+                        os_free(new_client->write_buffer);
+                        os_free(new_client->read_buffer);
                         os_free(new_client);
                         close(client_sock);
                         continue;

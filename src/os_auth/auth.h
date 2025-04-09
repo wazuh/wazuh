@@ -48,6 +48,7 @@ extern BIO *bio_err;
 #define DEFAULT_CENTRALIZED_GROUP "default"
 #define DEPRECATED_OPTION_WARN "Option '%s' is deprecated. Configure it in the file '%s'."
 #define MAX_SSL_PACKET_SIZE 16384
+#define MAX_SSL_MSG_SIZE (OS_SIZE_65536 + OS_SIZE_4096)
 #define SERVER_INDEX 0
 #define STOP_FD (AUTH_POOL+1)
 
@@ -68,10 +69,10 @@ struct client {
     bool enrollment_ok;
     char ip[IPSIZE + 1];
 
-    char read_buffer[MAX_SSL_PACKET_SIZE + 1];
+    char* read_buffer;
     int  read_offset;
 
-    char write_buffer[MAX_SSL_PACKET_SIZE + 1];
+    char* write_buffer;
     int  write_offset;
     int  write_len;
 
