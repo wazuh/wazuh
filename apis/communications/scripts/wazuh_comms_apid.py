@@ -39,12 +39,12 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from wazuh.core import common, pyDaemonModule, utils
 from wazuh.core.authentication import load_jwt_keys
 from wazuh.core.batcher.mux_demux import MuxDemuxManager, MuxDemuxQueue
-from wazuh.core.cluster.utils import print_version
 from wazuh.core.commands_manager import CommandsManager
 from wazuh.core.config.client import CentralizedConfig
 from wazuh.core.config.models.comms_api import CommsAPIConfig
 from wazuh.core.config.models.logging import APILoggingConfig
 from wazuh.core.exception import WazuhCommsAPIError
+from wazuh.core.server.utils import print_version
 from wazuh.core.unix_server.commands import post_commands
 from wazuh.core.unix_server.server import HTTPUnixServer
 
