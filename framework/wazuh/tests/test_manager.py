@@ -34,19 +34,23 @@ test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data
 
 @pytest.fixture(scope='module', autouse=True)
 def mock_wazuh_path():
+    """Wazuh path mock."""
     with patch('wazuh.core.common.WAZUH_PATH', new=test_data_path):
         yield
 
 
 class InitManager:
+    """Manager initialization mock."""
+
     def __init__(self):
-        """Sets up necessary environment to test manager functions."""
+        """Set up necessary environment to test manager functions."""
         # path for temporary API files
         self.api_tmp_path = os.path.join(test_data_path, 'tmp')
 
 
 @pytest.fixture(scope='module')
 def test_manager():
+    """Manager initialization fixture."""
     # Set up
     test_manager = InitManager()
     return test_manager
@@ -106,21 +110,7 @@ def test_get_status(mock_status):
 @patch('wazuh.core.manager.get_wazuh_active_logging_format', return_value=LoggingFormat.plain)
 @patch('wazuh.core.manager.exists', return_value=True)
 def test_ossec_log(mock_exists, mock_active_logging_format, tag, level, total_items, sort_by, sort_ascending):
-    """Test reading ossec.log file contents.
-
-    Parameters
-    ----------
-    level : str
-        Filters by log type: all, error or info.
-    tag : str
-        Filters by log category (i.e. wazuh-remoted).
-    total_items : int
-        Expected items to be returned after calling ossec_log.
-    sort_by : list
-        Fields to sort the items by.
-    sort_ascending : boolean
-        Sort in ascending (true) or descending (false) order.
-    """
+    """Test reading ossec.log file contents."""
     with patch('wazuh.core.manager.tail') as tail_patch:
         # Return ossec_log_file when calling tail() method
         ossec_log_file = get_logs()
@@ -154,19 +144,7 @@ def test_ossec_log(mock_exists, mock_active_logging_format, tag, level, total_it
 @patch('wazuh.core.manager.get_wazuh_active_logging_format', return_value=LoggingFormat.plain)
 @patch('wazuh.core.manager.exists', return_value=True)
 def test_ossec_log_q(mock_exists, mock_active_logging_format, q, field, operation, values):
-    """Check that the 'q' parameter is working correctly.
-
-    Parameters
-    ----------
-    q : str
-        Query to execute.
-    field : str
-        Field affected by the query.
-    operation : str
-        Operation type to be performed in the query.
-    values : str
-        Values used for the comparison.
-    """
+    """Check that the 'q' parameter is working correctly."""
     with patch('wazuh.core.manager.tail') as tail_patch:
         ossec_log_file = get_logs()
         tail_patch.return_value = ossec_log_file.splitlines()
@@ -207,8 +185,8 @@ def test_ossec_log_summary(mock_exists, mock_active_logging_format):
 
 
 @patch('socket.socket')
-@patch('wazuh.core.cluster.utils.fcntl')
-@patch('wazuh.core.cluster.utils.open')
+@patch('wazuh.core.server.utils.fcntl')
+@patch('wazuh.core.server.utils.open')
 @patch('os.path.exists', return_value=True)
 def test_restart_ok(mock_exists, mock_path, mock_fcntl, mock_socket):
     """Tests restarting a manager."""
@@ -219,8 +197,8 @@ def test_restart_ok(mock_exists, mock_path, mock_fcntl, mock_socket):
     assert result.render()['data']['total_failed_items'] == 0
 
 
-@patch('wazuh.core.cluster.utils.open')
-@patch('wazuh.core.cluster.utils.fcntl')
+@patch('wazuh.core.server.utils.open')
+@patch('wazuh.core.server.utils.fcntl')
 @patch('os.path.exists', return_value=False)
 def test_restart_ko_socket(mock_exists, mock_fcntl, mock_open):
     """Tests restarting a manager exceptions."""

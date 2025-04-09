@@ -29,6 +29,18 @@ def test_set_logging():
         assert wazuh_server.set_logging(debug_mode=0)
 
 
+@patch('builtins.print')
+def test_print_version(print_mock):
+    """Set the scheme to be printed."""
+    with patch('wazuh.core.server.__version__', 'TEST'):
+        wazuh_server.print_version()
+        print_mock.assert_called_once_with(
+            '\nWazuh TEST - Wazuh Inc\n\nThis program is free software; you can redistribute it and/or modify\n'
+            'it under the terms of the GNU General Public License (version 2) as \npublished by the '
+            'Free Software Foundation. For more details, go to \nhttps://www.gnu.org/licenses/gpl.html\n'
+        )
+
+
 @pytest.mark.parametrize('root', [True, False])
 @patch('subprocess.Popen')
 def test_start_daemons(mock_popen, root):

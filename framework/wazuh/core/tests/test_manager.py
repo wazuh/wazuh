@@ -9,9 +9,9 @@ from unittest.mock import ANY, patch
 from uuid import uuid4
 
 import pytest
-from wazuh.core.cluster.tests.conftest import get_default_configuration
 from wazuh.core.config.client import CentralizedConfig
 from wazuh.core.config.models.base import ValidateFilePathMixin
+from wazuh.core.server.tests.conftest import get_default_configuration
 
 with patch('wazuh.core.common.wazuh_uid'):
     with patch('wazuh.core.common.wazuh_gid'):
@@ -27,6 +27,8 @@ ossec_log_json_path = '{0}/ossec_log.log'.format(test_data_path)
 
 
 class InitManager:
+    """Initialization manager mock."""
+
     def __init__(self):
         """Initialize the environment for testing manager functions."""
         # path for temporary API files
@@ -69,15 +71,6 @@ def test_get_status(manager_glob, manager_exists, test_manager, process_status):
     Tests manager.status() function in two cases:
         * PID files are created and processed are running,
         * No process is running and therefore no PID files have been created
-
-    Parameters
-    ----------
-    manager_glob : mock
-        Mock of glob.glob function.
-    manager_exists : mock
-        Mock of os.path.exists function.
-    process_status : str
-        Status to test (valid values: running/stopped/failed/restarting).
     """
 
     def mock_glob(path_to_check):
@@ -153,7 +146,7 @@ def test_get_logs_summary(mock_exists, mock_active_logging_format):
 
 @patch('wazuh.core.manager.exists', return_value=True)
 def test_validation_ko(mock_exists):
-    """Test validate_ossec_conf raises an error"""
+    """Test validate_ossec_conf raises an error."""
     # Socket creation raise socket.error
     with patch('socket.socket', side_effect=socket.error):
         with pytest.raises(WazuhInternalError, match='.* 1013 .*'):
