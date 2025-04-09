@@ -551,7 +551,7 @@ int main(int argc, char **argv)
         set_non_blocking(remote_sock);
 
         event.events = EPOLLIN;
-        event.data.u32 = 0;
+        event.data.u32 = SERVER_INDEX;
 
         if (epoll_ctl(g_epfd, EPOLL_CTL_ADD, remote_sock, &event) < 0)
         {
@@ -950,6 +950,7 @@ void* run_remote_server(__attribute__((unused)) void *arg) {
                         break;
                     default:
                         merror("IP address family not supported. Rejecting.");
+                        g_client_pool[client_index] = NULL;
                         os_free(new_client);
                         close(client_sock);
                         continue;
@@ -1029,6 +1030,7 @@ void* run_remote_server(__attribute__((unused)) void *arg) {
     }
 
     close(g_stopFD[0]);
+    close(g_epfd);
     mdebug1("Remote server thread finished");
     close(remote_sock);
     SSL_CTX_free(ctx);
