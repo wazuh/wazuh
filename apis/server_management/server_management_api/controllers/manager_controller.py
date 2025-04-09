@@ -13,12 +13,11 @@ from wazuh.core.task_dispatcher import TaskDispatcher
 from server_management_api.constants import INSTALLATION_UID_KEY, UPDATE_INFORMATION_KEY
 from server_management_api.controllers.util import json_response
 from server_management_api.signals import cti_context
-from server_management_api.util import only_master_endpoint, raise_if_exc
+from server_management_api.util import raise_if_exc
 
 logger = logging.getLogger('wazuh-api')
 
 
-@only_master_endpoint
 async def check_available_version(pretty: bool = False, force_query: bool = False) -> ConnexionResponse:
     """Get available update information.
 
