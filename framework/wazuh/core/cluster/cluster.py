@@ -15,20 +15,8 @@ from functools import partial
 from os import listdir, path, remove, stat, walk
 from uuid import uuid4
 
-from jsonschema import ValidationError, validate, validators
 from wazuh import WazuhError, WazuhException, WazuhInternalError
 from wazuh.core import common
-from wazuh.core.cluster.utils import (
-    AGENT_CHUNK_SIZE,
-    AGENT_RECONNECTION_STABILITY_TIME,
-    AGENT_RECONNECTION_TIME,
-    FREQUENCY,
-    HAPROXY_HELPER,
-    HAPROXY_PORT,
-    HAPROXY_PROTOCOL,
-    IMBALANCE_TOLERANCE,
-    REMOVE_DISCONNECTED_NODE_AFTER,
-)
 from wazuh.core.config.client import CentralizedConfig
 from wazuh.core.InputValidator import InputValidator
 from wazuh.core.utils import blake2b, get_date_from_timestamp, get_utc_now, mkdir_with_mode
@@ -41,42 +29,9 @@ PATH_SEP = '|//@@//|'
 MIN_PORT = 1024
 MAX_PORT = 65535
 
-HAPROXY_HELPER_SCHEMA = {
-    'type': 'object',
-    'properties': {
-        HAPROXY_PORT: {'type': 'integer', 'minimum': MIN_PORT, 'maximum': MAX_PORT},
-        HAPROXY_PROTOCOL: {'type': 'string', 'enum': ['http', 'https']},
-        FREQUENCY: {'type': 'integer', 'minimum': 10},
-        AGENT_RECONNECTION_STABILITY_TIME: {'type': 'integer', 'minimum': 10},
-        AGENT_CHUNK_SIZE: {'type': 'integer', 'minimum': 100},
-        AGENT_RECONNECTION_TIME: {'type': 'integer', 'minimum': 0},
-        IMBALANCE_TOLERANCE: {'type': 'number', 'exclusiveMinimum': 0, 'maximum': 1},
-        REMOVE_DISCONNECTED_NODE_AFTER: {'type': 'integer', 'minimum': 0},
-    },
-}
-
 #
 # Cluster
 #
-
-
-def validate_haproxy_helper_config(config: dict):
-    """Validate the values of the give HAProxy helper configuration.
-
-    Parameters
-    ----------
-    config : dict
-        Configuration to validate.
-
-    Raises
-    ------
-    WazuhError(3004)
-        If there any invalid value.
-    """
-    try:
-        validate(config, HAPROXY_HELPER_SCHEMA, cls=validators.Draft202012Validator)
-    except ValidationError as error:
-        raise WazuhError(3004, f'Invalid value for {error.path.pop()}. {error.message}')
 
 
 def validate_file_path(config: dict, key: str):
@@ -151,8 +106,6 @@ def check_cluster_config(config):
                 config['nodes'][0]
             )
         )
-
-    validate_haproxy_helper_config(config.get(HAPROXY_HELPER, {}))
 
 
 def get_node():

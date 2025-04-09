@@ -14,23 +14,13 @@ from glob import glob
 
 from wazuh.core import common
 from wazuh.core.config.client import CentralizedConfig
-from wazuh.core.exception import WazuhError, WazuhHAPHelperError, WazuhInternalError
+from wazuh.core.exception import WazuhInternalError
 from wazuh.core.results import WazuhResult
 from wazuh.core.utils import temporary_cache
 from wazuh.core.wazuh_socket import create_wazuh_socket_message
 
 NO = 'no'
 YES = 'yes'
-HAPROXY_HELPER = 'haproxy_helper'
-HAPROXY_DISABLED = 'haproxy_disabled'
-HAPROXY_ADDRESS = 'haproxy_address'
-HAPROXY_PORT = 'haproxy_port'
-HAPROXY_PROTOCOL = 'haproxy_protocol'
-HAPROXY_USER = 'haproxy_user'
-HAPROXY_PASSWORD = 'haproxy_password'
-HAPROXY_BACKEND = 'haproxy_backend'
-HAPROXY_RESOLVER = 'haproxy_resolver'
-HAPROXY_CERT = 'haproxy_cert'
 CLIENT_CERT = 'client_cert'
 CLIENT_CERT_KEY = 'client_cert_key'
 CLIENT_CERT_PASSWORD = 'client_cert_password'
@@ -44,127 +34,6 @@ REMOVE_DISCONNECTED_NODE_AFTER = 'remove_disconnected_node_after'
 
 logger = logging.getLogger('wazuh')
 execq_lockfile = common.WAZUH_RUN / '.api_execq_lock'
-
-# TODO(25554) - Delete HAPROXY Config
-HELPER_DEFAULTS = {
-    HAPROXY_PORT: 5555,
-    HAPROXY_PROTOCOL: 'http',
-    HAPROXY_BACKEND: 'wazuh_reporting',
-    HAPROXY_RESOLVER: None,
-    HAPROXY_CERT: True,
-    CLIENT_CERT: None,
-    CLIENT_CERT_KEY: None,
-    CLIENT_CERT_PASSWORD: None,
-    EXCLUDED_NODES: [],
-    FREQUENCY: 60,
-    AGENT_CHUNK_SIZE: 300,
-    AGENT_RECONNECTION_TIME: 5,
-    AGENT_RECONNECTION_STABILITY_TIME: 60,
-    IMBALANCE_TOLERANCE: 0.1,
-    REMOVE_DISCONNECTED_NODE_AFTER: 240,
-}
-
-
-def _parse_haproxy_helper_integer_values(helper_config: dict) -> dict:
-    """Parse HAProxy helper integer values.
-
-    Parameters
-    ----------
-    helper_config : dict
-        Configuration to parse.
-
-    Returns
-    -------
-    dict
-        Parsed configuration with integer values.
-
-    Raises
-    ------
-    WazuhError (3004)
-        If some value has an invalid type.
-    """
-    for field in [
-        HAPROXY_PORT,
-        FREQUENCY,
-        AGENT_RECONNECTION_STABILITY_TIME,
-        AGENT_RECONNECTION_TIME,
-        AGENT_CHUNK_SIZE,
-        REMOVE_DISCONNECTED_NODE_AFTER,
-    ]:
-        if helper_config.get(field):
-            try:
-                helper_config[field] = int(helper_config[field])
-            except ValueError:
-                raise WazuhError(3004, extra_message=f'HAProxy Helper {field} must be an integer.')
-    return helper_config
-
-
-def _parse_haproxy_helper_float_values(helper_config: dict) -> dict:
-    """Parse HAProxy helper float values.
-
-    Parameters
-    ----------
-    helper_config : dict
-        Configuration to parse.
-
-    Returns
-    -------
-    dict
-        Parsed configuration with float values.
-
-    Raises
-    ------
-    WazuhError (3004)
-        If some value has an invalid type.
-    """
-    for field in [IMBALANCE_TOLERANCE]:
-        if helper_config.get(field):
-            try:
-                helper_config[field] = float(helper_config[field])
-            except ValueError:
-                raise WazuhError(3004, extra_message=f'HAProxy Helper {field} must be a float.')
-    return helper_config
-
-
-def parse_haproxy_helper_config(helper_config: dict) -> dict:
-    """Parse HAProxy helper configuration section.
-
-    Parameters
-    ----------
-    helper_config : dict
-        Configuration to parse.
-
-    Returns
-    -------
-    dict
-        Parsed configuration for HAProxy Helper.
-
-    Raises
-    ------
-    WazuhError (3004)
-        If some value has an invalid type.
-    WazuhHAPHelperError (3042)
-        If the used protocol is HTTPS and the HAProxy certificate is not defined.
-    """
-    # If any value is missing from user's cluster configuration, add the default one.
-    for value_name in set(HELPER_DEFAULTS.keys()) - set(helper_config.keys()):
-        helper_config[value_name] = HELPER_DEFAULTS[value_name]
-
-    if helper_config[HAPROXY_DISABLED] == NO:
-        helper_config[HAPROXY_DISABLED] = False
-    elif helper_config[HAPROXY_DISABLED] == YES:
-        helper_config[HAPROXY_DISABLED] = True
-
-    helper_config = _parse_haproxy_helper_integer_values(helper_config)
-    helper_config = _parse_haproxy_helper_float_values(helper_config)
-
-    # When the used protocol is HTTPS and the HAProxy certificate is not defined, an error is raised.
-    # If the client certificate info is not declared and the tls_ca parameter in the Dataplane API configuration is set,
-    # the communication fails
-    if helper_config[HAPROXY_PROTOCOL].lower() == 'https' and type(helper_config[HAPROXY_CERT]) is bool:
-        raise WazuhHAPHelperError(3042, extra_message='HAProxy certificate file required in the haproxy_cert parameter')
-
-    return helper_config
 
 
 @temporary_cache()

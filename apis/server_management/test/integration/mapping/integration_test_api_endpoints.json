@@ -1565,41 +1565,6 @@
         ]
     },
     {
-        "path": "framework/wazuh/core/cluster/hap_helper",
-        "files": [
-            {
-                "name": "hap_helper.py",
-                "tag": "hap",
-                "tests": [
-                    "test_agent_DELETE_endpoints.tavern.yaml",
-                    "test_agent_GET_endpoints.tavern.yaml",
-                    "test_agent_POST_endpoints.tavern.yaml",
-                    "test_agent_PUT_endpoints.tavern.yaml"
-                ]
-            },
-            {
-                "name": "proxy.py",
-                "tag": "proxy",
-                "tests": [
-                    "test_agent_DELETE_endpoints.tavern.yaml",
-                    "test_agent_GET_endpoints.tavern.yaml",
-                    "test_agent_POST_endpoints.tavern.yaml",
-                    "test_agent_PUT_endpoints.tavern.yaml"
-                ]
-            },
-            {
-                "name": "wazuh.py",
-                "tag": "wazuh",
-                "tests": [
-                    "test_agent_DELETE_endpoints.tavern.yaml",
-                    "test_agent_GET_endpoints.tavern.yaml",
-                    "test_agent_POST_endpoints.tavern.yaml",
-                    "test_agent_PUT_endpoints.tavern.yaml"
-                ]
-            }
-        ]
-    },
-    {
         "path": "framework/wazuh/core/cluster/tests",
         "files": [
             {
