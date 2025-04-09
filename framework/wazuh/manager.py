@@ -4,27 +4,26 @@
 
 from wazuh import Wazuh
 from wazuh.core import common
-from wazuh.core.cluster.cluster import get_node
-from wazuh.core.cluster.utils import manager_restart
 from wazuh.core.exception import WazuhError, WazuhInternalError
 from wazuh.core.manager import (
     OSSEC_LOG_FIELDS,
     get_logs_summary,
     get_ossec_logs,
     get_update_information_template,
-    status,
     validate_ossec_conf,
 )
 from wazuh.core.results import AffectedItemsWazuhResult, WazuhResult
+from wazuh.core.server.utils import get_manager_status, manager_restart
 from wazuh.core.utils import process_array
 from wazuh.rbac.decorators import expose_resources
 
-node_id = get_node().get('node')
+# TODO: set node ID
+node_id = '1'
 
 
 @expose_resources(actions=['cluster:read'], resources=[f'node:id:{node_id}'])
 def get_status() -> AffectedItemsWazuhResult:
-    """Wrapper for status().
+    """Get manager status.
 
     Returns
     -------
@@ -37,7 +36,7 @@ def get_status() -> AffectedItemsWazuhResult:
         none_msg=f'Could not read processes status{" in specified node" if node_id != "manager" else ""}',
     )
 
-    result.affected_items.append(status())
+    result.affected_items.append(get_manager_status())
     result.total_affected_items = len(result.affected_items)
 
     return result
