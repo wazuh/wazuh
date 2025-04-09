@@ -2401,6 +2401,9 @@ def check_if_wazuh_agent_version(version_str: str) -> bool:
         True if the string has the expected wazuh version format.
 
     """
+    if not isinstance(version_str, str):
+        return False
+
     return bool(re.match(r'^Wazuh v(\d+)\.(\d+)\.(\d+)', version_str))
 
 
