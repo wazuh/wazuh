@@ -152,7 +152,7 @@ def shutdown_server(server_pid: int):
     pyDaemonModule.delete_pid(SERVER_DAEMON_NAME, server_pid)
 
 
-def initialize():
+def initialize(args: argparse.Namespace):
     """Start the server instance."""
     tag = 'Server'
     context_tag.set(tag)
@@ -181,21 +181,6 @@ def get_script_arguments() -> argparse.Namespace:
 
     start_parser = subparsers.add_parser('start', help='Start Wazuh server')
     ####################################################################################################################
-    # Dev options - Silenced in the help message.
-    ####################################################################################################################
-    # Performance test - value stored in args.performance_test will be used to send a request of that size in bytes to
-    # all clients/to the server.
-    start_parser.add_argument('--performance_test', type=int, dest='performance_test', help=argparse.SUPPRESS)
-    # Concurrency test - value stored in args.concurrency_test will be used to send that number of requests in a row,
-    # without sleeping.
-    start_parser.add_argument('--concurrency_test', type=int, dest='concurrency_test', help=argparse.SUPPRESS)
-    # Send string test - value stored in args.send_string variable will be used to send a string with that size in bytes
-    # to the server. Only implemented in worker nodes.
-    start_parser.add_argument('--string', help=argparse.SUPPRESS, type=int, dest='send_string')
-    # Send file test - value stored in args.send_file variable is the path of a file to send to the server. Only
-    # implemented in worker nodes.
-    start_parser.add_argument('--file', help=argparse.SUPPRESS, type=str, dest='send_file')
-    ####################################################################################################################
     start_parser.add_argument('-r', '--root', help='Run as root', action='store_true', dest='root')
 
     start_parser.set_defaults(func=start)
@@ -221,6 +206,7 @@ def start():  # NOQA
     create_wazuh_dir(WAZUH_RUN)
 
     # Check for unused PID files
+    main_logger.debug('Checking for unused PID files')
     clean_pid_files(SERVER_DAEMON_NAME)
 
     # Drop privileges to wazuh
@@ -238,7 +224,7 @@ def start():  # NOQA
     # Create a strong reference to prevent the tasks from being garbage collected.
     background_tasks = set()
     try:
-        initialize()
+        initialize(args)
         loop = asyncio.new_event_loop()
         loop.add_signal_handler(signal.SIGTERM, partial(stop_loop, loop))
         background_tasks.add(loop.create_task(get_orders(main_logger)))
@@ -312,9 +298,8 @@ def check_daemon(processes: list, proc_name: str, children_number: int):
     """
     child: psutil.Process = _get_child_process(processes, proc_name)
     if child.status() == psutil.STATUS_ZOMBIE:
-        main_logger.error(f'Daemon `{proc_name}` is not running, stopping the whole server.')
         clean_pid_files(proc_name)
-        return
+        raise WazuhDaemonError(f'Daemon `{proc_name}` is not running, stopping the whole server.')
     if not _check_children_number(child, children_number):
         raise WazuhDaemonError(f'Daemon `{proc_name}` does not have the correct number of children process.')
 

@@ -2,7 +2,6 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-import asyncio
 import signal
 import sys
 from unittest.mock import Mock, call, patch
@@ -11,6 +10,7 @@ import pytest
 import scripts.wazuh_server as wazuh_server
 from scripts.tests.conftest import get_default_configuration
 from wazuh.core import pyDaemonModule
+from wazuh.core.common import CONFIG_SERVER_SOCKET_PATH
 from wazuh.core.config.client import CentralizedConfig
 from wazuh.core.config.models.server import ValidateFilePathMixin
 
@@ -23,23 +23,11 @@ with patch.object(ValidateFilePathMixin, '_validate_file_path', return_value=Non
 
 def test_set_logging():
     """Check and set the behavior of set_logging function."""
-    import wazuh.core.cluster.utils as cluster_utils
+    import wazuh.core.server.utils as server_utils
 
-    wazuh_server.cluster_utils = cluster_utils
-    with patch.object(cluster_utils, 'ClusterLogger'):
+    wazuh_server.server_utils = server_utils
+    with patch.object(server_utils, 'ServerLogger'):
         assert wazuh_server.set_logging(debug_mode=0)
-
-
-@patch('builtins.print')
-def test_print_version(print_mock):
-    """Set the scheme to be printed."""
-    with patch('wazuh.core.cluster.__version__', 'TEST'):
-        wazuh_server.print_version()
-        print_mock.assert_called_once_with(
-            '\nWazuh TEST - Wazuh Inc\n\nThis program is free software; you can redistribute it and/or modify\n'
-            'it under the terms of the GNU General Public License (version 2) as \npublished by the '
-            'Free Software Foundation. For more details, go to \nhttps://www.gnu.org/licenses/gpl.html\n'
-        )
 
 
 @pytest.mark.parametrize('root', [True, False])
@@ -163,174 +151,26 @@ def test_shutdown_daemon(os_getpid_mock, os_kill_mock):
     )
 
 
-@pytest.mark.asyncio
-@pytest.mark.parametrize('helper_disabled', (True, False))
-@pytest.mark.skip(reason='This test will be refactored')
-async def test_master_main(helper_disabled: bool):  # NOQA
-    """Check and set the behavior of master_main function."""
-    import wazuh.core.cluster.utils as cluster_utils
+def test_initialize():  # NOQA
+    """Check and set the behavior of initialize function."""
 
     class Arguments:
-        def __init__(self, performance_test, concurrency_test, root):
-            self.performance_test = performance_test
-            self.concurrency_test = concurrency_test
+        def __init__(self, root):
             self.root = root
 
-    class TaskPoolMock:
-        def __init__(self):
-            self._max_workers = 1
-
-        def map(self, first, second):
-            assert first == cluster_utils.process_spawn_sleep
-            assert second == range(1)
-
-    class MasterMock:
-        def __init__(self, performance_test, concurrency_test, server_config, logger):
-            assert performance_test == 'test_performance'
-            assert concurrency_test == 'concurrency_test'
-            assert server_config == default_config.server
-            assert logger == 'test_logger'
-            self.task_pool = TaskPoolMock()
-
-        def start(self):
-            return 'MASTER_START'
-
-    class LocalServerMasterMock:
-        def __init__(self, performance_test, logger, concurrency_test, node, server_config):
-            assert performance_test == 'test_performance'
-            assert logger == 'test_logger'
-            assert concurrency_test == 'concurrency_test'
-            assert server_config == default_config.server
-
-        def start(self):
-            return 'LOCALSERVER_START'
-
-    class HAPHElperMock:
-        @classmethod
-        def start(cls):
-            return 'HAPHELPER_START'
-
-    async def gather(first, second, third=None):
-        assert first == 'MASTER_START'
-        assert second == 'LOCALSERVER_START'
-        if third is not None:
-            assert third == 'HAPHELPER_START'
-
-    wazuh_server.cluster_utils = cluster_utils
-    args = Arguments(performance_test='test_performance', concurrency_test='concurrency_test', root=True)
-    with (
-        patch('scripts.wazuh_server.asyncio.gather', gather),
-        patch('wazuh.core.cluster.master.Master', MasterMock),
-        patch('wazuh.core.cluster.local_server.LocalServerMaster', LocalServerMasterMock),
-        patch('wazuh.core.cluster.hap_helper.hap_helper.HAPHelper', HAPHElperMock),
-        patch('scripts.wazuh_server.start_daemon'),
-        patch('scripts.wazuh_server.start_daemons'),
-    ):
-        await wazuh_server.master_main(args=args, server_config=default_config.server, logger='test_logger')
-
-
-@pytest.mark.asyncio
-@patch('asyncio.sleep', side_effect=IndexError)
-@pytest.mark.skip(reason='This test will be refactored')
-async def test_worker_main(asyncio_sleep_mock):  # NOQA
-    """Check and set the behavior of worker_main function."""
-    import wazuh.core.cluster.utils as cluster_utils
-
-    class Arguments:
-        def __init__(self, performance_test, concurrency_test, send_file, send_string, root):
-            self.performance_test = performance_test
-            self.concurrency_test = concurrency_test
-            self.send_file = send_file
-            self.send_string = send_string
-            self.root = root
-
-    class TaskPoolMock:
-        def __init__(self):
-            self._max_workers = 1
-
-        def map(self, first, second):
-            assert first == cluster_utils.process_spawn_sleep
-            assert second == range(1)
-
-    class LoggerMock:
-        def __init__(self):
-            pass
-
-        def warning(self, msg):
-            pass
-
-    class WorkerMock:
-        def __init__(self, performance_test, concurrency_test, server_config, logger, file, string, task_pool):
-            assert performance_test == 'test_performance'
-            assert concurrency_test == 'concurrency_test'
-            assert server_config == default_config.server
-            assert file is True
-            assert string is True
-            assert logger == 'test_logger'
-            assert task_pool is None
-            self.task_pool = TaskPoolMock()
-
-        def start(self):
-            return 'WORKER_START'
-
-    class LocalServerWorkerMock:
-        def __init__(self, performance_test, logger, concurrency_test, node, server_config):
-            assert performance_test == 'test_performance'
-            assert logger == 'test_logger'
-            assert concurrency_test == 'concurrency_test'
-            assert server_config == default_config.server
-
-        def start(self):
-            return 'LOCALSERVER_START'
-
-    async def gather(first, second):
-        assert first == 'WORKER_START'
-        assert second == 'LOCALSERVER_START'
-        raise asyncio.CancelledError()
-
-    wazuh_server.cluster_utils = cluster_utils
-    wazuh_server.main_logger = LoggerMock()
     args = Arguments(
-        performance_test='test_performance',
-        concurrency_test='concurrency_test',
-        send_file=True,
-        send_string=True,
         root=True,
     )
 
-    with patch.object(wazuh_server, 'main_logger') as main_logger_mock:
-        with patch('concurrent.futures.ProcessPoolExecutor', side_effect=FileNotFoundError) as processpoolexecutor_mock:
-            with patch('scripts.wazuh_server.asyncio.gather', gather):
-                with patch('scripts.wazuh_server.logging.info') as logging_info_mock:
-                    with patch('wazuh.core.cluster.worker.Worker', WorkerMock):
-                        with patch('wazuh.core.cluster.local_server.LocalServerWorker', LocalServerWorkerMock):
-                            with patch.object(default_config.server.worker.intervals, 'connection_retry', 34):
-                                with patch('scripts.wazuh_server.start_daemon'):
-                                    with patch('scripts.wazuh_server.start_daemons'):
-                                        with pytest.raises(IndexError):
-                                            await wazuh_server.worker_main(
-                                                args=args,
-                                                server_config=default_config.server,
-                                                logger='test_logger',
-                                            )
-                            processpoolexecutor_mock.assert_called_once_with(max_workers=1)
-                            main_logger_mock.assert_has_calls(
-                                [
-                                    call.warning(
-                                        'In order to take advantage of Wazuh 4.3.0 cluster improvements, the directory '
-                                        "'/dev/shm' must be accessible by the 'wazuh' user. Check that this file has "
-                                        'permissions to be accessed by all users. Changing the file permissions to 777 '
-                                        'will solve this issue.'
-                                    ),
-                                    call.warning(
-                                        'The Wazuh cluster will be run without the improvements added in Wazuh 4.3.0 and '
-                                        'higher versions.'
-                                    ),
-                                ]
-                            )
-                            logging_info_mock.assert_called_once_with(
-                                'Connection with server has been lost. Reconnecting in 10 seconds.'
-                            )
+    with (
+        patch('scripts.wazuh_server.start_daemons') as start_daemons_mock,
+        patch('scripts.wazuh_server.start_unix_server') as start_unix_server_mock,
+        patch('scripts.wazuh_server.ping_unix_socket') as ping_unix_socket_mock,
+    ):
+        wazuh_server.initialize(args)
+        start_unix_server_mock.assert_called_once()
+        ping_unix_socket_mock.assert_called_with(CONFIG_SERVER_SOCKET_PATH)
+        start_daemons_mock.assert_called_with(args.root)
 
 
 @pytest.mark.parametrize(
@@ -340,10 +180,6 @@ async def test_worker_main(asyncio_sleep_mock):  # NOQA
             'start',
             [
                 'func',
-                'performance_test',
-                'concurrency_test',
-                'send_string',
-                'send_file',
                 'root',
             ],
         ),
@@ -386,7 +222,7 @@ def test_start(
     mkdir_wazuh_dir_mock,
 ):
     """Check and set the behavior of the `start` function."""
-    import wazuh.core.cluster.utils as cluster_utils
+    import wazuh.core.server.utils as server_utils
     from wazuh.core import common
 
     class Arguments:
@@ -410,7 +246,7 @@ def test_start(
     wazuh_server.main_logger = LoggerMock()
     wazuh_server.args = args
     wazuh_server.common = common
-    wazuh_server.cluster_utils = cluster_utils
+    wazuh_server.cluster_utils = server_utils
     with (
         patch.object(common, 'wazuh_uid', return_value='uid_test'),
         patch.object(common, 'wazuh_gid', return_value='gid_test'),
