@@ -412,7 +412,7 @@ void test_set_auditd_config_audit_plugin_tampered_configuration(void **state) {
     // Plugin not created
     const char *audit3_socket = "/etc/audit/plugins.d/af_wazuh.conf";
 
-    expect_string(__wrap__minfo, formatted_msg, "(6024): Generating Auditd socket configuration file: 'etc/af_wazuh.conf'");
+    expect_string(__wrap__minfo, formatted_msg, "(6024): Generating Auditd socket configuration file: '/etc/audit/plugins.d/af_wazuh.conf'");
 
     expect_any(__wrap_OS_SHA1_Str, str);
     expect_any(__wrap_OS_SHA1_Str, length);
@@ -424,9 +424,8 @@ void test_set_auditd_config_audit_plugin_tampered_configuration(void **state) {
     will_return(__wrap_OS_SHA1_File, 0);
 
     expect_abspath(AUDIT_SOCKET, 1);
-    expect_abspath(AUDIT_CONF_FILE, 1);
 
-    expect_string(__wrap_wfopen, path, "etc/af_wazuh.conf");
+    expect_string(__wrap_wfopen, path, "/etc/audit/plugins.d/af_wazuh.conf");
     expect_string(__wrap_wfopen, mode, "w");
     will_return(__wrap_wfopen, 1);
 
@@ -435,21 +434,7 @@ void test_set_auditd_config_audit_plugin_tampered_configuration(void **state) {
     expect_value(__wrap_fclose, _File, 1);
     will_return(__wrap_fclose, 0);
 
-    // Create plugin
-    expect_string(__wrap_symlink, path1, "etc/af_wazuh.conf");
-    expect_string(__wrap_symlink, path2, audit3_socket);
-    will_return(__wrap_symlink, -1);
-    errno = EEXIST;
-
-    expect_string(__wrap_unlink, file, "/etc/audit/plugins.d/af_wazuh.conf");
-    will_return(__wrap_unlink, 0);
-
-    // Delete and create
-    expect_string(__wrap_symlink, path1, "etc/af_wazuh.conf");
-    expect_string(__wrap_symlink, path2, audit3_socket);
-    will_return(__wrap_symlink, 0);
-
-    expect_string(__wrap__minfo, formatted_msg, "(6025): Audit plugin configuration (etc/af_wazuh.conf) was modified. Restarting Auditd service.");
+    expect_string(__wrap__minfo, formatted_msg, "(6025): Audit plugin configuration (/etc/audit/plugins.d/af_wazuh.conf) was modified. Restarting Auditd service.");
 
     // Restart
     syscheck.restart_audit = 1;
@@ -480,12 +465,11 @@ void test_set_auditd_config_audit_plugin_not_created(void **state) {
     will_return(__wrap_OS_SHA1_File, "6e3a100fc85241f04ed9686d37738e7d08086fb4");
     will_return(__wrap_OS_SHA1_File, -1);
 
-    expect_string(__wrap__minfo, formatted_msg, "(6024): Generating Auditd socket configuration file: 'etc/af_wazuh.conf'");
+    expect_string(__wrap__minfo, formatted_msg, "(6024): Generating Auditd socket configuration file: '/etc/audit/plugins.d/af_wazuh.conf'");
 
     expect_abspath(AUDIT_SOCKET, 1);
-    expect_abspath(AUDIT_CONF_FILE, 1);
 
-    expect_string(__wrap_wfopen, path, "etc/af_wazuh.conf");
+    expect_string(__wrap_wfopen, path, "/etc/audit/plugins.d/af_wazuh.conf");
     expect_string(__wrap_wfopen, mode, "w");
     will_return(__wrap_wfopen, 1);
 
@@ -494,12 +478,7 @@ void test_set_auditd_config_audit_plugin_not_created(void **state) {
     expect_value(__wrap_fclose, _File, 1);
     will_return(__wrap_fclose, 0);
 
-    // Create plugin
-    expect_string(__wrap_symlink, path1, "etc/af_wazuh.conf");
-    expect_string(__wrap_symlink, path2, audit3_socket);
-    will_return(__wrap_symlink, 1);
-
-    expect_string(__wrap__minfo, formatted_msg, "(6025): Audit plugin configuration (etc/af_wazuh.conf) was modified. Restarting Auditd service.");
+    expect_string(__wrap__minfo, formatted_msg, "(6025): Audit plugin configuration (/etc/audit/plugins.d/af_wazuh.conf) was modified. Restarting Auditd service.");
 
     // Restart
     syscheck.restart_audit = 1;
@@ -517,13 +496,12 @@ void test_set_auditd_config_audit_plugin_not_created_fopen_error(void **state) {
     expect_string(__wrap_IsDir, file, "/etc/audit/plugins.d");
     will_return(__wrap_IsDir, 0);
 
-    expect_string(__wrap__minfo, formatted_msg, "(6024): Generating Auditd socket configuration file: 'etc/af_wazuh.conf'");
+    expect_string(__wrap__minfo, formatted_msg, "(6024): Generating Auditd socket configuration file: '/etc/audit/plugins.d/af_wazuh.conf'");
 
     // Plugin not created
     const char *audit3_socket = "/etc/audit/plugins.d/af_wazuh.conf";
 
     expect_abspath(AUDIT_SOCKET, 1);
-    expect_abspath(AUDIT_CONF_FILE, 1);
 
     expect_any(__wrap_OS_SHA1_Str, str);
     expect_any(__wrap_OS_SHA1_Str, length);
@@ -534,11 +512,11 @@ void test_set_auditd_config_audit_plugin_not_created_fopen_error(void **state) {
     will_return(__wrap_OS_SHA1_File, "0123456789abcdef0123456789abcdef01234567");
     will_return(__wrap_OS_SHA1_File, 0);
 
-    expect_string(__wrap_wfopen, path, "etc/af_wazuh.conf");
+    expect_string(__wrap_wfopen, path, "/etc/audit/plugins.d/af_wazuh.conf");
     expect_string(__wrap_wfopen, mode, "w");
     will_return(__wrap_wfopen, 0);
 
-    expect_string(__wrap__merror, formatted_msg, "(1103): Could not open file 'etc/af_wazuh.conf' due to [(0)-(Success)].");
+    expect_string(__wrap__merror, formatted_msg, "(1103): Could not open file '/etc/audit/plugins.d/af_wazuh.conf' due to [(0)-(Success)].");
 
     int ret;
     ret = set_auditd_config();
@@ -548,7 +526,7 @@ void test_set_auditd_config_audit_plugin_not_created_fopen_error(void **state) {
 
 
 void test_set_auditd_config_audit_plugin_not_created_fclose_error(void **state) {
-    expect_string(__wrap__minfo, formatted_msg, "(6024): Generating Auditd socket configuration file: 'etc/af_wazuh.conf'");
+    expect_string(__wrap__minfo, formatted_msg, "(6024): Generating Auditd socket configuration file: '/etc/audit/plugins.d/af_wazuh.conf'");
 
     // Audit 3
     expect_string(__wrap_IsDir, file, "/etc/audit/plugins.d");
@@ -558,7 +536,6 @@ void test_set_auditd_config_audit_plugin_not_created_fclose_error(void **state) 
     const char *audit3_socket = "/etc/audit/plugins.d/af_wazuh.conf";
 
     expect_abspath(AUDIT_SOCKET, 1);
-    expect_abspath(AUDIT_CONF_FILE, 1);
 
     expect_any(__wrap_OS_SHA1_Str, str);
     expect_any(__wrap_OS_SHA1_Str, length);
@@ -569,7 +546,7 @@ void test_set_auditd_config_audit_plugin_not_created_fclose_error(void **state) 
     will_return(__wrap_OS_SHA1_File, "0123456789abcdef0123456789abcdef01234567");
     will_return(__wrap_OS_SHA1_File, 0);
 
-    expect_string(__wrap_wfopen, path, "etc/af_wazuh.conf");
+    expect_string(__wrap_wfopen, path, "/etc/audit/plugins.d/af_wazuh.conf");
     expect_string(__wrap_wfopen, mode, "w");
     will_return(__wrap_wfopen, 1);
 
@@ -578,225 +555,7 @@ void test_set_auditd_config_audit_plugin_not_created_fclose_error(void **state) 
     expect_value(__wrap_fclose, _File, 1);
     will_return(__wrap_fclose, -1);
 
-    expect_string(__wrap__merror, formatted_msg, "(1140): Could not close file 'etc/af_wazuh.conf' due to [(0)-(Success)].");
-
-    int ret;
-    ret = set_auditd_config();
-
-    assert_int_equal(ret, -1);
-}
-
-
-void test_set_auditd_config_audit_plugin_not_created_recreate_symlink(void **state) {
-    expect_string(__wrap__minfo, formatted_msg, "(6024): Generating Auditd socket configuration file: 'etc/af_wazuh.conf'");
-
-    // Audit 3
-    expect_string(__wrap_IsDir, file, "/etc/audit/plugins.d");
-    will_return(__wrap_IsDir, 0);
-
-    // Plugin not created
-    const char *audit3_socket = "/etc/audit/plugins.d/af_wazuh.conf";
-
-    expect_abspath(AUDIT_SOCKET, 1);
-    expect_abspath(AUDIT_CONF_FILE, 1);
-
-    expect_any(__wrap_OS_SHA1_Str, str);
-    expect_any(__wrap_OS_SHA1_Str, length);
-    will_return(__wrap_OS_SHA1_Str, "6e3a100fc85241f04ed9686d37738e7d08086fb4");
-
-    expect_string(__wrap_OS_SHA1_File, fname, audit3_socket);
-    expect_value(__wrap_OS_SHA1_File, mode, OS_TEXT);
-    will_return(__wrap_OS_SHA1_File, "0123456789abcdef0123456789abcdef01234567");
-    will_return(__wrap_OS_SHA1_File, 0);
-
-    expect_string(__wrap_wfopen, path, "etc/af_wazuh.conf");
-    expect_string(__wrap_wfopen, mode, "w");
-    will_return(__wrap_wfopen, 1);
-
-    will_return(__wrap_fwrite, 1);
-
-    expect_value(__wrap_fclose, _File, 1);
-    will_return(__wrap_fclose, 0);
-
-    // Create plugin
-    expect_string(__wrap_symlink, path1, "etc/af_wazuh.conf");
-    expect_string(__wrap_symlink, path2, audit3_socket);
-    will_return(__wrap_symlink, -1);
-    errno = EEXIST;
-
-    expect_string(__wrap_unlink, file, "/etc/audit/plugins.d/af_wazuh.conf");
-    will_return(__wrap_unlink, 0);
-
-    // Delete and create
-    expect_string(__wrap_symlink, path1, "etc/af_wazuh.conf");
-    expect_string(__wrap_symlink, path2, audit3_socket);
-    will_return(__wrap_symlink, 0);
-
-    // Do not restart
-    syscheck.restart_audit = 0;
-
-    expect_string(__wrap__mwarn, formatted_msg, "(6910): Audit plugin configuration was modified. You need to restart Auditd. Who-data will be disabled.");
-
-    int ret;
-    ret = set_auditd_config();
-
-    assert_int_equal(ret, 1);
-}
-
-
-void test_set_auditd_config_audit_plugin_not_created_recreate_symlink_restart(void **state) {
-    // Audit 3
-    expect_string(__wrap_IsDir, file, "/etc/audit/plugins.d");
-    will_return(__wrap_IsDir, 0);
-
-    // Plugin not created
-    const char *audit3_socket = "/etc/audit/plugins.d/af_wazuh.conf";
-
-    expect_string(__wrap__minfo, formatted_msg, "(6024): Generating Auditd socket configuration file: 'etc/af_wazuh.conf'");
-
-    expect_abspath(AUDIT_SOCKET, 1);
-    expect_abspath(AUDIT_CONF_FILE, 1);
-
-    expect_any(__wrap_OS_SHA1_Str, str);
-    expect_any(__wrap_OS_SHA1_Str, length);
-    will_return(__wrap_OS_SHA1_Str, "6e3a100fc85241f04ed9686d37738e7d08086fb4");
-
-    expect_string(__wrap_OS_SHA1_File, fname, audit3_socket);
-    expect_value(__wrap_OS_SHA1_File, mode, OS_TEXT);
-    will_return(__wrap_OS_SHA1_File, "0123456789abcdef0123456789abcdef01234567");
-    will_return(__wrap_OS_SHA1_File, 0);
-
-    expect_string(__wrap_wfopen, path, "etc/af_wazuh.conf");
-    expect_string(__wrap_wfopen, mode, "w");
-    will_return(__wrap_wfopen, 1);
-
-    will_return(__wrap_fwrite, 1);
-
-    expect_value(__wrap_fclose, _File, 1);
-    will_return(__wrap_fclose, 0);
-
-    // Create plugin
-    expect_string(__wrap_symlink, path1, "etc/af_wazuh.conf");
-    expect_string(__wrap_symlink, path2, audit3_socket);
-    will_return(__wrap_symlink, -1);
-    errno = EEXIST;
-
-    expect_string(__wrap_unlink, file, "/etc/audit/plugins.d/af_wazuh.conf");
-    will_return(__wrap_unlink, 0);
-
-    // Delete and create
-    expect_string(__wrap_symlink, path1, "etc/af_wazuh.conf");
-    expect_string(__wrap_symlink, path2, audit3_socket);
-    will_return(__wrap_symlink, 0);
-
-    expect_string(__wrap__minfo, formatted_msg, "(6025): Audit plugin configuration (etc/af_wazuh.conf) was modified. Restarting Auditd service.");
-
-    // Restart
-    syscheck.restart_audit = 1;
-    will_return(__wrap_audit_restart, 99);
-
-    int ret;
-    ret = set_auditd_config();
-
-    assert_int_equal(ret, 99);
-}
-
-
-void test_set_auditd_config_audit_plugin_not_created_recreate_symlink_error(void **state) {
-    // Audit 3
-    expect_string(__wrap_IsDir, file, "/etc/audit/plugins.d");
-    will_return(__wrap_IsDir, 0);
-
-    expect_string(__wrap__minfo, formatted_msg, "(6024): Generating Auditd socket configuration file: 'etc/af_wazuh.conf'");
-
-    // Plugin not created
-    const char *audit3_socket = "/etc/audit/plugins.d/af_wazuh.conf";
-
-    expect_abspath(AUDIT_SOCKET, 1);
-    expect_abspath(AUDIT_CONF_FILE, 1);
-
-    expect_any(__wrap_OS_SHA1_Str, str);
-    expect_any(__wrap_OS_SHA1_Str, length);
-    will_return(__wrap_OS_SHA1_Str, "6e3a100fc85241f04ed9686d37738e7d08086fb4");
-
-    expect_string(__wrap_OS_SHA1_File, fname, audit3_socket);
-    expect_value(__wrap_OS_SHA1_File, mode, OS_TEXT);
-    will_return(__wrap_OS_SHA1_File, "0123456789abcdef0123456789abcdef01234567");
-    will_return(__wrap_OS_SHA1_File, 0);
-
-    expect_string(__wrap_wfopen, path, "etc/af_wazuh.conf");
-    expect_string(__wrap_wfopen, mode, "w");
-    will_return(__wrap_wfopen, 1);
-
-    will_return(__wrap_fwrite, 1);
-
-    expect_value(__wrap_fclose, _File, 1);
-    will_return(__wrap_fclose, 0);
-
-    // Create plugin
-    expect_string(__wrap_symlink, path1, "etc/af_wazuh.conf");
-    expect_string(__wrap_symlink, path2, audit3_socket);
-    will_return(__wrap_symlink, -1);
-    errno = EEXIST;
-
-    expect_string(__wrap_unlink, file, "/etc/audit/plugins.d/af_wazuh.conf");
-    will_return(__wrap_unlink, 0);
-
-    // Delete and create
-    expect_string(__wrap_symlink, path1, "etc/af_wazuh.conf");
-    expect_string(__wrap_symlink, path2, audit3_socket);
-    will_return(__wrap_symlink, -1);
-
-    expect_string(__wrap__merror, formatted_msg, "(1134): Unable to link from '/etc/audit/plugins.d/af_wazuh.conf' to 'etc/af_wazuh.conf' due to [(17)-(File exists)].");
-
-    int ret;
-    ret = set_auditd_config();
-
-    assert_int_equal(ret, -1);
-}
-
-
-void test_set_auditd_config_audit_plugin_not_created_recreate_symlink_unlink_error(void **state) {
-    // Audit 3
-    expect_string(__wrap_IsDir, file, "/etc/audit/plugins.d");
-    will_return(__wrap_IsDir, 0);
-
-    expect_string(__wrap__minfo, formatted_msg, "(6024): Generating Auditd socket configuration file: 'etc/af_wazuh.conf'");
-
-    // Plugin not created
-    const char *audit3_socket = "/etc/audit/plugins.d/af_wazuh.conf";
-
-    expect_abspath(AUDIT_SOCKET, 1);
-    expect_abspath(AUDIT_CONF_FILE, 1);
-
-    expect_any(__wrap_OS_SHA1_Str, str);
-    expect_any(__wrap_OS_SHA1_Str, length);
-    will_return(__wrap_OS_SHA1_Str, "6e3a100fc85241f04ed9686d37738e7d08086fb4");
-
-    expect_string(__wrap_OS_SHA1_File, fname, audit3_socket);
-    expect_value(__wrap_OS_SHA1_File, mode, OS_TEXT);
-    will_return(__wrap_OS_SHA1_File, "0123456789abcdef0123456789abcdef01234567");
-    will_return(__wrap_OS_SHA1_File, 0);
-
-    expect_string(__wrap_wfopen, path, "etc/af_wazuh.conf");
-    expect_string(__wrap_wfopen, mode, "w");
-    will_return(__wrap_wfopen, 1);
-
-    will_return(__wrap_fwrite, 1);
-
-    expect_value(__wrap_fclose, _File, 1);
-    will_return(__wrap_fclose, 0);
-
-    // Create plugin
-    expect_string(__wrap_symlink, path1, "etc/af_wazuh.conf");
-    expect_string(__wrap_symlink, path2, audit3_socket);
-    will_return(__wrap_symlink, -1);
-    errno = EEXIST;
-
-    expect_string(__wrap_unlink, file, "/etc/audit/plugins.d/af_wazuh.conf");
-    will_return(__wrap_unlink, -1);
-
-    expect_string(__wrap__merror, formatted_msg, "(1123): Unable to delete file: '/etc/audit/plugins.d/af_wazuh.conf' due to [(17)-(File exists)].");
+    expect_string(__wrap__merror, formatted_msg, "(1140): Could not close file '/etc/audit/plugins.d/af_wazuh.conf' due to [(0)-(Success)].");
 
     int ret;
     ret = set_auditd_config();
@@ -1367,141 +1126,6 @@ void test_audit_create_rules_file_fclose_fail(void **state) {
     audit_create_rules_file();
 }
 
-void test_audit_create_rules_file_symlink_exist(void **state) {
-    expect_string(__wrap_wfopen, path, AUDIT_RULES_FILE);
-    expect_string(__wrap_wfopen, mode, "w");
-    will_return(__wrap_wfopen, 1);
-
-    // Mutex inside get_real_path
-    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
-    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
-    expect_function_call_any(__wrap_pthread_rwlock_unlock);
-    expect_function_call_any(__wrap_pthread_mutex_lock);
-    expect_function_call_any(__wrap_pthread_mutex_unlock);
-
-    expect_string(__wrap__mdebug2, formatted_msg, "(6365): Added directory '/test0' to audit rules file.");
-
-    expect_any(__wrap_fprintf, __stream);
-    expect_string(__wrap_fprintf, formatted_msg, "-w /test0 -p wa -k wazuh_fim\n");
-    will_return(__wrap_fprintf, 0);
-
-    expect_string(__wrap__mdebug2, formatted_msg, "(6365): Added directory '/test1' to audit rules file.");
-
-    expect_any(__wrap_fprintf, __stream);
-    expect_string(__wrap_fprintf, formatted_msg, "-w /test1 -p wa -k wazuh_fim\n");
-    will_return(__wrap_fprintf, 0);
-
-    expect_any(__wrap_fclose, _File);
-    will_return(__wrap_fclose, 0);
-
-    expect_abspath(AUDIT_RULES_FILE, 0);
-
-    expect_string(__wrap_symlink, path1, AUDIT_RULES_FILE);
-    expect_string(__wrap_symlink, path2, AUDIT_RULES_LINK);
-    will_return(__wrap_symlink, -1);
-
-    errno = EEXIST;
-
-    expect_string(__wrap_unlink, file, AUDIT_RULES_LINK);
-    will_return(__wrap_unlink, 0);
-
-    expect_string(__wrap_symlink, path1, AUDIT_RULES_FILE);
-    expect_string(__wrap_symlink, path2, AUDIT_RULES_LINK);
-    will_return(__wrap_symlink, 0);
-
-    expect_string(__wrap__minfo, formatted_msg, "(6045): Created audit rules file, due to audit immutable mode rules will be loaded in the next reboot.");
-
-    audit_create_rules_file();
-}
-
-void test_audit_create_rules_file_unlink_fail(void **state) {
-    char error_msg[OS_SIZE_128];
-
-    expect_string(__wrap_wfopen, path, AUDIT_RULES_FILE);
-    expect_string(__wrap_wfopen, mode, "w");
-    will_return(__wrap_wfopen, 1);
-
-    // Mutex inside get_real_path
-    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
-    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
-    expect_function_call_any(__wrap_pthread_rwlock_unlock);
-    expect_function_call_any(__wrap_pthread_mutex_lock);
-    expect_function_call_any(__wrap_pthread_mutex_unlock);
-
-    expect_string(__wrap__mdebug2, formatted_msg, "(6365): Added directory '/test0' to audit rules file.");
-
-    expect_any(__wrap_fprintf, __stream);
-    expect_string(__wrap_fprintf, formatted_msg, "-w /test0 -p wa -k wazuh_fim\n");
-    will_return(__wrap_fprintf, 0);
-
-    expect_string(__wrap__mdebug2, formatted_msg, "(6365): Added directory '/test1' to audit rules file.");
-
-    expect_any(__wrap_fprintf, __stream);
-    expect_string(__wrap_fprintf, formatted_msg, "-w /test1 -p wa -k wazuh_fim\n");
-    will_return(__wrap_fprintf, 0);
-
-    expect_any(__wrap_fclose, _File);
-    will_return(__wrap_fclose, 0);
-
-    expect_abspath(AUDIT_RULES_FILE, 0);
-
-    expect_string(__wrap_symlink, path1, AUDIT_RULES_FILE);
-    expect_string(__wrap_symlink, path2, AUDIT_RULES_LINK);
-    will_return(__wrap_symlink, -1);
-
-    errno = EEXIST;
-
-    expect_string(__wrap_unlink, file, AUDIT_RULES_LINK);
-    will_return(__wrap_unlink, -1);
-
-    snprintf(error_msg, OS_SIZE_128, UNLINK_ERROR, AUDIT_RULES_LINK, errno, strerror(errno));
-    expect_string(__wrap__merror, formatted_msg, error_msg);
-
-    audit_create_rules_file();
-}
-
-void test_audit_create_rules_file_symlink_fail(void **state) {
-    char error_msg[OS_SIZE_256];
-
-    expect_string(__wrap_wfopen, path, AUDIT_RULES_FILE);
-    expect_string(__wrap_wfopen, mode, "w");
-    will_return(__wrap_wfopen, 1);
-
-    // Mutex inside get_real_path
-    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
-    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
-    expect_function_call_any(__wrap_pthread_rwlock_unlock);
-    expect_function_call_any(__wrap_pthread_mutex_lock);
-    expect_function_call_any(__wrap_pthread_mutex_unlock);
-
-    expect_string(__wrap__mdebug2, formatted_msg, "(6365): Added directory '/test0' to audit rules file.");
-
-    expect_any(__wrap_fprintf, __stream);
-    expect_string(__wrap_fprintf, formatted_msg, "-w /test0 -p wa -k wazuh_fim\n");
-    will_return(__wrap_fprintf, 0);
-
-    expect_string(__wrap__mdebug2, formatted_msg, "(6365): Added directory '/test1' to audit rules file.");
-
-    expect_any(__wrap_fprintf, __stream);
-    expect_string(__wrap_fprintf, formatted_msg, "-w /test1 -p wa -k wazuh_fim\n");
-    will_return(__wrap_fprintf, 0);
-
-    expect_any(__wrap_fclose, _File);
-    will_return(__wrap_fclose, 0);
-
-    expect_abspath(AUDIT_RULES_FILE, 0);
-
-    expect_string(__wrap_symlink, path1, AUDIT_RULES_FILE);
-    expect_string(__wrap_symlink, path2, AUDIT_RULES_LINK);
-    will_return(__wrap_symlink, -1);
-
-    errno = 1;
-
-    snprintf(error_msg, OS_SIZE_256, LINK_ERROR, AUDIT_RULES_LINK, AUDIT_RULES_FILE, errno, strerror(errno));
-    expect_string(__wrap__merror, formatted_msg, error_msg);
-
-    audit_create_rules_file();
-}
 
 int main(void) {
     const struct CMUnitTest tests[] = {
@@ -1519,10 +1143,6 @@ int main(void) {
         cmocka_unit_test(test_set_auditd_config_audit_plugin_not_created),
         cmocka_unit_test(test_set_auditd_config_audit_plugin_not_created_fopen_error),
         cmocka_unit_test(test_set_auditd_config_audit_plugin_not_created_fclose_error),
-        cmocka_unit_test(test_set_auditd_config_audit_plugin_not_created_recreate_symlink),
-        cmocka_unit_test(test_set_auditd_config_audit_plugin_not_created_recreate_symlink_restart),
-        cmocka_unit_test(test_set_auditd_config_audit_plugin_not_created_recreate_symlink_error),
-        cmocka_unit_test(test_set_auditd_config_audit_plugin_not_created_recreate_symlink_unlink_error),
         cmocka_unit_test_teardown(test_audit_get_id, free_string),
         cmocka_unit_test(test_audit_get_id_begin_error),
         cmocka_unit_test(test_audit_get_id_end_error),
@@ -1542,9 +1162,6 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_audit_create_rules_file, setup_syscheck_dir_links, teardown_syscheck_dir_links),
         cmocka_unit_test_setup_teardown(test_audit_create_rules_file_fopen_fail, setup_syscheck_dir_links, teardown_syscheck_dir_links),
         cmocka_unit_test_setup_teardown(test_audit_create_rules_file_fclose_fail, setup_syscheck_dir_links, teardown_syscheck_dir_links),
-        cmocka_unit_test_setup_teardown(test_audit_create_rules_file_symlink_exist, setup_syscheck_dir_links, teardown_syscheck_dir_links),
-        cmocka_unit_test_setup_teardown(test_audit_create_rules_file_unlink_fail, setup_syscheck_dir_links, teardown_syscheck_dir_links),
-        cmocka_unit_test_setup_teardown(test_audit_create_rules_file_symlink_fail, setup_syscheck_dir_links, teardown_syscheck_dir_links),
         };
 
     return cmocka_run_group_tests(tests, setup_group, teardown_group);
