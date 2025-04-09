@@ -348,7 +348,7 @@ def get_agents(agent_list: list = None, offset: int = 0, limit: int = common.DAT
                                 query=q, **rbac_filters, distinct=distinct) as db_query:
             data = db_query.run()
 
-        if 'version' in sort['fields']:
+        if sort and 'version' in sort['fields']:
             data['items'] = sorted(data['items'],
                           key=lambda o: tuple(
                               parse_wazuh_agent_version(o.get(a)) if a == 'version' and check_if_wazuh_agent_version(o.get(a))

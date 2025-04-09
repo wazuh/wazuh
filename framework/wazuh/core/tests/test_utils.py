@@ -2337,3 +2337,60 @@ def test_check_virustotal_integration(integrations_conf, new_conf):
             with pytest.raises(exception.WazuhError, match=".* 1131 .*"):
                 mock_requests_get.side_effect = exceptions.RequestException
                 utils.check_virustotal_integration(new_conf)
+
+@pytest.mark.parametrize(
+    "version_str, expected_result",
+    [
+        ("Wazuh v4.3.10", True),
+        ("Wazuh v3.0.0", True),
+        ("Wazuh v1.2.3", True),
+        ("Wazuhv4.3.10", False),
+        ("wazuh v4.3.10", False),
+        ("Wazuh v4.3", False),
+        ("Wazuh 4.3.10", False),
+        ("Not a version", False),
+    ]
+)
+def test_check_if_wazuh_agent_version(version_str, expected_result):
+    """
+    Test the check_if_wazuh_agent_version function.
+
+    Parameters
+    ----------
+    version_str : str
+        The version string to check.
+    expected_result : bool
+        Expected result from the function based on the input format.
+
+    Asserts
+    -------
+    bool
+        The function returns True for valid version formats and False otherwise.
+    """
+    assert utils.check_if_wazuh_agent_version(version_str) == expected_result
+
+
+@pytest.mark.parametrize(
+    "version_str, expected_tuple",
+    [
+        ("Wazuh v4.3.10", (4, 3, 10)),
+        ("Wazuh v0.0.1", (0, 0, 1)),
+    ]
+)
+def test_parse_wazuh_agent_version(version_str, expected_tuple):
+    """
+    Test the parse_wazuh_agent_version function.
+
+    Parameters
+    ----------
+    version_str : str
+        The version string to parse.
+    expected_tuple : tuple
+        Expected output tuple (X, Y, Z) extracted from the input string.
+
+    Asserts
+    -------
+    tuple
+        The function correctly parses the version string into a tuple of integers.
+    """
+    assert utils.parse_wazuh_agent_version(version_str) == expected_tuple
