@@ -352,7 +352,7 @@ def get_agents(agent_list: list = None, offset: int = 0, limit: int = common.DAT
             data['items'] = sorted(data['items'],
                           key=lambda o: tuple(
                               parse_wazuh_agent_version(o.get(a)) if a == 'version' and check_if_wazuh_agent_version(o.get(a))
-                              else o.get(a).lower() if type(o.get(a)) in str else o.get(a) for a in sort['fields']),
+                              else o.get(a).lower() if type(o.get(a)) == str else o.get(a) for a in sort['fields']),
                           reverse=True if sort['order'] == 'asc' else False)
 
         result.affected_items.extend(data['items'])
