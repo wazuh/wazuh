@@ -42,7 +42,6 @@ services:
       # User worker 1 certificates
       - ./certs/root-ca.pem:/etc/wazuh-dashboard/certs/root-ca.pem
       - ./certs/wazuh-worker1.pem:/etc/wazuh-dashboard/certs/dashboard.pem
-      - ./certs/wazuh-worker1.key:/etc/wazuh-dashboard/certs/dashboard-key.pem
       - ./certs/wazuh-worker1-key.pem:/etc/wazuh-dashboard/certs/dashboard-key.pem
     ports:
       - 4040:443
