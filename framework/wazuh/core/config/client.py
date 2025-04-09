@@ -15,7 +15,6 @@ from wazuh.core.config.models.central_config import (
     ServerConfig,
 )
 from wazuh.core.config.models.management_api import RBACMode
-from wazuh.core.config.models.server import ServerSyncConfig
 
 
 class CentralizedConfig:
@@ -124,22 +123,6 @@ class CentralizedConfig:
             cls.load()
 
         return cls._config.server
-
-    @classmethod
-    def get_internal_server_config(cls) -> ServerSyncConfig:
-        """Retrieve the internal server configuration.
-
-        Loads the configuration if it has not been loaded yet.
-
-        Returns
-        -------
-        ServerSyncConfig
-            The internal server configuration.
-        """
-        if cls._config is None:
-            cls.load()
-
-        return cls._config.server.get_internal_config()
 
     @classmethod
     def get_config_json(cls, sections: Optional[List[ConfigSections]] = None) -> str:

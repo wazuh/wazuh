@@ -11,7 +11,7 @@ from wazuh.core.config.models.central_config import (
     IndexerConfig,
     ManagementAPIConfig,
 )
-from wazuh.core.config.models.server import DEFAULT_SERVER_INTERNAL_CONFIG, ServerConfig
+from wazuh.core.config.models.server import ServerConfig
 
 mock_config_data = {
     'server': {
@@ -76,12 +76,6 @@ def test_get_server_config(patch_load):
     """Check the correct behavior of the `get_server_config` class method."""
     server_config = CentralizedConfig.get_server_config()
     assert server_config == ServerConfig(**mock_config_data['server'])
-
-
-def test_get_server_internal_config(patch_load):
-    """Check the correct behavior of the `get_internal_server_config` class method."""
-    internal_config = CentralizedConfig.get_internal_server_config()
-    assert internal_config == DEFAULT_SERVER_INTERNAL_CONFIG
 
 
 @pytest.mark.parametrize(
