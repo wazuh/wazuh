@@ -16,7 +16,6 @@ setup(
     author_email='hello@wazuh.com',
     license='GPLv2',
     packages=find_namespace_packages(exclude=['*.tests', '*.tests.*', 'tests.*', 'tests']),
-    package_data={'wazuh': ['core/wazuh.json', 'core/cluster/cluster.json', 'rbac/default/*.yaml']},
     include_package_data=True,
     install_requires=[],
     zip_safe=False,

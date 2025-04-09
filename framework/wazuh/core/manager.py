@@ -18,7 +18,6 @@ import httpx
 import wazuh
 from wazuh import WazuhError, WazuhException, WazuhInternalError
 from wazuh.core import common
-from wazuh.core.cluster.utils import get_manager_status
 from wazuh.core.configuration import get_active_configuration, get_cti_url
 from wazuh.core.utils import get_utc_now, get_utc_strptime, tail
 from wazuh.core.wazuh_socket import WazuhSocket
@@ -38,11 +37,6 @@ DEFAULT_TIMEOUT = 10.0
 class LoggingFormat(Enum):
     plain = 'plain'
     json = 'json'
-
-
-def status() -> dict:
-    """Return the Manager processes that are running."""
-    return get_manager_status()
 
 
 def get_ossec_log_fields(log: str, log_format: LoggingFormat = LoggingFormat.plain) -> Union[tuple, None]:
