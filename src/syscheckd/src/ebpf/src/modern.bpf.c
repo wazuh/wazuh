@@ -98,81 +98,81 @@ extern int LINUX_KERNEL_VERSION __kconfig;
 * to safely build the path in reverse order.
 */
 statfunc long get_path_str_from_path(unsigned char **path_str,
-                                     struct path *path,
-                                     struct buffer *out_buf)
+    struct path *path,
+    struct buffer *out_buf)
 {
-    long ret;
-    struct dentry *dentry, *dentry_parent, *dentry_mnt;
-    struct vfsmount *vfsmnt;
-    struct mount *mnt, *mnt_parent;
-    const unsigned char *name;
-    size_t name_len;
+long ret;
+struct dentry *dentry, *dentry_parent, *dentry_mnt;
+struct vfsmount *vfsmnt;
+struct mount *mnt, *mnt_parent;
+const unsigned char *name;
+size_t name_len;
 
-    dentry = BPF_CORE_READ(path, dentry);
-    vfsmnt = BPF_CORE_READ(path, mnt);
-    mnt = container_of(vfsmnt, struct mount, mnt);
-    mnt_parent = BPF_CORE_READ(mnt, mnt_parent);
+dentry = BPF_CORE_READ(path, dentry);
+vfsmnt = BPF_CORE_READ(path, mnt);
+mnt = container_of(vfsmnt, struct mount, mnt);
+mnt_parent = BPF_CORE_READ(mnt, mnt_parent);
 
-    size_t buf_off = HALF_PERCPU_ARRAY_SIZE;
+size_t buf_off = HALF_PERCPU_ARRAY_SIZE;
 
 #pragma unroll
-    for (int i = 0; i < MAX_PATH_COMPONENTS; i++) {
-        dentry_mnt = BPF_CORE_READ(vfsmnt, mnt_root);
-        dentry_parent = BPF_CORE_READ(dentry, d_parent);
+for (int i = 0; i < MAX_PATH_COMPONENTS; i++) {
+dentry_mnt = BPF_CORE_READ(vfsmnt, mnt_root);
+dentry_parent = BPF_CORE_READ(dentry, d_parent);
 
-        /* If we've reached the root of the filesystem or the parent is the same as current, stop. */
-        if (dentry == dentry_mnt || dentry == dentry_parent) {
-            if (dentry != dentry_mnt)
-                break;
-            /* Handle mountpoints going up */
-            if (mnt != mnt_parent) {
-                dentry = BPF_CORE_READ(mnt, mnt_mountpoint);
-                mnt_parent = BPF_CORE_READ(mnt, mnt_parent);
-                vfsmnt = __builtin_preserve_access_index(&mnt->mnt);
-                continue;
-            }
-            break;
-        }
+/* If we've reached the root of the filesystem or the parent is the same as current, stop. */
+if (dentry == dentry_mnt || dentry == dentry_parent) {
+if (dentry != dentry_mnt)
+break;
+/* Handle mountpoints going up */
+if (mnt != mnt_parent) {
+dentry = BPF_CORE_READ(mnt, mnt_mountpoint);
+mnt_parent = BPF_CORE_READ(mnt, mnt_parent);
+vfsmnt = __builtin_preserve_access_index(&mnt->mnt);
+continue;
+}
+break;
+}
 
-        name_len = LIMIT_PATH_SIZE(BPF_CORE_READ(dentry, d_name.len));
-        name     = (const unsigned char *)BPF_CORE_READ(dentry, d_name.name);
-        name_len = name_len + 1; // account for null terminator
+name_len = LIMIT_PATH_SIZE(BPF_CORE_READ(dentry, d_name.len));
+name     = (const unsigned char *)BPF_CORE_READ(dentry, d_name.name);
+name_len = name_len + 1; // account for null terminator
 
-        if (name_len > buf_off)
-            break;
+if (name_len > buf_off)
+break;
 
-        volatile size_t new_buf_off = buf_off - name_len;
-        ret = bpf_probe_read_kernel_str(
-                  &(out_buf->data[LIMIT_HALF_PERCPU_ARRAY_SIZE(new_buf_off)]),
-                  name_len, (const char *)name);
-        if (ret < 0)
-            return ret;
+volatile size_t new_buf_off = buf_off - name_len;
+ret = bpf_probe_read_kernel_str(
+&(out_buf->data[LIMIT_HALF_PERCPU_ARRAY_SIZE(new_buf_off)]),
+name_len, (const char *)name);
+if (ret < 0)
+return ret;
 
-        if (ret > 1) {
-            buf_off -= 1;
-            buf_off = LIMIT_HALF_PERCPU_ARRAY_SIZE(buf_off);
-            out_buf->data[buf_off] = '/';
+if (ret > 1) {
+buf_off -= 1;
+buf_off = LIMIT_HALF_PERCPU_ARRAY_SIZE(buf_off);
+out_buf->data[buf_off] = '/';
 
-            buf_off -= (ret - 1);
-            buf_off = LIMIT_HALF_PERCPU_ARRAY_SIZE(buf_off);
-        } else {
-            break;
-        }
-        dentry = dentry_parent;
-    }
+buf_off -= (ret - 1);
+buf_off = LIMIT_HALF_PERCPU_ARRAY_SIZE(buf_off);
+} else {
+break;
+}
+dentry = dentry_parent;
+}
 
-    /* Insert leading '/' if we haven't consumed the entire buffer. */
-    if (buf_off != 0) {
-        buf_off -= 1;
-        buf_off = LIMIT_HALF_PERCPU_ARRAY_SIZE(buf_off);
-        out_buf->data[buf_off] = '/';
-    }
+/* Insert leading '/' if we haven't consumed the entire buffer. */
+if (buf_off != 0) {
+buf_off -= 1;
+buf_off = LIMIT_HALF_PERCPU_ARRAY_SIZE(buf_off);
+out_buf->data[buf_off] = '/';
+}
 
-    /* Null-terminate at the end of the buffer slice. */
-    out_buf->data[HALF_PERCPU_ARRAY_SIZE - 1] = 0;
-    *path_str = &out_buf->data[buf_off];
+/* Null-terminate at the end of the buffer slice. */
+out_buf->data[HALF_PERCPU_ARRAY_SIZE - 1] = 0;
+*path_str = &out_buf->data[buf_off];
 
-    return HALF_PERCPU_ARRAY_SIZE - buf_off - 1;
+return HALF_PERCPU_ARRAY_SIZE - buf_off - 1;
 }
 
 /*
@@ -338,10 +338,18 @@ int kprobe__vfs_open(struct pt_regs *ctx)
 }
 
 SEC("kprobe/security_inode_setattr")
-int kprobe__security_inode_setattr(struct pt_regs *ctx) {
-    struct dentry *dentry = (struct dentry *)PT_REGS_PARM1(ctx);
-    if (!dentry)
-        return 0;
+int kprobe__security_inode_setattr(struct pt_regs *ctx)
+{
+    struct dentry *dentry;
+    if (LINUX_KERNEL_VERSION < KERNEL_VERSION(6, 0, 0)) {
+        dentry = (struct dentry *)PT_REGS_PARM1(ctx);
+        if (!dentry) // Necessary condition to validate BPF program
+            return 0;
+    } else {
+        dentry = (struct dentry *)PT_REGS_PARM2(ctx);
+        if (!dentry) // Necessary condition to validate BPF program
+            return 0;
+    }
 
     struct inode *d_inode = NULL;
     bpf_probe_read_kernel(&d_inode, sizeof(d_inode), &dentry->d_inode);
@@ -403,13 +411,13 @@ SEC("kprobe/vfs_unlink")
 int kprobe__vfs_unlink(struct pt_regs *ctx)
 {
     struct dentry *dentry;
-    if (LINUX_KERNEL_VERSION >= KERNEL_VERSION(5, 12, 0)) {
-        dentry = (struct dentry *)PT_REGS_PARM3(ctx);
-        if (!dentry) // This condition is necessary to open the BPF program
+    if (LINUX_KERNEL_VERSION < KERNEL_VERSION(5, 12, 0)) {
+        dentry = (struct dentry *)PT_REGS_PARM2(ctx);
+        if (!dentry) // Necessary condition to validate BPF program
             return 0;
     } else {
-        dentry = (struct dentry *)PT_REGS_PARM2(ctx);
-        if (!dentry) // This condition is necessary to open the BPF program
+        dentry = (struct dentry *)PT_REGS_PARM3(ctx);
+        if (!dentry) // Necessary condition to validate BPF program
             return 0;
     }
 
