@@ -65,6 +65,7 @@ struct client {
     bool is_ipv6;
     SSL *ssl;
     bool handshake_done;
+    bool enrollment_ok;
     char ip[IPSIZE + 1];
 
     char read_buffer[MAX_SSL_PACKET_SIZE + 1];
