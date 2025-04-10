@@ -706,6 +706,7 @@ void delete_client(uint32_t index) {
         merror("Client not found in pool");
     }
 }
+
 static void process_message(struct client *client) {
     char response[2048] = {0};
     client->enrollment_ok = FALSE;
