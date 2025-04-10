@@ -1,13 +1,3 @@
-server:
-  nodes:
-    - master
-  node:
-    name: server-1
-    type: master
-    ssl:
-      key: /etc/wazuh-server/certs/server-1-key.pem
-      cert: /etc/wazuh-server/certs/server-1.pem
-      ca: /etc/wazuh-server/certs/root-ca.pem
 indexer:
   hosts:
     - host: 127.0.0.1

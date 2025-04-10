@@ -209,8 +209,7 @@ def decode_token(token: str) -> dict:
         _, public_key = get_keypair()
         payload = jwt.decode(token, public_key, algorithms=[JWT_ALGORITHM], audience='Wazuh API REST')
 
-        # Check token and add processed policies in the Master node
-        server_config = CentralizedConfig.get_server_config()
+        # Check token and add processed policies
         dapi = DistributedAPI(
             f=check_token,
             f_kwargs={
@@ -218,7 +217,6 @@ def decode_token(token: str) -> dict:
                 'roles': tuple(payload['rbac_roles']),
                 'token_nbf_time': payload['nbf'],
                 'run_as': payload['run_as'],
-                'origin_node_type': server_config.node.type,
             },
             request_type='local_master',
             is_async=False,

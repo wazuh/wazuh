@@ -12,7 +12,6 @@ from typing import Union
 import six
 from connexion import ProblemException
 from wazuh.core import common, exception
-from wazuh.core.cluster.utils import running_in_master_node
 
 logger = logging.getLogger('wazuh-api')
 
@@ -448,16 +447,3 @@ def deprecate_endpoint(link: str = ''):
         return wrapper
 
     return add_deprecation_headers
-
-
-def only_master_endpoint(func):
-    """Decorator used to restrict endpoints only on master node."""
-
-    @wraps(func)
-    async def wrapper(*args, **kwargs):
-        if not running_in_master_node():
-            raise_if_exc(exception.WazuhResourceNotFound(902))
-        else:
-            return await func(*args, **kwargs)
-
-    return wrapper

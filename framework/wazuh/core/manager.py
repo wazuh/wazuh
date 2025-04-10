@@ -2,14 +2,17 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
+import fcntl
 import json
 import os
 import re
 import socket
 import ssl
+import typing
 from collections import OrderedDict
 from datetime import datetime
 from enum import Enum
+from glob import glob
 from os.path import exists
 from typing import Dict, Optional, Union
 
@@ -18,10 +21,10 @@ import httpx
 import wazuh
 from wazuh import WazuhError, WazuhException, WazuhInternalError
 from wazuh.core import common
-from wazuh.core.cluster.utils import get_manager_status
-from wazuh.core.configuration import get_active_configuration, get_cti_url
-from wazuh.core.utils import get_utc_now, get_utc_strptime, tail
-from wazuh.core.wazuh_socket import WazuhSocket
+from wazuh.core.configuration import get_cti_url
+from wazuh.core.results import WazuhResult
+from wazuh.core.utils import get_utc_now, get_utc_strptime, tail, temporary_cache
+from wazuh.core.wazuh_socket import WazuhSocket, create_wazuh_socket_message
 
 _re_logtest = re.compile(r'^.*(?:ERROR: |CRITICAL: )(?:\[.*\] )?(.*)$')
 
@@ -33,16 +36,14 @@ WAZUH_UID_KEY = 'wazuh-uid'
 WAZUH_TAG_KEY = 'wazuh-tag'
 USER_AGENT_KEY = 'user-agent'
 DEFAULT_TIMEOUT = 10.0
+EXECQ_LOCKFILE = common.WAZUH_RUN / '.api_execq_lock'
 
 
 class LoggingFormat(Enum):
+    """Logging format enumerator."""
+
     plain = 'plain'
     json = 'json'
-
-
-def status() -> dict:
-    """Return the Manager processes that are running."""
-    return get_manager_status()
 
 
 def get_ossec_log_fields(log: str, log_format: LoggingFormat = LoggingFormat.plain) -> Union[tuple, None]:
@@ -96,18 +97,6 @@ def get_ossec_log_fields(log: str, log_format: LoggingFormat = LoggingFormat.pla
     return get_utc_strptime(date, '%Y/%m/%d %H:%M:%S'), tag, level.lower(), description
 
 
-def get_wazuh_active_logging_format() -> LoggingFormat:
-    """Obtain the Wazuh active logging format.
-
-    Returns
-    -------
-    LoggingFormat
-        Wazuh active log format. Can either be `plain` or `json`. If it has both types, `plain` will be returned.
-    """
-    active_logging = get_active_configuration(component='com', configuration='logging')['logging']
-    return LoggingFormat.plain if active_logging['plain'] == 'yes' else LoggingFormat.json
-
-
 def get_ossec_logs(limit: int = 2000) -> list:
     """Return last <limit> lines of ossec.log file.
 
@@ -123,7 +112,7 @@ def get_ossec_logs(limit: int = 2000) -> list:
     """
     logs = []
 
-    log_format = get_wazuh_active_logging_format()
+    log_format = LoggingFormat.plain
     if log_format == LoggingFormat.plain and exists(common.WAZUH_LOG):
         wazuh_log_content = tail(common.WAZUH_LOG, limit)
     elif log_format == LoggingFormat.json and exists(common.WAZUH_LOG_JSON):
@@ -345,3 +334,105 @@ async def query_update_check_service(installation_uid: str) -> dict:
             update_information.update({'message': str(err), 'status_code': 500})
 
     return update_information
+
+
+@temporary_cache()
+def get_manager_status(cache=False) -> typing.Dict:
+    """Get the current status of each process of the manager.
+
+    Raises
+    ------
+    WazuhInternalError(1913)
+        If /proc directory is not found or permissions to see its status are not granted.
+
+    Returns
+    -------
+    data : dict
+        Dict whose keys are daemons and the values are the status.
+    """
+    # Check /proc directory availability
+    proc_path = '/proc'
+    try:
+        os.stat(proc_path)
+    except (PermissionError, FileNotFoundError) as e:
+        raise WazuhInternalError(1913, extra_message=str(e))
+
+    processes = ['wazuh-server', 'wazuh-engined', 'wazuh-server-management-apid', 'wazuh-comms-apid']
+
+    data, pidfile_regex, run_dir = {}, re.compile(r'.+\-(\d+)\.pid$'), common.WAZUH_RUN
+    for process in processes:
+        pidfile = glob(os.path.join(run_dir, f'{process}-*.pid'))
+        if os.path.exists(os.path.join(run_dir, f'{process}.failed')):
+            data[process] = 'failed'
+        elif os.path.exists(os.path.join(run_dir, '.restart')):
+            data[process] = 'restarting'
+        elif os.path.exists(os.path.join(run_dir, f'{process}.start')):
+            data[process] = 'starting'
+        elif pidfile:
+            # Iterate on pidfiles looking for the pidfile which has his pid in /proc,
+            # if the loop finishes, all pidfiles exist but their processes are not running,
+            # it means each process crashed and was not able to remove its own pidfile.
+            data[process] = 'failed'
+            for pid in pidfile:
+                if os.path.exists(os.path.join(proc_path, pidfile_regex.match(pid).group(1))):
+                    data[process] = 'running'
+                    break
+
+        else:
+            data[process] = 'stopped'
+
+    return data
+
+
+def manager_restart() -> WazuhResult:
+    """Restart Wazuh manager.
+
+    Send JSON message with the 'restart-wazuh' command to common.EXECQ_SOCKET socket.
+
+    Raises
+    ------
+    WazuhInternalError(1901)
+        If the socket path doesn't exist.
+    WazuhInternalError(1902)
+        If there is a socket connection error.
+    WazuhInternalError(1014)
+        If there is a socket communication error.
+
+    Returns
+    -------
+    WazuhResult
+        Confirmation message.
+    """
+    lock_file = open(EXECQ_LOCKFILE, 'a+')
+    fcntl.lockf(lock_file, fcntl.LOCK_EX)
+    try:
+        # execq socket path
+        socket_path = common.EXECQ_SOCKET
+        # json msg for restarting Wazuh manager
+        msg = json.dumps(
+            create_wazuh_socket_message(
+                origin={'module': common.origin_module.get()},
+                command=common.RESTART_WAZUH_COMMAND,
+                parameters={'extra_args': [], 'alert': {}},
+            )
+        )
+        # initialize socket
+        if os.path.exists(socket_path):
+            try:
+                conn = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
+                conn.connect(socket_path)
+            except socket.error:
+                raise WazuhInternalError(1902)
+        else:
+            raise WazuhInternalError(1901)
+
+        try:
+            conn.send(msg.encode())
+            conn.close()
+        except socket.error as e:
+            raise WazuhInternalError(1014, extra_message=str(e))
+    finally:
+        fcntl.lockf(lock_file, fcntl.LOCK_UN)
+        lock_file.close()
+
+    return WazuhResult({'message': 'Restart request sent'})

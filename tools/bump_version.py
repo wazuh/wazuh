@@ -270,14 +270,14 @@ def update_file_framework(executor: Executor, new_version: str | None = None, ne
     patterns_framework = {'version': version_pattern}
     update_file(executor, DIR_FRAMEWORK / 'wazuh/__init__.py', patterns_framework)
 
-    patterns_cluster = {
+    patterns_server = {
         'version': version_pattern,
         'stage': (
             re.compile(r'(^__revision__\s+=\s+\')(.+)(\'$)', re.MULTILINE),
             rf'\g<1>{new_stage}\g<3>' if new_stage else None,
         ),
     }
-    update_file(executor, DIR_FRAMEWORK / 'wazuh/core/cluster/__init__.py', patterns_cluster)
+    update_file(executor, DIR_FRAMEWORK / 'wazuh/core/server/__init__.py', patterns_server)
 
 
 def update_file_api(executor: Executor, new_version: str | None = None, new_stage: str | None = None) -> None:

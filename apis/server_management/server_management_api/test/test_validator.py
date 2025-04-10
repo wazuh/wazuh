@@ -8,7 +8,6 @@ from pathlib import Path
 
 import jsonschema as js
 import pytest
-from wazuh import WazuhError
 
 from server_management_api.validator import (
     _active_response_command,
@@ -41,7 +40,6 @@ from server_management_api.validator import (
     _wpk_path,
     _yes_no_boolean,
     allowed_fields,
-    check_component_configuration_pair,
     check_exp,
     is_safe_path,
 )
@@ -286,18 +284,3 @@ def test_validation_json_ko(value, format):
             schema={'type': 'object', 'properties': {'key': {'type': 'string', 'format': format}}},
             format_checker=js.Draft4Validator.FORMAT_CHECKER,
         )
-
-
-@pytest.mark.parametrize(
-    'component, configuration, expected_response', [('agent', 'client', None), ('agent', 'wmodules', WazuhError(1128))]
-)
-def test_check_component_configuration_pair(component, configuration, expected_response):
-    """Verify that `check_component_configuration_pair` function returns an exception when the configuration does
-    not belong to a Wazuh component.
-    """
-    response = check_component_configuration_pair(component, configuration)
-    if isinstance(response, Exception):
-        assert isinstance(response, expected_response.__class__)
-        assert response.code == expected_response.code
-    else:
-        assert response is expected_response

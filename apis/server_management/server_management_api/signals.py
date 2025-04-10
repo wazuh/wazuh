@@ -12,7 +12,6 @@ from typing import Callable
 
 from connexion import ConnexionMiddleware
 from wazuh.core import common
-from wazuh.core.cluster.utils import running_in_master_node
 from wazuh.core.commands_manager import CommandsManager
 from wazuh.core.config.client import CentralizedConfig
 from wazuh.core.configuration import update_check_is_enabled
@@ -101,12 +100,12 @@ async def lifespan_handler(_: ConnexionMiddleware, commands_manager: CommandsMan
     t = Thread(target=asyncio.run, args=(get_rbac_info(logger, commands_manager, rbac_manager),))
     t.start()
 
-    tasks: list[asyncio.Task] = []
+    tasks: list[asyncio.Task] = [
+        asyncio.create_task(check_installation_uid()),
+    ]
 
-    if running_in_master_node():
-        tasks.append(asyncio.create_task(check_installation_uid()))
-        if update_check_is_enabled():
-            tasks.append(asyncio.create_task(get_update_information()))
+    if update_check_is_enabled():
+        tasks.append(asyncio.create_task(get_update_information()))
 
     # Log the initial server startup message.
     management_api_config = CentralizedConfig.get_management_api_config()

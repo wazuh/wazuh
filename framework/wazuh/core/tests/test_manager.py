@@ -9,9 +9,9 @@ from unittest.mock import ANY, patch
 from uuid import uuid4
 
 import pytest
-from wazuh.core.cluster.tests.conftest import get_default_configuration
 from wazuh.core.config.client import CentralizedConfig
 from wazuh.core.config.models.server import ValidateFilePathMixin
+from wazuh.core.server.tests.conftest import get_default_configuration
 
 with patch('wazuh.core.common.wazuh_uid'):
     with patch('wazuh.core.common.wazuh_gid'):
@@ -27,6 +27,8 @@ ossec_log_json_path = '{0}/ossec_log.log'.format(test_data_path)
 
 
 class InitManager:
+    """Initialization manager mock."""
+
     def __init__(self):
         """Initialize the environment for testing manager functions."""
         # path for temporary API files
@@ -62,22 +64,13 @@ def get_logs(json_log: bool = False):
 
 @pytest.mark.parametrize('process_status', ['running', 'stopped', 'failed', 'restarting', 'starting'])
 @patch('os.path.exists')
-@patch('wazuh.core.cluster.utils.glob')
-def test_get_status(manager_glob, manager_exists, test_manager, process_status):
-    """Tests core.manager.status().
+@patch('wazuh.core.manager.glob')
+def test_get_manager_status(manager_glob, manager_exists, test_manager, process_status):
+    """Tests core.manager.get_manager_status().
 
     Tests manager.status() function in two cases:
         * PID files are created and processed are running,
         * No process is running and therefore no PID files have been created
-
-    Parameters
-    ----------
-    manager_glob : mock
-        Mock of glob.glob function.
-    manager_exists : mock
-        Mock of os.path.exists function.
-    process_status : str
-        Status to test (valid values: running/stopped/failed/restarting).
     """
 
     def mock_glob(path_to_check):
@@ -93,11 +86,90 @@ def test_get_status(manager_glob, manager_exists, test_manager, process_status):
 
     manager_glob.side_effect = mock_glob
     manager_exists.side_effect = mock_exists
-    manager_status = status()
+    manager_status = get_manager_status()
     assert isinstance(manager_status, dict)
     assert all(process_status == x for x in manager_status.values())
     if process_status == 'running':
         manager_exists.assert_any_call('/proc/0234')
+
+
+def test_get_manager_status_calls():  # noqa: C901
+    """Validate `get_manager_status` function calls.
+
+    For this test, the status can be stopped or failed.
+    """
+    called = 0
+
+    def exist_mock(path):
+        if '.failed' in path and called == 0:
+            return True
+        elif '.restart' in path and called == 1:
+            return True
+        elif '.start' in path and called == 2:
+            return True
+        elif '/proc' in path and called == 3:
+            return True
+        else:
+            return False
+
+    status = get_manager_status()
+    for value in status.values():
+        assert value == 'stopped'
+
+    with patch('wazuh.core.manager.glob', return_value=['ossec-0.pid']):
+        with patch('re.match', return_value='None'):
+            status = get_manager_status()
+            for value in status.values():
+                assert value == 'failed'
+
+        with patch('wazuh.core.manager.os.path.exists', side_effect=exist_mock):
+            status = get_manager_status()
+            for value in status.values():
+                assert value == 'failed'
+
+            called += 1
+            status = get_manager_status()
+            for value in status.values():
+                assert value == 'restarting'
+
+            called += 1
+            status = get_manager_status()
+            for value in status.values():
+                assert value == 'starting'
+
+            called += 1
+            status = get_manager_status()
+            for value in status.values():
+                assert value == 'running'
+
+
+@pytest.mark.parametrize('exc', [PermissionError, FileNotFoundError])
+@patch('os.stat')
+def test_get_manager_status_ko(mock_stat, exc):
+    """Check that get_manager_status function correctly handles expected exceptions."""
+    mock_stat.side_effect = exc
+    with pytest.raises(WazuhInternalError, match='.* 1913 .*'):
+        get_manager_status()
+
+
+def test_manager_restart():
+    """Verify that manager_restart send to the manager the restart request."""
+    with patch('wazuh.core.manager.open', side_effect=None):
+        with patch('fcntl.lockf', side_effect=None):
+            with pytest.raises(WazuhInternalError, match='.* 1901 .*'):
+                manager_restart()
+
+            with patch('os.path.exists', return_value=True):
+                with pytest.raises(WazuhInternalError, match='.* 1902 .*'):
+                    manager_restart()
+
+                with patch('socket.socket.connect', side_effect=None):
+                    with pytest.raises(WazuhInternalError, match='.* 1014 .*'):
+                        manager_restart()
+
+                    with patch('socket.socket.send', side_effect=None):
+                        status = manager_restart()
+                        assert WazuhResult({'message': 'Restart request sent'}) == status
 
 
 def test_get_ossec_log_fields():
@@ -121,19 +193,17 @@ def test_get_ossec_logs(log_format):
     """Test get_ossec_logs() method returns result with expected information."""
     logs = get_logs(json_log=log_format == LoggingFormat.json).splitlines()
 
-    with patch('wazuh.core.manager.get_wazuh_active_logging_format', return_value=log_format):
-        with pytest.raises(WazuhInternalError, match='.*1000.*'):
-            get_ossec_logs()
+    with pytest.raises(WazuhInternalError, match='.*1000.*'):
+        get_ossec_logs()
 
-        with patch('wazuh.core.manager.exists', return_value=True):
-            with patch('wazuh.core.manager.tail', return_value=logs):
-                result = get_ossec_logs()
-                assert all(key in log for key in ('timestamp', 'tag', 'level', 'description') for log in result)
+    with patch('wazuh.core.manager.exists', return_value=True):
+        with patch('wazuh.core.manager.tail', return_value=logs):
+            result = get_ossec_logs()
+            assert all(key in log for key in ('timestamp', 'tag', 'level', 'description') for log in result)
 
 
-@patch('wazuh.core.manager.get_wazuh_active_logging_format', return_value=LoggingFormat.plain)
 @patch('wazuh.core.manager.exists', return_value=True)
-def test_get_logs_summary(mock_exists, mock_active_logging_format):
+def test_get_logs_summary(mock_exists):
     """Test get_logs_summary() method returns result with expected information."""
     logs = get_logs().splitlines()
     with patch('wazuh.core.manager.tail', return_value=logs):
@@ -151,10 +221,9 @@ def test_get_logs_summary(mock_exists, mock_active_logging_format):
         }
 
 
-
 @patch('wazuh.core.manager.exists', return_value=True)
 def test_validation_ko(mock_exists):
-    """Test validate_ossec_conf raises an error"""
+    """Test validate_ossec_conf raises an error."""
     # Socket creation raise socket.error
     with patch('socket.socket', side_effect=socket.error):
         with pytest.raises(WazuhInternalError, match='.* 1013 .*'):
