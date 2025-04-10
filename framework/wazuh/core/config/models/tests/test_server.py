@@ -2,6 +2,7 @@ from unittest.mock import patch
 
 import pytest
 from pydantic import ValidationError
+from wazuh.core.config.models.logging import LoggingLevel
 from wazuh.core.config.models.server import (
     DEFAULT_CTI_URL,
     CTIConfig,
@@ -29,10 +30,11 @@ def test_cti_config_default_values(init_values, expected):
     [
         (
             {
-                'jwt': {'public_key': 'value', 'private_key': 'value'},
+                'jwt': {'private_key': 'value'},
             },
             {
                 'update_check': False,
+                'jwt': {'private_key': 'value'},
             },
         )
     ],
@@ -41,8 +43,9 @@ def test_cti_config_default_values(init_values, expected):
 def test_server_config_default_values(file_path_validation_mock, init_values, expected):
     """Check the correct initialization of the `ServerConfig` class."""
     config = ServerConfig(**init_values)
-    assert config.jwt == expected['jwt']
+    assert config.jwt.private_key == expected['jwt']['private_key']
     assert config.update_check == expected['update_check']
+    assert config.logging.level == LoggingLevel.info
 
 
 def test_server_config_invalid_values():
