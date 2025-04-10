@@ -38,8 +38,10 @@ private:
     {
         // Set the content type as offset.
         context.data["type"] = "offsets";
+        // The download doesn't update the currentOffset, only the callback should.
+        auto fromOffset = context.currentOffset;
 
-        logDebug2(WM_CONTENTUPDATER, "Initial API offset: %d", context.currentOffset);
+        logDebug2(WM_CONTENTUPDATER, "Initial API offset: %d", fromOffset);
         // Get the parameters needed to download the content.
         getParameters(context);
 
@@ -61,7 +63,7 @@ private:
 
         // Iterate until the current offset is equal to the consumer offset.
         auto pathsArray = nlohmann::json::array();
-        while (context.currentOffset < consumerLastOffset)
+        while (fromOffset < consumerLastOffset)
         {
             if (stopCondition->check())
             {
@@ -73,7 +75,7 @@ private:
             constexpr int OFFSETS_DELTA {1000};
 
             // Calculate the offset to download
-            const auto toOffset {std::min(consumerLastOffset, context.currentOffset + OFFSETS_DELTA)};
+            const auto toOffset {std::min(consumerLastOffset, fromOffset + OFFSETS_DELTA)};
 
             // full path where the content will be saved.
             std::ostringstream filePathStream;
@@ -81,10 +83,10 @@ private:
             const std::string fullFilePath = filePathStream.str();
 
             // Download the content.
-            downloadContent(toOffset, fullFilePath, context);
+            downloadContent(toOffset, fullFilePath, fromOffset);
 
             // Update the current offset.
-            context.currentOffset = toOffset;
+            fromOffset = toOffset;
 
             // Save the path of the downloaded content in a temporary variable.
             pathsArray.push_back(fullFilePath);
@@ -92,7 +94,7 @@ private:
 
         // Commit changes.
         context.data.at("paths") = std::move(pathsArray);
-        context.data.at("offset") = context.currentOffset;
+        context.data.at("offset") = fromOffset;
     }
 
     /**
@@ -120,12 +122,13 @@ private:
      *
      * @param toOffset end offset to download.
      * @param fullFilePath full path where the content will be saved.
+     * @param fromOffset start offset to download.
      */
-    void downloadContent(int toOffset, const std::string& fullFilePath, const UpdaterContext& context) const
+    void downloadContent(int toOffset, const std::string& fullFilePath, int fromOffset) const
     {
         // Define the parameters for the request.
         const auto queryParameters =
-            "/changes?from_offset=" + std::to_string(context.currentOffset) + "&to_offset=" + std::to_string(toOffset);
+            "/changes?from_offset=" + std::to_string(fromOffset) + "&to_offset=" + std::to_string(toOffset);
 
         // Empty on download success routine.
         const auto onSuccess {[]([[maybe_unused]] const std::string& data) {
