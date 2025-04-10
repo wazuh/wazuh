@@ -51,7 +51,7 @@ def mock_request():
 @pytest.mark.asyncio
 @pytest.mark.parametrize('raw', [True, False])
 @patch(
-    'server_management_api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock()
+    'server_management_api.controllers.security_controller.DistributedAPI.execute_function', return_value=AsyncMock()
 )
 @patch('server_management_api.controllers.security_controller.remove_nones_to_dict')
 @patch('server_management_api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
@@ -64,7 +64,6 @@ async def test_login_user(mock_token, mock_exc, mock_dapi, mock_remove, mock_dfu
     mock_dapi.assert_called_once_with(
         f=preprocessor.get_permissions,
         f_kwargs=mock_remove.return_value,
-        request_type='local_master',
         is_async=True,
         logger=ANY,
         rbac_manager=mock_request.state.rbac_manager,
@@ -78,7 +77,7 @@ async def test_login_user(mock_token, mock_exc, mock_dapi, mock_remove, mock_dfu
 
 @pytest.mark.asyncio
 @patch(
-    'server_management_api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock()
+    'server_management_api.controllers.security_controller.DistributedAPI.execute_function', return_value=AsyncMock()
 )
 @patch('server_management_api.controllers.security_controller.remove_nones_to_dict')
 @patch('server_management_api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
@@ -93,7 +92,6 @@ async def test_login_user_ko(mock_token, mock_exc, mock_dapi, mock_remove, mock_
     mock_dapi.assert_called_once_with(
         f=preprocessor.get_permissions,
         f_kwargs=mock_remove.return_value,
-        request_type='local_master',
         is_async=True,
         logger=ANY,
         rbac_manager=ANY,
@@ -107,7 +105,7 @@ async def test_login_user_ko(mock_token, mock_exc, mock_dapi, mock_remove, mock_
 @pytest.mark.asyncio
 @pytest.mark.parametrize('raw', [True, False])
 @patch(
-    'server_management_api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock()
+    'server_management_api.controllers.security_controller.DistributedAPI.execute_function', return_value=AsyncMock()
 )
 @patch('server_management_api.controllers.security_controller.remove_nones_to_dict')
 @patch('server_management_api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
@@ -121,7 +119,6 @@ async def test_run_as_login(mock_token, mock_exc, mock_dapi, mock_remove, mock_d
     mock_dapi.assert_called_once_with(
         f=preprocessor.get_permissions,
         f_kwargs=mock_remove.return_value,
-        request_type='local_master',
         is_async=True,
         logger=ANY,
         rbac_manager=mock_request.state.rbac_manager,
@@ -137,7 +134,7 @@ async def test_run_as_login(mock_token, mock_exc, mock_dapi, mock_remove, mock_d
 
 @pytest.mark.asyncio
 @patch(
-    'server_management_api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock()
+    'server_management_api.controllers.security_controller.DistributedAPI.execute_function', return_value=AsyncMock()
 )
 @patch('server_management_api.controllers.security_controller.remove_nones_to_dict')
 @patch('server_management_api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
@@ -152,7 +149,6 @@ async def test_run_as_login_ko(mock_token, mock_exc, mock_dapi, mock_remove, moc
     mock_dapi.assert_called_once_with(
         f=preprocessor.get_permissions,
         f_kwargs=mock_remove.return_value,
-        request_type='local_master',
         is_async=True,
         logger=ANY,
         rbac_manager=mock_request.state.rbac_manager,

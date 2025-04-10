@@ -34,7 +34,7 @@ with patch('wazuh.common.wazuh_uid'):
 @pytest.mark.asyncio
 @patch('server_management_api.controllers.manager_controller.configuration.update_check_is_enabled')
 @patch(
-    'server_management_api.controllers.manager_controller.DistributedAPI.distribute_function', return_value=AsyncMock()
+    'server_management_api.controllers.manager_controller.DistributedAPI.execute_function', return_value=AsyncMock()
 )
 @patch('server_management_api.controllers.manager_controller.DistributedAPI.__init__', return_value=None)
 @patch('server_management_api.controllers.manager_controller.raise_if_exc', return_value=CustomAffectedItems())
@@ -59,8 +59,7 @@ async def test_check_available_version(
             mock_dapi.assert_any_call(
                 f=query_update_check_service,
                 f_kwargs={INSTALLATION_UID_KEY: cti_context[INSTALLATION_UID_KEY]},
-                request_type='local_master',
-                is_async=True,
+                        is_async=True,
                 logger=ANY,
             )
             mock_exc.assert_any_call(mock_dfunc.return_value)
@@ -71,8 +70,7 @@ async def test_check_available_version(
                 INSTALLATION_UID_KEY: cti_context[INSTALLATION_UID_KEY],
                 UPDATE_INFORMATION_KEY: cti_context[UPDATE_INFORMATION_KEY],
             },
-            request_type='local_master',
-            is_async=False,
+                is_async=False,
             logger=ANY,
         )
         mock_exc.assert_called_with(mock_dfunc.return_value)

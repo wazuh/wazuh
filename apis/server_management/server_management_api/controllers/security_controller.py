@@ -6,7 +6,7 @@ import logging
 
 from connexion import request
 from connexion.lifecycle import ConnexionResponse
-from wazuh.core.cluster.dapi.dapi import DistributedAPI
+from wazuh.core.task_dispatcher import TaskDispatcher
 from wazuh.core.exception import WazuhException
 from wazuh.core.results import WazuhResult
 from wazuh.rbac import preprocessor
@@ -38,15 +38,14 @@ async def login_user(user: str, raw: bool = False) -> ConnexionResponse:
     """
     f_kwargs = {'user_id': user}
 
-    dapi = DistributedAPI(
+    dispatcher = TaskDispatcher(
         f=preprocessor.get_permissions,
         f_kwargs=remove_nones_to_dict(f_kwargs),
-        request_type='local_master',
         is_async=True,
         logger=logger,
         rbac_manager=request.state.rbac_manager if request else None,
     )
-    data = raise_if_exc(await dapi.distribute_function())
+    data = raise_if_exc(await dispatcher.execute_function())
 
     token = None
     try:
@@ -85,15 +84,14 @@ async def run_as_login(user: str, raw: bool = False) -> ConnexionResponse:
     auth_context = await request.json()
     f_kwargs = {'user_id': user, 'auth_context': auth_context}
 
-    dapi = DistributedAPI(
+    dispatcher = TaskDispatcher(
         f=preprocessor.get_permissions,
         f_kwargs=remove_nones_to_dict(f_kwargs),
-        request_type='local_master',
         is_async=True,
         logger=logger,
         rbac_manager=request.state.rbac_manager if request else None,
     )
-    data = raise_if_exc(await dapi.distribute_function())
+    data = raise_if_exc(await dispatcher.execute_function())
 
     token = None
     try:

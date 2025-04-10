@@ -45,7 +45,7 @@ with patch('wazuh.common.wazuh_uid'):
 @pytest.mark.asyncio
 @pytest.mark.parametrize('mock_request', ['agent_controller'], indirect=True)
 @patch(
-    'server_management_api.controllers.agent_controller.DistributedAPI.distribute_function', return_value=AsyncMock()
+    'server_management_api.controllers.agent_controller.DistributedAPI.execute_function', return_value=AsyncMock()
 )
 @patch('server_management_api.controllers.agent_controller.remove_nones_to_dict')
 @patch('server_management_api.controllers.agent_controller.DistributedAPI.__init__', return_value=None)
@@ -81,7 +81,6 @@ async def test_delete_agents(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_
     mock_dapi.awaited_once_with(
         f=agent.delete_agents,
         f_kwargs=mock_remove.return_value,
-        request_type='local_any',
         is_async=True,
         wait_for_complete=False,
         logger=ANY,
@@ -95,7 +94,7 @@ async def test_delete_agents(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_
 @pytest.mark.asyncio
 @pytest.mark.parametrize('mock_request', ['agent_controller'], indirect=True)
 @patch(
-    'server_management_api.controllers.agent_controller.DistributedAPI.distribute_function', return_value=AsyncMock()
+    'server_management_api.controllers.agent_controller.DistributedAPI.execute_function', return_value=AsyncMock()
 )
 @patch('server_management_api.controllers.agent_controller.remove_nones_to_dict')
 @patch('server_management_api.controllers.agent_controller.DistributedAPI.__init__', return_value=None)
@@ -125,7 +124,6 @@ async def test_get_agents(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_req
     mock_dapi.assert_called_once_with(
         f=agent.get_agents,
         f_kwargs=mock_remove.return_value,
-        request_type='local_any',
         is_async=True,
         wait_for_complete=False,
         logger=ANY,
@@ -139,7 +137,7 @@ async def test_get_agents(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_req
 @pytest.mark.asyncio
 @pytest.mark.parametrize('mock_request', ['agent_controller'], indirect=True)
 @patch(
-    'server_management_api.controllers.agent_controller.DistributedAPI.distribute_function', return_value=AsyncMock()
+    'server_management_api.controllers.agent_controller.DistributedAPI.execute_function', return_value=AsyncMock()
 )
 @patch('server_management_api.controllers.agent_controller.remove_nones_to_dict')
 @patch('server_management_api.controllers.agent_controller.DistributedAPI.__init__', return_value=None)
@@ -155,8 +153,7 @@ async def test_add_agent(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_requ
             mock_dapi.assert_called_once_with(
                 f=agent.add_agent,
                 f_kwargs=mock_remove.return_value,
-                request_type='local_any',
-                is_async=True,
+                        is_async=True,
                 wait_for_complete=False,
                 logger=ANY,
                 rbac_permissions=mock_request.context['token_info']['rbac_policies'],
@@ -170,7 +167,7 @@ async def test_add_agent(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_requ
 @pytest.mark.asyncio
 @pytest.mark.parametrize('mock_request', ['agent_controller'], indirect=True)
 @patch(
-    'server_management_api.controllers.agent_controller.DistributedAPI.distribute_function', return_value=AsyncMock()
+    'server_management_api.controllers.agent_controller.DistributedAPI.execute_function', return_value=AsyncMock()
 )
 @patch('server_management_api.controllers.agent_controller.remove_nones_to_dict')
 @patch('server_management_api.controllers.agent_controller.DistributedAPI.__init__', return_value=None)
@@ -197,7 +194,7 @@ async def test_reconnect_agents(mock_exc, mock_dapi, mock_remove, mock_dfunc, mo
 @pytest.mark.asyncio
 @pytest.mark.parametrize('mock_request', ['agent_controller'], indirect=True)
 @patch(
-    'server_management_api.controllers.agent_controller.DistributedAPI.distribute_function', return_value=AsyncMock()
+    'server_management_api.controllers.agent_controller.DistributedAPI.execute_function', return_value=AsyncMock()
 )
 @patch('server_management_api.controllers.agent_controller.remove_nones_to_dict')
 @patch('server_management_api.controllers.agent_controller.DistributedAPI.__init__', return_value=None)
@@ -208,7 +205,6 @@ async def test_restart_agents(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock
     mock_dapi.assert_called_once_with(
         f=agent.restart_agents,
         f_kwargs=mock_remove.return_value,
-        request_type='local_any',
         is_async=True,
         wait_for_complete=False,
         logger=ANY,
@@ -222,7 +218,7 @@ async def test_restart_agents(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock
 @pytest.mark.asyncio
 @pytest.mark.parametrize('mock_request', ['agent_controller'], indirect=True)
 @patch(
-    'server_management_api.controllers.agent_controller.DistributedAPI.distribute_function', return_value=AsyncMock()
+    'server_management_api.controllers.agent_controller.DistributedAPI.execute_function', return_value=AsyncMock()
 )
 @patch('server_management_api.controllers.agent_controller.remove_nones_to_dict')
 @patch('server_management_api.controllers.agent_controller.DistributedAPI.__init__', return_value=None)
@@ -249,7 +245,7 @@ async def test_restart_agent(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_
 @pytest.mark.asyncio
 @pytest.mark.parametrize('mock_request', ['agent_controller'], indirect=True)
 @patch(
-    'server_management_api.controllers.agent_controller.DistributedAPI.distribute_function', return_value=AsyncMock()
+    'server_management_api.controllers.agent_controller.DistributedAPI.execute_function', return_value=AsyncMock()
 )
 @patch('server_management_api.controllers.agent_controller.remove_nones_to_dict')
 @patch('server_management_api.controllers.agent_controller.DistributedAPI.__init__', return_value=None)
@@ -266,7 +262,6 @@ async def test_delete_multiple_agent_single_group(
     mock_dapi.assert_called_once_with(
         f=agent.remove_agents_from_group,
         f_kwargs=mock_remove.return_value,
-        request_type='local_master',
         is_async=True,
         wait_for_complete=False,
         logger=ANY,
@@ -280,7 +275,7 @@ async def test_delete_multiple_agent_single_group(
 @pytest.mark.asyncio
 @pytest.mark.parametrize('mock_request', ['agent_controller'], indirect=True)
 @patch(
-    'server_management_api.controllers.agent_controller.DistributedAPI.distribute_function', return_value=AsyncMock()
+    'server_management_api.controllers.agent_controller.DistributedAPI.execute_function', return_value=AsyncMock()
 )
 @patch('server_management_api.controllers.agent_controller.remove_nones_to_dict')
 @patch('server_management_api.controllers.agent_controller.DistributedAPI.__init__', return_value=None)
@@ -292,7 +287,6 @@ async def test_put_multiple_agent_single_group(mock_exc, mock_dapi, mock_remove,
     mock_dapi.assert_called_once_with(
         f=agent.assign_agents_to_group,
         f_kwargs=mock_remove.return_value,
-        request_type='local_master',
         is_async=True,
         wait_for_complete=False,
         logger=ANY,
@@ -306,7 +300,7 @@ async def test_put_multiple_agent_single_group(mock_exc, mock_dapi, mock_remove,
 @pytest.mark.asyncio
 @pytest.mark.parametrize('mock_request', ['agent_controller'], indirect=True)
 @patch(
-    'server_management_api.controllers.agent_controller.DistributedAPI.distribute_function', return_value=AsyncMock()
+    'server_management_api.controllers.agent_controller.DistributedAPI.execute_function', return_value=AsyncMock()
 )
 @patch('server_management_api.controllers.agent_controller.remove_nones_to_dict')
 @patch('server_management_api.controllers.agent_controller.DistributedAPI.__init__', return_value=None)
@@ -321,7 +315,6 @@ async def test_delete_groups(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_
     mock_dapi.assert_called_once_with(
         f=agent.delete_groups,
         f_kwargs=mock_remove.return_value,
-        request_type='local_master',
         is_async=True,
         wait_for_complete=False,
         logger=ANY,
@@ -335,7 +328,7 @@ async def test_delete_groups(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_
 @pytest.mark.asyncio
 @pytest.mark.parametrize('mock_request', ['agent_controller'], indirect=True)
 @patch(
-    'server_management_api.controllers.agent_controller.DistributedAPI.distribute_function', return_value=AsyncMock()
+    'server_management_api.controllers.agent_controller.DistributedAPI.execute_function', return_value=AsyncMock()
 )
 @patch('server_management_api.controllers.agent_controller.remove_nones_to_dict')
 @patch('server_management_api.controllers.agent_controller.DistributedAPI.__init__', return_value=None)
@@ -360,7 +353,6 @@ async def test_get_list_group(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock
     mock_dapi.assert_called_once_with(
         f=agent.get_agent_groups,
         f_kwargs=mock_remove.return_value,
-        request_type='local_master',
         is_async=True,
         wait_for_complete=False,
         logger=ANY,
@@ -374,7 +366,7 @@ async def test_get_list_group(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock
 @pytest.mark.asyncio
 @pytest.mark.parametrize('mock_request', ['agent_controller'], indirect=True)
 @patch(
-    'server_management_api.controllers.agent_controller.DistributedAPI.distribute_function', return_value=AsyncMock()
+    'server_management_api.controllers.agent_controller.DistributedAPI.execute_function', return_value=AsyncMock()
 )
 @patch('server_management_api.controllers.agent_controller.remove_nones_to_dict')
 @patch('server_management_api.controllers.agent_controller.DistributedAPI.__init__', return_value=None)
@@ -397,7 +389,6 @@ async def test_get_agents_in_group(mock_exc, mock_dapi, mock_remove, mock_dfunc,
     mock_dapi.assert_called_once_with(
         f=agent.get_agents_in_group,
         f_kwargs=mock_remove.return_value,
-        request_type='local_master',
         is_async=True,
         wait_for_complete=False,
         logger=ANY,
@@ -411,7 +402,7 @@ async def test_get_agents_in_group(mock_exc, mock_dapi, mock_remove, mock_dfunc,
 @pytest.mark.asyncio
 @pytest.mark.parametrize('mock_request', ['agent_controller'], indirect=True)
 @patch(
-    'server_management_api.controllers.agent_controller.DistributedAPI.distribute_function', return_value=AsyncMock()
+    'server_management_api.controllers.agent_controller.DistributedAPI.execute_function', return_value=AsyncMock()
 )
 @patch('server_management_api.controllers.agent_controller.remove_nones_to_dict')
 @patch('server_management_api.controllers.agent_controller.DistributedAPI.__init__', return_value=None)
@@ -426,8 +417,7 @@ async def test_post_group(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_req
             mock_dapi.assert_called_once_with(
                 f=agent.create_group,
                 f_kwargs=mock_remove.return_value,
-                request_type='local_master',
-                is_async=True,
+                        is_async=True,
                 wait_for_complete=False,
                 logger=ANY,
                 rbac_permissions=mock_request.context['token_info']['rbac_policies'],
@@ -440,7 +430,7 @@ async def test_post_group(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_req
 @pytest.mark.asyncio
 @pytest.mark.parametrize('mock_request', ['agent_controller'], indirect=True)
 @patch(
-    'server_management_api.controllers.agent_controller.DistributedAPI.distribute_function', return_value=AsyncMock()
+    'server_management_api.controllers.agent_controller.DistributedAPI.execute_function', return_value=AsyncMock()
 )
 @patch('server_management_api.controllers.agent_controller.remove_nones_to_dict')
 @patch('server_management_api.controllers.agent_controller.DistributedAPI.__init__', return_value=None)
@@ -452,7 +442,6 @@ async def test_get_group_config(mock_exc, mock_dapi, mock_remove, mock_dfunc, mo
     mock_dapi.assert_called_once_with(
         f=agent.get_group_conf,
         f_kwargs=mock_remove.return_value,
-        request_type='local_master',
         is_async=True,
         wait_for_complete=False,
         logger=ANY,
@@ -466,7 +455,7 @@ async def test_get_group_config(mock_exc, mock_dapi, mock_remove, mock_dfunc, mo
 @pytest.mark.asyncio
 @pytest.mark.parametrize('mock_request', ['agent_controller'], indirect=True)
 @patch(
-    'server_management_api.controllers.agent_controller.DistributedAPI.distribute_function', return_value=AsyncMock()
+    'server_management_api.controllers.agent_controller.DistributedAPI.execute_function', return_value=AsyncMock()
 )
 @patch('server_management_api.controllers.agent_controller.remove_nones_to_dict')
 @patch('server_management_api.controllers.agent_controller.DistributedAPI.__init__', return_value=None)
@@ -480,8 +469,7 @@ async def test_put_group_config(mock_exc, mock_dapi, mock_remove, mock_dfunc, mo
             mock_dapi.assert_called_once_with(
                 f=agent.update_group_file,
                 f_kwargs=mock_remove.return_value,
-                request_type='local_master',
-                is_async=True,
+                        is_async=True,
                 wait_for_complete=False,
                 logger=ANY,
                 rbac_permissions=mock_request.context['token_info']['rbac_policies'],
