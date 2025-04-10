@@ -19,6 +19,78 @@
 #include <json.hpp>
 #include <variant>
 
+namespace FimContextUtils
+{
+    /**
+     * @brief Normalize the registry path by removing the hive prefix and replacing double backslashes and slashes.
+     *
+     * @param input The registry path to sanitize.
+     */
+    void sanitizeKeyPath(std::string& input)
+    {
+        static const std::vector<std::string_view> HIVES = {"HKEY_CLASSES_ROOT/",
+                                                            "HKEY_CURRENT_USER/",
+                                                            "HKEY_LOCAL_MACHINE/",
+                                                            "HKEY_USERS/",
+                                                            "HKEY_CURRENT_CONFIG/",
+                                                            "HKEY_CLASSES_ROOT\\",
+                                                            "HKEY_CURRENT_USER\\",
+                                                            "HKEY_LOCAL_MACHINE\\",
+                                                            "HKEY_USERS\\",
+                                                            "HKEY_CURRENT_CONFIG\\"};
+
+        Utils::replaceAll(input, "\\\\", "\\");
+        Utils::replaceAll(input, "//", "/");
+
+        for (const auto& hive : HIVES)
+        {
+            if (Utils::replaceFirstView(input, hive, ""))
+            {
+                break;
+            }
+        }
+    }
+
+    /**
+     * @brief Normalize the registry path by removing the hive prefix and replacing double backslashes and slashes.
+     *
+     * @param input The registry path to sanitize.
+     * @param isOriginRegistry Indicates if the path is from the origin registry.
+     * @param valueName The value name to append if isOriginRegistry is true.
+     * @param isIdIdentifier Indicates if the path is an ID identifier.
+     */
+    void sanitizePath(std::string& input,
+                      bool isOriginRegistry,
+                      std::string_view valueName = "",
+                      bool isIdIdentifier = false)
+    {
+        static const std::map<std::string_view, std::string_view, std::less<>> HIVES = {
+            {"HKEY_CLASSES_ROOT", "HKCR"},
+            {"HKEY_CURRENT_USER", "HKCU"},
+            {"HKEY_LOCAL_MACHINE", "HKLM"},
+            {"HKEY_USERS", "HKU"},
+            {"HKEY_CURRENT_CONFIG", "HKCC"}};
+
+        isIdIdentifier ? Utils::replaceAll(input, "\\", "/") : Utils::replaceAll(input, "\\\\", "\\");
+        Utils::replaceAll(input, "//", "/");
+
+        for (const auto& [key, val] : HIVES)
+        {
+            if (Utils::replaceFirstView(input, key, val))
+            {
+                break;
+            }
+        }
+
+        if (isOriginRegistry)
+        {
+            isIdIdentifier ? input += "/" : input += "\\";
+            input += valueName;
+        }
+    }
+
+} // namespace FimContextUtils
+
 struct FimContext final
 {
 public:
@@ -636,7 +708,7 @@ public:
         if (m_valueNameSanitized.empty())
         {
             m_valueNameSanitized = valueNameRaw();
-            Utils::replaceAll(m_valueNameSanitized, "\\", "/");
+            Utils::replaceAll(m_valueNameSanitized, "\\\\", "\\");
             Utils::replaceAll(m_valueNameSanitized, "//", "/");
         }
         return m_valueNameSanitized;
@@ -644,34 +716,22 @@ public:
 
     std::string_view path()
     {
-        const static std::map<std::string_view, std::string_view, std::less<>> hives = {
-            {"HKEY_CLASSES_ROOT", "HKCR"},
-            {"HKEY_CURRENT_USER", "HKCU"},
-            {"HKEY_LOCAL_MACHINE", "HKLM"},
-            {"HKEY_USERS", "HKU"},
-            {"HKEY_CURRENT_CONFIG", "HKCC"}};
-
         if (m_pathSanitized.empty())
         {
             m_pathSanitized = pathRaw();
-            Utils::replaceAll(m_pathSanitized, "\\", "/");
-            Utils::replaceAll(m_pathSanitized, "//", "/");
-
-            for (const auto& [key, value] : hives)
-            {
-                if (Utils::replaceFirstView(m_pathSanitized, key, value))
-                {
-                    break;
-                }
-            }
-
-            if (m_originTable == OriginTable::RegistryValue)
-            {
-                m_pathSanitized += "/";
-                m_pathSanitized += valueName();
-            }
+            FimContextUtils::sanitizePath(m_pathSanitized, m_originTable == OriginTable::RegistryValue, valueName());
         }
         return m_pathSanitized;
+    }
+
+    std::string_view pathId()
+    {
+        if (m_pathId.empty())
+        {
+            m_pathId = pathRaw();
+            FimContextUtils::sanitizePath(m_pathId, m_originTable == OriginTable::RegistryValue, valueName(), true);
+        }
+        return m_pathId;
     }
 
     std::string_view mtimeISO8601()
@@ -704,22 +764,10 @@ public:
 
     std::string_view key()
     {
-        const static std::vector<std::string_view> hives = {
-            "HKEY_CLASSES_ROOT/", "HKEY_CURRENT_USER/", "HKEY_LOCAL_MACHINE/", "HKEY_USERS/", "HKEY_CURRENT_CONFIG/"};
-
         if (m_keySanitized.empty())
         {
             m_keySanitized = pathRaw();
-            Utils::replaceAll(m_keySanitized, "\\", "/");
-            Utils::replaceAll(m_keySanitized, "//", "/");
-
-            for (const auto& hive : hives)
-            {
-                if (Utils::replaceFirstView(m_keySanitized, hive, ""))
-                {
-                    break;
-                }
-            }
+            FimContextUtils::sanitizeKeyPath(m_keySanitized);
         }
         return m_keySanitized;
     }
@@ -738,6 +786,7 @@ private:
 
     // Allocations to mantain the lifetime of the data.
     std::string m_pathSanitized;
+    std::string m_pathId;
     std::string m_valueNameSanitized;
     std::string m_mtimeISO8601;
     std::string m_keySanitized;
