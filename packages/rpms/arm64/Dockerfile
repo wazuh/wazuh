@@ -30,12 +30,25 @@ RUN yum install -y \
     git \
     libarchive \
     file \
-    rpmdevtools \
     policycoreutils-python-utils
 
-RUN yum install zlib lzip -y
+RUN yum install zlib lzip libdb-devel -y && \
+    rpm -i https://public-yum.oracle.com/repo/OracleLinux/OL8/codeready/builder/aarch64/getPackage/file-devel-5.33-26.el8.aarch64.rpm  && \
+    rpm -i https://public-yum.oracle.com/repo/OracleLinux/OL8/codeready/builder/aarch64/getPackage/libarchive-devel-3.3.3-5.el8.aarch64.rpm
 
 RUN scl enable gcc-toolset-11 bash
+
+ADD http://packages.wazuh.com/utils/rpm/rpm-4.15.1.tar.bz2 /tmp/rpm-4.15.1.tar.bz2
+WORKDIR /tmp
+RUN tar -xjf rpm-4.15.1.tar.bz2
+WORKDIR /tmp/rpm-4.15.1
+RUN ./configure --without-lua && make -j$(nproc) && make install
+WORKDIR /
+RUN rm -rf /tmp/rpm-4.15.1
+
+RUN mkdir -p /usr/local/var/lib/rpm && \
+    cp /var/lib/rpm/Packages /usr/local/var/lib/rpm/Packages && \
+    /usr/local/bin/rpm --rebuilddb && rm -rf /root/rpmbuild
 
 ADD https://github.com/Kitware/CMake/releases/download/v3.30.4/cmake-3.30.4-linux-aarch64.sh /tmp/cmake-3.30.4-linux-aarch64.sh
 
@@ -44,7 +57,6 @@ RUN sh /tmp/cmake-3.30.4-linux-aarch64.sh --prefix=/opt/cmake --skip-license
 
 RUN ln -s /opt/cmake/bin/cmake /usr/local/bin/cmake
 RUN ln -s /opt/cmake/bin/ctest /usr/local/bin/ctest
-RUN ln -s /usr/bin/rpmbuild /usr/local/bin/rpmbuild
 
 # Install vcpkg
 ENV VCPKG_ROOT=/root/vcpkg
