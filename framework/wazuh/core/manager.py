@@ -21,7 +21,7 @@ import httpx
 import wazuh
 from wazuh import WazuhError, WazuhException, WazuhInternalError
 from wazuh.core import common
-from wazuh.core.configuration import get_active_configuration, get_cti_url
+from wazuh.core.configuration import get_cti_url
 from wazuh.core.results import WazuhResult
 from wazuh.core.utils import get_utc_now, get_utc_strptime, tail, temporary_cache
 from wazuh.core.wazuh_socket import WazuhSocket, create_wazuh_socket_message
@@ -97,18 +97,6 @@ def get_ossec_log_fields(log: str, log_format: LoggingFormat = LoggingFormat.pla
     return get_utc_strptime(date, '%Y/%m/%d %H:%M:%S'), tag, level.lower(), description
 
 
-def get_wazuh_active_logging_format() -> LoggingFormat:
-    """Obtain the Wazuh active logging format.
-
-    Returns
-    -------
-    LoggingFormat
-        Wazuh active log format. Can either be `plain` or `json`. If it has both types, `plain` will be returned.
-    """
-    active_logging = get_active_configuration(component='com', configuration='logging')['logging']
-    return LoggingFormat.plain if active_logging['plain'] == 'yes' else LoggingFormat.json
-
-
 def get_ossec_logs(limit: int = 2000) -> list:
     """Return last <limit> lines of ossec.log file.
 
@@ -124,7 +112,7 @@ def get_ossec_logs(limit: int = 2000) -> list:
     """
     logs = []
 
-    log_format = get_wazuh_active_logging_format()
+    log_format = LoggingFormat.plain
     if log_format == LoggingFormat.plain and exists(common.WAZUH_LOG):
         wazuh_log_content = tail(common.WAZUH_LOG, limit)
     elif log_format == LoggingFormat.json and exists(common.WAZUH_LOG_JSON):
