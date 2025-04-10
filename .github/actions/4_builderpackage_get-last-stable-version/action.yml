@@ -1,0 +1,32 @@
+name: "Get last stable version"
+description: "Get last stable version for the given arguments"
+
+inputs:
+  repo_owner:
+    required: true
+    description: "Repository owner"
+  repo_name:
+    required: true
+    description: "Repository name"
+  testing_version:
+    required: true
+    description: "Version of the tested package"
+
+outputs:
+  latest_stable_version:
+    description: "Latest stable version before given testing_version"
+    value: ${{ steps.latest-stable-release.outputs.latest-stable-release }}
+
+runs:
+  using: "composite"
+  steps:
+  - name: Get previous last stable release
+    id: latest-stable-release
+    shell: bash
+    run: |
+      version=$(.github/actions/4_builderpackage_get-last-stable-version/get_last_stable_version.py \
+          -o "${{ inputs.repo_owner }}" \
+          -r "${{ inputs.repo_name }}" \
+          -v "${{ inputs.testing_version }}"
+      )
+      echo latest-stable-release=$version >> $GITHUB_OUTPUT
