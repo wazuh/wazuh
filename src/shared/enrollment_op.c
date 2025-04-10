@@ -233,7 +233,7 @@ static int w_enrollment_connect(w_enrollment_ctx *cfg, const char * server_addre
     }
 
     if (OS_SetRecvTimeout(sock, cfg->recv_timeout, 0) < 0) {
-        merror(SET_TIMEO_ERR);
+        merror(SET_TIMEO_ERR, strerror(errno), errno);
         os_free(ip_address);
         SSL_CTX_free(ctx);
         OS_CloseSocket(sock);
