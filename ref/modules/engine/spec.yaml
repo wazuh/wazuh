@@ -65,10 +65,39 @@ paths:
                 status: OK
                 error: null
         "400":
-          $ref: "#/components/responses/BadRequest_400"
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/responses/BadRequest_400"
+              examples:
+                invalid_header:
+                  summary: The header is invalid
+                  value:
+                    error: "NDJson parser error, invalid header: 'JSON document could not be parsed: Invalid value.'"
+                    code: 400
+                not_enough_lines:
+                  summary: The minimum number of JSONs in the NDJSON is not met
+                  value:
+                    error: "NDJson parser error, invalid batch, expected at least 3 lines"
+                    code: 400
+                missing_subheader:
+                  summary: After the header there is no subheader
+                  value:
+                    error: "NDJson parser error, invalid subheader, expected '/module' and '/collector' fields"
+                    code: 400
+                non_json_event:
+                  summary: One of the events is not a valid JSON
+                  value:
+                    error: "NDJson parser error, invalid ndjson line: 'JSON document could not be parsed: Invalid value.'"
+                    code: 400
+                invalid_subheader:
+                  summary: Invalid subheader
+                  value:
+                    error: "NDJson parser error, invalid subheader, expected '/module' and '/collector' fields"
+                    code: 400
         "500":
           $ref: "#/components/responses/InternalServerError_500"
-
   ################################
   # Catalog
   ################################
@@ -89,7 +118,42 @@ paths:
         "200":
           $ref: "#/components/responses/GenericSuccess_200"
         "400":
-          $ref: "#/components/responses/BadRequest_400"
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/responses/BadRequest_400"
+              examples:
+                missing_type:
+                  summary: Missing /type parameter or is invalid
+                  value:
+                    status: "ERROR"
+                    error: "Missing /type parameter or is invalid"
+                invalid_collection_type:
+                  summary: The requested collection does not exist
+                  value:
+                    status: "ERROR"
+                    error: "Invalid collection type \"non-exist\""
+                invalid_format:
+                  summary: The requested format does not exist
+                  value:
+                    status: "ERROR"
+                    error: "Missing or invalid /format parameter"
+                missing_asset_name:
+                  summary: The asset content does not have a name
+                  value:
+                    status: "ERROR"
+                    error: "Invalid content name 'documentation': Invalid collection type \"documentation\""
+                name_type_mismatch:
+                  summary: The asset name in the content does not match the asset type
+                  value:
+                    status: "ERROR"
+                    error: "Invalid content name 'non-exist/documentation/0': Invalid type \"non-exist\""
+                already_exists:
+                  summary: The asset already exists currently
+                  value:
+                    status: "ERROR"
+                    error: "Content 'decoder/documentation/0' could not be added to store: Document already exists"
         "500":
           $ref: "#/components/responses/InternalServerError_500"
 
@@ -119,7 +183,32 @@ paths:
                 content: |
                   {"name": "decoder/example/0"}
         "400":
-          $ref: "#/components/responses/BadRequest_400"
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/responses/BadRequest_400"
+              examples:
+                missing_field:
+                  summary: Missing any of the fields in the request
+                  value:
+                    status: "ERROR"
+                    error: "Missing or invalid /format parameter"
+                invalid_collection:
+                  summary: The requested collection does not exist
+                  value:
+                    status: "ERROR"
+                    error: "Invalid collection type \"non-exist\""
+                invalid_format:
+                  summary: The requested format does not exist
+                  value:
+                    status: "ERROR"
+                    error: "Missing or invalid /format parameter"
+                invalid_name_format:
+                  summary: The requested asset name has an invalid format
+                  value:
+                    status: "ERROR"
+                    error: "Invalid name \"decoder/core-wazuh-message/0/other\" received, a name with 1, 2 or 3 parts was expected"
         "500":
           $ref: "#/components/responses/InternalServerError_500"
 
@@ -140,7 +229,32 @@ paths:
         "200":
           $ref: "#/components/responses/GenericSuccess_200"
         "400":
-          $ref: "#/components/responses/BadRequest_400"
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/responses/BadRequest_400"
+              examples:
+                missing_field:
+                  summary: Missing any of the fields in the request
+                  value:
+                    status: "ERROR"
+                    error: "Missing /name parameter or is invalid"
+                invalid_format:
+                  summary: The requested format does not exist
+                  value:
+                    status: "ERROR"
+                    error: "Missing or invalid /format parameter"
+                missing_asset_name:
+                  summary: The new content does not have an asset name
+                  value:
+                    status: "ERROR"
+                    error: "Field 'name' is missing in content"
+                not_found_in_namespace:
+                  summary: The asset does not exist in the indicated namespace
+                  value:
+                    status: "ERROR"
+                    error: "Could not update resource 'decoder/documentation/0': Does not exist in the 'wazuh' namespace"
         "500":
           $ref: "#/components/responses/InternalServerError_500"
 
@@ -161,7 +275,32 @@ paths:
         "200":
           $ref: "#/components/responses/GenericSuccess_200"
         "400":
-          $ref: "#/components/responses/BadRequest_400"
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/responses/BadRequest_400"
+              examples:
+                delete_collection_nonexistent_namespace:
+                  summary: Delete a collection in a namespace that does not exist
+                  value:
+                    status: "ERROR"
+                    error: "Could not delete collection 'decoder': Collection does not exist\n"
+                delete_resource_nonexistent_namespace:
+                  summary: Delete a decoder in a namespace that does not exist
+                  value:
+                    status: "ERROR"
+                    error: "Could not delete resource 'decoder/documentation/0': Does not exist in the 'wazuh' namespace"
+                missing_field:
+                  summary: Missing any of the fields in the request
+                  value:
+                    status: "ERROR"
+                    error: "Missing /namespaceid parameter"
+                invalid_name_format:
+                  summary: Invalid format of the asset name
+                  value:
+                    status: "ERROR"
+                    error: "Invalid name \"decoder/documentation/0/0\" received, a name with 1, 2 or 3 parts was expected"
         "500":
           $ref: "#/components/responses/InternalServerError_500"
 
@@ -182,7 +321,27 @@ paths:
         "200":
           $ref: "#/components/responses/GenericSuccess_200"
         "400":
-          $ref: "#/components/responses/BadRequest_400"
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/responses/BadRequest_400"
+              examples:
+                missing_field:
+                  summary: Missing any of the fields in the request
+                  value:
+                    status: "ERROR"
+                    error: "Missing or invalid /format parameter"
+                invalid_helper_function:
+                  summary: Invalid helper function
+                  value:
+                    status: "ERROR"
+                    error: "In stage 'normalize' builder for block 'map' failed with error: Failed to build operation '@timestamp: map(\"non-exist()\")': Field '@timestamp' value validation failed: Invalid date"
+                invalid_map_structure:
+                  summary: Invalid map structure
+                  value:
+                    status: "ERROR"
+                    error: "Stage 'normalize' expects an array or string but got 'object'"
         "500":
           $ref: "#/components/responses/InternalServerError_500"
 
@@ -238,7 +397,27 @@ paths:
         "200":
           $ref: "#/components/responses/GenericSuccess_200"
         "400":
-          $ref: "#/components/responses/BadRequest_400"
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/responses/BadRequest_400"
+              examples:
+                missing_field:
+                  summary: Missing any of the fields in the request
+                  value:
+                    status: "ERROR"
+                    error: "Missing /policy"
+                invalid_name:
+                  summary: Invalid policy name
+                  value:
+                    status: "ERROR"
+                    error: "Invalid policy name: policy/wazuh/0/0, expected 3 parts"
+                already_exists:
+                  summary: Policy already exists
+                  value:
+                    status: "ERROR"
+                    error: "Policy already exists: policy/wazuh/0"
         "500":
           $ref: "#/components/responses/InternalServerError_500"
   /policy/store/delete:
@@ -261,7 +440,27 @@ paths:
         "200":
           $ref: "#/components/responses/GenericSuccess_200"
         "400":
-          $ref: "#/components/responses/BadRequest_400"
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/responses/BadRequest_400"
+              examples:
+                missing_field:
+                  summary: Missing any of the fields in the request
+                  value:
+                    status: "ERROR"
+                    error: "Missing /policy"
+                invalid_name:
+                  summary: Invalid policy name
+                  value:
+                    status: "ERROR"
+                    error: "Invalid policy name: policy/wazuh/0/0, expected 3 parts"
+                not_found:
+                  summary: Policy does not exist
+                  value:
+                    status: "ERROR"
+                    error: "File '/var/lib/wazuh-server/engine/store/policy/wazuh/0' does not exist"
         "500":
           $ref: "#/components/responses/InternalServerError_500"
   /policy/store/get:
@@ -292,7 +491,27 @@ paths:
                 error: null
                 data: "Policy data"
         "400":
-          $ref: "#/components/responses/BadRequest_400"
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/responses/BadRequest_400"
+              examples:
+                missing_field:
+                  summary: Missing any of the fields in the request
+                  value:
+                    status: "ERROR"
+                    error: "Missing /policy"
+                invalid_name:
+                  summary: Invalid policy name
+                  value:
+                    status: "ERROR"
+                    error: "Invalid policy name: policy/wazuh/0/0, expected 3 parts"
+                empty_namespaces:
+                  summary: Empty namespaces
+                  value:
+                    status: "ERROR"
+                    error: "Error in namespace name: Name cannot be empty"
         "500":
           $ref: "#/components/responses/InternalServerError_500"
   /policy/asset/post:
@@ -336,7 +555,27 @@ paths:
                     error: null
                     warning: "Validation errors"
         "400":
-          $ref: "#/components/responses/BadRequest_400"
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/responses/BadRequest_400"
+              examples:
+                missing_field:
+                  summary: Missing any of the fields in the request
+                  value:
+                    status: "ERROR"
+                    error: "Missing /policy"
+                invalid_policy_name:
+                  summary: Invalid policy name
+                  value:
+                    status: "ERROR"
+                    error: "Invalid policy name: policy/wazuh/0/0, expected 3 parts"
+                policy_not_exist:
+                  summary: Policy does not exist
+                  value:
+                    status: "ERROR"
+                    error: "File '/var/lib/wazuh-server/engine/store/policy/wazuh/0' does not exist"
         "500":
           $ref: "#/components/responses/InternalServerError_500"
   /policy/asset/delete:
@@ -380,7 +619,32 @@ paths:
                     error: null
                     warning: "Validation errors"
         "400":
-          $ref: "#/components/responses/BadRequest_400"
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/responses/BadRequest_400"
+              examples:
+                missing_policy:
+                  summary: Missing policy field
+                  value:
+                    status: "ERROR"
+                    error: "Missing /policy"
+                invalid_policy_name:
+                  summary: Invalid policy name
+                  value:
+                    status: "ERROR"
+                    error: "Invalid policy name: policy/wazuh/0/0, expected 3 parts"
+                policy_not_exist:
+                  summary: Policy does not exist
+                  value:
+                    status: "ERROR"
+                    error: "File '/var/lib/wazuh-server/engine/store/policy/wazuh/0' does not exist"
+                asset_not_found:
+                  summary: Asset does not exist
+                  value:
+                    status: "ERROR"
+                    error: "Asset not found"
         "500":
           $ref: "#/components/responses/InternalServerError_500"
   /policy/asset/get:
@@ -413,7 +677,33 @@ paths:
                 error: null
                 data: ["decoder/example/0", "rule/example/0"]
         "400":
-          $ref: "#/components/responses/BadRequest_400"
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/responses/BadRequest_400"
+              examples:
+                missing_policy:
+                  summary: Missing policy field
+                  value:
+                    status: "ERROR"
+                    error: "Missing /policy"
+                invalid_policy_name:
+                  summary: Invalid policy name
+                  value:
+                    status: "ERROR"
+                    error: "Invalid policy name: policy/wazuh/0/0, expected 3 parts"
+                policy_not_exist:
+                  summary: Policy does not exist
+                  value:
+                    status: "ERROR"
+                    error: "File '/var/lib/wazuh-server/engine/store/policy/wazuh/0' does not exist"
+                deleted_assets:
+                  summary: Clean the policy of deleted assets
+                  value:
+                    status: "ERROR"
+                    error: "Clean the policy, it contains deleted assets: decoder/documentation/0"
+                    data: []
         "500":
           $ref: "#/components/responses/InternalServerError_500"
   /policy/asset/clean_deleted:
@@ -444,7 +734,32 @@ paths:
                 error: null
                 data: "List of deleted assets if any"
         "400":
-          $ref: "#/components/responses/BadRequest_400"
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/responses/BadRequest_400"
+              examples:
+                missing_policy:
+                  summary: Missing policy field
+                  value:
+                    status: "ERROR"
+                    error: "Missing /policy"
+                invalid_policy_name:
+                  summary: Invalid policy name
+                  value:
+                    status: "ERROR"
+                    error: "Invalid policy name: policy/wazuh/0/0, expected 3 parts"
+                policy_not_exist:
+                  summary: Policy does not exist
+                  value:
+                    status: "ERROR"
+                    error: "File '/var/lib/wazuh-server/engine/store/policy/wazuh/0' does not exist"
+                no_deleted_assets:
+                  summary: No deleted assets to clean
+                  value:
+                    status: "ERROR"
+                    error: "No deleted assets to clean"
         "500":
           $ref: "#/components/responses/InternalServerError_500"
   /policy/default_parent/get:
@@ -472,7 +787,27 @@ paths:
                 error: null
                 data: ["decoder/example/0", "rule/example/0"]
         "400":
-          $ref: "#/components/responses/BadRequest_400"
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/responses/BadRequest_400"
+              examples:
+                missing_policy:
+                  summary: Missing policy field
+                  value:
+                    status: "ERROR"
+                    error: "Missing /policy"
+                invalid_policy_name:
+                  summary: Invalid policy name
+                  value:
+                    status: "ERROR"
+                    error: "Invalid policy name: policy/wazuh/0/0, expected 3 parts"
+                policy_not_exist:
+                  summary: Policy does not exist
+                  value:
+                    status: "ERROR"
+                    error: "File '/var/lib/wazuh-server/engine/store/policy/wazuh/0' does not exist"
         "500":
           $ref: "#/components/responses/InternalServerError_500"
   /policy/default_parent/post:
@@ -492,7 +827,27 @@ paths:
         "200":
           $ref: "#/components/responses/GenericSuccess_200"
         "400":
-          $ref: "#/components/responses/BadRequest_400"
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/responses/BadRequest_400"
+              examples:
+                missing_policy:
+                  summary: Missing policy field
+                  value:
+                    status: "ERROR"
+                    error: "Missing /policy"
+                invalid_policy_name:
+                  summary: Invalid policy name
+                  value:
+                    status: "ERROR"
+                    error: "Invalid policy name: policy/wazuh/0/0, expected 3 parts"
+                policy_not_exist:
+                  summary: Policy does not exist
+                  value:
+                    status: "ERROR"
+                    error: "File '/var/lib/wazuh-server/engine/store/policy/wazuh/0' does not exist"
         "500":
           $ref: "#/components/responses/InternalServerError_500"
   /policy/default_parent/delete:
@@ -512,7 +867,32 @@ paths:
         "200":
           $ref: "#/components/responses/GenericSuccess_200"
         "400":
-          $ref: "#/components/responses/BadRequest_400"
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/responses/BadRequest_400"
+              examples:
+                missing_policy:
+                  summary: Missing policy field
+                  value:
+                    status: "ERROR"
+                    error: "Missing /policy"
+                invalid_policy_name:
+                  summary: Invalid policy name
+                  value:
+                    status: "ERROR"
+                    error: "Invalid policy name: policy/wazuh/0/0, expected 3 parts"
+                policy_not_exist:
+                  summary: Policy does not exist
+                  value:
+                    status: "ERROR"
+                    error: "File '/var/lib/wazuh-server/engine/store/policy/wazuh/0' does not exist"
+                default_parent_not_exist:
+                  summary: Default parent does not exist
+                  value:
+                    status: "ERROR"
+                    error: "Namespace system not found"
         "500":
           $ref: "#/components/responses/InternalServerError_500"
   /policy/list:
@@ -571,7 +951,27 @@ paths:
                 error: null
                 data: ["namespace1", "namespace2"]
         "400":
-          $ref: "#/components/responses/BadRequest_400"
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/responses/BadRequest_400"
+              examples:
+                missing_policy:
+                  summary: Missing policy field
+                  value:
+                    status: "ERROR"
+                    error: "Missing /policy"
+                invalid_policy_name:
+                  summary: Invalid policy name
+                  value:
+                    status: "ERROR"
+                    error: "Invalid policy name: policy/wazuh/0/0, expected 3 parts"
+                policy_not_exist:
+                  summary: Policy does not exist
+                  value:
+                    status: "ERROR"
+                    error: "File '/var/lib/wazuh-server/engine/store/policy/wazuh/0' does not exist"
         "500":
           $ref: "#/components/responses/InternalServerError_500"
 
@@ -595,7 +995,57 @@ paths:
         "200":
           $ref: "#/components/responses/GenericSuccess_200"
         "400":
-          $ref: "#/components/responses/BadRequest_400"
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/responses/BadRequest_400"
+              examples:
+                missing_route_field:
+                  summary: Missing /route field
+                  value:
+                    status: "ERROR"
+                    error: "Missing /route"
+                missing_name:
+                  summary: Name field is empty
+                  value:
+                    status: "ERROR"
+                    error: "Name cannot be empty"
+                policy_not_exist:
+                  summary: Policy does not exist
+                  value:
+                    status: "ERROR"
+                    error: "Failed to create the route: Failed to create environment with policy 'policy/wazuh/0' and filter 'filter/allow-all/0': File '/var/lib/wazuh-server/engine/store/policy/wazuh/0' does not exist"
+                policy_has_no_assets:
+                  summary: Policy has no assets
+                  value:
+                    status: "ERROR"
+                    error: "Failed to create the route: Failed to create environment with policy 'policy/wazuh/0' and filter 'filter/allow-all/0': Policy 'policy/wazuh/0' has no assets"
+                filter_not_exist:
+                  summary: Filter does not exist
+                  value:
+                    status: "ERROR"
+                    error: "Failed to create the route: Failed to create environment with policy 'policy/wazuh/0' and filter 'filter/allow-all/0': Engine utils: 'filter/allow-all/0' could not be obtained from the store: Document does not exist."
+                priority_zero:
+                  summary: Priority is set to 0
+                  value:
+                    status: "ERROR"
+                    error: "Priority cannot be 0"
+                priority_too_high:
+                  summary: Priority is set to more than 1000
+                  value:
+                    status: "ERROR"
+                    error: "Priority cannot be greater than 1000"
+                priority_already_in_use:
+                  summary: Priority already in use
+                  value:
+                    status: "ERROR"
+                    error: "The priority of the route  is already in use"
+                route_name_already_exists:
+                  summary: Route name already exists
+                  value:
+                    status: "ERROR"
+                    error: "The name of the route is already in use"
         "500":
           $ref: "#/components/responses/InternalServerError_500"
 
@@ -616,7 +1066,22 @@ paths:
         "200":
           $ref: "#/components/responses/GenericSuccess_200"
         "400":
-          $ref: "#/components/responses/BadRequest_400"
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/responses/BadRequest_400"
+              examples:
+                missing_name:
+                  summary: Missing name field
+                  value:
+                    status: "ERROR"
+                    error: "Name cannot be empty"
+                route_not_exist:
+                  summary: Route does not exist
+                  value:
+                    status: "ERROR"
+                    error: "The route not exist"
         "500":
           $ref: "#/components/responses/InternalServerError_500"
 
@@ -653,7 +1118,22 @@ paths:
                   entry_status: ENABLED
                   uptime: 3600
         "400":
-          $ref: "#/components/responses/BadRequest_400"
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/responses/BadRequest_400"
+              examples:
+                missing_name:
+                  summary: Name field is empty
+                  value:
+                    status: "ERROR"
+                    error: "Name cannot be empty"
+                route_not_exist:
+                  summary: Route does not exist
+                  value:
+                    status: "ERROR"
+                    error: "The route not exist"
         "500":
           $ref: "#/components/responses/InternalServerError_500"
 
@@ -674,7 +1154,27 @@ paths:
         "200":
           $ref: "#/components/responses/GenericSuccess_200"
         "400":
-          $ref: "#/components/responses/BadRequest_400"
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/responses/BadRequest_400"
+              examples:
+                missing_name:
+                  summary: Name field is empty
+                  value:
+                    status: "ERROR"
+                    error: "Name cannot be empty"
+                route_not_exist:
+                  summary: Route does not exist
+                  value:
+                    status: "ERROR"
+                    error: "The route not exist"
+                invalid_asset:
+                  summary: Some asset has validation errors
+                  value:
+                    status: "ERROR"
+                    error: "Failed to reload the route: Failed to create environment with policy 'policy/wazuh/0' and filter 'filter/allow-all/0': Expected 'name' key in asset document but got 'n'"
         "500":
           $ref: "#/components/responses/InternalServerError_500"
 
@@ -695,7 +1195,32 @@ paths:
         "200":
           $ref: "#/components/responses/GenericSuccess_200"
         "400":
-          $ref: "#/components/responses/BadRequest_400"
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/responses/BadRequest_400"
+              examples:
+                missing_name:
+                  summary: Name field is empty
+                  value:
+                    status: "ERROR"
+                    error: "Name cannot be empty"
+                route_not_exist:
+                  summary: Route does not exist
+                  value:
+                    status: "ERROR"
+                    error: "The route not exist"
+                priority_too_high:
+                  summary: Priority greater than allowed
+                  value:
+                    status: "ERROR"
+                    error: "Priority cannot be greater than 1000"
+                priority_zero:
+                  summary: Priority cannot be zero
+                  value:
+                    status: "ERROR"
+                    error: "Priority cannot be 0"
         "500":
           $ref: "#/components/responses/InternalServerError_500"
 
@@ -757,7 +1282,7 @@ paths:
         "500":
           $ref: "#/components/responses/InternalServerError_500"
 
-  /router/eps/update:
+  /router/eps/changeSettings:
     post:
       tags:
         - Router
@@ -774,7 +1299,27 @@ paths:
         "200":
           $ref: "#/components/responses/GenericSuccess_200"
         "400":
-          $ref: "#/components/responses/BadRequest_400"
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/responses/BadRequest_400"
+              examples:
+                missing_fields:
+                  summary: Missing required fields
+                  value:
+                    status: "ERROR"
+                    error: "EPS Limit must be greater than 0"
+                eps_negative:
+                  summary: EPS is negative
+                  value:
+                    status: "ERROR"
+                    error: "Failed to parse protobuff json request: INVALID_ARGUMENT:(eps): invalid value -10 for type TYPE_UINT32"
+                refresh_interval_negative:
+                  summary: Refresh interval is negative
+                  value:
+                    status: "ERROR"
+                    error: "Failed to parse protobuff json request: INVALID_ARGUMENT:(refresh_interval): invalid value -10000 for type TYPE_UINT32"
         "500":
           $ref: "#/components/responses/InternalServerError_500"
 
@@ -826,7 +1371,17 @@ paths:
         "200":
           $ref: "#/components/responses/GenericSuccess_200"
         "400":
-          $ref: "#/components/responses/BadRequest_400"
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/responses/BadRequest_400"
+              examples:
+                eps_already_active:
+                  summary: EPS already active
+                  value:
+                    status: "ERROR"
+                    error: "EPS counter is already active"
         "500":
           $ref: "#/components/responses/InternalServerError_500"
 
@@ -847,7 +1402,17 @@ paths:
         "200":
           $ref: "#/components/responses/GenericSuccess_200"
         "400":
-          $ref: "#/components/responses/BadRequest_400"
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/responses/BadRequest_400"
+              examples:
+                eps_already_inactive:
+                  summary: EPS already inactive
+                  value:
+                    status: "ERROR"
+                    error: "EPS counter is already inactive"
         "500":
           $ref: "#/components/responses/InternalServerError_500"
 
@@ -882,7 +1447,24 @@ paths:
                 error: null
                 value: "value"
         "400":
-          $ref: "#/components/responses/BadRequest_400"
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmptyRequest"
+              examples:
+                missing_name:
+                  summary: Missing name attribute in the request
+                  value:
+                    status: "ERROR"
+                    entries: []
+                    error: "Missing /name"
+                db_not_exist:
+                  summary: Database does not exist
+                  value:
+                    status: "ERROR"
+                    entries: []
+                    error: "The KVDB 'documentation' does not exist."
         "500":
           $ref: "#/components/responses/InternalServerError_500"
 
@@ -922,7 +1504,39 @@ paths:
                   - key: "example-key2"
                     value: "value3"
         "400":
-          $ref: "#/components/responses/BadRequest_400"
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmptyRequest"
+              examples:
+                missing_prefix:
+                  summary: Missing /prefix
+                  value:
+                    status: "ERROR"
+                    entries: []
+                    error: "Missing /prefix"
+                empty_prefix:
+                  summary: Prefix is empty
+                  value:
+                    status: "ERROR"
+                    error: "Field /prefix is empty"
+                page_zero:
+                  summary: Field page must be greater than 0
+                  value:
+                    status: "ERROR"
+                    error: "Field /page must be greater than 0"
+                records_zero:
+                  summary: Field records must be greater than 0
+                  value:
+                    status: "ERROR"
+                    error: "Field /records must be greater than 0"
+                db_not_exist:
+                  summary: Database does not exist
+                  value:
+                    status: "ERROR"
+                    entries: []
+                    error: "The KVDB 'documentation' does not exist."
         "500":
           $ref: "#/components/responses/InternalServerError_500"
 
@@ -946,7 +1560,23 @@ paths:
         "200":
           $ref: "#/components/responses/GenericSuccess_200"
         "400":
-          $ref: "#/components/responses/BadRequest_400"
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmptyRequest"
+              examples:
+                missing_name:
+                  summary: Missing name attribute in the request
+                  value:
+                    status: "ERROR"
+                    error: "Missing /name"
+                db_not_exist:
+                  summary: Database does not exist
+                  value:
+                    status: "ERROR"
+                    entries: []
+                    error: "The KVDB 'documentation' does not exist."
         "500":
           $ref: "#/components/responses/InternalServerError_500"
 
@@ -974,7 +1604,33 @@ paths:
         "200":
           $ref: "#/components/responses/GenericSuccess_200"
         "400":
-          $ref: "#/components/responses/BadRequest_400"
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmptyRequest"
+              examples:
+                missing_name:
+                  summary: Missing name attribute in the request
+                  value:
+                    status: "ERROR"
+                    entries: []
+                    error: "Missing /name"
+                empty_key:
+                  summary: Key is empty
+                  value:
+                    status: "ERROR"
+                    error: "Field /key is empty"
+                missing_value:
+                  summary: Value is not present
+                  value:
+                    status: "ERROR"
+                    error: "Missing /entry/value"
+                db_not_exist:
+                  summary: Database does not exist
+                  value:
+                    status: "ERROR"
+                    error: "The KVDB 'documentation' does not exist."
         "500":
           $ref: "#/components/responses/InternalServerError_500"
 
@@ -1032,7 +1688,32 @@ paths:
         "200":
           $ref: "#/components/responses/GenericSuccess_200"
         "400":
-          $ref: "#/components/responses/BadRequest_400"
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/responses/BadRequest_400"
+              examples:
+                missing_name:
+                  summary: Missing name attribute in the request
+                  value:
+                    status: "ERROR"
+                    error: "Missing /name"
+                invalid_json:
+                  summary: Path is not a valid JSON file
+                  value:
+                    status: "ERROR"
+                    error: "The database could not be created. Error: An error occurred while parsing the JSON file '/tmp/kvdb.txt'"
+                path_not_exist:
+                  summary: The path does not exist
+                  value:
+                    status: "ERROR"
+                    error: "The database could not be created. Error: An error occurred while opening the file '/tmp/non-exist.json'"
+                db_exists:
+                  summary: Database already exists
+                  value:
+                    status: "ERROR"
+                    error: "The Database already exists."
         "500":
           $ref: "#/components/responses/InternalServerError_500"
 
@@ -1055,7 +1736,22 @@ paths:
         "200":
           $ref: "#/components/responses/GenericSuccess_200"
         "400":
-          $ref: "#/components/responses/BadRequest_400"
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/responses/BadRequest_400"
+              examples:
+                missing_name:
+                  summary: Missing name attribute in the request
+                  value:
+                    status: "ERROR"
+                    error: "Missing /name"
+                db_not_exist:
+                  summary: Database does not exist
+                  value:
+                    status: "ERROR"
+                    error: "The KVDB 'documentation' does not exist."
         "500":
           $ref: "#/components/responses/InternalServerError_500"
 
@@ -1095,7 +1791,34 @@ paths:
                     value: "value3"
 
         "400":
-          $ref: "#/components/responses/BadRequest_400"
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/responses/BadRequest_400"
+              examples:
+                missing_name:
+                  summary: Missing name attribute in the request
+                  value:
+                    status: "ERROR"
+                    entries: []
+                    error: "Missing /name"
+                page_zero:
+                  summary: Field page must be greater than 0
+                  value:
+                    status: "ERROR"
+                    error: "Field /page must be greater than 0"
+                records_zero:
+                  summary: Field records must be greater than 0
+                  value:
+                    status: "ERROR"
+                    error: "Field /records must be greater than 0"
+                db_not_exist:
+                  summary: Database does not exist
+                  value:
+                    status: "ERROR"
+                    entries: []
+                    error: "The KVDB 'documentation' does not exist."
         "500":
           $ref: "#/components/responses/InternalServerError_500"
 
@@ -1119,7 +1842,37 @@ paths:
         "200":
           $ref: "#/components/responses/GenericSuccess_200"
         "400":
-          $ref: "#/components/responses/BadRequest_400"
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/responses/BadRequest_400"
+              examples:
+                missing_session:
+                  summary: Missing /session
+                  value:
+                    status: "ERROR"
+                    error: "Missing /session"
+                missing_name:
+                  summary: Name cannot be empty
+                  value:
+                    status: "ERROR"
+                    error: "Name cannot be empty"
+                session_already_exists:
+                  summary: Session name already exists
+                  value:
+                    status: "ERROR"
+                    error: "The name of the testing environment already exist"
+                policy_does_not_exist:
+                  summary: Policy file does not exist
+                  value:
+                    status: "ERROR"
+                    error: "Failed to create the testing environment: File '/var/lib/wazuh-server/engine/store/policy/wazuh/0' does not exist"
+                policy_without_assets:
+                  summary: Policy has no assets
+                  value:
+                    status: "ERROR"
+                    error: "Failed to create the testing environment: Policy 'policy/wazuh/0' has no assets"
         "500":
           $ref: "#/components/responses/InternalServerError_500"
 
@@ -1140,7 +1893,22 @@ paths:
         "200":
           $ref: "#/components/responses/GenericSuccess_200"
         "400":
-          $ref: "#/components/responses/BadRequest_400"
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/responses/BadRequest_400"
+              examples:
+                missing_name:
+                  summary: Name cannot be empty
+                  value:
+                    status: "ERROR"
+                    error: "Invalid name name: Name cannot be empty"
+                session_not_exist:
+                  summary: Session does not exist
+                  value:
+                    status: "ERROR"
+                    error: "The testing environment not exist"
         "500":
           $ref: "#/components/responses/InternalServerError_500"
 
@@ -1165,7 +1933,17 @@ paths:
               schema:
                 $ref: "#/components/schemas/TesterSessionGet_Response"
         "400":
-          $ref: "#/components/responses/BadRequest_400"
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/responses/BadRequest_400"
+              examples:
+                missing_name:
+                  summary: Name cannot be empty
+                  value:
+                    status: "ERROR"
+                    error: "Invalid name name: Name cannot be empty"
         "500":
           $ref: "#/components/responses/InternalServerError_500"
 
@@ -1186,7 +1964,27 @@ paths:
         "200":
           $ref: "#/components/responses/GenericSuccess_200"
         "400":
-          $ref: "#/components/responses/BadRequest_400"
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/responses/BadRequest_400"
+              examples:
+                missing_name:
+                  summary: Missing name field
+                  value:
+                    status: "ERROR"
+                    error: "Invalid name name: Name cannot be empty"
+                session_non_exist:
+                  summary: Non-existent session
+                  value:
+                    status: "ERROR"
+                    error: "The testing environment not exist"
+                asset_validation_error:
+                  summary: Asset validation failure
+                  value:
+                    status: "ERROR"
+                    error: "Failed to create the testing environment: Expected 'name' key in asset document but got 'n'"
         "500":
           $ref: "#/components/responses/InternalServerError_500"
 
@@ -1211,7 +2009,42 @@ paths:
               schema:
                 $ref: "#/components/schemas/TesterRunPost_Response"
         "400":
-          $ref: "#/components/responses/BadRequest_400"
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/responses/BadRequest_400"
+              examples:
+                missing_fields:
+                  summary: Empty request
+                  value:
+                    status: "ERROR"
+                    error: "Error parsing events: NDJson parser error, empty batch"
+                session_non_exist:
+                  summary: Session does not exist
+                  value:
+                    status: "ERROR"
+                    error: "The testing environment not exist"
+                asset_validation_error:
+                  summary: Environment not enabled
+                  value:
+                    status: "ERROR"
+                    error: "The testing environment is not enabled"
+                namespace_missing:
+                  summary: Namespace required
+                  value:
+                    status: "ERROR"
+                    error: "Error: Namespaces parameter is required"
+                ndjson_too_short:
+                  summary: Batch too short
+                  value:
+                    status: "ERROR"
+                    error: "Error parsing events: NDJson parser error, invalid batch, expected at least 3 lines"
+                ndjson_invalid_subheader:
+                  summary: Invalid NDJSON subheader
+                  value:
+                    status: "ERROR"
+                    error: "Error parsing events: NDJson parser error, invalid subheader, expected '/module' and '/collector' fields"
         "500":
           $ref: "#/components/responses/InternalServerError_500"
 
@@ -1260,7 +2093,37 @@ paths:
         "200":
           $ref: "#/components/responses/GenericSuccess_200"
         "400":
-          $ref: "#/components/responses/BadRequest_400"
+          description: Bad Request. The request was malformed or failed validation.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/responses/BadRequest_400"
+              examples:
+                missingField:
+                  summary: Missing required field
+                  value:
+                    status: "ERROR"
+                    error: "Path cannot be empty"
+                invalidType:
+                  summary: Invalid type
+                  value:
+                    status: "ERROR"
+                    error: "Invalid geo::Type name string 'non-exist'"
+                duplicateName:
+                  summary: Database name already exists
+                  value:
+                    status: "ERROR"
+                    error: "Database with name 'base.mmdb' already exists"
+                duplicateType:
+                  summary: Type already has an associated database
+                  value:
+                    status: "ERROR"
+                    error: "Type 'city' already has the database 'base.mmdb'"
+                invalidFile:
+                  summary: File is not a valid MMDB
+                  value:
+                    status: "ERROR"
+                    error: "Cannot add database '/tmp/base.mmdb': An attempt to read data from the MaxMind DB file failed"
         "500":
           $ref: "#/components/responses/InternalServerError_500"
 
@@ -1281,7 +2144,22 @@ paths:
         "200":
           $ref: "#/components/responses/GenericSuccess_200"
         "400":
-          $ref: "#/components/responses/BadRequest_400"
+          description: Bad Request. The request was malformed or failed validation.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/responses/BadRequest_400"
+              examples:
+                missingField:
+                  summary: Missing required field
+                  value:
+                    status: "ERROR"
+                    error: "Path cannot be empty"
+                notFound:
+                  summary: Database not found
+                  value:
+                    status: "ERROR"
+                    error: "Database 'base.mmdb' not found"
         "500":
           $ref: "#/components/responses/InternalServerError_500"
 
@@ -1327,7 +2205,37 @@ paths:
         "200":
           $ref: "#/components/responses/GenericSuccess_200"
         "400":
-          $ref: "#/components/responses/BadRequest_400"
+          description: Bad Request. The request was malformed or failed validation.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/responses/BadRequest_400"
+              examples:
+                missingPath:
+                  summary: Missing path
+                  value:
+                    status: "ERROR"
+                    error: "Path is mandatory"
+                invalidType:
+                  summary: Invalid geo type
+                  value:
+                    status: "ERROR"
+                    error: "Invalid geo::Type name string 'non-exist'"
+                typeMismatch:
+                  summary: Type does not match existing database
+                  value:
+                    status: "ERROR"
+                    error: "The name 'base.mmdb' does not correspond to any database for type 'city'. If you want it to correspond, please delete the existing database and recreate it with this name."
+                typeAlreadyExists:
+                  summary: Type already has a database
+                  value:
+                    status: "ERROR"
+                    error: "Type 'city' already has the database 'base.mmdb'"
+                downloadError:
+                  summary: Failed to download database
+                  value:
+                    status: "ERROR"
+                    error: "Cannot download database from 'https://raw.githubusercontent.com/wazuh/wazuh/blob/main/src/engine/test/integration_tests/geo/data/base.mmdb': Failed to download file from 'https://raw.githubusercontent.com/wazuh/wazuh/blob/main/src/engine/test/integration_tests/geo/data/base.mmdb', error: HTTP response code said error, status code: 404."
         "500":
           $ref: "#/components/responses/InternalServerError_500"
 
