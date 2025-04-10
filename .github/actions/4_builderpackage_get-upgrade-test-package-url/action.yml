@@ -1,0 +1,40 @@
+name: "Get package url of the last stable version"
+description: "Get package url of the last stable version"
+
+inputs:
+  component:
+    required: true
+    description: "Requested Wazuh component [manager,agent]"
+  os:
+    required: true
+    description: "Operative system of the package [linux,linux_legacy,macos,windows,solaris10,solaris11,aix,hp-ux]"
+  system:
+    required: false
+    description: "Package manager system (Linux OS) [rpm,deb]"
+  version:
+    required: true
+    description: "Version of the package"
+  architecture:
+    required: false
+    description: "Architecture os the request url package [amd64,intel64,arm64,armhf,i386,ppc64,sparc]"
+
+outputs:
+  testing_package_url:
+    description: "Released package url"
+    value: ${{ steps.get-package-url.outputs.package-url }}
+
+runs:
+  using: "composite"
+  steps:
+  - name: Get package url
+    id: get-package-url
+    shell: bash
+    run: |
+      package_url=$(.github/actions/4_builderpackage_get-upgrade-test-package-url/get_upgrade_test_package_url.py \
+          -c "${{ inputs.component }}" \
+          -o "${{ inputs.os }}" \
+          -s "${{ inputs.system }}" \
+          -v "${{ inputs.version }}" \
+          -a "${{ inputs.architecture }}"
+      )
+      echo package-url=$package_url >> $GITHUB_OUTPUT

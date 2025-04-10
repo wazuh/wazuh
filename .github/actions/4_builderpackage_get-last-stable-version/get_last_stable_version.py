@@ -67,7 +67,7 @@ def main():
     parser.add_argument("-r",  "--repository", type=str, action="store",
                         required=True, help="Repository name.")
     parser.add_argument("-v", "--version", type=str, action="store",
-                        required=True, help="Generates JSON file output.")
+                        required=True, help="Base version.")
 
     args = parser.parse_args()
 
