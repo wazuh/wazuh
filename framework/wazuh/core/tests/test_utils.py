@@ -917,14 +917,3 @@ def test_get_utc_now():
     date = utils.get_utc_strptime(mock_date, default_format)
     assert isinstance(date, datetime.datetime)
     assert date == datetime.datetime(1970, 1, 1, 0, 1, tzinfo=datetime.timezone.utc)
-
-
-@patch('yaml.safe_load')
-def test_load_api_spec(mock_safe_load):
-    """Validate that the function `load_api_spec` works properly."""
-    # To execute the function first it's necessary to clear the cache.
-    utils.load_api_spec.cache_clear()
-    utils.load_api_spec()
-    mock_safe_load.assert_called()
-    # Clearing the cache again since this call used mocked resources.
-    utils.load_api_spec.cache_clear()

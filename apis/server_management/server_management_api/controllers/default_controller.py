@@ -8,10 +8,11 @@ import socket
 from connexion.lifecycle import ConnexionResponse
 from wazuh.core.common import DATE_FORMAT
 from wazuh.core.results import WazuhResult
-from wazuh.core.utils import get_utc_now, load_api_spec
+from wazuh.core.utils import get_utc_now
 
 from server_management_api.controllers.util import json_response
 from server_management_api.models.basic_info_model import BasicInfo
+from server_management_api.util import load_api_spec
 
 logger = logging.getLogger('wazuh-api')
 

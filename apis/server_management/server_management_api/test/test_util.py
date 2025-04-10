@@ -273,3 +273,14 @@ async def test_only_master_endpoint(mock_exc):
         mock_exc.assert_called_once_with(WazuhResourceNotFound(902))
     with patch('server_management_api.util.running_in_master_node', return_value=True):
         assert await func_() == ret_val
+
+
+@patch('yaml.safe_load')
+def test_load_api_spec(mock_safe_load):
+    """Validate that the function `load_api_spec` works properly."""
+    # To execute the function first it's necessary to clear the cache.
+    util.load_api_spec.cache_clear()
+    util.load_api_spec()
+    mock_safe_load.assert_called()
+    # Clearing the cache again since this call used mocked resources.
+    util.load_api_spec.cache_clear()
