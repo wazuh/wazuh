@@ -8,15 +8,15 @@ from collections import defaultdict
 from functools import wraps
 
 from wazuh.core.agent import expand_group, get_agents_info, get_groups
-from wazuh.core.common import broadcast, cluster_nodes, rbac
+from wazuh.core.common import broadcast, cluster_nodes, rbac, rbac_manager
 from wazuh.core.exception import WazuhPermissionError
+from wazuh.core.rbac import RBACManager
 from wazuh.core.results import AffectedItemsWazuhResult
-from wazuh.rbac.orm import AuthenticationManager, PoliciesManager, RolesManager, RulesManager
 
 integer_resources = ['user:id', 'role:id', 'rule:id', 'policy:id']
 
 
-async def _expand_resource(resource: str) -> set:
+async def _expand_resource(resource: str) -> set:  # noqa: C901
     """Expand a specified resource depending on its type.
 
     Parameters
@@ -36,6 +36,8 @@ async def _expand_resource(resource: str) -> set:
     if resource_type == 'agent:group':
         return await expand_group(value)
 
+    manager: RBACManager = rbac_manager.get()
+
     # We need to transform the wildcard * to the resource of the system
     if value == '*':
         if resource_type == 'agent:id':
@@ -43,24 +45,17 @@ async def _expand_resource(resource: str) -> set:
         elif resource_type == 'group:id':
             return get_groups()
         elif resource_type == 'role:id':
-            with RolesManager() as rm:
-                roles = rm.get_roles()
-            return {str(role_id.id) for role_id in roles}
+            roles = manager.get_roles()
+            return {role.name for role in roles}
         elif resource_type == 'policy:id':
-            with PoliciesManager() as pm:
-                policies = pm.get_policies()
-            return {str(policy_id.id) for policy_id in policies}
+            policies = manager.get_policies()
+            return {policy.name for policy in policies}
         elif resource_type == 'user:id':
-            users_system = set()
-            with AuthenticationManager() as auth:
-                users = auth.get_users()
-            for user in users:
-                users_system.add(str(user['user_id']))
-            return users_system
+            users = manager.get_users()
+            return {user.id for user in users}
         elif resource_type == 'rule:id':
-            with RulesManager() as rum:
-                rules = rum.get_rules()
-            return {str(rule_id.id) for rule_id in rules}
+            rules = manager.get_rules()
+            return {rule.name for rule in rules}
         elif resource_type == 'node:id':
             return set(cluster_nodes.get())
         elif resource_type == '*:*':  # Resourceless
@@ -72,7 +67,7 @@ async def _expand_resource(resource: str) -> set:
 
 
 def _combination_defined_rbac(needed_resources: list, user_resources: str) -> bool:
-    """This function avoids that the combinations of resources are processed as individuals resources.
+    """Combine resources to avoid that the combinations of them are processed individually.
 
     Parameters
     ----------
@@ -111,7 +106,7 @@ def _combination_defined_rbac(needed_resources: list, user_resources: str) -> bo
 
 
 def _optimize_resources(req_resources: list) -> defaultdict:
-    """This function creates an optimized data structure for an easier processing.
+    """Create an optimized data structure for an easier processing.
     Example:
         ["node:id:master-node",            {
         "node:id:worker1",         -->         "node:id": {"master", "worker1", "worker2"}
@@ -160,7 +155,7 @@ async def _black_expansion(req_resources: list, final_user_permissions: dict):
 
 
 def _process_effect(effect: str, identifier: str, value: str, final_user_permissions: dict, expanded_resource: set):
-    """This function will add or remove resources from the final permissions depending on the effect of the permission.
+    """Add or remove resources from the final permissions depending on the effect of the permission.
 
     Parameters
     ----------
@@ -188,7 +183,7 @@ def _process_effect(effect: str, identifier: str, value: str, final_user_permiss
 
 
 async def _single_processor(req_resources: list, user_permissions_for_resource: dict, final_user_permissions: dict):
-    """This function processes the individual resources.
+    """Process individual resources.
 
     Parameters
     ----------
@@ -221,7 +216,7 @@ async def _single_processor(req_resources: list, user_permissions_for_resource: 
 async def _combination_processor(
     req_resources: list, user_permissions_for_resource: dict, final_user_permissions: dict
 ):
-    """This function processes the combinations of resources.
+    """Process the combinations of resources.
     Checks how the API is currently running and depending on the API and the resources defined for the user, will return
     a dictionary with the final permissions.
 
@@ -275,7 +270,7 @@ async def _match_permissions(req_permissions: dict = None, rbac_mode: str = 'whi
     return allow_match
 
 
-def _get_required_permissions(actions: list = None, resources: list = None, **kwargs: dict) -> tuple:
+def _get_required_permissions(actions: list = None, resources: list = None, **kwargs: dict) -> tuple:  # noqa: C901
     """Resource pairs exposed by the framework function.
 
     Parameters
@@ -342,7 +337,7 @@ def _get_required_permissions(actions: list = None, resources: list = None, **kw
 
 
 def _get_denied(original: dict, allowed: list, target_param: str, res_id: int, resources: list = None) -> set:
-    """This function compares the original kwargs and the processed kwargs, the difference between both should be the
+    """Compare the original kwargs and the processed kwargs, the difference between both should be the
     denied resources.
 
     Parameters
@@ -372,7 +367,7 @@ def _get_denied(original: dict, allowed: list, target_param: str, res_id: int, r
 
 
 async def async_list_handler(result: asyncio.coroutine, **kwargs):
-    """This function makes list_handler async."""
+    """Make list_handler async."""
     result = await result
     return list_handler(result, **kwargs)
 
@@ -428,10 +423,10 @@ def list_handler(
     return result
 
 
-def expose_resources(
+def expose_resources(  # noqa: C901
     actions: list = None, resources: list = None, post_proc_func: callable = list_handler, post_proc_kwargs: dict = None
 ):
-    """Decorator to apply user permissions on a Wazuh framework function based on exposed action:resource pairs.
+    """Apply user permissions on a Wazuh framework function based on exposed action:resource pairs.
 
     Parameters
     ----------
@@ -451,9 +446,9 @@ def expose_resources(
     if post_proc_kwargs is None:
         post_proc_kwargs = dict()
 
-    def decorator(func):
+    def decorator(func):  # noqa: C901
         @wraps(func)
-        async def wrapper(*args, **kwargs):
+        async def wrapper(*args, **kwargs):  # noqa: C901
             original_kwargs = dict(kwargs)
             target_params, req_permissions, add_denied = _get_required_permissions(
                 actions=actions, resources=resources, **kwargs

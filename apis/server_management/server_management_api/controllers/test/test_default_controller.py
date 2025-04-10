@@ -2,7 +2,6 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-import sys
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -10,7 +9,6 @@ from connexion.lifecycle import ConnexionResponse
 
 with patch('wazuh.common.wazuh_uid'):
     with patch('wazuh.common.wazuh_gid'):
-        sys.modules['wazuh.rbac.orm'] = MagicMock()
         import wazuh.rbac.decorators
         from wazuh.core.utils import get_utc_now
         from wazuh.tests.util import RBAC_bypasser
@@ -18,7 +16,6 @@ with patch('wazuh.common.wazuh_uid'):
         from server_management_api.controllers.default_controller import DATE_FORMAT, BasicInfo, default_info, socket
 
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
-        del sys.modules['wazuh.rbac.orm']
 
 
 @pytest.mark.asyncio

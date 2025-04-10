@@ -9,7 +9,7 @@ import sys
 from asyncio import TimeoutError
 from sqlite3 import DatabaseError, Error
 from sqlite3 import OperationalError as SQLiteOperationalError
-from unittest.mock import AsyncMock, MagicMock, call, patch
+from unittest.mock import AsyncMock, call, patch
 
 import pytest
 from connexion import ProblemException
@@ -27,11 +27,7 @@ with patch('wazuh.common.wazuh_uid'):
             default_config = get_default_configuration()
             CentralizedConfig._config = default_config
 
-            sys.modules['wazuh.rbac.orm'] = MagicMock()
             import wazuh.rbac.decorators
-
-            del sys.modules['wazuh.rbac.orm']
-
             from wazuh.tests.util import RBAC_bypasser
 
             wazuh.rbac.decorators.expose_resources = RBAC_bypasser

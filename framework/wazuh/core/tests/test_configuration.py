@@ -3,7 +3,6 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import os
-import sys
 from unittest.mock import ANY, MagicMock, mock_open, patch
 
 import pytest
@@ -11,10 +10,7 @@ from wazuh.core.common import REMOTED_SOCKET
 
 with patch('wazuh.core.common.wazuh_uid'):
     with patch('wazuh.core.common.wazuh_gid'):
-        sys.modules['wazuh.rbac.orm'] = MagicMock()
         import wazuh.rbac.decorators
-
-        del sys.modules['wazuh.rbac.orm']
         from wazuh.tests.util import RBAC_bypasser
 
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
@@ -118,7 +114,7 @@ def test_update_group_file(mock_open, mock_wazuh_uid, mock_wazuh_gid):
 def test_get_active_configuration(
     mock_exists, mock_create_wazuh_socket_message, agent_id, component, socket, socket_dir, rec_msg
 ):
-    """This test checks the proper working of get_active_configuration function."""
+    """Check the proper working of the `get_active_configuration` function."""
     sockets_json_protocol = {'remote', 'analysis', 'wdb'}
     config = MagicMock()
 

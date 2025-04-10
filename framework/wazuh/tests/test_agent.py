@@ -7,7 +7,7 @@ import os
 import sys
 from grp import getgrnam
 from pwd import getpwnam
-from unittest.mock import AsyncMock, MagicMock, call, patch
+from unittest.mock import AsyncMock, call, patch
 
 import pytest
 from wazuh.core.config.client import CentralizedConfig
@@ -22,11 +22,9 @@ with patch('wazuh.core.common.wazuh_uid'):
             default_config = get_default_configuration()
             CentralizedConfig._config = default_config
 
-            sys.modules['wazuh.rbac.orm'] = MagicMock()
             import wazuh.rbac.decorators
             from wazuh.tests.util import RBAC_bypasser
 
-            del sys.modules['wazuh.rbac.orm']
             wazuh.rbac.decorators.expose_resources = RBAC_bypasser
 
         from wazuh import WazuhError, WazuhException, WazuhInternalError
@@ -338,17 +336,17 @@ async def test_create_group(chown_mock, uid_mock, gid_mock, group_id):
     try:
         result = await create_group(group_id)
         assert isinstance(result, WazuhResult), 'The returned object is not an "WazuhResult" instance.'
-        assert (
-            len(result.dikt) == 1
-        ), f'Result dikt length is "{len(result.dikt)}" instead of "1". Result dikt content is: {result.dikt}'
+        assert len(result.dikt) == 1, (
+            f'Result dikt length is "{len(result.dikt)}" instead of "1". Result dikt content is: {result.dikt}'
+        )
         assert result.dikt['message'] == expected_msg, (
             f'The "result.dikt[\'message\']" received is not the expected.\n'
             f'Expected: "{expected_msg}"\n'
             f'Received: "{result.dikt["message"]}"'
         )
-        assert os.path.exists(
-            path_to_group
-        ), f'The path "{path_to_group}" does not exists and should be created by "create_group" function.'
+        assert os.path.exists(path_to_group), (
+            f'The path "{path_to_group}" does not exists and should be created by "create_group" function.'
+        )
     finally:
         # Remove the new file to avoid affecting other tests
         if os.path.exists(path_to_group):

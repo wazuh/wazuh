@@ -3,8 +3,7 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import json
-import sys
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 from wazuh.core.cluster.tests.conftest import get_default_configuration
@@ -19,8 +18,6 @@ with patch('wazuh.common.getgrnam'):
                 with patch.object(ValidateFilePathMixin, '_validate_file_path', return_value=None):
                     default_config = get_default_configuration()
                     CentralizedConfig._config = default_config
-
-                    sys.modules['wazuh.rbac.orm'] = MagicMock()
 
                     from wazuh.core.cluster import control
                     from wazuh.core.cluster.local_client import LocalClient
