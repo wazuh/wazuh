@@ -2,6 +2,7 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
+import contextlib
 from functools import wraps
 
 from cachetools import TTLCache
@@ -40,15 +41,14 @@ def token_cache(cache: TTLCache):
 
             async def f(*_args, **_kwargs):
                 k = hashkey(*_args, **_kwargs)
-                try:
+                with contextlib.suppress(KeyError):  # Key not found
                     return cache[k]
-                except KeyError:
-                    pass  # key not found
+
                 v = await func(*args, **kwargs)
-                try:
+
+                with contextlib.suppress(ValueError):  # Value too large
                     cache[k] = v
-                except ValueError:
-                    pass  # value too large
+
                 return v
 
             return await f(*args, **kwargs)
