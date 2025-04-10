@@ -1002,21 +1002,6 @@
         ]
     },
     {
-        "path": "apis/server_management/test/integration/env/configurations/cluster/manager/configuration_files",
-        "files": [
-            {
-                "name": "entrypoint.sh",
-                "tag": "entrypoint",
-                "tests": [
-                    "test_agent_DELETE_endpoints.tavern.yaml",
-                    "test_agent_GET_endpoints.tavern.yaml",
-                    "test_agent_POST_endpoints.tavern.yaml",
-                    "test_agent_PUT_endpoints.tavern.yaml"
-                ]
-            }
-        ]
-    },
-    {
         "path": "apis/server_management/test/integration/env/configurations/rbac/agent",
         "files": [
             {
@@ -1184,16 +1169,6 @@
                     "test_agent_PUT_endpoints.tavern.yaml",
                     "test_rbac_black_agent_endpoints.tavern.yaml",
                     "test_rbac_white_agent_endpoints.tavern.yaml"
-                ]
-            },
-            {
-                "name": "cluster.py",
-                "tag": "cluster",
-                "tests": [
-                    "test_agent_DELETE_endpoints.tavern.yaml",
-                    "test_agent_GET_endpoints.tavern.yaml",
-                    "test_agent_POST_endpoints.tavern.yaml",
-                    "test_agent_PUT_endpoints.tavern.yaml"
                 ]
             },
             {
@@ -2570,21 +2545,6 @@
             {
                 "name": "healthcheck.py",
                 "tag": "healthcheck",
-                "tests": [
-                    "test_agent_DELETE_endpoints.tavern.yaml",
-                    "test_agent_GET_endpoints.tavern.yaml",
-                    "test_agent_POST_endpoints.tavern.yaml",
-                    "test_agent_PUT_endpoints.tavern.yaml"
-                ]
-            }
-        ]
-    },
-    {
-        "path": "apis/server_management/test/integration/env/configurations/cluster/manager/configuration_files",
-        "files": [
-            {
-                "name": "entrypoint.sh",
-                "tag": "entrypoint",
                 "tests": [
                     "test_agent_DELETE_endpoints.tavern.yaml",
                     "test_agent_GET_endpoints.tavern.yaml",
