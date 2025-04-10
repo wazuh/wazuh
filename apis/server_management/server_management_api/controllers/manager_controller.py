@@ -7,7 +7,7 @@ import logging
 import wazuh.manager as manager
 from connexion.lifecycle import ConnexionResponse
 from wazuh.core import configuration
-from wazuh.core.cluster.dapi.dapi import DistributedAPI
+from wazuh.core.task_dispatcher import TaskDispatcher
 from wazuh.core.manager import query_update_check_service
 
 from server_management_api.constants import INSTALLATION_UID_KEY, UPDATE_INFORMATION_KEY
@@ -38,25 +38,23 @@ async def check_available_version(pretty: bool = False, force_query: bool = Fals
 
     if force_query and configuration.update_check_is_enabled():
         logger.debug('Forcing query to the update check service...')
-        dapi = DistributedAPI(
+        dispatcher = TaskDispatcher(
             f=query_update_check_service,
             f_kwargs={INSTALLATION_UID_KEY: installation_uid},
-            request_type='local_master',
-            is_async=True,
+                is_async=True,
             logger=logger,
         )
-        update_information = raise_if_exc(await dapi.distribute_function())
+        update_information = raise_if_exc(await dispatcher.execute_function())
         cti_context[UPDATE_INFORMATION_KEY] = update_information.dikt
 
-    dapi = DistributedAPI(
+    dispatcher = TaskDispatcher(
         f=manager.get_update_information,
         f_kwargs={
             INSTALLATION_UID_KEY: installation_uid,
             UPDATE_INFORMATION_KEY: cti_context.get(UPDATE_INFORMATION_KEY, {}),
         },
-        request_type='local_master',
         is_async=False,
         logger=logger,
     )
-    data = raise_if_exc(await dapi.distribute_function())
+    data = raise_if_exc(await dispatcher.execute_function())
     return json_response(data, pretty=pretty)
