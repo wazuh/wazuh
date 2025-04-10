@@ -8,12 +8,13 @@ from wazuh.core.exception import WazuhError, WazuhInternalError
 from wazuh.core.manager import (
     OSSEC_LOG_FIELDS,
     get_logs_summary,
+    get_manager_status,
     get_ossec_logs,
     get_update_information_template,
+    manager_restart,
     validate_ossec_conf,
 )
 from wazuh.core.results import AffectedItemsWazuhResult, WazuhResult
-from wazuh.core.server.utils import get_manager_status, manager_restart
 from wazuh.core.utils import process_array
 from wazuh.rbac.decorators import expose_resources
 

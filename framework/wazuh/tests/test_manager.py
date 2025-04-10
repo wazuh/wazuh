@@ -25,7 +25,6 @@ with patch('wazuh.core.common.wazuh_uid'):
 
             wazuh.rbac.decorators.expose_resources = RBAC_bypasser
 
-            from wazuh.core.manager import LoggingFormat
             from wazuh.core.tests.test_manager import get_logs
             from wazuh.manager import *
 
@@ -78,7 +77,7 @@ manager_status = {
 }
 
 
-@patch('wazuh.core.manager.status', return_value=manager_status)
+@patch('wazuh.core.manager.get_manager_status', return_value=manager_status)
 def test_get_status(mock_status):
     """Tests get_status() function works."""
     result = get_status()
@@ -107,9 +106,8 @@ def test_get_status(mock_status):
         (None, 'warning', 2, None, False),
     ],
 )
-@patch('wazuh.core.manager.get_wazuh_active_logging_format', return_value=LoggingFormat.plain)
 @patch('wazuh.core.manager.exists', return_value=True)
-def test_ossec_log(mock_exists, mock_active_logging_format, tag, level, total_items, sort_by, sort_ascending):
+def test_ossec_log(mock_exists, tag, level, total_items, sort_by, sort_ascending):
     """Test reading ossec.log file contents."""
     with patch('wazuh.core.manager.tail') as tail_patch:
         # Return ossec_log_file when calling tail() method
@@ -141,9 +139,8 @@ def test_ossec_log(mock_exists, mock_active_logging_format, tag, level, total_it
         ('timestamp<2019/03/26 19:49:14', 'timestamp', '<', '2019/03/26T19:49:15Z'),
     ],
 )
-@patch('wazuh.core.manager.get_wazuh_active_logging_format', return_value=LoggingFormat.plain)
 @patch('wazuh.core.manager.exists', return_value=True)
-def test_ossec_log_q(mock_exists, mock_active_logging_format, q, field, operation, values):
+def test_ossec_log_q(mock_exists, q, field, operation, values):
     """Check that the 'q' parameter is working correctly."""
     with patch('wazuh.core.manager.tail') as tail_patch:
         ossec_log_file = get_logs()
@@ -158,9 +155,8 @@ def test_ossec_log_q(mock_exists, mock_active_logging_format, q, field, operatio
             assert all(log[field] in values for log in result.render()['data']['affected_items'])
 
 
-@patch('wazuh.core.manager.get_wazuh_active_logging_format', return_value=LoggingFormat.plain)
 @patch('wazuh.core.manager.exists', return_value=True)
-def test_ossec_log_summary(mock_exists, mock_active_logging_format):
+def test_ossec_log_summary(mock_exists):
     """Tests ossec_log_summary function works and returned data match with expected."""
     expected_result = {
         'wazuh-csyslogd': {'all': 2, 'info': 2, 'error': 0, 'critical': 0, 'warning': 0, 'debug': 0},
@@ -185,8 +181,8 @@ def test_ossec_log_summary(mock_exists, mock_active_logging_format):
 
 
 @patch('socket.socket')
-@patch('wazuh.core.server.utils.fcntl')
-@patch('wazuh.core.server.utils.open')
+@patch('wazuh.core.manager.fcntl')
+@patch('wazuh.core.manager.open')
 @patch('os.path.exists', return_value=True)
 def test_restart_ok(mock_exists, mock_path, mock_fcntl, mock_socket):
     """Tests restarting a manager."""
@@ -197,8 +193,8 @@ def test_restart_ok(mock_exists, mock_path, mock_fcntl, mock_socket):
     assert result.render()['data']['total_failed_items'] == 0
 
 
-@patch('wazuh.core.server.utils.open')
-@patch('wazuh.core.server.utils.fcntl')
+@patch('wazuh.core.manager.open')
+@patch('wazuh.core.manager.fcntl')
 @patch('os.path.exists', return_value=False)
 def test_restart_ko_socket(mock_exists, mock_fcntl, mock_open):
     """Tests restarting a manager exceptions."""
