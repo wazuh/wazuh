@@ -2421,4 +2421,6 @@ def parse_wazuh_agent_version(version_str: str) -> tuple:
         The tuple of the wazuh version string.
     """
     match = re.search(r'v(\d+)\.(\d+)\.(\d+)', version_str)
-    return tuple(map(int, match.groups()))
+    if match:
+        return tuple(map(int, match.groups()))
+    return 0, 0, 0
