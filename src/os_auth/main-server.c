@@ -922,6 +922,10 @@ void* run_remote_server(__attribute__((unused)) void *arg) {
                     new_client->write_offset = 0;
                     new_client->write_len = 0;
 
+                    new_client->centralized_group = NULL;
+                    new_client->agentname = NULL;
+                    new_client->new_id = NULL;
+
                     set_non_blocking(new_client->socket);
 
                     int client_index = -1;
