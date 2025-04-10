@@ -91,7 +91,7 @@ def start_daemon(name: str, args: List[str]):
             pyDaemonModule.create_pid(ENGINE_DAEMON_NAME, pid)
         main_logger.info(f'Started {name} (pid: {pid})')
     except Exception as e:
-        raise WazuhDaemonError(f'Error starting {name}: {e}')
+        raise WazuhDaemonError(code=1017, extra_message=f'Error starting {name}: {e}')
 
 
 def start_daemons(root: bool):
@@ -220,7 +220,6 @@ def start():  # NOQA
     signal.signal(signal.SIGTERM, partial(sigterm_handler, server_pid=server_pid))
 
     main_logger.info(f'Starting server (pid: {server_pid})')
-
     # Create a strong reference to prevent the tasks from being garbage collected.
     background_tasks = set()
     try:
@@ -299,9 +298,13 @@ def check_daemon(processes: list, proc_name: str, children_number: int):
     child: psutil.Process = _get_child_process(processes, proc_name)
     if child.status() == psutil.STATUS_ZOMBIE:
         clean_pid_files(proc_name)
-        raise WazuhDaemonError(f'Daemon `{proc_name}` is not running, stopping the whole server.')
+        raise WazuhDaemonError(
+            code=1017, extra_message=f'Daemon `{proc_name}` is not running, stopping the whole server.'
+        )
     if not _check_children_number(child, children_number):
-        raise WazuhDaemonError(f'Daemon `{proc_name}` does not have the correct number of children process.')
+        raise WazuhDaemonError(
+            code=1017, extra_message=f'Daemon `{proc_name}` does not have the correct number of children process.'
+        )
 
 
 async def check_for_server_readiness(server_process: psutil.Process, expected_state: dict):

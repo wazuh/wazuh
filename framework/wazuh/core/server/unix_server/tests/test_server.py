@@ -1,8 +1,8 @@
 from unittest.mock import call, patch
 
 import uvicorn
-from wazuh.core.cluster.unix_server.config import get_config
-from wazuh.core.cluster.unix_server.server import common, get_log_config, start_unix_server
+from wazuh.core.server.unix_server.config import get_config
+from wazuh.core.server.unix_server.server import common, get_log_config, start_unix_server
 
 
 def test_get_log_config():
@@ -24,9 +24,9 @@ def test_get_log_config():
             assert handler['formatter'] == 'default'
 
 
-@patch('wazuh.core.cluster.unix_server.server.FastAPI')
-@patch('wazuh.core.cluster.unix_server.server.APIRouter')
-@patch('wazuh.core.cluster.unix_server.server.Thread')
+@patch('wazuh.core.server.unix_server.server.FastAPI')
+@patch('wazuh.core.server.unix_server.server.APIRouter')
+@patch('wazuh.core.server.unix_server.server.Thread')
 def test_start_unix_server(mock_thread, router_mock, fastapi_mock):
     """Validate that `start_unix_server` function works as expected."""
     start_unix_server('Master')
