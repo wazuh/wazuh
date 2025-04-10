@@ -43,7 +43,7 @@ class WazuhException(Exception):
         1012: {'message': 'Invalid message to queue'},
         1013: {'message': 'Unable to connect with socket', 'remediation': 'Please, restart Wazuh to restore sockets'},
         1014: {'message': 'Error communicating with socket', 'remediation': 'Please, restart Wazuh to restore sockets'},
-        1017: 'Some Wazuh daemons are not ready yet in node "{node_name}" ({not_ready_daemons})',
+        1017: 'Some Wazuh daemons are not ready yet',
         1018: 'Body request is not a valid JSON',
         # Configuration: 1100 - 1199
         1101: {

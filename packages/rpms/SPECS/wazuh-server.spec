@@ -241,7 +241,6 @@ rm -fr %{buildroot}
 %dir %attr(750, %{_wazuh_user}, %{_wazuh_group}) %{_localstatedir}etc/wazuh-server
 %attr(640, %{_wazuh_user}, %{_wazuh_group}) %{_localstatedir}etc/wazuh-server/wazuh-server.yml
 %dir %attr(500, %{_wazuh_user}, %{_wazuh_group}) %{_localstatedir}etc/wazuh-server/certs
-%dir %attr(750, %{_wazuh_user}, %{_wazuh_group}) %{_localstatedir}etc/wazuh-server/cluster
 %dir %attr(750, %{_wazuh_user}, %{_wazuh_group}) %{_localstatedir}etc/wazuh-server/groups
 %dir %attr(750, %{_wazuh_user}, %{_wazuh_group}) %{_localstatedir}usr/share/wazuh-server/lib
 %dir %attr(750, %{_wazuh_user}, %{_wazuh_group}) %{_localstatedir}usr/share/wazuh-server/framework

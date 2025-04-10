@@ -6,7 +6,7 @@
 
 import argparse
 import asyncio
-import logging
+import contextlib
 import os
 import signal
 import subprocess
@@ -16,14 +16,16 @@ from functools import partial
 from typing import Any, List
 
 import psutil
-from wazuh.core import pyDaemonModule
-from wazuh.core.cluster.cluster import clean_up
-from wazuh.core.cluster.unix_server.server import start_unix_server
-from wazuh.core.cluster.utils import ClusterLogger, context_tag, ping_unix_socket, print_version, process_spawn_sleep
 from wazuh.core.common import CONFIG_SERVER_SOCKET_PATH, WAZUH_RUN, WAZUH_SHARE, wazuh_gid, wazuh_uid
 from wazuh.core.config.client import CentralizedConfig
-from wazuh.core.config.models.server import NodeType, ServerConfig
 from wazuh.core.exception import WazuhDaemonError
+from wazuh.core.server.unix_server.server import start_unix_server
+from wazuh.core.server.utils import (
+    ServerLogger,
+    context_tag,
+    ping_unix_socket,
+    print_version,
+)
 from wazuh.core.task.order import get_orders
 from wazuh.core.utils import clean_pid_files, create_wazuh_dir
 from wazuh.core.wlogging import WazuhLogger
@@ -43,7 +45,7 @@ MANAGEMENT_API_SCRIPT_PATH = WAZUH_SHARE / 'apis' / 'scripts' / f'{MANAGEMENT_AP
 
 
 def set_logging(debug_mode=0) -> WazuhLogger:
-    """Set cluster logger.
+    """Set server logger.
 
     Parameters
     ----------
@@ -53,14 +55,14 @@ def set_logging(debug_mode=0) -> WazuhLogger:
     Returns
     -------
     WazuhLogger
-        Cluster logger.
+        Server logger.
     """
-    cluster_logger = ClusterLogger(
+    server_logger = ServerLogger(
         debug_level=debug_mode,
         tag='%(asctime)s %(levelname)s: [%(tag)s] [%(subtag)s] %(message)s',
     )
-    cluster_logger.setup_logger()
-    return cluster_logger
+    server_logger.setup_logger()
+    return server_logger
 
 
 def start_daemon(name: str, args: List[str]):
@@ -89,7 +91,7 @@ def start_daemon(name: str, args: List[str]):
             pyDaemonModule.create_pid(ENGINE_DAEMON_NAME, pid)
         main_logger.info(f'Started {name} (pid: {pid})')
     except Exception as e:
-        raise WazuhDaemonError(f'Error starting {name}: {e}')
+        raise WazuhDaemonError(code=1017, extra_message=f'Error starting {name}: {e}')
 
 
 def start_daemons(root: bool):
@@ -145,146 +147,23 @@ def shutdown_server(server_pid: int):
     while pyDaemonModule.check_for_daemons_shutdown(daemons):
         time.sleep(1)
 
-    # Terminate the cluster
+    # Terminate the server
     pyDaemonModule.delete_child_pids(SERVER_DAEMON_NAME, server_pid, main_logger)
     pyDaemonModule.delete_pid(SERVER_DAEMON_NAME, server_pid)
 
 
-#
-# Master main
-#
-async def master_main(args: argparse.Namespace, server_config: ServerConfig, logger: WazuhLogger):
-    """Start the master node main process.
-
-    Parameters
-    ----------
-    args : argparse.Namespace
-        Script arguments.
-    server_config : ServerConfig
-        Server configuration.
-    logger : WazuhLogger
-        Cluster logger.
-    """
-    from wazuh.core.cluster import local_server, master
-
-    tag = 'Master'
+def initialize(args: argparse.Namespace):
+    """Start the server instance."""
+    tag = 'Server'
     context_tag.set(tag)
     start_unix_server(tag)
 
     while not ping_unix_socket(CONFIG_SERVER_SOCKET_PATH):
         main_logger.info('Configuration server is not available, retrying...')
         time.sleep(1)
-
-    my_server = master.Master(
-        performance_test=args.performance_test,
-        concurrency_test=args.concurrency_test,
-        logger=logger,
-        server_config=server_config,
-    )
-
-    # Spawn pool processes
-    if my_server.task_pool is not None:
-        my_server.task_pool.map(process_spawn_sleep, range(my_server.task_pool._max_workers))
-
-    my_local_server = local_server.LocalServerMaster(
-        performance_test=args.performance_test,
-        logger=logger,
-        concurrency_test=args.concurrency_test,
-        node=my_server,
-        server_config=server_config,
-    )
-
-    # initialize server
-    my_server_task = my_server.start()
-    my_local_server_task = my_local_server.start()
-    tasks = [my_server_task, my_local_server_task]
 
     # Initialize daemons
     start_daemons(args.root)
-
-    await asyncio.gather(*tasks)
-
-
-#
-# Worker main
-#
-async def worker_main(args: argparse.Namespace, server_config: ServerConfig, logger: WazuhLogger):
-    """Start main process of a worker node.
-
-    Parameters
-    ----------
-    args : argparse.Namespace
-        Script arguments.
-    server_config : ServerConfig
-        Server configuration.
-    logger : WazuhLogger
-        Cluster logger.
-    """
-    from concurrent.futures import ProcessPoolExecutor
-
-    from wazuh.core.cluster import local_server, worker
-
-    tag = 'Worker'
-    context_tag.set(tag)
-    start_unix_server(tag)
-
-    while not ping_unix_socket(CONFIG_SERVER_SOCKET_PATH):
-        main_logger.info('Configuration server is not available, retrying...')
-        time.sleep(1)
-
-    # Pool is defined here so the child process is not recreated when the connection with master node is broken.
-    try:
-        task_pool = ProcessPoolExecutor(max_workers=1)
-    # Handle exception when the user running Wazuh cannot access /dev/shm
-    except (FileNotFoundError, PermissionError):
-        main_logger.warning(
-            "In order to take advantage of Wazuh 4.3.0 cluster improvements, the directory '/dev/shm' must be "
-            "accessible by the 'wazuh' user. Check that this file has permissions to be accessed by all users. "
-            'Changing the file permissions to 777 will solve this issue.'
-        )
-        main_logger.warning(
-            'The Wazuh cluster will be run without the improvements added in Wazuh 4.3.0 and higher versions.'
-        )
-        task_pool = None
-
-    daemons_initialized = False
-
-    while True:
-        my_client = worker.Worker(
-            performance_test=args.performance_test,
-            concurrency_test=args.concurrency_test,
-            file=args.send_file,
-            string=args.send_string,
-            logger=logger,
-            server_config=server_config,
-            task_pool=task_pool,
-        )
-        my_local_server = local_server.LocalServerWorker(
-            performance_test=args.performance_test,
-            logger=logger,
-            concurrency_test=args.concurrency_test,
-            node=my_client,
-            server_config=server_config,
-        )
-
-        # Spawn pool processes
-        if my_client.task_pool is not None:
-            my_client.task_pool.map(process_spawn_sleep, range(my_client.task_pool._max_workers))
-        try:
-            my_client_task = my_client.start()
-            my_local_server_task = my_local_server.start()
-            tasks = [my_client_task, my_local_server_task]
-
-            # Initialize the daemons one time
-            if not daemons_initialized:
-                # Initialize daemons
-                start_daemons(args.root)
-                daemons_initialized = True
-
-            await asyncio.gather(*tasks)
-        except asyncio.CancelledError:
-            logging.info('Connection with server has been lost. Reconnecting in 10 seconds.')
-            await asyncio.sleep(server_config.worker.intervals.connection_retry)
 
 
 def get_script_arguments() -> argparse.Namespace:
@@ -302,21 +181,6 @@ def get_script_arguments() -> argparse.Namespace:
 
     start_parser = subparsers.add_parser('start', help='Start Wazuh server')
     ####################################################################################################################
-    # Dev options - Silenced in the help message.
-    ####################################################################################################################
-    # Performance test - value stored in args.performance_test will be used to send a request of that size in bytes to
-    # all clients/to the server.
-    start_parser.add_argument('--performance_test', type=int, dest='performance_test', help=argparse.SUPPRESS)
-    # Concurrency test - value stored in args.concurrency_test will be used to send that number of requests in a row,
-    # without sleeping.
-    start_parser.add_argument('--concurrency_test', type=int, dest='concurrency_test', help=argparse.SUPPRESS)
-    # Send string test - value stored in args.send_string variable will be used to send a string with that size in bytes
-    # to the server. Only implemented in worker nodes.
-    start_parser.add_argument('--string', help=argparse.SUPPRESS, type=int, dest='send_string')
-    # Send file test - value stored in args.send_file variable is the path of a file to send to the server. Only
-    # implemented in worker nodes.
-    start_parser.add_argument('--file', help=argparse.SUPPRESS, type=str, dest='send_file')
-    ####################################################################################################################
     start_parser.add_argument('-r', '--root', help='Run as root', action='store_true', dest='root')
 
     start_parser.set_defaults(func=start)
@@ -332,27 +196,17 @@ def get_script_arguments() -> argparse.Namespace:
 
 def start():  # NOQA
     """Start function of the wazuh-server script in charge of starting the server process."""
-    try:
+    with contextlib.suppress(StopIteration):
         server_pid = pyDaemonModule.get_wazuh_server_pid(SERVER_DAEMON_NAME)
         if server_pid and psutil.pid_exists(server_pid):
             print(f'The server is already running on process {server_pid}')
             sys.exit(1)
-    except StopIteration:
-        pass
-
-    try:
-        server_config = CentralizedConfig.get_server_config()
-    except Exception as e:
-        main_logger.error(e)
-        sys.exit(1)
-
-    # Clean cluster files from previous executions
-    clean_up()
 
     # Create /run/wazuh-server
     create_wazuh_dir(WAZUH_RUN)
 
     # Check for unused PID files
+    main_logger.debug('Checking for unused PID files')
     clean_pid_files(SERVER_DAEMON_NAME)
 
     # Drop privileges to wazuh
@@ -366,20 +220,14 @@ def start():  # NOQA
     signal.signal(signal.SIGTERM, partial(sigterm_handler, server_pid=server_pid))
 
     main_logger.info(f'Starting server (pid: {server_pid})')
-
-    if server_config.node.type == NodeType.MASTER:
-        main_function = master_main
-    else:
-        main_function = worker_main
-
     # Create a strong reference to prevent the tasks from being garbage collected.
     background_tasks = set()
     try:
+        initialize(args)
         loop = asyncio.new_event_loop()
         loop.add_signal_handler(signal.SIGTERM, partial(stop_loop, loop))
         background_tasks.add(loop.create_task(get_orders(main_logger)))
-        background_tasks.add(loop.create_task(monitor_server_daemons(loop, psutil.Process(server_pid))))
-        loop.run_until_complete(main_function(args, server_config, main_logger))
+        loop.run_until_complete(monitor_server_daemons(loop, psutil.Process(server_pid)))
     except KeyboardInterrupt:
         main_logger.info('SIGINT received. Shutting down...')
     except MemoryError:
@@ -449,11 +297,14 @@ def check_daemon(processes: list, proc_name: str, children_number: int):
     """
     child: psutil.Process = _get_child_process(processes, proc_name)
     if child.status() == psutil.STATUS_ZOMBIE:
-        main_logger.error(f'Daemon `{proc_name}` is not running, stopping the whole server.')
         clean_pid_files(proc_name)
-        return
+        raise WazuhDaemonError(
+            code=1017, extra_message=f'Daemon `{proc_name}` is not running, stopping the whole server.'
+        )
     if not _check_children_number(child, children_number):
-        raise WazuhDaemonError(f'Daemon `{proc_name}` does not have the correct number of children process.')
+        raise WazuhDaemonError(
+            code=1017, extra_message=f'Daemon `{proc_name}` does not have the correct number of children process.'
+        )
 
 
 async def check_for_server_readiness(server_process: psutil.Process, expected_state: dict):

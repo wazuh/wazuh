@@ -39,13 +39,13 @@ from server_management_api.uri_parser import APIUriParser
 from starlette.middleware.cors import CORSMiddleware
 from wazuh.core import common, pyDaemonModule, utils
 from wazuh.core.authentication import load_jwt_keys
-from wazuh.core.cluster.utils import print_version
 from wazuh.core.commands_manager import CommandsManager
 from wazuh.core.common import WAZUH_SERVER_YML
 from wazuh.core.config.client import CentralizedConfig
 from wazuh.core.config.models.central_config import ManagementAPIConfig
 from wazuh.core.config.models.ssl_config import APISSLConfig
 from wazuh.core.rbac import RBACManager
+from wazuh.core.server.utils import print_version
 from wazuh.core.unix_server.commands import post_commands
 from wazuh.core.unix_server.server import HTTPUnixServer
 

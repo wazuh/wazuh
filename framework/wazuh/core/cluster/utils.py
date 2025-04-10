@@ -7,21 +7,17 @@ import json
 import logging
 import os
 import re
-import signal
 import socket
-import time
 import typing
 from contextvars import ContextVar
 from glob import glob
-from pathlib import Path
 
-from wazuh.core import common, pyDaemonModule
+from wazuh.core import common
 from wazuh.core.config.client import CentralizedConfig
 from wazuh.core.exception import WazuhError, WazuhHAPHelperError, WazuhInternalError
 from wazuh.core.results import WazuhResult
 from wazuh.core.utils import temporary_cache
 from wazuh.core.wazuh_socket import create_wazuh_socket_message
-from wazuh.core.wlogging import WazuhLogger
 
 NO = 'no'
 YES = 'yes'
@@ -67,35 +63,6 @@ HELPER_DEFAULTS = {
     IMBALANCE_TOLERANCE: 0.1,
     REMOVE_DISCONNECTED_NODE_AFTER: 240,
 }
-
-
-def ping_unix_socket(socket_path: Path, timeout: int = 1):
-    """Ping a UNIX socket to check if it's available.
-
-    Parameters
-    ----------
-    socket_path : Path
-        Path to the UNIX socket file.
-    timeout : int
-        Connection timeout in seconds.
-
-    Returns
-    -------
-    bool
-        True if the socket is reachable, False otherwise.
-    """
-    if not socket_path.exists():
-        return False
-
-    try:
-        # Create a testing UNIX socket client to connect to the server socket.
-        client = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-        client.settimeout(timeout)
-        client.connect(str(socket_path))
-        client.close()
-        return True
-    except (socket.timeout, socket.error):
-        return False
 
 
 def _parse_haproxy_helper_integer_values(helper_config: dict) -> dict:
@@ -322,55 +289,6 @@ def manager_restart() -> WazuhResult:
 context_tag: ContextVar[str] = ContextVar('tag', default='')
 
 
-class ClusterFilter(logging.Filter):
-    """Add cluster related information into cluster logs."""
-
-    def __init__(self, tag: str, subtag: str, name: str = ''):
-        """Class constructor.
-
-        Parameters
-        ----------
-        tag : str
-            First tag to show in the log - Usually describes class.
-        subtag : str
-            Second tag to show in the log - Usually describes function.
-        name : str
-            If name is specified, it names a logger which, together with its children, will have its events
-            allowed through the filter. If name is the empty string, allows every event.
-        """
-        super().__init__(name=name)
-        self.tag = tag
-        self.subtag = subtag
-
-    def filter(self, record):
-        record.tag = context_tag.get() if context_tag.get() != '' else self.tag
-        record.subtag = self.subtag
-        return True
-
-    def update_tag(self, new_tag: str):
-        self.tag = new_tag
-
-    def update_subtag(self, new_subtag: str):
-        self.subtag = new_subtag
-
-
-class ClusterLogger(WazuhLogger):
-    """Define the logger used by wazuh-clusterd."""
-
-    def setup_logger(self):
-        """Set ups cluster logger. In addition to super().setup_logger() this method adds:
-        * A filter to add tag and subtags to cluster logs
-        * Sets log level based on the "debug_level" parameter received from wazuh-clusterd binary.
-        """
-        super().setup_logger()
-        self.logger.addFilter(ClusterFilter(tag='Cluster', subtag='Main'))
-        debug_level = (
-            logging.DEBUG2 if self.debug_level == 2 else logging.DEBUG if self.debug_level == 1 else logging.INFO
-        )
-
-        self.logger.setLevel(debug_level)
-
-
 def log_subprocess_execution(logger_instance: logging.Logger, logs: dict):
     """Log messages returned by functions that are executed in cluster's subprocesses.
 
@@ -392,25 +310,6 @@ def log_subprocess_execution(logger_instance: logging.Logger, logs: dict):
     if 'generic_errors' in logs and logs['generic_errors']:
         for error in logs['generic_errors']:
             logger_instance.error(error, exc_info=False)
-
-
-def process_spawn_sleep(child):
-    """Task to force the cluster pool spawn all its children and create their PID files.
-
-    Parameters
-    ----------
-    child: int
-        Process child number.
-    """
-    pid = os.getpid()
-    # TODO: 26590 - Use a parameter to set the child name.
-    pyDaemonModule.create_pid(f'wazuh-server_child_{child}', pid)
-
-    signal.signal(signal.SIGINT, signal.SIG_IGN)
-    signal.signal(signal.SIGTERM, signal.SIG_IGN)
-    # Add a delay to force each child process to create its own PID file, preventing multiple calls
-    # executed by the same child
-    time.sleep(0.1)
 
 
 async def forward_function(
@@ -484,9 +383,3 @@ def raise_if_exc(result: object) -> None:
     """
     if isinstance(result, Exception):
         raise result
-
-
-def print_version():
-    from wazuh.core.cluster import __author__, __licence__, __version__, __wazuh_name__
-
-    print('\n{} {} - {}\n\n{}'.format(__wazuh_name__, __version__, __author__, __licence__))

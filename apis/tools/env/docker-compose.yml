@@ -40,80 +40,6 @@ services:
     depends_on:
       - wazuh-indexer
 
-  wazuh-worker1:
-    image: dev-wazuh-server
-    hostname: wazuh-worker1
-    container_name: wazuh-worker1
-    volumes:
-      # Server certificates
-      - ./certs/root-ca.pem:/etc/wazuh-server/certs/root-ca.pem
-      - ./certs/wazuh-worker1.pem:/etc/wazuh-server/certs/server.pem
-      - ./certs/wazuh-worker1.key:/etc/wazuh-server/certs/server-key.pem
-      # Indexer certificates
-      - ./certs/wazuh-indexer.pem:/etc/wazuh-server/certs/indexer.pem
-      - ./certs/wazuh-indexer-key.pem:/etc/wazuh-server/certs/indexer-key.pem
-      # Default configuration
-      - ./wazuh-server/wazuh-server.yml:/tmp/wazuh-server.yml
-      # Source code mappings
-      - ../../../framework/scripts/wazuh_server.py:/usr/share/wazuh-server/framework/scripts/wazuh-server.py
-      - ../../server_management/scripts/wazuh_server_management_apid.py:/usr/share/wazuh-server/apis/scripts/wazuh-server-management-apid.py
-      - ../../communications/scripts/wazuh_comms_apid.py:/usr/share/wazuh-server/apis/scripts/wazuh-comms-apid.py
-      - ../../../framework/wazuh:/usr/share/wazuh-server/framework/python/lib/python${WAZUH_PYTHON_VERSION}/site-packages/wazuh
-      - ../../server_management/server_management_api:/usr/share/wazuh-server/framework/python/lib/python${WAZUH_PYTHON_VERSION}/site-packages/server_management_api
-      - ../../communications/comms_api:/usr/share/wazuh-server/framework/python/lib/python${WAZUH_PYTHON_VERSION}/site-packages/comms_api
-      # Vulnerability Detector feed
-      - vd_feed:/var/lib/wazuh-server/queue
-    depends_on:
-      - wazuh-manager
-      - wazuh-indexer
-    ports:
-      # Management API
-      - 55001:55000
-      # Communications API
-      - 27001:27000
-    entrypoint:
-      - /scripts/entrypoint.sh
-      - wazuh-manager
-      - worker1
-      - worker
-
-  wazuh-worker2:
-    image: dev-wazuh-server
-    hostname: wazuh-worker2
-    container_name: wazuh-worker2
-    volumes:
-      # Server certificates
-      - ./certs/root-ca.pem:/etc/wazuh-server/certs/root-ca.pem
-      - ./certs/wazuh-worker2.pem:/etc/wazuh-server/certs/server.pem
-      - ./certs/wazuh-worker2.key:/etc/wazuh-server/certs/server-key.pem
-      # Indexer certificates
-      - ./certs/wazuh-indexer.pem:/etc/wazuh-server/certs/indexer.pem
-      - ./certs/wazuh-indexer-key.pem:/etc/wazuh-server/certs/indexer-key.pem
-      # Default configuration
-      - ./wazuh-server/wazuh-server.yml:/tmp/wazuh-server.yml
-      # Source code mappings
-      - ../../../framework/scripts/wazuh_server.py:/usr/share/wazuh-server/framework/scripts/wazuh-server.py
-      - ../../server_management/scripts/wazuh_server_management_apid.py:/usr/share/wazuh-server/apis/scripts/wazuh-server-management-apid.py
-      - ../../communications/scripts/wazuh_comms_apid.py:/usr/share/wazuh-server/apis/scripts/wazuh-comms-apid.py
-      - ../../../framework/wazuh:/usr/share/wazuh-server/framework/python/lib/python${WAZUH_PYTHON_VERSION}/site-packages/wazuh
-      - ../../server_management/server_management_api:/usr/share/wazuh-server/framework/python/lib/python${WAZUH_PYTHON_VERSION}/site-packages/server_management_api
-      - ../../communications/comms_api:/usr/share/wazuh-server/framework/python/lib/python${WAZUH_PYTHON_VERSION}/site-packages/comms_api
-      # Vulnerability Detector feed
-      - vd_feed:/var/lib/wazuh-server/queue
-    depends_on:
-      - wazuh-manager
-      - wazuh-indexer
-    ports:
-      # Management API
-      - 55002:55000
-      # Communications API
-      - 27002:27000
-    entrypoint:
-      - /scripts/entrypoint.sh
-      - wazuh-manager
-      - worker2
-      - worker
-
   wazuh-indexer:
     build:
       context: ./wazuh-indexer
@@ -154,8 +80,6 @@ services:
       - /scripts/entrypoint.sh
     depends_on:
       - wazuh-manager
-      - wazuh-worker1
-      - wazuh-worker2
 
   wazuh-agent:
     build:
@@ -170,8 +94,6 @@ services:
       PASSWORD: wazuh
     depends_on:
       - wazuh-manager
-      - wazuh-worker1
-      - wazuh-worker2
       - nginx-lb
 
 volumes:
