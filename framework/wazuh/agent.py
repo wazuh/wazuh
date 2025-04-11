@@ -17,7 +17,7 @@ from wazuh.core.cluster.utils import read_cluster_config
 from wazuh.core.exception import WazuhError, WazuhInternalError, WazuhException, WazuhResourceNotFound
 from wazuh.core.results import WazuhResult, AffectedItemsWazuhResult
 from wazuh.core.utils import chmod_r, chown_r, get_hash, mkdir_with_mode, md5, process_array, clear_temporary_caches, \
-    full_copy
+    full_copy, check_if_wazuh_agent_version, parse_wazuh_agent_version
 from wazuh.core.wazuh_queue import WazuhQueue
 from wazuh.rbac.decorators import expose_resources
 
@@ -347,6 +347,14 @@ def get_agents(agent_list: list = None, offset: int = 0, limit: int = common.DAT
         with WazuhDBQueryAgents(offset=offset, limit=limit, sort=sort, search=search, select=select,
                                 query=q, **rbac_filters, distinct=distinct) as db_query:
             data = db_query.run()
+
+        if sort and 'version' in sort['fields']:
+            data['items'] = sorted(data['items'],
+                          key=lambda o: tuple(
+                              parse_wazuh_agent_version(o.get(a)) if a == 'version' and check_if_wazuh_agent_version(o.get(a))
+                              else (0, 0, 0) if o.get(a) is None and a == 'version'
+                              else o.get(a).lower() if type(o.get(a)) == str else o.get(a) for a in sort['fields']),
+                          reverse=False if sort['order'] == 'asc' else True)
 
         result.affected_items.extend(data['items'])
         result.total_affected_items = data['totalItems']

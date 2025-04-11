@@ -2386,3 +2386,41 @@ def get_utc_strptime(date: str, datetime_format: str) -> datetime:
         The current date.
     """
     return datetime.strptime(date, datetime_format).replace(tzinfo=timezone.utc)
+
+def check_if_wazuh_agent_version(version_str: str) -> bool:
+    """Check if the string has the expected wazuh agent version format.
+
+    Parameters
+    ----------
+    version_str : str
+        The wazuh version string.
+
+    Returns
+    -------
+    bool
+        True if the string has the expected wazuh version format.
+
+    """
+    if not isinstance(version_str, str):
+        return False
+
+    return bool(re.match(r'^Wazuh v(\d+)\.(\d+)\.(\d+)', version_str))
+
+
+def parse_wazuh_agent_version(version_str: str) -> tuple:
+    """Convert the string vX.Y.Z to a tuple of type (X, Y, Z).
+
+    Parameters
+    ----------
+    version_str : str
+        The wazuh version string.
+
+    Returns
+    -------
+    tuple
+        The tuple of the wazuh version string.
+    """
+    match = re.search(r'v(\d+)\.(\d+)\.(\d+)', version_str)
+    if match:
+        return tuple(map(int, match.groups()))
+    return 0, 0, 0
