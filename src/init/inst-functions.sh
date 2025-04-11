@@ -33,8 +33,9 @@ InstallCommon()
 
 InstallPython()
 {
+    ARCH=$(uname -m)
     PYTHON_VERSION='3.10.15'
-    PYTHON_FILENAME='python.tar.gz'
+    PYTHON_FILENAME="python_${ARCH}.tar.gz"
     PYTHON_INSTALLDIR=${INSTALLDIR}usr/share/wazuh-server/framework/python/
     PYTHON_FULL_PATH=${PYTHON_INSTALLDIR}$PYTHON_FILENAME
 

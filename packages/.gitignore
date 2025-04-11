@@ -5,4 +5,4 @@
 .sha512
 .cache
 output
-
+vcpkg*

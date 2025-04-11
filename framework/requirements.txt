@@ -16,7 +16,7 @@ more-itertools==8.2.0
 mypy-extensions==0.4.3
 openapi-spec-validator==0.7.1
 opensearch-py==2.6.0
-psutil==5.9.0
+psutil==6.1.1
 PyJWT==2.8.0
 python-dateutil==2.8.1
 pytz==2020.1
