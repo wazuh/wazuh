@@ -8,11 +8,11 @@ import socket
 from connexion.lifecycle import ConnexionResponse
 from wazuh.core.common import DATE_FORMAT
 from wazuh.core.results import WazuhResult
-from wazuh.core.security import load_spec
 from wazuh.core.utils import get_utc_now
 
 from server_management_api.controllers.util import json_response
 from server_management_api.models.basic_info_model import BasicInfo
+from server_management_api.util import load_api_spec
 
 logger = logging.getLogger('wazuh-api')
 
@@ -30,7 +30,7 @@ async def default_info(pretty: bool = False) -> ConnexionResponse:
     ConnexionResponse
         API response.
     """
-    info_data = load_spec()
+    info_data = load_api_spec()
     data = {
         'title': info_data['info']['title'],
         'api_version': info_data['info']['version'],

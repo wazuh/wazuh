@@ -6,13 +6,16 @@ import datetime
 import logging
 import os
 import typing
-from functools import wraps
+from functools import lru_cache, wraps
 from typing import Union
 
 import six
+import yaml
 from connexion import ProblemException
 from wazuh.core import common, exception
 from wazuh.core.cluster.utils import running_in_master_node
+
+from server_management_api import __path__ as api_path
 
 logger = logging.getLogger('wazuh-api')
 
@@ -426,7 +429,7 @@ def get_invalid_keys(original_dict: dict, des_dict: dict) -> set:
 
 
 def deprecate_endpoint(link: str = ''):
-    """Decorator to add deprecation headers to API response.
+    """Deprecate endpoint decorator.
 
     Parameters
     ----------
@@ -451,7 +454,7 @@ def deprecate_endpoint(link: str = ''):
 
 
 def only_master_endpoint(func):
-    """Decorator used to restrict endpoints only on master node."""
+    """Restrict endpoints to the master node."""
 
     @wraps(func)
     async def wrapper(*args, **kwargs):
@@ -461,3 +464,10 @@ def only_master_endpoint(func):
             return await func(*args, **kwargs)
 
     return wrapper
+
+
+@lru_cache(maxsize=None)
+def load_api_spec():
+    """Load API specification."""
+    with open(os.path.join(api_path[0], 'spec', 'spec.yaml'), 'r', encoding='utf-8') as stream:
+        return yaml.safe_load(stream)
