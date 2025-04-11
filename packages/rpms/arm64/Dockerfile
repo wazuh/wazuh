@@ -38,22 +38,23 @@ RUN yum install zlib lzip libdb-devel -y && \
 
 RUN scl enable gcc-toolset-11 bash
 
-ADD http://packages.wazuh.com/utils/rpm/rpm-4.15.1.tar.bz2 /tmp/rpm-4.15.1.tar.bz2
+ENV RPM_VERSION=4.15.1
+ENV CMAKE_VERSION=3.30.4
+
+ADD http://packages.wazuh.com/utils/rpm/rpm-$RPM_VERSION.tar.bz2 /tmp/rpm-$RPM_VERSION.tar.bz2
 WORKDIR /tmp
-RUN tar -xjf rpm-4.15.1.tar.bz2
-WORKDIR /tmp/rpm-4.15.1
+RUN tar -xjf rpm-$RPM_VERSION.tar.bz2
+WORKDIR /tmp/rpm-$RPM_VERSION
 RUN ./configure --without-lua && make -j$(nproc) && make install
 WORKDIR /
-RUN rm -rf /tmp/rpm-4.15.1
-
+RUN rm -rf /tmp/rpm-$RPM_VERSION
 RUN mkdir -p /usr/local/var/lib/rpm && \
     cp /var/lib/rpm/Packages /usr/local/var/lib/rpm/Packages && \
     /usr/local/bin/rpm --rebuilddb && rm -rf /root/rpmbuild
 
-ADD https://github.com/Kitware/CMake/releases/download/v3.30.4/cmake-3.30.4-linux-aarch64.sh /tmp/cmake-3.30.4-linux-aarch64.sh
-
+ADD https://github.com/Kitware/CMake/releases/download/v$CMAKE_VERSION/cmake-$CMAKE_VERSION-linux-aarch64.sh /tmp/cmake-$CMAKE_VERSION-linux-aarch64.sh
 RUN mkdir -p /opt/cmake
-RUN sh /tmp/cmake-3.30.4-linux-aarch64.sh --prefix=/opt/cmake --skip-license
+RUN sh /tmp/cmake-$CMAKE_VERSION-linux-aarch64.sh --prefix=/opt/cmake --skip-license
 
 RUN ln -s /opt/cmake/bin/cmake /usr/local/bin/cmake
 RUN ln -s /opt/cmake/bin/ctest /usr/local/bin/ctest
@@ -76,7 +77,6 @@ RUN scl enable gcc-toolset-11 "cd /build_deps_vcpkg && vcpkg install --triplet a
 ADD build.sh /usr/local/bin/build_package
 RUN chmod +x /usr/local/bin/build_package
 ADD helper_function.sh /usr/local/bin/helper_function.sh
-
 
 # Set the entrypoint
 ENTRYPOINT ["/usr/local/bin/build_package"]

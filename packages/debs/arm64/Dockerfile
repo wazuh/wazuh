@@ -11,10 +11,10 @@ RUN apt update -y && \
     selinux-utils semodule-utils setools sudo tar unzip wget zip && \
     rm -rf /var/lib/apt/lists/*
 
-ADD https://github.com/Kitware/CMake/releases/download/v3.30.4/cmake-3.30.4-linux-aarch64.sh /tmp/cmake-3.30.4-linux-aarch64.sh
-
+ENV CMAKE_VERSION=3.30.4
+ADD https://github.com/Kitware/CMake/releases/download/v$CMAKE_VERSION/cmake-$CMAKE_VERSION-linux-aarch64.sh /tmp/cmake-$CMAKE_VERSION-linux-aarch64.sh
 RUN mkdir -p /opt/cmake
-RUN sh /tmp/cmake-3.30.4-linux-aarch64.sh --prefix=/opt/cmake --skip-license
+RUN sh /tmp/cmake-$CMAKE_VERSION-linux-aarch64.sh --prefix=/opt/cmake --skip-license
 
 RUN ln -s /opt/cmake/bin/cmake /usr/local/bin/cmake
 RUN ln -s /opt/cmake/bin/ctest /usr/local/bin/ctest
