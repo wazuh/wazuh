@@ -1,0 +1,95 @@
+name: Testing DLL search order to prevent hijack
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "src/**"
+      - ".github/workflows/4_testcomponent_windows-dll-hijack.yml"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install mingw
+        run: sudo apt install gcc-mingw-w64 g++-mingw-w64-i686 g++-mingw-w64-x86-64 nsis -y
+      - name: "Install a compatible CMake"
+        uses: ./.github/actions/reinstall_cmake
+      - name: make deps
+        run: make -C src deps TARGET=winagent -j2
+      - name: make
+        # We force the binary to exit when a library isn't signed because we could end up having a false
+        # positive if a Wazuh .dll is required after the verification mechanism has been enabled
+        run: make -C src TARGET=winagent -j2 IMAGE_TRUST_CHECKS=2
+      - name: Copy executables
+        run: |
+          mkdir -p src/exe_files
+          # We exclude the installer from the test
+          find src/win32/ -regex '.*wazuh-agent-[0-9]+.[0-9]+.[0-9]+\.exe$' -delete
+          # We remove the executables that aren't distributed in the signed installer
+          rm -f src/win32/setup-*.exe
+          cp src/win32/*.exe src/exe_files/
+      - name: Upload Artifact executables
+        uses: actions/upload-artifact@v4
+        with:
+          name: executables
+          path: src/exe_files
+      - name: Copy configuration files
+        run: |
+          mkdir -p src/configuration_files
+          # We want to test if the logging calls an external library
+          sed -i 's+<log_format>plain</log_format>+<log_format>plain,json</log_format>+g' src/win32/ossec.conf
+          cp src/win32/ossec.conf src/configuration_files/
+          sed -i 's+windows.debug=0+windows.debug=2+g' etc/internal_options.conf
+          cp src/win32/internal_options.conf src/configuration_files/
+      - name: Upload Artifact configuration files
+        uses: actions/upload-artifact@v4
+        with:
+          name: configuration
+          path: src/configuration_files
+  check_dll_on_windows:
+    strategy:
+          matrix:
+              os: [windows-latest, windows-2019]
+    runs-on: ${{ matrix.os }}
+    needs: build
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v3
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version-file: ".github/workflows/.python-version"
+          architecture: x64
+      - name: Download Artifact executables
+        uses: actions/download-artifact@v4
+        with:
+          name: executables
+          path: C:\executables\
+      - name: Download Artifact configuration files
+        uses: actions/download-artifact@v4
+        with:
+          name: configuration
+          path: C:\configuration_files\
+      - name: Copy configuration files
+        run: |
+          copy C:\configuration_files\*.conf C:\executables\
+      - name: Install dependencies
+        run: |
+          pip install -r src/win32/qa/requirements.txt
+      - name: Download Process Monitor
+        run: |
+          python -m wget https://download.sysinternals.com/files/ProcessMonitor.zip -o C:\ProcessMonitor.zip
+          Expand-Archive C:\ProcessMonitor.zip -DestinationPath C:\ProcessMonitor
+      - name: Run tests
+        run: |
+          cd src/win32/qa
+          Copy-Item *.pmc C:\executables\
+          python -m pytest -vv ./test_dll_hijack.py
+      - name: Upload .csv files
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: csv_files ${{ matrix.os }}
+          path: C:\executables\*.csv
