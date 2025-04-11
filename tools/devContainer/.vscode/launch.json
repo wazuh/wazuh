@@ -232,25 +232,6 @@
             "justMyCode": false
         },
         {
-            "name": "Python: engine-health-test dynamic validate_rule_mapping",
-            "type": "debugpy",
-            "request": "launch",
-            "program": "${env:ENGINE_SRC}/test/health_test/engine-health-test/src/health_test/__main__.py",
-            "console": "integratedTerminal",
-            "python": "${command:python.interpreterPath}",
-            "args": [
-                "dynamic",
-                "-e", "${env:TMP_CLEAN_ENV}",
-                "validate_rule_mapping",
-                "--skip", "wazuh-core"
-            ],
-            "cwd": "${env:TMP_CLEAN_ENV}",
-            "env": {
-                "PYTHONPATH": "${env:ENGINE_PYTHONPATH_DBG}:${env:PYTHONPATH}",
-            },
-            "justMyCode": false
-        },
-        {
             "name": "Python: engine-health-test dynamic Health Test decoder",
             "type": "debugpy",
             "request": "launch",

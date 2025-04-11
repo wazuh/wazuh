@@ -140,8 +140,6 @@ def init(env_path: Path, ruleset_path: Path, health_test_path: Path, stop_on_war
 
         sys.exit(1)
 
-    sys.exit(0)
-
 
 def run(args):
     env_path = Path(args['environment']).resolve()
