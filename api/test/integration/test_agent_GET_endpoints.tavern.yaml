@@ -60,7 +60,7 @@ stages:
             key: "os.name,os.major"
       status_code: 200
 
-  - name: Get all agents sorted by version
+  - name: Get all agents sorted by version in descending order
     request:
       verify: False
       <<: *get_agents
@@ -101,7 +101,7 @@ stages:
           total_affected_items: 13
           total_failed_items: 0
 
-  - name: Get all agents sorted by version inverse order
+  - name: Get all agents sorted by version in ascending order
     request:
       verify: False
       <<: *get_agents
