@@ -743,8 +743,6 @@ static void process_message(struct client *client) {
     } else {
         snprintf(client->write_buffer, MAX_SSL_MSG_SIZE, "%s. %s", response, "Unable to add agent");
         client->write_len = strlen(client->write_buffer);
-
-        merror("Unable to add agent %s (requested by %s) error: %s", client->agentname, client->ip, response);
     }
 
     os_free(key_hash);
@@ -791,7 +789,8 @@ static int handle_ssl_read(struct client *client) {
             }
         }
 
-        if (ret < (MAX_SSL_PACKET_SIZE - client->read_offset)) {
+        if (ret < (MAX_SSL_MSG_SIZE - client->read_offset) && ret < MAX_SSL_PACKET_SIZE) {
+            merror("Newline terminator not found in message request for %s", client->ip);
             break;
         }
     }
@@ -926,6 +925,7 @@ void* run_remote_server(__attribute__((unused)) void *arg) {
                     new_client->centralized_group = NULL;
                     new_client->agentname = NULL;
                     new_client->new_id = NULL;
+                    new_client->enrollment_ok = FALSE;
 
                     set_non_blocking(new_client->socket);
 
@@ -965,6 +965,8 @@ void* run_remote_server(__attribute__((unused)) void *arg) {
                     default:
                         merror("IP address family not supported. Rejecting.");
                         g_client_pool[client_index] = NULL;
+                        os_free(new_client->write_buffer);
+                        os_free(new_client->read_buffer);
                         os_free(new_client);
                         close(client_sock);
                         continue;
