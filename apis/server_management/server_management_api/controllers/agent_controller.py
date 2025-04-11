@@ -239,7 +239,6 @@ async def reconnect_agents(
         is_async=False,
         wait_for_complete=wait_for_complete,
         rbac_permissions=request.context['token_info']['rbac_policies'],
-        broadcasting=agents_list == '*',
         logger=logger,
     )
     data = raise_if_exc(await dispatcher.execute_function())

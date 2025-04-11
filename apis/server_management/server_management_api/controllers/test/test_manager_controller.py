@@ -29,22 +29,22 @@ with patch('wazuh.common.wazuh_uid'):
 
 
 @pytest.mark.parametrize(
-    'force_query,dapi_call_count,update_check', ([True, 2, True], [True, 1, False], [False, 1, True])
+    'force_query,task_dispatcher_call_count,update_check', ([True, 2, True], [True, 1, False], [False, 1, True])
 )
 @pytest.mark.asyncio
 @patch('server_management_api.controllers.manager_controller.configuration.update_check_is_enabled')
 @patch(
-    'server_management_api.controllers.manager_controller.DistributedAPI.execute_function', return_value=AsyncMock()
+    'server_management_api.controllers.manager_controller.TaskDispatcher.execute_function', return_value=AsyncMock()
 )
-@patch('server_management_api.controllers.manager_controller.DistributedAPI.__init__', return_value=None)
+@patch('server_management_api.controllers.manager_controller.TaskDispatcher.__init__', return_value=None)
 @patch('server_management_api.controllers.manager_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_check_available_version(
     mock_exc,
-    mock_dapi,
+    mock_task_dispatcher,
     mock_dfunc,
     update_check_mock,
     force_query,
-    dapi_call_count,
+    task_dispatcher_call_count,
     update_check,
 ):
     """Verify 'check_available_version' endpoint is working as expected."""
@@ -53,10 +53,10 @@ async def test_check_available_version(
 
     with patch('server_management_api.controllers.manager_controller.cti_context', new=cti_context):
         result = await check_available_version(force_query=force_query)
-        assert mock_dapi.call_count == dapi_call_count
+        assert mock_task_dispatcher.call_count == task_dispatcher_call_count
 
         if force_query and update_check:
-            mock_dapi.assert_any_call(
+            mock_task_dispatcher.assert_any_call(
                 f=query_update_check_service,
                 f_kwargs={INSTALLATION_UID_KEY: cti_context[INSTALLATION_UID_KEY]},
                         is_async=True,
@@ -64,7 +64,7 @@ async def test_check_available_version(
             )
             mock_exc.assert_any_call(mock_dfunc.return_value)
 
-        mock_dapi.assert_called_with(
+        mock_task_dispatcher.assert_called_with(
             f=manager.get_update_information,
             f_kwargs={
                 INSTALLATION_UID_KEY: cti_context[INSTALLATION_UID_KEY],

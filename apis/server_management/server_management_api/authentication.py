@@ -86,7 +86,7 @@ def check_user(name: str, password: str, request: ConnexionRequest = None) -> Un
         logger=logging.getLogger('wazuh-api'),
         rbac_manager=request.state.rbac_manager if request else None,
     )
-    data = raise_if_exc(pool.submit(asyncio.run, dapi.execute_function()).result())
+    data = raise_if_exc(pool.submit(asyncio.run, dispatcher.execute_function()).result())
 
     if data['result']:
         return {'sub': name, 'active': True}
@@ -130,7 +130,7 @@ def generate_token(user_id: str = None, data: dict = None, auth_context: dict = 
         wait_for_complete=False,
         logger=logging.getLogger('wazuh-api'),
     )
-    result = raise_if_exc(pool.submit(asyncio.run, dapi.execute_function()).result()).dikt
+    result = raise_if_exc(pool.submit(asyncio.run, dispatcher.execute_function()).result()).dikt
     timestamp = int(core_utils.get_utc_now().timestamp())
 
     payload = {
@@ -223,7 +223,7 @@ def decode_token(token: str, request: ConnexionRequest = None) -> dict:
             logger=logging.getLogger('wazuh-api'),
             rbac_manager=request.state.rbac_manager if request else None,
         )
-        data = raise_if_exc(pool.submit(asyncio.run, dapi.execute_function()).result()).to_dict()
+        data = raise_if_exc(pool.submit(asyncio.run, dispatcher.execute_function()).result()).to_dict()
 
         if not data['result']['valid']:
             raise Unauthorized(INVALID_TOKEN)
@@ -237,7 +237,7 @@ def decode_token(token: str, request: ConnexionRequest = None) -> dict:
             wait_for_complete=False,
             logger=logging.getLogger('wazuh-api'),
         )
-        result = raise_if_exc(pool.submit(asyncio.run, dapi.execute_function()).result())
+        result = raise_if_exc(pool.submit(asyncio.run, dispatcher.execute_function()).result())
 
         current_rbac_mode = result['rbac_mode']
         current_expiration_time = result['auth_token_exp_timeout']
