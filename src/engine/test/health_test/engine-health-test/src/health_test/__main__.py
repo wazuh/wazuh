@@ -13,13 +13,11 @@ from health_test.initial_state import run as init_run
 from health_test.load_decoders import run as load_decoders_run
 from health_test.load_rules import run as load_rules_run
 from health_test.assets_validate import run as assets_validate_run
-from health_test.decoder_mapping_validate import run as decoder_mapping_validate_run
-from health_test.rule_mapping_validate import run as rule_mapping_validate_run
 from health_test.validate_successful_assets import run as validate_successful_assets_run
 from health_test.validate_non_modifiables_fields import run as validate_non_modifiables_fields_run
 from health_test.validate_custom_field_documentation import run as validate_custom_field_documentation_run
 from health_test.coverage_validate import run as coverage_validate_run
-
+from health_test.run_all import run as run_all
 
 def parse_args() -> Namespace:
     parser = ArgumentParser(prog='engine-health-test')
@@ -27,6 +25,17 @@ def parse_args() -> Namespace:
     # dest used because of bug: https://bugs.python.org/issue29298
     subparsers = parser.add_subparsers(
         title='subcommands', required=True, dest='subcommand')
+
+    # Run all subcommand
+    run_all_parser = subparsers.add_parser(
+        'run_all', help='Run all health test')
+
+    run_all_parser.add_argument('-e', '--environment',
+                                help='Environment to run the tests in', type=str, required=True)
+    run_all_parser.add_argument('-r', '--ruleset',
+                               help='Specify the path to the ruleset directory', type=str, required=True)
+    run_all_parser.add_argument('-t', '--test-dir', help='Specify the path to the test directory', required=True)
+    run_all_parser.set_defaults(func=run_all)
 
     # Static subcommand group
     static_parser = subparsers.add_parser(
@@ -146,28 +155,6 @@ def parse_args() -> Namespace:
     validate_successful_assets_parser.add_argument(
         '--skip', help='Skip the tests with the specified name', default=None)
     validate_successful_assets_parser.set_defaults(func=validate_successful_assets_run)
-
-    # decoder mapping validate subcommand
-    validate_decoder_mapping_parser = dynamic_subparsers.add_parser(
-        'validate_decoder_mapping', help='Verifies that only certain fields are mapped in the decoders.')
-    validate_decoder_mapping_parser.add_argument(
-        '--integration',
-        help='Specify the name of the integration to test, if not specified all integration will be tested',
-        default=None)
-    validate_decoder_mapping_parser.add_argument(
-        '--skip', help='Skip the tests with the specified name', default=None)
-    validate_decoder_mapping_parser.set_defaults(func=decoder_mapping_validate_run)
-
-    # rule mapping validate subcommand
-    validate_rule_mapping_parser = dynamic_subparsers.add_parser(
-        'validate_rule_mapping', help='Verifies that only certain fields are mapped in the rules.')
-    validate_rule_mapping_parser.add_argument(
-        '--integration_rule',
-        help='Specify the name of the rules integrations rules to test, if not specified all integrations rules  will be tested',
-        default=None)
-    validate_rule_mapping_parser.add_argument(
-        '--skip', help='Skip the tests with the specified name', default=None)
-    validate_rule_mapping_parser.set_defaults(func=rule_mapping_validate_run)
 
     # validate event indexing subcommand
     validate_event_indexing_parser = dynamic_subparsers.add_parser(
