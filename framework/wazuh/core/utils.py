@@ -2388,7 +2388,7 @@ def get_utc_strptime(date: str, datetime_format: str) -> datetime:
     return datetime.strptime(date, datetime_format).replace(tzinfo=timezone.utc)
 
 def check_if_wazuh_agent_version(version_str: str) -> bool:
-    """Check if the string have the expected wazuh agent version format.
+    """Check if the string has the expected wazuh agent version format.
 
     Parameters
     ----------
@@ -2408,7 +2408,7 @@ def check_if_wazuh_agent_version(version_str: str) -> bool:
 
 
 def parse_wazuh_agent_version(version_str: str) -> tuple:
-    """Converts the string vX.Y.Z to a tuple of type (X, Y, Z).
+    """Convert the string vX.Y.Z to a tuple of type (X, Y, Z).
 
     Parameters
     ----------

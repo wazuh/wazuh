@@ -65,7 +65,7 @@ stages:
       verify: False
       <<: *get_agents
       params:
-        sort: version,id
+        sort: -version,id
         select: version,id
     response:
       status_code: 200
@@ -106,7 +106,7 @@ stages:
       verify: False
       <<: *get_agents
       params:
-        sort: -version,id
+        sort: version,id
         select: version,id
     response:
       status_code: 200
