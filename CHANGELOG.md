@@ -27,6 +27,8 @@ All notable changes to this project will be documented in this file.
 - Fixed a potential crash in Wazuh-DB by improving the PID parsing method. ([#26769](https://github.com/wazuh/wazuh/pull/26769))
 - Fixed concurrent mechanism on column family rocksDB. ([#28185](https://github.com/wazuh/wazuh/pull/28185))
 - Fixed unused variables in Analysisd. ([#28185](hhttps://github.com/wazuh/wazuh/pull/28503))
+- Fixed analysisd startup failure caused by mixing static and dynamic rules with the same ID. ([#29050](https://github.com/wazuh/wazuh/pull/29050))
+- Fixed crash in Vulnerability Scanner when processing delayed events during agent re-scan. ([#27834](https://github.com/wazuh/wazuh/pull/27834))
 
 ### Agent
 
