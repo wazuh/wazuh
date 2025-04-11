@@ -3414,10 +3414,10 @@ stages:
         error: 0
         data:
           affected_items:
+            - version: 'Wazuh v3.13.2'
+            - version: 'Wazuh v3.13.2'
+            - version: 'Wazuh v3.13.2'
             - version: 'Wazuh v4.13.0'
-            - version: 'Wazuh v3.13.2'
-            - version: 'Wazuh v3.13.2'
-            - version: 'Wazuh v3.13.2'
           failed_items: []
           total_affected_items: 4
           total_failed_items: 0
