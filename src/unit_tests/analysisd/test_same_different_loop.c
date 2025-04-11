@@ -152,11 +152,36 @@ void test_different(void **state)
     os_free(different_lf);
 }
 
+
+void test_static_out_of_bound(void **state)
+{
+    (void) state;
+    bool ret;
+    RuleInfo *rule = state[0];
+    Eventinfo *lf = state[1];
+    Eventinfo *same_lf = state[2];
+    Eventinfo *different_lf = state[3];
+    rule->different_field = 0b1 << N_FIELDS;
+
+    ret = different_loop(rule, lf, same_lf);
+    assert_true(ret); // Nothing to compare, return true
+
+    ret = same_loop(rule, lf, different_lf);
+    assert_true(ret);
+
+
+    os_free(rule);
+    os_free(lf);
+    os_free(same_lf);
+    os_free(different_lf);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         /* Tests for same loop function */
         cmocka_unit_test_setup(test_same, testSetup),
-        cmocka_unit_test_setup(test_different, testSetup)
+        cmocka_unit_test_setup(test_different, testSetup),
+        cmocka_unit_test_setup(test_static_out_of_bound, testSetup),
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }

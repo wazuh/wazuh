@@ -198,7 +198,7 @@ def update_file_version(executor: Executor, file_path: Path, new_version: str | 
     to_write = json.dumps(updated, indent=4) + "\n"
     if current != to_write:
         executor.add_command(
-            Command(file_path, current, json.dumps(updated, indent=4)))
+            Command(file_path, current, to_write))
 
 
 def update_file(executor: Executor, file_path: Path, patterns: dict[str, tuple[re.Pattern, str | None]]) -> None:
@@ -300,9 +300,8 @@ def update_file_api(executor: Executor, new_version: str | None = None, new_stag
     update_file(executor, DIR_API / 'api/spec/spec.yaml', patterns_api_spec)
 
 
-def update_file_packages(executor: Executor, new_version: str, new_stage: str, new_date: str) -> None:
+def update_file_packages(executor: Executor, new_version: str, new_date: str, new_entry: bool) -> None:
     """Update package-related files with new version, stage, and release date."""
-    major, minor, patch = new_version.split('.')
 
     formatted_date = datetime.strptime(
         new_date, "%Y-%m-%d").strftime("%a, %d %b %Y 00:00:00 +0000")
@@ -317,19 +316,33 @@ def update_file_packages(executor: Executor, new_version: str, new_stage: str, n
 
     # Update .spec files
     for spec_file in [f for f in DIR_PACKAGE.rglob("*") if pattern_spec.match(f.name)]:
-        patterns = {
-            "changelog_entry": (re.compile(r"(^%changelog\s*$)", re.MULTILINE),
-                                rf'\g<1>\n* {spec_date} support <info@wazuh.com> - {new_version}\n- More info: https://documentation.wazuh.com/current/release-notes/release-{new_version.replace(".", "-")}.html')
-        }
+        if new_entry:
+            patterns = {
+                "changelog_entry": (re.compile(r"(^%changelog\s*$)", re.MULTILINE),
+                                    rf'\g<1>\n* {spec_date} support <info@wazuh.com> - {new_version}\n- More info: https://documentation.wazuh.com/current/release-notes/release-{new_version.replace(".", "-")}.html')
+            }
+        else:
+            patterns = {
+                "changelog_entry": (re.compile(
+                    rf'(^\* )(.+)( support <info@wazuh\.com> - {new_version.replace(".", "\.")}\n)', re.MULTILINE), rf'\g<1>{spec_date}\g<3>'),
+            }
         update_file(executor, spec_file, patterns)
 
     # Update changelog files
     for changelog_file in [f for f in DIR_PACKAGE.rglob("*") if pattern_changelog.match(f.name)]:
         install_type = changelog_file.resolve().parent.parent.name
-        patterns = {
-            "changelog_entry": (re.compile('^'),
-                                rf'{install_type} ({new_version}-RELEASE) stable; urgency=low\n\n  * More info: https://documentation.wazuh.com/current/release-notes/release-{new_version.replace(".", "-")}.html\n\n -- Wazuh, Inc <info@wazuh.com>  {formatted_date}\n\n')
-        }
+        patterns = dict()
+        if new_entry:
+            patterns = {
+                "changelog_entry": (re.compile('^'),
+                                    rf'{install_type} ({new_version}-RELEASE) stable; urgency=low\n\n  * More info: https://documentation.wazuh.com/current/release-notes/release-{new_version.replace(".", "-")}.html\n\n -- Wazuh, Inc <info@wazuh.com>  {formatted_date}\n\n')
+            }
+        else:
+            patterns = {
+                "changelog_entry": (re.compile(
+                    rf'(^{install_type} \({new_version.replace(".", "\.")}-RELEASE\) stable; urgency=low\n\n  \* More info: https://documentation\.wazuh\.com/current/release-notes/release-{new_version.replace(".", "-")}\.html\n\n -- Wazuh, Inc <info@wazuh\.com>  )(.+)(\n\n)'),
+                    rf'\g<1>{formatted_date}\g<3>')
+            }
         update_file(executor, changelog_file, patterns)
 
     # Update copyright files
@@ -341,10 +354,14 @@ def update_file_packages(executor: Executor, new_version: str, new_stage: str, n
         update_file(executor, copyright_file, patterns)
 
     # Update pkginfo files
+    pkginfo_date = datetime.strptime(
+        new_date, "%Y-%m-%d").strftime("%d%b%Y")
     for pkginfo_file in [f for f in DIR_PACKAGE.rglob("*") if pattern_pkginfo.match(f.name)]:
         patterns = {
             "pkginfo_version": (re.compile(
                 fr'(^VERSION=")({PATTERN_VERSION})("$)', re.MULTILINE), fr'\g<1>{new_version}\g<3>'),
+            "pkginfo_date": (re.compile(
+                r'(^PSTAMP=")(.+)("$)', re.MULTILINE), fr'\g<1>{pkginfo_date}\g<3>'),
         }
         update_file(executor, pkginfo_file, patterns)
 
@@ -359,8 +376,11 @@ def update_version(current_version: str, current_stage: str, new_version: str | 
         new_stage (str | None): New stage to set.
         new_date (str | None): New date to set.
     """
+    new_entry = False
     if new_version:
         validate_version(new_version)
+        if new_version != current_version:
+            new_entry = True
     if new_stage:
         validate_stage(new_stage)
     if new_date:
@@ -377,7 +397,7 @@ def update_version(current_version: str, current_stage: str, new_version: str | 
 
     # Add package entries
     update_file_packages(executor, new_version or current_version,
-                         new_stage or current_stage, new_date or datetime.now().strftime("%Y-%m-%d"))
+                         new_date, new_entry)
 
     # Execute commands
     executor.execute(DRY_RUN)
@@ -389,7 +409,7 @@ def parse_args() -> tuple[str | None, str | None, str | None, bool, bool]:
 
     parser.add_argument('--version', help='Update version')
     parser.add_argument('--stage', help='Update stage')
-    parser.add_argument('--date', help='Update date')
+    parser.add_argument('--date', required=True, help='Update date, format YYYY-MM-DD')
     parser.add_argument(
         '--verbose', help='Verbose output', action='store_true')
     parser.add_argument(
