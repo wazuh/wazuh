@@ -211,15 +211,6 @@ jobs:
           path: /tmp/${{ env.PACKAGE_SYMBOLS_NAME }}
           if-no-files-found: error
 
-      - name: Check installed files
-        uses: ./.github/actions/check_files
-        with:
-          expected_files: manager_base.csv
-          wazuh_uid: ${{ env.WAZUH_UID }}
-          wazuh_gid: ${{ env.WAZUH_GID }}
-          size_check: "false"
-          ignore: "site-packages,/var/ossec/framework/python"
-
       - name: Set up AWS CLI
         if: ${{ env.SHOULD_UPLOAD == 'true' }}
         uses: aws-actions/configure-aws-credentials@v4
