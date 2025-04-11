@@ -43,13 +43,18 @@ size_t field_offset[] = {
 };
 
 
-// Function to check for repetitions from same fields
+// Function to check for repetitions from same static fields
 
 bool same_loop(RuleInfo *rule, Eventinfo *lf, Eventinfo *my_lf) {
+
+    if ((rule->same_field & ALL_FIELDS) == 0x0) {
+        return TRUE; // No need to check anything
+    }
+
     int i;
     u_int32_t same = rule->same_field >> 2;
 
-    for (i = 2; same != 0; i++) {
+    for (i = 2; same != 0 && i < N_FIELDS; i++) {
         if ((same & 1) == 1) {
             char * field1 = *(char **)((void *)lf + field_offset[i]);
             char * field2 = *(char **)((void *)my_lf + field_offset[i]);
@@ -63,13 +68,18 @@ bool same_loop(RuleInfo *rule, Eventinfo *lf, Eventinfo *my_lf) {
     return TRUE;
 }
 
-// Function to check for repetitions from different fields
+// Function to check for repetitions from different static fields
 
 bool different_loop(RuleInfo *rule, Eventinfo *lf, Eventinfo *my_lf) {
+
+    if ((rule->different_field & ALL_FIELDS) == 0x0) {
+        return TRUE; // No need to check anything
+    }
+
     int i;
     u_int32_t different = rule->different_field;
 
-    for (i = 0; different != 0; i++) {
+    for (i = 0; different != 0 && i < N_FIELDS; i++) {
         if ((different & 1) == 1) {
             char * field1 = *(char **)((void *)lf + field_offset[i]);
             char * field2 = *(char **)((void *)my_lf + field_offset[i]);

@@ -116,7 +116,7 @@
 #define RWLOCK_LOCK_RD  "(1336) Cannot lock rwlock for reading: %s (%d)."
 #define RWLOCK_LOCK_WR  "(1337) Cannot lock rwlock for writing: %s (%d)."
 #define RWLOCK_UNLOCK   "(1338) Cannot unlock rwlock: %s (%d)."
-#define SET_TIMEO_ERR   "(1339) Cannot set timeout."
+#define SET_TIMEO_ERR   "(1339) Cannot set timeout: %s (%d)."
 
 /* Mail errors */
 #define CHLDWAIT_ERROR  "(1261): Waiting for child process. (status: %d)."

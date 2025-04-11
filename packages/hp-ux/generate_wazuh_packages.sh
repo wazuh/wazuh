@@ -14,7 +14,7 @@ source_directory=/wazuh-sources
 configuration_file="${source_directory}/etc/preloaded-vars.conf"
 target_dir="${current_path}/output/"
 wazuh_version=""
-wazuh_revision="1"
+wazuh_revision=""
 depot_path=""
 control_binary=""
 compute_checksums="no"
@@ -93,7 +93,11 @@ config() {
 
 compute_version_revision() {
     wazuh_version="$(awk -F'"' '/"version"[ \t]*:/ {print $4}' $source_directory/VERSION.json)"
-    wazuh_revision=$(awk -F'"' '/"stage"[ \t]*:/ {print $4}' $source_directory/VERSION.json)
+
+    if [ -z "$wazuh_revision" ]; then
+        stage_value=$(awk -F'"' '/"stage"[ \t]*:/ {print $4}' $source_directory/VERSION.json)
+        wazuh_revision=$(echo "$stage_value" | sed 's/[^0-9]*\([0-9][0-9]*\).*/\1/')
+    fi
 
     # Add commit hash to the VERSION.json file
     short_commit_hash=$(/usr/local/bin/curl -ks "https://api.github.com/repos/wazuh/wazuh/commits/${wazuh_branch}" | awk -F '"' '/"sha":/ {print substr($4, 1, 7); exit}')

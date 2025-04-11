@@ -515,8 +515,17 @@ void test_w_enrollment_connect_set_timeout_error(void **state) {
     will_return(__wrap_OS_ConnectTCP, 5);
     // OS_SetRecvTimeout
     will_return(__wrap_OS_SetRecvTimeout, -1);
+    expect_string(__wrap__mwarn, formatted_msg, "(1339) Cannot set timeout: No such file or directory (2).");
 
-    expect_string(__wrap__merror, formatted_msg, "(1339) Cannot set timeout.");
+    // Connect SSL
+    expect_value(__wrap_SSL_new, ctx, ctx);
+    cfg->ssl = __real_SSL_new(ctx);
+    will_return(__wrap_SSL_new, cfg->ssl);
+    will_return(__wrap_SSL_connect, -1);
+
+    expect_value(__wrap_SSL_get_error, i, -1);
+    will_return(__wrap_SSL_get_error, 100);
+    expect_string(__wrap__merror, formatted_msg, "SSL error (100). Connection refused by the manager. Maybe the port specified is incorrect.");
 
     // Close socket
     expect_value(__wrap_OS_CloseSocket, sock, 5);

@@ -16,7 +16,9 @@
 #include "db/include/db.h"
 #include "registry/registry.h"
 #ifdef __linux__
+#ifdef ENABLE_AUDIT
 #include "ebpf/include/ebpf_whodata.h"
+#endif /* ENABLE_AUDIT */
 #endif /* __linux__ */
 
 #ifdef WAZUH_UNIT_TESTING
@@ -626,7 +628,9 @@ time_t fim_scan() {
     audit_queue_full_reported = 0;
 
 #ifdef __linux__
+#ifdef ENABLE_AUDIT
     ebpf_kernel_queue_full_reported = 0;
+#endif /* ENABLE_AUDIT */
 #endif  /* __linux__ */
 
     return end_of_scan;

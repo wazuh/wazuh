@@ -207,11 +207,11 @@ cp -rp  etc/templates/config/sles/* ${RPM_BUILD_ROOT}%{_localstatedir}/packages_
 install -m 0440 VERSION.json ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/agent_installation_scripts/
 install -m 0640 src/init/*.sh ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/agent_installation_scripts/src/init
 
-rm ${RPM_BUILD_ROOT}%{_localstatedir}/lib/modern.bpf.o
 %if 0%{?el} >= 6 || 0%{?rhel} >= 6
+rm ${RPM_BUILD_ROOT}%{_localstatedir}/lib/modern.bpf.o
 %{_rpmconfigdir}/find-debuginfo.sh
-%endif
 cp %{_localstatedir}/lib/modern.bpf.o ${RPM_BUILD_ROOT}%{_localstatedir}/lib
+%endif
 
 exit 0
 
@@ -695,9 +695,11 @@ rm -fr %{buildroot}
 %attr(750, root, wazuh) %{_localstatedir}/lib/libstdc++.so.6
 %attr(750, root, wazuh) %{_localstatedir}/lib/libgcc_s.so.1
 %attr(750, root, wazuh) %{_localstatedir}/lib/libfimdb.so
+%if 0%{?el} >= 6 || 0%{?rhel} >= 6
 %attr(750, root, wazuh) %{_localstatedir}/lib/libfimebpf.so
 %attr(750, root, wazuh) %{_localstatedir}/lib/libbpf.so
 %attr(750, root, wazuh) %{_localstatedir}/lib/modern.bpf.o
+%endif
 %dir %attr(750, wazuh, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp
 %dir %attr(750, wazuh, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/generic
 %attr(640, root, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/generic/*
@@ -779,7 +781,9 @@ rm -fr %{buildroot}
 %changelog
 * Wed Jun 04 2025 support <info@wazuh.com> - 4.13.0
 - More info: https://documentation.wazuh.com/current/release-notes/release-4-13-0.html
-* Wed Apr 09 2025 support <info@wazuh.com> - 4.12.0
+* Wed May 14 2025 support <info@wazuh.com> - 4.12.1
+- More info: https://documentation.wazuh.com/current/release-notes/release-4-12-1.html
+* Wed Apr 30 2025 support <info@wazuh.com> - 4.12.0
 - More info: https://documentation.wazuh.com/current/release-notes/release-4-12-0.html
 * Tue Apr 01 2025 support <info@wazuh.com> - 4.11.2
 - More info: https://documentation.wazuh.com/current/release-notes/release-4-11-2.html

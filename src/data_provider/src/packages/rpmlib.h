@@ -91,5 +91,30 @@ class RpmLib final : public IRpmLibWrapper
         {
             return ::rpmdbFreeIterator(mi);
         }
+
+        rpmfi rpmfiNew(rpmts ts, Header h, rpmTagVal tag, rpmfiFlags flags) override
+        {
+            return ::rpmfiNew(ts, h, tag, flags);
+        }
+
+        rpm_count_t rpmfiFC(rpmfi fi) override
+        {
+            return ::rpmfiFC(fi);
+        }
+
+        int rpmfiNext(rpmfi fi) override
+        {
+            return ::rpmfiNext(fi);
+        }
+
+        const char* rpmfiFN(rpmfi fi) override
+        {
+            return ::rpmfiFN(fi);
+        }
+
+        rpmfi rpmfiFree(rpmfi fi) override
+        {
+            return ::rpmfiFree(fi);
+        }
 };
 #endif //_RPMLIB_H
