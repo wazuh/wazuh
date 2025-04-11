@@ -10,6 +10,7 @@ All notable changes to this project will be documented in this file.
 - Added new compilation flags for the Vulnerability Detector module. ([#26652](https://github.com/wazuh/wazuh/pull/26652))
 - Added support for central components in ARM architectures. ([#26083](https://github.com/wazuh/wazuh/issues/26083))
 - Added functionality to navigate to CTI links related to specific CVE detections from states and alerts. ([#28220](https://github.com/wazuh/wazuh/issues/28220))
+- Added package condition field in indexed vulnerabilities. ([#27603](https://github.com/wazuh/wazuh/pull/27603))
 
 #### Changed
 
@@ -29,6 +30,10 @@ All notable changes to this project will be documented in this file.
 - Fixed unused variables in Analysisd. ([#28185](hhttps://github.com/wazuh/wazuh/pull/28503))
 - Fixed analysisd startup failure caused by mixing static and dynamic rules with the same ID. ([#29050](https://github.com/wazuh/wazuh/pull/29050))
 - Fixed crash in Vulnerability Scanner when processing delayed events during agent re-scan. ([#27834](https://github.com/wazuh/wazuh/pull/27834))
+- Improved the signal handling during processes stop. ([#26679](https://github.com/wazuh/wazuh/pull/26679))
+- Improved cleanup logic for the content folder for the VD module. ([#27750](https://github.com/wazuh/wazuh/pull/27750))
+- Sanitized invalid size values from package data provider events. ([#27806](https://github.com/wazuh/wazuh/pull/27806))
+- Fixed crash when reading email alerts missing the `email_to` attribute. ([#26704](https://github.com/wazuh/wazuh/pull/26704))
 
 ### Agent
 
