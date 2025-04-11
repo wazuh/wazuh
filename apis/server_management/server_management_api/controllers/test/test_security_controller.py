@@ -51,17 +51,17 @@ def mock_request():
 @pytest.mark.asyncio
 @pytest.mark.parametrize('raw', [True, False])
 @patch(
-    'server_management_api.controllers.security_controller.DistributedAPI.execute_function', return_value=AsyncMock()
+    'server_management_api.controllers.security_controller.TaskDispatcher.execute_function', return_value=AsyncMock()
 )
 @patch('server_management_api.controllers.security_controller.remove_nones_to_dict')
-@patch('server_management_api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
+@patch('server_management_api.controllers.security_controller.TaskDispatcher.__init__', return_value=None)
 @patch('server_management_api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
 @patch('server_management_api.controllers.security_controller.generate_token', return_value='token')
-async def test_login_user(mock_token, mock_exc, mock_dapi, mock_remove, mock_dfunc, raw, mock_request):
+async def test_login_user(mock_token, mock_exc, mock_task_dispatcher, mock_remove, mock_dfunc, raw, mock_request):
     """Verify 'login_user' endpoint is working as expected."""
     result = await login_user(user='001', raw=raw)
     f_kwargs = {'user_id': '001'}
-    mock_dapi.assert_called_once_with(
+    mock_task_dispatcher.assert_called_once_with(
         f=preprocessor.get_permissions,
         f_kwargs=mock_remove.return_value,
         is_async=True,
@@ -77,19 +77,19 @@ async def test_login_user(mock_token, mock_exc, mock_dapi, mock_remove, mock_dfu
 
 @pytest.mark.asyncio
 @patch(
-    'server_management_api.controllers.security_controller.DistributedAPI.execute_function', return_value=AsyncMock()
+    'server_management_api.controllers.security_controller.TaskDispatcher.execute_function', return_value=AsyncMock()
 )
 @patch('server_management_api.controllers.security_controller.remove_nones_to_dict')
-@patch('server_management_api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
+@patch('server_management_api.controllers.security_controller.TaskDispatcher.__init__', return_value=None)
 @patch('server_management_api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
 @patch('server_management_api.controllers.security_controller.generate_token', return_value='token')
 @pytest.mark.parametrize('mock_bool', [True, False])
-async def test_login_user_ko(mock_token, mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_bool):
+async def test_login_user_ko(mock_token, mock_exc, mock_task_dispatcher, mock_remove, mock_dfunc, mock_bool):
     """Verify 'login_user' endpoint is handling WazuhException as expected."""
     mock_token.side_effect = WazuhException(999)
     result = await login_user(user='001', raw=mock_bool)
     f_kwargs = {'user_id': '001'}
-    mock_dapi.assert_called_once_with(
+    mock_task_dispatcher.assert_called_once_with(
         f=preprocessor.get_permissions,
         f_kwargs=mock_remove.return_value,
         is_async=True,
@@ -105,18 +105,18 @@ async def test_login_user_ko(mock_token, mock_exc, mock_dapi, mock_remove, mock_
 @pytest.mark.asyncio
 @pytest.mark.parametrize('raw', [True, False])
 @patch(
-    'server_management_api.controllers.security_controller.DistributedAPI.execute_function', return_value=AsyncMock()
+    'server_management_api.controllers.security_controller.TaskDispatcher.execute_function', return_value=AsyncMock()
 )
 @patch('server_management_api.controllers.security_controller.remove_nones_to_dict')
-@patch('server_management_api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
+@patch('server_management_api.controllers.security_controller.TaskDispatcher.__init__', return_value=None)
 @patch('server_management_api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
 @patch('server_management_api.controllers.security_controller.generate_token', return_value='token')
-async def test_run_as_login(mock_token, mock_exc, mock_dapi, mock_remove, mock_dfunc, raw, mock_request):
+async def test_run_as_login(mock_token, mock_exc, mock_task_dispatcher, mock_remove, mock_dfunc, raw, mock_request):
     """Verify 'run_as_login' endpoint is working as expected."""
     result = await run_as_login(user='001', raw=raw)
     auth_context = await mock_request.json()
     f_kwargs = {'user_id': '001', 'auth_context': auth_context}
-    mock_dapi.assert_called_once_with(
+    mock_task_dispatcher.assert_called_once_with(
         f=preprocessor.get_permissions,
         f_kwargs=mock_remove.return_value,
         is_async=True,
@@ -134,19 +134,19 @@ async def test_run_as_login(mock_token, mock_exc, mock_dapi, mock_remove, mock_d
 
 @pytest.mark.asyncio
 @patch(
-    'server_management_api.controllers.security_controller.DistributedAPI.execute_function', return_value=AsyncMock()
+    'server_management_api.controllers.security_controller.TaskDispatcher.execute_function', return_value=AsyncMock()
 )
 @patch('server_management_api.controllers.security_controller.remove_nones_to_dict')
-@patch('server_management_api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
+@patch('server_management_api.controllers.security_controller.TaskDispatcher.__init__', return_value=None)
 @patch('server_management_api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
 @patch('server_management_api.controllers.security_controller.generate_token', return_value='token')
 @pytest.mark.parametrize('mock_bool', [True, False])
-async def test_run_as_login_ko(mock_token, mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_bool, mock_request):
+async def test_run_as_login_ko(mock_token, mock_exc, mock_task_dispatcher, mock_remove, mock_dfunc, mock_bool, mock_request):
     """Verify 'run_as_login' endpoint is handling WazuhException as expected."""
     mock_token.side_effect = WazuhException(999)
     result = await run_as_login(user='001', raw=mock_bool)
     f_kwargs = {'user_id': '001', 'auth_context': await mock_request.json()}
-    mock_dapi.assert_called_once_with(
+    mock_task_dispatcher.assert_called_once_with(
         f=preprocessor.get_permissions,
         f_kwargs=mock_remove.return_value,
         is_async=True,
