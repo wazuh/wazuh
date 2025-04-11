@@ -1,0 +1,37 @@
+name: 'Test upgrade Wazuh agent package on allocator'
+description: 'Test upgrade Wazuh agent package on allocator'
+
+inputs:
+  old_package_url:
+    description: 'Package url to update from'
+    required: true
+  expected_upgrade_version:
+    description: 'Expected package version after upgrading'
+    required: true
+  tested_docker:
+    description: 'image:tag of tested Docker'
+    required: true 
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Run test upgrade Wazuh agent package
+      shell: bash
+      run: |
+        ${{ env.SSH_COMMAND }} 'sudo docker run \
+          -v $(pwd)/wazuh/.github/actions/4_builderpackage_linux-smoke-upgrade-test/:/tests \
+          -v /tmp/:/packages \
+          --entrypoint '/bin/bash' ${{ inputs.tested_docker }} \
+          -c "/tests/smoke_upgrade_test.sh ${{ inputs.old_package_url }}"'
+        scp -i ${{ env.ansible_ssh_private_key_file }} -P ${{ env.ansible_port }} ${{ env.ansible_ssh_common_args }} ${{ env.ansible_user }}@${{ env.ansible_host }}:/tmp/upgraded_version.log /tmp
+
+    - name: Check test result
+      shell: bash
+      run: |
+        if grep -iq "${{ inputs.expected_upgrade_version }}" /tmp/upgraded_version.log ; then
+          echo "Package successfully upgraded."
+        else
+          echo "The upgrade could not be completed";
+          exit 1;
+        fi
+        sudo rm /tmp/upgraded_version.log
