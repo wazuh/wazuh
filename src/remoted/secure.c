@@ -137,7 +137,7 @@ void HandleSecure()
     const int protocol = logr.proto[logr.position];
     int n_events = 0;
 
-    w_linked_queue_t * control_msg_queue = NULL; ///< Pointer to the control message queue
+    w_linked_queue_t * control_msg_queue = linked_queue_init(); ///< Pointer to the control message queue
 
     struct sockaddr_storage peer_info;
     memset(&peer_info, 0, sizeof(struct sockaddr_storage));
@@ -218,16 +218,7 @@ void HandleSecure()
     }
 
     // Create upsert control message thread
-    {
-        //int control_pool = getDefine_Int("remoted", "control_msg_pool", 1, 16);
-        int control_pool = 4;
-        // Inizialize queue
-        control_msg_queue = linked_queue_init();
-        while (control_pool > 0) {
-            w_create_thread(save_control_thread, (void *) control_msg_queue);
-            control_pool--;
-        }
-    }
+    w_create_thread(save_control_thread, (void *) control_msg_queue);
 
     // Create message handler thread pool
     {
