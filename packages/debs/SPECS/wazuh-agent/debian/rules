@@ -40,7 +40,7 @@ override_dh_install:
 	rm -rf $(INSTALLATION_DIR)/
 
 	# Build the binaries
-	make -C src deps TARGET=agent -j$(JOBS)
+	make -C src deps TARGET=agent
 	make -j$(JOBS) -C src/ TARGET=agent USE_SELINUX=yes DEBUG=$(DEBUG_ENABLED)
 
 	USER_LANGUAGE="en" \
