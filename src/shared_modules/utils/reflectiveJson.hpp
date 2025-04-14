@@ -62,6 +62,7 @@ static std::array<const char*, CHAR_SIZE> ESCAPE_TABLE = []
 
 inline bool needEscape(std::string_view input)
 {
+    // Kept the unsigned char to avoid errors with unicode characters
     for (unsigned char chr : input)
     {
         if (ESCAPE_TABLE[chr])
@@ -73,7 +74,7 @@ inline bool needEscape(std::string_view input)
 }
 inline void escapeJSONString(std::string_view input, std::string& output)
 {
-
+    // Kept the unsigned char to avoid errors with unicode characters
     for (unsigned char chr : input)
     {
         if (ESCAPE_TABLE[chr])
