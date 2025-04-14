@@ -1,9 +1,6 @@
 name: Python code analysis
 on:
   workflow_dispatch:
-  pull_request:
-    paths:
-      - '.github/workflows/4_codeanalysis_python.yml'
   schedule:
     - cron: '0 10 * * 2'
 

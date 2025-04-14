@@ -1,0 +1,119 @@
+name: Syscollector test on Windows
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install mingw
+        run: sudo apt install gcc-mingw-w64 g++-mingw-w64-i686 g++-mingw-w64-x86-64 nsis -y
+      - name: "Install a compatible CMake"
+        uses: ./.github/actions/reinstall_cmake
+      - name: make deps
+        run: make -C src deps TARGET=winagent -j2
+      - name: make
+        run: |
+          make -C src external win32/libgcc_s_dw2-1.dll win32/libstdc++-6.dll win32/libwinpthread-1.dll win32/libwinpthreadpatched.a TARGET=winagent -j2
+          make -C src libwazuhext.dll CFLAGS="-DCLIENT -D_POSIX_C_SOURCE -DWIN32 -DPSAPI_VERSION=1" LIBS="-lwsock32 -lws2_32 -lcrypt32" TARGET=winagent -j2
+          make -C src win32/syscollector TARGET=winagent -j2
+          # Make folder and upload as artifacts.
+      - name: Copy libraries
+        run: |
+          mkdir -p src/shared_libraries
+          cp src/libwazuhext.dll src/shared_libraries/
+          cp src/win32/libgcc_s_dw2-1.dll src/shared_libraries/
+          cp src/win32/libstdc++-6.dll src/shared_libraries/
+          cp src/win32/libwinpthread-1.dll src/shared_libraries/
+      # Upload build artifacts for the shared libraries.
+      - name: Upload Artifact shared_libraries
+        uses: actions/upload-artifact@v4
+        with:
+          name: shared_libraries
+          path: src/shared_libraries
+      # Upload build artifacts for the data provider.
+      - name: Upload Artifact data_provider
+        uses: actions/upload-artifact@v4
+        with:
+          name: data_provider
+          path: src/data_provider/build/bin
+      # Upload build artifacts for dbsync.
+      - name: Upload Artifact dbsync
+        uses: actions/upload-artifact@v4
+        with:
+          name: dbsync
+          path: src/shared_modules/dbsync/build/bin
+      # Upload build artifacts for rsync.
+      - name: Upload Artifact rsync
+        uses: actions/upload-artifact@v4
+        with:
+          name: rsync
+          path: src/shared_modules/rsync/build/bin
+      # Upload build artifacts for syscollector.
+      - name: Upload Artifact syscollector
+        uses: actions/upload-artifact@v4
+        with:
+          name: syscollector
+          path: src/wazuh_modules/syscollector/build/bin
+  run-on-windows:
+    needs: build
+    runs-on: windows-latest
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v3
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version-file: ".github/workflows/.python-version"
+          architecture: x64
+      - name: Download Artifact data_provider
+        uses: actions/download-artifact@v4
+        with:
+          name: data_provider
+          path: C:\data_provider\
+      - name: Download Artifact dbsync
+        uses: actions/download-artifact@v4
+        with:
+          name: dbsync
+          path: C:\dbsync\
+      - name: Download Artifact rsync
+        uses: actions/download-artifact@v4
+        with:
+          name: rsync
+          path: C:\rsync\
+      - name: Download Artifact syscollector
+        uses: actions/download-artifact@v4
+        with:
+          name: syscollector
+          path: C:\syscollector\
+      - name: Download Artifact shared_libraries
+        uses: actions/download-artifact@v4
+        with:
+          name: shared_libraries
+          path: C:\shared_libraries\
+      # Copy dbsync, rsync and sysinfo libraries into syscollector.
+      - name: Copy libraries into syscollector (dbsync, rsync and sysinfo)
+        run: |
+          copy C:\dbsync\*.dll C:\syscollector\
+          copy C:\rsync\*.dll C:\syscollector\
+          copy C:\data_provider\*.dll C:\syscollector\
+      # Copy dbsync library into rsync.
+      - name: Copy libraries into rsync (dbsync)
+        run: |
+          copy C:\dbsync\*.dll C:\rsync\
+      - name: Copy shared libraries
+        run: |
+          copy C:\shared_libraries\* C:\data_provider\
+          copy C:\shared_libraries\* C:\dbsync\
+          copy C:\shared_libraries\* C:\rsync\
+          copy C:\shared_libraries\* C:\syscollector\
+      - name: Install dependencies
+        run: |
+          pip install -r src/data_provider/qa/requirements.txt
+          npm install json path yaml
+      - name: Run tests
+        run: |
+          cd src/data_provider
+          python -m pytest -vv qa/
