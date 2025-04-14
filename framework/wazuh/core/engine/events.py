@@ -36,7 +36,7 @@ class EventsModule(BaseModule):
 
             if response.is_error:
                 error = ErrorResponse(**response.json())
-                raise WazuhError(2710, extra_message=': '.join(error.error))
+                raise WazuhError(2710, extra_message=error.error)
 
         except RequestError as exc:
             raise WazuhEngineError(2803, extra_message=str(exc))
