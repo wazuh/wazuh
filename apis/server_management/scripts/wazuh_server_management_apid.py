@@ -71,14 +71,6 @@ def spawn_process_pool():
     signal.signal(signal.SIGINT, signal.SIG_IGN)
 
 
-def spawn_events_pool():
-    """Spawn events process pool child."""
-    events_pid = os.getpid()
-    pyDaemonModule.create_pid(API_SECURITY_EVENTS_PROCESS, events_pid)
-
-    signal.signal(signal.SIGINT, signal.SIG_IGN)
-
-
 def spawn_authentication_pool():
     """Spawn authentication process pool child."""
     auth_pid = os.getpid()

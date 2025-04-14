@@ -175,7 +175,6 @@ try:
         default={
             'process_pool': ProcessPoolExecutor(max_workers=1),
             'authentication_pool': ProcessPoolExecutor(max_workers=1),
-            'events_pool': ProcessPoolExecutor(max_workers=1),
         },
     )
 # Handle exception when the user running Wazuh cannot access /dev/shm.
