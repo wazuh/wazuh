@@ -27,7 +27,7 @@ curl -X POST -H "$CONTENT_TYPE" -ksu $INDEXER_USERNAME:$INDEXER_PASSWORD -w "\n"
                 "policies": [
                     {
                         "name": "agents_all",
-                        "actions": ["agent:read", "agent:delete", "agent:modify_group", "agent:reconnect", "agent:restart"],
+                        "actions": ["agent:create", "agent:read", "agent:delete", "agent:modify_group", "agent:reconnect", "agent:restart"],
                         "resources": ["*:*:*"],
                         "effect": "allow",
                         "level": 0
