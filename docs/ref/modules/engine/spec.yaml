@@ -1,0 +1,3055 @@
+openapi: 3.0.3
+info:
+  title: Wazuh-Engine Events API
+  description: API for processing security events using the Wazuh-Engine security policy.
+  version: 1.0.0
+
+servers:
+  - url: "http+unix:/run/wazuh-server/engine-api.socket"
+    description: "Wazuh server using Unix socket over HTTP"
+
+tags:
+  - name: EventStateless
+    description: "Operations for processing security events"
+  - name: Catalog
+    description: "Operations for managing catalog resources"
+  - name: Policy
+    description: "Operations for managing security policies"
+  - name: Router
+    description: "Operations for managing environments and routing"
+  - name: KVDB
+    description: "Operations for managing key-value databases"
+  - name: Tester
+    description: "Operations for testing and validating policies"
+
+#################################################################################
+# Paths
+#################################################################################
+paths:
+  ################################
+  # EventStateless
+  ################################
+  /events/stateless:
+    post:
+      tags:
+        - EventStateless
+      summary: Receive and process security events
+      description: |
+        This endpoint receives events to be processed by the Wazuh-Engine security policy.
+
+      requestBody:
+        required: true
+        content:
+          application/x-ndjson:
+            schema:
+              type: string
+              description: |
+                Newline-delimited JSON (NDJSON) data
+                - **Agent Metadata (First JSON Line)**: Contains agent-related metadata.
+                - **Subheader (Second JSON Line)**: Includes mandatory module and collector fields.
+                - **Event Logs (Third and Subsequent JSON Lines)**: Individual log events enriched with the agent metadata and subheader information.
+                - **New Subheader (Optional)**: If encountered, it replaces the previous subheader for the following event logs.
+              example: |
+                {"agent":{"id":"2887e1cf-9bf2-431a-b066-a46860080f56","name":"javier","type":"endpoint","version":"5.0.0","groups":["group1","group2"],"host":{"hostname":"myhost","os":{"name":"Amazon Linux 2","platform":"Linux"},"ip":["192.168.1.21"],"architecture":"x86_64"}}}
+                {"module":"logcollector","collector":"file"}
+                {"log":{"file":{"path":"/var/log/syslog"}},"tags":["production"],"event":{"original":"System started.","created":"2023-12-26T09:22:14.000Z"}}
+
+      responses:
+        "200":
+          description: Successfully processed events
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Response"
+              example:
+                status: OK
+                error: null
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/responses/BadRequest_400"
+              examples:
+                invalid_header:
+                  summary: The header is invalid
+                  value:
+                    error: "NDJson parser error, invalid header: 'JSON document could not be parsed: Invalid value.'"
+                    code: 400
+                not_enough_lines:
+                  summary: The minimum number of JSONs in the NDJSON is not met
+                  value:
+                    error: "NDJson parser error, invalid batch, expected at least 3 lines"
+                    code: 400
+                missing_subheader:
+                  summary: After the header there is no subheader
+                  value:
+                    error: "NDJson parser error, invalid subheader, expected '/module' and '/collector' fields"
+                    code: 400
+                non_json_event:
+                  summary: One of the events is not a valid JSON
+                  value:
+                    error: "NDJson parser error, invalid ndjson line: 'JSON document could not be parsed: Invalid value.'"
+                    code: 400
+                invalid_subheader:
+                  summary: Invalid subheader
+                  value:
+                    error: "NDJson parser error, invalid subheader, expected '/module' and '/collector' fields"
+                    code: 400
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+  ################################
+  # Catalog
+  ################################
+  /catalog/resource/post:
+    post:
+      tags:
+        - Catalog
+      summary: Create a new resource in the catalog
+      description: |
+        This endpoint allows you to create a new resource in the catalog.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ResourcePost_Request"
+      responses:
+        "200":
+          $ref: "#/components/responses/GenericSuccess_200"
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/responses/BadRequest_400"
+              examples:
+                missing_type:
+                  summary: Missing /type parameter or is invalid
+                  value:
+                    status: "ERROR"
+                    error: "Missing /type parameter or is invalid"
+                invalid_collection_type:
+                  summary: The requested collection does not exist
+                  value:
+                    status: "ERROR"
+                    error: "Invalid collection type \"non-exist\""
+                invalid_format:
+                  summary: The requested format does not exist
+                  value:
+                    status: "ERROR"
+                    error: "Missing or invalid /format parameter"
+                missing_asset_name:
+                  summary: The asset content does not have a name
+                  value:
+                    status: "ERROR"
+                    error: "Invalid content name 'documentation': Invalid collection type \"documentation\""
+                name_type_mismatch:
+                  summary: The asset name in the content does not match the asset type
+                  value:
+                    status: "ERROR"
+                    error: "Invalid content name 'non-exist/documentation/0': Invalid type \"non-exist\""
+                already_exists:
+                  summary: The asset already exists currently
+                  value:
+                    status: "ERROR"
+                    error: "Content 'decoder/documentation/0' could not be added to store: Document already exists"
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+
+  /catalog/resource/get:
+    post:
+      tags:
+        - Catalog
+      summary: Retrieve a resource from the catalog
+      description: |
+        This endpoint allows you to retrieve a resource from the catalog.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ResourceGet_Request"
+      responses:
+        "200":
+          description: Get resource response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResourceGet_Response"
+              example:
+                status: OK
+                error: null
+                content: |
+                  {"name": "decoder/example/0"}
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/responses/BadRequest_400"
+              examples:
+                missing_field:
+                  summary: Missing any of the fields in the request
+                  value:
+                    status: "ERROR"
+                    error: "Missing or invalid /format parameter"
+                invalid_collection:
+                  summary: The requested collection does not exist
+                  value:
+                    status: "ERROR"
+                    error: "Invalid collection type \"non-exist\""
+                invalid_format:
+                  summary: The requested format does not exist
+                  value:
+                    status: "ERROR"
+                    error: "Missing or invalid /format parameter"
+                invalid_name_format:
+                  summary: The requested asset name has an invalid format
+                  value:
+                    status: "ERROR"
+                    error: "Invalid name \"decoder/core-wazuh-message/0/other\" received, a name with 1, 2 or 3 parts was expected"
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+
+  /catalog/resource/put:
+    post:
+      tags:
+        - Catalog
+      summary: Update an existing resource in the catalog
+      description: |
+        This endpoint allows you to update an existing resource in the catalog.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ResourcePut_Request"
+      responses:
+        "200":
+          $ref: "#/components/responses/GenericSuccess_200"
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/responses/BadRequest_400"
+              examples:
+                missing_field:
+                  summary: Missing any of the fields in the request
+                  value:
+                    status: "ERROR"
+                    error: "Missing /name parameter or is invalid"
+                invalid_format:
+                  summary: The requested format does not exist
+                  value:
+                    status: "ERROR"
+                    error: "Missing or invalid /format parameter"
+                missing_asset_name:
+                  summary: The new content does not have an asset name
+                  value:
+                    status: "ERROR"
+                    error: "Field 'name' is missing in content"
+                not_found_in_namespace:
+                  summary: The asset does not exist in the indicated namespace
+                  value:
+                    status: "ERROR"
+                    error: "Could not update resource 'decoder/documentation/0': Does not exist in the 'wazuh' namespace"
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+
+  /catalog/resource/delete:
+    post:
+      tags:
+        - Catalog
+      summary: Delete a resource from the catalog
+      description: |
+        This endpoint allows you to delete a resource from the catalog.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ResourceDelete_Request"
+      responses:
+        "200":
+          $ref: "#/components/responses/GenericSuccess_200"
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/responses/BadRequest_400"
+              examples:
+                delete_collection_nonexistent_namespace:
+                  summary: Delete a collection in a namespace that does not exist
+                  value:
+                    status: "ERROR"
+                    error: "Could not delete collection 'decoder': Collection does not exist\n"
+                delete_resource_nonexistent_namespace:
+                  summary: Delete a decoder in a namespace that does not exist
+                  value:
+                    status: "ERROR"
+                    error: "Could not delete resource 'decoder/documentation/0': Does not exist in the 'wazuh' namespace"
+                missing_field:
+                  summary: Missing any of the fields in the request
+                  value:
+                    status: "ERROR"
+                    error: "Missing /namespaceid parameter"
+                invalid_name_format:
+                  summary: Invalid format of the asset name
+                  value:
+                    status: "ERROR"
+                    error: "Invalid name \"decoder/documentation/0/0\" received, a name with 1, 2 or 3 parts was expected"
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+
+  /catalog/resource/validate:
+    post:
+      tags:
+        - Catalog
+      summary: Validate a resource before adding it to the catalog
+      description: |
+        This endpoint allows you to validate a resource.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ResourceValidate_Request"
+      responses:
+        "200":
+          $ref: "#/components/responses/GenericSuccess_200"
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/responses/BadRequest_400"
+              examples:
+                missing_field:
+                  summary: Missing any of the fields in the request
+                  value:
+                    status: "ERROR"
+                    error: "Missing or invalid /format parameter"
+                invalid_helper_function:
+                  summary: Invalid helper function
+                  value:
+                    status: "ERROR"
+                    error: "In stage 'normalize' builder for block 'map' failed with error: Failed to build operation '@timestamp: map(\"non-exist()\")': Field '@timestamp' value validation failed: Invalid date"
+                invalid_map_structure:
+                  summary: Invalid map structure
+                  value:
+                    status: "ERROR"
+                    error: "Stage 'normalize' expects an array or string but got 'object'"
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+
+  /catalog/namespaces/get:
+    post:
+      tags:
+        - Catalog
+      summary: List all namespaces from the catalog
+      description: |
+        This endpoint allows you to list all namespaces from the catalog.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NamespacesGet_Request"
+      responses:
+        "200":
+          description: Get namespaces response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NamespacesGet_Response"
+              example:
+                status: OK
+                error: null
+                namespaces: ["namespace1", "namespace2"]
+        "400":
+          $ref: "#/components/responses/BadRequest_400"
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+
+  ################################
+  # Policy
+  ################################
+  /policy/store/post:
+    post:
+      tags:
+        - Policy
+      summary: Create a new empty policy in the store
+      description: |
+        This endpoint allows you to create a new empty policy in the store.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                policy:
+                  $ref: "#/components/schemas/PolicyName"
+      responses:
+        "200":
+          $ref: "#/components/responses/GenericSuccess_200"
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/responses/BadRequest_400"
+              examples:
+                missing_field:
+                  summary: Missing any of the fields in the request
+                  value:
+                    status: "ERROR"
+                    error: "Missing /policy"
+                invalid_name:
+                  summary: Invalid policy name
+                  value:
+                    status: "ERROR"
+                    error: "Invalid policy name: policy/wazuh/0/0, expected 3 parts"
+                already_exists:
+                  summary: Policy already exists
+                  value:
+                    status: "ERROR"
+                    error: "Policy already exists: policy/wazuh/0"
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+  /policy/store/delete:
+    post:
+      tags:
+        - Policy
+      summary: Delete a policy from the store
+      description: |
+        This endpoint allows you to delete a policy from the store.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                policy:
+                  $ref: "#/components/schemas/PolicyName"
+      responses:
+        "200":
+          $ref: "#/components/responses/GenericSuccess_200"
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/responses/BadRequest_400"
+              examples:
+                missing_field:
+                  summary: Missing any of the fields in the request
+                  value:
+                    status: "ERROR"
+                    error: "Missing /policy"
+                invalid_name:
+                  summary: Invalid policy name
+                  value:
+                    status: "ERROR"
+                    error: "Invalid policy name: policy/wazuh/0/0, expected 3 parts"
+                not_found:
+                  summary: Policy does not exist
+                  value:
+                    status: "ERROR"
+                    error: "File '/var/lib/wazuh-server/engine/store/policy/wazuh/0' does not exist"
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+  /policy/store/get:
+    post:
+      tags:
+        - Policy
+      summary: Retrieve a policy from the store
+      description: |
+        This endpoint allows you to retrieve a policy from the store.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                policy:
+                  $ref: "#/components/schemas/PolicyName"
+      responses:
+        "200":
+          description: Successfully retrieved policy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StoreGet_Response"
+              example:
+                status: OK
+                error: null
+                data: "Policy data"
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/responses/BadRequest_400"
+              examples:
+                missing_field:
+                  summary: Missing any of the fields in the request
+                  value:
+                    status: "ERROR"
+                    error: "Missing /policy"
+                invalid_name:
+                  summary: Invalid policy name
+                  value:
+                    status: "ERROR"
+                    error: "Invalid policy name: policy/wazuh/0/0, expected 3 parts"
+                empty_namespaces:
+                  summary: Empty namespaces
+                  value:
+                    status: "ERROR"
+                    error: "Error in namespace name: Name cannot be empty"
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+  /policy/asset/post:
+    post:
+      tags:
+        - Policy
+      summary: Add a new asset to a policy
+      description: |
+        This endpoint allows you to add a new asset to a policy.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                policy:
+                  $ref: "#/components/schemas/PolicyName"
+                asset:
+                  $ref: "#/components/schemas/ResourceName"
+                namespace:
+                  $ref: "#/components/schemas/Namespace"
+      responses:
+        "200":
+          description: Successfully added asset
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AssetPost_Response"
+              examples:
+                success:
+                  summary: Success
+                  value:
+                    status: OK
+                    error: null
+                    warning: null
+                success_with_warning:
+                  summary: Success with warning
+                  value:
+                    status: OK
+                    error: null
+                    warning: "Validation errors"
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/responses/BadRequest_400"
+              examples:
+                missing_field:
+                  summary: Missing any of the fields in the request
+                  value:
+                    status: "ERROR"
+                    error: "Missing /policy"
+                invalid_policy_name:
+                  summary: Invalid policy name
+                  value:
+                    status: "ERROR"
+                    error: "Invalid policy name: policy/wazuh/0/0, expected 3 parts"
+                policy_not_exist:
+                  summary: Policy does not exist
+                  value:
+                    status: "ERROR"
+                    error: "File '/var/lib/wazuh-server/engine/store/policy/wazuh/0' does not exist"
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+  /policy/asset/delete:
+    post:
+      tags:
+        - Policy
+      summary: Delete an asset from a policy
+      description: |
+        This endpoint allows you to delete an asset from a policy.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                policy:
+                  $ref: "#/components/schemas/PolicyName"
+                asset:
+                  $ref: "#/components/schemas/ResourceName"
+                namespace:
+                  $ref: "#/components/schemas/Namespace"
+      responses:
+        "200":
+          description: Successfully deleted asset
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AssetDelete_Response"
+              examples:
+                success:
+                  summary: Success
+                  value:
+                    status: OK
+                    error: null
+                    warning: null
+                success_with_warning:
+                  summary: Success with warning
+                  value:
+                    status: OK
+                    error: null
+                    warning: "Validation errors"
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/responses/BadRequest_400"
+              examples:
+                missing_policy:
+                  summary: Missing policy field
+                  value:
+                    status: "ERROR"
+                    error: "Missing /policy"
+                invalid_policy_name:
+                  summary: Invalid policy name
+                  value:
+                    status: "ERROR"
+                    error: "Invalid policy name: policy/wazuh/0/0, expected 3 parts"
+                policy_not_exist:
+                  summary: Policy does not exist
+                  value:
+                    status: "ERROR"
+                    error: "File '/var/lib/wazuh-server/engine/store/policy/wazuh/0' does not exist"
+                asset_not_found:
+                  summary: Asset does not exist
+                  value:
+                    status: "ERROR"
+                    error: "Asset not found"
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+  /policy/asset/get:
+    post:
+      tags:
+        - Policy
+      summary: Get all assets of a namespace in a policy
+      description: |
+        This endpoint allows you to retrieve all assets of a namespace in a policy.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                policy:
+                  $ref: "#/components/schemas/PolicyName"
+                namespace:
+                  $ref: "#/components/schemas/Namespace"
+      responses:
+        "200":
+          description: Successfully retrieved assets
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AssetGet_Response"
+              example:
+                status: OK
+                error: null
+                data: ["decoder/example/0", "rule/example/0"]
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/responses/BadRequest_400"
+              examples:
+                missing_policy:
+                  summary: Missing policy field
+                  value:
+                    status: "ERROR"
+                    error: "Missing /policy"
+                invalid_policy_name:
+                  summary: Invalid policy name
+                  value:
+                    status: "ERROR"
+                    error: "Invalid policy name: policy/wazuh/0/0, expected 3 parts"
+                policy_not_exist:
+                  summary: Policy does not exist
+                  value:
+                    status: "ERROR"
+                    error: "File '/var/lib/wazuh-server/engine/store/policy/wazuh/0' does not exist"
+                deleted_assets:
+                  summary: Clean the policy of deleted assets
+                  value:
+                    status: "ERROR"
+                    error: "Clean the policy, it contains deleted assets: decoder/documentation/0"
+                    data: []
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+  /policy/asset/clean_deleted:
+    post:
+      tags:
+        - Policy
+      summary: Delete assets from policy that are deleted from the catalog
+      description: |
+        This endpoint cleans up assets from a policy that are deleted from the catalog.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                policy:
+                  $ref: "#/components/schemas/PolicyName"
+      responses:
+        "200":
+          description: Successfully cleaned deleted assets
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AssetCleanDeleted_Response"
+              example:
+                status: OK
+                error: null
+                data: "List of deleted assets if any"
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/responses/BadRequest_400"
+              examples:
+                missing_policy:
+                  summary: Missing policy field
+                  value:
+                    status: "ERROR"
+                    error: "Missing /policy"
+                invalid_policy_name:
+                  summary: Invalid policy name
+                  value:
+                    status: "ERROR"
+                    error: "Invalid policy name: policy/wazuh/0/0, expected 3 parts"
+                policy_not_exist:
+                  summary: Policy does not exist
+                  value:
+                    status: "ERROR"
+                    error: "File '/var/lib/wazuh-server/engine/store/policy/wazuh/0' does not exist"
+                no_deleted_assets:
+                  summary: No deleted assets to clean
+                  value:
+                    status: "ERROR"
+                    error: "No deleted assets to clean"
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+  /policy/default_parent/get:
+    post:
+      tags:
+        - Policy
+      summary: Get default parent of a namespace in a policy
+      description: |
+        This endpoint allows you to get the default parent of a namespace in a policy.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PolicyDefaultParentGet_Request"
+      responses:
+        "200":
+          description: Successfully retrieved default parent
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PolicyDefaultParentGet_Response"
+              example:
+                status: OK
+                error: null
+                data: ["decoder/example/0", "rule/example/0"]
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/responses/BadRequest_400"
+              examples:
+                missing_policy:
+                  summary: Missing policy field
+                  value:
+                    status: "ERROR"
+                    error: "Missing /policy"
+                invalid_policy_name:
+                  summary: Invalid policy name
+                  value:
+                    status: "ERROR"
+                    error: "Invalid policy name: policy/wazuh/0/0, expected 3 parts"
+                policy_not_exist:
+                  summary: Policy does not exist
+                  value:
+                    status: "ERROR"
+                    error: "File '/var/lib/wazuh-server/engine/store/policy/wazuh/0' does not exist"
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+  /policy/default_parent/post:
+    post:
+      tags:
+        - Policy
+      summary: Set default parent of a namespace in a policy
+      description: |
+        This endpoint allows you to set the default parent of a namespace in a policy.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PolicyDefaultParentPost_Request"
+      responses:
+        "200":
+          $ref: "#/components/responses/GenericSuccess_200"
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/responses/BadRequest_400"
+              examples:
+                missing_policy:
+                  summary: Missing policy field
+                  value:
+                    status: "ERROR"
+                    error: "Missing /policy"
+                invalid_policy_name:
+                  summary: Invalid policy name
+                  value:
+                    status: "ERROR"
+                    error: "Invalid policy name: policy/wazuh/0/0, expected 3 parts"
+                policy_not_exist:
+                  summary: Policy does not exist
+                  value:
+                    status: "ERROR"
+                    error: "File '/var/lib/wazuh-server/engine/store/policy/wazuh/0' does not exist"
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+  /policy/default_parent/delete:
+    post:
+      tags:
+        - Policy
+      summary: Delete default parent of a namespace in a policy
+      description: |
+        This endpoint allows you to delete the default parent of a namespace in a policy.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PolicyDefaultParentDelete_Request"
+      responses:
+        "200":
+          $ref: "#/components/responses/GenericSuccess_200"
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/responses/BadRequest_400"
+              examples:
+                missing_policy:
+                  summary: Missing policy field
+                  value:
+                    status: "ERROR"
+                    error: "Missing /policy"
+                invalid_policy_name:
+                  summary: Invalid policy name
+                  value:
+                    status: "ERROR"
+                    error: "Invalid policy name: policy/wazuh/0/0, expected 3 parts"
+                policy_not_exist:
+                  summary: Policy does not exist
+                  value:
+                    status: "ERROR"
+                    error: "File '/var/lib/wazuh-server/engine/store/policy/wazuh/0' does not exist"
+                default_parent_not_exist:
+                  summary: Default parent does not exist
+                  value:
+                    status: "ERROR"
+                    error: "Namespace system not found"
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+  /policy/list:
+    post:
+      tags:
+        - Policy
+      summary: Get all policies in the store
+      description: |
+        This endpoint retrieves all policies in the store.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EmptyRequest"
+      responses:
+        "200":
+          description: Successfully retrieved policies
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PolicyList_Response"
+              example:
+                status: OK
+                error: null
+                data: ["policy/example/0", "policy/example/1"]
+        "400":
+          $ref: "#/components/responses/BadRequest_400"
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+  /policy/namespaces/list:
+    post:
+      tags:
+        - Policy
+      summary: Get all namespaces in a policy
+      description: |
+        This endpoint retrieves all namespaces in a policy.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                policy:
+                  $ref: "#/components/schemas/PolicyName"
+      responses:
+        "200":
+          description: Successfully retrieved namespaces
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NamespacesGet_Response"
+              example:
+                status: OK
+                error: null
+                data: ["namespace1", "namespace2"]
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/responses/BadRequest_400"
+              examples:
+                missing_policy:
+                  summary: Missing policy field
+                  value:
+                    status: "ERROR"
+                    error: "Missing /policy"
+                invalid_policy_name:
+                  summary: Invalid policy name
+                  value:
+                    status: "ERROR"
+                    error: "Invalid policy name: policy/wazuh/0/0, expected 3 parts"
+                policy_not_exist:
+                  summary: Policy does not exist
+                  value:
+                    status: "ERROR"
+                    error: "File '/var/lib/wazuh-server/engine/store/policy/wazuh/0' does not exist"
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+
+  ################################
+  # Router
+  ################################
+  /router/route/post:
+    post:
+      tags:
+        - Router
+      summary: Create a new route
+      description: |
+        This endpoint allows the creation of a new route in the Wazuh Engine API.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RoutePost_Request"
+      responses:
+        "200":
+          $ref: "#/components/responses/GenericSuccess_200"
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/responses/BadRequest_400"
+              examples:
+                missing_route_field:
+                  summary: Missing /route field
+                  value:
+                    status: "ERROR"
+                    error: "Missing /route"
+                missing_name:
+                  summary: Name field is empty
+                  value:
+                    status: "ERROR"
+                    error: "Name cannot be empty"
+                policy_not_exist:
+                  summary: Policy does not exist
+                  value:
+                    status: "ERROR"
+                    error: "Failed to create the route: Failed to create environment with policy 'policy/wazuh/0' and filter 'filter/allow-all/0': File '/var/lib/wazuh-server/engine/store/policy/wazuh/0' does not exist"
+                policy_has_no_assets:
+                  summary: Policy has no assets
+                  value:
+                    status: "ERROR"
+                    error: "Failed to create the route: Failed to create environment with policy 'policy/wazuh/0' and filter 'filter/allow-all/0': Policy 'policy/wazuh/0' has no assets"
+                filter_not_exist:
+                  summary: Filter does not exist
+                  value:
+                    status: "ERROR"
+                    error: "Failed to create the route: Failed to create environment with policy 'policy/wazuh/0' and filter 'filter/allow-all/0': Engine utils: 'filter/allow-all/0' could not be obtained from the store: Document does not exist."
+                priority_zero:
+                  summary: Priority is set to 0
+                  value:
+                    status: "ERROR"
+                    error: "Priority cannot be 0"
+                priority_too_high:
+                  summary: Priority is set to more than 1000
+                  value:
+                    status: "ERROR"
+                    error: "Priority cannot be greater than 1000"
+                priority_already_in_use:
+                  summary: Priority already in use
+                  value:
+                    status: "ERROR"
+                    error: "The priority of the route  is already in use"
+                route_name_already_exists:
+                  summary: Route name already exists
+                  value:
+                    status: "ERROR"
+                    error: "The name of the route is already in use"
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+
+  /router/route/delete:
+    post:
+      tags:
+        - Router
+      summary: Delete a route
+      description: |
+        This endpoint allows deleting a specific route in the Wazuh Engine API.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RouteDelete_Request"
+      responses:
+        "200":
+          $ref: "#/components/responses/GenericSuccess_200"
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/responses/BadRequest_400"
+              examples:
+                missing_name:
+                  summary: Missing name field
+                  value:
+                    status: "ERROR"
+                    error: "Name cannot be empty"
+                route_not_exist:
+                  summary: Route does not exist
+                  value:
+                    status: "ERROR"
+                    error: "The route not exist"
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+
+  /router/route/get:
+    post:
+      tags:
+        - Router
+      summary: Retrieve a route
+      description: |
+        This endpoint allows retrieving detailed information about a specific route.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RouteGet_Request"
+      responses:
+        "200":
+          description: Successfully retrieved route
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RouteGet_Response"
+              example:
+                status: OK
+                error: null
+                route:
+                  name: "example-route"
+                  policy: "policy/example/0"
+                  filter: "filter/example/0"
+                  priority: 10
+                  description: "Example route"
+                  policy_sync: UPDATED
+                  entry_status: ENABLED
+                  uptime: 3600
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/responses/BadRequest_400"
+              examples:
+                missing_name:
+                  summary: Name field is empty
+                  value:
+                    status: "ERROR"
+                    error: "Name cannot be empty"
+                route_not_exist:
+                  summary: Route does not exist
+                  value:
+                    status: "ERROR"
+                    error: "The route not exist"
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+
+  /router/route/reload:
+    post:
+      tags:
+        - Router
+      summary: Reload a route
+      description: |
+        This endpoint allows reloading a specific route in the Wazuh Engine API.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RouteReload_Request"
+      responses:
+        "200":
+          $ref: "#/components/responses/GenericSuccess_200"
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/responses/BadRequest_400"
+              examples:
+                missing_name:
+                  summary: Name field is empty
+                  value:
+                    status: "ERROR"
+                    error: "Name cannot be empty"
+                route_not_exist:
+                  summary: Route does not exist
+                  value:
+                    status: "ERROR"
+                    error: "The route not exist"
+                invalid_asset:
+                  summary: Some asset has validation errors
+                  value:
+                    status: "ERROR"
+                    error: "Failed to reload the route: Failed to create environment with policy 'policy/wazuh/0' and filter 'filter/allow-all/0': Expected 'name' key in asset document but got 'n'"
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+
+  /router/route/patchPriority:
+    post:
+      tags:
+        - Router
+      summary: Update route priority
+      description: |
+        This endpoint allows updating the priority of a specific route.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RoutePatchPriority_Request"
+      responses:
+        "200":
+          $ref: "#/components/responses/GenericSuccess_200"
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/responses/BadRequest_400"
+              examples:
+                missing_name:
+                  summary: Name field is empty
+                  value:
+                    status: "ERROR"
+                    error: "Name cannot be empty"
+                route_not_exist:
+                  summary: Route does not exist
+                  value:
+                    status: "ERROR"
+                    error: "The route not exist"
+                priority_too_high:
+                  summary: Priority greater than allowed
+                  value:
+                    status: "ERROR"
+                    error: "Priority cannot be greater than 1000"
+                priority_zero:
+                  summary: Priority cannot be zero
+                  value:
+                    status: "ERROR"
+                    error: "Priority cannot be 0"
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+
+  /router/table/get:
+    post:
+      tags:
+        - Router
+      summary: Retrieve all routes
+      description: |
+        This endpoint retrieves the list of existing routes in the Wazuh Engine API.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EmptyRequest"
+      responses:
+        "200":
+          description: Successfully retrieved routes
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TableGet_Response"
+              example:
+                status: OK
+                error: null
+                routes:
+                  - name: "example-route"
+                    policy: "policy/example/0"
+                    filter: "filter/example/0"
+                    priority: 10
+                    description: "Example route"
+                    policy_sync: UPDATED
+                    entry_status: ENABLED
+                    uptime: 3600
+        "400":
+          $ref: "#/components/responses/BadRequest_400"
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+
+  /router/queue/post:
+    post:
+      tags:
+        - Router
+      summary: Send an event to the router queue
+      description: |
+        This endpoint allows sending a Wazuh event to the router queue.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/QueuePost_Request"
+      responses:
+        "200":
+          $ref: "#/components/responses/GenericSuccess_200"
+        "400":
+          $ref: "#/components/responses/BadRequest_400"
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+
+  /router/eps/changeSettings:
+    post:
+      tags:
+        - Router
+      summary: Update EPS limiter settings
+      description: |
+        This endpoint allows updating the EPS (Events Per Second) limiter settings.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EpsUpdate_Request"
+      responses:
+        "200":
+          $ref: "#/components/responses/GenericSuccess_200"
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/responses/BadRequest_400"
+              examples:
+                missing_fields:
+                  summary: Missing required fields
+                  value:
+                    status: "ERROR"
+                    error: "EPS Limit must be greater than 0"
+                eps_negative:
+                  summary: EPS is negative
+                  value:
+                    status: "ERROR"
+                    error: "Failed to parse protobuff json request: INVALID_ARGUMENT:(eps): invalid value -10 for type TYPE_UINT32"
+                refresh_interval_negative:
+                  summary: Refresh interval is negative
+                  value:
+                    status: "ERROR"
+                    error: "Failed to parse protobuff json request: INVALID_ARGUMENT:(refresh_interval): invalid value -10000 for type TYPE_UINT32"
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+
+  /router/eps/get:
+    post:
+      tags:
+        - Router
+      summary: Retrieve EPS limiter settings
+      description: |
+        This endpoint retrieves the current EPS limiter settings.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EmptyRequest"
+      responses:
+        "200":
+          description: Successfully retrieved EPS settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EpsGet_Response"
+              example:
+                status: OK
+                error: null
+                eps: 100
+                refresh_interval: 60
+                enabled: true
+        "400":
+          $ref: "#/components/responses/BadRequest_400"
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+
+  /router/eps/activate:
+    post:
+      tags:
+        - Router
+      summary: Activate EPS limiter
+      description: |
+        This endpoint activates the EPS limiter in the system.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EmptyRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/GenericSuccess_200"
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/responses/BadRequest_400"
+              examples:
+                eps_already_active:
+                  summary: EPS already active
+                  value:
+                    status: "ERROR"
+                    error: "EPS counter is already active"
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+
+  /router/eps/deactivate:
+    post:
+      tags:
+        - Router
+      summary: Deactivate EPS limiter
+      description: |
+        This endpoint deactivates the EPS limiter in the system.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EmptyRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/GenericSuccess_200"
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/responses/BadRequest_400"
+              examples:
+                eps_already_inactive:
+                  summary: EPS already inactive
+                  value:
+                    status: "ERROR"
+                    error: "EPS counter is already inactive"
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+
+  ################################
+  # KVDB
+  ################################
+  /kvdb/db/get:
+    post:
+      tags:
+        - KVDB
+      summary: Get an entry from a database
+      description: |
+        This endpoint retrieves a specific entry from a key-value database.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/KVDBGet_Request"
+            example:
+              name: "example-db"
+              key: "example-key"
+      responses:
+        "200":
+          description: Successfully retrieved entry
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/KVDBGet_Response"
+              example:
+                status: OK
+                error: null
+                value: "value"
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmptyRequest"
+              examples:
+                missing_name:
+                  summary: Missing name attribute in the request
+                  value:
+                    status: "ERROR"
+                    entries: []
+                    error: "Missing /name"
+                db_not_exist:
+                  summary: Database does not exist
+                  value:
+                    status: "ERROR"
+                    entries: []
+                    error: "The KVDB 'documentation' does not exist."
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+
+  /kvdb/db/search:
+    post:
+      tags:
+        - KVDB
+      summary: Search entries in a database
+      description: |
+        This endpoint searches for entries in a key-value database based on a prefix.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/KVDBSearch_Request"
+            example:
+              name: "example-db"
+              prefix: "example-prefix"
+              page: 1
+              records: 10
+      responses:
+        "200":
+          description: Successfully retrieved entries
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/KVDBSearch_Response"
+              example:
+                status: OK
+                error: null
+                entries:
+                  - key: "example-key1"
+                    value:
+                      field1: "value1"
+                      field2: 123
+                  - key: "example-key2"
+                    value: "value3"
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmptyRequest"
+              examples:
+                missing_prefix:
+                  summary: Missing /prefix
+                  value:
+                    status: "ERROR"
+                    entries: []
+                    error: "Missing /prefix"
+                empty_prefix:
+                  summary: Prefix is empty
+                  value:
+                    status: "ERROR"
+                    error: "Field /prefix is empty"
+                page_zero:
+                  summary: Field page must be greater than 0
+                  value:
+                    status: "ERROR"
+                    error: "Field /page must be greater than 0"
+                records_zero:
+                  summary: Field records must be greater than 0
+                  value:
+                    status: "ERROR"
+                    error: "Field /records must be greater than 0"
+                db_not_exist:
+                  summary: Database does not exist
+                  value:
+                    status: "ERROR"
+                    entries: []
+                    error: "The KVDB 'documentation' does not exist."
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+
+  /kvdb/db/delete:
+    post:
+      tags:
+        - KVDB
+      summary: Delete an entry from a database
+      description: |
+        This endpoint deletes a specific entry from a key-value database.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/KVDBDelete_Request"
+            example:
+              name: "example-db"
+              key: "example-key"
+      responses:
+        "200":
+          $ref: "#/components/responses/GenericSuccess_200"
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmptyRequest"
+              examples:
+                missing_name:
+                  summary: Missing name attribute in the request
+                  value:
+                    status: "ERROR"
+                    error: "Missing /name"
+                db_not_exist:
+                  summary: Database does not exist
+                  value:
+                    status: "ERROR"
+                    entries: []
+                    error: "The KVDB 'documentation' does not exist."
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+
+  /kvdb/db/put:
+    post:
+      tags:
+        - KVDB
+      summary: Insert or update an entry in a database
+      description: |
+        This endpoint inserts or updates a specific entry in a key-value database.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/KVDBPut_Request"
+            example:
+              name: "example-db"
+              entry:
+                key: "example-key"
+                value:
+                  field1: "value1"
+                  field2: 123
+      responses:
+        "200":
+          $ref: "#/components/responses/GenericSuccess_200"
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmptyRequest"
+              examples:
+                missing_name:
+                  summary: Missing name attribute in the request
+                  value:
+                    status: "ERROR"
+                    entries: []
+                    error: "Missing /name"
+                empty_key:
+                  summary: Key is empty
+                  value:
+                    status: "ERROR"
+                    error: "Field /key is empty"
+                missing_value:
+                  summary: Value is not present
+                  value:
+                    status: "ERROR"
+                    error: "Missing /entry/value"
+                db_not_exist:
+                  summary: Database does not exist
+                  value:
+                    status: "ERROR"
+                    error: "The KVDB 'documentation' does not exist."
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+
+  /kvdb/manager/get:
+    post:
+      tags:
+        - KVDB
+      summary: List all databases
+      description: |
+        This endpoint retrieves a list of all key-value databases.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/KVDBManagerGet_Request"
+            example:
+              must_be_loaded: true
+              filter_by_name: "example-db"
+      responses:
+        "200":
+          description: Successfully retrieved databases
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/KVDBManagerGet_Response"
+              example:
+                status: OK
+                error: null
+                dbs:
+                  - "example-db1"
+                  - "example-db2"
+        "400":
+          $ref: "#/components/responses/BadRequest_400"
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+
+  /kvdb/manager/post:
+    post:
+      tags:
+        - KVDB
+      summary: Create a new database
+      description: |
+        This endpoint creates a new key-value database.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/KVDBManagerPost_Request"
+            example:
+              name: "example-db"
+              path: "/path/to/database.json"
+      responses:
+        "200":
+          $ref: "#/components/responses/GenericSuccess_200"
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/responses/BadRequest_400"
+              examples:
+                missing_name:
+                  summary: Missing name attribute in the request
+                  value:
+                    status: "ERROR"
+                    error: "Missing /name"
+                invalid_json:
+                  summary: Path is not a valid JSON file
+                  value:
+                    status: "ERROR"
+                    error: "The database could not be created. Error: An error occurred while parsing the JSON file '/tmp/kvdb.txt'"
+                path_not_exist:
+                  summary: The path does not exist
+                  value:
+                    status: "ERROR"
+                    error: "The database could not be created. Error: An error occurred while opening the file '/tmp/non-exist.json'"
+                db_exists:
+                  summary: Database already exists
+                  value:
+                    status: "ERROR"
+                    error: "The Database already exists."
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+
+  /kvdb/manager/delete:
+    post:
+      tags:
+        - KVDB
+      summary: Delete a database
+      description: |
+        This endpoint deletes a specific key-value database.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/KVDBManagerDelete_Request"
+            example:
+              name: "example-db"
+      responses:
+        "200":
+          $ref: "#/components/responses/GenericSuccess_200"
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/responses/BadRequest_400"
+              examples:
+                missing_name:
+                  summary: Missing name attribute in the request
+                  value:
+                    status: "ERROR"
+                    error: "Missing /name"
+                db_not_exist:
+                  summary: Database does not exist
+                  value:
+                    status: "ERROR"
+                    error: "The KVDB 'documentation' does not exist."
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+
+  /kvdb/manager/dump:
+    post:
+      tags:
+        - KVDB
+      summary: Dump all entries from a database
+      description: |
+        This endpoint retrieves all entries from a specific key-value database.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/KVDBManagerDump_Request"
+            example:
+              name: "example-db"
+              page: 1
+              records: 10
+      responses:
+        "200":
+          description: Successfully retrieved entries
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/KVDBManagerDump_Response"
+              example:
+                status: OK
+                error: null
+                entries:
+                  - key: "example-key1"
+                    value:
+                      field1: "value1"
+                      field2: 123
+                  - key: "example-key2"
+                    value: "value3"
+
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/responses/BadRequest_400"
+              examples:
+                missing_name:
+                  summary: Missing name attribute in the request
+                  value:
+                    status: "ERROR"
+                    entries: []
+                    error: "Missing /name"
+                page_zero:
+                  summary: Field page must be greater than 0
+                  value:
+                    status: "ERROR"
+                    error: "Field /page must be greater than 0"
+                records_zero:
+                  summary: Field records must be greater than 0
+                  value:
+                    status: "ERROR"
+                    error: "Field /records must be greater than 0"
+                db_not_exist:
+                  summary: Database does not exist
+                  value:
+                    status: "ERROR"
+                    entries: []
+                    error: "The KVDB 'documentation' does not exist."
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+
+  ################################
+  # Tester
+  ################################
+  /tester/session/post:
+    post:
+      tags:
+        - Tester
+      summary: Create a new tester session
+      description: |
+        This endpoint allows creating a new tester session.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TesterSessionPost_Request"
+      responses:
+        "200":
+          $ref: "#/components/responses/GenericSuccess_200"
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/responses/BadRequest_400"
+              examples:
+                missing_session:
+                  summary: Missing /session
+                  value:
+                    status: "ERROR"
+                    error: "Missing /session"
+                missing_name:
+                  summary: Name cannot be empty
+                  value:
+                    status: "ERROR"
+                    error: "Name cannot be empty"
+                session_already_exists:
+                  summary: Session name already exists
+                  value:
+                    status: "ERROR"
+                    error: "The name of the testing environment already exist"
+                policy_does_not_exist:
+                  summary: Policy file does not exist
+                  value:
+                    status: "ERROR"
+                    error: "Failed to create the testing environment: File '/var/lib/wazuh-server/engine/store/policy/wazuh/0' does not exist"
+                policy_without_assets:
+                  summary: Policy has no assets
+                  value:
+                    status: "ERROR"
+                    error: "Failed to create the testing environment: Policy 'policy/wazuh/0' has no assets"
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+
+  /tester/session/delete:
+    post:
+      tags:
+        - Tester
+      summary: Delete a tester session
+      description: |
+        This endpoint allows deleting a specific tester session.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TesterSessionDelete_Request"
+      responses:
+        "200":
+          $ref: "#/components/responses/GenericSuccess_200"
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/responses/BadRequest_400"
+              examples:
+                missing_name:
+                  summary: Name cannot be empty
+                  value:
+                    status: "ERROR"
+                    error: "Invalid name name: Name cannot be empty"
+                session_not_exist:
+                  summary: Session does not exist
+                  value:
+                    status: "ERROR"
+                    error: "The testing environment not exist"
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+
+  /tester/session/get:
+    post:
+      tags:
+        - Tester
+      summary: Retrieve a tester session
+      description: |
+        This endpoint retrieves details of a specific tester session.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TesterSessionGet_Request"
+      responses:
+        "200":
+          description: Successfully retrieved session
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TesterSessionGet_Response"
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/responses/BadRequest_400"
+              examples:
+                missing_name:
+                  summary: Name cannot be empty
+                  value:
+                    status: "ERROR"
+                    error: "Invalid name name: Name cannot be empty"
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+
+  /tester/session/reload:
+    post:
+      tags:
+        - Tester
+      summary: Reload a tester session
+      description: |
+        This endpoint reloads a specific tester session.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TesterSessionReload_Request"
+      responses:
+        "200":
+          $ref: "#/components/responses/GenericSuccess_200"
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/responses/BadRequest_400"
+              examples:
+                missing_name:
+                  summary: Missing name field
+                  value:
+                    status: "ERROR"
+                    error: "Invalid name name: Name cannot be empty"
+                session_non_exist:
+                  summary: Non-existent session
+                  value:
+                    status: "ERROR"
+                    error: "The testing environment not exist"
+                asset_validation_error:
+                  summary: Asset validation failure
+                  value:
+                    status: "ERROR"
+                    error: "Failed to create the testing environment: Expected 'name' key in asset document but got 'n'"
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+
+  /tester/run/post:
+    post:
+      tags:
+        - Tester
+      summary: Run a test in a session
+      description: |
+        This endpoint allows running a test in a specific tester session.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TesterRunPost_Request"
+      responses:
+        "200":
+          description: Successfully ran the test
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TesterRunPost_Response"
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/responses/BadRequest_400"
+              examples:
+                missing_fields:
+                  summary: Empty request
+                  value:
+                    status: "ERROR"
+                    error: "Error parsing events: NDJson parser error, empty batch"
+                session_non_exist:
+                  summary: Session does not exist
+                  value:
+                    status: "ERROR"
+                    error: "The testing environment not exist"
+                asset_validation_error:
+                  summary: Environment not enabled
+                  value:
+                    status: "ERROR"
+                    error: "The testing environment is not enabled"
+                namespace_missing:
+                  summary: Namespace required
+                  value:
+                    status: "ERROR"
+                    error: "Error: Namespaces parameter is required"
+                ndjson_too_short:
+                  summary: Batch too short
+                  value:
+                    status: "ERROR"
+                    error: "Error parsing events: NDJson parser error, invalid batch, expected at least 3 lines"
+                ndjson_invalid_subheader:
+                  summary: Invalid NDJSON subheader
+                  value:
+                    status: "ERROR"
+                    error: "Error parsing events: NDJson parser error, invalid subheader, expected '/module' and '/collector' fields"
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+
+  /tester/table/get:
+    post:
+      tags:
+        - Tester
+      summary: Retrieve all tester sessions
+      description: |
+        This endpoint retrieves a list of all tester sessions.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EmptyRequest"
+      responses:
+        "200":
+          description: Successfully retrieved sessions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TesterTableGet_Response"
+        "400":
+          $ref: "#/components/responses/BadRequest_400"
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+
+  ################################
+  # Geo
+  ################################
+  /geo/db/add:
+    post:
+      tags:
+        - Geo
+      summary: Add a new MMDB database
+      description: |
+        This endpoint allows adding a new MMDB (MaxMind Database) file to the geo manager.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GeoDbPost_Request"
+      responses:
+        "200":
+          $ref: "#/components/responses/GenericSuccess_200"
+        "400":
+          description: Bad Request. The request was malformed or failed validation.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/responses/BadRequest_400"
+              examples:
+                missingField:
+                  summary: Missing required field
+                  value:
+                    status: "ERROR"
+                    error: "Path cannot be empty"
+                invalidType:
+                  summary: Invalid type
+                  value:
+                    status: "ERROR"
+                    error: "Invalid geo::Type name string 'non-exist'"
+                duplicateName:
+                  summary: Database name already exists
+                  value:
+                    status: "ERROR"
+                    error: "Database with name 'base.mmdb' already exists"
+                duplicateType:
+                  summary: Type already has an associated database
+                  value:
+                    status: "ERROR"
+                    error: "Type 'city' already has the database 'base.mmdb'"
+                invalidFile:
+                  summary: File is not a valid MMDB
+                  value:
+                    status: "ERROR"
+                    error: "Cannot add database '/tmp/base.mmdb': An attempt to read data from the MaxMind DB file failed"
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+
+  /geo/db/del:
+    post:
+      tags:
+        - Geo
+      summary: Delete an MMDB database
+      description: |
+        This endpoint allows deleting an MMDB (MaxMind Database) file from the geo manager.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GeoDbDelete_Request"
+      responses:
+        "200":
+          $ref: "#/components/responses/GenericSuccess_200"
+        "400":
+          description: Bad Request. The request was malformed or failed validation.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/responses/BadRequest_400"
+              examples:
+                missingField:
+                  summary: Missing required field
+                  value:
+                    status: "ERROR"
+                    error: "Path cannot be empty"
+                notFound:
+                  summary: Database not found
+                  value:
+                    status: "ERROR"
+                    error: "Database 'base.mmdb' not found"
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+
+  /geo/db/list:
+    post:
+      tags:
+        - Geo
+      summary: List all MMDB databases
+      description: |
+        This endpoint retrieves a list of all MMDB (MaxMind Database) files in the geo manager.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EmptyRequest"
+      responses:
+        "200":
+          description: Successfully retrieved MMDB databases
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GeoDbList_Response"
+        "400":
+          $ref: "#/components/responses/BadRequest_400"
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+
+  /geo/db/remoteUpsert:
+    post:
+      tags:
+        - Geo
+      summary: Add or update an MMDB database from a remote location
+      description: |
+        This endpoint allows adding or updating an MMDB (MaxMind Database) file in the geo manager from a remote location.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GeoDbRemoteUpsert_Request"
+      responses:
+        "200":
+          $ref: "#/components/responses/GenericSuccess_200"
+        "400":
+          description: Bad Request. The request was malformed or failed validation.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/responses/BadRequest_400"
+              examples:
+                missingPath:
+                  summary: Missing path
+                  value:
+                    status: "ERROR"
+                    error: "Path is mandatory"
+                invalidType:
+                  summary: Invalid geo type
+                  value:
+                    status: "ERROR"
+                    error: "Invalid geo::Type name string 'non-exist'"
+                typeMismatch:
+                  summary: Type does not match existing database
+                  value:
+                    status: "ERROR"
+                    error: "The name 'base.mmdb' does not correspond to any database for type 'city'. If you want it to correspond, please delete the existing database and recreate it with this name."
+                typeAlreadyExists:
+                  summary: Type already has a database
+                  value:
+                    status: "ERROR"
+                    error: "Type 'city' already has the database 'base.mmdb'"
+                downloadError:
+                  summary: Failed to download database
+                  value:
+                    status: "ERROR"
+                    error: "Cannot download database from 'https://raw.githubusercontent.com/wazuh/wazuh/blob/main/src/engine/test/integration_tests/geo/data/base.mmdb': Failed to download file from 'https://raw.githubusercontent.com/wazuh/wazuh/blob/main/src/engine/test/integration_tests/geo/data/base.mmdb', error: HTTP response code said error, status code: 404."
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+
+#################################################################################
+# Components
+#################################################################################
+components:
+  #################################################################################
+  # Schemas
+  #################################################################################
+  schemas:
+    ################################
+    # Common
+    ################################
+    ReturnStatus:
+      type: string
+      enum:
+        - UNKNOWN
+        - OK
+        - ERROR
+      description: "Status codes representing different return states."
+
+    ReturnError:
+      type: string
+      description: "Error message if status is ERROR"
+      nullable: true
+
+    Response:
+      type: object
+      properties:
+        status:
+          $ref: "#/components/schemas/ReturnStatus"
+        error:
+          $ref: "#/components/schemas/ReturnError"
+
+    EmptyRequest:
+      type: object
+      description: "Empty request body"
+      properties: {}
+
+    ################################
+    # Catalog
+    ################################
+    ResourceFormat:
+      type: string
+      enum:
+        - json
+        - yaml
+        - yml
+      description: "Supported formats for the resources (Case sensitive)."
+
+    ResourceType:
+      type: string
+      enum:
+        - UNKNOWN
+        - decoder
+        - rule
+        - filter
+        - output
+        - schema
+        - collection
+        - integration
+      description: "Supported types for the resources (Case sensitive)."
+
+    ResourceName:
+      type: string
+      description: "Name of the resource, a '/' separated string. Where the first part is the type, the second part is the name, and the last part is the version."
+      example: "type/name/0"
+
+    Namespace:
+      type: string
+      description: "Namespace where the resource is located"
+      example: "namespace1"
+
+    ResourcePost_Request:
+      type: object
+      properties:
+        type:
+          $ref: "#/components/schemas/ResourceType"
+        format:
+          $ref: "#/components/schemas/ResourceFormat"
+        content:
+          type: string
+          description: "Content of the resource"
+        namespaceid:
+          $ref: "#/components/schemas/Namespace"
+
+    ResourceGet_Request:
+      type: object
+      properties:
+        name:
+          $ref: "#/components/schemas/ResourceName"
+        format:
+          $ref: "#/components/schemas/ResourceFormat"
+        namespaceid:
+          $ref: "#/components/schemas/Namespace"
+
+    ResourceGet_Response:
+      allOf:
+        - $ref: "#/components/schemas/Response"
+        - type: object
+          properties:
+            content:
+              type: string
+              description: "Content of the resource if status is OK"
+              nullable: true
+
+    ResourcePut_Request:
+      type: object
+      properties:
+        name:
+          $ref: "#/components/schemas/ResourceName"
+        format:
+          $ref: "#/components/schemas/ResourceFormat"
+        content:
+          type: string
+          description: "Content of the resource"
+        namespaceid:
+          $ref: "#/components/schemas/Namespace"
+
+    ResourceDelete_Request:
+      type: object
+      properties:
+        name:
+          $ref: "#/components/schemas/ResourceName"
+        namespaceid:
+          $ref: "#/components/schemas/Namespace"
+
+    ResourceValidate_Request:
+      type: object
+      properties:
+        name:
+          $ref: "#/components/schemas/ResourceName"
+        format:
+          $ref: "#/components/schemas/ResourceFormat"
+        content:
+          type: string
+          description: "Content of the resource"
+        namespaceid:
+          $ref: "#/components/schemas/Namespace"
+
+    NamespacesGet_Request:
+      type: object
+      description: "Request to list all namespaces from the catalog."
+
+    NamespacesGet_Response:
+      allOf:
+        - $ref: "#/components/schemas/Response"
+        - type: object
+          properties:
+            namespaces:
+              type: array
+              items:
+                type: string
+              description: "List of all namespaces"
+
+    ################################
+    # Policy
+    ################################
+    Warning:
+      type: string
+      description: "Warning message if validation errors"
+      nullable: true
+
+    PolicyName:
+      type: string
+      description: "Name of the policy, follows the format 'policy/<name>/<version>, example: 'policy/wazuh/0'"
+      example: "policy/example/0"
+
+    StoreGet_Response:
+      allOf:
+        - $ref: "#/components/schemas/Response"
+        - type: object
+          properties:
+            data:
+              type: string
+              description: "Policy data"
+              nullable: true
+
+    AssetPost_Response:
+      allOf:
+        - $ref: "#/components/schemas/Response"
+        - type: object
+          properties:
+            warning:
+              $ref: "#/components/schemas/Warning"
+
+    AssetDelete_Response:
+      allOf:
+        - $ref: "#/components/schemas/Response"
+        - type: object
+          properties:
+            warning:
+              $ref: "#/components/schemas/Warning"
+
+    AssetGet_Response:
+      allOf:
+        - $ref: "#/components/schemas/Response"
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                type: string
+              description: "List of assets"
+
+    AssetCleanDeleted_Response:
+      allOf:
+        - $ref: "#/components/schemas/Response"
+        - type: object
+          properties:
+            data:
+              type: string
+              description: "Assets deleted and validation errors"
+
+    PolicyDefaultParentGet_Request:
+      type: object
+      properties:
+        policy:
+          $ref: "#/components/schemas/PolicyName"
+        namespace:
+          $ref: "#/components/schemas/Namespace"
+
+    PolicyDefaultParentGet_Response:
+      allOf:
+        - $ref: "#/components/schemas/Response"
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: "#/components/schemas/ResourceName"
+              description: "Default parents of the namespace"
+
+    PolicyDefaultParentPost_Request:
+      type: object
+      properties:
+        policy:
+          $ref: "#/components/schemas/PolicyName"
+        namespace:
+          $ref: "#/components/schemas/Namespace"
+        default_parent:
+          $ref: "#/components/schemas/ResourceName"
+
+    PolicyDefaultParentDelete_Request:
+      type: object
+      properties:
+        policy:
+          $ref: "#/components/schemas/PolicyName"
+        namespace:
+          $ref: "#/components/schemas/Namespace"
+        default_parent:
+          $ref: "#/components/schemas/ResourceName"
+
+    PolicyList_Response:
+      allOf:
+        - $ref: "#/components/schemas/Response"
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: "#/components/schemas/PolicyName"
+              description: "List of all policies in the store"
+
+    #################################
+    # Router
+    #################################
+    RouteState:
+      type: string
+      enum:
+        - STATE_UNKNOWN
+        - DISABLED
+        - ENABLED
+      description: "State of the route"
+
+    PolicySync:
+      type: string
+      enum:
+        - SYNC_UNKNOWN
+        - UPDATED
+        - OUTDATED
+        - ERROR
+      description: "Whether the loaded policy is up to date or not with the catalog"
+
+    FilterName:
+      type: string
+      description: "Name of the filter, follows the format 'filter/<name>/<version>', example: 'filter/allow-all/0'"
+      example: "filter/example/0"
+
+    RouterEntry:
+      type: object
+      properties:
+        name:
+          type: string
+          description: "Name of the route"
+        policy:
+          $ref: "#/components/schemas/PolicyName"
+        filter:
+          $ref: "#/components/schemas/FilterName"
+        priority:
+          type: integer
+          description: "Priority of the route"
+        description:
+          type: string
+          description: "Description of the route"
+        policy_sync:
+          $ref: "#/components/schemas/PolicySync"
+        entry_status:
+          $ref: "#/components/schemas/RouteState"
+        uptime:
+          type: integer
+          description: "Uptime of the route in seconds"
+
+    RoutePost_Request:
+      type: object
+      properties:
+        name:
+          type: string
+          description: "Name of the route"
+        policy:
+          $ref: "#/components/schemas/PolicyName"
+        filter:
+          $ref: "#/components/schemas/FilterName"
+        priority:
+          type: integer
+          description: "Priority of the route"
+        description:
+          type: string
+          description: "Description of the route"
+
+    RouteDelete_Request:
+      type: object
+      properties:
+        name:
+          type: string
+          description: "Name of the route"
+
+    RouteGet_Request:
+      type: object
+      properties:
+        name:
+          type: string
+          description: "Name of the route"
+
+    RouteGet_Response:
+      allOf:
+        - $ref: "#/components/schemas/Response"
+        - type: object
+          properties:
+            route:
+              $ref: "#/components/schemas/RouterEntry"
+              description: "Details of the route"
+
+    RouteReload_Request:
+      type: object
+      properties:
+        name:
+          type: string
+          description: "Name of the route"
+
+    RoutePatchPriority_Request:
+      type: object
+      properties:
+        name:
+          type: string
+          description: "Name of the route"
+        priority:
+          type: integer
+          description: "New priority of the route"
+
+    TableGet_Response:
+      allOf:
+        - $ref: "#/components/schemas/Response"
+        - type: object
+          properties:
+            routes:
+              type: array
+              items:
+                $ref: "#/components/schemas/RouterEntry"
+              description: "List of all routes in the router"
+
+    QueuePost_Request:
+      type: object
+      properties:
+        wazuh_event:
+          type: string
+          description: "Wazuh event to be processed"
+
+    EpsUpdate_Request:
+      type: object
+      properties:
+        eps:
+          type: integer
+          description: "New EPS (Events Per Second) limit value for the Engine"
+        refresh_interval:
+          type: integer
+          description: "Interval in seconds to refresh the EPS limit"
+
+    EpsGet_Response:
+      allOf:
+        - $ref: "#/components/schemas/Response"
+        - type: object
+          properties:
+            eps:
+              type: integer
+              description: "Current EPS (Events Per Second) limit value for the Engine"
+            refresh_interval:
+              type: integer
+              description: "Interval in seconds to refresh the EPS limit"
+            enabled:
+              type: boolean
+              description: "Whether the EPS limit is enabled or not"
+
+    #################################
+    # KVDB
+    #################################
+    KVDBName:
+      type: string
+      description: "Name of the database"
+
+    KVDBKey:
+      type: string
+      description: "Key of the entry"
+
+    KVDBValue:
+      description: "Value of the key"
+      oneOf:
+        - type: "string"
+          example: "example-value"
+        - type: "number"
+          example: 123.45
+        - type: "integer"
+          example: 123
+        - type: "boolean"
+          example: true
+        - type: "object"
+          additionalProperties: true
+          example:
+            field1: "value1"
+            field2: 123
+        - type: "array"
+          items: {}
+          example:
+            - "value1"
+            - "value2"
+
+    KVDBEntry:
+      type: object
+      properties:
+        key:
+          $ref: "#/components/schemas/KVDBKey"
+        value:
+          $ref: "#/components/schemas/KVDBValue"
+
+    KVDBGet_Request:
+      type: object
+      properties:
+        name:
+          $ref: "#/components/schemas/KVDBName"
+        key:
+          $ref: "#/components/schemas/KVDBKey"
+
+    KVDBGet_Response:
+      allOf:
+        - $ref: "#/components/schemas/Response"
+        - type: object
+          properties:
+            value:
+              $ref: "#/components/schemas/KVDBValue"
+
+    KVDBSearch_Request:
+      type: object
+      properties:
+        name:
+          $ref: "#/components/schemas/KVDBName"
+        prefix:
+          type: string
+          description: "Prefix of the entries to search"
+          example: "example-prefix"
+        page:
+          type: integer
+          description: "Page number for pagination"
+          example: 1
+        records:
+          type: integer
+          description: "Number of records per page"
+          example: 10
+
+    KVDBSearch_Response:
+      allOf:
+        - $ref: "#/components/schemas/Response"
+        - type: object
+          properties:
+            entries:
+              type: array
+              items:
+                $ref: "#/components/schemas/KVDBEntry"
+              description: "List of entries if status is OK"
+
+    KVDBDelete_Request:
+      type: object
+      properties:
+        name:
+          $ref: "#/components/schemas/KVDBName"
+        key:
+          $ref: "#/components/schemas/KVDBKey"
+
+    KVDBPut_Request:
+      type: object
+      properties:
+        name:
+          $ref: "#/components/schemas/KVDBName"
+        entry:
+          $ref: "#/components/schemas/KVDBEntry"
+
+    KVDBManagerGet_Request:
+      type: object
+      properties:
+        must_be_loaded:
+          type: boolean
+          description: "If true, only the loaded databases will be returned"
+          example: true
+        filter_by_name:
+          $ref: "#/components/schemas/KVDBName"
+
+    KVDBManagerGet_Response:
+      allOf:
+        - $ref: "#/components/schemas/Response"
+        - type: object
+          properties:
+            dbs:
+              type: array
+              items:
+                $ref: "#/components/schemas/KVDBName"
+              description: "List of database names if status is OK"
+
+    KVDBManagerPost_Request:
+      type: object
+      properties:
+        name:
+          $ref: "#/components/schemas/KVDBName"
+        path:
+          type: string
+          description: "Path of the JSON file used to create the database"
+          example: "/path/to/database.json"
+
+    KVDBManagerDelete_Request:
+      type: object
+      properties:
+        name:
+          $ref: "#/components/schemas/KVDBName"
+
+    KVDBManagerDump_Request:
+      type: object
+      properties:
+        name:
+          $ref: "#/components/schemas/KVDBName"
+        page:
+          type: integer
+          description: "Page number for pagination"
+          example: 1
+        records:
+          type: integer
+          description: "Number of records per page"
+          example: 10
+
+    KVDBManagerDump_Response:
+      allOf:
+        - $ref: "#/components/schemas/Response"
+        - type: object
+          properties:
+            entries:
+              type: array
+              items:
+                $ref: "#/components/schemas/KVDBEntry"
+              description: "List of entries if status is OK"
+    #################################
+    # Tester
+    #################################
+    TesterSessionName:
+      type: string
+      description: "Name of the session"
+
+    TesterLifetime:
+      type: integer
+      description: "Lifetime of the session in seconds"
+
+    TesterDescription:
+      type: string
+      description: "Optional description of the session"
+      nullable: true
+
+    TesterSessionPost:
+      type: object
+      properties:
+        name:
+          $ref: "#/components/schemas/TesterSessionName"
+        policy:
+          $ref: "#/components/schemas/PolicyName"
+        lifetime:
+          $ref: "#/components/schemas/TesterLifetime"
+        description:
+          $ref: "#/components/schemas/TesterDescription"
+
+    TesterSession:
+      type: object
+      properties:
+        name:
+          $ref: "#/components/schemas/TesterSessionName"
+        policy:
+          $ref: "#/components/schemas/PolicyName"
+        lifetime:
+          $ref: "#/components/schemas/TesterLifetime"
+        description:
+          $ref: "#/components/schemas/TesterDescription"
+        policy_sync:
+          $ref: "#/components/schemas/PolicySync"
+        entry_status:
+          $ref: "#/components/schemas/RouteState"
+        last_use:
+          type: integer
+          description: "Last use of the session in seconds since epoch"
+
+    TesterResult:
+      type: object
+      properties:
+        output:
+          type: string
+          description: "JSON output of the event"
+        asset_traces:
+          type: array
+          items:
+            type: object
+            properties:
+              asset:
+                $ref: "#/components/schemas/ResourceName"
+              success:
+                type: boolean
+                description: "If the asset was successfully decoded"
+              traces:
+                type: array
+                items:
+                  type: string
+                description: "Traces of the asset"
+
+    TesterRunPost_Request:
+      type: object
+      properties:
+        name:
+          $ref: "#/components/schemas/TesterSessionName"
+        ndjson_event:
+          type: string
+          description: "Event to test in NDJSON format"
+        trace_level:
+          type: string
+          enum:
+            - NONE
+            - ASSET_ONLY
+            - ALL
+          description: "Level of traces"
+        asset_trace:
+          type: array
+          items:
+            $ref: "#/components/schemas/ResourceName"
+          description: "Assets for which detailed traces are required"
+        namespaces:
+          type: array
+          items:
+            $ref: "#/components/schemas/Namespace"
+          description: "Namespaces where the assets to test are located"
+
+    TesterRunPost_Response:
+      allOf:
+        - $ref: "#/components/schemas/Response"
+        - type: object
+          properties:
+            result:
+              $ref: "#/components/schemas/TesterResult"
+
+    TesterTableGet_Response:
+      allOf:
+        - $ref: "#/components/schemas/Response"
+        - type: object
+          properties:
+            sessions:
+              type: array
+              items:
+                $ref: "#/components/schemas/TesterSession"
+              description: "List of sessions if status is OK"
+
+    TesterSessionReload_Request:
+      type: object
+      properties:
+        name:
+          $ref: "#/components/schemas/TesterSessionName"
+
+    TesterSessionGet_Request:
+      type: object
+      properties:
+        name:
+          $ref: "#/components/schemas/TesterSessionName"
+
+    TesterSessionGet_Response:
+      allOf:
+        - $ref: "#/components/schemas/Response"
+        - type: object
+          properties:
+            session:
+              $ref: "#/components/schemas/TesterSession"
+              description: "Details of the session"
+
+    TesterSessionDelete_Request:
+      type: object
+      properties:
+        name:
+          $ref: "#/components/schemas/TesterSessionName"
+
+    TesterSessionPost_Request:
+      type: object
+      properties:
+        session:
+          $ref: "#/components/schemas/TesterSessionPost"
+
+    #################################
+    # Geo
+    #################################
+    GeoDbEntry:
+      type: object
+      properties:
+        name:
+          type: string
+          description: "Database name"
+        path:
+          type: string
+          description: "Path of the MMDB database file"
+        type:
+          type: string
+          description: "MMDB database type [city|asn]"
+
+    GeoDbPost_Request:
+      type: object
+      properties:
+        path:
+          type: string
+          description: "Path of the MMDB database file to add"
+        type:
+          type: string
+          description: "MMDB database type [city|asn]"
+
+    GeoDbDelete_Request:
+      type: object
+      properties:
+        path:
+          type: string
+          description: "Path of the MMDB database file to delete"
+
+    GeoDbList_Response:
+      allOf:
+        - $ref: "#/components/schemas/Response"
+        - type: object
+          properties:
+            entries:
+              type: array
+              items:
+                $ref: "#/components/schemas/GeoDbEntry"
+              description: "List of MMDB entries in the geo manager"
+
+    GeoDbRemoteUpsert_Request:
+      type: object
+      properties:
+        path:
+          type: string
+          description: "Path of the MMDB database file to add"
+        type:
+          type: string
+          description: "MMDB database type [city|asn]"
+        dbUrl:
+          type: string
+          description: "URL of the remote database"
+        hashUrl:
+          type: string
+          description: "Hash URL for integrity verification"
+
+  #################################################################################
+  # Responses
+  #################################################################################
+  responses:
+    InternalServerError_500:
+      description: "Internal Server Error"
+      content:
+        text/plain:
+          schema:
+            type: string
+            description: "Internal server error message"
+          example: |
+            Internal Server Error
+
+    BadRequest_400:
+      description: "Bad Request"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Response"
+          example:
+            status: ERROR
+            error: "Error message"
+
+    GenericSuccess_200:
+      description: "Generic Success"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Response"
+          example:
+            status: OK
+            error: null
