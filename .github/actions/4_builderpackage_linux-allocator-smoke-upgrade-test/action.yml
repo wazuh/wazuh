@@ -10,7 +10,10 @@ inputs:
     required: true
   tested_docker:
     description: 'image:tag of tested Docker'
-    required: true 
+    required: true
+  architecture:
+    description: 'Architecture of the testing container, only required if it is ppc64'
+    required: false 
 
 runs:
   using: 'composite'
@@ -18,16 +21,27 @@ runs:
     - name: Run test upgrade Wazuh agent package
       shell: bash
       run: |
-        ${{ env.SSH_COMMAND }} 'sudo docker run \
-          -v $(pwd)/wazuh/.github/actions/4_builderpackage_linux-smoke-upgrade-test/:/tests \
-          -v /tmp/:/packages \
-          --entrypoint '/bin/bash' ${{ inputs.tested_docker }} \
-          -c "/tests/smoke_upgrade_test.sh ${{ inputs.old_package_url }}"'
-        scp -i ${{ env.ansible_ssh_private_key_file }} -P ${{ env.ansible_port }} ${{ env.ansible_ssh_common_args }} ${{ env.ansible_user }}@${{ env.ansible_host }}:/tmp/upgraded_version.log /tmp
+        if [ "${{ inputs.architecture }}" == "ppc64" ]; then
+          ${{ env.SSH_COMMAND }} 'docker create --name test_container --entrypoint '/bin/bash' ${{ inputs.tested_docker }} \
+            -c "/tests/smoke_upgrade_test.sh ${{ inputs.old_package_url }}"'
+          ${{ env.SSH_COMMAND }} 'docker cp $(pwd)/wazuh/.github/actions/4_builderpackage_linux-smoke-upgrade-test/. test_container:/tests/'
+          ${{ env.SSH_COMMAND }} 'docker cp /tmp/. test_container:/packages'
+          ${{ env.SSH_COMMAND }} 'docker start test_container'
+          ${{ env.SSH_COMMAND }} 'docker wait test_container'
+          ${{ env.SSH_COMMAND }} 'docker cp test_container:/packages/upgraded_version.log /tmp/upgraded_version.log'
+          ${{ env.SSH_COMMAND }} 'docker rm test_container'
+        else
+          ${{ env.SSH_COMMAND }} 'sudo docker run \
+            -v $(pwd)/wazuh/.github/actions/4_builderpackage_linux-smoke-upgrade-test/:/tests \
+            -v /tmp/:/packages \
+            --entrypoint '/bin/bash' ${{ inputs.tested_docker }} \
+            -c "/tests/smoke_upgrade_test.sh ${{ inputs.old_package_url }}"'
+        fi
 
     - name: Check test result
       shell: bash
       run: |
+        scp -i ${{ env.ansible_ssh_private_key_file }} -P ${{ env.ansible_port }} ${{ env.ansible_ssh_common_args }} ${{ env.ansible_user }}@${{ env.ansible_host }}:/tmp/upgraded_version.log /tmp
         if grep -iq "${{ inputs.expected_upgrade_version }}" /tmp/upgraded_version.log ; then
           echo "Package successfully upgraded."
         else
