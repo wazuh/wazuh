@@ -278,7 +278,7 @@ checks:
       - pci_dss_v3.2.1: ["2.1", "2.1.1"]
       - pci_dss_v4.0: ["2.2.2", "2.3.1"]
       - soc_2: ["CC6.3"]
-    condition: all
+    condition: any
     rules:
       - 'c:net user guest -> r:Account active\s+No'
       - 'c:net user guest -> r:The user name could not be found.'
