@@ -338,10 +338,18 @@ int kprobe__vfs_open(struct pt_regs *ctx)
 }
 
 SEC("kprobe/security_inode_setattr")
-int kprobe__security_inode_setattr(struct pt_regs *ctx) {
-    struct dentry *dentry = (struct dentry *)PT_REGS_PARM1(ctx);
-    if (!dentry)
-        return 0;
+int kprobe__security_inode_setattr(struct pt_regs *ctx)
+{
+    struct dentry *dentry;
+    if (LINUX_KERNEL_VERSION < KERNEL_VERSION(6, 0, 0)) {
+        dentry = (struct dentry *)PT_REGS_PARM1(ctx);
+        if (!dentry) // Necessary condition to validate BPF program
+            return 0;
+    } else {
+        dentry = (struct dentry *)PT_REGS_PARM2(ctx);
+        if (!dentry) // Necessary condition to validate BPF program
+            return 0;
+    }
 
     struct inode *d_inode = NULL;
     bpf_probe_read_kernel(&d_inode, sizeof(d_inode), &dentry->d_inode);
@@ -403,13 +411,13 @@ SEC("kprobe/vfs_unlink")
 int kprobe__vfs_unlink(struct pt_regs *ctx)
 {
     struct dentry *dentry;
-    if (LINUX_KERNEL_VERSION >= KERNEL_VERSION(5, 12, 0)) {
-        dentry = (struct dentry *)PT_REGS_PARM3(ctx);
-        if (!dentry) // This condition is necessary to open the BPF program
+    if (LINUX_KERNEL_VERSION < KERNEL_VERSION(5, 12, 0)) {
+        dentry = (struct dentry *)PT_REGS_PARM2(ctx);
+        if (!dentry) // Necessary condition to validate BPF program
             return 0;
     } else {
-        dentry = (struct dentry *)PT_REGS_PARM2(ctx);
-        if (!dentry) // This condition is necessary to open the BPF program
+        dentry = (struct dentry *)PT_REGS_PARM3(ctx);
+        if (!dentry) // Necessary condition to validate BPF program
             return 0;
     }
 
