@@ -11,7 +11,6 @@ from concurrent.futures import process
 from functools import partial
 from typing import Callable, Dict
 import wazuh.core.results as wresults
-from sqlalchemy.exc import OperationalError
 from wazuh.core import common, exception
 from wazuh.core.config.client import CentralizedConfig
 from wazuh.core.rbac import RBACManager
@@ -21,7 +20,7 @@ pools = common.mp_pools.get()
 authentication_funcs = {'check_token', 'check_user_master', 'get_permissions', 'get_security_conf'}
 
 class TaskDispatcher:
-    """Represents a distributed API request."""
+    """Represents a task dispatch request."""
 
     def __init__(
         self,
@@ -48,14 +47,14 @@ class TaskDispatcher:
             Arguments to be passed to function `f`. Default `None`
         debug : bool, optional
             Enable debug messages and raise exceptions. Default `False`
+        current_user : str
+            User who started the request
         wait_for_complete : bool, optional
             True to disable timeout, false otherwise. Default `False`
         is_async : bool, optional
             Default `False`, specify if the request is asynchronous or not
         rbac_permissions : dict, optional
             Default `None`, RBAC user's permissions
-        current_user : str
-            User who started the request
         api_timeout : int
             Timeout set in source API for the request
         rbac_manager : RBACManager
@@ -206,8 +205,6 @@ class TaskDispatcher:
                     self.debug_log('Finished executing request locally')
                 except asyncio.TimeoutError:
                     raise exception.WazuhInternalError(3021)
-                except OperationalError as exc:
-                    raise exception.WazuhInternalError(2008, extra_message=str(exc.orig))
                 except process.BrokenProcessPool:
                     raise exception.WazuhInternalError(901)
             except json.decoder.JSONDecodeError:
