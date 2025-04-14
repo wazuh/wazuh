@@ -22,12 +22,13 @@ on:
           - rpm
       architecture:
         description: |
-          Architecture of the package [amd64, x86_64, arm64]
+          Architecture of the package [amd64, x86_64, arm64, aarch64]
         type: choice
         options:
           - amd64
           - x86_64
           - arm64
+          - aarch64
         required: true
       source_reference:
         description: |
@@ -47,6 +48,17 @@ jobs:
           repository: wazuh/wazuh
           ref: ${{ inputs.source_reference }}
 
+      - name: Set ARCH
+        run: |
+            if [ ${{ inputs.architecture }} = 'x86_64' ]; then
+              arch="amd64"
+            elif [ ${{ inputs.architecture }} = 'aarch64' ]; then
+              arch="arm64"
+            else
+              arch=${{ inputs.architecture }}
+            fi
+            echo "ARCH=$arch" >> $GITHUB_ENV;
+
       - name: Set TAG
         run: |
           VERSION="$(grep '"version"' VERSION.json | sed -E 's/.*"version": *"([^"]+)".*/\1/')"
@@ -60,13 +72,13 @@ jobs:
 
       - name: Copy build.sh, vcpkg-configuration.json and utils to Dockerfile path
         run: |
-          dockerfile_path="packages/${{ inputs.system }}s/${{ inputs.architecture }}"
+          dockerfile_path="packages/${{ inputs.system }}s/${{ env.ARCH }}"
           echo "DOCKERFILE_PATH=$dockerfile_path" >> $GITHUB_ENV
           cp packages/build.sh $dockerfile_path
           cp packages/${{ inputs.system }}s/utils/* $dockerfile_path
           cp src/engine/vcpkg-configuration.json $dockerfile_path
           cp src/engine/vcpkg.json $dockerfile_path
 
-      - name: Build and push image pkg_${{ inputs.system }}_server_builder_amd64 with tag ${{ env.TAG }} to Github Container Registry
+      - name: Build and push image pkg_${{ inputs.system }}_server_builder_${{ env.ARCH }} with tag ${{ env.TAG }} to Github Container Registry
         run:
-          bash .github/actions/ghcr-pull-and-push/build_and_push_image_to_ghcr.sh ${{ secrets.GITHUB_TOKEN }} ${{ github.actor}} pkg_${{ inputs.system }}_server_builder_${{ inputs.architecture }} ${{ env.DOCKERFILE_PATH }} ${{ env.TAG }}
+          bash .github/actions/ghcr-pull-and-push/build_and_push_image_to_ghcr.sh ${{ secrets.GITHUB_TOKEN }} ${{ github.actor}} pkg_${{ inputs.system }}_server_builder_${{ env.ARCH }} ${{ env.DOCKERFILE_PATH }} ${{ env.TAG }}
