@@ -1,11 +1,13 @@
 #!/bin/bash
 set_utils(){
     if [ -n "$(command -v rpm)" ]; then
-        install="rpm -ivh --force --ignorearch"
+        install="rpm -ivh --ignorearch"
+        upgrade="rpm -Uvh --ignorearch"
         get_package_version='rpm -q --qf %{VERSION}\n'
         package_extension="rpm"
     elif [ -n "$(command -v dpkg)" ]; then
         install="dpkg --install"
+        upgrade=$install
         get_package_version='dpkg-query -W -f=${version}\n'
         package_extension="deb"
     else
@@ -14,13 +16,25 @@ set_utils(){
     fi
 }
 
-install_package(){
-    local installing_package_path=$1
-    if [ -z "$installing_package_path" ]; then
+package_operation(){
+    local package_path=$1
+    local package_operation=$2
+
+    if [ -z "$package_path" ]; then
         echo "Error: No package found to install"
         exit 1
     fi
-    $install "$installing_package_path"
+
+    if [ -z "$package_operation" ] || { [ "$package_operation" != "install" ] && [ "$package_operation" != "upgrade" ]; }; then
+        echo "Error: Missing package operation or not supported"
+        exit 1
+    fi
+
+    if [ "$package_operation" == "install" ]; then
+        $install "$package_path"
+    else
+        $upgrade "$package_path"
+    fi
 }
 
 set_dummy_manager_ip(){
@@ -53,9 +67,9 @@ main() {
     OLD_PACKAGE_URL="$1"
     set_utils
     download_package "$OLD_PACKAGE_URL"
-    install_package "/old_package/$(basename "$OLD_PACKAGE_URL")"
+    package_operation "/old_package/$(basename "$OLD_PACKAGE_URL")" "install"
     set_dummy_manager_ip
-    install_package "/packages/$(ls /packages | grep "wazuh.*$package_extension$" | grep -Ev "dbg|debug")"
+    package_operation "/packages/$(ls /packages | grep "wazuh.*$package_extension$" | grep -Ev "dbg|debug")" "upgrade"
     save_upgraded_version
 }
 
