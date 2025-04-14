@@ -39,6 +39,7 @@ debian/cis_debian12.yml
 mongodb/cis_mongodb_36.yml
 nginx/cis_nginx_1.yml
 ol/9/cis_oracle_linux_9.yml
+ol/10/cis_oracle_linux_10.yml
 oracledb/cis_oracle_database_19c.yml
 rhel/5/cis_rhel5_linux.yml
 rhel/6/cis_rhel6_linux.yml
