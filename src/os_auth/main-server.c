@@ -574,7 +574,7 @@ int main(int argc, char **argv)
 
         set_non_blocking(remote_sock);
 
-        event.events = EPOLLIN;
+        event.events = EPOLLIN | EPOLLET;
         event.data.u32 = 0;
 
         if (epoll_ctl(g_epfd, EPOLL_CTL_ADD, remote_sock, &event) < 0)
@@ -820,7 +820,7 @@ static int handle_ssl_read(struct client *client) {
                 *end = '\0';
                 // Enable epoll for writing
                 struct epoll_event event;
-                event.events = EPOLLOUT;
+                event.events = EPOLLOUT | EPOLLET;
                 event.data.u32 = client->index;
                 if (epoll_ctl(g_epfd, EPOLL_CTL_MOD, client->socket, &event) < 0) {
                     merror("Couldn't modify event");
@@ -837,9 +837,10 @@ static int handle_ssl_read(struct client *client) {
         } else {
             int err = SSL_get_error(client->ssl, ret);
             if (err == SSL_ERROR_WANT_READ) {
-                mdebug2("SSL read in progress for socket=%d", client->socket);
+                mdebug2("SSL read in progress for socket=%d SSL_ERROR_WANT_READ", client->socket);
                 return 0;
             } else if (err == SSL_ERROR_WANT_WRITE) {
+                mdebug2("SSL read in progress for socket=%d SSL_ERROR_WANT_WRITE", client->socket);
                 return 0;
             } else {
                 merror("SSL read error (%d)", err);
@@ -856,10 +857,19 @@ static int handle_ssl_read(struct client *client) {
 }
 
 static int handle_ssl_handshake(struct client *client) {
+    struct epoll_event event;
     int ret = SSL_accept(client->ssl);
     if (ret == 1) {
         client->handshake_done = true;
         mdebug1("SSL handshake completed for socket=%d", client->socket);
+
+        // Handshake completed successfully set the client to read
+        event.events = EPOLLIN | EPOLLET;
+        event.data.u32 = client->index;
+        if (epoll_ctl(g_epfd, EPOLL_CTL_MOD, client->socket, &event) < 0) {
+            merror("Couldn't modify event");
+            return -1;
+        }
 
         /* Additional verification of the agent's certificate. */
         if (config.flags.verify_host && config.agent_ca) {
@@ -871,11 +881,26 @@ static int handle_ssl_handshake(struct client *client) {
         return 1;
     } else {
         int err = SSL_get_error(client->ssl, ret);
-        if (err == SSL_ERROR_WANT_READ || err == SSL_ERROR_WANT_WRITE) {
-            mdebug2("SSL handshake in progress for socket=%d", client->socket);
+        if (err == SSL_ERROR_WANT_READ) {
+            mdebug2("SSL handshake in progress for socket=%d SSL_ERROR_WANT_READ", client->socket);
+            event.events = EPOLLIN | EPOLLET;
+            event.data.u32 = client->index;
+            if (epoll_ctl(g_epfd, EPOLL_CTL_MOD, client->socket, &event) < 0) {
+                merror("Couldn't modify event");
+                return -1;
+            }
+            return 0;
+        } else if (err == SSL_ERROR_WANT_WRITE) {
+            mdebug2("SSL handshake in progress for socket=%d SSL_ERROR_WANT_WRITE", client->socket);
+            event.events = EPOLLIN | EPOLLOUT | EPOLLET;
+            event.data.u32 = client->index;
+            if (epoll_ctl(g_epfd, EPOLL_CTL_MOD, client->socket, &event) < 0) {
+                merror("Couldn't modify event");
+                return -1;
+            }
             return 0;
         } else {
-            merror("SSL handshake failed for socket=%d: %s", client->socket, ERR_error_string(ERR_get_error(), NULL));
+            merror("SSL handshake failed for socket=%d: %s %d", client->socket, ERR_error_string(ERR_get_error(), NULL),err);
             return -1;
         }
     }
@@ -891,10 +916,14 @@ static int handle_ssl_write(struct client *client) {
             client->write_offset += ret;
         } else {
             int err = SSL_get_error(client->ssl, ret);
-            if (err == SSL_ERROR_WANT_WRITE || err == SSL_ERROR_WANT_READ) {
-                mdebug2("SSL write in progress for socket=%d", client->socket);
+            if (err == SSL_ERROR_WANT_WRITE) {
+                mdebug2("SSL write in progress for socket=%d SSL_ERROR_WANT_WRITE", client->socket);
                 return 0;
-            } else {
+            } else if (err == SSL_ERROR_WANT_READ) {
+                mdebug2("SSL write in progress for socket=%d SSL_ERROR_WANT_READ", client->socket);
+                return 0;
+            }
+            else {
                 merror("SSL write error (%d)", err);
                 return -1;
             }
@@ -1032,11 +1061,8 @@ void* run_remote_server(__attribute__((unused)) void *arg) {
                     int ret = handle_ssl_handshake(g_client_pool[index_client]);
                     if (ret < 0) {
                         delete_client(index_client);
-                        continue;
-                    } else if (ret == 0) {
-                        // Handshake in progress
-                        continue;
                     }
+                    continue;
                 }
 
                 if (events[i].events & EPOLLIN) {
