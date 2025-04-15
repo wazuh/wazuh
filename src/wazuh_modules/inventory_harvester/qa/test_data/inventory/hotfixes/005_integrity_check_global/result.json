@@ -10,7 +10,7 @@
                 },
                 "package": {
                     "hotfix": {
-                        "name": "KB3114960"
+                        "name": "KB5034763"
                     }
                 },
                 "wazuh": {
@@ -28,6 +28,23 @@
                 "package": {
                     "hotfix": {
                         "name": "KB5034763"
+                    }
+                },
+                "wazuh": {
+                    "schema": {
+                        "version": "1.0"
+                    }
+                }
+            },
+            {
+                "agent": {
+                    "id": "001",
+                    "name": "DESKTOP-5RL9J34",
+                    "version": "v4.10.1"
+                },
+                "package": {
+                    "hotfix": {
+                        "name": "KB3114960"
                     }
                 },
                 "wazuh": {

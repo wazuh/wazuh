@@ -24,6 +24,7 @@ import os
 import subprocess
 import json
 import shutil
+from urllib.parse import quote
 from pathlib import Path
 
 # ---------- Global Constants ----------
@@ -32,62 +33,11 @@ logging.basicConfig(level=logging.INFO)
 LOGGER = logging.getLogger(__name__)
 
 GLOBAL_URL = "localhost:9200"
-TEMPLATE_ROOT = Path("wazuh_modules/inventory_harvester/indexer/template")
 TEST_DATA_ROOT = Path("wazuh_modules/inventory_harvester/qa/test_data")
 QUEUE_DIR = Path("queue")
 
 
 # ---------- Utility Functions ----------
-
-
-def discover_templates():
-    """
-    Discovers all valid template files in TEMPLATE_ROOT.
-    Skips 'update', 'fim-files', and 'fim-registries' (normalized to 'files' and 'registries').
-    """
-
-    def valid(path: Path):
-        name = path.name
-        return "update" not in name
-
-    return [path for path in TEMPLATE_ROOT.rglob("wazuh-states-*.json") if valid(path)]
-
-
-def create_index_from_template(template_path: Path):
-    """
-    Uploads a template and creates a dummy index that matches its index_patterns.
-    """
-    with template_path.open("r", encoding="utf-8") as f:
-        template_data = json.load(f)
-
-    template_name = template_path.stem
-    url = f"http://{GLOBAL_URL}/_index_template/{template_name}"
-    resp = requests.put(url, json=template_data)
-    assert resp.status_code in (200, 201), (
-        f"Failed to upload template {template_name}: {resp.text}"
-    )
-
-    pattern = template_data.get("index_patterns", [None])[0]
-    if pattern and "*" in pattern:
-        if "fim-files" in template_name:
-            concrete_index = "wazuh-states-files-cluster01"
-        elif "fim-registries" in template_name:
-            concrete_index = "wazuh-states-registries-cluster01"
-        else:
-            concrete_index = pattern.replace("*", "-cluster01")
-
-        index_url = f"http://{GLOBAL_URL}/{concrete_index}"
-        for _ in range(5):
-            create_resp = requests.put(index_url)
-            if create_resp.status_code in (200, 201):
-                return
-            if "resource_already_exists_exception" in create_resp.text:
-                LOGGER.info(f"Index '{concrete_index}' already exists. Skipping.")
-                return
-            time.sleep(1)
-        raise AssertionError(
-            f"Failed to create index '{concrete_index}': {create_resp.text}"
-        )
 
 
 def wait_for_opensearch(url: str, timeout: int = 60):
@@ -155,17 +105,6 @@ def clear_all_indices():
     yield
 
 
-@pytest.fixture(autouse=True)
-def load_all_templates():
-    """
-    Uploads all relevant templates and creates matching indices.
-    """
-    templates = discover_templates()
-    LOGGER.info(f"Loading {len(templates)} templates...")
-    for template in templates:
-        create_index_from_template(template)
-
-
 @pytest.fixture
 def test_folder(request):
     return request.param
@@ -226,10 +165,22 @@ def test_data_indexation(opensearch, test_folder):
                 pre_data = json.load(f)
 
             for idx in pre_data:
-                index_url = f"http://{GLOBAL_URL}/{idx['index_name']}/_doc"
+                index_name = idx["index_name"]
+                ids_map = idx.get("ids", {})
+
                 for doc in idx["data"]:
-                    resp = requests.post(index_url, json=doc)
-                    assert resp.status_code == 201, f"Insert failed: {resp.text}"
+                    agent_id = doc["agent"]["id"]
+                    raw_id = ids_map.get(agent_id)
+                    assert raw_id, f"No _id defined for agent.id = '{agent_id}'"
+
+                    encoded_id = quote(
+                        raw_id, safe=""
+                    )  # encode everything that might break the path
+                    index_url = f"http://{GLOBAL_URL}/{index_name}/_doc/{encoded_id}"
+                    resp = requests.put(index_url, json=doc)
+                    assert resp.status_code in (200, 201), (
+                        f"Insert failed: {resp.status_code} {resp.text}"
+                    )
 
         # Run test tool
         command = [
@@ -238,8 +189,6 @@ def test_data_indexation(opensearch, test_folder):
             str(test_path / "config.json"),
             "-l",
             log_file,
-            "-t",
-            "dummy_template.json",
             "-i",
             str(test_path / "inputs/"),
         ]
@@ -257,12 +206,16 @@ def test_data_indexation(opensearch, test_folder):
             assert resp.status_code == 200, f"Search failed: {resp.text}"
 
             hits = resp.json()["hits"]
+            LOGGER.debug(f"Fetched documents: {hits['hits']}")
+            LOGGER.debug(f"Expected documents: {idx_def['data']}")
             assert hits["total"]["value"] == len(idx_def["data"]), (
                 f"Mismatch in '{index}': expected {len(idx_def['data'])}, got {hits['total']['value']}"
             )
 
             for doc in idx_def["data"]:
                 if not any(doc == hit["_source"] for hit in hits["hits"]):
+                    LOGGER.debug(f"Fetched document: {idx_def['data']}")
+                    LOGGER.debug(f"Expected document: {doc}")
                     pytest.fail(
                         f"Missing document in '{index}': {json.dumps(doc, indent=2)}"
                     )

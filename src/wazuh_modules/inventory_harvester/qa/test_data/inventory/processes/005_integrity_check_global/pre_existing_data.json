@@ -1,6 +1,10 @@
 [
     {
         "index_name": "wazuh-states-processes-cluster01",
+        "ids":{
+            "001": "001_5892",
+            "002": "002_5892"
+        },
         "data": [
             {
                 "agent": {

@@ -1,6 +1,10 @@
 [
     {
         "index_name": "wazuh-states-packages-cluster01",
+        "ids": {
+            "001": "001_ec465b7eb5fa011a336e95614072e4c7f1a65a53",
+            "002": "001_ec465b7eb5fa011a336e95614072e4c7f1a65a54"
+        },
         "data": [
             {
                 "agent": {

@@ -1,7 +1,7 @@
 {
   "agent_info": {
     "agent_id": "002",
-    "agent_ip": "any",
+    "agent_ip": "10.0.0.1",
     "agent_name": "b593602240f5",
     "agent_version": "v4.11.1"
   },
@@ -9,7 +9,7 @@
   "data": {
     "attributes_type": "syscollector_network_address",
     "attributes": {
-      "address": "any",
+      "address": "10.0.0.1",
       "broadcast": "0.0.0.0",
       "checksum": "1691178971959743855",
       "iface": "eth0",

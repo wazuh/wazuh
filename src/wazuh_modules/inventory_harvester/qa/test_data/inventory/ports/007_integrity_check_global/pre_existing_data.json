@@ -1,6 +1,11 @@
 [
     {
         "index_name": "wazuh-states-ports-cluster01",
+        "ids":
+        {
+            "002": "002_b9ce16c7c8d82ab1d4df21518fd85fc8d0672396",
+            "003": "003_b9ce16c7c8d82ab1d4df21518fd85fc8d0672397"
+        },
         "data": [
             {
                 "agent": {
@@ -46,10 +51,10 @@
                 }
             },
             {
-                "agent_info": {
-                    "agent_id": "003",
-                    "agent_name": "DESKTOP-EQ4F57D",
-                    "agent_version": "v4.9.2"
+                "agent": {
+                    "id": "003",
+                    "name": "DESKTOP-EQ4F57D",
+                    "version": "v4.9.2"
                 },
                 "destination": {
                     "ip": "1.1.1.1",

@@ -56,7 +56,6 @@ These tests verify that after certain operations are performed, the affected ind
 
    ```bash
    echo "{}" > states_update_mappings.json
-   echo '{"index_patterns":["wazuh-states-*"],"priority":1,"template":{"settings":{},"mappings":{},"aliases":{}}}' > dummy_template.json
    python -m pytest -vv -rA wazuh_modules/inventory_harvester/qa/ --log-cli-level=DEBUG
    ```
 

@@ -4,6 +4,9 @@
         "data": [
             {
                 "agent": {
+                    "host": {
+                        "ip": "10.0.0.2"
+                    },
                     "id": "003",
                     "name": "DESKTOP-R8MRG1I",
                     "version": "v4.7.5"

@@ -10,7 +10,7 @@
     "scan_time": "2025/03/21 02:13:27",
     "iface": "eth0",
     "proto": 0,
-    "address": "any",
+    "address": "10.0.0.1",
     "netmask": "1.1.1.1",
     "broadcast": "0.0.0.0",
     "checksum": "c13a7528210234983cf6fee4bfce2cf1cd99e34c",
