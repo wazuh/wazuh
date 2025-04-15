@@ -224,7 +224,7 @@ jobs:
       - name: Get latest Wazuh release from GitHub
         run: |
           apt-get update && apt-get install -y curl jq
-          LATEST_TAG=$(curl -s https://api.github.com/repos/wazuh/wazuh/releases/latest | jq -r .tag_name | sed 's/^v//')
+          LATEST_TAG=$(curl -s https://api.github.com/repos/wazuh/wazuh/releases | jq -r '.[].tag_name' | grep -vE 'alpha|beta|rc' | sed 's/^v//' | grep -E '^4\.[0-9]+\.[0-9]+$' | sort -V | tail -n1)
           echo "Latest release detected: $LATEST_TAG"
           echo "PUBLIC_RELEASE_VERSION=$LATEST_TAG" >> $GITHUB_ENV
 
