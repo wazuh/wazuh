@@ -136,7 +136,7 @@ class WazuhIntegration:
             except configparser.NoSectionError:
                 aws_tools.error(f"No profile named: '{profile}' was found in the user config file")
                 aws_tools.debug(
-                    f"The region for the '{profile}' must be specified in "
+                    f"The region for '{profile}' must be specified in "
                     f"'~/.aws/config' under the '[{profile}]' section.", 2)
                 sys.exit(23)
 
