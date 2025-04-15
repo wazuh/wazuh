@@ -135,6 +135,9 @@ class WazuhIntegration:
 
             except configparser.NoSectionError:
                 aws_tools.error(f"No profile named: '{profile}' was found in the user config file")
+                aws_tools.debug(
+                    f"The region for the profile '{profile}' must be specified in "
+                    f"'~/.aws/config' under the '[profile {profile}]' section.", 2)
                 sys.exit(23)
 
             # Map Primary Botocore Config parameters with profile config file
