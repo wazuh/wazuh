@@ -219,6 +219,7 @@ TEST_F(ReflectiveJsonTest, FullEscapeTableCoverage)
         {"formfeed", "Page\fBreak"},
         {"newline", "Line1\nLine2"},
         {"carriage_return", "Line\rReset"},
+        {"unicode_text", "NetLock_Arany_=Class_Gold=_Főtanúsítvány.pem"},
         {"tabbed", "A\tB\tC"},
         {"ET", "🏠"} // Unicode emoji
     };
