@@ -75,6 +75,14 @@ list(APPEND remoted_flags "-Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,accep
                             -Wl,--wrap,OS_DupKeyEntry -Wl,--wrap,OS_FreeKey ${DEBUG_OP_WRAPPERS} \
                             -Wl,--wrap,router_provider_send_fb ${HASH_OP_WRAPPERS}")
 
+list(APPEND remoted_names "test_save_ctrlmsg_thread")
+list(APPEND remoted_flags "-Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,accept -Wl,--wrap,close \
+                            -Wl,--wrap,fclose -Wl,--wrap,fcntl -Wl,--wrap,fflush -Wl,--wrap,fgetc \
+                            -Wl,--wrap,fgetpos -Wl,--wrap,fgets -Wl,--wrap,fopen -Wl,--wrap,popen -Wl,--wrap,fread \
+                            -Wl,--wrap,fseek -Wl,--wrap,fwrite -Wl,--wrap,getpid -Wl,--wrap,remove \
+                            -Wl,--wrap,FOREVER -Wl,--wrap,linked_queue_push_ex  -Wl,--wrap,linked_queue_pop_ex \
+                            -Wl,--wrap,save_controlmsg")
+
 list(APPEND remoted_names "test_netbuffer")
 list(APPEND remoted_flags "-Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,_mdebug1 -Wl,--wrap,wnet_order -Wl,--wrap,wnotify_modify \
                             -Wl,--wrap,bqueue_push -Wl,--wrap,bqueue_peek -Wl,--wrap,bqueue_drop -Wl,--wrap,bqueue_clear -Wl,--wrap,sleep \
