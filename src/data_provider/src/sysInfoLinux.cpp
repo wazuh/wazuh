@@ -604,15 +604,7 @@ void SysInfo::getPackages(std::function<void(nlohmann::json&)> callback) const
 
     std::unordered_set<std::string> excludePaths;
 
-    if (Utils::existsDir(DPKG_PATH))
-    {
-        getDpkgPythonPackages(excludePaths);
-    }
-
-    if (Utils::existsDir(RPM_PATH))
-    {
-        getRpmPythonPackages(excludePaths);
-    }
+    FactoryPackagesCreator<LINUX_TYPE>::getPythonPackages(excludePaths);
 
     ModernFactoryPackagesCreator<HAS_STDFILESYSTEM>::getPackages(searchPaths, callback, excludePaths);
 }
