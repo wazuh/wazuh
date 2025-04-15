@@ -11,7 +11,7 @@ from uuid import uuid4
 import pytest
 from wazuh.core.cluster.tests.conftest import get_default_configuration
 from wazuh.core.config.client import CentralizedConfig
-from wazuh.core.config.models.server import ValidateFilePathMixin
+from wazuh.core.config.models.base import ValidateFilePathMixin
 
 with patch('wazuh.core.common.wazuh_uid'):
     with patch('wazuh.core.common.wazuh_gid'):
@@ -149,7 +149,6 @@ def test_get_logs_summary(mock_exists, mock_active_logging_format):
             'warning': 0,
             'debug': 2,
         }
-
 
 
 @patch('wazuh.core.manager.exists', return_value=True)

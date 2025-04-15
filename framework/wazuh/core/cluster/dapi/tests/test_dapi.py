@@ -17,7 +17,7 @@ from sqlalchemy.exc import OperationalError
 from wazuh.core import common
 from wazuh.core.cluster.tests.conftest import get_default_configuration
 from wazuh.core.config.client import CentralizedConfig
-from wazuh.core.config.models.server import ValidateFilePathMixin
+from wazuh.core.config.models.base import ValidateFilePathMixin
 
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '../../../../../../api'))
 

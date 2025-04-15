@@ -6,7 +6,7 @@ import pytest
 from fastapi import status
 from freezegun import freeze_time
 from wazuh.core.config.client import CentralizedConfig
-from wazuh.core.config.models.server import ValidateFilePathMixin
+from wazuh.core.config.models.base import ValidateFilePathMixin
 
 from comms_api.authentication.test.conftest import get_default_configuration
 

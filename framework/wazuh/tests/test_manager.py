@@ -11,7 +11,7 @@ from unittest.mock import patch
 
 import pytest
 from wazuh.core.config.client import CentralizedConfig
-from wazuh.core.config.models.server import ValidateFilePathMixin
+from wazuh.core.config.models.base import ValidateFilePathMixin
 from wazuh.tests.util import get_default_configuration
 
 with patch('wazuh.core.common.wazuh_uid'):
