@@ -55,7 +55,6 @@ void sigintHandler(const int signum)
 {
     if (g_engineServer)
     {
-        g_engineServer->stop();
         g_engineServer.reset();
     }
 }
