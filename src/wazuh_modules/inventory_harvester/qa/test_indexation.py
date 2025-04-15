@@ -35,9 +35,74 @@ LOGGER = logging.getLogger(__name__)
 GLOBAL_URL = "localhost:9200"
 TEST_DATA_ROOT = Path("wazuh_modules/inventory_harvester/qa/test_data")
 QUEUE_DIR = Path("queue")
-
+TEMPLATE_ROOT = Path("wazuh_modules/inventory_harvester/indexer/template")
 
 # ---------- Utility Functions ----------
+
+
+def discover_templates():
+    """
+    Discovers all valid template files in TEMPLATE_ROOT.
+    Skips 'update', 'fim-files', and 'fim-registries' (normalized to 'files' and 'registries').
+    """
+
+    def valid(path: Path):
+        name = path.name
+        return "update" not in name
+
+    return [path for path in TEMPLATE_ROOT.rglob("wazuh-states-*.json") if valid(path)]
+
+
+def create_index_from_template(template_path: Path):
+    """
+    Uploads the template and recreates the index that matches its pattern,
+    deleting it first if it already exists.
+    """
+    with template_path.open("r", encoding="utf-8") as f:
+        template_data = json.load(f)
+
+    template_name = template_path.stem
+    url = f"http://{GLOBAL_URL}/_index_template/{template_name}"
+    resp = requests.put(url, json=template_data)
+    assert resp.status_code in (200, 201), (
+        f"Failed to upload template {template_name}: {resp.text}"
+    )
+
+    pattern = template_data.get("index_patterns", [None])[0]
+    if pattern and "*" in pattern:
+        if "fim-files" in template_name:
+            index_name = "wazuh-states-files-cluster01"
+        elif "fim-registries" in template_name:
+            index_name = "wazuh-states-registries-cluster01"
+        else:
+            index_name = pattern.replace("*", "-cluster01")
+
+        index_url = f"http://{GLOBAL_URL}/{index_name}"
+
+        # Delete index if it exists
+        delete_resp = requests.delete(index_url)
+        if delete_resp.status_code not in (200, 404):
+            raise RuntimeError(
+                f"Failed to delete index {index_name}: {delete_resp.status_code} {delete_resp.text}"
+            )
+        LOGGER.info(f"Index '{index_name}' deleted (if existed).")
+
+        # Create index again
+        create_resp = requests.put(index_url)
+        assert create_resp.status_code in (200, 201), (
+            f"Failed to recreate index '{index_name}': {create_resp.status_code} {create_resp.text}"
+        )
+        LOGGER.info(f"Index '{index_name}' recreated successfully.")
+
+
+def load_all_templates():
+    """
+    Uploads all relevant templates and creates matching indices.
+    """
+    templates = discover_templates()
+    LOGGER.info(f"Loading {len(templates)} templates...")
+    for template in templates:
+        create_index_from_template(template)
 
 
 def wait_for_opensearch(url: str, timeout: int = 60):
@@ -136,6 +201,7 @@ def test_data_indexation(opensearch, test_folder):
     test_path = Path(test_folder)
     log_file = f"log_{test_path.name}.out"
     pre_existing_file = test_path / "pre_existing_data.json"
+    is_wazuh_db = "wazuh_db" in str(test_path)
 
     cmd = (
         Path(
@@ -182,19 +248,47 @@ def test_data_indexation(opensearch, test_folder):
                         f"Insert failed: {resp.status_code} {resp.text}"
                     )
 
+        if is_wazuh_db:
+            command = [
+                str(cmd),
+                "-c",
+                str(test_path / "config.json"),
+                "-l",
+                log_file,
+                "-t",
+                str(test_path / "template.json"),
+                "-i",
+                str(test_path / "inputs/"),
+            ]
+        else:
+            command = [
+                str(cmd),
+                "-c",
+                str(test_path / "config.json"),
+                "-l",
+                log_file,
+                "-i",
+                str(test_path / "inputs/"),
+            ]
+
         # Run test tool
-        command = [
-            str(cmd),
-            "-c",
-            str(test_path / "config.json"),
-            "-l",
-            log_file,
-            "-i",
-            str(test_path / "inputs/"),
-        ]
+
         LOGGER.info(f"Running: {' '.join(command)}")
-        proc = subprocess.run(command, capture_output=True, text=True)
-        assert proc.returncode == 0, f"Test tool error:\n{proc.stderr}"
+        proc = subprocess.Popen(
+            command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
+        )
+
+        # Optional: wait a bit if needed
+        time.sleep(1)
+
+        # Load templates *after* the tool has started
+        if is_wazuh_db:
+            LOGGER.info("Loading templates manually for 'wazuh_db' test case...")
+            load_all_templates()
+
+        # Wait for the tool to finish
+        stdout, stderr = proc.communicate()
+        assert proc.returncode == 0, f"Test tool error:\n{stderr}"
 
         # Validate results
         with (test_path / "result.json").open("r", encoding="utf-8") as f:
