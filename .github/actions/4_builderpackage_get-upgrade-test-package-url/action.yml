@@ -30,7 +30,8 @@ runs:
     id: get-package-url
     shell: bash
     run: |
-      package_url=$(.github/actions/4_builderpackage_get-upgrade-test-package-url/get_upgrade_test_package_url.py \
+      script_path=$(find . -name "get_upgrade_test_package_url.py") 
+      package_url=$($script_path \
           -c "${{ inputs.component }}" \
           -o "${{ inputs.os }}" \
           -s "${{ inputs.system }}" \

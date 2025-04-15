@@ -24,7 +24,8 @@ runs:
     id: latest-stable-release
     shell: bash
     run: |
-      version=$(.github/actions/4_builderpackage_get-last-stable-version/get_last_stable_version.py \
+      script_path=$(find . -name "get_last_stable_version.py") 
+      version=$($script_path \
           -o "${{ inputs.repo_owner }}" \
           -r "${{ inputs.repo_name }}" \
           -v "${{ inputs.testing_version }}"

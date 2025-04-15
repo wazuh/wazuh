@@ -26,6 +26,7 @@ runs:
       run: |
         if [ "${{ inputs.os }}" == "aix" ]; then
           ${{ env.SSH_COMMAND }} 'rpm -e wazuh-agent'
+          ${{ env.SSH_COMMAND }} 'rm -rf /var/ossec'
         elif [ "${{ inputs.os }}" == "hp-ux" ]; then
           ${{ env.SSH_COMMAND }} '/var/ossec/bin/wazuh-control stop'
           ${{ env.SSH_COMMAND }} 'groupdel wazuh'
@@ -42,14 +43,13 @@ runs:
     - name: Get old package and send it to the remote host
       shell: bash
       run: |
-        echo "OLD_PACKAGE_NAME=$(basename "${{inputs.old_package_url}}")"; | tee -a $GITHUB_ENV
-        mkdir -p /old_package
-        if ! curl -o /old_package/$(basename "${{inputs.old_package_url}}") "${{inputs.old_package_url}}"; then
+        echo "OLD_PACKAGE_NAME=$(basename "${{ inputs.old_package_url }}")" >> $GITHUB_ENV
+        if ! sudo curl -o $(basename "${{inputs.old_package_url}}") "${{inputs.old_package_url}}"; then
             echo "Error: Failed to download the package from ${{inputs.old_package_url}}"
             exit 1
         fi
         ${{ env.SCP_COMAND }} $(basename "${{inputs.old_package_url}}") root@${{ inputs.host }}:/${{ env.WORK_FOLDER }}
-        sudo rm -rf /old_package
+        sudo rm $(basename "${{inputs.old_package_url}}")
 
     - name: Install old package
       shell: bash
