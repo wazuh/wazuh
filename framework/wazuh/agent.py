@@ -8,6 +8,7 @@ from typing import Optional, Union
 from server_management_api.models.agent_enrollment_model import Host
 from wazuh.core import common, configuration
 from wazuh.core.agent import AGENT_FIELDS, delete_single_group, get_groups, group_exists
+from wazuh.core.cluster.cluster import get_node
 from wazuh.core.exception import WazuhError, WazuhException, WazuhInternalError, WazuhResourceNotFound
 from wazuh.core.indexer import get_indexer_client
 from wazuh.core.indexer.agent import DEFAULT_GROUP
@@ -20,6 +21,7 @@ from wazuh.core.results import AffectedItemsWazuhResult, WazuhResult
 from wazuh.core.utils import get_group_file_path, get_hash, process_array
 from wazuh.rbac.decorators import expose_resources
 
+node_id = get_node().get('node')
 
 def build_agents_query(agent_list: list, filters: dict) -> dict:
     """Build the query to filter agents.
