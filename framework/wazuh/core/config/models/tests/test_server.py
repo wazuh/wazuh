@@ -7,7 +7,6 @@ from wazuh.core.config.models.server import (
     CommunicationsConfig,
     CommunicationsTimeoutConfig,
     CTIConfig,
-    JWTConfig,
     MasterConfig,
     MasterIntervalsConfig,
     MasterProcesses,
@@ -388,15 +387,6 @@ def test_cti_config_default_values(init_values, expected):
     assert config.url == expected['url']
 
 
-@pytest.mark.parametrize('init_values', [{'private_key': 'private_key_example'}])
-@patch('os.path.isfile', return_value=True)
-def test_jwt_config_default_values(file_exists_mock, init_values):
-    """Check the correct initialization of the `JWTConfig` class."""
-    jwt_config = JWTConfig(**init_values)
-
-    assert jwt_config.private_key == init_values['private_key']
-
-
 @pytest.mark.parametrize(
     'init_values, expected',
     [
@@ -404,7 +394,6 @@ def test_jwt_config_default_values(file_exists_mock, init_values):
             {
                 'nodes': ['master'],
                 'node': {'name': 'example', 'type': 'master', 'ssl': {'key': 'value', 'cert': 'value', 'ca': 'value'}},
-                'jwt': {'public_key': 'value', 'private_key': 'value'},
             },
             {
                 'port': 1516,
