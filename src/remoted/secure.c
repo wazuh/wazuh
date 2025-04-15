@@ -1028,7 +1028,7 @@ void * save_control_thread(void * control_msg_queue)
     w_ctrl_msg_data_t * ctrl_msg_data = NULL;
     int wdb_sock = -1;
 
-    while (1) {
+    while (FOREVER()) {
         if ((ctrl_msg_data = (w_ctrl_msg_data_t *)linked_queue_pop_ex(queue))) {
 
             // Process the control message
