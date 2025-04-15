@@ -128,6 +128,25 @@ void ssl_info_callback(const SSL *ssl, int where, int ret)
         else if (ret < 0)
             mdebug2("INFO: %s:error in %s", str, SSL_state_string_long(ssl));
 }
+
+void ssl_msg_callback(int write_p, int version, int content_type,
+                      const void *buf, size_t len,
+                      SSL *ssl, void *arg) {
+    const char *direction = write_p ? ">>" : "<<";
+    mdebug2("TLS MSG %s type=%d version=0x%x len=%zu", direction, content_type, version, len);
+
+    // Hexdump del contenido (opcional)
+    char hex[1024] = {0};
+    size_t max = len > 512 ? 512 : len; // evitar volcar basura gigante
+    for (size_t i = 0; i < max; ++i) {
+        char byte[4];
+        snprintf(byte, sizeof(byte), "%02X ", ((const unsigned char *)buf)[i]);
+        strncat(hex, byte, sizeof(hex) - strlen(hex) - 1);
+    }
+
+    mdebug2("Payload (%zu bytes): %s", max, hex);
+}
+
 int main(int argc, char **argv)
 {
 
@@ -565,6 +584,8 @@ int main(int argc, char **argv)
         }
 
         SSL_CTX_set_info_callback(ctx, ssl_info_callback);
+        SSL_CTX_set_msg_callback(ctx, ssl_msg_callback);
+        SSL_CTX_set_msg_callback_arg(ctx, NULL);
 
         /* Connect via TCP */
         if (remote_sock = OS_Bindporttcp(config.port, NULL, config.ipv6), remote_sock <= 0) {
@@ -1058,9 +1079,11 @@ void* run_remote_server(__attribute__((unused)) void *arg) {
                 }
 
                 if (!g_client_pool[index_client]->handshake_done) {
-                    int ret = handle_ssl_handshake(g_client_pool[index_client]);
-                    if (ret < 0) {
-                        delete_client(index_client);
+                    if (events[i].events & EPOLLIN || events[i].events & EPOLLOUT) {
+                        int ret = handle_ssl_handshake(g_client_pool[index_client]);
+                        if (ret < 0) {
+                            delete_client(index_client);
+                        }
                     }
                     continue;
                 }
