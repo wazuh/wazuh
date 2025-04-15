@@ -69,22 +69,7 @@ EOF
 openssl pkcs8 -topk8 -inform pem -in $name-key.pem -outform pem -nocrypt -out $name.key
 }
 
-gen_server_key() {
-  openssl genpkey -algorithm RSA -out private-key.pem -pkeyopt rsa_keygen_bits:2048  > /dev/null 2>&1
-}
-
 hosts=(wazuh-indexer wazuh-manager wazuh-worker1 wazuh-worker2)
 for i in "${hosts[@]}"; do
     gencert $i www
 done
-# Parse command-line arguments
-while [[ "$#" -gt 0 ]]; do
-    case "$1" in
-        --with-jwt) with_jwt=true ;;
-        *) echo "Unknown option: $1" ;;
-    esac
-    shift
-done
-if [[ "$with_jwt" == true ]]; then
-    gen_server_key
-fi
