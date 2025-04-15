@@ -33,7 +33,7 @@ class TestEventsModule:
         response = mock.MagicMock()
         response.is_error = True
         response.json = mock.MagicMock()
-        response.json.return_value = {'error': ['Service Unavailable', 'failure'], 'code': 400}
+        response.json.return_value = {'error': 'Service Unavailable: failure', 'code': 400}
         client_mock.post.return_value = response
 
         expected_error_msg = 'Error 2710 - Invalid stateless events request: Service Unavailable: failure'
