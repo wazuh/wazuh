@@ -12,7 +12,9 @@ For the inventory harvester the data is converted into FlatBuffers and send it t
 
 ## Flatbuffer schemas
 
-### Common agent information for FIM Delta, Inventory Delta and Synchronization events
+### Common AgentInfo table
+- Common agent information for FIM Delta, Inventory Delta and Synchronization events.
+
 | Table         | Field          | Type       | Description |
 |---------------|----------------|------------|-------------|
 | **AgentInfo** | agent_id       | string     | Unique identifier of the agent, e.g., "001". |
@@ -21,13 +23,18 @@ For the inventory harvester the data is converted into FlatBuffers and send it t
 |               | agent_version  | string     | Version of the agent software, e.g., "v4.10.2". |
 
 
-### FlatBuffers schemas for FIM Delta events
+### FIM Delta table
+- Main table in flatbuffer schema for FIM Delta events.
+
 | Table        | Field          | Type       | Description |
 |--------------|----------------|------------|-------------|
 | **Delta**    | agent_info     | AgentInfo  | Metadata about the agent generating the event. |
 |              | data_type      | string     | Nature of the event, e.g., "event". |
 |              | data           | Data       | Detailed data about the detected change. |
 
+
+### FIM Data table
+- Data table for FIM delta events.
 
 | Table        | Field          | Type       | Description |
 |--------------|----------------|------------|-------------|
@@ -40,6 +47,9 @@ For the inventory harvester the data is converted into FlatBuffers and send it t
 |              | timestamp      | long       | Timestamp when the event was generated. |
 |              | value_name     | string     | Name of the registry value. |
 
+
+### FIM Attributes table
+- Attributes table for FIM delta events.
 
 | Table          | Field        | Type       | Description |
 |----------------|--------------|------------|-------------|
@@ -58,13 +68,18 @@ For the inventory harvester the data is converted into FlatBuffers and send it t
 |                | hash_sha256  | string     | SHA-256 hash of the file or registry value content. |
 
 
-### FlatBuffers schemas for Inventory Delta events
+### Inventory Delta table
+- Main table in flatbuffer schema for inventory Delta events.
+
 | Table                        | Field              | Type      | Description |
 |------------------------------|--------------------|-----------|-------------|
 | **Delta**                    | agent_info         | AgentInfo | Information about the agent. |
 |                              | data               | Provider  | Data changes in the agent. |
 |                              | operation          | string    | Type of operation performed (e.g., INSERTED, MODIFIED, DELETED). |
 
+
+### Inventory Provider union table
+- Provider union table for inventory delta events.
 
 | Table                        | Type                    | Description |
 |------------------------------|-------------------------|-------------|
@@ -78,6 +93,9 @@ For the inventory harvester the data is converted into FlatBuffers and send it t
 |                              | dbsync_hotfixes         | Installed hotfixes. |
 |                              | dbsync_processes        | Running processes. |
 
+
+### Inventory providers
+- Provider tables for inventory delta events.
 
 | Table                        | Field              | Type      | Description |
 |------------------------------|--------------------|-----------|-------------|
@@ -189,12 +207,17 @@ For the inventory harvester the data is converted into FlatBuffers and send it t
 |                              | item_id            | string    | Unique identifier for the package entry. |
 
 
-### FlatBuffers schemas for Synchronization
+### SyncMsg table
+- Main table in flatbuffer schema for synchronization events.
+
 | Table                        | Field              | Type      | Description |
 |------------------------------|--------------------|-----------|-------------|
 | **SyncMsg**                  | agent_info         | AgentInfo | Event type description. |
 |                              | data               | DataUnion | Data changes in the agent. |
 
+
+### DataUnion table union
+- DataUnion table union for synchronization events.
 
 | Table                        | Type                    | Description |
 |------------------------------|-------------------------|-------------|
@@ -205,6 +228,9 @@ For the inventory harvester the data is converted into FlatBuffers and send it t
 |                              | integrity_clear         | Hardware information. |
 
 
+### State table
+- State event type for synchronization events.
+
 | Table                        | Field                   | Type            | Description |
 |------------------------------|-------------------------|-----------------|-------------|
 | **state**                    | attributes              | AttributesUnion | Aggregated attributes of the entity. |
@@ -213,6 +239,9 @@ For the inventory harvester the data is converted into FlatBuffers and send it t
 |                              | value_name              | string          | Name of the registry value. |
 |                              | arch                    | string          | System architecture (x86, x64). |
 
+
+### AttributesUnion table union
+- Different event component types for synchronization events.
 
 | Table                        | Type                            | Description |
 |------------------------------|---------------------------------|-------------|
@@ -230,6 +259,9 @@ For the inventory harvester the data is converted into FlatBuffers and send it t
 |                              | fim_registry_value              | Registry monitoring value. |
 
 
+### fim_file table
+- fim_file table for file monitoring in synchronization events.
+
 | Table                          | Field          | Type      | Description |
 |--------------------------------|----------------|-----------|-------------|
 | **fim_file**                   | gid            | string    | Group ID associated with the file. |
@@ -245,6 +277,9 @@ For the inventory harvester the data is converted into FlatBuffers and send it t
 |                                | user_name      | string    | Name of the file owner. |
 
 
+### fim_registry_key table
+- fim_registry_key table for registry monitoring in synchronization events.
+
 | Table                          | Field          | Type      | Description |
 |--------------------------------|----------------|-----------|-------------|
 | **fim_registry_key**           | gid            | string    | Group ID associated with the registry. |
@@ -254,6 +289,9 @@ For the inventory harvester the data is converted into FlatBuffers and send it t
 |                                | type           | string    | Registry type. |
 |                                | user_name      | string    | Name of the registry owner. |
 
+
+### fim_registry_value
+- fim_registry_value table for registry monitoring in synchronization events.
 
 | Table                          | Field          | Type      | Description |
 |--------------------------------|----------------|-----------|-------------|
