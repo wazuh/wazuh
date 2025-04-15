@@ -5,7 +5,7 @@ from ._modules import get_args as modules_get_args
 from shared.default_settings import Constants as DefaultSettings
 
 
-DEFAULT_ECS_VERSION = 'v8.8.0'
+DEFAULT_ECS_VERSION = 'v8.17.0'
 DEFAULT_INDEXER_DIR = '/etc/filebeat/'
 DEFAULT_FIELDS_DIR = '/home/vagrant/engine/wazuh/src/engine/ruleset/schemas/'
 
