@@ -1,0 +1,112 @@
+name: 'Test upgrade Wazuh agent package'
+description: 'Test upgrade Wazuh agent package'
+
+inputs:
+  old_package_url:
+    description: 'Package url to update from'
+    required: true
+  expected_upgrade_version:
+    description: 'Expected package version after upgrading'
+    required: true
+  testing_architecture:
+    description: 'Architecture of the tested system, required only for Solaris OS'
+    required: false
+  os:
+    description: 'Tested OS'
+    required: true
+  host:
+    description: 'Host - SSH connection data'
+    required: true
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Clean previous installation
+      shell: bash
+      run: |
+        if [ "${{ inputs.os }}" == "aix" ]; then
+          ${{ env.SSH_COMMAND }} 'rpm -e wazuh-agent'
+        elif [ "${{ inputs.os }}" == "hp-ux" ]; then
+          ${{ env.SSH_COMMAND }} '/var/ossec/bin/wazuh-control stop'
+          ${{ env.SSH_COMMAND }} 'groupdel wazuh'
+          ${{ env.SSH_COMMAND }} 'userdel wazuh'
+          ${{ env.SSH_COMMAND }} 'rm -rf /var/ossec'
+        elif [ "${{ inputs.os }}" == "solaris10" ]; then
+          ${{ env.SSH_COMMAND }} 'pkgrm wazuh-agent'
+          ${{ env.SSH_COMMAND }} 'rm -rf /var/ossec'
+        elif [ "${{ inputs.os }}" == "solaris11" ]; then
+          ${{ env.SSH_COMMAND }} '/var/ossec/bin/wazuh-control stop'
+          ${{ env.SSH_COMMAND }} 'pkg uninstall wazuh-agent'
+        fi
+
+    - name: Get old package and send it to the remote host
+      shell: bash
+      run: |
+        echo "OLD_PACKAGE_NAME=$(basename "${{inputs.old_package_url}}")"; | tee -a $GITHUB_ENV
+        mkdir -p /old_package
+        if ! curl -o /old_package/$(basename "${{inputs.old_package_url}}") "${{inputs.old_package_url}}"; then
+            echo "Error: Failed to download the package from ${{inputs.old_package_url}}"
+            exit 1
+        fi
+        ${{ env.SCP_COMAND }} $(basename "${{inputs.old_package_url}}") root@${{ inputs.host }}:/${{ env.WORK_FOLDER }}
+        sudo rm -rf /old_package
+
+    - name: Install old package
+      shell: bash
+      run: |
+        if [ "${{ inputs.os }}" == "aix" ]; then
+          ${{ env.SSH_COMMAND }} 'WAZUH_MANAGER="10.0.0.2" rpm -ivh /${{ env.WORK_FOLDER }}/${{ env.OLD_PACKAGE_NAME }}'
+        elif [ "${{ inputs.os }}" == "hp-ux" ]; then
+          ${{ env.SSH_COMMAND }} 'cp /${{ env.WORK_FOLDER }}/${{ env.OLD_PACKAGE_NAME }} /'
+          ${{ env.SSH_COMMAND }} '/usr/local/bin/gzip -d /${{ env.OLD_PACKAGE_NAME }}'
+          ${{ env.SSH_COMMAND }} 'tar -xvf /${{ env.OLD_PACKAGE_NAME }}.gz'
+          ${{ env.SSH_COMMAND }} 'groupadd wazuh'
+          ${{ env.SSH_COMMAND }} 'useradd -G wazuh wazuh'
+          ${{ env.SSH_COMMAND }} '${{ env.SED_IP_MANAGER_COMMAND }}'
+        elif [ "${{ inputs.os }}" == "solaris10" ]; then
+          ${{ env.SSH_COMMAND }} 'pkgadd -d /${{ env.WORK_FOLDER }}/${{ env.OLD_PACKAGE_NAME }} -a /${{ env.WORK_FOLDER }}/noaskfile wazuh-agent'
+          ${{ env.SSH_COMMAND }} '${{ env.SED_IP_MANAGER_COMMAND }}'
+        elif [ "${{ inputs.os }}" == "solaris11" ]; then
+          ${{ env.SSH_COMMAND }} 'pkg install -g /${{ env.WORK_FOLDER }}/${{ env.OLD_PACKAGE_NAME }} wazuh-agent'
+          ${{ env.SSH_COMMAND }} '${{ env.SED_IP_MANAGER_COMMAND }}'
+        fi
+
+    - name: Update package
+      shell: bash
+      run: |
+        if [ "${{ inputs.os }}" == "aix" ]; then
+          ${{ env.SSH_COMMAND }} '/var/ossec/bin/wazuh-control stop'
+          ${{ env.SSH_COMMAND }} 'rpm -Uvh /${{ env.WORK_FOLDER }}/output/${{ env.PACKAGE_NAME }} > /${{ env.WORK_FOLDER }}/output/status.log 2>&1'
+          ${{ env.SSH_COMMAND }} '/var/ossec/bin/wazuh-control start'
+        elif [ "${{ inputs.os }}" == "hp-ux" ]; then
+          ${{ env.SSH_COMMAND }} '/var/ossec/bin/wazuh-control stop'
+          ${{ env.SSH_COMMAND }} '/usr/local/bin/gzip -d /${{ env.PACKAGE_NAME }}'
+          ${{ env.SSH_COMMAND }} 'tar -xvf /$(basename ${{ env.PACKAGE_NAME }} .gz) > /${{ env.WORK_FOLDER }}/output/status.log 2>&1'
+          ${{ env.SSH_COMMAND }} '${{ env.SED_IP_MANAGER_COMMAND }}'
+          ${{ env.SSH_COMMAND }} '/var/ossec/bin/wazuh-control start'
+        elif [ "${{ inputs.os }}" == "solaris10" ]; then
+          ${{ env.SSH_COMMAND }} '/var/ossec/bin/wazuh-control stop'
+          ${{ env.SSH_COMMAND }} 'pkgrm wazuh-agent'
+          ${{ env.SSH_COMMAND }} 'rm -rf /var/ossec'
+          ${{ env.SSH_COMMAND }} 'pkgadd -d /${{ env.WORK_FOLDER }}/output/${{ env.PACKAGE_NAME }} -a /${{ env.WORK_FOLDER }}/noaskfile wazuh-agent > /${{ env.WORK_FOLDER }}/output/status.log 2>&1'
+          ${{ env.SSH_COMMAND }} '${{ env.SED_IP_MANAGER_COMMAND }}'
+          ${{ env.SSH_COMMAND }} '/var/ossec/bin/wazuh-control start'
+        elif [ "${{ inputs.os }}" == "solaris11" ]; then
+          ${{ env.SSH_COMMAND }} '/var/ossec/bin/wazuh-control stop'
+          ${{ env.SSH_COMMAND }} 'pkg install -g /${{ env.WORK_FOLDER }}/output/${{ env.PACKAGE_NAME }} wazuh-agent > /${{ env.WORK_FOLDER }}/output/status.log 2>&1'
+          ${{ env.SSH_COMMAND }} '${{ env.SED_IP_MANAGER_COMMAND }}'
+          ${{ env.SSH_COMMAND }} '/var/ossec/bin/wazuh-control start'
+        fi
+        ${{ env.SSH_COMMAND }} '/var/ossec/bin/wazuh-control info > /${{ env.WORK_FOLDER }}/output/upgraded_version.log 2>&1'
+
+    - name: Check test result
+      shell: bash
+      run: |
+        ${{ env.SCP_COMAND }} root@${{ inputs.host }}:/${{ env.WORK_FOLDER }}/output/upgraded_version.log /tmp/
+        if grep -iq "${{ inputs.expected_upgrade_version }}" /tmp/upgraded_version.log ; then
+          echo "Package successfully upgraded."
+        else
+          echo "The upgrade could not be completed";
+          exit 1;
+        fi
+        sudo rm /tmp/upgraded_version.log
