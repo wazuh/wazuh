@@ -297,26 +297,61 @@ update_file_packages() {
 
     # Update .spec files
     for spec_file in $(find "$DIR_PACKAGE" -type f -name "*.spec"); do
-        sed -i -E "/^%changelog\s*$/a * ${spec_date} support <info@wazuh.com> - ${final_version}\n- More info: https://documentation.wazuh.com/current/release-notes/release-${final_version//./-}.html" "$spec_file"
-        log_action "Updated changelog section in: $spec_file"
+        version_line="* .* - ${final_version}"
+        existing_line=$(grep -E "^\\* .+ - ${final_version}$" "$spec_file")
+
+        if [ -n "$existing_line" ]; then
+            sed -i -E "s|^\* .+ - ${final_version}$|* ${spec_date} support <info@wazuh.com> - ${final_version}|" "$spec_file"
+            log_action "Updated changelog date for version ${final_version} in: $spec_file"
+        else
+            sed -i -E "/^%changelog\s*$/a * ${spec_date} support <info@wazuh.com> - ${final_version}\n- More info: https://documentation.wazuh.com/current/release-notes/release-${final_version//./-}.html" "$spec_file"
+            log_action "Prepended changelog entry for version ${final_version} in: $spec_file"
+        fi
     done
 
     # Update changelog files (prepend entry)
     for changelog_file in $(find "$DIR_PACKAGE" -type f -name "changelog"); do
         INSTALL_TYPE=$(basename "$(dirname "$(dirname "$changelog_file")")")
-        changelog_entry="${INSTALL_TYPE} (${final_version}-RELEASE) stable; urgency=low
 
-  * More info: https://documentation.wazuh.com/current/release-notes/release-${final_version//./-}.html
+        changelog_entry="$(
+cat <<EOF
+${INSTALL_TYPE} (${final_version}-RELEASE) stable; urgency=low
 
- -- Wazuh, Inc <info@wazuh.com>  ${formatted_date}
+* More info: https://documentation.wazuh.com/current/release-notes/release-${final_version//./-}.html
 
-"
-        tmp_file=$(mktemp)
-        {
-            echo "$changelog_entry"
-            cat "$changelog_file"
-        } > "$tmp_file" && mv "$tmp_file" "$changelog_file"
-        log_action "Prepended changelog entry in: $changelog_file"
+-- Wazuh, Inc <info@wazuh.com>  ${formatted_date}
+
+EOF
+)"
+
+        version_pattern="^${INSTALL_TYPE} \(${final_version//./\\.}-RELEASE\) stable; urgency=low"
+
+        if grep -qE "$version_pattern" "$changelog_file"; then
+            awk -v version_regex="$version_pattern" -v new_date="$formatted_date" '
+            BEGIN { inside_match = 0 }
+            {
+                if ($0 ~ version_regex) {
+                    inside_match = 1
+                    print
+                    next
+                }
+                if (inside_match && $0 ~ /^ -- Wazuh, Inc <info@wazuh.com>  /) {
+                    print " -- Wazuh, Inc <info@wazuh.com>  " new_date
+                    inside_match = 0
+                    next
+                }
+                print
+            }' "$changelog_file" > "${changelog_file}.tmp" && mv "${changelog_file}.tmp" "$changelog_file"
+
+            log_action "Updated changelog date for version ${final_version} in: $changelog_file"
+        else
+            tmp_file=$(mktemp)
+            {
+                printf "%s\n\n" "$changelog_entry"
+                cat "$changelog_file"
+            } > "$tmp_file" && mv "$tmp_file" "$changelog_file"
+            log_action "Prepended changelog entry for version ${final_version} in: $changelog_file"
+        fi
     done
 
     # Update copyright files
@@ -326,10 +361,58 @@ update_file_packages() {
     done
 
     # Update pkginfo files
+    pkginfo_date=$(date -d "$new_date" +"%d%b%Y")
     for pkginfo_file in $(find "$DIR_PACKAGE" -type f -name "pkginfo"); do
-        sed -i -E "s|(^VERSION=\")([0-9]+\.[0-9]+\.[0-9]+)(\")$|\1${final_version}\3|" "$pkginfo_file"
-        log_action "Updated VERSION in: $pkginfo_file"
+        sed -i -E "s|(^VERSION=\")([0-9]+\.[0-9]+\.[0-9]+)(\"$)|\1${final_version}\3|" "$pkginfo_file"
+
+        sed -i -E "s|(^PSTAMP=\")[^\"]+(\"$)|\1${pkginfo_date}\2|" "$pkginfo_file"
+
+        log_action "Updated VERSION and PSTAMP in: $pkginfo_file"
     done
+}
+
+update_root_changelog() {
+    local new_version="$1"
+    local changelog_file="$DIR_ROOT/CHANGELOG.md"
+
+    if [[ -z "$new_version" ]]; then
+        return
+    fi
+
+    if [[ ! -f "$changelog_file" ]]; then
+        echo -e "# Change Log\nAll notable changes to this project will be documented in this file.\n" > "$changelog_file"
+    fi
+
+    if grep -q "\[$new_version\]" "$changelog_file"; then
+        log_action "Version $new_version already exists in changelog."
+        return
+    fi
+
+    local inserted=0
+    local temp_file
+    temp_file=$(mktemp)
+
+    while IFS= read -r line; do
+        if [[ "$line" =~ ^##\ \[v?([0-9]+\.[0-9]+\.[0-9]+)\] ]]; then
+            existing_version="${BASH_REMATCH[1]}"
+            if [[ "$existing_version" == "$new_version" ]]; then
+                log_action "Duplicate version $new_version found, skipping."
+                return
+            fi
+            if [[ $inserted -eq 0 ]] && [[ "$(printf "%s\n%s" "$new_version" "$existing_version" | sort -Vr | head -n1)" == "$new_version" ]]; then
+                echo -e "## [v$new_version]\n\n" >> "$temp_file"
+                inserted=1
+            fi
+        fi
+        echo "$line" >> "$temp_file"
+    done < "$changelog_file"
+
+    if [[ $inserted -eq 0 ]]; then
+        echo -e "## [v$new_version]\n" >> "$temp_file"
+    fi
+
+    mv "$temp_file" "$changelog_file"
+    log_action "Modified $changelog_file with new version: $new_version"
 }
 
 update_version() {
@@ -348,6 +431,7 @@ update_version() {
     update_file_sources "$new_version" "$new_stage"
     update_file_framework "$new_version" "$new_stage"
     update_file_api "$new_version" "$new_stage"
+    update_root_changelog "$new_version"
 
     local final_version="${new_version:-$current_version}"
     local final_stage="${new_stage:-$current_stage}"
@@ -361,57 +445,43 @@ update_version() {
 }
 
 usage() {
-  echo "Usage: $0 [--version VERSION] [--stage STAGE] [--date DATE] [--verbose]"
+    echo "Usage: $0 --version VERSION --stage STAGE --date DATE"
+    echo "  --version VERSION   Version number (e.g., 4.9.1)"
+    echo "  --stage STAGE       Stage name (e.g., alpha, beta, rc)"
+    echo "  --date DATE         Release date in format YYYY-MM-DD (e.g., 2025-04-14)"
 }
 
 parse_args() {
-  local version=""
-  local stage=""
-  local date=""
-  local verbose=false
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+        --version)
+            new_version="$2"
+            shift 2
+            ;;
+        --stage)
+            new_stage="$2"
+            shift 2
+            ;;
+        --date)
+            new_date="$2"
+            shift 2
+            ;;
+        *)
+            echo "Unknown option: $1"
+            usage
+            exit 1
+            ;;
+        esac
+    done
 
-  while [[ $# -gt 0 ]]; do
-    case "$1" in
-      --version)
-        version="$2"
-        shift 2
-        ;;
-      --stage)
-        stage="$2"
-        shift 2
-        ;;
-      --date)
-        date="$2"
-        shift 2
-        ;;
-      -V)
-        verbose=true
-        shift
-        ;;
-      *)
-        echo "Unknown option: $1"
+    if [[ -z "$new_version" || -z "$new_stage" || -z "$new_date" ]]; then
+        echo "Error: --version, --stage, and --date are required."
         usage
-        return 1
-        ;;
-    esac
-  done
-
-  if [[ -z "$version" && -z "$stage" && -z "$date" ]]; then
-    echo "Error: No arguments provided. Use at least one of --version, --stage, or --date"
-    usage
-    return 1
-  fi
-
-  echo "$version $stage $date $verbose"
+        exit 1
+    fi
 }
 
-args=$(parse_args "$@") || exit 1
-set -- $args
-
-new_version=$1
-new_stage=$2
-new_date=$3
-verbose=$4
+parse_args "$@"
 
 result=$(load_version "$FILE_VERSION")
 current_version=$(echo "$result" | cut -d' ' -f1)

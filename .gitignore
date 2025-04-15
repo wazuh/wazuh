@@ -161,3 +161,6 @@ src/wazuh_modules/vulnerability_scanner/include/*_generated.h
 
 # Test files
 src/wazuh_modules/vulnerability_scanner/qa/test_data/*/input_*.bin
+
+# Tool files
+tools/repository_bumper_*
