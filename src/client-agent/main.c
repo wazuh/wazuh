@@ -79,10 +79,11 @@ int main(int argc, char **argv)
 
 #if !defined(HPUX) && !defined(AIX) && !defined(SOLARIS)
     struct option long_opts[] = {
-        {"uninstall-auth-login", 1, NULL, 1},
-        {"uninstall-auth-token", 1, NULL, 2},
-        {"uninstall-auth-host", 1, NULL, 3},
-        {"uninstall-ssl-verify", 2, NULL, 4}
+        {"uninstall-auth-login", required_argument, NULL, 1},
+        {"uninstall-auth-token", required_argument, NULL, 2},
+        {"uninstall-auth-host", required_argument, NULL, 3},
+        {"uninstall-ssl-verify", optional_argument, NULL, 4},
+        {NULL, no_argument, NULL, 0}
     };
 
     while ((c = getopt_long(argc, argv, "Vtdfhu:g:D:c:", long_opts, NULL)) != -1) {
