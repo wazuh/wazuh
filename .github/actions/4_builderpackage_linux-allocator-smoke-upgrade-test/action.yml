@@ -23,7 +23,7 @@ runs:
       run: |
         if [ "${{ inputs.architecture }}" == "ppc64" ]; then
           ${{ env.SSH_COMMAND }} 'docker create --name test_container --entrypoint '/bin/bash' ${{ inputs.tested_docker }} \
-            -c "/tests/smoke_upgrade_test.sh ${{ inputs.old_package_url }}"'
+            -c "/tests/smoke_upgrade_test.sh ${{ inputs.old_package_url }} ${{ inputs.expected_upgrade_version }}"'
           ${{ env.SSH_COMMAND }} 'docker cp $(pwd)/wazuh/.github/actions/4_builderpackage_linux-smoke-upgrade-test/. test_container:/tests/'
           ${{ env.SSH_COMMAND }} 'docker cp /tmp/. test_container:/packages'
           ${{ env.SSH_COMMAND }} 'docker start test_container'
@@ -35,17 +35,5 @@ runs:
             -v $(pwd)/wazuh/.github/actions/4_builderpackage_linux-smoke-upgrade-test/:/tests \
             -v /tmp/:/packages \
             --entrypoint '/bin/bash' ${{ inputs.tested_docker }} \
-            -c "/tests/smoke_upgrade_test.sh ${{ inputs.old_package_url }}"'
+            -c "/tests/smoke_upgrade_test.sh ${{ inputs.old_package_url }} ${{ inputs.expected_upgrade_version }}"'
         fi
-
-    - name: Check test result
-      shell: bash
-      run: |
-        scp -i ${{ env.ansible_ssh_private_key_file }} -P ${{ env.ansible_port }} ${{ env.ansible_ssh_common_args }} ${{ env.ansible_user }}@${{ env.ansible_host }}:/tmp/upgraded_version.log /tmp
-        if grep -iq "${{ inputs.expected_upgrade_version }}" /tmp/upgraded_version.log ; then
-          echo "Package successfully upgraded."
-        else
-          echo "The upgrade could not be completed";
-          exit 1;
-        fi
-        sudo rm /tmp/upgraded_version.log

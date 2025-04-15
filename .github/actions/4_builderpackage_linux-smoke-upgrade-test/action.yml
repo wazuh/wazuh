@@ -22,15 +22,4 @@ runs:
           -v $GITHUB_WORKSPACE/.github/actions/4_builderpackage_linux-smoke-upgrade-test/:/tests \
           -v /tmp/:/packages \
           --entrypoint '/bin/bash' ${{ inputs.tested_docker }} \
-          -c "/tests/smoke_upgrade_test.sh ${{ inputs.old_package_url }}"
-
-    - name: Check test result
-      shell: bash
-      run: |
-        if grep -iq "${{ inputs.expected_upgrade_version }}" /tmp/upgraded_version.log ; then
-          echo "Package successfully upgraded."
-        else
-          echo "The upgrade could not be completed";
-          exit 1;
-        fi
-        sudo rm /tmp/upgraded_version.log
+          -c "/tests/smoke_upgrade_test.sh ${{ inputs.old_package_url }} ${{ inputs.expected_upgrade_version }}"
