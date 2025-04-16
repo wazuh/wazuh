@@ -10,7 +10,7 @@
                 },
                 "network": {
                     "broadcast": "0.0.0.0",
-                    "ip": "any",
+                    "ip": "10.0.0.1",
                     "name": "eth0",
                     "netmask": "1.1.1.1",
                     "protocol": "IPv4"

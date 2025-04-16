@@ -6,7 +6,8 @@
       ],
       "username": "admin",
       "password": "WazuhTest99$",
-      "update_template_path" : "./states_update_mappings.json"
+      "update_template_path" : "./states_update_mappings.json",
+      "template_path": "./wazuh_modules/inventory_harvester/indexer/template/wazuh-states-inventory-interfaces.json"
     },
     "clusterName":"cluster01"
 }

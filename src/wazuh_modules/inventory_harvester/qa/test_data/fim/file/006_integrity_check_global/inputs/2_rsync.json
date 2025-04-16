@@ -2,7 +2,7 @@
   "agent_info": {
     "agent_id": "003",
     "agent_name": "DESKTOP-R8MRG1I",
-    "agent_ip": "any",
+    "agent_ip": "10.0.0.2",
     "agent_version": "v4.7.5"
   },
   "data_type": "integrity_check_global",

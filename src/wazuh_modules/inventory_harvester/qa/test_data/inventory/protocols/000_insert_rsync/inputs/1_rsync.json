@@ -11,7 +11,7 @@
       "attributes": {
           "checksum": "287414ba15f71acaa58f56a2875fd62c5aa581f7",
           "dhcp": "disabled",
-          "gateway": " ",
+          "gateway": "10.0.0.0",
           "iface": "eth1",
           "item_id": "35c9b5749116035dea24e0c8797c8e01358081a0",
           "metric": "101",

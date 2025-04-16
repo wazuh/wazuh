@@ -1,12 +1,14 @@
 [
     {
         "index_name": "wazuh-states-files-cluster01",
+        "ids": {
+            "003": "003_c:/temp/octa128.txt"
+        },
         "data": [
             {
                 "agent": {
                     "id": "003",
                     "name": "DESKTOP-R8MRG1I",
-                    "ip": "any",
                     "version": "v4.7.5"
                 },
                 "file": {

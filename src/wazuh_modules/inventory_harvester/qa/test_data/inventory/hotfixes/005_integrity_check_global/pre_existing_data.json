@@ -1,6 +1,10 @@
 [
     {
         "index_name": "wazuh-states-hotfixes-cluster01",
+        "ids": {
+            "001": "001_KB3114960",
+            "002": "002_KB5034763"
+        },
         "data": [
             {
                 "agent": {

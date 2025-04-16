@@ -10,7 +10,7 @@
                 },
                 "network": {
                     "dhcp": false,
-                    "gateway": " ",
+                    "gateway": "10.0.0.0",
                     "metric": 101,
                     "type": "ipv4"
                 },
