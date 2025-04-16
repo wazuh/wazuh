@@ -34,14 +34,30 @@ All notable changes to this project will be documented in this file.
 - Improved cleanup logic for the content folder for the VD module. ([#27750](https://github.com/wazuh/wazuh/pull/27750))
 - Sanitized invalid size values from package data provider events. ([#27806](https://github.com/wazuh/wazuh/pull/27806))
 - Fixed crash when reading email alerts missing the `email_to` attribute. ([#26704](https://github.com/wazuh/wazuh/pull/26704))
+- Fixed offset errors by updating the DB only after processing events. ([#29179](https://github.com/wazuh/wazuh/pull/29179))
 
 ### Agent
 
+#### Added
+
+- FIM now supports whodata using an eBPF-based integration. ([#27956](https://github.com/wazuh/wazuh/pull/27956))
+- Added support for the `riskDetections` relationship in MS Graph. ([#28416](https://github.com/wazuh/wazuh/pull/28416))
+
+#### Changed
+
+- Added a time delay option in the MS Graph integration to prevent log loss. ([#28389](https://github.com/wazuh/wazuh/pull/28389))
+- Added a page size option to the MS Graph integration. ([#28276](https://github.com/wazuh/wazuh/pull/28276))
+- Implemented Journald rotation detection in Logcollector. ([#28388](https://github.com/wazuh/wazuh/pull/28388))
+
 #### Fixed
 
-- Fixed a bug that might make wazuh-modulesd crash on startup. ([#26647](https://github.com/wazuh/wazuh/pull/26647))
-- Fixed invalid UTF-8 character checking in FIM. Thanks to @zbalkan. ([#26289](https://github.com/wazuh/wazuh/pull/26289))
-- Improved URL validations in Maltiverse Integration. ([#27100](https://github.com/wazuh/wazuh/pull/27100))
+- Fixed a bug that could cause `wazuh-modulesd` to crash at startup. ([#26647](https://github.com/wazuh/wazuh/pull/26647))
+- Fixed incorrect UTF-8 character validation in FIM. Thanks to @zbalkan. ([#26289](https://github.com/wazuh/wazuh/pull/26289))
+- Improved URL validation in the Maltiverse integration. ([#27100](https://github.com/wazuh/wazuh/pull/27100))
+- Fixed an issue in Syscollector where package sizes were reported as negative. ([#28005](https://github.com/wazuh/wazuh/pull/28005))
+- Fixed an enrollment failure on Solaris 10 caused by unsupported socket timeout. ([#29161](https://github.com/wazuh/wazuh/pull/29161))
+- Fixed a memory issue in the `wazuh-agentd` argument parser. ([#29214](https://github.com/wazuh/wazuh/pull/29214))
+- Fixed WPK package upgrades for DEB when upgrading from version 4.3.11 or earlier. ([#28928](https://github.com/wazuh/wazuh/pull/28928))
 
 ### Ruleset
 
