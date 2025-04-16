@@ -123,12 +123,16 @@ jobs:
               arch="amd64"
             elif [ ${{ inputs.architecture }} = 'aarch64' ]; then
               arch="arm64"
+            else
+              arch="${{ inputs.architecture }}"
             fi
           else
             if [ ${{ inputs.architecture }} = 'amd64' ]; then
               arch="x86_64"
             elif [ ${{ inputs.architecture }} = 'arm64' ]; then
               arch="aarch64"
+            else
+              arch="${{ inputs.architecture }}"
             fi
           fi
 
