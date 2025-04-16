@@ -34,6 +34,7 @@ All notable changes to this project will be documented in this file.
 - Improved cleanup logic for the content folder for the VD module. ([#27750](https://github.com/wazuh/wazuh/pull/27750))
 - Sanitized invalid size values from package data provider events. ([#27806](https://github.com/wazuh/wazuh/pull/27806))
 - Fixed crash when reading email alerts missing the `email_to` attribute. ([#26704](https://github.com/wazuh/wazuh/pull/26704))
+- Fixed offset errors by updating the DB only after processing events. ([#29179](https://github.com/wazuh/wazuh/pull/29179))
 
 ### Agent
 
