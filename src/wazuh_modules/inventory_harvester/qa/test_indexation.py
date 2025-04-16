@@ -242,7 +242,7 @@ def test_data_indexation(opensearch, test_folder):
                     encoded_id = quote(
                         raw_id, safe=""
                     )  # encode everything that might break the path
-                    index_url = f"http://{GLOBAL_URL}/{index_name}/_doc/{encoded_id}"
+                    index_url = f"http://{GLOBAL_URL}/{index_name}/_doc/{encoded_id}?refresh=wait_for"
                     resp = requests.put(index_url, json=doc)
                     assert resp.status_code in (200, 201), (
                         f"Insert failed: {resp.status_code} {resp.text}"
