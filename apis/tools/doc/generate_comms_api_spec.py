@@ -2,6 +2,7 @@
 
 import argparse
 import filecmp
+import os
 from pathlib import Path
 
 import yaml
@@ -25,7 +26,8 @@ def main(spec_path):  # NOQA
     )
     app.include_router(router)
 
-    with open(TMP_SPEC, 'w') as f:
+    fd = os.open(TMP_SPEC, os.O_WRONLY | os.O_CREAT, 0o600)
+    with os.fdopen(fd, 'w') as f:
         yaml.dump(app.openapi(), f, sort_keys=False)
 
     if not filecmp.cmp(TMP_SPEC, spec_path):
