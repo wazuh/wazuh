@@ -245,9 +245,13 @@ jobs:
       - name: Get latest Wazuh release from GitHub
         run: |
           apt-get update && apt-get install -y curl jq
-          LATEST_TAG=$(curl -s https://api.github.com/repos/wazuh/wazuh/releases | jq -r '.[].tag_name' | grep -vE 'alpha|beta|rc' | sed 's/^v//' | grep -E '^4\.[0-9]+\.[0-9]+$' | sort -V | tail -n1)
-          echo "Latest release detected: $LATEST_TAG"
-          echo "PUBLIC_RELEASE_VERSION=$LATEST_TAG" >> $GITHUB_ENV
+
+          CURRENT_TAG="${{ env.TAG }}"
+          PREVIOUS_TAG=$(curl -s https://api.github.com/repos/wazuh/wazuh/releases | jq -r '.[].tag_name' | grep -vE 'alpha|beta|rc' | sed 's/^v//' | grep -E '^4\.[0-9]+\.[0-9]+$' | \
+          grep -v "^${CURRENT_TAG}$" | sort -V | awk -v current="$CURRENT_TAG" '$0 < current' | tail -n1)
+          
+          echo "Latest release detected: $PREVIOUS_TAG"
+          echo "PUBLIC_RELEASE_VERSION=$PREVIOUS_TAG" >> $GITHUB_ENV
 
       - name: Download latest public wazuh-manager package
         run: |
