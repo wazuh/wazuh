@@ -13,7 +13,7 @@ RUN echo "deb http://archive.debian.org/debian stretch contrib main non-free" > 
     curl gcc make sudo expect gnupg perl-base perl wget \
     libc-bin libc6 libc6-dev build-essential \
     cdbs devscripts equivs automake autoconf libtool libaudit-dev selinux-basics \
-    libdb5.3 libdb5.3 libssl1.0.2 gawk libsigsegv2
+    libdb5.3 libdb5.3 libssl1.0.2 gawk libsigsegv2 procps
 
 RUN apt-get update && apt-get build-dep python3.5 -y --allow-change-held-packages
 
