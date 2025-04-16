@@ -118,13 +118,20 @@ jobs:
 
       - name: Set ARCH
         run: |
-          if [ ${{ inputs.architecture }} = 'x86_64' ]; then
-            arch="amd64"
-          elif [ ${{ inputs.architecture }} = 'aarch64' ]; then
-            arch="arm64"
+          if [ "${{ inputs.system }}" = "deb" ]; then
+            if [ ${{ inputs.architecture }} = 'x86_64' ]; then
+              arch="amd64"
+            elif [ ${{ inputs.architecture }} = 'aarch64' ]; then
+              arch="arm64"
+            fi
           else
-            arch=${{ inputs.architecture }}
+            if [ ${{ inputs.architecture }} = 'amd64' ]; then
+              arch="x86_64"
+            elif [ ${{ inputs.architecture }} = 'arm64' ]; then
+              arch="aarch64"
+            fi
           fi
+
           echo "ARCH=$arch" >> $GITHUB_ENV;
 
       - name: Set tag and container name
@@ -230,7 +237,7 @@ jobs:
 
       - name: Download latest public wazuh-manager package
         run: |
-          ARCH=${{ inputs.architecture }}
+          ARCH=${{ env.ARCH }}
           VERSION=${{ env.PUBLIC_RELEASE_VERSION }}
 
           if [ "${{ inputs.system }}" = "deb" ]; then
