@@ -354,7 +354,7 @@ async def monitor_server_daemons(loop: asyncio.BaseEventLoop, server_process: ps
     """
     comms_api_config = CentralizedConfig.get_comms_api_config()
     process_children = {
-        MANAGEMENT_API_DAEMON_NAME[:15]: 5,
+        MANAGEMENT_API_DAEMON_NAME[:15]: 4,
         COMMS_API_DAEMON_NAME: comms_api_config.workers + 4,
         ENGINE_DAEMON_NAME: 0,
     }
