@@ -38,7 +38,6 @@ from server_management_api.signals import lifespan_handler
 from server_management_api.uri_parser import APIUriParser
 from starlette.middleware.cors import CORSMiddleware
 from wazuh.core import common, pyDaemonModule, utils
-from wazuh.core.authentication import load_jwt_keys
 from wazuh.core.commands_manager import CommandsManager
 from wazuh.core.common import WAZUH_SERVER_YML
 from wazuh.core.config.client import CentralizedConfig
@@ -328,7 +327,6 @@ if __name__ == '__main__':
     logger = logging.getLogger('wazuh-api')
 
     configure_ssl(uvicorn_params, management_config.ssl)
-    load_jwt_keys(management_config)
 
     # Check for unused PID files
     utils.clean_pid_files(API_MAIN_PROCESS)

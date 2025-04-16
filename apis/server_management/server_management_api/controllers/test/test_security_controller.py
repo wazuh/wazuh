@@ -8,7 +8,7 @@ import pytest
 from connexion.lifecycle import ConnexionResponse
 from connexion.testing import TestContext
 from wazuh.core.config.client import CentralizedConfig
-from wazuh.core.config.models.server import ValidateFilePathMixin
+from wazuh.core.config.models.base import ValidateFilePathMixin
 
 from server_management_api.controllers.test.utils import CustomAffectedItems, get_default_configuration
 from server_management_api.controllers.util import JSON_CONTENT_TYPE

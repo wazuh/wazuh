@@ -7,7 +7,7 @@ from unittest.mock import ANY, AsyncMock, patch
 import pytest
 from connexion.lifecycle import ConnexionResponse
 from wazuh.core.config.client import CentralizedConfig
-from wazuh.core.config.models.server import ValidateFilePathMixin
+from wazuh.core.config.models.base import ValidateFilePathMixin
 
 from server_management_api.constants import INSTALLATION_UID_KEY, UPDATE_INFORMATION_KEY
 from server_management_api.controllers.test.utils import CustomAffectedItems, get_default_configuration

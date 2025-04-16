@@ -8,7 +8,7 @@ from unittest.mock import patch
 import pytest
 from wazuh.core.cluster.tests.conftest import get_default_configuration
 from wazuh.core.config.client import CentralizedConfig
-from wazuh.core.config.models.server import ValidateFilePathMixin
+from wazuh.core.config.models.base import ValidateFilePathMixin
 from wazuh.core.exception import WazuhClusterError
 
 with patch('wazuh.common.getgrnam'):

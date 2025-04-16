@@ -2,6 +2,7 @@ from unittest.mock import mock_open, patch
 
 import pytest
 from wazuh.core.config.client import CentralizedConfig
+from wazuh.core.config.models.base import ValidateFilePathMixin
 from wazuh.core.config.models.central_config import (
     CommsAPIConfig,
     Config,
@@ -10,7 +11,7 @@ from wazuh.core.config.models.central_config import (
     IndexerConfig,
     ManagementAPIConfig,
 )
-from wazuh.core.config.models.server import DEFAULT_SERVER_INTERNAL_CONFIG, ServerConfig, ValidateFilePathMixin
+from wazuh.core.config.models.server import DEFAULT_SERVER_INTERNAL_CONFIG, ServerConfig
 
 mock_config_data = {
     'server': {

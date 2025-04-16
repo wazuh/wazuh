@@ -48,7 +48,7 @@ from wazuh.core.exception import WazuhError, WazuhException
             None,
             None,
             None,
-            'Error 1017 - Some Wazuh daemons are not ready yet in node "Node Name" (not ready daemons)',
+            'Error 1017 - Some Wazuh daemons are not ready yet',
         ),
     ],
 )

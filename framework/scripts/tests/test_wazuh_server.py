@@ -11,7 +11,7 @@ from scripts.tests.conftest import get_default_configuration
 from wazuh.core import pyDaemonModule
 from wazuh.core.common import CONFIG_SERVER_SOCKET_PATH
 from wazuh.core.config.client import CentralizedConfig
-from wazuh.core.config.models.server import ValidateFilePathMixin
+from wazuh.core.config.models.base import ValidateFilePathMixin
 
 wazuh_server.pyDaemonModule = pyDaemonModule
 

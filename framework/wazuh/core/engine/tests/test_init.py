@@ -4,7 +4,7 @@ from unittest.mock import patch
 import pytest
 from httpx import AsyncClient, Timeout, TimeoutException
 from wazuh.core.config.client import CentralizedConfig
-from wazuh.core.config.models.server import ValidateFilePathMixin
+from wazuh.core.config.models.base import ValidateFilePathMixin
 from wazuh.core.engine import Engine, get_engine_client
 from wazuh.core.engine.tests.conftest import get_default_configuration
 from wazuh.core.exception import WazuhEngineError
