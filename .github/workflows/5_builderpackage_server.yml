@@ -16,11 +16,13 @@ on:
         required: false
       architecture:
         description: |
-          Architecture of the package [amd64, x86_64]
+          Architecture of the package [amd64, x86_64, arm64, aarch64]
         type: choice
         options:
           - amd64
           - x86_64
+          - arm64
+          - aarch64
         required: true
       system:
         description: 'Package format [deb, rpm]'
@@ -94,7 +96,7 @@ env:
 
 jobs:
   Build-server-packages:
-    runs-on: ubuntu-latest
+    runs-on: ${{ (inputs.architecture == 'arm64' || inputs.architecture == 'aarch64') && 'wz-linux-arm64' || 'ubuntu-24.04' }}
     timeout-minutes: 35
     name: Build ${{ inputs.system }} wazuh-server on ${{ inputs.architecture }}
 
@@ -111,13 +113,24 @@ jobs:
           submodules: recursive
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
+      - name: Set ARCH
+        run: |
+            if [ ${{ inputs.architecture }} = 'x86_64' ]; then
+              arch="amd64"
+            elif [ ${{ inputs.architecture }} = 'aarch64' ]; then
+              arch="arm64"
+            else
+              arch=${{ inputs.architecture }}
+            fi
+            echo "ARCH=$arch" >> $GITHUB_ENV;
+
       - name: Set tag and container name
         run: |
           VERSION="$(grep '"version"' $GITHUB_WORKSPACE/VERSION.json | sed -E 's/.*"version": *"([^"]+)".*/\1/')"
           if [ "${{ inputs.docker_image_tag }}" == "auto" ]; then echo "TAG=$VERSION" >> $GITHUB_ENV;
           elif [ "${{ inputs.docker_image_tag }}" == "developer" ]; then echo "TAG=$(sed 's|[/\]|--|g' <<< ${{ github.ref_name }})" >> $GITHUB_ENV;
           else echo "TAG=${{ inputs.docker_image_tag }}" >> $GITHUB_ENV; fi
-          echo "CONTAINER_NAME=pkg_${{ inputs.system }}_server_builder_amd64" >> $GITHUB_ENV
+          echo "CONTAINER_NAME=pkg_${{ inputs.system }}_server_builder_${{ env.ARCH }}" >> $GITHUB_ENV
 
       - name: Download docker image for package building
         run: |
@@ -136,7 +149,7 @@ jobs:
           # Save the store in the workspace
 
 
-      - name: Build ${{ inputs.system }} wazuh-server on ${{ inputs.architecture }}
+      - name: Build ${{ inputs.system }} wazuh-server on ${{ env.ARCH }}
         working-directory: packages
         run: |
           REVISION=${{ inputs.revision }}
@@ -146,8 +159,8 @@ jobs:
           if [ "${{ inputs.checksum }}" == "true" ]; then FLAGS+="--checksum "; fi
           if [ "${{ inputs.debug}}" == "true" ]; then FLAGS+="--debug "; fi
           # Every call to this workflow will be internally managed as amd64, which is synonymous with x86_64
-          echo "generate_package.sh -a amd64 --tag ${{ env.TAG }} --system ${{ inputs.system }} $FLAGS"
-          bash generate_package.sh -a amd64 --tag ${{ env.TAG }} --system ${{ inputs.system }} $FLAGS
+          echo "generate_package.sh -a ${{ env.ARCH }} --tag ${{ env.TAG }} --system ${{ inputs.system }} $FLAGS"
+          bash generate_package.sh -a ${{ env.ARCH }} --tag ${{ env.TAG }} --system ${{ inputs.system }} $FLAGS
 
           if [ "${{ inputs.system }}" == "deb" ]; then
             SYMBOLS_TAG="dbg"

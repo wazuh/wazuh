@@ -4,6 +4,7 @@ import argparse
 from importlib.metadata import metadata
 from engine_test.cmds.add import configure as configure_add
 from engine_test.cmds.run import configure as configure_run
+from engine_test.cmds.run_raw import configure as configure_run_raw
 from engine_test.cmds.get import configure as configure_get
 from engine_test.cmds.list import configure as configure_list
 from engine_test.cmds.delete import configure as configure_delete
@@ -26,6 +27,7 @@ def parse_args():
     subparsers = parser.add_subparsers(title='subcommands', required=True, dest='subcommand')
 
     configure_run(subparsers)
+    configure_run_raw(subparsers)
     configure_add(subparsers)
     configure_get(subparsers)
     configure_list(subparsers)

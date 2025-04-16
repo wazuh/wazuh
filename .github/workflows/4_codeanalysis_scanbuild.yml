@@ -1,0 +1,94 @@
+name: Scan build
+on:
+  workflow_dispatch:
+
+jobs:
+  scan-build-linux:
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        target: ['agent', 'server']
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          submodules: recursive
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang-tools-14
+      - name: "Install a compatible CMake"
+        uses: ./.github/actions/reinstall_cmake
+      - name: Build
+        id: build_step
+        continue-on-error: true
+        run: |
+          cd src
+          make deps TARGET=${{matrix.target}} -j$(nproc)
+          scan-build-14 --status-bugs --force-analyze-debug-code -o scan-build-report --exclude external/ make TARGET=${{ matrix.target }} DEBUG=1 -j$(nproc)
+      - name: Upload scan-build report
+        if: steps.build_step.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-${{ matrix.target }}-scan-build-report
+          path: src/scan-build-report/
+      - name: Fail job if build failed
+        if: steps.build_step.outcome == 'failure'
+        run: exit 1
+
+  scan-build-ubuntu-mingw-windows:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          submodules: recursive
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang-tools-14 gcc-mingw-w64 g++-mingw-w64-i686 g++-mingw-w64-x86-64 nsis -y
+      - name: "Install a compatible CMake"
+        uses: ./.github/actions/reinstall_cmake
+      - name: Build
+        id: build_step
+        continue-on-error: true
+        run: |
+          cd src
+          make deps TARGET=winagent -j$(nproc)
+          make TARGET=winagent DEBUG=1 -j$(nproc)
+          make clean-internals
+          scan-build-14 --status-bugs --use-cc=/usr/bin/i686-w64-mingw32-gcc --use-c++=/usr/bin/i686-w64-mingw32-g++-posix --analyzer-target=i686-w64-mingw32 --force-analyze-debug-code -o scan-build-report --exclude external/ make TARGET=winagent DEBUG=1 -j$(nproc)
+      - name: Upload scan-build report
+        if: steps.build_step.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-agent-scan-build-report
+          path: src/scan-build-report/
+      - name: Fail job if build failed
+        if: steps.build_step.outcome == 'failure'
+        run: exit 1
+
+  scan-build-macos-agent:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          submodules: recursive
+      - name: Install dependencies
+        run: |
+          brew install llvm@14
+      - name: Build
+        id: build_step
+        continue-on-error: true
+        run: |
+          cd src
+          make deps TARGET=agent -j3
+          /opt/homebrew/opt/llvm@14/bin/scan-build --status-bugs --force-analyze-debug-code -o scan-build-report --exclude external/ make TARGET=agent DEBUG=1 -j3
+      - name: Upload scan-build report
+        if: steps.build_step.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-agent-scan-build-report
+          path: src/scan-build-report/
+      - name: Fail job if build failed
+        if: steps.build_step.outcome == 'failure'
+        run: exit 1

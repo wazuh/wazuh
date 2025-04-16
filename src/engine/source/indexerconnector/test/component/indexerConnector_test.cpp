@@ -378,7 +378,7 @@ TEST_F(IndexerConnectorTest, PublishWithIndexName)
     // First line: JSON data with the metadata (indexer name, index ID)
     // Second line: Index data.
     constexpr auto INDEX_DATA {"content"};
-    auto callbackCalled {false};
+    std::atomic<bool> callbackCalled {false};
     const auto checkPublishedData {[&expectedMetadata, &callbackCalled, &INDEX_DATA](const std::string& data)
                                    {
                                        const auto splitData {base::utils::string::split(data, '\n')};
@@ -400,7 +400,7 @@ TEST_F(IndexerConnectorTest, PublishWithIndexName)
     publishData["index"] = "specific_index";
     publishData["data"] = INDEX_DATA;
     ASSERT_NO_THROW(indexerConnector.publish(publishData.dump()));
-    ASSERT_NO_THROW(waitUntil([&callbackCalled]() { return callbackCalled; }, MAX_INDEXER_PUBLISH_TIME_MS));
+    ASSERT_NO_THROW(waitUntil([&callbackCalled]() { return callbackCalled.load(); }, MAX_INDEXER_PUBLISH_TIME_MS));
 }
 
 /**

@@ -1,0 +1,50 @@
+name: macOS unit tests
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-ventura:
+    runs-on: macos-13
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v3
+      - name: Install cmocka and lcov
+        run: |
+          brew install cmocka lcov
+      - name: Build wazuh agent for macOS 13 with tests flags
+        run: |
+          make deps -C src TARGET=agent -j4
+          LIBRARY_PATH=/usr/local/lib make -C src TARGET=agent -j4 DEBUG=1 TEST=1
+      - name: Run wazuh unit tests for macOS 13
+        run: |
+          cd src/data_provider/build
+          ctest -V
+          cd ../../shared_modules/dbsync/build
+          ctest -V
+          cd ../../rsync/build
+          ctest -V
+          cd ../../../wazuh_modules/syscollector/build
+          ctest -V
+  build-sonoma:
+    runs-on: macos-14
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v3
+      - name: Install cmocka and lcov
+        run: |
+          brew install cmocka lcov
+      - name: Build wazuh agent for macOS 14 with tests flags
+        run: |
+          make deps -C src TARGET=agent -j3
+          C_INCLUDE_PATH=$C_INCLUDE_PATH:/opt/homebrew/include LIBRARY_PATH=/opt/homebrew/lib make -C src TARGET=agent -j3 DEBUG=1 TEST=1
+      - name: Run wazuh unit tests for macOS 14
+        run: |
+          cd src/data_provider/build
+          ctest -V
+          cd ../../shared_modules/dbsync/build
+          ctest -V
+          cd ../../rsync/build
+          ctest -V
+          cd ../../../wazuh_modules/syscollector/build
+          ctest -V

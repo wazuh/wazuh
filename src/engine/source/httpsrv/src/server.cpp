@@ -113,6 +113,11 @@ void Server::stop() noexcept
 {
     try
     {
+        if (!isRunning())
+        {
+            return;
+        }
+
         m_srv->stop();
 
         if (m_thread.joinable())
