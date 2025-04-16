@@ -27,6 +27,10 @@ case "$1" in
             rm -rf /var/lib/wazuh-server/ || true
         fi
 
+        if [ -d "/var/log/wazuh-server/" ]; then
+            rm -rf /var/log/wazuh-server/ || true
+        fi
+
         if [ -d "/run/wazuh-server" ]; then
             rm -rf /run/wazuh-server || true
         fi
