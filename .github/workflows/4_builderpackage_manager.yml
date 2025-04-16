@@ -116,27 +116,37 @@ jobs:
 
       - uses: actions/checkout@v4
 
-      - name: Set ARCH
+      - name: Set ARCH and PACKAGE_ARCH
         run: |
-          if [ "${{ inputs.system }}" = "deb" ]; then
-            if [ ${{ inputs.architecture }} = 'x86_64' ]; then
-              arch="amd64"
-            elif [ ${{ inputs.architecture }} = 'aarch64' ]; then
-              arch="arm64"
-            else
-              arch="${{ inputs.architecture }}"
-            fi
-          else
-            if [ ${{ inputs.architecture }} = 'amd64' ]; then
-              arch="x86_64"
-            elif [ ${{ inputs.architecture }} = 'arm64' ]; then
-              arch="aarch64"
-            else
-              arch="${{ inputs.architecture }}"
-            fi
-          fi
+          case "${{ inputs.system }}" in
+            rpm)
+              case "${{ inputs.architecture }}" in
+                x86_64|amd64)
+                  arch="x86_64"
+                  pkg_arch="amd64"
+                  ;;
+                aarch64|arm64)
+                  arch="aarch64"
+                  pkg_arch="arm64"
+                  ;;
+              esac
+              ;;
+            deb)
+              case "${{ inputs.architecture }}" in
+                x86_64|amd64)
+                  arch="amd64"
+                  pkg_arch="amd64"
+                  ;;
+                aarch64|arm64)
+                  arch="arm64"
+                  pkg_arch="arm64"
+                  ;;
+              esac
+              ;;
+          esac
 
-          echo "ARCH=$arch" >> $GITHUB_ENV;
+          echo "ARCH=$arch" >> $GITHUB_ENV
+          echo "PACKAGE_ARCH=$pkg_arch" >> $GITHUB_ENV
 
       - name: Set tag and container name
         run: |
@@ -144,7 +154,7 @@ jobs:
           if [ "${{ inputs.docker_image_tag }}" == "auto" ]; then echo "TAG=$VERSION" >> $GITHUB_ENV;
           elif [ "${{ inputs.docker_image_tag }}" == "developer" ]; then echo "TAG=$(sed 's|[/\]|--|g' <<< ${{ github.ref_name }})" >> $GITHUB_ENV;
           else echo "TAG=${{ inputs.docker_image_tag }}" >> $GITHUB_ENV; fi
-          echo "CONTAINER_NAME=pkg_${{ inputs.system }}_manager_builder_${{ env.ARCH }}" >> $GITHUB_ENV
+          echo "CONTAINER_NAME=pkg_${{ inputs.system }}_manager_builder_${{ env.PACKAGE_ARCH }}" >> $GITHUB_ENV
 
       - name: Download docker image for package building
         run: |
@@ -169,8 +179,8 @@ jobs:
           if [ "${{ inputs.checksum }}" == "true" ]; then FLAGS+="--checksum "; fi
           if [ "${{ inputs.debug}}" == "true" ]; then FLAGS+="--debug "; fi
           # Every call to this workflow will be internally managed as amd64, which is synonymous with x86_64
-          echo "generate_package.sh -a ${{ env.ARCH }} --tag ${{ env.TAG }} --system ${{ inputs.system }} $FLAGS"
-          bash generate_package.sh -a ${{ env.ARCH }} --tag ${{ env.TAG }} --system ${{ inputs.system }} $FLAGS
+          echo "generate_package.sh -a ${{ env.PACKAGE_ARCH }} --tag ${{ env.TAG }} --system ${{ inputs.system }} $FLAGS"
+          bash generate_package.sh -a ${{ env.PACKAGE_ARCH }} --tag ${{ env.TAG }} --system ${{ inputs.system }} $FLAGS
 
           if [ "${{ inputs.system }}" == "deb" ]; then
             SYMBOLS_TAG="dbg"
