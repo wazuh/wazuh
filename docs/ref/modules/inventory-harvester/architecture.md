@@ -39,4 +39,42 @@ This module uses a stateless design to process incoming messages and index them 
 
 ## High-Level Architecture Diagram
 
-@ToDo
+```mermaid
+flowchart TD
+
+subgraph WazuhManager["Wazuh Manager"]
+  Remoted["Remoted"]
+  subgraph WazuhModulesM["Wazuh Modules"]
+    InventoryHarvester["Inventory Harvester"]
+    IndexerConnector["Indexer Connector"]
+    InventoryHarvester -- "JSON Reflection" --> IndexerConnector
+  end
+  Remoted -- "Plain text JSON event" --> Router
+  Router -- "Flatbuffer event" --> InventoryHarvester
+end
+IndexerConnector -- indexes JSON document --> WazuhIndexer
+subgraph WazuhAgent["Wazuh Agent"]
+  subgraph Providers["Data Provider"]
+    OS["Operating System"]
+    Packages["Packages"]
+    Processes["Processes"]
+    Hotfixes["Hotfixes"]
+    Ports["Ports"]
+    Hardware["Hardware"]
+    Network["Networks"]
+  end
+  subgraph WazuhModulesA["Wazuh Modules"]
+    Syscollector["Syscollector"]
+  end
+  subgraph Syscheck["Syscheck"]
+    FileM["File monitoring"]
+    RegistryM["Registry monitoring"]
+  end
+  Syscheck -- "Plain text JSON event" --> Remoted
+  Syscollector -- "Plain text JSON event" --> Remoted
+end
+Providers --> Syscollector
+WazuhIndexer["Wazuh Indexer"]
+WazuhDashboard["Wazuh Dashboard"]
+WazuhDashboard -- /_search/dedicated_index --> WazuhIndexer
+```
