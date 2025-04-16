@@ -5,7 +5,9 @@ After=network.target network-online.target
 
 [Service]
 LimitNOFILE=65536
-ExecStart=/usr/bin/env WAZUH_HOME_TMPusr/share/wazuh-server/bin/wazuh-server start
+ExecStart=/usr/bin/sh -c 'WAZUH_HOME_TMPusr/share/wazuh-server/bin/wazuh-server start 2>&1 | tee -a WAZUH_HOME_TMPvar/log/wazuh-server/wazuh-server.log'
+StandardError=inherit
+StandardOutput=inherit
 Type=exec
 KillSignal=SIGINT
 RemainAfterExit=yes

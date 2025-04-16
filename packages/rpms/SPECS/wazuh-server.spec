@@ -105,6 +105,7 @@ cp -p %{_localstatedir}usr/share/wazuh-server/bin/wazuh-server ${RPM_BUILD_ROOT}
 cp -p %{_localstatedir}usr/share/wazuh-server/bin/wazuh-keystore ${RPM_BUILD_ROOT}%{_localstatedir}usr/share/wazuh-server/bin/
 
 cp -pr %{_localstatedir}var/lib/wazuh-server ${RPM_BUILD_ROOT}%{_localstatedir}var/lib/
+cp -pr %{_localstatedir}var/log/wazuh-server ${RPM_BUILD_ROOT}%{_localstatedir}var/log/
 cp -pr %{_localstatedir}usr/share/wazuh-server ${RPM_BUILD_ROOT}%{_localstatedir}usr/share/
 cp -pr %{_localstatedir}etc/wazuh-server ${RPM_BUILD_ROOT}%{_localstatedir}etc/
 
@@ -187,6 +188,7 @@ if [ $1 = 0 ];then
   # Remove lingering folders and files
   rm -rf %{_localstatedir}run/wazuh-server
   rm -rf %{_localstatedir}var/lib/wazuh-server
+  rm -rf %{_localstatedir}var/log/wazuh-server
   rm -rf %{_localstatedir}usr/share/wazuh-server
   rm -rf %{_localstatedir}etc/wazuh-server
 fi
