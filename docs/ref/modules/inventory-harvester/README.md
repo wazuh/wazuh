@@ -90,3 +90,7 @@ FIM (File Integrity Monitoring) and Inventory modules can leverage global querie
 - **Manager-Indexer synchronization** is guaranteed when both operate under the same Wazuh version.
 - FIM and system inventory fields follow a **common schema** wherever possible.
 - The **UI** for FIM and system inventory is designed to mirror the **Vulnerability Detector** interface for consistency.
+
+## Implementation Missing Features
+
+- Currently, the events indexation for **agent 000 (Wazuh manager)** is not supported.

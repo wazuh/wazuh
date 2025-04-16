@@ -25,7 +25,8 @@ This module uses a stateless design to process incoming messages and index them 
     - In the `FIM` module, `integrity_clear` events are sent to the manager for the `fim_file` component when no directories are being monitored. Similarly, for `Windows` systems, they are sent for the `fim_registry_key` and `fim_registry_value` components when no registries are being monitored.
   - **`elementDispatch`**: Dispatches incoming elements to the correct handler based on the element type.
   - **`indexSync`**: Synchronizes indices with the Wazuh Indexer.
-  - **`upgradeAgentDb`**: Action that performs that performs a re-synchronization when upgrading the manager from a legacy version.
+  - **`upgradeAgentDb`**: Action that performs a re-synchronization between databases when upgrading the manager from a legacy ensuring that synchronization events are triggered.
+  The Inventory Harvester does not process information stored in databases, only delta and synchronization events.
 
 - **`src/wazuh_modules/inventory_harvester/src/fimInventory/` and `src/wazuh_modules/inventory_harvester/src/systemInventory/`**
   These folders combine the **Factory Method** and **Chain of Responsibility** patterns:
