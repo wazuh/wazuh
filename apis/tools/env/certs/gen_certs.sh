@@ -69,7 +69,7 @@ EOF
 openssl pkcs8 -topk8 -inform pem -in $name-key.pem -outform pem -nocrypt -out $name.key
 }
 
-hosts=(wazuh-indexer wazuh-manager wazuh-worker1 wazuh-worker2)
+hosts=(wazuh-indexer wazuh-manager)
 for i in "${hosts[@]}"; do
     gencert $i www
 done
