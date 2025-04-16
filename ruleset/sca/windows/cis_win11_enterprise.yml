@@ -5648,11 +5648,11 @@ checks:
       - 'https://learn.microsoft.com/en-us/windows-server/identity/laps/laps-management-policy-settings'
     compliance:
       - cis: ["18.9.25.2"]
-    condition: all
+    condition: any
     rules:
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\LAPS'
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\LAPS -> PwdExpirationProtectionEnabled'
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\LAPS -> PwdExpirationProtectionEnabled -> 1'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\LAPS'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\LAPS -> PasswordExpirationProtectionEnabled'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\LAPS -> PasswordExpirationProtectionEnabled -> 1'
 
  # 18.9.25.3 (L1) Ensure 'Enable password encryption' is set to 'Enabled'. (Automated)
   - id: 26263
@@ -5723,7 +5723,7 @@ checks:
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\LAPS'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\LAPS -> PasswordLength'
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\LAPS -> PasswordLength -> 15'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\LAPS -> PasswordLength -> n:^(\d+) compare >= 15'
 
  # 18.9.25.6 (L1) Ensure 'Password Settings: Password Age (Days)' is set to 'Enabled: 30 or fewer'. (Automated)
   - id: 26266
@@ -7388,29 +7388,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE -> RDVEnforceUserCert'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE -> RDVEnforceUserCert -> 1'
 
- # 18.10.9.3.14 (BL) Ensure 'Deny write access to removable drives not protected by BitLocker' is set to 'Enabled'. (Automated)
-  - id: 26349
-    title: "Ensure 'Deny write access to removable drives not protected by BitLocker' is set to 'Enabled'."
-    description: "This policy setting configures whether BitLocker protection is required for a computer to be able to write data to a removable data drive. All removable data drives that are not BitLocker-protected will be mounted as read-only. If the drive is protected by BitLocker, it will be mounted with read and write access. The recommended state for this setting is: Enabled."
-    rationale: "Users may not voluntarily encrypt removable drives prior to saving important data to the drive."
-    impact: "All removable data drives that are not BitLocker-protected will be mounted as read-only. If the drive is protected by BitLocker, it will be mounted with read and write access."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\BitLocker Drive Encryption\\Removable Data Drives\\Deny write access to removable drives not protected by BitLocker Note: This Group Policy path is provided by the Group Policy template VolumeEncryption.admx/adml that is included with the Microsoft Windows 7 & Server 2008 R2 Administrative Templates (or newer)."
-    compliance:
-      - cis: ["18.10.9.3.14"]
-      - cis_csc_v8: ["3.9"]
-      - cis_csc_v7: ["13.6", "13.8"]
-      - cmmc_v2.0: ["MP.L2-3.8.6", "MP.L2-3.8.7"]
-      - hipaa: ["164.310(d)(1)"]
-      - iso_27001-2013: ["A.6.2.1", "A.8.3.1"]
-      - nist_sp_800-53: ["MP-5"]
-      - pci_dss_v3.2.1: ["3.4"]
-      - pci_dss_v4.0: ["3.5.1.2"]
-      - soc_2: ["CC6.1"]
-    condition: all
-    rules:
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE'
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE -> RDVDenyWriteAccess'
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE -> RDVDenyWriteAccess -> 1'
+ # 18.10.9.3.14 (BL) Ensure 'Deny write access to removable drives not protected by BitLocker' is set to 'Enabled'. (Automated) - Not Implemented
 
  # 18.10.9.3.15 (BL) Ensure 'Deny write access to removable drives not protected by BitLocker: Do not allow write access to devices configured in another organization' is set to 'Enabled: False' (Automated)
   - id: 26350
