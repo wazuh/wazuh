@@ -175,10 +175,10 @@ def test_zip_config_invalid_values(values):
 @pytest.mark.parametrize(
     'init_values, expected',
     [
-        ({}, {'dapi_request': 200, 'cluster_request': 20, 'receiving_file': 120}),
+        ({}, {'cluster_request': 20, 'receiving_file': 120}),
         (
-            {'dapi_request': 100, 'cluster_request': 30, 'receiving_file': 20},
-            {'dapi_request': 100, 'cluster_request': 30, 'receiving_file': 20},
+            {'cluster_request': 30, 'receiving_file': 20},
+            {'cluster_request': 30, 'receiving_file': 20},
         ),
     ],
 )
@@ -186,7 +186,6 @@ def test_communications_timeout_config_default_values(init_values, expected):
     """Check the correct initialization of the `CommunicationsTimeoutConfig` class."""
     config = CommunicationsTimeoutConfig(**init_values)
 
-    assert config.dapi_request == expected['dapi_request']
     assert config.cluster_request == expected['cluster_request']
     assert config.receiving_file == expected['receiving_file']
 
@@ -194,8 +193,6 @@ def test_communications_timeout_config_default_values(init_values, expected):
 @pytest.mark.parametrize(
     'values',
     [
-        {'dapi_request': 0},
-        {'dapi_request': -20},
         {'cluster_request': 0},
         {'cluster_request': -30},
         {'receiving_file': 0},
@@ -213,8 +210,8 @@ def test_communications_timeout_config_invalid_values(values):
     [
         ({}, {'zip': {}, 'timeouts': {}}),
         (
-            {'zip': {'max_size': 40}, 'timeouts': {'dapi_request': 100}},
-            {'zip': {'max_size': 40}, 'timeouts': {'dapi_request': 100}},
+            {'zip': {'max_size': 40}, 'timeouts': {}},
+            {'zip': {'max_size': 40}, 'timeouts': {}},
         ),
     ],
 )

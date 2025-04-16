@@ -297,7 +297,6 @@ class WazuhException(Exception):
             f'{DOCU_VERSION}/user-manual/configuring-cluster/index.html)'
             ' to get more information about how to configure a cluster',
         },
-        3009: {'message': 'Error executing distributed API request', 'remediation': ''},
         3015: 'Cannot access directory',
         3016: 'Received an error response',
         3018: 'Error sending request',
@@ -328,7 +327,6 @@ class WazuhException(Exception):
             'remediation': f'[Update](https://documentation.wazuh.com/{DOCU_VERSION}/upgrade-guide/index.html)'
             ' master and workers to the same version.',
         },
-        3032: 'Could not forward DAPI request. Connection not available.',
         3034: 'Error sending file. File not found.',
         3036: "JSON couldn't be loaded",
         3038: 'Error while processing extra-valid files',
@@ -400,7 +398,6 @@ class WazuhException(Exception):
         extra_message: str = None,
         extra_remediation: str = None,
         cmd_error: bool = False,
-        dapi_errors: dict = None,
         title: str = None,
         type: str = None,
     ):
@@ -416,9 +413,6 @@ class WazuhException(Exception):
             Adds an extra description to remediation.
         cmd_error : bool
             If it is a custom error code (i.e. ossec commands), the error description will be the message.
-        dapi_errors : dict
-            Dictionary with details about node and logfile. I.e.: {'master-node': {'error': 'Wazuh Internal error',
-            'logfile': 'Refer to the server logs for more details.'}}
         title : str
             Name of the exception to be shown.
         type : str
@@ -430,7 +424,6 @@ class WazuhException(Exception):
         self._extra_message = extra_message
         self._extra_remediation = extra_remediation
         self._cmd_error = cmd_error
-        self._dapi_errors = {} if dapi_errors is None else deepcopy(dapi_errors)
 
         if not cmd_error and self._code in self.ERRORS:
             error_details = self.ERRORS[self._code]
@@ -482,7 +475,6 @@ class WazuhException(Exception):
     def __or__(self, other):
         if isinstance(other, WazuhException):
             result = self.__class__(**self.to_dict())
-            result.dapi_errors = {**self._dapi_errors, **other.dapi_errors}
         else:
             result = other | self
         return result
@@ -507,7 +499,6 @@ class WazuhException(Exception):
             'extra_message': self._extra_message,
             'extra_remediation': self._extra_remediation,
             'cmd_error': self._cmd_error,
-            'dapi_errors': self._dapi_errors,
         }
 
     @property
@@ -555,21 +546,6 @@ class WazuhException(Exception):
         return self._remediation
 
     @property
-    def dapi_errors(self) -> dict | Any:
-        """Get distributed API errors.
-
-        Returns
-        -------
-        dict | Any
-            DAPI errors.
-        """
-        return self._dapi_errors
-
-    @dapi_errors.setter
-    def dapi_errors(self, value: dict | Any):
-        self._dapi_errors = value
-
-    @property
     def code(self) -> int:
         """Get code.
 
@@ -604,7 +580,6 @@ class WazuhInternalError(WazuhException):
         extra_message: str = None,
         extra_remediation: str = None,
         cmd_error: bool = False,
-        dapi_errors: dict = None,
         ids: Union[list, set] = None,
         title: str = None,
         type: str = None,
@@ -621,9 +596,6 @@ class WazuhInternalError(WazuhException):
             Adds an extra description to remediation.
         cmd_error : bool
             If it is a custom error code (i.e. ossec commands), the error description will be the message.
-        dapi_errors : dict
-            Dictionary with details about node and logfile. I.e.: {'master-node': {'error': 'Wazuh Internal error',
-            'logfile': 'Refer to the server logs for more details.'}}
         title : str
             Name of the exception to be shown.
         type : str
@@ -636,7 +608,6 @@ class WazuhInternalError(WazuhException):
             extra_message=extra_message,
             extra_remediation=extra_remediation,
             cmd_error=cmd_error,
-            dapi_errors=dapi_errors,
             title=title if title else self._default_title,
             type=type if type else self._default_type,
         )
@@ -697,7 +668,6 @@ class WazuhError(WazuhException):
         extra_message: str = None,
         extra_remediation: str = None,
         cmd_error: bool = False,
-        dapi_errors: dict = None,
         ids: Union[list, set] = None,
         title: str = None,
         type: str = None,
@@ -714,9 +684,6 @@ class WazuhError(WazuhException):
             Adds an extra description to remediation.
         cmd_error : bool
             If it is a custom error code (i.e. ossec commands), the error description will be the message.
-        dapi_errors : dict
-            Dictionary with details about node and logfile. I.e.: {'master-node': {'error': 'Wazuh Internal error',
-            'logfile': 'Refer to the server logs for more details.'}}
         title : str
             Name of the exception to be shown.
         type : str
@@ -729,7 +696,6 @@ class WazuhError(WazuhException):
             extra_message=extra_message,
             extra_remediation=extra_remediation,
             cmd_error=cmd_error,
-            dapi_errors=dapi_errors,
             title=title if title else self._default_title,
             type=type if type else self._default_type,
         )

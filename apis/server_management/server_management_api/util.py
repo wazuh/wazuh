@@ -354,8 +354,7 @@ def _create_problem(exc: Exception, code: int = None):
         ext = remove_nones_to_dict(
             {
                 'remediation': exc.remediation,
-                'code': exc.code,
-                'dapi_errors': exc.dapi_errors if exc.dapi_errors != {} else None,
+                'code': exc.code
             }
         )
 

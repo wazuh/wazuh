@@ -39,9 +39,6 @@ stages:
       status_code: 403
       json:
         error: 4000
-        dapi_errors:
-          unknown-node: # No permission to see node
-            error: !anystr
 
   - name: Get a list of agents (Partially allowed, user aware)
     request:
