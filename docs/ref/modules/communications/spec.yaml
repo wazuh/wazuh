@@ -187,21 +187,26 @@ components:
           type: string
           title: Order Id
         source:
-          $ref: '#/components/schemas/Source'
+          allOf:
+          - $ref: '#/components/schemas/Source'
         user:
           type: string
           title: User
         target:
-          $ref: '#/components/schemas/Target'
+          allOf:
+          - $ref: '#/components/schemas/Target'
         action:
-          $ref: '#/components/schemas/Action'
+          allOf:
+          - $ref: '#/components/schemas/Action'
         timeout:
           type: integer
           title: Timeout
         status:
-          $ref: '#/components/schemas/Status'
+          allOf:
+          - $ref: '#/components/schemas/Status'
         result:
-          $ref: '#/components/schemas/Result'
+          allOf:
+          - $ref: '#/components/schemas/Result'
       type: object
       title: Command
     Commands:
@@ -367,14 +372,16 @@ components:
           type: array
           title: Packages
         agent:
-          $ref: '#/components/schemas/Agent'
+          allOf:
+          - $ref: '#/components/schemas/Agent'
         hotfixes:
           items:
             type: string
           type: array
           title: Hotfixes
         os:
-          $ref: '#/components/schemas/OS'
+          allOf:
+          - $ref: '#/components/schemas/OS'
       type: object
       required:
       - type

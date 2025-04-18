@@ -2,15 +2,19 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
+import ast
 import asyncio
+import datetime
 import json
 import logging
-import os
 import time
 from concurrent.futures import process
 from functools import partial
+from importlib import import_module
 from typing import Callable, Dict
+
 import wazuh.core.results as wresults
+from wazuh import Wazuh
 from wazuh.core import common, exception
 from wazuh.core.config.client import CentralizedConfig
 from wazuh.core.rbac import RBACManager
@@ -18,6 +22,7 @@ from wazuh.core.rbac import RBACManager
 pools = common.mp_pools.get()
 
 authentication_funcs = {'check_token', 'check_user_master', 'get_permissions', 'get_security_conf'}
+
 
 class TaskDispatcher:
     """Represents a task dispatch request."""
@@ -105,11 +110,7 @@ class TaskDispatcher:
             response = await self.execute_local_request()
 
             try:
-                response = (
-                    json.loads(response)
-                    if isinstance(response, str)
-                    else response
-                )
+                response = json.loads(response, object_hook=as_wazuh_object) if isinstance(response, str) else response
             except json.decoder.JSONDecodeError:
                 response = {'message': response}
 
@@ -138,7 +139,6 @@ class TaskDispatcher:
 
             self.logger.error(f'Unhandled exception: {str(e)}', exc_info=True)
             return exception.WazuhInternalError(1000)
-
 
     @staticmethod
     def run_local(f, f_kwargs, rbac_permissions, current_user, origin_module, rbac_manager):
@@ -214,12 +214,17 @@ class TaskDispatcher:
 
             self.debug_log(f'Time calculating request result: {time.time() - before:.3f}s')
             return data
+        except (exception.WazuhError, exception.WazuhResourceNotFound) as e:
+            if self.debug:
+                raise
+            return json.dumps(e, cls=WazuhJSONEncoder)
         except Exception as e:
             self.logger.error(f'Error executing API request locally: {str(e)}', exc_info=True)
             if self.debug:
                 raise
             return json.dumps(
-                exception.WazuhInternalError(1000)
+                exception.WazuhInternalError(1000),
+                cls=WazuhJSONEncoder,
             )
 
     def to_dict(self):
@@ -239,3 +244,132 @@ class TaskDispatcher:
             'current_user': self.current_user,
             'api_timeout': self.api_request_timeout,
         }
+
+
+class WazuhJSONEncoder(json.JSONEncoder):
+    """Define special JSON encoder for Wazuh."""
+
+    def default(self, obj):
+        """Serialize special Wazuh-related objects to JSON.
+
+        Override the default serialization behavior to handle additional Python types
+        used in Wazuh, including callables, custom exceptions, results, datetime objects,
+        and generic exceptions.
+
+        Parameters
+        ----------
+        obj : Any
+            The object to be serialized.
+
+        Returns
+        -------
+        Any
+            A JSON-serializable object representing the original value.
+
+        Raises
+        ------
+        TypeError
+            If the object cannot be serialized.
+        """
+        if callable(obj):
+            return self._encode_callable(obj)
+        if isinstance(obj, exception.WazuhException):
+            return self._encode_wazuh_exception(obj)
+        if isinstance(obj, wresults.AbstractWazuhResult):
+            return self._encode_wazuh_result(obj)
+        if isinstance(obj, (datetime.datetime, datetime.date)):
+            return self._encode_datetime(obj)
+        if isinstance(obj, Exception):
+            return self._encode_unhandled_exception(obj)
+
+        return super().default(obj)
+
+    def _encode_callable(self, obj):
+        result = {'__callable__': {}}
+        attributes = result['__callable__']
+        if hasattr(obj, '__name__'):
+            attributes['__name__'] = obj.__name__
+        if hasattr(obj, '__module__'):
+            attributes['__module__'] = obj.__module__
+        if hasattr(obj, '__qualname__'):
+            attributes['__qualname__'] = obj.__qualname__
+        if hasattr(obj, '__self__') and isinstance(obj.__self__, Wazuh):
+            attributes['__wazuh__'] = obj.__self__.to_dict()
+        attributes['__type__'] = type(obj).__name__
+        return result
+
+    def _encode_wazuh_exception(self, obj):
+        return {'__wazuh_exception__': {'__class__': obj.__class__.__name__, '__object__': obj.to_dict()}}
+
+    def _encode_wazuh_result(self, obj):
+        return {'__wazuh_result__': {'__class__': obj.__class__.__name__, '__object__': obj.encode_json()}}
+
+    def _encode_datetime(self, obj):
+        return {'__wazuh_datetime__': obj.isoformat()}
+
+    def _encode_unhandled_exception(self, obj):
+        return {'__unhandled_exc__': {'__class__': obj.__class__.__name__, '__args__': obj.args}}
+
+
+def as_wazuh_object(dct: Dict):
+    """Deserialize a dictionary into a Wazuh-related Python object.
+
+    Act as a custom `object_hook` for `json.loads`, reconstructing Wazuh-specific
+    objects from their serialized form, such as:
+    - Callables (functions and methods)
+    - WazuhException instances
+    - AbstractWazuhResult objects
+    - datetime objects (from ISO format)
+    - Generic exceptions
+
+    Parameters
+    ----------
+    dct : dict
+        The dictionary potentially representing a serialized Wazuh object.
+
+    Returns
+    -------
+    Any
+        The deserialized Python object, or the original dictionary if no special decoding is needed.
+
+    Raises
+    ------
+    WazuhInternalError
+        If the dictionary contains an unrecognized or invalid format for decoding.
+    """
+    try:
+        if '__callable__' in dct:
+            encoded_callable = dct['__callable__']
+            funcname = encoded_callable['__name__']
+            if '__wazuh__' in encoded_callable:
+                # Encoded Wazuh instance method.
+                wazuh = Wazuh()
+                return getattr(wazuh, funcname)
+            else:
+                # Encoded function or static method.
+                qualname = encoded_callable['__qualname__'].split('.')
+                classname = qualname[0] if len(qualname) > 1 else None
+                module_path = encoded_callable['__module__']
+                module = import_module(module_path)
+                if classname is None:
+                    return getattr(module, funcname)
+                else:
+                    return getattr(getattr(module, classname), funcname)
+        elif '__wazuh_exception__' in dct:
+            wazuh_exception = dct['__wazuh_exception__']
+            return getattr(exception, wazuh_exception['__class__']).from_dict(wazuh_exception['__object__'])
+        elif '__wazuh_result__' in dct:
+            wazuh_result = dct['__wazuh_result__']
+            return getattr(wresults, wazuh_result['__class__']).decode_json(wazuh_result['__object__'])
+        elif '__wazuh_datetime__' in dct:
+            return datetime.datetime.fromisoformat(dct['__wazuh_datetime__'])
+        elif '__unhandled_exc__' in dct:
+            exc_data = dct['__unhandled_exc__']
+            exc_dict = {exc_data['__class__']: exc_data['__args__']}
+            return ast.literal_eval(json.dumps(exc_dict))
+        return dct
+
+    except (KeyError, AttributeError):
+        raise exception.WazuhInternalError(
+            1000, extra_message=f'Wazuh object cannot be decoded from JSON {dct}', cmd_error=True
+        )
