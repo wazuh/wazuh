@@ -27,7 +27,7 @@ constexpr auto NOT_USED {-1};
 constexpr auto INDEXER_COLUMN {"indexer"};
 constexpr auto USER_KEY {"username"};
 constexpr auto PASSWORD_KEY {"password"};
-constexpr auto ELEMENTS_PER_BULK {25000};
+constexpr auto ELEMENTS_PER_BULK {5000};
 constexpr auto MINIMAL_ELEMENTS_PER_BULK {5};
 
 constexpr auto HTTP_BAD_REQUEST {400};
