@@ -16,6 +16,7 @@
 #include "rocksDBColumnFamily.hpp"
 #include "rocksDBIterator.hpp"
 #include "rocksDBOptions.hpp"
+#include "singleton.hpp"
 #include <algorithm>
 #include <filesystem>
 #include <memory>
@@ -31,6 +32,18 @@
 
 namespace Utils
 {
+    class WriteManagerBuffer : public Singleton<WriteManagerBuffer>
+    {
+        std::shared_ptr<rocksdb::WriteBufferManager> m_writeManager =
+            std::make_shared<rocksdb::WriteBufferManager>(64 * 1024 * 1024);
+
+    public:
+        std::shared_ptr<rocksdb::WriteBufferManager> getWriteManager() const
+        {
+            return m_writeManager;
+        }
+    };
+
     class RocksDBTransaction;
     class IRocksDBWrapper
     {
@@ -74,7 +87,7 @@ namespace Utils
             , m_path {std::move(dbPath)}
         {
             m_readCache = rocksdb::NewLRUCache(16 * 1024 * 1024);
-            m_writeManager = std::make_shared<rocksdb::WriteBufferManager>(128 * 1024 * 1024);
+            m_writeManager = WriteManagerBuffer::instance().getWriteManager();
 
             rocksdb::Options options = RocksDBOptions::buildDBOptions(m_writeManager, m_readCache);
             rocksdb::ColumnFamilyOptions columnFamilyOptions = RocksDBOptions::buildColumnFamilyOptions(m_readCache);
@@ -499,11 +512,11 @@ namespace Utils
         std::vector<std::string> getAllColumns() override
         {
             std::vector<std::string> columnsNames;
-            rocksdb::Options options;
-            if (const auto listStatus {rocksdb::TransactionDB::ListColumnFamilies(options, m_path, &columnsNames)};
-                !listStatus.ok())
+            columnsNames.reserve(m_columnsInstances.size());
+
+            for (const auto& column : m_columnsInstances)
             {
-                throw std::runtime_error("Failed to list columns: " + std::string {listStatus.getState()});
+                columnsNames.push_back(column->GetName());
             }
             return columnsNames;
         }

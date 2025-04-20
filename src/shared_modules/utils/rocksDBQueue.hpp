@@ -16,6 +16,7 @@
 #include "rocksdb/db.h"
 #include "rocksdb/filter_policy.h"
 #include "rocksdb/table.h"
+#include "singleton.hpp"
 #include "stringHelper.h"
 #include <filesystem>
 #include <queue>
@@ -23,6 +24,18 @@
 #include <string>
 
 constexpr auto ROCKSDB_QUEUE_PADDING {20};
+
+class WriteManagerBufferQueue : public Singleton<WriteManagerBufferQueue>
+{
+    std::shared_ptr<rocksdb::WriteBufferManager> m_writeManager =
+        std::make_shared<rocksdb::WriteBufferManager>(128 * 1024 * 1024);
+
+public:
+    std::shared_ptr<rocksdb::WriteBufferManager> getWriteManager() const
+    {
+        return m_writeManager;
+    }
+};
 
 // RocksDB integration as queue
 template<typename T, typename U = T>
@@ -39,7 +52,7 @@ public:
         tableOptions.block_cache = m_readCache;
 
         // Write buffer manager is used to manage the memory used for writing data to the disk.
-        m_writeManager = std::make_shared<rocksdb::WriteBufferManager>(128 * 1024 * 1024);
+        m_writeManager = WriteManagerBufferQueue::instance().getWriteManager();
 
         rocksdb::Options options;
         options.table_factory.reset(NewBlockBasedTableFactory(tableOptions));
@@ -54,7 +67,7 @@ public:
         options.num_levels = 4;
 
         options.write_buffer_size = 32 * 1024 * 1024;
-        options.max_write_buffer_number = 4;
+        options.max_write_buffer_number = 2;
         options.max_background_jobs = 4;
 
         rocksdb::DB* db;
