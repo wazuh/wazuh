@@ -15,12 +15,12 @@ from unittest.mock import MagicMock, PropertyMock, call, patch
 
 import pytest
 import pytz
-from azure.core.exceptions import AzureError, ClientAuthenticationError, HttpResponseError
+from azure.core.exceptions import AzureError, ClientAuthenticationError, HttpResponseError, ResourceModifiedError
 from dateutil.parser import parse
 
 sys.path.insert(0, dirname(dirname(dirname(abspath(__file__)))))
 
-from azure_services.storage import get_blobs, start_storage
+from azure_services.storage import get_blobs, start_storage, download_blob
 from db import orm
 
 PAST_DATE = '2022-01-01T12:00:00.000000Z'
@@ -565,3 +565,43 @@ def test_get_blobs_json_ko(mock_update, mock_loads, mock_logging, exception):
     )
     assert mock_logging.call_count == num_blobs
     mock_update.assert_not_called()
+
+@ pytest.mark.parametrize("retries", [1, 3])
+def test_download_blob_success(retries):
+    """Test download_blob download blob as expected"""
+    container = MagicMock()
+    blob = create_mocked_blob("blob1")
+    data_mock = object()
+
+    container.download_blob.return_value = data_mock
+
+    result = download_blob(container, blob, number_of_retries=retries)
+    assert result is data_mock
+    container.download_blob.assert_called_once_with(blob, encoding="UTF-8", max_concurrency=2)
+
+
+def test_download_blob_retry_then_success():
+    """Test download_blob retries download after a ResourceModifiedError is raised."""
+    container = MagicMock()
+    blob = create_mocked_blob("blob2")
+    data_mock = object()
+
+    container.download_blob.side_effect = [ResourceModifiedError("mod"), data_mock]
+
+    result = download_blob(container, blob, number_of_retries=3)
+    assert result is data_mock
+    assert container.download_blob.call_count == 2
+
+
+@pytest.mark.parametrize("exc", [ValueError("bad"), AzureError("az"), HttpResponseError("http")])
+def test_download_blob_fails_immediately_on_other_exceptions(exc):
+    """Test download_blob handle and raise an exception on other exceptions."""
+    container = MagicMock()
+    blob = create_mocked_blob("blob3")
+
+    container.download_blob.side_effect = exc
+
+    with pytest.raises(type(exc)):
+        download_blob(container, blob, number_of_retries=5)
+    container.download_blob.assert_called_once()
+
