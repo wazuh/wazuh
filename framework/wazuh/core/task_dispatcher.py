@@ -235,24 +235,6 @@ class TaskDispatcher:
                 cls=WazuhJSONEncoder,
             )
 
-    def to_dict(self):
-        """Convert object into a dictionary.
-
-        Returns
-        -------
-        dict
-            Dictionary containing the key values.
-        """
-        return {
-            'f': self.f,
-            'f_kwargs': self.f_kwargs,
-            'wait_for_complete': self.wait_for_complete,
-            'is_async': self.is_async,
-            'rbac_permissions': self.rbac_permissions,
-            'current_user': self.current_user,
-            'api_timeout': self.api_request_timeout,
-        }
-
 
 class WazuhJSONEncoder(json.JSONEncoder):
     """Define special JSON encoder for Wazuh."""
