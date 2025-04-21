@@ -114,14 +114,11 @@ class CommunicationsTimeoutConfig(WazuhConfigBaseModel):
     ----------
     cluster_request : PositiveInt
         The timeout for cluster requests in seconds. Default is 20.
-    dapi_request : PositiveInt
-        The timeout for DAPI requests in seconds. Default is 200.
     receiving_file : PositiveInt
         The timeout for receiving files in seconds. Default is 120.
     """
 
     cluster_request: PositiveInt = 20
-    dapi_request: PositiveInt = 200
     receiving_file: PositiveInt = 120
 
 

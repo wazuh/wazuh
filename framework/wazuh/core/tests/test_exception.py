@@ -7,14 +7,14 @@ from wazuh.core.exception import WazuhError, WazuhException
 
 
 @pytest.mark.parametrize(
-    'code, extra_message, extra_remediation, cmd_error, dapi_errors, title, type, exc_string',
+    'code, extra_message, extra_remediation, cmd_error, title, type, exc_string',
     [
         # code not found in ERRORS - use extra_message
-        (9999, 'External exception', None, None, None, None, None, 'Error 9999 - External exception'),
+        (9999, 'External exception', None, None, None, None, 'Error 9999 - External exception'),
         # code found in ERRORS - cmd_error True
-        (999, 'Code found with cmd_error', None, True, None, None, None, 'Error 999 - Code found with cmd_error'),
+        (999, 'Code found with cmd_error', None, True, None, None, 'Error 999 - Code found with cmd_error'),
         # code found in ERRORS - dictionary entry of string type
-        (999, None, None, None, None, None, None, 'Error 999 - Incompatible version of Python'),
+        (999, None, None, None, None, None, 'Error 999 - Incompatible version of Python'),
         # code found in ERRORS - dictionary entry of dictionary type - without remediation key
         (
             3050,
@@ -23,16 +23,14 @@ from wazuh.core.exception import WazuhError, WazuhException
             None,
             None,
             None,
-            None,
             'Error 3050 - Error while sending orders to the Communications API unix server',
         ),
         # code found in ERRORS - dictionary entry of dictionary type - with remediation key
-        (4000, None, None, None, None, None, None, 'Error 4000 - Permission denied'),
+        (4000, None, None, None, None, None, 'Error 4000 - Permission denied'),
         # code found in ERRORS - extra_message parameter of string type
         (
             4027,
             {'entity': 'User'},
-            None,
             None,
             None,
             None,
@@ -47,27 +45,14 @@ from wazuh.core.exception import WazuhError, WazuhException
             None,
             None,
             None,
-            None,
             'Error 1017 - Some Wazuh daemons are not ready yet',
         ),
     ],
 )
-def test_wazuh_exception_to_string(
-    code, extra_message, extra_remediation, cmd_error, dapi_errors, title, type, exc_string
-):
+def test_wazuh_exception_to_string(code, extra_message, extra_remediation, cmd_error, title, type, exc_string):
     """Check object constructor."""
-    exc = WazuhException(code, extra_message, extra_remediation, cmd_error, dapi_errors, title, type)
+    exc = WazuhException(code, extra_message, extra_remediation, cmd_error, title, type)
     assert str(exc) == exc_string
-
-
-def test_wazuh_exception__or__():
-    """Check that WazuhException's | operator performs the join of dapi errors properly."""
-    excp1 = WazuhException(1307)
-    excp1._dapi_errors = {'test1': 'test error'}
-    excp2 = WazuhException(1307)
-    excp2._dapi_errors = {'test2': 'test error'}
-    excp3 = excp2 | excp1
-    assert excp3._dapi_errors == {'test1': 'test error', 'test2': 'test error'}
 
 
 def test_wazuh_exception__deepcopy__():

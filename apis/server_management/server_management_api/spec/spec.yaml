@@ -185,9 +185,6 @@ components:
             on how to set up permissions, please visit
             https://documentation.wazuh.com/5.0/user-manual/api/rbac/configuration.html"
             error: 4000
-            dapi_errors:
-              unknown-node:
-                error: "Permission denied: Resource type: *:*"
 
     UnauthorizedResponse:
       description: "Response to report an unauthorized request"
@@ -265,9 +262,6 @@ components:
             remediation: "Please, use `GET /groups` to find all available groups:
             https://documentation.wazuh.com/5.0/user-manual/api/rbac/configuration.html"
             code: 1710
-            dapi_errors:
-              unknown-node:
-                error: "The group does not exist"
 
   schemas:
     ## Common models
@@ -320,16 +314,6 @@ components:
           format: int32
         remediation:
           type: string
-        dapi_errors:
-          type: object
-          additionalProperties:
-            type: object
-            properties:
-              error:
-                type: string
-              logfile:
-                type: string
-                format: path
 
     RequestError:
       type: object

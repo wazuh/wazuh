@@ -23,7 +23,6 @@ from wazuh.rbac.decorators import expose_resources
 
 node_id = get_node().get('node')
 
-
 def build_agents_query(agent_list: list, filters: dict) -> dict:
     """Build the query to filter agents.
 

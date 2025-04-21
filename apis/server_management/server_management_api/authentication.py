@@ -15,11 +15,11 @@ import wazuh.rbac.utils as rbac_utils
 from connexion.exceptions import Unauthorized
 from connexion.lifecycle import ConnexionRequest
 from wazuh.core.authentication import JWT_ALGORITHM, JWT_ISSUER, get_keypair
-from wazuh.core.cluster.dapi.dapi import DistributedAPI
 from wazuh.core.common import rbac_manager
 from wazuh.core.config.client import CentralizedConfig
 from wazuh.core.exception import WazuhResourceNotFound
 from wazuh.core.rbac import RBACManager
+from wazuh.core.task_dispatcher import TaskDispatcher
 from wazuh.rbac.preprocessor import optimize_resources
 
 from server_management_api.util import raise_if_exc
@@ -78,16 +78,15 @@ def check_user(name: str, password: str, request: ConnexionRequest = None) -> Un
     dict or None
         Dictionary with the username and its status or None.
     """
-    dapi = DistributedAPI(
+    dispatcher = TaskDispatcher(
         f=check_user_master,
         f_kwargs={'name': name, 'password': password},
-        request_type='local_master',
         is_async=True,
         wait_for_complete=False,
         logger=logging.getLogger('wazuh-api'),
         rbac_manager=request.state.rbac_manager if request else None,
     )
-    data = raise_if_exc(pool.submit(asyncio.run, dapi.distribute_function()).result())
+    data = raise_if_exc(pool.submit(asyncio.run, dispatcher.execute_function()).result())
 
     if data['result']:
         return {'sub': name, 'active': True}
@@ -125,14 +124,13 @@ def generate_token(user_id: str = None, data: dict = None, auth_context: dict = 
     str
         Encoded JWT token.
     """
-    dapi = DistributedAPI(
+    dispatcher = TaskDispatcher(
         f=get_security_conf,
-        request_type='local_master',
         is_async=False,
         wait_for_complete=False,
         logger=logging.getLogger('wazuh-api'),
     )
-    result = raise_if_exc(pool.submit(asyncio.run, dapi.distribute_function()).result()).dikt
+    result = raise_if_exc(pool.submit(asyncio.run, dispatcher.execute_function()).result()).dikt
     timestamp = int(core_utils.get_utc_now().timestamp())
 
     payload = {
@@ -212,7 +210,7 @@ def decode_token(token: str, request: ConnexionRequest = None) -> dict:
         payload = jwt.decode(token, public_key, algorithms=[JWT_ALGORITHM], audience='Wazuh API REST')
 
         # Check token and add processed policies
-        dapi = DistributedAPI(
+        dispatcher = TaskDispatcher(
             f=check_token,
             f_kwargs={
                 'username': payload['sub'],
@@ -220,13 +218,12 @@ def decode_token(token: str, request: ConnexionRequest = None) -> dict:
                 'token_nbf_time': payload['nbf'],
                 'run_as': payload['run_as'],
             },
-            request_type='local_master',
             is_async=True,
             wait_for_complete=False,
             logger=logging.getLogger('wazuh-api'),
             rbac_manager=request.state.rbac_manager if request else None,
         )
-        data = raise_if_exc(pool.submit(asyncio.run, dapi.distribute_function()).result()).to_dict()
+        data = raise_if_exc(pool.submit(asyncio.run, dispatcher.execute_function()).result()).to_dict()
 
         if not data['result']['valid']:
             raise Unauthorized(INVALID_TOKEN)
@@ -234,14 +231,13 @@ def decode_token(token: str, request: ConnexionRequest = None) -> dict:
         payload['rbac_policies']['rbac_mode'] = payload.pop('rbac_mode')
 
         # Detect local changes
-        dapi = DistributedAPI(
+        dispatcher = TaskDispatcher(
             f=get_security_conf,
-            request_type='local_master',
             is_async=False,
             wait_for_complete=False,
             logger=logging.getLogger('wazuh-api'),
         )
-        result = raise_if_exc(pool.submit(asyncio.run, dapi.distribute_function()).result())
+        result = raise_if_exc(pool.submit(asyncio.run, dispatcher.execute_function()).result())
 
         current_rbac_mode = result['rbac_mode']
         current_expiration_time = result['auth_token_exp_timeout']
