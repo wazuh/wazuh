@@ -14,6 +14,7 @@
 
 #include "flatbuffers/include/rsync_generated.h"
 #include "flatbuffers/include/syscheck_deltas_generated.h"
+#include "hashHelper.h"
 #include "stringHelper.h"
 #include "timeHelper.h"
 #include <json.hpp>
@@ -674,6 +675,17 @@ public:
         return m_pathSanitized;
     }
 
+    std::string_view hashPath()
+    {
+        if (m_pathHashed.empty())
+        {
+            Utils::HashData hash(Utils::HashType::Sha256);
+            hash.update(m_pathHashed.c_str(), m_pathHashed.size());
+            m_pathHashed = Utils::asciiToHex(hash.hash());
+        }
+        return m_pathHashed;
+    }
+
     std::string_view mtimeISO8601()
     {
         if (m_mtimeISO8601.empty())
@@ -738,6 +750,7 @@ private:
 
     // Allocations to mantain the lifetime of the data.
     std::string m_pathSanitized;
+    std::string m_pathHashed;
     std::string m_valueNameSanitized;
     std::string m_mtimeISO8601;
     std::string m_keySanitized;

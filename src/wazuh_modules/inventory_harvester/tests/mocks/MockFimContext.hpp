@@ -63,9 +63,10 @@ public:
     MOCK_METHOD(uint64_t, mtime, (), (const));
     MOCK_METHOD(std::string_view, valueName, (), (const));
     MOCK_METHOD(std::string_view, path, (), (const));
+    MOCK_METHOD(std::string_view, hashPath, (), (const));
     MOCK_METHOD(std::string_view, mtimeISO8601, (), (const));
     MOCK_METHOD(std::string_view, hive, (), (const));
-    MOCK_METHOD(std::vector<std::string_view>, key, (), (const));
+    MOCK_METHOD(std::string_view, key, (), (const));
 
     MOCK_METHOD(AffectedComponentType, affectedComponentType, (), (const));
 
