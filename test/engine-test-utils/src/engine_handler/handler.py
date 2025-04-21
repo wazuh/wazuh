@@ -7,6 +7,7 @@ from typing import Optional
 from api_communication.client import APIClient
 from api_communication.proto import router_pb2 as api_router
 
+DEFAULT_ENGINE_RETRY_SLEEP: int = 2
 
 class EngineHandler:
     """EngineHandler class is responsible for starting and stopping an Engine process"""
@@ -97,7 +98,7 @@ class EngineHandler:
             if error == None:
                 break
 
-            time.sleep(1)
+            time.sleep(DEFAULT_ENGINE_RETRY_SLEEP)
             current_attempt += 1
 
         if current_attempt == max_attempts:
