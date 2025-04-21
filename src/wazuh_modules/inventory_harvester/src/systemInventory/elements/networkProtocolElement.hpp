@@ -61,7 +61,14 @@ public:
         }
 
         element.data.network.dhcp = data->netProtoDhcp().compare("enabled") == 0 ? true : false;
-        element.data.network.gateway = data->netProtoGateway();
+
+        // Gateway separator ","
+        if (auto networkGateway = data->netProtoGateway();
+            networkGateway.compare(" ") != 0 && networkGateway.find(',') == std::string_view::npos)
+        {
+            element.data.network.gateway = networkGateway;
+        }
+
         element.data.network.metric = data->netProtoMetric();
         element.data.network.type = data->netProtoType();
 
