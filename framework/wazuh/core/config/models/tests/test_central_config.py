@@ -1,6 +1,7 @@
 from unittest.mock import patch
 
 import pytest
+from wazuh.core.config.models.base import ValidateFilePathMixin
 from wazuh.core.config.models.central_config import (
     CommsAPIConfig,
     Config,
@@ -9,7 +10,6 @@ from wazuh.core.config.models.central_config import (
     IndexerConfig,
     ManagementAPIConfig,
 )
-from wazuh.core.config.models.server import ValidateFilePathMixin
 
 
 def test_config_sections_ko():

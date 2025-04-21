@@ -15,7 +15,7 @@ from freezegun import freeze_time
 from starlette.responses import Response
 from wazuh.core.authentication import JWT_ALGORITHM
 from wazuh.core.config.client import CentralizedConfig
-from wazuh.core.config.models.server import ValidateFilePathMixin
+from wazuh.core.config.models.base import ValidateFilePathMixin
 
 from server_management_api.api_exception import ExpectFailedException
 from server_management_api.controllers.test.utils import get_default_configuration

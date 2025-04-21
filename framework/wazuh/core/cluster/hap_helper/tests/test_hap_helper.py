@@ -26,7 +26,7 @@ from wazuh.core.cluster.utils import (
     REMOVE_DISCONNECTED_NODE_AFTER,
 )
 from wazuh.core.config.client import CentralizedConfig
-from wazuh.core.config.models.server import ValidateFilePathMixin
+from wazuh.core.config.models.base import ValidateFilePathMixin
 from wazuh.core.exception import WazuhException
 
 with patch.object(ValidateFilePathMixin, '_validate_file_path', return_value=None):

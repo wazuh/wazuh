@@ -11,7 +11,7 @@ from unittest.mock import AsyncMock, call, patch
 
 import pytest
 from wazuh.core.config.client import CentralizedConfig
-from wazuh.core.config.models.server import ValidateFilePathMixin
+from wazuh.core.config.models.base import ValidateFilePathMixin
 from wazuh.tests.util import get_default_configuration
 
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '../..'))
