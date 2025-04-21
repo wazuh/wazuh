@@ -214,6 +214,14 @@ class TaskDispatcher:
 
             self.debug_log(f'Time calculating request result: {time.time() - before:.3f}s')
             return data
+        except exception.WazuhInternalError as e:
+            self.logger.error(
+                f'{e.message}',
+                exc_info=e.code not in {3021, 3036, 1913, 1017},
+            )
+            if self.debug:
+                raise
+            return json.dumps(e, cls=WazuhJSONEncoder)
         except (exception.WazuhError, exception.WazuhResourceNotFound) as e:
             if self.debug:
                 raise
