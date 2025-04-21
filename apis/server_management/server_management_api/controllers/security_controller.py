@@ -6,9 +6,9 @@ import logging
 
 from connexion import request
 from connexion.lifecycle import ConnexionResponse
-from wazuh.core.task_dispatcher import TaskDispatcher
 from wazuh.core.exception import WazuhException
 from wazuh.core.results import WazuhResult
+from wazuh.core.task_dispatcher import TaskDispatcher
 from wazuh.rbac import preprocessor
 
 from server_management_api.authentication import generate_token

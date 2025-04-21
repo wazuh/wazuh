@@ -15,11 +15,11 @@ import wazuh.rbac.utils as rbac_utils
 from connexion.exceptions import Unauthorized
 from connexion.lifecycle import ConnexionRequest
 from wazuh.core.authentication import JWT_ALGORITHM, JWT_ISSUER, get_keypair
-from wazuh.core.task_dispatcher import TaskDispatcher
 from wazuh.core.common import rbac_manager
 from wazuh.core.config.client import CentralizedConfig
 from wazuh.core.exception import WazuhResourceNotFound
 from wazuh.core.rbac import RBACManager
+from wazuh.core.task_dispatcher import TaskDispatcher
 from wazuh.rbac.preprocessor import optimize_resources
 
 from server_management_api.util import raise_if_exc
@@ -218,7 +218,7 @@ def decode_token(token: str, request: ConnexionRequest = None) -> dict:
                 'token_nbf_time': payload['nbf'],
                 'run_as': payload['run_as'],
             },
-                is_async=True,
+            is_async=True,
             wait_for_complete=False,
             logger=logging.getLogger('wazuh-api'),
             rbac_manager=request.state.rbac_manager if request else None,
@@ -233,7 +233,7 @@ def decode_token(token: str, request: ConnexionRequest = None) -> dict:
         # Detect local changes
         dispatcher = TaskDispatcher(
             f=get_security_conf,
-                is_async=False,
+            is_async=False,
             wait_for_complete=False,
             logger=logging.getLogger('wazuh-api'),
         )

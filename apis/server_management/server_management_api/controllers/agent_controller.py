@@ -8,8 +8,8 @@ from typing import Union
 from connexion import request
 from connexion.lifecycle import ConnexionResponse
 from wazuh import agent
-from wazuh.core.task_dispatcher import TaskDispatcher
 from wazuh.core.common import DATABASE_LIMIT
+from wazuh.core.task_dispatcher import TaskDispatcher
 
 from server_management_api.controllers.util import JSON_CONTENT_TYPE, json_response
 from server_management_api.models.agent_enrollment_model import AgentEnrollmentModel

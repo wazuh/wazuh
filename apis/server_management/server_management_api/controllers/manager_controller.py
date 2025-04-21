@@ -7,8 +7,8 @@ import logging
 import wazuh.manager as manager
 from connexion.lifecycle import ConnexionResponse
 from wazuh.core import configuration
-from wazuh.core.task_dispatcher import TaskDispatcher
 from wazuh.core.manager import query_update_check_service
+from wazuh.core.task_dispatcher import TaskDispatcher
 
 from server_management_api.constants import INSTALLATION_UID_KEY, UPDATE_INFORMATION_KEY
 from server_management_api.controllers.util import json_response
@@ -41,7 +41,7 @@ async def check_available_version(pretty: bool = False, force_query: bool = Fals
         dispatcher = TaskDispatcher(
             f=query_update_check_service,
             f_kwargs={INSTALLATION_UID_KEY: installation_uid},
-                is_async=True,
+            is_async=True,
             logger=logger,
         )
         update_information = raise_if_exc(await dispatcher.execute_function())
