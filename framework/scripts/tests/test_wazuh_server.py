@@ -559,7 +559,7 @@ async def test_monitor_server_daemons(sleep_mock, check_daemon_mock, readiness_m
     readiness_mock.assert_called_once_with(
         process_mock,
         {
-            wazuh_server.MANAGEMENT_API_DAEMON_NAME[:15]: 5,
+            wazuh_server.MANAGEMENT_API_DAEMON_NAME[:15]: 4,
             wazuh_server.COMMS_API_DAEMON_NAME: 8,
             wazuh_server.ENGINE_DAEMON_NAME: 0,
         },
@@ -567,7 +567,7 @@ async def test_monitor_server_daemons(sleep_mock, check_daemon_mock, readiness_m
 
     check_daemon_mock.assert_has_calls(
         [
-            call(proc_list, wazuh_server.MANAGEMENT_API_DAEMON_NAME[:15], 5),
+            call(proc_list, wazuh_server.MANAGEMENT_API_DAEMON_NAME[:15], 4),
             call(proc_list, wazuh_server.COMMS_API_DAEMON_NAME, 8),
             call(proc_list, wazuh_server.ENGINE_DAEMON_NAME, 0),
         ],
