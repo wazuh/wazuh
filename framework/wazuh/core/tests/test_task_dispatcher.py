@@ -17,7 +17,9 @@ def logger():
 @pytest.fixture
 def funct():
     """Fixture that returns a MagicMock instance to simulate a callable function."""
-    return MagicMock()
+    f = MagicMock()
+    f.__name__ = 'default_function_name'
+    return f
 
 
 @pytest.mark.asyncio
@@ -213,9 +215,9 @@ async def test_execute_local_request_handle_agent_wildcard(mock_time, mock_debug
     assert result == 'retval'
     mock_debug_log.assert_has_calls(
         [
-            call('Starting to execute request locally'),
-            call('Finished executing request locally'),
-            call('Time calculating request result: 5.000s'),
+            call(f'Starting to execute request `{funct.__name__}` locally'),
+            call(f'Finished executing request `{funct.__name__}` locally'),
+            call(f'Time calculating `{funct.__name__}` request result: 5.000s'),
         ]
     )
 
@@ -245,9 +247,9 @@ async def test_execute_local_request_sync(mock_time, mock_debug_log, mock_get_lo
         assert result == 'mocked_result'
         mock_debug_log.assert_has_calls(
             [
-                call('Starting to execute request locally'),
-                call('Finished executing request locally'),
-                call('Time calculating request result: 5.000s'),
+                call(f'Starting to execute request `{funct.__name__}` locally'),
+                call(f'Finished executing request `{funct.__name__}` locally'),
+                call(f'Time calculating `{funct.__name__}` request result: 5.000s'),
             ]
         )
         loop.run_in_executor.assert_called_once()
@@ -285,7 +287,7 @@ async def test_execute_local_request_broken_process_pool(mock_debug_log, mock_ge
 
     assert result == json.dumps(exception.WazuhInternalError(901), cls=WazuhJSONEncoder)
     logger.error.assert_called_once_with(exception.WazuhException.ERRORS[901], exc_info=True)
-    mock_debug_log.assert_called_once_with('Starting to execute request locally')
+    mock_debug_log.assert_called_once_with(f'Starting to execute request `{funct.__name__}` locally')
     loop.run_in_executor.assert_called_once()
 
 

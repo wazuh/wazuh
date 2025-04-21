@@ -200,9 +200,9 @@ class TaskDispatcher:
                         ),
                     )
                 try:
-                    self.debug_log('Starting to execute request locally')
+                    self.debug_log(f'Starting to execute request `{self.f.__name__}` locally')
                     data = await asyncio.wait_for(task, timeout=timeout)
-                    self.debug_log('Finished executing request locally')
+                    self.debug_log(f'Finished executing request `{self.f.__name__}` locally')
                 except asyncio.TimeoutError:
                     raise exception.WazuhInternalError(3021)
                 except process.BrokenProcessPool:
@@ -212,7 +212,7 @@ class TaskDispatcher:
             except process.BrokenProcessPool:
                 raise exception.WazuhInternalError(900)
 
-            self.debug_log(f'Time calculating request result: {time.time() - before:.3f}s')
+            self.debug_log(f'Time calculating `{self.f.__name__}` request result: {time.time() - before:.3f}s')
             return data
         except exception.WazuhInternalError as e:
             self.logger.error(
