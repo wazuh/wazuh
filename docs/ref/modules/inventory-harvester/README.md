@@ -2,7 +2,7 @@
 
 ## Overview
 
-The **InventoryHarvester** module receives inventory data through flatbuffer messages and stores it in the Wazuh Indexer. By centralizing information about system inventory—such as hardware, software, network details, and File Integrity Monitoring (FIM) events—this module makes the data readily available for querying, visualization, and deeper analysis. Offloading this information to the Wazuh Indexer, rather than storing it on the Manager, helps prevent performance bottlenecks.
+The **InventoryHarvester** module receives inventory data events as flatbuffer messages through the router IPC mechanism and stores it in the Wazuh Indexer. By centralizing information about system inventory—such as hardware, software, network details, and File Integrity Monitoring (FIM) events, this module makes the data readily available for querying, visualization, and deeper analysis. Offloading this information to the Wazuh Indexer, rather than storing it on the Manager, helps prevent performance bottlenecks.
 
 ### Key Responsibilities
 
@@ -15,12 +15,12 @@ The **InventoryHarvester** module receives inventory data through flatbuffer mes
 
 1. **Message Ingestion**
 
-   - Flatbuffer messages arrive from the router IPC on the Manager side.
-   - Both the `Syscollector` modules and the `FIM` module contribute messages captured by the InventoryHarvester.
+   - Both the `Syscollector` module and the `FIM` module event messages arrive to the manager.
+   - Flatbuffer messages arrive to the Inventory Harvester module through the router.
 
 2. **Deserialization & Validation**
 
-   - Each message is deserialized, validated, and prepared for indexing.
+   - Each message is deserialized, validated, and processed for indexing.
 
 3. **Indexer Connector**
 
@@ -39,13 +39,15 @@ The **InventoryHarvester** module receives inventory data through flatbuffer mes
 
 1. **System inventory**
 
-   - System: Operating system information.
+   - System: Operating system running on agent.
    - Programs: Installed programs in the agent endpoint.
    - Processes: Running programs in the agent endpoint at the moment of the scan.
    - Hotfixes: Installed vulnerability and fix patches for Windows system endpoints.
-   - Network Protocol: Network protocol shows information for detected network interfaces.
    - Hardware: Installed CPU and memory information.
+   - Network protocol: Network protocol shows information for detected network interfaces.
    - Network address: Current network connection.
+   - Network interface: Descriptive information of network interfaces.
+   - Ports: Details about open ports in the agent endpoint.
 
 2. **File Integrity Monitoring**
 
@@ -88,3 +90,7 @@ FIM (File Integrity Monitoring) and Inventory modules can leverage global querie
 - **Manager-Indexer synchronization** is guaranteed when both operate under the same Wazuh version.
 - FIM and system inventory fields follow a **common schema** wherever possible.
 - The **UI** for FIM and system inventory is designed to mirror the **Vulnerability Detector** interface for consistency.
+
+## Implementation Missing Features
+
+- Currently, the events indexation for **agent 000 (Wazuh manager)** is not supported.

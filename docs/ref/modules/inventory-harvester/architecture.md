@@ -23,8 +23,10 @@ This module uses a stateless design to process incoming messages and index them 
   - **`clearElements`**: Similar to the previous operation, this function is triggered by `DeleteAllEntries` message types mapped to `integrity_clear` events from the `FIM` and `Syscollector` modules.
     - In the `Syscollector` module, `integrity_clear` events are sent to the manager for each provider when it is disabled in the configuration file. i.e. packages, ports, hardware.
     - In the `FIM` module, `integrity_clear` events are sent to the manager for the `fim_file` component when no directories are being monitored. Similarly, for `Windows` systems, they are sent for the `fim_registry_key` and `fim_registry_value` components when no registries are being monitored.
-  - **`elementDispatcher`**: Dispatches incoming elements to the correct handler based on the element type.
+  - **`elementDispatch`**: Dispatches incoming elements to the correct handler based on the element type.
   - **`indexSync`**: Synchronizes indices with the Wazuh Indexer.
+  - **`upgradeAgentDb`**: Action that performs a re-synchronization between databases when upgrading the manager from a legacy ensuring that synchronization events are triggered.
+  The Inventory Harvester does not process information stored in databases, only delta and synchronization events.
 
 - **`src/wazuh_modules/inventory_harvester/src/fimInventory/` and `src/wazuh_modules/inventory_harvester/src/systemInventory/`**
   These folders combine the **Factory Method** and **Chain of Responsibility** patterns:
@@ -37,4 +39,42 @@ This module uses a stateless design to process incoming messages and index them 
 
 ## High-Level Architecture Diagram
 
-@ToDo
+```mermaid
+flowchart TD
+
+subgraph WazuhManager["Wazuh Manager"]
+  Remoted["Remoted"]
+  subgraph WazuhModulesM["Wazuh Modules"]
+    InventoryHarvester["Inventory Harvester"]
+    IndexerConnector["Indexer Connector"]
+    InventoryHarvester -- "JSON Reflection" --> IndexerConnector
+  end
+  Remoted -- "Plain text JSON event" --> Router
+  Router -- "Flatbuffer event" --> InventoryHarvester
+end
+IndexerConnector -- indexes JSON document --> WazuhIndexer
+subgraph WazuhAgent["Wazuh Agent"]
+  subgraph Providers["Data Provider"]
+    OS["Operating System"]
+    Packages["Packages"]
+    Processes["Processes"]
+    Hotfixes["Hotfixes"]
+    Ports["Ports"]
+    Hardware["Hardware"]
+    Network["Networks"]
+  end
+  subgraph WazuhModulesA["Wazuh Modules"]
+    Syscollector["Syscollector"]
+  end
+  subgraph Syscheck["Syscheck"]
+    FileM["File monitoring"]
+    RegistryM["Registry monitoring"]
+  end
+  Syscheck -- "Plain text JSON event" --> Remoted
+  Syscollector -- "Plain text JSON event" --> Remoted
+end
+Providers --> Syscollector
+WazuhIndexer["Wazuh Indexer"]
+WazuhDashboard["Wazuh Dashboard"]
+WazuhDashboard -- /_search/dedicated_index --> WazuhIndexer
+```
