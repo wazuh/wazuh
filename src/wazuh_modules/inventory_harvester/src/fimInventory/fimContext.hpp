@@ -680,7 +680,7 @@ public:
         if (m_pathHashed.empty())
         {
             Utils::HashData hash(Utils::HashType::Sha256);
-            hash.update(m_pathHashed.c_str(), m_pathHashed.size());
+            hash.update(m_pathSanitized.c_str(), m_pathSanitized.size());
             m_pathHashed = Utils::asciiToHex(hash.hash());
         }
         return m_pathHashed;
