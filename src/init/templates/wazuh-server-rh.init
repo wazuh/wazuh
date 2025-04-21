@@ -17,10 +17,11 @@ export LANG=C
 
 WAZUH_HOME=WAZUH_HOME_TMP
 WAZUH_SERVER="${WAZUH_HOME}/usr/share/wazuh-server/bin/wazuh-server"
+WAZUH_LOG="${WAZUH_HOME}var/log/wazuh-server/wazuh-server.log"
 
 start() {
-    echo -n "Starting Wazuh: "
-    ${WAZUH_SERVER} start > /dev/null
+    start-stop-daemon --start --background --output ${WAZUH_LOG} --exec ${WAZUH_SERVER} -- start > /dev/null
+
     RETVAL=$?
     if [ $RETVAL -eq 0 ]; then
         success
@@ -32,8 +33,12 @@ start() {
 }
 
 stop() {
-    echo -n "Stopping Wazuh: "
-    ${WAZUH_SERVER} stop > /dev/null
+    SERVER_PID=$(find /var/run/wazuh-server/ -name wazuh-server-[0-9]*.pid | grep -o '[0-9]\+')
+
+    if [ -n "$SERVER_PID" ]; then
+        start-stop-daemon --stop --signal TERM --pid ${SERVER_PID}
+    fi
+
     RETVAL=$?
     if [ $RETVAL -eq 0 ]; then
         success
@@ -65,7 +70,7 @@ status)
     status
     ;;
 *)
-    echo "*** Usage: ossec {start|stop|restart|status}"
+    echo "*** Usage: $0 {start|stop|restart|status}"
     exit 1
 esac
 
