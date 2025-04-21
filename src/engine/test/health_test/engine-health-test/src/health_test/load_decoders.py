@@ -8,8 +8,10 @@ from api_communication.proto import catalog_pb2 as api_catalog
 from api_communication.proto import engine_pb2 as api_engine
 from api_communication.proto import policy_pb2 as api_policy
 from api_communication.proto import router_pb2 as api_router
+from api_communication.proto import tester_pb2 as api_tester
 
 from api_utils.commands import engine_clear
+from shared.default_settings import Constants
 import shared.resource_handler as ResourceHandler
 from engine_integration.cmds.add import add_integration as engine_integration_add
 
@@ -144,6 +146,18 @@ def load_policy(ruleset_path: Path, engine_handler: EngineHandler, stop_on_warn:
         sys.exit(parsed_response.error)
     print("Environment loaded.")
 
+def load_session(engine_handler: EngineHandler):
+    request = api_tester.SessionPost_Request()
+    request.session.name = Constants.DEFAULT_SESSION
+    request.session.policy = Constants.DEFAULT_POLICY
+    print(f"Creating session...\n{request}")
+    error, response = engine_handler.api_client.send_recv(request)
+    if error:
+        sys.exit(error)
+    parsed_response = ParseDict(response, api_engine.GenericStatus_Response())
+    if parsed_response.status == api_engine.ERROR:
+        sys.exit(parsed_response.error)
+    print("Session created.")
 
 def run(args):
     env_path = Path(args['environment']).resolve()
@@ -185,6 +199,9 @@ def run(args):
 
     # Create policy
     load_policy(ruleset_path, engine_handler, stop_on_warn)
+
+    # Create session
+    load_session(engine_handler)
 
     print("Stopping the engine...")
     engine_handler.stop()

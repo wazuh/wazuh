@@ -6,6 +6,8 @@ from google.protobuf.json_format import ParseDict
 from engine_handler.handler import EngineHandler
 from api_communication.proto import engine_pb2 as api_engine
 from api_communication.proto import policy_pb2 as api_policy
+from api_communication.proto import tester_pb2 as api_tester
+from shared.default_settings import Constants
 
 import shared.resource_handler as ResourceHandler
 from engine_integration.cmds.add import add_integration as engine_integration_add
@@ -43,6 +45,17 @@ def load_policy(ruleset_path: Path, engine_handler: EngineHandler, stop_on_warn:
             sys.exit(parsed_response.warning)
         print(f"{integration_name} added.")
 
+def reload_session(engine_handler: EngineHandler) -> None:
+    request = api_tester.SessionReload_Request()
+    request.name = Constants.DEFAULT_SESSION
+    print(f"Reloading session...\n{request}")
+    error, response = engine_handler.api_client.send_recv(request)
+    if error:
+        sys.exit(error)
+    parsed_response = ParseDict(response, api_engine.GenericStatus_Response())
+    if parsed_response.status == api_engine.ERROR:
+        sys.exit(parsed_response.error)
+    print("Session reloaded.")
 
 def run(args):
     env_path = Path(args['environment']).resolve()
@@ -75,6 +88,9 @@ def run(args):
 
     # Create policy
     load_policy(ruleset_path, engine_handler, stop_on_warn)
+
+    # Reload Session
+    reload_session(engine_handler)
 
     print("Stopping the engine...")
     engine_handler.stop()
