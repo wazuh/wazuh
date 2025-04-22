@@ -605,3 +605,17 @@ def test_download_blob_fails_immediately_on_other_exceptions(exc):
         download_blob(container, blob, number_of_retries=5)
     container.download_blob.assert_called_once()
 
+
+def test_download_blob_retry_then_fail():
+    """Test download_blob raises exception after multiple retries"""
+    container = MagicMock()
+    blob = create_mocked_blob("blob2")
+    data_mock = object()
+
+    container.download_blob.side_effect = [ResourceModifiedError("mod"), ResourceModifiedError("mod"),
+                                           ResourceModifiedError("mod")]
+
+    with pytest.raises(ResourceModifiedError):
+        result = download_blob(container, blob, number_of_retries=3)
+    assert container.download_blob.call_count == 3
+
