@@ -4,6 +4,7 @@ import shared.resource_handler as rs
 import sys
 from typing import List, Tuple, Optional, Union
 from engine_handler.handler import EngineHandler
+from shared.default_settings import Constants
 import json
 import subprocess
 
@@ -341,7 +342,7 @@ def run_test(test_parent_path: Path, engine_api_socket: str, debug_mode: str, ta
 
         ns = "wazuh system" if target == 'rule' else "wazuh"
         engine_test_command = f"engine-test -c {engine_test_conf.resolve().as_posix()} "
-        engine_test_command += f"run {test_name} --api-socket {engine_api_socket} -n {ns} {debug_mode} -j"
+        engine_test_command += f"run {test_name} -s {Constants.DEFAULT_SESSION} --api-socket {engine_api_socket} -n {ns} {debug_mode} -j"
         command = f"cat {input_file.resolve().as_posix()} | {engine_test_command}"
         test_result = test(input_file, command, engine_api_socket, asset_traces_by_stage)
         if test_result:
