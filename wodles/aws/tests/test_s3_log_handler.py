@@ -216,6 +216,40 @@ def test_process_file_sends_expected_messages(mock_debug):
         processor.send_msg.assert_called_once()
 
 
+@patch('s3_log_handler.aws_tools.debug')
+def test_process_file_sends_multiple_messages(mock_debug):
+    """Test that 'process_file' sends one message per log event."""
+    with patch('s3_log_handler.wazuh_integration.WazuhIntegration.__init__'):
+        processor = s3_log_handler.AWSSubscriberBucket()
+        processor.discard_regex = re.compile('your_regex_pattern_here')
+        processor.discard_field = 'your_discard_field_value'
+
+        message_body = {'log_path': 'log.txt', 'bucket_path': 'bucket'}
+        logs = [{'event': 'event1'}, {'event': 'event2'}]
+        processor.obtain_logs = MagicMock(return_value=logs)
+        processor.event_should_be_skipped = MagicMock(return_value=False)
+        processor.send_msg = MagicMock()
+
+        processor.process_file(message_body)
+
+        expected_calls = []
+        for log in logs:
+            expected_msg = {
+                'integration': 'aws',
+                'aws': {
+                    'log_info': {
+                        'log_file': 'log.txt',
+                        's3bucket': 'bucket'
+                    }
+                }
+            }
+            expected_msg['aws'].update(log)
+            expected_calls.append(call(expected_msg))
+
+        processor.send_msg.assert_has_calls(expected_calls)
+        assert processor.send_msg.call_count == 2
+
+
 @pytest.mark.parametrize("content, expected_calls", [
     (['{"event1": "data1"}', '{"event2": "data2"}'], [call('{"event1": "data1"}', dump_json=False), call('{"event2": "data2"}', dump_json=False)])
 ])
