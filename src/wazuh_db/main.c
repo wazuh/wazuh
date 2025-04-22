@@ -475,12 +475,12 @@ void * run_backup(__attribute__((unused)) void * args) {
                     if (global_enabled) {
                         current_time = time(NULL);
                         if((current_time - last_global_backup_time) >= global_interval) {
-                            wdb_t* wdb = wdb_open_global();
+                            wdb_t* wdb = wdb_open_global(false);
                             if (wdb && wdb->enabled && OS_SUCCESS != wdb_global_create_backup(wdb, output, NULL)) {
                                 merror("Creating Global DB snapshot by interval failed: %s", output);
                             }
                             last_global_backup_time = current_time;
-                            wdb_pool_leave(wdb);
+                            wdb_pool_leave_global(wdb);
                         }
                     }
                     break;

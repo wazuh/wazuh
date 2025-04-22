@@ -44,7 +44,7 @@ wdb_t * wdb_pool_get(const char * name);
  * @return Pointer to the selected database node
  */
 wdb_t * wdb_pool_get_or_create(const char * name);
-
+wdb_t * wdb_pool_get_or_create_global(const char * nam, bool read);
 /**
  * @brief Leave a node
  *
@@ -54,6 +54,7 @@ wdb_t * wdb_pool_get_or_create(const char * name);
  * @post The node's mutex gets unlocked.
  */
 void wdb_pool_leave(wdb_t * node);
+void wdb_pool_leave_global(wdb_t * node);
 
 /**
  * @brief Get all the existing names in the pool.

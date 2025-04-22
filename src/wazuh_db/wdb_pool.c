@@ -65,11 +65,42 @@ wdb_t * wdb_pool_get_or_create(const char * name) {
     return node;
 }
 
+wdb_t * wdb_pool_get_or_create_global(const char * name, bool read) {
+    w_mutex_lock(&wdb_pool.mutex);
+    wdb_t * node = rbtree_get(wdb_pool.nodes, name);
+
+    if (node == NULL) {
+        node = wdb_init(name);
+        rbtree_insert(wdb_pool.nodes, name, node);
+        wdb_pool.size++;
+    }
+
+    node->refcount++;
+    w_mutex_unlock(&wdb_pool.mutex);
+    if (read == TRUE) {
+        w_rwlock_rdlock(&node->rwlock);
+    } else {
+        w_rwlock_wrlock(&node->rwlock);
+    }
+
+    return node;
+}
+
 // Leave a node.
 
 void wdb_pool_leave(wdb_t * node) {
     if (node) {
         w_mutex_unlock(&node->mutex);
+        w_mutex_lock(&wdb_pool.mutex);
+        node->refcount--;
+        w_mutex_unlock(&wdb_pool.mutex);
+        node->last = time(NULL);
+    }
+}
+
+void wdb_pool_leave_global(wdb_t * node) {
+    if (node) {
+        w_rwlock_unlock(&node->rwlock);
         w_mutex_lock(&wdb_pool.mutex);
         node->refcount--;
         w_mutex_unlock(&wdb_pool.mutex);

@@ -331,9 +331,9 @@ STATIC int wdb_any_transaction(wdb_t * wdb, const char* sql_transaction);
 STATIC int wdb_write_state_transaction(wdb_t * wdb, uint8_t state, wdb_ptr_any_txn_t wdb_ptr_any_txn);
 
 // Opens global database and stores it in DB pool. It returns a locked database or NULL
-wdb_t * wdb_open_global() {
+wdb_t * wdb_open_global(bool read) {
     char path[PATH_MAX + 1] = "";
-    wdb_t * wdb = wdb_pool_get_or_create(WDB_GLOB_NAME);
+    wdb_t * wdb = wdb_pool_get_or_create_global(WDB_GLOB_NAME, read);
 
     if (wdb->db == NULL) {
         // Try to open DB
@@ -346,7 +346,7 @@ wdb_t * wdb_open_global() {
             // Creating database
             if (OS_SUCCESS != wdb_create_global(path)) {
                 merror("Couldn't create SQLite database '%s'", path);
-                wdb_pool_leave(wdb);
+                wdb_pool_leave_global(wdb);
                 return NULL;
             }
 
@@ -862,7 +862,12 @@ int wdb_insert_info(const char *key, const char *value) {
 wdb_t * wdb_init(const char * id) {
     wdb_t * wdb;
     os_calloc(1, sizeof(wdb_t), wdb);
-    w_mutex_init(&wdb->mutex, NULL);
+    if (strcmp(id, WDB_GLOB_NAME) == 0) {
+        w_rwlock_init(&wdb->rwlock, NULL);
+    }
+    else {
+        w_mutex_init(&wdb->mutex, NULL);
+    }
     os_strdup(id, wdb->id);
     wdb->enabled = true;
     return wdb;

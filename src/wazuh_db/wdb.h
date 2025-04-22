@@ -355,6 +355,7 @@ typedef struct wdb_t {
     _Atomic(time_t) last;
     time_t transaction_begin_time;
     pthread_mutex_t mutex;
+    pthread_rwlock_t rwlock;
     struct stmt_cache_list *cache_list;
     struct wdb_t * next;
     bool enabled;
@@ -514,7 +515,7 @@ typedef int (*wdb_ptr_any_txn_t)(wdb_t *);
  *
  * @return wdb_t* Database Structure locked or NULL.
  */
-wdb_t * wdb_open_global();
+wdb_t * wdb_open_global(bool read);
 
 /**
  * @brief Open mitre database and store in DB poll.

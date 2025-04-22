@@ -262,7 +262,7 @@ int wdb_parse(char * input, char * output, int peer) {
 
         // Don't perform this check if it's a manager.
         if (agent_id != 0) {
-            if (wdb_global = wdb_open_global(), !wdb_global) {
+            if (wdb_global = wdb_open_global(true), !wdb_global) {
                 mdebug2("Couldn't open DB global: %s/%s.db", WDB2_DIR, WDB_GLOB_NAME);
                 snprintf(output, OS_MAXSTR + 1, "err Couldn't open DB global");
                 return OS_INVALID;
@@ -279,7 +279,7 @@ int wdb_parse(char * input, char * output, int peer) {
                 wdb_pool_leave(wdb_global);
                 return OS_INVALID;
             }
-            wdb_pool_leave(wdb_global);
+            wdb_pool_leave_global(wdb_global);
         }
 
         gettimeofday(&begin, 0);
@@ -858,8 +858,81 @@ int wdb_parse(char * input, char * output, int peer) {
 
         mdebug2("Global query: %s", query);
 
+        if (next = wstr_chr(query, ' '), next) {
+            *next++ = '\0';
+        }
+        bool read = false;
+	    if (strcmp(query, "sql") == 0) {
+		read = false;
+        } else if (strcmp(query, "insert-agent") == 0) {
+		read = false;
+        } else if (strcmp(query, "update-agent-name") == 0) {
+		read = false;
+        } else if (strcmp(query, "update-agent-data") == 0) {
+		read = false;
+        } else if (strcmp(query, "get-labels") == 0) {
+		read = true;
+        } else if (strcmp(query, "update-keepalive") == 0) {
+		read = false;
+        } else if (strcmp(query, "update-connection-status") == 0) {
+		read = false;
+        } else if (strcmp(query, "update-status-code") == 0) {
+		read = false;
+        } else if (strcmp(query, "delete-agent") == 0) {
+		read = false;
+        } else if (strcmp(query, "select-agent-name") == 0) {
+		read = true;
+        } else if (strcmp(query, "select-agent-group") == 0) {
+		read = true;
+        } else if (strcmp(query, "find-agent") == 0) {
+		read = true;
+        } else if (strcmp(query, "find-group") == 0) {
+		read = true;
+        } else if (strcmp(query, "insert-agent-group") == 0) {
+ 		read = false;
+        } else if (strcmp(query, "select-group-belong") == 0) {
+		read = true;
+        } else if (strcmp(query, "get-group-agents") == 0) {
+		read = true;
+        } else if (strcmp(query, "delete-group") == 0) {
+  		read = false;
+        } else if (strcmp(query, "select-groups") == 0) {
+		read = true;
+        } else if (strcmp(query, "sync-agent-groups-get") == 0) {
+    	read = true;
+        } else if (strcmp(query, "set-agent-groups") == 0) {
+ 		read = false;
+        } else if (strcmp(query, "sync-agent-info-get") == 0) {
+		read = true;
+        } else if (strcmp(query, "sync-agent-info-set") == 0) {
+ 		read = false;
+        } else if (strcmp(query, "get-groups-integrity") == 0) {
+		read = true;
+        } else if (strcmp(query, "recalculate-agent-group-hashes") == 0) {
+ 		read = false;
+        } else if (strcmp(query, "disconnect-agents") == 0) {
+ 		read = false;
+        } else if (strcmp(query, "get-all-agents") == 0) {
+		read = true;
+        } else if (strcmp(query, "get-distinct-groups") == 0) {
+		read = true;
+        } else if (strcmp(query, "get-agent-info") == 0) {
+		read = true;
+        } else if (strcmp(query, "reset-agents-connection") == 0) {
+ 		read = false;
+        } else if (strcmp(query, "get-agents-by-connection-status") == 0) {
+		read = true;
+        } else if (strcmp(query, "backup") == 0) {
+ 		read = false;
+        } else if (strcmp(query, "vacuum") == 0) {
+ 		read = false;
+        } else if (strcmp(query, "get_fragmentation") == 0) {
+		read = true;
+        } else if (strcmp(query, "sleep") == 0) {
+ 		read = false;
+        }
         gettimeofday(&begin, 0);
-        if (wdb = wdb_open_global(), !wdb) {
+        if (wdb = wdb_open_global(read), !wdb) {
             mdebug2("Couldn't open DB global: %s/%s.db", WDB2_DIR, WDB_GLOB_NAME);
             snprintf(output, OS_MAXSTR + 1, "err Couldn't open DB global");
             gettimeofday(&end, 0);
@@ -869,7 +942,7 @@ int wdb_parse(char * input, char * output, int peer) {
         } else if (!wdb->enabled) {
             mdebug2("Database disabled: %s/%s.db.", WDB2_DIR, WDB_GLOB_NAME);
             snprintf(output, OS_MAXSTR + 1, "err DB global disabled.");
-            wdb_pool_leave(wdb);
+            wdb_pool_leave_global(wdb);
             gettimeofday(&end, 0);
             timersub(&end, &begin, &diff);
             w_inc_global_open_time(diff);
@@ -880,10 +953,6 @@ int wdb_parse(char * input, char * output, int peer) {
         w_inc_global_open_time(diff);
         // Add the current peer to wdb structure
         wdb->peer = peer;
-
-        if (next = wstr_chr(query, ' '), next) {
-            *next++ = '\0';
-        }
 
         if (strcmp(query, "sql") == 0) {
             w_inc_global_sql();
@@ -1407,7 +1476,7 @@ int wdb_parse(char * input, char * output, int peer) {
                 wdb_close(wdb, FALSE);
             }
         }
-        wdb_pool_leave(wdb);
+        wdb_pool_leave_global(wdb);
         return result;
     } else if (strcmp(actor, "task") == 0) {
         cJSON *parameters_json = NULL;
