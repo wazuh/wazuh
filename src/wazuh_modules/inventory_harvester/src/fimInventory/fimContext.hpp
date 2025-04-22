@@ -637,8 +637,6 @@ public:
         if (m_valueNameSanitized.empty())
         {
             m_valueNameSanitized = valueNameRaw();
-            Utils::replaceAll(m_valueNameSanitized, "\\", "/");
-            Utils::replaceAll(m_valueNameSanitized, "//", "/");
         }
         return m_valueNameSanitized;
     }
@@ -655,8 +653,6 @@ public:
         if (m_pathSanitized.empty())
         {
             m_pathSanitized = pathRaw();
-            Utils::replaceAll(m_pathSanitized, "\\", "/");
-            Utils::replaceAll(m_pathSanitized, "//", "/");
 
             for (const auto& [key, value] : hives)
             {
@@ -668,7 +664,7 @@ public:
 
             if (m_originTable == OriginTable::RegistryValue)
             {
-                m_pathSanitized += "/";
+                m_pathSanitized += "\\";
                 m_pathSanitized += valueName();
             }
         }
@@ -723,8 +719,6 @@ public:
         if (m_keySanitized.empty())
         {
             m_keySanitized = pathRaw();
-            Utils::replaceAll(m_keySanitized, "\\", "/");
-            Utils::replaceAll(m_keySanitized, "//", "/");
 
             for (const auto& hive : hives)
             {

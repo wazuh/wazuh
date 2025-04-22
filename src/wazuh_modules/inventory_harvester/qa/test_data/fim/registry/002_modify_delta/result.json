@@ -9,6 +9,10 @@
           "version": "v4.7.2"
         },
         "registry": {
+          "key": "HKEY_LOCAL_MACHINE\\Software\\Microsoft\\Active Setup\\Installed Components\\aaaocta",
+          "value": "BBBOCTA",
+          "hive": "HKLM",
+          "path": "HKLM\\Software\\Microsoft\\Active Setup\\Installed Components\\aaaocta\\BBBOCTA",
           "data": {
             "hash": {
               "md5": "63f5c08f5bdddee99aa30dcc47f662a6",
@@ -16,11 +20,7 @@
               "sha256": "302e4b78f8270848b8934aa957c29aba6c1065523055db77d4b70ce6107e4609"
             },
             "type": "REG_SZ"
-          },
-          "hive": "HKLM",
-          "key": "Software/Microsoft/Active Setup/Installed Components/aaaocta",
-          "path": "HKLM/Software/Microsoft/Active Setup/Installed Components/aaaocta/BBBOCTA",
-          "value": "BBBOCTA"
+          }
         },
         "wazuh": {
           "schema": {
