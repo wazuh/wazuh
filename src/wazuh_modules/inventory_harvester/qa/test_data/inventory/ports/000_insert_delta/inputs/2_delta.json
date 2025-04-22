@@ -1,0 +1,26 @@
+{
+    "agent_info": {
+      "agent_id": "002",
+      "agent_ip": "any",
+      "agent_name": "b593602240f5",
+      "agent_version": "v4.11.1"
+    },
+    "data_type": "dbsync_ports",
+    "data": {
+      "checksum": "3036f17496c7e3e766c3054aaca4f65948062aa6",
+      "inode": 321289,
+      "item_id": "d2b59a32849a2528b5aba77de1436fef54558795",
+      "local_ip": "fe80:::a4db:1329:21c5:b98a",
+      "local_port": 8080,
+      "pid": 6756,
+      "process": "a.out",
+      "protocol": "tcp6",
+      "remote_ip": "fe80:::a4db:1329:21c5:b98a",
+      "remote_port": 0,
+      "rx_queue": 0,
+      "scan_time": "2025/04/22 16:23:06",
+      "state": "listening",
+      "tx_queue": 0
+    },
+    "operation": "INSERTED"
+  }

@@ -44,6 +44,49 @@
                         "version": "1.0"
                     }
                 }
+            },
+            {
+                "agent": {
+                    "id": "002",
+                    "name": "b593602240f5",
+                    "version": "v4.11.1"
+                },
+                "destination": {
+                    "ip": "fe80::a4db:1329:21c5:b98a",
+                    "port": 0
+                },
+                "file": {
+                    "inode": "321289"
+                },
+                "host": {
+                    "network": {
+                        "egress": {
+                            "queue": 0
+                        },
+                        "ingress": {
+                            "queue": 0
+                        }
+                    }
+                },
+                "interface": {
+                    "state": "listening"
+                },
+                "network": {
+                    "transport": "tcp6"
+                },
+                "process": {
+                    "name": "a.out",
+                    "pid": 6756
+                },
+                "source": {
+                    "ip": "fe80::a4db:1329:21c5:b98a",
+                    "port": 8080
+                },
+                "wazuh": {
+                    "schema": {
+                        "version": "1.0"
+                    }
+                }
             }
         ]
     }

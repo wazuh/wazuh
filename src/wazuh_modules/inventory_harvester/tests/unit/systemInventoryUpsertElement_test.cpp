@@ -607,6 +607,7 @@ TEST_F(SystemInventoryUpsertElement, validAgentIDEmptyNetmask_NetworkAddress)
     EXPECT_CALL(*context, agentVersion()).WillOnce(testing::Return("agentVersion"));
     EXPECT_CALL(*context, broadcast()).WillOnce(testing::Return("192.168.0.255"));
     EXPECT_CALL(*context, netAddressName()).WillOnce(testing::Return("eth0"));
+    // Added for completeness I don't see the agent sending space strings
     EXPECT_CALL(*context, netmask()).WillOnce(testing::Return(" "));
     EXPECT_CALL(*context, address()).WillOnce(testing::Return("192.168.0.1"));
     EXPECT_CALL(*context, protocol()).WillOnce(testing::Return(0));
@@ -616,4 +617,29 @@ TEST_F(SystemInventoryUpsertElement, validAgentIDEmptyNetmask_NetworkAddress)
     EXPECT_EQ(
         context->m_serializedElement,
         R"({"id":"001_netAddressItemId","operation":"INSERTED","data":{"network":{"broadcast":"192.168.0.255","ip":"192.168.0.1","name":"eth0","protocol":"IPv4"},"agent":{"id":"001","name":"agentName","host":{"ip":"192.168.0.1"},"version":"agentVersion"},"wazuh":{"schema":{"version":"1.0"}}}})");
+}
+
+TEST_F(SystemInventoryUpsertElement, validAgentIDEmptyAddress_NetworkAddress)
+{
+    auto context = std::make_shared<MockSystemContext>();
+    auto upsertElement = std::make_shared<UpsertSystemElement<MockSystemContext>>();
+
+    EXPECT_CALL(*context, agentId()).WillOnce(testing::Return("001"));
+    EXPECT_CALL(*context, netAddressItemId()).WillOnce(testing::Return("netAddressItemId"));
+    EXPECT_CALL(*context, agentIp()).WillOnce(testing::Return("192.168.0.1"));
+    EXPECT_CALL(*context, originTable()).WillOnce(testing::Return(MockSystemContext::OriginTable::NetAddress));
+    EXPECT_CALL(*context, agentName()).WillOnce(testing::Return("agentName"));
+    EXPECT_CALL(*context, agentVersion()).WillOnce(testing::Return("agentVersion"));
+    EXPECT_CALL(*context, broadcast()).WillOnce(testing::Return("192.168.0.255"));
+    EXPECT_CALL(*context, netAddressName()).WillOnce(testing::Return("eth0"));
+    EXPECT_CALL(*context, netmask()).WillOnce(testing::Return("255.255.255.0"));
+    // Added for completeness I don't see the agent sending space strings
+    EXPECT_CALL(*context, address()).WillOnce(testing::Return(" "));
+    EXPECT_CALL(*context, protocol()).WillOnce(testing::Return(0));
+
+    EXPECT_NO_THROW(upsertElement->handleRequest(context));
+
+    EXPECT_EQ(
+        context->m_serializedElement,
+        R"({"id":"001_netAddressItemId","operation":"INSERTED","data":{"network":{"broadcast":"192.168.0.255","name":"eth0","netmask":"255.255.255.0","protocol":"IPv4"},"agent":{"id":"001","name":"agentName","host":{"ip":"192.168.0.1"},"version":"agentVersion"},"wazuh":{"schema":{"version":"1.0"}}}})");
 }

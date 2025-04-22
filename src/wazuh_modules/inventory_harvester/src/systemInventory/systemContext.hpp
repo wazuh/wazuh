@@ -1459,7 +1459,7 @@ public:
         return "";
     }
 
-    std::string_view portLocalIp() const
+    std::string_view portLocalIpRaw() const
     {
         if (m_type == VariantType::Delta)
         {
@@ -1481,6 +1481,18 @@ public:
             return "";
         }
         return "";
+    }
+
+    std::string_view portLocalIp()
+    {
+        m_portLocalIpSanitized = portLocalIpRaw();
+        if (m_portLocalIpSanitized.compare(" ") == 0)
+        {
+            return "";
+        }
+        Utils::replaceAll(m_portLocalIpSanitized, ":::", "::");
+
+        return m_portLocalIpSanitized;
     }
 
     int64_t portLocalPort() const
@@ -1507,7 +1519,7 @@ public:
         return 0;
     }
 
-    std::string_view portRemoteIp() const
+    std::string_view portRemoteIpRaw() const
     {
         if (m_type == VariantType::Delta)
         {
@@ -1529,6 +1541,18 @@ public:
             return "";
         }
         return "";
+    }
+
+    std::string_view portRemoteIp()
+    {
+        m_portRemoteIpSanitized = portRemoteIpRaw();
+        if (m_portRemoteIpSanitized.compare(" ") == 0)
+        {
+            return "";
+        }
+        Utils::replaceAll(m_portRemoteIpSanitized, ":::", "::");
+
+        return m_portRemoteIpSanitized;
     }
 
     int64_t portRemotePort() const
@@ -2281,6 +2305,8 @@ private:
     std::string m_processStartISO8601;
     std::vector<std::string_view> m_processArguments;
     std::string m_installTimeISO8601;
+    std::string m_portLocalIpSanitized;
+    std::string m_portRemoteIpSanitized;
 
     /**
      * @brief Scan context.
