@@ -16,6 +16,7 @@
 #include "sharedDefs.h"
 #include <functional>
 #include <map>
+#include <unordered_set>
 
 #if defined(HAS_STDFILESYSTEM) && HAS_STDFILESYSTEM==true
 #include "packages/packagesNPM.hpp"
