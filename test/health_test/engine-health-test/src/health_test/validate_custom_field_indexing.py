@@ -8,6 +8,8 @@ import time
 import sys
 import subprocess
 from shared.default_settings import Constants, CONFIG_ENV_KEYS
+from api_communication.proto import tester_pb2 as api_tester
+
 from engine_handler.handler import EngineHandler
 from api_communication.proto import catalog_pb2 as api_catalog
 from api_communication.proto import engine_pb2 as api_engine
@@ -438,7 +440,7 @@ def run_all_tests(test_parent_paths: List[Path],
             test_name = test_parent_name
             if input_file.parent != test_dir:
                 test_name = f"{test_parent_name}-{input_file.parent.name}"
-            engine_test_command = f"engine-test -c {engine_test_conf.resolve().as_posix()} run {test_name} --api-socket {engine_api_socket} -j"
+            engine_test_command = f"engine-test -c {engine_test_conf.resolve().as_posix()} run {test_name} -s {Constants.DEFAULT_SESSION} --api-socket {engine_api_socket} -j"
             command = f"cat {input_file.resolve().as_posix()} | {engine_test_command}"
 
             output = test(input_file, command, customs, schema_fields)
@@ -597,6 +599,18 @@ def delete_indexer_output_in_policy(engine_handler: EngineHandler, stop_on_warn:
     print("indexer output deleted to policy.")
 
 
+def reload_session(engine_handler: EngineHandler) -> None:
+    request = api_tester.SessionReload_Request()
+    request.name = Constants.DEFAULT_SESSION
+    print(f"Reloading session...\n{request}")
+    error, response = engine_handler.api_client.send_recv(request)
+    if error:
+        sys.exit(error)
+    parsed_response = ParseDict(response, api_engine.GenericStatus_Response())
+    if parsed_response.status == api_engine.ERROR:
+        sys.exit(parsed_response.error)
+    print("Session reloaded.")
+
 def decoder_health_test(env_path: Path, integration_name: Optional[str] = None, skip: Optional[List[str]] = None):
     print("Validating environment...")
     conf_path = (env_path / "config.env").resolve()
@@ -654,6 +668,7 @@ def decoder_health_test(env_path: Path, integration_name: Optional[str] = None, 
         if not exist_index_output(engine_handler):
             load_indexer_output(engine_handler)
             load_indexer_output_in_policy(engine_handler)
+            reload_session(engine_handler)
 
         print("\n\nRunning tests...")
         results = run_test(integrations, engine_handler.api_socket_path, schema_data)
@@ -665,6 +680,8 @@ def decoder_health_test(env_path: Path, integration_name: Optional[str] = None, 
     if exist_index_output(engine_handler):
         delete_indexer_output_in_policy(engine_handler)
         delete_indexer_output(engine_handler)
+        reload_session(engine_handler)
+
     print("Restart wazuh-core-message decoder changes")
     engine_handler.stop()
     opensearch_management.stop()
@@ -740,7 +757,7 @@ def rule_health_test(env_path: Path, integration_rule: Optional[str] = None, ski
         if not exist_index_output(engine_handler):
             load_indexer_output(engine_handler)
             load_indexer_output_in_policy(engine_handler)
-        print("Update wazuh-core-message decoder")
+            reload_session(engine_handler)
 
         print("\n\nRunning tests...")
         results = run_test(rules, engine_handler.api_socket_path, schema_data)
@@ -752,7 +769,8 @@ def rule_health_test(env_path: Path, integration_rule: Optional[str] = None, ski
         if exist_index_output(engine_handler):
             delete_indexer_output_in_policy(engine_handler)
             delete_indexer_output(engine_handler)
-        print("Restart wazuh-core-message decoder changes")
+            reload_session(engine_handler)
+
         engine_handler.stop()
         opensearch_management.stop()
         print("Engine stopped.\n\n")
