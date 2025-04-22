@@ -255,3 +255,14 @@ async def test_deprecate_endpoint(link):
         assert response.headers.pop('Link') == f'<{link}>; rel="Deprecated"', 'No link was found'
 
     assert response.headers == {}, f'Unexpected deprecation headers were found: {response.headers}'
+
+
+@patch('yaml.safe_load')
+def test_load_api_spec(mock_safe_load):
+    """Validate that the function `load_api_spec` works properly."""
+    # To execute the function first it's necessary to clear the cache.
+    util.load_api_spec.cache_clear()
+    util.load_api_spec()
+    mock_safe_load.assert_called()
+    # Clearing the cache again since this call used mocked resources.
+    util.load_api_spec.cache_clear()
