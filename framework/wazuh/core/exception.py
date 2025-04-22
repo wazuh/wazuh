@@ -264,6 +264,8 @@ class WazuhException(Exception):
         2803: {'message': 'Error sending HTTP request'},
         # Server
         3002: {'message': 'Error creating PID file'},
+        3021: 'Timeout executing API request',
+        3027: 'Unknown received task name',
         # Orders distribution exceptions
         3050: 'Error while sending orders to the Communications API unix server',
         # RBAC exceptions
