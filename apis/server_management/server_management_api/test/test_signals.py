@@ -144,16 +144,12 @@ async def test_get_update_information_schedule(query_update_check_service_mock):
     [
         (True, 2),
         (False, 1),
-        (True, 0),
-        (False, 0),
     ],
 )
 @patch('server_management_api.signals.check_installation_uid')
 @patch('server_management_api.signals.get_update_information')
 @patch('server_management_api.signals.update_check_is_enabled')
-@patch('server_management_api.signals.running_in_master_node')
 async def test_register_background_tasks(
-    running_in_master_node_mock,
     update_check_mock,
     get_update_information_mock,
     check_installation_uid_mock,

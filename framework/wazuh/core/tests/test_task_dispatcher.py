@@ -88,7 +88,7 @@ async def test_execute_function_jsondecode_error(mock_exec, funct, logger):
 
     assert isinstance(result, exception.WazuhInternalError)
     assert result.code == 3036
-    logger.error.assert_called_once_with(result.message)
+    logger.error.assert_called_once_with(f'{result.message}')
 
 
 @pytest.mark.asyncio
@@ -102,7 +102,7 @@ async def test_execute_function_wazuh_internal_error(mock_exec, funct, logger):
     result = await dispatcher.execute_function()
 
     assert result == err
-    logger.error.assert_called_once_with(exception.WazuhInternalError.ERRORS[3027], exc_info=True)
+    logger.error.assert_called_once_with(exception.WazuhInternalError.ERRORS[3027], exc_info=False)
 
 
 @pytest.mark.asyncio
