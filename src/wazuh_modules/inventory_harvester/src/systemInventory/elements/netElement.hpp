@@ -58,7 +58,10 @@ public:
         }
 
         // Ex: 192.168.0.255
-        element.data.network.broadcast = data->broadcast();
+        if (auto networkBroadcast = data->broadcast(); networkBroadcast.compare(" ") != 0)
+        {
+            element.data.network.broadcast = networkBroadcast;
+        }
 
         // Ex: 192.168.0.30
         element.data.network.ip = data->address();
@@ -67,7 +70,10 @@ public:
         element.data.network.name = data->netAddressName();
 
         // 255.255.255.0
-        element.data.network.netmask = data->netmask();
+        if (auto networkNetmask = data->netmask(); networkNetmask.compare(" ") != 0)
+        {
+            element.data.network.netmask = networkNetmask;
+        }
 
         // Ex: IPv4
         if (!data->protocol())

@@ -66,6 +66,35 @@ TEST_F(SystemInventoryUpsertElement, validAgentID_OS)
         R"({"id":"001","operation":"INSERTED","data":{"agent":{"id":"001","name":"agentName","host":{"ip":"agentIp"},"version":"agentVersion"},"host":{"architecture":"osArchitecture","hostname":"osHostName","os":{"codename":"osCodeName","kernel":{"name":"osKernelSysName","release":"osKernelRelease","version":"osKernelVersion"},"name":"osName","platform":"osPlatform","version":"osVersion"}},"wazuh":{"schema":{"version":"1.0"}}}})");
 }
 
+TEST_F(SystemInventoryUpsertElement, validAgentIDAnyAgentIp_OS)
+{
+    auto context = std::make_shared<MockSystemContext>();
+    auto upsertElement = std::make_shared<UpsertSystemElement<MockSystemContext>>();
+
+    EXPECT_CALL(*context, agentId()).WillOnce(testing::Return("001"));
+    EXPECT_CALL(*context, originTable()).WillOnce(testing::Return(MockSystemContext::OriginTable::Os));
+    EXPECT_CALL(*context, agentName()).WillOnce(testing::Return("agentName"));
+    EXPECT_CALL(*context, agentVersion()).WillOnce(testing::Return("agentVersion"));
+    // The expected value is always ip formatted string or "any". For this last case the field is not present in the
+    // serialized JSON.
+    EXPECT_CALL(*context, agentIp()).WillOnce(testing::Return("any"));
+    EXPECT_CALL(*context, osVersion()).WillOnce(testing::Return("osVersion"));
+    EXPECT_CALL(*context, osName()).WillOnce(testing::Return("osName"));
+    EXPECT_CALL(*context, osKernelRelease()).WillOnce(testing::Return("osKernelRelease"));
+    EXPECT_CALL(*context, osPlatform()).WillOnce(testing::Return("osPlatform"));
+    EXPECT_CALL(*context, osKernelSysName()).WillOnce(testing::Return("osKernelSysName"));
+    EXPECT_CALL(*context, osKernelVersion()).WillOnce(testing::Return("osKernelVersion"));
+    EXPECT_CALL(*context, osArchitecture()).WillOnce(testing::Return("osArchitecture"));
+    EXPECT_CALL(*context, osCodeName()).WillOnce(testing::Return("osCodeName"));
+    EXPECT_CALL(*context, osHostName()).WillOnce(testing::Return("osHostName"));
+
+    EXPECT_NO_THROW(upsertElement->handleRequest(context));
+
+    EXPECT_EQ(
+        context->m_serializedElement,
+        R"({"id":"001","operation":"INSERTED","data":{"agent":{"id":"001","name":"agentName","version":"agentVersion"},"host":{"architecture":"osArchitecture","hostname":"osHostName","os":{"codename":"osCodeName","kernel":{"name":"osKernelSysName","release":"osKernelRelease","version":"osKernelVersion"},"name":"osName","platform":"osPlatform","version":"osVersion"}},"wazuh":{"schema":{"version":"1.0"}}}})");
+}
+
 /*
  * Test cases for SystemInventoryUpsertElement package scenario
  * These tests check the behavior of the UpsertSystemElement class when handling requests.
@@ -352,6 +381,7 @@ TEST_F(SystemInventoryUpsertElement, emptyNetProtoItemID_NetworkProtocol)
 
     EXPECT_ANY_THROW(upsertElement->handleRequest(context));
 }
+
 TEST_F(SystemInventoryUpsertElement, validAgentID_NetworkProtocol)
 {
     auto context = std::make_shared<MockSystemContext>();
@@ -374,6 +404,56 @@ TEST_F(SystemInventoryUpsertElement, validAgentID_NetworkProtocol)
     EXPECT_EQ(
         context->m_serializedElement,
         R"({"id":"001_netProtoItemId","operation":"INSERTED","data":{"network":{"dhcp":true,"gateway":"netProtoGateway","metric":150,"type":"netProtoType"},"observer":{"ingress":{"interface":{"name":"netProtoIface"}}},"agent":{"id":"001","name":"agentName","host":{"ip":"agentIp"},"version":"agentVersion"},"wazuh":{"schema":{"version":"1.0"}}}})");
+}
+
+TEST_F(SystemInventoryUpsertElement, validAgentIDEmptyGateway_NetworkProtocol)
+{
+    auto context = std::make_shared<MockSystemContext>();
+    auto upsertElement = std::make_shared<UpsertSystemElement<MockSystemContext>>();
+
+    EXPECT_CALL(*context, agentId()).WillOnce(testing::Return("001"));
+    EXPECT_CALL(*context, agentName()).WillOnce(testing::Return("agentName"));
+    EXPECT_CALL(*context, agentVersion()).WillOnce(testing::Return("agentVersion"));
+    EXPECT_CALL(*context, agentIp()).WillOnce(testing::Return("agentIp"));
+    EXPECT_CALL(*context, netProtoItemId()).WillOnce(testing::Return("netProtoItemId"));
+    EXPECT_CALL(*context, netProtoIface()).WillOnce(testing::Return("netProtoIface"));
+    EXPECT_CALL(*context, netProtoType()).WillOnce(testing::Return("netProtoType"));
+    // The agent sets a default value for gateway " "
+    EXPECT_CALL(*context, netProtoGateway()).WillOnce(testing::Return(" "));
+    EXPECT_CALL(*context, netProtoDhcp()).WillOnce(testing::Return("enabled"));
+    EXPECT_CALL(*context, netProtoMetric()).WillOnce(testing::Return(150));
+    EXPECT_CALL(*context, originTable()).WillOnce(testing::Return(MockSystemContext::OriginTable::NetworkProtocol));
+
+    EXPECT_NO_THROW(upsertElement->handleRequest(context));
+
+    EXPECT_EQ(
+        context->m_serializedElement,
+        R"({"id":"001_netProtoItemId","operation":"INSERTED","data":{"network":{"dhcp":true,"metric":150,"type":"netProtoType"},"observer":{"ingress":{"interface":{"name":"netProtoIface"}}},"agent":{"id":"001","name":"agentName","host":{"ip":"agentIp"},"version":"agentVersion"},"wazuh":{"schema":{"version":"1.0"}}}})");
+}
+
+TEST_F(SystemInventoryUpsertElement, validAgentIDMultipleGateway_NetworkProtocol)
+{
+    auto context = std::make_shared<MockSystemContext>();
+    auto upsertElement = std::make_shared<UpsertSystemElement<MockSystemContext>>();
+
+    EXPECT_CALL(*context, agentId()).WillOnce(testing::Return("001"));
+    EXPECT_CALL(*context, agentName()).WillOnce(testing::Return("agentName"));
+    EXPECT_CALL(*context, agentVersion()).WillOnce(testing::Return("agentVersion"));
+    EXPECT_CALL(*context, agentIp()).WillOnce(testing::Return("agentIp"));
+    EXPECT_CALL(*context, netProtoItemId()).WillOnce(testing::Return("netProtoItemId"));
+    EXPECT_CALL(*context, netProtoIface()).WillOnce(testing::Return("netProtoIface"));
+    EXPECT_CALL(*context, netProtoType()).WillOnce(testing::Return("netProtoType"));
+    // The agent sends multiple gateway comma separated that can not be indexed.
+    EXPECT_CALL(*context, netProtoGateway()).WillOnce(testing::Return("fe80::2,10.0.2.2"));
+    EXPECT_CALL(*context, netProtoDhcp()).WillOnce(testing::Return("enabled"));
+    EXPECT_CALL(*context, netProtoMetric()).WillOnce(testing::Return(150));
+    EXPECT_CALL(*context, originTable()).WillOnce(testing::Return(MockSystemContext::OriginTable::NetworkProtocol));
+
+    EXPECT_NO_THROW(upsertElement->handleRequest(context));
+
+    EXPECT_EQ(
+        context->m_serializedElement,
+        R"({"id":"001_netProtoItemId","operation":"INSERTED","data":{"network":{"dhcp":true,"metric":150,"type":"netProtoType"},"observer":{"ingress":{"interface":{"name":"netProtoIface"}}},"agent":{"id":"001","name":"agentName","host":{"ip":"agentIp"},"version":"agentVersion"},"wazuh":{"schema":{"version":"1.0"}}}})");
 }
 
 /*
@@ -487,4 +567,53 @@ TEST_F(SystemInventoryUpsertElement, validAgentID_NetworkAddress)
     EXPECT_EQ(
         context->m_serializedElement,
         R"({"id":"001_netAddressItemId","operation":"INSERTED","data":{"network":{"broadcast":"192.168.0.255","ip":"192.168.0.1","name":"eth0","netmask":"255.255.255.0","protocol":"IPv4"},"agent":{"id":"001","name":"agentName","host":{"ip":"192.168.0.1"},"version":"agentVersion"},"wazuh":{"schema":{"version":"1.0"}}}})");
+}
+
+TEST_F(SystemInventoryUpsertElement, validAgentIDEmptyBroadcast_NetworkAddress)
+{
+    auto context = std::make_shared<MockSystemContext>();
+    auto upsertElement = std::make_shared<UpsertSystemElement<MockSystemContext>>();
+
+    EXPECT_CALL(*context, agentId()).WillOnce(testing::Return("001"));
+    EXPECT_CALL(*context, netAddressItemId()).WillOnce(testing::Return("netAddressItemId"));
+    EXPECT_CALL(*context, agentIp()).WillOnce(testing::Return("192.168.0.1"));
+    EXPECT_CALL(*context, originTable()).WillOnce(testing::Return(MockSystemContext::OriginTable::NetAddress));
+    EXPECT_CALL(*context, agentName()).WillOnce(testing::Return("agentName"));
+    EXPECT_CALL(*context, agentVersion()).WillOnce(testing::Return("agentVersion"));
+    // The agent sets a default value for broadcast " "
+    EXPECT_CALL(*context, broadcast()).WillOnce(testing::Return(" "));
+    EXPECT_CALL(*context, netAddressName()).WillOnce(testing::Return("eth0"));
+    EXPECT_CALL(*context, netmask()).WillOnce(testing::Return("255.255.255.0"));
+    EXPECT_CALL(*context, address()).WillOnce(testing::Return("192.168.0.1"));
+    EXPECT_CALL(*context, protocol()).WillOnce(testing::Return(0));
+
+    EXPECT_NO_THROW(upsertElement->handleRequest(context));
+
+    EXPECT_EQ(
+        context->m_serializedElement,
+        R"({"id":"001_netAddressItemId","operation":"INSERTED","data":{"network":{"ip":"192.168.0.1","name":"eth0","netmask":"255.255.255.0","protocol":"IPv4"},"agent":{"id":"001","name":"agentName","host":{"ip":"192.168.0.1"},"version":"agentVersion"},"wazuh":{"schema":{"version":"1.0"}}}})");
+}
+
+TEST_F(SystemInventoryUpsertElement, validAgentIDEmptyNetmask_NetworkAddress)
+{
+    auto context = std::make_shared<MockSystemContext>();
+    auto upsertElement = std::make_shared<UpsertSystemElement<MockSystemContext>>();
+
+    EXPECT_CALL(*context, agentId()).WillOnce(testing::Return("001"));
+    EXPECT_CALL(*context, netAddressItemId()).WillOnce(testing::Return("netAddressItemId"));
+    EXPECT_CALL(*context, agentIp()).WillOnce(testing::Return("192.168.0.1"));
+    EXPECT_CALL(*context, originTable()).WillOnce(testing::Return(MockSystemContext::OriginTable::NetAddress));
+    EXPECT_CALL(*context, agentName()).WillOnce(testing::Return("agentName"));
+    EXPECT_CALL(*context, agentVersion()).WillOnce(testing::Return("agentVersion"));
+    EXPECT_CALL(*context, broadcast()).WillOnce(testing::Return("192.168.0.255"));
+    EXPECT_CALL(*context, netAddressName()).WillOnce(testing::Return("eth0"));
+    EXPECT_CALL(*context, netmask()).WillOnce(testing::Return(" "));
+    EXPECT_CALL(*context, address()).WillOnce(testing::Return("192.168.0.1"));
+    EXPECT_CALL(*context, protocol()).WillOnce(testing::Return(0));
+
+    EXPECT_NO_THROW(upsertElement->handleRequest(context));
+
+    EXPECT_EQ(
+        context->m_serializedElement,
+        R"({"id":"001_netAddressItemId","operation":"INSERTED","data":{"network":{"broadcast":"192.168.0.255","ip":"192.168.0.1","name":"eth0","protocol":"IPv4"},"agent":{"id":"001","name":"agentName","host":{"ip":"192.168.0.1"},"version":"agentVersion"},"wazuh":{"schema":{"version":"1.0"}}}})");
 }
