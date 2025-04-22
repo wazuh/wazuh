@@ -679,8 +679,9 @@ public:
     {
         if (m_pathHashed.empty())
         {
+            auto pathRawStr = pathRaw();
             Utils::HashData hash(Utils::HashType::Sha256);
-            hash.update(m_pathSanitized.c_str(), m_pathSanitized.size());
+            hash.update(pathRawStr.data(), pathRawStr.size());
             m_pathHashed = Utils::asciiToHex(hash.hash());
         }
         return m_pathHashed;
