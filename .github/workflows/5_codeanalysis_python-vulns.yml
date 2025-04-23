@@ -18,25 +18,25 @@ jobs:
       - name: Generate dynamic matrix
         id: set-matrix
         run: |
-            VERSIONED_BRANCHES_REGEX="^(main|[0-9]{1,3}\.[0-9]{1,2}(\.[0-9]{1,2})?)$"
+          VERSIONED_BRANCHES_REGEX="^main$|^[0-9]{1,3}\.[0-9]{2}\.[0-9]{1,2}$"
 
-            # Filtrar ramas remotas válidas
-            BRANCHES=$(git branch -r | grep -Eo "origin/$VERSIONED_BRANCHES_REGEX" | sed 's|origin/||')
+          BRANCHES=$(git branch -r | awk '{print $1}' | sed 's|origin/||' | grep -E "$VERSIONED_BRANCHES_REGEX")
 
-            # Construir array JSON de objetos {ref, sha}
-            JSON_ARRAY=$(printf '%s\n' "$BRANCHES" | while read -r ref; do
-              sha=$(git rev-parse "origin/$ref")
-              jq -n --arg ref "$ref" --arg sha "$sha" '{ref: $ref, sha: $sha}'
-            done | jq -s '{include: .}')
+          JSON_ARRAY=$(printf '%s\n' "$BRANCHES" | while read -r ref; do
+            sha=$(git rev-parse "origin/$ref")
+            jq -c -n --arg ref "$ref" --arg sha "$sha" '{ref: $ref, sha: $sha}'
+          done | jq -c -s '{include: .}')
 
-            echo "matrix=$JSON_ARRAY" >> "$GITHUB_OUTPUT"
+          echo "matrix=$JSON_ARRAY" >> "$GITHUB_OUTPUT"
+          echo Picked branches: $JSON_ARRAY
+
 
   checking-py-vulns:
     needs: pick-branches
     name: Checking Python vulnerabilies
     runs-on: ubuntu-latest
     strategy:
-      matrix: ${{ fromJSON(needs.generate-matrix.outputs.matrix) }}
+      matrix: ${{ fromJSON(needs.pick-branches.outputs.matrix) }}
     permissions:
       contents: read
       security-events: write
