@@ -1,0 +1,64 @@
+name: 'Python dependency vuln checks'
+on:
+  pull_request:
+    branches: [ main ]
+jobs:
+  pick-branches:
+    name: Get branches to analyze
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - run: git fetch --all --prune
+
+      - name: Generate dynamic matrix
+        id: set-matrix
+        run: |
+            VERSIONED_BRANCHES_REGEX="^(main|[0-9]{1,3}\.[0-9]{1,2}(\.[0-9]{1,2})?)$"
+
+            # Filtrar ramas remotas válidas
+            BRANCHES=$(git branch -r | grep -Eo "origin/$VERSIONED_BRANCHES_REGEX" | sed 's|origin/||')
+
+            # Construir array JSON de objetos {ref, sha}
+            JSON_ARRAY=$(printf '%s\n' "$BRANCHES" | while read -r ref; do
+              sha=$(git rev-parse "origin/$ref")
+              jq -n --arg ref "$ref" --arg sha "$sha" '{ref: $ref, sha: $sha}'
+            done | jq -s '{include: .}')
+
+            echo "matrix=$JSON_ARRAY" >> "$GITHUB_OUTPUT"
+
+  checking-py-vulns:
+    needs: pick-branches
+    name: Checking Python vulnerabilies
+    runs-on: ubuntu-latest
+    strategy:
+      matrix: ${{ fromJSON(needs.generate-matrix.outputs.matrix) }}
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
+    steps:
+      - name: Checkout the repo
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ matrix.ref }}
+          fetch-depth: 0
+
+      - name: Run Trivy vulnerability scanner in repo mode
+        uses: aquasecurity/trivy-action@0.30.0
+        with:
+          scan-type: 'fs'
+          scanners: 'vuln'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+
+      - name: Upload Trivy scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          ref: refs/heads/${{ matrix.ref }}
+          sha: ${{ matrix.sha }}
+          sarif_file: 'trivy-results.sarif'
