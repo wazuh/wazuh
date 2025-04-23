@@ -159,6 +159,11 @@ class PKGWrapper final : public IPackageWrapper
                         {
                             m_name = getValueFnc(line);
                         }
+                        else if (line == "<key>CFBundleExecutable</key>" &&
+                                 m_name.empty() && std::getline(data, line))
+                        {
+                            m_name = getValueFnc(line);
+                        }
                         else if (line == "<key>CFBundleShortVersionString</key>" &&
                                  std::getline(data, line))
                         {
