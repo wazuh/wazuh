@@ -1330,14 +1330,14 @@ def expand_group(group_name: str) -> set:
         last_id = 0
         while True:
             if group_name == '*':
-                command = 'global sync-agent-groups-get {"last_id":' f'{last_id}' ', "condition":"all"}'
+                command = f'global get-all-agents last_id {last_id}'
             else:
                 command = f'global get-group-agents {group_name} last_id {last_id}'
 
             status, payload = wdb_conn.send(command, raw=True)
             agents = json.loads(payload)
 
-            for agent in agents[0]['data'] if group_name == '*' else agents:
+            for agent in agents:
                 agent_id = str(agent['id'] if isinstance(agent, dict) else agent).zfill(3)
                 agents_ids.append(agent_id)
 
