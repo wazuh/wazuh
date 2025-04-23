@@ -114,7 +114,7 @@ def get_agents_summary_status(agent_list: list[str] = None) -> WazuhResult:
 
         with WazuhDBQueryGroupByAgents(filter_fields=['status'], select=['status'], query='id!=000',
                                        min_select_fields=set(), count=True, get_data=True, offset=0, 
-                                       limit=common.MAXIMUM_DATABASE_LIMIT, sort=None, search=None,
+                                       limit=4, sort=None, search=None,
                                        **rbac_filters) as db_query:
             status_data = db_query.run()
 
@@ -124,7 +124,7 @@ def get_agents_summary_status(agent_list: list[str] = None) -> WazuhResult:
         
         with WazuhDBQueryGroupByAgents(filter_fields=['group_config_status'], select=['group_config_status'], 
                                        query='id!=000', min_select_fields=set(), count=True, get_data=True,
-                                       offset=0, limit=common.MAXIMUM_DATABASE_LIMIT, sort=None, search=None,
+                                       offset=0, limit=2, sort=None, search=None,
                                        **rbac_filters) as db_query:
             sync_data = db_query.run()
 
