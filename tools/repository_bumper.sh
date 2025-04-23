@@ -324,10 +324,11 @@ ${INSTALL_TYPE} (${final_version}-RELEASE) stable; urgency=low
 EOF
 )"
 
-        version_pattern="^${INSTALL_TYPE} \(${final_version//./\\.}-RELEASE\) stable; urgency=low"
+        version_pattern_grep="^${INSTALL_TYPE} \(${final_version//./\\.}-RELEASE\) stable; urgency=low"
+        version_pattern_awk="^${INSTALL_TYPE} (${final_version//./.}-RELEASE) stable; urgency=low"
 
-        if grep -qE "$version_pattern" "$changelog_file"; then
-            awk -v version_regex="$version_pattern" -v new_date="$formatted_date" '
+        if grep -qE "$version_pattern_grep" "$changelog_file"; then
+            awk -v version_regex="$version_pattern_awk" -v new_date="$formatted_date" '
             BEGIN { inside_match = 0 }
             {
                 if ($0 ~ version_regex) {
