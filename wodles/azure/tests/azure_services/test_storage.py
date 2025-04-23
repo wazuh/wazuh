@@ -568,7 +568,7 @@ def test_get_blobs_json_ko(mock_update, mock_loads, mock_logging, exception):
 
 @ pytest.mark.parametrize("retries", [1, 3])
 def test_download_blob_success(retries):
-    """Test download_blob download blob as expected"""
+    """Test download_blob download blob as expected."""
     container = MagicMock()
     blob = create_mocked_blob("blob1")
     data_mock = object()
@@ -607,7 +607,7 @@ def test_download_blob_fails_immediately_on_other_exceptions(exc):
 
 
 def test_download_blob_retry_then_fail():
-    """Test download_blob raises exception after multiple retries"""
+    """Test download_blob raises exception after multiple retries."""
     container = MagicMock()
     blob = create_mocked_blob("blob2")
     data_mock = object()

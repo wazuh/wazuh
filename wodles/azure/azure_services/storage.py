@@ -260,19 +260,28 @@ def get_blobs(
 
 def download_blob(container_client, blob, number_of_retries=3):
     """
-    Downloads a blob from Azure Storage with retry logic on ResourceModifiedError.
+    Download a blob from Azure Storage with retry logic on ResourceModifiedError.
 
-    Parameters:
-        container_client: The Azure container client instance.
-        blob: The blob object or name to download.
-        number_of_retries: Maximum number of retry attempts (default: 3).
+    Parameters
+    ----------
+    container_client: BlobServiceClient
+        The Azure container client instance.
+    blob: BlobProperties
+        The blob object or name to download.
+    number_of_retries: int
+        Maximum number of retry attempts (default: 3).
 
-    Returns:
-        The downloaded blob data on success.
+    Returns
+    -------
+    StorageStreamDownloader[str]
+        Message that will be sent to the WazuhQueue socket.
 
-    Raises:
-        ResourceModifiedError: If the blob keeps being modified after all retries.
-        ValueError, AzureError, HttpResponseError: For other download errors.
+    Raises
+    ------
+        ResourceModifiedError
+            If the blob keeps being modified after all retries.
+        ValueError, AzureError, HttpResponseError
+            For other download errors.
     """
     attempt = 1
 
