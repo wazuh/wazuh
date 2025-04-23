@@ -1,7 +1,8 @@
 name: 'Python dependency vuln checks'
 on:
-  pull_request:
-    branches: [ main ]
+  workflow_dispatch:
+  schedule:
+    - cron: '0 0 * * 0'
 jobs:
   pick-branches:
     name: Get branches to analyze
@@ -48,7 +49,7 @@ jobs:
           ref: ${{ matrix.ref }}
           fetch-depth: 0
 
-      - name: Run Trivy vulnerability scanner in repo mode
+      - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@0.30.0
         with:
           scan-type: 'fs'
