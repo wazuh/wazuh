@@ -80,12 +80,99 @@ TEST_F(PKGWrapperTest, ShortVersion)
     EXPECT_EQ(wrapper->multiarch(), UNKNOWN_VALUE);
 }
 
-TEST_F(PKGWrapperTest, NoName)
+TEST_F(PKGWrapperTest, NameDifferentExecutable)
 {
     std::string inputPath;
     inputPath += getwd(NULL);
     inputPath += "/input_files";
-    std::string package { "PKGWrapperTest_NoName.app" };
+    std::string package { "PKGWrapperTest_NameDifferentExecutable.app" };
+
+    struct PackageContext ctx
+    {
+        inputPath, package, ""
+    };
+    std::shared_ptr<PKGWrapper> wrapper;
+    EXPECT_NO_THROW(wrapper = std::make_shared<PKGWrapper>(ctx));
+    EXPECT_EQ(wrapper->name(), "OperaName");
+    EXPECT_EQ(wrapper->version(), "100.0.4815.54");
+    EXPECT_EQ(wrapper->groups(), "public.app-category.productivity");
+    EXPECT_EQ(wrapper->description(), "com.operasoftware.Opera");
+    EXPECT_EQ(wrapper->architecture(), UNKNOWN_VALUE);
+    EXPECT_EQ(wrapper->format(), "pkg");
+    EXPECT_EQ(wrapper->osPatch(), "");
+    EXPECT_EQ(wrapper->source(), "utilities");
+    EXPECT_EQ(wrapper->location(), inputPath + "/" + package + "/" + APP_INFO_PATH);
+    EXPECT_EQ(wrapper->vendor(), "operasoftware");
+    EXPECT_EQ(wrapper->priority(), UNKNOWN_VALUE);
+    EXPECT_EQ(wrapper->size(), 0);
+    EXPECT_EQ(wrapper->install_time(), UNKNOWN_VALUE);
+    EXPECT_EQ(wrapper->multiarch(), UNKNOWN_VALUE);
+}
+
+TEST_F(PKGWrapperTest, NameFirst)
+{
+    std::string inputPath;
+    inputPath += getwd(NULL);
+    inputPath += "/input_files";
+    std::string package { "PKGWrapperTest_NameFirst.app" };
+
+    struct PackageContext ctx
+    {
+        inputPath, package, ""
+    };
+    std::shared_ptr<PKGWrapper> wrapper;
+    EXPECT_NO_THROW(wrapper = std::make_shared<PKGWrapper>(ctx));
+    EXPECT_EQ(wrapper->name(), "OperaName");
+    EXPECT_EQ(wrapper->version(), "100.0.4815.54");
+    EXPECT_EQ(wrapper->groups(), "public.app-category.productivity");
+    EXPECT_EQ(wrapper->description(), "com.operasoftware.Opera");
+    EXPECT_EQ(wrapper->architecture(), UNKNOWN_VALUE);
+    EXPECT_EQ(wrapper->format(), "pkg");
+    EXPECT_EQ(wrapper->osPatch(), "");
+    EXPECT_EQ(wrapper->source(), "utilities");
+    EXPECT_EQ(wrapper->location(), inputPath + "/" + package + "/" + APP_INFO_PATH);
+    EXPECT_EQ(wrapper->vendor(), "operasoftware");
+    EXPECT_EQ(wrapper->priority(), UNKNOWN_VALUE);
+    EXPECT_EQ(wrapper->size(), 0);
+    EXPECT_EQ(wrapper->install_time(), UNKNOWN_VALUE);
+    EXPECT_EQ(wrapper->multiarch(), UNKNOWN_VALUE);
+}
+
+TEST_F(PKGWrapperTest, NoNameButExecutable)
+{
+    std::string inputPath;
+    inputPath += getwd(NULL);
+    inputPath += "/input_files";
+    std::string package { "PKGWrapperTest_NoNameButExecutable.app" };
+
+    struct PackageContext ctx
+    {
+        inputPath, package, ""
+    };
+    std::shared_ptr<PKGWrapper> wrapper;
+    EXPECT_NO_THROW(wrapper = std::make_shared<PKGWrapper>(ctx));
+    EXPECT_EQ(wrapper->name(), "Opera");
+    EXPECT_EQ(wrapper->version(), "100.0.4815.54");
+    EXPECT_EQ(wrapper->groups(), "public.app-category.productivity");
+    EXPECT_EQ(wrapper->description(), "com.operasoftware.Opera");
+    EXPECT_EQ(wrapper->architecture(), UNKNOWN_VALUE);
+    EXPECT_EQ(wrapper->format(), "pkg");
+    EXPECT_EQ(wrapper->osPatch(), "");
+    EXPECT_EQ(wrapper->source(), "utilities");
+    EXPECT_EQ(wrapper->location(), inputPath + "/" + package + "/" + APP_INFO_PATH);
+    EXPECT_EQ(wrapper->vendor(), "operasoftware");
+    EXPECT_EQ(wrapper->priority(), UNKNOWN_VALUE);
+    EXPECT_EQ(wrapper->size(), 0);
+    EXPECT_EQ(wrapper->install_time(), UNKNOWN_VALUE);
+    EXPECT_EQ(wrapper->multiarch(), UNKNOWN_VALUE);
+}
+
+TEST_F(PKGWrapperTest, NoNameNoExecutable)
+{
+    std::string inputPath;
+    inputPath += getwd(NULL);
+    inputPath += "/input_files";
+    std::string package { "PKGWrapperTest_NoNameNoExecutable.app" };
 
     struct PackageContext ctx
     {
