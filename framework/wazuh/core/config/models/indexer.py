@@ -1,8 +1,10 @@
-from typing import List
+from typing import Any, List
 
 from pydantic import Field, PositiveInt, field_serializer
+from wazuh.core.common import CLIENT_KEYSTORE
 from wazuh.core.config.models.base import WazuhConfigBaseModel
 from wazuh.core.config.models.ssl_config import IndexerSSLConfig
+from wazuh.core.utils import KeystoreReader
 
 
 class IndexerNode(WazuhConfigBaseModel):
@@ -35,9 +37,10 @@ class IndexerConfig(WazuhConfigBaseModel):
         SSL configuration for the indexer. Default is None.
     """
 
+    _username: str
+    _password: str
+
     hosts: List[IndexerNode] = Field(min_length=1)
-    username: str
-    password: str
     ssl: IndexerSSLConfig = None
 
     @field_serializer('hosts', when_used='json')
@@ -63,3 +66,41 @@ class IndexerConfig(WazuhConfigBaseModel):
             final_list.append(f'{scheme}://{node.host}:{node.port}')
 
         return final_list
+
+    def model_post_init(self, context: Any):
+        """Post initialization of the model.
+
+        Parameters
+        ----------
+        context : Any
+            Initialization context.
+        """
+        keystore = KeystoreReader(CLIENT_KEYSTORE)
+
+        try:
+            self._username = keystore['indexer-username']
+            self._password = keystore['indexer-password']
+        except KeyError as e:
+            raise ValueError(f'The key {e} was not found in the "{CLIENT_KEYSTORE}" keystore.')
+
+    @property
+    def username(self) -> str:
+        """Get the indexer username.
+
+        Returns
+        -------
+        str
+            The indexer username.
+        """
+        return self._username
+
+    @property
+    def password(self) -> str:
+        """Get the password username.
+
+        Returns
+        -------
+        str
+            The indexer password.
+        """
+        return self._password

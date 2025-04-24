@@ -1071,17 +1071,22 @@ class KeystoreReader:
 
         return kev_values
 
-    def get(self, key: str) -> typing.Optional[str]:
+    def get(self, key: str, default: typing.Optional[str] = None) -> typing.Optional[str]:
         """Obtain the value that match to the given key.
 
         Parameters
         ----------
         key : str
             To obtain the value.
+        default: typing.Optional[str]
+            Value to return if key does not exists.
 
         Returns
         -------
         typing.Optional[str]
             The value if the key exists, else None.
         """
-        return self._keystore.get(key)
+        return self._keystore.get(key, default)
+
+    def __getitem__(self, attr):
+        return self._keystore[attr]
