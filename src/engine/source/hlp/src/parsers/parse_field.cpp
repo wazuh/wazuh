@@ -86,17 +86,17 @@ void unescape(bool is_escaped, std::string& vs, std::string_view escape)
     }
 }
 
+// TODO: evaluate which is the most suitable site for this functionality
 std::string convertDotToSlash(std::string_view key)
 {
-    std::string result;
-    result.reserve(key.size());
-
-    for (char c : key)
+    auto pos = key.find('.');
+    if (pos == std::string_view::npos)
     {
-        result += (c == '.') ? '/' : c;
+        return std::string {key};
     }
-
-    return result;
+    std::string s {key};
+    std::replace(s.begin() + pos, s.end(), '.', '/');
+    return s;
 }
 
 void updateDoc(json::Json& doc,
