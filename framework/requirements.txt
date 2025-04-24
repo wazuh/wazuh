@@ -17,6 +17,7 @@ mypy-extensions==0.4.3
 openapi-spec-validator==0.7.1
 opensearch-py==2.6.0
 psutil==6.1.1
+pycryptodome==3.22.0
 PyJWT==2.8.0
 python-dateutil==2.8.1
 pytz==2020.1
