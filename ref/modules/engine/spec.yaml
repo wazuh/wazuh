@@ -21,6 +21,8 @@ tags:
     description: "Operations for managing key-value databases"
   - name: Tester
     description: "Operations for testing and validating policies"
+  - name: Archiver
+    description: "Operations for managing the archives. By default a file 'archives.json' is created at '/var/lib/wazuh-server/archives.json' where all events received by the Engine are stored."
 
 #################################################################################
 # Paths
@@ -133,7 +135,7 @@ paths:
                   summary: The requested collection does not exist
                   value:
                     status: "ERROR"
-                    error: "Invalid collection type \"non-exist\""
+                    error: 'Invalid collection type "non-exist"'
                 invalid_format:
                   summary: The requested format does not exist
                   value:
@@ -143,12 +145,12 @@ paths:
                   summary: The asset content does not have a name
                   value:
                     status: "ERROR"
-                    error: "Invalid content name 'documentation': Invalid collection type \"documentation\""
+                    error: 'Invalid content name ''documentation'': Invalid collection type "documentation"'
                 name_type_mismatch:
                   summary: The asset name in the content does not match the asset type
                   value:
                     status: "ERROR"
-                    error: "Invalid content name 'non-exist/documentation/0': Invalid type \"non-exist\""
+                    error: 'Invalid content name ''non-exist/documentation/0'': Invalid type "non-exist"'
                 already_exists:
                   summary: The asset already exists currently
                   value:
@@ -198,7 +200,7 @@ paths:
                   summary: The requested collection does not exist
                   value:
                     status: "ERROR"
-                    error: "Invalid collection type \"non-exist\""
+                    error: 'Invalid collection type "non-exist"'
                 invalid_format:
                   summary: The requested format does not exist
                   value:
@@ -208,7 +210,7 @@ paths:
                   summary: The requested asset name has an invalid format
                   value:
                     status: "ERROR"
-                    error: "Invalid name \"decoder/core-wazuh-message/0/other\" received, a name with 1, 2 or 3 parts was expected"
+                    error: 'Invalid name "decoder/core-wazuh-message/0/other" received, a name with 1, 2 or 3 parts was expected'
         "500":
           $ref: "#/components/responses/InternalServerError_500"
 
@@ -300,7 +302,7 @@ paths:
                   summary: Invalid format of the asset name
                   value:
                     status: "ERROR"
-                    error: "Invalid name \"decoder/documentation/0/0\" received, a name with 1, 2 or 3 parts was expected"
+                    error: 'Invalid name "decoder/documentation/0/0" received, a name with 1, 2 or 3 parts was expected'
         "500":
           $ref: "#/components/responses/InternalServerError_500"
 
@@ -336,7 +338,7 @@ paths:
                   summary: Invalid helper function
                   value:
                     status: "ERROR"
-                    error: "In stage 'normalize' builder for block 'map' failed with error: Failed to build operation '@timestamp: map(\"non-exist()\")': Field '@timestamp' value validation failed: Invalid date"
+                    error: 'In stage ''normalize'' builder for block ''map'' failed with error: Failed to build operation ''@timestamp: map("non-exist()")'': Field ''@timestamp'' value validation failed: Invalid date'
                 invalid_map_structure:
                   summary: Invalid map structure
                   value:
@@ -2236,6 +2238,98 @@ paths:
                   value:
                     status: "ERROR"
                     error: "Cannot download database from 'https://raw.githubusercontent.com/wazuh/wazuh/blob/main/src/engine/test/integration_tests/geo/data/base.mmdb': Failed to download file from 'https://raw.githubusercontent.com/wazuh/wazuh/blob/main/src/engine/test/integration_tests/geo/data/base.mmdb', error: HTTP response code said error, status code: 404."
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+  #################################
+  # Archiver
+  #################################
+  /archiver/activate:
+    post:
+      tags:
+        - Archiver
+      summary: Activate the archiver
+      description: |
+        This endpoint activates the archiver in the system.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EmptyRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/GenericSuccess_200"
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/responses/BadRequest_400"
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+  /archiver/deactivate:
+    post:
+      tags:
+        - Archiver
+      summary: Deactivate the archiver
+      description: |
+        This endpoint deactivates the archiver in the system.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EmptyRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/GenericSuccess_200"
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/responses/BadRequest_400"
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+  /archiver/status:
+    post:
+      tags:
+        - Archiver
+      summary: Get the status of the archiver
+      description: |
+        This endpoint retrieves the current status of the archiver.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EmptyRequest"
+      responses:
+        "200":
+          description: Successfully retrieved archiver status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ArchiverStatus_Response"
+              examples:
+                archiver_active:
+                  summary: Archiver is active
+                  value:
+                    status: "OK"
+                    error: null
+                    active: true
+                archiver_inactive:
+                  summary: Archiver is inactive
+                  value:
+                    status: "OK"
+                    error: null
+                    active: false
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/responses/BadRequest_400"
         "500":
           $ref: "#/components/responses/InternalServerError_500"
 
