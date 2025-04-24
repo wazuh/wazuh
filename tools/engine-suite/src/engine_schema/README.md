@@ -46,7 +46,7 @@ usage: engine-schema generate [-h] [--ecs-version ECS_VERSION] [--output-dir OUT
 options:
   -h, --help            show this help message and exit
   --ecs-version ECS_VERSION
-                        [default="v8.8.0"] ECS version to use for the schema generation
+                        [default="v8.17.0"] ECS version to use for the schema generation
   --output-dir OUTPUT_DIR
                         [default="./"] Root directory to store generated files
 
@@ -59,9 +59,9 @@ When updating the schema, specify the integration subcommand with the path to th
 
 ```bash
 $ engine-schema generate --output-dir /tmp/schema_update integration engine/ruleset/wazuh-core/
-Using target ECS version: v8.8.0
+Using target ECS version: v8.17.0
 Loading resources...
-Downloading https://raw.githubusercontent.com/elastic/ecs/v8.8.0/generated/ecs/ecs_flat.yml...
+Downloading https://raw.githubusercontent.com/elastic/ecs/v8.17.0/generated/ecs/ecs_flat.yml...
 Loading schema template...
 Loading mappings template...
 Loading logpar overrides template...
@@ -95,30 +95,3 @@ We must format the documents and replace them in their respective folders:
 - fields.json -> wazuh/src/engine/ruleset/schemas/fields.json
 - wazuh-logpar-types.json -> wazuh/src/engine/ruleset/schemas/wazuh-logpar-types.json
 - wazuh-template.json -> wazuh/src/engine/extension/elasticsearch/7.x/wazuh-template.json
-
-### Integrate
-
-```bash
-$ engine-schema integrate --help
-usage: engine-schema integrate [-h] [--ecs-version ECS_VERSION] [--api-sock API_SOCK]
-                               [--indexer-dir INDEXER_DIR] [--schema-dir SCHEMA_DIR]
-                               {integration} ...
-
-options:
-  -h, --help            show this help message and exit
-  --ecs-version ECS_VERSION
-                        [default="v8.8.0"] ECS version to use for the schema generation
-  --api-sock API_SOCK   [default="/run/wazuh-server/engine-api.socket"] Engine instance API socket path
-  --indexer-dir INDEXER_DIR
-                        [default="/etc/filebeat/"] Path to directory where the wazuh-template.json indexer
-                        file is located
-  --schema-dir SCHEMA_DIR
-                        [default="/home/vagrant/engine/wazuh/src/engine/ruleset/schemas/"] Path to the
-                        director where the fields.json schema file is located
-
-subcommands:
-  {integration}
-    integration         Add schema integration fields
-```
-
-It will generate the configuration files and update the engine's configuration.

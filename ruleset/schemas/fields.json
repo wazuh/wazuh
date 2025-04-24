@@ -57,6 +57,56 @@
         "string"
       ]
     },
+    "agent.groups": {
+      "description": "Module: schemas\nIndexerType: keyword\nArray: True\n\n",
+      "type": [
+        "string",
+        "array"
+      ],
+      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+      "items": {
+        "type": [
+          "string"
+        ]
+      }
+    },
+    "agent.host.hostname": {
+      "description": "Module: schemas\nIndexerType: keyword\nArray: False\n\n",
+      "type": [
+        "string"
+      ]
+    },
+    "agent.host.os.platform": {
+      "description": "Module: schemas\nIndexerType: keyword\nArray: False\n\n",
+      "type": [
+        "string"
+      ]
+    },
+    "agent.host.os.name": {
+      "description": "Module: schemas\nIndexerType: keyword\nArray: False\n\n",
+      "type": [
+        "string"
+      ]
+    },
+    "agent.host.architecture": {
+      "description": "Module: schemas\nIndexerType: keyword\nArray: False\n\n",
+      "type": [
+        "string"
+      ]
+    },
+    "agent.host.ip": {
+      "description": "Module: schemas\nIndexerType: ip\nArray: True\n\nTrace of the decoders used to decode the event in order",
+      "type": [
+        "string",
+        "array"
+      ],
+      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+      "items": {
+        "type": [
+          "string"
+        ]
+      }
+    },
     "client.address": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nSome event client addresses are defined ambiguously. The event will sometimes list an IP, a domain or a unix socket.  You should always store the raw address in the `.address` field.\nThen it should be duplicated to `.ip` or `.domain`, depending on which one it is.",
       "type": [
@@ -200,7 +250,7 @@
       "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
     },
     "client.registered_domain": {
-      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe highest registered client domain, stripped of the subdomain.\nFor example, the registered domain for \"foo.example.com\" is \"example.com\".\nThis value can be determined precisely with a list like the public suffix list (http://publicsuffix.org). Trying to approximate this by simply taking the last two labels will not work well for TLDs such as \"co.uk\".",
+      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe highest registered client domain, stripped of the subdomain.\nFor example, the registered domain for \"foo.example.com\" is \"example.com\".\nThis value can be determined precisely with a list like the public suffix list (https://publicsuffix.org). Trying to approximate this by simply taking the last two labels will not work well for TLDs such as \"co.uk\".",
       "type": [
         "string"
       ]
@@ -212,7 +262,7 @@
       ]
     },
     "client.top_level_domain": {
-      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe effective top level domain (eTLD), also known as the domain suffix, is the last part of the domain name. For example, the top level domain for example.com is \"com\".\nThis value can be determined precisely with a list like the public suffix list (http://publicsuffix.org). Trying to approximate this by simply taking the last label will not work well for effective TLDs such as \"co.uk\".",
+      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe effective top level domain (eTLD), also known as the domain suffix, is the last part of the domain name. For example, the top level domain for example.com is \"com\".\nThis value can be determined precisely with a list like the public suffix list (https://publicsuffix.org). Trying to approximate this by simply taking the last label will not work well for effective TLDs such as \"co.uk\".",
       "type": [
         "string"
       ]
@@ -757,7 +807,7 @@
       "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
     },
     "destination.registered_domain": {
-      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe highest registered destination domain, stripped of the subdomain.\nFor example, the registered domain for \"foo.example.com\" is \"example.com\".\nThis value can be determined precisely with a list like the public suffix list (http://publicsuffix.org). Trying to approximate this by simply taking the last two labels will not work well for TLDs such as \"co.uk\".",
+      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe highest registered destination domain, stripped of the subdomain.\nFor example, the registered domain for \"foo.example.com\" is \"example.com\".\nThis value can be determined precisely with a list like the public suffix list (https://publicsuffix.org). Trying to approximate this by simply taking the last two labels will not work well for TLDs such as \"co.uk\".",
       "type": [
         "string"
       ]
@@ -769,7 +819,7 @@
       ]
     },
     "destination.top_level_domain": {
-      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe effective top level domain (eTLD), also known as the domain suffix, is the last part of the domain name. For example, the top level domain for example.com is \"com\".\nThis value can be determined precisely with a list like the public suffix list (http://publicsuffix.org). Trying to approximate this by simply taking the last label will not work well for effective TLDs such as \"co.uk\".",
+      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe effective top level domain (eTLD), also known as the domain suffix, is the last part of the domain name. For example, the top level domain for example.com is \"com\".\nThis value can be determined precisely with a list like the public suffix list (https://publicsuffix.org). Trying to approximate this by simply taking the last label will not work well for effective TLDs such as \"co.uk\".",
       "type": [
         "string"
       ]
@@ -842,7 +892,7 @@
       }
     },
     "device.id": {
-      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe unique identifier of a device. The identifier must not change across application sessions but stay fixed for an instance of a (mobile) device. \nOn iOS, this value must be equal to the vendor identifier (https://developer.apple.com/documentation/uikit/uidevice/1620059-identifierforvendor). On Android, this value must be equal to the Firebase Installation ID or a globally unique UUID which is persisted across sessions in your application.\nFor GDPR and data protection law reasons this identifier should not carry information that would allow to identify a user.",
+      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe unique identifier of a device. The identifier must not change across application sessions but stay fixed for an instance of a (mobile) device.\nOn iOS, this value must be equal to the vendor identifier (https://developer.apple.com/documentation/uikit/uidevice/1620059-identifierforvendor). On Android, this value must be equal to the Firebase Installation ID or a globally unique UUID which is persisted across sessions in your application.\nFor GDPR and data protection law reasons this identifier should not carry information that would allow to identify a user.",
       "type": [
         "string"
       ]
@@ -865,6 +915,12 @@
         "string"
       ]
     },
+    "device.serial_number": {
+      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe unique serial number serves as a distinct identifier for each device, aiding in inventory management and device authentication.",
+      "type": [
+        "string"
+      ]
+    },
     "dll.code_signature.digest_algorithm": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe hashing algorithm used to sign the process.\nThis value can distinguish signatures when a file is signed multiple times by the same signer but with a different digest algorithm.",
       "type": [
@@ -878,6 +934,12 @@
         "string"
       ],
       "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
+    },
+    "dll.code_signature.flags": {
+      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe flags used to sign the process.",
+      "type": [
+        "string"
+      ]
     },
     "dll.code_signature.signing_id": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe identifier used to sign the process.\nThis is used to identify the application manufactured by a software vendor. The field is relevant to Apple *OS only.",
@@ -924,6 +986,12 @@
         "string"
       ],
       "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
+    },
+    "dll.hash.cdhash": {
+      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nCode directory hash, utilized to uniquely identify and authenticate the integrity of the executable code.",
+      "type": [
+        "string"
+      ]
     },
     "dll.hash.md5": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nMD5 hash.",
@@ -1004,7 +1072,7 @@
       ]
     },
     "dll.pe.go_import_hash": {
-      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nA hash of the Go language imports in a PE file excluding standard library imports. An import hash can be used to fingerprint binaries even after recompilation or other code-level transformations have occurred, which would change more traditional hash values.\nThe algorithm used to calculate the Go symbol hash and a reference implementation are available [here](https://github.com/elastic/toutoumomoma).",
+      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nA hash of the Go language imports in a PE file excluding standard library imports. An import hash can be used to fingerprint binaries even after recompilation or other code-level transformations have occurred, which would change more traditional hash values.\nThe algorithm used to calculate the Go symbol hash and a reference implementation are available here: https://github.com/elastic/toutoumomoma",
       "type": [
         "string"
       ]
@@ -1246,7 +1314,7 @@
       ]
     },
     "dns.question.registered_domain": {
-      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe highest registered domain, stripped of the subdomain.\nFor example, the registered domain for \"foo.example.com\" is \"example.com\".\nThis value can be determined precisely with a list like the public suffix list (http://publicsuffix.org). Trying to approximate this by simply taking the last two labels will not work well for TLDs such as \"co.uk\".",
+      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe highest registered domain, stripped of the subdomain.\nFor example, the registered domain for \"foo.example.com\" is \"example.com\".\nThis value can be determined precisely with a list like the public suffix list (https://publicsuffix.org). Trying to approximate this by simply taking the last two labels will not work well for TLDs such as \"co.uk\".",
       "type": [
         "string"
       ]
@@ -1258,7 +1326,7 @@
       ]
     },
     "dns.question.top_level_domain": {
-      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe effective top level domain (eTLD), also known as the domain suffix, is the last part of the domain name. For example, the top level domain for example.com is \"com\".\nThis value can be determined precisely with a list like the public suffix list (http://publicsuffix.org). Trying to approximate this by simply taking the last label will not work well for effective TLDs such as \"co.uk\".",
+      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe effective top level domain (eTLD), also known as the domain suffix, is the last part of the domain name. For example, the top level domain for example.com is \"com\".\nThis value can be determined precisely with a list like the public suffix list (https://publicsuffix.org). Trying to approximate this by simply taking the last label will not work well for effective TLDs such as \"co.uk\".",
       "type": [
         "string"
       ]
@@ -1317,6 +1385,12 @@
         "properties": {
           "file.extension": {
             "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nAttachment file extension, excluding the leading dot.",
+            "type": [
+              "string"
+            ]
+          },
+          "file.hash.cdhash": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nCode directory hash, utilized to uniquely identify and authenticate the integrity of the executable code.",
             "type": [
               "string"
             ]
@@ -1715,6 +1789,12 @@
         "string"
       ]
     },
+    "event.collector": {
+      "description": "Module: schemas\nIndexerType: keyword\nArray: False\n\nName of the collector, source of data",
+      "type": [
+        "string"
+      ]
+    },
     "faas.coldstart": {
       "description": "Module: ecs\nIndexerType: boolean\nArray: False\n\nBoolean value indicating a cold start of a function.",
       "type": [
@@ -1791,6 +1871,12 @@
         "string"
       ],
       "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
+    },
+    "file.code_signature.flags": {
+      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe flags used to sign the process.",
+      "type": [
+        "string"
+      ]
     },
     "file.code_signature.signing_id": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe identifier used to sign the process.\nThis is used to identify the application manufactured by a software vendor. The field is relevant to Apple *OS only.",
@@ -1908,7 +1994,7 @@
       }
     },
     "file.elf.go_import_hash": {
-      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nA hash of the Go language imports in an ELF file excluding standard library imports. An import hash can be used to fingerprint binaries even after recompilation or other code-level transformations have occurred, which would change more traditional hash values.\nThe algorithm used to calculate the Go symbol hash and a reference implementation are available [here](https://github.com/elastic/toutoumomoma).",
+      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nA hash of the Go language imports in an ELF file excluding standard library imports. An import hash can be used to fingerprint binaries even after recompilation or other code-level transformations have occurred, which would change more traditional hash values.\nThe algorithm used to calculate the Go symbol hash and a reference implementation are available here: https://github.com/elastic/toutoumomoma",
       "type": [
         "string"
       ]
@@ -2195,6 +2281,12 @@
         "string"
       ]
     },
+    "file.hash.cdhash": {
+      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nCode directory hash, utilized to uniquely identify and authenticate the integrity of the executable code.",
+      "type": [
+        "string"
+      ]
+    },
     "file.hash.md5": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nMD5 hash.",
       "type": [
@@ -2244,7 +2336,7 @@
       ]
     },
     "file.macho.go_import_hash": {
-      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nA hash of the Go language imports in a Mach-O file excluding standard library imports. An import hash can be used to fingerprint binaries even after recompilation or other code-level transformations have occurred, which would change more traditional hash values.\nThe algorithm used to calculate the Go symbol hash and a reference implementation are available [here](https://github.com/elastic/toutoumomoma).",
+      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nA hash of the Go language imports in a Mach-O file excluding standard library imports. An import hash can be used to fingerprint binaries even after recompilation or other code-level transformations have occurred, which would change more traditional hash values.\nThe algorithm used to calculate the Go symbol hash and a reference implementation are available here: https://github.com/elastic/toutoumomoma",
       "type": [
         "string"
       ]
@@ -2441,7 +2533,7 @@
       ]
     },
     "file.pe.go_import_hash": {
-      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nA hash of the Go language imports in a PE file excluding standard library imports. An import hash can be used to fingerprint binaries even after recompilation or other code-level transformations have occurred, which would change more traditional hash values.\nThe algorithm used to calculate the Go symbol hash and a reference implementation are available [here](https://github.com/elastic/toutoumomoma).",
+      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nA hash of the Go language imports in a PE file excluding standard library imports. An import hash can be used to fingerprint binaries even after recompilation or other code-level transformations have occurred, which would change more traditional hash values.\nThe algorithm used to calculate the Go symbol hash and a reference implementation are available here: https://github.com/elastic/toutoumomoma",
       "type": [
         "string"
       ]
@@ -2759,7 +2851,7 @@
       "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
     },
     "file.x509.serial_number": {
-      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nUnique serial number issued by the certificate authority. For consistency, if this value is alphanumeric, it should be formatted without colons and uppercase characters.",
+      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nUnique serial number issued by the certificate authority. For consistency, this should be encoded in base 16 and formatted without colons and uppercase characters.",
       "type": [
         "string"
       ]
@@ -4006,6 +4098,12 @@
       ],
       "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
     },
+    "process.code_signature.flags": {
+      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe flags used to sign the process.",
+      "type": [
+        "string"
+      ]
+    },
     "process.code_signature.signing_id": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe identifier used to sign the process.\nThis is used to identify the application manufactured by a software vendor. The field is relevant to Apple *OS only.",
       "type": [
@@ -4098,7 +4196,7 @@
       }
     },
     "process.elf.go_import_hash": {
-      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nA hash of the Go language imports in an ELF file excluding standard library imports. An import hash can be used to fingerprint binaries even after recompilation or other code-level transformations have occurred, which would change more traditional hash values.\nThe algorithm used to calculate the Go symbol hash and a reference implementation are available [here](https://github.com/elastic/toutoumomoma).",
+      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nA hash of the Go language imports in an ELF file excluding standard library imports. An import hash can be used to fingerprint binaries even after recompilation or other code-level transformations have occurred, which would change more traditional hash values.\nThe algorithm used to calculate the Go symbol hash and a reference implementation are available here: https://github.com/elastic/toutoumomoma",
       "type": [
         "string"
       ]
@@ -4686,6 +4784,18 @@
       ],
       "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
     },
+    "process.group.id": {
+      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nUnique identifier for the group on the system/platform.",
+      "type": [
+        "string"
+      ]
+    },
+    "process.group.name": {
+      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nName of the group.",
+      "type": [
+        "string"
+      ]
+    },
     "process.group_leader.args": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: True\n\nArray of process arguments, starting with the absolute path to the executable.\nMay be filtered to protect sensitive information.",
       "type": [
@@ -4886,6 +4996,12 @@
         "string"
       ]
     },
+    "process.hash.cdhash": {
+      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nCode directory hash, utilized to uniquely identify and authenticate the integrity of the executable code.",
+      "type": [
+        "string"
+      ]
+    },
     "process.hash.md5": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nMD5 hash.",
       "type": [
@@ -5018,7 +5134,7 @@
       }
     },
     "process.macho.go_import_hash": {
-      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nA hash of the Go language imports in a Mach-O file excluding standard library imports. An import hash can be used to fingerprint binaries even after recompilation or other code-level transformations have occurred, which would change more traditional hash values.\nThe algorithm used to calculate the Go symbol hash and a reference implementation are available [here](https://github.com/elastic/toutoumomoma).",
+      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nA hash of the Go language imports in a Mach-O file excluding standard library imports. An import hash can be used to fingerprint binaries even after recompilation or other code-level transformations have occurred, which would change more traditional hash values.\nThe algorithm used to calculate the Go symbol hash and a reference implementation are available here: https://github.com/elastic/toutoumomoma",
       "type": [
         "string"
       ]
@@ -5195,6 +5311,12 @@
       ],
       "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
     },
+    "process.parent.code_signature.flags": {
+      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe flags used to sign the process.",
+      "type": [
+        "string"
+      ]
+    },
     "process.parent.code_signature.signing_id": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe identifier used to sign the process.\nThis is used to identify the application manufactured by a software vendor. The field is relevant to Apple *OS only.",
       "type": [
@@ -5287,7 +5409,7 @@
       }
     },
     "process.parent.elf.go_import_hash": {
-      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nA hash of the Go language imports in an ELF file excluding standard library imports. An import hash can be used to fingerprint binaries even after recompilation or other code-level transformations have occurred, which would change more traditional hash values.\nThe algorithm used to calculate the Go symbol hash and a reference implementation are available [here](https://github.com/elastic/toutoumomoma).",
+      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nA hash of the Go language imports in an ELF file excluding standard library imports. An import hash can be used to fingerprint binaries even after recompilation or other code-level transformations have occurred, which would change more traditional hash values.\nThe algorithm used to calculate the Go symbol hash and a reference implementation are available here: https://github.com/elastic/toutoumomoma",
       "type": [
         "string"
       ]
@@ -5616,6 +5738,12 @@
       ],
       "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
     },
+    "process.parent.hash.cdhash": {
+      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nCode directory hash, utilized to uniquely identify and authenticate the integrity of the executable code.",
+      "type": [
+        "string"
+      ]
+    },
     "process.parent.hash.md5": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nMD5 hash.",
       "type": [
@@ -5667,7 +5795,7 @@
       "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
     },
     "process.parent.macho.go_import_hash": {
-      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nA hash of the Go language imports in a Mach-O file excluding standard library imports. An import hash can be used to fingerprint binaries even after recompilation or other code-level transformations have occurred, which would change more traditional hash values.\nThe algorithm used to calculate the Go symbol hash and a reference implementation are available [here](https://github.com/elastic/toutoumomoma).",
+      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nA hash of the Go language imports in a Mach-O file excluding standard library imports. An import hash can be used to fingerprint binaries even after recompilation or other code-level transformations have occurred, which would change more traditional hash values.\nThe algorithm used to calculate the Go symbol hash and a reference implementation are available here: https://github.com/elastic/toutoumomoma",
       "type": [
         "string"
       ]
@@ -5834,7 +5962,7 @@
       ]
     },
     "process.parent.pe.go_import_hash": {
-      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nA hash of the Go language imports in a PE file excluding standard library imports. An import hash can be used to fingerprint binaries even after recompilation or other code-level transformations have occurred, which would change more traditional hash values.\nThe algorithm used to calculate the Go symbol hash and a reference implementation are available [here](https://github.com/elastic/toutoumomoma).",
+      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nA hash of the Go language imports in a PE file excluding standard library imports. An import hash can be used to fingerprint binaries even after recompilation or other code-level transformations have occurred, which would change more traditional hash values.\nThe algorithm used to calculate the Go symbol hash and a reference implementation are available here: https://github.com/elastic/toutoumomoma",
       "type": [
         "string"
       ]
@@ -6202,7 +6330,7 @@
       ]
     },
     "process.pe.go_import_hash": {
-      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nA hash of the Go language imports in a PE file excluding standard library imports. An import hash can be used to fingerprint binaries even after recompilation or other code-level transformations have occurred, which would change more traditional hash values.\nThe algorithm used to calculate the Go symbol hash and a reference implementation are available [here](https://github.com/elastic/toutoumomoma).",
+      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nA hash of the Go language imports in a PE file excluding standard library imports. An import hash can be used to fingerprint binaries even after recompilation or other code-level transformations have occurred, which would change more traditional hash values.\nThe algorithm used to calculate the Go symbol hash and a reference implementation are available here: https://github.com/elastic/toutoumomoma",
       "type": [
         "string"
       ]
@@ -7155,7 +7283,7 @@
       "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
     },
     "server.registered_domain": {
-      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe highest registered server domain, stripped of the subdomain.\nFor example, the registered domain for \"foo.example.com\" is \"example.com\".\nThis value can be determined precisely with a list like the public suffix list (http://publicsuffix.org). Trying to approximate this by simply taking the last two labels will not work well for TLDs such as \"co.uk\".",
+      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe highest registered server domain, stripped of the subdomain.\nFor example, the registered domain for \"foo.example.com\" is \"example.com\".\nThis value can be determined precisely with a list like the public suffix list (https://publicsuffix.org). Trying to approximate this by simply taking the last two labels will not work well for TLDs such as \"co.uk\".",
       "type": [
         "string"
       ]
@@ -7167,7 +7295,7 @@
       ]
     },
     "server.top_level_domain": {
-      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe effective top level domain (eTLD), also known as the domain suffix, is the last part of the domain name. For example, the top level domain for example.com is \"com\".\nThis value can be determined precisely with a list like the public suffix list (http://publicsuffix.org). Trying to approximate this by simply taking the last label will not work well for effective TLDs such as \"co.uk\".",
+      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe effective top level domain (eTLD), also known as the domain suffix, is the last part of the domain name. For example, the top level domain for example.com is \"com\".\nThis value can be determined precisely with a list like the public suffix list (https://publicsuffix.org). Trying to approximate this by simply taking the last label will not work well for effective TLDs such as \"co.uk\".",
       "type": [
         "string"
       ]
@@ -7601,7 +7729,7 @@
       "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
     },
     "source.registered_domain": {
-      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe highest registered source domain, stripped of the subdomain.\nFor example, the registered domain for \"foo.example.com\" is \"example.com\".\nThis value can be determined precisely with a list like the public suffix list (http://publicsuffix.org). Trying to approximate this by simply taking the last two labels will not work well for TLDs such as \"co.uk\".",
+      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe highest registered source domain, stripped of the subdomain.\nFor example, the registered domain for \"foo.example.com\" is \"example.com\".\nThis value can be determined precisely with a list like the public suffix list (https://publicsuffix.org). Trying to approximate this by simply taking the last two labels will not work well for TLDs such as \"co.uk\".",
       "type": [
         "string"
       ]
@@ -7613,7 +7741,7 @@
       ]
     },
     "source.top_level_domain": {
-      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe effective top level domain (eTLD), also known as the domain suffix, is the last part of the domain name. For example, the top level domain for example.com is \"com\".\nThis value can be determined precisely with a list like the public suffix list (http://publicsuffix.org). Trying to approximate this by simply taking the last label will not work well for effective TLDs such as \"co.uk\".",
+      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe effective top level domain (eTLD), also known as the domain suffix, is the last part of the domain name. For example, the top level domain for example.com is \"com\".\nThis value can be determined precisely with a list like the public suffix list (https://publicsuffix.org). Trying to approximate this by simply taking the last label will not work well for effective TLDs such as \"co.uk\".",
       "type": [
         "string"
       ]
@@ -7793,6 +7921,12 @@
                 ],
                 "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
               },
+              "file.code_signature.flags": {
+                "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe flags used to sign the process.",
+                "type": [
+                  "string"
+                ]
+              },
               "file.code_signature.signing_id": {
                 "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe identifier used to sign the process.\nThis is used to identify the application manufactured by a software vendor. The field is relevant to Apple *OS only.",
                 "type": [
@@ -7909,7 +8043,7 @@
                 }
               },
               "file.elf.go_import_hash": {
-                "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nA hash of the Go language imports in an ELF file excluding standard library imports. An import hash can be used to fingerprint binaries even after recompilation or other code-level transformations have occurred, which would change more traditional hash values.\nThe algorithm used to calculate the Go symbol hash and a reference implementation are available [here](https://github.com/elastic/toutoumomoma).",
+                "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nA hash of the Go language imports in an ELF file excluding standard library imports. An import hash can be used to fingerprint binaries even after recompilation or other code-level transformations have occurred, which would change more traditional hash values.\nThe algorithm used to calculate the Go symbol hash and a reference implementation are available here: https://github.com/elastic/toutoumomoma",
                 "type": [
                   "string"
                 ]
@@ -8196,6 +8330,12 @@
                   "string"
                 ]
               },
+              "file.hash.cdhash": {
+                "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nCode directory hash, utilized to uniquely identify and authenticate the integrity of the executable code.",
+                "type": [
+                  "string"
+                ]
+              },
               "file.hash.md5": {
                 "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nMD5 hash.",
                 "type": [
@@ -8305,7 +8445,7 @@
                 ]
               },
               "file.pe.go_import_hash": {
-                "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nA hash of the Go language imports in a PE file excluding standard library imports. An import hash can be used to fingerprint binaries even after recompilation or other code-level transformations have occurred, which would change more traditional hash values.\nThe algorithm used to calculate the Go symbol hash and a reference implementation are available [here](https://github.com/elastic/toutoumomoma).",
+                "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nA hash of the Go language imports in a PE file excluding standard library imports. An import hash can be used to fingerprint binaries even after recompilation or other code-level transformations have occurred, which would change more traditional hash values.\nThe algorithm used to calculate the Go symbol hash and a reference implementation are available here: https://github.com/elastic/toutoumomoma",
                 "type": [
                   "string"
                 ]
@@ -8623,7 +8763,7 @@
                 "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
               },
               "file.x509.serial_number": {
-                "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nUnique serial number issued by the certificate authority. For consistency, if this value is alphanumeric, it should be formatted without colons and uppercase characters.",
+                "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nUnique serial number issued by the certificate authority. For consistency, this should be encoded in base 16 and formatted without colons and uppercase characters.",
                 "type": [
                   "string"
                 ]
@@ -8980,7 +9120,7 @@
                 ]
               },
               "url.registered_domain": {
-                "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe highest registered url domain, stripped of the subdomain.\nFor example, the registered domain for \"foo.example.com\" is \"example.com\".\nThis value can be determined precisely with a list like the public suffix list (http://publicsuffix.org). Trying to approximate this by simply taking the last two labels will not work well for TLDs such as \"co.uk\".",
+                "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe highest registered url domain, stripped of the subdomain.\nFor example, the registered domain for \"foo.example.com\" is \"example.com\".\nThis value can be determined precisely with a list like the public suffix list (https://publicsuffix.org). Trying to approximate this by simply taking the last two labels will not work well for TLDs such as \"co.uk\".",
                 "type": [
                   "string"
                 ]
@@ -8998,7 +9138,7 @@
                 ]
               },
               "url.top_level_domain": {
-                "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe effective top level domain (eTLD), also known as the domain suffix, is the last part of the domain name. For example, the top level domain for example.com is \"com\".\nThis value can be determined precisely with a list like the public suffix list (http://publicsuffix.org). Trying to approximate this by simply taking the last label will not work well for effective TLDs such as \"co.uk\".",
+                "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe effective top level domain (eTLD), also known as the domain suffix, is the last part of the domain name. For example, the top level domain for example.com is \"com\".\nThis value can be determined precisely with a list like the public suffix list (https://publicsuffix.org). Trying to approximate this by simply taking the last label will not work well for effective TLDs such as \"co.uk\".",
                 "type": [
                   "string"
                 ]
@@ -9147,7 +9287,7 @@
                 "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
               },
               "x509.serial_number": {
-                "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nUnique serial number issued by the certificate authority. For consistency, if this value is alphanumeric, it should be formatted without colons and uppercase characters.",
+                "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nUnique serial number issued by the certificate authority. For consistency, this should be encoded in base 16 and formatted without colons and uppercase characters.",
                 "type": [
                   "string"
                 ]
@@ -9415,6 +9555,12 @@
       ],
       "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
     },
+    "threat.indicator.file.code_signature.flags": {
+      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe flags used to sign the process.",
+      "type": [
+        "string"
+      ]
+    },
     "threat.indicator.file.code_signature.signing_id": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe identifier used to sign the process.\nThis is used to identify the application manufactured by a software vendor. The field is relevant to Apple *OS only.",
       "type": [
@@ -9531,7 +9677,7 @@
       }
     },
     "threat.indicator.file.elf.go_import_hash": {
-      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nA hash of the Go language imports in an ELF file excluding standard library imports. An import hash can be used to fingerprint binaries even after recompilation or other code-level transformations have occurred, which would change more traditional hash values.\nThe algorithm used to calculate the Go symbol hash and a reference implementation are available [here](https://github.com/elastic/toutoumomoma).",
+      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nA hash of the Go language imports in an ELF file excluding standard library imports. An import hash can be used to fingerprint binaries even after recompilation or other code-level transformations have occurred, which would change more traditional hash values.\nThe algorithm used to calculate the Go symbol hash and a reference implementation are available here: https://github.com/elastic/toutoumomoma",
       "type": [
         "string"
       ]
@@ -9818,6 +9964,12 @@
         "string"
       ]
     },
+    "threat.indicator.file.hash.cdhash": {
+      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nCode directory hash, utilized to uniquely identify and authenticate the integrity of the executable code.",
+      "type": [
+        "string"
+      ]
+    },
     "threat.indicator.file.hash.md5": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nMD5 hash.",
       "type": [
@@ -9927,7 +10079,7 @@
       ]
     },
     "threat.indicator.file.pe.go_import_hash": {
-      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nA hash of the Go language imports in a PE file excluding standard library imports. An import hash can be used to fingerprint binaries even after recompilation or other code-level transformations have occurred, which would change more traditional hash values.\nThe algorithm used to calculate the Go symbol hash and a reference implementation are available [here](https://github.com/elastic/toutoumomoma).",
+      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nA hash of the Go language imports in a PE file excluding standard library imports. An import hash can be used to fingerprint binaries even after recompilation or other code-level transformations have occurred, which would change more traditional hash values.\nThe algorithm used to calculate the Go symbol hash and a reference implementation are available here: https://github.com/elastic/toutoumomoma",
       "type": [
         "string"
       ]
@@ -10245,7 +10397,7 @@
       "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
     },
     "threat.indicator.file.x509.serial_number": {
-      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nUnique serial number issued by the certificate authority. For consistency, if this value is alphanumeric, it should be formatted without colons and uppercase characters.",
+      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nUnique serial number issued by the certificate authority. For consistency, this should be encoded in base 16 and formatted without colons and uppercase characters.",
       "type": [
         "string"
       ]
@@ -10417,6 +10569,19 @@
       "type": [
         "string"
       ]
+    },
+    "threat.indicator.id": {
+      "description": "Module: ecs\nIndexerType: keyword\nArray: True\n\nThe ID of the indicator used by this threat to conduct behavior commonly modeled using MITRE ATT&CK\u00ae. This field can have multiple values to allow for the identification of the same indicator across systems that use different ID formats.\nWhile not required, a common approach is to use a STIX 2.x indicator ID.",
+      "type": [
+        "string",
+        "array"
+      ],
+      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+      "items": {
+        "type": [
+          "string"
+        ]
+      }
     },
     "threat.indicator.ip": {
       "description": "Module: ecs\nIndexerType: ip\nArray: False\n\nIdentifies a threat indicator as an IP address (irrespective of direction).",
@@ -10602,7 +10767,7 @@
       ]
     },
     "threat.indicator.url.registered_domain": {
-      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe highest registered url domain, stripped of the subdomain.\nFor example, the registered domain for \"foo.example.com\" is \"example.com\".\nThis value can be determined precisely with a list like the public suffix list (http://publicsuffix.org). Trying to approximate this by simply taking the last two labels will not work well for TLDs such as \"co.uk\".",
+      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe highest registered url domain, stripped of the subdomain.\nFor example, the registered domain for \"foo.example.com\" is \"example.com\".\nThis value can be determined precisely with a list like the public suffix list (https://publicsuffix.org). Trying to approximate this by simply taking the last two labels will not work well for TLDs such as \"co.uk\".",
       "type": [
         "string"
       ]
@@ -10620,7 +10785,7 @@
       ]
     },
     "threat.indicator.url.top_level_domain": {
-      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe effective top level domain (eTLD), also known as the domain suffix, is the last part of the domain name. For example, the top level domain for example.com is \"com\".\nThis value can be determined precisely with a list like the public suffix list (http://publicsuffix.org). Trying to approximate this by simply taking the last label will not work well for effective TLDs such as \"co.uk\".",
+      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe effective top level domain (eTLD), also known as the domain suffix, is the last part of the domain name. For example, the top level domain for example.com is \"com\".\nThis value can be determined precisely with a list like the public suffix list (https://publicsuffix.org). Trying to approximate this by simply taking the last label will not work well for effective TLDs such as \"co.uk\".",
       "type": [
         "string"
       ]
@@ -10769,7 +10934,7 @@
       "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
     },
     "threat.indicator.x509.serial_number": {
-      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nUnique serial number issued by the certificate authority. For consistency, if this value is alphanumeric, it should be formatted without colons and uppercase characters.",
+      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nUnique serial number issued by the certificate authority. For consistency, this should be encoded in base 16 and formatted without colons and uppercase characters.",
       "type": [
         "string"
       ]
@@ -11267,7 +11432,7 @@
       "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
     },
     "tls.client.x509.serial_number": {
-      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nUnique serial number issued by the certificate authority. For consistency, if this value is alphanumeric, it should be formatted without colons and uppercase characters.",
+      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nUnique serial number issued by the certificate authority. For consistency, this should be encoded in base 16 and formatted without colons and uppercase characters.",
       "type": [
         "string"
       ]
@@ -11601,7 +11766,7 @@
       "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
     },
     "tls.server.x509.serial_number": {
-      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nUnique serial number issued by the certificate authority. For consistency, if this value is alphanumeric, it should be formatted without colons and uppercase characters.",
+      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nUnique serial number issued by the certificate authority. For consistency, this should be encoded in base 16 and formatted without colons and uppercase characters.",
       "type": [
         "string"
       ]
@@ -11783,7 +11948,7 @@
       ]
     },
     "url.registered_domain": {
-      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe highest registered url domain, stripped of the subdomain.\nFor example, the registered domain for \"foo.example.com\" is \"example.com\".\nThis value can be determined precisely with a list like the public suffix list (http://publicsuffix.org). Trying to approximate this by simply taking the last two labels will not work well for TLDs such as \"co.uk\".",
+      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe highest registered url domain, stripped of the subdomain.\nFor example, the registered domain for \"foo.example.com\" is \"example.com\".\nThis value can be determined precisely with a list like the public suffix list (https://publicsuffix.org). Trying to approximate this by simply taking the last two labels will not work well for TLDs such as \"co.uk\".",
       "type": [
         "string"
       ]
@@ -11801,7 +11966,7 @@
       ]
     },
     "url.top_level_domain": {
-      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe effective top level domain (eTLD), also known as the domain suffix, is the last part of the domain name. For example, the top level domain for example.com is \"com\".\nThis value can be determined precisely with a list like the public suffix list (http://publicsuffix.org). Trying to approximate this by simply taking the last label will not work well for effective TLDs such as \"co.uk\".",
+      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe effective top level domain (eTLD), also known as the domain suffix, is the last part of the domain name. For example, the top level domain for example.com is \"com\".\nThis value can be determined precisely with a list like the public suffix list (https://publicsuffix.org). Trying to approximate this by simply taking the last label will not work well for effective TLDs such as \"co.uk\".",
       "type": [
         "string"
       ]
@@ -12190,8 +12355,110 @@
         "string"
       ]
     },
+    "volume.bus_type": {
+      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nBus type of the device, such as `Nvme`, `Usb`, or `FileBackedVirtual`.",
+      "type": [
+        "string"
+      ]
+    },
+    "volume.default_access": {
+      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nDescribes the default access(es) of the volume.",
+      "type": [
+        "string"
+      ]
+    },
+    "volume.device_name": {
+      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nFull path of the volume device.\nOnly populate this field for POSIX system volumes.",
+      "type": [
+        "string"
+      ]
+    },
+    "volume.device_type": {
+      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nVolume device type.\nThe most frequently seen volume device types are `Disk File System` and `CD-ROM File System`.",
+      "type": [
+        "string"
+      ]
+    },
+    "volume.dos_name": {
+      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe MS-DOS name of a device.\nDOS device name is in the format of driver letters, such as `C:`. The field is relevant to Windows systems only.",
+      "type": [
+        "string"
+      ]
+    },
+    "volume.file_system_type": {
+      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nVolume device file system type.\nThe most common volume file system types are `NTFS` and `UDF`.",
+      "type": [
+        "string"
+      ]
+    },
+    "volume.mount_name": {
+      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nMount name of the volume device.\nOnly populate this field for POSIX system volumes.",
+      "type": [
+        "string"
+      ]
+    },
+    "volume.nt_name": {
+      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe NT device name.\nNT device name uses a format of `\\Device\\HarddiskVolume2`. The field is relevant to Windows systems only.",
+      "type": [
+        "string"
+      ]
+    },
+    "volume.product_id": {
+      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nProductID of the device.\nThe vendor provides the ProductID for the volume, if any.",
+      "type": [
+        "string"
+      ]
+    },
+    "volume.product_name": {
+      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nProduct name of the volume.\nThe volume device vendor provides this value.",
+      "type": [
+        "string"
+      ]
+    },
+    "volume.removable": {
+      "description": "Module: ecs\nIndexerType: boolean\nArray: False\n\nIndicates if the volume is removable.",
+      "type": [
+        "boolean",
+        "string"
+      ],
+      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
+    },
+    "volume.serial_number": {
+      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nSerial number identifier for the volume device.\nThe serial number is provided by the vendor of the device, if any.",
+      "type": [
+        "string"
+      ]
+    },
+    "volume.size": {
+      "description": "Module: ecs\nIndexerType: long\nArray: False\n\nSize of the volume device in bytes.",
+      "type": [
+        "number",
+        "string"
+      ],
+      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
+    },
+    "volume.vendor_id": {
+      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nVendorID of the volume device.\nThe volume device vendor provides this value.",
+      "type": [
+        "string"
+      ]
+    },
+    "volume.vendor_name": {
+      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nVendor name of the volume device.\nThe value is provided by the vendor of the device.",
+      "type": [
+        "string"
+      ]
+    },
+    "volume.writable": {
+      "description": "Module: ecs\nIndexerType: boolean\nArray: False\n\nIndicates if the volume is writable.",
+      "type": [
+        "boolean",
+        "string"
+      ],
+      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
+    },
     "vulnerability.category": {
-      "description": "Module: ecs\nIndexerType: keyword\nArray: True\n\nThe type of system or architecture that the vulnerability affects. These may be platform-specific (for example, Debian or SUSE) or general (for example, Database or Firewall). For example (https://qualysguard.qualys.com/qwebhelp/fo_portal/knowledgebase/vulnerability_categories.htm[Qualys vulnerability categories])\nThis field must be an array.",
+      "description": "Module: ecs\nIndexerType: keyword\nArray: True\n\nThe type of system or architecture that the vulnerability affects. These may be platform-specific (for example, Debian or SUSE) or general (for example, Database or Firewall). For example (https://qualysguard.qualys.com/qwebhelp/fo_portal/knowledgebase/vulnerability_categories.htm)\nThis field must be an array.",
       "type": [
         "string",
         "array"
@@ -12210,7 +12477,7 @@
       ]
     },
     "vulnerability.description": {
-      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe description of the vulnerability that provides additional context of the vulnerability. For example (https://cve.mitre.org/about/faqs.html#cve_entry_descriptions_created[Common Vulnerabilities and Exposure CVE description])",
+      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe description of the vulnerability that provides additional context of the vulnerability. For example (https://cve.mitre.org/about/faqs.html#cve_entry_descriptions_created)",
       "type": [
         "string"
       ]
@@ -12222,7 +12489,7 @@
       ]
     },
     "vulnerability.id": {
-      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe identification (ID) is the number portion of a vulnerability entry. It includes a unique identification number for the vulnerability. For example (https://cve.mitre.org/about/faqs.html#what_is_cve_id)[Common Vulnerabilities and Exposure CVE ID]",
+      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe identification (ID) is the number portion of a vulnerability entry. It includes a unique identification number for the vulnerability. For example (https://cve.mitre.org/about/faqs.html#what_is_cve_id)",
       "type": [
         "string"
       ]
@@ -12281,40 +12548,8 @@
         "string"
       ]
     },
-    "wazuh.queue": {
-      "description": "Module: wazuh-core\nIndexerType: long\nArray: False\n\nQueue part of the OSSEC message format",
-      "type": [
-        "number",
-        "string"
-      ],
-      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
-    },
-    "wazuh.location": {
-      "description": "Module: wazuh-core\nIndexerType: text\nArray: False\n\nLocation part of the OSSEC message format",
-      "type": [
-        "string"
-      ]
-    },
-    "wazuh.message": {
-      "description": "Module: wazuh-core\nIndexerType: text\nArray: False\n\nMessage part of the OSSEC message format",
-      "type": [
-        "string"
-      ]
-    },
-    "wazuh.origin": {
-      "description": "Module: wazuh-core\nIndexerType: keyword\nArray: False\n\nOrigin part of the OSSEC message format",
-      "type": [
-        "string"
-      ]
-    },
-    "wazuh.registered_ip": {
-      "description": "Module: wazuh-core\nIndexerType: keyword\nArray: False\n\nRegistered IP part of the OSSEC message format",
-      "type": [
-        "string"
-      ]
-    },
     "wazuh.decoders": {
-      "description": "Module: wazuh-core\nIndexerType: keyword\nArray: True\n\nTrace of the decoders used to decode the event in order",
+      "description": "Module: schemas\nIndexerType: keyword\nArray: True\n\nTrace of the decoders used to decode the event in order",
       "type": [
         "string",
         "array"
@@ -12327,7 +12562,7 @@
       }
     },
     "wazuh.rules": {
-      "description": "Module: wazuh-core\nIndexerType: keyword\nArray: True\n\nTrace of the rules used to rule the event in order",
+      "description": "Module: schemas\nIndexerType: keyword\nArray: True\n\nTrace of the rules that matched for the event in order",
       "type": [
         "string",
         "array"
@@ -12338,206 +12573,6 @@
           "string"
         ]
       }
-    },
-    "wazuh.source": {
-      "description": "Module: wazuh-core\nIndexerType: keyword\nArray: False\n\nSource that ingested the event",
-      "type": [
-        "string"
-      ]
-    },
-    "wazuh.syscollector.hardware": {
-      "description": "Module: wazuh-core\nIndexerType: object\nArray: False\n\nObject that contains the hardware fields from a syscollector event",
-      "type": [
-        "object",
-        "string"
-      ],
-      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
-    },
-    "wazuh.syscollector.hotfix": {
-      "description": "Module: wazuh-core\nIndexerType: object\nArray: False\n\nObject that contains the hotfix fields from a syscollector event",
-      "type": [
-        "object",
-        "string"
-      ],
-      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
-    },
-    "wazuh.syscollector.netinfo.addr": {
-      "description": "Module: wazuh-core\nIndexerType: object\nArray: False\n\nObject that contains the address fields from a syscollector event",
-      "type": [
-        "object",
-        "string"
-      ],
-      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
-    },
-    "wazuh.syscollector.netinfo.iface": {
-      "description": "Module: wazuh-core\nIndexerType: object\nArray: False\n\nObject that contains the network interface fields from a syscollector event",
-      "type": [
-        "object",
-        "string"
-      ],
-      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
-    },
-    "wazuh.syscollector.netinfo.proto": {
-      "description": "Module: wazuh-core\nIndexerType: object\nArray: False\n\nObject that contains the network protocol fields from a syscollector event",
-      "type": [
-        "object",
-        "string"
-      ],
-      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
-    },
-    "wazuh.syscollector.os": {
-      "description": "Module: wazuh-core\nIndexerType: object\nArray: False\n\nObject that contains the os fields from a syscollector event",
-      "type": [
-        "object",
-        "string"
-      ],
-      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
-    },
-    "wazuh.syscollector.port": {
-      "description": "Module: wazuh-core\nIndexerType: object\nArray: False\n\nObject that contains the port fields from a syscollector event",
-      "type": [
-        "object",
-        "string"
-      ],
-      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
-    },
-    "wazuh.syscollector.process": {
-      "description": "Module: wazuh-core\nIndexerType: object\nArray: False\n\nObject that contains the process fields from a syscollector event",
-      "type": [
-        "object",
-        "string"
-      ],
-      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
-    },
-    "wazuh.syscollector.program": {
-      "description": "Module: wazuh-core\nIndexerType: object\nArray: False\n\nObject that contains the program fields from a syscollector event",
-      "type": [
-        "object",
-        "string"
-      ],
-      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
-    },
-    "wazuh.rootcheck.file": {
-      "description": "Module: wazuh-core\nIndexerType: keyword\nArray: False\n\nFile path",
-      "type": [
-        "string"
-      ]
-    },
-    "wazuh.rootcheck.update": {
-      "description": "Module: wazuh-core\nIndexerType: boolean\nArray: False\n\nUpdate status",
-      "type": [
-        "boolean",
-        "string"
-      ],
-      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
-    },
-    "wazuh.rootcheck.fts": {
-      "description": "Module: wazuh-core\nIndexerType: boolean\nArray: False\n\nFts status",
-      "type": [
-        "boolean",
-        "string"
-      ],
-      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
-    },
-    "wazuh.rootcheck.title": {
-      "description": "Module: wazuh-core\nIndexerType: keyword\nArray: False\n\nTitle of the rootcheck event",
-      "type": [
-        "string"
-      ]
-    },
-    "wazuh.ciscat.type": {
-      "description": "Module: wazuh-core\nIndexerType: keyword\nArray: False\n\nType of the Ciscat event",
-      "type": [
-        "string"
-      ]
-    },
-    "wazuh.ciscat.scan_id": {
-      "description": "Module: wazuh-core\nIndexerType: long\nArray: False\n\nScan ID of the Ciscat event",
-      "type": [
-        "number",
-        "string"
-      ],
-      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
-    },
-    "wazuh.ciscat.cis.timestamp": {
-      "description": "Module: wazuh-core\nIndexerType: date\nArray: False\n\nTimestamp of the CIS fields from a Ciscat event",
-      "type": [
-        "string"
-      ]
-    },
-    "wazuh.ciscat.cis.benchmark": {
-      "description": "Module: wazuh-core\nIndexerType: keyword\nArray: False\n\nBenchmark of the CIS fields from a Ciscat event",
-      "type": [
-        "string"
-      ]
-    },
-    "wazuh.ciscat.cis.profile": {
-      "description": "Module: wazuh-core\nIndexerType: keyword\nArray: False\n\nProfile of the CIS fields from a Ciscat event",
-      "type": [
-        "string"
-      ]
-    },
-    "wazuh.ciscat.cis.pass": {
-      "description": "Module: wazuh-core\nIndexerType: long\nArray: False\n\nPass of the CIS fields from a Ciscat event",
-      "type": [
-        "number",
-        "string"
-      ],
-      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
-    },
-    "wazuh.ciscat.cis.fail": {
-      "description": "Module: wazuh-core\nIndexerType: long\nArray: False\n\nFail of the CIS fields from a Ciscat event",
-      "type": [
-        "number",
-        "string"
-      ],
-      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
-    },
-    "wazuh.ciscat.cis.error": {
-      "description": "Module: wazuh-core\nIndexerType: long\nArray: False\n\nError of the CIS fields from a Ciscat event",
-      "type": [
-        "number",
-        "string"
-      ],
-      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
-    },
-    "wazuh.ciscat.cis.notchecked": {
-      "description": "Module: wazuh-core\nIndexerType: long\nArray: False\n\nNot checked of the CIS fields from a Ciscat event",
-      "type": [
-        "number",
-        "string"
-      ],
-      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
-    },
-    "wazuh.ciscat.cis.unknown": {
-      "description": "Module: wazuh-core\nIndexerType: long\nArray: False\n\nUnknown of the CIS fields from a Ciscat event",
-      "type": [
-        "number",
-        "string"
-      ],
-      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
-    },
-    "wazuh.ciscat.cis.score": {
-      "description": "Module: wazuh-core\nIndexerType: long\nArray: False\n\nScore of the CIS fields from a Ciscat event",
-      "type": [
-        "number",
-        "string"
-      ],
-      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
-    },
-    "wazuh.ciscat.cis.hostname": {
-      "description": "Module: wazuh-core\nIndexerType: keyword\nArray: False\n\nHostname of the CIS fields from a Ciscat event",
-      "type": [
-        "string"
-      ]
-    },
-    "wazuh.noIndexing": {
-      "description": "Module: wazuh-core\nIndexerType: boolean\nArray: False\n\nBoolean that indicates if the event is related with internal Wazuh functionality and should not be indexed",
-      "type": [
-        "boolean",
-        "string"
-      ],
-      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
     }
   }
 }
