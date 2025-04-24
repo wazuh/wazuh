@@ -525,12 +525,20 @@
       "type": "keyword",
       "array": false
     },
+    "device.serial_number": {
+      "type": "keyword",
+      "array": false
+    },
     "dll.code_signature.digest_algorithm": {
       "type": "keyword",
       "array": false
     },
     "dll.code_signature.exists": {
       "type": "boolean",
+      "array": false
+    },
+    "dll.code_signature.flags": {
+      "type": "keyword",
       "array": false
     },
     "dll.code_signature.signing_id": {
@@ -559,6 +567,10 @@
     },
     "dll.code_signature.valid": {
       "type": "boolean",
+      "array": false
+    },
+    "dll.hash.cdhash": {
+      "type": "keyword",
       "array": false
     },
     "dll.hash.md5": {
@@ -773,6 +785,10 @@
       "type": "keyword",
       "array": false
     },
+    "email.attachments.file.hash.cdhash": {
+      "type": "keyword",
+      "array": false
+    },
     "email.attachments.file.hash.md5": {
       "type": "keyword",
       "array": false
@@ -902,10 +918,6 @@
       "array": true
     },
     "event.code": {
-      "type": "keyword",
-      "array": false
-    },
-    "event.collector": {
       "type": "keyword",
       "array": false
     },
@@ -1039,6 +1051,10 @@
     },
     "file.code_signature.exists": {
       "type": "boolean",
+      "array": false
+    },
+    "file.code_signature.flags": {
+      "type": "keyword",
       "array": false
     },
     "file.code_signature.signing_id": {
@@ -1254,6 +1270,10 @@
       "array": false
     },
     "file.group": {
+      "type": "keyword",
+      "array": false
+    },
+    "file.hash.cdhash": {
       "type": "keyword",
       "array": false
     },
@@ -2257,6 +2277,10 @@
       "type": "boolean",
       "array": false
     },
+    "process.code_signature.flags": {
+      "type": "keyword",
+      "array": false
+    },
     "process.code_signature.signing_id": {
       "type": "keyword",
       "array": false
@@ -2629,6 +2653,14 @@
       "type": "long",
       "array": false
     },
+    "process.group.id": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.group.name": {
+      "type": "keyword",
+      "array": false
+    },
     "process.group_leader.args": {
       "type": "keyword",
       "array": true
@@ -2742,6 +2774,10 @@
       "array": false
     },
     "process.group_leader.working_directory": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.hash.cdhash": {
       "type": "keyword",
       "array": false
     },
@@ -2895,6 +2931,10 @@
     },
     "process.parent.code_signature.exists": {
       "type": "boolean",
+      "array": false
+    },
+    "process.parent.code_signature.flags": {
+      "type": "keyword",
       "array": false
     },
     "process.parent.code_signature.signing_id": {
@@ -3119,6 +3159,10 @@
     },
     "process.parent.group_leader.vpid": {
       "type": "long",
+      "array": false
+    },
+    "process.parent.hash.cdhash": {
+      "type": "keyword",
       "array": false
     },
     "process.parent.hash.md5": {
@@ -4329,6 +4373,10 @@
       "type": "boolean",
       "array": false
     },
+    "threat.enrichments.indicator.file.code_signature.flags": {
+      "type": "keyword",
+      "array": false
+    },
     "threat.enrichments.indicator.file.code_signature.signing_id": {
       "type": "keyword",
       "array": false
@@ -4542,6 +4590,10 @@
       "array": false
     },
     "threat.enrichments.indicator.file.group": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.enrichments.indicator.file.hash.cdhash": {
       "type": "keyword",
       "array": false
     },
@@ -5177,6 +5229,10 @@
       "type": "boolean",
       "array": false
     },
+    "threat.indicator.file.code_signature.flags": {
+      "type": "keyword",
+      "array": false
+    },
     "threat.indicator.file.code_signature.signing_id": {
       "type": "keyword",
       "array": false
@@ -5390,6 +5446,10 @@
       "array": false
     },
     "threat.indicator.file.group": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.indicator.file.hash.cdhash": {
       "type": "keyword",
       "array": false
     },
@@ -5700,6 +5760,10 @@
     "threat.indicator.geo.timezone": {
       "type": "keyword",
       "array": false
+    },
+    "threat.indicator.id": {
+      "type": "keyword",
+      "array": true
     },
     "threat.indicator.ip": {
       "type": "ip",
@@ -6589,6 +6653,70 @@
       "type": "keyword",
       "array": false
     },
+    "volume.bus_type": {
+      "type": "keyword",
+      "array": false
+    },
+    "volume.default_access": {
+      "type": "keyword",
+      "array": false
+    },
+    "volume.device_name": {
+      "type": "keyword",
+      "array": false
+    },
+    "volume.device_type": {
+      "type": "keyword",
+      "array": false
+    },
+    "volume.dos_name": {
+      "type": "keyword",
+      "array": false
+    },
+    "volume.file_system_type": {
+      "type": "keyword",
+      "array": false
+    },
+    "volume.mount_name": {
+      "type": "keyword",
+      "array": false
+    },
+    "volume.nt_name": {
+      "type": "keyword",
+      "array": false
+    },
+    "volume.product_id": {
+      "type": "keyword",
+      "array": false
+    },
+    "volume.product_name": {
+      "type": "keyword",
+      "array": false
+    },
+    "volume.removable": {
+      "type": "boolean",
+      "array": false
+    },
+    "volume.serial_number": {
+      "type": "keyword",
+      "array": false
+    },
+    "volume.size": {
+      "type": "long",
+      "array": false
+    },
+    "volume.vendor_id": {
+      "type": "keyword",
+      "array": false
+    },
+    "volume.vendor_name": {
+      "type": "keyword",
+      "array": false
+    },
+    "volume.writable": {
+      "type": "boolean",
+      "array": false
+    },
     "vulnerability.category": {
       "type": "keyword",
       "array": true
@@ -6664,6 +6792,10 @@
     "agent.host.ip": {
       "type": "ip",
       "array": true
+    },
+    "event.collector": {
+      "type": "keyword",
+      "array": false
     },
     "wazuh.decoders": {
       "type": "keyword",
