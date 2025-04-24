@@ -64,7 +64,10 @@ public:
         }
 
         // Ex: 192.168.0.30
-        element.data.network.ip = data->address();
+        if (auto networkAddress = data->address(); networkAddress.compare(" ") != 0)
+        {
+            element.data.network.ip = networkAddress;
+        }
 
         // Ex: eth0
         element.data.network.name = data->netAddressName();
