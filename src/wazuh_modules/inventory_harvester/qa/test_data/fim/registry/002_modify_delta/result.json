@@ -9,10 +9,11 @@
           "version": "v4.7.2"
         },
         "registry": {
-          "key": "HKEY_LOCAL_MACHINE\\Software\\Microsoft\\Active Setup\\Installed Components\\aaaocta",
+          "key": "Software\\Microsoft\\Active Setup\\Installed Components\\aaaocta",
           "value": "BBBOCTA",
           "hive": "HKLM",
           "path": "HKLM\\Software\\Microsoft\\Active Setup\\Installed Components\\aaaocta\\BBBOCTA",
+          "architecture": "[x64]",
           "data": {
             "hash": {
               "md5": "63f5c08f5bdddee99aa30dcc47f662a6",

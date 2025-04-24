@@ -47,6 +47,7 @@ public:
     MOCK_METHOD(std::string_view, agentName, (), (const));
     MOCK_METHOD(std::string_view, agentIp, (), (const));
     MOCK_METHOD(std::string_view, agentVersion, (), (const));
+    MOCK_METHOD(std::string_view, index, (), (const));
     MOCK_METHOD(std::string_view, pathRaw, (), (const));
     MOCK_METHOD(std::string_view, valueNameRaw, (), (const));
     MOCK_METHOD(std::string_view, arch, (), (const));

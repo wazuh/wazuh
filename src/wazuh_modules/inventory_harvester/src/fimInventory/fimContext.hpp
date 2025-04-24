@@ -208,6 +208,32 @@ public:
         return "";
     }
 
+    std::string_view index()
+    {
+        if (m_type == VariantType::Delta)
+        {
+            if (m_delta->data() && m_delta->data()->index())
+            {
+                return m_delta->data()->index()->string_view();
+            }
+        }
+        else if (m_type == VariantType::SyncMsg)
+        {
+            if (m_syncMsg->data_type() == Synchronization::DataUnion_state)
+            {
+                return m_syncMsg->data_as_state()->index()->string_view();
+            }
+        }
+        else
+        {
+            if (m_jsonData->contains("/data/full_path"_json_pointer))
+            {
+                return m_jsonData->at("/data/full_path"_json_pointer).get<std::string_view>();
+            }
+        }
+        return "";
+    }
+
     std::string_view pathRaw()
     {
         if (m_type == VariantType::Delta)
@@ -675,7 +701,7 @@ public:
     {
         if (m_pathHashed.empty())
         {
-            auto pathRawStr = pathRaw();
+            auto pathRawStr = index();
             Utils::HashData hash(Utils::HashType::Sha256);
             hash.update(pathRawStr.data(), pathRawStr.size());
             m_pathHashed = Utils::asciiToHex(hash.hash());
@@ -713,8 +739,11 @@ public:
 
     std::string_view key()
     {
-        const static std::vector<std::string_view> hives = {
-            "HKEY_CLASSES_ROOT/", "HKEY_CURRENT_USER/", "HKEY_LOCAL_MACHINE/", "HKEY_USERS/", "HKEY_CURRENT_CONFIG/"};
+        const static std::vector<std::string_view> hives = {"HKEY_CLASSES_ROOT\\",
+                                                            "HKEY_CURRENT_USER\\",
+                                                            "HKEY_LOCAL_MACHINE\\",
+                                                            "HKEY_USERS\\",
+                                                            "HKEY_CURRENT_CONFIG\\"};
 
         if (m_keySanitized.empty())
         {

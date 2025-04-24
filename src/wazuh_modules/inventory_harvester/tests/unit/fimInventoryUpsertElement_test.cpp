@@ -50,7 +50,7 @@ TEST_F(FimInventoryUpsertElement, valid_Registry)
     EXPECT_CALL(*context, agentId()).WillRepeatedly(testing::Return("001"));
     EXPECT_CALL(*context, agentIp()).WillRepeatedly(testing::Return("agentIp"));
     EXPECT_CALL(*context, path()).WillRepeatedly(testing::Return("HKLM\\Software\\App"));
-    EXPECT_CALL(*context, hashPath()).WillRepeatedly(testing::Return("HASH_HASH"));
+    EXPECT_CALL(*context, index()).WillRepeatedly(testing::Return("HASH_HASH"));
     EXPECT_CALL(*context, agentName()).WillRepeatedly(testing::Return("agent-reg"));
     EXPECT_CALL(*context, agentVersion()).WillRepeatedly(testing::Return("agentVersion"));
     EXPECT_CALL(*context, hive()).WillRepeatedly(testing::Return("HKLM"));
@@ -148,8 +148,9 @@ TEST_F(FimInventoryUpsertElement, valid_RegistryWithValue)
 
     // Registry info
     EXPECT_CALL(*context, path()).WillRepeatedly(testing::Return("HKLM\\Software\\App"));
-    EXPECT_CALL(*context, hashPath()).WillRepeatedly(testing::Return("HASH_HASH"));
+    EXPECT_CALL(*context, index()).WillRepeatedly(testing::Return("HASH_HASH"));
     EXPECT_CALL(*context, key()).WillRepeatedly(testing::Return("Software\\App"));
+    EXPECT_CALL(*context, arch()).WillRepeatedly(testing::Return("[x32]"));
     EXPECT_CALL(*context, hive()).WillRepeatedly(testing::Return("HKLM"));
     EXPECT_CALL(*context, valueName()).WillRepeatedly(testing::Return("InstallPath"));
     EXPECT_CALL(*context, valueType()).WillRepeatedly(testing::Return("REG_SZ"));
@@ -163,5 +164,5 @@ TEST_F(FimInventoryUpsertElement, valid_RegistryWithValue)
 
     EXPECT_EQ(
         context->m_serializedElement,
-        R"({"id":"001_HASH_HASH","operation":"INSERTED","data":{"agent":{"id":"001","name":"agent-reg","host":{"ip":"10.10.10.10"},"version":"v4.9.0"},"registry":{"key":"Software\\App","value":"InstallPath","hive":"HKLM","path":"HKLM\\Software\\App","data":{"hash":{"md5":"md5value","sha1":"sha1value","sha256":"sha256value"},"type":"REG_SZ"}},"wazuh":{"schema":{"version":"1.0"}}}})");
+        R"({"id":"001_HASH_HASH","operation":"INSERTED","data":{"agent":{"id":"001","name":"agent-reg","host":{"ip":"10.10.10.10"},"version":"v4.9.0"},"registry":{"key":"Software\\App","value":"InstallPath","hive":"HKLM","path":"HKLM\\Software\\App","data":{"hash":{"md5":"md5value","sha1":"sha1value","sha256":"sha256value"},"type":"REG_SZ"},"architecture":"[x32]"},"wazuh":{"schema":{"version":"1.0"}}}})");
 }
