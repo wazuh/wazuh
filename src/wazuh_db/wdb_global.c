@@ -1839,6 +1839,25 @@ cJSON* wdb_global_get_all_agents(wdb_t *wdb, int last_agent_id, wdbc_result* sta
     return result;
 }
 
+cJSON* wdb_global_get_all_agent_ids(wdb_t *wdb) {
+    //Prepare SQL query
+    if (!wdb->transaction && wdb_begin2(wdb) < 0) {
+        mdebug1("Cannot begin transaction");
+        return NULL;
+    }
+    if (wdb_stmt_cache(wdb, WDB_STMT_GLOBAL_GET_AGENTS) < 0) {
+        mdebug1("Cannot cache statement");
+        return NULL;
+    }
+    sqlite3_stmt* stmt = wdb->stmt[WDB_STMT_GLOBAL_GET_AGENTS];
+    if (sqlite3_bind_int(stmt, 1, 0) != SQLITE_OK) {
+        merror("DB(%s) sqlite3_bind_int(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+        return NULL;
+    }
+
+    return wdb_exec_stmt_single_column(stmt);
+}
+
 int wdb_global_agent_exists(wdb_t *wdb, int agent_id) {
     //Prepare SQL query
     if (!wdb->transaction && wdb_begin2(wdb) < 0) {

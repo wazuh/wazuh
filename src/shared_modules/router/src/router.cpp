@@ -8,14 +8,15 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  */
-
 #include "router.h"
+#include "external/cpp-httplib/httplib.h"
 #include "flatbuffers/idl.h"
 #include "logging_helper.h"
 #include "routerFacade.hpp"
 #include "routerModule.hpp"
 #include "routerProvider.hpp"
 #include "routerSubscriber.hpp"
+#include <filesystem>
 
 std::map<ROUTER_PROVIDER_HANDLE, std::shared_ptr<RouterProvider>> PROVIDERS;
 std::shared_mutex PROVIDERS_MUTEX;
@@ -284,6 +285,134 @@ extern "C"
         if (it != PROVIDERS.end())
         {
             PROVIDERS.erase(it);
+        }
+    }
+
+    struct ServerInstance final
+    {
+        std::unique_ptr<httplib::Server> server;
+        std::thread serverThread;
+        bool running {false};
+    };
+
+    std::map<std::string, std::shared_ptr<ServerInstance>> G_HTTPINSTANCES;
+
+    void router_register_api_endpoint(char* socketPath, const char* method, const char* endpoint, void* callback)
+    {
+        if (!socketPath || !endpoint || !callback || !method)
+        {
+            logMessage(modules_log_level_t::LOG_ERROR, "Error registering API endpoint. Invalid parameters");
+            return;
+        }
+
+        std::string socketPathStr(socketPath);
+        if (G_HTTPINSTANCES.find(socketPathStr) == G_HTTPINSTANCES.end())
+        {
+            G_HTTPINSTANCES[socketPathStr] = std::make_shared<ServerInstance>();
+            G_HTTPINSTANCES[socketPathStr]->server = std::make_unique<httplib::Server>();
+        }
+
+        auto instance = G_HTTPINSTANCES[socketPathStr];
+        auto methodStr = std::string(method);
+        auto endpointStr = std::string(endpoint);
+
+        if (methodStr.compare("GET") == 0)
+        {
+            logMessage(modules_log_level_t::LOG_INFO, "Registering GET endpoint: " + endpointStr);
+            instance->server->Get(endpoint,
+                                  [callback, endpointStr](const httplib::Request& req, httplib::Response& res)
+                                  {
+                                      logMessage(modules_log_level_t::LOG_DEBUG, "GET request received");
+                                      char* output;
+                                      auto cb = reinterpret_cast<int (*)(const char*, const char*, char**)>(callback);
+                                      logMessage(modules_log_level_t::LOG_DEBUG, endpointStr + " " + req.body);
+                                      cb(endpointStr.c_str(), req.body.c_str(), &output);
+                                      res.set_content(output, "text/plain");
+                                      logMessage(modules_log_level_t::LOG_DEBUG,
+                                                 "GET request response: " + std::string(output));
+                                      free(output);
+                                  });
+        }
+        else if (methodStr.compare("POST") == 0)
+        {
+            logMessage(modules_log_level_t::LOG_INFO, "Registering POST endpoint: " + endpointStr);
+            instance->server->Post(endpoint,
+                                   [callback, endpointStr](const httplib::Request& req, httplib::Response& res)
+                                   {
+                                       logMessage(modules_log_level_t::LOG_DEBUG, "POST request received");
+                                       char* output;
+                                       auto cb = reinterpret_cast<int (*)(const char*, const char*, char**)>(callback);
+                                       cb(endpointStr.c_str(), req.body.c_str(), &output);
+                                       res.set_content(output, "text/plain");
+                                       free(output);
+                                   });
+        }
+        else
+        {
+            logMessage(modules_log_level_t::LOG_ERROR, "Error registering API endpoint. Invalid method");
+            return;
+        }
+    }
+
+    void router_start_api(const char* socketPath)
+    {
+        if (!socketPath)
+        {
+            logMessage(modules_log_level_t::LOG_ERROR, "Error starting API. Invalid socket path");
+            return;
+        }
+
+        std::string socketPathStr(socketPath);
+        if (G_HTTPINSTANCES.find(socketPath) == G_HTTPINSTANCES.end())
+        {
+            logMessage(modules_log_level_t::LOG_ERROR, "Error starting API. Socket path not found");
+            return;
+        }
+
+        auto instance = G_HTTPINSTANCES[socketPath];
+
+        instance->serverThread = std::thread(
+            [instance, socketPathStr]()
+            {
+                const static std::string SOCKETPATH {"queue/sockets/"};
+                std::filesystem::remove(SOCKETPATH + socketPathStr);
+                std::filesystem::path path {SOCKETPATH + socketPathStr};
+                std::filesystem::create_directories(path.parent_path());
+                instance->server->set_address_family(AF_UNIX);
+                instance->running = instance->server->listen(path.c_str(), true);
+
+                if (instance->running == false)
+                {
+                    logMessage(modules_log_level_t::LOG_ERROR, "Error starting API. Failed to listen on socket");
+                    return;
+                }
+            });
+        // Spin lock until server is ready
+        while (!instance->server->is_running() && instance->running)
+        {
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        }
+        logMessage(modules_log_level_t::LOG_INFO, "API started successfully");
+    }
+
+    void router_stop_api(const char* socketPath)
+    {
+        if (!socketPath)
+        {
+            logMessage(modules_log_level_t::LOG_ERROR, "Error stopping API. Invalid socket path");
+            return;
+        }
+
+        auto it = G_HTTPINSTANCES.find(socketPath);
+        if (it != G_HTTPINSTANCES.end())
+        {
+            it->second->server->stop();
+            if (it->second->serverThread.joinable())
+            {
+                logMessage(modules_log_level_t::LOG_INFO, "Stopping server thread");
+                it->second->serverThread.join();
+            }
+            G_HTTPINSTANCES.erase(it);
         }
     }
 

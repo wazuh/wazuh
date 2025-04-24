@@ -1280,6 +1280,29 @@ cJSON* wdb_exec_stmt(sqlite3_stmt* stmt) {
     return result;
 }
 
+cJSON* wdb_exec_stmt_single_column(sqlite3_stmt* stmt) {
+    cJSON * result;
+    cJSON * row;
+
+    if (!stmt) {
+        mdebug1("Invalid SQL statement.");
+        return NULL;
+    }
+
+    int status = SQLITE_ERROR;
+    result = cJSON_CreateArray();
+    while ((row = wdb_exec_row_stmt(stmt, &status, STMT_SINGLE_COLUMN))) {
+        cJSON_AddItemToArray(result, row);
+    }
+
+    if (status != SQLITE_DONE) {
+        cJSON_Delete(result);
+        result = NULL;
+    }
+
+    return result;
+}
+
 cJSON* wdb_exec_row_stmt_single_column(sqlite3_stmt* stmt, int* status) {
     cJSON* result = NULL;
     int _status = SQLITE_ERROR;
