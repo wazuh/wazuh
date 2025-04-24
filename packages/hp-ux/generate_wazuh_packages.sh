@@ -135,8 +135,8 @@ compute_version_revision() {
 download_source() {
     echo " Downloading source"
     /usr/local/bin/curl -k -L -o "/wazuh.zip" "https://github.com/wazuh/wazuh/archive/${wazuh_branch}.zip"
-    /usr/local/bin/unzip /wazuh.zip
-    mv wazuh-* ${source_directory}
+    /usr/local/bin/unzip /wazuh.zip -d ${source_directory}
+    # mv wazuh-* ${source_directory}
     compute_version_revision
 }
 
