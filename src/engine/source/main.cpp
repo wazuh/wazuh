@@ -7,10 +7,12 @@
 #include <thread>
 #include <vector>
 
+#include <api/archiver/handlers.hpp>
 #include <api/catalog/catalog.hpp>
 #include <api/event/ndJsonParser.hpp>
 #include <api/handlers.hpp>
 #include <api/policy/policy.hpp>
+#include <archiver/archiver.hpp>
 #include <base/logging.hpp>
 #include <base/utils/singletonLocator.hpp>
 #include <base/utils/singletonLocatorStrategies.hpp>
@@ -120,6 +122,7 @@ int main(int argc, char* argv[])
     std::shared_ptr<vdscanner::ScanOrchestrator> vdScanner;
     std::shared_ptr<IIndexerConnector> iConnector;
     std::shared_ptr<httpsrv::Server> apiServer;
+    std::shared_ptr<archiver::Archiver> archiver;
 
     try
     {
@@ -409,6 +412,13 @@ int main(int argc, char* argv[])
             vdScanner = std::make_shared<vdscanner::ScanOrchestrator>();
         }
 
+        // Archiver
+        {
+            archiver = std::make_shared<archiver::Archiver>(confManager.get<std::string>(conf::key::ARCHIVER_PATH),
+                                                            confManager.get<bool>(conf::key::ARCHIVER_ENABLED));
+            LOG_INFO("Archiver initialized.");
+        }
+
         // Create and configure the api endpints
         {
             apiServer = std::make_shared<httpsrv::Server>("API_SRV");
@@ -608,6 +618,10 @@ int main(int argc, char* argv[])
                                 });
             LOG_DEBUG("VD API endpoint registered.");
 
+            // Archiver
+            api::archiver::handlers::registerHandlers(archiver, apiServer);
+            LOG_DEBUG("Archiver API registered.");
+
             // Finally start the API server
             apiServer->start(confManager.get<std::string>(conf::key::SERVER_API_SOCKET));
         }
@@ -615,78 +629,10 @@ int main(int argc, char* argv[])
         // Server
         {
             g_engineServer = std::make_shared<httpsrv::Server>("EVENT_SRV");
-
-            // clang-format off
-            /**
-             * @api {post} /events/stateless Receive Events for Security Policy Processing
-             * @apiName ReceiveEvents
-             * @apiGroup Events
-             * @apiVersion 0.1.1-alpha
-             *
-             * @apiDescription This endpoint receives events to be processed by the Wazuh-Engine security policy. It
-             * accepts a NDJSON payload where each line represents an object.
-             *
-             * **Example NDJSON Payload:**
-             * ```
-             * {"agent":{"id":"2887e1cf-9bf2-431a-b066-a46860080f56","name":"javier","type":"endpoint","version":"5.0.0","groups":["group1","group2"],"host":{"hostname":"myhost","os":{"name":"Amazon Linux 2","platform":"Linux"},"ip":["192.168.1.2"],"architecture":"x86_64"}}}
-             * {"module": "logcollector", "collector": "file"}
-             * {"log": {"file": {"path": "/var/log/apache2/access.log"}}, "tags": ["production-server"], "event": {"original": "::1 - - [26/Jun/2020:16:16:29 +0200] \"GET /favicon.ico HTTP/1.1\" 404 209", "created": "2023-12-26T09:22:14.000Z"}}
-             * {"log":{"file":{"path":"/var/log/apache2/error.log"}},"tags":["production-server"],"event":{"original":"::1 - - [26/Jun/2020:16:16:29 +0200] \"GET /favicon.ico HTTP/1.1\" 404 209","created":"2023-12-26T09:22:14.000Z"}}
-             * {"log":{"file":{"path":"/var/log/syslog"}},"tags":["production-server"],"event":{"original":"::1 - - [26/Jun/2020:16:16:29 +0200] \"GET /favicon.ico HTTP/1.1\" 404 209","created":"2023-12-26T09:22:14.000Z"}}
-             * {"module": "logcollector", "collector": "windows-eventlog"}
-             * {"tags":["production-server"],"event":{"original":"XML EVENT AS STRING","created":"2023-12-26T09:22:14.000Z","provider":"$CHANEL_NAME"}}
-             * {"tags":["production-server"],"event":{"original":"XML EVENT AS STRING","created":"2023-12-26T09:22:14.000Z","provider":"Microsoft-Windows-Security-Auditing"}}
-             * {"tags":["production-server"],"event":{"original":"XML EVENT AS STRING","created":"2023-12-26T09:22:14.000Z","provider":"Windows PowerShell"}}
-             * {"module": "logcollector", "collector": "journald"}
-             * {"tags":["production-server"],"event":{"original":"JSON EVENT OF JOURNALD AS STRING","created":"2023-12-26T09:22:14.000Z","provider":"$UNIT_NAME"}
-             * {"tags":["production-server"],"event":{"original":"JSON EVENT OF JOURNALD AS STRING","created":"2023-12-26T09:22:14.000Z","provider":"ssh.service"}}
-             * ```
-             *
-             * @apiHeader {String} Content-Type=application/x-ndjson The content type of the request.
-             *
-             * @apiBody (Agent Information) {Object} agent Agent information.
-             * @apiBody (Agent Information) {String} agent.id Unique identifier for the agent.
-             * @apiBody (Agent Information) {String} agent.name Name of the agent.
-             * @apiBody (Agent Information) {String} agent.type Type of agent, e.g., "endpoint".
-             * @apiBody (Agent Information) {String} agent.version Version of the agent software.
-             * @apiBody (Agent Information) {Array} agent.groups Array of groups the agent belongs to. (e.g ["group1", "group2"])
-             * @apiBody (Agent Information) {Object} agent.host Host information.
-             * @apiBody (Agent Information) {String} agent.host.hostname Hostname of the agent.
-             * @apiBody (Agent Information) {Object} agent.host.os Operating system information.
-             * @apiBody (Agent Information) {String} agent.host.os.name Operating system name, e.g., "Amazon Linux 2".
-             * @apiBody (Agent Information) {String} agent.host.os.plataform Operating system platform, e.g., "Linux".
-             * @apiBody (Agent Information) {Array} agent.host.ip Array of IP addresses of the agent. (e.g ["192.168.1.2"])
-             * @apiBody (Agent Information) {String} agent.host.architecture Architecture of the agent, e.g., "x86_64".
-             *
-             * @apiBody (Log Information) {Object} log Log information.
-             * @apiBody (Log Information) {Object} log.file File information.
-             * @apiBody (Log Information) {String} log.file.path Path to the file, "/path/to/source". Exist only if is recolected from a file.
-             * @apiBody (Log Information) {String} tags List of keywords used to tag each event. (e.g ["production", "env2"])
-             * @apiBody (Log Information) {Object} event Details of the event itself.
-             * @apiBody (Log Information) {String} event.original The original message collected from the agent.
-             * @apiBody (Log Information) {String} event.created Timestamp when an event is recollected in '%Y-%m-%dT%H:%M:%SZ' format.
-             * @apiBody (Log Information) {String} event.module Name of the module this data is coming from. (e.g logcollector)
-             * @apiBody (Log Information) {String} event.collector Name of the collector this data is coming from. (e.g file, windows-eventlog, journald, macos-uls)
-             * @apiBody (Log Information) {String} event.provider Source of the event. (e.g channel, file, journald unit, etc)
-             *
-             * @apiSuccessExample Success-Response:
-             *     HTTP/1.1 204 No Content
-             *    {}
-             *
-             * @apiError BadRequest The request body is not a valid JSON.
-             *
-             * @apiErrorExample {json} Error-Response:
-             *     HTTP/1.1 400 Bad Request
-             *     {
-             *       "error": ["Service Unavailable"],
-             *       "code": 400
-             *     }
-             */
-            // clang-format on
             g_engineServer->addRoute(
                 httpsrv::Method::POST,
                 "/events/stateless",
-                api::event::handlers::pushEvent(orchestrator, api::event::protocol::getNDJsonParser()));
+                api::event::handlers::pushEvent(orchestrator, api::event::protocol::getNDJsonParser(), archiver));
         }
     }
     catch (const std::exception& e)
