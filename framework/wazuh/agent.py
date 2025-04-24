@@ -43,6 +43,10 @@ ERROR_CODES_UPGRADE_SOCKET_BAD_REQUEST = [1823]
 # 1813 -> No task in DB
 ERROR_CODES_UPGRADE_SOCKET_GET_UPGRADE_RESULT = [1813]
 
+STATUS = 'status'
+COUNT = 'count'
+GROUP_CONFIG_STATUS = 'group_config_status'
+
 
 @expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"], post_proc_func=None)
 def get_distinct_agents(agent_list: list = None, offset: int = 0, limit: int = common.DATABASE_LIMIT, sort: dict = None,
@@ -107,29 +111,34 @@ def get_agents_summary_status(agent_list: list[str] = None) -> WazuhResult:
         WazuhResult object.
     """
     connection = {'active': 0, 'disconnected': 0, 'never_connected': 0, 'pending': 0, 'total': 0}
-    sync_configuration = {'synced': 0, 'not synced': 0, 'total': 0}
+    sync_configuration = {'synced': 0, 'not_synced': 0, 'total': 0}
     if agent_list:
         rbac_filters = get_rbac_filters(system_resources=get_agents_info(), permitted_resources=agent_list)
         total = 0
 
-        with WazuhDBQueryGroupByAgents(filter_fields=['status'], select=['status'], query='id!=000',
+        with WazuhDBQueryGroupByAgents(filter_fields=[STATUS], select=[STATUS], query='id!=000',
                                        min_select_fields=set(), count=True, get_data=True, offset=0, 
                                        limit=4, sort=None, search=None,
                                        **rbac_filters) as db_query:
             status_data = db_query.run()
 
             for item in status_data['items']:
-                connection[item['status']] = item['count']
-                total += item['count']
+                connection[item[STATUS]] = item[COUNT]
+                total += item[COUNT]
         
-        with WazuhDBQueryGroupByAgents(filter_fields=['group_config_status'], select=['group_config_status'], 
+        with WazuhDBQueryGroupByAgents(filter_fields=[GROUP_CONFIG_STATUS], select=[GROUP_CONFIG_STATUS], 
                                        query='id!=000', min_select_fields=set(), count=True, get_data=True,
                                        offset=0, limit=2, sort=None, search=None,
                                        **rbac_filters) as db_query:
             sync_data = db_query.run()
 
             for item in sync_data['items']:
-                sync_configuration[item['group_config_status']] = item['count']
+                # Use 'not_synced' instead of 'not synced'
+                if item[GROUP_CONFIG_STATUS] == 'not synced':
+                    sync_configuration['not_synced'] = item[COUNT]
+                    continue
+
+                sync_configuration[item[GROUP_CONFIG_STATUS]] = item[COUNT]
 
         connection['total'] = sync_configuration['total'] = total
 
