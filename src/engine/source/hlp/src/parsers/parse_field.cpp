@@ -86,6 +86,19 @@ void unescape(bool is_escaped, std::string& vs, std::string_view escape)
     }
 }
 
+std::string convertDotToSlash(std::string_view key)
+{
+    std::string result;
+    result.reserve(key.size());
+
+    for (char c : key)
+    {
+        result += (c == '.') ? '/' : c;
+    }
+
+    return result;
+}
+
 void updateDoc(json::Json& doc,
                std::string_view key,
                std::string_view value,
@@ -102,7 +115,7 @@ void updateDoc(json::Json& doc,
     // If the value is a string, unescape it if necessary and add it to the JSON document
     auto vs = std::string {value.data(), value.size()};
     unescape(is_escaped, vs, escape);
-    doc.setString(vs, key);
+    doc.setString(vs, convertDotToSlash(key));
 }
 
 } // namespace hlp
