@@ -229,6 +229,7 @@ add_subdirectory(${ENGINE_SOURCE_DIR}/queue)
 add_subdirectory(${ENGINE_SOURCE_DIR}/fs)
 add_subdirectory(${ENGINE_SOURCE_DIR}/keystore)
 add_subdirectory(${ENGINE_SOURCE_DIR}/httpsrv)
+add_subdirectory(${ENGINE_SOURCE_DIR}/archiver)
 
 target_link_libraries(main
     base
@@ -254,6 +255,7 @@ target_link_libraries(main
     httpsrv
     api::event
     queue
+    archiver
 )
 
 # If ASAN, UBSAN or any other sanitizers are enabled do not link with static libraries
