@@ -12,6 +12,7 @@
 #include "wdb.h"
 #include "wdb_state.h"
 #include <os_net/os_net.h>
+#include "router.h"
 
 #define WDB_AGENT_EVENTS_TOPIC "wdb-agent-events"
 
@@ -230,6 +231,9 @@ int main(int argc, char ** argv)
 
     os_calloc(wconfig.worker_pool_size, sizeof(pthread_t), worker_pool);
 
+    router_register_api_endpoint("wdb-http.sock", "GET", "/get-all-agents-ids", (void*)&wdb_parse_api);
+    router_start_api("wdb-http.sock");
+
     for (i = 0; i < wconfig.worker_pool_size; i++) {
         if (status = pthread_create(worker_pool + i, NULL, run_worker, NULL), status != 0) {
             merror("Couldn't create 'run_worker' %d thread: %s", i + 1, strerror(status));
@@ -261,6 +265,8 @@ int main(int argc, char ** argv)
     for (i = 0; i < wconfig.worker_pool_size; i++) {
         pthread_join(worker_pool[i], NULL);
     }
+
+    router_stop_api("wdb-http.sock");
 
     wnotify_close(notify_queue);
     free(worker_pool);

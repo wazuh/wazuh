@@ -195,6 +195,58 @@ static struct kv_list const TABLE_MAP[] = {
     { .current = { "processes", "sys_processes",  false, TABLE_PROCESSES, PROCESSES_FIELD_COUNT }, .next = NULL},
 };
 
+int wdb_parse_api(const char* endpoint, __attribute__((unused)) const char* input, char **output)
+{
+    struct timeval begin;
+    struct timeval end;
+    struct timeval diff;
+    wdb_t * wdb;
+
+    w_inc_global();
+
+    mdebug2("Global API query: %s", endpoint);
+
+    gettimeofday(&begin, 0);
+    if (wdb = wdb_open_global(), !wdb) {
+        mdebug2("Couldn't open DB global: %s/%s.db", WDB2_DIR, WDB_GLOB_NAME);
+        //snprintf(output, OS_MAXSTR + 1, "err Couldn't open DB global");
+        gettimeofday(&end, 0);
+        timersub(&end, &begin, &diff);
+        w_inc_global_open_time(diff);
+        return OS_INVALID;
+    } else if (!wdb->enabled) {
+        mdebug2("Database disabled: %s/%s.db.", WDB2_DIR, WDB_GLOB_NAME);
+        //snprintf(output, OS_MAXSTR + 1, "err DB global disabled.");
+        wdb_pool_leave(wdb);
+        gettimeofday(&end, 0);
+        timersub(&end, &begin, &diff);
+        w_inc_global_open_time(diff);
+        return OS_INVALID;
+    }
+
+    gettimeofday(&end, 0);
+    timersub(&end, &begin, &diff);
+    w_inc_global_open_time(diff);
+
+    cJSON* result = NULL;;
+    if (strcmp(endpoint, "/get-all-agents-ids") == 0)
+    {
+        result = wdb_global_get_all_agent_ids(wdb);
+    }
+
+    if (!result) {
+        mdebug1("Error calling endpoint from global.db.");
+        return OS_INVALID;
+    }
+
+    //Print response
+    *output = cJSON_PrintUnformatted(result);
+    cJSON_Delete(result);
+
+    wdb_pool_leave(wdb);
+    return OS_SUCCESS;
+}
+
 int wdb_parse(char * input, char * output, int peer) {
     char * actor;
     char * id;

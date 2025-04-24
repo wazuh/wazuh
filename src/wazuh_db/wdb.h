@@ -975,6 +975,14 @@ int wdb_exec_stmt_send(sqlite3_stmt* stmt, int peer);
 cJSON* wdb_exec_stmt(sqlite3_stmt* stmt);
 
 /**
+ * @brief Function to execute a SQL statement and save the result in a JSON array.
+ *
+ * @param [in] stmt The SQL statement to be executed.
+ * @return JSON array with the statement execution results. NULL On error.
+ */
+cJSON* wdb_exec_stmt_single_column(sqlite3_stmt* stmt);
+
+/**
  * @brief Function to execute a SQL query and save the result in a JSON array.
  *
  * @param [in] db The SQL database to be queried.
@@ -1000,6 +1008,7 @@ wdb_t * wdb_pool_find_prev(wdb_t * wdb);
 int wdb_stmt_cache(wdb_t * wdb, int index);
 
 int wdb_parse(char * input, char * output, int peer);
+int wdb_parse_api(const char * endpoint, const char * input, char ** output);
 
 int wdb_parse_syscheck(wdb_t * wdb, wdb_component_t component, char * input, char * output);
 int wdb_parse_syscollector(wdb_t * wdb, const char * query, char * input, char * output);
@@ -2250,6 +2259,8 @@ cJSON* wdb_global_get_agent_info(wdb_t *wdb, int id);
  * @retval NULL on error.
  */
 cJSON* wdb_global_get_all_agents(wdb_t *wdb, int last_agent_id, wdbc_result* status);
+
+cJSON* wdb_global_get_all_agent_ids(wdb_t *wdb);
 
 /**
  * @brief Gets every agent ID with context.
