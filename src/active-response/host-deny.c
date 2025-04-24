@@ -206,7 +206,7 @@ int main (int argc, char **argv) {
         fclose(host_deny_fp);
         fclose(temp_host_deny_fp);
 
-        if (write_fail || rename(temp_hosts_deny_path, hosts_deny_path) != 0) {
+        if (write_fail || OS_MoveFile(temp_hosts_deny_path, hosts_deny_path) != 0) {
             memset(log_msg, '\0', OS_MAXSTR);
             snprintf(log_msg, OS_MAXSTR -1, "Unable to write file '%s'", hosts_deny_path);
             write_debug_file(argv[0], log_msg);
