@@ -6,7 +6,6 @@
 import json
 import operator
 import os
-import socket
 from unittest.mock import patch
 
 import pytest
@@ -178,40 +177,6 @@ def test_ossec_log_summary(mock_exists):
             all(value == expected_result[key] for key, value in item.items())
             for item in result.render()['data']['affected_items']
         )
-
-
-@patch('socket.socket')
-@patch('wazuh.core.manager.fcntl')
-@patch('wazuh.core.manager.open')
-@patch('os.path.exists', return_value=True)
-def test_restart_ok(mock_exists, mock_path, mock_fcntl, mock_socket):
-    """Tests restarting a manager."""
-    result = restart()
-
-    # Assert there are no errors and type of the result.
-    assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type'
-    assert result.render()['data']['total_failed_items'] == 0
-
-
-@patch('wazuh.core.manager.open')
-@patch('wazuh.core.manager.fcntl')
-@patch('os.path.exists', return_value=False)
-def test_restart_ko_socket(mock_exists, mock_fcntl, mock_open):
-    """Tests restarting a manager exceptions."""
-    # Socket path not exists
-    with pytest.raises(WazuhInternalError, match='.* 1901 .*'):
-        restart()
-
-    # Socket error
-    with patch('os.path.exists', return_value=True):
-        with patch('socket.socket', side_effect=socket.error):
-            with pytest.raises(WazuhInternalError, match='.* 1902 .*'):
-                restart()
-
-        with patch('socket.socket.connect'):
-            with patch('socket.socket.send', side_effect=socket.error):
-                with pytest.raises(WazuhInternalError, match='.* 1014 .*'):
-                    restart()
 
 
 @pytest.mark.parametrize(

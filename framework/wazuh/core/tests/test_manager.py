@@ -152,26 +152,6 @@ def test_get_server_status_ko(mock_stat, exc):
         get_server_status()
 
 
-def test_manager_restart():
-    """Verify that manager_restart send to the manager the restart request."""
-    with patch('wazuh.core.manager.open', side_effect=None):
-        with patch('fcntl.lockf', side_effect=None):
-            with pytest.raises(WazuhInternalError, match='.* 1901 .*'):
-                manager_restart()
-
-            with patch('os.path.exists', return_value=True):
-                with pytest.raises(WazuhInternalError, match='.* 1902 .*'):
-                    manager_restart()
-
-                with patch('socket.socket.connect', side_effect=None):
-                    with pytest.raises(WazuhInternalError, match='.* 1014 .*'):
-                        manager_restart()
-
-                    with patch('socket.socket.send', side_effect=None):
-                        status = manager_restart()
-                        assert WazuhResult({'message': 'Restart request sent'}) == status
-
-
 def test_get_ossec_log_fields():
     """Test get_ossec_log_fields() method returns a tuple."""
     result = get_ossec_log_fields('2020/07/14 06:10:40 rootcheck: INFO: Ending rootcheck scan.')

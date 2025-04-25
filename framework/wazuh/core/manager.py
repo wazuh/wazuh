@@ -2,7 +2,6 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-import fcntl
 import json
 import os
 import re
@@ -22,9 +21,8 @@ import wazuh
 from wazuh import WazuhError, WazuhException, WazuhInternalError
 from wazuh.core import common
 from wazuh.core.configuration import get_cti_url
-from wazuh.core.results import WazuhResult
 from wazuh.core.utils import get_utc_now, get_utc_strptime, tail, temporary_cache
-from wazuh.core.wazuh_socket import WazuhSocket, create_wazuh_socket_message
+from wazuh.core.wazuh_socket import WazuhSocket
 
 _re_logtest = re.compile(r'^.*(?:ERROR: |CRITICAL: )(?:\[.*\] )?(.*)$')
 
@@ -382,57 +380,3 @@ def get_server_status(cache=False) -> typing.Dict:
             data[process] = 'stopped'
 
     return data
-
-
-def manager_restart() -> WazuhResult:
-    """Restart Wazuh manager.
-
-    Send JSON message with the 'restart-wazuh' command to common.EXECQ_SOCKET socket.
-
-    Raises
-    ------
-    WazuhInternalError(1901)
-        If the socket path doesn't exist.
-    WazuhInternalError(1902)
-        If there is a socket connection error.
-    WazuhInternalError(1014)
-        If there is a socket communication error.
-
-    Returns
-    -------
-    WazuhResult
-        Confirmation message.
-    """
-    lock_file = open(EXECQ_LOCKFILE, 'a+')
-    fcntl.lockf(lock_file, fcntl.LOCK_EX)
-    try:
-        # execq socket path
-        socket_path = common.EXECQ_SOCKET
-        # json msg for restarting Wazuh manager
-        msg = json.dumps(
-            create_wazuh_socket_message(
-                origin={'module': common.origin_module.get()},
-                command=common.RESTART_WAZUH_COMMAND,
-                parameters={'extra_args': [], 'alert': {}},
-            )
-        )
-        # initialize socket
-        if os.path.exists(socket_path):
-            try:
-                conn = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
-                conn.connect(socket_path)
-            except socket.error:
-                raise WazuhInternalError(1902)
-        else:
-            raise WazuhInternalError(1901)
-
-        try:
-            conn.send(msg.encode())
-            conn.close()
-        except socket.error as e:
-            raise WazuhInternalError(1014, extra_message=str(e))
-    finally:
-        fcntl.lockf(lock_file, fcntl.LOCK_UN)
-        lock_file.close()
-
-    return WazuhResult({'message': 'Restart request sent'})

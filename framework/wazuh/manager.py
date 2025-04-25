@@ -11,7 +11,6 @@ from wazuh.core.manager import (
     get_ossec_logs,
     get_server_status,
     get_update_information_template,
-    manager_restart,
     validate_ossec_conf,
 )
 from wazuh.core.results import AffectedItemsWazuhResult, WazuhResult
@@ -156,31 +155,6 @@ _restart_default_result_kwargs = {
     'none_msg': 'Could not send restart request to any node',
     'sort_casting': ['str'],
 }
-
-
-@expose_resources(actions=['cluster:read'], resources=[f'node:id:{node_id}'])
-@expose_resources(
-    actions=['cluster:restart'],
-    resources=[f'node:id:{node_id}'],
-    post_proc_kwargs={'default_result_kwargs': _restart_default_result_kwargs},
-)
-def restart() -> AffectedItemsWazuhResult:
-    """Wrapper for 'restart_manager' function due to interdependence with cluster module and permission access.
-
-    Returns
-    -------
-    AffectedItemsWazuhResult
-        Affected items.
-    """
-    result = AffectedItemsWazuhResult(**_restart_default_result_kwargs)
-    try:
-        manager_restart()
-        result.affected_items.append(node_id)
-    except WazuhError as e:
-        result.add_failed_item(id_=node_id, error=e)
-    result.total_affected_items = len(result.affected_items)
-
-    return result
 
 
 _validation_default_result_kwargs = {
