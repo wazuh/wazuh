@@ -11,7 +11,6 @@ from wazuh.core import common
 
 from api.configuration import security_conf
 
-# Tokens cache
 tokens_cache = TTLCache(maxsize=4500, ttl=security_conf["auth_token_exp_timeout"])
 resources_cache = TTLCache(maxsize=100, ttl=10)
 
@@ -57,7 +56,36 @@ def token_cache(cache: TTLCache):
     return decorator
 
 
-@cached(cache=resources_cache, key=partial(hashkey, 'expand_rules'))
+def resource_cache(cache: TTLCache):
+    """Apply cache depending on the function type.
+
+    Parameters
+    ----------
+    cache : TTLCache
+        Cache object.
+
+    Returns
+    -------
+    Requested function
+    """
+
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+
+            # Use different keys for each function to avoid collisions
+            @cached(cache=cache, key=partial(hashkey, func.__name__))
+            def f(*_args, **_kwargs):
+                return func(*_args, **_kwargs)
+
+            return f(*args, **kwargs)
+
+        return wrapper
+
+    return decorator
+
+
+@resource_cache(cache=resources_cache)
 def expand_rules() -> set:
     """Return all ruleset rule files in the system.
 
@@ -76,7 +104,7 @@ def expand_rules() -> set:
     return rules
 
 
-@cached(cache=resources_cache, key=partial(hashkey, 'expand_decoders'))
+@resource_cache(cache=resources_cache)
 def expand_decoders() -> set:
     """Return all ruleset decoder files in the system.
 
@@ -95,7 +123,7 @@ def expand_decoders() -> set:
     return decoders
 
 
-@cached(cache=resources_cache, key=partial(hashkey, 'expand_lists'))
+@resource_cache(cache=resources_cache)
 def expand_lists() -> set:
     """Return all cdb list files in the system.
 
