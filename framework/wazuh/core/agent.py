@@ -24,6 +24,7 @@ from wazuh.core.utils import WazuhVersion, plain_dict_to_nested_dict, get_fields
 from wazuh.core.wazuh_queue import WazuhQueue
 from wazuh.core.wazuh_socket import WazuhSocket, WazuhSocketJSON, create_wazuh_socket_message
 from wazuh.core.wdb import WazuhDBConnection
+from wazuh.rbac.utils import resources_cache, resource_cache
 
 detect_wrong_lines = re.compile(r'(.+ .+ (?:any|\d+\.\d+\.\d+\.\d+) \w+)')
 detect_valid_lines = re.compile(r'^(\d{3,}) (.+) (any|\d+\.\d+\.\d+\.\d+) (\w+)', re.MULTILINE)
@@ -1294,7 +1295,7 @@ def get_agents_info() -> set:
     return result
 
 
-@common.context_cached('system_groups')
+@resource_cache(cache=resources_cache)
 def get_groups() -> set:
     """Get all groups in the system.
 
@@ -1310,7 +1311,7 @@ def get_groups() -> set:
     return groups
 
 
-@common.context_cached('system_expanded_groups')
+@resource_cache(cache=resources_cache)
 def expand_group(group_name: str) -> set:
     """Expand a certain group.
 
@@ -1346,7 +1347,8 @@ def expand_group(group_name: str) -> set:
     finally:
         wdb_conn.close()
 
-    return set(agents_ids) & get_agents_info()
+    system_agents = get_agents_info()
+    return set(agents_ids) & system_agents
 
 
 @lru_cache()
