@@ -30,6 +30,8 @@ full_filename,owner_name,group_name,mode,type,prot_permissions,size_bytes,size_e
 /var/ossec/tmp/sca-4.*-*.el5-tmp/centos/7/cis_centos7_linux.yml,root,wazuh,640,file,-rw-r-----,347255,0.1
 /var/ossec/tmp/sca-4.*-*.el5-tmp/centos/8/sca.files,root,wazuh,640,file,-rw-r-----,31,0.1
 /var/ossec/tmp/sca-4.*-*.el5-tmp/centos/8/cis_centos8_linux.yml,root,wazuh,640,file,-rw-r-----,336834,0.1
+/var/ossec/tmp/sca-4.*-*.el5-tmp/centos/9/sca.files,root,wazuh,640,file,-rw-r-----,31,0.1
+/var/ossec/tmp/sca-4.*-*.el5-tmp/centos/9/cis_centos9_linux.yml,root,wazuh,640,file,-rw-r-----,337120,0.1
 /var/ossec/tmp/sca-4.*-*.el5-tmp/centos/10/sca.files,root,wazuh,640,file,-rw-r-----,33,0.1
 /var/ossec/tmp/sca-4.*-*.el5-tmp/centos/10/cis_centos10_linux.yml,root,wazuh,640,file,-rw-r-----,336924,0.1
 /var/ossec/tmp/sca-4.*-*.el5-tmp/rhel/sca.files,root,wazuh,640,file,-rw-r-----,29,0.1
