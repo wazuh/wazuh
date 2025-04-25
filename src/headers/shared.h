@@ -221,6 +221,10 @@ extern const char *__local_name;
 // Only static arrays allowed.
 #define array_size(array) (sizeof(array)/sizeof(array[0]))
 
+// Define atomic manipulation macros
+#define ATOMIC_STORE(ptr, val) (*(ptr) = (val))
+#define ATOMIC_LOAD(ptr)       (*(ptr))
+
 #ifdef CLIENT
 #define isAgent 1
 #else

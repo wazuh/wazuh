@@ -769,7 +769,7 @@ STATIC void HandleSecureMessage(const message_t *message, int *wdb_sock) {
             }
 
             // The critical section for readers closes within this function
-            save_controlmsg(key, tmp_msg, msg_length - 3, wdb_sock);
+            save_controlmsg(key, tmp_msg, msg_length - 3, wdb_sock, &keys.keyentries[agentid]->is_startup);
             rem_inc_recv_ctrl(key->id);
 
             OS_FreeKey(key);
