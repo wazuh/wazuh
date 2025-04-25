@@ -257,24 +257,6 @@ async def test_deprecate_endpoint(link):
     assert response.headers == {}, f'Unexpected deprecation headers were found: {response.headers}'
 
 
-@patch('server_management_api.util.raise_if_exc')
-@pytest.mark.asyncio
-async def test_only_master_endpoint(mock_exc):
-    """Test that only_master_endpoint decorator raise the correct exception when running_in_master_node is False."""
-
-    @util.only_master_endpoint
-    async def func_():
-        return ret_val
-
-    ret_val = 'foo'
-
-    with patch('server_management_api.util.running_in_master_node', return_value=False):
-        await func_()
-        mock_exc.assert_called_once_with(WazuhResourceNotFound(902))
-    with patch('server_management_api.util.running_in_master_node', return_value=True):
-        assert await func_() == ret_val
-
-
 @patch('yaml.safe_load')
 def test_load_api_spec(mock_safe_load):
     """Validate that the function `load_api_spec` works properly."""

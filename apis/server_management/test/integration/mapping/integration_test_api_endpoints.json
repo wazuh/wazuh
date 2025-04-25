@@ -1002,21 +1002,6 @@
         ]
     },
     {
-        "path": "apis/server_management/test/integration/env/configurations/cluster/manager/configuration_files",
-        "files": [
-            {
-                "name": "entrypoint.sh",
-                "tag": "entrypoint",
-                "tests": [
-                    "test_agent_DELETE_endpoints.tavern.yaml",
-                    "test_agent_GET_endpoints.tavern.yaml",
-                    "test_agent_POST_endpoints.tavern.yaml",
-                    "test_agent_PUT_endpoints.tavern.yaml"
-                ]
-            }
-        ]
-    },
-    {
         "path": "apis/server_management/test/integration/env/configurations/rbac/agent",
         "files": [
             {
@@ -1184,16 +1169,6 @@
                     "test_agent_PUT_endpoints.tavern.yaml",
                     "test_rbac_black_agent_endpoints.tavern.yaml",
                     "test_rbac_white_agent_endpoints.tavern.yaml"
-                ]
-            },
-            {
-                "name": "cluster.py",
-                "tag": "cluster",
-                "tests": [
-                    "test_agent_DELETE_endpoints.tavern.yaml",
-                    "test_agent_GET_endpoints.tavern.yaml",
-                    "test_agent_POST_endpoints.tavern.yaml",
-                    "test_agent_PUT_endpoints.tavern.yaml"
                 ]
             },
             {
@@ -1445,177 +1420,7 @@
         ]
     },
     {
-        "path": "framework/wazuh/core/cluster",
-        "files": [
-            {
-                "name": "client.py",
-                "tag": "client",
-                "tests": [
-                    "test_agent_DELETE_endpoints.tavern.yaml",
-                    "test_agent_GET_endpoints.tavern.yaml",
-                    "test_agent_POST_endpoints.tavern.yaml",
-                    "test_agent_PUT_endpoints.tavern.yaml"
-                ]
-            },
-            {
-                "name": "cluster.py",
-                "tag": "cluster",
-                "tests": [
-                    "test_agent_DELETE_endpoints.tavern.yaml",
-                    "test_agent_GET_endpoints.tavern.yaml",
-                    "test_agent_POST_endpoints.tavern.yaml",
-                    "test_agent_PUT_endpoints.tavern.yaml"
-                ]
-            },
-            {
-                "name": "common.py",
-                "tag": "common",
-                "tests": [
-                    "test_agent_DELETE_endpoints.tavern.yaml",
-                    "test_agent_GET_endpoints.tavern.yaml",
-                    "test_agent_POST_endpoints.tavern.yaml",
-                    "test_agent_PUT_endpoints.tavern.yaml"
-                ]
-            },
-            {
-                "name": "control.py",
-                "tag": "control",
-                "tests": [
-                    "test_agent_DELETE_endpoints.tavern.yaml",
-                    "test_agent_GET_endpoints.tavern.yaml",
-                    "test_agent_POST_endpoints.tavern.yaml",
-                    "test_agent_PUT_endpoints.tavern.yaml"
-                ]
-            },
-            {
-                "name": "local_client.py",
-                "tag": "local",
-                "tests": [
-                    "test_agent_DELETE_endpoints.tavern.yaml",
-                    "test_agent_GET_endpoints.tavern.yaml",
-                    "test_agent_POST_endpoints.tavern.yaml",
-                    "test_agent_PUT_endpoints.tavern.yaml"
-                ]
-            },
-            {
-                "name": "local_server.py",
-                "tag": "local",
-                "tests": [
-                    "test_agent_DELETE_endpoints.tavern.yaml",
-                    "test_agent_GET_endpoints.tavern.yaml",
-                    "test_agent_POST_endpoints.tavern.yaml",
-                    "test_agent_PUT_endpoints.tavern.yaml"
-                ]
-            },
-            {
-                "name": "master.py",
-                "tag": "master",
-                "tests": [
-                    "test_agent_DELETE_endpoints.tavern.yaml",
-                    "test_agent_GET_endpoints.tavern.yaml",
-                    "test_agent_POST_endpoints.tavern.yaml",
-                    "test_agent_PUT_endpoints.tavern.yaml"
-                ]
-            },
-            {
-                "name": "server.py",
-                "tag": "server",
-                "tests": [
-                    "test_agent_DELETE_endpoints.tavern.yaml",
-                    "test_agent_GET_endpoints.tavern.yaml",
-                    "test_agent_POST_endpoints.tavern.yaml",
-                    "test_agent_PUT_endpoints.tavern.yaml"
-                ]
-            },
-            {
-                "name": "utils.py",
-                "tag": "utils",
-                "tests": [
-                    "test_agent_DELETE_endpoints.tavern.yaml",
-                    "test_agent_GET_endpoints.tavern.yaml",
-                    "test_agent_POST_endpoints.tavern.yaml",
-                    "test_agent_PUT_endpoints.tavern.yaml"
-                ]
-            },
-            {
-                "name": "worker.py",
-                "tag": "worker",
-                "tests": [
-                    "test_agent_DELETE_endpoints.tavern.yaml",
-                    "test_agent_GET_endpoints.tavern.yaml",
-                    "test_agent_POST_endpoints.tavern.yaml",
-                    "test_agent_PUT_endpoints.tavern.yaml"
-                ]
-            }
-        ]
-    },
-    {
-        "path": "framework/wazuh/core/cluster/dapi",
-        "files": [
-            {
-                "name": "dapi.py",
-                "tag": "dapi",
-                "tests": [
-                    "test_agent_DELETE_endpoints.tavern.yaml",
-                    "test_agent_GET_endpoints.tavern.yaml",
-                    "test_agent_POST_endpoints.tavern.yaml",
-                    "test_agent_PUT_endpoints.tavern.yaml"
-                ]
-            }
-        ]
-    },
-    {
-        "path": "framework/wazuh/core/cluster/hap_helper",
-        "files": [
-            {
-                "name": "hap_helper.py",
-                "tag": "hap",
-                "tests": [
-                    "test_agent_DELETE_endpoints.tavern.yaml",
-                    "test_agent_GET_endpoints.tavern.yaml",
-                    "test_agent_POST_endpoints.tavern.yaml",
-                    "test_agent_PUT_endpoints.tavern.yaml"
-                ]
-            },
-            {
-                "name": "proxy.py",
-                "tag": "proxy",
-                "tests": [
-                    "test_agent_DELETE_endpoints.tavern.yaml",
-                    "test_agent_GET_endpoints.tavern.yaml",
-                    "test_agent_POST_endpoints.tavern.yaml",
-                    "test_agent_PUT_endpoints.tavern.yaml"
-                ]
-            },
-            {
-                "name": "wazuh.py",
-                "tag": "wazuh",
-                "tests": [
-                    "test_agent_DELETE_endpoints.tavern.yaml",
-                    "test_agent_GET_endpoints.tavern.yaml",
-                    "test_agent_POST_endpoints.tavern.yaml",
-                    "test_agent_PUT_endpoints.tavern.yaml"
-                ]
-            }
-        ]
-    },
-    {
-        "path": "framework/wazuh/core/cluster/tests",
-        "files": [
-            {
-                "name": "conftest.py",
-                "tag": "conftest",
-                "tests": [
-                    "test_agent_DELETE_endpoints.tavern.yaml",
-                    "test_agent_GET_endpoints.tavern.yaml",
-                    "test_agent_POST_endpoints.tavern.yaml",
-                    "test_agent_PUT_endpoints.tavern.yaml"
-                ]
-            }
-        ]
-    },
-    {
-        "path": "framework/wazuh/core/cluster/unix_server",
+        "path": "framework/wazuh/core/server/unix_server",
         "files": [
             {
                 "name": "config.py",
@@ -2740,21 +2545,6 @@
             {
                 "name": "healthcheck.py",
                 "tag": "healthcheck",
-                "tests": [
-                    "test_agent_DELETE_endpoints.tavern.yaml",
-                    "test_agent_GET_endpoints.tavern.yaml",
-                    "test_agent_POST_endpoints.tavern.yaml",
-                    "test_agent_PUT_endpoints.tavern.yaml"
-                ]
-            }
-        ]
-    },
-    {
-        "path": "apis/server_management/test/integration/env/configurations/cluster/manager/configuration_files",
-        "files": [
-            {
-                "name": "entrypoint.sh",
-                "tag": "entrypoint",
                 "tests": [
                     "test_agent_DELETE_endpoints.tavern.yaml",
                     "test_agent_GET_endpoints.tavern.yaml",

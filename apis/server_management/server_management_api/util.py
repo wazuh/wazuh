@@ -13,7 +13,6 @@ import six
 import yaml
 from connexion import ProblemException
 from wazuh.core import common, exception
-from wazuh.core.cluster.utils import running_in_master_node
 
 from server_management_api import __path__ as api_path
 
@@ -351,12 +350,7 @@ def _create_problem(exc: Exception, code: int = None):
     """
     ext = None
     if isinstance(exc, exception.WazuhException):
-        ext = remove_nones_to_dict(
-            {
-                'remediation': exc.remediation,
-                'code': exc.code
-            }
-        )
+        ext = remove_nones_to_dict({'remediation': exc.remediation, 'code': exc.code})
 
     if isinstance(exc, exception.WazuhInternalError):
         raise ProblemException(
@@ -450,19 +444,6 @@ def deprecate_endpoint(link: str = ''):
         return wrapper
 
     return add_deprecation_headers
-
-
-def only_master_endpoint(func):
-    """Restrict endpoints to the master node."""
-
-    @wraps(func)
-    async def wrapper(*args, **kwargs):
-        if not running_in_master_node():
-            raise_if_exc(exception.WazuhResourceNotFound(902))
-        else:
-            return await func(*args, **kwargs)
-
-    return wrapper
 
 
 @lru_cache(maxsize=None)

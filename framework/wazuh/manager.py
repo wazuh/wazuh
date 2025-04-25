@@ -4,27 +4,26 @@
 
 from wazuh import Wazuh
 from wazuh.core import common
-from wazuh.core.cluster.cluster import get_node
-from wazuh.core.cluster.utils import manager_restart
 from wazuh.core.exception import WazuhError, WazuhInternalError
 from wazuh.core.manager import (
     OSSEC_LOG_FIELDS,
     get_logs_summary,
     get_ossec_logs,
+    get_server_status,
     get_update_information_template,
-    status,
     validate_ossec_conf,
 )
 from wazuh.core.results import AffectedItemsWazuhResult, WazuhResult
 from wazuh.core.utils import process_array
 from wazuh.rbac.decorators import expose_resources
 
-node_id = get_node().get('node')
+# TODO: set node ID
+node_id = '1'
 
 
 @expose_resources(actions=['cluster:read'], resources=[f'node:id:{node_id}'])
 def get_status() -> AffectedItemsWazuhResult:
-    """Wrapper for status().
+    """Get server status.
 
     Returns
     -------
@@ -37,7 +36,7 @@ def get_status() -> AffectedItemsWazuhResult:
         none_msg=f'Could not read processes status{" in specified node" if node_id != "manager" else ""}',
     )
 
-    result.affected_items.append(status())
+    result.affected_items.append(get_server_status())
     result.total_affected_items = len(result.affected_items)
 
     return result
@@ -156,31 +155,6 @@ _restart_default_result_kwargs = {
     'none_msg': 'Could not send restart request to any node',
     'sort_casting': ['str'],
 }
-
-
-@expose_resources(actions=['cluster:read'], resources=[f'node:id:{node_id}'])
-@expose_resources(
-    actions=['cluster:restart'],
-    resources=[f'node:id:{node_id}'],
-    post_proc_kwargs={'default_result_kwargs': _restart_default_result_kwargs},
-)
-def restart() -> AffectedItemsWazuhResult:
-    """Wrapper for 'restart_manager' function due to interdependence with cluster module and permission access.
-
-    Returns
-    -------
-    AffectedItemsWazuhResult
-        Affected items.
-    """
-    result = AffectedItemsWazuhResult(**_restart_default_result_kwargs)
-    try:
-        manager_restart()
-        result.affected_items.append(node_id)
-    except WazuhError as e:
-        result.add_failed_item(id_=node_id, error=e)
-    result.total_affected_items = len(result.affected_items)
-
-    return result
 
 
 _validation_default_result_kwargs = {

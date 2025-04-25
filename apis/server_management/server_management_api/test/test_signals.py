@@ -140,24 +140,19 @@ async def test_get_update_information_schedule(query_update_check_service_mock):
 
 
 @pytest.mark.parametrize(
-    'cluster_config,update_check_config,registered_tasks',
+    'update_check_config,registered_tasks',
     [
-        (True, True, 2),
-        (True, False, 1),
-        (False, True, 0),
-        (False, False, 0),
+        (True, 2),
+        (False, 1),
     ],
 )
 @patch('server_management_api.signals.check_installation_uid')
 @patch('server_management_api.signals.get_update_information')
 @patch('server_management_api.signals.update_check_is_enabled')
-@patch('server_management_api.signals.running_in_master_node')
 async def test_register_background_tasks(
-    running_in_master_node_mock,
     update_check_mock,
     get_update_information_mock,
     check_installation_uid_mock,
-    cluster_config,
     update_check_config,
     registered_tasks,
 ):
@@ -168,7 +163,6 @@ async def test_register_background_tasks(
             self.await_count += 1
             return iter([])
 
-    running_in_master_node_mock.return_value = cluster_config
     update_check_mock.return_value = update_check_config
 
     with patch('server_management_api.signals.asyncio') as create_task_mock:

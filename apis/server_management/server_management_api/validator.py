@@ -4,13 +4,11 @@
 
 import os
 import re
-from types import MappingProxyType
 from typing import Dict, List
 
 from jsonschema import Draft4Validator
 from uuid6 import UUID
 from wazuh.core import common
-from wazuh.core.exception import WazuhError
 
 _alphanumeric_param = re.compile(r'^[\w,\-.+\s:]+$')
 _symbols_alphanumeric_param = re.compile(r'^[\w,*<>!\-.+\s:/()\[\]\'\"|=~#]+$')
@@ -59,25 +57,6 @@ security_config_schema = {
         'rbac_mode': {'type': 'string', 'enum': ['white', 'black']},
     },
 }
-
-WAZUH_COMPONENT_CONFIGURATION_MAPPING = MappingProxyType(
-    {
-        'agent': {'client', 'buffer', 'labels', 'internal'},
-        'agentless': {'agentless'},
-        'analysis': {'global', 'active_response', 'alerts', 'command', 'rules', 'decoders', 'internal', 'rule_test'},
-        'auth': {'auth'},
-        'com': {'active-response', 'logging', 'internal', 'cluster'},
-        'csyslog': {'csyslog'},
-        'integrator': {'integration'},
-        'logcollector': {'localfile', 'socket', 'internal'},
-        'mail': {'global', 'alerts', 'internal'},
-        'monitor': {'global', 'internal', 'reports'},
-        'request': {'global', 'remote', 'internal'},
-        'syscheck': {'syscheck', 'rootcheck', 'internal'},
-        'wazuh-db': {'wdb', 'internal'},
-        'wmodules': {'wmodules'},
-    }
-)
 
 
 def check_exp(exp: str, regex: re.Pattern) -> bool:
@@ -143,28 +122,6 @@ def is_safe_path(path: str, basedir: str = common.WAZUH_ETC, relative: bool = Tr
     full_basedir = os.path.abspath(basedir)
 
     return os.path.commonpath([full_path, full_basedir]) == full_basedir
-
-
-def check_component_configuration_pair(component: str, configuration: str) -> WazuhError:
-    """Parameters
-    ----------
-    component : str
-        Wazuh component name.
-    configuration : str
-        Component configuration.
-
-    Returns
-    -------
-    WazuhError
-        It can either return a `WazuhError` or `None`, depending on the given component and configuration. The exception
-        is returned and not raised because we use the object to create a problem on API level.
-    """
-    if configuration not in WAZUH_COMPONENT_CONFIGURATION_MAPPING[component]:
-        return WazuhError(
-            1128,
-            extra_message=f"Valid configuration values for '{component}': "
-            f'{WAZUH_COMPONENT_CONFIGURATION_MAPPING[component]}',
-        )
 
 
 @Draft4Validator.FORMAT_CHECKER.checks('alphanumeric')

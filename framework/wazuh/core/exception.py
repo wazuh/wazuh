@@ -5,8 +5,8 @@
 from copy import deepcopy
 from typing import Any, Union
 
-from wazuh.core.cluster import __version__
 from wazuh.core.common import AGENT_NAME_LEN_LIMIT, MAX_SOCKET_BUFFER_SIZE, WAZUH_SERVER_YML
+from wazuh.core.server import __version__
 
 GENERIC_ERROR_MSG = 'Wazuh Internal Error. See log for more detail'
 DOCU_VERSION = 'current' if __version__ == '' else '.'.join(__version__.split('.')[:2]).lstrip('v')
@@ -183,18 +183,6 @@ class WazuhException(Exception):
             'message': 'Wazuh authd is not running',
             'remediation': 'Please enable authd or check if there is any error',
         },
-        1728: {
-            'message': 'Invalid node type',
-            'remediation': f'Valid types are `master` and `worker`. Please, visit https://documentation.wazuh.com/'
-            f'{DOCU_VERSION}/user-manual/configuring-cluster/index.html '
-            'to get more information about cluster configuration',
-        },
-        1730: {
-            'message': 'Node does not exist',
-            'remediation': 'Make sure the name is correct and that the node is up. You can check it using '
-            f'`cluster_control -l` (https://documentation.wazuh.com/{DOCU_VERSION}/user-manual/'
-            f'reference/tools/cluster_control.html#get-connected-nodes)',
-        },
         1731: {
             'message': 'Agent is not eligible for the action to be performed',
             'remediation': 'Please, make sure the agent meets the requirements.',
@@ -274,74 +262,10 @@ class WazuhException(Exception):
         2801: {'message': 'Invalid request URL scheme'},
         2802: {'message': 'Invalid unix socket path'},
         2803: {'message': 'Error sending HTTP request'},
-        # Cluster
-        3000: 'Cluster',
-        3001: 'Error creating zip file',
+        # Server
         3002: {'message': 'Error creating PID file'},
-        3004: {
-            'message': 'Error in cluster configuration',
-            'remediation': f'Please, visit the official documentation (https://documentation.wazuh.com/'
-            f'{DOCU_VERSION}/user-manual/configuring-cluster/index.html)'
-            ' to get more information about how to configure a cluster',
-        },
-        3005: 'Error reading cluster JSON file',
-        3006: {
-            'message': 'Error reading cluster configuration',
-            'remediation': f'Please, visit the official documentation (https://documentation.wazuh.com/'
-            f'{DOCU_VERSION}/user-manual/configuring-cluster/index.html)'
-            ' to get more information about how to configure a cluster',
-        },
-        3007: {
-            'message': 'Could not start the server',
-            'remediation': f'Please, visit the official documentation (https://documentation.wazuh.com/'
-            f'{DOCU_VERSION}/user-manual/configuring-cluster/index.html)'
-            ' to get more information about how to configure a cluster',
-        },
-        3015: 'Cannot access directory',
-        3016: 'Received an error response',
-        3018: 'Error sending request',
-        3020: {'message': 'Timeout sending request', 'remediation': 'Please, try to make the request again'},
         3021: 'Timeout executing API request',
-        3022: {'message': 'Unknown node ID', 'remediation': 'Check the name of the node'},
-        3023: {
-            'message': 'Worker node is not connected to master',
-            'remediation': 'Check the server logs to identify potential connection errors.',
-        },
-        3024: 'Length of command exceeds limit defined in wazuh.cluster.common.Handler.cmd_len.',
-        3026: 'Error sending request: Memory error. Request chunk size divided by 2.',
         3027: 'Unknown received task name',
-        3028: {
-            'message': 'Worker node ID already exists',
-            'remediation': f'Check and fix [worker names](https://documentation.wazuh.com/{DOCU_VERSION}/'
-            f'user-manual/reference/ossec-conf/cluster.html#node-name)'
-            ' and restart the `wazuh-manager` service.',
-        },
-        3029: {
-            'message': 'Connected worker with same name as the master',
-            'remediation': f'Check and fix the [worker name](https://documentation.wazuh.com/{DOCU_VERSION}/'
-            f'user-manual/reference/ossec-conf/cluster.html#node-name)'
-            ' and restart the `wazuh-manager` service in the node',
-        },
-        3031: {
-            'message': 'Worker and master versions are not the same',
-            'remediation': f'[Update](https://documentation.wazuh.com/{DOCU_VERSION}/upgrade-guide/index.html)'
-            ' master and workers to the same version.',
-        },
-        3034: 'Error sending file. File not found.',
-        3036: "JSON couldn't be loaded",
-        3038: 'Error while processing extra-valid files',
-        3039: 'Timeout while waiting to receive a file',
-        3040: 'Error while waiting to receive a file',
-        # HAProxy Helper exceptions
-        3041: 'Server status check timed out after adding new servers',
-        3042: 'User configuration is not valid',
-        3043: 'Could not initialize Proxy API',
-        3044: 'Could not connect to the HAProxy Dataplane API',
-        3045: 'Could not connect to HAProxy',
-        3046: 'Invalid credentials for the Proxy API',
-        3047: 'Invalid HAProxy Dataplane API specification configured',
-        3048: 'Could not detect a valid HAProxy process linked to the Dataplane API',
-        3049: 'Unexpected response from HAProxy Dataplane API',
         # Orders distribution exceptions
         3050: 'Error while sending orders to the Communications API unix server',
         # RBAC exceptions
@@ -612,20 +536,6 @@ class WazuhInternalError(WazuhException):
             type=type if type else self._default_type,
         )
         self._ids = set() if ids is None else set(ids)
-
-
-class WazuhClusterError(WazuhInternalError):
-    """Cluster exception."""
-
-    _default_type = 'about:blank'
-    _default_title = 'Wazuh Cluster Error'
-
-
-class WazuhHAPHelperError(WazuhClusterError):
-    """HAProxy Helper exception."""
-
-    _default_type = 'about:blank'
-    _default_title = 'HAProxy Helper Error'
 
 
 class WazuhCommsAPIError(WazuhInternalError):

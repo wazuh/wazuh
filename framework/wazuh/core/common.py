@@ -167,7 +167,6 @@ rbac: ContextVar[Dict] = ContextVar('rbac', default={'rbac_mode': 'black'})
 rbac_manager: ContextVar[Any] = ContextVar('rbac_manager', default=None)
 current_user: ContextVar[str] = ContextVar('current_user', default='')
 broadcast: ContextVar[bool] = ContextVar('broadcast', default=False)
-cluster_nodes: ContextVar[list] = ContextVar('cluster_nodes', default=list())
 origin_module: ContextVar[str] = ContextVar('origin_module', default='framework')
 try:
     mp_pools: ContextVar[Dict] = ContextVar(
@@ -211,12 +210,7 @@ WAZUH_RUN = RUN_ROOT / WAZUH_SERVER
 WAZUH_LOG = VAR_LOG / WAZUH_SERVER
 WAZUH_LIB = VAR_LIB / WAZUH_SERVER
 
-WAZUH_QUEUE = WAZUH_RUN / 'cluster'
-
 WAZUH_GROUPS = WAZUH_ETC / 'groups'
-
-LOCAL_SERVER_SOCKET = 'local-server.sock'
-LOCAL_SERVER_SOCKET_PATH = WAZUH_RUN / LOCAL_SERVER_SOCKET
 
 CONFIG_SERVER_SOCKET = 'config-server.sock'
 CONFIG_SERVER_SOCKET_PATH = WAZUH_RUN / CONFIG_SERVER_SOCKET

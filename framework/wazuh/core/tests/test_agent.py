@@ -8,9 +8,9 @@ from shutil import rmtree
 from unittest.mock import AsyncMock, patch
 
 import pytest
-from wazuh.core.cluster.tests.conftest import get_default_configuration
 from wazuh.core.config.client import CentralizedConfig
 from wazuh.core.config.models.base import ValidateFilePathMixin
+from wazuh.core.server.tests.conftest import get_default_configuration
 
 with patch('wazuh.core.common.wazuh_uid'):
     with patch('wazuh.core.common.wazuh_gid'):

@@ -129,7 +129,7 @@ class TaskDispatcher:
         except exception.WazuhInternalError as e:
             if self.debug:
                 raise
-            self.logger.error(f'{e.message}', exc_info=not isinstance(e, exception.WazuhClusterError))
+            self.logger.error(f'{e.message}', exc_info=not isinstance(e, exception.WazuhInternalError))
             return e
         except exception.WazuhError as e:
             return e

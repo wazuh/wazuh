@@ -42,25 +42,18 @@ install:
 	$(INSTALL_REGULAR_DIR) $(SHARE_INSTALLDIR)/framework
 	$(INSTALL_REGULAR_DIR) $(SHARE_INSTALLDIR)/framework/scripts
 	$(INSTALL_REGULAR_DIR) $(SHARE_INSTALLDIR)/framework/wazuh
-	$(INSTALL_REGULAR_DIR) $(SHARE_INSTALLDIR)/framework/wazuh/core/cluster
-	$(INSTALL_REGULAR_DIR) $(SHARE_INSTALLDIR)/framework/wazuh/core/cluster/dapi
-	$(INSTALL_REGULAR_DIR) $(SHARE_INSTALLDIR)/framework/wazuh/core/cluster/hap_helper
 
 	# LOGS
 	$(INSTALL_REGULAR_DIR) $(LOG_INSTALLDIR)
 
 	# ETC
 	$(INSTALL_REGULAR_DIR) $(ETC_INSTALLDIR)
-	$(INSTALL_REGULAR_DIR) $(ETC_INSTALLDIR)/cluster
 	$(INSTALL_RESTRICTED_DIR) $(ETC_INSTALLDIR)/certs
 	$(INSTALL_REGULAR_DIR) $(ETC_INSTALLDIR)/groups
 
 	# SHARE
 	$(INSTALL_EXEC) scripts/wazuh_server.py ${SHARE_INSTALLDIR}/framework/scripts/wazuh-server.py
 	$(INSTALL_FILE) wazuh/*.py ${SHARE_INSTALLDIR}/framework/wazuh
-	$(INSTALL_FILE) wazuh/core/cluster/*.py ${SHARE_INSTALLDIR}/framework/wazuh/core/cluster
-	$(INSTALL_FILE) wazuh/core/cluster/dapi/*.py ${SHARE_INSTALLDIR}/framework/wazuh/core/cluster/dapi
-	$(INSTALL_FILE) wazuh/core/cluster/hap_helper/*.py ${SHARE_INSTALLDIR}/framework/wazuh/core/cluster/hap_helper
 
 	# ETC
 	$(INSTALL_FILE) ../etc/wazuh-server.yml ${ETC_INSTALLDIR}

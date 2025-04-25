@@ -10,7 +10,7 @@ from functools import wraps
 from typing import Iterator
 
 from wazuh.core.agent import expand_group, get_agents_info, get_groups
-from wazuh.core.common import broadcast, cluster_nodes, rbac, rbac_manager
+from wazuh.core.common import broadcast, rbac, rbac_manager
 from wazuh.core.exception import WazuhPermissionError
 from wazuh.core.rbac import RBACManager
 from wazuh.core.results import AffectedItemsWazuhResult
@@ -58,8 +58,6 @@ async def _expand_resource(resource: str) -> set:  # noqa: C901
         elif resource_type == 'rule:id':
             rules = manager.get_rules()
             return {rule.name for rule in rules}
-        elif resource_type == 'node:id':
-            return set(cluster_nodes.get())
         elif resource_type == '*:*':  # Resourceless
             return {'*'}
         return set()

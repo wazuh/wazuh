@@ -194,7 +194,7 @@ def get_script_arguments() -> argparse.Namespace:
     return parser
 
 
-def start():  # noqa: C901
+def start():
     """Start function of the wazuh-server script in charge of starting the server process."""
     with contextlib.suppress(StopIteration):
         server_pid = pyDaemonModule.get_wazuh_server_pid(SERVER_DAEMON_NAME)
