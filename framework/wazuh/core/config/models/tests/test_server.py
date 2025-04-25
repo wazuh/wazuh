@@ -29,12 +29,9 @@ def test_cti_config_default_values(init_values, expected):
     'init_values, expected',
     [
         (
-            {
-                'jwt': {'private_key': 'value'},
-            },
+            {},
             {
                 'update_check': False,
-                'jwt': {'private_key': 'value'},
             },
         )
     ],
@@ -43,7 +40,6 @@ def test_cti_config_default_values(init_values, expected):
 def test_server_config_default_values(file_path_validation_mock, init_values, expected):
     """Check the correct initialization of the `ServerConfig` class."""
     config = ServerConfig(**init_values)
-    assert config.jwt.private_key == expected['jwt']['private_key']
     assert config.update_check == expected['update_check']
     assert config.logging.level == LoggingLevel.info
 
