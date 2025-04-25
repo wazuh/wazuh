@@ -52,6 +52,7 @@ static const char* rpm_platforms[] = {
     "sles",
     "suse",
     "rocky",
+    "almalinux",
 };
 
 int wm_agent_upgrade_validate_id(int agent_id) {
