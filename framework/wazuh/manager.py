@@ -8,8 +8,8 @@ from wazuh.core.exception import WazuhError, WazuhInternalError
 from wazuh.core.manager import (
     OSSEC_LOG_FIELDS,
     get_logs_summary,
-    get_manager_status,
     get_ossec_logs,
+    get_server_status,
     get_update_information_template,
     manager_restart,
     validate_ossec_conf,
@@ -24,7 +24,7 @@ node_id = '1'
 
 @expose_resources(actions=['cluster:read'], resources=[f'node:id:{node_id}'])
 def get_status() -> AffectedItemsWazuhResult:
-    """Get manager status.
+    """Get server status.
 
     Returns
     -------
@@ -37,7 +37,7 @@ def get_status() -> AffectedItemsWazuhResult:
         none_msg=f'Could not read processes status{" in specified node" if node_id != "manager" else ""}',
     )
 
-    result.affected_items.append(get_manager_status())
+    result.affected_items.append(get_server_status())
     result.total_affected_items = len(result.affected_items)
 
     return result

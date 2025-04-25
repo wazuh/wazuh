@@ -55,7 +55,7 @@ def test_manager():
     return test_manager
 
 
-manager_status = {
+server_status = {
     'wazuh-agentlessd': 'running',
     'wazuh-analysisd': 'running',
     'wazuh-authd': 'running',
@@ -77,7 +77,7 @@ manager_status = {
 }
 
 
-@patch('wazuh.core.manager.get_manager_status', return_value=manager_status)
+@patch('wazuh.core.manager.get_server_status', return_value=server_status)
 def test_get_status(mock_status):
     """Tests get_status() function works."""
     result = get_status()

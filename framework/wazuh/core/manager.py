@@ -337,8 +337,8 @@ async def query_update_check_service(installation_uid: str) -> dict:
 
 
 @temporary_cache()
-def get_manager_status(cache=False) -> typing.Dict:
-    """Get the current status of each process of the manager.
+def get_server_status(cache=False) -> typing.Dict:
+    """Get the current status of each process of the server.
 
     Raises
     ------

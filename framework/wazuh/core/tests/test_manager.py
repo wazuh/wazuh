@@ -65,8 +65,8 @@ def get_logs(json_log: bool = False):
 @pytest.mark.parametrize('process_status', ['running', 'stopped', 'failed', 'restarting', 'starting'])
 @patch('os.path.exists')
 @patch('wazuh.core.manager.glob')
-def test_get_manager_status(manager_glob, manager_exists, test_manager, process_status):
-    """Tests core.manager.get_manager_status().
+def test_get_server_status(manager_glob, manager_exists, test_manager, process_status):
+    """Tests core.manager.get_server_status().
 
     Tests manager.status() function in two cases:
         * PID files are created and processed are running,
@@ -86,15 +86,15 @@ def test_get_manager_status(manager_glob, manager_exists, test_manager, process_
 
     manager_glob.side_effect = mock_glob
     manager_exists.side_effect = mock_exists
-    manager_status = get_manager_status()
+    manager_status = get_server_status()
     assert isinstance(manager_status, dict)
     assert all(process_status == x for x in manager_status.values())
     if process_status == 'running':
         manager_exists.assert_any_call('/proc/0234')
 
 
-def test_get_manager_status_calls():  # noqa: C901
-    """Validate `get_manager_status` function calls.
+def test_get_server_status_calls():  # noqa: C901
+    """Validate `get_server_status` function calls.
 
     For this test, the status can be stopped or failed.
     """
@@ -112,44 +112,44 @@ def test_get_manager_status_calls():  # noqa: C901
         else:
             return False
 
-    status = get_manager_status()
+    status = get_server_status()
     for value in status.values():
         assert value == 'stopped'
 
     with patch('wazuh.core.manager.glob', return_value=['ossec-0.pid']):
         with patch('re.match', return_value='None'):
-            status = get_manager_status()
+            status = get_server_status()
             for value in status.values():
                 assert value == 'failed'
 
         with patch('wazuh.core.manager.os.path.exists', side_effect=exist_mock):
-            status = get_manager_status()
+            status = get_server_status()
             for value in status.values():
                 assert value == 'failed'
 
             called += 1
-            status = get_manager_status()
+            status = get_server_status()
             for value in status.values():
                 assert value == 'restarting'
 
             called += 1
-            status = get_manager_status()
+            status = get_server_status()
             for value in status.values():
                 assert value == 'starting'
 
             called += 1
-            status = get_manager_status()
+            status = get_server_status()
             for value in status.values():
                 assert value == 'running'
 
 
 @pytest.mark.parametrize('exc', [PermissionError, FileNotFoundError])
 @patch('os.stat')
-def test_get_manager_status_ko(mock_stat, exc):
-    """Check that get_manager_status function correctly handles expected exceptions."""
+def test_get_server_status_ko(mock_stat, exc):
+    """Check that get_server_status function correctly handles expected exceptions."""
     mock_stat.side_effect = exc
     with pytest.raises(WazuhInternalError, match='.* 1913 .*'):
-        get_manager_status()
+        get_server_status()
 
 
 def test_manager_restart():
