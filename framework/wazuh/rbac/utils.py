@@ -57,7 +57,7 @@ def token_cache(cache: TTLCache):
 
 
 def resource_cache(cache: TTLCache):
-    """Apply cache depending on the function type.
+    """Apply cache depending on the decorated function name.
 
     Parameters
     ----------
@@ -125,7 +125,7 @@ def expand_decoders() -> set:
 
 @resource_cache(cache=resources_cache)
 def expand_lists() -> set:
-    """Return all cdb list files in the system.
+    """Return all CDB list files in the system.
 
     Returns
     -------
