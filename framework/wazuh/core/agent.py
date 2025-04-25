@@ -1295,7 +1295,7 @@ def get_agents_info() -> set:
     return result
 
 
-@resource_cache(cache=resources_cache)
+@common.context_cached('system_groups')
 def get_groups() -> set:
     """Get all groups in the system.
 
