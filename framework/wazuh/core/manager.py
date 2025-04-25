@@ -34,7 +34,6 @@ WAZUH_UID_KEY = 'wazuh-uid'
 WAZUH_TAG_KEY = 'wazuh-tag'
 USER_AGENT_KEY = 'user-agent'
 DEFAULT_TIMEOUT = 10.0
-EXECQ_LOCKFILE = common.WAZUH_RUN / '.api_execq_lock'
 
 
 class LoggingFormat(Enum):
