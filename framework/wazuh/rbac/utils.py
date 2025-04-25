@@ -11,7 +11,7 @@ from wazuh.core import common
 
 from api.configuration import security_conf
 
-tokens_cache = TTLCache(maxsize=4500, ttl=security_conf["auth_token_exp_timeout"])
+tokens_cache = TTLCache(maxsize=4500, ttl=security_conf['auth_token_exp_timeout'])
 resources_cache = TTLCache(maxsize=100, ttl=10)
 
 
@@ -36,7 +36,7 @@ def token_cache(cache: TTLCache):
     def decorator(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
-            origin_node_type = kwargs.pop("origin_node_type")
+            origin_node_type = kwargs.pop('origin_node_type')
 
             if common.token_cache_event.is_set():
                 cache.clear()
@@ -46,7 +46,7 @@ def token_cache(cache: TTLCache):
             def f(*_args, **_kwargs):
                 return func(*_args, **_kwargs)
 
-            if origin_node_type == "master":
+            if origin_node_type == 'master':
                 return f(*args, **kwargs)
 
             return func(*args, **kwargs)
@@ -138,7 +138,7 @@ def expand_lists() -> set:
         for _, _, files in walk(folder):
             for f in filter(lambda x: x.endswith(common.LISTS_EXTENSION), files):
                 # List files do not have an extension at the moment
-                if "." not in f:
+                if '.' not in f:
                     lists.add(f)
 
     return lists
