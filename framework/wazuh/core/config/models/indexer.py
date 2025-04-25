@@ -1,25 +1,10 @@
 from typing import Any, List
 
-from pydantic import Field, PositiveInt, field_serializer
+from pydantic import Field, HttpUrl, model_validator
 from wazuh.core.common import CLIENT_KEYSTORE
 from wazuh.core.config.models.base import WazuhConfigBaseModel
 from wazuh.core.config.models.ssl_config import IndexerSSLConfig
 from wazuh.core.utils import KeystoreReader
-
-
-class IndexerNode(WazuhConfigBaseModel):
-    """Indexer instance connection configuration.
-
-    Parameters
-    ----------
-    host : str
-        The host address of the indexer.
-    port : PositiveInt
-        The port number for the indexer.
-    """
-
-    host: str
-    port: PositiveInt
 
 
 class IndexerConfig(WazuhConfigBaseModel):
@@ -40,32 +25,29 @@ class IndexerConfig(WazuhConfigBaseModel):
     _username: str
     _password: str
 
-    hosts: List[IndexerNode] = Field(min_length=1)
+    hosts: List[HttpUrl] = Field(min_length=1)
     ssl: IndexerSSLConfig = None
 
-    @field_serializer('hosts', when_used='json')
-    def convert_hosts_to_str(self, hosts: List[IndexerNode], _info) -> List[str]:
-        """Convert the list of IndexerNode objects to a list of strings for JSON serialization.
-
-        Parameters
-        ----------
-        hosts : List[IndexerNode]
-            List of IndexerNode objects to be converted.
-        _info : SerializationInfo
-            Additional serialization context (provided by Pydantic).
+    @model_validator(mode='after')
+    def validate_hosts_scheme(self) -> 'IndexerConfig':
+        """Validate the hosts scheme based on `ssl.use_ssl` is enabled or not.
 
         Returns
         -------
-        List[str]
-            List of strings with the format '<scheme>://<host>:<port>'.
+        IndexerConfig
+            The validated instance.
+
+        Raises
+        ------
+        ValueError
+            If the scheme of any of the hosts does not match with the `ssl.use_ssl` value.
         """
-        final_list = []
-        scheme = 'https' if self.ssl.use_ssl else 'http'
+        if self.ssl.use_ssl:
+            invalid_hosts = [str(host) for host in self.hosts if host.scheme == 'http']
+            if invalid_hosts:
+                raise ValueError(f'Invalid hosts: {invalid_hosts}, `use_ssl` is enabled but scheme is http.')
 
-        for node in hosts:
-            final_list.append(f'{scheme}://{node.host}:{node.port}')
-
-        return final_list
+        return self
 
     def model_post_init(self, context: Any):
         """Post initialization of the model.

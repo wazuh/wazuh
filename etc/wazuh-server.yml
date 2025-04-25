@@ -1,7 +1,6 @@
 indexer:
   hosts:
-    - host: 127.0.0.1
-      port: 9200
+    - https://127.0.0.1:9200
   username: admin
   password: admin
   ssl:
