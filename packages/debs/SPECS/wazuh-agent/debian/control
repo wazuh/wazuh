@@ -21,6 +21,7 @@ Package: wazuh-agent-dbg
 Section: debug
 Priority: optional
 Architecture: any
+Conflicts: wazuh-agent (<< ${binary:Version}), wazuh-agent (>> ${binary:Version})
 Depends: wazuh-agent
 Description: Debug symbols for wazuh-agent.
-  This package contains debug symbols for debugging wazuh-agent.
+  This package contains files necessary for debugging the wazuh-agent with gdb.

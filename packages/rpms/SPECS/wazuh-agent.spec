@@ -45,6 +45,7 @@ log analysis, file integrity monitoring, intrusions detection and policy and com
 %endif
 %package wazuh-agent-debuginfo
 Summary: Debug information for package %{name}.
+Requires: wazuh-agent = %{version}-%{release}
 %description wazuh-agent-debuginfo
 This package provides debug information for package %{name}.
 %endif
