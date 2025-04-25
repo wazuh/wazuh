@@ -211,6 +211,23 @@ void test_wm_agent_upgrade_validate_system_rocky_ok(void **state)
     os_free(package_type);
 }
 
+void test_wm_agent_upgrade_validate_system_almalinux_ok(void **state)
+{
+    (void) state;
+    char *platform = "almalinux";
+    char *os_major = "9";
+    char *os_minor = "5";
+    char *arch = "x64";
+    char *package_type = NULL;
+
+    int ret = wm_agent_upgrade_validate_system(platform, os_major, os_minor, arch, &package_type);
+
+    assert_int_equal(ret, WM_UPGRADE_SUCCESS);
+    assert_non_null(package_type);
+    assert_string_equal(package_type, "rpm");
+    os_free(package_type);
+}
+
 void test_wm_agent_upgrade_validate_system_darwin_x64_ok(void **state)
 {
     (void) state;
@@ -1771,6 +1788,7 @@ int main(void) {
         cmocka_unit_test(test_wm_agent_upgrade_validate_system_rhel_ok),
         cmocka_unit_test(test_wm_agent_upgrade_validate_system_ubuntu_ok),
         cmocka_unit_test(test_wm_agent_upgrade_validate_system_rocky_ok),
+        cmocka_unit_test(test_wm_agent_upgrade_validate_system_almalinux_ok),
         cmocka_unit_test(test_wm_agent_upgrade_validate_system_darwin_x64_ok),
         cmocka_unit_test(test_wm_agent_upgrade_validate_system_darwin_arm_ok),
         cmocka_unit_test(test_wm_agent_upgrade_validate_system_invalid_platform_solaris),
