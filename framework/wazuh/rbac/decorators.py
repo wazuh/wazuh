@@ -58,9 +58,6 @@ async def _expand_resource(resource: str) -> set:  # noqa: C901
         elif resource_type == 'rule:id':
             rules = manager.get_rules()
             return {rule.name for rule in rules}
-        elif resource_type == 'node:id':
-            # TODO: define what to do with node-specific RBAC resources
-            return set()
         elif resource_type == '*:*':  # Resourceless
             return {'*'}
         return set()
