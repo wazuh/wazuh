@@ -119,4 +119,4 @@ full_filename,owner_name,group_name,mode,type,prot_permissions,size_bytes,size_e
 /var/ossec/wodles/azure/azure_services/analytics.py,root,wazuh,750,file,-rwxr-x---,8961,0.1
 /var/ossec/wodles/azure/azure_services/__init__.py,root,wazuh,750,file,-rwxr-x---,0,0.1
 /var/ossec/wodles/azure/azure_services/graph.py,root,wazuh,750,file,-rwxr-x---,7635,0.1
-/var/ossec/wodles/azure/azure_services/storage.py,root,wazuh,750,file,-rwxr-x---,10123,0.1
+/var/ossec/wodles/azure/azure_services/storage.py,root,wazuh,750,file,-rwxr-x---,11550,0.1

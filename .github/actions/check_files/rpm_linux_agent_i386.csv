@@ -54,6 +54,8 @@ full_filename,owner_name,group_name,mode,type,prot_permissions,size_bytes,size_e
 /var/ossec/tmp/sca-4.*-*-tmp/amzn/2023/sca.files,root,wazuh,640,file,-rw-r-----,33,0.1
 /var/ossec/tmp/sca-4.*-*-tmp/ol/9/sca.files,root,wazuh,640,file,-rw-r-----,27,0.1
 /var/ossec/tmp/sca-4.*-*-tmp/ol/9/cis_oracle_linux_9.yml,root,wazuh,640,file,-rw-r-----,334520,0.1
+/var/ossec/tmp/sca-4.*-*-tmp/ol/10/sca.files,root,wazuh,640,file,-rw-r-----,30,0.1
+/var/ossec/tmp/sca-4.*-*-tmp/ol/10/cis_oracle_linux_10.yml,root,wazuh,640,file,-rw-r-----,334599,0.1
 /var/ossec/tmp/sca-4.*-*-tmp/sles/sca.files,root,wazuh,640,file,-rw-r-----,29,0.1
 /var/ossec/tmp/sca-4.*-*-tmp/sles/12/sca.files,root,wazuh,640,file,-rw-r-----,28,0.1
 /var/ossec/tmp/sca-4.*-*-tmp/sles/12/cis_sles12_linux.yml,root,wazuh,640,file,-rw-r-----,62673,0.1
@@ -181,4 +183,4 @@ full_filename,owner_name,group_name,mode,type,prot_permissions,size_bytes,size_e
 /var/ossec/wodles/azure/azure_services/analytics.py,root,wazuh,750,file,-rwxr-x---,8961,0.1
 /var/ossec/wodles/azure/azure_services/__init__.py,root,wazuh,750,file,-rwxr-x---,0,0.1
 /var/ossec/wodles/azure/azure_services/graph.py,root,wazuh,750,file,-rwxr-x---,7635,0.1
-/var/ossec/wodles/azure/azure_services/storage.py,root,wazuh,750,file,-rwxr-x---,10123,0.1
+/var/ossec/wodles/azure/azure_services/storage.py,root,wazuh,750,file,-rwxr-x---,11550,0.1
