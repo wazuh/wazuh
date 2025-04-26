@@ -810,6 +810,8 @@ STATIC void HandleSecureMessage(const message_t *message, w_linked_queue_t * con
                 memcpy(ctrl_msg_data->message, tmp_msg, ctrl_msg_data->length);
 
                 linked_queue_push_ex(control_msg_queue, ctrl_msg_data);
+
+                rem_inc_ctrl_msg_queue_usage();
                 mdebug2("Control message pushed to queue.");
             }
 
@@ -1031,6 +1033,7 @@ void * save_control_thread(void * control_msg_queue)
     while (FOREVER()) {
         if ((ctrl_msg_data = (w_ctrl_msg_data_t *)linked_queue_pop_ex(queue))) {
 
+            rem_dec_ctrl_msg_queue_usage();
             // Process the control message
             save_controlmsg(ctrl_msg_data->key, ctrl_msg_data->message, ctrl_msg_data->length, &wdb_sock);
 
