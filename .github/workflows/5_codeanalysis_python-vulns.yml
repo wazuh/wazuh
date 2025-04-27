@@ -1,4 +1,4 @@
-name: 'Python dependency vuln checks'
+name: 'Python vulnerability checks'
 on:
   workflow_dispatch:
   schedule:
@@ -14,8 +14,6 @@ jobs:
         with:
           fetch-depth: 0
 
-      - run: git fetch --all --prune
-
       - name: Generate dynamic matrix
         id: set-matrix
         run: |
@@ -30,7 +28,6 @@ jobs:
 
           echo "matrix=$JSON_ARRAY" >> "$GITHUB_OUTPUT"
           echo Picked branches: $JSON_ARRAY
-
 
   checking-py-vulns:
     needs: pick-branches
