@@ -188,6 +188,8 @@ static const char *SQL_STMT[] = {
     [WDB_STMT_GLOBAL_SYNC_SET] = "UPDATE agent SET sync_status = ? WHERE id = ?;",
     [WDB_STMT_GLOBAL_GROUP_SYNC_REQ_GET] = "SELECT id FROM agent WHERE id > ? AND group_sync_status = 'syncreq' AND date_add < ? LIMIT 1;",
     [WDB_STMT_GLOBAL_GROUP_SYNC_ALL_GET] = "SELECT id FROM agent WHERE id > ? AND date_add < ? LIMIT 1;",
+    [WDB_STMT_GLOBAL_GROUP_SYNC_REQ_GET_API] = "SELECT id FROM agent WHERE group_sync_status = 'syncreq' AND date_add < ?;",
+    [WDB_STMT_GLOBAL_GROUP_SYNC_ALL_GET_API] = "SELECT id FROM agent WHERE date_add < ?;",
     [WDB_STMT_GLOBAL_GROUP_SYNCREQ_FIND] = "SELECT 1 FROM agent WHERE group_sync_status = 'syncreq';",
     [WDB_STMT_GLOBAL_AGENT_GROUPS_NUMBER_GET] = "SELECT count(id_group) groups_number from belongs WHERE id_agent = ?;",
     [WDB_STMT_GLOBAL_GROUP_SYNC_SET] = "UPDATE agent SET group_sync_status = ? WHERE id = ?;",
@@ -274,6 +276,9 @@ static const char *SQL_STMT[] = {
     [WDB_STMT_SYSCOLLECTOR_OSINFO_CLEAR] = "DELETE FROM sys_osinfo;",
     [WDB_STMT_SYS_HOTFIXES_GET] = "SELECT HOTFIX FROM SYS_HOTFIXES;",
     [WDB_STMT_SYS_PROGRAMS_GET] = "SELECT DISTINCT NAME, VERSION, ARCHITECTURE, VENDOR, FORMAT, SOURCE, CPE, MSU_NAME, ITEM_ID, DESCRIPTION, LOCATION, SIZE, INSTALL_TIME FROM SYS_PROGRAMS;",
+    [WDB_STMT_GLOBAL_AGENT_SUMMARY_CONNECTIONS] = "SELECT COUNT(*) as quantity, connection_status AS status FROM agent GROUP BY status ORDER BY status ASC limit 5;",
+    [WDB_STMT_GLOBAL_AGENT_SUMMARY_CONNECTIONS_BY_OS] = "SELECT COUNT(*) as quantity, os_platform AS platform FROM agent GROUP BY platform ORDER BY quantity DESC limit 5;",
+    [WDB_STMT_GLOBAL_AGENT_SUMMARY_CONNECTIONS_BY_GROUP] = "SELECT COUNT(*) as q, g.name AS group_name FROM belongs b JOIN 'group' g ON b.id_group=g.id GROUP BY b.id_group ORDER BY q DESC LIMIT 5;",
 };
 
 /**

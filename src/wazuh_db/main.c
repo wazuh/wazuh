@@ -231,7 +231,12 @@ int main(int argc, char ** argv)
 
     os_calloc(wconfig.worker_pool_size, sizeof(pthread_t), worker_pool);
 
-    router_register_api_endpoint("wdb-http.sock", "GET", "/get-all-agents-ids", (void*)&wdb_parse_api);
+    router_register_api_endpoint("wdb-http.sock", "GET", "/v1/agents/ids", (void*)&wdb_parse_api);
+    router_register_api_endpoint("wdb-http.sock", "GET", "/v1/agents/ids/groups/:name", (void*)&wdb_parse_api);
+    router_register_api_endpoint("wdb-http.sock", "GET", "/v1/agents/ids/groups", (void*)&wdb_parse_api);
+    router_register_api_endpoint("wdb-http.sock", "GET", "/v1/agents/:agent_id/groups", (void*)&wdb_parse_api);
+    router_register_api_endpoint("wdb-http.sock", "POST", "/v1/agents/summary", (void*)&wdb_parse_api);
+
     router_start_api("wdb-http.sock");
 
     for (i = 0; i < wconfig.worker_pool_size; i++) {
