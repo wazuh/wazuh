@@ -16,7 +16,7 @@ with patch('wazuh.core.common.wazuh_uid'):
         from wazuh.core.agent import *
         from wazuh.core.exception import WazuhException
         from api.util import remove_nones_to_dict
-        from wazuh.rbac.utils import resources_cache
+        from wazuh.rbac.utils import RESOURCES_CACHE
 
 # all necessary params
 
@@ -1316,7 +1316,7 @@ def test_expand_group(socket_mock, group, wdb_response, expected_agents):
         Expected agent IDs for the selected group.
     """
     # Clear and set get_agents_info cache
-    resources_cache.clear()
+    RESOURCES_CACHE.clear()
     test_get_agents_info()
 
     with patch('wazuh.core.wdb.WazuhDBConnection.send', side_effect=wdb_response):

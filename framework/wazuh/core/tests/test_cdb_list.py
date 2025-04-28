@@ -15,7 +15,7 @@ with patch('wazuh.core.common.wazuh_uid'):
         from wazuh.core.cdb_list import check_path, get_list_from_file, iterate_lists, \
             split_key_value_with_quotes, validate_cdb_list, create_list_file, delete_list, get_filenames_paths
         from wazuh.core.exception import WazuhError
-        from wazuh.rbac.utils import resources_cache
+        from wazuh.rbac.utils import RESOURCES_CACHE
 
 
 # Variables
@@ -92,7 +92,7 @@ def test_iterate_lists(only_names, path):
     """
     required_fields = ['relative_dirname', 'filename'] if only_names else ['relative_dirname', 'filename', 'items']
 
-    resources_cache.clear()
+    RESOURCES_CACHE.clear()
     result = iterate_lists(absolute_path=path, only_names=only_names)
     assert isinstance(result, list)
     assert len(result) != 0
