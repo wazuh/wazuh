@@ -322,15 +322,37 @@ extern "C"
             instance->server->Get(endpoint,
                                   [callback, endpointStr](const httplib::Request& req, httplib::Response& res)
                                   {
-                                      logMessage(modules_log_level_t::LOG_DEBUG, "GET request received");
-                                      char* output;
+                                      bool first = true;
+                                      std::string json = "{";
+
+                                      for (const auto& [key, value] : req.path_params)
+                                      {
+                                          if (!first)
+                                          {
+                                              json += ",";
+                                          }
+                                          first = false;
+                                          json.append("\"").append(key).append("\":\"").append(value).append("\"");
+                                      }
+                                      json += "}";
+
+                                      char* output = nullptr;
                                       auto cb = reinterpret_cast<int (*)(const char*, const char*, char**)>(callback);
-                                      logMessage(modules_log_level_t::LOG_DEBUG, endpointStr + " " + req.body);
-                                      cb(endpointStr.c_str(), req.body.c_str(), &output);
-                                      res.set_content(output, "text/plain");
+                                      logMessage(modules_log_level_t::LOG_DEBUG, endpointStr + " Parameters: " + json);
+                                      cb(endpointStr.c_str(), json.c_str(), &output);
                                       logMessage(modules_log_level_t::LOG_DEBUG,
                                                  "GET request response: " + std::string(output));
-                                      free(output);
+
+                                      if (output == nullptr)
+                                      {
+                                          res.status = 400;
+                                      }
+                                      else
+                                      {
+                                          res.status = 200;
+                                          res.set_content(output, "text/json");
+                                          free(output);
+                                      }
                                   });
         }
         else if (methodStr.compare("POST") == 0)
@@ -339,12 +361,21 @@ extern "C"
             instance->server->Post(endpoint,
                                    [callback, endpointStr](const httplib::Request& req, httplib::Response& res)
                                    {
-                                       logMessage(modules_log_level_t::LOG_DEBUG, "POST request received");
-                                       char* output;
+                                       logMessage(modules_log_level_t::LOG_INFO, "POST request received");
+                                       char* output = nullptr;
                                        auto cb = reinterpret_cast<int (*)(const char*, const char*, char**)>(callback);
                                        cb(endpointStr.c_str(), req.body.c_str(), &output);
-                                       res.set_content(output, "text/plain");
-                                       free(output);
+
+                                       if (output == nullptr)
+                                       {
+                                           res.status = 400;
+                                       }
+                                       else
+                                       {
+                                           res.status = 200;
+                                           res.set_content(output, "text/json");
+                                           free(output);
+                                       }
                                    });
         }
         else
