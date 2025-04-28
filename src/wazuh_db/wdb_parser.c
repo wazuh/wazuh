@@ -228,7 +228,7 @@ int wdb_parse_api(const char* endpoint, __attribute__((unused)) const char* inpu
     timersub(&end, &begin, &diff);
     w_inc_global_open_time(diff);
 
-    cJSON* result = NULL;;
+    cJSON* result = NULL;
     if (strcmp(endpoint, "/v1/agents/ids") == 0) {
         result = wdb_global_get_all_agent_ids(wdb);
     } else if (strcmp(endpoint, "/v1/agents/ids/groups/:name") == 0) {
