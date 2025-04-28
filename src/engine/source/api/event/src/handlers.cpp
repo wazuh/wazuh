@@ -7,10 +7,12 @@
 namespace api::event::handlers
 {
 adapter::RouteHandler pushEvent(const std::shared_ptr<::router::IRouterAPI>& orchestrator,
-                                ProtolHandler protocolHandler)
+                                ProtolHandler protocolHandler,
+                                const std::shared_ptr<::archiver::IArchiver>& archiver)
 {
     return [lambdaName = logging::getLambdaName(__FUNCTION__, "apiHandler"),
             weakOrchestrator = std::weak_ptr(orchestrator),
+            archiver,
             protocolHandler](const auto& req, auto& res)
     {
         LOG_TRACE_L(lambdaName.c_str(), fmt::format("Recieved request {}", req.body));
@@ -23,6 +25,8 @@ adapter::RouteHandler pushEvent(const std::shared_ptr<::router::IRouterAPI>& orc
             res.set_content("{\"error\": \"Internal server error\", \"code\": 500}", "application/json");
             return;
         }
+
+        archiver->archive(std::string(req.body));
 
         std::queue<base::Event> events;
         try

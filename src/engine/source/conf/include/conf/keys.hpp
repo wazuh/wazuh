@@ -45,6 +45,9 @@ constexpr std::string_view METRICS_ENABLED = "/engine/metrics/enabled";
 constexpr std::string_view METRICS_EXPORT_INTERVAL = "/engine/metrics/export_interval";
 constexpr std::string_view METRICS_EXPORT_TIMEOUT = "/engine/metrics/export_timeout";
 
+constexpr std::string_view ARCHIVER_ENABLED = "/engine/archiver/enabled";
+constexpr std::string_view ARCHIVER_PATH = "/engine/archiver/path";
+
 }; // namespace conf::key
 
 #endif // _CONF_KEYS_HPP

@@ -11,6 +11,7 @@ import api_communication.proto.policy_pb2 as policy
 import api_communication.proto.router_pb2 as router
 import api_communication.proto.tester_pb2 as tester
 import api_communication.proto.geo_pb2 as geo
+import api_communication.proto.archiver_pb2 as archiver
 
 
 def get_endpoint(message: Message) -> Tuple[Optional[str], str]:
@@ -106,8 +107,6 @@ def get_endpoint(message: Message) -> Tuple[Optional[str], str]:
         return None, 'router/route/patchPriority'
     if isinstance(message, router.TableGet_Request):
         return None, 'router/table/get'
-    if isinstance(message, router.QueuePost_Request):
-        return None, 'router/queue/post'
     if isinstance(message, router.EpsGet_Request):
         return None, 'router/eps/getSettings'
     if isinstance(message, router.EpsEnable_Request):
@@ -130,6 +129,14 @@ def get_endpoint(message: Message) -> Tuple[Optional[str], str]:
         return None, 'tester/table/get'
     if isinstance(message, tester.RunPost_Request):
         return None, 'tester/run/post'
+
+    # Archiver
+    if isinstance(message, archiver.ArchiverActivate_Request):
+        return None, 'archiver/activate'
+    if isinstance(message, archiver.ArchiverDeactivate_Request):
+        return None, 'archiver/deactivate'
+    if isinstance(message, archiver.ArchiverStatus_Request):
+        return None, 'archiver/status'
 
     # Unknown
     return 'api-communication does not have the api command for the request, check the get_command method', ''

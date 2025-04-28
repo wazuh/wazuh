@@ -6,6 +6,7 @@ add_subdirectory(router)
 add_subdirectory(tester)
 add_subdirectory(kvdb)
 add_subdirectory(event)
+add_subdirectory(archiver)
 
 add_library(api INTERFACE)
 target_include_directories(api INTERFACE
@@ -19,4 +20,5 @@ target_link_libraries(api INTERFACE
   api::tester
   api::kvdb
   api::event
+  api::archiver
 )

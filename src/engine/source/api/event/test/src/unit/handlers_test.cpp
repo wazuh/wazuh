@@ -2,6 +2,7 @@
 
 #include <api/adapter/baseHandler_test.hpp>
 #include <api/event/handlers.hpp>
+#include <archiver/mockArchiver.hpp>
 #include <router/mockRouter.hpp>
 
 using namespace api::adapter;
@@ -38,14 +39,16 @@ INSTANTIATE_TEST_SUITE_P(Api,
                                  },
                                  [](const std::shared_ptr<::router::IRouterAPI>& orchestrator)
                                  {
-                                     return pushEvent(orchestrator,
-                                                      [](auto&&)
-                                                      {
-                                                          std::queue<base::Event> events;
-                                                          auto event = std::make_shared<json::Json>();
-                                                          events.push(event);
-                                                          return events;
-                                                      });
+                                     return pushEvent(
+                                         orchestrator,
+                                         [](auto&&)
+                                         {
+                                             std::queue<base::Event> events;
+                                             auto event = std::make_shared<json::Json>();
+                                             events.push(event);
+                                             return events;
+                                         },
+                                         std::make_shared<archiver::mocks::MockArchiver>());
                                  },
                                  []()
                                  {
@@ -66,9 +69,10 @@ INSTANTIATE_TEST_SUITE_P(Api,
                                  },
                                  [](const std::shared_ptr<::router::IRouterAPI>& orchestrator)
                                  {
-                                     return pushEvent(orchestrator,
-                                                      [](auto&&) -> std::queue<base::Event>
-                                                      { throw std::runtime_error("error"); });
+                                     return pushEvent(
+                                         orchestrator,
+                                         [](auto&&) -> std::queue<base::Event> { throw std::runtime_error("error"); },
+                                         std::make_shared<archiver::mocks::MockArchiver>());
                                  },
                                  []()
                                  {
@@ -90,15 +94,17 @@ INSTANTIATE_TEST_SUITE_P(Api,
                                  },
                                  [](const std::shared_ptr<::router::IRouterAPI>& orchestrator)
                                  {
-                                     return pushEvent(orchestrator,
-                                                      [](auto&&)
-                                                      {
-                                                          std::queue<base::Event> events;
-                                                          auto event = std::make_shared<json::Json>();
-                                                          events.push(event);
-                                                          events.push(event);
-                                                          return events;
-                                                      });
+                                     return pushEvent(
+                                         orchestrator,
+                                         [](auto&&)
+                                         {
+                                             std::queue<base::Event> events;
+                                             auto event = std::make_shared<json::Json>();
+                                             events.push(event);
+                                             events.push(event);
+                                             return events;
+                                         },
+                                         std::make_shared<archiver::mocks::MockArchiver>());
                                  },
                                  []()
                                  {
