@@ -140,6 +140,7 @@ override_dh_install:
 	mkdir -p ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/debian/11
 	mkdir -p ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/debian/12
 	mkdir -p ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/ol/9
+	mkdir -p ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/ol/10
 	mkdir -p ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/rhel/5
 	mkdir -p ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/rhel/6
 	mkdir -p ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/rhel/7
@@ -203,6 +204,7 @@ override_dh_install:
 	cp etc/templates/config/centos/10/sca.files ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/centos/10
 
 	cp etc/templates/config/ol/9/sca.files ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/ol/9
+	cp etc/templates/config/ol/10/sca.files ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/ol/10
 
 	cp etc/templates/config/rhel/sca.files ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/rhel
 	cp etc/templates/config/rhel/5/sca.files ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/rhel/5
