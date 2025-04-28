@@ -122,6 +122,7 @@ override_dh_install:
 	mkdir -p ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/centos/6
 	mkdir -p ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/centos/7
 	mkdir -p ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/centos/8
+	mkdir -p ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/centos/9
 	mkdir -p ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/centos/10
 	mkdir -p ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/darwin/15
 	mkdir -p ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/darwin/16
@@ -200,6 +201,7 @@ override_dh_install:
 	cp etc/templates/config/centos/6/sca.files ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/centos/6
 	cp etc/templates/config/centos/7/sca.files ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/centos/7
 	cp etc/templates/config/centos/8/sca.files ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/centos/8
+	cp etc/templates/config/centos/9/sca.files ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/centos/9
 	cp etc/templates/config/centos/10/sca.files ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/centos/10
 
 	cp etc/templates/config/ol/9/sca.files ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/ol/9

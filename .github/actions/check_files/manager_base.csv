@@ -500,6 +500,7 @@ full_filename,owner_name,group_name,mode,type,prot_permissions,size_bytes,size_e
 /var/ossec/ruleset/sca/cis_centos6_linux.yml*,root,wazuh,640,file,-rw-r-----,,
 /var/ossec/ruleset/sca/cis_centos7_linux.yml*,root,wazuh,640,file,-rw-r-----,,
 /var/ossec/ruleset/sca/cis_centos8_linux.yml*,root,wazuh,640,file,-rw-r-----,,
+/var/ossec/ruleset/sca/cis_centos9_linux.yml*,root,wazuh,640,file,-rw-r-----,,
 /var/ossec/ruleset/sca/cis_centos10_linux.yml*,root,wazuh,640,file,-rw-r-----,,
 /var/ossec/ruleset/sca/cis_debian10.yml*,root,wazuh,640,file,-rw-r-----,,
 /var/ossec/ruleset/sca/cis_debian11.yml*,root,wazuh,640,file,-rw-r-----,,
