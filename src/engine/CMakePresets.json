@@ -168,6 +168,19 @@
       "generator": "Ninja",
       "displayName": "MinSizeRel (Ninja)",
       "inherits": "minsize"
+    },
+    {
+      "name": "perf",
+      "description": "Build the project for performance profiling with perf",
+      "displayName": "Performance Profiling (Ninja)",
+      "generator": "Ninja",
+      "inherits": "debug-ninja",
+      "cacheVariables": {
+        "CMAKE_CXX_FLAGS": "-fno-omit-frame-pointer -gz=none -g -O0",
+        "CMAKE_C_FLAGS": "-fno-omit-frame-pointer -gz=none -g -O0",
+        "CMAKE_EXE_LINKER_FLAGS": "-fno-omit-frame-pointer -gz=none",
+        "CMAKE_SHARED_LINKER_FLAGS": "-fno-omit-frame-pointer -gz=none"
+      }
     }
   ]
 }
