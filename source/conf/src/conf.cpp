@@ -90,6 +90,10 @@ Conf::Conf(std::shared_ptr<IApiLoader> apiLoader)
     addUnit<bool>(key::METRICS_ENABLED, "WAZUH_METRICS_ENABLED", false);
     addUnit<int64_t>(key::METRICS_EXPORT_INTERVAL, "WAZUH_METRICS_EXPORT_INTERVAL", 10000);
     addUnit<int64_t>(key::METRICS_EXPORT_TIMEOUT, "WAZUH_METRICS_EXPORT_TIMEOUT", 1000);
+
+    // Archiver module
+    addUnit<bool>(key::ARCHIVER_ENABLED, "WAZUH_ARCHIVER_ENABLED", false);
+    addUnit<std::string>(key::ARCHIVER_PATH, "WAZUH_ARCHIVER_PATH", "/var/lib/wazuh-server/engine/archives.json");
 };
 
 void Conf::validate(const json::Json& config) const
