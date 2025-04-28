@@ -11,8 +11,8 @@ from wazuh.core import common
 
 from api.configuration import security_conf
 
-tokens_cache = TTLCache(maxsize=4500, ttl=security_conf['auth_token_exp_timeout'])
-resources_cache = TTLCache(maxsize=100, ttl=10)
+TOKENS_CACHE = TTLCache(maxsize=4500, ttl=security_conf['auth_token_exp_timeout'])
+RESOURCES_CACHE = TTLCache(maxsize=100, ttl=10)
 
 
 def clear_tokens_cache():
@@ -20,7 +20,7 @@ def clear_tokens_cache():
     common.token_cache_event.set()
 
 
-def token_cache(cache: TTLCache):
+def token_cache(cache: TTLCache = TOKENS_CACHE):
     """Apply cache depending on whether the request comes from the master node or from a worker node.
 
     Parameters
@@ -56,7 +56,7 @@ def token_cache(cache: TTLCache):
     return decorator
 
 
-def resource_cache(cache: TTLCache):
+def resource_cache(cache: TTLCache = RESOURCES_CACHE):
     """Apply cache depending on the decorated function name.
 
     Parameters
@@ -85,7 +85,7 @@ def resource_cache(cache: TTLCache):
     return decorator
 
 
-@resource_cache(cache=resources_cache)
+@resource_cache()
 def expand_rules() -> set:
     """Return all ruleset rule files in the system.
 
@@ -104,7 +104,7 @@ def expand_rules() -> set:
     return rules
 
 
-@resource_cache(cache=resources_cache)
+@resource_cache()
 def expand_decoders() -> set:
     """Return all ruleset decoder files in the system.
 
@@ -123,7 +123,7 @@ def expand_decoders() -> set:
     return decoders
 
 
-@resource_cache(cache=resources_cache)
+@resource_cache()
 def expand_lists() -> set:
     """Return all CDB list files in the system.
 
