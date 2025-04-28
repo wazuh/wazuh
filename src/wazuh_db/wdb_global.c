@@ -2276,7 +2276,6 @@ cJSON* wdb_global_get_distinct_agent_groups(wdb_t *wdb, char *group_hash, wdbc_r
 
 
 cJSON* wdb_global_sync_agent_groups_get_all(wdb_t *wdb, wdb_groups_sync_condition_t condition, bool set_synced, bool get_hash, int agent_registration_delta) {
-    int last_agent_id = 0;
 
     wdb_stmt sync_statement_index = WDB_STMT_GLOBAL_GROUP_SYNC_REQ_GET_API;
     switch (condition) {
@@ -2341,7 +2340,7 @@ cJSON* wdb_global_sync_agent_groups_get_all(wdb_t *wdb, wdb_groups_sync_conditio
             if (set_synced) {
                 //Set groups sync status as synced
                 if (OS_SUCCESS != wdb_global_set_agent_groups_sync_status(wdb, id, "synced")) {
-                    merror("Cannot set group_sync_status for agent %d", last_agent_id);
+                    merror("Cannot set group_sync_status for agent %d", id);
                 }
             }
         }

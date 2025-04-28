@@ -288,11 +288,14 @@ extern "C"
         }
     }
 
+    /**
+     * @brief Struct to hold the server instance and its thread.
+     */
     struct ServerInstance final
     {
-        std::unique_ptr<httplib::Server> server;
-        std::thread serverThread;
-        bool running {false};
+        std::unique_ptr<httplib::Server> server; ///< Server instance
+        std::thread serverThread;                ///< Thread to run the server
+        bool running {false};                    ///< Flag to indicate if the server is running
     };
 
     std::map<std::string, std::shared_ptr<ServerInstance>> G_HTTPINSTANCES;
