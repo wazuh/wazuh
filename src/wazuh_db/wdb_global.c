@@ -871,6 +871,26 @@ cJSON* wdb_global_select_groups(wdb_t *wdb) {
     return result;
 }
 
+cJSON* wdb_global_get_group_all_agents(wdb_t *wdb, char* group_name) {
+    sqlite3_stmt* stmt = wdb_init_stmt_in_cache(wdb, WDB_STMT_GLOBAL_GROUP_BELONG_GET);
+    if (!stmt) {
+        merror("DB(%s) sqlite3_prepare_v2(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+        return NULL;
+    }
+
+    if (sqlite3_bind_text(stmt, 1, group_name, -1, NULL) != SQLITE_OK) {
+        merror("DB(%s) sqlite3_bind_text(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+        return NULL;
+    }
+
+    if (sqlite3_bind_int(stmt, 2, 0) != SQLITE_OK) {
+        merror("DB(%s) sqlite3_bind_int(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+        return NULL;
+    }
+
+    return wdb_exec_stmt_single_column(stmt);
+}
+
 cJSON* wdb_global_get_group_agents(wdb_t *wdb,  wdbc_result* status, char* group_name, int last_agent_id) {
     sqlite3_stmt* stmt = wdb_init_stmt_in_cache(wdb, WDB_STMT_GLOBAL_GROUP_BELONG_GET);
     if (!stmt) {
@@ -1613,9 +1633,6 @@ wdbc_result wdb_global_sync_agent_groups_get(wdb_t *wdb, wdb_groups_sync_conditi
                         status = WDBC_DUE;
                     }
                     os_free(agent_str);
-                } else {
-                    //Continue with the next agent
-                    last_agent_id++;
                 }
             } else {
                 //All agents have been obtained
@@ -2254,5 +2271,259 @@ cJSON* wdb_global_get_distinct_agent_groups(wdb_t *wdb, char *group_hash, wdbc_r
     else if (SQLITE_ROW == sql_status) *status = WDBC_DUE;
     else *status = WDBC_ERROR;
 
+    return result;
+}
+
+
+cJSON* wdb_global_sync_agent_groups_get_all(wdb_t *wdb, wdb_groups_sync_condition_t condition, bool set_synced, bool get_hash, int agent_registration_delta) {
+    int last_agent_id = 0;
+
+    wdb_stmt sync_statement_index = WDB_STMT_GLOBAL_GROUP_SYNC_REQ_GET_API;
+    switch (condition) {
+        case WDB_GROUP_SYNC_STATUS:
+            sync_statement_index = WDB_STMT_GLOBAL_GROUP_SYNC_REQ_GET_API;
+            break;
+        case WDB_GROUP_ALL:
+            sync_statement_index = WDB_STMT_GLOBAL_GROUP_SYNC_ALL_GET_API;
+            break;
+        case WDB_GROUP_INVALID_CONDITION:
+            mdebug1("Invalid groups sync condition");
+            return NULL;
+        default:
+            break;
+    }
+
+    cJSON* j_response = cJSON_CreateObject();
+    cJSON* j_data = cJSON_CreateArray();
+    cJSON_AddItemToObject(j_response, "data", j_data);
+
+    if (condition != WDB_GROUP_NO_CONDITION) {
+        if (!wdb->transaction && wdb_begin2(wdb) < 0) {
+            cJSON_Delete(j_response);
+            mdebug1("Cannot begin transaction");
+            return NULL;
+        }
+
+        // Agents registered recently may be excluded depending on the 'agent_registration_delta' value.
+        time_t agent_registration_time = time(NULL) - agent_registration_delta;
+
+        // Prepare SQL query
+        if (wdb_stmt_cache(wdb, sync_statement_index) < 0) {
+            mdebug1("Cannot cache statement");
+            cJSON_Delete(j_response);
+            return NULL;
+        }
+        sqlite3_stmt* sync_stmt = wdb->stmt[sync_statement_index];
+
+        if (sqlite3_bind_int(sync_stmt, 1, agent_registration_time) != SQLITE_OK) {
+            merror("DB(%s) sqlite3_bind_int(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+            cJSON_Delete(j_response);
+            return NULL;
+        }
+
+        int _status;
+        while ((_status = wdb_step(sync_stmt)) == SQLITE_ROW) {
+            int id = sqlite3_column_int(sync_stmt, 0);
+
+            cJSON* j_agent = cJSON_CreateObject();
+            cJSON_AddItemToObject(j_agent, "id", cJSON_CreateNumber(id));
+            //Get the groups of the agent
+            cJSON* j_groups = wdb_global_select_group_belong(wdb, id);
+            if (j_groups && j_groups->child) {
+                cJSON_AddItemToObject(j_agent, "groups", j_groups);
+            } else {
+                cJSON_Delete(j_groups);
+                cJSON_AddItemToObject(j_agent, "groups", cJSON_CreateArray());
+            }
+
+            cJSON_AddItemToArray(j_data, j_agent);
+
+            if (set_synced) {
+                //Set groups sync status as synced
+                if (OS_SUCCESS != wdb_global_set_agent_groups_sync_status(wdb, id, "synced")) {
+                    merror("Cannot set group_sync_status for agent %d", last_agent_id);
+                }
+            }
+        }
+    }
+
+    if (get_hash) {
+        os_sha1 hash = {0};
+        if (OS_SUCCESS == wdb_get_global_group_hash(wdb, hash)) {
+            if (hash[0] == 0) {
+                cJSON_AddItemToObject(j_response, "hash", cJSON_CreateNull());
+            } else {
+                cJSON_AddStringToObject(j_response, "hash", hash);
+            }
+        } else {
+            merror("Cannot obtain the global group hash");
+            return NULL;
+        }
+    }
+
+    return j_response;
+}
+
+cJSON* wdb_global_select_group_belong_agent_id(wdb_t *wdb, int id_agent) {
+    sqlite3_stmt *stmt = NULL;
+
+    if (!wdb->transaction && wdb_begin2(wdb) < 0) {
+        mdebug1("Cannot begin transaction");
+        return NULL;
+    }
+
+    if (wdb_stmt_cache(wdb, WDB_STMT_GLOBAL_SELECT_GROUP_BELONG) < 0) {
+        mdebug1("Cannot cache statement");
+        return NULL;
+    }
+
+    stmt = wdb->stmt[WDB_STMT_GLOBAL_SELECT_GROUP_BELONG];
+
+    if (sqlite3_bind_int(stmt, 1, id_agent) != SQLITE_OK) {
+        merror("DB(%s) sqlite3_bind_int(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+        return NULL;
+    }
+
+    return wdb_exec_stmt_single_column(stmt);
+}
+
+static int wdb_global_populate_summary_with_stmt(wdb_t *wdb, cJSON* j_summary, wdb_stmt stmt_id) {
+
+    if (wdb_stmt_cache(wdb, stmt_id) < 0) {
+        mdebug1("Cannot cache statement");
+        return OS_INVALID;
+    }
+
+    sqlite3_stmt *stmt = wdb->stmt[stmt_id];
+
+    int _status;
+
+    while ((_status = wdb_step(stmt)) == SQLITE_ROW) {
+        cJSON_AddNumberToObject(j_summary, (const char *)sqlite3_column_text(stmt, 1), sqlite3_column_double(stmt, 0));
+    }
+
+    if (_status != SQLITE_DONE) {
+        mdebug1("DB(%s) SQLite: %s", wdb->id, sqlite3_errmsg(wdb->db));
+        return OS_INVALID;
+    }
+    return OS_SUCCESS;
+}
+
+static int wdb_global_populate_summary_without_stmt(wdb_t *wdb, cJSON* j_summary, cJSON* j_agent_array, char* query) {
+    sqlite3_stmt *stmt = NULL;
+    if (sqlite3_prepare_v2(wdb->db, query, -1, &stmt, NULL) != SQLITE_OK) {
+        merror("DB(%s) sqlite3_prepare_v2(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+        return OS_INVALID;
+    }
+
+    cJSON* j_id = NULL;
+    int idx = 0;
+    cJSON_ArrayForEach(j_id, j_agent_array) {
+        if (cJSON_IsNumber(j_id)) {
+            if (sqlite3_bind_int(stmt, ++idx, j_id->valueint) != SQLITE_OK) {
+                merror("DB(%s) sqlite3_bind_int(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+                sqlite3_finalize(stmt);
+                return OS_INVALID;
+            }
+        } else {
+            merror("Invalid element in agent_array");
+            sqlite3_finalize(stmt);
+            return OS_INVALID;
+        }
+    }
+
+    int _status;
+    while ((_status = wdb_step(stmt)) == SQLITE_ROW) {
+        cJSON_AddNumberToObject(j_summary, (const char *)sqlite3_column_text(stmt, 1), sqlite3_column_double(stmt, 0));
+    }
+
+    if (_status != SQLITE_DONE) {
+        mdebug1("DB(%s) SQLite: %s", wdb->id, sqlite3_errmsg(wdb->db));
+        sqlite3_finalize(stmt);
+        return OS_INVALID;
+    }
+    sqlite3_finalize(stmt);
+    return OS_SUCCESS;
+}
+
+static char* wdb_global_build_summary_dynamic_query(const int array_size, const char* prefix, const char* suffix) {
+    char* query = NULL;
+    size_t query_len = strlen(prefix) + strlen(suffix) + (array_size * 2) + 1;
+
+    os_calloc(query_len, sizeof(char), query);
+    strncat(query, prefix, query_len);
+    for (int i = 0; i < array_size; i++) {
+        if (i == array_size - 1) {
+            strncat(query, "?", query_len);
+        } else {
+            strncat(query, "?,", query_len);
+        }
+    }
+
+    strncat(query, suffix, query_len);
+
+    return query;
+}
+
+cJSON* wdb_global_get_summary(wdb_t *wdb, cJSON* agent_array) {
+    if (!wdb->transaction && wdb_begin2(wdb) < 0) {
+        mdebug1("Cannot begin transaction");
+        return NULL;
+    }
+
+    cJSON * result = cJSON_CreateObject();
+    cJSON * j_status = cJSON_CreateObject();
+    cJSON_AddItemToObject(result, "agents_by_status", j_status);
+    cJSON * j_groups = cJSON_CreateObject();
+    cJSON_AddItemToObject(result, "agents_by_groups", j_groups);
+    cJSON * j_os = cJSON_CreateObject();
+    cJSON_AddItemToObject(result, "agents_by_os", j_os);
+
+    const int agent_array_size = cJSON_GetArraySize(agent_array);
+
+    // If the agent_array is empty, we will use the default query (all agents)
+    if (agent_array_size == 0) {
+        if (OS_SUCCESS != wdb_global_populate_summary_with_stmt(wdb, j_status, WDB_STMT_GLOBAL_AGENT_SUMMARY_CONNECTIONS) ||
+            OS_SUCCESS != wdb_global_populate_summary_with_stmt(wdb, j_os, WDB_STMT_GLOBAL_AGENT_SUMMARY_CONNECTIONS_BY_OS) ||
+            OS_SUCCESS != wdb_global_populate_summary_with_stmt(wdb, j_groups, WDB_STMT_GLOBAL_AGENT_SUMMARY_CONNECTIONS_BY_GROUP)) {
+            cJSON_Delete(result);
+            return NULL;
+        }
+    }
+    else {
+        static const char * query_status_prefix = "SELECT COUNT(*) as quantity, connection_status AS status FROM agent WHERE id IN (";
+        static const char * query_status_suffix = ") AND id > 0 GROUP BY status ORDER BY status ASC limit 5;";
+
+        static const char * query_os_prefix = "SELECT COUNT(*) as quantity, os_platform AS platform FROM agent WHERE id IN (";
+        static const char * query_os_suffix = ") AND id > 0 GROUP BY platform ORDER BY quantity DESC limit 5;";
+
+        static const char * query_groups_prefix = "SELECT COUNT(*) as q, g.name AS group_name FROM belongs b JOIN 'group' g ON b.id_group=g.id WHERE b.id_agent IN (";
+        static const char * query_groups_suffix = ") AND b.id_agent > 0 GROUP BY b.id_group ORDER BY q DESC LIMIT 5;";
+
+        char * query = wdb_global_build_summary_dynamic_query(agent_array_size, query_status_prefix, query_status_suffix);
+
+        if (OS_SUCCESS != wdb_global_populate_summary_without_stmt(wdb, j_status, agent_array, query)) {
+            cJSON_Delete(result);
+            os_free(query);
+            return NULL;
+        }
+        os_free(query);
+
+        query = wdb_global_build_summary_dynamic_query(agent_array_size, query_groups_prefix, query_groups_suffix);
+        if (OS_SUCCESS != wdb_global_populate_summary_without_stmt(wdb, j_groups, agent_array, query)) {
+            cJSON_Delete(result);
+            os_free(query);
+            return NULL;
+        }
+        os_free(query);
+
+        query = wdb_global_build_summary_dynamic_query(agent_array_size, query_os_prefix, query_os_suffix);
+        if (OS_SUCCESS != wdb_global_populate_summary_without_stmt(wdb, j_os, agent_array, query)) {
+            cJSON_Delete(result);
+            os_free(query);
+            return NULL;
+        }
+        os_free(query);
+    }
     return result;
 }
