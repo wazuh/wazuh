@@ -221,7 +221,10 @@ public:
         {
             if (m_syncMsg->data_type() == Synchronization::DataUnion_state)
             {
-                return m_syncMsg->data_as_state()->index()->string_view();
+                if (m_syncMsg->data_as_state()->index())
+                {
+                    return m_syncMsg->data_as_state()->index()->string_view();
+                }
             }
         }
         else
