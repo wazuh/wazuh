@@ -217,10 +217,16 @@ int wdb_global_update_agent_version(wdb_t *wdb,
         merror("DB(%s) sqlite3_bind_text(): %s", wdb->id, sqlite3_errmsg(wdb->db));
         return OS_INVALID;
     }
-    if (sqlite3_bind_text(stmt, index++, sync_status, -1, NULL) != SQLITE_OK) {
+
+    char *validated_sync_status = wdb_global_validate_sync_status(wdb, id, sync_status);
+
+    if (sqlite3_bind_text(stmt, index++, validated_sync_status, -1, SQLITE_TRANSIENT) != SQLITE_OK) {
         merror("DB(%s) sqlite3_bind_text(): %s", wdb->id, sqlite3_errmsg(wdb->db));
         return OS_INVALID;
     }
+
+    os_free(validated_sync_status);
+
     if (sqlite3_bind_text(stmt, index++, group_config_status, -1, NULL) != SQLITE_OK) {
         merror("DB(%s) sqlite3_bind_text(): %s", wdb->id, sqlite3_errmsg(wdb->db));
         return OS_INVALID;
@@ -336,10 +342,16 @@ int wdb_global_update_agent_keepalive(wdb_t *wdb, int id, const char *connection
         merror("DB(%s) sqlite3_bind_text(): %s", wdb->id, sqlite3_errmsg(wdb->db));
         return OS_INVALID;
     }
-    if (sqlite3_bind_text(stmt, 2, sync_status, -1, NULL) != SQLITE_OK) {
+
+    char *validated_sync_status = wdb_global_validate_sync_status(wdb, id, sync_status);
+
+    if (sqlite3_bind_text(stmt, 2, validated_sync_status, -1, SQLITE_TRANSIENT) != SQLITE_OK) {
         merror("DB(%s) sqlite3_bind_text(): %s", wdb->id, sqlite3_errmsg(wdb->db));
         return OS_INVALID;
     }
+
+    os_free(validated_sync_status);
+
     if (sqlite3_bind_int(stmt, 3, id) != SQLITE_OK) {
         merror("DB(%s) sqlite3_bind_int(): %s", wdb->id, sqlite3_errmsg(wdb->db));
         return OS_INVALID;
@@ -372,10 +384,16 @@ int wdb_global_update_agent_connection_status(wdb_t *wdb, int id, const char *co
         merror("DB(%s) sqlite3_bind_text(): %s", wdb->id, sqlite3_errmsg(wdb->db));
         return OS_INVALID;
     }
-    if (sqlite3_bind_text(stmt, 2, sync_status, -1, NULL) != SQLITE_OK) {
+
+    char *validated_sync_status = wdb_global_validate_sync_status(wdb, id, sync_status);
+
+    if (sqlite3_bind_text(stmt, 2, validated_sync_status, -1, SQLITE_TRANSIENT) != SQLITE_OK) {
         merror("DB(%s) sqlite3_bind_text(): %s", wdb->id, sqlite3_errmsg(wdb->db));
         return OS_INVALID;
     }
+
+    os_free(validated_sync_status);
+
     if (sqlite3_bind_int(stmt, 3, disconnection_time) != SQLITE_OK) {
             merror("DB(%s) sqlite3_bind_int(): %s", wdb->id, sqlite3_errmsg(wdb->db));
             return OS_INVALID;
@@ -417,10 +435,14 @@ int wdb_global_update_agent_status_code(wdb_t *wdb, int id, int status_code, con
         return OS_INVALID;
     }
 
-    if (sqlite3_bind_text(stmt, 3, sync_status, -1, NULL) != SQLITE_OK) {
+    char *validated_sync_status = wdb_global_validate_sync_status(wdb, id, sync_status);
+
+    if (sqlite3_bind_text(stmt, 3, validated_sync_status, -1, SQLITE_TRANSIENT) != SQLITE_OK) {
         merror("DB(%s) sqlite3_bind_text(): %s", wdb->id, sqlite3_errmsg(wdb->db));
         return OS_INVALID;
     }
+
+    os_free(validated_sync_status);
 
     if (sqlite3_bind_int(stmt, 4, id) != SQLITE_OK) {
         merror("DB(%s) sqlite3_bind_int(): %s", wdb->id, sqlite3_errmsg(wdb->db));
@@ -927,6 +949,74 @@ int wdb_global_delete_agent_belong(wdb_t *wdb, int id) {
     return wdb_exec_stmt_silent(stmt);
 }
 
+char *wdb_global_validate_sync_status(wdb_t *wdb, int id, const char *requested_sync_status) {
+    char *old_sync_status = wdb_global_get_sync_status(wdb, id);
+
+    if (!old_sync_status) {
+        merror("Failed to get old sync_status for agent '%d'", id);
+        // If we can't validate, allow the requested one by duplicating it
+        char *fallback = NULL;
+        os_strdup(requested_sync_status, fallback);
+        return fallback;
+    }
+
+    bool allowed = false;
+
+    if (strcmp(old_sync_status, "synced") == 0 || strcmp(old_sync_status, "syncreq_keepalive") == 0) {
+        allowed = true;
+    } else if (strcmp(old_sync_status, "syncreq_status") == 0) {
+        allowed = strcmp(requested_sync_status, "syncreq_keepalive") != 0;
+    } else if (strcmp(old_sync_status, "syncreq") == 0) {
+        allowed = strcmp(requested_sync_status, "syncreq_keepalive") != 0 &&
+                  strcmp(requested_sync_status, "syncreq_status") != 0;
+    }
+
+    char *final_sync_status = NULL;
+
+    if (allowed) {
+        os_strdup(requested_sync_status, final_sync_status);
+    } else {
+        os_strdup(old_sync_status, final_sync_status);
+    }
+
+    os_free(old_sync_status);
+    return final_sync_status;
+}
+
+char * wdb_global_get_sync_status(wdb_t *wdb, int id) {
+    sqlite3_stmt *stmt = NULL;
+    char *sync_status = NULL;
+
+    if (!wdb->transaction && wdb_begin2(wdb) < 0) {
+        mdebug1("Cannot begin transaction");
+        return NULL;
+    }
+
+    if (wdb_stmt_cache(wdb, WDB_STMT_GLOBAL_SYNC_GET) < 0) {
+        mdebug1("Cannot cache statement");
+        return NULL;
+    }
+
+    stmt = wdb->stmt[WDB_STMT_GLOBAL_SYNC_GET];
+
+    if (sqlite3_bind_int(stmt, 1, id) != SQLITE_OK) {
+        merror("DB(%s) sqlite3_bind_int(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+        return NULL;
+    }
+
+    int step = wdb_step(stmt);
+    if (step == SQLITE_ROW) {
+        const unsigned char *text = sqlite3_column_text(stmt, 0);
+        if (text) {
+            os_strdup((const char *)text, sync_status);
+        }
+    } else if (step != SQLITE_DONE) {
+        mdebug1("sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+    }
+
+    return sync_status;
+}
+
 int wdb_global_set_sync_status(wdb_t *wdb, int id, const char* sync_status) {
     sqlite3_stmt *stmt = NULL;
 
@@ -977,8 +1067,13 @@ wdbc_result wdb_global_sync_agent_info_get(wdb_t *wdb, int* last_agent_id, char 
         WDB_STMT_GLOBAL_SYNC_REQ_KEEPALIVE_GET
     };
 
+    int initial_agent_id = *last_agent_id;
+
     for (int i = 0; i < sizeof(stmts)/sizeof(*stmts); ++i) {
         int stmt_id = stmts[i];
+
+        *last_agent_id = initial_agent_id;
+        status = WDBC_UNKNOWN;
 
         while (status == WDBC_UNKNOWN) {
             //Prepare SQL query
@@ -1005,14 +1100,16 @@ wdbc_result wdb_global_sync_agent_info_get(wdb_t *wdb, int* last_agent_id, char 
                     //Get ID
                     int agent_id = json_id->valueint;
 
-                    //Get labels if any
-                    cJSON* json_labels = wdb_global_get_agent_labels(wdb, agent_id);
-                    if (json_labels) {
-                        if (json_labels->child) {
-                            cJSON_AddItemToObject(json_agent, "labels", json_labels);
-                        }
-                        else {
-                            cJSON_Delete(json_labels);
+                    if (stmt_id == WDB_STMT_GLOBAL_SYNC_REQ_FULL_GET) {
+                        //Get labels if any
+                        cJSON* json_labels = wdb_global_get_agent_labels(wdb, agent_id);
+                        if (json_labels) {
+                            if (json_labels->child) {
+                                cJSON_AddItemToObject(json_agent, "labels", json_labels);
+                            }
+                            else {
+                                cJSON_Delete(json_labels);
+                            }
                         }
                     }
 
@@ -1053,6 +1150,10 @@ wdbc_result wdb_global_sync_agent_info_get(wdb_t *wdb, int* last_agent_id, char 
                 status = WDBC_OK;
             }
             cJSON_Delete(sql_agents_response);
+        }
+
+        if (status == WDBC_ERROR || status == WDBC_DUE) {
+            break;
         }
     }
 

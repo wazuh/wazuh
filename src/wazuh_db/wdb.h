@@ -245,6 +245,7 @@ typedef enum wdb_stmt {
     WDB_STMT_GLOBAL_SYNC_REQ_FULL_GET,
     WDB_STMT_GLOBAL_SYNC_REQ_STATUS_GET,
     WDB_STMT_GLOBAL_SYNC_REQ_KEEPALIVE_GET,
+    WDB_STMT_GLOBAL_SYNC_GET,
     WDB_STMT_GLOBAL_SYNC_SET,
     WDB_STMT_GLOBAL_GROUP_SYNC_REQ_GET,
     WDB_STMT_GLOBAL_GROUP_SYNC_ALL_GET,
@@ -2031,6 +2032,24 @@ cJSON* wdb_global_select_groups(wdb_t *wdb);
  * @retval JSON with agents IDs on success, NULL on error.
  */
 cJSON* wdb_global_get_group_agents(wdb_t *wdb,  wdbc_result* status, char* group_name, int last_agent_id);
+
+/**
+ * @brief Function to find and set the correct sync status value
+ *
+ * @param [in] wdb The Global struct database.
+ * @param [in] id The agent ID
+ * @param [in] requested_sync_status The value of sync_status
+*/
+char *wdb_global_validate_sync_status(wdb_t *wdb, int id, const char *requested_sync_status);
+
+/**
+ * @brief Function to get sync_status of a particular agent.
+ *
+ * @param [in] wdb The Global struct database.
+ * @param [in] id The agent ID
+ * @return The value of sync_status.
+ */
+char * wdb_global_get_sync_status(wdb_t *wdb, int id);
 
 /**
  * @brief Function to update sync_status of a particular agent.
