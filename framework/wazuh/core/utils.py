@@ -1042,8 +1042,8 @@ class KeystoreReader:
     IV_SIZE = 16
     KEY_VALUE_SEPARATOR = ':'
 
-    def __init__(self, keystore_paht: Path):
-        self._data = keystore_paht.read_bytes()
+    def __init__(self, keystore_path: Path):
+        self._data = keystore_path.read_bytes()
         self._cipher = self._get_cipher()
         self._keystore = self._decrypt_keystore()
 

@@ -6,6 +6,7 @@
 import datetime
 import os
 from io import StringIO
+from pathlib import Path
 from shutil import copyfile
 from tempfile import NamedTemporaryFile, TemporaryDirectory
 from unittest.mock import ANY, MagicMock, Mock, call, patch
@@ -886,9 +887,9 @@ def test_full_copy():
 
         for attribute in dir(original_stat):
             if attribute.startswith('st_') and attribute not in non_copyable_attributes:
-                assert getattr(original_stat, attribute) == getattr(copy_stat, attribute), (
-                    f'Attribute {attribute} is not equal between original and copy files'
-                )
+                assert getattr(original_stat, attribute) == getattr(
+                    copy_stat, attribute
+                ), f'Attribute {attribute} is not equal between original and copy files'
     finally:
         os.path.exists(test_file) and os.remove(test_file)
         os.path.exists(copied_test_file) and os.remove(copied_test_file)
@@ -917,3 +918,49 @@ def test_get_utc_now():
     date = utils.get_utc_strptime(mock_date, default_format)
     assert isinstance(date, datetime.datetime)
     assert date == datetime.datetime(1970, 1, 1, 0, 1, tzinfo=datetime.timezone.utc)
+
+
+class TestKeystoreReader:
+    """Group KeystoreReader test."""
+
+    klass = utils.KeystoreReader
+    test_keystore = Path(test_data_path, 'test.keystore')
+
+    @patch('wazuh.core.utils.KeystoreReader')
+    def test_init_call_expected_methods(self, keystore_mock):
+        """Test if __init__ call the expected methods."""
+        path_mock = MagicMock()
+
+        with (
+            patch.object(self.klass, '_get_cipher'),
+            patch.object(self.klass, '_decrypt_keystore'),
+        ):
+            self.klass(path_mock)
+
+            path_mock.read_bytes.assert_called_once()
+            self.klass._get_cipher.assert_called_once()
+            self.klass._decrypt_keystore.assert_called_once()
+
+    @pytest.mark.parametrize('key,expected_value', [('foo', 'test1'), ('bar', 'test2')])
+    def test_getitem_from_keystore(self, key, expected_value):
+        """Test __getitem__ from keystore return correct value."""
+        keystore = self.klass(self.test_keystore)
+
+        assert keystore[key] == expected_value
+
+    def test_getitem_from_keystore_with_inexistent_key(self):
+        """Test __getitem__ from keystore return correct value."""
+        keystore = self.klass(self.test_keystore)
+
+        with pytest.raises(KeyError):
+            assert keystore['test_key']
+
+    @pytest.mark.parametrize(
+        'key,expected_value, default',
+        [('foo', 'test1', None), ('bar', 'test2', None), ('baz', 'test3', 'test3'), ('bat', None, None)],
+    )
+    def test_get_from_keystore(self, key, expected_value, default):
+        """Test __getitem__ from keystore return correct value."""
+        keystore = self.klass(self.test_keystore)
+
+        assert keystore.get(key, default) == expected_value
