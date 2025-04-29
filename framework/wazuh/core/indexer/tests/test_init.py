@@ -3,7 +3,7 @@ from unittest import mock
 import pytest
 from opensearchpy import AsyncOpenSearch
 from opensearchpy.exceptions import TransportError
-from wazuh.core.config.models.indexer import IndexerConfig, IndexerNode
+from wazuh.core.config.models.indexer import IndexerConfig, IndexerSSLConfig
 from wazuh.core.exception import WazuhIndexerError
 from wazuh.core.indexer import Indexer, create_indexer, get_indexer_client
 
@@ -122,13 +122,17 @@ async def test_create_indexer_ko(indexer_mock: mock.AsyncMock, retries: int):
 
 @mock.patch('wazuh.core.indexer.create_indexer')
 @mock.patch('wazuh.core.config.client.CentralizedConfig.get_indexer_config')
-async def test_get_indexer_client(get_indexer_config_mock, create_indexer_mock):
+@mock.patch('wazuh.core.config.models.indexer.KeystoreReader.__new__', return_value=None)
+async def test_get_indexer_client(keystore_mock, get_indexer_config_mock, create_indexer_mock):
     """Check the correct function of `get_indexer_client`."""
-    config_test = IndexerConfig(
-        hosts=[IndexerNode(host='example', port=9200)],
-        username='user',
-        password='password',
-    )
+    user = 'user'
+    password = 'password'
+
+    keystore_instance = mock.MagicMock(**{'_keystore': {'indexer-username': user, 'indexer-password': password}})
+    keystore_instance.__getitem__ = lambda self, x: self._keystore[x]
+    keystore_mock.return_value = keystore_instance
+
+    config_test = IndexerConfig(hosts=['http://example:9200'], ssl=IndexerSSLConfig())
     get_indexer_config_mock.return_value = config_test
 
     client_mock = mock.AsyncMock()
@@ -137,9 +141,9 @@ async def test_get_indexer_client(get_indexer_config_mock, create_indexer_mock):
         create_indexer_mock.assert_called_once_with(
             hosts=['example'],
             ports=[9200],
-            user='user',
-            password='password',
-            ssl=None,
+            user=user,
+            password=password,
+            ssl=IndexerSSLConfig(),
             retries=3,
         )
         assert indexer == client_mock

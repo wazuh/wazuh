@@ -25,9 +25,10 @@ def test_config_sections_ko():
         (
             {
                 'indexer': {
-                    'hosts': [{'host': 'localhost', 'port': 9200}],
+                    'hosts': ['http://localhost:9200'],
                     'username': 'user_example',
                     'password': 'password_example',
+                    'ssl': {'use_ssl': False},
                 },
                 'server': {},
             },
@@ -37,9 +38,10 @@ def test_config_sections_ko():
                     'logging.level': 'info',
                 },
                 'indexer': {
-                    'hosts': [{'host': 'localhost', 'port': 9200}],
+                    'hosts': ['http://localhost:9200'],
                     'username': 'user_example',
                     'password': 'password_example',
+                    'ssl': {'use_ssl': False},
                 },
                 'engine': {},
                 'management_api': {},
@@ -48,7 +50,8 @@ def test_config_sections_ko():
         ),
     ],
 )
-def test_config_default_values(init_values, expected):
+@patch('wazuh.core.config.models.indexer.KeystoreReader')
+def test_config_default_values(keystore_mock, init_values, expected):
     """Check the correct initialization of the `Config` class."""
     with patch.object(ValidateFilePathMixin, '_validate_file_path', return_value=None):
         config = Config(**init_values)

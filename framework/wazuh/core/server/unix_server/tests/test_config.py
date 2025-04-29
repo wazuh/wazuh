@@ -1,5 +1,5 @@
 import json
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from fastapi import status
@@ -21,7 +21,7 @@ mock_config_data = {
         'cti': {},
     },
     'indexer': {
-        'hosts': [{'host': 'localhost', 'port': 9200}],
+        'hosts': ['http://localhost:9200'],
         'username': 'admin',
         'password': 'password',
         'ssl': {'use_ssl': False, 'key': '', 'certificate': '', 'certificate_authorities': ['']},
@@ -33,7 +33,16 @@ mock_config_data = {
 
 
 @pytest.fixture
-def patch_load():
+def keystore_mock():
+    """Patch the keystore initialization."""
+    with patch('wazuh.core.config.models.indexer.KeystoreReader.__new__') as keystore_mock:
+        keystore_mock.return_value = MagicMock()
+
+        yield keystore_mock
+
+
+@pytest.fixture
+def patch_load(keystore_mock):
     """Patch the load method in CentralizedConfig."""
     with patch.object(CentralizedConfig, 'load', return_value=None):
         with patch.object(ValidateFilePathMixin, '_validate_file_path', return_value=None):

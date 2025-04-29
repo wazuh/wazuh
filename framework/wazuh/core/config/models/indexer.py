@@ -12,7 +12,7 @@ class IndexerConfig(WazuhConfigBaseModel):
 
     Parameters
     ----------
-    hosts : List[IndexerNode]
+    hosts : List[HttpUrl]
         List of nodes configuration.
     username : str
         The username for indexer authentication.
