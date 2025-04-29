@@ -24,7 +24,7 @@ assignees: ''
 ## Considerations
 
 - Testing environment: Deploy the new OS taking into account the following notes:
-  - If the Wazuh central components are supported: 1 VM
+  - If the Wazuh central components are supported: 1 VM for each architecture supported.
   - If the Wazuh agent is supported: 1 VM for each architecture supported.
   - If the Wazuh central components or the Wazuh agent is not supported, deploy a Debian 12 VM for the non-supported component.
 - All testing tasks must be completed for each OS architecture supported.
@@ -41,6 +41,7 @@ assignees: ''
   - [ ] Test the JobFlow testing tool for that specific system.
   - [ ] Add the OS and each architecture to the JobFlow testing tool.
   - [ ] Add the OS and each architecture to the GitHub Deployability and Upgrade release templates.
+  - [ ] Add support to the upgrade test pipeline.
 - [ ] Add the OS and its supported architectures to the E2E UX Tests spreadsheet (OS sheet).
 - [ ] Add the OS as supported in the compatibility system spreadsheet.
 -->
