@@ -392,6 +392,7 @@ paths:
           application/json:
             schema:
               type: object
+              required: [policy]
               properties:
                 policy:
                   $ref: "#/components/schemas/PolicyName"
@@ -435,6 +436,7 @@ paths:
           application/json:
             schema:
               type: object
+              required: [policy]
               properties:
                 policy:
                   $ref: "#/components/schemas/PolicyName"
@@ -478,6 +480,7 @@ paths:
           application/json:
             schema:
               type: object
+              required: [policy]
               properties:
                 policy:
                   $ref: "#/components/schemas/PolicyName"
@@ -529,6 +532,7 @@ paths:
           application/json:
             schema:
               type: object
+              required: [policy, asset, namespace]
               properties:
                 policy:
                   $ref: "#/components/schemas/PolicyName"
@@ -593,6 +597,7 @@ paths:
           application/json:
             schema:
               type: object
+              required: [policy, asset, namespace]
               properties:
                 policy:
                   $ref: "#/components/schemas/PolicyName"
@@ -662,6 +667,7 @@ paths:
           application/json:
             schema:
               type: object
+              required: [policy, namespace]
               properties:
                 policy:
                   $ref: "#/components/schemas/PolicyName"
@@ -721,6 +727,7 @@ paths:
           application/json:
             schema:
               type: object
+              required: [policy]
               properties:
                 policy:
                   $ref: "#/components/schemas/PolicyName"
@@ -938,6 +945,7 @@ paths:
           application/json:
             schema:
               type: object
+              required: [policy]
               properties:
                 policy:
                   $ref: "#/components/schemas/PolicyName"
@@ -2406,6 +2414,7 @@ components:
 
     ResourcePost_Request:
       type: object
+      required: [type, format, content, namespaceid]
       properties:
         type:
           $ref: "#/components/schemas/ResourceType"
@@ -2419,6 +2428,7 @@ components:
 
     ResourceGet_Request:
       type: object
+      required: [name, format, namespaceid]
       properties:
         name:
           $ref: "#/components/schemas/ResourceName"
@@ -2439,6 +2449,7 @@ components:
 
     ResourcePut_Request:
       type: object
+      required: [name, format, content, namespaceid]
       properties:
         name:
           $ref: "#/components/schemas/ResourceName"
@@ -2452,6 +2463,7 @@ components:
 
     ResourceDelete_Request:
       type: object
+      required: [name, namespaceid]
       properties:
         name:
           $ref: "#/components/schemas/ResourceName"
@@ -2460,6 +2472,7 @@ components:
 
     ResourceValidate_Request:
       type: object
+      required: [name, format, content, namespaceid]
       properties:
         name:
           $ref: "#/components/schemas/ResourceName"
@@ -2547,6 +2560,7 @@ components:
 
     PolicyDefaultParentGet_Request:
       type: object
+      required: [policy, namespace]
       properties:
         policy:
           $ref: "#/components/schemas/PolicyName"
@@ -2566,6 +2580,7 @@ components:
 
     PolicyDefaultParentPost_Request:
       type: object
+      required: [policy, namespace, default_parent]
       properties:
         policy:
           $ref: "#/components/schemas/PolicyName"
@@ -2576,6 +2591,7 @@ components:
 
     PolicyDefaultParentDelete_Request:
       type: object
+      required: [policy, namespace, default_parent]
       properties:
         policy:
           $ref: "#/components/schemas/PolicyName"
@@ -2646,6 +2662,7 @@ components:
 
     RoutePost_Request:
       type: object
+      required: [name, policy, filter, priority]
       properties:
         name:
           type: string
@@ -2663,6 +2680,7 @@ components:
 
     RouteDelete_Request:
       type: object
+      required: [name]
       properties:
         name:
           type: string
@@ -2670,6 +2688,7 @@ components:
 
     RouteGet_Request:
       type: object
+      required: [name]
       properties:
         name:
           type: string
@@ -2686,6 +2705,7 @@ components:
 
     RouteReload_Request:
       type: object
+      required: [name]
       properties:
         name:
           type: string
@@ -2693,6 +2713,7 @@ components:
 
     RoutePatchPriority_Request:
       type: object
+      required: [name, priority]
       properties:
         name:
           type: string
@@ -2721,6 +2742,7 @@ components:
 
     EpsUpdate_Request:
       type: object
+      required: [eps, refresh_interval]
       properties:
         eps:
           type: integer
@@ -2787,6 +2809,7 @@ components:
 
     KVDBGet_Request:
       type: object
+      required: [name, key]
       properties:
         name:
           $ref: "#/components/schemas/KVDBName"
@@ -2803,6 +2826,7 @@ components:
 
     KVDBSearch_Request:
       type: object
+      required: [name, prefix]
       properties:
         name:
           $ref: "#/components/schemas/KVDBName"
@@ -2832,6 +2856,7 @@ components:
 
     KVDBDelete_Request:
       type: object
+      required: [name, key]
       properties:
         name:
           $ref: "#/components/schemas/KVDBName"
@@ -2840,6 +2865,7 @@ components:
 
     KVDBPut_Request:
       type: object
+      required: [name, entry]
       properties:
         name:
           $ref: "#/components/schemas/KVDBName"
@@ -2869,6 +2895,7 @@ components:
 
     KVDBManagerPost_Request:
       type: object
+      required: [name]
       properties:
         name:
           $ref: "#/components/schemas/KVDBName"
@@ -2879,12 +2906,14 @@ components:
 
     KVDBManagerDelete_Request:
       type: object
+      required: [name]
       properties:
         name:
           $ref: "#/components/schemas/KVDBName"
 
     KVDBManagerDump_Request:
       type: object
+      required: [name]
       properties:
         name:
           $ref: "#/components/schemas/KVDBName"
@@ -2925,6 +2954,7 @@ components:
 
     TesterSessionPost:
       type: object
+      required: [name, policy]
       properties:
         name:
           $ref: "#/components/schemas/TesterSessionName"
@@ -2978,6 +3008,7 @@ components:
 
     TesterRunPost_Request:
       type: object
+      required: [name, ndjson_event]
       properties:
         name:
           $ref: "#/components/schemas/TesterSessionName"
@@ -3023,12 +3054,14 @@ components:
 
     TesterSessionReload_Request:
       type: object
+      required: [name]
       properties:
         name:
           $ref: "#/components/schemas/TesterSessionName"
 
     TesterSessionGet_Request:
       type: object
+      required: [name]
       properties:
         name:
           $ref: "#/components/schemas/TesterSessionName"
@@ -3044,6 +3077,7 @@ components:
 
     TesterSessionDelete_Request:
       type: object
+      required: [name]
       properties:
         name:
           $ref: "#/components/schemas/TesterSessionName"
@@ -3072,6 +3106,7 @@ components:
 
     GeoDbPost_Request:
       type: object
+      required: [path, type]
       properties:
         path:
           type: string
@@ -3082,6 +3117,7 @@ components:
 
     GeoDbDelete_Request:
       type: object
+      required: [path]
       properties:
         path:
           type: string
@@ -3100,6 +3136,7 @@ components:
 
     GeoDbRemoteUpsert_Request:
       type: object
+      required: [path, type, dbUrl, hashUrl]
       properties:
         path:
           type: string
