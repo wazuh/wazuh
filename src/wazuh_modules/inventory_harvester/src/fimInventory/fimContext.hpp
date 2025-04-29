@@ -14,6 +14,7 @@
 
 #include "flatbuffers/include/rsync_generated.h"
 #include "flatbuffers/include/syscheck_deltas_generated.h"
+#include "hashHelper.h"
 #include "stringHelper.h"
 #include "timeHelper.h"
 #include <json.hpp>
@@ -203,6 +204,35 @@ public:
         else
         {
             return "";
+        }
+        return "";
+    }
+
+    std::string_view index()
+    {
+        if (m_type == VariantType::Delta)
+        {
+            if (m_delta->data() && m_delta->data()->index())
+            {
+                return m_delta->data()->index()->string_view();
+            }
+        }
+        else if (m_type == VariantType::SyncMsg)
+        {
+            if (m_syncMsg->data_type() == Synchronization::DataUnion_state)
+            {
+                if (m_syncMsg->data_as_state()->index())
+                {
+                    return m_syncMsg->data_as_state()->index()->string_view();
+                }
+            }
+        }
+        else
+        {
+            if (m_jsonData->contains("/data/full_path"_json_pointer))
+            {
+                return m_jsonData->at("/data/full_path"_json_pointer).get<std::string_view>();
+            }
         }
         return "";
     }
@@ -636,8 +666,6 @@ public:
         if (m_valueNameSanitized.empty())
         {
             m_valueNameSanitized = valueNameRaw();
-            Utils::replaceAll(m_valueNameSanitized, "\\", "/");
-            Utils::replaceAll(m_valueNameSanitized, "//", "/");
         }
         return m_valueNameSanitized;
     }
@@ -654,8 +682,6 @@ public:
         if (m_pathSanitized.empty())
         {
             m_pathSanitized = pathRaw();
-            Utils::replaceAll(m_pathSanitized, "\\", "/");
-            Utils::replaceAll(m_pathSanitized, "//", "/");
 
             for (const auto& [key, value] : hives)
             {
@@ -667,11 +693,23 @@ public:
 
             if (m_originTable == OriginTable::RegistryValue)
             {
-                m_pathSanitized += "/";
+                m_pathSanitized += "\\";
                 m_pathSanitized += valueName();
             }
         }
         return m_pathSanitized;
+    }
+
+    std::string_view hashPath()
+    {
+        if (m_pathHashed.empty())
+        {
+            auto pathRawStr = index();
+            Utils::HashData hash(Utils::HashType::Sha256);
+            hash.update(pathRawStr.data(), pathRawStr.size());
+            m_pathHashed = Utils::asciiToHex(hash.hash());
+        }
+        return m_pathHashed;
     }
 
     std::string_view mtimeISO8601()
@@ -704,14 +742,15 @@ public:
 
     std::string_view key()
     {
-        const static std::vector<std::string_view> hives = {
-            "HKEY_CLASSES_ROOT/", "HKEY_CURRENT_USER/", "HKEY_LOCAL_MACHINE/", "HKEY_USERS/", "HKEY_CURRENT_CONFIG/"};
+        const static std::vector<std::string_view> hives = {"HKEY_CLASSES_ROOT\\",
+                                                            "HKEY_CURRENT_USER\\",
+                                                            "HKEY_LOCAL_MACHINE\\",
+                                                            "HKEY_USERS\\",
+                                                            "HKEY_CURRENT_CONFIG\\"};
 
         if (m_keySanitized.empty())
         {
             m_keySanitized = pathRaw();
-            Utils::replaceAll(m_keySanitized, "\\", "/");
-            Utils::replaceAll(m_keySanitized, "//", "/");
 
             for (const auto& hive : hives)
             {
@@ -738,6 +777,7 @@ private:
 
     // Allocations to mantain the lifetime of the data.
     std::string m_pathSanitized;
+    std::string m_pathHashed;
     std::string m_valueNameSanitized;
     std::string m_mtimeISO8601;
     std::string m_keySanitized;

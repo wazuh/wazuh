@@ -47,6 +47,7 @@ public:
     MOCK_METHOD(std::string_view, agentName, (), (const));
     MOCK_METHOD(std::string_view, agentIp, (), (const));
     MOCK_METHOD(std::string_view, agentVersion, (), (const));
+    MOCK_METHOD(std::string_view, index, (), (const));
     MOCK_METHOD(std::string_view, pathRaw, (), (const));
     MOCK_METHOD(std::string_view, valueNameRaw, (), (const));
     MOCK_METHOD(std::string_view, arch, (), (const));
@@ -63,9 +64,10 @@ public:
     MOCK_METHOD(uint64_t, mtime, (), (const));
     MOCK_METHOD(std::string_view, valueName, (), (const));
     MOCK_METHOD(std::string_view, path, (), (const));
+    MOCK_METHOD(std::string_view, hashPath, (), (const));
     MOCK_METHOD(std::string_view, mtimeISO8601, (), (const));
     MOCK_METHOD(std::string_view, hive, (), (const));
-    MOCK_METHOD(std::vector<std::string_view>, key, (), (const));
+    MOCK_METHOD(std::string_view, key, (), (const));
 
     MOCK_METHOD(AffectedComponentType, affectedComponentType, (), (const));
 

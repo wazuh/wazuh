@@ -34,12 +34,19 @@ public:
     static DataHarvester<FimRegistryInventoryHarvester> build(TContext* data)
     {
         DataHarvester<FimRegistryInventoryHarvester> element;
-        element.id = data->agentId();
+
+        auto agentId = data->agentId();
+        if (agentId.empty())
+        {
+            throw std::runtime_error("Agent ID is empty, cannot upsert FIM registry key element.");
+        }
+
+        element.id = agentId;
         element.id += "_";
-        element.id += data->path();
+        element.id += data->index();
         element.operation = "INSERTED";
 
-        element.data.agent.id = data->agentId();
+        element.data.agent.id = agentId;
         element.data.agent.name = data->agentName();
         element.data.agent.version = data->agentVersion();
 
@@ -69,10 +76,17 @@ public:
     static NoDataHarvester deleteElement(TContext* data)
     {
         NoDataHarvester element;
+
+        auto agentId = data->agentId();
+        if (agentId.empty())
+        {
+            throw std::runtime_error("Agent ID is empty, cannot delete FIM registry key element.");
+        }
+
         element.operation = "DELETED";
-        element.id = data->agentId();
+        element.id = agentId;
         element.id += "_";
-        element.id += data->path();
+        element.id += data->index();
         return element;
     }
 };

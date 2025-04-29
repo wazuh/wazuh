@@ -2,7 +2,7 @@
     {
         "index_name": "wazuh-states-registries-cluster01",
         "ids": {
-            "002": "002_HKLM/Software/Microsoft/Active Setup/Installed Components/FFFocta"
+            "002": "002_aec7723dce1383030fe4e10936f07b2a5c7dcd4591833743b23462dd73fc688f"
         },
         "data": [
             {

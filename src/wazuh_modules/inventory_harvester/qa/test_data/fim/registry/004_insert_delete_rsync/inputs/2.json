@@ -4,6 +4,6 @@
   },
   "action": "deleteRegistryKey",
   "data": {
-    "path": "HKEY_LOCAL_MACHINE\\Software\\Microsoft\\Active Setup\\Installed Components\\FFFocta"
+    "full_path": "e910515a78e3dea8441c6a9013379bc61d8651ad"
   }
 }
