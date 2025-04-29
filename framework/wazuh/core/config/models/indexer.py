@@ -42,10 +42,14 @@ class IndexerConfig(WazuhConfigBaseModel):
         ValueError
             If the scheme of any of the hosts does not match with the `ssl.use_ssl` value.
         """
-        if self.ssl.use_ssl:
-            invalid_hosts = [str(host) for host in self.hosts if host.scheme == 'http']
-            if invalid_hosts:
-                raise ValueError(f'Invalid hosts: {invalid_hosts}, `use_ssl` is enabled but scheme is http.')
+        expected_schema = 'https' if self.ssl.use_ssl else 'http'
+
+        invalid_hosts = [str(host) for host in self.hosts if expected_schema != host.scheme]
+        if invalid_hosts:
+            raise ValueError(
+                f'Invalid hosts: {invalid_hosts}, `use_ssl` is {"enabled" if self.ssl.use_ssl else "disabled"}'
+                ' but scheme is http.'
+            )
 
         return self
 
