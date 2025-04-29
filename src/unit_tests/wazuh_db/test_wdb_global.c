@@ -616,6 +616,394 @@ void test_wdb_global_set_sync_status_success(void **state)
     assert_int_equal(result, OS_SUCCESS);
 }
 
+/* Tests wdb_global_validate_sync_status */
+
+void test_wdb_global_validate_sync_status_no_old_status(void **state)
+{
+    test_struct_t *data  = (test_struct_t *)*state;
+    int agent_id = 1;
+    char *status = "synced";
+    char *new_status = NULL;
+
+    will_return(__wrap_wdb_begin2, -1);
+    expect_string(__wrap__mdebug1, formatted_msg, "Cannot begin transaction");
+
+    expect_string(__wrap__merror, formatted_msg, "Failed to get old sync_status for agent '1'");
+
+    new_status = wdb_global_validate_sync_status(data->wdb, agent_id, status);
+    assert_string_equal(new_status, status);
+
+    os_free(new_status);
+}
+
+void test_wdb_global_validate_sync_status_synced_to_synced(void **state)
+{
+    test_struct_t *data  = (test_struct_t *)*state;
+    int agent_id = 1;
+    char *status = "synced";
+    char *old_status = "synced";
+    char *new_status = NULL;
+
+    will_return(__wrap_wdb_begin2, 1);
+    will_return(__wrap_wdb_stmt_cache, 1);
+    expect_value(__wrap_sqlite3_bind_int, index, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, agent_id);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+    will_return(__wrap_wdb_step, SQLITE_ROW);
+    expect_value(__wrap_sqlite3_column_text, iCol, 0);
+    will_return(__wrap_sqlite3_column_text, old_status);
+
+    new_status = wdb_global_validate_sync_status(data->wdb, agent_id, status);
+    assert_string_equal(new_status, status);
+
+    os_free(new_status);
+}
+
+void test_wdb_global_validate_sync_status_syncreq_to_synced(void **state)
+{
+    test_struct_t *data  = (test_struct_t *)*state;
+    int agent_id = 1;
+    char *status = "synced";
+    char *old_status = "syncreq";
+    char *new_status = NULL;
+
+    will_return(__wrap_wdb_begin2, 1);
+    will_return(__wrap_wdb_stmt_cache, 1);
+    expect_value(__wrap_sqlite3_bind_int, index, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, agent_id);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+    will_return(__wrap_wdb_step, SQLITE_ROW);
+    expect_value(__wrap_sqlite3_column_text, iCol, 0);
+    will_return(__wrap_sqlite3_column_text, old_status);
+
+    new_status = wdb_global_validate_sync_status(data->wdb, agent_id, status);
+    assert_string_equal(new_status, status);
+
+    os_free(new_status);
+}
+
+void test_wdb_global_validate_sync_status_syncreq_status_to_synced(void **state)
+{
+    test_struct_t *data  = (test_struct_t *)*state;
+    int agent_id = 1;
+    char *status = "synced";
+    char *old_status = "syncreq_status";
+    char *new_status = NULL;
+
+    will_return(__wrap_wdb_begin2, 1);
+    will_return(__wrap_wdb_stmt_cache, 1);
+    expect_value(__wrap_sqlite3_bind_int, index, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, agent_id);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+    will_return(__wrap_wdb_step, SQLITE_ROW);
+    expect_value(__wrap_sqlite3_column_text, iCol, 0);
+    will_return(__wrap_sqlite3_column_text, old_status);
+
+    new_status = wdb_global_validate_sync_status(data->wdb, agent_id, status);
+    assert_string_equal(new_status, status);
+
+    os_free(new_status);
+}
+
+void test_wdb_global_validate_sync_status_syncreq_keepalive_to_synced(void **state)
+{
+    test_struct_t *data  = (test_struct_t *)*state;
+    int agent_id = 1;
+    char *status = "synced";
+    char *old_status = "syncreq_keepalive";
+    char *new_status = NULL;
+
+    will_return(__wrap_wdb_begin2, 1);
+    will_return(__wrap_wdb_stmt_cache, 1);
+    expect_value(__wrap_sqlite3_bind_int, index, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, agent_id);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+    will_return(__wrap_wdb_step, SQLITE_ROW);
+    expect_value(__wrap_sqlite3_column_text, iCol, 0);
+    will_return(__wrap_sqlite3_column_text, old_status);
+
+    new_status = wdb_global_validate_sync_status(data->wdb, agent_id, status);
+    assert_string_equal(new_status, status);
+
+    os_free(new_status);
+}
+
+void test_wdb_global_validate_sync_status_synced_to_syncreq(void **state)
+{
+    test_struct_t *data  = (test_struct_t *)*state;
+    int agent_id = 1;
+    char *status = "syncreq";
+    char *old_status = "synced";
+    char *new_status = NULL;
+
+    will_return(__wrap_wdb_begin2, 1);
+    will_return(__wrap_wdb_stmt_cache, 1);
+    expect_value(__wrap_sqlite3_bind_int, index, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, agent_id);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+    will_return(__wrap_wdb_step, SQLITE_ROW);
+    expect_value(__wrap_sqlite3_column_text, iCol, 0);
+    will_return(__wrap_sqlite3_column_text, old_status);
+
+    new_status = wdb_global_validate_sync_status(data->wdb, agent_id, status);
+    assert_string_equal(new_status, status);
+
+    os_free(new_status);
+}
+
+void test_wdb_global_validate_sync_status_syncreq_to_syncreq(void **state)
+{
+    test_struct_t *data  = (test_struct_t *)*state;
+    int agent_id = 1;
+    char *status = "syncreq";
+    char *old_status = "syncreq";
+    char *new_status = NULL;
+
+    will_return(__wrap_wdb_begin2, 1);
+    will_return(__wrap_wdb_stmt_cache, 1);
+    expect_value(__wrap_sqlite3_bind_int, index, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, agent_id);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+    will_return(__wrap_wdb_step, SQLITE_ROW);
+    expect_value(__wrap_sqlite3_column_text, iCol, 0);
+    will_return(__wrap_sqlite3_column_text, old_status);
+
+    new_status = wdb_global_validate_sync_status(data->wdb, agent_id, status);
+    assert_string_equal(new_status, status);
+
+    os_free(new_status);
+}
+
+void test_wdb_global_validate_sync_status_syncreq_status_to_syncreq(void **state)
+{
+    test_struct_t *data  = (test_struct_t *)*state;
+    int agent_id = 1;
+    char *status = "syncreq";
+    char *old_status = "syncreq_status";
+    char *new_status = NULL;
+
+    will_return(__wrap_wdb_begin2, 1);
+    will_return(__wrap_wdb_stmt_cache, 1);
+    expect_value(__wrap_sqlite3_bind_int, index, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, agent_id);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+    will_return(__wrap_wdb_step, SQLITE_ROW);
+    expect_value(__wrap_sqlite3_column_text, iCol, 0);
+    will_return(__wrap_sqlite3_column_text, old_status);
+
+    new_status = wdb_global_validate_sync_status(data->wdb, agent_id, status);
+    assert_string_equal(new_status, status);
+
+    os_free(new_status);
+}
+
+void test_wdb_global_validate_sync_status_syncreq_keepalive_to_syncreq(void **state)
+{
+    test_struct_t *data  = (test_struct_t *)*state;
+    int agent_id = 1;
+    char *status = "syncreq";
+    char *old_status = "syncreq_keepalive";
+    char *new_status = NULL;
+
+    will_return(__wrap_wdb_begin2, 1);
+    will_return(__wrap_wdb_stmt_cache, 1);
+    expect_value(__wrap_sqlite3_bind_int, index, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, agent_id);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+    will_return(__wrap_wdb_step, SQLITE_ROW);
+    expect_value(__wrap_sqlite3_column_text, iCol, 0);
+    will_return(__wrap_sqlite3_column_text, old_status);
+
+    new_status = wdb_global_validate_sync_status(data->wdb, agent_id, status);
+    assert_string_equal(new_status, status);
+
+    os_free(new_status);
+}
+
+void test_wdb_global_validate_sync_status_synced_to_syncreq_status(void **state)
+{
+    test_struct_t *data  = (test_struct_t *)*state;
+    int agent_id = 1;
+    char *status = "syncreq_status";
+    char *old_status = "synced";
+    char *new_status = NULL;
+
+    will_return(__wrap_wdb_begin2, 1);
+    will_return(__wrap_wdb_stmt_cache, 1);
+    expect_value(__wrap_sqlite3_bind_int, index, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, agent_id);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+    will_return(__wrap_wdb_step, SQLITE_ROW);
+    expect_value(__wrap_sqlite3_column_text, iCol, 0);
+    will_return(__wrap_sqlite3_column_text, old_status);
+
+    new_status = wdb_global_validate_sync_status(data->wdb, agent_id, status);
+    assert_string_equal(new_status, status);
+
+    os_free(new_status);
+}
+
+void test_wdb_global_validate_sync_status_syncreq_to_syncreq_status(void **state)
+{
+    test_struct_t *data  = (test_struct_t *)*state;
+    int agent_id = 1;
+    char *status = "syncreq_status";
+    char *old_status = "syncreq";
+    char *new_status = NULL;
+
+    will_return(__wrap_wdb_begin2, 1);
+    will_return(__wrap_wdb_stmt_cache, 1);
+    expect_value(__wrap_sqlite3_bind_int, index, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, agent_id);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+    will_return(__wrap_wdb_step, SQLITE_ROW);
+    expect_value(__wrap_sqlite3_column_text, iCol, 0);
+    will_return(__wrap_sqlite3_column_text, old_status);
+
+    new_status = wdb_global_validate_sync_status(data->wdb, agent_id, status);
+    assert_string_equal(new_status, old_status);
+
+    os_free(new_status);
+}
+
+void test_wdb_global_validate_sync_status_syncreq_status_to_syncreq_status(void **state)
+{
+    test_struct_t *data  = (test_struct_t *)*state;
+    int agent_id = 1;
+    char *status = "syncreq_status";
+    char *old_status = "syncreq_status";
+    char *new_status = NULL;
+
+    will_return(__wrap_wdb_begin2, 1);
+    will_return(__wrap_wdb_stmt_cache, 1);
+    expect_value(__wrap_sqlite3_bind_int, index, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, agent_id);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+    will_return(__wrap_wdb_step, SQLITE_ROW);
+    expect_value(__wrap_sqlite3_column_text, iCol, 0);
+    will_return(__wrap_sqlite3_column_text, old_status);
+
+    new_status = wdb_global_validate_sync_status(data->wdb, agent_id, status);
+    assert_string_equal(new_status, status);
+
+    os_free(new_status);
+}
+
+void test_wdb_global_validate_sync_status_syncreq_keepalive_to_syncreq_status(void **state)
+{
+    test_struct_t *data  = (test_struct_t *)*state;
+    int agent_id = 1;
+    char *status = "syncreq_status";
+    char *old_status = "syncreq_keepalive";
+    char *new_status = NULL;
+
+    will_return(__wrap_wdb_begin2, 1);
+    will_return(__wrap_wdb_stmt_cache, 1);
+    expect_value(__wrap_sqlite3_bind_int, index, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, agent_id);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+    will_return(__wrap_wdb_step, SQLITE_ROW);
+    expect_value(__wrap_sqlite3_column_text, iCol, 0);
+    will_return(__wrap_sqlite3_column_text, old_status);
+
+    new_status = wdb_global_validate_sync_status(data->wdb, agent_id, status);
+    assert_string_equal(new_status, status);
+
+    os_free(new_status);
+}
+
+void test_wdb_global_validate_sync_status_synced_to_syncreq_keepalive(void **state)
+{
+    test_struct_t *data  = (test_struct_t *)*state;
+    int agent_id = 1;
+    char *status = "syncreq_keepalive";
+    char *old_status = "synced";
+    char *new_status = NULL;
+
+    will_return(__wrap_wdb_begin2, 1);
+    will_return(__wrap_wdb_stmt_cache, 1);
+    expect_value(__wrap_sqlite3_bind_int, index, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, agent_id);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+    will_return(__wrap_wdb_step, SQLITE_ROW);
+    expect_value(__wrap_sqlite3_column_text, iCol, 0);
+    will_return(__wrap_sqlite3_column_text, old_status);
+
+    new_status = wdb_global_validate_sync_status(data->wdb, agent_id, status);
+    assert_string_equal(new_status, status);
+
+    os_free(new_status);
+}
+
+void test_wdb_global_validate_sync_status_syncreq_to_syncreq_keepalive(void **state)
+{
+    test_struct_t *data  = (test_struct_t *)*state;
+    int agent_id = 1;
+    char *status = "syncreq_keepalive";
+    char *old_status = "syncreq";
+    char *new_status = NULL;
+
+    will_return(__wrap_wdb_begin2, 1);
+    will_return(__wrap_wdb_stmt_cache, 1);
+    expect_value(__wrap_sqlite3_bind_int, index, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, agent_id);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+    will_return(__wrap_wdb_step, SQLITE_ROW);
+    expect_value(__wrap_sqlite3_column_text, iCol, 0);
+    will_return(__wrap_sqlite3_column_text, old_status);
+
+    new_status = wdb_global_validate_sync_status(data->wdb, agent_id, status);
+    assert_string_equal(new_status, old_status);
+
+    os_free(new_status);
+}
+
+void test_wdb_global_validate_sync_status_syncreq_status_to_syncreq_keepalive(void **state)
+{
+    test_struct_t *data  = (test_struct_t *)*state;
+    int agent_id = 1;
+    char *status = "syncreq_keepalive";
+    char *old_status = "syncreq_status";
+    char *new_status = NULL;
+
+    will_return(__wrap_wdb_begin2, 1);
+    will_return(__wrap_wdb_stmt_cache, 1);
+    expect_value(__wrap_sqlite3_bind_int, index, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, agent_id);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+    will_return(__wrap_wdb_step, SQLITE_ROW);
+    expect_value(__wrap_sqlite3_column_text, iCol, 0);
+    will_return(__wrap_sqlite3_column_text, old_status);
+
+    new_status = wdb_global_validate_sync_status(data->wdb, agent_id, status);
+    assert_string_equal(new_status, old_status);
+
+    os_free(new_status);
+}
+
+void test_wdb_global_validate_sync_status_syncreq_keepalive_to_syncreq_keepalive(void **state)
+{
+    test_struct_t *data  = (test_struct_t *)*state;
+    int agent_id = 1;
+    char *status = "syncreq_keepalive";
+    char *old_status = "syncreq_keepalive";
+    char *new_status = NULL;
+
+    will_return(__wrap_wdb_begin2, 1);
+    will_return(__wrap_wdb_stmt_cache, 1);
+    expect_value(__wrap_sqlite3_bind_int, index, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, agent_id);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+    will_return(__wrap_wdb_step, SQLITE_ROW);
+    expect_value(__wrap_sqlite3_column_text, iCol, 0);
+    will_return(__wrap_sqlite3_column_text, old_status);
+
+    new_status = wdb_global_validate_sync_status(data->wdb, agent_id, status);
+    assert_string_equal(new_status, status);
+
+    os_free(new_status);
+}
+
 /* Tests wdb_global_get_sync_status */
 
 void test_wdb_global_get_sync_status_transaction_fail(void **state)
@@ -9743,6 +10131,24 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_global_set_sync_status_bind2_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_set_sync_status_step_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_set_sync_status_success, test_setup, test_teardown),
+        /* Tests wdb_global_validate_sync_status */
+        cmocka_unit_test_setup_teardown(test_wdb_global_validate_sync_status_no_old_status, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_validate_sync_status_synced_to_synced, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_validate_sync_status_syncreq_to_synced, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_validate_sync_status_syncreq_status_to_synced, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_validate_sync_status_syncreq_keepalive_to_synced, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_validate_sync_status_synced_to_syncreq, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_validate_sync_status_syncreq_to_syncreq, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_validate_sync_status_syncreq_status_to_syncreq, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_validate_sync_status_syncreq_keepalive_to_syncreq, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_validate_sync_status_synced_to_syncreq_status, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_validate_sync_status_syncreq_to_syncreq_status, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_validate_sync_status_syncreq_status_to_syncreq_status, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_validate_sync_status_syncreq_keepalive_to_syncreq_status, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_validate_sync_status_synced_to_syncreq_keepalive, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_validate_sync_status_syncreq_to_syncreq_keepalive, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_validate_sync_status_syncreq_status_to_syncreq_keepalive, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_validate_sync_status_syncreq_keepalive_to_syncreq_keepalive, test_setup, test_teardown),
         /* Tests wdb_global_get_sync_status */
         cmocka_unit_test_setup_teardown(test_wdb_global_get_sync_status_transaction_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_get_sync_status_cache_fail, test_setup, test_teardown),
