@@ -9,6 +9,7 @@ from wazuh.core.config.models.central_config import (
     EngineConfig,
     IndexerConfig,
     ManagementAPIConfig,
+    ServerConfig,
 )
 
 
@@ -29,18 +30,14 @@ def test_config_sections_ko():
                     'username': 'user_example',
                     'password': 'password_example',
                 },
-                'server': {},
             },
             {
-                'server': {
-                    'update_check': False,
-                    'logging.level': 'info',
-                },
                 'indexer': {
                     'hosts': [{'host': 'localhost', 'port': 9200}],
                     'username': 'user_example',
                     'password': 'password_example',
                 },
+                'server': {},
                 'engine': {},
                 'management_api': {},
                 'communications_api': {},
@@ -53,10 +50,8 @@ def test_config_default_values(init_values, expected):
     with patch.object(ValidateFilePathMixin, '_validate_file_path', return_value=None):
         config = Config(**init_values)
 
-        assert config.server.update_check == expected['server']['update_check']
-        assert config.server.logging.level == expected['server']['logging.level']
-
         assert config.indexer == IndexerConfig(**expected['indexer'])
         assert config.engine == EngineConfig(**expected['engine'])
+        assert config.server == ServerConfig(**expected['server'])
         assert config.management_api == ManagementAPIConfig(**expected['management_api'])
         assert config.communications_api == CommsAPIConfig(**expected['communications_api'])
