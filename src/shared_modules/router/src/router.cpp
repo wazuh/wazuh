@@ -322,64 +322,80 @@ extern "C"
         if (methodStr.compare("GET") == 0)
         {
             logMessage(modules_log_level_t::LOG_INFO, "Registering GET endpoint: " + endpointStr);
-            instance->server->Get(endpoint,
-                                  [callback, endpointStr](const httplib::Request& req, httplib::Response& res)
-                                  {
-                                      bool first = true;
-                                      std::string json = "{";
+            instance->server->Get(
+                endpoint,
+                [callback, endpointStr](const httplib::Request& req, httplib::Response& res)
+                {
+                    bool first = true;
+                    auto start = std::chrono::high_resolution_clock::now();
+                    std::string json = "{";
 
-                                      for (const auto& [key, value] : req.path_params)
-                                      {
-                                          if (!first)
-                                          {
-                                              json += ",";
-                                          }
-                                          first = false;
-                                          json.append("\"").append(key).append("\":\"").append(value).append("\"");
-                                      }
-                                      json += "}";
+                    for (const auto& [key, value] : req.path_params)
+                    {
+                        if (!first)
+                        {
+                            json += ",";
+                        }
+                        first = false;
+                        json.append("\"").append(key).append("\":\"").append(value).append("\"");
+                    }
+                    json += "}";
 
-                                      char* output = nullptr;
-                                      auto cb = reinterpret_cast<int (*)(const char*, const char*, char**)>(callback);
-                                      logMessage(modules_log_level_t::LOG_DEBUG, endpointStr + " Parameters: " + json);
-                                      cb(endpointStr.c_str(), json.c_str(), &output);
-                                      logMessage(modules_log_level_t::LOG_DEBUG,
-                                                 "GET request response: " + std::string(output));
+                    char* output = nullptr;
+                    auto cb = reinterpret_cast<int (*)(const char*, const char*, const char*, char**)>(callback);
+                    logMessage(modules_log_level_t::LOG_DEBUG_VERBOSE,
+                               "GET: " + endpointStr + " request parameters: " + json);
+                    cb(endpointStr.c_str(), "GET", json.c_str(), &output);
+                    logMessage(modules_log_level_t::LOG_DEBUG_VERBOSE, "GET response: " + std::string(output));
 
-                                      if (output == nullptr)
-                                      {
-                                          res.status = 400;
-                                      }
-                                      else
-                                      {
-                                          res.status = 200;
-                                          res.set_content(output, "text/json");
-                                          free(output);
-                                      }
-                                  });
+                    if (output == nullptr)
+                    {
+                        res.status = 400;
+                    }
+                    else
+                    {
+                        res.status = 200;
+                        res.set_content(output, "text/json");
+                        free(output);
+                    }
+                    auto end = std::chrono::high_resolution_clock::now();
+                    auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+                    logMessage(modules_log_level_t::LOG_DEBUG,
+                               "GET: " + endpointStr + " request processed in " + std::to_string(duration.count()) +
+                                   " us");
+                });
         }
         else if (methodStr.compare("POST") == 0)
         {
             logMessage(modules_log_level_t::LOG_INFO, "Registering POST endpoint: " + endpointStr);
-            instance->server->Post(endpoint,
-                                   [callback, endpointStr](const httplib::Request& req, httplib::Response& res)
-                                   {
-                                       logMessage(modules_log_level_t::LOG_INFO, "POST request received");
-                                       char* output = nullptr;
-                                       auto cb = reinterpret_cast<int (*)(const char*, const char*, char**)>(callback);
-                                       cb(endpointStr.c_str(), req.body.c_str(), &output);
+            instance->server->Post(
+                endpoint,
+                [callback, endpointStr](const httplib::Request& req, httplib::Response& res)
+                {
+                    auto start = std::chrono::high_resolution_clock::now();
+                    char* output = nullptr;
+                    auto cb = reinterpret_cast<int (*)(const char*, const char*, const char*, char**)>(callback);
+                    logMessage(modules_log_level_t::LOG_DEBUG_VERBOSE,
+                               "POST: " + endpointStr + " request parameters: " + req.body);
+                    cb(endpointStr.c_str(), "POST", req.body.c_str(), &output);
+                    logMessage(modules_log_level_t::LOG_DEBUG_VERBOSE, "POST response: " + std::string(output));
 
-                                       if (output == nullptr)
-                                       {
-                                           res.status = 400;
-                                       }
-                                       else
-                                       {
-                                           res.status = 200;
-                                           res.set_content(output, "text/json");
-                                           free(output);
-                                       }
-                                   });
+                    if (output == nullptr)
+                    {
+                        res.status = 400;
+                    }
+                    else
+                    {
+                        res.status = 200;
+                        res.set_content(output, "text/json");
+                        free(output);
+                    }
+                    auto end = std::chrono::high_resolution_clock::now();
+                    auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+                    logMessage(modules_log_level_t::LOG_DEBUG,
+                               "POST: " + endpointStr + " request processed in " + std::to_string(duration.count()) +
+                                   " us");
+                });
         }
         else
         {

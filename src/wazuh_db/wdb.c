@@ -279,6 +279,10 @@ static const char *SQL_STMT[] = {
     [WDB_STMT_GLOBAL_AGENT_SUMMARY_CONNECTIONS] = "SELECT COUNT(*) as quantity, connection_status AS status FROM agent WHERE id > 0 GROUP BY status ORDER BY status ASC limit 5;",
     [WDB_STMT_GLOBAL_AGENT_SUMMARY_CONNECTIONS_BY_OS] = "SELECT COUNT(*) as quantity, os_platform AS platform FROM agent WHERE id > 0 GROUP BY platform ORDER BY quantity DESC limit 5;",
     [WDB_STMT_GLOBAL_AGENT_SUMMARY_CONNECTIONS_BY_GROUP] = "SELECT COUNT(*) as q, g.name AS group_name FROM belongs b JOIN 'group' g ON b.id_group=g.id WHERE b.id_agent > 0  GROUP BY b.id_group ORDER BY q DESC LIMIT 5;",
+    [WDB_STMT_GLOBAL_SYNC_REQ_GET_API] = "SELECT id, name, ip, os_name, os_version, os_major, os_minor, os_codename, os_build, os_platform, os_uname, os_arch, version, config_sum, merged_sum, manager_host, node_name, last_keepalive, connection_status, disconnection_time, group_config_status, status_code FROM agent WHERE id > 0 AND sync_status = 'syncreq';",
+    [WDB_STMT_GLOBAL_SYNC_REQ_KEEPALIVE_GET_API] = "SELECT id FROM agent WHERE id > 0 AND sync_status = 'syncreq_keepalive';",
+    [WDB_STMT_GLOBAL_SYNC_REQ_STATUS_GET_API] = "SELECT id, connection_status, disconnection_time, status_code FROM agent WHERE id > 0 AND sync_status = 'syncreq_status';",
+    [WDB_STMT_GLOBAL_UPDATE_AGENT_KEEPALIVE_API] = "UPDATE agent SET last_keepalive = STRFTIME('%s', 'NOW') WHERE id = ?;",
 };
 
 /**

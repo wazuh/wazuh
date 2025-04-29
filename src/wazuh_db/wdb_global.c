@@ -9,6 +9,7 @@
  * Foundation.
  */
 
+#include "cJSON.h"
 #include "wdb.h"
 
 // List of agent information fields in global DB
@@ -2320,8 +2321,7 @@ cJSON* wdb_global_sync_agent_groups_get_all(wdb_t *wdb, wdb_groups_sync_conditio
             return NULL;
         }
 
-        int _status;
-        while ((_status = wdb_step(sync_stmt)) == SQLITE_ROW) {
+        while (wdb_step(sync_stmt) == SQLITE_ROW) {
             int id = sqlite3_column_int(sync_stmt, 0);
 
             cJSON* j_agent = cJSON_CreateObject();
@@ -2525,4 +2525,257 @@ cJSON* wdb_global_get_summary(wdb_t *wdb, cJSON* agent_array) {
         os_free(query);
     }
     return result;
+}
+
+cJSON* wdb_global_sync_agent_info_get_api(wdb_t *wdb) {
+    sqlite3_stmt* agent_stmt = NULL;
+
+    if (!wdb->transaction && wdb_begin2(wdb) < 0) {
+        mdebug1("Cannot begin transaction");
+        return NULL;
+    }
+
+    cJSON * result = cJSON_CreateObject();
+    cJSON * j_syncreq = cJSON_CreateArray();
+    cJSON_AddItemToObject(result, "syncreq", j_syncreq);
+
+    cJSON * j_syncreq_keepalive = cJSON_CreateArray();
+    cJSON_AddItemToObject(result, "syncreq_keepalive", j_syncreq_keepalive);
+
+    cJSON * j_syncreq_status = cJSON_CreateArray();
+    cJSON_AddItemToObject(result, "syncreq_status", j_syncreq_status);
+
+    int _status = SQLITE_ERROR;
+
+    if (wdb_stmt_cache(wdb, WDB_STMT_GLOBAL_SYNC_REQ_GET_API) < 0) {
+        mdebug1("Cannot cache statement");
+        cJSON_Delete(result);
+        return NULL;
+    }
+
+    agent_stmt = wdb->stmt[WDB_STMT_GLOBAL_SYNC_REQ_GET_API];
+    cJSON* j_agent_data;
+
+    while ((j_agent_data = wdb_exec_row_stmt_multi_column(agent_stmt, &_status)) != NULL) {
+        cJSON* json_id = cJSON_GetObjectItem(j_agent_data, "id");
+
+        if (cJSON_IsNumber(json_id)) {
+            int agent_id = json_id->valueint;
+            cJSON* json_labels = wdb_global_get_agent_labels(wdb, agent_id);
+
+            if (json_labels) {
+                if (json_labels->child) {
+                    cJSON_AddItemToObject(j_agent_data, "labels", json_labels);
+                }
+                else {
+                    cJSON_Delete(json_labels);
+                }
+            }
+
+            if (OS_SUCCESS != wdb_global_set_sync_status(wdb, agent_id, "synced")) {
+                merror("Cannot set sync_status for agent %d", agent_id);
+                cJSON_Delete(result);
+                return NULL;;
+            }
+        }
+        cJSON_AddItemToArray(j_syncreq, cJSON_Duplicate(j_agent_data, true));
+        cJSON_Delete(j_agent_data);
+    }
+
+    if (wdb_stmt_cache(wdb, WDB_STMT_GLOBAL_SYNC_REQ_KEEPALIVE_GET_API) < 0) {
+        mdebug1("Cannot cache statement");
+        cJSON_Delete(result);
+        return NULL;
+    }
+
+    agent_stmt = wdb->stmt[WDB_STMT_GLOBAL_SYNC_REQ_KEEPALIVE_GET_API];
+
+    while ((j_agent_data = wdb_exec_row_stmt_multi_column(agent_stmt, &_status)) != NULL) {
+        cJSON* json_id = cJSON_GetObjectItem(j_agent_data, "id");
+
+        if (cJSON_IsNumber(json_id)) {
+            int agent_id = json_id->valueint;
+
+            if (OS_SUCCESS != wdb_global_set_sync_status(wdb, agent_id, "synced")) {
+                merror("Cannot set sync_status for agent %d", agent_id);
+                cJSON_Delete(result);
+                return NULL;;
+            }
+        }
+        cJSON_AddItemToArray(j_syncreq_keepalive, cJSON_Duplicate(j_agent_data, true));
+        cJSON_Delete(j_agent_data);
+    }
+
+    if (wdb_stmt_cache(wdb, WDB_STMT_GLOBAL_SYNC_REQ_STATUS_GET_API) < 0) {
+        mdebug1("Cannot cache statement");
+        cJSON_Delete(result);
+        return NULL;
+    }
+
+    agent_stmt = wdb->stmt[WDB_STMT_GLOBAL_SYNC_REQ_STATUS_GET_API];
+
+    while ((j_agent_data = wdb_exec_row_stmt_multi_column(agent_stmt, &_status)) != NULL) {
+        cJSON* json_id = cJSON_GetObjectItem(j_agent_data, "id");
+
+        if (cJSON_IsNumber(json_id)) {
+            int agent_id = json_id->valueint;
+
+            if (OS_SUCCESS != wdb_global_set_sync_status(wdb, agent_id, "synced")) {
+                merror("Cannot set sync_status for agent %d", agent_id);
+                cJSON_Delete(result);
+                return NULL;;
+            }
+        }
+        cJSON_AddItemToArray(j_syncreq_status, cJSON_Duplicate(j_agent_data, true));
+        cJSON_Delete(j_agent_data);
+    }
+
+    return result;
+}
+
+static int wdb_global_sync_agent_keepalive_info_set(wdb_t *wdb, int id) {
+    sqlite3_stmt *stmt = NULL;
+
+    if (!wdb->transaction && wdb_begin2(wdb) < 0) {
+        mdebug1("Cannot begin transaction");
+        return OS_INVALID;
+    }
+
+    if (wdb_stmt_cache(wdb, WDB_STMT_GLOBAL_UPDATE_AGENT_KEEPALIVE_API) < 0) {
+        mdebug1("Cannot cache statement");
+        return OS_INVALID;
+    }
+
+    stmt = wdb->stmt[WDB_STMT_GLOBAL_UPDATE_AGENT_KEEPALIVE_API];
+
+    if (sqlite3_bind_int(stmt, 1, id) != SQLITE_OK) {
+        merror("DB(%s) sqlite3_bind_int(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+        return OS_INVALID;
+    }
+
+    return wdb_exec_stmt_silent(stmt);
+}
+
+int wdb_global_sync_agent_info_set_api(wdb_t *wdb, const cJSON *parameters) {
+    cJSON * j_syncreq = cJSON_GetObjectItem(parameters, "syncreq");
+    if (j_syncreq == NULL) {
+        mdebug1("Parameter 'syncreq' not found");
+        return OS_INVALID;
+    }
+
+    cJSON * j_syncreq_keepalive = cJSON_GetObjectItem(parameters, "syncreq_keepalive");
+    if (j_syncreq_keepalive == NULL) {
+        mdebug1("Parameter 'syncreq_keepalive' not found");
+        return OS_INVALID;
+    }
+
+    cJSON * j_syncreq_status = cJSON_GetObjectItem(parameters, "syncreq_status");
+    if (j_syncreq_status == NULL) {
+        mdebug1("Parameter 'j_syncreq_status' not found");
+        return OS_INVALID;
+    }
+
+    cJSON * json_agent = NULL;
+
+    cJSON_ArrayForEach(json_agent, j_syncreq) {
+        cJSON * json_labels;
+        // Inserting new agent information in the database
+        if (OS_SUCCESS != wdb_global_sync_agent_info_set(wdb, json_agent)) {
+            mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db: %s", WDB2_DIR, WDB_GLOB_NAME, sqlite3_errmsg(wdb->db));
+            return OS_INVALID;
+        }
+        // Checking for labels
+        json_labels = cJSON_GetObjectItem(json_agent, "labels");
+        if (cJSON_IsArray(json_labels)) {
+            // The JSON has a label array
+            // Removing old labels from the labels table before inserting
+            cJSON* json_field = cJSON_GetObjectItem(json_agent, "id");
+            int agent_id = cJSON_IsNumber(json_field) ? json_field->valueint : OS_INVALID;
+
+            if (agent_id == OS_INVALID) {
+                mdebug1("Global DB Cannot execute SQL query; incorrect agent id in labels array.");
+                return OS_INVALID;
+            }
+
+            else if (OS_SUCCESS != wdb_global_del_agent_labels(wdb, agent_id)) {
+                mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db: %s", WDB2_DIR, WDB_GLOB_NAME, sqlite3_errmsg(wdb->db));
+                return OS_INVALID;
+            }
+
+            cJSON * json_label = NULL;
+            // For every label in array, insert it in the database
+            cJSON_ArrayForEach(json_label, json_labels) {
+                cJSON * json_key = cJSON_GetObjectItem(json_label, "key");
+                cJSON * json_value = cJSON_GetObjectItem(json_label, "value");
+                cJSON * json_id = cJSON_GetObjectItem(json_label, "id");
+
+                if (cJSON_IsString(json_key) && json_key->valuestring != NULL && cJSON_IsString(json_value) &&
+                    json_value->valuestring != NULL && cJSON_IsNumber(json_id)) {
+                    // Inserting labels in the database
+                    if (OS_SUCCESS != wdb_global_set_agent_label(wdb, json_id->valueint, json_key->valuestring, json_value->valuestring)) {
+                        mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db: %s", WDB2_DIR, WDB_GLOB_NAME, sqlite3_errmsg(wdb->db));
+                        return OS_INVALID;
+                    }
+                }
+            }
+        }
+    }
+
+    cJSON_ArrayForEach(json_agent, j_syncreq_keepalive) {
+        cJSON* json_field = cJSON_GetObjectItem(json_agent, "id");
+        int agent_id = cJSON_IsNumber(json_field) ? json_field->valueint : OS_INVALID;
+
+        if (agent_id == OS_INVALID) {
+            mdebug1("Global DB Cannot execute SQL query; incorrect agent id.");
+            return OS_INVALID;
+        }
+
+        // Inserting new agent information in the database
+        if (OS_SUCCESS != wdb_global_sync_agent_keepalive_info_set(wdb, agent_id)) {
+            mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db: %s", WDB2_DIR, WDB_GLOB_NAME, sqlite3_errmsg(wdb->db));
+            return OS_INVALID;
+        }
+    }
+
+    cJSON_ArrayForEach(json_agent, j_syncreq_status) {
+        cJSON* json_field = cJSON_GetObjectItem(json_agent, "id");
+        int agent_id = cJSON_IsNumber(json_field) ? json_field->valueint : OS_INVALID;
+
+        if (agent_id == OS_INVALID) {
+            mdebug1("Global DB Cannot execute SQL query; incorrect agent id in labels array.");
+            return OS_INVALID;
+        }
+
+        json_field = cJSON_GetObjectItem(json_agent, "status_code");
+        int status_code = cJSON_IsNumber(json_field) ? json_field->valueint : OS_INVALID;
+
+        if (status_code == OS_INVALID) {
+            mdebug1("Global DB Cannot execute SQL query; incorrect status_code.");
+            return OS_INVALID;
+        }
+
+        json_field = cJSON_GetObjectItem(json_agent, "connection_status");
+        char * connection_status = cJSON_IsString(json_field) ? json_field->valuestring : NULL;
+
+        if (connection_status == NULL) {
+            mdebug1("Global DB Cannot execute SQL query; incorrect connection_status.");
+            return OS_INVALID;
+        }
+
+        json_field = cJSON_GetObjectItem(json_agent, "sync_status");
+        char * sync_status = cJSON_IsString(json_field) ? json_field->valuestring : NULL;
+
+        if (sync_status == NULL) {
+            mdebug1("Global DB Cannot execute SQL query; incorrect sync_status.");
+            return OS_INVALID;
+        }
+
+        // Inserting new agent information in the database
+        if (OS_SUCCESS != wdb_global_update_agent_connection_status(wdb, agent_id, connection_status, sync_status, status_code)) {
+            mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db: %s", WDB2_DIR, WDB_GLOB_NAME, sqlite3_errmsg(wdb->db));
+            return OS_INVALID;
+        }
+    }
+
+    return OS_SUCCESS;
 }

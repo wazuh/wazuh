@@ -337,6 +337,10 @@ typedef enum wdb_stmt {
     WDB_STMT_GLOBAL_AGENT_SUMMARY_CONNECTIONS,
     WDB_STMT_GLOBAL_AGENT_SUMMARY_CONNECTIONS_BY_OS,
     WDB_STMT_GLOBAL_AGENT_SUMMARY_CONNECTIONS_BY_GROUP,
+    WDB_STMT_GLOBAL_SYNC_REQ_GET_API,
+    WDB_STMT_GLOBAL_SYNC_REQ_KEEPALIVE_GET_API,
+    WDB_STMT_GLOBAL_SYNC_REQ_STATUS_GET_API,
+    WDB_STMT_GLOBAL_UPDATE_AGENT_KEEPALIVE_API,
     WDB_STMT_SIZE // This must be the last constant
 } wdb_stmt;
 
@@ -1013,7 +1017,7 @@ wdb_t * wdb_pool_find_prev(wdb_t * wdb);
 int wdb_stmt_cache(wdb_t * wdb, int index);
 
 int wdb_parse(char * input, char * output, int peer);
-int wdb_parse_api(const char * endpoint, const char * input, char ** output);
+int wdb_parse_api(const char * endpoint, const char * method, const char * input, char ** output);
 
 int wdb_parse_syscheck(wdb_t * wdb, wdb_component_t component, char * input, char * output);
 int wdb_parse_syscollector(wdb_t * wdb, const char * query, char * input, char * output);
@@ -2676,5 +2680,45 @@ void wdbcom_dispatch(char* request, char* output);
  * @return Returns 0 on success or -1 if an error occurs while setting the synchronous mode.
  */
 int wdb_set_synchronous_normal(wdb_t * wdb);
+
+/**
+ * @brief Get the elements of the agent table that were not synced.
+ * This function is likely to be called from the worker and this data is sent across the cluster to
+ * the master.
+ *
+ * @param wdb The database structure.
+ * @return cJSON* Returns a cJSON object with the elements that were not synced.
+ *        NULL on error.
+ */
+cJSON* wdb_global_sync_agent_info_get_api(wdb_t *wdb);
+
+/**
+ * @brief Get the elements of the agent table that were not synced.
+ * This function is likely to be called from the worker and this data is sent across the cluster to
+ * the master.
+ *
+ * @param wdb The database structure.
+ * @return cJSON* Returns a cJSON object with the elements that were not synced.
+ */
+cJSON* wdb_parse_global_sync_agent_info_get_api(wdb_t* wdb);
+
+/**
+ * @brief Set the elements of the agent table that were not synced.
+ * This function is called from the master with data obtained from the worker.
+ *
+ * @param wdb The database structure.
+ * @param agent_info A JSON object with the agent information.
+ * @return Returns 0 on success or -1 if an error occurs while setting the agent information.
+ */
+int wdb_global_sync_agent_info_set_api(wdb_t *wdb, const cJSON *parameters);
+
+/**
+ * @brief Set the elements of the agent table that were not synced.
+ *
+ * @param wdb The database structure.
+ * @param input A JSON object with the agent information.
+ * @return Returns 0 on success or -1 if an error occurs while setting the agent information.
+ */
+int wdb_parse_global_sync_agent_info_set_api(wdb_t *wdb, const char *input);
 
 #endif
