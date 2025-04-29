@@ -195,7 +195,7 @@ static struct kv_list const TABLE_MAP[] = {
     { .current = { "processes", "sys_processes",  false, TABLE_PROCESSES, PROCESSES_FIELD_COUNT }, .next = NULL},
 };
 
-int wdb_parse_api(const char* endpoint, __attribute__((unused)) const char* input, char **output)
+int wdb_parse_api(const char* endpoint, const char* method, __attribute__((unused)) const char* input, char **output)
 {
     struct timeval begin;
     struct timeval end;
@@ -229,20 +229,39 @@ int wdb_parse_api(const char* endpoint, __attribute__((unused)) const char* inpu
     w_inc_global_open_time(diff);
 
     cJSON* result = NULL;
-    if (strcmp(endpoint, "/v1/agents/ids") == 0) {
-        result = wdb_global_get_all_agent_ids(wdb);
-    } else if (strcmp(endpoint, "/v1/agents/ids/groups/:name") == 0) {
-        result = wdb_parse_global_get_group_agents_api(wdb, input);
-    } else if (strcmp(endpoint, "/v1/agents/ids/groups") == 0) {
-        // This call is used to get the list of groups for each agent.
-        result = wdb_parse_global_sync_agent_groups_get_api(wdb, R"({"condition":"all"})");
-    } else if (strcmp(endpoint, "/v1/agents/:agent_id/groups") == 0) {
-        result = wdb_parse_global_select_group_belong_api(wdb, input);
-    } else if (strcmp(endpoint, "/v1/agents/summary") == 0) {
-        // This call is used to get the summary of all agents. The method is post because
-        // we can receive a big list of agents and we need to use the body to send it.
-        result = wdb_parse_global_get_summary_api(wdb, input);
+
+    if (strcmp(method, "GET") == 0) {
+        if (strcmp(endpoint, "/v1/agents/ids") == 0) {
+            result = wdb_global_get_all_agent_ids(wdb);
+        } else if (strcmp(endpoint, "/v1/agents/ids/groups/:name") == 0) {
+            result = wdb_parse_global_get_group_agents_api(wdb, input);
+        } else if (strcmp(endpoint, "/v1/agents/ids/groups") == 0) {
+            // This call is used to get the list of groups for each agent.
+            result = wdb_parse_global_sync_agent_groups_get_api(wdb, R"({"condition":"all"})");
+        } else if (strcmp(endpoint, "/v1/agents/:agent_id/groups") == 0) {
+            result = wdb_parse_global_select_group_belong_api(wdb, input);
+        } else if (strcmp(endpoint, "/v1/agents/sync") == 0) {
+            result = wdb_parse_global_sync_agent_info_get_api(wdb);
+        } else {
+            mwarn("Invalid endpoint: %s", endpoint);
+        }
+    } else if (strcmp(method, "POST") == 0) {
+        if (strcmp(endpoint, "/v1/agents/summary") == 0) {
+            // This call is used to get the summary of all agents. The method is post because
+            // we can receive a big list of agents and we need to use the body to send it.
+            result = wdb_parse_global_get_summary_api(wdb, input);
+        } else if (strcmp(endpoint, "/v1/agents/sync") == 0) {
+            if (wdb_parse_global_sync_agent_info_set_api(wdb, input) == OS_SUCCESS) {
+                result = cJSON_CreateObject();
+                cJSON_AddStringToObject(result, "status", "success");
+            }
+        } else {
+            mwarn("Invalid endpoint: %s", endpoint);
+        }
+    } else {
+        mwarn("Invalid method: %s", method);
     }
+
     wdb_pool_leave(wdb);
 
     if (!result) {
@@ -6893,4 +6912,27 @@ cJSON* wdb_parse_global_get_summary_api(wdb_t *wdb, const char *input) {
     cJSON_Delete(parameters_json);
 
     return ret;
+}
+
+cJSON* wdb_parse_global_sync_agent_info_get_api(wdb_t* wdb) {
+    return wdb_global_sync_agent_info_get_api(wdb);
+}
+
+int wdb_parse_global_sync_agent_info_set_api(wdb_t *wdb, const char *input) {
+    cJSON *parameters_json = NULL;
+    // Detect parameters
+    if (parameters_json = cJSON_ParseWithOpts(input, 0, TRUE), !parameters_json) {
+        merror("Invalid JSON syntax when parsing wdb_parse_global_sync_agent_info_set_api %s.", input);
+        return OS_INVALID;
+    }
+
+    int ret = wdb_global_sync_agent_info_set_api(wdb, parameters_json);
+
+    if (ret != OS_SUCCESS) {
+        merror("Error in wdb_global_sync_agent_info_set_api.");
+        return OS_INVALID;
+    }
+
+    cJSON_Delete(parameters_json);
+    return OS_SUCCESS;
 }

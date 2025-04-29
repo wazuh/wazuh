@@ -236,6 +236,8 @@ int main(int argc, char ** argv)
     router_register_api_endpoint("wdb-http.sock", "GET", "/v1/agents/ids/groups", (void*)&wdb_parse_api);
     router_register_api_endpoint("wdb-http.sock", "GET", "/v1/agents/:agent_id/groups", (void*)&wdb_parse_api);
     router_register_api_endpoint("wdb-http.sock", "POST", "/v1/agents/summary", (void*)&wdb_parse_api);
+    router_register_api_endpoint("wdb-http.sock", "GET", "/v1/agents/sync", (void*)&wdb_parse_api);
+    router_register_api_endpoint("wdb-http.sock", "POST", "/v1/agents/sync", (void*)&wdb_parse_api);
 
     router_start_api("wdb-http.sock");
 
