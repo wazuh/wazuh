@@ -222,6 +222,7 @@ int wdb_global_update_agent_version(wdb_t *wdb,
 
     if (sqlite3_bind_text(stmt, index++, validated_sync_status, -1, SQLITE_TRANSIENT) != SQLITE_OK) {
         merror("DB(%s) sqlite3_bind_text(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+        os_free(validated_sync_status);
         return OS_INVALID;
     }
 
@@ -347,6 +348,7 @@ int wdb_global_update_agent_keepalive(wdb_t *wdb, int id, const char *connection
 
     if (sqlite3_bind_text(stmt, 2, validated_sync_status, -1, SQLITE_TRANSIENT) != SQLITE_OK) {
         merror("DB(%s) sqlite3_bind_text(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+        os_free(validated_sync_status);
         return OS_INVALID;
     }
 
@@ -389,6 +391,7 @@ int wdb_global_update_agent_connection_status(wdb_t *wdb, int id, const char *co
 
     if (sqlite3_bind_text(stmt, 2, validated_sync_status, -1, SQLITE_TRANSIENT) != SQLITE_OK) {
         merror("DB(%s) sqlite3_bind_text(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+        os_free(validated_sync_status);
         return OS_INVALID;
     }
 
@@ -439,6 +442,7 @@ int wdb_global_update_agent_status_code(wdb_t *wdb, int id, int status_code, con
 
     if (sqlite3_bind_text(stmt, 3, validated_sync_status, -1, SQLITE_TRANSIENT) != SQLITE_OK) {
         merror("DB(%s) sqlite3_bind_text(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+        os_free(validated_sync_status);
         return OS_INVALID;
     }
 
@@ -1069,7 +1073,7 @@ wdbc_result wdb_global_sync_agent_info_get(wdb_t *wdb, int* last_agent_id, char 
 
     int initial_agent_id = *last_agent_id;
 
-    for (int i = 0; i < sizeof(stmts)/sizeof(*stmts); ++i) {
+    for (size_t i = 0; i < sizeof(stmts)/sizeof(*stmts); ++i) {
         int stmt_id = stmts[i];
 
         *last_agent_id = initial_agent_id;
@@ -1157,12 +1161,14 @@ wdbc_result wdb_global_sync_agent_info_get(wdb_t *wdb, int* last_agent_id, char 
         }
     }
 
-    if (response_size > 2) {
-        //Remove last ','
-        response_aux--;
+    if (status != WDBC_ERROR) {
+        if (response_size > 2) {
+            //Remove last ','
+            response_aux--;
+        }
+        //Add array end
+        *response_aux = ']';
     }
-    //Add array end
-    *response_aux = ']';
 
     return status;
 }
