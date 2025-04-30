@@ -249,7 +249,7 @@ void free_file_time(void *data) {
  * wait_for_msgs (other thread) is going to deal with it
  * (only if message changed)
  */
-void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *wdb_sock, _Atomic bool *startup_msg)
+void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *wdb_sock, bool *startup_msg)
 {
     char msg_ack[OS_FLSIZE + 1] = "";
     char *msg = NULL;
@@ -396,7 +396,7 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
                 mwarn("Unable to save last keepalive and set connection status as pending for agent: %s", key->id);
             }
 
-            ATOMIC_STORE(startup_msg, true);
+            *startup_msg = true;
         } else if (is_shutdown) {
             w_mutex_unlock(&lastmsg_mutex);
 
@@ -505,9 +505,9 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
 
             agent_data->id = atoi(key->id);
             os_strdup(AGENT_CS_ACTIVE, agent_data->connection_status);
-            os_strdup(logr.worker_node ? (ATOMIC_LOAD(startup_msg) ? "syncreq" : "syncreq_keepalive") : "synced", agent_data->sync_status);
+            os_strdup(logr.worker_node ? (*startup_msg ? "syncreq" : "syncreq_keepalive") : "synced", agent_data->sync_status);
 
-            ATOMIC_STORE(startup_msg, false);
+            *startup_msg = false;
 
             w_mutex_lock(&lastmsg_mutex);
 
