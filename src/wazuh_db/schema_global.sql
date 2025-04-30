@@ -84,4 +84,6 @@ CREATE TABLE IF NOT EXISTS metadata (
     value TEXT
 );
 
-INSERT INTO metadata (key, value) VALUES ('db_version', '6');
+INSERT INTO `group` (name) VALUES ('default');
+
+INSERT INTO metadata (key, value) VALUES ('db_version', '7');
