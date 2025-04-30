@@ -207,6 +207,7 @@ char *GetGeoInfobyIP(char *ip_addr);
  */
 int SetDecodeXML(OSList* log_msg, OSStore **decoder_list, OSDecoderNode **decoderlist_npn, OSDecoderNode **decoderlist_pn);
 
+/* Internal decoders init */
 void HostinfoInit(void);
 int fim_init(void);
 void RootcheckInit(void);
@@ -214,6 +215,15 @@ void SyscollectorInit(void);
 void CiscatInit(void);
 void WinevtInit(void);
 void SecurityConfigurationAssessmentInit(void);
+
+/* Hot reload internal decoders */
+void HostinfoHotReload(void);
+void fim_hot_reload(void);
+void RootcheckHotReload(void);
+void SyscollectorHotReload(void);
+void CiscatHotReload(void);
+void WinevtHotReload(void);
+void SecurityConfigurationAssessmentHotReload(void);
 
 /**
  * @brief Read decoder files and save them in the decoder list
