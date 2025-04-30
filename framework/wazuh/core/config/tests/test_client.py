@@ -14,16 +14,13 @@ from wazuh.core.config.models.central_config import (
 from wazuh.core.config.models.server import ServerConfig
 
 mock_config_data = {
-    'server': {
-        'logging': {'level': 'debug2'},
-        'cti': {},
-    },
     'indexer': {
         'hosts': [{'host': 'localhost', 'port': 9200}],
         'username': 'admin',
         'password': 'password',
         'ssl': {'use_ssl': False, 'key': '', 'certificate': '', 'certificate_authorities': ['']},
     },
+    'server': {},
     'engine': {},
     'management_api': {},
     'communications_api': {},

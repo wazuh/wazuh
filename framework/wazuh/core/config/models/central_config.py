@@ -51,7 +51,7 @@ class Config(WazuhConfigBaseModel):
         Configuration for the communications API. Default is an instance of CommsAPIConfig.
     """
 
-    server: ServerConfig
+    server: ServerConfig = ServerConfig()
     indexer: IndexerConfig
     engine: EngineConfig = EngineConfig()
     management_api: ManagementAPIConfig = ManagementAPIConfig()
