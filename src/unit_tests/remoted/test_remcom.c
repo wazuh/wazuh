@@ -309,52 +309,6 @@ void test_remcom_dispatch_getagentsstats_array_ok(void ** state) {
     assert_int_equal(size, strlen(response));
 }
 
-void test_remcom_dispatch_assigngroup(void ** state) {
-    char* request = "{\"command\":\"assigngroup\", \"parameters\": {\"agent\": \"001\", \"md5\": \"1234567890abcdef\"}}";
-    char *response = NULL;
-
-    cJSON* data_json = cJSON_CreateObject();
-    cJSON_AddStringToObject(data_json, "group", "test1");
-
-    expect_string(__wrap_assign_group_to_agent, agent_id, "001");
-    expect_string(__wrap_assign_group_to_agent, md5, "1234567890abcdef");
-    will_return(__wrap_assign_group_to_agent, data_json);
-
-    size_t size = remcom_dispatch(request, &response);
-
-    *state = response;
-
-    assert_non_null(response);
-    assert_string_equal(response, "{\"error\":0,\"message\":\"ok\",\"data\":{\"group\":\"test1\"}}");
-    assert_int_equal(size, strlen(response));
-}
-
-void test_remcom_dispatch_assigngroup_invalid_parameters(void ** state) {
-    char* request = "{\"command\":\"assigngroup\", \"parameters\": {\"md5\": \"1234567890abcdef\"}}";
-    char *response = NULL;
-
-    size_t size = remcom_dispatch(request, &response);
-
-    *state = response;
-
-    assert_non_null(response);
-    assert_string_equal(response, "{\"error\":12,\"message\":\"Invalid agent or md5 parameter\",\"data\":{}}");
-    assert_int_equal(size, strlen(response));
-}
-
-void test_remcom_dispatch_assigngroup_empty_parameters(void ** state) {
-    char* request = "{\"command\":\"assigngroup\"}}";
-    char *response = NULL;
-
-    size_t size = remcom_dispatch(request, &response);
-
-    *state = response;
-
-    assert_non_null(response);
-    assert_string_equal(response, "{\"error\":5,\"message\":\"Empty parameters\",\"data\":{}}");
-    assert_int_equal(size, strlen(response));
-}
-
 void test_remcom_dispatch_unknown_command(void ** state) {
     char* request = "{\"command\":\"unknown\"}";
     char *response = NULL;
@@ -722,9 +676,6 @@ int main(void) {
         cmocka_unit_test_teardown(test_remcom_dispatch_getagentsstats_all_ok, test_teardown),
         cmocka_unit_test_teardown(test_remcom_dispatch_getagentsstats_array_empty_agents, test_teardown),
         cmocka_unit_test_teardown(test_remcom_dispatch_getagentsstats_array_ok, test_teardown),
-        cmocka_unit_test_teardown(test_remcom_dispatch_assigngroup, test_teardown),
-        cmocka_unit_test_teardown(test_remcom_dispatch_assigngroup_invalid_parameters, test_teardown),
-        cmocka_unit_test_teardown(test_remcom_dispatch_assigngroup_empty_parameters, test_teardown),
         cmocka_unit_test_teardown(test_remcom_dispatch_unknown_command, test_teardown),
         cmocka_unit_test_teardown(test_remcom_dispatch_empty_command, test_teardown),
         cmocka_unit_test_teardown(test_remcom_dispatch_invalid_json, test_teardown),
