@@ -5270,13 +5270,16 @@ int wdb_parse_global_update_agent_data(wdb_t * wdb, char * input, char * output)
             char *labels = cJSON_IsString(j_labels) ? j_labels->valuestring : NULL;
             char *group_config_status = cJSON_IsString(j_group_config_status) ? j_group_config_status->valuestring : NULL;
 
+            char *validated_sync_status = wdb_global_validate_sync_status(wdb, id, sync_status);
+
             if (OS_SUCCESS != wdb_global_update_agent_version(wdb, id, os_name, os_version, os_major, os_minor, os_codename,
                                                               os_platform, os_build, os_uname, os_arch, version, config_sum,
                                                               merged_sum, manager_host, node_name, agent_ip, connection_status,
-                                                              sync_status, group_config_status)) {
+                                                              validated_sync_status, group_config_status)) {
                 mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db: %s", WDB2_DIR, WDB_GLOB_NAME, sqlite3_errmsg(wdb->db));
                 snprintf(output, OS_MAXSTR + 1, "err Cannot execute Global database query; %s", sqlite3_errmsg(wdb->db));
                 cJSON_Delete(agent_data);
+                os_free(validated_sync_status);
                 return OS_INVALID;
             } else {
                 // We will only add the agent's labels if the agent was successfully added to the database.
@@ -5290,6 +5293,7 @@ int wdb_parse_global_update_agent_data(wdb_t * wdb, char * input, char * output)
                 int result = wdb_parse_global_set_agent_labels(wdb, labels_data, output);
 
                 cJSON_Delete(agent_data);
+                os_free(validated_sync_status);
                 os_free(labels_data);
                 return result;
             }
@@ -5402,12 +5406,17 @@ int wdb_parse_global_update_agent_keepalive(wdb_t * wdb, char * input, char * ou
             char *connection_status = j_connection_status->valuestring;
             char *sync_status = j_sync_status->valuestring;
 
-            if (OS_SUCCESS != wdb_global_update_agent_keepalive(wdb, id, connection_status, sync_status)) {
+            char *validated_sync_status = wdb_global_validate_sync_status(wdb, id, sync_status);
+
+            if (OS_SUCCESS != wdb_global_update_agent_keepalive(wdb, id, connection_status, validated_sync_status)) {
                 mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db: %s", WDB2_DIR, WDB_GLOB_NAME, sqlite3_errmsg(wdb->db));
                 snprintf(output, OS_MAXSTR + 1, "err Cannot execute Global database query; %s", sqlite3_errmsg(wdb->db));
                 cJSON_Delete(agent_data);
+                os_free(validated_sync_status);
                 return OS_INVALID;
             }
+
+            os_free(validated_sync_status);
         } else {
             mdebug1("Global DB Invalid JSON data when updating agent keepalive.");
             snprintf(output, OS_MAXSTR + 1, "err Invalid JSON data, near '%.32s'", input);
@@ -5449,12 +5458,17 @@ int wdb_parse_global_update_connection_status(wdb_t * wdb, char * input, char * 
             char *sync_status = j_sync_status->valuestring;
             int status_code = j_status_code->valueint;
 
-            if (OS_SUCCESS != wdb_global_update_agent_connection_status(wdb, id, connection_status, sync_status, status_code)) {
+            char *validated_sync_status = wdb_global_validate_sync_status(wdb, id, sync_status);
+
+            if (OS_SUCCESS != wdb_global_update_agent_connection_status(wdb, id, connection_status, validated_sync_status, status_code)) {
                 mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db: %s", WDB2_DIR, WDB_GLOB_NAME, sqlite3_errmsg(wdb->db));
                 snprintf(output, OS_MAXSTR + 1, "err Cannot execute Global database query; %s", sqlite3_errmsg(wdb->db));
                 cJSON_Delete(agent_data);
+                os_free(validated_sync_status);
                 return OS_INVALID;
             }
+
+            os_free(validated_sync_status);
         } else {
             mdebug1("Global DB Invalid JSON data when updating agent connection status.");
             snprintf(output, OS_MAXSTR + 1, "err Invalid JSON data, near '%.32s'", input);
@@ -5499,12 +5513,17 @@ int wdb_parse_global_update_status_code(wdb_t * wdb, char * input, char * output
             }
             char *sync_status = j_sync_status->valuestring;
 
-            if (OS_SUCCESS != wdb_global_update_agent_status_code(wdb, id, status_code, version, sync_status)) {
+            char *validated_sync_status = wdb_global_validate_sync_status(wdb, id, sync_status);
+
+            if (OS_SUCCESS != wdb_global_update_agent_status_code(wdb, id, status_code, version, validated_sync_status)) {
                 mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db: %s", WDB2_DIR, WDB_GLOB_NAME, sqlite3_errmsg(wdb->db));
                 snprintf(output, OS_MAXSTR + 1, "err Cannot execute Global database query; %s", sqlite3_errmsg(wdb->db));
                 cJSON_Delete(agent_data);
+                os_free(validated_sync_status);
                 return OS_INVALID;
             }
+
+            os_free(validated_sync_status);
         } else {
             mdebug1("Global DB Invalid JSON data when updating agent status code.");
             snprintf(output, OS_MAXSTR + 1, "err Invalid JSON data, near '%.32s'", input);
