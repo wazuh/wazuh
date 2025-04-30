@@ -114,4 +114,16 @@ cJSON* __wrap_wdb_global_get_distinct_agent_groups(   __attribute__((unused)) wd
 
 int __wrap_wdb_global_recalculate_all_agent_groups_hash(__attribute__((unused)) wdb_t *wdb);
 
+cJSON* __wrap_wdb_global_get_group_all_agents(wdb_t* wdb, const char* group_name);
+
+cJSON *__wrap_wdb_global_sync_agent_groups_get_all(wdb_t *wdb, wdb_groups_sync_condition_t condition, bool set_synced, bool get_hash, int agent_registration_delta);
+
+cJSON *__wrap_wdb_global_select_group_belong_agent_id(wdb_t *wdb, int agent_id);
+
+cJSON *__wrap_wdb_global_get_summary(wdb_t *wdb, cJSON *parameters_json);
+
+cJSON *__wrap_wdb_global_sync_agent_info_get_api(wdb_t *wdb);
+
+int __wrap_wdb_global_sync_agent_info_set_np(wdb_t *wdb, cJSON *parameters_json);
+
 #endif

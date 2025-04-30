@@ -2690,7 +2690,7 @@ int wdb_set_synchronous_normal(wdb_t * wdb);
  * @return cJSON* Returns a cJSON object with the elements that were not synced.
  *        NULL on error.
  */
-cJSON* wdb_global_sync_agent_info_get_api(wdb_t *wdb);
+cJSON* wdb_global_sync_agent_info_get_np(wdb_t *wdb);
 
 /**
  * @brief Get the elements of the agent table that were not synced.
@@ -2710,7 +2710,7 @@ cJSON* wdb_parse_global_sync_agent_info_get_api(wdb_t* wdb);
  * @param agent_info A JSON object with the agent information.
  * @return Returns 0 on success or -1 if an error occurs while setting the agent information.
  */
-int wdb_global_sync_agent_info_set_api(wdb_t *wdb, const cJSON *parameters);
+int wdb_global_sync_agent_info_set_np(wdb_t *wdb, const cJSON *parameters);
 
 /**
  * @brief Set the elements of the agent table that were not synced.

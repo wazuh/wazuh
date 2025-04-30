@@ -6915,7 +6915,8 @@ cJSON* wdb_parse_global_get_summary_api(wdb_t *wdb, const char *input) {
 }
 
 cJSON* wdb_parse_global_sync_agent_info_get_api(wdb_t* wdb) {
-    return wdb_global_sync_agent_info_get_api(wdb);
+    cJSON* ret = wdb_global_sync_agent_info_get_np(wdb);
+    return ret;
 }
 
 int wdb_parse_global_sync_agent_info_set_api(wdb_t *wdb, const char *input) {
@@ -6926,10 +6927,10 @@ int wdb_parse_global_sync_agent_info_set_api(wdb_t *wdb, const char *input) {
         return OS_INVALID;
     }
 
-    int ret = wdb_global_sync_agent_info_set_api(wdb, parameters_json);
+    int ret = wdb_global_sync_agent_info_set_np(wdb, parameters_json);
 
     if (ret != OS_SUCCESS) {
-        merror("Error in wdb_global_sync_agent_info_set_api.");
+        merror("Error in wdb_global_sync_agent_info_set_np.");
         return OS_INVALID;
     }
 

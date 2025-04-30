@@ -436,6 +436,16 @@ extern "C"
                     logMessage(modules_log_level_t::LOG_ERROR, "Error starting API. Failed to listen on socket");
                     return;
                 }
+
+                if (chmod(path.c_str(), 0660) == 0)
+                {
+                    logMessage(modules_log_level_t::LOG_DEBUG_VERBOSE, "API socket permissions set to 0660");
+                }
+                else
+                {
+                    logMessage(modules_log_level_t::LOG_ERROR,
+                               "Error setting API socket permissions: " + std::string(strerror(errno)));
+                }
             });
         // Spin lock until server is ready
         while (!instance->server->is_running() && instance->running)

@@ -375,3 +375,41 @@ cJSON* __wrap_wdb_global_get_distinct_agent_groups(   __attribute__((unused)) wd
 int __wrap_wdb_global_recalculate_all_agent_groups_hash(__attribute__((unused)) wdb_t *wdb) {
     return mock();
 }
+
+cJSON* __wrap_wdb_global_get_group_all_agents(wdb_t* wdb, const char* group_name) {
+    check_expected_ptr(wdb);
+    check_expected_ptr(group_name);
+    return mock_ptr_type(cJSON*);
+}
+
+cJSON *__wrap_wdb_global_sync_agent_groups_get_all(wdb_t *wdb, wdb_groups_sync_condition_t condition, bool set_synced, bool get_hash, int agent_registration_delta) {
+    check_expected_ptr(wdb);
+    check_expected(condition);
+    check_expected(set_synced);
+    check_expected(get_hash);
+    check_expected(agent_registration_delta);
+    return mock_ptr_type(cJSON *);
+}
+
+cJSON *__wrap_wdb_global_select_group_belong_agent_id(wdb_t *wdb, int agent_id) {
+    check_expected_ptr(wdb);
+    check_expected(agent_id);
+    return mock_ptr_type(cJSON *);
+}
+
+cJSON *__wrap_wdb_global_get_summary(wdb_t *wdb, cJSON *parameters_json) {
+    check_expected_ptr(wdb);
+    check_expected_ptr(parameters_json);
+    return mock_ptr_type(cJSON *);
+}
+
+cJSON *__wrap_wdb_global_sync_agent_info_get_np(wdb_t *wdb) {
+    check_expected_ptr(wdb);
+    return mock_ptr_type(cJSON *);
+}
+
+int __wrap_wdb_global_sync_agent_info_set_np(wdb_t *wdb, cJSON *parameters_json) {
+    check_expected_ptr(wdb);
+    check_expected_ptr(parameters_json);
+    return mock_type(int);
+}
