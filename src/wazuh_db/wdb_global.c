@@ -2527,7 +2527,7 @@ cJSON* wdb_global_get_summary(wdb_t *wdb, cJSON* agent_array) {
     return result;
 }
 
-cJSON* wdb_global_sync_agent_info_get_api(wdb_t *wdb) {
+cJSON* wdb_global_sync_agent_info_get_np(wdb_t *wdb) {
     sqlite3_stmt* agent_stmt = NULL;
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0) {
@@ -2656,7 +2656,7 @@ static int wdb_global_sync_agent_keepalive_info_set(wdb_t *wdb, int id) {
     return wdb_exec_stmt_silent(stmt);
 }
 
-int wdb_global_sync_agent_info_set_api(wdb_t *wdb, const cJSON *parameters) {
+int wdb_global_sync_agent_info_set_np(wdb_t *wdb, const cJSON *parameters) {
     cJSON * j_syncreq = cJSON_GetObjectItem(parameters, "syncreq");
     if (j_syncreq == NULL) {
         mdebug1("Parameter 'syncreq' not found");
