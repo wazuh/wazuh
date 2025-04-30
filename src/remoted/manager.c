@@ -365,9 +365,13 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
     if (data = OSHash_Get(pending_data, key->id), data && data->changed && data->message && msg && strcmp(data->message, msg) == 0) {
         w_mutex_unlock(&lastmsg_mutex);
 
+        char *sync_status = logr.worker_node ? (*startup_msg ? "syncreq" : "syncreq_keepalive") : "synced";
+
+        *startup_msg = false;
+
         agent_id = atoi(key->id);
 
-        result = wdb_update_agent_keepalive(agent_id, AGENT_CS_ACTIVE, logr.worker_node ? "syncreq_keepalive" : "synced", wdb_sock);
+        result = wdb_update_agent_keepalive(agent_id, AGENT_CS_ACTIVE, sync_status, wdb_sock);
 
         if (OS_SUCCESS != result) {
             mwarn("Unable to save last keepalive and set connection status as active for agent: %s", key->id);
@@ -388,6 +392,8 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
         if (is_startup) {
             w_mutex_unlock(&lastmsg_mutex);
 
+            *startup_msg = true;
+
             agent_id = atoi(key->id);
 
             result = wdb_update_agent_keepalive(agent_id, AGENT_CS_PENDING, logr.worker_node ? "syncreq_status" : "synced", wdb_sock);
@@ -395,8 +401,6 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
             if (OS_SUCCESS != result) {
                 mwarn("Unable to save last keepalive and set connection status as pending for agent: %s", key->id);
             }
-
-            *startup_msg = true;
         } else if (is_shutdown) {
             w_mutex_unlock(&lastmsg_mutex);
 

@@ -3968,17 +3968,6 @@ void test_wdb_global_update_agent_version_bind17_fail(void **state)
     expect_value(__wrap_sqlite3_bind_text, pos, 16);
     expect_value(__wrap_sqlite3_bind_text, buffer, connection_status);
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
-
-    // wdb_global_get_sync_status
-    will_return(__wrap_wdb_begin2, 1);
-    will_return(__wrap_wdb_stmt_cache, 1);
-    expect_value(__wrap_sqlite3_bind_int, index, 1);
-    expect_value(__wrap_sqlite3_bind_int, value, agent_id);
-    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
-    will_return(__wrap_wdb_step, SQLITE_ROW);
-    expect_value(__wrap_sqlite3_column_text, iCol, 0);
-    will_return(__wrap_sqlite3_column_text, sync_status);
-
     expect_value(__wrap_sqlite3_bind_text, pos, 17);
     expect_string(__wrap_sqlite3_bind_text, buffer, sync_status);
     will_return(__wrap_sqlite3_bind_text, SQLITE_ERROR);
@@ -4069,17 +4058,6 @@ void test_wdb_global_update_agent_version_bind18_fail(void **state)
     expect_value(__wrap_sqlite3_bind_text, pos, 16);
     expect_value(__wrap_sqlite3_bind_text, buffer, connection_status);
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
-
-    // wdb_global_get_sync_status
-    will_return(__wrap_wdb_begin2, 1);
-    will_return(__wrap_wdb_stmt_cache, 1);
-    expect_value(__wrap_sqlite3_bind_int, index, 1);
-    expect_value(__wrap_sqlite3_bind_int, value, agent_id);
-    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
-    will_return(__wrap_wdb_step, SQLITE_ROW);
-    expect_value(__wrap_sqlite3_column_text, iCol, 0);
-    will_return(__wrap_sqlite3_column_text, sync_status);
-
     expect_value(__wrap_sqlite3_bind_text, pos, 17);
     expect_string(__wrap_sqlite3_bind_text, buffer, sync_status);
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
@@ -4173,17 +4151,6 @@ void test_wdb_global_update_agent_version_bind19_fail(void **state)
     expect_value(__wrap_sqlite3_bind_text, pos, 16);
     expect_value(__wrap_sqlite3_bind_text, buffer, connection_status);
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
-
-    // wdb_global_get_sync_status
-    will_return(__wrap_wdb_begin2, 1);
-    will_return(__wrap_wdb_stmt_cache, 1);
-    expect_value(__wrap_sqlite3_bind_int, index, 1);
-    expect_value(__wrap_sqlite3_bind_int, value, agent_id);
-    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
-    will_return(__wrap_wdb_step, SQLITE_ROW);
-    expect_value(__wrap_sqlite3_column_text, iCol, 0);
-    will_return(__wrap_sqlite3_column_text, sync_status);
-
     expect_value(__wrap_sqlite3_bind_text, pos, 17);
     expect_string(__wrap_sqlite3_bind_text, buffer, sync_status);
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
@@ -4280,17 +4247,6 @@ void test_wdb_global_update_agent_version_step_fail(void **state)
     expect_value(__wrap_sqlite3_bind_text, pos, 16);
     expect_value(__wrap_sqlite3_bind_text, buffer, connection_status);
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
-
-    // wdb_global_get_sync_status
-    will_return(__wrap_wdb_begin2, 1);
-    will_return(__wrap_wdb_stmt_cache, 1);
-    expect_value(__wrap_sqlite3_bind_int, index, 1);
-    expect_value(__wrap_sqlite3_bind_int, value, agent_id);
-    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
-    will_return(__wrap_wdb_step, SQLITE_ROW);
-    expect_value(__wrap_sqlite3_column_text, iCol, 0);
-    will_return(__wrap_sqlite3_column_text, sync_status);
-
     expect_value(__wrap_sqlite3_bind_text, pos, 17);
     expect_string(__wrap_sqlite3_bind_text, buffer, sync_status);
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
@@ -4386,17 +4342,6 @@ void test_wdb_global_update_agent_version_success(void **state)
     expect_value(__wrap_sqlite3_bind_text, pos, 16);
     expect_value(__wrap_sqlite3_bind_text, buffer, connection_status);
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
-
-    // wdb_global_get_sync_status
-    will_return(__wrap_wdb_begin2, 1);
-    will_return(__wrap_wdb_stmt_cache, 1);
-    expect_value(__wrap_sqlite3_bind_int, index, 1);
-    expect_value(__wrap_sqlite3_bind_int, value, agent_id);
-    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
-    will_return(__wrap_wdb_step, SQLITE_ROW);
-    expect_value(__wrap_sqlite3_column_text, iCol, 0);
-    will_return(__wrap_sqlite3_column_text, sync_status);
-
     expect_value(__wrap_sqlite3_bind_text, pos, 17);
     expect_string(__wrap_sqlite3_bind_text, buffer, sync_status);
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
@@ -4485,17 +4430,6 @@ void test_wdb_global_update_agent_keepalive_bind2_fail(void **state)
     expect_value(__wrap_sqlite3_bind_text, pos, 1);
     expect_value(__wrap_sqlite3_bind_text, buffer, connection_status);
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
-
-    // wdb_global_get_sync_status
-    will_return(__wrap_wdb_begin2, 1);
-    will_return(__wrap_wdb_stmt_cache, 1);
-    expect_value(__wrap_sqlite3_bind_int, index, 1);
-    expect_value(__wrap_sqlite3_bind_int, value, 1);
-    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
-    will_return(__wrap_wdb_step, SQLITE_ROW);
-    expect_value(__wrap_sqlite3_column_text, iCol, 0);
-    will_return(__wrap_sqlite3_column_text, status);
-
     expect_value(__wrap_sqlite3_bind_text, pos, 2);
     expect_string(__wrap_sqlite3_bind_text, buffer, status);
     will_return(__wrap_sqlite3_bind_text, SQLITE_ERROR);
@@ -4521,17 +4455,6 @@ void test_wdb_global_update_agent_keepalive_bind3_fail(void **state)
     expect_value(__wrap_sqlite3_bind_text, pos, 1);
     expect_value(__wrap_sqlite3_bind_text, buffer, connection_status);
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
-
-    // wdb_global_get_sync_status
-    will_return(__wrap_wdb_begin2, 1);
-    will_return(__wrap_wdb_stmt_cache, 1);
-    expect_value(__wrap_sqlite3_bind_int, index, 1);
-    expect_value(__wrap_sqlite3_bind_int, value, 1);
-    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
-    will_return(__wrap_wdb_step, SQLITE_ROW);
-    expect_value(__wrap_sqlite3_column_text, iCol, 0);
-    will_return(__wrap_sqlite3_column_text, status);
-
     expect_value(__wrap_sqlite3_bind_text, pos, 2);
     expect_string(__wrap_sqlite3_bind_text, buffer, status);
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
@@ -4560,17 +4483,6 @@ void test_wdb_global_update_agent_keepalive_step_fail(void **state)
     expect_value(__wrap_sqlite3_bind_text, pos, 1);
     expect_value(__wrap_sqlite3_bind_text, buffer, connection_status);
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
-
-    // wdb_global_get_sync_status
-    will_return(__wrap_wdb_begin2, 1);
-    will_return(__wrap_wdb_stmt_cache, 1);
-    expect_value(__wrap_sqlite3_bind_int, index, 1);
-    expect_value(__wrap_sqlite3_bind_int, value, 1);
-    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
-    will_return(__wrap_wdb_step, SQLITE_ROW);
-    expect_value(__wrap_sqlite3_column_text, iCol, 0);
-    will_return(__wrap_sqlite3_column_text, status);
-
     expect_value(__wrap_sqlite3_bind_text, pos, 2);
     expect_string(__wrap_sqlite3_bind_text, buffer, status);
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
@@ -4598,17 +4510,6 @@ void test_wdb_global_update_agent_keepalive_success(void **state)
     expect_value(__wrap_sqlite3_bind_text, pos, 1);
     expect_value(__wrap_sqlite3_bind_text, buffer, connection_status);
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
-
-    // wdb_global_get_sync_status
-    will_return(__wrap_wdb_begin2, 1);
-    will_return(__wrap_wdb_stmt_cache, 1);
-    expect_value(__wrap_sqlite3_bind_int, index, 1);
-    expect_value(__wrap_sqlite3_bind_int, value, 1);
-    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
-    will_return(__wrap_wdb_step, SQLITE_ROW);
-    expect_value(__wrap_sqlite3_column_text, iCol, 0);
-    will_return(__wrap_sqlite3_column_text, status);
-
     expect_value(__wrap_sqlite3_bind_text, pos, 2);
     expect_string(__wrap_sqlite3_bind_text, buffer, status);
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
@@ -4689,17 +4590,6 @@ void test_wdb_global_update_agent_connection_status_bind2_fail(void **state)
     expect_value(__wrap_sqlite3_bind_text, pos, 1);
     expect_value(__wrap_sqlite3_bind_text, buffer, connection_status);
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
-
-    // wdb_global_get_sync_status
-    will_return(__wrap_wdb_begin2, 1);
-    will_return(__wrap_wdb_stmt_cache, 1);
-    expect_value(__wrap_sqlite3_bind_int, index, 1);
-    expect_value(__wrap_sqlite3_bind_int, value, 1);
-    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
-    will_return(__wrap_wdb_step, SQLITE_ROW);
-    expect_value(__wrap_sqlite3_column_text, iCol, 0);
-    will_return(__wrap_sqlite3_column_text, sync_status);
-
     expect_value(__wrap_sqlite3_bind_text, pos, 2);
     expect_string(__wrap_sqlite3_bind_text, buffer, sync_status);
     will_return(__wrap_sqlite3_bind_text, SQLITE_ERROR);
@@ -4724,17 +4614,6 @@ void test_wdb_global_update_agent_connection_status_bind3_fail(void **state)
     expect_value(__wrap_sqlite3_bind_text, pos, 1);
     expect_value(__wrap_sqlite3_bind_text, buffer, connection_status);
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
-
-    // wdb_global_get_sync_status
-    will_return(__wrap_wdb_begin2, 1);
-    will_return(__wrap_wdb_stmt_cache, 1);
-    expect_value(__wrap_sqlite3_bind_int, index, 1);
-    expect_value(__wrap_sqlite3_bind_int, value, 1);
-    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
-    will_return(__wrap_wdb_step, SQLITE_ROW);
-    expect_value(__wrap_sqlite3_column_text, iCol, 0);
-    will_return(__wrap_sqlite3_column_text, sync_status);
-
     expect_value(__wrap_sqlite3_bind_text, pos, 2);
     expect_string(__wrap_sqlite3_bind_text, buffer, sync_status);
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
@@ -4762,17 +4641,6 @@ void test_wdb_global_update_agent_connection_status_bind4_fail(void **state)
     expect_value(__wrap_sqlite3_bind_text, pos, 1);
     expect_value(__wrap_sqlite3_bind_text, buffer, connection_status);
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
-
-    // wdb_global_get_sync_status
-    will_return(__wrap_wdb_begin2, 1);
-    will_return(__wrap_wdb_stmt_cache, 1);
-    expect_value(__wrap_sqlite3_bind_int, index, 1);
-    expect_value(__wrap_sqlite3_bind_int, value, 1);
-    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
-    will_return(__wrap_wdb_step, SQLITE_ROW);
-    expect_value(__wrap_sqlite3_column_text, iCol, 0);
-    will_return(__wrap_sqlite3_column_text, sync_status);
-
     expect_value(__wrap_sqlite3_bind_text, pos, 2);
     expect_string(__wrap_sqlite3_bind_text, buffer, sync_status);
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
@@ -4803,17 +4671,6 @@ void test_wdb_global_update_agent_connection_status_bind5_fail(void **state)
     expect_value(__wrap_sqlite3_bind_text, pos, 1);
     expect_value(__wrap_sqlite3_bind_text, buffer, connection_status);
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
-
-    // wdb_global_get_sync_status
-    will_return(__wrap_wdb_begin2, 1);
-    will_return(__wrap_wdb_stmt_cache, 1);
-    expect_value(__wrap_sqlite3_bind_int, index, 1);
-    expect_value(__wrap_sqlite3_bind_int, value, 1);
-    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
-    will_return(__wrap_wdb_step, SQLITE_ROW);
-    expect_value(__wrap_sqlite3_column_text, iCol, 0);
-    will_return(__wrap_sqlite3_column_text, sync_status);
-
     expect_value(__wrap_sqlite3_bind_text, pos, 2);
     expect_string(__wrap_sqlite3_bind_text, buffer, sync_status);
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
@@ -4847,17 +4704,6 @@ void test_wdb_global_update_agent_connection_status_step_fail(void **state)
     expect_value(__wrap_sqlite3_bind_text, pos, 1);
     expect_value(__wrap_sqlite3_bind_text, buffer, connection_status);
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
-
-    // wdb_global_get_sync_status
-    will_return(__wrap_wdb_begin2, 1);
-    will_return(__wrap_wdb_stmt_cache, 1);
-    expect_value(__wrap_sqlite3_bind_int, index, 1);
-    expect_value(__wrap_sqlite3_bind_int, value, 1);
-    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
-    will_return(__wrap_wdb_step, SQLITE_ROW);
-    expect_value(__wrap_sqlite3_column_text, iCol, 0);
-    will_return(__wrap_sqlite3_column_text, sync_status);
-
     expect_value(__wrap_sqlite3_bind_text, pos, 2);
     expect_string(__wrap_sqlite3_bind_text, buffer, sync_status);
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
@@ -4892,17 +4738,6 @@ void test_wdb_global_update_agent_connection_status_success(void **state)
     expect_value(__wrap_sqlite3_bind_text, buffer, connection_status);
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
     expect_value(__wrap_sqlite3_bind_text, pos, 2);
-
-    // wdb_global_get_sync_status
-    will_return(__wrap_wdb_begin2, 1);
-    will_return(__wrap_wdb_stmt_cache, 1);
-    expect_value(__wrap_sqlite3_bind_int, index, 1);
-    expect_value(__wrap_sqlite3_bind_int, value, 1);
-    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
-    will_return(__wrap_wdb_step, SQLITE_ROW);
-    expect_value(__wrap_sqlite3_column_text, iCol, 0);
-    will_return(__wrap_sqlite3_column_text, sync_status);
-
     expect_string(__wrap_sqlite3_bind_text, buffer, sync_status);
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
     expect_value(__wrap_sqlite3_bind_int, index, 3);
@@ -5020,17 +4855,6 @@ void test_wdb_global_update_agent_status_code_bind3_fail(void **state) {
     expect_value(__wrap_sqlite3_bind_text, pos, 2);
     expect_value(__wrap_sqlite3_bind_text, buffer, version);
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
-
-    // wdb_global_get_sync_status
-    will_return(__wrap_wdb_begin2, 1);
-    will_return(__wrap_wdb_stmt_cache, 1);
-    expect_value(__wrap_sqlite3_bind_int, index, 1);
-    expect_value(__wrap_sqlite3_bind_int, value, 1);
-    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
-    will_return(__wrap_wdb_step, SQLITE_ROW);
-    expect_value(__wrap_sqlite3_column_text, iCol, 0);
-    will_return(__wrap_sqlite3_column_text, sync_status);
-
     expect_value(__wrap_sqlite3_bind_text, pos, 3);
     expect_string(__wrap_sqlite3_bind_text, buffer, sync_status);
     will_return(__wrap_sqlite3_bind_text, SQLITE_ERROR);
@@ -5060,17 +4884,6 @@ void test_wdb_global_update_agent_status_code_bind4_fail(void **state) {
     expect_value(__wrap_sqlite3_bind_text, pos, 2);
     expect_value(__wrap_sqlite3_bind_text, buffer, version);
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
-
-    // wdb_global_get_sync_status
-    will_return(__wrap_wdb_begin2, 1);
-    will_return(__wrap_wdb_stmt_cache, 1);
-    expect_value(__wrap_sqlite3_bind_int, index, 1);
-    expect_value(__wrap_sqlite3_bind_int, value, 1);
-    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
-    will_return(__wrap_wdb_step, SQLITE_ROW);
-    expect_value(__wrap_sqlite3_column_text, iCol, 0);
-    will_return(__wrap_sqlite3_column_text, sync_status);
-
     expect_value(__wrap_sqlite3_bind_text, pos, 3);
     expect_string(__wrap_sqlite3_bind_text, buffer, sync_status);
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
@@ -5104,17 +4917,6 @@ void test_wdb_global_update_agent_status_code_step_fail(void **state) {
     expect_value(__wrap_sqlite3_bind_text, pos, 2);
     expect_value(__wrap_sqlite3_bind_text, buffer, version);
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
-
-    // wdb_global_get_sync_status
-    will_return(__wrap_wdb_begin2, 1);
-    will_return(__wrap_wdb_stmt_cache, 1);
-    expect_value(__wrap_sqlite3_bind_int, index, 1);
-    expect_value(__wrap_sqlite3_bind_int, value, 1);
-    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
-    will_return(__wrap_wdb_step, SQLITE_ROW);
-    expect_value(__wrap_sqlite3_column_text, iCol, 0);
-    will_return(__wrap_sqlite3_column_text, sync_status);
-
     expect_value(__wrap_sqlite3_bind_text, pos, 3);
     expect_string(__wrap_sqlite3_bind_text, buffer, sync_status);
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
@@ -5148,17 +4950,6 @@ void test_wdb_global_update_agent_status_code_success(void **state) {
     expect_value(__wrap_sqlite3_bind_text, pos, 2);
     expect_value(__wrap_sqlite3_bind_text, buffer, version);
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
-
-    // wdb_global_get_sync_status
-    will_return(__wrap_wdb_begin2, 1);
-    will_return(__wrap_wdb_stmt_cache, 1);
-    expect_value(__wrap_sqlite3_bind_int, index, 1);
-    expect_value(__wrap_sqlite3_bind_int, value, 1);
-    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
-    will_return(__wrap_wdb_step, SQLITE_ROW);
-    expect_value(__wrap_sqlite3_column_text, iCol, 0);
-    will_return(__wrap_sqlite3_column_text, sync_status);
-
     expect_value(__wrap_sqlite3_bind_text, pos, 3);
     expect_string(__wrap_sqlite3_bind_text, buffer, sync_status);
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
@@ -6931,17 +6722,6 @@ void test_wdb_global_get_agents_to_disconnect_ok(void **state)
         expect_value(__wrap_sqlite3_bind_text, pos, 2);
         expect_string(__wrap_sqlite3_bind_text, buffer, "synced");
         will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
-
-        // wdb_global_get_sync_status
-        will_return(__wrap_wdb_begin2, 1);
-        will_return(__wrap_wdb_stmt_cache, 1);
-        expect_value(__wrap_sqlite3_bind_int, index, 1);
-        expect_value(__wrap_sqlite3_bind_int, value, i);
-        will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
-        will_return(__wrap_wdb_step, SQLITE_ROW);
-        expect_value(__wrap_sqlite3_column_text, iCol, 0);
-        will_return(__wrap_sqlite3_column_text, "synced");
-
         expect_value(__wrap_sqlite3_bind_int, index, 3);
         expect_value(__wrap_sqlite3_bind_int, value, (time_t)0);
         will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
@@ -7000,17 +6780,6 @@ void test_wdb_global_get_agents_to_disconnect_due(void **state)
         expect_value(__wrap_sqlite3_bind_text, pos, 2);
         expect_string(__wrap_sqlite3_bind_text, buffer, "synced");
         will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
-
-        // wdb_global_get_sync_status
-        will_return(__wrap_wdb_begin2, 1);
-        will_return(__wrap_wdb_stmt_cache, 1);
-        expect_value(__wrap_sqlite3_bind_int, index, 1);
-        expect_value(__wrap_sqlite3_bind_int, value, i);
-        will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
-        will_return(__wrap_wdb_step, SQLITE_ROW);
-        expect_value(__wrap_sqlite3_column_text, iCol, 0);
-        will_return(__wrap_sqlite3_column_text, "synced");
-
         expect_value(__wrap_sqlite3_bind_int, index, 3);
         expect_value(__wrap_sqlite3_bind_int, value, (time_t)0);
         will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
