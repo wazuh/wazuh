@@ -122,7 +122,7 @@ async def test_create_indexer_ko(indexer_mock: mock.AsyncMock, retries: int):
 
 @mock.patch('wazuh.core.indexer.create_indexer')
 @mock.patch('wazuh.core.config.client.CentralizedConfig.get_indexer_config')
-@mock.patch('wazuh.core.config.models.indexer.KeystoreReader.__new__', return_value=None)
+@mock.patch('wazuh.core.config.models.indexer.KeystoreReader', return_value=None)
 async def test_get_indexer_client(keystore_mock, get_indexer_config_mock, create_indexer_mock):
     """Check the correct function of `get_indexer_client`."""
     user = 'user'

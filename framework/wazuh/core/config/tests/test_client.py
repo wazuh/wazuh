@@ -33,7 +33,7 @@ mock_config_data = {
 @pytest.fixture
 def keystore_mock():
     """Patch the keystore initialization."""
-    with patch('wazuh.core.config.models.indexer.KeystoreReader.__new__') as keystore_mock:
+    with patch('wazuh.core.config.models.indexer.KeystoreReader') as keystore_mock:
         keystore_mock.return_value = MagicMock()
 
         yield keystore_mock

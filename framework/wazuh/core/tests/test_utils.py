@@ -926,8 +926,7 @@ class TestKeystoreReader:
     klass = utils.KeystoreReader
     test_keystore = Path(test_data_path, 'test.keystore')
 
-    @patch('wazuh.core.utils.KeystoreReader')
-    def test_init_call_expected_methods(self, keystore_mock):
+    def test_init_call_expected_methods(self):
         """Test if __init__ call the expected methods."""
         path_mock = MagicMock()
 

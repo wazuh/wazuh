@@ -41,7 +41,7 @@ with patch('os.path.isfile', return_value=True):
         ),
     ],
 )
-@patch('wazuh.core.config.models.indexer.KeystoreReader.__new__', return_value=None)
+@patch('wazuh.core.config.models.indexer.KeystoreReader', return_value=None)
 def test_indexer_config_default_values(keystore_mock, init_values, expected):
     """Check the correct initialization of the `IndexerConfig` class."""
     keystore_instance = MagicMock(
@@ -75,7 +75,7 @@ def test_indexer_config_fails_without_values(init_values):
 
 
 @pytest.mark.parametrize('keystore_value', [{'foo': 'bar'}, {'indexer-username': 'test'}, {'indexer-password': 'test'}])
-@patch('wazuh.core.config.models.indexer.KeystoreReader.__new__', return_value=None)
+@patch('wazuh.core.config.models.indexer.KeystoreReader', return_value=None)
 def test_indexer_config_fails_if_key_is_not_in_keystore(keystore_mock, keystore_value):
     """Check for validation error when expected key is not in the keystore."""
     keystore_instance = MagicMock(**{'_keystore': keystore_value})
@@ -100,7 +100,7 @@ def test_indexer_config_fails_if_key_is_not_in_keystore(keystore_mock, keystore_
         (['http://localhost:9200', 'https://localhost:9201'], False),
     ],
 )
-@patch('wazuh.core.config.models.indexer.KeystoreReader.__new__', return_value=None)
+@patch('wazuh.core.config.models.indexer.KeystoreReader', return_value=None)
 def test_indexer_config_validate_url_scheme(keystore_mock, hosts, use_ssl):
     """Check `IndexerConfig` hosts scheme depending of ssl.use_ssl."""
     keystore_instance = MagicMock(**{'_keystore': {'indexer-username': 'admin', 'indexer-password': 'admin'}})

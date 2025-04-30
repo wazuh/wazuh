@@ -11,7 +11,7 @@ from wazuh.core.config.models.server import ServerConfig
 
 def get_default_configuration():
     """Get default configuration for the tests."""
-    with patch('wazuh.core.config.models.indexer.KeystoreReader.__new__') as keystore_mock:
+    with patch('wazuh.core.config.models.indexer.KeystoreReader') as keystore_mock:
         keystore_mock.return_value = MagicMock()
 
         return Config(
