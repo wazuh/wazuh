@@ -7,7 +7,7 @@ RUN echo "deb http://archive.debian.org/debian stretch contrib main non-free" > 
     echo "deb http://archive.debian.org/debian-security stretch/updates main" >> /etc/apt/sources.list && \
     echo "deb-src http://archive.debian.org/debian stretch main" >> /etc/apt/sources.list && \
     apt-get update && apt-get install -y --allow-change-held-packages apt apt-utils  \
-    curl gcc g++ make sudo expect gnupg \
+    curl gcc g++ make sudo expect gnupg procps \
     perl-base perl wget libc-bin libc6 libc6-dev \
     build-essential cdbs devscripts equivs automake \
     autoconf libtool libaudit-dev selinux-basics \
