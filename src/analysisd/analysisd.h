@@ -119,4 +119,16 @@ extern int num_rule_matching_threads;
 
 time_t w_get_current_time(void);
 
+ /**
+  * @brief Try reload the ruleset
+  *
+  * This function will try to reload the ruleset, Re reading the ruleset config
+  * from ossec.conf, getting the new files of decoders, rules, cdb list and
+  * cleaning the old ruleset.
+  *
+  * @param list_msg [output] List of messages to be logged (error, warning and info messages)
+  * @return false if the ruleset was reloaded successfully, true otherwise
+  */
+ bool w_hotreload_reload(OSList* list_msg);
+
 #endif /* LOGAUDIT_H */

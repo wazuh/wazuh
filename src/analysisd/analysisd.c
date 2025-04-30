@@ -72,6 +72,43 @@ void sdb_init(_sdb *localsdb, OSDecoderInfo *fim_decoder);
 /* For stats */
 static void DumpLogstats(void);
 
+/* For hot reload ruleset */
+typedef struct _w_hotreload_ruleset_data_t
+{
+    // Ruleset data
+    RuleNode* rule_list; ///< Rule list [os_analysisd_rulelist]
+    OSDecoderNode*
+        decoderlist_forpname; ///< Decoder list to match logs which have a program name [os_analysisd_decoderlist_pn]
+    OSDecoderNode* decoderlist_nopname; ///< Decoder list to match logs which haven't a program name
+                                        ///< [os_analysisd_decoderlist_nopn]
+    OSStore* decoder_store;             ///< Decoder list to save internals decoders [os_analysisd_decoder_store]
+    ListNode* cdblistnode;              ///< List of CDB lists [os_analysisd_cdblists]
+    ListRule* cdblistrule;              ///< List to attach rules and CDB lists [os_analysisd_cdbrules]
+    EventList* eventlist;               ///< Previous events list [os_analysisd_last_events]
+    OSHash* rules_hash;                 ///< Hash table of rules [Config.g_rules_hash]
+    OSList* fts_list;                   ///< Save FTS previous events [os_analysisd_fts_list]
+    OSHash* fts_store;                  ///< Save FTS values processed [os_analysisd_fts_store]
+    OSHash* acm_store;                  ///< Hash to save data which have the same id [os_analysisd_acm_store]
+    int acm_lookups;     ///< Counter of the number of times purged. Option accumulate [os_analysisd_acm_lookups]
+    time_t acm_purge_ts; ///< Counter of the time interval of last purge. Option accumulate [os_analysisd_acm_purge_ts]
+    // Config data
+    char** decoders; ///< List of decoders [Config.decoders]
+    char** includes; ///< List of rules [Config.includes]
+    char** lists;    ///< List of lists [Config.lists]
+
+} w_hotreload_ruleset_data_t;
+
+// Hot reload ruleset
+void w_hotreload_reload_internal_decoders();
+w_hotreload_ruleset_data_t* w_hotreload_switch_ruleset(w_hotreload_ruleset_data_t* new_ruleset);
+w_hotreload_ruleset_data_t* w_hotreload_create_ruleset(OSList* list_msg);
+void w_hotreload_clean_ruleset(w_hotreload_ruleset_data_t** ptr_ruleset);
+bool w_hotreload_ruleset_load(_Config* ruleset_config, OSList* list_msg);
+bool w_hotreload_ruleset_load_config(OS_XML* xml,
+    XML_NODE conf_section_nodes,
+    _Config* ruleset_config,
+    OSList* list_msg);
+
 // Message handler thread
 void * ad_input_main(void * args);
 
@@ -231,11 +268,12 @@ static int reported_eps_drop = 0;
 static int reported_eps_drop_hourly = 0;
 
 /* Mutexes */
-pthread_mutex_t decode_syscheck_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t process_event_check_hour_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t process_event_mutex = PTHREAD_MUTEX_INITIALIZER;
 /* Hourly alerts mutex */
 pthread_mutex_t hourly_alert_mutex = PTHREAD_MUTEX_INITIALIZER;
+/* hot reload mutes */
+static pthread_rwlock_t g_hotreload_ruleset_mutex = PTHREAD_RWLOCK_INITIALIZER;
 
 /* Reported mutexes */
 static pthread_mutex_t writer_threads_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -719,7 +757,7 @@ int main_analysisd(int argc, char **argv)
 
                     if (Rules_OP_ReadRules(*rulesfiles, &os_analysisd_rulelist,
                                            &os_analysisd_cdblists, &os_analysisd_last_events,
-                                           &os_analysisd_decoder_store, list_msg) < 0) {
+                                           &os_analysisd_decoder_store, list_msg, true) < 0) {
                         error_exit = 1;
                     }
 
@@ -1216,6 +1254,8 @@ void * ad_input_main(void * args) {
             w_inc_received_events();
 
             result = -1;
+            // take the ruleset
+            w_rwlock_rdlock(&g_hotreload_ruleset_mutex);
 
             if (msg[0] == SYSCHECK_MQ) {
                 if (!queue_full(decode_queue_syscheck_input)) {
@@ -1414,6 +1454,9 @@ void * ad_input_main(void * args) {
                     }
                 }
             }
+
+
+            w_rwlock_unlock(&g_hotreload_ruleset_mutex);
 
             if (result == -1) {
                 if (!reported_eps_drop) {
@@ -2419,4 +2462,449 @@ time_t w_get_current_time(void) {
     time_t _current_time;
     w_guard_mutex_variable(current_time_mutex, (_current_time = current_time));
     return _current_time;
+}
+
+/******************************************************************************
+ *                          Hot reload ruleset
+ ******************************************************************************/
+bool w_hotreload_reload(OSList* list_msg)
+{
+    /* logging handler */
+    /*
+    OSList* list_msg = OSList_Create();
+    if (!list_msg)
+    {
+        merror_exit(LIST_ERROR);
+    }
+    OSList_SetMaxSize(list_msg, ERRORLIST_MAXSIZE);
+    OSList_SetFreeDataPointer(list_msg, (void (*)(void*))os_analysisd_free_log_msg);
+    */
+
+    assert(list_msg != NULL);
+
+    // Get the ruleset
+    w_hotreload_ruleset_data_t* ruleset = w_hotreload_create_ruleset(list_msg);
+    if (!ruleset)
+    {
+        mdebug1("Error creating ruleset for hotreload");
+        return true;
+    }
+
+    // Sync thread for reloading ruleset,
+    mdebug1("Blocking input threads to reload ruleset");
+    w_rwlock_wrlock(&g_hotreload_ruleset_mutex);
+
+    // Wait for a clean pipeline
+    mdebug1("Wait for pipeline to be clean");
+    while (!queue_empty_ex(decode_queue_event_output) || !queue_empty_ex(decode_queue_syscheck_input) ||
+           !queue_empty_ex(decode_queue_syscollector_input) || !queue_empty_ex(decode_queue_rootcheck_input) ||
+           !queue_empty_ex(decode_queue_sca_input) || !queue_empty_ex(decode_queue_hostinfo_input) ||
+           !queue_empty_ex(decode_queue_winevt_input) || !queue_empty_ex(dispatch_dbsync_input) ||
+           !queue_empty_ex(upgrade_module_input) || !queue_empty_ex(writer_queue_log) || !queue_empty_ex(writer_queue))
+    {
+        usleep(1000);
+    }
+
+    usleep(1000); // Give some time for the threads to finish TODO: Check this
+
+    mdebug1("Pipeline is clean, switching ruleset");
+
+    // Switch the ruleset and get the old one
+    w_hotreload_ruleset_data_t* old_ruleset = w_hotreload_switch_ruleset(ruleset);
+
+    // Reset the internal decoders
+    w_hotreload_reload_internal_decoders();
+
+    // Run the new ruleset
+    w_rwlock_unlock(&g_hotreload_ruleset_mutex);
+
+    // Free the old ruleset
+    w_hotreload_clean_ruleset(&old_ruleset);
+
+    // Delete only the struct where store the new ruleset
+    os_free(ruleset);
+
+    return false;
+}
+
+/**
+ * @brief Reload the internal decoders
+ *
+ * Reload the internal decoders, updating decoder store internally
+ */
+void w_hotreload_reload_internal_decoders()
+{
+
+    RootcheckHotReload();
+    SyscollectorHotReload();
+    CiscatHotReload();
+    HostinfoHotReload();
+    WinevtHotReload();
+    SecurityConfigurationAssessmentHotReload();
+    fim_hot_reload();
+}
+
+/**
+ * @brief Switch the current ruleset with the new one
+ * 
+ * This function will switch the current ruleset with the new one, updating the global configuration
+ * This function is not thread safe
+ * @param new_ruleset New ruleset to be set
+ * @return w_hotreload_ruleset_data_t* a struct pointing to the old ruleset
+ */
+w_hotreload_ruleset_data_t* w_hotreload_switch_ruleset(w_hotreload_ruleset_data_t* new_ruleset)
+{
+    assert(new_ruleset != NULL);
+
+    w_hotreload_ruleset_data_t* old_ruleset = NULL;
+    os_calloc(1, sizeof(w_hotreload_ruleset_data_t), old_ruleset);
+
+    // Rules
+    old_ruleset->eventlist = os_analysisd_last_events;
+    old_ruleset->rule_list = os_analysisd_rulelist;
+    os_analysisd_last_events = new_ruleset->eventlist;
+    os_analysisd_rulelist = new_ruleset->rule_list;
+
+    // Decoders
+    old_ruleset->decoderlist_forpname = os_analysisd_decoderlist_pn;
+    old_ruleset->decoderlist_nopname = os_analysisd_decoderlist_nopn;
+    old_ruleset->decoder_store = os_analysisd_decoder_store;
+    os_analysisd_decoderlist_pn = new_ruleset->decoderlist_forpname;
+    os_analysisd_decoderlist_nopn = new_ruleset->decoderlist_nopname;
+    os_analysisd_decoder_store = new_ruleset->decoder_store;
+
+    // CDB
+    old_ruleset->cdblistnode = os_analysisd_cdblists;
+    old_ruleset->cdblistrule = os_analysisd_cdbrules;
+    os_analysisd_cdblists = new_ruleset->cdblistnode;
+    os_analysisd_cdbrules = new_ruleset->cdblistrule;
+
+    // FTS Switch
+    old_ruleset->fts_list = os_analysisd_fts_list;
+    old_ruleset->fts_store = os_analysisd_fts_store;
+    os_analysisd_fts_list = new_ruleset->fts_list;
+    os_analysisd_fts_store = new_ruleset->fts_store;
+
+    // ACM
+    old_ruleset->acm_store = os_analysisd_acm_store;
+    old_ruleset->acm_lookups = os_analysisd_acm_lookups;
+    old_ruleset->acm_purge_ts = os_analysisd_acm_purge_ts;
+    os_analysisd_acm_store = new_ruleset->acm_store;
+    os_analysisd_acm_lookups = new_ruleset->acm_lookups;
+    os_analysisd_acm_purge_ts = new_ruleset->acm_purge_ts;
+
+    // Global Config (list of files and hash rules)
+    old_ruleset->rules_hash = Config.g_rules_hash;
+    old_ruleset->includes = Config.includes;
+    old_ruleset->lists = Config.lists;
+    old_ruleset->decoders = Config.decoders;
+    Config.g_rules_hash = new_ruleset->rules_hash;
+    Config.includes = new_ruleset->includes;
+    Config.lists = new_ruleset->lists;
+    Config.decoders = new_ruleset->decoders;
+
+    return old_ruleset;
+}
+
+/**
+ * @brief Create a new ruleset
+ * 
+ * @param list_msg [output] List of messages to be logged (error, warning and info messages)
+ * @return w_hotreload_ruleset_data_t* new ruleset
+ */
+w_hotreload_ruleset_data_t* w_hotreload_create_ruleset(OSList* list_msg)
+{
+
+    bool retval = true; // Failure
+
+    /* Temporary ruleset */
+    w_hotreload_ruleset_data_t* ruleset;
+    os_calloc(1, sizeof(w_hotreload_ruleset_data_t), ruleset);
+    _Config ruleset_config = {0};
+
+    /* Create the event list */
+    {
+        os_calloc(1, sizeof(EventList), ruleset->eventlist);
+        OS_CreateEventList(Config.memorysize, ruleset->eventlist);
+    }
+
+    /* Read the ossec.conf to get the ruleset files and alert level */
+    if (!w_hotreload_ruleset_load(&ruleset_config, list_msg))
+    {
+        goto cleanup;
+    }
+    ruleset->decoders = ruleset_config.decoders;
+    ruleset->includes = ruleset_config.includes;
+    ruleset->lists = ruleset_config.lists;
+
+    /* Load decoders */
+    {
+        char** files = ruleset->decoders;
+        while (files != NULL && *files != NULL)
+        {
+            if (ReadDecodeXML(*files,
+                              &ruleset->decoderlist_forpname,
+                              &ruleset->decoderlist_nopname,
+                              &ruleset->decoder_store,
+                              list_msg) == 0)
+            {
+                goto cleanup;
+            }
+            files++;
+        }
+
+        if (SetDecodeXML(
+                list_msg, &ruleset->decoder_store, &ruleset->decoderlist_nopname, &ruleset->decoderlist_forpname) == 0)
+        {
+            goto cleanup;
+        }
+    }
+
+    /* Load CDB lists */
+    {
+        char** files = ruleset_config.lists;
+        while (files != NULL && *files != NULL)
+        {
+            if (Lists_OP_LoadList(*files, &ruleset->cdblistnode, list_msg) < 0)
+            {
+                goto cleanup;
+            }
+            files++;
+        }
+        Lists_OP_MakeAll(0, 0, &ruleset->cdblistnode);
+    }
+
+    /* Load rules */
+    {
+        char** files = ruleset_config.includes;
+
+        while (files != NULL && *files != NULL)
+        {
+            // TODO: Ojo con lo del active response
+            if (Rules_OP_ReadRules(*files,
+                                   &ruleset->rule_list,
+                                   &ruleset->cdblistnode,
+                                   &ruleset->eventlist,
+                                   &ruleset->decoder_store,
+                                   list_msg,
+                                   true) < 0)
+            {
+                goto cleanup;
+            }
+            files++;
+        }
+        /* Associate rules and CDB lists */
+        OS_ListLoadRules(&ruleset->cdblistnode, &ruleset->cdblistrule);
+        _setlevels(ruleset->rule_list, 0);
+
+        /* Creating rule hash */
+        if (ruleset->rules_hash = OSHash_Create(), !ruleset->rules_hash)
+        {
+            goto cleanup;
+        }
+
+        AddHash_Rule(ruleset->rule_list);
+    }
+
+    /* Initiate the FTS list */
+    if (!w_logtest_fts_init(&ruleset->fts_list, &ruleset->fts_store))
+    {
+        goto cleanup;
+    }
+
+    /* Initialize the Accumulator */
+    if (!Accumulate_Init(&ruleset->acm_store, &ruleset->acm_lookups, &ruleset->acm_purge_ts))
+    {
+        goto cleanup;
+    }
+
+    retval = false; // Success
+
+cleanup: // TODO Delete this goto
+
+    if (retval)
+    {
+        w_hotreload_clean_ruleset(&ruleset);
+    }
+
+    return ruleset;
+}
+
+/**
+ * @brief Clean a ruleset
+ * 
+ * @param ptr_ruleset Pointer to the ruleset to be cleaned
+ * @return void
+ */
+void w_hotreload_clean_ruleset(w_hotreload_ruleset_data_t** ptr_ruleset)
+{
+
+    w_hotreload_ruleset_data_t* ruleset = *ptr_ruleset;
+    // Clean conf
+    free_strarray(ruleset->decoders);
+    free_strarray(ruleset->includes);
+    free_strarray(ruleset->lists);
+
+    // Clean previous events
+    if (ruleset->eventlist)
+    {
+        os_remove_eventlist(ruleset->eventlist);
+    }
+
+    /* Remove rule list and rule hash */
+    os_remove_rules_list(ruleset->rule_list);
+    if (ruleset->rules_hash)
+    {
+        OSHash_Free(ruleset->rules_hash);
+    }
+
+    /* Remove decoder lists */
+    os_remove_decoders_list(ruleset->decoderlist_forpname, ruleset->decoderlist_nopname);
+    if (ruleset->decoder_store != NULL)
+    {
+        OSStore_Free(ruleset->decoder_store);
+    }
+
+    /* Remove cdblistnode and cdblistrule */
+    os_remove_cdblist(&ruleset->cdblistnode);
+    os_remove_cdbrules(&ruleset->cdblistrule);
+
+    /* Remove fts list and hash */
+    if (ruleset->fts_store)
+    {
+        OSHash_Free(ruleset->fts_store);
+    }
+    OSList_CleanOnlyNodes(ruleset->fts_list);
+    os_free(ruleset->fts_list);
+
+    /* Remove accumulator hash */
+    if (ruleset->acm_store)
+    {
+        w_analysisd_accumulate_free(&ruleset->acm_store);
+    }
+
+    os_free(ruleset);
+    *ptr_ruleset = NULL;
+}
+
+/**
+ * @brief Load the ruleset files from ossec.conf
+ * 
+ * @param ruleset_config [output] Ruleset configuration
+ * @param list_msg [output] List of messages to be logged (error, warning and info messages)
+ * @return false if the ruleset was loaded successfully, true otherwise
+ */
+bool w_hotreload_ruleset_load(_Config* ruleset_config, OSList* list_msg)
+{
+
+    const char* FILE_CONFIG = OSSECCONF;
+    const char* XML_MAIN_NODE = "ossec_config";
+    bool retval = true;
+
+    OS_XML xml;
+    XML_NODE node;
+
+    /* Load and find the root */
+    if (OS_ReadXML(FILE_CONFIG, &xml) < 0)
+    {
+        smerror(list_msg, XML_ERROR, FILE_CONFIG, xml.err, xml.err_line);
+        return false;
+    }
+    else if (node = OS_GetElementsbyNode(&xml, NULL), node == NULL)
+    {
+        OS_ClearXML(&xml);
+        smerror(list_msg, "There are no configuration blocks inside of '%s'", FILE_CONFIG);
+        return false;
+    }
+
+    /* Find the nodes of ossec_conf */
+    for (int i = 0; node[i]; i++)
+    {
+        /* NULL element */
+        if (node[i]->element == NULL)
+        {
+            smerror(list_msg, XML_ELEMNULL);
+            retval = false;
+            break;
+        }
+        /* Main node type (ossec_config) */
+        else if (strcmp(node[i]->element, XML_MAIN_NODE) == 0)
+        {
+
+            XML_NODE conf_section_arr = NULL;
+            conf_section_arr = OS_GetElementsbyNode(&xml, node[i]);
+
+            /* If have configuration sections, iterates them */
+            if (conf_section_arr != NULL)
+            {
+                if (!w_hotreload_ruleset_load_config(&xml, conf_section_arr, ruleset_config, list_msg))
+                {
+                    smerror(list_msg, CONFIG_ERROR, FILE_CONFIG);
+                    OS_ClearNode(conf_section_arr);
+                    retval = false;
+                    break;
+                }
+                OS_ClearNode(conf_section_arr);
+            }
+        }
+    }
+
+    /* Clean up */
+    OS_ClearNode(node);
+    OS_ClearXML(&xml);
+
+    return retval;
+}
+
+/**
+ * @brief Load the ruleset configuration
+ * 
+ * @param xml XML object
+ * @param conf_section_nodes xml nodes from ossec_config
+ * @param ruleset_config Ruleset configuration files
+ * @param list_msg [output] List of messages to be logged (error, warning and info messages)
+ * @return false if the ruleset was loaded successfully, true otherwise
+ */
+bool w_hotreload_ruleset_load_config(OS_XML* xml,
+                                     XML_NODE conf_section_nodes,
+                                     _Config* ruleset_config,
+                                     OSList* list_msg)
+{
+
+    const char* XML_RULESET = "ruleset";
+    bool retval = true;
+
+    /* Load configuration of the configuration section */
+    for (int i = 0; conf_section_nodes[i]; i++)
+    {
+        XML_NODE options_node = NULL;
+
+        if (!conf_section_nodes[i]->element)
+        {
+            smerror(list_msg, XML_ELEMNULL);
+            retval = false;
+            break;
+        }
+        /* Empty configuration sections are not allowed. */
+        else if (options_node = OS_GetElementsbyNode(xml, conf_section_nodes[i]), options_node == NULL)
+        {
+            smerror(list_msg, XML_ELEMNULL);
+            retval = false;
+            break;
+        }
+
+        /* Load ruleset */
+        if (strcmp(conf_section_nodes[i]->element, XML_RULESET) == 0 &&
+            Read_Rules(options_node, ruleset_config, list_msg) < 0)
+        {
+
+            OS_ClearNode(options_node);
+            retval = false;
+            break;
+        }
+
+        OS_ClearNode(options_node);
+    }
+
+    return retval;
 }

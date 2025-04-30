@@ -163,6 +163,31 @@ STATIC size_t asyscom_dispatch(char* request, char** output) {
             } else {
                 *output = asyscom_output_builder(ERROR_EMPTY_PARAMATERS, error_messages[ERROR_EMPTY_PARAMATERS], NULL);
             }
+        } else if (strcmp(command_json->valuestring, "reload-ruleset") == 0) {
+            OSList* list_msg = OSList_Create();
+            OSList_SetMaxSize(list_msg, ERRORLIST_MAXSIZE);
+            OSList_SetFreeDataPointer(list_msg, (void (*)(void*))os_analysisd_free_log_msg);
+
+            bool fail_reload = w_hotreload_reload(list_msg);
+            cJSON* data_json = cJSON_CreateArray();
+
+            // Get the error messages
+            OSListNode* node_log_msg = OSList_GetFirstNode(list_msg);
+            while (node_log_msg != NULL) {
+                os_analysisd_log_msg_t* raw_msj = node_log_msg->data;
+                char* msg = os_analysisd_string_log_msg(raw_msj);
+                cJSON_AddItemToArray(data_json, cJSON_CreateString(msg));
+                os_free(msg);
+                node_log_msg = OSList_GetNextNode(list_msg);
+            }
+            OSList_Destroy(list_msg);
+
+            if (fail_reload) {
+                *output = asyscom_output_builder(ERROR_DUE, error_messages[ERROR_OK], data_json);
+            } else {
+                *output = asyscom_output_builder(ERROR_OK, error_messages[ERROR_DUE], data_json);
+            }
+
         } else {
             *output = asyscom_output_builder(ERROR_UNRECOGNIZED_COMMAND, error_messages[ERROR_UNRECOGNIZED_COMMAND], NULL);
         }
