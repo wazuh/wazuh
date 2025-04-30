@@ -97,7 +97,7 @@ void *wait_for_msgs(void *none);
 void *update_shared_files(void *none);
 
 /* Save control messages */
-void save_controlmsg(const keyentry * key, char *msg, size_t msg_length, int *wdb_sock, _Atomic bool *startup_msg);
+void save_controlmsg(const keyentry * key, char *msg, size_t msg_length, int *wdb_sock, bool *startup_msg);
 
 /* Assign a group to an agent without group */
 cJSON *assign_group_to_agent(const char *agent_id, const char *md5);

@@ -768,8 +768,18 @@ STATIC void HandleSecureMessage(const message_t *message, int *wdb_sock) {
                 _close_sock(&keys, sock_idle);
             }
 
+            bool is_startup = key->is_startup;
+
             // The critical section for readers closes within this function
-            save_controlmsg(key, tmp_msg, msg_length - 3, wdb_sock, &keys.keyentries[agentid]->is_startup);
+            save_controlmsg(key, tmp_msg, msg_length - 3, wdb_sock, &is_startup);
+
+            // Update agent is_startup flag in case it changed
+            if (key->is_startup != is_startup) {
+                key_lock_read();
+                keys.keyentries[agentid]->is_startup = is_startup;
+                key_unlock();
+            }
+
             rem_inc_recv_ctrl(key->id);
 
             OS_FreeKey(key);
