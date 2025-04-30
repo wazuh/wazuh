@@ -24,6 +24,9 @@
 #include "../wrappers/wazuh/os_auth/os_auth_wrappers.h"
 #include "../wrappers/wazuh/shared/randombytes_wrappers.h"
 
+extern struct keynode *queue_insert;
+extern struct keynode * volatile *insert_tail;
+
 /* tests */
 
 static void test_w_generate_random_pass_success(void **state) {
@@ -43,9 +46,72 @@ static void test_w_generate_random_pass_success(void **state) {
     os_free(result);
 }
 
+static int auth_setup(void **state) {
+    insert_tail = &queue_insert;
+
+    return 0;
+}
+
+static int auth_teardown(void **state) {
+    struct keynode *cur;
+    struct keynode *next;
+
+    for (cur = queue_insert; cur; cur = next) {
+        next = cur->next;
+        free(cur->id);
+        free(cur->name);
+        free(cur->ip);
+        free(cur->raw_key);
+        free(cur->group);
+        free(cur);
+    }
+
+    return 0;
+}
+
+static void test_w_insert_any_group(void **state) {
+    os_ip ip = { .ip = "127.0.0.1" };
+
+    keyentry entry = {
+        .id = "001",
+        .name = "TestName",
+        .ip = &ip,
+        .raw_key = "TestKey",
+    };
+
+    add_insert(&entry, "TestGroup");
+
+    assert_string_equal(queue_insert->id, "001");
+    assert_string_equal(queue_insert->name, "TestName");
+    assert_string_equal(queue_insert->ip, "127.0.0.1");
+    assert_string_equal(queue_insert->raw_key, "TestKey");
+    assert_string_equal(queue_insert->group, "TestGroup");
+}
+
+static void test_w_insert_null_group(void **state) {
+    os_ip ip = { .ip = "127.0.0.1" };
+
+    keyentry entry = {
+        .id = "001",
+        .name = "TestName",
+        .ip = &ip,
+        .raw_key = "TestKey",
+    };
+
+    add_insert(&entry, NULL);
+
+    assert_string_equal(queue_insert->id, "001");
+    assert_string_equal(queue_insert->name, "TestName");
+    assert_string_equal(queue_insert->ip, "127.0.0.1");
+    assert_string_equal(queue_insert->raw_key, "TestKey");
+    assert_string_equal(queue_insert->group, "default");
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_w_generate_random_pass_success),
+        cmocka_unit_test_setup_teardown(test_w_insert_any_group, auth_setup, auth_teardown),
+        cmocka_unit_test_setup_teardown(test_w_insert_null_group, auth_setup, auth_teardown),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

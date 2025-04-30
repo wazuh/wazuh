@@ -428,6 +428,7 @@ extern char *schema_global_upgrade_v3_sql;
 extern char *schema_global_upgrade_v4_sql;
 extern char *schema_global_upgrade_v5_sql;
 extern char *schema_global_upgrade_v6_sql;
+extern char *schema_global_upgrade_v7_sql;
 
 extern wdb_config wconfig;
 extern _Config gconfig;
