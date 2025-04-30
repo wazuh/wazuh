@@ -433,7 +433,7 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
 
                 w_mutex_unlock(&files_mutex);
             } else {
-                merror("Error getting group for agent '%s'", key->id);
+                mdebug2("No group for agent '%s'", key->id);
             }
 
             w_mutex_unlock(&lastmsg_mutex);
