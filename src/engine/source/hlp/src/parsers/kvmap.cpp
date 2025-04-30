@@ -79,7 +79,7 @@ Parser getKVParser(const Params& params)
         while (start <= kvInput.size())
         {
             auto remaining = kvInput.substr(start, kvInput.size() - start);
-            auto f = getField(remaining, dlm, quote, '\\', true);
+            auto f = getFieldKeyValue(remaining, dlm, quote, esc, true);
             if (!f.has_value())
             {
                 break;
