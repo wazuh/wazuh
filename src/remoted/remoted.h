@@ -99,9 +99,6 @@ void *update_shared_files(void *none);
 /* Save control messages */
 void save_controlmsg(const keyentry * key, char *msg, size_t msg_length, int *wdb_sock);
 
-/* Assign a group to an agent without group */
-cJSON *assign_group_to_agent(const char *agent_id, const char *md5);
-
 // Initialize request module
 void req_init();
 
