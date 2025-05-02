@@ -1299,9 +1299,6 @@ def test_get_groups():
 @pytest.mark.parametrize('group, wdb_response, expected_agents', [
     ('default', [('due', '[1,2]'), ('ok', '[3,4]')], {'001', '002', '003', '004'}),
     ('test_group', [('ok', '[1,2,3,999]')], {'001', '002', '003'}),
-    ('*', [('due', '[{"data": [{"id": 1}, {"id": 2}]}]'), ('ok', '[{"data": [{"id": 3}, {"id": 4}]}]')],
-     {'001', '002', '003', '004'}),
-    ('*', [('ok', '[{"data": [{"id": 1}, {"id": 2}, {"id": 999}]}]')], {'001', '002'})
 ])
 @patch('socket.socket.connect')
 def test_expand_group(socket_mock, group, wdb_response, expected_agents):

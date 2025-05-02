@@ -1312,7 +1312,7 @@ def get_groups() -> set:
 
 @common.context_cached('system_expanded_groups')
 def expand_group(group_name: str) -> set:
-    """Expand a certain group or all (*) of them.
+    """Expand a certain group.
 
     Parameters
     ----------
@@ -1329,17 +1329,14 @@ def expand_group(group_name: str) -> set:
     try:
         last_id = 0
         while True:
-            if group_name == '*':
-                command = 'global sync-agent-groups-get {"last_id":' f'{last_id}' ', "condition":"all"}'
-            else:
-                command = f'global get-group-agents {group_name} last_id {last_id}'
+            command = f'global get-group-agents {group_name} last_id {last_id}'
 
             status, payload = wdb_conn.send(command, raw=True)
             agents = json.loads(payload)
 
-            for agent in agents[0]['data'] if group_name == '*' else agents:
-                agent_id = str(agent['id'] if isinstance(agent, dict) else agent).zfill(3)
-                agents_ids.append(agent_id)
+            for agent_id in agents:
+                agent_id_str = str(agent_id).zfill(3)
+                agents_ids.append(agent_id_str)
 
             if status == 'ok':
                 break
