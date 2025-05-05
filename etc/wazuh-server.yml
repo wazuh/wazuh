@@ -1,8 +1,6 @@
 indexer:
   hosts:
     - https://127.0.0.1:9200
-  username: admin
-  password: admin
   ssl:
     use_ssl: true
     key: /etc/wazuh-server/certs/server-1-key.pem

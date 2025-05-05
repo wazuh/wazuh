@@ -20,7 +20,7 @@ from signal import SIGALRM, SIGKILL, alarm, signal
 import psutil
 import yaml
 from cachetools import TTLCache, cached
-from Crypto.Cipher import AES
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from wazuh.core import common
 from wazuh.core.exception import WazuhError
 
@@ -1051,14 +1051,15 @@ class KeystoreReader:
     def _unpad(decrypted):
         return decrypted[: -ord(decrypted[len(decrypted) - 1 :])]
 
-    def _get_cipher(self):
+    def _get_cipher(self) -> Cipher:
         enc_key = self._data[: self.KEY_SIZE]
         iv = self._data[self.KEY_SIZE : self.KEY_SIZE + self.IV_SIZE]
-        return AES.new(enc_key, AES.MODE_CBC, iv)
+        return Cipher(algorithms.AES(enc_key), modes.CBC(iv))
 
     def _decrypt_keystore(self) -> dict:
         value = self._data[self.KEY_SIZE + self.IV_SIZE :]
-        decrypted = self._unpad(self._cipher.decrypt(value)).decode('utf-8')
+        decryptor = self._cipher.decryptor()
+        decrypted = self._unpad(decryptor.update(value)).decode('utf-8')
 
         lines = decrypted.split('\n')
         lines.pop()
@@ -1071,19 +1072,19 @@ class KeystoreReader:
 
         return kev_values
 
-    def get(self, key: str, default: typing.Optional[str] = None) -> typing.Optional[str]:
-        """Obtain the value that match to the given key.
+    def get(self, key: str, default: str | None) -> str | None:
+        """Obtain the value that matches the given key.
 
         Parameters
         ----------
         key : str
             To obtain the value.
-        default: typing.Optional[str]
+        default: str | None
             Value to return if key does not exists.
 
         Returns
         -------
-        typing.Optional[str]
+        str | None
             The value if the key exists, else None.
         """
         return self._keystore.get(key, default)
