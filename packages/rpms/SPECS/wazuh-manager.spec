@@ -39,10 +39,10 @@ log analysis, file integrity monitoring, intrusions detection and policy and com
 %global _build_id_links none
 
 # Build debuginfo package
-%debug_package
-%package wazuh-manager-debuginfo
+%package -n wazuh-manager-debuginfo
+Requires: wazuh-manager = %{_version}-%{_release}
 Summary: Debug information for package %{name}.
-%description wazuh-manager-debuginfo
+%description -n wazuh-manager-debuginfo
 This package provides debug information for package %{name}.
 
 
@@ -916,6 +916,8 @@ rm -fr %{buildroot}
 %attr(750, root, wazuh) %{_localstatedir}/wodles/docker/*
 %dir %attr(750, root, wazuh) %{_localstatedir}/wodles/gcloud
 %attr(750, root, wazuh) %{_localstatedir}/wodles/gcloud/*
+
+%files -n wazuh-manager-debuginfo -f debugfiles.list
 
 %changelog
 * Wed Jun 04 2025 support <info@wazuh.com> - 4.13.0
