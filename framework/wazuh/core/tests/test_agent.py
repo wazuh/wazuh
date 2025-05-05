@@ -16,7 +16,7 @@ with patch('wazuh.core.common.wazuh_uid'):
         from wazuh.core.agent import *
         from wazuh.core.exception import WazuhException
         from api.util import remove_nones_to_dict
-        from wazuh.core.common import reset_context_cache
+        from wazuh.rbac.utils import RESOURCES_CACHE
 
 # all necessary params
 
@@ -1268,7 +1268,6 @@ def test_send_restart_command(wq_mock, wq_send_msg, agents_list, versions_list):
 
 def test_get_agents_info():
     """Test that get_agents_info() returns expected agent IDs"""
-    reset_context_cache()
     with open(os.path.join(test_data_path, 'client.keys')) as f:
         client_keys = ''.join(f.readlines())
 
@@ -1299,9 +1298,6 @@ def test_get_groups():
 @pytest.mark.parametrize('group, wdb_response, expected_agents', [
     ('default', [('due', '[1,2]'), ('ok', '[3,4]')], {'001', '002', '003', '004'}),
     ('test_group', [('ok', '[1,2,3,999]')], {'001', '002', '003'}),
-    ('*', [('due', '[{"data": [{"id": 1}, {"id": 2}]}]'), ('ok', '[{"data": [{"id": 3}, {"id": 4}]}]')],
-     {'001', '002', '003', '004'}),
-    ('*', [('ok', '[{"data": [{"id": 1}, {"id": 2}, {"id": 999}]}]')], {'001', '002'})
 ])
 @patch('socket.socket.connect')
 def test_expand_group(socket_mock, group, wdb_response, expected_agents):
@@ -1317,7 +1313,7 @@ def test_expand_group(socket_mock, group, wdb_response, expected_agents):
         Expected agent IDs for the selected group.
     """
     # Clear and set get_agents_info cache
-    reset_context_cache()
+    RESOURCES_CACHE.clear()
     test_get_agents_info()
 
     with patch('wazuh.core.wdb.WazuhDBConnection.send', side_effect=wdb_response):

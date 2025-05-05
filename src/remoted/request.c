@@ -43,7 +43,6 @@ int max_attempts;
 int request_pool;
 int request_timeout;
 int response_timeout;
-int guess_agent_group;
 
 // Initialize request module
 void req_init() {
@@ -54,11 +53,6 @@ void req_init() {
     rto_sec = getDefine_Int("remoted", "request_rto_sec", 0, 60);
     rto_msec = getDefine_Int("remoted", "request_rto_msec", 0, 999);
     max_attempts = getDefine_Int("remoted", "max_attempts", 1, 16);
-    guess_agent_group = getDefine_Int("remoted", "guess_agent_group", 0, 1);
-
-    if (guess_agent_group && logr.worker_node) {
-        mwarn("The internal option guess_agent_group must be configured on the master node.");
-    }
 
     // Create hash table
     if (req_table = OSHash_Create(), !req_table) {

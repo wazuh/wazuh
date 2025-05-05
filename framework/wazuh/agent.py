@@ -9,7 +9,7 @@ from typing import Union
 
 from wazuh.core import common, configuration
 from wazuh.core.InputValidator import InputValidator
-from wazuh.core.agent import WazuhDBQueryAgents, WazuhDBQueryGroupByAgents, WazuhDBQueryMultigroups, Agent, \
+from wazuh.core.agent import WazuhDBQueryAgents, WazuhDBQueryGroupByAgents, Agent, \
     WazuhDBQueryGroup, create_upgrade_tasks, get_agents_info, get_groups, get_rbac_filters, send_restart_command, \
     GROUP_FIELDS, GROUP_REQUIRED_FIELDS, GROUP_FILES_FIELDS, GROUP_FILES_REQUIRED_FIELDS
 from wazuh.core.cluster.cluster import get_node
@@ -42,6 +42,10 @@ ERROR_CODES_UPGRADE_SOCKET_BAD_REQUEST = [1823]
 # Error codes generated from upgrade socket error codes that should be excluded in get upgrade results
 # 1813 -> No task in DB
 ERROR_CODES_UPGRADE_SOCKET_GET_UPGRADE_RESULT = [1813]
+
+STATUS = 'status'
+COUNT = 'count'
+GROUP_CONFIG_STATUS = 'group_config_status'
 
 
 @expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"], post_proc_func=None)
@@ -107,23 +111,37 @@ def get_agents_summary_status(agent_list: list[str] = None) -> WazuhResult:
         WazuhResult object.
     """
     connection = {'active': 0, 'disconnected': 0, 'never_connected': 0, 'pending': 0, 'total': 0}
-    sync_configuration = {'synced': 0, 'not synced': 0, 'total': 0}
+    sync_configuration = {'synced': 0, 'not_synced': 0, 'total': 0}
     if agent_list:
         rbac_filters = get_rbac_filters(system_resources=get_agents_info(), permitted_resources=agent_list)
+        total = 0
 
-        # We don't consider agent 000 in order to get the summary
-        with WazuhDBQueryAgents(limit=None, select=['status', 'group_config_status'], query="id!=000",
-                                **rbac_filters) as db_query:
-            data = db_query.run()
+        with WazuhDBQueryGroupByAgents(filter_fields=[STATUS], select=[STATUS], query='id!=000',
+                                       min_select_fields=set(), count=True, get_data=True, offset=0, 
+                                       limit=4, sort=None, search=None,
+                                       **rbac_filters) as db_query:
+            status_data = db_query.run()
 
-        items = data['items']
-        for agent in items:
-            connection[agent['status']] += 1
-            sync_configuration[agent['group_config_status']] += 1
+            for item in status_data['items']:
+                connection[item[STATUS]] = item[COUNT]
+                total += item[COUNT]
+        
+        with WazuhDBQueryGroupByAgents(filter_fields=[GROUP_CONFIG_STATUS], select=[GROUP_CONFIG_STATUS], 
+                                       query='id!=000', min_select_fields=set(), count=True, get_data=True,
+                                       offset=0, limit=2, sort=None, search=None,
+                                       **rbac_filters) as db_query:
+            sync_data = db_query.run()
 
-        connection['total'] = sync_configuration['total'] = len(items)
+            for item in sync_data['items']:
+                # Use 'not_synced' instead of 'not synced'
+                if item[GROUP_CONFIG_STATUS] == 'not synced':
+                    sync_configuration['not_synced'] = item[COUNT]
+                    continue
 
-    sync_configuration['not_synced'] = sync_configuration.pop('not synced')
+                sync_configuration[item[GROUP_CONFIG_STATUS]] = item[COUNT]
+
+        connection['total'] = sync_configuration['total'] = total
+
     return WazuhResult({'data': {'connection': connection, 'configuration': sync_configuration}})
 
 

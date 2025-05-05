@@ -166,19 +166,13 @@ def test_agent_get_agents_summary_status(socket_mock, send_mock):
     summary = get_agents_summary_status(short_agent_list)
     assert isinstance(summary, WazuhResult), 'The returned object is not an "WazuhResult" instance.'
     # Asserts are based on what it should get from the fake database
-    expected_results = {'connection': {'active': 2, 'disconnected': 1, 'never_connected': 1, 'pending': 1, 'total': 5},
-                        'configuration': {'synced': 2, 'not_synced': 3, 'total': 5}}
+    expected_results = {
+        'connection': {'active': 2, 'disconnected': 1, 'never_connected': 1, 'pending': 1, 'total': 5},
+        'configuration': {'synced': 2, 'not_synced': 3, 'total': 5}
+    }
     summary_data = summary['data']
 
-    # For the following test cases, if summary_data has unexpected keys, a KeyError will be raised
-
-    # Check the data dictionary follows the expected keys schema
-    assert all(summary_data[key].keys() == expected_results[key].keys() for key in expected_results.keys()), \
-        'The result obtained has unexpected keys'
-    # Check that the agents count for connection and configuration statuses are the expected ones
-    assert all(all(summary_data[key][status] == expected_results[key][status] for status in
-                   summary_data[key].keys()) for key in expected_results.keys()), \
-        'The agents connection or configuration status counts are not the expected ones'
+    assert summary_data == expected_results
 
 
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
@@ -924,7 +918,7 @@ def test_agent_remove_agent_from_groups_exceptions(mock_get_groups, mock_get_age
     try:
         result = remove_agent_from_groups(group_list=group_list, agent_list=agent_list)
         assert not catch_exception, \
-            f'An "WazuhError" exception was expected but was not raised.'
+            'An "WazuhError" exception was expected but was not raised.'
         # Check Typing
         assert isinstance(result, AffectedItemsWazuhResult), 'The returned object is not an "AffectedItemsWazuhResult".'
         assert isinstance(result.failed_items, dict), \
@@ -934,7 +928,7 @@ def test_agent_remove_agent_from_groups_exceptions(mock_get_groups, mock_get_age
             f'The number of "failed_items" is "{result.total_failed_items}" but was expected to be ' \
             f'"{len(group_list)}".'
         assert result.total_failed_items == len(result.failed_items), \
-            f'"total_failed_items" length does not match with "failed_items".'
+            '"total_failed_items" length does not match with "failed_items".'
         assert set(result.failed_items.keys()).difference({expected_error}) == set(), \
             f'The "failed_items" received does not match.\n' \
             f' - The "failed_items" received is: "{set(result.failed_items.keys())}"\n' \
@@ -942,8 +936,8 @@ def test_agent_remove_agent_from_groups_exceptions(mock_get_groups, mock_get_age
             f' - The difference between them is "{set(result.failed_items.keys()).difference({expected_error})}"\n'
     except (WazuhError, WazuhResourceNotFound) as error:
         assert catch_exception, \
-            f'No exception should be raised at this point. An AffectedItemsWazuhResult object with at least one ' \
-            f'failed item was expected instead.'
+            'No exception should be raised at this point. An AffectedItemsWazuhResult object with at least one ' \
+            'failed item was expected instead.'
         assert error == expected_error
 
 

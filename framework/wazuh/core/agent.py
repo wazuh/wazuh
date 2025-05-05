@@ -24,6 +24,7 @@ from wazuh.core.utils import WazuhVersion, plain_dict_to_nested_dict, get_fields
 from wazuh.core.wazuh_queue import WazuhQueue
 from wazuh.core.wazuh_socket import WazuhSocket, WazuhSocketJSON, create_wazuh_socket_message
 from wazuh.core.wdb import WazuhDBConnection
+from wazuh.rbac.utils import resource_cache
 
 detect_wrong_lines = re.compile(r'(.+ .+ (?:any|\d+\.\d+\.\d+\.\d+) \w+)')
 detect_valid_lines = re.compile(r'^(\d{3,}) (.+) (any|\d+\.\d+\.\d+\.\d+) (\w+)', re.MULTILINE)
@@ -1310,9 +1311,9 @@ def get_groups() -> set:
     return groups
 
 
-@common.context_cached('system_expanded_groups')
+@resource_cache()
 def expand_group(group_name: str) -> set:
-    """Expand a certain group or all (*) of them.
+    """Expand a certain group.
 
     Parameters
     ----------
@@ -1329,17 +1330,14 @@ def expand_group(group_name: str) -> set:
     try:
         last_id = 0
         while True:
-            if group_name == '*':
-                command = 'global sync-agent-groups-get {"last_id":' f'{last_id}' ', "condition":"all"}'
-            else:
-                command = f'global get-group-agents {group_name} last_id {last_id}'
+            command = f'global get-group-agents {group_name} last_id {last_id}'
 
             status, payload = wdb_conn.send(command, raw=True)
             agents = json.loads(payload)
 
-            for agent in agents[0]['data'] if group_name == '*' else agents:
-                agent_id = str(agent['id'] if isinstance(agent, dict) else agent).zfill(3)
-                agents_ids.append(agent_id)
+            for agent_id in agents:
+                agent_id_str = str(agent_id).zfill(3)
+                agents_ids.append(agent_id_str)
 
             if status == 'ok':
                 break
@@ -1349,7 +1347,8 @@ def expand_group(group_name: str) -> set:
     finally:
         wdb_conn.close()
 
-    return set(agents_ids) & get_agents_info()
+    system_agents = get_agents_info()
+    return set(agents_ids) & system_agents
 
 
 @lru_cache()
