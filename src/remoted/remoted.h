@@ -97,7 +97,7 @@ void *wait_for_msgs(void *none);
 void *update_shared_files(void *none);
 
 /* Save control messages */
-void save_controlmsg(const keyentry * key, char *msg, size_t msg_length, int *wdb_sock);
+void save_controlmsg(const keyentry * key, char *msg, size_t msg_length, int *wdb_sock, bool *startup_msg);
 
 // Initialize request module
 void req_init();

@@ -112,17 +112,18 @@ char *str_family_address[FAMILY_ADDRESS_SIZE] = {
 
 /**
  * @brief Structure to hold control message data
- * 
+ *
  */
 typedef struct {
     keyentry * key; ///< Pointer to the key entry of agent to which the message belongs
     char * message; ///< Raw message received
     size_t length;  ///< Length of the message
+    int agent_id;   ///< Agent ID
 } w_ctrl_msg_data_t;
 
 /**
  * @brief Thread function to save control messages
- * 
+ *
  * This function is executed by the control message thread pool. It waits for messages to be pushed into the queue and processes them.
  * Updates the agent's status in wazuhdb and sends the message to the appropriate handler.
  * @param queue Pointer to the control message queue, which is used to store messages to be processed.
@@ -802,6 +803,7 @@ STATIC void HandleSecureMessage(const message_t *message, w_linked_queue_t * con
                 w_ctrl_msg_data_t * ctrl_msg_data;
                 os_calloc(sizeof(w_ctrl_msg_data_t), 1, ctrl_msg_data);
 
+                ctrl_msg_data->agent_id = agentid;
                 ctrl_msg_data->key = key;
                 key = NULL;
 
@@ -1034,8 +1036,18 @@ void * save_control_thread(void * control_msg_queue)
         if ((ctrl_msg_data = (w_ctrl_msg_data_t *)linked_queue_pop_ex(queue))) {
 
             rem_dec_ctrl_msg_queue_usage();
+
+            bool is_startup = ctrl_msg_data->key->is_startup;
+
             // Process the control message
-            save_controlmsg(ctrl_msg_data->key, ctrl_msg_data->message, ctrl_msg_data->length, &wdb_sock);
+            save_controlmsg(ctrl_msg_data->key, ctrl_msg_data->message, ctrl_msg_data->length, &wdb_sock, &is_startup);
+
+            // Update agent is_startup flag in case it changed
+            if (ctrl_msg_data->key->is_startup != is_startup) {
+                key_lock_read();
+                keys.keyentries[ctrl_msg_data->agent_id]->is_startup = is_startup;
+                key_unlock();
+            }
 
             // Free the key entry
             OS_FreeKey(ctrl_msg_data->key);
@@ -1045,5 +1057,4 @@ void * save_control_thread(void * control_msg_queue)
     }
 
     return NULL;
-
 }
