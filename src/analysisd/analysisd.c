@@ -273,7 +273,7 @@ pthread_mutex_t process_event_mutex = PTHREAD_MUTEX_INITIALIZER;
 /* Hourly alerts mutex */
 pthread_mutex_t hourly_alert_mutex = PTHREAD_MUTEX_INITIALIZER;
 /* hot reload mutes */
-static pthread_rwlock_t g_hotreload_ruleset_mutex = PTHREAD_RWLOCK_INITIALIZER;
+static pthread_rwlock_t g_hotreload_ruleset_mutex;
 
 /* Reported mutexes */
 static pthread_mutex_t writer_threads_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -876,6 +876,13 @@ int main_analysisd(int argc, char **argv)
     minfo(STARTUP_MSG, (int)getpid());
 
     w_init_queues();
+
+    /* Sync for event queues and API, for hot reload */
+    pthread_rwlockattr_t rwlock_attr;
+    pthread_rwlockattr_init(&rwlock_attr);
+    pthread_rwlockattr_setkind_np(&rwlock_attr, PTHREAD_RWLOCK_PREFER_WRITER_NONRECURSIVE_NP);
+    pthread_rwlock_init(&g_hotreload_ruleset_mutex, &rwlock_attr);
+    pthread_rwlockattr_destroy(&rwlock_attr);
 
     // Start com request thread
     w_create_thread(asyscom_main, NULL);
@@ -2469,17 +2476,6 @@ time_t w_get_current_time(void) {
  ******************************************************************************/
 bool w_hotreload_reload(OSList* list_msg)
 {
-    /* logging handler */
-    /*
-    OSList* list_msg = OSList_Create();
-    if (!list_msg)
-    {
-        merror_exit(LIST_ERROR);
-    }
-    OSList_SetMaxSize(list_msg, ERRORLIST_MAXSIZE);
-    OSList_SetFreeDataPointer(list_msg, (void (*)(void*))os_analysisd_free_log_msg);
-    */
-
     assert(list_msg != NULL);
 
     // Get the ruleset
@@ -2509,6 +2505,8 @@ bool w_hotreload_reload(OSList* list_msg)
 
     mdebug1("Pipeline is clean, switching ruleset");
 
+    minfo("Reloading ruleset");
+
     // Switch the ruleset and get the old one
     w_hotreload_ruleset_data_t* old_ruleset = w_hotreload_switch_ruleset(ruleset);
 
@@ -2517,6 +2515,8 @@ bool w_hotreload_reload(OSList* list_msg)
 
     // Run the new ruleset
     w_rwlock_unlock(&g_hotreload_ruleset_mutex);
+
+    mdebug1("Unblocking input threads (Enable new ruleset)");
 
     // Free the old ruleset
     w_hotreload_clean_ruleset(&old_ruleset);
@@ -2610,12 +2610,10 @@ w_hotreload_ruleset_data_t* w_hotreload_switch_ruleset(w_hotreload_ruleset_data_
  * @brief Create a new ruleset
  * 
  * @param list_msg [output] List of messages to be logged (error, warning and info messages)
- * @return w_hotreload_ruleset_data_t* new ruleset
+ * @return w_hotreload_ruleset_data_t* new ruleset, NULL if error
  */
 w_hotreload_ruleset_data_t* w_hotreload_create_ruleset(OSList* list_msg)
 {
-
-    bool retval = true; // Failure
 
     /* Temporary ruleset */
     w_hotreload_ruleset_data_t* ruleset;
@@ -2631,7 +2629,8 @@ w_hotreload_ruleset_data_t* w_hotreload_create_ruleset(OSList* list_msg)
     /* Read the ossec.conf to get the ruleset files and alert level */
     if (!w_hotreload_ruleset_load(&ruleset_config, list_msg))
     {
-        goto cleanup;
+        w_hotreload_clean_ruleset(&ruleset);
+        return NULL;
     }
     ruleset->decoders = ruleset_config.decoders;
     ruleset->includes = ruleset_config.includes;
@@ -2648,7 +2647,8 @@ w_hotreload_ruleset_data_t* w_hotreload_create_ruleset(OSList* list_msg)
                               &ruleset->decoder_store,
                               list_msg) == 0)
             {
-                goto cleanup;
+                w_hotreload_clean_ruleset(&ruleset);
+                return NULL;
             }
             files++;
         }
@@ -2656,7 +2656,8 @@ w_hotreload_ruleset_data_t* w_hotreload_create_ruleset(OSList* list_msg)
         if (SetDecodeXML(
                 list_msg, &ruleset->decoder_store, &ruleset->decoderlist_nopname, &ruleset->decoderlist_forpname) == 0)
         {
-            goto cleanup;
+            w_hotreload_clean_ruleset(&ruleset);
+            return NULL;
         }
     }
 
@@ -2667,7 +2668,8 @@ w_hotreload_ruleset_data_t* w_hotreload_create_ruleset(OSList* list_msg)
         {
             if (Lists_OP_LoadList(*files, &ruleset->cdblistnode, list_msg) < 0)
             {
-                goto cleanup;
+                w_hotreload_clean_ruleset(&ruleset);
+                return NULL;
             }
             files++;
         }
@@ -2680,7 +2682,6 @@ w_hotreload_ruleset_data_t* w_hotreload_create_ruleset(OSList* list_msg)
 
         while (files != NULL && *files != NULL)
         {
-            // TODO: Ojo con lo del active response
             if (Rules_OP_ReadRules(*files,
                                    &ruleset->rule_list,
                                    &ruleset->cdblistnode,
@@ -2689,7 +2690,8 @@ w_hotreload_ruleset_data_t* w_hotreload_create_ruleset(OSList* list_msg)
                                    list_msg,
                                    true) < 0)
             {
-                goto cleanup;
+                w_hotreload_clean_ruleset(&ruleset);
+                return NULL;
             }
             files++;
         }
@@ -2700,7 +2702,8 @@ w_hotreload_ruleset_data_t* w_hotreload_create_ruleset(OSList* list_msg)
         /* Creating rule hash */
         if (ruleset->rules_hash = OSHash_Create(), !ruleset->rules_hash)
         {
-            goto cleanup;
+            w_hotreload_clean_ruleset(&ruleset);
+            return NULL;
         }
 
         AddHash_Rule(ruleset->rule_list);
@@ -2709,22 +2712,15 @@ w_hotreload_ruleset_data_t* w_hotreload_create_ruleset(OSList* list_msg)
     /* Initiate the FTS list */
     if (!w_logtest_fts_init(&ruleset->fts_list, &ruleset->fts_store))
     {
-        goto cleanup;
+        w_hotreload_clean_ruleset(&ruleset);
+        return NULL;
     }
 
     /* Initialize the Accumulator */
     if (!Accumulate_Init(&ruleset->acm_store, &ruleset->acm_lookups, &ruleset->acm_purge_ts))
     {
-        goto cleanup;
-    }
-
-    retval = false; // Success
-
-cleanup: // TODO Delete this goto
-
-    if (retval)
-    {
         w_hotreload_clean_ruleset(&ruleset);
+        return NULL;
     }
 
     return ruleset;
@@ -2801,13 +2797,14 @@ bool w_hotreload_ruleset_load(_Config* ruleset_config, OSList* list_msg)
     const char* XML_MAIN_NODE = "ossec_config";
     bool retval = true;
 
-    OS_XML xml;
-    XML_NODE node;
+    OS_XML xml = {0};
+    XML_NODE node = {0};
 
     /* Load and find the root */
     if (OS_ReadXML(FILE_CONFIG, &xml) < 0)
     {
         smerror(list_msg, XML_ERROR, FILE_CONFIG, xml.err, xml.err_line);
+        OS_ClearXML(&xml);
         return false;
     }
     else if (node = OS_GetElementsbyNode(&xml, NULL), node == NULL)
