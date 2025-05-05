@@ -385,9 +385,26 @@ Public Function KillGUITask()
 End Function
 
 Public Function StartWazuhSvc()
-	Set WshShell = CreateObject("WScript.Shell")
+    Dim WshShell, StartSvc, i, SERVICE, wmi, svc, state
+    Set WshShell = CreateObject("WScript.Shell")
     StartSvc = "NET START WazuhSvc"
-    WshShell.run StartSvc, 0, True
+    SERVICE = "WazuhSvc"
+
+    For i = 1 To 3
+        WshShell.Run StartSvc, 0, True
+        WScript.Sleep 2000
+
+        Set wmi = GetObject("winmgmts://./root/cimv2")
+        Set svc = wmi.ExecQuery("SELECT * FROM Win32_Service WHERE Name = '" & SERVICE & "'")
+
+        If svc.Count <> 0 Then
+            state = wmi.Get("Win32_Service.Name='" & SERVICE & "'").State
+
+            If LCase(state) = "running" Then
+                Exit For
+            End If
+        End If
+    Next
 End Function
 
 Public Function SetWazuhPermissions()
