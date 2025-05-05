@@ -183,9 +183,9 @@ STATIC size_t asyscom_dispatch(char* request, char** output) {
             OSList_Destroy(list_msg);
 
             if (fail_reload) {
-                *output = asyscom_output_builder(ERROR_DUE, error_messages[ERROR_OK], data_json);
+                *output = asyscom_output_builder(ERROR_DUE, error_messages[ERROR_DUE], data_json);
             } else {
-                *output = asyscom_output_builder(ERROR_OK, error_messages[ERROR_DUE], data_json);
+                *output = asyscom_output_builder(ERROR_OK, error_messages[ERROR_OK], data_json);
             }
 
         } else {
