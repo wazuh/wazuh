@@ -170,70 +170,76 @@ def load_traces_by_stages(asset: dict, traces: list) -> dict:
         "map": []
     }
 
-    check_definitions = asset.get("check", [])
-    if isinstance(check_definitions, str):
-        traces_by_stages["check"].append(traces[trace_index])
-        trace_index += 1
-    else:
-        for _ in check_definitions:
+    try:
+        # CHECK stage
+        check_definitions = asset.get("check", [])
+        if isinstance(check_definitions, str):
             traces_by_stages["check"].append(traces[trace_index])
             trace_index += 1
+        else:
+            for _ in check_definitions:
+                traces_by_stages["check"].append(traces[trace_index])
+                trace_index += 1
 
-    parse_keys = [key for key in asset.keys() if key.startswith("parse|")]
-    for parse_key in parse_keys:
-        parse_definitions = asset[parse_key]
-        for _ in parse_definitions:
-            traces_by_stages["parse"].append(traces[trace_index])
-            trace_index += 1
-            if "-> Success" in traces[trace_index - 1]:
-                break
+        # PARSE stage (first layer)
+        parse_keys = [key for key in asset.keys() if key.startswith("parse|")]
+        for parse_key in parse_keys:
+            parse_definitions = asset[parse_key]
+            for _ in parse_definitions:
+                traces_by_stages["parse"].append(traces[trace_index])
+                trace_index += 1
+                if "-> Success" in traces[trace_index - 1]:
+                    break
 
-    skip_map = False
-    skip_parse = False
-    for normalize_entry in asset.get("normalize", []):
-        has_map = "map" in normalize_entry
-        has_parse = any(key.startswith("parse|") for key in normalize_entry)
+        # NORMALIZE stage
+        for normalize_entry in asset.get("normalize", []):
+            skip_next_keys = set()
 
-        for key, value in normalize_entry.items():
-            if key == "map":
-                if skip_map:
-                    skip_map = False
-                    continue
-
-                for map_entry in value:
-                    if trace_index < len(traces):
-                        traces_by_stages["map"].append(traces[trace_index])
-                        trace_index += 1
-
-            elif key.startswith("parse|"):
-                if skip_parse:
-                    skip_parse = False
-                    continue
-
-                for _ in value:
-                    if trace_index < len(traces):
-                        traces_by_stages["parse"].append(traces[trace_index])
-                        trace_index += 1
-                        if "-> Success" in traces[trace_index - 1]:
-                            break
-
-            else:
-                if isinstance(value, str):
-                    traces_by_stages["check"].append(traces[trace_index])
-                    trace_index += 1
-                    if "-> Success" not in traces[trace_index - 1]:
-                        skip_map = has_map
-                        skip_parse = has_parse
+            for key, value in normalize_entry.items():
+                if key == "map":
+                    if "map" in skip_next_keys:
                         continue
-                else:
                     for _ in value:
+                        if trace_index < len(traces):
+                            traces_by_stages["map"].append(traces[trace_index])
+                            trace_index += 1
+
+                elif key.startswith("parse|"):
+                    if key in skip_next_keys:
+                        continue
+                    for _ in value:
+                        if trace_index < len(traces):
+                            traces_by_stages["parse"].append(traces[trace_index])
+                            trace_index += 1
+                            if "-> Success" in traces[trace_index - 1]:
+                                break
+
+                else:
+                    if isinstance(value, str):
                         if trace_index < len(traces):
                             traces_by_stages["check"].append(traces[trace_index])
                             trace_index += 1
                             if "-> Success" not in traces[trace_index - 1]:
-                                skip_map = has_map
-                                skip_parse = has_parse
-                                continue
+                                skip_next_keys.update(["map"] + [k for k in normalize_entry.keys() if k.startswith("parse|")])
+                    else:
+                        for _ in value:
+                            if trace_index < len(traces):
+                                traces_by_stages["check"].append(traces[trace_index])
+                                trace_index += 1
+                                if "-> Success" not in traces[trace_index - 1]:
+                                    skip_next_keys.update(["map"] + [k for k in normalize_entry.keys() if k.startswith("parse|")])
+                                    break
+
+    except Exception as e:
+        sys.exit(
+            f"[ERROR] {str(e)}\n"
+            f"Trace index: {trace_index}\n"
+            f"Traces length: {len(traces)}\n"
+            f"Current traces in check: {traces_by_stages['check']}\n"
+            f"Current traces in parse: {traces_by_stages['parse']}\n"
+            f"Current traces in map: {traces_by_stages['map']}\n"
+        )
+
     return traces_by_stages
 
 
@@ -472,6 +478,8 @@ def rule_health_test(env_path: Path, debug_mode: str, output_file: Path, integra
 
         print_coverity_results(asset_traces_by_stage, output_file)
 
+    except Exception as e:
+        sys.exit(f"An error occurred: {e}")
     finally:
         engine_handler.stop()
         print("Engine stopped.")
