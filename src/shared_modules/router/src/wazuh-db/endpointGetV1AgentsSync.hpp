@@ -25,7 +25,7 @@ class TEndpointGetV1AgentsSync final
 {
     struct SyncReq final
     {
-        int64_t id;
+        int64_t id {};
         std::string name;
         std::string ip;
         std::string osName;

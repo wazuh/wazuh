@@ -1,7 +1,7 @@
 /*
- * Wazuh router - Subscriber tests
+ * Wazuh router
  * Copyright (C) 2015, Wazuh Inc.
- * July 17, 2023.
+ * May 5, 2025.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
