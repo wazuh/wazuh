@@ -559,25 +559,29 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         Asynchronous task that is started when the worker connects to the master. It starts an agent-info
         synchronization process every 'sync_agent_info' seconds.
 
-        A list of JSON chunks with the information of all local agents is retrieved from local wazuh-db socket
+        A JSON object with the information of all local agents is retrieved from local wazuh-db socket
         and sent to the master's wazuh-db.
         """
         logger = self.task_loggers["Agent-info sync"]
-        wdb_conn = AsyncWazuhDBConnection()
-        agent_info = c_common.SyncWazuhdb(manager=self, logger=logger, cmd=b'syn_a_w_m',
-                                          data_retriever=wdb_conn.run_wdb_command,
+        agent_info = c_common.SyncWazuhdb(manager=self, logger=logger, data_retriever=None, cmd=b'syn_a_w_m',
                                           get_data_command='global sync-agent-info-get ',
                                           set_data_command='global sync-agent-info-set')
 
         while True:
             try:
                 if self.connected:
-                    start_time = get_utc_now().timestamp()
                     if await agent_info.request_permission():
                         logger.info("Starting.")
+                        start_time = get_utc_now().timestamp()
                         self.agent_info_sync_status['date_start'] = start_time
-                        chunks = await agent_info.retrieve_information()
-                        await agent_info.sync(start_time=start_time, chunks=chunks)
+
+                        agents_sync = await agent_info.retrieve_agents_information()
+                        sync_sum = len(agents_sync['syncreq']) + \
+                            len(agents_sync['syncreq_keepalive']) + \
+                            len(agents_sync['syncreq_status'])
+
+                        if sync_sum > 0:
+                            await agent_info.sync(start_time=start_time, chunks=agents_sync)
             except Exception as e:
                 logger.error(f"Error synchronizing agent info: {e}")
 
