@@ -4,6 +4,7 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
+import os
 from time import strftime
 
 from wazuh.core import common
@@ -51,6 +52,7 @@ class Wazuh:
         self.openssl_support = 'N/A'
         self.tz_offset = None
         self.tz_name = None
+        self.uuid = None
 
         self._initialize()
 
@@ -69,7 +71,8 @@ class Wazuh:
                 'max_agents': self.max_agents,
                 'openssl_support': self.openssl_support,
                 'tz_offset': self.tz_offset,
-                'tz_name': self.tz_name
+                'tz_name': self.tz_name,
+                'uuid' : self.uuid                
                 }
 
     def _initialize(self):
@@ -91,6 +94,14 @@ class Wazuh:
         except Exception:
             self.tz_offset = None
             self.tz_name = None
+
+        # UUID info
+        try:
+            uuid_file = os.path.join(self.path, 'api/configuration/security/installation_uid')
+            with open(uuid_file, 'r') as f:
+                self.uuid = f.read().strip()
+        except Exception:
+            self.uuid = None
 
         return self.to_dict()
 
