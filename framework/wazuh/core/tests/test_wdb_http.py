@@ -72,10 +72,10 @@ class TestWazuhDBHTTPClient:
 
     async def test_get_agents_ids(self, client_mock: AsyncMock, module_instance: WazuhDBHTTPClient):
         """Check that the `get_agents_ids` method works as expected."""
-        expected_result = ['001', '002', '003']
+        expected_result = [1, 2, 3]
         response = MagicMock()
         response.is_error = False
-        response.json.return_value = [1, 2, 3]
+        response.json.return_value = expected_result
         client_mock.get.return_value = response
 
         result = await module_instance.get_agents_ids()
@@ -87,7 +87,7 @@ class TestWazuhDBHTTPClient:
 
     async def test_get_agent_groups(self, client_mock: AsyncMock, module_instance: WazuhDBHTTPClient):
         """Check that the `get_agent_groups` method works as expected."""
-        agent_id = '001'
+        agent_id = 1
         expected_result = ['default', 'test']
         response = MagicMock()
         response.is_error = False
@@ -104,8 +104,8 @@ class TestWazuhDBHTTPClient:
     async def test_get_agents_groups(self, client_mock: AsyncMock, module_instance: WazuhDBHTTPClient):
         """Check that the `get_agents_groups` method works as expected."""
         expected_result = [
-            AgentIDGroups(id='001', groups=['default']),
-            AgentIDGroups(id='002', groups=['default', 'test']),
+            AgentIDGroups(id=1, groups=['default']),
+            AgentIDGroups(id=2, groups=['default', 'test']),
         ]
         response = MagicMock()
         response.is_error = False
@@ -128,10 +128,10 @@ class TestWazuhDBHTTPClient:
     async def test_get_group_agents(self, client_mock: AsyncMock, module_instance: WazuhDBHTTPClient):
         """Check that the `get_group_agents` method works as expected."""
         group_name = 'test'
-        expected_result = ['002', '005', '011']
+        expected_result = [2, 5, 11]
         response = MagicMock()
         response.is_error = False
-        response.json.return_value = [2, 5, 11]
+        response.json.return_value = expected_result
         client_mock.get.return_value = response
 
         result = await module_instance.get_group_agents(group_name)
@@ -193,7 +193,7 @@ class TestWazuhDBHTTPClient:
         expected_result = AgentsSync(
             syncreq=[
                 {
-                    'id': '010',
+                    'id': 10,
                     'name': 'b922117b0323',
                     'ip': '172.18.0.9',
                     'node_name': 'node01',
