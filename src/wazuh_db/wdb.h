@@ -1018,6 +1018,8 @@ int wdb_stmt_cache(wdb_t * wdb, int index);
 
 int wdb_parse(char * input, char * output, int peer);
 int wdb_parse_api(const char * endpoint, const char * method, const char * input, char ** output);
+sqlite3 * wdb_global_pre(void **wdb_ctx);
+void wdb_global_post(void *wdb_ctx);
 
 int wdb_parse_syscheck(wdb_t * wdb, wdb_component_t component, char * input, char * output);
 int wdb_parse_syscollector(wdb_t * wdb, const char * query, char * input, char * output);

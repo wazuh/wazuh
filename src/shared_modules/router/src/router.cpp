@@ -8,28 +8,46 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  */
-#include "router.h"
-#include "external/cpp-httplib/httplib.h"
-#include "flatbuffers/idl.h"
+
 #include "logging_helper.h"
-#include "routerFacade.hpp"
-#include "routerModule.hpp"
-#include "routerProvider.hpp"
-#include "routerSubscriber.hpp"
-#include <filesystem>
-
-std::map<ROUTER_PROVIDER_HANDLE, std::shared_ptr<RouterProvider>> PROVIDERS;
-std::shared_mutex PROVIDERS_MUTEX;
-
+#include <functional>
+#include <string>
 static std::function<void(const modules_log_level_t, const std::string&)> GS_LOG_FUNCTION;
 
-static void logMessage(const modules_log_level_t level, const std::string& msg)
+void logMessage(const modules_log_level_t level, const std::string& msg)
 {
     if (!msg.empty() && GS_LOG_FUNCTION)
     {
         GS_LOG_FUNCTION(level, msg);
     }
 }
+
+#include "external/cpp-httplib/httplib.h"
+#include "flatbuffers/idl.h"
+#include "router.h"
+#include "routerFacade.hpp"
+#include "routerModule.hpp"
+#include "routerModuleGateway.hpp"
+#include "routerProvider.hpp"
+#include "routerSubscriber.hpp"
+#include <filesystem>
+#include <malloc.h>
+#include <utility>
+
+std::map<ROUTER_PROVIDER_HANDLE, std::shared_ptr<RouterProvider>> PROVIDERS;
+std::shared_mutex PROVIDERS_MUTEX;
+
+/**
+ * @brief Struct to hold the server instance and its thread.
+ */
+struct ServerInstance final
+{
+    std::unique_ptr<httplib::Server> server; ///< Server instance
+    std::thread serverThread;                ///< Thread to run the server
+    bool running {false};                    ///< Flag to indicate if the server is running
+};
+
+std::map<std::string, std::shared_ptr<ServerInstance>> G_HTTPINSTANCES;
 
 void RouterModule::initialize(const std::function<void(const modules_log_level_t, const std::string&)>& logFunction)
 {
@@ -288,21 +306,14 @@ extern "C"
         }
     }
 
-    /**
-     * @brief Struct to hold the server instance and its thread.
-     */
-    struct ServerInstance final
+    void router_register_api_endpoint(const char* module,
+                                      const char* socketPath,
+                                      const char* method,
+                                      const char* endpoint,
+                                      void* callbackPre,
+                                      void* callbackPost)
     {
-        std::unique_ptr<httplib::Server> server; ///< Server instance
-        std::thread serverThread;                ///< Thread to run the server
-        bool running {false};                    ///< Flag to indicate if the server is running
-    };
-
-    std::map<std::string, std::shared_ptr<ServerInstance>> G_HTTPINSTANCES;
-
-    void router_register_api_endpoint(char* socketPath, const char* method, const char* endpoint, void* callback)
-    {
-        if (!socketPath || !endpoint || !callback || !method)
+        if (!socketPath || !endpoint || !method || !module)
         {
             logMessage(modules_log_level_t::LOG_ERROR, "Error registering API endpoint. Invalid parameters");
             return;
@@ -318,46 +329,19 @@ extern "C"
         auto instance = G_HTTPINSTANCES[socketPathStr];
         auto methodStr = std::string(method);
         auto endpointStr = std::string(endpoint);
+        auto moduleStr = std::string(module);
 
         if (methodStr.compare("GET") == 0)
         {
             logMessage(modules_log_level_t::LOG_INFO, "Registering GET endpoint: " + endpointStr);
             instance->server->Get(
                 endpoint,
-                [callback, endpointStr](const httplib::Request& req, httplib::Response& res)
+                [callbackPre, callbackPost, endpointStr, moduleStr](const httplib::Request& req, httplib::Response& res)
                 {
-                    bool first = true;
-                    auto start = std::chrono::high_resolution_clock::now();
-                    std::string json = "{";
-
-                    for (const auto& [key, value] : req.path_params)
-                    {
-                        if (!first)
-                        {
-                            json += ",";
-                        }
-                        first = false;
-                        json.append("\"").append(key).append("\":\"").append(value).append("\"");
-                    }
-                    json += "}";
-
-                    char* output = nullptr;
-                    auto cb = reinterpret_cast<int (*)(const char*, const char*, const char*, char**)>(callback);
                     logMessage(modules_log_level_t::LOG_DEBUG_VERBOSE,
-                               "GET: " + endpointStr + " request parameters: " + json);
-                    cb(endpointStr.c_str(), "GET", json.c_str(), &output);
-                    logMessage(modules_log_level_t::LOG_DEBUG_VERBOSE, "GET response: " + std::string(output));
-
-                    if (output == nullptr)
-                    {
-                        res.status = 400;
-                    }
-                    else
-                    {
-                        res.status = 200;
-                        res.set_content(output, "text/json");
-                        free(output);
-                    }
+                               "GET: " + endpointStr + " request parameters: " + req.path);
+                    auto start = std::chrono::high_resolution_clock::now();
+                    RouterModuleGateway::redirect(moduleStr, callbackPre, callbackPost, endpointStr, "GET", req, res);
                     auto end = std::chrono::high_resolution_clock::now();
                     auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
                     logMessage(modules_log_level_t::LOG_DEBUG,
@@ -370,26 +354,10 @@ extern "C"
             logMessage(modules_log_level_t::LOG_INFO, "Registering POST endpoint: " + endpointStr);
             instance->server->Post(
                 endpoint,
-                [callback, endpointStr](const httplib::Request& req, httplib::Response& res)
+                [callbackPre, callbackPost, endpointStr, moduleStr](const httplib::Request& req, httplib::Response& res)
                 {
                     auto start = std::chrono::high_resolution_clock::now();
-                    char* output = nullptr;
-                    auto cb = reinterpret_cast<int (*)(const char*, const char*, const char*, char**)>(callback);
-                    logMessage(modules_log_level_t::LOG_DEBUG_VERBOSE,
-                               "POST: " + endpointStr + " request parameters: " + req.body);
-                    cb(endpointStr.c_str(), "POST", req.body.c_str(), &output);
-                    logMessage(modules_log_level_t::LOG_DEBUG_VERBOSE, "POST response: " + std::string(output));
-
-                    if (output == nullptr)
-                    {
-                        res.status = 400;
-                    }
-                    else
-                    {
-                        res.status = 200;
-                        res.set_content(output, "text/json");
-                        free(output);
-                    }
+                    RouterModuleGateway::redirect(moduleStr, callbackPre, callbackPost, endpointStr, "POST", req, res);
                     auto end = std::chrono::high_resolution_clock::now();
                     auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
                     logMessage(modules_log_level_t::LOG_DEBUG,
@@ -429,6 +397,24 @@ extern "C"
                 std::filesystem::path path {SOCKETPATH + socketPathStr};
                 std::filesystem::create_directories(path.parent_path());
                 instance->server->set_address_family(AF_UNIX);
+                instance->server->set_exception_handler(
+                    [](const auto& req, auto& res, std::exception_ptr ep)
+                    {
+                        try
+                        {
+                            std::rethrow_exception(std::move(ep));
+                        }
+                        catch (const std::exception& e)
+                        {
+                            logMessage(modules_log_level_t::LOG_ERROR,
+                                       std::string(e.what()) + " on endpoint: " + req.path);
+                        }
+                        catch (...)
+                        {
+                            logMessage(modules_log_level_t::LOG_ERROR, "Unknown exception");
+                        }
+                        res.status = 500;
+                    });
                 instance->running = instance->server->listen(path.c_str(), true);
 
                 if (instance->running == false)

@@ -39,7 +39,7 @@ add_library(router SHARED
     ${ROUTER_SRC}
     )
 
-target_link_libraries(router gcc_s flatbuffers)
+target_link_libraries(router gcc_s flatbuffers wazuhext jemalloc)
 
 set_target_properties(router PROPERTIES
         BUILD_RPATH_USE_ORIGIN TRUE
