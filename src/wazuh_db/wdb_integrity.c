@@ -105,7 +105,7 @@ void wdbi_report_removed(const char* agent_id, wdb_component_t component, sqlite
                 cJSON_AddItemToObject(j_data, "local_ip", cJSON_CreateString((const char*) sqlite3_column_text(stmt, 1)));
                 cJSON_AddItemToObject(j_data, "local_port", cJSON_CreateNumber(sqlite3_column_int64(stmt, 2)));
                 cJSON_AddItemToObject(j_data, "inode", cJSON_CreateNumber(sqlite3_column_int64(stmt, 3)));
-                cJSON_AddItemToObject(j_data, "item_id", cJSON_CreateString(sqlite3_column_text(stmt, 4)));
+                cJSON_AddItemToObject(j_data, "item_id", cJSON_CreateString((const char*) sqlite3_column_text(stmt, 4)));
                 router_handle = router_inventory_events_handle;
                 break;
             case WDB_SYSCOLLECTOR_HWINFO:
@@ -131,7 +131,7 @@ void wdbi_report_removed(const char* agent_id, wdb_component_t component, sqlite
             case WDB_FIM:
             case WDB_FIM_FILE:
                 cJSON_AddStringToObject(j_msg_to_send, "action", "deleteFile");
-                cJSON_AddItemToObject(j_data, "path", cJSON_CreateString((const char*) sqlite3_column_text(stmt, 0)));
+                cJSON_AddItemToObject(j_data, "full_path", cJSON_CreateString((const char*) sqlite3_column_text(stmt, 0)));
                 router_handle = router_fim_events_handle;
                 break;
             case WDB_FIM_REGISTRY:
