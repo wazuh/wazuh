@@ -650,15 +650,16 @@ async def test_handler_update_chunks_wdb(send_request_mock):
     handler = cluster_common.Handler(fernet_key, cluster_items)
     handler.server = ServerMock(None)
 
-    with patch('wazuh.core.cluster.cluster.run_in_pool',
-               return_value={'total_updated': 0, 'errors_per_folder': {'key': 'value'}, 'generic_errors': ['ERR'],
-                             'updated_chunks': 2, 'time_spent': 6,
-                             'error_messages': {'chunks': [[0, 0], [1, 1]], 'others': ['other1', 'other2']}}):
+    with patch('wazuh.core.cluster.common.send_data_to_wdb', new_callable=AsyncMock) as send_data_to_wdb_mock:
         with patch.object(LoggerMock, "debug") as logger_debug_mock:
             with patch.object(LoggerMock, "debug2") as logger_debug2_mock:
                 with patch.object(LoggerMock, "error") as logger_error_mock:
+                    send_data_to_wdb_mock.return_value = {
+                        'total_updated': 0, 'errors_per_folder': {'key': 'value'}, 'generic_errors': ['ERR'],
+                        'updated_chunks': 2, 'time_spent': 6,
+                        'error_messages': {'chunks': [[0, 0], [1, 1]], 'others': ['other1', 'other2']}}
                     assert await handler.update_chunks_wdb(
-                        data={'chunks': [0, 1, 2, 3, 4]}, info_type='info',
+                        data={'chunks': [0, 1, 2, 3, 4]}, info_type='agent-groups',
                         logger=logger, error_command=b'ERROR', timeout=10) == {'error_messages': [0, 1],
                                                                                'errors_per_folder': {'key': 'value'},
                                                                                'generic_errors': ['ERR'],
@@ -672,14 +673,16 @@ async def test_handler_update_chunks_wdb(send_request_mock):
 
     # Test Exception
     send_request_mock.reset_mock()
-    with pytest.raises(exception.WazuhClusterError,
-                       match=r'.*Error 3037 - Error while processing Agent-info chunks: .*'):
-        await handler.update_chunks_wdb(data={'chunks': [0, 1, 2, 3, 4]}, info_type='info',
-                                        logger=logger, error_command=b'ERROR', timeout=10)
+    error_message = 'error'
+    with patch('wazuh.core.cluster.common.send_data_to_wdb', side_effect=Exception(error_message)):
+        with pytest.raises(exception.WazuhClusterError,
+                        match=r'.*Error 3037 - Error while processing Agent-info chunks: .*'):
+            await handler.update_chunks_wdb(data={'chunks': [0, 1, 2, 3, 4]}, info_type='info',
+                                            logger=logger, error_command=b'ERROR', timeout=10)
+
     send_request_mock.assert_has_calls(
         [call(command=b'ERROR',
-              data=b'error processing info chunks in process pool: '
-                   b'Error 2005 - Could not connect to wdb socket: [Errno 2] No such file or directory')])
+              data=f'error processing info chunks in process pool: {error_message}'.encode())])
 
 
 @pytest.mark.asyncio
@@ -1507,6 +1510,40 @@ async def test_sync_wazuh_db_retrieve_information(socket_mock):
                 'Could not obtain data from wazuh-db: Error 1000 - Wazuh Internal Error')
 
 
+@patch('wazuh.core.wdb_http.WazuhDBHTTPClient')
+async def test_sync_wazuh_db_retrieve_agents_information(wdb_http_client_mock):
+    """Validate that the `retrieve_agents_information` method works as expected."""
+    logger = logging.getLogger('wazuh')
+    handler = cluster_common.Handler(fernet_key, cluster_items)
+    sync_object = cluster_common.SyncWazuhdb(manager=handler, logger=logger, cmd=b'syn_a_w_m',
+                                             data_retriever=None,
+                                             get_data_command='global sync-agent-info-get ',
+                                             set_data_command='global sync-agent-info-set')
+
+    agents_info = {'id': 1, 'name': 'test'}
+    wdb_http_client_mock.return_value.close = AsyncMock()
+    get_agents_sync_mock = AsyncMock(return_value=agents_info)
+    wdb_http_client_mock.return_value.get_agents_sync = get_agents_sync_mock
+    
+    assert await sync_object.retrieve_agents_information() == {'id': 1, 'name': 'test'}
+
+
+async def test_sync_wazuh_db_retrieve_agents_information_ko():
+    """Validate that the `retrieve_agents_information` method handles exceptions successfully."""
+    logger = logging.getLogger('wazuh')
+    handler = cluster_common.Handler(fernet_key, cluster_items)
+    sync_object = cluster_common.SyncWazuhdb(manager=handler, logger=logger, cmd=b'syn_a_w_m',
+                                             data_retriever=None,
+                                             get_data_command='global sync-agent-info-get ',
+                                             set_data_command='global sync-agent-info-set')
+    
+    with patch('wazuh.core.wdb_http.WazuhDBHTTPClient', side_effect=exception.WazuhException(1000)):
+        with patch.object(sync_object.logger, 'error') as logger_error_mock:
+            assert await sync_object.retrieve_agents_information() is None
+            logger_error_mock.assert_called_with(
+                'Could not obtain data from wazuh-db: Error 1000 - Wazuh Internal Error')
+
+
 @pytest.mark.asyncio
 @freeze_time('1970-01-01')
 @patch("json.dumps", return_value="")
@@ -1588,7 +1625,7 @@ def test_error_receiving_agent_information():
 
 
 @patch("wazuh.core.cluster.common.WazuhDBConnection")
-def test_send_data_to_wdb(WazuhDBConnection_mock):
+async def test_send_data_to_wdb(WazuhDBConnection_mock):
     """Check if the data chunks are being properly forward to the Wazuh-db socket."""
 
     class MockWazuhDBConnection:
@@ -1613,30 +1650,32 @@ def test_send_data_to_wdb(WazuhDBConnection_mock):
             pass
 
     WazuhDBConnection_mock.return_value = MockWazuhDBConnection()
+    chunks = ['[{"data": "1chunk"}]', '[{"data": "2chunk"}]']
 
-    result = cluster_common.send_data_to_wdb(data={'chunks': ['[{"data": ""}]'], 'payload': {}, 'set_data_command': ''},
-                                             timeout=15, info_type='agent-groups')
+    result = await cluster_common.send_data_to_wdb(data={'chunks': ['[{"data": ""}]'], 'payload': {}, 
+                                                         'set_data_command': ''}, timeout=15, info_type='agent-groups')
     assert result['error_messages']['others'] == ['Timeout while processing agent-groups chunks.']
 
     WazuhDBConnection_mock.return_value.exceptions += 1
-    result = cluster_common.send_data_to_wdb(data={'chunks': ['1chunk', '2chunk'], 'set_data_command': ''},
-                                             timeout=15)
+    result = await cluster_common.send_data_to_wdb(data={'chunks': chunks, 
+                                                         'payload': {}, 'set_data_command': ''}, 
+                                                         timeout=15, info_type='agent-groups')
     assert result['updated_chunks'] == 2
 
     WazuhDBConnection_mock.return_value.exceptions += 1
-    result = cluster_common.send_data_to_wdb(data={'chunks': ['1chunk', '2chunk'], 'set_data_command': ''},
-                                             timeout=15)
+    result = await cluster_common.send_data_to_wdb(data={'chunks': chunks, 'set_data_command': ''},
+                                             timeout=15, info_type='agent-groups')
     assert result['updated_chunks'] == 0
 
     WazuhDBConnection_mock.return_value.exceptions += 1
-    result = cluster_common.send_data_to_wdb(data={'chunks': ['1chunk', '2chunk'], 'set_data_command': ''},
-                                             timeout=15)
+    result = await cluster_common.send_data_to_wdb(data={'chunks': chunks, 'payload': {}, 'set_data_command': ''},
+                                             timeout=15, info_type='agent-groups')
     assert result['error_messages']['chunks'] == [(0, ''), (1, '')]
 
     with patch('wazuh.core.cluster.master.utils.Timeout', side_effect=Exception):
-        result = cluster_common.send_data_to_wdb(data={'chunks': ['1chunk', '2chunk'], 'set_data_command': ''},
-                                                 timeout=15)
-        assert result['error_messages']['others'] == ['Error while processing agent-info chunks: ']
+        result = await cluster_common.send_data_to_wdb(data={'chunks': chunks, 'set_data_command': ''},
+                                                 timeout=15, info_type='agent-groups')
+        assert result['error_messages']['others'] == ['Error while processing agent-groups chunks: ']
 
 
 @patch.object(logging, "error")
