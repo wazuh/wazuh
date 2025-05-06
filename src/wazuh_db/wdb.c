@@ -188,8 +188,6 @@ static const char *SQL_STMT[] = {
     [WDB_STMT_GLOBAL_SYNC_SET] = "UPDATE agent SET sync_status = ? WHERE id = ?;",
     [WDB_STMT_GLOBAL_GROUP_SYNC_REQ_GET] = "SELECT id FROM agent WHERE id > ? AND group_sync_status = 'syncreq' AND date_add < ? LIMIT 1;",
     [WDB_STMT_GLOBAL_GROUP_SYNC_ALL_GET] = "SELECT id FROM agent WHERE id > ? AND date_add < ? LIMIT 1;",
-    [WDB_STMT_GLOBAL_GROUP_SYNC_REQ_GET_API] = "SELECT id FROM agent WHERE group_sync_status = 'syncreq' AND date_add < ? AND id > 0;",
-    [WDB_STMT_GLOBAL_GROUP_SYNC_ALL_GET_API] = "SELECT id FROM agent WHERE date_add < ? AND id > 0;",
     [WDB_STMT_GLOBAL_GROUP_SYNCREQ_FIND] = "SELECT 1 FROM agent WHERE group_sync_status = 'syncreq';",
     [WDB_STMT_GLOBAL_AGENT_GROUPS_NUMBER_GET] = "SELECT count(id_group) groups_number from belongs WHERE id_agent = ?;",
     [WDB_STMT_GLOBAL_GROUP_SYNC_SET] = "UPDATE agent SET group_sync_status = ? WHERE id = ?;",
@@ -276,13 +274,6 @@ static const char *SQL_STMT[] = {
     [WDB_STMT_SYSCOLLECTOR_OSINFO_CLEAR] = "DELETE FROM sys_osinfo;",
     [WDB_STMT_SYS_HOTFIXES_GET] = "SELECT HOTFIX FROM SYS_HOTFIXES;",
     [WDB_STMT_SYS_PROGRAMS_GET] = "SELECT DISTINCT NAME, VERSION, ARCHITECTURE, VENDOR, FORMAT, SOURCE, CPE, MSU_NAME, ITEM_ID, DESCRIPTION, LOCATION, SIZE, INSTALL_TIME FROM SYS_PROGRAMS;",
-    [WDB_STMT_GLOBAL_AGENT_SUMMARY_CONNECTIONS] = "SELECT COUNT(*) as quantity, connection_status AS status FROM agent WHERE id > 0 GROUP BY status ORDER BY status ASC limit 5;",
-    [WDB_STMT_GLOBAL_AGENT_SUMMARY_CONNECTIONS_BY_OS] = "SELECT COUNT(*) as quantity, os_platform AS platform FROM agent WHERE id > 0 GROUP BY platform ORDER BY quantity DESC limit 5;",
-    [WDB_STMT_GLOBAL_AGENT_SUMMARY_CONNECTIONS_BY_GROUP] = "SELECT COUNT(*) as q, g.name AS group_name FROM belongs b JOIN 'group' g ON b.id_group=g.id WHERE b.id_agent > 0  GROUP BY b.id_group ORDER BY q DESC LIMIT 5;",
-    [WDB_STMT_GLOBAL_SYNC_REQ_GET_API] = "SELECT id, name, ip, os_name, os_version, os_major, os_minor, os_codename, os_build, os_platform, os_uname, os_arch, version, config_sum, merged_sum, manager_host, node_name, last_keepalive, connection_status, disconnection_time, group_config_status, status_code FROM agent WHERE id > 0 AND sync_status = 'syncreq';",
-    [WDB_STMT_GLOBAL_SYNC_REQ_KEEPALIVE_GET_API] = "SELECT id FROM agent WHERE id > 0 AND sync_status = 'syncreq_keepalive';",
-    [WDB_STMT_GLOBAL_SYNC_REQ_STATUS_GET_API] = "SELECT id, connection_status, disconnection_time, status_code FROM agent WHERE id > 0 AND sync_status = 'syncreq_status';",
-    [WDB_STMT_GLOBAL_UPDATE_AGENT_KEEPALIVE_API] = "UPDATE agent SET last_keepalive = STRFTIME('%s', 'NOW') WHERE id = ?;",
 };
 
 /**
@@ -1278,29 +1269,6 @@ cJSON* wdb_exec_stmt(sqlite3_stmt* stmt) {
     int status = SQLITE_ERROR;
     result = cJSON_CreateArray();
     while ((row = wdb_exec_row_stmt(stmt, &status, STMT_MULTI_COLUMN))) {
-        cJSON_AddItemToArray(result, row);
-    }
-
-    if (status != SQLITE_DONE) {
-        cJSON_Delete(result);
-        result = NULL;
-    }
-
-    return result;
-}
-
-cJSON* wdb_exec_stmt_single_column(sqlite3_stmt* stmt) {
-    cJSON * result;
-    cJSON * row;
-
-    if (!stmt) {
-        mdebug1("Invalid SQL statement.");
-        return NULL;
-    }
-
-    int status = SQLITE_ERROR;
-    result = cJSON_CreateArray();
-    while ((row = wdb_exec_row_stmt(stmt, &status, STMT_SINGLE_COLUMN))) {
         cJSON_AddItemToArray(result, row);
     }
 

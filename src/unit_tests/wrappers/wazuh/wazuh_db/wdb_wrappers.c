@@ -100,10 +100,6 @@ cJSON * __wrap_wdb_exec_stmt(__attribute__((unused)) sqlite3_stmt *stmt) {
     return mock_ptr_type(cJSON *);
 }
 
-cJSON * __wrap_wdb_exec_stmt_single_column(__attribute__((unused)) sqlite3_stmt *stmt) {
-    return mock_ptr_type(cJSON *);
-}
-
 cJSON * __wrap_wdb_exec_stmt_sized(__attribute__((unused)) sqlite3_stmt *stmt,
                                    size_t max_size,
                                    int* status,

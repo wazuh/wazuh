@@ -246,8 +246,6 @@ typedef enum wdb_stmt {
     WDB_STMT_GLOBAL_SYNC_SET,
     WDB_STMT_GLOBAL_GROUP_SYNC_REQ_GET,
     WDB_STMT_GLOBAL_GROUP_SYNC_ALL_GET,
-    WDB_STMT_GLOBAL_GROUP_SYNC_REQ_GET_API,
-    WDB_STMT_GLOBAL_GROUP_SYNC_ALL_GET_API,
     WDB_STMT_GLOBAL_GROUP_SYNCREQ_FIND,
     WDB_STMT_GLOBAL_AGENT_GROUPS_NUMBER_GET,
     WDB_STMT_GLOBAL_GROUP_SYNC_SET,
@@ -334,13 +332,6 @@ typedef enum wdb_stmt {
     WDB_STMT_SYSCOLLECTOR_OSINFO_CLEAR,
     WDB_STMT_SYS_HOTFIXES_GET,
     WDB_STMT_SYS_PROGRAMS_GET,
-    WDB_STMT_GLOBAL_AGENT_SUMMARY_CONNECTIONS,
-    WDB_STMT_GLOBAL_AGENT_SUMMARY_CONNECTIONS_BY_OS,
-    WDB_STMT_GLOBAL_AGENT_SUMMARY_CONNECTIONS_BY_GROUP,
-    WDB_STMT_GLOBAL_SYNC_REQ_GET_API,
-    WDB_STMT_GLOBAL_SYNC_REQ_KEEPALIVE_GET_API,
-    WDB_STMT_GLOBAL_SYNC_REQ_STATUS_GET_API,
-    WDB_STMT_GLOBAL_UPDATE_AGENT_KEEPALIVE_API,
     WDB_STMT_SIZE // This must be the last constant
 } wdb_stmt;
 
@@ -984,14 +975,6 @@ int wdb_exec_stmt_send(sqlite3_stmt* stmt, int peer);
 cJSON* wdb_exec_stmt(sqlite3_stmt* stmt);
 
 /**
- * @brief Function to execute a SQL statement and save the result in a JSON array.
- *
- * @param [in] stmt The SQL statement to be executed.
- * @return JSON array with the statement execution results. NULL On error.
- */
-cJSON* wdb_exec_stmt_single_column(sqlite3_stmt* stmt);
-
-/**
  * @brief Function to execute a SQL query and save the result in a JSON array.
  *
  * @param [in] db The SQL database to be queried.
@@ -1017,7 +1000,7 @@ wdb_t * wdb_pool_find_prev(wdb_t * wdb);
 int wdb_stmt_cache(wdb_t * wdb, int index);
 
 int wdb_parse(char * input, char * output, int peer);
-int wdb_parse_api(const char * endpoint, const char * method, const char * input, char ** output);
+
 sqlite3 * wdb_global_pre(void **wdb_ctx);
 void wdb_global_post(void *wdb_ctx);
 
@@ -1315,27 +1298,6 @@ int wdb_parse_global_insert_agent_group(wdb_t * wdb, char * input, char * output
  */
 int wdb_parse_global_select_group_belong(wdb_t *wdb, char *input, char *output);
 
-
-/**
- * @brief Function to parse the select group from belongs table request using agent id.
- *
- * @param [in] wdb The global struct database.
- * @param [in] input String with the agent id in JSON format.
- * @return JSON object with the response of the query.
- *        NULL On error: invalid DB query syntax.
- */
-cJSON * wdb_parse_global_select_group_belong_api(wdb_t *wdb, const char *input);
-
-/**
- * @brief Function to parse the agent summary request.
- *
- * @param [in] wdb The global struct database.
- * @param [in] input String with the agent ids in JSON format.
- * @return JSON object with the response of the query.
- *        NULL On error: invalid DB query syntax.
- */
-cJSON* wdb_parse_global_get_summary_api(wdb_t *wdb, const char *input);
-
 /**
  *
  * @return 0 Success: response contains "ok".
@@ -1435,16 +1397,6 @@ int wdb_parse_global_sync_agent_info_set(wdb_t * wdb, char * input, char * outpu
  * @return 0 Success: response contains the value. -1 On error: invalid DB query syntax.
  */
 int wdb_parse_global_sync_agent_groups_get(wdb_t* wdb, char* input, char* output);
-
-/**
- * @brief Function to parse sync-agent-groups-get command data.
- *
- * @param [in] wdb The global struct database.
- * @param [in] input String in json format with last_id and sync_condition.
- * @return JSON object with the response of the query.
- *         NULL On error: invalid DB query syntax.
- */
-cJSON* wdb_parse_global_sync_agent_groups_get_api(wdb_t* wdb, const char* input);
 
 /**
  * @brief Function to parse the disconnect-agents command data.
@@ -1632,16 +1584,6 @@ void wdbi_update_attempt(wdb_t * wdb, wdb_component_t component, long timestamp,
  * @param [in] manager_checksum Checksum of the last calculated component on the manager to be stored.
  */
 void wdbi_update_completion(wdb_t * wdb, wdb_component_t component, long timestamp, os_sha1 last_agent_checksum, os_sha1 manager_checksum);
-
-/**
- * @brief Function to parse the get group all agents request.
- *
- * @param [in] wdb The global struct database.
- * @param [in] input JSON with the parameters.
- * @return cJSON object with the agents in the group.
- *        NULL on error.
- */
-cJSON* wdb_parse_global_get_group_agents_api(wdb_t *wdb, const char* input);
 
 /**
  * @brief Get the last stored checksum of a component on the manager
@@ -2030,24 +1972,6 @@ int wdb_global_insert_agent_group(wdb_t *wdb, char* group_name);
 cJSON* wdb_global_select_group_belong(wdb_t *wdb, int id_agent);
 
 /**
- * @brief Function to get groups of a specified agent from the belongs table.
- *
- * @param [in] wdb The Global struct database.
- * @param [in] id_agent The agent id.
- * @return JSON with agent groups on success. NULL on error.
- */
-cJSON* wdb_global_select_group_belong_agent_id(wdb_t *wdb, int id_agent);
-
-/**
- * @brief Function to get summary of agent connection status, agent group and agent platforms.
- *
- * @param [in] wdb The Global struct database.
- * @param [in] agent_array The agent array.
- * @return JSON with agent summary on success. NULL on error.
- */
-cJSON* wdb_global_get_summary(wdb_t *wdb, cJSON* agent_array);
-
-/**
  * @brief Function to insert an agent to the belongs table.
  *
  * @param [in] wdb The Global struct database.
@@ -2161,25 +2085,6 @@ wdbc_result wdb_global_sync_agent_groups_get(wdb_t* wdb,
                                              bool get_hash,
                                              int agent_registration_delta,
                                              cJSON** output);
-
-
-/**
- * @brief Gets each agent matching the sync condition and all their groups.
- *
- * @param [in] wdb The Global struct database.
- * @param [in] condition The condition of the agents to be requested.
- *              WDB_GROUP_SYNC_STATUS for agents tagged as sync_req,
- *              WDB_GROUP_CKS_MISMATCH for agents with difference between the CKS in the master and the worker.
- * @param [in] set_synced Indicates if the obtained groups must be set as synced.
- * @param [in] get_hash Indicates if the response must append the group_hash once all the groups have been obtained.
- * @param [in] agent_registration_delta Minimum amount of seconds since the registration time for the agent to be included in the result.
- * @return A cJSON pointer where the response is written.
- */
-cJSON* wdb_global_sync_agent_groups_get_all(wdb_t* wdb,
-                                             wdb_groups_sync_condition_t condition,
-                                             bool set_synced,
-                                             bool get_hash,
-                                             int agent_registration_delta);
 
 /**
  * @brief Add global group hash to JSON response.
@@ -2349,8 +2254,6 @@ cJSON* wdb_global_get_agent_info(wdb_t *wdb, int id);
  */
 cJSON* wdb_global_get_all_agents(wdb_t *wdb, int last_agent_id, wdbc_result* status);
 
-cJSON* wdb_global_get_all_agent_ids(wdb_t *wdb);
-
 /**
  * @brief Gets every agent ID with context.
  *        Response is send by elements.
@@ -2429,16 +2332,6 @@ cJSON* wdb_global_get_agents_to_disconnect(wdb_t *wdb, int last_agent_id, int ke
  * @retval -1 The table "agent" is missing or an error occurred.
  */
 int wdb_global_check_manager_keepalive(wdb_t *wdb);
-
-/**
- * @brief Function to parse the get group all agents request.
- *
- * @param [in] wdb The global struct database.
- * @param [in] group_name String with the parameters.
- * @return cJSON object with the agents in the group.
- *        NULL on error.
- */
-cJSON* wdb_global_get_group_all_agents(wdb_t *wdb, char* group_name);
 
 /**
  * @brief Returns a JSON array containing the group and group_hash assigned to all agents,
@@ -2682,45 +2575,5 @@ void wdbcom_dispatch(char* request, char* output);
  * @return Returns 0 on success or -1 if an error occurs while setting the synchronous mode.
  */
 int wdb_set_synchronous_normal(wdb_t * wdb);
-
-/**
- * @brief Get the elements of the agent table that were not synced.
- * This function is likely to be called from the worker and this data is sent across the cluster to
- * the master.
- *
- * @param wdb The database structure.
- * @return cJSON* Returns a cJSON object with the elements that were not synced.
- *        NULL on error.
- */
-cJSON* wdb_global_sync_agent_info_get_np(wdb_t *wdb);
-
-/**
- * @brief Get the elements of the agent table that were not synced.
- * This function is likely to be called from the worker and this data is sent across the cluster to
- * the master.
- *
- * @param wdb The database structure.
- * @return cJSON* Returns a cJSON object with the elements that were not synced.
- */
-cJSON* wdb_parse_global_sync_agent_info_get_api(wdb_t* wdb);
-
-/**
- * @brief Set the elements of the agent table that were not synced.
- * This function is called from the master with data obtained from the worker.
- *
- * @param wdb The database structure.
- * @param agent_info A JSON object with the agent information.
- * @return Returns 0 on success or -1 if an error occurs while setting the agent information.
- */
-int wdb_global_sync_agent_info_set_np(wdb_t *wdb, const cJSON *parameters);
-
-/**
- * @brief Set the elements of the agent table that were not synced.
- *
- * @param wdb The database structure.
- * @param input A JSON object with the agent information.
- * @return Returns 0 on success or -1 if an error occurs while setting the agent information.
- */
-int wdb_parse_global_sync_agent_info_set_api(wdb_t *wdb, const char *input);
 
 #endif
