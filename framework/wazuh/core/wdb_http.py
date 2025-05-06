@@ -37,15 +37,6 @@ class AgentsSummary:
         self.groups = agents_by_groups
 
 
-class AgentsSync:
-    """Agents synchronization information."""
-
-    def __init__(self, syncreq: list, syncreq_keepalive: list, syncreq_status: list):
-        self.syncreq = syncreq
-        self.syncreq_keepalive = syncreq_keepalive
-        self.syncreq_status = syncreq_status
-
-
 class Status:
     """Agents synchronization set response status."""
 
@@ -205,23 +196,22 @@ class WazuhDBHTTPClient:
         data = await self._post('/agents/summary', ids)
         return AgentsSummary(**data)
     
-    async def get_agents_sync(self) -> AgentsSync:
+    async def get_agents_sync(self) -> dict:
         """Get agents synchronization information.
         
         Returns
         -------
-        AgentsSync
+        dict
             Agenst synchronization information.
         """
-        data = await self._get('/agents/sync')
-        return AgentsSync(**data)
+        return await self._get('/agents/sync')
 
-    async def set_agents_sync(self, agents_sync: AgentsSync) -> Status:
+    async def set_agents_sync(self, agents_sync: dict) -> Status:
         """Set agents synchronization information.
 
         Parameters
         ----------
-        agents_sync : AgentsSync
+        agents_sync : dict
             Agenst synchronization information.
         
         Returns

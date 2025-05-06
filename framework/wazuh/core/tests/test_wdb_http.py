@@ -1,7 +1,7 @@
 from unittest.mock import AsyncMock, call, MagicMock
 
 import pytest
-from wazuh.core.wdb_http import AgentIDGroups, AgentsSummary, AgentsSync, APPLICATION_JSON, Status, WazuhDBHTTPClient
+from wazuh.core.wdb_http import AgentIDGroups, AgentsSummary, APPLICATION_JSON, Status, WazuhDBHTTPClient
 from wazuh.core.exception import WazuhError
 
 
@@ -190,27 +190,7 @@ class TestWazuhDBHTTPClient:
 
     async def test_get_agents_sync(self, client_mock: AsyncMock, module_instance: WazuhDBHTTPClient):
         """Check that the `get_agents_sync` method works as expected."""
-        expected_result = AgentsSync(
-            syncreq=[
-                {
-                    'id': 10,
-                    'name': 'b922117b0323',
-                    'ip': '172.18.0.9',
-                    'node_name': 'node01',
-                    'last_keepalive': 1745892111,
-                    'connection_status': 'active',
-                    'disconnection_time': 0,
-                    'group_config_status': 'synced',
-                    'status_code': 0,
-                    'labels': []
-                }
-            ],
-            syncreq_keepalive=[],
-            syncreq_status=[],
-        )
-        response = MagicMock()
-        response.is_error = False
-        response.json.return_value = {
+        expected_result = {
             'syncreq': [
                 {
                     'id': 10,
@@ -226,12 +206,15 @@ class TestWazuhDBHTTPClient:
                 }
             ],
             'syncreq_keepalive': [],
-            'syncreq_status': []
+            'syncreq_status': [],
         }
+        response = MagicMock()
+        response.is_error = False
+        response.json.return_value = expected_result
         client_mock.get.return_value = response
 
         result = await module_instance.get_agents_sync()
-        assert result.syncreq[0]['id'] == expected_result.syncreq[0]['id']
+        assert result == expected_result
 
         client_mock.assert_has_calls([
             call.get(
@@ -243,8 +226,8 @@ class TestWazuhDBHTTPClient:
     
     async def test_set_agents_sync(self, client_mock: AsyncMock, module_instance: WazuhDBHTTPClient):
         """Check that the `set_agents_sync` method works as expected."""
-        agents_sync = AgentsSync(
-            syncreq=[
+        agents_sync = {
+            'syncreq': [
                 {
                     'id': '010',
                     'name': 'b922117b0323',
@@ -258,9 +241,9 @@ class TestWazuhDBHTTPClient:
                     'labels': []
                 }
             ],
-            syncreq_keepalive=[],
-            syncreq_status=[],
-        )
+            'syncreq_keepalive': [],
+            'syncreq_status': [],
+        }
         expected_result = Status(status='success')
         response = MagicMock()
         response.is_error = False
