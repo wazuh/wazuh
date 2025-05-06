@@ -41,11 +41,11 @@ log analysis, file integrity monitoring, intrusions detection and policy and com
 %if 0%{?el} >= 6 || 0%{?rhel} >= 6
 # Build debuginfo package
 %if %{_arch} != ppc64le
-%debug_package
+%package -n wazuh-agent-debuginfo
 %endif
-%package wazuh-agent-debuginfo
+Requires: wazuh-agent = %{_version}-%{_release}
 Summary: Debug information for package %{name}.
-%description wazuh-agent-debuginfo
+%description -n wazuh-agent-debuginfo
 This package provides debug information for package %{name}.
 %endif
 
@@ -780,6 +780,10 @@ rm -fr %{buildroot}
 %attr(750, root, wazuh) %{_localstatedir}/wodles/docker/*
 %dir %attr(750, root, wazuh) %{_localstatedir}/wodles/gcloud
 %attr(750, root, wazuh) %{_localstatedir}/wodles/gcloud/*
+
+%if 0%{?el} >= 6 || 0%{?rhel} >= 6
+%files -n wazuh-agent-debuginfo -f debugfiles.list
+%endif
 
 %changelog
 * Wed Jun 04 2025 support <info@wazuh.com> - 4.13.0

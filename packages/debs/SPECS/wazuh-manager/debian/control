@@ -22,6 +22,7 @@ Package: wazuh-manager-dbg
 Section: debug
 Priority: optional
 Architecture: any
+Conflicts: wazuh-manager (<< ${binary:Version}), wazuh-manager (>> ${binary:Version})
 Depends: wazuh-manager
 Description: Debug symbols for wazuh-manager.
-  This package contains debug symbols for debugging wazuh-manager.
+  This package contains files necessary for debugging the wazuh-manager with gdb.
