@@ -1,10 +1,8 @@
-import json
 from contextlib import asynccontextmanager
 from typing import Any, AsyncIterator
 
 from wazuh.core.exception import WazuhError, WazuhInternalError
 from wazuh.core import common
-from wazuh.core.agent import Agent
 
 from httpx import AsyncClient, AsyncHTTPTransport, ConnectError, Timeout, TimeoutException, UnsupportedProtocol, \
     RequestError
@@ -42,7 +40,7 @@ class AgentsSummary:
 class AgentsSync:
     """Agents synchronization information."""
 
-    def __init__(self, syncreq: list[Agent], syncreq_keepalive: list[Agent], syncreq_status: list[Agent]):
+    def __init__(self, syncreq: list, syncreq_keepalive: list, syncreq_status: list):
         self.syncreq = syncreq
         self.syncreq_keepalive = syncreq_keepalive
         self.syncreq_status = syncreq_status
@@ -53,10 +51,6 @@ class Status:
 
     def __init__(self, status: str):
         self.status = status
-
-
-def parse_agent_ids(ids: list[int]) -> list[str]:
-    return [str(id).zfill(3) for id in ids]
 
 
 class WazuhDBHTTPClient:
@@ -151,8 +145,7 @@ class WazuhDBHTTPClient:
         list[str]
             Agent IDs.
         """
-        ids = await self._get('/agents/ids')
-        return parse_agent_ids(ids)
+        return await self._get('/agents/ids')
     
     async def get_agent_groups(self, agent_id: str) -> list[str]:
         """Get agent groups.
@@ -178,7 +171,7 @@ class WazuhDBHTTPClient:
             Group names.
         """
         data = await self._get('/agents/ids/groups')
-        return [AgentIDGroups(id=str(d['id']).zfill(3), groups=d['groups']) for d in data['data']]
+        return [AgentIDGroups(**d) for d in data['data']]
 
     async def get_group_agents(self, group_name: str) -> list[str]:
         """Get group agents.
@@ -193,8 +186,7 @@ class WazuhDBHTTPClient:
         list[str]
             Agent IDs.
         """
-        data = await self._get(f'/agents/ids/groups/{group_name}')
-        return parse_agent_ids(data)
+        return await self._get(f'/agents/ids/groups/{group_name}')
     
     async def get_agents_summary(self, agent_ids: list[str] = []) -> AgentsSummary:
         """Get agents information summary.
@@ -222,18 +214,7 @@ class WazuhDBHTTPClient:
             Agenst synchronization information.
         """
         data = await self._get('/agents/sync')
-        agents_sync = AgentsSync(**data)
-
-        for agent in agents_sync.syncreq:
-            agent['id'] = str(agent['id']).zfill(3)
-        
-        for agent in agents_sync.syncreq_keepalive:
-            agent['id'] = str(agent['id']).zfill(3)
-        
-        for agent in agents_sync.syncreq_status:
-            agent['id'] = str(agent['id']).zfill(3)
-        
-        return agents_sync
+        return AgentsSync(**data)
 
     async def set_agents_sync(self, agents_sync: AgentsSync) -> Status:
         """Set agents synchronization information.
