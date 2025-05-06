@@ -515,6 +515,7 @@ full_filename,owner_name,group_name,mode,type,prot_permissions,size_bytes,size_e
 /var/ossec/ruleset/sca/cis_nginx_1.yml*,root,wazuh,640,file,-rw-r-----,,
 /var/ossec/ruleset/sca/cis_oracle_database_19c.yml*,root,wazuh,640,file,-rw-r-----,,
 /var/ossec/ruleset/sca/cis_oracle_linux_9.yml*,root,wazuh,640,file,-rw-r-----,,
+/var/ossec/ruleset/sca/cis_oracle_linux_10.yml*,root,wazuh,640,file,-rw-r-----,,
 /var/ossec/ruleset/sca/cis_postgre-sql-13.yml*,root,wazuh,640,file,-rw-r-----,,
 /var/ossec/ruleset/sca/cis_rhel5_linux.yml*,root,wazuh,640,file,-rw-r-----,,
 /var/ossec/ruleset/sca/cis_rhel6_linux.yml*,root,wazuh,640,file,-rw-r-----,,

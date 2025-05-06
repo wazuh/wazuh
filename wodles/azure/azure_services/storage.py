@@ -12,7 +12,8 @@ from hashlib import md5
 from json import JSONDecodeError, dumps, loads
 from os.path import abspath, dirname
 
-from azure.core.exceptions import AzureError, ClientAuthenticationError, HttpResponseError
+from azure.core.exceptions import AzureError, ClientAuthenticationError, HttpResponseError, ResourceExistsError, \
+    ResourceModifiedError
 from azure.storage.blob import BlobServiceClient
 from dateutil.parser import parse
 
@@ -204,8 +205,9 @@ def get_blobs(
 
             # Get the blob data
             try:
-                logging.info(f"Getting data from blob {blob.name}")
-                data = container_client.download_blob(blob, encoding="UTF-8", max_concurrency=2)
+                data = download_blob(container_client, blob)
+            except ResourceModifiedError as e:
+                logging.error(f'Storage: Error downloading blob "{blob.name}" after multiple retries: {e}')
             except (ValueError, AzureError, HttpResponseError) as e:
                 logging.error(f'Storage: Error reading the blob data: "{e}".')
                 continue
@@ -255,3 +257,44 @@ def get_blobs(
                 new_min=last_modified.strftime('%Y-%m-%dT%H:%M:%S.%fZ'),
                 new_max=last_modified.strftime('%Y-%m-%dT%H:%M:%S.%fZ'),
             )
+
+def download_blob(container_client, blob, number_of_retries=3):
+    """
+    Download a blob from Azure Storage with retry logic on ResourceModifiedError.
+
+    Parameters
+    ----------
+    container_client: BlobServiceClient
+        The Azure container client instance.
+    blob: BlobProperties
+        The blob object or name to download.
+    number_of_retries: int
+        Maximum number of retry attempts (default: 3).
+
+    Returns
+    -------
+    StorageStreamDownloader[str]
+        Message that will be sent to the WazuhQueue socket.
+
+    Raises
+    ------
+        ResourceModifiedError
+            If the blob keeps being modified after all retries.
+        ValueError, AzureError, HttpResponseError
+            For other download errors.
+    """
+    attempt = 1
+
+    while attempt <= number_of_retries:
+        try:
+            logging.info(f"Getting data from blob {blob.name}")
+            data = container_client.download_blob(blob, encoding="UTF-8", max_concurrency=2)
+            return data
+        except ResourceModifiedError as e:
+            if attempt == number_of_retries:
+                raise e
+            logging.info(f"Blob {blob.name} was modified while downloading, retrying download.")
+            attempt += 1
+
+        except (ValueError, AzureError, HttpResponseError) as e:
+            raise e

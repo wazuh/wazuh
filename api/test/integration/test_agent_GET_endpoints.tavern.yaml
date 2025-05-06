@@ -60,6 +60,88 @@ stages:
             key: "os.name,os.major"
       status_code: 200
 
+  - name: Get all agents sorted by version in descending order
+    request:
+      verify: False
+      <<: *get_agents
+      params:
+        sort: -version,id
+        select: version,id
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - id: '004'
+              version: 'Wazuh v4.13.0'
+            - id: '003'
+              version: 'Wazuh v4.13.0'
+            - id: '002'
+              version: 'Wazuh v4.13.0'
+            - id: '001'
+              version: 'Wazuh v4.13.0'
+            - id: '000'
+              version: 'Wazuh v4.13.0'
+            - id: '008'
+              version: 'Wazuh v3.13.2'
+            - id: '007'
+              version: 'Wazuh v3.13.2'
+            - id: '006'
+              version: 'Wazuh v3.13.2'
+            - id: '005'
+              version: 'Wazuh v3.13.2'
+            - id: '010'
+              version: 'Wazuh v3.9.2'
+            - id: '009'
+              version: 'Wazuh v3.9.2'
+            - id: '012'
+            - id: '011'
+          failed_items: []
+          total_affected_items: 13
+          total_failed_items: 0
+
+  - name: Get all agents sorted by version in ascending order
+    request:
+      verify: False
+      <<: *get_agents
+      params:
+        sort: version,id
+        select: version,id
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - id: '011'
+            - id: '012'
+            - id: '009'
+              version: 'Wazuh v3.9.2'
+            - id: '010'
+              version: 'Wazuh v3.9.2'
+            - id: '005'
+              version: 'Wazuh v3.13.2'
+            - id: '006'
+              version: 'Wazuh v3.13.2'
+            - id: '007'
+              version: 'Wazuh v3.13.2'
+            - id: '008'
+              version: 'Wazuh v3.13.2'
+            - id: '000'
+              version: 'Wazuh v4.13.0'
+            - id: '001'
+              version: 'Wazuh v4.13.0'
+            - id: '002'
+              version: 'Wazuh v4.13.0'
+            - id: '003'
+              version: 'Wazuh v4.13.0'
+            - id: '004'
+              version: 'Wazuh v4.13.0'
+          failed_items: [ ]
+          total_affected_items: 13
+          total_failed_items: 0
+
   - name: Get all agents sorted by status
     request:
       verify: False
@@ -3273,7 +3355,6 @@ marks:
         - os.version
         - registerIP
         - status
-        - version
         - status_code
 
 stages:
@@ -3315,6 +3396,32 @@ stages:
           extra_kwargs:
             key: "{field}"
       status_code: 200
+
+---
+test_name: GET /groups/{group_id}/agents {sort,select} version
+
+stages:
+
+  - name: Filter groups, sort
+    request:
+      verify: False
+      <<: *groups_id_request
+      params:
+        sort: version
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - version: 'Wazuh v3.13.2'
+            - version: 'Wazuh v3.13.2'
+            - version: 'Wazuh v3.13.2'
+            - version: 'Wazuh v4.13.0'
+          failed_items: []
+          total_affected_items: 4
+          total_failed_items: 0
+
 
 ---
 test_name: GET /groups/{group_id}/configuration

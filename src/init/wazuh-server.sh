@@ -44,7 +44,7 @@ LOCK_PID="${LOCK}/pid"
 # to 10 attempts (or 10 seconds) to execute.
 MAX_ITERATION="60"
 
-MAX_KILL_TRIES=600
+MAX_KILL_TRIES=300
 
 
 checkpid()

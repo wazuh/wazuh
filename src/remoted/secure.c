@@ -77,13 +77,13 @@ STATIC void handle_new_tcp_connection(wnotify_t * notify, struct sockaddr_storag
 void router_message_forward(char* msg, const char* agent_id, const char* agent_ip, const char* agent_name);
 
 // Message handler thread
-static void * rem_handler_main(__attribute__((unused)) void * args);
+static void * rem_handler_main(void * args);
 
 // Key reloader thread
 void * rem_keyupdate_main(__attribute__((unused)) void * args);
 
 /* Handle each message received */
-STATIC void HandleSecureMessage(const message_t *message, int *wdb_sock);
+STATIC void HandleSecureMessage(const message_t *message, w_linked_queue_t * control_msg_queue);
 
 // Close and remove socket from keystore
 int _close_sock(keystore * keys, int sock);
@@ -124,11 +124,34 @@ char *str_family_address[FAMILY_ADDRESS_SIZE] = {
     "AF_VSOCK", "AF_KCM", "AF_QIPCRTR", "AF_SMC", "AF_XDP", "AF_MCTP"
 };
 
+/**
+ * @brief Structure to hold control message data
+ * 
+ */
+typedef struct {
+    keyentry * key; ///< Pointer to the key entry of agent to which the message belongs
+    char * message; ///< Raw message received
+    size_t length;  ///< Length of the message
+} w_ctrl_msg_data_t;
+
+/**
+ * @brief Thread function to save control messages
+ * 
+ * This function is executed by the control message thread pool. It waits for messages to be pushed into the queue and processes them.
+ * Updates the agent's status in wazuhdb and sends the message to the appropriate handler.
+ * @param queue Pointer to the control message queue, which is used to store messages to be processed.
+ * @return void* Null
+ */
+void * save_control_thread(void * queue);
+
+
 /* Handle secure connections */
 void HandleSecure()
 {
     const int protocol = logr.proto[logr.position];
     int n_events = 0;
+
+    w_linked_queue_t * control_msg_queue = linked_queue_init(); ///< Pointer to the control message queue
 
     struct sockaddr_storage peer_info;
     memset(&peer_info, 0, sizeof(struct sockaddr_storage));
@@ -212,6 +235,9 @@ void HandleSecure()
         mdebug2("Failed to create router handle for 'rsync'.");
     }
 
+    // Create upsert control message thread
+    w_create_thread(save_control_thread, (void *) control_msg_queue);
+
     // Create message handler thread pool
     {
         int worker_pool = getDefine_Int("remoted", "worker_pool", 1, 16);
@@ -219,7 +245,7 @@ void HandleSecure()
         global_counter = 0;
         rem_initList(FD_LIST_INIT_VALUE);
         while (worker_pool > 0) {
-            w_create_thread(rem_handler_main, NULL);
+            w_create_thread(rem_handler_main, control_msg_queue);
             worker_pool--;
         }
     }
@@ -416,14 +442,14 @@ STATIC void handle_outgoing_data_to_tcp_socket(int sock_client)
 }
 
 // Message handler thread
-void * rem_handler_main(__attribute__((unused)) void * args) {
+void * rem_handler_main(void * args) {
     message_t * message;
-    int wdb_sock = -1;
+    w_linked_queue_t * control_msg_queue = (w_linked_queue_t *) args;
     mdebug1("Message handler thread started.");
 
     while (1) {
         message = rem_msgpop();
-        HandleSecureMessage(message, &wdb_sock);
+        HandleSecureMessage(message, control_msg_queue);
         rem_msgfree(message);
     }
 
@@ -505,7 +531,7 @@ STATIC const char * get_schema(const int type)
     return NULL;
 
 }
-STATIC void HandleSecureMessage(const message_t *message, int *wdb_sock) {
+STATIC void HandleSecureMessage(const message_t *message, w_linked_queue_t * control_msg_queue) {
     int agentid;
     const int protocol = (message->sock == USING_UDP_NO_CLIENT_SOCKET) ? REMOTED_NET_PROTOCOL_UDP : REMOTED_NET_PROTOCOL_TCP;
     char cleartext_msg[OS_MAXSTR + 1];
@@ -789,10 +815,24 @@ STATIC void HandleSecureMessage(const message_t *message, int *wdb_sock) {
             }
 
             // The critical section for readers closes within this function
-            save_controlmsg(key, tmp_msg, msg_length - 3, wdb_sock);
             rem_inc_recv_ctrl(key->id);
 
-            OS_FreeKey(key);
+            // Send the control message to the queue for processing in the control thread
+            {
+                w_ctrl_msg_data_t * ctrl_msg_data;
+                os_calloc(sizeof(w_ctrl_msg_data_t), 1, ctrl_msg_data);
+
+                ctrl_msg_data->key = key;
+                key = NULL;
+
+                ctrl_msg_data->length = msg_length - 3;
+                os_calloc(msg_length, sizeof(char), ctrl_msg_data->message);
+                memcpy(ctrl_msg_data->message, tmp_msg, ctrl_msg_data->length);
+
+                linked_queue_push_ex(control_msg_queue, ctrl_msg_data);
+                mdebug2("Control message pushed to queue.");
+            }
+
         } else {
             key_unlock();
             rem_inc_recv_dequeued();
@@ -1033,4 +1073,29 @@ void *current_timestamp(__attribute__((unused)) void *none)
     }
 
     return NULL;
+}
+
+// Save control message thread
+void * save_control_thread(void * control_msg_queue)
+{
+    assert(control_msg_queue != NULL);
+    w_linked_queue_t * queue = (w_linked_queue_t *)control_msg_queue;
+    w_ctrl_msg_data_t * ctrl_msg_data = NULL;
+    int wdb_sock = -1;
+
+    while (FOREVER()) {
+        if ((ctrl_msg_data = (w_ctrl_msg_data_t *)linked_queue_pop_ex(queue))) {
+
+            // Process the control message
+            save_controlmsg(ctrl_msg_data->key, ctrl_msg_data->message, ctrl_msg_data->length, &wdb_sock);
+
+            // Free the key entry
+            OS_FreeKey(ctrl_msg_data->key);
+            os_free(ctrl_msg_data->message);
+            os_free(ctrl_msg_data);
+        }
+    }
+
+    return NULL;
+
 }

@@ -1383,7 +1383,7 @@ TAR := tar -xf
 GUNZIP := gunzip
 GZIP := gzip
 CURL := curl -so
-DEPS_VERSION = 40
+DEPS_VERSION = 43
 RESOURCES_URL_BASE := https://packages.wazuh.com/deps/
 RESOURCES_URL := $(RESOURCES_URL_BASE)$(DEPS_VERSION)
 CPYTHON := cpython
@@ -1455,6 +1455,7 @@ ifeq ($(CHECK_CENTOS5),YES)
 PRECOMPILED_OS := el5
 # Avoid the linkage of incompatible libraries in Data Provider for CentOS 5 and Red Hat 5
 SYSINFO_OS+=-DCMAKE_CHECK_CENTOS5=1
+SYSCHECK_OS=-DCMAKE_CHECK_CENTOS5=1
 endif
 
 ifeq (,$(filter ${EXTERNAL_SRC_ONLY},YES yes y Y 1))
@@ -2295,7 +2296,7 @@ librootcheck.a: ${rootcheck_o_lib}
 #### FIM ######
 
 wazuh-syscheckd: librootcheck.a libwazuh.a ${WAZUHEXT_LIB} build_shared_modules
-	cd syscheckd && mkdir -p build && cd build && cmake ${CMAKE_OPTS} -DCMAKE_C_FLAGS="${DEFINES} -pipe -Wall -Wextra -std=gnu99" ${SYSCHECK_TEST} ${SYSCHECK_RELEASE_TYPE} .. && ${MAKE}
+	cd syscheckd && mkdir -p build && cd build && cmake ${SYSCHECK_OS} ${CMAKE_OPTS} -DCMAKE_C_FLAGS="${DEFINES} -pipe -Wall -Wextra -std=gnu99" ${SYSCHECK_TEST} ${SYSCHECK_RELEASE_TYPE} .. && ${MAKE}
 
 #### Monitor #######
 

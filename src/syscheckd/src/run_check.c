@@ -316,9 +316,11 @@ void start_daemon()
     // Launch Whodata ebpf real-time thread
     if (syscheck.enable_whodata && syscheck.whodata_provider == EBPF_PROVIDER) {
 #ifdef __linux__
+#ifdef ENABLE_AUDIT
         w_create_thread(ebpf_whodata, NULL);
 #else
         merror(FIM_ERROR_EBPF_NOT_SUPPORTED);
+#endif
 #endif
     }
 

@@ -5,6 +5,7 @@ After=network.target network-online.target
 
 [Service]
 Type=forking
+TimeoutSec=45
 
 ExecStart=/usr/bin/env WAZUH_HOME_TMP/bin/wazuh-control start
 ExecStop=/usr/bin/env WAZUH_HOME_TMP/bin/wazuh-control stop

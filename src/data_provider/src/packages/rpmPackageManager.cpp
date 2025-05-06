@@ -73,6 +73,40 @@ uint64_t RpmPackageManager::Iterator::getAttributeNumber(rpmTag tag) const
     return retval;
 }
 
+std::vector<std::string> RpmPackageManager::Iterator::getFiles() const
+{
+    std::vector<std::string> files;
+
+    std::string packageName = getAttribute(RPMTAG_NAME);
+
+    if (packageName.rfind("python", 0) != 0)
+    {
+        return files;
+    }
+
+    rpmfi fi = m_rpmlib->rpmfiNew(m_transactionSet, m_header, RPMTAG_BASENAMES, RPMFI_NOHEADER);
+
+    if (!fi)
+    {
+        return files;
+    }
+
+    rpm_count_t file_count = m_rpmlib->rpmfiFC(fi);
+
+    for (rpm_count_t i = 0; i < file_count && m_rpmlib->rpmfiNext(fi) >= 0; i++)
+    {
+        const char* path = m_rpmlib->rpmfiFN(fi);
+
+        if (path)
+        {
+            files.emplace_back(path);
+        }
+    }
+
+    m_rpmlib->rpmfiFree(fi);
+    return files;
+}
+
 const RpmPackageManager::Iterator RpmPackageManager::END_ITERATOR{};
 
 RpmPackageManager::Iterator::Iterator()
@@ -171,5 +205,6 @@ RpmPackageManager::Package RpmPackageManager::Iterator::operator*()
     p.source = getAttribute(RPMTAG_SOURCE);
     p.architecture = getAttribute(RPMTAG_ARCH);
     p.description = getAttribute(RPMTAG_DESCRIPTION);
+    p.files = getFiles();
     return p;
 }
