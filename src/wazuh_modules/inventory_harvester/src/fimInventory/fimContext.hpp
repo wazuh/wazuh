@@ -704,7 +704,7 @@ public:
     {
         if (m_pathHashed.empty())
         {
-            auto pathRawStr = index();
+            auto pathRawStr = pathRaw();
             Utils::HashData hash(Utils::HashType::Sha256);
             hash.update(pathRawStr.data(), pathRawStr.size());
             m_pathHashed = Utils::asciiToHex(hash.hash());
