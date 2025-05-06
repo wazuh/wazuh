@@ -58,7 +58,7 @@ public:
     MOCK_METHOD(void, reset, (), ());
 
     template<typename T>
-    void bind(int index, const T& value)
+    void bind(int index, const T value)
     {
         if constexpr (std::is_same_v<T, std::string>)
         {
@@ -89,9 +89,9 @@ public:
 class TrampolineSQLiteStatement final
 {
 public:
-    TrampolineSQLiteStatement(const MockSQLiteConnection& db, const std::string& query)
+    TrampolineSQLiteStatement(const MockSQLiteConnection& db, std::string_view query)
     {
-        m_queriesRef->push_back(query);
+        m_queriesRef->emplace_back(query.data(), query.size());
     }
 
     int step() const
@@ -114,7 +114,7 @@ public:
 
     void reset()
     {
-        m_stmtRef.reset();
+        m_stmtRef->reset();
     }
 
     // Dependency injection setup
