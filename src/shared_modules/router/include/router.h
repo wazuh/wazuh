@@ -97,8 +97,12 @@ extern "C"
      */
     EXPORTED void router_provider_destroy(ROUTER_PROVIDER_HANDLE handle);
 
-    EXPORTED void
-    router_register_api_endpoint(char* socket_path, const char* method, const char* endpoint, void* callback);
+    EXPORTED void router_register_api_endpoint(const char* module,
+                                               const char* socketPath,
+                                               const char* method,
+                                               const char* endpoint,
+                                               void* callbackPre,
+                                               void* callbackPost);
 
     EXPORTED void router_start_api(const char* socket_path);
 
@@ -123,7 +127,12 @@ typedef bool (*router_provider_send_fb_func)(ROUTER_PROVIDER_HANDLE handle, cons
 
 typedef void (*router_provider_destroy_func)(ROUTER_PROVIDER_HANDLE handle);
 
-typedef void (*router_register_api_endpoint_func)(char* socket_path, const char* endpoint, void* callback, void* data);
+typedef void (*router_register_api_endpoint_func)(const char* module,
+                                                  const char* socketPath,
+                                                  const char* method,
+                                                  const char* endpoint,
+                                                  void* callbackPre,
+                                                  void* callbackPost);
 
 typedef void (*router_start_api_func)(const char* socket_path);
 
