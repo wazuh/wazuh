@@ -367,6 +367,9 @@ static int w_enrollment_process_response(SSL *ssl) {
                 if (tmpbuf && tmpbuf[0] != '\0') {
                     merror("%s (from manager)", tmpbuf);
                     manager_error = 1;
+                    if (strncmp(tmpbuf, "Invalid", 7) == 0) {
+                        status = -2;
+                    }
                 }
             }
         } else if (strncmp(buf, "OSSEC K:'", 9) == 0) {

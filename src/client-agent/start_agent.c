@@ -161,9 +161,14 @@ void start_agent(int is_startup)
         // Try to enroll and extra attempt
 
         if (should_enroll && agt->enrollment_cfg && agt->enrollment_cfg->enabled) {
-            if (try_enroll_to_server(agt->server[current_server_id].rip, agt->server[current_server_id].network_interface) == 0) {
+            int registration_status = try_enroll_to_server(agt->server[current_server_id].rip, agt->server[current_server_id].network_interface);
+            if (registration_status == 0) {
                 if (agent_handshake_to_server(current_server_id, is_startup, &should_enroll)) {
                     return;
+                }
+            } else {
+                if (registration_status == -2) {
+                    merror_exit("Agent enrollment failed. Invalid enrollment information. Exiting.");
                 }
             }
         }
@@ -212,6 +217,9 @@ static void w_agentd_keys_init (void) {
 
                 /* Sleep between retries */
                 if (registration_status != 0) {
+                    if (registration_status == -2) {
+                        merror_exit("Agent enrollment failed. Invalid enrollment information. Exiting.");
+                    }
                     if (delay_sleep < ENROLLMENT_RETRY_TIME_MAX) {
                         delay_sleep += ENROLLMENT_RETRY_TIME_DELTA;
                     }
