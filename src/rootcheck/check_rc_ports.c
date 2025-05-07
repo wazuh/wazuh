@@ -45,7 +45,7 @@ static int run_netstat(int proto, int port)
 
     if (ret == 0) {
         return (1);
-    } else if (ret == 1) {
+    } else if (WEXITSTATUS(ret) == 1) {
         return (0);
     }
 
