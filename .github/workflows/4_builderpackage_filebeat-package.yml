@@ -108,6 +108,13 @@ jobs:
           sudo apt update -y
           sudo apt install -y docker-ce
 
+      - name: Add RPM compatibility with FIPS
+        working-directory: filebeat
+        run: |
+          # https://github.com/elastic/beats/pull/27103
+          FIX_COMMIT=0bf2fe7b5625f180d11b20c69593ded5b825356f
+          git fetch origin ${FIX_COMMIT} && git cherry-pick -n ${FIX_COMMIT}
+
       - name: Apply patch for Ubuntu build
         run: |
           sed -i 's/apt-get install -y --no-install-recommends/DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends/' filebeat/Dockerfile
@@ -124,13 +131,6 @@ jobs:
           RUN apt-get update -y && \\\n    DEBIAN_FRONTEND=noninteractive apt-get install --no-install-recommends --yes ca-certificates curl libcap2-bin xz-utils && \\\n    apt-get clean && \\\n    exit_code=$? && \\\n    [ $exit_code -eq 0 ] || exit $exit_code' dev-tools/packaging/templates/docker/Dockerfile.tmpl
 
           sed -i '/func TestDocker(t \*testing\.T) {/,/^}$/d' dev-tools/packaging/package_test.go
-
-      - name: Add RPM compatibility with FIPS
-        working-directory: filebeat
-        run: |
-          # https://github.com/elastic/beats/pull/27103
-          FIX_COMMIT=0bf2fe7b5625f180d11b20c69593ded5b825356f
-          git fetch origin ${FIX_COMMIT} && git cherry-pick -n ${FIX_COMMIT}
 
       - name: Modify FPM call (add revision/version)
         run: |
