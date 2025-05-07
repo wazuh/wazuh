@@ -19,13 +19,19 @@ using ::testing::NiceMock;
 using ::testing::Return;
 using ::testing::Sequence;
 
+/**
+ * @brief Tests for the EndpointPostV1AgentsSummary class.
+ */
 class EndpointPostV1AgentsSummaryTest : public ::testing::Test
 {
 public:
-    std::shared_ptr<NiceMock<MockSQLiteStatement>> stmt;
-    std::shared_ptr<std::vector<std::string>> queries;
+    std::shared_ptr<NiceMock<MockSQLiteStatement>> stmt; ///< SQLite statement mock
+    std::shared_ptr<std::vector<std::string>> queries;   ///< SQLite queries mock
 
 protected:
+    /**
+     * @brief Set up the test fixture.
+     */
     void SetUp() override
     {
         stmt = std::make_shared<NiceMock<MockSQLiteStatement>>();
@@ -49,6 +55,9 @@ protected:
         ON_CALL(*stmt, valueInt64).WillByDefault(Return(1));
     }
 
+    /**
+     * @brief Tear down the test fixture.
+     */
     void TearDown() override
     {
         TrampolineSQLiteStatement::inject(nullptr, nullptr);

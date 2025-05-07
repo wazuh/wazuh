@@ -57,21 +57,28 @@ static std::shared_ptr<NiceMock<MockSQLiteStatement>> mockStmt(std::shared_ptr<s
     return s;
 }
 
-class EpPostSync : public ::testing::Test
+/**
+ * @brief Tests for the EndpointPostV1AgentsSync class.
+ */
+class EndpointPostV1AgentsSyncTest : public ::testing::Test
 {
 public:
+    /**
+     * @brief Set up the test fixture.
+     */
     void TearDown() override
     {
         TrampolineSQLiteStatement::inject(nullptr, nullptr);
     }
 
-    MockSQLiteConnection db;
-    httplib::Request req;
-    httplib::Response res;
-    std::shared_ptr<std::vector<std::string>> qdump = std::make_shared<std::vector<std::string>>();
+    MockSQLiteConnection db; ///< SQLite connection mock
+    httplib::Request req;    ///< HTTP request mock
+    httplib::Response res;   ///< HTTP response mock
+    std::shared_ptr<std::vector<std::string>> qdump =
+        std::make_shared<std::vector<std::string>>(); ///< SQLite queries mock
 };
 
-TEST_F(EpPostSync, SyncReqTwoAgents)
+TEST_F(EndpointPostV1AgentsSyncTest, SyncReqTwoAgents)
 {
     auto stmt = mockStmt(qdump);
 
@@ -92,7 +99,7 @@ TEST_F(EpPostSync, SyncReqTwoAgents)
     EXPECT_TRUE((*qdump)[0].find("UPDATE agent SET config_sum") != std::string::npos);
 }
 
-TEST_F(EpPostSync, KeepAliveThreeAgents)
+TEST_F(EndpointPostV1AgentsSyncTest, KeepAliveThreeAgents)
 {
     auto stmt = mockStmt(qdump);
 
@@ -109,7 +116,7 @@ TEST_F(EpPostSync, KeepAliveThreeAgents)
     EXPECT_TRUE((*qdump)[0].find("last_keepalive") != std::string::npos);
 }
 
-TEST_F(EpPostSync, StatusSingleAgent)
+TEST_F(EndpointPostV1AgentsSyncTest, StatusSingleAgent)
 {
     auto stmt = mockStmt(qdump);
 

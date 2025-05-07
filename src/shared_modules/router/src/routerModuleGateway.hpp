@@ -25,9 +25,15 @@ class RouterModuleGateway final
 public:
     // LCOV_EXCL_START
     /**
-     * @brief
+     * @brief Redirects the request to the appropriate module.
      *
-
+     * @param module The module to be used. E.g. "wazuh-db"
+     * @param callbackPre The pre callback function, this function is called before the endpoint
+     * @param callbackPost The post callback function, this function is called after the endpoint
+     * @param endpoint The endpoint to be used. E.g. "/v1/agents"
+     * @param method The HTTP method to be used. E.g. "GET", "POST", "PUT", "DELETE"
+     * @param req The HTTP request
+     * @param res The HTTP response
      */
     static void redirect(std::string_view module,
                          void* callbackPre,

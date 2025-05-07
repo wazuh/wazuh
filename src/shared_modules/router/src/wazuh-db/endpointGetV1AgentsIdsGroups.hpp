@@ -35,9 +35,13 @@ class TEndpointGetV1AgentsIdsGroups final
 
 public:
     /**
-     * @brief
+     * @brief Call the endpoint implementation, this functions populates a Response object with the
+     * data from the database. This particular implementation returns the agent ids and the
+     * groups they belong to.
      *
-
+     * @param db The database connection.
+     * @param req The HTTP request.
+     * @param res The HTTP response.
      */
     static void call(const DBConnection& db, [[maybe_unused]] const httplib::Request& req, httplib::Response& res)
     {
