@@ -37,13 +37,6 @@ class AgentsSummary:
         self.groups = agents_by_groups
 
 
-class Status:
-    """Agents synchronization set response status."""
-
-    def __init__(self, status: str):
-        self.status = status
-
-
 class WazuhDBHTTPClient:
     """Represents a client to the wdb HTTP unix socket."""
 
@@ -95,7 +88,7 @@ class WazuhDBHTTPClient:
 
         return response.json()
     
-    async def _post(self, endpoint: str, data: Any) -> Any:
+    async def _post(self, endpoint: str, data: Any, empty_response: bool = False) -> Any:
         """Send a POST request to the specified endpoint.
 
         Parameters
@@ -104,6 +97,8 @@ class WazuhDBHTTPClient:
             Endpoint name.
         data : Any
             JSON body.
+        empty_response : bool
+            Whether the endpoint returns an empty response or not. False by default.
 
         Returns
         -------
@@ -125,6 +120,9 @@ class WazuhDBHTTPClient:
 
         except RequestError as exc:
             raise WazuhError(2013, extra_message=str(exc))
+        
+        if empty_response:
+            return
 
         return response.json()
 
@@ -161,10 +159,12 @@ class WazuhDBHTTPClient:
         list[str]
             Group names.
         """
-        data = await self._get('/agents/ids/groups')
-        return [AgentIDGroups(**d) for d in data['data']]
+        response = await self._get('/agents/ids/groups')
+        if not response:
+            return []
+        return [AgentIDGroups(id=key.zfill(3), groups=value) for key, value in response['data'].items()]
 
-    async def get_group_agents(self, group_name: str) -> list[str]:
+    async def get_group_agents(self, group_name: str) -> list[int]:
         """Get group agents.
         
         Parameters
@@ -174,7 +174,7 @@ class WazuhDBHTTPClient:
         
         Returns
         -------
-        list[str]
+        list[int]
             Agent IDs.
         """
         return await self._get(f'/agents/ids/groups/{group_name}')
@@ -206,21 +206,15 @@ class WazuhDBHTTPClient:
         """
         return await self._get('/agents/sync')
 
-    async def set_agents_sync(self, agents_sync: dict) -> Status:
+    async def set_agents_sync(self, agents_sync: dict) -> None:
         """Set agents synchronization information.
 
         Parameters
         ----------
         agents_sync : dict
             Agenst synchronization information.
-        
-        Returns
-        -------
-        Status
-            Operation status.
         """
-        data = await self._post('/agents/sync', agents_sync)
-        return Status(**data)
+        await self._post('/agents/sync', agents_sync, empty_response=True)
 
 
 @asynccontextmanager
