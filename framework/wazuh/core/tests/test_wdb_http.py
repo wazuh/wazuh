@@ -1,7 +1,7 @@
 from unittest.mock import AsyncMock, call, MagicMock
 
 import pytest
-from wazuh.core.wdb_http import AgentIDGroups, AgentsSummary, APPLICATION_JSON, Status, WazuhDBHTTPClient
+from wazuh.core.wdb_http import AgentIDGroups, AgentsSummary, APPLICATION_JSON, WazuhDBHTTPClient
 from wazuh.core.exception import WazuhError
 
 
@@ -104,15 +104,15 @@ class TestWazuhDBHTTPClient:
     async def test_get_agents_groups(self, client_mock: AsyncMock, module_instance: WazuhDBHTTPClient):
         """Check that the `get_agents_groups` method works as expected."""
         expected_result = [
-            AgentIDGroups(id=1, groups=['default']),
-            AgentIDGroups(id=2, groups=['default', 'test']),
+            AgentIDGroups(id='001', groups=['default']),
+            AgentIDGroups(id='002', groups=['default', 'test']),
         ]
         response = MagicMock()
         response.is_error = False
-        response.json.return_value = {'data': [
-            {'id': 1, 'groups': ['default']},
-            {'id': 2, 'groups': ['default','test']}
-        ]}
+        response.json.return_value = {'data': {
+            '1': ['default'],
+            '2': ['default','test']
+        }}
         client_mock.get.return_value = response
 
         result = await module_instance.get_agents_groups()
@@ -244,20 +244,16 @@ class TestWazuhDBHTTPClient:
             'syncreq_keepalive': [],
             'syncreq_status': [],
         }
-        expected_result = Status(status='success')
         response = MagicMock()
         response.is_error = False
-        response.json.return_value = {'status': 'success'}
         client_mock.post.return_value = response
 
-        result = await module_instance.set_agents_sync(agents_sync)
-        assert result.status == expected_result.status
+        await module_instance.set_agents_sync(agents_sync)
 
         client_mock.assert_has_calls([
             call.post(
                 url='http://localhost/v1/agents/sync',
                 json=agents_sync,
-                headers={'Accept': APPLICATION_JSON, 'Content-Type': APPLICATION_JSON}
+                headers={'Accept': APPLICATION_JSON, 'Content-Type': APPLICATION_JSON},
             ),
-            call.post().json()
         ])
