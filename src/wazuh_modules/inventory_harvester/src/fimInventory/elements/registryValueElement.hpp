@@ -42,7 +42,7 @@ public:
 
         element.id = agentId;
         element.id += "_";
-        element.id += data->hashPath();
+        element.id += data->index();
         element.operation = "INSERTED";
 
         element.data.agent.id = agentId;
@@ -88,7 +88,7 @@ public:
         element.operation = "DELETED";
         element.id = agentId;
         element.id += "_";
-        element.id += data->hashPath();
+        element.id += data->index();
 
         return element;
     }

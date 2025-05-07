@@ -264,9 +264,9 @@ public:
         }
         else
         {
-            if (m_jsonData->contains("/data/full_path"_json_pointer))
+            if (m_jsonData->contains("/data/path"_json_pointer))
             {
-                return m_jsonData->at("/data/full_path"_json_pointer).get<std::string_view>();
+                return m_jsonData->at("/data/path"_json_pointer).get<std::string_view>();
             }
         }
         return "";

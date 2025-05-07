@@ -131,7 +131,7 @@ void wdbi_report_removed(const char* agent_id, wdb_component_t component, sqlite
             case WDB_FIM:
             case WDB_FIM_FILE:
                 cJSON_AddStringToObject(j_msg_to_send, "action", "deleteFile");
-                cJSON_AddItemToObject(j_data, "full_path", cJSON_CreateString((const char*) sqlite3_column_text(stmt, 0)));
+                cJSON_AddItemToObject(j_data, "path", cJSON_CreateString((const char*) sqlite3_column_text(stmt, 0)));
                 router_handle = router_fim_events_handle;
                 break;
             case WDB_FIM_REGISTRY:
