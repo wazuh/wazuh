@@ -74,7 +74,7 @@ class TEndpointGetV1AgentsSync final
     struct Response final
     {
         std::vector<SyncReq> agentsSyncReq;
-        std::vector<SyncReq> agentsSyncKeepAlive;
+        std::vector<int64_t> agentsSyncKeepAlive;
         std::vector<SyncReq> agentsSyncStatus;
 
         REFLECTABLE(MAKE_FIELD("syncreq", &Response::agentsSyncReq),
@@ -154,7 +154,7 @@ public:
             while (stmtSyncKeepAlive.step() == SQLITE_ROW)
             {
                 const auto idAgent = stmtSyncKeepAlive.template value<int64_t>(0);
-                resObj.agentsSyncKeepAlive.push_back({.id = idAgent});
+                resObj.agentsSyncKeepAlive.push_back(idAgent);
             }
         }
 

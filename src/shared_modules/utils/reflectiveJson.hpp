@@ -423,8 +423,8 @@ std::enable_if_t<IsReflectable<T>::value, void> serializeToJSON(const T& obj, st
                                      }
                                      json.push_back('\"');
                                  }
-                                 else if constexpr ((std::is_arithmetic_v<decltype(v)> ||
-                                                     std::is_same_v<const double&, decltype(v)>)&&!std::
+                                 else if constexpr ((std::is_arithmetic_v<std::decay_t<decltype(v)>> ||
+                                                     std::is_same_v<double, std::decay_t<decltype(v)>>)&&!std::
                                                         is_same_v<bool, std::decay_t<decltype(v)>>)
                                  {
                                      auto [ptr, ec] = std::to_chars(buffer, buffer + sizeof(buffer), v);
