@@ -1,0 +1,20 @@
+<!--
+  -  Malicious IOC ruleset
+  -  Created by Wazuh, Inc.
+  -  Copyright (C) 2025, Wazuh Inc.
+  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
+  ID: 99900 - 99999
+-->
+
+
+<group name="malware,">
+  <rule id="99901" level="13">
+    <!-- The if_sid tag references the built-in FIM rules -->
+    <if_sid>554, 550</if_sid>
+    <list field="sha256" lookup="match_key">etc/lists/malware-hashes</list>
+    <description>File with known malware hash detected: $(file)</description>
+    <mitre>
+      <id>T1204.002</id>
+    </mitre>
+  </rule>
+</group>
