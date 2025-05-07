@@ -27,20 +27,27 @@ template<typename DBConnection = SQLite::Connection, typename DBStatement = SQLi
 class TEndpointPostV1AgentsSummary final
 {
 public:
+    /**
+     * @brief Response structure.
+     */
     struct Response final
     {
-        std::map<std::string, int64_t, std::less<>> agentsByStatus;
-        std::map<std::string, int64_t, std::less<>> agentsByGroups;
-        std::map<std::string, int64_t, std::less<>> agentsByOs;
+        std::map<std::string, int64_t, std::less<>> agentsByStatus; ///< Agents by status
+        std::map<std::string, int64_t, std::less<>> agentsByGroups; ///< Agents by groups
+        std::map<std::string, int64_t, std::less<>> agentsByOs;     ///< Agents by OS
 
         REFLECTABLE(MAKE_FIELD("agents_by_status", &Response::agentsByStatus),
                     MAKE_FIELD("agents_by_groups", &Response::agentsByGroups),
                     MAKE_FIELD("agents_by_os", &Response::agentsByOs))
     };
     /**
-     * @brief
+     * @brief Call the endpoint implementation. This function is used to populate a Response object with the
+     * data from the database. This particular implementation returns the agent summary. The agent summary
+     * is a summary of the agents status, groups and OS.
      *
-
+     * @param db The database connection.
+     * @param req The HTTP request.
+     * @param res The HTTP response.
      */
     static void call(const DBConnection& db, const httplib::Request& req, httplib::Response& res)
     {
@@ -105,14 +112,14 @@ public:
 
             while (pos < view.size())
             {
-                // Saltar cualquier caracter no numérico ni signo
+                // Skip characters that are not part of the number
                 pos = view.find_first_of("0123456789-", pos);
                 if (pos == std::string_view::npos)
                 {
                     break;
                 }
 
-                // Buscar el final del número (primera posición que no es parte del número)
+                // Find the end of the number
                 size_t end = pos;
                 while (end < view.size() && (std::isdigit(view[end]) || view[end] == '-'))
                 {

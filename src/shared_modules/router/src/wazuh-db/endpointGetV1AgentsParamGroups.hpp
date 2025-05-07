@@ -35,9 +35,12 @@ class TEndpointGetV1AgentsParamGroups final
 
 public:
     /**
-     * @brief
+     * @brief Call the endpoint implementation. This function populates a Response object with the
+     * data from the database. This particular implementation returns the groups for a specific agent.
      *
-
+     * @param db The database connection.
+     * @param req The HTTP request.
+     * @param res The HTTP response.
      */
     static void call(const DBConnection& db, const httplib::Request& req, httplib::Response& res)
     {

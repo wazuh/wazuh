@@ -46,9 +46,12 @@ class TEndpointPostV1AgentsSync final
 
 public:
     /**
-     * @brief
+     * @brief Call the endpoint implementation. This function write the data to the database with the received
+     * request body. Basically this function is used to update the agent status.
      *
-
+     * @param db The database connection.
+     * @param req The HTTP request.
+     * @param res The HTTP response.
      */
     static void call(const DBConnection& db, const httplib::Request& req, [[maybe_unused]] const httplib::Response& res)
     {

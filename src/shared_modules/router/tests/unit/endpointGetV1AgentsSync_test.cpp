@@ -19,9 +19,15 @@ using ::testing::NiceMock;
 using ::testing::Return;
 using ::testing::Sequence;
 
+/**
+ * @brief Tests for the EndpointGetV1AgentsSync class.
+ */
 class EndpointGetV1AgentsSyncTest : public ::testing::Test
 {
 protected:
+    /**
+     * @brief Set up the test fixture.
+     */
     void SetUp() override
     {
         stmt = std::make_shared<NiceMock<MockSQLiteStatement>>();
@@ -56,14 +62,17 @@ protected:
         ON_CALL(*stmt, valueString).WillByDefault(Return("value"));
     }
 
+    /**
+     * @brief Tear down the test fixture.
+     */
     void TearDown() override
     {
         TrampolineSQLiteStatement::inject(nullptr, nullptr);
     }
 
 public:
-    std::shared_ptr<NiceMock<MockSQLiteStatement>> stmt;
-    std::shared_ptr<std::vector<std::string>> queries;
+    std::shared_ptr<NiceMock<MockSQLiteStatement>> stmt; ///< SQLite statement mock
+    std::shared_ptr<std::vector<std::string>> queries;   ///< SQLite queries mock
 };
 
 TEST_F(EndpointGetV1AgentsSyncTest, HappyPath)
