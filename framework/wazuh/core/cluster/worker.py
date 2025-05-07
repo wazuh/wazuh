@@ -576,12 +576,14 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                         self.agent_info_sync_status['date_start'] = start_time
 
                         agents_sync = await agent_info.retrieve_agents_information()
-                        sync_sum = len(agents_sync['syncreq']) + \
-                            len(agents_sync['syncreq_keepalive']) + \
-                            len(agents_sync['syncreq_status'])
+                        sync_sum = len(agents_sync.get('syncreq', [])) + \
+                            len(agents_sync.get('syncreq_keepalive', [])) + \
+                            len(agents_sync.get('syncreq_status', []))
 
                         if sync_sum > 0:
                             await agent_info.sync(start_time=start_time, chunks=agents_sync)
+                        else:
+                            logger.info('No synchronization required, skipping.')
             except Exception as e:
                 logger.error(f"Error synchronizing agent info: {e}")
 
