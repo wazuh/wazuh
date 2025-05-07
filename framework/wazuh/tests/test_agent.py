@@ -1533,9 +1533,8 @@ def test_get_agents_big_env(mock_conn, mock_send, mock_get_agents, insert_agents
     (['dmz', 'webserver', 'database'], '005', 'dmz')
 ])
 @patch('wazuh.core.agent.Agent.get_agent_groups', new_callable=AsyncMock)
-@patch('wazuh.core.agent.Agent.set_agent_group_relationship', new_callable=AsyncMock)
-@patch('wazuh.core.agent.Agent')
-async def test_unset_single_group_agent(agent_patch, set_agent_group_patch, get_groups_patch, agent_groups,
+@patch('wazuh.core.agent.Agent.set_agent_group_relationship')
+async def test_unset_single_group_agent(set_agent_group_patch, get_groups_patch, agent_groups,
                                    agent_id, group_id):
     """Test successfully unsetting a group from an agent.
 

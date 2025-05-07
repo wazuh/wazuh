@@ -968,7 +968,7 @@ def test_agent_get_agents_overview_sort(socket_mock, send_mock, sort, first_id):
     ('002', 'test_group', True, ['default']),
 ])
 @patch('wazuh.core.agent.Agent.get_agent_groups', new_callable=AsyncMock)
-@patch('wazuh.core.agent.Agent.set_agent_group_relationship', new_callable=AsyncMock)
+@patch('wazuh.core.agent.Agent.set_agent_group_relationship')
 async def test_agent_add_group_to_agent(set_agent_group_mock, agent_groups_mock, agent_id, group_id, replace, replace_list):
     """Test if add_group_to_agent() works as expected and uses the correct parameters.
 
@@ -1133,7 +1133,7 @@ def test_agent_set_agent_group_relationship_ko(socket_connect_mock):
     ('002', 'test_group', False, ['test_group'], True),
     ('002', 'test_group', False, ['test_group', 'another_test'], False)
 ])
-@patch('wazuh.core.agent.Agent.set_agent_group_relationship', new_callable=AsyncMock)
+@patch('wazuh.core.agent.Agent.set_agent_group_relationship')
 @patch('wazuh.core.agent.Agent.group_exists', return_value=True)
 @patch('wazuh.core.agent.Agent.get_basic_information')
 async def test_agent_unset_single_group_agent(agent_info_mock, group_exists_mock, set_agent_group_mock, agent_id, group_id,

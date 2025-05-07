@@ -961,7 +961,7 @@ class Agent:
             raise WazuhError(1737)
 
         # Update group
-        await Agent.set_agent_group_relationship(agent_id, group_id, override=replace)
+        Agent.set_agent_group_relationship(agent_id, group_id, override=replace)
 
         return f"Agent {agent_id} assigned to {group_id}"
 
@@ -1130,7 +1130,7 @@ class Agent:
                 set_default = True
 
         # Update group file
-        await Agent.set_agent_group_relationship(agent_id, group_id, remove=True)
+        Agent.set_agent_group_relationship(agent_id, group_id, remove=True)
 
         return f"Agent '{agent_id}' removed from '{group_id}'." + (" Agent reassigned to group default."
                                                                    if set_default else "")
