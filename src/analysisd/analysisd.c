@@ -108,6 +108,7 @@ bool w_hotreload_ruleset_load_config(OS_XML* xml,
     XML_NODE conf_section_nodes,
     _Config* ruleset_config,
     OSList* list_msg);
+inline bool w_hotreload_queues_are_empty();
 
 // Message handler thread
 void * ad_input_main(void * args);
@@ -2202,6 +2203,7 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
                     }
 
                     if (do_ar) {
+                        mdebug1("Send AR to execd: %s", (*rule_ar)->name == NULL ? "Unknown" : (*rule_ar)->name);
                         OS_Exec(&execdq, &arq, &sock, lf, *rule_ar);
                     }
                     rule_ar++;
@@ -2492,18 +2494,21 @@ bool w_hotreload_reload(OSList* list_msg)
 
     // Wait for a clean pipeline
     mdebug1("Wait for pipeline to be clean");
-    while (!queue_empty_ex(decode_queue_event_output) || !queue_empty_ex(decode_queue_syscheck_input) ||
-           !queue_empty_ex(decode_queue_syscollector_input) || !queue_empty_ex(decode_queue_rootcheck_input) ||
-           !queue_empty_ex(decode_queue_sca_input) || !queue_empty_ex(decode_queue_hostinfo_input) ||
-           !queue_empty_ex(decode_queue_winevt_input) || !queue_empty_ex(dispatch_dbsync_input) ||
-           !queue_empty_ex(upgrade_module_input) || !queue_empty_ex(writer_queue_log) || !queue_empty_ex(writer_queue))
+    // wait until queues are empty, then verify emptiness persists for one cycle
+    do
     {
-        usleep(1000);
-    }
+        // step 1: block until empty
+        while (!w_hotreload_queues_are_empty())
+        {
+            mdebug2("Pipeline not clean, waiting...");
+            usleep(1000);
+        }
 
-    usleep(1000); // Give some time for the threads to finish TODO: Check this
+        // step 2: one more wait, then re-check
+        mdebug2("Queues empty, verifying persistence...");
+        usleep(3000);
 
-    mdebug1("Pipeline is clean, switching ruleset");
+    } while (!w_hotreload_queues_are_empty());
 
     minfo("Reloading ruleset");
 
@@ -2543,6 +2548,19 @@ void w_hotreload_reload_internal_decoders()
     SecurityConfigurationAssessmentHotReload();
     fim_hot_reload();
 }
+
+bool w_hotreload_queues_are_empty()
+{
+
+    return (queue_empty_ex(decode_queue_event_output) && queue_empty_ex(decode_queue_syscheck_input) &&
+            queue_empty_ex(decode_queue_syscollector_input) && queue_empty_ex(decode_queue_rootcheck_input) &&
+            queue_empty_ex(decode_queue_sca_input) && queue_empty_ex(decode_queue_hostinfo_input) &&
+            queue_empty_ex(decode_queue_winevt_input) && queue_empty_ex(dispatch_dbsync_input) &&
+            queue_empty_ex(upgrade_module_input) && queue_empty_ex(writer_queue_log) && queue_empty_ex(writer_queue) &&
+            queue_empty_ex(decode_queue_event_input) && queue_empty_ex(writer_queue_log_statistical) &&
+            queue_empty_ex(writer_queue_log_firewall));
+}
+
 
 /**
  * @brief Switch the current ruleset with the new one
