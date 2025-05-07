@@ -41,7 +41,7 @@ checks:
   # 1.1.1.10 Ensure unused filesystems kernel modules are not available. (Manual) - Not Implemented
 
   # 1.1.2.1.1 Ensure /tmp is a separate partition. (Automated)
-  - id: 18510
+  - id: 33010
     title: "Ensure /tmp is a separate partition."
     description: 'The /tmp directory is a world-writable directory used for temporary storage by all users and some applications. - IF - an entry for /tmp exists in /etc/fstab it will take precedence over entries in systemd default unit file. Note: In an environment where the main system is diskless and connected to iSCSI, entries in /etc/fstab may not take precedence. /tmp can be configured to use tmpfs. tmpfs puts everything into the kernel internal caches and grows and shrinks to accommodate the files it contains and is able to swap unneeded pages out to swap space. It has maximum size limits which can be adjusted on the fly via mount -o remount. Since tmpfs lives completely in the page cache and on swap, all tmpfs pages will be shown as "Shmem" in /proc/meminfo and "Shared" in free. Notice that these counters also include shared memory. The most reliable way to get the count is using df and du. tmpfs has three mount options for sizing: - size: The limit of allocated bytes for this tmpfs instance. The default is half of your physical RAM without swap. If you oversize your tmpfs instances the machine will deadlock since the OOM handler will not be able to free that memory. - nr_blocks: The same as size, but in blocks of PAGE_SIZE. - nr_inodes: The maximum number of inodes for this instance. The default is half of the number of your physical RAM pages, or (on a machine with highmem) the number of lowmem RAM pages, whichever is the lower. These parameters accept a suffix k, m or g and can be changed on remount. The size parameter also accepts a suffix % to limit this tmpfs instance to that percentage of your physical RAM. The default, when neither size nor nr_blocks is specified, is size=50%.'
     rationale: "Making /tmp its own file system allows an administrator to set additional mount options such as the noexec option on the mount, making /tmp useless for an attacker to install executable code. It would also prevent an attacker from establishing a hard link to a system setuid program and wait for it to be updated. Once the program was updated, the hard link would be broken, and the attacker would have his own copy of the program. If the program happened to have a security vulnerability, the attacker could continue to exploit the known flaw. This can be accomplished by either mounting tmpfs to /tmp, or creating a separate partition for /tmp."
@@ -69,7 +69,7 @@ checks:
       - "c:systemctl is-enabled tmp.mount -> !r:masked|disabled && r:generated|enabled"
 
   # 1.1.2.1.2 Ensure nodev option set on /tmp partition. (Automated)
-  - id: 18511
+  - id: 33011
     title: "Ensure nodev option set on /tmp partition."
     description: "The nodev mount option specifies that the filesystem cannot contain special devices."
     rationale: "Since the /tmp filesystem is not intended to support devices, set this option to ensure that users cannot create a block or character special devices in /tmp."
@@ -91,7 +91,7 @@ checks:
       - "c:findmnt -kn /tmp -> r:nodev"
 
   # 1.1.2.1.3 Ensure nosuid option set on /tmp partition. (Automated)
-  - id: 18512
+  - id: 33012
     title: "Ensure nosuid option set on /tmp partition."
     description: "The nosuid mount option specifies that the filesystem cannot contain setuid files."
     rationale: "Since the /tmp filesystem is only intended for temporary file storage, set this option to ensure that users cannot create setuid files in /tmp."
@@ -115,7 +115,7 @@ checks:
       - "c:findmnt -kn /tmp -> r:nosuid"
 
   # 1.1.2.1.4 Ensure noexec option set on /tmp partition. (Automated)
-  - id: 18513
+  - id: 33013
     title: "Ensure noexec option set on /tmp partition."
     description: "The noexec mount option specifies that the filesystem cannot contain executable binaries."
     rationale: "Since the /tmp filesystem is only intended for temporary file storage, set this option to ensure that users cannot run executable binaries from /tmp."
@@ -140,7 +140,7 @@ checks:
       - "c:findmnt -kn /tmp -> r:noexec"
 
   # 1.1.2.2.1 Ensure /dev/shm is a separate partition. (Automated)
-  - id: 18514
+  - id: 33014
     title: "Ensure /dev/shm is a separate partition."
     description: "The /dev/shm directory is a world-writable directory that can function as shared memory that facilitates inter process communication (IPC)."
     rationale: "Making /dev/shm its own file system allows an administrator to set additional mount options such as the noexec option on the mount, making /dev/shm useless for an attacker to install executable code. It would also prevent an attacker from establishing a hard link to a system setuid program and wait for it to be updated. Once the program was updated, the hard link would be broken and the attacker would have his own copy of the program. If the program happened to have a security vulnerability, the attacker could continue to exploit the known flaw. This can be accomplished by mounting tmpfs to /dev/shm."
@@ -166,7 +166,7 @@ checks:
       - 'c:findmnt -kn /dev/shm -> r:^\s*/dev/shm\s'
 
   # 1.1.2.2.2 Ensure nodev option set on /dev/shm partition. (Automated)
-  - id: 18515
+  - id: 33015
     title: "Ensure nodev option set on /dev/shm partition."
     description: "The nodev mount option specifies that the filesystem cannot contain special devices."
     rationale: "Since the /dev/shm filesystem is not intended to support devices, set this option to ensure that users cannot attempt to create special devices in /dev/shm partitions."
@@ -190,7 +190,7 @@ checks:
       - "c:findmnt -kn /dev/shm -> r:nodev"
 
   # 1.1.2.2.3 Ensure nosuid option set on /dev/shm partition. (Automated)
-  - id: 18516
+  - id: 33016
     title: "Ensure nosuid option set on /dev/shm partition."
     description: "The nosuid mount option specifies that the filesystem cannot contain setuid files."
     rationale: "Setting this option on a file system prevents users from introducing privileged programs onto the system and allowing non-root users to execute them."
@@ -214,7 +214,7 @@ checks:
       - "c:findmnt -kn /dev/shm -> r:nosuid"
 
   # 1.1.2.2.4 Ensure noexec option set on /dev/shm partition. (Automated)
-  - id: 18517
+  - id: 33017
     title: "Ensure noexec option set on /dev/shm partition."
     description: "The noexec mount option specifies that the filesystem cannot contain executable binaries."
     rationale: "Setting this option on a file system prevents users from executing programs from shared memory. This deters users from introducing potentially malicious software on the system."
@@ -238,7 +238,7 @@ checks:
       - "c:findmnt -kn /dev/shm -> r:noexec"
 
   # 1.1.2.3.1 Ensure separate partition exists for /home. (Automated)
-  - id: 18518
+  - id: 33018
     title: "Ensure separate partition exists for /home."
     description: "The /home directory is used to support disk storage needs of local users."
     rationale: "The default installation only creates a single / partition. Since the /home directory contains user generated data, there is a risk of resource exhaustion. It will essentially have the whole disk available to fill up and impact the system as a whole. In addition, other operations on the system could fill up the disk unrelated to /home and impact all local users. Configuring /home as its own file system allows an administrator to set additional mount options such as noexec/nosuid/nodev. These options limit an attacker's ability to create exploits on the system. In the case of /home options such as usrquota/grpquota may be considered to limit the impact that users can have on each other with regards to disk resource exhaustion. Other options allow for specific behavior. See man mount for exact details regarding filesystem-independent and filesystem-specific options. As /home contains user data, care should be taken to ensure the security and integrity of the data and mount point."
@@ -265,7 +265,7 @@ checks:
       - 'c:findmnt -kn /home -> r:^\s*/home\s'
 
   # 1.1.2.3.2 Ensure nodev option set on /home partition. (Automated)
-  - id: 18519
+  - id: 33019
     title: "Ensure nodev option set on /home partition."
     description: "The nodev mount option specifies that the filesystem cannot contain special devices."
     rationale: "Since the /home filesystem is not intended to support devices, set this option to ensure that users cannot create a block or character special devices in /home."
@@ -289,7 +289,7 @@ checks:
       - "c:findmnt -kn /home -> r:nodev"
 
   # 1.1.2.3.3 Ensure nosuid option set on /home partition. (Automated)
-  - id: 18520
+  - id: 33020
     title: "Ensure nosuid option set on /home partition."
     description: "The nosuid mount option specifies that the filesystem cannot contain setuid files."
     rationale: "Since the /home filesystem is only intended for user file storage, set this option to ensure that users cannot create setuid files in /home."
@@ -313,7 +313,7 @@ checks:
       - "c:findmnt -kn /home -> r:nosuid"
 
   # 1.1.2.4.1 Ensure separate partition exists for /var. (Automated)
-  - id: 18521
+  - id: 33021
     title: "Ensure separate partition exists for /var."
     description: "The /var directory is used by daemons and other system services to temporarily store dynamic data. Some directories created by these processes may be world-writable."
     rationale: "The reasoning for mounting /var on a separate partition is as follows. The default installation only creates a single / partition. Since the /var directory may contain world writable files and directories, there is a risk of resource exhaustion. It will essentially have the whole disk available to fill up and impact the system. In addition, other operations on the system could fill up the disk unrelated to /var and cause unintended behavior across the system as the disk is full. See man auditd.conf for details. Configuring /var as its own file system allows an administrator to set additional mount options such as noexec/nosuid/nodev. These options limit an attacker's ability to create exploits on the system. Other options allow for specific behavior. See man mount for exact details regarding filesystem-independent and filesystem-specific options. An example of exploiting /var may be an attacker establishing a hard-link to a system setuid program and waiting for it to be updated. Once the program is updated, the hard-link can be broken and the attacker would have their own copy of the program. If the program happened to have a security vulnerability, the attacker could continue to exploit the known flaw."
@@ -340,7 +340,7 @@ checks:
       - 'c:findmnt -kn /var -> r:^\s*/var\s'
 
   # 1.1.2.4.2 Ensure nodev option set on /var partition. (Automated)
-  - id: 18522
+  - id: 33022
     title: "Ensure nodev option set on /var partition."
     description: "The nodev mount option specifies that the filesystem cannot contain special devices."
     rationale: "Since the /var filesystem is not intended to support devices, set this option to ensure that users cannot create a block or character special devices in /var."
@@ -364,7 +364,7 @@ checks:
       - "c:findmnt -kn /var -> r:nodev"
 
   # 1.1.2.4.3 Ensure nosuid option set on /var partition. (Automated)
-  - id: 18523
+  - id: 33023
     title: "Ensure nosuid option set on /var partition."
     description: "The nosuid mount option specifies that the filesystem cannot contain setuid files."
     rationale: "Since the /var filesystem is only intended for variable files such as logs, set this option to ensure that users cannot create setuid files in /var."
@@ -388,7 +388,7 @@ checks:
       - "c:findmnt -kn /var -> r:nosuid"
 
   # 1.1.2.5.1 Ensure separate partition exists for /var/tmp. (Automated)
-  - id: 18524
+  - id: 33024
     title: "Ensure separate partition exists for /var/tmp."
     description: "The /var/tmp directory is a world-writable directory used for temporary storage by all users and some applications. Temporary files residing in /var/tmp are to be preserved between reboots."
     rationale: "The default installation only creates a single / partition. Since the /var/tmp directory is world-writable, there is a risk of resource exhaustion. In addition, other operations on the system could fill up the disk unrelated to /var/tmp and cause potential disruption to daemons as the disk is full. Configuring /var/tmp as its own file system allows an administrator to set additional mount options such as noexec/nosuid/nodev. These options limit an attacker's ability to create exploits on the system."
@@ -415,7 +415,7 @@ checks:
       - 'c:findmnt -kn /var/tmp -> r:^\s*/var/tmp\s'
 
   # 1.1.2.5.2 Ensure nodev option set on /var/tmp partition. (Automated)
-  - id: 18525
+  - id: 33025
     title: "Ensure nodev option set on /var/tmp partition."
     description: "The nodev mount option specifies that the filesystem cannot contain special devices."
     rationale: "Since the /var/tmp filesystem is not intended to support devices, set this option to ensure that users cannot create a block or character special devices in /var/tmp."
@@ -439,7 +439,7 @@ checks:
       - "c:findmnt -kn /var/tmp -> r:nodev"
 
   # 1.1.2.5.3 Ensure nosuid option set on /var/tmp partition. (Automated)
-  - id: 18526
+  - id: 33026
     title: "Ensure nosuid option set on /var/tmp partition."
     description: "The nosuid mount option specifies that the filesystem cannot contain setuid files."
     rationale: "Since the /var/tmp filesystem is only intended for temporary file storage, set this option to ensure that users cannot create setuid files in /var/tmp."
@@ -463,7 +463,7 @@ checks:
       - "c:findmnt -kn /var/tmp -> r:nosuid"
 
   # 1.1.2.5.4 Ensure noexec option set on /var/tmp partition. (Automated)
-  - id: 18527
+  - id: 33027
     title: "Ensure noexec option set on /var/tmp partition."
     description: "The noexec mount option specifies that the filesystem cannot contain executable binaries."
     rationale: "Since the /var/tmp filesystem is only intended for temporary file storage, set this option to ensure that users cannot run executable binaries from /var/tmp."
@@ -487,7 +487,7 @@ checks:
       - "c:findmnt -kn /var/tmp -> r:noexec"
 
   # 1.1.2.6.1 Ensure separate partition exists for /var/log. (Automated)
-  - id: 18528
+  - id: 33028
     title: "Ensure separate partition exists for /var/log."
     description: "The /var/log directory is used by system services to store log data."
     rationale: "The default installation only creates a single / partition. Since the /var/log directory contains log files which can grow quite large, there is a risk of resource exhaustion. It will essentially have the whole disk available to fill up and impact the system as a whole. Configuring /var/log as its own file system allows an administrator to set additional mount options such as noexec/nosuid/nodev. These options limit an attackers ability to create exploits on the system. Other options allow for specific behavior. See man mount for exact details regarding filesystem-independent and filesystem-specific options. As /var/log contains log files, care should be taken to ensure the security and integrity of the data and mount point."
@@ -510,7 +510,7 @@ checks:
       - 'c:findmnt -kn /var/log -> r:^\s*/var/log\s'
 
   # 1.1.2.6.2 Ensure nodev option set on /var/log partition. (Automated)
-  - id: 18529
+  - id: 33029
     title: "Ensure nodev option set on /var/log partition."
     description: "The nodev mount option specifies that the filesystem cannot contain special devices."
     rationale: "Since the /var/log filesystem is not intended to support devices, set this option to ensure that users cannot create a block or character special devices in /var/log."
@@ -534,7 +534,7 @@ checks:
       - "c:findmnt -kn /var/log -> r:nodev"
 
   # 1.1.2.6.3 Ensure nosuid option set on /var/log partition. (Automated)
-  - id: 18530
+  - id: 33030
     title: "Ensure nosuid option set on /var/log partition."
     description: "The nosuid mount option specifies that the filesystem cannot contain setuid files."
     rationale: "Since the /var/log filesystem is only intended for log files, set this option to ensure that users cannot create setuid files in /var/log."
@@ -558,7 +558,7 @@ checks:
       - "c:findmnt -kn /var/log -> r:nosuid"
 
   # 1.1.2.6.4 Ensure noexec option set on /var/log partition. (Automated)
-  - id: 18531
+  - id: 33031
     title: "Ensure noexec option set on /var/log partition."
     description: "The noexec mount option specifies that the filesystem cannot contain executable binaries."
     rationale: "Since the /var/log filesystem is only intended for log files, set this option to ensure that users cannot run executable binaries from /var/log."
@@ -582,7 +582,7 @@ checks:
       - "c:findmnt -kn /var/log -> r:noexec"
 
   # 1.1.2.7.1 Ensure separate partition exists for /var/log/audit. (Automated)
-  - id: 18532
+  - id: 33032
     title: "Ensure separate partition exists for /var/log/audit."
     description: "The auditing daemon, auditd, stores log data in the /var/log/audit directory."
     rationale: "The default installation only creates a single / partition. Since the /var/log/audit directory contains the audit.log file which can grow quite large, there is a risk of resource exhaustion. It will essentially have the whole disk available to fill up and impact the system as a whole. In addition, other operations on the system could fill up the disk unrelated to /var/log/audit and cause auditd to trigger its space_left_action as the disk is full. See man auditd.conf for details. Configuring /var/log/audit as its own file system allows an administrator to set additional mount options such as noexec/nosuid/nodev. These options limit an attacker's ability to create exploits on the system. Other options allow for specific behavior. See man mount for exact details regarding filesystem-independent and filesystem-specific options. As /var/log/audit contains audit logs, care should be taken to ensure the security and integrity of the data and mount point."
@@ -605,7 +605,7 @@ checks:
       - 'c:findmnt -kn /var/log/audit -> r:^\s*/var/log/audit\s'
 
   # 1.1.2.7.2 Ensure nodev option set on /var/log/audit partition. (Automated)
-  - id: 18533
+  - id: 33033
     title: "Ensure nodev option set on /var/log/audit partition."
     description: "The nodev mount option specifies that the filesystem cannot contain special devices."
     rationale: "Since the /var/log/audit filesystem is not intended to support devices, set this option to ensure that users cannot create a block or character special devices in /var/log/audit."
@@ -629,7 +629,7 @@ checks:
       - "c:findmnt -kn /var/log/audit -> r:nodev"
 
   # 1.1.2.7.3 Ensure nosuid option set on /var/log/audit partition. (Automated)
-  - id: 18534
+  - id: 33034
     title: "Ensure nosuid option set on /var/log/audit partition."
     description: "The nosuid mount option specifies that the filesystem cannot contain setuid files."
     rationale: "Since the /var/log/audit filesystem is only intended for variable files such as logs, set this option to ensure that users cannot create setuid files in /var/log/audit."
@@ -653,7 +653,7 @@ checks:
       - "c:findmnt -kn /var/log/audit -> r:nodev"
 
   # 1.1.2.7.4 Ensure noexec option set on /var/log/audit partition. (Automated)
-  - id: 18535
+  - id: 33035
     title: "Ensure noexec option set on /var/log/audit partition."
     description: "The noexec mount option specifies that the filesystem cannot contain executable binaries."
     rationale: "Since the /var/log/audit filesystem is only intended for audit logs, set this option to ensure that users cannot run executable binaries from /var/log/audit."
@@ -681,7 +681,7 @@ checks:
   # 1.2.2.1 Ensure updates, patches, and additional security software are installed. (Manual) - Not Implemented
 
   # 1.3.1.1 Ensure AppArmor is installed. (Automated)
-  - id: 18539
+  - id: 33039
     title: "Ensure AppArmor is installed."
     description: "AppArmor provides Mandatory Access Controls."
     rationale: "Without a Mandatory Access Control system installed only the default Discretionary Access Control system will be available."
@@ -706,7 +706,7 @@ checks:
       - "c:dpkg-query -s apparmor-utils -> r:install ok installed"
 
   # 1.3.1.2 Ensure AppArmor is enabled in the bootloader configuration. (Automated)
-  - id: 18540
+  - id: 33040
     title: "Ensure AppArmor is enabled in the bootloader configuration."
     description: "Configure AppArmor to be enabled at boot time and verify that it has not been overwritten by the bootloader boot parameters. Note: This recommendation is designed around the grub bootloader, if LILO or another bootloader is in use in your environment enact equivalent settings."
     rationale: "AppArmor must be enabled at boot time in your bootloader configuration to ensure that the controls it provides are not overridden."
@@ -734,7 +734,7 @@ checks:
   # 1.3.1.4 Ensure all AppArmor Profiles are enforcing. (Automated) - Not Implemented
 
   # 1.4.1 Ensure bootloader password is set. (Automated)
-  - id: 18543
+  - id: 33043
     title: "Ensure bootloader password is set."
     description: "Setting the boot loader password will require that anyone rebooting the system must enter a password before being able to set command line boot parameters."
     rationale: "Requiring a boot password upon execution of the boot loader will prevent an unauthorized user from entering boot parameters or changing the boot partition. This prevents users from weakening security (e.g. turning off AppArmor at boot time)."
@@ -760,7 +760,7 @@ checks:
       - 'f:/boot/grub/grub.cfg -> r:^\s*\t*password_pbkdf2\s*\t*\w+'
 
   # 1.4.2 Ensure access to bootloader config is configured. (Automated)
-  - id: 18544
+  - id: 33044
     title: "Ensure access to bootloader config is configured."
     description: "The grub configuration file contains information on boot settings and passwords for unlocking boot options."
     rationale: "Setting the permissions to read and write for root only prevents non-root users from seeing the boot parameters or changing them. Non-root users who read the boot parameters may be able to identify weaknesses in security upon boot and be able to exploit them."
@@ -788,7 +788,7 @@ checks:
   # 1.5.3 Ensure core dumps are restricted. (Automated) - Not Implemented
 
   # 1.6.1 Ensure message of the day is configured properly. (Automated)
-  - id: 18548
+  - id: 33048
     title: "Ensure message of the day is configured properly."
     description: "The contents of the /etc/motd file are displayed to users after login and function as a message of the day for authenticated users. Unix-based systems have typically displayed information about the OS release and patch level upon logging in to the system. This information can be useful to developers who are developing software for a particular OS platform. If mingetty(8) supports the following options, they display operating system information: \\m - machine architecture \\r - operating system release \\s - operating system name \\v - operating system version."
     rationale: 'Warning messages inform users who are attempting to login to the system of their legal status regarding the system and must include the name of the organization that owns the system and any monitoring policies that are in place. Displaying OS and patch level information in login banners also has the side effect of providing detailed system information to attackers attempting to target specific exploits of a system. Authorized users can easily get this information by running the " uname -a " command once they have logged in.'
@@ -803,7 +803,7 @@ checks:
       - 'not f:/etc/motd -> r:\\v|\\r|\\m|\s|Debian|Ubuntu'
 
   # 1.6.2 Ensure local login warning banner is configured properly. (Automated)
-  - id: 18549
+  - id: 33049
     title: "Ensure local login warning banner is configured properly."
     description: "The contents of the /etc/issue file are displayed to users prior to login for local terminals. Unix-based systems have typically displayed information about the OS release and patch level upon logging in to the system. This information can be useful to developers who are developing software for a particular OS platform. If mingetty(8) supports the following options, they display operating system information: \\m - machine architecture \\r - operating system release \\s - operating system name \\v - operating system version - or the operating system's name."
     rationale: 'Warning messages inform users who are attempting to login to the system of their legal status regarding the system and must include the name of the organization that owns the system and any monitoring policies that are in place. Displaying OS and patch level information in login banners also has the side effect of providing detailed system information to attackers attempting to target specific exploits of a system. Authorized users can easily get this information by running the " uname -a " command once they have logged in.'
@@ -817,7 +817,7 @@ checks:
       - 'not f:/etc/issue -> r:\\v|\\r|\\m|\\s|Debian|Ubuntu'
 
   # 1.6.3 Ensure remote login warning banner is configured properly. (Automated)
-  - id: 18550
+  - id: 33050
     title: "Ensure remote login warning banner is configured properly."
     description: "The contents of the /etc/issue.net file are displayed to users prior to login for remote connections from configured services. Unix-based systems have typically displayed information about the OS release and patch level upon logging in to the system. This information can be useful to developers who are developing software for a particular OS platform. If mingetty(8) supports the following options, they display operating system information: \\m - machine architecture \\r - operating system release \\s - operating system name \\v - operating system version."
     rationale: 'Warning messages inform users who are attempting to login to the system of their legal status regarding the system and must include the name of the organization that owns the system and any monitoring policies that are in place. Displaying OS and patch level information in login banners also has the side effect of providing detailed system information to attackers attempting to target specific exploits of a system. Authorized users can easily get this information by running the " uname -a " command once they have logged in.'
@@ -831,7 +831,7 @@ checks:
       - 'not f:/etc/issue.net -> r:\\v|\\r|\\m|\\s|Debian|Ubuntu'
 
   # 1.6.4 Ensure access to /etc/motd is configured. (Automated)
-  - id: 18551
+  - id: 33051
     title: "Ensure access to /etc/motd is configured."
     description: "The contents of the /etc/motd file are displayed to users after login and function as a message of the day for authenticated users."
     rationale: "- IF - the /etc/motd file does not have the correct access configured, it could be modified by unauthorized users with incorrect or misleading information."
@@ -856,7 +856,7 @@ checks:
       - 'c:stat -Lc "%n %a %u %U %g %G" /etc/motd -> r:0 root 0 root && r:644|640|600|400'
 
   # 1.6.5 Ensure access to /etc/issue is configured. (Automated)
-  - id: 18552
+  - id: 33052
     title: "Ensure access to /etc/issue is configured."
     description: "The contents of the /etc/issue file are displayed to users prior to login for local terminals."
     rationale: "- IF - the /etc/issue file does not have the correct access configured, it could be modified by unauthorized users with incorrect or misleading information."
@@ -880,7 +880,7 @@ checks:
       - 'c:stat -Lc "%n %a %u %U %g %G" /etc/issue -> r:0 root 0 root && r:644|640|600|400'
 
   # 1.6.6 Ensure access to /etc/issue.net is configured. (Automated)
-  - id: 18553
+  - id: 33053
     title: "Ensure access to /etc/issue.net is configured."
     description: "The contents of the /etc/issue.net file are displayed to users prior to login for remote connections from configured services."
     rationale: "- IF - the /etc/issue.net file does not have the correct access configured, it could be modified by unauthorized users with incorrect or misleading information."
@@ -904,7 +904,7 @@ checks:
       - 'c:stat -Lc "%n %a %u %U %g %G" /etc/issue.net -> r:0 root 0 root && r:644|640|600|400'
 
   # 1.7.1 Ensure GDM is removed. (Automated)
-  - id: 18554
+  - id: 33054
     title: "Ensure GDM is removed."
     description: "The GNOME Display Manager (GDM) is a program that manages graphical display servers and handles graphical user logins."
     rationale: "If a Graphical User Interface (GUI) is not required, it should be removed to reduce the attack surface of the system."
@@ -937,7 +937,7 @@ checks:
   # 1.7.10 Ensure XDMCP is not enabled. (Automated) - Not Implemented
 
   # 2.1.1 Ensure autofs services are not in use. (Automated)
-  - id: 18564
+  - id: 33064
     title: "Ensure autofs services are not in use."
     description: "autofs allows automatic mounting of devices, typically including CD/DVDs and USB drives."
     rationale: "With automounting enabled anyone with physical access could attach a USB drive or disc and have its contents available in the filesystem even if they lacked permissions to mount it themselves."
@@ -957,7 +957,7 @@ checks:
       - 'not c:sh -c "systemctl is-enabled autofs.service & systemctl is-active autofs.service" -> r:^active$|^enabled$'
 
   # 2.1.2 Ensure avahi daemon services are not in use. (Automated)
-  - id: 18565
+  - id: 33065
     title: "Ensure avahi daemon services are not in use."
     description: "Avahi is a free zeroconf implementation, including a system for multicast DNS/DNS-SD service discovery. Avahi allows programs to publish and discover services and hosts running on a local network with no specific configuration. For example, a user can plug a computer into a network and Avahi automatically finds printers to print to, files to look at and people to talk to, as well as network services running on the machine."
     rationale: "Automatic discovery of network services is not normally required for system functionality. It is recommended to remove this package to reduce the potential attack surface."
@@ -981,7 +981,7 @@ checks:
       - 'not c:sh -c "systemctl is-enabled avahi-daemon.socket avahi-daemon.service & systemctl is-active avahi-daemon.socket avahi-daemon.service" -> r:^active$|^enabled$'
 
   # 2.1.3 Ensure dhcp server services are not in use. (Automated)
-  - id: 18566
+  - id: 33066
     title: "Ensure dhcp server services are not in use."
     description: "The Dynamic Host Configuration Protocol (DHCP) is a service that allows machines to be dynamically assigned IP addresses. There are two versions of the DHCP protocol DHCPv4 and DHCPv6. At startup the server may be started for one or the other via the -4 or -6 arguments."
     rationale: "Unless a system is specifically set up to act as a DHCP server, it is recommended that this package be removed to reduce the potential attack surface."
@@ -1007,7 +1007,7 @@ checks:
       - 'not c:sh -c "systemctl is-enabled isc-dhcp-server.service isc-dhcp-server6.service & systemctl is-active isc-dhcp-server.service isc-dhcp-server6.service" -> r:^active$|^enabled$'
 
   # 2.1.4 Ensure dns server services are not in use. (Automated)
-  - id: 18567
+  - id: 33067
     title: "Ensure dns server services are not in use."
     description: "The Domain Name System (DNS) is a hierarchical naming system that maps names to IP addresses for computers, services and other resources connected to a network. Note: bind9 is the package and bind.service is the alias for named.service."
     rationale: "Unless a system is specifically designated to act as a DNS server, it is recommended that the package be deleted to reduce the potential attack surface."
@@ -1049,8 +1049,10 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: any
     rules:
+      - "not c: dpkg-query -s dnsmasq -> r:install ok installed"
+      - 'not c:sh -c "systemctl is-enabled dnsmasq.service & systemctl is-active dnsmasq.service" -> r:^active$|^enabled$'
 
   # 2.1.6 Ensure ftp server services are not in use. (Automated)
   - id: 33069
