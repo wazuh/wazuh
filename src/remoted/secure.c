@@ -608,7 +608,9 @@ STATIC void HandleSecureMessage(const message_t *message, w_linked_queue_t * con
             push_request(buffer + 1, "id");
 
             // Let the agent know that it was not found
-            send_unrecognized_msg(message);
+            if (logr.allow_agents_enrollment) {
+                send_unrecognized_msg(message);
+            }
 
             if (message->sock >= 0) {
                 _close_sock(&keys, message->sock);
@@ -675,7 +677,9 @@ STATIC void HandleSecureMessage(const message_t *message, w_linked_queue_t * con
             push_request(srcip, "ip");
 
             // Let the agent know that it was not found
-            send_unrecognized_msg(message);
+            if (logr.allow_agents_enrollment) {
+                send_unrecognized_msg(message);
+            }
 
             if (message->sock >= 0) {
                 _close_sock(&keys, message->sock);
@@ -743,7 +747,9 @@ STATIC void HandleSecureMessage(const message_t *message, w_linked_queue_t * con
             }
 
             // Let the agent know that it was not found
-            send_unrecognized_msg(message);
+            if (logr.allow_agents_enrollment) {
+                send_unrecognized_msg(message);
+            }
         }
 
         if (message->sock >= 0) {

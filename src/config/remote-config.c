@@ -62,6 +62,7 @@ int Read_Remote(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
     const char *xml_queue_size = "queue_size";
     const char *xml_rids_closing_time = "rids_closing_time";
     const char *xml_connection_overtake_time = "connection_overtake_time";
+    const char *xml_allow_agents_enrollment = "allow_agents_enrollment";
 
     logr = (remoted *)d1;
 
@@ -258,6 +259,14 @@ int Read_Remote(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
                 } else {
                     logr->connection_overtake_time = connection_overtake_time;
                 }
+            }
+        } else if (strcmp(node[i]->element, xml_allow_agents_enrollment) == 0) {
+            if (strcasecmp(node[i]->content, "yes") == 0) {
+                logr->allow_agents_enrollment = true;
+            } else if (strcasecmp(node[i]->content, "no") == 0) {
+                logr->allow_agents_enrollment = false;
+            } else {
+                mwarn(REMOTED_INV_VALUE_IGNORE, node[i]->content, xml_allow_agents_enrollment);
             }
         } else if (strcasecmp(node[i]->element, xml_remote_agents) == 0) {
             xml_node **children = OS_GetElementsbyNode(xml, node[i]);
