@@ -109,7 +109,7 @@ public:
 
                 for (const auto& agent : jsonBody.at("syncreq_keepalive"))
                 {
-                    stmt.bind(1, agent.at("id").get<int>());
+                    stmt.bind(1, agent.get<int64_t>());
                     stmt.step();
                     stmt.reset();
                 }
@@ -131,6 +131,7 @@ public:
                     stmt.bind(3, value<int64_t>(agent, "status_code"));
                     stmt.bind(4, agent.at("id").get<int>());
                     stmt.step();
+                    stmt.reset();
                 }
             }
         }
