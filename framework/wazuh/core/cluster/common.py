@@ -1605,7 +1605,7 @@ class SyncWazuhdb(SyncTask):
         Returns
         -------
         dict | None
-            Agents synchronization information or nothing if there was an error.
+            Agents synchronization information or None if there was an error.
         """
         start_time = time.perf_counter()
         try:
@@ -1636,7 +1636,6 @@ class SyncWazuhdb(SyncTask):
         bool
             True if data was correctly sent to the master/worker node, None otherwise.
         """
-        self.logger.debug(chunks)
         if chunks:
             # Send list of chunks as a JSON string
             data = json.dumps({'set_data_command': self.set_data_command,
@@ -1737,7 +1736,7 @@ async def send_data_to_wdb(data, timeout, info_type='agent-info'):
             if info_type == 'agent-info':
                 agents_sync = data['chunks']
                 async with get_wdb_http_client() as wdb_client:
-                    _ = await wdb_client.set_agents_sync(agents_sync)
+                    await wdb_client.set_agents_sync(agents_sync)
 
                 result['updated_chunks'] += len(agents_sync)
             elif info_type == 'agent-groups':
