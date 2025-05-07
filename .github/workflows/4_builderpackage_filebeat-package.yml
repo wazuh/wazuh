@@ -130,7 +130,7 @@ jobs:
         run: |
           # https://github.com/elastic/beats/pull/27103
           FIX_COMMIT=0bf2fe7b5625f180d11b20c69593ded5b825356f
-          git cherry-pick -n ${FIX_COMMIT}
+          git fetch origin ${FIX_COMMIT} && git cherry-pick -n ${FIX_COMMIT}
 
       - name: Modify FPM call (add revision/version)
         run: |
