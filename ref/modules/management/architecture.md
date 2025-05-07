@@ -41,7 +41,7 @@ System_Boundary(management_api, "wazuh-management-api") {
     Rel(commands_server, commands_socket, "Receives commands via")
 }
 
-ComponentQueue(commands_socket, "Commands Unix Socket", "Receives internal Wazuh commands")
+ComponentQueue(commands_socket, "Commands Unix Socket", "Receives internal Wazuh commands at management-api.sock")
 System_Ext(centralized_config, "Centralized Configuration", "wazuh-server.yml", "Defines core parameters for service behavior")
 Person(user, "User", "Client that interacts with the Wazuh Management API")
 
