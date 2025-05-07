@@ -4,6 +4,6 @@
   },
   "action": "deleteFile",
   "data": {
-    "full_path": "c:\\temp\\octa128.txt"
+    "path": "c:\\temp\\octa128.txt"
   }
 }
