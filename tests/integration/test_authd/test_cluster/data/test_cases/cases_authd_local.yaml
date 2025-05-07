@@ -6,15 +6,19 @@
     -
       input: '{"arguments":{"name":"user1","ip":"any"},"function":"add"}'
       output: '{"error":0,"data":{"id":"001","name":"user1","ip":"any","key":'
+      expected_group: 'default'
     -
       input: '{"arguments":{"name":"user2","ip":"192.0.0.0"},"function":"add"}'
       output: '{"error":0,"data":{"id":"002","name":"user2","ip":"192.0.0.0","key":'
+      expected_group: 'default'
     -
       input: '{"arguments":{"id":"100","name":"user100","ip":"any"},"function":"add"}'
       output: '{"error":0,"data":{"id":"100","name":"user100","ip":"any","key":'
+      expected_group: 'default'
     -
       input: '{"arguments":{"name":"user4","ip":"any","id":"101","key":"675aaf366e6827ee7a77b2f7b4d89e603a21333c09afbb02c40191f199d7c915"},"function":"add"}'
       output: '{"error":0,"data":{"id":"101","name":"user4","ip":"any","key":"675aaf366e6827ee7a77b2f7b4d89e603a21333c09afbb02c40191f199d7c915"'
+      expected_group: 'default'
     pre_existent_agents:
     -
     groups:
@@ -78,12 +82,15 @@
     -
       input: '{"arguments":{"name":"user1","ip":"any","force":{"enabled":true, "key_mismatch":false, "disconnected_time":{"enabled":false, "value":"0"}, "after_registration_time":"0"}},"function":"add"}'
       output: '{"error":0,"data":{"id":"004","name":"user1","ip":"any","key":'
+      expected_group: 'default'
     -
       input: '{"arguments":{"name":"user_2","ip":"192.0.0.0","force":{"enabled":true, "key_mismatch":false, "disconnected_time":{"enabled":false, "value":"0"}, "after_registration_time":"0"}},"function":"add"}'
       output: '{"error":0,"data":{"id":"005","name":"user_2","ip":"192.0.0.0","key":'
+      expected_group: 'default'
     -
       input: '{"arguments":{"id":"003","name":"user_3","ip":"any","force":{"enabled":true, "key_mismatch":false, "disconnected_time":{"enabled":false, "value":"0"}, "after_registration_time":"0"}},"function":"add"}'
       output: '{"error":0,"data":{"id":"003","name":"user_3","ip":"any","key":'
+      expected_group: 'default'
     pre_existent_agents:
     -
       id: '001'
@@ -111,12 +118,14 @@
     -
       input: '{"arguments":{"name":"user21","ip":"any","groups":"Group1"},"function":"add"}'
       output: '{"error":0,"data":{"id":"001","name":"user21","ip":"any","key":'
+      expected_group: 'Group1'
     -
       input: '{"arguments":{"name":"user_","ip":"any","groups":"Group_"},"function":"add"}'
       output: '{"error":9014,"message":"Invalid Group(s) Name(s)"}'
     -
       input: '{"arguments":{"name":"user22","ip":"any","groups":"Group1,Group2"},"function":"add"}'
       output: '{"error":0,"data":{"id":"002","name":"user22","ip":"any","key":'
+      expected_group: 'Group1,Group2'
     -
       input: '{"arguments":{"name":"user_","ip":"any","groups":"Group1,Group2,Group3"},"function":"add"}'
       output: '{"error":9014,"message":"Invalid Group(s) Name(s)"}'
@@ -169,12 +178,14 @@
     -
       input: '{"arguments":{"name":"new_user1","ip":"any","key_hash":"123ABC","force":{"enabled":true, "key_mismatch":true, "disconnected_time":{"enabled":false, "value":"0"}, "after_registration_time":"0"}},"function":"add"}'
       output: '{"error":0,"data":{"id":"002","name":"new_user1","ip":"any","key":'
+      expected_group: 'default'
     -
       input: '{"arguments":{"name":"user1","ip":"any","key_hash":"74ccacd341a6087b2d3a31656b07664a9c5bb307","force":{"enabled":true, "key_mismatch":true, "disconnected_time":{"enabled":false, "value":"0"}, "after_registration_time":"0"}},"function":"add"}'
       output: '{"error":9008,"message":"Duplicate name"}'
     -
       input: '{"arguments":{"name":"user1","ip":"any","key_hash":"123ABC","force":{"enabled":true, "key_mismatch":true, "disconnected_time":{"enabled":false, "value":"0"}, "after_registration_time":"0"}},"function":"add"}'
       output: '{"error":0,"data":{"id":"003","name":"user1","ip":"any","key":'
+      expected_group: 'default'
     pre_existent_agents:
     -
       id: '001'
@@ -192,6 +203,7 @@
     -
       input: '{"arguments":{"name":"new_user","ip":"10.0.0.1","groups":"Group1","key_hash":"123ABC","force":{"enabled":true, "key_mismatch":true, "disconnected_time":{"enabled":false, "value":"0"}, "after_registration_time":"0"}},"function":"add"}'
       output: '{"error":0,"data":{"id":"002","name":"new_user","ip":"10.0.0.1","key":'
+      expected_group: 'Group1'
     -
       input: '{"arguments":{"name":"user1","ip":"any","groups":"Group1","key_hash":"74ccacd341a6087b2d3a31656b07664a9c5bb307","force":{"enabled":true, "key_mismatch":true, "disconnected_time":{"enabled":false, "value":"0"}, "after_registration_time":"0"}},"function":"add"}'
       output: '{"error":9008,"message":"Duplicate name"}'
@@ -201,6 +213,7 @@
     -
       input: '{"arguments":{"name":"user1","ip":"10.10.10.10","groups":"Group1","key_hash":"123ABC","force":{"enabled":true, "key_mismatch":true, "disconnected_time":{"enabled":false, "value":"0"}, "after_registration_time":"0"}},"function":"add"}'
       output: '{"error":0,"data":{"id":"003","name":"user1","ip":"10.10.10.10","key":'
+      expected_group: 'Group1'
     pre_existent_agents:
     -
       id: '001'

@@ -1929,30 +1929,6 @@ def test_to_relative_path():
     assert utils.to_relative_path(path, prefix='etc') == os.path.basename(path)
 
 
-@patch('wazuh.core.utils.common.RULES_PATH', new=test_files_path)
-@patch('wazuh.core.utils.common.USER_RULES_PATH', new=test_files_path)
-def test_expand_rules():
-    rules = utils.expand_rules()
-    assert rules == set(map(os.path.basename, glob.glob(os.path.join(test_files_path,
-                                                                     f'*{utils.common.RULES_EXTENSION}'))))
-
-
-@patch('wazuh.core.utils.common.DECODERS_PATH', new=test_files_path)
-@patch('wazuh.core.utils.common.USER_DECODERS_PATH', new=test_files_path)
-def test_expand_decoders():
-    decoders = utils.expand_decoders()
-    assert decoders == set(map(os.path.basename, glob.glob(os.path.join(test_files_path,
-                                                                        f'*{utils.common.DECODERS_EXTENSION}'))))
-
-
-@patch('wazuh.core.utils.common.LISTS_PATH', new=test_files_path)
-@patch('wazuh.core.utils.common.USER_LISTS_PATH', new=test_files_path)
-def test_expand_lists():
-    lists = utils.expand_lists()
-    assert lists == set(filter(lambda x: len(x.split('.')) == 1, map(os.path.basename, glob.glob(os.path.join(
-        test_files_path, f'*{utils.common.LISTS_EXTENSION}')))))
-
-
 def test_full_copy():
     """Test `full_copy` function.
 

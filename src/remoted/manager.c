@@ -110,22 +110,6 @@ STATIC void process_deleted_multi_groups(bool initial_scan);
 STATIC void ftime_add(OSHash **_f_time, const char *name, const time_t m_time);
 
 /**
- * @brief Find a group structure from a file name and md5
- * @param md5 MD5 of the file
- * @param group_name Array to store the group name if exists
- * @return Group structure if exists, NULL otherwise
- */
-STATIC group_t* find_group_from_sum(const char * md5, char group_name[OS_SIZE_65536]);
-
-/**
- * @brief Find a multigroup structure from a file name and md5
- * @param md5 MD5 of the file
- * @param multigroup_name Array to store the multigroup name if exists
- * @return Multigroup structure if exists, NULL otherwise
- */
-STATIC group_t* find_multi_group_from_sum(const char * md5, char multigroup_name[OS_SIZE_65536]);
-
-/**
  * @brief Compare and check if the file time has changed
  * @param old_time File time table of previous scan
  * @param new_time File time table of new scan
@@ -145,20 +129,11 @@ STATIC bool group_changed(const char *multi_group);
 /**
  * @brief Get agent group
  * @param agent_id. Agent id to assign a group
- * @param msg. Message from agent to process and validate current configuration files
  * @param group. Name of the found group, it will include the name of the group or 'default' group or NULL if it fails.
  * @param wdb_sock Wazuh-DB socket.
  * @return OS_SUCCESS if it found or assigned a group, OS_INVALID otherwise
  */
-STATIC int lookfor_agent_group(const char *agent_id, char *msg, char **group, int *wdb_sock);
-
-/**
- * @brief Redirect the request to the master node to assign a group
- * @param agent_id. Agent id to assign a group
- * @param md5. MD5 sum used if guessing is enabled
- * @return JSON* with group name if successful, NULL otherwise
- */
-STATIC cJSON *assign_group_to_agent_worker(const char *agent_id, const char *md5);
+STATIC int lookfor_agent_group(const char *agent_id, char **group, int *wdb_sock);
 
 /**
  * @brief Send a shared file to an agent
@@ -249,7 +224,7 @@ void free_file_time(void *data) {
  * wait_for_msgs (other thread) is going to deal with it
  * (only if message changed)
  */
-void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *wdb_sock)
+void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *wdb_sock, bool *startup_msg)
 {
     char msg_ack[OS_FLSIZE + 1] = "";
     char *msg = NULL;
@@ -365,9 +340,13 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
     if (data = OSHash_Get(pending_data, key->id), data && data->changed && data->message && msg && strcmp(data->message, msg) == 0) {
         w_mutex_unlock(&lastmsg_mutex);
 
+        char *sync_status = logr.worker_node ? (*startup_msg ? "syncreq" : "syncreq_keepalive") : "synced";
+
+        *startup_msg = false;
+
         agent_id = atoi(key->id);
 
-        result = wdb_update_agent_keepalive(agent_id, AGENT_CS_ACTIVE, logr.worker_node ? "syncreq" : "synced", wdb_sock);
+        result = wdb_update_agent_keepalive(agent_id, AGENT_CS_ACTIVE, sync_status, wdb_sock);
 
         if (OS_SUCCESS != result) {
             mwarn("Unable to save last keepalive and set connection status as active for agent: %s", key->id);
@@ -388,9 +367,11 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
         if (is_startup) {
             w_mutex_unlock(&lastmsg_mutex);
 
+            *startup_msg = true;
+
             agent_id = atoi(key->id);
 
-            result = wdb_update_agent_keepalive(agent_id, AGENT_CS_PENDING, logr.worker_node ? "syncreq" : "synced", wdb_sock);
+            result = wdb_update_agent_keepalive(agent_id, AGENT_CS_PENDING, logr.worker_node ? "syncreq_status" : "synced", wdb_sock);
 
             if (OS_SUCCESS != result) {
                 mwarn("Unable to save last keepalive and set connection status as pending for agent: %s", key->id);
@@ -400,7 +381,7 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
 
             agent_id = atoi(key->id);
 
-            result = wdb_update_agent_connection_status(agent_id, AGENT_CS_DISCONNECTED, logr.worker_node ? "syncreq" : "synced", wdb_sock, HC_SHUTDOWN_RECV);
+            result = wdb_update_agent_connection_status(agent_id, AGENT_CS_DISCONNECTED, logr.worker_node ? "syncreq_status" : "synced", wdb_sock, HC_SHUTDOWN_RECV);
 
             if (OS_SUCCESS != result) {
                 mwarn("Unable to set connection status as disconnected for agent: %s", key->id);
@@ -440,7 +421,7 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
 
             os_strdup(msg, data->message);
 
-            if (OS_SUCCESS == lookfor_agent_group(key->id, data->message, &data->group, wdb_sock)) {
+            if (OS_SUCCESS == lookfor_agent_group(key->id, &data->group, wdb_sock)) {
                 group_t *aux = NULL;
 
                 w_mutex_lock(&files_mutex);
@@ -458,7 +439,7 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
 
                 w_mutex_unlock(&files_mutex);
             } else {
-                merror("Error getting group for agent '%s'", key->id);
+                mdebug2("No group for agent '%s'", key->id);
             }
 
             w_mutex_unlock(&lastmsg_mutex);
@@ -503,7 +484,9 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
 
             agent_data->id = atoi(key->id);
             os_strdup(AGENT_CS_ACTIVE, agent_data->connection_status);
-            os_strdup(logr.worker_node ? "syncreq" : "synced", agent_data->sync_status);
+            os_strdup(logr.worker_node ? (*startup_msg ? "syncreq" : "syncreq_keepalive") : "synced", agent_data->sync_status);
+
+            *startup_msg = false;
 
             w_mutex_lock(&lastmsg_mutex);
 
@@ -535,77 +518,6 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
     }
 
     os_free(clean);
-}
-
-/* Assign a group to an agent without group */
-cJSON *assign_group_to_agent(const char *agent_id, const char *md5) {
-    cJSON *result = NULL;
-    char* group = NULL;
-
-    os_calloc(OS_SIZE_65536 + 1, sizeof(char), group);
-
-    mdebug2("Agent '%s' with file '%s' MD5 '%s'", agent_id, SHAREDCFG_FILENAME, md5);
-
-    w_mutex_lock(&files_mutex);
-
-    if (!guess_agent_group || (!find_group_from_sum(md5, group) && !find_multi_group_from_sum(md5, group))) {
-        // If the group could not be guessed, set to "default"
-        // or if the user requested not to guess the group, through the internal
-        // option 'guess_agent_group', set to "default"
-        strncpy(group, "default", OS_SIZE_65536);
-    }
-
-    w_mutex_unlock(&files_mutex);
-
-    wdb_set_agent_groups_csv(atoi(agent_id),
-                            group,
-                            WDB_GROUP_MODE_EMPTY_ONLY,
-                            w_is_single_node(NULL) ? "synced" : "syncreq",
-                            NULL);
-
-    mdebug2("Group assigned: '%s'", group);
-
-    result = cJSON_CreateObject();
-    cJSON_AddStringToObject(result, "group", group);
-
-    os_free(group);
-    return result;
-}
-
-STATIC cJSON *assign_group_to_agent_worker(const char *agent_id, const char *md5) {
-    char response[OS_MAXSTR] = "";
-    char *request = NULL;
-    cJSON *payload_json = NULL;
-    cJSON *response_json = NULL;
-    cJSON *data_json = NULL;
-
-    cJSON *message_json = cJSON_CreateObject();
-    cJSON *parameters_json = cJSON_CreateObject();
-
-    cJSON_AddStringToObject(parameters_json, "agent", agent_id);
-    cJSON_AddStringToObject(parameters_json, "md5", md5);
-
-    cJSON_AddStringToObject(message_json, "command", "assigngroup");
-    cJSON_AddItemToObject(message_json, "parameters", parameters_json);
-
-    payload_json = w_create_sendsync_payload("remoted", message_json);
-
-    request = cJSON_PrintUnformatted(payload_json);
-
-    mdebug2("Sending message to master node: '%s'", request);
-
-    if (w_send_clustered_message("sendsync", request, response) == 0) {
-        response_json = cJSON_Parse(response);
-        data_json = cJSON_Duplicate(cJSON_GetObjectItem(response_json, "data"), 1);
-    }
-
-    mdebug2("Message received from master node: '%s'", response);
-
-    os_free(request);
-    cJSON_Delete(payload_json);
-    cJSON_Delete(response_json);
-
-    return data_json;
 }
 
 /* Generate merged file for groups */
@@ -1352,48 +1264,6 @@ STATIC void ftime_add(OSHash **_f_time, const char *name, const time_t m_time) {
     }
 }
 
-STATIC group_t* find_group_from_sum(const char * md5, char group_name[OS_SIZE_65536]) {
-    group_t *group;
-    OSHashNode *my_node;
-    unsigned int i;
-
-    my_node = OSHash_Begin(groups, &i);
-
-    while (my_node) {
-        group = my_node->data;
-
-        if (!strcmp(group->merged_sum, md5)) {
-            snprintf(group_name, OS_SIZE_65536, "%s", group->name);
-            return group;
-        }
-
-        my_node = OSHash_Next(groups, &i, my_node);
-    }
-
-    return NULL;
-}
-
-STATIC group_t* find_multi_group_from_sum(const char * md5, char multigroup_name[OS_SIZE_65536]) {
-    group_t *multigroup;
-    OSHashNode *my_node;
-    unsigned int i;
-
-    my_node = OSHash_Begin(multi_groups, &i);
-
-    while (my_node) {
-        multigroup = my_node->data;
-
-        if (!strcmp(multigroup->merged_sum, md5)) {
-            snprintf(multigroup_name, OS_SIZE_65536, "%s", multigroup->name);
-            return multigroup;
-        }
-
-        my_node = OSHash_Next(multi_groups, &i, my_node);
-    }
-
-    return NULL;
-}
-
 STATIC bool ftime_changed(OSHash *old_time, OSHash *new_time) {
     unsigned int size_old, size_new = 0;
 
@@ -1473,7 +1343,7 @@ STATIC void send_wrong_version_response(const char *agent_id, char *msg, agent_s
 
     mdebug2("Unable to connect agent: '%s': '%s'", agent_id, msg);
 
-    result = wdb_update_agent_status_code(atoi(agent_id), status_code, version, logr.worker_node ? "syncreq" : "synced", wdb_sock);
+    result = wdb_update_agent_status_code(atoi(agent_id), status_code, version, logr.worker_node ? "syncreq_status" : "synced", wdb_sock);
 
     if (OS_SUCCESS != result) {
         mwarn("Unable to set status code for agent: '%s'", agent_id);
@@ -1485,12 +1355,9 @@ STATIC void send_wrong_version_response(const char *agent_id, char *msg, agent_s
 }
 
 /* look for agent group */
-STATIC int lookfor_agent_group(const char *agent_id, char *msg, char **r_group, int *wdb_sock)
+STATIC int lookfor_agent_group(const char *agent_id, char **r_group, int *wdb_sock)
 {
     char* group = NULL;
-    char *end;
-    char *fmsg;
-    char *message;
 
     group = wdb_get_agent_group(atoi(agent_id), wdb_sock);
     if (group) {
@@ -1499,76 +1366,6 @@ STATIC int lookfor_agent_group(const char *agent_id, char *msg, char **r_group, 
         return OS_SUCCESS;
     }
 
-    os_strdup(msg, message);
-    fmsg = message;
-
-    // Skip agent-info and label data
-    if (message = strchr(message, '\n'), !message) {
-        merror("Invalid message from agent ID '%s' (strchr \\n)", agent_id);
-        os_free(fmsg);
-        return OS_INVALID;
-    }
-
-    for (message++; (*message == '\"' || *message == '!' || *message == '#') && (end = strchr(message, '\n')); message = end + 1);
-
-    /* Parse message */
-    while (*message != '\0') {
-        char *md5;
-        char *file;
-
-        md5 = message;
-        file = message;
-
-        message = strchr(message, '\n');
-        if (!message) {
-            merror("Invalid message from agent ID '%s' (strchr \\n)", agent_id);
-            break;
-        }
-
-        *message = '\0';
-        message++;
-
-        // Skip labeled data
-        if (*md5 == '\"' || *md5 == '!' || *md5 == '#') {
-            continue;
-        }
-
-        file = strchr(file, ' ');
-        if (!file) {
-            merror("Invalid message from agent ID '%s' (strchr ' ')", agent_id);
-            break;
-        }
-
-        *file = '\0';
-        file++;
-
-        /* New agents only have merged.mg */
-        if (strcmp(file, SHAREDCFG_FILENAME) == 0) {
-            cJSON *group_json = NULL;
-            cJSON *value = NULL;
-
-            if (!logr.worker_node) {
-                group_json = assign_group_to_agent(agent_id, md5);
-            } else {
-                group_json = assign_group_to_agent_worker(agent_id, md5);
-            }
-
-            value = cJSON_GetObjectItem(group_json, "group");
-            if (cJSON_IsString(value) && value->valuestring != NULL) {
-                os_strdup(value->valuestring, *r_group);
-            } else {
-                merror("Agent '%s' invalid or empty group assigned.", agent_id);
-                cJSON_Delete(group_json);
-                break;
-            }
-
-            cJSON_Delete(group_json);
-            os_free(fmsg);
-            return OS_SUCCESS;
-        }
-    }
-
-    os_free(fmsg);
     return OS_INVALID;
 }
 
