@@ -34,7 +34,7 @@ int timeout;    //timeout in seconds waiting for a server reply
 
 static ssize_t receive_message(char *buffer, unsigned int max_lenght);
 static void w_agentd_keys_init (void);
-STATIC bool agent_handshake_to_server(int server_id, bool is_startup);
+STATIC bool agent_handshake_to_server(int server_id, bool is_startup, bool *should_enroll);
 STATIC void send_msg_on_startup(void);
 
 /**
@@ -140,27 +140,29 @@ void start_agent(int is_startup)
     #endif
     int current_server_id = agt->rip_id;
     while (1) {
-        // (max_retries - 1) attempts
+        // Trying to connect to the server
 
-        for (int attempts = 0; attempts < agt->server[current_server_id].max_retries - 1; attempts++) {
-            if (agent_handshake_to_server(current_server_id, is_startup)) {
+        bool should_enroll = false;
+
+        for (int attempts = 0; attempts < agt->server[current_server_id].max_retries; attempts++) {
+            if (agent_handshake_to_server(current_server_id, is_startup, &should_enroll)) {
                 return;
             }
 
-            sleep(agt->server[current_server_id].retry_interval);
-        }
+            if (should_enroll) {
+                break;
+            }
 
-        // Last attempt
-
-        if (agent_handshake_to_server(current_server_id, is_startup)) {
-            return;
+            if (attempts < agt->server[current_server_id].max_retries - 1) {
+                sleep(agt->server[current_server_id].retry_interval);
+            }
         }
 
         // Try to enroll and extra attempt
 
-        if (agt->enrollment_cfg && agt->enrollment_cfg->enabled) {
+        if (should_enroll && agt->enrollment_cfg && agt->enrollment_cfg->enabled) {
             if (try_enroll_to_server(agt->server[current_server_id].rip, agt->server[current_server_id].network_interface) == 0) {
-                if (agent_handshake_to_server(current_server_id, is_startup)) {
+                if (agent_handshake_to_server(current_server_id, is_startup, &should_enroll)) {
                     return;
                 }
             }
@@ -324,7 +326,7 @@ int try_enroll_to_server(const char * server_rip, uint32_t network_interface) {
  * @retval true on success
  * @retval false when failed
  * */
-STATIC bool agent_handshake_to_server(int server_id, bool is_startup) {
+STATIC bool agent_handshake_to_server(int server_id, bool is_startup, bool *should_enroll) {
     size_t msg_length;
     ssize_t recv_b = 0;
 
@@ -341,6 +343,8 @@ STATIC bool agent_handshake_to_server(int server_id, bool is_startup) {
     snprintf(msg, OS_MAXSTR, "%s%s%s", CONTROL_HEADER, HC_STARTUP, agent_info_string);
     os_free(agent_info_string);
 
+    *should_enroll = false;
+
     if (connect_server(server_id, true)) {
         /* Send start up message */
         send_msg(msg, -1);
@@ -351,7 +355,11 @@ STATIC bool agent_handshake_to_server(int server_id, bool is_startup) {
         if (recv_b > 0) {
             /* Id of zero -- only one key allowed */
             if (ReadSecMSG(&keys, buffer, cleartext, 0, recv_b - 1, &msg_length, agt->server[server_id].rip, &tmp_msg) != KS_VALID) {
-                mwarn(MSG_ERROR, agt->server[server_id].rip);
+                if (strncmp(buffer, "#unauthorized", 13) == 0) {
+                    *should_enroll = true;
+                } else {
+                    mwarn(MSG_ERROR, agt->server[server_id].rip);
+                }
             }
             else {
                 /* Check for commands */

@@ -71,6 +71,9 @@ void * rem_keyupdate_main(__attribute__((unused)) void * args);
 /* Handle each message received */
 STATIC void HandleSecureMessage(const message_t *message, w_linked_queue_t * control_msg_queue);
 
+/* Send unrecognized message */
+STATIC void send_unrecognized_msg(const message_t *message);
+
 // Close and remove socket from keystore
 int _close_sock(keystore * keys, int sock);
 
@@ -512,6 +515,7 @@ STATIC const char * get_schema(const int type)
     return NULL;
 
 }
+
 STATIC void HandleSecureMessage(const message_t *message, w_linked_queue_t * control_msg_queue) {
     int agentid;
     const int protocol = (message->sock == USING_UDP_NO_CLIENT_SOCKET) ? REMOTED_NET_PROTOCOL_UDP : REMOTED_NET_PROTOCOL_TCP;
@@ -602,6 +606,10 @@ STATIC void HandleSecureMessage(const message_t *message, w_linked_queue_t * con
 
             // Send key request by id
             push_request(buffer + 1, "id");
+
+            // Let the agent know that it was not found
+            send_unrecognized_msg(message);
+
             if (message->sock >= 0) {
                 _close_sock(&keys, message->sock);
             }
@@ -665,6 +673,10 @@ STATIC void HandleSecureMessage(const message_t *message, w_linked_queue_t * con
 
             // Send key request by ip
             push_request(srcip, "ip");
+
+            // Let the agent know that it was not found
+            send_unrecognized_msg(message);
+
             if (message->sock >= 0) {
                 _close_sock(&keys, message->sock);
             }
@@ -729,6 +741,9 @@ STATIC void HandleSecureMessage(const message_t *message, w_linked_queue_t * con
             } else {
                 push_request(buffer + 1, "id");
             }
+
+            // Let the agent know that it was not found
+            send_unrecognized_msg(message);
         }
 
         if (message->sock >= 0) {
@@ -866,6 +881,28 @@ STATIC void HandleSecureMessage(const message_t *message, w_linked_queue_t * con
     os_free(agentid_str);
     os_free(agent_ip);
     os_free(agent_name);
+}
+
+STATIC void send_unrecognized_msg(const message_t *message) {
+    int retval = 0;
+    const char *msg = "#unauthorized";
+    ssize_t msg_len = strlen(msg);
+
+    if (!message) {
+        return;
+    }
+
+    const int protocol = (message->sock == USING_UDP_NO_CLIENT_SOCKET) ? REMOTED_NET_PROTOCOL_UDP : REMOTED_NET_PROTOCOL_TCP;
+
+    if (protocol == REMOTED_NET_PROTOCOL_UDP) {
+        retval = sendto(logr.udp_sock, msg, msg_len, 0, (struct sockaddr *)&message->addr, logr.peer_size) == msg_len ? 0 : -1;
+    } else {
+        retval = OS_SendSecureTCP(message->sock, msg_len, msg);
+    }
+
+    if (retval < 0) {
+        mwarn("Unrecognized message could not be delivered (protocol %d, retval %d)", protocol, retval);
+    }
 }
 
 void router_message_forward(char* msg, const char* agent_id, const char* agent_ip, const char* agent_name) {
