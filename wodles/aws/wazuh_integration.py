@@ -132,9 +132,18 @@ class WazuhIntegration:
             try:
                 # Get profile config dictionary
                 profile_config = {option: aws_config.get(profile, option) for option in aws_config.options(profile)}
+                region = profile_config.get('region')
+                if region is not None:
+                    args['region_name'] = region
+                    aws_tools.debug(f"+++ Region '{region}' added to the configuration", 2)
+                else:
+                    aws_tools.debug(f"+++ No 'region' found in profile '{profile}'", 2)
 
             except configparser.NoSectionError:
                 aws_tools.error(f"No profile named: '{profile}' was found in the user config file")
+                aws_tools.debug(
+                    f"The region for '{profile}' must be specified in "
+                    f"'~/.aws/config' under the '[{profile}]' section.", 2)
                 sys.exit(23)
 
             # Map Primary Botocore Config parameters with profile config file

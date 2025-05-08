@@ -121,7 +121,7 @@ mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/manager_installation_
 # Install configuration assesment files and files templates
 mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/{applications,generic}
 mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/amzn/{1,2,2023}
-mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/centos/{8,7,6,5}
+mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/centos/{10,9,8,7,6,5}
 mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/darwin/{15,16,17,18,19,20,21,22,23,24}
 mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/debian/{7,8,9,10,11,12}
 mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/ol/{9,10}
@@ -145,6 +145,7 @@ cp etc/templates/config/amzn/2023/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/t
 
 cp etc/templates/config/centos/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/centos
 cp etc/templates/config/centos/10/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/centos/10
+cp etc/templates/config/centos/9/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/centos/9
 cp etc/templates/config/centos/8/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/centos/8
 cp etc/templates/config/centos/7/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/centos/7
 cp etc/templates/config/centos/6/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/centos/6
@@ -826,6 +827,8 @@ rm -fr %{buildroot}
 %attr(640, root, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/centos/7/*
 %dir %attr(750, wazuh, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/centos/8
 %attr(640, root, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/centos/8/*
+%dir %attr(750, wazuh, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/centos/9
+%attr(640, root, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/centos/9/*
 %dir %attr(750, wazuh, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/centos/10
 %attr(640, root, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/centos/10/*
 %dir %attr(750, wazuh, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/darwin
@@ -922,9 +925,11 @@ rm -fr %{buildroot}
 %changelog
 * Wed Jun 04 2025 support <info@wazuh.com> - 4.13.0
 - More info: https://documentation.wazuh.com/current/release-notes/release-4-13-0.html
+* Wed May 21 2025 support <info@wazuh.com> - 4.12.2
+- More info: https://documentation.wazuh.com/current/release-notes/release-4-12-2.html
 * Wed May 14 2025 support <info@wazuh.com> - 4.12.1
 - More info: https://documentation.wazuh.com/current/release-notes/release-4-12-1.html
-* Wed Apr 30 2025 support <info@wazuh.com> - 4.12.0
+* Wed May 07 2025 support <info@wazuh.com> - 4.12.0
 - More info: https://documentation.wazuh.com/current/release-notes/release-4-12-0.html
 * Tue Apr 01 2025 support <info@wazuh.com> - 4.11.2
 - More info: https://documentation.wazuh.com/current/release-notes/release-4-11-2.html

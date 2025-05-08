@@ -207,17 +207,17 @@ class AWSSubscriberBucket(wazuh_integration.WazuhIntegration, AWSS3LogHandler):
         log_path = unquote(message_body['log_path'])
         bucket_path = message_body['bucket_path']
 
-        msg = {
-            'integration': 'aws',
-            'aws': {
-                'log_info': {
-                    'log_file': log_path,
-                    's3bucket': bucket_path
-                }
-            }
-        }
         formatted_logs = self.obtain_logs(bucket=bucket_path, log_path=log_path)
         for log in formatted_logs:
+            msg = {
+                'integration': 'aws',
+                'aws': {
+                    'log_info': {
+                        'log_file': log_path,
+                        's3bucket': bucket_path
+                    }
+                }
+            }
             self._remove_none_fields(log)
             if 'full_log' in log:
                 # The processed logs origin is a plain text log file

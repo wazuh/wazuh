@@ -117,6 +117,19 @@ class FactoryPackagesCreator<LinuxType::STANDARD> final
                 getSnapInfo(callback);
             }
         }
+
+        static void getPythonPackages(std::unordered_set<std::string>& pythonPackages)
+        {
+            if (Utils::existsDir(DPKG_PATH))
+            {
+                getDpkgPythonPackages(pythonPackages);
+            }
+
+            if (Utils::existsDir(RPM_PATH))
+            {
+                getRpmPythonPackages(pythonPackages);
+            }
+        }
 };
 
 // Template to extract package information in partially incompatible Linux systems
@@ -131,6 +144,7 @@ class FactoryPackagesCreator<LinuxType::LEGACY> final
                 getRpmInfoLegacy(callback);
             }
         }
+        static void getPythonPackages(std::unordered_set<std::string>&) {};
 };
 
 #endif // _PACKAGE_LINUX_DATA_RETRIEVER_H
