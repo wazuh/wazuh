@@ -19,7 +19,7 @@ from wazuh.core.results import WazuhResult, AffectedItemsWazuhResult
 from wazuh.core.utils import chmod_r, chown_r, get_hash, mkdir_with_mode, md5, process_array, clear_temporary_caches, \
     full_copy
 from wazuh.core.wazuh_queue import WazuhQueue
-from wazuh.rbac.decorators import expose_resources
+from wazuh.rbac.decorators import expose_resources, async_list_handler
 
 cluster_enabled = not read_cluster_config(from_import=True)['disabled']
 node_id = get_node().get('node') if cluster_enabled else None
@@ -838,11 +838,13 @@ def delete_groups(group_list: list = None) -> AffectedItemsWazuhResult:
     return result
 
 
-@expose_resources(actions=["group:modify_assignments"], resources=['group:id:{replace_list}'], post_proc_func=None)
-@expose_resources(actions=["group:modify_assignments"], resources=['group:id:{group_list}'], post_proc_func=None)
+@expose_resources(actions=["group:modify_assignments"], resources=['group:id:{replace_list}'],
+                  post_proc_func=async_list_handler)
+@expose_resources(actions=["group:modify_assignments"], resources=['group:id:{group_list}'],
+                  post_proc_func=async_list_handler)
 @expose_resources(actions=["agent:modify_group"], resources=["agent:id:{agent_list}"],
-                  post_proc_kwargs={'exclude_codes': [1701, 1703, 1751, 1752]})
-def assign_agents_to_group(group_list: list = None, agent_list: list = None, replace: bool = False,
+                  post_proc_kwargs={'exclude_codes': [1701, 1703, 1751, 1752]}, post_proc_func=async_list_handler)
+async def assign_agents_to_group(group_list: list = None, agent_list: list = None, replace: bool = False,
                            replace_list: list = None) -> AffectedItemsWazuhResult:
     """Assign a list of agents to a group.
 
@@ -897,7 +899,7 @@ def assign_agents_to_group(group_list: list = None, agent_list: list = None, rep
 
     for agent_id in agent_list:
         try:
-            Agent.add_group_to_agent(group_id, agent_id, replace=replace, replace_list=replace_list)
+            await Agent.add_group_to_agent(group_id, agent_id, replace=replace, replace_list=replace_list)
             result.affected_items.append(agent_id)
         except WazuhException as e:
             result.add_failed_item(id_=agent_id, error=e)
@@ -908,9 +910,11 @@ def assign_agents_to_group(group_list: list = None, agent_list: list = None, rep
     return result
 
 
-@expose_resources(actions=["group:modify_assignments"], resources=['group:id:{group_list}'], post_proc_func=None)
-@expose_resources(actions=["agent:modify_group"], resources=['agent:id:{agent_list}'], post_proc_func=None)
-def remove_agent_from_group(group_list: list = None, agent_list: list = None) -> WazuhResult:
+@expose_resources(actions=["group:modify_assignments"], resources=['group:id:{group_list}'],
+                  post_proc_func=async_list_handler)
+@expose_resources(actions=["agent:modify_group"], resources=['agent:id:{agent_list}'],
+                  post_proc_func=async_list_handler)
+async def remove_agent_from_group(group_list: list = None, agent_list: list = None) -> WazuhResult:
     """Removes an agent assignation with a specified group.
 
     Parameters
@@ -945,13 +949,15 @@ def remove_agent_from_group(group_list: list = None, agent_list: list = None) ->
     if group_id not in get_groups():
         raise WazuhResourceNotFound(1710)
 
-    return WazuhResult({'message': Agent.unset_single_group_agent(agent_id=agent_id, group_id=group_id, force=True)})
+    message = await Agent.unset_single_group_agent(agent_id=agent_id, group_id=group_id, force=True)
+    return WazuhResult({'message': message})
 
 
-@expose_resources(actions=["agent:modify_group"], resources=["agent:id:{agent_list}"], post_proc_func=None)
+@expose_resources(actions=["agent:modify_group"], resources=["agent:id:{agent_list}"],
+                  post_proc_func=async_list_handler)
 @expose_resources(actions=["group:modify_assignments"], resources=["group:id:{group_list}"],
-                  post_proc_kwargs={'exclude_codes': [1710, 1734, 1745]})
-def remove_agent_from_groups(agent_list: list = None, group_list: list = None) -> AffectedItemsWazuhResult:
+                  post_proc_kwargs={'exclude_codes': [1710, 1734, 1745]}, post_proc_func=async_list_handler)
+async def remove_agent_from_groups(agent_list: list = None, group_list: list = None) -> AffectedItemsWazuhResult:
     """Removes an agent assignation with a list of groups.
 
     Parameters
@@ -997,7 +1003,7 @@ def remove_agent_from_groups(agent_list: list = None, group_list: list = None) -
         try:
             if group_id not in system_groups:
                 raise WazuhResourceNotFound(1710)
-            Agent.unset_single_group_agent(agent_id=agent_id, group_id=group_id, force=True)
+            await Agent.unset_single_group_agent(agent_id=agent_id, group_id=group_id, force=True)
             result.affected_items.append(group_id)
         except WazuhException as e:
             result.add_failed_item(id_=group_id, error=e)
@@ -1007,10 +1013,11 @@ def remove_agent_from_groups(agent_list: list = None, group_list: list = None) -
     return result
 
 
-@expose_resources(actions=["group:modify_assignments"], resources=["group:id:{group_list}"], post_proc_func=None)
+@expose_resources(actions=["group:modify_assignments"], resources=["group:id:{group_list}"],
+                  post_proc_func=async_list_handler)
 @expose_resources(actions=["agent:modify_group"], resources=["agent:id:{agent_list}"],
-                  post_proc_kwargs={'exclude_codes': [1701, 1703, 1734]})
-def remove_agents_from_group(agent_list: list = None, group_list: list = None) -> AffectedItemsWazuhResult:
+                  post_proc_kwargs={'exclude_codes': [1701, 1703, 1734]}, post_proc_func=async_list_handler)
+async def remove_agents_from_group(agent_list: list = None, group_list: list = None) -> AffectedItemsWazuhResult:
     """Remove the assignations of a list of agents with a specified group.
 
     Parameters
@@ -1048,7 +1055,7 @@ def remove_agents_from_group(agent_list: list = None, group_list: list = None) -
                 raise WazuhError(1703)
             elif agent_id not in system_agents:
                 raise WazuhResourceNotFound(1701)
-            Agent.unset_single_group_agent(agent_id=agent_id, group_id=group_id, force=True)
+            await Agent.unset_single_group_agent(agent_id=agent_id, group_id=group_id, force=True)
             result.affected_items.append(agent_id)
         except WazuhException as e:
             result.add_failed_item(id_=agent_id, error=e)
