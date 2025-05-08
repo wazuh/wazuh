@@ -28,6 +28,9 @@
 #include <thread>
 #include <unistd.h>
 
+#ifdef INVALID_SOCKET
+#undef INVALID_SOCKET
+#endif
 constexpr auto INVALID_SOCKET {-1};
 constexpr auto SOCKET_ERROR {-1};
 using PacketFieldType = uint32_t;
