@@ -207,14 +207,12 @@ sqlite3 * wdb_global_pre(void **wdb_ctx)
     gettimeofday(&begin, 0);
     if (wdb = wdb_open_global(), !wdb) {
         mdebug2("Couldn't open DB global: %s/%s.db", WDB2_DIR, WDB_GLOB_NAME);
-        //snprintf(output, OS_MAXSTR + 1, "err Couldn't open DB global");
         gettimeofday(&end, 0);
         timersub(&end, &begin, &diff);
         w_inc_global_open_time(diff);
         return NULL;
     } else if (!wdb->enabled) {
         mdebug2("Database disabled: %s/%s.db.", WDB2_DIR, WDB_GLOB_NAME);
-        //snprintf(output, OS_MAXSTR + 1, "err DB global disabled.");
         wdb_pool_leave(wdb);
         gettimeofday(&end, 0);
         timersub(&end, &begin, &diff);

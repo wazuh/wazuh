@@ -129,7 +129,7 @@ public:
                     stmt.bind(1, value<std::string_view>(agent, "connection_status"));
                     stmt.bind(2, value<int64_t>(agent, "disconnection_time"));
                     stmt.bind(3, value<int64_t>(agent, "status_code"));
-                    stmt.bind(4, agent.at("id").get<int>());
+                    stmt.bind(4, agent.at("id").get<int64_t>());
                     stmt.step();
                     stmt.reset();
                 }

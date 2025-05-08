@@ -103,11 +103,11 @@ TEST_F(EndpointPostV1AgentsSyncTest, KeepAliveThreeAgents)
 {
     auto stmt = mockStmt(qdump);
 
-    EXPECT_CALL(*stmt, bindInt32).Times(3);
+    EXPECT_CALL(*stmt, bindInt64).Times(3);
     EXPECT_CALL(*stmt, step()).Times(3);
     EXPECT_CALL(*stmt, reset()).Times(3);
 
-    nlohmann::json body = {{"syncreq_keepalive", {{{"id", 10}}, {{"id", 11}}, {{"id", 12}}}}};
+    nlohmann::json body = R"({"syncreq_keepalive":[10,11,12]})"_json;
     req.body = body.dump();
 
     TEndpointPostV1AgentsSync<MockSQLiteConnection, TrampolineSQLiteStatement>::call(db, req, res);
@@ -121,8 +121,7 @@ TEST_F(EndpointPostV1AgentsSyncTest, StatusSingleAgent)
     auto stmt = mockStmt(qdump);
 
     EXPECT_CALL(*stmt, bindStringView).Times(1); // connection_status
-    EXPECT_CALL(*stmt, bindInt64).Times(2);      // disconnection_time + status_code
-    EXPECT_CALL(*stmt, bindInt32).Times(1);      // id
+    EXPECT_CALL(*stmt, bindInt64).Times(3);      // disconnection_time + status_code + id
     EXPECT_CALL(*stmt, step()).Times(1);
 
     nlohmann::json body = {
