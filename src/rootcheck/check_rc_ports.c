@@ -45,7 +45,7 @@ static int run_netstat(int proto, int port)
 
     if (ret == 0) {
         return (1);
-    } else if (ret == 1) {
+    } else if (WEXITSTATUS(ret) == 1) {
         return (0);
     }
 
@@ -149,6 +149,13 @@ void check_rc_ports()
     int _total = 0;
 
     int i = 0;
+
+    if (!is_program_available("netstat")) {
+        minfo("netstat not available. Skipping port check.");
+        notify_rk(ALERT_SYSTEM_ERR, "netstat not available. "
+                 "Skipping port check.");
+        return;
+    }
 
     while (i <= 65535) {
         total_ports_tcp[i] = 0;
