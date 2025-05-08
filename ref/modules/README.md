@@ -37,7 +37,7 @@ requires temporary tokens obtained through basic authentication to securely inte
 
 
 The API is composed of several components, such as the `commands-manager` socket responsible for exposing local server
-commands to the various API processes and the `rbac-manager` responsible for Role Access control.
+commands to the various API processes and the `rbac-manager` responsible for Role-based access control.
 
 ## Server process overview
 
@@ -50,17 +50,14 @@ flowchart TD
     classDef external fill:#C8E6C9,stroke:#2E7D32;
 
     Server["Wazuh Server"]:::server
-
-    %% Subcomponentes principales
+    
     Server --> Engine["wazuh-engine"]:::component
     Server --> CommsAPI["wazuh-comms-api"]:::api
     Server --> ManagementAPI["wazuh-server-management-api"]:::api
-
-    %% Componentes internos de Comms API
+    
     CommsAPI --> CommsManager["commands-manager"]:::component
     CommsAPI --> Batcher["batcher"]:::component
-
-    %% Componentes internos de Management API
+    
     ManagementAPI --> MgmtCommands["commands-manager"]:::component
     ManagementAPI --> RBAC["rbac-manager"]:::component
 
@@ -109,7 +106,7 @@ server:
     url: https://cti.wazuh.com
 ```
 
-* `update\_check`: Enables/disables update checks.
+* `update_check`: Enables/disables update checks.
 * `logging`: Logging level (info, debug, debug2).
 * `cti`: Configuration options for CTI.
   * `update_check`: Enables update check for CTI.
