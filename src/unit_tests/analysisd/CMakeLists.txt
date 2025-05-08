@@ -118,6 +118,19 @@ LIST(APPEND analysisd_flags "-Wl,--wrap,get_nproc -Wl,--wrap,cJSON_CreateObject 
                              -Wl,--wrap,cJSON_AddStringToObject -Wl,--wrap,cJSON_AddNumberToObject -Wl,--wrap,cJSON_AddItemToObject \
                              ${DEBUG_OP_WRAPPERS}")
 
+LIST(APPEND analysisd_names "test_analysisd_hotreload")
+LIST(APPEND analysisd_flags "${DEBUG_OP_WRAPPERS} -Wl,--wrap,RootcheckHotReload -Wl,--wrap,SyscollectorHotReload        \
+                            -Wl,--wrap,CiscatHotReload -Wl,--wrap,HostinfoHotReload -Wl,--wrap,WinevtHotReload         \
+                            -Wl,--wrap,SecurityConfigurationAssessmentHotReload -Wl,--wrap,fim_hot_reload                \
+                            -Wl,--wrap,_os_analysisd_add_logmsg                                                        \
+                            -Wl,--wrap,w_get_attr_val_by_name -Wl,--wrap,OS_GetElementsbyNode -Wl,--wrap,OS_ClearNode  \
+                            -Wl,--wrap,OS_ReadXML -Wl,--wrap,OS_ClearXML                                               \
+                            -Wl,--wrap,OS_CreateEventList -Wl,--wrap,ReadDecodeXML -Wl,--wrap,SetDecodeXML             \
+                            -Wl,--wrap,Lists_OP_LoadList -Wl,--wrap,Lists_OP_MakeAll -Wl,--wrap,Rules_OP_ReadRules     \
+                            -Wl,--wrap,OS_ListLoadRules -Wl,--wrap,_setlevels -Wl,--wrap,AddHash_Rule                  \
+                            -Wl,--wrap,Accumulate_Init -Wl,--wrap,OSStore_Free -Wl,--wrap,OSHash_Create \
+                            -Wl,--wrap,Read_Rules")
+
 LIST(APPEND analysisd_names "test_decoder_list")
 LIST(APPEND analysisd_flags "-Wl,--wrap,FreeDecoderInfo")
 
