@@ -163,9 +163,10 @@ checks:
     compliance:
       - cis: ["2.3.1.3"]
       - cis_csc: ["4.7"]
-    condition: all
+    condition: any
     rules:
       - 'c:net user guest -> r:Account active\s+No'
+      - "c:net user guest -> r:The user name could not be found."
 
   - id: 15512
     title: "Ensure 'Accounts: Limit local account use of blank passwords to console logon only' is set to 'Enabled'."

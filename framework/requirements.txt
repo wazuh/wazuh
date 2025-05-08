@@ -40,7 +40,7 @@ h11==0.14.0
 idna==3.7.0
 inflection==0.3.1
 isodate==0.6.1
-Jinja2==3.1.4
+Jinja2==3.1.6
 jmespath==0.9.5
 jsonschema==4.20.0
 jsonschema-path==0.3.2
@@ -64,7 +64,7 @@ psutil==5.9.0
 pyasn1==0.4.8
 pyasn1-modules==0.2.8
 pycparser==2.21
-PyJWT==2.8.0
+PyJWT==2.10.1
 pyparsing==2.4.7
 python-dateutil==2.8.1
 python-json-logger==2.0.2

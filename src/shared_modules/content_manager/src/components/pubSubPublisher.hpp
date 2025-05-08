@@ -63,7 +63,7 @@ private:
             // Update the offset and hash
             context.currentOffset = offset;
             context.spUpdaterBaseContext->downloadedFileHash = hash;
-            logDebug2(WM_CONTENTUPDATER, "Data published");
+            logDebug2(WM_CONTENTUPDATER, "Data published. Offset: '%d', Hash: '%s'", offset, hash.c_str());
         }
         else
         {

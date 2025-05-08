@@ -77,11 +77,20 @@ def test_default_config(mock_boto_config, file_exists, options, retry_attempts, 
     profile = utils.TEST_AWS_PROFILE
     with patch('wazuh_integration.path.exists', return_value=file_exists):
         if file_exists:
-            with patch('aws_tools.get_aws_config_params') as mock_config, \
+            with patch('aws_tools.get_aws_config_params') as mock_get_config, \
                     patch('aws_tools.set_profile_dict_config'):
-                mock_config.options(profile).return_value = options
-                profile_config = {option: mock_config.get(profile, option) for option in mock_config.options(profile)}
+                mock_config = MagicMock()
+                mock_get_config.return_value = mock_config
 
+                mock_config.options.return_value = options + ['region']
+                mock_config.get.side_effect = lambda prof, opt: (
+                    'us-east-1' if opt == 'region' else
+                    str(retry_attempts) if opt == aws_tools.RETRY_ATTEMPTS_KEY and retry_attempts is not None else
+                    retry_mode if opt == aws_tools.RETRY_MODE_BOTO_KEY else
+                    None
+                )
+
+                profile_config = {option: mock_config.get(profile, option) for option in mock_config.options()}
                 config = wazuh_integration.WazuhIntegration.default_config(profile=utils.TEST_AWS_PROFILE)
 
             if aws_tools.RETRY_ATTEMPTS_KEY in profile_config or aws_tools.RETRY_MODE_CONFIG_KEY in profile_config:
