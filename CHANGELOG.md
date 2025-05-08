@@ -17,34 +17,47 @@ All notable changes to this project will be documented in this file.
 
 #### Changed
 
-- Updated curl dependency to 8.11.0. ([#27614](https://github.com/wazuh/wazuh/pull/27614))
-- Upgraded cryptography package to version 44.0.1. ([#28298](https://github.com/wazuh/wazuh/pull/28298))
 - Converted server logs timestamp to UTC. ([#28047](https://github.com/wazuh/wazuh/pull/28047))
-- Delete restriction for aws_profile in Security Lake. ([#28149](https://github.com/wazuh/wazuh/pull/28149))
 - Removed error logs when the response is 409 for certain OpenSearch calls. ([#28038](https://github.com/wazuh/wazuh/pull/28038))
-- Upgraded packages python-multipart to 0.0.20, starlette to 0.42.0 and Werkzeug to 3.1.3. ([#27451](https://github.com/wazuh/wazuh/pull/27451))
-- Removed `WARNING` about events in cloudwatchlogs. ([#27990](https://github.com/wazuh/wazuh/pull/27990))
 
 #### Fixed
 
 - Fixed inconsistent vulnerability severity categorization by correcting CVSS version prioritization. ([#26720](https://github.com/wazuh/wazuh/pull/26720))
 - Fixed a potential crash in Wazuh-DB by improving the PID parsing method. ([#26769](https://github.com/wazuh/wazuh/pull/26769))
 - Fixed concurrent mechanism on column family rocksDB. ([#28185](https://github.com/wazuh/wazuh/pull/28185))
-- Fixed unused variables in Analysisd. ([#28185](hhttps://github.com/wazuh/wazuh/pull/28503))
+- Fixed unused variables in Analysisd. ([#28503](https://github.com/wazuh/wazuh/pull/28503))
 - Fixed analysisd startup failure caused by mixing static and dynamic rules with the same ID. ([#29050](https://github.com/wazuh/wazuh/pull/29050))
 - Fixed crash in Vulnerability Scanner when processing delayed events during agent re-scan. ([#27834](https://github.com/wazuh/wazuh/pull/27834))
 - Improved the signal handling during processes stop. ([#26679](https://github.com/wazuh/wazuh/pull/26679))
 - Improved cleanup logic for the content folder for the VD module. ([#27750](https://github.com/wazuh/wazuh/pull/27750))
 - Sanitized invalid size values from package data provider events. ([#27806](https://github.com/wazuh/wazuh/pull/27806))
 - Fixed crash when reading email alerts missing the `email_to` attribute. ([#26704](https://github.com/wazuh/wazuh/pull/26704))
+- Fixed offset errors by updating the DB only after processing events. ([#29179](https://github.com/wazuh/wazuh/pull/29179))
 
 ### Agent
 
+#### Added
+
+- FIM now supports whodata using an eBPF-based integration. ([#27956](https://github.com/wazuh/wazuh/pull/27956))
+- Added support for the `riskDetections` relationship in MS Graph. ([#28416](https://github.com/wazuh/wazuh/pull/28416))
+
+#### Changed
+
+- Added a time delay option in the MS Graph integration to prevent log loss. ([#28389](https://github.com/wazuh/wazuh/pull/28389))
+- Added a page size option to the MS Graph integration. ([#28276](https://github.com/wazuh/wazuh/pull/28276))
+- Implemented Journald rotation detection in Logcollector. ([#28388](https://github.com/wazuh/wazuh/pull/28388))
+- Deleted the restriction for the use of the AWS profile in the Amazon Security Lake integration. ([#28149](https://github.com/wazuh/wazuh/pull/28149))
+- Removed `WARNING` prefix in logs from the CloudWatchLogs AWS integration. ([#27990](https://github.com/wazuh/wazuh/pull/27990))
+
 #### Fixed
 
-- Fixed a bug that might make wazuh-modulesd crash on startup. ([#26647](https://github.com/wazuh/wazuh/pull/26647))
-- Fixed invalid UTF-8 character checking in FIM. Thanks to @zbalkan. ([#26289](https://github.com/wazuh/wazuh/pull/26289))
-- Improved URL validations in Maltiverse Integration. ([#27100](https://github.com/wazuh/wazuh/pull/27100))
+- Fixed a bug that could cause `wazuh-modulesd` to crash at startup. ([#26647](https://github.com/wazuh/wazuh/pull/26647))
+- Fixed incorrect UTF-8 character validation in FIM. Thanks to @zbalkan. ([#26289](https://github.com/wazuh/wazuh/pull/26289))
+- Improved URL validation in the Maltiverse integration. ([#27100](https://github.com/wazuh/wazuh/pull/27100))
+- Fixed an issue in Syscollector where package sizes were reported as negative. ([#28005](https://github.com/wazuh/wazuh/pull/28005))
+- Fixed an enrollment failure on Solaris 10 caused by unsupported socket timeout. ([#29161](https://github.com/wazuh/wazuh/pull/29161))
+- Fixed a memory issue in the `wazuh-agentd` argument parser. ([#29214](https://github.com/wazuh/wazuh/pull/29214))
+- Fixed WPK package upgrades for DEB when upgrading from version 4.3.11 or earlier. ([#28928](https://github.com/wazuh/wazuh/pull/28928))
 
 ### Ruleset
 
@@ -58,6 +71,14 @@ All notable changes to this project will be documented in this file.
 #### Changed
 
 - SCA rule Improvement for MacOS 15 SCA. ([#26982](https://github.com/wazuh/wazuh/issues/26982))
+
+### Other
+
+#### Changed
+
+- Upgraded the curl dependency to 8.11.0. ([#27614](https://github.com/wazuh/wazuh/pull/27614))
+- Upgraded the cryptography library dependency to version 44.0.1. ([#28298](https://github.com/wazuh/wazuh/pull/28298))
+- Upgraded python-multipart to 0.0.20, starlette to 0.42.0 and Werkzeug to 3.1.3. ([#27451](https://github.com/wazuh/wazuh/pull/27451))
 
 
 ## [v4.11.2]
