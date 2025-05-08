@@ -1,0 +1,12 @@
+.mermaid {
+  width: 100%;
+  height: 600px;
+  overflow: hidden;
+  display: block;
+}
+
+.mermaid svg {
+  width: 100% !important;
+  height: 100% !important;
+  display: block;
+}
