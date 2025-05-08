@@ -39,6 +39,7 @@ int RemotedConfig(const char *cfgfile, remoted *cfg)
     cfg->queue_size = 131072;
     cfg->allow_higher_versions = REMOTED_ALLOW_AGENTS_HIGHER_VERSIONS_DEFAULT;
     cfg->connection_overtake_time = 60;
+    cfg->allow_agents_enrollment = true;
 
     receive_chunk = (unsigned)getDefine_Int("remoted", "receive_chunk", 1024, 16384);
     send_chunk = (unsigned)getDefine_Int("remoted", "send_chunk", 512, 16384);
@@ -129,6 +130,12 @@ cJSON *getRemoteConfig(void) {
             }
 
             cJSON_AddNumberToObject(conn, "connection_overtake_time", logr.connection_overtake_time);
+
+            if (logr.allow_agents_enrollment) {
+                cJSON_AddStringToObject(conn, "allow_agents_enrollment", "yes");
+            } else {
+                cJSON_AddStringToObject(conn, "allow_agents_enrollment", "no");
+            }
 
             cJSON_AddItemToArray(rem,conn);
         }

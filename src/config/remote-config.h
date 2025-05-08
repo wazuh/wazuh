@@ -54,6 +54,7 @@ typedef struct _remoted {
     bool worker_node;
     int rids_closing_time;
     int connection_overtake_time;
+    bool allow_agents_enrollment;
     _Config global;
 } remoted;
 
