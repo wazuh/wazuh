@@ -230,7 +230,14 @@ INSTANTIATE_TEST_SUITE_P(
                j(fmt::format(R"({{"{}":{{"f1":"v1","f2":"v2","f3":"v3"}}}})", TARGET.substr(1))),
                14,
                getCSVParser,
-               {NAME, TARGET, {""}, {"f1", "f2", "f3"}})));
+               {NAME, TARGET, {""}, {"f1", "f2", "f3"}}),
+        ParseT(SUCCESS,
+               R"("v1","v2","v3")",
+               j(fmt::format(R"({{"{}":{{"f1":{{"key":"v1"}},"f2":{{"key":"v2"}},"f3":{{"key":{{"subkey":"v3"}}}}}}}})",
+                             TARGET.substr(1))),
+               14,
+               getCSVParser,
+               {NAME, TARGET, {""}, {"f1.key", "f2/key", "f3.key/subkey"}})));
 
 /************************************
  *  DSV Parser
@@ -474,4 +481,12 @@ INSTANTIATE_TEST_SUITE_P(
                              TARGET.substr(1))),
                strlen(R"("\"value1\""|value2|value3|valueN)"),
                getDSVParser,
-               {NAME, TARGET, {""}, {"|", "\"", "\\", "out1", "out2", "out3", "outN"}})));
+               {NAME, TARGET, {""}, {"|", "\"", "\\", "out1", "out2", "out3", "outN"}}),
+        ParseT(SUCCESS,
+               R"("\"v1\""|v2|v3)",
+               j(fmt::format(
+                   R"({{"{}":{{"f1":{{"key":"\"v1\""}},"f2":{{"key":"v2"}},"f3":{{"key":{{"subkey":"v3"}}}}}}}})",
+                   TARGET.substr(1))),
+               strlen(R"("\"v1\""|v2|v3)"),
+               getDSVParser,
+               {NAME, TARGET, {""}, {"|", "\"", "\\", "f1.key", "f2/key", "f3.key/subkey"}})));

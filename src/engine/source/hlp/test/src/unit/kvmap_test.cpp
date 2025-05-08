@@ -210,6 +210,14 @@ INSTANTIATE_TEST_SUITE_P(
                getKVParser,
                {NAME, TARGET, {}, {"=", " ", "\"", "'"}}),
 
+        ParseT(SUCCESS,
+               R"(O=Akamai Technologies\\, Inc.,L=Cambridge,C=US)",
+               j(fmt::format(R"({{"{}": {{"O":"Akamai Technologies\\, Inc.","L":"Cambridge","C":"US"}}}})",
+                             TARGET.substr(1))),
+               46,
+               getKVParser,
+               {NAME, TARGET, {}, {"=", ",", "'", "\\"}}),
+
         ParseT(FAILURE,
                R"(key1='value=1',key2=value''2,key3='value,3',key4='value=,''4')",
                {},
