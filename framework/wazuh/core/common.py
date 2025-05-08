@@ -125,6 +125,20 @@ def get_context_cache() -> dict:
     return _context_cache
 
 
+def get_installation_uid() -> str | None:
+    """Retrieve the installation UID from file if it exists.
+    Returns
+    -------
+    str or None
+        The installation UID, or None if the file is not found.
+    """
+    try:
+        with open(INSTALLATION_UID_PATH, 'r') as f:
+            return f.read().strip()
+    except FileNotFoundError:
+        return None
+
+
 # ================================================= Context variables ==================================================
 rbac: ContextVar[Dict] = ContextVar('rbac', default={'rbac_mode': 'black'})
 current_user: ContextVar[str] = ContextVar('current_user', default='')
@@ -231,3 +245,7 @@ LISTS_PATH = os.path.join(RULESET_PATH, 'lists')
 USER_LISTS_PATH = os.path.join(WAZUH_PATH, 'etc', 'lists')
 USER_RULES_PATH = os.path.join(WAZUH_PATH, 'etc', 'rules')
 USER_DECODERS_PATH = os.path.join(WAZUH_PATH, 'etc', 'decoders')
+
+# ========================================== INSTALLATION UID PATH ====================================================
+SECURITY_PATH = os.path.join(WAZUH_PATH, 'api', 'configuration', 'security')
+INSTALLATION_UID_PATH = os.path.join(SECURITY_PATH, 'installation_uid')

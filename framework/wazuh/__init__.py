@@ -10,6 +10,7 @@ from time import strftime
 from wazuh.core import common
 from wazuh.core.wdb import WazuhDBConnection
 from wazuh.core.exception import WazuhException, WazuhError, WazuhInternalError
+from wazuh.core.common import get_installation_uid
 
 """
 Wazuh HIDS Python package
@@ -52,7 +53,7 @@ class Wazuh:
         self.openssl_support = 'N/A'
         self.tz_offset = None
         self.tz_name = None
-        self.uuid = None
+        self.uuid = get_installation_uid()
 
         self._initialize()
 
@@ -94,14 +95,6 @@ class Wazuh:
         except Exception:
             self.tz_offset = None
             self.tz_name = None
-
-        # UUID info
-        uuid_file = os.path.join(self.path, 'api/configuration/security/installation_uid')
-        try:
-            with open(uuid_file, 'r') as f:
-                self.uuid = f.read().strip()
-        except FileNotFoundError:
-            self.uuid = None
 
         return self.to_dict()
 
