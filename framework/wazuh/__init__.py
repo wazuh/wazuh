@@ -96,11 +96,11 @@ class Wazuh:
             self.tz_name = None
 
         # UUID info
+        uuid_file = os.path.join(self.path, 'api/configuration/security/installation_uid')
         try:
-            uuid_file = os.path.join(self.path, 'api/configuration/security/installation_uid')
             with open(uuid_file, 'r') as f:
                 self.uuid = f.read().strip()
-        except Exception:
+        except FileNotFoundError:
             self.uuid = None
 
         return self.to_dict()
