@@ -1437,8 +1437,9 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - "not c: dpkg-query -s nis -> r:install ok installed"
 
   # 2.2.2 Ensure rsh client is not installed. (Automated)
   - id: 33087
@@ -1459,8 +1460,9 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - "not c: dpkg-query -s rsh-client -> r:install ok installed"
 
   # 2.2.3 Ensure talk client is not installed. (Automated)
   - id: 33088
@@ -1481,8 +1483,9 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - "not c: dpkg-query -s talk -> r:install ok installed"
 
   # 2.2.4 Ensure telnet client is not installed. (Automated)
   - id: 33089
@@ -1503,8 +1506,9 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - "not c: dpkg-query -s telnet inetutils-telnet -> r:install ok installed"
 
   # 2.2.5 Ensure ldap client is not installed. (Automated)
   - id: 33090
@@ -1525,8 +1529,9 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - "not c: dpkg-query -s ldap-utils -> r:install ok installed"
 
   # 2.2.6 Ensure ftp client is not installed. (Automated)
   - id: 33091
@@ -1546,54 +1551,12 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - "not c: dpkg-query -s ftp tnftp -> r:install ok installed"
 
-  # 2.3.1.1 Ensure a single time synchronization daemon is in use. (Automated)
-  - id: 33092
-    title: "Ensure a single time synchronization daemon is in use."
-    description: "System time should be synchronized between all systems in an environment. This is typically done by establishing an authoritative time server or set of servers and having all systems synchronize their clocks to them. Note: - On virtual systems where host based time synchronization is available consult your virtualization software documentation and verify that host based synchronization is in use and follows local site policy. In this scenario, this section should be skipped - Only one time synchronization method should be in use on the system. Configuring multiple time synchronization methods could lead to unexpected or unreliable results."
-    rationale: "Time synchronization is important to support time sensitive security mechanisms and ensures log files have consistent time records across the enterprise, which aids in forensic investigations."
-    remediation: "On physical systems, and virtual systems where host based time synchronization is not available. Select one of the two time synchronization daemons; chrony (1) or systemd- timesyncd (2) and following the remediation procedure for the selected daemon. Note: enabling more than one synchronization daemon could lead to unexpected or unreliable results: 1. chrony Run the following command to install chrony: # apt install chrony Run the following commands to stop and mask the systemd-timesyncd daemon: # systemctl stop systemd-timesyncd.service # systemctl mask systemd-timesyncd.service Note: - Subsection: Configure chrony should be followed - Subsection: Configure systemd-timesyncd should be skipped 2. systemd-timesyncd Run the following command to remove the chrony package: # apt purge chrony # apt autoremove chrony Note: - Subsection: Configure systemd-timesyncd should be followed - Subsection: Configure chrony should be skipped."
-    compliance:
-      - cis: ["2.3.1.1"]
-      - cis_csc_v8: ["8.4"]
-      - cis_csc_v7: ["6.1"]
-      - cmmc_v2.0: ["AU.L2-3.3.7"]
-      - iso_27001-2013: ["A.12.4.4"]
-      - mitre_tactics: ["TA0005"]
-      - mitre_techniques: ["T1070", "T1070.002", "T1562", "T1562.001"]
-      - nist_sp_800-53: ["AU-7"]
-      - pci_dss_v3.2.1: ["10.4"]
-      - pci_dss_v4.0: ["10.6", "10.6.1", "10.6.2", "10.6.3"]
-      - soc_2: ["CC4.1", "CC5.2"]
-    condition:
-    rules:
-
-  # 2.3.2.1 Ensure systemd-timesyncd configured with authorized timeserver. (Automated)
-  - id: 33093
-    title: "Ensure systemd-timesyncd configured with authorized timeserver."
-    description: "NTP= - A space-separated list of NTP server host names or IP addresses. During runtime this list is combined with any per-interface NTP servers acquired from systemd-networkd.service(8). systemd-timesyncd will contact all configured system or per-interface servers in turn, until one responds. When the empty string is assigned, the list of NTP servers is reset, and all prior assignments will have no effect. This setting defaults to an empty list. FallbackNTP= - A space-separated list of NTP server host names or IP addresses to be used as the fallback NTP servers. Any per-interface NTP servers obtained from systemd-networkd.service(8) take precedence over this setting, as do any servers set via NTP= above. This setting is hence only relevant if no other NTP server information is known. When the empty string is assigned, the list of NTP servers is reset, and all prior assignments will have no effect. If this option is not given, a compiled-in list of NTP servers is used."
-    rationale: "Time synchronization is important to support time sensitive security mechanisms and to ensure log files have consistent time records across the enterprise to aid in forensic investigations."
-    remediation: "Set NTP and/or FallbackNPT parameters to local site approved authoritative time server(s) in /etc/systemd/timesyncd.conf or a file in /etc/systemd/timesyncd.conf.d/ ending in .conf in the [Time] section: Example file: [Time] NTP=time.nist.gov # Uses the generic name for NIST's time servers FallbackNTP=time-a-g.nist.gov time-b-g.nist.gov time-c-g.nist.gov # Space separated list of NIST time servers Example script to create systemd drop-in configuration file: #!/usr/bin/env bash { a_settings=(\"NTP=time.nist.gov\" \"FallbackNTP=time-a-g.nist.gov time-b- g.nist.gov time-c-g.nist.gov\") [ ! -d /etc/systemd/timesyncd.conf.d/ ] && mkdir /etc/systemd/timesyncd.conf.d/ if grep -Psq -- '^\\h*\\[Time\\]' /etc/systemd/timesyncd.conf.d/60- timesyncd.conf; then printf '%s\\n' \"\" \"${a_settings[@]}\" >> /etc/systemd/timesyncd.conf.d/60-timesyncd.conf else printf '%s\\n' \"\" \"[Time]\" \"${a_settings[@]}\" >> /etc/systemd/timesyncd.conf.d/60-timesyncd.conf fi } Note: If this setting appears in a canonically later file, or later in the same file, the setting will be overwritten Run to following command to update the parameters in the service: # systemctl reload-or-restart systemd-timesyncd."
-    references:
-      - "https://www.freedesktop.org/software/systemd/man/timesyncd.conf.html"
-      - "https://tf.nist.gov/tf-cgi/servers.cgi"
-    compliance:
-      - cis: ["2.3.2.1"]
-      - cis_csc_v8: ["8.4"]
-      - cis_csc_v7: ["6.1"]
-      - cmmc_v2.0: ["AU.L2-3.3.7"]
-      - iso_27001-2013: ["A.12.4.4"]
-      - mitre_mitigations: ["M1022"]
-      - mitre_tactics: ["TA0002"]
-      - mitre_techniques: ["T1070", "T1070.002", "T1562", "T1562.001"]
-      - nist_sp_800-53: ["AU-7"]
-      - pci_dss_v3.2.1: ["10.4"]
-      - pci_dss_v4.0: ["10.6", "10.6.1", "10.6.2", "10.6.3"]
-      - soc_2: ["CC4.1", "CC5.2"]
-    condition:
-    rules:
+  # 2.3.1.1 Ensure a single time synchronization daemon is in use. (Automated) - Not Implemented
+  # 2.3.2.1 Ensure systemd-timesyncd configured with authorized timeserver. (Automated) - Not Implemented
 
   # 2.3.2.2 Ensure systemd-timesyncd is enabled and running. (Automated)
   - id: 33094
@@ -1614,30 +1577,11 @@ checks:
       - pci_dss_v3.2.1: ["10.4"]
       - pci_dss_v4.0: ["10.6", "10.6.1", "10.6.2", "10.6.3"]
       - soc_2: ["CC4.1", "CC5.2"]
-    condition:
+    condition: all
     rules:
+      - 'c:sh -c "systemctl is-enabled systemd-timesyncd.service & systemctl is-active systemd-timesyncd.service" -> r:^active$|^enabled$'
 
-  # 2.3.3.1 Ensure chrony is configured with authorized timeserver. (Automated)
-  - id: 33095
-    title: "Ensure chrony is configured with authorized timeserver."
-    description: "- server o The server directive specifies an NTP server which can be used as a time source. The client-server relationship is strictly hierarchical: a client might synchronize its system time to that of the server, but the server’s system time will never be influenced by that of a client. o This directive can be used multiple times to specify multiple servers. o The directive is immediately followed by either the name of the server, or its IP address. - pool o The syntax of this directive is similar to that for the server directive, except that it is used to specify a pool of NTP servers rather than a single NTP server. The pool name is expected to resolve to multiple addresses which might change over time. o This directive can be used multiple times to specify multiple pools. o All options valid in the server directive can be used in this directive too."
-    rationale: "Time synchronization is important to support time sensitive security mechanisms and to ensure log files have consistent time records across the enterprise to aid in forensic investigations."
-    remediation: "Edit /etc/chrony/chrony.conf or a file ending in .sources in /etc/chrony/sources.d/ and add or edit server or pool lines as appropriate according to local site policy: Edit the Chrony configuration and add or edit the server and/or pool lines returned by the Audit Procedure as appropriate according to local site policy <[server|pool]> <[remote-server|remote-pool]> Example script to add a drop-in configuration for the pool directive: #!/usr/bin/env bash { [ ! -d \"/etc/chrony/sources.d/\" ] && mkdir /etc/chrony/sources.d/ printf '%s\\n' \"\" \"#The maxsources option is unique to the pool directive\" \\ \"pool time.nist.gov iburst maxsources 4\" >> /etc/chrony/sources.d/60- sources.sources chronyc reload sources &>/dev/null } Example script to add a drop-in configuration for the server directive: #!/usr/bin/env bash { [ ! -d \"/etc/chrony/sources.d/\" ] && mkdir /etc/chrony/sources.d/ printf '%s\\n' \"\" \"server time-a-g.nist.gov iburst\" \"server 132.163.97.3 iburst\" \\ \"server time-d-b.nist.gov iburst\" >> /etc/chrony/sources.d/60- sources.sources chronyc reload sources &>/dev/null } Run the following command to reload the chronyd config: # systemctl reload-or-restart chronyd."
-    compliance:
-      - cis: ["2.3.3.1"]
-      - cis_csc_v8: ["8.4"]
-      - cis_csc_v7: ["6.1"]
-      - cmmc_v2.0: ["AU.L2-3.3.7"]
-      - iso_27001-2013: ["A.12.4.4"]
-      - mitre_mitigations: ["M1022"]
-      - mitre_tactics: ["TA0002"]
-      - mitre_techniques: ["T1070", "T1070.002", "T1562", "T1562.001"]
-      - nist_sp_800-53: ["AU-7"]
-      - pci_dss_v3.2.1: ["10.4"]
-      - pci_dss_v4.0: ["10.6", "10.6.1", "10.6.2", "10.6.3"]
-      - soc_2: ["CC4.1", "CC5.2"]
-    condition:
-    rules:
+  # 2.3.3.1 Ensure chrony is configured with authorized timeserver. (Automated) - Not Implemented
 
   # 2.3.3.2 Ensure chrony is running as user _chrony. (Automated)
   - id: 33096
@@ -1658,7 +1602,7 @@ checks:
       - pci_dss_v3.2.1: ["10.4"]
       - pci_dss_v4.0: ["10.6", "10.6.1", "10.6.2", "10.6.3"]
       - soc_2: ["CC4.1", "CC5.2"]
-    condition:
+    condition: all
     rules:
 
   # 2.3.3.3 Ensure chrony is enabled and running. (Automated)
@@ -1680,8 +1624,9 @@ checks:
       - pci_dss_v3.2.1: ["10.4"]
       - pci_dss_v4.0: ["10.6", "10.6.1", "10.6.2", "10.6.3"]
       - soc_2: ["CC4.1", "CC5.2"]
-    condition:
+    condition: all
     rules:
+      - 'c:sh -c "systemctl is-enabled chrony.service & systemctl is-active chrony.service" -> r:^active$|^enabled$'
 
   # 2.4.1.1 Ensure cron daemon is enabled and active. (Automated)
   - id: 33098
@@ -1694,8 +1639,9 @@ checks:
       - mitre_mitigations: ["M1018"]
       - mitre_tactics: ["TA0005"]
       - mitre_techniques: ["T1562", "T1562.001"]
-    condition:
+    condition: all
     rules:
+      - 'c:sh -c "systemctl is-enabled list-unit-files & systemctl is-active list-unit" -> r:^active$|^enabled$'
 
   # 2.4.1.2 Ensure permissions on /etc/crontab are configured. (Automated)
   - id: 33099
@@ -1717,8 +1663,9 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:stat -Lc /etc/crontab -> r:^Access: \(0600/-rw-------\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*0/\s*root\)$'
 
   # 2.4.1.3 Ensure permissions on /etc/cron.hourly are configured. (Automated)
   - id: 33100
@@ -1740,8 +1687,9 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:stat -Lc /etc/cron.hourly -> r:^Access: \(0700/drwx------\)\s*Uid: \(\s*0/\s*root\)\s*Gid: \(\s*0/\s*root\)$'
 
   # 2.4.1.4 Ensure permissions on /etc/cron.daily are configured. (Automated)
   - id: 33101
@@ -1763,8 +1711,9 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:stat -Lc /etc/cron.daily -> r:^Access: \(0700/drwx------\)\s*Uid: \(\s*0/\s*root\)\s*Gid: \(\s*0/\s*root\)$'
 
   # 2.4.1.5 Ensure permissions on /etc/cron.weekly are configured. (Automated)
   - id: 33102
@@ -1786,8 +1735,9 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:stat -Lc /etc/cron.weekly -> r:^Access: \(0700/drwx------\)\s*Uid: \(\s*0/\s*root\)\s*Gid: \(\s*0/\s*root\)$'
 
   # 2.4.1.6 Ensure permissions on /etc/cron.monthly are configured. (Automated)
   - id: 33103
@@ -1809,8 +1759,9 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:stat -Lc /etc/cron.monthly -> r:^Access: \(0700/drwx------\)\s*Uid: \(\s*0/\s*root\)\s*Gid: \(\s*0/\s*root\)$'
 
   # 2.4.1.7 Ensure permissions on /etc/cron.d are configured. (Automated)
   - id: 33104
@@ -1832,8 +1783,9 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:stat -Lc /etc/cron.d -> r:^Access: \(0700/drwx------\)\s*Uid: \(\s*0/\s*root\)\s*Gid: \(\s*0/\s*root\)$'
 
   # 2.4.1.8 Ensure crontab is restricted to authorized users. (Automated)
   - id: 33105
@@ -1855,8 +1807,11 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - "f:/etc/cron.allow"
+      - "not f:/etc/cron.deny"
+      - 'c:stat /etc/cron.allow -> r:^Access: \(0640/-rw-r-----\)\s*Uid: \(\s*0/\s*root\)\s*Gid: \(\s*0/\s*root\)$'
 
   # 2.4.2.1 Ensure at is restricted to authorized users. (Automated)
   - id: 33106
@@ -1878,8 +1833,11 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - "f:/etc/at.allow"
+      - "not f:/etc/at.deny"
+      - 'c:stat /etc/at.allow -> r:^Access: \(0640/-rw-r-----\)\s*Uid: \(\s*0/\s*root\)\s*Gid: \(\s*0/\s*root\)$'
 
   # 3.1.1 Ensure IPv6 status is identified. (Manual)
   - id: 33107
