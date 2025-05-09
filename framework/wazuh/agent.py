@@ -19,6 +19,7 @@ from wazuh.core.results import WazuhResult, AffectedItemsWazuhResult
 from wazuh.core.utils import chmod_r, chown_r, get_hash, mkdir_with_mode, md5, process_array, clear_temporary_caches, \
     full_copy, check_if_wazuh_agent_version, parse_wazuh_agent_version
 from wazuh.core.wazuh_queue import WazuhQueue
+from wazuh.core.wdb_http import get_wdb_http_client
 from wazuh.rbac.decorators import expose_resources, async_list_handler
 
 cluster_enabled = not read_cluster_config(from_import=True)['disabled']
@@ -94,6 +95,26 @@ def get_distinct_agents(agent_list: list = None, offset: int = 0, limit: int = c
         result.total_affected_items = data['totalItems']
 
     return result
+
+
+@expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"], post_proc_func=None)
+async def get_agents_summary(agent_list: list[str] = None) -> WazuhResult:
+    """Count the number of agents by status, OS and group.
+
+    Parameters
+    ----------
+    agent_list : list[str]
+       Agents IDs list.
+
+    Returns
+    -------
+    WazuhResult
+        Result object.
+    """
+    async with get_wdb_http_client() as wdb_client:
+        agents_summary = await wdb_client.get_agents_summary(agent_list)
+
+    return WazuhResult({'data': agents_summary.to_dict()})
 
 
 @expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"], post_proc_func=None)

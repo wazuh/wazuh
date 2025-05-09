@@ -25,8 +25,8 @@ with patch('wazuh.core.common.wazuh_uid'):
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
 
         from wazuh.agent import add_agent, assign_agents_to_group, create_group, delete_agents, delete_groups, \
-            get_agent_conf, get_agent_config, get_agent_groups, get_agents, get_agents_in_group, \
-            get_agents_keys, get_agents_summary_os, get_agents_summary_status, get_agents_sync_group, \
+            get_agent_conf, get_agent_config, get_agent_groups, get_agents, get_agents_in_group, get_agents_keys, \
+            get_agents_summary, get_agents_summary_os, get_agents_summary_status, get_agents_sync_group, \
             get_distinct_agents, get_file_conf, get_full_overview, get_group_files, get_outdated_agents, \
             get_upgrade_result, remove_agent_from_group, remove_agent_from_groups, remove_agents_from_group, \
             restart_agents, upgrade_agents, upload_group_file, restart_agents_by_node, reconnect_agents, \
@@ -37,6 +37,7 @@ with patch('wazuh.core.common.wazuh_uid'):
         from wazuh.core.tests.test_agent import InitAgent
         from api.util import remove_nones_to_dict
         from wazuh.core.exception import WazuhResourceNotFound
+        from wazuh.core.wdb_http import AgentsSummary
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
 test_agent_path = os.path.join(test_data_path, 'agent')
@@ -157,6 +158,21 @@ def test_agent_sort_order(socket_mock, send_mock, fields, order, expected_items)
                                                                 '"AffectedItemsWazuhResult". '
     assert sorted_agents.affected_items == expected_items, f'"Affected_items" does not match. Should be ' \
                                                            f'"{expected_items}". '
+
+
+@patch('wazuh.core.wdb_http.WazuhDBHTTPClient')
+async def test_get_agents_summary(wdb_http_client_mock: AsyncMock):
+    """Test if get_agent_groups() asks for agent's groups correctly."""
+    agent_ids = []
+    summary = AgentsSummary(agents_by_status={'active': 10, 'disconnected': 2})
+    wdb_http_client_mock.return_value.close = AsyncMock()
+    get_agents_summary_mock = AsyncMock(return_value=summary)
+    wdb_http_client_mock.return_value.get_agents_summary = get_agents_summary_mock
+
+    agents_summary = await get_agents_summary(agent_ids)
+    assert agents_summary['data'] == summary.to_dict()
+
+    get_agents_summary_mock.assert_called_once_with(agent_ids)
 
 
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
