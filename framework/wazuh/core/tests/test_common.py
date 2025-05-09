@@ -106,9 +106,11 @@ async def test_origin_module_context_var_api(mock_check_wazuh_status, mock_creat
     assert mock_create_socket_msg.call_args[1]['origin']['module'] == 'API'
 
 
+@patch('wazuh.core.common.wazuh_uid', return_value=0)
+@patch('wazuh.core.common.wazuh_gid', return_value=0)
 @patch('wazuh.core.common.os.chmod')
 @patch('wazuh.core.common.os.chown')
-def test_get_installation_uid_creates_file(chown_mock, chmod_mock, tmp_path):
+def test_get_installation_uid_creates_file(chown_mock, chmod_mock, mock_gid, mock_uid, tmp_path):
     """Test get_installation_uid creates the UID file if it doesn't exist."""
 
     test_path = tmp_path / 'installation_uid'
