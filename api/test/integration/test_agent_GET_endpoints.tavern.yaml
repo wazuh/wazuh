@@ -4891,6 +4891,36 @@ stages:
           total_failed_items: 0
 
 ---
+test_name: GET /agents/summary
+
+stages:
+
+  - name: Get the agents status summary
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents/summary"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          status:
+            active: 8
+            disconnected: 2
+            never_connected: 2
+            pending: 0
+          os:
+            ubuntu: 10
+          groups:
+            default: 10
+            group2: 8
+            group1: 7
+            group3: 4
+
+---
 test_name: GET /agents/summary/status
 
 stages:
