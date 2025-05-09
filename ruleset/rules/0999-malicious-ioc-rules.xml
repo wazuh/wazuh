@@ -12,9 +12,47 @@
     <!-- The if_sid tag references the built-in FIM rules -->
     <if_sid>554, 550</if_sid>
     <list field="sha256" lookup="match_key">etc/lists/malware-hashes</list>
-    <description>File with known malware hash detected: $(file)</description>
+    <description>File with known malware hash detected: $(file).</description>
     <mitre>
       <id>T1204.002</id>
     </mitre>
+  </rule>
+</group>
+
+<group name="WAF, Cloudflare">
+  <rule id="99902" level="13">
+    <if_sid>92501</if_sid>
+    <list field="ClientIP" lookup="match_key">etc/lists/malicious-ip</list>
+    <description>Connection from malicious IP $(ClientIP) detected.</description>
+  </rule>
+</group>
+
+<group name="syslog,sshd,">
+  <rule id="99902" level="13">
+    <if_sid>5715</if_sid>
+    <list field="src_ip" lookup="match_key">etc/lists/malicious-ip</list>
+    <description>sshd: Authentication succeeded from a malicious IP address $(srcip).</description>
+    <group>authentication_failed,authentication_success,pci_dss_10.2.4,pci_dss_10.2.5,</group>
+  </rule>
+
+  <rule id="99903" level="13">
+    <if_sid>5716</if_sid>
+  <list field="src_ip" lookup="match_key">etc/lists/malicious-ip</list>
+    <description>sshd: Authentication failed from a malicious IP address $(srcip).</description>
+    <group>authentication_failed,authentication_success,pci_dss_10.2.4,pci_dss_10.2.5,</group>
+  </rule>
+</group>
+
+<group name="web,accesslog,">
+  <rule id="99902" level="13">
+    <if_sid>92501</if_sid>
+    <list field="source_ip" lookup="match_key">etc/lists/malicious-ip</list>
+    <description>Connection from malicious IP $(source_ip) detected.</description>
+  </rule>
+
+  <rule id="99902" level="13">
+    <if_sid>31153</if_sid>
+    <list field="source_ip" lookup="match_key">etc/lists/malicious-ip</list>
+    <description>Multiple common web attacks from the same malicious IP address $(source_ip).</description>
   </rule>
 </group>
