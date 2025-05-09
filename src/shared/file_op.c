@@ -2764,7 +2764,7 @@ FILE * wfopen(const char * pathname, const char * mode) {
     FILE * fp;
     int i;
 
-    if (pathname && strchr("\\/", pathname[0]) && strchr("\\/?\"<>|", pathname[1])) {
+    if (is_network_path(pathname)) {
         errno = EINVAL;
         return NULL;
     }
