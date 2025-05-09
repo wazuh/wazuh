@@ -27,6 +27,8 @@
 #define FindFirstFile wrap_FindFirstFile
 #undef FindNextFile
 #define FindNextFile wrap_FindNextFile
+#undef GetDriveTypeA
+#define GetDriveTypeA wrap_GetDriveTypeA
 
 HANDLE wrap_CreateFile(LPCSTR lpFileName,
                        DWORD dwDesiredAccess,
@@ -66,5 +68,7 @@ BOOL wrap_GetFileTime(HANDLE     hFile,
 HANDLE wrap_FindFirstFile(LPCSTR lpFileName,  LPWIN32_FIND_DATAA lpFindFileData);
 
 BOOL wrap_FindNextFile(HANDLE hFindFile, LPWIN32_FIND_DATAA lpFindFileData);
+
+UINT wrap_GetDriveTypeA(LPCSTR lpRootPathName);
 
 #endif
