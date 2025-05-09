@@ -1,6 +1,6 @@
 {
   "index_patterns": [
-    "wazuh-states-inventory-ports*"
+    "wazuh-states-ports*"
   ],
   "priority": 1,
   "template": {
@@ -110,11 +110,6 @@
         "process": {
           "properties": {
             "name": {
-              "fields": {
-                "text": {
-                  "type": "text"
-                }
-              },
               "ignore_above": 1024,
               "type": "keyword"
             },

@@ -1,6 +1,6 @@
 {
   "index_patterns": [
-    "wazuh-states-inventory-packages*"
+    "wazuh-states-packages*"
   ],
   "priority": 1,
   "template": {
