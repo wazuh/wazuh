@@ -1659,6 +1659,7 @@ def test_asyncio_exception_handler(format_tb, mock_loop, mock_logging):
     mock_logging.assert_called_once_with(output)
 
 
+@patch('wazuh.core.common.INSTALLATION_UID_PATH', os.path.join('/tmp', 'installation_uid'))
 def test_wazuh_json_encoder_default():
     """Test if a special JSON encoder is defined for Wazuh."""
 
@@ -1718,6 +1719,7 @@ def test_wazuh_json_encoder_default():
             wazuh_encoder.default({"key": "value"})
 
 
+@patch('wazuh.core.common.INSTALLATION_UID_PATH', os.path.join('/tmp', 'installation_uid'))
 def test_as_wazuh_object_ok():
     """Test the different outputs taking into account the input values."""
 
@@ -1761,6 +1763,7 @@ def test_as_wazuh_object_ok():
            {"__wazuh_datetime_bad__": "2021-10-14"}
 
 
+@patch('wazuh.core.common.INSTALLATION_UID_PATH', os.path.join('/tmp', 'installation_uid'))
 def test_as_wazuh_object_ko():
     """Test if the exceptions are correctly raised."""
 
