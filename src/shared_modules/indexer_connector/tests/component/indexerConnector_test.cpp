@@ -415,7 +415,8 @@ TEST_F(IndexerConnectorTest, NoPublish)
     // Now we create the normal object and check the data is synced without pushing it again
 
     indexerConnector.reset();
-    indexerConnector = std::make_shared<IndexerConnector>(indexerConfig, TEMPLATE_FILE_PATH, nullptr, INDEXER_TIMEOUT);
+    indexerConnector =
+        std::make_shared<IndexerConnector>(indexerConfig, TEMPLATE_FILE_PATH, "", nullptr, INDEXER_TIMEOUT);
     ASSERT_NO_THROW(waitUntil([this]() { return m_indexerServers[A_IDX]->initialized(); }, MAX_INDEXER_INIT_TIME_MS));
 
     auto searchCallbackCalled {false};
