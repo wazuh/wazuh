@@ -3229,6 +3229,32 @@ float DirSize(const char *path) {
     return folder_size;
 }
 
+// Checks if a given path is located on network storage.
+
+bool is_network_path(const char *path) {
+    if (!path || !*path) {
+        return false;
+    }
+
+    // Case 1: UNC path (\\server\share\...)
+    if (PathIsUNCA(path)) {
+        return true;
+    }
+
+    // Case 2: Absolute path on mapped network drive
+    if (strlen(path) >= 2 && path[1] == ':') {
+        char root[] = "X:\\";
+        root[0] = path[0];
+
+        UINT type = GetDriveTypeA(root);
+        if (type == DRIVE_REMOTE) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 #endif
 
 

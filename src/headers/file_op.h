@@ -550,6 +550,17 @@ FILE * w_fopen_r(const char *file, const char * mode, BY_HANDLE_FILE_INFORMATION
  */
 char **expand_win32_wildcards(const char *path);
 
+/**
+ * @brief Checks if a given path is located on network storage.
+ *
+ * This function detects both UNC paths (e.g. "\\\\server\\share\\...") and
+ * paths on drives mapped to remote locations (e.g. "Z:\\folder\\file.txt").
+ *
+ * @param path A null-terminated string containing the file path to check.
+ * @return true if the path points to a network location, false otherwise.
+ */
+bool is_network_path(const char *path);
+
 #endif // Windows
 
 /**
