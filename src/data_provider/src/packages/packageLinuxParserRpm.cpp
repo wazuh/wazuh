@@ -140,7 +140,7 @@ void getRpmPythonPackages(std::unordered_set<std::string>& pythonPackages)
 
                         if (std::filesystem::is_regular_file(baseInfoPath))
                         {
-                            pythonPackages.insert(baseInfoPath);
+                            pythonPackages.insert(std::move(baseInfoPath));
                         }
                         else
                         {
@@ -148,7 +148,7 @@ void getRpmPythonPackages(std::unordered_set<std::string>& pythonPackages)
 
                             if (std::filesystem::exists(fullPath))
                             {
-                                pythonPackages.insert(fullPath);
+                                pythonPackages.insert(std::move(fullPath));
                             }
                         }
                     }

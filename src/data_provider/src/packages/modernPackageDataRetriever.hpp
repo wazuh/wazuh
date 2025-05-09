@@ -38,7 +38,7 @@ template <bool>
 class ModernFactoryPackagesCreator final
 {
     public:
-        static void getPackages(const std::map<std::string, std::set<std::string>>& /*paths*/, std::function<void(nlohmann::json&)> /*callback*/)
+        static void getPackages(const std::map<std::string, std::set<std::string>>& /*paths*/, std::function<void(nlohmann::json&)> /*callback*/, const std::unordered_set<std::string>& /*excludePaths*/ = {})
         {
         }
 };
@@ -51,8 +51,9 @@ class ModernFactoryPackagesCreator<true> final
     public:
         static void getPackages(const std::map<std::string, std::set<std::string>>& paths, std::function<void(nlohmann::json&)> callback, const std::unordered_set<std::string>& excludePaths = {})
         {
-            PYPI().getPackages(paths.at("PYPI"), callback, excludePaths);
-            NPM().getPackages(paths.at("NPM"), callback);
+            auto cbCopy {callback};
+            PYPI().getPackages(paths.at("PYPI"), std::move(callback), excludePaths);
+            NPM().getPackages(paths.at("NPM"), std::move(cbCopy));
         }
 };
 

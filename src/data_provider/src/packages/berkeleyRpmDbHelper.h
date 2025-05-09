@@ -44,6 +44,7 @@ constexpr int STRING_VECTOR_TYPE { 9 };
 
 //This constant is defined with this value in the RPM source code (header.c)
 constexpr int HEADER_TAGS_MAX { 65535 };
+constexpr int DIRINDEX_MAX { 10000 };
 
 struct BerkeleyHeaderEntry final
 {
@@ -230,7 +231,13 @@ class BerkeleyRpmDBReader final
                         {
                             for (int i = 0; i < it->count; ++i)
                             {
-                                dirindexes.push_back(Utils::toInt32BE(reinterpret_cast<uint8_t*>(ucp)));
+                                int index = Utils::toInt32BE(reinterpret_cast<uint8_t*>(ucp));
+
+                                if (index >= 0 && index < DIRINDEX_MAX)
+                                {
+                                    dirindexes.push_back(index);
+                                }
+
                                 ucp += sizeof(int32_t);
                             }
                         }
@@ -259,10 +266,10 @@ class BerkeleyRpmDBReader final
                 {
                     for (size_t i = 0; i < basenames.size(); ++i)
                     {
-                        if (dirindexes[i] < static_cast<int>(dirnames.size()))
+                        if (dirindexes[i] >= 0 && dirindexes[i] < static_cast<int>(dirnames.size()))
                         {
                             std::string fullPath = dirnames[dirindexes[i]] + basenames[i];
-                            pythonFiles.push_back(fullPath);
+                            pythonFiles.push_back(std::move(fullPath));
                         }
                     }
                 }
