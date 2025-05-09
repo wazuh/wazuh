@@ -42,6 +42,19 @@ void RootcheckInit()
     return;
 }
 
+void RootcheckHotReload()
+{
+    if (rootcheck_dec)
+    {
+        rootcheck_dec->id = getDecoderfromlist(ROOTCHECK_MOD, &os_analysisd_decoder_store);
+        mdebug1("RootcheckHotReload completed.");
+    }
+    else
+    {
+        mdebug1("Rootcheck decoder not initialized.");
+    }
+}
+
 /* Special decoder for rootcheck
  * Not using the default rendering tools for simplicity
  * and to be less resource intensive
