@@ -2646,7 +2646,7 @@ w_hotreload_ruleset_data_t * w_hotreload_create_ruleset(OSList * list_msg) {
     }
 
     /* Initiate the FTS list */
-    if (!w_logtest_fts_init(&ruleset->fts_list, &ruleset->fts_store)) {
+    if (FTS_HotReload(&ruleset->fts_list, &ruleset->fts_store) < 0) {
         w_hotreload_clean_ruleset(&ruleset);
         return NULL;
     }
@@ -2693,8 +2693,11 @@ void w_hotreload_clean_ruleset(w_hotreload_ruleset_data_t ** ptr_ruleset) {
     if (ruleset->fts_store) {
         OSHash_Free(ruleset->fts_store);
     }
-    OSList_CleanOnlyNodes(ruleset->fts_list);
-    os_free(ruleset->fts_list);
+
+    if (ruleset->fts_list) {
+        OSList_CleanOnlyNodes(ruleset->fts_list);
+        os_free(ruleset->fts_list);
+    }
 
     /* Remove accumulator hash */
     if (ruleset->acm_store) {

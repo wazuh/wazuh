@@ -124,6 +124,10 @@ int __wrap_Accumulate_Init(OSHash ** acm_store, int * acm_lookups, time_t * acm_
     return mock_type(int);
 }
 
+void __wrap_w_analysisd_accumulate_free(OSHash **acm_store) {
+    function_called();
+}
+
 OSStore *__wrap_OSStore_Free(OSStore *list) {
     return mock_type(OSStore *);
 }
@@ -131,6 +135,22 @@ OSStore *__wrap_OSStore_Free(OSStore *list) {
 OSHash *__wrap_OSHash_Create() {
     return mock_type(OSHash *);
 }
+
+void * __wrap_OSHash_Free(OSHash *self) {
+    return mock_type(void *);
+}
+
+int __wrap_FTS_HotReload(OSList ** fts_list, OSHash ** fts_store) {
+    int retval = mock_type(int);
+    if (retval >= 0) {
+        os_calloc(1, sizeof(OSList), *fts_list);
+        *fts_store = (OSHash *) 8;
+    }
+
+    return retval;
+}
+
+void __wrap_OSList_CleanOnlyNodes(OSList * list) { function_called(); }
 
 /* Test for w_hotreload_reload_internal_decoders */
 void test_w_hotreload_reload_internal_decoders(void ** state) {
@@ -810,7 +830,7 @@ void test_w_hotreload_create_ruleset_fail_rule_hash(void ** state) {
         expect_function_call_any(__wrap_Lists_OP_MakeAll);
     }
 
-    // Load rules fail ash
+    // Load rules fail hash
     {
         will_return(__wrap_Rules_OP_ReadRules, 0);
         expect_function_call(__wrap_OS_ListLoadRules);
@@ -828,6 +848,233 @@ void test_w_hotreload_create_ruleset_fail_rule_hash(void ** state) {
     ruleset = w_hotreload_create_ruleset(&list_msg);
     assert_null(ruleset);
 }
+
+void test_w_hotreload_create_ruleset_fail_FTS_HotReload(void ** state) {
+
+    OSList list_msg = {0};
+
+    expect_function_call_any(__wrap_OS_CreateEventList);
+
+    // Success ruleset load
+    {
+        expect_function_call_any(__wrap_OS_ClearNode);
+        will_return(__wrap_OS_ReadXML, 0);
+        XML_NODE node;
+        os_calloc(2, sizeof(xml_node *), node);
+        /* <ossec_config></> */
+        os_calloc(1, sizeof(xml_node), node[0]);
+        os_strdup("ossec_config", node[0]->element);
+        will_return(__wrap_OS_GetElementsbyNode, node);
+
+        // w_logtest_ruleset_load_config ok
+        XML_NODE conf_section_nodes;
+        os_calloc(3, sizeof(xml_node *), conf_section_nodes);
+        os_calloc(1, sizeof(xml_node), conf_section_nodes[0]);
+        will_return(__wrap_OS_GetElementsbyNode, conf_section_nodes);
+
+        /* xml ruleset */
+        os_strdup("ruleset", conf_section_nodes[0]->element);
+
+        will_return(__wrap_OS_GetElementsbyNode, (xml_node **) calloc(1, sizeof(xml_node *)));
+        will_return(__wrap_Read_Rules, 0);
+    }
+
+    // Load decoders OK
+    {
+        will_return(__wrap_ReadDecodeXML, 1);
+        will_return(__wrap_SetDecodeXML, 1);
+    }
+
+    // Load CDB OK
+    {
+        will_return(__wrap_Lists_OP_LoadList, 0);
+        expect_function_call_any(__wrap_Lists_OP_MakeAll);
+    }
+
+    // Load rules OK
+    {
+        will_return(__wrap_Rules_OP_ReadRules, 0);
+        expect_function_call(__wrap_OS_ListLoadRules);
+        will_return(__wrap__setlevels, 100);
+
+        will_return(__wrap_OSHash_Create, (OSHash *) 0x1);
+        will_return(__wrap_AddHash_Rule, 0);
+    }
+
+    // Fail FTS_HotReload
+    {
+        will_return(__wrap_FTS_HotReload, -1);
+    }
+
+    // Free expected
+    {
+        will_return(__wrap_OSHash_Free, NULL);
+        will_return(__wrap_OSStore_Free, NULL);
+    }
+
+    w_hotreload_ruleset_data_t * ruleset = NULL;
+    ruleset = w_hotreload_create_ruleset(&list_msg);
+    assert_null(ruleset);
+}
+
+void test_w_hotreload_create_ruleset_fail_acm(void ** state) {
+
+    OSList list_msg = {0};
+
+    expect_function_call_any(__wrap_OS_CreateEventList);
+
+    // Success ruleset load
+    {
+        expect_function_call_any(__wrap_OS_ClearNode);
+        will_return(__wrap_OS_ReadXML, 0);
+        XML_NODE node;
+        os_calloc(2, sizeof(xml_node *), node);
+        /* <ossec_config></> */
+        os_calloc(1, sizeof(xml_node), node[0]);
+        os_strdup("ossec_config", node[0]->element);
+        will_return(__wrap_OS_GetElementsbyNode, node);
+
+        // w_logtest_ruleset_load_config ok
+        XML_NODE conf_section_nodes;
+        os_calloc(3, sizeof(xml_node *), conf_section_nodes);
+        os_calloc(1, sizeof(xml_node), conf_section_nodes[0]);
+        will_return(__wrap_OS_GetElementsbyNode, conf_section_nodes);
+
+        /* xml ruleset */
+        os_strdup("ruleset", conf_section_nodes[0]->element);
+
+        will_return(__wrap_OS_GetElementsbyNode, (xml_node **) calloc(1, sizeof(xml_node *)));
+        will_return(__wrap_Read_Rules, 0);
+    }
+
+    // Load decoders OK
+    {
+        will_return(__wrap_ReadDecodeXML, 1);
+        will_return(__wrap_SetDecodeXML, 1);
+    }
+
+    // Load CDB OK
+    {
+        will_return(__wrap_Lists_OP_LoadList, 0);
+        expect_function_call_any(__wrap_Lists_OP_MakeAll);
+    }
+
+    // Load rules OK
+    {
+        will_return(__wrap_Rules_OP_ReadRules, 0);
+        expect_function_call(__wrap_OS_ListLoadRules);
+        will_return(__wrap__setlevels, 100);
+
+        will_return(__wrap_OSHash_Create, (OSHash *) 0x1);
+        will_return(__wrap_AddHash_Rule, 0);
+    }
+
+    // Success FTS_HotReload
+    {
+        will_return(__wrap_FTS_HotReload, 0);
+    }
+
+    // Fail ACM Init
+    {
+        g_test_load_acm_store = false;  // No reszerve memory
+        will_return(__wrap_Accumulate_Init, 0);
+    }
+
+    // Free expected
+    {
+        will_return(__wrap_OSHash_Free, NULL);
+        will_return(__wrap_OSStore_Free, NULL);
+        will_return(__wrap_OSHash_Free, NULL);
+        expect_function_call(__wrap_OSList_CleanOnlyNodes);
+    }
+
+    w_hotreload_ruleset_data_t * ruleset = NULL;
+    ruleset = w_hotreload_create_ruleset(&list_msg);
+    assert_null(ruleset);
+}
+
+void test_w_hotreload_create_ruleset_success(void ** state) {
+
+    OSList list_msg = {0};
+
+    expect_function_call_any(__wrap_OS_CreateEventList);
+
+    // Success ruleset load
+    {
+        expect_function_call_any(__wrap_OS_ClearNode);
+        will_return(__wrap_OS_ReadXML, 0);
+        XML_NODE node;
+        os_calloc(2, sizeof(xml_node *), node);
+        /* <ossec_config></> */
+        os_calloc(1, sizeof(xml_node), node[0]);
+        os_strdup("ossec_config", node[0]->element);
+        will_return(__wrap_OS_GetElementsbyNode, node);
+
+        // w_logtest_ruleset_load_config ok
+        XML_NODE conf_section_nodes;
+        os_calloc(3, sizeof(xml_node *), conf_section_nodes);
+        os_calloc(1, sizeof(xml_node), conf_section_nodes[0]);
+        will_return(__wrap_OS_GetElementsbyNode, conf_section_nodes);
+
+        /* xml ruleset */
+        os_strdup("ruleset", conf_section_nodes[0]->element);
+
+        will_return(__wrap_OS_GetElementsbyNode, (xml_node **) calloc(1, sizeof(xml_node *)));
+        will_return(__wrap_Read_Rules, 0);
+    }
+
+    // Load decoders OK
+    {
+        will_return(__wrap_ReadDecodeXML, 1);
+        will_return(__wrap_SetDecodeXML, 1);
+    }
+
+    // Load CDB OK
+    {
+        will_return(__wrap_Lists_OP_LoadList, 0);
+        expect_function_call_any(__wrap_Lists_OP_MakeAll);
+    }
+
+    // Load rules OK
+    {
+        will_return(__wrap_Rules_OP_ReadRules, 0);
+        expect_function_call(__wrap_OS_ListLoadRules);
+        will_return(__wrap__setlevels, 100);
+
+        will_return(__wrap_OSHash_Create, (OSHash *) 0x1);
+        will_return(__wrap_AddHash_Rule, 0);
+    }
+
+    // Success FTS_HotReload
+    {
+        will_return(__wrap_FTS_HotReload, 0);
+    }
+
+    // Success ACM Init
+    {
+        g_test_load_acm_store = true;  
+        will_return(__wrap_Accumulate_Init, 1);
+    }
+
+
+    w_hotreload_ruleset_data_t * ruleset = NULL;
+    ruleset = w_hotreload_create_ruleset(&list_msg);
+    assert_non_null(ruleset);
+
+    // Clean
+    // Free expected
+    {
+        will_return(__wrap_OSHash_Free, NULL);
+        will_return(__wrap_OSStore_Free, NULL);
+        will_return(__wrap_OSHash_Free, NULL);
+        expect_function_call(__wrap_OSList_CleanOnlyNodes);
+        expect_function_call(__wrap_w_analysisd_accumulate_free);
+    }
+    w_hotreload_clean_ruleset(&ruleset);
+    os_free(ruleset);
+}
+
+
 
 int main(void) {
     const struct CMUnitTest tests[] = {
@@ -858,6 +1105,9 @@ int main(void) {
         cmocka_unit_test(test_w_hotreload_create_ruleset_fail_OP_LoadList),
         cmocka_unit_test(test_w_hotreload_create_ruleset_fail_Read_OP_Readrules),
         cmocka_unit_test(test_w_hotreload_create_ruleset_fail_rule_hash),
+        cmocka_unit_test(test_w_hotreload_create_ruleset_fail_FTS_HotReload),
+        cmocka_unit_test(test_w_hotreload_create_ruleset_fail_acm),
+        cmocka_unit_test(test_w_hotreload_create_ruleset_success),
 
         /* Test for w_hotreload_clean_ruleset */
 
