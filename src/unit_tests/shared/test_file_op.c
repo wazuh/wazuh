@@ -1172,6 +1172,34 @@ void test_expand_win32_wildcards_file_with_next_glob(void **state) {
     }
 }
 
+void test_is_network_path_null(void **state) {
+    char *path = NULL;
+    int ret = is_network_path(path);
+    assert_int_equal(ret, 0);
+
+    path = "";
+    ret = is_network_path(path);
+    assert_int_equal(ret, 0);
+}
+
+void test_is_network_path_unc(void **state) {
+    char *path = "\\\\server\\share";
+    int ret = is_network_path(path);
+    assert_int_equal(ret, 1);
+}
+
+void test_is_network_path_network(void **state) {
+    char *path = "Z:\\file.txt";
+    int ret = is_network_path(path);
+    assert_int_equal(ret, 1);
+}
+
+void test_is_network_path_local(void **state) {
+    char *path = "C:\\file.txt";
+    int ret = is_network_path(path);
+    assert_int_equal(ret, 0);
+}
+
 #endif
 
 int main(void) {
@@ -1230,7 +1258,11 @@ int main(void) {
         cmocka_unit_test_teardown(test_expand_win32_wildcards_back_link, teardown_win32_wildcards),
         cmocka_unit_test_teardown(test_expand_win32_wildcards_directories, teardown_win32_wildcards),
         cmocka_unit_test_teardown(test_expand_win32_wildcards_directories_reparse_point, teardown_win32_wildcards),
-        cmocka_unit_test_teardown(test_expand_win32_wildcards_file_with_next_glob, teardown_win32_wildcards)
+        cmocka_unit_test_teardown(test_expand_win32_wildcards_file_with_next_glob, teardown_win32_wildcards),
+        cmocka_unit_test(test_is_network_path_null),
+        cmocka_unit_test(test_is_network_path_unc),
+        cmocka_unit_test(test_is_network_path_network),
+        cmocka_unit_test(test_is_network_path_local),
 
 #endif
     };
