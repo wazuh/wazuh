@@ -1659,7 +1659,12 @@ def test_asyncio_exception_handler(format_tb, mock_loop, mock_logging):
     mock_logging.assert_called_once_with(output)
 
 
-def test_wazuh_json_encoder_default():
+@patch('wazuh.core.common.os.chmod')
+@patch('wazuh.core.common.os.chown')
+@patch('wazuh.core.common.wazuh_gid', return_value=0)
+@patch('wazuh.core.common.wazuh_uid', return_value=0)
+@patch('wazuh.core.common.INSTALLATION_UID_PATH', os.path.join('/tmp', 'installation_uid'))
+def test_wazuh_json_encoder_default(mock_chmod, mock_chown, mock_gid, mock_uid):
     """Test if a special JSON encoder is defined for Wazuh."""
 
     wazuh_encoder = cluster_common.WazuhJSONEncoder()
@@ -1718,7 +1723,12 @@ def test_wazuh_json_encoder_default():
             wazuh_encoder.default({"key": "value"})
 
 
-def test_as_wazuh_object_ok():
+@patch('wazuh.core.common.os.chmod')
+@patch('wazuh.core.common.os.chown')
+@patch('wazuh.core.common.wazuh_gid', return_value=0)
+@patch('wazuh.core.common.wazuh_uid', return_value=0)
+@patch('wazuh.core.common.INSTALLATION_UID_PATH', os.path.join('/tmp', 'installation_uid'))
+def test_as_wazuh_object_ok(mock_chmod, mock_chown, mock_gid, mock_uid):
     """Test the different outputs taking into account the input values."""
 
     # Test the first condition and nested if
@@ -1761,7 +1771,12 @@ def test_as_wazuh_object_ok():
            {"__wazuh_datetime_bad__": "2021-10-14"}
 
 
-def test_as_wazuh_object_ko():
+@patch('wazuh.core.common.os.chmod')
+@patch('wazuh.core.common.os.chown')
+@patch('wazuh.core.common.wazuh_gid', return_value=0)
+@patch('wazuh.core.common.wazuh_uid', return_value=0)
+@patch('wazuh.core.common.INSTALLATION_UID_PATH', os.path.join('/tmp', 'installation_uid'))
+def test_as_wazuh_object_ko(mock_chmod, mock_chown, mock_gid, mock_uid):
     """Test if the exceptions are correctly raised."""
 
     with pytest.raises(exception.WazuhInternalError, match=r'.* 1000 .*'):
