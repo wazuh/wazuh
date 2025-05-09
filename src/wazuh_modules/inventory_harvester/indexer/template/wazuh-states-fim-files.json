@@ -1,6 +1,6 @@
 {
   "index_patterns": [
-    "wazuh-states-fim-files*"
+    "wazuh-states-files*"
   ],
   "priority": 1,
   "template": {
@@ -107,7 +107,7 @@
             "path": {
               "fields": {
                 "text": {
-                  "type": "text"
+                  "type": "keyword"
                 }
               },
               "ignore_above": 1024,

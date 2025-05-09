@@ -1,6 +1,6 @@
 {
   "index_patterns": [
-    "wazuh-states-inventory-hotfixes*"
+    "wazuh-states-hotfixes*"
   ],
   "priority": 1,
   "template": {

@@ -1,6 +1,6 @@
 {
   "index_patterns": [
-    "wazuh-states-inventory-hardware*"
+    "wazuh-states-hardware*"
   ],
   "priority": 1,
   "template": {

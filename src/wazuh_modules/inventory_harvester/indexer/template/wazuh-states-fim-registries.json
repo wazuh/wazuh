@@ -1,6 +1,6 @@
 {
   "index_patterns": [
-    "wazuh-states-fim-registries*"
+    "wazuh-states-registries*"
   ],
   "priority": 1,
   "template": {
