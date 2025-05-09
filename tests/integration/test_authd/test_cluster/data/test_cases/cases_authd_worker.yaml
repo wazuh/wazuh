@@ -4,7 +4,7 @@
     FERNET_KEY: x1b1y3fwf7tywwhqzzasom2czwk7zuj0
   metadata:
     fernet_key: x1b1y3fwf7tywwhqzzasom2czwk7zuj0
-    port_input: "OSSEC A:'user1'"
+    port_input: "OSSEC A:'user1'\n"
     cluster_input: '{"daemon_name":"authd","message":{"arguments":{"name":"user1","ip":"any"},"function":"add"}}'
     cluster_output: '{"error":0,"data":{"id":"001","name":"user1","ip":"any","key":"675aaf366e6827ee7a77b2f7b4d89e603a21333c09afbb02c40191f199d7c915"}}'
     port_output: "OSSEC K:'"
@@ -15,7 +15,7 @@
     FERNET_KEY: x1b1y3fwf7tywwhqzzasom2czwk7zuj0
   metadata:
     fernet_key: x1b1y3fwf7tywwhqzzasom2czwk7zuj0
-    port_input: "OSSEC A:'user2' G:'Group1'"
+    port_input: "OSSEC A:'user2' G:'Group1'\n"
     cluster_input: '{"daemon_name":"authd","message":{"arguments":{"name":"user2","ip":"any","groups":"Group1"},"function":"add"}}'
     cluster_output: '{"error":0,"data":{"id":"002","name":"user2","ip":"any","key":"675aaf366e6827ee7a77b2f7b4d89e603a21333c09afbb02c40191f199d7c915"}}'
     port_output: "OSSEC K:'"
@@ -26,7 +26,7 @@
     FERNET_KEY: x1b1y3fwf7tywwhqzzasom2czwk7zuj0
   metadata:
     fernet_key: x1b1y3fwf7tywwhqzzasom2czwk7zuj0
-    port_input: "OSSEC A:'user3' G:'Group1,Group2'"
+    port_input: "OSSEC A:'user3' G:'Group1,Group2'\n"
     cluster_input: '{"daemon_name":"authd","message":{"arguments":{"name":"user3","ip":"any","groups":"Group1,Group2"},"function":"add"}}'
     cluster_output: '{"error":0,"data":{"id":"003","name":"user3","ip":"any","key":"675aaf366e6827ee7a77b2f7b4d89e603a21333c09afbb02c40191f199d7c915"}}'
     port_output: "OSSEC K:'"
@@ -37,7 +37,7 @@
     FERNET_KEY: x1b1y3fwf7tywwhqzzasom2czwk7zuj0
   metadata:
     FERNET_KEY: x1b1y3fwf7tywwhqzzasom2czwk7zuj0
-    port_input: "OSSEC A:'user4' IP:'192.0.0.0'"
+    port_input: "OSSEC A:'user4' IP:'192.0.0.0'\n"
     cluster_input: '{"daemon_name":"authd","message":{"arguments":{"name":"user4","ip":"192.0.0.0"},"function":"add"}}'
     cluster_output: '{"error":0,"data":{"id":"003","name":"user4","ip":"192.0.0.0","key":"675aaf366e6827ee7a77b2f7b4d89e603a21333c09afbb02c40191f199d7c915"}}'
     port_output: "OSSEC K:'"
@@ -48,7 +48,7 @@
     FERNET_KEY: x1b1y3fwf7tywwhqzzasom2czwk7zuj0
   metadata:
     FERNET_KEY: x1b1y3fwf7tywwhqzzasom2czwk7zuj0
-    port_input: "OSSEC A:'user1'"
+    port_input: "OSSEC A:'user1'\n"
     cluster_input: '{"daemon_name":"authd","message":{"arguments":{"name":"user1","ip":"any"},"function":"add"}}'
     cluster_output: '{"error":9008,"message":"Duplicate name"}'
     port_output: "ERROR: Duplicate name"
@@ -59,7 +59,7 @@
     FERNET_KEY: x1b1y3fwf7tywwhqzzasom2czwk7zuj0
   metadata:
     FERNET_KEY: x1b1y3fwf7tywwhqzzasom2czwk7zuj0
-    port_input: "OSSEC A:'user_' G:'GroupA'"
+    port_input: "OSSEC A:'user_' G:'GroupA'\n"
     cluster_input: '{"daemon_name":"authd","message":{"arguments":{"name":"user_","ip":"any","groups":"GroupA"},"function":"add"}}'
     cluster_output: '{"error":9014,"message":"Invalid Group(s) Name(s)"}'
     port_output: 'ERROR: Invalid Group(s) Name(s)'
@@ -70,7 +70,7 @@
     FERNET_KEY: x1b1y3fwf7tywwhqzzasom2czwk7zuj0
   metadata:
     FERNET_KEY: x1b1y3fwf7tywwhqzzasom2czwk7zuj0
-    port_input: "OSSEC A:'user_' IP:'192.0.0.0'"
+    port_input: "OSSEC A:'user_' IP:'192.0.0.0'\n"
     cluster_input: '{"daemon_name":"authd","message":{"arguments":{"name":"user_","ip":"192.0.0.0"},"function":"add"}}'
     cluster_output: '{"error":9007,"message":"Duplicate IP"}'
     port_output: 'ERROR: Duplicate IP'
@@ -82,7 +82,7 @@
     FERNET_KEY: x1b1y3fwf7tywwhqzzasom2czwk7zuj0
   metadata:
     FERNET_KEY: x1b1y3fwf7tywwhqzzasom2czwk7zuj0
-    port_input: "OSSEC A:'user1' K:'123ABC'"
+    port_input: "OSSEC A:'user1' K:'123ABC'\n"
     cluster_input: '{"daemon_name":"authd","message":{"arguments":{"name":"user1","ip":"any","key_hash":"123ABC"},"function":"add"}}'
     cluster_output: '{"error":0,"data":{"id":"001","name":"user1","ip":"any","key":"675aaf366e6827ee7a77b2f7b4d89e603a21333c09afbb02c40191f199d7c915"}}'
     port_output: "OSSEC K:'"
@@ -93,7 +93,7 @@
     FERNET_KEY: x1b1y3fwf7tywwhqzzasom2czwk7zuj0
   metadata:
     FERNET_KEY: x1b1y3fwf7tywwhqzzasom2czwk7zuj0
-    port_input: "OSSEC A:'user1' G:'Group1' IP:'10.10.10.10' K:'123ABC'"
+    port_input: "OSSEC A:'user1' G:'Group1' IP:'10.10.10.10' K:'123ABC'\n"
     cluster_input: '{"daemon_name":"authd","message":{"arguments":{"name":"user1","ip":"10.10.10.10","groups":"Group1","key_hash":"123ABC"},"function":"add"}}'
     cluster_output: '{"error":0,"data":{"id":"001","name":"user1","ip":"10.10.10.10","key":"675aaf366e6827ee7a77b2f7b4d89e603a21333c09afbb02c40191f199d7c915"}}'
     port_output: "OSSEC K:'"
