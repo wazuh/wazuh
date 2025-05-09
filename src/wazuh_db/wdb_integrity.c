@@ -57,7 +57,7 @@ extern void mock_assert(const int result, const char* const expression,
 #endif
 
 void wdbi_report_removed(const char* agent_id, wdb_component_t component, sqlite3_stmt* stmt) {
-    if (!router_agent_events_handle) {
+    if (!router_fim_events_handle || !router_inventory_events_handle) {
         mdebug2("Router handle not available.");
         return;
     }
@@ -69,6 +69,7 @@ void wdbi_report_removed(const char* agent_id, wdb_component_t component, sqlite
     int result = SQLITE_ERROR;
 
     do{
+        ROUTER_PROVIDER_HANDLE router_handle = NULL;
         j_msg_to_send = cJSON_CreateObject();
         j_agent_info = cJSON_CreateObject();
         j_data = cJSON_CreateObject();
@@ -81,6 +82,7 @@ void wdbi_report_removed(const char* agent_id, wdb_component_t component, sqlite
             case WDB_SYSCOLLECTOR_HOTFIXES:
                 cJSON_AddStringToObject(j_msg_to_send, "action", "deleteHotfix");
                 cJSON_AddItemToObject(j_data, "hotfix", cJSON_CreateString((const char*) sqlite3_column_text(stmt, 0)));
+                router_handle = router_inventory_events_handle;
                 break;
             case WDB_SYSCOLLECTOR_PACKAGES:
                 cJSON_AddStringToObject(j_msg_to_send, "action", "deletePackage");
@@ -90,6 +92,70 @@ void wdbi_report_removed(const char* agent_id, wdb_component_t component, sqlite
                 cJSON_AddItemToObject(j_data, "format", cJSON_CreateString((const char*) sqlite3_column_text(stmt, 3)));
                 cJSON_AddItemToObject(j_data, "location", cJSON_CreateString((const char*) sqlite3_column_text(stmt, 4)));
                 cJSON_AddItemToObject(j_data, "item_id", cJSON_CreateString((const char*) sqlite3_column_text(stmt, 5)));
+                router_handle = router_inventory_events_handle;
+                break;
+            case WDB_SYSCOLLECTOR_PROCESSES:
+                cJSON_AddStringToObject(j_msg_to_send, "action", "deleteProcess");
+                cJSON_AddItemToObject(j_data, "pid", cJSON_CreateString((const char*) sqlite3_column_text(stmt, 0)));
+                router_handle = router_inventory_events_handle;
+                break;
+            case WDB_SYSCOLLECTOR_PORTS:
+                cJSON_AddStringToObject(j_msg_to_send, "action", "deletePort");
+                cJSON_AddItemToObject(j_data, "protocol", cJSON_CreateString((const char*) sqlite3_column_text(stmt, 0)));
+                cJSON_AddItemToObject(j_data, "local_ip", cJSON_CreateString((const char*) sqlite3_column_text(stmt, 1)));
+                cJSON_AddItemToObject(j_data, "local_port", cJSON_CreateNumber(sqlite3_column_int64(stmt, 2)));
+                cJSON_AddItemToObject(j_data, "inode", cJSON_CreateNumber(sqlite3_column_int64(stmt, 3)));
+                cJSON_AddItemToObject(j_data, "item_id", cJSON_CreateString((const char*) sqlite3_column_text(stmt, 4)));
+                router_handle = router_inventory_events_handle;
+                break;
+            case WDB_SYSCOLLECTOR_HWINFO:
+                cJSON_AddStringToObject(j_msg_to_send, "action", "deleteHardware");
+                cJSON_AddItemToObject(j_data, "board_serial", cJSON_CreateString((const char*) sqlite3_column_text(stmt, 0)));
+                router_handle = router_inventory_events_handle;
+                break;
+            case WDB_SYSCOLLECTOR_NETPROTO:
+                cJSON_AddStringToObject(j_msg_to_send, "action", "deleteNetProto");
+                cJSON_AddItemToObject(j_data, "item_id", cJSON_CreateString((const char*) sqlite3_column_text(stmt, 0)));
+                router_handle = router_inventory_events_handle;
+                break;
+            case WDB_SYSCOLLECTOR_NETINFO:
+                cJSON_AddStringToObject(j_msg_to_send, "action", "deleteNetIface");
+                cJSON_AddItemToObject(j_data, "item_id", cJSON_CreateString((const char*) sqlite3_column_text(stmt, 0)));
+                router_handle = router_inventory_events_handle;
+                break;
+            case WDB_SYSCOLLECTOR_NETADDRESS:
+                cJSON_AddStringToObject(j_msg_to_send, "action", "deleteNetworkAddress");
+                cJSON_AddItemToObject(j_data, "item_id", cJSON_CreateString((const char*) sqlite3_column_text(stmt, 0)));
+                router_handle = router_inventory_events_handle;
+                break;
+            case WDB_FIM:
+            case WDB_FIM_FILE:
+                cJSON_AddStringToObject(j_msg_to_send, "action", "deleteFile");
+                cJSON_AddItemToObject(j_data, "path", cJSON_CreateString((const char*) sqlite3_column_text(stmt, 0)));
+                router_handle = router_fim_events_handle;
+                break;
+            case WDB_FIM_REGISTRY:
+                {
+                    const char *type = (const char*) sqlite3_column_text(stmt, 2);
+                    if (type && strcmp(type, "registry_key") == 0) {
+                        cJSON_AddStringToObject(j_msg_to_send, "action", "deleteRegistryKey");
+                    } else {
+                        cJSON_AddStringToObject(j_msg_to_send, "action", "deleteRegistryValue");
+                    }
+                    cJSON_AddItemToObject(j_data, "full_path", cJSON_CreateString((const char*) sqlite3_column_text(stmt, 0)));
+                    router_handle = router_fim_events_handle;
+                }
+                break;
+            case WDB_FIM_REGISTRY_KEY:
+                cJSON_AddStringToObject(j_msg_to_send, "action", "deleteRegistryKey");
+                cJSON_AddItemToObject(j_data, "full_path", cJSON_CreateString((const char*) sqlite3_column_text(stmt, 0)));
+                router_handle = router_fim_events_handle;
+                break;
+
+            case WDB_FIM_REGISTRY_VALUE:
+                cJSON_AddStringToObject(j_msg_to_send, "action", "deleteRegistryValue");
+                cJSON_AddItemToObject(j_data, "full_path", cJSON_CreateString((const char*) sqlite3_column_text(stmt, 0)));
+                router_handle = router_fim_events_handle;
                 break;
             default:
                 break;
@@ -100,7 +166,11 @@ void wdbi_report_removed(const char* agent_id, wdb_component_t component, sqlite
         msg_to_send = cJSON_PrintUnformatted(j_msg_to_send);
 
         if (msg_to_send) {
-            router_provider_send(router_agent_events_handle, msg_to_send, strlen(msg_to_send));
+            if (router_handle) {
+                router_provider_send(router_handle, msg_to_send, strlen(msg_to_send));
+            } else {
+                merror("Invalid handle to send delete message. Agent %s", agent_id);
+            }
         } else {
             mdebug2("Unable to dump delete message to publish. Agent %s", agent_id);
         }

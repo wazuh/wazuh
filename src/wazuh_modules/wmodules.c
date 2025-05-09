@@ -101,6 +101,10 @@ int wm_config() {
     if ((module = wm_download_read()))
         wm_add(module);
 
+    // Inventory harvester
+    if ((module = wm_inventory_harvester_read()))
+        wm_add(module);
+
 #endif
 
 #if defined (__linux__) || (__MACH__) || defined (sun) || defined(FreeBSD) || defined(OpenBSD)

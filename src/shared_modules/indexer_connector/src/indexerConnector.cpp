@@ -58,6 +58,8 @@ constexpr auto SYNC_QUEUE_LIMIT = 4096;
 // Abuse control
 constexpr auto MINIMAL_SYNC_TIME {30}; // In minutes
 
+static std::mutex G_CREDENTIAL_MUTEX;
+
 static void mergeCaRootCertificates(const std::vector<std::string>& filePaths, std::string& caRootCertificate)
 {
     std::string caRootCertificateContentMerged;
@@ -116,8 +118,6 @@ static void initConfiguration(SecureCommunication& secureCommunication, const nl
     std::string caRootCertificate;
     std::string sslCertificate;
     std::string sslKey;
-    std::string username;
-    std::string password;
 
     if (config.contains("ssl"))
     {
@@ -148,8 +148,11 @@ static void initConfiguration(SecureCommunication& secureCommunication, const nl
         }
     }
 
-    Keystore::get(INDEXER_COLUMN, USER_KEY, username);
-    Keystore::get(INDEXER_COLUMN, PASSWORD_KEY, password);
+    // Basically we need to lock a global mutex, because the keystore::get method open the same database connection, and
+    // that action is not thread safe.
+    std::lock_guard lock(G_CREDENTIAL_MUTEX);
+    static auto username = Keystore::get(INDEXER_COLUMN, USER_KEY);
+    static auto password = Keystore::get(INDEXER_COLUMN, PASSWORD_KEY);
 
     if (username.empty() && password.empty())
     {
@@ -223,15 +226,17 @@ nlohmann::json IndexerConnector::getAgentDocumentsIds(const std::string& url,
     nlohmann::json postData;
     nlohmann::json responseJson;
     constexpr auto ELEMENTS_PER_QUERY {10000}; // The max value for queries is 10000 in the wazuh-indexer.
+    std::string scrollId;
 
     postData["query"]["match"]["agent.id"] = agentId;
     postData["size"] = ELEMENTS_PER_QUERY;
     postData["_source"] = nlohmann::json::array({"_id"});
 
     {
-        const auto onSuccess = [&responseJson](const std::string& response)
+        const auto onSuccess = [&responseJson, &scrollId](const std::string& response)
         {
             responseJson = nlohmann::json::parse(response);
+            scrollId = responseJson.at("_scroll_id").get_ref<const std::string&>();
         };
 
         const auto onError = [](const std::string& error, const long statusCode)
@@ -251,7 +256,6 @@ nlohmann::json IndexerConnector::getAgentDocumentsIds(const std::string& url,
     // If the response have more than ELEMENTS_PER_QUERY elements, we need to scroll.
     if (responseJson.at("hits").at("total").at("value").get<int>() > ELEMENTS_PER_QUERY)
     {
-        const auto& scrollId = responseJson.at("_scroll_id").get_ref<const std::string&>();
         const auto scrollUrl = url + "/_search/scroll";
         const auto scrollData = R"({"scroll":"1m","scroll_id":")" + scrollId + "\"}";
 
@@ -278,6 +282,25 @@ nlohmann::json IndexerConnector::getAgentDocumentsIds(const std::string& url,
                                          ConfigurationParameters {});
         }
     }
+
+    // Delete the scroll id.
+    const auto deleteScrollUrl = url + "/_search/scroll/" + scrollId;
+
+    const auto onError = [&](const std::string& error, const long statusCode)
+    {
+        logError(IC_NAME, "%s, status code: %ld.", error.c_str(), statusCode);
+        // print payload
+        logError(IC_NAME, "Url: %s", deleteScrollUrl.c_str());
+    };
+    const auto onSuccess = [](const std::string& response)
+    {
+        logDebug2(IC_NAME, "Response: %s", response.c_str());
+    };
+
+    HTTPRequest::instance().delete_(
+        RequestParameters {.url = HttpURL(deleteScrollUrl), .secureCommunication = secureCommunication},
+        PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
+        ConfigurationParameters {});
 
     return responseJson;
 }
@@ -490,7 +513,7 @@ void IndexerConnector::preInitialization(
 
     if (Utils::haveUpperCaseCharacters(m_indexName))
     {
-        throw std::runtime_error("Index name must be lowercase.");
+        throw std::runtime_error("Index name must be lowercase: " + m_indexName);
     }
 
     m_db = std::make_unique<Utils::RocksDBWrapper>(std::string(DATABASE_BASE_PATH) + "db/" + m_indexName);

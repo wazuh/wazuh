@@ -1,0 +1,41 @@
+[
+    {
+        "index_name": "wazuh-states-hotfixes-cluster01",
+        "data": [
+            {
+                "agent": {
+                    "id": "001",
+                    "name": "DESKTOP-5RL9J34",
+                    "version": "v4.10.1"
+                },
+                "package": {
+                    "hotfix": {
+                        "name": "KB3114960"
+                    }
+                },
+                "wazuh": {
+                    "schema": {
+                        "version": "1.0"
+                    }
+                }
+            },
+            {
+                "agent": {
+                    "id": "002",
+                    "name": "DESKTOP-5RL9J35",
+                    "version": "v4.10.1"
+                },
+                "package": {
+                    "hotfix": {
+                        "name": "KB5034763"
+                    }
+                },
+                "wazuh": {
+                    "schema": {
+                        "version": "1.0"
+                    }
+                }
+            }
+        ]
+    }
+]

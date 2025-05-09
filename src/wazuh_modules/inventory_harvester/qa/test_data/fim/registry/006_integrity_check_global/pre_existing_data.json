@@ -1,0 +1,26 @@
+[
+    {
+        "index_name": "wazuh-states-registries-cluster01",
+        "ids": {
+            "002": "002_aec7723dce1383030fe4e10936f07b2a5c7dcd4591833743b23462dd73fc688f"
+        },
+        "data": [
+            {
+                "agent": {
+                    "id": "002",
+                    "name": "DESKTOP-5RL9J34",
+                    "version": "v4.7.2"
+                },
+                "registry": {
+                    "architecture": "[x64]",
+                    "gid": "S-1-5-21-1245906424-2878732365-1129427271-513",
+                    "hive": "HKLM",
+                    "key": "Software/Microsoft/Active Setup/Installed Components/FFFocta",
+                    "mtime": "2025-01-27T00:50:43.000Z",
+                    "owner": "Administrators",
+                    "uid": "S-1-5-32-544"
+                }
+            }
+        ]
+    }
+]

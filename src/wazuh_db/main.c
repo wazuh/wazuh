@@ -14,6 +14,8 @@
 #include <os_net/os_net.h>
 
 #define WDB_AGENT_EVENTS_TOPIC "wdb-agent-events"
+#define WDB_FIM_EVENTS_TOPIC "wdb-fim-events"
+#define WDB_INVENTORY_EVENTS_TOPIC "wdb-inventory-events"
 
 static void wdb_help() __attribute__ ((noreturn));
 static void handler(int signum);
@@ -206,6 +208,14 @@ int main(int argc, char ** argv)
     // Router provider initialization
     if (router_agent_events_handle = router_provider_create(WDB_AGENT_EVENTS_TOPIC, false), !router_agent_events_handle) {
         mdebug2("Failed to create router handle for 'wdb-agent-events'.");
+    }
+
+    if (router_fim_events_handle = router_provider_create(WDB_FIM_EVENTS_TOPIC, false), !router_fim_events_handle) {
+        mdebug2("Failed to create router handle for 'wdb-fim-events'.");
+    }
+
+    if (router_inventory_events_handle = router_provider_create(WDB_INVENTORY_EVENTS_TOPIC, false), !router_inventory_events_handle) {
+        mdebug2("Failed to create router handle for 'wdb-inventory-events'.");
     }
 
     if (notify_queue = wnotify_init(1), !notify_queue) {

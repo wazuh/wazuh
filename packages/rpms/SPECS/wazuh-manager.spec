@@ -736,6 +736,7 @@ rm -fr %{buildroot}
 %attr(750, root, wazuh) %{_localstatedir}/lib/librocksdb.so.8
 %attr(750, root, wazuh) %{_localstatedir}/lib/librouter.so
 %attr(750, root, wazuh) %{_localstatedir}/lib/libvulnerability_scanner.so
+%attr(750, root, wazuh) %{_localstatedir}/lib/libinventory_harvester.so
 %{_localstatedir}/lib/libpython3.10.so.1.0
 %dir %attr(770, wazuh, wazuh) %{_localstatedir}/logs
 %attr(660, wazuh, wazuh)  %ghost %{_localstatedir}/logs/active-responses.log
@@ -745,7 +746,29 @@ rm -fr %{buildroot}
 %attr(660, wazuh, wazuh) %ghost %{_localstatedir}/logs/ossec.json
 %dir %attr(440, root, wazuh) %{_localstatedir}/templates
 %attr(0440, root, wazuh) %{_localstatedir}/templates/vd_states_template.json
+%attr(0440, root, wazuh) %{_localstatedir}/templates/wazuh-states-fim-files.json
+%attr(0440, root, wazuh) %{_localstatedir}/templates/wazuh-states-fim-registries.json
+%attr(0440, root, wazuh) %{_localstatedir}/templates/wazuh-states-inventory-packages.json
+%attr(0440, root, wazuh) %{_localstatedir}/templates/wazuh-states-inventory-processes.json
+%attr(0440, root, wazuh) %{_localstatedir}/templates/wazuh-states-inventory-system.json
+%attr(0440, root, wazuh) %{_localstatedir}/templates/wazuh-states-inventory-hardware.json
+%attr(0440, root, wazuh) %{_localstatedir}/templates/wazuh-states-inventory-networks.json
+%attr(0440, root, wazuh) %{_localstatedir}/templates/wazuh-states-inventory-protocols.json
+%attr(0440, root, wazuh) %{_localstatedir}/templates/wazuh-states-inventory-interfaces.json
+%attr(0440, root, wazuh) %{_localstatedir}/templates/wazuh-states-inventory-hotfixes.json
+%attr(0440, root, wazuh) %{_localstatedir}/templates/wazuh-states-inventory-ports.json
 %attr(0440, root, wazuh) %{_localstatedir}/templates/vd_states_update_mappings.json
+%attr(0440, root, wazuh) %{_localstatedir}/templates/wazuh-states-fim-files-update.json
+%attr(0440, root, wazuh) %{_localstatedir}/templates/wazuh-states-fim-registries-update.json
+%attr(0440, root, wazuh) %{_localstatedir}/templates/wazuh-states-inventory-packages-update.json
+%attr(0440, root, wazuh) %{_localstatedir}/templates/wazuh-states-inventory-processes-update.json
+%attr(0440, root, wazuh) %{_localstatedir}/templates/wazuh-states-inventory-system-update.json
+%attr(0440, root, wazuh) %{_localstatedir}/templates/wazuh-states-inventory-hardware-update.json
+%attr(0440, root, wazuh) %{_localstatedir}/templates/wazuh-states-inventory-networks-update.json
+%attr(0440, root, wazuh) %{_localstatedir}/templates/wazuh-states-inventory-protocols-update.json
+%attr(0440, root, wazuh) %{_localstatedir}/templates/wazuh-states-inventory-interfaces-update.json
+%attr(0440, root, wazuh) %{_localstatedir}/templates/wazuh-states-inventory-hotfixes-update.json
+%attr(0440, root, wazuh) %{_localstatedir}/templates/wazuh-states-inventory-ports-update.json
 %dir %attr(750, wazuh, wazuh) %{_localstatedir}/logs/api
 %dir %attr(750, wazuh, wazuh) %{_localstatedir}/logs/archives
 %dir %attr(750, wazuh, wazuh) %{_localstatedir}/logs/alerts

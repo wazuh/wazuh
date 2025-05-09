@@ -7,6 +7,10 @@ enable_testing()
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+if (NOT SRC_FOLDER)
+    get_filename_component(SRC_FOLDER     ${CMAKE_SOURCE_DIR}/../../../ ABSOLUTE)
+endif()
+
 # Include directories
 include_directories(include)
 include_directories(${SRC_FOLDER})
@@ -23,3 +27,5 @@ file(GLOB FLATBUFFERS_TOOL_SRC
 add_executable(flatbuffer_tool ${FLATBUFFERS_TOOL_SRC})
 
 target_link_libraries(flatbuffer_tool flatbuffers)
+
+add_subdirectory(schemas)

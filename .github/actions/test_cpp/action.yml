@@ -1,0 +1,44 @@
+name: "Run target test"
+description: "Run target test"
+
+inputs:
+  target:
+    required: true
+    description: "Target to test"
+    default: none
+  valgrind:
+    required: false
+    description: "Run test using valgrind"
+    default: "false"
+
+runs:
+  using: "composite"
+  steps:
+      # Dependencies for testing:
+      # - valgrind
+      - name: Install dependencies
+        uses: awalsh128/cache-apt-pkgs-action@v1.4.3
+        with:
+          packages: valgrind
+          version: 1.0
+
+      # Dependencies for coverage:
+      # - lcov
+      - name: Install dependencies
+        uses: awalsh128/cache-apt-pkgs-action@v1.4.3
+        with:
+          packages: lcov
+          version: 1.0
+
+      - name: Test
+        run: |
+          SRC_FOLDER=$(pwd)/src
+          cd $SRC_FOLDER/build
+
+          if [[ "${{ inputs.valgrind }}" != "false" ]]; then
+            valgrind ctest --output-on-failure -L ${{ inputs.target }}
+          else
+            # Run for valgrind and coverage
+            ctest --output-on-failure -L ${{ inputs.target }}
+          fi
+        shell: bash

@@ -1,0 +1,49 @@
+[
+    {
+        "index_name": "wazuh-states-packages-cluster01",
+        "ids": {
+            "001": "001_ec465b7eb5fa011a336e95614072e4c7f1a65a53",
+            "002": "001_ec465b7eb5fa011a336e95614072e4c7f1a65a54"
+        },
+        "data": [
+            {
+                "agent": {
+                    "id": "001"
+                },
+                "package": {
+                    "architecture": "amd64",
+                    "description": "A package that is already installed",
+                    "name": "package",
+                    "size": 777,
+                    "type": "deb",
+                    "vendor": "The vendor",
+                    "version": "1.2.3"
+                },
+                "wazuh": {
+                    "schema": {
+                        "version": "1.0"
+                    }
+                }
+            },
+            {
+                "agent": {
+                    "id": "002"
+                },
+                "package": {
+                    "architecture": "amd64",
+                    "description": "Another package that is already installed",
+                    "name": "package2",
+                    "size": 777,
+                    "type": "deb",
+                    "vendor": "The vendor",
+                    "version": "1.2.3"
+                },
+                "wazuh": {
+                    "schema": {
+                        "version": "1.0"
+                    }
+                }
+            }
+        ]
+    }
+]

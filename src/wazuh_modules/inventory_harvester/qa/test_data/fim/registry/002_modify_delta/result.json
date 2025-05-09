@@ -1,0 +1,34 @@
+[
+  {
+    "index_name": "wazuh-states-registries-cluster01",
+    "data": [
+      {
+        "agent": {
+          "id": "002",
+          "name": "DESKTOP-5RL9J34",
+          "version": "v4.7.2"
+        },
+        "registry": {
+          "key": "Software\\Microsoft\\Active Setup\\Installed Components\\aaaocta",
+          "value": "BBBOCTA",
+          "hive": "HKLM",
+          "path": "HKLM\\Software\\Microsoft\\Active Setup\\Installed Components\\aaaocta\\BBBOCTA",
+          "architecture": "[x64]",
+          "data": {
+            "hash": {
+              "md5": "63f5c08f5bdddee99aa30dcc47f662a6",
+              "sha1": "65ffcd97bc8cf930373ba9f47ab8a0d90153a38b",
+              "sha256": "302e4b78f8270848b8934aa957c29aba6c1065523055db77d4b70ce6107e4609"
+            },
+            "type": "REG_SZ"
+          }
+        },
+        "wazuh": {
+          "schema": {
+            "version": "1.0"
+          }
+        }
+      }
+    ]
+  }
+]

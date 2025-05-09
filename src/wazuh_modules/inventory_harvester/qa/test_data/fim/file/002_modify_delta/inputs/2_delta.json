@@ -1,0 +1,263 @@
+{
+  "agent_info": {
+    "agent_id": "003",
+    "agent_name": "DESKTOP-R8MRG1I",
+    "agent_ip": "any",
+    "agent_version": "v4.7.5"
+  },
+  "data_type": "event",
+  "data": {
+    "attributes": {
+      "attributes": "ARCHIVE",
+      "checksum": "284998f818129fb57d232e9652ef93832657cbd7",
+      "hash_md5": "6074c6aa3488f3c2dddff2a7ca821aab",
+      "hash_sha1": "ab874467a7d1ff5fc71a4ade87dc0e098b458aae",
+      "hash_sha256": "c1f330d0aff31c1c87403f1e4347bcc21aff7c179908723535f2b31723702525",
+      "inode": 0,
+      "mtime": 1739846176,
+      "perm": {
+        "S-1-5-32-544": {
+          "name": "Administrators",
+          "allowed": [
+            "delete",
+            "read_control",
+            "write_dac",
+            "write_owner",
+            "synchronize",
+            "read_data",
+            "write_data",
+            "append_data",
+            "read_ea",
+            "write_ea",
+            "execute",
+            "read_attributes",
+            "write_attributes"
+          ]
+        },
+        "S-1-5-21-3622736456-3345462557-1602827630-1001": {
+          "name": "uadmin",
+          "allowed": [
+            "delete",
+            "read_control",
+            "write_dac",
+            "write_owner",
+            "synchronize",
+            "read_data",
+            "write_data",
+            "append_data",
+            "read_ea",
+            "write_ea",
+            "execute",
+            "read_attributes",
+            "write_attributes"
+          ]
+        },
+        "S-1-5-18": {
+          "name": "SYSTEM",
+          "allowed": [
+            "delete",
+            "read_control",
+            "write_dac",
+            "write_owner",
+            "synchronize",
+            "read_data",
+            "write_data",
+            "append_data",
+            "read_ea",
+            "write_ea",
+            "execute",
+            "read_attributes",
+            "write_attributes"
+          ]
+        },
+        "S-1-5-4": {
+          "name": "INTERACTIVE",
+          "allowed": [
+            "delete",
+            "read_control",
+            "synchronize",
+            "read_data",
+            "write_data",
+            "append_data",
+            "read_ea",
+            "write_ea",
+            "execute",
+            "read_attributes",
+            "write_attributes"
+          ]
+        },
+        "S-1-5-6": {
+          "name": "SERVICE",
+          "allowed": [
+            "delete",
+            "read_control",
+            "synchronize",
+            "read_data",
+            "write_data",
+            "append_data",
+            "read_ea",
+            "write_ea",
+            "execute",
+            "read_attributes",
+            "write_attributes"
+          ]
+        },
+        "S-1-5-3": {
+          "name": "BATCH",
+          "allowed": [
+            "delete",
+            "read_control",
+            "synchronize",
+            "read_data",
+            "write_data",
+            "append_data",
+            "read_ea",
+            "write_ea",
+            "execute",
+            "read_attributes",
+            "write_attributes"
+          ]
+        }
+      },
+      "size": 4,
+      "type": "file",
+      "uid": "S-1-5-21-3622736456-3345462557-1602827630-1001",
+      "user_name": "uadmin"
+    },
+    "changed_attributes": [
+      "mtime",
+      "md5",
+      "sha1",
+      "sha256"
+    ],
+    "mode": "whodata",
+    "old_attributes": {
+      "attributes": "ARCHIVE",
+      "checksum": "e1d706559b6927c9a5180b35384b245f61b096da",
+      "hash_md5": "d5e2fbef30a4eb668a203060ec8e5eef",
+      "hash_sha1": "20812b5742605a1c9d3f35d8f3eb8524745bd8b6",
+      "hash_sha256": "8b01315e403fc6491b9913a552cf8ff5ee954c14ad3207898db1ccf318cd9ba3",
+      "inode": 0,
+      "mtime": 1739842332,
+      "perm": {
+        "S-1-5-32-544": {
+          "name": "Administrators",
+          "allowed": [
+            "delete",
+            "read_control",
+            "write_dac",
+            "write_owner",
+            "synchronize",
+            "read_data",
+            "write_data",
+            "append_data",
+            "read_ea",
+            "write_ea",
+            "execute",
+            "read_attributes",
+            "write_attributes"
+          ]
+        },
+        "S-1-5-21-3622736456-3345462557-1602827630-1001": {
+          "name": "uadmin",
+          "allowed": [
+            "delete",
+            "read_control",
+            "write_dac",
+            "write_owner",
+            "synchronize",
+            "read_data",
+            "write_data",
+            "append_data",
+            "read_ea",
+            "write_ea",
+            "execute",
+            "read_attributes",
+            "write_attributes"
+          ]
+        },
+        "S-1-5-18": {
+          "name": "SYSTEM",
+          "allowed": [
+            "delete",
+            "read_control",
+            "write_dac",
+            "write_owner",
+            "synchronize",
+            "read_data",
+            "write_data",
+            "append_data",
+            "read_ea",
+            "write_ea",
+            "execute",
+            "read_attributes",
+            "write_attributes"
+          ]
+        },
+        "S-1-5-4": {
+          "name": "INTERACTIVE",
+          "allowed": [
+            "delete",
+            "read_control",
+            "synchronize",
+            "read_data",
+            "write_data",
+            "append_data",
+            "read_ea",
+            "write_ea",
+            "execute",
+            "read_attributes",
+            "write_attributes"
+          ]
+        },
+        "S-1-5-6": {
+          "name": "SERVICE",
+          "allowed": [
+            "delete",
+            "read_control",
+            "synchronize",
+            "read_data",
+            "write_data",
+            "append_data",
+            "read_ea",
+            "write_ea",
+            "execute",
+            "read_attributes",
+            "write_attributes"
+          ]
+        },
+        "S-1-5-3": {
+          "name": "BATCH",
+          "allowed": [
+            "delete",
+            "read_control",
+            "synchronize",
+            "read_data",
+            "write_data",
+            "append_data",
+            "read_ea",
+            "write_ea",
+            "execute",
+            "read_attributes",
+            "write_attributes"
+          ]
+        }
+      },
+      "size": 4,
+      "type": "file",
+      "uid": "S-1-5-21-3622736456-3345462557-1602827630-1001",
+      "user_name": "uadmin"
+    },
+    "path": "c:\\users\\public\\documents\\newFile.txt",
+    "timestamp": 1739846177,
+    "type": "modified",
+    "version": "2.0",
+    "content_changes": "< 2324\n---\n> 5555\n",
+    "audit": {
+      "user_id": "S-1-5-21-3622736456-3345462557-1602827630-1001",
+      "user_name": "uadmin",
+      "process_name": "C:\\Windows\\System32\\notepad.exe",
+      "process_id": 4452
+    }
+  }
+}

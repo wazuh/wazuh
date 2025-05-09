@@ -1,0 +1,29 @@
+[
+    {
+        "index_name": "wazuh-states-networks-cluster01",
+        "ids": {
+            "003": "003_b9ce16c7c8d82ab1d4df21518fd85fc8d0672396"
+        },
+        "data": [
+            {
+                "agent": {
+                    "id": "003",
+                    "name": "b593602240f5",
+                    "version": "v4.11.1"
+                },
+                "network": {
+                    "broadcast": "0.0.0.0",
+                    "ip": "10.0.0.1",
+                    "name": "eth0",
+                    "netmask": "1.2.3.4",
+                    "protocol": "IPv4"
+                },
+                "wazuh": {
+                    "schema": {
+                        "version": "1.0"
+                    }
+                }
+            }
+        ]
+    }
+]

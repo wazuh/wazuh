@@ -2,6 +2,28 @@ cmake_minimum_required(VERSION 3.12.4)
 
 project(utils_unit_test)
 
+include(CheckCXXSourceCompiles)
+
+# Check if std::to_chars supports floating-point numbers
+check_cxx_source_compiles("
+    #include <charconv>
+    #include <system_error>
+    int main() {
+        char buffer[32];
+        float f = 3.14f;
+        auto [ptr, ec] = std::to_chars(buffer, buffer + sizeof(buffer), f);
+        return ec == std::errc() ? 0 : 1;
+    }
+" HAS_TO_CHARS_FLOAT)
+
+if(HAS_TO_CHARS_FLOAT)
+  add_definitions(-DHAS_TO_CHARS_FLOAT=true)
+  set(CMAKE_CXX_STANDARD 17)
+  set(CMAKE_CXX_STANDARD_REQUIRED ON)
+else()
+  add_definitions(-DHAS_TO_CHARS_FLOAT=false)
+endif()
+
 
 file(GLOB UTIL_CXX_UNITTEST_WINDOWS_SRC
     "windowsHelper_test.cpp"
@@ -49,6 +71,7 @@ file(GLOB UTIL_CXX_UNITTEST_LINUX_SRC
     "rsaHelper_test.cpp"
     "evpHelper_test.cpp"
     "socketServer_test.cpp"
+    "reflectiveJson_test.cpp"
 )
 
 file(COPY input_files DESTINATION ${CMAKE_CURRENT_BINARY_DIR})

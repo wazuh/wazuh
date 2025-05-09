@@ -1,0 +1,46 @@
+{
+  "agent_info": {
+    "agent_id": "001",
+    "agent_ip": "any",
+    "agent_name": "c0ce505227a4",
+    "agent_version": "v4.11.0"
+  },
+  "data_type": "state",
+  "data": {
+    "attributes_type": "syscollector_processes",
+    "attributes": {
+      "argvs": null,
+      "checksum": "9c1688d4153ca2d8c5de2b59e686f86e05c154ed",
+      "cmd": "/var/ossec/bin/wazuh-syscheckd",
+      "egroup": "wazuh",
+      "euser": "root",
+      "fgroup": "wazuh",
+      "name": "wazuh-syscheckd",
+      "nice": 10,
+      "nlwp": 7,
+      "pgrp": 5891,
+      "pid": "5892",
+      "ppid": 1,
+      "priority": 30,
+      "processor": 1,
+      "resident": 13532,
+      "rgroup": "wazuh",
+      "ruser": "root",
+      "scan_time": "2025/02/26 23:45:03",
+      "session": 5891,
+      "sgroup": "wazuh",
+      "share": 2336,
+      "size": 85793,
+      "start_time": 1740613499,
+      "state": "S",
+      "stime": 41,
+      "suser": "root",
+      "tgid": 5892,
+      "tty": 0,
+      "utime": 50,
+      "vm_size": 343172
+    },
+    "index": "5892",
+    "timestamp": ""
+  }
+}

@@ -1,0 +1,23 @@
+{
+    "index_patterns": [
+        "wazuh-states-files-*",
+        "wazuh-states-registries-*",
+        "wazuh-states-packages-*",
+        "wazuh-states-system-*",
+        "wazuh-states-processes-*",
+        "wazuh-states-hotfixes-*"
+    ],
+    "priority": 0,
+    "template": {
+        "settings": {
+            "number_of_shards": 1,
+            "number_of_replicas": 0
+        },
+        "mappings": {
+            "dynamic": true,
+            "_source": {
+                "enabled": true
+            }
+        }
+    }
+}

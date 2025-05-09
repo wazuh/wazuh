@@ -12,6 +12,10 @@
 #include "stringHelper_test.h"
 #include "stringHelper.h"
 #include <sstream>
+#if __cplusplus >= 201703L
+#include <string_view>
+using namespace std::string_view_literals;
+#endif
 
 void StringUtilsTest::SetUp() {};
 
@@ -72,6 +76,23 @@ TEST_F(StringUtilsTest, SplitDelimiterNoCoincidence)
 TEST_F(StringUtilsTest, SplitDelimiterCoincidence)
 {
     const auto splitTextVector {Utils::split("hello.world", '.')};
+    EXPECT_EQ(2ull, splitTextVector.size());
+    EXPECT_EQ(splitTextVector[0], "hello");
+    EXPECT_EQ(splitTextVector[1], "world");
+}
+
+TEST_F(StringUtilsTest, SplitDelimiterAtTheBeginningCoincidence)
+{
+    const auto splitTextVector {Utils::split(".hello.world", '.')};
+    EXPECT_EQ(3ull, splitTextVector.size());
+    EXPECT_EQ(splitTextVector[0], "");
+    EXPECT_EQ(splitTextVector[1], "hello");
+    EXPECT_EQ(splitTextVector[2], "world");
+}
+
+TEST_F(StringUtilsTest, SplitDelimiterAtTheEndCoincidence)
+{
+    const auto splitTextVector {Utils::split("hello.world.", '.')};
     EXPECT_EQ(2ull, splitTextVector.size());
     EXPECT_EQ(splitTextVector[0], "hello");
     EXPECT_EQ(splitTextVector[1], "world");
@@ -506,22 +527,26 @@ TEST_F(StringUtilsTest, rawUnicodeToUTF8)
 
 TEST_F(StringUtilsTest, stringIsNumberFalse1)
 {
-    EXPECT_FALSE(Utils::isNumber("random_string"));
+    EXPECT_FALSE(Utils::isNumber(std::string("random_string")));
+    EXPECT_FALSE(Utils::isNumber(std::string_view("random_string")));
 }
 
 TEST_F(StringUtilsTest, stringIsNumberFalse2)
 {
-    EXPECT_FALSE(Utils::isNumber("r4nd0m_57r1n9"));
+    EXPECT_FALSE(Utils::isNumber(std::string("r4nd0m_57r1n9")));
+    EXPECT_FALSE(Utils::isNumber(std::string_view("r4nd0m_57r1n9")));
 }
 
 TEST_F(StringUtilsTest, stringIsNumberFalse3)
 {
-    EXPECT_FALSE(Utils::isNumber(""));
+    EXPECT_FALSE(Utils::isNumber(std::string("")));
+    EXPECT_FALSE(Utils::isNumber(std::string_view("")));
 }
 
 TEST_F(StringUtilsTest, stringIsNumberTrue)
 {
-    EXPECT_TRUE(Utils::isNumber("12345"));
+    EXPECT_TRUE(Utils::isNumber(std::string("12345")));
+    EXPECT_TRUE(Utils::isNumber(std::string_view("12345")));
 }
 
 TEST_F(StringUtilsTest, parseStrToBoolYes)
@@ -640,3 +665,87 @@ TEST_F(StringUtilsTest, splitToNumbers)
 
     EXPECT_ANY_THROW({ ret = Utils::splitToNumbers("1.1.1", ' '); });
 }
+
+#if __cplusplus >= 201703L
+
+TEST_F(StringUtilsTest, SplitEmptyStringSV)
+{
+    auto splitTextVector {Utils::splitView(""sv, '.')};
+    EXPECT_EQ(1ull, splitTextVector.size());
+    EXPECT_EQ(splitTextVector[0], "");
+}
+
+TEST_F(StringUtilsTest, SplitDelimiterNoCoincidenceSV)
+{
+    const auto splitTextVector {Utils::splitView("hello_world"sv, '.')};
+    EXPECT_EQ(1ull, splitTextVector.size());
+}
+
+TEST_F(StringUtilsTest, SplitDelimiterCoincidenceSV)
+{
+    const auto splitTextVector {Utils::splitView("hello.world"sv, '.')};
+    EXPECT_EQ(2ull, splitTextVector.size());
+    EXPECT_EQ(splitTextVector[0], "hello");
+    EXPECT_EQ(splitTextVector[1], "world");
+}
+
+TEST_F(StringUtilsTest, SplitDelimiterAtTheBeginningCoincidenceSV)
+{
+    const auto splitTextVector {Utils::splitView(".hello.world"sv, '.')};
+    EXPECT_EQ(3ull, splitTextVector.size());
+    EXPECT_EQ(splitTextVector[0], "");
+    EXPECT_EQ(splitTextVector[1], "hello");
+    EXPECT_EQ(splitTextVector[2], "world");
+}
+
+TEST_F(StringUtilsTest, SplitDelimiterAtTheEndCoincidenceSV)
+{
+    const auto splitTextVector {Utils::splitView("hello.world."sv, '.')};
+    EXPECT_EQ(3ull, splitTextVector.size());
+    EXPECT_EQ(splitTextVector[0], "hello");
+    EXPECT_EQ(splitTextVector[1], "world");
+    EXPECT_EQ(splitTextVector[2], "");
+}
+
+TEST_F(StringUtilsTest, StartsWithSV)
+{
+    const std::string_view start {"Package_"};
+    const std::string_view item1 {"Package_6_for_KB4565554~31bf3856ad364e35~amd64~~18362.957.1.3"};
+    const std::string_view item2 {"Package_5_for_KB4569073~31bf3856ad364e35~amd64~~18362.1012.1.1"};
+    const std::string_view item3 {
+        "Microsoft-Windows-IIS-WebServer-AddOn-Package~31bf3856ad364e35~amd64~~10.0.18362.815"};
+    const std::string_view item4 {
+        "Microsoft-Windows-HyperV-OptionalFeature-VirtualMachinePlatform-Package_31bf3856ad364e35~"
+        "amd64~~10.0.18362.1139.mum"};
+    EXPECT_TRUE(Utils::startsWith(start, start));
+    EXPECT_TRUE(Utils::startsWith(item1, start));
+    EXPECT_TRUE(Utils::startsWith(item2, start));
+    EXPECT_FALSE(Utils::startsWith(""sv, start));
+    EXPECT_FALSE(Utils::startsWith(item3, start));
+    EXPECT_FALSE(Utils::startsWith(item4, start));
+}
+
+TEST_F(StringUtilsTest, CheckFirstReplacementSV)
+{
+    std::string string_base {"bye_bye"};
+    const auto retVal {Utils::replaceFirstView(string_base, "bye"sv, "hello"sv)};
+    EXPECT_EQ(string_base, "hello_bye");
+    EXPECT_TRUE(retVal);
+}
+
+TEST_F(StringUtilsTest, CheckNotFirstReplacementSV)
+{
+    std::string string_base {"hello_world"};
+    const auto retVal {Utils::replaceFirstView(string_base, "nothing_"sv, "bye_"sv)};
+    EXPECT_EQ(string_base, "hello_world");
+    EXPECT_FALSE(retVal);
+}
+
+TEST_F(StringUtilsTest, ToLowerCaseSV)
+{
+    EXPECT_EQ("", Utils::toLowerCaseView(""sv));
+    EXPECT_EQ("hello world", Utils::toLowerCaseView("HeLlO WoRlD"sv));
+    EXPECT_EQ("123", Utils::toLowerCaseView("123"sv));
+}
+
+#endif

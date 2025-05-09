@@ -19,6 +19,9 @@
 #include <sstream>
 #include <string>
 #include <vector>
+#if __cplusplus >= 201703L
+#include <string_view>
+#endif
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-function"
@@ -516,6 +519,67 @@ namespace Utils
 
         return tokens;
     }
+
+#if __cplusplus >= 201703L
+
+    static bool startsWith(std::string_view str, std::string_view start)
+    {
+        if (!str.empty() && str.length() >= start.length())
+        {
+            return str.compare(0, start.length(), start) == 0;
+        }
+
+        return false;
+    }
+    static bool replaceFirstView(std::string& data, std::string_view toSearch, std::string_view toReplace)
+    {
+        auto pos {data.find(toSearch)};
+        auto ret {false};
+
+        if (std::string::npos != pos)
+        {
+            data.replace(pos, toSearch.size(), toReplace);
+            ret = true;
+        }
+
+        return ret;
+    }
+
+    static std::string toLowerCaseView(std::string_view str)
+    {
+        std::string temp {str};
+        std::transform(std::begin(temp),
+                       std::end(temp),
+                       std::begin(temp),
+                       [](std::string::value_type character) { return std::tolower(character); });
+        return temp;
+    }
+
+    static std::vector<std::string_view> splitView(std::string_view str, const char delimiter)
+    {
+        std::vector<std::string_view> tokens;
+        std::string_view token;
+        std::size_t pos {0};
+
+        while ((pos = str.find(delimiter)) != std::string::npos)
+        {
+            token = str.substr(0, pos);
+            tokens.push_back(token);
+            str.remove_prefix(pos + 1);
+        }
+        tokens.push_back(str);
+        return tokens;
+    }
+
+    static bool isNumber(std::string_view str)
+    {
+        auto it = str.begin();
+
+        while (it != str.end() && std::isdigit(*it)) ++it;
+
+        return !str.empty() && it == str.end();
+    }
+#endif
 
 } // namespace Utils
 

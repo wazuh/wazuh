@@ -21,7 +21,7 @@
 
 #ifndef CLIENT
 #include "router.h"
-#include "utils/flatbuffers/include/syscollector_synchronization_schema.h"
+#include "utils/flatbuffers/include/rsync_schema.h"
 #include "utils/flatbuffers/include/syscollector_deltas_schema.h"
 #include "agent_messages_adapter.h"
 #endif // CLIENT
@@ -120,7 +120,7 @@ static void wm_sys_send_dbsync_message(const void* data) {
     {
         char* msg_to_send = adapt_sync_message(data, "localhost", "000", "127.0.0.1", NULL);
         if (msg_to_send && router_provider_send_fb_func_ptr) {
-            router_provider_send_fb_func_ptr(rsync_handle, msg_to_send, syscollector_synchronization_SCHEMA);
+            router_provider_send_fb_func_ptr(rsync_handle, msg_to_send, rsync_SCHEMA);
         }
         cJSON_free(msg_to_send);
     }
@@ -281,7 +281,7 @@ void wm_sys_destroy(wm_sys_t *data) {
     w_cond_destroy(&sys_stop_condition);
     w_mutex_destroy(&sys_stop_mutex);
     w_mutex_destroy(&sys_reconnect_mutex);
-    
+
     free(data);
 }
 

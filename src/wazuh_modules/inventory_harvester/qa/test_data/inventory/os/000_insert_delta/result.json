@@ -1,0 +1,32 @@
+[
+    {
+        "index_name": "wazuh-states-system-cluster01",
+        "data": [
+            {
+                "agent": {
+                    "id": "001"
+                },
+                "host": {
+                    "architecture": "x86_64",
+                    "hostname": "debian",
+                    "os": {
+                        "codename": "trusty",
+                        "kernel": {
+                            "name": "Linux",
+                            "release": "5.4.0-155-generic",
+                            "version": "#172-Ubuntu SMP Fri Jul 7 16:10:02 UTC 2023"
+                        },
+                        "name": "Debian",
+                        "platform": "debian",
+                        "version": "Trusty Tahr"
+                    }
+                },
+                "wazuh": {
+                    "schema": {
+                        "version": "1.0"
+                    }
+                }
+            }
+        ]
+    }
+]

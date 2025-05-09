@@ -1,0 +1,13 @@
+{
+  "agent_info": {
+    "agent_id": "002",
+    "agent_ip": "10.0.0.1",
+    "agent_name": "b593602240f5",
+    "agent_version": "v4.11.1"
+  },
+  "data_type": "integrity_clear",
+  "data": {
+    "attributes_type": "syscollector_network_address",
+    "id": 1740672008
+  }
+}

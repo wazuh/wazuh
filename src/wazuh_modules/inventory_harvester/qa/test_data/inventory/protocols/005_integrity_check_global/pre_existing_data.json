@@ -1,0 +1,61 @@
+[
+    {
+        "index_name": "wazuh-states-protocols-cluster01",
+        "ids":{
+            "001": "001_35c9b5749116035dea24e0c8797c8e01358081a0",
+            "002": "002_35c9b5749116035dea24e0c8797c8e01358081a1"
+        },
+        "data": [
+            {
+                "agent": {
+                    "id": "001",
+                    "name": "centos9",
+                    "version": "v4.10.1"
+                },
+                "network": {
+                    "dhcp": false,
+                    "gateway": "10.0.0.0",
+                    "metric": 101,
+                    "type": "ipv4"
+                },
+                "observer": {
+                    "ingress": {
+                        "interface": {
+                            "name": "eth1"
+                        }
+                    }
+                },
+                "wazuh": {
+                    "schema": {
+                        "version": "1.0"
+                    }
+                }
+            },
+            {
+                "agent": {
+                    "id": "002",
+                    "name": "jammy",
+                    "version": "v4.10.1"
+                },
+                "network": {
+                    "dhcp": false,
+                    "gateway": "10.0.2.2",
+                    "metric": 100,
+                    "type": "ipv4"
+                },
+                "observer": {
+                    "ingress": {
+                        "interface": {
+                            "name": "eth0"
+                        }
+                    }
+                },
+                "wazuh": {
+                    "schema": {
+                        "version": "1.0"
+                    }
+                }
+            }
+        ]
+    }
+]

@@ -1,0 +1,26 @@
+[
+    {
+        "index_name": "wazuh-states-packages-cluster01",
+        "data": [
+            {
+                "agent": {
+                    "id": "001"
+                },
+                "package": {
+                    "architecture": "amd64",
+                    "description": "system and service manager",
+                    "name": "systemd",
+                    "size": 72,
+                    "type": "deb",
+                    "vendor": "Debian vendor",
+                    "version": "247.3-7+deb11u4"
+                },
+                "wazuh": {
+                    "schema": {
+                        "version": "1.0"
+                    }
+                }
+            }
+        ]
+    }
+]

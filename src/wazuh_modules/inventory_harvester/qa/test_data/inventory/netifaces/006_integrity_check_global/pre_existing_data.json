@@ -1,0 +1,89 @@
+[
+    {
+        "index_name": "wazuh-states-interfaces-cluster01",
+        "ids": {
+            "001": "001_d4aa8b01955e438235d586585492f3f5edceec1b",
+            "002": "002_d4aa8b01955e438235d586585492f3f5edceec1c"
+        },
+        "data": [
+            {
+                "agent": {
+                    "id": "001",
+                    "name": "c0ce505227a4",
+                    "version": "v4.11.0"
+                },
+                "host": {
+                    "mac": "14:15:6e:37:f2:7e",
+                    "network": {
+                        "ingress": {
+                            "bytes": 1,
+                            "drops": 1,
+                            "errors": 1,
+                            "packets": 1
+                        },
+                        "egress": {
+                            "bytes": 1,
+                            "drops": 1,
+                            "errors": 1,
+                            "packets": 1
+                        }
+                    }
+                },
+                "observer": {
+                    "ingress": {
+                        "interface": {
+                            "mtu": 1500,
+                            "name": "eth1",
+                            "state": "up",
+                            "type": "ethernet"
+                        }
+                    }
+                },
+                "wazuh": {
+                    "schema": {
+                        "version": "1.0"
+                    }
+                }
+            },
+            {
+                "agent": {
+                    "id": "002",
+                    "name": "agentName",
+                    "version": "v4.11.0"
+                },
+                "host": {
+                    "mac": "14:15:6e:37:f2:7e",
+                    "network": {
+                        "ingress": {
+                            "bytes": 449599,
+                            "drops": 0,
+                            "errors": 0,
+                            "packets": 661
+                        },
+                        "egress": {
+                            "bytes": 52525,
+                            "drops": 0,
+                            "errors": 0,
+                            "packets": 432
+                        }
+                    }
+                },
+                "observer": {
+                    "ingress": {
+                        "interface": {
+                            "mtu": 1500,
+                            "name": "eth0",
+                            "state": "up",
+                            "type": "ethernet"
+                        }
+                    }
+                },
+                "wazuh": {
+                    "schema": {
+                        "version": "1.0"
+                    }
+                }
+            }
+        ]
+    }
+]

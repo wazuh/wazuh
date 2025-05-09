@@ -1,0 +1,33 @@
+[
+    {
+        "index_name": "wazuh-states-files-cluster01",
+        "data": [
+            {
+                "agent": {
+                    "id": "002",
+                    "name": "agent_test",
+                    "version": "v4.10.1"
+                },
+                "file": {
+                    "gid": "0",
+                    "group": "root",
+                    "hash": {
+                        "md5": "d41d8cd98f00b204e9800998ecf8427e",
+                        "sha1": "da39a3ee5e6b4b0d3255bfef95601890afd80709",
+                        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+                    },
+                    "mtime": "2025-02-27T17:24:27.000Z",
+                    "owner": "root",
+                    "path": "/home/folderB/AFileInB.txt",
+                    "size": 0,
+                    "uid": "0"
+                },
+                "wazuh": {
+                    "schema": {
+                        "version": "1.0"
+                    }
+                }
+            }
+        ]
+    }
+]
