@@ -197,6 +197,23 @@ services:
       - wazuh-agent7
       - haproxy-lb
 
+  wazuh-agent13:
+    profiles:
+      - standalone
+      - cluster
+    image: integration_test_wazuh-agent
+    hostname: wazuh-agent13
+    volumes:
+      - ./configurations/tmp/agent:/tmp_volume
+      - ./tools/:/tools
+    entrypoint:
+      - /scripts/entrypoint.sh
+      - haproxy-lb
+      - wazuh-agent13
+    depends_on:
+      - wazuh-agent8
+      - haproxy-lb
+
   haproxy-lb:
     profiles:
       - standalone

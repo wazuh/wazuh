@@ -29,8 +29,11 @@ stages:
             - id: '010'
             - id: '011'
             - id: '012'
+            - id: '013'
+            - id: '014'
+            - id: '015'
           failed_items: []
-          total_affected_items: 13
+          total_affected_items: 16
           total_failed_items: 0
 
   - name: Get all agents inverse order
@@ -114,7 +117,7 @@ stages:
             - status: active
               id: '001'
           failed_items: []
-          total_affected_items: 13
+          total_affected_items: 16
           total_failed_items: 0
 
   - name: Try to show agents using offset -1
@@ -268,7 +271,7 @@ stages:
               os:
                 platform: !anystr
           failed_items: []
-          total_affected_items: 13
+          total_affected_items: 16
           total_failed_items: 0
 
   - name: Filter select multiple fields
@@ -297,7 +300,7 @@ stages:
               dateAdd: !anystr
               mergedSum: !anystr
           failed_items: []
-          total_affected_items: 13
+          total_affected_items: 16
           total_failed_items: 0
 
   - name: Try to show agents using a not allowed selector
@@ -408,7 +411,7 @@ stages:
               os:
                 platform: "{expected_os_platform:s}"
           failed_items: []
-          total_affected_items: 11
+          total_affected_items: 13
           total_failed_items: 0
 
   - name: Try to show agents using a non existing OS Platform
@@ -452,7 +455,7 @@ stages:
               os:
                 version: "{expected_os_version:s}"
           failed_items: []
-          total_affected_items: 5
+          total_affected_items: 6
           total_failed_items: 0
 
   - name: Try to show agents using a non existing OS Version
@@ -496,7 +499,7 @@ stages:
               os:
                 name: "{expected_os_name:s}"
           failed_items: []
-          total_affected_items: 11
+          total_affected_items: 13
           total_failed_items: 0
 
   - name: Try to show agents using a non existing OS Name
@@ -704,8 +707,9 @@ stages:
           affected_items:
             - id: '009'
             - id: '010'
+            - id: '015'
           failed_items: []
-          total_affected_items: 2
+          total_affected_items: 3
           total_failed_items: 0
 
   - name: Filter by agent status 2
@@ -724,8 +728,10 @@ stages:
             - id: '010'
             - id: '011'
             - id: '012'
+            - id: '014'
+            - id: '015'
           failed_items: []
-          total_affected_items: 4
+          total_affected_items: 6
           total_failed_items: 0
 
   - name: Filter by agent status 3 (Upper and lowercase letters in values)
@@ -742,8 +748,9 @@ stages:
           affected_items:
             - id: '009'
             - id: '010'
+            - id: '014'
           failed_items: []
-          total_affected_items: 2
+          total_affected_items: 3
           total_failed_items: 0
 
   - name: Try to show agents with a non existing status
@@ -823,8 +830,9 @@ stages:
             - id: '006'
             - id: '007'
             - id: '008'
+            - id: '013'
           failed_items: []
-          total_affected_items: 9
+          total_affected_items: 10
           total_failed_items: 0
 
   - name: Filter agents by group_config_status (not synced)
@@ -843,8 +851,10 @@ stages:
             - id: '010'
             - id: '011'
             - id: '012'
+            - id: '014'
+            - id: '015'
           failed_items: []
-          total_affected_items: 4
+          total_affected_items: 6
           total_failed_items: 0
 
   - name: Try show agents using an invalid group_config_status
@@ -932,8 +942,32 @@ stages:
             - id: '004'
             - id: '006'
             - id: '010'
+            - id: '011'
+            - id: '012'
+            - id: '013'
+            - id: '014'
+            - id: '015'
           failed_items: []
-          total_affected_items: 5
+          total_affected_items: 9
+          total_failed_items: 0
+
+  - name: Filter agents by query (group - get agents that are not in default group)
+    request:
+      verify: False
+      <<: *get_agents
+      params:
+        q: group!=default
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - id: '013'
+            - id: '014'
+            - id: '015'
+          failed_items: []
+          total_affected_items: 3
           total_failed_items: 0
 
   - name: Filter agents by query (group - get agents with group~group)
@@ -957,8 +991,11 @@ stages:
             - id: '008'
             - id: '009'
             - id: '010'
+            - id: '013'
+            - id: '014'
+            - id: '015'
           failed_items: []
-          total_affected_items: 9
+          total_affected_items: 12
           total_failed_items: 0
 
   - name: Filter agents by query (group - invalid operator)
@@ -1123,8 +1160,10 @@ stages:
             - id: '010'
             - id: '011'
             - id: '012'
+            - id: '014'
+            - id: '015'
           failed_items: []
-          total_affected_items: 4
+          total_affected_items: 6
           total_failed_items: 0
 
   - name: Try show agents using an invalid older_than
@@ -1790,7 +1829,6 @@ stages:
             remoted:
               buffer_relax: !anyint
               comp_average_printout: !anyint
-              guess_agent_group: !anyint
               max_attempts: !anyint
               merge_shared: !anyint
               pass_empty_keyfile: !anyint
@@ -2561,15 +2599,17 @@ stages:
         data: &get_groups_answer
           affected_items:
             - name: 'default'
-              count: 10
+              count: 12
             - name: 'group1'
               count: 5
             - name: 'group2'
               count: 5
             - name: 'group3'
               count: 4
+            - name: 'group4'
+              count: 3  
           failed_items: []
-          total_affected_items: 4
+          total_affected_items: 5
           total_failed_items: 0
 
   - name: Pagination
@@ -2588,7 +2628,7 @@ stages:
             - name: 'group2'
               count: 5
           failed_items: []
-          total_affected_items: 4
+          total_affected_items: 5
           total_failed_items: 0
 
   - name: Try show groups with offset -1
@@ -2626,7 +2666,7 @@ stages:
         data:
           affected_items: []
           failed_items: []
-          total_affected_items: 4
+          total_affected_items: 5
           total_failed_items: 0
 
   - name: Try show groups with limit 0
@@ -2712,7 +2752,7 @@ stages:
         data:
           affected_items:
             - name: 'default'
-              count: 10
+              count: 12
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
@@ -2772,7 +2812,7 @@ stages:
         data:
           affected_items:
             - name: 'default'
-              count: 10
+              count: 12
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
@@ -3979,11 +4019,9 @@ stages:
       json: &no_group_response
         error: 0
         data:
-          affected_items:
-            - id: '011'
-            - id: '012'
+          affected_items: []
           failed_items: []
-          total_affected_items: 2
+          total_affected_items: 0
           total_failed_items: 0
 
   - name: Pagination
@@ -3998,10 +4036,9 @@ stages:
       json:
         error: 0
         data:
-          affected_items:
-            - id: '011'
+          affected_items: []
           failed_items: []
-          total_affected_items: 2
+          total_affected_items: 0
           total_failed_items: 0
 
   - name: Try show agents with offset -1
@@ -4033,9 +4070,9 @@ stages:
       params:
         offset: 9999999999999999999
     response:
-      status_code: 400
+      status_code: 200
       json:
-        error: 2003
+        error: 0
 
   - name: Try show agents with limit 0
     request:
@@ -4104,10 +4141,9 @@ stages:
       json:
         error: 0
         data:
-          affected_items:
-            - id: '011'
+          affected_items: []
           failed_items: []
-          total_affected_items: 1
+          total_affected_items: 0
           total_failed_items: 0
 
   - name: Try show agents with empty search
@@ -4258,7 +4294,7 @@ stages:
               dateAdd: !anystr
               group_config_status: synced
           failed_items: []
-          total_affected_items: 6
+          total_affected_items: 7
           total_failed_items: 0
 
   - name: Select
@@ -4293,7 +4329,7 @@ stages:
         error: 0
         data:
           affected_items:
-            - id: '009'
+            - id: '010'
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
@@ -4405,8 +4441,9 @@ stages:
             - id: '007'
             - id: '008'
             - id: '010'
+            - id: '014'
           failed_items: []
-          total_affected_items: 4
+          total_affected_items: 5
           total_failed_items: 0
   
   - name: Filter agents by id
@@ -4674,10 +4711,10 @@ stages:
         error: 0
         data:
           affected_items:
-            - count: 2
+            - count: 3
               node_name: 'unknown'
           failed_items: []
-          total_affected_items: 2
+          total_affected_items: 3
           total_failed_items: 0
 
   - name: Try to show agents with wrong search
@@ -4801,15 +4838,15 @@ stages:
         error: 0
         data:
           connection:
-            active: 8
-            disconnected: 2
+            active: 9
+            disconnected: 4
             never_connected: 2
             pending: 0
-            total: 12
+            total: 15
           configuration:
-            synced: 8
-            not_synced: 4
-            total: 12
+            synced: 9
+            not_synced: 6
+            total: 15
 
 ---
 test_name: GET /agents/summary/os

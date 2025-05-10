@@ -34,7 +34,7 @@ login_headers = {'Content-Type': 'application/json',
                  'Authorization': f'Basic {b64encode(basic_auth).decode()}'}
 environment_status = None
 env_cluster_nodes = ['master', 'worker1', 'worker2']
-agent_names = ['agent1', 'agent2', 'agent3', 'agent4', 'agent5', 'agent6', 'agent7', 'agent8']
+agent_names = ['agent1', 'agent2', 'agent3', 'agent4', 'agent5', 'agent6', 'agent7', 'agent8', 'agent13']
 
 standalone_env_mode = 'standalone'
 cluster_env_mode = 'cluster'
@@ -400,7 +400,7 @@ def api_test(request: _pytest.fixtures.SubRequest):
 
     while retries < max_retries:
         managers_health = check_health(only_check_master_health=env_mode == standalone_env_mode)
-        agents_health = check_health(node_type='agent', agents=list(range(1, 9)))
+        agents_health = check_health(node_type='agent', agents=[int(name.replace('agent', '')) for name in agent_names])
         haproxy_health = check_health(node_type='haproxy-lb')
 
         # Check if entrypoint was successful
