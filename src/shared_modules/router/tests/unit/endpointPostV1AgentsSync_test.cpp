@@ -96,7 +96,11 @@ TEST_F(EndpointPostV1AgentsSyncTest, SyncReqTwoAgents)
     TEndpointPostV1AgentsSync<MockSQLiteConnection, TrampolineSQLiteStatement>::call(db, req, res);
 
     ASSERT_EQ(qdump->size(), 1);
-    EXPECT_TRUE((*qdump)[0].find("UPDATE agent SET config_sum") != std::string::npos);
+    EXPECT_EQ((*qdump)[0],
+              "UPDATE agent SET config_sum = ?, ip = ?, manager_host = ?, merged_sum = ?, name = ?, node_name = ?, "
+              "os_arch = ?, os_build = ?, os_codename = ?, os_major = ?, os_minor = ?, os_name = ?, os_platform = ?, "
+              "os_uname = ?, os_version = ?, version = ?, last_keepalive = ?, connection_status = ?, "
+              "disconnection_time = ?, group_config_status = ?, status_code= ?, sync_status = 'synced' WHERE id = ?;");
 }
 
 TEST_F(EndpointPostV1AgentsSyncTest, KeepAliveThreeAgents)
@@ -113,7 +117,9 @@ TEST_F(EndpointPostV1AgentsSyncTest, KeepAliveThreeAgents)
     TEndpointPostV1AgentsSync<MockSQLiteConnection, TrampolineSQLiteStatement>::call(db, req, res);
 
     ASSERT_EQ(qdump->size(), 1);
-    EXPECT_TRUE((*qdump)[0].find("last_keepalive") != std::string::npos);
+    EXPECT_EQ((*qdump)[0],
+              "UPDATE agent SET last_keepalive = STRFTIME('%s', 'NOW'),sync_status = 'synced',connection_status = "
+              "'active',disconnection_time = 0,status_code = 0 WHERE id = ?;");
 }
 
 TEST_F(EndpointPostV1AgentsSyncTest, StatusSingleAgent)
@@ -132,5 +138,7 @@ TEST_F(EndpointPostV1AgentsSyncTest, StatusSingleAgent)
     TEndpointPostV1AgentsSync<MockSQLiteConnection, TrampolineSQLiteStatement>::call(db, req, res);
 
     ASSERT_EQ(qdump->size(), 1);
-    EXPECT_TRUE((*qdump)[0].find("connection_status") != std::string::npos);
+    EXPECT_EQ((*qdump)[0],
+              "UPDATE agent SET connection_status = ?, sync_status = 'synced', disconnection_time = ?, status_code = ? "
+              "WHERE id = ?;");
 }
