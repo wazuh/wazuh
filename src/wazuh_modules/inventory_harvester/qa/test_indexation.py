@@ -71,9 +71,9 @@ def create_index_from_template(template_path: Path):
     pattern = template_data.get("index_patterns", [None])[0]
     if pattern and "*" in pattern:
         if "fim-files" in template_name:
-            index_name = "wazuh-states-files-cluster01"
+            index_name = "wazuh-states-fim-files-cluster01"
         elif "fim-registries" in template_name:
-            index_name = "wazuh-states-registries-cluster01"
+            index_name = "wazuh-states-fim-registries-cluster01"
         else:
             index_name = pattern.replace("*", "-cluster01")
 

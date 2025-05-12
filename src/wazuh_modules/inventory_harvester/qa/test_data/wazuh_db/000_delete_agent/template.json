@@ -1,11 +1,11 @@
 {
     "index_patterns": [
-        "wazuh-states-files-*",
-        "wazuh-states-registries-*",
-        "wazuh-states-packages-*",
-        "wazuh-states-system-*",
-        "wazuh-states-processes-*",
-        "wazuh-states-hotfixes-*"
+        "wazuh-states-fim-files-*",
+        "wazuh-states-fim-registries-*",
+        "wazuh-states-inventory-packages-*",
+        "wazuh-states-inventory-system-*",
+        "wazuh-states-inventory-processes-*",
+        "wazuh-states-inventory-hotfixes-*"
     ],
     "priority": 0,
     "template": {

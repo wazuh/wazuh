@@ -1,6 +1,6 @@
 [
     {
-        "index_name": "wazuh-states-hotfixes-cluster01",
+        "index_name": "wazuh-states-inventory-hotfixes-cluster01",
         "data": [
             {
                 "agent": {

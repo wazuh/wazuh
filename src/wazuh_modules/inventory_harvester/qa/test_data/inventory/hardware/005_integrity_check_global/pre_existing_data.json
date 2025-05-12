@@ -1,6 +1,6 @@
 [
     {
-        "index_name": "wazuh-states-hardware-cluster01",
+        "index_name": "wazuh-states-inventory-hardware-cluster01",
         "ids": {
             "001": "001_ABC123XYZ789",
             "002": "002_AAA111BBB222"
