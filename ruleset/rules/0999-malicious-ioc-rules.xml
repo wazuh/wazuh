@@ -25,7 +25,7 @@
 
   <rule id="99902" level="9">
     <if_sid>92501</if_sid>
-    <list field="ClientIP" lookup="match_key">etc/lists/malicious-ip</list>
+    <list field="ClientIP" lookup="match_key">etc/lists/malicious-ioc/malicious-ip</list>
     <description>Cloudflare WAF: Connection from malicious IP $(ClientIP) detected.</description>
   </rule>
 
@@ -35,14 +35,14 @@
 
   <rule id="99903" level="14">
     <if_sid>5715</if_sid>
-    <list field="src_ip" lookup="match_key">etc/lists/malicious-ip</list>
+    <list field="src_ip" lookup="match_key">etc/lists/malicious-ioc/malicious-ip</list>
     <description>sshd: Authentication succeeded from a malicious IP address $(srcip).</description>
     <group>authentication_failed,authentication_success,pci_dss_10.2.4,pci_dss_10.2.5,</group>
   </rule>
 
   <rule id="99904" level="9">
     <if_sid>5716</if_sid>
-  <list field="src_ip" lookup="match_key">etc/lists/malicious-ip</list>
+  <list field="src_ip" lookup="match_key">etc/lists/malicious-ioc/malicious-ip</list>
     <description>sshd: Authentication failed from a malicious IP address $(srcip).</description>
     <group>authentication_failed,authentication_success,pci_dss_10.2.4,pci_dss_10.2.5,</group>
   </rule>
@@ -52,13 +52,13 @@
 
   <rule id="99905" level="9">
     <if_sid>31103, 31104, 31105, 31109, 31164, 31165, 31170, 31171</if_sid>
-    <list field="srcip" lookup="match_key">etc/lists/malicious-ip</list>
+    <list field="srcip" lookup="match_key">etc/lists/malicious-ioc/malicious-ip</list>
     <description>Common web attack from malicious IP $(srcip) detected.</description>
   </rule>
 
   <rule id="99906" level="14">
     <if_sid>31106</if_sid>
-    <list field="srcip" lookup="match_key">etc/lists/malicious-ip</list>
+    <list field="srcip" lookup="match_key">etc/lists/malicious-ioc/malicious-ip</list>
     <description>A web attack from malicious IP  $(srcip) returned code 200 (success).</description>
   </rule>
 
@@ -68,13 +68,13 @@
 
   <rule id="99907" level="9">
     <if_sid>30108, 30109, 30110</if_sid>
-    <list field="srcip" lookup="match_key">etc/lists/malicious-ip</list>
+    <list field="srcip" lookup="match_key">etc/lists/malicious-ioc/malicious-ip</list>
     <description>Apache: User authentication from malicious IP $(srcip) failed.</description>
   </rule>
 
   <rule id="99908" level="9">
     <if_sid>30105, 30106, 30112</if_sid>
-    <list field="srcip" lookup="match_key">etc/lists/malicious-ip</list>
+    <list field="srcip" lookup="match_key">etc/lists/malicious-ioc/malicious-ip</list>
     <description>Apache: Attempt to access forbidden or non-existent file or directory from malicious IP $(srcip) detected.</description>
   </rule>
 
@@ -84,7 +84,7 @@
 
   <rule id="99909" level="9">
     <if_sid>89606</if_sid>
-    <list field="ip_address" lookup="match_key">etc/lists/malicious-ip</list>
+    <list field="ip_address" lookup="match_key">etc/lists/malicious-ioc/malicious-ip</list>
     <description>Attempt to connect to screen sharing with username $(dstuser) from malicious IP $(ip_address) failed.</description>
     <mitre>
       <id>T1021</id>
@@ -95,7 +95,7 @@
 
   <rule id="99910" level="14">
     <if_sid>89607</if_sid>
-    <list field="ip_address" lookup="match_key">etc/lists/malicious-ip</list>
+    <list field="ip_address" lookup="match_key">etc/lists/malicious-ioc/malicious-ip</list>
     <description>Attempt to connect to screen sharing with username $(dstuser) from malicious IP $(ip_address) succeeded.</description>
     <mitre>
       <id>T1021</id>
@@ -111,14 +111,14 @@
 
   <rule id="99911" level="9">
     <if_sid>9702, 9705, 9771</if_sid>
-    <list field="srcip" lookup="match_key">etc/lists/malicious-ip</list>
+    <list field="srcip" lookup="match_key">etc/lists/malicious-ioc/malicious-ip</list>
     <description>Dovecot Authentication from malicious IP $(srcip) Failed.</description>
     <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="99912" level="14">
     <if_sid>9701</if_sid>
-    <list field="srcip" lookup="match_key">etc/lists/malicious-ip</list>
+    <list field="srcip" lookup="match_key">etc/lists/malicious-ioc/malicious-ip</list>
      <description>Dovecot Authentication from malicious IP $(srcip) was Successful.</description>
     <mitre>
       <id>T1078</id>
@@ -132,14 +132,14 @@
 
     <rule id="99913" level="14">
         <if_sid>85004</if_sid>
-        <list field="srcip" lookup="match_key">etc/lists/malicious-ip</list>
+        <list field="srcip" lookup="match_key">etc/lists/malicious-ioc/malicious-ip</list>
         <description>SQL Server login from malicious IP $(srcip) was successful.</description>
         <group>sqlserver_login,pci_dss_10.2.5,gpg13_7.1,gpg13_7.2,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
     </rule>
 
     <rule id="99914" level="9">
         <if_sid>85005</if_sid>
-        <list field="srcip" lookup="match_key">etc/lists/malicious-ip</list>
+        <list field="srcip" lookup="match_key">etc/lists/malicious-ioc/malicious-ip</list>
         <description>SQL Server login from malicious IP $(srcip) failed.</description>
         <group>sqlserver_login, authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
     </rule>
@@ -150,26 +150,26 @@
 
     <rule id="99915" level="9">
         <if_sid>86601</if_sid>
-        <list field="src_ip" lookup="match_key">etc/lists/malicious-ip</list>
-        <description>Suricata: Alert from malicious IP $(src_ip)</description>
+        <list field="src_ip" lookup="match_key">etc/lists/malicious-ioc/malicious-ip</list>
+        <description>Suricata: Alert from malicious IP $(src_ip).</description>
     </rule>
 
     <rule id="99916" level="9">
         <if_sid>86601</if_sid>
-        <list field="dest_ip" lookup="match_key">etc/lists/malicious-ip</list>
-        <description>Suricata: Alert from malicious IP $(dest_ip)</description>
+        <list field="dest_ip" lookup="match_key">etc/lists/malicious-ioc/malicious-ip</list>
+        <description>Suricata: Alert from malicious IP $(dest_ip).</description>
     </rule>
 
     <rule id="99917" level="9">
         <if_sid>86601</if_sid>
-        <list field="url" lookup="match_key">etc/lists/malicious-url</list>
-        <description>Suricata: Alert from malicious IP $(url)</description>
+        <list field="url" lookup="match_key">etc/lists/malicious-ioc/malicious-url</list>
+        <description>Suricata: Alert from malicious IP $(url).</description>
     </rule>
 
     <rule id="99918" level="9">
         <if_sid>86601</if_sid>
-        <list field="host" lookup="match_key">etc/lists/malicious-url</list>
-        <description>Suricata: Alert from malicious IP $(host)</description>
+        <list field="host" lookup="match_key">etc/lists/malicious-ioc/malicious-url</list>
+        <description>Suricata: Alert from malicious IP $(host).</description>
     </rule>
 
 </group>
@@ -178,7 +178,7 @@
 
   <rule id="99919" level="9">
     <if_sid>60105</if_sid>
-    <list field="win.eventdata.ipAddress" lookup="match_key">etc/lists/malicious-ip</list>
+    <list field="win.eventdata.ipAddress" lookup="match_key">etc/lists/malicious-ioc/malicious-ip</list>
     <description>Failed Logon from malicious IP $(win.eventdata.ipAddress).</description>
     <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
     <mitre>
@@ -188,7 +188,7 @@
 
   <rule id="99920" level="14">
     <if_sid>92651</if_sid>
-    <list field="win.eventdata.ipAddress" lookup="match_key">etc/lists/malicious-ip</list>
+    <list field="win.eventdata.ipAddress" lookup="match_key">etc/lists/malicious-ioc/malicious-ip</list>
     <description>Successful Remote Logon from malicious IP $(win.eventdata.ipAddress).</description>
     <group>authentication_success,pci_dss_10.2.5,gpg13_7.1,gpg13_7.2,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
     <mitre>
