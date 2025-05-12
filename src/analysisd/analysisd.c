@@ -1549,6 +1549,9 @@ void * w_decode_syscheck_thread(__attribute__((unused)) void * args){
     /* Initialize the integrity database */
     sdb_init(&sdb, fim_decoder);
 
+    /* Regiter the decoder for hot reload */
+    w_hotreload_fim_registry_decoder(fim_decoder);
+
     while(1) {
         /* Receive message from queue */
         if (msg = queue_pop_ex(decode_queue_syscheck_input), msg) {
