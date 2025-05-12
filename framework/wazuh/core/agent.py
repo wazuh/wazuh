@@ -25,7 +25,7 @@ from wazuh.core.wazuh_queue import WazuhQueue
 from wazuh.core.wazuh_socket import WazuhSocket, WazuhSocketJSON, create_wazuh_socket_message
 from wazuh.core.wdb import WazuhDBConnection
 from wazuh.core.wdb_http import get_wdb_http_client
-from wazuh.rbac.utils import resource_cache
+from wazuh.rbac.utils import resource_cache, RESOURCES_CACHE
 
 
 detect_wrong_lines = re.compile(r'(.+ .+ (?:any|\d+\.\d+\.\d+\.\d+) \w+)')
@@ -37,6 +37,8 @@ lock_acquired = False
 
 agent_regex = re.compile(r"^(\d{3,}) [^!].* .* .*$", re.MULTILINE)
 
+GET_AGENTS_INFO_CACHE_KEY = 'get_agents_info'
+GET_GROUPS_CACHE_KEY = 'get_groups'
 GROUP_FIELDS = ['name', 'mergedSum', 'configSum', 'count']
 GROUP_REQUIRED_FIELDS = ['name']
 GROUP_FILES_FIELDS = ['filename', 'hash']
@@ -1275,7 +1277,6 @@ def send_restart_command(agent_id: str = '', agent_version: str = '', wq: WazuhQ
     return ret_msg
 
 
-@common.context_cached('system_agents')
 def get_agents_info() -> set:
     """Get all agent IDs in the system.
 
@@ -1284,16 +1285,20 @@ def get_agents_info() -> set:
     set
         IDs of all agents in the system.
     """
+    if agents := RESOURCES_CACHE.get(GET_AGENTS_INFO_CACHE_KEY):
+        return agents
+    
     with open(common.CLIENT_KEYS, 'r') as f:
         file_content = f.read()
 
     result = set(agent_regex.findall(file_content))
     result.add('000')
 
+    RESOURCES_CACHE[GET_AGENTS_INFO_CACHE_KEY] = result
+
     return result
 
 
-@common.context_cached('system_groups')
 def get_groups() -> set:
     """Get all groups in the system.
 
@@ -1302,9 +1307,14 @@ def get_groups() -> set:
     set
         Names of all groups in the system.
     """
+    if groups := RESOURCES_CACHE.get(GET_GROUPS_CACHE_KEY):
+        return groups
+    
     groups = set()
     for shared_file in listdir(common.SHARED_PATH):
         path.isdir(path.join(common.SHARED_PATH, shared_file)) and groups.add(shared_file)
+
+    RESOURCES_CACHE[GET_GROUPS_CACHE_KEY] = groups
 
     return groups
 
