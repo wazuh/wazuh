@@ -215,7 +215,11 @@ def is_valid_url(url: str) -> bool:
     bool
         True if the URL is valid, False otherwise.
     """
-    split_url = urlsplit(url)
+    try:
+        split_url = urlsplit(url)
+    except ValueError:
+        # Return False if urlsplit raises a ValueError for malformed URLs
+        return False
 
     valid_schemes = {"http", "https"}
     if split_url.scheme not in valid_schemes:
