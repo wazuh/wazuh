@@ -140,6 +140,23 @@ def test_get_by_sha1():
         mock_get.assert_called_once_with(f'https://api.maltiverse.com/sample/sha1/{example_sample}')
 
 
+@pytest.mark.parametrize('url,expected', [
+    ('http://example.com', True),
+    ('https://example.com:8080', True),
+    ('https://api.maltiverse.com', True),
+    ('http://example.com/<script>', False),
+    ('https://192.168.0.1:invalid', False),
+    ('malformed://example.com', False),
+    ('http://', False),
+    ('https://user:some]password[@host.com', False),
+    ('https://user:some%5Dpassword%5B@host.com', False)
+])
+def test_is_valid_url(url, expected):
+    """Test the `test_is_valid_url` function works as expected."""
+    result = maltiverse.is_valid_url(url)
+    assert result == expected
+
+
 @pytest.mark.parametrize('number_of_arguments', [1, 2, 3])
 def test_main_exit_with_invalid_number_of_arguments(number_of_arguments):
     """Test that the `main` function exits with the expected code for an invalid number of arguments."""
