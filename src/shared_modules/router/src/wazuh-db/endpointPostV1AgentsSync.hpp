@@ -103,9 +103,10 @@ public:
         {
             if (jsonBody.contains("syncreq_keepalive"))
             {
-                DBStatement stmt(
-                    db,
-                    "UPDATE agent SET last_keepalive = STRFTIME('%s', 'NOW'), sync_status = 'synced' WHERE id = ?;");
+                DBStatement stmt(db,
+                                 "UPDATE agent SET last_keepalive = STRFTIME('%s', 'NOW'),sync_status = 'synced',"
+                                 "connection_status = 'active',disconnection_time = 0,"
+                                 "status_code = 0 WHERE id = ?;");
 
                 for (const auto& agent : jsonBody.at("syncreq_keepalive"))
                 {
