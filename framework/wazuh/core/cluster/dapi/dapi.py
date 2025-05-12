@@ -248,7 +248,6 @@ class DistributedAPI:
         common.current_user.set(current_user)
         common.origin_module.set(origin_module)
         data = f(**f_kwargs)
-        common.reset_context_cache()
         return data
 
     async def execute_local_request(self) -> str:
