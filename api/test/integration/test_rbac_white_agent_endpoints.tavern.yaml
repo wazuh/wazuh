@@ -547,11 +547,10 @@ stages:
      json:
        error: 0
        data:
-         affected_items:
-           - id: '012'
-         failed_items: []
-         total_affected_items: 1
-         total_failed_items: 0
+          affected_items: []
+          failed_items: []
+          total_affected_items: 0
+          total_failed_items: 0
 
 ---
 test_name: GET /agents/outdated
@@ -1204,7 +1203,7 @@ test_name: POST /groups
 
 stages:
 
-  - name: Try to create a group called group4 (Denied)
+  - name: Try to create a group called group5 (Denied)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/groups"
@@ -1212,7 +1211,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       json:
-        group_id: "group4"
+        group_id: "group5"
     response:
       <<: *permission_denied
 

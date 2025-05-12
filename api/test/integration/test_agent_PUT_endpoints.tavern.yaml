@@ -186,7 +186,7 @@ stages:
       verify_response_with:
         function: tavern_utils:healthcheck_agent_restart
         extra_kwargs:
-          agents_list: ["001", "003", "004", "007"]  # 009 is not restarted as it is disconnected
+          agents_list: ["001", "003", "004", "007", "13"]  # 009, 011 and 14 are not restarted as they are disconnected
       status_code: 200
       json:
         error: 0
@@ -199,7 +199,10 @@ stages:
             - "009"
             - "011"
             - "012"
-          total_affected_items: 7
+            - "013"
+            - "014"
+            - "015"
+          total_affected_items: 10
 
     # PUT /agents/group?group_id=group2&force_single_group=true
   - name: Assign all agents to group2 with force_single_group
@@ -216,8 +219,8 @@ stages:
       verify_response_with:
         function: tavern_utils:healthcheck_agent_restart
         extra_kwargs:
-          agents_list: ["001", "002", "003", "004", "005", "006", "007", "008"]  # 009 and 010 are not restarted as
-                                                                                 # they are disconnected
+          agents_list: ["001", "002", "003", "004", "005", "006", "007", "008", "013"]  # 009, 010, 011 and 014 are not 
+                                                                                  # restarted as they are disconnected
       status_code: 200
       json:
         error: 0
@@ -235,7 +238,10 @@ stages:
             - "010"
             - "011"
             - "012"
-          total_affected_items: 12
+            - "013"
+            - "014"
+            - "015"
+          total_affected_items: 15
 
 ---
 test_name: PUT /groups/{group_id}/configuration
@@ -257,8 +263,8 @@ stages:
       verify_response_with:
         function: tavern_utils:healthcheck_agent_restart
         extra_kwargs:
-          agents_list: ["001", "002", "003", "004", "005", "006", "007", "008"]  # 009 and 010 are not restarted as
-                                                                                 # they are disconnected
+          agents_list: ["001", "002", "003", "004", "005", "006", "007", "008", "013"]  # 009, 010, 011 and 014 are not 
+                                                                                  # restarted as they are disconnected
       status_code: 200
 
     # PUT /groups/wrong_group/configuration
@@ -391,7 +397,7 @@ stages:
       verify_response_with:
         function: tavern_utils:healthcheck_agent_restart
         extra_kwargs:
-          agents_list: ["001", "002", "003", "004", "005", "006", "007", "008"]
+          agents_list: ["001", "002", "003", "004", "005", "006", "007", "008", "013"]
       status_code: 200
       json:
         error: 0
@@ -405,7 +411,26 @@ stages:
             - "006"
             - "007"
             - "008"
-          total_affected_items: 8
+            - "013"
+          total_affected_items: 9
+
+
+  - name: Restart all agents from default group
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents/group/default/restart"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items: []
+          total_affected_items: 0
+          failed_items: []
+          total_failed_items: 0
 
   # PUT /groups/not_exists/restart (Group does not exist)
   - name: Restart all agents from a group which does not exist
@@ -530,8 +555,9 @@ stages:
             - "006"
             - "007"
             - "008"
+            - "013"
           failed_items: !anything
-          total_affected_items: 8
+          total_affected_items: 9
           total_failed_items: 0
     delay_after: !float "{reconnect_delay}"
 
@@ -640,7 +666,7 @@ stages:
       verify_response_with:
         function: tavern_utils:healthcheck_agent_restart
         extra_kwargs:
-          agents_list: ["001", "002", "003", "004", "005", "006", "007", "008"]
+          agents_list: ["001", "002", "003", "004", "005", "006", "007", "008", "013"]
       status_code: 200
       json:
         error: 0
@@ -654,8 +680,9 @@ stages:
             - "006"
             - "007"
             - "008"
+            - "013"
           failed_items: !anything
-          total_affected_items: 8
+          total_affected_items: 9
           total_failed_items: 0
 
 ---
@@ -1039,7 +1066,7 @@ stages:
         data:
           affected_items: []
           total_affected_items: 0
-          total_failed_items: 7
+          total_failed_items: 9
           failed_items:
             - error:  # Not existing agents
                 code: 1701
@@ -1063,6 +1090,9 @@ stages:
                 - '010'
                 - '011'
                 - '012'
+                - '012'
+                - '014'
+                - '015'
         message: !anystr
 
   - name: Try to upgrade a list of agents expecting socket error (agent version greater or equal)
