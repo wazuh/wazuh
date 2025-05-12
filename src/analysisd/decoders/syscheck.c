@@ -134,6 +134,8 @@ static fim_decoders_t *fim_decoders[] = {
 };
 OSHash *fim_agentinfo;
 
+OSList * g_decoder_thread_list = NULL; ///< List of decoders on threads
+
 // Initialize the necessary information to process the syscheck information
 // LCOV_EXCL_START
 int fim_init(void) {
@@ -157,7 +159,17 @@ int fim_init(void) {
     fim_decoders[REGISTRY_VALUE_DECODER]->modify_name = FIM_REG_VAL_MOD;
     fim_decoders[REGISTRY_VALUE_DECODER]->delete_id = getDecoderfromlist(FIM_REG_VAL_DEL, &os_analysisd_decoder_store);
     fim_decoders[REGISTRY_VALUE_DECODER]->delete_name = FIM_REG_VAL_DEL;
-    if (fim_agentinfo == NULL) return 0;
+    if (fim_agentinfo == NULL) {
+        return 0;
+    }
+
+    // Create registry for decoders used in threads (For hotreload)
+    g_decoder_thread_list = OSList_Create();
+    if (g_decoder_thread_list == NULL) {
+        merror("Error creating the list of decoder info threads");
+        return 0;
+    }
+
     return 1;
 }
 
@@ -172,10 +184,23 @@ void fim_hot_reload(void) {
         fim_decoders[REGISTRY_VALUE_DECODER]->add_id = getDecoderfromlist(FIM_REG_VAL_NEW, &os_analysisd_decoder_store);
         fim_decoders[REGISTRY_VALUE_DECODER]->modify_id = getDecoderfromlist(FIM_REG_VAL_MOD, &os_analysisd_decoder_store);
         fim_decoders[REGISTRY_VALUE_DECODER]->delete_id = getDecoderfromlist(FIM_REG_VAL_DEL, &os_analysisd_decoder_store);
+
+        // Reload local thread decoders
+        OSListNode * node = OSList_GetFirstNode(g_decoder_thread_list);
+        while (node && node->data) {
+            OSDecoderInfo * fim_decoder = node->data;
+            fim_decoder->id = getDecoderfromlist(FIM_MOD, &os_analysisd_decoder_store);
+            node = OSList_GetNextNode(g_decoder_thread_list);
+        }
         mdebug1("FIM hotreload decoder completed.");
     } else {
         mdebug1("FIM decoder not initialized.");
     }
+}
+
+void w_hotreload_fim_registry_decoder(OSDecoderInfo * fim_decoder) {
+    assert(fim_decoder != NULL);
+    OSList_AddData(g_decoder_thread_list, fim_decoder);
 }
 
 // Initialize the necessary information to process the syscheck information

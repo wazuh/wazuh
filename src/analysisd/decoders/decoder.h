@@ -225,6 +225,8 @@ void CiscatHotReload(void);
 void WinevtHotReload(void);
 void SecurityConfigurationAssessmentHotReload(void);
 
+void w_hotreload_fim_registry_decoder(OSDecoderInfo * fim_decoder);
+
 /**
  * @brief Read decoder files and save them in the decoder list
  * @param file name of file which read
