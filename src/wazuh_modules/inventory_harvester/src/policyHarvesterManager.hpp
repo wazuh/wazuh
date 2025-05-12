@@ -296,7 +296,8 @@ public:
     {
         auto config = PolicyHarvesterManager::instance().getIndexerConfiguration();
         auto clusterName = Utils::toLowerCaseView(PolicyHarvesterManager::instance().getClusterName());
-        config["name"] = std::string(STATES_INDEX_NAME_PREFIX) + INVENTORY_TYPES.at(type) + "-" + name + "-" + clusterName;
+        config["name"] =
+            std::string(STATES_INDEX_NAME_PREFIX) + INVENTORY_TYPES.at(type) + "-" + name + "-" + clusterName;
         return config;
     }
 
