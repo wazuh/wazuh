@@ -1839,49 +1839,8 @@ checks:
       - "not f:/etc/at.deny"
       - 'c:stat /etc/at.allow -> r:^Access: \(0640/-rw-r-----\)\s*Uid: \(\s*0/\s*root\)\s*Gid: \(\s*0/\s*root\)$'
 
-  # 3.1.1 Ensure IPv6 status is identified. (Manual)
-  - id: 33107
-    title: "Ensure IPv6 status is identified."
-    description: "Internet Protocol Version 6 (IPv6) is the most recent version of Internet Protocol (IP). It's designed to supply IP addressing and additional security to support the predicted growth of connected devices. IPv6 is based on 128-bit addressing and can support 340 undecillion, which is 340,282,366,920,938,463,463,374,607,431,768,211,456 unique addresses. Features of IPv6 - Hierarchical addressing and routing infrastructure - Statefull and Stateless configuration - Support for quality of service (QoS) - An ideal protocol for neighboring node interaction."
-    rationale: "IETF RFC 4038 recommends that applications are built with an assumption of dual stack. It is recommended that IPv6 be enabled and configured in accordance with Benchmark recommendations. - IF - dual stack and IPv6 are not used in your environment, IPv6 may be disabled to reduce the attack surface of the system, and recommendations pertaining to IPv6 can be skipped. Note: It is recommended that IPv6 be enabled and configured unless this is against local site policy."
-    impact: "IETF RFC 4038 recommends that applications are built with an assumption of dual stack. When enabled, IPv6 will require additional configuration to reduce risk to the system."
-    remediation: "Enable or disable IPv6 in accordance with system requirements and local site policy."
-    compliance:
-      - cis: ["3.1.1"]
-      - cis_csc_v8: ["4.8"]
-      - cis_csc_v7: ["9.2"]
-      - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
-      - iso_27001-2013: ["A.13.1.3"]
-      - mitre_mitigations: ["M1042"]
-      - mitre_tactics: ["TA0008"]
-      - mitre_techniques: ["T1557", "T1595", "T1595.001", "T1595.002"]
-      - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
-      - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
-      - soc_2: ["CC6.3", "CC6.6"]
-    condition:
-    rules:
-
-  # 3.1.2 Ensure wireless interfaces are disabled. (Automated)
-  - id: 33108
-    title: "Ensure wireless interfaces are disabled."
-    description: "Wireless networking is used when wired networks are unavailable."
-    rationale: "-IF- wireless is not to be used, wireless devices can be disabled to reduce the potential attack surface."
-    impact: "Many if not all laptop workstations and some desktop workstations will connect via wireless requiring these interfaces be enabled."
-    remediation: "Run the following script to disable any wireless interfaces: #!/usr/bin/env bash { module_fix() { if ! modprobe -n -v \"$l_mname\" | grep -P -- '^\\h*install \\/bin\\/(true|false)'; then echo -e \" - setting module: \\\"$l_mname\\\" to be un-loadable\" echo -e \"install $l_mname /bin/false\" >> /etc/modprobe.d/\"$l_mname\".conf fi if lsmod | grep \"$l_mname\" > /dev/null 2>&1; then echo -e \" - unloading module \\\"$l_mname\\\"\" modprobe -r \"$l_mname\" fi if ! grep -Pq -- \"^\\h*blacklist\\h+$l_mname\\b\" /etc/modprobe.d/*; then echo -e \" - deny listing \\\"$l_mname\\\"\" echo -e \"blacklist $l_mname\" >> /etc/modprobe.d/\"$l_mname\".conf fi } if [ -n \"$(find /sys/class/net/*/ -type d -name wireless)\" ]; then l_dname=$(for driverdir in $(find /sys/class/net/*/ -type d -name wireless | xargs -0 dirname); do basename \"$(readlink -f \"$driverdir\"/device/driver/module)\";done | sort -u) for l_mname in $l_dname; do module_fix done fi }."
-    compliance:
-      - cis: ["3.1.2"]
-      - cis_csc_v8: ["4.8"]
-      - cis_csc_v7: ["15.4", "15.5"]
-      - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
-      - iso_27001-2013: ["A.8.1.3"]
-      - mitre_mitigations: ["M1028"]
-      - mitre_tactics: ["TA0010"]
-      - mitre_techniques: ["T1011", "T1595", "T1595.001", "T1595.002"]
-      - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
-      - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
-      - soc_2: ["CC6.3", "CC6.6"]
-    condition:
-    rules:
+  # 3.1.1 Ensure IPv6 status is identified. (Manual) - Not Implemented
+  # 3.1.2 Ensure wireless interfaces are disabled. (Automated) - Not Implemented
 
   # 3.1.3 Ensure bluetooth services are not in use. (Automated)
   - id: 33109
@@ -1904,353 +1863,27 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: any
     rules:
+      - "not c: dpkg-query -s bluez -> r:install ok installed"
+      - 'not c:sh -c "systemctl is-enabled bluetooth.service & systemctl is-active bluetooth.service" -> r:^active$|^enabled$'
 
-  # 3.2.1 Ensure dccp kernel module is not available. (Automated)
-  - id: 33110
-    title: "Ensure dccp kernel module is not available."
-    description: "The Datagram Congestion Control Protocol (DCCP) is a transport layer protocol that supports streaming media and telephony. DCCP provides a way to gain access to congestion control, without having to do it at the application layer, but does not provide in-sequence delivery."
-    rationale: "- IF - the protocol is not required, it is recommended that the drivers not be installed to reduce the potential attack surface."
-    remediation: "Run the following script to unload and disable the dccp module: - IF - the dccp kernel module is available in ANY installed kernel: - Create a file ending in .conf with install dccp /bin/false in the /etc/modprobe.d/ directory - Create a file ending in .conf with blacklist dccp in the /etc/modprobe.d/ directory - Run modprobe -r dccp 2>/dev/null; rmmod dccp 2>/dev/null to remove dccp from the kernel - IF - the dccp kernel module is not available on the system, or pre-compiled into the kernel, no remediation is necessary #!/usr/bin/env bash { a_output2=() a_output3=() l_dl=\"\" l_mod_name=\"dccp\" l_mod_type=\"net\" l_mod_path=\"$(readlink -f /lib/modules/**/kernel/$l_mod_type | sort -u)\" f_module_fix() { l_dl=\"y\" a_showconfig=() while IFS= read -r l_showconfig; do a_showconfig+=(\"$l_showconfig\") done < <(modprobe --showconfig | grep -P -- '\\b(install|blacklist)\\h+'\"${l_mod_chk_name//-/_}\"'\\b') if lsmod | grep \"$l_mod_chk_name\" &> /dev/null; then a_output2+=(\" - unloading kernel module: \\\"$l_mod_name\\\"\") modprobe -r \"$l_mod_chk_name\" 2>/dev/null; rmmod \"$l_mod_name\" 2>/dev/null fi if ! grep -Pq -- '\\binstall\\h+'\"${l_mod_chk_name//- /_}\"'\\h+(\\/usr)?\\/bin\\/(true|false)\\b' <<< \"${a_showconfig[*]}\"; then a_output2+=(\" - setting kernel module: \\\"$l_mod_name\\\" to \\\"$(readlink -f /bin/false)\\\"\") printf '%s\\n' \"install $l_mod_chk_name $(readlink -f /bin/false)\" >> /etc/modprobe.d/\"$l_mod_name\".conf fi if ! grep -Pq -- '\\bblacklist\\h+'\"${l_mod_chk_name//-/_}\"'\\b' <<< \"${a_showconfig[*]}\"; then a_output2+=(\" - denylisting kernel module: \\\"$l_mod_name\\\"\") printf '%s\\n' \"blacklist $l_mod_chk_name\" >> /etc/modprobe.d/\"$l_mod_name\".conf fi } for l_mod_base_directory in $l_mod_path; do # Check if the module exists on the system if [ -d \"$l_mod_base_directory/${l_mod_name/-/\\/}\" ] && [ -n \"$(ls -A \"$l_mod_base_directory/${l_mod_name/-/\\/}\")\" ]; then a_output3+=(\" - \\\"$l_mod_base_directory\\\"\") l_mod_chk_name=\"$l_mod_name\" [[ \"$l_mod_name\" =~ overlay ]] && l_mod_chk_name=\"${l_mod_name::-2}\" [ \"$l_dl\" != \"y\" ] && f_module_fix else printf '%s\\n' \" - kernel module: \\\"$l_mod_name\\\" doesn't exist in \\\"$l_mod_base_directory\\\"\" fi done [ \"${#a_output3[@]}\" -gt 0 ] && printf '%s\\n' \"\" \" -- INFO --\" \" - module: \\\"$l_mod_name\\\" exists in:\" \"${a_output3[@]}\" [ \"${#a_output2[@]}\" -gt 0 ] && printf '%s\\n' \"\" \"${a_output2[@]}\" || printf '%s\\n' \"\" \" - No changes needed\" printf '%s\\n' \"\" \" - remediation of kernel module: \\\"$l_mod_name\\\" complete\" \"\" }."
-    compliance:
-      - cis: ["3.2.1"]
-      - cis_csc_v8: ["4.8"]
-      - cis_csc_v7: ["9.2"]
-      - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
-      - iso_27001-2013: ["A.13.1.3"]
-      - mitre_mitigations: ["M1042"]
-      - mitre_tactics: ["TA0008"]
-      - mitre_techniques: ["T1068", "T1210"]
-      - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
-      - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
-      - soc_2: ["CC6.3", "CC6.6"]
-    condition:
-    rules:
-
-  # 3.2.2 Ensure tipc kernel module is not available. (Automated)
-  - id: 33111
-    title: "Ensure tipc kernel module is not available."
-    description: "The Transparent Inter-Process Communication (TIPC) protocol is designed to provide communication between cluster nodes."
-    rationale: "- IF - the protocol is not being used, it is recommended that kernel module not be loaded, disabling the service to reduce the potential attack surface."
-    remediation: "Run the following script to unload and disable the tipc module: - IF - the tipc kernel module is available in ANY installed kernel: - Create a file ending in .conf with install tipc /bin/false in the /etc/modprobe.d/ directory - Create a file ending in .conf with blacklist tipc in the /etc/modprobe.d/ directory - Run modprobe -r tipc 2>/dev/null; rmmod tipc 2>/dev/null to remove tipc from the kernel - IF - the tipc kernel module is not available on the system, or pre-compiled into the kernel, no remediation is necessary #!/usr/bin/env bash { a_output2=() a_output3=() l_dl=\"\" l_mod_name=\"tipc\" l_mod_type=\"net\" l_mod_path=\"$(readlink -f /lib/modules/**/kernel/$l_mod_type | sort -u)\" f_module_fix() { l_dl=\"y\" a_showconfig=() while IFS= read -r l_showconfig; do a_showconfig+=(\"$l_showconfig\") done < <(modprobe --showconfig | grep -P -- '\\b(install|blacklist)\\h+'\"${l_mod_chk_name//-/_}\"'\\b') if lsmod | grep \"$l_mod_chk_name\" &> /dev/null; then a_output2+=(\" - unloading kernel module: \\\"$l_mod_name\\\"\") modprobe -r \"$l_mod_chk_name\" 2>/dev/null; rmmod \"$l_mod_name\" 2>/dev/null fi if ! grep -Pq -- '\\binstall\\h+'\"${l_mod_chk_name//- /_}\"'\\h+(\\/usr)?\\/bin\\/(true|false)\\b' <<< \"${a_showconfig[*]}\"; then a_output2+=(\" - setting kernel module: \\\"$l_mod_name\\\" to \\\"$(readlink -f /bin/false)\\\"\") printf '%s\\n' \"install $l_mod_chk_name $(readlink -f /bin/false)\" >> /etc/modprobe.d/\"$l_mod_name\".conf fi if ! grep -Pq -- '\\bblacklist\\h+'\"${l_mod_chk_name//-/_}\"'\\b' <<< \"${a_showconfig[*]}\"; then a_output2+=(\" - denylisting kernel module: \\\"$l_mod_name\\\"\") printf '%s\\n' \"blacklist $l_mod_chk_name\" >> /etc/modprobe.d/\"$l_mod_name\".conf fi } for l_mod_base_directory in $l_mod_path; do # Check if the module exists on the system if [ -d \"$l_mod_base_directory/${l_mod_name/-/\\/}\" ] && [ -n \"$(ls -A \"$l_mod_base_directory/${l_mod_name/-/\\/}\")\" ]; then a_output3+=(\" - \\\"$l_mod_base_directory\\\"\") l_mod_chk_name=\"$l_mod_name\" [[ \"$l_mod_name\" =~ overlay ]] && l_mod_chk_name=\"${l_mod_name::-2}\" [ \"$l_dl\" != \"y\" ] && f_module_fix else printf '%s\\n' \" - kernel module: \\\"$l_mod_name\\\" doesn't exist in \\\"$l_mod_base_directory\\\"\" fi done [ \"${#a_output3[@]}\" -gt 0 ] && printf '%s\\n' \"\" \" -- INFO --\" \" - module: \\\"$l_mod_name\\\" exists in:\" \"${a_output3[@]}\" [ \"${#a_output2[@]}\" -gt 0 ] && printf '%s\\n' \"\" \"${a_output2[@]}\" || printf '%s\\n' \"\" \" - No changes needed\" printf '%s\\n' \"\" \" - remediation of kernel module: \\\"$l_mod_name\\\" complete\" \"\" }."
-    compliance:
-      - cis: ["3.2.2"]
-      - cis_csc_v8: ["4.8"]
-      - cis_csc_v7: ["9.2"]
-      - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
-      - iso_27001-2013: ["A.13.1.3"]
-      - mitre_mitigations: ["M1042"]
-      - mitre_tactics: ["TA0008"]
-      - mitre_techniques: ["T1068", "T1210"]
-      - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
-      - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
-      - soc_2: ["CC6.3", "CC6.6"]
-    condition:
-    rules:
-
-  # 3.2.3 Ensure rds kernel module is not available. (Automated)
-  - id: 33112
-    title: "Ensure rds kernel module is not available."
-    description: "The Reliable Datagram Sockets (RDS) protocol is a transport layer protocol designed to provide low-latency, high-bandwidth communications between cluster nodes. It was developed by the Oracle Corporation."
-    rationale: "- IF - the protocol is not being used, it is recommended that kernel module not be loaded, disabling the service to reduce the potential attack surface."
-    remediation: "Run the following script to unload and disable the rds module: - IF - the rds kernel module is available in ANY installed kernel: - Create a file ending in .conf with install rds /bin/false in the /etc/modprobe.d/ directory - Create a file ending in .conf with blacklist rds in the /etc/modprobe.d/ directory - Run modprobe -r rds 2>/dev/null; rmmod rds 2>/dev/null to remove rds from the kernel - IF - the rds kernel module is not available on the system, or pre-compiled into the kernel, no remediation is necessary #!/usr/bin/env bash { a_output2=() a_output3=() l_dl=\"\" l_mod_name=\"rds\" l_mod_type=\"net\" l_mod_path=\"$(readlink -f /lib/modules/**/kernel/$l_mod_type | sort -u)\" f_module_fix() { l_dl=\"y\" a_showconfig=() while IFS= read -r l_showconfig; do a_showconfig+=(\"$l_showconfig\") done < <(modprobe --showconfig | grep -P -- '\\b(install|blacklist)\\h+'\"${l_mod_chk_name//-/_}\"'\\b') if lsmod | grep \"$l_mod_chk_name\" &> /dev/null; then a_output2+=(\" - unloading kernel module: \\\"$l_mod_name\\\"\") modprobe -r \"$l_mod_chk_name\" 2>/dev/null; rmmod \"$l_mod_name\" 2>/dev/null fi if ! grep -Pq -- '\\binstall\\h+'\"${l_mod_chk_name//- /_}\"'\\h+(\\/usr)?\\/bin\\/(true|false)\\b' <<< \"${a_showconfig[*]}\"; then a_output2+=(\" - setting kernel module: \\\"$l_mod_name\\\" to \\\"$(readlink -f /bin/false)\\\"\") printf '%s\\n' \"install $l_mod_chk_name $(readlink -f /bin/false)\" >> /etc/modprobe.d/\"$l_mod_name\".conf fi if ! grep -Pq -- '\\bblacklist\\h+'\"${l_mod_chk_name//-/_}\"'\\b' <<< \"${a_showconfig[*]}\"; then a_output2+=(\" - denylisting kernel module: \\\"$l_mod_name\\\"\") printf '%s\\n' \"blacklist $l_mod_chk_name\" >> /etc/modprobe.d/\"$l_mod_name\".conf fi } for l_mod_base_directory in $l_mod_path; do # Check if the module exists on the system if [ -d \"$l_mod_base_directory/${l_mod_name/-/\\/}\" ] && [ -n \"$(ls -A \"$l_mod_base_directory/${l_mod_name/-/\\/}\")\" ]; then a_output3+=(\" - \\\"$l_mod_base_directory\\\"\") l_mod_chk_name=\"$l_mod_name\" [[ \"$l_mod_name\" =~ overlay ]] && l_mod_chk_name=\"${l_mod_name::-2}\" [ \"$l_dl\" != \"y\" ] && f_module_fix else printf '%s\\n' \" - kernel module: \\\"$l_mod_name\\\" doesn't exist in \\\"$l_mod_base_directory\\\"\" fi done [ \"${#a_output3[@]}\" -gt 0 ] && printf '%s\\n' \"\" \" -- INFO --\" \" - module: \\\"$l_mod_name\\\" exists in:\" \"${a_output3[@]}\" [ \"${#a_output2[@]}\" -gt 0 ] && printf '%s\\n' \"\" \"${a_output2[@]}\" || printf '%s\\n' \"\" \" - No changes needed\" printf '%s\\n' \"\" \" - remediation of kernel module: \\\"$l_mod_name\\\" complete\" \"\" }."
-    compliance:
-      - cis: ["3.2.3"]
-      - cis_csc_v8: ["4.8"]
-      - cis_csc_v7: ["9.2"]
-      - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
-      - iso_27001-2013: ["A.13.1.3"]
-      - mitre_mitigations: ["M1042"]
-      - mitre_tactics: ["TA0008"]
-      - mitre_techniques: ["T1068", "T1210"]
-      - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
-      - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
-      - soc_2: ["CC6.3", "CC6.6"]
-    condition:
-    rules:
-
-  # 3.2.4 Ensure sctp kernel module is not available. (Automated)
-  - id: 33113
-    title: "Ensure sctp kernel module is not available."
-    description: "The Stream Control Transmission Protocol (SCTP) is a transport layer protocol used to support message oriented communication, with several streams of messages in one connection. It serves a similar function as TCP and UDP, incorporating features of both. It is message-oriented like UDP, and ensures reliable in-sequence transport of messages with congestion control like TCP."
-    rationale: "- IF - the protocol is not being used, it is recommended that kernel module not be loaded, disabling the service to reduce the potential attack surface."
-    remediation: "Run the following script to unload and disable the sctp module: - IF - the sctp kernel module is available in ANY installed kernel: - Create a file ending in .conf with install sctp /bin/false in the /etc/modprobe.d/ directory - Create a file ending in .conf with blacklist sctp in the /etc/modprobe.d/ directory - Run modprobe -r sctp 2>/dev/null; rmmod sctp 2>/dev/null to remove sctp from the kernel - IF - the sctp kernel module is not available on the system, or pre-compiled into the kernel, no remediation is necessary #!/usr/bin/env bash { a_output2=() a_output3=() l_dl=\"\" l_mod_name=\"sctp\" l_mod_type=\"net\" l_mod_path=\"$(readlink -f /lib/modules/**/kernel/$l_mod_type | sort -u)\" f_module_fix() { l_dl=\"y\" a_showconfig=() while IFS= read -r l_showconfig; do a_showconfig+=(\"$l_showconfig\") done < <(modprobe --showconfig | grep -P -- '\\b(install|blacklist)\\h+'\"${l_mod_chk_name//-/_}\"'\\b') if lsmod | grep \"$l_mod_chk_name\" &> /dev/null; then a_output2+=(\" - unloading kernel module: \\\"$l_mod_name\\\"\") modprobe -r \"$l_mod_chk_name\" 2>/dev/null; rmmod \"$l_mod_name\" 2>/dev/null fi if ! grep -Pq -- '\\binstall\\h+'\"${l_mod_chk_name//- /_}\"'\\h+(\\/usr)?\\/bin\\/(true|false)\\b' <<< \"${a_showconfig[*]}\"; then a_output2+=(\" - setting kernel module: \\\"$l_mod_name\\\" to \\\"$(readlink -f /bin/false)\\\"\") printf '%s\\n' \"install $l_mod_chk_name $(readlink -f /bin/false)\" >> /etc/modprobe.d/\"$l_mod_name\".conf fi if ! grep -Pq -- '\\bblacklist\\h+'\"${l_mod_chk_name//-/_}\"'\\b' <<< \"${a_showconfig[*]}\"; then a_output2+=(\" - denylisting kernel module: \\\"$l_mod_name\\\"\") printf '%s\\n' \"blacklist $l_mod_chk_name\" >> /etc/modprobe.d/\"$l_mod_name\".conf fi } for l_mod_base_directory in $l_mod_path; do # Check if the module exists on the system if [ -d \"$l_mod_base_directory/${l_mod_name/-/\\/}\" ] && [ -n \"$(ls -A \"$l_mod_base_directory/${l_mod_name/-/\\/}\")\" ]; then a_output3+=(\" - \\\"$l_mod_base_directory\\\"\") l_mod_chk_name=\"$l_mod_name\" [[ \"$l_mod_name\" =~ overlay ]] && l_mod_chk_name=\"${l_mod_name::-2}\" [ \"$l_dl\" != \"y\" ] && f_module_fix else printf '%s\\n' \" - kernel module: \\\"$l_mod_name\\\" doesn't exist in \\\"$l_mod_base_directory\\\"\" fi done [ \"${#a_output3[@]}\" -gt 0 ] && printf '%s\\n' \"\" \" -- INFO --\" \" - module: \\\"$l_mod_name\\\" exists in:\" \"${a_output3[@]}\" [ \"${#a_output2[@]}\" -gt 0 ] && printf '%s\\n' \"\" \"${a_output2[@]}\" || printf '%s\\n' \"\" \" - No changes needed\" printf '%s\\n' \"\" \" - remediation of kernel module: \\\"$l_mod_name\\\" complete\" \"\" }."
-    compliance:
-      - cis: ["3.2.4"]
-      - cis_csc_v8: ["4.8"]
-      - cis_csc_v7: ["9.2"]
-      - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
-      - iso_27001-2013: ["A.13.1.3"]
-      - mitre_mitigations: ["M1042"]
-      - mitre_tactics: ["TA0008"]
-      - mitre_techniques: ["T1068", "T1210"]
-      - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
-      - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
-      - soc_2: ["CC6.3", "CC6.6"]
-    condition:
-    rules:
-
-  # 3.3.1 Ensure ip forwarding is disabled. (Automated)
-  - id: 33114
-    title: "Ensure ip forwarding is disabled."
-    description: "The net.ipv4.ip_forward and net.ipv6.conf.all.forwarding flags are used to tell the system whether it can forward packets or not."
-    rationale: "Setting net.ipv4.ip_forward and net.ipv6.conf.all.forwarding to 0 ensures that a system with multiple interfaces (for example, a hard proxy), will never be able to forward packets, and therefore, never serve as a router."
-    impact: "IP forwarding is required on systems configured to act as a router. If these parameters are disabled, the system will not be able to perform as a router. Many Cloud Service Provider (CSP) hosted systems require IP forwarding to be enabled. If the system is running on a CSP platform, this requirement should be reviewed before disabling IP forwarding."
-    remediation: "Set the following parameter in /etc/sysctl.conf or a file in /etc/sysctl.d/ ending in .conf: - net.ipv4.ip_forward = 0 Example: # printf '%s\\n' \"net.ipv4.ip_forward = 0\" >> /etc/sysctl.d/60- netipv4_sysctl.conf Run the following script to set the active kernel parameters: #!/usr/bin/env bash { sysctl -w net.ipv4.ip_forward=0 sysctl -w net.ipv4.route.flush=1 } - IF - IPv6 is enabled on the system: Set the following parameter in /etc/sysctl.conf or a file in /etc/sysctl.d/ ending in .conf: - net.ipv6.conf.all.forwarding = 0 Example: # printf '%s\\n' \"net.ipv6.conf.all.forwarding = 0\" >> /etc/sysctl.d/60- netipv6_sysctl.conf Run the following script to set the active kernel parameters: #!/usr/bin/env bash { sysctl -w net.ipv6.conf.all.forwarding=0 sysctl -w net.ipv6.route.flush=1 } Note: If these settings appear in a canonically later file, or later in the same file, these settings will be overwritten."
-    compliance:
-      - cis: ["3.3.1"]
-      - cis_csc_v8: ["4.8"]
-      - cis_csc_v7: ["9.2"]
-      - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
-      - iso_27001-2013: ["A.13.1.3"]
-      - mitre_mitigations: ["M1030", "M1042"]
-      - mitre_tactics: ["TA0006", "TA0009"]
-      - mitre_techniques: ["T1557"]
-      - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
-      - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
-      - soc_2: ["CC6.3", "CC6.6"]
-    condition:
-    rules:
-
-  # 3.3.2 Ensure packet redirect sending is disabled. (Automated)
-  - id: 33115
-    title: "Ensure packet redirect sending is disabled."
-    description: "ICMP Redirects are used to send routing information to other hosts. As a host itself does not act as a router (in a host only configuration), there is no need to send redirects."
-    rationale: "An attacker could use a compromised host to send invalid ICMP redirects to other router devices in an attempt to corrupt routing and have users access a system set up by the attacker as opposed to a valid system."
-    impact: "IP forwarding is required on systems configured to act as a router. If these parameters are disabled, the system will not be able to perform as a router."
-    remediation: "Set the following parameters in /etc/sysctl.conf or a file in /etc/sysctl.d/ ending in .conf: - net.ipv4.conf.all.send_redirects = 0 - net.ipv4.conf.default.send_redirects = 0 Example: # printf '%s\\n' \"net.ipv4.conf.all.send_redirects = 0\" \"net.ipv4.conf.default.send_redirects = 0\" >> /etc/sysctl.d/60- netipv4_sysctl.conf Run the following script to set the active kernel parameters: #!/usr/bin/env bash { sysctl -w net.ipv4.conf.all.send_redirects=0 sysctl -w net.ipv4.conf.default.send_redirects=0 sysctl -w net.ipv4.route.flush=1 } Note: If these settings appear in a canonically later file, or later in the same file, these settings will be overwritten."
-    compliance:
-      - cis: ["3.3.2"]
-      - cis_csc_v8: ["4.8"]
-      - cis_csc_v7: ["9.2"]
-      - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
-      - iso_27001-2013: ["A.13.1.3"]
-      - mitre_mitigations: ["M1030", "M1042"]
-      - mitre_tactics: ["TA0006", "TA0009"]
-      - mitre_techniques: ["T1557"]
-      - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
-      - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
-      - soc_2: ["CC6.3", "CC6.6"]
-    condition:
-    rules:
-
-  # 3.3.3 Ensure bogus icmp responses are ignored. (Automated)
-  - id: 33116
-    title: "Ensure bogus icmp responses are ignored."
-    description: "Setting net.ipv4.icmp_ignore_bogus_error_responses to 1 prevents the kernel from logging bogus responses (RFC-1122 non-compliant) from broadcast reframes, keeping file systems from filling up with useless log messages."
-    rationale: "Some routers (and some attackers) will send responses that violate RFC-1122 and attempt to fill up a log file system with many useless error messages."
-    remediation: "Set the following parameter in /etc/sysctl.conf or a file in /etc/sysctl.d/ ending in .conf: - net.ipv4.icmp_ignore_bogus_error_responses = 1 Example: # printf '%s\\n' \"net.ipv4.icmp_ignore_bogus_error_responses = 1\" >> /etc/sysctl.d/60-netipv4_sysctl.conf Run the following script to set the active kernel parameters: #!/usr/bin/env bash { sysctl -w net.ipv4.icmp_ignore_bogus_error_responses=1 sysctl -w net.ipv4.route.flush=1 } Note: If these settings appear in a canonically later file, or later in the same file, these settings will be overwritten."
-    compliance:
-      - cis: ["3.3.3"]
-      - cis_csc_v8: ["4.8"]
-      - cis_csc_v7: ["9.2"]
-      - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
-      - iso_27001-2013: ["A.13.1.3"]
-      - mitre_mitigations: ["M1053"]
-      - mitre_tactics: ["TA0040"]
-      - mitre_techniques: ["T1562", "T1562.006"]
-      - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
-      - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
-      - soc_2: ["CC6.3", "CC6.6"]
-    condition:
-    rules:
-
-  # 3.3.4 Ensure broadcast icmp requests are ignored. (Automated)
-  - id: 33117
-    title: "Ensure broadcast icmp requests are ignored."
-    description: "Setting net.ipv4.icmp_echo_ignore_broadcasts to 1 will cause the system to ignore all ICMP echo and timestamp requests to broadcast and multicast addresses."
-    rationale: "Accepting ICMP echo and timestamp requests with broadcast or multicast destinations for your network could be used to trick your host into starting (or participating) in a Smurf attack. A Smurf attack relies on an attacker sending large amounts of ICMP broadcast messages with a spoofed source address. All hosts receiving this message and responding would send echo-reply messages back to the spoofed address, which is probably not routable. If many hosts respond to the packets, the amount of traffic on the network could be significantly multiplied."
-    remediation: "Set the following parameter in /etc/sysctl.conf or a file in /etc/sysctl.d/ ending in .conf: - net.ipv4.icmp_echo_ignore_broadcasts = 1 Example: # printf '%s\\n' \"net.ipv4.icmp_echo_ignore_broadcasts = 1\" >> /etc/sysctl.d/60-netipv4_sysctl.conf Run the following script to set the active kernel parameters: #!/usr/bin/env bash { sysctl -w net.ipv4.icmp_echo_ignore_broadcasts=1 sysctl -w net.ipv4.route.flush=1 } Note: If these settings appear in a canonically later file, or later in the same file, these settings will be overwritten."
-    compliance:
-      - cis: ["3.3.4"]
-      - cis_csc_v8: ["4.8"]
-      - cis_csc_v7: ["9.2"]
-      - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
-      - iso_27001-2013: ["A.13.1.3"]
-      - mitre_mitigations: ["M1037"]
-      - mitre_tactics: ["TA0040"]
-      - mitre_techniques: ["T1498", "T1498.001"]
-      - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
-      - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
-      - soc_2: ["CC6.3", "CC6.6"]
-    condition:
-    rules:
-
-  # 3.3.5 Ensure icmp redirects are not accepted. (Automated)
-  - id: 33118
-    title: "Ensure icmp redirects are not accepted."
-    description: "ICMP redirect messages are packets that convey routing information and tell your host (acting as a router) to send packets via an alternate path. It is a way of allowing an outside routing device to update your system routing tables."
-    rationale: "ICMP redirect messages are packets that convey routing information and tell your host (acting as a router) to send packets via an alternate path. It is a way of allowing an outside routing device to update your system routing tables. By setting net.ipv4.conf.all.accept_redirects, net.ipv4.conf.default.accept_redirects, net.ipv6.conf.all.accept_redirects, and net.ipv6.conf.default.accept_redirects to 0, the system will not accept any ICMP redirect messages, and therefore, won't allow outsiders to update the system's routing tables."
-    remediation: "Set the following parameters in /etc/sysctl.conf or a file in /etc/sysctl.d/ ending in .conf: - net.ipv4.conf.all.accept_redirects = 0 - net.ipv4.conf.default.accept_redirects = 0 Example: # printf '%s\\n' \"net.ipv4.conf.all.accept_redirects = 0\" \"net.ipv4.conf.default.accept_redirects = 0\" >> /etc/sysctl.d/60- netipv4_sysctl.conf Run the following script to set the active kernel parameters: #!/usr/bin/env bash { sysctl -w net.ipv4.conf.all.accept_redirects=0 sysctl -w net.ipv4.conf.default.accept_redirects=0 sysctl -w net.ipv4.route.flush=1 } - IF - IPv6 is enabled on the system: Set the following parameters in /etc/sysctl.conf or a file in /etc/sysctl.d/ ending in .conf: - net.ipv6.conf.all.accept_redirects = 0 - net.ipv6.conf.default.accept_redirects = 0 Example: # printf '%s\\n' \"net.ipv6.conf.all.accept_redirects = 0\" \"net.ipv6.conf.default.accept_redirects = 0\" >> /etc/sysctl.d/60- netipv6_sysctl.conf Run the following script to set the active kernel parameters: #!/usr/bin/env bash { sysctl -w net.ipv6.conf.all.accept_redirects=0 sysctl -w net.ipv6.conf.default.accept_redirects=0 sysctl -w net.ipv6.route.flush=1 } Note: If these settings appear in a canonically later file, or later in the same file, these settings will be overwritten."
-    compliance:
-      - cis: ["3.3.5"]
-      - cis_csc_v8: ["4.8"]
-      - cis_csc_v7: ["9.2"]
-      - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
-      - iso_27001-2013: ["A.13.1.3"]
-      - mitre_mitigations: ["M1030", "M1042"]
-      - mitre_tactics: ["TA0006", "TA0009"]
-      - mitre_techniques: ["T1557"]
-      - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
-      - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
-      - soc_2: ["CC6.3", "CC6.6"]
-    condition:
-    rules:
-
-  # 3.3.6 Ensure secure icmp redirects are not accepted. (Automated)
-  - id: 33119
-    title: "Ensure secure icmp redirects are not accepted."
-    description: "Secure ICMP redirects are the same as ICMP redirects, except they come from gateways listed on the default gateway list. It is assumed that these gateways are known to your system, and that they are likely to be secure."
-    rationale: "It is still possible for even known gateways to be compromised. Setting net.ipv4.conf.all.secure_redirects and net.ipv4.conf.default.secure_redirects to 0 protects the system from routing table updates by possibly compromised known gateways."
-    remediation: "Set the following parameters in /etc/sysctl.conf or a file in /etc/sysctl.d/ ending in .conf: - net.ipv4.conf.all.secure_redirects = 0 - net.ipv4.conf.default.secure_redirects = 0 Example: # printf '%s\\n' \"net.ipv4.conf.all.secure_redirects = 0\" \"net.ipv4.conf.default.secure_redirects = 0\" >> /etc/sysctl.d/60- netipv4_sysctl.conf Run the following script to set the active kernel parameters: #!/usr/bin/env bash { sysctl -w net.ipv4.conf.all.secure_redirects=0 sysctl -w net.ipv4.conf.default.secure_redirects=0 sysctl -w net.ipv4.route.flush=1 } Note: If these settings appear in a canonically later file, or later in the same file, these settings will be overwritten."
-    compliance:
-      - cis: ["3.3.6"]
-      - cis_csc_v8: ["4.8"]
-      - cis_csc_v7: ["9.2"]
-      - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
-      - iso_27001-2013: ["A.13.1.3"]
-      - mitre_mitigations: ["M1030", "M1042"]
-      - mitre_tactics: ["TA0006", "TA0009"]
-      - mitre_techniques: ["T1557"]
-      - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
-      - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
-      - soc_2: ["CC6.3", "CC6.6"]
-    condition:
-    rules:
-
-  # 3.3.7 Ensure reverse path filtering is enabled. (Automated)
-  - id: 33120
-    title: "Ensure reverse path filtering is enabled."
-    description: "Setting net.ipv4.conf.all.rp_filter and net.ipv4.conf.default.rp_filter to 1 forces the Linux kernel to utilize reverse path filtering on a received packet to determine if the packet was valid. Essentially, with reverse path filtering, if the return packet does not go out the same interface that the corresponding source packet came from, the packet is dropped (and logged if log_martians is set)."
-    rationale: "Setting net.ipv4.conf.all.rp_filter and net.ipv4.conf.default.rp_filter to 1 is a good way to deter attackers from sending your system bogus packets that cannot be responded to. One instance where this feature breaks down is if asymmetrical routing is employed. This would occur when using dynamic routing protocols (bgp, ospf, etc) on your system. If you are using asymmetrical routing on your system, you will not be able to enable this feature without breaking the routing."
-    impact: "If you are using asymmetrical routing on your system, you will not be able to enable this feature without breaking the routing."
-    remediation: "Set the following parameters in /etc/sysctl.conf or a file in /etc/sysctl.d/ ending in .conf: - net.ipv4.conf.all.rp_filter = 1 - net.ipv4.conf.default.rp_filter = 1 Example: # printf '%s\\n' \"net.ipv4.conf.all.rp_filter = 1\" \"net.ipv4.conf.default.rp_filter = 1\" >> /etc/sysctl.d/60-netipv4_sysctl.conf Run the following script to set the active kernel parameters: #!/usr/bin/env bash { sysctl -w net.ipv4.conf.all.rp_filter=1 sysctl -w net.ipv4.conf.default.rp_filter=1 sysctl -w net.ipv4.route.flush=1 } Note: If these settings appear in a canonically later file, or later in the same file, these settings will be overwritten."
-    compliance:
-      - cis: ["3.3.7"]
-      - cis_csc_v8: ["4.8"]
-      - cis_csc_v7: ["9.2"]
-      - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
-      - iso_27001-2013: ["A.13.1.3"]
-      - mitre_mitigations: ["M1030", "M1042"]
-      - mitre_tactics: ["TA0006", "TA0040"]
-      - mitre_techniques: ["T1498", "T1498.001"]
-      - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
-      - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
-      - soc_2: ["CC6.3", "CC6.6"]
-    condition:
-    rules:
-
-  # 3.3.8 Ensure source routed packets are not accepted. (Automated)
-  - id: 33121
-    title: "Ensure source routed packets are not accepted."
-    description: "In networking, source routing allows a sender to partially or fully specify the route packets take through a network. In contrast, non-source routed packets travel a path determined by routers in the network. In some cases, systems may not be routable or reachable from some locations (e.g. private addresses vs. Internet routable), and so source routed packets would need to be used."
-    rationale: "Setting net.ipv4.conf.all.accept_source_route, net.ipv4.conf.default.accept_source_route, net.ipv6.conf.all.accept_source_route and net.ipv6.conf.default.accept_source_route to 0 disables the system from accepting source routed packets. Assume this system was capable of routing packets to Internet routable addresses on one interface and private addresses on another interface. Assume that the private addresses were not routable to the Internet routable addresses and vice versa. Under normal routing circumstances, an attacker from the Internet routable addresses could not use the system as a way to reach the private address systems. If, however, source routed packets were allowed, they could be used to gain access to the private address systems as the route could be specified, rather than rely on routing protocols that did not allow this routing."
-    remediation: "Set the following parameters in /etc/sysctl.conf or a file in /etc/sysctl.d/ ending in .conf: - net.ipv4.conf.all.accept_source_route = 0 - net.ipv4.conf.default.accept_source_route = 0 Example: # printf '%s\\n' \"net.ipv4.conf.all.accept_source_route = 0\" \"net.ipv4.conf.default.accept_source_route = 0\" >> /etc/sysctl.d/60- netipv4_sysctl.conf Run the following script to set the active kernel parameters: #!/usr/bin/env bash { sysctl -w net.ipv4.conf.all.accept_source_route=0 sysctl -w net.ipv4.conf.default.accept_source_route=0 sysctl -w net.ipv4.route.flush=1 } - IF - IPv6 is enabled on the system: Set the following parameters in /etc/sysctl.conf or a file in /etc/sysctl.d/ ending in .conf: - net.ipv6.conf.all.accept_source_route = 0 - net.ipv6.conf.default.accept_source_route = 0 Example: # printf '%s\\n' \"net.ipv6.conf.all.accept_source_route = 0\" \"net.ipv6.conf.default.accept_source_route = 0\" >> /etc/sysctl.d/60- netipv6_sysctl.conf Run the following command to set the active kernel parameters: #!/usr/bin/env bash { sysctl -w net.ipv6.conf.all.accept_source_route=0 sysctl -w net.ipv6.conf.default.accept_source_route=0 sysctl -w net.ipv6.route.flush=1 } Note: If these settings appear in a canonically later file, or later in the same file, these settings will be overwritten."
-    compliance:
-      - cis: ["3.3.8"]
-      - cis_csc_v8: ["4.8"]
-      - cis_csc_v7: ["9.2"]
-      - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
-      - iso_27001-2013: ["A.13.1.3"]
-      - mitre_tactics: ["TA0007"]
-      - mitre_techniques: ["T1590", "T1590.005"]
-      - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
-      - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
-      - soc_2: ["CC6.3", "CC6.6"]
-    condition:
-    rules:
-
-  # 3.3.9 Ensure suspicious packets are logged. (Automated)
-  - id: 33122
-    title: "Ensure suspicious packets are logged."
-    description: "When enabled, this feature logs packets with un-routable source addresses to the kernel log."
-    rationale: "Setting net.ipv4.conf.all.log_martians and net.ipv4.conf.default.log_martians to 1 enables this feature. Logging these packets allows an administrator to investigate the possibility that an attacker is sending spoofed packets to their system."
-    remediation: "Set the following parameters in /etc/sysctl.conf or a file in /etc/sysctl.d/ ending in .conf: - net.ipv4.conf.all.log_martians = 1 - net.ipv4.conf.default.log_martians = 1 Example: # printf '%s\\n' \"net.ipv4.conf.all.log_martians = 1\" \"net.ipv4.conf.default.log_martians = 1\" >> /etc/sysctl.d/60- netipv4_sysctl.conf Run the following script to set the active kernel parameters: #!/usr/bin/env bash { sysctl -w net.ipv4.conf.all.log_martians=1 sysctl -w net.ipv4.conf.default.log_martians=1 sysctl -w net.ipv4.route.flush=1 } Note: If these settings appear in a canonically later file, or later in the same file, these settings will be overwritten."
-    compliance:
-      - cis: ["3.3.9"]
-      - cis_csc_v8: ["8.5"]
-      - cis_csc_v7: ["6.2", "6.3"]
-      - cmmc_v2.0: ["AU.L2-3.3.1"]
-      - iso_27001-2013: ["A.12.4.1"]
-      - mitre_tactics: ["TA0005"]
-      - mitre_techniques: ["T1562", "T1562.006"]
-      - nist_sp_800-53: ["AU-3(1)", "AU-7"]
-      - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
-      - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
-      - soc_2: ["CC5.2", "CC7.2"]
-    condition:
-    rules:
-
-  # 3.3.10 Ensure tcp syn cookies is enabled. (Automated)
-  - id: 33123
-    title: "Ensure tcp syn cookies is enabled."
-    description: "When tcp_syncookies is set, the kernel will handle TCP SYN packets normally until the half-open connection queue is full, at which time, the SYN cookie functionality kicks in. SYN cookies work by not using the SYN queue at all. Instead, the kernel simply replies to the SYN with a SYN/ACK, but will include a specially crafted TCP sequence number that encodes the source and destination IP address and port number and the time the packet was sent. A legitimate connection would send the ACK packet of the three way handshake with the specially crafted sequence number. This allows the system to verify that it has received a valid response to a SYN cookie and allow the connection, even though there is no corresponding SYN in the queue."
-    rationale: "Attackers use SYN flood attacks to perform a denial of service attacked on a system by sending many SYN packets without completing the three way handshake. This will quickly use up slots in the kernel's half-open connection queue and prevent legitimate connections from succeeding. Setting net.ipv4.tcp_syncookies to 1 enables SYN cookies, allowing the system to keep accepting valid connections, even if under a denial of service attack."
-    remediation: "Set the following parameter in /etc/sysctl.conf or a file in /etc/sysctl.d/ ending in .conf: - net.ipv4.tcp_syncookies = 1 Example: # printf '%s\\n' \"net.ipv4.tcp_syncookies = 1\" >> /etc/sysctl.d/60- netipv4_sysctl.conf Run the following script to set the active kernel parameters: #!/usr/bin/env bash { sysctl -w net.ipv4.tcp_syncookies=1 sysctl -w net.ipv4.route.flush=1 } Note: If these settings appear in a canonically later file, or later in the same file, these settings will be overwritten."
-    compliance:
-      - cis: ["3.3.10"]
-      - cis_csc_v8: ["4.8"]
-      - cis_csc_v7: ["9.2"]
-      - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
-      - iso_27001-2013: ["A.13.1.3"]
-      - mitre_mitigations: ["M1037"]
-      - mitre_tactics: ["TA0040"]
-      - mitre_techniques: ["T1499", "T1499.001"]
-      - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
-      - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
-      - soc_2: ["CC6.3", "CC6.6"]
-    condition:
-    rules:
-
-  # 3.3.11 Ensure ipv6 router advertisements are not accepted. (Automated)
-  - id: 33124
-    title: "Ensure ipv6 router advertisements are not accepted."
-    description: "Routers periodically multicast Router Advertisement messages to announce their availability and convey information to neighboring nodes that enable them to be automatically configured on the network. net.ipv6.conf.all.accept_ra and net.ipv6.conf.default.accept_ra determine the systems ability to accept these advertisements."
-    rationale: "It is recommended that systems do not accept router advertisements as they could be tricked into routing traffic to compromised machines. Setting hard routes within the system (usually a single default route to a trusted router) protects the system from bad routes. Setting net.ipv6.conf.all.accept_ra and net.ipv6.conf.default.accept_ra to 0 disables the system's ability to accept IPv6 router advertisements."
-    remediation: "- IF - IPv6 is enabled on the system: Set the following parameters in /etc/sysctl.conf or a file in /etc/sysctl.d/ ending in .conf: - net.ipv6.conf.all.accept_ra = 0 - net.ipv6.conf.default.accept_ra = 0 Example: # printf '%s\\n' \"net.ipv6.conf.all.accept_ra = 0\" \"net.ipv6.conf.default.accept_ra = 0\" >> /etc/sysctl.d/60-netipv6_sysctl.conf Run the following script to set the active kernel parameters: #!/usr/bin/env bash { sysctl -w net.ipv6.conf.all.accept_ra=0 sysctl -w net.ipv6.conf.default.accept_ra=0 sysctl -w net.ipv6.route.flush=1 } Note: If these settings appear in a canonically later file, or later in the same file, these settings will be overwritten."
-    compliance:
-      - cis: ["3.3.11"]
-      - cis_csc_v8: ["4.8"]
-      - cis_csc_v7: ["9.2"]
-      - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
-      - iso_27001-2013: ["A.13.1.3"]
-      - mitre_mitigations: ["M1030", "M1042"]
-      - mitre_tactics: ["TA0006", "TA0040"]
-      - mitre_techniques: ["T1557"]
-      - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
-      - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
-      - soc_2: ["CC6.3", "CC6.6"]
-    condition:
-    rules:
-
-  # 4.1.1 Ensure a single firewall configuration utility is in use. (Automated)
-  - id: 33125
-    title: "Ensure a single firewall configuration utility is in use."
-    description: "In Linux security, employing a single, effective firewall configuration utility ensures that only legitimate traffic gets processed, reducing the system’s exposure to potential threats. The choice between ufw, nftables, and iptables depends on organizational needs. Note: iptables is being phased out, and support for iptables will be reduced over time. It is recommended to transition towards either nftables or ufw as the default firewall management tool."
-    rationale: "Proper configuration of a single firewall utility minimizes cyber threats and protects services and data, while avoiding vulnerabilities like open ports or exposed services. Standardizing on a single tool simplifies management, reduces errors, and fortifies security across Linux systems."
-    impact: "The use of more than one firewall utility may produce unexpected results."
-    remediation: "Remediating to a single firewall configuration is a complex process and involves several steps. The following provides the basic steps to follow for a single firewall configuration: 1. Determine which firewall utility best fits organizational needs 2. Follow the recommendations in the subsequent subsection for the single firewall to be used Note: Review the firewall subsection overview for the selected firewall to be used, it contains a script to simplify this process. 3. Return to this recommendation to ensure a single firewall configuration utility is in use."
-    references:
-      - "https://wiki.debian.org/DebianFirewall"
-      - "https://wiki.ubuntu.com/UncomplicatedFirewall"
-      - "https://assets.ubuntu.com/v1/544d9904-ubuntu-server-guide-2024-01-22.pdf"
-      - "https://www.debian.org/doc/manuals/debian-reference/debian-reference.en.pdf"
-    compliance:
-      - cis: ["4.1.1"]
-      - cis_csc_v8: ["4.4", "4.5"]
-      - cis_csc_v7: ["9.4"]
-      - cmmc_v2.0: ["AC.L1-3.1.20", "CM.L2-3.4.7", "SC.L1-3.13.1", "SC.L2-3.13.6"]
-      - iso_27001-2013: ["A.13.1.1"]
-      - mitre_mitigations: ["M1031", "M1037"]
-      - mitre_tactics: ["TA0011"]
-      - mitre_techniques: ["T1562", "T1562.004"]
-      - nist_sp_800-53: ["SC-7(5)"]
-      - pci_dss_v3.2.1: ["1.1.4", "1.3.1", "1.4"]
-      - pci_dss_v4.0: ["1.2.1", "1.4.1"]
-      - soc_2: ["CC6.6"]
-    condition:
-    rules:
+  # 3.2.1 Ensure dccp kernel module is not available. (Automated) - Not Implemented
+  # 3.2.2 Ensure tipc kernel module is not available. (Automated) - Not Implemented
+  # 3.2.3 Ensure rds kernel module is not available. (Automated) - Not Implemented
+  # 3.2.4 Ensure sctp kernel module is not available. (Automated) - Not Implemented
+  # 3.3.1 Ensure ip forwarding is disabled. (Automated) - Not Implemented
+  # 3.3.2 Ensure packet redirect sending is disabled. (Automated) - Not Implemented
+  # 3.3.3 Ensure bogus icmp responses are ignored. (Automated) - Not Implemented
+  # 3.3.4 Ensure broadcast icmp requests are ignored. (Automated) - Not Implemented
+  # 3.3.5 Ensure icmp redirects are not accepted. (Automated) - Not Implemented
+  # 3.3.6 Ensure secure icmp redirects are not accepted. (Automated) - Not Implemented
+  # 3.3.7 Ensure reverse path filtering is enabled. (Automated) - Not Implemented
+  # 3.3.8 Ensure source routed packets are not accepted. (Automated) - Not Implemented
+  # 3.3.9 Ensure suspicious packets are logged. (Automated) - Not Implemented
+  # 3.3.10 Ensure tcp syn cookies is enabled. (Automated) - Not Implemented
+  # 3.3.11 Ensure ipv6 router advertisements are not accepted. (Automated) - Not Implemented
+  # 4.1.1 Ensure a single firewall configuration utility is in use. (Automated) - Not Implemented
 
   # 4.2.1 Ensure ufw is installed. (Automated)
   - id: 33126
@@ -2271,8 +1904,9 @@ checks:
       - pci_dss_v3.2.1: ["1.1.4", "1.3.1", "1.4"]
       - pci_dss_v4.0: ["1.2.1", "1.4.1"]
       - soc_2: ["CC6.6"]
-    condition:
+    condition: all
     rules:
+      - "c: dpkg-query -s ufw -> r:install ok installed"
 
   # 4.2.2 Ensure iptables-persistent is not installed with ufw. (Automated)
   - id: 33127
@@ -2293,8 +1927,9 @@ checks:
       - pci_dss_v3.2.1: ["1.1.4", "1.3.1", "1.4"]
       - pci_dss_v4.0: ["1.2.1", "1.4.1"]
       - soc_2: ["CC6.6"]
-    condition:
+    condition: all
     rules:
+      - "not c: dpkg-query -s iptables-persistent -> r:install ok installed"
 
   # 4.2.3 Ensure ufw service is enabled. (Automated)
   - id: 33128
@@ -2318,8 +1953,9 @@ checks:
       - pci_dss_v3.2.1: ["1.1.4", "1.3.1", "1.4"]
       - pci_dss_v4.0: ["1.2.1", "1.4.1"]
       - soc_2: ["CC6.6"]
-    condition:
+    condition: all
     rules:
+      - 'not c:sh -c "systemctl is-enabled ufw.service & systemctl is-active ufw & ufw status" -> r:^active$|^enabled$'
 
   # 4.2.4 Ensure ufw loopback traffic is configured. (Automated)
   - id: 33129
