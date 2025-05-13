@@ -24,6 +24,7 @@
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../wrappers/wazuh/shared/file_op_wrappers.h"
 #include "../wrappers/externals/zlib/zlib_wrappers.h"
+#include "../wrappers/windows/fileapi_wrappers.h"
 
 /* setups/teardowns */
 static int setup_group(void **state) {
@@ -1200,6 +1201,24 @@ void test_is_network_path_local(void **state) {
     assert_int_equal(ret, 0);
 }
 
+void test_wfopen_local_path(void **state) {
+    errno = 0;
+    char *path = "C:\\file.txt";
+    expect_CreateFile_call(path, INVALID_HANDLE_VALUE);
+    SetLastError(0);
+    FILE *fp = wfopen(path, "r");
+    assert_int_equal(fp, NULL);
+    assert_int_equal(errno, 0);
+}
+
+void test_wfopen_network_path(void **state) {
+    errno = 0;
+    char *path = "Z:\\file.txt";
+    FILE *fp = wfopen(path, "r");
+    assert_int_equal(fp, NULL);
+    assert_int_equal(errno, EINVAL);
+}
+
 #endif
 
 int main(void) {
@@ -1263,6 +1282,8 @@ int main(void) {
         cmocka_unit_test(test_is_network_path_unc),
         cmocka_unit_test(test_is_network_path_network),
         cmocka_unit_test(test_is_network_path_local),
+        cmocka_unit_test(test_wfopen_local_path),
+        cmocka_unit_test(test_wfopen_network_path),
 
 #endif
     };
