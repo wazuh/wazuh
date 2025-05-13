@@ -30,13 +30,13 @@ specific size, detailed in the configuration.
 ### Management API
 
 The API allows you to manage agents (add, remove, restart, group), configure group policies, 
-and control access using JWT authentication and RBAC permissions. It offers operations such as update verification, 
+and control access using JWT authentication. It offers operations such as update verification, 
 log monitoring, and remote configuration, integrating with scripts, CLI tools, or the Wazuh Web Interface (WUI). It 
 requires temporary tokens obtained through basic authentication to securely interact with the environment.
 
 
 The API is composed of several components, such as the `commands-manager` socket responsible for exposing local server
-commands to the various API processes and the `rbac-manager` responsible for Role-based access control.
+commands to the various API processes.
 
 ## Server process overview
 
