@@ -1,6 +1,6 @@
 [
     {
-        "index_name": "wazuh-states-registries-cluster01",
+        "index_name": "wazuh-states-fim-registries-cluster01",
         "data": [
             {
                 "agent": {

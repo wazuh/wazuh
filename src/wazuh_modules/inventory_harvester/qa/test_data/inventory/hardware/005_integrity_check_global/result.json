@@ -1,6 +1,6 @@
 [
     {
-        "index_name": "wazuh-states-hardware-cluster01",
+        "index_name": "wazuh-states-inventory-hardware-cluster01",
         "data": [
             {
                 "agent": {
