@@ -411,7 +411,7 @@ stages:
               os:
                 platform: "{expected_os_platform:s}"
           failed_items: []
-          total_affected_items: 13
+          total_affected_items: 14
           total_failed_items: 0
 
   - name: Try to show agents using a non existing OS Platform
@@ -499,7 +499,7 @@ stages:
               os:
                 name: "{expected_os_name:s}"
           failed_items: []
-          total_affected_items: 13
+          total_affected_items: 14
           total_failed_items: 0
 
   - name: Try to show agents using a non existing OS Name
@@ -707,9 +707,10 @@ stages:
           affected_items:
             - id: '009'
             - id: '010'
-            - id: '015'
+            - id: '011'
+            - id: '014'
           failed_items: []
-          total_affected_items: 3
+          total_affected_items: 4
           total_failed_items: 0
 
   - name: Filter by agent status 2
@@ -748,9 +749,10 @@ stages:
           affected_items:
             - id: '009'
             - id: '010'
+            - id: '011'
             - id: '014'
           failed_items: []
-          total_affected_items: 3
+          total_affected_items: 4
           total_failed_items: 0
 
   - name: Try to show agents with a non existing status
@@ -948,7 +950,7 @@ stages:
             - id: '014'
             - id: '015'
           failed_items: []
-          total_affected_items: 9
+          total_affected_items: 10
           total_failed_items: 0
 
   - name: Filter agents by query (group - get agents that are not in default group)
@@ -1023,8 +1025,10 @@ stages:
           affected_items:
             - id: '009'
             - id: '010'
+            - id: '011'
+            - id: '014'
           failed_items: [ ]
-          total_affected_items: 2
+          total_affected_items: 4
           total_failed_items: 0
 
   - name: Filter agents by query (datetime)
@@ -1057,8 +1061,10 @@ stages:
         data:
           affected_items:
             - id: '010'
+            - id: '011'
+            - id: '014'
           failed_items: [ ]
-          total_affected_items: 1
+          total_affected_items: 3
           total_failed_items: 0
 
   - name: Filter agents by complex query
@@ -1116,8 +1122,8 @@ stages:
           affected_items:
             - id: '001'
             - id: '002'
-            - id: '011'
             - id: '012'
+            - id: '015'
           failed_items: []
           total_affected_items: 4
           total_failed_items: 0
@@ -4294,7 +4300,7 @@ stages:
               dateAdd: !anystr
               group_config_status: synced
           failed_items: []
-          total_affected_items: 7
+          total_affected_items: 8
           total_failed_items: 0
 
   - name: Select
@@ -4329,7 +4335,7 @@ stages:
         error: 0
         data:
           affected_items:
-            - id: '010'
+            - id: '011'
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
@@ -4441,9 +4447,10 @@ stages:
             - id: '007'
             - id: '008'
             - id: '010'
+            - id: '011'
             - id: '014'
           failed_items: []
-          total_affected_items: 5
+          total_affected_items: 6
           total_failed_items: 0
   
   - name: Filter agents by id
@@ -4711,10 +4718,10 @@ stages:
         error: 0
         data:
           affected_items:
-            - count: 3
+            - count: 2
               node_name: 'unknown'
           failed_items: []
-          total_affected_items: 3
+          total_affected_items: 2
           total_failed_items: 0
 
   - name: Try to show agents with wrong search
