@@ -75,6 +75,16 @@ void FTS_Fprintf(char * _line);
  */
 void FTS_Flush();
 
+/**
+ * @brief Reload FTS engine
+ * @param fts_list List which save fts previous events (*fts_list should be NULL)
+ * @param fts_store Hash table which save fts values processed previously (*fts_store should be NULL)
+ * @return 1 on success
+ * @return 0 on success but with not loaded fts-queue from file
+ * @return -1 on failure
+ */
+int FTS_HotReload(OSList **fts_list, OSHash **fts_store);
+
 
 /* Global variables */
 extern unsigned int fts_minsize_for_str;
