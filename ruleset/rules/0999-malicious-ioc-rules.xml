@@ -35,14 +35,14 @@
 
   <rule id="99903" level="14">
     <if_sid>5715</if_sid>
-    <list field="src_ip" lookup="match_key">etc/lists/malicious-ioc/malicious-ip</list>
+    <list field="srcip" lookup="match_key">etc/lists/malicious-ioc/malicious-ip</list>
     <description>sshd: Authentication succeeded from a malicious IP address $(srcip).</description>
     <group>authentication_failed,authentication_success,pci_dss_10.2.4,pci_dss_10.2.5,</group>
   </rule>
 
   <rule id="99904" level="9">
     <if_sid>5716</if_sid>
-  <list field="src_ip" lookup="match_key">etc/lists/malicious-ioc/malicious-ip</list>
+  <list field="srcip" lookup="match_key">etc/lists/malicious-ioc/malicious-ip</list>
     <description>sshd: Authentication failed from a malicious IP address $(srcip).</description>
     <group>authentication_failed,authentication_success,pci_dss_10.2.4,pci_dss_10.2.5,</group>
   </rule>
