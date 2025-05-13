@@ -75,7 +75,7 @@ Turn off specific providers individually
 ```
 **`<hotfixes>` provider is hidden by default**
 
-- Disabling Syscheck components
+- Disabling FIM components
 
 To disable files monitoring the following configuration must not exist
 ```xml
