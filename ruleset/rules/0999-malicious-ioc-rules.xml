@@ -162,14 +162,14 @@
 
     <rule id="99917" level="9">
         <if_sid>86601</if_sid>
-        <list field="url" lookup="match_key">etc/lists/malicious-ioc/malicious-url</list>
-        <description>Suricata: Alert from malicious IP $(url).</description>
+        <list field="http.hostname" lookup="match_key">etc/lists/malicious-ioc/malicious-domains</list>
+        <description>Suricata: Alert from malicious domain $(http.hostname).</description>
     </rule>
 
     <rule id="99918" level="9">
         <if_sid>86601</if_sid>
-        <list field="host" lookup="match_key">etc/lists/malicious-ioc/malicious-url</list>
-        <description>Suricata: Alert from malicious IP $(host).</description>
+        <list field="dns.rrname" lookup="match_key">etc/lists/malicious-ioc/malicious-domains</list>
+        <description>Suricata: Alert from malicious domain $(dns.rrname).</description>
     </rule>
 
 </group>
@@ -177,7 +177,7 @@
 <group name="windows,windows_security,">
 
   <rule id="99919" level="9">
-    <if_sid>60105</if_sid>
+    <if_sid>60105, 60122</if_sid>
     <list field="win.eventdata.ipAddress" lookup="match_key">etc/lists/malicious-ioc/malicious-ip</list>
     <description>Failed Logon from malicious IP $(win.eventdata.ipAddress).</description>
     <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
