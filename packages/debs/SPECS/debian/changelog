@@ -1,3 +1,9 @@
+wazuh-server (6.0.0-RELEASE) stable; urgency=low
+
+  * More info: https://documentation.wazuh.com/current/release-notes/release-6-0-0.html
+
+ -- Wazuh, Inc <info@wazuh.com>  Wed, 02 Jul 2025 00:00:00 +0000
+
 wazuh-server (5.0.0-RELEASE) stable; urgency=low
 
   * More info: https://documentation.wazuh.com/current/release-notes/release-5-0-0.html

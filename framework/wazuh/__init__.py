@@ -15,7 +15,7 @@ Wazuh is a python package to manage OSSEC.
 
 """
 
-__version__ = '5.0.0'
+__version__ = '6.0.0'
 
 
 msg = '\n\nPython 2.7 or newer not found.'
@@ -36,9 +36,7 @@ class Wazuh:
     """Basic class to set up OSSEC directories."""
 
     def __init__(self):
-        """Initialize basic information and directories.
-        :return:
-        """
+        """Initialize basic information and directories."""
         self.version = f'v{__version__}'
         self.type = 'server'
         self.path = common.WAZUH_SHARE
@@ -58,6 +56,7 @@ class Wazuh:
         return False
 
     def to_dict(self):
+        """Return class information as a dictionary."""
         return {
             'path': self.path,
             'version': self.version,
@@ -69,7 +68,7 @@ class Wazuh:
         }
 
     def _initialize(self):
-        """Calculates all Wazuh installation metadata."""
+        """Calculate all Wazuh installation metadata."""
         # info DB if possible
         try:
             wdb_conn = WazuhDBConnection()
@@ -89,5 +88,5 @@ class Wazuh:
         return self.to_dict()
 
 
-def main():
+def main():  # NOQA D103
     print('Wazuh HIDS Library')

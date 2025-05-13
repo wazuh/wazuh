@@ -15,7 +15,7 @@ from setuptools import find_namespace_packages, setup
 
 setup(
     name='comms_api',
-    version='5.0.0',
+    version='6.0.0',
     description='Communications API',
     author_email='hello@wazuh.com',
     author='Wazuh',
