@@ -608,7 +608,7 @@ TEST_F(DBEngineTest, GetRowsToBeDeletedByStatusField)
     .WillOnce(Return(SQLITE_DONE));
 
     auto mockColumn_9 { std::make_unique<MockColumn>() };
-    EXPECT_CALL(*mockColumn_9, value(An<const int32_t&>()))
+    EXPECT_CALL(*mockColumn_9, value(An<const int64_t&>()))
     .WillOnce(Return(1));
 
     EXPECT_CALL(*mockStatement_3, column(0))
