@@ -186,7 +186,7 @@ stages:
       verify_response_with:
         function: tavern_utils:healthcheck_agent_restart
         extra_kwargs:
-          agents_list: ["001", "003", "004", "007", "13"]  # 009, 011 and 14 are not restarted as they are disconnected
+          agents_list: ["001", "003", "004", "007", "013"]  # 009, 011 and 14 are not restarted as they are disconnected
       status_code: 200
       json:
         error: 0
@@ -1057,7 +1057,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        agents_list: '000,009,010,011,012,998,999'
+        agents_list: '000,009,010,011,012,014,015,998,999'
         upgrade_version: '4.0.0'
     response: &agents_not_upgraded_response
       status_code: 200
@@ -1089,7 +1089,6 @@ stages:
                 - '009'
                 - '010'
                 - '011'
-                - '012'
                 - '012'
                 - '014'
                 - '015'
@@ -1312,7 +1311,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        agents_list: '000,009,010,011,012,998,999'
+        agents_list: '000,009,010,011,012,014,015,998,999'
         file_path: "{custom_wpk_path:s}"
     response:
       <<: *agents_not_upgraded_response
