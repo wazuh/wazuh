@@ -13,9 +13,16 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     set(TEST_SRC test_logged_in_users_win.cpp)
 else()
     set(TEST_SRC test_logged_in_users_unix.cpp)
+
+    if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+        set(TEST_SRC_FILES_USERS test_users_darwin.cpp)
+    else()
+        set(TEST_SRC_FILES_USERS test_users_linux.cpp)
+    endif()
 endif()
 
 add_executable(extended_sources_users_unit_test ${TEST_SRC})
+add_executable(users_collector_unit_test ${TEST_SRC_FILES_USERS})
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     target_link_libraries(extended_sources_users_unit_test
@@ -53,6 +60,15 @@ else()
         gmock_maind
         pthread
     )
+    target_link_libraries(test_users
+        users_collector_unit_test
+        gtestd
+        gmockd
+        gtest_maind
+        gmock_maind
+        pthread
+    )
 endif()
 
 add_test(NAME LoggedInUsersTests COMMAND extended_sources_users_unit_test)
+add_test(NAME UsersTests COMMAND users_collector_unit_test)
