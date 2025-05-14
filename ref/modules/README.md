@@ -35,8 +35,9 @@ log monitoring, and remote configuration, integrating with scripts, CLI tools, o
 requires temporary tokens obtained through basic authentication to securely interact with the environment.
 
 
-The API is composed of several components, such as the `commands-manager` socket responsible for exposing local server
-commands to the various API processes.
+
+The API is composed of several components, such as the `commands-manager` socket, exposed to receive commands such as 
+the ones to refresh the RBAC data.
 
 ## Server process overview
 
