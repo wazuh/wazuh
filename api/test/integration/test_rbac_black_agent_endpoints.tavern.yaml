@@ -591,7 +591,7 @@ stages:
        error: 0
        data:
          affected_items:
-           - count: 5
+           - count: 6
              os:
                platform: !anystr
          failed_items: []
@@ -617,8 +617,8 @@ stages:
        data:
          connection:
            active: 4
-           disconnected: 1
-           never_connected: 1
+           disconnected: 2
+           never_connected: 0
            pending: 0
            total: 6
          configuration:

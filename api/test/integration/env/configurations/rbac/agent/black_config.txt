@@ -1,9 +1,10 @@
-| Group   | Agents                                  |
-|---------|-----------------------------------------|
-| default | 001,002,003,004,005,006,007,008,009,010 |
-| group1  | 001,005,007,008,009                     |
-| group2  | 002,005,006,008,010                     |
-| group3  | 003,006,007,008                         |
+| Group   | Agents                                          |
+|---------|-------------------------------------------------|
+| default | 001,002,003,004,005,006,007,008,009,010,011,012 |
+| group1  | 001,005,007,008,009                             |
+| group2  | 002,005,006,008,010                             |
+| group3  | 003,006,007,008                                 |
+| group4  | 013,014,015                                     |
 
 | Agent | Name          | Groups                       | Status          |
 |-------|---------------|------------------------------|-----------------|
@@ -18,27 +19,31 @@
 | 008   | wazuh-agent8  | default,group1,group2,group3 | active          |
 | 009   | wazuh-agent9  | default,group1               | disconnected    |
 | 010   | wazuh-agent10 | default,group2               | disconnected    |
-| 011   | wazuh-agent11 |                              | never_connected |
-| 012   | wazuh-agent12 |                              | never_connected |
-
-| Resource    | List                                                |
-|-------------|-----------------------------------------------------|
-| agent:id    | 000,001,002,003,004,005,006,007,008,009,010,011,012 |
-| group:id    | default,group1,group2,group3                        |
+| 011   | wazuh-agent11 | default                      | disconnected    |
+| 012   | wazuh-agent12 | default                      | never_connected |
+| 013   | wazuh-agent13 | group4                       | active          |
+| 014   | wazuh-agent14 | group4                       | disconnected    |
+| 015   | wazuh-agent15 | group4                       | never_connected |
 
 
-| Actions                  | Resources | Allow                                   | Deny                                |
-|--------------------------|-----------|-----------------------------------------|-------------------------------------|
-| agent:read               | agent:id  | 001,003,005,007,009,011                 | *                                   |
-| agent:delete             | agent:id  | 000,002,004,006,008,010,012             | *                                   |
-| agent:reconnect          | agent:id  | 002,003,005,006,007,008,010             | *                                   |
-| agent:restart            | agent:id  | 002,003,005,006,007,008,010             | *                                   |
-| agent:upgrade            | agent:id  |                                         | *                                   |
-| agent:modify_group       | agent:id  | 004,005,009,010                         | *                                   |
-| agent:create             | *         |                                         | *                                   |
-| agent:uninstall          | *         |                                         | *                                   |
-| group:read               | group:id  | group2,group3                           | *                                   |
-| group:delete             | group:id  | *                                       | default,group1,group2,group3,pepito |
-| group:update_config      | group:id  | group1                                  | *                                   |
-| group:modify_assignments | group:id  | group1                                  | *                                   |
-| group:create             | *         |                                         | *                                   |
+| Resource    | List                                                            |
+|-------------|-----------------------------------------------------------------|
+| agent:id    | 000,001,002,003,004,005,006,007,008,009,010,011,012,013,014,015 |
+| group:id    | default,group1,group2,group3,group4                             |
+
+
+| Actions                  | Resources | Allow                                   | Deny                                       |
+|--------------------------|-----------|-----------------------------------------|--------------------------------------------|
+| agent:read               | agent:id  | 001,003,005,007,009,011                 | *                                          |
+| agent:delete             | agent:id  | 000,002,004,006,008,010,012             | *                                          |
+| agent:reconnect          | agent:id  | 002,003,005,006,007,008,010             | *                                          |
+| agent:restart            | agent:id  | 002,003,005,006,007,008,010             | *                                          |
+| agent:upgrade            | agent:id  |                                         | *                                          |
+| agent:modify_group       | agent:id  | 004,005,009,010                         | *                                          |
+| agent:create             | *         |                                         | *                                          |
+| agent:uninstall          | *         |                                         | *                                          |
+| group:read               | group:id  | group2,group3                           | *                                          |
+| group:delete             | group:id  | *                                       | default,group1,group2,group3,group4,pepito |
+| group:update_config      | group:id  | group1                                  | *                                          |
+| group:modify_assignments | group:id  | group1                                  | *                                          |
+| group:create             | *         |                                         | *                                          |
