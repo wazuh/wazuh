@@ -516,7 +516,7 @@ stages:
     delay_after: !float "{global_db_delay}"
 
     # DELETE /groups
-  - name: Delete all groups (group2)
+  - name: Delete all groups (group2,group4)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/groups"
@@ -531,8 +531,9 @@ stages:
         error: 0
         data:
           affected_items:
+            - group4
             - group2
-          total_affected_items: 1
+          total_affected_items: 2
 
 ---
 test_name: DELETE /agents
@@ -785,9 +786,10 @@ stages:
         error: 0
         data:
           affected_items:
-            - "012"
+            - '012'
+            - '015'
           failed_items: []
-          total_affected_items: 1
+          total_affected_items: 2
           total_failed_items: 0
 
   # DELETE /agents

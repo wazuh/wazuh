@@ -309,7 +309,7 @@ stages:
         <<: *error_spec
 
     # POST /groups
-  - name: Create a group called group4
+  - name: Create a group called group5
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/groups"
@@ -317,7 +317,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       json:
-        group_id: "group4"
+        group_id: "group5"
     response:
       status_code: 200
       json:
