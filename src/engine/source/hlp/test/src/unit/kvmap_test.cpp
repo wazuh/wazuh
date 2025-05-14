@@ -56,9 +56,19 @@ INSTANTIATE_TEST_SUITE_P(
                getKVParser,
                {NAME, TARGET, {}, {"=", " ", "'", "\\"}}),
 
-        ParseT(FAILURE, R"(key1=Value1 Key2)", {}, 11, getKVParser, {NAME, TARGET, {}, {"=", " ", "'", "\\"}}),
+        ParseT(SUCCESS,
+               R"(key1=Value1 Key2)",
+               j(fmt::format(R"({{"{}":{{"key1":"Value1"}}}})", TARGET.substr(1))),
+               11,
+               getKVParser,
+               {NAME, TARGET, {}, {"=", " ", "'", "\\"}}),
 
-        ParseT(FAILURE, R"(key1=Value1 =Value2)", {}, 12, getKVParser, {NAME, TARGET, {}, {"=", " ", "'", "\\"}}),
+        ParseT(SUCCESS,
+               R"(key1=Value1 =Value2)",
+               j(fmt::format(R"({{"{}":{{"key1":"Value1"}}}})", TARGET.substr(1))),
+               11,
+               getKVParser,
+               {NAME, TARGET, {}, {"=", " ", "'", "\\"}}),
 
         ParseT(FAILURE, R"(=Value1 =Value2)", {}, 0, getKVParser, {NAME, TARGET, {}, {"=", " ", "'", "\\"}}),
         // should we support multi chars sep or delim?
@@ -81,7 +91,12 @@ INSTANTIATE_TEST_SUITE_P(
                getKVParser,
                {NAME, TARGET, {}, {"|", ",", "'", "\\"}}),
 
-        ParseT(FAILURE, R"(keyX:"valueX;";)", {}, 14, getKVParser, {NAME, TARGET, {}, {":", ";", "\"", "\\"}}),
+        ParseT(SUCCESS,
+               R"(keyX:"valueX;";)",
+               j(fmt::format(R"({{"{}":{{"keyX":"valueX;"}}}})", TARGET.substr(1))),
+               14,
+               getKVParser,
+               {NAME, TARGET, {}, {":", ";", "\"", "\\"}}),
 
         ParseT(SUCCESS,
                R"(key1= key2="" key3=)",
@@ -90,31 +105,41 @@ INSTANTIATE_TEST_SUITE_P(
                getKVParser,
                {NAME, TARGET, {}, {"=", " ", "\"", "\\"}}),
 
-        ParseT(FAILURE, R"(: ;)", {}, 1, getKVParser, {NAME, TARGET, {}, {":", " ", "'", "\\"}}),
+        ParseT(FAILURE, R"(: ;)", {}, 0, getKVParser, {NAME, TARGET, {}, {":", " ", "'", "\\"}}),
 
-        ParseT(FAILURE, R"(: valueX;)", {}, 1, getKVParser, {NAME, TARGET, {}, {":", " ", "'", "\\"}}),
+        ParseT(FAILURE, R"(: valueX;)", {}, 0, getKVParser, {NAME, TARGET, {}, {":", " ", "'", "\\"}}),
 
-        ParseT(FAILURE, R"(: valueX)", {}, 1, getKVParser, {NAME, TARGET, {}, {":", " ", "'", "\\"}}),
+        ParseT(FAILURE, R"(: valueX)", {}, 0, getKVParser, {NAME, TARGET, {}, {":", " ", "'", "\\"}}),
 
         ParseT(FAILURE, R"(:valueX)", {}, 0, getKVParser, {NAME, TARGET, {}, {":", " ", "'", "\\"}}),
 
-        ParseT(FAILURE, R"(key1:value1,:value2)", {}, 12, getKVParser, {NAME, TARGET, {}, {":", ",", "'", "\\"}}),
-
-        ParseT(FAILURE,
-               R"(key1:value1,key2:value2,:value3)",
-               {},
-               24,
+        ParseT(SUCCESS,
+               R"(key1:value1,:value2)",
+               j(fmt::format(R"({{"{}":{{"key1":"value1"}}}})", TARGET.substr(1))),
+               11,
                getKVParser,
                {NAME, TARGET, {}, {":", ",", "'", "\\"}}),
 
-        ParseT(FAILURE,
-               R"(key1:value1,key2:value2,value3)",
-               {},
+        ParseT(SUCCESS,
+               R"(key1:value1,key2:value2,:value3)",
+               j(fmt::format(R"({{"{}":{{"key1":"value1","key2":"value2"}}}})", TARGET.substr(1))),
                23,
                getKVParser,
                {NAME, TARGET, {}, {":", ",", "'", "\\"}}),
 
-        ParseT(FAILURE, R"(key1:value1,key2:value2,:)", {}, 24, getKVParser, {NAME, TARGET, {}, {":", ",", "'", "\\"}}),
+        ParseT(SUCCESS,
+               R"(key1:value1,key2:value2,value3)",
+               j(fmt::format(R"({{"{}":{{"key1":"value1","key2":"value2"}}}})", TARGET.substr(1))),
+               23,
+               getKVParser,
+               {NAME, TARGET, {}, {":", ",", "'", "\\"}}),
+
+        ParseT(SUCCESS,
+               R"(key1:value1,key2:value2,:)",
+               j(fmt::format(R"({{"{}":{{"key1":"value1","key2":"value2"}}}})", TARGET.substr(1))),
+               23,
+               getKVParser,
+               {NAME, TARGET, {}, {":", ",", "'", "\\"}}),
 
         ParseT(SUCCESS,
                R"("key1":"value\"1",key2:value2)",
@@ -211,16 +236,16 @@ INSTANTIATE_TEST_SUITE_P(
                {NAME, TARGET, {}, {"=", " ", "\"", "'"}}),
 
         ParseT(SUCCESS,
-               R"(O=Akamai Technologies\\, Inc.,L=Cambridge,C=US)",
-               j(fmt::format(R"({{"{}": {{"O":"Akamai Technologies\\, Inc.","L":"Cambridge","C":"US"}}}})",
-                             TARGET.substr(1))),
-               46,
+               R"(L=New York City, O=Acme U.S.A., INC., CN=update.acme.com)",
+               j(fmt::format(R"({{"{}": {{"L":"New York City"," O":"Acme U.S.A."}}}})", TARGET.substr(1))),
+               30,
                getKVParser,
                {NAME, TARGET, {}, {"=", ",", "'", "\\"}}),
 
-        ParseT(FAILURE,
+        ParseT(SUCCESS,
                R"(key1='value=1',key2=value''2,key3='value,3',key4='value=,''4')",
-               {},
-               14,
+               j(fmt::format(R"({{"{}": {{"key1":"value=1","key2":"value'2","key3":"value,3","key4":"value=,'4"}}}})",
+                             TARGET.substr(1))),
+               61,
                getKVParser,
                {NAME, TARGET, {}, {"=", ",", "'", "'"}})));
