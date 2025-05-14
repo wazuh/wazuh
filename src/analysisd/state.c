@@ -505,21 +505,21 @@ int w_analysisd_write_state() {
 }
 
 void w_get_queues_size() {
-    queue_status.syscheck_queue_usage = ((decode_queue_syscheck_input->elements / (float)decode_queue_syscheck_input->size));
-    queue_status.syscollector_queue_usage = ((decode_queue_syscollector_input->elements / (float)decode_queue_syscollector_input->size));
-    queue_status.rootcheck_queue_usage = ((decode_queue_rootcheck_input->elements / (float)decode_queue_rootcheck_input->size));
-    queue_status.sca_queue_usage = ((decode_queue_sca_input->elements / (float)decode_queue_sca_input->size));
-    queue_status.hostinfo_queue_usage = ((decode_queue_hostinfo_input->elements / (float)decode_queue_hostinfo_input->size));
-    queue_status.winevt_queue_usage = ((decode_queue_winevt_input->elements / (float)decode_queue_winevt_input->size));
-    queue_status.dbsync_queue_usage = ((dispatch_dbsync_input->elements / (float)dispatch_dbsync_input->size));
-    queue_status.upgrade_queue_usage = ((upgrade_module_input->elements / (float)upgrade_module_input->size));
-    queue_status.events_queue_usage = ((decode_queue_event_input->elements / (float)decode_queue_event_input->size));
-    queue_status.processed_queue_usage = ((decode_queue_event_output->elements / (float)decode_queue_event_output->size));
-    queue_status.alerts_queue_usage = ((writer_queue_log->elements / (float)writer_queue_log->size));
-    queue_status.archives_queue_usage = ((writer_queue->elements / (float)writer_queue->size));
-    queue_status.firewall_queue_usage = ((writer_queue_log_firewall->elements / (float)writer_queue_log_firewall->size));
-    queue_status.fts_queue_usage = ((writer_queue_log_fts->elements / (float)writer_queue_log_firewall->size));
-    queue_status.stats_queue_usage = ((writer_queue_log_statistical->elements / (float)writer_queue_log_statistical->size));
+    queue_status.syscheck_queue_usage = queue_get_percentage_ex(decode_queue_syscheck_input);
+    queue_status.syscollector_queue_usage = queue_get_percentage_ex(decode_queue_syscollector_input);
+    queue_status.rootcheck_queue_usage = queue_get_percentage_ex(decode_queue_rootcheck_input);
+    queue_status.sca_queue_usage = queue_get_percentage_ex(decode_queue_sca_input);
+    queue_status.hostinfo_queue_usage = queue_get_percentage_ex(decode_queue_hostinfo_input);
+    queue_status.winevt_queue_usage = queue_get_percentage_ex(decode_queue_winevt_input);
+    queue_status.dbsync_queue_usage = queue_get_percentage_ex(dispatch_dbsync_input);
+    queue_status.upgrade_queue_usage = queue_get_percentage_ex(upgrade_module_input);
+    queue_status.events_queue_usage = queue_get_percentage_ex(decode_queue_event_input);
+    queue_status.processed_queue_usage = queue_get_percentage_ex(decode_queue_event_output);
+    queue_status.alerts_queue_usage = queue_get_percentage_ex(writer_queue_log);
+    queue_status.archives_queue_usage = queue_get_percentage_ex(writer_queue);
+    queue_status.firewall_queue_usage = queue_get_percentage_ex(writer_queue_log_firewall);
+    queue_status.fts_queue_usage = queue_get_percentage_ex(writer_queue_log_fts);
+    queue_status.stats_queue_usage = queue_get_percentage_ex(writer_queue_log_statistical);
 }
 
 void w_get_initial_queues_size() {
