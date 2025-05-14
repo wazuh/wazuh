@@ -7,9 +7,8 @@
 #include <fmt/format.h>
 
 #include "hlp.hpp"
-#include "syntax.hpp"
-
 #include "parse_field.hpp"
+#include "syntax.hpp"
 
 namespace
 {
@@ -31,6 +30,152 @@ SemParser getSemParser(json::Json&& doc, const std::string& targetField)
         return getMapper(doc, targetField);
     };
 }
+
+syntax::Parser getSynParser(char separator, char quote, char escape, bool requireSeparator)
+{
+    // Capture parameters and return a parsing lambda
+    return [=](std::string_view input) -> syntax::Result
+    {
+        if (input.empty())
+        {
+            // Parsing fails if input is empty
+            return abs::makeFailure<syntax::ResultT>(input, {});
+        }
+
+        size_t i = 0;         // Current position in the input
+        size_t start = 0;     // Start of the current token
+        bool inQuote = false; // Whether we're currently inside a quoted section
+
+        // === Predicates ===
+
+        // Returns the character at position i + offset, or '\0' if out of bounds
+        const auto at = [&](size_t offset = 0) -> char
+        {
+            return i + offset < input.size() ? input[i + offset] : '\0';
+        };
+
+        // Checks if the current character matches the given one
+        const auto match = [&](char c) -> bool
+        {
+            return at() == c;
+        };
+
+        // Returns true if the current character is the escape character and the next matches `target`
+        const auto canEscape = [&](char target) -> bool
+        {
+            return match(escape) && at(1) == target;
+        };
+
+        // === Advancing the position ===
+
+        // Moves forward n characters (default is 1)
+        const auto skip = [&](size_t n = 1)
+        {
+            i += n;
+        };
+
+        // === Token processing logic ===
+
+        // Processes characters when inside a quoted string
+        const auto processQuote = [&]()
+        {
+            if (canEscape(quote))
+            {
+                // Escaped quote: skip both escape and quote characters
+                skip(2);
+                return;
+            }
+            if (match(quote))
+            {
+                // Closing quote: exit quoted mode
+                inQuote = false;
+                skip();
+                return;
+            }
+            // Regular character inside quote
+            skip();
+        };
+
+        // Processes characters when outside quotes
+        const auto processUnquoted = [&]() -> std::optional<syntax::Result>
+        {
+            if (canEscape(separator))
+            {
+                // Escaped separator: skip both escape and separator characters
+                skip(2);
+                return std::nullopt;
+            }
+            if (match(quote))
+            {
+                // Enter quoted mode
+                inQuote = true;
+                skip();
+                return std::nullopt;
+            }
+            if (match(separator))
+            {
+                // Token ends here: return it along with the remaining string
+                auto token = input.substr(start, i - start);
+                auto rest = input.substr(i + 1);
+                return abs::makeSuccess<syntax::ResultT>(std::move(token), rest);
+            }
+            // Regular unquoted character
+            skip();
+            return std::nullopt;
+        };
+
+        // === Main loop ===
+        while (i < input.size())
+        {
+            if (inQuote)
+            {
+                processQuote();
+            }
+            else if (auto res = processUnquoted(); res)
+            {
+                // Token successfully extracted
+                return *res;
+            }
+        }
+
+        // === Finalization ===
+        if (inQuote || (requireSeparator))
+        {
+            // If we're still inside a quote, or a separator was required but not found, fail
+            return abs::makeFailure<syntax::ResultT>(input, {});
+        }
+
+        // Return final token (no separator found, or not required)
+        return abs::makeSuccess<syntax::ResultT>(input.substr(start, i - start), input.substr(i));
+    };
+}
+
+std::tuple<std::string_view, bool, bool> processToken(std::string_view token, char delim, char quote, char esc)
+{
+    bool isQuoted = token.size() >= 2 && token.front() == quote && token.back() == quote;
+    bool isEscaped = false;
+
+    if (isQuoted)
+    {
+        token.remove_prefix(1);
+        token.remove_suffix(1);
+    }
+
+    // Check if value contains escaped characters
+    size_t escPos = token.find(esc);
+    while (escPos != std::string_view::npos)
+    {
+        if (escPos + 1 < token.size() && (token[escPos + 1] == quote || token[escPos + 1] == delim))
+        {
+            isEscaped = true;
+            break;
+        }
+        escPos = token.find(esc, escPos + 1);
+    }
+
+    return {token, isQuoted, isEscaped};
+}
+
 } // namespace
 
 namespace hlp::parsers
@@ -38,7 +183,6 @@ namespace hlp::parsers
 
 Parser getKVParser(const Params& params)
 {
-
     if (params.options.size() != 4)
     {
         throw std::runtime_error(fmt::format("KV parser requires four parameters: separator, delimiter, quote "
@@ -67,76 +211,94 @@ Parser getKVParser(const Params& params)
 
     return [sep, delim, quote, esc, name = params.name, targetField](std::string_view txt)
     {
-        std::string_view kvInput = txt;
+        std::vector<std::string> tokens;
+        std::vector<size_t> tokenOffsets;
 
-        auto remaining = txt.substr(kvInput.size());
+        std::string_view rest = txt;
+        auto parser = getSynParser(sep, quote, esc, true);
+        bool expectKey = true;
 
-        size_t start {0}, end {0};
-        json::Json doc;
+        size_t parsedPos = 0;
 
-        std::vector<Field> kv;
-        auto dlm = sep;
-        while (start <= kvInput.size())
+        while (!rest.empty())
         {
-            auto remaining = kvInput.substr(start, kvInput.size() - start);
-            auto f = getFieldKeyValue(remaining, dlm, quote, esc, true);
-            if (!f.has_value())
+            auto result = parser(rest);
+            if (result.failure())
             {
-                break;
+                // Fail if a parsing step failed
+                size_t failureOffset = parsedPos == 0 ? 0 : parsedPos - 1;
+                return abs::makeFailure<ResultT>(txt.substr(failureOffset), name);
             }
 
-            dlm = ((dlm == delim) ? sep : delim);
+            auto token = std::string(result.value());
+            tokens.push_back(token);
+            tokenOffsets.push_back(parsedPos);
 
-            auto fld = f.value();
-            fld.addOffset(start);
-            end = fld.end();
-            start = end + 1;
-            kv.insert(kv.end(), fld);
-        };
+            size_t consumed = rest.size() - result.remaining().size();
+            parsedPos += consumed;
+            rest = result.remaining();
 
-        if (kv.size() <= 1)
-        {
-            return abs::makeFailure<ResultT>(txt, name);
-            // return parsec::makeError<json::Json>(fmt::format("{}: No key-value fields found)", name), index);
-        }
-
-        if (kv.size() % 2 != 0)
-        {
-            return abs::makeFailure<ResultT>(txt.substr(kv[kv.size() - 2].end()), name);
-            // return parsec::makeError<json::Json>(fmt::format("{}: Invalid number of key-value fields", name), index);
-        }
-
-        for (auto i = 0; i < kv.size() - 1; i += 2)
-        {
-            auto k = kvInput.substr(kv[i].start(), kv[i].len());
-            auto v = kvInput.substr(kv[i + 1].start(), kv[i + 1].len());
-            if (k.empty())
+            // Switch delimiter depending on expected type (key or value)
+            if (!rest.empty())
             {
-                return abs::makeFailure<ResultT>(txt.substr(kv[i].start()), name);
-                // return parsec::makeError<json::Json>(
-                //     fmt::format(
-                //         "{}: Unable to parse key-value between '{}'-'{}' chars", name, kv[i].start(), kv[i].end()),
-                //     index);
+                parser = getSynParser(expectKey ? delim : sep, quote, esc, !expectKey);
             }
-            end = kv[i + 1].end();
-            updateDoc(
-                doc, fmt::format("/{}", k), v, kv[i + 1].isEscaped(), std::string_view {&esc, 1}, kv[i + 1].isQuoted());
+
+            expectKey = !expectKey;
+
+            // If at the end of input, add empty value for null-pair keys
+            if (rest.empty())
+            {
+                if (!expectKey || txt.back() == delim)
+                {
+                    tokens.push_back("");
+                    tokenOffsets.push_back(parsedPos - 1);
+                    break;
+                }
+            }
         }
 
-        if (start - 1 != end)
+        // No fields were extracted
+        if (tokens.empty())
         {
-            // TODO: fix index
             return abs::makeFailure<ResultT>(txt, name);
-            // return parsec::makeError<json::Json>(fmt::format("{}: Invalid key-value string", name), index);
         }
 
-        if (kvInput.size() != end)
+        // Unmatched key-value pairs (odd number of tokens)
+        if (tokens.size() % 2 != 0)
         {
-            return abs::makeFailure<ResultT>(txt.substr(end), name);
+            if (tokens.size() < 2)
+            {
+                return abs::makeFailure<ResultT>(txt, name);
+            }
+
+            return abs::makeFailure<ResultT>(txt.substr(tokenOffsets[tokens.size() - 1]), name);
+        }
+
+        // Input not fully consumed
+        if (parsedPos != txt.size())
+        {
+            return abs::makeFailure<ResultT>(txt.substr(parsedPos), name);
+        }
+
+        json::Json doc {};
+
+        for (size_t i = 0; i < tokens.size(); i += 2)
+        {
+            auto [key, keyQuoted, keyEscaped] = processToken(tokens[i], delim, quote, esc);
+            auto [val, valQuoted, valEscaped] = processToken(tokens[i + 1], delim, quote, esc);
+
+            if (key.empty())
+            {
+                // Fail on empty key
+                return abs::makeFailure<ResultT>(txt.substr(tokenOffsets[i]), name);
+            }
+
+            updateDoc(doc, fmt::format("/{}", key), val, valEscaped, std::string_view {&esc, 1}, valQuoted);
         }
 
         const auto semP = targetField.empty() ? noSemParser() : getSemParser(std::move(doc), targetField);
-        return abs::makeSuccess<ResultT>(SemToken {kvInput, std::move(semP)}, remaining);
+        return abs::makeSuccess<ResultT>(SemToken {txt.substr(0, parsedPos), semP}, rest);
     };
 }
 
