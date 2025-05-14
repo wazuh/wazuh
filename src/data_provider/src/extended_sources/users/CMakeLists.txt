@@ -20,6 +20,7 @@ else()
   list(APPEND SRC_FILES src/logged_in_users_unix.cpp)
   if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     list(APPEND SRC_FILES src/shadow_linux.cpp)
+    list(APPEND SRC_FILES src/users_linux.cpp)
   endif()
 endif()
 
