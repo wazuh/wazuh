@@ -89,6 +89,18 @@ void test_queue_full(void **state){
     assert_int_equal(queue_full(queue), 1);
 }
 
+void test_queue_full_ex(void **state) {
+    w_queue_t *queue = *state;
+    expect_value_count(__wrap_pthread_mutex_lock, mutex,  &queue->mutex, QUEUE_SIZE);
+    expect_value_count(__wrap_pthread_mutex_unlock, mutex, &queue->mutex, QUEUE_SIZE);
+
+    for (int i=0; i < QUEUE_SIZE - 1; i++){
+        assert_int_equal(queue_full_ex(queue), 0);
+        queue->begin++;
+    }
+    assert_int_equal(queue_full_ex(queue), 1);
+}
+
 void test_queue_empty(void **state){
     w_queue_t *queue = *state;
     assert_int_equal(queue_empty(queue), 1);
@@ -288,6 +300,7 @@ void test_queue_pop_ex_timedwait_no_timeout(void **state) {
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_queue_full, setup_queue, teardown_queue),
+        cmocka_unit_test_setup_teardown(test_queue_full_ex, setup_queue, teardown_queue),
         cmocka_unit_test_setup_teardown(test_queue_empty, setup_queue, teardown_queue),
         cmocka_unit_test_setup_teardown(test_queue_push, setup_queue, teardown_queue),
         cmocka_unit_test_setup_teardown(test_queue_push_ex, setup_queue, teardown_queue),
