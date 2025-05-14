@@ -17,6 +17,7 @@ else()
     list(APPEND TEST_SRC test_logged_in_users_unix.cpp)
     if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
         list(APPEND TEST_SRC test_shadow_linux.cpp)
+        list(APPEND TEST_SRC test_users_linux.cpp)
     endif()
 endif()
 
