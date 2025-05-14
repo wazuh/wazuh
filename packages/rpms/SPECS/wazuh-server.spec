@@ -281,5 +281,7 @@ rm -fr %{buildroot}
 /usr/lib/systemd/system/wazuh-server.service
 
 %changelog
+* Wed Jul 02 2025 support <info@wazuh.com> - 6.0.0
+- More info: https://documentation.wazuh.com/current/release-notes/release-6-0-0.html
 * Mon Jun 2 2025 support <info@wazuh.com> - 5.0.0
 - More info: https://documentation.wazuh.com/current/release-notes/release-5-0-0.html
