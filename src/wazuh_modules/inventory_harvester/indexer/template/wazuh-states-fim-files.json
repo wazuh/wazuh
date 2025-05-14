@@ -105,11 +105,6 @@
               "type": "keyword"
             },
             "path": {
-              "fields": {
-                "text": {
-                  "type": "text"
-                }
-              },
               "ignore_above": 1024,
               "type": "keyword"
             },

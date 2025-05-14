@@ -75,19 +75,9 @@
               "type": "long"
             },
             "command_line": {
-              "fields": {
-                "text": {
-                  "type": "text"
-                }
-              },
               "type": "keyword"
             },
             "name": {
-              "fields": {
-                "text": {
-                  "type": "text"
-                }
-              },
               "ignore_above": 1024,
               "type": "keyword"
             },
