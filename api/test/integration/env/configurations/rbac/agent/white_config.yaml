@@ -86,6 +86,7 @@
   - group:id:default
   - group:id:group1
   - group:id:group3
+  - group:id:group4
   - group:id:pepito
   effect: allow
 

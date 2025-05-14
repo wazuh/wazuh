@@ -311,8 +311,9 @@ stages:
            - name: 'default'
            - name: 'group1'
            - name: 'group2'
+           - name: 'group4'
          failed_items: []
-         total_affected_items: 3
+         total_affected_items: 4
          total_failed_items: 0
 
  - name: Try to read group3 (Denied)
@@ -993,9 +994,10 @@ stages:
         error: 0
         data:
           affected_items:
+            - group4
             - group1
           failed_items: []
-          total_affected_items: 1
+          total_affected_items: 2
           total_failed_items: 0
 
   - name: Try to delete a list of groups (Partially allowed, user aware)
@@ -1471,8 +1473,9 @@ stages:
         data:
           affected_items:
             - '004'
+            - '013'
           failed_items: []
-          total_affected_items: 1
+          total_affected_items: 2
           total_failed_items: 0
     delay_after: !float "{reconnect_delay}"
 
@@ -1564,15 +1567,16 @@ stages:
       verify_response_with:
         function: tavern_utils:healthcheck_agent_restart
         extra_kwargs:
-          agents_list: ["004"]
+          agents_list: ["004", "013"]
       status_code: 200
       json:
         error: 0
         data:
           affected_items:
             - '004'
+            - '013'
           failed_items: []
-          total_affected_items: 1
+          total_affected_items: 2
           total_failed_items: 0
 
 ---
