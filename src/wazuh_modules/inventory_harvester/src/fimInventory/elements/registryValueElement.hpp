@@ -65,6 +65,8 @@ public:
         element.data.registry.data.hash.sha256 = data->sha256();
         element.data.registry.data.type = data->valueType();
 
+        element.data.event.category = data->elementType();
+
         auto& instancePolicyManager = PolicyHarvesterManager::instance();
         if (instancePolicyManager.getClusterStatus())
         {

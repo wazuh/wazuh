@@ -63,6 +63,9 @@ public:
         element.data.registry.group = data->groupName();
         element.data.registry.architecture = data->arch();
         element.data.registry.mtime = data->mtimeISO8601();
+        element.data.registry.path = data->path();
+
+        element.data.event.category = data->elementType();
 
         auto& instancePolicyManager = PolicyHarvesterManager::instance();
         if (instancePolicyManager.getClusterStatus())
