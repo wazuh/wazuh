@@ -16,8 +16,11 @@ static void wm_help();                  // Print help.
 static void wm_setup();                 // Setup function. Exits on error.
 static void wm_cleanup();               // Cleanup function, called on exiting.
 static void wm_handler(int signum);     // Action on signal.
+static void wm_signals_configure();     // Configure signal handling.
 
 static int flag_foreground = 0;         // Running in foreground.
+
+static pthread_mutex_t sig_lock = PTHREAD_MUTEX_INITIALIZER;
 
 // Main function
 
@@ -98,6 +101,9 @@ int main(int argc, char **argv)
     // Start com request thread
     w_create_thread(wmcom_main, NULL);
 
+    // Signal management
+    wm_signals_configure();
+
     // Wait for threads
 
     for (cur_module = wmodules; cur_module; cur_module = cur_module->next) {
@@ -127,8 +133,6 @@ void wm_help()
 
 void wm_setup()
 {
-    struct sigaction action = { .sa_handler = wm_handler };
-
     // Read XML settings and internal options
 
     if (wm_config() < 0) {
@@ -154,18 +158,8 @@ void wm_setup()
         exit(EXIT_SUCCESS);
     }
 
-    // Signal management
-
+    // Register cleanup function before CreatePID to avoid dangling PID files
     atexit(wm_cleanup);
-    sigaction(SIGTERM, &action, NULL);
-
-    if (flag_foreground) {
-        sigaction(SIGHUP, &action, NULL);
-        sigaction(SIGINT, &action, NULL);
-    }
-
-    action.sa_handler = SIG_IGN;
-    sigaction(SIGPIPE, &action, NULL);
 
     // Create PID file
 
@@ -192,8 +186,39 @@ void wm_cleanup()
 
 // Action on signal
 
+void wm_signals_configure()
+{
+    struct sigaction action = { .sa_handler = wm_handler };
+
+    sigaction(SIGTERM, &action, NULL);
+
+    if (flag_foreground) {
+        sigaction(SIGHUP, &action, NULL);
+        sigaction(SIGINT, &action, NULL);
+    }
+
+    action.sa_handler = SIG_IGN;
+    sigaction(SIGPIPE, &action, NULL);
+}
+
 void wm_handler(int signum)
 {
+    static bool wm_sig_processing = false;
+
+    w_mutex_lock(&sig_lock);
+    if (wm_sig_processing) {
+        mdebug2("Signal received: %d, but another one is being processed. Ignoring.", signum);
+        w_mutex_unlock(&sig_lock);
+        return;
+    } else {
+        wm_sig_processing = true;
+        mdebug2("Signal received: %d, handling.", signum);
+    }
+    w_mutex_unlock(&sig_lock);
+
+    // We wait in case the modules haven't completed the initialization
+    sleep(1);
+
     wmodule * cur_module;
     switch (signum) {
     case SIGHUP:
@@ -201,6 +226,7 @@ void wm_handler(int signum)
     case SIGTERM:
         // For the moment only gracefull shutdown will be for syscollector, in the future
         // it will be modified for all wmodules, modifying the mainloop of each thread.
+        minfo("Shutting down Wazuh modules.");
         for (cur_module = wmodules; cur_module && cur_module->context && cur_module->context->name; cur_module = cur_module->next) {
             if (cur_module->context->stop) {
                 cur_module->context->stop(cur_module->data);
