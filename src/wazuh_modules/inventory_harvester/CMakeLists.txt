@@ -55,6 +55,7 @@ if (TARGET compile_schemas_input)
 endif()
 
 add_subdirectory(testtool)
+add_subdirectory(tests)
 
 if(UNIT_TEST)
   add_subdirectory(tests)
