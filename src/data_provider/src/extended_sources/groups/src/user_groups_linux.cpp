@@ -1,5 +1,5 @@
 #include <iostream>
-#include "user_groups_linux.hpp"
+#include "user_groups_unix.hpp"
 #include "user_groups_wrapper.hpp"
 
 UserGroupsProvider::UserGroupsProvider(std::shared_ptr<IUserGroupsWrapper> wrapper)
