@@ -12,7 +12,7 @@
   <rule id="99901" level="14">
     <!-- The if_sid tag references the built-in FIM rules -->
     <if_sid>554, 550</if_sid>
-    <list field="sha256" lookup="match_key">etc/lists/malware-hashes</list>
+    <list field="sha256" lookup="match_key">etc/lists/malicious-ioc/malicious-domains</list>
     <description>FIM: File with known malware hash detected: $(file).</description>
     <mitre>
       <id>T1204.002</id>
@@ -112,14 +112,14 @@
   <rule id="99911" level="9">
     <if_sid>9702, 9705, 9771</if_sid>
     <list field="srcip" lookup="match_key">etc/lists/malicious-ioc/malicious-ip</list>
-    <description>Dovecot Authentication from malicious IP $(srcip) Failed.</description>
+    <description>Dovecot authentication from malicious IP $(srcip) failed.</description>
     <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="99912" level="14">
     <if_sid>9701</if_sid>
     <list field="srcip" lookup="match_key">etc/lists/malicious-ioc/malicious-ip</list>
-     <description>Dovecot Authentication from malicious IP $(srcip) was Successful.</description>
+     <description>Dovecot authentication from malicious IP $(srcip) was successful.</description>
     <mitre>
       <id>T1078</id>
     </mitre>
@@ -133,14 +133,14 @@
     <rule id="99913" level="14">
         <if_sid>85004</if_sid>
         <list field="srcip" lookup="match_key">etc/lists/malicious-ioc/malicious-ip</list>
-        <description>SQL Server login from malicious IP $(srcip) was successful.</description>
+        <description>SQL server login from malicious IP $(srcip) was successful.</description>
         <group>sqlserver_login,pci_dss_10.2.5,gpg13_7.1,gpg13_7.2,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
     </rule>
 
     <rule id="99914" level="9">
         <if_sid>85005</if_sid>
         <list field="srcip" lookup="match_key">etc/lists/malicious-ioc/malicious-ip</list>
-        <description>SQL Server login from malicious IP $(srcip) failed.</description>
+        <description>SQL server login from malicious IP $(srcip) failed.</description>
         <group>sqlserver_login, authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
     </rule>
 
@@ -179,7 +179,7 @@
   <rule id="99919" level="9">
     <if_sid>60105, 60122</if_sid>
     <list field="win.eventdata.ipAddress" lookup="match_key">etc/lists/malicious-ioc/malicious-ip</list>
-    <description>Failed Logon from malicious IP $(win.eventdata.ipAddress).</description>
+    <description>Failed logon from malicious IP $(win.eventdata.ipAddress).</description>
     <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
     <mitre>
       <id>T1078</id>
@@ -189,7 +189,7 @@
   <rule id="99920" level="14">
     <if_sid>92651</if_sid>
     <list field="win.eventdata.ipAddress" lookup="match_key">etc/lists/malicious-ioc/malicious-ip</list>
-    <description>Successful Remote Logon from malicious IP $(win.eventdata.ipAddress).</description>
+    <description>Successful remote logon from malicious IP $(win.eventdata.ipAddress).</description>
     <group>authentication_success,pci_dss_10.2.5,gpg13_7.1,gpg13_7.2,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
     <mitre>
       <id>T1078</id>
