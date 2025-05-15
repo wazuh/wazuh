@@ -362,6 +362,78 @@ TEST_F(IndexerConnectorTest, Publish)
 }
 
 /**
+ * @brief Test the indexer connector when the simplified object is created. We expect that no data is indexed but the
+ * local DB is synced.
+ *
+ */
+TEST_F(IndexerConnectorTest, NoPublish)
+{
+    nlohmann::json expectedMetadata;
+    std::string agentId {"001"};
+    expectedMetadata["index"]["_index"] = INDEXER_NAME;
+    expectedMetadata["index"]["_id"] = agentId + "_" + INDEX_ID_A;
+
+    // Callback that checks the expected data to be published.
+    // The format of the data published is divided in two lines:
+    // First line: JSON data with the metadata (indexer name, index ID)
+    // Second line: Index data.
+    constexpr auto INDEX_DATA {"content"};
+    auto callbackCalled {false};
+    const auto checkPublishedData {[&expectedMetadata, &callbackCalled, &INDEX_DATA](const std::string& data)
+                                   {
+                                       const auto splitData {Utils::split(data, '\n')};
+                                       ASSERT_EQ(nlohmann::json::parse(splitData.front()), expectedMetadata);
+                                       ASSERT_EQ(nlohmann::json::parse(splitData.back()), INDEX_DATA);
+                                       callbackCalled = true;
+                                   }};
+    m_indexerServers[A_IDX]->setPublishCallback(checkPublishedData);
+
+    // Create connector and make sure the connection isn't established.
+    nlohmann::json indexerConfig;
+    indexerConfig["name"] = INDEXER_NAME;
+    indexerConfig["hosts"] = nlohmann::json::array({A_ADDRESS});
+    auto indexerConnector {
+        std::make_shared<IndexerConnector>(indexerConfig,
+                                           static_cast<std::function<void(const int,
+                                                                          const std::string&,
+                                                                          const std::string&,
+                                                                          const int,
+                                                                          const std::string&,
+                                                                          const std::string&,
+                                                                          va_list)>>(nullptr))}; // Simplified object.
+    EXPECT_ANY_THROW(waitUntil([this]() { return m_indexerServers[A_IDX]->initialized(); }, MAX_INDEXER_INIT_TIME_MS));
+
+    // Publish content. The local DB should be updated but no data should be indexed.
+    nlohmann::json publishData;
+    publishData["id"] = agentId + "_" + INDEX_ID_A;
+    publishData["operation"] = "INSERT";
+    publishData["data"] = INDEX_DATA;
+    ASSERT_NO_THROW(indexerConnector->publish(publishData.dump()));
+    EXPECT_ANY_THROW(waitUntil([&callbackCalled]() { return callbackCalled; }, MAX_INDEXER_PUBLISH_TIME_MS));
+    ASSERT_FALSE(callbackCalled);
+
+    // Now we create the normal object and check the data is synced without pushing it again
+
+    indexerConnector.reset();
+    indexerConnector =
+        std::make_shared<IndexerConnector>(indexerConfig, TEMPLATE_FILE_PATH, "", nullptr, INDEXER_TIMEOUT);
+    ASSERT_NO_THROW(waitUntil([this]() { return m_indexerServers[A_IDX]->initialized(); }, MAX_INDEXER_INIT_TIME_MS));
+
+    auto searchCallbackCalled {false};
+    m_indexerServers[A_IDX]->setSearchCallback(
+        [&](const std::string& data) -> std::string
+        {
+            EXPECT_NE(data.find(agentId), std::string::npos);
+            searchCallbackCalled = true;
+            return R"({"hits": {"total" : {"value": 0}, "hits": []}})";
+        });
+    indexerConnector->sync(agentId);
+    ASSERT_NO_THROW(waitUntil([&callbackCalled]() { return callbackCalled; }, MAX_INDEXER_PUBLISH_TIME_MS));
+    ASSERT_TRUE(callbackCalled);
+    ASSERT_TRUE(searchCallbackCalled);
+}
+
+/**
  * @brief Test the connection and posterior data publication into a server. The published data is checked against the
  * expected one. The publication contains a DELETED operation.
  *
