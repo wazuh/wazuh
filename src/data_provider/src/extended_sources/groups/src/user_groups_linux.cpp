@@ -1,4 +1,5 @@
-#include "user_groups_unix.hpp"
+#include <iostream>
+#include "user_groups_linux.hpp"
 #include "user_groups_wrapper.hpp"
 
 UserGroupsProvider::UserGroupsProvider(std::shared_ptr<IUserGroupsWrapper> wrapper)
@@ -37,11 +38,8 @@ nlohmann::json UserGroupsProvider::collect(const std::set<uid_t>& uids)
             if (m_userGroupsWrapper->getpwuid_r(uid, &pwd, buf.get(), bufsize, &pwd_results) == 0 &&
                     pwd_results != nullptr)
             {
-                user_t<uid_t, gid_t> user;
-                user.name = pwd_results->pw_name;
-                user.uid = pwd_results->pw_uid;
-                user.gid = pwd_results->pw_gid;
-                getGroupsForUser<uid_t, gid_t>(results, user, m_userGroupsWrapper);
+                UserInfo user{pwd_results->pw_name, pwd_results->pw_uid, pwd_results->pw_gid};
+                getGroupsForUser(results, user);
             }
         }
     }
@@ -54,11 +52,8 @@ nlohmann::json UserGroupsProvider::collect(const std::set<uid_t>& uids)
         {
             if (processed_uids.insert(pwd_results->pw_uid).second)
             {
-                user_t<uid_t, gid_t> user;
-                user.name = pwd_results->pw_name;
-                user.uid = pwd_results->pw_uid;
-                user.gid = pwd_results->pw_gid;
-                getGroupsForUser<uid_t, gid_t>(results, user, m_userGroupsWrapper);
+                UserInfo user{pwd_results->pw_name, pwd_results->pw_uid, pwd_results->pw_gid};
+                getGroupsForUser(results, user);
             }
         }
 
@@ -66,4 +61,56 @@ nlohmann::json UserGroupsProvider::collect(const std::set<uid_t>& uids)
     }
 
     return results;
+}
+
+void UserGroupsProvider::getGroupsForUser(nlohmann::json& results, const UserInfo& user)
+{
+    gid_t groups_buf[EXPECTED_GROUPS_MAX];
+    gid_t* groups = groups_buf;
+    int ngroups = EXPECTED_GROUPS_MAX;
+
+    if (!m_userGroupsWrapper)
+    {
+        std::cerr << "UserGroupsProvider: user groups wrapper is not initialized" << std::endl;
+        return;
+    }
+
+    // GLIBC version before 2.3.3 may have a buffer overrun:
+    // http://man7.org/linux/man-pages/man3/getgrouplist.3.html
+    if (m_userGroupsWrapper->getgrouplist(user.name, user.gid, groups, &ngroups) < 0)
+    {
+        groups = new gid_t[ngroups];
+
+        if (groups == nullptr)
+        {
+            std::cerr << "Could not allocate memory to get user groups" << std::endl;
+            return;
+        }
+
+        if (m_userGroupsWrapper->getgrouplist(user.name, user.gid, groups, &ngroups) < 0)
+        {
+            std::cerr << "Could not get user's group list" << std::endl;
+        }
+        else
+        {
+            addGroupsToResults(results, user.uid, groups, ngroups);
+        }
+
+        delete[] groups;
+    }
+    else
+    {
+        addGroupsToResults(results, user.uid, groups, ngroups);
+    }
+}
+
+void UserGroupsProvider::addGroupsToResults(nlohmann::json& results, uid_t uid, const gid_t* groups, int ngroups)
+{
+    for (int i = 0; i < ngroups; i++)
+    {
+        nlohmann::json row;
+        row["uid"] = uid;
+        row["gid"] = groups[i];
+        results.push_back(row);
+    }
 }
