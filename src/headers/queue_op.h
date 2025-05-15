@@ -57,6 +57,15 @@ void queue_free(w_queue_t * queue);
 int queue_full(const w_queue_t * queue);
 
 /**
+ * @brief Same as queue_full but with mutual exclusion
+ * for multithreaded applications
+ *
+ * @param queue
+ * @return 1 if true, 0 if false
+ * */
+int queue_full_ex(const w_queue_t * queue);
+
+/**
  * @brief Evaluates whether the queue is empty or not
  * 
  * @param queue
