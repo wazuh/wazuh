@@ -4,33 +4,6 @@
         "data": [
             {
                 "agent": {
-                    "id": "001",
-                    "name": "WazuhAgent",
-                    "version": "v4.11.1"
-                },
-                "host": {
-                    "cpu": {
-                        "cores": 8,
-                        "name": "Intel(R) Core(TM) i7-10700K CPU @ 3.80GHz",
-                        "speed": 3800
-                    },
-                    "memory": {
-                        "free": 16777216,
-                        "total": 33554432,
-                        "used": 16777216
-                    }
-                },
-                "observer": {
-                    "serial_number": "ABC123XYZ789"
-                },
-                "wazuh": {
-                    "schema": {
-                        "version": "1.0"
-                    }
-                }
-            },
-            {
-                "agent": {
                     "id": "002",
                     "name": "WazuhAgent",
                     "version": "v4.11.1"
@@ -51,6 +24,36 @@
                     "serial_number": "AAA111BBB222"
                 },
                 "wazuh": {
+                    "schema": {
+                        "version": "1.0"
+                    }
+                }
+            },
+            {
+                "agent": {
+                    "id": "001",
+                    "name": "WazuhAgent",
+                    "version": "v4.11.1"
+                },
+                "host": {
+                    "cpu": {
+                        "cores": 8,
+                        "name": "Intel(R) Core(TM) i7-10700K CPU @ 3.80GHz",
+                        "speed": 3800
+                    },
+                    "memory": {
+                        "free": 16777216,
+                        "total": 33554432,
+                        "used": 16777216
+                    }
+                },
+                "observer": {
+                    "serial_number": "ABC123XYZ789"
+                },
+                "wazuh": {
+                    "cluster": {
+                        "name": "cluster01"
+                    },
                     "schema": {
                         "version": "1.0"
                     }

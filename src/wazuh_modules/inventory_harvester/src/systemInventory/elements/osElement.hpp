@@ -63,9 +63,9 @@ public:
         element.data.host.os.version = data->osVersion();
 
         auto& instancePolicyManager = PolicyHarvesterManager::instance();
+        element.data.wazuh.cluster.name = instancePolicyManager.getClusterName();
         if (instancePolicyManager.getClusterStatus())
         {
-            element.data.wazuh.cluster.name = instancePolicyManager.getClusterName();
             element.data.wazuh.cluster.node = instancePolicyManager.getClusterNodeName();
         }
 

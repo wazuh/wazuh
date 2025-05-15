@@ -24,6 +24,9 @@
                     "serial_number": "A320"
                 },
                 "wazuh": {
+                    "cluster": {
+                        "name": "cluster01"
+                    },
                     "schema": {
                         "version": "1.0"
                     }

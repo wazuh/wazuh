@@ -62,9 +62,9 @@ public:
         element.data.package.hotfix.name = hotfixName;
 
         auto& instancePolicyManager = PolicyHarvesterManager::instance();
+        element.data.wazuh.cluster.name = instancePolicyManager.getClusterName();
         if (instancePolicyManager.getClusterStatus())
         {
-            element.data.wazuh.cluster.name = instancePolicyManager.getClusterName();
             element.data.wazuh.cluster.node = instancePolicyManager.getClusterNodeName();
         }
 
