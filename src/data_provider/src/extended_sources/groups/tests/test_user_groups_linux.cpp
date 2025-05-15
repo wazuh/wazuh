@@ -1,14 +1,16 @@
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 #include "iuser_groups_wrapper.hpp"
-#include "user_groups_linux.hpp"
+#include "user_groups_unix.hpp"
 
 class MockUserGroupsWrapper : public IUserGroupsWrapper
 {
     public:
         MOCK_METHOD(long, sysconf, (int name), (const, override));
+        MOCK_METHOD(struct passwd*, getpwuid, (uid_t uid), (const, override));
         MOCK_METHOD(int, getpwuid_r, (uid_t uid, struct passwd* pwd, char* buf, size_t buflen, struct passwd** result), (const, override));
         MOCK_METHOD(void, setpwent, (), (const, override));
+        MOCK_METHOD(struct passwd*, getpwent, (), (const, override));
         MOCK_METHOD(int, getpwent_r, (struct passwd* pwd, char* buf, size_t buflen, struct passwd** result), (const, override));
         MOCK_METHOD(void, endpwent, (), (const, override));
         MOCK_METHOD(int, getgrouplist, (const char* user, gid_t group, gid_t* groups, int* ngroups), (const, override));
