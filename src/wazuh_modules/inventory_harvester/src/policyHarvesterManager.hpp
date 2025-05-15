@@ -38,7 +38,6 @@ class PolicyHarvesterManager final : public Singleton<PolicyHarvesterManager>
 {
 private:
     nlohmann::json m_configuration;
-    std::string m_clusterName;
 
     /**
      * @brief Set the default policy.
@@ -192,7 +191,6 @@ public:
         logDebug2(LOGGER_DEFAULT_TAG, "Initializing PolicyHarvesterManager.");
         // Load and validate configuration
         validateAndLoadConfiguration(configuration);
-        m_clusterName = m_configuration.at("clusterName").get<std::string>();
     }
     // LCOV_EXCL_STOP
 
@@ -289,7 +287,8 @@ public:
      */
     std::string_view getClusterName() const
     {
-        return m_clusterName;
+        static const auto clusterName = m_configuration.at("clusterName").get<std::string_view>();
+        return clusterName;
     }
 
     nlohmann::json buildIndexerConfig(const std::string& name, const InventoryType type) const
