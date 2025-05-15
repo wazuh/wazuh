@@ -127,7 +127,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
       "${CMAKE_SOURCE_DIR}/src/network/*Windows.cpp"
       "${CMAKE_SOURCE_DIR}/src/packages/*Windows.cpp")
   add_definitions(-DWIN32=1
-                  -D_WIN32_WINNT=0x600
+                  -D_WIN32_WINNT=0x601
                   -DWIN_EXPORT)
 elseif(CMAKE_CHECK_CENTOS5)
   file(GLOB SYSINFO_SRC
@@ -189,6 +189,8 @@ else()
       "${CMAKE_SOURCE_DIR}/src/osinfo/sysOsParsers.cpp")
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
+#TODO: should use a define to disable this?
+add_subdirectory(src/extended_sources)
 
 add_library(sysinfo SHARED
     ${SYSINFO_SRC}
