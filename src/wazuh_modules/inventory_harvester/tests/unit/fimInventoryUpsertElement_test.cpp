@@ -66,7 +66,7 @@ TEST_F(FimInventoryUpsertElement, valid_Registry)
 
     EXPECT_EQ(
         context->m_serializedElement,
-        R"({"id":"001_HASH_HASH","operation":"INSERTED","data":{"agent":{"id":"001","name":"agent-reg","host":{"ip":"agentIp"},"version":"agentVersion"},"registry":{"key":"Software\\App","hive":"HKLM","gid":"gid","group":"groupName","uid":"uid","owner":"userName","architecture":"x86","mtime":"2025-04-09T15:45:00Z"},"wazuh":{"schema":{"version":"1.0"}}}})");
+        R"({"id":"001_HASH_HASH","operation":"INSERTED","data":{"agent":{"id":"001","name":"agent-reg","host":{"ip":"agentIp"},"version":"agentVersion"},"registry":{"key":"Software\\App","hive":"HKLM","path":"HKLM\\Software\\App","gid":"gid","group":"groupName","uid":"uid","owner":"userName","architecture":"x86","mtime":"2025-04-09T15:45:00Z"},"wazuh":{"schema":{"version":"1.0"}}}})");
 }
 
 /*
