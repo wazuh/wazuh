@@ -47,7 +47,7 @@ Feature: Manage Geolocation Databases
         And the response should include "testdb-city.mmdb"
 
     Scenario: Remotely upsert a geolocation database
-        When I send a request to remotely upsert a database with path to "testdb-city.mmdb", type "city", db url "https://github.com/wazuh/wazuh/raw/main/src/engine/test/integration_tests/geo/data/base.mmdb" and hash url "https://github.com/wazuh/wazuh/raw/main/src/engine/test/integration_tests/geo/data/base.md5"
+        When I send a request to remotely upsert a database with path to "testdb-city.mmdb", type "city", db url "https://raw.githubusercontent.com/wazuh/wazuh/refs/heads/6.0.0/src/engine/test/integration_tests/geo/data/base.mmdb" and hash url "https://raw.githubusercontent.com/wazuh/wazuh/refs/heads/6.0.0/src/engine/test/integration_tests/geo/data/base.md5"
         Then the response should be a "success"
         And the database list "should" include "testdb-city.mmdb"
 
@@ -59,7 +59,7 @@ Feature: Manage Geolocation Databases
         Then the database list "should" include "testdb-city.mmdb"
 
     Scenario: Remotely added db persists after restart
-        When I send a request to remotely upsert a database with path to "testdb-city.mmdb", type "city", db url "https://github.com/wazuh/wazuh/raw/main/src/engine/test/integration_tests/geo/data/base.mmdb" and hash url "https://github.com/wazuh/wazuh/raw/main/src/engine/test/integration_tests/geo/data/base.md5"
+        When I send a request to remotely upsert a database with path to "testdb-city.mmdb", type "city", db url "https://raw.githubusercontent.com/wazuh/wazuh/refs/heads/6.0.0/src/engine/test/integration_tests/geo/data/base.mmdb" and hash url "https://raw.githubusercontent.com/wazuh/wazuh/refs/heads/6.0.0/src/engine/test/integration_tests/geo/data/base.md5"
         Then the response should be a "success"
         When I restart the engine
         Then the database list "should" include "testdb-city.mmdb"
