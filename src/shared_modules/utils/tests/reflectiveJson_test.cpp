@@ -170,7 +170,7 @@ TEST_F(ReflectiveJsonTest, BasicStructSerializationWithAllEmptyFields)
     TestData<std::string_view> obj;
     obj.fieldOne = "";
     obj.fieldTwo = DEFAULT_INT_VALUE;
-    obj.fieldThree = "";
+    obj.fieldThree = " ";
 
     std::string json;
     serializeToJSON(obj, json);
