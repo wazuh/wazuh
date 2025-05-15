@@ -40,15 +40,14 @@ log analysis, file integrity monitoring, intrusions detection and policy and com
 
 %if 0%{?el} >= 6 || 0%{?rhel} >= 6
 # Build debuginfo package
-%if %{_arch} != ppc64le
+%ifnarch ppc64le
 %package -n wazuh-agent-debuginfo
-%endif
 Requires: wazuh-agent = %{_version}-%{_release}
 Summary: Debug information for package %{name}.
 %description -n wazuh-agent-debuginfo
 This package provides debug information for package %{name}.
 %endif
-
+%endif
 
 %prep
 %setup -q
@@ -61,14 +60,14 @@ pushd src
 make clean
 
 %if 0%{?el} >= 6 || 0%{?rhel} >= 6
-    make deps TARGET=agent
+    make -j%{_threads} deps TARGET=agent
     make -j%{_threads} TARGET=agent USE_SELINUX=yes DEBUG=%{_debugenabled}
 %else
     %ifnarch amd64
       MSGPACK="USE_MSGPACK_OPT=no"
     %endif
     deps_version=`cat Makefile | grep "DEPS_VERSION =" | cut -d " " -f 3`
-    make deps RESOURCES_URL=http://packages.wazuh.com/deps/${deps_version} TARGET=agent
+    make -j%{_threads} deps RESOURCES_URL=http://packages.wazuh.com/deps/${deps_version} TARGET=agent
     make -j%{_threads} TARGET=agent USE_AUDIT=no USE_SELINUX=yes USE_EXEC_ENVIRON=no DEBUG=%{_debugenabled} ${MSGPACK}
 
 %endif
@@ -785,7 +784,9 @@ rm -fr %{buildroot}
 %attr(750, root, wazuh) %{_localstatedir}/wodles/gcloud/*
 
 %if 0%{?el} >= 6 || 0%{?rhel} >= 6
+%ifnarch ppc64le
 %files -n wazuh-agent-debuginfo -f debugfiles.list
+%endif
 %endif
 
 %changelog
