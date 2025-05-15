@@ -158,12 +158,12 @@ inline bool isEmpty([[maybe_unused]] bool value)
 
 inline bool isEmpty(std::string_view value)
 {
-    return value.empty() || value.find_first_not_of(" \t\n\r\f\v");
+    return value.empty() || (value.size() == 1 && value[0] == ' ');
 }
 
 inline bool isEmpty(const std::string& value)
 {
-    return isEmpty(std::string_view{value});
+    return isEmpty(std::string_view {value});
 }
 
 template<typename K, typename V>
