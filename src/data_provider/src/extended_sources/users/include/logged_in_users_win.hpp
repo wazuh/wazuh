@@ -6,12 +6,14 @@
 
 #include "json.hpp"
 
-#include "itwsapi_wrapper.hpp"
+#include "iwinapi_wrappers.hpp"
 
 class LoggedInUsersProvider
 {
     public:
-        explicit LoggedInUsersProvider(std::shared_ptr<ITWSapiWrapper> twsApiWrapper);
+        explicit LoggedInUsersProvider(std::shared_ptr<ITWSapiWrapper> twsWrapper,
+            std::shared_ptr<IWinBaseApiWrapper> winBaseWrapper, std::shared_ptr<IWinSDDLWrapper> winSddlWrapper,
+            std::shared_ptr<IWinSecurityBaseApiWrapper> winSecurityWrapper);
 
         LoggedInUsersProvider();
 
@@ -19,6 +21,9 @@ class LoggedInUsersProvider
 
     private:
         std::shared_ptr<ITWSapiWrapper> m_twsApiWrapper;
+        std::shared_ptr<IWinBaseApiWrapper> m_winBaseWrapper;
+        std::shared_ptr<IWinSDDLWrapper> m_winSddlWrapper;
+        std::shared_ptr<IWinSecurityBaseApiWrapper> m_winSecurityWrapper;
 
         static const std::map<int, std::string> m_kSessionStates;
 

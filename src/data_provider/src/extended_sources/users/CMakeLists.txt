@@ -10,14 +10,6 @@ include_directories(${CMAKE_SOURCE_DIR}/../external/nlohmann/)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   include_directories(${CMAKE_SOURCE_DIR}/../shared_modules/utils)
-
-  # When using -D_WIN32_WINNT=0x600 the win32 api version wont build loggedInUser
-  add_definitions(-DWIN32=1
-                  -D_WIN32_WINNT=0x0601  # Windows 7 or later
-                  -DWINVER=0x0601
-                  -DWIN_EXPORT
-                  -DUNICODE
-                  -D_UNICODE)
 endif()
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
