@@ -27,6 +27,9 @@
           "schema": {
             "version": "1.0"
           }
+        },
+        "event": {
+          "category": "registry_value"
         }
       }
     ]

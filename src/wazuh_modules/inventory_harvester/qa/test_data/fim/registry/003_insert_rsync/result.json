@@ -11,6 +11,7 @@
                 "registry": {
                     "key": "Software\\Microsoft\\Active Setup\\Installed Components\\FFFocta",
                     "hive": "HKLM",
+                    "path": "HKLM\\Software\\Microsoft\\Active Setup\\Installed Components\\FFFocta",
                     "gid": "S-1-5-21-1245906424-2878732365-1129427271-513",
                     "uid": "S-1-5-32-544",
                     "owner": "Administrators",
@@ -21,6 +22,9 @@
                     "schema": {
                         "version": "1.0"
                     }
+                },
+                "event": {
+                    "category": "registry_key"
                 }
             }
         ]
