@@ -2151,27 +2151,7 @@ checks:
       - 'c:sh -c "nft list ruleset | awk ''/hook input/,/}/''" -> r:iif "lo" accept'
       - 'c:sh -c "nft list ruleset | awk ''/hook input/,/}/''" -> r:ip saddr|ip6 saddr'
 
-  # 4.3.7 Ensure nftables outbound and established connections are configured. (Manual)
-  - id: 33139
-    title: "Ensure nftables outbound and established connections are configured."
-    description: "Configure the firewall rules for new outbound, and established connections."
-    rationale: "If rules are not in place for new outbound, and established connections all packets will be dropped by the default policy preventing network usage."
-    remediation: "Configure nftables in accordance with site policy. The following commands will implement a policy to allow all outbound connections and all established connections: # nft add rule inet filter input ip protocol tcp ct state established accept # nft add rule inet filter input ip protocol udp ct state established accept # nft add rule inet filter output ip protocol tcp ct state new,related,established accept # nft add rule inet filter output ip protocol udp ct state new,related,established accept."
-    compliance:
-      - cis: ["4.3.7"]
-      - cis_csc_v8: ["4.4", "4.5"]
-      - cis_csc_v7: ["9.4"]
-      - cmmc_v2.0: ["AC.L1-3.1.20", "CM.L2-3.4.7", "SC.L1-3.13.1", "SC.L2-3.13.6"]
-      - iso_27001-2013: ["A.13.1.1"]
-      - mitre_mitigations: ["M1031", "M1037"]
-      - mitre_tactics: ["TA0011"]
-      - mitre_techniques: ["T1562"]
-      - nist_sp_800-53: ["SC-7(5)"]
-      - pci_dss_v3.2.1: ["1.1.4", "1.3.1", "1.4"]
-      - pci_dss_v4.0: ["1.2.1", "1.4.1"]
-      - soc_2: ["CC6.6"]
-    condition:
-    rules:
+  # 4.3.7 Ensure nftables outbound and established connections are configured. (Manual) - Not Implemented
 
   # 4.3.8 Ensure nftables default deny firewall policy. (Automated)
   - id: 33140
@@ -2193,8 +2173,11 @@ checks:
       - pci_dss_v3.2.1: ["1.1.4", "1.3.1", "1.4"]
       - pci_dss_v4.0: ["1.2.1", "1.4.1"]
       - soc_2: ["CC6.6"]
-    condition:
+    condition: all
     rules:
+      - "not c:nft list ruleset -> r:hook input && !r:policy drop"
+      - "not c:nft list ruleset -> r:hook forward && !r:policy drop"
+      - "not c:nft list ruleset -> r:hook output && !r:policy drop"
 
   # 4.3.9 Ensure nftables service is enabled. (Automated)
   - id: 33141
@@ -2215,30 +2198,11 @@ checks:
       - pci_dss_v3.2.1: ["1.1.4", "1.3.1", "1.4"]
       - pci_dss_v4.0: ["1.2.1", "1.4.1"]
       - soc_2: ["CC6.6"]
-    condition:
+    condition: all
     rules:
+      - "c:systemctl is-enabled nftables -> r:enabled"
 
-  # 4.3.10 Ensure nftables rules are permanent. (Automated)
-  - id: 33142
-    title: "Ensure nftables rules are permanent."
-    description: "nftables is a subsystem of the Linux kernel providing filtering and classification of network packets/datagrams/frames. The nftables service reads the /etc/nftables.conf file for a nftables file or files to include in the nftables ruleset. A nftables ruleset containing the input, forward, and output base chains allow network traffic to be filtered. Note: Saving the script and following the instruction in the Configure nftables section overview will implement the rules in the configure nftable section, open port 22(ssh) from anywhere, and applies nftables ruleset on boot."
-    rationale: "Changes made to nftables ruleset only affect the live system, you will also need to configure the nftables ruleset to apply on boot."
-    remediation: 'Edit the /etc/nftables.conf file and un-comment or add a line with include <Absolute path to nftables rules file> for each nftables file you want included in the nftables ruleset on boot Example: # vi /etc/nftables.conf Add the line: include "/etc/nftables.rules".'
-    compliance:
-      - cis: ["4.3.10"]
-      - cis_csc_v8: ["4.4", "4.5"]
-      - cis_csc_v7: ["9.4"]
-      - cmmc_v2.0: ["AC.L1-3.1.20", "CM.L2-3.4.7", "SC.L1-3.13.1", "SC.L2-3.13.6"]
-      - iso_27001-2013: ["A.13.1.1"]
-      - mitre_mitigations: ["M1031"]
-      - mitre_tactics: ["TA0011"]
-      - mitre_techniques: ["T1562", "T1562.004"]
-      - nist_sp_800-53: ["SC-7(5)"]
-      - pci_dss_v3.2.1: ["1.1.4", "1.3.1", "1.4"]
-      - pci_dss_v4.0: ["1.2.1", "1.4.1"]
-      - soc_2: ["CC6.6"]
-    condition:
-    rules:
+  # 4.3.10 Ensure nftables rules are permanent. (Automated) - Not Implemented
 
   # 4.4.1.1 Ensure iptables packages are installed. (Automated)
   - id: 33143
@@ -2259,8 +2223,9 @@ checks:
       - pci_dss_v3.2.1: ["1.1.4", "1.3.1", "1.4"]
       - pci_dss_v4.0: ["1.2.1", "1.4.1"]
       - soc_2: ["CC6.6"]
-    condition:
+    condition: all
     rules:
+      - "c: dpkg-query -s iptables-persistent iptables -> r:install ok installed"
 
   # 4.4.1.2 Ensure nftables is not in use with iptables. (Automated)
   - id: 33144
@@ -2280,8 +2245,10 @@ checks:
       - pci_dss_v3.2.1: ["1.1.4", "1.3.1", "1.4"]
       - pci_dss_v4.0: ["1.2.1", "1.4.1"]
       - soc_2: ["CC6.6"]
-    condition:
+    condition: any
     rules:
+      - "not c: dpkg-query -s nftables -> r:install ok installed"
+      - 'not c:sh -c "systemctl is-enabled nftables.service & systemctl is-active nftables.service" -> r:^active$|^enabled$'
 
   # 4.4.1.3 Ensure ufw is not in use with iptables. (Automated)
   - id: 33145
@@ -2301,8 +2268,10 @@ checks:
       - pci_dss_v3.2.1: ["1.1.4", "1.3.1", "1.4"]
       - pci_dss_v4.0: ["1.2.1", "1.4.1"]
       - soc_2: ["CC6.6"]
-    condition:
+    condition: any
     rules:
+      - "not c: dpkg-query -s ufw -> r:install ok installed"
+      - 'not c:sh -c "systemctl is-enabled ufw.service & ufw status" -> r:^active$|^enabled$'
 
   # 4.4.2.1 Ensure iptables default deny firewall policy. (Automated)
   - id: 33146
@@ -2323,8 +2292,11 @@ checks:
       - pci_dss_v3.2.1: ["1.1.4", "1.3.1", "1.4"]
       - pci_dss_v4.0: ["1.2.1", "1.4.1"]
       - soc_2: ["CC6.6"]
-    condition:
+    condition: all
     rules:
+      - 'c:iptables -L -> r:Chain INPUT \(policy DROP\)|Chain INPUT \(policy REJECT\)'
+      - 'c:iptables -L -> r:Chain FORWARD \(policy DROP\)|Chain FORWARD \(policy REJECT\)'
+      - 'c:iptables -L -> r:Chain OUTPUT \(policy DROP\)|Chain OUTPUT \(policy REJECT\)'
 
   # 4.4.2.2 Ensure iptables loopback traffic is configured. (Automated)
   - id: 33147
