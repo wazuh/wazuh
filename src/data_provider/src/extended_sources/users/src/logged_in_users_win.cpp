@@ -2,7 +2,7 @@
 #include <ctime>
 
 #include "logged_in_users_win.hpp"
-#include "twsapi_wrapper.hpp"
+#include "winapi_wrappers.hpp"
 #include "encodingWindowsHelper.h"
 
 
@@ -20,11 +20,19 @@ const std::map<int, std::string> LoggedInUsersProvider::m_kSessionStates =
     {WTSInit, "init"}
 };
 
-LoggedInUsersProvider::LoggedInUsersProvider(std::shared_ptr<ITWSapiWrapper> wrapper)
-    : m_twsApiWrapper(std::move(wrapper)) {}
+LoggedInUsersProvider::LoggedInUsersProvider(std::shared_ptr<ITWSapiWrapper> twsWrapper,
+    std::shared_ptr<IWinBaseApiWrapper> winBaseWrapper, std::shared_ptr<IWinSDDLWrapper> winSddlWrapper,
+    std::shared_ptr<IWinSecurityBaseApiWrapper> winSecurityWrapper)
+    : m_twsApiWrapper(std::move(twsWrapper)),
+     m_winBaseWrapper(std::move(winBaseWrapper)),
+     m_winSddlWrapper(std::move(winSddlWrapper)),
+     m_winSecurityWrapper(std::move(winSecurityWrapper)) {}
 
 LoggedInUsersProvider::LoggedInUsersProvider()
-    : m_twsApiWrapper(std::make_shared<TWSapiWrapper>()) {}
+    : m_twsApiWrapper(std::make_shared<TWSapiWrapper>()),
+    m_winBaseWrapper(std::make_shared<WinBaseApiWrapper>()),
+    m_winSddlWrapper(std::make_shared<WinSDDLWrapper>()),
+    m_winSecurityWrapper(std::make_shared<WinSecurityBaseApiWrapper>()) {}
 
 nlohmann::json LoggedInUsersProvider::collect()
 {
@@ -213,7 +221,7 @@ std::unique_ptr<BYTE[]> LoggedInUsersProvider::getSidFromAccountName(const std::
     DWORD sidBufferSize = 0;
     DWORD domainNameSize = 0;
     auto eSidType = SidTypeUnknown;
-    auto ret = m_twsApiWrapper->LookupAccountNameW(nullptr,
+    auto ret = m_winBaseWrapper->LookupAccountNameW(nullptr,
                                                    accountName,
                                                    nullptr,
                                                    &sidBufferSize,
@@ -234,7 +242,7 @@ std::unique_ptr<BYTE[]> LoggedInUsersProvider::getSidFromAccountName(const std::
 
     // Call LookupAccountNameW() a second time to actually obtain the SID for
     // the given account name:
-    ret = m_twsApiWrapper->LookupAccountNameW(nullptr,
+    ret = m_winBaseWrapper->LookupAccountNameW(nullptr,
                                               accountName,
                                               sidBuffer.get(),
                                               &sidBufferSize,
@@ -248,7 +256,7 @@ std::unique_ptr<BYTE[]> LoggedInUsersProvider::getSidFromAccountName(const std::
                   << " with " << GetLastError() << std::endl;
         return nullptr;
     }
-    else if (m_twsApiWrapper->IsValidSid(sidBuffer.get()) == FALSE)
+    else if (m_winSecurityWrapper->IsValidSid(sidBuffer.get()) == FALSE)
     {
         std::cerr << "The SID for " << Utils::EncodingWindowsHelper::wstringToStringUTF8(accountName)
                   << " is invalid." << std::endl;
@@ -263,7 +271,7 @@ std::string LoggedInUsersProvider::psidToString(PSID sid)
     LPWSTR sidOut = nullptr;
     // TODO: double check this commented code
     // auto guard = scope_guard::create([&] { LocalFree(sidOut); });
-    auto ret = m_twsApiWrapper->ConvertSidToStringSidW(sid, &sidOut);
+    auto ret = m_winSddlWrapper->ConvertSidToStringSidW(sid, &sidOut);
 
     if (ret == 0)
     {

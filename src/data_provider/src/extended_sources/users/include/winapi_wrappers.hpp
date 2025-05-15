@@ -1,6 +1,6 @@
 #pragma once
 
-#include "itwsapi_wrapper.hpp"
+#include "iwinapi_wrappers.hpp"
 
 
 class TWSapiWrapper : public ITWSapiWrapper
@@ -27,19 +27,37 @@ class TWSapiWrapper : public ITWSapiWrapper
         {
             return ::WTSFreeMemoryEx(WTSTypeClass, pMemory, NumberOfEntries);
         }
+};
 
-        bool LookupAccountNameW(LPCWSTR lpSystemName, LPCWSTR lpAccountName, PSID Sid,
-            LPDWORD cbSid, LPWSTR ReferencedDomainName, LPDWORD cchReferencedDomainName, PSID_NAME_USE peUse) override
-        {
-            return ::LookupAccountNameW(lpSystemName, lpAccountName, Sid, cbSid, ReferencedDomainName, cchReferencedDomainName, peUse);
-        }
+class WinBaseApiWrapper : public IWinBaseApiWrapper
+{
+    public:
+        virtual bool LookupAccountNameW(LPCWSTR lpSystemName,
+            LPCWSTR lpAccountName,
+            PSID Sid,
+            LPDWORD cbSid,
+            LPWSTR ReferencedDomainName,
+            LPDWORD cchReferencedDomainName,
+            PSID_NAME_USE peUse) override
+            {
+                return ::LookupAccountNameW(lpSystemName, lpAccountName, Sid, cbSid,
+                    ReferencedDomainName, cchReferencedDomainName, peUse);
+            }
+};
 
-        bool ConvertSidToStringSidW(PSID Sid, LPWSTR *StringSid) override
+class WinSDDLWrapper : public IWinSDDLWrapper
+{
+    public:
+        virtual bool ConvertSidToStringSidW(PSID Sid, LPWSTR *StringSid) override
         {
             return ::ConvertSidToStringSidW(Sid, StringSid);
         }
+};
 
-        bool IsValidSid(PSID pSid) override
+class WinSecurityBaseApiWrapper : public IWinSecurityBaseApiWrapper
+{
+    public:
+        virtual bool IsValidSid(PSID pSid) override
         {
             return ::IsValidSid(pSid);
         }

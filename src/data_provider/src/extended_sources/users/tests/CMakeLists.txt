@@ -29,7 +29,6 @@ if(UNIX)
         pthread
     )
 elseif(WIN32)
-    message("Linking with Windows libraries")
     target_link_libraries(extended_sources_users_unit_test
         logged_in_users
         debug gtestd

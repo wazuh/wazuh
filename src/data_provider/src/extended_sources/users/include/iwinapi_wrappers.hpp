@@ -1,5 +1,8 @@
 #pragma once
 
+// When using -D_WIN32_WINNT=0x600 the win32 api version wont build loggedInUser
+#define _WIN32_WINNT 0x0601
+
 #include <winsock2.h>
 #include <windows.h>
 #include <wtsapi32.h>
@@ -27,7 +30,11 @@ class ITWSapiWrapper
         virtual bool WTSFreeMemoryEx(WTS_TYPE_CLASS WTSTypeClass,
             PVOID pMemory,
             ULONG NumberOfEntries) = 0;
+};
 
+class IWinBaseApiWrapper
+{
+    public:
         virtual bool LookupAccountNameW(LPCWSTR lpSystemName,
             LPCWSTR lpAccountName,
             PSID Sid,
@@ -35,8 +42,16 @@ class ITWSapiWrapper
             LPWSTR ReferencedDomainName,
             LPDWORD cchReferencedDomainName,
             PSID_NAME_USE peUse) = 0;
+};
 
+class IWinSDDLWrapper
+{
+    public:
         virtual bool ConvertSidToStringSidW(PSID Sid, LPWSTR *StringSid) = 0;
+};
 
+class IWinSecurityBaseApiWrapper
+{
+    public:
         virtual bool IsValidSid(PSID pSid) = 0;
 };
