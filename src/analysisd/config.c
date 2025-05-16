@@ -9,6 +9,7 @@
  */
 
 /* Functions to handle the configuration files */
+#include <pthread.h>
 
 #include "shared.h"
 #include "os_xml/os_xml.h"
@@ -19,7 +20,9 @@
 #include "stats.h"
 #include "fts.h"
 
-long int __crt_ftell; /* Global ftell pointer */
+static long g_ftell_alerts = 0; ///< file‐offset pointer and its protecting lock, user for second part of alert id.
+static pthread_rwlock_t g_ftell_alerts_lock = PTHREAD_RWLOCK_INITIALIZER; ///< Lock for the file‐offset pointer.
+
 _Config Config;       /* Global Config structure */
 rlim_t nofile;
 int sys_debug_level;
@@ -332,4 +335,19 @@ cJSON *getManagerLabelsConfig(void) {
     cJSON_AddItemToObject(root, "labels", labels);
 
     return root;
+}
+
+
+long get_global_alert_second_id(void) {
+    long v;
+    pthread_rwlock_rdlock(&g_ftell_alerts_lock);
+    v = g_ftell_alerts;
+    pthread_rwlock_unlock(&g_ftell_alerts_lock);
+    return v;
+}
+
+void set_global_alert_second_id(long v) {
+    pthread_rwlock_wrlock(&g_ftell_alerts_lock);
+    g_ftell_alerts = v;
+    pthread_rwlock_unlock(&g_ftell_alerts_lock);
 }

@@ -38,7 +38,6 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf, bool force_full_log, OSList * li
     int i;
     char * saveptr;
 
-    extern long int __crt_ftell;
 
     root = cJSON_CreateObject();
 
@@ -56,7 +55,7 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf, bool force_full_log, OSList * li
 
         char alert_id[23];
         alert_id[22] = '\0';
-        if((snprintf(alert_id, 22, "%ld.%ld", (long int)lf->time.tv_sec, __crt_ftell)) < 0) {
+        if((snprintf(alert_id, 22, "%ld.%ld", (long int)lf->time.tv_sec, get_global_alert_second_id())) < 0) {
             merror("snprintf failed");
         }
 
