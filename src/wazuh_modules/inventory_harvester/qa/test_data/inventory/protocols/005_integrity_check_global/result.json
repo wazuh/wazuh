@@ -4,8 +4,8 @@
         "data": [
             {
                 "agent": {
-                    "id": "001",
-                    "name": "centos9",
+                    "id": "002",
+                    "name": "jammy",
                     "version": "v4.10.1"
                 },
                 "network": {
@@ -29,8 +29,8 @@
             },
             {
                 "agent": {
-                    "id": "002",
-                    "name": "jammy",
+                    "id": "001",
+                    "name": "centos9",
                     "version": "v4.10.1"
                 },
                 "network": {
@@ -47,6 +47,9 @@
                     }
                 },
                 "wazuh": {
+                    "cluster": {
+                        "name": "cluster01"
+                    },
                     "schema": {
                         "version": "1.0"
                     }

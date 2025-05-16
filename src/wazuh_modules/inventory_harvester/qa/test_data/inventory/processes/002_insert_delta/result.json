@@ -23,6 +23,9 @@
                     "start": "2025-02-27T15:58:54.000Z"
                 },
                 "wazuh": {
+                    "cluster": {
+                        "name": "cluster01"
+                    },
                     "schema": {
                         "version": "1.0"
                     }

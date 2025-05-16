@@ -4,28 +4,6 @@
         "data": [
             {
                 "agent": {
-                    "id": "001",
-                    "name": "c0ce505227a4",
-                    "version": "v4.11.0"
-                },
-                "process": {
-                    "args_count": 0,
-                    "command_line": "/var/ossec/bin/wazuh-syscheckd",
-                    "name": "wazuh-syscheckd",
-                    "pid": 5892,
-                    "parent": {
-                        "pid": 1
-                    },
-                    "start": "2025-02-26T23:44:59.000Z"
-                },
-                "wazuh": {
-                    "schema": {
-                        "version": "1.0"
-                    }
-                }
-            },
-            {
-                "agent": {
                     "id": "002",
                     "name": "name2",
                     "version": "v4.11.0"
@@ -41,6 +19,31 @@
                     "start": "2025-02-26T23:44:59.000Z"
                 },
                 "wazuh": {
+                    "schema": {
+                        "version": "1.0"
+                    }
+                }
+            },
+            {
+                "agent": {
+                    "id": "001",
+                    "name": "c0ce505227a4",
+                    "version": "v4.11.0"
+                },
+                "process": {
+                    "args_count": 0,
+                    "command_line": "/var/ossec/bin/wazuh-syscheckd",
+                    "name": "wazuh-syscheckd",
+                    "parent": {
+                        "pid": 1
+                    },
+                    "pid": 5892,
+                    "start": "2025-02-26T23:44:59.000Z"
+                },
+                "wazuh": {
+                    "cluster": {
+                        "name": "cluster01"
+                    },
                     "schema": {
                         "version": "1.0"
                     }

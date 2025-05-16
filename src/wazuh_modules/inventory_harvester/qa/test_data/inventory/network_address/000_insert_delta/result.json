@@ -16,6 +16,9 @@
                     "protocol": "IPv4"
                 },
                 "wazuh": {
+                    "cluster": {
+                        "name": "cluster01"
+                    },
                     "schema": {
                         "version": "1.0"
                     }
