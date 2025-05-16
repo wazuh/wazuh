@@ -137,7 +137,7 @@ constexpr bool IS_REFLECTABLE_MEMBER =
     std::is_same_v<std::decay_t<T>, std::int64_t>;
 
 template<typename C, typename T>
-constexpr auto makeFieldChecked(const char* keyLiteral, const char* keyLiteralField, T C::* member)
+constexpr auto makeFieldChecked(const char* keyLiteral, const char* keyLiteralField, T C::*member)
 {
     static_assert(IS_REFLECTABLE_MEMBER<T>, "Invalid member type for reflection");
     return std::make_tuple(std::string_view {keyLiteral}, std::string_view {keyLiteralField}, member);
@@ -158,12 +158,12 @@ inline bool isEmpty([[maybe_unused]] bool value)
 
 inline bool isEmpty(std::string_view value)
 {
-    return value.empty() || (value.size() == 1 && value[0] == ' ');
+    return value.empty();
 }
 
 inline bool isEmpty(const std::string& value)
 {
-    return isEmpty(std::string_view {value});
+    return value.empty();
 }
 
 template<typename K, typename V>
@@ -191,6 +191,28 @@ std::enable_if_t<IsReflectable<T>::value, bool> isEmpty(const T& obj)
     bool allEmpty = true;
     std::apply([&](auto&&... field) { ((allEmpty = allEmpty && isEmpty(obj.*(std::get<2>(field)))), ...); }, fields);
     return allEmpty;
+}
+
+template<typename T>
+bool isSingleSpace(const T& obj)
+{
+    if constexpr (IsReflectable<T>::value)
+    {
+        constexpr auto fields = T::fields();
+        bool allSpaces = true;
+        std::apply([&](auto&&... field) { ((allSpaces = allSpaces && isSingleSpace(obj.*(std::get<2>(field)))), ...); },
+                   fields);
+        return allSpaces;
+    }
+    else if constexpr (std::is_same_v<std::decay_t<T>, std::string> ||
+                       std::is_same_v<std::decay_t<T>, std::string_view>)
+    {
+        return obj.size() == 1 && obj[0] == ' ';
+    }
+    else
+    {
+        return false;
+    }
 }
 
 template<typename K, typename V>
@@ -252,7 +274,7 @@ std::string jsonFieldToString(const T& obj);
 template<typename T>
 void jsonFieldToString(const T& obj, std::string& json);
 
-template<typename T>
+template<typename T, bool NOEMPTY = true, bool NOSINGLESPACE = true>
 std::enable_if_t<IsReflectable<T>::value, void> serializeToJSON(const T& obj, std::string& json)
 {
     json.push_back('{');
@@ -267,157 +289,171 @@ std::enable_if_t<IsReflectable<T>::value, void> serializeToJSON(const T& obj, st
                  [&]
                  {
                      const auto& data = obj.*(std::get<2>(field));
-                     if (!isEmpty(data))
+
+                     if constexpr (NOEMPTY)
                      {
-                         if (count++ > 0)
+                         if (isEmpty(data))
                          {
-                             json.push_back(',');
+                             return;
                          }
-                         json.append(std::get<1>(field));
-                         //  If is string add quotes
-                         if constexpr (std::is_same_v<std::string, std::decay_t<decltype(data)>> ||
-                                       std::is_same_v<std::string_view, std::decay_t<decltype(data)>>)
-                         {
+                     }
 
-                             json.push_back('"');
-                             if (needEscape(data))
-                             {
-                                 escapeJSONString(data, json);
-                             }
-                             else
-                             {
-                                 json.append(data);
-                             }
-                             json.push_back('"');
-                         }
-                         else if constexpr ((std::is_arithmetic_v<std::decay_t<decltype(data)>> ||
-                                             std::is_same_v<double, std::decay_t<decltype(data)>>) &&
-                                            !std::is_same_v<bool, std::decay_t<decltype(data)>>)
+                     if constexpr (NOSINGLESPACE)
+                     {
+                         if (isSingleSpace(data))
                          {
+                             return;
+                         }
+                     }
 
-                             auto [ptr, ec] = std::to_chars(buffer, buffer + sizeof(buffer), data);
-                             if (ec == std::errc())
-                             {
-                                 json.append(buffer);
-                             }
-                             else
-                             {
-                                 json.append("0");
-                             }
-                             std::fill(buffer, buffer + sizeof(buffer), '\0');
-                         }
-                         else if constexpr (std::is_same_v<bool, std::decay_t<decltype(data)>>)
-                         {
-                             json.append(data ? "true" : "false");
-                         }
-                         else if constexpr (IS_MAP_V<std::decay_t<decltype(data)>>)
-                         {
-                             json.push_back('{');
-                             size_t count2 = 0;
-                             for (const auto& [key, value] : data)
-                             {
-                                 if (count2++ > 0)
-                                 {
-                                     json.push_back(',');
-                                 }
-                                 json.push_back('\"');
-                                 json.append(key);
-                                 json.push_back('\"');
-                                 json.push_back(':');
-                                 if constexpr (std::is_same_v<std::string, std::decay_t<decltype(value)>> ||
-                                               std::is_same_v<std::string_view, std::decay_t<decltype(value)>>)
-                                 {
-                                     json.push_back('\"');
-                                     if (needEscape(value))
-                                     {
-                                         escapeJSONString(value, json);
-                                     }
-                                     else
-                                     {
-                                         json.append(value);
-                                     }
-                                     json.push_back('\"');
-                                 }
-                                 else if constexpr ((std::is_arithmetic_v<std::decay_t<decltype(value)>> ||
-                                                     std::is_same_v<double, std::decay_t<decltype(value)>>) &&
-                                                    !std::is_same_v<bool, std::decay_t<decltype(value)>>)
-                                 {
-                                     auto [ptr, ec] = std::to_chars(buffer, buffer + sizeof(buffer), value);
-                                     if (ec == std::errc())
-                                     {
-                                         json.append(buffer);
-                                     }
-                                     else
-                                     {
-                                         json.push_back('0');
-                                     }
-                                 }
-                                 else if constexpr (std::is_same_v<bool, std::decay_t<decltype(value)>>)
-                                 {
-                                     json.append(value ? "true" : "false");
-                                 }
-                                 else
-                                 {
-                                     jsonFieldToString(value, json);
-                                 }
-                             }
-                             json.push_back('}');
-                         }
-                         else if constexpr (IS_VECTOR_V<std::decay_t<decltype(data)>>)
-                         {
-                             size_t count2 = 0;
-                             json.push_back('[');
-                             for (const auto& v : data)
-                             {
-                                 if (count2++ > 0)
-                                 {
-                                     json.push_back(',');
-                                 }
-                                 if constexpr (std::is_same_v<std::string, std::decay_t<decltype(v)>> ||
-                                               std::is_same_v<std::string_view, std::decay_t<decltype(v)>>)
-                                 {
-                                     json.push_back('\"');
-                                     if (needEscape(v))
-                                     {
-                                         escapeJSONString(v, json);
-                                     }
-                                     else
-                                     {
-                                         json.append(v);
-                                     }
-                                     json.push_back('\"');
-                                 }
-                                 else if constexpr ((std::is_arithmetic_v<decltype(v)> ||
-                                                     std::is_same_v<const double&, decltype(v)>) &&
-                                                    !std::is_same_v<bool, std::decay_t<decltype(v)>>)
-                                 {
-                                     auto [ptr, ec] = std::to_chars(buffer, buffer + sizeof(buffer), v);
-                                     if (ec == std::errc())
-                                     {
-                                         json.append(buffer);
-                                     }
-                                     else
-                                     {
-                                         json.push_back('0');
-                                     }
+                     if (count++ > 0)
+                     {
+                         json.push_back(',');
+                     }
+                     json.append(std::get<1>(field));
+                     //  If is string add quotes
+                     if constexpr (std::is_same_v<std::string, std::decay_t<decltype(data)>> ||
+                                   std::is_same_v<std::string_view, std::decay_t<decltype(data)>>)
+                     {
 
-                                     std::fill(buffer, buffer + sizeof(buffer), '\0');
-                                 }
-                                 else if constexpr (std::is_same_v<bool, std::decay_t<decltype(v)>>)
-                                 {
-                                     json.append(v ? "true" : "false");
-                                 }
-                                 else
-                                 {
-                                     jsonFieldToString(v, json);
-                                 }
-                             }
-                             json.push_back(']');
+                         json.push_back('"');
+                         if (needEscape(data))
+                         {
+                             escapeJSONString(data, json);
                          }
                          else
                          {
-                             jsonFieldToString(data, json);
+                             json.append(data);
                          }
+                         json.push_back('"');
+                     }
+                     else if constexpr ((std::is_arithmetic_v<std::decay_t<decltype(data)>> ||
+                                         std::is_same_v<double, std::decay_t<decltype(data)>>)&&!std::
+                                            is_same_v<bool, std::decay_t<decltype(data)>>)
+                     {
+
+                         auto [ptr, ec] = std::to_chars(buffer, buffer + sizeof(buffer), data);
+                         if (ec == std::errc())
+                         {
+                             json.append(buffer);
+                         }
+                         else
+                         {
+                             json.append("0");
+                         }
+                         std::fill(buffer, buffer + sizeof(buffer), '\0');
+                     }
+                     else if constexpr (std::is_same_v<bool, std::decay_t<decltype(data)>>)
+                     {
+                         json.append(data ? "true" : "false");
+                     }
+                     else if constexpr (IS_MAP_V<std::decay_t<decltype(data)>>)
+                     {
+                         json.push_back('{');
+                         size_t count2 = 0;
+                         for (const auto& [key, value] : data)
+                         {
+                             if (count2++ > 0)
+                             {
+                                 json.push_back(',');
+                             }
+                             json.push_back('\"');
+                             json.append(key);
+                             json.push_back('\"');
+                             json.push_back(':');
+                             if constexpr (std::is_same_v<std::string, std::decay_t<decltype(value)>> ||
+                                           std::is_same_v<std::string_view, std::decay_t<decltype(value)>>)
+                             {
+                                 json.push_back('\"');
+                                 if (needEscape(value))
+                                 {
+                                     escapeJSONString(value, json);
+                                 }
+                                 else
+                                 {
+                                     json.append(value);
+                                 }
+                                 json.push_back('\"');
+                             }
+                             else if constexpr ((std::is_arithmetic_v<std::decay_t<decltype(value)>> ||
+                                                 std::is_same_v<double, std::decay_t<decltype(value)>>)&&!std::
+                                                    is_same_v<bool, std::decay_t<decltype(value)>>)
+                             {
+                                 auto [ptr, ec] = std::to_chars(buffer, buffer + sizeof(buffer), value);
+                                 if (ec == std::errc())
+                                 {
+                                     json.append(buffer);
+                                 }
+                                 else
+                                 {
+                                     json.push_back('0');
+                                 }
+                             }
+                             else if constexpr (std::is_same_v<bool, std::decay_t<decltype(value)>>)
+                             {
+                                 json.append(value ? "true" : "false");
+                             }
+                             else
+                             {
+                                 jsonFieldToString(value, json);
+                             }
+                         }
+                         json.push_back('}');
+                     }
+                     else if constexpr (IS_VECTOR_V<std::decay_t<decltype(data)>>)
+                     {
+                         size_t count2 = 0;
+                         json.push_back('[');
+                         for (const auto& v : data)
+                         {
+                             if (count2++ > 0)
+                             {
+                                 json.push_back(',');
+                             }
+                             if constexpr (std::is_same_v<std::string, std::decay_t<decltype(v)>> ||
+                                           std::is_same_v<std::string_view, std::decay_t<decltype(v)>>)
+                             {
+                                 json.push_back('\"');
+                                 if (needEscape(v))
+                                 {
+                                     escapeJSONString(v, json);
+                                 }
+                                 else
+                                 {
+                                     json.append(v);
+                                 }
+                                 json.push_back('\"');
+                             }
+                             else if constexpr ((std::is_arithmetic_v<std::decay_t<decltype(v)>> ||
+                                                 std::is_same_v<double, std::decay_t<decltype(v)>>)&&!std::
+                                                    is_same_v<bool, std::decay_t<decltype(v)>>)
+                             {
+                                 auto [ptr, ec] = std::to_chars(buffer, buffer + sizeof(buffer), v);
+                                 if (ec == std::errc())
+                                 {
+                                     json.append(buffer);
+                                 }
+                                 else
+                                 {
+                                     json.push_back('0');
+                                 }
+
+                                 std::fill(buffer, buffer + sizeof(buffer), '\0');
+                             }
+                             else if constexpr (std::is_same_v<bool, std::decay_t<decltype(v)>>)
+                             {
+                                 json.append(v ? "true" : "false");
+                             }
+                             else
+                             {
+                                 jsonFieldToString(v, json);
+                             }
+                         }
+                         json.push_back(']');
+                     }
+                     else
+                     {
+                         jsonFieldToString(data, json);
                      }
                  }()),
              ...);
@@ -427,7 +463,7 @@ std::enable_if_t<IsReflectable<T>::value, void> serializeToJSON(const T& obj, st
     json.push_back('}');
 }
 
-template<typename T>
+template<typename T, bool NOEMPTY = true, bool NOSINGLESPACE = true>
 std::enable_if_t<IsReflectable<T>::value, std::string> serializeToJSON(const T& obj)
 {
     std::string json;
@@ -444,158 +480,171 @@ std::enable_if_t<IsReflectable<T>::value, std::string> serializeToJSON(const T& 
                  [&]
                  {
                      const auto& data = obj.*(std::get<2>(field));
-                     if (!isEmpty(data))
+                     if constexpr (NOEMPTY)
                      {
-                         if (count++ > 0)
+                         if (isEmpty(data))
                          {
-                             json.push_back(',');
+                             return;
                          }
-                         json.append(std::get<1>(field));
-                         //  If is string add quotes
-                         if constexpr (std::is_same_v<std::string, std::decay_t<decltype(data)>> ||
-                                       std::is_same_v<std::string_view, std::decay_t<decltype(data)>>)
-                         {
+                     }
 
-                             json.push_back('"');
-                             if (needEscape(data))
-                             {
-                                 escapeJSONString(data, json);
-                             }
-                             else
-                             {
-                                 json.append(data);
-                             }
-                             json.push_back('"');
+                     if constexpr (NOSINGLESPACE)
+                     {
+                         if (isSingleSpace(data))
+                         {
+                             return;
                          }
-                         else if constexpr ((std::is_arithmetic_v<std::decay_t<decltype(data)>> ||
-                                             std::is_same_v<double, std::decay_t<decltype(data)>>) &&
-                                            !std::is_same_v<bool, std::decay_t<decltype(data)>>)
-                         {
+                     }
 
-                             auto [ptr, ec] = std::to_chars(buffer, buffer + sizeof(buffer), data);
-                             if (ec == std::errc())
-                             {
-                                 json.append(buffer);
-                             }
-                             else
-                             {
-                                 json.append("0");
-                             }
+                     if (count++ > 0)
+                     {
+                         json.push_back(',');
+                     }
+                     json.append(std::get<1>(field));
+                     //  If is string add quotes
+                     if constexpr (std::is_same_v<std::string, std::decay_t<decltype(data)>> ||
+                                   std::is_same_v<std::string_view, std::decay_t<decltype(data)>>)
+                     {
 
-                             std::fill(buffer, buffer + sizeof(buffer), '\0');
-                         }
-                         else if constexpr (std::is_same_v<bool, std::decay_t<decltype(data)>>)
+                         json.push_back('"');
+                         if (needEscape(data))
                          {
-                             json.append(data ? "true" : "false");
-                         }
-                         else if constexpr (IS_MAP_V<std::decay_t<decltype(data)>>)
-                         {
-                             size_t count2 = 0;
-                             json.push_back('{');
-                             for (const auto& [key, value] : data)
-                             {
-                                 if (count2++ > 0)
-                                 {
-                                     json.push_back(',');
-                                 }
-                                 json.push_back('\"');
-                                 json.append(key);
-                                 json.push_back('\"');
-                                 json.push_back(':');
-                                 if constexpr (std::is_same_v<std::string, std::decay_t<decltype(value)>> ||
-                                               std::is_same_v<std::string_view, std::decay_t<decltype(value)>>)
-                                 {
-                                     json.push_back('\"');
-                                     if (needEscape(value))
-                                     {
-                                         escapeJSONString(value, json);
-                                     }
-                                     else
-                                     {
-                                         json.append(value);
-                                     }
-                                     json.push_back('\"');
-                                 }
-                                 else if constexpr ((std::is_arithmetic_v<std::decay_t<decltype(value)>> ||
-                                                     std::is_same_v<double, std::decay_t<decltype(value)>>) &&
-                                                    !std::is_same_v<bool, std::decay_t<decltype(value)>>)
-                                 {
-                                     auto [ptr, ec] = std::to_chars(buffer, buffer + sizeof(buffer), value);
-                                     if (ec == std::errc())
-                                     {
-                                         json.append(buffer);
-                                     }
-                                     else
-                                     {
-                                         json.push_back('0');
-                                     }
-                                 }
-                                 else if constexpr (std::is_same_v<bool, std::decay_t<decltype(value)>>)
-                                 {
-                                     json.append(value ? "true" : "false");
-                                 }
-                                 else if constexpr (IS_VECTOR_V<std::decay_t<decltype(value)>>)
-                                 {
-                                     size_t count3 = 0;
-                                     json.push_back('[');
-                                     for (const auto& v : value)
-                                     {
-                                         if (count3++ > 0)
-                                         {
-                                             json.push_back(',');
-                                         }
-                                         if constexpr (std::is_same_v<std::string, std::decay_t<decltype(v)>> ||
-                                                       std::is_same_v<std::string_view, std::decay_t<decltype(v)>>)
-                                         {
-                                             json.push_back('\"');
-                                             if (needEscape(v))
-                                             {
-                                                 escapeJSONString(v, json);
-                                             }
-                                             else
-                                             {
-                                                 json.append(v);
-                                             }
-                                             json.push_back('\"');
-                                         }
-                                         else if constexpr ((std::is_arithmetic_v<std::decay_t<decltype(value)>> ||
-                                                             std::is_same_v<double, std::decay_t<decltype(value)>>) &&
-                                                            !std::is_same_v<bool, std::decay_t<decltype(value)>>)
-                                         {
-                                             auto [ptr, ec] = std::to_chars(buffer, buffer + sizeof(buffer), v);
-                                             if (ec == std::errc())
-                                             {
-                                                 json.append(buffer);
-                                             }
-                                             else
-                                             {
-                                                 json.push_back('0');
-                                             }
-                                             std::fill(buffer, buffer + sizeof(buffer), '\0');
-                                         }
-                                         else if constexpr (std::is_same_v<bool, std::decay_t<decltype(v)>>)
-                                         {
-                                             json.append(v ? "true" : "false");
-                                         }
-                                         else
-                                         {
-                                             jsonFieldToString(v, json);
-                                         }
-                                     }
-                                     json.push_back(']');
-                                 }
-
-                                 else
-                                 {
-                                     jsonFieldToString(value, json);
-                                 }
-                             }
-                             json.push_back('}');
+                             escapeJSONString(data, json);
                          }
                          else
                          {
-                             jsonFieldToString(data, json);
+                             json.append(data);
                          }
+                         json.push_back('"');
+                     }
+                     else if constexpr ((std::is_arithmetic_v<std::decay_t<decltype(data)>> ||
+                                         std::is_same_v<double, std::decay_t<decltype(data)>>)&&!std::
+                                            is_same_v<bool, std::decay_t<decltype(data)>>)
+                     {
+
+                         auto [ptr, ec] = std::to_chars(buffer, buffer + sizeof(buffer), data);
+                         if (ec == std::errc())
+                         {
+                             json.append(buffer);
+                         }
+                         else
+                         {
+                             json.append("0");
+                         }
+
+                         std::fill(buffer, buffer + sizeof(buffer), '\0');
+                     }
+                     else if constexpr (std::is_same_v<bool, std::decay_t<decltype(data)>>)
+                     {
+                         json.append(data ? "true" : "false");
+                     }
+                     else if constexpr (IS_MAP_V<std::decay_t<decltype(data)>>)
+                     {
+                         size_t count2 = 0;
+                         json.push_back('{');
+                         for (const auto& [key, value] : data)
+                         {
+                             if (count2++ > 0)
+                             {
+                                 json.push_back(',');
+                             }
+                             json.push_back('\"');
+                             json.append(key);
+                             json.push_back('\"');
+                             json.push_back(':');
+                             if constexpr (std::is_same_v<std::string, std::decay_t<decltype(value)>> ||
+                                           std::is_same_v<std::string_view, std::decay_t<decltype(value)>>)
+                             {
+                                 json.push_back('\"');
+                                 if (needEscape(value))
+                                 {
+                                     escapeJSONString(value, json);
+                                 }
+                                 else
+                                 {
+                                     json.append(value);
+                                 }
+                                 json.push_back('\"');
+                             }
+                             else if constexpr ((std::is_arithmetic_v<std::decay_t<decltype(value)>> ||
+                                                 std::is_same_v<double, std::decay_t<decltype(value)>>)&&!std::
+                                                    is_same_v<bool, std::decay_t<decltype(value)>>)
+                             {
+                                 auto [ptr, ec] = std::to_chars(buffer, buffer + sizeof(buffer), value);
+                                 if (ec == std::errc())
+                                 {
+                                     json.append(buffer);
+                                 }
+                                 else
+                                 {
+                                     json.push_back('0');
+                                 }
+                             }
+                             else if constexpr (std::is_same_v<bool, std::decay_t<decltype(value)>>)
+                             {
+                                 json.append(value ? "true" : "false");
+                             }
+                             else if constexpr (IS_VECTOR_V<std::decay_t<decltype(value)>>)
+                             {
+                                 size_t count3 = 0;
+                                 json.push_back('[');
+                                 for (const auto& v : value)
+                                 {
+                                     if (count3++ > 0)
+                                     {
+                                         json.push_back(',');
+                                     }
+                                     if constexpr (std::is_same_v<std::string, std::decay_t<decltype(v)>> ||
+                                                   std::is_same_v<std::string_view, std::decay_t<decltype(v)>>)
+                                     {
+                                         json.push_back('\"');
+                                         if (needEscape(v))
+                                         {
+                                             escapeJSONString(v, json);
+                                         }
+                                         else
+                                         {
+                                             json.append(v);
+                                         }
+                                         json.push_back('\"');
+                                     }
+                                     else if constexpr ((std::is_arithmetic_v<std::decay_t<decltype(value)>> ||
+                                                         std::is_same_v<double, std::decay_t<decltype(value)>>)&&!std::
+                                                            is_same_v<bool, std::decay_t<decltype(value)>>)
+                                     {
+                                         auto [ptr, ec] = std::to_chars(buffer, buffer + sizeof(buffer), v);
+                                         if (ec == std::errc())
+                                         {
+                                             json.append(buffer);
+                                         }
+                                         else
+                                         {
+                                             json.push_back('0');
+                                         }
+                                         std::fill(buffer, buffer + sizeof(buffer), '\0');
+                                     }
+                                     else if constexpr (std::is_same_v<bool, std::decay_t<decltype(v)>>)
+                                     {
+                                         json.append(v ? "true" : "false");
+                                     }
+                                     else
+                                     {
+                                         jsonFieldToString(v, json);
+                                     }
+                                 }
+                                 json.push_back(']');
+                             }
+
+                             else
+                             {
+                                 jsonFieldToString(value, json);
+                             }
+                         }
+                         json.push_back('}');
+                     }
+                     else
+                     {
+                         jsonFieldToString(data, json);
                      }
                  }()),
              ...);
