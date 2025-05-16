@@ -3,6 +3,11 @@
 #include <pwd.h>
 #include <grp.h>
 
+#ifdef __APPLE__
+// This symbol is exported from libSystem.B and has been since 10.6.
+extern "C" int getgroupcount(const char* name, gid_t basegid);
+#endif
+
 class UserGroupsWrapper : public IUserGroupsWrapper
 {
     public:
@@ -11,12 +16,12 @@ class UserGroupsWrapper : public IUserGroupsWrapper
             return ::sysconf(name);
         }
 
-        struct passwd* getpwuid(uid_t uid) const override
+        struct passwd* getpwuid(uid_type uid) const override
         {
             return ::getpwuid(uid);
         }
 
-        int getpwuid_r(uid_t uid, struct passwd* pwd, char* buf, size_t buflen, struct passwd** result) const override
+        int getpwuid_r(uid_type uid, struct passwd* pwd, char* buf, size_t buflen, struct passwd** result) const override
         {
             return ::getpwuid_r(uid, pwd, buf, buflen, result);
         }
@@ -26,9 +31,16 @@ class UserGroupsWrapper : public IUserGroupsWrapper
             return ::getpwent();
         }
 
+#ifdef __linux__
         int getpwent_r(struct passwd* pwd, char* buf, size_t buflen, struct passwd** result) const override
         {
             return ::getpwent_r(pwd, buf, buflen, result);
+        }
+#endif
+
+        struct passwd* getpwnam(const char* name) const override
+        {
+            return ::getpwnam(name);
         }
 
         void setpwent() const override
@@ -41,8 +53,13 @@ class UserGroupsWrapper : public IUserGroupsWrapper
             ::endpwent();
         }
 
-        int getgrouplist(const char* user, gid_t group, gid_t* groups, int* ngroups) const override
+        int getgrouplist(const char* user, gid_type group, gid_type* groups, int* ngroups) const override
         {
             return ::getgrouplist(user, group, groups, ngroups);
+        }
+
+        int getgroupcount(const char* user, gid_type group) const override
+        {
+            return getgroupcount(user, group);
         }
 };

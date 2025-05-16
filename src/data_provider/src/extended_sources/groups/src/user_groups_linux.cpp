@@ -12,7 +12,7 @@ UserGroupsProvider::UserGroupsProvider()
 {
 }
 
-nlohmann::json UserGroupsProvider::collect(const std::set<uid_t>& uids)
+nlohmann::json UserGroupsProvider::collect(const std::set<uid_type>& uids)
 {
     nlohmann::json results = nlohmann::json::array();
     struct passwd pwd;
@@ -45,7 +45,7 @@ nlohmann::json UserGroupsProvider::collect(const std::set<uid_t>& uids)
     }
     else
     {
-        std::set<uid_t> processed_uids;
+        std::set<uid_type> processed_uids;
         m_userGroupsWrapper->setpwent();
 
         while (m_userGroupsWrapper->getpwent_r(&pwd, buf.get(), bufsize, &pwd_results) == 0 && pwd_results != nullptr)
@@ -65,8 +65,8 @@ nlohmann::json UserGroupsProvider::collect(const std::set<uid_t>& uids)
 
 void UserGroupsProvider::getGroupsForUser(nlohmann::json& results, const UserInfo& user)
 {
-    gid_t groups_buf[EXPECTED_GROUPS_MAX];
-    gid_t* groups = groups_buf;
+    gid_type groups_buf[EXPECTED_GROUPS_MAX];
+    gid_type* groups = groups_buf;
     int ngroups = EXPECTED_GROUPS_MAX;
 
     if (!m_userGroupsWrapper)
@@ -79,7 +79,7 @@ void UserGroupsProvider::getGroupsForUser(nlohmann::json& results, const UserInf
     // http://man7.org/linux/man-pages/man3/getgrouplist.3.html
     if (m_userGroupsWrapper->getgrouplist(user.name, user.gid, groups, &ngroups) < 0)
     {
-        groups = new gid_t[ngroups];
+        groups = new gid_type[ngroups];
 
         if (groups == nullptr)
         {
@@ -104,7 +104,7 @@ void UserGroupsProvider::getGroupsForUser(nlohmann::json& results, const UserInf
     }
 }
 
-void UserGroupsProvider::addGroupsToResults(nlohmann::json& results, uid_t uid, const gid_t* groups, int ngroups)
+void UserGroupsProvider::addGroupsToResults(nlohmann::json& results, uid_type uid, const gid_type* groups, int ngroups)
 {
     for (int i = 0; i < ngroups; i++)
     {
