@@ -184,15 +184,14 @@
             <Custom Action="SetCustomActionDataForSetWazuhPermissions" After="InstallInitialize">(WIX_UPGRADE_DETECTED) OR (PATCH)</Custom>
             <Custom Action="SetWazuhPermissions" After="SetCustomActionDataForSetWazuhPermissions">(WIX_UPGRADE_DETECTED) OR (PATCH)</Custom>
 
-            <!-- Start services if necessary -->
-            <Custom Action="StartWazuhSvc" After="InstallServices">((WIX_UPGRADE_DETECTED) OR (PATCH)) AND ((OSSECRUNNING = "Running") OR (WAZUHRUNNING = "Running"))</Custom>
-
             <!-- Stop the service as soon as possible on uninstall, and only on uninstall, in order to unlock the files and folders that must be deleted. -->
 			<Custom Action="SetRemoveAllDataValue" Before="InstallFinalize">(NOT UPGRADINGPRODUCTCODE) AND (REMOVE="ALL")</Custom>
  		    <Custom Action="CustomAction_RemoveAllScript" After="SetRemoveAllDataValue">(NOT UPGRADINGPRODUCTCODE) AND (REMOVE="ALL")</Custom>
 
-
             <Custom Action="CreateDumpRegistryKey" Before="InstallFinalize">GENERATE_DUMP = "1" AND DEFAULT_GENERATE_DUMP = "1"</Custom>
+            
+            <!-- Start services if necessary -->
+            <Custom Action="StartWazuhSvc" Before="InstallFinalize">((WIX_UPGRADE_DETECTED) OR (PATCH)) AND ((OSSECRUNNING = "Running") OR (WAZUHRUNNING = "Running"))</Custom>
         </InstallExecuteSequence>
 
         <Directory Id="TARGETDIR" Name="SourceDir">
