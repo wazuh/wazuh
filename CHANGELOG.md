@@ -30,7 +30,7 @@ All notable changes to this project will be documented in this file.
 
 #### Changed
 
-- Upgraded python-multipart to 0.0.20, starlette to 0.42.0 and Werkzeug to 3.1.3 (backport from 4.12.0). ([#29669](https://github.com/wazuh/wazuh/pull/29669))
+- Upgraded python-multipart to 0.0.20, starlette to 0.42.0 and Werkzeug to 3.1.3 (backport from 4.12.0), h11 to 0.16.0 and httpcore to 1.0.9. ([#29669](https://github.com/wazuh/wazuh/pull/29669))
 
 
 ## [v4.10.1]
