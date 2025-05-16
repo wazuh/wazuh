@@ -1133,6 +1133,10 @@ InstallLocal()
     if [ ! -f ${INSTALLDIR}/etc/lists/audit-keys ]; then
         ${INSTALL} -m 0660 -o ${WAZUH_USER} -g ${WAZUH_GROUP} -b ../ruleset/lists/audit-keys ${INSTALLDIR}/etc/lists/audit-keys
     fi
+    if [ ! -f ${INSTALLDIR}/etc/lists/malicious-ioc/malicious-ip ]; then
+        ${INSTALL} -d -m 0770 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/etc/lists/malicious-ioc
+        ${INSTALL} -m 0660 -o ${WAZUH_USER} -g ${WAZUH_GROUP} -b ../ruleset/lists/malicious-ioc/* ${INSTALLDIR}/etc/lists/malicious-ioc/
+    fi
     if [ ! -f ${INSTALLDIR}/etc/lists/security-eventchannel ]; then
         ${INSTALL} -m 0660 -o ${WAZUH_USER} -g ${WAZUH_GROUP} -b ../ruleset/lists/security-eventchannel ${INSTALLDIR}/etc/lists/security-eventchannel
     fi
