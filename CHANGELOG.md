@@ -3,6 +3,35 @@ All notable changes to this project will be documented in this file.
 
 ## [v4.10.2]
 
+### Manager
+
+#### Fixed
+
+- Enabled inventory synchronization in Vulnerability Detector when the Indexer module is disabled (backport from 4.11.0). ([#29612](https://github.com/wazuh/wazuh/pull/29612))
+- Fixed the OS CPE build for package scans with data from Wazuh-DB (backport from 4.11.1). ([#29613](https://github.com/wazuh/wazuh/pull/29613))
+- Fixed heap buffer overflow in Analysisd rule parser (backport from 4.11.1). ([#29599](https://github.com/wazuh/wazuh/pull/29599))
+- Improved the signal handling during processes stop (backport from 4.12.0). ([#29615](https://github.com/wazuh/wazuh/pull/29615))
+- Fixed crash when reading email alerts missing the `email_to` attribute (backport from 4.12.0). ([#29616](https://github.com/wazuh/wazuh/pull/29616))
+
+#### Changed
+
+- Improved SCA and Syscheck decoders (backport from 4.11.0). ([#29633](https://github.com/wazuh/wazuh/pull/29633))
+
+### Agent
+
+#### Fixed
+
+- Fixed a bug that could cause `wazuh-modulesd` to crash at startup (backport from 4.12.0). ([#29598](https://github.com/wazuh/wazuh/pull/29598))
+- Fixed WPK package upgrades for DEB when upgrading from version 4.3.11 or earlier (backport from 4.12.0). ([#29600](https://github.com/wazuh/wazuh/pull/29600))
+- Fixed error in event processing on AWS Custom Logs Buckets module (backport from 4.11.0). ([#29635](https://github.com/wazuh/wazuh/pull/29635))
+- Improved URL validation in the Maltiverse integration (backport from 4.12.0). ([#29604](https://github.com/wazuh/wazuh/pull/29604))
+
+### Other
+
+#### Changed
+
+- Upgraded python-multipart to 0.0.20, starlette to 0.42.0 and Werkzeug to 3.1.3 (backport from 4.12.0), h11 to 0.16.0 and httpcore to 1.0.9. ([#29669](https://github.com/wazuh/wazuh/pull/29669))
+
 
 ## [v4.10.1]
 
