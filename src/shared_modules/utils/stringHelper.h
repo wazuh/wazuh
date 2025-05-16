@@ -579,6 +579,34 @@ namespace Utils
 
         return !str.empty() && it == str.end();
     }
+
+    static std::string_view trimView(std::string_view str, const std::string& args = " ")
+    {
+        const auto pos {str.find_first_not_of(args)};
+
+        if (pos != std::string::npos)
+        {
+            str.remove_prefix(pos);
+        }
+        else
+        {
+            str.remove_prefix(str.length());
+            return str;
+        }
+
+        const auto pos2 {str.find_last_not_of(args)};
+
+        if (pos2 != std::string::npos)
+        {
+            str.remove_suffix(str.length() - pos2 - 1);
+        }
+        else
+        {
+            str.remove_suffix(str.length());
+        }
+
+        return str;
+    }
 #endif
 
 } // namespace Utils

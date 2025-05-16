@@ -43,6 +43,17 @@ TEST_F(ReflectiveJsonTest, SingleStringEntry)
     EXPECT_EQ(result, R"({"key":"value"})");
 }
 
+TEST_F(ReflectiveJsonTest, SingleStringViewEntryTrim)
+{
+    TestData<std::string_view> obj;
+    obj.fieldOne = "key";
+    obj.fieldTwo = 0;
+    obj.fieldThree = "   value   ";
+    std::string json;
+    serializeToJSON(obj, json);
+    EXPECT_NE(json.find(R"("fieldThree":"value")"), std::string::npos) << "JSON output: " << json;
+}
+
 TEST_F(ReflectiveJsonTest, MultipleStringEntries)
 {
     std::unordered_map<std::string, std::string> map {{"key1", "value1"}, {"key2", "value2"}};

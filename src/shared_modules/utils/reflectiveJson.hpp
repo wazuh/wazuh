@@ -12,6 +12,7 @@
 #ifndef _REFLECTIVE_JSON_HPP
 #define _REFLECTIVE_JSON_HPP
 
+#include "stringHelper.h"
 #include <array>
 #include <charconv>
 #include <map>
@@ -145,6 +146,8 @@ constexpr auto makeFieldChecked(const char* keyLiteral, const char* keyLiteralFi
 
 #define MAKE_FIELD(keyLiteral, memberPtr) makeFieldChecked(keyLiteral, "\"" keyLiteral "\":", memberPtr)
 
+// isEmpty
+
 template<typename T>
 std::enable_if_t<std::is_arithmetic_v<T> || std::is_same_v<double, T>, bool> isEmpty(T value)
 {
@@ -193,6 +196,20 @@ std::enable_if_t<IsReflectable<T>::value, bool> isEmpty(const T& obj)
     return allEmpty;
 }
 
+// dataTrim
+
+inline std::string_view dataTrim(std::string_view data)
+{
+    return Utils::trimView(data);
+}
+
+inline std::string& dataTrim(std::string& data)
+{
+    return data;
+}
+
+// jsonFieldToString
+
 template<typename K, typename V>
 std::string jsonFieldToString(const std::unordered_map<K, V>& map)
 {
@@ -215,11 +232,11 @@ std::string jsonFieldToString(const std::unordered_map<K, V>& map)
             json.push_back('\"');
             if (needEscape(value))
             {
-                escapeJSONString(value, json);
+                escapeJSONString(dataTrim(value), json);
             }
             else
             {
-                json.append(value);
+                json.append(dataTrim(value));
             }
             json.push_back('\"');
         }
@@ -282,11 +299,11 @@ std::enable_if_t<IsReflectable<T>::value, void> serializeToJSON(const T& obj, st
                              json.push_back('"');
                              if (needEscape(data))
                              {
-                                 escapeJSONString(data, json);
+                                 escapeJSONString(dataTrim(data), json);
                              }
                              else
                              {
-                                 json.append(data);
+                                 json.append(dataTrim(data));
                              }
                              json.push_back('"');
                          }
@@ -330,11 +347,11 @@ std::enable_if_t<IsReflectable<T>::value, void> serializeToJSON(const T& obj, st
                                      json.push_back('\"');
                                      if (needEscape(value))
                                      {
-                                         escapeJSONString(value, json);
+                                         escapeJSONString(dataTrim(value), json);
                                      }
                                      else
                                      {
-                                         json.append(value);
+                                         json.append(dataTrim(value));
                                      }
                                      json.push_back('\"');
                                  }
@@ -379,11 +396,11 @@ std::enable_if_t<IsReflectable<T>::value, void> serializeToJSON(const T& obj, st
                                      json.push_back('\"');
                                      if (needEscape(v))
                                      {
-                                         escapeJSONString(v, json);
+                                         escapeJSONString(dataTrim(v), json);
                                      }
                                      else
                                      {
-                                         json.append(v);
+                                         json.append(dataTrim(v));
                                      }
                                      json.push_back('\"');
                                  }
@@ -459,11 +476,11 @@ std::enable_if_t<IsReflectable<T>::value, std::string> serializeToJSON(const T& 
                              json.push_back('"');
                              if (needEscape(data))
                              {
-                                 escapeJSONString(data, json);
+                                 escapeJSONString(dataTrim(data), json);
                              }
                              else
                              {
-                                 json.append(data);
+                                 json.append(dataTrim(data));
                              }
                              json.push_back('"');
                          }
@@ -508,11 +525,11 @@ std::enable_if_t<IsReflectable<T>::value, std::string> serializeToJSON(const T& 
                                      json.push_back('\"');
                                      if (needEscape(value))
                                      {
-                                         escapeJSONString(value, json);
+                                         escapeJSONString(dataTrim(value), json);
                                      }
                                      else
                                      {
-                                         json.append(value);
+                                         json.append(dataTrim(value));
                                      }
                                      json.push_back('\"');
                                  }
@@ -550,11 +567,11 @@ std::enable_if_t<IsReflectable<T>::value, std::string> serializeToJSON(const T& 
                                              json.push_back('\"');
                                              if (needEscape(v))
                                              {
-                                                 escapeJSONString(v, json);
+                                                 escapeJSONString(dataTrim(v), json);
                                              }
                                              else
                                              {
-                                                 json.append(v);
+                                                 json.append(dataTrim(v));
                                              }
                                              json.push_back('\"');
                                          }

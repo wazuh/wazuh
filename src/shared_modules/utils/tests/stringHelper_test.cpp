@@ -14,6 +14,7 @@
 #include <sstream>
 #if __cplusplus >= 201703L
 #include <string_view>
+#include <vector>
 using namespace std::string_view_literals;
 #endif
 
@@ -174,6 +175,29 @@ TEST_F(StringUtilsTest, Trim)
     EXPECT_EQ("Hello", Utils::trim(" \t\nHello\t\n ", " \t\n"));
     EXPECT_EQ("", Utils::trim(" "));
     EXPECT_EQ("", Utils::trim("   "));
+}
+
+TEST_F(StringUtilsTest, TrimStringView)
+{
+    auto lambda = [](const std::vector<std::string>& strings, const std::string& expected)
+    {
+        for (const auto& str : strings)
+        {
+            std::string_view strView {str};
+            strView = Utils::trimView(strView);
+            EXPECT_EQ(expected, strView);
+        }
+    };
+
+    const std::vector<std::string> strings = {"Hello", " Hello ", "  Hello ", "          Hello      ", " Hello     "};
+    lambda(strings, "Hello");
+
+    const std::vector<std::string> otherStrings = {
+        "Hello World", " Hello World ", "  Hello World ", "          Hello World      ", " Hello World     "};
+    lambda(otherStrings, "Hello World");
+
+    const std::vector<std::string> emptyStrings = {"", " ", "  ", "           "};
+    lambda(emptyStrings, "");
 }
 
 TEST_F(StringUtilsTest, ToUpperCase)
