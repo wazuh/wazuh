@@ -8,7 +8,7 @@ on:
 jobs:
     test_ubuntu:
         name: Test Deployment variables on Ubuntu
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-24.04
         steps:
           - uses: actions/checkout@v2
 

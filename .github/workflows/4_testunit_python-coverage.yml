@@ -6,9 +6,7 @@ on:
         description: 'Base branch'
         required: true
         default: 'main'
-  pull_request:
-    paths:
-      - '.github/workflows/4_testunit_python-coverage.yml'
+
 jobs:
   build:
     env:

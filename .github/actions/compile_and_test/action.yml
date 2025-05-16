@@ -14,10 +14,10 @@ inputs:
     required: false
     description: "Run tests"
     default: "true"
-  flags:
-    required: false
-    description: "Compilation flags directly passed to cmake. For example -DFLAG=VALUE"
-    default: ""
+  legacy:
+    required: true
+    description: "Whether to obtain VERSION and REVSION from legacy files or not"
+    default: "false"
 
 runs:
   using: "composite"
@@ -25,7 +25,7 @@ runs:
       # Dependencies for testing:
       # - valgrind
       - name: Install dependencies
-        uses: awalsh128/cache-apt-pkgs-action@v1.4.3
+        uses: awalsh128/cache-apt-pkgs-action@latest
         with:
           packages: valgrind
           version: 1.0
@@ -33,7 +33,7 @@ runs:
       # Dependencies for coverage:
       # - lcov
       - name: Install dependencies
-        uses: awalsh128/cache-apt-pkgs-action@v1.4.3
+        uses: awalsh128/cache-apt-pkgs-action@latest
         with:
           packages: lcov
           version: 1.0
@@ -42,9 +42,15 @@ runs:
         run: |
           SRC_FOLDER=$(pwd)/src
 
-          VERSION="v$(grep '"version"' VERSION.json | sed -E 's/.*"version": *"([^"]+)".*/\1/')"
+          if [[ ${{ inputs.legacy }} == "false" ]]; then
+            VERSION="v$(grep '"version"' VERSION.json | sed -E 's/.*"version": *"([^"]+)".*/\1/')"
+            REVISION=`grep '"stage"' VERSION.json | sed -E 's/.*"stage": *"([^"]+)".*/\1/'`
+          else
+            VERSION=$(cat src/VERSION)
+            REVISION=$(cat src/REVISION)
+          fi
+
           echo $VERSION
-          REVISION=`grep '"stage"' VERSION.json | sed -E 's/.*"stage": *"([^"]+)".*/\1/'`
           echo $REVISION
 
           cd ${{ inputs.path }}
@@ -52,7 +58,7 @@ runs:
 
           if [[ ${{ inputs.test }} == "false" ]]; then
             echo "Compiling without tests"
-            cmake -DSRC_FOLDER=${SRC_FOLDER} -DVERSION="$VERSION" -DREVISION="$REVISION" ${{ inputs.flags }} .. && make -j2
+            cmake -DSRC_FOLDER=${SRC_FOLDER} -DVERSION="$VERSION" -DREVISION="$REVISION" .. && make -j2
           else
             if [[ "${{ inputs.asan }}" != "false" ]]; then
               # Compile for ASAN
@@ -63,8 +69,8 @@ runs:
               echo "Compiling for valgrind and coverage"
               export COMPILATION_FLAGS="-fprofile-arcs -ftest-coverage -lgcov --coverage"
             fi
-
-            cmake -DSRC_FOLDER=${SRC_FOLDER} -DCMAKE_CXX_FLAGS="$COMPILATION_FLAGS" -DUNIT_TEST=ON -DVERSION="$VERSION" -DREVISION="$REVISION" ${{ inputs.flags }} .. && make -j2
+            # Read version and revision file.
+            cmake -DSRC_FOLDER=${SRC_FOLDER} -DCMAKE_CXX_FLAGS="$COMPILATION_FLAGS" -DUNIT_TEST=ON -DVERSION="$VERSION" -DREVISION="$REVISION" .. && make -j2
           fi
 
         shell: bash
