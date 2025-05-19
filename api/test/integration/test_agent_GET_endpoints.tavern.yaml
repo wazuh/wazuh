@@ -1790,7 +1790,6 @@ stages:
             remoted:
               buffer_relax: !anyint
               comp_average_printout: !anyint
-              guess_agent_group: !anyint
               max_attempts: !anyint
               merge_shared: !anyint
               pass_empty_keyfile: !anyint
