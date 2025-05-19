@@ -23,6 +23,20 @@ protected:
     // LCOV_EXCL_START
     FimInventoryUpsertElement() = default;
     ~FimInventoryUpsertElement() override = default;
+
+    static void SetUpTestSuite()
+    {
+        const auto& configJson = nlohmann::json::parse(R"({
+            "clusterName": "clusterName",
+            "clusterEnabled": false
+        })");
+        PolicyHarvesterManager::instance().initialize(configJson);
+    }
+
+    static void TearDownTestSuite()
+    {
+        PolicyHarvesterManager::instance().teardown();
+    }
     // LCOV_EXCL_STOP
 };
 
@@ -67,7 +81,7 @@ TEST_F(FimInventoryUpsertElement, valid_Registry)
 
     EXPECT_EQ(
         context->m_serializedElement,
-        R"({"id":"001_HASH_HASH","operation":"INSERTED","data":{"agent":{"id":"001","name":"agent-reg","host":{"ip":"agentIp"},"version":"agentVersion"},"registry":{"key":"Software\\App","hive":"HKLM","path":"HKLM\\Software\\App","gid":"gid","group":"groupName","uid":"uid","owner":"userName","architecture":"x86","mtime":"2025-04-09T15:45:00Z"},"wazuh":{"schema":{"version":"1.0"}},"event":{"category":"registry_key"}}})");
+        R"({"id":"001_HASH_HASH","operation":"INSERTED","data":{"agent":{"id":"001","name":"agent-reg","host":{"ip":"agentIp"},"version":"agentVersion"},"registry":{"key":"Software\\App","hive":"HKLM","path":"HKLM\\Software\\App","gid":"gid","group":"groupName","uid":"uid","owner":"userName","architecture":"x86","mtime":"2025-04-09T15:45:00Z"},"wazuh":{"cluster":{"name":"clusterName"},"schema":{"version":"1.0"}},"event":{"category":"registry_key"}}})");
 }
 
 /*
@@ -116,7 +130,7 @@ TEST_F(FimInventoryUpsertElement, valid_File)
 
     EXPECT_EQ(
         context->m_serializedElement,
-        R"({"id":"001_HASH_HASH","operation":"INSERTED","data":{"file":{"path":"/etc/hosts","gid":"1000","group":"root","mtime":"2025-04-09T12:00:00Z","size":512,"uid":"1000","owner":"sysadmin","hash":{"md5":"md5-file","sha1":"sha1-file","sha256":"sha256-file"}},"agent":{"id":"001","name":"agent-file","host":{"ip":"192.168.1.20"},"version":"v4.0.0"},"wazuh":{"schema":{"version":"1.0"}}}})");
+        R"({"id":"001_HASH_HASH","operation":"INSERTED","data":{"file":{"path":"/etc/hosts","gid":"1000","group":"root","mtime":"2025-04-09T12:00:00Z","size":512,"uid":"1000","owner":"sysadmin","hash":{"md5":"md5-file","sha1":"sha1-file","sha256":"sha256-file"}},"agent":{"id":"001","name":"agent-file","host":{"ip":"192.168.1.20"},"version":"v4.0.0"},"wazuh":{"cluster":{"name":"clusterName"},"schema":{"version":"1.0"}}}})");
 }
 
 /*
@@ -167,5 +181,5 @@ TEST_F(FimInventoryUpsertElement, valid_RegistryWithValue)
 
     EXPECT_EQ(
         context->m_serializedElement,
-        R"({"id":"001_HASH_HASH","operation":"INSERTED","data":{"agent":{"id":"001","name":"agent-reg","host":{"ip":"10.10.10.10"},"version":"v4.9.0"},"registry":{"key":"Software\\App","value":"InstallPath","hive":"HKLM","path":"HKLM\\Software\\App","data":{"hash":{"md5":"md5value","sha1":"sha1value","sha256":"sha256value"},"type":"REG_SZ"},"architecture":"[x32]"},"wazuh":{"schema":{"version":"1.0"}},"event":{"category":"registry_value"}}})");
+        R"({"id":"001_HASH_HASH","operation":"INSERTED","data":{"agent":{"id":"001","name":"agent-reg","host":{"ip":"10.10.10.10"},"version":"v4.9.0"},"registry":{"key":"Software\\App","value":"InstallPath","hive":"HKLM","path":"HKLM\\Software\\App","data":{"hash":{"md5":"md5value","sha1":"sha1value","sha256":"sha256value"},"type":"REG_SZ"},"architecture":"[x32]"},"wazuh":{"cluster":{"name":"clusterName"},"schema":{"version":"1.0"}},"event":{"category":"registry_value"}}})");
 }

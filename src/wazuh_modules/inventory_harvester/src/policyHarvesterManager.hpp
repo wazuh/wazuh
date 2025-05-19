@@ -177,7 +177,6 @@ private:
     void loadConfiguration(const nlohmann::json& configuration)
     {
         m_configuration = configuration;
-        std::cout << "Configuration loaded: " << m_configuration.dump(4) << std::endl;
     }
 
 public:

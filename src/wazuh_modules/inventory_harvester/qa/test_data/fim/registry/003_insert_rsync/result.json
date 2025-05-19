@@ -19,6 +19,9 @@
                     "mtime": "2025-01-27T00:50:43.000Z"
                 },
                 "wazuh": {
+                    "cluster": {
+                        "name": "cluster01"
+                    },
                     "schema": {
                         "version": "1.0"
                     }
