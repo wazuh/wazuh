@@ -37,6 +37,10 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   )
 endif()
 
+if(PLATFORM_LIBS_USERS)
+    target_link_libraries(users_collector ${PLATFORM_LIBS_USERS})
+endif()
+
 if(UNIT_TEST)
   if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     target_link_libraries(logged_in_users -fprofile-arcs)
