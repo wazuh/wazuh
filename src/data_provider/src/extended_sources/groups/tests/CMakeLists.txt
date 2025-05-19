@@ -1,4 +1,4 @@
-get_filename_component(SRC_FOLDER ${CMAKE_SOURCE_DIR}/../../../../ ABSOLUTE)
+get_filename_component(SRC_FOLDER ${CMAKE_SOURCE_DIR}/../ ABSOLUTE)
 
 include_directories(${SRC_FOLDER}/external/googletest/googletest/include/)
 include_directories(${SRC_FOLDER}/external/googletest/googlemock/include/)
