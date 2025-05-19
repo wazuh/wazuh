@@ -8591,6 +8591,7 @@ paths:
     get:
       tags:
         - Agents
+      deprecated: true
       summary: "List agents without group"
       description: "Return a list with all the available agents without an assigned group"
       operationId: api.controllers.agent_controller.get_agent_no_group
