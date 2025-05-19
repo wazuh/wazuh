@@ -4,6 +4,7 @@
 #include <grp.h>
 #include <set>
 #include <memory>
+#include "user_groups_types.hpp"
 
 class IUserGroupsWrapper
 {
@@ -21,5 +22,7 @@ class IUserGroupsWrapper
         virtual void setpwent() const = 0;
         virtual void endpwent() const = 0;
         virtual int getgrouplist(const char* user, gid_type group, gid_type* groups, int* ngroups) const = 0;
+#ifdef __APPLE__
         virtual int getgroupcount(const char* user, gid_type group) const = 0;
+#endif
 };

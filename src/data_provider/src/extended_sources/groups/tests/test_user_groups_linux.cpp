@@ -12,6 +12,7 @@ class MockUserGroupsWrapper : public IUserGroupsWrapper
         MOCK_METHOD(void, setpwent, (), (const, override));
         MOCK_METHOD(struct passwd*, getpwent, (), (const, override));
         MOCK_METHOD(int, getpwent_r, (struct passwd* pwd, char* buf, size_t buflen, struct passwd** result), (const, override));
+        MOCK_METHOD(struct passwd*, getpwnam, (const char* name), (const, override));
         MOCK_METHOD(void, endpwent, (), (const, override));
         MOCK_METHOD(int, getgrouplist, (const char* user, gid_t group, gid_t* groups, int* ngroups), (const, override));
 };
@@ -60,7 +61,7 @@ TEST(UserGroupsProviderTest, CollectWithUIDReturnsExpectedJson)
 
     auto result = provider.collect({testUid});
 
-    ASSERT_EQ(result.size(), 2);
+    ASSERT_EQ(result.size(), static_cast<decltype(result.size())>(2));
     EXPECT_EQ(result[0]["uid"], testUid);
     EXPECT_EQ(result[0]["gid"], 2001);
     EXPECT_EQ(result[1]["uid"], testUid);
@@ -74,7 +75,6 @@ TEST(UserGroupsProviderTest, CollectWithoutUIDReturnsExpectedJson)
 
     struct passwd user1;
     struct passwd user2;
-    struct passwd* pwdResult = nullptr;
 
     const char* user1Name = "user1";
     const uid_t user1Uid = 1001;
@@ -93,7 +93,7 @@ TEST(UserGroupsProviderTest, CollectWithoutUIDReturnsExpectedJson)
         InSequence seq;
 
         EXPECT_CALL(*mockWrapper, getpwent_r(_, _, _, _))
-        .WillOnce(Invoke([&](struct passwd * pwd, char* buf, size_t buflen, struct passwd** pwdResult)
+        .WillOnce(Invoke([&](struct passwd * pwd, char* /* buf */, size_t /* buflen */, struct passwd** pwdResult)
         {
             user1.pw_name = const_cast<char*>(user1Name);
             user1.pw_uid = user1Uid;
@@ -104,7 +104,7 @@ TEST(UserGroupsProviderTest, CollectWithoutUIDReturnsExpectedJson)
         }));
 
         EXPECT_CALL(*mockWrapper, getpwent_r(_, _, _, _))
-        .WillOnce(Invoke([&](struct passwd * pwd, char* buf, size_t buflen, struct passwd** pwdResult)
+        .WillOnce(Invoke([&](struct passwd * pwd, char* /* buf */, size_t /* buflen */, struct passwd** pwdResult)
         {
             user2.pw_name = const_cast<char*>(user2Name);
             user2.pw_uid = user2Uid;
@@ -144,7 +144,7 @@ TEST(UserGroupsProviderTest, CollectWithoutUIDReturnsExpectedJson)
 
     nlohmann::json results = provider.collect();
 
-    ASSERT_EQ(results.size(), 4); // 2 users * 2 groups
+    ASSERT_EQ(results.size(), static_cast<decltype(results.size())>(4)); // 2 users * 2 groups
 
     std::set<std::tuple<uid_t, gid_t>> expected =
     {
