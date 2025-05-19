@@ -68,7 +68,7 @@ runs:
               echo "Compiling for valgrind and coverage"
               export COMPILATION_FLAGS="-fprofile-arcs -ftest-coverage -lgcov --coverage"
             fi
-            # Read version and revision file.
+
             cmake -DSRC_FOLDER=${SRC_FOLDER} -DCMAKE_CXX_FLAGS="$COMPILATION_FLAGS" -DUNIT_TEST=ON -DVERSION="$VERSION" -DREVISION="$REVISION" .. && make -j2
           fi
 
