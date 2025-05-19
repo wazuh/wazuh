@@ -18,6 +18,8 @@ else()
     if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
         list(APPEND TEST_SRC test_shadow_linux.cpp)
         list(APPEND TEST_SRC test_users_linux.cpp)
+    elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+        list(APPEND TEST_SRC test_users_darwin.cpp)
     endif()
 endif()
 

@@ -21,6 +21,12 @@ else()
   if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     list(APPEND SRC_FILES src/shadow_linux.cpp)
     list(APPEND SRC_FILES src/users_linux.cpp)
+  elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+    find_library(OPEN_DIRECTORY OpenDirectory)
+    find_library(FOUNDATION Foundation)
+
+    list(APPEND SRC_FILES src/users_darwin.cpp src/od_wrapper.mm)
+    set(PLATFORM_LIBS_USERS ${OPEN_DIRECTORY} ${FOUNDATION})
   endif()
 endif()
 
@@ -30,6 +36,8 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   target_link_libraries(users
       wtsapi32
   )
+elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+  target_link_libraries(users ${PLATFORM_LIBS_USERS})
 endif()
 
 if(UNIT_TEST)
