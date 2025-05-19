@@ -5,6 +5,7 @@ list(APPEND schemas
             syscheck_deltas
             rsync
             messageBuffer
+            inventorySync
 )
 
 add_custom_target(compile_schemas_input)

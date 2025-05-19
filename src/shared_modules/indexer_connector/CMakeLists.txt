@@ -52,7 +52,7 @@ set_target_properties(indexer_connector PROPERTIES
         BUILD_RPATH "$ORIGIN/../lib"
 )
 
-add_subdirectory(testtool)
+#add_subdirectory(testtool)
 if(UNIT_TEST)
     add_subdirectory(tests)
 endif()
