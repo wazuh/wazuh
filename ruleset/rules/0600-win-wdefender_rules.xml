@@ -1132,4 +1132,407 @@
     <options>no_full_log</options>
     <group>pci_dss_6.5.5,pci_dss_10.6.1,gpg13_4.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_SA.11,nist_800_53_AU.6,tsc_CC6.6,tsc_CC7.1,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
+
+  <!--
+  Microsoft Defender ASR events
+  Reference: https://learn.microsoft.com/en-us/defender-endpoint/attack-surface-reduction-rules-reference
+  -->
+
+  <rule id="62213" level="1">
+      <if_sid>62101</if_sid>
+      <field name="win.system.eventID">^1121$</field>
+      <description>A Microsoft Defender ASR violation is blocked</description>
+      <info type="link">https://learn.microsoft.com/en-us/defender-endpoint/attack-surface-reduction-rules-reference</info>
+  </rule>
+
+
+  <rule id="62214" level="1">
+      <if_sid>62101</if_sid>
+      <field name="win.system.eventID">^1122$</field>
+      <description>A Microsoft Defender ASR violation is detected</description>
+      <info type="link">https://learn.microsoft.com/en-us/defender-endpoint/attack-surface-reduction-rules-reference</info>
+  </rule>
+
+
+  <rule id="62215" level="10">
+      <if_sid>62213</if_sid>
+      <match>56a863a9-875e-4185-98a7-b882c64b5ce5</match>
+      <description>A Microsoft Defender ASR violation is blocked: Block abuse of exploited vulnerable signed drivers</description>
+      <info type="link">https://learn.microsoft.com/en-us/defender-endpoint/attack-surface-reduction-rules-reference</info>
+      <mitre>
+          <id>T1600</id>
+      </mitre>
+  </rule>
+
+
+  <rule id="62216" level="10">
+      <if_sid>62214</if_sid>
+      <match>56a863a9-875e-4185-98a7-b882c64b5ce5</match>
+      <description>A Microsoft Defender ASR violation is detected: Block abuse of exploited vulnerable signed drivers</description>
+      <info type="link">https://learn.microsoft.com/en-us/defender-endpoint/attack-surface-reduction-rules-reference</info>
+      <mitre>
+          <id>T1600</id>
+      </mitre>
+  </rule>
+
+
+  <rule id="62217" level="10">
+      <if_sid>62213</if_sid>
+      <match>7674ba52-37eb-4a4f-a9a1-f0f9a1619a2c</match>
+      <description>A Microsoft Defender ASR violation is blocked: Block Adobe Reader from creating child processes</description>
+      <info type="link">https://learn.microsoft.com/en-us/defender-endpoint/attack-surface-reduction-rules-reference</info>
+      <mitre>
+          <id>T1204.002</id>
+      </mitre>
+  </rule>
+
+
+  <rule id="62218" level="10">
+      <if_sid>62214</if_sid>
+      <match>7674ba52-37eb-4a4f-a9a1-f0f9a1619a2c</match>
+      <description>A Microsoft Defender ASR violation is detected: Block Adobe Reader from creating child processes</description>
+      <info type="link">https://learn.microsoft.com/en-us/defender-endpoint/attack-surface-reduction-rules-reference</info>
+      <mitre>
+          <id>T1204.002</id>
+      </mitre>
+  </rule>
+
+
+  <rule id="62219" level="10">
+      <if_sid>62213</if_sid>
+      <match>d4f940ab-401b-4efc-aadc-ad5f3c50688a</match>
+      <description>A Microsoft Defender ASR violation is blocked: Block all Office applications from creating child processes</description>
+      <info type="link">https://learn.microsoft.com/en-us/defender-endpoint/attack-surface-reduction-rules-reference</info>
+      <mitre>
+          <id>T1204.002</id>
+      </mitre>
+  </rule>
+
+
+  <rule id="62220" level="10">
+      <if_sid>62214</if_sid>
+      <match>d4f940ab-401b-4efc-aadc-ad5f3c50688a</match>
+      <description>A Microsoft Defender ASR violation is detected: Block all Office applications from creating child processes</description>
+      <info type="link">https://learn.microsoft.com/en-us/defender-endpoint/attack-surface-reduction-rules-reference</info>
+      <mitre>
+          <id>T1204.002</id>
+      </mitre>
+  </rule>
+
+
+  <rule id="62221" level="10">
+      <if_sid>62213</if_sid>
+      <match>9e6c4e1f-7d60-472f-ba1a-a39ef669e4b2</match>
+      <description>A Microsoft Defender ASR violation is blocked: Block credential stealing from the Windows local security authority subsystem (lsass.exe)</description>
+      <info type="link">https://learn.microsoft.com/en-us/defender-endpoint/attack-surface-reduction-rules-reference</info>
+      <mitre>
+          <id>T1003</id>
+      </mitre>
+  </rule>
+
+
+  <rule id="62222" level="10">
+      <if_sid>62214</if_sid>
+      <match>9e6c4e1f-7d60-472f-ba1a-a39ef669e4b2</match>
+      <description>A Microsoft Defender ASR violation is detected: Block credential stealing from the Windows local security authority subsystem (lsass.exe)</description>
+      <info type="link">https://learn.microsoft.com/en-us/defender-endpoint/attack-surface-reduction-rules-reference</info>
+      <mitre>
+          <id>T1003</id>
+      </mitre>
+  </rule>
+
+
+  <rule id="62223" level="10">
+      <if_sid>62213</if_sid>
+      <match>be9ba2d9-53ea-4cdc-84e5-9b1eeee46550</match>
+      <description>A Microsoft Defender ASR violation is blocked: Block executable content from email client and webmail</description>
+      <info type="link">https://learn.microsoft.com/en-us/defender-endpoint/attack-surface-reduction-rules-reference</info>
+      <mitre>
+          <id>T1193</id>
+          <id>T1566.001</id>
+      </mitre>
+  </rule>
+
+
+  <rule id="62224" level="10">
+      <if_sid>62214</if_sid>
+      <match>be9ba2d9-53ea-4cdc-84e5-9b1eeee46550</match>
+      <description>A Microsoft Defender ASR violation is detected: Block executable content from email client and webmail</description>
+      <info type="link">https://learn.microsoft.com/en-us/defender-endpoint/attack-surface-reduction-rules-reference</info>
+      <mitre>
+          <id>T1193</id>
+          <id>T1566.001</id>
+      </mitre>
+  </rule>
+
+
+  <rule id="62225" level="10">
+      <if_sid>62213</if_sid>
+      <match>01443614-cd74-433a-b99e-2ecdc07bfc25</match>
+      <description>A Microsoft Defender ASR violation is blocked: Block executable files from running unless they meet a prevalence, age, or trusted list criterion</description>
+      <info type="link">https://learn.microsoft.com/en-us/defender-endpoint/attack-surface-reduction-rules-reference</info>
+      <mitre>
+          <id>T1480</id>
+          <id>T1553</id>
+      </mitre>
+  </rule>
+
+
+  <rule id="62226" level="10">
+      <if_sid>62214</if_sid>
+      <match>01443614-cd74-433a-b99e-2ecdc07bfc25</match>
+      <description>A Microsoft Defender ASR violation is detected: Block executable files from running unless they meet a prevalence, age, or trusted list criterion</description>
+      <info type="link">https://learn.microsoft.com/en-us/defender-endpoint/attack-surface-reduction-rules-reference</info>
+      <mitre>
+          <id>T1480</id>
+          <id>T1553</id>
+      </mitre>
+  </rule>
+
+
+  <rule id="62227" level="10">
+      <if_sid>62213</if_sid>
+      <match>5beb7efe-fd9a-4556-801d-275e5ffc04cc</match>
+      <description>A Microsoft Defender ASR violation is blocked: Block execution of potentially obfuscated scripts</description>
+      <info type="link">https://learn.microsoft.com/en-us/defender-endpoint/attack-surface-reduction-rules-reference</info>
+      <mitre>
+          <id>T1027</id>
+          <id>T1059</id>
+      </mitre>
+  </rule>
+
+
+  <rule id="62228" level="10">
+      <if_sid>62214</if_sid>
+      <match>5beb7efe-fd9a-4556-801d-275e5ffc04cc</match>
+      <description>A Microsoft Defender ASR violation is detected: Block execution of potentially obfuscated scripts</description>
+      <info type="link">https://learn.microsoft.com/en-us/defender-endpoint/attack-surface-reduction-rules-reference</info>
+      <mitre>
+          <id>T1027</id>
+          <id>T1059</id>
+      </mitre>
+  </rule>
+
+
+  <rule id="62229" level="10">
+      <if_sid>62213</if_sid>
+      <match>d3e037e1-3eb8-44c8-a917-57927947596d</match>
+      <description>A Microsoft Defender ASR violation is blocked: Block JavaScript or VBScript from launching downloaded executable content</description>
+      <info type="link">https://learn.microsoft.com/en-us/defender-endpoint/attack-surface-reduction-rules-reference</info>
+      <mitre>
+          <id>T1059</id>
+          <id>T1064</id>
+      </mitre>
+  </rule>
+
+
+  <rule id="62230" level="10">
+      <if_sid>62214</if_sid>
+      <match>d3e037e1-3eb8-44c8-a917-57927947596d</match>
+      <description>A Microsoft Defender ASR violation is detected: Block JavaScript or VBScript from launching downloaded executable content</description>
+      <info type="link">https://learn.microsoft.com/en-us/defender-endpoint/attack-surface-reduction-rules-reference</info>
+      <mitre>
+          <id>T1059</id>
+          <id>T1064</id>
+      </mitre>
+  </rule>
+
+
+  <rule id="62231" level="10">
+      <if_sid>62213</if_sid>
+      <match>3b576869-a4ec-4529-8536-b80a7769e899</match>
+      <description>A Microsoft Defender ASR violation is blocked: Block Office applications from creating executable content</description>
+      <info type="link">https://learn.microsoft.com/en-us/defender-endpoint/attack-surface-reduction-rules-reference</info>
+      <mitre>
+          <id>T1204.002</id>
+      </mitre>
+  </rule>
+
+
+  <rule id="62232" level="10">
+      <if_sid>62214</if_sid>
+      <match>3b576869-a4ec-4529-8536-b80a7769e899</match>
+      <description>A Microsoft Defender ASR violation is detected: Block Office applications from creating executable content</description>
+      <info type="link">https://learn.microsoft.com/en-us/defender-endpoint/attack-surface-reduction-rules-reference</info>
+      <mitre>
+          <id>T1204.002</id>
+      </mitre>
+  </rule>
+
+
+  <rule id="62233" level="10">
+      <if_sid>62213</if_sid>
+      <match>75668c1f-73b5-4cf0-bb93-3ecf5cb7cc84</match>
+      <description>A Microsoft Defender ASR violation is blocked: Block Office applications from injecting code into other processes</description>
+      <info type="link">https://learn.microsoft.com/en-us/defender-endpoint/attack-surface-reduction-rules-reference</info>
+      <mitre>
+          <id>T1055</id>
+      </mitre>
+  </rule>
+
+
+  <rule id="62234" level="10">
+      <if_sid>62214</if_sid>
+      <match>75668c1f-73b5-4cf0-bb93-3ecf5cb7cc84</match>
+      <description>A Microsoft Defender ASR violation is detected: Block Office applications from injecting code into other processes</description>
+      <info type="link">https://learn.microsoft.com/en-us/defender-endpoint/attack-surface-reduction-rules-reference</info>
+      <mitre>
+          <id>T1055</id>
+      </mitre>
+  </rule>
+
+
+  <rule id="62235" level="10">
+      <if_sid>62213</if_sid>
+      <match>26190899-1602-49e8-8b27-eb1d0a1ce869</match>
+      <description>A Microsoft Defender ASR violation is blocked: Block Office communication application from creating child processes</description>
+      <info type="link">https://learn.microsoft.com/en-us/defender-endpoint/attack-surface-reduction-rules-reference</info>
+      <mitre>
+          <id>T1204.002</id>
+      </mitre>
+  </rule>
+
+
+  <rule id="62236" level="10">
+      <if_sid>62214</if_sid>
+      <match>26190899-1602-49e8-8b27-eb1d0a1ce869</match>
+      <description>A Microsoft Defender ASR violation is detected: Block Office communication application from creating child processes</description>
+      <info type="link">https://learn.microsoft.com/en-us/defender-endpoint/attack-surface-reduction-rules-reference</info>
+      <mitre>
+          <id>T1204.002</id>
+      </mitre>
+  </rule>
+
+
+  <rule id="62237" level="10">
+      <if_sid>62213</if_sid>
+      <match>e6db77e5-3df2-4cf1-b95a-636979351e5b</match>
+      <description>A Microsoft Defender ASR violation is blocked: Block persistence through WMI event subscription</description>
+      <info type="link">https://learn.microsoft.com/en-us/defender-endpoint/attack-surface-reduction-rules-reference</info>
+      <mitre>
+          <id>T1546</id>
+      </mitre>
+  </rule>
+
+
+  <rule id="62238" level="10">
+      <if_sid>62214</if_sid>
+      <match>e6db77e5-3df2-4cf1-b95a-636979351e5b</match>
+      <description>A Microsoft Defender ASR violation is detected: Block persistence through WMI event subscription</description>
+      <info type="link">https://learn.microsoft.com/en-us/defender-endpoint/attack-surface-reduction-rules-reference</info>
+      <mitre>
+          <id>T1546</id>
+      </mitre>
+  </rule>
+
+
+  <rule id="62239" level="10">
+      <if_sid>62213</if_sid>
+      <match>d1e49aac-8f56-4280-b9ba-993a6d77406c</match>
+      <description>A Microsoft Defender ASR violation is blocked: Block process creations originating from PSExec and WMI commands</description>
+      <info type="link">https://learn.microsoft.com/en-us/defender-endpoint/attack-surface-reduction-rules-reference</info>
+      <mitre>
+          <id>T1035</id>
+          <id>T1059</id>
+      </mitre>
+  </rule>
+
+
+  <rule id="62240" level="10">
+      <if_sid>62214</if_sid>
+      <match>d1e49aac-8f56-4280-b9ba-993a6d77406c</match>
+      <description>A Microsoft Defender ASR violation is detected: Block process creations originating from PSExec and WMI commands</description>
+      <info type="link">https://learn.microsoft.com/en-us/defender-endpoint/attack-surface-reduction-rules-reference</info>
+      <mitre>
+          <id>T1035</id>
+          <id>T1059</id>
+      </mitre>
+  </rule>
+
+
+  <rule id="62241" level="10">
+      <if_sid>62213</if_sid>
+      <match>b2b3f03d-6a65-4f7b-a9c7-1c7ef74a9ba4</match>
+      <description>A Microsoft Defender ASR violation is blocked: Block untrusted and unsigned processes that run from USB</description>
+      <info type="link">https://learn.microsoft.com/en-us/defender-endpoint/attack-surface-reduction-rules-reference</info>
+      <mitre>
+          <id>T1189</id>
+          <id>T1204.002</id>
+      </mitre>
+  </rule>
+
+
+  <rule id="62242" level="10">
+      <if_sid>62214</if_sid>
+      <match>b2b3f03d-6a65-4f7b-a9c7-1c7ef74a9ba4</match>
+      <description>A Microsoft Defender ASR violation is detected: Block untrusted and unsigned processes that run from USB</description>
+      <info type="link">https://learn.microsoft.com/en-us/defender-endpoint/attack-surface-reduction-rules-reference</info>
+      <mitre>
+          <id>T1189</id>
+          <id>T1204.002</id>
+      </mitre>
+  </rule>
+
+
+  <rule id="62243" level="10">
+      <if_sid>62213</if_sid>
+      <match>92e97fa1-2edf-4476-bdd6-9dd0b4dddc7b</match>
+      <description>A Microsoft Defender ASR violation is blocked: Block Win32 API calls from Office macros</description>
+      <info type="link">https://learn.microsoft.com/en-us/defender-endpoint/attack-surface-reduction-rules-reference</info>
+      <mitre>
+          <id>T1137</id>
+          <id>T1203</id>
+      </mitre>
+  </rule>
+
+
+  <rule id="62244" level="10">
+      <if_sid>62214</if_sid>
+      <match>92e97fa1-2edf-4476-bdd6-9dd0b4dddc7b</match>
+      <description>A Microsoft Defender ASR violation is detected: Block Win32 API calls from Office macros</description>
+      <info type="link">https://learn.microsoft.com/en-us/defender-endpoint/attack-surface-reduction-rules-reference</info>
+      <mitre>
+          <id>T1137</id>
+          <id>T1203</id>
+      </mitre>
+  </rule>
+
+
+  <rule id="62245" level="10">
+      <if_sid>62213</if_sid>
+      <match>c1db55ab-c21a-4637-bb3f-a12568109d35</match>
+      <description>A Microsoft Defender ASR violation is blocked: Use advanced protection against ransomware</description>
+      <info type="link">https://learn.microsoft.com/en-us/defender-endpoint/attack-surface-reduction-rules-reference</info>
+      <mitre>
+          <id>T1486</id>
+          <id>T1490</id>
+      </mitre>
+  </rule>
+
+
+  <rule id="62246" level="10">
+      <if_sid>62214</if_sid>
+      <match>c1db55ab-c21a-4637-bb3f-a12568109d35</match>
+      <description>A Microsoft Defender ASR violation is detected: Use advanced protection against ransomware</description>
+      <info type="link">https://learn.microsoft.com/en-us/defender-endpoint/attack-surface-reduction-rules-reference</info>
+      <mitre>
+          <id>T1486</id>
+          <id>T1490</id>
+      </mitre>
+  </rule>
+
+
+  <!-- Suppress Wazuh agent access -->
+  <rule id="62247" level="0">
+      <if_sid>62221</if_sid>
+      <field name="win.eventdata.path" type="pcre2">(?i)[c-z]:\\\\Program Files \(x86\)\\\\ossec\-agent\\\\wazuh\-agent\.exe</field>
+      <description>Ignore lsass access by Wazuh agent. It is for FIM controls.</description>
+  </rule>
+
+
+  <rule id="62248" level="0">
+      <if_sid>62222</if_sid>
+      <field name="win.eventdata.path" type="pcre2">(?i)[c-z]:\\\\Program Files \(x86\)\\\\ossec\-agent\\\\wazuh\-agent\.exe</field>
+      <description>Ignore lsass access by Wazuh agent. It is for FIM controls.</description>
+  </rule>
 </group>
