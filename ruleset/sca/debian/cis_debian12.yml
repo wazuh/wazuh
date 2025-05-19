@@ -2317,52 +2317,14 @@ checks:
       - pci_dss_v3.2.1: ["1.1.4", "1.3.1", "1.4"]
       - pci_dss_v4.0: ["1.2.1", "1.4.1"]
       - soc_2: ["CC6.6"]
-    condition:
+    condition: all
     rules:
+      - 'c:iptables -L INPUT -v -n -> r:\.*ACCEPT\.*all\.*lo\.**\.*0.0.0.0/0\.*0.0.0.0/0'
+      - 'c:iptables -L INPUT -v -n -> r:\.*DROP\.*all\.**\.**\.*127.0.0.0/8\.*0.0.0.0/0'
+      - 'c:iptables -L OUTPUT -v -n -> r:\.*ACCEPT\.*all\.**\.*lo\.*0.0.0.0/0\.*0.0.0.0/0'
 
-  # 4.4.2.3 Ensure iptables outbound and established connections are configured. (Manual)
-  - id: 33148
-    title: "Ensure iptables outbound and established connections are configured."
-    description: "Configure the firewall rules for new outbound, and established connections. Note: - Changing firewall settings while connected over network can result in being locked out of the system - Remediation will only affect the active system firewall, be sure to configure the default policy in your firewall management to apply on boot as well."
-    rationale: "If rules are not in place for new outbound, and established connections all packets will be dropped by the default policy preventing network usage."
-    remediation: "Configure iptables in accordance with site policy. The following commands will implement a policy to allow all outbound connections and all established connections: # iptables -A OUTPUT -p tcp -m state --state NEW,ESTABLISHED -j ACCEPT # iptables -A OUTPUT -p udp -m state --state NEW,ESTABLISHED -j ACCEPT # iptables -A INPUT -p tcp -m state --state ESTABLISHED -j ACCEPT # iptables -A INPUT -p udp -m state --state ESTABLISHED -j ACCEPT."
-    compliance:
-      - cis: ["4.4.2.3"]
-      - cis_csc_v8: ["4.4", "4.5"]
-      - cis_csc_v7: ["9.4"]
-      - cmmc_v2.0: ["AC.L1-3.1.20", "CM.L2-3.4.7", "SC.L1-3.13.1", "SC.L2-3.13.6"]
-      - iso_27001-2013: ["A.13.1.1"]
-      - mitre_mitigations: ["M1031", "M1037"]
-      - mitre_tactics: ["TA0011"]
-      - mitre_techniques: ["T1562", "T1562.004"]
-      - nist_sp_800-53: ["SC-7(5)"]
-      - pci_dss_v3.2.1: ["1.1.4", "1.3.1", "1.4"]
-      - pci_dss_v4.0: ["1.2.1", "1.4.1"]
-      - soc_2: ["CC6.6"]
-    condition:
-    rules:
-
-  # 4.4.2.4 Ensure iptables firewall rules exist for all open ports. (Automated)
-  - id: 33149
-    title: "Ensure iptables firewall rules exist for all open ports."
-    description: "Any ports that have been opened on non-loopback addresses need firewall rules to govern traffic. Notes: - Changing firewall settings while connected over network can result in being locked out of the system - Remediation will only affect the active system firewall, be sure to configure the default policy in your firewall management to apply on boot as well - The remediation command opens up the port to traffic from all sources. Consult iptables documentation and set any restrictions in compliance with site policy."
-    rationale: "Without a firewall rule configured for open ports default firewall policy will drop all packets to these ports."
-    remediation: "For each port identified in the audit which does not have a firewall rule establish a proper rule for accepting inbound connections: # iptables -A INPUT -p <protocol> --dport <port> -m state --state NEW -j ACCEPT."
-    compliance:
-      - cis: ["4.4.2.4"]
-      - cis_csc_v8: ["4.4", "4.5"]
-      - cis_csc_v7: ["9.4"]
-      - cmmc_v2.0: ["AC.L1-3.1.20", "CM.L2-3.4.7", "SC.L1-3.13.1", "SC.L2-3.13.6"]
-      - iso_27001-2013: ["A.13.1.1"]
-      - mitre_mitigations: ["M1031", "M1037"]
-      - mitre_tactics: ["TA0011"]
-      - mitre_techniques: ["T1562", "T1562.004"]
-      - nist_sp_800-53: ["SC-7(5)"]
-      - pci_dss_v3.2.1: ["1.1.4", "1.3.1", "1.4"]
-      - pci_dss_v4.0: ["1.2.1", "1.4.1"]
-      - soc_2: ["CC6.6"]
-    condition:
-    rules:
+  # 4.4.2.3 Ensure iptables outbound and established connections are configured. (Manual) - Not Implemented
+  # 4.4.2.4 Ensure iptables firewall rules exist for all open ports. (Automated) - Not Implemented
 
   # 4.4.3.1 Ensure ip6tables default deny firewall policy. (Automated)
   - id: 33150
@@ -2383,8 +2345,11 @@ checks:
       - pci_dss_v3.2.1: ["1.1.4", "1.3.1", "1.4"]
       - pci_dss_v4.0: ["1.2.1", "1.4.1"]
       - soc_2: ["CC6.6"]
-    condition:
+    condition: all
     rules:
+      - "c:ip6tables -L -> r:^Chain INPUT && r:policy DROP"
+      - "c:ip6tables -L -> r:^Chain FORWARD && r:policy DROP"
+      - "c:ip6tables -L -> r:^Chain OUTPUT && r:policy DROP"
 
   # 4.4.3.2 Ensure ip6tables loopback traffic is configured. (Automated)
   - id: 33151
@@ -2405,121 +2370,17 @@ checks:
       - pci_dss_v3.2.1: ["1.1.4", "1.3.1", "1.4"]
       - pci_dss_v4.0: ["1.2.1", "1.4.1"]
       - soc_2: ["CC6.6"]
-    condition:
+    condition: all
     rules:
+      - 'c:ip6tables -L INPUT -v -n -> r:\.*ACCEPT\.*all\.*lo\.**\.*::/0\.*::/0'
+      - 'c:ip6tables -L INPUT -v -n -> r:\.*DROP\.*all\.**\.**\.*::1\.*::/0'
+      - 'c:ip6tables -L OUTPUT -v -n -> r:\.*ACCEPT\.*all\.**\.*lo\.*::/0\.*::/0'
 
-  # 4.4.3.3 Ensure ip6tables outbound and established connections are configured. (Manual)
-  - id: 33152
-    title: "Ensure ip6tables outbound and established connections are configured."
-    description: "Configure the firewall rules for new outbound, and established IPv6 connections. Note: - Changing firewall settings while connected over network can result in being locked out of the system - Remediation will only affect the active system firewall, be sure to configure the default policy in your firewall management to apply on boot as well."
-    rationale: "If rules are not in place for new outbound, and established connections all packets will be dropped by the default policy preventing network usage."
-    remediation: "Configure iptables in accordance with site policy. The following commands will implement a policy to allow all outbound connections and all established connections: # ip6tables -A OUTPUT -p tcp -m state --state NEW,ESTABLISHED -j ACCEPT # ip6tables -A OUTPUT -p udp -m state --state NEW,ESTABLISHED -j ACCEPT # ip6tables -A INPUT -p tcp -m state --state ESTABLISHED -j ACCEPT # ip6tables -A INPUT -p udp -m state --state ESTABLISHED -j ACCEPT."
-    compliance:
-      - cis: ["4.4.3.3"]
-      - cis_csc_v8: ["4.4", "4.5"]
-      - cis_csc_v7: ["9.4"]
-      - cmmc_v2.0: ["AC.L1-3.1.20", "CM.L2-3.4.7", "SC.L1-3.13.1", "SC.L2-3.13.6"]
-      - iso_27001-2013: ["A.13.1.1"]
-      - mitre_mitigations: ["M1031", "M1037"]
-      - mitre_tactics: ["TA0011"]
-      - mitre_techniques: ["T1562", "T1562.004"]
-      - nist_sp_800-53: ["SC-7(5)"]
-      - pci_dss_v3.2.1: ["1.1.4", "1.3.1", "1.4"]
-      - pci_dss_v4.0: ["1.2.1", "1.4.1"]
-      - soc_2: ["CC6.6"]
-    condition:
-    rules:
-
-  # 4.4.3.4 Ensure ip6tables firewall rules exist for all open ports. (Automated)
-  - id: 33153
-    title: "Ensure ip6tables firewall rules exist for all open ports."
-    description: "Any ports that have been opened on non-loopback addresses need firewall rules to govern traffic. Notes: - Changing firewall settings while connected over network can result in being locked out of the system - Remediation will only affect the active system firewall, be sure to configure the default policy in your firewall management to apply on boot as well - The remediation command opens up the port to traffic from all sources. Consult iptables documentation and set any restrictions in compliance with site policy."
-    rationale: "Without a firewall rule configured for open ports default firewall policy will drop all packets to these ports."
-    remediation: "For each port identified in the audit which does not have a firewall rule establish a proper rule for accepting inbound connections: # ip6tables -A INPUT -p <protocol> --dport <port> -m state --state NEW -j ACCEPT."
-    compliance:
-      - cis: ["4.4.3.4"]
-      - cis_csc_v8: ["4.4", "4.5"]
-      - cis_csc_v7: ["9.4"]
-      - cmmc_v2.0: ["AC.L1-3.1.20", "CM.L2-3.4.7", "SC.L1-3.13.1", "SC.L2-3.13.6"]
-      - iso_27001-2013: ["A.13.1.1"]
-      - mitre_mitigations: ["M1031", "M1037"]
-      - mitre_tactics: ["TA0011"]
-      - mitre_techniques: ["T1562", "T1562.004"]
-      - nist_sp_800-53: ["SC-7(5)"]
-      - pci_dss_v3.2.1: ["1.1.4", "1.3.1", "1.4"]
-      - pci_dss_v4.0: ["1.2.1", "1.4.1"]
-      - soc_2: ["CC6.6"]
-    condition:
-    rules:
-
-  # 5.1.1 Ensure permissions on /etc/ssh/sshd_config are configured. (Automated)
-  - id: 33154
-    title: "Ensure permissions on /etc/ssh/sshd_config are configured."
-    description: "The file /etc/ssh/sshd_config, and files ending in .conf in the /etc/ssh/sshd_config.d directory, contain configuration specifications for sshd."
-    rationale: "configuration specifications for sshd need to be protected from unauthorized changes by non-privileged users."
-    remediation: "Run the following script to set ownership and permissions on /etc/ssh/sshd_config and files ending in .conf in the /etc/ssh/sshd_config.d directory: #!/usr/bin/env bash { chmod u-x,og-rwx /etc/ssh/sshd_config chown root:root /etc/ssh/sshd_config while IFS= read -r -d $'\\0' l_file; do if [ -e \"$l_file\" ]; then chmod u-x,og-rwx \"$l_file\" chown root:root \"$l_file\" fi done < <(find /etc/ssh/sshd_config.d -type f -print0 2>/dev/null) } - IF - other locations are listed in an Include statement, *.conf files in these locations access should also be modified."
-    compliance:
-      - cis: ["5.1.1"]
-      - cis_csc_v8: ["3.3"]
-      - cis_csc_v7: ["14.6"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
-      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-      - iso_27001-2013: ["A.9.1.1"]
-      - mitre_mitigations: ["M1022"]
-      - mitre_tactics: ["TA0005"]
-      - mitre_techniques: ["T1098", "T1098.004", "T1543", "T1543.002"]
-      - nist_sp_800-53: ["AC-5", "AC-6"]
-      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-      - pci_dss_v4.0: ["1.3.1", "7.1"]
-      - soc_2: ["CC5.2", "CC6.1"]
-    condition:
-    rules:
-
-  # 5.1.2 Ensure permissions on SSH private host key files are configured. (Automated)
-  - id: 33155
-    title: "Ensure permissions on SSH private host key files are configured."
-    description: "An SSH private key is one of two files used in SSH public key authentication. In this authentication method, the possession of the private key is proof of identity. Only a private key that corresponds to a public key will be able to authenticate successfully. The private keys need to be stored and handled carefully, and no copies of the private key should be distributed."
-    rationale: "If an unauthorized user obtains the private SSH host key file, the host could be impersonated."
-    remediation: "Run the following script to set mode, ownership, and group on the private SSH host key files: #!/usr/bin/env bash { a_output=(); a_output2=(); l_ssh_group_name=\"$(awk -F: '($1 ~ /^(ssh_keys|_?ssh)$/) {print $1}' /etc/group)\" f_file_access_fix() { while IFS=: read -r l_file_mode l_file_owner l_file_group; do a_out2=() [ \"$l_file_group\" = \"$l_ssh_group_name\" ] && l_pmask=\"0137\" || l_pmask=\"0177\" l_maxperm=\"$( printf '%o' $(( 0777 & ~$l_pmask )) )\" if [ $(( $l_file_mode & $l_pmask )) -gt 0 ]; then a_out2+=(\" Mode: \\\"$l_file_mode\\\" should be mode: \\\"$l_maxperm\\\" or more restrictive\" \\ \" updating to mode: \\:$l_maxperm\\\"\") if [ \"l_file_group\" = \"$l_ssh_group_name\" ]; then chmod u-x,g-wx,o-rwx \"$l_file\" else chmod u-x,go-rwx \"$l_file\" fi fi if [ \"$l_file_owner\" != \"root\" ]; then a_out2+=(\" Owned by: \\\"$l_file_owner\\\" should be owned by \\\"root\\\"\" \\ \" Changing ownership to \\\"root\\\"\") chown root \"$l_file\" fi if [[ ! \"$l_file_group\" =~ ($l_ssh_group_name|root) ]]; then [ -n \"$l_ssh_group_name\" ] && l_new_group=\"$l_ssh_group_name\" || l_new_group=\"root\" a_out2+=(\" Owned by group \\\"$l_file_group\\\" should be group owned by: \\\"$l_ssh_group_name\\\" or \\\"root\\\"\" \\ \" Changing group ownership to \\\"$l_new_group\\\"\") chgrp \"$l_new_group\" \"$l_file\" fi if [ \"${#a_out2[@]}\" -gt \"0\" ]; then a_output2+=(\" - File: \\\"$l_file\\\"\" \"${a_out2[@]}\") else a_output+=(\" - File: \\\"$l_file\\\"\" \\ \"Correct: mode: \\\"$l_file_mode\\\", owner: \\\"$l_file_owner\\\", and group owner: \\\"$l_file_group\\\" configured\") fi done < <(stat -Lc '%#a:%U:%G' \"$l_file\") } while IFS= read -r -d $'\\0' l_file; do if ssh-keygen -lf &>/dev/null \"$l_file\"; then file \"$l_file\" | grep -Piq -- '\\bopenssh\\h+([^#\\n\\r]+\\h+)?private\\h+key\\b' && f_file_access_fix fi done < <(find -L /etc/ssh -xdev -type f -print0 2>/dev/null) if [ \"${#a_output2[@]}\" -le \"0\" ]; then printf '%s\\n' \"\" \" - No access changes required\" \"\" else printf '%s\\n' \"\" \" - Remediation results:\" \"${a_output2[@]}\" \"\" fi }."
-    compliance:
-      - cis: ["5.1.2"]
-      - cis_csc_v8: ["3.3"]
-      - cis_csc_v7: ["14.6"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
-      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-      - iso_27001-2013: ["A.9.1.1"]
-      - mitre_mitigations: ["M1022"]
-      - mitre_tactics: ["TA0003", "TA0006"]
-      - mitre_techniques: ["T1552", "T1552.004"]
-      - nist_sp_800-53: ["AC-5", "AC-6"]
-      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-      - pci_dss_v4.0: ["1.3.1", "7.1"]
-      - soc_2: ["CC5.2", "CC6.1"]
-    condition:
-    rules:
-
-  # 5.1.3 Ensure permissions on SSH public host key files are configured. (Automated)
-  - id: 33156
-    title: "Ensure permissions on SSH public host key files are configured."
-    description: "An SSH public key is one of two files used in SSH public key authentication. In this authentication method, a public key is a key that can be used for verifying digital signatures generated using a corresponding private key. Only a public key that corresponds to a private key will be able to authenticate successfully."
-    rationale: "If a public host key file is modified by an unauthorized user, the SSH service may be compromised."
-    remediation: "Run the following script to set mode, ownership, and group on the public SSH host key files: #!/usr/bin/env bash { a_output=(); a_output2=() l_pmask=\"0133\"; l_maxperm=\"$( printf '%o' $(( 0777 & ~$l_pmask )) )\" f_file_access_fix() { while IFS=: read -r l_file_mode l_file_owner l_file_group; do a_out2=() [ $(( $l_file_mode & $l_pmask )) -gt 0 ] && \\ a_out2+=(\" Mode: \\\"$l_file_mode\\\" should be mode: \\\"$l_maxperm\\\" or more restrictive\" \\ \" updating to mode: \\\"$l_maxperm\\\"\") && chmod u-x,go-wx \"$l_file\" [ \"$l_file_owner\" != \"root\" ] && \\ a_out2+=(\" Owned by: \\\"$l_file_owner\\\" should be owned by \\\"root\\\"\" \\ \" Changing ownership to \\\"root\\\"\") && chown root \"$l_file\" [ \"$l_file_group\" != \"root\" ] && \\ a_out2+=(\" Owned by group \\\"$l_file_group\\\" should be group owned by: \\\"root\\\"\" \\ \" Changing group ownership to \\\"root\\\"\") && chgrp root \"$l_file\" if [ \"${#a_out2[@]}\" -gt \"0\" ]; then a_output2+=(\" - File: \\\"$l_file\\\"\" \"${a_out2[@]}\") else a_output+=(\" - File: \\\"$l_file\\\"\" \\ \" Correct: mode: \\\"$l_file_mode\\\", owner: \\\"$l_file_owner\\\", and group owner: \\\"$l_file_group\\\" configured\") fi done < <(stat -Lc '%#a:%U:%G' \"$l_file\") } while IFS= read -r -d $'\\0' l_file; do if ssh-keygen -lf &>/dev/null \"$l_file\"; then file \"$l_file\" | grep -Piq -- '\\bopenssh\\h+([^#\\n\\r]+\\h+)?public\\h+key\\b' && f_file_access_fix fi done < <(find -L /etc/ssh -xdev -type f -print0 2>/dev/null) if [ \"${#a_output2[@]}\" -le \"0\" ]; then printf '%s\\n' \"\" \" - No access changes required\" \"\" else printf '%s\\n' \" - Remediation results:\" \"${a_output2[@]}\" \"\" fi }."
-    compliance:
-      - cis: ["5.1.3"]
-      - cis_csc_v8: ["3.3"]
-      - cis_csc_v7: ["14.6"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
-      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-      - iso_27001-2013: ["A.9.1.1"]
-      - mitre_mitigations: ["M1022"]
-      - mitre_tactics: ["TA0003", "TA0006"]
-      - mitre_techniques: ["T1557"]
-      - nist_sp_800-53: ["AC-5", "AC-6"]
-      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-      - pci_dss_v4.0: ["1.3.1", "7.1"]
-      - soc_2: ["CC5.2", "CC6.1"]
-    condition:
-    rules:
+  # 4.4.3.3 Ensure ip6tables outbound and established connections are configured. (Manual) - Not Implemented
+  # 4.4.3.4 Ensure ip6tables firewall rules exist for all open ports. (Automated) - Not Implemented
+  # 5.1.1 Ensure permissions on /etc/ssh/sshd_config are configured. (Automated) - Not Implemented
+  # 5.1.2 Ensure permissions on SSH private host key files are configured. (Automated) - Not Implemented
+  # 5.1.3 Ensure permissions on SSH public host key files are configured. (Automated) - Not Implemented
 
   # 5.1.4 Ensure sshd access is configured. (Automated)
   - id: 33157
@@ -2541,8 +2402,9 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:sshd -T -> r:^AllowUsers\s+\w+|^AllowGroups\s+\w+|^DenyUsers\s+\w+|^DenyGroups\s+\w+'
 
   # 5.1.5 Ensure sshd Banner is configured. (Automated)
   - id: 33158
@@ -2554,8 +2416,9 @@ checks:
       - cis: ["5.1.5"]
       - mitre_mitigations: ["M1035"]
       - mitre_tactics: ["TA0001", "TA0007"]
-    condition:
+    condition: all
     rules:
+      - 'c:sshd -T -> r:^banner\s/'
 
   # 5.1.6 Ensure sshd Ciphers are configured. (Automated)
   - id: 33159
@@ -2583,8 +2446,9 @@ checks:
       - nist_sp_800-53: ["AC-17(2)", "SC-8", "SC-8(1)"]
       - pci_dss_v3.2.1: ["2.1.1", "4.1", "4.1.1", "8.2.1"]
       - pci_dss_v4.0: ["2.2.7", "4.1.1", "4.2.1", "4.2.1.2", "4.2.2", "8.3.2"]
-    condition:
+    condition: none
     rules:
+      - "c:sshd -T -> r:^ciphers && r:3des-cbc|aes128-cbc|aes192-cbc|aes256-cbc"
 
   # 5.1.7 Ensure sshd ClientAliveInterval and ClientAliveCountMax are configured. (Automated)
   - id: 33160
@@ -2597,8 +2461,10 @@ checks:
       - mitre_mitigations: ["M1026"]
       - mitre_tactics: ["TA0001"]
       - mitre_techniques: ["T1078", "T1078.001", "T1078.002", "T1078.003"]
-    condition:
+    condition: all
     rules:
+      - 'c:sshd -T -> n:clientaliveinterval\s(\d+) compare > 0'
+      - 'c:sshd -T -> n:clientalivecountmax\s(\d+) compare > 0'
 
   # 5.1.8 Ensure sshd DisableForwarding is enabled. (Automated)
   - id: 33161
@@ -2619,8 +2485,9 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - 'c:sshd -T -> r:^disableforwarding\s+yes'
 
   # 5.1.9 Ensure sshd GSSAPIAuthentication is disabled. (Automated)
   - id: 33162
@@ -2639,8 +2506,9 @@ checks:
       - mitre_techniques: ["T1078", "T1078.001", "T1078.003"]
       - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
       - soc_2: ["CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:sshd -T -> r:^gssapiauthentication\s+yes'
 
   # 5.1.10 Ensure sshd HostbasedAuthentication is disabled. (Automated)
   - id: 33163
@@ -2653,8 +2521,9 @@ checks:
       - mitre_mitigations: ["M1042"]
       - mitre_tactics: ["TA0001"]
       - mitre_techniques: ["T1078", "T1078.001", "T1078.003"]
-    condition:
+    condition: all
     rules:
+      - 'c:sshd -T -> r:^hostbasedauthentication\s+yes'
 
   # 5.1.11 Ensure sshd IgnoreRhosts is enabled. (Automated)
   - id: 33164
@@ -2673,8 +2542,9 @@ checks:
       - mitre_techniques: ["T1078", "T1078.001", "T1078.003"]
       - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
       - soc_2: ["CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:sshd -T -> r:^ignorerhosts\s+yes'
 
   # 5.1.12 Ensure sshd KexAlgorithms is configured. (Automated)
   - id: 33165
@@ -2697,8 +2567,9 @@ checks:
       - nist_sp_800-53: ["AC-17(2)", "SC-8", "SC-8(1)"]
       - pci_dss_v3.2.1: ["2.1.1", "4.1", "4.1.1", "8.2.1"]
       - pci_dss_v4.0: ["2.2.7", "4.1.1", "4.2.1", "4.2.1.2", "4.2.2", "8.3.2"]
-    condition:
+    condition: none
     rules:
+      - "c:sshd -T -> r:^kexalgorithms && r:diffie-hellman-group1-sha1|diffie-hellman-group14-sha1|diffie-hellman-group-exchange-sha1"
 
   # 5.1.13 Ensure sshd LoginGraceTime is configured. (Automated)
   - id: 33166
@@ -2711,8 +2582,9 @@ checks:
       - mitre_mitigations: ["M1036"]
       - mitre_tactics: ["TA0006"]
       - mitre_techniques: ["T1110", "T1110.001", "T1110.003", "T1110.004"]
-    condition:
+    condition: all
     rules:
+      - 'c:sshd -T -> n:^logingracetime\s(\d+) compare <= 60 && n:LoginGraceTime\s(\d+) compare >= 1'
 
   # 5.1.14 Ensure sshd LogLevel is configured. (Automated)
   - id: 33167
@@ -2734,8 +2606,9 @@ checks:
       - nist_sp_800-53: ["AU-7"]
       - pci_dss_v3.2.1: ["10.2", "10.3"]
       - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
-    condition:
+    condition: all
     rules:
+      - 'c:sshd -T -> r:^LogLevel\s+INFO|^LogLevel\s+VERBOSE'
 
   # 5.1.15 Ensure sshd MACs are configured. (Automated)
   - id: 33168
@@ -2759,8 +2632,9 @@ checks:
       - nist_sp_800-53: ["AC-17(2)", "SC-8", "SC-8(1)"]
       - pci_dss_v3.2.1: ["2.1.1", "4.1", "4.1.1", "8.2.1"]
       - pci_dss_v4.0: ["2.2.7", "4.1.1", "4.2.1", "4.2.1.2", "4.2.2", "8.3.2"]
-    condition:
+    condition: none
     rules:
+      - "c:sshd -T -> r:^MACs && r:hmac-md5|hmac-md5-96|hmac-ripemd160|hmac-sha1|hmac-sha1-96|umac-64@openssh.com|umac-128@openssh.com|hmac-md5-etm@openssh.com|hmac-md5-96-etm@openssh.com|hmac-ripemd160-etm@openssh.com|hmac-sha1-etm@openssh.com|hmac-sha1-96-etm@openssh.com|umac-64-etm@openssh.com|umac-128-etm@openssh.com"
 
   # 5.1.16 Ensure sshd MaxAuthTries is configured. (Automated)
   - id: 33169
@@ -2780,8 +2654,9 @@ checks:
       - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
       - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
       - soc_2: ["CC5.2", "CC7.2"]
-    condition:
+    condition: all
     rules:
+      - 'c:sshd -T -> n:^MaxAuthTries\s(\d+) compare <= 4'
 
   # 5.1.17 Ensure sshd MaxSessions is configured. (Automated)
   - id: 33170
@@ -2793,8 +2668,9 @@ checks:
       - cis: ["5.1.17"]
       - mitre_tactics: ["TA0040"]
       - mitre_techniques: ["T1499", "T1499.002"]
-    condition:
+    condition: all
     rules:
+      - 'c:sshd -T -> n:^maxsessions\s(\d+) compare <= 10'
 
   # 5.1.18 Ensure sshd MaxStartups is configured. (Automated)
   - id: 33171
@@ -2806,8 +2682,11 @@ checks:
       - cis: ["5.1.18"]
       - mitre_tactics: ["TA0040"]
       - mitre_techniques: ["T1499", "T1499.002"]
-    condition:
+    condition: all
     rules:
+      - 'c:sshd -T -> n:^maxstartups\s+(\d+):\d+:\d+ compare <= 10'
+      - 'c:sshd -T -> n:^maxstartups\s+\d+:(\d+):\d+ compare <= 30'
+      - 'c:sshd -T -> n:^maxstartups\s+\d+:\d+:(\d+) compare <= 60'
 
   # 5.1.19 Ensure sshd PermitEmptyPasswords is disabled. (Automated)
   - id: 33172
@@ -2826,8 +2705,9 @@ checks:
       - mitre_techniques: ["T1021"]
       - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
       - soc_2: ["CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:sshd -T -> r:^PermitEmptyPasswords\s+no'
 
   # 5.1.20 Ensure sshd PermitRootLogin is disabled. (Automated)
   - id: 33173
@@ -2847,8 +2727,9 @@ checks:
       - nist_sp_800-53: ["AC-6(2)", "AC-6(5)"]
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - soc_2: ["CC6.1", "CC6.3"]
-    condition:
+    condition: all
     rules:
+      - 'c:sshd -T -> r:^PermitRootLogin\s+no'
 
   # 5.1.21 Ensure sshd PermitUserEnvironment is disabled. (Automated)
   - id: 33174
@@ -2861,8 +2742,9 @@ checks:
       - mitre_mitigations: ["M1042"]
       - mitre_tactics: ["TA0008"]
       - mitre_techniques: ["T1021"]
-    condition:
+    condition: all
     rules:
+      - 'c:sshd -T -> r:^PermitUserEnvironment\s+no'
 
   # 5.1.22 Ensure sshd UsePAM is enabled. (Automated)
   - id: 33175
@@ -2881,8 +2763,9 @@ checks:
       - mitre_techniques: ["T1021", "T1021.004"]
       - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
       - soc_2: ["CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:sshd -T -> r:^usepam\s+yes'
 
   # 5.2.1 Ensure sudo is installed. (Automated)
   - id: 33176
