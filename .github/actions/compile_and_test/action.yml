@@ -14,10 +14,6 @@ inputs:
     required: false
     description: "Run tests"
     default: "true"
-  legacy:
-    required: true
-    description: "Whether to obtain VERSION and REVSION from legacy files or not"
-    default: "false"
 
 runs:
   using: "composite"
@@ -42,12 +38,15 @@ runs:
         run: |
           SRC_FOLDER=$(pwd)/src
 
-          if [[ ${{ inputs.legacy }} == "false" ]]; then
+          if [[ -s VERSION.json ]]; then
             VERSION="v$(grep '"version"' VERSION.json | sed -E 's/.*"version": *"([^"]+)".*/\1/')"
-            REVISION=`grep '"stage"' VERSION.json | sed -E 's/.*"stage": *"([^"]+)".*/\1/'`
-          else
+            REVISION=$(grep '"stage"' VERSION.json | sed -E 's/.*"stage": *"([^"]+)".*/\1/')
+          elif [[ -s src/VERSION && -s src/REVISION ]]; then
             VERSION=$(cat src/VERSION)
             REVISION=$(cat src/REVISION)
+          else
+            echo "Version file not found." >&2
+            exit 1
           fi
 
           echo $VERSION
