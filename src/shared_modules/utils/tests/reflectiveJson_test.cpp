@@ -154,14 +154,14 @@ TEST_F(ReflectiveJsonTest, BasicStructSerializationWithEmptyFieldsDoNotIgnore)
 {
     TestData<std::string_view> obj;
     obj.fieldOne = "";
-    obj.fieldTwo = 0;
+    obj.fieldTwo = DEFAULT_INT_VALUE;
     obj.fieldThree = "";
 
     std::string json;
     serializeToJSON<TestData<std::string_view>, false>(obj, json);
 
     EXPECT_NE(json.find(R"("fieldOne":)"), std::string::npos);
-    EXPECT_NE(json.find(R"("fieldTwo":0)"), std::string::npos);
+    EXPECT_NE(json.find(R"("fieldTwo":-9223372036854775808)"), std::string::npos);
     EXPECT_NE(json.find(R"("fieldThree":)"), std::string::npos);
 }
 
@@ -169,14 +169,14 @@ TEST_F(ReflectiveJsonTest, BasicStructSerializationWithWhiteSpace)
 {
     TestData<std::string_view> obj;
     obj.fieldOne = " ";
-    obj.fieldTwo = 0;
+    obj.fieldTwo = DEFAULT_INT_VALUE;
     obj.fieldThree = " ";
 
     std::string json;
     serializeToJSON(obj, json);
 
     EXPECT_EQ(json.find(R"("fieldOne":)"), std::string::npos);
-    EXPECT_NE(json.find(R"("fieldTwo":0)"), std::string::npos);
+    EXPECT_EQ(json.find(R"("fieldTwo":0)"), std::string::npos);
     EXPECT_EQ(json.find(R"("fieldThree":)"), std::string::npos);
 }
 
@@ -184,14 +184,14 @@ TEST_F(ReflectiveJsonTest, BasicStructSerializationWithWhiteSpaceDoNotIgnore)
 {
     TestData<std::string_view> obj;
     obj.fieldOne = " ";
-    obj.fieldTwo = 0;
+    obj.fieldTwo = DEFAULT_INT_VALUE;
     obj.fieldThree = " ";
 
     std::string json;
     serializeToJSON<TestData<std::string_view>, true, false>(obj, json);
 
     EXPECT_NE(json.find(R"("fieldOne":)"), std::string::npos);
-    EXPECT_NE(json.find(R"("fieldTwo":0)"), std::string::npos);
+    EXPECT_EQ(json.find(R"("fieldTwo":-9223372036854775808)"), std::string::npos);
     EXPECT_NE(json.find(R"("fieldThree":)"), std::string::npos);
 }
 
@@ -199,14 +199,14 @@ TEST_F(ReflectiveJsonTest, BasicStructSerializationWithEmptyAndWhiteSpace)
 {
     TestData<std::string_view> obj;
     obj.fieldOne = "";
-    obj.fieldTwo = 0;
+    obj.fieldTwo = DEFAULT_INT_VALUE;
     obj.fieldThree = " ";
 
     std::string json;
     serializeToJSON(obj, json);
 
     EXPECT_EQ(json.find(R"("fieldOne":)"), std::string::npos);
-    EXPECT_NE(json.find(R"("fieldTwo":0)"), std::string::npos);
+    EXPECT_EQ(json.find(R"("fieldTwo":0)"), std::string::npos);
     EXPECT_EQ(json.find(R"("fieldThree":)"), std::string::npos);
 }
 
@@ -214,14 +214,14 @@ TEST_F(ReflectiveJsonTest, BasicStructSerializationWithEmptyAndWhiteSpaceDoNotIg
 {
     TestData<std::string_view> obj;
     obj.fieldOne = "";
-    obj.fieldTwo = 0;
+    obj.fieldTwo = DEFAULT_INT_VALUE;
     obj.fieldThree = " ";
 
     std::string json;
     serializeToJSON<TestData<std::string_view>, false, false>(obj, json);
 
     EXPECT_NE(json.find(R"("fieldOne":)"), std::string::npos);
-    EXPECT_NE(json.find(R"("fieldTwo":0)"), std::string::npos);
+    EXPECT_NE(json.find(R"("fieldTwo":-9223372036854775808)"), std::string::npos);
     EXPECT_NE(json.find(R"("fieldThree":)"), std::string::npos);
 }
 
