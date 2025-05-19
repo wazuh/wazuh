@@ -84,20 +84,23 @@ jobs:
         working-directory: wazuh/src
         id: build
         run: |
-          VERSION="$(cat VERSION)-r$(cat REVISION)"
-          DESCRIPTION="Revision $(cat REVISION)"
-
-          if [ -z "$VERSION" ] || [ -z "$DESCRIPTION" ]; then
-            echo "ERROR: Undefined 'VERSION' or 'DESCRIPTION'. You should build first."
+          if [[ -s ../VERSION.json ]]; then
+            VERSION="v$(grep '"version"' ../VERSION.json | sed -E 's/.*"version": *"([^"]+)".*/\1/')"
+            REVISION=$(grep '"stage"' ../VERSION.json | sed -E 's/.*"stage": *"([^"]+)".*/\1/')
+          elif [[ -s VERSION && -s REVISION ]]; then
+            VERSION=$(cat VERSION)
+            REVISION=$(cat REVISION)
+          else
+            echo "Version file not found." >&2
             exit 1
           fi
 
           # Export
           echo "VERSION=$VERSION" | tee -a $GITHUB_OUTPUT
-          echo "DESCRIPTION=$DESCRIPTION" | tee -a $GITHUB_OUTPUT
+          echo "REVISION=$REVISION" | tee -a $GITHUB_OUTPUT
 
 
-          echo "Building version $VERSION: $DESCRIPTION"
+          echo "Building version $VERSION: $REVISION"
           make deps -j$(nproc)
           make clean-internals
           make TARGET=${{ inputs.target}} external COVERITY=YES -j$(nproc)
