@@ -36,9 +36,7 @@ LoggedInUsersProvider::LoggedInUsersProvider()
 
 nlohmann::json LoggedInUsersProvider::collect()
 {
-
     nlohmann::json results;
-
     PWTS_SESSION_INFO_1W pSessionInfo;
     unsigned long count;
 
@@ -269,15 +267,13 @@ std::unique_ptr<BYTE[]> LoggedInUsersProvider::getSidFromAccountName(const std::
 std::string LoggedInUsersProvider::psidToString(PSID sid)
 {
     LPWSTR sidOut = nullptr;
-    // TODO: double check this commented code
-    // auto guard = scope_guard::create([&] { LocalFree(sidOut); });
-    auto ret = m_winSddlWrapper->ConvertSidToStringSidW(sid, &sidOut);
+    // Custom deleter to free the allocated memory for sidOut.
+    auto deleter = [](LPWSTR* p) { if (p && *p) LocalFree(*p); };
+    std::unique_ptr<LPWSTR, decltype(deleter)> sidGuard(&sidOut, deleter);
 
-    if (ret == 0)
-    {
+    if (!m_winSddlWrapper->ConvertSidToStringSidW(sid, &sidOut)) {
         std::cerr << "ConvertSidToStringW failed with " << GetLastError() << std::endl;
         return {};
     }
-
     return Utils::EncodingWindowsHelper::wstringToStringUTF8(sidOut);
 }

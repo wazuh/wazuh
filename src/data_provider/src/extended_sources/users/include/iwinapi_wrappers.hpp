@@ -35,6 +35,7 @@ class ITWSapiWrapper
 class IWinBaseApiWrapper
 {
     public:
+        virtual ~IWinBaseApiWrapper() = default;
         virtual bool LookupAccountNameW(LPCWSTR lpSystemName,
             LPCWSTR lpAccountName,
             PSID Sid,
@@ -47,11 +48,13 @@ class IWinBaseApiWrapper
 class IWinSDDLWrapper
 {
     public:
+        virtual ~IWinSDDLWrapper() = default;
         virtual bool ConvertSidToStringSidW(PSID Sid, LPWSTR *StringSid) = 0;
 };
 
 class IWinSecurityBaseApiWrapper
 {
     public:
+        virtual ~IWinSecurityBaseApiWrapper() = default;
         virtual bool IsValidSid(PSID pSid) = 0;
 };
