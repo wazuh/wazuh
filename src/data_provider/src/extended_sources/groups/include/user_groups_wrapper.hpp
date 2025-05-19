@@ -57,9 +57,10 @@ class UserGroupsWrapper : public IUserGroupsWrapper
         {
             return ::getgrouplist(user, group, groups, ngroups);
         }
-
+#ifdef __APPLE__
         int getgroupcount(const char* user, gid_type group) const override
         {
-            return getgroupcount(user, group);
+            return ::getgroupcount(user, group);
         }
+#endif
 };
