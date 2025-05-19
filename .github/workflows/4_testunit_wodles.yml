@@ -12,11 +12,6 @@ on:
         description: 'QA repository branch'
         required: false
         default: 'main'
-  pull_request:
-    paths:
-      - '.github/workflows/4_testunit_wodles.yml'
-      - 'wodles/**'
-      - 'src/Makefile'
 
 jobs:
   build: 

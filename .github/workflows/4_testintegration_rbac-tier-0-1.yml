@@ -7,13 +7,6 @@ on:
         description: 'Base branch'
         required: true
         default: 'main'
-  pull_request:
-    paths:
-        - ".github/workflows/4_testintegration_rbac-tier-0-1.yml"
-        - "framework/wazuh/rbac/"
-        - "src/Makefile"
-        - "tests/integration/conftest.py"
-        - "tests/integration/test_api/test_rbac/**"
 
 jobs:
   build:

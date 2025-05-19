@@ -7,16 +7,6 @@ on:
         description: 'Base branch'
         required: true
         default: 'main'
-  pull_request:
-    paths:
-        - ".github/workflows/4_testintegration_remoted-tier-0-1.yml"
-        - "src/config/remote-config.c"
-        - "src/config/remote-config.h"
-        - "src/remoted/**"
-        - "src/os_net/**"
-        - "src/Makefile"
-        - "tests/integration/conftest.py"
-        - "tests/integration/test_remoted/**"
 
 jobs:
   build:

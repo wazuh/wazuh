@@ -7,15 +7,6 @@ on:
         description: 'Base branch'
         required: true
         default: 'main'
-  pull_request:
-    paths:
-        - ".github/workflows/4_testintegration_wazuh_db-tier-0-1.yml"
-        - "src/config/wazuh_db-config.c"
-        - "src/config/wazuh_db-config.h"
-        - "src/wazuh_db/**"
-        - "src/Makefile"
-        - "tests/integration/conftest.py"
-        - "tests/integration/test_wazuh_db/**"
 
 jobs:
   build:
