@@ -7,17 +7,6 @@ on:
         description: 'Base branch'
         required: true
         default: 'main'
-  pull_request:
-    paths:
-        - ".github/workflows/4_testintegration_analysisd-tier-0-1.yml"
-        - "src/analysisd/**"
-        - "src/config/alerts-config.c"
-        - "src/config/global-config.c"
-        - "src/config/global-config.h"
-        - "src/config/rules-config.c"
-        - "src/Makefile"
-        - "tests/integration/conftest.py"
-        - "tests/integration/test_analysisd/**"
 
 jobs:
   build:

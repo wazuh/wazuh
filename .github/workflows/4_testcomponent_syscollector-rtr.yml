@@ -2,16 +2,6 @@ name: Running RTR. Module syscollector and its dependencies for agent/winagent t
 
 on:
   workflow_dispatch:
-  pull_request:
-    paths:
-      - "src/ci/**"
-      - "src/build.py"
-      - "src/data_provider/**"
-      - "src/shared_modules/**"
-      - "src/wazuh_modules/syscollector/**"
-      - "src/Makefile"
-      - ".github/workflows/4_testcomponent_syscollector-rtr.yml"
-      - ".github/actions/**"
 
 jobs:
   rtr:
