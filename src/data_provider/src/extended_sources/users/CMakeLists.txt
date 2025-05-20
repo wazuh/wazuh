@@ -24,19 +24,6 @@ add_library(logged_in_users STATIC ${SRC_FILES})
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   target_link_libraries(logged_in_users
-      psapi
-      iphlpapi
-      ws2_32
-      wbemuuid
-      advapi32
-      kernel32
-      user32
-      gdi32
-      winspool
-      shell32
-      uuid
-      ole32
-      oleaut32
       wtsapi32
   )
 endif()

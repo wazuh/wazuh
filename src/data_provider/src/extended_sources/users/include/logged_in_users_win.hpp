@@ -12,8 +12,8 @@ class LoggedInUsersProvider
 {
     public:
         explicit LoggedInUsersProvider(std::shared_ptr<ITWSapiWrapper> twsWrapper,
-            std::shared_ptr<IWinBaseApiWrapper> winBaseWrapper, std::shared_ptr<IWinSDDLWrapper> winSddlWrapper,
-            std::shared_ptr<IWinSecurityBaseApiWrapper> winSecurityWrapper);
+                                       std::shared_ptr<IWinBaseApiWrapper> winBaseWrapper, std::shared_ptr<IWinSDDLWrapper> winSddlWrapper,
+                                       std::shared_ptr<IWinSecurityBaseApiWrapper> winSecurityWrapper);
 
         LoggedInUsersProvider();
 
