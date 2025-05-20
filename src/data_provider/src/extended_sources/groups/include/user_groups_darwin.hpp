@@ -1,12 +1,10 @@
 #pragma once
 
 #include <set>
-#include <grp.h>
-#include <pwd.h>
 
 #include "json.hpp"
-#include "user_groups_types.hpp"
-#include "iuser_groups_wrapper.hpp"
+#include "igroup_wrapper_darwin.hpp"
+#include "ipasswd_wrapper_darwin.hpp"
 #include "iopen_directory_utils_wrapper.hpp"
 
 #define EXPECTED_GROUPS_MAX 64
@@ -14,23 +12,25 @@
 class UserGroupsProvider
 {
     public:
-        explicit UserGroupsProvider(std::shared_ptr<IUserGroupsWrapper> userGroupsWrapper,
+        explicit UserGroupsProvider(std::shared_ptr<IGroupWrapperDarwin> groupWrapper,
+                                    std::shared_ptr<IPasswdWrapperDarwin> passwdWrapper,
                                     std::shared_ptr<IODUtilsWrapper> odWrapper);
         UserGroupsProvider();
-        nlohmann::json collect(const std::set<uid_type>& uids = {});
+        nlohmann::json collect(const std::set<uid_t>& uids = {});
 
     private:
-        std::shared_ptr<IUserGroupsWrapper> m_userGroupsWrapper;
+        std::shared_ptr<IGroupWrapperDarwin> m_groupWrapper;
+        std::shared_ptr<IPasswdWrapperDarwin> m_passwdWrapper;
         std::shared_ptr<IODUtilsWrapper> m_odWrapper;
 
         struct UserInfo
         {
             const char* name;
-            uid_type uid;
-            gid_type gid;
+            uid_t uid;
+            gid_t gid;
         };
 
         void getGroupsForUser(nlohmann::json& results, const UserInfo& user);
-        void addGroupsToResults(nlohmann::json& results, uid_type uid, const gid_type* groups, int ngroups);
+        void addGroupsToResults(nlohmann::json& results, uid_t uid, const gid_t* groups, int ngroups);
 
 };

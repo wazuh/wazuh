@@ -1,22 +1,26 @@
 #include <iostream>
 #include "user_groups_darwin.hpp"
-#include "user_groups_wrapper.hpp"
+#include "group_wrapper_darwin.hpp"
+#include "passwd_wrapper_darwin.hpp"
 #include "open_directory_utils_wrapper.hpp"
 
-UserGroupsProvider::UserGroupsProvider(std::shared_ptr<IUserGroupsWrapper> wrapper,
+UserGroupsProvider::UserGroupsProvider(std::shared_ptr<IGroupWrapperDarwin> groupWrapper,
+                                       std::shared_ptr<IPasswdWrapperDarwin> passwdWrapper,
                                        std::shared_ptr<IODUtilsWrapper> odWrapper)
-    : m_userGroupsWrapper(std::move(wrapper))
+    : m_groupWrapper(std::move(groupWrapper))
+    , m_passwdWrapper(std::move(passwdWrapper))
     , m_odWrapper(std::move(odWrapper))
 {
 }
 
 UserGroupsProvider::UserGroupsProvider()
-    : m_userGroupsWrapper(std::make_shared<UserGroupsWrapper>())
+    : m_groupWrapper(std::make_shared<GroupWrapperDarwin>())
+    , m_passwdWrapper(std::make_shared<PasswdWrapperDarwin>())
     , m_odWrapper(std::make_shared<ODUtilsWrapper>())
 {
 }
 
-nlohmann::json UserGroupsProvider::collect(const std::set<uid_type>& uids)
+nlohmann::json UserGroupsProvider::collect(const std::set<uid_t>& uids)
 {
     nlohmann::json results = nlohmann::json::array();
 
@@ -24,10 +28,10 @@ nlohmann::json UserGroupsProvider::collect(const std::set<uid_type>& uids)
     {
         for (const auto& uid : uids)
         {
-            struct passwd* pwd = m_userGroupsWrapper->getpwuid(uid);
+            struct passwd* pwd = m_passwdWrapper->getpwuid(uid);
             if (pwd != nullptr)
             {
-                UserInfo user {pwd->pw_name, static_cast<uid_type>(pwd->pw_uid), static_cast<gid_type>(pwd->pw_gid)};
+                UserInfo user {pwd->pw_name, pwd->pw_uid, pwd->pw_gid};
                 getGroupsForUser(results, user);
             }
         }
@@ -36,9 +40,9 @@ nlohmann::json UserGroupsProvider::collect(const std::set<uid_type>& uids)
         std::map<std::string, bool> usernames;
         m_odWrapper->genEntries("dsRecTypeStandard:Users", nullptr, usernames);
         for (const auto& username : usernames) {
-            struct passwd* pwd = m_userGroupsWrapper->getpwnam(username.first.c_str());
+            struct passwd* pwd = m_passwdWrapper->getpwnam(username.first.c_str());
             if (pwd != nullptr) {
-                UserInfo user {pwd->pw_name, static_cast<uid_type>(pwd->pw_uid), static_cast<gid_type>(pwd->pw_gid)};
+                UserInfo user {pwd->pw_name, pwd->pw_uid, pwd->pw_gid};
                 getGroupsForUser(results, user);
             }
         }
@@ -48,20 +52,20 @@ nlohmann::json UserGroupsProvider::collect(const std::set<uid_type>& uids)
 
 void UserGroupsProvider::getGroupsForUser(nlohmann::json& results, const UserInfo& user)
 {
-    int ngroups = m_userGroupsWrapper->getgroupcount(user.name, user.gid);
-    gid_type* groups = new int[ngroups];
-    if (m_userGroupsWrapper->getgrouplist(user.name, user.gid, groups, &ngroups) < 0) 
+    int ngroups = m_groupWrapper->getgroupcount(user.name, user.gid);
+    gid_t* groups = new gid_t[ngroups];
+    if (m_groupWrapper->getgrouplist(user.name, user.gid, groups, &ngroups) < 0)
     {
         std::cerr << "Could not get users group list" << std::endl;
-    } 
-    else 
+    }
+    else
     {
         addGroupsToResults(results, user.uid, groups, ngroups);
     }
     delete[] groups;
 }
 
-void UserGroupsProvider::addGroupsToResults(nlohmann::json& results, uid_type uid, const gid_type* groups, int ngroups)
+void UserGroupsProvider::addGroupsToResults(nlohmann::json& results, uid_t uid, const gid_t* groups, int ngroups)
 {
     for (int i = 0; i < ngroups; i++)
     {

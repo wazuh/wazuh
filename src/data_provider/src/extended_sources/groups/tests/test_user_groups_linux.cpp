@@ -1,20 +1,29 @@
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
-#include "iuser_groups_wrapper.hpp"
+#include "igroup_wrapper_linux.hpp"
+#include "ipasswd_wrapper_linux.hpp"
+#include "isystem_wrapper.hpp"
 #include "user_groups_linux.hpp"
 
-class MockUserGroupsWrapper : public IUserGroupsWrapper
+class MockGroupWrapper : public IGroupWrapperLinux
+{
+    public:
+        MOCK_METHOD(int, getgrouplist, (const char* user, gid_t group, gid_t* groups, int* ngroups), (const, override));
+};
+
+class MockPasswdWrapper : public IPasswdWrapperLinux
+{
+    public:
+        MOCK_METHOD(int, getpwuid_r, (uid_t uid, struct passwd* pwd, char* buf, size_t buflen, struct passwd** result), (override));
+        MOCK_METHOD(int, getpwent_r, (struct passwd* pwd, char* buf, size_t buflen, struct passwd** result), (override));
+        MOCK_METHOD(void, setpwent, (), (override));
+        MOCK_METHOD(void, endpwent, (), (override));
+};
+
+class MockSystemWrapper : public ISystemWrapper
 {
     public:
         MOCK_METHOD(long, sysconf, (int name), (const, override));
-        MOCK_METHOD(struct passwd*, getpwuid, (uid_t uid), (const, override));
-        MOCK_METHOD(int, getpwuid_r, (uid_t uid, struct passwd* pwd, char* buf, size_t buflen, struct passwd** result), (const, override));
-        MOCK_METHOD(void, setpwent, (), (const, override));
-        MOCK_METHOD(struct passwd*, getpwent, (), (const, override));
-        MOCK_METHOD(int, getpwent_r, (struct passwd* pwd, char* buf, size_t buflen, struct passwd** result), (const, override));
-        MOCK_METHOD(struct passwd*, getpwnam, (const char* name), (const, override));
-        MOCK_METHOD(void, endpwent, (), (const, override));
-        MOCK_METHOD(int, getgrouplist, (const char* user, gid_t group, gid_t* groups, int* ngroups), (const, override));
 };
 
 using ::testing::_;
@@ -29,16 +38,18 @@ using ::testing::StrEq;
 
 TEST(UserGroupsProviderTest, CollectWithUIDReturnsExpectedJson)
 {
-    auto mockWrapper = std::make_shared<MockUserGroupsWrapper>();
+    auto mockGroup = std::make_shared<MockGroupWrapper>();
+    auto mockPasswd = std::make_shared<MockPasswdWrapper>();
+    auto mockSys = std::make_shared<MockSystemWrapper>();
 
     const uid_t testUid = 1001;
     const gid_t testGid = 2001;
     const char* username = "testuser";
 
-    EXPECT_CALL(*mockWrapper, sysconf(_SC_GETPW_R_SIZE_MAX))
+    EXPECT_CALL(*mockSys, sysconf(_SC_GETPW_R_SIZE_MAX))
     .WillOnce(Return(1024));
 
-    EXPECT_CALL(*mockWrapper, getpwuid_r(testUid, _, _, _, _))
+    EXPECT_CALL(*mockPasswd, getpwuid_r(testUid, _, _, _, _))
     .WillOnce(Invoke([&](uid_t, struct passwd * pwd, char*, size_t, struct passwd** result)
     {
         pwd->pw_name = const_cast<char*>(username);
@@ -48,7 +59,7 @@ TEST(UserGroupsProviderTest, CollectWithUIDReturnsExpectedJson)
         return 0;
     }));
 
-    EXPECT_CALL(*mockWrapper, getgrouplist(username, testGid, _, _))
+    EXPECT_CALL(*mockGroup, getgrouplist(username, testGid, _, _))
     .WillOnce(Invoke([](const char*, gid_t, gid_t * groups, int* ngroups)
     {
         groups[0] = 2001;
@@ -57,7 +68,7 @@ TEST(UserGroupsProviderTest, CollectWithUIDReturnsExpectedJson)
         return 2;
     }));
 
-    UserGroupsProvider provider(mockWrapper);
+    UserGroupsProvider provider(mockGroup, mockPasswd, mockSys);
 
     auto result = provider.collect({testUid});
 
@@ -70,8 +81,10 @@ TEST(UserGroupsProviderTest, CollectWithUIDReturnsExpectedJson)
 
 TEST(UserGroupsProviderTest, CollectWithoutUIDReturnsExpectedJson)
 {
-    auto mockWrapper = std::make_shared<NiceMock<MockUserGroupsWrapper>>();
-    UserGroupsProvider provider(mockWrapper);
+    auto mockGroup = std::make_shared<MockGroupWrapper>();
+    auto mockPasswd = std::make_shared<MockPasswdWrapper>();
+    auto mockSys = std::make_shared<MockSystemWrapper>();
+    UserGroupsProvider provider(mockGroup, mockPasswd, mockSys);
 
     struct passwd user1;
     struct passwd user2;
@@ -84,15 +97,15 @@ TEST(UserGroupsProviderTest, CollectWithoutUIDReturnsExpectedJson)
     const uid_t user2Uid = 1002;
     const gid_t user2Gid = 200;
 
-    EXPECT_CALL(*mockWrapper, sysconf(_SC_GETPW_R_SIZE_MAX))
+    EXPECT_CALL(*mockSys, sysconf(_SC_GETPW_R_SIZE_MAX))
     .WillOnce(Return(1024));
 
-    EXPECT_CALL(*mockWrapper, setpwent());
+    EXPECT_CALL(*mockPasswd, setpwent());
 
     {
         InSequence seq;
 
-        EXPECT_CALL(*mockWrapper, getpwent_r(_, _, _, _))
+        EXPECT_CALL(*mockPasswd, getpwent_r(_, _, _, _))
         .WillOnce(Invoke([&](struct passwd * pwd, char* /* buf */, size_t /* buflen */, struct passwd** pwdResult)
         {
             user1.pw_name = const_cast<char*>(user1Name);
@@ -103,7 +116,7 @@ TEST(UserGroupsProviderTest, CollectWithoutUIDReturnsExpectedJson)
             return 0;
         }));
 
-        EXPECT_CALL(*mockWrapper, getpwent_r(_, _, _, _))
+        EXPECT_CALL(*mockPasswd, getpwent_r(_, _, _, _))
         .WillOnce(Invoke([&](struct passwd * pwd, char* /* buf */, size_t /* buflen */, struct passwd** pwdResult)
         {
             user2.pw_name = const_cast<char*>(user2Name);
@@ -114,7 +127,7 @@ TEST(UserGroupsProviderTest, CollectWithoutUIDReturnsExpectedJson)
             return 0;
         }));
 
-        EXPECT_CALL(*mockWrapper, getpwent_r(_, _, _, _))
+        EXPECT_CALL(*mockPasswd, getpwent_r(_, _, _, _))
         .WillOnce(Invoke([](struct passwd*, char*, size_t, struct passwd** pwdResult)
         {
             *pwdResult = nullptr;
@@ -122,7 +135,7 @@ TEST(UserGroupsProviderTest, CollectWithoutUIDReturnsExpectedJson)
         }));
     }
 
-    EXPECT_CALL(*mockWrapper, getgrouplist(StrEq(user1Name), user1Gid, _, _))
+    EXPECT_CALL(*mockGroup, getgrouplist(StrEq(user1Name), user1Gid, _, _))
     .WillOnce(Invoke([](const char*, gid_t, gid_t * groups, int* ngroups)
     {
         groups[0] = 101;
@@ -131,7 +144,7 @@ TEST(UserGroupsProviderTest, CollectWithoutUIDReturnsExpectedJson)
         return 2;
     }));
 
-    EXPECT_CALL(*mockWrapper, getgrouplist(StrEq(user2Name), user2Gid, _, _))
+    EXPECT_CALL(*mockGroup, getgrouplist(StrEq(user2Name), user2Gid, _, _))
     .WillOnce(Invoke([](const char*, gid_t, gid_t * groups, int* ngroups)
     {
         groups[0] = 201;
@@ -140,7 +153,7 @@ TEST(UserGroupsProviderTest, CollectWithoutUIDReturnsExpectedJson)
         return 2;
     }));
 
-    EXPECT_CALL(*mockWrapper, endpwent());
+    EXPECT_CALL(*mockPasswd, endpwent());
 
     nlohmann::json results = provider.collect();
 
