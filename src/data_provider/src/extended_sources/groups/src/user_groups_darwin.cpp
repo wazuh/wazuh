@@ -1,15 +1,18 @@
 #include <iostream>
-#include "user_groups_unix.hpp"
+#include "user_groups_darwin.hpp"
 #include "user_groups_wrapper.hpp"
-#include "od_wrapper.hpp"
+#include "open_directory_utils_wrapper.hpp"
 
-UserGroupsProvider::UserGroupsProvider(std::shared_ptr<IUserGroupsWrapper> wrapper)
+UserGroupsProvider::UserGroupsProvider(std::shared_ptr<IUserGroupsWrapper> wrapper,
+                                       std::shared_ptr<IODUtilsWrapper> odWrapper)
     : m_userGroupsWrapper(std::move(wrapper))
+    , m_odWrapper(std::move(odWrapper))
 {
 }
 
 UserGroupsProvider::UserGroupsProvider()
     : m_userGroupsWrapper(std::make_shared<UserGroupsWrapper>())
+    , m_odWrapper(std::make_shared<ODUtilsWrapper>())
 {
 }
 
@@ -31,7 +34,7 @@ nlohmann::json UserGroupsProvider::collect(const std::set<uid_type>& uids)
     }
     else {
         std::map<std::string, bool> usernames;
-        genODEntries("dsRecTypeStandard:Users", nullptr, usernames);
+        m_odWrapper->genEntries("dsRecTypeStandard:Users", nullptr, usernames);
         for (const auto& username : usernames) {
             struct passwd* pwd = m_userGroupsWrapper->getpwnam(username.first.c_str());
             if (pwd != nullptr) {

@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 #include "iuser_groups_wrapper.hpp"
-#include "user_groups_unix.hpp"
+#include "user_groups_linux.hpp"
 
 class MockUserGroupsWrapper : public IUserGroupsWrapper
 {
