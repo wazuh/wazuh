@@ -12,6 +12,14 @@
 #include "agentd.h"
 #include "os_net/os_net.h"
 
+bool needs_config_reload = false;
+void reload_handler(int signum) {
+    if (signum == SIGUSR1) {
+        minfo("SIGNAL [(%d)-(%s)] Received. Reload agentd.", signum, strsignal(signum));
+        needs_config_reload = true;
+    }
+}
+
 /* Start the agent daemon */
 void AgentdStart(int uid, int gid, const char *user, const char *group)
 {
@@ -100,6 +108,10 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
     /* Ignore SIGPIPE, it will be detected on recv */
     signal(SIGPIPE, SIG_IGN);
 
+    /* Config SIGUSR1 as reload signal */
+    struct sigaction action = { .sa_handler = reload_handler, .sa_flags = SA_RESTART };
+    sigaction(SIGUSR1, &action, NULL);
+
     /* Launch rotation thread */
     rotate_log = getDefine_Int("monitord", "rotate_log", 0, 1);
     if (rotate_log) {
@@ -123,15 +135,6 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
     /* Set max fd for select */
     if (agt->sock > maxfd) {
         maxfd = agt->sock;
-    }
-
-    /* Connect to the execd queue */
-    if (agt->execdq == 0) {
-        if ((agt->execdq = StartMQ(EXECQUEUE, WRITE, 1)) < 0) {
-            minfo("Unable to connect to the active response "
-                   "queue (disabled).");
-            agt->execdq = -1;
-        }
     }
 
     start_agent(1);
@@ -177,11 +180,30 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
         fdtimeout.tv_usec = 0;
 
         /* Wait with a timeout for any descriptor */
-        rc = select(maxfd, &fdset, NULL, NULL, &fdtimeout);
+        do {
+            rc = select(maxfd, &fdset, NULL, NULL, &fdtimeout);
+        } while (rc < 0 && errno == EINTR);
+
         if (rc == -1) {
             merror_exit(SELECT_ERROR, errno, strerror(errno));
         } else if (rc == 0) {
             continue;
+        }
+
+        /* Check the flag for pending configuration reload */
+        if (needs_config_reload) {
+            needs_config_reload = false;
+
+            close(agt->execdq);
+            agt->execdq=-1;
+        }
+
+        /* Connect to the execd queue */
+        if (agt->execdq <= 0) {
+            if ((agt->execdq = StartMQ(EXECQUEUE, WRITE, 1)) < 0) {
+                minfo("Unable to connect to the active response queue (disabled).");
+                agt->execdq = -1;
+            }
         }
 
         /* For the receiver */
