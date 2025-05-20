@@ -180,7 +180,7 @@ def delete_asset_task(executor: exec.Executor, client: APIClient, asset_name: st
 def run(args, resource_handler: rs.ResourceHandler):
     api_socket = args['api_sock']
     namespace = args['namespace']
-    integration_path = Path(args['integration-path'])
+    integration_path = Path(args['integration-path']).resolve()
     if not integration_path.exists() or not integration_path.is_dir():
         print(f'Error: {integration_path.as_posix()} does not exist or is not a directory')
         return -1
