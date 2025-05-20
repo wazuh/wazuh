@@ -21,30 +21,27 @@ const std::map<int, std::string> LoggedInUsersProvider::m_kSessionStates =
 };
 
 LoggedInUsersProvider::LoggedInUsersProvider(std::shared_ptr<ITWSapiWrapper> twsWrapper,
-    std::shared_ptr<IWinBaseApiWrapper> winBaseWrapper, std::shared_ptr<IWinSDDLWrapper> winSddlWrapper,
-    std::shared_ptr<IWinSecurityBaseApiWrapper> winSecurityWrapper)
+                                             std::shared_ptr<IWinBaseApiWrapper> winBaseWrapper, std::shared_ptr<IWinSDDLWrapper> winSddlWrapper,
+                                             std::shared_ptr<IWinSecurityBaseApiWrapper> winSecurityWrapper)
     : m_twsApiWrapper(std::move(twsWrapper)),
-     m_winBaseWrapper(std::move(winBaseWrapper)),
-     m_winSddlWrapper(std::move(winSddlWrapper)),
-     m_winSecurityWrapper(std::move(winSecurityWrapper)) {}
+      m_winBaseWrapper(std::move(winBaseWrapper)),
+      m_winSddlWrapper(std::move(winSddlWrapper)),
+      m_winSecurityWrapper(std::move(winSecurityWrapper)) {}
 
 LoggedInUsersProvider::LoggedInUsersProvider()
     : m_twsApiWrapper(std::make_shared<TWSapiWrapper>()),
-    m_winBaseWrapper(std::make_shared<WinBaseApiWrapper>()),
-    m_winSddlWrapper(std::make_shared<WinSDDLWrapper>()),
-    m_winSecurityWrapper(std::make_shared<WinSecurityBaseApiWrapper>()) {}
+      m_winBaseWrapper(std::make_shared<WinBaseApiWrapper>()),
+      m_winSddlWrapper(std::make_shared<WinSDDLWrapper>()),
+      m_winSecurityWrapper(std::make_shared<WinSecurityBaseApiWrapper>()) {}
 
 nlohmann::json LoggedInUsersProvider::collect()
 {
     nlohmann::json results;
-    PWTS_SESSION_INFO_1W pSessionInfo;
+    WTS_SESSION_INFOW* pSessionInfo = nullptr;
     unsigned long count;
 
-    // As per the MSDN:
-    // This parameter is reserved. Always set this parameter to one.
-    unsigned long level = 1;
-    auto res = m_twsApiWrapper->WTSEnumerateSessionsExW(
-                   WTS_CURRENT_SERVER_HANDLE, &level, 0, &pSessionInfo, &count);
+    auto res = m_twsApiWrapper->WTSEnumerateSessionsW(
+                   WTS_CURRENT_SERVER_HANDLE, 0, 1, &pSessionInfo, &count);
 
     if (res == 0)
     {
@@ -78,9 +75,10 @@ nlohmann::json LoggedInUsersProvider::collect()
         const auto wtsSession = reinterpret_cast<WTSINFOW*>(sessionInfo);
         r["user"] = Utils::EncodingWindowsHelper::wstringToStringUTF8(wtsSession->UserName);
         r["type"] = m_kSessionStates.at(pSessionInfo[i].State);
-        r["tty"] = pSessionInfo[i].pSessionName == nullptr
+        r["tty"] = pSessionInfo[i].pWinStationName == nullptr
                    ? ""
-                   : Utils::EncodingWindowsHelper::wstringToStringUTF8(pSessionInfo[i].pSessionName);
+                   : Utils::EncodingWindowsHelper::wstringToStringUTF8(pSessionInfo[i].pWinStationName);
+
 
         FILETIME utcTime = {0};
         unsigned long long unixTime = 0;
@@ -187,7 +185,7 @@ nlohmann::json LoggedInUsersProvider::collect()
 
     if (pSessionInfo != nullptr)
     {
-        m_twsApiWrapper->WTSFreeMemoryEx(WTSTypeSessionInfoLevel1, pSessionInfo, count);
+        m_twsApiWrapper->WTSFreeMemory(pSessionInfo);
         pSessionInfo = nullptr;
     }
 
@@ -220,12 +218,12 @@ std::unique_ptr<BYTE[]> LoggedInUsersProvider::getSidFromAccountName(const std::
     DWORD domainNameSize = 0;
     auto eSidType = SidTypeUnknown;
     auto ret = m_winBaseWrapper->LookupAccountNameW(nullptr,
-                                                   accountName,
-                                                   nullptr,
-                                                   &sidBufferSize,
-                                                   nullptr,
-                                                   &domainNameSize,
-                                                   &eSidType);
+                                                    accountName,
+                                                    nullptr,
+                                                    &sidBufferSize,
+                                                    nullptr,
+                                                    &domainNameSize,
+                                                    &eSidType);
 
     if (ret == 0 && GetLastError() != ERROR_INSUFFICIENT_BUFFER)
     {
@@ -241,12 +239,12 @@ std::unique_ptr<BYTE[]> LoggedInUsersProvider::getSidFromAccountName(const std::
     // Call LookupAccountNameW() a second time to actually obtain the SID for
     // the given account name:
     ret = m_winBaseWrapper->LookupAccountNameW(nullptr,
-                                              accountName,
-                                              sidBuffer.get(),
-                                              &sidBufferSize,
-                                              domainName.data(),
-                                              &domainNameSize,
-                                              &eSidType);
+                                               accountName,
+                                               sidBuffer.get(),
+                                               &sidBufferSize,
+                                               domainName.data(),
+                                               &domainNameSize,
+                                               &eSidType);
 
     if (ret == 0)
     {
@@ -268,12 +266,17 @@ std::string LoggedInUsersProvider::psidToString(PSID sid)
 {
     LPWSTR sidOut = nullptr;
     // Custom deleter to free the allocated memory for sidOut.
-    auto deleter = [](LPWSTR* p) { if (p && *p) LocalFree(*p); };
+    auto deleter = [](LPWSTR * p)
+    {
+        if (p && *p) LocalFree(*p);
+    };
     std::unique_ptr<LPWSTR, decltype(deleter)> sidGuard(&sidOut, deleter);
 
-    if (!m_winSddlWrapper->ConvertSidToStringSidW(sid, &sidOut)) {
+    if (!m_winSddlWrapper->ConvertSidToStringSidW(sid, &sidOut))
+    {
         std::cerr << "ConvertSidToStringW failed with " << GetLastError() << std::endl;
         return {};
     }
+
     return Utils::EncodingWindowsHelper::wstringToStringUTF8(sidOut);
 }
