@@ -260,6 +260,7 @@ class BerkeleyRpmDBReader final
                     for (size_t i = 0; i < dirindexes.size(); ++i)
                     {
                         int index = dirindexes[i];
+
                         if (index >= 0 && index < static_cast<int>(dirnames.size()))
                         {
                             std::string fullPath = dirnames[index] + basenames[i];
