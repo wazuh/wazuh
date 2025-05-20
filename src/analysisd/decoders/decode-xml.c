@@ -60,7 +60,7 @@ STATIC bool w_get_attr_regex_type(xml_node * node, w_exp_type_t * type);
 int getDecoderfromlist(const char *name, OSStore **decoder_store) {
 
     if (*decoder_store) {
-        return (OSStore_GetPosition(*decoder_store, name));
+        return (OSStore_GetPosition_ex(*decoder_store, name));
     }
 
     return (0);
@@ -77,7 +77,7 @@ STATIC int addDecoder2list(const char *name, OSStore **decoder_store) {
     }
 
     /* Store data */
-    if (!OSStore_Put(*decoder_store, name, NULL)) {
+    if (!OSStore_Put_ex(*decoder_store, name, NULL)) {
         merror(LIST_ADD_ERROR);
         return (0);
     }

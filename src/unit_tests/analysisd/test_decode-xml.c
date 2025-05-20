@@ -52,7 +52,7 @@ OSStore * __wrap_OSStore_Create() {
     return mock_type(OSStore *);
 }
 
-int __wrap_OSStore_Put(OSStore *list, const char *key, void *data) {
+int __wrap_OSStore_Put_ex(OSStore *list, const char *key, void *data) {
     return mock_type(int);
 }
 
@@ -239,7 +239,7 @@ void test_addDecoder2list_empty_list_deco_ok(void ** state)
     int retval;
 
     will_return(__wrap_OSStore_Create, (OSStore *) 1);
-    will_return(__wrap_OSStore_Put, 1);
+    will_return(__wrap_OSStore_Put_ex, 1);
 
     retval = addDecoder2list(name, &decoder_store);
 
@@ -254,7 +254,7 @@ void test_addDecoder2list_fail_push(void ** state)
     int retval;
     os_calloc(1, sizeof(OSStore), decoder_store);
 
-    will_return(__wrap_OSStore_Put, 0);
+    will_return(__wrap_OSStore_Put_ex, 0);
     expect_string(__wrap__merror, formatted_msg, "(1291): Error adding nodes to list.");
 
     retval = addDecoder2list(name, &decoder_store);
@@ -271,7 +271,7 @@ void test_addDecoder2list_push_ok(void ** state)
     int retval;
     os_calloc(1, sizeof(OSStore), decoder_store);
 
-    will_return(__wrap_OSStore_Put, 1);
+    will_return(__wrap_OSStore_Put_ex, 1);
 
     retval = addDecoder2list(name, &decoder_store);
 
