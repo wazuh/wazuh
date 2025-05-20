@@ -1,0 +1,35 @@
+# Name of the helper function
+name: decode_base16
+
+metadata:
+  description: |
+    The operation transforms a string of hexa digits into an ASCII string. The result of the operation is mapped to “field”.
+    If the “field” already exists, then it will be replaced. In case of errors “field” will not be modified.
+  keywords:
+    - undefined
+
+helper_type: map
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: False
+
+# Arguments expected by the helper function
+arguments:
+  hex:
+    type: string # Expected type is string
+    generate: hexadecimal
+    source: reference # Includes only references (their names start with $)
+
+skipped:
+  - success_cases
+
+output:
+  type: string
+  subset: string
+
+test:
+  - arguments:
+      hex: 48656C6C6F20776F726C6421
+    should_pass: true
+    expected: "Hello world!"
+    description: Convert base 16 to decimal

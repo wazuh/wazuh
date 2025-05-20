@@ -1,0 +1,49 @@
+# Name of the helper function
+name: string_less
+
+metadata:
+  description: |
+    Checkers whether the value stored in field is lexicographically less than to the one provided.
+    If they're not, the function evaluates to false. In case of error, the function will evaluate to false.
+    This helper function is typically used in the check stage
+
+  keywords:
+    - string
+    - comparison
+
+helper_type: filter
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: false
+
+# Arguments expected by the helper function
+arguments:
+  any_string:
+    type: string  # Expected type is integer
+    generate: string
+    source: both # includes values or references (their names start with $)
+
+# do not compare with target field to avoid failure
+skipped:
+  - success_cases
+
+target_field:
+  type: string
+  generate: string
+
+test:
+  - arguments:
+      any_string: wazuh
+    target_field: hello world!
+    should_pass: true
+    description: Success string less
+  - arguments:
+      any_string: hello world!
+    target_field: wazuh
+    should_pass: false
+    description: Failure string less
+  - arguments:
+      any_string: hello world!
+    target_field: hello world!
+    should_pass: false
+    description: Failure string less

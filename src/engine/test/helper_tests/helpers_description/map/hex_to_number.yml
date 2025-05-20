@@ -1,0 +1,41 @@
+# Name of the helper function
+name: hex_to_number
+
+metadata:
+  description: |
+    The peration transforms a number in hexadecimal format (0x...) to a base 10 number.
+    The result of the operation is mapped to “field”. If the “field” already exists, then it will be replaced.
+    In case of errors “field” will not be modified.
+  keywords:
+    - undefined
+
+helper_type: map
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: False
+
+# Arguments expected by the helper function
+arguments:
+  hex:
+    type: string # Expected type is string
+    generate: hexadecimal
+    source: reference # Includes only references (their names start with $)
+
+skipped:
+  - success_cases
+
+output:
+  type: number
+  subset: integer
+
+test:
+  - arguments:
+      hex: 2A
+    should_pass: true
+    expected: 42
+    description: Convert hexadecimal to decimal
+  - arguments:
+      hex: '0xBC763516'
+    should_pass: true
+    expected: 3161863446
+    description: Converts hexadecimal to int64

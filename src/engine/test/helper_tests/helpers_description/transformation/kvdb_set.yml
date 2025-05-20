@@ -1,0 +1,63 @@
+# Name of the helper function
+name: kvdb_set
+
+metadata:
+  description: |
+    Inserts or updates the value of a key in a KVDB named db-name. If the value already exists, it is updated.
+    If the database does not exist or the key value can't be inserted or updated, it returns an error.
+    If it was able to insert the value, then map `true` into field, if not, then map `false` into field.
+    Value type can be string, number, object, array or null. This helper function is typically used in the map stage
+  keywords:
+    - kvdb
+
+helper_type: transformation
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: false
+
+# Arguments expected by the helper function
+arguments:
+  db-name:
+    type: string  # Accept only object
+    generate: string
+    source: value # Includes only values
+  key:
+    type: string  # Accept only string
+    generate: string
+    source: both # Includes values or references (their names start with $)
+  value:
+    type:
+      - object
+      - array
+      - string
+      - number
+      - boolean
+    source: both # Includes values or references (their names start with $)
+
+# target_field type not comprobed
+# Database not exists
+skipped:
+  - different_target_field_type
+  - success_cases
+
+target_field:
+  type: boolean
+  generate: boolean
+
+test:
+  - arguments:
+      db-name: testing
+      key: new_key
+      value: any_value
+    target_field: true
+    should_pass: true
+    expected: true
+    description: Success kvdb set
+  - arguments:
+      db-name: testing
+      key: key
+      value: new_value
+    target_field: true
+    should_pass: true
+    expected: false
+    description: Failure kvdb set

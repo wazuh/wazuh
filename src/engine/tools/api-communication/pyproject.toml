@@ -1,0 +1,13 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "api-communication"
+version = "1.0.0.dev0"
+authors = [{ name = "Wazuh, Inc." }]
+description = "A library to communicate with the Wazuh Engine API."
+requires-python = ">=3.8"
+classifiers = ["Programming Language :: Python :: 3"]
+
+dependencies = ["protobuf", "httpx"]

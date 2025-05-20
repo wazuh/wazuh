@@ -1,0 +1,60 @@
+# Name of the helper function
+name: parse_bool
+
+metadata:
+  description: |
+    Checks if an input is the “true” or “false” string and store a boolean value in field according to the string value.
+    The operation es key insensitive Fail if other value is store in $inField or not exist.
+  keywords:
+    - parser
+
+helper_type: transformation
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: true
+
+# Arguments expected by the helper function
+arguments:
+  input_field:
+    type: string  # Accept only string
+    generate: string
+    source: reference # includes only references (their names start with $)
+
+skipped:
+  - success_cases # parser failed - string generation is random
+
+target_field:
+  type:
+    - object
+    - array
+    - string
+    - number
+    - boolean
+
+test:
+  - arguments:
+      input_field: "true"
+    target_field: any_value
+    should_pass: true
+    expected: true
+    description: Success bool parse
+  - arguments:
+      input_field: hello
+    target_field: any_value
+    should_pass: false
+    expected: any_value
+    description: Failure bool parse
+  - arguments:
+      input_field: hello
+    target_field: [any_value]
+    should_pass: false
+    expected: [any_value]
+    description: Failure bool parse
+  - arguments:
+      input_field: hello
+    target_field:
+      key: value
+    should_pass: false
+    expected:
+      key: value
+    description: Failure bool parse

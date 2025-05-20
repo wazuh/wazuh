@@ -1,0 +1,126 @@
+syntax = "proto3";
+
+import "engine.proto";
+
+package com.wazuh.api.engine.catalog;
+
+/*
+ * This API is used to manage the catalog of the Wazuh manager
+ * TODO: Make all roles required (and remove the default value)
+ */
+
+/* Supported formats for the resources (Case sensitive) */
+enum ResourceFormat
+{
+    option allow_alias = true;
+    json = 0; // JSON format
+    yaml = 1; // YAML format
+    yml = 1;  // Alias for YAML
+}
+
+/*
+ * Supported types for the resources (Case sensitive)
+ * UNKNOWN is only used for errors
+ */
+enum ResourceType
+{
+    UNKNOWN = 0;     // Unknown (Only for errors)
+    decoder = 1;     // Decoder
+    rule = 2;        // Rule
+    filter = 3;      // Filter
+    output = 4;      // Output
+    schema = 5;      // Schema
+    collection = 6;  // Collection
+    integration = 7; // Integration
+}
+
+/***************************************************
+ * Post a resource in the catalog
+ *
+ * command: catalog.resource/post (<resource>/<action>)
+ **************************************************/
+message ResourcePost_Request
+{
+    optional ResourceType type = 1;     // Type of the resource (rule, decoder, etc)
+    optional ResourceFormat format = 2; // Format of the resource
+    optional string content = 3;        // Content of the resource
+    optional string namespaceid = 4;    // Namespace where the resource will be created
+}
+
+// message ResourcePost_Response -> Return a GenericStatus_Response
+
+/***************************************************
+ * Get a resource from the catalog
+ *
+ * command: catalog.resource/get (<resource>/<action>)
+ **************************************************/
+message ResourceGet_Request
+{
+    optional string name = 1;           // Name of the resource
+    optional ResourceFormat format = 2; // Format of the resource (xml, json, etc)
+    optional string namespaceid = 3;    // Namespace where the resource is located
+}
+
+message ResourceGet_Response
+{
+    ReturnStatus status = 1;     // Status of the query
+    optional string error = 2;   // Error message if status is ERROR
+    optional string content = 3; // Content of the resource if status is OK
+}
+
+/***************************************************
+ * Put a resource in the catalog
+ *
+ * command: catalog.resource/put (<resource>/<action>)
+ **************************************************/
+message ResourcePut_Request
+{
+    optional string name = 1;           // Name of the resource
+    optional ResourceFormat format = 2; // Format of the resource (xml, json, etc)
+    optional string content = 3;        // Content of the resource
+    optional string namespaceid = 4;    // Namespace where the resource is located
+}
+
+// message ResourcePut_Response -> Return a GenericStatus_Response
+
+/***************************************************
+ * Delete a resource from the catalog
+ *
+ * command: catalog.resource/delete (<resource>/<action>)
+ **************************************************/
+message ResourceDelete_Request
+{
+    optional string name = 1;        // Name of the resource
+    optional string namespaceid = 2; // Namespace where the resource is located
+}
+
+// message ResourceDelete_Response -> Return a GenericStatus_Response
+
+/***************************************************
+ * Validate a resource from the catalog
+ *
+ * command: catalog.resource/validate (<resource>/<action>)
+ **************************************************/
+message ResourceValidate_Request
+{
+    optional string name = 1;           // Name of the resource
+    optional ResourceFormat format = 2; // Format of the resource (xml, json, etc)
+    optional string content = 3;        // Content of the resource
+    optional string namespaceid = 4;    // Namespace where the resource is located
+}
+
+// message ResourceValidate_Response -> Return a GenericStatus_Response
+
+/***************************************************
+ * List all namespaces from the catalog
+ *
+ * command: catalog.namespaces/get (<resource>/<action>)
+ **************************************************/
+message NamespacesGet_Request {}
+
+message NamespacesGet_Response
+{
+    ReturnStatus status = 1;        // Status of the query
+    optional string error = 2;      // Error message if status is ERROR
+    repeated string namespaces = 3; // List of all namespaces
+}

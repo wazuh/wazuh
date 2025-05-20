@@ -1,0 +1,121 @@
+{
+  "dependencies": [
+    "benchmark",
+    "concurrentqueue",
+    "curl",
+    "date",
+    "flatbuffers",
+    "fast-float",
+    "fmt",
+    "gtest",
+    "libmaxminddb",
+    "opentelemetry-cpp",
+    "protobuf",
+    "pugixml",
+    "rapidjson",
+    "re2",
+    "rocksdb",
+    "rxcpp",
+    "spdlog",
+    "taskflow",
+    "yaml-cpp",
+    "cpp-httplib",
+    "liblzma",
+    "libarchive",
+    "openssl"
+  ],
+  "overrides": [
+    {
+      "name": "benchmark",
+      "version": "1.8.5#0"
+    },
+    {
+      "name": "concurrentqueue",
+      "version": "1.0.4#0"
+    },
+    {
+      "name": "curl",
+      "version": "8.11.1#0"
+    },
+    {
+      "name": "date",
+      "version": "2024-05-14#0"
+    },
+    {
+      "name": "flatbuffers",
+      "version": "24.3.25#0"
+    },
+    {
+      "name": "fast-float",
+      "version": "6.1.4#0"
+    },
+    {
+      "name": "fmt",
+      "version": "8.1.1#2"
+    },
+    {
+      "name": "gtest",
+      "version": "1.15.0#0"
+    },
+    {
+      "name": "libmaxminddb",
+      "version": "1.9.1#0"
+    },
+    {
+      "name": "opentelemetry-cpp",
+      "version": "1.8.3#6"
+    },
+    {
+      "name": "protobuf",
+      "version": "3.21.12#4"
+    },
+    {
+      "name": "pugixml",
+      "version": "1.14#0"
+    },
+    {
+      "name": "rapidjson",
+      "version": "2023-07-17#1"
+    },
+    {
+      "name": "re2",
+      "version": "2024-06-01#0"
+    },
+    {
+      "name": "rocksdb",
+      "version": "9.2.1#0"
+    },
+    {
+      "name": "rxcpp",
+      "version": "4.1.1#1"
+    },
+    {
+      "name": "spdlog",
+      "version": "1.14.1#0"
+    },
+    {
+      "name": "taskflow",
+      "version": "3.7.0#0"
+    },
+    {
+      "name": "yaml-cpp",
+      "version": "0.8.0#0"
+    },
+    {
+      "name": "cpp-httplib",
+      "version": "0.16.2#0"
+    },
+    {
+      "name": "liblzma",
+      "version": "5.6.3#0"
+    },
+    {
+      "name": "libarchive",
+      "version": "3.7.7#0"
+    },
+    {
+      "name": "openssl",
+      "version": "3.4.0#0"
+    }
+  ]
+}
