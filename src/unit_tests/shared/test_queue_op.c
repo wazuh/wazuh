@@ -98,6 +98,57 @@ void test_queue_empty(void **state){
     assert_int_equal(queue_empty(queue), 1);
 }
 
+void test_queue_get_percentage_ex(void ** state) {
+
+    w_queue_t * queue = *state;
+
+    // empty
+    expect_value(__wrap_pthread_mutex_lock, mutex, &queue->mutex);
+    expect_value(__wrap_pthread_mutex_unlock, mutex, &queue->mutex);
+    assert_float_equal(queue_get_percentage_ex(queue), 0.0f, 0.01f);
+
+    // quarter full
+    for (int i = 0; i < QUEUE_SIZE / 4; i++) {
+        queue_push(queue, NULL);
+    }
+    expect_value(__wrap_pthread_mutex_lock, mutex, &queue->mutex);
+    expect_value(__wrap_pthread_mutex_unlock, mutex, &queue->mutex);
+    assert_float_equal(queue_get_percentage_ex(queue), 0.25f, 0.01f);
+
+    // half full
+    for (int i = 0; i < QUEUE_SIZE / 4; i++) {
+        queue_push(queue, NULL);
+    }
+    expect_value(__wrap_pthread_mutex_lock, mutex, &queue->mutex);
+    expect_value(__wrap_pthread_mutex_unlock, mutex, &queue->mutex);
+    assert_float_equal(queue_get_percentage_ex(queue), 0.5f, 0.01f);
+
+    // three quarters full
+    for (int i = 0; i < QUEUE_SIZE / 4; i++) {
+        queue_push(queue, NULL);
+    }
+    expect_value(__wrap_pthread_mutex_lock, mutex, &queue->mutex);
+    expect_value(__wrap_pthread_mutex_unlock, mutex, &queue->mutex);
+    assert_float_equal(queue_get_percentage_ex(queue), 0.75f, 0.01f);
+
+    // full
+    for (int i = 0; i < QUEUE_SIZE / 4; i++) {
+        queue_push(queue, NULL);
+    }
+    expect_value(__wrap_pthread_mutex_lock, mutex, &queue->mutex);
+    expect_value(__wrap_pthread_mutex_unlock, mutex, &queue->mutex);
+    assert_float_equal(queue_get_percentage_ex(queue), 1.0f, 0.01f);
+
+    // empty
+    for (int i = 0; i < QUEUE_SIZE; i++) {
+        queue_pop(queue);
+    }
+
+    expect_value(__wrap_pthread_mutex_lock, mutex, &queue->mutex);
+    expect_value(__wrap_pthread_mutex_unlock, mutex, &queue->mutex);
+    assert_float_equal(queue_get_percentage_ex(queue), 0.0f, 0.01f);
+}
+
 void test_queue_push(void **state) {
     w_queue_t *queue = *state;
     int i;
@@ -289,6 +340,7 @@ int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_queue_full, setup_queue, teardown_queue),
         cmocka_unit_test_setup_teardown(test_queue_empty, setup_queue, teardown_queue),
+        cmocka_unit_test_setup_teardown(test_queue_get_percentage_ex, setup_queue, teardown_queue),
         cmocka_unit_test_setup_teardown(test_queue_push, setup_queue, teardown_queue),
         cmocka_unit_test_setup_teardown(test_queue_push_ex, setup_queue, teardown_queue),
         cmocka_unit_test_setup_teardown(test_queue_push_ex_block, setup_queue, teardown_queue),
