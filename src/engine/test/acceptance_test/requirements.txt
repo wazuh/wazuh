@@ -1,0 +1,6 @@
+# Please update it if you find new dependencies not included on this file
+
+matplotlib
+seaborn
+pandas
+psutil

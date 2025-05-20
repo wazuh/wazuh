@@ -1,0 +1,11 @@
+{
+    "steps": [
+        {
+            "description": "Cppcheck",
+            "parameters": [
+                "--test cppcheck",
+                "--exclude build"
+            ]
+        }
+    ]
+}
