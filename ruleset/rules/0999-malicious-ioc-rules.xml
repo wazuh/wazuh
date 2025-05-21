@@ -12,7 +12,7 @@
   <rule id="99901" level="14">
     <!-- The if_sid tag references the built-in FIM rules -->
     <if_sid>554, 550</if_sid>
-    <list field="sha256" lookup="match_key">etc/lists/malicious-ioc/malicious-domains</list>
+    <list field="sha256" lookup="match_key">etc/lists/malicious-ioc/malware-hashes</list>
     <description>FIM: File with known malware hash detected: $(file).</description>
     <mitre>
       <id>T1204.002</id>
@@ -51,14 +51,14 @@
 <group name="web,accesslog,">
 
   <rule id="99905" level="9">
-    <if_sid>31103, 31104, 31105, 31109, 31164, 31165, 31170, 31171</if_sid>
+    <if_sid>31103, 31104, 31105, 31106, 31109, 31164, 31165, 31170, 31171</if_sid>
     <list field="srcip" lookup="match_key">etc/lists/malicious-ioc/malicious-ip</list>
     <description>Common web attack from malicious IP $(srcip) detected.</description>
   </rule>
 
   <rule id="99906" level="14">
-    <if_sid>31106</if_sid>
-    <list field="srcip" lookup="match_key">etc/lists/malicious-ioc/malicious-ip</list>
+    <if_sid>99905</if_sid>
+    <id>^200</id>
     <description>A web attack from malicious IP  $(srcip) returned code 200 (success).</description>
   </rule>
 
@@ -161,13 +161,13 @@
     </rule>
 
     <rule id="99917" level="9">
-        <if_sid>86601</if_sid>
+        <if_sid>86601, 86602</if_sid>
         <list field="http.hostname" lookup="match_key">etc/lists/malicious-ioc/malicious-domains</list>
         <description>Suricata: Alert from malicious domain $(http.hostname).</description>
     </rule>
 
     <rule id="99918" level="9">
-        <if_sid>86601</if_sid>
+        <if_sid>86601, 86602, 86603</if_sid>
         <list field="dns.rrname" lookup="match_key">etc/lists/malicious-ioc/malicious-domains</list>
         <description>Suricata: Alert from malicious domain $(dns.rrname).</description>
     </rule>
