@@ -9,26 +9,15 @@ include_directories(${CMAKE_SOURCE_DIR}/../external/googletest/googletest/includ
 include_directories(${CMAKE_SOURCE_DIR}/../external/googletest/googlemock/include/)
 link_directories(${CMAKE_SOURCE_DIR}/../external/googletest/lib/)
 
-if(UNIX)
-    set(TEST_SRC test_logged_in_users_unix.cpp)
-elseif(WIN32)
+if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     set(TEST_SRC test_logged_in_users_win.cpp)
 else()
-    message(FATAL_ERROR "Unsupported platform for tests")
+    set(TEST_SRC test_logged_in_users_unix.cpp)
 endif()
 
 add_executable(extended_sources_users_unit_test ${TEST_SRC})
 
-if(UNIX)
-    target_link_libraries(extended_sources_users_unit_test
-        logged_in_users
-        gtestd
-        gmockd
-        gtest_maind
-        gmock_maind
-        pthread
-    )
-elseif(WIN32)
+if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     target_link_libraries(extended_sources_users_unit_test
         logged_in_users
         debug gtestd
@@ -54,6 +43,15 @@ elseif(WIN32)
         oleaut32
         wtsapi32
         -static-libgcc -static-libstdc++
+    )
+else()
+    target_link_libraries(extended_sources_users_unit_test
+        logged_in_users
+        gtestd
+        gmockd
+        gtest_maind
+        gmock_maind
+        pthread
     )
 endif()
 

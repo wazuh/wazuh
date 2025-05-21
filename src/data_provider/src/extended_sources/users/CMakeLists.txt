@@ -14,10 +14,8 @@ endif()
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   set(SRC_FILES src/logged_in_users_win.cpp)
-elseif(UNIX)
-  set(SRC_FILES src/logged_in_users_unix.cpp)
 else()
-  message(FATAL_ERROR "Unsupported platform")
+  set(SRC_FILES src/logged_in_users_unix.cpp)
 endif()
 
 add_library(logged_in_users STATIC ${SRC_FILES})
