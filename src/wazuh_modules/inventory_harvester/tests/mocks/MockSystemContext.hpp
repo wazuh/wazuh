@@ -115,7 +115,7 @@ public:
     MOCK_METHOD(int64_t, cpuFrequency, (), (const));
     MOCK_METHOD(int64_t, freeMem, (), (const));
     MOCK_METHOD(int64_t, totalMem, (), (const));
-    MOCK_METHOD(int64_t, usedMem, (), (const));
+    MOCK_METHOD(double, usedMem, (), (const));
     MOCK_METHOD(std::string_view, netProtoIface, (), (const));
     MOCK_METHOD(std::string_view, netProtoType, (), (const));
     MOCK_METHOD(std::string_view, netProtoGateway, (), (const));

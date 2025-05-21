@@ -29,7 +29,7 @@ struct Hardware final
     {
         int64_t free = DEFAULT_INT_VALUE;
         int64_t total = DEFAULT_INT_VALUE;
-        int64_t used = DEFAULT_INT_VALUE;
+        double used = DEFAULT_DOUBLE_VALUE;
 
         REFLECTABLE(MAKE_FIELD("free", &Memory::free),
                     MAKE_FIELD("total", &Memory::total),

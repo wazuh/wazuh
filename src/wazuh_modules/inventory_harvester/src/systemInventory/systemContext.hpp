@@ -218,11 +218,12 @@ public:
 
     int64_t freeMem()
     {
+        // Return on Bytes
         if (m_type == VariantType::Delta)
         {
             if (m_delta->data_as_dbsync_hwinfo() && m_delta->data_as_dbsync_hwinfo()->ram_free())
             {
-                return m_delta->data_as_dbsync_hwinfo()->ram_free();
+                return m_delta->data_as_dbsync_hwinfo()->ram_free() * 1024;
             }
         }
         else if (m_type == VariantType::SyncMsg)
@@ -230,7 +231,7 @@ public:
             if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_hwinfo() &&
                 m_syncMsg->data_as_state()->attributes_as_syscollector_hwinfo()->ram_free())
             {
-                return m_syncMsg->data_as_state()->attributes_as_syscollector_hwinfo()->ram_free();
+                return m_syncMsg->data_as_state()->attributes_as_syscollector_hwinfo()->ram_free() * 1024;
             }
         }
         return 0;
@@ -238,11 +239,12 @@ public:
 
     int64_t totalMem()
     {
+        // Return on Bytes
         if (m_type == VariantType::Delta)
         {
             if (m_delta->data_as_dbsync_hwinfo() && m_delta->data_as_dbsync_hwinfo()->ram_total())
             {
-                return m_delta->data_as_dbsync_hwinfo()->ram_total();
+                return m_delta->data_as_dbsync_hwinfo()->ram_total() * 1024;
             }
         }
         else if (m_type == VariantType::SyncMsg)
@@ -250,19 +252,20 @@ public:
             if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_hwinfo() &&
                 m_syncMsg->data_as_state()->attributes_as_syscollector_hwinfo()->ram_total())
             {
-                return m_syncMsg->data_as_state()->attributes_as_syscollector_hwinfo()->ram_total();
+                return m_syncMsg->data_as_state()->attributes_as_syscollector_hwinfo()->ram_total() * 1024;
             }
         }
         return 0;
     }
 
-    int64_t usedMem()
+    double usedMem()
     {
+        // Percentage value, return between 0 and 1
         if (m_type == VariantType::Delta)
         {
             if (m_delta->data_as_dbsync_hwinfo() && m_delta->data_as_dbsync_hwinfo()->ram_usage())
             {
-                return m_delta->data_as_dbsync_hwinfo()->ram_usage();
+                return m_delta->data_as_dbsync_hwinfo()->ram_usage() / 100.0;
             }
         }
         else if (m_type == VariantType::SyncMsg)
@@ -270,7 +273,7 @@ public:
             if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_hwinfo() &&
                 m_syncMsg->data_as_state()->attributes_as_syscollector_hwinfo()->ram_usage())
             {
-                return m_syncMsg->data_as_state()->attributes_as_syscollector_hwinfo()->ram_usage();
+                return m_syncMsg->data_as_state()->attributes_as_syscollector_hwinfo()->ram_usage() / 100.0;
             }
         }
         return 0;
