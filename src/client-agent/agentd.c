@@ -196,6 +196,38 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
 
             close(agt->execdq);
             agt->execdq=-1;
+
+            // Update buffer configuration
+            const char *cfg = OSSECCONF;
+            unsigned int current_capacity = agt->buflength;
+            int current_buffer_flag = agt->buffer;
+
+            mdebug2("Buffer pre-update, enable: %i size: %i ", agt->buffer, current_capacity);
+            if (ReadConfig(CBUFFER, cfg, NULL, agt) < 0) {
+                mlerror_exit(LOGLEVEL_ERROR, CLIENT_ERROR);
+            }
+            #ifdef CLIENT
+            if(agt->flags.remote_conf) {
+                ReadConfig(CBUFFER | CAGENT_CONFIG, AGENTCONFIG, NULL, agt);
+                minfo("Buffer agent.conf updated, enable: %i size: %i ", agt->buffer, agt->buflength);
+            }
+            #endif
+
+            //  Buffer was enabled, needs to be disabled
+            if(agt->buffer == 0 && current_buffer_flag != 0) {
+                w_agentd_free_buffer(current_capacity);
+            }else if (current_buffer_flag == 0 && agt->buffer != 0)
+            {
+                // Buffer was disabled, needs to be enabled
+                buffer_init();
+                w_create_thread(dispatch_buffer, (void *)NULL);
+            }else
+            {
+                // Buffer was enabled, stays enabled (potential resize)
+                resize_internal_buffer(current_capacity, agt->buflength);
+            }
+
+            mdebug2("Buffer updated, enable: %i size: %i ", agt->buffer, agt->buflength);
         }
 
         /* Connect to the execd queue */
