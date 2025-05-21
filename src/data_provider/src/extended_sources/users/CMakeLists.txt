@@ -16,6 +16,8 @@ set(SRC_FILES "")
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   list(APPEND SRC_FILES src/logged_in_users_win.cpp)
+  list(APPEND SRC_FILES src/users_windows.cpp src/users_windows_utils_wrapper.cpp)
+  set(PLATFORM_LIBS_USERS netapi32 advapi32)
 else()
   list(APPEND SRC_FILES src/logged_in_users_unix.cpp)
   if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
@@ -35,6 +37,7 @@ add_library(users STATIC ${SRC_FILES})
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   target_link_libraries(users
       wtsapi32
+      ${PLATFORM_LIBS_USERS}
   )
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
   target_link_libraries(users ${PLATFORM_LIBS_USERS})
