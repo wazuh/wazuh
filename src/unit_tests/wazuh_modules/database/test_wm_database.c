@@ -32,6 +32,8 @@
 #include "../../wrappers/posix/dirent_wrappers.h"
 #include "../../wrappers/posix/unistd_wrappers.h"
 
+extern const wm_context WM_DATABASE_CONTEXT;
+
 /* setup/teardown */
 
 extern int test_mode;
@@ -526,6 +528,78 @@ void test_sync_keys_with_wdb_null(void **state) {
     sync_keys_with_wdb(&keys);
 }
 
+// Test wm_database_query
+
+int setup_query(void **state) {
+    return 0;
+}
+
+int teardown_query(void **state) {
+    return 0;
+}
+
+void test_query_unknown(void **state) {
+    char *query = "unknown";
+    char *output = NULL;
+    size_t ret;
+
+    ret = WM_DATABASE_CONTEXT.query(NULL, query, &output);
+
+    assert_non_null(output);
+    assert_string_equal(output, "err {\"error\":12,\"message\":\"Query not supported\"}");
+    assert_int_equal(ret, strlen(output));
+
+    free(output);
+}
+
+void test_query_sync_agents(void **state) {
+    char *query = "sync_agents";
+    char *output = NULL;
+    size_t ret;
+
+    rb_tree *tree = NULL;
+    os_calloc(1, sizeof(rb_tree), tree);
+
+    is_worker = 1;
+
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:database");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Synchronizing agents.");
+    expect_string(__wrap__mdebug1, formatted_msg, "(1402): Authentication key file 'etc/client.keys' not found.");
+    expect_string(__wrap__mdebug1, formatted_msg, "(1751): File client.keys not found or empty.");
+
+    expect_value(__wrap_wdb_get_all_agents_rbtree, include_manager, 0);
+    will_return(__wrap_wdb_get_all_agents_rbtree, tree);
+    will_return(__wrap_rbtree_keys, calloc(1, sizeof(char*)));
+
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:database");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Agents synchronization completed.");
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:database");
+    expect_any(__wrap__mtdebug1, formatted_msg);
+
+    ret = WM_DATABASE_CONTEXT.query(NULL, query, &output);
+
+    assert_non_null(output);
+    assert_string_equal(output, "ok");
+    assert_int_equal(ret, strlen(output));
+
+    free(output);
+}
+
+void test_query_sync_agents_master(void **state) {
+    char *query = "sync_agents";
+    char *output = NULL;
+    size_t ret;
+
+    is_worker = 0;
+    ret = WM_DATABASE_CONTEXT.query(NULL, query, &output);
+
+    assert_non_null(output);
+    assert_string_equal(output, "err {\"error\":11,\"message\":\"Node is not a worker\"}");
+    assert_int_equal(ret, strlen(output));
+
+    free(output);
+}
+
 int main()
 {
     const struct CMUnitTest tests[] = {
@@ -545,6 +619,9 @@ int main()
         cmocka_unit_test_setup_teardown(test_sync_keys_with_wdb_delete, setup_keys_to_db, teardown_keys_to_db),
         cmocka_unit_test_setup_teardown(test_sync_keys_with_wdb_insert_delete, setup_keys_to_db, teardown_keys_to_db),
         cmocka_unit_test_setup_teardown(test_sync_keys_with_wdb_null, setup_keys_to_db, teardown_keys_to_db),
+        cmocka_unit_test(test_query_unknown),
+        cmocka_unit_test_setup_teardown(test_query_sync_agents, setup_query, teardown_query),
+        cmocka_unit_test(test_query_sync_agents_master),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
