@@ -11,6 +11,7 @@ link_directories(${CMAKE_SOURCE_DIR}/../external/googletest/lib/)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     set(TEST_SRC test_logged_in_users_win.cpp)
+    set(TEST_SRC_FILES_USERS test_users_windows.cpp)
 else()
     set(TEST_SRC test_logged_in_users_unix.cpp)
 
@@ -49,6 +50,14 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
         ole32
         oleaut32
         wtsapi32
+        -static-libgcc -static-libstdc++
+    )
+    target_link_libraries(users_collector_unit_test
+        users_collector
+        gtestd
+        gmockd
+        gtest_maind
+        gmock_maind
         -static-libgcc -static-libstdc++
     )
 else()

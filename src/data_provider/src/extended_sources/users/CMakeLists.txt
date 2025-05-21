@@ -14,6 +14,8 @@ endif()
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   set(SRC_FILES src/logged_in_users_win.cpp)
+  set(SRC_FILES_USERS src/users_windows.cpp src/users_windows_utils_wrapper.cpp)
+  set(PLATFORM_LIBS_USERS netapi32 advapi32)
 else()
   set(SRC_FILES src/logged_in_users_unix.cpp)
 
