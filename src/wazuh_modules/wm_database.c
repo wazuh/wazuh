@@ -68,6 +68,8 @@ static void* wm_database_main(wm_database *data);
 static void wm_database_destroy(wm_database *data);
 // Read config
 cJSON *wm_database_dump(const wm_database *data);
+// Run a query
+static size_t wm_database_query(wm_database *data, char *query, char **output);
 // Update manager information
 static void wm_sync_manager();
 
@@ -100,7 +102,7 @@ const wm_context WM_DATABASE_CONTEXT = {
     .dump = (cJSON * (*)(const void *))wm_database_dump,
     .sync = NULL,
     .stop = NULL,
-    .query = NULL,
+    .query = (size_t (*)(void *, char *, char **))wm_database_query,
 };
 
 // Module main function. It won't return
@@ -269,11 +271,13 @@ void wm_check_agents() {
 
 // Synchronize agents
 void wm_sync_agents() {
+    static pthread_mutex_t mutex_sync = PTHREAD_MUTEX_INITIALIZER;
     keystore keys = KEYSTORE_INITIALIZER;
     clock_t clock0 = clock();
     struct timespec spec0;
     struct timespec spec1;
 
+    w_mutex_lock(&mutex_sync);
     gettime(&spec0);
 
     mtdebug1(WM_DATABASE_LOGTAG, "Synchronizing agents.");
@@ -286,6 +290,7 @@ void wm_sync_agents() {
     mtdebug1(WM_DATABASE_LOGTAG, "Agents synchronization completed.");
     gettime(&spec1);
     time_sub(&spec1, &spec0);
+    w_mutex_unlock(&mutex_sync);
     mtdebug1(WM_DATABASE_LOGTAG, "wm_sync_agents(): %.3f ms (%.3f clock ms).", spec1.tv_sec * 1000 + spec1.tv_nsec / 1000000.0, (double)(clock() - clock0) / CLOCKS_PER_SEC * 1000);
 }
 
@@ -583,6 +588,29 @@ cJSON *wm_database_dump(const wm_database *data) {
 // Destroy data
 void wm_database_destroy(wm_database *data) {
     free(data);
+}
+
+/**
+ * @brief This function is used to run a query on the database module.
+ *
+ * @param data The database module data.
+ * @param query The query to be executed.
+ * @param output The output of the query.
+ * @return The size of the output.
+ */
+static size_t wm_database_query(__attribute__((unused)) wm_database *data, char *query, char **output) {
+    if (strcmp(query, "sync_agents") == 0) {
+        if (is_worker) {
+            wm_sync_agents();
+            os_strdup("ok", *output);
+        } else {
+            os_strdup("err {\"error\":11,\"message\":\"Node is not a worker\"}", *output);
+        }
+    } else {
+        os_strdup("err {\"error\":12,\"message\":\"Query not supported\"}", *output);
+    }
+
+    return strlen(*output);
 }
 
 // Read configuration and return a module (if enabled) or NULL (if disabled)
