@@ -317,9 +317,9 @@ update_file_packages() {
 cat <<EOF
 ${INSTALL_TYPE} (${final_version}-RELEASE) stable; urgency=low
 
-* More info: https://documentation.wazuh.com/current/release-notes/release-${final_version//./-}.html
+  * More info: https://documentation.wazuh.com/current/release-notes/release-${final_version//./-}.html
 
--- Wazuh, Inc <info@wazuh.com>  ${formatted_date}
+ -- Wazuh, Inc <info@wazuh.com>  ${formatted_date}
 
 EOF
 )"
