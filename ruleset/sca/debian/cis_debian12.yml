@@ -2785,8 +2785,10 @@ checks:
       - nist_sp_800-53: ["AC-6(2)", "AC-6(5)"]
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - soc_2: ["CC6.1", "CC6.3"]
-    condition:
+    condition: any
     rules:
+      - "c:dpkg-query -s sudo -> r:install ok installed"
+      - "c:dpkg-query -s sudo-ldap -> r:install ok installed"
 
   # 5.2.2 Ensure sudo commands use pty. (Automated)
   - id: 33177
@@ -2807,8 +2809,10 @@ checks:
       - nist_sp_800-53: ["AC-6(2)", "AC-6(5)"]
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - soc_2: ["CC6.1", "CC6.3"]
-    condition:
+    condition: any
     rules:
+      - 'f:/etc/sudoers -> r:Defaults\s*\t*use_pty'
+      - 'd:/etc/sudoers.d/ -> r: \.* -> r:Defaults\s*\t*use_pty'
 
   # 5.2.3 Ensure sudo log file exists. (Automated)
   - id: 33178
@@ -2830,8 +2834,10 @@ checks:
       - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
       - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
       - soc_2: ["CC5.2", "CC7.2"]
-    condition:
+    condition: any
     rules:
+      - 'f:/etc/sudoers -> r:Defaults\s*\t*logfile=\S+'
+      - 'd:/etc/sudoers.d/ -> r: \.* -> r:Defaults\s*\t*logfile=\S+'
 
   # 5.2.4 Ensure users must provide password for privilege escalation. (Automated)
   - id: 33179
@@ -2852,8 +2858,10 @@ checks:
       - nist_sp_800-53: ["AC-6(2)", "AC-6(5)"]
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - soc_2: ["CC6.1", "CC6.3"]
-    condition:
+    condition: none
     rules:
+      - 'f:/etc/sudoers -> r:NOPASSWD'
+      - 'd:/etc/sudoers.d/ -> r: \.* -> r:NOPASSWD'
 
   # 5.2.5 Ensure re-authentication for privilege escalation is not disabled globally. (Automated)
   - id: 33180
@@ -2873,8 +2881,10 @@ checks:
       - nist_sp_800-53: ["AC-6(2)", "AC-6(5)"]
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - soc_2: ["CC6.1", "CC6.3"]
-    condition:
+    condition: any
     rules:
+      - 'not f:/etc/sudoers -> r:!authenticate'
+      - 'not d:/etc/sudoers.d/ -> r: \.* -> r:!authenticate'
 
   # 5.2.6 Ensure sudo authentication timeout is configured correctly. (Automated)
   - id: 33181
@@ -2896,8 +2906,9 @@ checks:
       - nist_sp_800-53: ["AC-6(2)", "AC-6(5)"]
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - soc_2: ["CC6.1", "CC6.3"]
-    condition:
+    condition: all
     rules:
+      - 'f:/etc/sudoers -> n:timestamp_timeout=(\d+) compare <= 15'
 
   # 5.2.7 Ensure access to the su command is restricted. (Automated)
   - id: 33182
@@ -2919,28 +2930,33 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'f:/etc/pam.d/su -> !r:^\s*\t*# && r:auth\s*\t*required\s*\t*pam_wheel.so && r:use_uid && r:group=\w+'
 
   # 5.3.1.1 Ensure latest version of pam is installed. (Automated)
   - id: 33183
     title: "Ensure latest version of pam is installed."
     description: "Updated versions of PAM include additional functionality."
     rationale: "To ensure the system has full functionality and access to the options covered by this Benchmark the latest version of libpam-runtime should be installed on the system."
+    remediation: "-IF- the version of libpam-runtime on the system is less than version 1.5.2-6: Run the following command to update to the latest version of PAM: # apt upgrade libpam-runtime."
     compliance:
       - cis: ["5.3.1.1"]
-    condition:
+    condition: all
     rules:
+      - "c:dpkg-query -s libpam-runtime -> r:install ok installed"
 
   # 5.3.1.2 Ensure libpam-modules is installed. (Automated)
   - id: 33184
     title: "Ensure libpam-modules is installed."
     description: "Pluggable Authentication Modules for PAM."
     rationale: "To ensure the system has full functionality and access to the PAM options covered by this Benchmark."
+    remediation: "-IF- the version of libpam-modules on the system is less than version 1.5.2-6: Run the following command to update to the latest version of PAM: # apt upgrade libpam-modules."
     compliance:
       - cis: ["5.3.1.2"]
-    condition:
+    condition: all
     rules:
+      - "c:dpkg-query -s libpam-modules -> r:install ok installed"
 
   # 5.3.1.3 Ensure libpam-pwquality is installed. (Automated)
   - id: 33185
@@ -2952,8 +2968,9 @@ checks:
       - "https://packages.debian.org/buster/libpam-pwquality"
     compliance:
       - cis: ["5.3.1.3"]
-    condition:
+    condition: all
     rules:
+      - "c:dpkg-query -s libpam-pwquality -> r:install ok installed"
 
   # 5.3.2.1 Ensure pam_unix module is enabled. (Automated)
   - id: 33186
@@ -3061,8 +3078,9 @@ checks:
       - pci_dss_v3.2.1: ["8.1.3"]
       - pci_dss_v4.0: ["8.2.4", "8.2.5"]
       - soc_2: ["CC6.2", "CC6.3"]
-    condition:
+    condition: all
     rules:
+      - 'f:/etc/security/faillock.conf -> n:deny\s*\t*=\s*\t*(d+) compare <= 5'
 
   # 5.3.3.1.2 Ensure password unlock time is configured. (Automated)
   - id: 33191
