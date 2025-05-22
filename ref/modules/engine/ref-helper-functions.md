@@ -15,7 +15,6 @@ This documentation provides an overview of the auxiliary functions available. Au
 - [ends_with](#ends_with)
 - [exists](#exists)
 - [exists_key_in](#exists_key_in)
-- [has_keys](#has_keys)
 - [int_equal](#int_equal)
 - [int_greater](#int_greater)
 - [int_greater_or_equal](#int_greater_or_equal)
@@ -36,6 +35,7 @@ This documentation provides an overview of the auxiliary functions available. Au
 - [is_public_ip](#is_public_ip)
 - [is_string](#is_string)
 - [is_test_session](#is_test_session)
+- [keys_exist_in_list](#keys_exist_in_list)
 - [kvdb_match](#kvdb_match)
 - [kvdb_not_match](#kvdb_not_match)
 - [match_value](#match_value)
@@ -1363,159 +1363,6 @@ check:
 ```
 
 *The check was successful*
-
-
-
----
-# has_keys
-
-## Signature
-
-```
-
-field: has_keys(elements)
-```
-
-## Arguments
-
-| parameter | Type | Source | Accepted values |
-| --------- | ---- | ------ | --------------- |
-| elements | array | value or reference | Any string |
-
-
-## Target Field
-
-| Type | Possible values |
-| ---- | --------------- |
-| object | Any object |
-
-
-## Description
-
-Checks if all the specified keys from the target field (an object) are present in the given list.
-It verifies whether the elements in the list are included as keys in the target object.
-If any key from the target object is missing in the list, the validation fails.
-The function does not require that all keys in the list be present in the target field,
-but all keys from the target field must be in the list.
-If any element in the list is not a string, or if the target object is missing any keys from the list, the validation fails.
-This helper is particularly useful for ensuring that all required keys are present in the object and
-are strictly enforced in the list.
-
-
-## Keywords
-
-- `array` 
-
-- `object` 
-
-## Examples
-
-### Example 1
-
-Success keys in list
-
-#### Asset
-
-```yaml
-check:
-  - target_field: has_keys(['ts', 'host'])
-```
-
-#### Input Event
-
-```json
-{
-  "target_field": {
-    "ts": "2021-01-03T01:19:32.488179Z",
-    "host": "192.168.4.43"
-  }
-}
-```
-
-*The check was successful*
-
-### Example 2
-
-There are elements in the list that are missing from the target field
-
-#### Asset
-
-```yaml
-check:
-  - target_field: has_keys($elements)
-```
-
-#### Input Event
-
-```json
-{
-  "elements": [
-    "ts",
-    "host",
-    "other"
-  ],
-  "target_field": {
-    "ts": "2021-01-03T01:19:32.488179Z",
-    "host": "192.168.4.43"
-  }
-}
-```
-
-*The check was successful*
-
-### Example 3
-
-There are keys in the target field that are missing from the list
-
-#### Asset
-
-```yaml
-check:
-  - target_field: has_keys(['ts', 'host'])
-```
-
-#### Input Event
-
-```json
-{
-  "target_field": {
-    "ts": "2021-01-03T01:19:32.488179Z",
-    "host": "192.168.4.43",
-    "other_key": "some_value"
-  }
-}
-```
-
-*The check was performed with errors*
-
-### Example 4
-
-Element in array is not a string
-
-#### Asset
-
-```yaml
-check:
-  - target_field: has_keys($elements)
-```
-
-#### Input Event
-
-```json
-{
-  "elements": [
-    "ts",
-    9999,
-    "other"
-  ],
-  "target_field": {
-    "ts": "2021-01-03T01:19:32.488179Z",
-    "host": "192.168.4.43"
-  }
-}
-```
-
-*The check was performed with errors*
 
 
 
@@ -3550,6 +3397,159 @@ check:
 ```
 
 *The check was successful*
+
+
+
+---
+# keys_exist_in_list
+
+## Signature
+
+```
+
+field: keys_exist_in_list(elements)
+```
+
+## Arguments
+
+| parameter | Type | Source | Accepted values |
+| --------- | ---- | ------ | --------------- |
+| elements | array | value or reference | Any string |
+
+
+## Target Field
+
+| Type | Possible values |
+| ---- | --------------- |
+| object | Any object |
+
+
+## Description
+
+Checks if all the specified keys from the target field (an object) are present in the given list.
+It verifies whether the elements in the list are included as keys in the target object.
+If any key from the target object is missing in the list, the validation fails.
+The function does not require that all keys in the list be present in the target field,
+but all keys from the target field must be in the list.
+If any element in the list is not a string, or if the target object is missing any keys from the list, the validation fails.
+This helper is particularly useful for ensuring that all required keys are present in the object and
+are strictly enforced in the list.
+
+
+## Keywords
+
+- `array` 
+
+- `object` 
+
+## Examples
+
+### Example 1
+
+Success keys in list
+
+#### Asset
+
+```yaml
+check:
+  - target_field: keys_exist_in_list(['ts', 'host'])
+```
+
+#### Input Event
+
+```json
+{
+  "target_field": {
+    "ts": "2021-01-03T01:19:32.488179Z",
+    "host": "192.168.4.43"
+  }
+}
+```
+
+*The check was successful*
+
+### Example 2
+
+There are elements in the list that are missing from the target field
+
+#### Asset
+
+```yaml
+check:
+  - target_field: keys_exist_in_list($elements)
+```
+
+#### Input Event
+
+```json
+{
+  "elements": [
+    "ts",
+    "host",
+    "other"
+  ],
+  "target_field": {
+    "ts": "2021-01-03T01:19:32.488179Z",
+    "host": "192.168.4.43"
+  }
+}
+```
+
+*The check was successful*
+
+### Example 3
+
+There are keys in the target field that are missing from the list
+
+#### Asset
+
+```yaml
+check:
+  - target_field: keys_exist_in_list(['ts', 'host'])
+```
+
+#### Input Event
+
+```json
+{
+  "target_field": {
+    "ts": "2021-01-03T01:19:32.488179Z",
+    "host": "192.168.4.43",
+    "other_key": "some_value"
+  }
+}
+```
+
+*The check was performed with errors*
+
+### Example 4
+
+Element in array is not a string
+
+#### Asset
+
+```yaml
+check:
+  - target_field: keys_exist_in_list($elements)
+```
+
+#### Input Event
+
+```json
+{
+  "elements": [
+    "ts",
+    9999,
+    "other"
+  ],
+  "target_field": {
+    "ts": "2021-01-03T01:19:32.488179Z",
+    "host": "192.168.4.43"
+  }
+}
+```
+
+*The check was performed with errors*
 
 
 
