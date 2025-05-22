@@ -13,6 +13,7 @@ set(TEST_SRC "main.cpp")
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     list(APPEND TEST_SRC test_logged_in_users_win.cpp)
+    list(APPEND TEST_SRC test_users_windows.cpp)
 else()
     list(APPEND TEST_SRC test_logged_in_users_unix.cpp)
     if(CMAKE_SYSTEM_NAME STREQUAL "Linux")

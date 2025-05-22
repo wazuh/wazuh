@@ -75,4 +75,6 @@ class IWindowsApiWrapper
         virtual LSTATUS RegEnumKeyWWrapper(HKEY hKey, DWORD index, LPWSTR lpName, DWORD cchName) = 0;
 
         virtual DWORD GetLastErrorWrapper() = 0;
+
+        virtual LSTATUS RegCloseKeyWrapper(HKEY hKey) = 0;
 };
