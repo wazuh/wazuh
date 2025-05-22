@@ -15,6 +15,7 @@
 #include "endpointGetV1AgentsIds.hpp"
 #include "endpointGetV1AgentsIdsGroups.hpp"
 #include "endpointGetV1AgentsIdsGroupsParam.hpp"
+#include "endpointGetV1AgentsLastId.hpp"
 #include "endpointGetV1AgentsParamGroups.hpp"
 #include "endpointGetV1AgentsSync.hpp"
 #include "endpointPostV1AgentsSummary.hpp"
@@ -90,6 +91,10 @@ public:
             else if (endpoint.compare("/v1/agents/sync") == 0)
             {
                 EndpointGetV1AgentsSync::call(connection, req, res);
+            }
+            else if (endpoint.compare("/v1/agents/lastid") == 0)
+            {
+                EndpointGetV1AgentsLastId::call(connection, req, res);
             }
             else
             {

@@ -232,6 +232,7 @@ int main(int argc, char ** argv)
     os_calloc(wconfig.worker_pool_size, sizeof(pthread_t), worker_pool);
 
     router_register_api_endpoint("wazuh-db","wdb-http.sock", "GET", "/v1/agents/ids", (void*)&wdb_global_pre, (void*)&wdb_global_post);
+    router_register_api_endpoint("wazuh-db","wdb-http.sock", "GET", "/v1/agents/lastid", (void*)&wdb_global_pre, (void*)&wdb_global_post);
     router_register_api_endpoint("wazuh-db","wdb-http.sock", "GET", "/v1/agents/ids/groups/:name", (void*)&wdb_global_pre, (void*)&wdb_global_post);
     router_register_api_endpoint("wazuh-db","wdb-http.sock", "GET", "/v1/agents/ids/groups", (void*)&wdb_global_pre, (void*)&wdb_global_post);
     router_register_api_endpoint("wazuh-db","wdb-http.sock", "GET", "/v1/agents/:agent_id/groups", (void*)&wdb_global_pre, (void*)&wdb_global_post);
