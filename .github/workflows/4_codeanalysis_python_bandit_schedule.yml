@@ -1,11 +1,8 @@
-name: Python code analysis
+name: Python code analysis schedule
 on:
   workflow_dispatch:
   schedule:
     - cron: '0 10 * * 2'
-  push:
-    branches:
-      - enhancement/29541-expand-bandit-scan
 
 jobs:
   pick-branches:

@@ -32,8 +32,6 @@ jobs:
           fetch-depth: 0
 
       - name: Bandit Scan
-        uses: shundor/python-bandit-scan@v1.0
+        uses: PyCQA/bandit-action@v1
         with:
-          exit_zero: true
-          excluded_paths: .git,__pycache__,*/test_*,*/test/*,*/tests/*,*/testing/*
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          exclude: .git,__pycache__,*/test_*,*/test/*,*/tests/*,*/testing/*
