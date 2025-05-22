@@ -83,7 +83,7 @@ int main(int argc, char **argv)
 {
 #ifdef WIN32
     // This must be always the first instruction
-    enable_dll_verification();
+    // enable_dll_verification();
 #endif
 
     int c = 0, cmdlist = 0, json_output = 0;

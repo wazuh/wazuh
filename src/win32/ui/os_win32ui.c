@@ -388,7 +388,7 @@ int WINAPI WinMain(HINSTANCE hInstance, __attribute__((unused))HINSTANCE hPrevIn
         __attribute__((unused))LPSTR lpCmdLine, __attribute__((unused))int nCmdShow)
 {
     // This must be always the first instruction
-    enable_dll_verification();
+    // enable_dll_verification();
 
     WSADATA wsaData;
 

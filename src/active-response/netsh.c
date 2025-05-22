@@ -60,7 +60,7 @@ static void getStatusFirewallProfile(const char * output_buf, firewallData_t *fi
 
 int main (int argc, char **argv) {
     // This must be always the first instruction
-    enable_dll_verification();
+    // enable_dll_verification();
 
     (void)argc;
     char log_msg[OS_MAXSTR];
