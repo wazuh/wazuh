@@ -76,7 +76,7 @@ INSTANTIATE_TEST_SUITE_P(
                 opfilter::opBuilderHelperKeysExistInList,
                 FAILURE(jTypeArrayRefExpected(json::Json::Type::String, false))),
         FilterT({makeRef("ref"), makeRef("ref")}, opfilter::opBuilderHelperKeysExistInList, FAILURE())),
-    testNameFormatter<FilterBuilderTest>("HasKeys"));
+    testNameFormatter<FilterBuilderTest>("KeysExistInList"));
 } // namespace filterbuildtest
 
 namespace filteroperatestest
@@ -238,6 +238,6 @@ INSTANTIATE_TEST_SUITE_P(
                 "target",
                 {makeRef("ref")},
                 SUCCESS(customRefExpected()))),
-    testNameFormatter<FilterOperationTest>("HasKeys"));
+    testNameFormatter<FilterOperationTest>("KeysExistInList"));
 
 } // namespace filteroperatestest

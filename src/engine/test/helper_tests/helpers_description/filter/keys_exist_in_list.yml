@@ -1,5 +1,5 @@
 # Name of the helper function
-name: has_keys
+name: keys_exist_in_list
 
 metadata:
   description: |
