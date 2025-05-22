@@ -73,8 +73,8 @@ public:
         // Ex: Any value greater than 0
         element.data.host.memory.total = data->totalMem();
 
-        // Ex: Any value greater than 0
-        element.data.host.memory.used = data->usedMem();
+        // Ex: Any value greater than 0. Calculated as total - free
+        element.data.host.memory.used = data->totalMem() - data->freeMem();
 
         // Ex: AA320
         element.data.observer.serial_number = boardId;

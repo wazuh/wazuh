@@ -12,9 +12,9 @@
     "cpu_cores": 8,
     "cpu_mhz": 3800.0,
     "cpu_name": "Intel(R) Core(TM) i7-10700K CPU @ 3.80GHz",
-    "ram_free": 16777216,
-    "ram_total": 33554432,
-    "ram_usage": 630
+    "ram_free": 1024,
+    "ram_total": 2048,
+    "ram_usage": 1024
   },
   "operation": "INSERTED"
 }
