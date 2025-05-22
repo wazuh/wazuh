@@ -74,7 +74,7 @@ std::string UsersHelper::getUserHomeDir(const std::string& sid)
         return {};
     }
 
-    reg_handle_t registry_handle(hkey, close_reg_handle);
+    reg_handle_t registry_handle(hkey, makeRegHandleDeleter());
     DWORD values_count;
     DWORD max_value_data_length;
 
@@ -261,7 +261,7 @@ std::optional<std::vector<std::string>> UsersHelper::getRoamingProfileSids()
         return std::nullopt;
     }
 
-    reg_handle_t registry_handle(hkey, close_reg_handle);
+    reg_handle_t registry_handle(hkey, makeRegHandleDeleter());
 
     const auto max_key_length = 255;
     DWORD subkeys_count;

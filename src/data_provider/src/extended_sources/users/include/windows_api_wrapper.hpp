@@ -130,4 +130,9 @@ class WindowsApiWrapper : public IWindowsApiWrapper
         {
             return GetLastError();
         }
+
+        LSTATUS RegCloseKeyWrapper(HKEY hKey)
+        {
+            return RegCloseKey(hKey);
+        }
 };

@@ -13,6 +13,7 @@
 #include <vector>
 #include <memory>
 #include <set>
+#include <optional>
 
 #include "json.hpp"
 #include "iusers_windows_utils_wrapper.hpp"
@@ -89,12 +90,6 @@ using user_info_3_ptr = NetApiObjectPtr<USER_INFO_3>;
 using user_info_4_ptr = NetApiObjectPtr<USER_INFO_4>;
 using localgroup_users_info_0_ptr = NetApiObjectPtr<LOCALGROUP_USERS_INFO_0>;
 
-inline auto close_reg_handle = [](HKEY handle)
-{
-    RegCloseKey(handle);
-};
-using reg_handle_t = std::unique_ptr<HKEY__, decltype(close_reg_handle)>;
-
 const std::wstring kRegProfileKey =
     L"SOFTWARE\\Microsoft\\Windows "
     "NT\\CurrentVersion\\ProfileList";
@@ -139,6 +134,15 @@ class UsersHelper : public IUsersHelper
         DWORD getRidFromSid(PSID sid);
 
         std::shared_ptr<IWindowsApiWrapper> m_winapiWrapper;
+
+        auto makeRegHandleDeleter()
+        {
+            return [this](HKEY handle)
+            {
+                m_winapiWrapper->RegCloseKeyWrapper(handle);
+            };
+        }
+        using reg_handle_t = std::unique_ptr<HKEY__, std::function<void(HKEY)>>;
 
     public:
         explicit UsersHelper(
