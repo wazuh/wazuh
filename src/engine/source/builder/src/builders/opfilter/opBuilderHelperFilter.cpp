@@ -1522,7 +1522,7 @@ FilterOp opBuilderHelperIsTestSession(const Reference& targetField,
     };
 }
 
-// <field>: +has_keys/$<list_value>|$<list_reference>
+// <field>: +keys_exist_in_list/$<list_value>|$<list_reference>
 FilterOp opBuilderHelperKeysExistInList(const Reference& targetField,
                                         const std::vector<OpArg>& opArgs,
                                         const std::shared_ptr<const IBuildCtx>& buildCtx)
