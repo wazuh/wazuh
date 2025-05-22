@@ -473,11 +473,14 @@ std::enable_if_t<IsReflectable<T>::value, std::string> serializeToJSON(const T& 
         const auto& field = std::get<0>(fields);
         const auto& data = obj.*(std::get<2>(field));
 
-        std::string json;
-        json.reserve(1024);
+        if constexpr (IS_VECTOR_V<std::decay_t<decltype(data)>> || IS_LIST_V<std::decay_t<decltype(data)>>)
+        {
+            std::string json;
+            json.reserve(1024);
 
-        jsonFieldToString(data, json);
-        return json;
+            jsonFieldToString(data, json);
+            return json;
+        }
     }
 
     std::string json;
