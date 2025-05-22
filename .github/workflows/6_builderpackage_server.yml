@@ -91,7 +91,7 @@ on:
         required: false
 
 env:
-  S3_PRECOMPILED_STORE: s3://packages-dev.internal.wazuh.com/development/wazuh/5.x/main/engine-store/store.tar.gz
+  S3_PRECOMPILED_STORE: s3://packages-dev.internal.wazuh.com/development/wazuh/6.x/main/engine-store/store.tar.gz
   LOCAL_PRECOMPILED_STORE_PATH: src/engine/engine_precompiled_store.tar.gz # Also used in the build script
 
 jobs:
@@ -208,20 +208,20 @@ jobs:
       - name: Upload package to S3
         working-directory: packages
         run: |
-          aws s3 cp /tmp/${{ env.PACKAGE_NAME }} s3://packages-dev.internal.wazuh.com/development/wazuh/5.x/main/packages/
-          s3uri="s3://packages-dev.internal.wazuh.com/development/wazuh/5.x/main/packages/${{ env.PACKAGE_NAME }}"
+          aws s3 cp /tmp/${{ env.PACKAGE_NAME }} s3://packages-dev.internal.wazuh.com/development/wazuh/6.x/main/packages/
+          s3uri="s3://packages-dev.internal.wazuh.com/development/wazuh/6.x/main/packages/${{ env.PACKAGE_NAME }}"
           echo "S3 URI: ${s3uri}"
 
       - name: Upload checksum to S3
         if: ${{ inputs.checksum }}
         run: |
-          aws s3 cp /tmp/${{ env.PACKAGE_NAME }}.sha512 s3://packages-dev.internal.wazuh.com/development/wazuh/5.x/main/packages/
-          aws s3 cp /tmp/${{ env.PACKAGE_SYMBOLS_NAME }}.sha512 s3://packages-dev.internal.wazuh.com/development/wazuh/5.x/main/packages/
-          s3uri="s3://packages-dev.internal.wazuh.com/development/wazuh/5.x/main/packages/${{ env.PACKAGE_NAME }}.sha512"
+          aws s3 cp /tmp/${{ env.PACKAGE_NAME }}.sha512 s3://packages-dev.internal.wazuh.com/development/wazuh/6.x/main/packages/
+          aws s3 cp /tmp/${{ env.PACKAGE_SYMBOLS_NAME }}.sha512 s3://packages-dev.internal.wazuh.com/development/wazuh/6.x/main/packages/
+          s3uri="s3://packages-dev.internal.wazuh.com/development/wazuh/6.x/main/packages/${{ env.PACKAGE_NAME }}.sha512"
           echo "S3 sha512 URI: ${s3uri}"
 
       - name: Upload debug symbols to S3
         run: |
-          aws s3 cp /tmp/${{ env.PACKAGE_SYMBOLS_NAME }} s3://packages-dev.internal.wazuh.com/development/wazuh/5.x/main/packages/
-          symbols="s3://packages-dev.internal.wazuh.com/development/wazuh/5.x/main/packages/${symbols_name}"
+          aws s3 cp /tmp/${{ env.PACKAGE_SYMBOLS_NAME }} s3://packages-dev.internal.wazuh.com/development/wazuh/6.x/main/packages/
+          symbols="s3://packages-dev.internal.wazuh.com/development/wazuh/6.x/main/packages/${symbols_name}"
           echo "S3 symbols URI: ${symbols}"
