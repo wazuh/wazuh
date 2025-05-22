@@ -1,9 +1,9 @@
-| Group   | Agents                                  |
-|---------|-----------------------------------------|
-| default | 001,002,003,004,005,006,007,008,009,010 |
-| group1  | 001,005,007,008,009                     |
-| group2  | 002,005,006,008,010                     |
-| group3  | 003,006,007,008                         |
+| Group   | Agents                                          |
+|---------|-------------------------------------------------|
+| default | 001,002,003,004,005,006,007,008,009,010,011,012 |
+| group1  | 001,005,007,008,009                             |
+| group2  | 002,005,006,008,010                             |
+| group3  | 003,006,007,008                                 |
 
 | Agent | Name          | Groups                       | Status          |
 |-------|---------------|------------------------------|-----------------|
@@ -18,8 +18,8 @@
 | 008   | wazuh-agent8  | default,group1,group2,group3 | active          |
 | 009   | wazuh-agent9  | default,group1               | disconnected    |
 | 010   | wazuh-agent10 | default,group2               | disconnected    |
-| 011   | wazuh-agent11 |                              | never_connected |
-| 012   | wazuh-agent12 |                              | never_connected |
+| 011   | wazuh-agent11 | default                      | never_connected |
+| 012   | wazuh-agent12 | default                      | never_connected |
 
 | Resource    | List                                                |
 |-------------|-----------------------------------------------------|
