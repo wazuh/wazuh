@@ -67,6 +67,7 @@ int os_start_service()
 /* Stop OSSEC-HIDS service */
 int os_stop_service()
 {
+    plain_minfo("os_stop_service");
     int rc = 0;
     SC_HANDLE schSCManager, schService;
 
@@ -252,9 +253,12 @@ int UninstallService()
 /* "Signal" handler */
 VOID WINAPI OssecServiceCtrlHandler(DWORD dwOpcode)
 {
+    plain_minfo("1.");
     if (ossecServiceStatusHandle) {
+        plain_minfo("2.");
         switch (dwOpcode) {
             case SERVICE_CONTROL_STOP:
+                plain_minfo("3.");
                 ossecServiceStatus.dwWin32ExitCode          = 0;
                 ossecServiceStatus.dwCheckPoint             = 0;
                 ossecServiceStatus.dwWaitHint               = 0;
@@ -306,6 +310,7 @@ int os_WinMain(__attribute__((unused)) int argc, __attribute__((unused)) char **
 /* Start OSSEC service */
 void WINAPI OssecServiceStart (__attribute__((unused)) DWORD argc, __attribute__((unused)) LPTSTR *argv)
 {
+    plain_minfo("OssecServiceStart.");
     ossecServiceStatus.dwServiceType            = SERVICE_WIN32;
     ossecServiceStatus.dwCurrentState           = SERVICE_START_PENDING;
     ossecServiceStatus.dwControlsAccepted       = SERVICE_ACCEPT_STOP;
@@ -322,6 +327,7 @@ void WINAPI OssecServiceStart (__attribute__((unused)) DWORD argc, __attribute__
         plain_minfo("RegisterServiceCtrlHandler failed.");
         return;
     }
+    plain_minfo("SERVICE_RUNNING.");
 
     ossecServiceStatus.dwCurrentState = SERVICE_RUNNING;
     ossecServiceStatus.dwCheckPoint = 0;
@@ -334,6 +340,7 @@ void WINAPI OssecServiceStart (__attribute__((unused)) DWORD argc, __attribute__
 
 #ifdef OSSECHIDS
     /* Start process */
+    plain_minfo("local_start.");
     local_start();
 #endif
 }
