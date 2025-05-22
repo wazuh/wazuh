@@ -142,7 +142,7 @@ inline ValueValidator getIpValidator()
         auto val = value.getString().value();
         auto res = ipParser(val);
 
-        if (!res.success())
+        if (!res.success() || !res.remaining().empty())
         {
             return base::Error {"Invalid IP"};
         }
