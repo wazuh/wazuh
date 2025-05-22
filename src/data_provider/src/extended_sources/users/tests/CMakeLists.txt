@@ -69,8 +69,8 @@ else()
         gmock_maind
         pthread
     )
-    target_link_libraries(test_users
-        users_collector_unit_test
+    target_link_libraries(users_collector_unit_test
+        users_collector
         gtestd
         gmockd
         gtest_maind

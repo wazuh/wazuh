@@ -13,6 +13,7 @@
 #include <vector>
 #include <memory>
 #include <set>
+#include <optional>
 
 #include "json.hpp"
 #include "iusers_windows_utils_wrapper.hpp"
