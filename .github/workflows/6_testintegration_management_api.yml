@@ -21,7 +21,7 @@ on:
 
 env:
     PACKAGE_REFERENCE: ${{ inputs.package_reference || github.head_ref || github.sha }}
-    S3_BUCKET_PATH: s3://packages-dev.internal.wazuh.com/development/wazuh/5.x/main/packages
+    S3_BUCKET_PATH: s3://packages-dev.internal.wazuh.com/development/wazuh/6.x/main/packages
 
 jobs:
 
