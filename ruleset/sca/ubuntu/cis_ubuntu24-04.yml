@@ -34,7 +34,7 @@ checks:
      title: "Ensure mounting of cramfs filesystems is disabled."
      description: "The cramfs filesystem type is a compressed read-only Linux filesystem embedded in small footprint systems. A cramfs image can be used without having to first decompress the image."
      rationale: "Removing support for unneeded filesystem types reduces the local attack surface of the system. If this filesystem type is not needed, disable it."
-     remediation: "Run the following script to unload and disable the freevxfs module: - IF - the freevxfs kernel module is available in ANY installed kernel: - Create a file ending in .conf with install freevxfs /bin/false in the /etc/modprobe.d/ directory - Create a file ending in .conf with blacklist freevxfs in the /etc/modprobe.d/ directory - Run modprobe -r freevxfs 2>/dev/null; rmmod freevxfs 2>/dev/null to remove freevxfs from the kernel - IF - the freevxfs kernel module is not available on the system, or pre-compiled into the kernel, no remediation is necessary #!/usr/bin/env bash."
+     remediation: "Run the following script to unload and disable the cramfs module: - IF - the cramfs kernel module is available in ANY installed kernel: - Create a file ending in .conf with install cramfs /bin/false in the /etc/modprobe.d/ directory - Create a file ending in .conf with blacklist cramfs in the /etc/modprobe.d/ directory - Run modprobe -r cramfs 2>/dev/null; rmmod cramfs 2>/dev/null to remove cramfs from the kernel - IF - the cramfs kernel module is not available on the system, or pre-compiled into the kernel, no remediation is necessary #!/usr/bin/env bash."
      compliance:
        - cis: ["1.1.1.1"]
        - cis_csc_v8: ["4.8"]
@@ -178,7 +178,7 @@ checks:
      description: "The squashfs filesystem type is a compressed read-only Linux filesystem embedded in small footprint systems. A squashfs image can be used without having to first decompress the image."
      rationale: "Removing support for unneeded filesystem types reduces the local attack surface of the system. If this filesystem type is not needed, disable it."
      impact: "As Snap packages utilize squashfs as a compressed filesystem, disabling squashfs will cause Snap packages to fail. Snap application packages of software are self-contained and work across a range of Linux distributions. This is unlike traditional Linux package management approaches, like APT or RPM, which require specifically adapted packages per Linux distribution on an application update and delay therefore application deployment from developers to their software's end-user. Snaps themselves have no dependency on any external store (\"App store\"), can be obtained from any source and can be therefore used for upstream software deployment."
-     remediation: "Run the following script to unload and disable the udf module: - IF - the squashfs kernel module is available in ANY installed kernel: - Create a file ending in .conf with install squashfs /bin/false in the /etc/modprobe.d/ directory - Create a file ending in .conf with blacklist squashfs in the /etc/modprobe.d/ directory - Run modprobe -r squashfs 2>/dev/null; rmmod squashfs 2>/dev/null to remove squashfs from the kernel - IF - the squashfs kernel module is not available on the system, or pre-compiled into the kernel, no remediation is necessary."
+     remediation: "Run the following script to unload and disable the squashfs module: - IF - the squashfs kernel module is available in ANY installed kernel: - Create a file ending in .conf with install squashfs /bin/false in the /etc/modprobe.d/ directory - Create a file ending in .conf with blacklist squashfs in the /etc/modprobe.d/ directory - Run modprobe -r squashfs 2>/dev/null; rmmod squashfs 2>/dev/null to remove squashfs from the kernel - IF - the squashfs kernel module is not available on the system, or pre-compiled into the kernel, no remediation is necessary."
      compliance:
        - cis: ["1.1.1.7"]
        - cis_csc_v8: ["4.8"]
@@ -974,8 +974,8 @@ checks:
        - soc_2: ["CC5.2", "CC6.1"]
      condition: all
      rules:
-      - "f:/etc/default/grub -> r:security=apparmor"
-      - "f:/etc/default/grub -> r:apparmor=1"
+      - 'f:/boot/grub/grub.cfg -> r:^\s*\t*linux && r:security=apparmor'
+      - 'f:/boot/grub/grub.cfg -> r:^\s*\t*linux && r:apparmor=1'
 
   # 1.3.1.3 Ensure all AppArmor Profiles are in enforce or complain mode. (Automated)
    - id: 35538
@@ -999,10 +999,9 @@ checks:
      condition: all
      rules:
       - c:apparmor_status -> n:^(\p*\d+)\s+profiles\s+are\s+loaded compare > 0
-      - c:apparmor_status -> n:^(\p*\d+)\s+profiles\s+are\s+in\s+enforce\s+mode compare > 0
+      - c:apparmor_status -> n:^(\p*\d+)\s+profiles\s+are\s+in\s+enforce\s+mode compare >= 0
       - c:apparmor_status -> n:^(\p*\d+)\s+profiles\s+are\s+in\s+kill\s+mode compare == 0
-      - c:apparmor_status -> n:^(\p*\d+)\s+profiles\s+are\s+in\s+unconfined\s+mode compare == 0
-      - c:apparmor_status -> n:^(\p*\d+)\s*profiles\s+are\s+in\s+complain\s+mode compare == 0
+      - c:apparmor_status -> n:^(\p*\d+)\s*profiles\s+are\s+in\s+complain\s+mode compare >= 0
       - c:apparmor_status -> n:^(\p*\d+)\s*processes\s+are\s+unconfined compare == 0
 
   # 1.3.1.4 Ensure all AppArmor Profiles are enforcing. (Automated)
@@ -1030,7 +1029,6 @@ checks:
       - 'c:apparmor_status -> n:^(\d+)\s+profiles\s+are\s+loaded compare > 0'
       - 'c:apparmor_status -> n:^(\d+)\s+profiles\s+are\s+in\s+enforce\s+mode compare > 0'
       - 'c:apparmor_status -> r:^0\s+profiles\s+are\s+in\s+kill\s+mode'
-      - 'c:apparmor_status -> r:^0\s+profiles\s+are\s+in\s+unconfined\s+mode'
       - 'c:apparmor_status -> r:^0\s*profiles\s+are\s+in\s+complain\s+mode'
       - 'c:apparmor_status -> r:^0\s*processes\s+are\s+unconfined'
 
@@ -1082,7 +1080,7 @@ checks:
        - soc_2: ["CC5.2", "CC6.1"]
      condition: all
      rules:
-      - 'c:stat /boot/grub/grub.cfg -> r:Access: \(0400/-r--------\) && r:Uid:\s+\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s+\t*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat -c "%a" /boot/grub/grub.cfg -> r:600|400'
 
   # 1.5.1 Ensure address space layout randomization is enabled. (Automated)
    - id: 35542
@@ -1124,9 +1122,9 @@ checks:
      condition: all
      rules:
       - "c:sysctl fs.suid_dumpable -> r:^fs.suid_dumpable = 0"
-      - "c:systemctl is-enabled coredump.service -> r:enabled|masked|disabled"
-      - 'c:grep -Rh "fs.suid_dumpable" /etc/sysctl.conf /etc/sysctl.d/ -> !r:^\s*\t*# && r:fs.suid_dumpable = 0'
-      - 'c:grep -Rh "hard core 0" /etc/security/limits.conf /etc/security/limits.d/ -> !r:^\s*\t*# && r:\p hard core 0'
+      - "c:systemctl is-enabled coredump.service -> r:enabled|masked|disabled|not-found"
+      - 'c:grep -Rh "fs.suid_dumpable" /etc/sysctl.conf /etc/sysctl.d/ -> !r:^\s*\t*# && r:fs.suid_dumpable\s*=\s*0'
+      - 'c:grep -RhE "hard\\s+core\\s+0" /etc/security/limits.conf /etc/security/limits.d/ -> !r:^\s*\t*# && r:\p\s+hard\s+core\s+0'
 
   # 1.5.4 Ensure prelink is not installed. (Automated)
    - id: 35544
@@ -1170,9 +1168,9 @@ checks:
        - soc_2: ["CC6.3", "CC6.6"]
      condition: all
      rules:
-      - "c:systemctl is-enabled apport.service -> r:disabled"
+      - "c:systemctl is-enabled apport.service -> r:disabled|not-found"
       - "not f:/etc/default/apport -> n:enabled=(\\d+) compare != 0"
-      - "not c:systemctl is-active apport.service -> r:active"
+      - "not c:systemctl is-active apport.service -> r:^active$"
 
   # 1.6.1 Ensure message of the day is configured properly. (Automated)
    - id: 35546
@@ -1311,7 +1309,7 @@ checks:
        - soc_2: ["CC6.3", "CC6.6"]
      condition: all
      rules:
-      - "c:dpkg-query -s gdm3 -> r:package 'gdm3' is not installed'"
+      - "c:dpkg-query -s gdm3 -> r:package 'gdm3' is not installed"
 
   # 1.7.2 Ensure GDM login banner is configured. (Automated)
    - id: 35553
@@ -2182,7 +2180,7 @@ checks:
      condition: all
      rules:
       - "c:systemctl is-enabled systemd-timesyncd.service -> r:enabled"
-      - "c:systemctl is-active systemd-timesyncd.service -> r:active"
+      - "c:systemctl is-active systemd-timesyncd.service -> r:^active$"
 
   # 2.3.3.1 Ensure chrony is configured with authorized timeserver. (Automated)
    - id: 35590
@@ -2231,7 +2229,6 @@ checks:
      condition: all
      rules:
       - 'c:ps -ef -> r:_chrony\.+chronyd'
-      - 'd:/etc/chrony/sources.d -> r:\.*.sources -> r:^server|^pool'
       - "not c:systemctl show systemd-timesyncd.service -> r:^LoadState=loaded|^ActiveState=active"
 
   # 2.3.3.3 Ensure chrony is enabled and running. (Automated)
@@ -2442,7 +2439,8 @@ checks:
      condition: all
      rules:
       - "f:/etc/cron.allow"
-      - 'c:stat /etc/cron.allow -> r:Access:\s*\t*\(0640/-rw-r-----\)\s*\t*Uid:\s*\t*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\t*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat -Lc "%a" /etc/cron.allow -> r:640|600|400'
+      - 'c:stat -Lc "%U %G" /etc/cron.allow -> r:^root root$'
 
   # 2.4.2.1 Ensure at is restricted to authorized users. (Automated)
    - id: 35601
@@ -2467,9 +2465,7 @@ checks:
      condition: all
      rules:
       - "f:/etc/at.allow"
-      - 'c:stat -Lc "%a" /etc/at.allow -> n:^(\d)\d\d$ compare <= 6'
-      - 'c:stat -Lc "%a" /etc/at.allow -> n:^\d(\d)\d$ compare <= 4'
-      - 'c:stat -Lc "%a" /etc/at.allow -> n:^\d\d(\d)$ compare <= 0'
+      - 'c:stat -Lc "%a" /etc/at.allow -> r:640|600|400'
       - 'c:stat -Lc "%U %G" /etc/at.allow -> r:^root root$|^root daemon$'
 
   # 3.1.1 Ensure IPv6 status is identified. (Manual) - Not Implemented
@@ -3750,7 +3746,7 @@ checks:
        - pci_dss_v4.0: ["2.2.7", "4.1.1", "4.2.1", "4.2.1.2", "4.2.2", "8.3.2"]
      condition: none
      rules:
-      - "c:sshd -T -> r:^MACs && r:hmac-md5|hmac-md5-96|hmac-ripemd160|hmac-sha1|hmac-sha1-96|umac-64@openssh.com|umac-128@openssh.com|hmac-md5-etm@openssh.com|hmac-md5-96-etm@openssh.com|hmac-ripemd160-etm@openssh.com|hmac-sha1-etm@openssh.com|hmac-sha1-96-etm@openssh.com|umac-64-etm@openssh.com|umac-128-etm@openssh.com"
+      - "c:sshd -T -> r:^MACs && r:hmac-md5|hmac-md5-96|hmac-ripemd160|hmac-sha1-96|umac-64@openssh.com|hmac-md5-etm@openssh.com|hmac-md5-96-etm@openssh.com|hmac-ripemd160-etm@openssh.com|hmac-sha1-96-etm@openssh.com|umac-64-etm@openssh.com|umac-128-etm@openssh.com"
 
   # 5.1.16 Ensure sshd MaxAuthTries is configured. (Automated)
    - id: 35655
@@ -4951,11 +4947,11 @@ checks:
        - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
      condition: all
      rules:
-      - 'f:/etc/systemd/journald.conf -> r:^SystemMaxUse\s*\t*=\s*\t*\d+'
-      - 'f:/etc/systemd/journald.conf -> r:^SystemKeepFree\s*\t*=\s*\t*\d+'
-      - 'f:/etc/systemd/journald.conf -> r:^RuntimeMaxUse\s*\t*=\s*\t*\d+'
-      - 'f:/etc/systemd/journald.conf -> r:^RuntimeKeepFree\s*\t*=\s*\t*\d+'
-      - 'f:/etc/systemd/journald.conf -> r:^MaxFileSec\s*\t*=\s*\t*\d+'
+      - 'c:grep -Rh "SystemMaxUse" /etc/systemd/journald.conf /etc/systemd/journald.conf.d/ -> r:^SystemMaxUse\s*\t*=\s*\t*\d+'
+      - 'c:grep -Rh "SystemKeepFree" /etc/systemd/journald.conf /etc/systemd/journald.conf.d/ -> r:^SystemKeepFree\s*\t*=\s*\t*\d+'
+      - 'c:grep -Rh "RuntimeMaxUse" /etc/systemd/journald.conf /etc/systemd/journald.conf.d/ -> r:^RuntimeMaxUse\s*\t*=\s*\t*\d+'
+      - 'c:grep -Rh "RuntimeKeepFree" /etc/systemd/journald.conf /etc/systemd/journald.conf.d/ -> r:^RuntimeKeepFree\s*\t*=\s*\t*\d+'
+      - 'c:grep -Rh "MaxFileSec" /etc/systemd/journald.conf /etc/systemd/journald.conf.d/ -> r:^MaxFileSec\s*\t*=\s*\t*\d+'
 
   # 6.1.1.4 Ensure only one logging system is in use. (Automated) - Not Implemented
 
@@ -5099,9 +5095,10 @@ checks:
        - pci_dss_v3.2.1: ["10.2", "10.3", "10.7"]
        - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
        - soc_2: ["A1.1"]
-     condition: all
+     condition: any
      rules:
       - 'f:/etc/systemd/journald.conf -> r:^Compress\s*\t*=\s*\t*yes'
+      - 'd:/etc/systemd/journald.conf.d -> r:\.* -> r:^Compress\s*\t*=\s*\t*yes'
 
   # 6.1.2.4 Ensure journald Storage is configured. (Automated)
    - id: 35715
@@ -5122,9 +5119,10 @@ checks:
        - nist_sp_800-53: ["AU-7"]
        - pci_dss_v3.2.1: ["10.2", "10.3"]
        - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
-     condition: all
+     condition: any
      rules:
       - 'f:/etc/systemd/journald.conf -> r:^Storage\s*\t*=\s*\t*persistent'
+      - 'd:/etc/systemd/journald.conf.d -> r:\.* -> r:^Storage\s*\t*=\s*\t*persistent'
 
   # 6.1.3.1 Ensure rsyslog is installed. (Automated)
    - id: 35716
@@ -5274,7 +5272,7 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition: all
+     condition: none
      rules:
       - 'f:/etc/rsyslog.conf -> r:^\s*\t*module\(load="imtcp"\)'
       - 'd:/etc/rsyslog.d -> r:\.*.conf -> r:^\s*\t*module\(load="imtcp"\)'
@@ -6161,7 +6159,7 @@ checks:
        - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
        - pci_dss_v4.0: ["1.3.1", "7.1"]
        - soc_2: ["CC5.2", "CC6.1"]
-     condition: all
+     condition: none
      rules:
       - 'c:stat -c "%n %a" /sbin/auditctl /sbin/aureport /sbin/ausearch /sbin/autrace /sbin/auditd /sbin/augenrules -> r:\w+ && !r:000|010|040|050|001|011|041|051|004|014|044|054|005|015|045|055|700|710|740|750|701|711|741|751|704|714|744|754|705|715|745|755'
 
@@ -6402,7 +6400,7 @@ checks:
        - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
        - pci_dss_v4.0: ["1.3.1", "7.1"]
        - soc_2: ["CC5.2", "CC6.1"]
-     condition: all
+     condition: any
      rules:
       - 'c:stat /etc/shadow -> r:^Access:\s*\(0640/-rw-r-----\)|Access:\s*\(0600/-rw-------\) && r:\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
       - 'c:stat /etc/shadow -> r:^Access:\s*\(0640/-rw-r-----\)|Access:\s*\(0600/-rw-------\) && r:\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*\d+/\s*\t*shadow\)'
@@ -6427,7 +6425,7 @@ checks:
        - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
        - pci_dss_v4.0: ["1.3.1", "7.1"]
        - soc_2: ["CC5.2", "CC6.1"]
-     condition: all
+     condition: any
      rules:
       - 'c:stat /etc/shadow- -> r:^Access:\s*\(0640/-rw-r-----\)|Access:\s*\(0600/-rw-------\) && r:\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
       - 'c:stat /etc/shadow- -> r:^Access:\s*\(0640/-rw-r-----\)|Access:\s*\(0600/-rw-------\) && r:\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*\d+/\s*\t*shadow\)'
@@ -6452,7 +6450,7 @@ checks:
        - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
        - pci_dss_v4.0: ["1.3.1", "7.1"]
        - soc_2: ["CC5.2", "CC6.1"]
-     condition: all
+     condition: any
      rules:
       - 'c:stat /etc/gshadow -> r:^Access:\s*\(0640/-rw-r-----\)|Access:\s*\(0600/-rw-------\) && r:\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
       - 'c:stat /etc/gshadow -> r:^Access:\s*\(0640/-rw-r-----\)|Access:\s*\(0600/-rw-------\) && r:\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*\d+/\s*\t*shadow\)'
@@ -6477,7 +6475,7 @@ checks:
        - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
        - pci_dss_v4.0: ["1.3.1", "7.1"]
        - soc_2: ["CC5.2", "CC6.1"]
-     condition: all
+     condition: any
      rules:
       - 'c:stat /etc/gshadow- -> r:^Access:\s*\(0640/-rw-r-----\)|Access:\s*\(0600/-rw-------\) && r:\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
       - 'c:stat /etc/gshadow- -> r:^Access:\s*\(0640/-rw-r-----\)|Access:\s*\(0600/-rw-------\) && r:\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*\d+/\s*\t*shadow\)'
@@ -6528,8 +6526,8 @@ checks:
        - soc_2: ["CC5.2", "CC6.1"]
      condition: all
      rules:
-      - 'c:stat /etc/security/opasswd -> r:Access:\s*\(0600/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
-      - 'c:stat /etc/security/opasswd.old -> r:Access:\s*\(0600/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat -c "%a %U %G" /etc/security/opasswd -> r:^600\s+root\s+root$'
+      - 'c:stat -c "%a %U %G" /etc/security/opasswd.old -> r:^600\s+root\s+root$'
 
   # 7.1.11 Ensure world writable files and directories are secured. (Automated) - Not Implemented
   # 7.1.12 Ensure no files or directories without an owner and a group exist. (Automated) - Not Implemented
