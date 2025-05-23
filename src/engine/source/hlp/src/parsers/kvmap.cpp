@@ -7,14 +7,117 @@
 #include <fmt/format.h>
 
 #include "hlp.hpp"
-#include "syntax.hpp"
-
 #include "parse_field.hpp"
+#include "syntax.hpp"
 
 namespace
 {
 using namespace hlp;
 using namespace hlp::parser;
+
+size_t findNext(std::string_view input, size_t start, char target, char quote, char esc)
+{
+    bool inQuotes = false;
+
+    for (size_t i = start; i < input.size(); ++i)
+    {
+        bool isQuote = input[i] == quote;
+        bool isEscaped = (i > 0 && input[i - 1] == esc && esc != quote);
+        bool isDoubleQuoteEscape = (quote == esc && i + 1 < input.size() && input[i] == quote && input[i + 1] == quote);
+
+        if (isQuote && !isEscaped)
+        {
+            if (isDoubleQuoteEscape)
+            {
+                ++i; // skip escaped quote
+            }
+            else
+            {
+                inQuotes = !inQuotes;
+            }
+        }
+        else if (input[i] == target && !inQuotes && !isEscaped)
+        {
+            return i;
+        }
+    }
+
+    return std::string_view::npos;
+}
+
+void processKeyValue(
+    json::Json& doc, std::string_view key, std::string_view value, char quote, char esc, char sep, char delim)
+{
+    // Check if the ending quote is escaped
+    bool isEscapedQuoteAtEnd = value.size() >= 2 && value.back() == quote && value[value.size() - 2] == esc;
+
+    // Checks if the value is enclosed in unescaped quotes
+    bool isQuoted = (value.size() >= 2 && value.front() == quote && value.back() == quote && !isEscapedQuoteAtEnd);
+
+    if (isQuoted)
+    {
+        value.remove_prefix(1);
+        value.remove_suffix(1);
+    }
+
+    if (key.size() >= 2 && key.front() == quote && key.back() == quote)
+    {
+        key.remove_prefix(1), key.remove_suffix(1);
+    }
+
+    bool hasEscape = false;
+    for (size_t i = 0; i + 1 < value.size(); ++i)
+    {
+        if (value[i] == esc
+            && (value[i + 1] == quote || value[i + 1] == sep || value[i + 1] == delim || value[i + 1] == esc))
+        {
+            hasEscape = true;
+            break;
+        }
+    }
+
+    updateDoc(doc, fmt::format("/{}", key), value, hasEscape, std::string(1, esc), isQuoted);
+}
+
+bool validateKeyValue(std::string_view input,
+                      size_t& pos,
+                      std::string_view& key,
+                      std::string_view& value,
+                      char sep,
+                      char delim,
+                      char quote,
+                      char esc)
+{
+    size_t sepPos = findNext(input, pos, sep, quote, esc);
+    size_t delimBeforeSep = findNext(input, pos, delim, quote, esc);
+
+    if (delimBeforeSep != std::string_view::npos && (sepPos == std::string_view::npos || delimBeforeSep < sepPos))
+    {
+        return false;
+    }
+
+    if (sepPos == std::string_view::npos || sepPos == pos)
+    {
+        return false;
+    }
+
+    key = input.substr(pos, sepPos - pos);
+    pos = sepPos + 1;
+
+    size_t delimPos = findNext(input, pos, delim, quote, esc);
+    if (delimPos == std::string_view::npos)
+    {
+        value = input.substr(pos);
+        pos = input.size();
+    }
+    else
+    {
+        value = input.substr(pos, delimPos - pos);
+        pos = delimPos + 1;
+    }
+
+    return true;
+}
 
 Mapper getMapper(const json::Json& doc, std::string_view targetField)
 {
@@ -24,13 +127,52 @@ Mapper getMapper(const json::Json& doc, std::string_view targetField)
     };
 }
 
-SemParser getSemParser(json::Json&& doc, const std::string& targetField)
+SemParser getSemParser(const std::string& targetField, char delim, char sep, char quote, char esc)
 {
-    return [targetField, doc](std::string_view)
+    return [=](std::string_view input)
     {
-        return getMapper(doc, targetField);
+        json::Json doc {};
+        size_t pos = 0;
+        std::string_view key, value;
+
+        while (pos < input.size() && validateKeyValue(input, pos, key, value, sep, delim, quote, esc))
+        {
+            processKeyValue(doc, key, value, quote, esc, sep, delim);
+        }
+
+        return targetField.empty() ? noMapper() : getMapper(doc, targetField);
     };
 }
+
+syntax::Parser getSynParser(char delim, char sep, char quote, char esc)
+{
+    return [=](std::string_view input) -> syntax::Result
+    {
+        if (input.empty())
+        {
+            return abs::makeFailure<syntax::ResultT>(input, {});
+        }
+
+        size_t pos = 0;
+        size_t lastValidPos = 0;
+        bool parsedAny = false;
+        std::string_view key, value;
+
+        while (pos < input.size() && validateKeyValue(input, pos, key, value, sep, delim, quote, esc))
+        {
+            lastValidPos = pos;
+            parsedAny = true;
+        }
+
+        if (!parsedAny)
+        {
+            return abs::makeFailure<syntax::ResultT>(input.substr(pos), {});
+        }
+
+        return abs::makeSuccess<syntax::ResultT>(std::move(input), input.substr(lastValidPos));
+    };
+}
+
 } // namespace
 
 namespace hlp::parsers
@@ -38,18 +180,18 @@ namespace hlp::parsers
 
 Parser getKVParser(const Params& params)
 {
-
     if (params.options.size() != 4)
     {
         throw std::runtime_error(fmt::format("KV parser requires four parameters: separator, delimiter, quote "
                                              "character and escape character"));
     }
 
-    if (params.options[0].size() != 1 || params.options[1].size() != 1 || params.options[2].size() != 1
-        || params.options[3].size() != 1)
+    for (const auto& opt : params.options)
     {
-        throw std::runtime_error(fmt::format("KV parser: separator, delimiter, quote and escape must be single "
-                                             "characters"));
+        if (opt.size() != 1)
+        {
+            throw std::runtime_error("KV parser: separator, delimiter, quote and escape must be single characters");
+        }
     }
 
     const char sep = params.options[0][0];   // separator between key and value
@@ -57,86 +199,26 @@ Parser getKVParser(const Params& params)
     const char quote = params.options[2][0]; // quote character
     const char esc = params.options[3][0];   // escape character
 
-    // Check if the arguments of the parser are valid
     if (sep == delim)
     {
-        throw std::runtime_error(fmt::format("KV parser: separator and delimiter must be different"));
+        throw std::runtime_error("KV parser: separator and delimiter must be different");
     }
 
-    const auto targetField = params.targetField.empty() ? "" : params.targetField;
+    const auto targetField = params.targetField;
 
-    return [sep, delim, quote, esc, name = params.name, targetField](std::string_view txt)
+    const auto synP = getSynParser(delim, sep, quote, esc);
+    const auto semP = getSemParser(targetField, delim, sep, quote, esc);
+
+    return [name = params.name, synP, semP](std::string_view txt)
     {
-        std::string_view kvInput = txt;
-
-        auto remaining = txt.substr(kvInput.size());
-
-        size_t start {0}, end {0};
-        json::Json doc;
-
-        std::vector<Field> kv;
-        auto dlm = sep;
-        while (start <= kvInput.size())
+        auto synR = synP(txt);
+        if (synR.failure())
         {
-            auto remaining = kvInput.substr(start, kvInput.size() - start);
-            auto f = getField(remaining, dlm, quote, '\\', true);
-            if (!f.has_value())
-            {
-                break;
-            }
-
-            dlm = ((dlm == delim) ? sep : delim);
-
-            auto fld = f.value();
-            fld.addOffset(start);
-            end = fld.end();
-            start = end + 1;
-            kv.insert(kv.end(), fld);
-        };
-
-        if (kv.size() <= 1)
-        {
-            return abs::makeFailure<ResultT>(txt, name);
-            // return parsec::makeError<json::Json>(fmt::format("{}: No key-value fields found)", name), index);
+            return abs::makeFailure<ResultT>(synR.remaining(), name);
         }
 
-        if (kv.size() % 2 != 0)
-        {
-            return abs::makeFailure<ResultT>(txt.substr(kv[kv.size() - 2].end()), name);
-            // return parsec::makeError<json::Json>(fmt::format("{}: Invalid number of key-value fields", name), index);
-        }
-
-        for (auto i = 0; i < kv.size() - 1; i += 2)
-        {
-            auto k = kvInput.substr(kv[i].start(), kv[i].len());
-            auto v = kvInput.substr(kv[i + 1].start(), kv[i + 1].len());
-            if (k.empty())
-            {
-                return abs::makeFailure<ResultT>(txt.substr(kv[i].start()), name);
-                // return parsec::makeError<json::Json>(
-                //     fmt::format(
-                //         "{}: Unable to parse key-value between '{}'-'{}' chars", name, kv[i].start(), kv[i].end()),
-                //     index);
-            }
-            end = kv[i + 1].end();
-            updateDoc(
-                doc, fmt::format("/{}", k), v, kv[i + 1].isEscaped(), std::string_view {&esc, 1}, kv[i + 1].isQuoted());
-        }
-
-        if (start - 1 != end)
-        {
-            // TODO: fix index
-            return abs::makeFailure<ResultT>(txt, name);
-            // return parsec::makeError<json::Json>(fmt::format("{}: Invalid key-value string", name), index);
-        }
-
-        if (kvInput.size() != end)
-        {
-            return abs::makeFailure<ResultT>(txt.substr(end), name);
-        }
-
-        const auto semP = targetField.empty() ? noSemParser() : getSemParser(std::move(doc), targetField);
-        return abs::makeSuccess<ResultT>(SemToken {kvInput, std::move(semP)}, remaining);
+        auto parsed = syntax::parsed(synR, txt);
+        return abs::makeSuccess<ResultT>(SemToken {parsed, semP}, synR.remaining());
     };
 }
 
