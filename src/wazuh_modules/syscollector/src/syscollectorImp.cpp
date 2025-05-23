@@ -935,6 +935,35 @@ static void removeKeysWithEmptyValue(nlohmann::json& input)
     }
 }
 
+static void sanitizeJsonValue(nlohmann::json& input)
+{
+    if (input.is_object())
+    {
+        for (auto it = input.begin(); it != input.end(); ++it)
+        {
+            auto& value = it.value();
+
+            sanitizeJsonValue(value);
+        }
+    }
+    else if (input.is_array())
+    {
+        for (auto& item : input)
+        {
+            sanitizeJsonValue(item);
+        }
+    }
+    else if (input.is_string())
+    {
+        const std::string& stringValue = input.get_ref<const std::string&>();
+
+        if (stringValue != " ")
+        {
+            input = Utils::trim(stringValue);
+        }
+    }
+}
+
 static bool isElementDuplicated(const nlohmann::json& input, const std::pair<std::string, std::string>& keyValue)
 {
     const auto it
@@ -1206,6 +1235,7 @@ nlohmann::json Syscollector::getHardwareData()
 {
     nlohmann::json ret;
     ret[0] = m_spInfo->hardware();
+    sanitizeJsonValue(ret[0]);
     ret[0]["checksum"] = getItemChecksum(ret[0]);
     return ret;
 }
@@ -1230,6 +1260,7 @@ nlohmann::json Syscollector::getOSData()
 {
     nlohmann::json ret;
     ret[0] = m_spInfo->os();
+    sanitizeJsonValue(ret[0]);
     ret[0]["checksum"] = std::to_string(std::chrono::system_clock::now().time_since_epoch().count());
     return ret;
 }
@@ -1253,7 +1284,7 @@ void Syscollector::syncOs()
 nlohmann::json Syscollector::getNetworkData()
 {
     nlohmann::json ret;
-    const auto& networks { m_spInfo->networks() };
+    auto networks = m_spInfo->networks();
     nlohmann::json ifaceTableDataList {};
     nlohmann::json protoTableDataList {};
     nlohmann::json addressTableDataList {};
@@ -1267,6 +1298,7 @@ nlohmann::json Syscollector::getNetworkData()
 
     if (!networks.is_null())
     {
+        sanitizeJsonValue(networks);
         const auto& itIface { networks.find("iface") };
 
         if (networks.end() != itIface)
@@ -1426,6 +1458,7 @@ void Syscollector::scanPackages()
         {
             nlohmann::json input;
 
+            sanitizeJsonValue(rawData);
             rawData["checksum"] = getItemChecksum(rawData);
             rawData["item_id"] = getItemId(rawData, PACKAGES_ITEM_ID_FIELDS);
 
@@ -1454,6 +1487,8 @@ void Syscollector::scanHotfixes()
 
         if (!hotfixes.is_null())
         {
+            sanitizeJsonValue(hotfixes);
+
             for (auto& hotfix : hotfixes)
             {
                 hotfix["checksum"] = getItemChecksum(hotfix);
@@ -1486,6 +1521,8 @@ nlohmann::json Syscollector::getPortsData()
 
     if (!data.is_null())
     {
+        sanitizeJsonValue(data);
+
         for (auto& item : data)
         {
             const auto protocol { item.at("protocol").get_ref<const std::string&>() };
@@ -1579,6 +1616,7 @@ void Syscollector::scanProcesses()
         {
             nlohmann::json input;
 
+            sanitizeJsonValue(rawData);
             rawData["checksum"] = getItemChecksum(rawData);
 
             input["table"] = PROCESSES_TABLE;
