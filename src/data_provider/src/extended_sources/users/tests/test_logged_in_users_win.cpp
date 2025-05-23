@@ -290,9 +290,3 @@ TEST(LoggedInUsersWindowsProviderTest, CollectWithOneValidSession)
     EXPECT_EQ(result[0]["sid"], sidString);
     EXPECT_EQ(result[0]["registry_hive"], "HKEY_USERS\\" + sidString);
 }
-
-int main(int argc, char** argv)
-{
-    ::testing::InitGoogleTest(&argc, argv);
-    return RUN_ALL_TESTS();
-}

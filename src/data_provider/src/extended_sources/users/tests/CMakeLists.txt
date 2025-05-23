@@ -9,10 +9,13 @@ include_directories(${CMAKE_SOURCE_DIR}/../external/googletest/googletest/includ
 include_directories(${CMAKE_SOURCE_DIR}/../external/googletest/googlemock/include/)
 link_directories(${CMAKE_SOURCE_DIR}/../external/googletest/lib/)
 
+set(TEST_SRC "main.cpp")
+
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
-    set(TEST_SRC test_logged_in_users_win.cpp)
+    list(APPEND TEST_SRC test_logged_in_users_win.cpp)
 else()
-    set(TEST_SRC test_logged_in_users_unix.cpp)
+    list(APPEND TEST_SRC test_logged_in_users_unix.cpp)
+    list(APPEND TEST_SRC test_shadow_linux.cpp)
 endif()
 
 add_executable(extended_sources_users_unit_test ${TEST_SRC})
@@ -28,25 +31,11 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
         optimized gmock
         optimized gtest_main
         optimized gmock_main
-        psapi
-        iphlpapi
-        ws2_32
-        wbemuuid
-        advapi32
-        kernel32
-        user32
-        gdi32
-        winspool
-        shell32
-        uuid
-        ole32
-        oleaut32
         wtsapi32
-        -static-libgcc -static-libstdc++
     )
 else()
     target_link_libraries(extended_sources_users_unit_test
-        logged_in_users
+        users
         gtestd
         gmockd
         gtest_maind
