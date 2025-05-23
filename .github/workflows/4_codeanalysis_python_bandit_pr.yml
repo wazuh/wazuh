@@ -1,0 +1,40 @@
+run-name: Python static code analysis on PR ${{ github.event.pull_request.number }}
+name: Python static code analysis on PR
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/4_codeanalysis_python_bandit_pr.yml"
+      - 'framework/**/*.py'
+      - 'api/**/*.py'
+      - 'wodles/**/*.py'
+      - 'integrations/**/*.py'
+
+
+jobs:
+  bandit-scan:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'  # Specify your Python version
+
+      - name: Install bandit
+        run: |
+          pip install bandit
+
+      - name: Run Bandit
+        run: |
+          targets=$(git diff --diff-filter=d --name-only ${{ github.event.pull_request.base.sha }} -- '*.py')
+
+          if [ -z "$targets" ]; then
+              echo "Nothing to scan"
+          else
+              bandit -f screen "$targets"
+          fi
