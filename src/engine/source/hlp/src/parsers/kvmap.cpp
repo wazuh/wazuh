@@ -15,13 +15,57 @@ namespace
 using namespace hlp;
 using namespace hlp::parser;
 
+size_t findNext(std::string_view input, size_t start, char target, char quote, char esc)
+{
+    bool inQuotes = false;
+
+    for (size_t i = start; i < input.size(); ++i)
+    {
+        bool isQuote = input[i] == quote;
+        bool isEscaped = (i > 0 && input[i - 1] == esc && esc != quote);
+        bool isDoubleQuoteEscape = (quote == esc && i + 1 < input.size() && input[i] == quote && input[i + 1] == quote);
+
+        if (isQuote && !isEscaped)
+        {
+            if (isDoubleQuoteEscape)
+            {
+                ++i; // skip escaped quote
+            }
+            else
+            {
+                inQuotes = !inQuotes;
+            }
+        }
+        else if (input[i] == target && !inQuotes && !isEscaped)
+        {
+            return i;
+        }
+    }
+
+    return std::string_view::npos;
+}
+
 void processKeyValue(
     json::Json& doc, std::string_view key, std::string_view value, char quote, char esc, char sep, char delim)
 {
-    bool isQuoted = false;
-    bool hasEscape = false;
+    // Check if the ending quote is escaped
+    bool isEscapedQuoteAtEnd = value.size() >= 2 && value.back() == quote && value[value.size() - 2] == esc;
 
-    // Check for escapes before cutting quotes
+    // Checks if the value is enclosed in unescaped quotes
+    bool isQuoted = (value.size() >= 2 && value.front() == quote && value.back() == quote && !isEscapedQuoteAtEnd);
+
+    if (isQuoted)
+    {
+        value.remove_prefix(1);
+        value.remove_suffix(1);
+    }
+
+    if (key.size() >= 2 && key.front() == quote && key.back() == quote)
+    {
+        key.remove_prefix(1), key.remove_suffix(1);
+    }
+
+    bool hasEscape = false;
     for (size_t i = 0; i + 1 < value.size(); ++i)
     {
         if (value[i] == esc
@@ -32,73 +76,47 @@ void processKeyValue(
         }
     }
 
-    // Check if it is enclosed in real (not escaped) quotes
-    auto quoted = (value.size() >= 2 && value.front() == quote && value.back() == quote
-                   && (value.size() < 2 || value[value.size() - 2] != esc));
-
-    if (quoted)
-    {
-        value = value.substr(1, value.size() - 2);
-        isQuoted = true;
-    }
-
-    // The same applies to the key
-    if (key.size() >= 2 && key.front() == quote && key.back() == quote)
-    {
-        key = key.substr(1, key.size() - 2);
-    }
-
     updateDoc(doc, fmt::format("/{}", key), value, hasEscape, std::string(1, esc), isQuoted);
 }
 
-size_t findNext(std::string_view input, size_t start, char ch, char quote, char esc)
+bool validateKeyValue(std::string_view input,
+                      size_t& pos,
+                      std::string_view& key,
+                      std::string_view& value,
+                      char sep,
+                      char delim,
+                      char quote,
+                      char esc)
 {
-    bool inQuotes = false;
+    size_t sepPos = findNext(input, pos, sep, quote, esc);
+    size_t delimBeforeSep = findNext(input, pos, delim, quote, esc);
 
-    auto isEscaped = [quote, esc, input](size_t i)
+    if (delimBeforeSep != std::string_view::npos && (sepPos == std::string_view::npos || delimBeforeSep < sepPos))
     {
-        return i > 0 && input[i - 1] == esc && esc != quote;
-    };
-
-    auto isDoubleQuoteEscape = [quote, esc, input](size_t i)
-    {
-        return quote == esc && i + 1 < input.size() && input[i] == quote && input[i + 1] == quote;
-    };
-
-    auto isQuoteChar = [input, quote](size_t i)
-    {
-        return input[i] == quote;
-    };
-
-    for (size_t i = start; i < input.size(); ++i)
-    {
-        if (isQuoteChar(i))
-        {
-            if (isDoubleQuoteEscape(i))
-            {
-                ++i;
-                continue;
-            }
-
-            if (quote == esc || !isEscaped(i))
-            {
-                inQuotes = !inQuotes;
-                continue;
-            }
-        }
-
-        if (input[i] == ch && !inQuotes)
-        {
-            if (isEscaped(i))
-            {
-                continue;
-            }
-
-            return i;
-        }
+        return false;
     }
 
-    return std::string_view::npos;
+    if (sepPos == std::string_view::npos || sepPos == pos)
+    {
+        return false;
+    }
+
+    key = input.substr(pos, sepPos - pos);
+    pos = sepPos + 1;
+
+    size_t delimPos = findNext(input, pos, delim, quote, esc);
+    if (delimPos == std::string_view::npos)
+    {
+        value = input.substr(pos);
+        pos = input.size();
+    }
+    else
+    {
+        value = input.substr(pos, delimPos - pos);
+        pos = delimPos + 1;
+    }
+
+    return true;
 }
 
 Mapper getMapper(const json::Json& doc, std::string_view targetField)
@@ -115,58 +133,14 @@ SemParser getSemParser(const std::string& targetField, char delim, char sep, cha
     {
         json::Json doc {};
         size_t pos = 0;
-        size_t len = input.size();
+        std::string_view key, value;
 
-        while (pos < len)
+        while (pos < input.size() && validateKeyValue(input, pos, key, value, sep, delim, quote, esc))
         {
-            size_t sepPos = findNext(input, pos, sep, quote, esc);
-            size_t delimBeforeSep = findNext(input, pos, delim, quote, esc);
-
-            // Validate that there is no delimiter before a separator
-            if (delimBeforeSep != std::string_view::npos
-                && (sepPos == std::string_view::npos || delimBeforeSep < sepPos))
-            {
-                break;
-            }
-
-            if (sepPos == std::string_view::npos)
-            {
-                pos = (pos == 0) ? pos : pos - 1;
-                break;
-            }
-
-            // Validate non-empty key
-            auto key = input.substr(pos, sepPos - pos);
-            if (key.empty())
-            {
-                break;
-            }
-
-            pos = sepPos + 1;
-
-            // Search delimiter to find value
-            auto delimPos = findNext(input, pos, delim, quote, esc);
-            std::string_view rawVal;
-            if (delimPos == std::string_view::npos)
-            {
-                rawVal = input.substr(pos);
-                pos = len;
-            }
-            else
-            {
-                rawVal = input.substr(pos, delimPos - pos);
-                pos = delimPos + 1;
-            }
-
-            processKeyValue(doc, key, rawVal, quote, esc, sep, delim);
+            processKeyValue(doc, key, value, quote, esc, sep, delim);
         }
 
-        if (targetField.empty())
-        {
-            return noMapper();
-        }
-
-        return getMapper(doc, targetField);
+        return targetField.empty() ? noMapper() : getMapper(doc, targetField);
     };
 }
 
@@ -182,51 +156,11 @@ syntax::Parser getSynParser(char delim, char sep, char quote, char esc)
         size_t pos = 0;
         size_t lastValidPos = 0;
         bool parsedAny = false;
+        std::string_view key, value;
 
-        while (pos < input.size())
+        while (pos < input.size() && validateKeyValue(input, pos, key, value, sep, delim, quote, esc))
         {
-            auto sepPos = findNext(input, pos, sep, quote, esc);
-            auto delimBeforeSep = findNext(input, pos, delim, quote, esc);
-
-            // Validate that there is no delimiter before a separator
-            if (delimBeforeSep != std::string_view::npos
-                && (sepPos == std::string_view::npos || delimBeforeSep < sepPos))
-            {
-                break;
-            }
-
-            if (sepPos == std::string_view::npos)
-            {
-                pos == 0 ? pos : pos - 1;
-                break;
-            }
-
-            // Validate non-empty key
-            auto key = input.substr(pos, sepPos - pos);
-            if (key.empty())
-            {
-                break;
-            }
-
-            pos = sepPos + 1;
-
-            // Search delimiter to find value
-            auto delimPos = findNext(input, pos, delim, quote, esc);
-            if (delimPos == std::string_view::npos)
-            {
-                input.substr(pos);
-                lastValidPos = input.size();
-                pos = input.size();
-                parsedAny = true;
-                break;
-            }
-            else
-            {
-                input.substr(pos, delimPos - pos);
-                lastValidPos = delimPos;
-                pos = delimPos + 1;
-            }
-
+            lastValidPos = pos;
             parsedAny = true;
         }
 
@@ -252,11 +186,12 @@ Parser getKVParser(const Params& params)
                                              "character and escape character"));
     }
 
-    if (params.options[0].size() != 1 || params.options[1].size() != 1 || params.options[2].size() != 1
-        || params.options[3].size() != 1)
+    for (const auto& opt : params.options)
     {
-        throw std::runtime_error(fmt::format("KV parser: separator, delimiter, quote and escape must be single "
-                                             "characters"));
+        if (opt.size() != 1)
+        {
+            throw std::runtime_error("KV parser: separator, delimiter, quote and escape must be single characters");
+        }
     }
 
     const char sep = params.options[0][0];   // separator between key and value
@@ -264,13 +199,12 @@ Parser getKVParser(const Params& params)
     const char quote = params.options[2][0]; // quote character
     const char esc = params.options[3][0];   // escape character
 
-    // Check if the arguments of the parser are valid
     if (sep == delim)
     {
-        throw std::runtime_error(fmt::format("KV parser: separator and delimiter must be different"));
+        throw std::runtime_error("KV parser: separator and delimiter must be different");
     }
 
-    const auto targetField = params.targetField.empty() ? "" : params.targetField;
+    const auto targetField = params.targetField;
 
     const auto synP = getSynParser(delim, sep, quote, esc);
     const auto semP = getSemParser(targetField, delim, sep, quote, esc);
