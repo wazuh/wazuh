@@ -50,6 +50,9 @@ TEST(ShadowProviderTests, CollectReturnsExpectedJson)
     EXPECT_EQ(result[0]["expire"], -1);
     EXPECT_EQ(result[0]["username"], "testuser");
     EXPECT_EQ(result[0]["password_status"], "not_set");
+
+    free(fakeEntry.sp_namp);
+    free(fakeEntry.sp_pwdp);
 }
 
 TEST(ShadowProviderTests, CollectReturnsJsonArray)
@@ -110,4 +113,9 @@ TEST(ShadowProviderTests, CollectReturnsJsonArray)
     EXPECT_EQ(result[1]["expire"], -1);
     EXPECT_EQ(result[1]["username"], "testuser");
     EXPECT_EQ(result[1]["password_status"], "locked");
+
+    free(fakeEntry.sp_namp);
+    free(fakeEntry.sp_pwdp);
+    free(fakeEntry2.sp_namp);
+    free(fakeEntry2.sp_pwdp);
 }

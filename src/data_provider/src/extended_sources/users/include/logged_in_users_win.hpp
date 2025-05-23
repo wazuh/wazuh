@@ -19,7 +19,7 @@
 
 /// LoggedInUsersProvider class
 /// This class is responsible for collecting information about logged-in users on a Windows system.
-class LoggedInUsersProvider 
+class LoggedInUsersProvider
 {
     public:
         /// @brief Constructor

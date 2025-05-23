@@ -6,8 +6,8 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  */
- 
- #pragma once
+
+#pragma once
 
 #include <winsock2.h>
 #include <windows.h>
@@ -46,7 +46,7 @@ class ITWSapiWrapper
                                                  WTS_INFO_CLASS WTSInfoClass,
                                                  LPWSTR* ppBuffer,
                                                  DWORD* pBytesReturned) = 0;
-        
+
         /// @brief WTSFreeMemory frees memory allocated by WTS functions
         /// @param pMemory: Pointer to the memory to be freed
         virtual void WTSFreeMemory(PVOID pMemory) = 0;

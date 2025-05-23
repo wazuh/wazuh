@@ -15,14 +15,16 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     list(APPEND TEST_SRC test_logged_in_users_win.cpp)
 else()
     list(APPEND TEST_SRC test_logged_in_users_unix.cpp)
-    list(APPEND TEST_SRC test_shadow_linux.cpp)
+    if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+        list(APPEND TEST_SRC test_shadow_linux.cpp)
+    endif()
 endif()
 
 add_executable(extended_sources_users_unit_test ${TEST_SRC})
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     target_link_libraries(extended_sources_users_unit_test
-        logged_in_users
+        users
         debug gtestd
         debug gmockd
         debug gtest_maind

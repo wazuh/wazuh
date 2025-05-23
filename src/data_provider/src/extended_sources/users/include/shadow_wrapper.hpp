@@ -6,7 +6,7 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  */
- 
+
 #pragma once
 
 #include "ishadow_wrapper.hpp"
