@@ -1,4 +1,3 @@
-#include "iutmpx_wrapper.hpp"
 #include "logged_in_users_unix.hpp"
 #include "gtest/gtest.h"
 #include "gmock/gmock.h"
@@ -41,10 +40,4 @@ TEST(LoggedInUsersProviderTest, CollectReturnsExpectedJson)
     EXPECT_EQ(result[0]["host"], "localhost");
     EXPECT_EQ(result[0]["time"], 1715520000);
     EXPECT_EQ(result[0]["pid"], 1234);
-}
-
-int main(int argc, char** argv)
-{
-    ::testing::InitGoogleTest(&argc, argv);
-    return RUN_ALL_TESTS();
 }
