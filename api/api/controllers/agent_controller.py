@@ -1468,7 +1468,6 @@ async def insert_agent(pretty: bool = False, wait_for_complete: bool = False) ->
     return json_response(data, pretty=pretty)
 
 
-@deprecate_endpoint()
 async def get_agent_no_group(pretty: bool = False, wait_for_complete: bool = False, offset: int = 0,
                              limit: int = DATABASE_LIMIT, select=None, sort=None, search=None, q=None) -> ConnexionResponse:
     """Get agents without group.

@@ -540,9 +540,10 @@ stages:
      json:
        error: 0
        data:
-         affected_items: []
+         affected_items:
+           - id: '011'
          failed_items: []
-         total_affected_items: 0
+         total_affected_items: 1
          total_failed_items: 0
 
 ---
