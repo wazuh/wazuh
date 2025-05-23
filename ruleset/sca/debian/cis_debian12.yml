@@ -1978,9 +1978,8 @@ checks:
       - pci_dss_v3.2.1: ["1.1.4", "1.3.1", "1.4"]
       - pci_dss_v4.0: ["1.2.1", "1.4.1"]
       - soc_2: ["CC6.6"]
-    condition: 
+    condition:
     rules:
-
 
   # 4.2.5 Ensure ufw outbound connections are configured. (Manual) - Not Implemented
   # 4.2.6 Ensure ufw firewall rules exist for all open ports. (Automated) - Not Implemented
@@ -2054,7 +2053,7 @@ checks:
     rules:
       - "not c: dpkg-query -s ufw -> r:install ok installed"
       - 'not c:sh -c "systemctl is-enabled ufw.service & ufw status" -> r:^inactive$|^masked$'
-  
+
   # 4.3.3 Ensure iptables are flushed with nftables. (Manual)
   - id: 33135
     title: "Ensure iptables are flushed with nftables."
@@ -2075,8 +2074,8 @@ checks:
       - soc_2: ["CC6.6"]
     condition: none
     rules:
-      - 'c:iptables -L -> r:Chain INPUT'
-      - 'c:ip6tables -L -> r:Chain INPUT'
+      - "c:iptables -L -> r:Chain INPUT"
+      - "c:ip6tables -L -> r:Chain INPUT"
 
   # 4.3.4 Ensure a nftables table exists. (Automated)
   - id: 33136
@@ -2100,7 +2099,7 @@ checks:
       - soc_2: ["CC6.6"]
     condition: all
     rules:
-      - 'c:nft list tables -> r:table inet'
+      - "c:nft list tables -> r:table inet"
 
   # 4.3.5 Ensure nftables base chains exist. (Automated)
   - id: 33137
@@ -2124,9 +2123,9 @@ checks:
       - soc_2: ["CC6.6"]
     condition: all
     rules:
-      - 'c:nft list ruleset -> r:type filter hook input priority 0'
-      - 'c:nft list ruleset -> r:type filter hook forward priority 0'
-      - 'c:nft list ruleset -> r:type filter hook output priority 0'
+      - "c:nft list ruleset -> r:type filter hook input priority 0"
+      - "c:nft list ruleset -> r:type filter hook forward priority 0"
+      - "c:nft list ruleset -> r:type filter hook output priority 0"
 
   # 4.3.6 Ensure nftables loopback traffic is configured. (Automated)
   - id: 33138
@@ -2860,7 +2859,7 @@ checks:
       - soc_2: ["CC6.1", "CC6.3"]
     condition: none
     rules:
-      - 'f:/etc/sudoers -> r:NOPASSWD'
+      - "f:/etc/sudoers -> r:NOPASSWD"
       - 'd:/etc/sudoers.d/ -> r: \.* -> r:NOPASSWD'
 
   # 5.2.5 Ensure re-authentication for privilege escalation is not disabled globally. (Automated)
@@ -2883,7 +2882,7 @@ checks:
       - soc_2: ["CC6.1", "CC6.3"]
     condition: any
     rules:
-      - 'not f:/etc/sudoers -> r:!authenticate'
+      - "not f:/etc/sudoers -> r:!authenticate"
       - 'not d:/etc/sudoers.d/ -> r: \.* -> r:!authenticate'
 
   # 5.2.6 Ensure sudo authentication timeout is configured correctly. (Automated)
@@ -3061,7 +3060,7 @@ checks:
   # 5.3.3.1.1 Ensure password failed attempts lockout is configured. (Automated)
   - id: 33190
     title: "Ensure password failed attempts lockout is configured."
-    description: "The deny=<n> option will deny access if the number of consecutive authentication failures for this user during the recent interval exceeds ."
+    description: "The deny=<n> option will deny access if the number of consecutive authentication failures for this user during the recent interval exceeds."
     rationale: "Locking out user IDs after n unsuccessful consecutive login attempts mitigates brute force password attacks against your systems."
     remediation: "Create or edit the following line in /etc/security/faillock.conf setting the deny option to 5 or less: deny = 5 Run the following command: # grep -Pl -- '\\bpam_faillock\\.so\\h+([^#\\n\\r]+\\h+)?deny\\b' /usr/share/pam- configs/* Edit any returned files and remove the deny=<N> arguments from the pam_faillock.so line(s):."
     compliance:
@@ -3081,6 +3080,9 @@ checks:
     condition: all
     rules:
       - 'f:/etc/security/faillock.conf -> n:deny\s*\t*=\s*\t*(d+) compare <= 5'
+      - 'f:/etc/pam.d/common-auth -> !r:^# && r:account\s*\t*requisite\s*\t*pam_faillock.so'
+      - 'f:/etc/pam.d/common-auth -> !r:^# && r:account\s*\t*required\s*\t*pam_faillock.so'
+      - 'f:/etc/pam.d/common-auth -> !r:^# && r:account\s*\t*sufficient\s*\t*pam_faillock.so'
 
   # 5.3.3.1.2 Ensure password unlock time is configured. (Automated)
   - id: 33191
@@ -3103,8 +3105,12 @@ checks:
       - pci_dss_v3.2.1: ["8.1.3"]
       - pci_dss_v4.0: ["8.2.4", "8.2.5"]
       - soc_2: ["CC6.2", "CC6.3"]
-    condition:
+    condition: all
     rules:
+      - 'f:/etc/security/faillock.conf -> n:unlock_time\s*\t*=\s*\t*(d+) compare == 0 | n:unlock_time\s*\t*=\s*\t*(d+) compare >= 900'
+      - 'f:/etc/pam.d/common-auth -> !r:^# && r:account\s*\t*requisite\s*\t*pam_faillock.so'
+      - 'f:/etc/pam.d/common-auth -> !r:^# && r:account\s*\t*required\s*\t*pam_faillock.so'
+      - 'f:/etc/pam.d/common-auth -> !r:^# && r:account\s*\t*sufficient\s*\t*pam_faillock.so'
 
   # 5.3.3.1.3 Ensure password failed attempts lockout includes root account. (Automated)
   - id: 33192
@@ -3127,8 +3133,10 @@ checks:
       - pci_dss_v3.2.1: ["8.1.3"]
       - pci_dss_v4.0: ["8.2.4", "8.2.5"]
       - soc_2: ["CC6.2", "CC6.3"]
-    condition:
+    condition: any
     rules:
+      - "f:/etc/security/faillock.conf -> r:even_deny_root"
+      - "f:/etc/security/faillock.conf -> n:root_unlock_time >= 60"
 
   # 5.3.3.2.1 Ensure password number of changed characters is configured. (Automated)
   - id: 33193
@@ -3147,15 +3155,17 @@ checks:
       - mitre_techniques: ["T1110", "T1110.001", "T1110.002", "T1110.003", "T1178.001", "T1178.002", "T1178.003", "T1178.004"]
       - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
       - soc_2: ["CC6.1"]
-    condition:
+    condition: any
     rules:
+      - 'f:/etc/security/pwquality.conf -> n:difok\s*\t*=\s*\t*(d+) compare >= 2'
+      - 'd:/etc/security/pwquality.conf.d/* -> r: \.*.conf -> n:difok\s*\t*=\s*\t*(d+) compare => 2'
 
   # 5.3.3.2.2 Ensure minimum password length is configured. (Automated)
   - id: 33194
     title: "Ensure minimum password length is configured."
     description: 'The minimum password length setting determines the lowers number of characters that make up a password for a user account. There are many different theories about how to determine the best password length for an organization, but perhaps "passphrase" is a better term than "password". The minlen option sets the minimum acceptable size for the new password (plus one if credits are not disabled which is the default). Cannot be set to lower value than 6.'
     rationale: "Strong passwords help protect systems from password attacks. Types of password attacks include dictionary attacks, which attempt to use common words and phrases, and brute force attacks, which try every possible combination of characters. Also attackers may try to obtain the account database so they can use tools to discover the accounts and passwords."
-    impact: "In general, it is true that longer passwords are better (harder to crack), but it is also true that forced password length requirements can cause user behavior that is predictable and undesirable. For example, requiring users to have a minimum 16-character password may cause them to choose repeating patterns like fourfourfourfour or passwordpassword that meet the requirement but aren’t hard to guess. Additionally, length requirements increase the chances that users will adopt other insecure practices, like writing them down, re-using them or storing them unencrypted in their documents. Having a reasonable minimum length with no maximum character limit increases the resulting average password length used (and therefore the strength).6."
+    impact: "In general, it is true that longer passwords are better (harder to crack), but it is also true that forced password length requirements can cause user behavior that is predictable and undesirable. For example, requiring users to have a minimum 16-character password may cause them to choose repeating patterns like fourfourfourfour or passwordpassword that meet the requirement but aren't hard to guess. Additionally, length requirements increase the chances that users will adopt other insecure practices, like writing them down, re-using them or storing them unencrypted in their documents. Having a reasonable minimum length with no maximum character limit increases the resulting average password length used (and therefore the strength).6."
     remediation: "Create or modify a file ending in .conf in the /etc/security/pwquality.conf.d/ directory or the file /etc/security/pwquality.conf and add or modify the following line to set password length of 14 or more characters. Ensure that password length conforms to local site policy: Example: #!/usr/bin/env bash { sed -ri 's/^\\s*minlen\\s*=/# &/' /etc/security/pwquality.conf [ ! -d /etc/security/pwquality.conf.d/ ] && mkdir /etc/security/pwquality.conf.d/ printf '\\n%s' \"minlen = 14\" > /etc/security/pwquality.conf.d/50- pwlength.conf } Run the following command: # grep -Pl -- '\\bpam_pwquality\\.so\\h+([^#\\n\\r]+\\h+)?minlen\\b' /usr/share/pam- configs/* Edit any returned files and remove the minlen argument from the pam_pwquality.so line(s):."
     compliance:
       - cis: ["5.3.3.2.2"]
@@ -3168,14 +3178,16 @@ checks:
       - mitre_techniques: ["T1110", "T1110.001", "T1110.002", "T1110.003", "T1178.001", "T1178.002", "T1178.003", "T1178.004"]
       - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
       - soc_2: ["CC6.1"]
-    condition:
+    condition: any
     rules:
+      - 'f:/etc/security/pwquality.conf -> n:minlen\s*\t*=\s*\t*(d+) compare >= 14'
+      - 'd:/etc/security/pwquality.conf.d/* -> r: \.*.conf -> n:minlen\s*\t*=\s*\t*(d+) compare => 14'
 
   # 5.3.3.2.3 Ensure password complexity is configured. (Manual)
   - id: 33195
     title: "Ensure password complexity is configured."
     description: "Password complexity can be set through: - minclass - The minimum number of classes of characters required in a new password. (digits, uppercase, lowercase, others). e.g. minclass = 4 requires digits, uppercase, lower case, and special characters. - dcredit - The maximum credit for having digits in the new password. If less than 0 it is the minimum number of digits in the new password. e.g. dcredit = -1 requires at least one digit - ucredit - The maximum credit for having uppercase characters in the new password. If less than 0 it is the minimum number of uppercase characters in the new password. e.g. ucredit = -1 requires at least one uppercase character - ocredit - The maximum credit for having other characters in the new password. If less than 0 it is the minimum number of other characters in the new password. e.g. ocredit = -1 requires at least one special character - lcredit - The maximum credit for having lowercase characters in the new password. If less than 0 it is the minimum number of lowercase characters in the new password. e.g. lcredit = -1 requires at least one lowercase character."
-    rationale: "Strong passwords protect systems from being hacked through brute force methods. Requiring at least one non-alphabetic character increases the search space beyond pure dictionary words, which makes the resulting password harder to crack. Forcing users to choose an excessively complex password, e.g. some combination of upper-case, lower-case, numbers, and special characters, has a negative impact. It places an extra burden on users and many will use predictable patterns (for example, a capital letter in the first position, followed by lowercase letters, then one or two numbers, and a “special character” at the end). Attackers know this, so dictionary attacks will often contain these common patterns and use the most common substitutions like, $ for s, @ for a, 1 for l, 0 for o."
+    rationale: 'Strong passwords protect systems from being hacked through brute force methods. Requiring at least one non-alphabetic character increases the search space beyond pure dictionary words, which makes the resulting password harder to crack. Forcing users to choose an excessively complex password, e.g. some combination of upper-case, lower-case, numbers, and special characters, has a negative impact. It places an extra burden on users and many will use predictable patterns (for example, a capital letter in the first position, followed by lowercase letters, then one or two numbers, and a "special character" at the end). Attackers know this, so dictionary attacks will often contain these common patterns and use the most common substitutions like, $ for s, @ for a, 1 for l, 0 for o.'
     impact: "Passwords that are too complex in nature make it harder for users to remember, leading to bad practices. In addition, composition requirements provide no defense against common attack types such as social engineering or insecure storage of passwords."
     remediation: "Run the following command: # grep -Pl -- '\\bpam_pwquality\\.so\\h+([^#\\n\\r]+\\h+)?(minclass|[dulo]credit)\\b' /usr/share/pam-configs/* Edit any returned files and remove the minclass, dcredit, ucredit, lcredit, and ocredit arguments from the pam_pwquality.so line(s) Create or modify a file ending in .conf in the /etc/security/pwquality.conf.d/ directory or the file /etc/security/pwquality.conf and add or modify the following line(s) to set complexity according to local site policy: - minclass = _N_ - dcredit = _N_ # Value should be either 0 or a number proceeded by a minus (- ) symbol - ucredit = -1 # Value should be either 0 or a number proceeded by a minus (-) symbol - ocredit = -1 # Value should be either 0 or a number proceeded by a minus (-) symbol - lcredit = -1 # Value should be either 0 or a number proceeded by a minus (-) symbol Example 1 - Set minclass = 3: #!/usr/bin/env bash { sed -ri 's/^\\s*minclass\\s*=/# &/' /etc/security/pwquality.conf sed -ri 's/^\\s*[dulo]credit\\s*=/# &/' /etc/security/pwquality.conf [ ! -d /etc/security/pwquality.conf.d/ ] && mkdir /etc/security/pwquality.conf.d/ printf '\\n%s' \"minclass = 3\" > /etc/security/pwquality.conf.d/50- pwcomplexity.conf } Example 2 - set dcredit = -1, ucredit = -1, and lcredit = -1: #!/usr/bin/env bash { sed -ri 's/^\\s*minclass\\s*=/# &/' /etc/security/pwquality.conf sed -ri 's/^\\s*[dulo]credit\\s*=/# &/' /etc/security/pwquality.conf [ ! -d /etc/security/pwquality.conf.d/ ] && mkdir /etc/security/pwquality.conf.d/ printf '%s\\n' \"dcredit = -1\" \"ucredit = -1\" \"lcredit = -1\" > /etc/security/pwquality.conf.d/50-pwcomplexity.conf }."
     references:
@@ -3191,8 +3203,10 @@ checks:
       - mitre_techniques: ["T1110", "T1110.001", "T1110.002", "T1110.003", "T1178.001", "T1178.002", "T1178.003", "T1178.004"]
       - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
       - soc_2: ["CC6.1"]
-    condition:
+    condition: any
     rules:
+      - 'f:/etc/security/pwquality.conf -> n:minclass\s*\t*=\s*\t*(d+) compare > 4 && n:ucredit\s*\t*=\s*\t*(d+) compare < 0 && n:lcredit\s*\t*=\s*\t*(d+) compare < 0 && n:dcredit\s*\t*=\s*\t*(d+) compare < 0 && n:ocredit\s*\t*=\s*\t*(d+) < 0'
+      - 'd:/etc/security/pwquality.conf.d/* -> r: \.*.conf -> n:minclass\s*\t*=\s*\t*(d+) compare > 4 && n:ucredit\s*\t*=\s*\t*(d+) compare < 0 && n:lcredit\s*\t*=\s*\t*(d+) compare < 0 && n:dcredit\s*\t*=\s*\t*(d+) compare < 0 && n:ocredit\s*\t*=\s*\t*(d+) < 0'
 
   # 5.3.3.2.4 Ensure password same consecutive characters is configured. (Automated)
   - id: 33196
@@ -3211,8 +3225,10 @@ checks:
       - mitre_techniques: ["T1110", "T1110.001", "T1110.002", "T1110.003", "T1178.001", "T1178.002", "T1178.003", "T1178.004"]
       - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
       - soc_2: ["CC6.1"]
-    condition:
+    condition: any
     rules:
+      - 'f:/etc/security/pwquality.conf -> n:maxrepeat\s*\t*=\s*\t*(d+) compare > 0 && n:maxrepeat\s*\t*=\s*\t*(d+) compare =< 3'
+      - 'd:/etc/security/pwquality.conf.d/* -> r: \.*.conf -> n:maxrepeat\s*\t*=\s*\t*(d+) compare > 0 && n:maxrepeat\s*\t*=\s*\t*(d+) compare =< 3'
 
   # 5.3.3.2.5 Ensure password maximum sequential characters is configured. (Automated)
   - id: 33197
@@ -3231,8 +3247,10 @@ checks:
       - mitre_techniques: ["T1110", "T1110.001", "T1110.002", "T1110.003", "T1178.001", "T1178.002", "T1178.003", "T1178.004"]
       - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
       - soc_2: ["CC6.1"]
-    condition:
+    condition: any
     rules:
+      - 'f:/etc/security/pwquality.conf -> n:maxsequence\s*\t*=\s*\t*(d+) compare > 0 && n:maxsequence\s*\t*=\s*\t*(d+) compare =< 3'
+      - 'd:/etc/security/pwquality.conf.d/* -> r: \.*.conf -> n:maxsequence\s*\t*=\s*\t*(d+) compare > 0 && n:maxsequence\s*\t*=\s*\t*(d+) compare =< 3'
 
   # 5.3.3.2.6 Ensure password dictionary check is enabled. (Automated)
   - id: 33198
@@ -3251,8 +3269,10 @@ checks:
       - mitre_techniques: ["T1110", "T1110.001", "T1110.002", "T1110.003", "T1178.001", "T1178.002", "T1178.003", "T1178.004"]
       - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
       - soc_2: ["CC6.1"]
-    condition:
+    condition: any
     rules:
+      - 'f:/etc/security/pwquality.conf -> n:dictcheck\s*\t*=\s*\t*(d+) compare != 0'
+      - 'not d:/etc/security/pwquality.conf.d/* -> r: \.*.conf -> n:dictcheck\s*\t*=\s*\t*(d+) compare = 0'
 
   # 5.3.3.2.7 Ensure password quality checking is enforced. (Automated)
   - id: 33199
@@ -3268,8 +3288,10 @@ checks:
       - iso_27001-2013: ["A.9.4.3"]
       - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
       - soc_2: ["CC6.1"]
-    condition:
+    condition: any
     rules:
+      - 'f:/etc/security/pwquality.conf -> n:enforcing\s*\t*=\s*\t*(d+) compare != 0'
+      - 'not d:/etc/security/pwquality.conf.d/* -> r: \.*.conf -> n:enforcing\s*\t*=\s*\t*(d+) compare = 0'
 
   # 5.3.3.2.8 Ensure password quality is enforced for the root user. (Automated)
   - id: 33200
@@ -3285,8 +3307,10 @@ checks:
       - iso_27001-2013: ["A.9.4.3"]
       - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
       - soc_2: ["CC6.1"]
-    condition:
+    condition: any
     rules:
+      - "f:/etc/security/pwquality.conf -> r:enforce_for_root"
+      - 'd:/etc/security/pwquality.conf.d/* -> r: \.*.conf -> r:enforce_for_root'
 
   # 5.3.3.3.1 Ensure password history remember is configured. (Automated)
   - id: 33201
@@ -3303,8 +3327,9 @@ checks:
       - mitre_techniques: ["T1078", "T1078.001", "T1078.002", "T1078.003", "T1078.004", "T1110", "T1110.004"]
       - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
       - soc_2: ["CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'f:/etc/pam.d/common-password -> !r:^\s*\t*# && r:\s*\t*password\s*\t*requisite\s*\t*pam_pwhistory.so && n:remember\s*\t*=\s*\t*(\d+) compare >= 24'
 
   # 5.3.3.3.2 Ensure password history is enforced for the root user. (Automated)
   - id: 33202
@@ -3323,8 +3348,9 @@ checks:
       - mitre_techniques: ["T1110", "T1110.001", "T1110.002", "T1110.003", "T1178.001", "T1178.002", "T1178.003", "T1178.004"]
       - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
       - soc_2: ["CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'f:/etc/pam.d/common-password -> !r:^\s*\t*# && r:\s*\t*password\s*\t*requisite\s*\t*pam_pwhistory.so\s*\t*remember\s*\t*enforce_for_root'
 
   # 5.3.3.3.3 Ensure pam_pwhistory includes use_authtok. (Automated)
   - id: 33203
@@ -3346,8 +3372,9 @@ checks:
       - pci_dss_v3.2.1: ["3.4", "3.4.1", "8.2.1"]
       - pci_dss_v4.0: ["3.1.1", "3.3.2", "3.3.3", "3.5.1", "3.5.1.2", "3.5.1.3", "8.3.2"]
       - soc_2: ["CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'f:/etc/pam.d/common-password -> !r:^\s*\t*# && r:\s*\t*password\s*\t*requisite\s*\t*pam_pwhistory.so\s*\t*remember\s*\t*enforce_for_root\s*\t*use_authtok'
 
   # 5.3.3.4.1 Ensure pam_unix does not include nullok. (Automated)
   - id: 33204
@@ -3366,8 +3393,13 @@ checks:
       - mitre_techniques: ["T1003", "T1003.008", "T1110", "T1110.002"]
       - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
       - soc_2: ["CC6.1"]
-    condition:
+    condition: none
     rules:
+      - "f:/etc/pam.d/common-password -> r:nullok"
+      - "f:/etc/pam.d/common-auth -> r:nullok"
+      - "f:/etc/pam.d/common-account -> r:nullok"
+      - "f:/etc/pam.d/common-session -> r:nullok"
+      - "f:/etc/pam.d/common-session-noninteractive -> r:nullok"
 
   # 5.3.3.4.2 Ensure pam_unix does not include remember. (Automated)
   - id: 33205
@@ -3386,8 +3418,13 @@ checks:
       - mitre_techniques: ["T1003", "T1003.008", "T1110", "T1110.002"]
       - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
       - soc_2: ["CC6.1"]
-    condition:
+    condition: none
     rules:
+      - "f:/etc/pam.d/common-password -> r:remember"
+      - "f:/etc/pam.d/common-auth -> r:remember"
+      - "f:/etc/pam.d/common-account -> r:remember"
+      - "f:/etc/pam.d/common-session -> r:remember"
+      - "f:/etc/pam.d/common-session-noninteractive -> r:remember"
 
   # 5.3.3.4.3 Ensure pam_unix includes a strong password hashing algorithm. (Automated)
   - id: 33206
@@ -3409,8 +3446,9 @@ checks:
       - pci_dss_v3.2.1: ["3.4", "3.4.1", "8.2.1"]
       - pci_dss_v4.0: ["3.1.1", "3.3.2", "3.3.3", "3.5.1", "3.5.1.2", "3.5.1.3", "8.3.2"]
       - soc_2: ["CC6.1"]
-    condition:
+    condition: all
     rules:
+      - "f:/etc/pam.d/common-password -> r:yescrypt | r:sha512"
 
   # 5.3.3.4.4 Ensure pam_unix includes use_authtok. (Automated)
   - id: 33207
@@ -3432,8 +3470,9 @@ checks:
       - pci_dss_v3.2.1: ["3.4", "3.4.1", "8.2.1"]
       - pci_dss_v4.0: ["3.1.1", "3.3.2", "3.3.3", "3.5.1", "3.5.1.2", "3.5.1.3", "8.3.2"]
       - soc_2: ["CC6.1"]
-    condition:
+    condition: all
     rules:
+      - "f:/etc/pam.d/common-password -> r:use_authtok"
 
   # 5.4.1.1 Ensure password expiration is configured. (Automated)
   - id: 33208
@@ -3451,8 +3490,10 @@ checks:
       - mitre_techniques: ["T1078", "T1078.001", "T1078.002", "T1078.003", "T1078.004", "T1110", "T1110.001", "T1110.002", "T1110.003", "T1110.004"]
       - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
       - soc_2: ["CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'f:/etc/login.defs -> n:^\s*PASS_MAX_DAYS\s*\t*(\d+) compare <= 365'
+      - 'not f:/etc/shadow -> !r:^\w+:!|^\w+:\p: && n:^\w+:\S*:\S*:\S*:(\d+):\S*:\S*:\S*:\S* compare > 365'
 
   # 5.4.1.2 Ensure minimum password days is configured. (Manual)
   - id: 33209
@@ -3472,8 +3513,10 @@ checks:
       - mitre_techniques: ["T1078", "T1078.001", "T1078.002", "T1078.003", "T1078.004", "T1110", "T1110.004"]
       - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
       - soc_2: ["CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'f:/etc/login.defs -> n:^\s*\t*PASS_MIN_DAYS\s*\t*(\d+) compare >= 1'
+      - 'not f:/etc/shadow -> n:^\w+:\$\.*:\d+:(\d+): compare == 0'
 
   # 5.4.1.3 Ensure password expiration warning days is configured. (Automated)
   - id: 33210
@@ -3494,8 +3537,11 @@ checks:
       - pci_dss_v3.2.1: ["11.5", "2.2"]
       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
       - soc_2: ["CC7.1", "CC8.1"]
-    condition:
+    condition: all
     rules:
+      - 'f:/etc/login.defs -> n:^\s*PASS_WARN_AGE\s*\t*(\d+) compare >= 7'
+      - 'f:/etc/shadow -> n:^\w+:\S*:\S*:\S*:\S*:(\d+):\S*:\S*:\S* compare >= 7'
+      - 'not f:/etc/shadow -> r:^\w+:\S*:\S*:\S*:\S*::\S*:\S*:\S*'
 
   # 5.4.1.4 Ensure strong password hashing algorithm is configured. (Automated)
   - id: 33211
@@ -3517,8 +3563,9 @@ checks:
       - pci_dss_v3.2.1: ["3.4", "3.4.1", "8.2.1"]
       - pci_dss_v4.0: ["3.1.1", "3.3.2", "3.3.3", "3.5.1", "3.5.1.2", "3.5.1.3", "8.3.2"]
       - soc_2: ["CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'f:/etc/login.defs -> r:ENCRYPT_METHOD\s*\t*SHA512 | r:ENCRYPT_METHOD\s*\t*YESCRYPT'
 
   # 5.4.1.5 Ensure inactive password lock is configured. (Automated)
   - id: 33212
@@ -3537,26 +3584,14 @@ checks:
       - mitre_techniques: ["T1078", "T1078.002", "T1078.003"]
       - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
       - soc_2: ["CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:useradd -D -> n:^INACTIVE=(\d+) compare <= 45'
+      - "not c:useradd -D -> r:^INACTIVE=-1"
+      - 'f:/etc/shadow -> !r:^\w+:!|^\w+:\p: && n:^\w+:\S*:\S*:\S*:\S*:\S*:(\d+):\S*:\S* compare <= 45'
+      - 'not f:/etc/shadow -> !r:^\w+:!|^\w+:\p: && r:^\w+:\S*:\S*:\S*:\S*:\S*::\S*:\S*'
 
-  # 5.4.1.6 Ensure all users last password change date is in the past. (Automated)
-  - id: 33213
-    title: "Ensure all users last password change date is in the past."
-    description: "All users should have a password change date in the past."
-    rationale: "If a user's recorded password change date is in the future, then they could bypass any set password expiration."
-    remediation: "Investigate any users with a password change date in the future and correct them. Locking the account, expiring the password, or resetting the password manually may be appropriate."
-    compliance:
-      - cis: ["5.4.1.6"]
-      - cis_csc_v8: ["5.2"]
-      - cis_csc_v7: ["4.4"]
-      - cmmc_v2.0: ["IA.L2-3.5.7"]
-      - iso_27001-2013: ["A.9.4.3"]
-      - mitre_techniques: ["T1078", "T1078.001", "T1078.002", "T1078.003", "T1078.004", "T1110", "T1110.001", "T1110.002", "T1110.003", "T1110.004"]
-      - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
-      - soc_2: ["CC6.1"]
-    condition:
-    rules:
+  # 5.4.1.6 Ensure all users last password change date is in the past. (Automated) - Not Implemented
 
   # 5.4.2.1 Ensure root is the only UID 0 account. (Automated)
   - id: 33214
@@ -3569,8 +3604,9 @@ checks:
       - mitre_mitigations: ["M1026"]
       - mitre_tactics: ["TA0001"]
       - mitre_techniques: ["T1548"]
-    condition:
+    condition: all
     rules:
+      - "f:/etc/passwd -> r:^root:x:0:0"
 
   # 5.4.2.2 Ensure root is the only GID 0 account. (Automated)
   - id: 33215
@@ -3592,8 +3628,9 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - "f:/etc/passwd -> r:^root:x:0:0"
 
   # 5.4.2.3 Ensure group root is the only GID 0 group. (Automated)
   - id: 33216
@@ -3615,8 +3652,9 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - "f:/etc/group -> r:^root:x:0:0"
 
   # 5.4.2.4 Ensure root account access is controlled. (Automated)
   - id: 33217
@@ -3639,90 +3677,15 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - "c:passwd -S root -> r:Password is status: P | r:Password is status: L"
 
-  # 5.4.2.5 Ensure root path integrity. (Automated)
-  - id: 33218
-    title: "Ensure root path integrity."
-    description: "The root user can execute any command on the system and could be fooled into executing programs unintentionally if the PATH is not set correctly."
-    rationale: "Including the current working directory (.) or other writable directory in root's executable path makes it likely that an attacker can gain superuser access by forcing an administrator operating as root to execute a Trojan horse program."
-    remediation: "Correct or justify any: - Locations that are not directories - Empty directories (::) - Trailing (:) - Current working directory (.) - Non root owned directories - Directories that less restrictive than mode 0755."
-    compliance:
-      - cis: ["5.4.2.5"]
-      - mitre_mitigations: ["M1022"]
-      - mitre_tactics: ["TA0006"]
-      - mitre_techniques: ["T1204", "T1204.002"]
-    condition:
-    rules:
+  # 5.4.2.5 Ensure root path integrity. (Automated) - Not Implemented
+  # 5.4.2.6 Ensure root user umask is configured. (Automated) - Not Implemented
+  # 5.4.2.7 Ensure system accounts do not have a valid login shell. (Automated) - Not Implemented
 
-  # 5.4.2.6 Ensure root user umask is configured. (Automated)
-  - id: 33219
-    title: "Ensure root user umask is configured."
-    description: "The user file-creation mode mask (umask) is used to determine the file permission for newly created directories and files. In Linux, the default permissions for any newly created directory is 0777 (rwxrwxrwx), and for any newly created file it is 0666 (rw-rw-rw-). The umask modifies the default Linux permissions by restricting (masking) these permissions. The umask is not simply subtracted, but is processed bitwise. Bits set in the umask are cleared in the resulting file mode. umask can be set with either Octal or Symbolic values: - Octal (Numeric) Value - Represented by either three or four digits. ie umask 0027 or umask 027. If a four digit umask is used, the first digit is ignored. The remaining three digits effect the resulting permissions for user, group, and world/other respectively. - Symbolic Value - Represented by a comma separated list for User u, group g, and world/other o. The permissions listed are not masked by umask. ie a umask set by umask u=rwx,g=rx,o= is the Symbolic equivalent of the Octal umask 027. This umask would set a newly created directory with file mode drwxr-x--- and a newly created file with file mode rw-r-----. root user Shell Configuration Files: - /root/.bash_profile - Is executed to configure the root users' shell before the initial command prompt. Is only read by login shells. - /root/.bashrc - Is executed for interactive shells. only read by a shell that's both interactive and non-login umask is set by order of precedence. If umask is set in multiple locations, this order of precedence will determine the system's default umask. Order of precedence: 1. /root/.bash_profile 2. /root/.bashrc 3. The system default umask."
-    rationale: "Setting a secure value for umask ensures that users make a conscious choice about their file permissions. A permissive umask value could result in directories or files with excessive permissions that can be read and/or written to by unauthorized users."
-    remediation: "Edit /root/.bash_profile and /root/.bashrc and remove, comment out, or update any line with umask to be 0027 or more restrictive."
-    compliance:
-      - cis: ["5.4.2.6"]
-      - cis_csc_v8: ["3.3"]
-      - cis_csc_v7: ["14.6"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
-      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-      - iso_27001-2013: ["A.9.1.1"]
-      - mitre_tactics: ["TA0007"]
-      - mitre_techniques: ["T1083"]
-      - nist_sp_800-53: ["AC-5", "AC-6"]
-      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-      - pci_dss_v4.0: ["1.3.1", "7.1"]
-      - soc_2: ["CC5.2", "CC6.1"]
-    condition:
-    rules:
-
-  # 5.4.2.7 Ensure system accounts do not have a valid login shell. (Automated)
-  - id: 33220
-    title: "Ensure system accounts do not have a valid login shell."
-    description: "There are a number of accounts provided with most distributions that are used to manage applications and are not intended to provide an interactive shell. Furthermore, a user may add special accounts that are not intended to provide an interactive shell."
-    rationale: "It is important to make sure that accounts that are not being used by regular users are prevented from being used to provide an interactive shell. By default, most distributions set the password field for these accounts to an invalid string, but it is also recommended that the shell field in the password file be set to the nologin shell. This prevents the account from potentially being used to run any commands."
-    remediation: "Run the following command to set the shell for any service accounts returned by the audit to nologin: # usermod -s $(command -v nologin) <user> Example script: #!/usr/bin/env bash { l_valid_shells=\"^($( awk -F\\/ '$NF != \"nologin\" {print}' /etc/shells | sed -rn '/^\\//{s,/,\\\\\\\\/,g;p}' | paste -s -d '|' - ))$\" awk -v pat=\"$l_valid_shells\" -F: '($1!~/^(root|halt|sync|shutdown|nfsnobody)$/ && ($3<'\"$(awk '/^\\s*UID_MIN/{print $2}' /etc/login.defs)\"' || $3 == 65534) && $(NF) ~ pat) {system (\"usermod -s '\"$(command -v nologin)\"' \" $1)}' /etc/passwd }."
-    compliance:
-      - cis: ["5.4.2.7"]
-      - cis_csc_v8: ["3.3"]
-      - cis_csc_v7: ["14.6"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
-      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-      - iso_27001-2013: ["A.9.1.1"]
-      - mitre_mitigations: ["M1026"]
-      - mitre_tactics: ["TA0005"]
-      - mitre_techniques: ["T1078", "T1078.001", "T1078.003"]
-      - nist_sp_800-53: ["AC-5", "AC-6"]
-      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-      - pci_dss_v4.0: ["1.3.1", "7.1"]
-      - soc_2: ["CC5.2", "CC6.1"]
-    condition:
-    rules:
-
-  # 5.4.2.8 Ensure accounts without a valid login shell are locked. (Automated)
-  - id: 33221
-    title: "Ensure accounts without a valid login shell are locked."
-    description: "There are a number of accounts provided with most distributions that are used to manage applications and are not intended to provide an interactive shell. Furthermore, a user may add special accounts that are not intended to provide an interactive shell."
-    rationale: "It is important to make sure that accounts that are not being used by regular users are prevented from being used to provide an interactive shell. By default, most distributions set the password field for these accounts to an invalid string, but it is also recommended that the shell field in the password file be set to the nologin shell. This prevents the account from potentially being used to run any commands."
-    remediation: "Run the following command to lock any non-root accounts without a valid login shell returned by the audit: # usermod -L <user> Example script:: #!/usr/bin/env bash { l_valid_shells=\"^($(awk -F\\/ '$NF != \"nologin\" {print}' /etc/shells | sed -rn '/^\\//{s,/,\\\\\\\\/,g;p}' | paste -s -d '|' - ))$\" while IFS= read -r l_user; do passwd -S \"$l_user\" | awk '$2 !~ /^L/ {system (\"usermod -L \" $1)}' done < <(awk -v pat=\"$l_valid_shells\" -F: '($1 != \"root\" && $(NF) !~ pat) {print $1}' /etc/passwd) }."
-    compliance:
-      - cis: ["5.4.2.8"]
-      - cis_csc_v8: ["3.3"]
-      - cis_csc_v7: ["14.6"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
-      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-      - iso_27001-2013: ["A.9.1.1"]
-      - mitre_mitigations: ["M1026"]
-      - mitre_tactics: ["TA0005"]
-      - mitre_techniques: ["T1078", "T1078.001", "T1078.003"]
-      - nist_sp_800-53: ["AC-5", "AC-6"]
-      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-      - pci_dss_v4.0: ["1.3.1", "7.1"]
-      - soc_2: ["CC5.2", "CC6.1"]
-    condition:
-    rules:
+  # 5.4.2.8 Ensure accounts without a valid login shell are locked. (Automated) - Not Implemented
 
   # 5.4.3.1 Ensure nologin is not listed in /etc/shells. (Automated)
   - id: 33222
@@ -3732,52 +3695,12 @@ checks:
     remediation: "Edit /etc/shells and remove any lines that include nologin."
     compliance:
       - cis: ["5.4.3.1"]
-    condition:
+    condition: all
     rules:
+      - "not f:/etc/shells -> r:nologin"
 
-  # 5.4.3.2 Ensure default user shell timeout is configured. (Automated)
-  - id: 33223
-    title: "Ensure default user shell timeout is configured."
-    description: "TMOUT is an environmental setting that determines the timeout of a shell in seconds. - TMOUT=n - Sets the shell timeout to n seconds. A setting of TMOUT=0 disables - timeout. readonly TMOUT- Sets the TMOUT environmental variable as readonly, preventing unwanted modification during run-time. - export TMOUT - exports the TMOUT variable System Wide Shell Configuration Files: - /etc/profile - used to set system wide environmental variables on users shells. The variables are sometimes the same ones that are in the .bash_profile, however this file is used to set an initial PATH or PS1 for all shell users of the system. is only executed for interactive login shells, or shells executed with the --login parameter. - /etc/profile.d - /etc/profile will execute the scripts within /etc/profile.d/*.sh. It is recommended to place your configuration in a shell script within /etc/profile.d to set your own system wide environmental variables. - /etc/bashrc - System wide version of .bashrc. In Fedora derived distributions, /etc/bashrc also invokes /etc/profile.d/*.sh if non-login shell, but redirects output to /dev/null if non-interactive. Is only executed for interactive shells or if BASH_ENV is set to /etc/bashrc."
-    rationale: "Setting a timeout value reduces the window of opportunity for unauthorized user access to another user's shell session that has been left unattended. It also ends the inactive session and releases the resources associated with that session."
-    remediation: "Review /etc/bashrc, /etc/profile, and all files ending in *.sh in the /etc/profile.d/ directory and remove or edit all TMOUT=_n_ entries to follow local site policy. TMOUT should not exceed 900 or be equal to 0. Configure TMOUT in one of the following files: - A file in the /etc/profile.d/ directory ending in .sh - /etc/profile - /etc/bashrc TMOUT configuration examples: - As multiple lines: TMOUT=900 readonly TMOUT export TMOUT - As a single line: readonly TMOUT=900 ; export TMOUT."
-    compliance:
-      - cis: ["5.4.3.2"]
-      - cis_csc_v8: ["4.3"]
-      - cis_csc_v7: ["16.11"]
-      - cmmc_v2.0: ["AC.L2-3.1.10", "AC.L2-3.1.11"]
-      - hipaa: ["164.312(a)(2)(iii)"]
-      - iso_27001-2013: ["A.8.1.3"]
-      - mitre_mitigations: ["M1026"]
-      - mitre_tactics: ["TA0005"]
-      - mitre_techniques: ["T1078"]
-      - nist_sp_800-53: ["AC-11", "AC-11(1)", "AC-12", "AC-2(5)"]
-      - pci_dss_v3.2.1: ["8.1.8"]
-      - pci_dss_v4.0: ["8.2.8"]
-    condition:
-    rules:
-
-  # 5.4.3.3 Ensure default user umask is configured. (Automated)
-  - id: 33224
-    title: "Ensure default user umask is configured."
-    description: "The user file-creation mode mask (umask) is used to determine the file permission for newly created directories and files. In Linux, the default permissions for any newly created directory is 0777 (rwxrwxrwx), and for any newly created file it is 0666 (rw-rw-rw-). The umask modifies the default Linux permissions by restricting (masking) these permissions. The umask is not simply subtracted, but is processed bitwise. Bits set in the umask are cleared in the resulting file mode. umask can be set with either Octal or Symbolic values: - Octal (Numeric) Value - Represented by either three or four digits. ie umask 0027 or umask 027. If a four digit umask is used, the first digit is ignored. The remaining three digits effect the resulting permissions for user, group, and world/other respectively. - Symbolic Value - Represented by a comma separated list for User u, group g, and world/other o. The permissions listed are not masked by umask. ie a umask set by umask u=rwx,g=rx,o= is the Symbolic equivalent of the Octal umask 027. This umask would set a newly created directory with file mode drwxr-x--- and a newly created file with file mode rw-r-----. The default umask can be set to use the pam_umask module or in a System Wide Shell Configuration File. The user creating the directories or files has the discretion of changing the permissions via the chmod command, or choosing a different default umask by adding the umask command into a User Shell Configuration File, (.bash_profile or .bashrc), in their home directory. Setting the default umask: - pam_umask module: o will set the umask according to the system default in /etc/login.defs and user settings, solving the problem of different umask settings with different shells, display managers, remote sessions etc. o umask=<mask> value in the /etc/login.defs file is interpreted as Octal o Setting USERGROUPS_ENAB to yes in /etc/login.defs (default): ▪ will enable setting of the umask group bits to be the same as owner bits. (examples: 022 -> 002, 077 -> 007) for non-root users, if the uid is the same as gid, and username is the same as the <primary group name> ▪ userdel will remove the user's group if it contains no more members, and useradd will create by default a group with the name of the user - System Wide Shell Configuration File: o /etc/profile - used to set system wide environmental variables on users shells. The variables are sometimes the same ones that are in the .bash_profile, however this file is used to set an initial PATH or PS1 for all shell users of the system. is only executed for interactive login shells, or shells executed with the --login parameter. o /etc/profile.d - /etc/profile will execute the scripts within /etc/profile.d/*.sh. It is recommended to place your configuration in a shell script within /etc/profile.d to set your own system wide environmental variables. o /etc/bashrc - System wide version of .bashrc. In Fedora derived distributions, etc/bashrc also invokes /etc/profile.d/*.sh if non-login shell, but redirects output to /dev/null if non-interactive. Is only executed for interactive shells or if BASH_ENV is set to /etc/bashrc. User Shell Configuration Files: - ~/.bash_profile - Is executed to configure your shell before the initial command prompt. Is only read by login shells. - ~/.bashrc - Is executed for interactive shells. only read by a shell that's both interactive and non-login umask is set by order of precedence. If umask is set in multiple locations, this order of precedence will determine the system's default umask. Order of precedence: 1. A file in /etc/profile.d/ ending in .sh - This will override any other system- wide umask setting 2. In the file /etc/profile 3. On the pam_umask.so module in /etc/pam.d/postlogin 4. In the file /etc/login.defs 5. In the file /etc/default/login."
-    rationale: "Setting a secure default value for umask ensures that users make a conscious choice about their file permissions. A permissive umask value could result in directories or files with excessive permissions that can be read and/or written to by unauthorized users."
-    remediation: "Run the following script and perform the instructions in the output to set the default umask to 027 or more restrictive: #!/usr/bin/env bash { l_output=\"\" l_output2=\"\" l_out=\"\" file_umask_chk() { if grep -Psiq -- '^\\h*umask\\h+(0?[0-7][2- 7]7|u(=[rwx]{0,3}),g=([rx]{0,2}),o=)(\\h*#.*)?$' \"$l_file\"; then l_out=\"$l_out\\n - umask is set correctly in \\\"$l_file\\\"\" elif grep -Psiq -- '^\\h*umask\\h+(([0-7][0-7][01][0-7]\\b|[0-7][0-7][0- 7][0-6]\\b)|([0-7][01][0-7]\\b|[0-7][0-7][0- 6]\\b)|(u=[rwx]{1,3},)?(((g=[rx]?[rx]?w[rx]?[rx]?\\b)(,o=[rwx]{1,3})?)|((g=[wrx ]{1,3},)?o=[wrx]{1,3}\\b)))' \"$l_file\"; then l_output2=\"$l_output2\\n - \\\"$l_file\\\"\" fi } while IFS= read -r -d $'\\0' l_file; do file_umask_chk done < <(find /etc/profile.d/ -type f -name '*.sh' -print0) [ -n \"$l_out\" ] && l_output=\"$l_out\" l_file=\"/etc/profile\" && file_umask_chk l_file=\"/etc/bashrc\" && file_umask_chk l_file=\"/etc/bash.bashrc\" && file_umask_chk l_file=\"/etc/pam.d/postlogin\" if grep -Psiq '^\\h*session\\h+[^#\\n\\r]+\\h+pam_umask\\.so\\h+([^#\\n\\r]+\\h+)?umask=(([0-7][0- 7][01][0-7]\\b|[0-7][0-7][0-7][0-6]\\b)|([0-7][01][0-7]\\b))' \"$l_file\"; then l_output2=\"$l_output2\\n - \\\"$l_file\\\"\" fi l_file=\"/etc/login.defs\" && file_umask_chk l_file=\"/etc/default/login\" && file_umask_chk if [ -z \"$l_output2\" ]; then echo -e \" - No files contain a UMASK that is not restrictive enough\\n No UMASK updates required to existing files\" else echo -e \"\\n - UMASK is not restrictive enough in the following file(s):$l_output2\\n\\n- Remediation Procedure:\\n - Update these files and comment out the UMASK line\\n or update umask to be \\\"0027\\\" or more restrictive\" fi if [ -n \"$l_output\" ]; then echo -e \"$l_output\" else echo -e \" - Configure UMASK in a file in the \\\"/etc/profile.d/\\\" directory ending in \\\".sh\\\"\\n\\n Example Command (Hash to represent being run at a root prompt):\\n\\n# printf '%s\\\\\\n' \\\"umask 027\\\" > /etc/profile.d/50-systemwide_umask.sh\\n\" fi } Notes: - This method only applies to bash and shell. If other shells are supported on the - system, it is recommended that their configuration files also are checked If the pam_umask.so module is going to be used to set umask, ensure that it's not being overridden by another setting. Refer to the PAM_UMASK(8) man page for more information."
-    compliance:
-      - cis: ["5.4.3.3"]
-      - cis_csc_v8: ["3.3"]
-      - cis_csc_v7: ["14.6"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
-      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-      - iso_27001-2013: ["A.9.1.1"]
-      - mitre_tactics: ["TA0007"]
-      - mitre_techniques: ["T1083"]
-      - nist_sp_800-53: ["AC-5", "AC-6"]
-      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-      - pci_dss_v4.0: ["1.3.1", "7.1"]
-      - soc_2: ["CC5.2", "CC6.1"]
-    condition:
-    rules:
+  # 5.4.3.2 Ensure default user shell timeout is configured. (Automated) - Not Implemented
+  # 5.4.3.3 Ensure default user umask is configured. (Automated) - Not Implemented
 
   # 6.1.1.1 Ensure journald service is enabled and active. (Automated)
   - id: 33225
@@ -3798,64 +3721,13 @@ checks:
       - nist_sp_800-53: ["AU-7"]
       - pci_dss_v3.2.1: ["10.2", "10.3"]
       - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
-    condition:
+    condition: all
     rules:
+      - 'c:sh -c "systemctl is-enabled systemd-journald.service & systemctl is-active systemd-journald.service" -> r:^active$|^static$'
 
-  # 6.1.1.2 Ensure journald log file access is configured. (Manual)
-  - id: 33226
-    title: "Ensure journald log file access is configured."
-    description: "Journald will create logfiles that do not already exist on the system. This setting controls what permissions will be applied to these newly created files."
-    rationale: "It is important to ensure that log files have the correct permissions to ensure that sensitive data is archived and protected."
-    remediation: "If the default configuration is not appropriate for the site specific requirements, copy /usr/lib/tmpfiles.d/systemd.conf to /etc/tmpfiles.d/systemd.conf and modify as required. Recommended mode for logfiles is 0640 or more restrictive."
-    compliance:
-      - cis: ["6.1.1.2"]
-      - cis_csc_v8: ["3.3"]
-      - cis_csc_v7: ["14.6"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
-      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-      - iso_27001-2013: ["A.9.1.1"]
-      - mitre_mitigations: ["M1022"]
-      - mitre_tactics: ["TA0007"]
-      - mitre_techniques: ["T1070", "T1070.002", "T1083"]
-      - nist_sp_800-53: ["AC-5", "AC-6"]
-      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-      - pci_dss_v4.0: ["1.3.1", "7.1"]
-      - soc_2: ["CC5.2", "CC6.1"]
-    condition:
-    rules:
-
-  # 6.1.1.3 Ensure journald log file rotation is configured. (Manual)
-  - id: 33227
-    title: "Ensure journald log file rotation is configured."
-    description: "Journald includes the capability of rotating log files regularly to avoid filling up the system with logs or making the logs unmanageably large. The file /etc/systemd/journald.conf is the configuration file used to specify how logs generated by Journald should be rotated."
-    rationale: "By keeping the log files smaller and more manageable, a system administrator can easily archive these files to another system and spend less time looking through inordinately large log files."
-    remediation: "Edit /etc/systemd/journald.conf or a file ending in .conf the /etc/systemd/journald.conf.d/ directory. Set the following parameters in the [Journal] section to ensure logs are rotated according to site policy. The settings should be carefully understood as there are specific edge cases and prioritization of parameters. Example Configuration: [Journal] SystemMaxUse=1G SystemKeepFree=500M RuntimeMaxUse=200M RuntimeKeepFree=50M MaxFileSec=1month Example script to create systemd drop-in configuration file: { a_settings=(\"SystemMaxUse=1G\" \"SystemKeepFree=500M\" \"RuntimeMaxUse=200M\" \"RuntimeKeepFree=50M\" \"MaxFileSec=1month\") [ ! -d /etc/systemd/journald.conf.d/ ] && mkdir /etc/systemd/journald.conf.d/ if grep -Psq -- '^\\h*\\[Journal\\]' /etc/systemd/journald.conf.d/60- journald.conf; then printf '%s\\n' \"\" \"${a_settings[@]}\" >> /etc/systemd/journald.conf.d/60- journald.conf else printf '%s\\n' \"\" \"[Journal]\" \"${a_settings[@]}\" >> /etc/systemd/journald.conf.d/60-journald.conf fi } Note: - If these settings appear in a canonically later file, or later in the same file, the setting will be overwritten - Logfile size and configuration to move logfiles to a remote log server should be accounted for when configuring these settings Run to following command to update the parameters in the service: # systemctl reload-or-restart systemd-journald."
-    compliance:
-      - cis: ["6.1.1.3"]
-      - cis_csc_v8: ["8.2"]
-      - cis_csc_v7: ["6.2", "6.3"]
-      - cmmc_v2.0: ["AU.L2-3.3.1"]
-      - hipaa: ["164.312(b)"]
-      - iso_27001-2013: ["A.12.4.1"]
-      - mitre_mitigations: ["M1022"]
-      - mitre_tactics: ["TA0040"]
-      - mitre_techniques: ["T1070", "T1070.002"]
-      - nist_sp_800-53: ["AU-7"]
-      - pci_dss_v3.2.1: ["10.2", "10.3"]
-      - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
-    condition:
-    rules:
-
-  # 6.1.1.4 Ensure only one logging system is in use. (Automated)
-  - id: 33228
-    title: "Ensure only one logging system is in use."
-    description: "Best practices recommend that a single centralized logging system be used for log management, choose a single service either rsyslog - OR - journald to be used as a single centralized logging system."
-    rationale: "Configuring only one logging service either rsyslog - OR - journald avoids redundancy, optimizes resources, simplifies configuration and management, and ensures consistency."
-    impact: "Transitioning from one logging service to another can be complex and time consuming, it involves reconfiguration and may result in data loss if not managed and reconfigured correctly."
-    compliance:
-      - cis: ["6.1.1.4"]
-    condition:
-    rules:
+  # 6.1.1.2 Ensure journald log file access is configured. (Manual) - Not Implemented
+  # 6.1.1.3 Ensure journald log file rotation is configured. (Manual) - Not Implemented
+  # 6.1.1.4 Ensure only one logging system is in use. (Automated) - Not Implemented
 
   # 6.1.2.1.1 Ensure systemd-journal-remote is installed. (Automated)
   - id: 33229
@@ -3876,30 +3748,11 @@ checks:
       - nist_sp_800-53: ["AU-7"]
       - pci_dss_v3.2.1: ["10.2", "10.3"]
       - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
-    condition:
+    condition: all
     rules:
+      - "c:dpkg-query -s systemd-journal-remote -> r:install ok installed"
 
-  # 6.1.2.1.2 Ensure systemd-journal-upload authentication is configured. (Manual)
-  - id: 33230
-    title: "Ensure systemd-journal-upload authentication is configured."
-    description: "Journald systemd-journal-upload supports the ability to send log events it gathers to a remote log host."
-    rationale: "Storing log data on a remote host protects log integrity from local attacks. If an attacker gains root access on the local system, they could tamper with or remove log data that is stored on the local system. Note: This recommendation only applies if journald is the chosen method for client side logging. Do not apply this recommendation if rsyslog is used."
-    remediation: "Edit the /etc/systemd/journal-upload.conf file or a file in /etc/systemd/journal-upload.conf.d ending in .conf and ensure the following lines are set in the [Upload] section per your environment: Example settings: [Upload] URL=192.168.50.42 ServerKeyFile=/etc/ssl/private/journal-upload.pem ServerCertificateFile=/etc/ssl/certs/journal-upload.pem TrustedCertificateFile=/etc/ssl/ca/trusted.pem Example script to create systemd drop-in configuration file: #!/usr/bin/env bash { a_settings=(\"URL=192.168.50.42\" \"ServerKeyFile=/etc/ssl/private/journal- upload.pem\" \\ \"ServerCertificateFile=/etc/ssl/certs/journal-upload.pem\" \"TrustedCertificateFile=/etc/ssl/ca/trusted.pem\") [ ! -d /etc/systemd/journal-upload.conf.d/ ] && mkdir /etc/systemd/journal-upload.conf.d/ if grep -Psq -- '^\\h*\\[Upload\\]' /etc/systemd/journal-upload.conf.d/60- journald_upload.conf; then printf '%s\\n' \"\" \"${a_settings[@]}\" >> /etc/systemd/journal- upload.conf.d/60-journald_upload.conf else printf '%s\\n' \"\" \"[Journal]\" \"${a_settings[@]}\" >> /etc/systemd/journal-upload.conf.d/60-journald_upload.conf fi } Run the following command to update the parameters in the service: # systemctl reload-or-restart systemd-journal-upload."
-    compliance:
-      - cis: ["6.1.2.1.2"]
-      - cis_csc_v8: ["8.2"]
-      - cis_csc_v7: ["6.2", "6.3"]
-      - cmmc_v2.0: ["AU.L2-3.3.1"]
-      - hipaa: ["164.312(b)"]
-      - iso_27001-2013: ["A.12.4.1"]
-      - mitre_mitigations: ["M1029"]
-      - mitre_tactics: ["TA0040"]
-      - mitre_techniques: ["T1070", "T1070.002", "T1562", "T1562.006"]
-      - nist_sp_800-53: ["AU-7"]
-      - pci_dss_v3.2.1: ["10.2", "10.3"]
-      - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
-    condition:
-    rules:
+  # 6.1.2.1.2 Ensure systemd-journal-upload authentication is configured. (Manual) - Not Implemented
 
   # 6.1.2.1.3 Ensure systemd-journal-upload is enabled and active. (Automated)
   - id: 33231
@@ -3920,8 +3773,9 @@ checks:
       - nist_sp_800-53: ["AU-7"]
       - pci_dss_v3.2.1: ["10.2", "10.3"]
       - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
-    condition:
+    condition: all
     rules:
+      - 'c:sh -c "systemctl is-enabled systemd-journal-upload.service & systemctl is-active systemd-journal-upload.service" -> r:^active$|^enabled$'
 
   # 6.1.2.1.4 Ensure systemd-journal-remote service is not in use. (Automated)
   - id: 33232
@@ -3941,8 +3795,9 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - 'not c:sh -c "systemctl is-enabled systemd-journal-remote.socket systemd-journal-remote.service & systemctl is-active systemd-journal-remote.socket systemd-journal-remote.service" -> r:^active$|^enabled$'
 
   # 6.1.2.2 Ensure journald ForwardToSyslog is disabled. (Automated)
   - id: 33233
@@ -3963,8 +3818,9 @@ checks:
       - nist_sp_800-53: ["AU-7"]
       - pci_dss_v3.2.1: ["10.2", "10.3"]
       - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
-    condition:
+    condition: all
     rules:
+      - "f:/etc/systemd/journald.conf -> r:ForwardToSyslog=no"
 
   # 6.1.2.3 Ensure journald Compress is configured. (Automated)
   - id: 33234
@@ -3986,8 +3842,9 @@ checks:
       - pci_dss_v3.2.1: ["10.2", "10.3", "10.7"]
       - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
       - soc_2: ["A1.1"]
-    condition:
+    condition: all
     rules:
+      - "f:/etc/systemd/journald.conf -> r:Compress=yes"
 
   # 6.1.2.4 Ensure journald Storage is configured. (Automated)
   - id: 33235
@@ -4008,8 +3865,9 @@ checks:
       - nist_sp_800-53: ["AU-7"]
       - pci_dss_v3.2.1: ["10.2", "10.3"]
       - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
-    condition:
+    condition: all
     rules:
+      - "f:/etc/systemd/journald.conf -> r:Storage=persistent"
 
   # 6.1.3.1 Ensure rsyslog is installed. (Automated)
   - id: 33236
@@ -4030,8 +3888,9 @@ checks:
       - nist_sp_800-53: ["AU-7"]
       - pci_dss_v3.2.1: ["10.2", "10.3"]
       - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
-    condition:
+    condition: all
     rules:
+      - "c:dpkg-query -s rsyslog -> r:install ok installed"
 
   # 6.1.3.2 Ensure rsyslog service is enabled and active. (Automated)
   - id: 33237
@@ -4052,8 +3911,9 @@ checks:
       - nist_sp_800-53: ["AU-7"]
       - pci_dss_v3.2.1: ["10.2", "10.3"]
       - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
-    condition:
+    condition: all
     rules:
+      - 'c:sh -c "systemctl is-enabled rsyslog & systemctl is-active rsyslog.service" -> r:^active$|^enabled$'
 
   # 6.1.3.3 Ensure journald is configured to send logs to rsyslog. (Automated)
   - id: 33238
@@ -4075,13 +3935,14 @@ checks:
       - pci_dss_v3.2.1: ["10.2", "10.3", "10.5.3", "10.5.4"]
       - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "10.3.3", "5.3.4", "6.4.1", "6.4.2"]
       - soc_2: ["PL1.4"]
-    condition:
+    condition: all
     rules:
+      - "f:/etc/systemd/journald.conf -> r:ForwardToSyslog=yes"
 
   # 6.1.3.4 Ensure rsyslog log file creation mode is configured. (Automated)
   - id: 33239
     title: "Ensure rsyslog log file creation mode is configured."
-    description: "rsyslog will create logfiles that do not already exist on the system. The global() configuration object umask, available in rsyslog 8.26.0+, sets the rsyslogd process’ umask. If not specified, the system-provided default is used. The value given must always be a 4-digit octal number, with the initial digit being zero. The legacy $umask parameter sets the rsyslogd process' umask. If not specified, the system-provided default is used. The value given must always be a 4-digit octal number, with the initial digit being zero. The legacy $FileCreateMode parameter allows the setting of the mode with which rsyslogd creates new files. If not specified, the value 0644 is used. The value given must always be a 4-digit octal number, with the initial digit being zero. Please note that the actual permission depend on rsyslogd process umask. If in doubt, use $umask 0000 right at the beginning of the configuration file to remove any restrictions. The legacy $FileCreateMode may be specified multiple times. If so, it specifies the creation mode for all selector lines that follow until the next $FileCreateMode parameter. Order of lines is vitally important."
+    description: "rsyslog will create logfiles that do not already exist on the system. The global() configuration object umask, available in rsyslog 8.26.0+, sets the rsyslogd process umask. If not specified, the system-provided default is used. The value given must always be a 4-digit octal number, with the initial digit being zero. The legacy $umask parameter sets the rsyslogd process' umask. If not specified, the system-provided default is used. The value given must always be a 4-digit octal number, with the initial digit being zero. The legacy $FileCreateMode parameter allows the setting of the mode with which rsyslogd creates new files. If not specified, the value 0644 is used. The value given must always be a 4-digit octal number, with the initial digit being zero. Please note that the actual permission depend on rsyslogd process umask. If in doubt, use $umask 0000 right at the beginning of the configuration file to remove any restrictions. The legacy $FileCreateMode may be specified multiple times. If so, it specifies the creation mode for all selector lines that follow until the next $FileCreateMode parameter. Order of lines is vitally important."
     rationale: "It is important to ensure that log files have the correct permissions to ensure that sensitive data is archived and protected."
     remediation: "Edit either /etc/rsyslog.conf or a dedicated .conf file in /etc/rsyslog.d/ and set $FileCreateMode to 0640 or more restrictive: $FileCreateMode 0640 Example script to create a drop-in configuration file in the default include location: #!/usr/bin/env bash { [ ! -d \"/etc/rsyslog.d/\" ] && mkdir /etc/rsyslog.d/ printf '%s\\n' \"\" \"\\$FileCreateMode 0640\" >> /etc/rsyslog.d/60-rsyslog.conf } Reload the service: # systemctl reload-or-restart rsyslog."
     references:
@@ -4100,119 +3961,16 @@ checks:
       - pci_dss_v3.2.1: ["10.2", "10.3", "7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'not f:/etc/rsyslog.conf -> r:^\s*\t*\$FileCreateMode && !r:0640|0600|0400'
+      - 'not d:/etc/rsyslog.d/ -> r:\.+.conf -> r:^\s*\t*\$FileCreateMode && !r:0640|0600|0400'
 
-  # 6.1.3.5 Ensure rsyslog logging is configured. (Manual)
-  - id: 33240
-    title: "Ensure rsyslog logging is configured."
-    description: "The rsyslog and configuration files specifies rules for logging and which files are to be used to log certain classes of messages."
-    rationale: "A great deal of important security-related information is sent via rsyslog (e.g., successful and failed su attempts, failed login attempts, root login attempts, etc.)."
-    remediation: "Edit the following lines in the configuration file(s) returned by the audit as appropriate for your environment. Note: The below configuration is shown for example purposes only. Due care should be given to how the organization wishes to store log data. *.emerg :omusrmsg:* auth,authpriv.* /var/log/secure mail.* -/var/log/mail mail.info -/var/log/mail.info mail.warning -/var/log/mail.warn mail.err /var/log/mail.err cron.* /var/log/cron *.=warning;*.=err -/var/log/warn *.crit /var/log/warn *.*;mail.none;news.none -/var/log/messages local0,local1.* -/var/log/localmessages local2,local3.* -/var/log/localmessages local4,local5.* -/var/log/localmessages local6,local7.* -/var/log/localmessages Run the following command to reload the rsyslogd configuration: # systemctl reload-or-restart rsyslog."
-    compliance:
-      - cis: ["6.1.3.5"]
-      - cis_csc_v8: ["8.2"]
-      - cis_csc_v7: ["6.2", "6.3"]
-      - cmmc_v2.0: ["AU.L2-3.3.1"]
-      - hipaa: ["164.312(b)"]
-      - iso_27001-2013: ["A.12.4.1"]
-      - mitre_mitigations: ["M1047"]
-      - mitre_tactics: ["TA0005"]
-      - mitre_techniques: ["T1070", "T1070.002"]
-      - nist_sp_800-53: ["AU-7"]
-      - pci_dss_v3.2.1: ["10.2", "10.3"]
-      - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
-    condition:
-    rules:
-
-  # 6.1.3.6 Ensure rsyslog is configured to send logs to a remote log host. (Manual)
-  - id: 33241
-    title: "Ensure rsyslog is configured to send logs to a remote log host."
-    description: "rsyslog supports the ability to send log events it gathers to a remote log host or to receive messages from remote hosts, thus enabling centralized log management."
-    rationale: "Storing log data on a remote host protects log integrity from local attacks. If an attacker gains root access on the local system, they could tamper with or remove log data that is stored on the local system."
-    remediation: "Edit the rsyslog configuration and add the following line (where loghost.example.com is the name of your central log host). The target directive may either be a fully qualified domain name or an IP address. Example script to create a drop-in configuration file: #!/usr/bin/env bash { a_parameters=('*.* action(type=\"omfwd\" target=\"loghost.example.com\" port=\"514\" protocol=\"tcp\"' \\ ' action.resumeRetryCount=\"100\"' ' queue.type=\"LinkedList\" queue.size=\"1000\")') [ ! -d \"/etc/rsyslog.d/\" ] && mkdir /etc/rsyslod.d/ printf '%s\\n' \"\" \"${a_parameters[@]}\" >> /etc/rsyslog.d/60-rsyslog.conf } Run the following command to reload rsyslog.service: # systemctl reload-or-restart rsyslog.service."
-    references:
-      - "https://www.rsyslog.com/doc/"
-    compliance:
-      - cis: ["6.1.3.6"]
-      - cis_csc_v8: ["8.2"]
-      - cis_csc_v7: ["6.2", "6.3"]
-      - cmmc_v2.0: ["AU.L2-3.3.1"]
-      - hipaa: ["164.312(b)"]
-      - iso_27001-2013: ["A.12.4.1"]
-      - mitre_mitigations: ["M1029"]
-      - mitre_tactics: ["TA0040"]
-      - mitre_techniques: ["T1070", "T1070.002", "T1562", "T1562.006"]
-      - nist_sp_800-53: ["AU-7"]
-      - pci_dss_v3.2.1: ["10.2", "10.3"]
-      - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
-    condition:
-    rules:
-
-  # 6.1.3.7 Ensure rsyslog is not configured to receive logs from a remote client. (Automated)
-  - id: 33242
-    title: "Ensure rsyslog is not configured to receive logs from a remote client."
-    description: "rsyslog supports the ability to receive messages from remote hosts, thus acting as a log server. Clients should not receive data from other hosts."
-    rationale: "If a client is configured to also receive data, thus turning it into a server, the client system is acting outside its operational boundary."
-    remediation: 'Unless the system''s primary function is to serve as a logfile server , modify the files returned by the Audit Procedure and remove the specific lines highlighted by the audit. Verify none of the following entries are present in the rsyslog configuration. advanced format module(load="imtcp") input(type="imtcp" port="514") deprecated legacy format $ModLoad imtcp $InputTCPServerRun Reload the service: # systemctl reload-or-restart rsyslog.'
-    references:
-      - "https://www.rsyslog.com/doc/index.html"
-    compliance:
-      - cis: ["6.1.3.7"]
-      - cis_csc_v8: ["4.8"]
-      - cis_csc_v7: ["9.2"]
-      - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
-      - iso_27001-2013: ["A.13.1.3"]
-      - mitre_mitigations: ["M1029"]
-      - mitre_tactics: ["TA0005", "TA0040"]
-      - mitre_techniques: ["T1070", "T1070.002", "T1562", "T1562.006"]
-      - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
-      - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
-      - soc_2: ["CC6.3", "CC6.6"]
-    condition:
-    rules:
-
-  # 6.1.3.8 Ensure logrotate is configured. (Manual)
-  - id: 33243
-    title: "Ensure logrotate is configured."
-    description: "The system includes the capability of rotating log files regularly to avoid filling up the system with logs or making the logs unmanageably large. The file /etc/logrotate.d/rsyslog is the configuration file used to rotate log files created by rsyslog."
-    rationale: "By keeping the log files smaller and more manageable, a system administrator can easily archive these files to another system and spend less time looking through inordinately large log files."
-    remediation: "Edit /etc/logrotate.conf, or the appropriate configuration file provided by the script in the Audit Procedure, as necessary to ensure logs are rotated according to site policy."
-    compliance:
-      - cis: ["6.1.3.8"]
-      - cis_csc_v8: ["8.3"]
-      - cis_csc_v7: ["6.4"]
-      - iso_27001-2013: ["A.12.4.1"]
-      - mitre_mitigations: ["M1022"]
-      - mitre_tactics: ["TA0040"]
-      - mitre_techniques: ["T1070", "T1070.002"]
-      - pci_dss_v3.2.1: ["10.7"]
-      - soc_2: ["A1.1"]
-    condition:
-    rules:
-
-  # 6.1.4.1 Ensure access to all logfiles has been configured. (Automated)
-  - id: 33244
-    title: "Ensure access to all logfiles has been configured."
-    description: "Log files contain information from many services on the the local system, or in the event of a centralized log server, others systems logs as well. In general log files are found in /var/log/, although application can be configured to store logs elsewhere. Should your application store logs in another, ensure to run the same test on that location."
-    rationale: "It is important that log files have the correct permissions to ensure that sensitive data is protected and that only the appropriate users / groups have access to them."
-    remediation: "Run the following script to update permissions and ownership on files in /var/log. Although the script is not destructive, ensure that the output of the audit procedure is captured in the event that the remediation causes issues. #!/usr/bin/env bash { a_output2=() f_file_test_fix() { a_out2=() maxperm=\"$( printf '%o' $(( 0777 & ~$perm_mask)) )\" if [ $(( $l_mode & $perm_mask )) -gt 0 ]; then a_out2+=(\" o Mode: \\\"$l_mode\\\" should be \\\"$maxperm\\\" or more restrictive\" \" x Removing excess permissions\") chmod \"$l_rperms\" \"$l_fname\" fi if [[ ! \"$l_user\" =~ $l_auser ]]; then a_out2+=(\" o Owned by: \\\"$l_user\\\" and should be owned by \\\"${l_auser//|/ or }\\\"\" \" x Changing ownership to: \\\"$l_fix_account\\\"\") chown \"$l_fix_account\" \"$l_fname\" fi if [[ ! \"$l_group\" =~ $l_agroup ]]; then a_out2+=(\" o Group owned by: \\\"$l_group\\\" and should be group owned by \\\"${l_agroup//|/ or }\\\"\" \" x Changing group ownership to: \\\"$l_fix_account\\\"\") chgrp \"$l_fix_account\" \"$l_fname\" fi [ \"${#a_out2[@]}\" -gt 0 ] && a_output2+=(\" - File: \\\"$l_fname\\\" is:\" \"${a_out2[@]}\") } l_fix_account='root' while IFS= read -r -d $'\\0' l_file; do while IFS=: read -r l_fname l_mode l_user l_group; do if grep -Pq -- '\\/(apt)\\h*$' <<< \"$(dirname \"$l_fname\")\"; then perm_mask='0133' l_rperms=\"u-x,go-wx\" l_auser=\"root\" l_agroup=\"(root|adm)\"; f_file_test_fix else case \"$(basename \"$l_fname\")\" in lastlog | lastlog.* | wtmp | wtmp.* | wtmp-* | btmp | btmp.* | btmp-* | README) perm_mask='0113' l_rperms=\"ug-x,o-wx\" l_auser=\"root\" l_agroup=\"(root|utmp)\" f_file_test_fix ;; cloud-init.log* | localmessages* | waagent.log*) perm_mask='0133' l_rperms=\"u-x,go-wx\" l_auser=\"(root|syslog)\" l_agroup=\"(root|adm)\" file_test_fix ;; secure | auth.log | syslog | messages) perm_mask='0137' l_rperms=\"u-x,g-wx,o-rwx\" l_auser=\"(root|syslog)\" l_agroup=\"(root|adm)\" f_file_test_fix ;; SSSD | sssd) perm_mask='0117' l_rperms=\"ug-x,o-rwx\" l_auser=\"(root|SSSD)\" l_agroup=\"(root|SSSD)\" f_file_test_fix ;; gdm | gdm3) perm_mask='0117' l_rperms=\"ug-x,o-rwx\" l_auser=\"root\" l_agroup=\"(root|gdm|gdm3)\" f_file_test_fix ;; *.journal | *.journal~) perm_mask='0137' l_rperms=\"u-x,g-wx,o-rwx\" l_auser=\"root\" l_agroup=\"(root|systemd-journal)\" f_file_test_fix ;; *) perm_mask='0137' l_rperms=\"u-x,g-wx,o-rwx\" l_auser=\"(root|syslog)\" l_agroup=\"(root|adm)\" if [ \"$l_user\" = \"root\" ] || ! grep -Pq -- \"^\\h*$(awk -F: '$1==\"'\"$l_user\"'\" {print $7}' /etc/passwd)\\b\" /etc/shells; then ! grep -Pq -- \"$l_auser\" <<< \"$l_user\" && l_auser=\"(root|syslog|$l_user)\" ! grep -Pq -- \"$l_agroup\" <<< \"$l_group\" && l_agroup=\"(root|adm|$l_group)\" fi f_file_test_fix ;; esac fi done < <(stat -Lc '%n:%#a:%U:%G' \"$l_file\") done < <(find -L /var/log -type f \\( -perm /0137 -o ! -user root -o ! - group root \\) -print0) if [ \"${#a_output2[@]}\" -le 0 ]; then # If all files passed, then we report no changes a_output+=(\" - All files in \\\"/var/log/\\\" have appropriate permissions and ownership\") printf '\\n%s' \"- All files in \\\"/var/log/\\\" have appropriate permissions and ownership\" \" o No changes required\" \"\" else printf '\\n%s' \"${a_output2[@]}\" \"\" fi } Note: You may also need to change the configuration for your logging software or services for any logs that had incorrect permissions. If there are services that log to other locations, ensure that those log files have the appropriate permissions."
-    compliance:
-      - cis: ["6.1.4.1"]
-      - cis_csc_v8: ["3.3"]
-      - cis_csc_v7: ["14.6"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
-      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-      - iso_27001-2013: ["A.9.1.1"]
-      - mitre_mitigations: ["M1028"]
-      - mitre_tactics: ["TA0007"]
-      - mitre_techniques: ["T1070", "T1070.002", "T1083"]
-      - nist_sp_800-53: ["AC-5", "AC-6"]
-      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-      - pci_dss_v4.0: ["1.3.1", "7.1"]
-      - soc_2: ["CC5.2", "CC6.1"]
-    condition:
-    rules:
+  # 6.1.3.5 Ensure rsyslog logging is configured. (Manual) - Not Implemented
+  # 6.1.3.6 Ensure rsyslog is configured to send logs to a remote log host. (Manual) - Not Implemented
+  # 6.1.3.7 Ensure rsyslog is not configured to receive logs from a remote client. (Automated) - Not Implemented
+  # 6.1.3.8 Ensure logrotate is configured. (Manual) - Not Implemented
+  # 6.1.4.1 Ensure access to all logfiles has been configured. (Automated) - Not Implemented
 
   # 6.2.1.1 Ensure auditd packages are installed. (Automated)
   - id: 33245
@@ -4233,8 +3991,10 @@ checks:
       - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
       - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
       - soc_2: ["CC5.2", "CC7.2"]
-    condition:
+    condition: all
     rules:
+      - "c:dpkg -s auditd -> r:install ok installed"
+      - "c:dpkg -s audispd-plugins -> r:install ok installed"
 
   # 6.2.1.2 Ensure auditd service is enabled and active. (Automated)
   - id: 33246
@@ -4255,8 +4015,9 @@ checks:
       - nist_sp_800-53: ["AU-7"]
       - pci_dss_v3.2.1: ["10.2", "10.3"]
       - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
-    condition:
+    condition: all
     rules:
+      - 'c:sh -c "systemctl is-enabled auditd & systemctl is-active auditd" -> r:^active$|^enabled$'
 
   # 6.2.1.3 Ensure auditing for processes that start prior to auditd is enabled. (Automated)
   - id: 33247
@@ -4277,8 +4038,9 @@ checks:
       - nist_sp_800-53: ["AU-7"]
       - pci_dss_v3.2.1: ["10.2", "10.3"]
       - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
-    condition:
+    condition: all
     rules:
+      - 'not f:/boot/grub/grub.cfg -> r:^\s*\t*linux && !n:audit=(\d+) compare == 1'
 
   # 6.2.1.4 Ensure audit_backlog_limit is sufficient. (Automated)
   - id: 33248
@@ -4299,8 +4061,9 @@ checks:
       - nist_sp_800-53: ["AU-7"]
       - pci_dss_v3.2.1: ["10.2", "10.3"]
       - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
-    condition:
+    condition: all
     rules:
+      - 'not f:/boot/grub/grub.cfg -> r:^\s*\t*linux && !n:audit_backlog_limit=(\d+) compare >= 8192'
 
   # 6.2.2.1 Ensure audit log storage size is configured. (Automated)
   - id: 33249
@@ -4318,8 +4081,9 @@ checks:
       - mitre_techniques: ["T1562", "T1562.006"]
       - pci_dss_v3.2.1: ["10.7"]
       - soc_2: ["A1.1"]
-    condition:
+    condition: all
     rules:
+      - 'f:/etc/audit/auditd.conf -> r:^\s*\t*max_log_file\s*\t*=\s*\t*\d+'
 
   # 6.2.2.2 Ensure audit logs are not automatically deleted. (Automated)
   - id: 33250
@@ -4337,15 +4101,16 @@ checks:
       - mitre_techniques: ["T1562", "T1562.006"]
       - pci_dss_v3.2.1: ["10.7"]
       - soc_2: ["A1.1"]
-    condition:
+    condition: all
     rules:
+      - 'f:/etc/audit/auditd.conf -> r:^\s*\t*max_log_file_action\s*\t*=\s*\t*keep_logs'
 
   # 6.2.2.3 Ensure system is disabled when audit logs are full. (Automated)
   - id: 33251
     title: "Ensure system is disabled when audit logs are full."
     description: "The auditd daemon can be configured to halt the system or put the system in single user mode, if no free space is available or an error is detected on the partition that holds the audit log files. The disk_full_action parameter tells the system what action to take when no free space is available on the partition that holds the audit log files. Valid values are ignore, syslog, rotate, exec, suspend, single, and halt. - ignore, the audit daemon will issue a syslog message but no other action is taken - syslog, the audit daemon will issue a warning to syslog - rotate, the audit daemon will rotate logs, losing the oldest to free up space - exec, /path-to-script will execute the script. You cannot pass parameters to the script. The script is also responsible for telling the auditd daemon to resume logging once its completed its action - suspend, the audit daemon will stop writing records to the disk - single, the audit daemon will put the computer system in single user mode - halt, the audit daemon will shut down the system The disk_error_action parameter tells the system what action to take when an error is detected on the partition that holds the audit log files. Valid values are ignore, syslog, exec, suspend, single, and halt. - ignore, the audit daemon will not take any action - syslog, the audit daemon will issue no more than 5 consecutive warnings to syslog - exec, /path-to-script will execute the script. You cannot pass parameters to the script - suspend, the audit daemon will stop writing records to the disk - single, the audit daemon will put the computer system in single user mode - halt, the audit daemon will shut down the system."
     rationale: "In high security contexts, the risk of detecting unauthorized access or nonrepudiation exceeds the benefit of the system's availability."
-    impact: "disk_full_action parameter: - Set to halt - the auditd daemon will shutdown the system when the disk partition containing the audit logs becomes full. - Set to single - the auditd daemon will put the computer system in single user mode when the disk partition containing the audit logs becomes full. disk_error_action parameter: - Set to halt - the auditd daemon will shutdown the system when an error is detected on the partition that holds the audit log files. - Set to single - the auditd daemon will put the computer system in single user mode when an error is detected on the partition that holds the audit log files. - Set to syslog - the auditd daemon will issue no more than 5 consecutive warnings to syslog when an error is detected on the partition that holds the audit log files."
+    impact: "disk_full_action parameter: -Set to halt - the auditd daemon will shutdown the system when the disk partition containing the audit logs becomes full. -Set to single - the auditd daemon will put the computer system in single user mode when the disk partition containing the audit logs becomes full. disk_error_action parameter: -Set to halt - the auditd daemon will shutdown the system when an error is detected on the partition that holds the audit log files. -Set to single - the auditd daemon will put the computer system in single user mode when an error is detected on the partition that holds the audit log files. -Set to syslog - the auditd daemon will issue no more than 5 consecutive warnings to syslog when an error is detected on the partition that holds the audit log files."
     remediation: "Set one of the following parameters in /etc/audit/auditd.conf depending on your local security policies. disk_full_action = <halt|single> disk_error_action = <syslog|single|halt> Example: disk_full_action = halt disk_error_action = halt."
     compliance:
       - cis: ["6.2.2.3"]
@@ -4359,8 +4124,10 @@ checks:
       - pci_dss_v3.2.1: ["10.2", "10.3", "10.7"]
       - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
       - soc_2: ["A1.1"]
-    condition:
+    condition: all
     rules:
+      - 'f:/etc/audit/auditd.conf -> r:^\s*\t*disk_full_action\s*\t*=\s*\t*halt|^\s*\t*disk_full_action\s*\t*=\s*\t*single'
+      - 'f:/etc/audit/auditd.conf -> r:^\s*\t*disk_error_action\s*\t*=\s*\t*halt|^\s*\t*disk_error_action\s*\t*=\s*\t*single|^\s*\t*disk_error_action\s*\t*=\s*\t*syslog'
 
   # 6.2.2.4 Ensure system warns when audit logs are low on space. (Automated)
   - id: 33252
