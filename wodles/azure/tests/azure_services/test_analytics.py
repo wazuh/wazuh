@@ -100,6 +100,7 @@ def test_start_log_analytics(
         md5_hash=md5_hash,
         query=query,
         tag=tag,
+        tenant=tenant
     )
 
 
