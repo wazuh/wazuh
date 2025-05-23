@@ -59,6 +59,22 @@ test:
       out3: value3
     description: Success csv parse
   - arguments:
+      input_field: value1,value2,value3
+      out1: out1.key
+      out2: out2/key
+      out3: out3.key/subkey
+    target_field: any_value
+    should_pass: true
+    expected:
+      out1:
+        key: value1
+      out2:
+        key: value2
+      out3:
+        key:
+          subkey: value3
+    description: Success csv parse with slash and dotpath
+  - arguments:
       input_field: valu1=1 value2=2
       out1: out1
       out2: out2
