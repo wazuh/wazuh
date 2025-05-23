@@ -2061,7 +2061,12 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
         fp_timeout.tv_usec = 0;
 
         /* Wait for the select timeout */
-        if ((r = select(0, NULL, NULL, NULL, &fp_timeout)) < 0) {
+
+        do {
+            r = select(0, NULL, NULL, NULL, &fp_timeout);
+        } while (r < 0 && errno == EINTR);
+
+        if (r < 0) {
             merror(SELECT_ERROR, errno, strerror(errno));
             int_error++;
 
