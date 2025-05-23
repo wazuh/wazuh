@@ -59,14 +59,14 @@ INSTANTIATE_TEST_SUITE_P(
         ParseT(SUCCESS,
                R"(key1=Value1 Key2)",
                j(fmt::format(R"({{"{}":{{"key1":"Value1"}}}})", TARGET.substr(1))),
-               11,
+               12,
                getKVParser,
                {NAME, TARGET, {}, {"=", " ", "'", "\\"}}),
 
         ParseT(SUCCESS,
                R"(key1=Value1 =Value2)",
                j(fmt::format(R"({{"{}":{{"key1":"Value1"}}}})", TARGET.substr(1))),
-               11,
+               12,
                getKVParser,
                {NAME, TARGET, {}, {"=", " ", "'", "\\"}}),
 
@@ -94,7 +94,7 @@ INSTANTIATE_TEST_SUITE_P(
         ParseT(SUCCESS,
                R"(keyX:"valueX;";)",
                j(fmt::format(R"({{"{}":{{"keyX":"valueX;"}}}})", TARGET.substr(1))),
-               14,
+               15,
                getKVParser,
                {NAME, TARGET, {}, {":", ";", "\"", "\\"}}),
 
@@ -107,6 +107,8 @@ INSTANTIATE_TEST_SUITE_P(
 
         ParseT(FAILURE, R"(: ;)", {}, 0, getKVParser, {NAME, TARGET, {}, {":", " ", "'", "\\"}}),
 
+        ParseT(FAILURE, R"(key:'hi!)", {}, 4, getKVParser, {NAME, TARGET, {}, {":", " ", "'", "\\"}}),
+
         ParseT(FAILURE, R"(: valueX;)", {}, 0, getKVParser, {NAME, TARGET, {}, {":", " ", "'", "\\"}}),
 
         ParseT(FAILURE, R"(: valueX)", {}, 0, getKVParser, {NAME, TARGET, {}, {":", " ", "'", "\\"}}),
@@ -116,28 +118,28 @@ INSTANTIATE_TEST_SUITE_P(
         ParseT(SUCCESS,
                R"(key1:value1,:value2)",
                j(fmt::format(R"({{"{}":{{"key1":"value1"}}}})", TARGET.substr(1))),
-               11,
+               12,
                getKVParser,
                {NAME, TARGET, {}, {":", ",", "'", "\\"}}),
 
         ParseT(SUCCESS,
                R"(key1:value1,key2:value2,:value3)",
                j(fmt::format(R"({{"{}":{{"key1":"value1","key2":"value2"}}}})", TARGET.substr(1))),
-               23,
+               24,
                getKVParser,
                {NAME, TARGET, {}, {":", ",", "'", "\\"}}),
 
         ParseT(SUCCESS,
                R"(key1:value1,key2:value2,value3)",
                j(fmt::format(R"({{"{}":{{"key1":"value1","key2":"value2"}}}})", TARGET.substr(1))),
-               23,
+               24,
                getKVParser,
                {NAME, TARGET, {}, {":", ",", "'", "\\"}}),
 
         ParseT(SUCCESS,
                R"(key1:value1,key2:value2,:)",
                j(fmt::format(R"({{"{}":{{"key1":"value1","key2":"value2"}}}})", TARGET.substr(1))),
-               23,
+               24,
                getKVParser,
                {NAME, TARGET, {}, {":", ",", "'", "\\"}}),
 
@@ -238,7 +240,7 @@ INSTANTIATE_TEST_SUITE_P(
         ParseT(SUCCESS,
                R"(L=New York City, O=Acme U.S.A., INC., CN=update.acme.com)",
                j(fmt::format(R"({{"{}": {{"L":"New York City"," O":"Acme U.S.A."}}}})", TARGET.substr(1))),
-               30,
+               31,
                getKVParser,
                {NAME, TARGET, {}, {"=", ",", "'", "\\"}}),
 
