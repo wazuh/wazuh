@@ -58,17 +58,17 @@ nlohmann::json ShadowProvider::collect()
             std::string password = std::string(shadow_entry->sp_pwdp);
             std::smatch matches;
 
-            if (password == "!!")
+            if (password.empty())
+            {
+                entry["password_status"] = "empty";
+            }
+            else if (password == "!!")
             {
                 entry["password_status"] = "not_set";
             }
             else if (password[0] == '!' || password[0] == '*' || password[0] == 'x')
             {
                 entry["password_status"] = "locked";
-            }
-            else if (password.empty())
-            {
-                entry["password_status"] = "empty";
             }
             else
             {
@@ -77,6 +77,7 @@ nlohmann::json ShadowProvider::collect()
 
             if (std::regex_search(password, matches, kPasswordHashAlgRegex))
             {
+                // Possible improvement assigning each hash name: "6" should be "sha512"
                 entry["hash_alg"] = std::string(matches[1]);
             }
         }
