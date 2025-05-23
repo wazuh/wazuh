@@ -1,3 +1,12 @@
+/* Copyright (C) 2015, Wazuh Inc.
+ * All rights reserved.
+ *
+ * This program is free software; you can redistribute it
+ * and/or modify it under the terms of the GNU General Public
+ * License (version 2) as published by the FSF - Free Software
+ * Foundation.
+ */
+
 #include "iwinapi_wrappers.hpp"
 #include "logged_in_users_win.hpp"
 #include "gtest/gtest.h"
@@ -289,10 +298,4 @@ TEST(LoggedInUsersWindowsProviderTest, CollectWithOneValidSession)
     EXPECT_EQ(result[0]["host"], "192.168.1.100");
     EXPECT_EQ(result[0]["sid"], sidString);
     EXPECT_EQ(result[0]["registry_hive"], "HKEY_USERS\\" + sidString);
-}
-
-int main(int argc, char** argv)
-{
-    ::testing::InitGoogleTest(&argc, argv);
-    return RUN_ALL_TESTS();
 }

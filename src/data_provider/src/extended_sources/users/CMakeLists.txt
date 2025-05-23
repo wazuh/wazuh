@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.10)
 
-project(logged_in_users)
+project(users)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -12,25 +12,30 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   include_directories(${CMAKE_SOURCE_DIR}/../shared_modules/utils)
 endif()
 
+set(SRC_FILES "")
+
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
-  set(SRC_FILES src/logged_in_users_win.cpp)
+  list(APPEND SRC_FILES src/logged_in_users_win.cpp)
 else()
-  set(SRC_FILES src/logged_in_users_unix.cpp)
+  list(APPEND SRC_FILES src/logged_in_users_unix.cpp)
+  if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    list(APPEND SRC_FILES src/shadow_linux.cpp)
+  endif()
 endif()
 
-add_library(logged_in_users STATIC ${SRC_FILES})
+add_library(users STATIC ${SRC_FILES})
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
-  target_link_libraries(logged_in_users
+  target_link_libraries(users
       wtsapi32
   )
 endif()
 
 if(UNIT_TEST)
   if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-    target_link_libraries(logged_in_users -fprofile-arcs)
+    target_link_libraries(users -fprofile-arcs)
   else()
-    target_link_libraries(logged_in_users gcov)
+    target_link_libraries(users gcov)
   endif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 
   add_subdirectory(tests)
