@@ -291,7 +291,7 @@ class AWSSLSubscriberBucket(wazuh_integration.WazuhIntegration, AWSS3LogHandler)
         pfile = pq.ParquetFile(raw_parquet)
         for i in pfile.iter_batches():
             for j in i.to_pylist():
-                events.append(json.dumps(j))
+                events.append(json.dumps(j,default=str))
         aws_tools.debug(f'Found {len(events)} events in file {log_path}', 2)
         return events
 
