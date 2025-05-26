@@ -778,6 +778,9 @@ async def put_restart(pretty: bool = False, nodes_list: str = '*') -> ConnexionR
     f_kwargs = {'node_list': nodes_list}
 
     nodes = raise_if_exc(await get_system_nodes())
+    # The master node is always the first item in the list
+    master_node = nodes.pop(0)
+
     dapi = DistributedAPI(f=manager.restart,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
@@ -789,7 +792,18 @@ async def put_restart(pretty: bool = False, nodes_list: str = '*') -> ConnexionR
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return json_response(data, pretty=pretty, status_code=202)
+    dapi_master = DistributedAPI(f=manager.restart,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='local_master',
+                          is_async=False,
+                          logger=logger,
+                          broadcasting=False,
+                          rbac_permissions=request.context['token_info']['rbac_policies'],
+                          nodes=[master_node]
+                          )
+    data_master = raise_if_exc(await dapi_master.distribute_function())
+
+    return json_response(data + data_master, pretty=pretty, status_code=202)
 
 
 async def get_conf_validation(pretty: bool = False, wait_for_complete: bool = False,
