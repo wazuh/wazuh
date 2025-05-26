@@ -3046,7 +3046,7 @@ checks:
       - soc_2: ["CC6.1"]
     condition: all
     rules:
-      - 'f:/etc/pam.d/common-password -> r: password\s*\t*requisite\s*\t*pam_pwquality.so\s*\t*retry=(d+)'
+      - 'f:/etc/pam.d/common-password -> r:password\s*\t*requisite\s*\t*pam_pwquality.so\s*\t*retry=(d+)'
 
   # 5.3.2.4 Ensure pam_pwhistory module is enabled. (Automated)
   - id: 33189
@@ -3067,7 +3067,7 @@ checks:
       - soc_2: ["CC6.1"]
     condition: all
     rules:
-      - 'f:/etc/pam.d/common-password -> r: password\s*\t*requisite\s*\t*pam_pwquality.so\s*\t*retry=(d+)\s*\t*enforce_for_root\s*\t*try_first_pass\s*\t*use_authtok'
+      - 'f:/etc/pam.d/common-password -> r:password\s*\t*requisite\s*\t*pam_pwquality.so\s*\t*retry=(d+)\s*\t*enforce_for_root\s*\t*try_first_pass\s*\t*use_authtok'
 
   # 5.3.3.1.1 Ensure password failed attempts lockout is configured. (Automated)
   - id: 33190
