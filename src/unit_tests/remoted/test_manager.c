@@ -4709,7 +4709,7 @@ void test_save_controlmsg_update_msg_lookfor_agent_group_fail(void **state)
 
     expect_function_call(__wrap_pthread_mutex_unlock);
 
-    expect_string(__wrap__mdebug2, formatted_msg, "No group for agent '001'");
+    expect_string(__wrap__merror, formatted_msg, "Error getting group for agent '001'");
 
     agent_info_data *agent_data;
     os_calloc(1, sizeof(agent_info_data), agent_data);
