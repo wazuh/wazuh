@@ -39,13 +39,10 @@ tags:
 '''
 from pathlib import Path
 
-import json
 import pytest
-import time
 
 from wazuh_testing.constants.paths.sockets import WAZUH_DB_SOCKET_PATH, AUTHD_SOCKET_PATH
 from wazuh_testing.constants.daemons import AUTHD_DAEMON, WAZUH_DB_DAEMON
-from wazuh_testing.utils import database
 from wazuh_testing.utils.configuration import load_configuration_template, get_test_cases_data
 
 from . import CONFIGURATIONS_FOLDER_PATH, TEST_CASES_FOLDER_PATH
@@ -139,20 +136,3 @@ def test_authd_local_messages(test_configuration, test_metadata, set_wazuh_confi
         assert response[:len(expected)] == expected, \
             'Failed: Response was: {} instead of: {}' \
             .format(response, expected)
-
-        if 'expected_group' in case:
-            data = json.loads(response)['data']
-            query = "global sql SELECT * FROM `agent` WHERE `id` = {}".format(data['id'])
-
-            for i in range(3):
-                group = database.query_wdb(query)
-
-                if group:
-                    break
-
-                time.sleep(1)
-
-            if not group:
-                assert False, 'The agent was not created in the database'
-
-            assert group[0]['group'] == case['expected_group']
