@@ -63,7 +63,7 @@ def insert_pre_existent_agents(test_metadata, stop_authd):
             else:
                 registration_time = time_now
 
-            mocking.create_mocked_agent(id=id, name=name, ip=ip, date_add=registration_time, group='default',
+            mocking.create_mocked_agent(id=id, name=name, ip=ip, date_add=registration_time,
                                         connection_status=connection_status, disconnection_time=disconnection_time,
                                         client_key_secret=key)
 
