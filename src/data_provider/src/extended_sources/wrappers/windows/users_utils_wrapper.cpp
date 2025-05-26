@@ -7,7 +7,7 @@
  * Foundation.
  */
 
-#include "users_windows_utils_wrapper.hpp"
+#include "users_utils_wrapper.hpp"
 #include "windows_api_wrapper.hpp"
 
 UsersHelper::UsersHelper(

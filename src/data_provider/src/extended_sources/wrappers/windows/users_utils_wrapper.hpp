@@ -25,7 +25,7 @@
 #include <optional>
 
 #include "json.hpp"
-#include "iusers_windows_utils_wrapper.hpp"
+#include "iusers_utils_wrapper.hpp"
 #include "iwindows_api_wrapper.hpp"
 
 /// @brief Smart pointer wrapper managing Windows NetAPI allocated buffers.

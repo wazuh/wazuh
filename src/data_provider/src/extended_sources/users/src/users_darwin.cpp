@@ -14,7 +14,7 @@
 
 #include "users_darwin.hpp"
 #include "uuid_wrapper.hpp"
-#include "passwd_wrapper_darwin.hpp"
+#include "passwd_wrapper.hpp"
 #include "open_directory_utils_wrapper.hpp"
 
 UsersProvider::UsersProvider(
