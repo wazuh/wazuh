@@ -1,3 +1,12 @@
+/* Copyright (C) 2015, Wazuh Inc.
+ * All rights reserved.
+ *
+ * This program is free software; you can redistribute it
+ * and/or modify it under the terms of the GNU General Public
+ * License (version 2) as published by the FSF - Free Software
+ * Foundation.
+ */
+
 #pragma once
 
 #include <limits>
@@ -24,12 +33,25 @@ struct User
     }
 };
 
+// Interface for the windows user helper wrapper
 class IUsersHelper
 {
     public:
+        /// Destructor
         virtual ~IUsersHelper() = default;
 
+        /// @brief Retrieves the shell path for the user identified by the SID.
+        /// @param sid String representation of the user's SID.
+        /// @return The shell executable path.
         virtual std::string getUserShell(const std::string& sid) = 0;
+
+        /// @brief Processes local Windows user accounts and collects user data.
+        /// @param processed_sids Set to track processed SIDs and avoid duplicates.
+        /// @return Vector of User objects representing local accounts.
         virtual std::vector<User> processLocalAccounts(std::set<std::string>& processed_sids) = 0;
+
+        /// @brief Processes roaming profiles and collects user data.
+        /// @param processed_sids Set to track processed SIDs and avoid duplicates.
+        /// @return Vector of User objects representing roaming profiles.
         virtual std::vector<User> processRoamingProfiles(std::set<std::string>& processed_sids) = 0;
 };
