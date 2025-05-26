@@ -580,7 +580,6 @@ async def test_put_restart(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_re
                                           f_kwargs=mock_remove.return_value,
                                           request_type='distributed_master',
                                           is_async=False,
-                                          wait_for_complete=False,
                                           logger=ANY,
                                           broadcasting=True,
                                           rbac_permissions=mock_request.context['token_info']['rbac_policies'],

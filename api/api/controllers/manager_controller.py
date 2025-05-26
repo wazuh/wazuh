@@ -459,15 +459,13 @@ async def get_api_config(pretty: bool = False, wait_for_complete: bool = False) 
     return json_response(data, pretty=pretty)
 
 
-async def put_restart(pretty: bool = False, wait_for_complete: bool = False) -> ConnexionResponse:
+async def put_restart(pretty: bool = False) -> ConnexionResponse:
     """Restart manager or local_node.
 
     Parameters
     ----------
     pretty: bool
         Show results in human-readable format.
-    wait_for_complete : bool
-        Disable timeout response.
 
     Returns
     -------
@@ -480,7 +478,6 @@ async def put_restart(pretty: bool = False, wait_for_complete: bool = False) -> 
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_any',
                           is_async=False,
-                          wait_for_complete=wait_for_complete,
                           logger=logger,
                           rbac_permissions=request.context['token_info']['rbac_policies']
                           )
