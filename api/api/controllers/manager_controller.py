@@ -486,7 +486,7 @@ async def put_restart(pretty: bool = False, wait_for_complete: bool = False) -> 
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return json_response(data, pretty=pretty)
+    return json_response(data, pretty=pretty, status_code=202)
 
 
 async def get_conf_validation(pretty: bool = False, wait_for_complete: bool = False) -> ConnexionResponse:

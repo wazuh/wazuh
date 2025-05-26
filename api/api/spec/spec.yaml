@@ -11408,7 +11408,7 @@ paths:
         - $ref: '#/components/parameters/wait_for_complete'
         - $ref: '#/components/parameters/nodes_list'
       responses:
-        '200':
+        '202':
           description: "List of affected nodes"
           content:
             application/json:
@@ -13004,7 +13004,7 @@ paths:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
       responses:
-        '200':
+        '202':
           description: "Confirmation message"
           content:
             application/json:
