@@ -72,9 +72,9 @@ class UsersProvider
         nlohmann::json collectRemoteUsers(const std::set<std::string>& usernames,
                                           const std::set<uid_t>& uids);
 
-        /// @brief System wrapper dependency.
-        std::shared_ptr<ISystemWrapper> m_sysWrapper;
-
         /// @brief Passwd wrapper dependency.
         std::shared_ptr<IPasswdWrapper> m_passwdWrapper;
+
+        /// @brief System wrapper dependency.
+        std::shared_ptr<ISystemWrapper> m_sysWrapper;
 };

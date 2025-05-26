@@ -7,10 +7,11 @@
  * Foundation.
  */
 
-#include "iwinapi_wrappers.hpp"
-#include "logged_in_users_win.hpp"
 #include "gtest/gtest.h"
 #include "gmock/gmock.h"
+
+#include "logged_in_users_win.hpp"
+#include "iwinapi_wrappers.hpp"
 
 class MockTWSapiWrapper : public ITWSapiWrapper
 {
@@ -292,7 +293,7 @@ TEST(LoggedInUsersWindowsProviderTest, CollectWithOneValidSession)
 
     auto result = provider.collect();
 
-    ASSERT_EQ(result.size(), 1);
+    ASSERT_EQ(result.size(), static_cast<size_t>(1));
     EXPECT_EQ(result[0]["user"], "TestUser");
     EXPECT_EQ(result[0]["tty"], "Console");
     EXPECT_EQ(result[0]["host"], "192.168.1.100");

@@ -10,10 +10,10 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "iuuid_wrapper.hpp"
-#include "ipasswd_wrapper_darwin.hpp"
-#include "iopen_directory_utils_wrapper.hpp"
 #include "users_darwin.hpp"
+#include "iopen_directory_utils_wrapper.hpp"
+#include "ipasswd_wrapper.hpp"
+#include "iuuid_wrapper.hpp"
 
 class MockUUIDWrapper : public IUUIDWrapper
 {
@@ -77,7 +77,7 @@ TEST(UsersProviderTest, CollectWithConstraints_SingleUser)
 
     auto result = provider.collectWithConstraints({101});
 
-    ASSERT_EQ(result.size(), 1);
+    ASSERT_EQ(result.size(), static_cast<size_t>(1));
     EXPECT_EQ(result[0]["username"], "testuser");
     EXPECT_EQ(result[0]["uuid"], "abcdef00-1234-5678-90ab-cdefabcdef12");
     EXPECT_EQ(result[0]["is_hidden"], 0);

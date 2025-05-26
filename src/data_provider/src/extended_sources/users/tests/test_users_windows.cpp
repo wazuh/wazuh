@@ -9,7 +9,7 @@
 
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
-#include "users_windows_utils_wrapper.hpp"
+#include "users_utils_wrapper.hpp"
 #include "iwindows_api_wrapper.hpp"
 
 class MockWindowsApiWrapper : public IWindowsApiWrapper

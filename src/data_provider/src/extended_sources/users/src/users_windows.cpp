@@ -8,8 +8,8 @@
  */
 
 #include "users_windows.hpp"
-#include "iusers_windows_utils_wrapper.hpp"
-#include "users_windows_utils_wrapper.hpp"
+#include "iusers_utils_wrapper.hpp"
+#include "users_utils_wrapper.hpp"
 
 #include "json.hpp"
 

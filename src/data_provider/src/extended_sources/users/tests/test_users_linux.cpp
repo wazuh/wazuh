@@ -53,6 +53,7 @@ TEST(UsersProviderTest, CollectLocalUsers)
     struct passwd test_pwd =
     {
         .pw_name = const_cast<char*>("testuser"),
+        .pw_passwd = const_cast<char*>("x"),
         .pw_uid = 1000,
         .pw_gid = 1000,
         .pw_gecos = const_cast<char*>("Test User"),
@@ -73,7 +74,7 @@ TEST(UsersProviderTest, CollectLocalUsers)
     UsersProvider provider(mockPasswd, mockSys);
     auto result = provider.collect(false);
 
-    ASSERT_EQ(result.size(), 1);
+    ASSERT_EQ(result.size(), static_cast<size_t>(1));
     EXPECT_EQ(result[0]["username"], "testuser");
     EXPECT_EQ(result[0]["uid"], "1000");
     EXPECT_EQ(result[0]["gid"], "1000");

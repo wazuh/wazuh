@@ -50,7 +50,7 @@ TEST(ShadowProviderTests, CollectReturnsExpectedJson)
     ShadowProvider provider(mockWrapper);
     auto result = provider.collect();
 
-    ASSERT_EQ(result.size(), 1);
+    ASSERT_EQ(result.size(), static_cast<size_t>(1));
     EXPECT_EQ(result[0]["last_change"], 20228);
     EXPECT_EQ(result[0]["min"], 0);
     EXPECT_EQ(result[0]["max"], 99999);
@@ -104,7 +104,7 @@ TEST(ShadowProviderTests, CollectReturnsJsonArray)
     ShadowProvider provider(mockWrapper);
     auto result = provider.collect();
 
-    ASSERT_EQ(result.size(), 2);
+    ASSERT_EQ(result.size(), static_cast<size_t>(2));
     EXPECT_EQ(result[0]["last_change"], 20228);
     EXPECT_EQ(result[0]["min"], 0);
     EXPECT_EQ(result[0]["max"], 99999);

@@ -16,7 +16,7 @@
 
 #include "iuuid_wrapper.hpp"
 #include "iopen_directory_utils_wrapper.hpp"
-#include "ipasswd_wrapper_darwin.hpp"
+#include "ipasswd_wrapper.hpp"
 
 /// @brief Provides user information on Darwin (macOS) systems.
 ///
