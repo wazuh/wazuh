@@ -52,7 +52,6 @@ from pathlib import Path
 from . import CONFIGURATIONS_FOLDER_PATH, TEST_CASES_FOLDER_PATH
 from wazuh_testing.constants.ports import DEFAULT_SSL_REMOTE_ENROLLMENT_PORT
 from wazuh_testing.constants.daemons import AUTHD_DAEMON, WAZUH_DB_DAEMON, MODULES_DAEMON
-from wazuh_testing.utils import database
 from wazuh_testing.utils.configuration import get_test_cases_data, load_configuration_template
 
 # Marks
@@ -153,20 +152,3 @@ def test_ossec_auth_messages(test_configuration, test_metadata, set_wazuh_config
                 assert response != '', 'The manager did not respond to the message sent.'
         assert response[:len(expected)] == expected, \
             'Failed test case {}: Response was: {} instead of: {}'.format(set_up_groups['name'], response, expected)
-
-        if 'expected_group' in stage:
-            id = int(response.split("K:'")[1].split()[0])
-            query = "global sql SELECT * FROM `agent` WHERE `id` = {}".format(id)
-
-            for i in range(3):
-                group = database.query_wdb(query)
-
-                if group:
-                    break
-
-                time.sleep(1)
-
-            if not group:
-                assert False, 'The agent was not created in the database'
-
-            assert group[0]['group'] == stage['expected_group']

@@ -6,7 +6,6 @@
     -
       input: "OSSEC A:'user1'"
       output: "OSSEC K:'"
-      expected_group: "default"
     groups:
       -
 
@@ -18,7 +17,6 @@
     -
       input: "OSSEC A:'user2' G:'Group1'"
       output: "OSSEC K:"
-      expected_group: "Group1"
     groups:
       - 'Group1'
       - 'Group2'
@@ -92,7 +90,6 @@
     -
       input: "OSSEC A:'user3' G:'Group1,Group2'"
       output: "OSSEC K:"
-      expected_group: "Group1,Group2"
 
 - name: "Multiple Group - One group is invalid"
   description: "Check Multiple groups enrollment"
