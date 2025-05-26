@@ -99,6 +99,9 @@ void *update_shared_files(void *none);
 /* Save control messages */
 void save_controlmsg(const keyentry * key, char *msg, size_t msg_length, int *wdb_sock, bool *startup_msg);
 
+/* Assign a group to an agent without group */
+cJSON *assign_group_to_agent(const char *agent_id, const char *md5);
+
 // Initialize request module
 void req_init();
 
@@ -199,6 +202,7 @@ extern int response_timeout;
 extern int INTERVAL;
 extern int disk_storage;
 extern rlim_t nofile;
+extern int guess_agent_group;
 extern unsigned receive_chunk;
 extern unsigned send_chunk;
 extern int buffer_relax;
