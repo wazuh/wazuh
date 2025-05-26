@@ -50,17 +50,6 @@ CREATE INDEX IF NOT EXISTS agent_name ON agent (name);
 CREATE INDEX IF NOT EXISTS agent_ip ON agent (ip);
 CREATE INDEX IF NOT EXISTS agent_group_hash ON agent (group_hash);
 
-INSERT OR IGNORE INTO `group` (name) VALUES ('default');
-
-UPDATE agent SET `group` = 'default' WHERE `group` IS NULL AND id != 0;
-
-WITH default_group AS (
-    SELECT id AS id_group FROM `group` WHERE name = 'default'
-) INSERT INTO belongs (id_agent, id_group, priority)
-SELECT agent.id, dg.id_group, 0 FROM agent CROSS JOIN default_group dg WHERE agent.id != 0 AND NOT EXISTS (
-    SELECT 1 FROM belongs WHERE belongs.id_agent = agent.id
-);
-
 UPDATE metadata SET value = '7' WHERE key = 'db_version';
 
 END;
