@@ -161,6 +161,7 @@ cJSON *getRemoteInternalConfig(void) {
     cJSON_AddNumberToObject(remoted,"disk_storage",disk_storage);
     cJSON_AddNumberToObject(remoted,"rlimit_nofile",nofile);
     cJSON_AddNumberToObject(remoted,"merge_shared",logr.nocmerged);
+    cJSON_AddNumberToObject(remoted,"guess_agent_group",guess_agent_group);
     cJSON_AddNumberToObject(remoted,"receive_chunk",receive_chunk);
     cJSON_AddNumberToObject(remoted,"send_chunk",send_chunk);
     cJSON_AddNumberToObject(remoted,"buffer_relax",buffer_relax);
