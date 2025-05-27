@@ -2046,8 +2046,6 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
     unsigned long thread_id = (unsigned long) pthread_self();
 #endif
 #ifndef WIN32
-    int int_error = 0;
-    struct timeval fp_timeout;
     struct stat tmp_stat;
 #else
     BY_HANDLE_FILE_INFORMATION lpFileInformation;
@@ -2056,25 +2054,9 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
 
     /* Daemon loop */
     while (1) {
-#ifndef WIN32
-        fp_timeout.tv_sec = loop_timeout;
-        fp_timeout.tv_usec = 0;
+        sleep(loop_timeout);
 
-        /* Wait for the select timeout */
-        if ((r = select(0, NULL, NULL, NULL, &fp_timeout)) < 0) {
-            merror(SELECT_ERROR, errno, strerror(errno));
-            int_error++;
-
-            if (int_error >= 5) {
-                merror_exit(SYSTEM_ERROR);
-            }
-            continue;
-        }
-#else
-
-        /* Windows doesn't like select that way */
-        sleep(loop_timeout + 2);
-
+#ifdef WIN32
         /* Check for messages in the event viewer */
 
         if (pthread_mutex_trylock(&win_el_mutex) == 0) {
