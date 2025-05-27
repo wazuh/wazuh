@@ -9,6 +9,7 @@ from time import strftime
 from wazuh.core import common
 from wazuh.core.wdb import WazuhDBConnection
 from wazuh.core.exception import WazuhException, WazuhError, WazuhInternalError
+from wazuh.core.common import get_installation_uid
 
 """
 Wazuh HIDS Python package
@@ -51,6 +52,7 @@ class Wazuh:
         self.openssl_support = 'N/A'
         self.tz_offset = None
         self.tz_name = None
+        self.uuid = get_installation_uid()
 
         self._initialize()
 
@@ -69,7 +71,8 @@ class Wazuh:
                 'max_agents': self.max_agents,
                 'openssl_support': self.openssl_support,
                 'tz_offset': self.tz_offset,
-                'tz_name': self.tz_name
+                'tz_name': self.tz_name,
+                'uuid' : self.uuid                
                 }
 
     def _initialize(self):
