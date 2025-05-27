@@ -239,6 +239,71 @@ void test_w_is_compressed_bz2_file_uncompressed(void **state) {
     assert_int_equal(ret, 0);
 }
 
+// is_program_available
+
+void test_is_program_available_success(void **state) {
+    char * program = "test_program";
+    char * path = "/bin:/usr/bin:/usr/local/bin";
+    int ret = 0;
+
+    expect_string(__wrap_getenv, name, "PATH");
+    will_return(__wrap_getenv, path);
+
+    expect_string(__wrap_access, __name, "/bin/test_program");
+    expect_value(__wrap_access, __type, X_OK);
+    will_return(__wrap_access, 1);
+
+    expect_string(__wrap_access, __name, "/usr/bin/test_program");
+    expect_value(__wrap_access, __type, X_OK);
+    will_return(__wrap_access, 0);
+
+    ret = is_program_available(program);
+    assert_int_equal(ret, 1);
+}
+
+void test_is_program_available_failure(void **state) {
+    char * program = "test_program";
+    int ret = 0;
+
+    expect_string(__wrap_getenv, name, "PATH");
+    will_return(__wrap_getenv, NULL);
+
+    ret = is_program_available(program);
+    assert_int_equal(ret, 0);
+}
+
+void test_is_program_available_null(void **state) {
+    char * program = NULL;
+    int ret = 0;
+
+    ret = is_program_available(program);
+    assert_int_equal(ret, 0);
+}
+
+void test_is_program_available_not_found(void **state) {
+    char * program = "test_program";
+    char * path = "/bin:/usr/bin:/usr/local/bin";
+    int ret = 0;
+
+    expect_string(__wrap_getenv, name, "PATH");
+    will_return(__wrap_getenv, path);
+
+    expect_string(__wrap_access, __name, "/bin/test_program");
+    expect_value(__wrap_access, __type, X_OK);
+    will_return(__wrap_access, 1);
+
+    expect_string(__wrap_access, __name, "/usr/bin/test_program");
+    expect_value(__wrap_access, __type, X_OK);
+    will_return(__wrap_access, 1);
+
+    expect_string(__wrap_access, __name, "/usr/local/bin/test_program");
+    expect_value(__wrap_access, __type, X_OK);
+    will_return(__wrap_access, 1);
+
+    ret = is_program_available(program);
+    assert_int_equal(ret, 0);
+}
+
 // w_uncompress_bz2_gz_file
 
 #ifdef TEST_SERVER
@@ -893,7 +958,7 @@ void test_get_file_content(void **state)
 void test_get_file_pointer_NULL(void **state)
 {
     const char * path = NULL;
-    
+
     expect_string(__wrap__mdebug1, formatted_msg, "Cannot open NULL path");
 
     FILE * fp = w_get_file_pointer(path);
@@ -1120,6 +1185,10 @@ int main(void) {
         cmocka_unit_test(test_w_is_compressed_gz_file_uncompressed),
         cmocka_unit_test(test_w_is_compressed_bz2_file_compressed),
         cmocka_unit_test(test_w_is_compressed_bz2_file_uncompressed),
+        cmocka_unit_test(test_is_program_available_success),
+        cmocka_unit_test(test_is_program_available_failure),
+        cmocka_unit_test(test_is_program_available_null),
+        cmocka_unit_test(test_is_program_available_not_found),
 #ifdef TEST_SERVER
         cmocka_unit_test(test_w_uncompress_bz2_gz_file_bz2),
         // MergeAppendFile

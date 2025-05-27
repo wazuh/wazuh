@@ -1156,6 +1156,42 @@ void goDaemon()
     nowDaemon();
 }
 
+// Check if a program is available in the system PATH.
+
+bool is_program_available(const char *program) {
+    if (!program || !*program) {
+        return false;
+    }
+
+    const char *path_env = getenv("PATH");
+    if (!path_env) {
+        return false;
+    }
+
+    char *path = strdup(path_env);
+    if (!path) {
+        return false;
+    }
+
+    bool found = false;
+    char *saveptr = NULL;
+    char *dir = strtok_r(path, ":", &saveptr);
+
+    while (dir) {
+        char fullpath[512];
+        snprintf(fullpath, sizeof(fullpath), "%s/%s", dir, program);
+        if (access(fullpath, X_OK) == 0) {
+            found = true;
+            break;
+        }
+
+        dir = strtok_r(NULL, ":", &saveptr);
+    }
+
+    free(path);
+    return found;
+}
+
 #else /* WIN32 */
 
 int checkVista()
