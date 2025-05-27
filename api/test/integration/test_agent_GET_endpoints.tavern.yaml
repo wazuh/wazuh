@@ -932,10 +932,8 @@ stages:
             - id: '004'
             - id: '006'
             - id: '010'
-            - id: '011'
-            - id: '012'
           failed_items: []
-          total_affected_items: 7
+          total_affected_items: 5
           total_failed_items: 0
 
   - name: Filter agents by query (group - get agents with group~group)
@@ -1792,6 +1790,7 @@ stages:
             remoted:
               buffer_relax: !anyint
               comp_average_printout: !anyint
+              guess_agent_group: !anyint
               max_attempts: !anyint
               merge_shared: !anyint
               pass_empty_keyfile: !anyint
@@ -2562,7 +2561,7 @@ stages:
         data: &get_groups_answer
           affected_items:
             - name: 'default'
-              count: 12
+              count: 10
             - name: 'group1'
               count: 5
             - name: 'group2'
@@ -2713,7 +2712,7 @@ stages:
         data:
           affected_items:
             - name: 'default'
-              count: 12
+              count: 10
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
@@ -2773,7 +2772,7 @@ stages:
         data:
           affected_items:
             - name: 'default'
-              count: 12
+              count: 10
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
@@ -3980,9 +3979,11 @@ stages:
       json: &no_group_response
         error: 0
         data:
-          affected_items: []
+          affected_items:
+            - id: '011'
+            - id: '012'
           failed_items: []
-          total_affected_items: 0
+          total_affected_items: 2
           total_failed_items: 0
 
   - name: Pagination
@@ -3997,9 +3998,10 @@ stages:
       json:
         error: 0
         data:
-          affected_items: []
+          affected_items:
+            - id: '011'
           failed_items: []
-          total_affected_items: 0
+          total_affected_items: 2
           total_failed_items: 0
 
   - name: Try show agents with offset -1
@@ -4031,9 +4033,9 @@ stages:
       params:
         offset: 9999999999999999999
     response:
-      status_code: 200
+      status_code: 400
       json:
-        error: 0
+        error: 2003
 
   - name: Try show agents with limit 0
     request:
@@ -4102,9 +4104,10 @@ stages:
       json:
         error: 0
         data:
-          affected_items: []
+          affected_items:
+            - id: '011'
           failed_items: []
-          total_affected_items: 0
+          total_affected_items: 1
           total_failed_items: 0
 
   - name: Try show agents with empty search
