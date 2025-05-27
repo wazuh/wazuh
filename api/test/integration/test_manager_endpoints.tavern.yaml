@@ -64,6 +64,7 @@ stages:
               tz_name: !anystr
               tz_offset: !anystr
               version: !anystr
+              uuid: !anystr
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
