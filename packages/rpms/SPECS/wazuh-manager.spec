@@ -692,6 +692,8 @@ rm -fr %{buildroot}
 %dir %attr(770, wazuh, wazuh) %{_localstatedir}/etc/lists/amazon
 %attr(660, wazuh, wazuh) %config(noreplace) %{_localstatedir}/etc/lists/amazon/*
 %attr(660, wazuh, wazuh) %config(noreplace) %{_localstatedir}/etc/lists/audit-keys
+%dir %attr(770, wazuh, wazuh) %{_localstatedir}/etc/lists/malicious-ioc
+%attr(660, wazuh, wazuh) %config(noreplace) %{_localstatedir}/etc/lists/malicious-ioc/*
 %attr(660, wazuh, wazuh) %config(noreplace) %{_localstatedir}/etc/lists/security-eventchannel
 %dir %attr(770, root, wazuh) %{_localstatedir}/etc/shared
 %dir %attr(770, wazuh, wazuh) %{_localstatedir}/etc/shared/default

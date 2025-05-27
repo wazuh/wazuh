@@ -8,7 +8,7 @@ import operator
 import os
 import socket
 import sys
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch, MagicMock, mock_open
 
 import pytest
 
@@ -319,8 +319,13 @@ def test_read_ossec_con_ko():
     assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type'
     assert result.render()['data']['failed_items'][0]['error']['code'] == 1102
 
-@patch('builtins.open')
-def test_get_basic_info(mock_open):
+
+@patch('wazuh.core.common.os.chown')  # <- evita el fallo
+@patch('wazuh.core.common.os.path.exists', return_value=True)
+@patch('builtins.open', new_callable=mock_open, read_data='test-uuid')
+@patch('wazuh.core.common.wazuh_gid', return_value=0)
+@patch('wazuh.core.common.wazuh_uid', return_value=0)
+def test_get_basic_info(mock_uid, mock_gid, mock_open_file, mock_exists, mock_chown):
     """Tests get_basic_info() function works as expected"""
     result = get_basic_info()
 
