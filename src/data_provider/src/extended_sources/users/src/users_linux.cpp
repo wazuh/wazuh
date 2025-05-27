@@ -18,6 +18,9 @@
 #include <sstream>
 #include <fstream>
 
+// Reasonable upper bound for getpw_r buffer
+constexpr size_t MAX_GETPW_R_BUF_SIZE = 16 * 1024;
+
 UsersProvider::UsersProvider(
     std::shared_ptr<IPasswdWrapper> passwdWrapper,
     std::shared_ptr<ISystemWrapper> sysWrapper)
@@ -94,9 +97,9 @@ nlohmann::json UsersProvider::collectLocalUsers(const std::set<std::string>& use
 
     size_t bufsize = m_sysWrapper->sysconf(_SC_GETPW_R_SIZE_MAX);
 
-    if (bufsize > 16384)
+    if (bufsize > MAX_GETPW_R_BUF_SIZE)
     {
-        bufsize = 16384;
+        bufsize = MAX_GETPW_R_BUF_SIZE;
     }
 
     auto buf = std::make_unique<char[]>(bufsize);
@@ -106,17 +109,9 @@ nlohmann::json UsersProvider::collectLocalUsers(const std::set<std::string>& use
     {
         nullptr
     };
-    int ret;
 
-    while (1)
+    while (m_passwdWrapper->fgetpwent_r(passwd_file, &pwd, buf.get(), bufsize, &result) == 0 && result != nullptr)
     {
-        ret = m_passwdWrapper->fgetpwent_r(passwd_file, &pwd, buf.get(), bufsize, &result);
-
-        if (ret != 0 || result == nullptr)
-        {
-            break;
-        }
-
         if (!usernames.empty() && usernames.find(result->pw_name) == usernames.end())
         {
             continue;
@@ -141,9 +136,9 @@ nlohmann::json UsersProvider::collectRemoteUsers(const std::set<std::string>& us
 
     size_t bufsize = m_sysWrapper->sysconf(_SC_GETPW_R_SIZE_MAX);
 
-    if (bufsize > 16384)
+    if (bufsize > MAX_GETPW_R_BUF_SIZE)
     {
-        bufsize = 16384;
+        bufsize = MAX_GETPW_R_BUF_SIZE;
     }
 
     auto buf = std::make_unique<char[]>(bufsize);
@@ -156,28 +151,15 @@ nlohmann::json UsersProvider::collectRemoteUsers(const std::set<std::string>& us
 
     m_passwdWrapper->setpwent();
 
-    while (1)
+    while (m_passwdWrapper->getpwent_r(&pwd, buf.get(), bufsize, &pwd_results) == 0 && pwd_results != nullptr)
     {
-        m_passwdWrapper->getpwent_r(&pwd, buf.get(), bufsize, &pwd_results);
-
-        if (pwd_results == nullptr)
+        if (!usernames.empty() && usernames.find(pwd_results->pw_name) == usernames.end())
         {
-            break;
+            continue;
         }
-
-        if (!usernames.empty())
+        else if (!uids.empty() && uids.find(pwd_results->pw_uid) == uids.end())
         {
-            if (usernames.find(pwd_results->pw_name) == usernames.end())
-            {
-                continue;
-            }
-        }
-        else if (!uids.empty())
-        {
-            if (uids.find(pwd_results->pw_uid) == uids.end())
-            {
-                continue;
-            }
+            continue;
         }
 
         results.push_back(genUserJson(pwd_results, "1"));
