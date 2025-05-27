@@ -3819,6 +3819,8 @@ components:
           type: string
         tz_name:
           type: string
+        uuid:
+          type: string
 
     WazuhManagerConfiguration:
       type: object
@@ -10315,6 +10317,7 @@ paths:
                       openssl_support: yes
                       tz_offset: +0000
                       tz_name: UTC
+                      uuid: c842f85c-c24b-4b39-9508-093ce53482e7
                   total_affected_items: 1
                   total_failed_items: 0
                   failed_items: []
@@ -12022,6 +12025,7 @@ paths:
                       openssl_support: yes
                       tz_offset: +0000
                       tz_name: UTC
+                      uuid: c842f85c-c24b-4b39-9508-093ce53482e7
                   total_affected_items: 1
                   total_failed_items: 0
                   failed_items: []
