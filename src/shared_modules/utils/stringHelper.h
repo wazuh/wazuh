@@ -14,6 +14,7 @@
 
 #include <algorithm>
 #include <iomanip>
+#include <map>
 #include <memory>
 #include <regex>
 #include <sstream>
