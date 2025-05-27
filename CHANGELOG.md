@@ -3,6 +3,38 @@ All notable changes to this project will be documented in this file.
 
 ## [v4.12.1]
 
+### Manager
+
+#### Fixed
+- Fixed missing agent version handling in Vulnerability Detector. ([#29181](https://github.com/wazuh/wazuh/pull/29181))
+
+#### Changed
+- Improved reports functionality to avoid duplicated daily FIM reports. ([#29232](https://github.com/wazuh/wazuh/pull/29232))
+
+### Agent
+
+#### Added
+- Added support for Rocky Linux and AlmaLinux in the agent upgrade module. ([#29391](https://github.com/wazuh/wazuh/pull/29391))
+- Added handling of CentOS 9 SCA files in package specs. ([#29393](https://github.com/wazuh/wazuh-packages/pull/29393))
+
+#### Fixed
+- Fixed incorrect handling of events in the Custom logs bucket. ([#29312](https://github.com/wazuh/wazuh/pull/29312))
+
+#### Changed
+- Improved agent synchronization to reduce redundant payload transfers. ([#29426](https://github.com/wazuh/wazuh/pull/29426))
+- Improved Syscollector to report only Python packages managed by `dpkg`. ([#28688](https://github.com/wazuh/wazuh/pull/28688))
+- Improved `wazuh-db` JSON handling performance by updating external dependencies. ([#29399](https://github.com/wazuh/wazuh/issues/29399))
+
+### RESTful API
+
+#### Added
+- Added the server uuid to the /manager/info endpoint. ([#29524](https://github.com/wazuh/wazuh/pull/29524))
+
+### Other
+
+#### Changed
+- Updated Python dependencies: `setuptools`, `Jinja2`, and `PyJWT`. ([#29489](https://github.com/wazuh/wazuh/pull/29489))
+
 
 ## [v4.12.0]
 
