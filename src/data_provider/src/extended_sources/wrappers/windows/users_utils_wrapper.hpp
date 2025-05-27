@@ -180,11 +180,6 @@ const std::set<int> kRegistryStringTypes =
 class UsersHelper : public IUsersHelper
 {
     private:
-        /// @brief Converts a wide string (wstring) to a UTF-8 std::string.
-        /// @param src Pointer to the wide character string.
-        /// @return Converted UTF-8 string.
-        std::string wstringToString(const wchar_t* src);
-
         /// @brief Converts a UTF-8 std::string to a wide string (wstring).
         /// @param src Input UTF-8 string.
         /// @return Converted wide string.

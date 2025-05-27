@@ -147,6 +147,7 @@ TEST(UsersHelperTest, ProcessRoamingProfilesReturnsExpectedUsers)
     HKEY fakeProfileKey = reinterpret_cast<HKEY>(0x5678);
     PSID fakeSid = reinterpret_cast<PSID>(0x1002);
 
+    // Call getRoamingProfileSids()
     EXPECT_CALL(*mockApi, RegOpenKeyExWWrapper(HKEY_LOCAL_MACHINE, ::testing::StrEq(L"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\ProfileList"), 0, KEY_READ, ::testing::_))
     .WillOnce(::testing::DoAll(::testing::SetArgPointee<4>(fakeRootKey), ::testing::Return(ERROR_SUCCESS)));
 
@@ -156,9 +157,11 @@ TEST(UsersHelperTest, ProcessRoamingProfilesReturnsExpectedUsers)
 
     EXPECT_CALL(*mockApi, RegEnumKeyWWrapper(fakeRootKey, 0, ::testing::_, ::testing::_))
     .WillOnce(::testing::DoAll(
-                  ::testing::Invoke([](HKEY, DWORD, LPWSTR buffer, DWORD)
+                  ::testing::Invoke([](HKEY, DWORD, LPWSTR buffer, DWORD length)
     {
-        wcscpy(buffer, L"S-1-5-21-1234567890-1234567890-1234567890-1002");
+        const wchar_t* sid = L"S-1-5-21-1234567890-1234567890-1234567890-1002";
+        wcsncpy(buffer, sid, length);
+        buffer[length - 1] = L'\0';
     }),
     ::testing::Return(ERROR_SUCCESS)));
 
@@ -208,8 +211,8 @@ TEST(UsersHelperTest, ProcessRoamingProfilesReturnsExpectedUsers)
     }),
     ::testing::Return(NERR_Success)));
 
-    auto userInfo = new USER_INFO_3{};
-    userInfo->usri3_primary_group_id = 1002;
+    auto userInfo = new USER_INFO_2{};
+    userInfo->usri2_comment = const_cast<LPWSTR>(L"Comment for RoamingUser");
     EXPECT_CALL(*mockApi, NetUserGetInfoWrapper(nullptr, ::testing::StrEq(L"RoamingUser"), ::testing::_, ::testing::_))
     .WillOnce(::testing::DoAll(
                   ::testing::Invoke([userInfo](LPCWSTR, LPCWSTR, DWORD, LPBYTE * buffer)
