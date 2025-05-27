@@ -20,18 +20,6 @@ UsersHelper::UsersHelper(
 UsersHelper::UsersHelper()
     : m_winapiWrapper(std::make_shared<WindowsApiWrapper>()) {}
 
-std::string UsersHelper::wstringToString(const wchar_t* src)
-{
-    if (src == nullptr)
-    {
-        return std::string("");
-    }
-
-    std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
-    std::string utf8_str = converter.to_bytes(src);
-    return utf8_str;
-}
-
 std::wstring UsersHelper::stringToWstring(const std::string& src)
 {
     std::wstring utf16le_str;
@@ -63,7 +51,7 @@ std::string UsersHelper::getUserHomeDir(const std::string& sid)
     {
         if (ret != ERROR_FILE_NOT_FOUND)
         {
-            // std::cout << "Failed to open " << wstringToString(profile_key_path.c_str())
+            // std::cout << "Failed to open " << Utils::EncodingWindowsHelper::wstringToStringUTF8(profile_key_path)
             //   << " with error " << ret;
         }
 
@@ -89,7 +77,7 @@ std::string UsersHelper::getUserHomeDir(const std::string& sid)
 
     if (ret != ERROR_SUCCESS)
     {
-        // std::cout << "Failed to query key info " << wstringToString(profile_key_path.c_str())
+        // std::cout << "Failed to query key info " << Utils::EncodingWindowsHelper::wstringToStringUTF8(profile_key_path))
         //     << " with error " << ret;
         return {};
     }
@@ -101,8 +89,8 @@ std::string UsersHelper::getUserHomeDir(const std::string& sid)
 
     DWORD value_type;
     DWORD value_data_length;
-    std::wstring value_data;
-    value_data.resize(max_value_data_length);
+    std::vector<wchar_t> value_data;
+    value_data.resize(max_value_data_length / sizeof(wchar_t));
 
     value_data_length = max_value_data_length;
 
@@ -115,20 +103,30 @@ std::string UsersHelper::getUserHomeDir(const std::string& sid)
 
     if (ret != ERROR_SUCCESS)
     {
-        // std::cout << "Failed to query value " << wstringToString(kProfileValueName.c_str())
-        //     << " for key " << wstringToString(profile_key_path.c_str())
+        // std::cout << "Failed to query value " << Utils::EncodingWindowsHelper::wstringToStringUTF8(kProfileValueName)
+        //     << " for key " << Utils::EncodingWindowsHelper::wstringToStringUTF8(profile_key_path)
         //     << " with error " << ret;
         return {};
     }
 
     if (kRegistryStringTypes.find(value_type) == kRegistryStringTypes.end())
     {
-        // std::cout << "Value " << wstringToString(kProfileValueName.c_str()) << " in key "
-        //     << wstringToString(profile_key_path.c_str()) << " is not a string";
+        // std::cout << "Value " << Utils::EncodingWindowsHelper::wstringToStringUTF8(kProfileValueName) << " in key "
+        //     << Utils::EncodingWindowsHelper::wstringToStringUTF8(profile_key_path) << " is not a string";
         return {};
     }
 
-    return wstringToString(value_data.c_str());
+    // Clean buffer
+    size_t actual_chars = value_data_length / sizeof(wchar_t);
+    std::wstring wvalue(value_data.data(), actual_chars);
+    auto null_pos = wvalue.find(L'\0');
+
+    if (null_pos != std::wstring::npos)
+    {
+        wvalue.resize(null_pos);
+    }
+
+    return Utils::EncodingWindowsHelper::wstringToStringUTF8(wvalue);
 }
 
 std::optional<std::uint32_t> UsersHelper::getGidFromUsername(LPCWSTR username)
@@ -229,7 +227,7 @@ std::optional<std::vector<std::string>> UsersHelper::getRoamingProfileSids()
         return {};
     }
 
-    std::wstring key_name;
+    std::vector<wchar_t> key_name(max_key_length);
     key_name.resize(max_key_length);
 
     std::vector<std::string> subkeys_names;
@@ -245,7 +243,8 @@ std::optional<std::vector<std::string>> UsersHelper::getRoamingProfileSids()
             return std::nullopt;
         }
 
-        subkeys_names.emplace_back(wstringToString(key_name.c_str()));
+        std::wstring valid_key(key_name.data(), wcslen(key_name.data()));
+        subkeys_names.emplace_back(Utils::EncodingWindowsHelper::wstringToStringUTF8(std::wstring(valid_key)));
     }
 
     return subkeys_names;
@@ -323,7 +322,7 @@ std::vector<User> UsersHelper::processLocalAccounts(std::set<std::string>& proce
             if (ret != NERR_Success || user_info_lvl4 == nullptr)
             {
                 // std::cout << "Failed to get additional information for the user "
-                //          << wstringToString(user_info_lvl0.usri0_name)
+                //          << Utils::EncodingWindowsHelper::wstringToStringUTF8(user_info_lvl0.usri0_name)
                 //          << " with error code " << ret;
                 continue;
             }
@@ -334,14 +333,14 @@ std::vector<User> UsersHelper::processLocalAccounts(std::set<std::string>& proce
             std::string sid_string = psidToString(sid);
             processed_sids.insert(sid_string);
 
-            new_user.username = wstringToString(user_info_lvl4->usri4_name);
+            new_user.username = Utils::EncodingWindowsHelper::wstringToStringUTF8(user_info_lvl4->usri4_name);
             new_user.uid = getRidFromSid(sid);
 
             /* NOTE: This still keeps the old behavior where if getting the gid
                from the first local group or the primary group id fails,
                then we use the uid of the user. */
             new_user.gid = getGidFromUsername(user_info_lvl4->usri4_name).value_or(new_user.uid);
-            new_user.description = wstringToString(user_info_lvl4->usri4_comment);
+            new_user.description = Utils::EncodingWindowsHelper::wstringToStringUTF8(user_info_lvl4->usri4_comment);
             new_user.directory = getUserHomeDir(sid_string);
             new_user.type = "local";
             new_user.sid = std::move(sid_string);
@@ -415,7 +414,7 @@ std::vector<User> UsersHelper::processRoamingProfiles(std::set<std::string>& pro
 
             if (ret != FALSE)
             {
-                new_user.username = wstringToString(account_name);
+                new_user.username = Utils::EncodingWindowsHelper::wstringToStringUTF8(account_name);
                 /* NOTE: This still keeps the old behavior where if getting the gid
                 from the first local group or the primary group id fails,
                 then we use the uid of the user. */
@@ -438,7 +437,7 @@ std::vector<User> UsersHelper::processRoamingProfiles(std::set<std::string>& pro
 
             if (ret == NERR_Success && user_info_lvl2 != nullptr)
             {
-                new_user.description = wstringToString(user_info_lvl2->usri2_comment);
+                new_user.description = Utils::EncodingWindowsHelper::wstringToStringUTF8(user_info_lvl2->usri2_comment);
             }
 
             users.push_back(new_user);
