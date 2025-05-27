@@ -15,6 +15,7 @@
 
 #include "json.hpp"
 
+#include "iusers_utils_wrapper.hpp"
 #include "iwinapi_wrappers.hpp"
 
 /// LoggedInUsersProvider class
@@ -29,7 +30,8 @@ class LoggedInUsersProvider
         /// @param winSecurityWrapper A shared pointer to an IWinSecurityBaseApiWrapper object.
         explicit LoggedInUsersProvider(std::shared_ptr<ITWSapiWrapper> twsWrapper,
                                        std::shared_ptr<IWinBaseApiWrapper> winBaseWrapper, std::shared_ptr<IWinSDDLWrapper> winSddlWrapper,
-                                       std::shared_ptr<IWinSecurityBaseApiWrapper> winSecurityWrapper);
+                                       std::shared_ptr<IWinSecurityBaseApiWrapper> winSecurityWrapper,
+                                       std::shared_ptr<IUsersHelper> usersHelperWrapper);
 
         /// @brief Default constructor
         LoggedInUsersProvider();
@@ -51,6 +53,9 @@ class LoggedInUsersProvider
         /// winSecurityWrapper A shared pointer to an IWinSecurityBaseApiWrapper object.
         std::shared_ptr<IWinSecurityBaseApiWrapper> m_winSecurityWrapper;
 
+        /// usersHelperWrapper A shared pointer to an IUsersHelper object.
+        std::shared_ptr<IUsersHelper> m_usersHelpersWrapper;
+
         /// @brief Get the session state as a string.
         static const std::map<int, std::string> m_kSessionStates;
 
@@ -58,14 +63,4 @@ class LoggedInUsersProvider
         /// @param fileTime The FILETIME to convert.
         /// @return The Unix time as an unsigned long long.
         unsigned long long filetimeToUnixtime(const FILETIME& fileTime);
-
-        /// @brief Get the SID from an account name.
-        /// @param accountNameInput The account name to look up.
-        /// @return A unique pointer to a BYTE array containing the SID.
-        std::unique_ptr<BYTE[]> getSidFromAccountName(const std::wstring& account_name_input);
-
-        /// @brief Convert a PSID to a string.
-        /// @param sid The PSID to convert.
-        /// @return A string representation of the SID.
-        std::string psidToString(PSID sid);
 };

@@ -9,6 +9,9 @@
 
 #include "users_utils_wrapper.hpp"
 #include "windows_api_wrapper.hpp"
+#include "encodingWindowsHelper.h"
+
+#include <iostream>
 
 UsersHelper::UsersHelper(
     std::shared_ptr<IWindowsApiWrapper> winapiWrapper)
@@ -16,22 +19,6 @@ UsersHelper::UsersHelper(
 
 UsersHelper::UsersHelper()
     : m_winapiWrapper(std::make_shared<WindowsApiWrapper>()) {}
-
-std::string UsersHelper::psidToString(PSID sid)
-{
-    LPSTR sid_out = nullptr;
-    auto ret = m_winapiWrapper->ConvertSidToStringSidAWrapper(sid, &sid_out);
-
-    if (ret == 0)
-    {
-        // std::cout << "ConvertSidToString failed with " << GetLastError();
-        return {};
-    }
-
-    std::string sid_string(sid_out);
-    m_winapiWrapper->FreeSidWrapper(sid_out);
-    return sid_string;
-}
 
 std::string UsersHelper::wstringToString(const wchar_t* src)
 {
@@ -142,64 +129,6 @@ std::string UsersHelper::getUserHomeDir(const std::string& sid)
     }
 
     return wstringToString(value_data.c_str());
-}
-
-std::unique_ptr<BYTE[]> UsersHelper::getSidFromAccountName(LPCWSTR account_name)
-{
-    if (account_name == nullptr || account_name[0] == 0)
-    {
-        // std::cout << "No account name provided";
-        return nullptr;
-    }
-
-    // Call LookupAccountNameW() once to retrieve the necessary buffer sizes for
-    // the SID (in bytes) and the domain name (in TCHARS):
-    DWORD sid_buffer_size = 0;
-    DWORD domain_name_size = 0;
-    auto e_sid_type = SidTypeUnknown;
-    auto ret = m_winapiWrapper->LookupAccountNameWWrapper(nullptr,
-                                                          account_name,
-                                                          nullptr,
-                                                          &sid_buffer_size,
-                                                          nullptr,
-                                                          &domain_name_size,
-                                                          &e_sid_type);
-
-    if (ret == 0 && m_winapiWrapper->GetLastErrorWrapper() != ERROR_INSUFFICIENT_BUFFER)
-    {
-        // std::cout << "Failed to lookup account name " << wstringToString(account_name)
-        //     << " with " << GetLastError();
-        return nullptr;
-    }
-
-    // Allocate buffers for the (binary data) SID and (wide string) domain name:
-    auto sid_buffer = std::make_unique<BYTE[]>(sid_buffer_size);
-    std::vector<wchar_t> domain_name(domain_name_size);
-
-    // Call LookupAccountNameW() a second time to actually obtain the SID for
-    // the given account name:
-    ret = m_winapiWrapper->LookupAccountNameWWrapper(nullptr,
-                                                     account_name,
-                                                     sid_buffer.get(),
-                                                     &sid_buffer_size,
-                                                     domain_name.data(),
-                                                     &domain_name_size,
-                                                     &e_sid_type);
-
-    if (ret == 0)
-    {
-        // std::cout << "Failed to lookup account name " << wstringToString(account_name)
-        //     << " with " << GetLastError();
-        return nullptr;
-    }
-    else if (m_winapiWrapper->IsValidSidWrapper(sid_buffer.get()) == FALSE)
-    {
-        // std::cout << "The SID for " << wstringToString(account_name)
-        //     << " is invalid.";
-    }
-
-    // Implicit move operation. Caller "owns" returned pointer:
-    return sid_buffer;
 }
 
 std::optional<std::uint32_t> UsersHelper::getGidFromUsername(LPCWSTR username)
@@ -517,4 +446,83 @@ std::vector<User> UsersHelper::processRoamingProfiles(std::set<std::string>& pro
     }
 
     return users;
+}
+
+std::unique_ptr<BYTE[]> UsersHelper::getSidFromAccountName(const std::wstring& accountNameInput)
+{
+    auto accountName = accountNameInput.data();
+
+    if (accountName == nullptr || accountName[0] == 0)
+    {
+        std::cerr << "No account name provided" << std::endl;
+        return nullptr;
+    }
+
+    // Call LookupAccountNameW() once to retrieve the necessary buffer sizes for
+    // the SID (in bytes) and the domain name (in TCHARS):
+    DWORD sidBufferSize = 0;
+    DWORD domainNameSize = 0;
+    auto eSidType = SidTypeUnknown;
+    auto ret = m_winapiWrapper->LookupAccountNameWWrapper(nullptr,
+                                                          accountName,
+                                                          nullptr,
+                                                          &sidBufferSize,
+                                                          nullptr,
+                                                          &domainNameSize,
+                                                          &eSidType);
+
+    if (ret == 0 && m_winapiWrapper->GetLastErrorWrapper() != ERROR_INSUFFICIENT_BUFFER)
+    {
+        std::cerr << "Failed to lookup account name " << Utils::EncodingWindowsHelper::wstringToStringUTF8(accountName)
+                  << " with " << m_winapiWrapper->GetLastErrorWrapper() << std::endl;
+        return nullptr;
+    }
+
+    // Allocate buffers for the (binary data) SID and (wide string) domain name:
+    auto sidBuffer = std::make_unique<BYTE[]>(sidBufferSize);
+    std::vector<wchar_t> domainName(domainNameSize);
+
+    // Call LookupAccountNameW() a second time to actually obtain the SID for
+    // the given account name:
+    ret = m_winapiWrapper->LookupAccountNameWWrapper(nullptr,
+                                                     accountName,
+                                                     sidBuffer.get(),
+                                                     &sidBufferSize,
+                                                     domainName.data(),
+                                                     &domainNameSize,
+                                                     &eSidType);
+
+    if (ret == 0)
+    {
+        std::cerr << "Failed to lookup account name " << Utils::EncodingWindowsHelper::wstringToStringUTF8(accountName)
+                  << " with " << m_winapiWrapper->GetLastErrorWrapper() << std::endl;
+        return nullptr;
+    }
+    else if (m_winapiWrapper->IsValidSidWrapper(sidBuffer.get()) == FALSE)
+    {
+        std::cerr << "The SID for " << Utils::EncodingWindowsHelper::wstringToStringUTF8(accountName)
+                  << " is invalid." << std::endl;
+    }
+
+    // Implicit move operation. Caller "owns" returned pointer:
+    return sidBuffer;
+}
+
+std::string UsersHelper::psidToString(PSID sid)
+{
+    LPWSTR sidOut = nullptr;
+    // Custom deleter to free the allocated memory for sidOut.
+    auto deleter = [](LPWSTR * p)
+    {
+        if (p && *p) LocalFree(*p);
+    };
+    std::unique_ptr<LPWSTR, decltype(deleter)> sidGuard(&sidOut, deleter);
+
+    if (!m_winapiWrapper->ConvertSidToStringSidWWrapper(sid, &sidOut))
+    {
+        std::cerr << "ConvertSidToStringW failed with " << m_winapiWrapper->GetLastErrorWrapper() << std::endl;
+        return {};
+    }
+
+    return Utils::EncodingWindowsHelper::wstringToStringUTF8(sidOut);
 }

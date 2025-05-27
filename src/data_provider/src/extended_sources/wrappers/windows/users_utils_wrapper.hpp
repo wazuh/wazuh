@@ -9,6 +9,7 @@
 
 #pragma once
 
+#include <winsock2.h>
 #include <windows.h>
 #include <lm.h>
 #include <sddl.h>
@@ -179,11 +180,6 @@ const std::set<int> kRegistryStringTypes =
 class UsersHelper : public IUsersHelper
 {
     private:
-        /// @brief Converts a SID to its string representation.
-        /// @param sid Pointer to the SID.
-        /// @return String representation of the SID.
-        std::string psidToString(PSID sid);
-
         /// @brief Converts a wide string (wstring) to a UTF-8 std::string.
         /// @param src Pointer to the wide character string.
         /// @return Converted UTF-8 string.
@@ -203,11 +199,6 @@ class UsersHelper : public IUsersHelper
         /// @param username Wide string username.
         /// @return Optional GID if available.
         std::optional<std::uint32_t> getGidFromUsername(LPCWSTR username);
-
-        /// @brief Retrieves the SID for a given account name.
-        /// @param account_name Wide string account name.
-        /// @return Unique pointer managing the SID bytes.
-        std::unique_ptr<BYTE[]> getSidFromAccountName(LPCWSTR account_name);
 
         /// @brief Retrieves SIDs of roaming profiles available on the system.
         /// @return Optional vector of SID strings for roaming profiles.
@@ -257,4 +248,14 @@ class UsersHelper : public IUsersHelper
         /// @param processed_sids Set to track processed SIDs and avoid duplicates.
         /// @return Vector of User objects representing roaming profiles.
         std::vector<User> processRoamingProfiles(std::set<std::string>& processed_sids) override;
+
+        /// @brief Retrieves the SID for a given account name.
+        /// @param accountNameInput Wide string account name.
+        /// @return Unique pointer managing the SID bytes.
+        std::unique_ptr<BYTE[]> getSidFromAccountName(const std::wstring& accountNameInput);
+
+        /// @brief Converts a SID to its string representation.
+        /// @param sid Pointer to the SID.
+        /// @return String representation of the SID.
+        std::string psidToString(PSID sid);
 };
