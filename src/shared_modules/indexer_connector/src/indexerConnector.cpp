@@ -185,7 +185,14 @@ static void builderBulkDelete(std::string& bulkData, std::string_view id, std::s
 
 static void builderDeleteByQuery(nlohmann::json& bulkData, const std::string& agentId)
 {
-    bulkData["query"]["bool"]["filter"]["terms"]["agent.id"].push_back(agentId);
+    //bulkData["query"]["bool"]["filter"]["terms"]["agent.id"].push_back(agentId);
+    bulkData["query"]["bool"]["should"].push_back({{"term", {{"agent.id", agentId}}}});
+
+}
+
+static void builderDeleteByQueryDocumentId(nlohmann::json& bulkData, const std::string& docIdPrefix)
+{
+    bulkData["query"]["bool"]["should"].push_back({{"prefix", {{"wazuh.internal.id", docIdPrefix}}}});
 }
 
 static void builderBulkIndex(std::string& bulkData, std::string_view id, std::string_view index, std::string_view data)
@@ -613,9 +620,13 @@ IndexerConnector::IndexerConnector(
                     logDebug2(IC_NAME, "Added document for deletion with id: %s.", id.c_str());
                     if (!noIndex)
                     {
-                        builderBulkDelete(bulkData, id, m_indexName);
+                        builderDeleteByQueryDocumentId(queryData, id);
                     }
-                    m_db->delete_(id);
+
+                    for (const auto& [key, _] : m_db->seek(id))
+                    {
+                        m_db->delete_(key);
+                    }
                 }
                 else if (operation.compare("DELETED_BY_QUERY") == 0)
                 {
@@ -851,7 +862,10 @@ IndexerConnector::IndexerConnector(
                 // We only sync the local DB when the indexer is disabled
                 if (parsedData.at("operation").get_ref<const std::string&>().compare("DELETED") == 0)
                 {
-                    m_db->delete_(id);
+                    for (const auto& [key, _] : m_db->seek(id))
+                    {
+                        m_db->delete_(key);
+                    }
                 }
                 // We made the same operation for DELETED_BY_QUERY as for DELETED
                 else if (parsedData.at("operation").get_ref<const std::string&>().compare("DELETED_BY_QUERY") == 0)
