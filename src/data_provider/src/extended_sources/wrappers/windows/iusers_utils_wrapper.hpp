@@ -9,6 +9,8 @@
 
 #pragma once
 
+#include <winsock2.h>
+#include <windows.h>
 #include <limits>
 #include <set>
 #include <string>
@@ -54,4 +56,14 @@ class IUsersHelper
         /// @param processed_sids Set to track processed SIDs and avoid duplicates.
         /// @return Vector of User objects representing roaming profiles.
         virtual std::vector<User> processRoamingProfiles(std::set<std::string>& processed_sids) = 0;
+
+        /// @brief Retrieves the SID for a given account name.
+        /// @param accountNameInput Wide string account name.
+        /// @return Unique pointer managing the SID bytes.
+        virtual std::unique_ptr<BYTE[]> getSidFromAccountName(const std::wstring& accountNameInput) = 0;
+
+        /// @brief Converts a SID to its string representation.
+        /// @param sid Pointer to the SID.
+        /// @return String representation of the SID.
+        virtual std::string psidToString(PSID sid) = 0;
 };

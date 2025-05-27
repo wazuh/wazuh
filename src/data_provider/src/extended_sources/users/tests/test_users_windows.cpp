@@ -28,6 +28,7 @@ class MockWindowsApiWrapper : public IWindowsApiWrapper
                      LPDWORD, LPDWORD, LPDWORD, LPDWORD, LPDWORD, PFILETIME), (override));
         MOCK_METHOD(bool, IsValidSidWrapper, (PSID), (override));
         MOCK_METHOD(BOOL, ConvertSidToStringSidAWrapper, (PSID, LPSTR*), (override));
+        MOCK_METHOD(bool, ConvertSidToStringSidWWrapper, (PSID, LPWSTR*), (override));
         MOCK_METHOD(BOOL, ConvertStringSidToSidAWrapper, (LPCSTR, PSID*), (override));
         MOCK_METHOD(BOOL, LookupAccountSidWWrapper,
                     (LPCWSTR, PSID, LPWSTR, LPDWORD, LPWSTR, LPDWORD, PSID_NAME_USE), (override));
@@ -61,7 +62,7 @@ TEST(UsersHelperTest, ProcessLocalAccountsSingleUserReturnsExpectedUser)
     LPCWSTR testUsername = L"TestUser";
     LPCWSTR testComment = L"Test comment";
     PSID fakeSid = reinterpret_cast<PSID>(0xABCDEF);
-    LPSTR fakeSidString = const_cast<LPSTR>("S-1-5-21-1000");
+    std::string sidString = "S-1-5-21-1000";
     DWORD fakeRid = 1000;
 
     auto usersInfo0 = new USER_INFO_0[1];
@@ -89,13 +90,16 @@ TEST(UsersHelperTest, ProcessLocalAccountsSingleUserReturnsExpectedUser)
                   ::testing::Return(NERR_Success)
               ));
 
-    EXPECT_CALL(*mockApi, ConvertSidToStringSidAWrapper(fakeSid, ::testing::_))
+    EXPECT_CALL(*mockApi, ConvertSidToStringSidWWrapper(fakeSid, ::testing::_))
     .WillOnce(::testing::DoAll(
-                  ::testing::SetArgPointee<1>(fakeSidString),
-                  ::testing::Return(TRUE)
-              ));
-
-    EXPECT_CALL(*mockApi, FreeSidWrapper(fakeSidString)).Times(1);
+                  [&sidString](PSID, LPWSTR * sidOut)
+    {
+        size_t len = sidString.length() + 1;
+        *sidOut = static_cast<LPWSTR>(malloc(len * sizeof(wchar_t)));
+        std::wstring wideSid(sidString.begin(), sidString.end());
+        wcscpy_s(*sidOut, len, wideSid.c_str());
+    },
+    ::testing::Return(1)));
 
     BYTE subAuthCount = 2;
     EXPECT_CALL(*mockApi, GetSidSubAuthorityCountWrapper(fakeSid))

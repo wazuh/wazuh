@@ -126,6 +126,15 @@ class WindowsApiWrapper : public IWindowsApiWrapper
             return ConvertSidToStringSidA(sid, stringSid);
         }
 
+        /// @brief ConvertSidToStringSidW converts a SID to a string format
+        /// @param Sid: Pointer to the SID to be converted
+        /// @param StringSid: Pointer to a buffer that receives the string SID
+        /// @return Returns true if successful, false otherwise
+        bool ConvertSidToStringSidWWrapper(PSID Sid, LPWSTR* StringSid) override
+        {
+            return ConvertSidToStringSidW(Sid, StringSid);
+        }
+
         /// @brief Wrapper for ConvertStringSidToSidA.
         /// @param StringSid String representation of a SID.
         /// @param Sid Receives the binary SID.

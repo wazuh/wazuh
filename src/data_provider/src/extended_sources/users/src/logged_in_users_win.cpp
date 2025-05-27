@@ -11,6 +11,7 @@
 #include <ctime>
 
 #include "logged_in_users_win.hpp"
+#include "users_utils_wrapper.hpp"
 #include "winapi_wrappers.hpp"
 #include "encodingWindowsHelper.h"
 
@@ -31,17 +32,20 @@ const std::map<int, std::string> LoggedInUsersProvider::m_kSessionStates =
 
 LoggedInUsersProvider::LoggedInUsersProvider(std::shared_ptr<ITWSapiWrapper> twsWrapper,
                                              std::shared_ptr<IWinBaseApiWrapper> winBaseWrapper, std::shared_ptr<IWinSDDLWrapper> winSddlWrapper,
-                                             std::shared_ptr<IWinSecurityBaseApiWrapper> winSecurityWrapper)
+                                             std::shared_ptr<IWinSecurityBaseApiWrapper> winSecurityWrapper,
+                                             std::shared_ptr<IUsersHelper> usersHelperWrapper)
     : m_twsApiWrapper(std::move(twsWrapper)),
       m_winBaseWrapper(std::move(winBaseWrapper)),
       m_winSddlWrapper(std::move(winSddlWrapper)),
-      m_winSecurityWrapper(std::move(winSecurityWrapper)) {}
+      m_winSecurityWrapper(std::move(winSecurityWrapper)),
+      m_usersHelpersWrapper(std::move(usersHelperWrapper)) {}
 
 LoggedInUsersProvider::LoggedInUsersProvider()
     : m_twsApiWrapper(std::make_shared<TWSapiWrapper>()),
       m_winBaseWrapper(std::make_shared<WinBaseApiWrapper>()),
       m_winSddlWrapper(std::make_shared<WinSDDLWrapper>()),
-      m_winSecurityWrapper(std::make_shared<WinSecurityBaseApiWrapper>()) {}
+      m_winSecurityWrapper(std::make_shared<WinSecurityBaseApiWrapper>()),
+      m_usersHelpersWrapper(std::make_shared<UsersHelper>()) {}
 
 nlohmann::json LoggedInUsersProvider::collect()
 {
@@ -89,7 +93,7 @@ nlohmann::json LoggedInUsersProvider::collect()
                    : Utils::EncodingWindowsHelper::wstringToStringUTF8(pSessionInfo[i].pWinStationName);
 
 
-        FILETIME utcTime = {0};
+        FILETIME utcTime = {0, 0};
         unsigned long long unixTime = 0;
         utcTime.dwLowDateTime = wtsSession->ConnectTime.LowPart;
         utcTime.dwHighDateTime = wtsSession->ConnectTime.HighPart;
@@ -168,7 +172,7 @@ nlohmann::json LoggedInUsersProvider::collect()
         std::wstring domainUser = wtsSession->Domain;
         domainUser += L"\\";
         domainUser += wtsSession->UserName;
-        const auto sidBuf = getSidFromAccountName(domainUser);
+        const auto sidBuf = m_usersHelpersWrapper->getSidFromAccountName(domainUser);
 
         if (sessionInfo != nullptr)
         {
@@ -183,7 +187,7 @@ nlohmann::json LoggedInUsersProvider::collect()
             continue;
         }
 
-        const auto sidStr = psidToString(reinterpret_cast<SID*>(sidBuf.get()));
+        const auto sidStr = m_usersHelpersWrapper->psidToString(reinterpret_cast<SID*>(sidBuf.get()));
         r["sid"] = sidStr;
 
         const auto hivePath = "HKEY_USERS\\" + sidStr;
@@ -209,83 +213,4 @@ unsigned long long LoggedInUsersProvider::filetimeToUnixtime(const FILETIME& fil
 
     // Convert to Unix time (seconds since 1970-01-01)
     return (ull.QuadPart - 116444736000000000ULL) / 10000000ULL;
-}
-
-std::unique_ptr<BYTE[]> LoggedInUsersProvider::getSidFromAccountName(const std::wstring& accountNameInput)
-{
-    auto accountName = accountNameInput.data();
-
-    if (accountName == nullptr || accountName[0] == 0)
-    {
-        std::cerr << "No account name provided" << std::endl;
-        return nullptr;
-    }
-
-    // Call LookupAccountNameW() once to retrieve the necessary buffer sizes for
-    // the SID (in bytes) and the domain name (in TCHARS):
-    DWORD sidBufferSize = 0;
-    DWORD domainNameSize = 0;
-    auto eSidType = SidTypeUnknown;
-    auto ret = m_winBaseWrapper->LookupAccountNameW(nullptr,
-                                                    accountName,
-                                                    nullptr,
-                                                    &sidBufferSize,
-                                                    nullptr,
-                                                    &domainNameSize,
-                                                    &eSidType);
-
-    if (ret == 0 && GetLastError() != ERROR_INSUFFICIENT_BUFFER)
-    {
-        std::cerr << "Failed to lookup account name " << Utils::EncodingWindowsHelper::wstringToStringUTF8(accountName)
-                  << " with " << GetLastError() << std::endl;
-        return nullptr;
-    }
-
-    // Allocate buffers for the (binary data) SID and (wide string) domain name:
-    auto sidBuffer = std::make_unique<BYTE[]>(sidBufferSize);
-    std::vector<wchar_t> domainName(domainNameSize);
-
-    // Call LookupAccountNameW() a second time to actually obtain the SID for
-    // the given account name:
-    ret = m_winBaseWrapper->LookupAccountNameW(nullptr,
-                                               accountName,
-                                               sidBuffer.get(),
-                                               &sidBufferSize,
-                                               domainName.data(),
-                                               &domainNameSize,
-                                               &eSidType);
-
-    if (ret == 0)
-    {
-        std::cerr << "Failed to lookup account name " << Utils::EncodingWindowsHelper::wstringToStringUTF8(accountName)
-                  << " with " << GetLastError() << std::endl;
-        return nullptr;
-    }
-    else if (m_winSecurityWrapper->IsValidSid(sidBuffer.get()) == FALSE)
-    {
-        std::cerr << "The SID for " << Utils::EncodingWindowsHelper::wstringToStringUTF8(accountName)
-                  << " is invalid." << std::endl;
-    }
-
-    // Implicit move operation. Caller "owns" returned pointer:
-    return sidBuffer;
-}
-
-std::string LoggedInUsersProvider::psidToString(PSID sid)
-{
-    LPWSTR sidOut = nullptr;
-    // Custom deleter to free the allocated memory for sidOut.
-    auto deleter = [](LPWSTR * p)
-    {
-        if (p && *p) LocalFree(*p);
-    };
-    std::unique_ptr<LPWSTR, decltype(deleter)> sidGuard(&sidOut, deleter);
-
-    if (!m_winSddlWrapper->ConvertSidToStringSidW(sid, &sidOut))
-    {
-        std::cerr << "ConvertSidToStringW failed with " << GetLastError() << std::endl;
-        return {};
-    }
-
-    return Utils::EncodingWindowsHelper::wstringToStringUTF8(sidOut);
 }
