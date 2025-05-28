@@ -284,6 +284,19 @@ INSTANTIATE_TEST_SUITE_P(
                           return "In stage 'normalize' builder for block 'map' failed with error: Failed to build "
                                  "operation 'event.code: map(2)': event.code is of type text";
                       })),
+        ValidateA(json::Json {DECODER_STAGE_NORMALIZE_WRONG_IP_MAPPING},
+                  FAILURE_ASSET(
+                      [](const std::shared_ptr<MockSchema>& schema,
+                         const std::shared_ptr<MockDefinitionsBuilder>& defBuild,
+                         const std::shared_ptr<defs::mocks::MockDefinitions>& def)
+                      {
+                          EXPECT_CALL(*schema, validate(testing::_, testing::_))
+                              .WillOnce(testing::Return(base::Error {"source.ip value validation failed: Invalid IP"}));
+                          EXPECT_CALL(*defBuild, build(testing::_)).WillRepeatedly(testing::Return(def));
+                          return "In stage 'normalize' builder for block 'map' failed with error: Failed to build "
+                                 "operation 'source.ip: map(\"127.0.0.1/17\")': source.ip value validation "
+                                 "failed: Invalid IP";
+                      })),
         ValidateA(json::Json {DECODER_STAGE_NORMALIZE_WRONG_PARSE_WITHOUT_SEPARATOR},
                   FAILURE_ASSET(
                       [](const std::shared_ptr<MockSchema>& schema,
