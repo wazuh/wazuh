@@ -1,6 +1,6 @@
 [
     {
-        "index_name": "wazuh-states-processes-cluster01",
+        "index_name": "wazuh-states-inventory-processes-cluster01",
         "data": [
             {
                 "agent": {
@@ -19,6 +19,9 @@
                     "start": "2025-02-26T23:44:59.000Z"
                 },
                 "wazuh": {
+                    "cluster": {
+                        "name": "cluster01"
+                    },
                     "schema": {
                         "version": "1.0"
                     }

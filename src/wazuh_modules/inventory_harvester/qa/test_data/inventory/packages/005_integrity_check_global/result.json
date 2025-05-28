@@ -1,26 +1,7 @@
 [
     {
-        "index_name": "wazuh-states-packages-cluster01",
+        "index_name": "wazuh-states-inventory-packages-cluster01",
         "data": [
-            {
-                "agent": {
-                    "id": "001"
-                },
-                "package": {
-                    "architecture": "amd64",
-                    "description": "system and service manager",
-                    "name": "systemd",
-                    "size": 72,
-                    "type": "deb",
-                    "vendor": "Debian vendor",
-                    "version": "247.3-7+deb11u4"
-                },
-                "wazuh": {
-                    "schema": {
-                        "version": "1.0"
-                    }
-                }
-            },
             {
                 "agent": {
                     "id": "002"
@@ -35,6 +16,28 @@
                     "version": "1.2.3"
                 },
                 "wazuh": {
+                    "schema": {
+                        "version": "1.0"
+                    }
+                }
+            },
+            {
+                "agent": {
+                    "id": "001"
+                },
+                "package": {
+                    "architecture": "amd64",
+                    "description": "system and service manager",
+                    "name": "systemd",
+                    "size": 72,
+                    "type": "deb",
+                    "vendor": "Debian vendor",
+                    "version": "247.3-7+deb11u4"
+                },
+                "wazuh": {
+                    "cluster": {
+                        "name": "cluster01"
+                    },
                     "schema": {
                         "version": "1.0"
                     }

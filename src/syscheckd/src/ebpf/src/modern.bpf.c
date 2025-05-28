@@ -17,6 +17,7 @@
 #define TASK_COMM_LEN                   32
 #define FMODE_CREATED                   0x4000
 #define O_CREAT                         0100
+#define O_ACCMODE                       00000003
 
 /* These define general path extraction and buffer limits. */
 #define LIMIT_PATH_SIZE(x)              ((x) & (MAX_PATH_LEN - 1))
@@ -75,6 +76,13 @@ struct {
     __uint(max_entries, 1);
 } heaps_map SEC(".maps");
 
+struct {
+    __uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
+    __type(key, u32);
+    __type(value, char[MAX_PATH_LEN]);
+    __uint(max_entries, 1);
+} full_path_map SEC(".maps");
+
 /*
 * Per-CPU array used for storing CWD (current working directory) paths
 * during path reconstruction.
@@ -88,6 +96,62 @@ struct {
 
 // Kernel version check
 extern int LINUX_KERNEL_VERSION __kconfig;
+
+/*
+* Concatenates a directory path and a filename into a full path.
+* The result is stored in out_buf->data.
+* The function returns the length of the concatenated string.
+* The full path pointer is returned via full_path.
+*
+* This function ensures that the concatenated string does not exceed
+* the maximum length of HALF_PERCPU_ARRAY_SIZE.
+* It also handles the case where the directory path does not end with a '/'
+* by appending it.
+*/
+statfunc long concat_strings_bpf(unsigned char **full_path,
+                                 const char *dir_path,
+                                 const char *filename,
+                                 struct buffer *out_buf)
+{
+    long ret;
+    size_t buf_off = 0;
+    size_t max_len = HALF_PERCPU_ARRAY_SIZE; // Set the maximum length to half of the buffer size
+
+    // Read the directory path (dir_path) into the buffer
+    ret = bpf_probe_read_kernel_str(&out_buf->data[buf_off], max_len, (const char *)dir_path);
+    if (ret < 0)
+        return ret;
+    size_t dir_path_len = ret;
+
+    // Verify the length of the directory path
+    if (dir_path_len == 0)
+        return -1;
+
+    // Update the buffer offset
+    buf_off = dir_path_len - 1;
+
+    // Check if the last character of dir_path is a null terminator
+    if (&out_buf->data[buf_off - 1] != '/') {
+        out_buf->data[buf_off] = '/';
+        buf_off++;
+    }
+
+    // Recalculate the maximum length for the filename
+    max_len = HALF_PERCPU_ARRAY_SIZE - buf_off;
+
+    // Read the filename into the buffer
+    ret = bpf_probe_read_kernel_str(&out_buf->data[buf_off], max_len, (const char *)filename);
+    if (ret < 0)
+        return ret;
+    size_t filename_len = ret;
+
+    // Assign pointer to the start of the concatenated string
+    *full_path = &out_buf->data[0];
+
+    // Return the total length of the concatenated string
+    return (dir_path_len - 1) + (filename_len - 1);
+}
+
 
 /*
 * Reconstructs the full absolute path from a struct path and stores it
@@ -279,6 +343,7 @@ statfunc void submit_event(const char *filename,
 SEC("kprobe/vfs_open")
 int kprobe__vfs_open(struct pt_regs *ctx)
 {
+if (LINUX_KERNEL_VERSION < KERNEL_VERSION(6, 8, 0)) {
     struct path *path = (struct path *)PT_REGS_PARM1(ctx);
     if (!path)
         return 0;
@@ -333,15 +398,23 @@ int kprobe__vfs_open(struct pt_regs *ctx)
 
     /* Report file creation event. */
     submit_event((const char *)full_path, inode, dev);
-
+}
     return 0;
 }
 
 SEC("kprobe/security_inode_setattr")
-int kprobe__security_inode_setattr(struct pt_regs *ctx) {
-    struct dentry *dentry = (struct dentry *)PT_REGS_PARM1(ctx);
-    if (!dentry)
-        return 0;
+int kprobe__security_inode_setattr(struct pt_regs *ctx)
+{
+    struct dentry *dentry;
+    if (LINUX_KERNEL_VERSION < KERNEL_VERSION(6, 0, 0)) {
+        dentry = (struct dentry *)PT_REGS_PARM1(ctx);
+        if (!dentry) // Necessary condition to validate BPF program
+            return 0;
+    } else {
+        dentry = (struct dentry *)PT_REGS_PARM2(ctx);
+        if (!dentry) // Necessary condition to validate BPF program
+            return 0;
+    }
 
     struct inode *d_inode = NULL;
     bpf_probe_read_kernel(&d_inode, sizeof(d_inode), &dentry->d_inode);
@@ -402,14 +475,15 @@ int kprobe__security_inode_setattr(struct pt_regs *ctx) {
 SEC("kprobe/vfs_unlink")
 int kprobe__vfs_unlink(struct pt_regs *ctx)
 {
+if (LINUX_KERNEL_VERSION < KERNEL_VERSION(6, 8, 0)) {
     struct dentry *dentry;
-    if (LINUX_KERNEL_VERSION >= KERNEL_VERSION(5, 12, 0)) {
-        dentry = (struct dentry *)PT_REGS_PARM3(ctx);
-        if (!dentry) // This condition is necessary to open the BPF program
+    if (LINUX_KERNEL_VERSION < KERNEL_VERSION(5, 12, 0)) {
+        dentry = (struct dentry *)PT_REGS_PARM2(ctx);
+        if (!dentry) // Necessary condition to validate BPF program
             return 0;
     } else {
-        dentry = (struct dentry *)PT_REGS_PARM2(ctx);
-        if (!dentry) // This condition is necessary to open the BPF program
+        dentry = (struct dentry *)PT_REGS_PARM3(ctx);
+        if (!dentry) // Necessary condition to validate BPF program
             return 0;
     }
 
@@ -457,6 +531,122 @@ int kprobe__vfs_unlink(struct pt_regs *ctx)
     get_inode_dev(d_inode, &inode, &dev);
 
     submit_event((const char *)full_path, inode, dev);
+}
+    return 0;
+}
+
+SEC("lsm/file_open")
+int BPF_PROG(file_open, struct file *file)
+{
+if (LINUX_KERNEL_VERSION >= KERNEL_VERSION(6, 8, 0)) {
+    struct path *path = NULL;
+    bpf_probe_read_kernel(&path, sizeof(path), &file->f_path);
+    if (!path)
+        return 0;
+
+    /* Check if the file is newly created */
+    fmode_t f_mode = 0;
+    bpf_probe_read_kernel(&f_mode, sizeof(f_mode), &file->f_mode);
+    if (!f_mode)
+        return 0;
+
+    /* Also retrieve f_flags to handle creation if FMODE_CREATED fails */
+    __u32 f_flags = 0;
+    bpf_probe_read_kernel(&f_flags, sizeof(f_flags), &file->f_flags);
+    if (!f_flags)
+        return 0;
+
+    /* If not created, skip */
+    if (!(f_mode & FMODE_CREATED) && !(f_flags & O_CREAT) && !(f_flags & O_ACCMODE)) {
+        return 0;
+    }
+
+    /* Retrieve the dentry. */
+    struct dentry *dentry = NULL;
+    bpf_probe_read_kernel(&dentry, sizeof(dentry), &path->dentry);
+    if (!dentry)
+        return 0;
+
+    struct inode *f_inode = NULL;
+    bpf_probe_read_kernel(&f_inode, sizeof(f_inode), &file->f_inode);
+    if (!f_inode)
+        return 0;
+
+    __u32 mode = 0;
+    bpf_probe_read_kernel(&mode, sizeof(mode), &f_inode->i_mode);
+    if (!mode)
+        return 0;
+
+    /* Only report regular files (0100000 is the S_IFREG mask). */
+    if (((mode & 00170000) != 0100000))
+        return 0;
+
+    char *full_path = bpf_map_lookup_elem(&full_path_map, &(u32){0});
+    if (!full_path)
+        return 0;
+
+    int ret = bpf_d_path(&file->f_path, full_path, MAX_PATH_LEN);
+    if (ret < 0)
+        return 0;
+
+    /* Extract inode/device. */
+    __u64 inode = 0, dev = 0;
+    get_inode_dev(f_inode, &inode, &dev);
+
+    submit_event((const char *)full_path, inode, dev);
+}
+    return 0;
+}
+
+
+SEC("lsm/path_unlink")
+int BPF_PROG(path_unlink, struct path *path, struct dentry *dentry)
+{
+if (LINUX_KERNEL_VERSION >= KERNEL_VERSION(6, 8, 0)) {
+    struct inode *d_inode = NULL;
+    bpf_probe_read_kernel(&d_inode, sizeof(d_inode), &dentry->d_inode);
+    if (!d_inode)
+        return 0;
+
+    __u32 mode = 0;
+    bpf_probe_read_kernel(&mode, sizeof(mode), &d_inode->i_mode);
+    if (!mode)
+        return 0;
+
+    /* Only report regular files (0100000 is the S_IFREG mask). */
+    if (((mode & 00170000) != 0100000))
+        return 0;
+
+    char *dir_path = bpf_map_lookup_elem(&full_path_map, &(u32){0});
+    if (!dir_path)
+        return 0;
+
+    int ret = bpf_d_path(path, dir_path, MAX_PATH_LEN);
+    if (ret < 0)
+        return 0;
+
+    /* Get the file name pointer from dentry->d_name.name */
+    const char *file_name_ptr;
+    bpf_probe_read_kernel(&file_name_ptr, sizeof(file_name_ptr), &dentry->d_name.name);
+    if (!file_name_ptr)
+        return 0;
+
+    /* Reconstruct the path. */
+    struct buffer *string_buf = bpf_map_lookup_elem(&heaps_map, &(u32){0});
+    if (!string_buf)
+        return 0;
+
+    u8 *full_path = NULL;
+    ret = concat_strings_bpf(&full_path, dir_path, file_name_ptr, string_buf);
+    if (ret < 0)
+        return 0;
+
+    /* Extract inode/device. */
+    __u64 inode = 0, dev = 0;
+    get_inode_dev(d_inode, &inode, &dev);
+
+    submit_event((const char *)full_path, inode, dev);
+}
     return 0;
 }
 

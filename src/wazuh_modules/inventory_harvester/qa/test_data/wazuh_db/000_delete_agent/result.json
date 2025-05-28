@@ -1,34 +1,34 @@
 [
     {
-        "index_name": "wazuh-states-packages-cluster01",
+        "index_name": "wazuh-states-inventory-packages-cluster01",
         "data": []
     },
     {
-        "index_name": "wazuh-states-system-cluster01",
+        "index_name": "wazuh-states-inventory-system-cluster01",
         "data": []
     },
     {
-        "index_name": "wazuh-states-registries-cluster01",
+        "index_name": "wazuh-states-fim-registries-cluster01",
         "data": []
     },
     {
-        "index_name": "wazuh-states-files-cluster01",
+        "index_name": "wazuh-states-fim-files-cluster01",
         "data": []
     },
     {
-        "index_name": "wazuh-states-ports-cluster01",
+        "index_name": "wazuh-states-inventory-ports-cluster01",
         "data": []
     },
     {
-        "index_name": "wazuh-states-hotfixes-cluster01",
+        "index_name": "wazuh-states-inventory-hotfixes-cluster01",
         "data": []
     },
     {
-        "index_name": "wazuh-states-processes-cluster01",
+        "index_name": "wazuh-states-inventory-processes-cluster01",
         "data": []
     },
     {
-        "index_name": "wazuh-states-interfaces-cluster01",
+        "index_name": "wazuh-states-inventory-interfaces-cluster01",
         "data": []
     }
 ]

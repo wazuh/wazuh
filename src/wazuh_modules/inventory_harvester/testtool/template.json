@@ -1,17 +1,17 @@
 {
   "index_patterns": [
-    "wazuh-states-files-*",
-    "wazuh-states-registries-*",
-    "wazuh-states-packages-*",
-    "wazuh-states-system-*",
-    "wazuh-states-processes-*",
-    "wazuh-states-ports-*",
-    "wazuh-states-hotfixes-*",
-    "wazuh-states-hardware-*",
-    "wazuh-states-protocols-*",
-    "wazuh-states-interfaces-*",
-    "wazuh-states-hardware-*",
-    "wazuh-states-networks-*"
+    "wazuh-states-fim-files-*",
+    "wazuh-states-fim-registries-*",
+    "wazuh-states-inventory-packages-*",
+    "wazuh-states-inventory-system-*",
+    "wazuh-states-inventory-processes-*",
+    "wazuh-states-inventory-ports-*",
+    "wazuh-states-inventory-hotfixes-*",
+    "wazuh-states-inventory-hardware-*",
+    "wazuh-states-inventory-protocols-*",
+    "wazuh-states-inventory-interfaces-*",
+    "wazuh-states-inventory-hardware-*",
+    "wazuh-states-inventory-networks-*"
   ],
   "priority": 1,
   "template": {

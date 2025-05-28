@@ -15,7 +15,7 @@ The **InventoryHarvester** module receives inventory data events as flatbuffer m
 
 1. **Message Ingestion**
 
-   - Both the `Syscollector` module and the `FIM` module event messages arrive to the manager.
+   - Both the `System inventory` module and the `FIM` module event messages arrive to the manager.
    - Flatbuffer messages arrive to the Inventory Harvester module through the router.
 
 2. **Deserialization & Validation**

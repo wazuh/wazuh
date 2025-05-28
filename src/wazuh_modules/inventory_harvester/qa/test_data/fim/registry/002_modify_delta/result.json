@@ -1,6 +1,6 @@
 [
   {
-    "index_name": "wazuh-states-registries-cluster01",
+    "index_name": "wazuh-states-fim-registries-cluster01",
     "data": [
       {
         "agent": {
@@ -24,9 +24,15 @@
           }
         },
         "wazuh": {
+          "cluster": {
+            "name": "cluster01"
+          },
           "schema": {
             "version": "1.0"
           }
+        },
+        "event": {
+          "category": "registry_value"
         }
       }
     ]

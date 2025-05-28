@@ -1,6 +1,6 @@
 [
     {
-        "index_name": "wazuh-states-ports-cluster01",
+        "index_name": "wazuh-states-inventory-ports-cluster01",
         "data": [
             {
                 "agent": {
@@ -40,6 +40,9 @@
                     "port": 49664
                 },
                 "wazuh": {
+                    "cluster": {
+                        "name": "cluster01"
+                    },
                     "schema": {
                         "version": "1.0"
                     }

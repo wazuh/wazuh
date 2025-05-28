@@ -173,6 +173,15 @@ int check_path_type(const char *dir) __attribute__((nonnull));
  * @return 0 if it is a link, -1 otherwise.
  */
 int IsLink(const char * file) __attribute__((nonnull));
+
+/**
+ * Check if a program is available in the system PATH.
+ *
+ * @param program The name of the program to check.
+ * @return true if the program is available, false otherwise.
+ */
+bool is_program_available(const char *program);
+
 #endif
 
 

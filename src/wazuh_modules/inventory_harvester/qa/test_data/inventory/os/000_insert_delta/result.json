@@ -1,6 +1,6 @@
 [
     {
-        "index_name": "wazuh-states-system-cluster01",
+        "index_name": "wazuh-states-inventory-system-cluster01",
         "data": [
             {
                 "agent": {
@@ -22,6 +22,9 @@
                     }
                 },
                 "wazuh": {
+                    "cluster": {
+                        "name": "cluster01"
+                    },
                     "schema": {
                         "version": "1.0"
                     }

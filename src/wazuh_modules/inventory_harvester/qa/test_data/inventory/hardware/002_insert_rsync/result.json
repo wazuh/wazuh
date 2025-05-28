@@ -1,6 +1,6 @@
 [
     {
-        "index_name": "wazuh-states-hardware-cluster01",
+        "index_name": "wazuh-states-inventory-hardware-cluster01",
         "data": [
             {
                 "agent": {
@@ -24,6 +24,9 @@
                     "serial_number": "A320"
                 },
                 "wazuh": {
+                    "cluster": {
+                        "name": "cluster01"
+                    },
                     "schema": {
                         "version": "1.0"
                     }

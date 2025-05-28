@@ -177,7 +177,6 @@ private:
     void loadConfiguration(const nlohmann::json& configuration)
     {
         m_configuration = configuration;
-        std::cout << "Configuration loaded: " << m_configuration.dump(4) << std::endl;
     }
 
 public:
@@ -292,11 +291,12 @@ public:
         return clusterName;
     }
 
-    nlohmann::json buildIndexerConfig(const std::string& name) const
+    nlohmann::json buildIndexerConfig(const std::string& name, const InventoryType type) const
     {
         auto config = PolicyHarvesterManager::instance().getIndexerConfiguration();
         auto clusterName = Utils::toLowerCaseView(PolicyHarvesterManager::instance().getClusterName());
-        config["name"] = std::string(STATES_INDEX_NAME_PREFIX) + name + "-" + clusterName;
+        config["name"] =
+            std::string(STATES_INDEX_NAME_PREFIX) + INVENTORY_TYPES.at(type) + "-" + name + "-" + clusterName;
         return config;
     }
 
