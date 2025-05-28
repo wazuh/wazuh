@@ -831,9 +831,9 @@ bool SQLiteDBEngine::bindJsonData(const std::shared_ptr<SQLite::IStatement> stmt
         }
         else if (ColumnType::Integer == type)
         {
-            int32_t value
+            int64_t value
             {
-                jsData.is_number() ? jsData.get<int32_t>() : jsData.is_string()
+                jsData.is_number() ? jsData.get<int64_t>() : jsData.is_string()
                 && jsData.get_ref<const std::string&>().size()
                 ? std::stoi(jsData.get_ref<const std::string&>())
                 : 0
@@ -1000,7 +1000,7 @@ void SQLiteDBEngine::getTableData(std::shared_ptr<SQLite::IStatement>const stmt,
     }
     else if (ColumnType::Integer == type)
     {
-        row[fieldName] = std::make_tuple(type, std::string(), stmt->column(index)->value(int32_t{}), 0, 0, 0);
+        row[fieldName] = std::make_tuple(type, std::string(), stmt->column(index)->value(int64_t{}), 0, 0, 0);
     }
     else if (ColumnType::Text == type)
     {

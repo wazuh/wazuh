@@ -257,12 +257,14 @@ class BerkeleyRpmDBReader final
 
                 if (isPython && !dirindexes.empty() && !dirnames.empty() && !basenames.empty())
                 {
-                    for (size_t i = 0; i < basenames.size(); ++i)
+                    for (size_t i = 0; i < dirindexes.size(); ++i)
                     {
-                        if (dirindexes[i] < static_cast<int>(dirnames.size()))
+                        int index = dirindexes[i];
+
+                        if (index >= 0 && index < static_cast<int>(dirnames.size()))
                         {
-                            std::string fullPath = dirnames[dirindexes[i]] + basenames[i];
-                            pythonFiles.push_back(fullPath);
+                            std::string fullPath = dirnames[index] + basenames[i];
+                            pythonFiles.push_back(std::move(fullPath));
                         }
                     }
                 }

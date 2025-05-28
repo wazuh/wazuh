@@ -6,6 +6,9 @@
     <list>etc/lists/audit-keys</list>
     <list>etc/lists/amazon/aws-eventnames</list>
     <list>etc/lists/security-eventchannel</list>
+    <list>etc/lists/malicious-ioc/malware-hashes</list>
+    <list>etc/lists/malicious-ioc/malicious-ip</list>
+    <list>etc/lists/malicious-ioc/malicious-domains</list>
 
     <!-- User-defined ruleset -->
     <decoder_dir>etc/decoders</decoder_dir>
