@@ -393,6 +393,54 @@ int w_ref_parent_folder(const char * path);
  */
 char ** wreaddir(const char * name);
 
+/**
+ * @brief Wrapper over access() that rejects UNC or mapped-drive paths.
+ *
+ * @param path  Null-terminated path to test.
+ * @param mode  Standard access() mode flags (R_OK, W_OK, …).
+ * @return 0 on success, −1 on failure (sets errno and GetLastError()).
+ */
+int waccess(const char *path, int mode);
+
+#ifdef WIN32
+/**
+ * @brief Wrapper over CreateFile that blocks network paths.
+ *
+ * @param lpFileName             UTF-8 file name.
+ * @param dwDesiredAccess        Desired access flags.
+ * @param dwShareMode            Share mode flags.
+ * @param lpSecurityAttributes   Optional security descriptor.
+ * @param dwCreationDisposition  Creation action.
+ * @param dwFlagsAndAttributes   File attributes / flags.
+ * @param hTemplateFile          Template file handle (may be NULL).
+ * @return A valid HANDLE or INVALID_HANDLE_VALUE on error.
+ */
+HANDLE wCreateFile(LPCSTR  lpFileName,
+    DWORD   dwDesiredAccess,
+    DWORD   dwShareMode,
+    LPSECURITY_ATTRIBUTES lpSecurityAttributes,
+    DWORD   dwCreationDisposition,
+    DWORD   dwFlagsAndAttributes,
+    HANDLE  hTemplateFile);
+#endif
+/**
+ * @brief Wrapper over opendir() that refuses network directories.
+ *
+ * @param name Directory path.
+ * @return Pointer to DIR or NULL on error (sets errno).
+ */
+DIR * wopendir(const char *name);
+
+/**
+ * @brief Wrapper over stat() that blocks network paths.
+ *
+ * @param pathname Path to inspect.
+ * @param statbuf  Output structure to fill.
+ * @return 0 on success, −1 on error (sets errno).
+ */
+int wstat(const char *restrict pathname,
+           struct stat *restrict statbuf);
+
 
 /**
  * @brief Open file normally in Linux, allow read/write/delete in Windows.

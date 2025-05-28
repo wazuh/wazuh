@@ -59,7 +59,7 @@ namespace Utils
     static std::vector<std::string> enumerateDir(const std::string& path)
     {
         std::vector<std::string> ret;
-        std::unique_ptr<DIR, DirSmartDeleter> spDir{opendir(path.c_str())};
+        std::unique_ptr<DIR, DirSmartDeleter> spDir{wopendir(path.c_str())};
 
         if (spDir)
         {

@@ -2013,7 +2013,7 @@ int wdb_global_create_backup(wdb_t* wdb, char* output, const char* tag) {
 }
 
 int wdb_global_remove_old_backups() {
-    DIR* dp = opendir(WDB_BACKUP_FOLDER);
+    DIR* dp = wopendir(WDB_BACKUP_FOLDER);
 
     if(!dp) {
         mdebug1("Unable to open backup directory '%s'", WDB_BACKUP_FOLDER);
@@ -2053,7 +2053,7 @@ cJSON* wdb_global_get_backups() {
     cJSON* j_backups = NULL;
     struct dirent *entry = NULL;
 
-    DIR* dp = opendir(WDB_BACKUP_FOLDER);
+    DIR* dp = wopendir(WDB_BACKUP_FOLDER);
 
     if(!dp) {
         mdebug1("Unable to open backup directory '%s'", WDB_BACKUP_FOLDER);
@@ -2135,7 +2135,7 @@ end:
 }
 
 time_t wdb_global_get_most_recent_backup(char **most_recent_backup_name) {
-    DIR* dp = opendir(WDB_BACKUP_FOLDER);
+    DIR* dp = wopendir(WDB_BACKUP_FOLDER);
 
     if(!dp) {
         mdebug1("Unable to open backup directory '%s'", WDB_BACKUP_FOLDER);
@@ -2171,7 +2171,7 @@ time_t wdb_global_get_most_recent_backup(char **most_recent_backup_name) {
 }
 
 time_t wdb_global_get_oldest_backup(char **oldest_backup_name) {
-    DIR* dp = opendir(WDB_BACKUP_FOLDER);
+    DIR* dp = wopendir(WDB_BACKUP_FOLDER);
 
     if(!dp) {
         mdebug1("Unable to open backup directory '%s'", WDB_BACKUP_FOLDER);

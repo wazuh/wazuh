@@ -385,7 +385,7 @@ void wm_clean_dangling_wdb_dbs() {
     struct dirent * dirent = NULL;
     DIR * dir;
 
-    if (!(dir = opendir(WDB2_DIR))) {
+    if (!(dir = wopendir(WDB2_DIR))) {
         mterror(WM_DATABASE_LOGTAG, "Couldn't open directory '%s': %s.", WDB2_DIR, strerror(errno));
         return;
     }
@@ -421,7 +421,7 @@ void wm_clean_dangling_wdb_dbs() {
 }
 
 void wm_sync_legacy_groups_files() {
-    DIR *dir = opendir(GROUPS_DIR);
+    DIR *dir = wopendir(GROUPS_DIR);
 
     if (!dir) {
         mtdebug1(WM_DATABASE_LOGTAG, "Couldn't open directory '%s': %s.", GROUPS_DIR, strerror(errno));
@@ -525,7 +525,7 @@ int wm_sync_shared_group(const char *fname) {
 
     snprintf(path, PATH_MAX, "%s/%s", SHAREDCFG_DIR, fname);
 
-    dp = opendir(path);
+    dp = wopendir(path);
     if (!dp) {
         /* The group was deleted */
         wdb_remove_group_db(fname, &wdb_wmdb_sock);

@@ -2059,7 +2059,7 @@ static int wm_sca_check_dir_existence(const char * const dir, char **reason)
     }
     #endif
 
-    DIR *dp = opendir(realpath_buffer);
+    DIR *dp = wopendir(realpath_buffer);
     const int open_dir_errno = errno;
     if (dp) {
         mdebug2("DIR_EXISTS(%s) -> RETURN_FOUND", dir);
@@ -2108,7 +2108,7 @@ static int wm_sca_check_dir(const char * const dir,
     }
     #endif
 
-    DIR *dp = opendir(realpath_buffer);
+    DIR *dp = wopendir(realpath_buffer);
     if (!dp) {
         const int open_dir_errno = errno;
         if (*reason == NULL) {

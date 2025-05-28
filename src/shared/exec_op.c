@@ -223,7 +223,7 @@ wfd_t * wpopenv(const char * path, char * const * argv, int flags) {
     case 0:
         // Child code
 
-        if (flags & W_CHECK_WRITE && !access(path, W_OK)) {
+        if (flags & W_CHECK_WRITE && !waccess(path, W_OK)) {
             merror("At wpopenv(): file '%s' has write permissions.", path);
             _exit(127);
         }

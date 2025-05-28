@@ -808,7 +808,7 @@ STATIC void c_multi_group(char *multi_group, OSHash **_f_time, os_md5 *_merged_s
 
             snprintf(dir, PATH_MAX + 1, "%s/%s", SHAREDCFG_DIR, group);
 
-            dp = opendir(SHAREDCFG_DIR);
+            dp = wopendir(SHAREDCFG_DIR);
 
             if (!dp) {
                 mdebug2("Opening directory: '%s': %s", SHAREDCFG_DIR, strerror(errno));
@@ -823,7 +823,7 @@ STATIC void c_multi_group(char *multi_group, OSHash **_f_time, os_md5 *_merged_s
     }
 
     /* Open the multi-group files and generate merged */
-    dp = opendir(MULTIGROUPS_DIR);
+    dp = wopendir(MULTIGROUPS_DIR);
 
     if (!dp) {
         mdebug2("Opening directory: '%s': %s", MULTIGROUPS_DIR, strerror(errno));
@@ -874,7 +874,7 @@ STATIC void process_groups() {
     struct dirent *entry = NULL;
     char path[PATH_MAX + 1];
 
-    dp = opendir(SHAREDCFG_DIR);
+    dp = wopendir(SHAREDCFG_DIR);
 
     if (!dp) {
         mdebug1("Opening directory: '%s': %s", SHAREDCFG_DIR, strerror(errno));
@@ -1299,7 +1299,7 @@ STATIC void copy_directory(const char *src_path, const char *dst_path, char *gro
         }
 
         /* Is a file */
-        if (dir = opendir(source_path), !dir) {
+        if (dir = wopendir(source_path), !dir) {
             ignored = 0;
 
             char agent_conf_chunck_message[PATH_MAX + 1]= {0};

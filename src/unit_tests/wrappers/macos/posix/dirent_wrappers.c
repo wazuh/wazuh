@@ -31,9 +31,9 @@ DIR * wrap_opendir(const char *filename) {
             errno = ESRCH;
         }
 
-        return ret; 
+        return ret;
     } else {
-        return opendir(filename);
+        return wopendir(filename);
     }
 }
 

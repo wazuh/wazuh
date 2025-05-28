@@ -517,7 +517,7 @@ void * run_up(__attribute__((unused)) void * args) {
     os_calloc(PATH_MAX + 1, sizeof(char), db_folder);
     snprintf(db_folder, PATH_MAX, "%s", WDB2_DIR);
 
-    fd = opendir(db_folder);
+    fd = wopendir(db_folder);
 
     if (!fd) {
         mdebug1("Opening directory: '%s': %s", db_folder, strerror(errno));

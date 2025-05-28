@@ -786,7 +786,7 @@ int fim_directory(const char *dir,
     }
 
     // Open the directory given
-    dp = opendir(dir);
+    dp = wopendir(dir);
 
     if (!dp) {
         mwarn(FIM_PATH_NOT_OPEN, dir, strerror(errno));

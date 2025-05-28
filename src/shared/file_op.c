@@ -397,6 +397,58 @@ int isVista;
 
 const char *__local_name = "unset";
 
+#define REJECT_NETWORK_PATH(retval)                  \
+    do {                                             \
+        errno = EINVAL;                              \
+        SetLastError(ERROR_INVALID_NAME);            \
+        return (retval);                             \
+    } while (0)
+
+int waccess(const char *path, int mode) {
+    if (is_network_path(path)) {
+        REJECT_NETWORK_PATH(-1);
+    }
+    return access(path, mode);
+}
+
+#ifdef WIN32
+HANDLE wCreateFile(LPCSTR  lpFileName,
+                    DWORD   dwDesiredAccess,
+                    DWORD   dwShareMode,
+                    LPSECURITY_ATTRIBUTES lpSecurityAttributes,
+                    DWORD   dwCreationDisposition,
+                    DWORD   dwFlagsAndAttributes,
+                    HANDLE  hTemplateFile) {
+
+    if (is_network_path(lpFileName)) {
+        REJECT_NETWORK_PATH(INVALID_HANDLE_VALUE);
+    }
+
+    return CreateFile(lpFileName,
+                       dwDesiredAccess,
+                       dwShareMode,
+                       lpSecurityAttributes,
+                       dwCreationDisposition,
+                       dwFlagsAndAttributes,
+                       hTemplateFile);
+}
+#endif
+
+DIR * wopendir(const char *name) {
+    if (is_network_path(name)) {
+        REJECT_NETWORK_PATH(NULL);
+    }
+    return opendir(name);
+}
+
+int wstat(const char *restrict pathname,
+           struct stat *restrict statbuf) {
+    if (is_network_path(pathname)) {
+        REJECT_NETWORK_PATH(-1);
+    }
+    return stat(pathname, statbuf);
+}
+
 /* Set the name of the starting program */
 void OS_SetName(const char *name)
 {
@@ -442,7 +494,7 @@ int check_path_type(const char *dir)
     DIR *dp;
     int retval;
 
-    if (dp = opendir(dir), dp) {
+    if (dp = wopendir(dir), dp) {
         retval = 2;
         closedir(dp);
     } else if (errno == ENOTDIR){
@@ -491,7 +543,7 @@ float DirSize(const char *path) {
     float file_size = 0.0;
     char *entry;
 
-    if (directory = opendir(path), directory == NULL) {
+    if (directory = wopendir(path), directory == NULL) {
         mdebug2("Couldn't open directory '%s'.", path);
         return -1;
     }
@@ -1180,7 +1232,7 @@ bool is_program_available(const char *program) {
     while (dir) {
         char fullpath[512];
         snprintf(fullpath, sizeof(fullpath), "%s/%s", dir, program);
-        if (access(fullpath, X_OK) == 0) {
+        if (waccess(fullpath, X_OK) == 0) {
             found = true;
             break;
         }
@@ -1223,7 +1275,7 @@ int get_creation_date(char *dir, SYSTEMTIME *utc) {
     FILETIME creation_date;
     int retval = 1;
 
-    if (hdle = CreateFile(dir, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL | FILE_FLAG_BACKUP_SEMANTICS, NULL), hdle == INVALID_HANDLE_VALUE) {
+    if (hdle = wCreateFile(dir, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL | FILE_FLAG_BACKUP_SEMANTICS, NULL), hdle == INVALID_HANDLE_VALUE) {
         return retval;
     }
 
@@ -1242,7 +1294,7 @@ end:
 time_t get_UTC_modification_time(const char *file){
     HANDLE hdle;
     FILETIME modification_date;
-    if (hdle = CreateFile(file, GENERIC_READ, FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL), \
+    if (hdle = wCreateFile(file, GENERIC_READ, FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL), \
         hdle == INVALID_HANDLE_VALUE) {
         mferror(FIM_WARN_OPEN_HANDLE_FILE, file, GetLastError());
         return 0;
@@ -1279,7 +1331,7 @@ int rename_ex(const char *source, const char *destination)
         const DWORD dwCreationDisposition = CREATE_ALWAYS;
         const DWORD dwFlagsAndAttributes = FILE_ATTRIBUTE_NORMAL;
 
-        HANDLE hFile = CreateFile(destination, dwDesiredAccess, dwShareMode, NULL, dwCreationDisposition, dwFlagsAndAttributes, NULL);
+        HANDLE hFile = wCreateFile(destination, dwDesiredAccess, dwShareMode, NULL, dwCreationDisposition, dwFlagsAndAttributes, NULL);
 
         if (hFile == INVALID_HANDLE_VALUE) {
             mferror("Could not create file (%s) which returned (%lu)", destination, GetLastError());
@@ -2055,7 +2107,7 @@ FILE * w_fopen_r(const char *file, const char * mode, BY_HANDLE_FILE_INFORMATION
     int fd;
     HANDLE h;
 
-    h = CreateFile(file, GENERIC_READ, FILE_SHARE_DELETE|FILE_SHARE_READ|FILE_SHARE_WRITE,
+    h = wCreateFile(file, GENERIC_READ, FILE_SHARE_DELETE|FILE_SHARE_READ|FILE_SHARE_WRITE,
                    NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
     if (h == INVALID_HANDLE_VALUE) {
         return NULL;
@@ -2230,7 +2282,7 @@ int cldir_ex_ignore(const char * name, const char ** ignore) {
 
     // Erase content
 
-    dir = opendir(name);
+    dir = wopendir(name);
 
     if (!dir) {
         return -1;
@@ -2726,7 +2778,7 @@ char ** wreaddir(const char * name) {
     char ** files;
     unsigned int i = 0;
 
-    if (dir = opendir(name), !dir) {
+    if (dir = wopendir(name), !dir) {
         return NULL;
     }
 
@@ -2802,7 +2854,7 @@ FILE * wfopen(const char * pathname, const char * mode) {
         return NULL;
     }
 
-    hFile = CreateFile(pathname, dwDesiredAccess, dwShareMode, NULL, dwCreationDisposition, dwFlagsAndAttributes, NULL);
+    hFile = wCreateFile(pathname, dwDesiredAccess, dwShareMode, NULL, dwCreationDisposition, dwFlagsAndAttributes, NULL);
 
     if (hFile == INVALID_HANDLE_VALUE) {
         errno = GetLastError();
@@ -3175,7 +3227,7 @@ DWORD FileSizeWin(const char * file) {
     HANDLE h1;
     BY_HANDLE_FILE_INFORMATION lpFileInfo;
 
-    h1 = CreateFile(file, GENERIC_READ,
+    h1 = wCreateFile(file, GENERIC_READ,
                     FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE,
                     NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
     if (h1 == INVALID_HANDLE_VALUE) {
