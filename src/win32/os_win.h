@@ -34,4 +34,7 @@ int os_WinMain(int argc, char **argv);
 /* Locally start the process (after the services initialization) */
 int local_start();
 
+/* Locally start the process (after the services initialization) */
+int local_reload(HWND hwnd);
+
 #endif /* OS_WIN_H */

@@ -97,6 +97,7 @@ extern HWND hStatus;
 #define UI_MENU_HELP_HELP       1608
 #define UI_MENU_HELP_ABOUT      1609
 #define UI_MENU_NONE            1610
+#define UI_MENU_MANAGE_RELOAD   1611
 
 #define IDD_MAIN                1700
 #define IDC_MAIN_STATUS         1701

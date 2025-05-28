@@ -32,6 +32,9 @@
 #define FULL 2
 #define FLOOD 3
 
+#define PIPE_NAME "\\\\.\\pipe\\WazuhSocketPipe"
+#define BUFFER_SIZE sizeof(WSAPROTOCOL_INFO)
+
 /* Client configuration */
 int ClientConf(const char *cfgfile);
 

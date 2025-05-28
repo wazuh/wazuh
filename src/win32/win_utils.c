@@ -73,6 +73,70 @@ void stop_wmodules()
     }
 }
 
+int local_reload(HWND hwnd) {
+    SOCKET sock = agt->sock;
+    if (sock == INVALID_SOCKET) {
+        MessageBox(hwnd, "Failed to create socket for reload.", "Reload Error", MB_OK | MB_ICONERROR);
+        return -1;
+    }
+
+    WSAPROTOCOL_INFO protoInfo;
+    if (WSADuplicateSocket(sock, GetCurrentProcessId(), &protoInfo) != 0) {
+        MessageBox(hwnd, "Failed to duplicate socket.", "Reload Error", MB_OK | MB_ICONERROR);
+        closesocket(sock);
+        return -1;
+    }
+
+    // Asegúrate de que estas constantes estén definidas antes:
+    // #define PIPE_NAME "\\\\.\\pipe\\wazuh_reload"
+    // #define BUFFER_SIZE 4096
+    HANDLE hPipe = CreateNamedPipe(PIPE_NAME,
+                                   PIPE_ACCESS_OUTBOUND,
+                                   PIPE_TYPE_MESSAGE | PIPE_READMODE_MESSAGE | PIPE_WAIT,
+                                   1, BUFFER_SIZE, BUFFER_SIZE, 0, NULL);
+    if (hPipe == INVALID_HANDLE_VALUE) {
+        MessageBox(hwnd, "Failed to create named pipe.", "Reload Error", MB_OK | MB_ICONERROR);
+        closesocket(sock);
+        return -1;
+    }
+
+    char cmdLine[256];
+    snprintf(cmdLine, sizeof(cmdLine), "\"%s\" child %s", __argv[0], PIPE_NAME);
+
+    STARTUPINFO si;
+    ZeroMemory(&si, sizeof(si));
+    si.cb = sizeof(si);
+    PROCESS_INFORMATION pi;
+    if (!CreateProcess(NULL, cmdLine, NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi)) {
+        MessageBox(hwnd, "Failed to launch child process.", "Reload Error", MB_OK | MB_ICONERROR);
+        CloseHandle(hPipe);
+        closesocket(sock);
+        return -1;
+    }
+
+    if (!ConnectNamedPipe(hPipe, NULL) && GetLastError() != ERROR_PIPE_CONNECTED) {
+        MessageBox(hwnd, "Failed to connect pipe.", "Reload Error", MB_OK | MB_ICONERROR);
+        CloseHandle(hPipe);
+        closesocket(sock);
+        return -1;
+    }
+
+    DWORD bytesWritten;
+    if (!WriteFile(hPipe, &protoInfo, sizeof(protoInfo), &bytesWritten, NULL)) {
+        MessageBox(hwnd, "Failed to write socket info to pipe.", "Reload Error", MB_OK | MB_ICONERROR);
+    }
+
+    CloseHandle(hPipe);
+    CloseHandle(pi.hProcess);
+    CloseHandle(pi.hThread);
+    closesocket(sock);
+
+    MessageBox(hwnd, "Reload completed. Socket transferred to child process.", "Reload", MB_OK | MB_ICONINFORMATION);
+    PostMessage(hwnd, WM_CLOSE, 0, 0);
+    return 0;
+}
+
+
 /* Locally start (after service/win init) */
 int local_start()
 {

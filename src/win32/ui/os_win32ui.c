@@ -69,6 +69,7 @@ BOOL CALLBACK DlgProc(HWND hwnd, UINT Message, WPARAM wParam,
             AppendMenu(hSubMenu, menuflags, UI_MENU_MANAGE_START, "&Start");
             AppendMenu(hSubMenu, menuflags, UI_MENU_MANAGE_STOP, "&Stop");
             AppendMenu(hSubMenu, menuflags, UI_MENU_MANAGE_RESTART, "&Restart");
+            AppendMenu(hSubMenu, menuflags, UI_MENU_MANAGE_RELOAD, "&Reload");
             AppendMenu(hSubMenu, MF_SEPARATOR, UI_MENU_NONE, "");
             AppendMenu(hSubMenu, menuflags, UI_MENU_MANAGE_STATUS, "&Status");
             AppendMenu(hSubMenu, MF_SEPARATOR, UI_MENU_NONE, "");
@@ -371,7 +372,8 @@ BOOL CALLBACK DlgProc(HWND hwnd, UINT Message, WPARAM wParam,
                                    "Agent Restarted", MB_OK);
                     }
                     break;
-            }
+                case UI_MENU_MANAGE_RELOAD:
+                   local_reload(hwnd);
             break;
 
         case WM_CLOSE:
@@ -380,8 +382,9 @@ BOOL CALLBACK DlgProc(HWND hwnd, UINT Message, WPARAM wParam,
 
         default:
             return FALSE;
-    }
+        }
     return TRUE;
+    }
 }
 
 int WINAPI WinMain(HINSTANCE hInstance, __attribute__((unused))HINSTANCE hPrevInstance,
