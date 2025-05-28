@@ -16,6 +16,8 @@
 #include <filesystem>
 #include <fstream>
 
+#include "filesystemHelper.h"
+#include "fileSystem.hpp"
 #include "stringHelper.h"
 
 #include "sudoers_unix.hpp"
@@ -47,39 +49,6 @@ void SudoersProvider::genSudoersFile(const std::string& fileName,
     // sudoers(5): No more than 128 files are allowed to be nested.
     static const unsigned int kMaxNest = 128;
 
-    // Local utility functions/lambdas
-    auto trim = [](std::string & s)
-    {
-        s.erase(s.begin(), std::find_if(s.begin(), s.end(), [](int ch)
-        {
-            return !std::isspace(ch);
-        }));
-        s.erase(std::find_if(s.rbegin(), s.rend(), [](int ch)
-        {
-            return !std::isspace(ch);
-        }).base(), s.end());
-    };
-
-    auto listFilesInDirectory = [](const std::string & path, std::vector<std::string>& out)
-    {
-        try
-        {
-            for (const auto& entry : std::filesystem::directory_iterator(path))
-            {
-                if (entry.is_regular_file())
-                {
-                    out.push_back(entry.path().string());
-                }
-            }
-
-            return true;
-        }
-        catch (...)
-        {
-            return false;
-        }
-    };
-
     if (level > kMaxNest)
     {
         // std::cout << "sudoers file recursion maximum reached" << std::endl;
@@ -108,7 +77,7 @@ void SudoersProvider::genSudoersFile(const std::string& fileName,
     for (auto& line : lines)
     {
         // sudoers uses EBNF for grammar.
-        trim(line);
+        Utils::trimSpaces(line);
 
         if (line.empty())
         {
@@ -147,7 +116,7 @@ void SudoersProvider::genSudoersFile(const std::string& fileName,
         // Find the rule header.
         auto headerLen = line.find_first_of("\t\v ");
         auto header = line.substr(0, headerLen);
-        trim(header);
+        Utils::trimSpaces(header);
 
         // We frequently check if these are include headers. Do it once here.
         auto isInclude = (header == "#include" || header == "@include");
@@ -162,7 +131,7 @@ void SudoersProvider::genSudoersFile(const std::string& fileName,
         // Find the next field. Instead of skipping the whitespace, we
         // include it, and then trim it.
         auto ruleDetails = (headerLen < line.size()) ? line.substr(headerLen) : "";
-        trim(ruleDetails);
+        Utils::trimSpaces(ruleDetails);
 
         // If an include is _missing_ the target to include, treat it like a comment.
         if (ruleDetails.empty() && (isInclude || isIncludeDir))
@@ -182,22 +151,17 @@ void SudoersProvider::genSudoersFile(const std::string& fileName,
         entry["rule_details"] = ruleDetails;
         results.push_back(std::move(entry));
 
-        auto resolvePath = [&](const std::string & relativePath)
-        {
-            return (std::filesystem::path(fileName).parent_path() / relativePath).string();
-        };
-
         if (isIncludeDir)
         {
             // support both relative and full paths
             if (ruleDetails.at(0) != '/')
             {
-                ruleDetails = resolvePath(ruleDetails);
+                ruleDetails = RealFileSystem::resolvePath(fileName, ruleDetails);
             }
 
-            std::vector<std::string> inc_files;
+            std::vector<std::string> inc_files = Utils::enumerateDir(ruleDetails);
 
-            if (!listFilesInDirectory(ruleDetails, inc_files))
+            if (inc_files.empty())
             {
                 // std::cout << "Could not list includedir: " << ruleDetails << std::endl;
                 continue;
@@ -216,7 +180,7 @@ void SudoersProvider::genSudoersFile(const std::string& fileName,
                     continue;
                 }
 
-                genSudoersFile(incFile, ++level, results);
+                genSudoersFile(incFile, level + 1, results);
             }
         }
 
@@ -225,10 +189,10 @@ void SudoersProvider::genSudoersFile(const std::string& fileName,
             // Relative or full paths
             if (ruleDetails.at(0) != '/')
             {
-                ruleDetails = resolvePath(ruleDetails);
+                ruleDetails = RealFileSystem::resolvePath(fileName, ruleDetails);
             }
 
-            genSudoersFile(ruleDetails, ++level, results);
+            genSudoersFile(ruleDetails, level + 1, results);
         }
     }
 }

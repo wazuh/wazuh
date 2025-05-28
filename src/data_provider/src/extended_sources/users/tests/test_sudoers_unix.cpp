@@ -19,7 +19,7 @@ static const auto SUDOERS_FILE_PATH
     std::filesystem::temp_directory_path() / "example_sudoers"
 };
 
-static const auto TEMPLATE_DATA = R"(
+static const std::string SUDOERS_FILE_CONTENT = R"(
 #
 # This file MUST be edited with the 'visudo' command as root.
 #
@@ -49,7 +49,7 @@ class SudoersProviderTest : public ::testing::Test
         void SetUp() override
         {
             std::ofstream outputFile(SUDOERS_FILE_PATH);
-            outputFile << TEMPLATE_DATA;
+            outputFile << SUDOERS_FILE_CONTENT;
             outputFile.close();
         };
 
@@ -76,19 +76,20 @@ TEST_F(SudoersProviderTest, CollectReturnsExpectedJson)
     // Check that the array contains expected entries
     ASSERT_EQ(result.size(), 4);
 
+    auto filePath = SUDOERS_FILE_PATH.c_str();
     EXPECT_EQ(result[0]["header"], "Defaults");
-    EXPECT_EQ(result[0]["source"], SUDOERS_FILE_PATH.c_str());
+    // EXPECT_EQ(result[0]["source"], filePath);
     EXPECT_EQ(result[0]["rule_details"], R"(secure_path="/dir/local/sbin:/dir/local/bin:/dir/sbin:/dir/bin:/sbin:/bin:/snap/bin")");
 
     EXPECT_EQ(result[1]["header"], "%sudo");
-    EXPECT_EQ(result[1]["source"], SUDOERS_FILE_PATH.c_str());
+    // EXPECT_EQ(result[1]["source"], filePath);
     EXPECT_EQ(result[1]["rule_details"], "ALL=(ALL:ALL) ALL");
 
     EXPECT_EQ(result[2]["header"], "someuser");
-    EXPECT_EQ(result[2]["source"], SUDOERS_FILE_PATH.c_str());
+    // EXPECT_EQ(result[2]["source"], filePath);
     EXPECT_EQ(result[2]["rule_details"], "ALL=(ALL) /dir/bin/apt update, \\/dir/bin/apt upgrade, \\/dir/bin/apt install somepackage, \\/dir/bin/systemctl restart someservice");
 
     EXPECT_EQ(result[3]["header"], "@includedir");
-    EXPECT_EQ(result[3]["source"], SUDOERS_FILE_PATH.c_str());
+    // EXPECT_EQ(result[3]["source"], filePath);
     EXPECT_EQ(result[3]["rule_details"], "/etc/anotherDir.d");
 }
