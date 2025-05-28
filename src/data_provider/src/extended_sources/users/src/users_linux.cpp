@@ -49,13 +49,13 @@ nlohmann::json UsersProvider::collectWithConstraints(const std::set<std::string>
     return collectLocalUsers(usernames, uids);
 }
 
-nlohmann::json UsersProvider::genUserJson(const struct passwd* pwd, const std::string& include_remote)
+nlohmann::json UsersProvider::genUserJson(const struct passwd* pwd, bool include_remote)
 {
     nlohmann::json r;
-    r["uid"] = std::to_string(pwd->pw_uid);
-    r["gid"] = std::to_string(pwd->pw_gid);
-    r["uid_signed"] = std::to_string(static_cast<int32_t>(pwd->pw_uid));
-    r["gid_signed"] = std::to_string(static_cast<int32_t>(pwd->pw_gid));
+    r["uid"] = pwd->pw_uid;
+    r["gid"] = pwd->pw_gid;
+    r["uid_signed"] = static_cast<int32_t>(pwd->pw_uid);
+    r["gid_signed"] = static_cast<int32_t>(pwd->pw_gid);
 
     if (pwd->pw_name != nullptr)
     {
@@ -78,7 +78,7 @@ nlohmann::json UsersProvider::genUserJson(const struct passwd* pwd, const std::s
     }
 
     r["pid_with_namespace"] = "0";
-    r["include_remote"] = include_remote;
+    r["include_remote"] = static_cast<int>(include_remote);
 
     return r;
 }
@@ -122,7 +122,7 @@ nlohmann::json UsersProvider::collectLocalUsers(const std::set<std::string>& use
             continue;
         }
 
-        results.push_back(genUserJson(result, "0"));
+        results.push_back(genUserJson(result, false));
     }
 
     m_sysWrapper->fclose(passwd_file);
@@ -162,7 +162,7 @@ nlohmann::json UsersProvider::collectRemoteUsers(const std::set<std::string>& us
             continue;
         }
 
-        results.push_back(genUserJson(pwd_results, "1"));
+        results.push_back(genUserJson(pwd_results, true));
     }
 
     m_passwdWrapper->endpwent();
