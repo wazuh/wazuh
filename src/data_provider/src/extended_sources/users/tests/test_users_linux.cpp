@@ -76,8 +76,8 @@ TEST(UsersProviderTest, CollectLocalUsers)
 
     ASSERT_EQ(result.size(), static_cast<size_t>(1));
     EXPECT_EQ(result[0]["username"], "testuser");
-    EXPECT_EQ(result[0]["uid"], "1000");
-    EXPECT_EQ(result[0]["gid"], "1000");
+    EXPECT_EQ(result[0]["uid"], std::uint32_t{1000});
+    EXPECT_EQ(result[0]["gid"], std::uint32_t{1000});
     EXPECT_EQ(result[0]["description"], "Test User");
     EXPECT_EQ(result[0]["directory"], "/home/testuser");
     EXPECT_EQ(result[0]["shell"], "/bin/bash");

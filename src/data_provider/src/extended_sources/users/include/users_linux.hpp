@@ -54,9 +54,9 @@ class UsersProvider
     private:
         /// @brief Generates a JSON representation of a user from passwd struct.
         /// @param pwd Pointer to passwd struct representing the user.
-        /// @param include_remote String indicating whether remote users are included.
+        /// @param include_remote Boolean indicating whether remote users are included.
         /// @return JSON object representing the user.
-        nlohmann::json genUserJson(const struct passwd* pwd, const std::string& include_remote);
+        nlohmann::json genUserJson(const struct passwd* pwd, bool include_remote);
 
         /// @brief Collects local users filtered by usernames and UIDs.
         /// @param usernames Set of usernames to filter.
