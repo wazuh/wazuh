@@ -1,6 +1,17 @@
-#include "logged_in_users_unix.hpp"
+/* Copyright (C) 2015, Wazuh Inc.
+ * All rights reserved.
+ *
+ * This program is free software; you can redistribute it
+ * and/or modify it under the terms of the GNU General Public
+ * License (version 2) as published by the FSF - Free Software
+ * Foundation.
+ */
+
 #include "gtest/gtest.h"
 #include "gmock/gmock.h"
+
+#include "logged_in_users_unix.hpp"
+#include "iutmpx_wrapper.hpp"
 
 class MockUtmpxWrapper : public IUtmpxWrapper
 {
@@ -33,7 +44,7 @@ TEST(LoggedInUsersProviderTest, CollectReturnsExpectedJson)
     LoggedInUsersProvider provider(mockWrapper);
     auto result = provider.collect();
 
-    ASSERT_EQ(result.size(), 1);
+    ASSERT_EQ(result.size(), static_cast<size_t>(1));
     EXPECT_EQ(result[0]["user"], "testuser");
     EXPECT_EQ(result[0]["type"], "user");
     EXPECT_EQ(result[0]["tty"], "pts/0");

@@ -7,10 +7,12 @@
  * Foundation.
  */
 
-#include "iwinapi_wrappers.hpp"
-#include "logged_in_users_win.hpp"
 #include "gtest/gtest.h"
 #include "gmock/gmock.h"
+
+#include "logged_in_users_win.hpp"
+#include "iwinapi_wrappers.hpp"
+#include "iusers_utils_wrapper.hpp"
 
 class MockTWSapiWrapper : public ITWSapiWrapper
 {
@@ -38,16 +40,28 @@ class MockWinBaseApiWrapper : public IWinBaseApiWrapper
                                                LPDWORD cchReferencedDomainName,
                                                PSID_NAME_USE peUse), (override));
 };
+
 class MockWinSDDLWrapper : public IWinSDDLWrapper
 {
     public:
         MOCK_METHOD(bool, ConvertSidToStringSidW, (PSID Sid, LPWSTR* StringSid), (override));
 
 };
+
 class MockWinSecurityBaseApiWrapper : public IWinSecurityBaseApiWrapper
 {
     public:
         MOCK_METHOD(bool, IsValidSid, (PSID pSid), (override));
+};
+
+class MockUsersHelper : public IUsersHelper
+{
+    public:
+        MOCK_METHOD(std::string, getUserShell, (const std::string& sid), (override));
+        MOCK_METHOD(std::vector<User>, processLocalAccounts, (std::set<std::string>& processed_sids), (override));
+        MOCK_METHOD(std::vector<User>, processRoamingProfiles, (std::set<std::string>& processed_sids), (override));
+        MOCK_METHOD(std::unique_ptr<BYTE[]>, getSidFromAccountName, (const std::wstring& accountNameInput), (override));
+        MOCK_METHOD(std::string, psidToString, (PSID sid), (override));
 };
 
 
@@ -62,15 +76,16 @@ TEST(LoggedInUsersWindowsProviderTest, CollectReturnsEmpty)
     auto mockedWinBaseWrapper = std::make_shared<MockWinBaseApiWrapper>();
     auto mockedWinSDDLWrapper = std::make_shared<MockWinSDDLWrapper>();
     auto mockedSecurityBaseWrapper = std::make_shared<MockWinSecurityBaseApiWrapper>();
+    auto mockedUsersHelper = std::make_shared<MockUsersHelper>();
 
     EXPECT_CALL(*mockTWSapiWrapper, WTSEnumerateSessionsW(_, _, _, _, _)).WillOnce(Return(false));
 
     LoggedInUsersProvider provider(mockTWSapiWrapper, mockedWinBaseWrapper, mockedWinSDDLWrapper,
-                                   mockedSecurityBaseWrapper);
+                                   mockedSecurityBaseWrapper, mockedUsersHelper);
 
     auto result = provider.collect();
 
-    ASSERT_EQ(result.size(), 0);
+    ASSERT_EQ(result.size(), static_cast<size_t>(0));
 }
 
 TEST(LoggedInUsersWindowsProviderTest, CollectWithAF_UNSPECAddress)
@@ -79,6 +94,7 @@ TEST(LoggedInUsersWindowsProviderTest, CollectWithAF_UNSPECAddress)
     auto mockedWinBaseWrapper = std::make_shared<MockWinBaseApiWrapper>();
     auto mockedWinSDDLWrapper = std::make_shared<MockWinSDDLWrapper>();
     auto mockedSecurityBaseWrapper = std::make_shared<MockWinSecurityBaseApiWrapper>();
+    auto mockedUsersHelper = std::make_shared<MockUsersHelper>();
 
     WTS_SESSION_INFOW sessionInfo[1];
     sessionInfo[0].SessionId = 1;
@@ -125,44 +141,17 @@ TEST(LoggedInUsersWindowsProviderTest, CollectWithAF_UNSPECAddress)
 
     EXPECT_CALL(*mockTWSapiWrapper, WTSFreeMemory(_)).Times(4);
 
-    EXPECT_CALL(*mockedWinBaseWrapper, LookupAccountNameW(nullptr, _, nullptr, _, nullptr, _, _))
-    .WillOnce(DoAll(
-                  SetArgPointee<3>(100),
-                  SetArgPointee<5>(20),
-                  SetArgPointee<6>(SidTypeUser),
-                  Return(1)
-              ));
+    EXPECT_CALL(*mockedUsersHelper, getSidFromAccountName(_))
+    .WillOnce(Return(testing::ByMove(std::move(sidBuffer))));
 
-    EXPECT_CALL(*mockedWinBaseWrapper, LookupAccountNameW(nullptr, _, ::testing::NotNull(), _, ::testing::NotNull(), _, _))
-    .WillOnce(DoAll(
-                  [&sidBuffer](LPCWSTR, LPCWSTR, PSID sid, LPDWORD sidSize, LPWSTR, LPDWORD, PSID_NAME_USE)
-    {
-        if (sid != nullptr)
-            memcpy(sid, sidBuffer.get(), *sidSize);
-    },
-    Return(1)
-              ));
-
-    EXPECT_CALL(*mockedSecurityBaseWrapper, IsValidSid(_))
-    .WillRepeatedly(Return(TRUE));
-
-    EXPECT_CALL(*mockedWinSDDLWrapper, ConvertSidToStringSidW(_, _))
-    .WillOnce(DoAll(
-                  [&sidString](PSID, LPWSTR * sidOut)
-    {
-        size_t len = sidString.length() + 1;
-        *sidOut = static_cast<LPWSTR>(malloc(len * sizeof(wchar_t)));
-        std::wstring wideSid(sidString.begin(), sidString.end());
-        wcscpy_s(*sidOut, len, wideSid.c_str());
-    },
-    Return(1)
-              ));
+    EXPECT_CALL(*mockedUsersHelper, psidToString(_))
+    .WillOnce(Return(sidString));
 
     LoggedInUsersProvider provider(mockTWSapiWrapper, mockedWinBaseWrapper, mockedWinSDDLWrapper,
-                                   mockedSecurityBaseWrapper);
+                                   mockedSecurityBaseWrapper, mockedUsersHelper);
 
     auto result = provider.collect();
-    ASSERT_EQ(result.size(), 1);
+    ASSERT_EQ(result.size(), static_cast<size_t>(1));
     EXPECT_EQ(result[0]["user"], "LocalUser");
     EXPECT_EQ(result[0]["tty"], "Console");
     EXPECT_EQ(result[0]["host"], "LOCAL");
@@ -176,6 +165,7 @@ TEST(LoggedInUsersWindowsProviderTest, CollectWithFailedSessionInfoQuery)
     auto mockedWinBaseWrapper = std::make_shared<MockWinBaseApiWrapper>();
     auto mockedWinSDDLWrapper = std::make_shared<MockWinSDDLWrapper>();
     auto mockedSecurityBaseWrapper = std::make_shared<MockWinSecurityBaseApiWrapper>();
+    auto mockedUsersHelper = std::make_shared<MockUsersHelper>();
 
     WTS_SESSION_INFOW sessionInfo[1];
     sessionInfo[0].SessionId = 1;
@@ -195,12 +185,12 @@ TEST(LoggedInUsersWindowsProviderTest, CollectWithFailedSessionInfoQuery)
     EXPECT_CALL(*mockTWSapiWrapper, WTSFreeMemory(_)).Times(1);
 
     LoggedInUsersProvider provider(mockTWSapiWrapper, mockedWinBaseWrapper, mockedWinSDDLWrapper,
-                                   mockedSecurityBaseWrapper);
+                                   mockedSecurityBaseWrapper, mockedUsersHelper);
 
     auto result = provider.collect();
 
     // should have no entries due to failed WTSQuerySessionInformationW
-    ASSERT_EQ(result.size(), 0);
+    ASSERT_EQ(result.size(), static_cast<size_t>(0));
 }
 
 TEST(LoggedInUsersWindowsProviderTest, CollectWithOneValidSession)
@@ -209,6 +199,7 @@ TEST(LoggedInUsersWindowsProviderTest, CollectWithOneValidSession)
     auto mockedWinBaseWrapper = std::make_shared<MockWinBaseApiWrapper>();
     auto mockedWinSDDLWrapper = std::make_shared<MockWinSDDLWrapper>();
     auto mockedSecurityBaseWrapper = std::make_shared<MockWinSecurityBaseApiWrapper>();
+    auto mockedUsersHelper = std::make_shared<MockUsersHelper>();
 
     WTS_SESSION_INFOW sessionInfo[1];
     sessionInfo[0].SessionId = 1;
@@ -254,45 +245,18 @@ TEST(LoggedInUsersWindowsProviderTest, CollectWithOneValidSession)
 
     EXPECT_CALL(*mockTWSapiWrapper, WTSFreeMemory(_)).Times(3);
 
-    EXPECT_CALL(*mockedWinBaseWrapper, LookupAccountNameW(nullptr, _, nullptr, _, nullptr, _, _))
-    .WillOnce(DoAll(
-                  SetArgPointee<3>(100),
-                  SetArgPointee<5>(20),
-                  SetArgPointee<6>(SidTypeUser),
-                  Return(1)
-              ));
+    EXPECT_CALL(*mockedUsersHelper, getSidFromAccountName(_))
+    .WillOnce(Return(testing::ByMove(std::move(sidBuffer))));
 
-    EXPECT_CALL(*mockedWinBaseWrapper, LookupAccountNameW(nullptr, _, ::testing::NotNull(), _, ::testing::NotNull(), _, _))
-    .WillOnce(DoAll(
-                  [&sidBuffer](LPCWSTR, LPCWSTR, PSID sid, LPDWORD sidSize, LPWSTR, LPDWORD, PSID_NAME_USE)
-    {
-        if (sid != nullptr)
-            memcpy(sid, sidBuffer.get(), *sidSize);
-    },
-    Return(1)
-              ));
-
-    EXPECT_CALL(*mockedSecurityBaseWrapper, IsValidSid(_))
-    .WillRepeatedly(Return(TRUE));
-
-    EXPECT_CALL(*mockedWinSDDLWrapper, ConvertSidToStringSidW(_, _))
-    .WillOnce(DoAll(
-                  [&sidString](PSID, LPWSTR * sidOut)
-    {
-        size_t len = sidString.length() + 1;
-        *sidOut = static_cast<LPWSTR>(malloc(len * sizeof(wchar_t)));
-        std::wstring wideSid(sidString.begin(), sidString.end());
-        wcscpy_s(*sidOut, len, wideSid.c_str());
-    },
-    Return(1)
-              ));
+    EXPECT_CALL(*mockedUsersHelper, psidToString(_))
+    .WillOnce(Return(sidString));
 
     LoggedInUsersProvider provider(mockTWSapiWrapper, mockedWinBaseWrapper, mockedWinSDDLWrapper,
-                                   mockedSecurityBaseWrapper);
+                                   mockedSecurityBaseWrapper, mockedUsersHelper);
 
     auto result = provider.collect();
 
-    ASSERT_EQ(result.size(), 1);
+    ASSERT_EQ(result.size(), static_cast<size_t>(1));
     EXPECT_EQ(result[0]["user"], "TestUser");
     EXPECT_EQ(result[0]["tty"], "Console");
     EXPECT_EQ(result[0]["host"], "192.168.1.100");
