@@ -29,15 +29,11 @@
                         }
                     }
                 },
-                "observer": {
-                    "ingress": {
-                        "interface": {
-                            "mtu": 1500,
-                            "name": "eth1",
-                            "state": "up",
-                            "type": "ethernet"
-                        }
-                    }
+                "interface": {
+                    "mtu": 1500,
+                    "name": "eth1",
+                    "state": "up",
+                    "type": "ethernet"
                 },
                 "wazuh": {
                     "schema": {
@@ -68,15 +64,11 @@
                         }
                     }
                 },
-                "observer": {
-                    "ingress": {
-                        "interface": {
-                            "mtu": 1500,
-                            "name": "eth0",
-                            "state": "up",
-                            "type": "ethernet"
-                        }
-                    }
+                "interface": {
+                    "mtu": 1500,
+                    "name": "eth0",
+                    "state": "up",
+                    "type": "ethernet"
                 },
                 "wazuh": {
                     "schema": {

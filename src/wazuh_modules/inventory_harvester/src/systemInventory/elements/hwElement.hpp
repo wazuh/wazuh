@@ -79,7 +79,7 @@ public:
         element.data.host.memory.used = (usedMem > 0) ? usedMem : 0;
 
         // Ex: AA320
-        element.data.observer.serial_number = boardId;
+        element.data.host.serial_number = boardId;
 
         auto& instancePolicyManager = PolicyHarvesterManager::instance();
         element.data.wazuh.cluster.name = instancePolicyManager.getClusterName();

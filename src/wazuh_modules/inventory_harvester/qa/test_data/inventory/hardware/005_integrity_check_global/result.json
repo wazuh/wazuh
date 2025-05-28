@@ -15,12 +15,10 @@
                         "speed": 3800
                     },
                     "memory": {
-                         "free": 1048576,
+                        "free": 1048576,
                         "total": 2097152,
                         "used": 1048576
-                    }
-                },
-                "observer": {
+                    },
                     "serial_number": "AAA111BBB222"
                 },
                 "wazuh": {
@@ -42,12 +40,10 @@
                         "speed": 3800
                     },
                     "memory": {
-                         "free": 1048576,
+                        "free": 1048576,
                         "total": 2097152,
                         "used": 1048576
-                    }
-                },
-                "observer": {
+                    },
                     "serial_number": "ABC123XYZ789"
                 },
                 "wazuh": {

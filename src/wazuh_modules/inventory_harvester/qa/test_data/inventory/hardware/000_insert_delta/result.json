@@ -18,9 +18,7 @@
                         "free": 1048576,
                         "total": 2097152,
                         "used": 1048576
-                    }
-                },
-                "observer": {
+                    },
                     "serial_number": "ABC123XYZ789"
                 },
                 "wazuh": {
