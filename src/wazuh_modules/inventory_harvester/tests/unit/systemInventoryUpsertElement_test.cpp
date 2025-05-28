@@ -320,15 +320,14 @@ TEST_F(SystemInventoryUpsertElement, emptyBoardId_Hw)
     EXPECT_CALL(*context, cpuCores()).WillOnce(testing::Return(2));
     EXPECT_CALL(*context, cpuName()).WillOnce(testing::Return("cpuName"));
     EXPECT_CALL(*context, cpuFrequency()).WillOnce(testing::Return(2497));
-    EXPECT_CALL(*context, freeMem()).WillOnce(testing::Return(0));
-    EXPECT_CALL(*context, totalMem()).WillOnce(testing::Return(0));
-    EXPECT_CALL(*context, usedMem()).WillOnce(testing::Return(0));
+    EXPECT_CALL(*context, freeMem()).WillRepeatedly(testing::Return(50));
+    EXPECT_CALL(*context, totalMem()).WillRepeatedly(testing::Return(100));
 
     EXPECT_NO_THROW(upsertElement->handleRequest(context));
 
     EXPECT_EQ(
         context->m_serializedElement,
-        R"({"id":"001_unknown","operation":"INSERTED","data":{"host":{"cpu":{"cores":2,"name":"cpuName","speed":2497},"memory":{"free":0,"total":0,"used":0}},"agent":{"id":"001","name":"agentName","host":{"ip":"agentIp"},"version":"agentVersion"},"observer":{"serial_number":"unknown"},"wazuh":{"cluster":{"name":"clusterName"},"schema":{"version":"1.0"}}}})");
+        R"({"id":"001_unknown","operation":"INSERTED","data":{"host":{"cpu":{"cores":2,"name":"cpuName","speed":2497},"memory":{"free":50,"total":100,"used":50}},"agent":{"id":"001","name":"agentName","host":{"ip":"agentIp"},"version":"agentVersion"},"observer":{"serial_number":"unknown"},"wazuh":{"cluster":{"name":"clusterName"},"schema":{"version":"1.0"}}}})");
 }
 
 TEST_F(SystemInventoryUpsertElement, validAgentID_Hw)
@@ -345,15 +344,14 @@ TEST_F(SystemInventoryUpsertElement, validAgentID_Hw)
     EXPECT_CALL(*context, cpuCores()).WillOnce(testing::Return(2));
     EXPECT_CALL(*context, cpuName()).WillOnce(testing::Return("cpuName"));
     EXPECT_CALL(*context, cpuFrequency()).WillOnce(testing::Return(2497));
-    EXPECT_CALL(*context, freeMem()).WillOnce(testing::Return(0));
-    EXPECT_CALL(*context, totalMem()).WillOnce(testing::Return(0));
-    EXPECT_CALL(*context, usedMem()).WillOnce(testing::Return(0));
+    EXPECT_CALL(*context, freeMem()).WillRepeatedly(testing::Return(50));
+    EXPECT_CALL(*context, totalMem()).WillRepeatedly(testing::Return(100));
 
     EXPECT_NO_THROW(upsertElement->handleRequest(context));
 
     EXPECT_EQ(
         context->m_serializedElement,
-        R"({"id":"001_boardInfo","operation":"INSERTED","data":{"host":{"cpu":{"cores":2,"name":"cpuName","speed":2497},"memory":{"free":0,"total":0,"used":0}},"agent":{"id":"001","name":"agentName","host":{"ip":"agentIp"},"version":"agentVersion"},"observer":{"serial_number":"boardInfo"},"wazuh":{"cluster":{"name":"clusterName"},"schema":{"version":"1.0"}}}})");
+        R"({"id":"001_boardInfo","operation":"INSERTED","data":{"host":{"cpu":{"cores":2,"name":"cpuName","speed":2497},"memory":{"free":50,"total":100,"used":50}},"agent":{"id":"001","name":"agentName","host":{"ip":"agentIp"},"version":"agentVersion"},"observer":{"serial_number":"boardInfo"},"wazuh":{"cluster":{"name":"clusterName"},"schema":{"version":"1.0"}}}})");
 }
 
 /*
