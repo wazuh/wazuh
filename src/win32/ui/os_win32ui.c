@@ -373,7 +373,9 @@ BOOL CALLBACK DlgProc(HWND hwnd, UINT Message, WPARAM wParam,
                     }
                     break;
                 case UI_MENU_MANAGE_RELOAD:
-                   local_reload(hwnd);
+                    service_reload(hwnd);
+                    break;
+            }
             break;
 
         case WM_CLOSE:
@@ -382,9 +384,8 @@ BOOL CALLBACK DlgProc(HWND hwnd, UINT Message, WPARAM wParam,
 
         default:
             return FALSE;
-        }
-    return TRUE;
     }
+    return TRUE;
 }
 
 int WINAPI WinMain(HINSTANCE hInstance, __attribute__((unused))HINSTANCE hPrevInstance,
