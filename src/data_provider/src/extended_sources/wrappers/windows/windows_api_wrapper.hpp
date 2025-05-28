@@ -36,6 +36,24 @@ class WindowsApiWrapper : public IWindowsApiWrapper
                                entriesread, totalentries, resume_handle);
         }
 
+        /// @brief Wrapper for NetLocalGroupEnum API.
+        /// @param servername Name of the server or NULL for local.
+        /// @param level Information level (0, 1, etc.).
+        /// @param bufptr Pointer to the buffer that receives the data.
+        /// @param prefmaxlen Preferred maximum length of the returned data.
+        /// @param entriesread Pointer to the number of entries read.
+        /// @param totalentries Pointer to the total number of entries available.
+        /// @param resume_handle Handle for continuing an existing search.
+        /// @return Windows API status code.
+        DWORD NetLocalGroupEnumWrapper(LPCWSTR servername, DWORD level,
+                                       LPBYTE* bufptr, DWORD prefmaxlen,
+                                       LPDWORD entriesread, LPDWORD totalentries,
+                                       LPDWORD resume_handle) override
+        {
+            return NetLocalGroupEnum(servername, level, bufptr, prefmaxlen,
+                                     entriesread, totalentries, resume_handle);
+        }
+
         /// @brief Wrapper for NetUserGetInfo API.
         /// @param servername Name of the server.
         /// @param username Name of the user.
