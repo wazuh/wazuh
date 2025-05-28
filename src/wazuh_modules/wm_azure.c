@@ -613,8 +613,6 @@ static void wm_integrations_parse_output(char * const output) {
                 mterror(WM_AZURE_LOGTAG, "%s", log_payload);
             } else if (!strcmp(log_level, "DEBUG")) {
                 mtdebug1(WM_AZURE_LOGTAG, "%s", log_payload);
-            } else if (!strcmp(log_level, "DEBUG2")) {
-                mtdebug2(WM_AZURE_LOGTAG, "%s", log_payload);
             }
         }
 
