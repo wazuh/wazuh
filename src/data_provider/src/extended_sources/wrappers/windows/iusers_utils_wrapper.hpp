@@ -13,6 +13,7 @@
 #include <windows.h>
 #include <limits>
 #include <set>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -42,6 +43,11 @@ class IUsersHelper
         /// Destructor
         virtual ~IUsersHelper() = default;
 
+        /// @brief Converts a UTF-8 std::string to a wide string (wstring).
+        /// @param src Input UTF-8 string.
+        /// @return Converted wide string.
+        virtual std::wstring stringToWstring(const std::string& src) = 0;
+
         /// @brief Retrieves the shell path for the user identified by the SID.
         /// @param sid String representation of the user's SID.
         /// @return The shell executable path.
@@ -66,4 +72,9 @@ class IUsersHelper
         /// @param sid Pointer to the SID.
         /// @return String representation of the SID.
         virtual std::string psidToString(PSID sid) = 0;
+
+        /// @brief Extracts the Relative Identifier (RID) from a SID.
+        /// @param sid Pointer to the SID.
+        /// @return RID as a DWORD.
+        virtual DWORD getRidFromSid(PSID sid) = 0;
 };

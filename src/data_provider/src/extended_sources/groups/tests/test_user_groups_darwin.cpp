@@ -27,7 +27,7 @@ class MockPasswdWrapper : public IPasswdWrapperDarwin
 
 class MockODUtilsWrapper : public IODUtilsWrapper
 {
-    using StringBoolMap = std::map<std::string, bool>;
+        using StringBoolMap = std::map<std::string, bool>;
 
     public:
         MOCK_METHOD(void,
@@ -57,17 +57,18 @@ TEST(UserGroupsProviderTest, CollectWithUIDReturnsExpectedGroups)
     const char* username = "testuser";
 
     EXPECT_CALL(*mockPasswd, getpwuid(test_uid))
-        .WillOnce(Return(createFakePasswd(username, test_uid, test_gid)));
+    .WillOnce(Return(createFakePasswd(username, test_uid, test_gid)));
 
     EXPECT_CALL(*mockGroup, getgroupcount(::testing::StrEq("testuser"), test_gid))
-        .WillOnce(Return(2));
+    .WillOnce(Return(2));
 
     EXPECT_CALL(*mockGroup, getgrouplist(::testing::StrEq("testuser"), test_gid, _, _))
-        .WillOnce(Invoke([](const std::string&, gid_t, gid_t* groups, int* /*ngroups*/) {
-            groups[0] = 2000;
-            groups[1] = 3000;
-            return 0;
-        }));
+    .WillOnce(Invoke([](const std::string&, gid_t, gid_t * groups, int* /*ngroups*/)
+    {
+        groups[0] = 2000;
+        groups[1] = 3000;
+        return 0;
+    }));
 
     std::set<uid_t> uids = {test_uid};
     nlohmann::json result = provider.collect(uids);
@@ -92,21 +93,23 @@ TEST(UserGroupsProviderTest, CollectWithoutUID_ReturnsExpectedGroups)
     std::map<std::string, bool> fakeUsers = {{username, true}};
 
     EXPECT_CALL(*mockODWrapper, genEntries("dsRecTypeStandard:Users", nullptr, _))
-        .WillOnce(Invoke([&fakeUsers](const std::string&, const void*, std::map<std::string, bool>& output) {
-            output = fakeUsers;
-        }));
+    .WillOnce(Invoke([&fakeUsers](const std::string&, const void*, std::map<std::string, bool>& output)
+    {
+        output = fakeUsers;
+    }));
 
     EXPECT_CALL(*mockPasswd, getpwnam(::testing::StrEq(username)))
-        .WillOnce(Return(createFakePasswd(username, test_uid, test_gid)));
+    .WillOnce(Return(createFakePasswd(username, test_uid, test_gid)));
 
     EXPECT_CALL(*mockGroup, getgroupcount(::testing::StrEq(username), test_gid))
-        .WillOnce(Return(1));
+    .WillOnce(Return(1));
 
     EXPECT_CALL(*mockGroup, getgrouplist(::testing::StrEq(username), test_gid, _, _))
-        .WillOnce(Invoke([](const std::string&, gid_t, gid_t* groups, int* /*ngroups*/) {
-            groups[0] = 3001;
-            return 0;
-        }));
+    .WillOnce(Invoke([](const std::string&, gid_t, gid_t * groups, int* /*ngroups*/)
+    {
+        groups[0] = 3001;
+        return 0;
+    }));
 
     std::set<uid_t> empty_uids;
     nlohmann::json result = provider.collect(empty_uids);

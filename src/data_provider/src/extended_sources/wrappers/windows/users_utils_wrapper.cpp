@@ -20,23 +20,6 @@ UsersHelper::UsersHelper(
 UsersHelper::UsersHelper()
     : m_winapiWrapper(std::make_shared<WindowsApiWrapper>()) {}
 
-std::wstring UsersHelper::stringToWstring(const std::string& src)
-{
-    std::wstring utf16le_str;
-
-    try
-    {
-        std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
-        utf16le_str = converter.from_bytes(src);
-    }
-    catch (const std::exception& /* e */)
-    {
-        // std::cout << "Failed to convert string to wstring " << src;
-    }
-
-    return utf16le_str;
-}
-
 std::string UsersHelper::getUserHomeDir(const std::string& sid)
 {
     std::wstring profile_key_path = kRegProfileKey;
@@ -250,12 +233,21 @@ std::optional<std::vector<std::string>> UsersHelper::getRoamingProfileSids()
     return subkeys_names;
 }
 
-DWORD UsersHelper::getRidFromSid(PSID sid)
+std::wstring UsersHelper::stringToWstring(const std::string& src)
 {
-    BYTE* count_ptr = m_winapiWrapper->GetSidSubAuthorityCountWrapper(sid);
-    DWORD index_of_rid = static_cast<DWORD>(*count_ptr - 1);
-    DWORD* rid_ptr = m_winapiWrapper->GetSidSubAuthorityWrapper(sid, index_of_rid);
-    return *rid_ptr;
+    std::wstring utf16le_str;
+
+    try
+    {
+        std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
+        utf16le_str = converter.from_bytes(src);
+    }
+    catch (const std::exception& /* e */)
+    {
+        // std::cout << "Failed to convert string to wstring " << src;
+    }
+
+    return utf16le_str;
 }
 
 std::string UsersHelper::getUserShell(const std::string& sid)
@@ -524,4 +516,12 @@ std::string UsersHelper::psidToString(PSID sid)
     }
 
     return Utils::EncodingWindowsHelper::wstringToStringUTF8(sidOut);
+}
+
+DWORD UsersHelper::getRidFromSid(PSID sid)
+{
+    BYTE* count_ptr = m_winapiWrapper->GetSidSubAuthorityCountWrapper(sid);
+    DWORD index_of_rid = static_cast<DWORD>(*count_ptr - 1);
+    DWORD* rid_ptr = m_winapiWrapper->GetSidSubAuthorityWrapper(sid, index_of_rid);
+    return *rid_ptr;
 }

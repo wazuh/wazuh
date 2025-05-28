@@ -29,6 +29,7 @@ nlohmann::json UserGroupsProvider::collect(const std::set<uid_t>& uids)
         for (const auto& uid : uids)
         {
             struct passwd* pwd = m_passwdWrapper->getpwuid(uid);
+
             if (pwd != nullptr)
             {
                 UserInfo user {pwd->pw_name, pwd->pw_uid, pwd->pw_gid};
@@ -36,17 +37,23 @@ nlohmann::json UserGroupsProvider::collect(const std::set<uid_t>& uids)
             }
         }
     }
-    else {
+    else
+    {
         std::map<std::string, bool> usernames;
         m_odWrapper->genEntries("dsRecTypeStandard:Users", nullptr, usernames);
-        for (const auto& username : usernames) {
+
+        for (const auto& username : usernames)
+        {
             struct passwd* pwd = m_passwdWrapper->getpwnam(username.first.c_str());
-            if (pwd != nullptr) {
+
+            if (pwd != nullptr)
+            {
                 UserInfo user {pwd->pw_name, pwd->pw_uid, pwd->pw_gid};
                 getGroupsForUser(results, user);
             }
         }
     }
+
     return results;
 }
 
@@ -54,6 +61,7 @@ void UserGroupsProvider::getGroupsForUser(nlohmann::json& results, const UserInf
 {
     int ngroups = m_groupWrapper->getgroupcount(user.name, user.gid);
     gid_t* groups = new gid_t[ngroups];
+
     if (m_groupWrapper->getgrouplist(user.name, user.gid, groups, &ngroups) < 0)
     {
         std::cerr << "Could not get users group list" << std::endl;
@@ -62,6 +70,7 @@ void UserGroupsProvider::getGroupsForUser(nlohmann::json& results, const UserInf
     {
         addGroupsToResults(results, user.uid, groups, ngroups);
     }
+
     delete[] groups;
 }
 

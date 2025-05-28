@@ -142,6 +142,9 @@ using user_info_4_ptr = NetApiObjectPtr<USER_INFO_4>;
 /// @brief Alias for NetApiObjectPtr managing LOCALGROUP_USERS_INFO_0 pointers.
 using localgroup_users_info_0_ptr = NetApiObjectPtr<LOCALGROUP_USERS_INFO_0>;
 
+/// @brief Alias for NetApiObjectPtr managing LOCALGROUP_INFO_1 pointers.
+using localgroup_info_1_ptr = NetApiObjectPtr<LOCALGROUP_INFO_1>;
+
 const std::wstring kRegProfileKey =
     L"SOFTWARE\\Microsoft\\Windows "
     "NT\\CurrentVersion\\ProfileList";
@@ -180,11 +183,6 @@ const std::set<int> kRegistryStringTypes =
 class UsersHelper : public IUsersHelper
 {
     private:
-        /// @brief Converts a UTF-8 std::string to a wide string (wstring).
-        /// @param src Input UTF-8 string.
-        /// @return Converted wide string.
-        std::wstring stringToWstring(const std::string& src);
-
         /// @brief Retrieves the home directory path for a given SID string.
         /// @param sid String representation of the user SID.
         /// @return Path to the user's home directory.
@@ -198,11 +196,6 @@ class UsersHelper : public IUsersHelper
         /// @brief Retrieves SIDs of roaming profiles available on the system.
         /// @return Optional vector of SID strings for roaming profiles.
         std::optional<std::vector<std::string>> getRoamingProfileSids();
-
-        /// @brief Extracts the Relative Identifier (RID) from a SID.
-        /// @param sid Pointer to the SID.
-        /// @return RID as a DWORD.
-        DWORD getRidFromSid(PSID sid);
 
         /// @brief Windows API wrapper instance used for system calls.
         std::shared_ptr<IWindowsApiWrapper> m_winapiWrapper;
@@ -229,6 +222,11 @@ class UsersHelper : public IUsersHelper
         /// @brief Default constructor.
         UsersHelper();
 
+        /// @brief Converts a UTF-8 std::string to a wide string (wstring).
+        /// @param src Input UTF-8 string.
+        /// @return Converted wide string.
+        std::wstring stringToWstring(const std::string& src);
+
         /// @brief Retrieves the shell path for the user identified by the SID.
         /// @param sid String representation of the user's SID.
         /// @return The shell executable path.
@@ -253,4 +251,9 @@ class UsersHelper : public IUsersHelper
         /// @param sid Pointer to the SID.
         /// @return String representation of the SID.
         std::string psidToString(PSID sid);
+
+        /// @brief Extracts the Relative Identifier (RID) from a SID.
+        /// @param sid Pointer to the SID.
+        /// @return RID as a DWORD.
+        DWORD getRidFromSid(PSID sid);
 };
