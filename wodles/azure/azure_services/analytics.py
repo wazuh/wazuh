@@ -205,11 +205,11 @@ def get_log_analytics_events(
                         query=query,
                     )
                 else:
-                    logging.error('Error: No TimeGenerated field was found')
+                    logging.error('No TimeGenerated field was found')
 
         except KeyError as e:
             logging.error(
-                f'Error: It was not possible to obtain the columns and rows from the event: "{e}".'
+                f'It was not possible to obtain the columns and rows from the event: "{e}".'
             )
     else:
         logging.error(f"Error with Log Analytics request: {response.json()}")
