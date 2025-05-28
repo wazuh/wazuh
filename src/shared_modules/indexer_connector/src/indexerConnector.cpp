@@ -185,14 +185,7 @@ static void builderBulkDelete(std::string& bulkData, std::string_view id, std::s
 
 static void builderDeleteByQuery(nlohmann::json& bulkData, const std::string& agentId)
 {
-    //bulkData["query"]["bool"]["filter"]["terms"]["agent.id"].push_back(agentId);
-    bulkData["query"]["bool"]["should"].push_back({{"term", {{"agent.id", agentId}}}});
-
-}
-
-static void builderDeleteByQueryDocumentId(nlohmann::json& bulkData, const std::string& docIdPrefix)
-{
-    bulkData["query"]["bool"]["should"].push_back({{"prefix", {{"wazuh.internal.id", docIdPrefix}}}});
+    bulkData["query"]["bool"]["filter"]["terms"]["agent.id"].push_back(agentId);
 }
 
 static void builderBulkIndex(std::string& bulkData, std::string_view id, std::string_view index, std::string_view data)
@@ -617,14 +610,14 @@ IndexerConnector::IndexerConnector(
 
                 if (operation.compare("DELETED") == 0)
                 {
-                    logDebug2(IC_NAME, "Added document for deletion with id: %s.", id.c_str());
-                    if (!noIndex)
-                    {
-                        builderDeleteByQueryDocumentId(queryData, id);
-                    }
-
                     for (const auto& [key, _] : m_db->seek(id))
                     {
+                        logDebug2(IC_NAME, "Added document for deletion with id: %s.", key.c_str());
+                        if (!noIndex)
+                        {
+                            builderBulkDelete(bulkData, key, m_indexName);
+                        }
+
                         m_db->delete_(key);
                     }
                 }
