@@ -3,6 +3,44 @@ All notable changes to this project will be documented in this file.
 
 ## [v4.13.0]
 
+### Manager
+
+#### Changed
+
+- Separated control messages from the connection handling in remoted. ([29153](https://github.com/wazuh/wazuh/pull/29153))
+
+### Agent
+
+#### Added
+
+- Added SCA support for Oracle Linux 10. ([#29139](https://github.com/wazuh/wazuh/pull/29139))
+
+#### Fixed
+
+- Fixed download Azure's blob race condition. ([29317](https://github.com/wazuh/wazuh/pull/29317))
+- Fixed FIM reports false files. ([#28962](https://github.com/wazuh/wazuh/pull/28962))
+- Fixed IPv6 address format reported by WindowsHelper. ([#29502](https://github.com/wazuh/wazuh/pull/29502))
+- Fixed hidden port detection and netstat availability handling. ([#29561](https://github.com/wazuh/wazuh/pull/29561))
+- Replaced `select()` with `sleep()` in Logcollector to prevent errors during Docker deployment. ([#29905](https://github.com/wazuh/wazuh/pull/29905))
+
+#### Changed
+
+- Standarized different services timeouts. ([#29443](https://github.com/wazuh/wazuh/pull/29443))
+
+### RESTful API
+
+#### Fixed
+
+- Fixed false positive in configuration uploading. ([#28962](https://github.com/wazuh/wazuh/pull/28962))
+- Fixed sorting by version in agent list endpoint. ([#29166](https://github.com/wazuh/wazuh/pull/29166))
+
+### Other
+
+#### Changed
+- Upgraded Python embedded interpreter to 3.10.16. ([#28646](https://github.com/wazuh/wazuh/pull/28646))
+- Upgraded h11 to 0.16.0 and httpcore to 1.0.9. ([#29735](https://github.com/wazuh/wazuh/pull/29735))
+- Removed unused Python Azure dependencies. ([#28564](https://github.com/wazuh/wazuh/pull/28564))
+
 
 ## [v4.12.2]
 
