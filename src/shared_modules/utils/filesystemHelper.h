@@ -25,6 +25,7 @@
 #include <algorithm>
 #include <array>
 #include "stringHelper.h"
+#include "file_op.h"
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-function"
@@ -34,18 +35,18 @@ namespace Utils
     static bool existsDir(const std::string& path)
     {
         struct stat info {};
-        return !stat(path.c_str(), &info) && (info.st_mode & S_IFDIR);
+        return !w_stat(path.c_str(), &info) && (info.st_mode & S_IFDIR);
     }
     static bool existsRegular(const std::string& path)
     {
         struct stat info {};
-        return !stat(path.c_str(), &info) && (info.st_mode & S_IFREG);
+        return !w_stat(path.c_str(), &info) && (info.st_mode & S_IFREG);
     }
 #ifndef WIN32
     static bool existsSocket(const std::string& path)
     {
         struct stat info {};
-        return !stat(path.c_str(), &info) && ((info.st_mode & S_IFMT) == S_IFSOCK);
+        return !w_stat(path.c_str(), &info) && ((info.st_mode & S_IFMT) == S_IFSOCK);
     }
 #endif
     struct DirSmartDeleter

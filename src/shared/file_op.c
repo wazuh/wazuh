@@ -397,17 +397,12 @@ int isVista;
 
 const char *__local_name = "unset";
 
-#define REJECT_NETWORK_PATH(retval)                  \
-    do {                                             \
-        errno = EINVAL;                              \
-        SetLastError(ERROR_INVALID_NAME);            \
-        return (retval);                             \
-    } while (0)
-
 int waccess(const char *path, int mode) {
+#ifdef WIN32
     if (is_network_path(path)) {
         REJECT_NETWORK_PATH(-1);
     }
+#endif
     return access(path, mode);
 }
 
@@ -423,7 +418,6 @@ HANDLE wCreateFile(LPCSTR  lpFileName,
     if (is_network_path(lpFileName)) {
         REJECT_NETWORK_PATH(INVALID_HANDLE_VALUE);
     }
-
     return CreateFile(lpFileName,
                        dwDesiredAccess,
                        dwShareMode,
@@ -435,17 +429,21 @@ HANDLE wCreateFile(LPCSTR  lpFileName,
 #endif
 
 DIR * wopendir(const char *name) {
+#ifdef WIN32
     if (is_network_path(name)) {
         REJECT_NETWORK_PATH(NULL);
     }
+#endif
     return opendir(name);
 }
 
-int wstat(const char *restrict pathname,
-           struct stat *restrict statbuf) {
+int w_stat(const char * pathname,
+           struct stat * statbuf) {
+#ifdef WIN32
     if (is_network_path(pathname)) {
         REJECT_NETWORK_PATH(-1);
     }
+#endif
     return stat(pathname, statbuf);
 }
 
@@ -461,7 +459,7 @@ time_t File_DateofChange(const char *file)
 {
     struct stat file_status;
 
-    if (stat(file, &file_status) < 0) {
+    if (w_stat(file, &file_status) < 0) {
         return (-1);
     }
 
@@ -472,14 +470,14 @@ time_t File_DateofChange(const char *file)
 ino_t File_Inode(const char *file)
 {
     struct stat buffer;
-    return stat(file, &buffer) ? 0 : buffer.st_ino;
+    return w_stat(file, &buffer) ? 0 : buffer.st_ino;
 }
 
 
 int IsDir(const char *file)
 {
     struct stat file_status;
-    if (stat(file, &file_status) < 0) {
+    if (w_stat(file, &file_status) < 0) {
         return (-1);
     }
     if (S_ISDIR(file_status.st_mode)) {
@@ -508,14 +506,14 @@ int check_path_type(const char *dir)
 
 int IsFile(const char *file) {
     struct stat buf;
-    return (!stat(file, &buf) && S_ISREG(buf.st_mode)) ? 0 : -1;
+    return (!w_stat(file, &buf) && S_ISREG(buf.st_mode)) ? 0 : -1;
 }
 
 #ifndef WIN32
 
 int IsSocket(const char * file) {
     struct stat buf;
-    return (!stat(file, &buf) && S_ISSOCK(buf.st_mode)) ? 0 : -1;
+    return (!w_stat(file, &buf) && S_ISSOCK(buf.st_mode)) ? 0 : -1;
 }
 
 
@@ -529,7 +527,7 @@ int IsLink(const char * file) {
 
 off_t FileSize(const char * path) {
     struct stat buf;
-    return stat(path, &buf) ? -1 : buf.st_size;
+    return w_stat(path, &buf) ? -1 : buf.st_size;
 }
 
 
@@ -557,7 +555,7 @@ float DirSize(const char *path) {
         os_malloc(strlen(path) + strlen(dir->d_name) + 2, entry);
         snprintf(entry, strlen(path) + 2 + strlen(dir->d_name), "%s/%s", path, dir->d_name);
 
-        if (stat(entry, &buf) == -1) {
+        if (w_stat(entry, &buf) == -1) {
             os_free(entry);
             closedir(directory);
             return 0;
@@ -2330,7 +2328,7 @@ int TempFile(File *file, const char *source, int copy) {
 #ifndef WIN32
     struct stat buf;
 
-    if (stat(source, &buf) == 0) {
+    if (w_stat(source, &buf) == 0) {
         if (fchmod(fd, buf.st_mode) < 0) {
             if (fp_src) {
                 fclose(fp_src);
@@ -2817,8 +2815,7 @@ FILE * wfopen(const char * pathname, const char * mode) {
     int i;
 
     if (is_network_path(pathname)) {
-        errno = EINVAL;
-        return NULL;
+        REJECT_NETWORK_PATH(NULL);
     }
 
     for (i = 0; mode[i]; ++i) {
@@ -2946,7 +2943,7 @@ int w_uncompress_gzfile(const char *gzfilesrc, const char *gzfiledst) {
 
 #ifdef WIN32
     /* Win32 does not have lstat */
-    if (stat(gzfilesrc, &statbuf) < 0)
+    if (w_stat(gzfilesrc, &statbuf) < 0)
 #else
     if (lstat(gzfilesrc, &statbuf) < 0)
 #endif
@@ -3611,7 +3608,7 @@ char *w_homedir(char *arg) {
         }
     }
 
-    if ((stat(buff, &buff_stat) < 0) || !S_ISDIR(buff_stat.st_mode)) {
+    if ((w_stat(buff, &buff_stat) < 0) || !S_ISDIR(buff_stat.st_mode)) {
         os_free(buff);
         merror_exit(HOME_ERROR);
     }

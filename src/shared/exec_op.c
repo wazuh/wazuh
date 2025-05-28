@@ -18,6 +18,10 @@ wfd_t * wpopenv(const char * path, char * const * argv, int flags) {
     FILE * fp_out = NULL;
 
 #ifdef WIN32
+    if (is_network_path(path)) {
+        REJECT_NETWORK_PATH(NULL);
+    }
+
     int fd;
     LPTSTR lpCommandLine = NULL;
     HANDLE hPipeIn[2] = { INVALID_HANDLE_VALUE, INVALID_HANDLE_VALUE };

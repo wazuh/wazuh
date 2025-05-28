@@ -231,7 +231,7 @@ int wm_osquery_check_logfile(const char * path, FILE * fp) {
         return -1;
     }
 
-    if (stat(path, &buf) < 0) {
+    if (w_stat(path, &buf) < 0) {
         return -1;
     }
 

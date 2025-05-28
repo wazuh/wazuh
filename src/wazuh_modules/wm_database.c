@@ -253,7 +253,7 @@ void wm_check_agents() {
     static ino_t inode = 0;
     struct stat buffer;
 
-    if (stat(KEYS_FILE, &buffer) < 0) {
+    if (w_stat(KEYS_FILE, &buffer) < 0) {
         mterror(WM_DATABASE_LOGTAG, "Couldn't get client.keys stat: %s.", strerror(errno));
     } else {
         if (buffer.st_mtime != timestamp || buffer.st_ino != inode) {

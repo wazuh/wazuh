@@ -706,7 +706,7 @@ STATIC void c_group(const char *group, OSHash **_f_time, os_md5 *_merged_sum, ch
         }
 
         // Merge ar.conf always
-        if (stat(DEFAULTAR, &attrib) == 0) {
+        if (w_stat(DEFAULTAR, &attrib) == 0) {
             if (create_merged) {
                 if (merged_ok = MergeAppendFile(finalfp, DEFAULTAR, -1), merged_ok == 0) {
                     fclose(finalfp);
@@ -771,7 +771,7 @@ STATIC void c_group(const char *group, OSHash **_f_time, os_md5 *_merged_sum, ch
     if (OS_MD5_File(merged, md5sum, OS_TEXT) == 0) {
         snprintf((*_merged_sum), sizeof((*_merged_sum)), "%s", md5sum);
 
-        if (stat(merged, &attrib) != 0) {
+        if (w_stat(merged, &attrib) != 0) {
             merror("Unable to get entry attributes '%s'", merged);
         } else {
             ftime_add(_f_time, SHAREDCFG_FILENAME, attrib.st_mtime);
@@ -1188,7 +1188,7 @@ STATIC int validate_shared_files(const char *src_path, FILE *finalfp, OSHash **_
             }
         }
 
-        if (stat(file, &attrib) != 0) {
+        if (w_stat(file, &attrib) != 0) {
             merror("Unable to get entry attributes '%s'", file);
             continue;
         }

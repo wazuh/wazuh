@@ -877,7 +877,7 @@ void LogCollectorStart()
                     if (j >= 0) {
 #ifndef WIN32
                         struct stat stat_fd;
-                        if (stat(current->file, &stat_fd) == -1 && ENOENT == errno) {
+                        if (w_stat(current->file, &stat_fd) == -1 && ENOENT == errno) {
 #else
                         if (!PathFileExists(current->file)) {
 #endif
@@ -2663,7 +2663,7 @@ STATIC void w_load_files_status(cJSON * global_json) {
 
         struct stat stat_fd;
 
-        if (stat(path_str, &stat_fd) == -1) {
+        if (w_stat(path_str, &stat_fd) == -1) {
             continue;
         }
 

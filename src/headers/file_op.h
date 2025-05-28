@@ -18,6 +18,7 @@
 #include <stdbool.h>
 #include <sys/stat.h>
 #include <cJSON.h>
+#include <dirent.h>
 
 #ifdef WIN32
 #include <winsock2.h>
@@ -40,6 +41,14 @@ extern int isVista;
 #define PATH_SEP '/'
 typedef ino_t wino_t;
 #endif
+
+#define REJECT_NETWORK_PATH(retval)                  \
+    do {                                             \
+        errno = EACCES;                              \
+        SetLastError(ERROR_NETWORK_ACCESS_DENIED);   \
+        merror("Testing network drives, rejected."); \
+        return (retval);                             \
+    } while (0)
 
 typedef struct File {
     char *name;
@@ -393,6 +402,7 @@ int w_ref_parent_folder(const char * path);
  */
 char ** wreaddir(const char * name);
 
+
 /**
  * @brief Wrapper over access() that rejects UNC or mapped-drive paths.
  *
@@ -401,6 +411,7 @@ char ** wreaddir(const char * name);
  * @return 0 on success, −1 on failure (sets errno and GetLastError()).
  */
 int waccess(const char *path, int mode);
+
 
 #ifdef WIN32
 /**
@@ -423,6 +434,8 @@ HANDLE wCreateFile(LPCSTR  lpFileName,
     DWORD   dwFlagsAndAttributes,
     HANDLE  hTemplateFile);
 #endif
+
+
 /**
  * @brief Wrapper over opendir() that refuses network directories.
  *
@@ -431,15 +444,16 @@ HANDLE wCreateFile(LPCSTR  lpFileName,
  */
 DIR * wopendir(const char *name);
 
+
 /**
- * @brief Wrapper over stat() that blocks network paths.
+ * @brief Wrapper over w_stat() that blocks network paths.
  *
  * @param pathname Path to inspect.
  * @param statbuf  Output structure to fill.
  * @return 0 on success, −1 on error (sets errno).
  */
-int wstat(const char *restrict pathname,
-           struct stat *restrict statbuf);
+int w_stat(const char * pathname,
+           struct stat * statbuf);
 
 
 /**
