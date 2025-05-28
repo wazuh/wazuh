@@ -763,6 +763,20 @@ public:
         return m_keySanitized;
     }
 
+    std::string_view elementType() const
+    {
+        switch (m_originTable)
+        {
+            case OriginTable::File: return "file";
+
+            case OriginTable::RegistryKey: return "registry_key";
+
+            case OriginTable::RegistryValue: return "registry_value";
+
+            default: return "invalid";
+        }
+    }
+
     std::string m_serializedElement;
 
 private:

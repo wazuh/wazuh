@@ -65,10 +65,12 @@ public:
         element.data.registry.data.hash.sha256 = data->sha256();
         element.data.registry.data.type = data->valueType();
 
+        element.data.event.category = data->elementType();
+
         auto& instancePolicyManager = PolicyHarvesterManager::instance();
+        element.data.wazuh.cluster.name = instancePolicyManager.getClusterName();
         if (instancePolicyManager.getClusterStatus())
         {
-            element.data.wazuh.cluster.name = instancePolicyManager.getClusterName();
             element.data.wazuh.cluster.node = instancePolicyManager.getClusterNodeName();
         }
 

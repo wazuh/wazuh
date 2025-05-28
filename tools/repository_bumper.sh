@@ -199,7 +199,7 @@ update_file_sources() {
     # Update wazuh-installer.nsi
     if [[ -n "$new_version" ]]; then
         sed -i -E "s|(^!define VERSION\s+\")[0-9]+\.[0-9]+\.[0-9]+(\")|\1${new_version}\2|" "$DIR_SRC/win32/wazuh-installer.nsi"
-        sed -i -E "s|(^VIProductVersion\s+\")[0-9]+\.[0-9]+\.[0-9]+(\.\"\$)|\1${new_version}\2|" "$DIR_SRC/win32/wazuh-installer.nsi"
+        sed -i -E "s|(^VIProductVersion\s+\")[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+(\")|\1${new_version}.0\2|" "$DIR_SRC/win32/wazuh-installer.nsi"
         log_action "Modified $DIR_SRC/win32/wazuh-installer.nsi with new version: $new_version"
     fi
     if [[ -n "$new_stage" ]]; then
@@ -317,9 +317,9 @@ update_file_packages() {
 cat <<EOF
 ${INSTALL_TYPE} (${final_version}-RELEASE) stable; urgency=low
 
-* More info: https://documentation.wazuh.com/current/release-notes/release-${final_version//./-}.html
+  * More info: https://documentation.wazuh.com/current/release-notes/release-${final_version//./-}.html
 
--- Wazuh, Inc <info@wazuh.com>  ${formatted_date}
+ -- Wazuh, Inc <info@wazuh.com>  ${formatted_date}
 
 EOF
 )"

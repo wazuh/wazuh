@@ -4,6 +4,7 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 # Wazuh Solaris 11 Package builder.
 
+set -x
 REPOSITORY="https://github.com/wazuh/wazuh"
 wazuh_branch="main"
 install_path="/var/ossec"
@@ -38,15 +39,9 @@ set_control_binary() {
 build_environment() {
     echo "Installing dependencies."
 
-    unset CPLUS_INCLUDE_PATH
-    unset LD_LIBRARY_PATH
-    export CPLUS_INCLUDE_PATH=/usr/local/gcc-5.5.0/include/c++/5.5.0
-    export LD_LIBRARY_PATH=/usr/local/gcc-5.5.0/lib
     export PATH=/usr/sbin:/usr/bin:/usr/ccs/bin:/opt/csw/bin
     mkdir -p /usr/local
     echo "export PATH=/usr/sbin:/usr/bin:/usr/ccs/bin:/opt/csw/bin" >> /etc/profile
-    echo "export CPLUS_INCLUDE_PATH=/usr/local/gcc-5.5.0/include/c++/5.5.0" >> /etc/profile
-    echo "export LD_LIBRARY_PATH=/usr/local/gcc-5.5.0/lib" >> /etc/profile
 
     cd ${current_path}
 
@@ -75,6 +70,9 @@ build_environment() {
     /opt/csw/bin/pkgutil -y -i gcc5g++
     /opt/csw/bin/pkgutil -y -i jq
 
+    unset CPLUS_INCLUDE_PATH
+    unset LD_LIBRARY_PATH
+
     # Install precompiled gcc-5.5
     curl -LO http://packages-dev.wazuh.com/deps/solaris/precompiled-solaris-gcc-5.5.0.tar.gz
     gtar -xzvf precompiled-solaris-gcc-5.5.0.tar.gz > /dev/null
@@ -83,6 +81,11 @@ build_environment() {
     cd ..
     rm -rf *gcc-*
     ln -sf /usr/local/gcc-5.5.0/bin/g++ /usr/bin/g++
+
+    export CPLUS_INCLUDE_PATH=/usr/local/gcc-5.5.0/include/c++/5.5.0
+    export LD_LIBRARY_PATH=/usr/local/gcc-5.5.0/lib
+    echo "export CPLUS_INCLUDE_PATH=/usr/local/gcc-5.5.0/include/c++/5.5.0" >> /etc/profile
+    echo "export LD_LIBRARY_PATH=/usr/local/gcc-5.5.0/lib" >> /etc/profile
 
     # Install precompiled cmake-3.18.3
     curl -LO http://packages-dev.wazuh.com/deps/solaris/precompiled-solaris-cmake-3.18.3.tar.gz

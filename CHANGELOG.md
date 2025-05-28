@@ -4,13 +4,86 @@ All notable changes to this project will be documented in this file.
 ## [v5.0.0]
 
 
+## [v4.14.0]
+
+
 ## [v4.13.0]
+
+### Manager
+
+#### Changed
+
+- Separated control messages from the connection handling in remoted. ([29153](https://github.com/wazuh/wazuh/pull/29153))
+
+### Agent
+
+#### Added
+
+- Added SCA support for Oracle Linux 10. ([#29139](https://github.com/wazuh/wazuh/pull/29139))
+
+#### Fixed
+
+- Fixed download Azure's blob race condition. ([29317](https://github.com/wazuh/wazuh/pull/29317))
+- Fixed FIM reports false files. ([#28962](https://github.com/wazuh/wazuh/pull/28962))
+- Fixed IPv6 address format reported by WindowsHelper. ([#29502](https://github.com/wazuh/wazuh/pull/29502))
+- Fixed hidden port detection and netstat availability handling. ([#29561](https://github.com/wazuh/wazuh/pull/29561))
+- Replaced `select()` with `sleep()` in Logcollector to prevent errors during Docker deployment. ([#29905](https://github.com/wazuh/wazuh/pull/29905))
+
+#### Changed
+
+- Standarized different services timeouts. ([#29443](https://github.com/wazuh/wazuh/pull/29443))
+
+### RESTful API
+
+#### Fixed
+
+- Fixed false positive in configuration uploading. ([#28962](https://github.com/wazuh/wazuh/pull/28962))
+- Fixed sorting by version in agent list endpoint. ([#29166](https://github.com/wazuh/wazuh/pull/29166))
+
+### Other
+
+#### Changed
+- Upgraded Python embedded interpreter to 3.10.16. ([#28646](https://github.com/wazuh/wazuh/pull/28646))
+- Upgraded h11 to 0.16.0 and httpcore to 1.0.9. ([#29735](https://github.com/wazuh/wazuh/pull/29735))
+- Removed unused Python Azure dependencies. ([#28564](https://github.com/wazuh/wazuh/pull/28564))
 
 
 ## [v4.12.2]
 
 
 ## [v4.12.1]
+
+### Manager
+
+#### Fixed
+- Fixed missing agent version handling in Vulnerability Detector. ([#29181](https://github.com/wazuh/wazuh/pull/29181))
+
+#### Changed
+- Improved reports functionality to avoid duplicated daily FIM reports. ([#29232](https://github.com/wazuh/wazuh/pull/29232))
+
+### Agent
+
+#### Added
+- Added support for Rocky Linux and AlmaLinux in the agent upgrade module. ([#29391](https://github.com/wazuh/wazuh/pull/29391))
+- Added handling of CentOS 9 SCA files in package specs. ([#29393](https://github.com/wazuh/wazuh-packages/pull/29393))
+
+#### Fixed
+- Fixed incorrect handling of events in the Custom logs bucket. ([#29312](https://github.com/wazuh/wazuh/pull/29312))
+
+#### Changed
+- Improved agent synchronization to reduce redundant payload transfers. ([#29426](https://github.com/wazuh/wazuh/pull/29426))
+- Improved Syscollector to report only Python packages managed by `dpkg`. ([#28688](https://github.com/wazuh/wazuh/pull/28688))
+- Improved `wazuh-db` JSON handling performance by updating external dependencies. ([#29399](https://github.com/wazuh/wazuh/issues/29399))
+
+### RESTful API
+
+#### Added
+- Added the server uuid to the /manager/info endpoint. ([#29524](https://github.com/wazuh/wazuh/pull/29524))
+
+### Other
+
+#### Changed
+- Updated Python dependencies: `setuptools`, `Jinja2`, and `PyJWT`. ([#29489](https://github.com/wazuh/wazuh/pull/29489))
 
 
 ## [v4.12.0]

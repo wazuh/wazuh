@@ -1,11 +1,11 @@
 [
     {
-        "index_name": "wazuh-states-interfaces-cluster01",
+        "index_name": "wazuh-states-inventory-interfaces-cluster01",
         "data": [
             {
                 "agent": {
-                    "id": "001",
-                    "name": "c0ce505227a4",
+                    "id": "002",
+                    "name": "agentName",
                     "version": "v4.11.0"
                 },
                 "host": {
@@ -43,24 +43,24 @@
             },
             {
                 "agent": {
-                    "id": "002",
-                    "name": "agentName",
+                    "id": "001",
+                    "name": "c0ce505227a4",
                     "version": "v4.11.0"
                 },
                 "host": {
                     "mac": "14:15:6e:37:f2:7e",
                     "network": {
-                        "ingress": {
-                            "bytes": 449599,
-                            "drops": 0,
-                            "errors": 0,
-                            "packets": 661
-                        },
                         "egress": {
                             "bytes": 52525,
                             "drops": 0,
                             "errors": 0,
                             "packets": 432
+                        },
+                        "ingress": {
+                            "bytes": 449599,
+                            "drops": 0,
+                            "errors": 0,
+                            "packets": 661
                         }
                     }
                 },
@@ -75,6 +75,9 @@
                     }
                 },
                 "wazuh": {
+                    "cluster": {
+                        "name": "cluster01"
+                    },
                     "schema": {
                         "version": "1.0"
                     }

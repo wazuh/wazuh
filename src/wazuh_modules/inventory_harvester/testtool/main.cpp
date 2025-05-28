@@ -88,6 +88,10 @@ int main(const int argc, const char* argv[])
             {
                 pos++;
             }
+            else
+            {
+                pos = 0;
+            }
             std::string_view fileName = file.substr(pos, file.size() - pos);
             char formattedStr[MAX_LEN] = {0};
             vsnprintf(formattedStr, MAX_LEN, message.c_str(), args);
