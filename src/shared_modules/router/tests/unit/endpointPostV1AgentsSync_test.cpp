@@ -82,25 +82,47 @@ TEST_F(EndpointPostV1AgentsSyncTest, SyncReqTwoAgents)
 {
     auto stmt = mockStmt(qdump);
 
-    EXPECT_CALL(*stmt, bindStringView).Times(18 * 2);
-    EXPECT_CALL(*stmt, bindInt64).Times(4 * 2);
-    EXPECT_CALL(*stmt, step()).Times(2);
-    EXPECT_CALL(*stmt, reset()).Times(2);
+    EXPECT_CALL(*stmt, bindStringView).Times(18 * 2 + 2); // 18 fields * 2 agents + 2 ids
+    EXPECT_CALL(*stmt, bindInt64).Times(4 * 2 + 2 + 1);   // 18 fields + 2 ids + 1 for labels
+    EXPECT_CALL(*stmt, step()).Times(5);                  // 2 updates + 1 delete + 2 inserts
+    EXPECT_CALL(*stmt, reset()).Times(5);                 // 2 updates + 1 delete + 2 inserts
 
-    nlohmann::json body = {
-        {"syncreq",
-         {{{"id", 1}, {"name", "Alice"}, {"version", "4.7.0"}, {"config_sum", "x"}, {"merged_sum", "y"}},
-          {{"id", 2}, {"name", "Bob"}, {"version", "4.8.0"}, {"config_sum", "x2"}, {"merged_sum", "y2"}}}}};
-    req.body = body.dump();
+    req.body = R"(
+    {
+        "syncreq": [
+            {
+            "config_sum": "x",
+            "id": 1,
+            "merged_sum": "y",
+            "name": "Alice",
+            "version": "4.7.0"
+            },
+            {
+            "config_sum": "x2",
+            "id": 2,
+            "labels": [
+                {
+                "key": "env",
+                "value": "test"
+                }
+            ],
+            "merged_sum": "y2",
+            "name": "Bob",
+            "version": "4.8.0"
+            }
+        ]
+    })";
 
     TEndpointPostV1AgentsSync<MockSQLiteConnection, TrampolineSQLiteStatement>::call(db, req, res);
 
-    ASSERT_EQ(qdump->size(), 1);
+    ASSERT_EQ(qdump->size(), 3);
     EXPECT_EQ((*qdump)[0],
               "UPDATE agent SET config_sum = ?, ip = ?, manager_host = ?, merged_sum = ?, name = ?, node_name = ?, "
               "os_arch = ?, os_build = ?, os_codename = ?, os_major = ?, os_minor = ?, os_name = ?, os_platform = ?, "
               "os_uname = ?, os_version = ?, version = ?, last_keepalive = ?, connection_status = ?, "
               "disconnection_time = ?, group_config_status = ?, status_code= ?, sync_status = 'synced' WHERE id = ?;");
+    EXPECT_EQ((*qdump)[1], "DELETE FROM labels WHERE id = ?;");
+    EXPECT_EQ((*qdump)[2], "INSERT INTO labels (id, key, value) VALUES (?, ?, ?);");
 }
 
 TEST_F(EndpointPostV1AgentsSyncTest, KeepAliveThreeAgents)
