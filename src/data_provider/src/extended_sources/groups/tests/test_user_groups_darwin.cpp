@@ -1,7 +1,16 @@
+/* Copyright (C) 2015, Wazuh Inc.
+ * All rights reserved.
+ *
+ * This program is free software; you can redistribute it
+ * and/or modify it under the terms of the GNU General Public
+ * License (version 2) as published by the FSF - Free Software
+ * Foundation.
+ */
+
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
-#include "igroup_wrapper_darwin.hpp"
-#include "ipasswd_wrapper_darwin.hpp"
+#include "igroup_wrapper.hpp"
+#include "ipasswd_wrapper.hpp"
 #include "iopen_directory_utils_wrapper.hpp"
 #include "user_groups_darwin.hpp"
 
@@ -21,6 +30,9 @@ class MockGroupWrapper : public IGroupWrapperDarwin
 class MockPasswdWrapper : public IPasswdWrapperDarwin
 {
     public:
+        MOCK_METHOD(void, setpwent, (), (override));
+        MOCK_METHOD(void, endpwent, (), (override));
+        MOCK_METHOD(struct passwd*, getpwent, (), (override));
         MOCK_METHOD(struct passwd*, getpwuid, (uid_t uid), (override));
         MOCK_METHOD(struct passwd*, getpwnam, (const char* name), (override));
 };

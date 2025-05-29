@@ -22,13 +22,13 @@
 constexpr size_t MAX_GETPW_R_BUF_SIZE = 16 * 1024;
 
 UsersProvider::UsersProvider(
-    std::shared_ptr<IPasswdWrapper> passwdWrapper,
+    std::shared_ptr<IPasswdWrapperLinux> passwdWrapper,
     std::shared_ptr<ISystemWrapper> sysWrapper)
     : m_passwdWrapper(std::move(passwdWrapper)),
       m_sysWrapper(std::move(sysWrapper)) {}
 
 UsersProvider::UsersProvider()
-    : m_passwdWrapper(std::make_shared<PasswdWrapper>()),
+    : m_passwdWrapper(std::make_shared<PasswdWrapperLinux>()),
       m_sysWrapper(std::make_shared<SystemWrapper>()) {}
 
 nlohmann::json UsersProvider::collect(bool include_remote)

@@ -33,7 +33,8 @@ else()
         find_library(OPEN_DIRECTORY OpenDirectory)
         find_library(FOUNDATION Foundation)
 
-        set(SRC_FILES src/user_groups_darwin.cpp src/od_wrapper.mm)
+        set(SRC_FILES src/user_groups_darwin.cpp 
+          ${CMAKE_CURRENT_SOURCE_DIR}/../wrappers/unix/darwin/od_wrapper.mm)
         set(PLATFORM_LIBS_USERS ${OPEN_DIRECTORY} ${FOUNDATION})
     endif()
 endif()

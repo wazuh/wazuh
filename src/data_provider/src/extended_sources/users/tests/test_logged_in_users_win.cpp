@@ -57,11 +57,13 @@ class MockWinSecurityBaseApiWrapper : public IWinSecurityBaseApiWrapper
 class MockUsersHelper : public IUsersHelper
 {
     public:
+        MOCK_METHOD(std::wstring, stringToWstring, (const std::string& src), (override));
         MOCK_METHOD(std::string, getUserShell, (const std::string& sid), (override));
         MOCK_METHOD(std::vector<User>, processLocalAccounts, (std::set<std::string>& processed_sids), (override));
         MOCK_METHOD(std::vector<User>, processRoamingProfiles, (std::set<std::string>& processed_sids), (override));
         MOCK_METHOD(std::unique_ptr<BYTE[]>, getSidFromAccountName, (const std::wstring& accountNameInput), (override));
         MOCK_METHOD(std::string, psidToString, (PSID sid), (override));
+        MOCK_METHOD(DWORD, getRidFromSid, (PSID sid), (override));
 };
 
 

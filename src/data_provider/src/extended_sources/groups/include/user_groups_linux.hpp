@@ -1,10 +1,19 @@
+/* Copyright (C) 2015, Wazuh Inc.
+ * All rights reserved.
+ *
+ * This program is free software; you can redistribute it
+ * and/or modify it under the terms of the GNU General Public
+ * License (version 2) as published by the FSF - Free Software
+ * Foundation.
+ */
+
 #pragma once
 
 #include <set>
 
 #include "json.hpp"
-#include "igroup_wrapper_linux.hpp"
-#include "ipasswd_wrapper_linux.hpp"
+#include "igroup_wrapper.hpp"
+#include "ipasswd_wrapper.hpp"
 #include "isystem_wrapper.hpp"
 
 #define EXPECTED_GROUPS_MAX 64
