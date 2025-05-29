@@ -44,6 +44,17 @@ class TEndpointPostV1AgentsSync final
         }
     }
 
+    template<typename T>
+    static T id(const nlohmann::json& json, std::string_view key)
+    {
+        if (json.contains(key))
+        {
+            return json.at(key).get<T>();
+        }
+
+        throw std::invalid_argument("Missing required key.");
+    }
+
 public:
     /**
      * @brief Call the endpoint implementation. This function write the data to the database with the received
@@ -69,9 +80,14 @@ public:
                                  "?, group_config_status = ?, status_code= ?, "
                                  "sync_status = 'synced' WHERE id = ?;");
 
+                DBStatement stmtDeleteLabels(db, "DELETE FROM labels WHERE id = ?;");
+
+                DBStatement stmtInsertLabels(db, "INSERT INTO labels (id, key, value) VALUES (?, ?, ?);");
+
                 const auto& syncReq = jsonBody.at("syncreq");
                 for (const auto& agent : syncReq)
                 {
+                    const auto idAgent = id<int64_t>(agent, "id");
                     stmt.bind(1, value<std::string_view>(agent, "config_sum"));
                     stmt.bind(2, value<std::string_view>(agent, "ip"));
                     stmt.bind(3, value<std::string_view>(agent, "manager_host"));
@@ -93,9 +109,25 @@ public:
                     stmt.bind(19, value<int64_t>(agent, "disconnection_time"));
                     stmt.bind(20, value<std::string_view>(agent, "group_config_status"));
                     stmt.bind(21, value<int64_t>(agent, "status_code"));
-                    stmt.bind(22, value<int64_t>(agent, "id"));
+                    stmt.bind(22, idAgent);
                     stmt.step();
                     stmt.reset();
+
+                    stmtDeleteLabels.bind(1, idAgent);
+                    stmtDeleteLabels.step();
+                    stmtDeleteLabels.reset();
+
+                    if (agent.contains("labels"))
+                    {
+                        for (const auto& label : agent.at("labels"))
+                        {
+                            stmtInsertLabels.bind(1, idAgent);
+                            stmtInsertLabels.bind(2, value<std::string_view>(label, "key"));
+                            stmtInsertLabels.bind(3, value<std::string_view>(label, "value"));
+                            stmtInsertLabels.step();
+                            stmtInsertLabels.reset();
+                        }
+                    }
                 }
             }
         }
