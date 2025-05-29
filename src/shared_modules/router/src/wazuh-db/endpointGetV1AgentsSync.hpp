@@ -25,6 +25,17 @@ class TEndpointGetV1AgentsSync final
 {
     struct SyncReq final
     {
+        /**
+         * @brief Label structure to hold key-value pairs for agent labels.
+         */
+        struct Label final
+        {
+            std::string key;   ///< The key of the label.
+            std::string value; ///< The value of the label.
+
+            REFLECTABLE(MAKE_FIELD("key", &Label::key), MAKE_FIELD("value", &Label::value))
+        };
+
         int64_t id {};
         std::string name;
         std::string ip;
@@ -47,6 +58,7 @@ class TEndpointGetV1AgentsSync final
         int64_t disconnectionTime = DEFAULT_INT_VALUE;
         std::string groupConfigStatus;
         int64_t statusCode = DEFAULT_INT_VALUE;
+        std::vector<Label> labels;
 
         REFLECTABLE(MAKE_FIELD("id", &SyncReq::id),
                     MAKE_FIELD("name", &SyncReq::name),
@@ -69,7 +81,8 @@ class TEndpointGetV1AgentsSync final
                     MAKE_FIELD("connection_status", &SyncReq::connectionStatus),
                     MAKE_FIELD("disconnection_time", &SyncReq::disconnectionTime),
                     MAKE_FIELD("group_config_status", &SyncReq::groupConfigStatus),
-                    MAKE_FIELD("status_code", &SyncReq::statusCode))
+                    MAKE_FIELD("status_code", &SyncReq::statusCode),
+                    MAKE_FIELD("labels", &SyncReq::labels))
     };
     struct Response final
     {
@@ -112,9 +125,13 @@ public:
                 "os_uname, os_arch, version, config_sum, merged_sum, manager_host, node_name, last_keepalive, "
                 "connection_status, disconnection_time, group_config_status, status_code FROM agent WHERE id > 0 AND "
                 "sync_status = 'syncreq';");
+
+            DBStatement stmtGetLabels(db, "SELECT key, value FROM labels WHERE id = ?;");
+
             while (stmtSyncReq.step() == SQLITE_ROW)
             {
                 const auto idAgent = stmtSyncReq.template value<int64_t>(0);
+
                 resObj.agentsSyncReq.push_back({.id = idAgent,
                                                 .name = stmtSyncReq.template value<std::string>(1),
                                                 .ip = stmtSyncReq.template value<std::string>(2),
@@ -137,6 +154,16 @@ public:
                                                 .disconnectionTime = stmtSyncReq.template value<int64_t>(19),
                                                 .groupConfigStatus = stmtSyncReq.template value<std::string>(20),
                                                 .statusCode = stmtSyncReq.template value<int64_t>(21)});
+
+                stmtGetLabels.reset();
+                stmtGetLabels.bind(1, idAgent);
+
+                while (stmtGetLabels.step() == SQLITE_ROW)
+                {
+                    resObj.agentsSyncReq.back().labels.push_back(
+                        {.key = stmtGetLabels.template value<std::string>(0),
+                         .value = stmtGetLabels.template value<std::string>(1)});
+                }
             }
         }
 
