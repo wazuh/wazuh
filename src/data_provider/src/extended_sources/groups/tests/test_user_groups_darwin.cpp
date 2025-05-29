@@ -38,7 +38,7 @@ class MockODUtilsWrapper : public IODUtilsWrapper
 
 struct passwd* createFakePasswd(const char* name, uid_t uid, gid_t gid)
 {
-    auto* pwd = new passwd{};
+    auto* pwd = new passwd();
     pwd->pw_name = strdup(name);
     pwd->pw_uid = uid;
     pwd->pw_gid = gid;
@@ -56,8 +56,8 @@ TEST(UserGroupsProviderTest, CollectWithUIDReturnsExpectedGroups)
     gid_t test_gid = 2000;
     const char* username = "testuser";
 
-    EXPECT_CALL(*mockPasswd, getpwuid(test_uid))
-    .WillOnce(Return(createFakePasswd(username, test_uid, test_gid)));
+    passwd* fakePwd = createFakePasswd(username, test_uid, test_gid);
+    EXPECT_CALL(*mockPasswd, getpwuid(test_uid)).WillOnce(Return(fakePwd));
 
     EXPECT_CALL(*mockGroup, getgroupcount(::testing::StrEq("testuser"), test_gid))
     .WillOnce(Return(2));
@@ -77,6 +77,9 @@ TEST(UserGroupsProviderTest, CollectWithUIDReturnsExpectedGroups)
     EXPECT_EQ(result[0]["uid"], test_uid);
     EXPECT_EQ(result[0]["gid"], 2000);
     EXPECT_EQ(result[1]["gid"], 3000);
+
+    free(fakePwd->pw_name);
+    delete fakePwd;
 }
 
 TEST(UserGroupsProviderTest, CollectWithoutUID_ReturnsExpectedGroups)
@@ -98,8 +101,8 @@ TEST(UserGroupsProviderTest, CollectWithoutUID_ReturnsExpectedGroups)
         output = fakeUsers;
     }));
 
-    EXPECT_CALL(*mockPasswd, getpwnam(::testing::StrEq(username)))
-    .WillOnce(Return(createFakePasswd(username, test_uid, test_gid)));
+    passwd* fakePwd = createFakePasswd(username, test_uid, test_gid);
+    EXPECT_CALL(*mockPasswd, getpwnam(::testing::StrEq(username))).WillOnce(Return(fakePwd));
 
     EXPECT_CALL(*mockGroup, getgroupcount(::testing::StrEq(username), test_gid))
     .WillOnce(Return(1));
@@ -117,6 +120,9 @@ TEST(UserGroupsProviderTest, CollectWithoutUID_ReturnsExpectedGroups)
     ASSERT_EQ(result.size(), static_cast<decltype(result.size())>(1));
     EXPECT_EQ(result[0]["uid"], test_uid);
     EXPECT_EQ(result[0]["gid"], 3001);
+
+    free(fakePwd->pw_name);
+    delete fakePwd;
 }
 
 int main(int argc, char** argv)

@@ -4,19 +4,19 @@ include_directories(${SRC_FOLDER}/external/googletest/googletest/include/)
 include_directories(${SRC_FOLDER}/external/googletest/googlemock/include/)
 link_directories(${SRC_FOLDER}/external/googletest/lib/)
 
-if(LINUX)
-    set(TEST_SRC test_user_groups_linux.cpp)
-elseif(WIN32)
+if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     set(TEST_SRC test_user_groups_windows.cpp)
-elseif(APPLE)
-    set(TEST_SRC test_user_groups_darwin.cpp)
 else()
-    message(FATAL_ERROR "Unsupported platform")
+    if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+        set(TEST_SRC test_user_groups_linux.cpp)
+    elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+        set(TEST_SRC test_user_groups_darwin.cpp)
+    endif()
 endif()
 
-add_executable(test_user_groups ${TEST_SRC})
+add_executable(extended_sources_user_groups_unit_test ${TEST_SRC})
 
-target_link_libraries(test_user_groups
+target_link_libraries(extended_sources_user_groups_unit_test
     user_groups
     gtestd
     gmockd
@@ -24,4 +24,4 @@ target_link_libraries(test_user_groups
     gmock_maind
 )
 
-add_test(NAME UserGroupsTests COMMAND test_user_groups)
+add_test(NAME UserGroupsTests COMMAND extended_sources_user_groups_unit_test)
