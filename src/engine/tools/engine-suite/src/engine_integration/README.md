@@ -105,10 +105,10 @@ Deletes assets listed in the integration and the integration from the Engine's c
 ```
 $ engine-integration delete -h
 usage: engine-integration delete [-h] [-a API_SOCK] [--dry-run] [-n NAMESPACE]
-                                 integration-name
+                                 integration-path
 
 positional arguments:
-  integration-name      Integration name to be deleted
+  integration-path      Integration path to be deleted
 
 options:
   -h, --help            show this help message and exit
