@@ -580,7 +580,7 @@ cJSON *wm_azure_dump(const wm_azure_t * azure) {
 
 static void wm_setup_logging_capture() {
     const char * const log_pattern =
-        "^\\d{4}/\\d{2}/\\d{2} \\d{2}:\\d{2}:\\d{2} azure: (DEBUG2|DEBUG|INFO|WARNING|ERROR): ";
+        "^\\d{4}/\\d{2}/\\d{2} \\d{2}:\\d{2}:\\d{2} azure: (DEBUG|INFO|WARNING|ERROR): ";
     w_calloc_expression_t(&azure_script_log_regex, EXP_TYPE_PCRE2);
 
     if (!w_expression_compile(azure_script_log_regex, log_pattern, 0)) {
