@@ -372,9 +372,6 @@ BOOL CALLBACK DlgProc(HWND hwnd, UINT Message, WPARAM wParam,
                                    "Agent Restarted", MB_OK);
                     }
                     break;
-                case UI_MENU_MANAGE_RELOAD:
-                    service_reload(hwnd);
-                    break;
             }
             break;
 

@@ -87,7 +87,7 @@ int local_reload() {
         return -1;
     }
 
-    // Asegúrate de que estas constantes estén definidas antes:
+    // Make sure these constants are defined before:
     // #define PIPE_NAME "\\\\.\\pipe\\wazuh_reload"
     // #define BUFFER_SIZE 4096
     HANDLE hPipe = CreateNamedPipe(PIPE_NAME,
@@ -385,6 +385,11 @@ int local_start()
     atexit(send_agent_stopped_message);
 
     /* Start receiver -- main process here */
+    minfo("Wait 10 seconds for the receiver to reload.");
+    sleep(10);
+    minfo("Execute local reload.");
+    local_reload();
+    minfo("Starting receiver thread.");
     receiver_messages();
 
     if (sysinfo_module){

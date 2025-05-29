@@ -24,7 +24,6 @@ int CheckServiceRunning();
 
 /* Start WAZUH-HIDS service */
 int os_start_service();
-int service_reload(HWND hwnd);
 
 /* Stop WAZUH-HIDS service */
 int os_stop_service();
