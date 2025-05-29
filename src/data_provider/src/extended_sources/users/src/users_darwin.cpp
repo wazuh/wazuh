@@ -87,6 +87,8 @@ nlohmann::json UsersProvider::collectUsers(const std::set<uid_t>& uids)
             nlohmann::json user = genUserJson(pwd);
             user["is_hidden"] = int(userNames[user["username"]]);
 
+            user.update(collectAccountPolicyData(user["uid"]));
+
             users.push_back(user);
         }
 
@@ -118,8 +120,18 @@ nlohmann::json UsersProvider::collectUsers(const std::set<uid_t>& uids)
 
         user["is_hidden"] = static_cast<int>(isHidden);
 
+        user.update(collectAccountPolicyData(user["uid"]));
+
         users.push_back(user);
     }
 
     return users;
+}
+
+nlohmann::json UsersProvider::collectAccountPolicyData(const uid_t uid)
+{
+    nlohmann::json accountData;
+    m_odWrapper->genAccountPolicyData(std::to_string(uid), accountData);
+
+    return accountData;
 }

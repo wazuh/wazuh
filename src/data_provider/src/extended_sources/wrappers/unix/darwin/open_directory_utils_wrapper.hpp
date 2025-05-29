@@ -34,4 +34,26 @@ class ODUtilsWrapper : public IODUtilsWrapper
         {
             od::genEntries(recordType, record, names);
         }
+
+        /// @brief Retrieves account policy data for a given user UID.
+        ///
+        /// Queries the local OpenDirectory node for the `accountPolicyData` attribute of the user
+        /// corresponding to the provided UID. Parses the returned property list (plist) data
+        /// and extracts relevant account policy fields.
+        ///
+        /// The following fields are extracted and populated in the output JSON object:
+        /// - "creation_time": When the account was first created (double)
+        /// - "failed_login_count": Number of failed login attempts (int)
+        /// - "failed_login_timestamp": Time of last failed login attempt (double)
+        /// - "password_last_set_time": Time when the password was last changed (double)
+        ///
+        /// If the user does not have `accountPolicyData`, or the attribute is missing or malformed,
+        /// the output JSON will still contain those fields with `null` values.
+        ///
+        /// @param uid The UID of the user to query.
+        /// @param policyData Output JSON object to be populated with account policy data.
+        void genAccountPolicyData(const std::string& uid, nlohmann::json& policyData) override
+        {
+            od::genAccountPolicyData(uid, policyData);
+        }
 };
