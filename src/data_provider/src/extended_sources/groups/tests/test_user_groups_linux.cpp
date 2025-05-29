@@ -1,7 +1,16 @@
+/* Copyright (C) 2015, Wazuh Inc.
+ * All rights reserved.
+ *
+ * This program is free software; you can redistribute it
+ * and/or modify it under the terms of the GNU General Public
+ * License (version 2) as published by the FSF - Free Software
+ * Foundation.
+ */
+
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
-#include "igroup_wrapper_linux.hpp"
-#include "ipasswd_wrapper_linux.hpp"
+#include "igroup_wrapper.hpp"
+#include "ipasswd_wrapper.hpp"
 #include "isystem_wrapper.hpp"
 #include "user_groups_linux.hpp"
 
@@ -14,16 +23,21 @@ class MockGroupWrapper : public IGroupWrapperLinux
 class MockPasswdWrapper : public IPasswdWrapperLinux
 {
     public:
+        MOCK_METHOD(int, fgetpwent_r, (FILE* stream, struct passwd* pwd, char* buf, size_t buflen, struct passwd** result), (override));
         MOCK_METHOD(int, getpwuid_r, (uid_t uid, struct passwd* pwd, char* buf, size_t buflen, struct passwd** result), (override));
         MOCK_METHOD(int, getpwent_r, (struct passwd* pwd, char* buf, size_t buflen, struct passwd** result), (override));
         MOCK_METHOD(void, setpwent, (), (override));
         MOCK_METHOD(void, endpwent, (), (override));
+        MOCK_METHOD(int, getpwnam_r, (const char* name, struct passwd* pwd, char* buf, size_t buflen, struct passwd** result), (override));
 };
 
 class MockSystemWrapper : public ISystemWrapper
 {
     public:
         MOCK_METHOD(long, sysconf, (int name), (const, override));
+        MOCK_METHOD(FILE*, fopen, (const char* filename, const char* mode), (override));
+        MOCK_METHOD(int, fclose, (FILE* stream), (override));
+        MOCK_METHOD(char*, strerror, (int errnum), (override));
 };
 
 using ::testing::_;

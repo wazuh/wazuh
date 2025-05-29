@@ -31,7 +31,7 @@ class UsersProvider
         /// @param passwdWrapper Wrapper for password database operations.
         /// @param sysWrapper Wrapper for system-level operations.
         explicit UsersProvider(
-            std::shared_ptr<IPasswdWrapper> passwdWrapper,
+            std::shared_ptr<IPasswdWrapperLinux> passwdWrapper,
             std::shared_ptr<ISystemWrapper> sysWrapper);
 
         /// @brief Default constructor.
@@ -73,7 +73,7 @@ class UsersProvider
                                           const std::set<uid_t>& uids);
 
         /// @brief Passwd wrapper dependency.
-        std::shared_ptr<IPasswdWrapper> m_passwdWrapper;
+        std::shared_ptr<IPasswdWrapperLinux> m_passwdWrapper;
 
         /// @brief System wrapper dependency.
         std::shared_ptr<ISystemWrapper> m_sysWrapper;

@@ -7,6 +7,8 @@
  * Foundation.
  */
 
+#pragma once
+
 #include "ipasswd_wrapper.hpp"
 
 /// @brief Wrapper class for macOS-specific passwd database access.

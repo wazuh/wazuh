@@ -1,7 +1,16 @@
+/* Copyright (C) 2015, Wazuh Inc.
+ * All rights reserved.
+ *
+ * This program is free software; you can redistribute it
+ * and/or modify it under the terms of the GNU General Public
+ * License (version 2) as published by the FSF - Free Software
+ * Foundation.
+ */
+
 #include <iostream>
 #include "user_groups_linux.hpp"
-#include "group_wrapper_linux.hpp"
-#include "passwd_wrapper_linux.hpp"
+#include "group_wrapper.hpp"
+#include "passwd_wrapper.hpp"
 #include "system_wrapper.hpp"
 
 UserGroupsProvider::UserGroupsProvider(std::shared_ptr<IGroupWrapperLinux> groupWrapper,
