@@ -34,15 +34,25 @@ All notable changes to this project will be documented in this file.
 - Fixed false positive in configuration uploading. ([#28962](https://github.com/wazuh/wazuh/pull/28962))
 - Fixed sorting by version in agent list endpoint. ([#29166](https://github.com/wazuh/wazuh/pull/29166))
 
+### Ruleset
+
+#### Added
+
+- Added SCA content for Oracle Linux 10. ([#29139](https://github.com/wazuh/wazuh/pull/29139))
+- Added rule to minimize event flooding from Windows events on the Wazuh manager. ([#28790](https://github.com/wazuh/wazuh/pull/28790))
+
+#### Changed
+
+- Fixed multiple checks in RHEL 9, RHEL 10, Rocky Linux 8 and Rocky Linux 9 SCA policies. ([#29040](https://github.com/wazuh/wazuh/pull/29040))
+- Fixed diff causing false negatives in rootcheck. ([#28982](https://github.com/wazuh/wazuh/pull/28982))
+- Fixed multiple RHEL 8 and CentOS 7 SCA checks generating incorrect results. ([#28711](https://github.com/wazuh/wazuh/pull/28711))
+
 ### Other
 
 #### Changed
 - Upgraded Python embedded interpreter to 3.10.16. ([#28646](https://github.com/wazuh/wazuh/pull/28646))
 - Upgraded h11 to 0.16.0 and httpcore to 1.0.9. ([#29735](https://github.com/wazuh/wazuh/pull/29735))
 - Removed unused Python Azure dependencies. ([#28564](https://github.com/wazuh/wazuh/pull/28564))
-
-
-## [v4.12.2]
 
 
 ## [v4.12.1]
@@ -73,6 +83,13 @@ All notable changes to this project will be documented in this file.
 
 #### Added
 - Added the server uuid to the /manager/info endpoint. ([#29524](https://github.com/wazuh/wazuh/pull/29524))
+
+### Ruleset
+
+#### Added
+
+- Added SCA content for CentOS Stream 9. ([#29269](https://github.com/wazuh/wazuh/pull/29269))
+- Added IOCs and rules for Wazuh 4.x ruleset improvement. ([#29653](https://github.com/wazuh/wazuh/pull/29653))
 
 ### Other
 
@@ -139,14 +156,22 @@ All notable changes to this project will be documented in this file.
 
 #### Added
 
+- Created SCA content for Distribution Independent Linux. ([#27749](https://github.com/wazuh/wazuh/pull/27749))
+- Created SCA policy for Ubuntu 24.04 LTS. ([#27253](https://github.com/wazuh/wazuh/pull/27253))
+- Added SCA content for CentOS Stream 10. ([#24495](https://github.com/wazuh/wazuh/issues/24495))
 - Added SCA content for Windows Server 2025. ([#26732](https://github.com/wazuh/wazuh/issues/26732))
-- Added SCA content for Fedora 41. ([#26736](https://github.com/wazuh/wazuh/issues/26736))
-- Create SCA policy for Distribution Independent Linux. ([#26837](https://github.com/wazuh/wazuh/issues/26837))
-- Create SCA policy for Ubuntu 24.04 LTS. ([#23194](https://github.com/wazuh/wazuh/issues/23194))
+- Added SCA content for RHEL 10. ([#27752](https://github.com/wazuh/wazuh/pull/27752))
+- Added SCA content for AlmaLinux 10. ([#27998](https://github.com/wazuh/wazuh/pull/27998))
 
 #### Changed
 
-- SCA rule Improvement for MacOS 15 SCA. ([#26982](https://github.com/wazuh/wazuh/issues/26982))
+- Improved SCA rule for macOS 15. ([#27751](https://github.com/wazuh/wazuh/pull/27751))
+- Updated SCA Policy for Ubuntu 22.04 LTS to CIS Benchmark v2.0.0. ([#28466](https://github.com/wazuh/wazuh/pull/28466))
+- Fixed incorrect registry key in Windows Server 2022 SCA policy. ([#27911](https://github.com/wazuh/wazuh/pull/27911))
+- Fixed duplicated SCA check IDs for Windows Server 2025. ([#29204](https://github.com/wazuh/wazuh/pull/29204))
+- Fixed Ubuntu SCA checks to ensure nftables and iptables do not co-exist ([#27913](https://github.com/wazuh/wazuh/pull/27913))
+- Fixed errors in multiple checks in Rocky Linux 9 SCA checks ([#28468](https://github.com/wazuh/wazuh/pull/28468))
+- Fixed Ubuntu 24.04 SCA parsing error. ([#28379](https://github.com/wazuh/wazuh/pull/28379))
 
 ### Other
 
