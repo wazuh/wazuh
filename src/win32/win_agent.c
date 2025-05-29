@@ -42,6 +42,7 @@ void agent_help()
     printf("\tinstall-service   Installs as a service\n");
     printf("\tuninstall-service Uninstalls as a service\n");
     printf("\tstart             Manually starts (not from services)\n");
+    printf("\treload            Manually reload the agent service\n");
     exit(1);
 }
 
@@ -86,6 +87,8 @@ int main(int argc, char **argv)
             return (UninstallService());
         } else if (strcmp(argv[1], "start") == 0) {
             return (local_start());
+        } else if (strcmp(argv[1], "reload") == 0) {
+            return (local_reload());
         } else if (strcmp(argv[1], "/?") == 0) {
             agent_help();
         } else if (strcmp(argv[1], "-h") == 0) {

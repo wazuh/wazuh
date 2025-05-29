@@ -73,16 +73,16 @@ void stop_wmodules()
     }
 }
 
-int local_reload(HWND hwnd) {
+int local_reload() {
     SOCKET sock = agt->sock;
     if (sock == INVALID_SOCKET) {
-        MessageBox(hwnd, "Failed to create socket for reload.", "Reload Error", MB_OK | MB_ICONERROR);
+        merror("Failed to create socket for reload.");
         return -1;
     }
 
     WSAPROTOCOL_INFO protoInfo;
     if (WSADuplicateSocket(sock, GetCurrentProcessId(), &protoInfo) != 0) {
-        MessageBox(hwnd, "Failed to duplicate socket.", "Reload Error", MB_OK | MB_ICONERROR);
+        merror("Failed to duplicate socket.", "Reload Error");
         closesocket(sock);
         return -1;
     }
@@ -95,7 +95,7 @@ int local_reload(HWND hwnd) {
                                    PIPE_TYPE_MESSAGE | PIPE_READMODE_MESSAGE | PIPE_WAIT,
                                    1, BUFFER_SIZE, BUFFER_SIZE, 0, NULL);
     if (hPipe == INVALID_HANDLE_VALUE) {
-        MessageBox(hwnd, "Failed to create named pipe.", "Reload Error", MB_OK | MB_ICONERROR);
+        merror("Failed to create named pipe.", "Reload Error");
         closesocket(sock);
         return -1;
     }
@@ -108,14 +108,14 @@ int local_reload(HWND hwnd) {
     si.cb = sizeof(si);
     PROCESS_INFORMATION pi;
     if (!CreateProcess(NULL, cmdLine, NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi)) {
-        MessageBox(hwnd, "Failed to launch child process.", "Reload Error", MB_OK | MB_ICONERROR);
+        merror("Failed to launch child process.");
         CloseHandle(hPipe);
         closesocket(sock);
         return -1;
     }
 
     if (!ConnectNamedPipe(hPipe, NULL) && GetLastError() != ERROR_PIPE_CONNECTED) {
-        MessageBox(hwnd, "Failed to connect pipe.", "Reload Error", MB_OK | MB_ICONERROR);
+        merror("Failed to connect pipe.");
         CloseHandle(hPipe);
         closesocket(sock);
         return -1;
@@ -123,7 +123,7 @@ int local_reload(HWND hwnd) {
 
     DWORD bytesWritten;
     if (!WriteFile(hPipe, &protoInfo, sizeof(protoInfo), &bytesWritten, NULL)) {
-        MessageBox(hwnd, "Failed to write socket info to pipe.", "Reload Error", MB_OK | MB_ICONERROR);
+        merror("Failed to write socket info to pipe.");
     }
 
     CloseHandle(hPipe);
@@ -131,8 +131,8 @@ int local_reload(HWND hwnd) {
     CloseHandle(pi.hThread);
     closesocket(sock);
 
-    MessageBox(hwnd, "Reload completed. Socket transferred to child process.", "Reload", MB_OK | MB_ICONINFORMATION);
-    PostMessage(hwnd, WM_CLOSE, 0, 0);
+    minfo("Reload completed. Socket transferred to child process.");
+
     return 0;
 }
 

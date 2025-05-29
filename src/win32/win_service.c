@@ -340,7 +340,7 @@ void WINAPI OssecServiceStart (__attribute__((unused)) DWORD argc, __attribute__
 
 int service_reload(HWND hwnd) {
 #ifdef OSSECHIDS
-    if (local_reload(hwnd) == 0) {
+    if (local_reload() == 0) {
         MessageBox(hwnd, "Reload successful.", "Reload Success", MB_OK | MB_ICONINFORMATION);
         return 1;
     } else {
