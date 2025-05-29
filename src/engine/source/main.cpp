@@ -32,7 +32,6 @@
 #include <logpar/registerParsers.hpp>
 #include <metrics/manager.hpp>
 #include <queue/concurrentQueue.hpp>
-#include <rbac/rbac.hpp>
 #include <router/orchestrator.hpp>
 #include <schemf/schema.hpp>
 #include <store/drivers/fileDriver.hpp>
@@ -116,7 +115,6 @@ int main(int argc, char* argv[])
     std::shared_ptr<kvdbManager::KVDBManager> kvdbManager;
     std::shared_ptr<geo::Manager> geoManager;
     std::shared_ptr<schemf::Schema> schema;
-    std::shared_ptr<rbac::RBAC> rbac;
     std::shared_ptr<api::policy::IPolicy> policyManager;
     std::shared_ptr<IIndexerConnector> iConnector;
     std::shared_ptr<httpsrv::Server> apiServer;
@@ -207,12 +205,6 @@ int main(int argc, char* argv[])
             auto fileDriver = std::make_shared<store::drivers::FileDriver>(fileStorage);
             store = std::make_shared<store::Store>(fileDriver);
             LOG_INFO("Store initialized.");
-        }
-
-        // RBAC
-        {
-            rbac = std::make_shared<rbac::RBAC>(store);
-            LOG_INFO("RBAC initialized.");
         }
 
         // KVDB

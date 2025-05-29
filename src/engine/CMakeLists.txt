@@ -205,7 +205,6 @@ add_subdirectory(${ENGINE_SOURCE_DIR}/wazuh-http-request)
 add_subdirectory(${ENGINE_SOURCE_DIR}/indexerconnector)
 add_subdirectory(${ENGINE_SOURCE_DIR}/base)
 add_subdirectory(${ENGINE_SOURCE_DIR}/bk)
-add_subdirectory(${ENGINE_SOURCE_DIR}/rbac)
 add_subdirectory(${ENGINE_SOURCE_DIR}/api)
 add_subdirectory(${ENGINE_SOURCE_DIR}/defs)
 add_subdirectory(${ENGINE_SOURCE_DIR}/schemf)
@@ -243,7 +242,6 @@ target_link_libraries(main
     metrics
     geo
     schemf
-    rbac
     geo::igeo
     indexerconnector
     httpsrv
