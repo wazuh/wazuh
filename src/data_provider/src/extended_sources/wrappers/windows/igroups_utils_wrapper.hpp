@@ -11,6 +11,7 @@
 
 #include <winsock2.h>
 #include <windows.h>
+#include <cstdint>
 #include <limits>
 #include <string>
 #include <vector>
