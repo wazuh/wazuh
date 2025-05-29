@@ -184,7 +184,6 @@ find_and_create_imported_target("opentelemetry-cpp" "opentelemetry-cpp::metrics"
 find_and_create_imported_target("opentelemetry-cpp" "opentelemetry-cpp::resources")
 
 find_and_create_imported_target("Protobuf" "protobuf::libprotobuf")
-find_and_create_imported_target("flatbuffers" "flatbuffers::flatbuffers")
 find_and_create_imported_target("httplib" "httplib::httplib")
 
 find_and_create_imported_target("date" "date::date")
@@ -202,8 +201,6 @@ find_and_create_imported_target_ex("OpenSSL" "OpenSSL::Crypto")
 # Build main
 add_executable(main ${ENGINE_SOURCE_DIR}/main.cpp)
 
-add_subdirectory(${ENGINE_SOURCE_DIR}/feedmanager)
-add_subdirectory(${ENGINE_SOURCE_DIR}/vdscanner)
 add_subdirectory(${ENGINE_SOURCE_DIR}/wazuh-http-request)
 add_subdirectory(${ENGINE_SOURCE_DIR}/indexerconnector)
 add_subdirectory(${ENGINE_SOURCE_DIR}/base)
@@ -226,8 +223,6 @@ add_subdirectory(${ENGINE_SOURCE_DIR}/proto)
 add_subdirectory(${ENGINE_SOURCE_DIR}/metrics)
 add_subdirectory(${ENGINE_SOURCE_DIR}/geo)
 add_subdirectory(${ENGINE_SOURCE_DIR}/queue)
-add_subdirectory(${ENGINE_SOURCE_DIR}/fs)
-add_subdirectory(${ENGINE_SOURCE_DIR}/keystore)
 add_subdirectory(${ENGINE_SOURCE_DIR}/httpsrv)
 add_subdirectory(${ENGINE_SOURCE_DIR}/archiver)
 
@@ -250,7 +245,6 @@ target_link_libraries(main
     schemf
     rbac
     geo::igeo
-    vdscanner
     indexerconnector
     httpsrv
     api::event

@@ -4,7 +4,6 @@
     "concurrentqueue",
     "curl",
     "date",
-    "flatbuffers",
     "fast-float",
     "fmt",
     "gtest",
@@ -40,10 +39,6 @@
     {
       "name": "date",
       "version": "2024-05-14#0"
-    },
-    {
-      "name": "flatbuffers",
-      "version": "24.3.25#0"
     },
     {
       "name": "fast-float",
