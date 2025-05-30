@@ -60,6 +60,11 @@ class UsersProvider
         /// @return JSON array of users matching the UIDs.
         nlohmann::json collectUsers(const std::set<uid_t>& uids);
 
+        /// @brief Collects account policy data for a specific user UID.
+        /// @param uid The numeric user ID (UID) for which to retrieve account policy data.
+        /// @return A JSON object containing account policy information for the given UID.
+        nlohmann::json collectAccountPolicyData(const uid_t uid);
+
         /// @brief Passwd utility wrapper.
         std::shared_ptr<IPasswdWrapperDarwin> m_passwdWrapper;
 
