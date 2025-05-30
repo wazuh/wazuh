@@ -326,17 +326,6 @@
     </mitre>
   </rule>
 
-  <rule id="92030" level="3">
-    <if_group>sysmon_event1</if_group>
-    <field name="win.eventdata.originalFileName" type="pcre2">qwinsta</field>
-    <field name="win.eventdata.commandLine" type="pcre2">(?i)\/server</field>
-    <options>no_full_log</options>
-    <description>Gathered user information from Remote Desktop Service sessions</description>
-    <mitre>
-      <id>T1033</id>
-    </mitre>
-  </rule>
-
   <rule id="92031" level="3">
     <if_group>sysmon_event1</if_group>
     <field name="win.eventdata.originalFileName" type="pcre2">(?i)(net\.EXE|net1\.EXE)</field>
