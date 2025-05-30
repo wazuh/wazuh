@@ -13,7 +13,9 @@ constexpr auto SOCKET_CONFIG {"/run/wazuh-server/config-server.sock"};          
 json::Json ApiLoader::load() const
 {
     // Allow starting the engine without the API
-    if (const auto env = std::getenv("WAZUH_CONFIG_SKIP_API"); env != nullptr && std::string(env) == "true")
+    // bool skipApiConfig = const auto env = std::getenv("WAZUH_CONFIG_SKIP_API"); env != nullptr && std::string(env) == "true";
+    bool skipApiConfig = true; // TODO: We disable the API until the configuration is redefined again.
+    if (skipApiConfig)
     {
         LOG_INFO("Skipping configuration from API.");
         return json::Json(R"({})");

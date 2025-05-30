@@ -80,7 +80,7 @@ Conf::Conf(std::shared_ptr<IApiLoader> apiLoader)
     addUnit<int>(key::SERVER_API_TIMEOUT, "WAZUH_SERVER_API_TIMEOUT", 5000);
     addUnit<std::string>(key::SERVER_EVENT_SOCKET,
                          "WAZUH_SERVER_EVENT_SOCKET",
-                         "/run/wazuh-server/engine.socket"); // /run/wazuh-server/queue
+                         "/run/wazuh-server/engine.socket");
 
     // TZDB module
     addUnit<std::string>(key::TZDB_PATH, "WAZUH_TZDB_PATH", "/var/lib/wazuh-server/engine/tzdb");

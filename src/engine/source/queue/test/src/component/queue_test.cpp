@@ -3,7 +3,8 @@
 #include <queue/concurrentQueue.hpp>
 
 #include <base/mockSingletonManager.hpp>
-#include <metrics/noOpManager.hpp>
+// TODO: Until the indexer connector is unified with the rest of wazuh-manager
+// #include <metrics/noOpManager.hpp>
 
 using namespace base::queue;
 
@@ -40,15 +41,20 @@ protected:
 
     static void SetUpTestSuite()
     {
+        /*
+        TODO: Until the indexer connector is unified with the rest of wazuh-manager
         static metrics::mocks::NoOpManager mockManager;
         SingletonLocator::registerManager<metrics::IManager, base::test::MockSingletonManager<metrics::IManager>>();
         auto& mockStrategy = dynamic_cast<base::test::MockSingletonManager<metrics::IManager>&>(
             SingletonLocator::manager<metrics::IManager>());
         ON_CALL(mockStrategy, instance()).WillByDefault(testing::ReturnRef(mockManager));
         EXPECT_CALL(mockStrategy, instance()).Times(testing::AnyNumber());
+        */
     }
 
-    static void TearDownTestSuite() { SingletonLocator::unregisterManager<metrics::IManager>(); }
+    // TODO: Until the indexer connector is unified with the rest of wazuh-manager
+    // static void TearDownTestSuite() { SingletonLocator::unregisterManager<metrics::IManager>(); }
+    static void TearDownTestSuite() { }
 };
 TEST(FloodingFileTest, CanOpenAndWriteToFile)
 {

@@ -1,3 +1,8 @@
 [submodule "src/shared_modules/http-request"]
 	path = src/shared_modules/http-request
 	url = https://github.com/wazuh/wazuh-http-request.git
+
+# TODO: Unify the submodule and use the same commit hash for both
+[submodule "engine/http-request"]
+	path = src/engine/source/wazuh-http-request
+	url = https://github.com/wazuh/wazuh-http-request.git

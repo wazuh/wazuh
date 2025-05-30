@@ -26,18 +26,17 @@
 #include <geo/downloader.hpp>
 #include <geo/manager.hpp>
 #include <httpsrv/server.hpp>
-#include <indexerConnector/indexerConnector.hpp>
+// TODO: Until the indexer connector is unified with the rest of wazuh-manager
+// #include <indexerConnector/indexerConnector.hpp>
 #include <kvdb/kvdbManager.hpp>
 #include <logpar/logpar.hpp>
 #include <logpar/registerParsers.hpp>
-#include <metrics/manager.hpp>
+// #include <metrics/manager.hpp>
 #include <queue/concurrentQueue.hpp>
-#include <rbac/rbac.hpp>
 #include <router/orchestrator.hpp>
 #include <schemf/schema.hpp>
 #include <store/drivers/fileDriver.hpp>
 #include <store/store.hpp>
-#include <vdscanner/scanOrchestrator.hpp>
 
 #include "base/utils/getExceptionStack.hpp"
 #include "stackExecutor.hpp"
@@ -117,10 +116,8 @@ int main(int argc, char* argv[])
     std::shared_ptr<kvdbManager::KVDBManager> kvdbManager;
     std::shared_ptr<geo::Manager> geoManager;
     std::shared_ptr<schemf::Schema> schema;
-    std::shared_ptr<rbac::RBAC> rbac;
     std::shared_ptr<api::policy::IPolicy> policyManager;
-    std::shared_ptr<vdscanner::ScanOrchestrator> vdScanner;
-    std::shared_ptr<IIndexerConnector> iConnector;
+    // std::shared_ptr<IIndexerConnector> iConnector;
     std::shared_ptr<httpsrv::Server> apiServer;
     std::shared_ptr<archiver::Archiver> archiver;
 
@@ -138,6 +135,9 @@ int main(int argc, char* argv[])
         }
 
         // Metrics
+        /*
+        TODO: Until the indexer connector is unified with the rest of wazuh-manager
+        
         {
             SingletonLocator::registerManager<metrics::IManager,
                                               base::PtrSingleton<metrics::IManager, metrics::Manager>>();
@@ -148,7 +148,7 @@ int main(int argc, char* argv[])
             config->exportTimeout =
                 std::chrono::milliseconds(confManager.get<int64_t>(conf::key::METRICS_EXPORT_TIMEOUT));
 
-            // TODO Update index configuration when it is defined
+            
             IndexerConnectorOptions icConfig {};
             icConfig.name = "metrics-index";
             icConfig.hosts = confManager.get<std::vector<std::string>>(conf::key::INDEXER_HOST);
@@ -202,6 +202,7 @@ int main(int argc, char* argv[])
                     SingletonLocator::clear();
                 });
         }
+        */
 
         // Store
         {
@@ -209,12 +210,6 @@ int main(int argc, char* argv[])
             auto fileDriver = std::make_shared<store::drivers::FileDriver>(fileStorage);
             store = std::make_shared<store::Store>(fileDriver);
             LOG_INFO("Store initialized.");
-        }
-
-        // RBAC
-        {
-            rbac = std::make_shared<rbac::RBAC>(store);
-            LOG_INFO("RBAC initialized.");
         }
 
         // KVDB
@@ -276,6 +271,8 @@ int main(int argc, char* argv[])
         }
 
         // Indexer Connector
+        /*
+        TODO: Until the indexer connector is unified with the rest of wazuh-manager
         {
             IndexerConnectorOptions icConfig {};
             icConfig.name = confManager.get<std::string>(conf::key::INDEXER_INDEX);
@@ -321,6 +318,7 @@ int main(int argc, char* argv[])
             iConnector = std::make_shared<IndexerConnector>(icConfig);
             LOG_INFO("Indexer Connector initialized.");
         }
+        */
 
         // Builder and registry
         {
@@ -330,7 +328,7 @@ int main(int argc, char* argv[])
             builderDeps.kvdbScopeName = "builder";
             builderDeps.kvdbManager = kvdbManager;
             builderDeps.geoManager = geoManager;
-            builderDeps.iConnector = iConnector;
+            // builderDeps.iConnector = iConnector;
             auto defs = std::make_shared<defs::DefinitionsBuilder>();
 
             // Build allowed fields
@@ -407,11 +405,6 @@ int main(int argc, char* argv[])
             LOG_INFO("Router initialized.");
         }
 
-        // VD Scanner
-        {
-            vdScanner = std::make_shared<vdscanner::ScanOrchestrator>();
-        }
-
         // Archiver
         {
             archiver = std::make_shared<archiver::Archiver>(confManager.get<std::string>(conf::key::ARCHIVER_PATH),
@@ -456,167 +449,6 @@ int main(int argc, char* argv[])
             // Tester
             api::tester::handlers::registerHandlers(orchestrator, store, policyManager, apiServer);
             LOG_DEBUG("Tester API registered.");
-
-            // Add apidoc documentation.
-            /**
-             * @api {post} /vulnerability/scan Scan OS and packages for vulnerabilities
-             * @apiName scan
-             * @apiGroup vulnerability
-             * @apiVersion 0.1.0
-             *
-             * @apiBody {String} type Type of scan to perform.
-             * @apiBody {Object} agent Agent information.
-             * @apiBody {String} agent.id ID of the agent.
-             * @apiBody {Object[]} packages List of packages to scan.
-             * @apiBody {String} packages.architecture Architecture of the package.
-             * @apiBody {String} packages.checksum Checksum of the package.
-             * @apiBody {String} packages.description Description of the package.
-             * @apiBody {String} packages.format Format of the package (e.g., deb).
-             * @apiBody {String} packages.groups Groups to which the package belongs.
-             * @apiBody {String} packages.item_id Item ID of the package.
-             * @apiBody {String} packages.multiarch Multiarch compatibility.
-             * @apiBody {String} packages.name Name of the package.
-             * @apiBody {String} packages.priority Priority of the package.
-             * @apiBody {String} packages.scan_time Scan time of the package.
-             * @apiBody {Number} packages.size Size of the package in MB.
-             * @apiBody {String} packages.source Source of the package.
-             * @apiBody {String} packages.vendor Vendor of the package.
-             * @apiBody {String} packages.version Version of the package.
-             * @apiBody {String[]} hotfixes List of hotfixes to scan.
-             * @apiBody {Object} os OS information.
-             * @apiBody {String} os.architecture OS architecture.
-             * @apiBody {String} os.checksum OS checksum.
-             * @apiBody {String} os.hostname Hostname of the OS.
-             * @apiBody {String} os.codename Codename of the OS.
-             * @apiBody {String} os.major_version Major version of the OS.
-             * @apiBody {String} os.minor_version Minor version of the OS.
-             * @apiBody {String} os.name Name of the OS.
-             * @apiBody {String} os.patch Patch level of the OS.
-             * @apiBody {String} os.platform Platform of the OS.
-             * @apiBody {String} os.version Version name of the OS.
-             * @apiBody {String} os.scan_time Scan time of the OS.
-             * @apiBody {String} os.kernel_release Kernel release version.
-             * @apiBody {String} os.kernel_name Kernel name.
-             * @apiBody {String} os.kernel_version Kernel version.
-             *
-             * @apiSuccess {Object[]} vulnerabilities List of detected vulnerabilities.
-             * @apiSuccess {String} vulnerabilities.assigner Assigner of the vulnerability.
-             * @apiSuccess {String} vulnerabilities.category Category of the vulnerability.
-             * @apiSuccess {String} vulnerabilities.classification Classification type (e.g., CVSS).
-             * @apiSuccess {String} vulnerabilities.condition Condition that triggered the vulnerability detection.
-             * @apiSuccess {Object} vulnerabilities.cvss CVSS score details.
-             * @apiSuccess {Object} vulnerabilities.cvss.cvss3 CVSS v3.0 scoring details.
-             * @apiSuccess {Object} vulnerabilities.cvss.cvss3.vector CVSS v3.0 vector details.
-             * @apiSuccess {String} vulnerabilities.cvss.cvss3.vector.attack_vector Attack vector.
-             * @apiSuccess {String} vulnerabilities.cvss.cvss3.vector.availability Availability impact.
-             * @apiSuccess {String} vulnerabilities.cvss.cvss3.vector.confidentiality_impact Confidentiality impact.
-             * @apiSuccess {String} vulnerabilities.cvss.cvss3.vector.integrity_impact Integrity impact.
-             * @apiSuccess {String} vulnerabilities.cvss.cvss3.vector.privileges_required Privileges required.
-             * @apiSuccess {String} vulnerabilities.cvss.cvss3.vector.scope Scope of the vulnerability.
-             * @apiSuccess {String} vulnerabilities.cvss.cvss3.vector.user_interaction User interaction requirement.
-             * @apiSuccess {String} vulnerabilities.cwe_reference CWE reference for the vulnerability.
-             * @apiSuccess {String} vulnerabilities.description Description of the vulnerability.
-             * @apiSuccess {String} vulnerabilities.detected_at Detection time in ISO format.
-             * @apiSuccess {String} vulnerabilities.enumeration Enumeration type (e.g., CVE).
-             * @apiSuccess {String} vulnerabilities.id ID of the vulnerability (e.g., CVE ID).
-             * @apiSuccess {String} vulnerabilities.item_id Internal item ID related to the vulnerability.
-             * @apiSuccess {String} vulnerabilities.published_at Published date of the vulnerability.
-             * @apiSuccess {String} vulnerabilities.reference URL reference for more details about the vulnerability.
-             * @apiSuccess {Object} vulnerabilities.score Vulnerability score details.
-             * @apiSuccess {Number} vulnerabilities.score.base Base score of the vulnerability.
-             * @apiSuccess {String} vulnerabilities.score.version CVSS version.
-             * @apiSuccess {String} vulnerabilities.severity Severity level (e.g., High, Medium).
-             * @apiSuccess {String} vulnerabilities.updated Last updated time of the vulnerability.
-             *
-             * @apiSuccessExample {json} Success-Response:
-             *    HTTP/1.1 200 OK
-             *   [
-             *     {
-             *       "assigner": "microsoft",
-             *       "category": "Packages",
-             *       "classification": "CVSS",
-             *       "condition": "Package equal to 2016",
-             *       "cvss": {
-             *         "cvss3": {
-             *           "vector": {
-             *             "attack_vector": "",
-             *             "availability": "HIGH",
-             *             "confidentiality_impact": "HIGH",
-             *             "integrity_impact": "HIGH",
-             *             "privileges_required": "NONE",
-             *             "scope": "UNCHANGED",
-             *             "user_interaction": "REQUIRED"
-             *           }
-             *         }
-             *       },
-             *       "cwe_reference": "CWE-20",
-             *       "description": "Microsoft Outlook Remote Code Execution Vulnerability",
-             *       "detected_at": "2024-09-04T18:00:02.747Z",
-             *       "enumeration": "CVE",
-             *       "id": "CVE-2024-38021",
-             *       "item_id": "eff251a49a142accf85b170526462e13d3265f03",
-             *       "published_at": "2024-07-09T17:15:28Z",
-             *       "reference": "https://msrc.microsoft.com/update-guide/vulnerability/CVE-2024-38021",
-             *       "score": {
-             *         "base": 8.8,
-             *         "version": "3.1"
-             *       },
-             *       "severity": "High",
-             *       "updated": "2024-07-11T16:49:16Z"
-             *     },
-             *     {
-             *       "assigner": "microsoft",
-             *       "category": "Packages",
-             *       "classification": "CVSS",
-             *       "condition": "Package equal to 2016",
-             *       "cvss": {
-             *         "cvss3": {
-             *           "vector": {
-             *             "attack_vector": "",
-             *             "availability": "NONE",
-             *             "confidentiality_impact": "HIGH",
-             *             "integrity_impact": "NONE",
-             *             "privileges_required": "NONE",
-             *             "scope": "UNCHANGED",
-             *             "user_interaction": "REQUIRED"
-             *           }
-             *         }
-             *       },
-             *       "cwe_reference": "CWE-200",
-             *       "description": "Microsoft Outlook Spoofing Vulnerability",
-             *       "detected_at": "2024-09-04T18:00:02.747Z",
-             *       "enumeration": "CVE",
-             *       "id": "CVE-2024-38020",
-             *       "item_id": "eff251a49a142accf85b170526462e13d3265f03",
-             *       "published_at": "2024-07-09T17:15:28Z",
-             *       "reference": "https://msrc.microsoft.com/update-guide/vulnerability/CVE-2024-38020",
-             *       "score": {
-             *         "base": 6.5,
-             *         "version": "3.1"
-             *       },
-             *       "severity": "Medium",
-             *       "updated": "2024-07-11T16:49:29Z"
-             *     }
-             *   ]
-             *
-             * @apiError {String} error Error message.
-             * @apiError {Number} code Error code.
-             *
-             * @apiErrorExample {json} Error-Response:
-             *   HTTP/1.1 503 Service Unavailable
-             *  {
-             *   "error": "Service Unavailable",
-             *   "code": 503
-             *  }
-             */
-            apiServer->addRoute(httpsrv::Method::POST,
-                                "/vulnerability/scan",
-                                [vdScanner](const auto& req, auto& res)
-                                {
-                                    vdScanner->processEvent(req.body, res.body);
-                                    res.set_header("Content-Type", "application/json");
-                                });
-            LOG_DEBUG("VD API endpoint registered.");
 
             // Archiver
             api::archiver::handlers::registerHandlers(archiver, apiServer);

@@ -4,7 +4,6 @@
     "concurrentqueue",
     "curl",
     "date",
-    "flatbuffers",
     "fast-float",
     "fmt",
     "gtest",
@@ -19,9 +18,7 @@
     "spdlog",
     "taskflow",
     "yaml-cpp",
-    "cpp-httplib",
-    "liblzma",
-    "libarchive",
+     "cpp-httplib",
     "openssl"
   ],
   "overrides": [
@@ -40,10 +37,6 @@
     {
       "name": "date",
       "version": "2024-05-14#0"
-    },
-    {
-      "name": "flatbuffers",
-      "version": "24.3.25#0"
     },
     {
       "name": "fast-float",
@@ -104,14 +97,6 @@
     {
       "name": "cpp-httplib",
       "version": "0.16.2#0"
-    },
-    {
-      "name": "liblzma",
-      "version": "5.6.3#0"
-    },
-    {
-      "name": "libarchive",
-      "version": "3.7.7#0"
     },
     {
       "name": "openssl",
