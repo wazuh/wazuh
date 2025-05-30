@@ -433,6 +433,12 @@ class WazuhException(Exception):
                'remediation': 'Restart the Wazuh service to restore the RBAC database to default'},
         2009: {'message': 'Pagination error. Response from wazuh-db was over the maximum socket buffer size'},
         2010: {'message': 'The requested read operation did not complete fully'},
+        2011: {'message': 'Could not connect to the wazuh-db unix socket'},
+        2012: {'message': 'Invalid wazuh-db HTTP request'},
+        2013: {'message': 'Error sending HTTP request'},
+        2014: {'message': 'The wazuh-db client connection timeout has been exceeded'},
+        2015: {'message': 'Invalid request URL scheme'},
+        2016: {'message': 'Invalid unix socket path'},
 
         # External services
         2100: {'message': 'Error in CTI service request'},

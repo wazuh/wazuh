@@ -242,7 +242,10 @@ typedef enum wdb_stmt {
     WDB_STMT_GLOBAL_GROUP_BELONG_FIND,
     WDB_STMT_GLOBAL_GROUP_BELONG_GET,
     WDB_STMT_GLOBAL_SELECT_GROUPS,
-    WDB_STMT_GLOBAL_SYNC_REQ_GET,
+    WDB_STMT_GLOBAL_SYNC_REQ_FULL_GET,
+    WDB_STMT_GLOBAL_SYNC_REQ_STATUS_GET,
+    WDB_STMT_GLOBAL_SYNC_REQ_KEEPALIVE_GET,
+    WDB_STMT_GLOBAL_SYNC_GET,
     WDB_STMT_GLOBAL_SYNC_SET,
     WDB_STMT_GLOBAL_GROUP_SYNC_REQ_GET,
     WDB_STMT_GLOBAL_GROUP_SYNC_ALL_GET,
@@ -428,6 +431,7 @@ extern char *schema_global_upgrade_v3_sql;
 extern char *schema_global_upgrade_v4_sql;
 extern char *schema_global_upgrade_v5_sql;
 extern char *schema_global_upgrade_v6_sql;
+extern char *schema_global_upgrade_v7_sql;
 
 extern wdb_config wconfig;
 extern _Config gconfig;
@@ -1000,6 +1004,9 @@ wdb_t * wdb_pool_find_prev(wdb_t * wdb);
 int wdb_stmt_cache(wdb_t * wdb, int index);
 
 int wdb_parse(char * input, char * output, int peer);
+
+sqlite3 * wdb_global_pre(void **wdb_ctx);
+void wdb_global_post(void *wdb_ctx);
 
 int wdb_parse_syscheck(wdb_t * wdb, wdb_component_t component, char * input, char * output);
 int wdb_parse_syscollector(wdb_t * wdb, const char * query, char * input, char * output);
@@ -2025,6 +2032,24 @@ cJSON* wdb_global_select_groups(wdb_t *wdb);
  * @retval JSON with agents IDs on success, NULL on error.
  */
 cJSON* wdb_global_get_group_agents(wdb_t *wdb,  wdbc_result* status, char* group_name, int last_agent_id);
+
+/**
+ * @brief Function to find and set the correct sync status value
+ *
+ * @param [in] wdb The Global struct database.
+ * @param [in] id The agent ID
+ * @param [in] requested_sync_status The value of sync_status
+*/
+char *wdb_global_validate_sync_status(wdb_t *wdb, int id, const char *requested_sync_status);
+
+/**
+ * @brief Function to get sync_status of a particular agent.
+ *
+ * @param [in] wdb The Global struct database.
+ * @param [in] id The agent ID
+ * @return The value of sync_status.
+ */
+char * wdb_global_get_sync_status(wdb_t *wdb, int id);
 
 /**
  * @brief Function to update sync_status of a particular agent.
