@@ -7,6 +7,7 @@ from os.path import exists
 
 from wazuh import Wazuh
 from wazuh.core import common, configuration
+from wazuh.core.analysis import send_reload_ruleset_msg
 from wazuh.core.cluster.cluster import get_node
 from wazuh.core.cluster.utils import manager_restart, read_cluster_config
 from wazuh.core.configuration import get_ossec_conf, write_ossec_conf
@@ -356,6 +357,8 @@ def update_ossec_conf(new_conf: str = None) -> AffectedItemsWazuhResult:
     AffectedItemsWazuhResult
         Affected items.
     """
+    # Saves the original configuration to check the changes made later
+    initial_configuration = get_ossec_conf(section="ruleset")
     result = AffectedItemsWazuhResult(all_msg=f"Configuration was successfully updated"
                                               f"{' in specified node' if node_id != 'manager' else ''}",
                                       some_msg='Could not update configuration in some nodes',
@@ -386,11 +389,18 @@ def update_ossec_conf(new_conf: str = None) -> AffectedItemsWazuhResult:
         else:
             result.affected_items.append(node_id)
         exists(backup_file) and remove(backup_file)
+
+        # Get the new configuration to compare it to the original one
+        new_configuration = get_ossec_conf(section="ruleset")
+        if initial_configuration != new_configuration:
+            # The contents of the ruleset section are different
+            socket_response = send_reload_ruleset_msg(origin={'module': 'api'})
+            if socket_response['error'] == 1:
+                raise WazuhError(1914, extra_message=socket_response['data'])
     except WazuhError as e:
         result.add_failed_item(id_=node_id, error=e)
     finally:
         exists(backup_file) and safe_move(backup_file, common.OSSEC_CONF)
-
     result.total_affected_items = len(result.affected_items)
     return result
 

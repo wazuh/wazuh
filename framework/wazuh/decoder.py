@@ -378,7 +378,7 @@ def upload_decoder_file(filename: str, content: str, relative_dirname: str = Non
         # After uploading the file, reload rulesets
         socket_response = send_reload_ruleset_msg(origin={'module': 'api'})
         if socket_response['error'] == 1:
-            raise WazuhError(1501, extra_message=socket_response['data'])
+            raise WazuhError(1508, extra_message=socket_response['data'])
 
         result.affected_items.append(to_relative_path(full_path))
         result.total_affected_items = len(result.affected_items)
