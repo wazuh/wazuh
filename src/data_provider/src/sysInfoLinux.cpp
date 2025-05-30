@@ -29,6 +29,7 @@
 #include "packages/berkeleyRpmDbHelper.h"
 #include "packages/packageLinuxDataRetriever.h"
 #include "linuxInfoHelper.h"
+#include "users_linux.hpp"
 
 using ProcessInfo = std::unordered_map<int64_t, std::pair<int32_t, std::string>>;
 
@@ -613,4 +614,12 @@ nlohmann::json SysInfo::getHotfixes() const
 {
     // Currently not supported for this OS.
     return nlohmann::json();
+}
+
+nlohmann::json SysInfo::getUsers() const
+{
+    // TODO: Pending json formation.
+    UsersProvider usersProvider;
+    auto collected = usersProvider.collect();
+    return collected;
 }

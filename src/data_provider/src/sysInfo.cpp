@@ -57,6 +57,11 @@ nlohmann::json SysInfo::hotfixes()
     return getHotfixes();
 }
 
+nlohmann::json SysInfo::users()
+{
+    return getUsers();
+}
+
 #ifdef __cplusplus
 extern "C" {
 #endif
