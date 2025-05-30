@@ -134,3 +134,9 @@ nlohmann::json SysInfo::getGroups() const
     //TODO: Pending implementation.
     return nlohmann::json();
 }
+
+nlohmann::json SysInfo::getUsers() const
+{
+    //TODO: Pending implementation.
+    return nlohmann::json();
+}

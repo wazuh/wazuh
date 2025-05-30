@@ -31,6 +31,7 @@
 #include "linuxInfoHelper.h"
 #include "groups_linux.hpp"
 #include "user_groups_linux.hpp"
+#include "users_linux.hpp"
 
 using ProcessInfo = std::unordered_map<int64_t, std::pair<int32_t, std::string>>;
 
@@ -665,4 +666,12 @@ nlohmann::json SysInfo::getGroups() const
     }
 
     return result;
+}
+
+nlohmann::json SysInfo::getUsers() const
+{
+    // TODO: Pending json formation.
+    UsersProvider usersProvider;
+    auto collected = usersProvider.collect();
+    return collected;
 }

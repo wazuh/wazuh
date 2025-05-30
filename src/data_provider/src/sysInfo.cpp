@@ -62,6 +62,11 @@ nlohmann::json SysInfo::groups()
     return getGroups();
 }
 
+nlohmann::json SysInfo::users()
+{
+    return getUsers();
+}
+
 #ifdef __cplusplus
 extern "C" {
 #endif

@@ -376,7 +376,8 @@ void Syscollector::init(const std::shared_ptr<ISysInfo>& spInfo,
                         const bool processes,
                         const bool hotfixes,
                         const bool groups,
-                        const bool notifyOnFirstScan)
+                        const bool notifyOnFirstScan,
+                        const bool users)
 {
     m_spInfo = spInfo;
     m_reportDiffFunction = reportDiffFunction;
@@ -394,6 +395,7 @@ void Syscollector::init(const std::shared_ptr<ISysInfo>& spInfo,
     m_hotfixes = hotfixes;
     m_notify = notifyOnFirstScan;
     m_groups = groups;
+    m_users = users;
 
     std::unique_lock<std::mutex> lock{m_mutex};
     m_stopping = false;
@@ -774,6 +776,13 @@ nlohmann::json Syscollector::getGroupsData()
     return ret;
 }
 
+nlohmann::json Syscollector::getUsersData()
+{
+    nlohmann::json ret;
+    auto data = m_spInfo->users();
+    return data;
+}
+
 void Syscollector::scanPorts()
 {
     if (m_ports)
@@ -849,6 +858,22 @@ void Syscollector::syncGroups()
     m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(GROUPS_START_CONFIG_STATEMENT), m_reportSyncFunction);
 }
 
+void Syscollector::scanUsers()
+{
+    if (m_users)
+    {
+        m_logFunction(LOG_DEBUG_VERBOSE, "Starting users scan");
+        const auto& usersData { getUsersData() };
+        updateChanges(USERS_TABLE, usersData);
+        m_logFunction(LOG_DEBUG_VERBOSE, "Ending users scan");
+    }
+}
+
+void Syscollector::syncUsers()
+{
+    // m_spRsync->startSyusers(m_spDBSync->handle(), nlohmann::json::parse(PORTS_START_CONFIG_STATEMENT), m_reportSyncFunction);
+}
+
 void Syscollector::scan()
 {
     m_logFunction(LOG_INFO, "Starting evaluation.");
@@ -862,6 +887,7 @@ void Syscollector::scan()
     TRY_CATCH_TASK(scanPorts);
     TRY_CATCH_TASK(scanProcesses);
     TRY_CATCH_TASK(scanGroups);
+    TRY_CATCH_TASK(scanUsers);
     m_notify = true;
     m_logFunction(LOG_INFO, "Evaluation finished.");
 }
