@@ -30,3 +30,13 @@
       elements:
         - disabled:
             value: 'yes'
+
+    # Add malicious-ioc CDB lists
+    - section: ruleset
+      elements:
+        - list:
+            value: etc/lists/malicious-ioc/malware-hashes
+        - list:
+            value: etc/lists/malicious-ioc/malicious-ip
+        - list:
+            value: etc/lists/malicious-ioc/malicious-domains
