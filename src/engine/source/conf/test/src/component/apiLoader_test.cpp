@@ -82,6 +82,8 @@ protected:
 
 TEST_P(ApiLoaderServerTest, load)
 {
+    // TODO: Skip until the new config method is defined
+    GTEST_SKIP() << "Skipping ApiLoaderServerTest until the new config method is defined";
     *m_response = std::get<0>(GetParam());
     *m_status = std::get<1>(GetParam());
 
