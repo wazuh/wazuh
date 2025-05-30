@@ -5,7 +5,8 @@
 
 #include <defs/idefinitions.hpp>
 #include <geo/imanager.hpp>
-#include <indexerConnector/iindexerconnector.hpp>
+// TODO: Until the indexer connector is unified with the rest of wazuh-manager
+// #include <indexerConnector/iindexerconnector.hpp>
 #include <kvdb/ikvdbmanager.hpp>
 #include <logpar/logpar.hpp>
 #include <schemf/ischema.hpp>
@@ -27,7 +28,7 @@ struct BuilderDeps
     std::string kvdbScopeName;
     std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager;
     std::shared_ptr<geo::IManager> geoManager;
-    std::shared_ptr<IIndexerConnector> iConnector;
+    // std::shared_ptr<IIndexerConnector> iConnector;
 };
 
 class Builder final

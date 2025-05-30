@@ -26,11 +26,12 @@
 #include <geo/downloader.hpp>
 #include <geo/manager.hpp>
 #include <httpsrv/server.hpp>
-#include <indexerConnector/indexerConnector.hpp>
+// TODO: Until the indexer connector is unified with the rest of wazuh-manager
+// #include <indexerConnector/indexerConnector.hpp>
 #include <kvdb/kvdbManager.hpp>
 #include <logpar/logpar.hpp>
 #include <logpar/registerParsers.hpp>
-#include <metrics/manager.hpp>
+// #include <metrics/manager.hpp>
 #include <queue/concurrentQueue.hpp>
 #include <router/orchestrator.hpp>
 #include <schemf/schema.hpp>
@@ -116,7 +117,7 @@ int main(int argc, char* argv[])
     std::shared_ptr<geo::Manager> geoManager;
     std::shared_ptr<schemf::Schema> schema;
     std::shared_ptr<api::policy::IPolicy> policyManager;
-    std::shared_ptr<IIndexerConnector> iConnector;
+    // std::shared_ptr<IIndexerConnector> iConnector;
     std::shared_ptr<httpsrv::Server> apiServer;
     std::shared_ptr<archiver::Archiver> archiver;
 
@@ -134,6 +135,9 @@ int main(int argc, char* argv[])
         }
 
         // Metrics
+        /*
+        TODO: Until the indexer connector is unified with the rest of wazuh-manager
+        
         {
             SingletonLocator::registerManager<metrics::IManager,
                                               base::PtrSingleton<metrics::IManager, metrics::Manager>>();
@@ -144,7 +148,7 @@ int main(int argc, char* argv[])
             config->exportTimeout =
                 std::chrono::milliseconds(confManager.get<int64_t>(conf::key::METRICS_EXPORT_TIMEOUT));
 
-            // TODO Update index configuration when it is defined
+            
             IndexerConnectorOptions icConfig {};
             icConfig.name = "metrics-index";
             icConfig.hosts = confManager.get<std::vector<std::string>>(conf::key::INDEXER_HOST);
@@ -198,6 +202,7 @@ int main(int argc, char* argv[])
                     SingletonLocator::clear();
                 });
         }
+        */
 
         // Store
         {
@@ -266,6 +271,8 @@ int main(int argc, char* argv[])
         }
 
         // Indexer Connector
+        /*
+        TODO: Until the indexer connector is unified with the rest of wazuh-manager
         {
             IndexerConnectorOptions icConfig {};
             icConfig.name = confManager.get<std::string>(conf::key::INDEXER_INDEX);
@@ -311,6 +318,7 @@ int main(int argc, char* argv[])
             iConnector = std::make_shared<IndexerConnector>(icConfig);
             LOG_INFO("Indexer Connector initialized.");
         }
+        */
 
         // Builder and registry
         {
@@ -320,7 +328,7 @@ int main(int argc, char* argv[])
             builderDeps.kvdbScopeName = "builder";
             builderDeps.kvdbManager = kvdbManager;
             builderDeps.geoManager = geoManager;
-            builderDeps.iConnector = iConnector;
+            // builderDeps.iConnector = iConnector;
             auto defs = std::make_shared<defs::DefinitionsBuilder>();
 
             // Build allowed fields

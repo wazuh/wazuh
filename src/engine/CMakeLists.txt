@@ -202,7 +202,8 @@ find_and_create_imported_target_ex("OpenSSL" "OpenSSL::Crypto")
 add_executable(main ${ENGINE_SOURCE_DIR}/main.cpp)
 
 add_subdirectory(${ENGINE_SOURCE_DIR}/wazuh-http-request)
-add_subdirectory(${ENGINE_SOURCE_DIR}/indexerconnector)
+# TODO: Until the indexer connector is unified with the rest of wazuh-manager
+# add_subdirectory(${ENGINE_SOURCE_DIR}/indexerconnector) 
 add_subdirectory(${ENGINE_SOURCE_DIR}/base)
 add_subdirectory(${ENGINE_SOURCE_DIR}/bk)
 add_subdirectory(${ENGINE_SOURCE_DIR}/api)
@@ -219,7 +220,8 @@ add_subdirectory(${ENGINE_SOURCE_DIR}/store)
 add_subdirectory(${ENGINE_SOURCE_DIR}/router)
 add_subdirectory(${ENGINE_SOURCE_DIR}/conf)
 add_subdirectory(${ENGINE_SOURCE_DIR}/proto)
-add_subdirectory(${ENGINE_SOURCE_DIR}/metrics)
+# TODO: Until the indexer connector is unified with the rest of wazuh-manager
+# add_subdirectory(${ENGINE_SOURCE_DIR}/metrics)
 add_subdirectory(${ENGINE_SOURCE_DIR}/geo)
 add_subdirectory(${ENGINE_SOURCE_DIR}/queue)
 add_subdirectory(${ENGINE_SOURCE_DIR}/httpsrv)
@@ -239,11 +241,11 @@ target_link_libraries(main
     api
     kvdb
     eMessages
-    metrics
+    # metrics # TODO: Comment until indexerconnector is unified with the old one
     geo
     schemf
     geo::igeo
-    indexerconnector
+    # indexerconnector # TODO: Comment until indexerconnector is unified with the old one
     httpsrv
     api::event
     queue
