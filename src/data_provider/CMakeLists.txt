@@ -92,6 +92,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   set(PRECOMPILED_EXTERNAL_RES "")
   include_directories(${SRC_FOLDER}/shared_modules/http-request/include/)
   include_directories(${SRC_FOLDER}/shared_modules/http-request/shared/)
+  include_directories(${CMAKE_SOURCE_DIR}/src/extended_sources/wrappers/unix/)
   include_directories(${CMAKE_SOURCE_DIR}/src/extended_sources/wrappers/unix/linux)
 endif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
 
