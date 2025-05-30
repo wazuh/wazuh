@@ -341,7 +341,7 @@ def test_get_basic_info(mock_uid, mock_gid, mock_open_file, mock_exists, mock_ch
 @patch('wazuh.manager.remove')
 @patch('wazuh.manager.safe_move')
 @patch('wazuh.manager.send_reload_ruleset_msg', return_value={'error': 0})
-def test_update_ossec_conf(mock_reload, move_mock, remove_mock, exists_mock, full_copy_mock, prettify_mock, write_mock,
+def test_update_ossec_conf(reload_mock, move_mock, remove_mock, exists_mock, full_copy_mock, prettify_mock, write_mock,
                            validate_mock):
     """Test update_ossec_conf works as expected."""
     result = update_ossec_conf(new_conf="placeholder config")
@@ -363,7 +363,7 @@ def test_update_ossec_conf(mock_reload, move_mock, remove_mock, exists_mock, ful
 @patch('wazuh.manager.remove')
 @patch('wazuh.manager.safe_move')
 @patch('wazuh.manager.send_reload_ruleset_msg', return_value={'error': 0})
-def test_update_ossec_conf_ko(move_mock, remove_mock, exists_mock, full_copy_mock, prettify_mock, write_mock,
+def test_update_ossec_conf_ko(reload_mock, move_mock, remove_mock, exists_mock, full_copy_mock, prettify_mock, write_mock,
                               validate_mock, new_conf):
     """Test update_ossec_conf() function return an error and restore the configuration if the provided configuration
     is not valid."""
