@@ -224,6 +224,7 @@ Syscollector::Syscollector()
     , m_stopping { true }
     , m_notify { false }
     , m_groups { false }
+    , m_users { false }
 {}
 
 std::string Syscollector::getCreateStatement() const
@@ -240,6 +241,7 @@ std::string Syscollector::getCreateStatement() const
     ret += NETPROTO_SQL_STATEMENT;
     ret += NETADDR_SQL_STATEMENT;
     ret += GROUPS_SQL_STATEMENT;
+    ret += USERS_SQL_STATEMENT;
     return ret;
 }
 
@@ -376,8 +378,8 @@ void Syscollector::init(const std::shared_ptr<ISysInfo>& spInfo,
                         const bool processes,
                         const bool hotfixes,
                         const bool groups,
-                        const bool notifyOnFirstScan,
-                        const bool users)
+                        const bool users,
+                        const bool notifyOnFirstScan)
 {
     m_spInfo = spInfo;
     m_reportDiffFunction = reportDiffFunction;
@@ -864,6 +866,8 @@ void Syscollector::scanUsers()
     {
         m_logFunction(LOG_DEBUG_VERBOSE, "Starting users scan");
         const auto& usersData { getUsersData() };
+        // TODO: delete later
+        // m_logFunction(LOG_DEBUG_VERBOSE, "scan result: " + usersData.dump(4));
         updateChanges(USERS_TABLE, usersData);
         m_logFunction(LOG_DEBUG_VERBOSE, "Ending users scan");
     }

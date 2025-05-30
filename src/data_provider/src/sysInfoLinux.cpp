@@ -31,6 +31,10 @@
 #include "linuxInfoHelper.h"
 #include "groups_linux.hpp"
 #include "user_groups_linux.hpp"
+
+#include "logged_in_users_unix.hpp"
+#include "shadow_linux.hpp"
+// #include "sudoers_unix.hpp"
 #include "users_linux.hpp"
 
 using ProcessInfo = std::unordered_map<int64_t, std::pair<int32_t, std::string>>;
@@ -670,8 +674,102 @@ nlohmann::json SysInfo::getGroups() const
 
 nlohmann::json SysInfo::getUsers() const
 {
-    // TODO: Pending json formation.
+    nlohmann::json result;
+
     UsersProvider usersProvider;
-    auto collected = usersProvider.collect();
-    return collected;
+    auto collectedUsers = usersProvider.collect();
+
+    for (auto& user : collectedUsers)
+    {
+        nlohmann::json userItem {};
+
+        auto username = user["username"].get<std::string>();
+
+        userItem["user_description"] = user["description"];
+        userItem["user_directory"] = user["directory"];
+        userItem["user_gid_signed"] = user["gid_signed"];
+        userItem["user_id"] = user["uuid"];
+        userItem["user_is_remote"] = user["include_remote"];        // user_is_remote BOOLEAN
+        userItem["user_name"] = username;
+        userItem["user_password"] = user["password_last_set_time"];
+        userItem["user_shell"] = user["shell"];
+        userItem["user_type"] = user["type"];
+        userItem["user_uid_signed"] = user["uid_signed"];
+        userItem["user_uuid"] = user["uuid"];
+        userItem["group"] = user["gid"];
+
+        auto matched = false;
+
+        LoggedInUsersProvider loggedInUserProvider;
+        auto collectedLoggedInUser = loggedInUserProvider.collect();
+
+        //TODO: let's try to avoid iterating in every LoggedInUsersProvider
+        for (auto& item : collectedLoggedInUser)
+        {
+            // If matches user_name, fill the rest of the fields
+            if (item["user"] == username)
+            {
+                matched = true;
+                userItem["user_logged_status"] = "true";
+                userItem["user_host"] = item["host"];
+                userItem["user_logged_tty"] = item["tty"];
+                userItem["user_logged_type"] = item["type"];
+                userItem["user_login_pid"] = item["pid"];
+                userItem["user_login_time"] = item["time"];
+            }
+        }
+
+        if (!matched)
+        {
+            userItem["user_logged_status"] = R"({})"_json; //"nullptr";
+            userItem["user_host"] = R"({})"_json;          //"nullptr";
+            userItem["user_logged_tty"] = R"({})"_json;    //"nullptr";
+            userItem["user_logged_type"] = R"({})"_json;   //"nullptr";
+            userItem["user_login_pid"] = R"({})"_json;     //1234;
+            userItem["user_login_time"] = R"({})"_json;    //123456789;
+        }
+
+        matched = false;
+
+        ShadowProvider shadowProvide;
+        auto collectedShadow = shadowProvide.collect();
+
+        for (auto& singleShadow : collectedShadow)
+        {
+            // If matches user_name, fill the rest of the fields
+            if (singleShadow["username"] == username)
+            {
+                matched = true;
+                userItem["user_password_expiration_date"] = singleShadow["expire"];
+                userItem["user_password_hash_algorithm"] = singleShadow["hash_alg"];
+                userItem["user_password_inactive_days"] = singleShadow["inactive"];
+                userItem["user_password_last_change"] = singleShadow["last_change"];
+                userItem["user_password_max_days_between_changes"] = singleShadow["max"];
+                userItem["user_password_min_days_between_changes"] = singleShadow["min"];
+                userItem["user_password_status"] = singleShadow["password_status"];
+                userItem["user_password_warning_days_before_expiration"] = singleShadow["warning"];
+            }
+        }
+
+        if (!matched)
+        {
+            userItem["user_password_expiration_date"] = R"({})"_json;                //0;
+            userItem["user_password_hash_algorithm"] = R"({})"_json;                 //"nullptr";
+            userItem["user_password_inactive_days"] = R"({})"_json;                  //123456789;
+            userItem["user_password_last_change"] = R"({})"_json;                    //123456789;
+            userItem["user_password_max_days_between_changes"] = R"({})"_json;       //123456789;
+            userItem["user_password_min_days_between_changes"] = R"({})"_json;       //123456789;
+            userItem["user_password_status"] = R"({})"_json;                         //"nullptr";
+            userItem["user_password_warning_days_before_expiration"] = R"({})"_json; //123456789;
+        }
+
+        // groups TEXT,                             //TODO: get it from groups
+        // user_roles_sudo BOOLEAN,                 //TODO: How to form? SudoersProvider[""]
+        // user_roles_sudo_rule_details TEXT,       //SudoersProvider IDEM
+        // item["checksum"] = ""; // checksum TEXT, // TODO: should I calculate it in syscollectorImp.cpp?
+
+        result.push_back(std::move(userItem));
+    }
+
+    return result;
 }

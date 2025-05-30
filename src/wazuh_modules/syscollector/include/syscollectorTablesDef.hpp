@@ -859,30 +859,30 @@ constexpr auto USERS_SYNC_CONFIG_STATEMENT
     {
         "decoder_type":"JSON_RANGE",
         "table":"dbsync_users",
-        "component":"syscollector_ports",
-        "index":"item_id",
+        "component":"syscollector_users",
+        "index":"user_id",
         "checksum_field":"checksum",
         "no_data_query_json": {
-                "row_filter":"WHERE item_id BETWEEN '?' and '?' ORDER BY item_id",
+                "row_filter":"WHERE user_id BETWEEN '?' and '?' ORDER BY user_id",
                 "column_list":["*"],
                 "distinct_opt":false,
                 "order_by_opt":""
         },
         "count_range_query_json": {
-                "row_filter":"WHERE item_id BETWEEN '?' and '?' ORDER BY item_id",
+                "row_filter":"WHERE user_id BETWEEN '?' and '?' ORDER BY user_id",
                 "count_field_name":"count",
                 "column_list":["count(*) AS count "],
                 "distinct_opt":false,
                 "order_by_opt":""
         },
         "row_data_query_json": {
-                "row_filter":"WHERE item_id ='?'",
+                "row_filter":"WHERE user_id ='?'",
                 "column_list":["*"],
                 "distinct_opt":false,
                 "order_by_opt":""
         },
         "range_checksum_query_json": {
-                "row_filter":"WHERE item_id BETWEEN '?' and '?' ORDER BY item_id",
+                "row_filter":"WHERE user_id BETWEEN '?' and '?' ORDER BY user_id",
                 "column_list":["*"],
                 "distinct_opt":false,
                 "order_by_opt":""
@@ -894,11 +894,43 @@ constexpr auto USERS_SYNC_CONFIG_STATEMENT
 constexpr auto USERS_SQL_STATEMENT
 {
     R"(CREATE TABLE dbsync_users (
-       protocol TEXT,
-       inode BIGINT,
-       PRIMARY KEY (inode)) WITHOUT ROWID;)"
+    group_id BIGINT,
+    groups TEXT,
+    user_auth_failed_count BIGINT,
+    user_auth_failed_timestamp DOUBLE,
+    user_created DOUBLE,
+    user_description TEXT,
+    user_directory TEXT,
+    user_gid_signed BIGINT,
+    user_host TEXT,
+    user_id BIGINT,
+    user_is_hidden INTEGER,
+    user_is_remote INTEGER,
+    user_logged_status TEXT,
+    user_logged_tty TEXT,
+    user_logged_type TEXT,
+    user_login_pid INTEGER,
+    user_login_time BIGINT,
+    user_name TEXT,
+    user_password_last_set_time DOUBLE,
+    user_password_expiration_date BIGINT,
+    user_password_hash_algorithm TEXT,
+    user_password_inactive_days BIGINT,
+    user_password_last_change BIGINT,
+    user_password_max_days_between_changes BIGINT,
+    user_password_min_days_between_changes BIGINT,
+    user_password_status TEXT,
+    user_password_warning_days_before_expiration BIGINT,
+    user_roles_sudo TEXT,
+    user_roles_sudo_rule_details TEXT,
+    user_shell TEXT,
+    user_type TEXT,
+    user_uid_signed BIGINT,
+    user_uuid TEXT,
+    checksum TEXT,
+    PRIMARY KEY (user_name)) WITHOUT ROWID;)"
 };
-static const std::vector<std::string> USERS_ITEM_ID_FIELDS{"inode"};
+static const std::vector<std::string> USERS_ITEM_ID_FIELDS{"user_name"};
 
 
 constexpr auto GROUPS_START_CONFIG_STATEMENT
