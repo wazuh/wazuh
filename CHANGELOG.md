@@ -7,9 +7,14 @@ All notable changes to this project will be documented in this file.
 
 #### Fixed
 - Fixed missing agent version handling in Vulnerability Detector. ([#29181](https://github.com/wazuh/wazuh/pull/29181))
+- Fixed race condition in agent status synchronization between worker and master. ([#29624](https://github.com/wazuh/wazuh/pull/29624))
 
 #### Changed
 - Improved reports functionality to avoid duplicated daily FIM reports. ([#29232](https://github.com/wazuh/wazuh/pull/29232))
+- Optimized agent query endpoints. ([#29363](https://github.com/wazuh/wazuh/pull/29363))
+- Implemented RBAC resource cache with TTL support. ([#29406](https://github.com/wazuh/wazuh/pull/29406))
+- Improved Wazuh-DB protocol to support large HTTP requests and remove pagination. ([#29514](https://github.com/wazuh/wazuh/pull/29514))
+- Added HTTP client implementation to wazuh-db. ([#29515](https://github.com/wazuh/wazuh/pull/29515))
 
 ### Agent
 
