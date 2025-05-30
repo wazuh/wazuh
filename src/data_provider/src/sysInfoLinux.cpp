@@ -29,6 +29,10 @@
 #include "packages/berkeleyRpmDbHelper.h"
 #include "packages/packageLinuxDataRetriever.h"
 #include "linuxInfoHelper.h"
+
+#include "logged_in_users_unix.hpp"
+#include "shadow_linux.hpp"
+// #include "sudoers_unix.hpp"
 #include "users_linux.hpp"
 
 using ProcessInfo = std::unordered_map<int64_t, std::pair<int32_t, std::string>>;
@@ -618,8 +622,48 @@ nlohmann::json SysInfo::getHotfixes() const
 
 nlohmann::json SysInfo::getUsers() const
 {
-    // TODO: Pending json formation.
+    nlohmann::json result;
     UsersProvider usersProvider;
-    auto collected = usersProvider.collect();
-    return collected;
+
+    auto collectedUsers = usersProvider.collect();
+    result["user_description"] = collectedUsers[0]["description"];         // user_description TEXT
+    result["user_directory"] = collectedUsers[0]["directory"];             // user_directory TEXT
+    result["user_gid_signed"] = collectedUsers[0]["gid_signed"];           // user_gid_signed BIGINT
+    result["user_id"] = collectedUsers[0]["uuid"];                         // user_id BIGINT
+    result["user_is_remote"] = collectedUsers[0]["include_remote"];        // user_is_remote BOOLEAN
+    // ALso from ShadowProvider["username"]
+    result["user_name"] = collectedUsers[0]["username"];                   // user_name TEXT
+    result["user_password"] = collectedUsers[0]["password_last_set_time"]; // user_password.last_set_time DOUBLE
+    result["user_shell"] = collectedUsers[0]["shell"];                     // user_shell TEXT
+    result["user_type"] = collectedUsers[0]["type"];                       // user_type TEXT
+    result["user_uid_signed"] = collectedUsers[0]["uid_signed"];           // user_uid_signed BIGINT
+    result["user_uuid"] = collectedUsers[0]["uuid"];                       // user_uuid TEXT
+    result["group"] = collectedUsers[0]["gid"];                            // group.id BIGINT
+
+    LoggedInUsersProvider loggedInUserProvider;
+    auto collectedLoggedInUser = loggedInUserProvider.collect();
+    result["user_host"] = collectedLoggedInUser[0]["host"];                  //If matches user_name TEXT
+    result["user_logged_status"] = collectedLoggedInUser[0]["user"];         //If matches user_name BOOLEAN
+    result["user_logged_tty"] = collectedLoggedInUser[0]["tty"];             //If matches user_name TEXT
+    result["user_logged_type"] = collectedLoggedInUser[0]["type"];           //If matches user_name TEXT
+    result["user_login_pid"] = collectedLoggedInUser[0]["pid"];              //If matches user_name integer
+    result["user_login_time"] = collectedLoggedInUser[0]["time"];            //If matches user_name BIGINT
+
+    ShadowProvider shadowProvide;
+    auto collectedShadow = shadowProvide.collect();
+    result["user_password_expiration_date"] = collectedShadow[0]["expire"];                  // BIGINT
+    result["user_password_hash_algorithm"] = collectedShadow[0]["hash_alg"];                 // TEXT
+    result["user_password_inactive_days"] = collectedShadow[0]["inactive"];                  // BIGINT
+    result["user_password_last_change"] = collectedShadow[0]["last_change"];                 // BIGINT
+    result["user_password_max_days_between_changes"] = collectedShadow[0]["max"];            // BIGINT
+    result["user_password_min_days_between_changes"] = collectedShadow[0]["min"];            // BIGINT
+    result["user_password_status"] = collectedShadow[0]["password_status"];                  // TEXT
+    result["user_password_warning_days_before_expiration"] = collectedShadow[0]["warning"];  // BIGINT,
+
+    // groups TEXT,                                        //TODO: from groups ????
+    // user_roles_sudo BOOLEAN,                            //TODO: How to form? SudoersProvider[""]
+    // user_roles_sudo_rule_details TEXT,                  //SudoersProvider IDEM
+    // checksum TEXT,                                      //TODO
+
+    return result;
 }

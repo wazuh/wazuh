@@ -209,6 +209,7 @@ std::string Syscollector::getCreateStatement() const
     ret += NETIFACE_SQL_STATEMENT;
     ret += NETPROTO_SQL_STATEMENT;
     ret += NETADDR_SQL_STATEMENT;
+    ret += USERS_SQL_STATEMENT;
     return ret;
 }
 
