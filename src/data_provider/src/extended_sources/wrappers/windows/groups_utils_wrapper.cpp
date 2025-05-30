@@ -29,56 +29,56 @@ GroupsHelper::GroupsHelper()
 std::vector<Group> GroupsHelper::processLocalGroups()
 {
     std::vector<Group> groups;
-    DWORD group_info_level = 1;
-    DWORD num_groups_read = 0;
-    DWORD total_groups = 0;
+    DWORD groupInfoLevel = 1;
+    DWORD numGroupsRead = 0;
+    DWORD totalGroups = 0;
     DWORD ret = 0;
-    localgroup_info_1_ptr groups_info_buffer;
+    localgroup_info_1_ptr groupsInfoBuffer;
 
     do
     {
         ret = m_winapiWrapper->NetLocalGroupEnumWrapper(nullptr,
-                                                        group_info_level,
-                                                        reinterpret_cast<LPBYTE*>(groups_info_buffer.get_new_ptr()),
+                                                        groupInfoLevel,
+                                                        reinterpret_cast<LPBYTE*>(groupsInfoBuffer.get_new_ptr()),
                                                         MAX_PREFERRED_LENGTH,
-                                                        &num_groups_read,
-                                                        &total_groups,
+                                                        &numGroupsRead,
+                                                        &totalGroups,
                                                         nullptr);
 
         if (ret != NERR_Success && ret != ERROR_MORE_DATA)
         {
-            std::cout << "NetLocalGroupEnum failed with return value: " << ret << std::endl;
+            // std::cout << "NetLocalGroupEnum failed with return value: " << ret << std::endl;
             break;
         }
 
-        if (groups_info_buffer == nullptr)
+        if (groupsInfoBuffer == nullptr)
         {
-            std::cout << "NetLocalGroupEnum groups buffer is null" << std::endl;
+            // std::cout << "NetLocalGroupEnum groups buffer is null" << std::endl;
             break;
         }
 
-        for (std::size_t i = 0; i < num_groups_read; i++)
+        for (std::size_t i = 0; i < numGroupsRead; i++)
         {
-            PWSTR groupname = groups_info_buffer.get()[i].lgrpi1_name;
-            auto sid_ptr = m_usersHelper->getSidFromAccountName(groupname);
+            PWSTR groupname = groupsInfoBuffer.get()[i].lgrpi1_name;
+            auto pSid = m_usersHelper->getSidFromAccountName(groupname);
 
-            if (!sid_ptr)
+            if (!pSid)
             {
                 // If we failed to find a SID, don't add a row to the table.
-                std::cout << "Failed to find a SID from LookupAccountNameW for group: "
-                          << Utils::EncodingWindowsHelper::wstringToStringUTF8(groupname) << std::endl;
+                // std::cout << "Failed to find a SID from LookupAccountNameW for group: "
+                //           << Utils::EncodingWindowsHelper::wstringToStringUTF8(groupname) << std::endl;
                 continue;
             }
 
-            const auto& group_sid = sid_ptr.get();
+            const auto& groupSid = pSid.get();
 
-            Group new_group;
-            new_group.sid = m_usersHelper->psidToString(group_sid);
-            new_group.comment = Utils::EncodingWindowsHelper::wstringToStringUTF8(groups_info_buffer.get()[i].lgrpi1_comment);
-            new_group.gid = m_usersHelper->getRidFromSid(group_sid);
-            new_group.groupname = Utils::EncodingWindowsHelper::wstringToStringUTF8(groups_info_buffer.get()[i].lgrpi1_name);
+            Group newGroup;
+            newGroup.sid = m_usersHelper->psidToString(groupSid);
+            newGroup.comment = Utils::EncodingWindowsHelper::wstringToStringUTF8(groupsInfoBuffer.get()[i].lgrpi1_comment);
+            newGroup.gid = m_usersHelper->getRidFromSid(groupSid);
+            newGroup.groupname = Utils::EncodingWindowsHelper::wstringToStringUTF8(groupsInfoBuffer.get()[i].lgrpi1_name);
 
-            groups.push_back(std::move(new_group));
+            groups.push_back(std::move(newGroup));
         }
 
     }

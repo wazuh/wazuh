@@ -186,9 +186,3 @@ TEST(UserGroupsProviderTest, CollectWithoutUIDReturnsExpectedJson)
         ASSERT_TRUE(expected.count({uid, gid})) << "Unexpected pair: uid=" << uid << ", gid=" << gid;
     }
 }
-
-int main(int argc, char** argv)
-{
-    ::testing::InitGoogleTest(&argc, argv);
-    return RUN_ALL_TESTS();
-}

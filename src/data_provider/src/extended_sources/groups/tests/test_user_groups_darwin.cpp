@@ -13,6 +13,7 @@
 #include "ipasswd_wrapper.hpp"
 #include "iopen_directory_utils_wrapper.hpp"
 #include "user_groups_darwin.hpp"
+#include "json.hpp"
 
 using ::testing::Return;
 using ::testing::_;
@@ -46,6 +47,7 @@ class MockODUtilsWrapper : public IODUtilsWrapper
                     genEntries,
                     (const std::string& recordType, const std::string* record, StringBoolMap& usernames),
                     (override));
+        MOCK_METHOD(void, genAccountPolicyData, (const std::string& uid, nlohmann::json& policyData), (override));
 };
 
 struct passwd* createFakePasswd(const char* name, uid_t uid, gid_t gid)
@@ -64,17 +66,17 @@ TEST(UserGroupsProviderTest, CollectWithUIDReturnsExpectedGroups)
     auto mockODWrapper = std::make_shared<MockODUtilsWrapper>();
     UserGroupsProvider provider(mockGroup, mockPasswd, mockODWrapper);
 
-    uid_t test_uid = 1000;
-    gid_t test_gid = 2000;
+    uid_t testUid = 1000;
+    gid_t testGid = 2000;
     const char* username = "testuser";
 
-    passwd* fakePwd = createFakePasswd(username, test_uid, test_gid);
-    EXPECT_CALL(*mockPasswd, getpwuid(test_uid)).WillOnce(Return(fakePwd));
+    passwd* fakePwd = createFakePasswd(username, testUid, testGid);
+    EXPECT_CALL(*mockPasswd, getpwuid(testUid)).WillOnce(Return(fakePwd));
 
-    EXPECT_CALL(*mockGroup, getgroupcount(::testing::StrEq("testuser"), test_gid))
+    EXPECT_CALL(*mockGroup, getgroupcount(::testing::StrEq("testuser"), testGid))
     .WillOnce(Return(2));
 
-    EXPECT_CALL(*mockGroup, getgrouplist(::testing::StrEq("testuser"), test_gid, _, _))
+    EXPECT_CALL(*mockGroup, getgrouplist(::testing::StrEq("testuser"), testGid, _, _))
     .WillOnce(Invoke([](const std::string&, gid_t, gid_t * groups, int* /*ngroups*/)
     {
         groups[0] = 2000;
@@ -82,11 +84,11 @@ TEST(UserGroupsProviderTest, CollectWithUIDReturnsExpectedGroups)
         return 0;
     }));
 
-    std::set<uid_t> uids = {test_uid};
+    std::set<uid_t> uids = {testUid};
     nlohmann::json result = provider.collect(uids);
 
     ASSERT_EQ(result.size(), static_cast<decltype(result.size())>(2));
-    EXPECT_EQ(result[0]["uid"], test_uid);
+    EXPECT_EQ(result[0]["uid"], testUid);
     EXPECT_EQ(result[0]["gid"], 2000);
     EXPECT_EQ(result[1]["gid"], 3000);
 
@@ -102,8 +104,8 @@ TEST(UserGroupsProviderTest, CollectWithoutUID_ReturnsExpectedGroups)
     UserGroupsProvider provider(mockGroup, mockPasswd, mockODWrapper);
 
     const char* username = "testuser";
-    uid_t test_uid = 1001;
-    gid_t test_gid = 3001;
+    uid_t testUid = 1001;
+    gid_t testGid = 3001;
 
     std::map<std::string, bool> fakeUsers = {{username, true}};
 
@@ -113,32 +115,26 @@ TEST(UserGroupsProviderTest, CollectWithoutUID_ReturnsExpectedGroups)
         output = fakeUsers;
     }));
 
-    passwd* fakePwd = createFakePasswd(username, test_uid, test_gid);
+    passwd* fakePwd = createFakePasswd(username, testUid, testGid);
     EXPECT_CALL(*mockPasswd, getpwnam(::testing::StrEq(username))).WillOnce(Return(fakePwd));
 
-    EXPECT_CALL(*mockGroup, getgroupcount(::testing::StrEq(username), test_gid))
+    EXPECT_CALL(*mockGroup, getgroupcount(::testing::StrEq(username), testGid))
     .WillOnce(Return(1));
 
-    EXPECT_CALL(*mockGroup, getgrouplist(::testing::StrEq(username), test_gid, _, _))
+    EXPECT_CALL(*mockGroup, getgrouplist(::testing::StrEq(username), testGid, _, _))
     .WillOnce(Invoke([](const std::string&, gid_t, gid_t * groups, int* /*ngroups*/)
     {
         groups[0] = 3001;
         return 0;
     }));
 
-    std::set<uid_t> empty_uids;
-    nlohmann::json result = provider.collect(empty_uids);
+    std::set<uid_t> emptyUids;
+    nlohmann::json result = provider.collect(emptyUids);
 
     ASSERT_EQ(result.size(), static_cast<decltype(result.size())>(1));
-    EXPECT_EQ(result[0]["uid"], test_uid);
+    EXPECT_EQ(result[0]["uid"], testUid);
     EXPECT_EQ(result[0]["gid"], 3001);
 
     free(fakePwd->pw_name);
     delete fakePwd;
-}
-
-int main(int argc, char** argv)
-{
-    ::testing::InitGoogleTest(&argc, argv);
-    return RUN_ALL_TESTS();
 }

@@ -11,6 +11,7 @@
 
 #include <map>
 #include <string>
+#include "json.hpp"
 
 // Interface for the open directory utils wrapper
 class IODUtilsWrapper
