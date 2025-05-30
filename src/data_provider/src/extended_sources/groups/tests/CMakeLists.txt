@@ -4,13 +4,15 @@ include_directories(${SRC_FOLDER}/external/googletest/googletest/include/)
 include_directories(${SRC_FOLDER}/external/googletest/googlemock/include/)
 link_directories(${SRC_FOLDER}/external/googletest/lib/)
 
+set(TEST_SRC "main.cpp")
+
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
-    set(TEST_SRC test_user_groups_windows.cpp)
+    list(APPEND TEST_SRC test_user_groups_windows.cpp)
 else()
     if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
-        set(TEST_SRC test_user_groups_linux.cpp)
+        list(APPEND TEST_SRC test_user_groups_linux.cpp)
     elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
-        set(TEST_SRC test_user_groups_darwin.cpp)
+        list(APPEND TEST_SRC test_user_groups_darwin.cpp)
     endif()
 endif()
 

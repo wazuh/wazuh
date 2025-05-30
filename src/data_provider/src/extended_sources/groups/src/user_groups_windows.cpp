@@ -33,10 +33,10 @@ UserGroupsProvider::UserGroupsProvider()
 
 void UserGroupsProvider::processLocalUserGroups(const User& user, const std::vector<Group>& groups, nlohmann::json& results)
 {
-    DWORD group_info_level = 0;
-    DWORD num_groups = 0;
-    DWORD total_groups = 0;
-    localgroup_users_info_0_ptr group_info;
+    DWORD groupInfoLevel = 0;
+    DWORD numGroups = 0;
+    DWORD totalGroups = 0;
+    localgroup_users_info_0_ptr groupInfo;
 
     DWORD ret = 0;
 
@@ -44,44 +44,44 @@ void UserGroupsProvider::processLocalUserGroups(const User& user, const std::vec
 
     ret = m_winapiWrapper->NetUserGetLocalGroupsWrapper(nullptr,
                                                         username.c_str(),
-                                                        group_info_level,
+                                                        groupInfoLevel,
                                                         1,
-                                                        reinterpret_cast<LPBYTE*>(group_info.get_new_ptr()),
+                                                        reinterpret_cast<LPBYTE*>(groupInfo.get_new_ptr()),
                                                         MAX_PREFERRED_LENGTH,
-                                                        &num_groups,
-                                                        &total_groups);
+                                                        &numGroups,
+                                                        &totalGroups);
 
     if (ret == ERROR_MORE_DATA)
     {
-        std::cerr << "User " << user.username << " group membership exceeds buffer limits, processing " << num_groups
-                  << " our of " << total_groups << " groups" << std::endl;
+        // std::cerr << "User " << user.username << " group membership exceeds buffer limits, processing " << numGroups
+        //           << " our of " << totalGroups << " groups" << std::endl;
     }
-    else if (ret != NERR_Success || group_info == nullptr)
+    else if (ret != NERR_Success || groupInfo == nullptr)
     {
-        std::cerr << " NetUserGetLocalGroups failed for user " << user.username << " with " << ret << std::endl;
+        // std::cerr << " NetUserGetLocalGroups failed for user " << user.username << " with " << ret << std::endl;
         return;
     }
 
-    for (std::size_t i = 0; i < num_groups; i++)
+    for (std::size_t i = 0; i < numGroups; i++)
     {
-        std::string groupname = Utils::EncodingWindowsHelper::wstringToStringUTF8(group_info.get()[i].lgrui0_name);
+        std::string groupname = Utils::EncodingWindowsHelper::wstringToStringUTF8(groupInfo.get()[i].lgrui0_name);
 
-        auto opt_group = std::find_if(groups.begin(), groups.end(),
-                                      [&groupname](const Group & group)
+        auto optGroup = std::find_if(groups.begin(), groups.end(),
+                                     [&groupname](const Group & group)
         {
             return group.groupname == groupname;
         });
 
-        if (opt_group == groups.end())
+        if (optGroup == groups.end())
         {
-            std::cerr << "Group " << groupname << " not found in local groups" << std::endl;
+            // std::cerr << "Group " << groupname << " not found in local groups" << std::endl;
             continue;
         }
 
         nlohmann::json row;
 
         row["uid"] = user.uid;
-        row["gid"] = opt_group->gid;
+        row["gid"] = optGroup->gid;
 
         results.push_back(std::move(row));
     }
@@ -92,8 +92,8 @@ nlohmann::json UserGroupsProvider::collect(const std::set<std::uint32_t>& uids)
 
     nlohmann::json results;
 
-    std::set<std::string> processed_sids;
-    auto local_users = m_usersHelper->processLocalAccounts(processed_sids);
+    std::set<std::string> processedSids;
+    auto localUsers = m_usersHelper->processLocalAccounts(processedSids);
     auto groups = m_groupsHelper->processLocalGroups();
 
     auto filteringUsers = [&](const std::vector<User>& users)
@@ -112,7 +112,7 @@ nlohmann::json UserGroupsProvider::collect(const std::set<std::uint32_t>& uids)
         }
     };
 
-    filteringUsers(local_users);
+    filteringUsers(localUsers);
 
     return results;
 }

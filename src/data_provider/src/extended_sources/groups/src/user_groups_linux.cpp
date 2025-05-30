@@ -13,6 +13,9 @@
 #include "passwd_wrapper.hpp"
 #include "system_wrapper.hpp"
 
+// Reasonable upper bound for getpw_r buffer
+constexpr size_t MAX_GETPW_R_BUF_SIZE = 16 * 1024;
+
 UserGroupsProvider::UserGroupsProvider(std::shared_ptr<IGroupWrapperLinux> groupWrapper,
                                        std::shared_ptr<IPasswdWrapperLinux> passwdWrapper,
                                        std::shared_ptr<ISystemWrapper> sysWrapper)
@@ -33,29 +36,28 @@ nlohmann::json UserGroupsProvider::collect(const std::set<uid_t>& uids)
 {
     nlohmann::json results = nlohmann::json::array();
     struct passwd pwd;
-    struct passwd* pwd_results
+    struct passwd* pwdResults
     {
         nullptr
     };
 
-    size_t bufsize = m_sysWrapper->sysconf(_SC_GETPW_R_SIZE_MAX);
+    size_t bufSize = m_sysWrapper->sysconf(_SC_GETPW_R_SIZE_MAX);
 
-    if (bufsize > 16384)
+    if (bufSize > MAX_GETPW_R_BUF_SIZE)
     {
-        /* Value was indeterminate */
-        bufsize = 16384; /* Should be more than enough */
+        bufSize = MAX_GETPW_R_BUF_SIZE;
     }
 
-    auto buf = std::make_unique<char[]>(bufsize);
+    auto buf = std::make_unique<char[]>(bufSize);
 
     if (!uids.empty())
     {
         for (const auto& uid : uids)
         {
-            if (m_passwdWrapper->getpwuid_r(uid, &pwd, buf.get(), bufsize, &pwd_results) == 0 &&
-                    pwd_results != nullptr)
+            if (m_passwdWrapper->getpwuid_r(uid, &pwd, buf.get(), bufSize, &pwdResults) == 0 &&
+                    pwdResults != nullptr)
             {
-                UserInfo user{pwd_results->pw_name, pwd_results->pw_uid, pwd_results->pw_gid};
+                UserInfo user{pwdResults->pw_name, pwdResults->pw_uid, pwdResults->pw_gid};
                 getGroupsForUser(results, user);
             }
         }
@@ -65,11 +67,11 @@ nlohmann::json UserGroupsProvider::collect(const std::set<uid_t>& uids)
         std::set<uid_t> processed_uids;
         m_passwdWrapper->setpwent();
 
-        while (m_passwdWrapper->getpwent_r(&pwd, buf.get(), bufsize, &pwd_results) == 0 && pwd_results != nullptr)
+        while (m_passwdWrapper->getpwent_r(&pwd, buf.get(), bufSize, &pwdResults) == 0 && pwdResults != nullptr)
         {
-            if (processed_uids.insert(pwd_results->pw_uid).second)
+            if (processed_uids.insert(pwdResults->pw_uid).second)
             {
-                UserInfo user{pwd_results->pw_name, pwd_results->pw_uid, pwd_results->pw_gid};
+                UserInfo user{pwdResults->pw_name, pwdResults->pw_uid, pwdResults->pw_gid};
                 getGroupsForUser(results, user);
             }
         }
@@ -82,48 +84,48 @@ nlohmann::json UserGroupsProvider::collect(const std::set<uid_t>& uids)
 
 void UserGroupsProvider::getGroupsForUser(nlohmann::json& results, const UserInfo& user)
 {
-    gid_t groups_buf[EXPECTED_GROUPS_MAX];
-    gid_t* groups = groups_buf;
-    int ngroups = EXPECTED_GROUPS_MAX;
+    gid_t groupsBuffer[EXPECTED_GROUPS_MAX];
+    gid_t* groups = groupsBuffer;
+    int nGroups = EXPECTED_GROUPS_MAX;
 
     if (!m_groupWrapper)
     {
-        std::cerr << "UserGroupsProvider: user groups wrapper is not initialized" << std::endl;
+        // std::cerr << "UserGroupsProvider: user groups wrapper is not initialized" << std::endl;
         return;
     }
 
     // GLIBC version before 2.3.3 may have a buffer overrun:
     // http://man7.org/linux/man-pages/man3/getgrouplist.3.html
-    if (m_groupWrapper->getgrouplist(user.name, user.gid, groups, &ngroups) < 0)
+    if (m_groupWrapper->getgrouplist(user.name, user.gid, groups, &nGroups) < 0)
     {
-        groups = new gid_t[ngroups];
+        groups = new gid_t[nGroups];
 
         if (groups == nullptr)
         {
-            std::cerr << "Could not allocate memory to get user groups" << std::endl;
+            // std::cerr << "Could not allocate memory to get user groups" << std::endl;
             return;
         }
 
-        if (m_groupWrapper->getgrouplist(user.name, user.gid, groups, &ngroups) < 0)
+        if (m_groupWrapper->getgrouplist(user.name, user.gid, groups, &nGroups) < 0)
         {
-            std::cerr << "Could not get user's group list" << std::endl;
+            // std::cerr << "Could not get user's group list" << std::endl;
         }
         else
         {
-            addGroupsToResults(results, user.uid, groups, ngroups);
+            addGroupsToResults(results, user.uid, groups, nGroups);
         }
 
         delete[] groups;
     }
     else
     {
-        addGroupsToResults(results, user.uid, groups, ngroups);
+        addGroupsToResults(results, user.uid, groups, nGroups);
     }
 }
 
-void UserGroupsProvider::addGroupsToResults(nlohmann::json& results, uid_t uid, const gid_t* groups, int ngroups)
+void UserGroupsProvider::addGroupsToResults(nlohmann::json& results, uid_t uid, const gid_t* groups, int nGroups)
 {
-    for (int i = 0; i < ngroups; i++)
+    for (int i = 0; i < nGroups; i++)
     {
         nlohmann::json row;
         row["uid"] = uid;

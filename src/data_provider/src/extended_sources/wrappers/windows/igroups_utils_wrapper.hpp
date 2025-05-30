@@ -16,6 +16,7 @@
 #include <string>
 #include <vector>
 
+/// @brief Represents a Windows group with its associated properties.
 struct Group
 {
     std::uint32_t generation{0};

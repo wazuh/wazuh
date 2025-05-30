@@ -73,7 +73,7 @@ void UserGroupsProvider::getGroupsForUser(nlohmann::json& results, const UserInf
 
     if (m_groupWrapper->getgrouplist(user.name, user.gid, groups, &ngroups) < 0)
     {
-        std::cerr << "Could not get users group list" << std::endl;
+        // std::cerr << "Could not get users group list" << std::endl;
     }
     else
     {

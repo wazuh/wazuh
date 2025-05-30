@@ -137,16 +137,16 @@ TEST_F(UserGroupsProviderTest, CollectUserWithValidGroupReturnsGroupInfo)
     auto buffer = std::make_unique<LOCALGROUP_USERS_INFO_0[]>(1);
     buffer[0].lgrui0_name = const_cast<LPWSTR>(groupName);
 
-    DWORD num_groups = 1;
-    DWORD total_groups = 1;
+    DWORD numGroups = 1;
+    DWORD totalGroups = 1;
 
     EXPECT_CALL(*winapiWrapper, NetUserGetLocalGroupsWrapper(
                     ::testing::_, ::testing::_, 0, 1, ::testing::_, MAX_PREFERRED_LENGTH, ::testing::_, ::testing::_))
     .WillOnce([&](LPCWSTR, LPCWSTR, DWORD, DWORD, LPBYTE * buf, DWORD, LPDWORD ng, LPDWORD tg)
     {
         *buf = reinterpret_cast<LPBYTE>(buffer.get());
-        *ng = num_groups;
-        *tg = total_groups;
+        *ng = numGroups;
+        *tg = totalGroups;
         return NERR_Success;
     });
 
@@ -325,16 +325,16 @@ TEST_F(UserGroupsProviderTest, CollectHandlesGroupNotFound)
     auto buffer = std::make_unique<LOCALGROUP_USERS_INFO_0[]>(1);
     buffer[0].lgrui0_name = const_cast<LPWSTR>(groupName);
 
-    DWORD num_groups = 1;
-    DWORD total_groups = 1;
+    DWORD numGroups = 1;
+    DWORD totalGroups = 1;
 
     EXPECT_CALL(*winapiWrapper, NetUserGetLocalGroupsWrapper(
                     ::testing::_, ::testing::_, 0, 1, ::testing::_, MAX_PREFERRED_LENGTH, ::testing::_, ::testing::_))
     .WillOnce([&](LPCWSTR, LPCWSTR, DWORD, DWORD, LPBYTE * buf, DWORD, LPDWORD ng, LPDWORD tg)
     {
         *buf = reinterpret_cast<LPBYTE>(buffer.get());
-        *ng = num_groups;
-        *tg = total_groups;
+        *ng = numGroups;
+        *tg = totalGroups;
         return NERR_Success;
     });
 
