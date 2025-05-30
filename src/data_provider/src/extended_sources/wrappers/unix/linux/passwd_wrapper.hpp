@@ -7,13 +7,15 @@
  * Foundation.
  */
 
+#pragma once
+
 #include "ipasswd_wrapper.hpp"
 
 /// @brief Wrapper class for functions related to the passwd database.
 ///
 /// Encapsulates standard library functions for accessing user account information,
 /// allowing easier mocking and testing.
-class PasswdWrapper : public IPasswdWrapper
+class PasswdWrapperLinux : public IPasswdWrapperLinux
 {
     public:
         /// @brief Reads a passwd entry from a file stream.

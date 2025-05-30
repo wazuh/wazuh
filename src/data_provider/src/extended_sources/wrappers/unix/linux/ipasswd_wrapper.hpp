@@ -11,12 +11,12 @@
 #include <sys/types.h>
 #include <pwd.h>
 
-// Interface for the pwd wrapper
-class IPasswdWrapper
+// Interface for the pwd linux wrapper
+class IPasswdWrapperLinux
 {
     public:
         /// Destructor
-        virtual ~IPasswdWrapper() = default;
+        virtual ~IPasswdWrapperLinux() = default;
 
         /// @brief Reads a passwd entry from a file stream.
         /// @param stream The file stream to read from (typically /etc/passwd).

@@ -17,6 +17,8 @@ class MockWindowsApiWrapper : public IWindowsApiWrapper
     public:
         MOCK_METHOD(DWORD, NetUserEnumWrapper,
                     (LPCWSTR, DWORD, DWORD, LPBYTE*, DWORD, LPDWORD, LPDWORD, LPDWORD), (override));
+        MOCK_METHOD(DWORD, NetLocalGroupEnumWrapper,
+                    (LPCWSTR, DWORD, LPBYTE*, DWORD, LPDWORD, LPDWORD, LPDWORD), (override));
         MOCK_METHOD(DWORD, NetUserGetInfoWrapper,
                     (LPCWSTR, LPCWSTR, DWORD, LPBYTE*), (override));
         MOCK_METHOD(DWORD, RegOpenKeyExWWrapper,

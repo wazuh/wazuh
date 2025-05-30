@@ -22,7 +22,7 @@ class MockSystemWrapper : public ISystemWrapper
         MOCK_METHOD(char*, strerror, (int), (override));
 };
 
-class MockPasswdWrapper : public IPasswdWrapper
+class MockPasswdWrapper : public IPasswdWrapperLinux
 {
     public:
         MOCK_METHOD(int, fgetpwent_r,
