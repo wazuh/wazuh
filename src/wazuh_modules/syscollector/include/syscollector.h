@@ -52,7 +52,8 @@ EXPORTED void syscollector_start(const unsigned int inverval,
                                  const bool ports,
                                  const bool portsAll,
                                  const bool processes,
-                                 const bool hotfixes);
+                                 const bool hotfixes,
+                                 const bool users);
 
 EXPORTED void syscollector_stop();
 
@@ -79,7 +80,8 @@ typedef void(*syscollector_start_func)(const unsigned int inverval,
                                        const bool ports,
                                        const bool portsAll,
                                        const bool processes,
-                                       const bool hotfixes);
+                                       const bool hotfixes,
+                                       const bool users);
 
 typedef void(*syscollector_stop_func)();
 
