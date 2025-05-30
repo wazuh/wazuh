@@ -15,12 +15,10 @@
                         "speed": 2497
                     },
                     "memory": {
-                         "free": 1048576,
+                        "free": 1048576,
                         "total": 2097152,
                         "used": 1048576
-                    }
-                },
-                "observer": {
+                    },
                     "serial_number": "A320"
                 },
                 "wazuh": {

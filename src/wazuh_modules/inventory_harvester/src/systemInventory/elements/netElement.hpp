@@ -70,7 +70,7 @@ public:
         }
 
         // Ex: eth0
-        element.data.network.name = data->netAddressName();
+        element.data.interface.name = data->netAddressName();
 
         // 255.255.255.0
         if (auto networkNetmask = data->netmask(); networkNetmask.compare(" ") != 0)
@@ -81,11 +81,11 @@ public:
         // Ex: IPv4
         if (!data->protocol())
         {
-            element.data.network.protocol = "IPv4";
+            element.data.network.type = "IPv4";
         }
         else
         {
-            element.data.network.protocol = "IPv6";
+            element.data.network.type = "IPv6";
         }
 
         auto& instancePolicyManager = PolicyHarvesterManager::instance();
