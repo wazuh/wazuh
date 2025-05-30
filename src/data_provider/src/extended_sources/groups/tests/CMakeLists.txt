@@ -19,7 +19,7 @@ endif()
 add_executable(extended_sources_user_groups_unit_test ${TEST_SRC})
 
 target_link_libraries(extended_sources_user_groups_unit_test
-    user_groups
+    groups
     gtestd
     gmockd
     gtest_maind
