@@ -16,7 +16,8 @@ Policy::Policy(const store::Doc& doc,
                const std::shared_ptr<schemf::IValidator>& schema,
                const std::shared_ptr<IAllowedFields>& allowedFields,
                const bool trace,
-               const bool sandbox)
+               const bool sandbox,
+               const bool reverseOrderDecoders)
 {
     // Read the policy data
     auto policyData = factory::readData(doc, store);
@@ -55,7 +56,7 @@ Policy::Policy(const store::Doc& doc,
     // TODO: Assign graphiv string
 
     // Build the expression
-    m_expression = factory::buildExpression(policyGraph, policyData);
+    m_expression = factory::buildExpression(policyGraph, policyData, reverseOrderDecoders);
 }
 
 } // namespace builder::policy

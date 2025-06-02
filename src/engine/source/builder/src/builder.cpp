@@ -56,7 +56,8 @@ Builder::Builder(const std::shared_ptr<store::IStore>& storeRead,
     detail::registerOpBuilders<Registry>(m_registry, builderDeps);
 }
 
-std::shared_ptr<IPolicy> Builder::buildPolicy(const base::Name& name, bool trace, bool sandbox) const
+std::shared_ptr<IPolicy>
+Builder::buildPolicy(const base::Name& name, bool trace, bool sandbox, bool reverseOrderDecoders) const
 {
     auto policyDoc = m_storeRead->readInternalDoc(name);
     if (base::isError(policyDoc))
@@ -71,7 +72,8 @@ std::shared_ptr<IPolicy> Builder::buildPolicy(const base::Name& name, bool trace
                                                    m_schema,
                                                    m_allowedFields,
                                                    trace,
-                                                   sandbox);
+                                                   sandbox,
+                                                   reverseOrderDecoders);
 
     return policy;
 }

@@ -395,13 +395,15 @@ int main(int argc, char* argv[])
                 LOG_DEBUG("Test queue created.");
             }
 
-            router::Orchestrator::Options config {.m_numThreads = confManager.get<int>(conf::key::ORCHESTRATOR_THREADS),
-                                                  .m_wStore = store,
-                                                  .m_builder = builder,
-                                                  .m_controllerMaker = std::make_shared<bk::rx::ControllerMaker>(),
-                                                  .m_prodQueue = eventQueue,
-                                                  .m_testQueue = testQueue,
-                                                  .m_testTimeout = confManager.get<int>(conf::key::SERVER_API_TIMEOUT)};
+            router::Orchestrator::Options config {
+                .m_numThreads = confManager.get<int>(conf::key::ORCHESTRATOR_THREADS),
+                .m_wStore = store,
+                .m_builder = builder,
+                .m_controllerMaker = std::make_shared<bk::rx::ControllerMaker>(),
+                .m_prodQueue = eventQueue,
+                .m_testQueue = testQueue,
+                .m_testTimeout = confManager.get<int>(conf::key::SERVER_API_TIMEOUT),
+                .m_reverseOrderDecoders = confManager.get<bool>(conf::key::ORCHESTRATOR_REVERSE_ORDER_DECODERS)};
 
             orchestrator = std::make_shared<router::Orchestrator>(config);
             orchestrator->start();

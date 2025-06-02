@@ -26,10 +26,13 @@ public:
      * @param name Name of the policy.
      * @param trace Indicates whether to enable or disable the trace
      * @param sandbox If it is set to true, it indicates a test environment and if it is set to false, it indicates a
+     * @param reverseOrderDecoders If it is set to true, the decoders will be processed in reverse order.
+     * This is useful for testing purposes, but it should not be used in a
      * production environment.
      * @return base::RespOrError<std::shared_ptr<IPolicy>> The policy or an error.
      */
-    virtual std::shared_ptr<IPolicy> buildPolicy(const base::Name& name, bool trace, bool sandbox) const = 0;
+    virtual std::shared_ptr<IPolicy>
+    buildPolicy(const base::Name& name, bool trace, bool sandbox, bool reverseOrderDecoders) const = 0;
 
     /**
      * @brief Build an asset expression from the store.
