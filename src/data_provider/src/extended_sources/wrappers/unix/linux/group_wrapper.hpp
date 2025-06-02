@@ -37,7 +37,7 @@ class GroupWrapperLinux : public IGroupWrapperLinux
         /// @param resultbuf A pointer to a group structure where the result will be stored.
         /// @param buffer A buffer to hold the string data for the group entry.
         /// @param buflen The size of the buffer.
-        /// @param result A pointer to a group structure pointer that will point to the result.    
+        /// @param result A pointer to a group structure pointer that will point to the result.
         int getgrent_r(struct group* resultbuf, char* buffer, size_t buflen, struct group** result) const override
         {
             return ::getgrent_r(resultbuf, buffer, buflen, result);
@@ -53,7 +53,7 @@ class GroupWrapperLinux : public IGroupWrapperLinux
         void endgrent() const override
         {
             ::endgrent();
-        }   
+        }
 
         /// @brief Retrieves the list of groups for a user.
         /// @param user The username for which to retrieve the group list.
