@@ -2010,7 +2010,7 @@ $(WAZUHEXT_LIB): $(EXTERNAL_LIBS)
 		ar -x libwazuhext/$$lib; \
 		mv *.o libwazuhext/; \
 	done
-	$(OSSEC_SHARED) $(OSSEC_CFLAGS) libwazuhext/*.o -o $@ -static-libgcc -latomic
+	$(OSSEC_SHARED) $(OSSEC_CFLAGS) libwazuhext/*.o -o $@ -static-libgcc -latomic -lm
 else
 ifeq (${uname_S},HP-UX)
 $(WAZUHEXT_LIB): $(EXTERNAL_LIBS)
