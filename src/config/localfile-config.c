@@ -319,6 +319,18 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
                     os_strdup(newfile, node[i]->content);
                 }
             }
+            if (is_network_path(node[i]->content)) {
+                merror("Network drives not allowed.");
+
+                logf[pl].file = NULL;
+                logf[pl].ffile = NULL;
+                logf[pl].command = NULL;
+                logf[pl].alias = NULL;
+                logf[pl].logformat = NULL;
+                logf[pl].fp = NULL;
+                labels_free(logf[pl].labels);
+                return 0;
+            }
 #endif
             os_strdup(node[i]->content, logf[pl].file);
         } else if (strcasecmp(node[i]->element, xml_localfile_logformat) == 0) {

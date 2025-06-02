@@ -1703,6 +1703,9 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
         else if (strcmp(node[i]->element, xml_directories) == 0) {
             char dirs[OS_MAXSTR];
 #ifdef WIN32
+            if (is_network_path(node[i]->content)) {
+                continue;
+            }
             fim_adjust_path(&(node[i]->content));
 #endif
             strncpy(dirs, node[i]->content, sizeof(dirs) - 1);
