@@ -13,7 +13,6 @@ on:
         - "src/config/remote-config.c"
         - "src/config/remote-config.h"
         - "src/remoted/**"
-        - "src/os_net/**"
         - "src/Makefile"
         - "tests/integration/conftest.py"
         - "tests/integration/test_remoted/**"
