@@ -650,7 +650,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - "c:findmnt -kn /var/log/audit -> r:nodev"
+      - "c:findmnt -kn /var/log/audit -> r:nosuid"
 
   # 1.1.2.7.4 Ensure noexec option set on /var/log/audit partition. (Automated)
   - id: 33035
@@ -781,7 +781,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'c:stat -Lc "%n %a %u %U %g %G" /boot/grub/grub.cfg -> r:0 root 0 root && r:600'
+      - 'c:stat -L "%n %a %u %U %g %G" /boot/grub/grub.cfg -> r:0 root 0 root && r:600'
 
   # 1.5.1 Ensure address space layout randomization is enabled. (Automated) - Not Implemented
   # 1.5.2 Ensure ptrace_scope is restricted. (Automated) - Not Implemented
@@ -853,7 +853,7 @@ checks:
     condition: any
     rules:
       - "not f:/etc/motd"
-      - 'c:stat -Lc "%n %a %u %U %g %G" /etc/motd -> r:0 root 0 root && r:644|640|600|400'
+      - 'c:stat -L "%n %a %u %U %g %G" /etc/motd -> r:0 root 0 root && r:644|640|600|400'
 
   # 1.6.5 Ensure access to /etc/issue is configured. (Automated)
   - id: 33052
@@ -877,7 +877,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'c:stat -Lc "%n %a %u %U %g %G" /etc/issue -> r:0 root 0 root && r:644|640|600|400'
+      - 'c:stat -L "%n %a %u %U %g %G" /etc/issue -> r:0 root 0 root && r:644|640|600|400'
 
   # 1.6.6 Ensure access to /etc/issue.net is configured. (Automated)
   - id: 33053
@@ -901,7 +901,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'c:stat -Lc "%n %a %u %U %g %G" /etc/issue.net -> r:0 root 0 root && r:644|640|600|400'
+      - 'c:stat -L "%n %a %u %U %g %G" /etc/issue.net -> r:0 root 0 root && r:644|640|600|400'
 
   # 1.7.1 Ensure GDM is removed. (Automated)
   - id: 33054
@@ -1201,6 +1201,7 @@ checks:
     rules:
       - "not c: dpkg-query -s cups -> r:install ok installed"
       - 'not c:sh -c "systemctl is-enabled cups.socket cups.service & systemctl is-active cups.socket cups.service" -> r:^active$|^enabled$'
+
   # 2.1.12 Ensure rpcbind services are not in use. (Automated)
   - id: 33075
     title: "Ensure rpcbind services are not in use."
@@ -1579,7 +1580,8 @@ checks:
       - soc_2: ["CC4.1", "CC5.2"]
     condition: all
     rules:
-      - 'c:sh -c "systemctl is-enabled systemd-timesyncd.service & systemctl is-active systemd-timesyncd.service" -> r:^active$|^enabled$'
+      - "c:systemctl is-enabled systemd-timesyncd.service -> r:^enabled$"
+      - "c:systemctl is-active systemd-timesyncd.service -> r:^active$"
 
   # 2.3.3.1 Ensure chrony is configured with authorized timeserver. (Automated) - Not Implemented
 
@@ -1628,7 +1630,8 @@ checks:
       - soc_2: ["CC4.1", "CC5.2"]
     condition: all
     rules:
-      - 'c:sh -c "systemctl is-enabled chrony.service & systemctl is-active chrony.service" -> r:^active$|^enabled$'
+      - "c:systemctl is-enabled chrony.service -> r:^enabled$"
+      - "c:systemctl is-active chrony.service -> r:^active$"
 
   # 2.4.1.1 Ensure cron daemon is enabled and active. (Automated)
   - id: 33098
@@ -1643,7 +1646,8 @@ checks:
       - mitre_techniques: ["T1562", "T1562.001"]
     condition: all
     rules:
-      - 'c:sh -c "systemctl is-enabled list-unit-files & systemctl is-active list-unit" -> r:^active$|^enabled$'
+      - 'c:systemctl list-unit-files -> r:^cron.service\s*\t*enabled|^crond.service\s*\t*enabled'
+      - 'c:systemctl list-units -> r:^\s*cron.service|^crond.service && r:\sactive'
 
   # 2.4.1.2 Ensure permissions on /etc/crontab are configured. (Automated)
   - id: 33099
@@ -1667,7 +1671,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'c:stat -Lc /etc/crontab -> r:^Access: \(0600/-rw-------\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*0/\s*root\)$'
+      - 'c:stat -L /etc/crontab -> r:^Access: \(0600/-rw-------\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*0/\s*root\)$'
 
   # 2.4.1.3 Ensure permissions on /etc/cron.hourly are configured. (Automated)
   - id: 33100
@@ -1691,7 +1695,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'c:stat -Lc /etc/cron.hourly -> r:^Access: \(0700/drwx------\)\s*Uid: \(\s*0/\s*root\)\s*Gid: \(\s*0/\s*root\)$'
+      - 'c:stat -L /etc/cron.hourly -> r:^Access: \(0700/drwx------\)\s*Uid: \(\s*0/\s*root\)\s*Gid: \(\s*0/\s*root\)$'
 
   # 2.4.1.4 Ensure permissions on /etc/cron.daily are configured. (Automated)
   - id: 33101
@@ -1715,7 +1719,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'c:stat -Lc /etc/cron.daily -> r:^Access: \(0700/drwx------\)\s*Uid: \(\s*0/\s*root\)\s*Gid: \(\s*0/\s*root\)$'
+      - 'c:stat -L /etc/cron.daily -> r:^Access: \(0700/drwx------\)\s*Uid: \(\s*0/\s*root\)\s*Gid: \(\s*0/\s*root\)$'
 
   # 2.4.1.5 Ensure permissions on /etc/cron.weekly are configured. (Automated)
   - id: 33102
@@ -1739,7 +1743,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'c:stat -Lc /etc/cron.weekly -> r:^Access: \(0700/drwx------\)\s*Uid: \(\s*0/\s*root\)\s*Gid: \(\s*0/\s*root\)$'
+      - 'c:stat -L /etc/cron.weekly -> r:^Access: \(0700/drwx------\)\s*Uid: \(\s*0/\s*root\)\s*Gid: \(\s*0/\s*root\)$'
 
   # 2.4.1.6 Ensure permissions on /etc/cron.monthly are configured. (Automated)
   - id: 33103
@@ -1763,7 +1767,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'c:stat -Lc /etc/cron.monthly -> r:^Access: \(0700/drwx------\)\s*Uid: \(\s*0/\s*root\)\s*Gid: \(\s*0/\s*root\)$'
+      - 'c:stat -L /etc/cron.monthly -> r:^Access: \(0700/drwx------\)\s*Uid: \(\s*0/\s*root\)\s*Gid: \(\s*0/\s*root\)$'
 
   # 2.4.1.7 Ensure permissions on /etc/cron.d are configured. (Automated)
   - id: 33104
@@ -1787,60 +1791,10 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'c:stat -Lc /etc/cron.d -> r:^Access: \(0700/drwx------\)\s*Uid: \(\s*0/\s*root\)\s*Gid: \(\s*0/\s*root\)$'
+      - 'c:stat -L /etc/cron.d -> r:^Access: \(0700/drwx------\)\s*Uid: \(\s*0/\s*root\)\s*Gid: \(\s*0/\s*root\)$'
 
-  # 2.4.1.8 Ensure crontab is restricted to authorized users. (Automated)
-  - id: 33105
-    title: "Ensure crontab is restricted to authorized users."
-    description: "crontab is the program used to install, deinstall, or list the tables used to drive the cron daemon. Each user can have their own crontab, and though these are files in /var/spool/cron/crontabs, they are not intended to be edited directly. If the /etc/cron.allow file exists, then you must be listed (one user per line) therein in order to be allowed to use this command. If the /etc/cron.allow file does not exist but the /etc/cron.deny file does exist, then you must not be listed in the /etc/cron.deny file in order to use this command. If neither of these files exists, then depending on site-dependent configuration parameters, only the super user will be allowed to use this command, or all users will be able to use this command. If both files exist then /etc/cron.allow takes precedence. Which means that /etc/cron.deny is not considered and your user must be listed in /etc/cron.allow in order to be able to use the crontab. Regardless of the existence of any of these files, the root administrative user is always allowed to setup a crontab. The files /etc/cron.allow and /etc/cron.deny, if they exist, must be either world-readable, or readable by group crontab. If they are not, then cron will deny access to all users until the permissions are fixed. There is one file for each user's crontab under the /var/spool/cron/crontabs directory. Users are not allowed to edit the files under that directory directly to ensure that only users allowed by the system to run periodic tasks can add them, and only syntactically correct crontabs will be written there. This is enforced by having the directory writable only by the crontab group and configuring crontab command with the setgid bid set for that specific group. Note: - Even though a given user is not listed in cron.allow, cron jobs can still be run as that user - The files /etc/cron.allow and /etc/cron.deny, if they exist, only controls administrative access to the crontab command for scheduling and modifying cron jobs."
-    rationale: "On many systems, only the system administrator is authorized to schedule cron jobs. Using the cron.allow file to control who can run cron jobs enforces this policy. It is easier to manage an allow list than a deny list. In a deny list, you could potentially add a user ID to the system and forget to add it to the deny files."
-    remediation: "- IF - cron is installed on the system: Run the following script to: - Create /etc/cron.allow if it doesn't exist - Change owner to user root - Change group owner to group root - OR - group crontab if it exists - Change mode to 640 or more restrictive #!/usr/bin/env bash { [ ! -e \"/etc/cron.deny\" ] && touch /etc/cron.allow chmod u-x,g-wx,o-rwx /etc/cron.allow if grep -Pq -- '^\\h*crontab\\:' /etc/group; then chown root:crontab /etc/cron.allow else chown root:root /etc/cron.allow fi } - IF - /etc/cron.deny exists, run the following script to: - Change owner to user root - Change group owner to group root - OR - group crontab if it exists - Change mode to 640 or more restrictive #!/usr/bin/env bash { if [ -e \"/etc/cron.deny\" ]; then chmod u-x,g-wx,o-rwx /etc/cron.deny if grep -Pq -- '^\\h*crontab\\:' /etc/group; then chown root:crontab /etc/cron.deny else chown root:root /etc/cron.deny fi fi } Note: On systems where cron is configured to use the group crontab, if the group crontab is not set as the owner of cron.allow, then cron will deny access to all users and you will see an error similar to: You (<USERNAME>) are not allowed to use this program (crontab) See crontab(1) for more information."
-    compliance:
-      - cis: ["2.4.1.8"]
-      - cis_csc_v8: ["3.3"]
-      - cis_csc_v7: ["14.6"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
-      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-      - iso_27001-2013: ["A.9.1.1"]
-      - mitre_mitigations: ["M1018"]
-      - mitre_tactics: ["TA0002"]
-      - mitre_techniques: ["T1053", "T1053.003"]
-      - nist_sp_800-53: ["AC-5", "AC-6"]
-      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-      - pci_dss_v4.0: ["1.3.1", "7.1"]
-      - soc_2: ["CC5.2", "CC6.1"]
-    condition: all
-    rules:
-      - "f:/etc/cron.allow"
-      - "not f:/etc/cron.deny"
-      - 'c:stat /etc/cron.allow -> r:^Access: \(0640/-rw-r-----\)\s*Uid: \(\s*0/\s*root\)\s*Gid: \(\s*0/\s*root\)$'
-
-  # 2.4.2.1 Ensure at is restricted to authorized users. (Automated)
-  - id: 33106
-    title: "Ensure at is restricted to authorized users."
-    description: "at allows fairly complex time specifications, extending the POSIX.2 standard. It accepts times of the form HH:MM to run a job at a specific time of day. (If that time is already past, the next day is assumed.) You may also specify midnight, noon, or teatime (4pm) and you can have a time-of-day suffixed with AM or PM for running in the morning or the evening. You can also say what day the job will be run, by giving a date in the form month-name day with an optional year, or giving a date of the form MMDD[CC]YY, MM/DD/[CC]YY, DD.MM.[CC]YY or [CC]YY-MM-DD. The specification of a date must follow the specification of the time of day. You can also give times like now + count time-units, where the time-units can be minutes, hours, days, or weeks and you can tell at to run the job today by suffixing the time with today and to run the job tomorrow by suffixing the time with tomorrow. The /etc/at.allow and /etc/at.deny files determine which user can submit commands for later execution via at or batch. The format of the files is a list of usernames, one on each line. Whitespace is not permitted. If the file /etc/at.allow exists, only usernames mentioned in it are allowed to use at. If /etc/at.allow does not exist, /etc/at.deny is checked, every username not mentioned in it is then allowed to use at. An empty /etc/at.deny means that every user may use at. If neither file exists, only the superuser is allowed to use at."
-    rationale: "On many systems, only the system administrator is authorized to schedule at jobs. Using the at.allow file to control who can run at jobs enforces this policy. It is easier to manage an allow list than a deny list. In a deny list, you could potentially add a user ID to the system and forget to add it to the deny files."
-    remediation: "- IF - at is installed on the system: Run the following script to: - /etc/at.allow: o Create the file if it doesn't exist o Change owner or user root o If group daemon exists, change to group daemon, else change group to root o Change mode to 640 or more restrictive - - IF - /etc/at.deny exists: o Change owner or user root o If group daemon exists, change to group daemon, else change group to root o Change mode to 640 or more restrictive #!/usr/bin/env bash { grep -Pq -- '^daemon\\b' /etc/group && l_group=\"daemon\" || l_group=\"root\" [ ! -e \"/etc/at.allow\" ] && touch /etc/at.allow chown root:\"$l_group\" /etc/at.allow chmod u-x,g-wx,o-rwx /etc/at.allow [ -e \"/etc/at.deny\" ] && chown root:\"$l_group\" /etc/at.deny [ -e \"/etc/at.deny\" ] && chmod u-x,g-wx,o-rwx /etc/at.deny }."
-    compliance:
-      - cis: ["2.4.2.1"]
-      - cis_csc_v8: ["3.3"]
-      - cis_csc_v7: ["14.6"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
-      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-      - iso_27001-2013: ["A.9.1.1"]
-      - mitre_mitigations: ["M1018"]
-      - mitre_tactics: ["TA0002"]
-      - mitre_techniques: ["T1053", "T1053.003"]
-      - nist_sp_800-53: ["AC-5", "AC-6"]
-      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-      - pci_dss_v4.0: ["1.3.1", "7.1"]
-      - soc_2: ["CC5.2", "CC6.1"]
-    condition: all
-    rules:
-      - "f:/etc/at.allow"
-      - "not f:/etc/at.deny"
-      - 'c:stat /etc/at.allow -> r:^Access: \(0640/-rw-r-----\)\s*Uid: \(\s*0/\s*root\)\s*Gid: \(\s*0/\s*root\)$'
-
+  # 2.4.1.8 Ensure crontab is restricted to authorized users. (Automated) - Not Implemented
+  # 2.4.2.1 Ensure at is restricted to authorized users. (Automated) - Not Implemented
   # 3.1.1 Ensure IPv6 status is identified. (Manual) - Not Implemented
   # 3.1.2 Ensure wireless interfaces are disabled. (Automated) - Not Implemented
 
@@ -1957,7 +1911,9 @@ checks:
       - soc_2: ["CC6.6"]
     condition: all
     rules:
-      - 'not c:sh -c "systemctl is-enabled ufw.service & systemctl is-active ufw & ufw status" -> r:^active$|^enabled$'
+      - "c:systemctl is-enabled ufw.service -> r:^enabled$"
+      - "c:systemctl is-active ufw -> r:^active$"
+      - 'c:ufw status -> r:Status:\s*\t*active'
 
   # 4.2.4 Ensure ufw loopback traffic is configured. (Automated)
   - id: 33129
@@ -1982,7 +1938,10 @@ checks:
       - soc_2: ["CC6.6"]
     condition: all
     rules:
-      - "f:/etc/ufw/before.rules -> r:^-A ufw-before-input -i lo -j ACCEPT | r:^-A ufw-before-output -o lo -j ACCEPT"
+      - "f:/etc/ufw/before.rules -> r:lo|127.0.0.0 && r:^-A ufw-before-input -i lo -j ACCEPT"
+      - "f:/etc/ufw/before.rules -> r:lo|127.0.0.0 && r:^-A ufw-before-output -o lo -j ACCEPT"
+      - "not c:ufw status verbose -> r:Anywhere && r:deny in && r:127.0.0.0"
+      - 'not c:ufw status verbose -> r:Anywhere && r:deny in && r:\s*\t*::1$'
 
   # 4.2.5 Ensure ufw outbound connections are configured. (Manual) - Not Implemented
   # 4.2.6 Ensure ufw firewall rules exist for all open ports. (Automated) - Not Implemented
@@ -2009,7 +1968,9 @@ checks:
       - soc_2: ["CC6.6"]
     condition: all
     rules:
-      - 'c:ufw status verbose -> r:^Default:\S+'
+      - 'c:ufw status verbose -> r:^Default && r:deny\s+\(incoming\)|reject\s+\(incoming\)|disabled\s+\(incoming\)'
+      - 'c:ufw status verbose -> r:^Default && r:deny\s+\(outgoing\)|reject\s+\(outgoing\)|disabled\s+\(outgoing\)'
+      - 'c:ufw status verbose -> r:^Default && r:deny\s+\(routed\)|reject\s+\(routed\)|disabled\s+\(routed\)'
 
   # 4.3.1 Ensure nftables is installed. (Automated)
   - id: 33133
@@ -2056,30 +2017,9 @@ checks:
     condition: any
     rules:
       - "not c: dpkg-query -s ufw -> r:install ok installed"
-      - 'not c:sh -c "systemctl is-enabled ufw.service & ufw status" -> r:^inactive$|^masked$'
+      - 'not c:sh -c "systemctl is-enabled ufw.service & ufw status" -> r:Status:\s*\t*active|^enabled$'
 
-  # 4.3.3 Ensure iptables are flushed with nftables. (Manual)
-  - id: 33135
-    title: "Ensure iptables are flushed with nftables."
-    description: "nftables is a replacement for iptables, ip6tables, ebtables and arptables."
-    rationale: "It is possible to mix iptables and nftables. However, this increases complexity and also the chance to introduce errors. For simplicity flush out all iptables rules, and ensure it is not loaded."
-    remediation: "Run the following commands to flush iptables: For iptables: # iptables -F For ip6tables: # ip6tables -F."
-    compliance:
-      - cis: ["4.3.3"]
-      - cis_csc_v8: ["4.4", "4.5"]
-      - cis_csc_v7: ["9.4"]
-      - cmmc_v2.0: ["AC.L1-3.1.20", "CM.L2-3.4.7", "SC.L1-3.13.1", "SC.L2-3.13.6"]
-      - iso_27001-2013: ["A.13.1.1"]
-      - mitre_tactics: ["TA0005"]
-      - mitre_techniques: ["T1562", "T1562.004"]
-      - nist_sp_800-53: ["SC-7(5)"]
-      - pci_dss_v3.2.1: ["1.1.4", "1.3.1", "1.4"]
-      - pci_dss_v4.0: ["1.2.1", "1.4.1"]
-      - soc_2: ["CC6.6"]
-    condition: none
-    rules:
-      - "c:iptables -L -> r:Chain INPUT"
-      - "c:ip6tables -L -> r:Chain INPUT"
+  # 4.3.3 Ensure iptables are flushed with nftables. (Manual) - Not Implemented
 
   # 4.3.4 Ensure a nftables table exists. (Automated)
   - id: 33136
@@ -2228,7 +2168,8 @@ checks:
       - soc_2: ["CC6.6"]
     condition: all
     rules:
-      - "c: dpkg-query -s iptables-persistent iptables -> r:install ok installed"
+      - "c: dpkg-query -s iptables-persistent -> r:install ok installed"
+      - "c: dpkg-query -s iptables -> r:install ok installed"
 
   # 4.4.1.2 Ensure nftables is not in use with iptables. (Automated)
   - id: 33144
@@ -2274,7 +2215,7 @@ checks:
     condition: any
     rules:
       - "not c: dpkg-query -s ufw -> r:install ok installed"
-      - 'not c:sh -c "systemctl is-enabled ufw.service & ufw status" -> r:^active$|^enabled$'
+      - 'not c:sh -c "systemctl is-enabled ufw.service & ufw status" -> r:Status:\s*\t*active|^enabled$'
 
   # 4.4.2.1 Ensure iptables default deny firewall policy. (Automated)
   - id: 33146
@@ -4771,7 +4712,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'c:stat -Lc /etc/passwd -> r:^Access: \(0644/-rw-r--r--\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*0/\s*root\)$'
+      - 'c:stat -L /etc/passwd -> r:^Access: \(0644/-rw-r--r--\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*0/\s*root\)$'
 
   # 7.1.2 Ensure permissions on /etc/passwd- are configured. (Automated)
   - id: 33288
@@ -4795,7 +4736,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'c:stat -Lc /etc/passwd- -> r:^Access: \(0644/-rw-r--r--\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*0/\s*root\)$'
+      - 'c:stat -L /etc/passwd- -> r:^Access: \(0644/-rw-r--r--\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*0/\s*root\)$'
 
   # 7.1.3 Ensure permissions on /etc/group are configured. (Automated)
   - id: 33289
@@ -4819,7 +4760,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'c:stat -Lc /etc/group -> r:^Access: \(0644/-rw-r--r--\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*0/\s*root\)$'
+      - 'c:stat -L /etc/group -> r:^Access: \(0644/-rw-r--r--\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*0/\s*root\)$'
 
   # 7.1.4 Ensure permissions on /etc/group- are configured. (Automated)
   - id: 33290
@@ -4843,7 +4784,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'c:stat -Lc /etc/group- -> r:^Access: \(0644/-rw-r--r--\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*0/\s*root\)$'
+      - 'c:stat -L /etc/group- -> r:^Access: \(0644/-rw-r--r--\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*0/\s*root\)$'
 
   # 7.1.5 Ensure permissions on /etc/shadow are configured. (Automated)
   - id: 33291
@@ -4867,7 +4808,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'c:stat -Lc /etc/shadow -> r:^Access: \(0640/-rw-r-----\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*0/\s*root\)$|^Access: \(0640/-rw-r-----\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*\d+/\s*shadow\)$'
+      - 'c:stat -L /etc/shadow -> r:^Access: \(0640/-rw-r-----\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*0/\s*root\)$|^Access: \(0640/-rw-r-----\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*\d+/\s*shadow\)$'
 
   # 7.1.6 Ensure permissions on /etc/shadow- are configured. (Automated)
   - id: 33292
@@ -4891,7 +4832,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'c:stat -Lc /etc/shadow- -> r:^Access: \(0640/-rw-r-----\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*0/\s*root\)$|^Access: \(0640/-rw-r-----\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*\d+/\s*shadow\)$'
+      - 'c:stat -L /etc/shadow- -> r:^Access: \(0640/-rw-r-----\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*0/\s*root\)$|^Access: \(0640/-rw-r-----\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*\d+/\s*shadow\)$'
 
   # 7.1.7 Ensure permissions on /etc/gshadow are configured. (Automated)
   - id: 33293
@@ -4915,7 +4856,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'c:stat -Lc /etc/gshadow -> r:^Access: \(0640/-rw-r-----\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*0/\s*root\)$|^Access: \(0640/-rw-r-----\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*\d+/\s*shadow\)$'
+      - 'c:stat -L /etc/gshadow -> r:^Access: \(0640/-rw-r-----\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*0/\s*root\)$|^Access: \(0640/-rw-r-----\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*\d+/\s*shadow\)$'
 
   # 7.1.8 Ensure permissions on /etc/gshadow- are configured. (Automated)
   - id: 33294
@@ -4939,7 +4880,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'c:stat -Lc /etc/gshadow- -> r:^Access: \(0640/-rw-r-----\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*0/\s*root\)$|^Access: \(0640/-rw-r-----\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*\d+/\s*shadow\)$'
+      - 'c:stat -L /etc/gshadow- -> r:^Access: \(0640/-rw-r-----\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*0/\s*root\)$|^Access: \(0640/-rw-r-----\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*\d+/\s*shadow\)$'
 
   # 7.1.9 Ensure permissions on /etc/shells are configured. (Automated)
   - id: 33295
@@ -4963,7 +4904,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'c:stat -Lc /etc/shells -> r:^Access: \(0644/-rw-r--r--\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*0/\s*root\)$|^Access: \(0644/-rw-r--r--\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*\d+/\s*shadow\)$'
+      - 'c:stat -L /etc/shells -> r:^Access: \(0644/-rw-r--r--\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*0/\s*root\)$|^Access: \(0644/-rw-r--r--\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*\d+/\s*shadow\)$'
 
   # 7.1.10 Ensure permissions on /etc/security/opasswd are configured. (Automated)
   - id: 33296
@@ -4987,8 +4928,8 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'c:stat -Lc /etc/security/opasswd -> r:^Access: \(0600/-rw-------\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*0/\s*root\)$|^Access: \(0600/-rw-------\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*\d+/\s*shadow\)$'
-      - 'c:stat -Lc /etc/security/opasswd.old -> r:^Access: \(0600/-rw-------\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*0/\s*root\)$|^Access: \(0600/-rw-------\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*\d+/\s*shadow\)$'
+      - 'c:stat -L /etc/security/opasswd -> r:^Access: \(0600/-rw-------\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*0/\s*root\)$|^Access: \(0600/-rw-------\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*\d+/\s*shadow\)$'
+      - 'c:stat -L /etc/security/opasswd.old -> r:^Access: \(0600/-rw-------\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*0/\s*root\)$|^Access: \(0600/-rw-------\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*\d+/\s*shadow\)$'
 
   # 7.1.11 Ensure world writable files and directories are secured. (Automated) - Not Implemented
   # 7.1.12 Ensure no files or directories without an owner and a group exist. (Automated) - Not Implemented
