@@ -27,7 +27,7 @@ TEST(EnvironmentBuilderTest, Create_ValidPolicyAndFilter)
     fakeAssets.insert(base::Name("asset/test/0"));
     fakeAssets.insert(base::Name("asset/test/1"));
     fakeAssets.insert(base::Name("asset/test/2"));
-    EXPECT_CALL(*builder, buildPolicy(policyName, testing::_, testing::_)).WillOnce(Return(resPolicy));
+    EXPECT_CALL(*builder, buildPolicy(policyName, testing::_, testing::_, testing::_)).WillOnce(Return(resPolicy));
     EXPECT_CALL(*mockPolicy, assets()).Times(3).WillRepeatedly(ReturnRef(fakeAssets));
 
     auto mockController = std::make_shared<bk::mocks::MockController>();
@@ -58,7 +58,7 @@ TEST(EnvironmentBuilderTest, Create_inValidPolicy)
     auto policyName = base::Name("policy/test/0");
     auto filterName = base::Name("filter/test/0");
 
-    EXPECT_CALL(*builder, buildPolicy(policyName, testing::_, testing::_))
+    EXPECT_CALL(*builder, buildPolicy(policyName, testing::_, testing::_, testing::_))
         .WillOnce(::testing::Throw(std::runtime_error("error")));
 
     ASSERT_THROW(eBuilder.create(policyName, filterName), std::runtime_error);
@@ -81,7 +81,7 @@ TEST(EnvironmentBuilderTest, Create_ValidPolicyAndInvalidFilter)
     fakeAssets.insert(base::Name("asset/test/0"));
     fakeAssets.insert(base::Name("asset/test/1"));
     fakeAssets.insert(base::Name("asset/test/2"));
-    EXPECT_CALL(*builder, buildPolicy(policyName, testing::_, testing::_)).WillOnce(Return(resPolicy));
+    EXPECT_CALL(*builder, buildPolicy(policyName, testing::_, testing::_, testing::_)).WillOnce(Return(resPolicy));
     EXPECT_CALL(*mockPolicy, assets()).Times(3).WillRepeatedly(ReturnRef(fakeAssets));
 
     auto mockController = std::make_shared<bk::mocks::MockController>();

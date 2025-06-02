@@ -52,6 +52,7 @@ protected:
     base::Name m_storeTesterName;                  ///< Path of internal configuration state for testers
     base::Name m_storeRouterName;                  ///< Path of internal configuration state for routers
     std::size_t m_testTimeout;                     ///< Timeout for the tests
+    bool m_reverseOrderDecoders;                   ///< Reverse the order of decoders in the test environment
 
     using WorkerOp = std::function<base::OptError(const std::shared_ptr<IWorker>&)>;
     base::OptError forEachWorker(const WorkerOp& f); ///< Apply the function f to each worker
@@ -96,6 +97,8 @@ public:
         std::shared_ptr<TestQueueType> m_testQueue;              ///< The test queue
 
         int m_testTimeout; ///< Timeout for handlers of testers
+
+        bool m_reverseOrderDecoders; ///< Reverse the order of decoders in the test environment
 
         void validate() const; ///< Validate the configuration options if is invalid throw an  std::runtime_error
     };

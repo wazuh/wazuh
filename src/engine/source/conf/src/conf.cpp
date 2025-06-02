@@ -74,6 +74,7 @@ Conf::Conf(std::shared_ptr<IApiLoader> apiLoader)
 
     // Orchestrator module
     addUnit<int>(key::ORCHESTRATOR_THREADS, "WAZUH_ORCHESTRATOR_THREADS", 1);
+    addUnit<bool>(key::ORCHESTRATOR_REVERSE_ORDER_DECODERS, "WAZUH_ORCHESTRATOR_REVERSE_ORDER_DECODERS", false);
 
     // Http server module
     addUnit<std::string>(key::SERVER_API_SOCKET, "WAZUH_SERVER_API_SOCKET", "/run/wazuh-server/engine-api.socket");

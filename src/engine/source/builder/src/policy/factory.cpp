@@ -476,7 +476,7 @@ PolicyGraph buildGraph(const BuiltAssets& assets, const PolicyData& data)
     return graph;
 }
 
-base::Expression buildExpression(const PolicyGraph& graph, const PolicyData& data)
+base::Expression buildExpression(const PolicyGraph& graph, const PolicyData& data, const bool reverseOrderDecoders)
 {
     // Expression of the policy, expression to be returned.
     // All subgraphs are added to this expression.
@@ -491,7 +491,9 @@ base::Expression buildExpression(const PolicyGraph& graph, const PolicyData& dat
         // Child operator depends on the asset type
         switch (assetType)
         {
-            case PolicyData::AssetType::DECODER: subgraphExpr = buildSubgraphExpression<base::Or>(subgraph); break;
+            case PolicyData::AssetType::DECODER:
+                subgraphExpr = buildSubgraphExpression<base::Or>(subgraph, reverseOrderDecoders);
+                break;
             case PolicyData::AssetType::RULE:
             case PolicyData::AssetType::OUTPUT:
                 subgraphExpr = buildSubgraphExpression<base::Broadcast>(subgraph);

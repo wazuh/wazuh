@@ -27,9 +27,13 @@ public:
      * @brief Add a new entry (policy) to the tester
      * @param entryPost The entry information for testing policy
      * @param ignoreFail If true, if the operation fails the entry is added in disabled state.
+     * @param reverseOrderDecoders If it is set to true, the decoders will be processed in reverse order.
+     * This is useful for testing purposes, but it should not be used in a
+     * production environment.
      * @return An optional error if the operation failed.
      */
-    virtual base::OptError addEntry(const test::EntryPost& entryPost, bool ignoreFail = false) = 0;
+    virtual base::OptError
+    addEntry(const test::EntryPost& entryPost, bool ignoreFail = false, bool reverseOrderDecoders = false) = 0;
 
     /**
      * @brief Removes a entry (testing policy) from the tester

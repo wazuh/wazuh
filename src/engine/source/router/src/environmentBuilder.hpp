@@ -77,10 +77,16 @@ public:
      * @param sandbox If it is set to true, it indicates a test environment and if it is set to false, it indicates a
      * production environment.
      * @return std::shared_ptr<bk::IController> The constructed controller.
+     * @param reverseOrderDecoders If it is set to true, the decoders will be processed in reverse order.
+     * This is useful for testing purposes, but it should not be used in a
+     * production environment.
      * @throws std::runtime_error if the policy has no assets or if the backend cannot be built. // TODO Move to
      * base::Error
      */
-    auto makeController(const base::Name& policyName, const bool trace = true, const bool sandbox = true)
+    auto makeController(const base::Name& policyName,
+                        const bool trace = true,
+                        const bool sandbox = true,
+                        const bool reverseOrderDecoders = false)
         -> std::pair<std::shared_ptr<bk::IController>, std::string>
     {
         if (policyName.parts().size() == 0 || policyName.parts()[0] != "policy")
@@ -94,7 +100,7 @@ public:
             throw std::runtime_error {"The builder is not available"};
         }
 
-        auto policy = builder->buildPolicy(policyName, trace, sandbox);
+        auto policy = builder->buildPolicy(policyName, trace, sandbox, reverseOrderDecoders);
         if (policy->assets().empty())
         {
             throw std::runtime_error {fmt::format("Policy '{}' has no assets", policyName)};
