@@ -23,6 +23,7 @@ static const char *XML_PORTS = "ports";
 static const char *XML_PROCS = "processes";
 static const char *XML_HOTFIXES = "hotfixes";
 static const char *XML_SYNC = "synchronization";
+static const char *XML_GROUPS = "groups";
 
 static void parse_synchronization_section(wm_sys_t * syscollector, XML_NODE node) {
     const char *XML_DB_SYNC_MAX_EPS = "max_eps";
@@ -66,6 +67,7 @@ int wm_syscollector_read(const OS_XML *xml, XML_NODE node, wmodule *module) {
         syscollector->flags.portsinfo = 1;
         syscollector->flags.allports = 0;
         syscollector->flags.procinfo = 1;
+        syscollector->flags.groups = 1;
 
         // Database synchronization config values
         syscollector->sync.sync_max_eps = 10;
@@ -211,6 +213,15 @@ int wm_syscollector_read(const OS_XML *xml, XML_NODE node, wmodule *module) {
                 syscollector->flags.portsinfo = 0;
             else {
                 merror("Invalid content for tag '%s' at module '%s'.", XML_PORTS, WM_SYS_CONTEXT.name);
+                return OS_INVALID;
+            }
+        } else if (!strcmp(node[i]->element, XML_GROUPS)) {
+            if (!strcmp(node[i]->content, "yes"))
+                syscollector->flags.groups = 1;
+            else if (!strcmp(node[i]->content, "no"))
+                syscollector->flags.groups = 0;
+            else {
+                merror("Invalid content for tag '%s' at module '%s'.", XML_GROUPS, WM_SYS_CONTEXT.name);
                 return OS_INVALID;
             }
         } else if (!strcmp(node[i]->element, XML_SYNC)) {
