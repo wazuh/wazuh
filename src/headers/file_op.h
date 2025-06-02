@@ -46,7 +46,6 @@ typedef ino_t wino_t;
     do {                                             \
         errno = EACCES;                              \
         SetLastError(ERROR_NETWORK_ACCESS_DENIED);   \
-        merror("Testing network drives, rejected."); \
         return (retval);                             \
     } while (0)
 

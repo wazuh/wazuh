@@ -408,7 +408,7 @@ int waccess(const char *path, int mode) {
 }
 
 #ifdef WIN32
-HANDLE wCreateFile(LPCSTR  lpFileName,
+HANDLE wCreateFile(LPCSTR   lpFileName,
                     DWORD   dwDesiredAccess,
                     DWORD   dwShareMode,
                     LPSECURITY_ATTRIBUTES lpSecurityAttributes,
@@ -420,12 +420,12 @@ HANDLE wCreateFile(LPCSTR  lpFileName,
         REJECT_NETWORK_PATH(INVALID_HANDLE_VALUE);
     }
     return CreateFile(lpFileName,
-                       dwDesiredAccess,
-                       dwShareMode,
-                       lpSecurityAttributes,
-                       dwCreationDisposition,
-                       dwFlagsAndAttributes,
-                       hTemplateFile);
+                      dwDesiredAccess,
+                      dwShareMode,
+                      lpSecurityAttributes,
+                      dwCreationDisposition,
+                      dwFlagsAndAttributes,
+                      hTemplateFile);
 }
 #endif
 
@@ -3288,6 +3288,7 @@ bool is_network_path(const char *path) {
 
     // Case 1: UNC path (\\server\share\...)
     if (PathIsUNCA(path)) {
+        merror("UNC path detected: %s", path);
         return true;
     }
 
@@ -3304,8 +3305,6 @@ bool is_network_path(const char *path) {
         if (result == NO_ERROR || result == ERROR_CONNECTION_UNAVAIL) {
             merror("Mapped drive detected: %s -> %s (code: %lu)", root, remoteName, result);
             return true;
-        } else {
-            merror("WNetGetConnectionA failed for %s with error code: %lu", root, result);
         }
     }
 

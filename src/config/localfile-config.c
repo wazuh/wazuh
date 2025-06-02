@@ -320,8 +320,6 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
                 }
             }
             if (is_network_path(node[i]->content)) {
-                merror("Network drives not allowed.");
-
                 logf[pl].file = NULL;
                 logf[pl].ffile = NULL;
                 logf[pl].command = NULL;

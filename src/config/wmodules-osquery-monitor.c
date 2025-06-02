@@ -68,17 +68,26 @@ int wm_osquery_monitor_read(xml_node **nodes, wmodule *module)
         }
         else if(!strcmp(nodes[i]->element, XML_BINPATH))
         {
+            if (is_network_path(nodes[i]->content)) {
+                continue;
+            }
             free(osquery_monitor->bin_path);
             osquery_monitor->bin_path = strdup(nodes[i]->content);
         }
         else if(!strcmp(nodes[i]->element, XML_LOGPATH))
         {
+            if (is_network_path(nodes[i]->content)) {
+                continue;
+            }
             free(osquery_monitor->log_path);
             osquery_monitor->log_path = strdup(nodes[i]->content);
             mdebug2("Logpath read: %s", osquery_monitor->log_path);
         }
         else if(!strcmp(nodes[i]->element, XML_CONFIGPATH))
         {
+            if (is_network_path(nodes[i]->content)) {
+                continue;
+            }
             free(osquery_monitor->config_path);
             osquery_monitor->config_path = strdup(nodes[i]->content);
             mdebug2("configPath read: %s", osquery_monitor->config_path);
