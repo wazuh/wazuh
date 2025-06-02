@@ -28,6 +28,7 @@
 #include <regex.h>
 #else
 #include <aclapi.h>
+#include <winnetwk.h>
 #endif
 
 /* Vista product information */
@@ -3292,12 +3293,19 @@ bool is_network_path(const char *path) {
 
     // Case 2: Absolute path on mapped network drive
     if (strlen(path) >= 2 && path[1] == ':') {
-        char root[] = "X:\\";
-        root[0] = path[0];
+        char root[] = "X:";
+        root[0] = toupper(path[0]);
 
-        UINT type = GetDriveTypeA(root);
-        if (type == DRIVE_REMOTE) {
+        char remoteName[MAX_PATH] = {0};
+        DWORD bufferSize = sizeof(remoteName);
+
+        DWORD result = WNetGetConnectionA(root, remoteName, &bufferSize);
+
+        if (result == NO_ERROR || result == ERROR_CONNECTION_UNAVAIL) {
+            merror("Mapped drive detected: %s -> %s (code: %lu)", root, remoteName, result);
             return true;
+        } else {
+            merror("WNetGetConnectionA failed for %s with error code: %lu", root, result);
         }
     }
 
