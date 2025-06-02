@@ -10,15 +10,16 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     list(APPEND TEST_SRC test_user_groups_windows.cpp)
 else()
     if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+        list(APPEND TEST_SRC test_groups_linux.cpp)
         list(APPEND TEST_SRC test_user_groups_linux.cpp)
     elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
         list(APPEND TEST_SRC test_user_groups_darwin.cpp)
     endif()
 endif()
 
-add_executable(extended_sources_user_groups_unit_test ${TEST_SRC})
+add_executable(extended_sources_groups_unit_test ${TEST_SRC})
 
-target_link_libraries(extended_sources_user_groups_unit_test
+target_link_libraries(extended_sources_groups_unit_test
     groups
     gtestd
     gmockd
@@ -26,4 +27,4 @@ target_link_libraries(extended_sources_user_groups_unit_test
     gmock_maind
 )
 
-add_test(NAME UserGroupsTests COMMAND extended_sources_user_groups_unit_test)
+add_test(NAME GroupsTests COMMAND extended_sources_groups_unit_test)

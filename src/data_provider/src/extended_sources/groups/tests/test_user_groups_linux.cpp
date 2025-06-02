@@ -17,6 +17,10 @@
 class MockGroupWrapper : public IGroupWrapperLinux
 {
     public:
+        MOCK_METHOD(int, getgrgid_r, (gid_t gid, struct group* grp, char* buf, size_t buflen, struct group** result), (const, override));
+        MOCK_METHOD(int, getgrent_r, (struct group* grp, char* buf, size_t buflen, struct group** result), (const, override));
+        MOCK_METHOD(void, setgrent, (), (const, override));
+        MOCK_METHOD(void, endgrent, (), (const, override));
         MOCK_METHOD(int, getgrouplist, (const char* user, gid_t group, gid_t* groups, int* ngroups), (const, override));
 };
 

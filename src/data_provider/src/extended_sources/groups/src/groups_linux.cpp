@@ -22,49 +22,59 @@ GroupsProvider::GroupsProvider()
 nlohmann::json GroupsProvider::collect(const std::set<gid_t>& gids)
 {
     nlohmann::json results = nlohmann::json::array();
-    struct group* groupResult {nullptr};
+    struct group* groupResult
+    {
+        nullptr
+    };
     struct group group;
 
     size_t bufSize = MAX_GETPW_R_BUF_SIZE;
     auto buf = std::make_unique<char[]>(bufSize);
+
     if (!gids.empty())
     {
         for (const auto& gid : gids)
         {
-            while (getgrgid_r(gid, &group, buf.get(), bufSize, &groupResult) == ERANGE)
+            while (m_groupWrapper->getgrgid_r(gid, &group, buf.get(), bufSize, &groupResult) == ERANGE)
             {
                 bufSize *= 2;
                 buf = std::make_unique<char[]>(bufSize);
             }
+
             if (groupResult == nullptr)
             {
                 continue;
             }
+
             addGroupToResults(results, groupResult);
         }
     }
     else
     {
         std::set<long> groupsIn;
-        setgrent();
+        m_groupWrapper->setgrent();
+
         while (1)
         {
-            while (getgrent_r(&group, buf.get(), bufSize, &groupResult) == ERANGE)
+            while (m_groupWrapper->getgrent_r(&group, buf.get(), bufSize, &groupResult) == ERANGE)
             {
                 bufSize *= 2;
                 buf = std::make_unique<char[]>(bufSize);
             }
+
             if (groupResult == nullptr)
             {
                 break;
             }
+
             if (std::find(groupsIn.begin(), groupsIn.end(), groupResult->gr_gid) == groupsIn.end())
             {
                 addGroupToResults(results, groupResult);
                 groupsIn.insert(groupResult->gr_gid);
             }
         }
-        endgrent();
+
+        m_groupWrapper->endgrent();
         groupsIn.clear();
     }
 
@@ -77,6 +87,5 @@ void GroupsProvider::addGroupToResults(nlohmann::json& results, const group* gro
     row["groupname"] = group->gr_name;
     row["gid"] = group->gr_gid;
     row["gid_signed"] = static_cast<int32_t>(group->gr_gid);
-    row["pid_with_namespace"] = "0";
     results.push_back(row);
 }
