@@ -2044,7 +2044,7 @@ def test_get_utc_now():
 
 
 @freeze_time('1970-01-01')
-def test_get_utc_now():
+def test_get_utc_strptime():
     """Test if the result is the expected date."""
     mock_date = '1970-01-01'
     default_format = '%Y-%M-%d'
