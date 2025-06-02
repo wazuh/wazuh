@@ -111,7 +111,8 @@ void expectBuildPolicyOk(std::shared_ptr<builder::mocks::MockBuilder> mockbuilde
                          std::shared_ptr<builder::mocks::MockPolicy> mockPolicy)
 {
     // Build policy controller
-    EXPECT_CALL(*mockbuilder, buildPolicy(testing::_, testing::_, testing::_)).WillOnce(testing::Return(mockPolicy));
+    EXPECT_CALL(*mockbuilder, buildPolicy(testing::_, testing::_, testing::_, testing::_))
+        .WillOnce(testing::Return(mockPolicy));
     auto emptyNames = std::unordered_set<base::Name> {"asset/test/0"};
     EXPECT_CALL(*mockPolicy, assets()).WillRepeatedly(testing::ReturnRefOfCopy(emptyNames));
     auto emptyExpression = base::Expression {};
@@ -306,14 +307,39 @@ TEST_F(OrchestratorTesterTest, IngestTest)
     std::unordered_set<std::string> fakeAssetsString {};
     fakeAssetsString.insert("decoder/fake/0");
     router::test::Options opt(router::test::Options::TraceLevel::ASSET_ONLY, fakeAssetsString, "test");
+    auto event = std::make_shared<json::Json>(R"({"message":"test"})");
+    router::test::QueueType capturedTuple;
 
-    EXPECT_CALL(*m_mockQueueTester, tryPush(testing::_)).WillOnce(testing::Return(true));
+    EXPECT_CALL(*m_mockQueueTester, tryPush(testing::_))
+        .WillOnce(testing::DoAll(testing::SaveArg<0>(&capturedTuple), testing::Return(true)));
+
+    EXPECT_CALL(*m_mockQueueTester, tryPop(testing::_))
+        .WillOnce(testing::Invoke(
+            [&](router::test::QueueType& out)
+            {
+                out = capturedTuple;
+                return true;
+            }))
+        .WillRepeatedly(testing::Return(false));
+
+    ON_CALL(*m_mockController, subscribe(testing::_, testing::_)).WillByDefault(testing::Return(bk::Subscription(1)));
+
+    ON_CALL(*m_mockController, ingestGet(testing::_)).WillByDefault(testing::Return(event));
+
+    ON_CALL(*m_mockController, unsubscribeAll()).WillByDefault(testing::Return());
+
     EXPECT_CALL(*m_mockQueueRouter, empty()).WillOnce(testing::Return(true));
     EXPECT_CALL(*m_mockQueueRouter, push(testing::_)).Times(1);
 
-    auto event = std::make_shared<json::Json>(R"({"message":"test"})");
-
     auto resultFuture = m_orchestrator->ingestTest(std::move(event), opt);
+
+    auto optResult = resultFuture.get();
+
+    EXPECT_FALSE(base::isError(optResult));
+
+    auto result = base::getResponse(optResult);
+
+    EXPECT_STREQ(result.event()->str().c_str(), R"({"message":"test"})");
 
     m_orchestrator->stop();
 }

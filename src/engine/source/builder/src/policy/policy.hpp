@@ -38,6 +38,9 @@ public:
      * @param trace Indicates whether to enable or disable the trace
      * @param sandbox If it is set to true, it indicates a test environment and if it is set to false, it indicates a
      * production environment.
+     * @param reverseOrderDecoders If it is set to true, the decoders will be processed in reverse order.
+     * This is useful for testing purposes, but it should not be used in a
+     * production environment.
      */
     Policy(const store::Doc& doc,
            const std::shared_ptr<store::IStoreReader>& store,
@@ -46,7 +49,8 @@ public:
            const std::shared_ptr<schemf::IValidator>& schema,
            const std::shared_ptr<IAllowedFields>& allowedFields,
            const bool trace = false,
-           const bool sandbox = false);
+           const bool sandbox = false,
+           const bool reverseOrderDecoders = false);
 
     /**
      * @copydoc IPolicy::name

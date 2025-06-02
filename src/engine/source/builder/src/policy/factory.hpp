@@ -308,13 +308,17 @@ PolicyGraph buildGraph(const BuiltAssets& assets, const PolicyData& data);
  *
  * @tparam ChildOperator Expression type of the children nodes and the root node.
  * @param subgraph Subgraph to generate the expression from.
+ * @param reverseOrderDecoders If it is set to true, the decoders will be processed in reverse order.
+ * This is useful for testing purposes, but it should not be used in a
+ * production environment.
  *
  * @return base::Expression
  *
  * @throw std::runtime_error If any error occurs.
  */
 template<typename ChildOperator>
-base::Expression buildSubgraphExpression(const Graph<base::Name, Asset>& subgraph)
+base::Expression buildSubgraphExpression(const Graph<base::Name, Asset>& subgraph,
+                                         const bool reverseOrderDecoders = false)
 {
     // Assert T is a valid operation
     static_assert(std::is_base_of_v<base::Operation, ChildOperator>, "ChildOperator must be a valid operation");
@@ -352,6 +356,15 @@ base::Expression buildSubgraphExpression(const Graph<base::Name, Asset>& subgrap
                 {
                     assetChildren->getOperands().push_back(visitRef(child, current, visitRef));
                 }
+
+                if constexpr (std::is_same_v<ChildOperator, base::Or>)
+                {
+                    if (reverseOrderDecoders)
+                    {
+                        auto& ops = assetChildren->getOperands();
+                        std::reverse(ops.begin(), ops.end());
+                    }
+                }
             }
             else
             {
@@ -374,7 +387,6 @@ base::Expression buildSubgraphExpression(const Graph<base::Name, Asset>& subgrap
     {
         root->getOperands().push_back(visit(child, subgraph.rootId(), visit));
     }
-
     return root;
 }
 
@@ -388,7 +400,7 @@ base::Expression buildSubgraphExpression(const Graph<base::Name, Asset>& subgrap
  *
  * @throw std::runtime_error If any error occurs.
  */
-base::Expression buildExpression(const PolicyGraph& graph, const PolicyData& data);
+base::Expression buildExpression(const PolicyGraph& graph, const PolicyData& data, const bool revert = false);
 
 } // namespace builder::policy::factory
 

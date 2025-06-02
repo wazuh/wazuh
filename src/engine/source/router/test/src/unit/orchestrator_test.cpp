@@ -104,7 +104,8 @@ public:
         auto itesterMock = std::static_pointer_cast<router::ITester>(testerMock);
 
         EXPECT_CALL(*m_mocks.front(), getTester()).WillOnce(testing::ReturnRefOfCopy(itesterMock));
-        EXPECT_CALL(*testerMock, addEntry(testing::_, testing::_)).WillOnce(testing::Return(base::Error {"error"}));
+        EXPECT_CALL(*testerMock, addEntry(testing::_, testing::_, testing::_))
+            .WillOnce(testing::Return(base::Error {"error"}));
     }
 
     void expectPostEntryEnableEntryFailture()
@@ -120,7 +121,8 @@ public:
         for (auto mock : m_mocks)
         {
             EXPECT_CALL(*mock, getTester()).WillRepeatedly(testing::ReturnRefOfCopy(itesterMock));
-            EXPECT_CALL(*testerMock, addEntry(testing::_, testing::_)).WillRepeatedly(testing::Return(std::nullopt));
+            EXPECT_CALL(*testerMock, addEntry(testing::_, testing::_, testing::_))
+                .WillRepeatedly(testing::Return(std::nullopt));
         }
 
         EXPECT_CALL(*testerMock, enableEntry(testing::_)).WillOnce(testing::Return(base::Error {"error"}));
@@ -139,7 +141,8 @@ public:
         for (auto mock : m_mocks)
         {
             EXPECT_CALL(*mock, getTester()).WillRepeatedly(testing::ReturnRefOfCopy(itesterMock));
-            EXPECT_CALL(*testerMock, addEntry(testing::_, testing::_)).WillRepeatedly(testing::Return(std::nullopt));
+            EXPECT_CALL(*testerMock, addEntry(testing::_, testing::_, testing::_))
+                .WillRepeatedly(testing::Return(std::nullopt));
             EXPECT_CALL(*testerMock, enableEntry(testing::_)).WillRepeatedly(testing::Return(std::nullopt));
             EXPECT_CALL(*testerMock, getEntries()).WillRepeatedly(testing::Return(std::list<test::Entry> {}));
         }
