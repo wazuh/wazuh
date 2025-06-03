@@ -96,3 +96,30 @@ target_link_libraries(base_logger_utest
 gtest_discover_tests(base_logger_utest)
 
 endif(ENGINE_BUILD_TEST)
+
+if(ENGINE_BUILD_BENCHMARK)
+
+set(BENCH_DIR ${CMAKE_CURRENT_LIST_DIR}/benchmark)
+set(BENCH_SRC_DIR ${CMAKE_CURRENT_LIST_DIR}/benchmark/src)
+
+add_library(base_bench INTERFACE)
+target_include_directories(base_bench INTERFACE ${BENCH_DIR}/include)
+target_link_libraries(base_bench INTERFACE base benchmark::benchmark)
+add_library(base::bench ALIAS base_bench)
+
+add_executable(base_benchmark
+    ${BENCH_SRC_DIR}/eventParser_bench.cpp
+)
+target_include_directories(base_benchmark
+    PRIVATE
+    ${BENCH_SRC_DIR}
+    ${SRC_DIR}
+    ${INC_DIR}/base
+)
+target_link_libraries(base_benchmark
+    PUBLIC
+    base::bench 
+    benchmark::benchmark_main
+)
+
+endif(ENGINE_BUILD_BENCHMARK)
