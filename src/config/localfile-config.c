@@ -327,6 +327,7 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
                 logf[pl].logformat = NULL;
                 logf[pl].fp = NULL;
                 labels_free(logf[pl].labels);
+                mwarn(NETWORK_PATH_CONFIGURED, node[i]->element, node[i]->content);
                 return 0;
             }
 #endif

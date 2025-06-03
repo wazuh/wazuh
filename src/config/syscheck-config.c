@@ -1704,6 +1704,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
             char dirs[OS_MAXSTR];
 #ifdef WIN32
             if (is_network_path(node[i]->content)) {
+                mwarn(NETWORK_PATH_CONFIGURED, node[i]->element, node[i]->content);
                 continue;
             }
             fim_adjust_path(&(node[i]->content));

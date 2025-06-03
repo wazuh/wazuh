@@ -42,13 +42,6 @@ extern int isVista;
 typedef ino_t wino_t;
 #endif
 
-#define REJECT_NETWORK_PATH(retval)                  \
-    do {                                             \
-        errno = EACCES;                              \
-        SetLastError(ERROR_NETWORK_ACCESS_DENIED);   \
-        return (retval);                             \
-    } while (0)
-
 typedef struct File {
     char *name;
     FILE *fp;

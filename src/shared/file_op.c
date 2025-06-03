@@ -401,7 +401,9 @@ const char *__local_name = "unset";
 int waccess(const char *path, int mode) {
 #ifdef WIN32
     if (is_network_path(path)) {
-        REJECT_NETWORK_PATH(-1);
+        errno = EACCES;
+        mwarn(NETWORK_PATH_EXECUTED, path);
+        return (-1);
     }
 #endif
     return access(path, mode);
@@ -417,7 +419,9 @@ HANDLE wCreateFile(LPCSTR   lpFileName,
                     HANDLE  hTemplateFile) {
 
     if (is_network_path(lpFileName)) {
-        REJECT_NETWORK_PATH(INVALID_HANDLE_VALUE);
+        errno = EACCES;
+        mwarn(NETWORK_PATH_EXECUTED, lpFileName);
+        return (INVALID_HANDLE_VALUE);
     }
     return CreateFile(lpFileName,
                       dwDesiredAccess,
@@ -432,7 +436,9 @@ HANDLE wCreateFile(LPCSTR   lpFileName,
 DIR * wopendir(const char *name) {
 #ifdef WIN32
     if (is_network_path(name)) {
-        REJECT_NETWORK_PATH(NULL);
+        errno = EACCES;
+        mwarn(NETWORK_PATH_EXECUTED, name);
+        return (NULL);
     }
 #endif
     return opendir(name);
@@ -442,7 +448,9 @@ int w_stat(const char * pathname,
            struct stat * statbuf) {
 #ifdef WIN32
     if (is_network_path(pathname)) {
-        REJECT_NETWORK_PATH(-1);
+        errno = EACCES;
+        mwarn(NETWORK_PATH_EXECUTED, pathname);
+        return (-1);
     }
 #endif
     return stat(pathname, statbuf);
@@ -2816,7 +2824,9 @@ FILE * wfopen(const char * pathname, const char * mode) {
     int i;
 
     if (is_network_path(pathname)) {
-        REJECT_NETWORK_PATH(NULL);
+        errno = EACCES;
+        mwarn(NETWORK_PATH_EXECUTED, pathname);
+        return (NULL);
     }
 
     for (i = 0; mode[i]; ++i) {

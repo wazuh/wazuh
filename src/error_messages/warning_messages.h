@@ -168,4 +168,9 @@
                                                 " Default value (%s) will be used."
 #define REMOTED_INV_VALUE_DEFAULT               "(9004): Invalid value '%s' in '%s' option. " \
                                                 "Default value will be used."
+
+/* Other */
+#define NETWORK_PATH_EXECUTED           "(9800): File access denied. Network path usage is not allowed: '%s'."
+#define NETWORK_PATH_CONFIGURED         "(9801): Network path not allowed in configuration. '%s': %s."
+
 #endif /* WARN_MESSAGES_H */

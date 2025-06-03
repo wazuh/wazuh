@@ -19,7 +19,9 @@ wfd_t * wpopenv(const char * path, char * const * argv, int flags) {
 
 #ifdef WIN32
     if (is_network_path(path)) {
-        REJECT_NETWORK_PATH(NULL);
+        errno = EACCES;
+        mwarn(NETWORK_PATH_EXECUTED, path);
+        return (NULL);
     }
 
     int fd;
