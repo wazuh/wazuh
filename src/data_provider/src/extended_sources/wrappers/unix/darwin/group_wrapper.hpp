@@ -25,6 +25,22 @@ extern "C" int getgroupcount(const char* name, gid_t basegid);
 class GroupWrapperDarwin : public IGroupWrapperDarwin
 {
     public:
+        /// @brief Retrieves a group by its GID.
+        /// @param gid The group ID for which to retrieve the group structure.
+        /// @return A pointer to the group structure if found, or nullptr if not found.
+        struct group* getgrgid(gid_t gid) const override
+        {
+            return ::getgrgid(gid);
+        }
+
+        /// @brief Retrieves a group by its name.
+        /// @param name The name of the group to retrieve.
+        /// @return A pointer to the group structure if found, or nullptr if not found.
+        struct group* getgrnam(const char* name) const override
+        {
+            return ::getgrnam(name);
+        }
+
         /// @brief Retrieves the list of groups for a user.
         /// @param user The username for which to retrieve the group list.
         /// @param group The primary group ID of the user.

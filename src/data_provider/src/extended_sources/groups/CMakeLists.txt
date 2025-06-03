@@ -37,7 +37,9 @@ else()
         find_library(OPEN_DIRECTORY OpenDirectory)
         find_library(FOUNDATION Foundation)
 
-        list(APPEND SRC_FILES src/user_groups_darwin.cpp 
+        list(APPEND SRC_FILES 
+          src/groups_darwin.cpp
+          src/user_groups_darwin.cpp 
           ${CMAKE_CURRENT_SOURCE_DIR}/../wrappers/unix/darwin/od_wrapper.mm)
         set(PLATFORM_LIBS_USERS ${OPEN_DIRECTORY} ${FOUNDATION})
     endif()

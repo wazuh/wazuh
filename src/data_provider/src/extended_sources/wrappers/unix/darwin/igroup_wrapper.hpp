@@ -21,6 +21,16 @@ class IGroupWrapperDarwin
         /// @brief Default constructor.
         virtual ~IGroupWrapperDarwin() = default;
 
+        /// @brief Retrieves a group by its GID.
+        /// @param gid The group ID for which to retrieve the group structure.
+        /// @return A pointer to the group structure if found, or nullptr if not found.
+        virtual struct group* getgrgid(gid_t gid) const = 0;
+
+        /// @brief Retrieves a group by its name.
+        /// @param name The name of the group to retrieve.
+        /// @return A pointer to the group structure if found, or nullptr if not found.
+        virtual struct group* getgrnam(const char* name) const = 0;
+
         /// @brief Retrieves the list of groups for a user.
         /// @param user The username for which to retrieve the group list.
         /// @param group The primary group ID of the user.

@@ -24,6 +24,8 @@ using ::testing::Invoke;
 class MockGroupWrapper : public IGroupWrapperDarwin
 {
     public:
+        MOCK_METHOD(struct group*, getgrgid, (gid_t gid), (const, override));
+        MOCK_METHOD(struct group*, getgrnam, (const char* name), (const, override));
         MOCK_METHOD(int, getgrouplist, (const char* user, gid_t group, gid_t* groups, int* ngroups), (const, override));
         MOCK_METHOD(int, getgroupcount, (const char* user, gid_t group), (const, override));
 };
