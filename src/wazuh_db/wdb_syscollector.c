@@ -12,9 +12,13 @@
 #include "wdb.h"
 #include "wdb_agents.h"
 
+#define MAX_USER_LENGHT 256
 
 // Function to save Network info into the DB. Return 0 on success or -1 on error.
-int wdb_netinfo_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * name, const char * adapter, const char * type, const char * state, int mtu, const char * mac, long tx_packets, long rx_packets, long tx_bytes, long rx_bytes, long tx_errors, long rx_errors, long tx_dropped, long rx_dropped, const char * checksum, const char * item_id, const bool replace) {
+int wdb_netinfo_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * name, const char * adapter, 
+                     const char * type, const char * state, int mtu, const char * mac, long tx_packets, long rx_packets, 
+                     long tx_bytes, long rx_bytes, long tx_errors, long rx_errors, long tx_dropped, long rx_dropped, 
+                     const char * checksum, const char * item_id, const bool replace) {
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0){
         mdebug1("at wdb_netinfo_save(): cannot begin transaction");
@@ -49,7 +53,10 @@ int wdb_netinfo_save(wdb_t * wdb, const char * scan_id, const char * scan_time, 
 }
 
 // Insert Network info tuple. Return 0 on success or -1 on error.
-int wdb_netinfo_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * name, const char * adapter, const char * type, const char * state, int mtu, const char * mac, long tx_packets, long rx_packets, long tx_bytes, long rx_bytes, long tx_errors, long rx_errors, long tx_dropped, long rx_dropped, const char * checksum, const char * item_id, const bool replace) {
+int wdb_netinfo_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * name, const char * adapter, 
+                       const char * type, const char * state, int mtu, const char * mac, long tx_packets, long rx_packets, 
+                       long tx_bytes, long rx_bytes, long tx_errors, long rx_errors, long tx_dropped, long rx_dropped, 
+                       const char * checksum, const char * item_id, const bool replace) {
     sqlite3_stmt *stmt = NULL;
 
     if (NULL == name) {
@@ -141,7 +148,8 @@ int wdb_netinfo_insert(wdb_t * wdb, const char * scan_id, const char * scan_time
 }
 
 // Save IPv4/IPv6 protocol info into DB.
-int wdb_netproto_save(wdb_t * wdb, const char * scan_id, const char * iface, int type, const char * gateway, const char * dhcp, int metric, const char * checksum, const char * item_id, const bool replace) {
+int wdb_netproto_save(wdb_t * wdb, const char * scan_id, const char * iface, int type, const char * gateway, const char * dhcp, 
+                      int metric, const char * checksum, const char * item_id, const bool replace) {
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0){
         mdebug1("at wdb_netproto_save(): cannot begin transaction");
@@ -166,7 +174,8 @@ int wdb_netproto_save(wdb_t * wdb, const char * scan_id, const char * iface, int
 }
 
 // Insert IPv4/IPv6 protocol info tuple. Return 0 on success or -1 on error.
-int wdb_netproto_insert(wdb_t * wdb, const char * scan_id, const char * iface, int type, const char * gateway, const char * dhcp, int metric, const char * checksum, const char * item_id, const bool replace) {
+int wdb_netproto_insert(wdb_t * wdb, const char * scan_id, const char * iface, int type, const char * gateway, const char * dhcp, 
+                        int metric, const char * checksum, const char * item_id, const bool replace) {
     sqlite3_stmt *stmt = NULL;
 
     if (NULL == iface) {
@@ -219,7 +228,8 @@ int wdb_netproto_insert(wdb_t * wdb, const char * scan_id, const char * iface, i
 }
 
 // Save IPv4/IPv6 address info into DB.
-int wdb_netaddr_save(wdb_t * wdb, const char * scan_id, const char * iface, int proto, const char * address, const char * netmask, const char * broadcast, const char * checksum, const char * item_id, const bool replace) {
+int wdb_netaddr_save(wdb_t * wdb, const char * scan_id, const char * iface, int proto, const char * address, const char * netmask, 
+                     const char * broadcast, const char * checksum, const char * item_id, const bool replace) {
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0){
         mdebug1("at wdb_netaddr_save(): cannot begin transaction");
@@ -244,7 +254,8 @@ int wdb_netaddr_save(wdb_t * wdb, const char * scan_id, const char * iface, int 
 }
 
 // Insert IPv4/IPv6 address info tuple. Return 0 on success or -1 on error.
-int wdb_netaddr_insert(wdb_t * wdb, const char * scan_id, const char * iface, int proto, const char * address, const char * netmask, const char * broadcast, const char * checksum, const char * item_id, const bool replace) {
+int wdb_netaddr_insert(wdb_t * wdb, const char * scan_id, const char * iface, int proto, const char * address, const char * netmask, 
+                       const char * broadcast, const char * checksum, const char * item_id, const bool replace) {
     sqlite3_stmt *stmt = NULL;
 
     if (NULL == iface || NULL == address) {
@@ -365,7 +376,11 @@ int wdb_hotfix_delete(wdb_t * wdb, const char * scan_id) {
 }
 
 // Function to save OS info into the DB. Return 0 on success or -1 on error.
-int wdb_osinfo_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * hostname, const char * architecture, const char * os_name, const char * os_version, const char * os_codename, const char * os_major, const char * os_minor, const char * os_patch, const char * os_build, const char * os_platform, const char * sysname, const char * release, const char * version, const char * os_release, const char * os_display_version, const char * checksum, const bool replace) {
+int wdb_osinfo_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * hostname, const char * architecture, 
+                    const char * os_name, const char * os_version, const char * os_codename, const char * os_major, 
+                    const char * os_minor, const char * os_patch, const char * os_build, const char * os_platform, 
+                    const char * sysname, const char * release, const char * version, const char * os_release, 
+                    const char * os_display_version, const char * checksum, const bool replace) {
     sqlite3_stmt *stmt_del = NULL;
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0){
@@ -433,7 +448,11 @@ int wdb_osinfo_save(wdb_t * wdb, const char * scan_id, const char * scan_time, c
 }
 
 // Insert OS info tuple. Return 0 on success or -1 on error. (v2)
-int wdb_osinfo_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * hostname, const char * architecture, const char * os_name, const char * os_version, const char * os_codename, const char * os_major, const char * os_minor, const char * os_patch, const char * os_build, const char * os_platform, const char * sysname, const char * release, const char * version, const char * os_release, const char * os_display_version, const char * checksum, const bool replace, os_sha1 hexdigest) {
+int wdb_osinfo_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * hostname, const char * architecture, 
+                      const char * os_name, const char * os_version, const char * os_codename, const char * os_major, 
+                      const char * os_minor, const char * os_patch, const char * os_build, const char * os_platform, 
+                      const char * sysname, const char * release, const char * version, const char * os_release, 
+                      const char * os_display_version, const char * checksum, const bool replace, os_sha1 hexdigest) {
     sqlite3_stmt *stmt = NULL;
 
     if (wdb_stmt_cache(wdb, replace ? WDB_STMT_OSINFO_INSERT2 : WDB_STMT_OSINFO_INSERT) < 0) {
@@ -473,7 +492,10 @@ int wdb_osinfo_insert(wdb_t * wdb, const char * scan_id, const char * scan_time,
 }
 
 // Function to save Package info into the DB. Return 0 on success or -1 on error.
-int wdb_package_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * format, const char * name, const char * priority, const char * section, long size, const char * vendor, const char * install_time, const char * version, const char * architecture, const char * multiarch, const char * source, const char * description, const char * location, const char * checksum, const char * item_id, const bool replace) {
+int wdb_package_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * format, const char * name, 
+                     const char * priority, const char * section, long size, const char * vendor, const char * install_time, 
+                     const char * version, const char * architecture, const char * multiarch, const char * source, 
+                     const char * description, const char * location, const char * checksum, const char * item_id, const bool replace) {
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0){
         mdebug1("at wdb_package_save(): cannot begin transaction");
@@ -521,7 +543,10 @@ int wdb_hotfix_save(wdb_t * wdb, const char * scan_id, const char * scan_time, c
 }
 
 // Insert Package info tuple. Return 0 on success or -1 on error.
-int wdb_package_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * format, const char * name, const char * priority, const char * section, long size, const char * vendor, const char * install_time, const char * version, const char * architecture, const char * multiarch, const char * source, const char * description, const char * location, const char * checksum, const char * item_id, const bool replace) {
+int wdb_package_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * format, const char * name, 
+                       const char * priority, const char * section, long size, const char * vendor, const char * install_time, 
+                       const char * version, const char * architecture, const char * multiarch, const char * source, 
+                       const char * description, const char * location, const char * checksum, const char * item_id, const bool replace) {
     sqlite3_stmt *stmt = NULL;
 
     if (NULL == name || NULL == version || NULL == architecture) {
@@ -690,7 +715,9 @@ int wdb_package_delete(wdb_t * wdb, const char * scan_id) {
 }
 
 // Function to save hardware info into the DB. Return 0 on success or -1 on error.
-int wdb_hardware_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * serial, const char * cpu_name, int cpu_cores, double cpu_mhz, uint64_t ram_total, uint64_t ram_free, int ram_usage, const char * checksum, const bool replace) {
+int wdb_hardware_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * serial, const char * cpu_name, 
+                      int cpu_cores, double cpu_mhz, uint64_t ram_total, uint64_t ram_free, int ram_usage, const char * checksum, 
+                      const bool replace) {
 
     sqlite3_stmt *stmt = NULL;
 
@@ -732,7 +759,9 @@ int wdb_hardware_save(wdb_t * wdb, const char * scan_id, const char * scan_time,
 }
 
 // Insert HW info tuple. Return 0 on success or -1 on error.
-int wdb_hardware_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * serial, const char * cpu_name, int cpu_cores, double cpu_mhz, uint64_t ram_total, uint64_t ram_free, int ram_usage, const char * checksum, const bool replace) {
+int wdb_hardware_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * serial, const char * cpu_name, 
+                        int cpu_cores, double cpu_mhz, uint64_t ram_total, uint64_t ram_free, int ram_usage, const char * checksum, 
+                        const bool replace) {
     sqlite3_stmt *stmt = NULL;
 
     if (wdb_stmt_cache(wdb, replace ? WDB_STMT_HWINFO_INSERT2 : WDB_STMT_HWINFO_INSERT) < 0) {
@@ -787,7 +816,9 @@ int wdb_hardware_insert(wdb_t * wdb, const char * scan_id, const char * scan_tim
 }
 
 // Function to save Port info into the DB. Return 0 on success or -1 on error.
-int wdb_port_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * protocol, const char * local_ip, int local_port, const char * remote_ip, int remote_port, int tx_queue, int rx_queue, long long inode, const char * state, int pid, const char * process, const char * checksum, const char * item_id, const bool replace) {
+int wdb_port_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * protocol, const char * local_ip, 
+                  int local_port, const char * remote_ip, int remote_port, int tx_queue, int rx_queue, long long inode, 
+                  const char * state, int pid, const char * process, const char * checksum, const char * item_id, const bool replace) {
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0){
         mdebug1("at wdb_port_save(): cannot begin transaction");
@@ -819,7 +850,9 @@ int wdb_port_save(wdb_t * wdb, const char * scan_id, const char * scan_time, con
 }
 
 // Insert port info tuple. Return 0 on success or -1 on error.
-int wdb_port_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * protocol, const char * local_ip, int local_port, const char * remote_ip, int remote_port, int tx_queue, int rx_queue, long long inode, const char * state, int pid, const char * process, const char * checksum, const char * item_id, const bool replace) {
+int wdb_port_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * protocol, const char * local_ip, 
+                    int local_port, const char * remote_ip, int remote_port, int tx_queue, int rx_queue, long long inode, 
+                    const char * state, int pid, const char * process, const char * checksum, const char * item_id, const bool replace) {
     sqlite3_stmt *stmt = NULL;
 
     if (NULL == protocol || NULL == local_ip || local_port < 0 || inode < 0) {
@@ -918,7 +951,11 @@ int wdb_port_delete(wdb_t * wdb, const char * scan_id) {
 }
 
 // Function to save process info into the DB. Return 0 on success or -1 on error.
-int wdb_process_save(wdb_t * wdb, const char * scan_id, const char * scan_time, int pid, const char * name, const char * state, int ppid, int utime, int stime, const char * cmd, const char * argvs, const char * euser, const char * ruser, const char * suser, const char * egroup, const char * rgroup, const char * sgroup, const char * fgroup, int priority, int nice, int size, int vm_size, int resident, int share, long long start_time, int pgrp, int session, int nlwp, int tgid, int tty, int processor, const char* checksum, const bool replace) {
+int wdb_process_save(wdb_t * wdb, const char * scan_id, const char * scan_time, int pid, const char * name, const char * state, 
+                     int ppid, int utime, int stime, const char * cmd, const char * argvs, const char * euser, const char * ruser, 
+                     const char * suser, const char * egroup, const char * rgroup, const char * sgroup, const char * fgroup, 
+                     int priority, int nice, int size, int vm_size, int resident, int share, long long start_time, int pgrp, 
+                     int session, int nlwp, int tgid, int tty, int processor, const char* checksum, const bool replace) {
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0){
         mdebug1("at wdb_process_save(): cannot begin transaction");
@@ -965,8 +1002,75 @@ int wdb_process_save(wdb_t * wdb, const char * scan_id, const char * scan_time, 
     return 0;
 }
 
+// int wdb_users_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * user_id, const char * user_name, 
+//                     const char * user_full_name, const char * user_home, const char * user_shell, const char * user_type, 
+//                     const char * user_created, int user_group_id, int user_group_id_signed, const char * user_groups, 
+//                     int user_uid_signed, const char * user_uuid, const bool user_is_hidden, const bool user_is_remote, 
+//                     const char * user_password_status, const char * user_password_hash_algorithm, int user_password_last_change,
+//                     int user_password_min_days_between_changes, int user_password_max_days_between_changes, 
+//                     int user_password_warning_days_before_expiration, int user_password_inactive_days, 
+//                     int user_password_expiration_date, double user_password_last_set_time, int user_auth_failure_count,
+//                     double user_auth_failure_timestamp, const char * user_roles, const char * user_last_login, const char * host_ip, 
+//                     int process_pid, const bool login_status, const char * login_type, const char * login_tty, 
+//                     const char * checksum, const bool replace)
+// {
+//     return 0;
+// }
+
+// Function to save users info into the DB. Return 0 on success or -1 on error.
+int wdb_users_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * user_id, const char * user_name, 
+                   const char * user_full_name, const char * user_home, const char * user_shell, const char * user_type, 
+                   const char * user_created, int user_group_id, int user_group_id_signed, const char * user_groups, 
+                   int user_uid_signed, const char * user_uuid, const bool user_is_hidden, const bool user_is_remote, 
+                   const char * user_password_status, const char * user_password_hash_algorithm, int user_password_last_change,
+                   int user_password_min_days_between_changes, int user_password_max_days_between_changes, 
+                   int user_password_warning_days_before_expiration, int user_password_inactive_days, 
+                   int user_password_expiration_date, double user_password_last_set_time, int user_auth_failure_count,
+                   double user_auth_failure_timestamp, const char * user_roles, const char * user_last_login, const char * host_ip, 
+                   int process_pid, const bool login_status, const char * login_type, const char * login_tty, 
+                   const char * checksum, const bool replace)
+{
+    if (!wdb->transaction && wdb_begin2(wdb) < 0){
+        mdebug1("at wdb_process_save(): cannot begin transaction");
+        return -1;
+    }
+
+    // if (wdb_users_insert(wdb, scan_id, scan_time, user_id, user_name, user_full_name, user_home, user_shell, user_type, user_created,
+    //                      user_group_id, user_group_id_signed, user_groups, user_uid_signed, user_uuid, user_is_hidden, user_is_remote,
+    //                      user_password_status, user_password_hash_algorithm, user_password_last_change, user_password_warning_days_before_expiration,
+    //                      user_password_inactive_days, user_password_expiration_date, user_password_last_set_time, user_auth_failure_count,
+    //                      user_auth_failure_timestamp, user_roles, user_last_login, host_ip, process_pid, login_status, login_type, login_tty,
+    //                      checksum, replace)) {
+    //     return -1;
+    // }
+
+    return 0;
+}
+
+// Function to save groups info into the DB. Return 0 on success or -1 on error.
+int wdb_groups_save(wdb_t * wdb, const char * scan_id, const char * scan_time, long group_id, const char * group_name, 
+                    const char * group_description, long group_id_signed, const char * group_uuid, bool group_is_hidden, 
+                    int group_namespace_id, const char * group_users, const char * checksum, const bool replace)
+{
+    if (!wdb->transaction && wdb_begin2(wdb) < 0){
+        mdebug1("at wdb_process_save(): cannot begin transaction");
+        return -1;
+    }
+
+    // if (wdb_groups_insert(wdb, scan_id, scan_time, group_id, group_name, group_description, group_id_signed, group_uuid, 
+    //                       group_is_hidden, group_namespace_id, group_users, checksum, replace)) {
+    //     return -1;
+    // }
+
+    return 0;
+}
+
 // Insert process info tuple. Return 0 on success or -1 on error.
-int wdb_process_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, int pid, const char * name, const char * state, int ppid, int utime, int stime, const char * cmd, const char * argvs, const char * euser, const char * ruser, const char * suser, const char * egroup, const char * rgroup, const char * sgroup, const char * fgroup, int priority, int nice, int size, int vm_size, int resident, int share, long long start_time, int pgrp, int session, int nlwp, int tgid, int tty, int processor, const char * checksum, const bool replace) {
+int wdb_process_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, int pid, const char * name, const char * state, 
+                       int ppid, int utime, int stime, const char * cmd, const char * argvs, const char * euser, const char * ruser, 
+                       const char * suser, const char * egroup, const char * rgroup, const char * sgroup, const char * fgroup, 
+                       int priority, int nice, int size, int vm_size, int resident, int share, long long start_time, int pgrp, 
+                       int session, int nlwp, int tgid, int tty, int processor, const char * checksum, const bool replace) {
     sqlite3_stmt *stmt = NULL;
 
     if (pid < 0) {
@@ -1130,7 +1234,9 @@ int wdb_syscollector_processes_save2(wdb_t * wdb, const cJSON * attributes)
     const int tty = cJSON_GetObjectItem(attributes, "tty") ? cJSON_GetObjectItem(attributes, "tty")->valueint : 0;
     const int processor = cJSON_GetObjectItem(attributes, "processor") ? cJSON_GetObjectItem(attributes, "processor")->valueint : 0;
     const char * checksum = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "checksum"));
-    return wdb_process_save(wdb, scan_id, scan_time, pid, name, state, ppid, utime, stime, cmd, argvs, euser, ruser, suser, egroup, rgroup, sgroup, fgroup, priority, nice, size, vm_size, resident, share, start_time, pgrp, session, nlwp, tgid, tty, processor, checksum, TRUE);
+    return wdb_process_save(wdb, scan_id, scan_time, pid, name, state, ppid, utime, stime, cmd, argvs, euser, ruser, suser, egroup, 
+                            rgroup, sgroup, fgroup, priority, nice, size, vm_size, resident, share, start_time, pgrp, session, nlwp, 
+                            tgid, tty, processor, checksum, TRUE);
 }
 
 
@@ -1153,7 +1259,8 @@ int wdb_syscollector_package_save2(wdb_t * wdb, const cJSON * attributes)
     const char * location = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "location"));
     const char * checksum = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "checksum"));
     const char * item_id = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "item_id"));
-    return wdb_package_save(wdb, scan_id, scan_time, format, name, priority, section, size, vendor, install_time, version, architecture, multiarch, source, description, location, checksum, item_id, TRUE);
+    return wdb_package_save(wdb, scan_id, scan_time, format, name, priority, section, size, vendor, install_time, version, 
+                            architecture, multiarch, source, description, location, checksum, item_id, TRUE);
 }
 
 int wdb_syscollector_hotfix_save2(wdb_t * wdb, const cJSON * attributes)
@@ -1182,7 +1289,8 @@ int wdb_syscollector_port_save2(wdb_t * wdb, const cJSON * attributes)
     const char * process = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "process"));
     const char * checksum = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "checksum"));
     const char * item_id = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "item_id"));
-    return wdb_port_save(wdb, scan_id, scan_time, protocol, local_ip, local_port, remote_ip, remote_port, tx_queue, rx_queue, inode, state, pid, process, checksum, item_id, TRUE);
+    return wdb_port_save(wdb, scan_id, scan_time, protocol, local_ip, local_port, remote_ip, remote_port, tx_queue, rx_queue, inode, 
+                         state, pid, process, checksum, item_id, TRUE);
 }
 
 int wdb_syscollector_netproto_save2(wdb_t * wdb, const cJSON * attributes)
@@ -1232,7 +1340,8 @@ int wdb_syscollector_netinfo_save2(wdb_t * wdb, const cJSON * attributes)
     const long rx_dropped = cJSON_GetObjectItem(attributes, "rx_dropped") ? cJSON_GetObjectItem(attributes, "rx_dropped")->valueint : 0;
     const char * checksum = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "checksum"));
     const char * item_id = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "item_id"));
-    return wdb_netinfo_save(wdb, scan_id, scan_time, name, adapter, type, state, mtu, mac, tx_packets, rx_packets, tx_bytes, rx_bytes, tx_errors, rx_errors, tx_dropped, rx_dropped, checksum, item_id, TRUE);
+    return wdb_netinfo_save(wdb, scan_id, scan_time, name, adapter, type, state, mtu, mac, tx_packets, rx_packets, tx_bytes, rx_bytes, 
+                            tx_errors, rx_errors, tx_dropped, rx_dropped, checksum, item_id, TRUE);
 }
 
 int wdb_syscollector_hwinfo_save2(wdb_t * wdb, const cJSON * attributes)
@@ -1270,9 +1379,87 @@ int wdb_syscollector_osinfo_save2(wdb_t * wdb, const cJSON * attributes)
     const char * os_release = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "os_release"));
     const char * os_display_version = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "os_display_version"));
     const char * checksum = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "checksum"));
-    return wdb_osinfo_save(wdb, scan_id, scan_time, hostname, architecture, os_name, os_version, os_codename, os_major, os_minor, os_patch, os_build, os_platform, sysname, release, version, os_release, os_display_version, checksum, TRUE);
+    return wdb_osinfo_save(wdb, scan_id, scan_time, hostname, architecture, os_name, os_version, os_codename, os_major, os_minor, 
+                           os_patch, os_build, os_platform, sysname, release, version, os_release, os_display_version, checksum, TRUE);
 }
 
+char * concat_data(cJSON * json_array)
+{
+    cJSON * item = NULL;
+    const size_t array_size = cJSON_GetArraySize(json_array);
+    char * result = NULL;
+    os_calloc(array_size * MAX_USER_LENGHT + array_size, sizeof(char), result);
+    cJSON_ArrayForEach(item, json_array) {
+        wm_strcat(&result, cJSON_GetStringValue(item), ',');
+    }
+
+    return result;
+}
+
+int wdb_syscollector_users_save2(wdb_t * wdb, const cJSON * attributes)
+{
+    const char * scan_id = "0";
+    const char * scan_time = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "scan_time"));
+    const char * user_id = cJSON_GetStringValue(cJSON_GetObjectItem(cJSON_GetObjectItem(attributes, "user"), "id"));
+    const char * user_name = cJSON_GetStringValue(cJSON_GetObjectItem(cJSON_GetObjectItem(attributes, "user"), "name"));
+    const char * user_full_name = cJSON_GetStringValue(cJSON_GetObjectItem(cJSON_GetObjectItem(attributes, "user"), "full_name"));
+    const char * user_home = cJSON_GetStringValue(cJSON_GetObjectItem(cJSON_GetObjectItem(attributes, "user"), "home"));
+    const char * user_shell = cJSON_GetStringValue(cJSON_GetObjectItem(cJSON_GetObjectItem(attributes, "user"), "shell"));
+    const char * user_type = cJSON_GetStringValue(cJSON_GetObjectItem(cJSON_GetObjectItem(attributes, "user"), "type"));
+    const char * user_created = cJSON_GetStringValue(cJSON_GetObjectItem(cJSON_GetObjectItem(attributes, "user"), "created"));
+    const long user_group_id =  cJSON_GetObjectItem(cJSON_GetObjectItem(cJSON_GetObjectItem(attributes, "user"), "group"), "id") ? cJSON_GetObjectItem(cJSON_GetObjectItem(cJSON_GetObjectItem(attributes, "user"), "group"), "id")->valueint : 0;
+    const long user_group_id_signed =  cJSON_GetObjectItem(cJSON_GetObjectItem(cJSON_GetObjectItem(attributes, "user"), "group"), "id") ? cJSON_GetObjectItem(cJSON_GetObjectItem(cJSON_GetObjectItem(attributes, "user"), "group"), "id")->valueint : 0;
+    const char * user_groups = concat_data(cJSON_GetObjectItem(cJSON_GetObjectItem(attributes, "user"), "groups"));
+    const long user_uid_signed = cJSON_GetObjectItem(cJSON_GetObjectItem(attributes, "user"), "uid_signed") ? cJSON_GetObjectItem(cJSON_GetObjectItem(attributes, "user"), "uid_signed")->valueint : 0;
+    const int user_uuid = cJSON_GetStringValue(cJSON_GetObjectItem(cJSON_GetObjectItem(attributes, "user"), "uuid"));
+    const bool user_is_hidden = cJSON_GetObjectItem(cJSON_GetObjectItem(attributes, "user"), "is_hidden") ? cJSON_GetObjectItem(cJSON_GetObjectItem(attributes, "user"), "is_hidden")->valueint : false;
+    const bool user_is_remote = cJSON_GetObjectItem(cJSON_GetObjectItem(attributes, "user"), "is_remoted") ? cJSON_GetObjectItem(cJSON_GetObjectItem(attributes, "user"), "is_remoted")->valueint : false;
+    const char * user_password_status = cJSON_GetStringValue(cJSON_GetObjectItem(cJSON_GetObjectItem(cJSON_GetObjectItem(attributes, "user"), "password"), "status"));
+    const char * user_password_hash_algorithm = cJSON_GetStringValue(cJSON_GetObjectItem(cJSON_GetObjectItem(cJSON_GetObjectItem(attributes, "user"), "password"), "hash_algorithm"));
+    const long user_password_last_change = cJSON_GetObjectItem(cJSON_GetObjectItem(cJSON_GetObjectItem(attributes, "user"), "password"), "last_change") ? cJSON_GetObjectItem(cJSON_GetObjectItem(cJSON_GetObjectItem(attributes, "user"), "password"), "last_change")->valueint : 0;
+    const long user_password_min_days_between_changes = cJSON_GetObjectItem(cJSON_GetObjectItem(cJSON_GetObjectItem(attributes, "user"), "password"), "min_days_between_changes") ? cJSON_GetObjectItem(cJSON_GetObjectItem(cJSON_GetObjectItem(attributes, "user"), "password"), "min_days_between_changes")->valueint : 0;
+    const long user_password_max_days_between_changes = cJSON_GetObjectItem(cJSON_GetObjectItem(cJSON_GetObjectItem(attributes, "user"), "password"), "max_days_between_changes") ? cJSON_GetObjectItem(cJSON_GetObjectItem(cJSON_GetObjectItem(attributes, "user"), "password"), "max_days_between_changes")->valueint : 0;
+    const long user_password_warning_days_before_expiration = cJSON_GetObjectItem(cJSON_GetObjectItem(cJSON_GetObjectItem(attributes, "user"), "password"), "warning_days_before_expiration") ? cJSON_GetObjectItem(cJSON_GetObjectItem(cJSON_GetObjectItem(attributes, "user"), "password"), "warning_days_before_expiration")->valueint : 0;
+    const long user_password_inactive_days = cJSON_GetObjectItem(cJSON_GetObjectItem(cJSON_GetObjectItem(attributes, "user"), "password"), "inactive_days") ? cJSON_GetObjectItem(cJSON_GetObjectItem(cJSON_GetObjectItem(attributes, "user"), "password"), "inactive_days")->valueint : 0;
+    const long user_password_expiration_date = cJSON_GetObjectItem(cJSON_GetObjectItem(cJSON_GetObjectItem(attributes, "user"), "password"), "expiration_date") ? cJSON_GetObjectItem(cJSON_GetObjectItem(cJSON_GetObjectItem(attributes, "user"), "password"), "expiration_date")->valueint : 0;
+    const double user_password_last_set_time = cJSON_GetObjectItem(cJSON_GetObjectItem(cJSON_GetObjectItem(attributes, "user"), "password"), "last_set_time") ? cJSON_GetObjectItem(cJSON_GetObjectItem(cJSON_GetObjectItem(attributes, "user"), "password"), "last_set_time")->valuedouble : 0.0;
+    const long user_auth_failure_count = cJSON_GetObjectItem(cJSON_GetObjectItem(cJSON_GetObjectItem(attributes, "user"), "auth_failures"), "count") ? cJSON_GetObjectItem(cJSON_GetObjectItem(cJSON_GetObjectItem(attributes, "user"), "auth_failures"), "count")->valueint : 0;
+    const double user_auth_failure_timestamp = cJSON_GetObjectItem(cJSON_GetObjectItem(cJSON_GetObjectItem(attributes, "user"), "auth_failures"), "timestamp") ? cJSON_GetObjectItem(cJSON_GetObjectItem(cJSON_GetObjectItem(attributes, "user"), "auth_failures"), "timestamp")->valuedouble : 0.0;
+    const char * user_roles = concat_data(cJSON_GetObjectItem(cJSON_GetObjectItem(attributes, "user"), "roles"));
+    const char * user_last_login = cJSON_GetStringValue(cJSON_GetObjectItem(cJSON_GetObjectItem(attributes, "user"), "last_login"));
+    const char * host_ip = concat_data(cJSON_GetObjectItem(cJSON_GetObjectItem(attributes, "host"), "ip"));
+    const char * host_hostname = cJSON_GetStringValue(cJSON_GetObjectItem(cJSON_GetObjectItem(attributes, "host"), "hostname"));
+    const int process_pid = cJSON_GetObjectItem(cJSON_GetObjectItem(attributes, "process"), "pid") ? cJSON_GetObjectItem(cJSON_GetObjectItem(attributes, "process"), "pid")->valueint : 0;
+    const bool login_status = cJSON_GetObjectItem(cJSON_GetObjectItem(attributes, "login"), "status") ? cJSON_GetObjectItem(cJSON_GetObjectItem(attributes, "login"), "status")->valueint : false;
+    const char * login_type = cJSON_GetStringValue(cJSON_GetObjectItem(cJSON_GetObjectItem(attributes, "login"), "type"));
+    const char * login_tty = cJSON_GetStringValue(cJSON_GetObjectItem(cJSON_GetObjectItem(attributes, "login"), "tty"));
+    const char * checksum = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "checksum"));
+
+    return wdb_users_save(wdb, scan_id, scan_time, user_id, user_name, user_full_name, user_home, user_shell, user_type, 
+                          user_created, user_group_id, user_group_id_signed, user_groups, user_uid_signed, user_uuid,
+                          user_is_hidden, user_is_remote, user_password_status, user_password_hash_algorithm, user_password_last_change,
+                          user_password_min_days_between_changes, user_password_max_days_between_changes, user_password_warning_days_before_expiration,
+                          user_password_inactive_days, user_password_expiration_date, user_password_last_set_time, user_auth_failure_count,
+                          user_auth_failure_timestamp, user_roles, user_last_login, host_ip, process_pid, login_status,
+                          login_type, login_tty, checksum, TRUE);
+}
+
+int wdb_syscollector_groups_save2(wdb_t * wdb, const cJSON * attributes)
+{
+    const char * scan_id = "0";
+    const char * scan_time = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "scan_time"));
+    const long group_id = cJSON_GetObjectItem(cJSON_GetObjectItem(attributes, "group"), "id") ? cJSON_GetObjectItem(cJSON_GetObjectItem(attributes, "group"), "id")->valueint : 0;
+    const char * group_name = cJSON_GetStringValue(cJSON_GetObjectItem(cJSON_GetObjectItem(attributes, "group"), "name"));;
+    const char * group_description = cJSON_GetStringValue(cJSON_GetObjectItem(cJSON_GetObjectItem(attributes, "group"), "description"));;
+    const long group_id_signed = cJSON_GetObjectItem(cJSON_GetObjectItem(attributes, "group"), "id_signed") ? cJSON_GetObjectItem(cJSON_GetObjectItem(attributes, "group"), "id")->valueint : 0;
+    const char * group_uuid = cJSON_GetStringValue(cJSON_GetObjectItem(cJSON_GetObjectItem(attributes, "group"), "uuid"));;
+    const bool group_is_hidden = cJSON_GetObjectItem(cJSON_GetObjectItem(attributes, "group"), "is_hidden") ? cJSON_GetObjectItem(cJSON_GetObjectItem(attributes, "group"), "is_hidden")->valueint : false;
+    const int group_namespace_id = cJSON_GetStringValue(cJSON_GetObjectItem(cJSON_GetObjectItem(attributes, "group"), "namespace_id"));
+    char * group_users = concat_data(cJSON_GetObjectItem(cJSON_GetObjectItem(attributes, "group"), "users"));
+    const char * checksum = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "checksum"));
+    return wdb_groups_save(wdb, scan_id, scan_time, group_id, group_name, group_description, group_id_signed, group_uuid, group_is_hidden, 
+                           group_namespace_id, group_users, checksum, TRUE);
+}
 
 int wdb_syscollector_save2(wdb_t * wdb, wdb_component_t component, const char * payload)
 {
@@ -1326,6 +1513,20 @@ int wdb_syscollector_save2(wdb_t * wdb, wdb_component_t component, const char * 
     {
         result = wdb_syscollector_osinfo_save2(wdb, attributes);
     }
+    else if(component == WDB_SYSCOLLECTOR_USERS)
+    {
+        result = wdb_syscollector_users_save2(wdb, attributes);
+    }
+    else if(component == WDB_SYSCOLLECTOR_GROUPS)
+    {
+        result = wdb_syscollector_groups_save2(wdb, attributes);
+    }
+    else 
+    {
+        mdebug1("at wdb_syscollector_save2(): Invalid component.");
+        result = OS_INVALID;
+    }
+
     cJSON_Delete(data);
     return result;
 }

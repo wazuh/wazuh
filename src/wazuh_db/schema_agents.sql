@@ -234,6 +234,59 @@ CREATE TABLE IF NOT EXISTS sys_processes (
 
 CREATE INDEX IF NOT EXISTS processes_id ON sys_processes (scan_id);
 
+CREATE TABLE IF NOT EXISTS sys_users (
+    scan_id INTEGER,
+    scan_time TEXT,
+    user_name TEXT,
+    user_full_name TEXT,
+    user_home TEXT,
+    user_id INTEGER,
+    user_uid_signed INTEGER,
+    user_uuid TEXT,
+    user_groups TEXT,
+    user_group_id INTEGER,
+    user_group_id_signed INTEGER,
+    user_created REAL,
+    user_roles_sudo TEXT,
+    user_shell TEXT,
+    user_type TEXT,
+    user_is_hidden INTEGER,
+    user_is_remoted INTEGER,
+    user_last_login INTEGER,
+    user_auth_failures_count INTEGER,
+    user_auth_failures_timestamp REAL,
+    user_password_last_set_time REAL,
+    user_password_expiration_date INTEGER,
+    user_password_hash_algorithm TEXT,
+    user_password_inactive_days INTEGER,
+    user_password_last_change INTEGER,
+    user_password_max_days_between_changes INTEGER,
+    user_password_min_days_between_changes INTEGER,
+    user_password_status TEXT,
+    user_password_warning_days_before_expiration INTEGER,
+    process_pid INTEGER,
+    host_ip TEXT,
+    login_status INTEGER,
+    login_tty TEXT,
+    login_type TEXT,
+    checksum TEXT NOT NULL CHECK (checksum <> ''),
+    PRIMARY KEY (user_name)
+);
+
+CREATE TABLE IF NOT EXISTS sys_groups (
+    scan_id INTEGER,
+    scan_time TEXT,
+    group_id INTEGER,
+    group_name TEXT,
+    group_description TEXT,
+    group_id_signed INTEGER,
+    group_uuid TEXT,
+    group_is_hidden INTEGER,
+    group_users TEXT,
+    checksum TEXT NOT NULL CHECK (checksum <> ''),
+    PRIMARY KEY (group_id)
+);
+
 CREATE TABLE IF NOT EXISTS ciscat_results (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     scan_id INTEGER,
@@ -339,7 +392,7 @@ CREATE TABLE IF NOT EXISTS sync_info (
 
 BEGIN;
 
-INSERT INTO metadata (key, value) VALUES ('db_version', '15');
+INSERT INTO metadata (key, value) VALUES ('db_version', '16');
 INSERT INTO scan_info (module) VALUES ('fim');
 INSERT INTO scan_info (module) VALUES ('syscollector');
 INSERT INTO sync_info (component) VALUES ('fim');
@@ -356,5 +409,7 @@ INSERT INTO sync_info (component) VALUES ('syscollector-netaddress');
 INSERT INTO sync_info (component) VALUES ('syscollector-netinfo');
 INSERT INTO sync_info (component) VALUES ('syscollector-hwinfo');
 INSERT INTO sync_info (component) VALUES ('syscollector-osinfo');
+INSERT INTO sync_info (component) VALUES ('syscollector-users');
+INSERT INTO sync_info (component) VALUES ('syscollector-groups');
 
 COMMIT;
