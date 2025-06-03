@@ -336,7 +336,8 @@ extern "C"
             logMessage(modules_log_level_t::LOG_INFO, "Registering GET endpoint: " + endpointStr);
             instance->server->Get(
                 endpoint,
-                [callbackPre, callbackPost, endpointStr, moduleStr](const httplib::Request& req, httplib::Response& res)
+                [callbackPre, callbackPost, endpointStr = std::move(endpointStr), moduleStr = std::move(moduleStr)](
+                    const httplib::Request& req, httplib::Response& res)
                 {
                     logMessage(modules_log_level_t::LOG_DEBUG_VERBOSE,
                                "GET: " + endpointStr + " request parameters: " + req.path);
@@ -354,7 +355,8 @@ extern "C"
             logMessage(modules_log_level_t::LOG_INFO, "Registering POST endpoint: " + endpointStr);
             instance->server->Post(
                 endpoint,
-                [callbackPre, callbackPost, endpointStr, moduleStr](const httplib::Request& req, httplib::Response& res)
+                [callbackPre, callbackPost, endpointStr = std::move(endpointStr), moduleStr = std::move(moduleStr)](
+                    const httplib::Request& req, httplib::Response& res)
                 {
                     auto start = std::chrono::high_resolution_clock::now();
                     RouterModuleGateway::redirect(moduleStr, callbackPre, callbackPost, endpointStr, "POST", req, res);
@@ -390,7 +392,7 @@ extern "C"
         auto instance = G_HTTPINSTANCES[socketPath];
 
         instance->serverThread = std::thread(
-            [instance, socketPathStr]()
+            [instance, socketPathStr = std::move(socketPathStr)]()
             {
                 const static std::string SOCKETPATH {"queue/sockets/"};
                 std::filesystem::remove(SOCKETPATH + socketPathStr);
