@@ -405,6 +405,8 @@ typedef enum {
     WDB_SYSCOLLECTOR_NETINFO,        ///< Net info integrity monitoring.
     WDB_SYSCOLLECTOR_HWINFO,         ///< Hardware info integrity monitoring.
     WDB_SYSCOLLECTOR_OSINFO,         ///< OS info integrity monitoring.
+    WDB_SYSCOLLECTOR_USERS,          ///< Users info integrity monitoring.
+    WDB_SYSCOLLECTOR_GROUPS,         ///< Groups info integrity monitoring.
     WDB_GENERIC_COMPONENT,           ///< Miscellaneous component
 } wdb_component_t;
 
@@ -428,6 +430,7 @@ extern char *schema_upgrade_v12_sql;
 extern char *schema_upgrade_v13_sql;
 extern char *schema_upgrade_v14_sql;
 extern char *schema_upgrade_v15_sql;
+extern char *schema_upgrade_v16_sql;
 extern char *schema_global_upgrade_v1_sql;
 extern char *schema_global_upgrade_v2_sql;
 extern char *schema_global_upgrade_v3_sql;
