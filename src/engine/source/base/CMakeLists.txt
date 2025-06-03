@@ -11,6 +11,7 @@ add_library(base STATIC
     ${SRC_DIR}/utils/stringUtils.cpp
     ${SRC_DIR}/utils/timeUtils.cpp
     ${SRC_DIR}/expression.cpp
+    ${SRC_DIR}/eventParser.cpp
     ${SRC_DIR}/json.cpp
     ${SRC_DIR}/logging.cpp
 )
@@ -51,6 +52,7 @@ add_executable(base_utest
     ${UNIT_SRC_DIR}/utils/wazuhProtocol/wazuhResponse_test.cpp
     ${UNIT_SRC_DIR}/utils/timeUtils_test.cpp
     ${UNIT_SRC_DIR}/dotPath_test.cpp
+    ${UNIT_SRC_DIR}/eventParser_test.cpp
     ${UNIT_SRC_DIR}/json_test.cpp
     ${UNIT_SRC_DIR}/error_test.cpp
     ${UNIT_SRC_DIR}/timer_test.cpp
