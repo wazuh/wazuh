@@ -1,0 +1,12 @@
+graph LR
+    A["main()"<BR>wazuh_modules/main.c] ==> B("wm_setup()"<BR>main.c)
+subgraph "Module configuration"
+    B ==> C("wm_config()"<BR>wmodules.c)
+    C ==> D("ReadConfig()"<BR>config.c)
+    D ==> E("read_main_elements()"<BR>config.c)
+    E ==> F("wm_syscollector_read()"<BR>wmodules-syscollector.c)
+end
+    A ==> G("CreateThreadJoinable()")
+
+    classDef blue fill:#02a8da,stroke:#ffffff,stroke-width:2px;
+    class A,B,C,D,E,F,G blue
