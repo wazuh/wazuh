@@ -14,6 +14,12 @@
 #include "json.hpp"
 #include "igroup_wrapper.hpp"
 
+/// @brief Class for collecting group information on Linux systems.
+///
+/// This class provides methods to collect group information from the
+/// Linux operating system. It uses the system's group database to retrieve
+/// group details such as group name and GID. The collected data is returned
+/// in JSON format.
 class GroupsProvider
 {
     public:
