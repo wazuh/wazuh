@@ -102,6 +102,7 @@ WAZUH_MODULES=wazuh_modules/
 DBSYNC=${SHARED_MODULES}dbsync/
 RSYNC=${SHARED_MODULES}rsync/
 SYSCOLLECTOR=wazuh_modules/syscollector/
+NEWSCA=wazuh_modules/newsca/
 ROUTER=shared_modules/router/
 CONTENT_MANAGER=shared_modules/content_manager/
 VULNERABILITY_SCANNER=wazuh_modules/vulnerability_scanner/
@@ -142,6 +143,7 @@ SYSCHECK_TEST=-DUNIT_TEST=ON #--coverage
 DBSYNC_TEST=-DUNIT_TEST=ON #--coverage
 RSYNC_TEST=-DUNIT_TEST=ON #--coverage
 SYSCOLLECTOR_TEST=-DUNIT_TEST=ON #--coverage
+NEWSCA_TEST=-DUNIT_TEST=ON #--coverage
 SYSINFO_TEST=-DUNIT_TEST=ON #--coverage
 WAZUH_TEST=-DUNIT_TEST=ON #--coverage
 endif
@@ -149,6 +151,7 @@ ifneq (,$(filter ${DEBUG},YES yes y Y 1))
 SHARED_MODULES_RELEASE_TYPE=-DCMAKE_BUILD_TYPE=Debug
 GTEST_RELEASE_TYPE=-DCMAKE_BUILD_TYPE=Debug
 SYSCOLLECTOR_RELEASE_TYPE=-DCMAKE_BUILD_TYPE=Debug
+NEWSCA_RELEASE_TYPE=-DCMAKE_BUILD_TYPE=Debug
 SYSINFO_RELEASE_TYPE=-DCMAKE_BUILD_TYPE=Debug
 SYSCHECK_RELEASE_TYPE=-DCMAKE_BUILD_TYPE=Debug
 WAZUH_RELEASE_TYPE=-DCMAKE_BUILD_TYPE=Debug
@@ -435,7 +438,7 @@ endif
 
 OSSEC_CFLAGS+=${DEFINES}
 OSSEC_CFLAGS+=-pipe -Wall -Wextra -std=gnu99
-OSSEC_CFLAGS+=-I./ -I./headers/ -I${EXTERNAL_OPENSSL}include -I$(EXTERNAL_JSON) -I${EXTERNAL_LIBYAML}include -I${EXTERNAL_CURL}include -I${EXTERNAL_MSGPACK}include -I${EXTERNAL_BZIP2} -I${SHARED_MODULES}common -I${DBSYNC}include -I${RSYNC}include -I${SYSCOLLECTOR}include  -I${SYSINFO}include  -I${EXTERNAL_LIBPCRE2}include -I${EXTERNAL_RPM}/builddir/output/include -I${SYSCHECK}include -I${ROUTER}include -I${CONTENT_MANAGER}include -I${VULNERABILITY_SCANNER}include -I${INVENTORY_HARVESTER}include -I./shared_modules/
+OSSEC_CFLAGS+=-I./ -I./headers/ -I${EXTERNAL_OPENSSL}include -I$(EXTERNAL_JSON) -I${EXTERNAL_LIBYAML}include -I${EXTERNAL_CURL}include -I${EXTERNAL_MSGPACK}include -I${EXTERNAL_BZIP2} -I${SHARED_MODULES}common -I${DBSYNC}include -I${RSYNC}include -I${SYSCOLLECTOR}include -I${NEWSCA}include -I${SYSINFO}include  -I${EXTERNAL_LIBPCRE2}include -I${EXTERNAL_RPM}/builddir/output/include -I${SYSCHECK}include -I${ROUTER}include -I${CONTENT_MANAGER}include -I${VULNERABILITY_SCANNER}include -I${INVENTORY_HARVESTER}include -I./shared_modules/
 
 OSSEC_CFLAGS += ${CFLAGS}
 OSSEC_LDFLAGS += ${LDFLAGS}
@@ -563,11 +566,13 @@ SYSINFO_LIB+=-lsysinfo
 
 ifeq (${TARGET}, winagent)
 	OSSEC_LDFLAGS+=-L${SYSCOLLECTOR}build/bin
+	OSSEC_LDFLAGS+=-L${NEWSCA}build/bin
 	OSSEC_LDFLAGS+=-L${SYSINFO}build/bin
 	OSSEC_LDFLAGS+=-L${SYSCHECK}build/lib
 	OSSEC_LDFLAGS+=-L${SYSCHECK}build/bin
 else
 	OSSEC_LDFLAGS+=-L${SYSCOLLECTOR}build/lib
+	OSSEC_LDFLAGS+=-L${NEWSCA}build/lib
 	OSSEC_LDFLAGS+=-L${SYSINFO}build/lib
 	OSSEC_LDFLAGS+=-L${SYSCHECK}build/lib
 endif
@@ -575,6 +580,7 @@ endif
 ifeq (,$(filter ${DISABLE_SYSC}, YES yes y Y 1))
 	SYSCOLLECTOR_LIB+=-lsyscollector
 endif
+NEWSCA_LIB+=-lnewsca
 
 MI :=
 PI :=
@@ -818,6 +824,7 @@ endif
 ifeq (,$(filter ${DISABLE_SYSC},YES yes y Y 1))
 ifneq (${uname_S},HP-UX)
 BUILD_CMAKE_PROJECTS+=build_syscollector
+BUILD_CMAKE_PROJECTS+=build_newsca
 endif
 endif
 
@@ -909,6 +916,9 @@ win32/sysinfo: $(WAZUHEXT_LIB) win32/version-dll.o
 #### Syscollector ##
 win32/syscollector: win32/shared_modules win32/sysinfo win32/version-dll.o
 	cd ${SYSCOLLECTOR} && mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${SYSCOLLECTOR_TEST} ${SYSCOLLECTOR_RELEASE_TYPE} ${WIN_RESOURCE_OBJ} .. && ${MAKE}
+
+win32/newsca: win32/shared_modules win32/sysinfo win32/version-dll.o
+	cd ${NEWSCA} && mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${NEWSCA_TEST} ${NEWSCA_RELEASE_TYPE} ${WIN_RESOURCE_OBJ} .. && ${MAKE}
 
 win32/syscheck: win32/shared_modules $(WAZUHEXT_LIB)
 	cd ${SYSCHECK} && mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${SYSCHECK_TEST} ${SYSCHECK_RELEASE_TYPE} ${WIN_RESOURCE_OBJ} .. && ${MAKE}
@@ -1855,8 +1865,12 @@ build_syscollector: build_shared_modules build_sysinfo
 	cd ${SYSCOLLECTOR} && mkdir -p build && cd build && cmake -DTARGET=${TARGET} ${CMAKE_OPTS} ${SOLARIS_CMAKE_OPTS} ${SYSCOLLECTOR_TEST} ${SYSCOLLECTOR_RELEASE_TYPE} .. && ${MAKE}
 endif
 
+#### NewSca ####
+build_newsca: build_shared_modules build_sysinfo
+	cd ${NEWSCA} && mkdir -p build && cd build && cmake -DTARGET=${TARGET} ${CMAKE_OPTS} ${SOLARIS_CMAKE_OPTS} ${NEWSCA_TEST} ${NEWSCA_RELEASE_TYPE} .. && ${MAKE}
+
 #### Wazuh cmake ###
-build_wazuh_cmake: $(WAZUHEXT_LIB) $(EXTERNAL_LIBS_NO_WHOLE) build_syscollector
+build_wazuh_cmake: $(WAZUHEXT_LIB) $(EXTERNAL_LIBS_NO_WHOLE) build_syscollector build_newsca
 	mkdir -p build && cd build && cmake .. -DTARGET=${TARGET} ${CMAKE_OPTS} ${WAZUH_RELEASE_TYPE} ${WAZUH_TEST} && ${MAKE}
 
 #### Wazuh modules ##
@@ -2831,6 +2845,7 @@ clean-internals: clean-unit-tests
 	rm -rf $(DBSYNC)build
 	rm -rf $(RSYNC)build
 	rm -rf $(SYSCOLLECTOR)build
+	rm -rf $(NEWSCA)build
 	rm -rf $(SHARED_MODULES)utils/flatbuffers/include/
 	rm -rf $(wildcard $(VULNERABILITY_SCANNER)include/*_generated.h)
 	rm -rf $(SYSINFO)build
@@ -2895,6 +2910,7 @@ clean-windows:
 	rm -f libwazuhshared.*
 	rm -f libwazuhext.*
 	rm -f wazuh_modules/syscollector/*.o wazuh_modules/syscollector/*.obj
+	rm -f wazuh_modules/newsca/*.o wazuh_modules/newsca/*.obj
 	rm -f win32/LICENSE.txt
 	rm -f win32/help_win.txt
 	rm -f win32/internal_options.conf

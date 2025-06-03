@@ -85,6 +85,10 @@ int wm_config() {
 #else
     wmodule *module;
 
+    if((module = wm_newsca_read())) {
+        wm_add(module);
+    }
+    
     if ((module = wm_router_read())) {
         wm_add(module);
     }
