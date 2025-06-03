@@ -1,0 +1,169 @@
+{
+  "index_patterns": [
+    "wazuh-states-inventory-users*"
+  ],
+  "priority": 1,
+  "template": {
+    "settings": {
+      "index": {
+        "number_of_replicas": "0",
+        "number_of_shards": "1",
+        "query.default_field": [],
+        "refresh_interval": "5s"
+      }
+    },
+    "mappings": {
+      "date_detection": false,
+      "dynamic": "strict",
+      "properties": {
+        "host": {
+          "properties": {
+            "hostname": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            },
+            "id": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            }
+          }
+        },
+        "login": {
+          "properties": {
+            "status": {
+              "type": "boolean"
+            },
+            "tty": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            },
+            "type": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            }
+          }
+        },
+        "process": {
+          "properties": {
+            "pid": {
+              "type": "long"
+            }
+          }
+        },
+        "user": {
+          "properties": {
+            "auth_failures": {
+              "properties": {
+                "count": {
+                  "type": "long"
+                },
+                "timestamp": {
+                  "type": "double"
+                }
+              }
+            },
+            "created": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            },
+            "full_name": {
+              "fields": {
+                "text": {
+                  "type": "keyword"
+                }
+              },
+              "ignore_above": 1024,
+              "type": "keyword"
+            },
+            "group": {
+              "properties": {
+                "id": {
+                  "ignore_above": 1024,
+                  "type": "keyword"
+                },
+                "id_signed": {
+                  "type": "long"
+                }
+              }
+            },
+            "groups": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            },
+            "home": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            },
+            "id": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            },
+            "is_hidden": {
+              "type": "boolean"
+            },
+            "is_remote": {
+              "type": "boolean"
+            },
+            "name": {
+              "fields": {
+                "text": {
+                  "type": "keyword"
+                }
+              },
+              "ignore_above": 1024,
+              "type": "keyword"
+            },
+            "password": {
+              "properties": {
+                "expiration_date": {
+                  "type": "long"
+                },
+                "hash_algorithm": {
+                  "ignore_above": 1024,
+                  "type": "keyword"
+                },
+                "inactive_days": {
+                  "type": "integer"
+                },
+                "last_change": {
+                  "type": "long"
+                },
+                "last_set_time": {
+                  "type": "double"
+                },
+                "max_days_between_changes": {
+                  "type": "integer"
+                },
+                "min_days_between_changes": {
+                  "type": "integer"
+                },
+                "status": {
+                  "ignore_above": 1024,
+                  "type": "keyword"
+                },
+                "warning_days_before_expiration": {
+                  "type": "integer"
+                }
+              }
+            },
+            "shell": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            },
+            "type": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            },
+            "uid_signed": {
+              "type": "long"
+            },
+            "uuid": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            }
+          }
+        }
+      }
+    }
+  }
+}
