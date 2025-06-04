@@ -33,7 +33,6 @@ constexpr std::string_view QUEUE_FLOOD_SLEEP = "/engine/queue/flood_sleep";
 constexpr std::string_view QUEUE_DROP_ON_FLOOD = "/engine/queue/drop_on_flood";
 
 constexpr std::string_view ORCHESTRATOR_THREADS = "/engine/orchestrator/threads";
-constexpr std::string_view ORCHESTRATOR_REVERSE_ORDER_DECODERS = "/engine/orchestrator/reverse_order_decoders";
 
 constexpr std::string_view SERVER_API_SOCKET = "/engine/server/api_socket";
 constexpr std::string_view SERVER_API_TIMEOUT = "/engine/server/api_timeout";
