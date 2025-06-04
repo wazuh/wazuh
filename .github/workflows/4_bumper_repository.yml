@@ -1,0 +1,133 @@
+name: Repository bumper
+run-name: Bump ${{ github.ref_name }} to ${{ inputs.version }} ${{ inputs.stage }} (${{ inputs.id }})
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Target version (e.g. 4.13.0)'
+        required: false
+        type: string
+      stage:
+        description: 'Version stage (e.g. alpha0)'
+        required: false
+        type: string
+      date:
+        description: 'Release date in format YYYY-MM-DD (e.g., 2025-04-14)'
+        required: false
+        type: string
+      issue-link:
+        description: 'Issue link in format https://github.com/wazuh/<REPO>/issues/<ISSUE-NUMBER>'
+        required: true
+        type: string
+      id:
+        description: 'Optional identifier for the run'
+        required: false
+        type: string
+
+jobs:
+  bump:
+    name: Repository bumper
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+      pull-requests: write
+
+    env:
+      CI_COMMIT_AUTHOR: wazuhci
+      CI_COMMIT_EMAIL: 22834044+wazuhci@users.noreply.github.com
+      CI_GPG_PRIVATE_KEY: ${{ secrets.CI_WAZUHCI_GPG_PRIVATE }}
+      GH_TOKEN: ${{ secrets.CI_WAZUHCI_BUMPER_TOKEN }}
+      BUMP_SCRIPT_PATH: tools/repository_bumper.sh
+      BUMP_LOG_PATH: tools/
+
+    steps:
+      - name: Dump event payload
+        run: |
+          cat $GITHUB_EVENT_PATH | jq '.inputs'
+
+      - name: Set up GPG key
+        id: signing_setup
+        run: |
+          echo "${{ env.CI_GPG_PRIVATE_KEY }}" | gpg --batch --import
+          KEY_ID=$(gpg --list-secret-keys --with-colons | awk -F: '/^sec/ {print $5; exit}')
+          echo "gpg_key_id=$KEY_ID" >> $GITHUB_OUTPUT
+
+      - name: Set up git
+        run: |
+          git config --global user.name "${{ env.CI_COMMIT_AUTHOR }}"
+          git config --global user.email "${{ env.CI_COMMIT_EMAIL }}"
+          git config --global commit.gpgsign true
+          git config --global user.signingkey "${{ steps.signing_setup.outputs.gpg_key_id }}"
+          echo "use-agent" >> ~/.gnupg/gpg.conf
+          echo "pinentry-mode loopback" >> ~/.gnupg/gpg.conf
+          echo "allow-loopback-pinentry" >> ~/.gnupg/gpg-agent.conf
+          echo RELOADAGENT | gpg-connect-agent
+          export DEBIAN_FRONTEND=noninteractive
+          export GPG_TTY=$(tty)
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          # Using workflow-specific GITHUB_TOKEN because currently CI_WAZUHCI_BUMPER_TOKEN
+          # doesn't have all the necessary permissions
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Determine branch name
+        id: vars
+        run: |
+          declare bump_dest
+          declare script_params
+          declare version="${{ github.event.inputs.version }}"
+          declare stage="${{ github.event.inputs.stage }}"
+          declare date="${{ github.event.inputs.date }}"
+          # Both version and stage provided
+          script_params=""
+          [[ -n "$version" ]] && script_params+="--version $version "
+          [[ -n "$stage"   ]] && script_params+="--stage $stage "
+          [[ -n "$date"    ]] && script_params+="--date $date "
+          issue_number=$(echo "${{ github.event.inputs.issue-link }}" | awk -F'/' '{print $NF}')
+          BRANCH_NAME="enhancement/wqa${issue_number}-bump-${{ github.ref_name }}-to-${bump_dest}"
+          echo "branch_name=$BRANCH_NAME" >> $GITHUB_OUTPUT
+          echo "bump_dest=${bump_dest}" >> $GITHUB_OUTPUT
+          echo "script_params=${script_params}" >> $GITHUB_OUTPUT
+
+      - name: Create and switch to bump branch
+        run: |
+          git checkout -b ${{ steps.vars.outputs.branch_name }}
+
+      - name: Make version bump changes
+        run: |
+          echo "Running bump script"
+          bash ${{ env.BUMP_SCRIPT_PATH }} ${{ steps.vars.outputs.script_params }}
+
+      - name: Commit and push changes
+        run: |
+          git add .
+          git commit -m "feat: bump to ${{ steps.vars.outputs.bump_dest }}"
+          git push origin ${{ steps.vars.outputs.branch_name }}
+
+      - name: Create pull request
+        id: create_pr
+        run: |
+          gh auth setup-git
+          PR_URL=$(gh pr create \
+            --title "Bump ${{ steps.vars.outputs.branch_name }} branch to ${{ steps.vars.outputs.bump_dest }}" \
+            --body "Issue: ${{ github.event.inputs.issue-link }}" \
+            --base ${{ github.ref_name }} \
+            --head ${{ steps.vars.outputs.branch_name }})
+          echo "Pull request created: ${PR_URL}"
+          echo "pull_request_url=${PR_URL}" >> $GITHUB_OUTPUT
+
+      - name: Merge pull request
+        run: |
+          # Any checks for the PR are bypassed since the branch is expected to be functional (i.e. the bump process does not introduce any bugs)
+          gh pr merge "${{ steps.create_pr.outputs.pull_request_url }}" --merge
+
+      - name: Show logs
+        run: |
+          echo "Bump complete for version ${{ steps.vars.outputs.bump_dest }}"
+          echo "Branch: ${{ steps.vars.outputs.branch_name }}"
+          echo "PR: https://github.com/${{ github.repository }}/pull/${{ steps.create_pr.outputs.pull_request_number }}"
+          echo "Bumper scripts logs:"
+          cat ${BUMP_LOG_PATH}/repository_bumper*log
