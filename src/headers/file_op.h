@@ -435,7 +435,7 @@ HANDLE wCreateFile(LPCSTR  lpFileName,
  * @return 0 on success, −1 on error (sets errno).
  */
 int w_stat64(const char * pathname,
-             struct _stat64 * statbuf)
+             struct _stat64 * statbuf);
 #endif
 
 
