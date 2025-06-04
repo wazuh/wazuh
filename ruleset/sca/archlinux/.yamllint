@@ -1,0 +1,11 @@
+extends: default
+
+rules:
+  line-length:
+    max: 120  # Wazuh allows up to 120 characters
+  document-start:
+    present: true
+  indentation:
+    spaces: 2
+  truthy:
+    check-keys: false
