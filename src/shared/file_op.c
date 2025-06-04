@@ -432,6 +432,16 @@ HANDLE wCreateFile(LPCSTR   lpFileName,
                       dwFlagsAndAttributes,
                       hTemplateFile);
 }
+
+int w_stat64(const char * pathname,
+             struct _stat64 * statbuf) {
+    if (is_network_path(pathname)) {
+        errno = EACCES;
+        mwarn(NETWORK_PATH_EXECUTED, pathname);
+        return (-1);
+    }
+    return _stat64(pathname, statbuf);
+}
 #endif
 
 DIR * wopendir(const char *name) {

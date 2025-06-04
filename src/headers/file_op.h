@@ -425,6 +425,17 @@ HANDLE wCreateFile(LPCSTR  lpFileName,
     DWORD   dwCreationDisposition,
     DWORD   dwFlagsAndAttributes,
     HANDLE  hTemplateFile);
+
+
+/**
+ * @brief Wrapper over _stat64() that blocks network paths.
+ *
+ * @param pathname Path to inspect.
+ * @param statbuf  Output structure to fill.
+ * @return 0 on success, −1 on error (sets errno).
+ */
+int w_stat64(const char * pathname,
+             struct _stat64 * statbuf)
 #endif
 
 
