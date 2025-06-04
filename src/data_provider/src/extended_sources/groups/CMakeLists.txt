@@ -24,10 +24,12 @@ endif()
 set(SRC_FILES "")
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
-    list(APPEND SRC_FILES src/user_groups_windows.cpp
+    list(APPEND SRC_FILES 
+      src/groups_windows.cpp
+      src/user_groups_windows.cpp
       ${CMAKE_CURRENT_SOURCE_DIR}/../wrappers/windows/users_utils_wrapper.cpp 
       ${CMAKE_CURRENT_SOURCE_DIR}/../wrappers/windows/groups_utils_wrapper.cpp)
-      set(PLATFORM_LIBS_USERS netapi32 advapi32)
+    set(PLATFORM_LIBS_USERS netapi32 advapi32)
 else()
     if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
         list(APPEND SRC_FILES 
