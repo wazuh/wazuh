@@ -822,8 +822,11 @@ TEST_P(BuildSubgraphOr, OrOperation)
     const auto& graph = param.subgraph;
     bool reverseOrderDecoders = param.reverseOrderDecoders;
 
+    reverseOrderDecoders == true ? setenv("WAZUH_REVERSE_ORDER_DECODERS", "true", 1)
+                                 : unsetenv("WAZUH_REVERSE_ORDER_DECODERS");
+
     base::Expression got;
-    ASSERT_NO_THROW({ got = factory::buildSubgraphExpression<base::Or>(graph, reverseOrderDecoders); });
+    ASSERT_NO_THROW({ got = factory::buildSubgraphExpression<base::Or>(graph); });
 
     builder::test::assertEqualExpr(got, param.expected);
 }
