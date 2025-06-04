@@ -183,7 +183,7 @@ static struct column_list const TABLE_HARDWARE[HARDWARE_FIELD_COUNT+1] = {
     { .value = { FIELD_TEXT, 10, false, false, NULL, "checksum", {.text = ""}, false}, .next = NULL }
 };
 
-#define USERS_FIELD_COUNT 33
+#define USERS_FIELD_COUNT 34
 static struct column_list const TABLE_USERS[USERS_FIELD_COUNT+1] = {
     { .value = { FIELD_INTEGER, 1, true, false, NULL, "scan_id", {.integer = 0}, true}, .next = &TABLE_USERS[1]},
     { .value = { FIELD_TEXT, 2, false, false, NULL, "scan_time", {.text = ""}, true}, .next = &TABLE_USERS[2]},
@@ -194,31 +194,32 @@ static struct column_list const TABLE_USERS[USERS_FIELD_COUNT+1] = {
     { .value = { FIELD_TEXT, 7, false, false, NULL, "user_shell", {.text = ""}, true}, .next = &TABLE_USERS[7]},
     { .value = { FIELD_TEXT, 8, false, false, NULL, "user_type", {.text = ""}, true}, .next = &TABLE_USERS[8]},
     { .value = { FIELD_TEXT, 9, false, false, NULL, "user_created", {.text = ""}, true}, .next = &TABLE_USERS[9]},
-    { .value = { FIELD_TEXT, 10, false, false, NULL, "user_groups", {.text = ""}, true}, .next = &TABLE_USERS[10]},
-    { .value = { FIELD_INTEGER, 11, false, false, NULL, "user_uid_signed", {.integer = 0}, true}, .next = &TABLE_USERS[11]},
-    { .value = { FIELD_TEXT, 12, false, false, NULL, "user_uuid", {.text = ""}, true}, .next = &TABLE_USERS[12]},
-    { .value = { FIELD_INTEGER, 13, false, false, NULL, "user_is_hidden", {.integer = 0}, true}, .next = &TABLE_USERS[13]},
-    { .value = { FIELD_INTEGER, 14, false, false, NULL, "user_is_remoted", {.integer = 0}, true}, .next = &TABLE_USERS[14]},
-    { .value = { FIELD_TEXT, 15, false, false, NULL, "user_password_status", {.text = ""}, true}, .next = &TABLE_USERS[15]},
-    { .value = { FIELD_TEXT, 16, false, false, NULL, "user_password_hash_algorithm", {.text = ""}, true}, .next = &TABLE_USERS[16]},
-    { .value = { FIELD_INTEGER, 17, false, false, NULL, "user_password_last_change", {.integer = 0}, true}, .next = &TABLE_USERS[17]},
-    { .value = { FIELD_INTEGER, 18, false, false, NULL, "user_password_min_days_between_changes", {.integer = 0}, true}, .next = &TABLE_USERS[18]},
-    { .value = { FIELD_INTEGER, 19, false, false, NULL, "user_password_max_days_between_changes", {.integer = 0}, true}, .next = &TABLE_USERS[19]},
-    { .value = { FIELD_INTEGER, 20, false, false, NULL, "user_password_warning_days_before_epiration", {.integer = 0}, true}, .next = &TABLE_USERS[20]},
-    { .value = { FIELD_INTEGER, 21, false, false, NULL, "user_password_inactive_days", {.integer = 0}, true}, .next = &TABLE_USERS[21]},
-    { .value = { FIELD_INTEGER, 22, false, false, NULL, "user_password_expiration_date", {.integer = 0}, true}, .next = &TABLE_USERS[22]},
-    { .value = { FIELD_REAL, 23, false, false, NULL, "user_password_last_set_time", {.real = 0.0}, true}, .next = &TABLE_USERS[23]},
-    { .value = { FIELD_INTEGER, 24, false, false, NULL, "user_auth_failures_count", {.integer = 0}, true}, .next = &TABLE_USERS[24]},
-    { .value = { FIELD_REAL, 25, false, false, NULL, "user_auth_failures_timestamp", {.real = 0.0}, true}, .next = &TABLE_USERS[25]},
-    { .value = { FIELD_TEXT, 26, false, false, NULL, "user_roles", {.text = ""}, true}, .next = &TABLE_USERS[26]},
-    { .value = { FIELD_TEXT, 27, false, false, NULL, "user_last_login", {.text = ""}, true}, .next = &TABLE_USERS[27]},
-    { .value = { FIELD_TEXT, 28, false, false, NULL, "user_host_ip", {.text = ""}, true}, .next = &TABLE_USERS[28]},
-    { .value = { FIELD_TEXT, 29, false, false, NULL, "user_host_hostname", {.text = ""}, true}, .next = &TABLE_USERS[29]},
-    { .value = { FIELD_INTEGER, 30, false, false, NULL, "user_process_pid", {.integer = 0}, true}, .next = &TABLE_USERS[30]},
-    { .value = { FIELD_INTEGER, 31, false, false, NULL, "user_login_status", {.integer = 0}, true}, .next = &TABLE_USERS[31]},
-    { .value = { FIELD_TEXT, 32, false, false, NULL, "user_login_type", {.text = ""}, true}, .next = &TABLE_USERS[32]},
-    { .value = { FIELD_TEXT, 33, false, false, NULL, "user_login_tty", {.text = ""}, true}, .next = &TABLE_USERS[33]},
-    { .value = { FIELD_TEXT, 34, false, false, NULL, "checksum", {.text = ""}, true}, .next = &TABLE_USERS[34]}
+    { .value = { FIELD_INTEGER, 10, false, false, NULL, "user_group_id", {.integer = 0}, true}, .next = &TABLE_USERS[10]},
+    { .value = { FIELD_INTEGER, 11, false, false, NULL, "user_group_id_signed", {.integer = 0}, true}, .next = &TABLE_USERS[11]},
+    { .value = { FIELD_TEXT, 12, false, false, NULL, "user_groups", {.text = ""}, true}, .next = &TABLE_USERS[12]},
+    { .value = { FIELD_INTEGER, 13, false, false, NULL, "user_uid_signed", {.integer = 0}, true}, .next = &TABLE_USERS[13]},
+    { .value = { FIELD_TEXT, 14, false, false, NULL, "user_uuid", {.text = ""}, true}, .next = &TABLE_USERS[14]},
+    { .value = { FIELD_INTEGER, 15, false, false, NULL, "user_is_hidden", {.integer = 0}, true}, .next = &TABLE_USERS[15]},
+    { .value = { FIELD_INTEGER, 16, false, false, NULL, "user_is_remoted", {.integer = 0}, true}, .next = &TABLE_USERS[16]},
+    { .value = { FIELD_TEXT, 17, false, false, NULL, "user_password_status", {.text = ""}, true}, .next = &TABLE_USERS[17]},
+    { .value = { FIELD_TEXT, 18, false, false, NULL, "user_password_hash_algorithm", {.text = ""}, true}, .next = &TABLE_USERS[18]},
+    { .value = { FIELD_INTEGER, 19, false, false, NULL, "user_password_last_change", {.integer = 0}, true}, .next = &TABLE_USERS[19]},
+    { .value = { FIELD_INTEGER, 20, false, false, NULL, "user_password_min_days_between_changes", {.integer = 0}, true}, .next = &TABLE_USERS[20]},
+    { .value = { FIELD_INTEGER, 21, false, false, NULL, "user_password_max_days_between_changes", {.integer = 0}, true}, .next = &TABLE_USERS[21]},
+    { .value = { FIELD_INTEGER, 22, false, false, NULL, "user_password_warning_days_before_expiration", {.integer = 0}, true}, .next = &TABLE_USERS[22]},
+    { .value = { FIELD_INTEGER, 23, false, false, NULL, "user_password_inactive_days", {.integer = 0}, true}, .next = &TABLE_USERS[23]},
+    { .value = { FIELD_INTEGER, 24, false, false, NULL, "user_password_expiration_date", {.integer = 0}, true}, .next = &TABLE_USERS[24]},
+    { .value = { FIELD_REAL, 25, false, false, NULL, "user_password_last_set_time", {.real = 0.0}, true}, .next = &TABLE_USERS[25]},
+    { .value = { FIELD_INTEGER, 26, false, false, NULL, "user_auth_failures_count", {.integer = 0}, true}, .next = &TABLE_USERS[26]},
+    { .value = { FIELD_REAL, 27, false, false, NULL, "user_auth_failures_timestamp", {.real = 0.0}, true}, .next = &TABLE_USERS[27]},
+    { .value = { FIELD_TEXT, 28, false, false, NULL, "user_roles", {.text = ""}, true}, .next = &TABLE_USERS[28]},
+    { .value = { FIELD_TEXT, 29, false, false, NULL, "user_last_login", {.text = ""}, true}, .next = &TABLE_USERS[29]},
+    { .value = { FIELD_TEXT, 30, false, false, NULL, "user_host_ip", {.text = ""}, true}, .next = &TABLE_USERS[30]},
+    { .value = { FIELD_INTEGER, 31, false, false, NULL, "user_process_pid", {.integer = 0}, true}, .next = &TABLE_USERS[31]},
+    { .value = { FIELD_INTEGER, 32, false, false, NULL, "user_login_status", {.integer = 0}, true}, .next = &TABLE_USERS[32]},
+    { .value = { FIELD_TEXT, 33, false, false, NULL, "user_login_type", {.text = ""}, true}, .next = &TABLE_USERS[33]},
+    { .value = { FIELD_TEXT, 34, false, false, NULL, "user_login_tty", {.text = ""}, true}, .next = &TABLE_USERS[34]},
+    { .value = { FIELD_TEXT, 35, false, false, NULL, "checksum", {.text = ""}, true}, .next = &TABLE_USERS[35]}
 };
 
 #define GROUPS_FIELD_COUNT 10
