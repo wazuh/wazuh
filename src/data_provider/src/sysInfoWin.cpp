@@ -986,3 +986,9 @@ nlohmann::json SysInfo::getHotfixes() const
 
     return ret;
 }
+
+nlohmann::json SysInfo::getGroups() const
+{
+    //TODO: Pending implementation.
+    return nlohmann::json();
+}

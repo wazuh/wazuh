@@ -38,6 +38,7 @@ class SysInfoWrapper: public ISysInfo
         MOCK_METHOD(void, processes, (std::function<void(nlohmann::json&)>), (override));
         MOCK_METHOD(nlohmann::json, ports, (), (override));
         MOCK_METHOD(nlohmann::json, hotfixes, (), (override));
+        MOCK_METHOD(nlohmann::json, groups, (), (override));
 };
 
 class CallbackMock
