@@ -475,8 +475,8 @@ parse_args() {
         esac
     done
 
-    if [[ -z "$new_version" || -z "$new_stage" || -z "$new_date" ]]; then
-        echo "Error: --version, --stage, and --date are required."
+    if [[ -z "$new_version" && -z "$new_stage" && -z "$new_date" ]]; then
+        echo "Error: at least one of the parameters (version, stage or date) must be set"
         usage
         exit 1
     fi
