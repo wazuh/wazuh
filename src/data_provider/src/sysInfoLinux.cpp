@@ -614,3 +614,24 @@ nlohmann::json SysInfo::getHotfixes() const
     // Currently not supported for this OS.
     return nlohmann::json();
 }
+
+nlohmann::json SysInfo::getGroups() const
+{
+    nlohmann::json result;
+
+    //TODO: Pending implementation.
+    nlohmann::json groupItem {};
+
+    groupItem["group_id"] = 1000;
+    groupItem["group_name"] = "admin";
+    groupItem["group_description"] = "Administrative group";
+    groupItem["group_id_signed"] = 1000;
+    groupItem["group_uuid"] = "S-1-5-21-3623811015-3361044348-30300820-1013";
+    groupItem["group_is_hidden"] = false;
+    groupItem["group_namespace_pid"] = 1;
+    groupItem["group_users"] = nlohmann::json::array({"alice", "bob", "charlie"});
+
+    result.push_back(std::move(groupItem));
+
+    return result;
+}

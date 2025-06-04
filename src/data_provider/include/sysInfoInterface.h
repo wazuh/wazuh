@@ -28,6 +28,7 @@ class ISysInfo
         virtual nlohmann::json networks() = 0;
         virtual nlohmann::json ports() = 0;
         virtual nlohmann::json hotfixes() = 0;
+        virtual nlohmann::json groups() = 0;
         virtual void packages(std::function<void(nlohmann::json&)>) = 0;
         virtual void processes(std::function<void(nlohmann::json&)>) = 0;
 
