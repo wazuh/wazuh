@@ -7,6 +7,7 @@ link_directories(${SRC_FOLDER}/external/googletest/lib/)
 set(TEST_SRC "main.cpp")
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+    list(APPEND TEST_SRC test_groups_windows.cpp)
     list(APPEND TEST_SRC test_user_groups_windows.cpp)
 else()
     if(CMAKE_SYSTEM_NAME STREQUAL "Linux")

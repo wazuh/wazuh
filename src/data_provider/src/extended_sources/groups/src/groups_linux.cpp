@@ -83,9 +83,11 @@ nlohmann::json GroupsProvider::collect(const std::set<gid_t>& gids)
 
 void GroupsProvider::addGroupToResults(nlohmann::json& results, const group* group)
 {
-    nlohmann::json row;
-    row["groupname"] = group->gr_name;
-    row["gid"] = group->gr_gid;
-    row["gid_signed"] = static_cast<int32_t>(group->gr_gid);
-    results.push_back(row);
+    nlohmann::json groupJson;
+
+    groupJson["groupname"] = group->gr_name;
+    groupJson["gid"] = group->gr_gid;
+    groupJson["gid_signed"] = static_cast<int32_t>(group->gr_gid);
+
+    results.push_back(groupJson);
 }
