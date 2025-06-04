@@ -22,6 +22,7 @@
 #include "unit_tests/wrappers/windows/fileapi_wrappers.h"
 #include "unit_tests/wrappers/windows/handleapi_wrappers.h"
 #include "unit_tests/wrappers/windows/winnetwk_wrappers.h"
+#include "unit_tests/wrappers/windows/stat64_wrappers.h"
 #endif
 #endif
 
