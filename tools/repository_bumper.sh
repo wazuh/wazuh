@@ -288,31 +288,42 @@ update_file_packages() {
     local final_stage="$2"
     local new_date="$3"
 
-    # Split the version into major, minor and patch
-    IFS='.' read -r major minor patch <<< "$final_version"
+    if [[ -z "$final_version" && -z "$new_date" ]]; then
+        log_action "No version or date provided: changelog and .spec updates omitted."
+        return 0
+    fi
 
-    # Format the date
+    IFS='.' read -r major minor patch <<< "$final_version"
     formatted_date=$(date -d "$new_date" +"%a, %d %b %Y 00:00:00 +0000")
     spec_date=$(date -d "$new_date" +"%a %b %d %Y")
 
+    # ----------------------------------------------------
     # Update .spec files
+    # ----------------------------------------------------
     for spec_file in $(find "$DIR_PACKAGE" -type f -name "*.spec"); do
-        version_line="* .* - ${final_version}"
-        existing_line=$(grep -E "^\\* .+ - ${final_version}$" "$spec_file")
+        local existing_line
+        existing_line=$(grep -E "^\\* .+ - ${final_version}$" "$spec_file" || true)
 
-        if [ -n "$existing_line" ]; then
-            sed -i -E "s|^\* .+ - ${final_version}$|* ${spec_date} support <info@wazuh.com> - ${final_version}|" "$spec_file"
+        if [[ -n "$existing_line" ]]; then
+            sed -i -E \
+                "s|^\* .+ - ${final_version}$|* ${spec_date} support <info@wazuh.com> - ${final_version}|" \
+                "$spec_file"
             log_action "Updated changelog date for version ${final_version} in: $spec_file"
         else
-            sed -i -E "/^%changelog\s*$/a * ${spec_date} support <info@wazuh.com> - ${final_version}\n- More info: https://documentation.wazuh.com/current/release-notes/release-${final_version//./-}.html" "$spec_file"
+            sed -i -E \
+                "/^%changelog\s*$/a * ${spec_date} support <info@wazuh.com> - ${final_version}\n- More info: https://documentation.wazuh.com/current/release-notes/release-${final_version//./-}.html" \
+                "$spec_file"
             log_action "Prepended changelog entry for version ${final_version} in: $spec_file"
         fi
     done
 
-    # Update changelog files (prepend entry)
+    # ----------------------------------------------------
+    # Update Debian/Ubuntu changelog files (in each package)
+    # ----------------------------------------------------
     for changelog_file in $(find "$DIR_PACKAGE" -type f -name "changelog"); do
+        local INSTALL_TYPE
         INSTALL_TYPE=$(basename "$(dirname "$(dirname "$changelog_file")")")
-
+        local changelog_entry
         changelog_entry="$(
 cat <<EOF
 ${INSTALL_TYPE} (${final_version}-RELEASE) stable; urgency=low
@@ -323,16 +334,17 @@ ${INSTALL_TYPE} (${final_version}-RELEASE) stable; urgency=low
 
 EOF
 )"
-
+        local version_pattern_grep
+        local version_pattern_awk
         version_pattern_grep="^${INSTALL_TYPE} \(${final_version//./\\.}-RELEASE\) stable; urgency=low"
-        version_pattern_awk="^${INSTALL_TYPE} (${final_version//./.}-RELEASE) stable; urgency=low"
+        version_pattern_awk="^${INSTALL_TYPE} [(]${final_version//./.}-RELEASE[)] stable; urgency=low"
 
         if grep -qE "$version_pattern_grep" "$changelog_file"; then
             awk -v version_regex="$version_pattern_awk" -v new_date="$formatted_date" '
             BEGIN { inside_match = 0 }
             {
                 if ($0 ~ version_regex) {
-                    inside_match = 1
+                    inside_match = 1s
                     print
                     next
                 }
@@ -346,26 +358,34 @@ EOF
 
             log_action "Updated changelog date for version ${final_version} in: $changelog_file"
         else
+            local tmp_file
             tmp_file=$(mktemp)
             {
-                printf "%s\n\n" "$changelog_entry"
+                printf "%s\n" "$changelog_entry"
                 cat "$changelog_file"
             } > "$tmp_file" && mv "$tmp_file" "$changelog_file"
+
             log_action "Prepended changelog entry for version ${final_version} in: $changelog_file"
         fi
     done
 
-    # Update copyright files
+    # ----------------------------------------------------
+    # Update “copyright” files
+    # ----------------------------------------------------
     for copyright_file in $(find "$DIR_PACKAGE" -type f -name "copyright"); do
-        sed -i -E "s|(^    Wazuh, Inc <info@wazuh.com> on )[^$]+(\$)|\1${formatted_date}\2|" "$copyright_file"
-        log_action "Updated copyright year in: $copyright_file"
+        sed -i -E \
+            "s|(^    Wazuh, Inc <info@wazuh.com> on )[^$]+(\$)|\1${formatted_date}\2|" \
+            "$copyright_file"
+        log_action "Updated copyright date in: $copyright_file"
     done
 
-    # Update pkginfo files
+    # ----------------------------------------------------
+    # 6) Update “pkginfo” files
+    # ----------------------------------------------------
+    local pkginfo_date
     pkginfo_date=$(date -d "$new_date" +"%d%b%Y")
     for pkginfo_file in $(find "$DIR_PACKAGE" -type f -name "pkginfo"); do
         sed -i -E "s|(^VERSION=\")([0-9]+\.[0-9]+\.[0-9]+)(\"$)|\1${final_version}\3|" "$pkginfo_file"
-
         sed -i -E "s|(^PSTAMP=\")[^\"]+(\"$)|\1${pkginfo_date}\2|" "$pkginfo_file"
 
         log_action "Updated VERSION and PSTAMP in: $pkginfo_file"
@@ -475,8 +495,8 @@ parse_args() {
         esac
     done
 
-    if [[ -z "$new_version" || -z "$new_stage" || -z "$new_date" ]]; then
-        echo "Error: --version, --stage, and --date are required."
+    if [[ -z "$new_version" && -z "$new_stage" && -z "$new_date" ]]; then
+        echo "Error: at least one of the parameters (version, stage or date) must be set"
         usage
         exit 1
     fi
