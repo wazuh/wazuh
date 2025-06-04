@@ -1319,7 +1319,7 @@ void test_w_stat_network_path(void **state) {
     assert_int_equal(errno, EACCES);
 }
 
-void test_w_lstat_local_path(void **state) {
+void test_w_stat64_local_path(void **state) {
     errno = 0;
     char *path = "C:\\file.txt";
 
@@ -1327,18 +1327,18 @@ void test_w_lstat_local_path(void **state) {
     will_return(wrap__stat64, NULL);
     will_return(wrap__stat64, 0);
 
-    int ret = w_lstat(path, NULL);
+    int ret = w_stat64(path, NULL);
     assert_int_equal(ret, 0);
     assert_int_equal(errno, 0);
 }
 
-void test_w_lstat_network_path(void **state) {
+void test_w_stat64_network_path(void **state) {
     errno = 0;
     char *path = "Z:\\file.txt";
 
     expect_string(__wrap__mwarn, formatted_msg, "(9800): File access denied. Network path usage is not allowed: 'Z:\\file.txt'.");
 
-    int ret = w_lstat(path, NULL);
+    int ret = w_stat64(path, NULL);
     assert_int_equal(ret, -1);
     assert_int_equal(errno, EACCES);
 }
@@ -1416,8 +1416,8 @@ int main(void) {
         cmocka_unit_test(test_wopendir_network_path),
         cmocka_unit_test(test_w_stat_local_path),
         cmocka_unit_test(test_w_stat_network_path),
-        cmocka_unit_test(test_w_lstat_local_path),
-        cmocka_unit_test(test_w_lstat_network_path),
+        cmocka_unit_test(test_w_stat64_local_path),
+        cmocka_unit_test(test_w_stat64_network_path),
 
 #endif
     };
