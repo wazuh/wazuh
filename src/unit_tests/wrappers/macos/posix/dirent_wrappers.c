@@ -33,7 +33,7 @@ DIR * wrap_opendir(const char *filename) {
 
         return ret;
     } else {
-        return wopendir(filename);
+        return opendir(filename);
     }
 }
 

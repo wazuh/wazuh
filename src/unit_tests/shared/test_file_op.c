@@ -24,7 +24,9 @@
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../wrappers/wazuh/shared/file_op_wrappers.h"
 #include "../wrappers/externals/zlib/zlib_wrappers.h"
+#ifdef WIN32
 #include "../wrappers/windows/fileapi_wrappers.h"
+#endif
 
 /* setups/teardowns */
 static int setup_group(void **state) {
@@ -1214,9 +1216,107 @@ void test_wfopen_local_path(void **state) {
 void test_wfopen_network_path(void **state) {
     errno = 0;
     char *path = "Z:\\file.txt";
+
+    expect_string(__wrap__mwarn, formatted_msg, "(9800): File access denied. Network path usage is not allowed: 'Z:\\file.txt'.");
+
     FILE *fp = wfopen(path, "r");
     assert_int_equal(fp, NULL);
-    assert_int_equal(errno, EINVAL);
+    assert_int_equal(errno, EACCES);
+}
+
+void test_waccess_local_path(void **state) {
+    errno = 0;
+    char *path = "C:\\file.txt";
+
+    expect_string(__wrap_access, __name, path);
+    expect_value(__wrap_access, __type, "r");
+    will_return(__wrap_access, 0);
+
+    int ret = waccess(path, "r");
+    assert_int_equal(ret, 0);
+    assert_int_equal(errno, 0);
+}
+
+void test_waccess_network_path(void **state) {
+    errno = 0;
+    char *path = "Z:\\file.txt";
+
+    expect_string(__wrap__mwarn, formatted_msg, "(9800): File access denied. Network path usage is not allowed: 'Z:\\file.txt'.");
+
+    int ret = waccess(path, "r");
+    assert_int_equal(ret, -1);
+    assert_int_equal(errno, EACCES);
+}
+
+void test_wCreateFile_local_path(void **state) {
+    errno = 0;
+    HANDLE hdle = (HANDLE)1234;
+    char *path = "C:\\file.txt";
+
+    expect_string(wrap_CreateFile, lpFileName, path);
+    will_return(wrap_CreateFile, hdle);
+
+    HANDLE ret = wCreateFile(path, NULL, NULL, NULL, NULL, NULL, NULL);
+    assert_int_equal(ret, hdle);
+    assert_int_equal(errno, 0);
+}
+
+void test_wCreateFile_network_path(void **state) {
+    errno = 0;
+    char *path = "Z:\\file.txt";
+
+    expect_string(__wrap__mwarn, formatted_msg, "(9800): File access denied. Network path usage is not allowed: 'Z:\\file.txt'.");
+
+    HANDLE ret = wCreateFile(path, NULL, NULL, NULL, NULL, NULL, NULL);
+    assert_int_equal(ret, INVALID_HANDLE_VALUE);
+    assert_int_equal(errno, EACCES);
+}
+
+void test_wopendir_local_path(void **state) {
+    errno = 0;
+    char *path = "C:\\file.txt";
+    DIR *dir = (DIR *)1;
+
+    will_return(__wrap_opendir, dir);
+
+    DIR *ret = wopendir(path);
+    assert_ptr_equal(ret, dir);
+    assert_int_equal(errno, 0);
+}
+
+void test_wopendir_network_path(void **state) {
+    errno = 0;
+    char *path = "Z:\\file.txt";
+
+    expect_string(__wrap__mwarn, formatted_msg, "(9800): File access denied. Network path usage is not allowed: 'Z:\\file.txt'.");
+
+    DIR *ret = wopendir(path);
+    assert_ptr_equal(ret, NULL);
+    assert_int_equal(errno, EACCES);
+}
+
+void test_w_stat_local_path(void **state) {
+    errno = 0;
+    char *path = "C:\\file.txt";
+
+    expect_string(__wrap_stat, __file, path);
+    will_return(__wrap_stat, NULL);
+    will_return(__wrap_stat, 0);
+
+    int ret = w_stat(path, NULL);
+    assert_int_equal(ret, 0);
+    assert_int_equal(errno, 0);
+}
+
+void test_w_stat_network_path(void **state) {
+    errno = 0;
+    char *path = "Z:\\file.txt";
+
+    expect_string(__wrap__mwarn, formatted_msg, "(9800): File access denied. Network path usage is not allowed: 'Z:\\file.txt'.");
+
+    int ret = w_stat(path, NULL);
+    assert_int_equal(ret, -1);
+    assert_int_equal(errno, EACCES);
 }
 
 #endif
@@ -1284,6 +1384,14 @@ int main(void) {
         cmocka_unit_test(test_is_network_path_local),
         cmocka_unit_test(test_wfopen_local_path),
         cmocka_unit_test(test_wfopen_network_path),
+        cmocka_unit_test(test_waccess_local_path),
+        cmocka_unit_test(test_waccess_network_path),
+        cmocka_unit_test(test_wCreateFile_local_path),
+        cmocka_unit_test(test_wCreateFile_network_path),
+        cmocka_unit_test(test_wopendir_local_path),
+        cmocka_unit_test(test_wopendir_network_path),
+        cmocka_unit_test(test_w_stat_local_path),
+        cmocka_unit_test(test_w_stat_network_path),
 
 #endif
     };

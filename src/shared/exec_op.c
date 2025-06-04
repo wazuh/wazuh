@@ -10,7 +10,9 @@
  */
 
 #include <shared.h>
+#ifdef WIN32
 #include "unit_tests/wrappers/windows/winnetwk_wrappers.h"
+#endif
 
 // Open a stream from a process without shell (execvp form)
 wfd_t * wpopenv(const char * path, char * const * argv, int flags) {
