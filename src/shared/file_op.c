@@ -21,6 +21,7 @@
 #include "unit_tests/wrappers/windows/libc/stdio_wrappers.h"
 #include "unit_tests/wrappers/windows/fileapi_wrappers.h"
 #include "unit_tests/wrappers/windows/handleapi_wrappers.h"
+#include "unit_tests/wrappers/windows/winnetwk_wrappers.h"
 #endif
 #endif
 
@@ -3298,7 +3299,6 @@ bool is_network_path(const char *path) {
 
     // Case 1: UNC path (\\server\share\...)
     if (PathIsUNCA(path)) {
-        merror("UNC path detected: %s", path);
         return true;
     }
 
@@ -3313,7 +3313,6 @@ bool is_network_path(const char *path) {
         DWORD result = WNetGetConnectionA(root, remoteName, &bufferSize);
 
         if (result == NO_ERROR || result == ERROR_CONNECTION_UNAVAIL) {
-            merror("Mapped drive detected: %s -> %s (code: %lu)", root, remoteName, result);
             return true;
         }
     }
