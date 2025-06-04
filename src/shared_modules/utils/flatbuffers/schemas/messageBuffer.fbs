@@ -6,7 +6,7 @@ enum BufferType: byte {
 }
 
 table MessageBuffer {
-  data: [byte];
+  data: [ubyte];
   type: BufferType;
   timestamp: ulong;
 }

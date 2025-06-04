@@ -63,13 +63,8 @@ public:
         }
         else if (message->type() == BufferType::BufferType_JSON)
         {
-            const auto* dataPtr = message->data()->data();
-            const auto dataSize = message->data()->size();
-
-            // Create a std::string (copy) for safer UTF-8 parsing
-            std::string jsonStr(dataPtr, dataPtr + dataSize);
-
-            const auto jsonData = nlohmann::json::parse(jsonStr);
+            const auto jsonData =
+                nlohmann::json::parse(message->data()->data(), message->data()->data() + message->data()->size());
 
             run(&jsonData);
         }
