@@ -199,13 +199,13 @@ def run_test(test_parent_path: Path, engine_api_socket: str, unit_result: type, 
 def toggle_reverse_order_decoders(path_env_file: str) -> None:
     """
     Opens the configuration file at path_env_file, finds the line defining
-    WAZUH_ORCHESTRATOR_REVERSE_ORDER_DECODERS, and if its value is 'true' or 'false',
+    WAZUH_REVERSE_ORDER_DECODERS, and if its value is 'true' or 'false',
     toggles it. Then saves the file with the modification.
 
     Parameters:
         path_env_file: Path to the text file (e.g., .env) containing the variable.
     """
-    key = "WAZUH_ORCHESTRATOR_REVERSE_ORDER_DECODERS"
+    key = "WAZUH_REVERSE_ORDER_DECODERS"
 
     with open(path_env_file, "r", encoding="utf-8") as f:
         lines = f.readlines()

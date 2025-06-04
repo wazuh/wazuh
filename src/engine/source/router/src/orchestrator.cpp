@@ -50,13 +50,11 @@ base::OptError Orchestrator::forEachWorker(const WorkerOp& f)
 /**************************************************************************
  * Manage configuration - Dump
  *************************************************************************/
-base::OptError loadTesterOnWorker(const std::vector<EntryConverter>& entries,
-                                  const std::shared_ptr<IWorker>& worker,
-                                  const bool reverseOrderDecoders)
+base::OptError loadTesterOnWorker(const std::vector<EntryConverter>& entries, const std::shared_ptr<IWorker>& worker)
 {
     for (const auto& entry : entries)
     {
-        auto err = worker->getTester()->addEntry(test::EntryPost(entry), true, reverseOrderDecoders);
+        auto err = worker->getTester()->addEntry(test::EntryPost(entry), true);
         if (err)
         {
             return err;
@@ -190,7 +188,7 @@ base::OptError Orchestrator::initWorker(const std::shared_ptr<IWorker>& worker,
                                         const std::vector<EntryConverter>& testerEntries)
 {
     auto error = loadRouterOnWoker(routerEntries, worker);
-    auto error2 = loadTesterOnWorker(testerEntries, worker, m_reverseOrderDecoders);
+    auto error2 = loadTesterOnWorker(testerEntries, worker);
 
     if (error && error2)
     {
@@ -259,7 +257,6 @@ Orchestrator::Orchestrator(const Options& opt)
     , m_syncMutex()
     , m_storeTesterName(STORE_PATH_TESTER_TABLE)
     , m_storeRouterName(STORE_PATH_ROUTER_TABLE)
-    , m_reverseOrderDecoders(opt.m_reverseOrderDecoders)
 {
     opt.validate();
 
@@ -475,7 +472,7 @@ base::OptError Orchestrator::postTestEntry(const test::EntryPost& entry)
     }
 
     std::unique_lock lock {m_syncMutex};
-    auto error = forEachWorker([&entry](const auto& worker) { return worker->getTester()->addEntry(entry, false); });
+    auto error = forEachWorker([&entry](const auto& worker) { return worker->getTester()->addEntry(entry); });
     if (error)
     {
         return error;

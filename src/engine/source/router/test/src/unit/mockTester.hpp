@@ -11,7 +11,7 @@ namespace router
 class MockTester : public router::ITester
 {
 public:
-    MOCK_METHOD(base::OptError, addEntry, (const test::EntryPost&, bool, bool), (override));
+    MOCK_METHOD(base::OptError, addEntry, (const test::EntryPost&, bool), (override));
     MOCK_METHOD(base::OptError, removeEntry, (const std::string&), (override));
     MOCK_METHOD(base::OptError, rebuildEntry, (const std::string&), (override));
     MOCK_METHOD(base::OptError, enableEntry, (const std::string&), (override));

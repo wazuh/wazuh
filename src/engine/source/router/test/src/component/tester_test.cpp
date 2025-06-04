@@ -111,8 +111,7 @@ void expectBuildPolicyOk(std::shared_ptr<builder::mocks::MockBuilder> mockbuilde
                          std::shared_ptr<builder::mocks::MockPolicy> mockPolicy)
 {
     // Build policy controller
-    EXPECT_CALL(*mockbuilder, buildPolicy(testing::_, testing::_, testing::_, testing::_))
-        .WillOnce(testing::Return(mockPolicy));
+    EXPECT_CALL(*mockbuilder, buildPolicy(testing::_, testing::_, testing::_)).WillOnce(testing::Return(mockPolicy));
     auto emptyNames = std::unordered_set<base::Name> {"asset/test/0"};
     EXPECT_CALL(*mockPolicy, assets()).WillRepeatedly(testing::ReturnRefOfCopy(emptyNames));
     auto emptyExpression = base::Expression {};

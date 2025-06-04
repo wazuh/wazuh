@@ -66,10 +66,8 @@ public:
     /**
      * @copydoc IBuilder::buildPolicy
      */
-    std::shared_ptr<IPolicy> buildPolicy(const base::Name& name,
-                                         bool trace = false,
-                                         bool sandbox = false,
-                                         bool reverseOrderDecoders = false) const override;
+    std::shared_ptr<IPolicy>
+    buildPolicy(const base::Name& name, bool trace = false, bool sandbox = false) const override;
 
     /**
      * @copydoc IBuilder::buildAsset

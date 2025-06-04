@@ -64,12 +64,12 @@ public:
 };
 } // namespace test
 
-base::OptError Tester::addEntry(const test::EntryPost& entryPost, bool ignoreFail, bool reverseOrderDecoders)
+base::OptError Tester::addEntry(const test::EntryPost& entryPost, bool ignoreFail)
 {
     auto entry = RuntimeEntry(entryPost);
     try
     {
-        auto [controller, hash] = m_envBuilder->makeController(entry.policy(), true, true, reverseOrderDecoders);
+        auto [controller, hash] = m_envBuilder->makeController(entry.policy());
         entry.controller() = controller;
         entry.hash(hash);
     }
