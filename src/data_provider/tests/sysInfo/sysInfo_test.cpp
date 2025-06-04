@@ -61,6 +61,10 @@ nlohmann::json SysInfo::getHotfixes() const
 {
     return {};
 }
+nlohmann::json SysInfo::getGroups() const
+{
+    return {};
+}
 
 void SysInfo::getPackages(std::function<void(nlohmann::json&)>callback) const
 {
@@ -102,6 +106,7 @@ class SysInfoWrapper: public SysInfo
         MOCK_METHOD(nlohmann::json, getNetworks, (), (const override));
         MOCK_METHOD(nlohmann::json, getPorts, (), (const override));
         MOCK_METHOD(nlohmann::json, getHotfixes, (), (const override));
+        MOCK_METHOD(nlohmann::json, getGroups, (), (const override));
         MOCK_METHOD(void, getPackages, (std::function<void(nlohmann::json&)>), (const override));
         MOCK_METHOD(void, getProcessesInfo, (std::function<void(nlohmann::json&)>), (const override));
 

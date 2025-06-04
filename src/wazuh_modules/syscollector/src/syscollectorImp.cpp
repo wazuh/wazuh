@@ -873,15 +873,102 @@ constexpr auto NETADDR_SQL_STATEMENT
 };
 static const std::vector<std::string> NETADDRESS_ITEM_ID_FIELDS{"iface", "proto", "address"};
 
-constexpr auto NET_IFACE_TABLE    { "dbsync_network_iface"    };
-constexpr auto NET_PROTOCOL_TABLE { "dbsync_network_protocol" };
-constexpr auto NET_ADDRESS_TABLE  { "dbsync_network_address"  };
-constexpr auto PACKAGES_TABLE     { "dbsync_packages"         };
-constexpr auto HOTFIXES_TABLE     { "dbsync_hotfixes"         };
-constexpr auto PORTS_TABLE        { "dbsync_ports"            };
-constexpr auto PROCESSES_TABLE    { "dbsync_processes"        };
-constexpr auto OS_TABLE           { "dbsync_osinfo"           };
-constexpr auto HW_TABLE           { "dbsync_hwinfo"           };
+constexpr auto GROUPS_START_CONFIG_STATEMENT
+{
+    R"({"table":"dbsync_groups",
+        "first_query":
+            {
+                "column_list":["group_id"],
+                "row_filter":" ",
+                "distinct_opt":false,
+                "order_by_opt":"group_id DESC",
+                "count_opt":1
+            },
+        "last_query":
+            {
+                "column_list":["group_id"],
+                "row_filter":" ",
+                "distinct_opt":false,
+                "order_by_opt":"group_id ASC",
+                "count_opt":1
+            },
+        "component":"syscollector_groups",
+        "index":"group_id",
+        "last_event":"last_event",
+        "checksum_field":"checksum",
+        "range_checksum_query_json":
+            {
+                "row_filter":"WHERE group_id BETWEEN '?' and '?' ORDER BY group_id",
+                "column_list":["group_id, checksum"],
+                "distinct_opt":false,
+                "order_by_opt":"",
+                "count_opt":1000
+            }
+        })"
+};
+
+constexpr auto GROUPS_SYNC_CONFIG_STATEMENT
+{
+    R"(
+    {
+        "decoder_type":"JSON_RANGE",
+        "table":"dbsync_groups",
+        "component":"syscollector_groups",
+        "index":"group_id",
+        "checksum_field":"checksum",
+        "no_data_query_json": {
+                "row_filter":"WHERE group_id BETWEEN '?' and '?' ORDER BY group_id",
+                "column_list":["*"],
+                "distinct_opt":false,
+                "order_by_opt":""
+        },
+        "count_range_query_json": {
+                "row_filter":"WHERE group_id BETWEEN '?' and '?' ORDER BY group_id",
+                "count_field_name":"count",
+                "column_list":["count(*) AS count "],
+                "distinct_opt":false,
+                "order_by_opt":""
+        },
+        "row_data_query_json": {
+                "row_filter":"WHERE group_id ='?'",
+                "column_list":["*"],
+                "distinct_opt":false,
+                "order_by_opt":""
+        },
+        "range_checksum_query_json": {
+                "row_filter":"WHERE group_id BETWEEN '?' and '?' ORDER BY group_id",
+                "column_list":["*"],
+                "distinct_opt":false,
+                "order_by_opt":""
+        }
+    }
+    )"
+};
+
+constexpr auto GROUPS_SQL_STATEMENT
+{
+    R"(CREATE TABLE dbsync_groups (
+    group_id BIGINT,
+    group_name TEXT,
+    group_description TEXT,
+    group_id_signed BIGINT,
+    group_uuid TEXT,
+    group_is_hidden INTEGER,
+    group_users TEXT,
+    checksum TEXT,
+    PRIMARY KEY (group_id)) WITHOUT ROWID;)"
+};
+
+constexpr auto NET_IFACE_TABLE     { "dbsync_network_iface"    };
+constexpr auto NET_PROTOCOL_TABLE  { "dbsync_network_protocol" };
+constexpr auto NET_ADDRESS_TABLE   { "dbsync_network_address"  };
+constexpr auto PACKAGES_TABLE      { "dbsync_packages"         };
+constexpr auto HOTFIXES_TABLE      { "dbsync_hotfixes"         };
+constexpr auto PORTS_TABLE         { "dbsync_ports"            };
+constexpr auto PROCESSES_TABLE     { "dbsync_processes"        };
+constexpr auto OS_TABLE            { "dbsync_osinfo"           };
+constexpr auto HW_TABLE            { "dbsync_hwinfo"           };
+constexpr auto GROUPS_TABLE        { "dbsync_groups"           };
 
 
 static std::string getItemId(const nlohmann::json& item, const std::vector<std::string>& idFields)
@@ -1054,6 +1141,7 @@ Syscollector::Syscollector()
     , m_hotfixes { false }
     , m_stopping { true }
     , m_notify { false }
+    , m_groups { false }
 {}
 
 std::string Syscollector::getCreateStatement() const
@@ -1069,6 +1157,7 @@ std::string Syscollector::getCreateStatement() const
     ret += NETIFACE_SQL_STATEMENT;
     ret += NETPROTO_SQL_STATEMENT;
     ret += NETADDR_SQL_STATEMENT;
+    ret += GROUPS_SQL_STATEMENT;
     return ret;
 }
 
@@ -1178,6 +1267,14 @@ void Syscollector::registerWithRsync()
                                   nlohmann::json::parse(NETADDRESS_SYNC_CONFIG_STATEMENT),
                                   reportSyncWrapper);
     }
+
+    if (m_groups)
+    {
+        m_spRsync->registerSyncID("syscollector_groups",
+                                  m_spDBSync->handle(),
+                                  nlohmann::json::parse(GROUPS_SYNC_CONFIG_STATEMENT),
+                                  reportSyncWrapper);
+    }
 }
 void Syscollector::init(const std::shared_ptr<ISysInfo>& spInfo,
                         const std::function<void(const std::string&)> reportDiffFunction,
@@ -1196,6 +1293,7 @@ void Syscollector::init(const std::shared_ptr<ISysInfo>& spInfo,
                         const bool portsAll,
                         const bool processes,
                         const bool hotfixes,
+                        const bool groups,
                         const bool notifyOnFirstScan)
 {
     m_spInfo = spInfo;
@@ -1213,6 +1311,7 @@ void Syscollector::init(const std::shared_ptr<ISysInfo>& spInfo,
     m_processes = processes;
     m_hotfixes = hotfixes;
     m_notify = notifyOnFirstScan;
+    m_groups = groups;
 
     std::unique_lock<std::mutex> lock{m_mutex};
     m_stopping = false;
@@ -1576,6 +1675,22 @@ nlohmann::json Syscollector::getPortsData()
     return ret;
 }
 
+nlohmann::json Syscollector::getGroupsData()
+{
+    nlohmann::json ret;
+    auto data = m_spInfo->groups();
+
+    if (!data.is_null())
+    {
+        for (auto& item : data)
+        {
+            item["checksum"] = getItemChecksum(item);
+            ret.push_back(item);
+        }
+    }
+    return ret;
+}
+
 void Syscollector::scanPorts()
 {
     if (m_ports)
@@ -1635,6 +1750,25 @@ void Syscollector::syncProcesses()
     m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(PROCESSES_START_CONFIG_STATEMENT), m_reportSyncFunction);
 }
 
+void Syscollector::scanGroups()
+{
+    if (m_groups)
+    {
+        //m_logFunction(LOG_DEBUG_VERBOSE, "Starting groups scan");
+        m_logFunction(LOG_INFO, "Starting groups scan");
+        const auto& groupsData { getGroupsData() };
+        // TODO: delete later
+        m_logFunction(LOG_INFO, "scan result: " + groupsData.dump(4));
+        updateChanges(GROUPS_TABLE, groupsData);
+        m_logFunction(LOG_DEBUG_VERBOSE, "Ending groups scan");
+    }
+}
+
+void Syscollector::syncGroups()
+{
+    m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(GROUPS_START_CONFIG_STATEMENT), m_reportSyncFunction);
+}
+
 void Syscollector::scan()
 {
     m_logFunction(LOG_INFO, "Starting evaluation.");
@@ -1647,6 +1781,7 @@ void Syscollector::scan()
     TRY_CATCH_TASK(scanHotfixes);
     TRY_CATCH_TASK(scanPorts);
     TRY_CATCH_TASK(scanProcesses);
+    TRY_CATCH_TASK(scanGroups);
     m_notify = true;
     m_logFunction(LOG_INFO, "Evaluation finished.");
 }
@@ -1661,6 +1796,7 @@ void Syscollector::sync()
     TRY_CATCH_TASK(syncHotfixes);
     TRY_CATCH_TASK(syncPorts);
     TRY_CATCH_TASK(syncProcesses);
+    TRY_CATCH_TASK(syncGroups);
     m_logFunction(LOG_DEBUG, "Ending syscollector sync");
 }
 
