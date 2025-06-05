@@ -26,40 +26,47 @@ updateRulesetLists()
 
 
         # Insert after the latest <list> at the first uncommented <ruleset> entry
-        awk -v insert_lines="$LISTS_BLOCK" '
-            BEGIN {
-            in_comment=0
-            in_ruleset=0
-            last_list_line=0
-            line_count=0
-            }
-            {
-            line_count++
-            lines[line_count] = $0
+        awk -v insert="$LISTS_BLOCK" '
+        BEGIN {
+            inserted = 0           # Flag to track insertion
+            inside_ruleset = 0     # Flag if inside <ruleset>
+            last_list_line = 0     # Line number of last <list> inside <ruleset>
+        }
 
-            if ($0 ~ /<!--/) in_comment=1
-            if ($0 ~ /-->/) in_comment=0
+        # Detect start of <ruleset>
+        /<ruleset>/ {
+            print                 # Print <ruleset> line
+            inside_ruleset = 1
+            next
+        }
 
-            if (!in_comment && $0 ~ /<ruleset>/ && in_ruleset==0) {
-                in_ruleset=1
+        # When inside <ruleset>, track <list> lines and print normally
+        inside_ruleset {
+            if ($0 ~ /<list>/) {
+            last_list_line = NR
+            print
+            next
             }
 
-            if (in_ruleset && !in_comment && $0 ~ /<list>/) {
-                last_list_line = line_count
+            # If we are at the line immediately after last <list>, insert
+            if (last_list_line && NR == last_list_line + 1 && !inserted) {
+            print insert        # Insert the new <list> entries
+            inserted = 1
             }
+            # If no <list> found and this is first line inside ruleset after <ruleset>
+            else if (!last_list_line && !inserted) {
+            print insert
+            inserted = 1
+            }
+        }
 
-            if (!in_comment && $0 ~ /<\/ruleset>/ && in_ruleset==1) {
-                in_ruleset=0
-            }
-            }
-            END {
-            for (i=1; i<=line_count; i++) {
-                print lines[i]
-                if (i == last_list_line) {
-                printf("%s\n", insert_lines)
-                }
-            }
-            }
+        # Print the current line
+        { print }
+
+        # Detect end of <ruleset>
+        /<\/ruleset>/ {
+            inside_ruleset = 0
+        }
         ' "$CONFIG" > "$CONFIG.tmp" && mv "$CONFIG.tmp" "$CONFIG"
 
     fi
