@@ -23,6 +23,7 @@
 #include "unit_tests/wrappers/windows/handleapi_wrappers.h"
 #include "unit_tests/wrappers/windows/winnetwk_wrappers.h"
 #include "unit_tests/wrappers/windows/stat64_wrappers.h"
+#include "unit_tests/wrappers/windows/processthreadsapi_wrappers.h"
 #endif
 #endif
 
@@ -432,6 +433,34 @@ HANDLE wCreateFile(LPCSTR   lpFileName,
                       dwCreationDisposition,
                       dwFlagsAndAttributes,
                       hTemplateFile);
+}
+
+BOOL wCreateProcessW(LPCWSTR               lpApplicationName,
+    	             LPWSTR                lpCommandLine,
+    	             LPSECURITY_ATTRIBUTES lpProcessAttributes,
+    	             LPSECURITY_ATTRIBUTES lpThreadAttributes,
+    	             BOOL                  bInheritHandles,
+    	             DWORD                 dwCreationFlags,
+    	             LPVOID                lpEnvironment,
+    	             LPCWSTR               lpCurrentDirectory,
+    	             LPSTARTUPINFOW        lpStartupInfo,
+    	             LPPROCESS_INFORMATION lpProcessInformation) {
+
+    if (is_network_path(lpCommandLine)) {
+        errno = EACCES;
+        mwarn(NETWORK_PATH_EXECUTED, lpCommandLine);
+        return (false);
+    }
+    return CreateProcessW(lpApplicationName,
+    	                  lpCommandLine,
+    	                  lpProcessAttributes,
+    	                  lpThreadAttributes,
+    	                  bInheritHandles,
+    	                  dwCreationFlags,
+    	                  lpEnvironment,
+    	                  lpCurrentDirectory,
+    	                  lpStartupInfo,
+    	                  lpProcessInformation);
 }
 
 int w_stat64(const char * pathname,

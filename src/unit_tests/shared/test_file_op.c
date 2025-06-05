@@ -1272,6 +1272,29 @@ void test_wCreateFile_network_path(void **state) {
     assert_int_equal(errno, EACCES);
 }
 
+void test_wCreateProcessW_local_path(void **state) {
+    errno = 0;
+    char *path = "C:\\file.txt";
+
+    expect_string(wrap_CreateProcessW, lpCommandLine, path);
+    will_return(wrap_CreateProcessW, TRUE);
+
+    bool ret = wCreateProcessW(NULL, path, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+    assert_true(ret);
+    assert_int_equal(errno, 0);
+}
+
+void test_wCreateProcessW_network_path(void **state) {
+    errno = 0;
+    char *path = "Z:\\file.txt";
+
+    expect_string(__wrap__mwarn, formatted_msg, "(9800): File access denied. Network path usage is not allowed: 'Z:\\file.txt'.");
+
+    bool ret = wCreateProcessW(NULL, path, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+    assert_false(ret);
+    assert_int_equal(errno, EACCES);
+}
+
 void test_wopendir_local_path(void **state) {
     errno = 0;
     char *path = "C:\\file.txt";
@@ -1412,6 +1435,8 @@ int main(void) {
         cmocka_unit_test(test_waccess_network_path),
         cmocka_unit_test(test_wCreateFile_local_path),
         cmocka_unit_test(test_wCreateFile_network_path),
+        cmocka_unit_test(test_wCreateProcessW_local_path),
+        cmocka_unit_test(test_wCreateProcessW_network_path),
         cmocka_unit_test(test_wopendir_local_path),
         cmocka_unit_test(test_wopendir_network_path),
         cmocka_unit_test(test_w_stat_local_path),
