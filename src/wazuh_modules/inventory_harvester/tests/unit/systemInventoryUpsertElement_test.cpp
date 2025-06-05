@@ -322,12 +322,13 @@ TEST_F(SystemInventoryUpsertElement, emptyBoardId_Hw)
     EXPECT_CALL(*context, cpuFrequency()).WillOnce(testing::Return(2497));
     EXPECT_CALL(*context, freeMem()).WillRepeatedly(testing::Return(50));
     EXPECT_CALL(*context, totalMem()).WillRepeatedly(testing::Return(100));
+    EXPECT_CALL(*context, usedMem()).WillRepeatedly(testing::Return(0.5));
 
     EXPECT_NO_THROW(upsertElement->handleRequest(context));
 
     EXPECT_EQ(
         context->m_serializedElement,
-        R"({"id":"001_unknown","operation":"INSERTED","data":{"host":{"cpu":{"cores":2,"name":"cpuName","speed":2497},"memory":{"free":50,"total":100,"used":50},"serial_number":"unknown"},"agent":{"id":"001","name":"agentName","host":{"ip":"agentIp"},"version":"agentVersion"},"wazuh":{"cluster":{"name":"clusterName"},"schema":{"version":"1.0"}}}})");
+        R"({"id":"001_unknown","operation":"INSERTED","data":{"host":{"cpu":{"cores":2,"name":"cpuName","speed":2497},"memory":{"free":50,"total":100,"used":50,"used_percentage":0.5},"serial_number":"unknown"},"agent":{"id":"001","name":"agentName","host":{"ip":"agentIp"},"version":"agentVersion"},"wazuh":{"cluster":{"name":"clusterName"},"schema":{"version":"1.0"}}}})");
 }
 
 TEST_F(SystemInventoryUpsertElement, validAgentID_Hw)
@@ -346,12 +347,13 @@ TEST_F(SystemInventoryUpsertElement, validAgentID_Hw)
     EXPECT_CALL(*context, cpuFrequency()).WillOnce(testing::Return(2497));
     EXPECT_CALL(*context, freeMem()).WillRepeatedly(testing::Return(50));
     EXPECT_CALL(*context, totalMem()).WillRepeatedly(testing::Return(100));
+    EXPECT_CALL(*context, usedMem()).WillRepeatedly(testing::Return(0.5));
 
     EXPECT_NO_THROW(upsertElement->handleRequest(context));
 
     EXPECT_EQ(
         context->m_serializedElement,
-        R"({"id":"001_boardInfo","operation":"INSERTED","data":{"host":{"cpu":{"cores":2,"name":"cpuName","speed":2497},"memory":{"free":50,"total":100,"used":50},"serial_number":"boardInfo"},"agent":{"id":"001","name":"agentName","host":{"ip":"agentIp"},"version":"agentVersion"},"wazuh":{"cluster":{"name":"clusterName"},"schema":{"version":"1.0"}}}})");
+        R"({"id":"001_boardInfo","operation":"INSERTED","data":{"host":{"cpu":{"cores":2,"name":"cpuName","speed":2497},"memory":{"free":50,"total":100,"used":50,"used_percentage":0.5},"serial_number":"boardInfo"},"agent":{"id":"001","name":"agentName","host":{"ip":"agentIp"},"version":"agentVersion"},"wazuh":{"cluster":{"name":"clusterName"},"schema":{"version":"1.0"}}}})");
 }
 
 /*

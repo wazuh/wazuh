@@ -12,6 +12,7 @@
 #ifndef _MOCK_SYSTEM_CONTEXT_HPP
 #define _MOCK_SYSTEM_CONTEXT_HPP
 
+#include "gmock/gmock-function-mocker.h"
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -115,6 +116,7 @@ public:
     MOCK_METHOD(int64_t, cpuFrequency, (), (const));
     MOCK_METHOD(int64_t, freeMem, (), (const));
     MOCK_METHOD(int64_t, totalMem, (), (const));
+    MOCK_METHOD(double, usedMem, (), (const));
     MOCK_METHOD(std::string_view, netProtoIface, (), (const));
     MOCK_METHOD(std::string_view, netProtoType, (), (const));
     MOCK_METHOD(std::string_view, netProtoGateway, (), (const));
