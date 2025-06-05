@@ -78,6 +78,15 @@ CheckModuleIsEnabled(){
     echo ${is_disabled}
 }
 
+WazuhPreUpgrade(){
+    mkdir -p $PREINSTALLEDDIR/tmp
+
+    if [ "X$1" = "Xserver" ]; then
+        # Get current CDB lists
+        find $PREINSTALLEDDIR/etc/lists/ -type f -exec realpath --relative-to=$PREINSTALLEDDIR --no-symlinks -- {} \; > $PREINSTALLEDDIR/tmp/lists.old.manifest
+    fi
+}
+
 WazuhUpgrade()
 {
     # Encode Agentd passlist if not encoded
@@ -234,5 +243,13 @@ WazuhUpgrade()
 
         . ./src/init/update-indexer.sh
         updateIndexerTemplate "$OSSEC_CONF_PATH" "$INDEXER_TEMPLATE_PATH"
+
+        # Add new CDB lists into configuration
+        if [ -f $PREINSTALLEDDIR/tmp/lists.old.manifest ]; then
+            . ./src/init/update-ruleset-lists.sh
+            find $PREINSTALLEDDIR/etc/lists/ -type f -exec realpath --relative-to=$PREINSTALLEDDIR --no-symlinks -- {} \; > $PREINSTALLEDDIR/tmp/lists.new.manifest
+            updateRulesetLists "$OSSEC_CONF_PATH" $PREINSTALLEDDIR/tmp/lists.old.manifest $PREINSTALLEDDIR/tmp/lists.new.manifest
+            rm $PREINSTALLEDDIR/tmp/lists.*.manifest
+        fi
     fi
 }
