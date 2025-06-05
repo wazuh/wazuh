@@ -359,6 +359,14 @@ void Syscollector::registerWithRsync()
                                   nlohmann::json::parse(GROUPS_SYNC_CONFIG_STATEMENT),
                                   reportSyncWrapper);
     }
+    if (m_users)
+    {
+        m_spRsync->registerSyncID("syscollector_users",
+                                  m_spDBSync->handle(),
+                                  nlohmann::json::parse(USERS_SYNC_CONFIG_STATEMENT),
+                                  reportSyncWrapper);
+    }
+
 }
 void Syscollector::init(const std::shared_ptr<ISysInfo>& spInfo,
                         const std::function<void(const std::string&)> reportDiffFunction,
@@ -780,9 +788,15 @@ nlohmann::json Syscollector::getGroupsData()
 
 nlohmann::json Syscollector::getUsersData()
 {
-    nlohmann::json ret;
-    auto data = m_spInfo->users();
-    return data;
+    auto allUsers = m_spInfo->users();
+
+    for (auto& user : allUsers)
+    {
+        // TODO: Check correct checksum implementation.
+        user["checksum"] = getItemChecksum(user);
+    }
+
+    return allUsers;
 }
 
 void Syscollector::scanPorts()
@@ -875,7 +889,7 @@ void Syscollector::scanUsers()
 
 void Syscollector::syncUsers()
 {
-    // m_spRsync->startSyusers(m_spDBSync->handle(), nlohmann::json::parse(PORTS_START_CONFIG_STATEMENT), m_reportSyncFunction);
+    m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(USERS_START_CONFIG_STATEMENT), m_reportSyncFunction);
 }
 
 void Syscollector::scan()
@@ -907,6 +921,7 @@ void Syscollector::sync()
     TRY_CATCH_TASK(syncPorts);
     TRY_CATCH_TASK(syncProcesses);
     TRY_CATCH_TASK(syncGroups);
+    TRY_CATCH_TASK(syncUsers);
     m_logFunction(LOG_DEBUG, "Ending syscollector sync");
 }
 
