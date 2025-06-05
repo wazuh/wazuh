@@ -367,8 +367,8 @@ std::enable_if_t<IsReflectable<T>::value, void> serializeToJSON(const T& obj, st
                                         !std::is_same_v<bool, std::decay_t<decltype(data)>>)
                      {
 
-                         auto [ptr, ec] = std::to_chars(buffer, buffer + sizeof(buffer), data);
-                         if (ec == std::errc())
+                         int len = std::snprintf(buffer, sizeof(buffer), "%g", data);
+                         if (len > 0 && len < static_cast<int>(sizeof(buffer)))
                          {
                              json.append(buffer);
                          }
