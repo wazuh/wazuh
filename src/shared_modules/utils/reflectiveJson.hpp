@@ -25,7 +25,7 @@
 #include <vector>
 
 constexpr auto DEFAULT_INT_VALUE = INT64_MIN;
-constexpr auto DEFAULT_DOUBLE_VALUE = -1.0;
+constexpr auto DEFAULT_DOUBLE_VALUE = 0.0;
 constexpr auto CHAR_SIZE {256};
 constexpr auto BUFFER_SIZE {32};
 
@@ -362,15 +362,28 @@ std::enable_if_t<IsReflectable<T>::value, void> serializeToJSON(const T& obj, st
                          }
                          json.push_back('"');
                      }
-                     else if constexpr ((std::is_arithmetic_v<std::decay_t<decltype(data)>> ||
-                                         std::is_same_v<double, std::decay_t<decltype(data)>>) &&
-                                        !std::is_same_v<bool, std::decay_t<decltype(data)>>)
+                     else if constexpr (std::is_same_v<double, std::decay_t<decltype(data)>>)
                      {
-
+                         // Special case: GCC 9.4 doesn't support std::to_chars(double), so we use snprintf
                          int len = std::snprintf(buffer, sizeof(buffer), "%g", data);
                          if (len > 0 && len < static_cast<int>(sizeof(buffer)))
                          {
                              json.append(buffer);
+                         }
+                         else
+                         {
+                             json.append("0");
+                         }
+                         std::fill(buffer, buffer + sizeof(buffer), '\0');
+                     }
+                     else if constexpr (std::is_arithmetic_v<std::decay_t<decltype(data)>> &&
+                                        !std::is_same_v<bool, std::decay_t<decltype(data)>>)
+                     {
+                         // Use to_chars for ints/floats where supported
+                         auto [ptr, ec] = std::to_chars(buffer, buffer + sizeof(buffer), data);
+                         if (ec == std::errc())
+                         {
+                             json.append(buffer, ptr);
                          }
                          else
                          {
@@ -565,15 +578,28 @@ std::enable_if_t<IsReflectable<T>::value, std::string> serializeToJSON(const T& 
                          }
                          json.push_back('"');
                      }
-                     else if constexpr ((std::is_arithmetic_v<std::decay_t<decltype(data)>> ||
-                                         std::is_same_v<double, std::decay_t<decltype(data)>>) &&
-                                        !std::is_same_v<bool, std::decay_t<decltype(data)>>)
+                     else if constexpr (std::is_same_v<double, std::decay_t<decltype(data)>>)
                      {
-
+                         // Special case: GCC 9.4 doesn't support std::to_chars(double), so we use snprintf
                          int len = std::snprintf(buffer, sizeof(buffer), "%g", data);
                          if (len > 0 && len < static_cast<int>(sizeof(buffer)))
                          {
                              json.append(buffer);
+                         }
+                         else
+                         {
+                             json.append("0");
+                         }
+                         std::fill(buffer, buffer + sizeof(buffer), '\0');
+                     }
+                     else if constexpr (std::is_arithmetic_v<std::decay_t<decltype(data)>> &&
+                                        !std::is_same_v<bool, std::decay_t<decltype(data)>>)
+                     {
+                         // Use to_chars for ints/floats where supported
+                         auto [ptr, ec] = std::to_chars(buffer, buffer + sizeof(buffer), data);
+                         if (ec == std::errc())
+                         {
+                             json.append(buffer, ptr);
                          }
                          else
                          {
