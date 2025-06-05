@@ -12,9 +12,9 @@ assignees: ''
 |---|---|
 | Issue number | Issue number|
 
-| Agent tier | Central components support | OS type |
-|-|-|-|
-| 1/2/3 | Yes/No | New family/Major/Minor |
+| Agent tier | Central components support | OS type | Architectures |
+|-|-|-|-|
+| 1/2/3 | Yes/No | New family/Major/Minor | AMD64/ARM64 |
 
 # Plan
 
@@ -24,7 +24,7 @@ assignees: ''
 ## Considerations
 
 - Testing environment: Deploy the new OS taking into account the following notes:
-  - If the Wazuh central components are supported: 1 VM
+  - If the Wazuh central components are supported: 1 VM for each architecture supported.
   - If the Wazuh agent is supported: 1 VM for each architecture supported.
   - If the Wazuh central components or the Wazuh agent is not supported, deploy a Debian 12 VM for the non-supported component.
 - All testing tasks must be completed for each OS architecture supported.
@@ -42,7 +42,7 @@ assignees: ''
   - [ ] Add the OS and each architecture to the JobFlow testing tool.
   - [ ] Add the OS and each architecture to the GitHub Deployability and Upgrade release templates.
 - [ ] Add the OS and its supported architectures to the E2E UX Tests spreadsheet (OS sheet).
-- [ ] Add the OS as supported in the compatibility system spreadsheet.
+- [ ] Create an [issue](https://github.com/wazuh/internal-documentation-requests/issues/new?template=new-OSs-support-request.md) (using the new OSs template), for the documentation team to add support for the new OS version in the full support release version.
 -->
 
 <!-- Uncomment for CPPSERVER issue
