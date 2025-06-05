@@ -12,9 +12,9 @@ assignees: ''
 |---|---|
 | Issue number | Issue number|
 
-| Agent tier | Central components support | OS type |
-|-|-|-|
-| 1/2/3 | Yes/No | New family/Major/Minor |
+| Agent tier | Central components support | OS type | Architectures |
+|-|-|-|-|
+| 1/2/3 | Yes/No | New family/Major/Minor | AMD64/ARM64 |
 
 # Plan
 
@@ -41,13 +41,8 @@ assignees: ''
   - [ ] Test the JobFlow testing tool for that specific system.
   - [ ] Add the OS and each architecture to the JobFlow testing tool.
   - [ ] Add the OS and each architecture to the GitHub Deployability and Upgrade release templates.
-  - [ ] Add support to the upgrade test pipeline.
 - [ ] Add the OS and its supported architectures to the E2E UX Tests spreadsheet (OS sheet).
-- [ ] We need to add proper documentation, including adding the new OS version if it belongs to an OS family already added to these tables:
-  - https://documentation.wazuh.com/current/quickstart.html#operating-system
-  - https://documentation.wazuh.com/current/installation-guide/wazuh-server/index.html#recommended-operating-systems
-  - https://documentation.wazuh.com/current/installation-guide/wazuh-indexer/index.html#recommended-operating-systems
-  - https://documentation.wazuh.com/current/installation-guide/wazuh-dashboard/index.html#recommended-operating-systems	
+- [ ] Add the OS as supported in the compatibility system spreadsheet.
 -->
 
 <!-- Uncomment for CPPSERVER issue
