@@ -32,6 +32,8 @@ constexpr auto KByte
     1024
 };
 
+constexpr auto arraySeparator { ":" };
+
 class EXPORTED SysInfo: public ISysInfo
 {
     public:
