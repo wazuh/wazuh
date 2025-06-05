@@ -128,7 +128,7 @@ Install()
     fi
 
     if [ "X${update_only}" = "Xyes" ]; then
-        WazuhPreUpgrade
+        WazuhPreUpgrade $INSTYPE
     fi
 
     # Install
