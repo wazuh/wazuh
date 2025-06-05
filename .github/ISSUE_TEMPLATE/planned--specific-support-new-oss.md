@@ -42,7 +42,7 @@ assignees: ''
   - [ ] Add the OS and each architecture to the JobFlow testing tool.
   - [ ] Add the OS and each architecture to the GitHub Deployability and Upgrade release templates.
 - [ ] Add the OS and its supported architectures to the E2E UX Tests spreadsheet (OS sheet).
-- [ ] Add the OS as supported in the compatibility system spreadsheet.
+- [ ] Create an issue (using the new OSs template), for the documentation team to add support for the new OS version in the full support release version.
 -->
 
 <!-- Uncomment for CPPSERVER issue
