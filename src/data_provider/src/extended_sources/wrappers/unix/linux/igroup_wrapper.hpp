@@ -21,6 +21,28 @@ class IGroupWrapperLinux
         /// @brief Default constructor.
         virtual ~IGroupWrapperLinux() = default;
 
+        /// @brief Retrieves the group entry for a given group ID.
+        /// @param gid The group ID to search for.
+        /// @param resultbuf A pointer to a group structure where the result will be stored.
+        /// @param buffer A buffer to hold the string data for the group entry.
+        /// @param buflen The size of the buffer.
+        /// @param result A pointer to a group structure pointer that will point to the result.
+        /// @return 0 on success, or an error code on failure.
+        virtual int getgrgid_r(gid_t gid, struct group* resultbuf, char* buffer, size_t buflen, struct group** result) const = 0;
+
+        /// @brief Retrieves the group entry for a given group name.
+        /// @param resultbuf A pointer to a group structure where the result will be stored.
+        /// @param buffer A buffer to hold the string data for the group entry.
+        /// @param buflen The size of the buffer.
+        /// @param result A pointer to a group structure pointer that will point to the result.
+        virtual int getgrent_r(struct group* resultbuf, char* buffer, size_t buflen, struct group** result) const = 0;
+
+        /// @brief Rewind the group-file stream.
+        virtual void setgrent() const = 0;
+
+        /// @brief Close the group-file stream.
+        virtual void endgrent() const = 0;
+
         /// @brief Retrieves the list of groups for a user.
         /// @param user The username for which to retrieve the group list.
         /// @param group The primary group ID of the user.
