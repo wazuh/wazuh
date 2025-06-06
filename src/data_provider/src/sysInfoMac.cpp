@@ -29,6 +29,7 @@
 #include "osPrimitivesImplMac.h"
 #include "sqliteWrapperTemp.h"
 #include "packages/modernPackageDataRetriever.hpp"
+#include "groups_darwin.hpp"
 
 const std::string MAC_APPS_PATH{"/Applications"};
 const std::string MAC_UTILITIES_PATH{"/Applications/Utilities"};
@@ -464,6 +465,27 @@ nlohmann::json SysInfo::getHotfixes() const
 
 nlohmann::json SysInfo::getGroups() const
 {
-    //TODO: Pending implementation.
-    return nlohmann::json();
+    nlohmann::json result;
+
+    GroupsProvider groupsProvider;
+    auto collectedGroups = groupsProvider.collect({});
+
+    for (auto& group : collectedGroups)
+    {
+        nlohmann::json groupItem {};
+
+        groupItem["group_id"] = group["gid"];
+        groupItem["group_name"] = group["groupname"];
+        groupItem["group_description"] = group["comment"];
+        groupItem["group_id_signed"] = group["gid_signed"];
+        groupItem["group_uuid"] = nullptr;
+        groupItem["group_is_hidden"] = group["is_hidden"];
+        // TODO: collect group_users from users_groups collector
+        groupItem["group_users"] = nlohmann::json::array({"alice", "bob", "charlie"});
+
+        result.push_back(std::move(groupItem));
+
+    }
+
+    return result;
 }
