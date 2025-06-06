@@ -55,6 +55,13 @@ class PasswdWrapperLinux : public IPasswdWrapperLinux
             ::endpwent();
         }
 
+        /// @brief Retrieves the next entry from the passwd database.
+        /// @return A pointer to the next passwd structure, or nullptr if there are no more entries.
+        struct passwd* getpwent() override
+        {
+            return ::getpwent();
+        }
+
         /// @brief Retrieves the passwd entry for the given user ID.
         /// @param uid User ID to search.
         /// @param pwd Pointer to a passwd structure to fill.

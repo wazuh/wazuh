@@ -43,6 +43,13 @@ class GroupWrapperLinux : public IGroupWrapperLinux
             return ::getgrent_r(resultbuf, buffer, buflen, result);
         }
 
+        /// @brief Retrieves the next group entry from the group database.
+        /// @return A pointer to the next group structure, or nullptr if there are no more entries.
+        struct group* getgrent() const override
+        {
+            return ::getgrent();
+        }
+
         /// @brief Rewind the group-file stream.
         void setgrent() const override
         {

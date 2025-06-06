@@ -37,6 +37,10 @@ class IGroupWrapperLinux
         /// @param result A pointer to a group structure pointer that will point to the result.
         virtual int getgrent_r(struct group* resultbuf, char* buffer, size_t buflen, struct group** result) const = 0;
 
+        /// @brief Retrieves the next group entry from the group database.
+        /// @return A pointer to the next group structure, or nullptr if there are no more entries
+        virtual struct group* getgrent() const = 0;
+
         /// @brief Rewind the group-file stream.
         virtual void setgrent() const = 0;
 

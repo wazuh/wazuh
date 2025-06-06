@@ -31,6 +31,7 @@ class MockPasswdWrapper : public IPasswdWrapperLinux
         MOCK_METHOD(int, getpwent_r,
                     (struct passwd*, char*, size_t, struct passwd**), (override));
         MOCK_METHOD(void, endpwent, (), (override));
+        MOCK_METHOD(struct passwd*, getpwent, (), (override));
         MOCK_METHOD(int, getpwuid_r,
                     (uid_t, struct passwd*, char*, size_t, struct passwd**), (override));
         MOCK_METHOD(int, getpwnam_r,
