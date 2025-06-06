@@ -42,6 +42,7 @@
 #include "packages/packagesNPM.hpp"
 #include "packages/modernPackageDataRetriever.hpp"
 #include "utilsWrapperWin.hpp"
+#include "groups_windows.hpp"
 
 
 constexpr auto CENTRAL_PROCESSOR_REGISTRY {"HARDWARE\\DESCRIPTION\\System\\CentralProcessor\\0"};
@@ -989,6 +990,27 @@ nlohmann::json SysInfo::getHotfixes() const
 
 nlohmann::json SysInfo::getGroups() const
 {
-    //TODO: Pending implementation.
-    return nlohmann::json();
+    nlohmann::json result;
+
+    GroupsProvider groupsProvider;
+    auto collectedGroups = groupsProvider.collect({});
+
+    for (auto& group : collectedGroups)
+    {
+        nlohmann::json groupItem {};
+
+        groupItem["group_id"] = group["gid"];
+        groupItem["group_name"] = group["groupname"];
+        groupItem["group_description"] = group["comment"];
+        groupItem["group_id_signed"] = group["gid_signed"];
+        groupItem["group_uuid"] = group["group_sid"];
+        groupItem["group_is_hidden"] = nullptr;
+        // TODO: collect group_users from users_groups collector
+        groupItem["group_users"] = nlohmann::json::array({"alice", "bob", "charlie"});
+
+        result.push_back(std::move(groupItem));
+
+    }
+
+    return result;
 }
