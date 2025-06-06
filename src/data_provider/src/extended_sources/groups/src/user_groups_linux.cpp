@@ -47,7 +47,8 @@ nlohmann::json UserGroupsProvider::collect(const std::set<uid_t>& uids)
 
 nlohmann::json UserGroupsProvider::getGroupNamesByUid(const std::set<uid_t>& uids)
 {
-    nlohmann::json result = nlohmann::json::object();
+    const bool singleUid = (uids.size() == 1);
+    nlohmann::json result = singleUid ? nlohmann::json::array() : nlohmann::json::object();
     auto usersGroups = getUserGroups(uids);
 
     size_t bufSize = m_sysWrapper->sysconf(_SC_GETGR_R_SIZE_MAX);
@@ -73,7 +74,105 @@ nlohmann::json UserGroupsProvider::getGroupNamesByUid(const std::set<uid_t>& uid
             }
         }
 
-        result[std::to_string(uid)] = groupNames;
+        if (singleUid)
+        {
+            result = groupNames;
+        }
+        else
+        {
+            result[std::to_string(uid)] = groupNames;
+        }
+    }
+
+    return result;
+}
+
+nlohmann::json UserGroupsProvider::getUserNamesByGid(const std::set<gid_t>& gids)
+{
+    const bool allGroups = gids.empty();
+    const bool singleGid = (!allGroups && gids.size() == 1);
+    nlohmann::json result = singleGid ? nlohmann::json::array() : nlohmann::json::object();
+
+    size_t bufSize = m_sysWrapper->sysconf(_SC_GETPW_R_SIZE_MAX);
+
+    if (bufSize > MAX_GETPW_R_BUF_SIZE)
+    {
+        bufSize = MAX_GETPW_R_BUF_SIZE;
+    }
+
+    std::map<gid_t, std::set<std::string>> gidToUsernames;
+
+    if (allGroups)
+    {
+        struct group* grp = nullptr;
+        m_groupWrapper->setgrent();
+
+        while ((grp = m_groupWrapper->getgrent()) != nullptr)
+        {
+            gid_t gid = grp->gr_gid;
+            char** members = grp->gr_mem;
+
+            while (members && *members)
+            {
+                gidToUsernames[gid].insert(*members);
+                ++members;
+            }
+        }
+
+        m_groupWrapper->endgrent();
+    }
+    else
+    {
+        for (const auto& gid : gids)
+        {
+            struct group grp;
+            struct group* grpResult = nullptr;
+            auto groupBuf = std::make_unique<char[]>(bufSize);
+
+            if (m_groupWrapper->getgrgid_r(gid, &grp, groupBuf.get(), bufSize, &grpResult) == 0 && grpResult != nullptr)
+            {
+                char** members = grpResult->gr_mem;
+
+                while (members && *members)
+                {
+                    gidToUsernames[gid].insert(*members);
+                    ++members;
+                }
+            }
+        }
+    }
+
+    struct passwd* pwd = nullptr;
+
+    m_passwdWrapper->setpwent();
+
+    while ((pwd = m_passwdWrapper->getpwent()) != nullptr)
+    {
+        if (allGroups || gids.count(pwd->pw_gid))
+        {
+            gidToUsernames[pwd->pw_gid].insert(pwd->pw_name);
+        }
+    }
+
+    m_passwdWrapper->endpwent();
+
+    for (const auto& [gid, usernames] : gidToUsernames)
+    {
+        nlohmann::json jsonUsernames = nlohmann::json::array();
+
+        for (const auto& name : usernames)
+        {
+            jsonUsernames.push_back(name);
+        }
+
+        if (singleGid)
+        {
+            result = jsonUsernames;
+        }
+        else
+        {
+            result[std::to_string(gid)] = jsonUsernames;
+        }
     }
 
     return result;
