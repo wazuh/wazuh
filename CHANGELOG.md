@@ -5,6 +5,10 @@ All notable changes to this project will be documented in this file.
 
 ### Manager
 
+### Added
+
+- Added Analysisd ability to do a hot ruleset reload. ([#29458](https://github.com/wazuh/wazuh/pull/29458))
+
 #### Fixed
 - Fixed missing agent version handling in Vulnerability Detector. ([#29181](https://github.com/wazuh/wazuh/pull/29181))
 - Fixed race condition in agent status synchronization between worker and master. ([#29624](https://github.com/wazuh/wazuh/pull/29624))
@@ -16,6 +20,7 @@ All notable changes to this project will be documented in this file.
 - Improved Wazuh-DB protocol to support large HTTP requests and remove pagination. ([#29514](https://github.com/wazuh/wazuh/pull/29514))
 - Added HTTP client implementation to wazuh-db. ([#29515](https://github.com/wazuh/wazuh/pull/29515))
 - Separated control messages from the connection handling in remoted. ([29153](https://github.com/wazuh/wazuh/pull/29153))
+- Added capability to re-index CVEs if documents have changed in Vulnerability detector. ([#29916](https://github.com/wazuh/wazuh/pull/29916))
 
 ### Agent
 
@@ -36,12 +41,15 @@ All notable changes to this project will be documented in this file.
 - Improved agent synchronization to reduce redundant payload transfers. ([#29426](https://github.com/wazuh/wazuh/pull/29426))
 - Improved Syscollector to report only Python packages managed by `dpkg`. ([#28688](https://github.com/wazuh/wazuh/pull/28688))
 - Improved `wazuh-db` JSON handling performance by updating external dependencies. ([#29399](https://github.com/wazuh/wazuh/issues/29399))
+- Improved Azure module logging capabilities. ([#29930](https://github.com/wazuh/wazuh/pull/29930))
+- Improved restart on macOS agents after an upgrade. ([#29940](https://github.com/wazuh/wazuh/pull/29940))
 - Standarized different services timeouts. ([#29443](https://github.com/wazuh/wazuh/pull/29443))
 
 ### RESTful API
 
 #### Added
 - Added the server uuid to the /manager/info endpoint. ([#29524](https://github.com/wazuh/wazuh/pull/29524))
+- Added support for hot ruleset reload in the related API endpoints. ([#29954](https://github.com/wazuh/wazuh/pull/29954))
 
 #### Fixed
 
