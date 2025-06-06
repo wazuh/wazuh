@@ -43,6 +43,10 @@ class IPasswdWrapperLinux
         /// @brief Closes the passwd database.
         virtual void endpwent() = 0;
 
+        /// @brief Retrieves the next entry from the passwd database.
+        /// @return A pointer to the next passwd structure, or nullptr if there are no more entries.
+        virtual struct passwd* getpwent() = 0;
+
         /// @brief Retrieves the passwd entry for the given user ID.
         /// @param uid User ID to search.
         /// @param pwd Pointer to a passwd structure to fill.

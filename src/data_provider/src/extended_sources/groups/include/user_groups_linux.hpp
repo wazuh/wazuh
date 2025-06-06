@@ -49,7 +49,16 @@ class UserGroupsProvider
         /// @return A JSON object where keys are UIDs and values are arrays of group names associated with those UIDs.
         /// If a UID has no associated groups, the value will be an empty array.
         /// @note This method is useful for quickly mapping UIDs to their group names without retrieving full group details.
+        /// @note If `uids` is empty, it retrieves group names for all users.
         nlohmann::json getGroupNamesByUid(const std::set<uid_t>& uids = {});
+
+        /// @brief Retrieves usernames associated with the specified GIDs.
+        /// @param gids A set of group IDs (GIDs) for which to retrieve usernames.
+        /// @return A JSON object where keys are GIDs and values are arrays of usernames associated with those GIDs.
+        /// If a GID has no associated usernames, the value will be an empty array.
+        /// @note This method is useful for quickly mapping GIDs to their usernames without retrieving full user details.
+        /// @note If `gids` is empty, it retrieves usernames for all groups.
+        nlohmann::json getUserNamesByGid(const std::set<gid_t>& gids = {});
 
     private:
         std::shared_ptr<IGroupWrapperLinux> m_groupWrapper;
