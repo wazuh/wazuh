@@ -1012,7 +1012,7 @@ InstallCommon()
         find ${INSTALLDIR}/usr/share/lib/zoneinfo/ -type f -exec chmod 0640 {} +
     fi
 
-    ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} -b ../etc/internal_options.conf ${INSTALLDIR}/etc/
+    ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} -S .bak -b ../etc/internal_options.conf ${INSTALLDIR}/etc/
     ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} wazuh_modules/syscollector/norm_config.json ${INSTALLDIR}/queue/syscollector
 
     if [ ! -f ${INSTALLDIR}/etc/local_internal_options.conf ]; then
@@ -1111,34 +1111,34 @@ InstallLocal()
     ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/ruleset/decoders
     ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/ruleset/rules
 
-    ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} -b ../ruleset/rules/*.xml ${INSTALLDIR}/ruleset/rules
-    ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} -b ../ruleset/decoders/*.xml ${INSTALLDIR}/ruleset/decoders
+    ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} -S .bak -b ../ruleset/rules/*.xml ${INSTALLDIR}/ruleset/rules
+    ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} -S .bak -b ../ruleset/decoders/*.xml ${INSTALLDIR}/ruleset/decoders
     ${INSTALL} -m 0660 -o root -g ${WAZUH_GROUP} ../ruleset/rootcheck/db/*.txt ${INSTALLDIR}/etc/rootcheck
 
     InstallSecurityConfigurationAssessmentFiles "manager"
 
     if [ ! -f ${INSTALLDIR}/etc/decoders/local_decoder.xml ]; then
-        ${INSTALL} -m 0660 -o ${WAZUH_USER} -g ${WAZUH_GROUP} -b ../etc/local_decoder.xml ${INSTALLDIR}/etc/decoders/local_decoder.xml
+        ${INSTALL} -m 0660 -o ${WAZUH_USER} -g ${WAZUH_GROUP} -S .bak -b ../etc/local_decoder.xml ${INSTALLDIR}/etc/decoders/local_decoder.xml
     fi
     if [ ! -f ${INSTALLDIR}/etc/rules/local_rules.xml ]; then
-        ${INSTALL} -m 0660 -o ${WAZUH_USER} -g ${WAZUH_GROUP} -b ../etc/local_rules.xml ${INSTALLDIR}/etc/rules/local_rules.xml
+        ${INSTALL} -m 0660 -o ${WAZUH_USER} -g ${WAZUH_GROUP} -S .bak -b ../etc/local_rules.xml ${INSTALLDIR}/etc/rules/local_rules.xml
     fi
     if [ ! -f ${INSTALLDIR}/etc/lists ]; then
         ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/etc/lists
     fi
     if [ ! -f ${INSTALLDIR}/etc/lists/amazon ]; then
         ${INSTALL} -d -m 0770 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/etc/lists/amazon
-        ${INSTALL} -m 0660 -o ${WAZUH_USER} -g ${WAZUH_GROUP} -b ../ruleset/lists/amazon/* ${INSTALLDIR}/etc/lists/amazon/
+        ${INSTALL} -m 0660 -o ${WAZUH_USER} -g ${WAZUH_GROUP} -S .bak -b ../ruleset/lists/amazon/* ${INSTALLDIR}/etc/lists/amazon/
     fi
     if [ ! -f ${INSTALLDIR}/etc/lists/audit-keys ]; then
-        ${INSTALL} -m 0660 -o ${WAZUH_USER} -g ${WAZUH_GROUP} -b ../ruleset/lists/audit-keys ${INSTALLDIR}/etc/lists/audit-keys
+        ${INSTALL} -m 0660 -o ${WAZUH_USER} -g ${WAZUH_GROUP} -S .bak -b ../ruleset/lists/audit-keys ${INSTALLDIR}/etc/lists/audit-keys
     fi
     if [ ! -f ${INSTALLDIR}/etc/lists/malicious-ioc/malicious-ip ]; then
         ${INSTALL} -d -m 0770 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/etc/lists/malicious-ioc
-        ${INSTALL} -m 0660 -o ${WAZUH_USER} -g ${WAZUH_GROUP} -b ../ruleset/lists/malicious-ioc/* ${INSTALLDIR}/etc/lists/malicious-ioc/
+        ${INSTALL} -m 0660 -o ${WAZUH_USER} -g ${WAZUH_GROUP} -S .bak -b ../ruleset/lists/malicious-ioc/* ${INSTALLDIR}/etc/lists/malicious-ioc/
     fi
     if [ ! -f ${INSTALLDIR}/etc/lists/security-eventchannel ]; then
-        ${INSTALL} -m 0660 -o ${WAZUH_USER} -g ${WAZUH_GROUP} -b ../ruleset/lists/security-eventchannel ${INSTALLDIR}/etc/lists/security-eventchannel
+        ${INSTALL} -m 0660 -o ${WAZUH_USER} -g ${WAZUH_GROUP} -S .bak -b ../ruleset/lists/security-eventchannel ${INSTALLDIR}/etc/lists/security-eventchannel
     fi
 
     ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/fts
