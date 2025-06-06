@@ -434,7 +434,7 @@ void w_create_group(char *group){
     }
     else{
         /* Check if group exists */
-        DIR *group_dir = opendir(group_path);
+        DIR *group_dir = wopendir(group_path);
 
         if (!group_dir) {
             /* Create the group */

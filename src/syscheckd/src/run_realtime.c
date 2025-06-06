@@ -673,7 +673,7 @@ int realtime_adddir(const char *dir, directory_t *configuration) {
 
     os_calloc(1, sizeof(win32rtfim), rtlocald);
 
-    rtlocald->h = CreateFile(dir, FILE_LIST_DIRECTORY, FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE, NULL,
+    rtlocald->h = wCreateFile(dir, FILE_LIST_DIRECTORY, FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE, NULL,
                              OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OVERLAPPED, NULL);
 
     if (rtlocald->h == INVALID_HANDLE_VALUE || rtlocald->h == NULL) {

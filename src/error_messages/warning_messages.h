@@ -19,7 +19,7 @@
 #define FIM_WARN_DELETE                         "(6901): Could not delete from filesystem '%s'"
 #define FIM_WARN_DELETE_HASH_TABLE              "(6902): Could not delete from hash table '%s'"
 #define FIM_WARN_SYMLINKS_UNSUPPORTED           "(6903) Links are not supported: '%s'"
-#define FIM_WARN_STAT_BROKEN_LINK               "(6904): Error in stat() function: %s. This may be caused by a broken symbolic link (%s)."
+#define FIM_WARN_STAT_BROKEN_LINK               "(6904): Error in w_stat() function: %s. This may be caused by a broken symbolic link (%s)."
 #define FIM_WARN_ALLOW_PREFILTER                "(6905): Ignoring prefilter option '%s'. Enable <%s> to use it."
 #define FIM_WARN_REALTIME_OVERFLOW              "(6906): Real time process: no data. Probably buffer overflow."
 #define FIM_WARN_REALTIME_OPENFAIL              "(6907): '%s' does not exist. Monitoring discarded."
@@ -168,4 +168,9 @@
                                                 " Default value (%s) will be used."
 #define REMOTED_INV_VALUE_DEFAULT               "(9004): Invalid value '%s' in '%s' option. " \
                                                 "Default value will be used."
+
+/* Other */
+#define NETWORK_PATH_EXECUTED           "(9800): File access denied. Network path usage is not allowed: '%s'."
+#define NETWORK_PATH_CONFIGURED         "(9801): Network path not allowed in configuration. '%s': %s."
+
 #endif /* WARN_MESSAGES_H */

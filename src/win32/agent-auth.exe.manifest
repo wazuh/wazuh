@@ -23,6 +23,7 @@
  <file name="rsaenh.dll" loadFrom="%windir%\System32\rsaenh.dll"></file>
  <file name="userenv.dll" loadFrom="%windir%\System32\userenv.dll"></file>
  <file name="wintrust.dll" loadFrom="%windir%\System32\wintrust.dll"></file>
+ <file name="mpr.dll" loadFrom="%windir%\System32\mpr.dll"></file>
  <file name="ntmarta.dll" loadFrom="%windir%\System32\ntmarta.dll"></file>
  <file name="samlib.dll" loadFrom="%windir%\System32\samlib.dll"></file>
  <file name="uxtheme.dll" loadFrom="%windir%\System32\uxtheme.dll"></file>

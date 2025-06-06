@@ -70,7 +70,7 @@ void * w_rotate_log_thread(__attribute__((unused)) void * arg) {
         }
 
         if (size_rotate > 0) {
-            if (stat(path, &buf) == 0) {
+            if (w_stat(path, &buf) == 0) {
                 size = buf.st_size;
                 /* If log file reachs maximum size, rotate ossec.log */
                 if ( (unsigned long) size >= size_rotate) {
@@ -78,7 +78,7 @@ void * w_rotate_log_thread(__attribute__((unused)) void * arg) {
                 }
             }
 
-            if (stat(path_json, &buf) == 0) {
+            if (w_stat(path_json, &buf) == 0) {
                 size = buf.st_size;
                 /* If log file reachs maximum size, rotate ossec.json */
                 if ( (unsigned long) size >= size_rotate) {

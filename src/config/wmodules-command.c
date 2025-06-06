@@ -96,7 +96,13 @@ int wm_command_read(xml_node **nodes, wmodule *module, int agent_cfg)
                 merror("Empty content for tag '%s' at module '%s'.", XML_COMMAND, WM_COMMAND_CONTEXT.name);
                 return OS_INVALID;
             }
-
+#ifdef WIN32
+            if (is_network_path(nodes[i]->content)) {
+                merror(NETWORK_PATH_CONFIGURED, nodes[i]->element, nodes[i]->content);
+                command->enabled = 0;
+                return 0;
+            }
+#endif
             free(command->command);
             os_strdup(nodes[i]->content, command->command);
         } else if (!strcmp(nodes[i]->element, XML_RUN_ON_START)) {
@@ -161,7 +167,7 @@ int wm_command_read(xml_node **nodes, wmodule *module, int agent_cfg)
         } else if (is_sched_tag(nodes[i]->element)) {
             // Do nothing
         } else {
-            merror("No such tag '%s' at module '%s'.", nodes[i]->element, WM_COMMAND_CONTEXT.name);	
+            merror("No such tag '%s' at module '%s'.", nodes[i]->element, WM_COMMAND_CONTEXT.name);
             return OS_INVALID;
         }
     }

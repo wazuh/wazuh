@@ -92,7 +92,7 @@ int main(int argc, char **argv)
         } // while
     }//if
     else{
-        gdir = opendir(ar);
+        gdir = wopendir(ar);
         if (!gdir) {
             merror("Opening directory: '%s'", ar);
             return 1;
@@ -110,7 +110,7 @@ int main(int argc, char **argv)
                 break;
             }
 
-            subdir = opendir(path);
+            subdir = wopendir(path);
 
             if (!subdir) {
                 if (errno != ENOTDIR) {

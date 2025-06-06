@@ -1703,6 +1703,10 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
         else if (strcmp(node[i]->element, xml_directories) == 0) {
             char dirs[OS_MAXSTR];
 #ifdef WIN32
+            if (is_network_path(node[i]->content)) {
+                mwarn(NETWORK_PATH_CONFIGURED, node[i]->element, node[i]->content);
+                continue;
+            }
             fim_adjust_path(&(node[i]->content));
 #endif
             strncpy(dirs, node[i]->content, sizeof(dirs) - 1);
@@ -2051,7 +2055,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
                 if (NULL != (ix = strchr(statcmd, ' '))) {
                     *ix = '\0';
                 }
-                if (stat(statcmd, &statbuf) != 0) {
+                if (w_stat(statcmd, &statbuf) != 0) {
                     mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
                     return (OS_INVALID);
                 }

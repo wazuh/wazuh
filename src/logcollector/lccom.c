@@ -340,7 +340,7 @@ bool isJsonUpdated(void) {
     bool isJsonUpdated = false;
 
     /*should be reset index to the first page when some files are added or removed*/
-    if (stat(LOGCOLLECTOR_STATE, &outstat) == 0) {
+    if (w_stat(LOGCOLLECTOR_STATE, &outstat) == 0) {
         tm_stat = localtime(&outstat.st_mtime);
         /* Get localized date string. */
         strftime(date_string, sizeof(date_string), "%c", tm_stat);

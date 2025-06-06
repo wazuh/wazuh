@@ -260,10 +260,10 @@ static int read_sys_dir(const char *dir_name, int do_read)
 #endif
 
     /* Open the directory */
-    dp = opendir(dir_name);
+    dp = wopendir(dir_name);
     if (!dp) {
         if ((strcmp(dir_name, "") == 0) &&
-                (dp = opendir("/"))) {
+                (dp = wopendir("/"))) {
             /* ok */
         } else {
             return (-1);

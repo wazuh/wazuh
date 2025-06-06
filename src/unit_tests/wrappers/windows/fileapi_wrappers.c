@@ -135,3 +135,29 @@ BOOL wrap_FindNextFile(HANDLE hFindFile, LPWIN32_FIND_DATA lpFindFileData) {
     }
     return mock_type(BOOL);
 }
+
+UINT wrap_GetDriveTypeA(LPCSTR lpRootPathName) {
+    if (lpRootPathName == NULL) {
+        // If this parameter is NULL, the function uses the root of the current directory.
+        return DRIVE_FIXED;
+    }
+
+    if (strlen(lpRootPathName) == 3 && lpRootPathName[1] == ':' && lpRootPathName[2] == '\\') {
+        switch (lpRootPathName[0]) {
+            case 'A':
+                return DRIVE_REMOVABLE;
+            case 'C':
+                return DRIVE_FIXED;
+            case 'D':
+                return DRIVE_CDROM;
+            case 'R':
+                return DRIVE_RAMDISK;
+            case 'Z':
+                return DRIVE_REMOTE;
+            default:
+                return DRIVE_UNKNOWN;
+        }
+    }
+
+    return DRIVE_NO_ROOT_DIR;
+}

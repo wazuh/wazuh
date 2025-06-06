@@ -158,7 +158,7 @@ typedef int gid_t;
 typedef int socklen_t;
 #define sleep(x) Sleep((x) * 1000)
 #define srandom(x) srand(x)
-#define lstat(x,y) stat(x,y)
+#define lstat(x,y) w_stat(x,y)
 void WinSetError();
 typedef uint32_t u_int32_t;
 typedef uint16_t u_int16_t;

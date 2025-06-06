@@ -274,7 +274,7 @@ int wpk_verify_cert(X509 * cert, const char ** ca_store) {
 
         int r;
 
-        if (stat(ca_store[i], &statbuf) < 0) {
+        if (w_stat(ca_store[i], &statbuf) < 0) {
             merror(FSTAT_ERROR, ca_store[i], errno, strerror(errno));
             continue;
         }

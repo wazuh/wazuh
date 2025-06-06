@@ -110,7 +110,7 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
     sprintf(ruleset_path, "%s/", SECURITY_CONFIGURATION_ASSESSMENT_DIR);
     #endif
 
-    DIR *ruleset_dir = opendir(ruleset_path);
+    DIR *ruleset_dir = wopendir(ruleset_path);
     const int open_dir_errno = errno;
     if (ruleset_dir) {
         struct dirent *dir_entry;

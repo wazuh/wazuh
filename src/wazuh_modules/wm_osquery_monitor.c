@@ -231,7 +231,7 @@ int wm_osquery_check_logfile(const char * path, FILE * fp) {
         return -1;
     }
 
-    if (stat(path, &buf) < 0) {
+    if (w_stat(path, &buf) < 0) {
         return -1;
     }
 
@@ -239,7 +239,7 @@ int wm_osquery_check_logfile(const char * path, FILE * fp) {
     HANDLE hFile;
     BY_HANDLE_FILE_INFORMATION fileInfo;
 
-    if (hFile = CreateFile(path, GENERIC_READ, FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL), hFile == INVALID_HANDLE_VALUE) {
+    if (hFile = wCreateFile(path, GENERIC_READ, FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL), hFile == INVALID_HANDLE_VALUE) {
         return -1;
     }
 
@@ -307,7 +307,7 @@ void *Execute_Osquery(wm_osquery_monitor_t *osquery)
 
         // Check that the configuration file is valid
 
-        if (access(osquery->config_path, R_OK) < 0) {
+        if (waccess(osquery->config_path, R_OK) < 0) {
             mwarn("The configuration file '%s' is not accessible: %s (%d)", osquery->config_path, strerror(errno), errno);
             sleep(600);
             continue;
@@ -576,7 +576,7 @@ int wm_osquery_packs(wm_osquery_monitor_t *osquery)
         if (strcmp(osquery->packs[i]->name, "*")) {
             // Check if the file exists
 
-            if (access(osquery->packs[i]->path, R_OK) < 0) {
+            if (waccess(osquery->packs[i]->path, R_OK) < 0) {
                 mwarn("Possible invalid configuration: Pack file '%s' is not accessible: %s (%d)", osquery->packs[i]->path, strerror(errno), errno);
             }
         } else if (!strchr(osquery->packs[i]->path, '*')) {

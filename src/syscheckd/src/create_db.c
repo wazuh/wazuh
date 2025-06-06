@@ -687,7 +687,7 @@ void fim_checker(const char *path,
     }
 
     // Deleted file. Sending alert.
-    if (w_stat(path, &(evt_data->statbuf)) == -1) {
+    if (w_lstat(path, &(evt_data->statbuf)) == -1) {
         if(errno != ENOENT) {
             mdebug1(FIM_STAT_FAILED, path, errno, strerror(errno));
             return;
@@ -786,7 +786,7 @@ int fim_directory(const char *dir,
     }
 
     // Open the directory given
-    dp = opendir(dir);
+    dp = wopendir(dir);
 
     if (!dp) {
         mwarn(FIM_PATH_NOT_OPEN, dir, strerror(errno));
@@ -936,7 +936,7 @@ void fim_realtime_event(char *file) {
     struct stat file_stat;
 
     // If the file exists, generate add or modify events.
-    if (w_stat(file, &file_stat) >= 0) {
+    if (w_lstat(file, &file_stat) >= 0) {
         event_data_t evt_data = { .mode = FIM_REALTIME, .w_evt = NULL, .report_event = true };
 
         /* Need a sleep here to avoid triggering on vim
@@ -965,7 +965,7 @@ void fim_whodata_event(whodata_evt * w_evt) {
     struct stat file_stat;
 
     // If the file exists, generate add or modify events.
-    if(w_stat(w_evt->path, &file_stat) >= 0) {
+    if(w_lstat(w_evt->path, &file_stat) >= 0) {
         event_data_t evt_data = { .mode = FIM_WHODATA, .w_evt = w_evt, .report_event = true };
 
         fim_rt_delay();

@@ -33,7 +33,7 @@ int os_check_ads(const char *full_path)
     DWORD dwRead, shs, dw1, dw2;
 
     /* Open file */
-    file_h = CreateFile(full_path,
+    file_h = wCreateFile(full_path,
                         GENERIC_READ,
                         FILE_SHARE_READ,
                         NULL,

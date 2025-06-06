@@ -103,7 +103,7 @@ int main(int argc, char **argv)
         DIR *daily;
         struct dirent *entry = NULL;
 
-        daily = opendir(daily_dir);
+        daily = wopendir(daily_dir);
         if (!daily) {
             merror_exit("Unable to open: '%s'", daily_dir);
         }
@@ -136,7 +136,7 @@ int main(int argc, char **argv)
             struct dirent *entry = NULL;
 
             snprintf(dir_path, PATH_MAX, "%s/%d", daily_dir, i);
-            daily = opendir(dir_path);
+            daily = wopendir(dir_path);
             if (!daily) {
                 merror_exit("Unable to open: '%s' (no stats)", dir_path);
             }

@@ -103,7 +103,7 @@ int main (int argc, char **argv) {
         char *exec_cmd4[4] = { pfctl_path, "-f", PFCTL_RULES, NULL };
 
         // Checking if we have pf config file
-        if (access(PFCTL_RULES, F_OK) == 0) {
+        if (waccess(PFCTL_RULES, F_OK) == 0) {
             if (action == ADD_COMMAND) {
                 const char *arg1[7] = { pfctl_path, "-t", PFCTL_TABLE, "-T", "add", srcip, NULL };
                 memcpy(exec_cmd1, arg1, sizeof(exec_cmd1));
@@ -116,7 +116,7 @@ int main (int argc, char **argv) {
             }
 
             // Checking if pf is running
-            if (access(DEVPF, F_OK) < 0) {
+            if (waccess(DEVPF, F_OK) < 0) {
                 memset(log_msg, '\0', OS_MAXSTR);
                 snprintf(log_msg, OS_MAXSTR - 1, "The file '%s' is not accessible", DEVPF);
                 write_debug_file(argv[0], log_msg);

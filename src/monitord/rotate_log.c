@@ -196,7 +196,7 @@ void remove_old_logs(const char *base_dir, int keep_log_days) {
     DIR *dir;
     struct dirent *dirent = NULL;
 
-    if (dir = opendir(base_dir), !dir) {
+    if (dir = wopendir(base_dir), !dir) {
         merror("Couldn't open directory '%s' to delete old logs: %s", base_dir, strerror(errno));
         return;
     }
@@ -225,7 +225,7 @@ void remove_old_logs_y(const char * base_dir, int year, time_t threshold) {
     DIR *dir;
     struct dirent *dirent = NULL;
 
-    if (dir = opendir(base_dir), !dir) {
+    if (dir = wopendir(base_dir), !dir) {
         merror("Couldn't open directory '%s' to delete old logs: %s", base_dir, strerror(errno));
         return;
     }
@@ -274,7 +274,7 @@ void remove_old_logs_m(const char * base_dir, int year, int month, time_t thresh
     tm.tm_min = 0;
     tm.tm_sec = 0;
 
-    if (dir = opendir(base_dir), !dir) {
+    if (dir = wopendir(base_dir), !dir) {
         merror("Couldn't open directory '%s' to delete old logs: %s", base_dir, strerror(errno));
         return;
     }

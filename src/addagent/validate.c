@@ -576,7 +576,7 @@ int print_agents(int print_status, int active_only, int inactive_only, int csv_o
             printf("\nList of agentless devices:\n");
         }
 
-        dirp = opendir(AGENTLESS_ENTRYDIR);
+        dirp = wopendir(AGENTLESS_ENTRYDIR);
         if (dirp) {
             while ((dp = readdir(dirp)) != NULL) {
                 if (strncmp(dp->d_name, ".", 1) == 0) {

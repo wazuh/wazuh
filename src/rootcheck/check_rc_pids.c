@@ -47,15 +47,15 @@ static int proc_opendir(int pid)
     if (noproc) {
         return (0);
     }
-    
-    dp  = opendir("/proc");
+
+    dp  = wopendir("/proc");
     if (!dp) {
         return 0;
     }
     closedir(dp);
-    
+
     snprintf(dir, OS_SIZE_1024, "/proc/%d", pid);
-    dp  = opendir(dir);
+    dp  = wopendir(dir);
     if (!dp) {
         return 0;
     }

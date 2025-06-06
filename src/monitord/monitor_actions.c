@@ -170,7 +170,7 @@ void monitor_logs(bool check_logs_size, char path[PATH_MAX], char path_json[PATH
         w_rotate_log(mond.compress, mond.keep_log_days, 1, 0, mond.daily_rotations);
 
     } else if (check_logs_size == TRUE && mond.rotate_log && mond.size_rotate > 0){
-        if (stat(path, &buf) == 0) {
+        if (w_stat(path, &buf) == 0) {
             size = buf.st_size;
             /* If log file reachs maximum size, rotate ossec.log */
             if ( (unsigned long) size >= mond.size_rotate) {
@@ -178,7 +178,7 @@ void monitor_logs(bool check_logs_size, char path[PATH_MAX], char path_json[PATH
             }
         }
 
-        if (stat(path_json, &buf) == 0) {
+        if (w_stat(path_json, &buf) == 0) {
             size = buf.st_size;
             /* If log file reachs maximum size, rotate ossec.json */
             if ( (unsigned long) size >= mond.size_rotate) {

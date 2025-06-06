@@ -269,7 +269,7 @@ int audit_manage_rules(int action, const char *path, int permissions, const char
     // Check path
     type = AUDIT_DIR;
 
-    if (stat(path, &buf) != 0) {
+    if (w_stat(path, &buf) != 0) {
         mdebug2(FIM_STAT_FAILED, path, errno, strerror(errno));
         retval = -1;
         goto end;

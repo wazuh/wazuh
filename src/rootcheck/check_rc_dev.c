@@ -101,7 +101,7 @@ static int read_dev_dir(const char *dir_name)
     }
 
     /* Open directory */
-    dp = opendir(dir_name);
+    dp = wopendir(dir_name);
     if (!dp) {
         return (-1);
     }
