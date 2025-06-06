@@ -61,6 +61,18 @@ class RealFileSystemT
         {
             return std::filesystem::is_directory(path);
         }
+
+        /**
+         * @brief Get the full path of a file
+         * @param relativePath Relative path to the file
+         * @param fileName Name of the file
+         * @details This function resolves the full path of a file based on the provided relative path and the file name.
+         * @return The full path of the file as a string.
+         */
+        static std::string resolvePath(const std::string & fileName, const std::string & relativePath)
+        {
+            return (std::filesystem::path(fileName).parent_path() / relativePath).string();
+        }
 };
 
 using RealFileSystem = RealFileSystemT<>;

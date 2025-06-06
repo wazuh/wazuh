@@ -189,6 +189,8 @@ else()
       "${CMAKE_SOURCE_DIR}/src/osinfo/sysOsParsers.cpp")
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
+#TODO: should use a define to disable this?
+add_subdirectory(src/extended_sources)
 
 add_library(sysinfo SHARED
     ${SYSINFO_SRC}
