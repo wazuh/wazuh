@@ -29,6 +29,7 @@
 #include "packages/berkeleyRpmDbHelper.h"
 #include "packages/packageLinuxDataRetriever.h"
 #include "linuxInfoHelper.h"
+#include "groups_linux.hpp"
 
 using ProcessInfo = std::unordered_map<int64_t, std::pair<int32_t, std::string>>;
 
@@ -619,19 +620,25 @@ nlohmann::json SysInfo::getGroups() const
 {
     nlohmann::json result;
 
-    //TODO: Pending implementation.
-    nlohmann::json groupItem {};
+    GroupsProvider groupsProvider;
+    auto collectedGroups = groupsProvider.collect({});
 
-    groupItem["group_id"] = 1000;
-    groupItem["group_name"] = "admin";
-    groupItem["group_description"] = "Administrative group";
-    groupItem["group_id_signed"] = 1000;
-    groupItem["group_uuid"] = "S-1-5-21-3623811015-3361044348-30300820-1013";
-    groupItem["group_is_hidden"] = false;
-    groupItem["group_namespace_pid"] = 1;
-    groupItem["group_users"] = nlohmann::json::array({"alice", "bob", "charlie"});
+    for (auto& group : collectedGroups)
+    {
+        nlohmann::json groupItem {};
 
-    result.push_back(std::move(groupItem));
+        groupItem["group_id"] = group["gid"];
+        groupItem["group_name"] = group["groupname"];
+        groupItem["group_description"] = nullptr;
+        groupItem["group_id_signed"] = group["gid_signed"];
+        groupItem["group_uuid"] = nullptr;
+        groupItem["group_is_hidden"] = nullptr;
+        // TODO: collect group_users from users_groups collector
+        groupItem["group_users"] = nlohmann::json::array({"alice", "bob", "charlie"});
+
+        result.push_back(std::move(groupItem));
+
+    }
 
     return result;
 }
