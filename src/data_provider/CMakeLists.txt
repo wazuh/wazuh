@@ -105,6 +105,11 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   include_directories(${CMAKE_SOURCE_DIR}/src/extended_sources/wrappers/windows/)
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
+if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+  include_directories(${CMAKE_SOURCE_DIR}/src/extended_sources/wrappers/unix/)
+  include_directories(${CMAKE_SOURCE_DIR}/src/extended_sources/wrappers/unix/darwin)
+endif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+
 link_directories(${SRC_FOLDER})
 link_directories(${SRC_FOLDER}/external/sqlite/)
 link_directories(${SRC_FOLDER}/external/cJSON/)
