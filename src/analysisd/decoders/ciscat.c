@@ -35,6 +35,20 @@ void CiscatInit(){
     mdebug1("CiscatInit completed.");
 }
 
+void CiscatHotReload()
+{
+    if (ciscat_decoder)
+    {
+        ciscat_decoder->id = getDecoderfromlist(CISCAT_MOD, &os_analysisd_decoder_store);
+        ciscat_decoder->fts = 0;
+        mdebug1("CiscatHotReload completed.");
+    }
+    else
+    {
+        mdebug1("Ciscat decoder not initialized.");
+    }
+}
+
 /* Special decoder for CIS-CAT events */
 int DecodeCiscat(Eventinfo *lf, int *socket)
 {

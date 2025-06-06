@@ -236,6 +236,20 @@ void SyscollectorInit(){
     mdebug1("SyscollectorInit completed.");
 }
 
+void SyscollectorHotReload()
+{
+    if (sysc_decoder)
+    {
+        sysc_decoder->id = getDecoderfromlist(SYSCOLLECTOR_MOD, &os_analysisd_decoder_store);
+        sysc_decoder->fts = 0;
+        mdebug1("SyscollectorHotReload completed.");
+    }
+    else
+    {
+        mdebug1("Syscollector decoder not initialized.");
+    }
+}
+
 /* Special decoder for syscollector */
 int DecodeSyscollector(Eventinfo *lf,int *socket)
 {

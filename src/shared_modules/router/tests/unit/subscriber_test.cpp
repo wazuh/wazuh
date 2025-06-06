@@ -9,13 +9,23 @@
  * Foundation.
  */
 
-#include "subscriber_test.hpp"
 #include "src/subscriber.hpp"
 #include <functional>
+#include <gtest/gtest.h>
 #include <iostream>
 #include <memory>
 #include <string>
 #include <vector>
+
+/**
+ * @brief Runs unit tests for Subscriber class
+ */
+class SubscriberTest : public ::testing::Test
+{
+protected:
+    SubscriberTest() = default;
+    ~SubscriberTest() override = default;
+};
 
 /*
  * @brief Test the instantiation of the Subscriber class

@@ -230,7 +230,7 @@ def load_dates_json() -> dict:
             contents = last_dates_default_contents
         return contents
     except (json.JSONDecodeError, OSError) as e:
-        logging.error(f'Error: The file of the last dates could not be read: {e}.')
+        logging.error(f'The file of the last dates could not be read: {e}.')
         raise e
 
 

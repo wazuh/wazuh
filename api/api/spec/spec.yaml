@@ -10554,6 +10554,9 @@ paths:
                           - etc/lists/audit-keys
                           - etc/lists/amazon/aws-eventnames
                           - etc/lists/security-eventchannel
+                          - etc/lists/malicious-ioc/malware-hashes
+                          - etc/lists/malicious-ioc/malicious-ip
+                          - etc/lists/malicious-ioc/malicious-domains
                       auth:
                         disabled: no
                         port: "1515"

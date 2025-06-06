@@ -73,11 +73,13 @@ public:
         // Ex: Any value greater than 0
         element.data.host.memory.total = data->totalMem();
 
-        // Ex: Any value greater than 0
-        element.data.host.memory.used = data->usedMem();
+        // Ex: Any value greater than 0. Calculated as total - free, check
+        // if the value is greater than 0, if not set it to 0.
+        auto usedMem = data->totalMem() - data->freeMem();
+        element.data.host.memory.used = (usedMem > 0) ? usedMem : 0;
 
         // Ex: AA320
-        element.data.observer.serial_number = boardId;
+        element.data.host.serial_number = boardId;
 
         auto& instancePolicyManager = PolicyHarvesterManager::instance();
         element.data.wazuh.cluster.name = instancePolicyManager.getClusterName();

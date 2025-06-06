@@ -19,12 +19,21 @@
 
 struct InventoryNetworkHarvester final
 {
+    struct Interface final
+    {
+        std::string_view name;
+
+        REFLECTABLE(MAKE_FIELD("name", &Interface::name));
+    };
+
+    Interface interface;
 
     Agent agent;
     NetworkAddress network;
     Wazuh wazuh;
 
     REFLECTABLE(MAKE_FIELD("network", &InventoryNetworkHarvester::network),
+                MAKE_FIELD("interface", &InventoryNetworkHarvester::interface),
                 MAKE_FIELD("agent", &InventoryNetworkHarvester::agent),
                 MAKE_FIELD("wazuh", &InventoryNetworkHarvester::wazuh));
 };

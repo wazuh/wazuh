@@ -66,7 +66,7 @@ public:
     {
         flatbuffers::FlatBufferBuilder builder;
         auto object = CreateMessageBufferDirect(
-            builder, reinterpret_cast<const std::vector<int8_t>*>(&message), type, Utils::getSecondsFromEpoch());
+            builder, reinterpret_cast<const std::vector<uint8_t>*>(&message), type, Utils::getSecondsFromEpoch());
 
         builder.Finish(object);
         auto bufferData = reinterpret_cast<const char*>(builder.GetBufferPointer());
@@ -85,7 +85,7 @@ public:
     {
         flatbuffers::FlatBufferBuilder builder;
         auto object = CreateMessageBufferDirect(
-            builder, reinterpret_cast<const std::vector<int8_t>*>(&message), type, Utils::getSecondsFromEpoch());
+            builder, reinterpret_cast<const std::vector<uint8_t>*>(&message), type, Utils::getSecondsFromEpoch());
 
         builder.Finish(object);
         auto bufferData = reinterpret_cast<const char*>(builder.GetBufferPointer());

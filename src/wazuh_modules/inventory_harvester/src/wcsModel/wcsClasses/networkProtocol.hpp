@@ -28,25 +28,4 @@ struct Network final
                 MAKE_FIELD("type", &Network::type));
 };
 
-struct Observer final
-{
-    struct _Ingress final
-    {
-        struct _Interface final
-        {
-            std::string_view name;
-
-            REFLECTABLE(MAKE_FIELD("name", &_Interface::name));
-        };
-
-        _Interface interface;
-
-        REFLECTABLE(MAKE_FIELD("interface", &_Ingress::interface));
-    };
-
-    _Ingress ingress;
-
-    REFLECTABLE(MAKE_FIELD("ingress", &Observer::ingress));
-};
-
 #endif // _NETWORK_PROTOCOL_WCS_MODEL_HPP

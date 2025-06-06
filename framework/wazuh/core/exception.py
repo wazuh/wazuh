@@ -179,6 +179,7 @@ class WazuhException(Exception):
                               f'{DOCU_VERSION}/user-manual/reference/ossec-conf/ruleset.html)'
                               ' to get more information about the rules'
                },
+        1212: {'message': 'Error sending Rules file update to Wazuh-Analysisd'},
 
         # Stats: 1300 - 1399
         1307: {'message': 'Invalid parameters',
@@ -260,6 +261,7 @@ class WazuhException(Exception):
                               f'{DOCU_VERSION}/user-manual/reference/ossec-conf/ruleset.html)'
                               ' to get more information about the decoders'
                },
+        1508: {'message': 'Error sending decoders files update to Wazuh-Analysisd'},
 
         # Syscheck/AR: 1600 - 1699
         1603: 'Invalid status. Valid statuses are: all, solved and outstanding',
@@ -386,6 +388,7 @@ class WazuhException(Exception):
                },
         1810: {'message': 'Upgrade module\'s reserved exception IDs (1810-1899). '
                           'The error message will be the output of upgrade module'},
+        1811: {'message': 'Error sending CDB list files update to Wazuh-Analysisd'},
 
         # Manager:
         1901: {'message': '\'execq\' socket has not been created'
@@ -433,6 +436,12 @@ class WazuhException(Exception):
                'remediation': 'Restart the Wazuh service to restore the RBAC database to default'},
         2009: {'message': 'Pagination error. Response from wazuh-db was over the maximum socket buffer size'},
         2010: {'message': 'The requested read operation did not complete fully'},
+        2011: {'message': 'Could not connect to the wazuh-db unix socket'},
+        2012: {'message': 'Invalid wazuh-db HTTP request'},
+        2013: {'message': 'Error sending HTTP request'},
+        2014: {'message': 'The wazuh-db client connection timeout has been exceeded'},
+        2015: {'message': 'Invalid request URL scheme'},
+        2016: {'message': 'Invalid unix socket path'},
 
         # External services
         2100: {'message': 'Error in CTI service request'},

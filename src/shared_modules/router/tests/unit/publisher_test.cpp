@@ -9,11 +9,21 @@
  * Foundation.
  */
 
-#include "publisher_test.hpp"
 #include "socketClient.hpp"
 #include "src/publisher.hpp"
+#include <gtest/gtest.h>
 #include <memory>
 #include <vector>
+
+/**
+ * @brief Runs unit tests for Publisher class
+ */
+class PublisherTest : public ::testing::Test
+{
+protected:
+    PublisherTest() = default;
+    ~PublisherTest() override = default;
+};
 
 /*
  * @brief Tests the instantiation of the Publisher class

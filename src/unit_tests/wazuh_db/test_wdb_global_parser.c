@@ -645,6 +645,10 @@ void test_wdb_parse_global_update_agent_data_query_error(void **state)
     \"test_config\",\"merged_sum\":\"test_merged\",\"manager_host\":\"test_manager\",\"node_name\":\"test_node\",\"agent_ip\":\"test_ip\",\
     \"connection_status\":\"active\",\"sync_status\":\"syncreq\",\"group_config_status\":\"synced\"}");
 
+    expect_value(__wrap_wdb_global_validate_sync_status, id, 1);
+    expect_string(__wrap_wdb_global_validate_sync_status, requested_sync_status, "syncreq");
+    will_return(__wrap_wdb_global_validate_sync_status, "syncreq");
+
     expect_value(__wrap_wdb_global_update_agent_version, id, 1);
     expect_string(__wrap_wdb_global_update_agent_version, os_name, "test_name");
     expect_string(__wrap_wdb_global_update_agent_version, os_version, "test_version");
@@ -747,6 +751,10 @@ void test_wdb_parse_global_update_agent_data_success(void **state)
     \"os_build\":\"test_build\",\"os_uname\":\"test_uname\",\"os_arch\":\"test_arch\",\"version\":\"test_version\",\"config_sum\":\
     \"test_config\",\"merged_sum\":\"test_merged\",\"manager_host\":\"test_manager\",\"node_name\":\"test_node\",\"agent_ip\":\"test_ip\",\
     \"connection_status\":\"active\",\"sync_status\":\"syncreq\",\"group_config_status\":\"not synced\"}");
+
+    expect_value(__wrap_wdb_global_validate_sync_status, id, 1);
+    expect_string(__wrap_wdb_global_validate_sync_status, requested_sync_status, "syncreq");
+    will_return(__wrap_wdb_global_validate_sync_status, "syncreq");
 
     expect_value(__wrap_wdb_global_update_agent_version, id, 1);
     expect_string(__wrap_wdb_global_update_agent_version, os_name, "test_name");
@@ -990,6 +998,11 @@ void test_wdb_parse_global_update_agent_keepalive_query_error(void **state)
     char query[OS_BUFFER_SIZE] = "global update-keepalive {\"id\":1,\"connection_status\":\"active\",\"sync_status\":\"syncreq\"}";
 
     will_return(__wrap_wdb_open_global, data->wdb);
+
+    expect_value(__wrap_wdb_global_validate_sync_status, id, 1);
+    expect_string(__wrap_wdb_global_validate_sync_status, requested_sync_status, "syncreq");
+    will_return(__wrap_wdb_global_validate_sync_status, "syncreq");
+
     expect_value(__wrap_wdb_global_update_agent_keepalive, id, 1);
     expect_string(__wrap_wdb_global_update_agent_keepalive, connection_status, "active");
     expect_string(__wrap_wdb_global_update_agent_keepalive, status, "syncreq");
@@ -1026,6 +1039,11 @@ void test_wdb_parse_global_update_agent_keepalive_success(void **state)
     char query[OS_BUFFER_SIZE] = "global update-keepalive {\"id\":1,\"connection_status\":\"active\",\"sync_status\":\"syncreq\"}";
 
     will_return(__wrap_wdb_open_global, data->wdb);
+
+    expect_value(__wrap_wdb_global_validate_sync_status, id, 1);
+    expect_string(__wrap_wdb_global_validate_sync_status, requested_sync_status, "syncreq");
+    will_return(__wrap_wdb_global_validate_sync_status, "syncreq");
+
     expect_value(__wrap_wdb_global_update_agent_keepalive, id, 1);
     expect_string(__wrap_wdb_global_update_agent_keepalive, connection_status, "active");
     expect_string(__wrap_wdb_global_update_agent_keepalive, status, "syncreq");
@@ -1149,6 +1167,11 @@ void test_wdb_parse_global_update_connection_status_query_error(void **state)
     char query[OS_BUFFER_SIZE] = "global update-connection-status {\"id\":1,\"connection_status\":\"active\",\"sync_status\":\"syncreq\",\"status_code\":0}";
 
     will_return(__wrap_wdb_open_global, data->wdb);
+
+    expect_value(__wrap_wdb_global_validate_sync_status, id, 1);
+    expect_string(__wrap_wdb_global_validate_sync_status, requested_sync_status, "syncreq");
+    will_return(__wrap_wdb_global_validate_sync_status, "syncreq");
+
     expect_value(__wrap_wdb_global_update_agent_connection_status, id, 1);
     expect_string(__wrap_wdb_global_update_agent_connection_status, connection_status, "active");
     expect_string(__wrap_wdb_global_update_agent_connection_status, sync_status, "syncreq");
@@ -1186,6 +1209,11 @@ void test_wdb_parse_global_update_connection_status_success(void **state)
     char query[OS_BUFFER_SIZE] = "global update-connection-status {\"id\":1,\"connection_status\":\"active\",\"sync_status\":\"syncreq\",\"status_code\":0}";
 
     will_return(__wrap_wdb_open_global, data->wdb);
+
+    expect_value(__wrap_wdb_global_validate_sync_status, id, 1);
+    expect_string(__wrap_wdb_global_validate_sync_status, requested_sync_status, "syncreq");
+    will_return(__wrap_wdb_global_validate_sync_status, "syncreq");
+
     expect_value(__wrap_wdb_global_update_agent_connection_status, id, 1);
     expect_string(__wrap_wdb_global_update_agent_connection_status, connection_status, "active");
     expect_string(__wrap_wdb_global_update_agent_connection_status, sync_status, "syncreq");
@@ -1310,6 +1338,11 @@ void test_wdb_parse_global_update_status_code_query_error(void **state)
     char query[OS_BUFFER_SIZE] = "global update-status-code {\"id\":1,\"status_code\":0,\"version\":\"v4.5.0\",\"sync_status\":\"syncreq\"}";
 
     will_return(__wrap_wdb_open_global, data->wdb);
+
+    expect_value(__wrap_wdb_global_validate_sync_status, id, 1);
+    expect_string(__wrap_wdb_global_validate_sync_status, requested_sync_status, "syncreq");
+    will_return(__wrap_wdb_global_validate_sync_status, "syncreq");
+
     expect_value(__wrap_wdb_global_update_agent_status_code, id, 1);
     expect_value(__wrap_wdb_global_update_agent_status_code, status_code, 0);
     expect_string(__wrap_wdb_global_update_agent_status_code, version, "v4.5.0");
@@ -1347,6 +1380,11 @@ void test_wdb_parse_global_update_status_code_success(void **state)
     char query[OS_BUFFER_SIZE] = "global update-status-code {\"id\":1,\"status_code\":0,\"version\":\"v4.5.0\",\"sync_status\":\"syncreq\"}";
 
     will_return(__wrap_wdb_open_global, data->wdb);
+
+    expect_value(__wrap_wdb_global_validate_sync_status, id, 1);
+    expect_string(__wrap_wdb_global_validate_sync_status, requested_sync_status, "syncreq");
+    will_return(__wrap_wdb_global_validate_sync_status, "syncreq");
+
     expect_value(__wrap_wdb_global_update_agent_status_code, id, 1);
     expect_value(__wrap_wdb_global_update_agent_status_code, status_code, 0);
     expect_string(__wrap_wdb_global_update_agent_status_code, version, "v4.5.0");

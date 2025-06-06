@@ -30,7 +30,7 @@ data_path = 'core/tests/data/rules'
 ruleset_conf = {
     'decoder_dir': ['ruleset/decoders', 'etc/decoders'],
     'rule_dir': ['ruleset/rules', 'etc/rules'], 'rule_exclude': ['0215-policy_rules.xml'],
-    'list': ['etc/lists/audit-keys', 'etc/lists/amazon/aws-eventnames', 'etc/lists/security-eventchannel']
+    'list': ['etc/lists/audit-keys', 'etc/lists/amazon/aws-eventnames', 'etc/lists/security-eventchannel', 'etc/lists/malicious-ioc/malware-hashes', 'etc/lists/malicious-ioc/malicious-ip', 'etc/lists/malicious-ioc/malicious-domains']
 }
 
 

@@ -169,7 +169,7 @@ async def test_unset_group(print_mock):
             self.total_affected_items = 0 if AffectedItems.called else len(affected_items)
             AffectedItems.called = True
 
-    async def forward_function(func, f_kwargs):
+    async def forward_function(func, f_kwargs, is_async):
         return AffectedItems(affected_items=[{'filename': 'a', 'hash': 'aa'}, {'filename': 'b', 'hash': 'bb'}],
                              failed_items={'a': 'b'})
 
@@ -179,7 +179,7 @@ async def test_unset_group(print_mock):
             group_id = 'testing'
             await agent_groups.unset_group(agent_id=agent_id, group_id=group_id)
             forward_mock.assert_called_once_with(func=agent.remove_agent_from_groups,
-                                        f_kwargs={'agent_list': [agent_id], 'group_list': [group_id]})
+                                        f_kwargs={'agent_list': [agent_id], 'group_list': [group_id]}, is_async=True)
             get_stdin_mock.assert_has_calls([call("Do you want to delete the group 'testing' of agent '99'? [y/N]: ")])
             print_mock.assert_has_calls([call("Agent '99' removed from testing.")])
             print_mock.reset_mock()
@@ -243,14 +243,15 @@ async def test_set_group(print_mock):
             self.total_affected_items = 0 if AffectedItems.called else len(affected_items)
             AffectedItems.called = True
 
-    async def forward_function(func, f_kwargs):
+    async def forward_function(func, f_kwargs, is_async):
         return AffectedItems(affected_items=[{'testing': ['agent0', 'agent1']}], failed_items={'a': 'b'})
 
     with patch('scripts.agent_groups.cluster_utils.forward_function', side_effect=forward_function) as forward_mock:
         with patch('scripts.agent_groups.get_stdin', return_value='y') as get_stdin_mock:
             await agent_groups.set_group(agent_id=1, group_id='testing')
             forward_mock.assert_called_once_with(func=agent.assign_agents_to_group,
-                                   f_kwargs={'group_list': ['testing'], 'agent_list': ['001'], 'replace': False})
+                                   f_kwargs={'group_list': ['testing'], 'agent_list': ['001'], 'replace': False},
+                                   is_async=True)
             get_stdin_mock.assert_has_calls(
                 [call("Do you want to add the group 'testing' to the agent '001'? [y/N]: ")])
             print_mock.assert_has_calls([call("Group 'testing' added to agent '001'.")])

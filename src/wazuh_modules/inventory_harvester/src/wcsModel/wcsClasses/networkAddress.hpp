@@ -21,13 +21,12 @@ struct NetworkAddress final
     std::string_view ip;
     std::string_view name;
     std::string_view netmask;
-    std::string_view protocol;
+    std::string_view type;
 
     REFLECTABLE(MAKE_FIELD("broadcast", &NetworkAddress::broadcast),
                 MAKE_FIELD("ip", &NetworkAddress::ip),
-                MAKE_FIELD("name", &NetworkAddress::name),
                 MAKE_FIELD("netmask", &NetworkAddress::netmask),
-                MAKE_FIELD("protocol", &NetworkAddress::protocol));
+                MAKE_FIELD("type", &NetworkAddress::type));
 };
 
 #endif // _NET_WCS_MODEL_HPP

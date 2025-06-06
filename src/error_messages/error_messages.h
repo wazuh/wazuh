@@ -272,6 +272,7 @@
 #define REGEX_COMPILE   "(1450): Syntax error on regex: '%s': %d."
 #define REGEX_SUBS      "(1451): Missing sub_strings on regex: '%s'."
 #define REGEX_SYNTAX    "(1452): Syntax error on regex: '%s'"
+#define REGEX_COMPILE_2 "(1453): Syntax error on regex: '%s'"
 
 /* Decoders */
 #define PPLUGIN_INV     "(2101): Parent decoder name invalid: '%s'."

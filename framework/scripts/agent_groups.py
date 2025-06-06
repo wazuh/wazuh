@@ -167,7 +167,8 @@ async def unset_group(agent_id: str, group_id: str = None, quiet: bool = False):
         ans = get_stdin(f"Do you want to delete all groups of agent '{agent_id}'? [y/N]: ")
     if ans.lower() == 'y':
         result = await cluster_utils.forward_function(func=agent.remove_agent_from_groups,
-                                                      f_kwargs={'agent_list': [agent_id], 'group_list': [group_id]})
+                                                      f_kwargs={'agent_list': [agent_id], 'group_list': [group_id]},
+                                                      is_async=True)
         cluster_utils.raise_if_exc(result)
 
         if result.total_affected_items != 0:
@@ -226,9 +227,14 @@ async def set_group(agent_id: str, group_id: str, quiet: bool = False, replace: 
     ans = 'y' if quiet else get_stdin(f"Do you want to add the group '{group_id}' to the agent '{agent_id}'? [y/N]: ")
 
     if ans.lower() == 'y':
-        result = await cluster_utils.forward_function(func=agent.assign_agents_to_group,
-                                                      f_kwargs={'group_list': [group_id], 'agent_list': [agent_id],
-                                                                'replace': replace})
+        result = await cluster_utils.forward_function(
+            func=agent.assign_agents_to_group,
+            f_kwargs={
+                'group_list': [group_id],
+                'agent_list': [agent_id],
+                'replace': replace},
+            is_async=True
+        )
         cluster_utils.raise_if_exc(result)
 
         if result.total_affected_items != 0:

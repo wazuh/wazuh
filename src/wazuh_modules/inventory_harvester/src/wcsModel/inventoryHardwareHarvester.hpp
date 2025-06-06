@@ -19,20 +19,12 @@
 
 struct InventoryHardwareHarvester final
 {
-    struct Observer final
-    {
-        std::string_view serial_number;
-
-        REFLECTABLE(MAKE_FIELD("serial_number", &Observer::serial_number));
-    } observer;
-
     Agent agent;
     Hardware host;
     Wazuh wazuh;
 
     REFLECTABLE(MAKE_FIELD("host", &InventoryHardwareHarvester::host),
                 MAKE_FIELD("agent", &InventoryHardwareHarvester::agent),
-                MAKE_FIELD("observer", &InventoryHardwareHarvester::observer),
                 MAKE_FIELD("wazuh", &InventoryHardwareHarvester::wazuh));
 };
 

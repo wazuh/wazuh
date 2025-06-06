@@ -11,8 +11,8 @@
         "query.default_field": [
           "agent.id",
           "agent.ip",
-          "observer.ingress.interface.name",
-          "observer.ingress.interface.alias"
+          "interface.name",
+          "interface.alias"
         ],
         "refresh_interval": "5s"
       }
@@ -92,35 +92,26 @@
             }
           }
         },
-        "observer": {
+        "interface": {
           "properties": {
-            "ingress": {
-              "properties": {
-                "interface": {
-                  "properties": {
-                    "alias": {
-                      "ignore_above": 1024,
-                      "type": "keyword"
-                    },
-                    "mtu": {
-                      "type": "long"
-                    },
-                    "name": {
-                      "ignore_above": 1024,
-                      "type": "keyword"
-                    },
-                    "state": {
-                      "ignore_above": 1024,
-                      "type": "keyword"
-                    },
-                    "type": {
-                      "ignore_above": 1024,
-                      "type": "keyword"
-                    }
-                  }
-                }
-              },
-              "type": "object"
+            "alias": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            },
+            "mtu": {
+              "type": "long"
+            },
+            "name": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            },
+            "state": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            },
+            "type": {
+              "ignore_above": 1024,
+              "type": "keyword"
             }
           }
         },

@@ -20,7 +20,8 @@
                     "owner": "root",
                     "path": "/home/folderB/AFileInB.txt",
                     "size": 0,
-                    "uid": "0"
+                    "uid": "0",
+                    "inode": "28183416"
                 },
                 "wazuh": {
                     "cluster": {

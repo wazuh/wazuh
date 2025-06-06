@@ -14,6 +14,8 @@
 
 #include <array>
 #include <charconv>
+#include <functional>
+#include <list>
 #include <map>
 #include <string>
 #include <string_view>
@@ -119,6 +121,19 @@ struct IsVector<std::vector<T, Args...>> : std::true_type
 template<typename T>
 constexpr bool IS_VECTOR_V = IsVector<std::decay_t<T>>::value;
 
+template<typename T>
+struct IsList : std::false_type
+{
+};
+
+template<typename T, typename... Args>
+struct IsList<std::list<T, Args...>> : std::true_type
+{
+};
+
+template<typename T>
+constexpr bool IS_LIST_V = IsList<std::decay_t<T>>::value;
+
 template<typename T, typename = void>
 struct IsReflectable : std::false_type
 {
@@ -132,8 +147,9 @@ struct IsReflectable<T, std::void_t<decltype(T::fields())>> : std::true_type
 template<typename T>
 constexpr bool IS_REFLECTABLE_MEMBER =
     std::is_same_v<std::decay_t<T>, std::string_view> || std::is_same_v<std::decay_t<T>, std::string> ||
-    std::is_same_v<std::decay_t<T>, double> || std::is_same_v<std::decay_t<T>, bool> || IsMap<std::decay_t<T>>::value ||
-    IsVector<std::decay_t<T>>::value || IsReflectable<std::decay_t<T>>::value ||
+    std::is_same_v<std::decay_t<T>, std::pmr::string> || std::is_same_v<std::decay_t<T>, double> ||
+    std::is_same_v<std::decay_t<T>, bool> || IsMap<std::decay_t<T>>::value || IsVector<std::decay_t<T>>::value ||
+    IsList<std::decay_t<T>>::value || IsReflectable<std::decay_t<T>>::value ||
     std::is_same_v<std::decay_t<T>, std::int64_t>;
 
 template<typename C, typename T>
@@ -178,8 +194,26 @@ bool isEmpty(const std::map<K, V>& map)
     return map.empty();
 }
 
+template<typename K, typename V>
+bool isEmpty(const std::map<K, V, std::less<>>& map)
+{
+    return map.empty();
+}
+
 template<typename V>
 bool isEmpty(const std::vector<V>& vector)
+{
+    return vector.empty();
+}
+
+template<typename V>
+bool isEmpty(const std::list<V>& list)
+{
+    return list.empty();
+}
+
+template<typename V>
+bool isEmpty(const std::pmr::vector<V>& vector)
 {
     return vector.empty();
 }
@@ -466,10 +500,23 @@ std::enable_if_t<IsReflectable<T>::value, void> serializeToJSON(const T& obj, st
 template<typename T, bool NOEMPTY = true, bool NOSINGLESPACE = true>
 std::enable_if_t<IsReflectable<T>::value, std::string> serializeToJSON(const T& obj)
 {
+    constexpr auto fields = T::fields();
+
+    if constexpr (std::tuple_size<decltype(fields)>::value == 1)
+    {
+        const auto& field = std::get<0>(fields);
+        const auto& data = obj.*(std::get<2>(field));
+
+        std::string json;
+        json.reserve(1024);
+
+        jsonFieldToString(data, json);
+        return json;
+    }
+
     std::string json;
     json.reserve(1024);
     json.push_back('{');
-    constexpr auto fields = T::fields();
     char buffer[BUFFER_SIZE] = {};
 
     size_t count = 0;
@@ -653,6 +700,51 @@ std::enable_if_t<IsReflectable<T>::value, std::string> serializeToJSON(const T& 
 
     json.push_back('}');
     return json;
+}
+
+template<typename T>
+std::enable_if_t<IS_VECTOR_V<T>, void> serializeToJSON(const T& vec, std::string& json)
+{
+    size_t count = 0;
+    char buffer[BUFFER_SIZE] = {};
+    json.push_back('[');
+    for (const auto& v : vec)
+    {
+        if (count++ > 0)
+        {
+            json.push_back(',');
+        }
+
+        if constexpr (std::is_same_v<std::string, std::decay_t<decltype(v)>> ||
+                      std::is_same_v<std::string_view, std::decay_t<decltype(v)>>)
+        {
+            json.push_back('"');
+            if (needEscape(v))
+                escapeJSONString(v, json);
+            else
+                json.append(v);
+            json.push_back('"');
+        }
+        else if constexpr (std::is_arithmetic_v<std::decay_t<decltype(v)>>)
+        {
+            auto [ptr, ec] = std::to_chars(buffer, buffer + sizeof(buffer), v);
+            if (ec == std::errc())
+                json.append(buffer);
+            else
+                json.push_back('0');
+        }
+        else if constexpr (std::is_same_v<bool, std::decay_t<decltype(v)>>)
+        {
+            json.append(v ? "true" : "false");
+        }
+        else
+        {
+            jsonFieldToString(v, json);
+        }
+
+        std::fill(buffer, buffer + sizeof(buffer), '\0');
+    }
+    json.push_back(']');
 }
 
 template<typename T>

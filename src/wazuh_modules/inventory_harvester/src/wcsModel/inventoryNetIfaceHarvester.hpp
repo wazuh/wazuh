@@ -36,28 +36,14 @@ struct InventoryNetIfaceHarvester final
         REFLECTABLE(MAKE_FIELD("mac", &NetIfaceHost::mac), MAKE_FIELD("network", &NetIfaceHost::network));
     };
 
-    struct NetIfaceObserver final
-    {
-        struct NetIfaceIngress final
-        {
-            NetIface interface;
-
-            REFLECTABLE(MAKE_FIELD("interface", &NetIfaceIngress::interface));
-        };
-
-        NetIfaceIngress ingress;
-
-        REFLECTABLE(MAKE_FIELD("ingress", &NetIfaceObserver::ingress));
-    };
-
     Agent agent;
     NetIfaceHost host;
-    NetIfaceObserver observer;
+    NetIface interface;
     Wazuh wazuh;
 
     REFLECTABLE(MAKE_FIELD("agent", &InventoryNetIfaceHarvester::agent),
                 MAKE_FIELD("host", &InventoryNetIfaceHarvester::host),
-                MAKE_FIELD("observer", &InventoryNetIfaceHarvester::observer),
+                MAKE_FIELD("interface", &InventoryNetIfaceHarvester::interface),
                 MAKE_FIELD("wazuh", &InventoryNetIfaceHarvester::wazuh));
 };
 

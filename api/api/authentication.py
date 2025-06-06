@@ -198,7 +198,7 @@ def generate_token(user_id: str = None, data: dict = None, auth_context: dict = 
     return jwt.encode(payload, generate_keypair()[0], algorithm=JWT_ALGORITHM)
 
 
-@rbac_utils.token_cache(rbac_utils.tokens_cache)
+@rbac_utils.token_cache()
 def check_token(username: str, roles: tuple, token_nbf_time: int, run_as: bool) -> dict:
     """Check the validity of a token with the current time and the generation time of the token.
 

@@ -14,12 +14,8 @@
                     "metric": 100,
                     "type": "ipv4"
                 },
-                "observer": {
-                    "ingress": {
-                        "interface": {
-                            "name": "eth0"
-                        }
-                    }
+                "interface": {
+                    "name": "eth0"
                 },
                 "wazuh": {
                     "schema": {
@@ -39,12 +35,8 @@
                     "metric": 100,
                     "type": "ipv4"
                 },
-                "observer": {
-                    "ingress": {
-                        "interface": {
-                            "name": "eth0"
-                        }
-                    }
+                "interface": {
+                    "name": "eth0"
                 },
                 "wazuh": {
                     "cluster": {

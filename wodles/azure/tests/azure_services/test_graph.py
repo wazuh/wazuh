@@ -93,6 +93,7 @@ def test_start_graph(
         md5_hash=md5_hash,
         query=query,
         tag=tag,
+        tenant=tenant
     )
 
 
@@ -205,7 +206,7 @@ def test_get_graph_events(mock_get, mock_update, mock_send):
     mock_get.side_effect = [event_list, empty_event_list]
 
     headers = 'headers'
-    get_graph_events(url=url, headers=headers, md5_hash='', query='query', tag='tag')
+    get_graph_events(url=url, headers=headers, md5_hash='', query='query', tag='tag', tenant='tenant')
     mock_get.assert_called_with(url=url, headers=headers, timeout=10)
     assert mock_update.call_count == num_events
     assert mock_send.call_count == num_events
@@ -218,7 +219,7 @@ def test_get_graph_events_error_responses(mock_get, mock_logging, status_code):
     """Test get_graph_events handles invalid responses from the request module."""
     response_mock = MagicMock(status_code=status_code)
     mock_get.return_value = response_mock
-    get_graph_events(url=None, headers=None, md5_hash=None, query='query', tag='tag')
+    get_graph_events(url=None, headers=None, md5_hash=None, query='query', tag='tag', tenant='tenant')
 
     if status_code == 400:
         assert mock_logging.call_count == 2

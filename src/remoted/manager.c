@@ -249,7 +249,7 @@ void free_file_time(void *data) {
  * wait_for_msgs (other thread) is going to deal with it
  * (only if message changed)
  */
-void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *wdb_sock)
+void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *wdb_sock, bool *startup_msg)
 {
     char msg_ack[OS_FLSIZE + 1] = "";
     char *msg = NULL;
@@ -365,9 +365,13 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
     if (data = OSHash_Get(pending_data, key->id), data && data->changed && data->message && msg && strcmp(data->message, msg) == 0) {
         w_mutex_unlock(&lastmsg_mutex);
 
+        char *sync_status = logr.worker_node ? (*startup_msg ? "syncreq" : "syncreq_keepalive") : "synced";
+
+        *startup_msg = false;
+
         agent_id = atoi(key->id);
 
-        result = wdb_update_agent_keepalive(agent_id, AGENT_CS_ACTIVE, logr.worker_node ? "syncreq" : "synced", wdb_sock);
+        result = wdb_update_agent_keepalive(agent_id, AGENT_CS_ACTIVE, sync_status, wdb_sock);
 
         if (OS_SUCCESS != result) {
             mwarn("Unable to save last keepalive and set connection status as active for agent: %s", key->id);
@@ -388,9 +392,11 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
         if (is_startup) {
             w_mutex_unlock(&lastmsg_mutex);
 
+            *startup_msg = true;
+
             agent_id = atoi(key->id);
 
-            result = wdb_update_agent_keepalive(agent_id, AGENT_CS_PENDING, logr.worker_node ? "syncreq" : "synced", wdb_sock);
+            result = wdb_update_agent_keepalive(agent_id, AGENT_CS_PENDING, logr.worker_node ? "syncreq_status" : "synced", wdb_sock);
 
             if (OS_SUCCESS != result) {
                 mwarn("Unable to save last keepalive and set connection status as pending for agent: %s", key->id);
@@ -400,7 +406,7 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
 
             agent_id = atoi(key->id);
 
-            result = wdb_update_agent_connection_status(agent_id, AGENT_CS_DISCONNECTED, logr.worker_node ? "syncreq" : "synced", wdb_sock, HC_SHUTDOWN_RECV);
+            result = wdb_update_agent_connection_status(agent_id, AGENT_CS_DISCONNECTED, logr.worker_node ? "syncreq_status" : "synced", wdb_sock, HC_SHUTDOWN_RECV);
 
             if (OS_SUCCESS != result) {
                 mwarn("Unable to set connection status as disconnected for agent: %s", key->id);
@@ -503,7 +509,9 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
 
             agent_data->id = atoi(key->id);
             os_strdup(AGENT_CS_ACTIVE, agent_data->connection_status);
-            os_strdup(logr.worker_node ? "syncreq" : "synced", agent_data->sync_status);
+            os_strdup(logr.worker_node ? (*startup_msg ? "syncreq" : "syncreq_keepalive") : "synced", agent_data->sync_status);
+
+            *startup_msg = false;
 
             w_mutex_lock(&lastmsg_mutex);
 
@@ -1473,7 +1481,7 @@ STATIC void send_wrong_version_response(const char *agent_id, char *msg, agent_s
 
     mdebug2("Unable to connect agent: '%s': '%s'", agent_id, msg);
 
-    result = wdb_update_agent_status_code(atoi(agent_id), status_code, version, logr.worker_node ? "syncreq" : "synced", wdb_sock);
+    result = wdb_update_agent_status_code(atoi(agent_id), status_code, version, logr.worker_node ? "syncreq_status" : "synced", wdb_sock);
 
     if (OS_SUCCESS != result) {
         mwarn("Unable to set status code for agent: '%s'", agent_id);

@@ -22,9 +22,7 @@
                         "free": 1234,
                         "total": 33554432,
                         "used": 16777216
-                    }
-                },
-                "observer": {
+                    },
                     "serial_number": "ABC123XYZ789"
                 },
                 "wazuh": {
@@ -46,12 +44,10 @@
                         "speed": 3800
                     },
                     "memory": {
-                        "free": 16777216,
-                        "total": 33554432,
-                        "used": 16777216
-                    }
-                },
-                "observer": {
+                        "free": 1048576,
+                        "total": 2097152,
+                        "used": 1048576
+                    },
                     "serial_number": "AAA111BBB222"
                 },
                 "wazuh": {
