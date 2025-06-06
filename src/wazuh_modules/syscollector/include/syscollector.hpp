@@ -61,6 +61,7 @@ class EXPORTED Syscollector final
                   const bool portsAll = true,
                   const bool processes = true,
                   const bool hotfixes = true,
+                  const bool users = true,
                   const bool notifyOnFirstScan = false);
 
         void destroy();
@@ -76,6 +77,7 @@ class EXPORTED Syscollector final
         nlohmann::json getHardwareData();
         nlohmann::json getNetworkData();
         nlohmann::json getPortsData();
+        nlohmann::json getUsersData();
 
         void registerWithRsync();
         void updateChanges(const std::string& table,
@@ -90,6 +92,7 @@ class EXPORTED Syscollector final
         void scanHotfixes();
         void scanPorts();
         void scanProcesses();
+        void scanUsers();
         void syncOs();
         void syncHardware();
         void syncNetwork();
@@ -97,6 +100,7 @@ class EXPORTED Syscollector final
         void syncHotfixes();
         void syncPorts();
         void syncProcesses();
+        void syncUsers();
         void scan();
         void sync();
         void syncLoop(std::unique_lock<std::mutex>& lock);
@@ -116,6 +120,7 @@ class EXPORTED Syscollector final
         bool                                                                    m_hotfixes;
         bool                                                                    m_stopping;
         bool                                                                    m_notify;
+        bool                                                                    m_users;
         std::unique_ptr<DBSync>                                                 m_spDBSync;
         std::unique_ptr<RemoteSync>                                             m_spRsync;
         std::condition_variable                                                 m_cv;

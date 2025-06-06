@@ -30,6 +30,11 @@
 #include "packages/packageLinuxDataRetriever.h"
 #include "linuxInfoHelper.h"
 
+#include "logged_in_users_unix.hpp"
+#include "shadow_linux.hpp"
+#include "sudoers_unix.hpp"
+#include "users_linux.hpp"
+
 using ProcessInfo = std::unordered_map<int64_t, std::pair<int32_t, std::string>>;
 
 struct ProcTableDeleter
@@ -613,4 +618,150 @@ nlohmann::json SysInfo::getHotfixes() const
 {
     // Currently not supported for this OS.
     return nlohmann::json();
+}
+
+nlohmann::json SysInfo::getUsers() const
+{
+    nlohmann::json result;
+
+    UsersProvider usersProvider;
+    auto collectedUsers = usersProvider.collect();
+
+    for (auto& user : collectedUsers)
+    {
+        nlohmann::json userItem {};
+
+        auto username = user["username"].get<std::string>();
+
+        userItem["user_full_name"] = user["description"];
+        userItem["user_home"] = user["directory"];
+        userItem["user_id"] = user["uid"];
+        userItem["user_is_remote"] = user["include_remote"];
+        userItem["user_name"] = username;
+        userItem["user_shell"] = user["shell"];
+        userItem["user_uid_signed"] = user["uid_signed"];
+        userItem["user_group_id_signed"] = user["gid_signed"];
+        userItem["user_group_id"] = user["gid"];
+
+        // Only in windows
+        // userItem["user_type"] = user["type"];
+        userItem["user_type"] = nullptr;
+
+        // Macos or windows
+        // userItem["user_uuid"] = user["uuid"];
+        userItem["user_uuid"] = nullptr;
+
+        // Macos
+        // userItem["user_password_last_set_time"] = user["password_last_set_time"];
+        userItem["user_password_last_set_time"] = nullptr;
+        // user["is_hidden"]
+        userItem["user_is_hidden"] = nullptr;
+        // user["creation_time"]
+        userItem["user_created"] = nullptr;
+        // user["failed_login_count"]
+        userItem["user_auth_failed_count"] = nullptr;
+        // user["failed_login_timestamp"]
+        userItem["user_auth_failed_timestamp"] = nullptr;
+
+        //TODO: get it from groups
+        userItem["user_groups"] = nullptr;
+
+        auto matched = false;
+
+        LoggedInUsersProvider loggedInUserProvider;
+        auto collectedLoggedInUser = loggedInUserProvider.collect();
+
+        //TODO: Avoid this iteratiion for moving to LoggedInUsersProvider
+        for (auto& item : collectedLoggedInUser)
+        {
+            // By default, user is not logged in.
+            userItem["login_status"] = 0;
+
+            // tty,host,time and pid can take more than one value due to different logins.
+            if (item["user"] == username)
+            {
+                matched = true;
+                userItem["login_status"] = 1;
+                userItem["login_tty"] = userItem["login_tty"].is_null() ? item["tty"].get<std::string>() :
+                                        (userItem["login_tty"].get<std::string>() + arraySeparator + item["tty"].get<std::string>());
+                userItem["login_type"] = userItem["login_type"].is_null() ? item["type"].get<std::string>() :
+                                         (userItem["login_type"].get<std::string>() + arraySeparator + item["type"].get<std::string>());
+                userItem["host_ip"] = userItem["host_ip"].is_null() ? item["host"].get<std::string>() :
+                                      (userItem["host_ip"].get<std::string>() + arraySeparator + item["host"].get<std::string>());
+                //transform to string and the append ech case
+                userItem["process_pid"] = userItem["process_pid"].is_null() ? std::to_string(item["pid"].get<int32_t>()) :
+                                          ( userItem["process_pid"].get<std::string>() + arraySeparator + std::to_string(item["pid"].get<int32_t>()) );
+                userItem["user_last_login"] = userItem["user_last_login"].is_null() ? std::to_string(item["time"].get<int32_t>()) :
+                                              ( userItem["process_pid"].get<std::string>() + arraySeparator + std::to_string(item["time"].get<int32_t>()) );
+            }
+        }
+
+        if (!matched)
+        {
+            userItem["login_status"] = nullptr;
+            userItem["login_tty"] = nullptr;
+            userItem["login_type"] = nullptr;
+            userItem["host_ip"] = nullptr;
+            userItem["process_pid"] = nullptr;
+            userItem["user_last_login"] = nullptr;
+        }
+
+        matched = false;
+
+        ShadowProvider shadowProvide;
+        auto collectedShadow = shadowProvide.collect();
+
+        for (auto& singleShadow : collectedShadow)
+        {
+            // If matches user_name, fill the rest of the fields
+            if (singleShadow["username"] == username)
+            {
+                matched = true;
+                userItem["user_password_expiration_date"] = singleShadow["expire"];
+                userItem["user_password_hash_algorithm"] = singleShadow["hash_alg"];
+                userItem["user_password_inactive_days"] = singleShadow["inactive"];
+                userItem["user_password_last_change"] = singleShadow["last_change"];
+                userItem["user_password_max_days_between_changes"] = singleShadow["max"];
+                userItem["user_password_min_days_between_changes"] = singleShadow["min"];
+                userItem["user_password_status"] = singleShadow["password_status"];
+                userItem["user_password_warning_days_before_expiration"] = singleShadow["warning"];
+            }
+        }
+
+        if (!matched)
+        {
+            userItem["user_password_expiration_date"] = nullptr;
+            userItem["user_password_hash_algorithm"] = nullptr;
+            userItem["user_password_inactive_days"] = nullptr;
+            userItem["user_password_last_change"] = nullptr;
+            userItem["user_password_max_days_between_changes"] = nullptr;
+            userItem["user_password_min_days_between_changes"] = nullptr;
+            userItem["user_password_status"] = nullptr;
+            userItem["user_password_warning_days_before_expiration"] = nullptr;
+        }
+
+
+        SudoersProvider sudoersProvider;
+        auto collectedSudoers = sudoersProvider.collect();
+
+        // By default, user is not sudoer.
+        userItem["user_roles_sudo"] = 0;
+
+        for (auto& singleSudoer : collectedSudoers)
+        {
+            // Searching in content of header
+            auto header = singleSudoer["header"].get<std::string>();
+
+            if (header.find(username) != std::string::npos)
+            {
+                //TODO: user_roles_sudo_sudo_rule_details has more detailed information.
+                userItem["user_roles_sudo"] = 1;
+
+            }
+        }
+
+        result.push_back(std::move(userItem));
+    }
+
+    return result;
 }
