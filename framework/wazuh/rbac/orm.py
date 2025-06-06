@@ -29,7 +29,7 @@ from api.configuration import security_conf
 from api.constants import SECURITY_PATH
 from wazuh.core.common import wazuh_uid, wazuh_gid, DEFAULT_RBAC_RESOURCES
 from wazuh.core.utils import get_utc_now, safe_move
-from wazuh.rbac.utils import clear_cache
+from wazuh.rbac.utils import clear_tokens_cache
 
 logger = logging.getLogger("wazuh-api")
 
@@ -694,7 +694,7 @@ class TokenManager(RBACManager):
                 self.session.add(RunAsTokenBlacklist())
                 self.session.commit()
 
-            clear_cache()
+            clear_tokens_cache()
             return True
         except IntegrityError:
             self.session.rollback()

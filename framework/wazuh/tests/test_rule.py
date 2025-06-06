@@ -39,7 +39,7 @@ other_rule_ossec_conf = {
         'decoder_dir': ['ruleset/decoders', 'etc/decoders'],
         'rule_dir': [core_data_path],
         'rule_exclude': ['0010-rules_config.xml'],
-        'list': ['etc/lists/audit-keys', 'etc/lists/amazon/aws-eventnames', 'etc/lists/security-eventchannel']
+        'list': ['etc/lists/audit-keys', 'etc/lists/amazon/aws-eventnames', 'etc/lists/security-eventchannel', 'etc/lists/malicious-ioc/malware-hashes', 'etc/lists/malicious-ioc/malicious-ip', 'etc/lists/malicious-ioc/malicious-domains']
     }
 }
 
