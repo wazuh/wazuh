@@ -39,7 +39,7 @@ other_rule_ossec_conf = {
         'decoder_dir': ['ruleset/decoders', 'etc/decoders'],
         'rule_dir': [core_data_path],
         'rule_exclude': ['0010-rules_config.xml'],
-        'list': ['etc/lists/audit-keys', 'etc/lists/amazon/aws-eventnames', 'etc/lists/security-eventchannel']
+        'list': ['etc/lists/audit-keys', 'etc/lists/amazon/aws-eventnames', 'etc/lists/security-eventchannel', 'etc/lists/malicious-ioc/malware-hashes', 'etc/lists/malicious-ioc/malicious-ip', 'etc/lists/malicious-ioc/malicious-domains']
     }
 }
 
@@ -351,24 +351,26 @@ def test_upload_file(mock_logtest, mock_safe_move, mock_remove, mock_xml, mock_f
         ret_validation = rule.validate_upload_delete_dir(relative_dirname=relative_dirname)
         with patch('wazuh.rule.validate_upload_delete_dir', return_value=ret_validation):
             with patch('wazuh.rule.exists', return_value=overwrite):
-                result = rule.upload_rule_file(filename=file, relative_dirname=relative_dirname,
-                                                content=content, overwrite=overwrite)
+                with patch('wazuh.rule.send_reload_ruleset_msg', return_value={'error': 0}) as mock_reload:
+                    result = rule.upload_rule_file(filename=file, relative_dirname=relative_dirname,
+                                                    content=content, overwrite=overwrite)
 
-                # Assert data match what was expected, type of the result and correct
-                # parameters in delete() method.
-                assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type'
-                assert result.affected_items[0] == rule_path, 'Expected item not found'
-                mock_xml.assert_called_once_with(content, rule_path)
-                if overwrite:
-                    full_path = os.path.join(wazuh.common.WAZUH_PATH, rule_path)
-                    backup_file = full_path+'.backup'
-                    mock_full_copy.assert_called_once_with(full_path, backup_file), \
-                    'full_copy function not called with expected parameters'
-                    mock_delete.assert_called_once_with(filename= file,
-                                                        relative_dirname=os.path.dirname(rule_path)), \
-                        'delete_rule_file method not called with expected parameter'
-                    mock_remove.assert_called_once()
-                    mock_safe_move.assert_called_once()
+                    # Assert data match what was expected, type of the result and correct
+                    # parameters in delete() method.
+                    assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type'
+                    assert result.affected_items[0] == rule_path, 'Expected item not found'
+                    mock_xml.assert_called_once_with(content, rule_path)
+                    if overwrite:
+                        full_path = os.path.join(wazuh.common.WAZUH_PATH, rule_path)
+                        backup_file = full_path+'.backup'
+                        mock_full_copy.assert_called_once_with(full_path, backup_file), \
+                        'full_copy function not called with expected parameters'
+                        mock_delete.assert_called_once_with(filename= file,
+                                                            relative_dirname=os.path.dirname(rule_path)), \
+                            'delete_rule_file method not called with expected parameter'
+                        mock_remove.assert_called_once()
+                        mock_safe_move.assert_called_once()
+                        mock_reload.assert_called_once()
 
 
 @patch('wazuh.rule.delete_rule_file', side_effect=WazuhError(1019))
@@ -435,9 +437,11 @@ def test_delete_rule_file(file, relative_dirname):
     with patch('wazuh.core.configuration.get_ossec_conf', return_value=get_rule_file_ossec_conf):
         with patch('wazuh.rule.exists', return_value=True):
             with patch('wazuh.rule.remove'):
-                # Assert returned type is AffectedItemsWazuhResult when everything is correct
-                assert(isinstance(rule.delete_rule_file(filename=file, relative_dirname=relative_dirname), 
-                                AffectedItemsWazuhResult))
+                with patch('wazuh.rule.send_reload_ruleset_msg', return_value={'error': 0}) as mock_reload:
+                    # Assert returned type is AffectedItemsWazuhResult when everything is correct
+                    assert(isinstance(rule.delete_rule_file(filename=file, relative_dirname=relative_dirname),
+                                    AffectedItemsWazuhResult))
+                    mock_reload.assert_called_once()
 
 def test_delete_rule_file_ko():
     """Delete rule file invalid test cases"""

@@ -8,18 +8,32 @@ All notable changes to this project will be documented in this file.
 
 ### Manager
 
-#### Changed
+### Added
 
+- Added Analysisd ability to do a hot ruleset reload. ([#29458](https://github.com/wazuh/wazuh/pull/29458))
+
+#### Fixed
+- Fixed missing agent version handling in Vulnerability Detector. ([#29181](https://github.com/wazuh/wazuh/pull/29181))
+- Fixed race condition in agent status synchronization between worker and master. ([#29624](https://github.com/wazuh/wazuh/pull/29624))
+
+#### Changed
+- Improved reports functionality to avoid duplicated daily FIM reports. ([#29232](https://github.com/wazuh/wazuh/pull/29232))
+- Optimized agent query endpoints. ([#29363](https://github.com/wazuh/wazuh/pull/29363))
+- Implemented RBAC resource cache with TTL support. ([#29406](https://github.com/wazuh/wazuh/pull/29406))
+- Improved Wazuh-DB protocol to support large HTTP requests and remove pagination. ([#29514](https://github.com/wazuh/wazuh/pull/29514))
+- Added HTTP client implementation to wazuh-db. ([#29515](https://github.com/wazuh/wazuh/pull/29515))
 - Separated control messages from the connection handling in remoted. ([29153](https://github.com/wazuh/wazuh/pull/29153))
+- Added capability to re-index CVEs if documents have changed in Vulnerability detector. ([#29916](https://github.com/wazuh/wazuh/pull/29916))
 
 ### Agent
 
 #### Added
-
+- Added support for Rocky Linux and AlmaLinux in the agent upgrade module. ([#29391](https://github.com/wazuh/wazuh/pull/29391))
+- Added handling of CentOS 9 SCA files in package specs. ([#29393](https://github.com/wazuh/wazuh-packages/pull/29393))
 - Added SCA support for Oracle Linux 10. ([#29139](https://github.com/wazuh/wazuh/pull/29139))
 
 #### Fixed
-
+- Fixed incorrect handling of events in the Custom logs bucket. ([#29312](https://github.com/wazuh/wazuh/pull/29312))
 - Fixed download Azure's blob race condition. ([29317](https://github.com/wazuh/wazuh/pull/29317))
 - Fixed FIM reports false files. ([#28962](https://github.com/wazuh/wazuh/pull/28962))
 - Fixed IPv6 address format reported by WindowsHelper. ([#29502](https://github.com/wazuh/wazuh/pull/29502))
@@ -27,10 +41,18 @@ All notable changes to this project will be documented in this file.
 - Replaced `select()` with `sleep()` in Logcollector to prevent errors during Docker deployment. ([#29905](https://github.com/wazuh/wazuh/pull/29905))
 
 #### Changed
-
+- Improved agent synchronization to reduce redundant payload transfers. ([#29426](https://github.com/wazuh/wazuh/pull/29426))
+- Improved Syscollector to report only Python packages managed by `dpkg`. ([#28688](https://github.com/wazuh/wazuh/pull/28688))
+- Improved `wazuh-db` JSON handling performance by updating external dependencies. ([#29399](https://github.com/wazuh/wazuh/issues/29399))
+- Improved Azure module logging capabilities. ([#29930](https://github.com/wazuh/wazuh/pull/29930))
+- Improved restart on macOS agents after an upgrade. ([#29940](https://github.com/wazuh/wazuh/pull/29940))
 - Standarized different services timeouts. ([#29443](https://github.com/wazuh/wazuh/pull/29443))
 
 ### RESTful API
+
+#### Added
+- Added the server uuid to the /manager/info endpoint. ([#29524](https://github.com/wazuh/wazuh/pull/29524))
+- Added support for hot ruleset reload in the related API endpoints. ([#29954](https://github.com/wazuh/wazuh/pull/29954))
 
 #### Fixed
 
@@ -41,11 +63,14 @@ All notable changes to this project will be documented in this file.
 
 #### Added
 
+- Added SCA content for CentOS Stream 9. ([#29269](https://github.com/wazuh/wazuh/pull/29269))
+- Added IOCs and rules for Wazuh 4.x ruleset improvement. ([#29653](https://github.com/wazuh/wazuh/pull/29653))
 - Added SCA content for Oracle Linux 10. ([#29139](https://github.com/wazuh/wazuh/pull/29139))
 - Added rule to minimize event flooding from Windows events on the Wazuh manager. ([#28790](https://github.com/wazuh/wazuh/pull/28790))
 
 #### Changed
 
+- Fixed bugs in Microsoft Windows 11 Enterprise SCA policy. ([#5648](https://github.com/wazuh/wazuh/pull/29221))
 - Fixed multiple checks in RHEL 9, RHEL 10, Rocky Linux 8 and Rocky Linux 9 SCA policies. ([#29040](https://github.com/wazuh/wazuh/pull/29040))
 - Fixed diff causing false negatives in rootcheck. ([#28982](https://github.com/wazuh/wazuh/pull/28982))
 - Fixed multiple RHEL 8 and CentOS 7 SCA checks generating incorrect results. ([#28711](https://github.com/wazuh/wazuh/pull/28711))
@@ -53,55 +78,10 @@ All notable changes to this project will be documented in this file.
 ### Other
 
 #### Changed
+- Updated Python dependencies: `setuptools`, `Jinja2`, and `PyJWT`. ([#29489](https://github.com/wazuh/wazuh/pull/29489))
 - Upgraded Python embedded interpreter to 3.10.16. ([#28646](https://github.com/wazuh/wazuh/pull/28646))
 - Upgraded h11 to 0.16.0 and httpcore to 1.0.9. ([#29735](https://github.com/wazuh/wazuh/pull/29735))
 - Removed unused Python Azure dependencies. ([#28564](https://github.com/wazuh/wazuh/pull/28564))
-
-
-## [v4.12.1]
-
-### Manager
-
-#### Fixed
-- Fixed missing agent version handling in Vulnerability Detector. ([#29181](https://github.com/wazuh/wazuh/pull/29181))
-
-#### Changed
-- Improved reports functionality to avoid duplicated daily FIM reports. ([#29232](https://github.com/wazuh/wazuh/pull/29232))
-
-### Agent
-
-#### Added
-- Added support for Rocky Linux and AlmaLinux in the agent upgrade module. ([#29391](https://github.com/wazuh/wazuh/pull/29391))
-- Added handling of CentOS 9 SCA files in package specs. ([#29393](https://github.com/wazuh/wazuh-packages/pull/29393))
-
-#### Fixed
-- Fixed incorrect handling of events in the Custom logs bucket. ([#29312](https://github.com/wazuh/wazuh/pull/29312))
-
-#### Changed
-- Improved agent synchronization to reduce redundant payload transfers. ([#29426](https://github.com/wazuh/wazuh/pull/29426))
-- Improved Syscollector to report only Python packages managed by `dpkg`. ([#28688](https://github.com/wazuh/wazuh/pull/28688))
-- Improved `wazuh-db` JSON handling performance by updating external dependencies. ([#29399](https://github.com/wazuh/wazuh/issues/29399))
-
-### RESTful API
-
-#### Added
-- Added the server uuid to the /manager/info endpoint. ([#29524](https://github.com/wazuh/wazuh/pull/29524))
-
-### Ruleset
-
-#### Added
-
-- Added SCA content for CentOS Stream 9. ([#29269](https://github.com/wazuh/wazuh/pull/29269))
-- Added IOCs and rules for Wazuh 4.x ruleset improvement. ([#29653](https://github.com/wazuh/wazuh/pull/29653))
-
-#### Changed
-
-- Fixed bugs in Microsoft Windows 11 Enterprise SCA policy. ([#5648](https://github.com/wazuh/wazuh/pull/29221))
-
-### Other
-
-#### Changed
-- Updated Python dependencies: `setuptools`, `Jinja2`, and `PyJWT`. ([#29489](https://github.com/wazuh/wazuh/pull/29489))
 
 
 ## [v4.12.0]

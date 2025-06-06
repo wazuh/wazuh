@@ -21,7 +21,7 @@ struct File final
     std::string_view path;
     std::string_view gid;
     std::string_view group;
-    std::string_view inode;
+    std::string inode;
     std::string mtime;
     std::int64_t size = DEFAULT_INT_VALUE;
     std::string_view uid;

@@ -466,7 +466,7 @@ w_logtest_session_t * w_logtest_initialize_session(OSList * list_msg) {
 
     while (files != NULL && *files != NULL) {
         if (Rules_OP_ReadRules(*files, &session->rule_list, &session->cdblistnode,
-                            &session->eventlist, &session->decoder_store, list_msg) < 0) {
+                            &session->eventlist, &session->decoder_store, list_msg, false) < 0) {
             goto cleanup;
         }
         files++;

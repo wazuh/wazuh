@@ -1,0 +1,14 @@
+{
+  "agent_info": {
+    "agent_id": "002"
+  },
+  "action": "deletePackage",
+  "data": {
+    "name": "µTorrent",
+    "version": "3.6.0.47178",
+    "architecture": " ",
+    "format": "win",
+    "location": " ",
+    "item_id": "7c6a8a5156cf128b6b678b363d102c6947a7101e"
+  }
+}

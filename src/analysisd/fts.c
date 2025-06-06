@@ -62,6 +62,9 @@ int FTS_Init(int threads, OSList **fts_list, OSHash **fts_store)
         return (0);
     }
 
+    /* Set the free data function */
+    OSHash_SetFreeDataPointer(*fts_store, &free);
+
     /* Get default list size */
     fts_list_size = getDefine_Int("analysisd",
                                   "fts_list_size",
@@ -388,4 +391,64 @@ void FTS_Flush(){
     w_mutex_lock(&fts_write_lock);
     fflush(fp_list);
     w_mutex_unlock(&fts_write_lock);
+}
+
+int FTS_HotReload(OSList **fts_list, OSHash **fts_store)
+{
+
+    assert(fts_list != NULL);
+    assert(fts_store != NULL);
+
+    int list_size = getDefine_Int("analysisd", "fts_list_size", 12, 512);
+
+    if (*fts_list = OSList_Create(), *fts_list == NULL) {
+        merror(LIST_ERROR);
+        return -1;
+    }
+
+    if (!OSList_SetMaxSize(*fts_list, list_size)) {
+        merror(LIST_SIZE_ERROR);
+        return -1;
+    }
+
+    if (*fts_store = OSHash_Create(), *fts_store == NULL) {
+        merror(HASH_ERROR);
+        return -1;
+    }
+
+    if (!OSHash_setSize(*fts_store, 2048)) {
+        merror(LIST_SIZE_ERROR);
+        return -1;
+    }
+
+    OSHash_SetFreeDataPointer(*fts_store, &free);
+
+    // Load the FTS list from the file
+    char line[OS_FLSIZE + 1] = {0};
+
+    w_mutex_lock(&fts_write_lock);
+    if (fp_list == NULL) {
+        w_mutex_unlock(&fts_write_lock);
+        return 0;
+    }
+
+    fseek(fp_list, 0, SEEK_SET);
+    while (fgets(line, sizeof(line), fp_list) != NULL) {
+        char *tmp_s;
+
+        /* Remove newlines */
+        tmp_s = strchr(line, '\n');
+        if (tmp_s) {
+            *tmp_s = '\0';
+        }
+
+        os_strdup(line, tmp_s);
+        if (OSHash_Add(*fts_store, tmp_s, tmp_s) != 2) {
+            os_free(tmp_s);
+        }
+        tmp_s = NULL;
+    }
+    w_mutex_unlock(&fts_write_lock);
+
+    return 1;
 }

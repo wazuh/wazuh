@@ -11,8 +11,12 @@ add_executable(${PROJECT_NAME} ${SOURCES})
 target_link_libraries(${PROJECT_NAME}
         debug gtestd
         debug gtest_maind
+        debug gmockd
+        debug gmock_maind
         optimized gtest
         optimized gtest_main
+        optimized gmock
+        optimized gmock_main
         router
         pthread
         )

@@ -402,8 +402,14 @@ int main(int argc, char **argv)
                 rulesfiles = Config.includes;
                 while (rulesfiles && *rulesfiles) {
                     mdebug1("Reading rules file: '%s'", *rulesfiles);
-                    if (Rules_OP_ReadRules(*rulesfiles, &os_analysisd_rulelist, &os_analysisd_cdblists,
-                                           &os_analysisd_last_events, &os_analysisd_decoder_store, list_msg) < 0) {
+                    if (Rules_OP_ReadRules(*rulesfiles,
+                                           &os_analysisd_rulelist,
+                                           &os_analysisd_cdblists,
+                                           &os_analysisd_last_events,
+                                           &os_analysisd_decoder_store,
+                                           list_msg,
+                                           false) < 0)
+                    {
                         error_exit = 1;
                     }
                     node_log_msg = OSList_GetFirstNode(list_msg);
