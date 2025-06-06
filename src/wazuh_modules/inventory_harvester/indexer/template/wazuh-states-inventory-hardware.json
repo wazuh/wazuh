@@ -72,6 +72,9 @@
                 },
                 "used": {
                   "type": "long"
+                },
+                "used_percent": {
+                  "type": "half_float"
                 }
               },
               "type": "object"
