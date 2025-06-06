@@ -78,6 +78,9 @@ public:
         auto usedMem = data->totalMem() - data->freeMem();
         element.data.host.memory.used = (usedMem > 0) ? usedMem : 0;
 
+        // Ex: The percentage of used memory
+        element.data.host.memory.used_percentage = data->usedMem();
+
         // Ex: AA320
         element.data.host.serial_number = boardId;
 

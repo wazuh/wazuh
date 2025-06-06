@@ -17,7 +17,8 @@
                     "memory": {
                         "free": 1048576,
                         "total": 2097152,
-                        "used": 1048576
+                        "used": 1048576,
+                        "used_percentage": 0.5
                     },
                     "serial_number": "ABC123XYZ789"
                 },

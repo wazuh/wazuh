@@ -192,6 +192,26 @@ public:
         return 0;
     }
 
+    double usedMem()
+    {
+        if (m_type == VariantType::Delta)
+        {
+            if (m_delta->data_as_dbsync_hwinfo() && m_delta->data_as_dbsync_hwinfo()->ram_usage())
+            {
+                return m_delta->data_as_dbsync_hwinfo()->ram_usage() * 0.01;
+            }
+        }
+        else if (m_type == VariantType::SyncMsg)
+        {
+            if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_hwinfo() &&
+                m_syncMsg->data_as_state()->attributes_as_syscollector_hwinfo()->ram_usage())
+            {
+                return m_syncMsg->data_as_state()->attributes_as_syscollector_hwinfo()->ram_usage() * 0.01;
+            }
+        }
+        return 0.0;
+    }
+
     std::string_view cpuName()
     {
         if (m_type == VariantType::Delta)
