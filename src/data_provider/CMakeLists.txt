@@ -102,6 +102,7 @@ endif(CMAKE_SYSTEM_NAME STREQUAL "HP-UX")
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   link_directories(${CMAKE_SOURCE_DIR}/lib/)
+  include_directories(${CMAKE_SOURCE_DIR}/src/extended_sources/wrappers/windows/)
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
 link_directories(${SRC_FOLDER})
