@@ -57,6 +57,11 @@ nlohmann::json SysInfo::hotfixes()
     return getHotfixes();
 }
 
+nlohmann::json SysInfo::groups()
+{
+    return getGroups();
+}
+
 #ifdef __cplusplus
 extern "C" {
 #endif

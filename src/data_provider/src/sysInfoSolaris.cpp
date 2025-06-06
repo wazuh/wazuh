@@ -235,3 +235,9 @@ nlohmann::json SysInfo::getHotfixes() const
     // Currently not supported for this OS.
     return nlohmann::json();
 }
+
+nlohmann::json SysInfo::getGroups() const
+{
+    //TODO: Pending implementation.
+    return nlohmann::json();
+}

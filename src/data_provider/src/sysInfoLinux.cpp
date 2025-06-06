@@ -29,6 +29,7 @@
 #include "packages/berkeleyRpmDbHelper.h"
 #include "packages/packageLinuxDataRetriever.h"
 #include "linuxInfoHelper.h"
+#include "groups_linux.hpp"
 
 using ProcessInfo = std::unordered_map<int64_t, std::pair<int32_t, std::string>>;
 
@@ -613,4 +614,32 @@ nlohmann::json SysInfo::getHotfixes() const
 {
     // Currently not supported for this OS.
     return nlohmann::json();
+}
+
+nlohmann::json SysInfo::getGroups() const
+{
+    nlohmann::json result;
+
+    GroupsProvider groupsProvider;
+    auto collectedGroups = groupsProvider.collect({});
+
+    for (auto& group : collectedGroups)
+    {
+        nlohmann::json groupItem {};
+
+        groupItem["group_id"] = group["gid"];
+        groupItem["group_name"] = group["groupname"];
+        groupItem["group_description"] = nullptr;
+        groupItem["group_id_signed"] = group["gid_signed"];
+        groupItem["group_uuid"] = nullptr;
+        groupItem["group_is_hidden"] = nullptr;
+        groupItem["group_namespace_pid"] = nullptr;
+        // TODO: collect group_users from users_groups collector
+        groupItem["group_users"] = nlohmann::json::array({"alice", "bob", "charlie"});
+
+        result.push_back(std::move(groupItem));
+
+    }
+
+    return result;
 }

@@ -32,6 +32,7 @@ typedef struct wm_sys_flags_t {
     unsigned int allports:1;                // Scan only listening ports or all
     unsigned int procinfo:1;                // Running processes inventory
     unsigned int running:1;                 // The module is running
+    unsigned int groups:1;                  // Groups inventory
 } wm_sys_flags_t;
 
 typedef struct wm_sys_state_t {
