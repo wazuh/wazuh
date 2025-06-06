@@ -16,59 +16,70 @@ updateRulesetLists()
     local OLD_LISTS_MANIFEST=$2
     local NEW_LISTS_MANIFEST=$3
 
-    LISTS_TO_INSERT=`grep -Fvx -f $OLD_LISTS_MANIFEST $NEW_LISTS_MANIFEST`
+    LISTS_TO_INSERT=$(grep -Fvx -f "$OLD_LISTS_MANIFEST" "$NEW_LISTS_MANIFEST")
 
     if [ -n "$LISTS_TO_INSERT" ]; then
-
+        LISTS_BLOCK=""
         for list in $LISTS_TO_INSERT; do
-        LISTS_BLOCK="$LISTS_BLOCK\n    <list>$list</list>"
+            LISTS_BLOCK="$LISTS_BLOCK\n    <list>$list</list>"
         done
 
-
-        # Insert after the latest <list> at the first uncommented <ruleset> entry
         awk -v insert="$LISTS_BLOCK" '
         BEGIN {
-            inserted = 0           # Flag to track insertion
-            inside_ruleset = 0     # Flag if inside <ruleset>
-            last_list_line = 0     # Line number of last <list> inside <ruleset>
-        }
-
-        # Detect start of <ruleset>
-        /<ruleset>/ {
-            print                 # Print <ruleset> line
-            inside_ruleset = 1
-            next
-        }
-
-        # When inside <ruleset>, track <list> lines and print normally
-        inside_ruleset {
-            if ($0 ~ /<list>/) {
-            last_list_line = NR
-            print
-            next
-            }
-
-            # If we are at the line immediately after last <list>, insert
-            if (last_list_line && NR == last_list_line + 1 && !inserted) {
-            print insert        # Insert the new <list> entries
-            inserted = 1
-            }
-            # If no <list> found and this is first line inside ruleset after <ruleset>
-            else if (!last_list_line && !inserted) {
-            print insert
-            inserted = 1
-            }
-        }
-
-        # Print the current line
-        { print }
-
-        # Detect end of <ruleset>
-        /<\/ruleset>/ {
             inside_ruleset = 0
+            last_list_line = 0
+            first_ruleset_found = 0
+            ruleset_open_line = 0
+            inside_comment = 0
+        }
+
+        {
+            # Check for comment blocks
+            if ($0 ~ /<!--/) {
+            inside_comment = 1
+            }
+            if ($0 ~ /-->/) {
+            inside_comment = 0
+            }
+
+            # Detect uncommented ruleset opening tag
+            if (!inside_comment && $0 ~ /<ruleset>/ && !first_ruleset_found) {
+            inside_ruleset = 1
+            first_ruleset_found = 1
+            ruleset_open_line = NR
+            }
+
+            # Track last <list> within uncommented ruleset
+            if (!inside_comment && inside_ruleset && $0 ~ /<list>/) {
+            last_list_line = NR
+            }
+
+            # Detect uncommented ruleset closing tag
+            if (!inside_comment && inside_ruleset && $0 ~ /<\/ruleset>/) {
+            inside_ruleset = 0
+            }
+
+            lines[NR] = $0
+        }
+
+        END {
+            if (first_ruleset_found) {
+            insert_line = (last_list_line > 0) ? last_list_line : ruleset_open_line
+            for (i=1; i<=NR; i++) {
+                print lines[i]
+                if (i == insert_line) {
+                print insert
+                }
+            }
+            } else {
+            # No uncommented <ruleset> found: print file as-is
+            for (i=1; i<=NR; i++) {
+                print lines[i]
+            }
+            }
         }
         ' "$CONFIG" > "$CONFIG.tmp" && mv "$CONFIG.tmp" "$CONFIG"
-
     fi
+
 
 }

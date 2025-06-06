@@ -83,7 +83,7 @@ WazuhPreUpgrade(){
 
     if [ "X$1" = "Xserver" ]; then
         # Get current CDB lists
-        find $PREINSTALLEDDIR/etc/lists/ -type f -exec realpath --relative-to=$PREINSTALLEDDIR --no-symlinks -- {} \; > $PREINSTALLEDDIR/tmp/lists.old.manifest
+        find $PREINSTALLEDDIR/etc/lists/ -type f ! -name "*.bak" -exec realpath --relative-to=$PREINSTALLEDDIR --no-symlinks -- {} \; > $PREINSTALLEDDIR/tmp/lists.old.manifest
     fi
 }
 
@@ -247,7 +247,7 @@ WazuhUpgrade()
         # Add new CDB lists into configuration
         if [ -f $PREINSTALLEDDIR/tmp/lists.old.manifest ]; then
             . ./src/init/update-ruleset-lists.sh
-            find $PREINSTALLEDDIR/etc/lists/ -type f -exec realpath --relative-to=$PREINSTALLEDDIR --no-symlinks -- {} \; > $PREINSTALLEDDIR/tmp/lists.new.manifest
+            find $PREINSTALLEDDIR/etc/lists/ -type f ! -name "*.bak" -exec realpath --relative-to=$PREINSTALLEDDIR --no-symlinks -- {} \; > $PREINSTALLEDDIR/tmp/lists.new.manifest
             updateRulesetLists "$OSSEC_CONF_PATH" $PREINSTALLEDDIR/tmp/lists.old.manifest $PREINSTALLEDDIR/tmp/lists.new.manifest
             rm $PREINSTALLEDDIR/tmp/lists.*.manifest
         fi
