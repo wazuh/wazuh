@@ -26,7 +26,7 @@ int main (int argc, char **argv) {
 
 #ifndef WIN32
     char log_msg[OS_MAXSTR];
-    char *exec_cmd[3] = { "bin/wazuh-control", "restart", NULL };
+    char *exec_cmd[3] = { "bin/wazuh-control", "reload", NULL };
 
     wfd_t *wfd = wpopenv(*exec_cmd, exec_cmd, W_BIND_STDERR);
     if (!wfd) {
