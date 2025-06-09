@@ -103,6 +103,18 @@ void HostinfoInit()
     return;
 }
 
+void HostinfoHotReload()
+{
+    if (hostinfo_dec) {
+        hostinfo_dec->id = getDecoderfromlist(HOSTINFO_MOD, &os_analysisd_decoder_store);
+        id_new = getDecoderfromlist(HOSTINFO_NEW, &os_analysisd_decoder_store);
+        id_mod = getDecoderfromlist(HOSTINFO_MOD, &os_analysisd_decoder_store);
+        hostinfo_dec->fts = 0;
+    } else {
+        mdebug1("Hostinfo decoder not initialized.");
+    }
+}
+
 /* Return the file pointer to be used */
 static FILE *HI_File(void)
 {

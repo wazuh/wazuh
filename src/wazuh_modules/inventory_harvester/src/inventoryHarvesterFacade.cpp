@@ -208,10 +208,12 @@ void InventoryHarvesterFacade::initSystemEventDispatcher() const
             }
             catch (const nlohmann::json::exception& e)
             {
-                logError(LOGGER_DEFAULT_TAG,
-                         "InventoryHarvesterFacade::initSystemEventDispatcher: json exception (%d) - Event message: %s",
-                         e.id,
-                         parseEventMessage(element).c_str());
+                logError(
+                    LOGGER_DEFAULT_TAG,
+                    "InventoryHarvesterFacade::initSystemEventDispatcher: json exception [%d](%s) - Event message: %s",
+                    e.id,
+                    e.what(),
+                    parseEventMessage(element).c_str());
             }
             catch (const std::exception& e)
             {
@@ -256,10 +258,12 @@ void InventoryHarvesterFacade::initFimEventDispatcher() const
             }
             catch (const nlohmann::json::exception& e)
             {
-                logError(LOGGER_DEFAULT_TAG,
-                         "InventoryHarvesterFacade::initFimEventDispatcher: json exception (%d) - Event message: %s",
-                         e.id,
-                         parseEventMessage(element).c_str());
+                logError(
+                    LOGGER_DEFAULT_TAG,
+                    "InventoryHarvesterFacade::initFimEventDispatcher: json exception [%d](%s) - Event message: %s",
+                    e.id,
+                    e.what(),
+                    parseEventMessage(element).c_str());
             }
             catch (const std::exception& e)
             {

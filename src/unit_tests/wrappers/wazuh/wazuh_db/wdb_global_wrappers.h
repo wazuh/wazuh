@@ -52,6 +52,8 @@ int __wrap_wdb_global_update_agent_status_code(wdb_t *wdb, int id, int status_co
 
 int __wrap_wdb_global_delete_agent(wdb_t *wdb, int id);
 
+char * __wrap_wdb_global_validate_sync_status(wdb_t *wdb, int id, const char *requested_sync_status);
+
 cJSON* __wrap_wdb_global_select_agent_name(wdb_t *wdb, int id);
 
 cJSON* __wrap_wdb_global_select_agent_group(wdb_t *wdb, int id);

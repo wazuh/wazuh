@@ -374,9 +374,9 @@ The following sections present representative examples of the supported modules 
       "speed": 2592
     },
     "memory": {
-      "free": 1962928,
-      "total": 4193844,
-      "used": 53
+      "free": 1048576,
+      "total": 2097152,
+      "used": 1048576
     }
   },
   "observer": {
@@ -405,9 +405,9 @@ The following sections present representative examples of the supported modules 
       "speed": 2593
     },
     "memory": {
-      "free": 3042880,
-      "total": 3745632,
-      "used": 19
+      "free": 1048576,
+      "total": 2097152,
+      "used": 1048576
     }
   },
   "observer": {

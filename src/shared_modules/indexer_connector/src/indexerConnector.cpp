@@ -610,12 +610,16 @@ IndexerConnector::IndexerConnector(
 
                 if (operation.compare("DELETED") == 0)
                 {
-                    logDebug2(IC_NAME, "Added document for deletion with id: %s.", id.c_str());
-                    if (!noIndex)
+                    for (const auto& [key, _] : m_db->seek(id))
                     {
-                        builderBulkDelete(bulkData, id, m_indexName);
+                        logDebug2(IC_NAME, "Added document for deletion with id: %s.", key.c_str());
+                        if (!noIndex)
+                        {
+                            builderBulkDelete(bulkData, key, m_indexName);
+                        }
+
+                        m_db->delete_(key);
                     }
-                    m_db->delete_(id);
                 }
                 else if (operation.compare("DELETED_BY_QUERY") == 0)
                 {
@@ -851,7 +855,10 @@ IndexerConnector::IndexerConnector(
                 // We only sync the local DB when the indexer is disabled
                 if (parsedData.at("operation").get_ref<const std::string&>().compare("DELETED") == 0)
                 {
-                    m_db->delete_(id);
+                    for (const auto& [key, _] : m_db->seek(id))
+                    {
+                        m_db->delete_(key);
+                    }
                 }
                 // We made the same operation for DELETED_BY_QUERY as for DELETED
                 else if (parsedData.at("operation").get_ref<const std::string&>().compare("DELETED_BY_QUERY") == 0)
