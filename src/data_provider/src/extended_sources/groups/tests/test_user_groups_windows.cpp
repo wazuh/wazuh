@@ -74,6 +74,32 @@ class UserGroupsProviderTest : public ::testing::Test
         }
 };
 
+static auto ReturnGroups(const std::vector<std::wstring>& groupNames)
+{
+    return [groupNames](LPCWSTR, LPCWSTR, DWORD, DWORD, LPBYTE * buf, DWORD, LPDWORD ng, LPDWORD tg)
+    {
+        auto namesCopy = std::make_shared<std::vector<std::wstring>>(groupNames);
+        auto bufferPtr = std::make_shared<std::vector<LOCALGROUP_USERS_INFO_0>>();
+
+        for (const auto& name : *namesCopy)
+        {
+            LOCALGROUP_USERS_INFO_0 entry{};
+            entry.lgrui0_name = const_cast<LPWSTR>(name.c_str());
+            bufferPtr->push_back(entry);
+        }
+
+        *buf = reinterpret_cast<LPBYTE>(bufferPtr->data());
+        *ng = static_cast<DWORD>(bufferPtr->size());
+        *tg = static_cast<DWORD>(bufferPtr->size());
+
+        static std::vector<std::shared_ptr<void>> guard;
+        guard.push_back(namesCopy);
+        guard.push_back(bufferPtr);
+
+        return NERR_Success;
+    };
+}
+
 TEST_F(UserGroupsProviderTest, CollectNoGroupsForUserReturnsEmpty)
 {
     std::set<std::string> sids;
@@ -341,4 +367,321 @@ TEST_F(UserGroupsProviderTest, CollectHandlesGroupNotFound)
     auto result = provider->collect({});
 
     EXPECT_TRUE(result.empty());
+}
+
+TEST_F(UserGroupsProviderTest, GetGroupNamesByUidSingleUid)
+{
+    User testUser{};
+    testUser.uid = 1000;
+    testUser.username = "testuser";
+    std::vector<User> localUsers = { testUser };
+
+    Group group1{};
+    group1.gid = 100;
+    group1.groupname = "groupA";
+    Group group2{};
+    group2.gid = 101;
+    group2.groupname = "groupB";
+    std::vector<Group> localGroups = { group1, group2 };
+
+    EXPECT_CALL(*usersHelper, processLocalAccounts(::testing::_))
+    .WillOnce(::testing::Return(localUsers));
+
+    EXPECT_CALL(*groupsHelper, processLocalGroups())
+    .WillOnce(::testing::Return(localGroups));
+
+    EXPECT_CALL(*usersHelper, stringToWstring("testuser"))
+    .WillOnce(::testing::Return(L"testuser"));
+
+    static std::wstring gA = L"groupA";
+    static std::wstring gB = L"groupB";
+    auto buffer = std::make_unique<LOCALGROUP_USERS_INFO_0[]>(2);
+    buffer[0].lgrui0_name = const_cast<LPWSTR>(gA.c_str());
+    buffer[1].lgrui0_name = const_cast<LPWSTR>(gB.c_str());
+
+    EXPECT_CALL(*winapiWrapper,
+                NetUserGetLocalGroupsWrapper(::testing::_, ::testing::StrEq(L"testuser"),
+                                             0, 1, ::testing::_, MAX_PREFERRED_LENGTH,
+                                             ::testing::_, ::testing::_))
+    .WillOnce([&](LPCWSTR, LPCWSTR, DWORD, DWORD, LPBYTE * buf,
+                  DWORD, LPDWORD ng, LPDWORD tg)
+    {
+        *buf = reinterpret_cast<LPBYTE>(buffer.get());
+        *ng  = 2;
+        *tg  = 2;
+        return NERR_Success;
+    });
+
+    auto result = provider->getGroupNamesByUid({1000});
+
+    EXPECT_THAT(result.get<std::vector<std::string>>(),
+                ::testing::UnorderedElementsAre("groupA", "groupB"));
+}
+
+TEST_F(UserGroupsProviderTest, GetGroupNamesByUidMultipleUids)
+{
+    User user1{}, user2{};
+    user1.uid = 1000;
+    user1.username = "user1";
+    user2.uid = 1001;
+    user2.username = "user2";
+    std::vector<User> localUsers = { user1, user2 };
+
+    Group group1{}, group2{}, group3{};
+    group1.gid = 100;
+    group1.groupname = "groupA";
+    group2.gid = 101;
+    group2.groupname = "groupB";
+    group3.gid = 102;
+    group3.groupname = "groupC";
+    std::vector<Group> localGroups = { group1, group2, group3 };
+
+    EXPECT_CALL(*usersHelper, processLocalAccounts(::testing::_))
+    .WillOnce(::testing::Return(localUsers));
+
+    EXPECT_CALL(*groupsHelper, processLocalGroups())
+    .WillOnce(::testing::Return(localGroups));
+
+    EXPECT_CALL(*usersHelper, stringToWstring("user1"))
+    .WillOnce(::testing::Return(L"user1"));
+    EXPECT_CALL(*usersHelper, stringToWstring("user2"))
+    .WillOnce(::testing::Return(L"user2"));
+
+    static std::wstring gA = L"groupA";
+    static std::wstring gB = L"groupB";
+    auto buffer1 = std::make_unique<LOCALGROUP_USERS_INFO_0[]>(2);
+    buffer1[0].lgrui0_name = const_cast<LPWSTR>(gA.c_str());
+    buffer1[1].lgrui0_name = const_cast<LPWSTR>(gB.c_str());
+
+    EXPECT_CALL(*winapiWrapper,
+                NetUserGetLocalGroupsWrapper(::testing::_, ::testing::StrEq(L"user1"),
+                                             0, 1, ::testing::_, MAX_PREFERRED_LENGTH,
+                                             ::testing::_, ::testing::_))
+    .WillOnce([&](LPCWSTR, LPCWSTR, DWORD, DWORD, LPBYTE * buf,
+                  DWORD, LPDWORD ng, LPDWORD tg)
+    {
+        *buf = reinterpret_cast<LPBYTE>(buffer1.get());
+        *ng  = 2;
+        *tg  = 2;
+        return NERR_Success;
+    });
+
+    static std::wstring gC = L"groupC";
+    auto buffer2 = std::make_unique<LOCALGROUP_USERS_INFO_0[]>(2);
+    buffer2[0].lgrui0_name = const_cast<LPWSTR>(gB.c_str());
+    buffer2[1].lgrui0_name = const_cast<LPWSTR>(gC.c_str());
+
+    EXPECT_CALL(*winapiWrapper,
+                NetUserGetLocalGroupsWrapper(::testing::_, ::testing::StrEq(L"user2"),
+                                             0, 1, ::testing::_, MAX_PREFERRED_LENGTH,
+                                             ::testing::_, ::testing::_))
+    .WillOnce([&](LPCWSTR, LPCWSTR, DWORD, DWORD, LPBYTE * buf,
+                  DWORD, LPDWORD ng, LPDWORD tg)
+    {
+        *buf = reinterpret_cast<LPBYTE>(buffer2.get());
+        *ng  = 2;
+        *tg  = 2;
+        return NERR_Success;
+    });
+
+    auto result = provider->getGroupNamesByUid({1000, 1001});
+
+    EXPECT_THAT(result["1000"].get<std::vector<std::string>>(),
+                ::testing::UnorderedElementsAre("groupA", "groupB"));
+
+    EXPECT_THAT(result["1001"].get<std::vector<std::string>>(),
+                ::testing::UnorderedElementsAre("groupB", "groupC"));
+}
+
+TEST_F(UserGroupsProviderTest, GetGroupNamesByUidAllUsers)
+{
+    User user1{}, user2{};
+    user1.uid = 1000;
+    user1.username = "user1";
+    user2.uid = 1001;
+    user2.username = "user2";
+    std::vector<User> localUsers = { user1, user2 };
+
+    Group group1{}, group2{}, group3{};
+    group1.gid = 100;
+    group1.groupname = "groupA";
+    group2.gid = 101;
+    group2.groupname = "groupB";
+    group3.gid = 102;
+    group3.groupname = "groupC";
+    std::vector<Group> localGroups = { group1, group2, group3 };
+
+    EXPECT_CALL(*usersHelper, processLocalAccounts(::testing::_))
+    .WillOnce(::testing::Return(localUsers));
+
+    EXPECT_CALL(*groupsHelper, processLocalGroups())
+    .WillOnce(::testing::Return(localGroups));
+
+    EXPECT_CALL(*usersHelper, stringToWstring("user1"))
+    .WillOnce(::testing::Return(L"user1"));
+    EXPECT_CALL(*usersHelper, stringToWstring("user2"))
+    .WillOnce(::testing::Return(L"user2"));
+
+    static std::wstring gA = L"groupA";
+    static std::wstring gB = L"groupB";
+    static std::wstring gC = L"groupC";
+
+    auto buffer1 = std::make_unique<LOCALGROUP_USERS_INFO_0[]>(2);
+    buffer1[0].lgrui0_name = const_cast<LPWSTR>(gA.c_str());
+    buffer1[1].lgrui0_name = const_cast<LPWSTR>(gB.c_str());
+
+    EXPECT_CALL(*winapiWrapper,
+                NetUserGetLocalGroupsWrapper(::testing::_, ::testing::StrEq(L"user1"),
+                                             0, 1, ::testing::_, MAX_PREFERRED_LENGTH,
+                                             ::testing::_, ::testing::_))
+    .WillOnce([&](LPCWSTR, LPCWSTR, DWORD, DWORD, LPBYTE * buf,
+                  DWORD, LPDWORD ng, LPDWORD tg)
+    {
+        *buf = reinterpret_cast<LPBYTE>(buffer1.get());
+        *ng  = 2;
+        *tg  = 2;
+        return NERR_Success;
+    });
+
+    auto buffer2 = std::make_unique<LOCALGROUP_USERS_INFO_0[]>(2);
+    buffer2[0].lgrui0_name = const_cast<LPWSTR>(gB.c_str());
+    buffer2[1].lgrui0_name = const_cast<LPWSTR>(gC.c_str());
+
+    EXPECT_CALL(*winapiWrapper,
+                NetUserGetLocalGroupsWrapper(::testing::_, ::testing::StrEq(L"user2"),
+                                             0, 1, ::testing::_, MAX_PREFERRED_LENGTH,
+                                             ::testing::_, ::testing::_))
+    .WillOnce([&](LPCWSTR, LPCWSTR, DWORD, DWORD, LPBYTE * buf,
+                  DWORD, LPDWORD ng, LPDWORD tg)
+    {
+        *buf = reinterpret_cast<LPBYTE>(buffer2.get());
+        *ng  = 2;
+        *tg  = 2;
+        return NERR_Success;
+    });
+
+    auto result = provider->getGroupNamesByUid({});
+
+    EXPECT_THAT(result["1000"].get<std::vector<std::string>>(),
+                ::testing::UnorderedElementsAre("groupA", "groupB"));
+
+    EXPECT_THAT(result["1001"].get<std::vector<std::string>>(),
+                ::testing::UnorderedElementsAre("groupB", "groupC"));
+}
+
+TEST_F(UserGroupsProviderTest, GetUserNamesByGidSingleGid)
+{
+    User user1{}, user2{};
+    user1.uid = 1000;
+    user1.username = "alice";
+    user2.uid = 1001;
+    user2.username = "bob";
+    std::vector<User> users = { user1, user2 };
+
+    Group group{};
+    group.gid = 200;
+    group.groupname = "developers";
+    std::vector<Group> groups = { group };
+
+    EXPECT_CALL(*usersHelper, processLocalAccounts(::testing::_))
+    .WillOnce(::testing::Return(users));
+
+    EXPECT_CALL(*groupsHelper, processLocalGroups())
+    .WillOnce(::testing::Return(groups));
+
+    EXPECT_CALL(*usersHelper, stringToWstring("alice"))
+    .WillOnce(::testing::Return(L"alice"));
+    EXPECT_CALL(*usersHelper, stringToWstring("bob"))
+    .WillOnce(::testing::Return(L"bob"));
+
+    EXPECT_CALL(*winapiWrapper, NetUserGetLocalGroupsWrapper(::testing::_, ::testing::StrEq(L"alice"), 0, 1, ::testing::_, MAX_PREFERRED_LENGTH, ::testing::_, ::testing::_))
+    .WillOnce(ReturnGroups({ L"developers" }));
+
+    EXPECT_CALL(*winapiWrapper, NetUserGetLocalGroupsWrapper(::testing::_, ::testing::StrEq(L"bob"), 0, 1, ::testing::_, MAX_PREFERRED_LENGTH, ::testing::_, ::testing::_))
+    .WillOnce(ReturnGroups({}));
+
+    auto result = provider->getUserNamesByGid({200});
+
+    EXPECT_THAT(result.get<std::vector<std::string>>(),
+                ::testing::UnorderedElementsAre("alice"));
+}
+
+TEST_F(UserGroupsProviderTest, GetUserNamesByGidMultipleGids)
+{
+    User user1{}, user2{};
+    user1.uid = 1000;
+    user1.username = "alice";
+    user2.uid = 1001;
+    user2.username = "bob";
+    std::vector<User> users = { user1, user2 };
+
+    Group group1{}, group2{};
+    group1.gid = 200;
+    group1.groupname = "developers";
+    group2.gid = 201;
+    group2.groupname = "admins";
+    std::vector<Group> groups = { group1, group2 };
+
+    EXPECT_CALL(*usersHelper, processLocalAccounts(::testing::_))
+    .WillOnce(::testing::Return(users));
+    EXPECT_CALL(*groupsHelper, processLocalGroups())
+    .WillOnce(::testing::Return(groups));
+
+    EXPECT_CALL(*usersHelper, stringToWstring("alice"))
+    .WillOnce(::testing::Return(L"alice"));
+    EXPECT_CALL(*usersHelper, stringToWstring("bob"))
+    .WillOnce(::testing::Return(L"bob"));
+
+    EXPECT_CALL(*winapiWrapper, NetUserGetLocalGroupsWrapper(::testing::_, ::testing::StrEq(L"alice"), 0, 1, ::testing::_, MAX_PREFERRED_LENGTH, ::testing::_, ::testing::_))
+    .WillOnce(ReturnGroups({ L"developers", L"admins" }));
+
+    EXPECT_CALL(*winapiWrapper, NetUserGetLocalGroupsWrapper(::testing::_, ::testing::StrEq(L"bob"), 0, 1, ::testing::_, MAX_PREFERRED_LENGTH, ::testing::_, ::testing::_))
+    .WillOnce(ReturnGroups({ L"admins" }));
+
+    auto result = provider->getUserNamesByGid({200, 201});
+
+    EXPECT_THAT(result["200"].get<std::vector<std::string>>(),
+                ::testing::UnorderedElementsAre("alice"));
+    EXPECT_THAT(result["201"].get<std::vector<std::string>>(),
+                ::testing::UnorderedElementsAre("alice", "bob"));
+}
+
+TEST_F(UserGroupsProviderTest, GetUserNamesByGidAllGroups)
+{
+    User user1{}, user2{};
+    user1.uid = 1000;
+    user1.username = "alice";
+    user2.uid = 1001;
+    user2.username = "bob";
+    std::vector<User> users = { user1, user2 };
+
+    Group group1{}, group2{};
+    group1.gid = 200;
+    group1.groupname = "developers";
+    group2.gid = 201;
+    group2.groupname = "admins";
+    std::vector<Group> groups = { group1, group2 };
+
+    EXPECT_CALL(*usersHelper, processLocalAccounts(::testing::_))
+    .WillOnce(::testing::Return(users));
+    EXPECT_CALL(*groupsHelper, processLocalGroups())
+    .WillOnce(::testing::Return(groups));
+
+    EXPECT_CALL(*usersHelper, stringToWstring("alice"))
+    .WillOnce(::testing::Return(L"alice"));
+    EXPECT_CALL(*usersHelper, stringToWstring("bob"))
+    .WillOnce(::testing::Return(L"bob"));
+
+    EXPECT_CALL(*winapiWrapper, NetUserGetLocalGroupsWrapper(::testing::_, ::testing::StrEq(L"alice"), 0, 1, ::testing::_, MAX_PREFERRED_LENGTH, ::testing::_, ::testing::_))
+    .WillOnce(ReturnGroups({ L"developers", L"admins" }));
+
+    EXPECT_CALL(*winapiWrapper, NetUserGetLocalGroupsWrapper(::testing::_, ::testing::StrEq(L"bob"), 0, 1, ::testing::_, MAX_PREFERRED_LENGTH, ::testing::_, ::testing::_))
+    .WillOnce(ReturnGroups({ L"admins" }));
+
+    auto result = provider->getUserNamesByGid({});
+
+    EXPECT_THAT(result["200"].get<std::vector<std::string>>(),
+                ::testing::UnorderedElementsAre("alice"));
+    EXPECT_THAT(result["201"].get<std::vector<std::string>>(),
+                ::testing::UnorderedElementsAre("alice", "bob"));
 }
