@@ -33,7 +33,7 @@ from azure_utils import (
     get_token,
     offset_to_datetime,
     read_auth_file,
-    send_message,
+    SocketConnection,
     set_logger,
 )
 
@@ -207,37 +207,61 @@ def test_get_token_ko(mock_post, mock_logging, exception, error_msg, error_codes
     mock_logging.assert_called_once()
 
 
+@patch('azure_utils.socket.connect')
+def test_socket_connection_init(mock_connect):
+    """Test SocketConnection correctly connect to the socket."""
+    SocketConnection()
+
+    mock_connect.assert_called_with(ANALYSISD)
+
+
+@pytest.mark.parametrize('error_code', [111])
+@patch('azure_utils.logging.error')
+@patch('azure_utils.socket.connect')
+def test_socket_connection_init_ko(mock_connect, mock_logging, error_code):
+    """Test SocketConnection handle the socket exception."""
+    s = socket.error()
+    s.errno = error_code
+    mock_connect.side_effect = s
+
+    with pytest.raises(SystemExit) as err:
+        SocketConnection()
+    assert err.value.code == 1
+
+    mock_logging.assert_called_once()
+
+
 @patch('azure_utils.socket.close')
 @patch('azure_utils.socket.send')
 @patch('azure_utils.socket.connect')
-def test_send_message(mock_connect, mock_send, mock_close):
+def test_socket_connection_send_message(mock_connect, mock_send, mock_close):
     """Test send_message sends the messages to the Wazuh queue socket."""
     message = 'msg'
-    send_message(message)
+
+    with SocketConnection() as socket:
+        socket.send_message(message)
+
     mock_connect.assert_called_with(ANALYSISD)
     mock_send.assert_called_with(f'{SOCKET_HEADER}{message}'.encode(errors='replace'))
     mock_close.assert_called_once()
 
 
-@pytest.mark.parametrize('error_code', [111, 90, 1])
+@pytest.mark.parametrize('error_code', [90, 1])
 @patch('azure_utils.logging.error')
 @patch('azure_utils.socket.close')
 @patch('azure_utils.socket.send')
 @patch('azure_utils.socket.connect')
-def test_send_message_ko(mock_connect, mock_send, mock_close, mock_logging, error_code):
+def test_socket_connection_send_message_ko(mock_connect, mock_send, mock_close, mock_logging, error_code):
     """Test send_message handle the socket exceptions."""
     s = socket.error()
     s.errno = error_code
     mock_send.side_effect = s
 
-    if error_code == 90:
-        send_message('')
-    else:
-        with pytest.raises(SystemExit) as err:
-            send_message('')
-        assert err.value.code == 1
-    mock_close.assert_called_once()
+    with SocketConnection() as socket_conn:
+        socket_conn.send_message('')
+
     mock_logging.assert_called_once()
+    mock_close.assert_called_once()
 
 
 @pytest.mark.parametrize(

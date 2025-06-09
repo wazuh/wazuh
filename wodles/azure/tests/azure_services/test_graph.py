@@ -180,7 +180,7 @@ def test_build_graph_url_ko(mock_get, mock_logging):
     mock_logging.assert_called_once()
 
 
-@patch('azure_services.graph.send_message')
+@patch('azure_services.graph.SocketConnection.send_message')
 @patch('azure_services.graph.update_row_object')
 @patch('azure_services.graph.get')
 def test_get_graph_events(mock_get, mock_update, mock_send):

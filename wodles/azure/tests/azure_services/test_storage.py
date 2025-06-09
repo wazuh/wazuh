@@ -11,7 +11,7 @@ from datetime import datetime
 from hashlib import md5
 from os.path import abspath, dirname, join, realpath
 from typing import Optional
-from unittest.mock import MagicMock, PropertyMock, call, patch
+from unittest.mock import MagicMock, call, patch
 
 import pytest
 import pytz
@@ -284,7 +284,7 @@ def test_start_storage_ko_credentials(mock_logging):
     ],
 )
 @patch('azure_services.storage.update_row_object')
-@patch('azure_services.storage.send_message')
+@patch('azure_services.storage.SocketConnection.send_message')
 def test_get_blobs(
     mock_send,
     mock_update,
@@ -412,7 +412,7 @@ def test_that_empty_blobs_are_omitted(mock_logging):
 
 
 @patch('azure_services.storage.update_row_object')
-@patch('azure_services.storage.send_message')
+@patch('azure_services.storage.SocketConnection.send_message')
 def test_get_blobs_only_with_prefix(mock_send, mock_update):
     """Test get_blobs process only the blobs corresponding to a specific prefix, ignoring the rest."""
     MagicMock(blobs=None, json_file=False, json_inline=False, reparse=False)

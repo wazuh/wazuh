@@ -258,7 +258,7 @@ def test_get_time_position(columns, position):
     assert result == position
 
 
-@patch('azure_services.analytics.send_message')
+@patch('azure_services.analytics.SocketConnection.send_message')
 def test_iter_log_analytics_events(mock_send):
     """Test iter_log_analytics_events iterates through the columns and rows to build the events and send them to the
     socket."""
