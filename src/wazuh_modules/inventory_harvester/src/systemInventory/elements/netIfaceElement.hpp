@@ -70,11 +70,11 @@ public:
         element.data.host.network.egress.errors = data->netIfaceTxErrors();
         element.data.host.network.egress.packets = data->netIfaceTxPackets();
 
-        element.data.observer.ingress.interface.alias = data->netIfaceAdapter();
-        element.data.observer.ingress.interface.name = data->netIfaceName();
-        element.data.observer.ingress.interface.mtu = data->netIfaceMtu();
-        element.data.observer.ingress.interface.state = data->netIfaceState();
-        element.data.observer.ingress.interface.type = data->netIfaceType();
+        element.data.interface.alias = data->netIfaceAdapter();
+        element.data.interface.name = data->netIfaceName();
+        element.data.interface.mtu = data->netIfaceMtu();
+        element.data.interface.state = data->netIfaceState();
+        element.data.interface.type = data->netIfaceType();
 
         auto& instancePolicyManager = PolicyHarvesterManager::instance();
         element.data.wazuh.cluster.name = instancePolicyManager.getClusterName();

@@ -458,6 +458,7 @@ static int setup_registry_key_data(void **state) {
 }
 
 extern OSHash *fim_agentinfo;
+extern OSList *g_decoder_thread_list;
 
 static int setup_registry_value_data(void **state) {
     fim_data_t *data;
@@ -538,6 +539,8 @@ static int teardown_fim_data(void **state) {
     free(data);
 
     OSHash_Free(fim_agentinfo);
+
+    OSList_Destroy(g_decoder_thread_list);
 
     return 0;
 }

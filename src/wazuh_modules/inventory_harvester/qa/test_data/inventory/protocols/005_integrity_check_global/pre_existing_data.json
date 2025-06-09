@@ -1,7 +1,7 @@
 [
     {
         "index_name": "wazuh-states-inventory-protocols-cluster01",
-        "ids":{
+        "ids": {
             "001": "001_35c9b5749116035dea24e0c8797c8e01358081a0",
             "002": "002_35c9b5749116035dea24e0c8797c8e01358081a1"
         },
@@ -18,12 +18,8 @@
                     "metric": 101,
                     "type": "ipv4"
                 },
-                "observer": {
-                    "ingress": {
-                        "interface": {
-                            "name": "eth1"
-                        }
-                    }
+                "interface": {
+                    "name": "eth1"
                 },
                 "wazuh": {
                     "schema": {
@@ -43,12 +39,8 @@
                     "metric": 100,
                     "type": "ipv4"
                 },
-                "observer": {
-                    "ingress": {
-                        "interface": {
-                            "name": "eth0"
-                        }
-                    }
+                "interface": {
+                    "name": "eth0"
                 },
                 "wazuh": {
                     "schema": {

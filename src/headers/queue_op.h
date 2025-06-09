@@ -64,7 +64,15 @@ int queue_full(const w_queue_t * queue);
  * */
 int queue_empty(const w_queue_t * queue);
 
-/** 
+/**
+ * @brief Evaluates whether the queue is empty or not
+ *
+ * @param queue
+ * @return 1 if true, 0 if false
+ * */
+int queue_empty_ex(w_queue_t * queue);
+
+/**
  * @brief Tries to insert an element into the queue
  * 
  * @param queue the queue

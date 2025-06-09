@@ -457,8 +457,6 @@ TEST_F(IndexerConnectorTest, NoPublish)
 TEST_F(IndexerConnectorTest, PublishDeleted)
 {
     nlohmann::json expectedMetadata;
-    expectedMetadata["delete"]["_index"] = INDEXER_NAME;
-    expectedMetadata["delete"]["_id"] = INDEX_ID_A;
 
     // Callback that checks the expected data to be published.
     // The format of the data published is divided in two lines:
@@ -482,6 +480,19 @@ TEST_F(IndexerConnectorTest, PublishDeleted)
 
     // Publish content and wait until the publication finishes.
     nlohmann::json publishData;
+    expectedMetadata["index"]["_index"] = INDEXER_NAME;
+    expectedMetadata["index"]["_id"] = INDEX_ID_A;
+    publishData["id"] = INDEX_ID_A;
+    publishData["operation"] = "INSERTED";
+    publishData["data"] = "content";
+    ASSERT_NO_THROW(indexerConnector.publish(publishData.dump()));
+    ASSERT_NO_THROW(waitUntil([&callbackCalled]() { return callbackCalled.load(); }, MAX_INDEXER_PUBLISH_TIME_MS));
+
+    callbackCalled = false;
+    publishData.erase("data");
+    expectedMetadata.clear();
+    expectedMetadata["delete"]["_index"] = INDEXER_NAME;
+    expectedMetadata["delete"]["_id"] = INDEX_ID_A;
     publishData["id"] = INDEX_ID_A;
     publishData["operation"] = "DELETED";
     ASSERT_NO_THROW(indexerConnector.publish(publishData.dump()));
@@ -736,6 +747,14 @@ TEST_F(IndexerConnectorTest, PublishErrorFromServer)
 
     // Trigger publication and expect that it is not made.
     nlohmann::json publishData;
+    publishData["id"] = INDEX_ID_A;
+    publishData["operation"] = "INSERTED";
+    publishData["data"] = "content";
+    ASSERT_NO_THROW(indexerConnector.publish(publishData.dump()));
+    ASSERT_NO_THROW(waitUntil([&callbackCalled]() { return callbackCalled.load(); }, MAX_INDEXER_PUBLISH_TIME_MS));
+
+    callbackCalled = false;
+    publishData.erase("data");
     publishData["id"] = INDEX_ID_A;
     publishData["operation"] = "DELETED";
     ASSERT_NO_THROW(indexerConnector.publish(publishData.dump()));

@@ -84,6 +84,17 @@ void SecurityConfigurationAssessmentInit()
     mdebug1("SecurityConfigurationAssessmentInit completed.");
 }
 
+void SecurityConfigurationAssessmentHotReload()
+{
+    if (sca_json_dec) {
+        sca_json_dec->id = getDecoderfromlist(SCA_MOD, &os_analysisd_decoder_store);
+        sca_json_dec->fts = 0;
+        mdebug1("SecurityConfigurationAssessmentHotReload completed.");
+    } else {
+        mdebug1("Security Configuration Assessment decoder not initialized.");
+    }
+}
+
 static void *RequestDBThread() {
 
     while(1) {
