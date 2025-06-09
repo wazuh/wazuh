@@ -23,7 +23,7 @@ from azure_utils import (
     get_token,
     offset_to_datetime,
     read_auth_file,
-    send_message,
+    SocketConnection,
 )
 from db import orm
 from db.utils import create_new_row, update_row_object
@@ -44,7 +44,7 @@ def start_log_analytics(args):
             auth_path=args.la_auth_path, fields=('application_id', 'application_key')
         )
     elif args.la_id and args.la_key and args.la_tenant_domain:
-        logging.debug(f"Log Analytics: Using id and key from configuration for authentication")
+        logging.debug("Log Analytics: Using id and key from configuration for authentication")
         logging.warning(
             DEPRECATED_MESSAGE.format(
                 name='la_id and la_key', release='4.4', url=CREDENTIALS_URL
@@ -246,16 +246,17 @@ def iter_log_analytics_events(columns: list, rows: list, tag: str):
     if tag:
         columns.append({'type': 'string', 'name': 'log_analytics_tag'})
 
-    for row in rows:
-        # Add tag values
-        row.append('azure-log-analytics')
-        if tag:
-            row.append(tag)
+    with SocketConnection() as socket:
+        for row in rows:
+            # Add tag values
+            row.append('azure-log-analytics')
+            if tag:
+                row.append(tag)
 
-        # Build the events and send them
-        event = {}
-        for c in range(0, len(columns)):
-            event[columns[c]['name']] = row[c]
-        logging.info('Log Analytics: Sending event by socket.')
-        logging.debug(f"Event send to socket: {event}")
-        send_message(dumps(event))
+            # Build the events and send them
+            event = {}
+            for c in range(0, len(columns)):
+                event[columns[c]['name']] = row[c]
+            logging.info('Log Analytics: Sending event by socket.')
+            logging.debug(f"Event send to socket: {event}")
+            socket.send_message(dumps(event))

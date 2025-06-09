@@ -23,7 +23,7 @@ from azure_utils import (
     DEPRECATED_MESSAGE,
     offset_to_datetime,
     read_auth_file,
-    send_message,
+    SocketConnection,
 )
 from db import orm
 from db.utils import create_new_row, update_row_object
@@ -41,7 +41,7 @@ def start_storage(args):
             auth_path=args.storage_auth_path, fields=('account_name', 'account_key')
         )
     elif args.account_name and args.account_key:
-        logging.debug(f"Storage: Using path account name and account key for authentication")
+        logging.debug("Storage: Using path account name and account key for authentication")
         logging.warning(
             DEPRECATED_MESSAGE.format(
                 name='account_name and account_key', release='4.4', url=CREDENTIALS_URL
@@ -175,83 +175,84 @@ def get_blobs(
             f'Storage: The search starts from the date: {desired_datetime} for blobs in '
             f'container: "{container_name}" and prefix: "/{prefix if prefix is not None else ""}"'
         )
-        for blob in blobs:
-            # Skip if the blob is empty
-            if blob.size == 0:
-                logging.debug(f'Empty blob {blob.name}, skipping')
-                continue
-            # Skip the blob if nested under the set prefix
-            if prefix is not None and len(blob.name.split('/')) > 2:
-                logging.debug(
-                    f'Skipped blob {blob.name}, nested under set prefix {prefix}'
-                )
-                continue
-            # Skip the blob if its name has not the expected format
-            if blob_extension and blob_extension not in blob.name:
-                logging.debug(
-                    f'Skipped blob, name {blob.name} does not match with the format "{blob_extension}"'
-                )
-                continue
+        with SocketConnection() as socket:
+            for blob in blobs:
+                # Skip if the blob is empty
+                if blob.size == 0:
+                    logging.debug(f'Empty blob {blob.name}, skipping')
+                    continue
+                # Skip the blob if nested under the set prefix
+                if prefix is not None and len(blob.name.split('/')) > 2:
+                    logging.debug(
+                        f'Skipped blob {blob.name}, nested under set prefix {prefix}'
+                    )
+                    continue
+                # Skip the blob if its name has not the expected format
+                if blob_extension and blob_extension not in blob.name:
+                    logging.debug(
+                        f'Skipped blob, name {blob.name} does not match with the format "{blob_extension}"'
+                    )
+                    continue
 
-            # Skip the blob if already processed
-            last_modified = blob.last_modified
-            if not reparse and (
-                last_modified < desired_datetime
-                or (min_datetime <= last_modified <= max_datetime)
-            ):
-                logging.info(f"Storage: Skipping blob {blob.name} due to being already processed")
-                continue
+                # Skip the blob if already processed
+                last_modified = blob.last_modified
+                if not reparse and (
+                    last_modified < desired_datetime
+                    or (min_datetime <= last_modified <= max_datetime)
+                ):
+                    logging.info(f"Storage: Skipping blob {blob.name} due to being already processed")
+                    continue
 
-            # Get the blob data
-            try:
-                logging.info(f"Getting data from blob {blob.name}")
-                data = container_client.download_blob(blob, encoding="UTF-8", max_concurrency=2)
-            except (ValueError, AzureError, HttpResponseError) as e:
-                logging.error(f'Storage: Error reading the blob data: "{e}".')
-                continue
-            else:
-                # Process the data as a JSON
-                if json_file:
-                    try:
-                        content_list = loads(data.readall())
-                        records = content_list['records']
-                    except (JSONDecodeError, TypeError) as e:
-                        logging.error(
-                            f'Storage: Error reading the contents of the blob: "{e}".'
-                        )
-                        continue
-                    except KeyError as e:
-                        logging.error(
-                            f'Storage: No records found in the blob\'s contents: "{e}".'
-                        )
-                        continue
-                    else:
-                        for log_record in records:
-                            # Add azure tags
-                            log_record['azure_tag'] = 'azure-storage'
-                            if tag:
-                                log_record['azure_storage_tag'] = tag
-                            logging.info('Storage: Sending event by socket.')
-                            send_message(dumps(log_record))
-                # Process the data as plain text
+                # Get the blob data
+                try:
+                    logging.info(f"Getting data from blob {blob.name}")
+                    data = container_client.download_blob(blob, encoding="UTF-8", max_concurrency=2)
+                except (ValueError, AzureError, HttpResponseError) as e:
+                    logging.error(f'Storage: Error reading the blob data: "{e}".')
+                    continue
                 else:
-                    for line in [s for s in str(data.readall()).splitlines() if s]:
-                        if json_inline:
-                            msg = '{"azure_tag": "azure-storage"'
-                            if tag:
-                                msg = f'{msg}, "azure_storage_tag": "{tag}"'
-                            msg = f'{msg}, {line[1:]}'
+                    # Process the data as a JSON
+                    if json_file:
+                        try:
+                            content_list = loads(data.readall())
+                            records = content_list['records']
+                        except (JSONDecodeError, TypeError) as e:
+                            logging.error(
+                                f'Storage: Error reading the contents of the blob: "{e}".'
+                            )
+                            continue
+                        except KeyError as e:
+                            logging.error(
+                                f'Storage: No records found in the blob\'s contents: "{e}".'
+                            )
+                            continue
                         else:
-                            msg = 'azure_tag: azure-storage.'
-                            if tag:
-                                msg = f'{msg} azure_storage_tag: {tag}.'
-                            msg = f'{msg} {line}'
-                        logging.info('Storage: Sending event by socket.')
-                        send_message(msg)
-            update_row_object(
-                table=orm.Storage,
-                md5_hash=md5_hash,
-                query=container_name,
-                new_min=last_modified.strftime('%Y-%m-%dT%H:%M:%S.%fZ'),
-                new_max=last_modified.strftime('%Y-%m-%dT%H:%M:%S.%fZ'),
-            )
+                            for log_record in records:
+                                # Add azure tags
+                                log_record['azure_tag'] = 'azure-storage'
+                                if tag:
+                                    log_record['azure_storage_tag'] = tag
+                                logging.info('Storage: Sending event by socket.')
+                                socket.send_message(dumps(log_record))
+                    # Process the data as plain text
+                    else:
+                        for line in [s for s in str(data.readall()).splitlines() if s]:
+                            if json_inline:
+                                msg = '{"azure_tag": "azure-storage"'
+                                if tag:
+                                    msg = f'{msg}, "azure_storage_tag": "{tag}"'
+                                msg = f'{msg}, {line[1:]}'
+                            else:
+                                msg = 'azure_tag: azure-storage.'
+                                if tag:
+                                    msg = f'{msg} azure_storage_tag: {tag}.'
+                                msg = f'{msg} {line}'
+                            logging.info('Storage: Sending event by socket.')
+                            socket.send_message(msg)
+                update_row_object(
+                    table=orm.Storage,
+                    md5_hash=md5_hash,
+                    query=container_name,
+                    new_min=last_modified.strftime('%Y-%m-%dT%H:%M:%S.%fZ'),
+                    new_max=last_modified.strftime('%Y-%m-%dT%H:%M:%S.%fZ'),
+                )

@@ -395,40 +395,47 @@ def get_token(client_id: str, secret: str, domain: str, scope: str):
     sys.exit(1)
 
 
-def send_message(message: str):
-    """Send a message with a header to the analysisd queue.
+class SocketConnection:
+    _socket = socket(AF_UNIX, SOCK_DGRAM)
+    _msg_template = '{header}{message}'
 
-    Parameters
-    ----------
-    message : str
-        The message body to send to analysisd.
-    """
-    s = socket(AF_UNIX, SOCK_DGRAM)
+    def __init__(self):
+        try:
+            self._socket.connect(ANALYSISD)
+        except socket_error as e:
+            if e.errno == 111:
+                logging.error('ERROR: Wazuh must be running.')
+                sys.exit(1)
 
-    encoded_msg = f'{SOCKET_HEADER}{message}'.encode(errors='replace')
+    def __enter__(self) -> "SocketConnection":
+        return self
 
-    # Logs warning if event is bigger than max size
-    if len(encoded_msg) > MAX_EVENT_SIZE:
-        logging.warning(
-            f'WARNING: Event size exceeds the maximum allowed limit of {MAX_EVENT_SIZE} bytes.'
-        )
+    def __exit__(self, type, value, traceback):
+        self._socket.close()
 
-    try:
-        s.connect(ANALYSISD)
-        s.send(encoded_msg)
-    except socket_error as e:
-        if e.errno == 111:
-            logging.error('ERROR: Wazuh must be running.')
-            sys.exit(1)
-        elif e.errno == 90:
-            logging.error(
-                'ERROR: Message too long to send to Wazuh.  Skipping message...'
+    def send_message(self, message: str) -> None:
+        """Send a message with a header to the analysisd queue.
+
+        Parameters
+        ----------
+        message : str
+            The message body to send to analysisd.
+        """
+        encoded_msg = self._msg_template.format(header=SOCKET_HEADER, message=message).encode(errors='replace')
+
+        # Logs warning if event is bigger than max size
+        if len(encoded_msg) > MAX_EVENT_SIZE:
+            logging.warning(
+                f'WARNING: Event size exceeds the maximum allowed limit of {MAX_EVENT_SIZE} bytes.'
             )
-        else:
-            logging.error(f'ERROR: Error sending message to wazuh: {e}')
-            sys.exit(1)
-    finally:
-        s.close()
+
+        try:
+            self._socket.send(encoded_msg)
+        except socket_error as e:
+            if e.errno == 90:
+                logging.error('ERROR: Message too long to send to Wazuh.  Skipping message...')
+            else:
+                logging.error(f'ERROR: Error sending message to wazuh: {e}')
 
 
 def offset_to_datetime(offset: str):

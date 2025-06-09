@@ -23,7 +23,7 @@ from azure_utils import (
     get_token,
     offset_to_datetime,
     read_auth_file,
-    send_message,
+    SocketConnection,
 )
 from db import orm
 from db.utils import create_new_row, update_row_object
@@ -43,7 +43,7 @@ def start_graph(args):
             auth_path=args.graph_auth_path, fields=('application_id', 'application_key')
         )
     elif args.graph_id and args.graph_key and args.graph_tenant_domain:
-        logging.debug(f"Graph: Using id and key from configuration for authentication")
+        logging.debug("Graph: Using id and key from configuration for authentication")
         logging.warning(
             DEPRECATED_MESSAGE.format(
                 name='graph_id and graph_key', release='4.4', url=CREDENTIALS_URL
@@ -179,39 +179,40 @@ def get_graph_events(url: str, headers: dict, md5_hash: str, query: str, tag: st
     if response.status_code == 200:
         response_json = response.json()
         values_json = response_json.get('value')
-        for value in values_json:
-            try:
-                date = value['activityDateTime']
-            except KeyError:
-                date = value['createdDateTime']
-            update_row_object(
-                table=orm.Graph,
-                md5_hash=md5_hash,
-                new_min=date,
-                new_max=date,
-                query=query,
-            )
-            value['azure_tag'] = 'azure-ad-graph'
-            if tag:
-                value['azure_aad_tag'] = tag
-            json_result = dumps(value)
-            logging.info('Graph: Sending event by socket.')
-            send_message(json_result)
+        with SocketConnection() as socket:
+            for value in values_json:
+                try:
+                    date = value['activityDateTime']
+                except KeyError:
+                    date = value['createdDateTime']
+                update_row_object(
+                    table=orm.Graph,
+                    md5_hash=md5_hash,
+                    new_min=date,
+                    new_max=date,
+                    query=query,
+                )
+                value['azure_tag'] = 'azure-ad-graph'
+                if tag:
+                    value['azure_aad_tag'] = tag
+                json_result = dumps(value)
+                logging.info('Graph: Sending event by socket.')
+                socket.send_message(json_result)
 
-        if len(values_json) == 0:
-            logging.info('Graph: There are no new results')
-        next_url = response_json.get('@odata.nextLink')
+            if len(values_json) == 0:
+                logging.info('Graph: There are no new results')
+            next_url = response_json.get('@odata.nextLink')
 
-        if next_url:
-            logging.info(f"Graph: Requesting data from next page")
-            logging.debug(f"Iterating to next url: {next_url}")
-            get_graph_events(
-                url=next_url, headers=headers, md5_hash=md5_hash, query=query, tag=tag
-            )
+            if next_url:
+                logging.info("Graph: Requesting data from next page")
+                logging.debug(f"Iterating to next url: {next_url}")
+                get_graph_events(
+                    url=next_url, headers=headers, md5_hash=md5_hash, query=query, tag=tag
+                )
     elif response.status_code == 400:
         logging.error(f'Bad Request for url: {response.url}')
         logging.error(
-            f'Ensure the URL is valid and there is data available for the specified datetime.'
+            'Ensure the URL is valid and there is data available for the specified datetime.'
         )
     else:
         logging.error(f"Error with Graph request: {response.json()}")
