@@ -13,16 +13,20 @@
 
 #include "wmodules.h"
 #include "wm_azure.h"
+#include "expression.h"
 
 static wm_azure_t *azure_config;                               // Pointer to Azure-logs configuration
+static w_expression_t *azure_script_log_regex;                 // Pointer to Azure script log regex
 static int queue_fd;                                           // Output queue file descriptor
 static unsigned int default_timeout;                           // Default timeout for every query
 
 static void* wm_azure_main(wm_azure_t *azure_config);          // Module main function. It won't return
-static void wm_azure_setup(wm_azure_t *_azure_config);           // Setup module
-static void wm_azure_cleanup();                                  // Cleanup function, doesn't overwrite wm_cleanup
-static void wm_azure_check();         // Check configuration
+static void wm_azure_setup(wm_azure_t *_azure_config);         // Setup module
+static void wm_azure_cleanup();                                // Cleanup function, doesn't overwrite wm_cleanup
+static void wm_azure_check();                                  // Check configuration
 static void wm_azure_destroy(wm_azure_t *azure_config);        // Destroy data
+static void wm_setup_logging_capture();                        // Setup script logging output
+static void wm_integrations_parse_output(char * const output); // Parse script logging output and log them here
 
 static void wm_azure_log_analytics(wm_azure_api_t *log_analytics);      // Run log analytics queries
 static void wm_azure_graphs(wm_azure_api_t *graph);                     // Run graph queries
@@ -172,10 +176,7 @@ void wm_azure_log_analytics(wm_azure_api_t *log_analytics) {
         mtdebug1(WM_AZURE_LOGTAG, "Launching command: %s", command);
         switch (wm_exec(command, &output, &status, timeout, NULL)) {
             case 0:
-                if (status > 0) {
-                    mterror(WM_AZURE_LOGTAG, "%s: Returned error code: '%d'.", curr_request->tag, status);
-                    mtdebug1(WM_AZURE_LOGTAG, "OUTPUT: %s", output);
-                }
+                wm_integrations_parse_output(output);
                 break;
             case WM_ERROR_TIMEOUT:
                 mterror(WM_AZURE_LOGTAG, "Timeout expired at request '%s'.", curr_request->tag);
@@ -259,10 +260,7 @@ void wm_azure_graphs(wm_azure_api_t *graph) {
         mtdebug1(WM_AZURE_LOGTAG, "Launching command: %s", command);
         switch (wm_exec(command, &output, &status, timeout, NULL)) {
             case 0:
-                if (status > 0) {
-                    mterror(WM_AZURE_LOGTAG, "%s: Returned error code: '%d'.", curr_request->tag, status);
-                    mtdebug1(WM_AZURE_LOGTAG, "OUTPUT: %s", output);
-                }
+                wm_integrations_parse_output(output);
                 break;
             case WM_ERROR_TIMEOUT:
                 mterror(WM_AZURE_LOGTAG, "Timeout expired at request '%s'.", curr_request->tag);
@@ -364,10 +362,7 @@ void wm_azure_storage(wm_azure_storage_t *storage) {
         mtdebug1(WM_AZURE_LOGTAG, "Launching command: %s", command);
         switch (wm_exec(command, &output, &status, timeout, NULL)) {
             case 0:
-                if (status > 0) {
-                    mterror(WM_AZURE_LOGTAG, "%s: Returned error code: '%d'.", curr_container->name, status);
-                    mtdebug1(WM_AZURE_LOGTAG, "OUTPUT: %s", output);
-                }
+                wm_integrations_parse_output(output);
                 break;
             case WM_ERROR_TIMEOUT:
                 mterror(WM_AZURE_LOGTAG, "Timeout expired at request '%s'.", curr_container->name);
@@ -391,6 +386,7 @@ void wm_azure_setup(wm_azure_t *_azure_config) {
 
     azure_config = _azure_config;
     wm_azure_check();
+    wm_setup_logging_capture();
 
     // Read running state
 
@@ -508,6 +504,7 @@ void wm_azure_destroy(wm_azure_t *azure_config) {
     }
 
     free(azure_config);
+    w_free_expression(azure_script_log_regex);
 }
 
 
@@ -577,6 +574,51 @@ cJSON *wm_azure_dump(const wm_azure_t * azure) {
     cJSON_AddItemToObject(root, "azure-logs", wm_azure);
 
     return root;
+}
+
+// Setup script logging capture feature
+
+static void wm_setup_logging_capture() {
+    const char * const log_pattern =
+        "^\\d{4}/\\d{2}/\\d{2} \\d{2}:\\d{2}:\\d{2} azure: (DEBUG|INFO|WARNING|ERROR): ";
+    w_calloc_expression_t(&azure_script_log_regex, EXP_TYPE_PCRE2);
+
+    if (!w_expression_compile(azure_script_log_regex, log_pattern, 0)) {
+        mterror(WM_AZURE_LOGTAG, REGEX_COMPILE_2, log_pattern);
+        pthread_exit(NULL);
+    }
+}
+
+// Get script logging output and log it here
+
+static void wm_integrations_parse_output(char * const output) {
+    char *saveptr = NULL;
+    const char *end_match = NULL;
+    char *log_line = strtok_r(output, "\n", &saveptr);
+    regex_matching *regex_match = NULL;
+
+    while (log_line != NULL) {
+        os_calloc(1, sizeof(regex_matching), regex_match);
+        if (w_expression_match(azure_script_log_regex, log_line, &end_match, regex_match) &&
+            regex_match->sub_strings && regex_match->sub_strings[0] && end_match) {
+
+            char * const log_level = regex_match->sub_strings[0];
+            char * const log_payload = (char *)(end_match + 1);
+
+            if (!strcmp(log_level, "INFO")) {
+                mtinfo(WM_AZURE_LOGTAG, "%s", log_payload);
+            } else if (!strcmp(log_level, "WARNING")) {
+                mtwarn(WM_AZURE_LOGTAG, "%s", log_payload);
+            } else if (!strcmp(log_level, "ERROR")) {
+                mterror(WM_AZURE_LOGTAG, "%s", log_payload);
+            } else if (!strcmp(log_level, "DEBUG")) {
+                mtdebug1(WM_AZURE_LOGTAG, "%s", log_payload);
+            }
+        }
+
+        w_free_expression_match(azure_script_log_regex, &regex_match);
+        log_line = strtok_r(NULL, "\n", &saveptr);
+    }
 }
 
 #endif

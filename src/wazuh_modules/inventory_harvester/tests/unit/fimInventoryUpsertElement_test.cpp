@@ -125,12 +125,13 @@ TEST_F(FimInventoryUpsertElement, valid_File)
     EXPECT_CALL(*context, userName()).WillRepeatedly(testing::Return("sysadmin"));
     EXPECT_CALL(*context, size()).WillRepeatedly(testing::Return(512));
     EXPECT_CALL(*context, mtimeISO8601()).WillRepeatedly(testing::Return("2025-04-09T12:00:00Z"));
+    EXPECT_CALL(*context, inode()).WillRepeatedly(testing::Return(112233));
 
     EXPECT_NO_THROW(upsertElement->handleRequest(context));
 
     EXPECT_EQ(
         context->m_serializedElement,
-        R"({"id":"001_HASH_HASH","operation":"INSERTED","data":{"file":{"path":"/etc/hosts","gid":"1000","group":"root","mtime":"2025-04-09T12:00:00Z","size":512,"uid":"1000","owner":"sysadmin","hash":{"md5":"md5-file","sha1":"sha1-file","sha256":"sha256-file"}},"agent":{"id":"001","name":"agent-file","host":{"ip":"192.168.1.20"},"version":"v4.0.0"},"wazuh":{"cluster":{"name":"clusterName"},"schema":{"version":"1.0"}}}})");
+        R"({"id":"001_HASH_HASH","operation":"INSERTED","data":{"file":{"path":"/etc/hosts","gid":"1000","group":"root","inode":"112233","mtime":"2025-04-09T12:00:00Z","size":512,"uid":"1000","owner":"sysadmin","hash":{"md5":"md5-file","sha1":"sha1-file","sha256":"sha256-file"}},"agent":{"id":"001","name":"agent-file","host":{"ip":"192.168.1.20"},"version":"v4.0.0"},"wazuh":{"cluster":{"name":"clusterName"},"schema":{"version":"1.0"}}}})");
 }
 
 /*

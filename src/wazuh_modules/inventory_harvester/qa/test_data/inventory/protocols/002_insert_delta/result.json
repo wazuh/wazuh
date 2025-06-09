@@ -14,12 +14,8 @@
                     "metric": 101,
                     "type": "ipv4"
                 },
-                "observer": {
-                    "ingress": {
-                        "interface": {
-                            "name": "eth1"
-                        }
-                    }
+                "interface": {
+                    "name": "eth1"
                 },
                 "wazuh": {
                     "cluster": {

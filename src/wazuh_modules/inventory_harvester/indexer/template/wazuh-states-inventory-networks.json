@@ -46,6 +46,14 @@
             }
           }
         },
+        "interface": {
+          "properties": {
+            "name": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            }
+          }
+        },
         "network": {
           "properties": {
             "broadcast": {
@@ -60,14 +68,10 @@
             "metric": {
               "type": "long"
             },
-            "name": {
-              "ignore_above": 1024,
-              "type": "keyword"
-            },
             "netmask": {
               "type": "ip"
             },
-            "protocol": {
+            "type": {
               "ignore_above": 1024,
               "type": "keyword"
             }
