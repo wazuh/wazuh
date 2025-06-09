@@ -6,7 +6,6 @@ set(SRC_DIR ${CMAKE_CURRENT_LIST_DIR}/src)
 set(INC_DIR ${CMAKE_CURRENT_LIST_DIR}/include)
 
 add_library(base STATIC
-    ${SRC_DIR}/utils/wazuhProtocol/wazuhRequest.cpp
     ${SRC_DIR}/utils/ipUtils.cpp
     ${SRC_DIR}/utils/stringUtils.cpp
     ${SRC_DIR}/utils/timeUtils.cpp
@@ -48,8 +47,6 @@ add_executable(base_utest
     ${UNIT_SRC_DIR}/result_test.cpp
     ${UNIT_SRC_DIR}/graph_test.cpp
     ${UNIT_SRC_DIR}/name_test.cpp
-    ${UNIT_SRC_DIR}/utils/wazuhProtocol/wazuhRequest_test.cpp
-    ${UNIT_SRC_DIR}/utils/wazuhProtocol/wazuhResponse_test.cpp
     ${UNIT_SRC_DIR}/utils/timeUtils_test.cpp
     ${UNIT_SRC_DIR}/dotPath_test.cpp
     ${UNIT_SRC_DIR}/eventParser_test.cpp
@@ -118,7 +115,7 @@ target_include_directories(base_benchmark
 )
 target_link_libraries(base_benchmark
     PUBLIC
-    base::bench 
+    base::bench
     benchmark::benchmark_main
 )
 
