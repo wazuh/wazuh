@@ -81,6 +81,13 @@ public:
     void stop();
 
     /**
+     * @brief Check if the server is currently running.
+     *
+     * @return true if the server is running, false otherwise.
+     */
+    bool isRunning() const { return m_running.load(); }
+
+    /**
      * @brief Destructor: calls stop() and unlinks the socket file.
      */
     ~Server();

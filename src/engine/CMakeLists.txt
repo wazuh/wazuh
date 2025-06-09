@@ -249,6 +249,7 @@ target_link_libraries(main
     geo::igeo
     # indexerconnector # TODO: Comment until indexerconnector is unified with the old one
     httpsrv
+    udgramsrv::udgramsrv
     api::event
     queue
     archiver

@@ -24,6 +24,8 @@ target_link_libraries(udgramsrv
     ${PRIVATE_LINKS}
 )
 
+add_library(udgramsrv::udgramsrv ALIAS udgramsrv)
+
 if(ENGINE_BUILD_TEST)
 
 set(TEST_SRC_DIR ${CMAKE_CURRENT_LIST_DIR}/test/src)
