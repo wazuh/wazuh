@@ -63,7 +63,6 @@ private:
 
     std::string getCreateStatement() const;
 
-    void registerWithRsync();
     void updateChanges(const std::string& table, const nlohmann::json& values);
     void notifyChange(ReturnTypeCallback result, const nlohmann::json& data, const std::string& table);
     void syncLoop(std::unique_lock<std::mutex>& lock);

@@ -157,6 +157,20 @@ int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2)
     return 0;
 }
 
+int Read_NewSCA(void *d1)
+{
+   wmodule **wmodules = (wmodule**)d1;
+    wmodule *cur_wmodule;
+    wmodule *cur_wmodule_exists;
+
+    mtinfo(WM_NEWSCA_LOGTAG, "----- Loading newsca module");
+
+    // TODO: Implement the newsca module reading logic
+
+    return 0;
+
+}
+
 int Read_SCA(const OS_XML *xml, xml_node *node, void *d1)
 {
     wmodule **wmodules = (wmodule**)d1;
@@ -164,12 +178,15 @@ int Read_SCA(const OS_XML *xml, xml_node *node, void *d1)
     xml_node **children = NULL;
     wmodule *cur_wmodule_exists;
 
+    mtinfo(WM_NEWSCA_LOGTAG, "----- Loading SCA module");
+
     // Allocate memory
     if ((cur_wmodule = *wmodules)) {
         cur_wmodule_exists = *wmodules;
         int found = 0;
 
         while (cur_wmodule_exists) {
+             mtinfo(WM_NEWSCA_LOGTAG, "next: 0x%0x", cur_wmodule_exists->next);
             if(cur_wmodule_exists->tag) {
                 if(strcmp(cur_wmodule_exists->tag,node->element) == 0) {
                     cur_wmodule = cur_wmodule_exists;

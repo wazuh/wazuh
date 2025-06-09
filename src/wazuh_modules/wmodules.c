@@ -84,10 +84,6 @@ int wm_config() {
     ReadConfig(CWMODULE | CAGENT_CONFIG, AGENTCONFIG, &wmodules, &agent_cfg);
 #else
     wmodule *module;
-
-    if((module = wm_newsca_read())) {
-        wm_add(module);
-    }
     
     if ((module = wm_router_read())) {
         wm_add(module);
