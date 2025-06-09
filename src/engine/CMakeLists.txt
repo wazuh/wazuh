@@ -226,6 +226,7 @@ add_subdirectory(${ENGINE_SOURCE_DIR}/proto)
 add_subdirectory(${ENGINE_SOURCE_DIR}/geo)
 add_subdirectory(${ENGINE_SOURCE_DIR}/queue)
 add_subdirectory(${ENGINE_SOURCE_DIR}/httpsrv)
+add_subdirectory(${ENGINE_SOURCE_DIR}/udgramsrv)
 add_subdirectory(${ENGINE_SOURCE_DIR}/archiver)
 
 target_link_libraries(main
