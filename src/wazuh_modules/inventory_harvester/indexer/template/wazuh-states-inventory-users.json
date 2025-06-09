@@ -18,13 +18,8 @@
       "properties": {
         "host": {
           "properties": {
-            "hostname": {
-              "ignore_above": 1024,
-              "type": "keyword"
-            },
-            "id": {
-              "ignore_above": 1024,
-              "type": "keyword"
+            "ip": {
+              "type": "ip"
             }
           }
         },
@@ -55,21 +50,20 @@
             "auth_failures": {
               "properties": {
                 "count": {
-                  "type": "long"
+                  "type": "integer"
                 },
                 "timestamp": {
-                  "type": "double"
+                  "type": "date"
                 }
               }
             },
             "created": {
-              "ignore_above": 1024,
-              "type": "keyword"
+              "type": "date"
             },
             "full_name": {
               "fields": {
                 "text": {
-                  "type": "keyword"
+                  "type": "text"
                 }
               },
               "ignore_above": 1024,
@@ -78,8 +72,7 @@
             "group": {
               "properties": {
                 "id": {
-                  "ignore_above": 1024,
-                  "type": "keyword"
+                  "type": "unsigned_long"
                 },
                 "id_signed": {
                   "type": "long"
@@ -104,10 +97,13 @@
             "is_remote": {
               "type": "boolean"
             },
+            "last_login": {
+              "type": "date"
+            },
             "name": {
               "fields": {
                 "text": {
-                  "type": "keyword"
+                  "type": "text"
                 }
               },
               "ignore_above": 1024,
@@ -116,7 +112,7 @@
             "password": {
               "properties": {
                 "expiration_date": {
-                  "type": "long"
+                  "type": "date"
                 },
                 "hash_algorithm": {
                   "ignore_above": 1024,
@@ -126,10 +122,10 @@
                   "type": "integer"
                 },
                 "last_change": {
-                  "type": "long"
+                  "type": "integer"
                 },
                 "last_set_time": {
-                  "type": "double"
+                  "type": "date"
                 },
                 "max_days_between_changes": {
                   "type": "integer"
@@ -145,6 +141,10 @@
                   "type": "integer"
                 }
               }
+            },
+            "roles": {
+              "ignore_above": 1024,
+              "type": "keyword"
             },
             "shell": {
               "ignore_above": 1024,

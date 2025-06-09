@@ -16,18 +16,13 @@
       "date_detection": false,
       "dynamic": "strict",
       "properties": {
-        "@timestamp": {
-          "type": "date"
-        },
         "group": {
           "properties": {
             "description": {
-              "ignore_above": 1024,
-              "type": "keyword"
+              "type": "text"
             },
             "id": {
-              "ignore_above": 1024,
-              "type": "keyword"
+              "type": "unsigned_long"
             },
             "id_signed": {
               "type": "long"
@@ -40,7 +35,7 @@
               "type": "keyword"
             },
             "namespace_pid": {
-              "type": "long"
+              "type": "integer"
             },
             "users": {
               "ignore_above": 1024,
