@@ -1012,7 +1012,11 @@ InstallCommon()
         find ${INSTALLDIR}/usr/share/lib/zoneinfo/ -type f -exec chmod 0640 {} +
     fi
 
-    ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} -S .bak -b ../etc/internal_options.conf ${INSTALLDIR}/etc/
+    if [ -f ${INSTALLDIR}/etc/internal_options.conf ]; then
+        mv ${INSTALLDIR}/etc/internal_options.conf ${INSTALLDIR}/etc/internal_options.conf.bak
+    fi
+
+    ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} ../etc/internal_options.conf ${INSTALLDIR}/etc/
     ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} wazuh_modules/syscollector/norm_config.json ${INSTALLDIR}/queue/syscollector
 
     if [ ! -f ${INSTALLDIR}/etc/local_internal_options.conf ]; then
