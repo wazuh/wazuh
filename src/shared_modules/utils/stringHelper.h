@@ -214,28 +214,6 @@ namespace Utils
         return ret;
     }
 
-    static std::vector<std::string> splitWithDelimiterString(const std::string& input, const std::string& delimiter)
-    {
-        std::vector<std::string> result;
-        std::string token;
-        std::string inputCopy = input;
-        size_t pos = 0;
-        size_t delim_len = delimiter.length();
-
-        while ((pos = inputCopy.find(delimiter)) != std::string::npos)
-        {
-            result.push_back(inputCopy.substr(0, pos));
-            inputCopy.erase(0, pos + delim_len);
-        }
-
-        if (!inputCopy.empty())
-        {
-            result.push_back(inputCopy);
-        }
-
-        return result;
-    }
-
     static void
     splitMapKeyValue(const std::string& str, const char delimiter, std::map<std::string, std::string>& mapResult)
     {

@@ -13,6 +13,7 @@
     PROCESSES_SCAN: 'yes'
     HOTFIXES_SCAN: 'yes'
     GROUPS_SCAN: 'yes'
+    USERS_SCAN: 'yes'
     MAX_EPS: 10
   metadata:
     disabled: 'yes'
@@ -27,4 +28,5 @@
     processes_scan: 'yes'
     hotfixes_scan: 'yes'
     groups_scan: 'yes'
+    users_scan: 'yes'
     max_eps: 10
