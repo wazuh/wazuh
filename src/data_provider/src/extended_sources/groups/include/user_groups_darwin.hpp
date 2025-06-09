@@ -27,6 +27,10 @@ class UserGroupsProvider
         UserGroupsProvider();
         nlohmann::json collect(const std::set<uid_t>& uids = {});
 
+        nlohmann::json getUserNamesByGid(const std::set<gid_t>& gids);
+
+        nlohmann::json getGroupNamesByUid(const std::set<uid_t>& uids);
+
     private:
         std::shared_ptr<IGroupWrapperDarwin> m_groupWrapper;
         std::shared_ptr<IPasswdWrapperDarwin> m_passwdWrapper;
@@ -41,5 +45,6 @@ class UserGroupsProvider
 
         void getGroupsForUser(nlohmann::json& results, const UserInfo& user);
         void addGroupsToResults(nlohmann::json& results, uid_t uid, const gid_t* groups, int ngroups);
+        std::vector<gid_t> getGroupIdsForUser(const UserInfo& user);
 
 };
