@@ -79,7 +79,7 @@ public:
         element.data.host.memory.used = (usedMem > 0) ? usedMem : 0;
 
         // Ex: The percentage of used memory
-        element.data.host.memory.used_percentage = data->usedMem();
+        element.data.host.memory.usage = data->usedMem();
 
         // Ex: AA320
         element.data.host.serial_number = boardId;

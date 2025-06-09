@@ -30,12 +30,12 @@ struct Hardware final
         int64_t free = DEFAULT_INT_VALUE;
         int64_t total = DEFAULT_INT_VALUE;
         int64_t used = DEFAULT_INT_VALUE;
-        double used_percentage = DEFAULT_DOUBLE_VALUE;
+        double usage = DEFAULT_DOUBLE_VALUE;
 
         REFLECTABLE(MAKE_FIELD("free", &Memory::free),
                     MAKE_FIELD("total", &Memory::total),
                     MAKE_FIELD("used", &Memory::used),
-                    MAKE_FIELD("used_percentage", &Memory::used_percentage));
+                    MAKE_FIELD("usage", &Memory::usage));
     } memory;
 
     std::string_view serial_number;
