@@ -50,7 +50,7 @@
             "cpu": {
               "properties": {
                 "cores": {
-                  "type": "long"
+                  "type": "byte"
                 },
                 "name": {
                   "ignore_above": 1024,
@@ -59,8 +59,7 @@
                 "speed": {
                   "type": "long"
                 }
-              },
-              "type": "object"
+              }
             },
             "memory": {
               "properties": {
@@ -70,14 +69,14 @@
                 "total": {
                   "type": "long"
                 },
+                "usage": {
+                  "scaling_factor": 100,
+                  "type": "scaled_float"
+                },
                 "used": {
                   "type": "long"
-                },
-                "used_percent": {
-                  "type": "half_float"
                 }
-              },
-              "type": "object"
+              }
             },
             "serial_number": {
               "ignore_above": 1024,
