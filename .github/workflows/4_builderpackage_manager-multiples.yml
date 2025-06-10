@@ -36,7 +36,6 @@ on:
       - ".github/workflows/4_builderpackage_manager.yml"
 
 jobs:
-
   select-targets:
     name: Select build targets (Wazuh Managers)
     runs-on: ubuntu-24.04
@@ -48,7 +47,7 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            const targets = '${{ inputs.targets }}'.split(',');
+            const targets = '${{ inputs.targets || 'rpm-x86_64,rpm-aarch64,deb-amd64,deb-arm64' }}'.split(',');
             const matrix = targets.map(target => {
               const [system, architecture] = target.split('-');
               return { system, architecture };
@@ -56,7 +55,6 @@ jobs:
             core.info('Generated matrix: ' + JSON.stringify(matrix));
             return { include: matrix };
           result-encoding: json
-
   build-wazuh-manager:
     name: Build Wazuh Manager
     needs: select-targets
@@ -65,10 +63,10 @@ jobs:
         fail-fast: false
     uses: ./.github/workflows/4_builderpackage_manager.yml
     with:
-      docker_image_tag: auto
+      docker_image_tag: auto  
       architecture:  ${{ matrix.architecture }}
       system:  ${{ matrix.system }}
-      revision: ${{ inputs.revision}}
-      is_stage: ${{ inputs.is_stage }}
-      debug: ${{ inputs.debug }}
+      revision: ${{ inputs.revision || '0' }}
+      is_stage: "${{ inputs.is_stage || false }}"
+      debug: "${{ inputs.debug || false }}"
     secrets: inherit
