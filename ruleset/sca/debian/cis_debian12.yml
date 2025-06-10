@@ -2451,7 +2451,7 @@ checks:
       - soc_2: ["CC6.1"]
     condition: all
     rules:
-      - 'c:sshd -T -> r:^gssapiauthentication\s+yes'
+      - 'c:sshd -T -> r:^gssapiauthentication\s+no'
 
   # 5.1.10 Ensure sshd HostbasedAuthentication is disabled. (Automated)
   - id: 33163
@@ -2466,7 +2466,7 @@ checks:
       - mitre_techniques: ["T1078", "T1078.001", "T1078.003"]
     condition: all
     rules:
-      - 'c:sshd -T -> r:^hostbasedauthentication\s+yes'
+      - 'c:sshd -T -> r:^hostbasedauthentication\s+no'
 
   # 5.1.11 Ensure sshd IgnoreRhosts is enabled. (Automated)
   - id: 33164
@@ -2754,8 +2754,8 @@ checks:
       - soc_2: ["CC6.1", "CC6.3"]
     condition: any
     rules:
-      - 'f:/etc/sudoers -> r:Defaults\s*\t*use_pty'
-      - 'd:/etc/sudoers.d/ -> r:\.* -> r:Defaults\s*\t*use_pty'
+      - 'f:/etc/sudoers -> !r:^# && r:Defaults\s*\t*use_pty'
+      - 'd:/etc/sudoers.d/ -> r:\.* -> !r:^# && r:Defaults\s*\t*use_pty'
 
   # 5.2.3 Ensure sudo log file exists. (Automated)
   - id: 33178
@@ -2779,8 +2779,8 @@ checks:
       - soc_2: ["CC5.2", "CC7.2"]
     condition: any
     rules:
-      - 'f:/etc/sudoers -> r:Defaults\s*\t*logfile=\S+'
-      - 'd:/etc/sudoers.d/ -> r:\.* -> r:Defaults\s*\t*logfile=\S+'
+      - 'f:/etc/sudoers -> !r:^# && r:Defaults\s*\t*logfile=\S+'
+      - 'd:/etc/sudoers.d/ -> r:\.* -> !r:^# && r:Defaults\s*\t*logfile=\S+'
 
   # 5.2.4 Ensure users must provide password for privilege escalation. (Automated)
   - id: 33179
@@ -2803,8 +2803,8 @@ checks:
       - soc_2: ["CC6.1", "CC6.3"]
     condition: none
     rules:
-      - "f:/etc/sudoers -> r:NOPASSWD"
-      - 'd:/etc/sudoers.d/ -> r:\.* -> r:NOPASSWD'
+      - "f:/etc/sudoers -> !r:^# && r:NOPASSWD"
+      - 'd:/etc/sudoers.d/ -> !r:^# && r:\.* -> r:NOPASSWD'
 
   # 5.2.5 Ensure re-authentication for privilege escalation is not disabled globally. (Automated)
   - id: 33180
@@ -2826,8 +2826,8 @@ checks:
       - soc_2: ["CC6.1", "CC6.3"]
     condition: any
     rules:
-      - "not f:/etc/sudoers -> r:!authenticate"
-      - 'not d:/etc/sudoers.d/ -> r:\.* -> r:!authenticate'
+      - "not f:/etc/sudoers -> !r:^# && r:!authenticate"
+      - 'not d:/etc/sudoers.d/ -> r:\.* -> !r:^# && r:!authenticate'
 
   # 5.2.6 Ensure sudo authentication timeout is configured correctly. (Automated)
   - id: 33181
@@ -2851,7 +2851,9 @@ checks:
       - soc_2: ["CC6.1", "CC6.3"]
     condition: all
     rules:
-      - 'f:/etc/sudoers -> n:timestamp_timeout=(\d+) compare <= 15'
+      - 'c:sudo -V -> r:Authentication timestamp timeout:\s*\t*15.0 minutes'
+      - 'f:/etc/sudoers -> n:timestamp_timeout=(\d+) compare <=15'
+      - 'd:/etc/sudoers.d -> r:\.* -> n:timestamp_timeout=(\d+) compare <=15'
 
   # 5.2.7 Ensure access to the su command is restricted. (Automated)
   - id: 33182
@@ -2937,11 +2939,11 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'f:/etc/pam.d/common-account -> r:account\S+'
-      - 'f:/etc/pam.d/common-auth -> r:auth\S+'
-      - 'f:/etc/pam.d/common-password -> r:password\S+'
-      - 'f:/etc/pam.d/common-session -> r:session\S+'
-      - 'f:/etc/pam.d/common-session-noninteractive -> r:session\S+'
+      - "f:/etc/pam.d/common-account -> r:pam_unix.so"
+      - "f:/etc/pam.d/common-session -> r:pam_unix.so"
+      - "f:/etc/pam.d/common-auth -> r:pam_unix.so"
+      - "f:/etc/pam.d/common-password -> r:pam_unix.so"
+      - "f:/etc/pam.d/common-session-noninteractive -> r:pam_unix.so"
 
   # 5.3.2.2 Ensure pam_faillock module is enabled. (Automated)
   - id: 33187
@@ -2965,8 +2967,8 @@ checks:
       - soc_2: ["CC6.2", "CC6.3"]
     condition: all
     rules:
-      - 'f:/etc/pam.d/common-account -> r:account\S+'
-      - 'f:/etc/pam.d/common-auth -> r:auth\S+'
+      - "f:/etc/pam.d/common-auth -> r:pam_faillock.so"
+      - "f:/etc/pam.d/common-account -> r:pam_faillock.so"
 
   # 5.3.2.3 Ensure pam_pwquality module is enabled. (Automated)
   - id: 33188
@@ -3008,7 +3010,7 @@ checks:
       - soc_2: ["CC6.1"]
     condition: all
     rules:
-      - 'f:/etc/pam.d/common-password -> r:password\s*\t*requisite\s*\t*pam_pwquality.so\s*\t*retry=(d+)\s*\t*enforce_for_root\s*\t*try_first_pass\s*\t*use_authtok'
+      - "f:/etc/pam.d/common-password -> r:pam_pwhistory.so"
 
   # 5.3.3.1.1 Ensure password failed attempts lockout is configured. (Automated)
   - id: 33190
@@ -3030,12 +3032,11 @@ checks:
       - pci_dss_v3.2.1: ["8.1.3"]
       - pci_dss_v4.0: ["8.2.4", "8.2.5"]
       - soc_2: ["CC6.2", "CC6.3"]
-    condition: all
+    condition: any
     rules:
-      - 'f:/etc/security/faillock.conf -> n:deny\s*\t*=\s*\t*(d+) compare <= 5'
-      - 'f:/etc/pam.d/common-auth -> !r:^# && r:account\s*\t*requisite\s*\t*pam_faillock.so'
-      - 'f:/etc/pam.d/common-auth -> !r:^# && r:account\s*\t*required\s*\t*pam_faillock.so'
-      - 'f:/etc/pam.d/common-auth -> !r:^# && r:account\s*\t*sufficient\s*\t*pam_faillock.so'
+      - 'f:/etc/security/faillock.conf -> n:^\s*\t*deny\s*\t*=\s*\t*(\d+) compare <= 5'
+      - 'f:/etc/pam.d/common-auth -> r:pam_faillock.so && n:^\s*\t*deny\s*\t*=\s*\t*(\d+) compare <= 5'
+      - 'not f:/etc/pam.d/common-auth -> r:pam_faillock.so && r:^\s*\t*deny\s*\t*='
 
   # 5.3.3.1.2 Ensure password unlock time is configured. (Automated)
   - id: 33191
@@ -3058,12 +3059,13 @@ checks:
       - pci_dss_v3.2.1: ["8.1.3"]
       - pci_dss_v4.0: ["8.2.4", "8.2.5"]
       - soc_2: ["CC6.2", "CC6.3"]
-    condition: all
+    condition: any
     rules:
-      - 'f:/etc/security/faillock.conf -> n:unlock_time\s*\t*=\s*\t*(d+) compare == 0 | n:unlock_time\s*\t*=\s*\t*(d+) compare >= 900'
-      - 'f:/etc/pam.d/common-auth -> !r:^# && r:account\s*\t*requisite\s*\t*pam_faillock.so'
-      - 'f:/etc/pam.d/common-auth -> !r:^# && r:account\s*\t*required\s*\t*pam_faillock.so'
-      - 'f:/etc/pam.d/common-auth -> !r:^# && r:account\s*\t*sufficient\s*\t*pam_faillock.so'
+      - 'f:/etc/security/faillock.conf -> n:^\s*\t*unlock_time\s*\t*=\s*\t*(\d+) compare >= 900'
+      - 'f:/etc/security/faillock.conf -> n:^\s*\t*unlock_time\s*\t*=\s*\t*(\d+) compare = 0'
+      - 'f:/etc/pam.d/common-auth -> !r:^# && r:pam_faillock.so && n:^\s*\t*unlock_time\s*\t*=\s*\t*(\d+) compare >= 900'
+      - 'f:/etc/pam.d/common-auth -> !r:^# && r:pam_faillock.so && n:^\s*\t*unlock_time\s*\t*=\s*\t*(\d+) compare = 0'
+      - 'not f:/etc/pam.d/common-auth -> !r:^# && r:pam_faillock.so && r:^\s*\t*unlock_time\s*\t*='
 
   # 5.3.3.1.3 Ensure password failed attempts lockout includes root account. (Automated)
   - id: 33192
@@ -3158,8 +3160,8 @@ checks:
       - soc_2: ["CC6.1"]
     condition: any
     rules:
-      - 'f:/etc/security/pwquality.conf -> n:minclass\s*\t*=\s*\t*(d+) compare > 4 && n:ucredit\s*\t*=\s*\t*(d+) compare < 0 && n:lcredit\s*\t*=\s*\t*(d+) compare < 0 && n:dcredit\s*\t*=\s*\t*(d+) compare < 0 && n:ocredit\s*\t*=\s*\t*(d+) < 0'
-      - 'd:/etc/security/pwquality.conf.d/* -> r:\.+.conf$ -> n:minclass\s*\t*=\s*\t*(d+) compare > 4 && n:ucredit\s*\t*=\s*\t*(d+) compare < 0 && n:lcredit\s*\t*=\s*\t*(d+) compare < 0 && n:dcredit\s*\t*=\s*\t*(d+) compare < 0 && n:ocredit\s*\t*=\s*\t*(d+) < 0'
+      - 'f:/etc/security/pwquality.conf -> n:ucredit\s*\t*=\s*\t*(d+) compare < 0 && n:lcredit\s*\t*=\s*\t*(d+) compare < 0 && n:dcredit\s*\t*=\s*\t*(d+) compare < 0 && n:ocredit\s*\t*=\s*\t*(d+) < 0'
+      - 'd:/etc/security/pwquality.conf.d/* -> r:\.+.conf$ -> n:ucredit\s*\t*=\s*\t*(d+) compare < 0 && n:lcredit\s*\t*=\s*\t*(d+) compare < 0 && n:dcredit\s*\t*=\s*\t*(d+) compare < 0 && n:ocredit\s*\t*=\s*\t*(d+) < 0'
 
   # 5.3.3.2.4 Ensure password same consecutive characters is configured. (Automated)
   - id: 33196
@@ -3445,8 +3447,9 @@ checks:
       - soc_2: ["CC6.1"]
     condition: all
     rules:
-      - 'f:/etc/login.defs -> n:^\s*PASS_MAX_DAYS\s*\t*(\d+) compare <= 365'
-      - 'not f:/etc/shadow -> !r:^\w+:!|^\w+:\p: && n:^\w+:\S*:\S*:\S*:(\d+):\S*:\S*:\S*:\S* compare > 365'
+      - 'f:/etc/login.defs -> n:^\s*\t*PASS_MAX_DAYS\s*\t*(\d+) compare <= 365'
+      - 'f:/etc/login.defs -> n:^\s*\t*PASS_MAX_DAYS\s*\t*(\d+) compare > 0'
+      - 'not f:/etc/shadow -> !r:^\w+:\p: && n:^\w+:\S*:\d*:\d*:(\d+) compare > 365'
 
   # 5.4.1.2 Ensure minimum password days is configured. (Manual)
   - id: 33209
@@ -3676,7 +3679,8 @@ checks:
       - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
     condition: all
     rules:
-      - 'c:sh -c "systemctl is-enabled systemd-journald.service & systemctl is-active systemd-journald.service" -> r:^active$|^static$'
+      - "c:systemctl is-enabled systemd-journald.service -> r:static"
+      - "c:systemctl is-active systemd-journald.service -> r:active"
 
   # 6.1.1.2 Ensure journald log file access is configured. (Manual) - Not Implemented
   # 6.1.1.3 Ensure journald log file rotation is configured. (Manual) - Not Implemented
@@ -3728,7 +3732,8 @@ checks:
       - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
     condition: all
     rules:
-      - 'c:sh -c "systemctl is-enabled systemd-journal-upload.service & systemctl is-active systemd-journal-upload.service" -> r:^active$|^enabled$'
+      - "c:systemctl is-enabled systemd-journal-upload.service -> r:^enabled"
+      - "c:systemctl is-active systemd-journal-upload.service -> r:^active"
 
   # 6.1.2.1.4 Ensure systemd-journal-remote service is not in use. (Automated)
   - id: 33232
@@ -3771,9 +3776,10 @@ checks:
       - nist_sp_800-53: ["AU-7"]
       - pci_dss_v3.2.1: ["10.2", "10.3"]
       - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
-    condition: all
+    condition: any
     rules:
-      - "f:/etc/systemd/journald.conf -> r:ForwardToSyslog=no"
+      - 'f:/etc/systemd/journald.conf -> !r:^# && r:ForwardToSyslog\s*=\s*no'
+      - 'd:/etc/systemd/journald.conf.d -> r:\.*.conf -> !r:^# && r:ForwardToSyslog\s*=\s*no'
 
   # 6.1.2.3 Ensure journald Compress is configured. (Automated)
   - id: 33234
@@ -3795,9 +3801,10 @@ checks:
       - pci_dss_v3.2.1: ["10.2", "10.3", "10.7"]
       - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
       - soc_2: ["A1.1"]
-    condition: all
+    condition: any
     rules:
-      - "f:/etc/systemd/journald.conf -> r:Compress=yes"
+      - "f:/etc/systemd/journald.conf -> r:^Compress=yes"
+      - 'd:/etc/systemd/journald.conf.d -> r:\.*.conf -> r:^Compress=yes'
 
   # 6.1.2.4 Ensure journald Storage is configured. (Automated)
   - id: 33235
@@ -3818,9 +3825,10 @@ checks:
       - nist_sp_800-53: ["AU-7"]
       - pci_dss_v3.2.1: ["10.2", "10.3"]
       - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
-    condition: all
+    condition: any
     rules:
-      - "f:/etc/systemd/journald.conf -> r:Storage=persistent"
+      - "f:/etc/systemd/journald.conf -> r:^Storage=persistent"
+      - 'd:/etc/systemd/journald.conf.d -> r:\.*.conf -> r:^Storage=persistent'
 
   # 6.1.3.1 Ensure rsyslog is installed. (Automated)
   - id: 33236
@@ -3866,7 +3874,8 @@ checks:
       - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
     condition: all
     rules:
-      - 'c:sh -c "systemctl is-enabled rsyslog & systemctl is-active rsyslog.service" -> r:^active$|^enabled$'
+      - "c:systemctl is-enabled rsyslog -> r:^enabled"
+      - "c:systemctl is-active rsyslog.service -> r:^active"
 
   # 6.1.3.3 Ensure journald is configured to send logs to rsyslog. (Automated)
   - id: 33238
@@ -3888,9 +3897,10 @@ checks:
       - pci_dss_v3.2.1: ["10.2", "10.3", "10.5.3", "10.5.4"]
       - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "10.3.3", "5.3.4", "6.4.1", "6.4.2"]
       - soc_2: ["PL1.4"]
-    condition: all
+    condition: any
     rules:
-      - "f:/etc/systemd/journald.conf -> r:ForwardToSyslog=yes"
+      - 'f:/etc/systemd/journald.conf -> !r:^# && r:ForwardToSyslog\s*=\s*yes'
+      - 'd:/etc/systemd/journald.conf.d -> r:\.*.conf -> !r:^# && r:ForwardToSyslog\s*=\s*yes'
 
   # 6.1.3.4 Ensure rsyslog log file creation mode is configured. (Automated)
   - id: 33239
@@ -3970,7 +3980,8 @@ checks:
       - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
     condition: all
     rules:
-      - 'c:sh -c "systemctl is-enabled auditd & systemctl is-active auditd" -> r:^active$|^enabled$'
+      - "c:systemctl is-enabled auditd -> r:^enabled"
+      - "c:systemctl is-active auditd -> r:^active"
 
   # 6.2.1.3 Ensure auditing for processes that start prior to auditd is enabled. (Automated)
   - id: 33247
@@ -3993,7 +4004,7 @@ checks:
       - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
     condition: all
     rules:
-      - 'not f:/boot/grub/grub.cfg -> r:^\s*\t*linux && !n:audit=(\d+) compare == 1'
+      - 'not f:/etc/default/grub -> r:^\s*\t*linux && !r:audit=1'
 
   # 6.2.1.4 Ensure audit_backlog_limit is sufficient. (Automated)
   - id: 33248
@@ -4016,7 +4027,7 @@ checks:
       - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
     condition: all
     rules:
-      - 'not f:/boot/grub/grub.cfg -> r:^\s*\t*linux && !n:audit_backlog_limit=(\d+) compare >= 8192'
+      - 'not f:/etc/default/grub -> !r:audit_backlog_limit=\d+'
 
   # 6.2.2.1 Ensure audit log storage size is configured. (Automated)
   - id: 33249
@@ -4128,8 +4139,12 @@ checks:
       - soc_2: ["CC5.2", "CC7.2"]
     condition: all
     rules:
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/sudoers && r:-p wa && r:-k scope|key=scope'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/sudoers.d && r:-p wa && r:-k scope|key=scope'
+      - "d:/etc/audit/rules.d"
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/sudoers && r:-p wa && r:-k scope'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/sudoers.d && r:-p wa && r:-k scope'
+      - "c:auditctl -l -> r:^-w && r:/etc/sudoers && r:-p wa && r:-k scope"
+      - "c:auditctl -l -> r:^-w && r:/etc/sudoers.d && r:-p wa && r:-k scope"
 
   # 6.2.3.2 Ensure actions as another user are always logged. (Automated)
   - id: 33254
@@ -4152,7 +4167,10 @@ checks:
       - soc_2: ["CC5.2", "CC7.2"]
     condition: all
     rules:
+      - "d:/etc/audit/rules.d"
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:exit,always|always,exit && r:-F arch=b64|-F arch=b32 && r:-C euid!=uid  && r:-F auid!=unset && r:-S execve && r:-k user_emulation'
+      - "c:auditctl -l -> r:^-a && r:exit,always|always,exit && r:-F arch=b64|-F arch=b32 && r:-C euid!=uid  && r:-F auid!=unset && r:-S execve && r:-k user_emulation|key=user_emulation"
 
   # 6.2.3.3 Ensure events that modify the sudo log file are collected. (Automated)
   - id: 33255
@@ -4174,7 +4192,10 @@ checks:
       - soc_2: ["CC5.2", "CC7.2"]
     condition: all
     rules:
+      - "d:/etc/audit/rules.d"
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/var/log/sudo.log && r:-p wa && r:-k sudo_log_file'
+      - "c:auditctl -l -> r:^-w && r:/var/log/sudo.log && r:-p wa && r:-k sudo_log_file"
 
   # 6.2.3.4 Ensure events that modify date and time information are collected. (Automated)
   - id: 33256
@@ -4197,9 +4218,14 @@ checks:
       - soc_2: ["CC5.2", "CC7.2"]
     condition: all
     rules:
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b64|-F arch=b32 && r:-S && r:adjtimex && r:settimeofday|stime && r:-k time-change|key=time-change'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b32|-F arch=b64 && r:-S && r:clock_settime && r:-k time-change|key=time-change'
+      - "d:/etc/audit/rules.d"
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b64|-F arch=b32 && r:-S && r:adjtimex && r:settimeofday|settimeofday -S stime && r:-k time-change|key=time-change'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b64|-F arch=b32 && r:clock_settime && r:-k time-change|key=time-change'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/localtime && r:-p wa && r:-k time-change|key=time-change'
+      - "c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b64|-F arch=b32 && r:-S && r:adjtimex && r:settimeofday|settimeofday -S stime && r:-k time-change|key=time-change"
+      - "c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b64|-F arch=b32 && r:clock_settime && r:-k time-change|key=time-change"
+      - "c:auditctl -l -> r:^-w && r:/etc/localtime && r:-p wa && r:-k time-change|key=time-change"
 
   # 6.2.3.5 Ensure events that modify the system's network environment are collected. (Automated)
   - id: 33257
@@ -4224,16 +4250,14 @@ checks:
       - soc_2: ["CC5.2", "CC7.2"]
     condition: all
     rules:
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:exit,always|always,exit && r:-F arch=b32|-F arch=b64 && r:-S && r:sethostname && r:setdomainname && r:-k system-locale|key=system-locale'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/issue && r:-p wa && r:-k system-locale|key=system-locale'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/issue.net && r:-p wa && r:-k system-locale|key=system-locale'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/hosts && r:-p wa && r:-k system-locale|key=system-locale'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/network && r:-p wa && r:-k system-locale|key=system-locale'
-      - "c:auditctl -l -> r:^-a && r:exit,always|always,exit && r:-F arch=b32|-F arch=b64 && r:-S && r:sethostname && r:setdomainname && r:-k system-locale|key=system-locale"
-      - "c:auditctl -l -> r:^-w && r:/etc/issue.net && r:-p wa && r:-k system-locale|key=system-locale"
-      - "c:auditctl -l -> r:^-w && r:/etc/issue && r:-p wa && r:-k system-locale|key=system-locale"
-      - "c:auditctl -l -> r:^-w && r:/etc/hosts && r:-p wa && r:-k system-locale|key=system-locale"
-      - "c:auditctl -l -> r:^-w && r:/etc/network && r:-p wa && r:-k system-locale|key=system-locale"
+      - "d:/etc/audit/rules.d"
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/networks && r:-p wa && r:-k system-locale|key=system-locale'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/netplan && r:-p wa && r:-k system-locale|key=system-locale'
+      - "c:auditctl -l -> r:^-w && r:/etc/networks && r:-p wa && r:-k system-locale|key=system-locale"
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/netplan && r:-p wa && r:-k system-locale|key=system-locale'
+      - 'c:auditctl -l -> r:\.+.rules$ -> r:^-w && r:/etc/netplan && r:-p wa && r:-k system-locale|key=system-locale'
+      - 'c:auditctl -l -> r:^-w && r:/etc/networks && r:-p wa && r:-k system-locale|key=system-locale"s && r:-p wa && r:-k system-locale|key=system-locale'
 
   # 6.2.3.6 Ensure use of privileged commands are collected. (Automated) - Not Implemented
 
@@ -4287,16 +4311,14 @@ checks:
       - soc_2: ["CC5.2", "CC7.2"]
     condition: all
     rules:
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/group && r:-p wa && r:-k identity|key=identity'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/passwd && r:-p wa && r:-k identity|key=identity'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/gshadow && r:-p wa && r:-k identity|key=identity'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/shadow && r:-p wa && r:-k identity|key=identity'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/security/opasswd && r:-p wa && r:-k identity|key=identity'
-      - "c:auditctl -l -> r:^-w && r:/etc/group && r:-p wa && r:-k identity|key=identity"
-      - "c:auditctl -l -> r:^-w && r:/etc/passwd && r:-p wa && r:-k identity|key=identity"
-      - "c:auditctl -l -> r:^-w && r:/etc/gshadow && r:-p wa && r:-k identity|key=identity"
-      - "c:auditctl -l -> r:^-w && r:/etc/shadow && r:-p wa && r:-k identity|key=identity"
-      - "c:auditctl -l -> r:^-w && r:/etc/security/opasswd && r:-p wa && r:-k identity|key=identity"
+      - "d:/etc/audit/rules.d"
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/nsswitch.conf && r:-p wa && r:-k identity|key=identity'
+      - "c:auditctl -l-> r:^-w && r:/etc/nsswitch.conf && r:-p wa && r:-k identity|key=identity"
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/pam.conf && r:-p wa && r:-k identity|key=identity'
+      - "c:auditctl -l-> r:^-w && r:/etc/pam.conf && r:-p wa && r:-k identity|key=identity"
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/pam.d && r:-p wa && r:-k identity|key=identity'
+      - "c:auditctl -l-> r:^-w && r:/etc/pam.d && r:-p wa && r:-k identity|key=identity"
 
   # 6.2.3.9 Ensure discretionary access control permission modification events are collected. (Automated)
   - id: 33261
@@ -4399,12 +4421,12 @@ checks:
       - soc_2: ["CC5.2", "CC7.2"]
     condition: all
     rules:
+      - "d:/etc/audit/rules.d"
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/var/log/faillog && r:-p wa && r:-k logins'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/var/log/lastlog && r:-p wa && r:-k logins'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/var/log/tallylog && r:-p wa && r:-k logins'
       - "c:auditctl -l -> r:^-w && r:/var/log/faillog && r:-p wa && r:-k logins"
       - "c:auditctl -l -> r:^-w && r:/var/log/lastlog && r:-p wa && r:-k logins"
-      - "c:auditctl -l -> r:^-w && r:/var/log/tallylog && r:-p wa && r:-k logins"
 
   # 6.2.3.13 Ensure file deletion events by users are collected. (Automated)
   - id: 33265
@@ -4573,14 +4595,12 @@ checks:
       - soc_2: ["CC5.2", "CC7.2"]
     condition: all
     rules:
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b64|-F arch=b32 && r:-S && r:init_module && r:delete_module && r:-k modules|-F key=modules'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/sbin/insmod && r:-p x && r:-k modules|-F key=modules'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/sbin/rmmod && r:-p x && r:-k modules|-F key=modules'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/sbin/modprobe && r:-p x && r:-k modules|-F key=modules'
-      - "c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b64|-F arch=b32 && r:-S && r:init_module && r:delete_module && r:-k modules|-F key=modules"
-      - "c:auditctl -l -> r:^-w && r:/sbin/insmod && r:-p x && r:-k modules|-F key=modules"
-      - "c:auditctl -l -> r:^-w && r:/sbin/rmmod && r:-p x && r:-k modules|-F key=modules"
-      - "c:auditctl -l -> r:^-w && r:/sbin/modprobe && r:-p x && r:-k modules|-F key=modules"
+      - "d:/etc/audit/rules.d"
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b64|-F arch=b32 && r:-S && r:init_module && r:delete_module && r:finit_module && r:query_module && r:create_module && r:-k kernel_modules|-F key=kernel_modules'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:path=/usr/bin/kmod && r:-k kernel_modules|-F key=kernel_modules'
+      - "c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b64|-F arch=b32 && r:-S && r:init_module && r:delete_module && r:finit_module && r:query_module && r:create_module && r:-k kernel_modules|-F key=kernel_modules"
+      - "c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:path=/usr/bin/kmod && r:-k kernel_modules|-F key=kernel_modules"
 
   # 6.2.3.20 Ensure the audit configuration is immutable. (Automated)
   - id: 33272
