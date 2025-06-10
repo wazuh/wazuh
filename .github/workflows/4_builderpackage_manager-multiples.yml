@@ -70,5 +70,4 @@ jobs:
       revision: ${{ inputs.revision}}
       is_stage: ${{ inputs.is_stage }}
       debug: ${{ inputs.debug }}
-      id: ${{ github.event_name == 'pull_request' && format('PR#{0}', github.event.pull_request.number) || '' }}
     secrets: inherit
