@@ -8,7 +8,13 @@
       "index": {
         "number_of_replicas": "0",
         "number_of_shards": "1",
-        "query.default_field": [],
+        "query.default_field": [
+          "group.name",
+          "group.description",
+          "group.id_signed",
+          "group.uuid",
+          "group.users"
+        ],
         "refresh_interval": "5s"
       }
     },
@@ -33,9 +39,6 @@
             "name": {
               "ignore_above": 1024,
               "type": "keyword"
-            },
-            "namespace_pid": {
-              "type": "integer"
             },
             "users": {
               "ignore_above": 1024,
