@@ -50,7 +50,7 @@
             "cpu": {
               "properties": {
                 "cores": {
-                  "type": "byte"
+                  "type": "short"
                 },
                 "name": {
                   "ignore_above": 1024,
