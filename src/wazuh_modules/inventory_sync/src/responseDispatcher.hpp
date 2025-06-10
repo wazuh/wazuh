@@ -14,81 +14,105 @@
 
 #include "context.hpp"
 #include "flatbuffers/include/inventorySync_generated.h"
+#include "socketClient.hpp"
 #include "threadDispatcher.h"
 #include <cstdint>
+#include <memory>
 #include <vector>
 
 using ResponseQueue =
-    Utils::AsyncDispatcher<::flatbuffers::Offset<Wazuh::SyncSchema::Message>,
-                           std::function<void(const ::flatbuffers::Offset<Wazuh::SyncSchema::Message>&)>>;
+    Utils::AsyncDispatcher<std::shared_ptr<flatbuffers::FlatBufferBuilder>,
+                           std::function<void(const std::shared_ptr<flatbuffers::FlatBufferBuilder>&)>>;
 
-class ResponseDispatcher final
+constexpr auto EXECQUEUE {"queue/alerts/execq"};
+
+template<typename TQueue>
+class ResponseDispatcherImpl
 {
 private:
-    std::unique_ptr<ResponseQueue> m_responseQueue;
+    std::unique_ptr<TQueue> m_responseDispatcher;
 
 public:
-    ResponseDispatcher()
+    explicit ResponseDispatcherImpl()
     {
-        m_responseQueue = std::make_unique<ResponseQueue>(
-            [](const ::flatbuffers::Offset<Wazuh::SyncSchema::Message>& /*data*/)
+        auto responseSocketClient =
+            std::make_shared<SocketClient<Socket<OSPrimitives, AppendHeaderProtocol>, EpollWrapper>>(EXECQUEUE);
+        responseSocketClient->connect(
+            [](const char*, uint32_t, const char*, uint32_t)
             {
-                try
-                {
-                    // Send response to agent. (write to execd queue).
-                }
-                catch (const std::exception& e)
-                {
-                    std::cerr << "InventorySyncFacade::start: " << e.what() << std::endl;
-                }
+                std::cout << "OnRead to " << EXECQUEUE << std::endl;
+                // Not used
             },
-            1,
-            UNLIMITED_QUEUE_SIZE);
+            []()
+            {
+                std::cout << "Connected to " << EXECQUEUE << std::endl;
+                // Not used
+            });
+
+        m_responseDispatcher = std::make_unique<ResponseQueue>(
+            [responseSocketClient](const std::shared_ptr<flatbuffers::FlatBufferBuilder>& data)
+            {
+                std::cout << "Sending data: " << data->GetSize() << std::endl;
+                responseSocketClient->send(reinterpret_cast<const char*>(data->GetBufferPointer()), data->GetSize());
+                // We wait to keep the maximum number of events per second
+                // if (reportsWait > 0)
+                // {
+                //     std::this_thread::sleep_for(std::chrono::microseconds(reportsWait));
+                // }
+                // logDebug2(WM_VULNSCAN_LOGTAG, "Report sent: %s", data.c_str());
+            });
+    }
+
+    explicit ResponseDispatcherImpl(TQueue* responseDispatcher)
+        : m_responseDispatcher(responseDispatcher)
+    {
     }
 
     void sendStartAck(const Wazuh::SyncSchema::Status status, const std::shared_ptr<Context> ctx) const
     {
-        flatbuffers::FlatBufferBuilder fbBuilder;
+        auto fbBuilder = std::make_shared<flatbuffers::FlatBufferBuilder>();
         auto startAckOffset =
-            Wazuh::SyncSchema::CreateStartAckDirect(fbBuilder, status, ctx->sessionId, ctx->moduleName.c_str());
+            Wazuh::SyncSchema::CreateStartAckDirect(*fbBuilder, status, ctx->sessionId, ctx->moduleName.c_str());
 
         auto messageOffset = Wazuh::SyncSchema::CreateMessage(
-            fbBuilder, Wazuh::SyncSchema::MessageType_StartAck, startAckOffset.Union());
-        fbBuilder.Finish(messageOffset);
+            *fbBuilder, Wazuh::SyncSchema::MessageType_StartAck, startAckOffset.Union());
+        fbBuilder->Finish(messageOffset);
 
-        m_responseQueue->push(messageOffset);
+        m_responseDispatcher->push(fbBuilder);
     }
 
-    void sendEndAck(const Wazuh::SyncSchema::Status status, const std::shared_ptr<Context> ctx)
+    void sendEndAck(const Wazuh::SyncSchema::Status status, const std::shared_ptr<Context> ctx) const
     {
-        flatbuffers::FlatBufferBuilder fbBuilder;
+        auto fbBuilder = std::make_shared<flatbuffers::FlatBufferBuilder>();
         auto startAckOffset =
-            Wazuh::SyncSchema::CreateEndAckDirect(fbBuilder, status, ctx->sessionId, ctx->moduleName.c_str());
+            Wazuh::SyncSchema::CreateEndAckDirect(*fbBuilder, status, ctx->sessionId, ctx->moduleName.c_str());
 
         auto messageOffset =
-            Wazuh::SyncSchema::CreateMessage(fbBuilder, Wazuh::SyncSchema::MessageType_EndAck, startAckOffset.Union());
-        fbBuilder.Finish(messageOffset);
+            Wazuh::SyncSchema::CreateMessage(*fbBuilder, Wazuh::SyncSchema::MessageType_EndAck, startAckOffset.Union());
+        fbBuilder->Finish(messageOffset);
 
-        m_responseQueue->push(messageOffset);
+        m_responseDispatcher->push(fbBuilder);
     }
 
     void sendEndMissingSeq(const uint64_t sessionId, const std::vector<std::pair<uint64_t, uint64_t>>& ranges) const
     {
-        flatbuffers::FlatBufferBuilder fbBuilder;
+        auto fbBuilder = std::make_shared<flatbuffers::FlatBufferBuilder>();
         std::vector<flatbuffers::Offset<Wazuh::SyncSchema::Pair>> convertedRanges;
         for (const auto& [first, second] : ranges)
         {
-            auto offset = Wazuh::SyncSchema::CreatePair(fbBuilder, first, second);
+            auto offset = Wazuh::SyncSchema::CreatePair(*fbBuilder, first, second);
             convertedRanges.push_back(offset);
         }
 
-        auto endOffset = Wazuh::SyncSchema::CreateReqRetDirect(fbBuilder, &convertedRanges, sessionId);
+        auto endOffset = Wazuh::SyncSchema::CreateReqRetDirect(*fbBuilder, &convertedRanges, sessionId);
         auto messageOffset =
-            Wazuh::SyncSchema::CreateMessage(fbBuilder, Wazuh::SyncSchema::MessageType_End, endOffset.Union());
-        fbBuilder.Finish(messageOffset);
+            Wazuh::SyncSchema::CreateMessage(*fbBuilder, Wazuh::SyncSchema::MessageType_ReqRet, endOffset.Union());
+        fbBuilder->Finish(messageOffset);
 
-        m_responseQueue->push(messageOffset);
+        m_responseDispatcher->push(fbBuilder);
     }
 };
+
+using ResponseDispatcher = ResponseDispatcherImpl<ResponseQueue>;
 
 #endif // _RESPONSE_DISPATCHER_HPP

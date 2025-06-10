@@ -38,3 +38,6 @@ if (TARGET compile_schemas_input)
     # The schemas must be compiled manually before building this project in that case.
     add_dependencies(inventory_sync compile_schemas_input)
 endif()
+
+add_subdirectory(tests)
+add_subdirectory(testtool)

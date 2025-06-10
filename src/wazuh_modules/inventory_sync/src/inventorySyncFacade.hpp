@@ -54,8 +54,23 @@ private:
  * @brief InventorySyncFacade class.
  *
  */
-class InventorySyncFacade final : public Singleton<InventorySyncFacade>
+template<typename TAgentSession,
+         typename TResponseDispatcher,
+         typename TRouterSubscriber,
+         typename TIndexerConnector,
+         typename TRocksDBWrapper>
+class InventorySyncFacadeImpl final
+    : public Singleton<InventorySyncFacadeImpl<TAgentSession,
+                                               TResponseDispatcher,
+                                               TRouterSubscriber,
+                                               TIndexerConnector,
+                                               TRocksDBWrapper>>
 {
+    friend class Singleton<InventorySyncFacadeImpl<TAgentSession,
+                                                   TResponseDispatcher,
+                                                   TRouterSubscriber,
+                                                   TIndexerConnector,
+                                                   TRocksDBWrapper>>;
     void run(const std::vector<char>& dataRaw)
     {
         auto message = Wazuh::SyncSchema::GetMessage(dataRaw.data());
@@ -97,9 +112,9 @@ class InventorySyncFacade final : public Singleton<InventorySyncFacade>
                 m_agentSessions.try_emplace(sessionId,
                                             sessionId,
                                             message->content_as<Wazuh::SyncSchema::Start>(),
-                                            m_dataStore.get(),
-                                            m_indexerQueue.get(),
-                                            m_responseDispatcher);
+                                            *m_dataStore,
+                                            *m_indexerQueue,
+                                            *m_responseDispatcher);
             }
         }
         else if (message->content_type() == Wazuh::SyncSchema::MessageType_End)
@@ -118,7 +133,8 @@ class InventorySyncFacade final : public Singleton<InventorySyncFacade>
             else
             {
                 // Handle end.
-                it->second.handleEnd(m_responseDispatcher);
+                std::cout << "Handling end for session: " << end->session() << std::endl;
+                it->second.handleEnd(*m_responseDispatcher);
             }
         }
     }
@@ -142,36 +158,18 @@ public:
         std::cout << "Starting InventorySyncFacade..." << std::endl;
 
         // TODO This database should be ephemeral and not persistent.
-        m_dataStore = std::make_unique<Utils::RocksDBWrapper>("inventory_sync");
-        m_indexerConnector = std::make_unique<IndexerConnector>(
+        m_dataStore = std::make_unique<TRocksDBWrapper>("inventory_sync");
+        m_responseDispatcher = std::make_unique<TResponseDispatcher>();
+        m_indexerConnector = std::make_unique<TIndexerConnector>(
             nlohmann::json::parse(R"({"hosts": ["localhost:9200"], "ssl": {"certificate_authorities": []}})"),
             logFunction);
 
-        m_engineQueue = std::make_unique<WorkersQueue>(
-            [](const std::vector<char>& /*dataRaw*/)
-            {
-                try
-                {
-                    // Send response to agent. (write to execd queue).
-                }
-                catch (const InventorySyncException& e)
-                {
-                    std::cerr << "InventorySyncFacade::start: " << e.what() << std::endl;
-                }
-                catch (const std::exception& e)
-                {
-                    std::cerr << "InventorySyncFacade::start: " << e.what() << std::endl;
-                }
-            },
-            SINGLE_THREAD_COUNT,
-            UNLIMITED_QUEUE_SIZE);
-
-        m_WorkersQueue = std::make_unique<WorkersQueue>(
+        m_workersQueue = std::make_unique<WorkersQueue>(
             [this](const std::vector<char>& dataRaw)
             {
                 try
                 {
-                    std::cout << "InventorySyncFacade::start: Processing message..." << std::endl;
+                    // std::cout << "InventorySyncFacade::start: Processing message..." << std::endl;
                     flatbuffers::Verifier verifier(reinterpret_cast<const uint8_t*>(dataRaw.data()), dataRaw.size());
                     if (Wazuh::SyncSchema::VerifyMessageBuffer(verifier))
                     {
@@ -190,19 +188,20 @@ public:
             std::thread::hardware_concurrency(),
             UNLIMITED_QUEUE_SIZE);
 
-        m_inventorySubscription = std::make_unique<RouterSubscriber>("inventory-states", "inventory-sync-module");
+        m_inventorySubscription = std::make_unique<TRouterSubscriber>("inventory-states", "inventory-sync-module");
         m_inventorySubscription->subscribe(
             // coverity[copy_constructor_call]
-            [queue = m_WorkersQueue.get()](const std::vector<char>& message) { queue->push(message); });
+            [queue = m_workersQueue.get()](const std::vector<char>& message) { queue->push(message); });
 
         const auto preIndexerAction = []()
         {
-            std::cout << "Pre-indexer action..." << std::endl;
+            std::cout << "Pre-indexer action...\n";
         };
 
         m_indexerQueue = std::make_unique<IndexerQueue>(
             [this, &preIndexerAction](const Response& res)
             {
+                std::cout << "Indexer queue action...\n";
                 try
                 {
                     auto sessionIt = m_agentSessions.find(res.context->sessionId);
@@ -217,15 +216,15 @@ public:
                     if (res.context->mode == Wazuh::SyncSchema::Mode_Full)
                     {
                         nlohmann::json bulkData;
-                        IndexerConnector::Builder::deleteByQuery(bulkData, std::to_string(res.context->sessionId));
-                        m_indexerConnector->deleteByQuery(bulkData, std::to_string(res.context->agentId));
+                        IndexerConnector::Builder::deleteByQuery(bulkData, std::to_string(res.context->agentId));
+                        m_indexerConnector->deleteByQuery(bulkData.dump(), std::to_string(res.context->agentId));
                     }
 
                     std::string bulkData;
+                    std::string prefix = std::to_string(res.context->sessionId) + "_";
                     // Send bulk query (with handling of 429 error).
-                    for (const auto& [key, value] : m_dataStore->seek(std::to_string(res.context->sessionId)))
+                    for (const auto& [key, value] : m_dataStore->seek(prefix))
                     {
-
                         flatbuffers::Verifier verifier(reinterpret_cast<const uint8_t*>(value.data()), value.size());
                         if (Wazuh::SyncSchema::VerifyMessageBuffer(verifier))
                         {
@@ -235,14 +234,14 @@ public:
                             {
                                 IndexerConnector::Builder::bulkIndex(
                                     bulkData,
-                                    data->key()->string_view(),
+                                    data->id()->string_view(),
                                     data->index()->string_view(),
                                     std::string_view((const char*)data->data()->data(), data->data()->size()));
                             }
                             else if (data->operation() == Wazuh::SyncSchema::Operation_Delete)
                             {
                                 IndexerConnector::Builder::bulkDelete(
-                                    bulkData, data->index()->str(), data->key()->str());
+                                    bulkData, data->index()->str(), data->id()->str());
                             }
                             else
                             {
@@ -254,11 +253,11 @@ public:
                             throw InventorySyncException("Invalid message type");
                         }
                     }
-
+                    std::cout << "Bulk data: " << bulkData << std::endl;
                     m_indexerConnector->bulk(bulkData);
 
                     // Send ACK to agent.
-                    m_responseDispatcher.sendEndAck(Wazuh::SyncSchema::Status_Ok, res.context);
+                    m_responseDispatcher->sendEndAck(Wazuh::SyncSchema::Status_Ok, res.context);
                     // Delete data from database.
                     m_dataStore->deleteByPrefix(std::to_string(res.context->sessionId));
                     // Delete Session.
@@ -283,21 +282,32 @@ public:
      * @brief Stops facade.
      *
      */
-    void stop() const
+    void stop()
     {
         std::cout << "Stopping InventorySyncFacade..." << std::endl;
+        m_inventorySubscription.reset();
+        m_workersQueue.reset();
+        m_indexerQueue.reset();
+        m_indexerConnector.reset();
+        m_dataStore.reset();
     }
 
 private:
-    std::unique_ptr<WorkersQueue> m_WorkersQueue;
-    ResponseDispatcher m_responseDispatcher;
-    std::unique_ptr<WorkersQueue> m_engineQueue;
+    InventorySyncFacadeImpl() = default;
+    std::unique_ptr<TRocksDBWrapper> m_dataStore;
+    std::unique_ptr<TIndexerConnector> m_indexerConnector;
     std::unique_ptr<IndexerQueue> m_indexerQueue;
-    std::unique_ptr<IndexerConnector> m_indexerConnector;
-    std::unique_ptr<RouterSubscriber> m_inventorySubscription;
-    std::unique_ptr<Utils::RocksDBWrapper> m_dataStore;
-    std::map<uint64_t, AgentSession, std::less<>> m_agentSessions;
+    std::unique_ptr<TResponseDispatcher> m_responseDispatcher;
+    std::unique_ptr<WorkersQueue> m_workersQueue;
+    std::unique_ptr<TRouterSubscriber> m_inventorySubscription;
+    std::map<uint64_t, TAgentSession, std::less<>> m_agentSessions;
     std::shared_mutex m_agentSessionsMutex;
 };
+
+using InventorySyncFacade = InventorySyncFacadeImpl<AgentSession,
+                                                    ResponseDispatcher,
+                                                    RouterSubscriber,
+                                                    IndexerConnector,
+                                                    Utils::RocksDBWrapper>;
 
 #endif // _INVENTORY_SYNC_FACADE_HPP

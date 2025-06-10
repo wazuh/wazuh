@@ -1,3 +1,4 @@
+#pragma once
 #include <chrono>
 #include <cstdint>
 #include <vector>
@@ -7,19 +8,19 @@ class GapSet final
 public:
     explicit GapSet(const uint64_t size)
         : m_size(size)
-        , m_gaps(size, false)
+        , m_observed(size, false)
     {
     }
 
     void observe(const uint64_t seq)
     {
-        if (seq >= m_size || m_gaps[seq])
+        if (seq >= m_size || m_observed[seq])
         {
             return;
         }
 
         m_lastUpdate = std::chrono::steady_clock::now();
-        m_gaps[seq] = true;
+        m_observed[seq] = true;
         ++m_observedCount;
     }
 
@@ -35,7 +36,7 @@ public:
             return false;
         }
 
-        return m_gaps[seq];
+        return m_observed[seq];
     }
     std::vector<std::pair<uint64_t, uint64_t>> ranges() const
     {
@@ -46,7 +47,7 @@ public:
 
         for (uint64_t i = 0; i < m_size; ++i)
         {
-            if (!m_gaps[i])
+            if (!m_observed[i])
             {
                 if (!inGap)
                 {
@@ -74,7 +75,7 @@ public:
 
 private:
     uint64_t m_size {0};
-    std::vector<bool> m_gaps;
+    std::vector<bool> m_observed;
     uint64_t m_observedCount {0};
-    std::chrono::time_point<std::chrono::steady_clock> m_lastUpdate;
+    std::chrono::time_point<std::chrono::steady_clock> m_lastUpdate {};
 };

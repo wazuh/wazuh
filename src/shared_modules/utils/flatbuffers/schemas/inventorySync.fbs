@@ -21,17 +21,17 @@ table Data {
     seq: ulong;
     session: ulong;
     operation: Operation;
-    key: string;
+    id: string;
     index: string;
     data: [byte];
 }
 
 table Start {
     mode: Mode;
-    id: ulong;
     size: ulong;
     realtime: bool;
     module: string;
+    agent_id: ulong;
 }
 
 table StartAck {

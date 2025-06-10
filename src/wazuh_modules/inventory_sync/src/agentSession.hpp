@@ -1,3 +1,4 @@
+#pragma once
 #include "context.hpp"
 #include "flatbuffers/include/inventorySync_generated.h"
 #include "gapSet.hpp"
@@ -22,10 +23,6 @@ struct Response
 };
 
 using WorkersQueue = Utils::AsyncDispatcher<std::vector<char>, std::function<void(const std::vector<char>&)>>;
-using ResponseQueue =
-    Utils::AsyncDispatcher<::flatbuffers::Offset<Wazuh::SyncSchema::Message>,
-                           std::function<void(const ::flatbuffers::Offset<Wazuh::SyncSchema::Message>&)>>;
-
 using IndexerQueue = Utils::AsyncDispatcher<Response, std::function<void(const Response&)>>;
 
 class AgentSessionException : public std::exception
@@ -45,20 +42,22 @@ private:
     std::string m_message;
 };
 
-class AgentSession final
+template<typename TStore, typename TIndexerQueue, typename TResponseDispatcher>
+class AgentSessionImpl final
 {
     std::unique_ptr<GapSet> m_gapSet;
     std::shared_ptr<Context> m_context;
-    Utils::RocksDBWrapper* m_store;
-    IndexerQueue* m_indexerQueue;
+    TStore& m_store;
+    TIndexerQueue& m_indexerQueue;
     bool m_endReceived = false;
+    std::mutex m_mutex;
 
 public:
-    explicit AgentSession(const uint64_t sessionId,
-                          Wazuh::SyncSchema::Start const* data,
-                          Utils::RocksDBWrapper* store,
-                          IndexerQueue* indexerQueue,
-                          const ResponseDispatcher& responseDispatcher)
+    explicit AgentSessionImpl(const uint64_t sessionId,
+                              Wazuh::SyncSchema::Start const* data,
+                              TStore& store,
+                              TIndexerQueue& indexerQueue,
+                              const TResponseDispatcher& responseDispatcher)
         : m_store {store}
         , m_indexerQueue {indexerQueue}
 
@@ -79,12 +78,16 @@ public:
             throw AgentSessionException("Invalid module");
         }
 
-        if (data->id() == 0)
+        if (data->agent_id() == 0)
         {
             throw AgentSessionException("Invalid id");
         }
 
-        m_context = std::make_shared<Context>(Context {data->mode(), sessionId, data->id(), data->module_()->str()});
+        m_context =
+            std::make_shared<Context>(Context {data->mode(), sessionId, data->agent_id(), data->module_()->str()});
+
+        std::cout << "AgentSessionImpl: " << m_context->sessionId << " " << m_context->agentId << " "
+                  << m_context->moduleName << std::endl;
 
         responseDispatcher.sendStartAck(Wazuh::SyncSchema::Status_Ok, m_context);
     }
@@ -94,24 +97,31 @@ public:
         const auto seq = data->seq();
         const auto session = data->session();
 
-        m_store->put(std::to_string(session) + "_" + std::to_string(seq),
-                     rocksdb::Slice(dataRaw.data(), dataRaw.size()));
+        m_store.put(std::to_string(session) + "_" + std::to_string(seq),
+                    rocksdb::Slice(dataRaw.data(), dataRaw.size()));
+
+        std::lock_guard<std::mutex> lock(m_mutex);
         m_gapSet->observe(data->seq());
+
+        // std::cout << "Data received: " << std::to_string(session) + "_" + std::to_string(seq) << "\n";
 
         if (m_endReceived)
         {
             if (m_gapSet->empty())
             {
-                m_indexerQueue->push(Response({ResponseStatus::Ok, m_context}));
+                m_indexerQueue.push(Response({ResponseStatus::Ok, m_context}));
             }
         }
     }
 
-    void handleEnd(const ResponseDispatcher& responseDispatcher)
+    void handleEnd(const TResponseDispatcher& responseDispatcher)
     {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        m_endReceived = true;
         if (m_gapSet->empty())
         {
-            m_indexerQueue->push(Response({ResponseStatus::Ok, m_context}));
+            std::cout << "End received and gap set is empty\n";
+            m_indexerQueue.push(Response({ResponseStatus::Ok, m_context}));
         }
         else
         {
@@ -119,3 +129,5 @@ public:
         }
     }
 };
+
+using AgentSession = AgentSessionImpl<Utils::RocksDBWrapper, IndexerQueue, ResponseDispatcher>;
