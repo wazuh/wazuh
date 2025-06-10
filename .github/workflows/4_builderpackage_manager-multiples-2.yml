@@ -5,6 +5,8 @@ on:
 
 jobs:
   Generate-Packages:
+    permissions:
+      actions: write
     runs-on: ubuntu-24.04
     steps:
       - name: Build DEB Manager
