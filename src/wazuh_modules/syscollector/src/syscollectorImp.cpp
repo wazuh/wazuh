@@ -1688,6 +1688,7 @@ nlohmann::json Syscollector::getGroupsData()
             ret.push_back(item);
         }
     }
+
     return ret;
 }
 
@@ -1754,8 +1755,7 @@ void Syscollector::scanGroups()
 {
     if (m_groups)
     {
-        //m_logFunction(LOG_DEBUG_VERBOSE, "Starting groups scan");
-        m_logFunction(LOG_INFO, "Starting groups scan");
+        m_logFunction(LOG_DEBUG_VERBOSE, "Starting groups scan");
         const auto& groupsData { getGroupsData() };
         // TODO: delete later
         //m_logFunction(LOG_INFO, "scan result: " + groupsData.dump(4));

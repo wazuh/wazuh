@@ -12,6 +12,7 @@
     ALL_PORTS: 'yes'
     PROCESSES_SCAN: 'yes'
     HOTFIXES_SCAN: 'yes'
+    GROUPS_SCAN: 'yes'
     MAX_EPS: 10
   metadata:
     dummy_metadata: ''
