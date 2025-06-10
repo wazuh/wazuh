@@ -69,18 +69,16 @@ nlohmann::json UserGroupsProvider::collect(const std::set<uid_t>& uids)
 void UserGroupsProvider::getGroupsForUser(nlohmann::json& results, const UserInfo& user)
 {
     int ngroups = m_groupWrapper->getgroupcount(user.name, user.gid);
-    gid_t* groups = new gid_t[ngroups];
+    std::vector<gid_t> groups(ngroups);
 
-    if (m_groupWrapper->getgrouplist(user.name, user.gid, groups, &ngroups) < 0)
+    if (m_groupWrapper->getgrouplist(user.name, user.gid, groups.data(), &ngroups) < 0)
     {
         // std::cerr << "Could not get users group list" << std::endl;
     }
     else
     {
-        addGroupsToResults(results, user.uid, groups, ngroups);
+        addGroupsToResults(results, user.uid, groups.data(), ngroups);
     }
-
-    delete[] groups;
 }
 
 void UserGroupsProvider::addGroupsToResults(nlohmann::json& results, uid_t uid, const gid_t* groups, int ngroups)
@@ -163,9 +161,9 @@ nlohmann::json UserGroupsProvider::getGroupNamesByUid(const std::set<uid_t>& uid
         UserInfo user {pwd->pw_name, pwd->pw_uid, pwd->pw_gid};
 
         int ngroups = m_groupWrapper->getgroupcount(user.name, user.gid);
-        gid_t* groups = new gid_t[ngroups];
+        std::vector<gid_t> groups(ngroups);
 
-        if (m_groupWrapper->getgrouplist(user.name, user.gid, groups, &ngroups) >= 0)
+        if (m_groupWrapper->getgrouplist(user.name, user.gid, groups.data(), &ngroups) >= 0)
         {
             nlohmann::json groupNames = nlohmann::json::array();
 
@@ -188,8 +186,6 @@ nlohmann::json UserGroupsProvider::getGroupNamesByUid(const std::set<uid_t>& uid
                 results[std::to_string(uid)] = groupNames;
             }
         }
-
-        delete[] groups;
     }
 
     return results;
