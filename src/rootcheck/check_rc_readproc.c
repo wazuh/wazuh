@@ -52,7 +52,7 @@ int read_proc_dir(const char *dir_name, const char *pid, int position)
     }
 
     /* Open the directory */
-    dp = opendir(dir_name);
+    dp = wopendir(dir_name);
     if (!dp) {
         return (0);
     }

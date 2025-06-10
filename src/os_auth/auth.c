@@ -406,7 +406,7 @@ w_err_t w_auth_validate_groups(const char *groups, char *response) {
         }
 
         snprintf(dir, PATH_MAX + 1, SHAREDCFG_DIR "/%s", group);
-        dp = opendir(dir);
+        dp = wopendir(dir);
         if (!dp) {
             merror("Invalid group: %.255s",group);
             if (response) {
