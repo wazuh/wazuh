@@ -38,7 +38,8 @@ add_library(builder STATIC
     ${SRC_DIR}/builders/stage/normalize.cpp
     ${SRC_DIR}/builders/stage/outputs.cpp
     ${SRC_DIR}/builders/stage/fileOutput.cpp
-    ${SRC_DIR}/builders/stage/indexerOutput.cpp
+    # TODO: Until the indexer connector is unified with the rest of wazuh-manager
+    # ${SRC_DIR}/builders/stage/indexerOutput.cpp
 
     # Map
     ${SRC_DIR}/builders/opmap/map.cpp
@@ -69,7 +70,8 @@ target_link_libraries(builder
     base
     kvdb::ikvdb
     geo::igeo
-    indexerconnector::iindexerconnector
+    # TODO: Until the indexer connector is unified with the rest of wazuh-manager
+    # indexerconnector::iindexerconnector
     logpar
 
     PRIVATE
@@ -155,7 +157,8 @@ add_executable(builder_utest
     ${UNIT_SRC_DIR}/builders/stage/parse_test.cpp
     ${UNIT_SRC_DIR}/builders/stage/outputs_test.cpp
     ${UNIT_SRC_DIR}/builders/stage/fileOutput_test.cpp
-    ${UNIT_SRC_DIR}/builders/stage/indexerOutput_test.cpp
+    # TODO: Until the indexer connector is unified with the rest of wazuh-manager
+    # ${UNIT_SRC_DIR}/builders/stage/indexerOutput_test.cpp
 
 )
 target_include_directories(builder_utest PRIVATE ${BUILDER_PRI_INCS} ${TEST_SRC_DIR} ${UNIT_SRC_DIR})
@@ -172,7 +175,8 @@ target_link_libraries(builder_utest
     kvdb::mocks
     geo::mocks
     base::test
-    indexerconnector::mocks
+    # TODO: Until the indexer connector is unified with the rest of wazuh-manager
+    # indexerconnector::mocks
 )
 gtest_discover_tests(builder_utest)
 

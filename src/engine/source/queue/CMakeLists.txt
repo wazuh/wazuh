@@ -26,7 +26,8 @@ target_link_libraries(queue
   base # Only for the loggin
   queue::iqueue
   unofficial-concurrentqueue::concurrentqueue
-  metrics::imetrics
+  # TODO: Until the indexer connector is unified with the rest of wazuh-manager
+  # metrics::imetrics
 )
 
 # Tests
@@ -51,7 +52,8 @@ if(ENGINE_BUILD_TEST)
     GTest::gtest_main
     base
     queue
-    metrics::mocks
+    # TODO: Until the indexer connector is unified with the rest of wazuh-manager
+    # metrics::mocks
     base::test
   )
   gtest_discover_tests(queue_ctest)
