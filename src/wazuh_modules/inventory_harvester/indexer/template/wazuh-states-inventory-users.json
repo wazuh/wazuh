@@ -6,9 +6,32 @@
   "template": {
     "settings": {
       "index": {
+        "auto_expand_replicas": "0-1",
         "number_of_replicas": "0",
         "number_of_shards": "1",
-        "query.default_field": [],
+        "query.default_field": [
+          "user.id",
+          "user.name",
+          "user.home",
+          "user.type",
+          "user.created",
+          "user.groups",
+          "user.uuid",
+          "user.auth_failures.timestamp",
+          "user.auth_failures.count",
+          "user.group.id_signed",
+          "user.login.status",
+          "user.login.type",
+          "user.login.tty",
+          "user.password.status",
+          "user.password.last_change",
+          "user.password.expiration_date",
+          "user.password.last_set_time",
+          "user.roles",
+          "user.last_login",
+          "process.pid",
+          "host.ip"
+        ],
         "refresh_interval": "5s"
       }
     },
@@ -61,11 +84,6 @@
               "type": "date"
             },
             "full_name": {
-              "fields": {
-                "text": {
-                  "type": "text"
-                }
-              },
               "ignore_above": 1024,
               "type": "keyword"
             },
@@ -101,11 +119,6 @@
               "type": "date"
             },
             "name": {
-              "fields": {
-                "text": {
-                  "type": "text"
-                }
-              },
               "ignore_above": 1024,
               "type": "keyword"
             },
