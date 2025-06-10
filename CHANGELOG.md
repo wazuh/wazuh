@@ -4785,6 +4785,8 @@ All notable changes to this project will be documented in this file.
 - Delete ZLib generated files on cleaning.
 - Removed maximum lines limit from diff messages (that remain limited by length).
 
+## [v1.2.3]
+
 ## [v1.1.1] - 2016-05-12
 
 ### Added
