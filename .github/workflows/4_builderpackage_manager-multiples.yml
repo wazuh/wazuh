@@ -62,6 +62,7 @@ jobs:
     needs: select-targets
     strategy:
         matrix: ${{ fromJSON(needs.select-targets.outputs.matrix) }}
+        fail-fast: false
     uses: ./.github/workflows/4_builderpackage_manager.yml
     with:
       docker_image_tag: auto
