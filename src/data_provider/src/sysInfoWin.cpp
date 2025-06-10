@@ -43,6 +43,7 @@
 #include "packages/modernPackageDataRetriever.hpp"
 #include "utilsWrapperWin.hpp"
 #include "groups_windows.hpp"
+#include "user_groups_windows.hpp"
 
 
 constexpr auto CENTRAL_PROCESSOR_REGISTRY {"HARDWARE\\DESCRIPTION\\System\\CentralProcessor\\0"};
@@ -991,8 +992,9 @@ nlohmann::json SysInfo::getHotfixes() const
 nlohmann::json SysInfo::getGroups() const
 {
     nlohmann::json result;
-
     GroupsProvider groupsProvider;
+    UserGroupsProvider userGroupsProvider;
+
     auto collectedGroups = groupsProvider.collect({});
 
     for (auto& group : collectedGroups)
@@ -1005,8 +1007,30 @@ nlohmann::json SysInfo::getGroups() const
         groupItem["group_id_signed"] = group["gid_signed"];
         groupItem["group_uuid"] = group["group_sid"];
         groupItem["group_is_hidden"] = nullptr;
-        // TODO: collect group_users from users_groups collector
-        groupItem["group_users"] = nlohmann::json::array({"alice", "bob", "charlie"});
+
+        std::set<std::uint32_t> gids {static_cast<std::uint32_t>(group["gid"].get<int>())};
+        auto collectedUsersGroups = userGroupsProvider.getUserNamesByGid(gids);
+
+        if (collectedUsersGroups.empty())
+        {
+            groupItem["group_users"] = nullptr;
+        }
+        else
+        {
+            std::string usersConcatenated;
+
+            for (const auto& user : collectedUsersGroups)
+            {
+                if (!usersConcatenated.empty())
+                {
+                    usersConcatenated += secondaryArraySeparator;
+                }
+
+                usersConcatenated += user.get<std::string>();
+            }
+
+            groupItem["group_users"] = usersConcatenated;
+        }
 
         result.push_back(std::move(groupItem));
 
