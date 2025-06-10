@@ -6,10 +6,20 @@
   "template": {
     "settings": {
       "index": {
+        "auto_expand_replicas": "0-1",
         "number_of_replicas": "0",
         "number_of_shards": "1",
         "query.default_field": [
-          "host.serial_number"
+          "agent.host.architecture",
+          "agent.host.ip",
+          "agent.id",
+          "agent.name",
+          "agent.version",
+          "agent.host.ip",
+          "host.serial_number",
+          "wazuh.cluster.name",
+          "wazuh.cluster.node",
+          "wazuh.schema.version"
         ],
         "refresh_interval": "5s"
       }
