@@ -32,6 +32,9 @@ constexpr auto KByte
     1024
 };
 
+constexpr auto primaryArraySeparator { "," };
+constexpr auto secondaryArraySeparator { ":" };
+
 class EXPORTED SysInfo: public ISysInfo
 {
     public:

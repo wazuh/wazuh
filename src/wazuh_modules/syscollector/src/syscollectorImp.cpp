@@ -1757,8 +1757,6 @@ void Syscollector::scanGroups()
     {
         m_logFunction(LOG_DEBUG_VERBOSE, "Starting groups scan");
         const auto& groupsData { getGroupsData() };
-        // TODO: delete later
-        //m_logFunction(LOG_INFO, "scan result: " + groupsData.dump(4));
         updateChanges(GROUPS_TABLE, groupsData);
         m_logFunction(LOG_DEBUG_VERBOSE, "Ending groups scan");
     }

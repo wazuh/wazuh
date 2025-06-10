@@ -30,6 +30,7 @@
 #include "packages/packageLinuxDataRetriever.h"
 #include "linuxInfoHelper.h"
 #include "groups_linux.hpp"
+#include "user_groups_linux.hpp"
 
 using ProcessInfo = std::unordered_map<int64_t, std::pair<int32_t, std::string>>;
 
@@ -619,8 +620,9 @@ nlohmann::json SysInfo::getHotfixes() const
 nlohmann::json SysInfo::getGroups() const
 {
     nlohmann::json result;
-
     GroupsProvider groupsProvider;
+    UserGroupsProvider userGroupsProvider;
+
     auto collectedGroups = groupsProvider.collect({});
 
     for (auto& group : collectedGroups)
@@ -633,8 +635,30 @@ nlohmann::json SysInfo::getGroups() const
         groupItem["group_id_signed"] = group["gid_signed"];
         groupItem["group_uuid"] = nullptr;
         groupItem["group_is_hidden"] = nullptr;
-        // TODO: collect group_users from users_groups collector
-        groupItem["group_users"] = nlohmann::json::array({"alice", "bob", "charlie"});
+
+        std::set<gid_t> gids {static_cast<gid_t>(group["gid"].get<int>())};
+        auto collectedUsersGroups = userGroupsProvider.getUserNamesByGid(gids);
+
+        if (collectedUsersGroups.empty())
+        {
+            groupItem["group_users"] = nullptr;
+        }
+        else
+        {
+            std::string usersConcatenated;
+
+            for (const auto& user : collectedUsersGroups)
+            {
+                if (!usersConcatenated.empty())
+                {
+                    usersConcatenated += secondaryArraySeparator;
+                }
+
+                usersConcatenated += user.get<std::string>();
+            }
+
+            groupItem["group_users"] = usersConcatenated;
+        }
 
         result.push_back(std::move(groupItem));
 
