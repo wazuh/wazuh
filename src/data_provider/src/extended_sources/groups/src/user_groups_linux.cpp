@@ -197,35 +197,27 @@ std::vector<std::pair<uid_t, std::vector<gid_t>>> UserGroupsProvider::getUserGro
     {
         UserInfo user {pwdInfo->pw_name, pwdInfo->pw_uid, pwdInfo->pw_gid};
 
-        gid_t groupsBuffer[EXPECTED_GROUPS_MAX];
-        gid_t* groups = groupsBuffer;
+        std::vector<gid_t> groups(EXPECTED_GROUPS_MAX);
         int nGroups = EXPECTED_GROUPS_MAX;
 
-        if (m_groupWrapper->getgrouplist(user.name, user.gid, groups, &nGroups) < 0)
+        if (m_groupWrapper->getgrouplist(user.name, user.gid, groups.data(), &nGroups) < 0)
         {
-            groups = new gid_t[nGroups];
+            groups.resize(nGroups);
 
-            if (groups == nullptr)
+            if (m_groupWrapper->getgrouplist(user.name, user.gid, groups.data(), &nGroups) < 0)
             {
-                // std::cerr << "Could not allocate memory to get user groups" << std::endl;
+                // std::cerr << "Could not get user's group list" << std::endl;
                 return;
             }
 
-            if (m_groupWrapper->getgrouplist(user.name, user.gid, groups, &nGroups) < 0)
-            {
-                // std::cerr << "Could not get user's group list" << std::endl;
-            }
-            else
-            {
-                userGroups.emplace_back(user.uid, std::vector<gid_t>(groups, groups + nGroups));
-            }
-
-            delete[] groups;
+            groups.resize(nGroups);
         }
         else
         {
-            userGroups.emplace_back(user.uid, std::vector<gid_t>(groups, groups + nGroups));
+            groups.resize(nGroups);
         }
+
+        userGroups.emplace_back(user.uid, std::move(groups));
     };
 
     if (!uids.empty())
