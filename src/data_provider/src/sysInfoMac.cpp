@@ -30,6 +30,7 @@
 #include "sqliteWrapperTemp.h"
 #include "packages/modernPackageDataRetriever.hpp"
 #include "groups_darwin.hpp"
+#include "user_groups_darwin.hpp"
 
 const std::string MAC_APPS_PATH{"/Applications"};
 const std::string MAC_UTILITIES_PATH{"/Applications/Utilities"};
@@ -466,13 +467,27 @@ nlohmann::json SysInfo::getHotfixes() const
 nlohmann::json SysInfo::getGroups() const
 {
     nlohmann::json result;
-
     GroupsProvider groupsProvider;
+    UserGroupsProvider userGroupsProvider;
+
     auto collectedGroups = groupsProvider.collect({});
+
+    // Collect all the GIDs
+    std::set<gid_t> allGids;
 
     for (auto& group : collectedGroups)
     {
+        allGids.insert(static_cast<gid_t>(group["gid"].get<int>()));
+    }
+
+    // Single call to getUserNamesByGid with all GIDs
+    auto allUsersGroups = userGroupsProvider.getUserNamesByGid(allGids);
+
+    // Process each group
+    for (auto& group : collectedGroups)
+    {
         nlohmann::json groupItem {};
+        gid_t currentGid = static_cast<gid_t>(group["gid"].get<int>());
 
         groupItem["group_id"] = group["gid"];
         groupItem["group_name"] = group["groupname"];
@@ -480,11 +495,34 @@ nlohmann::json SysInfo::getGroups() const
         groupItem["group_id_signed"] = group["gid_signed"];
         groupItem["group_uuid"] = nullptr;
         groupItem["group_is_hidden"] = group["is_hidden"];
-        // TODO: collect group_users from users_groups collector
-        groupItem["group_users"] = nlohmann::json::array({"alice", "bob", "charlie"});
+
+        // Obtain the users for this specific GID
+        auto gidStr = std::to_string(currentGid);
+        nlohmann::json collectedUsersGroups = allUsersGroups.contains(gidStr) ?
+                                              allUsersGroups[gidStr] : nlohmann::json::array();
+
+        if (collectedUsersGroups.empty())
+        {
+            groupItem["group_users"] = nullptr;
+        }
+        else
+        {
+            std::string usersConcatenated;
+
+            for (const auto& user : collectedUsersGroups)
+            {
+                if (!usersConcatenated.empty())
+                {
+                    usersConcatenated += secondaryArraySeparator;
+                }
+
+                usersConcatenated += user.get<std::string>();
+            }
+
+            groupItem["group_users"] = usersConcatenated;
+        }
 
         result.push_back(std::move(groupItem));
-
     }
 
     return result;
