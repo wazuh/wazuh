@@ -44,6 +44,8 @@
 #include "utilsWrapperWin.hpp"
 #include "groups_windows.hpp"
 #include "user_groups_windows.hpp"
+#include "logged_in_users_win.hpp"
+#include "users_windows.hpp"
 
 
 constexpr auto CENTRAL_PROCESSOR_REGISTRY {"HARDWARE\\DESCRIPTION\\System\\CentralProcessor\\0"};
@@ -1041,6 +1043,99 @@ nlohmann::json SysInfo::getGroups() const
 
 nlohmann::json SysInfo::getUsers() const
 {
-    //TODO: Pending implementation.
-    return nlohmann::json();
+    nlohmann::json result;
+
+    UsersProvider usersProvider;
+    auto collectedUsers = usersProvider.collect();
+
+    for (auto& user : collectedUsers)
+    {
+        nlohmann::json userItem {};
+
+        auto username = user["username"].get<std::string>();
+
+        userItem["user_full_name"] = user["description"];
+        userItem["user_home"] = user["directory"];
+        userItem["user_id"] = user["uid"];
+        //NO windows
+        // userItem["user_is_remote"] = user["include_remote"];
+        userItem["user_is_remote"] = nullptr;
+        userItem["user_name"] = username;
+        userItem["user_shell"] = user["shell"];
+        userItem["user_uid_signed"] = user["uid_signed"];
+        userItem["user_group_id_signed"] = user["gid_signed"];
+        userItem["user_group_id"] = user["gid"];
+
+        // Only in windows
+        userItem["user_type"] = user["type"];
+
+        // Macos or windows
+        userItem["user_uuid"] = user["uuid"];
+
+        // Only Macos
+        userItem["user_password_last_set_time"] = nullptr;
+        userItem["user_is_hidden"] = nullptr;
+        userItem["user_created"] = nullptr;
+        userItem["user_auth_failed_count"] = nullptr;
+        userItem["user_auth_failed_timestamp"] = nullptr;
+
+        //TODO: get it from groups use secondaryArraySeparator
+        userItem["user_groups"] = nullptr;
+
+        auto matched = false;
+
+        LoggedInUsersProvider loggedInUserProvider;
+        auto collectedLoggedInUser = loggedInUserProvider.collect();
+
+        //TODO: Avoid this iteration, move logic to LoggedInUsersProvider
+        for (auto& item : collectedLoggedInUser)
+        {
+            // By default, user is not logged in.
+            userItem["login_status"] = 0;
+
+            // tty,host,time and pid can take more than one value due to different logins.
+            if (item["user"] == username)
+            {
+                matched = true;
+                userItem["login_status"] = 1;
+                userItem["login_tty"] = userItem["login_tty"].is_null() ? item["tty"].get<std::string>() :
+                                        (userItem["login_tty"].get<std::string>() + primaryArraySeparator + item["tty"].get<std::string>());
+                userItem["login_type"] = userItem["login_type"].is_null() ? item["type"].get<std::string>() :
+                                         (userItem["login_type"].get<std::string>() + primaryArraySeparator + item["type"].get<std::string>());
+                userItem["host_ip"] = userItem["host_ip"].is_null() ? item["host"].get<std::string>() :
+                                      (userItem["host_ip"].get<std::string>() + primaryArraySeparator + item["host"].get<std::string>());
+                //transform to string and then append each case
+                userItem["process_pid"] = userItem["process_pid"].is_null() ? std::to_string(item["pid"].get<int32_t>()) :
+                                          ( userItem["process_pid"].get<std::string>() + primaryArraySeparator + std::to_string(item["pid"].get<int32_t>()) );
+                userItem["user_last_login"] = userItem["user_last_login"].is_null() ? std::to_string(item["time"].get<int32_t>()) :
+                                              ( userItem["process_pid"].get<std::string>() + primaryArraySeparator + std::to_string(item["time"].get<int32_t>()) );
+                // TODO: check need!
+                // r["sid"] = sidStr;
+                // r["registry_hive"] = hivePath;
+            }
+        }
+
+        if (!matched)
+        {
+            userItem["login_status"] = nullptr;
+            userItem["login_tty"] = nullptr;
+            userItem["login_type"] = nullptr;
+            userItem["host_ip"] = nullptr;
+            userItem["process_pid"] = nullptr;
+            userItem["user_last_login"] = nullptr;
+        }
+
+        userItem["user_password_expiration_date"] = nullptr;
+        userItem["user_password_hash_algorithm"] = nullptr;
+        userItem["user_password_inactive_days"] = nullptr;
+        userItem["user_password_last_change"] = nullptr;
+        userItem["user_password_max_days_between_changes"] = nullptr;
+        userItem["user_password_min_days_between_changes"] = nullptr;
+        userItem["user_password_status"] = nullptr;
+        userItem["user_password_warning_days_before_expiration"] = nullptr;
+
+        result.push_back(std::move(userItem));
+    }
+
+    return result;
 }

@@ -498,7 +498,7 @@
     USERS_SCAN: ''
     MAX_EPS: 10
   metadata:
-    field: hotfixes
+    field: users
     attribute: null
 
 - name: invalid_value_users
@@ -518,7 +518,7 @@
     USERS_SCAN: invalid
     MAX_EPS: 10
   metadata:
-    field: hotfixes
+    field: users
     attribute: null
 
 - name: empty_value_groups

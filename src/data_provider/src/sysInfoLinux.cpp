@@ -715,7 +715,7 @@ nlohmann::json SysInfo::getUsers() const
         // user["failed_login_timestamp"]
         userItem["user_auth_failed_timestamp"] = nullptr;
 
-        //TODO: get it from groups
+        //TODO: get it from groups use secondaryArraySeparator
         userItem["user_groups"] = nullptr;
 
         auto matched = false;
@@ -723,7 +723,7 @@ nlohmann::json SysInfo::getUsers() const
         LoggedInUsersProvider loggedInUserProvider;
         auto collectedLoggedInUser = loggedInUserProvider.collect();
 
-        //TODO: Avoid this iteratiion for moving to LoggedInUsersProvider
+        //TODO: Avoid this iteration, move logic to LoggedInUsersProvider
         for (auto& item : collectedLoggedInUser)
         {
             // By default, user is not logged in.
@@ -735,16 +735,16 @@ nlohmann::json SysInfo::getUsers() const
                 matched = true;
                 userItem["login_status"] = 1;
                 userItem["login_tty"] = userItem["login_tty"].is_null() ? item["tty"].get<std::string>() :
-                                        (userItem["login_tty"].get<std::string>() + arraySeparator + item["tty"].get<std::string>());
+                                        (userItem["login_tty"].get<std::string>() + primaryArraySeparator + item["tty"].get<std::string>());
                 userItem["login_type"] = userItem["login_type"].is_null() ? item["type"].get<std::string>() :
-                                         (userItem["login_type"].get<std::string>() + arraySeparator + item["type"].get<std::string>());
+                                         (userItem["login_type"].get<std::string>() + primaryArraySeparator + item["type"].get<std::string>());
                 userItem["host_ip"] = userItem["host_ip"].is_null() ? item["host"].get<std::string>() :
-                                      (userItem["host_ip"].get<std::string>() + arraySeparator + item["host"].get<std::string>());
-                //transform to string and the append ech case
+                                      (userItem["host_ip"].get<std::string>() + primaryArraySeparator + item["host"].get<std::string>());
+                //transform to string and then append each case
                 userItem["process_pid"] = userItem["process_pid"].is_null() ? std::to_string(item["pid"].get<int32_t>()) :
-                                          ( userItem["process_pid"].get<std::string>() + arraySeparator + std::to_string(item["pid"].get<int32_t>()) );
+                                          ( userItem["process_pid"].get<std::string>() + primaryArraySeparator + std::to_string(item["pid"].get<int32_t>()) );
                 userItem["user_last_login"] = userItem["user_last_login"].is_null() ? std::to_string(item["time"].get<int32_t>()) :
-                                              ( userItem["process_pid"].get<std::string>() + arraySeparator + std::to_string(item["time"].get<int32_t>()) );
+                                              ( userItem["process_pid"].get<std::string>() + primaryArraySeparator + std::to_string(item["time"].get<int32_t>()) );
             }
         }
 
