@@ -10,6 +10,7 @@ namespace base::eventParsers
 // TODO: Add to the schema
 constexpr char EVENT_QUEUE_ID[] {"/wazuh/queue"};
 constexpr char EVENT_LOCATION_ID[] {"/wazuh/location"};
+constexpr char EVENT_REGISTER_IP[] {"/wazuh/register_ip"};
 constexpr char EVENT_MESSAGE_ID[] {"/event/original"};
 constexpr char EVENT_AGENT_ID[] {"/agent/id"};
 constexpr char EVENT_AGENT_NAME[] {"/agent/name"};

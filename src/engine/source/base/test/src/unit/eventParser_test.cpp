@@ -92,6 +92,7 @@ struct LegacyLocationParam
     std::string expectedMessage;
     std::string expectedAgentID;
     std::string expectedAgentName;
+    std::string expectedRegisterIP;
 };
 
 class EventParserLegacyLocationParamTest : public ::testing::TestWithParam<LegacyLocationParam>
@@ -118,44 +119,55 @@ TEST_P(EventParserLegacyLocationParamTest, ParseLegacyEvent_WithAgentInfo)
     EXPECT_EQ(eventLocation.value(), param.expectedModule);
     EXPECT_EQ(eventMessage.value(), param.expectedMessage);
 
-    // Verify agentID and agentName in the JSON
+    // Verify register_ip agentID and agentName in the JSON
     auto agentID = event->getString(ep::EVENT_AGENT_ID);
     auto agentName = event->getString(ep::EVENT_AGENT_NAME);
+    auto registerIP = event->getString(ep::EVENT_REGISTER_IP);
+
     ASSERT_TRUE(agentID.has_value());
     ASSERT_TRUE(agentName.has_value());
+    ASSERT_TRUE(registerIP.has_value());
 
     EXPECT_EQ(agentID.value(), param.expectedAgentID);
     EXPECT_EQ(agentName.value(), param.expectedAgentName);
+    EXPECT_EQ(registerIP.value(), param.expectedRegisterIP);
 }
 
-INSTANTIATE_TEST_SUITE_P(
-    ParseLegacyEventWithAgent,
-    EventParserLegacyLocationParamTest,
-    ::testing::Values(
-        // Single-char ID, simple name and module
-        LegacyLocationParam {
-            "1:[A] Alice->home:Hello",
-            49,      // '1' as unsigned char
-            "home",  // module
-            "Hello", // message
-            "A",     // agentID
-            "Alice"  // agentName
-        },
-        // Multi-char ID and name containing spaces
-        LegacyLocationParam {
-            "7:[xyz123] Bob Marley->dashboard:LogIn", 55, "dashboard", "LogIn", "xyz123", "Bob Marley"},
-        // Module and message may contain colons
-        LegacyLocationParam {"9:[ID42] Agent|:007->server|:port:Payload:data",
-                             57,
-                             "server:port",  // module includes a colon
-                             "Payload:data", // message includes a colon
-                             "ID42",
-                             "Agent:007"},
-        // Edge case: name with arrow-like substring but only first “->” is parsed
-        LegacyLocationParam {"5:[007] E>X->sys->err:Okay",
-                             53,
-                             "sys->err", // module contains “->” after the first
-                             "Okay",
-                             "007",
-                             "E>X"}));
+INSTANTIATE_TEST_SUITE_P(ParseLegacyEventWithAgent,
+                         EventParserLegacyLocationParamTest,
+                         ::testing::Values(
+                             // Single-char ID, simple name and module
+                             LegacyLocationParam {
+                                 "1:[A] (Alice) any->home:Hello",
+                                 49,      // '1' as unsigned char
+                                 "home",  // module
+                                 "Hello", // message
+                                 "A",     // agentID
+                                 "Alice", // agentName
+                                 "any"    // registerIP
+                             },
+                             // Multi-char ID and name containing spaces
+                             LegacyLocationParam {"7:[xyz123] (Bob Marley) 1.1.1.1->dashboard:LogIn",
+                                                  55,
+                                                  "dashboard",
+                                                  "LogIn",
+                                                  "xyz123",
+                                                  "Bob Marley",
+                                                  "1.1.1.1"},
+                             // Module and message may contain colons
+                             LegacyLocationParam {"9:[ID42] (Agent|:007) |:|:1->server|:port:Payload:data",
+                                                  57,
+                                                  "server:port",  // module includes a colon
+                                                  "Payload:data", // message includes a colon
+                                                  "ID42",
+                                                  "Agent:007",
+                                                  "::1"},
+                             // Edge case: name with arrow-like substring but only first “->” is parsed
+                             LegacyLocationParam {"5:[007] (E>X) a->sys->err:Okay",
+                                                  53,
+                                                  "sys->err", // module contains “->” after the first
+                                                  "Okay",
+                                                  "007",
+                                                  "E>X",
+                                                  "a"}));
 } // namespace

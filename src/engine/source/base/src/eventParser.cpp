@@ -9,21 +9,20 @@ namespace
 {
 
 constexpr int LOCATION_OFFSET = 2; // Given the "q:" prefix.
-constexpr int MINIMUM_EVENT_ALLOWED_LENGTH = 4;
 
 /**
- * @brief If `location` has the form "[$agentID] $agentName->$module", extract
- *        agentID and agentName into `event` and rewrite `location` to just `$module`.
+ * @brief If `location` has the form "[$agentID] ($agentName) $registerIP->$module", extract
+ *        agentID, agentName and register IP into `event` and rewrite `location` to just `$module`.
  *        Otherwise, leave `location` untouched.
  *
- * @param location    String potentially of the form "[ID] Name->Module". Will be modified in‐place to "Module" if it
+ * @param location    String potentially of the form "[ID] Name IP->Module". Will be modified in‐place to "Module" if it
  * matches.
  * @param event Shared pointer to a JSON object where agentID and agentName will be set if the format matches.
  */
 void parseLegacyLocation(std::string& location, std::shared_ptr<json::Json>& event)
 {
-    // Minimum format is "[x] y->z", i.e. at least 7 characters
-    if (location.size() < 7 || location.front() != '[')
+    // Minimum format is "[x] (y) z->m", i.e. at least 12 characters
+    if (location.size() < 12 || location.front() != '[')
     {
         return;
     }
@@ -31,56 +30,43 @@ void parseLegacyLocation(std::string& location, std::shared_ptr<json::Json>& eve
     const char* data = location.data();
     size_t n = location.size();
 
-    // Find the closing ']' (agentID end). It must appear somewhere after index 1.
-    size_t posBracket = location.find(']');
-    if (posBracket == std::string::npos || posBracket < 2)
-    {
+    // find closing ']' for agentID
+    size_t p1 = location.find(']');
+    if (p1 == std::string::npos)
         return;
-    }
 
-    // Check space after ']'
-    if (posBracket + 1 >= n || data[posBracket + 1] != ' ')
-    {
+    // next must be " ("
+    if (p1 + 2 >= n || data[p1 + 1] != ' ' || data[p1 + 2] != '(')
         return;
-    }
-    size_t nameStart = posBracket + 2;
 
-    // Find the agentName & module separator "->"
-    size_t arrowPos = location.find("->", nameStart + 1);
-    if (arrowPos == std::string::npos || arrowPos <= nameStart)
-    {
+    // find closing ')' for agentName
+    size_t p2 = location.find(')', p1 + 3);
+    if (p2 == std::string::npos)
         return;
-    }
 
-    // Extract agentID as everything between '[' and ']'
-    std::string_view agentID {data + 1, posBracket - 1};
-    if (agentID.empty())
-    {
+    // next must be space, then registerIP, then "->"
+    if (p2 + 2 >= n || data[p2 + 1] != ' ')
         return;
-    }
-
-    // Extract agentName as everything between '] ' and "->"
-    size_t nameLen = arrowPos - nameStart;
-    std::string_view agentName {data + nameStart, nameLen};
-    if (agentName.empty())
-    {
+    size_t arrow = location.find("->", p2 + 2);
+    if (arrow == std::string::npos)
         return;
-    }
 
-    // Extract module  (new location) as everything after "->"
-    size_t moduleStart = arrowPos + 2;
-    if (moduleStart >= n)
-    {
+    // extract substrings
+    std::string_view svID {data + 1, p1 - 1};
+    std::string_view svName {data + p1 + 3, p2 - (p1 + 3)};
+    std::string_view svRegIP {data + p2 + 2, arrow - (p2 + 2)};
+    std::string_view svModule {data + arrow + 2, n - (arrow + 2)};
+
+    if (svID.empty() || svName.empty() || svRegIP.empty() || svModule.empty())
         return;
-    }
-    std::string_view module {data + moduleStart, n - moduleStart};
 
-    // Set agentID and agentName in the event JSON event
-    event->setString(agentID, EVENT_AGENT_ID);
-    event->setString(agentName, EVENT_AGENT_NAME);
+    // Set the agent ID, name, and register IP in the event.
+    event->setString(svID,    EVENT_AGENT_ID);
+    event->setString(svName,  EVENT_AGENT_NAME);
+    event->setString(svRegIP, EVENT_REGISTER_IP);
 
-    // Finally, overwrite location with module
-    location.assign(module);
+    // Rewrite the location to just the module name.
+    location.assign(svModule);
 }
 
 } // namespace

@@ -41,7 +41,7 @@ BENCHMARK(BM_ParseLegacyEvent_LongIPv6);
 
 static void BM_ParseLegacyEvent_LegacyLocation(benchmark::State& state) {
     // Legacy “[ID] Name->Module:message” format
-    const std::string input = "4:[agent007] Alice Wonderland->dashboard:UserLogin";
+    const std::string input = "4:[agent007] (Alice Wonderland) any->dashboard:UserLogin";
     for (auto _ : state) {
         auto ev = parseLegacyEvent(std::string(input));
         benchmark::DoNotOptimize(ev);
@@ -52,7 +52,7 @@ BENCHMARK(BM_ParseLegacyEvent_LegacyLocation);
 static void BM_ParseLegacyEvent_LegacyWithEscapes(benchmark::State& state) {
     // Legacy prefix plus escaped colons in location and message
     const std::string input =
-        "5:[xyz123] Agent|:007->server|:8080:payload|:data";
+        "5:[xyz123] (Agent|:007) any->server|:8080:payload|:data";
     for (auto _ : state) {
         auto ev = parseLegacyEvent(std::string(input));
         benchmark::DoNotOptimize(ev);
