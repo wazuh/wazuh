@@ -1,15 +1,12 @@
-name: Package - Build multiple Wazuh Manager Packages - DEB|RPM - amd64|x86_64
+name: Package - Build multiple Wazuh Manager Packages
 on:
   workflow_dispatch:
     inputs:
-      build-amd64-deb:
-        description: 'Build .deb wazuh-manager on amd64 arch'
-        type: boolean
-        required: false
-      build-x86_64-rpm:
-        description: 'Build .rpm wazuh-manager on x86_64 arch'
-        type: boolean
-        required: false
+      targets:
+        description: 'Comma-separated targets. Example: "rpm-x86_64,deb-amd64".'
+        type: string
+        required: true
+        default: 'rpm-x86_64,rpm-aarch64,deb-amd64,deb-arm64'
       revision:
         description: |
           Set the value to "1" for packages in release format.
@@ -30,28 +27,48 @@ on:
           By default: false
         type: boolean
         required: false
+  pull_request:
+    types: [synchronize, opened, reopened, ready_for_review]
+    paths:
+      - "src/**"
+      - "packages/**"
+      - ".github/workflows/4_builderpackage_manager-multiples.yml"
+      - ".github/workflows/4_builderpackage_manager.yml"
 
 jobs:
-   Build-manager-amd64-deb:
-    if: ${{ inputs.build-amd64-deb == true }}
-    uses: ./.github/workflows/4_builderpackage_manager.yml 
-    with:
-        docker_image_tag: auto
-        architecture: amd64
-        system: deb
-        revision: ${{ inputs.revision}}
-        is_stage: ${{ inputs.is_stage }}
-        debug: ${{ inputs.debug }}
-    secrets: inherit
 
-   Build-manager-x86_64-rpm:
-    if: ${{ inputs.build-x86_64-rpm == true }}
-    uses: ./.github/workflows/4_builderpackage_manager.yml 
+  select-targets:
+    name: Select build targets (Wazuh Managers)
+    runs-on: ubuntu-24.04
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.result }}
+    steps:
+      - name: Generate dynamic matrix
+        id: set-matrix
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const targets = '${{ inputs.targets }}'.split(',');
+            const matrix = targets.map(target => {
+              const [system, architecture] = target.split('-');
+              return { system, architecture };
+            });
+            core.info('Generated matrix: ' + JSON.stringify(matrix));
+            return { include: matrix };
+          result-encoding: json
+
+  build-wazuh-manager:
+    name: Build Wazuh Manager
+    needs: select-targets
+    strategy:
+        matrix: ${{ fromJSON(needs.select-targets.outputs.matrix) }}
+    uses: ./.github/workflows/4_builderpackage_manager.yml
     with:
-        docker_image_tag: auto
-        architecture: x86_64
-        system: rpm
-        revision: ${{ inputs.revision}}
-        is_stage: ${{ inputs.is_stage }}
-        debug: ${{ inputs.debug }}
+      docker_image_tag: auto
+      architecture:  ${{ matrix.architecture }}
+      system:  ${{ matrix.system }}
+      revision: ${{ inputs.revision}}
+      is_stage: ${{ inputs.is_stage }}
+      debug: ${{ inputs.debug }}
+      id: ${{ github.event_name == 'pull_request' && format('PR#{0}', github.event.pull_request.number) || '' }}
     secrets: inherit
