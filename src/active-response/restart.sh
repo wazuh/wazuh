@@ -41,6 +41,6 @@ if [ "$TYPE" = "manager" ]; then
     fi
 fi
 
-${PWD}/bin/wazuh-control restart
+${PWD}/bin/wazuh-control reload
 
 exit $?;
