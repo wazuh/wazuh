@@ -679,6 +679,12 @@ nlohmann::json SysInfo::getUsers() const
     UsersProvider usersProvider;
     auto collectedUsers = usersProvider.collect();
 
+    LoggedInUsersProvider loggedInUserProvider;
+    auto collectedLoggedInUser = loggedInUserProvider.collect();
+
+    ShadowProvider shadowProvide;
+    auto collectedShadow = shadowProvide.collect();
+
     for (auto& user : collectedUsers)
     {
         nlohmann::json userItem {};
@@ -696,32 +702,22 @@ nlohmann::json SysInfo::getUsers() const
         userItem["user_group_id"] = user["gid"];
 
         // Only in windows
-        // userItem["user_type"] = user["type"];
         userItem["user_type"] = nullptr;
 
         // Macos or windows
-        // userItem["user_uuid"] = user["uuid"];
         userItem["user_uuid"] = nullptr;
 
         // Macos
-        // userItem["user_password_last_set_time"] = user["password_last_set_time"];
         userItem["user_password_last_set_time"] = nullptr;
-        // user["is_hidden"]
         userItem["user_is_hidden"] = nullptr;
-        // user["creation_time"]
         userItem["user_created"] = nullptr;
-        // user["failed_login_count"]
         userItem["user_auth_failed_count"] = nullptr;
-        // user["failed_login_timestamp"]
         userItem["user_auth_failed_timestamp"] = nullptr;
 
         //TODO: get it from groups use secondaryArraySeparator
         userItem["user_groups"] = nullptr;
 
         auto matched = false;
-
-        LoggedInUsersProvider loggedInUserProvider;
-        auto collectedLoggedInUser = loggedInUserProvider.collect();
 
         //TODO: Avoid this iteration, move logic to LoggedInUsersProvider
         for (auto& item : collectedLoggedInUser)
@@ -759,9 +755,6 @@ nlohmann::json SysInfo::getUsers() const
         }
 
         matched = false;
-
-        ShadowProvider shadowProvide;
-        auto collectedShadow = shadowProvide.collect();
 
         for (auto& singleShadow : collectedShadow)
         {

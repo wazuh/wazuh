@@ -792,7 +792,6 @@ nlohmann::json Syscollector::getUsersData()
 
     for (auto& user : allUsers)
     {
-        // TODO: Check correct checksum implementation.
         user["checksum"] = getItemChecksum(user);
     }
 
@@ -880,8 +879,6 @@ void Syscollector::scanUsers()
     {
         m_logFunction(LOG_DEBUG_VERBOSE, "Starting users scan");
         const auto& usersData { getUsersData() };
-        // TODO: delete later
-        // m_logFunction(LOG_DEBUG_VERBOSE, "scan result: " + usersData.dump(4));
         updateChanges(USERS_TABLE, usersData);
         m_logFunction(LOG_DEBUG_VERBOSE, "Ending users scan");
     }

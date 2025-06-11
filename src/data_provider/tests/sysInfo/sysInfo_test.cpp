@@ -343,4 +343,13 @@ TEST_F(SysInfoTest, c_interfaces_bad_params)
     EXPECT_EQ(-1, sysinfo_os(NULL));
     EXPECT_EQ(-1, sysinfo_hotfixes(NULL));
     EXPECT_EQ(-1, sysinfo_groups(NULL));
+    EXPECT_EQ(-1, sysinfo_users(NULL));
+}
+
+TEST_F(SysInfoTest, users_c_interface)
+{
+    cJSON* object = NULL;
+    EXPECT_EQ(0, sysinfo_users(&object));
+    EXPECT_TRUE(object);
+    EXPECT_NO_THROW(sysinfo_free_result(&object));
 }
