@@ -8,6 +8,8 @@ All notable changes to this project will be documented in this file.
 ### Added
 
 - Added Analysisd ability to do a hot ruleset reload. ([#29458](https://github.com/wazuh/wazuh/pull/29458))
+- Added support for hot ruleset reload via API. ([#29954](https://github.com/wazuh/wazuh/pull/29954))
+- Added support for global queries of FIM and system inventory data. ([#27894](https://github.com/wazuh/wazuh/issues/27894))
 
 #### Fixed
 - Fixed missing agent version handling in Vulnerability Detector. ([#29181](https://github.com/wazuh/wazuh/pull/29181))
@@ -36,6 +38,7 @@ All notable changes to this project will be documented in this file.
 - Fixed IPv6 address format reported by WindowsHelper. ([#29502](https://github.com/wazuh/wazuh/pull/29502))
 - Fixed hidden port detection and netstat availability handling. ([#29561](https://github.com/wazuh/wazuh/pull/29561))
 - Replaced `select()` with `sleep()` in Logcollector to prevent errors during Docker deployment. ([#29905](https://github.com/wazuh/wazuh/pull/29905))
+- Fixed NetNTLMv2 exposure by filtering UNC paths and mapped drives in Windows agent. ([#30060](https://github.com/wazuh/wazuh/pull/30060))
 
 #### Changed
 - Improved agent synchronization to reduce redundant payload transfers. ([#29426](https://github.com/wazuh/wazuh/pull/29426))
