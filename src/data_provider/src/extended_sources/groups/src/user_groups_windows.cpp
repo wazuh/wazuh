@@ -114,6 +114,8 @@ nlohmann::json UserGroupsProvider::getUserNamesByGid(const std::set<std::uint32_
         {
             return gidToUsers[onlyGid];
         }
+
+        return nlohmann::json::array();
     }
     else
     {
