@@ -43,8 +43,6 @@ static int decode_package( Eventinfo *lf, cJSON * logJSON, int *socket);
 static int decode_hotfix(Eventinfo *lf, cJSON * logJSON, int *socket);
 static int decode_port( Eventinfo *lf, cJSON * logJSON, int *socket);
 static int decode_process( Eventinfo *lf, cJSON * logJSON, int *socket);
-static int decode_user( Eventinfo *lf, cJSON * logJSON, int *socket);
-static int decode_group( Eventinfo *lf, cJSON * logJSON, int *socket);
 static int decode_dbsync( Eventinfo *lf, char *msg_type, cJSON * logJSON, int *socket);
 
 static OSDecoderInfo *sysc_decoder = NULL;
@@ -227,6 +225,55 @@ static struct deltas_fields_match_list const OS_FIELDS[] = {
     { .current = { "checksum", NULL }, .next = NULL},
 };
 
+static struct deltas_fields_match_list const USER_FIELDS[] = {
+  { .current = { "scan_time", NULL }, .next = &USER_FIELDS[1]},
+  { .current = { "user_name", "user.user_name" }, .next = &USER_FIELDS[2]},
+  { .current = { "user_full_name", "user.user_full_name" }, .next = &USER_FIELDS[3]},
+  { .current = { "user_home", "user.user_home" }, .next = &USER_FIELDS[4]},
+  { .current = { "user_id", "user.user_id" }, .next = &USER_FIELDS[5]},
+  { .current = { "user_uid_signed", "user.user_uid_signed" }, .next = &USER_FIELDS[6]},
+  { .current = { "user_uuid", "user.user_uuid" }, .next = &USER_FIELDS[7]},
+  { .current = { "user_groups", "user.user_groups" }, .next = &USER_FIELDS[8]},
+  { .current = { "user_group_id", "user.user_group_id" }, .next = &USER_FIELDS[9]},
+  { .current = { "user_group_id_signed", "user.user_group_id_signed" }, .next = &USER_FIELDS[10]},
+  { .current = { "user_created", "user.user_created" }, .next = &USER_FIELDS[11]},
+  { .current = { "user_roles_sudo", "user.user_roles_sudo" }, .next = &USER_FIELDS[12]},
+  { .current = { "user_shell", "user.user_shell" }, .next = &USER_FIELDS[13]},
+  { .current = { "user_type", "user.user_type" }, .next = &USER_FIELDS[14]},
+  { .current = { "user_is_hidden", "user.user_is_hidden" }, .next = &USER_FIELDS[15]},
+  { .current = { "user_is_remoted", "user.user_is_remoted" }, .next = &USER_FIELDS[16]},
+  { .current = { "user_last_login", "user.user_last_login" }, .next = &USER_FIELDS[17]},
+  { .current = { "user_auth_failures_count", "user.user_auth_failures_count" }, .next = &USER_FIELDS[18]},
+  { .current = { "user_auth_failures_timestamp", "user.user_auth_failures_timestamp" }, .next = &USER_FIELDS[19]},
+  { .current = { "user_password_last_set_time", "user.user_password_last_set_time" }, .next = &USER_FIELDS[20]},
+  { .current = { "user_password_expiration_date", "user.user_password_expiration_date" }, .next = &USER_FIELDS[21]},
+  { .current = { "user_password_hash_algorithm", "user.user_password_hash_algorithm" }, .next = &USER_FIELDS[22]},
+  { .current = { "user_password_inactive_days", "user.user_password_inactive_days" }, .next = &USER_FIELDS[23]},
+  { .current = { "user_password_last_change", "user.user_password_last_change" }, .next = &USER_FIELDS[24]},
+  { .current = { "user_password_max_days_between_changes", "user.user_password_max_days_between_changes" }, .next = &USER_FIELDS[25]},
+  { .current = { "user_password_min_days_between_changes", "user.user_password_min_days_between_changes" }, .next = &USER_FIELDS[26]},
+  { .current = { "user_password_status", "user.user_password_status" }, .next = &USER_FIELDS[27]},
+  { .current = { "user_password_warning_days_before_expiration", "user.user_password_warning_days_before_expiration" }, .next = &USER_FIELDS[28]},
+  { .current = { "process_pid", "user.process_pid" }, .next = &USER_FIELDS[29]},
+  { .current = { "host_ip", "user.host_ip" }, .next = &USER_FIELDS[30]},
+  { .current = { "login_status", "user.login_status" }, .next = &USER_FIELDS[31]},
+  { .current = { "login_tty", "user.login_tty" }, .next = &USER_FIELDS[32]},
+  { .current = { "login_type", "user.login_type" }, .next = &USER_FIELDS[33]},
+  { .current = { "checksum", NULL }, .next = NULL}
+};
+
+static struct deltas_fields_match_list const GROUP_FIELDS[] = {
+  { .current = { "scan_time", NULL }, .next = &GROUP_FIELDS[1]},
+  { .current = { "group_id", "group.group_id" }, .next = &GROUP_FIELDS[2]},
+  { .current = { "group_name", "group.group_name" }, .next = &GROUP_FIELDS[3]},
+  { .current = { "group_description", "group.group_description" }, .next = &GROUP_FIELDS[4]},
+  { .current = { "group_id_signed", "group.group_id_signed" }, .next = &GROUP_FIELDS[5]},
+  { .current = { "group_uuid", "group.group_uuid" }, .next = &GROUP_FIELDS[6]},
+  { .current = { "group_is_hidden", "group.group_is_hidden" }, .next = &GROUP_FIELDS[7]},
+  { .current = { "group_users", "group.group_users" }, .next = &GROUP_FIELDS[8]},
+  { .current = { "checksum", NULL }, .next = NULL}
+};
+
 void SyscollectorInit(){
 
     os_calloc(1, sizeof(OSDecoderInfo), sysc_decoder);
@@ -342,20 +389,6 @@ int DecodeSyscollector(Eventinfo *lf,int *socket)
     else if (strcmp(msg_type, "process") == 0 || strcmp(msg_type, "process_end") == 0) {
         if (decode_process(lf, logJSON,socket) < 0) {
             mdebug1("Unable to send processes information to Wazuh DB.");
-            cJSON_Delete (logJSON);
-            return (0);
-        }
-    }
-    else if (strcmp(msg_type, "user") == 0) { 
-        if (decode_user(lf, logJSON, socket) < 0) {
-            mdebug1("Unable to send users information to Wazuh DB.");
-            cJSON_Delete (logJSON);
-            return (0);
-        }
-    }
-    else if (strcmp(msg_type, "group") == 0) {
-        if (decode_group(lf, logJSON, socket) < 0) {
-            mdebug1("Unable to send groups information to Wazuh DB.");
             cJSON_Delete (logJSON);
             return (0);
         }
@@ -2018,16 +2051,6 @@ end:
     return retval;
 }
 
-int decode_user(Eventinfo *lf, cJSON * logJson, int *socket) {
-    // TODO: IMPLEMENTATION PENDING
-    return 0;
-}
-
-int decode_group(Eventinfo *lf, cJSON * logJson, int *socket) {
-    // TODO: IMPLEMENTATION PENDING
-    return 0;
-}
-
 static const struct deltas_fields_match_list * get_field_list(const char *type) {
     const struct deltas_fields_match_list * ret_val = NULL;
     // 'type' will not be NULL because this function is being called after checking the type value
@@ -2049,6 +2072,10 @@ static const struct deltas_fields_match_list * get_field_list(const char *type) 
         ret_val = HARDWARE_FIELDS;
     } else if(strcmp(type, "osinfo") == 0) {
         ret_val = OS_FIELDS;
+    } else if(strcmp(type, "users") == 0) {
+        ret_val = USER_FIELDS;
+    } else if(strcmp(type, "groups") == 0) {
+        ret_val = GROUP_FIELDS;
     } else {
         /* This could be a new type of synchronization that is not yet implemented or corrupted data. */
         merror(INVALID_TYPE, type);
@@ -2124,6 +2151,10 @@ static const struct delta_values_mapping_list * get_mapping_list(const char *typ
     } else if(strcmp(type, "hwinfo") == 0) {
         ret_val = NULL;
     } else if(strcmp(type, "osinfo") == 0) {
+        ret_val = NULL;
+    } else if(strcmp(type, "users") == 0) {
+        ret_val = NULL;
+    } else if(strcmp(type, "groups") == 0) {
         ret_val = NULL;
     } else {
         merror(INVALID_TYPE, type);

@@ -23,7 +23,7 @@ CREATE TABLE IF NOT EXISTS sys_users (
     user_group_id INTEGER,
     user_group_id_signed INTEGER,
     user_created REAL,
-    user_roles_sudo TEXT,
+    user_roles_sudo INTEGER,
     user_shell TEXT,
     user_type TEXT,
     user_is_hidden INTEGER,
