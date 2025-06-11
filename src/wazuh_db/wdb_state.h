@@ -60,6 +60,8 @@ typedef struct _agent_syscollector_deprecated_t {
     uint64_t package_queries;
     uint64_t port_queries;
     uint64_t process_queries;
+    uint64_t user_queries;
+    uint64_t group_queries;
     struct timeval hardware_time;
     struct timeval hotfix_time;
     struct timeval netaddr_time;
@@ -69,6 +71,8 @@ typedef struct _agent_syscollector_deprecated_t {
     struct timeval package_time;
     struct timeval port_time;
     struct timeval process_time;
+    struct timeval user_time;
+    struct timeval group_time;
 } agent_syscollector_deprecated_t;
 
 typedef struct _agent_syscollector_t {
@@ -568,6 +572,18 @@ void w_inc_agent_syscollector_hwinfo();
 void w_inc_agent_syscollector_osinfo();
 
 /**
+ * @brief Increment syscollector users information agent queries counter
+ *
+ */
+void w_inc_agent_syscollector_users();
+
+/**
+ * @brief Increment syscollector groups information agent queries counter
+ *
+ */
+void w_inc_agent_syscollector_groups();
+
+/**
  * @brief Increment syscollector agent time counter
  *
  * @param time Value to increment the counter.
@@ -691,6 +707,32 @@ void w_inc_agent_syscollector_deprecated_osinfo();
  * @param time Value to increment the counter.
  */
 void w_inc_agent_syscollector_deprecated_osinfo_time(struct timeval time);
+
+/**
+ * @brief Increment deprecated syscollector users information agent queries counter
+ *
+ */
+void w_inc_agent_syscollector_deprecated_users();
+
+/**
+ * @brief Increment deprecated users information syscollector agent time counter
+ *
+ * @param time Value to increment the counter.
+ */
+void w_inc_agent_syscollector_deprecated_users_time(struct timeval time);
+
+/**
+ * @brief Increment deprecated syscollector groups information agent queries counter
+ *
+ */
+void w_inc_agent_syscollector_deprecated_groups();
+
+/**
+ * @brief Increment deprecated groups information syscollector agent time counter
+ *
+ * @param time Value to increment the counter.
+ */
+void w_inc_agent_syscollector_deprecated_groups_time(struct timeval time);
 
 /**
  * @brief Increment deprecated syscollector OS information agent queries counter

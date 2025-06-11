@@ -43,6 +43,8 @@ static int decode_package( Eventinfo *lf, cJSON * logJSON, int *socket);
 static int decode_hotfix(Eventinfo *lf, cJSON * logJSON, int *socket);
 static int decode_port( Eventinfo *lf, cJSON * logJSON, int *socket);
 static int decode_process( Eventinfo *lf, cJSON * logJSON, int *socket);
+static int decode_user( Eventinfo *lf, cJSON * logJSON, int *socket);
+static int decode_group( Eventinfo *lf, cJSON * logJSON, int *socket);
 static int decode_dbsync( Eventinfo *lf, char *msg_type, cJSON * logJSON, int *socket);
 
 static OSDecoderInfo *sysc_decoder = NULL;
@@ -340,6 +342,20 @@ int DecodeSyscollector(Eventinfo *lf,int *socket)
     else if (strcmp(msg_type, "process") == 0 || strcmp(msg_type, "process_end") == 0) {
         if (decode_process(lf, logJSON,socket) < 0) {
             mdebug1("Unable to send processes information to Wazuh DB.");
+            cJSON_Delete (logJSON);
+            return (0);
+        }
+    }
+    else if (strcmp(msg_type, "user") == 0) { 
+        if (decode_user(lf, logJSON, socket) < 0) {
+            mdebug1("Unable to send users information to Wazuh DB.");
+            cJSON_Delete (logJSON);
+            return (0);
+        }
+    }
+    else if (strcmp(msg_type, "group") == 0) {
+        if (decode_group(lf, logJSON, socket) < 0) {
+            mdebug1("Unable to send groups information to Wazuh DB.");
             cJSON_Delete (logJSON);
             return (0);
         }
@@ -2000,6 +2016,16 @@ end:
     free(response);
     free(msg);
     return retval;
+}
+
+int decode_user(Eventinfo *lf, cJSON * logJson, int *socket) {
+    // TODO: IMPLEMENTATION PENDING
+    return 0;
+}
+
+int decode_group(Eventinfo *lf, cJSON * logJson, int *socket) {
+    // TODO: IMPLEMENTATION PENDING
+    return 0;
 }
 
 static const struct deltas_fields_match_list * get_field_list(const char *type) {
