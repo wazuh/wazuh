@@ -94,6 +94,8 @@ TEST_F(SyscollectorImpTest, defaultCtor)
                                                              R"([{"group_description": null, "group_id": 1, "group_id_signed": 1, "group_is_hidden": null, "group_name": "daemon", "group_users": "daemon:pollinate:vboxadd", "group_uuid": null }])"_json));
     EXPECT_CALL(*spInfoWrapper, users()).WillOnce(Return(
                                                       R"([{"checksum":"978ed233e118afd1b92490f0db4cff98ddc638ed","host_ip":null,"login_status":null,"login_tty":null,"login_type":null,"process_pid":null,"scan_time":"2020/07/04 09:58:10","user_auth_failed_count":null,"user_auth_failed_timestamp":null,"user_created":null,"user_full_name":"bin","user_group_id":2}])"_json));
+    EXPECT_CALL(*spInfoWrapper, users()).WillRepeatedly(Return(
+                                                            R"([{"checksum":"978ed233e118afd1b92490f0db4cff98ddc638ed","host_ip":null,"login_status":null,"login_tty":null,"login_type":null,"process_pid":null,"scan_time":"2020/07/04 09:58:10","user_auth_failed_count":null,"user_auth_failed_timestamp":null,"user_created":null,"user_full_name":"bin","user_group_id":2}])"_json));
 
     CallbackMock wrapper;
     std::function<void(const std::string&)> callbackData

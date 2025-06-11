@@ -21,6 +21,7 @@ constexpr auto PROCESSES_ACTION    { "--processes"};
 constexpr auto PORTS_ACTION        { "--ports"};
 constexpr auto OS_ACTION           { "--os"};
 constexpr auto HOTFIXES_ACTION     { "--hotfixes"};
+constexpr auto USERS_ACTION        { "--users"};
 constexpr auto PROCESSES_CB_ACTION { "--processes-cb"};
 constexpr auto PACKAGES_CB_ACTION  { "--packages-cb"};
 constexpr auto GROUPS_ACTION       { "--groups" };
@@ -36,6 +37,7 @@ class CmdLineActions final
             , m_ports             { PORTS_ACTION        == std::string(argv[1]) }
             , m_os                { OS_ACTION           == std::string(argv[1]) }
             , m_hotfixes          { HOTFIXES_ACTION     == std::string(argv[1]) }
+            , m_users             { USERS_ACTION        == std::string(argv[1]) }
             , m_processesCallback { PROCESSES_CB_ACTION == std::string(argv[1]) }
             , m_packagesCallback  { PACKAGES_CB_ACTION  == std::string(argv[1]) }
             , m_groups            { GROUPS_ACTION       == std::string(argv[1]) }
@@ -77,6 +79,11 @@ class CmdLineActions final
             return m_hotfixes;
         };
 
+        bool usersArg() const
+        {
+            return m_users;
+        };
+
         bool packagesCallbackArg() const
         {
             return m_packagesCallback;
@@ -107,6 +114,7 @@ class CmdLineActions final
                       << "\t--os \t\tPrints the current Operating System information.\n"
                       << "\t--hotfixes \tPrints the current Operating System hotfixes information.\n"
                       << "\t--groups \tPrints the current Operating System groups information.\n"
+                      << "\t--users \tPrints the current Operating System users information.\n"
                       << "\nExamples:"
                       << "\n\t./sysinfo_test_tool"
                       << "\n\t./sysinfo_test_tool --hardware"
@@ -116,6 +124,7 @@ class CmdLineActions final
                       << "\n\t./sysinfo_test_tool --ports"
                       << "\n\t./sysinfo_test_tool --os"
                       << "\n\t./sysinfo_test_tool --hotfixes"
+                      << "\n\t./sysinfo_test_tool --users"
                       << "\n\t./sysinfo_test_tool --processes-cb"
                       << "\n\t./sysinfo_test_tool --packages-cb"
                       << "\n\t./sysinfo_test_tool --groups"
@@ -130,6 +139,7 @@ class CmdLineActions final
         const bool m_ports;
         const bool m_os;
         const bool m_hotfixes;
+        const bool m_users;
         const bool m_processesCallback;
         const bool m_packagesCallback;
         const bool m_groups;
