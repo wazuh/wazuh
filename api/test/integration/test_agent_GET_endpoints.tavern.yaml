@@ -4916,8 +4916,8 @@ stages:
             ubuntu: 10
           groups:
             default: 10
-            group2: 8
-            group1: 7
+            group1: 5
+            group2: 5
             group3: 4
 
 ---
