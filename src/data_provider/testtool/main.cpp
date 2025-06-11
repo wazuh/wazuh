@@ -59,6 +59,11 @@ class SysInfoPrinter final
             m_data["hotfixes"] = m_sysinfo.hotfixes();
         }
 
+        void printGroupsInfo()
+        {
+            m_data["groups"] = m_sysinfo.groups();
+        }
+
         void printData()
         {
             std::cout << m_data.dump(JSON_PRETTY_SPACES) << std::endl;
@@ -144,6 +149,10 @@ int main(int argc, const char* argv[])
             else if (cmdLineArgs.processesCallbackArg())
             {
                 printer.printProcessesInfoCallback();
+            }
+            else if (cmdLineArgs.groupsArg())
+            {
+                printer.printGroupsInfo();
             }
             else
             {
