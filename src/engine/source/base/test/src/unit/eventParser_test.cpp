@@ -28,6 +28,13 @@ TEST_P(EventParserRawLocationParamTest, ParseLegacyEvent)
     namespace ep = base::eventParsers;
     auto [input, expected] = GetParam();
 
+    char hostname[256];
+    if (gethostname(hostname, sizeof(hostname)) != 0)
+    {
+        throw std::runtime_error("Failed to get hostname");
+    }
+    std::string hostNameStr(hostname);
+
     try
     {
         auto event = ep::parseLegacyEvent(std::move(input));
@@ -35,13 +42,23 @@ TEST_P(EventParserRawLocationParamTest, ParseLegacyEvent)
         auto eventQueueId = event->getInt(ep::EVENT_QUEUE_ID);
         auto eventLocation = event->getString(ep::EVENT_LOCATION_ID);
         auto eventMessage = event->getString(ep::EVENT_MESSAGE_ID);
+        auto eventAgentId = event->getString(ep::EVENT_AGENT_ID);
+        auto eventAgentName = event->getString(ep::EVENT_AGENT_NAME);
+        auto eventManagerName = event->getString(ep::EVENT_MANAGER_NAME);
         ASSERT_TRUE(eventQueueId.has_value()) << "Expected queue ID to be present";
         ASSERT_TRUE(eventLocation.has_value()) << "Expected location to be present";
         ASSERT_TRUE(eventMessage.has_value()) << "Expected message to be present";
+        ASSERT_TRUE(eventAgentId.has_value()) << "Expected agent ID to be present";
+        ASSERT_TRUE(eventAgentName.has_value()) << "Expected agent name to be present";
+        ASSERT_TRUE(eventManagerName.has_value()) << "Expected manager name to be present";
 
         ASSERT_EQ(eventQueueId.value(), std::get<0>(expected.value())) << "Queue ID does not match expected value";
         ASSERT_EQ(eventLocation.value(), std::get<1>(expected.value())) << "Location does not match expected value";
         ASSERT_EQ(eventMessage.value(), std::get<2>(expected.value())) << "Message does not match expected value";
+        ASSERT_EQ(eventAgentId.value(), "000") << "Agent ID does not match expected value";
+        ASSERT_EQ(eventAgentName.value(), hostNameStr) << "Agent name does not match expected value";
+        ASSERT_EQ(eventManagerName.value(), hostNameStr) << "Manager name does not match expected value";
+
     }
     catch (const std::runtime_error& e)
     {
@@ -104,6 +121,13 @@ TEST_P(EventParserLegacyLocationParamTest, ParseLegacyEvent_WithAgentInfo)
     namespace ep = base::eventParsers;
     auto param = GetParam();
 
+    char hostname[256];
+    if (gethostname(hostname, sizeof(hostname)) != 0)
+    {
+        throw std::runtime_error("Failed to get hostname");
+    }
+    std::string hostNameStr(hostname);
+
     // Call parseLegacyEvent
     auto event = ep::parseLegacyEvent(std::move(param.input));
 
@@ -111,6 +135,8 @@ TEST_P(EventParserLegacyLocationParamTest, ParseLegacyEvent_WithAgentInfo)
     auto eventQueueId = event->getInt(ep::EVENT_QUEUE_ID);
     auto eventLocation = event->getString(ep::EVENT_LOCATION_ID);
     auto eventMessage = event->getString(ep::EVENT_MESSAGE_ID);
+    auto eventManagerName = event->getString(ep::EVENT_MANAGER_NAME);
+
     ASSERT_TRUE(eventQueueId.has_value());
     ASSERT_TRUE(eventLocation.has_value());
     ASSERT_TRUE(eventMessage.has_value());
@@ -119,18 +145,18 @@ TEST_P(EventParserLegacyLocationParamTest, ParseLegacyEvent_WithAgentInfo)
     EXPECT_EQ(eventLocation.value(), param.expectedModule);
     EXPECT_EQ(eventMessage.value(), param.expectedMessage);
 
-    // Verify register_ip agentID and agentName in the JSON
+    // Verify manager_name agentID and agentName in the JSON
     auto agentID = event->getString(ep::EVENT_AGENT_ID);
     auto agentName = event->getString(ep::EVENT_AGENT_NAME);
-    auto registerIP = event->getString(ep::EVENT_REGISTER_IP);
+    auto managerName = event->getString(ep::EVENT_MANAGER_NAME);
+    ASSERT_TRUE(managerName.has_value());
+    ASSERT_EQ(managerName.value(), hostNameStr) << "Manager name does not match expected hostname";
 
     ASSERT_TRUE(agentID.has_value());
     ASSERT_TRUE(agentName.has_value());
-    ASSERT_TRUE(registerIP.has_value());
 
-    EXPECT_EQ(agentID.value(), param.expectedAgentID);
-    EXPECT_EQ(agentName.value(), param.expectedAgentName);
-    EXPECT_EQ(registerIP.value(), param.expectedRegisterIP);
+    EXPECT_EQ(agentID.value(), param.expectedAgentID) << "Agent ID does not match expected value";
+    EXPECT_EQ(agentName.value(), param.expectedAgentName) << "Agent name does not match expected value";
 }
 
 INSTANTIATE_TEST_SUITE_P(ParseLegacyEventWithAgent,
