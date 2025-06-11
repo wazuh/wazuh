@@ -1,0 +1,57 @@
+{
+  "index_patterns": [
+    "wazuh-states-inventory-groups*"
+  ],
+  "priority": 1,
+  "template": {
+    "settings": {
+      "index": {
+        "auto_expand_replicas": "0-1",
+        "number_of_replicas": "0",
+        "number_of_shards": "1",
+        "query.default_field": [
+          "group.name",
+          "group.description",
+          "group.id_signed",
+          "group.uuid",
+          "group.users"
+        ],
+        "refresh_interval": "5s"
+      }
+    },
+    "mappings": {
+      "date_detection": false,
+      "dynamic": "strict",
+      "properties": {
+        "group": {
+          "properties": {
+            "description": {
+              "type": "match_only_text"
+            },
+            "id": {
+              "type": "unsigned_long"
+            },
+            "id_signed": {
+              "type": "long"
+            },
+            "is_hidden": {
+              "type": "boolean"
+            },
+            "name": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            },
+            "users": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            },
+            "uuid": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            }
+          }
+        }
+      }
+    }
+  }
+}
