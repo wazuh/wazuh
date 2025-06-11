@@ -14,6 +14,8 @@ static void BM_ParseLegacyEvent_Simple(benchmark::State& state) {
         auto ev = parseLegacyEvent(std::string(input));
         benchmark::DoNotOptimize(ev);
     }
+
+    state.SetItemsProcessed(state.iterations());
 }
 BENCHMARK(BM_ParseLegacyEvent_Simple);
 
@@ -25,6 +27,8 @@ static void BM_ParseLegacyEvent_WithEscapes(benchmark::State& state) {
         auto ev = parseLegacyEvent(std::string(input));
         benchmark::DoNotOptimize(ev);
     }
+
+    state.SetItemsProcessed(state.iterations());
 }
 BENCHMARK(BM_ParseLegacyEvent_WithEscapes);
 
@@ -36,16 +40,20 @@ static void BM_ParseLegacyEvent_LongIPv6(benchmark::State& state) {
         auto ev = parseLegacyEvent(std::string(input));
         benchmark::DoNotOptimize(ev);
     }
+
+    state.SetItemsProcessed(state.iterations());
 }
 BENCHMARK(BM_ParseLegacyEvent_LongIPv6);
 
 static void BM_ParseLegacyEvent_LegacyLocation(benchmark::State& state) {
-    // Legacy “[ID] Name->Module:message” format
+    // Legacy “[ID] (Name) ip->Module:message” format
     const std::string input = "4:[agent007] (Alice Wonderland) any->dashboard:UserLogin";
     for (auto _ : state) {
         auto ev = parseLegacyEvent(std::string(input));
         benchmark::DoNotOptimize(ev);
     }
+
+    state.SetItemsProcessed(state.iterations());
 }
 BENCHMARK(BM_ParseLegacyEvent_LegacyLocation);
 
@@ -57,6 +65,8 @@ static void BM_ParseLegacyEvent_LegacyWithEscapes(benchmark::State& state) {
         auto ev = parseLegacyEvent(std::string(input));
         benchmark::DoNotOptimize(ev);
     }
+
+    state.SetItemsProcessed(state.iterations());
 }
 BENCHMARK(BM_ParseLegacyEvent_LegacyWithEscapes);
 

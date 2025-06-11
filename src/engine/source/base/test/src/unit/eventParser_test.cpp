@@ -80,7 +80,7 @@ INSTANTIATE_TEST_SUITE_P(
 /*
 Test fixture for legacy-location prefix cases
  Tuple:
- - Input string (Wazuh legacy message including “[ID] Name->Module” in location)
+ - Input string (Wazuh legacy message including “[ID] (Name) ip->Module” in location)
  - Expected: queue, module, message, agentID, agentName
 */
 

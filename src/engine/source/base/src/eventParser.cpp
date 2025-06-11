@@ -33,23 +33,33 @@ void parseLegacyLocation(std::string& location, std::shared_ptr<json::Json>& eve
     // find closing ']' for agentID
     size_t p1 = location.find(']');
     if (p1 == std::string::npos)
+    {
         return;
+    }
 
     // next must be " ("
     if (p1 + 2 >= n || data[p1 + 1] != ' ' || data[p1 + 2] != '(')
+    {
         return;
+    }
 
     // find closing ')' for agentName
     size_t p2 = location.find(')', p1 + 3);
     if (p2 == std::string::npos)
+    {
         return;
+    }
 
     // next must be space, then registerIP, then "->"
     if (p2 + 2 >= n || data[p2 + 1] != ' ')
+    {
         return;
+    }
     size_t arrow = location.find("->", p2 + 2);
     if (arrow == std::string::npos)
+    {
         return;
+    }
 
     // extract substrings
     std::string_view svID {data + 1, p1 - 1};
@@ -58,11 +68,13 @@ void parseLegacyLocation(std::string& location, std::shared_ptr<json::Json>& eve
     std::string_view svModule {data + arrow + 2, n - (arrow + 2)};
 
     if (svID.empty() || svName.empty() || svRegIP.empty() || svModule.empty())
+    {
         return;
+    }
 
     // Set the agent ID, name, and register IP in the event.
-    event->setString(svID,    EVENT_AGENT_ID);
-    event->setString(svName,  EVENT_AGENT_NAME);
+    event->setString(svID, EVENT_AGENT_ID);
+    event->setString(svName, EVENT_AGENT_NAME);
     event->setString(svRegIP, EVENT_REGISTER_IP);
 
     // Rewrite the location to just the module name.
@@ -126,7 +138,7 @@ Event parseLegacyEvent(std::string&& event)
         }
     }
 
-    // If the location is in the legacy format "[ID] Name->Module", parse it.
+    // If the location is in the legacy format "[ID] (Name) IP->Module", parse it.
     parseLegacyLocation(rawLocation, parseEvent);
     parseEvent->setString(rawLocation, EVENT_LOCATION_ID);
 
