@@ -11,10 +11,6 @@ on:
         description: 'Base qa-integration-framework branch'
         required: true
         default: 'main'
-  pull_request:
-    paths:
-      - ".github/workflows/4_testintegration_aws-tier-0-1.yml"
-      - "wodles/aws/**"
 
 jobs:
   build:

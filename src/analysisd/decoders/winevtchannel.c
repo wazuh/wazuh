@@ -47,6 +47,20 @@ void WinevtInit(){
     mdebug1("WinevtInit completed.");
 }
 
+void WinevtHotReload()
+{
+    if (winevt_decoder)
+    {
+        winevt_decoder->id = getDecoderfromlist(WINEVT_MOD, &os_analysisd_decoder_store);
+        winevt_decoder->fts = 0;
+        mdebug1("WinevtHotReload completed.");
+    }
+    else
+    {
+        mdebug1("Winevt decoder not initialized.");
+    }
+}
+
 char *replace_win_format(char *str, int message){
     char *result = NULL;
     char *end = NULL;

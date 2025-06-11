@@ -146,6 +146,17 @@ int __wrap_wdb_global_delete_agent(__attribute__((unused)) wdb_t *wdb,
     return mock();
 }
 
+char * __wrap_wdb_global_validate_sync_status(__attribute__((unused)) wdb_t *wdb,
+                                                int id,
+                                                const char *requested_sync_status) {
+    check_expected(id);
+    check_expected(requested_sync_status);
+
+    char *str = NULL;
+    os_strdup(mock_type(char*), str);
+    return str;
+}
+
 cJSON* __wrap_wdb_global_select_agent_name(__attribute__((unused)) wdb_t *wdb,
                                            int id) {
     check_expected(id);

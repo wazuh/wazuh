@@ -1,6 +1,6 @@
 [
     {
-        "index_name": "wazuh-states-protocols-cluster01",
+        "index_name": "wazuh-states-inventory-protocols-cluster01",
         "data": []
     }
 ]

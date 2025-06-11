@@ -1,0 +1,24 @@
+{
+    "steps": [
+        {
+            "description": "Build (Coverage flag)",
+            "parameters": [
+                "--test build",
+                "--option ENGINE_BUILD_COVERAGE=ON"
+            ]
+        },
+        {
+            "description": "Unit tests",
+            "parameters": [
+                "--test ut"
+            ]
+        },
+        {
+            "description": "Coverage",
+            "parameters": [
+                "--test coverage",
+                "--include source"
+            ]
+        }
+    ]
+}

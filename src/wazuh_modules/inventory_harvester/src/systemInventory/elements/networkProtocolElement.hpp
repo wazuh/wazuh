@@ -72,12 +72,12 @@ public:
         element.data.network.metric = data->netProtoMetric();
         element.data.network.type = data->netProtoType();
 
-        element.data.observer.ingress.interface.name = data->netProtoIface();
+        element.data.interface.name = data->netProtoIface();
 
         auto& instancePolicyManager = PolicyHarvesterManager::instance();
+        element.data.wazuh.cluster.name = instancePolicyManager.getClusterName();
         if (instancePolicyManager.getClusterStatus())
         {
-            element.data.wazuh.cluster.name = instancePolicyManager.getClusterName();
             element.data.wazuh.cluster.node = instancePolicyManager.getClusterNodeName();
         }
 

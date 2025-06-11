@@ -1,6 +1,6 @@
 [
     {
-        "index_name": "wazuh-states-files-cluster01",
+        "index_name": "wazuh-states-fim-files-cluster01",
         "ids": {
             "003": "003_da9f091b4ee1f59ad05fd375f8cd46dceaf031ebeb87bf30cf70179f5dda5b47"
         },

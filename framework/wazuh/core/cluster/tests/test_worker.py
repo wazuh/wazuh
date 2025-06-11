@@ -794,7 +794,16 @@ async def test_worker_handler_sync_agent_info(SyncWazuhdb_mock, AsyncWazuhDBConn
     w_handler.connected = True
     w_handler.task_loggers['Agent-info sync'] = logger
     SyncWazuhdb_mock.return_value.request_permission = AsyncMock()
-    SyncWazuhdb_mock.return_value.retrieve_information = AsyncMock()
+    retrieve_agents_information_mock = AsyncMock()
+    agents_sync = {
+        'syncreq': [
+            {'id': 1, 'name': 'test'}
+        ],
+        'syncreq_keepalive': [],
+        'syncreq_status': [],
+    }
+    retrieve_agents_information_mock.return_value = agents_sync
+    SyncWazuhdb_mock.return_value.retrieve_agents_information = retrieve_agents_information_mock
     SyncWazuhdb_mock.return_value.sync = AsyncMock()
 
     try:
@@ -802,12 +811,12 @@ async def test_worker_handler_sync_agent_info(SyncWazuhdb_mock, AsyncWazuhDBConn
     except Exception:
         pass
 
-    SyncWazuhdb_mock.assert_called_once_with(manager=w_handler, logger=logger, cmd=b'syn_a_w_m', data_retriever=ANY,
+    SyncWazuhdb_mock.assert_called_once_with(manager=w_handler, logger=logger, cmd=b'syn_a_w_m', data_retriever=None,
                                              get_data_command='global sync-agent-info-get ',
                                              set_data_command='global sync-agent-info-set')
     SyncWazuhdb_mock.return_value.request_permission.assert_called_once()
-    SyncWazuhdb_mock.return_value.retrieve_information.assert_called_once()
-    SyncWazuhdb_mock.return_value.sync.assert_called_once_with(start_time=ANY, chunks=ANY)
+    SyncWazuhdb_mock.return_value.retrieve_agents_information.assert_called_once()
+    SyncWazuhdb_mock.return_value.sync.assert_called_once_with(start_time=ANY, chunks=agents_sync)
     assert w_handler.agent_info_sync_status == {'date_start': 0.0}
     assert logger._info == ['Starting.']
 

@@ -1,46 +1,7 @@
 [
     {
-        "index_name": "wazuh-states-interfaces-cluster01",
+        "index_name": "wazuh-states-inventory-interfaces-cluster01",
         "data": [
-            {
-                "agent": {
-                    "id": "001",
-                    "name": "c0ce505227a4",
-                    "version": "v4.11.0"
-                },
-                "host": {
-                    "mac": "14:15:6e:37:f2:7e",
-                    "network": {
-                        "ingress": {
-                            "bytes": 449599,
-                            "drops": 0,
-                            "errors": 0,
-                            "packets": 661
-                        },
-                        "egress": {
-                            "bytes": 52525,
-                            "drops": 0,
-                            "errors": 0,
-                            "packets": 432
-                        }
-                    }
-                },
-                "observer": {
-                    "ingress": {
-                        "interface": {
-                            "mtu": 1500,
-                            "name": "eth0",
-                            "state": "up",
-                            "type": "ethernet"
-                        }
-                    }
-                },
-                "wazuh": {
-                    "schema": {
-                        "version": "1.0"
-                    }
-                }
-            },
             {
                 "agent": {
                     "id": "002",
@@ -64,17 +25,51 @@
                         }
                     }
                 },
-                "observer": {
-                    "ingress": {
-                        "interface": {
-                            "mtu": 1500,
-                            "name": "eth0",
-                            "state": "up",
-                            "type": "ethernet"
+                "interface": {
+                    "mtu": 1500,
+                    "name": "eth0",
+                    "state": "up",
+                    "type": "ethernet"
+                },
+                "wazuh": {
+                    "schema": {
+                        "version": "1.0"
+                    }
+                }
+            },
+            {
+                "agent": {
+                    "id": "001",
+                    "name": "c0ce505227a4",
+                    "version": "v4.11.0"
+                },
+                "host": {
+                    "mac": "14:15:6e:37:f2:7e",
+                    "network": {
+                        "egress": {
+                            "bytes": 52525,
+                            "drops": 0,
+                            "errors": 0,
+                            "packets": 432
+                        },
+                        "ingress": {
+                            "bytes": 449599,
+                            "drops": 0,
+                            "errors": 0,
+                            "packets": 661
                         }
                     }
                 },
+                "interface": {
+                    "mtu": 1500,
+                    "name": "eth0",
+                    "state": "up",
+                    "type": "ethernet"
+                },
                 "wazuh": {
+                    "cluster": {
+                        "name": "cluster01"
+                    },
                     "schema": {
                         "version": "1.0"
                     }

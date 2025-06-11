@@ -1,0 +1,97 @@
+# Name of the helper function
+name: merge_key_in
+
+metadata:
+  description: |
+    Merge in target field value with the content of some key in the specified object, where the key is specified with a reference to another field.
+    The object parameter must be a definition object or a reference to a field containing the object.
+    This helper function is typically used in the map stage.
+
+  keywords:
+    - undefined
+
+helper_type: transformation
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: false
+
+# Arguments expected by the helper function
+arguments:
+  any_object:
+    type: object  # Accept only object
+    generate: object
+    source: both # Includes values or references (their names start with $)
+  key:
+    type: string  # Accept only string
+    generate: string
+    source: reference # includes only references (their names start with $)
+
+# Key not found
+skipped:
+  - success_cases
+
+target_field:
+  type: object
+  generate: object
+
+test:
+  - arguments:
+      any_object:
+        input_key_1:
+          v1: k1
+        input_key_2:
+          v2: k2
+      key: input_key_1
+    target_field:
+      v0: k0
+    should_pass: true
+    expected:
+      v0: k0
+      v1: k1
+    description: The merge was success
+  - arguments:
+      any_object:
+        input_key_1:
+          v1: k1
+        input_key_2:
+          v2: k2
+      key: input_key_not_found
+    target_field:
+      v0: k0
+    should_pass: false
+    description: The input key was not found
+  - arguments:
+      any_object:
+        input_key_1:
+          v1: k1
+          nested:
+            n1: value1
+        input_key_2:
+          v2: k2
+      key: input_key_1
+    target_field:
+      v0: k0
+      nested:
+        n2: value2
+    should_pass: true
+    expected:
+      v0: k0
+      v1: k1
+      nested:
+        n1: value1
+    description: The value from the specified key `input_key_1` is not merged into `target_field`, due to the need for recursion.
+  - arguments:
+      any_object:
+        input_key_1:
+          b: a-value
+          c: a-value
+      key: input_key_1
+    target_field:
+      a: b-value
+      c: b-value
+    should_pass: true
+    expected:
+      a: b-value
+      b: a-value
+      c: a-value
+    description: Success merge in object with same keys

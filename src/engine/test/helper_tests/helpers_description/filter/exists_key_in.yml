@@ -1,0 +1,45 @@
+# Name of the helper function
+name: exists_key_in
+
+metadata:
+  description: |
+    Checks if the target field value is present as a key in the specified object.
+    This parameter must be a definition object or a reference to a field containing the object.
+    If the object contains the key, then the function will evaluate to true, otherwise it will be false.
+    This helper function is typically used in the check stage.
+  keywords:
+    - undefined
+
+helper_type: filter
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: false
+
+# Arguments expected by the helper function
+arguments:
+  object:
+    type: object  # Expected type is object
+    generate: object
+    source: both # includes values or references (their names start with $)
+
+# do not compare with target field to avoid failure
+skipped:
+  - success_cases
+
+target_field:
+  type: string
+  generate: string
+
+test:
+  - arguments:
+      object:
+        key: value
+    target_field: key-not-exist
+    should_pass: false
+    description: Compare two different integers
+  - arguments:
+      object:
+        key: value
+    target_field: key
+    should_pass: true
+    description: Compare two equals integers

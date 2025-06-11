@@ -1,6 +1,6 @@
 [
     {
-        "index_name": "wazuh-states-interfaces-cluster01",
+        "index_name": "wazuh-states-inventory-interfaces-cluster01",
         "data": [
             {
                 "agent": {
@@ -25,17 +25,16 @@
                         }
                     }
                 },
-                "observer": {
-                    "ingress": {
-                        "interface": {
-                            "mtu": 1500,
-                            "name": "eth0",
-                            "state": "up",
-                            "type": "ethernet"
-                        }
-                    }
+                "interface": {
+                    "mtu": 1500,
+                    "name": "eth0",
+                    "state": "up",
+                    "type": "ethernet"
                 },
                 "wazuh": {
+                    "cluster": {
+                        "name": "cluster01"
+                    },
                     "schema": {
                         "version": "1.0"
                     }

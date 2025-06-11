@@ -1,6 +1,6 @@
 [
     {
-        "index_name": "wazuh-states-hardware-cluster01",
+        "index_name": "wazuh-states-inventory-hardware-cluster01",
         "data": [
             {
                 "agent": {
@@ -15,15 +15,16 @@
                         "speed": 2497
                     },
                     "memory": {
-                        "free": 2515832,
-                        "total": 3062624,
-                        "used": 1862624
-                    }
-                },
-                "observer": {
+                        "free": 1048576,
+                        "total": 2097152,
+                        "used": 1048576
+                    },
                     "serial_number": "A320"
                 },
                 "wazuh": {
+                    "cluster": {
+                        "name": "cluster01"
+                    },
                     "schema": {
                         "version": "1.0"
                     }

@@ -4579,7 +4579,7 @@ void test_save_controlmsg_request_error(void **state)
     expect_string(__wrap__merror, formatted_msg, "Request control format error.");
     expect_string(__wrap__mdebug2, formatted_msg, "r_msg = \"req \"");
 
-    save_controlmsg(key, r_msg, msg_length, wdb_sock);
+    save_controlmsg(key, r_msg, msg_length, wdb_sock, NULL);
 }
 
 void test_save_controlmsg_request_success(void **state)
@@ -4600,7 +4600,7 @@ void test_save_controlmsg_request_success(void **state)
 
     expect_string(__wrap_rem_inc_recv_ctrl_request, agent_id, "001");
 
-    save_controlmsg(&key, r_msg, msg_length, wdb_sock);
+    save_controlmsg(&key, r_msg, msg_length, wdb_sock, &key.is_startup);
 
     free_keyentry(&key);
 }
@@ -4618,7 +4618,7 @@ void test_save_controlmsg_invalid_msg(void **state)
 
     expect_string(__wrap__mwarn, formatted_msg, "Invalid message from agent: 'NEW_AGENT' (001)");
 
-    save_controlmsg(&key, r_msg, msg_length, wdb_sock);
+    save_controlmsg(&key, r_msg, msg_length, wdb_sock, &key.is_startup);
 
     free_keyentry(&key);
 }
@@ -4657,7 +4657,7 @@ void test_save_controlmsg_agent_invalid_version(void **state)
 
     expect_string(__wrap_rem_inc_send_ack, agent_id, "001");
 
-    save_controlmsg(&key, r_msg, msg_length, wdb_sock);
+    save_controlmsg(&key, r_msg, msg_length, wdb_sock, &key.is_startup);
 
     free_keyentry(&key);
 }
@@ -4693,7 +4693,7 @@ void test_save_controlmsg_get_agent_version_fail(void **state)
 
     expect_string(__wrap_rem_inc_send_ack, agent_id, "001");
 
-    save_controlmsg(&key, r_msg, msg_length, wdb_sock);
+    save_controlmsg(&key, r_msg, msg_length, wdb_sock, &key.is_startup);
 
     free_keyentry(&key);
 }
@@ -4733,7 +4733,7 @@ void test_save_controlmsg_could_not_add_pending_data(void **state)
 
     expect_function_call(__wrap_pthread_mutex_unlock);
 
-    save_controlmsg(&key, r_msg, msg_length, wdb_sock);
+    save_controlmsg(&key, r_msg, msg_length, wdb_sock, &key.is_startup);
 
     free_keyentry(&key);
 }
@@ -4779,7 +4779,7 @@ void test_save_controlmsg_unable_to_save_last_keepalive(void **state)
 
     expect_string(__wrap__mwarn, formatted_msg, "Unable to save last keepalive and set connection status as active for agent: 001");
 
-    save_controlmsg(&key, r_msg, msg_length, wdb_sock);
+    save_controlmsg(&key, r_msg, msg_length, wdb_sock, &key.is_startup);
     free_keyentry(&key);
     os_free(data.message);
 }
@@ -4855,7 +4855,7 @@ void test_save_controlmsg_update_msg_error_parsing(void **state)
 
     expect_string(__wrap__merror, formatted_msg, "Error parsing message for agent '001'");
 
-    save_controlmsg(&key, r_msg, msg_length, wdb_sock);
+    save_controlmsg(&key, r_msg, msg_length, wdb_sock, &key.is_startup);
 
     os_free(agent_data);
 
@@ -4953,7 +4953,7 @@ void test_save_controlmsg_update_msg_unable_to_update_information(void **state)
 
     expect_string(__wrap__mdebug1, formatted_msg, "Unable to update information in global.db for agent: 001");
 
-    save_controlmsg(&key, r_msg, msg_length, wdb_sock);
+    save_controlmsg(&key, r_msg, msg_length, wdb_sock, &key.is_startup);
 
     os_free(group->name);
     os_free(group);
@@ -5032,7 +5032,7 @@ void test_save_controlmsg_update_msg_lookfor_agent_group_fail(void **state)
 
     expect_string(__wrap__mdebug1, formatted_msg, "Unable to update information in global.db for agent: 001");
 
-    save_controlmsg(&key, r_msg, msg_length, wdb_sock);
+    save_controlmsg(&key, r_msg, msg_length, wdb_sock, &key.is_startup);
 
     os_free(agent_data->manager_host);
     os_free(agent_data);
@@ -5090,7 +5090,7 @@ void test_save_controlmsg_startup(void **state)
 
     expect_string(__wrap__mwarn, formatted_msg, "Unable to save last keepalive and set connection status as pending for agent: 001");
 
-    save_controlmsg(&key, r_msg, msg_length, wdb_sock);
+    save_controlmsg(&key, r_msg, msg_length, wdb_sock, &key.is_startup);
 
     free_keyentry(&key);
     os_free(message);
@@ -5163,7 +5163,7 @@ void test_save_controlmsg_shutdown(void **state)
     expect_string(__wrap_OSHash_Delete_ex, key, "001");
     expect_value(__wrap_OSHash_Delete_ex, self, agent_data_hash);
 
-    save_controlmsg(&key, r_msg, msg_length, wdb_sock);
+    save_controlmsg(&key, r_msg, msg_length, wdb_sock, &key.is_startup);
 
     free_keyentry(&key);
     os_free(message);
@@ -5215,7 +5215,7 @@ void test_save_controlmsg_shutdown_wdb_fail(void **state)
     expect_string(__wrap_OSHash_Delete_ex, key, "001");
     expect_value(__wrap_OSHash_Delete_ex, self, agent_data_hash);
 
-    save_controlmsg(&key, r_msg, msg_length, wdb_sock);
+    save_controlmsg(&key, r_msg, msg_length, wdb_sock, &key.is_startup);
 
     free_keyentry(&key);
     os_free(message);

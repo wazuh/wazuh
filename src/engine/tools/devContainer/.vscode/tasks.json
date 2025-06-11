@@ -1,0 +1,84 @@
+{
+	// See https://go.microsoft.com/fwlink/?LinkId=733558
+	// for the documentation about the tasks.json format
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Remove engine env",
+			"type": "shell",
+			"command": "rm",
+			"args": [
+				"-rf",
+				"${env:TMP_CLEAN_ENV}",
+				"/var/log/wazuh-server/engine"
+			]
+		},
+		{
+			"label": "Create engine env",
+			"type": "shell",
+			"command": "${env:ENGINE_SRC}/test/setupEnvironment.py",
+			"args": [
+				"-e",
+				"${env:TMP_CLEAN_ENV}"
+			],
+			"dependsOn": "Remove engine env",
+			"problemMatcher": []
+		},
+		{
+			"label": "Remove vd feed",
+			"type": "shell",
+			"command": "rm",
+			"args": [
+				"-rf",
+				"/var/lib/wazuh-server/vd/feed/"
+			]
+		},
+		{
+			"label": "Remove indexer queue",
+			"type": "shell",
+			"command": "rm",
+			"args": [
+				"-rf",
+				"/var/lib/wazuh-server/indexer-connector/"
+			]
+		},
+		{
+			"label": "Remove all queue",
+			"type": "shell",
+			"command": "true",
+			"args": [],
+			"dependsOn": [
+				"Remove vd feed",
+				"Remove indexer queue"
+			]
+		},
+		{
+			"label": "Build clean python venv",
+			"type": "shell",
+			"command": "rm -rf ${env:TMP_PY_VENV}; python -m venv ${env:TMP_PY_VENV};. ${env:TMP_PY_VENV}/bin/activate; pip install behave pyyaml protobuf==4.21 docker lxml",
+			"args": [],
+			"problemMatcher": []
+		},
+		{
+			"label": "Install engine python dependencies",
+			"type": "shell",
+			"command": ". ${env:TMP_PY_VENV}/bin/activate && pip install ${env:ENGINE_PYTHONPATH_API} ${env:ENGINE_PYTHONPATH_SUITE} ${env:ENGINE_PYTHONPATH_TEST} ${env:ENGINE_PYTHONPATH_HEALTH} ${env:ENGINE_PYTHONPATH_HELPER} ${env:ENGINE_PYTHONPATH_IT}",
+			"args": [],
+			"problemMatcher": []
+		},
+		{
+			"label": "Wazuh-server clean",
+			"type": "shell",
+			"command": "${env:ENGINE_SRC}/tools/devContainer/e2e/wazuh_purge.sh",
+			"args": [],
+			"problemMatcher": []
+		},
+		{
+			"label": "Wazuh-server copy certs",
+			"type": "shell",
+			"command": "${env:ENGINE_SRC}/tools/devContainer/e2e/wazuh_copy_certs.sh",
+			"args": [],
+			"problemMatcher": []
+		}
+	]
+}

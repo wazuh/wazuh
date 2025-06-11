@@ -170,64 +170,133 @@ update_file_sources() {
         return
     fi
 
-    # Log action for version and stage
-    if [[ -n "$new_version" ]]; then
-        log_action "New version provided: $new_version"
-    fi
-    if [[ -n "$new_stage" ]]; then
-        log_action "New stage provided: $new_stage"
-    fi
-
     # Update defs.h
     if [[ -n "$new_version" ]]; then
-        sed -i -E "s|(^#define __ossec_version\s+\"v)[0-9]+\.[0-9]+\.[0-9]+(\")|\1${new_version}\2|" "$DIR_SRC/headers/defs.h"
-        log_action "Modified $DIR_SRC/headers/defs.h with new version: $new_version"
+        local defs_file="$DIR_SRC/headers/defs.h"
+        local current_defs_version
+        current_defs_version=$(grep -E '^#define __ossec_version' "$defs_file" \
+            | sed -E 's/^#define __ossec_version\s+"v([0-9]+\.[0-9]+\.[0-9]+)".*/\1/')
+
+        if [[ "$current_defs_version" != "$new_version" ]]; then
+            sed -i -E "s|(^#define __ossec_version\s+\"v)[0-9]+\.[0-9]+\.[0-9]+(\")|\1${new_version}\2|" "$defs_file"
+            log_action "Modified $defs_file with new version: $new_version"
+        fi
     fi
 
     # Update wazuh-*.sh scripts
-    for script in "$DIR_SRC/init/wazuh-server.sh" "$DIR_SRC/init/wazuh-client.sh" "$DIR_SRC/init/wazuh-local.sh"; do
+    for script in \
+        "$DIR_SRC/init/wazuh-server.sh" \
+        "$DIR_SRC/init/wazuh-client.sh" \
+        "$DIR_SRC/init/wazuh-local.sh"
+    do
         if [[ -n "$new_version" ]]; then
-            sed -i -E "s|(^VERSION=\")v[0-9]+\.[0-9]+\.[0-9]+(\")|\1v${new_version}\2|" "$script"
-            log_action "Modified $script with new version: $new_version"
+            local current_script_version
+            current_script_version=$(
+                grep -E '^VERSION="' "$script" \
+                | sed -E 's/^VERSION="v([0-9]+\.[0-9]+\.[0-9]+)".*/\1/'
+            )
+
+            if [[ "$current_script_version" != "$new_version" ]]; then
+                sed -i -E "s|(^VERSION=\")v[0-9]+\.[0-9]+\.[0-9]+(\")|\1v${new_version}\2|" "$script"
+                log_action "Modified $script with new version: $new_version"
+            fi
         fi
+
         if [[ -n "$new_stage" ]]; then
-            sed -i -E "s|(^REVISION=\")[^\"]+(\")|\1${new_stage}\2|" "$script"
-            log_action "Modified $script with new stage: $new_stage"
+            local current_script_stage
+            current_script_stage=$(
+                grep -E '^REVISION="' "$script" \
+                | sed -E 's/^REVISION="([^"]+)".*/\1/'
+            )
+
+            if [[ "$current_script_stage" != "$new_stage" ]]; then
+                sed -i -E "s|(^REVISION=\")[^\"]+(\")|\1${new_stage}\2|" "$script"
+                log_action "Modified $script with new stage: $new_stage"
+            fi
         fi
     done
 
     # Update wazuh-installer.nsi
+    local nsi_file="$DIR_SRC/win32/wazuh-installer.nsi"
     if [[ -n "$new_version" ]]; then
-        sed -i -E "s|(^!define VERSION\s+\")[0-9]+\.[0-9]+\.[0-9]+(\")|\1${new_version}\2|" "$DIR_SRC/win32/wazuh-installer.nsi"
-        sed -i -E "s|(^VIProductVersion\s+\")[0-9]+\.[0-9]+\.[0-9]+(\.\"\$)|\1${new_version}\2|" "$DIR_SRC/win32/wazuh-installer.nsi"
-        log_action "Modified $DIR_SRC/win32/wazuh-installer.nsi with new version: $new_version"
+        local current_nsi_version
+        current_nsi_version=$(grep -E '^!define VERSION' "$nsi_file" \
+            | sed -E 's/^!define VERSION\s+"([0-9]+\.[0-9]+\.[0-9]+)".*/\1/')
+
+        if [[ "$current_nsi_version" != "$new_version" ]]; then
+            sed -i -E "s|(^!define VERSION\s+\")[0-9]+\.[0-9]+\.[0-9]+(\")|\1${new_version}\2|" "$nsi_file"
+            sed -i -E "s|(^VIProductVersion\s+\")[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+(\")|\1${new_version}.0\2|" "$nsi_file"
+            log_action "Modified $nsi_file with new version: $new_version"
+        fi
     fi
     if [[ -n "$new_stage" ]]; then
-        sed -i -E "s|(^!define REVISION\s+\")[^\"]+(\")|\1${new_stage}\2|" "$DIR_SRC/win32/wazuh-installer.nsi"
-        log_action "Modified $DIR_SRC/win32/wazuh-installer.nsi with new stage: $new_stage"
+        local current_nsi_stage
+        current_nsi_stage=$(grep -E '^!define REVISION' "$nsi_file" \
+            | sed -E 's/^!define REVISION\s+"([^"]+)".*/\1/')
+
+        if [[ "$current_nsi_stage" != "$new_stage" ]]; then
+            sed -i -E "s|(^!define REVISION\s+\")[^\"]+(\")|\1${new_stage}\2|" "$nsi_file"
+            log_action "Modified $nsi_file with new stage: $new_stage"
+        fi
     fi
 
     # Update wazuh-installer.wxs
     if [[ -n "$new_version" ]]; then
-        sed -i -E "s|(<Product Id=\"\*\" Name=\"Wazuh Agent\" Language=\"1033\" Version=\")[^\"]+(\" Manufacturer=)|\1${new_version}\2|" "$DIR_SRC/win32/wazuh-installer.wxs"
-        log_action "Modified $DIR_SRC/win32/wazuh-installer.wxs with new version: $new_version"
+        local wxs_file="$DIR_SRC/win32/wazuh-installer.wxs"
+        local current_wxs_version
+        current_wxs_version=$(grep -E '<Product ' "$wxs_file" \
+            | sed -E 's/.*Version="([^"]+)".*/\1/')
+
+        if [[ "$current_wxs_version" != "$new_version" ]]; then
+            sed -i -E "s|(<Product Id=\"\*\" Name=\"Wazuh Agent\" Language=\"1033\" Version=\")[^\"]+(\" Manufacturer=)|\1${new_version}\2|" "$wxs_file"
+            log_action "Modified $wxs_file with new version: $new_version"
+        fi
     fi
 
     # Update Doxyfile
+    local doxy_file="$DIR_SRC/Doxyfile"
     if [[ -n "$new_version" ]]; then
-        sed -i -E "s|(PROJECT_NUMBER\s+=\s+\"v)[0-9]+\.[0-9]+\.[0-9]+(-[^\"]+\"$)|\1${new_version}\2|" "$DIR_SRC/Doxyfile"
-        log_action "Modified $DIR_SRC/Doxyfile with new version: $new_version"
+        local current_doxy_proj
+        current_doxy_proj=$(grep -E '^PROJECT_NUMBER\s+=' "$doxy_file" \
+            | sed -E 's/^PROJECT_NUMBER\s+=\s+"v([0-9]+\.[0-9]+\.[0-9]+)(-[^"]*)?"$/\1/')
+
+        if [[ "$current_doxy_proj" != "$new_version" ]]; then
+            sed -i -E "s|(PROJECT_NUMBER\s+=\s+\"v)[0-9]+\.[0-9]+\.[0-9]+(-[^\"]+\"$)|\1${new_version}\2|" "$doxy_file"
+            log_action "Modified $doxy_file with new version: $new_version"
+        fi
     fi
     if [[ -n "$new_stage" ]]; then
-        sed -i -E "s|(PROJECT_NUMBER\s+=\s+\"v[0-9]+\.[0-9]+\.[0-9]+-)[^\"]+(\"$)|\1${new_stage}\2|" "$DIR_SRC/Doxyfile"
-        log_action "Modified $DIR_SRC/Doxyfile with new stage: $new_stage"
+        local current_doxy_stage
+        current_doxy_stage=$(grep -E '^PROJECT_NUMBER\s+=' "$doxy_file" \
+            | sed -E 's/^PROJECT_NUMBER\s+=\s+"v[0-9]+\.[0-9]+\.[0-9]+-([^"]+)".*$/\1/')
+
+        if [[ "$current_doxy_stage" != "$new_stage" ]]; then
+            sed -i -E "s|(PROJECT_NUMBER\s+=\s+\"v[0-9]+\.[0-9]+\.[0-9]+-)[^\"]+(\"$)|\1${new_stage}\2|" "$doxy_file"
+            log_action "Modified $doxy_file with new stage: $new_stage"
+        fi
     fi
 
     # Update version.rc
     if [[ -n "$new_version" ]]; then
-        sed -i -E "s|(^#define VER_PRODUCTVERSION_STR v)[0-9]+\.[0-9]+\.[0-9]+$|\1${new_version}|" "$DIR_SRC/win32/version.rc"
-        sed -i -E "s|(^#define VER_PRODUCTVERSION\s+)[0-9]+,[0-9]+,[0-9]+(,[0-9]+$)|\1${new_version//./,}\2|" "$DIR_SRC/win32/version.rc"
-        log_action "Modified $DIR_SRC/win32/version.rc with new version: $new_version"
+        local rc_file="$DIR_SRC/win32/version.rc"
+        local current_rc_str
+        current_rc_str=$(grep -E '^#define VER_PRODUCTVERSION_STR' "$rc_file" \
+            | sed -E 's/^#define VER_PRODUCTVERSION_STR v([0-9]+\.[0-9]+\.[0-9]+)$/\1/')
+
+        local current_rc_num
+        current_rc_num=$(grep -E '^#define VER_PRODUCTVERSION\s+' "$rc_file" \
+            | sed -E 's/^#define VER_PRODUCTVERSION\s+([0-9]+,[0-9]+,[0-9]+),?.*$/\1/')
+
+        if [[ "$current_rc_str" != "$new_version" ]]; then
+            sed -i -E "s|(^#define VER_PRODUCTVERSION_STR v)[0-9]+\.[0-9]+\.[0-9]+$|\1${new_version}|" "$rc_file"
+            log_action "Modified $rc_file with new VER_PRODUCTVERSION_STR: $new_version"
+        fi
+
+        local new_version_comma="${new_version//./,}"
+        if [[ "$current_rc_num" != "$new_version_comma" ]]; then
+            sed -i -E "s|(^#define VER_PRODUCTVERSION\s+)[0-9]+,[0-9]+,[0-9]+(,[0-9]+$)|\1${new_version_comma}\2|" "$rc_file"
+            log_action "Modified $rc_file with new VER_PRODUCTVERSION: $new_version_comma"
+        fi
     fi
 }
 
@@ -241,14 +310,26 @@ update_file_framework() {
     local cluster_file="$DIR_FRAMEWORK/wazuh/core/cluster/__init__.py"
 
     if [[ -n "$new_version" ]]; then
-        sed -i -E "s/^(__version__\s*=\s*')[^']+(')/\1${new_version}\2/" "$init_file"
-        sed -i -E "s/^(__version__\s*=\s*')[^']+(')/\1${new_version}\2/" "$cluster_file"
-        log_action "Updated version to '${new_version}' in: $init_file and $cluster_file"
+        local current_version_init
+        current_version_init=$(grep -E "^__version__" "$init_file" | sed -E "s/^__version__\s*=\s*'([^']+)'.*/\1/")
+        local current_version_cluster
+        current_version_cluster=$(grep -E "^__version__" "$cluster_file" | sed -E "s/^__version__\s*=\s*'([^']+)'.*/\1/")
+
+        if [[ "$current_version_init" != "$new_version" || "$current_version_cluster" != "$new_version" ]]; then
+            sed -i -E "s|^(__version__\s*=\s*')[^']+(')|\1${new_version}\2|" "$init_file"
+            sed -i -E "s|^(__version__\s*=\s*')[^']+(')|\1${new_version}\2|" "$cluster_file"
+            log_action "Updated version to '${new_version}' in: $init_file and $cluster_file"
+        fi
     fi
 
     if [[ -n "$new_stage" ]]; then
-        sed -i -E "s/^(__revision__\s*=\s*')[^']+(')/\1${new_stage}\2/" "$cluster_file"
-        log_action "Updated revision to '${new_stage}' in: $cluster_file"
+        local current_stage
+        current_stage=$(grep -E "^__revision__" "$cluster_file" | sed -E "s/^__revision__\s*=\s*'([^']+)'.*/\1/")
+
+        if [[ "$current_stage" != "$new_stage" ]]; then
+            sed -i -E "s|^(__revision__\s*=\s*')[^']+(')|\1${new_stage}\2|" "$cluster_file"
+            log_action "Updated revision to '${new_stage}' in: $cluster_file"
+        fi
     fi
 }
 
@@ -261,25 +342,57 @@ update_file_api() {
     [[ -z "$new_version" && -z "$new_stage" ]] && return
 
     if [[ -n "$new_version" ]]; then
-        # setup.py: version='X.Y.Z',
-        sed -i -E "s/^([[:space:]]+version=')[^']+(',)$/\1${new_version}\2/" "$setup_file"
+        local current_setup_version
+        current_setup_version=$(
+            grep -E "^[[:space:]]*version='" "$setup_file" \
+            | sed -E "s/^[[:space:]]*version='([^']+)'.*/\1/"
+        )
 
-        # spec.yaml: version: 'X.Y.Z'
-        sed -i -E "s/^([[:space:]]+version:[[:space:]]+')([0-9]+\.[0-9]+\.[0-9]+)(')$/\1${new_version}\3/" "$spec_file"
+        local current_spec_version
+        current_spec_version=$(
+            grep -E "^[[:space:]]*version:[[:space:]]*'" "$spec_file" \
+            | sed -E "s/^[[:space:]]*version:[[:space:]]*'([0-9]+\.[0-9]+\.[0-9]+)'.*/\1/"
+        )
 
-        # /vX.Y.Z/ => path to API
-        sed -i -E "s|(\/v)[0-9]+\.[0-9]+\.[0-9]+(/)|\1${new_version}\2|g" "$spec_file"
+        # Only if the version in setup.py does NOT match new_version, we apply changes
+        if [[ "$current_setup_version" != "$new_version" ]]; then
+            sed -i -E \
+                "s|^([[:space:]]*version=')[^']+(',)|\1${new_version}\2|" \
+                "$setup_file"
 
-        # com/X.Y/ => only the first two digits
-        VERSION_SHORT=$(echo "$new_version" | awk -F. '{print $1"."$2}')
-        sed -i -E "s|(com/)[0-9]+\.[0-9]+(/)|\1${VERSION_SHORT}\2|g" "$spec_file"
-        log_action "Updated version to '${new_version}' in: $setup_file and $spec_file"
+            sed -i -E \
+                "s|^([[:space:]]*version:[[:space:]]*')[0-9]+\.[0-9]+\.[0-9]+(')|\1${new_version}\2|" \
+                "$spec_file"
+
+            sed -i -E \
+                "s|(\/v)[0-9]+\.[0-9]+\.[0-9]+(/)|\1${new_version}\2|g" \
+                "$spec_file"
+
+            local version_short
+            version_short=$(echo "$new_version" | awk -F. '{print $1 "." $2}')
+            sed -i -E \
+                "s|(com/)[0-9]+\.[0-9]+(/)|\1${version_short}\2|g" \
+                "$spec_file"
+
+            log_action "Updated version to '${new_version}' in: $setup_file and $spec_file"
+        fi
     fi
 
     if [[ -n "$new_stage" ]]; then
-        # x-revision: 'alpha0' → x-revision: 'beta0'
-        sed -i -E "s/^([[:space:]]+x-revision:[[:space:]]+')([^']+)(')$/\1${new_stage}\3/" "$spec_file"
-        log_action "Updated revision to '${new_stage}' in: $spec_file"
+        local current_spec_stage
+        current_spec_stage=$(
+            grep -E "^[[:space:]]*x-revision:[[:space:]]*'" "$spec_file" \
+            | sed -E "s/^[[:space:]]*x-revision:[[:space:]]*'([^']+)'.*/\1/"
+        )
+
+        # Only if the current stage does NOT match new_stage, we apply the change
+        if [[ "$current_spec_stage" != "$new_stage" ]]; then
+            sed -i -E \
+                "s|^([[:space:]]*x-revision:[[:space:]]*')[^']+(')|\1${new_stage}\2|" \
+                "$spec_file"
+
+            log_action "Updated revision to '${new_stage}' in: $spec_file"
+        fi
     fi
 }
 
@@ -288,44 +401,52 @@ update_file_packages() {
     local final_stage="$2"
     local new_date="$3"
 
-    # Split the version into major, minor and patch
-    IFS='.' read -r major minor patch <<< "$final_version"
+    if [[ -z "$final_version" && -z "$new_date" ]]; then
+        log_action "No version or date provided: changelog and .spec updates omitted."
+        return 0
+    fi
 
-    # Format the date
+    IFS='.' read -r major minor patch <<< "$final_version"
     formatted_date=$(date -d "$new_date" +"%a, %d %b %Y 00:00:00 +0000")
     spec_date=$(date -d "$new_date" +"%a %b %d %Y")
 
     # Update .spec files
     for spec_file in $(find "$DIR_PACKAGE" -type f -name "*.spec"); do
-        version_line="* .* - ${final_version}"
-        existing_line=$(grep -E "^\\* .+ - ${final_version}$" "$spec_file")
+        local existing_line
+        existing_line=$(grep -E "^\\* .+ - ${final_version}$" "$spec_file" || true)
 
-        if [ -n "$existing_line" ]; then
-            sed -i -E "s|^\* .+ - ${final_version}$|* ${spec_date} support <info@wazuh.com> - ${final_version}|" "$spec_file"
+        if [[ -n "$existing_line" ]]; then
+            sed -i -E \
+                "s|^\* .+ - ${final_version}$|* ${spec_date} support <info@wazuh.com> - ${final_version}|" \
+                "$spec_file"
             log_action "Updated changelog date for version ${final_version} in: $spec_file"
         else
-            sed -i -E "/^%changelog\s*$/a * ${spec_date} support <info@wazuh.com> - ${final_version}\n- More info: https://documentation.wazuh.com/current/release-notes/release-${final_version//./-}.html" "$spec_file"
+            sed -i -E \
+                "/^%changelog\s*$/a * ${spec_date} support <info@wazuh.com> - ${final_version}\n- More info: https://documentation.wazuh.com/current/release-notes/release-${final_version//./-}.html" \
+                "$spec_file"
             log_action "Prepended changelog entry for version ${final_version} in: $spec_file"
         fi
     done
 
     # Update changelog files (prepend entry)
     for changelog_file in $(find "$DIR_PACKAGE" -type f -name "changelog"); do
+        local INSTALL_TYPE
         INSTALL_TYPE=$(basename "$(dirname "$(dirname "$changelog_file")")")
-
+        local changelog_entry
         changelog_entry="$(
 cat <<EOF
 ${INSTALL_TYPE} (${final_version}-RELEASE) stable; urgency=low
 
-* More info: https://documentation.wazuh.com/current/release-notes/release-${final_version//./-}.html
+  * More info: https://documentation.wazuh.com/current/release-notes/release-${final_version//./-}.html
 
--- Wazuh, Inc <info@wazuh.com>  ${formatted_date}
+ -- Wazuh, Inc <info@wazuh.com>  ${formatted_date}
 
 EOF
 )"
-
+        local version_pattern_grep
+        local version_pattern_awk
         version_pattern_grep="^${INSTALL_TYPE} \(${final_version//./\\.}-RELEASE\) stable; urgency=low"
-        version_pattern_awk="^${INSTALL_TYPE} (${final_version//./.}-RELEASE) stable; urgency=low"
+        version_pattern_awk="^${INSTALL_TYPE} [(]${final_version//./.}-RELEASE[)] stable; urgency=low"
 
         if grep -qE "$version_pattern_grep" "$changelog_file"; then
             awk -v version_regex="$version_pattern_awk" -v new_date="$formatted_date" '
@@ -346,26 +467,30 @@ EOF
 
             log_action "Updated changelog date for version ${final_version} in: $changelog_file"
         else
+            local tmp_file
             tmp_file=$(mktemp)
             {
                 printf "%s\n\n" "$changelog_entry"
                 cat "$changelog_file"
             } > "$tmp_file" && mv "$tmp_file" "$changelog_file"
+
             log_action "Prepended changelog entry for version ${final_version} in: $changelog_file"
         fi
     done
 
     # Update copyright files
     for copyright_file in $(find "$DIR_PACKAGE" -type f -name "copyright"); do
-        sed -i -E "s|(^    Wazuh, Inc <info@wazuh.com> on )[^$]+(\$)|\1${formatted_date}\2|" "$copyright_file"
-        log_action "Updated copyright year in: $copyright_file"
+        sed -i -E \
+            "s|(^    Wazuh, Inc <info@wazuh.com> on )[^$]+(\$)|\1${formatted_date}\2|" \
+            "$copyright_file"
+        log_action "Updated copyright date in: $copyright_file"
     done
 
     # Update pkginfo files
+    local pkginfo_date
     pkginfo_date=$(date -d "$new_date" +"%d%b%Y")
     for pkginfo_file in $(find "$DIR_PACKAGE" -type f -name "pkginfo"); do
         sed -i -E "s|(^VERSION=\")([0-9]+\.[0-9]+\.[0-9]+)(\"$)|\1${final_version}\3|" "$pkginfo_file"
-
         sed -i -E "s|(^PSTAMP=\")[^\"]+(\"$)|\1${pkginfo_date}\2|" "$pkginfo_file"
 
         log_action "Updated VERSION and PSTAMP in: $pkginfo_file"
@@ -401,7 +526,7 @@ update_root_changelog() {
                 return
             fi
             if [[ $inserted -eq 0 ]] && [[ "$(printf "%s\n%s" "$new_version" "$existing_version" | sort -Vr | head -n1)" == "$new_version" ]]; then
-                echo -e "## [v$new_version]\n\n" >> "$temp_file"
+                echo -e "## [v$new_version]\n" >> "$temp_file"
                 inserted=1
             fi
         fi
@@ -475,8 +600,8 @@ parse_args() {
         esac
     done
 
-    if [[ -z "$new_version" || -z "$new_stage" || -z "$new_date" ]]; then
-        echo "Error: --version, --stage, and --date are required."
+    if [[ -z "$new_version" && -z "$new_stage" && -z "$new_date" ]]; then
+        echo "Error: at least one of the parameters (version, stage or date) must be set"
         usage
         exit 1
     fi

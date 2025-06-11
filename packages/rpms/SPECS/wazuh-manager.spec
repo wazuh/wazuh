@@ -334,7 +334,7 @@ if [ $1 = 2 ]; then
   fi
 fi
 
-%define _vdfilename vd_1.0.0_vd_4.11.0.tar.xz
+%define _vdfilename vd_1.0.0_vd_4.13.0.tar.xz
 
 # Fresh install code block
 if [ $1 = 1 ]; then
@@ -692,6 +692,8 @@ rm -fr %{buildroot}
 %dir %attr(770, wazuh, wazuh) %{_localstatedir}/etc/lists/amazon
 %attr(660, wazuh, wazuh) %config(noreplace) %{_localstatedir}/etc/lists/amazon/*
 %attr(660, wazuh, wazuh) %config(noreplace) %{_localstatedir}/etc/lists/audit-keys
+%dir %attr(770, wazuh, wazuh) %{_localstatedir}/etc/lists/malicious-ioc
+%attr(660, wazuh, wazuh) %config(noreplace) %{_localstatedir}/etc/lists/malicious-ioc/*
 %attr(660, wazuh, wazuh) %config(noreplace) %{_localstatedir}/etc/lists/security-eventchannel
 %dir %attr(770, root, wazuh) %{_localstatedir}/etc/shared
 %dir %attr(770, wazuh, wazuh) %{_localstatedir}/etc/shared/default
@@ -946,14 +948,12 @@ rm -fr %{buildroot}
 %files -n wazuh-manager-debuginfo -f debugfiles.list
 
 %changelog
-* Wed Jul 02 2025 support <info@wazuh.com> - 5.0.0
+* Thu Dec 18 2025 support <info@wazuh.com> - 5.0.0
 - More info: https://documentation.wazuh.com/current/release-notes/release-5-0-0.html
+* Wed Jul 09 2025 support <info@wazuh.com> - 4.14.0
+- More info: https://documentation.wazuh.com/current/release-notes/release-4-14-0.html
 * Wed Jun 04 2025 support <info@wazuh.com> - 4.13.0
 - More info: https://documentation.wazuh.com/current/release-notes/release-4-13-0.html
-* Wed May 21 2025 support <info@wazuh.com> - 4.12.2
-- More info: https://documentation.wazuh.com/current/release-notes/release-4-12-2.html
-* Wed May 14 2025 support <info@wazuh.com> - 4.12.1
-- More info: https://documentation.wazuh.com/current/release-notes/release-4-12-1.html
 * Wed May 07 2025 support <info@wazuh.com> - 4.12.0
 - More info: https://documentation.wazuh.com/current/release-notes/release-4-12-0.html
 * Tue Apr 01 2025 support <info@wazuh.com> - 4.11.2

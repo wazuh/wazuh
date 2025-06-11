@@ -1,0 +1,45 @@
+# Name of the helper function
+name: parse_useragent
+
+metadata:
+  description: |
+    This parser is designed to process and map user agent strings.
+    It does not perform any transformation or parsing in the traditional sense but directly maps
+    the input user agent string to a specific field in the output.
+    Takes a reference to a string that represents the user agent of a device or browser.
+    It directly maps this string to `field` without any modification or parsing.
+    This function is particularly useful for logging or analyzing user agent strings in their original format.
+  keywords:
+    - parser
+
+helper_type: transformation
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: true
+
+# Arguments expected by the helper function
+arguments:
+  input_field:
+    type: string  # Accept only string
+    generate: string
+    source: reference # includes only references (their names start with $)
+
+skipped:
+  - success_cases # parser failed
+
+target_field:
+  type:
+    - object
+    - array
+    - string
+    - number
+    - boolean
+
+test:
+  - arguments:
+      input_field: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110"
+    target_field: any_value
+    should_pass: true
+    expected:
+      original: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110"
+    description: Success useragent parse

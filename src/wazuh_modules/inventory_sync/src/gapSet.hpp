@@ -1,4 +1,6 @@
-#pragma once
+#ifndef _GAP_SET_HPP
+#define _GAP_SET_HPP
+
 #include <chrono>
 #include <cstdint>
 #include <vector>
@@ -79,3 +81,5 @@ private:
     uint64_t m_observedCount {0};
     std::chrono::time_point<std::chrono::steady_clock> m_lastUpdate {};
 };
+
+#endif // _GAP_SET_HPP

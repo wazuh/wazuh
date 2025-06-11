@@ -216,7 +216,7 @@ public:
                     if (res.context->mode == Wazuh::SyncSchema::Mode_Full)
                     {
                         nlohmann::json bulkData;
-                        IndexerConnector::Builder::deleteByQuery(bulkData, std::to_string(res.context->agentId));
+                        IndexerConnectorSync::Builder::deleteByQuery(bulkData, std::to_string(res.context->agentId));
                         m_indexerConnector->deleteByQuery(bulkData.dump(), std::to_string(res.context->agentId));
                     }
 
@@ -232,7 +232,7 @@ public:
                             auto data = message->content_as_Data();
                             if (data->operation() == Wazuh::SyncSchema::Operation_Upsert)
                             {
-                                IndexerConnector::Builder::bulkIndex(
+                                IndexerConnectorSync::Builder::bulkIndex(
                                     bulkData,
                                     data->id()->string_view(),
                                     data->index()->string_view(),
@@ -240,7 +240,7 @@ public:
                             }
                             else if (data->operation() == Wazuh::SyncSchema::Operation_Delete)
                             {
-                                IndexerConnector::Builder::bulkDelete(
+                                IndexerConnectorSync::Builder::bulkDelete(
                                     bulkData, data->index()->str(), data->id()->str());
                             }
                             else
@@ -307,7 +307,7 @@ private:
 using InventorySyncFacade = InventorySyncFacadeImpl<AgentSession,
                                                     ResponseDispatcher,
                                                     RouterSubscriber,
-                                                    IndexerConnector,
+                                                    IndexerConnectorSync,
                                                     Utils::RocksDBWrapper>;
 
 #endif // _INVENTORY_SYNC_FACADE_HPP

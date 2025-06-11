@@ -80,62 +80,66 @@ public:
         logDebug2(LOGGER_DEFAULT_TAG, "SystemInventoryOrchestrator constructor");
 
         m_indexerConnectorInstances[SystemContext::AffectedComponentType::Package] = std::make_unique<IndexerConnector>(
-            PolicyHarvesterManager::instance().buildIndexerConfig("packages"),
+            PolicyHarvesterManager::instance().buildIndexerConfig("packages", InventoryType::SYSTEM_INVENTORY),
             PolicyHarvesterManager::instance().buildIndexerTemplatePath("packages", InventoryType::SYSTEM_INVENTORY),
             PolicyHarvesterManager::instance().buildIndexerUpdateTemplatePath("packages",
                                                                               InventoryType::SYSTEM_INVENTORY),
             Log::GLOBAL_LOG_FUNCTION);
         m_indexerConnectorInstances[SystemContext::AffectedComponentType::System] = std::make_unique<IndexerConnector>(
-            PolicyHarvesterManager::instance().buildIndexerConfig("system"),
+            PolicyHarvesterManager::instance().buildIndexerConfig("system", InventoryType::SYSTEM_INVENTORY),
             PolicyHarvesterManager::instance().buildIndexerTemplatePath("system", InventoryType::SYSTEM_INVENTORY),
             PolicyHarvesterManager::instance().buildIndexerUpdateTemplatePath("system",
                                                                               InventoryType::SYSTEM_INVENTORY),
             Log::GLOBAL_LOG_FUNCTION);
         m_indexerConnectorInstances[SystemContext::AffectedComponentType::Process] = std::make_unique<IndexerConnector>(
-            PolicyHarvesterManager::instance().buildIndexerConfig("processes"),
+            PolicyHarvesterManager::instance().buildIndexerConfig("processes", InventoryType::SYSTEM_INVENTORY),
             PolicyHarvesterManager::instance().buildIndexerTemplatePath("processes", InventoryType::SYSTEM_INVENTORY),
             PolicyHarvesterManager::instance().buildIndexerUpdateTemplatePath("processes",
                                                                               InventoryType::SYSTEM_INVENTORY),
             Log::GLOBAL_LOG_FUNCTION);
         m_indexerConnectorInstances[SystemContext::AffectedComponentType::Port] = std::make_unique<IndexerConnector>(
-            PolicyHarvesterManager::instance().buildIndexerConfig("ports"),
+            PolicyHarvesterManager::instance().buildIndexerConfig("ports", InventoryType::SYSTEM_INVENTORY),
             PolicyHarvesterManager::instance().buildIndexerTemplatePath("ports", InventoryType::SYSTEM_INVENTORY),
             PolicyHarvesterManager::instance().buildIndexerUpdateTemplatePath("ports", InventoryType::SYSTEM_INVENTORY),
             Log::GLOBAL_LOG_FUNCTION);
         m_indexerConnectorInstances[SystemContext::AffectedComponentType::Hotfix] = std::make_unique<IndexerConnector>(
-            PolicyHarvesterManager::instance().buildIndexerConfig("hotfixes"),
+            PolicyHarvesterManager::instance().buildIndexerConfig("hotfixes", InventoryType::SYSTEM_INVENTORY),
             PolicyHarvesterManager::instance().buildIndexerTemplatePath("hotfixes", InventoryType::SYSTEM_INVENTORY),
             PolicyHarvesterManager::instance().buildIndexerUpdateTemplatePath("hotfixes",
                                                                               InventoryType::SYSTEM_INVENTORY),
             Log::GLOBAL_LOG_FUNCTION);
         m_indexerConnectorInstances[SystemContext::AffectedComponentType::Hardware] =
-            std::make_unique<IndexerConnector>(PolicyHarvesterManager::instance().buildIndexerConfig("hardware"),
-                                               PolicyHarvesterManager::instance().buildIndexerTemplatePath(
-                                                   "hardware", InventoryType::SYSTEM_INVENTORY),
-                                               PolicyHarvesterManager::instance().buildIndexerUpdateTemplatePath(
-                                                   "hardware", InventoryType::SYSTEM_INVENTORY),
-                                               Log::GLOBAL_LOG_FUNCTION);
+            std::make_unique<IndexerConnector>(
+                PolicyHarvesterManager::instance().buildIndexerConfig("hardware", InventoryType::SYSTEM_INVENTORY),
+                PolicyHarvesterManager::instance().buildIndexerTemplatePath("hardware",
+                                                                            InventoryType::SYSTEM_INVENTORY),
+                PolicyHarvesterManager::instance().buildIndexerUpdateTemplatePath("hardware",
+                                                                                  InventoryType::SYSTEM_INVENTORY),
+                Log::GLOBAL_LOG_FUNCTION);
         m_indexerConnectorInstances[SystemContext::AffectedComponentType::NetProto] =
-            std::make_unique<IndexerConnector>(PolicyHarvesterManager::instance().buildIndexerConfig("protocols"),
-                                               PolicyHarvesterManager::instance().buildIndexerTemplatePath(
-                                                   "protocols", InventoryType::SYSTEM_INVENTORY),
-                                               PolicyHarvesterManager::instance().buildIndexerUpdateTemplatePath(
-                                                   "protocols", InventoryType::SYSTEM_INVENTORY),
-                                               Log::GLOBAL_LOG_FUNCTION);
+            std::make_unique<IndexerConnector>(
+                PolicyHarvesterManager::instance().buildIndexerConfig("protocols", InventoryType::SYSTEM_INVENTORY),
+                PolicyHarvesterManager::instance().buildIndexerTemplatePath("protocols",
+                                                                            InventoryType::SYSTEM_INVENTORY),
+                PolicyHarvesterManager::instance().buildIndexerUpdateTemplatePath("protocols",
+                                                                                  InventoryType::SYSTEM_INVENTORY),
+                Log::GLOBAL_LOG_FUNCTION);
         m_indexerConnectorInstances[SystemContext::AffectedComponentType::NetIface] =
-            std::make_unique<IndexerConnector>(PolicyHarvesterManager::instance().buildIndexerConfig("interfaces"),
-                                               PolicyHarvesterManager::instance().buildIndexerTemplatePath(
-                                                   "interfaces", InventoryType::SYSTEM_INVENTORY),
-                                               PolicyHarvesterManager::instance().buildIndexerUpdateTemplatePath(
-                                                   "interfaces", InventoryType::SYSTEM_INVENTORY),
-                                               Log::GLOBAL_LOG_FUNCTION);
+            std::make_unique<IndexerConnector>(
+                PolicyHarvesterManager::instance().buildIndexerConfig("interfaces", InventoryType::SYSTEM_INVENTORY),
+                PolicyHarvesterManager::instance().buildIndexerTemplatePath("interfaces",
+                                                                            InventoryType::SYSTEM_INVENTORY),
+                PolicyHarvesterManager::instance().buildIndexerUpdateTemplatePath("interfaces",
+                                                                                  InventoryType::SYSTEM_INVENTORY),
+                Log::GLOBAL_LOG_FUNCTION);
         m_indexerConnectorInstances[SystemContext::AffectedComponentType::NetworkAddress] =
-            std::make_unique<IndexerConnector>(PolicyHarvesterManager::instance().buildIndexerConfig("networks"),
-                                               PolicyHarvesterManager::instance().buildIndexerTemplatePath(
-                                                   "networks", InventoryType::SYSTEM_INVENTORY),
-                                               PolicyHarvesterManager::instance().buildIndexerUpdateTemplatePath(
-                                                   "networks", InventoryType::SYSTEM_INVENTORY),
-                                               Log::GLOBAL_LOG_FUNCTION);
+            std::make_unique<IndexerConnector>(
+                PolicyHarvesterManager::instance().buildIndexerConfig("networks", InventoryType::SYSTEM_INVENTORY),
+                PolicyHarvesterManager::instance().buildIndexerTemplatePath("networks",
+                                                                            InventoryType::SYSTEM_INVENTORY),
+                PolicyHarvesterManager::instance().buildIndexerUpdateTemplatePath("networks",
+                                                                                  InventoryType::SYSTEM_INVENTORY),
+                Log::GLOBAL_LOG_FUNCTION);
 
         m_orchestrations[SystemContext::Operation::Upsert] =
             SystemFactoryOrchestrator::create(SystemContext::Operation::Upsert, m_indexerConnectorInstances);

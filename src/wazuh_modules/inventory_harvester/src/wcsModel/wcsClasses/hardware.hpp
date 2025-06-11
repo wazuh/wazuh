@@ -36,7 +36,11 @@ struct Hardware final
                     MAKE_FIELD("used", &Memory::used));
     } memory;
 
-    REFLECTABLE(MAKE_FIELD("cpu", &Hardware::cpu), MAKE_FIELD("memory", &Hardware::memory));
+    std::string_view serial_number;
+
+    REFLECTABLE(MAKE_FIELD("cpu", &Hardware::cpu),
+                MAKE_FIELD("memory", &Hardware::memory),
+                MAKE_FIELD("serial_number", &Hardware::serial_number));
 };
 
 #endif // _HW_WCS_MODEL_HPP

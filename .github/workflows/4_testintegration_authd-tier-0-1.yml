@@ -7,16 +7,6 @@ on:
         description: 'Base branch'
         required: true
         default: 'main'
-  pull_request:
-    paths:
-        - ".github/workflows/4_testintegration_authd-tier-0-1.yml"
-        - "src/config/authd-config.c"
-        - "src/config/authd-config.h"
-        - "src/config/authd-key-request-config.c"
-        - "src/os_auth/**"
-        - "src/Makefile"
-        - "tests/integration/conftest.py"
-        - "tests/integration/test_authd/**"
 
 jobs:
   build:

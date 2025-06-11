@@ -1,6 +1,6 @@
 [
     {
-        "index_name": "wazuh-states-packages-cluster01",
+        "index_name": "wazuh-states-inventory-packages-cluster01",
         "data": [
             {
                 "agent": {
@@ -16,6 +16,9 @@
                     "version": "247.3-7+deb11u4"
                 },
                 "wazuh": {
+                    "cluster": {
+                        "name": "cluster01"
+                    },
                     "schema": {
                         "version": "1.0"
                     }

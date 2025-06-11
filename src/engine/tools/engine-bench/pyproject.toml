@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "engine-bench"
+version = "1.0.0.dev0"
+authors = [{ name = "Wazuh, Inc." }]
+description = "A library for benchmarking Wazuh engine"
+requires-python = ">=3.12"
+classifiers = ["Programming Language :: Python :: 3"]
+
+dependencies = [
+    "click",          # For command-line interface
+    "engine-test-utils"
+]
+
+[project.scripts]
+engine-bench = "engine_bench.__main__:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+include-package-data = true
+
+[tool.setuptools.package-data]
+"engine_bench.scripts" = ["*.pl"] # Include awesome https://github.com/brendangregg/FlameGraph flamegraph scripts

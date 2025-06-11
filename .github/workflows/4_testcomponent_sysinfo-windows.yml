@@ -2,17 +2,10 @@ name: Syscollector test on Windows
 
 on:
   workflow_dispatch:
-  pull_request:
-    paths:
-      - ".github/workflows/4_testcomponent_sysinfo-windows.yml"
-      - "src/data_provider/**"
-      - "src/shared_modules/**"
-      - "src/wazuh_modules/syscollector/**"
-      - "src/Makefile"
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v3
       - name: Install mingw

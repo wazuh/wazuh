@@ -15,6 +15,7 @@
 #include "secureCommunication.hpp"
 #include <json.hpp>
 #include <memory>
+#include <stdexcept>
 #include <string>
 
 #if __GNUC__ >= 4
@@ -27,11 +28,20 @@ class ServerSelector;
 static constexpr auto DEFAULT_INTERVAL = 60u;
 static constexpr auto IC_NAME {"indexer-connector"};
 
+class IndexerConnectorException : public std::runtime_error
+{
+public:
+    explicit IndexerConnectorException(const std::string& what)
+        : std::runtime_error(what)
+    {
+    }
+};
+
 /**
  * @brief IndexerConnector class.
  *
  */
-class EXPORTED IndexerConnector final
+class EXPORTED IndexerConnectorSync final
 {
     /**
      * @brief Initialized status.
@@ -77,16 +87,16 @@ public:
      * @param logFunction Callback function to be called when trying to log a message.
      * @param timeout Server selector time interval.
      */
-    explicit IndexerConnector(const nlohmann::json& config,
-                              const std::function<void(const int,
-                                                       const std::string&,
-                                                       const std::string&,
-                                                       const int,
-                                                       const std::string&,
-                                                       const std::string&,
-                                                       va_list)>& logFunction = {});
+    explicit IndexerConnectorSync(const nlohmann::json& config,
+                                  const std::function<void(const int,
+                                                           const std::string&,
+                                                           const std::string&,
+                                                           const int,
+                                                           const std::string&,
+                                                           const std::string&,
+                                                           va_list)>& logFunction = {});
 
-    ~IndexerConnector();
+    ~IndexerConnectorSync();
 
     /**
      * @brief Publish a message into the queue map.
@@ -102,6 +112,42 @@ public:
      * @param index Index name.
      */
     void deleteByQuery(const std::string& message, const std::string& index);
+};
+
+/**
+ * @brief IndexerConnectorAsync class.
+ *
+ */
+class IndexerConnectorAsync final
+{
+    SecureCommunication m_secureCommunication;
+    std::unique_ptr<ServerSelector> m_selector;
+
+public:
+    /**
+     * @brief Class constructor that initializes the publisher.
+     *
+     * @param config Indexer configuration, including database_path and servers.
+     * @param logFunction Callback function to be called when trying to log a message.
+     * @param timeout Server selector time interval.
+     */
+    explicit IndexerConnectorAsync(const nlohmann::json& config,
+                                   const std::function<void(const int,
+                                                            const std::string&,
+                                                            const std::string&,
+                                                            const int,
+                                                            const std::string&,
+                                                            const std::string&,
+                                                            va_list)>& logFunction = {});
+
+    ~IndexerConnectorAsync();
+
+    /**
+     * @brief Publish a message into the queue map.
+     *
+     * @param message Message to be published.
+     */
+    void publish(const char* message, size_t size);
 };
 
 #endif // _INDEXER_CONNECTOR_HPP

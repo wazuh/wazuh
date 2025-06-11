@@ -1,4 +1,5 @@
-#pragma once
+#ifndef _MOCK_AGENT_SESSION_HPP
+#define _MOCK_AGENT_SESSION_HPP
 
 #include "agentSession.hpp"
 #include "context.hpp"
@@ -34,3 +35,5 @@ public:
     MOCK_CONST_METHOD2(sendEndMissingSeq,
                        void(uint64_t sessionId, const std::vector<std::pair<uint64_t, uint64_t>>& ranges));
 };
+
+#endif // _MOCK_AGENT_SESSION_HPP

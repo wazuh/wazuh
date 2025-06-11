@@ -1,6 +1,6 @@
 [
     {
-        "index_name": "wazuh-states-packages-cluster01",
+        "index_name": "wazuh-states-inventory-packages-cluster01",
         "data": [
             {
                 "agent": {
@@ -12,13 +12,15 @@
                     "architecture": "amd64",
                     "description": "Pluggable Authentication Modules library",
                     "name": "libpam0g",
-                    "path": " ",
                     "size": 214016,
                     "type": "deb",
                     "vendor": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>",
                     "version": "1.5.3-5ubuntu5.1"
                 },
                 "wazuh": {
+                    "cluster": {
+                        "name": "cluster01"
+                    },
                     "schema": {
                         "version": "1.0"
                     }

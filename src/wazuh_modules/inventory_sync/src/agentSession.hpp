@@ -1,4 +1,6 @@
-#pragma once
+#ifndef _AGENT_SESSION_HPP
+#define _AGENT_SESSION_HPP
+
 #include "context.hpp"
 #include "flatbuffers/include/inventorySync_generated.h"
 #include "gapSet.hpp"
@@ -131,3 +133,5 @@ public:
 };
 
 using AgentSession = AgentSessionImpl<Utils::RocksDBWrapper, IndexerQueue, ResponseDispatcher>;
+
+#endif // _AGENT_SESSION_HPP

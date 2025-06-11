@@ -1,6 +1,6 @@
 [
     {
-        "index_name": "wazuh-states-networks-cluster01",
+        "index_name": "wazuh-states-inventory-networks-cluster01",
         "data": [
             {
                 "agent": {
@@ -11,11 +11,16 @@
                 "network": {
                     "broadcast": "0.0.0.0",
                     "ip": "10.0.0.1",
-                    "name": "eth0",
                     "netmask": "1.1.1.1",
-                    "protocol": "IPv4"
+                    "type": "IPv4"
+                },
+                "interface": {
+                    "name": "eth0"
                 },
                 "wazuh": {
+                    "cluster": {
+                        "name": "cluster01"
+                    },
                     "schema": {
                         "version": "1.0"
                     }

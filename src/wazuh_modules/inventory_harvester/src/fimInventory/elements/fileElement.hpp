@@ -64,13 +64,14 @@ public:
         element.data.file.uid = data->uid();
         element.data.file.owner = data->userName();
         element.data.file.size = data->size();
+        element.data.file.inode = data->inode() > 0 ? std::to_string(data->inode()) : "";
 
         element.data.file.mtime = data->mtimeISO8601();
 
         auto& instancePolicyManager = PolicyHarvesterManager::instance();
+        element.data.wazuh.cluster.name = instancePolicyManager.getClusterName();
         if (instancePolicyManager.getClusterStatus())
         {
-            element.data.wazuh.cluster.name = instancePolicyManager.getClusterName();
             element.data.wazuh.cluster.node = instancePolicyManager.getClusterNodeName();
         }
 

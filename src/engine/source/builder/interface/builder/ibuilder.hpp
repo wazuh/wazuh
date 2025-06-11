@@ -1,0 +1,46 @@
+#ifndef _BUILDER2_IBUILDER_HPP
+#define _BUILDER2_IBUILDER_HPP
+
+#include <memory>
+
+#include <base/error.hpp>
+#include <base/expression.hpp>
+#include <base/name.hpp>
+#include <builder/ipolicy.hpp>
+
+namespace builder
+{
+
+/**
+ * @brief Builder Interface for building Policies and Assets.
+ *
+ */
+class IBuilder
+{
+public:
+    virtual ~IBuilder() = default;
+
+    /**
+     * @brief Build a policy from the store.
+     *
+     * @param name Name of the policy.
+     * @param trace Indicates whether to enable or disable the trace
+     * @param sandbox If it is set to true, it indicates a test environment and if it is set to false, it indicates a
+     * production environment.
+     * @return base::RespOrError<std::shared_ptr<IPolicy>> The policy or an error.
+     */
+    virtual std::shared_ptr<IPolicy> buildPolicy(const base::Name& name, bool trace, bool sandbox) const = 0;
+
+    /**
+     * @brief Build an asset expression from the store.
+     * @attention This method ignores the parents of the asset.
+     *
+     * @param name Name of the asset.
+     * @return base::RespOrError<base::Expression> The asset expression or an error.
+     */
+    virtual base::Expression buildAsset(const base::Name& name) const = 0;
+};
+
+} // namespace builder
+
+#endif // _BUILDER2_IBUILDER_HPP

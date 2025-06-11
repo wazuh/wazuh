@@ -28,6 +28,7 @@ from wazuh.core import common, exception
 from wazuh.core import utils
 from wazuh.core.cluster import cluster, utils as cluster_utils
 from wazuh.core.wdb import AsyncWazuhDBConnection, WazuhDBConnection
+from wazuh.core.wdb_http import get_wdb_http_client
 
 IGNORED_WDB_EXCEPTIONS = ['Cannot execute Global database query; FOREIGN KEY constraint failed']
 
@@ -597,8 +598,7 @@ class Handler(asyncio.Protocol):
             Dict containing number of updated chunks, error messages (if any) and time spent.
         """
         try:
-            result = await cluster.run_in_pool(self.loop, self.server.task_pool, send_data_to_wdb, data,
-                                               timeout, info_type=info_type)
+            result = await send_data_to_wdb(data, timeout, info_type=info_type)
         except Exception as e:
             print(f'error processing {info_type} chunks in process pool: {str(e)}'.encode())
             with contextlib.suppress(Exception):
@@ -1599,6 +1599,28 @@ class SyncWazuhdb(SyncTask):
         self.logger.debug(f"Obtained {len(chunks)} chunks of data in {(time.perf_counter() - start_time):.3f}s.")
         return chunks
 
+    async def retrieve_agents_information(self) -> dict | None:
+        """Collect the agents required information from the local node's database.
+        
+        Returns
+        -------
+        dict | None
+            Agents synchronization information or None if there was an error.
+        """
+        start_time = time.perf_counter()
+        try:
+            async with get_wdb_http_client() as wdb_client:
+                agents_sync = await wdb_client.get_agents_sync()
+        except exception.WazuhException as e:
+            self.logger.error(f"Could not obtain data from wazuh-db: {e}")
+            return
+        
+        now = time.perf_counter()
+        self.logger.debug(f"Obtained agents synchronization information in {(now - start_time):.3f}s.")
+
+        return agents_sync
+
+
     async def sync(self, start_time: float, chunks: List):
         """Start sending information to master/worker node.
 
@@ -1689,7 +1711,7 @@ def error_receiving_agent_information(logger, response, info_type):
     return b'ok', b'Thanks'
 
 
-def send_data_to_wdb(data, timeout, info_type='agent-info'):
+async def send_data_to_wdb(data, timeout, info_type='agent-info'):
     """Send chunks of data to Wazuh-db socket.
 
     Parameters
@@ -1707,36 +1729,45 @@ def send_data_to_wdb(data, timeout, info_type='agent-info'):
         Dict containing number of updated chunks, error messages (if any) and time spent.
     """
     result = {'updated_chunks': 0, 'error_messages': {'chunks': [], 'others': []}, 'time_spent': 0}
-    wdb_conn = WazuhDBConnection()
     before = time.perf_counter()
 
     try:
         with utils.Timeout(timeout):
-            for i, chunk in enumerate(data['chunks']):
-                try:
-                    if info_type == 'agent-info':
-                        wdb_conn.send(f"{data['set_data_command']} {chunk}", raw=True)
-                    elif info_type == 'agent-groups':
+            if info_type == 'agent-info':
+                agents_sync = data['chunks']
+                async with get_wdb_http_client() as wdb_client:
+                    await wdb_client.set_agents_sync(agents_sync)
+
+                result['updated_chunks'] += len(agents_sync)
+            elif info_type == 'agent-groups':
+                wdb_conn = WazuhDBConnection()
+
+                for i, chunk in enumerate(data['chunks']):
+                    try:
                         data['payload']['data'] = json.loads(chunk)[0]['data']
                         wdb_conn.send(
                             f"{data['set_data_command']} {json.dumps(data['payload'], separators=(',', ':'))}",
                             raw=True
                         )
-                    result['updated_chunks'] += 1
-                except TimeoutError as e:
-                    raise e
-                except Exception as e:
-                    error = str(e)
-                    if any(ignored_exception in error for ignored_exception in IGNORED_WDB_EXCEPTIONS):
-                        continue
-                    result['error_messages']['chunks'].append((i, error))
+                        result['updated_chunks'] += 1
+                    except TimeoutError as e:
+                        wdb_conn.close()
+                        raise e
+                    except Exception as e:
+                        error = str(e)
+
+                        if any(ignored_exception in error for ignored_exception in IGNORED_WDB_EXCEPTIONS):
+                            continue
+
+                        result['error_messages']['chunks'].append((i, error))
+                
+                wdb_conn.close()
     except TimeoutError:
         result['error_messages']['others'].append(f'Timeout while processing {info_type} chunks.')
     except Exception as e:
         result['error_messages']['others'].append(f'Error while processing {info_type} chunks: {e}')
 
     result['time_spent'] = time.perf_counter() - before
-    wdb_conn.close()
     return result
 
 
