@@ -1069,6 +1069,10 @@ int wdb_parse_ports(wdb_t * wdb, char * input, char * output);
 
 int wdb_parse_processes(wdb_t * wdb, char * input, char * output);
 
+int wdb_parse_users(wdb_t * wdb, char * input, char * output);
+
+int wdb_parse_groups(wdb_t * wdb, char * input, char * output);
+
 int wdb_parse_ciscat(wdb_t * wdb, char * input, char * output);
 
 int wdb_parse_sca(wdb_t * wdb, char * input, char * output);
