@@ -14,6 +14,7 @@ endif()
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 get_filename_component(SRC_FOLDER     ${CMAKE_SOURCE_DIR}/ ABSOLUTE)
 
@@ -138,6 +139,7 @@ add_subdirectory(shared_modules/content_manager)
 set(CURL_DEP wazuhext)
 add_subdirectory(shared_modules/http-request)
 add_subdirectory(shared_modules/indexer_connector)
-add_subdirectory(wazuh_modules/vulnerability_scanner)
+#add_subdirectory(wazuh_modules/vulnerability_scanner)
 add_subdirectory(shared_modules/keystore)
-add_subdirectory(wazuh_modules/inventory_harvester)
+#add_subdirectory(wazuh_modules/inventory_harvester)
+add_subdirectory(wazuh_modules/inventory_sync)

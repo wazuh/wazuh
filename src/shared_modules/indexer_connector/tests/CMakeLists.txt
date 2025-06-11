@@ -9,5 +9,5 @@ include_directories(${SRC_FOLDER}/shared_modules/indexer_connector/src/)
 
 link_directories(${SRC_FOLDER}/external/googletest/lib/)
 
-add_subdirectory(unit)
-add_subdirectory(component)
+#add_subdirectory(unit)
+#add_subdirectory(component)

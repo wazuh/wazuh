@@ -1,0 +1,77 @@
+namespace Wazuh.SyncSchema;
+
+enum Mode: byte {
+    Full,
+    Delta
+}
+
+enum Operation: byte {
+    Upsert,
+    Delete
+}
+
+enum Status: byte {
+    Ok,
+    PartialOk,
+    Error,
+    Offline
+}
+
+table Data {
+    seq: ulong;
+    session: ulong;
+    operation: Operation;
+    id: string;
+    index: string;
+    data: [byte];
+}
+
+table Start {
+    mode: Mode;
+    size: ulong;
+    realtime: bool;
+    module: string;
+    agent_id: ulong;
+}
+
+table StartAck {
+    status: Status;
+    session: ulong;
+    module: string;
+}
+
+table End {
+    session: ulong;
+}
+
+table EndAck {
+    status: Status;
+    session: ulong;
+    module: string;
+}
+
+table Pair {
+    begin: ulong;
+    end: ulong;
+}
+
+table ReqRet {
+    seq: [Pair];
+    session: ulong;
+    module: string;
+}
+
+union MessageType {
+    Data,
+    Start,
+    StartAck,
+    End,
+    EndAck,
+    ReqRet
+}
+
+table Message {
+    content: MessageType;
+}
+
+root_type Message;
