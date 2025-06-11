@@ -218,3 +218,43 @@ TEST_F(EndpointPostV1AgentsSummaryTest, FilteredHappyCase)
               "b.id_agent > 0 AND g.name IS NOT NULL AND g.name <> '';");
     EXPECT_EQ((*queries)[2], "SELECT id, os_platform AS platform FROM agent WHERE id > 0;");
 }
+
+TEST_F(EndpointPostV1AgentsSummaryTest, GroupSummaryFromQuery)
+{
+    Sequence s;
+    EXPECT_CALL(*stmt, step())
+        .InSequence(s)
+        // status - empty
+        .WillOnce(Return(SQLITE_DONE))
+        // groups
+        .WillOnce(Return(SQLITE_ROW))
+        .WillOnce(Return(SQLITE_ROW))
+        .WillOnce(Return(SQLITE_ROW))
+        .WillOnce(Return(SQLITE_ROW))
+        .WillOnce(Return(SQLITE_DONE))
+        // os - empty
+        .WillOnce(Return(SQLITE_DONE));
+
+    EXPECT_CALL(*stmt, valueInt64(0)).WillOnce(Return(10)).WillOnce(Return(5)).WillOnce(Return(5)).WillOnce(Return(4));
+
+    EXPECT_CALL(*stmt, valueString(1))
+        .WillOnce(Return("default"))
+        .WillOnce(Return("group1"))
+        .WillOnce(Return("group2"))
+        .WillOnce(Return("group3"));
+
+    MockSQLiteConnection db;
+    httplib::Request req;
+    httplib::Response res;
+
+    TEndpointPostV1AgentsSummary<MockSQLiteConnection, TrampolineSQLiteStatement>::call(db, req, res);
+
+    // Verify that the query contains the new filter
+    ASSERT_EQ(queries->size(), 3);
+    EXPECT_THAT((*queries)[1],
+                "SELECT COUNT(*) as q, g.name AS group_name FROM belongs b JOIN 'group' g ON b.id_group=g.id WHERE "
+                "b.id_agent > 0 AND g.name IS NOT NULL AND g.name <> '' GROUP BY b.id_group ORDER BY q DESC LIMIT 5;");
+
+    // Verify that the response body is correct
+    EXPECT_EQ(res.body, R"({"agents_by_groups":{"default":10,"group1":5,"group2":5,"group3":4}})");
+}
