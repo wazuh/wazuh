@@ -17,7 +17,6 @@ project(wazuh-engine
 set(ENGINE_BIN_DIR ${PROJECT_SOURCE_DIR}/bin)
 # set(LIB_DIR ${PROJECT_SOURCE_DIR}/lib)
 set(ENGINE_SOURCE_DIR ${PROJECT_SOURCE_DIR}/source)
-set(ENGINE_BENCHMARK_DIR ${PROJECT_SOURCE_DIR}/benchmark)
 set(ENGINE_DOC_DIR ${PROJECT_SOURCE_DIR}/docs)
 
 # Options
@@ -36,6 +35,11 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     add_compile_definitions ( WAZUH_DEBUG )
 endif()
 
+if(ENGINE_BUILD_BENCHMARK AND
+   NOT CMAKE_BUILD_TYPE STREQUAL "Release" AND
+   NOT CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
+    message(WARNING "Building and running benchmarks in '${CMAKE_BUILD_TYPE}' will skew the results; use Release or RelWithDebInfo.")
+endif()
 
 # Ensures that we do an out of source build
 MACRO(MACRO_ENSURE_OUT_OF_SOURCE_BUILD MSG)
@@ -222,6 +226,7 @@ add_subdirectory(${ENGINE_SOURCE_DIR}/proto)
 add_subdirectory(${ENGINE_SOURCE_DIR}/geo)
 add_subdirectory(${ENGINE_SOURCE_DIR}/queue)
 add_subdirectory(${ENGINE_SOURCE_DIR}/httpsrv)
+add_subdirectory(${ENGINE_SOURCE_DIR}/udgramsrv)
 add_subdirectory(${ENGINE_SOURCE_DIR}/archiver)
 
 target_link_libraries(main
@@ -244,6 +249,7 @@ target_link_libraries(main
     geo::igeo
     # indexerconnector # TODO: Comment until indexerconnector is unified with the old one
     httpsrv
+    udgramsrv::udgramsrv
     api::event
     queue
     archiver
@@ -254,10 +260,6 @@ if(NOT CMAKE_CXX_FLAGS MATCHES "-fsanitize=.*")
     target_link_libraries(main -static-libgcc -static-libstdc++)
 endif()
 
-# Build benchmark
-if(ENGINE_BUILD_BENCHMARK)
-add_subdirectory(${ENGINE_BENCHMARK_DIR})
-endif(ENGINE_BUILD_BENCHMARK)
 
 # Create a custom test target
 function(get_all_targets _result _dir)
