@@ -126,6 +126,15 @@ EXPORTED int sysinfo_packages_cb(callback_data_t cb);
  */
 EXPORTED int sysinfo_hotfixes(cJSON** js_result);
 
+/**
+ * @brief Obtains the groups information from the current OS being analyzed.
+ *
+ * @param js_result Resulting json where the specific information will be stored.
+ *
+ * @return 0 on success, -1 otherwise.
+ */
+EXPORTED int sysinfo_groups(cJSON** js_result);
+
 
 typedef int(*sysinfo_networks_func)(cJSON** jsresult);
 typedef int(*sysinfo_os_func)(cJSON** jsresult);

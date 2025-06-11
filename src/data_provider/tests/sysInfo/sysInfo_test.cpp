@@ -228,6 +228,14 @@ TEST_F(SysInfoTest, hotfixes)
     EXPECT_FALSE(result.empty());
 }
 
+TEST_F(SysInfoTest, groups)
+{
+    SysInfoWrapper info;
+    EXPECT_CALL(info, getGroups()).WillOnce(Return("groups"));
+    const auto result {info.groups()};
+    EXPECT_FALSE(result.empty());
+}
+
 TEST_F(SysInfoTest, hardware_c_interface)
 {
     cJSON* object = NULL;
@@ -312,6 +320,14 @@ TEST_F(SysInfoTest, hotfixes_c_interface)
     EXPECT_NO_THROW(sysinfo_free_result(&object));
 }
 
+TEST_F(SysInfoTest, groups_c_interface)
+{
+    cJSON* object = NULL;
+    EXPECT_EQ(0, sysinfo_groups(&object));
+    EXPECT_TRUE(object);
+    EXPECT_NO_THROW(sysinfo_free_result(&object));
+}
+
 TEST_F(SysInfoTest, c_interfaces_bad_params)
 {
     EXPECT_EQ(-1, sysinfo_hardware(NULL));
@@ -320,4 +336,5 @@ TEST_F(SysInfoTest, c_interfaces_bad_params)
     EXPECT_EQ(-1, sysinfo_ports(NULL));
     EXPECT_EQ(-1, sysinfo_os(NULL));
     EXPECT_EQ(-1, sysinfo_hotfixes(NULL));
+    EXPECT_EQ(-1, sysinfo_groups(NULL));
 }
