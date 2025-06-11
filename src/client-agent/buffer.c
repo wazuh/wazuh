@@ -154,10 +154,15 @@ void *dispatch_buffer(__attribute__((unused)) void * arg){
         gettime(&ts0);
 
         w_mutex_lock(&mutex_lock);
-
-        while(empty(i, j)){
+        while(empty(i, j) && agt->buffer){
             w_cond_wait(&cond_no_empty, &mutex_lock);
         }
+
+        if (!agt->buffer) {
+            minfo("Dispatch buffer thread received stop signal. Exiting.");
+            break;
+        }
+
         /* Check if buffer usage reaches any lower level */
         switch (state) {
 
@@ -193,6 +198,7 @@ void *dispatch_buffer(__attribute__((unused)) void * arg){
         }
 
         char * msg_output = buffer[j];
+        // unsigned int original_j_for_nulling = j;
         forward(j, agt->buflength + 1);
         w_mutex_unlock(&mutex_lock);
 
@@ -230,8 +236,14 @@ void *dispatch_buffer(__attribute__((unused)) void * arg){
         }
 
         os_wait();
-        send_msg(msg_output, -1);
-        free(msg_output);
+        if (msg_output == NULL) {
+            // Handle the NULL message error gracefully
+            mwarn("Attempted to send a NULL message. Skipping.");
+        }else{
+            send_msg(msg_output, -1);
+            os_free(msg_output);
+        }
+        // buffer[original_j_for_nulling] = NULL;
 
         gettime(&ts1);
         time_sub(&ts1, &ts0);
@@ -239,6 +251,8 @@ void *dispatch_buffer(__attribute__((unused)) void * arg){
         if (ts1.tv_sec >= 0) {
             delay(&ts1);
         }
+
+        minfo("Buffer status: head(i) %i, tail j %i, count: %i ", i ,j, w_agentd_get_buffer_lenght());
     }
 }
 
@@ -265,4 +279,110 @@ int w_agentd_get_buffer_lenght() {
     }
 
     return retval;
+}
+
+void w_agentd_free_buffer(unsigned int current_capacity) {
+    w_mutex_lock(&mutex_lock);
+
+    // Ensure the buffer is actually allocated before trying to free.
+    if ( buffer == NULL || current_capacity == 0) {
+        mwarn("Buffer is already unallocated or invalid. Skipping free operation.");
+        w_mutex_unlock(&mutex_lock);
+        return;
+    }
+
+    mdebug2("Freeing the client-buffer.");
+    w_FreeArray(buffer);
+    os_free(buffer);
+
+    agt->buflength = 0;
+    i = 0;
+    j = 0;
+
+    // Signal to end the dispatch_buffer thread.
+    w_cond_signal(&cond_no_empty)
+    w_mutex_unlock(&mutex_lock);
+    minfo("Client buffer freed successfully.");
+}
+
+int resize_internal_buffer(unsigned int current_capacity, unsigned int desired_capacity) {
+    unsigned int agent_msg_count = current_capacity - w_agentd_get_buffer_lenght();
+
+    if (desired_capacity <= 0) {
+        merror("Invalid new buffer capacity requested: %u.", desired_capacity);
+        return -1;
+    }
+
+    if (desired_capacity == current_capacity) {
+        return 0;
+    }
+
+    // Attempt to reallocate the buffer
+    w_mutex_lock(&mutex_lock);
+    if (desired_capacity > current_capacity) {
+        char **new_buffer_ptr = NULL;
+        os_realloc(buffer, desired_capacity * sizeof(char *), new_buffer_ptr);
+
+        buffer = new_buffer_ptr;
+
+        // If capacity increased, initialize new pointers to NULL to prevent dangling
+        for (unsigned int k = current_capacity; k < desired_capacity; k++) {
+            buffer[k] = NULL;
+        }
+
+        // Update indices
+        i = i < j ? current_capacity : i;
+
+    }else{
+        mwarn("Shrinking client buffer from %u to %u (messages: %u).",
+            current_capacity, desired_capacity, agent_msg_count);
+
+        unsigned int new_actual_message_count = (agent_msg_count < desired_capacity) ? agent_msg_count : desired_capacity;
+        unsigned int messages_to_discard = agent_msg_count - new_actual_message_count;
+
+        // Free memory for messages that will be truncated (if any)
+        if (messages_to_discard > 0) {
+            mwarn("Truncating %u oldest messages due to buffer shrink.", messages_to_discard);
+            unsigned int discard_idx = j; // Start from the current oldest message
+            for (unsigned int k = 0; k < messages_to_discard; k++) {
+                if (buffer[discard_idx] != NULL) {
+                    mdebug2("Freeing buffer[%u] (ptr: %p)\n", discard_idx, (void*)buffer[discard_idx]);
+                    os_free(buffer[discard_idx]);
+                    buffer[discard_idx] = NULL;
+                }
+                discard_idx = (discard_idx + 1) % current_capacity;
+            }
+        }
+
+        // Allocate a new temporary buffer of the desired smaller size
+        char **temp_buffer=NULL;
+        os_calloc(desired_capacity, sizeof(char *),temp_buffer);
+
+        // Copy active elements from the old buffer to the new buffer
+        // 'j' now points to the first message that should be kept (after discarding)
+        unsigned int current_old_idx_for_copy = (j + messages_to_discard) % current_capacity; // Start from the new oldest message
+        for (unsigned int k = 0; k < new_actual_message_count; k++) {
+            temp_buffer[k] = buffer[current_old_idx_for_copy];
+            buffer[current_old_idx_for_copy] = NULL;
+            current_old_idx_for_copy = (current_old_idx_for_copy + 1) % current_capacity;
+            mdebug2("Copying messages %i to the new buffer.\n", k);
+        }
+        minfo("Successfully copied %u messages to the new buffer.", new_actual_message_count);
+
+        // Free the old buffer and update global pointer
+        os_free(buffer);
+        buffer = temp_buffer;
+
+        // Update global buffer state variables for the new smaller buffer
+        agent_msg_count = new_actual_message_count;
+        w_agentd_state_update(RESET_MSG_COUNT_ON_SHRINK, &agent_msg_count);
+
+        // Reset head and tail indices for the new, linear buffer
+        j = 0; // Tail is now at the start
+        i = agent_msg_count; // Head is after the last copied message
+    }
+    w_mutex_unlock(&mutex_lock);
+
+    minfo("Client buffer resized from %u to %u elements.", current_capacity, desired_capacity);
+    return 0;
 }
