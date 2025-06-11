@@ -478,30 +478,6 @@ void w_inc_agent_syscollector_deprecated_osinfo_time(struct timeval time) {
     w_mutex_unlock(&db_state_t_mutex);
 }
 
-void w_inc_agent_syscollector_deprecated_users() {
-    w_mutex_lock(&db_state_t_mutex);
-    wdb_state.queries_breakdown.agent_breakdown.syscollector.deprecated.user_queries++;
-    w_mutex_unlock(&db_state_t_mutex);
-}
-
-void w_inc_agent_syscollector_deprecated_users_time(struct timeval time) {
-    w_mutex_lock(&db_state_t_mutex);
-    timeradd(&wdb_state.queries_breakdown.agent_breakdown.syscollector.deprecated.user_time, &time, &wdb_state.queries_breakdown.agent_breakdown.syscollector.deprecated.user_time);
-    w_mutex_unlock(&db_state_t_mutex);
-}
-
-void w_inc_agent_syscollector_deprecated_groups() {
-    w_mutex_lock(&db_state_t_mutex);
-    wdb_state.queries_breakdown.agent_breakdown.syscollector.deprecated.group_queries++;
-    w_mutex_unlock(&db_state_t_mutex);
-}
-
-void w_inc_agent_syscollector_deprecated_groups_time(struct timeval time) {
-    w_mutex_lock(&db_state_t_mutex);
-    timeradd(&wdb_state.queries_breakdown.agent_breakdown.syscollector.deprecated.group_time, &time, &wdb_state.queries_breakdown.agent_breakdown.syscollector.deprecated.group_time);
-    w_mutex_unlock(&db_state_t_mutex);
-}
-
 void w_inc_agent_sleep() {
     w_mutex_lock(&db_state_t_mutex);
     wdb_state.queries_breakdown.agent_breakdown.sleep_queries++;

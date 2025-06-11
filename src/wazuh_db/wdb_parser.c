@@ -197,7 +197,7 @@ static struct column_list const TABLE_USERS[USERS_FIELD_COUNT+1] = {
     { .value = { FIELD_INTEGER, 10, false, false, NULL, "user_group_id", {.integer = 0}, true}, .next = &TABLE_USERS[10]},
     { .value = { FIELD_INTEGER, 11, false, false, NULL, "user_group_id_signed", {.integer = 0}, true}, .next = &TABLE_USERS[11]},
     { .value = { FIELD_REAL, 12, false, false, NULL, "user_created", {.real = 0.0}, true}, .next = &TABLE_USERS[12]},
-    { .value = { FIELD_TEXT, 13, false, false, NULL, "user_roles_sudo", {.text = ""}, true}, .next = &TABLE_USERS[13]},
+    { .value = { FIELD_INTEGER, 13, false, false, NULL, "user_roles_sudo", {.integer = 0}, true}, .next = &TABLE_USERS[13]},
     { .value = { FIELD_TEXT, 14, false, false, NULL, "user_shell", {.text = ""}, true}, .next = &TABLE_USERS[14]},
     { .value = { FIELD_TEXT, 15, false, false, NULL, "user_type", {.text = ""}, true}, .next = &TABLE_USERS[15]},
     { .value = { FIELD_INTEGER, 16, false, false, NULL, "user_is_hidden", {.integer = 0}, true}, .next = &TABLE_USERS[16]},
@@ -219,7 +219,7 @@ static struct column_list const TABLE_USERS[USERS_FIELD_COUNT+1] = {
     { .value = { FIELD_INTEGER, 32, false, false, NULL, "login_status", {.integer = 0}, true}, .next = &TABLE_USERS[32]},
     { .value = { FIELD_TEXT, 33, false, false, NULL, "login_tty", {.text = ""}, true}, .next = &TABLE_USERS[33]},
     { .value = { FIELD_TEXT, 34, false, false, NULL, "login_type", {.text = ""}, true}, .next = &TABLE_USERS[34]},
-    { .value = { FIELD_TEXT, 35, false, false, NULL, "checksum", {.text = ""}, true}, .next = &TABLE_USERS[35]}
+    { .value = { FIELD_TEXT, 35, false, false, NULL, "checksum", {.text = ""}, true}, .next = NULL}
 };
 
 #define GROUPS_FIELD_COUNT 9
@@ -232,8 +232,8 @@ static struct column_list const TABLE_GROUPS[GROUPS_FIELD_COUNT+1] = {
     { .value = { FIELD_INTEGER, 6, false, false, NULL, "group_id_signed", {.integer = 0}, true}, .next = &TABLE_GROUPS[6]},
     { .value = { FIELD_TEXT, 7, false, false, NULL, "group_uuid", {.text = ""}, true}, .next = &TABLE_GROUPS[7]},
     { .value = { FIELD_INTEGER, 8, false, false, NULL, "group_is_hidden", {.integer = 0}, true}, .next = &TABLE_GROUPS[8]},
-    { .value = { FIELD_TEXT, 10, false, false, NULL, "group_users", {.text = ""}, true}, .next = &TABLE_GROUPS[9]},
-    { .value = { FIELD_TEXT, 11, false, false, NULL, "checksum", {.text = ""}, true}, .next = &TABLE_GROUPS[10]}
+    { .value = { FIELD_TEXT, 9, false, false, NULL, "group_users", {.text = ""}, true}, .next = &TABLE_GROUPS[9]},
+    { .value = { FIELD_TEXT, 10, false, false, NULL, "checksum", {.text = ""}, true}, .next = NULL}
 };
 
 static struct kv_list const TABLE_MAP[] = {
@@ -614,34 +614,6 @@ int wdb_parse(char * input, char * output, int peer) {
                 gettimeofday(&end, 0);
                 timersub(&end, &begin, &diff);
                 w_inc_agent_syscollector_deprecated_process_time(diff);
-            }
-        } else if (strcmp(query, "user") == 0) {
-            w_inc_agent_syscollector_deprecated_users();
-            if (!next) {
-                mdebug1("DB(%s) Invalid DB query syntax.", sagent_id);
-                mdebug2("DB(%s) query error near: %s", sagent_id, query);
-                snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
-                result = OS_INVALID;
-            } else {
-                gettimeofday(&begin, 0);
-                result = wdb_parse_users(wdb, next, output);
-                gettimeofday(&end, 0);
-                timersub(&end, &begin, &diff);
-                w_inc_agent_syscollector_deprecated_users_time(diff);
-            }
-        } else if (strcmp(query, "group") == 0) {
-            w_inc_agent_syscollector_deprecated_groups();
-            if (!next) {
-                mdebug1("DB(%s) Invalid DB query syntax.", sagent_id);
-                mdebug2("DB(%s) query error near: %s", sagent_id, query);
-                snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
-                result = OS_INVALID;
-            } else {
-                gettimeofday(&begin, 0);
-                result = wdb_parse_groups(wdb, next, output);
-                gettimeofday(&end, 0);
-                timersub(&end, &begin, &diff);
-                w_inc_agent_syscollector_deprecated_groups_time(diff);
             }
         } else if (strcmp(query, "dbsync") == 0) {
             w_inc_agent_dbsync();
@@ -4983,14 +4955,6 @@ int wdb_parse_processes(wdb_t * wdb, char * input, char * output) {
         snprintf(output, OS_MAXSTR + 1, "err Invalid Process query syntax, near '%.32s'", curr);
         return OS_INVALID;
     }
-}
-
-int wdb_parse_users(wdb_t * wdb, char * input, char * output) {
-    // TODO: IMPLEMENTATION PENDING
-}
-
-int wdb_parse_groups(wdb_t * wdb, char * input, char * output) {
-    // TODO: IMPLEMENTATION PENDING
 }
 
 int wdb_parse_ciscat(wdb_t * wdb, char * input, char * output) {
