@@ -303,16 +303,40 @@ int os_WinMain(__attribute__((unused)) int argc, __attribute__((unused)) char **
     return (1);
 }
 
+DWORD WINAPI WaitServiceStart(LPVOID lpParam) {
+    plain_minfo("Starting service.");
+    for (int i = 0; i < 3; ++i) {
+        Sleep(1000);
+        ossecServiceStatus.dwCheckPoint++;
+        if (!SetServiceStatus(ossecServiceStatusHandle, &ossecServiceStatus)) {
+            plain_minfo("SetServiceStatus error.");
+            return;
+        }
+    }
+
+    ossecServiceStatus.dwCurrentState = SERVICE_RUNNING;
+    ossecServiceStatus.dwControlsAccepted = SERVICE_ACCEPT_STOP;
+    ossecServiceStatus.dwCheckPoint = 0;
+    ossecServiceStatus.dwWaitHint = 0;
+    if (!SetServiceStatus(ossecServiceStatusHandle, &ossecServiceStatus)) {
+        plain_minfo("SetServiceStatus error.");
+        return;
+    }
+    plain_minfo("Service running.");
+
+    return 0;
+}
+
 /* Start OSSEC service */
 void WINAPI OssecServiceStart (__attribute__((unused)) DWORD argc, __attribute__((unused)) LPTSTR *argv)
 {
-    ossecServiceStatus.dwServiceType            = SERVICE_WIN32;
-    ossecServiceStatus.dwCurrentState           = SERVICE_START_PENDING;
-    ossecServiceStatus.dwControlsAccepted       = SERVICE_ACCEPT_STOP;
-    ossecServiceStatus.dwWin32ExitCode          = 0;
+    ossecServiceStatus.dwServiceType             = SERVICE_WIN32;
+    ossecServiceStatus.dwCurrentState            = SERVICE_START_PENDING;
+    ossecServiceStatus.dwControlsAccepted        = 0;
+    ossecServiceStatus.dwWin32ExitCode           = 0;
     ossecServiceStatus.dwServiceSpecificExitCode = 0;
-    ossecServiceStatus.dwCheckPoint             = 0;
-    ossecServiceStatus.dwWaitHint               = 0;
+    ossecServiceStatus.dwCheckPoint              = 1;
+    ossecServiceStatus.dwWaitHint                = 5000;
 
     ossecServiceStatusHandle =
         RegisterServiceCtrlHandler(g_lpszServiceName,
@@ -323,14 +347,7 @@ void WINAPI OssecServiceStart (__attribute__((unused)) DWORD argc, __attribute__
         return;
     }
 
-    ossecServiceStatus.dwCurrentState = SERVICE_RUNNING;
-    ossecServiceStatus.dwCheckPoint = 0;
-    ossecServiceStatus.dwWaitHint = 0;
-
-    if (!SetServiceStatus(ossecServiceStatusHandle, &ossecServiceStatus)) {
-        plain_minfo("SetServiceStatus error.");
-        return;
-    }
+    CreateThread(NULL, 0, WaitServiceStart, NULL, 0, NULL);
 
 #ifdef OSSECHIDS
     /* Start process */
