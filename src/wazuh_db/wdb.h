@@ -868,7 +868,7 @@ int wdb_port_delete(wdb_t * wdb, const char * scan_id);
 
 // Save user info into DB.
 int wdb_users_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * user_name, const char * user_full_name, 
-                   const char * user_home, const int user_id, int user_uid_signed, const char * user_uuid, const char * user_groups, 
+                   const char * user_home, int user_id, int user_uid_signed, const char * user_uuid, const char * user_groups, 
                    int user_group_id, int user_group_id_signed, double user_created, int user_roles_sudo, const char * user_shell, 
                    const char * user_type, const bool user_is_hidden, const bool user_is_remote, long user_last_login, 
                    int user_auth_failures_count, double user_auth_failures_timestamp, double user_password_last_set_time, 
@@ -879,7 +879,7 @@ int wdb_users_save(wdb_t * wdb, const char * scan_id, const char * scan_time, co
 
 // Insert user info tuple. Return 0 on success or -1 on error.
 int wdb_users_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * user_name, const char * user_full_name, 
-                     const char * user_home, const int user_id, int user_uid_signed, const char * user_uuid, const char * user_groups, 
+                     const char * user_home, int user_id, int user_uid_signed, const char * user_uuid, const char * user_groups, 
                      int user_group_id, int user_group_id_signed, double user_created, int user_roles_sudo, const char * user_shell, 
                      const char * user_type, const bool user_is_hidden, const bool user_is_remote, long user_last_login, 
                      int user_auth_failures_count, double user_auth_failures_timestamp, double user_password_last_set_time, 
