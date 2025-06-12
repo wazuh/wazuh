@@ -57,6 +57,11 @@ nlohmann::json SysInfo::hotfixes()
     return getHotfixes();
 }
 
+nlohmann::json SysInfo::groups()
+{
+    return getGroups();
+}
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -274,6 +279,29 @@ int sysinfo_hotfixes(cJSON** js_result)
             SysInfo info;
             const auto& hotfixes       {info.hotfixes()};
             *js_result = cJSON_Parse(hotfixes.dump().c_str());
+            retVal = 0;
+        }
+    }
+    // LCOV_EXCL_START
+    catch (...)
+    {}
+
+    // LCOV_EXCL_STOP
+
+    return retVal;
+}
+
+int sysinfo_groups(cJSON** js_result)
+{
+    auto retVal { -1 };
+
+    try
+    {
+        if (js_result)
+        {
+            SysInfo info;
+            const auto& grps       {info.groups()};
+            *js_result = cJSON_Parse(grps.dump().c_str());
             retVal = 0;
         }
     }

@@ -12,6 +12,7 @@
     ALL_PORTS: 'no'
     PROCESSES_SCAN: 'no'
     HOTFIXES_SCAN: 'no'
+    GROUPS_SCAN: 'no'
   metadata:
     disabled: 'no'
     interval_scan: 2
@@ -24,3 +25,4 @@
     all_ports: 'no'
     processes_scan: 'no'
     hotfixes_scan: 'no'
+    groups_scan: 'no'

@@ -44,3 +44,4 @@ A brief example could be similar to the following one:
 | `--ports`        | Prints the current Operating System ports information only. Example: `sysinfo_test_tool --ports`                                     |
 | `--os`           | Prints the current Operating System information only. Example: `sysinfo_test_tool --os`                                              |
 | `--hotfixes`     | Prints the current Operating System hotfixes information only. Example: `sysinfo_test_tool --hotfixes`                               |
+| `--groups`       | Prints the current Operating System groups information only. Example: `sysinfo_test_tool --groups`                               |
