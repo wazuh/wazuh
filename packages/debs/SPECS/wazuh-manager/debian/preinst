@@ -106,6 +106,10 @@ case "$1" in
 
         if [ -d ${DIR}/etc/lists ]; then
           cp -rp ${DIR}/etc/lists ${WAZUH_TMP_DIR}/lists
+          # Get lists before upgrade
+          if [ "$1" = "upgrade" ]; then
+            find $DIR/etc/lists/ -type f -exec realpath --relative-to=$DIR --no-symlinks -- {} \; > ${WAZUH_TMP_DIR}/lists.old.manifest
+          fi
         fi
 
         if [ -f ${DIR}/etc/client.keys ]; then
