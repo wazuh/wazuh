@@ -1002,69 +1002,6 @@ int wdb_process_save(wdb_t * wdb, const char * scan_id, const char * scan_time, 
     return 0;
 }
 
-// int wdb_users_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * user_id, const char * user_name, 
-//                     const char * user_full_name, const char * user_home, const char * user_shell, const char * user_type, 
-//                     const char * user_created, int user_group_id, int user_group_id_signed, const char * user_groups, 
-//                     int user_uid_signed, const char * user_uuid, const bool user_is_hidden, const bool user_is_remote, 
-//                     const char * user_password_status, const char * user_password_hash_algorithm, int user_password_last_change,
-//                     int user_password_min_days_between_changes, int user_password_max_days_between_changes, 
-//                     int user_password_warning_days_before_expiration, int user_password_inactive_days, 
-//                     int user_password_expiration_date, double user_password_last_set_time, int user_auth_failure_count,
-//                     double user_auth_failure_timestamp, const char * user_roles, const char * user_last_login, const char * host_ip, 
-//                     int process_pid, const bool login_status, const char * login_type, const char * login_tty, 
-//                     const char * checksum, const bool replace)
-// {
-//     return 0;
-// }
-
-// Function to save users info into the DB. Return 0 on success or -1 on error.
-int wdb_users_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * user_id, const char * user_name, 
-                   const char * user_full_name, const char * user_home, const char * user_shell, const char * user_type, 
-                   const char * user_created, int user_group_id, int user_group_id_signed, const char * user_groups, 
-                   int user_uid_signed, const char * user_uuid, const bool user_is_hidden, const bool user_is_remote, 
-                   const char * user_password_status, const char * user_password_hash_algorithm, int user_password_last_change,
-                   int user_password_min_days_between_changes, int user_password_max_days_between_changes, 
-                   int user_password_warning_days_before_expiration, int user_password_inactive_days, 
-                   int user_password_expiration_date, double user_password_last_set_time, int user_auth_failure_count,
-                   double user_auth_failure_timestamp, const char * user_roles, const char * user_last_login, const char * host_ip, 
-                   int process_pid, const bool login_status, const char * login_type, const char * login_tty, 
-                   const char * checksum, const bool replace)
-{
-    if (!wdb->transaction && wdb_begin2(wdb) < 0){
-        mdebug1("at wdb_process_save(): cannot begin transaction");
-        return -1;
-    }
-
-    // if (wdb_users_insert(wdb, scan_id, scan_time, user_id, user_name, user_full_name, user_home, user_shell, user_type, user_created,
-    //                      user_group_id, user_group_id_signed, user_groups, user_uid_signed, user_uuid, user_is_hidden, user_is_remote,
-    //                      user_password_status, user_password_hash_algorithm, user_password_last_change, user_password_warning_days_before_expiration,
-    //                      user_password_inactive_days, user_password_expiration_date, user_password_last_set_time, user_auth_failure_count,
-    //                      user_auth_failure_timestamp, user_roles, user_last_login, host_ip, process_pid, login_status, login_type, login_tty,
-    //                      checksum, replace)) {
-    //     return -1;
-    // }
-
-    return 0;
-}
-
-// Function to save groups info into the DB. Return 0 on success or -1 on error.
-int wdb_groups_save(wdb_t * wdb, const char * scan_id, const char * scan_time, long group_id, const char * group_name, 
-                    const char * group_description, long group_id_signed, const char * group_uuid, bool group_is_hidden, 
-                    int group_namespace_id, const char * group_users, const char * checksum, const bool replace)
-{
-    if (!wdb->transaction && wdb_begin2(wdb) < 0){
-        mdebug1("at wdb_process_save(): cannot begin transaction");
-        return -1;
-    }
-
-    // if (wdb_groups_insert(wdb, scan_id, scan_time, group_id, group_name, group_description, group_id_signed, group_uuid, 
-    //                       group_is_hidden, group_namespace_id, group_users, checksum, replace)) {
-    //     return -1;
-    // }
-
-    return 0;
-}
-
 // Insert process info tuple. Return 0 on success or -1 on error.
 int wdb_process_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, int pid, const char * name, const char * state, 
                        int ppid, int utime, int stime, const char * cmd, const char * argvs, const char * euser, const char * ruser, 
@@ -1199,6 +1136,212 @@ int wdb_process_delete(wdb_t * wdb, const char * scan_id) {
     }
 
     return 0;
+}
+
+// Function to save users info into the DB. Return 0 on success or -1 on error.
+int wdb_users_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * user_name, const char * user_full_name, 
+                   const char * user_home, const int user_id, int user_uid_signed, const char * user_uuid, const char * user_groups, 
+                   int user_group_id, int user_group_id_signed, double user_created, int user_roles_sudo, const char * user_shell, 
+                   const char * user_type, const bool user_is_hidden, const bool user_is_remote, long user_last_login, 
+                   int user_auth_failure_count, double user_auth_failure_timestamp, double user_password_last_set_time, 
+                   int user_password_expiration_date, const char * user_password_hash_algorithm, int user_password_inactive_days,
+                   int user_password_last_change, int user_password_max_days_between_changes, int user_password_min_days_between_changes,
+                   const char * user_password_status, int user_password_warning_days_before_expiration, long process_pid, const char * host_ip,
+                   const bool login_status, const char * login_type, const char * login_tty, const char * checksum, const bool replace)
+{
+    if (!wdb->transaction && wdb_begin2(wdb) < 0){
+        mdebug1("at wdb_process_save(): cannot begin transaction");
+        return -1;
+    }
+
+    if (wdb_users_insert(wdb, scan_id, scan_time, user_name, user_full_name, user_home, user_id, user_uid_signed, user_uuid, user_groups, 
+                         user_group_id, user_group_id_signed, user_created, user_roles_sudo, user_shell, user_type, user_is_hidden, user_is_remote, 
+                         user_last_login, user_auth_failure_count, user_auth_failure_timestamp, user_password_last_set_time, user_password_expiration_date,
+                         user_password_hash_algorithm, user_password_inactive_days, user_password_last_change, user_password_max_days_between_changes,
+                         user_password_min_days_between_changes, user_password_status, user_password_warning_days_before_expiration, 
+                         process_pid, host_ip, login_status, login_type, login_tty, checksum, replace)) {
+        return -1;
+    }
+
+    return 0;
+}
+
+// Insert user info tuple. Return 0 on success or -1 on error.
+int wdb_users_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * user_name, const char * user_full_name, 
+                     const char * user_home, const int user_id, int user_uid_signed, const char * user_uuid, const char * user_groups, 
+                     int user_group_id, int user_group_id_signed, double user_created, int user_roles_sudo, const char * user_shell, 
+                     const char * user_type, const bool user_is_hidden, const bool user_is_remote, long user_last_login, 
+                     int user_auth_failure_count, double user_auth_failure_timestamp, double user_password_last_set_time, 
+                     int user_password_expiration_date, const char * user_password_hash_algorithm, int user_password_inactive_days,
+                     int user_password_last_change, int user_password_max_days_between_changes, int user_password_min_days_between_changes,
+                     const char * user_password_status, int user_password_warning_days_before_expiration, long process_pid, const char * host_ip,
+                     const bool login_status, const char * login_type, const char * login_tty, const char * checksum, const bool replace)
+{
+    sqlite3_stmt *stmt = NULL;
+
+    if (NULL == user_name) {
+        return OS_INVALID;
+    }
+
+    if (wdb_stmt_cache(wdb, replace ? WDB_STMT_USER_INSERT2 : WDB_STMT_USER_INSERT) < 0) {
+        mdebug1("at wdb_process_insert(): cannot cache statement");
+        return OS_INVALID;
+    }
+
+    stmt = wdb->stmt[replace ? WDB_STMT_USER_INSERT2 : WDB_STMT_USER_INSERT];
+
+    sqlite3_bind_text(stmt, 1, scan_id, -1, NULL);
+    sqlite3_bind_text(stmt, 2, scan_time, -1, NULL);
+    sqlite3_bind_text(stmt, 3, user_name, -1, NULL);
+    sqlite3_bind_text(stmt, 4, user_full_name, -1, NULL);
+    sqlite3_bind_text(stmt, 5, user_home, -1, NULL);
+    if (user_id >= 0) {
+        sqlite3_bind_int(stmt, 6, user_id);
+    } else {
+        sqlite3_bind_null(stmt, 6);
+    }
+    sqlite3_bind_int(stmt, 7, user_uid_signed);
+    sqlite3_bind_text(stmt, 8, user_uuid, -1, NULL);
+    sqlite3_bind_text(stmt, 9, user_groups, -1, NULL);
+    if (user_group_id >0) {
+        sqlite3_bind_int(stmt, 10, user_group_id);
+    } else {
+        sqlite3_bind_null(stmt, 10);
+    }
+    sqlite3_bind_int(stmt, 11, user_group_id_signed);
+    if (user_created >= 0) {
+        sqlite3_bind_double(stmt, 12, user_created);
+    } else {
+        sqlite3_bind_null(stmt, 12);
+    }
+    sqlite3_bind_int(stmt, 13, user_roles_sudo);
+    sqlite3_bind_text(stmt, 14, user_shell, -1, NULL);
+    sqlite3_bind_text(stmt, 15, user_type, -1, NULL);
+    sqlite3_bind_int(stmt, 16, user_is_hidden);
+    sqlite3_bind_int(stmt, 17, user_is_remote);
+    if (user_last_login >= 0) {
+        sqlite3_bind_int64(stmt, 18, user_last_login);
+    } else {
+        sqlite3_bind_null(stmt, 18);
+    }
+    if (user_auth_failure_count >= 0) {
+        sqlite3_bind_int(stmt, 19, user_auth_failure_count);
+    } else {
+        sqlite3_bind_null(stmt, 19);
+    }
+    if (user_auth_failure_timestamp >= 0) {
+        sqlite3_bind_double(stmt, 20, user_auth_failure_timestamp);
+    } else {
+        sqlite3_bind_null(stmt, 20);
+    }
+    if (user_password_last_set_time >= 0) {
+        sqlite3_bind_double(stmt, 21, user_password_last_set_time);
+    } else {
+        sqlite3_bind_null(stmt, 21);
+    }
+    if (user_password_expiration_date >= 0) {
+        sqlite3_bind_int(stmt, 22, user_password_expiration_date);
+    } else {
+        sqlite3_bind_null(stmt, 22);
+    }
+    sqlite3_bind_text(stmt, 23, user_password_hash_algorithm, -1, NULL);
+    if (user_password_inactive_days >= 0) {
+        sqlite3_bind_int(stmt, 24, user_password_inactive_days);
+    } else {
+        sqlite3_bind_null(stmt, 24);
+    }
+    if (user_password_last_change >= 0) {
+        sqlite3_bind_int(stmt, 25, user_password_last_change);
+    } else {
+        sqlite3_bind_null(stmt, 25);
+    }
+    if (user_password_max_days_between_changes >= 0) {
+        sqlite3_bind_int(stmt, 26, user_password_max_days_between_changes);
+    } else {
+        sqlite3_bind_null(stmt, 26);
+    }
+    if (user_password_min_days_between_changes >= 0) {
+        sqlite3_bind_int(stmt, 27, user_password_min_days_between_changes);
+    } else {
+        sqlite3_bind_null(stmt, 27);
+    }
+    sqlite3_bind_text(stmt, 28, user_password_status, -1, NULL);
+    if (user_password_warning_days_before_expiration >= 0) {
+        sqlite3_bind_int(stmt, 29, user_password_warning_days_before_expiration);
+    } else {
+        sqlite3_bind_null(stmt, 29);
+    }
+    if (process_pid >= 0) {
+        sqlite3_bind_int64(stmt, 30, process_pid);
+    } else {
+        sqlite3_bind_null(stmt, 30);
+    }
+    sqlite3_bind_text(stmt, 31, host_ip, -1, NULL);
+    sqlite3_bind_int(stmt, 32, login_status);
+    sqlite3_bind_text(stmt, 33, login_type, -1, NULL);
+    sqlite3_bind_text(stmt, 34, login_tty, -1, NULL);
+    sqlite3_bind_text(stmt, 35, checksum, -1, NULL);
+
+    if (wdb_step(stmt) == SQLITE_DONE){
+        return OS_SUCCESS;
+    } else {
+        merror("SQLite: %s", sqlite3_errmsg(wdb->db));
+        return OS_INVALID;
+    }
+}
+
+// Function to save groups info into the DB. Return 0 on success or -1 on error.
+int wdb_groups_save(wdb_t * wdb, const char * scan_id, const char * scan_time, long group_id, const char * group_name, 
+                    const char * group_description, long group_id_signed, const char * group_uuid, bool group_is_hidden, 
+                    const char * group_users, const char * checksum, const bool replace)
+{
+    if (!wdb->transaction && wdb_begin2(wdb) < 0){
+        mdebug1("at wdb_process_save(): cannot begin transaction");
+        return -1;
+    }
+
+    if (wdb_groups_insert(wdb, scan_id, scan_time, group_id, group_name, group_description, group_id_signed, group_uuid, 
+                          group_is_hidden, group_users, checksum, replace)) {
+        return -1;
+    }
+
+    return 0;
+}
+
+// Insert group info tuple. Return 0 on success or -1 on error.
+int wdb_groups_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, long group_id, const char * group_name, 
+                      const char * group_description, long group_id_signed, const char * group_uuid, bool group_is_hidden, 
+                      const char * group_users, const char * checksum, const bool replace){
+    sqlite3_stmt *stmt = NULL;
+
+    if (group_id < 0){
+        return OS_INVALID;
+    }
+
+    if (wdb_stmt_cache(wdb, replace ? WDB_STMT_GROUP_INSERT2 : WDB_STMT_GROUP_INSERT) < 0) {
+        mdebug1("at wdb_process_insert(): cannot cache statement");
+        return OS_INVALID;
+    }
+
+    stmt = wdb->stmt[replace ? WDB_STMT_GROUP_INSERT2 : WDB_STMT_GROUP_INSERT];
+
+    sqlite3_bind_text(stmt, 1, scan_id, -1, NULL);
+    sqlite3_bind_text(stmt, 2, scan_time, -1, NULL);
+    sqlite3_bind_int(stmt, 3, group_id);
+    sqlite3_bind_text(stmt, 4, group_name, -1, NULL);
+    sqlite3_bind_text(stmt, 5, group_description, -1, NULL);
+    sqlite3_bind_int64(stmt, 6, group_id_signed);
+    sqlite3_bind_text(stmt, 7, group_uuid, -1, NULL);
+    sqlite3_bind_int(stmt, 8, group_is_hidden);
+    sqlite3_bind_text(stmt, 9, group_users, -1, NULL);
+    sqlite3_bind_text(stmt, 10, checksum, -1, NULL);
+
+    if (wdb_step(stmt) == SQLITE_DONE){
+        return OS_SUCCESS;
+    } else {
+        merror("SQLite: %s", sqlite3_errmsg(wdb->db));
+        return OS_INVALID;
+    }
 }
 
 int wdb_syscollector_processes_save2(wdb_t * wdb, const cJSON * attributes)
@@ -1383,82 +1526,65 @@ int wdb_syscollector_osinfo_save2(wdb_t * wdb, const cJSON * attributes)
                            os_patch, os_build, os_platform, sysname, release, version, os_release, os_display_version, checksum, TRUE);
 }
 
-char * concat_data(cJSON * json_array)
-{
-    cJSON * item = NULL;
-    const size_t array_size = cJSON_GetArraySize(json_array);
-    char * result = NULL;
-    os_calloc(array_size * MAX_USER_LENGHT + array_size, sizeof(char), result);
-    cJSON_ArrayForEach(item, json_array) {
-        wm_strcat(&result, cJSON_GetStringValue(item), ',');
-    }
-
-    return result;
-}
-
 int wdb_syscollector_users_save2(wdb_t * wdb, const cJSON * attributes)
 {
     const char * scan_id = "0";
     const char * scan_time = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "scan_time"));
-    const char * user_id = cJSON_GetStringValue(cJSON_GetObjectItem(cJSON_GetObjectItem(attributes, "user"), "id"));
-    const char * user_name = cJSON_GetStringValue(cJSON_GetObjectItem(cJSON_GetObjectItem(attributes, "user"), "name"));
-    const char * user_full_name = cJSON_GetStringValue(cJSON_GetObjectItem(cJSON_GetObjectItem(attributes, "user"), "full_name"));
-    const char * user_home = cJSON_GetStringValue(cJSON_GetObjectItem(cJSON_GetObjectItem(attributes, "user"), "home"));
-    const char * user_shell = cJSON_GetStringValue(cJSON_GetObjectItem(cJSON_GetObjectItem(attributes, "user"), "shell"));
-    const char * user_type = cJSON_GetStringValue(cJSON_GetObjectItem(cJSON_GetObjectItem(attributes, "user"), "type"));
-    const char * user_created = cJSON_GetStringValue(cJSON_GetObjectItem(cJSON_GetObjectItem(attributes, "user"), "created"));
-    const long user_group_id =  cJSON_GetObjectItem(cJSON_GetObjectItem(cJSON_GetObjectItem(attributes, "user"), "group"), "id") ? cJSON_GetObjectItem(cJSON_GetObjectItem(cJSON_GetObjectItem(attributes, "user"), "group"), "id")->valueint : 0;
-    const long user_group_id_signed =  cJSON_GetObjectItem(cJSON_GetObjectItem(cJSON_GetObjectItem(attributes, "user"), "group"), "id") ? cJSON_GetObjectItem(cJSON_GetObjectItem(cJSON_GetObjectItem(attributes, "user"), "group"), "id")->valueint : 0;
-    const char * user_groups = concat_data(cJSON_GetObjectItem(cJSON_GetObjectItem(attributes, "user"), "groups"));
-    const long user_uid_signed = cJSON_GetObjectItem(cJSON_GetObjectItem(attributes, "user"), "uid_signed") ? cJSON_GetObjectItem(cJSON_GetObjectItem(attributes, "user"), "uid_signed")->valueint : 0;
-    const int user_uuid = cJSON_GetStringValue(cJSON_GetObjectItem(cJSON_GetObjectItem(attributes, "user"), "uuid"));
-    const bool user_is_hidden = cJSON_GetObjectItem(cJSON_GetObjectItem(attributes, "user"), "is_hidden") ? cJSON_GetObjectItem(cJSON_GetObjectItem(attributes, "user"), "is_hidden")->valueint : false;
-    const bool user_is_remote = cJSON_GetObjectItem(cJSON_GetObjectItem(attributes, "user"), "is_remoted") ? cJSON_GetObjectItem(cJSON_GetObjectItem(attributes, "user"), "is_remoted")->valueint : false;
-    const char * user_password_status = cJSON_GetStringValue(cJSON_GetObjectItem(cJSON_GetObjectItem(cJSON_GetObjectItem(attributes, "user"), "password"), "status"));
-    const char * user_password_hash_algorithm = cJSON_GetStringValue(cJSON_GetObjectItem(cJSON_GetObjectItem(cJSON_GetObjectItem(attributes, "user"), "password"), "hash_algorithm"));
-    const long user_password_last_change = cJSON_GetObjectItem(cJSON_GetObjectItem(cJSON_GetObjectItem(attributes, "user"), "password"), "last_change") ? cJSON_GetObjectItem(cJSON_GetObjectItem(cJSON_GetObjectItem(attributes, "user"), "password"), "last_change")->valueint : 0;
-    const long user_password_min_days_between_changes = cJSON_GetObjectItem(cJSON_GetObjectItem(cJSON_GetObjectItem(attributes, "user"), "password"), "min_days_between_changes") ? cJSON_GetObjectItem(cJSON_GetObjectItem(cJSON_GetObjectItem(attributes, "user"), "password"), "min_days_between_changes")->valueint : 0;
-    const long user_password_max_days_between_changes = cJSON_GetObjectItem(cJSON_GetObjectItem(cJSON_GetObjectItem(attributes, "user"), "password"), "max_days_between_changes") ? cJSON_GetObjectItem(cJSON_GetObjectItem(cJSON_GetObjectItem(attributes, "user"), "password"), "max_days_between_changes")->valueint : 0;
-    const long user_password_warning_days_before_expiration = cJSON_GetObjectItem(cJSON_GetObjectItem(cJSON_GetObjectItem(attributes, "user"), "password"), "warning_days_before_expiration") ? cJSON_GetObjectItem(cJSON_GetObjectItem(cJSON_GetObjectItem(attributes, "user"), "password"), "warning_days_before_expiration")->valueint : 0;
-    const long user_password_inactive_days = cJSON_GetObjectItem(cJSON_GetObjectItem(cJSON_GetObjectItem(attributes, "user"), "password"), "inactive_days") ? cJSON_GetObjectItem(cJSON_GetObjectItem(cJSON_GetObjectItem(attributes, "user"), "password"), "inactive_days")->valueint : 0;
-    const long user_password_expiration_date = cJSON_GetObjectItem(cJSON_GetObjectItem(cJSON_GetObjectItem(attributes, "user"), "password"), "expiration_date") ? cJSON_GetObjectItem(cJSON_GetObjectItem(cJSON_GetObjectItem(attributes, "user"), "password"), "expiration_date")->valueint : 0;
-    const double user_password_last_set_time = cJSON_GetObjectItem(cJSON_GetObjectItem(cJSON_GetObjectItem(attributes, "user"), "password"), "last_set_time") ? cJSON_GetObjectItem(cJSON_GetObjectItem(cJSON_GetObjectItem(attributes, "user"), "password"), "last_set_time")->valuedouble : 0.0;
-    const long user_auth_failure_count = cJSON_GetObjectItem(cJSON_GetObjectItem(cJSON_GetObjectItem(attributes, "user"), "auth_failures"), "count") ? cJSON_GetObjectItem(cJSON_GetObjectItem(cJSON_GetObjectItem(attributes, "user"), "auth_failures"), "count")->valueint : 0;
-    const double user_auth_failure_timestamp = cJSON_GetObjectItem(cJSON_GetObjectItem(cJSON_GetObjectItem(attributes, "user"), "auth_failures"), "timestamp") ? cJSON_GetObjectItem(cJSON_GetObjectItem(cJSON_GetObjectItem(attributes, "user"), "auth_failures"), "timestamp")->valuedouble : 0.0;
-    const char * user_roles = concat_data(cJSON_GetObjectItem(cJSON_GetObjectItem(attributes, "user"), "roles"));
-    const char * user_last_login = cJSON_GetStringValue(cJSON_GetObjectItem(cJSON_GetObjectItem(attributes, "user"), "last_login"));
-    const char * host_ip = concat_data(cJSON_GetObjectItem(cJSON_GetObjectItem(attributes, "host"), "ip"));
-    const char * host_hostname = cJSON_GetStringValue(cJSON_GetObjectItem(cJSON_GetObjectItem(attributes, "host"), "hostname"));
-    const int process_pid = cJSON_GetObjectItem(cJSON_GetObjectItem(attributes, "process"), "pid") ? cJSON_GetObjectItem(cJSON_GetObjectItem(attributes, "process"), "pid")->valueint : 0;
-    const bool login_status = cJSON_GetObjectItem(cJSON_GetObjectItem(attributes, "login"), "status") ? cJSON_GetObjectItem(cJSON_GetObjectItem(attributes, "login"), "status")->valueint : false;
-    const char * login_type = cJSON_GetStringValue(cJSON_GetObjectItem(cJSON_GetObjectItem(attributes, "login"), "type"));
-    const char * login_tty = cJSON_GetStringValue(cJSON_GetObjectItem(cJSON_GetObjectItem(attributes, "login"), "tty"));
+    const char * user_name = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "user_name"));
+    const char * user_full_name = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "user_full_name"));
+    const char * user_home = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "user_home"));
+    const int user_id = cJSON_GetObjectItem(attributes, "user_id") ? cJSON_GetObjectItem(attributes, "user_id")->valueint : 0;
+    const int user_uid_signed = cJSON_GetObjectItem(attributes, "user_uid_signed") ? cJSON_GetObjectItem(attributes, "user_uid_signed")->valueint : 0;
+    const char * user_uuid = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "user_uuid"));
+    const char * user_groups = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "user_groups"));
+    const int user_group_id =  cJSON_GetObjectItem(attributes, "user_group_id") ? cJSON_GetObjectItem(attributes, "user_group_id")->valueint : 0;
+    const int user_group_id_signed =  cJSON_GetObjectItem(attributes, "user_group_id_signed") ? cJSON_GetObjectItem(attributes, "user_group_id_signed")->valueint : 0;
+    const double user_created = cJSON_GetObjectItem(attributes, "user_created") ? cJSON_GetObjectItem(attributes, "user_created")->valuedouble : 0.0;
+    const int user_roles_sudo = cJSON_GetObjectItem(attributes, "user_roles_sudo") ? cJSON_GetObjectItem(attributes, "user_roles_sudo")->valueint : 0;
+    const char * user_shell = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "user_shell"));
+    const char * user_type = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "user_type"));
+    const bool user_is_hidden = cJSON_GetObjectItem(attributes, "user_is_hidden") ? cJSON_GetObjectItem(attributes, "user_is_hidden")->valueint : false;
+    const bool user_is_remote = cJSON_GetObjectItem(attributes, "user_is_remoted") ? cJSON_GetObjectItem(attributes, "user_is_remoted")->valueint : false;
+    const long user_last_login = cJSON_GetObjectItem(attributes, "user_last_login") ? cJSON_GetObjectItem(attributes, "user_last_login")->valueint : 0;
+    const int user_auth_failure_count = cJSON_GetObjectItem(attributes, "user_auth_failures_count") ? cJSON_GetObjectItem(attributes, "user_auth_failures_count") ->valueint : 0;
+    const double user_auth_failure_timestamp = cJSON_GetObjectItem(attributes, "user_auth_failures_timestamp") ? cJSON_GetObjectItem(attributes, "user_auth_failures_timestamp") ->valuedouble : 0.0;
+    const double user_password_last_set_time = cJSON_GetObjectItem(attributes, "user_password_last_set_time") ? cJSON_GetObjectItem(attributes, "user_password_last_set_time")->valuedouble : 0.0;
+    const int user_password_expiration_date = cJSON_GetObjectItem(attributes, "user_password_expiration_date") ? cJSON_GetObjectItem(attributes, "user_password_expiration_date")->valueint : 0;
+    const char * user_password_hash_algorithm = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "user_password_hash_algorithm"));
+    const int user_password_inactive_days = cJSON_GetObjectItem(attributes, "user_password_inactive_days") ? cJSON_GetObjectItem(attributes, "user_password_inactive_days")->valueint : 0;
+    const int user_password_last_change = cJSON_GetObjectItem(attributes, "user_pasword_last_change") ? cJSON_GetObjectItem(attributes, "user_pasword_last_change")->valueint : 0;
+    const int user_password_max_days_between_changes = cJSON_GetObjectItem(attributes, "user_password_max_days_between_changes") ? cJSON_GetObjectItem(attributes, "user_password_max_days_between_changes")->valueint : 0;
+    const int user_password_min_days_between_changes = cJSON_GetObjectItem(attributes, "user_password_min_days_between_changes") ? cJSON_GetObjectItem(attributes, "user_password_min_days_between_changes")->valueint : 0;
+    const char * user_password_status = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "user_password_status"));
+    const int user_password_warning_days_before_expiration = cJSON_GetObjectItem(attributes, "user_password_warning_days_before_expiration") ? cJSON_GetObjectItem(attributes, "user_password_warning_days_before_expiration")->valueint : 0;
+    const long process_pid = cJSON_GetObjectItem(attributes, "process_pid") ? cJSON_GetObjectItem(attributes, "process_pid")->valueint : 0;
+    const char * host_ip = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "host_ip"));
+    const bool login_status = cJSON_GetObjectItem(attributes, "login_status") ? cJSON_GetObjectItem(attributes, "login_status")->valueint : false;
+    const char * login_type = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "login_type"));
+    const char * login_tty = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "login_tty"));
     const char * checksum = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "checksum"));
-
-    return wdb_users_save(wdb, scan_id, scan_time, user_id, user_name, user_full_name, user_home, user_shell, user_type, 
-                          user_created, user_group_id, user_group_id_signed, user_groups, user_uid_signed, user_uuid,
-                          user_is_hidden, user_is_remote, user_password_status, user_password_hash_algorithm, user_password_last_change,
-                          user_password_min_days_between_changes, user_password_max_days_between_changes, user_password_warning_days_before_expiration,
-                          user_password_inactive_days, user_password_expiration_date, user_password_last_set_time, user_auth_failure_count,
-                          user_auth_failure_timestamp, user_roles, user_last_login, host_ip, process_pid, login_status,
-                          login_type, login_tty, checksum, TRUE);
+    return wdb_users_save(wdb, scan_id, scan_time, user_name, user_full_name, user_home, user_id, user_uid_signed, user_uuid, user_groups, 
+                          user_group_id, user_group_id_signed, user_created, user_roles_sudo, user_shell, user_type, user_is_hidden, 
+                          user_is_remote, user_last_login, user_auth_failure_count, user_auth_failure_timestamp, user_password_last_set_time,
+                          user_password_expiration_date, user_password_hash_algorithm, user_password_inactive_days, user_password_last_change,  
+                          user_password_max_days_between_changes, user_password_min_days_between_changes, user_password_status, 
+                          user_password_warning_days_before_expiration, process_pid, host_ip, login_status, login_type, login_tty, checksum, TRUE);
 }
 
 int wdb_syscollector_groups_save2(wdb_t * wdb, const cJSON * attributes)
 {
     const char * scan_id = "0";
     const char * scan_time = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "scan_time"));
-    const long group_id = cJSON_GetObjectItem(cJSON_GetObjectItem(attributes, "group"), "id") ? cJSON_GetObjectItem(cJSON_GetObjectItem(attributes, "group"), "id")->valueint : 0;
-    const char * group_name = cJSON_GetStringValue(cJSON_GetObjectItem(cJSON_GetObjectItem(attributes, "group"), "name"));;
-    const char * group_description = cJSON_GetStringValue(cJSON_GetObjectItem(cJSON_GetObjectItem(attributes, "group"), "description"));;
-    const long group_id_signed = cJSON_GetObjectItem(cJSON_GetObjectItem(attributes, "group"), "id_signed") ? cJSON_GetObjectItem(cJSON_GetObjectItem(attributes, "group"), "id")->valueint : 0;
-    const char * group_uuid = cJSON_GetStringValue(cJSON_GetObjectItem(cJSON_GetObjectItem(attributes, "group"), "uuid"));;
-    const bool group_is_hidden = cJSON_GetObjectItem(cJSON_GetObjectItem(attributes, "group"), "is_hidden") ? cJSON_GetObjectItem(cJSON_GetObjectItem(attributes, "group"), "is_hidden")->valueint : false;
-    const int group_namespace_id = cJSON_GetStringValue(cJSON_GetObjectItem(cJSON_GetObjectItem(attributes, "group"), "namespace_id"));
-    char * group_users = concat_data(cJSON_GetObjectItem(cJSON_GetObjectItem(attributes, "group"), "users"));
+    const long group_id = cJSON_GetObjectItem(attributes, "group_id") ? cJSON_GetObjectItem(attributes, "group_id")->valueint : 0;
+    const char * group_name = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "group_name"));
+    const char * group_description = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "group_description"));
+    const long group_id_signed = cJSON_GetObjectItem(attributes, "group_id_signed") ? cJSON_GetObjectItem(attributes, "group_id_signed")->valueint : 0;
+    const char * group_uuid = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "group_group_uuid"));
+    const bool group_is_hidden = cJSON_GetObjectItem(attributes, "group_is_hidden") ? cJSON_GetObjectItem(attributes, "group_is_hidden")->valueint : false;
+    char * group_users = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "group_users"));
     const char * checksum = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "checksum"));
     return wdb_groups_save(wdb, scan_id, scan_time, group_id, group_name, group_description, group_id_signed, group_uuid, group_is_hidden, 
-                           group_namespace_id, group_users, checksum, TRUE);
+                           group_users, checksum, TRUE);
 }
 
 int wdb_syscollector_save2(wdb_t * wdb, wdb_component_t component, const char * payload)
