@@ -241,7 +241,7 @@ static struct deltas_fields_match_list const USER_FIELDS[] = {
   { .current = { "user_shell", "user.user_shell" }, .next = &USER_FIELDS[13]},
   { .current = { "user_type", "user.user_type" }, .next = &USER_FIELDS[14]},
   { .current = { "user_is_hidden", "user.user_is_hidden" }, .next = &USER_FIELDS[15]},
-  { .current = { "user_is_remoted", "user.user_is_remoted" }, .next = &USER_FIELDS[16]},
+  { .current = { "user_is_remote", "user.user_is_remote" }, .next = &USER_FIELDS[16]},
   { .current = { "user_last_login", "user.user_last_login" }, .next = &USER_FIELDS[17]},
   { .current = { "user_auth_failures_count", "user.user_auth_failures_count" }, .next = &USER_FIELDS[18]},
   { .current = { "user_auth_failures_timestamp", "user.user_auth_failures_timestamp" }, .next = &USER_FIELDS[19]},

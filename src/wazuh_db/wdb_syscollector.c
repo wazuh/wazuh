@@ -1143,7 +1143,7 @@ int wdb_users_save(wdb_t * wdb, const char * scan_id, const char * scan_time, co
                    const char * user_home, const int user_id, int user_uid_signed, const char * user_uuid, const char * user_groups, 
                    int user_group_id, int user_group_id_signed, double user_created, int user_roles_sudo, const char * user_shell, 
                    const char * user_type, const bool user_is_hidden, const bool user_is_remote, long user_last_login, 
-                   int user_auth_failure_count, double user_auth_failure_timestamp, double user_password_last_set_time, 
+                   int user_auth_failures_count, double user_auth_failures_timestamp, double user_password_last_set_time, 
                    int user_password_expiration_date, const char * user_password_hash_algorithm, int user_password_inactive_days,
                    int user_password_last_change, int user_password_max_days_between_changes, int user_password_min_days_between_changes,
                    const char * user_password_status, int user_password_warning_days_before_expiration, long process_pid, const char * host_ip,
@@ -1156,7 +1156,7 @@ int wdb_users_save(wdb_t * wdb, const char * scan_id, const char * scan_time, co
 
     if (wdb_users_insert(wdb, scan_id, scan_time, user_name, user_full_name, user_home, user_id, user_uid_signed, user_uuid, user_groups, 
                          user_group_id, user_group_id_signed, user_created, user_roles_sudo, user_shell, user_type, user_is_hidden, user_is_remote, 
-                         user_last_login, user_auth_failure_count, user_auth_failure_timestamp, user_password_last_set_time, user_password_expiration_date,
+                         user_last_login, user_auth_failures_count, user_auth_failures_timestamp, user_password_last_set_time, user_password_expiration_date,
                          user_password_hash_algorithm, user_password_inactive_days, user_password_last_change, user_password_max_days_between_changes,
                          user_password_min_days_between_changes, user_password_status, user_password_warning_days_before_expiration, 
                          process_pid, host_ip, login_status, login_type, login_tty, checksum, replace)) {
@@ -1171,7 +1171,7 @@ int wdb_users_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, 
                      const char * user_home, const int user_id, int user_uid_signed, const char * user_uuid, const char * user_groups, 
                      int user_group_id, int user_group_id_signed, double user_created, int user_roles_sudo, const char * user_shell, 
                      const char * user_type, const bool user_is_hidden, const bool user_is_remote, long user_last_login, 
-                     int user_auth_failure_count, double user_auth_failure_timestamp, double user_password_last_set_time, 
+                     int user_auth_failures_count, double user_auth_failures_timestamp, double user_password_last_set_time, 
                      int user_password_expiration_date, const char * user_password_hash_algorithm, int user_password_inactive_days,
                      int user_password_last_change, int user_password_max_days_between_changes, int user_password_min_days_between_changes,
                      const char * user_password_status, int user_password_warning_days_before_expiration, long process_pid, const char * host_ip,
@@ -1224,13 +1224,13 @@ int wdb_users_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, 
     } else {
         sqlite3_bind_null(stmt, 18);
     }
-    if (user_auth_failure_count >= 0) {
-        sqlite3_bind_int(stmt, 19, user_auth_failure_count);
+    if (user_auth_failures_count >= 0) {
+        sqlite3_bind_int(stmt, 19, user_auth_failures_count);
     } else {
         sqlite3_bind_null(stmt, 19);
     }
-    if (user_auth_failure_timestamp >= 0) {
-        sqlite3_bind_double(stmt, 20, user_auth_failure_timestamp);
+    if (user_auth_failures_timestamp >= 0) {
+        sqlite3_bind_double(stmt, 20, user_auth_failures_timestamp);
     } else {
         sqlite3_bind_null(stmt, 20);
     }
@@ -1544,10 +1544,10 @@ int wdb_syscollector_users_save2(wdb_t * wdb, const cJSON * attributes)
     const char * user_shell = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "user_shell"));
     const char * user_type = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "user_type"));
     const bool user_is_hidden = cJSON_GetObjectItem(attributes, "user_is_hidden") ? cJSON_GetObjectItem(attributes, "user_is_hidden")->valueint : false;
-    const bool user_is_remote = cJSON_GetObjectItem(attributes, "user_is_remoted") ? cJSON_GetObjectItem(attributes, "user_is_remoted")->valueint : false;
+    const bool user_is_remote = cJSON_GetObjectItem(attributes, "user_is_remote") ? cJSON_GetObjectItem(attributes, "user_is_remote")->valueint : false;
     const long user_last_login = cJSON_GetObjectItem(attributes, "user_last_login") ? cJSON_GetObjectItem(attributes, "user_last_login")->valueint : 0;
-    const int user_auth_failure_count = cJSON_GetObjectItem(attributes, "user_auth_failures_count") ? cJSON_GetObjectItem(attributes, "user_auth_failures_count") ->valueint : 0;
-    const double user_auth_failure_timestamp = cJSON_GetObjectItem(attributes, "user_auth_failures_timestamp") ? cJSON_GetObjectItem(attributes, "user_auth_failures_timestamp") ->valuedouble : 0.0;
+    const int user_auth_failures_count = cJSON_GetObjectItem(attributes, "user_auth_failures_count") ? cJSON_GetObjectItem(attributes, "user_auth_failures_count") ->valueint : 0;
+    const double user_auth_failures_timestamp = cJSON_GetObjectItem(attributes, "user_auth_failures_timestamp") ? cJSON_GetObjectItem(attributes, "user_auth_failures_timestamp") ->valuedouble : 0.0;
     const double user_password_last_set_time = cJSON_GetObjectItem(attributes, "user_password_last_set_time") ? cJSON_GetObjectItem(attributes, "user_password_last_set_time")->valuedouble : 0.0;
     const int user_password_expiration_date = cJSON_GetObjectItem(attributes, "user_password_expiration_date") ? cJSON_GetObjectItem(attributes, "user_password_expiration_date")->valueint : 0;
     const char * user_password_hash_algorithm = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "user_password_hash_algorithm"));
@@ -1565,7 +1565,7 @@ int wdb_syscollector_users_save2(wdb_t * wdb, const cJSON * attributes)
     const char * checksum = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "checksum"));
     return wdb_users_save(wdb, scan_id, scan_time, user_name, user_full_name, user_home, user_id, user_uid_signed, user_uuid, user_groups, 
                           user_group_id, user_group_id_signed, user_created, user_roles_sudo, user_shell, user_type, user_is_hidden, 
-                          user_is_remote, user_last_login, user_auth_failure_count, user_auth_failure_timestamp, user_password_last_set_time,
+                          user_is_remote, user_last_login, user_auth_failures_count, user_auth_failures_timestamp, user_password_last_set_time,
                           user_password_expiration_date, user_password_hash_algorithm, user_password_inactive_days, user_password_last_change,  
                           user_password_max_days_between_changes, user_password_min_days_between_changes, user_password_status, 
                           user_password_warning_days_before_expiration, process_pid, host_ip, login_status, login_type, login_tty, checksum, TRUE);
