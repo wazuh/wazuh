@@ -196,12 +196,51 @@ def run_test(test_parent_path: Path, engine_api_socket: str, unit_result: type, 
 
     return result
 
+def toggle_reverse_order_decoders(path_env_file: str) -> None:
+    """
+    Opens the configuration file at path_env_file, finds the line defining
+    WAZUH_REVERSE_ORDER_DECODERS, and if its value is 'true' or 'false',
+    toggles it. Then saves the file with the modification.
 
-def decoder_health_test(env_path: Path, unit_result: type, debug_mode: str, integration_name: Optional[str] = None, skip: Optional[List[str]] = None):
+    Parameters:
+        path_env_file: Path to the text file (e.g., .env) containing the variable.
+    """
+    key = "WAZUH_REVERSE_ORDER_DECODERS"
+
+    with open(path_env_file, "r", encoding="utf-8") as f:
+        lines = f.readlines()
+
+    modified_lines = []
+    for line in lines:
+        stripped = line.strip()
+
+        # If the line starts with the key followed by '=', check and toggle the value.
+        if stripped.startswith(f"{key}="):
+            parts = stripped.split("=", 1)
+            if len(parts) == 2:
+                raw_value = parts[1].lower()  # raw_value will be "true" or "false", if present
+                if raw_value == "true":
+                    # Rebuild the line with the new value
+                    line = f"{key}=false\n"
+                elif raw_value == "false":
+                    line = f"{key}=true\n"
+                # If it's neither 'true' nor 'false', leave the line unchanged
+
+        # Add (modified or original) to the final list
+        modified_lines.append(line)
+
+    # Write all lines back, including the potentially modified one
+    with open(path_env_file, "w", encoding="utf-8") as f:
+        f.writelines(modified_lines)
+
+def decoder_health_test(env_path: Path, unit_result: type, debug_mode: str, reverse_order_decoders: bool, integration_name: Optional[str] = None, skip: Optional[List[str]] = None):
     print("Validating environment...")
     conf_path = (env_path / "config.env").resolve()
     if not conf_path.is_file():
         sys.exit(f"Configuration file not found: {conf_path}")
+
+    if reverse_order_decoders:
+        toggle_reverse_order_decoders(conf_path.as_posix())
 
     bin_path = (env_path / "wazuh-engine").resolve()
     if not bin_path.is_file():
@@ -246,6 +285,8 @@ def decoder_health_test(env_path: Path, unit_result: type, debug_mode: str, inte
             results.append(result)
 
     finally:
+        if reverse_order_decoders:
+            toggle_reverse_order_decoders(conf_path.as_posix())
         engine_handler.stop()
         print("Engine stopped.")
 
@@ -330,7 +371,6 @@ def rule_health_test(env_path: Path, unit_result: type, debug_mode: str, integra
     else:
         sys.exit(1)
 
-
 def run(args, unit_result: type, debug_mode: str):
     if not issubclass(unit_result, UnitResultInterface):
         sys.exit(
@@ -340,6 +380,7 @@ def run(args, unit_result: type, debug_mode: str):
     integration_rule = args.get('integration_rule')
     target = args.get('target')
     skip = args['skip']
+    reverse_order_decoders = args.get('reverse_order_decoders', False)
 
     provided_args = sum(
         [bool(integration_name), bool(integration_rule), bool(target)])
@@ -351,11 +392,11 @@ def run(args, unit_result: type, debug_mode: str):
         return rule_health_test(env_path, unit_result, debug_mode, integration_rule, skip)
 
     elif integration_name:
-        return decoder_health_test(env_path, unit_result, debug_mode, integration_name, skip)
+        return decoder_health_test(env_path, unit_result, debug_mode, reverse_order_decoders, integration_name, skip)
 
     elif target:
         if target == 'decoder':
-            return decoder_health_test(env_path, unit_result, debug_mode, integration_name, skip)
+            return decoder_health_test(env_path, unit_result, debug_mode, reverse_order_decoders, integration_name, skip)
         elif target == 'rule':
             return rule_health_test(env_path, unit_result, debug_mode, integration_rule, skip)
         else:

@@ -210,6 +210,11 @@ def parse_args() -> Namespace:
         '--target',
         help='Specify the asset type (decoder or rule). If it is a decoder, the tests are carried out for all decoders. The same for the rules.',
         required=False)
+    test_parser.add_argument(
+        '--reverse_order_decoders',
+        action='store_true',
+        help='If set, the decoders will be processed in reverse order. This is useful for testing the order of decoder processing.',
+        required=False)
     test_parser.set_defaults(func=test_run)
 
     # coverage test subcommand
