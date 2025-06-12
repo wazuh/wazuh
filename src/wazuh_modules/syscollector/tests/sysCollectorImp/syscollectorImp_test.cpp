@@ -216,7 +216,7 @@ TEST_F(SyscollectorImpTest, defaultCtor)
     {
         R"({"component":"syscollector_users","data":{"begin":"root","end":"root"},"type":"integrity_check_global"})"
     };
-    const auto expectedResult22
+    const auto expectedResult24
     {
         R"({"data":{"checksum":"786cc53b6766ed4deab1c2bd279877f50537a29e","host_ip":"192.168.0.84","login_status":0,"login_tty":"pts/0","login_type":"user","process_pid":"129870","user_auth_failed_count":null,"user_auth_failed_timestamp":null,"user_created":null,"user_full_name":"root","user_group_id":0,"user_group_id_signed":0,"user_groups":null,"user_home":"/root","user_id":0,"user_is_hidden":null,"user_is_remote":1,"user_last_login":"1749605216","user_name":"root","user_password_expiration_date":-1,"user_password_hash_algorithm":"y","user_password_inactive_days":-1,"user_password_last_change":20228,"user_password_last_set_time":null,"user_password_max_days_between_changes":99999,"user_password_min_days_between_changes":0,"user_password_status":"active","user_password_warning_days_before_expiration":7,"user_roles_sudo":1,"user_shell":"/bin/bash","user_type":null,"user_uid_signed":0,"user_uuid":null},"operation":"INSERTED","type":"dbsync_users"})"
     };
@@ -242,8 +242,9 @@ TEST_F(SyscollectorImpTest, defaultCtor)
     EXPECT_CALL(wrapper, callbackMock(expectedResult19)).Times(1);
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult20)).Times(1);
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult21)).Times(1);
-    EXPECT_CALL(wrapperDelta, callbackMock(expectedResult22)).Times(1);
+    EXPECT_CALL(wrapper, callbackMock(expectedResult22)).Times(1);
     EXPECT_CALL(wrapper, callbackMock(expectedResult23)).Times(1);
+    EXPECT_CALL(wrapperDelta, callbackMock(expectedResult24)).Times(1);
 
     std::thread t
     {
@@ -256,7 +257,7 @@ TEST_F(SyscollectorImpTest, defaultCtor)
                                           SYSCOLLECTOR_DB_PATH,
                                           "",
                                           "",
-                                          5, true, true, true, true, true, true, true, true, true, true, true);
+                                          5, true, true, true, true, true, true, true, true, true, true, true, true);
         }
     };
 
@@ -307,7 +308,7 @@ TEST_F(SyscollectorImpTest, intervalSeconds)
                                           SYSCOLLECTOR_DB_PATH,
                                           "",
                                           "",
-                                          1, true, true, true, true, true, true, true, true, true, true, true);
+                                          1, true, true, true, true, true, true, true, true, true, true, true, true);
 
         }
     };
@@ -529,7 +530,7 @@ TEST_F(SyscollectorImpTest, noHardware)
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult22)).Times(1);
     EXPECT_CALL(wrapper, callbackMock(expectedResult23)).Times(1);
     EXPECT_CALL(wrapper, callbackMock(expectedResult24)).Times(1);
-    EXPECT_CALL(wrapper, callbackMock(expectedResult25)).Times(1);
+    EXPECT_CALL(wrapperDelta, callbackMock(expectedResult25)).Times(1);
 
     std::thread t
     {
@@ -542,7 +543,7 @@ TEST_F(SyscollectorImpTest, noHardware)
                                           SYSCOLLECTOR_DB_PATH,
                                           "",
                                           "",
-                                          3600, true, false, true, true, true, true, true, true, true, true, true);
+                                          3600, true, false, true, true, true, true, true, true, true, true, true, true);
         }
     };
 
@@ -580,8 +581,8 @@ TEST_F(SyscollectorImpTest, noOs)
 
     EXPECT_CALL(*spInfoWrapper, groups()).WillRepeatedly(Return(
                                                              R"([{"group_description": null, "group_id": 1, "group_id_signed": 1, "group_is_hidden": null, "group_name": "daemon", "group_users": "daemon:pollinate:vboxadd", "group_uuid": null }])"_json));
-    EXPECT_CALL(*spInfoWrapper, users()).WillRepeatedly(Return(
-                                                            R"([{"checksum":"978ed233e118afd1b92490f0db4cff98ddc638ed","host_ip":null,"login_status":null,"login_tty":null,"login_type":null,"process_pid":null,"scan_time":"2020/07/04 09:58:10","user_auth_failed_count":null,"user_auth_failed_timestamp":null,"user_created":null,"user_full_name":"bin","user_group_id":2}])"_json));
+    EXPECT_CALL(*spInfoWrapper, users()).WillRepeatedly(Return
+                                                        (R"([{"host_ip":"192.168.0.84","login_status":0,"login_tty":"pts/0","login_type":"user","process_pid":"129870","user_auth_failed_count":null,"user_auth_failed_timestamp":null,"user_created":null,"user_full_name":"root","user_group_id":0,"user_group_id_signed":0,"user_groups":null,"user_home":"/root","user_id":0,"user_is_hidden":null,"user_is_remote":1,"user_last_login":"1749605216","user_name":"root","user_password_expiration_date":-1,"user_password_hash_algorithm":"y","user_password_inactive_days":-1,"user_password_last_change":20228,"user_password_last_set_time":null,"user_password_max_days_between_changes":99999,"user_password_min_days_between_changes":0,"user_password_status":"active","user_password_warning_days_before_expiration":7,"user_roles_sudo":1,"user_shell":"/bin/bash","user_type":null,"user_uid_signed":0,"user_uuid":null}])"_json));
 
     CallbackMock wrapper;
     std::function<void(const std::string&)> callbackData
@@ -700,7 +701,7 @@ TEST_F(SyscollectorImpTest, noOs)
     {
         R"({"component":"syscollector_users","data":{"begin":"root","end":"root"},"type":"integrity_check_global"})"
     };
-    const auto expectedResult23
+    const auto expectedResult25
     {
         R"({"data":{"checksum":"786cc53b6766ed4deab1c2bd279877f50537a29e","host_ip":"192.168.0.84","login_status":0,"login_tty":"pts/0","login_type":"user","process_pid":"129870","user_auth_failed_count":null,"user_auth_failed_timestamp":null,"user_created":null,"user_full_name":"root","user_group_id":0,"user_group_id_signed":0,"user_groups":null,"user_home":"/root","user_id":0,"user_is_hidden":null,"user_is_remote":1,"user_last_login":"1749605216","user_name":"root","user_password_expiration_date":-1,"user_password_hash_algorithm":"y","user_password_inactive_days":-1,"user_password_last_change":20228,"user_password_last_set_time":null,"user_password_max_days_between_changes":99999,"user_password_min_days_between_changes":0,"user_password_status":"active","user_password_warning_days_before_expiration":7,"user_roles_sudo":1,"user_shell":"/bin/bash","user_type":null,"user_uid_signed":0,"user_uuid":null},"operation":"INSERTED","type":"dbsync_users"})"
     };
@@ -727,6 +728,7 @@ TEST_F(SyscollectorImpTest, noOs)
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult22)).Times(1);
     EXPECT_CALL(wrapper, callbackMock(expectedResult23)).Times(1);
     EXPECT_CALL(wrapper, callbackMock(expectedResult24)).Times(1);
+    EXPECT_CALL(wrapperDelta, callbackMock(expectedResult25)).Times(1);
 
     std::thread t
     {
@@ -739,7 +741,7 @@ TEST_F(SyscollectorImpTest, noOs)
                                           SYSCOLLECTOR_DB_PATH,
                                           "",
                                           "",
-                                          3600, true, true, false, true, true, true, true, true, true, true, true);
+                                          3600, true, true, false, true, true, true, true, true, true, true, true, true);
         }
     };
 
@@ -776,8 +778,8 @@ TEST_F(SyscollectorImpTest, noNetwork)
 
     EXPECT_CALL(*spInfoWrapper, groups()).WillRepeatedly(Return(
                                                              R"([{"group_description": null, "group_id": 1, "group_id_signed": 1, "group_is_hidden": null, "group_name": "daemon", "group_users": "daemon:pollinate:vboxadd", "group_uuid": null }])"_json));
-    EXPECT_CALL(*spInfoWrapper, users()).WillRepeatedly(Return(
-                                                            R"([{"checksum":"978ed233e118afd1b92490f0db4cff98ddc638ed","host_ip":null,"login_status":null,"login_tty":null,"login_type":null,"process_pid":null,"scan_time":"2020/07/04 09:58:10","user_auth_failed_count":null,"user_auth_failed_timestamp":null,"user_created":null,"user_full_name":"bin","user_group_id":2}])"_json));
+    EXPECT_CALL(*spInfoWrapper, users()).WillRepeatedly(Return
+                                                        (R"([{"host_ip":"192.168.0.84","login_status":0,"login_tty":"pts/0","login_type":"user","process_pid":"129870","user_auth_failed_count":null,"user_auth_failed_timestamp":null,"user_created":null,"user_full_name":"root","user_group_id":0,"user_group_id_signed":0,"user_groups":null,"user_home":"/root","user_id":0,"user_is_hidden":null,"user_is_remote":1,"user_last_login":"1749605216","user_name":"root","user_password_expiration_date":-1,"user_password_hash_algorithm":"y","user_password_inactive_days":-1,"user_password_last_change":20228,"user_password_last_set_time":null,"user_password_max_days_between_changes":99999,"user_password_min_days_between_changes":0,"user_password_status":"active","user_password_warning_days_before_expiration":7,"user_roles_sudo":1,"user_shell":"/bin/bash","user_type":null,"user_uid_signed":0,"user_uuid":null}])"_json));
 
     CallbackMock wrapper;
     std::function<void(const std::string&)> callbackData
@@ -880,7 +882,7 @@ TEST_F(SyscollectorImpTest, noNetwork)
     {
         R"({"component":"syscollector_users","data":{"begin":"root","end":"root"},"type":"integrity_check_global"})"
     };
-    const auto expectedResult24
+    const auto expectedResult26
     {
         R"({"data":{"checksum":"786cc53b6766ed4deab1c2bd279877f50537a29e","host_ip":"192.168.0.84","login_status":0,"login_tty":"pts/0","login_type":"user","process_pid":"129870","user_auth_failed_count":null,"user_auth_failed_timestamp":null,"user_created":null,"user_full_name":"root","user_group_id":0,"user_group_id_signed":0,"user_groups":null,"user_home":"/root","user_id":0,"user_is_hidden":null,"user_is_remote":1,"user_last_login":"1749605216","user_name":"root","user_password_expiration_date":-1,"user_password_hash_algorithm":"y","user_password_inactive_days":-1,"user_password_last_change":20228,"user_password_last_set_time":null,"user_password_max_days_between_changes":99999,"user_password_min_days_between_changes":0,"user_password_status":"active","user_password_warning_days_before_expiration":7,"user_roles_sudo":1,"user_shell":"/bin/bash","user_type":null,"user_uid_signed":0,"user_uuid":null},"operation":"INSERTED","type":"dbsync_users"})"
     };
@@ -900,8 +902,10 @@ TEST_F(SyscollectorImpTest, noNetwork)
     EXPECT_CALL(wrapper, callbackMock(expectedResult20)).Times(1);
     EXPECT_CALL(wrapper, callbackMock(expectedResult21)).Times(1);
     EXPECT_CALL(wrapper, callbackMock(expectedResult22)).Times(1);
-    EXPECT_CALL(wrapper, callbackMock(expectedResult23)).Times(1);
-    EXPECT_CALL(wrapperDelta, callbackMock(expectedResult24)).Times(1);
+    EXPECT_CALL(wrapperDelta, callbackMock(expectedResult23)).Times(1);
+    EXPECT_CALL(wrapper, callbackMock(expectedResult24)).Times(1);
+    EXPECT_CALL(wrapper, callbackMock(expectedResult25)).Times(1);
+    EXPECT_CALL(wrapperDelta, callbackMock(expectedResult26)).Times(1);
 
     std::thread t
     {
@@ -914,7 +918,7 @@ TEST_F(SyscollectorImpTest, noNetwork)
                                           SYSCOLLECTOR_DB_PATH,
                                           "",
                                           "",
-                                          3600, true, true, true, false, true, true, true, true, true, true, true);
+                                          3600, true, true, true, false, true, true, true, true, true, true, true, true);
         }
     };
 
@@ -1096,7 +1100,7 @@ TEST_F(SyscollectorImpTest, noPackages)
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult22)).Times(1);
     EXPECT_CALL(wrapper, callbackMock(expectedResult23)).Times(1);
     EXPECT_CALL(wrapper, callbackMock(expectedResult24)).Times(1);
-    EXPECT_CALL(wrapper, callbackMock(expectedResult25)).Times(1);
+    EXPECT_CALL(wrapperDelta, callbackMock(expectedResult25)).Times(1);
 
     std::thread t
     {
@@ -1109,7 +1113,7 @@ TEST_F(SyscollectorImpTest, noPackages)
                                           SYSCOLLECTOR_DB_PATH,
                                           "",
                                           "",
-                                          3600, true, true, true, true, false, true, true, true, true, true, true);
+                                          3600, true, true, true, true, false, true, true, true, true, true, true, true);
         }
     };
 
@@ -1293,7 +1297,7 @@ TEST_F(SyscollectorImpTest, noPorts)
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult22)).Times(1);
     EXPECT_CALL(wrapper, callbackMock(expectedResult23)).Times(1);
     EXPECT_CALL(wrapper, callbackMock(expectedResult24)).Times(1);
-    EXPECT_CALL(wrapper, callbackMock(expectedResult25)).Times(1);
+    EXPECT_CALL(wrapperDelta, callbackMock(expectedResult25)).Times(1);
 
     std::thread t
     {
@@ -1306,7 +1310,7 @@ TEST_F(SyscollectorImpTest, noPorts)
                                           SYSCOLLECTOR_DB_PATH,
                                           "",
                                           "",
-                                          5, true, true, true, true, true, false, true, true, true, true, true);
+                                          5, true, true, true, true, true, false, true, true, true, true, true, true);
         }
     };
 
@@ -1501,7 +1505,7 @@ TEST_F(SyscollectorImpTest, noPortsAll)
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult22)).Times(1);
     EXPECT_CALL(wrapper, callbackMock(expectedResult23)).Times(1);
     EXPECT_CALL(wrapper, callbackMock(expectedResult24)).Times(1);
-    EXPECT_CALL(wrapper, callbackMock(expectedResult25)).Times(1);
+    EXPECT_CALL(wrapperDelta, callbackMock(expectedResult25)).Times(1);
 
     std::thread t
     {
@@ -1514,7 +1518,7 @@ TEST_F(SyscollectorImpTest, noPortsAll)
                                           SYSCOLLECTOR_DB_PATH,
                                           "",
                                           "",
-                                          3600, true, true, true, true, true, true, false, true, true, true, true);
+                                          3600, true, true, true, true, true, true, false, true, true, true, true, true);
         }
     };
 
@@ -1696,7 +1700,7 @@ TEST_F(SyscollectorImpTest, noProcesses)
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult22)).Times(1);
     EXPECT_CALL(wrapper, callbackMock(expectedResult23)).Times(1);
     EXPECT_CALL(wrapper, callbackMock(expectedResult24)).Times(1);
-    EXPECT_CALL(wrapper, callbackMock(expectedResult25)).Times(1);
+    EXPECT_CALL(wrapperDelta, callbackMock(expectedResult25)).Times(1);
 
     std::thread t
     {
@@ -1709,7 +1713,7 @@ TEST_F(SyscollectorImpTest, noProcesses)
                                           SYSCOLLECTOR_DB_PATH,
                                           "",
                                           "",
-                                          3600, true, true, true, true, true, true, true, false, true, true, true);
+                                          3600, true, true, true, true, true, true, true, false, true, true, true, true);
         }
     };
 
@@ -1907,7 +1911,7 @@ TEST_F(SyscollectorImpTest, noHotfixes)
                                           SYSCOLLECTOR_DB_PATH,
                                           "",
                                           "",
-                                          3600, true, true, true, true, true, true, true, true, false, true, true);
+                                          3600, true, true, true, true, true, true, true, true, false, true, true, true);
         }
     };
 
@@ -1942,6 +1946,10 @@ TEST_F(SyscollectorImpTest, noUsers)
     .Times(testing::AtLeast(1))
     .WillOnce(::testing::InvokeArgument<0>
               (R"({"egroup":"root","euser":"root","fgroup":"root","name":"kworker/u256:2-","scan_time":"2020/12/28 21:49:50", "nice":0,"nlwp":1,"pgrp":0,"pid":"431625","ppid":2,"priority":20,"processor":1,"resident":0,"rgroup":"root","ruser":"root","session":0,"sgroup":"root","share":0,"size":0,"start_time":9302261,"state":"I","stime":3,"suser":"root","tgid":431625,"tty":0,"utime":0,"vm_size":0})"_json));
+
+    EXPECT_CALL(*spInfoWrapper, groups()).WillRepeatedly(Return(
+                                                             R"([{"group_description": null, "group_id": 1, "group_id_signed": 1, "group_is_hidden": null, "group_name": "daemon", "group_users": "daemon:pollinate:vboxadd", "group_uuid": null }])"_json));
+
 
     EXPECT_CALL(*spInfoWrapper, users()).Times(0);
 
@@ -2058,6 +2066,14 @@ TEST_F(SyscollectorImpTest, noUsers)
     {
         R"({"component":"syscollector_users","data":{},"type":"integrity_clear"})"
     };
+    const auto expectedResult22
+    {
+        R"({"component":"syscollector_groups","data":{"begin":"1","end":"1"},"type":"integrity_check_global"})"
+    };
+    const auto expectedResult23
+    {
+        R"({"data":{"checksum":"8c431a0b1998efae2d9792251d614ff7558f58ba","group_description":null,"group_id":1,"group_id_signed":1,"group_is_hidden":null,"group_name":"daemon","group_users":"daemon:pollinate:vboxadd","group_uuid":null},"operation":"INSERTED","type":"dbsync_groups"})"
+    };
 
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult1)).Times(1);
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult2)).Times(1);
@@ -2080,6 +2096,8 @@ TEST_F(SyscollectorImpTest, noUsers)
     EXPECT_CALL(wrapper, callbackMock(expectedResult19)).Times(1);
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult20)).Times(1);
     EXPECT_CALL(wrapper, callbackMock(expectedResult21)).Times(1);
+    EXPECT_CALL(wrapper, callbackMock(expectedResult22)).Times(1);
+    EXPECT_CALL(wrapperDelta, callbackMock(expectedResult23)).Times(1);
 
     std::thread t
     {
@@ -2092,7 +2110,7 @@ TEST_F(SyscollectorImpTest, noUsers)
                                           SYSCOLLECTOR_DB_PATH,
                                           "",
                                           "",
-                                          3600, true, true, true, true, true, true, true, true, true, false, true);
+                                          3600, true, true, true, true, true, true, true, true, true, true, false, true);
         }
     };
 
@@ -2129,6 +2147,9 @@ TEST_F(SyscollectorImpTest, noGroups)
               (R"({"egroup":"root","euser":"root","fgroup":"root","name":"kworker/u256:2-","scan_time":"2020/12/28 21:49:50", "nice":0,"nlwp":1,"pgrp":0,"pid":"431625","ppid":2,"priority":20,"processor":1,"resident":0,"rgroup":"root","ruser":"root","session":0,"sgroup":"root","share":0,"size":0,"start_time":9302261,"state":"I","stime":3,"suser":"root","tgid":431625,"tty":0,"utime":0,"vm_size":0})"_json));
 
     EXPECT_CALL(*spInfoWrapper, groups()).Times(0);
+
+    EXPECT_CALL(*spInfoWrapper, users()).WillRepeatedly(Return
+                                                        (R"([{"host_ip":"192.168.0.84","login_status":0,"login_tty":"pts/0","login_type":"user","process_pid":"129870","user_auth_failed_count":null,"user_auth_failed_timestamp":null,"user_created":null,"user_full_name":"root","user_group_id":0,"user_group_id_signed":0,"user_groups":null,"user_home":"/root","user_id":0,"user_is_hidden":null,"user_is_remote":1,"user_last_login":"1749605216","user_name":"root","user_password_expiration_date":-1,"user_password_hash_algorithm":"y","user_password_inactive_days":-1,"user_password_last_change":20228,"user_password_last_set_time":null,"user_password_max_days_between_changes":99999,"user_password_min_days_between_changes":0,"user_password_status":"active","user_password_warning_days_before_expiration":7,"user_roles_sudo":1,"user_shell":"/bin/bash","user_type":null,"user_uid_signed":0,"user_uuid":null}])"_json));
 
     CallbackMock wrapper;
     std::function<void(const std::string&)> callbackData
@@ -2243,6 +2264,14 @@ TEST_F(SyscollectorImpTest, noGroups)
     {
         R"({"component":"syscollector_groups","data":{},"type":"integrity_clear"})"
     };
+    const auto expectedResult24
+    {
+        R"({"component":"syscollector_users","data":{"begin":"root","end":"root"},"type":"integrity_check_global"})"
+    };
+    const auto expectedResult25
+    {
+        R"({"data":{"checksum":"786cc53b6766ed4deab1c2bd279877f50537a29e","host_ip":"192.168.0.84","login_status":0,"login_tty":"pts/0","login_type":"user","process_pid":"129870","user_auth_failed_count":null,"user_auth_failed_timestamp":null,"user_created":null,"user_full_name":"root","user_group_id":0,"user_group_id_signed":0,"user_groups":null,"user_home":"/root","user_id":0,"user_is_hidden":null,"user_is_remote":1,"user_last_login":"1749605216","user_name":"root","user_password_expiration_date":-1,"user_password_hash_algorithm":"y","user_password_inactive_days":-1,"user_password_last_change":20228,"user_password_last_set_time":null,"user_password_max_days_between_changes":99999,"user_password_min_days_between_changes":0,"user_password_status":"active","user_password_warning_days_before_expiration":7,"user_roles_sudo":1,"user_shell":"/bin/bash","user_type":null,"user_uid_signed":0,"user_uuid":null},"operation":"INSERTED","type":"dbsync_users"})"
+    };
 
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult1)).Times(1);
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult2)).Times(1);
@@ -2265,6 +2294,8 @@ TEST_F(SyscollectorImpTest, noGroups)
     EXPECT_CALL(wrapper, callbackMock(expectedResult19)).Times(1);
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult20)).Times(1);
     EXPECT_CALL(wrapper, callbackMock(expectedResult21)).Times(1);
+    EXPECT_CALL(wrapper, callbackMock(expectedResult24)).Times(1);
+    EXPECT_CALL(wrapperDelta, callbackMock(expectedResult25)).Times(1);
 
     std::thread t
     {
@@ -2277,7 +2308,7 @@ TEST_F(SyscollectorImpTest, noGroups)
                                           SYSCOLLECTOR_DB_PATH,
                                           "",
                                           "",
-                                          3600, true, true, true, true, true, true, true, true, true, false, true);
+                                          3600, true, true, true, true, true, true, true, true, true, false, true, true);
         }
     };
 
@@ -2328,7 +2359,7 @@ TEST_F(SyscollectorImpTest, pushMessageOk)
                                           SYSCOLLECTOR_DB_PATH,
                                           "",
                                           "",
-                                          60, true, true, true, true, true, true, true, true, true, true, true);
+                                          60, true, true, true, true, true, true, true, true, true, true, true, true);
         }
     };
     std::this_thread::sleep_for(std::chrono::seconds{1});
@@ -2517,7 +2548,7 @@ TEST_F(SyscollectorImpTest, pushMessageOk1)
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult21)).Times(1);
     EXPECT_CALL(wrapper, callbackMock(expectedResult22)).Times(1);
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult23)).Times(1);
-    EXPECT_CALL(wrapperDelta, callbackMock(expectedResult24)).Times(1);
+    EXPECT_CALL(wrapper, callbackMock(expectedResult24)).Times(1);
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult25)).Times(1);
 
     std::thread t
@@ -2531,7 +2562,7 @@ TEST_F(SyscollectorImpTest, pushMessageOk1)
                                           SYSCOLLECTOR_DB_PATH,
                                           "",
                                           "",
-                                          60, true, true, true, true, true, true, true, true, true, true, true);
+                                          60, true, true, true, true, true, true, true, true, true, true, true, true);
         }
     };
     std::this_thread::sleep_for(std::chrono::seconds{1});
@@ -2583,7 +2614,7 @@ TEST_F(SyscollectorImpTest, pushMessageInvalid)
                                           SYSCOLLECTOR_DB_PATH,
                                           "",
                                           "",
-                                          60, true, true, true, true, true, true, true, true, true, true, true);
+                                          60, true, true, true, true, true, true, true, true, true, true, true, true);
         }
     };
     std::this_thread::sleep_for(std::chrono::seconds{1});
@@ -2635,7 +2666,7 @@ TEST_F(SyscollectorImpTest, scanInvalidData)
                                           SYSCOLLECTOR_DB_PATH,
                                           "",
                                           "",
-                                          60, true, true, true, true, true, true, true, true, true, true, true);
+                                          60, true, true, true, true, true, true, true, true, true, true, true, true);
         }
     };
     std::this_thread::sleep_for(std::chrono::seconds{1});
@@ -2768,7 +2799,7 @@ TEST_F(SyscollectorImpTest, portAllEnable)
                                           SYSCOLLECTOR_DB_PATH,
                                           "",
                                           "",
-                                          3600, true, false, false, false, false, true, true, false, false, false, true);
+                                          3600, true, false, false, false, false, true, true, false, false, false, false, true);
         }
     };
 
@@ -2894,7 +2925,7 @@ TEST_F(SyscollectorImpTest, portAllDisable)
                                           SYSCOLLECTOR_DB_PATH,
                                           "",
                                           "",
-                                          3600, true, false, false, false, false, true, false, false, false, false, true);
+                                          3600, true, false, false, false, false, true, false, false, false, false, false, true);
         }
     };
 
@@ -2951,7 +2982,7 @@ TEST_F(SyscollectorImpTest, PackagesDuplicated)
                                           SYSCOLLECTOR_DB_PATH,
                                           "",
                                           "",
-                                          3600, true, false, false, false, true, false, false, false, false, false, true);
+                                          3600, true, false, false, false, true, false, false, false, false, false, false, true);
         }
     };
 
@@ -2989,6 +3020,9 @@ TEST_F(SyscollectorImpTest, sanitizeJsonValues)
 
     EXPECT_CALL(*spInfoWrapper, groups()).WillRepeatedly(Return(
                                                              R"([{"group_description": null, "group_id": 1, "group_id_signed": 1, "group_is_hidden": null, "group_name": "daemon", "group_users": "daemon:pollinate:vboxadd", "group_uuid": null }])"_json));
+
+    EXPECT_CALL(*spInfoWrapper, users()).WillRepeatedly(Return
+                                                        (R"([{"host_ip":"192.168.0.84","login_status":0,"login_tty":"pts/0","login_type":"user","process_pid":"129870","user_auth_failed_count":null,"user_auth_failed_timestamp":null,"user_created":null,"user_full_name":"root","user_group_id":0,"user_group_id_signed":0,"user_groups":null,"user_home":"/root","user_id":0,"user_is_hidden":null,"user_is_remote":1,"user_last_login":"1749605216","user_name":"root","user_password_expiration_date":-1,"user_password_hash_algorithm":"y","user_password_inactive_days":-1,"user_password_last_change":20228,"user_password_last_set_time":null,"user_password_max_days_between_changes":99999,"user_password_min_days_between_changes":0,"user_password_status":"active","user_password_warning_days_before_expiration":7,"user_roles_sudo":1,"user_shell":"/bin/bash","user_type":null,"user_uid_signed":0,"user_uuid":null}])"_json));
 
     CallbackMock wrapper;
     std::function<void(const std::string&)> callbackData
@@ -3107,6 +3141,14 @@ TEST_F(SyscollectorImpTest, sanitizeJsonValues)
     {
         R"({"component":"syscollector_groups","data":{"begin":"1","end":"1"},"type":"integrity_check_global"})"
     };
+    const auto expectedResult23
+    {
+        R"({"component":"syscollector_users","data":{"begin":"root","end":"root"},"type":"integrity_check_global"})"
+    };
+    const auto expectedResult24
+    {
+        R"({"data":{"checksum":"786cc53b6766ed4deab1c2bd279877f50537a29e","host_ip":"192.168.0.84","login_status":0,"login_tty":"pts/0","login_type":"user","process_pid":"129870","user_auth_failed_count":null,"user_auth_failed_timestamp":null,"user_created":null,"user_full_name":"root","user_group_id":0,"user_group_id_signed":0,"user_groups":null,"user_home":"/root","user_id":0,"user_is_hidden":null,"user_is_remote":1,"user_last_login":"1749605216","user_name":"root","user_password_expiration_date":-1,"user_password_hash_algorithm":"y","user_password_inactive_days":-1,"user_password_last_change":20228,"user_password_last_set_time":null,"user_password_max_days_between_changes":99999,"user_password_min_days_between_changes":0,"user_password_status":"active","user_password_warning_days_before_expiration":7,"user_roles_sudo":1,"user_shell":"/bin/bash","user_type":null,"user_uid_signed":0,"user_uuid":null},"operation":"INSERTED","type":"dbsync_users"})"
+    };
 
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult1)).Times(1);
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult2)).Times(1);
@@ -3130,6 +3172,8 @@ TEST_F(SyscollectorImpTest, sanitizeJsonValues)
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult20)).Times(1);
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult21)).Times(1);
     EXPECT_CALL(wrapper, callbackMock(expectedResult22)).Times(1);
+    EXPECT_CALL(wrapper, callbackMock(expectedResult23)).Times(1);
+    EXPECT_CALL(wrapperDelta, callbackMock(expectedResult24)).Times(1);
 
     std::thread t
     {
@@ -3142,7 +3186,7 @@ TEST_F(SyscollectorImpTest, sanitizeJsonValues)
                                           SYSCOLLECTOR_DB_PATH,
                                           "",
                                           "",
-                                          5, true, true, true, true, true, true, true, true, true, true, true);
+                                          5, true, true, true, true, true, true, true, true, true, true, true, true);
         }
     };
 
