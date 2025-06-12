@@ -247,7 +247,7 @@ static struct kv_list const TABLE_MAP[] = {
     { .current = { "hotfixes", "sys_hotfixes",  false, TABLE_HOTFIXES, HOTFIXES_FIELD_COUNT }, .next = &TABLE_MAP[8]},
     { .current = { "processes", "sys_processes",  false, TABLE_PROCESSES, PROCESSES_FIELD_COUNT }, .next = &TABLE_MAP[9]},
     { .current = { "users", "sys_users", false, TABLE_USERS, USERS_FIELD_COUNT }, .next = &TABLE_MAP[10]},
-    { .current = { "groups", "sys_groups", false, TABLE_GROUPS, GROUPS_FIELD_COUNT }, .next = &TABLE_MAP[11]}
+    { .current = { "groups", "sys_groups", false, TABLE_GROUPS, GROUPS_FIELD_COUNT }, .next = NULL}
 };
 
 #define AGENT_ID_LEN 64

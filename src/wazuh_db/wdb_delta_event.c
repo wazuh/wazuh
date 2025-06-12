@@ -13,33 +13,51 @@
 #define LT(X, Y) (X < Y ? true : false)
 #define EQ(X, Y) (X == Y ? true : false)
 
+const char * HWINFO_FIELDS[] = {
+    "cpu_cores",
+    "cpu_mhz",
+    "ram_total",
+    "ram_free",
+    "ram_usage"
+};
+
+const char * USERINFO_FIELDS[] = {
+    "user_id",
+    "user_group_id",
+    "user_auth_failures_count",
+    "user_password_max_days_between_changes",
+    "user_password_min_days_between_changes",
+    "user_password_warning_days_before_expiration", 
+    "process_pid"
+};
+
 #define IS_VALID_HWINFO_VALUE(field_name, field_value) ( \
-    !strncmp(field_name, "cpu_cores", 9) ? \
+    !strncmp(field_name, HWINFO_FIELDS[0], strlen(HWINFO_FIELDS[0])) ? \
         GT(field_value, 0) : \
-    !strncmp(field_name, "cpu_mhz", 7) ? \
+    !strncmp(field_name, HWINFO_FIELDS[1], strlen(HWINFO_FIELDS[1])) ? \
         GT(field_value, 0) : \
-    !strncmp(field_name, "ram_total", 9) ? \
+    !strncmp(field_name, HWINFO_FIELDS[2], strlen(HWINFO_FIELDS[2])) ? \
         GT(field_value, 0) : \
-    !strncmp(field_name, "ram_free", 8) ? \
+    !strncmp(field_name, HWINFO_FIELDS[3], strlen(HWINFO_FIELDS[3])) ? \
         GT(field_value, 0) : \
-    !strncmp(field_name, "ram_usage", 9) ? \
+    !strncmp(field_name, HWINFO_FIELDS[4], strlen(HWINFO_FIELDS[4])) ? \
         (GT(field_value, 0) && (EQ(field_value, 100) || LT(field_value, 100))): true \
 )
 
 #define IS_VALID_USERS_VALUE(field_name, field_value) ( \
-    !strncmp(field_name, "user_id", 7) ? \
+    !strncmp(field_name, USERINFO_FIELDS[0], strlen(USERINFO_FIELDS[0])) ? \
         (GT(field_value, 0) || EQ(field_value, 0)) : \
-    !strncmp(field_name, "user_group_id", 13) ? \
+    !strncmp(field_name, USERINFO_FIELDS[1], strlen(USERINFO_FIELDS[1])) ? \
         (GT(field_value, 0) || EQ(field_value, 0)) : \
-    !strncmp(field_name, "user_auth_failures_count", 24) ? \
+    !strncmp(field_name, USERINFO_FIELDS[2], strlen(USERINFO_FIELDS[2])) ? \
         (GT(field_value, 0) || EQ(field_value, 0)) : \
-    !strncmp(field_name, "user_password_max_days_between_changes", 38) ? \
+    !strncmp(field_name, USERINFO_FIELDS[3], strlen(USERINFO_FIELDS[3])) ? \
         (GT(field_value, 0) || EQ(field_value, 0)) : \
-    !strncmp(field_name, "user_password_min_days_between_changes", 38) ? \
+    !strncmp(field_name, USERINFO_FIELDS[4], strlen(USERINFO_FIELDS[4])) ? \
         (GT(field_value, 0) || EQ(field_value, 0)) : \
-    !strncmp(field_name, "user_password_warning_days_before_expiration", 44) ? \
+    !strncmp(field_name, USERINFO_FIELDS[5], strlen(USERINFO_FIELDS[5])) ? \
         (GT(field_value, 0) || EQ(field_value, 0)) : \
-    !strncmp(field_name, "process_pid", 11) ? \
+    !strncmp(field_name, USERINFO_FIELDS[6], strlen(USERINFO_FIELDS[6])) ? \
         (GT(field_value, 0) || EQ(field_value, 0)) : true \
 )
 
