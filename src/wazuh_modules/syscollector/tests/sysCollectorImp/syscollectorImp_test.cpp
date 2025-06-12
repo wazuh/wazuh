@@ -2677,6 +2677,9 @@ TEST_F(SyscollectorImpTest, sanitizeJsonValues)
     .WillOnce(::testing::InvokeArgument<0>
               (R"({"egroup":" root ","euser":" root","fgroup":"root ","name":" kworker/u256:2-  ","scan_time":"2020/12/28 21:49:50", "nice":0,"nlwp":1,"pgrp":0,"pid":"  431625  ","ppid":2,"priority":20,"processor":1,"resident":0,"rgroup":"root","ruser":"root","session":0,"sgroup":"root","share":0,"size":0,"start_time":9302261,"state":"I","stime":3,"suser":"root","tgid":431625,"tty":0,"utime":0,"vm_size":0})"_json));
 
+    EXPECT_CALL(*spInfoWrapper, groups()).WillRepeatedly(Return(
+                                                             R"([{"group_description": null, "group_id": 1, "group_id_signed": 1, "group_is_hidden": null, "group_name": "daemon", "group_users": "daemon:pollinate:vboxadd", "group_uuid": null }])"_json));
+
     CallbackMock wrapper;
     std::function<void(const std::string&)> callbackData
     {
@@ -2786,7 +2789,14 @@ TEST_F(SyscollectorImpTest, sanitizeJsonValues)
     {
         R"({"data":{"checksum":"ea17673e7422c0ab04c4f1f111a5828be8cd366a","dhcp":"unknown","gateway":"192.168.0.1|600","iface":"enp4s0","item_id":"9dff246584835755137820c975f034d089e90b6f","metric":" ","type":"ipv6"},"operation":"INSERTED","type":"dbsync_network_protocol"})"
     };
-
+    const auto expectedResult21
+    {
+        R"({"data":{"checksum":"8c431a0b1998efae2d9792251d614ff7558f58ba","group_description":null,"group_id":1,"group_id_signed":1,"group_is_hidden":null,"group_name":"daemon","group_users":"daemon:pollinate:vboxadd","group_uuid":null},"operation":"INSERTED","type":"dbsync_groups"})"
+    };
+    const auto expectedResult22
+    {
+        R"({"component":"syscollector_groups","data":{"begin":"1","end":"1"},"type":"integrity_check_global"})"
+    };
 
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult1)).Times(1);
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult2)).Times(1);
@@ -2808,6 +2818,8 @@ TEST_F(SyscollectorImpTest, sanitizeJsonValues)
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult18)).Times(1);
     EXPECT_CALL(wrapper, callbackMock(expectedResult19)).Times(1);
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult20)).Times(1);
+    EXPECT_CALL(wrapperDelta, callbackMock(expectedResult21)).Times(1);
+    EXPECT_CALL(wrapper, callbackMock(expectedResult22)).Times(1);
 
     std::thread t
     {
@@ -2820,7 +2832,7 @@ TEST_F(SyscollectorImpTest, sanitizeJsonValues)
                                           SYSCOLLECTOR_DB_PATH,
                                           "",
                                           "",
-                                          5, true, true, true, true, true, true, true, true, true, true);
+                                          5, true, true, true, true, true, true, true, true, true, true, true);
         }
     };
 
