@@ -27,7 +27,7 @@ CREATE TABLE IF NOT EXISTS sys_users (
     user_shell TEXT,
     user_type TEXT,
     user_is_hidden INTEGER,
-    user_is_remoted INTEGER,
+    user_is_remote INTEGER,
     user_last_login INTEGER,
     user_auth_failures_count INTEGER,
     user_auth_failures_timestamp REAL,
