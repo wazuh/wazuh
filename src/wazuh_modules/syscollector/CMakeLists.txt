@@ -109,6 +109,8 @@ else()
   target_link_libraries(syscollector dbsync rsync sysinfo wazuhext -Wl,-blibpath:${INSTALL_PREFIX}/lib:${CXX_IMPLICIT_LINK_DIRECTORIES_STR}:${PLATFORM_REQUIRED_RUNTIME_PATH_STR})
 endif(NOT CMAKE_SYSTEM_NAME STREQUAL "AIX")
 
+add_dependencies(syscollector compile_schemas_input)
+
 if(UNIT_TEST)
   if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     target_link_libraries(syscollector -fprofile-arcs)
