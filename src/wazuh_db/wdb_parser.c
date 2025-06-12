@@ -201,7 +201,7 @@ static struct column_list const TABLE_USERS[USERS_FIELD_COUNT+1] = {
     { .value = { FIELD_TEXT, 14, false, false, NULL, "user_shell", {.text = ""}, true}, .next = &TABLE_USERS[14]},
     { .value = { FIELD_TEXT, 15, false, false, NULL, "user_type", {.text = ""}, true}, .next = &TABLE_USERS[15]},
     { .value = { FIELD_INTEGER, 16, false, false, NULL, "user_is_hidden", {.integer = 0}, true}, .next = &TABLE_USERS[16]},
-    { .value = { FIELD_INTEGER, 17, false, false, NULL, "user_is_remoted", {.integer = 0}, true}, .next = &TABLE_USERS[17]},
+    { .value = { FIELD_INTEGER, 17, false, false, NULL, "user_is_remote", {.integer = 0}, true}, .next = &TABLE_USERS[17]},
     { .value = { FIELD_INTEGER, 18, false, false, NULL, "user_last_login", {.integer = 0}, true}, .next = &TABLE_USERS[18]},
     { .value = { FIELD_INTEGER, 19, false, false, NULL, "user_auth_failures_count", {.integer = 0}, true}, .next = &TABLE_USERS[19]},
     { .value = { FIELD_REAL, 20, false, false, NULL, "user_auth_failures_timestamp", {.real = 0.0}, true}, .next = &TABLE_USERS[20]},
