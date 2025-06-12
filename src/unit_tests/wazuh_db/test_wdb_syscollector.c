@@ -3387,6 +3387,394 @@ void test_wdb_process_delete_success(void **state) {
     assert_int_equal(output, 0);
 }
 
+/* Test wdb_users_save */
+void test_wdb_users_save_transaction_fail(void **state) {
+    int output = 0;
+    wdb_t *data = (wdb_t *)*state;
+
+    data->transaction = 0;
+    will_return(__wrap_wdb_begin2, -1);
+    expect_string(__wrap__mdebug1, formatted_msg, "at wdb_users_save(): cannot begin transaction");
+
+    output = wdb_users_save(data, "scan_id", "scan_time", "name", "full_name", "home", 1, 1, "uuid", "groups", 1, 1, 1.0, 1,
+                            "shell", "type", true, false, 1, 1, 1.0, 1.0, 1, "hash", 1, 1, 1, 1, "status", 1, 1, "ip", true, 
+                            "type", "tty", "checksum", false);
+    assert_int_equal(output, -1);
+}
+
+void test_wdb_users_save_insert_fail(void **state) {
+    int output = 0;
+    wdb_t *data = (wdb_t *)*state;
+
+    data->transaction = 1;
+
+    will_return(__wrap_wdb_stmt_cache, -1);
+    expect_string(__wrap__mdebug1, formatted_msg, "at wdb_users_insert(): cannot cache statement");
+
+    output = wdb_users_save(data, "scan_id", "scan_time", "name", "full_name", "home", 1, 1, "uuid", "groups", 1, 1, 1.0, 1,
+                            "shell", "type", true, false, 1, 1, 1.0, 1.0, 1, "hash", 1, 1, 1, 1, "status", 1, 1, "ip", true, 
+                            "type", "tty", "checksum", false);    
+    assert_int_equal(output, -1);
+}
+
+void test_wdb_users_save_success(void **state) {
+    int output = 0;
+    wdb_t *data = (wdb_t *)*state;
+
+    data->transaction = 0;
+    will_return(__wrap_wdb_begin2, 0);
+
+    will_return(__wrap_wdb_stmt_cache, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 1);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "scan_id");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 2);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "scan_time");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 3);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "name");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 4);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "full_name");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 5);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "home");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_int, index, 6);
+    expect_value(__wrap_sqlite3_bind_int, value, 1);
+    will_return(__wrap_sqlite3_bind_int, 0);
+    expect_value(__wrap_sqlite3_bind_int, index, 7);
+    expect_value(__wrap_sqlite3_bind_int, value, 1);
+    will_return(__wrap_sqlite3_bind_int, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 8);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "uuid");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 9);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "groups");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_int, index, 10);
+    expect_value(__wrap_sqlite3_bind_int, value, 1);
+    will_return(__wrap_sqlite3_bind_int, 0);
+    expect_value(__wrap_sqlite3_bind_int, index, 11);
+    expect_value(__wrap_sqlite3_bind_int, value, 1);
+    will_return(__wrap_sqlite3_bind_int, 0);
+    expect_value(__wrap_sqlite3_bind_double, index, 12);
+    expect_value(__wrap_sqlite3_bind_double, value, 1.0);
+    will_return(__wrap_sqlite3_bind_double, 0);
+    expect_value(__wrap_sqlite3_bind_int, index, 13);
+    expect_value(__wrap_sqlite3_bind_int, value, 1);
+    will_return(__wrap_sqlite3_bind_int, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 14);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "shell");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 15);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "type");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_int, index, 16);
+    expect_value(__wrap_sqlite3_bind_int, value, true);
+    will_return(__wrap_sqlite3_bind_int, 0);    
+    expect_value(__wrap_sqlite3_bind_int, index, 17);
+    expect_value(__wrap_sqlite3_bind_int, value, false);
+    will_return(__wrap_sqlite3_bind_int, 0);
+    expect_value(__wrap_sqlite3_bind_int64, index, 18);
+    expect_value(__wrap_sqlite3_bind_int64, value, 1);
+    will_return(__wrap_sqlite3_bind_int64, 0);  
+    expect_value(__wrap_sqlite3_bind_int, index, 19);
+    expect_value(__wrap_sqlite3_bind_int, value, 1);
+    will_return(__wrap_sqlite3_bind_int, 0); 
+    expect_value(__wrap_sqlite3_bind_double, index, 20);
+    expect_value(__wrap_sqlite3_bind_double, value, 1.0);
+    will_return(__wrap_sqlite3_bind_double, 0);
+    expect_value(__wrap_sqlite3_bind_double, index, 21);
+    expect_value(__wrap_sqlite3_bind_double, value, 1.0);
+    will_return(__wrap_sqlite3_bind_double, 0);    
+    expect_value(__wrap_sqlite3_bind_int, index, 22);
+    expect_value(__wrap_sqlite3_bind_int, value, 1);
+    will_return(__wrap_sqlite3_bind_int, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 23);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "hash");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_int, index, 24);
+    expect_value(__wrap_sqlite3_bind_int, value, 1);
+    will_return(__wrap_sqlite3_bind_int, 0);    
+    expect_value(__wrap_sqlite3_bind_int, index, 25);
+    expect_value(__wrap_sqlite3_bind_int, value, 1);
+    will_return(__wrap_sqlite3_bind_int, 0);    
+    expect_value(__wrap_sqlite3_bind_int, index, 26);
+    expect_value(__wrap_sqlite3_bind_int, value, 1);
+    will_return(__wrap_sqlite3_bind_int, 0);    
+    expect_value(__wrap_sqlite3_bind_int, index, 27);
+    expect_value(__wrap_sqlite3_bind_int, value, 1);
+    will_return(__wrap_sqlite3_bind_int, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 28);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "status");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_int, index, 29);
+    expect_value(__wrap_sqlite3_bind_int, value, 1);
+    will_return(__wrap_sqlite3_bind_int, 0);
+    expect_value(__wrap_sqlite3_bind_int64, index, 30);
+    expect_value(__wrap_sqlite3_bind_int64, value, 1);
+    will_return(__wrap_sqlite3_bind_int64, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 31);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "ip");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_int, index, 32);
+    expect_value(__wrap_sqlite3_bind_int, value, true);
+    will_return(__wrap_sqlite3_bind_int, 0);  
+    expect_value(__wrap_sqlite3_bind_text, pos, 33);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "type");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 34);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "tty");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 35);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "checksum");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    will_return(__wrap_wdb_step, SQLITE_DONE);
+
+    output = wdb_users_save(data, "scan_id", "scan_time", "name", "full_name", "home", 1, 1, "uuid", "groups", 1, 1, 1.0, 1,
+                            "shell", "type", true, false, 1, 1, 1.0, 1.0, 1, "hash", 1, 1, 1, 1, "status", 1, 1, "ip", true, 
+                            "type", "tty", "checksum", false);    
+    assert_int_equal(output, 0);
+}
+
+/* wdb_users_insert */
+void test_wdb_users_insert_sql_fail(void **state) {
+    int output = 0;
+    wdb_t *data = (wdb_t *)*state;
+
+    will_return(__wrap_wdb_stmt_cache, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 1);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "scan_id");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 2);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "scan_time");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 3);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "name");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 4);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "full_name");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 5);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "home");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_int, index, 6);
+    expect_value(__wrap_sqlite3_bind_int, value, 1);
+    will_return(__wrap_sqlite3_bind_int, 0);
+    expect_value(__wrap_sqlite3_bind_int, index, 7);
+    expect_value(__wrap_sqlite3_bind_int, value, 1);
+    will_return(__wrap_sqlite3_bind_int, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 8);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "uuid");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 9);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "groups");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_int, index, 10);
+    expect_value(__wrap_sqlite3_bind_int, value, 1);
+    will_return(__wrap_sqlite3_bind_int, 0);
+    expect_value(__wrap_sqlite3_bind_int, index, 11);
+    expect_value(__wrap_sqlite3_bind_int, value, 1);
+    will_return(__wrap_sqlite3_bind_int, 0);
+    expect_value(__wrap_sqlite3_bind_double, index, 12);
+    expect_value(__wrap_sqlite3_bind_double, value, 1.0);
+    will_return(__wrap_sqlite3_bind_double, 0);
+    expect_value(__wrap_sqlite3_bind_int, index, 13);
+    expect_value(__wrap_sqlite3_bind_int, value, 1);
+    will_return(__wrap_sqlite3_bind_int, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 14);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "shell");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 15);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "type");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_int, index, 16);
+    expect_value(__wrap_sqlite3_bind_int, value, true);
+    will_return(__wrap_sqlite3_bind_int, 0);    
+    expect_value(__wrap_sqlite3_bind_int, index, 17);
+    expect_value(__wrap_sqlite3_bind_int, value, false);
+    will_return(__wrap_sqlite3_bind_int, 0);
+    expect_value(__wrap_sqlite3_bind_int64, index, 18);
+    expect_value(__wrap_sqlite3_bind_int64, value, 1);
+    will_return(__wrap_sqlite3_bind_int64, 0);  
+    expect_value(__wrap_sqlite3_bind_int, index, 19);
+    expect_value(__wrap_sqlite3_bind_int, value, 1);
+    will_return(__wrap_sqlite3_bind_int, 0); 
+    expect_value(__wrap_sqlite3_bind_double, index, 20);
+    expect_value(__wrap_sqlite3_bind_double, value, 1.0);
+    will_return(__wrap_sqlite3_bind_double, 0);
+    expect_value(__wrap_sqlite3_bind_double, index, 21);
+    expect_value(__wrap_sqlite3_bind_double, value, 1.0);
+    will_return(__wrap_sqlite3_bind_double, 0);    
+    expect_value(__wrap_sqlite3_bind_int, index, 22);
+    expect_value(__wrap_sqlite3_bind_int, value, 1);
+    will_return(__wrap_sqlite3_bind_int, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 23);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "hash");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_int, index, 24);
+    expect_value(__wrap_sqlite3_bind_int, value, 1);
+    will_return(__wrap_sqlite3_bind_int, 0);    
+    expect_value(__wrap_sqlite3_bind_int, index, 25);
+    expect_value(__wrap_sqlite3_bind_int, value, 1);
+    will_return(__wrap_sqlite3_bind_int, 0);    
+    expect_value(__wrap_sqlite3_bind_int, index, 26);
+    expect_value(__wrap_sqlite3_bind_int, value, 1);
+    will_return(__wrap_sqlite3_bind_int, 0);    
+    expect_value(__wrap_sqlite3_bind_int, index, 27);
+    expect_value(__wrap_sqlite3_bind_int, value, 1);
+    will_return(__wrap_sqlite3_bind_int, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 28);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "status");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_int, index, 29);
+    expect_value(__wrap_sqlite3_bind_int, value, 1);
+    will_return(__wrap_sqlite3_bind_int, 0);
+    expect_value(__wrap_sqlite3_bind_int64, index, 30);
+    expect_value(__wrap_sqlite3_bind_int64, value, 1);
+    will_return(__wrap_sqlite3_bind_int64, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 31);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "ip");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_int, index, 32);
+    expect_value(__wrap_sqlite3_bind_int, value, true);
+    will_return(__wrap_sqlite3_bind_int, 0);  
+    expect_value(__wrap_sqlite3_bind_text, pos, 33);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "type");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 34);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "tty");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 35);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "checksum");
+    will_return(__wrap_sqlite3_bind_text, 0);
+
+    will_return(__wrap_wdb_step, 1);
+    will_return(__wrap_sqlite3_errmsg, "ERROR");
+    expect_string(__wrap__merror, formatted_msg, "SQLite: ERROR");
+
+    output = wdb_users_insert(data, "scan_id", "scan_time", "name", "full_name", "home", 1, 1, "uuid", "groups", 1, 1, 1.0, 1,
+                            "shell", "type", true, false, 1, 1, 1.0, 1.0, 1, "hash", 1, 1, 1, 1, "status", 1, 1, "ip", true, 
+                            "type", "tty", "checksum", false);    
+    assert_int_equal(output, -1);
+}
+
+/* Test wdb_groups_save */
+void test_wdb_groups_save_transaction_fail(void **state) {
+    int output = 0;
+    wdb_t *data = (wdb_t *)*state;
+
+    data->transaction = 0;
+    will_return(__wrap_wdb_begin2, -1);
+    expect_string(__wrap__mdebug1, formatted_msg, "at wdb_groups_save(): cannot begin transaction");
+
+    output = wdb_groups_save(data, "scan_id", "scan_time", 1, "name", "description", 1, "uuid", true, "users", "checksum", false);
+    assert_int_equal(output, -1);
+}
+
+void test_wdb_groups_save_insert_fail(void **state) {
+    int output = 0;
+    wdb_t *data = (wdb_t *)*state;
+
+    data->transaction = 1;
+
+    will_return(__wrap_wdb_stmt_cache, -1);
+    expect_string(__wrap__mdebug1, formatted_msg, "at wdb_groups_insert(): cannot cache statement");
+
+    output = wdb_groups_save(data, "scan_id", "scan_time", 1, "name", "description", 1, "uuid", true, "users", "checksum", false);
+    assert_int_equal(output, -1);
+}
+
+void test_wdb_groups_save_success(void **state) {
+    int output = 0;
+    wdb_t *data = (wdb_t *)*state;
+
+    data->transaction = 0;
+    will_return(__wrap_wdb_begin2, 0);
+
+    will_return(__wrap_wdb_stmt_cache, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 1);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "scan_id");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 2);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "scan_time");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_int, index, 3);
+    expect_value(__wrap_sqlite3_bind_int, value, 1);
+    will_return(__wrap_sqlite3_bind_int, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 4);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "name");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 5);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "description");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_int64, index, 6);
+    expect_value(__wrap_sqlite3_bind_int64, value, 1);
+    will_return(__wrap_sqlite3_bind_int64, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 7);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "uuid");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_int, index, 8);
+    expect_value(__wrap_sqlite3_bind_int, value, true);
+    will_return(__wrap_sqlite3_bind_int, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 9);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "users");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 10);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "checksum");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    will_return(__wrap_wdb_step, SQLITE_DONE);
+
+    output = wdb_groups_save(data, "scan_id", "scan_time", 1, "name", "description", 1, "uuid", true, "users", "checksum", false);
+    assert_int_equal(output, 0);
+}
+
+/* wdb_groups_insert */
+void test_wdb_groups_insert_sql_fail(void **state) {
+    int output = 0;
+    wdb_t *data = (wdb_t *)*state;
+
+    will_return(__wrap_wdb_stmt_cache, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 1);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "scan_id");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 2);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "scan_time");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_int, index, 3);
+    expect_value(__wrap_sqlite3_bind_int, value, 1);
+    will_return(__wrap_sqlite3_bind_int, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 4);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "name");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 5);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "description");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_int64, index, 6);
+    expect_value(__wrap_sqlite3_bind_int64, value, 1);
+    will_return(__wrap_sqlite3_bind_int64, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 7);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "uuid");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_int, index, 8);
+    expect_value(__wrap_sqlite3_bind_int, value, true);
+    will_return(__wrap_sqlite3_bind_int, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 9);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "users");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 10);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "checksum");
+    will_return(__wrap_sqlite3_bind_text, 0);
+
+    will_return(__wrap_wdb_step, 1);
+    will_return(__wrap_sqlite3_errmsg, "ERROR");
+    expect_string(__wrap__merror, formatted_msg, "SQLite: ERROR");
+
+    output = wdb_groups_insert(data, "scan_id", "scan_time", 1, "name", "description", 1, "uuid", true, "users", "checksum", false);
+    assert_int_equal(output, -1);
+}
+
 /* Test wdb_syscollector_save2 */
 void test_wdb_syscollector_save2_parser_json_fail(void **state) {
     int output = 0;
@@ -3419,7 +3807,8 @@ void test_wdb_syscollector_save2_fail(void **state) {
     will_return(__wrap_cJSON_Parse, 1);
     will_return(__wrap_cJSON_GetObjectItem, 1);
     expect_function_call(__wrap_cJSON_Delete);
-
+    expect_string(__wrap__mdebug1, formatted_msg, "at wdb_syscollector_save2(): Invalid component.");
+    
     output = wdb_syscollector_save2(data, 0, NULL);
     assert_int_equal(output, -1);
 }
@@ -5232,6 +5621,18 @@ int main() {
         cmocka_unit_test_setup_teardown(test_wdb_process_delete_cache_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_process_delete_sql_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_process_delete_success, test_setup, test_teardown),
+        /* Test wdb_users_insert */
+        cmocka_unit_test_setup_teardown(test_wdb_users_insert_sql_fail, test_setup, test_teardown),
+        /* Test wdb_users_save */
+        cmocka_unit_test_setup_teardown(test_wdb_users_save_transaction_fail, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_users_save_insert_fail, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_users_save_success, test_setup, test_teardown),
+        /* Test wdb_groups_insert */
+        cmocka_unit_test_setup_teardown(test_wdb_groups_insert_sql_fail, test_setup, test_teardown),
+        /* Test wdb_groups_save */
+        cmocka_unit_test_setup_teardown(test_wdb_groups_save_transaction_fail, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_groups_save_insert_fail, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_groups_save_success, test_setup, test_teardown),
         /* Test wdb_syscollector_save2 */
         cmocka_unit_test_setup_teardown(test_wdb_syscollector_save2_parser_json_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_syscollector_save2_get_attributes_fail, test_setup, test_teardown),

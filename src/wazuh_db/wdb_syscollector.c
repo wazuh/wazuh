@@ -1140,7 +1140,7 @@ int wdb_process_delete(wdb_t * wdb, const char * scan_id) {
 
 // Function to save users info into the DB. Return 0 on success or -1 on error.
 int wdb_users_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * user_name, const char * user_full_name, 
-                   const char * user_home, const int user_id, int user_uid_signed, const char * user_uuid, const char * user_groups, 
+                   const char * user_home, int user_id, int user_uid_signed, const char * user_uuid, const char * user_groups, 
                    int user_group_id, int user_group_id_signed, double user_created, int user_roles_sudo, const char * user_shell, 
                    const char * user_type, const bool user_is_hidden, const bool user_is_remote, long user_last_login, 
                    int user_auth_failures_count, double user_auth_failures_timestamp, double user_password_last_set_time, 
@@ -1150,7 +1150,7 @@ int wdb_users_save(wdb_t * wdb, const char * scan_id, const char * scan_time, co
                    const bool login_status, const char * login_type, const char * login_tty, const char * checksum, const bool replace)
 {
     if (!wdb->transaction && wdb_begin2(wdb) < 0){
-        mdebug1("at wdb_process_save(): cannot begin transaction");
+        mdebug1("at wdb_users_save(): cannot begin transaction");
         return -1;
     }
 
@@ -1168,7 +1168,7 @@ int wdb_users_save(wdb_t * wdb, const char * scan_id, const char * scan_time, co
 
 // Insert user info tuple. Return 0 on success or -1 on error.
 int wdb_users_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * user_name, const char * user_full_name, 
-                     const char * user_home, const int user_id, int user_uid_signed, const char * user_uuid, const char * user_groups, 
+                     const char * user_home, int user_id, int user_uid_signed, const char * user_uuid, const char * user_groups, 
                      int user_group_id, int user_group_id_signed, double user_created, int user_roles_sudo, const char * user_shell, 
                      const char * user_type, const bool user_is_hidden, const bool user_is_remote, long user_last_login, 
                      int user_auth_failures_count, double user_auth_failures_timestamp, double user_password_last_set_time, 
@@ -1184,7 +1184,7 @@ int wdb_users_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, 
     }
 
     if (wdb_stmt_cache(wdb, replace ? WDB_STMT_USER_INSERT2 : WDB_STMT_USER_INSERT) < 0) {
-        mdebug1("at wdb_process_insert(): cannot cache statement");
+        mdebug1("at wdb_users_insert(): cannot cache statement");
         return OS_INVALID;
     }
 
@@ -1268,7 +1268,7 @@ int wdb_groups_save(wdb_t * wdb, const char * scan_id, const char * scan_time, l
                     const char * group_users, const char * checksum, const bool replace)
 {
     if (!wdb->transaction && wdb_begin2(wdb) < 0){
-        mdebug1("at wdb_process_save(): cannot begin transaction");
+        mdebug1("at wdb_groups_save(): cannot begin transaction");
         return -1;
     }
 
@@ -1291,7 +1291,7 @@ int wdb_groups_insert(wdb_t * wdb, const char * scan_id, const char * scan_time,
     }
 
     if (wdb_stmt_cache(wdb, replace ? WDB_STMT_GROUP_INSERT2 : WDB_STMT_GROUP_INSERT) < 0) {
-        mdebug1("at wdb_process_insert(): cannot cache statement");
+        mdebug1("at wdb_groups_insert(): cannot cache statement");
         return OS_INVALID;
     }
 
