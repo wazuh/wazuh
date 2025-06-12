@@ -685,6 +685,8 @@ nlohmann::json SysInfo::getUsers() const
     ShadowProvider shadowProvide;
     auto collectedShadow = shadowProvide.collect();
 
+    UserGroupsProvider userGroupsProvider;
+
     for (auto& user : collectedUsers)
     {
         nlohmann::json userItem {};
@@ -693,13 +695,38 @@ nlohmann::json SysInfo::getUsers() const
 
         userItem["user_full_name"] = user["description"];
         userItem["user_home"] = user["directory"];
-        userItem["user_id"] = user["uid"];
         userItem["user_is_remote"] = user["include_remote"];
         userItem["user_name"] = username;
         userItem["user_shell"] = user["shell"];
         userItem["user_uid_signed"] = user["uid_signed"];
         userItem["user_group_id_signed"] = user["gid_signed"];
         userItem["user_group_id"] = user["gid"];
+
+        std::set<gid_t> uid {static_cast<gid_t>(user["uid"].get<int>())};
+
+        userItem["user_id"] = uid;
+        auto collectedUsersGroups = userGroupsProvider.getGroupNamesByUid(uid);
+
+        if (collectedUsersGroups.empty())
+        {
+            userItem["user_groups"] = nullptr;
+        }
+        else
+        {
+            std::string accumGroups;
+
+            for (const auto& group : collectedUsersGroups)
+            {
+                if (!accumGroups.empty())
+                {
+                    accumGroups += secondaryArraySeparator;
+                }
+
+                accumGroups += group.get<std::string>();
+            }
+
+            userItem["user_groups"] = accumGroups;
+        }
 
         // Only in windows
         userItem["user_type"] = nullptr;
@@ -713,9 +740,6 @@ nlohmann::json SysInfo::getUsers() const
         userItem["user_created"] = nullptr;
         userItem["user_auth_failed_count"] = nullptr;
         userItem["user_auth_failed_timestamp"] = nullptr;
-
-        //TODO: get it from groups use secondaryArraySeparator
-        userItem["user_groups"] = nullptr;
 
         auto matched = false;
 

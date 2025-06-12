@@ -538,6 +538,14 @@ nlohmann::json SysInfo::getUsers() const
     UsersProvider usersProvider;
     auto collectedUsers = usersProvider.collect();
 
+    LoggedInUsersProvider loggedInUserProvider;
+    auto collectedLoggedInUser = loggedInUserProvider.collect();
+
+    SudoersProvider sudoersProvider;
+    auto collectedSudoers = sudoersProvider.collect();
+
+    UserGroupsProvider userGroupsProvider;
+
     for (auto& user : collectedUsers)
     {
         nlohmann::json userItem {};
@@ -546,12 +554,38 @@ nlohmann::json SysInfo::getUsers() const
 
         userItem["user_full_name"] = user["description"];
         userItem["user_home"] = user["directory"];
-        userItem["user_id"] = user["uid"];
         userItem["user_name"] = username;
         userItem["user_shell"] = user["shell"];
         userItem["user_uid_signed"] = user["uid_signed"];
         userItem["user_group_id_signed"] = user["gid_signed"];
         userItem["user_group_id"] = user["gid"];
+
+        std::set<gid_t> uid {static_cast<gid_t>(user["uid"].get<int>())};
+
+        userItem["user_id"] = uid;
+        auto collectedUsersGroups = userGroupsProvider.getGroupNamesByUid(uid);
+
+        if (collectedUsersGroups.empty())
+        {
+            userItem["user_groups"] = nullptr;
+        }
+        else
+        {
+            std::string accumGroups;
+
+            for (const auto& group : collectedUsersGroups)
+            {
+                if (!accumGroups.empty())
+                {
+                    accumGroups += secondaryArraySeparator;
+                }
+
+                accumGroups += group.get<std::string>();
+            }
+
+            userItem["user_groups"] = accumGroups;
+        }
+
         // Macos
         userItem["user_password_last_set_time"] = user["password_last_set_time"];
         userItem["user_is_hidden"] = user["is_hidden"];
@@ -567,13 +601,7 @@ nlohmann::json SysInfo::getUsers() const
         // Only in Linux
         userItem["user_is_remote"] = nullptr;
 
-        //TODO: get it from groups use secondaryArraySeparator
-        userItem["user_groups"] = nullptr;
-
         auto matched = false;
-
-        LoggedInUsersProvider loggedInUserProvider;
-        auto collectedLoggedInUser = loggedInUserProvider.collect();
 
         //TODO: Avoid this iteration, move logic to LoggedInUsersProvider
         for (auto& item : collectedLoggedInUser)
@@ -618,9 +646,6 @@ nlohmann::json SysInfo::getUsers() const
         userItem["user_password_min_days_between_changes"] = nullptr;
         userItem["user_password_status"] = nullptr;
         userItem["user_password_warning_days_before_expiration"] = nullptr;
-
-        SudoersProvider sudoersProvider;
-        auto collectedSudoers = sudoersProvider.collect();
 
         // By default, user is not sudoer.
         userItem["user_roles_sudo"] = 0;
