@@ -1203,58 +1203,30 @@ int wdb_users_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, 
     sqlite3_bind_int(stmt, 7, user_uid_signed);
     sqlite3_bind_text(stmt, 8, user_uuid, -1, NULL);
     sqlite3_bind_text(stmt, 9, user_groups, -1, NULL);
-    if (user_group_id >0) {
+    if (user_group_id >= 0) {
         sqlite3_bind_int(stmt, 10, user_group_id);
     } else {
         sqlite3_bind_null(stmt, 10);
     }
     sqlite3_bind_int(stmt, 11, user_group_id_signed);
-    if (user_created >= 0) {
-        sqlite3_bind_double(stmt, 12, user_created);
-    } else {
-        sqlite3_bind_null(stmt, 12);
-    }
+    sqlite3_bind_double(stmt, 12, user_created);
     sqlite3_bind_int(stmt, 13, user_roles_sudo);
     sqlite3_bind_text(stmt, 14, user_shell, -1, NULL);
     sqlite3_bind_text(stmt, 15, user_type, -1, NULL);
     sqlite3_bind_int(stmt, 16, user_is_hidden);
     sqlite3_bind_int(stmt, 17, user_is_remote);
-    if (user_last_login >= 0) {
-        sqlite3_bind_int64(stmt, 18, user_last_login);
-    } else {
-        sqlite3_bind_null(stmt, 18);
-    }
+    sqlite3_bind_int64(stmt, 18, user_last_login);
     if (user_auth_failures_count >= 0) {
         sqlite3_bind_int(stmt, 19, user_auth_failures_count);
     } else {
         sqlite3_bind_null(stmt, 19);
     }
-    if (user_auth_failures_timestamp >= 0) {
-        sqlite3_bind_double(stmt, 20, user_auth_failures_timestamp);
-    } else {
-        sqlite3_bind_null(stmt, 20);
-    }
-    if (user_password_last_set_time >= 0) {
-        sqlite3_bind_double(stmt, 21, user_password_last_set_time);
-    } else {
-        sqlite3_bind_null(stmt, 21);
-    }
-    if (user_password_expiration_date >= 0) {
-        sqlite3_bind_int(stmt, 22, user_password_expiration_date);
-    } else {
-        sqlite3_bind_null(stmt, 22);
-    }
+    sqlite3_bind_double(stmt, 20, user_auth_failures_timestamp);
+    sqlite3_bind_double(stmt, 21, user_password_last_set_time);
+    sqlite3_bind_int(stmt, 22, user_password_expiration_date);
     sqlite3_bind_text(stmt, 23, user_password_hash_algorithm, -1, NULL);
-    if (user_password_inactive_days >= 0) {
-        sqlite3_bind_int(stmt, 24, user_password_inactive_days);
-    } else {
-        sqlite3_bind_null(stmt, 24);
-    }
-    if (user_password_last_change >= 0) {
-        sqlite3_bind_int(stmt, 25, user_password_last_change);
-    } else {
-        sqlite3_bind_null(stmt, 25);
-    }
+    sqlite3_bind_int(stmt, 24, user_password_inactive_days);
+    sqlite3_bind_int(stmt, 25, user_password_last_change);
     if (user_password_max_days_between_changes >= 0) {
         sqlite3_bind_int(stmt, 26, user_password_max_days_between_changes);
     } else {
@@ -1545,19 +1517,19 @@ int wdb_syscollector_users_save2(wdb_t * wdb, const cJSON * attributes)
     const char * user_type = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "user_type"));
     const bool user_is_hidden = cJSON_GetObjectItem(attributes, "user_is_hidden") ? cJSON_GetObjectItem(attributes, "user_is_hidden")->valueint : false;
     const bool user_is_remote = cJSON_GetObjectItem(attributes, "user_is_remote") ? cJSON_GetObjectItem(attributes, "user_is_remote")->valueint : false;
-    const long user_last_login = cJSON_GetObjectItem(attributes, "user_last_login") ? cJSON_GetObjectItem(attributes, "user_last_login")->valueint : 0;
+    const long user_last_login = cJSON_GetObjectItem(attributes, "user_last_login") ? cJSON_GetObjectItem(attributes, "user_last_login")->valuedouble : 0;
     const int user_auth_failures_count = cJSON_GetObjectItem(attributes, "user_auth_failures_count") ? cJSON_GetObjectItem(attributes, "user_auth_failures_count") ->valueint : 0;
     const double user_auth_failures_timestamp = cJSON_GetObjectItem(attributes, "user_auth_failures_timestamp") ? cJSON_GetObjectItem(attributes, "user_auth_failures_timestamp") ->valuedouble : 0.0;
     const double user_password_last_set_time = cJSON_GetObjectItem(attributes, "user_password_last_set_time") ? cJSON_GetObjectItem(attributes, "user_password_last_set_time")->valuedouble : 0.0;
     const int user_password_expiration_date = cJSON_GetObjectItem(attributes, "user_password_expiration_date") ? cJSON_GetObjectItem(attributes, "user_password_expiration_date")->valueint : 0;
     const char * user_password_hash_algorithm = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "user_password_hash_algorithm"));
     const int user_password_inactive_days = cJSON_GetObjectItem(attributes, "user_password_inactive_days") ? cJSON_GetObjectItem(attributes, "user_password_inactive_days")->valueint : 0;
-    const int user_password_last_change = cJSON_GetObjectItem(attributes, "user_pasword_last_change") ? cJSON_GetObjectItem(attributes, "user_pasword_last_change")->valueint : 0;
+    const int user_password_last_change = cJSON_GetObjectItem(attributes, "user_password_last_change") ? cJSON_GetObjectItem(attributes, "user_password_last_change")->valueint : 0;
     const int user_password_max_days_between_changes = cJSON_GetObjectItem(attributes, "user_password_max_days_between_changes") ? cJSON_GetObjectItem(attributes, "user_password_max_days_between_changes")->valueint : 0;
     const int user_password_min_days_between_changes = cJSON_GetObjectItem(attributes, "user_password_min_days_between_changes") ? cJSON_GetObjectItem(attributes, "user_password_min_days_between_changes")->valueint : 0;
     const char * user_password_status = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "user_password_status"));
     const int user_password_warning_days_before_expiration = cJSON_GetObjectItem(attributes, "user_password_warning_days_before_expiration") ? cJSON_GetObjectItem(attributes, "user_password_warning_days_before_expiration")->valueint : 0;
-    const long process_pid = cJSON_GetObjectItem(attributes, "process_pid") ? cJSON_GetObjectItem(attributes, "process_pid")->valueint : 0;
+    const long process_pid = cJSON_GetObjectItem(attributes, "process_pid") ? cJSON_GetObjectItem(attributes, "process_pid")->valuedouble : 0;
     const char * host_ip = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "host_ip"));
     const bool login_status = cJSON_GetObjectItem(attributes, "login_status") ? cJSON_GetObjectItem(attributes, "login_status")->valueint : false;
     const char * login_type = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "login_type"));
@@ -1575,11 +1547,11 @@ int wdb_syscollector_groups_save2(wdb_t * wdb, const cJSON * attributes)
 {
     const char * scan_id = "0";
     const char * scan_time = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "scan_time"));
-    const long group_id = cJSON_GetObjectItem(attributes, "group_id") ? cJSON_GetObjectItem(attributes, "group_id")->valueint : 0;
+    const long group_id = cJSON_GetObjectItem(attributes, "group_id") ? cJSON_GetObjectItem(attributes, "group_id")->valuedouble : 0;
     const char * group_name = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "group_name"));
     const char * group_description = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "group_description"));
-    const long group_id_signed = cJSON_GetObjectItem(attributes, "group_id_signed") ? cJSON_GetObjectItem(attributes, "group_id_signed")->valueint : 0;
-    const char * group_uuid = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "group_group_uuid"));
+    const long group_id_signed = cJSON_GetObjectItem(attributes, "group_id_signed") ? cJSON_GetObjectItem(attributes, "group_id_signed")->valuedouble : 0;
+    const char * group_uuid = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "group_uuid"));
     const bool group_is_hidden = cJSON_GetObjectItem(attributes, "group_is_hidden") ? cJSON_GetObjectItem(attributes, "group_is_hidden")->valueint : false;
     char * group_users = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "group_users"));
     const char * checksum = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "checksum"));

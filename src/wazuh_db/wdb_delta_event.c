@@ -26,8 +26,26 @@
         (GT(field_value, 0) && (EQ(field_value, 100) || LT(field_value, 100))): true \
 )
 
+#define IS_VALID_USERS_VALUE(field_name, field_value) ( \
+    !strncmp(field_name, "user_id", 7) ? \
+        (GT(field_value, 0) || EQ(field_value, 0)) : \
+    !strncmp(field_name, "user_group_id", 13) ? \
+        (GT(field_value, 0) || EQ(field_value, 0)) : \
+    !strncmp(field_name, "user_auth_failures_count", 24) ? \
+        (GT(field_value, 0) || EQ(field_value, 0)) : \
+    !strncmp(field_name, "user_password_max_days_between_changes", 38) ? \
+        (GT(field_value, 0) || EQ(field_value, 0)) : \
+    !strncmp(field_name, "user_password_min_days_between_changes", 38) ? \
+        (GT(field_value, 0) || EQ(field_value, 0)) : \
+    !strncmp(field_name, "user_password_warning_days_before_expiration", 44) ? \
+        (GT(field_value, 0) || EQ(field_value, 0)) : \
+    !strncmp(field_name, "process_pid", 11) ? \
+        (GT(field_value, 0) || EQ(field_value, 0)) : true \
+)
+
 #define IS_VALID_VALUE(table_name, field_name, field_value) (\
-    !strncmp(table_name, "sys_hwinfo", 10) ? IS_VALID_HWINFO_VALUE(field_name, field_value) : true \
+    !strncmp(table_name, "sys_hwinfo", 10) ? IS_VALID_HWINFO_VALUE(field_name, field_value) : \
+    !strncmp(table_name, "sys_users", 9) ? IS_VALID_USERS_VALUE(field_name, field_value) : true \
 )
 
 STATIC bool wdb_dbsync_stmt_bind_from_json(sqlite3_stmt * stmt, int index, field_type_t type, const cJSON * value, const char * field_name,
@@ -319,14 +337,29 @@ STATIC bool wdb_dbsync_stmt_bind_from_json(sqlite3_stmt * stmt, int index, field
                 case cJSON_String: {
                     char * endptr;
                     const long long long_value = strtoll(value->valuestring, &endptr, 10);
-                    if (NULL != endptr && '\0' == *endptr &&
-                        SQLITE_OK == sqlite3_bind_int64(stmt, index, (sqlite3_int64) long_value)) {
-                        ret_val = true;
+                    int sqlite3_bind = SQLITE_ERROR;
+                    if (NULL != endptr && '\0' == *endptr) {
+                        if (IS_VALID_VALUE(table_name, field_name, long_value)) {
+                            sqlite3_bind = sqlite3_bind_int64(stmt, index, (sqlite3_int64) long_value);
+                        } else {
+                            sqlite3_bind = sqlite3_bind_null(stmt, index);
+                        }
+
+                        if (SQLITE_OK == sqlite3_bind) {
+                            ret_val = true;
+                        }
                     }
                     break;
                 }
                 case cJSON_Number:
-                    if (SQLITE_OK == sqlite3_bind_int64(stmt, index, (sqlite3_int64) value->valuedouble)) {
+                    int sqlite3_bind = SQLITE_ERROR;
+                    if (IS_VALID_VALUE(table_name, field_name, value->valuedouble)) {
+                        sqlite3_bind = sqlite3_bind_int64(stmt, index, (sqlite3_int64) value->valuedouble);
+                    } else {
+                        sqlite3_bind = sqlite3_bind_null(stmt, index);
+                    }
+
+                    if (SQLITE_OK == sqlite3_bind) {
                         ret_val = true;
                     }
                     break;
