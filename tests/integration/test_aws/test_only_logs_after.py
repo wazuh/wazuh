@@ -563,6 +563,7 @@ configurator.configure_test(configuration_file='inspector_configuration_with_onl
 
 
 @pytest.mark.tier(level=0)
+@pytest.mark.skip(reason="The Inspector Classic service was deprecated. A migration to Inspector v2 is required")
 @pytest.mark.parametrize('test_configuration, metadata',
                          zip(configurator.test_configuration_template, configurator.metadata),
                          ids=configurator.cases_ids)
@@ -870,7 +871,7 @@ configurator.configure_test(cases_file='cases_inspector_multiple_calls.yaml')
 @pytest.mark.parametrize('metadata',
                          configurator.metadata,
                          ids=configurator.cases_ids)
-@pytest.mark.xfail
+@pytest.mark.skip(reason="The Inspector Classic service was deprecated. A migration to Inspector v2 is required")
 def test_inspector_multiple_calls(
     metadata, clean_aws_services_db, load_wazuh_basic_configuration, restart_wazuh_function
 ):

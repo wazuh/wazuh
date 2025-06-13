@@ -2103,7 +2103,7 @@ int wdb_global_create_backup(wdb_t* wdb, char* output, const char* tag) {
 }
 
 int wdb_global_remove_old_backups() {
-    DIR* dp = opendir(WDB_BACKUP_FOLDER);
+    DIR* dp = wopendir(WDB_BACKUP_FOLDER);
 
     if(!dp) {
         mdebug1("Unable to open backup directory '%s'", WDB_BACKUP_FOLDER);
@@ -2143,7 +2143,7 @@ cJSON* wdb_global_get_backups() {
     cJSON* j_backups = NULL;
     struct dirent *entry = NULL;
 
-    DIR* dp = opendir(WDB_BACKUP_FOLDER);
+    DIR* dp = wopendir(WDB_BACKUP_FOLDER);
 
     if(!dp) {
         mdebug1("Unable to open backup directory '%s'", WDB_BACKUP_FOLDER);
@@ -2225,7 +2225,7 @@ end:
 }
 
 time_t wdb_global_get_most_recent_backup(char **most_recent_backup_name) {
-    DIR* dp = opendir(WDB_BACKUP_FOLDER);
+    DIR* dp = wopendir(WDB_BACKUP_FOLDER);
 
     if(!dp) {
         mdebug1("Unable to open backup directory '%s'", WDB_BACKUP_FOLDER);
@@ -2244,7 +2244,7 @@ time_t wdb_global_get_most_recent_backup(char **most_recent_backup_name) {
         struct stat backup_info = {0};
 
         snprintf(tmp_path, OS_SIZE_512, "%s/%s", WDB_BACKUP_FOLDER, entry->d_name);
-        if(!stat(tmp_path, &backup_info)) {
+        if(!w_stat(tmp_path, &backup_info)) {
             if(backup_info.st_mtime >= most_recent_backup_time) {
                 most_recent_backup_time = backup_info.st_mtime;
                 tmp_backup_name = entry->d_name;
@@ -2261,7 +2261,7 @@ time_t wdb_global_get_most_recent_backup(char **most_recent_backup_name) {
 }
 
 time_t wdb_global_get_oldest_backup(char **oldest_backup_name) {
-    DIR* dp = opendir(WDB_BACKUP_FOLDER);
+    DIR* dp = wopendir(WDB_BACKUP_FOLDER);
 
     if(!dp) {
         mdebug1("Unable to open backup directory '%s'", WDB_BACKUP_FOLDER);
@@ -2282,7 +2282,7 @@ time_t wdb_global_get_oldest_backup(char **oldest_backup_name) {
         struct stat backup_info = {0};
 
         snprintf(tmp_path, OS_SIZE_512, "%s/%s", WDB_BACKUP_FOLDER, entry->d_name);
-        if(!stat(tmp_path, &backup_info)) {
+        if(!w_stat(tmp_path, &backup_info)) {
             if((current_time - backup_info.st_mtime) >= aux_time_var) {
                 aux_time_var = current_time - backup_info.st_mtime;
                 oldest_backup_time = backup_info.st_mtime;

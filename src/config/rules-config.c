@@ -287,7 +287,7 @@ int Read_Rules(XML_NODE node, void *configp, void * list)
         }
 
         f_name[PATH_MAX + 1] = '\0';
-        dfd = opendir(path);
+        dfd = wopendir(path);
 
         if (dfd != NULL) {
 
@@ -340,7 +340,7 @@ int Read_Rules(XML_NODE node, void *configp, void * list)
         }
 
         f_name[PATH_MAX + 1] = '\0';
-        dfd = opendir(path);
+        dfd = wopendir(path);
 
         if (dfd != NULL) {
 

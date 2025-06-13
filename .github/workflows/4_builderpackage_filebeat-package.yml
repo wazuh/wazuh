@@ -108,6 +108,13 @@ jobs:
           sudo apt update -y
           sudo apt install -y docker-ce
 
+      - name: Add RPM compatibility with FIPS
+        working-directory: filebeat
+        run: |
+          # https://github.com/elastic/beats/pull/27103
+          FIX_COMMIT=0bf2fe7b5625f180d11b20c69593ded5b825356f
+          git fetch origin ${FIX_COMMIT} && git cherry-pick -n ${FIX_COMMIT}
+
       - name: Apply patch for Ubuntu build
         run: |
           sed -i 's/apt-get install -y --no-install-recommends/DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends/' filebeat/Dockerfile
