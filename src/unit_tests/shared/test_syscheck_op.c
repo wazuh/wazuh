@@ -3660,7 +3660,7 @@ static void test_get_file_user_CreateFile_error_access_denied(void **state) {
 
     expect_FormatMessage_call("An error message");
 
-    expect_string(__wrap__mdebug1, formatted_msg, "At get_user(C:\\a\\path): CreateFile(): An error message (5)");
+    expect_string(__wrap__mdebug1, formatted_msg, "At get_user(C:\\a\\path): wCreateFile(): An error message (5)");
 
     expect_CloseHandle_call(INVALID_HANDLE_VALUE, 1);
 
@@ -3678,7 +3678,7 @@ static void test_get_file_user_CreateFile_error_sharing_violation(void **state) 
 
     expect_FormatMessage_call("An error message");
 
-    expect_string(__wrap__mdebug1, formatted_msg, "At get_user(C:\\a\\path): CreateFile(): An error message (32)");
+    expect_string(__wrap__mdebug1, formatted_msg, "At get_user(C:\\a\\path): wCreateFile(): An error message (32)");
 
     expect_CloseHandle_call(INVALID_HANDLE_VALUE, 1);
 
@@ -3696,7 +3696,7 @@ static void test_get_file_user_CreateFile_error_generic(void **state) {
 
     expect_FormatMessage_call("An error message");
 
-    expect_string(__wrap__mwarn, formatted_msg, "At get_user(C:\\a\\path): CreateFile(): An error message (127)");
+    expect_string(__wrap__mwarn, formatted_msg, "At get_user(C:\\a\\path): wCreateFile(): An error message (127)");
 
     expect_CloseHandle_call(INVALID_HANDLE_VALUE, 1);
 

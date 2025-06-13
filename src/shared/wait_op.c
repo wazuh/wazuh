@@ -92,7 +92,7 @@ void os_wait_primitive(bool (*fn_ptr)()) {
 
 void loop_check(struct stat *file_status, bool (*fn_ptr)()) {
     while (1) {
-        if (stat(WAIT_FILE, file_status) == -1 || (fn_ptr && fn_ptr())) {
+        if (w_stat(WAIT_FILE, file_status) == -1 || (fn_ptr && fn_ptr())) {
             break;
         }
         /* Sleep LOCK_LOOP seconds and check if lock is gone */
@@ -105,7 +105,7 @@ void os_wait_primitive(bool (*fn_ptr)()) {
     static atomic_int_t just_unlocked = ATOMIC_INT_INITIALIZER(0);
 
     /* If the wait file is not present, keep going */
-    if (stat(WAIT_FILE, &file_status) == -1) {
+    if (w_stat(WAIT_FILE, &file_status) == -1) {
         atomic_int_set(&just_unlocked, 1);
         return;
     }
