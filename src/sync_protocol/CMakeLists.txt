@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.12.4)
 project(agent_sync_protocol)
 
-# Default to Release if no build type is specified
+# Default to Release if not specified
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release)
 endif()
@@ -26,12 +26,8 @@ endif()
 
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# General compiler flags
-set(CMAKE_CXX_FLAGS
-    "-Wall -Wextra -Wshadow -Wnon-virtual-dtor -Woverloaded-virtual -Wunused -Wcast-align -Wformat=2"
-)
-
-# Debug and release specific flags
+# Compiler flags
+set(CMAKE_CXX_FLAGS "-Wall -Wextra -Wshadow -Wnon-virtual-dtor -Woverloaded-virtual -Wunused -Wcast-align -Wformat=2")
 set(CMAKE_CXX_FLAGS_DEBUG "-g")
 if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   set(CMAKE_CXX_FLAGS_RELEASE "-O3")
@@ -49,43 +45,67 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
-# FlatBuffers
+# -----------------------------------------------------------------------------
+# Build native flatc using ExternalProject
+# -----------------------------------------------------------------------------
+include(ExternalProject)
+
 set(FLATBUFFERS_ROOT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../external/flatbuffers")
-add_subdirectory(${FLATBUFFERS_ROOT_DIR} flatbuffers_build)
 
-# Use the built flatc binary
-set(FLATC_EXECUTABLE $<TARGET_FILE:flatc>)
+ExternalProject_Add(flatc_host_tool
+  SOURCE_DIR ${FLATBUFFERS_ROOT_DIR}
+  CMAKE_ARGS
+    -DCMAKE_BUILD_TYPE=Release
+    -DFLATBUFFERS_BUILD_TESTS=OFF
+    -DFLATBUFFERS_BUILD_FLATLIB=OFF
+    -DFLATBUFFERS_BUILD_FLATC=ON
+    -DCMAKE_INSTALL_PREFIX=<INSTALL_DIR>
+  BUILD_ALWAYS 1
+  BUILD_BYPRODUCTS <INSTALL_DIR>/bin/flatc
+)
 
-# Schema file and generated output
+ExternalProject_Get_Property(flatc_host_tool install_dir)
+set(FLATC_EXECUTABLE ${install_dir}/bin/flatc)
+
+# -----------------------------------------------------------------------------
+# Use flatc to generate schema
+# -----------------------------------------------------------------------------
 set(SCHEMA_FILE
     ${CMAKE_CURRENT_SOURCE_DIR}/../shared_modules/utils/flatbuffers/schemas/inventorySync.fbs
 )
 set(GENERATED_HEADER ${CMAKE_CURRENT_BINARY_DIR}/inventorySync_generated.h)
 
-# Generate FlatBuffers schema
 add_custom_command(
   OUTPUT ${GENERATED_HEADER}
   COMMAND ${FLATC_EXECUTABLE} --cpp --scoped-enums --gen-object-api -o
           ${CMAKE_CURRENT_BINARY_DIR} ${SCHEMA_FILE}
-  DEPENDS ${SCHEMA_FILE} flatc
+  DEPENDS ${SCHEMA_FILE} flatc_host_tool
   COMMENT "Generating FlatBuffers schema"
-  VERBATIM)
+  VERBATIM
+)
 
 add_custom_target(generate_flatbuffers ALL DEPENDS ${GENERATED_HEADER})
 
-# Build the static library
-add_library(agent_sync_protocol STATIC src/agent_sync_protocol.cpp
-                                       ${GENERATED_HEADER})
+# -----------------------------------------------------------------------------
+# Build FlatBuffers library (only needed headers/lib, not flatc)
+# -----------------------------------------------------------------------------
+add_subdirectory(${FLATBUFFERS_ROOT_DIR} flatbuffers_build EXCLUDE_FROM_ALL)
 
+# -----------------------------------------------------------------------------
+# Build the static library
+# -----------------------------------------------------------------------------
+add_library(agent_sync_protocol STATIC
+  src/agent_sync_protocol.cpp
+  ${GENERATED_HEADER}
+)
 add_dependencies(agent_sync_protocol generate_flatbuffers)
 
-target_include_directories(
-  agent_sync_protocol
-  PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include
-          ${CMAKE_CURRENT_BINARY_DIR} # for generated inventorySync_generated.h
-          ${FLATBUFFERS_ROOT_DIR}/include # for flatbuffers headers
+target_include_directories(agent_sync_protocol
+  PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${CMAKE_CURRENT_BINARY_DIR}
+    ${FLATBUFFERS_ROOT_DIR}/include
 )
-
 target_link_libraries(agent_sync_protocol PRIVATE flatbuffers)
 
 if(UNIT_TEST)
