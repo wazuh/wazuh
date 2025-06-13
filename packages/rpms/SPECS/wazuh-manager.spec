@@ -948,6 +948,8 @@ rm -fr %{buildroot}
 %files -n wazuh-manager-debuginfo -f debugfiles.list
 
 %changelog
+* Fri Jun 13 2025 support <info@wazuh.com> - 4.15.0
+- More info: https://documentation.wazuh.com/current/release-notes/release-4-15-0.html
 * Fri Jun 13 2025 support <info@wazuh.com> - 4.14.0
 - More info: https://documentation.wazuh.com/current/release-notes/release-4-14-0.html
 * Mon Jun 16 2025 support <info@wazuh.com> - 4.13.0
