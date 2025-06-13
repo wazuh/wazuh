@@ -17,7 +17,8 @@
                     "memory": {
                         "free": 1048576,
                         "total": 2097152,
-                        "used": 1048576
+                        "used": 1048576,
+                        "usage": 0.5
                     },
                     "serial_number": "AAA111BBB222"
                 },
@@ -42,7 +43,8 @@
                     "memory": {
                         "free": 1048576,
                         "total": 2097152,
-                        "used": 1048576
+                        "used": 1048576,
+                        "usage": 0.5
                     },
                     "serial_number": "ABC123XYZ789"
                 },

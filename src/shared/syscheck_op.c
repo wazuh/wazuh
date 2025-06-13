@@ -652,7 +652,7 @@ char *get_file_user(const char *path, char **sid) {
     char *result;
 
     // Get the handle of the file object.
-    hFile = CreateFile(TEXT(path),
+    hFile = wCreateFile(TEXT(path),
                        GENERIC_READ,
                        FILE_SHARE_READ | FILE_SHARE_WRITE,
                        NULL,
@@ -676,10 +676,10 @@ char *get_file_user(const char *path, char **sid) {
         switch (dwErrorCode) {
         case ERROR_ACCESS_DENIED:     // 5
         case ERROR_SHARING_VIOLATION: // 32
-            mdebug1("At get_user(%s): CreateFile(): %s (%lu)", path, messageBuffer, dwErrorCode);
+            mdebug1("At get_user(%s): wCreateFile(): %s (%lu)", path, messageBuffer, dwErrorCode);
             break;
         default:
-            mwarn("At get_user(%s): CreateFile(): %s (%lu)", path, messageBuffer, dwErrorCode);
+            mwarn("At get_user(%s): wCreateFile(): %s (%lu)", path, messageBuffer, dwErrorCode);
         }
 
         LocalFree(messageBuffer);

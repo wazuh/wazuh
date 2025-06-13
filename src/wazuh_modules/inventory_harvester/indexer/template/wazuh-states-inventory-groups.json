@@ -1,6 +1,6 @@
 {
   "index_patterns": [
-    "wazuh-states-inventory-hardware*"
+    "wazuh-states-inventory-groups*"
   ],
   "priority": 1,
   "template": {
@@ -10,16 +10,11 @@
         "number_of_replicas": "0",
         "number_of_shards": "1",
         "query.default_field": [
-          "agent.host.architecture",
-          "agent.host.ip",
-          "agent.id",
-          "agent.name",
-          "agent.version",
-          "agent.host.ip",
-          "host.serial_number",
-          "wazuh.cluster.name",
-          "wazuh.cluster.node",
-          "wazuh.schema.version"
+          "group.name",
+          "group.description",
+          "group.id_signed",
+          "group.uuid",
+          "group.users"
         ],
         "refresh_interval": "5s"
       }
@@ -55,40 +50,29 @@
             }
           }
         },
-        "host": {
+        "group": {
           "properties": {
-            "cpu": {
-              "properties": {
-                "cores": {
-                  "type": "short"
-                },
-                "name": {
-                  "ignore_above": 1024,
-                  "type": "keyword"
-                },
-                "speed": {
-                  "type": "long"
-                }
-              }
+            "description": {
+              "type": "match_only_text"
             },
-            "memory": {
-              "properties": {
-                "free": {
-                  "type": "long"
-                },
-                "total": {
-                  "type": "long"
-                },
-                "usage": {
-                  "scaling_factor": 100,
-                  "type": "scaled_float"
-                },
-                "used": {
-                  "type": "long"
-                }
-              }
+            "id": {
+              "type": "unsigned_long"
             },
-            "serial_number": {
+            "id_signed": {
+              "type": "long"
+            },
+            "is_hidden": {
+              "type": "boolean"
+            },
+            "name": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            },
+            "users": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            },
+            "uuid": {
               "ignore_above": 1024,
               "type": "keyword"
             }
