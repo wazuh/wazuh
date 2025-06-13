@@ -13,21 +13,57 @@
 #define LT(X, Y) (X < Y ? true : false)
 #define EQ(X, Y) (X == Y ? true : false)
 
+const char * HWINFO_FIELDS[] = {
+    "cpu_cores",
+    "cpu_mhz",
+    "ram_total",
+    "ram_free",
+    "ram_usage"
+};
+
+const char * USERINFO_FIELDS[] = {
+    "user_id",
+    "user_group_id",
+    "user_auth_failures_count",
+    "user_password_max_days_between_changes",
+    "user_password_min_days_between_changes",
+    "user_password_warning_days_before_expiration", 
+    "process_pid"
+};
+
 #define IS_VALID_HWINFO_VALUE(field_name, field_value) ( \
-    !strncmp(field_name, "cpu_cores", 9) ? \
+    !strncmp(field_name, HWINFO_FIELDS[0], strlen(HWINFO_FIELDS[0])) ? \
         GT(field_value, 0) : \
-    !strncmp(field_name, "cpu_mhz", 7) ? \
+    !strncmp(field_name, HWINFO_FIELDS[1], strlen(HWINFO_FIELDS[1])) ? \
         GT(field_value, 0) : \
-    !strncmp(field_name, "ram_total", 9) ? \
+    !strncmp(field_name, HWINFO_FIELDS[2], strlen(HWINFO_FIELDS[2])) ? \
         GT(field_value, 0) : \
-    !strncmp(field_name, "ram_free", 8) ? \
+    !strncmp(field_name, HWINFO_FIELDS[3], strlen(HWINFO_FIELDS[3])) ? \
         GT(field_value, 0) : \
-    !strncmp(field_name, "ram_usage", 9) ? \
+    !strncmp(field_name, HWINFO_FIELDS[4], strlen(HWINFO_FIELDS[4])) ? \
         (GT(field_value, 0) && (EQ(field_value, 100) || LT(field_value, 100))): true \
 )
 
+#define IS_VALID_USERS_VALUE(field_name, field_value) ( \
+    !strncmp(field_name, USERINFO_FIELDS[0], strlen(USERINFO_FIELDS[0])) ? \
+        (GT(field_value, 0) || EQ(field_value, 0)) : \
+    !strncmp(field_name, USERINFO_FIELDS[1], strlen(USERINFO_FIELDS[1])) ? \
+        (GT(field_value, 0) || EQ(field_value, 0)) : \
+    !strncmp(field_name, USERINFO_FIELDS[2], strlen(USERINFO_FIELDS[2])) ? \
+        (GT(field_value, 0) || EQ(field_value, 0)) : \
+    !strncmp(field_name, USERINFO_FIELDS[3], strlen(USERINFO_FIELDS[3])) ? \
+        (GT(field_value, 0) || EQ(field_value, 0)) : \
+    !strncmp(field_name, USERINFO_FIELDS[4], strlen(USERINFO_FIELDS[4])) ? \
+        (GT(field_value, 0) || EQ(field_value, 0)) : \
+    !strncmp(field_name, USERINFO_FIELDS[5], strlen(USERINFO_FIELDS[5])) ? \
+        (GT(field_value, 0) || EQ(field_value, 0)) : \
+    !strncmp(field_name, USERINFO_FIELDS[6], strlen(USERINFO_FIELDS[6])) ? \
+        (GT(field_value, 0) || EQ(field_value, 0)) : true \
+)
+
 #define IS_VALID_VALUE(table_name, field_name, field_value) (\
-    !strncmp(table_name, "sys_hwinfo", 10) ? IS_VALID_HWINFO_VALUE(field_name, field_value) : true \
+    !strncmp(table_name, "sys_hwinfo", 10) ? IS_VALID_HWINFO_VALUE(field_name, field_value) : \
+    !strncmp(table_name, "sys_users", 9) ? IS_VALID_USERS_VALUE(field_name, field_value) : true \
 )
 
 STATIC bool wdb_dbsync_stmt_bind_from_json(sqlite3_stmt * stmt, int index, field_type_t type, const cJSON * value, const char * field_name,
@@ -319,17 +355,33 @@ STATIC bool wdb_dbsync_stmt_bind_from_json(sqlite3_stmt * stmt, int index, field
                 case cJSON_String: {
                     char * endptr;
                     const long long long_value = strtoll(value->valuestring, &endptr, 10);
-                    if (NULL != endptr && '\0' == *endptr &&
-                        SQLITE_OK == sqlite3_bind_int64(stmt, index, (sqlite3_int64) long_value)) {
+                    int sqlite3_bind = SQLITE_ERROR;
+                    if (NULL != endptr && '\0' == *endptr) {
+                        if (IS_VALID_VALUE(table_name, field_name, long_value)) {
+                            sqlite3_bind = sqlite3_bind_int64(stmt, index, (sqlite3_int64) long_value);
+                        } else {
+                            sqlite3_bind = sqlite3_bind_null(stmt, index);
+                        }
+
+                        if (SQLITE_OK == sqlite3_bind) {
+                            ret_val = true;
+                        }
+                    }
+                    break;
+                }
+                case cJSON_Number: {
+                    int sqlite3_bind = SQLITE_ERROR;
+                    if (IS_VALID_VALUE(table_name, field_name, value->valuedouble)) {
+                        sqlite3_bind = sqlite3_bind_int64(stmt, index, (sqlite3_int64) value->valuedouble);
+                    } else {
+                        sqlite3_bind = sqlite3_bind_null(stmt, index);
+                    }
+
+                    if (SQLITE_OK == sqlite3_bind) {
                         ret_val = true;
                     }
                     break;
                 }
-                case cJSON_Number:
-                    if (SQLITE_OK == sqlite3_bind_int64(stmt, index, (sqlite3_int64) value->valuedouble)) {
-                        ret_val = true;
-                    }
-                    break;
                 }
                 break;
             }

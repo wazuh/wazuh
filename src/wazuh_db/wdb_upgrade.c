@@ -47,7 +47,8 @@ wdb_t * wdb_upgrade(wdb_t *wdb) {
         schema_upgrade_v12_sql,
         schema_upgrade_v13_sql,
         schema_upgrade_v14_sql,
-        schema_upgrade_v15_sql
+        schema_upgrade_v15_sql,
+        schema_upgrade_v16_sql
     };
 
     bool database_updated = false;
