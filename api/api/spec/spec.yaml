@@ -1556,6 +1556,29 @@ components:
       - disconnected
       description: "Agent status. It is calculated based on the last keepalive and the Wazuh version"
 
+    AgentsSummary:
+      type: object
+      properties:
+        status:
+          type: object
+          properties:
+            active:
+              type: integer
+              format: int32
+            disconnected:
+              type: integer
+              format: int32
+            never_connected:
+              type: integer
+              format: int32
+            pending:
+              type: integer
+              format: int32
+        os:
+          type: object
+        groups:
+          type: object
+
     AgentsSummaryStatus:
       type: object
       properties:
@@ -8967,6 +8990,56 @@ paths:
                   total_failed_items: 0
                   failed_items: []
                 message: 'All selected agents information was returned'
+                error: 0
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+  
+  /agents/summary:
+    get:
+      tags:
+        - Agents
+      summary: "Summarize agents information"
+      description: "Return a summary of the available agents OS, status and groups"
+      operationId: api.controllers.agent_controller.get_agents_summary
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/agent:read'
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/agents_list'
+      responses:
+        '200':
+          description: "Available agents summary"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AgentsSummary'
+              example:
+                data:
+                  status:
+                    active: 8
+                    disconnected: 0
+                    never_connected: 1
+                    pending: 2
+                  os:
+                    debian: 8
+                    ubuntu: 3
+                  groups:
+                    default: 11
+                    test: 5
                 error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
