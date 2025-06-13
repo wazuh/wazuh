@@ -66,6 +66,11 @@ nlohmann::json SysInfo::getGroups() const
     return {};
 }
 
+nlohmann::json SysInfo::getUsers() const
+{
+    return {};
+}
+
 void SysInfo::getPackages(std::function<void(nlohmann::json&)>callback) const
 {
     callback(PACKAGES_EXPECTED);
@@ -107,6 +112,7 @@ class SysInfoWrapper: public SysInfo
         MOCK_METHOD(nlohmann::json, getPorts, (), (const override));
         MOCK_METHOD(nlohmann::json, getHotfixes, (), (const override));
         MOCK_METHOD(nlohmann::json, getGroups, (), (const override));
+        MOCK_METHOD(nlohmann::json, getUsers, (), (const override));
         MOCK_METHOD(void, getPackages, (std::function<void(nlohmann::json&)>), (const override));
         MOCK_METHOD(void, getProcessesInfo, (std::function<void(nlohmann::json&)>), (const override));
 
@@ -337,4 +343,13 @@ TEST_F(SysInfoTest, c_interfaces_bad_params)
     EXPECT_EQ(-1, sysinfo_os(NULL));
     EXPECT_EQ(-1, sysinfo_hotfixes(NULL));
     EXPECT_EQ(-1, sysinfo_groups(NULL));
+    EXPECT_EQ(-1, sysinfo_users(NULL));
+}
+
+TEST_F(SysInfoTest, users_c_interface)
+{
+    cJSON* object = NULL;
+    EXPECT_EQ(0, sysinfo_users(&object));
+    EXPECT_TRUE(object);
+    EXPECT_NO_THROW(sysinfo_free_result(&object));
 }

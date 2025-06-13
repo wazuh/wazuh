@@ -13,6 +13,7 @@
     PROCESSES_SCAN: 'no'
     HOTFIXES_SCAN: 'no'
     GROUPS_SCAN: 'no'
+    USERS_SCAN: 'no'
   metadata:
     disabled: 'no'
     interval_scan: 2
@@ -26,3 +27,4 @@
     processes_scan: 'no'
     hotfixes_scan: 'no'
     groups_scan: 'no'
+    users_scan: 'no'

@@ -27,6 +27,8 @@
             value: HOTFIXES_SCAN
         - groups:
             value: GROUPS_SCAN
+        - users:
+            value: USERS_SCAN
         - synchronization:
             elements:
               - max_eps:

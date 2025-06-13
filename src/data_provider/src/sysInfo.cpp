@@ -62,6 +62,11 @@ nlohmann::json SysInfo::groups()
     return getGroups();
 }
 
+nlohmann::json SysInfo::users()
+{
+    return getUsers();
+}
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -302,6 +307,29 @@ int sysinfo_groups(cJSON** js_result)
             SysInfo info;
             const auto& grps       {info.groups()};
             *js_result = cJSON_Parse(grps.dump().c_str());
+            retVal = 0;
+        }
+    }
+    // LCOV_EXCL_START
+    catch (...)
+    {}
+
+    // LCOV_EXCL_STOP
+
+    return retVal;
+}
+
+int sysinfo_users(cJSON** js_result)
+{
+    auto retVal { -1 };
+
+    try
+    {
+        if (js_result)
+        {
+            SysInfo info;
+            const auto& users       {info.users()};
+            *js_result = cJSON_Parse(users.dump().c_str());
             retVal = 0;
         }
     }
