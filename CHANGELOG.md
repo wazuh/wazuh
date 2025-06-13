@@ -9,6 +9,7 @@ All notable changes to this project will be documented in this file.
 
 - Fixed multiple Rocky Linux SCA checks generating incorrect results. ([#29976](https://github.com/wazuh/wazuh/pull/29976))
 - Fixed missing Check (2.3.7.6) in Windows Server 2019 v2.0.0. ([#30173](https://github.com/wazuh/wazuh/pull/30173))
+- Fix camel casing in ownCloud ruleset header. ([#30276](https://github.com/wazuh/wazuh/pull/30276))
 
 
 ## [v4.13.1]
