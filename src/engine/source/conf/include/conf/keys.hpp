@@ -40,6 +40,7 @@ constexpr std::string_view SERVER_API_TIMEOUT = "/engine/server/api_timeout";
 
 constexpr std::string_view TZDB_PATH = "/engine/tzdb/path";
 constexpr std::string_view TZDB_AUTO_UPDATE = "/engine/tzdb/auto_update";
+constexpr std::string_view TZDB_FORCE_VERSION_UPDATE = "/engine/tzdb/force_version_update";
 
 constexpr std::string_view METRICS_ENABLED = "/engine/metrics/enabled";
 constexpr std::string_view METRICS_EXPORT_INTERVAL = "/engine/metrics/export_interval";

@@ -61,69 +61,6 @@ else()
 endif()
 
 ####################################################################################################
-# Temporary IANA Time Zone Database fixed
-####################################################################################################
-function(configure_tzdb)
-
-    set(TZDB_VERSION "2024a")
-    set(TZDB_URL "https://ftp.iana.org/tz/releases/tzdb-${TZDB_VERSION}.tar.lz")
-    set(TZDB_DIR "${CMAKE_BINARY_DIR}/tzdb")
-    set(TZDB_TAR "${CMAKE_BINARY_DIR}/tzcode${TZDB_VERSION}.tar.lz")
-    set(TZDB_HLP_TEST_DIR "${CMAKE_BINARY_DIR}/source/hlp/data")
-
-    find_program(WGET wget)
-    find_program(TAR tar)
-    find_program(LZIP lzip)
-
-    if(NOT WGET)
-        message(FATAL_ERROR "wget is required but not found. Please install wget.")
-    endif()
-
-    if(NOT TAR)
-        message(FATAL_ERROR "tar is required but not found. Please install tar.")
-    endif()
-
-    if(NOT LZIP)
-        message(FATAL_ERROR "lzip is required but not found. Please install lzip.")
-    endif()
-
-    # Download tzdb
-    if(NOT EXISTS ${TZDB_TAR})
-        message(STATUS "Downloading tzdb version ${TZDB_VERSION} from ${TZDB_URL}")
-        execute_process(
-            COMMAND ${WGET} ${TZDB_URL} -O ${TZDB_TAR}
-            RESULT_VARIABLE DOWNLOAD_RESULT
-        )
-        if(NOT DOWNLOAD_RESULT EQUAL 0)
-            message(FATAL_ERROR "Failed to download tzdb from ${TZDB_URL}")
-        endif()
-    endif()
-
-    # Check if tzdb directory exists if not extract it
-    if(NOT EXISTS ${TZDB_DIR})
-        message(STATUS "Creating directory ${TZDB_DIR} for extraction")
-        file(MAKE_DIRECTORY ${TZDB_DIR})  # Crear el directorio de destino
-
-        message(STATUS "Extracting tzdb version ${TZDB_VERSION} into ${TZDB_DIR}")
-        execute_process(
-            COMMAND ${TAR} --lzip --strip-components=1 -xvf ${TZDB_TAR} -C ${TZDB_DIR}
-            RESULT_VARIABLE EXTRACT_RESULT
-        )
-        if(NOT EXTRACT_RESULT EQUAL 0)
-            message(FATAL_ERROR "Failed to extract tzdb file ${TZDB_TAR}")
-        endif()
-    endif()
-
-    file(MAKE_DIRECTORY ${TZDB_HLP_TEST_DIR})
-    file(COPY ${TZDB_DIR} DESTINATION ${TZDB_HLP_TEST_DIR} FILES_MATCHING PATTERN "*")
-
-
-endfunction()
-# Temporaty fix for IANA Time Zone Database
-configure_tzdb()
-
-
-####################################################################################################
 # Dependencies
 ####################################################################################################
 function(action package_name target_name)
