@@ -81,7 +81,7 @@ All notable changes to this project will be documented in this file.
 ### Other
 
 #### Changed
-- Updated Python dependencies: `setuptools`, `Jinja2`, and `PyJWT`. ([#29489](https://github.com/wazuh/wazuh/pull/29489))
+- Updated Python dependencies: `setuptools`, `Jinja2`, and `PyJWT`. ([#29610](https://github.com/wazuh/wazuh/pull/29610))
 - Upgraded Python embedded interpreter to 3.10.16. ([#28646](https://github.com/wazuh/wazuh/pull/28646))
 - Upgraded h11 to 0.16.0 and httpcore to 1.0.9. ([#29735](https://github.com/wazuh/wazuh/pull/29735))
 - Removed unused Python Azure dependencies. ([#28564](https://github.com/wazuh/wazuh/pull/28564))
