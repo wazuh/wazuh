@@ -369,7 +369,7 @@ STATIC bool wdb_dbsync_stmt_bind_from_json(sqlite3_stmt * stmt, int index, field
                     }
                     break;
                 }
-                case cJSON_Number:
+                case cJSON_Number: {
                     int sqlite3_bind = SQLITE_ERROR;
                     if (IS_VALID_VALUE(table_name, field_name, value->valuedouble)) {
                         sqlite3_bind = sqlite3_bind_int64(stmt, index, (sqlite3_int64) value->valuedouble);
@@ -381,6 +381,7 @@ STATIC bool wdb_dbsync_stmt_bind_from_json(sqlite3_stmt * stmt, int index, field
                         ret_val = true;
                     }
                     break;
+                }
                 }
                 break;
             }
