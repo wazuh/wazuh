@@ -27,10 +27,11 @@ static bool wm_ms_graph_setup(wm_ms_graph* ms_graph);
 static bool wm_ms_graph_check();
 static void wm_ms_graph_get_access_token(wm_ms_graph_auth* auth_config, const ssize_t curl_max_size);
 static void wm_ms_graph_scan_relationships(wm_ms_graph* ms_graph, wm_ms_graph_auth* auth_config, const bool initial_scan);
-static cJSON* wm_ms_graph_scan_apps_devices(const wm_ms_graph* ms_graph, const cJSON* app_id, const char* query_fqdn, char** headers);
+static cJSON* wm_ms_graph_scan_apps_devices(const wm_ms_graph* ms_graph, const cJSON* app_id, const char* query_fqdn, char** headers, wm_ms_graph_auth* auth_config);
 static void wm_ms_graph_destroy(wm_ms_graph* ms_graph);
 static void wm_ms_graph_cleanup();
 cJSON* wm_ms_graph_dump(const wm_ms_graph* ms_graph);
+static bool wm_ms_graph_ensure_valid_token(wm_ms_graph_auth *auth_config, ssize_t curl_max_size, bool* token_changed);
 
 static int queue_fd; // Socket ID
 
@@ -43,6 +44,25 @@ const wm_context WM_MS_GRAPH_CONTEXT = {
     .stop = NULL,
     .query = NULL,
 };
+
+static bool wm_ms_graph_ensure_valid_token(wm_ms_graph_auth *auth_config, ssize_t curl_max_size, bool* token_changed) {
+    // Consider the token invalid if it's missing or will expire soon (within WM_MS_GRAPH_DEFAULT_TIMEOUT seconds)
+    if (!auth_config->access_token || time(NULL) >= (auth_config->token_expiration_time - WM_MS_GRAPH_DEFAULT_TIMEOUT)) {
+        mtinfo(WM_MS_GRAPH_LOGTAG, "Access token expired or missing. Requesting new token.");
+        wm_ms_graph_get_access_token(auth_config, curl_max_size);
+
+        // Validate new token
+        if (!auth_config->access_token || time(NULL) >= (auth_config->token_expiration_time - WM_MS_GRAPH_DEFAULT_TIMEOUT)) {
+            mtwarn(WM_MS_GRAPH_LOGTAG, "Failed to renew access token.");
+            return false;
+        }
+        if (token_changed) {
+            *token_changed = true;
+        }
+    }
+
+    return true;
+}
 
 void* wm_ms_graph_main(wm_ms_graph* ms_graph) {
     char* timestamp = NULL;
@@ -171,6 +191,7 @@ void wm_ms_graph_get_access_token(wm_ms_graph_auth* auth_config, const ssize_t c
                 cJSON* access_token_value = cJSON_GetObjectItem(response_body, "access_token");
                 cJSON* access_token_expiration = cJSON_GetObjectItem(response_body, "expires_in");
                 if (cJSON_IsString(access_token_value) && cJSON_IsNumber(access_token_expiration)) {
+                    os_free(auth_config->access_token);
                     os_strdup(access_token_value->valuestring, auth_config->access_token);
                     auth_config->token_expiration_time = time(NULL) + access_token_expiration->valueint;
                 } else {
@@ -298,6 +319,22 @@ void wm_ms_graph_scan_relationships(wm_ms_graph* ms_graph, wm_ms_graph_auth* aut
                 mtdebug1(WM_MS_GRAPH_LOGTAG, "Microsoft Graph API Log URL: '%s'", url);
 
                 fail = true;
+
+                bool token_changed = false;
+                if (!wm_ms_graph_ensure_valid_token(auth_config, ms_graph->curl_max_size, &token_changed)) {
+                    mtwarn(WM_MS_GRAPH_LOGTAG, "Aborting scan of '%s' for tenant '%s' due to access token error.",
+                        ms_graph->resources[resource_num].relationships[relationship_num],
+                        auth_config->tenant_id);
+                    os_free(headers[0]);
+                    break;
+                }
+
+                if (token_changed) {
+                    os_free(headers[0]);
+                    snprintf(auth_header, OS_SIZE_8192 - 1, "Authorization: Bearer %s", auth_config->access_token);
+                    os_strdup(auth_header, headers[0]);
+                }
+
                 next_page = false;
                 response = wurl_http_request(WURL_GET_METHOD, headers, url, "", ms_graph->curl_max_size, WM_MS_GRAPH_DEFAULT_TIMEOUT, NULL, true);
                 if (response) {
@@ -328,7 +365,7 @@ void wm_ms_graph_scan_relationships(wm_ms_graph* ms_graph, wm_ms_graph_auth* aut
 
                                         if (inventory && !strcmp(ms_graph->resources[resource_num].relationships[relationship_num], WM_MS_GRAPH_RELATIONSHIP_DETECTED_APPS)) {
                                             cJSON_AddItemToObject(log, WM_MS_GRAPH_RELATIONSHIP_MANAGED_DEVICES,
-                                                wm_ms_graph_scan_apps_devices(ms_graph, cJSON_GetObjectItem(log, "id"), auth_config->query_fqdn, headers));
+                                                wm_ms_graph_scan_apps_devices(ms_graph, cJSON_GetObjectItem(log, "id"), auth_config->query_fqdn, headers, auth_config));
                                         }
 
                                         cJSON_AddStringToObject(log, "resource", ms_graph->resources[resource_num].name);
@@ -393,7 +430,7 @@ void wm_ms_graph_scan_relationships(wm_ms_graph* ms_graph, wm_ms_graph_auth* aut
     }
 }
 
-cJSON* wm_ms_graph_scan_apps_devices(const wm_ms_graph* ms_graph, const cJSON* app_id, const char* query_fqdn, char** headers) {
+cJSON* wm_ms_graph_scan_apps_devices(const wm_ms_graph* ms_graph, const cJSON* app_id, const char* query_fqdn, char** headers, wm_ms_graph_auth* auth_config) {
     char url[OS_SIZE_8192] = { '\0' };
     curl_response* response;
     bool next_page;
@@ -407,6 +444,20 @@ cJSON* wm_ms_graph_scan_apps_devices(const wm_ms_graph* ms_graph, const cJSON* a
         next_page = true;
         while (next_page) {
             mtdebug1(WM_MS_GRAPH_LOGTAG, "Microsoft Graph API Log URL: '%s'", url);
+
+            bool token_changed = false;
+            if (!wm_ms_graph_ensure_valid_token(auth_config, ms_graph->curl_max_size, &token_changed)) {
+                mtwarn(WM_MS_GRAPH_LOGTAG, "Aborting app-device scan due to access token error.");
+                break;
+            }
+
+            if (token_changed) {
+                char auth_header[OS_SIZE_8192] = { '\0' };
+
+                os_free(*headers);
+                snprintf(auth_header, OS_SIZE_8192 - 1, "Authorization: Bearer %s", auth_config->access_token);
+                os_strdup(auth_header, *headers);
+            }
 
             next_page = false;
             response = wurl_http_request(WURL_GET_METHOD, headers, url, "", ms_graph->curl_max_size, WM_MS_GRAPH_DEFAULT_TIMEOUT, NULL, true);
