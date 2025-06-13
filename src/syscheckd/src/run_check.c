@@ -803,7 +803,7 @@ STATIC void fim_link_update(const char *new_path, directory_t *configuration) {
 STATIC void fim_link_check_delete(directory_t *configuration) {
     struct stat statbuf;
 
-    if (w_stat(configuration->symbolic_links, &statbuf) < 0) {
+    if (w_lstat(configuration->symbolic_links, &statbuf) < 0) {
         if (errno == ENOENT) {
 #ifdef ENABLE_AUDIT
             if ((configuration->options & WHODATA_ACTIVE) && syscheck.whodata_provider == AUDIT_PROVIDER) {

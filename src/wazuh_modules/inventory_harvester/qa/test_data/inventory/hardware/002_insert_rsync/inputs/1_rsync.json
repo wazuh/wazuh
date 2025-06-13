@@ -16,7 +16,7 @@
             "cpu_name": "Intel(R) Core(TM) i9-10500H CPU @ 2.50GHz",
             "ram_free": 1024,
             "ram_total": 2048,
-            "ram_usage": 1024,
+            "ram_usage": 50,
             "scan_time": "2025/03/21 02:04:08"
         },
         "index": "f825a912fb60c89e421a526ba6bcef010cee7315",

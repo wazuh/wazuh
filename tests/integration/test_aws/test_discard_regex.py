@@ -421,6 +421,7 @@ configurator.configure_test(configuration_file='configuration_inspector_discard_
 
 
 @pytest.mark.tier(level=0)
+@pytest.mark.skip(reason="The Inspector Classic service was deprecated. A migration to Inspector v2 is required")
 @pytest.mark.parametrize('test_configuration, metadata',
                          zip(configurator.test_configuration_template, configurator.metadata),
                          ids=configurator.cases_ids)
