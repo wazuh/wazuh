@@ -42,7 +42,7 @@ COPY scripts/reinstall-cmake.sh /tmp/reinstall-cmake.sh
 RUN chmod +x /tmp/reinstall-cmake.sh && /tmp/reinstall-cmake.sh ${CMAKE_VERSION}
 
 # Build and install wazuh-server
-ENV WAZUH_BRANCH=main
+ENV WAZUH_BRANCH=6.0.0
 ENV WAZUH_ROOT=/root/wazuh
 ENV ENGINE_PRESET=release
 ENV ENGINE_ON_BACKGROUND=1

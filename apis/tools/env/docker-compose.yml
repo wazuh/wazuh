@@ -51,6 +51,8 @@ services:
       - ./certs/wazuh-indexer.pem:/usr/share/opensearch/config/indexer.pem
       - ./certs/wazuh-indexer.key:/usr/share/opensearch/config/indexer.key
       - ./certs/wazuh-indexer-key.pem:/usr/share/opensearch/config/indexer-key.pem
+      - ./wazuh-indexer/wazuh-indexer-setup-6.0.0.0.zip:/usr/share/opensearch/wazuh-indexer-setup-6.0.0.0.zip
+      - ./wazuh-indexer/wazuh-indexer-command-manager-6.0.0.0.zip:/usr/share/opensearch/wazuh-indexer-command-manager-6.0.0.0.zip
     ports:
       - 9200:9200
     environment:
