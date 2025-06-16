@@ -52,8 +52,6 @@ public:
         element.id = std::string(agentId_sv) + "_" + std::string(groupItemId_sv);
         element.operation = "INSERTED";
 
-        // InventoryGroupHarvester& wcsGroup = element.data; // Line removed
-
         element.data.agent.id = agentId_sv;
         element.data.agent.name = context->agentName();
         element.data.agent.version = context->agentVersion();
@@ -96,10 +94,7 @@ public:
         element.data.group.uuid = context->groupUuid();
         element.data.group.is_hidden = context->groupIsHidden();
 
-        auto users_sv = context->groupUsers();
-        if (!users_sv.empty()) {
-            Utils::splitView(users_sv, ',', element.data.group.users);
-        }
+        element.data.group.users = context->groupUsers();
 
         return element;
     }

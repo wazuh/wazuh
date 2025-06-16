@@ -127,10 +127,9 @@ public:
         element.data.user.password.min_days_between_changes = context->userPasswordMinDays();
         element.data.user.password.warning_days_before_expiration = context->userPasswordWarningDays();
 
-        auto roles_sv = context->userRoles();
-        if (!roles_sv.empty()) { Utils::splitView(roles_sv, ',', element.data.user.roles); }
-        auto groups_sv = context->userGroups();
-        if (!groups_sv.empty()) { Utils::splitView(groups_sv, ',', element.data.user.groups); }
+        element.data.user.roles = context->userRoles();
+
+        element.data.user.groups = context->userGroups();
 
         element.data.user.auth_failures.count = context->userAuthFailuresCount();
         element.data.user.auth_failures.timestamp = context->userAuthFailuresTimestamp();
