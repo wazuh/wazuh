@@ -15,12 +15,12 @@
 #include "../systemContext.hpp"
 #include "../../wcsModel/data.hpp"
 #include "../../wcsModel/noData.hpp"
-#include "../../wcsModel/inventoryGroupHarvester.hpp" // Uses string_view
+#include "../../wcsModel/inventoryGroupHarvester.hpp"
 #include "../policyHarvesterManager.hpp"
 #include "timeHelper.h"
-#include "stringHelper.h" // For Utils::splitView
+#include "stringHelper.h"
 
-#include <stdexcept> // For std::runtime_error, std::invalid_argument, std::out_of_range
+#include <stdexcept>
 
 template <typename TContext>
 class GroupElement final
