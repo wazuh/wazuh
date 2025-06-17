@@ -158,45 +158,51 @@ table syscollector_processes {
 
 table syscollector_users {
     scan_time:string;
-    item_id:string;
-    name:string;
-    uid:string;
-    gid:string;
-    home:string;
-    shell:string;
-    uuid:string;
-    full_name:string;
-    is_hidden:bool;
-    is_remote:bool;
-    password_hash_algorithm:string;
-    password_last_change:long;
-    password_max_days_between_changes:int;
-    password_min_days_between_changes:int;
-    password_warning_days_before_expiration:int;
-    password_expiration_date:string;
-    password_status:string;
-    password_last_set_time:string;
-    password_inactive_days:int;
-    created:string;
-    last_login:string;
-    roles:string;
-    groups:string;
-    auth_failures_count:int;
-    auth_failures_timestamp:string;
-    login_status:bool;
-    login_type:string;
+    user_name:string;
+    user_full_name:string;
+    user_home:string;
+    user_id:int;
+    user_uid_signed:int;
+    user_uuid:string;
+    user_groups:string;
+    user_group_id:int;
+    user_group_id_signed:int;
+    user_created:double;
+    user_roles_sudo:int;
+    user_shell:string;
+    user_type:string;
+    user_is_hidden:bool;
+    user_is_remote:bool;
+    user_last_login:long;
+    user_auth_failed_count:int;
+    user_auth_failed_timestamp:double;
+    user_password_last_set_time:double;
+    user_password_expiration_date:int;
+    user_password_hash_algorithm:string;
+    user_password_inactive_days:int;
+    user_password_last_change:int;
+    user_password_max_days_between_changes:int;
+    user_password_min_days_between_changes:int;
+    user_password_status:string;
+    user_password_warning_days_before_expiration:int;
+    process_pid:long;
+    host_ip:string;
+    login_status:int;
     login_tty:string;
+    login_type:string;
+    checksum:string;
 }
 
 table syscollector_groups {
     scan_time:string;
-    item_id:string;
-    name:string;
-    gid:string;
-    description:string;
-    uuid:string;
-    is_hidden:bool;
-    users:string;
+    group_id:long;
+    group_name:string;
+    group_description:string;
+    group_id_signed:long;
+    group_uuid:string;
+    group_is_hidden:int;
+    group_users:string;
+    checksum:string;
 }
 
 table fim_file {
