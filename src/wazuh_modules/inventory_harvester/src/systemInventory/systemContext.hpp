@@ -275,10 +275,10 @@ public:
         {
             if (m_jsonData && m_jsonData->contains("/data/item_id"_json_pointer))
             {
-                 if (m_affectedComponentType == AffectedComponentType::Group)
-                 {
+                if (m_affectedComponentType == AffectedComponentType::Group)
+                {
                     return m_jsonData->at("/data/item_id"_json_pointer).get<std::string_view>();
-                 }
+                }
             }
         }
         return "";
@@ -478,7 +478,10 @@ public:
             if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_users() &&
                 m_syncMsg->data_as_state()->attributes_as_syscollector_users()->password_hash_algorithm())
             {
-                return m_syncMsg->data_as_state()->attributes_as_syscollector_users()->password_hash_algorithm()->string_view();
+                return m_syncMsg->data_as_state()
+                    ->attributes_as_syscollector_users()
+                    ->password_hash_algorithm()
+                    ->string_view();
             }
         }
         return "";
@@ -516,7 +519,9 @@ public:
         {
             if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_users())
             {
-                return m_syncMsg->data_as_state()->attributes_as_syscollector_users()->password_max_days_between_changes();
+                return m_syncMsg->data_as_state()
+                    ->attributes_as_syscollector_users()
+                    ->password_max_days_between_changes();
             }
         }
         return 0;
@@ -535,7 +540,9 @@ public:
         {
             if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_users())
             {
-                return m_syncMsg->data_as_state()->attributes_as_syscollector_users()->password_min_days_between_changes();
+                return m_syncMsg->data_as_state()
+                    ->attributes_as_syscollector_users()
+                    ->password_min_days_between_changes();
             }
         }
         return 0;
@@ -554,7 +561,9 @@ public:
         {
             if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_users())
             {
-                return m_syncMsg->data_as_state()->attributes_as_syscollector_users()->password_warning_days_before_expiration();
+                return m_syncMsg->data_as_state()
+                    ->attributes_as_syscollector_users()
+                    ->password_warning_days_before_expiration();
             }
         }
         return 0;
@@ -574,7 +583,10 @@ public:
             if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_users() &&
                 m_syncMsg->data_as_state()->attributes_as_syscollector_users()->password_expiration_date())
             {
-                return m_syncMsg->data_as_state()->attributes_as_syscollector_users()->password_expiration_date()->string_view();
+                return m_syncMsg->data_as_state()
+                    ->attributes_as_syscollector_users()
+                    ->password_expiration_date()
+                    ->string_view();
             }
         }
         return "";
@@ -614,7 +626,10 @@ public:
             if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_users() &&
                 m_syncMsg->data_as_state()->attributes_as_syscollector_users()->password_last_set_time())
             {
-                return m_syncMsg->data_as_state()->attributes_as_syscollector_users()->password_last_set_time()->string_view();
+                return m_syncMsg->data_as_state()
+                    ->attributes_as_syscollector_users()
+                    ->password_last_set_time()
+                    ->string_view();
             }
         }
         return "";
@@ -752,7 +767,10 @@ public:
             if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_users() &&
                 m_syncMsg->data_as_state()->attributes_as_syscollector_users()->auth_failures_timestamp())
             {
-                return m_syncMsg->data_as_state()->attributes_as_syscollector_users()->auth_failures_timestamp()->string_view();
+                return m_syncMsg->data_as_state()
+                    ->attributes_as_syscollector_users()
+                    ->auth_failures_timestamp()
+                    ->string_view();
             }
         }
         return "";
@@ -908,6 +926,26 @@ public:
             }
         }
         return 0;
+    }
+
+    double usedMem()
+    {
+        if (m_type == VariantType::Delta)
+        {
+            if (m_delta->data_as_dbsync_hwinfo() && m_delta->data_as_dbsync_hwinfo()->ram_usage())
+            {
+                return m_delta->data_as_dbsync_hwinfo()->ram_usage() * 0.01;
+            }
+        }
+        else if (m_type == VariantType::SyncMsg)
+        {
+            if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_hwinfo() &&
+                m_syncMsg->data_as_state()->attributes_as_syscollector_hwinfo()->ram_usage())
+            {
+                return m_syncMsg->data_as_state()->attributes_as_syscollector_hwinfo()->ram_usage() * 0.01;
+            }
+        }
+        return 0.0;
     }
 
     std::string_view cpuName()
@@ -3167,8 +3205,7 @@ private:
                 m_affectedComponentType = AffectedComponentType::NetIface;
                 m_originTable = OriginTable::NetIfaces;
             }
-            else if (syncMsg->data_as_state()->attributes_type() ==
-                     Synchronization::AttributesUnion_syscollector_users)
+            else if (syncMsg->data_as_state()->attributes_type() == Synchronization::AttributesUnion_syscollector_users)
             {
                 m_operation = Operation::Upsert;
                 m_affectedComponentType = AffectedComponentType::User;
