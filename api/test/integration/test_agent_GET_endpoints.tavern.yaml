@@ -3,6 +3,19 @@ test_name: GET /agents
 
 stages:
 
+  - name: Get wazuh version
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      save:
+        json:
+          wazuh_version: data.api_version
+
   - name: Get all agents
     request: &get_agents
       verify: False
@@ -74,15 +87,15 @@ stages:
         data:
           affected_items:
             - id: '004'
-              version: 'Wazuh v4.13.0'
+              version: 'Wazuh v{wazuh_version:s}'
             - id: '003'
-              version: 'Wazuh v4.13.0'
+              version: 'Wazuh v{wazuh_version:s}'
             - id: '002'
-              version: 'Wazuh v4.13.0'
+              version: 'Wazuh v{wazuh_version:s}'
             - id: '001'
-              version: 'Wazuh v4.13.0'
+              version: 'Wazuh v{wazuh_version:s}'
             - id: '000'
-              version: 'Wazuh v4.13.0'
+              version: 'Wazuh v{wazuh_version:s}'
             - id: '008'
               version: 'Wazuh v3.13.2'
             - id: '007'
@@ -129,15 +142,15 @@ stages:
             - id: '008'
               version: 'Wazuh v3.13.2'
             - id: '000'
-              version: 'Wazuh v4.13.0'
+              version: 'Wazuh v{wazuh_version:s}'
             - id: '001'
-              version: 'Wazuh v4.13.0'
+              version: 'Wazuh v{wazuh_version:s}'
             - id: '002'
-              version: 'Wazuh v4.13.0'
+              version: 'Wazuh v{wazuh_version:s}'
             - id: '003'
-              version: 'Wazuh v4.13.0'
+              version: 'Wazuh v{wazuh_version:s}'
             - id: '004'
-              version: 'Wazuh v4.13.0'
+              version: 'Wazuh v{wazuh_version:s}'
           failed_items: [ ]
           total_affected_items: 13
           total_failed_items: 0
@@ -3402,6 +3415,19 @@ test_name: GET /groups/{group_id}/agents {sort,select} version
 
 stages:
 
+  - name: Get wazuh version
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      save:
+        json:
+          wazuh_version: data.api_version
+
   - name: Filter groups, sort
     request:
       verify: False
@@ -3417,7 +3443,7 @@ stages:
             - version: 'Wazuh v3.13.2'
             - version: 'Wazuh v3.13.2'
             - version: 'Wazuh v3.13.2'
-            - version: 'Wazuh v4.13.0'
+            - version: 'Wazuh v{wazuh_version:s}'
           failed_items: []
           total_affected_items: 4
           total_failed_items: 0
