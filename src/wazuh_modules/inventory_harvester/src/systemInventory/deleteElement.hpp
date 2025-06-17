@@ -22,6 +22,8 @@
 #include "elements/packageElement.hpp"
 #include "elements/portElement.hpp"
 #include "elements/processElement.hpp"
+#include "elements/userElement.hpp"
+#include "elements/groupElement.hpp"
 #include "loggerHelper.h"
 
 template<typename TContext>
@@ -79,6 +81,14 @@ public:
         else if (originTable == TContext::OriginTable::NetAddress)
         {
             data->m_serializedElement = serializeToJSON(NetElement<TContext>::deleteElement(data.get()));
+        }
+        else if (originTable == TContext::OriginTable::Users)
+        {
+            data->m_serializedElement = serializeToJSON(UserElement<TContext>::deleteElement(data.get()));
+        }
+        else if (originTable == TContext::OriginTable::Groups)
+        {
+            data->m_serializedElement = serializeToJSON(GroupElement<TContext>::deleteElement(data.get()));
         }
         else
         {

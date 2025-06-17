@@ -92,7 +92,7 @@ public:
         }
         else
         {
-            logDebug2(LOGGER_DEFAULT_TAG, "UpsertSystemElement::build: not implemented for table %u", static_cast<unsigned int>(originTable));
+            logDebug2(LOGGER_DEFAULT_TAG, "UpsertSystemElement::build: not implemented");
             return nullptr;
         }
         logDebug2(LOGGER_DEFAULT_TAG, "UpsertSystemElement::build: %s", data->m_serializedElement.c_str());
