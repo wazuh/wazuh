@@ -155,42 +155,77 @@ public:
         return "";
     }
 
-    std::string_view groupId() const
+    int64_t groupId() const
     {
         if (m_type == VariantType::Delta)
         {
-            if (m_delta->data_as_dbsync_groups() && m_delta->data_as_dbsync_groups()->gid())
+            if (m_delta->data_as_dbsync_groups() && m_delta->data_as_dbsync_groups()->group_id())
             {
-                return m_delta->data_as_dbsync_groups()->gid()->string_view();
+                return m_delta->data_as_dbsync_groups()->group_id();
             }
         }
         else if (m_type == VariantType::SyncMsg)
         {
             if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_groups() &&
-                m_syncMsg->data_as_state()->attributes_as_syscollector_groups()->gid())
+                m_syncMsg->data_as_state()->attributes_as_syscollector_groups()->group_id())
             {
-                return m_syncMsg->data_as_state()->attributes_as_syscollector_groups()->gid()->string_view();
+                return m_syncMsg->data_as_state()->attributes_as_syscollector_groups()->group_id();
             }
         }
-        return "";
+        else
+        {
+            return 0;
+        }
+        return 0;
+    }
+
+    int64_t groupIdSigned() const
+    {
+        if (m_type == VariantType::Delta)
+        {
+            if (m_delta->data_as_dbsync_groups() && m_delta->data_as_dbsync_groups()->group_id_signed())
+            {
+                return m_delta->data_as_dbsync_groups()->group_id_signed();
+            }
+        }
+        else if (m_type == VariantType::Sync)
+        {
+            if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_groups() &&
+                m_syncMsg->data_as_state()->attributes_as_syscollector_groups()->group_id_signed())
+            {
+                return m_syncMsg->data_as_state()->attributes_as_syscollector_groups()->group_id_signed();
+            }
+        }
+        else
+        {
+            return 0;
+        }
+        return 0;
     }
 
     std::string_view groupDescription() const
     {
         if (m_type == VariantType::Delta)
         {
-            if (m_delta->data_as_dbsync_groups() && m_delta->data_as_dbsync_groups()->description())
+            if (m_delta->data_as_dbsync_groups() && m_delta->data_as_dbsync_groups()->group_description())
             {
-                return m_delta->data_as_dbsync_groups()->description()->string_view();
+                return m_delta->data_as_dbsync_groups()->group_description()->string_view();
             }
         }
         else if (m_type == VariantType::SyncMsg)
         {
             if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_groups() &&
-                m_syncMsg->data_as_state()->attributes_as_syscollector_groups()->description())
+                m_syncMsg->data_as_state()->attributes_as_syscollector_groups()->group_description())
             {
-                return m_syncMsg->data_as_state()->attributes_as_syscollector_groups()->description()->string_view();
+                return m_syncMsg->data_as_state()
+                    ->attributes_as_syscollector_groups()
+                    ->group_description()
+                    ->string_view();
             }
+        }
+        else
+        {
+            return "";
         }
         return "";
     }
@@ -199,18 +234,22 @@ public:
     {
         if (m_type == VariantType::Delta)
         {
-            if (m_delta->data_as_dbsync_groups() && m_delta->data_as_dbsync_groups()->uuid())
+            if (m_delta->data_as_dbsync_groups() && m_delta->data_as_dbsync_groups()->group_uuid())
             {
-                return m_delta->data_as_dbsync_groups()->uuid()->string_view();
+                return m_delta->data_as_dbsync_groups()->group_uuid()->string_view();
             }
         }
         else if (m_type == VariantType::SyncMsg)
         {
             if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_groups() &&
-                m_syncMsg->data_as_state()->attributes_as_syscollector_groups()->uuid())
+                m_syncMsg->data_as_state()->attributes_as_syscollector_groups()->group_uuid())
             {
-                return m_syncMsg->data_as_state()->attributes_as_syscollector_groups()->uuid()->string_view();
+                return m_syncMsg->data_as_state()->attributes_as_syscollector_groups()->group_uuid()->string_view();
             }
+        }
+        else
+        {
+            return "";
         }
         return "";
     }
@@ -221,15 +260,19 @@ public:
         {
             if (m_delta->data_as_dbsync_groups())
             {
-                return m_delta->data_as_dbsync_groups()->is_hidden();
+                return m_delta->data_as_dbsync_groups()->group_is_hidden();
             }
         }
         else if (m_type == VariantType::SyncMsg)
         {
             if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_groups())
             {
-                return m_syncMsg->data_as_state()->attributes_as_syscollector_groups()->is_hidden();
+                return m_syncMsg->data_as_state()->attributes_as_syscollector_groups()->group_is_hidden();
             }
+        }
+        else
+        {
+            return false;
         }
         return false;
     }
@@ -238,48 +281,22 @@ public:
     {
         if (m_type == VariantType::Delta)
         {
-            if (m_delta->data_as_dbsync_groups() && m_delta->data_as_dbsync_groups()->users())
+            if (m_delta->data_as_dbsync_groups() && m_delta->data_as_dbsync_groups()->group_users())
             {
-                return m_delta->data_as_dbsync_groups()->users()->string_view();
+                return m_delta->data_as_dbsync_groups()->group_users()->string_view();
             }
         }
         else if (m_type == VariantType::SyncMsg)
         {
             if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_groups() &&
-                m_syncMsg->data_as_state()->attributes_as_syscollector_groups()->users())
+                m_syncMsg->data_as_state()->attributes_as_syscollector_groups()->group_users())
             {
-                return m_syncMsg->data_as_state()->attributes_as_syscollector_groups()->users()->string_view();
-            }
-        }
-        return "";
-    }
-
-    std::string_view groupItemId() const
-    {
-        if (m_type == VariantType::Delta)
-        {
-            if (m_delta->data_as_dbsync_groups() && m_delta->data_as_dbsync_groups()->item_id())
-            {
-                return m_delta->data_as_dbsync_groups()->item_id()->string_view();
-            }
-        }
-        else if (m_type == VariantType::SyncMsg)
-        {
-            if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_groups() &&
-                m_syncMsg->data_as_state()->attributes_as_syscollector_groups()->item_id())
-            {
-                return m_syncMsg->data_as_state()->attributes_as_syscollector_groups()->item_id()->string_view();
+                return m_syncMsg->data_as_state()->attributes_as_syscollector_groups()->group_users()->string_view();
             }
         }
         else
         {
-            if (m_jsonData && m_jsonData->contains("/data/item_id"_json_pointer))
-            {
-                if (m_affectedComponentType == AffectedComponentType::Group)
-                {
-                    return m_jsonData->at("/data/item_id"_json_pointer).get<std::string_view>();
-                }
-            }
+            return "";
         }
         return "";
     }
@@ -290,78 +307,138 @@ public:
     {
         if (m_type == VariantType::Delta)
         {
-            if (m_delta->data_as_dbsync_users() && m_delta->data_as_dbsync_users()->name())
+            if (m_delta->data_as_dbsync_users() && m_delta->data_as_dbsync_users()->user_name())
             {
-                return m_delta->data_as_dbsync_users()->name()->string_view();
+                return m_delta->data_as_dbsync_users()->user_name()->string_view();
             }
         }
         else if (m_type == VariantType::SyncMsg)
         {
             if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_users() &&
-                m_syncMsg->data_as_state()->attributes_as_syscollector_users()->name())
+                m_syncMsg->data_as_state()->attributes_as_syscollector_users()->user_name())
             {
-                return m_syncMsg->data_as_state()->attributes_as_syscollector_users()->name()->string_view();
+                return m_syncMsg->data_as_state()->attributes_as_syscollector_users()->user_name()->string_view();
             }
+        }
+        else
+        {
+            return "";
         }
         return "";
     }
 
-    std::string_view userId() const
+    int userId() const
     {
         if (m_type == VariantType::Delta)
         {
-            if (m_delta->data_as_dbsync_users() && m_delta->data_as_dbsync_users()->uid())
+            if (m_delta->data_as_dbsync_users())
             {
-                return m_delta->data_as_dbsync_users()->uid()->string_view();
+                return m_delta->data_as_dbsync_users()->user_id()
             }
         }
         else if (m_type == VariantType::SyncMsg)
         {
-            if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_users() &&
-                m_syncMsg->data_as_state()->attributes_as_syscollector_users()->uid())
+            if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_users())
             {
-                return m_syncMsg->data_as_state()->attributes_as_syscollector_users()->uid()->string_view();
+                return m_syncMsg->data_as_state()->attributes_as_syscollector_users()->user_id();
             }
         }
-        return "";
+        else
+        {
+            return 0;
+        }
+        return 0;
     }
 
-    std::string_view userGroupId() const
+    int userUidSigned() const
     {
         if (m_type == VariantType::Delta)
         {
-            if (m_delta->data_as_dbsync_users() && m_delta->data_as_dbsync_users()->gid())
+            if (m_delta->data_as_dbsync_users())
             {
-                return m_delta->data_as_dbsync_users()->gid()->string_view();
+                return m_delta->data_as_dbsync_users()->user_uid_signed()
             }
         }
         else if (m_type == VariantType::SyncMsg)
         {
-            if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_users() &&
-                m_syncMsg->data_as_state()->attributes_as_syscollector_users()->gid())
+            if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_users())
             {
-                return m_syncMsg->data_as_state()->attributes_as_syscollector_users()->gid()->string_view();
+                return m_syncMsg->data_as_state()->attributes_as_syscollector_users()->user_uid_signed();
             }
         }
-        return "";
+        else
+        {
+            return 0;
+        }
+        return 0;
+    }
+
+    int userGroupId() const
+    {
+        if (m_type == VariantType::Delta)
+        {
+            if (m_delta->data_as_dbsync_users())
+            {
+                return m_delta->data_as_dbsync_users()->user_group_id();
+            }
+        }
+        else if (m_type == VariantType::SyncMsg)
+        {
+            if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_users())
+            {
+                return m_syncMsg->data_as_state()->attributes_as_syscollector_users()->user_group_id();
+            }
+        }
+        else
+        {
+            return 0;
+        }
+        return 0;
+    }
+
+    int userGroupIdSigned() const
+    {
+        if (m_type == VariantType::Delta)
+        {
+            if (m_delta->data_as_dbsync_users())
+            {
+                return m_delta->data_as_dbsync_users()->user_group_id_signed();
+            }
+        }
+        else if (m_type == VariantType::SyncMsg)
+        {
+            if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_users())
+            {
+                return m_syncMsg->data_as_state()->attributes_as_syscollector_users()->user_group_id_signed();
+            }
+        }
+        else
+        {
+            return 0;
+        }
+        return 0;
     }
 
     std::string_view userHome() const
     {
         if (m_type == VariantType::Delta)
         {
-            if (m_delta->data_as_dbsync_users() && m_delta->data_as_dbsync_users()->home())
+            if (m_delta->data_as_dbsync_users() && m_delta->data_as_dbsync_users()->user_home())
             {
-                return m_delta->data_as_dbsync_users()->home()->string_view();
+                return m_delta->data_as_dbsync_users()->user_home()->string_view();
             }
         }
         else if (m_type == VariantType::SyncMsg)
         {
             if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_users() &&
-                m_syncMsg->data_as_state()->attributes_as_syscollector_users()->home())
+                m_syncMsg->data_as_state()->attributes_as_syscollector_users()->user_home())
             {
-                return m_syncMsg->data_as_state()->attributes_as_syscollector_users()->home()->string_view();
+                return m_syncMsg->data_as_state()->attributes_as_syscollector_users()->user_home()->string_view();
             }
+        }
+        else
+        {
+            return "";
         }
         return "";
     }
@@ -370,18 +447,46 @@ public:
     {
         if (m_type == VariantType::Delta)
         {
-            if (m_delta->data_as_dbsync_users() && m_delta->data_as_dbsync_users()->shell())
+            if (m_delta->data_as_dbsync_users() && m_delta->data_as_dbsync_users()->user_shell())
             {
-                return m_delta->data_as_dbsync_users()->shell()->string_view();
+                return m_delta->data_as_dbsync_users()->user_shell()->string_view();
             }
         }
         else if (m_type == VariantType::SyncMsg)
         {
             if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_users() &&
-                m_syncMsg->data_as_state()->attributes_as_syscollector_users()->shell())
+                m_syncMsg->data_as_state()->attributes_as_syscollector_users()->user_shell())
             {
-                return m_syncMsg->data_as_state()->attributes_as_syscollector_users()->shell()->string_view();
+                return m_syncMsg->data_as_state()->attributes_as_syscollector_users()->user_shell()->string_view();
             }
+        }
+        else
+        {
+            return "";
+        }
+        return "";
+    }
+
+    std::string_view userType() const
+    {
+        if (m_type == VariantType::Delta)
+        {
+            if (m_delta->data_as_dbsync_users() && m_delta->data_as_dbsync_users()->user_type())
+            {
+                return m_delta->data_as_dbsync_users()->user_type()->string_view();
+            }
+        }
+        else if (m_type == VariantType::SyncMsg)
+        {
+            if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_users() &&
+                m_syncMsg->data_as_state()->attributes_as_syscollector_users()->user_type())
+            {
+                return m_syncMsg->data_as_state()->attributes_as_syscollector_users()->user_type()->string_view();
+            }
+        }
+        else
+        {
+            return "";
         }
         return "";
     }
@@ -390,18 +495,22 @@ public:
     {
         if (m_type == VariantType::Delta)
         {
-            if (m_delta->data_as_dbsync_users() && m_delta->data_as_dbsync_users()->uuid())
+            if (m_delta->data_as_dbsync_users() && m_delta->data_as_dbsync_users()->user_uuid())
             {
-                return m_delta->data_as_dbsync_users()->uuid()->string_view();
+                return m_delta->data_as_dbsync_users()->user_uuid()->string_view();
             }
         }
         else if (m_type == VariantType::SyncMsg)
         {
             if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_users() &&
-                m_syncMsg->data_as_state()->attributes_as_syscollector_users()->uuid())
+                m_syncMsg->data_as_state()->attributes_as_syscollector_users()->user_uuid())
             {
-                return m_syncMsg->data_as_state()->attributes_as_syscollector_users()->uuid()->string_view();
+                return m_syncMsg->data_as_state()->attributes_as_syscollector_users()->user_uuid()->string_view();
             }
+        }
+        else
+        {
+            return "";
         }
         return "";
     }
@@ -410,18 +519,22 @@ public:
     {
         if (m_type == VariantType::Delta)
         {
-            if (m_delta->data_as_dbsync_users() && m_delta->data_as_dbsync_users()->full_name())
+            if (m_delta->data_as_dbsync_users() && m_delta->data_as_dbsync_users()->user_full_name())
             {
-                return m_delta->data_as_dbsync_users()->full_name()->string_view();
+                return m_delta->data_as_dbsync_users()->user_full_name()->string_view();
             }
         }
         else if (m_type == VariantType::SyncMsg)
         {
             if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_users() &&
-                m_syncMsg->data_as_state()->attributes_as_syscollector_users()->full_name())
+                m_syncMsg->data_as_state()->attributes_as_syscollector_users()->user_full_name())
             {
-                return m_syncMsg->data_as_state()->attributes_as_syscollector_users()->full_name()->string_view();
+                return m_syncMsg->data_as_state()->attributes_as_syscollector_users()->user_full_name()->string_view();
             }
+        }
+        else
+        {
+            return "";
         }
         return "";
     }
@@ -432,15 +545,19 @@ public:
         {
             if (m_delta->data_as_dbsync_users())
             {
-                return m_delta->data_as_dbsync_users()->is_hidden();
+                return m_delta->data_as_dbsync_users()->user_is_hidden();
             }
         }
         else if (m_type == VariantType::SyncMsg)
         {
             if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_users())
             {
-                return m_syncMsg->data_as_state()->attributes_as_syscollector_users()->is_hidden();
+                return m_syncMsg->data_as_state()->attributes_as_syscollector_users()->user_is_hidden();
             }
+        }
+        else
+        {
+            return false;
         }
         return false;
     }
@@ -451,15 +568,19 @@ public:
         {
             if (m_delta->data_as_dbsync_users())
             {
-                return m_delta->data_as_dbsync_users()->is_remote();
+                return m_delta->data_as_dbsync_users()->user_is_remote();
             }
         }
         else if (m_type == VariantType::SyncMsg)
         {
             if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_users())
             {
-                return m_syncMsg->data_as_state()->attributes_as_syscollector_users()->is_remote();
+                return m_syncMsg->data_as_state()->attributes_as_syscollector_users()->user_is_remote();
             }
+        }
+        else
+        {
+            return false;
         }
         return false;
     }
@@ -468,15 +589,15 @@ public:
     {
         if (m_type == VariantType::Delta)
         {
-            if (m_delta->data_as_dbsync_users() && m_delta->data_as_dbsync_users()->password_hash_algorithm())
+            if (m_delta->data_as_dbsync_users() && m_delta->data_as_dbsync_users()->user_password_hash_algorithm())
             {
-                return m_delta->data_as_dbsync_users()->password_hash_algorithm()->string_view();
+                return m_delta->data_as_dbsync_users()->user_password_hash_algorithm()->string_view();
             }
         }
         else if (m_type == VariantType::SyncMsg)
         {
             if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_users() &&
-                m_syncMsg->data_as_state()->attributes_as_syscollector_users()->password_hash_algorithm())
+                m_syncMsg->data_as_state()->attributes_as_syscollector_users()->user_password_hash_algorithm())
             {
                 return m_syncMsg->data_as_state()
                     ->attributes_as_syscollector_users()
@@ -484,24 +605,32 @@ public:
                     ->string_view();
             }
         }
+        else
+        {
+            return "";
+        }
         return "";
     }
 
-    long userPasswordLastChange() const
+    int userPasswordLastChange() const
     {
         if (m_type == VariantType::Delta)
         {
             if (m_delta->data_as_dbsync_users())
             {
-                return m_delta->data_as_dbsync_users()->password_last_change();
+                return m_delta->data_as_dbsync_users()->user_password_last_change();
             }
         }
         else if (m_type == VariantType::SyncMsg)
         {
             if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_users())
             {
-                return m_syncMsg->data_as_state()->attributes_as_syscollector_users()->password_last_change();
+                return m_syncMsg->data_as_state()->attributes_as_syscollector_users()->user_password_last_change();
             }
+        }
+        else
+        {
+            return 0;
         }
         return 0;
     }
@@ -512,7 +641,7 @@ public:
         {
             if (m_delta->data_as_dbsync_users())
             {
-                return m_delta->data_as_dbsync_users()->password_max_days_between_changes();
+                return m_delta->data_as_dbsync_users()->user_password_max_days_between_changes();
             }
         }
         else if (m_type == VariantType::SyncMsg)
@@ -521,8 +650,12 @@ public:
             {
                 return m_syncMsg->data_as_state()
                     ->attributes_as_syscollector_users()
-                    ->password_max_days_between_changes();
+                    ->user_password_max_days_between_changes();
             }
+        }
+        else
+        {
+            return = 0;
         }
         return 0;
     }
@@ -533,7 +666,7 @@ public:
         {
             if (m_delta->data_as_dbsync_users())
             {
-                return m_delta->data_as_dbsync_users()->password_min_days_between_changes();
+                return m_delta->data_as_dbsync_users()->user_password_min_days_between_changes();
             }
         }
         else if (m_type == VariantType::SyncMsg)
@@ -542,8 +675,12 @@ public:
             {
                 return m_syncMsg->data_as_state()
                     ->attributes_as_syscollector_users()
-                    ->password_min_days_between_changes();
+                    ->user_password_min_days_between_changes();
             }
+        }
+        else
+        {
+            return 0;
         }
         return 0;
     }
@@ -554,17 +691,21 @@ public:
         {
             if (m_delta->data_as_dbsync_users())
             {
-                return m_delta->data_as_dbsync_users()->password_warning_days_before_expiration();
+                return m_delta->data_as_dbsync_users()->user_password_warning_days_before_expiration();
             }
         }
         else if (m_type == VariantType::SyncMsg)
         {
-            if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_users())
+            if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->user_attributes_as_syscollector_users())
             {
                 return m_syncMsg->data_as_state()
                     ->attributes_as_syscollector_users()
-                    ->password_warning_days_before_expiration();
+                    ->user_password_warning_days_before_expiration();
             }
+        }
+        else
+        {
+            return 0;
         }
         return 0;
     }
@@ -596,43 +737,73 @@ public:
     {
         if (m_type == VariantType::Delta)
         {
-            if (m_delta->data_as_dbsync_users() && m_delta->data_as_dbsync_users()->password_status())
+            if (m_delta->data_as_dbsync_users() && m_delta->data_as_dbsync_users()->user_password_status())
             {
-                return m_delta->data_as_dbsync_users()->password_status()->string_view();
+                return m_delta->data_as_dbsync_users()->user_password_status()->string_view();
             }
         }
         else if (m_type == VariantType::SyncMsg)
         {
             if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_users() &&
-                m_syncMsg->data_as_state()->attributes_as_syscollector_users()->password_status())
+                m_syncMsg->data_as_state()->attributes_as_syscollector_users()->user_password_status())
             {
-                return m_syncMsg->data_as_state()->attributes_as_syscollector_users()->password_status()->string_view();
+                return m_syncMsg->data_as_state()
+                    ->attributes_as_syscollector_users()
+                    ->user_password_status()
+                    ->string_view();
             }
+        }
+        else
+        {
+            return "";
         }
         return "";
     }
 
-    std::string_view userPasswordLastSetTime() const
+    double userPasswordLastSetTime() const
     {
         if (m_type == VariantType::Delta)
         {
-            if (m_delta->data_as_dbsync_users() && m_delta->data_as_dbsync_users()->password_last_set_time())
+            if (m_delta->data_as_dbsync_users())
             {
-                return m_delta->data_as_dbsync_users()->password_last_set_time()->string_view();
+                return m_delta->data_as_dbsync_users()->user_password_last_set_time();
             }
         }
         else if (m_type == VariantType::SyncMsg)
         {
-            if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_users() &&
-                m_syncMsg->data_as_state()->attributes_as_syscollector_users()->password_last_set_time())
+            if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_users())
             {
-                return m_syncMsg->data_as_state()
-                    ->attributes_as_syscollector_users()
-                    ->password_last_set_time()
-                    ->string_view();
+                return m_delta->data_as_dbsync_users()->user_password_last_set_time();
             }
         }
-        return "";
+        else
+        {
+            return 0.0;
+        }
+        return 0.0;
+    }
+
+    int userPasswordExpirationDate() const
+    {
+        if (m_type == VariantType::Delta)
+        {
+            if (m_delta->data_as_dbsync_users())
+            {
+                return m_delta->data_as_dbsync_users()->user_password_expiration_date();
+            }
+        }
+        else if (m_type == VariantType::SyncMsg)
+        {
+            if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_users())
+            {
+                return m_syncMsg->data_as_state()->attributes_as_syscollector_users()->user_password_expiration_date();
+            }
+        }
+        else
+        {
+            return 0;
+        }
+        return 0;
     }
 
     int userPasswordInactiveDays() const
@@ -641,95 +812,112 @@ public:
         {
             if (m_delta->data_as_dbsync_users())
             {
-                return m_delta->data_as_dbsync_users()->password_inactive_days();
+                return m_delta->data_as_dbsync_users()->user_password_inactive_days();
             }
         }
         else if (m_type == VariantType::SyncMsg)
         {
             if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_users())
             {
-                return m_syncMsg->data_as_state()->attributes_as_syscollector_users()->password_inactive_days();
+                return m_syncMsg->data_as_state()->attributes_as_syscollector_users()->user_password_inactive_days();
             }
+        }
+        else
+        {
+            return = 0;
         }
         return 0;
     }
 
-    std::string_view userCreated() const
+    double userCreated() const
     {
         if (m_type == VariantType::Delta)
         {
-            if (m_delta->data_as_dbsync_users() && m_delta->data_as_dbsync_users()->created())
+            if (m_delta->data_as_dbsync_users())
             {
-                return m_delta->data_as_dbsync_users()->created()->string_view();
+                return m_delta->data_as_dbsync_users()->user_created();
             }
         }
         else if (m_type == VariantType::SyncMsg)
         {
-            if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_users() &&
-                m_syncMsg->data_as_state()->attributes_as_syscollector_users()->created())
+            if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_users())
             {
-                return m_syncMsg->data_as_state()->attributes_as_syscollector_users()->created()->string_view();
+                return m_syncMsg->data_as_state()->attributes_as_syscollector_users()->user_created();
             }
         }
-        return "";
+        else
+        {
+            return 0.0;
+        }
+        return 0.0;
     }
 
-    std::string_view userLastLogin() const
+    int64_t userLastLogin() const
     {
         if (m_type == VariantType::Delta)
         {
-            if (m_delta->data_as_dbsync_users() && m_delta->data_as_dbsync_users()->last_login())
+            if (m_delta->data_as_dbsync_users())
             {
-                return m_delta->data_as_dbsync_users()->last_login()->string_view();
+                return m_delta->data_as_dbsync_users()->user_last_login();
             }
         }
         else if (m_type == VariantType::SyncMsg)
         {
-            if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_users() &&
-                m_syncMsg->data_as_state()->attributes_as_syscollector_users()->last_login())
+            if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_users())
             {
-                return m_syncMsg->data_as_state()->attributes_as_syscollector_users()->last_login()->string_view();
+                return m_syncMsg->data_as_state()->attributes_as_syscollector_users()->last_login();
             }
         }
-        return "";
+        else
+        {
+            return 0;
+        }
+        return 0;
     }
 
-    std::string_view userRoles() const
+    int userRolesSudo() const
     {
         if (m_type == VariantType::Delta)
         {
-            if (m_delta->data_as_dbsync_users() && m_delta->data_as_dbsync_users()->roles())
+            if (m_delta->data_as_dbsync_users())
             {
-                return m_delta->data_as_dbsync_users()->roles()->string_view();
+                return m_delta->data_as_dbsync_users()->user_roles_sudo();
             }
         }
         else if (m_type == VariantType::SyncMsg)
         {
-            if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_users() &&
-                m_syncMsg->data_as_state()->attributes_as_syscollector_users()->roles())
+            if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_users())
             {
-                return m_syncMsg->data_as_state()->attributes_as_syscollector_users()->roles()->string_view();
+                return m_syncMsg->data_as_state()->attributes_as_syscollector_users()->user_roles_sudo();
             }
         }
-        return "";
+        else
+        {
+            return 0;
+        }
+        return 0;
     }
 
     std::string_view userGroups() const
     {
         if (m_type == VariantType::Delta)
         {
-            if (m_delta->data_as_dbsync_users() && m_delta->data_as_dbsync_users()->groups())
+            if (m_delta->data_as_dbsync_users() && m_delta->data_as_dbsync_users()->user_groups())
             {
-                return m_delta->data_as_dbsync_users()->groups()->string_view();
+                return m_delta->data_as_dbsync_users()->user_groups()->string_view();
             }
         }
         else if (m_type == VariantType::SyncMsg)
         {
             if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_users() &&
-                m_syncMsg->data_as_state()->attributes_as_syscollector_users()->groups())
+                m_syncMsg->data_as_state()->attributes_as_syscollector_users()->user_groups())
             {
-                return m_syncMsg->data_as_state()->attributes_as_syscollector_users()->groups()->string_view();
+                return m_syncMsg->data_as_state()->attributes_as_syscollector_users()->user_groups()->string_view();
             }
+        }
+        else
+        {
+            return "";
         }
         return "";
     }
@@ -740,40 +928,44 @@ public:
         {
             if (m_delta->data_as_dbsync_users())
             {
-                return m_delta->data_as_dbsync_users()->auth_failures_count();
+                return m_delta->data_as_dbsync_users()->user_auth_failures_count();
             }
         }
         else if (m_type == VariantType::SyncMsg)
         {
             if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_users())
             {
-                return m_syncMsg->data_as_state()->attributes_as_syscollector_users()->auth_failures_count();
+                return m_syncMsg->data_as_state()->attributes_as_syscollector_users()->user_auth_failures_count();
             }
+        }
+        else
+        {
+            return 0;
         }
         return 0;
     }
 
-    std::string_view userAuthFailuresTimestamp() const
+    double userAuthFailuresTimestamp() const
     {
         if (m_type == VariantType::Delta)
         {
-            if (m_delta->data_as_dbsync_users() && m_delta->data_as_dbsync_users()->auth_failures_timestamp())
+            if (m_delta->data_as_dbsync_users())
             {
-                return m_delta->data_as_dbsync_users()->auth_failures_timestamp()->string_view();
+                return m_delta->data_as_dbsync_users()->user_auth_failures_timestamp();
             }
         }
         else if (m_type == VariantType::SyncMsg)
         {
-            if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_users() &&
-                m_syncMsg->data_as_state()->attributes_as_syscollector_users()->auth_failures_timestamp())
+            if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_users())
             {
-                return m_syncMsg->data_as_state()
-                    ->attributes_as_syscollector_users()
-                    ->auth_failures_timestamp()
-                    ->string_view();
+                return m_syncMsg->data_as_state()->attributes_as_syscollector_users()->auth_failures_timestamp();
             }
         }
-        return "";
+        else
+        {
+            return 0.0;
+        }
+        return 0.0;
     }
 
     bool userLoginStatus() const
@@ -791,6 +983,10 @@ public:
             {
                 return m_syncMsg->data_as_state()->attributes_as_syscollector_users()->login_status();
             }
+        }
+        else
+        {
+            return false;
         }
         return false;
     }
@@ -812,6 +1008,10 @@ public:
                 return m_syncMsg->data_as_state()->attributes_as_syscollector_users()->login_type()->string_view();
             }
         }
+        else
+        {
+            return "";
+        }
         return "";
     }
 
@@ -832,35 +1032,56 @@ public:
                 return m_syncMsg->data_as_state()->attributes_as_syscollector_users()->login_tty()->string_view();
             }
         }
+        else
+        {
+            return "";
+        }
         return "";
     }
 
-    std::string_view userItemId() const
+    int64_t userProcessPid() const
     {
         if (m_type == VariantType::Delta)
         {
-            if (m_delta->data_as_dbsync_users() && m_delta->data_as_dbsync_users()->item_id())
+            if (m_delta->data_as_dbsync_users())
             {
-                return m_delta->data_as_dbsync_users()->item_id()->string_view();
+                return m_delta->data_as_dbsync_users()->process_pid();
+            }
+        }
+        else if (m_type == VariantType::SyncMsg)
+        {
+            if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_users())
+            {
+                return m_syncMsg->data_as_state()->attributes_as_syscollector_users()->process_pid();
+            }
+        }
+        else
+        {
+            return 0;
+        }
+        return 0;
+    }
+
+    std::string_view userHostIp()
+    {
+        if (m_type == VariantType::Delta)
+        {
+            if (m_delta->data_as_dbsync_users() && m_delta->data_as_dbsync_users()->host_ip())
+            {
+                return m_delta->data_as_dbsync_users()->host_ip()->string_view();
             }
         }
         else if (m_type == VariantType::SyncMsg)
         {
             if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_users() &&
-                m_syncMsg->data_as_state()->attributes_as_syscollector_users()->item_id())
+                m_syncMsg->data_as_state()->attributes_as_syscollector_users()->host_ip())
             {
-                return m_syncMsg->data_as_state()->attributes_as_syscollector_users()->item_id()->string_view();
+                return m_syncMsg->data_as_state()->attributes_as_syscollector_users()->host_ip()->string_view();
             }
         }
         else
         {
-            if (m_jsonData && m_jsonData->contains("/data/item_id"_json_pointer))
-            {
-                if (m_affectedComponentType == AffectedComponentType::User)
-                {
-                    return m_jsonData->at("/data/item_id"_json_pointer).get<std::string_view>();
-                }
-            }
+            return "";
         }
         return "";
     }
