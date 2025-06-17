@@ -390,13 +390,13 @@
 
   <rule id="44602" level="10">
     <if_sid>44601</if_sid>
-    <field name="actn">^pass$|^monitor$</field>
+    <action type="pcre2">^pass$|^monitor$</action>
     <description>FortiGate: Botnet application allowed by application control.</description>
   </rule>
 
   <rule id="44603" level="7">
     <if_sid>44601</if_sid>
-    <field name="actn" negate="yes">^pass$|^monitor$</field>
+    <action type="pcre2" negate="yes">^pass$|^monitor$</action>
     <description>FortiGate: Botnet application blocked by application control.</description>
   </rule>
 
@@ -408,26 +408,26 @@
 
   <rule id="44605" level="7">
     <if_sid>44600</if_sid>
-    <field name="actn">^blocked$</field>
+    <action type="pcre2">^blocked$</action>
     <field name="logid">^0202009248$|^0202009249$</field>
     <description>FortiGate: Botnet C-and-C blocked by IP-Reputation.</description>
   </rule>
 
   <rule id="44606" level="10">
     <if_sid>44601</if_sid>
-    <field name="actn">^detected$|^pass session$</field>
+    <action type="pcre2">^detected$|^pass session$</action>
     <description>FortiGate: Botnet traffic allowed by IPS.</description>
   </rule>
 
   <rule id="44607" level="7">
     <if_sid>44601</if_sid>
-    <field name="actn" negate="yes">^detected$|^pass session$</field>
+    <action type="pcre2" negate="yes">^detected$|^pass session$</action>
     <description>FortiGate: Botnet traffic blocked by IPS.</description>
   </rule>
 
   <rule id="44608" level="10">
     <if_sid>44600</if_sid>
-    <field name="actn">conserve mode</field>
+    <action>conserve mode</action>
     <description>FortiGate: System services entered conserve mode.</description>
   </rule>
 
@@ -453,27 +453,27 @@
 
   <rule id="44612" level="7">
     <if_sid>44600</if_sid>
-    <field name="actn">^interface-stat-change$</field>
+    <action type="pcre2">^interface-stat-change$</action>
     <field name="fstatus">^down$</field>
     <description>FortiGate: Interface down.</description>
   </rule>
 
   <rule id="44613" level="5">
     <if_sid>44600</if_sid>
-    <field name="actn">^interface-stat-change$</field>
+    <action type="pcre2">^interface-stat-change$</action>
     <field name="fstatus">^up$</field>
     <description>FortiGate: Interface up.</description>
   </rule>
 
   <rule id="44614" level="5">
     <if_sid>44600</if_sid>
-    <field name="actn">^phase2-down$</field>
+    <action type="pcre2">^phase2-down$</action>
     <description>FortiGate: IPsec phase2 down.</description>
   </rule>
 
   <rule id="44615" level="5">
     <if_sid>44600</if_sid>
-    <field name="actn">^phase2-up$</field>
+    <action type="pcre2">^phase2-up$</action>
     <description>FortiGate: IPsec phase2 up.</description>
   </rule>
 
@@ -509,7 +509,7 @@
 
   <rule id="44621" level="7">
     <if_sid>44600</if_sid>
-    <field name="actn">^power-supply-monitor$</field>
+    <action type="pcre2">^power-supply-monitor$</action>
     <field name="fstatus">^failure$</field>
     <description>FortiGate: Power supply failure.</description>
   </rule>
@@ -535,7 +535,7 @@
 
   <rule id="44625" level="5">
     <if_sid>44622</if_sid>
-    <field name="actn">^block$</field>
+    <action type="pcre2">^block$</action>
     <description>FortiGate: UTM DLP event.</description>
   </rule>
 
