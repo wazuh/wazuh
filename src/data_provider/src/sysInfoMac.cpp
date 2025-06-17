@@ -552,6 +552,7 @@ nlohmann::json SysInfo::getUsers() const
 
         auto username = user["username"].get<std::string>();
 
+        userItem["user_id"] = user["uid"];
         userItem["user_full_name"] = user["description"];
         userItem["user_home"] = user["directory"];
         userItem["user_name"] = username;
@@ -560,9 +561,7 @@ nlohmann::json SysInfo::getUsers() const
         userItem["user_group_id_signed"] = user["gid_signed"];
         userItem["user_group_id"] = user["gid"];
 
-        std::set<gid_t> uid {static_cast<gid_t>(user["uid"].get<int>())};
-
-        userItem["user_id"] = uid;
+        std::set<uid_t> uid {static_cast<uid_t>(user["uid"].get<int>())};
         auto collectedUsersGroups = userGroupsProvider.getGroupNamesByUid(uid);
 
         if (collectedUsersGroups.empty())

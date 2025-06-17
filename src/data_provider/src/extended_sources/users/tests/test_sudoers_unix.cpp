@@ -74,7 +74,7 @@ TEST_F(SudoersProviderTest, CollectReturnsExpectedJson)
     ASSERT_TRUE(result.is_array());
 
     // Check that the array contains expected entries
-    ASSERT_EQ(result.size(), 4);
+    ASSERT_EQ(result.size(), 4u);
 
     auto filePath = SUDOERS_FILE_PATH.c_str();
     EXPECT_EQ(result[0]["header"], "Defaults");
