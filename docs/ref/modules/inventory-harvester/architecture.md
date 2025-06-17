@@ -62,6 +62,8 @@ subgraph WazuhAgent["Wazuh Agent"]
     Ports["Ports"]
     Hardware["Hardware"]
     Network["Networks"]
+    Users["Users"]
+    Groups["Groups"]
   end
   subgraph WazuhModulesA["wazuh-modulesd"]
     SystemInventory["System inventory"]
