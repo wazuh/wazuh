@@ -2,16 +2,14 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-import json
 import os
 import uuid
 from contextvars import ContextVar
-from copy import deepcopy
-from functools import lru_cache, wraps
+from functools import lru_cache
 from grp import getgrnam
 from multiprocessing import Event
 from pwd import getpwnam
-from typing import Any, Dict
+from typing import Dict
 
 
 # ===================================================== Functions ======================================================
@@ -70,62 +68,6 @@ def wazuh_gid() -> int:
     return getgrnam(GROUP_NAME).gr_gid if globals()['_WAZUH_GID'] is None else globals()['_WAZUH_GID']
 
 
-def context_cached(key: str = '') -> Any:
-    """Save the result of the decorated function in a cache.
-
-    Next calls to the decorated function returns the saved result saving time and resources. The cache gets
-    invalidated at the end of the request.
-
-    Parameters
-    ----------
-    key : str
-        Part of the cache entry identifier. The identifier will be the key + args + kwargs.
-
-    Returns
-    -------
-    Any
-        The result of the first call to the decorated function.
-
-    Notes
-    -----
-    The returned object will be a deep copy of the cached one.
-    """
-
-    def decorator(func) -> Any:
-        @wraps(func)
-        def wrapper(*args, **kwargs) -> Any:
-            cached_key = json.dumps({'key': key, 'args': args, 'kwargs': kwargs})
-            if cached_key not in _context_cache:
-                _context_cache[cached_key] = ContextVar(cached_key, default=None)
-            if _context_cache[cached_key].get() is None:
-                result = func(*args, **kwargs)
-                _context_cache[cached_key].set(result)
-            return deepcopy(_context_cache[cached_key].get())
-
-        return wrapper
-
-    return decorator
-
-
-def reset_context_cache() -> None:
-    """Reset context cache."""
-
-    for context_var in _context_cache.values():
-        context_var.set(None)
-
-
-def get_context_cache() -> dict:
-    """Get the context cache.
-
-    Returns
-    -------
-    dict
-        Dictionary with the context variables representing the cache.
-    """
-
-    return _context_cache
-
-
 def get_installation_uid() -> str:
     """Get the installation UID, creating it if it does not exist.
     Returns
@@ -153,7 +95,6 @@ broadcast: ContextVar[bool] = ContextVar('broadcast', default=False)
 cluster_nodes: ContextVar[list] = ContextVar('cluster_nodes', default=list())
 origin_module: ContextVar[str] = ContextVar('origin_module', default='framework')
 mp_pools: ContextVar[Dict] = ContextVar('mp_pools',default={})
-_context_cache = dict()
 
 
 # =========================================== Wazuh constants and variables ============================================
