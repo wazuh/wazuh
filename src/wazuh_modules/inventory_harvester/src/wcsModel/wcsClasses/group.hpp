@@ -14,14 +14,15 @@
 
 #include "reflectiveJson.hpp"
 #include <string_view>
+#include <cstdint>
 
 struct Group final {
     std::string_view description;
-    unsigned long id = 0;
-    long id_signed = 0;
+    std::int64_t id = 0;
+    std::int64_t id_signed = 0;
     bool is_hidden = false;
     std::string_view name;
-    std::string_view users;
+    std::string_view users; // CHANGED
     std::string_view uuid;
 
     REFLECTABLE(MAKE_FIELD("description", &Group::description),

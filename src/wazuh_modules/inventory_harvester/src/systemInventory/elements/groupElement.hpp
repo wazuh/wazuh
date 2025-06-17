@@ -59,16 +59,15 @@ public:
         auto agentIp_sv = context->agentIp();
         if (!agentIp_sv.empty() && agentIp_sv.compare("any") != 0)
         {
-            element.data.agent.ip = agentIp_sv;
+            element.data.agent.host.ip = agentIp_sv;
         } else {
-            element.data.agent.ip = "";
+            element.data.agent.host.ip = "";
         }
 
         auto& instancePolicyManager = PolicyHarvesterManager::instance();
         element.data.wazuh.cluster.name = instancePolicyManager.getClusterName();
         if (instancePolicyManager.getClusterStatus())
         {
-            element.data.wazuh.cluster.node_type = instancePolicyManager.getClusterNodeType();
             element.data.wazuh.cluster.node = instancePolicyManager.getClusterNodeName();
         }
 
@@ -78,7 +77,7 @@ public:
         unsigned long ugid_val = 0;
         std::string_view groupId_sv = context->groupId();
         if(!groupId_sv.empty()){
-            std::string temp_str(groupId_sv);Add commentMore actions
+            std::string temp_str(groupId_sv);
             try {
                 gid_val = std::stol(temp_str);
                 if (gid_val >= 0) {

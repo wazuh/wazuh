@@ -21,9 +21,9 @@ struct InventoryUserHarvester final {
     Agent agent;
     User user;
     Wazuh wazuh;
-    Host host;
-    Login login;
-    Process process;
+    User::Host host;
+    User::Login login;
+    User::Process process;
 
     REFLECTABLE(MAKE_FIELD("agent", &InventoryUserHarvester::agent),
                 MAKE_FIELD("user", &InventoryUserHarvester::user),

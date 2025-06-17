@@ -59,10 +59,10 @@ public:
         auto agentIp_sv = context->agentIp();
         if (!agentIp_sv.empty() && agentIp_sv.compare("any") != 0)
         {
-            element.data.agent.ip = agentIp_sv;
+            element.data.agent.host.ip = agentIp_sv;
             element.data.host.ip = agentIp_sv;
         } else {
-            element.data.agent.ip = "";
+            element.data.agent.host.ip = "";
             element.data.host.ip = "";
         }
 
@@ -70,7 +70,6 @@ public:
         element.data.wazuh.cluster.name = instancePolicyManager.getClusterName();
         if (instancePolicyManager.getClusterStatus())
         {
-            element.data.wazuh.cluster.node_type = instancePolicyManager.getClusterNodeType();
             element.data.wazuh.cluster.node = instancePolicyManager.getClusterNodeName();
         }
 
@@ -128,7 +127,6 @@ public:
         element.data.user.password.warning_days_before_expiration = context->userPasswordWarningDays();
 
         element.data.user.roles = context->userRoles();
-
         element.data.user.groups = context->userGroups();
 
         element.data.user.auth_failures.count = context->userAuthFailuresCount();

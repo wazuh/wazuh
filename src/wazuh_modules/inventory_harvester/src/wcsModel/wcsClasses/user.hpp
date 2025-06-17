@@ -14,62 +14,63 @@
 
 #include "reflectiveJson.hpp"
 #include <string_view>
-
-struct Host final {
-    std::string_view ip;
-    REFLECTABLE(MAKE_FIELD("ip", &Host::ip));
-};
-
-struct Login final {
-    bool status = false;
-    std::string_view tty;
-    std::string_view type;
-    REFLECTABLE(MAKE_FIELD("status", &Login::status),
-                MAKE_FIELD("tty", &Login::tty),
-                MAKE_FIELD("type", &Login::type));
-};
-
-struct Process final {
-    long pid = 0;
-    REFLECTABLE(MAKE_FIELD("pid", &Process::pid));
-};
-
-struct AuthFailures final {
-    int count = 0;
-    std::string_view timestamp;
-    REFLECTABLE(MAKE_FIELD("count", &AuthFailures::count),
-                MAKE_FIELD("timestamp", &AuthFailures::timestamp));
-};
-
-struct UserGroupInfo final {
-    unsigned long id = 0;
-    long id_signed = 0;
-    REFLECTABLE(MAKE_FIELD("id", &UserGroupInfo::id),
-                MAKE_FIELD("id_signed", &UserGroupInfo::id_signed));
-};
-
-struct Password final {
-    std::string_view expiration_date;
-    std::string_view hash_algorithm;
-    int inactive_days = 0;
-    long last_change = 0;
-    std::string_view last_set_time;
-    int max_days_between_changes = 0;
-    int min_days_between_changes = 0;
-    std::string_view status;
-    int warning_days_before_expiration = 0;
-    REFLECTABLE(MAKE_FIELD("expiration_date", &Password::expiration_date),
-                MAKE_FIELD("hash_algorithm", &Password::hash_algorithm),
-                MAKE_FIELD("inactive_days", &Password::inactive_days),
-                MAKE_FIELD("last_change", &Password::last_change),
-                MAKE_FIELD("last_set_time", &Password::last_set_time),
-                MAKE_FIELD("max_days_between_changes", &Password::max_days_between_changes),
-                MAKE_FIELD("min_days_between_changes", &Password::min_days_between_changes),
-                MAKE_FIELD("status", &Password::status),
-                MAKE_FIELD("warning_days_before_expiration", &Password::warning_days_before_expiration));
-};
+#include <cstdint>
 
 struct User final {
+    struct Host final {
+        std::string_view ip;
+        REFLECTABLE(MAKE_FIELD("ip", &Host::ip));
+    };
+
+    struct Login final {
+        bool status = false;
+        std::string_view tty;
+        std::string_view type;
+        REFLECTABLE(MAKE_FIELD("status", &Login::status),
+                    MAKE_FIELD("tty", &Login::tty),
+                    MAKE_FIELD("type", &Login::type));
+    };
+
+    struct Process final {
+        std::int64_t pid = 0;
+        REFLECTABLE(MAKE_FIELD("pid", &Process::pid));
+    };
+
+    struct AuthFailures final {
+        std::int64_t count = 0;
+        std::string_view timestamp;
+        REFLECTABLE(MAKE_FIELD("count", &AuthFailures::count),
+                    MAKE_FIELD("timestamp", &AuthFailures::timestamp));
+    };
+
+    struct UserGroupInfo final {
+        std::int64_t id = 0;
+        std::int64_t id_signed = 0;
+        REFLECTABLE(MAKE_FIELD("id", &UserGroupInfo::id),
+                    MAKE_FIELD("id_signed", &UserGroupInfo::id_signed));
+    };
+
+    struct Password final {
+        std::string_view expiration_date;
+        std::string_view hash_algorithm;
+        std::int64_t inactive_days = 0;
+        std::int64_t last_change = 0;
+        std::string_view last_set_time;
+        std::int64_t max_days_between_changes = 0;
+        std::int64_t min_days_between_changes = 0;
+        std::string_view status;
+        std::int64_t warning_days_before_expiration = 0;
+        REFLECTABLE(MAKE_FIELD("expiration_date", &Password::expiration_date),
+                    MAKE_FIELD("hash_algorithm", &Password::hash_algorithm),
+                    MAKE_FIELD("inactive_days", &Password::inactive_days),
+                    MAKE_FIELD("last_change", &Password::last_change),
+                    MAKE_FIELD("last_set_time", &Password::last_set_time),
+                    MAKE_FIELD("max_days_between_changes", &Password::max_days_between_changes),
+                    MAKE_FIELD("min_days_between_changes", &Password::min_days_between_changes),
+                    MAKE_FIELD("status", &Password::status),
+                    MAKE_FIELD("warning_days_before_expiration", &Password::warning_days_before_expiration));
+    };
+
     AuthFailures auth_failures;
     std::string_view created;
     std::string_view full_name;
@@ -85,7 +86,7 @@ struct User final {
     std::string_view roles;
     std::string_view shell;
     std::string_view type;
-    long uid_signed = 0;
+    std::int64_t uid_signed = 0;
     std::string_view uuid;
 
     REFLECTABLE(MAKE_FIELD("auth_failures", &User::auth_failures),
