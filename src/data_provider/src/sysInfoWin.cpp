@@ -1008,7 +1008,7 @@ nlohmann::json SysInfo::getGroups() const
         groupItem["group_description"] = group["comment"];
         groupItem["group_id_signed"] = group["gid_signed"];
         groupItem["group_uuid"] = group["group_sid"];
-        groupItem["group_is_hidden"] = nullptr;
+        groupItem["group_is_hidden"] = 0;
 
         std::set<std::uint32_t> gids {static_cast<std::uint32_t>(group["gid"].get<int>())};
         auto collectedUsersGroups = userGroupsProvider.getUserNamesByGid(gids);
@@ -1099,14 +1099,14 @@ nlohmann::json SysInfo::getUsers() const
         userItem["user_uuid"] = user["uuid"];
 
         //Not in windows
-        userItem["user_is_remote"] = nullptr;
+        userItem["user_is_remote"] = 0;
 
         // Only Macos
-        userItem["user_password_last_set_time"] = nullptr;
-        userItem["user_is_hidden"] = nullptr;
-        userItem["user_created"] = nullptr;
-        userItem["user_auth_failed_count"] = nullptr;
-        userItem["user_auth_failed_timestamp"] = nullptr;
+        userItem["user_password_last_set_time"] = 0;
+        userItem["user_is_hidden"] = 0;
+        userItem["user_created"] = 0;
+        userItem["user_auth_failed_count"] = 0;
+        userItem["user_auth_failed_timestamp"] = 0;
 
         auto matched = false;
 
@@ -1137,22 +1137,22 @@ nlohmann::json SysInfo::getUsers() const
 
         if (!matched)
         {
-            userItem["login_status"] = nullptr;
+            userItem["login_status"] = 0;
             userItem["login_tty"] = nullptr;
             userItem["login_type"] = nullptr;
             userItem["host_ip"] = nullptr;
-            userItem["process_pid"] = nullptr;
-            userItem["user_last_login"] = nullptr;
+            userItem["process_pid"] = 0;
+            userItem["user_last_login"] = 0;
         }
 
-        userItem["user_password_expiration_date"] = nullptr;
+        userItem["user_password_expiration_date"] = 0;
         userItem["user_password_hash_algorithm"] = nullptr;
-        userItem["user_password_inactive_days"] = nullptr;
-        userItem["user_password_last_change"] = nullptr;
-        userItem["user_password_max_days_between_changes"] = nullptr;
-        userItem["user_password_min_days_between_changes"] = nullptr;
+        userItem["user_password_inactive_days"] = 0;
+        userItem["user_password_last_change"] = 0;
+        userItem["user_password_max_days_between_changes"] = 0;
+        userItem["user_password_min_days_between_changes"] = 0;
         userItem["user_password_status"] = nullptr;
-        userItem["user_password_warning_days_before_expiration"] = nullptr;
+        userItem["user_password_warning_days_before_expiration"] = 0;
 
         result.push_back(std::move(userItem));
     }

@@ -91,9 +91,9 @@ TEST_F(SyscollectorImpTest, defaultCtor)
               (R"({"egroup":"root","euser":"root","fgroup":"root","name":"kworker/u256:2-","scan_time":"2020/12/28 21:49:50", "nice":0,"nlwp":1,"pgrp":0,"pid":"431625","ppid":2,"priority":20,"processor":1,"resident":0,"rgroup":"root","ruser":"root","session":0,"sgroup":"root","share":0,"size":0,"start_time":9302261,"state":"I","stime":3,"suser":"root","tgid":431625,"tty":0,"utime":0,"vm_size":0})"_json));
 
     EXPECT_CALL(*spInfoWrapper, groups()).WillRepeatedly(Return(
-                                                             R"([{"group_description": null, "group_id": 1, "group_id_signed": 1, "group_is_hidden": null, "group_name": "daemon", "group_users": "daemon:pollinate:vboxadd", "group_uuid": null }])"_json));
+                                                             R"([{"group_description": null, "group_id": 1, "group_id_signed": 1, "group_is_hidden": 0, "group_name": "daemon", "group_users": "daemon:pollinate:vboxadd", "group_uuid": null }])"_json));
     EXPECT_CALL(*spInfoWrapper, users()).WillRepeatedly(Return
-                                                        (R"([{"host_ip":"192.168.0.84","login_status":0,"login_tty":"pts/0","login_type":"user","process_pid":"129870","user_auth_failed_count":null,"user_auth_failed_timestamp":null,"user_created":null,"user_full_name":"root","user_group_id":0,"user_group_id_signed":0,"user_groups":null,"user_home":"/root","user_id":0,"user_is_hidden":null,"user_is_remote":1,"user_last_login":"1749605216","user_name":"root","user_password_expiration_date":-1,"user_password_hash_algorithm":"y","user_password_inactive_days":-1,"user_password_last_change":20228,"user_password_last_set_time":null,"user_password_max_days_between_changes":99999,"user_password_min_days_between_changes":0,"user_password_status":"active","user_password_warning_days_before_expiration":7,"user_roles_sudo":1,"user_shell":"/bin/bash","user_type":null,"user_uid_signed":0,"user_uuid":null}])"_json));
+                                                        (R"([{"host_ip":"192.168.0.84","login_status":0,"login_tty":"pts/0","login_type":"user","process_pid":"129870","user_auth_failed_count":0,"user_auth_failed_timestamp":0,"user_created":0,"user_full_name":"root","user_group_id":0,"user_group_id_signed":0,"user_groups":0,"user_home":"/root","user_id":0,"user_is_hidden":0,"user_is_remote":1,"user_last_login":"1749605216","user_name":"root","user_password_expiration_date":-1,"user_password_hash_algorithm":"y","user_password_inactive_days":-1,"user_password_last_change":20228,"user_password_last_set_time":0,"user_password_max_days_between_changes":99999,"user_password_min_days_between_changes":0,"user_password_status":"active","user_password_warning_days_before_expiration":7,"user_roles":"sudo","user_shell":"/bin/bash","user_type":null,"user_uid_signed":0,"user_uuid":null}])"_json));
 
     CallbackMock wrapper;
     std::function<void(const std::string&)> callbackData
@@ -206,7 +206,7 @@ TEST_F(SyscollectorImpTest, defaultCtor)
     };
     const auto expectedResult21
     {
-        R"({"data":{"checksum":"8c431a0b1998efae2d9792251d614ff7558f58ba","group_description":null,"group_id":1,"group_id_signed":1,"group_is_hidden":null,"group_name":"daemon","group_users":"daemon:pollinate:vboxadd","group_uuid":null},"operation":"INSERTED","type":"dbsync_groups"})"
+        R"({"data":{"checksum":"81793e529c565256a60eff6c6345e2f5c5ee8cb0","group_description":null,"group_id":1,"group_id_signed":1,"group_is_hidden":0,"group_name":"daemon","group_users":"daemon:pollinate:vboxadd","group_uuid":null},"operation":"INSERTED","type":"dbsync_groups"})"
     };
     const auto expectedResult22
     {
@@ -218,7 +218,7 @@ TEST_F(SyscollectorImpTest, defaultCtor)
     };
     const auto expectedResult24
     {
-        R"({"data":{"checksum":"786cc53b6766ed4deab1c2bd279877f50537a29e","host_ip":"192.168.0.84","login_status":0,"login_tty":"pts/0","login_type":"user","process_pid":"129870","user_auth_failed_count":null,"user_auth_failed_timestamp":null,"user_created":null,"user_full_name":"root","user_group_id":0,"user_group_id_signed":0,"user_groups":null,"user_home":"/root","user_id":0,"user_is_hidden":null,"user_is_remote":1,"user_last_login":"1749605216","user_name":"root","user_password_expiration_date":-1,"user_password_hash_algorithm":"y","user_password_inactive_days":-1,"user_password_last_change":20228,"user_password_last_set_time":null,"user_password_max_days_between_changes":99999,"user_password_min_days_between_changes":0,"user_password_status":"active","user_password_warning_days_before_expiration":7,"user_roles_sudo":1,"user_shell":"/bin/bash","user_type":null,"user_uid_signed":0,"user_uuid":null},"operation":"INSERTED","type":"dbsync_users"})"
+        R"({"data":{"checksum":"04e92f4fc7ee1d8a5b9f94337c62e88e2e3cee58","host_ip":"192.168.0.84","login_status":0,"login_tty":"pts/0","login_type":"user","process_pid":"129870","user_auth_failed_count":0,"user_auth_failed_timestamp":0,"user_created":0,"user_full_name":"root","user_group_id":0,"user_group_id_signed":0,"user_groups":0,"user_home":"/root","user_id":0,"user_is_hidden":0,"user_is_remote":1,"user_last_login":"1749605216","user_name":"root","user_password_expiration_date":-1,"user_password_hash_algorithm":"y","user_password_inactive_days":-1,"user_password_last_change":20228,"user_password_last_set_time":0,"user_password_max_days_between_changes":99999,"user_password_min_days_between_changes":0,"user_password_status":"active","user_password_warning_days_before_expiration":7,"user_roles":"sudo","user_shell":"/bin/bash","user_type":null,"user_uid_signed":0,"user_uuid":null},"operation":"INSERTED","type":"dbsync_users"})"
     };
 
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult1)).Times(1);
@@ -293,9 +293,9 @@ TEST_F(SyscollectorImpTest, intervalSeconds)
                     (R"({"name":"TEXT", "scan_time":"2020/12/28 21:49:50", "version":"TEXT", "vendor":"TEXT", "install_time":"TEXT", "location":"TEXT", "architecture":"TEXT", "groups":"TEXT", "description":"TEXT", "size":"TEXT", "priority":"TEXT", "multiarch":"TEXT", "source":"TEXT", "os_patch":"TEXT"})"_json));
 
     EXPECT_CALL(*spInfoWrapper, groups()).WillRepeatedly(Return(
-                                                             R"([{"group_description": null, "group_id": 1, "group_id_signed": 1, "group_is_hidden": null, "group_name": "daemon", "group_users": "daemon:pollinate:vboxadd", "group_uuid": null }])"_json));
+                                                             R"([{"group_description": null, "group_id": 1, "group_id_signed": 1, "group_is_hidden": 0, "group_name": "daemon", "group_users": "daemon:pollinate:vboxadd", "group_uuid": null }])"_json));
     EXPECT_CALL(*spInfoWrapper, users()).WillRepeatedly(Return
-                                                        (R"([{"host_ip":"192.168.0.84","login_status":0,"login_tty":"pts/0","login_type":"user","process_pid":"129870","user_auth_failed_count":null,"user_auth_failed_timestamp":null,"user_created":null,"user_full_name":"root","user_group_id":0,"user_group_id_signed":0,"user_groups":null,"user_home":"/root","user_id":0,"user_is_hidden":null,"user_is_remote":1,"user_last_login":"1749605216","user_name":"root","user_password_expiration_date":-1,"user_password_hash_algorithm":"y","user_password_inactive_days":-1,"user_password_last_change":20228,"user_password_last_set_time":null,"user_password_max_days_between_changes":99999,"user_password_min_days_between_changes":0,"user_password_status":"active","user_password_warning_days_before_expiration":7,"user_roles_sudo":1,"user_shell":"/bin/bash","user_type":null,"user_uid_signed":0,"user_uuid":null}])"_json));
+                                                        (R"([{"host_ip":"192.168.0.84","login_status":0,"login_tty":"pts/0","login_type":"user","process_pid":"129870","user_auth_failed_count":0,"user_auth_failed_timestamp":0,"user_created":0,"user_full_name":"root","user_group_id":0,"user_group_id_signed":0,"user_groups":0,"user_home":"/root","user_id":0,"user_is_hidden":0,"user_is_remote":1,"user_last_login":"1749605216","user_name":"root","user_password_expiration_date":-1,"user_password_hash_algorithm":"y","user_password_inactive_days":-1,"user_password_last_change":20228,"user_password_last_set_time":0,"user_password_max_days_between_changes":99999,"user_password_min_days_between_changes":0,"user_password_status":"active","user_password_warning_days_before_expiration":7,"user_roles":"sudo","user_shell":"/bin/bash","user_type":null,"user_uid_signed":0,"user_uuid":null}])"_json));
 
     std::thread t
     {
@@ -382,9 +382,9 @@ TEST_F(SyscollectorImpTest, noHardware)
               (R"({"egroup":"root","euser":"root","fgroup":"root","name":"kworker/u256:2-","scan_time":"2020/12/28 21:49:50", "nice":0,"nlwp":1,"pgrp":0,"pid":"431625","ppid":2,"priority":20,"processor":1,"resident":0,"rgroup":"root","ruser":"root","session":0,"sgroup":"root","share":0,"size":0,"start_time":9302261,"state":"I","stime":3,"suser":"root","tgid":431625,"tty":0,"utime":0,"vm_size":0})"_json));
 
     EXPECT_CALL(*spInfoWrapper, groups()).WillRepeatedly(Return(
-                                                             R"([{"group_description": null, "group_id": 1, "group_id_signed": 1, "group_is_hidden": null, "group_name": "daemon", "group_users": "daemon:pollinate:vboxadd", "group_uuid": null }])"_json));
+                                                             R"([{"group_description": null, "group_id": 1, "group_id_signed": 1, "group_is_hidden": 0, "group_name": "daemon", "group_users": "daemon:pollinate:vboxadd", "group_uuid": null }])"_json));
     EXPECT_CALL(*spInfoWrapper, users()).WillRepeatedly(Return
-                                                        (R"([{"host_ip":"192.168.0.84","login_status":0,"login_tty":"pts/0","login_type":"user","process_pid":"129870","user_auth_failed_count":null,"user_auth_failed_timestamp":null,"user_created":null,"user_full_name":"root","user_group_id":0,"user_group_id_signed":0,"user_groups":null,"user_home":"/root","user_id":0,"user_is_hidden":null,"user_is_remote":1,"user_last_login":"1749605216","user_name":"root","user_password_expiration_date":-1,"user_password_hash_algorithm":"y","user_password_inactive_days":-1,"user_password_last_change":20228,"user_password_last_set_time":null,"user_password_max_days_between_changes":99999,"user_password_min_days_between_changes":0,"user_password_status":"active","user_password_warning_days_before_expiration":7,"user_roles_sudo":1,"user_shell":"/bin/bash","user_type":null,"user_uid_signed":0,"user_uuid":null}])"_json));
+                                                        (R"([{"host_ip":"192.168.0.84","login_status":0,"login_tty":"pts/0","login_type":"user","process_pid":"129870","user_auth_failed_count":0,"user_auth_failed_timestamp":0,"user_created":0,"user_full_name":"root","user_group_id":0,"user_group_id_signed":0,"user_groups":0,"user_home":"/root","user_id":0,"user_is_hidden":0,"user_is_remote":1,"user_last_login":"1749605216","user_name":"root","user_password_expiration_date":-1,"user_password_hash_algorithm":"y","user_password_inactive_days":-1,"user_password_last_change":20228,"user_password_last_set_time":0,"user_password_max_days_between_changes":99999,"user_password_min_days_between_changes":0,"user_password_status":"active","user_password_warning_days_before_expiration":7,"user_roles":"sudo","user_shell":"/bin/bash","user_type":null,"user_uid_signed":0,"user_uuid":null}])"_json));
 
     CallbackMock wrapper;
     std::function<void(const std::string&)> callbackData
@@ -493,7 +493,7 @@ TEST_F(SyscollectorImpTest, noHardware)
     };
     const auto expectedResult22
     {
-        R"({"data":{"checksum":"8c431a0b1998efae2d9792251d614ff7558f58ba","group_description":null,"group_id":1,"group_id_signed":1,"group_is_hidden":null,"group_name":"daemon","group_users":"daemon:pollinate:vboxadd","group_uuid":null},"operation":"INSERTED","type":"dbsync_groups"})"
+        R"({"data":{"checksum":"81793e529c565256a60eff6c6345e2f5c5ee8cb0","group_description":null,"group_id":1,"group_id_signed":1,"group_is_hidden":0,"group_name":"daemon","group_users":"daemon:pollinate:vboxadd","group_uuid":null},"operation":"INSERTED","type":"dbsync_groups"})"
     };
     const auto expectedResult23
     {
@@ -505,7 +505,7 @@ TEST_F(SyscollectorImpTest, noHardware)
     };
     const auto expectedResult25
     {
-        R"({"data":{"checksum":"786cc53b6766ed4deab1c2bd279877f50537a29e","host_ip":"192.168.0.84","login_status":0,"login_tty":"pts/0","login_type":"user","process_pid":"129870","user_auth_failed_count":null,"user_auth_failed_timestamp":null,"user_created":null,"user_full_name":"root","user_group_id":0,"user_group_id_signed":0,"user_groups":null,"user_home":"/root","user_id":0,"user_is_hidden":null,"user_is_remote":1,"user_last_login":"1749605216","user_name":"root","user_password_expiration_date":-1,"user_password_hash_algorithm":"y","user_password_inactive_days":-1,"user_password_last_change":20228,"user_password_last_set_time":null,"user_password_max_days_between_changes":99999,"user_password_min_days_between_changes":0,"user_password_status":"active","user_password_warning_days_before_expiration":7,"user_roles_sudo":1,"user_shell":"/bin/bash","user_type":null,"user_uid_signed":0,"user_uuid":null},"operation":"INSERTED","type":"dbsync_users"})"
+        R"({"data":{"checksum":"04e92f4fc7ee1d8a5b9f94337c62e88e2e3cee58","host_ip":"192.168.0.84","login_status":0,"login_tty":"pts/0","login_type":"user","process_pid":"129870","user_auth_failed_count":0,"user_auth_failed_timestamp":0,"user_created":0,"user_full_name":"root","user_group_id":0,"user_group_id_signed":0,"user_groups":0,"user_home":"/root","user_id":0,"user_is_hidden":0,"user_is_remote":1,"user_last_login":"1749605216","user_name":"root","user_password_expiration_date":-1,"user_password_hash_algorithm":"y","user_password_inactive_days":-1,"user_password_last_change":20228,"user_password_last_set_time":0,"user_password_max_days_between_changes":99999,"user_password_min_days_between_changes":0,"user_password_status":"active","user_password_warning_days_before_expiration":7,"user_roles":"sudo","user_shell":"/bin/bash","user_type":null,"user_uid_signed":0,"user_uuid":null},"operation":"INSERTED","type":"dbsync_users"})"
     };
 
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult2)).Times(1);
@@ -580,9 +580,9 @@ TEST_F(SyscollectorImpTest, noOs)
               (R"({"egroup":"root","euser":"root","fgroup":"root","name":"kworker/u256:2-","scan_time":"2020/12/28 21:49:50", "nice":0,"nlwp":1,"pgrp":0,"pid":"431625","ppid":2,"priority":20,"processor":1,"resident":0,"rgroup":"root","ruser":"root","session":0,"sgroup":"root","share":0,"size":0,"start_time":9302261,"state":"I","stime":3,"suser":"root","tgid":431625,"tty":0,"utime":0,"vm_size":0})"_json));
 
     EXPECT_CALL(*spInfoWrapper, groups()).WillRepeatedly(Return(
-                                                             R"([{"group_description": null, "group_id": 1, "group_id_signed": 1, "group_is_hidden": null, "group_name": "daemon", "group_users": "daemon:pollinate:vboxadd", "group_uuid": null }])"_json));
+                                                             R"([{"group_description": null, "group_id": 1, "group_id_signed": 1, "group_is_hidden": 0, "group_name": "daemon", "group_users": "daemon:pollinate:vboxadd", "group_uuid": null }])"_json));
     EXPECT_CALL(*spInfoWrapper, users()).WillRepeatedly(Return
-                                                        (R"([{"host_ip":"192.168.0.84","login_status":0,"login_tty":"pts/0","login_type":"user","process_pid":"129870","user_auth_failed_count":null,"user_auth_failed_timestamp":null,"user_created":null,"user_full_name":"root","user_group_id":0,"user_group_id_signed":0,"user_groups":null,"user_home":"/root","user_id":0,"user_is_hidden":null,"user_is_remote":1,"user_last_login":"1749605216","user_name":"root","user_password_expiration_date":-1,"user_password_hash_algorithm":"y","user_password_inactive_days":-1,"user_password_last_change":20228,"user_password_last_set_time":null,"user_password_max_days_between_changes":99999,"user_password_min_days_between_changes":0,"user_password_status":"active","user_password_warning_days_before_expiration":7,"user_roles_sudo":1,"user_shell":"/bin/bash","user_type":null,"user_uid_signed":0,"user_uuid":null}])"_json));
+                                                        (R"([{"host_ip":"192.168.0.84","login_status":0,"login_tty":"pts/0","login_type":"user","process_pid":"129870","user_auth_failed_count":0,"user_auth_failed_timestamp":0,"user_created":0,"user_full_name":"root","user_group_id":0,"user_group_id_signed":0,"user_groups":0,"user_home":"/root","user_id":0,"user_is_hidden":0,"user_is_remote":1,"user_last_login":"1749605216","user_name":"root","user_password_expiration_date":-1,"user_password_hash_algorithm":"y","user_password_inactive_days":-1,"user_password_last_change":20228,"user_password_last_set_time":0,"user_password_max_days_between_changes":99999,"user_password_min_days_between_changes":0,"user_password_status":"active","user_password_warning_days_before_expiration":7,"user_roles":"sudo","user_shell":"/bin/bash","user_type":null,"user_uid_signed":0,"user_uuid":null}])"_json));
 
     CallbackMock wrapper;
     std::function<void(const std::string&)> callbackData
@@ -691,7 +691,7 @@ TEST_F(SyscollectorImpTest, noOs)
     };
     const auto expectedResult22
     {
-        R"({"data":{"checksum":"8c431a0b1998efae2d9792251d614ff7558f58ba","group_description":null,"group_id":1,"group_id_signed":1,"group_is_hidden":null,"group_name":"daemon","group_users":"daemon:pollinate:vboxadd","group_uuid":null},"operation":"INSERTED","type":"dbsync_groups"})"
+        R"({"data":{"checksum":"81793e529c565256a60eff6c6345e2f5c5ee8cb0","group_description":null,"group_id":1,"group_id_signed":1,"group_is_hidden":0,"group_name":"daemon","group_users":"daemon:pollinate:vboxadd","group_uuid":null},"operation":"INSERTED","type":"dbsync_groups"})"
     };
     const auto expectedResult23
     {
@@ -703,7 +703,7 @@ TEST_F(SyscollectorImpTest, noOs)
     };
     const auto expectedResult25
     {
-        R"({"data":{"checksum":"786cc53b6766ed4deab1c2bd279877f50537a29e","host_ip":"192.168.0.84","login_status":0,"login_tty":"pts/0","login_type":"user","process_pid":"129870","user_auth_failed_count":null,"user_auth_failed_timestamp":null,"user_created":null,"user_full_name":"root","user_group_id":0,"user_group_id_signed":0,"user_groups":null,"user_home":"/root","user_id":0,"user_is_hidden":null,"user_is_remote":1,"user_last_login":"1749605216","user_name":"root","user_password_expiration_date":-1,"user_password_hash_algorithm":"y","user_password_inactive_days":-1,"user_password_last_change":20228,"user_password_last_set_time":null,"user_password_max_days_between_changes":99999,"user_password_min_days_between_changes":0,"user_password_status":"active","user_password_warning_days_before_expiration":7,"user_roles_sudo":1,"user_shell":"/bin/bash","user_type":null,"user_uid_signed":0,"user_uuid":null},"operation":"INSERTED","type":"dbsync_users"})"
+        R"({"data":{"checksum":"04e92f4fc7ee1d8a5b9f94337c62e88e2e3cee58","host_ip":"192.168.0.84","login_status":0,"login_tty":"pts/0","login_type":"user","process_pid":"129870","user_auth_failed_count":0,"user_auth_failed_timestamp":0,"user_created":0,"user_full_name":"root","user_group_id":0,"user_group_id_signed":0,"user_groups":0,"user_home":"/root","user_id":0,"user_is_hidden":0,"user_is_remote":1,"user_last_login":"1749605216","user_name":"root","user_password_expiration_date":-1,"user_password_hash_algorithm":"y","user_password_inactive_days":-1,"user_password_last_change":20228,"user_password_last_set_time":0,"user_password_max_days_between_changes":99999,"user_password_min_days_between_changes":0,"user_password_status":"active","user_password_warning_days_before_expiration":7,"user_roles":"sudo","user_shell":"/bin/bash","user_type":null,"user_uid_signed":0,"user_uuid":null},"operation":"INSERTED","type":"dbsync_users"})"
     };
 
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult1)).Times(1);
@@ -777,9 +777,9 @@ TEST_F(SyscollectorImpTest, noNetwork)
               (R"({"egroup":"root","euser":"root","fgroup":"root","name":"kworker/u256:2-","scan_time":"2020/12/28 21:49:50", "nice":0,"nlwp":1,"pgrp":0,"pid":"431625","ppid":2,"priority":20,"processor":1,"resident":0,"rgroup":"root","ruser":"root","session":0,"sgroup":"root","share":0,"size":0,"start_time":9302261,"state":"I","stime":3,"suser":"root","tgid":431625,"tty":0,"utime":0,"vm_size":0})"_json));
 
     EXPECT_CALL(*spInfoWrapper, groups()).WillRepeatedly(Return(
-                                                             R"([{"group_description": null, "group_id": 1, "group_id_signed": 1, "group_is_hidden": null, "group_name": "daemon", "group_users": "daemon:pollinate:vboxadd", "group_uuid": null }])"_json));
+                                                             R"([{"group_description": null, "group_id": 1, "group_id_signed": 1, "group_is_hidden": 0, "group_name": "daemon", "group_users": "daemon:pollinate:vboxadd", "group_uuid": null }])"_json));
     EXPECT_CALL(*spInfoWrapper, users()).WillRepeatedly(Return
-                                                        (R"([{"host_ip":"192.168.0.84","login_status":0,"login_tty":"pts/0","login_type":"user","process_pid":"129870","user_auth_failed_count":null,"user_auth_failed_timestamp":null,"user_created":null,"user_full_name":"root","user_group_id":0,"user_group_id_signed":0,"user_groups":null,"user_home":"/root","user_id":0,"user_is_hidden":null,"user_is_remote":1,"user_last_login":"1749605216","user_name":"root","user_password_expiration_date":-1,"user_password_hash_algorithm":"y","user_password_inactive_days":-1,"user_password_last_change":20228,"user_password_last_set_time":null,"user_password_max_days_between_changes":99999,"user_password_min_days_between_changes":0,"user_password_status":"active","user_password_warning_days_before_expiration":7,"user_roles_sudo":1,"user_shell":"/bin/bash","user_type":null,"user_uid_signed":0,"user_uuid":null}])"_json));
+                                                        (R"([{"host_ip":"192.168.0.84","login_status":0,"login_tty":"pts/0","login_type":"user","process_pid":"129870","user_auth_failed_count":0,"user_auth_failed_timestamp":0,"user_created":0,"user_full_name":"root","user_group_id":0,"user_group_id_signed":0,"user_groups":0,"user_home":"/root","user_id":0,"user_is_hidden":0,"user_is_remote":1,"user_last_login":"1749605216","user_name":"root","user_password_expiration_date":-1,"user_password_hash_algorithm":"y","user_password_inactive_days":-1,"user_password_last_change":20228,"user_password_last_set_time":0,"user_password_max_days_between_changes":99999,"user_password_min_days_between_changes":0,"user_password_status":"active","user_password_warning_days_before_expiration":7,"user_roles":"sudo","user_shell":"/bin/bash","user_type":null,"user_uid_signed":0,"user_uuid":null}])"_json));
 
     CallbackMock wrapper;
     std::function<void(const std::string&)> callbackData
@@ -872,7 +872,7 @@ TEST_F(SyscollectorImpTest, noNetwork)
     };
     const auto expectedResult23
     {
-        R"({"data":{"checksum":"8c431a0b1998efae2d9792251d614ff7558f58ba","group_description":null,"group_id":1,"group_id_signed":1,"group_is_hidden":null,"group_name":"daemon","group_users":"daemon:pollinate:vboxadd","group_uuid":null},"operation":"INSERTED","type":"dbsync_groups"})"
+        R"({"data":{"checksum":"81793e529c565256a60eff6c6345e2f5c5ee8cb0","group_description":null,"group_id":1,"group_id_signed":1,"group_is_hidden":0,"group_name":"daemon","group_users":"daemon:pollinate:vboxadd","group_uuid":null},"operation":"INSERTED","type":"dbsync_groups"})"
     };
     const auto expectedResult24
     {
@@ -884,7 +884,7 @@ TEST_F(SyscollectorImpTest, noNetwork)
     };
     const auto expectedResult26
     {
-        R"({"data":{"checksum":"786cc53b6766ed4deab1c2bd279877f50537a29e","host_ip":"192.168.0.84","login_status":0,"login_tty":"pts/0","login_type":"user","process_pid":"129870","user_auth_failed_count":null,"user_auth_failed_timestamp":null,"user_created":null,"user_full_name":"root","user_group_id":0,"user_group_id_signed":0,"user_groups":null,"user_home":"/root","user_id":0,"user_is_hidden":null,"user_is_remote":1,"user_last_login":"1749605216","user_name":"root","user_password_expiration_date":-1,"user_password_hash_algorithm":"y","user_password_inactive_days":-1,"user_password_last_change":20228,"user_password_last_set_time":null,"user_password_max_days_between_changes":99999,"user_password_min_days_between_changes":0,"user_password_status":"active","user_password_warning_days_before_expiration":7,"user_roles_sudo":1,"user_shell":"/bin/bash","user_type":null,"user_uid_signed":0,"user_uuid":null},"operation":"INSERTED","type":"dbsync_users"})"
+        R"({"data":{"checksum":"04e92f4fc7ee1d8a5b9f94337c62e88e2e3cee58","host_ip":"192.168.0.84","login_status":0,"login_tty":"pts/0","login_type":"user","process_pid":"129870","user_auth_failed_count":0,"user_auth_failed_timestamp":0,"user_created":0,"user_full_name":"root","user_group_id":0,"user_group_id_signed":0,"user_groups":0,"user_home":"/root","user_id":0,"user_is_hidden":0,"user_is_remote":1,"user_last_login":"1749605216","user_name":"root","user_password_expiration_date":-1,"user_password_hash_algorithm":"y","user_password_inactive_days":-1,"user_password_last_change":20228,"user_password_last_set_time":0,"user_password_max_days_between_changes":99999,"user_password_min_days_between_changes":0,"user_password_status":"active","user_password_warning_days_before_expiration":7,"user_roles":"sudo","user_shell":"/bin/bash","user_type":null,"user_uid_signed":0,"user_uuid":null},"operation":"INSERTED","type":"dbsync_users"})"
     };
 
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult1)).Times(1);
@@ -952,9 +952,9 @@ TEST_F(SyscollectorImpTest, noPackages)
               (R"({"egroup":"root","euser":"root","fgroup":"root","name":"kworker/u256:2-","scan_time":"2020/12/28 21:49:50", "nice":0,"nlwp":1,"pgrp":0,"pid":"431625","ppid":2,"priority":20,"processor":1,"resident":0,"rgroup":"root","ruser":"root","session":0,"sgroup":"root","share":0,"size":0,"start_time":9302261,"state":"I","stime":3,"suser":"root","tgid":431625,"tty":0,"utime":0,"vm_size":0})"_json));
 
     EXPECT_CALL(*spInfoWrapper, groups()).WillRepeatedly(Return(
-                                                             R"([{"group_description": null, "group_id": 1, "group_id_signed": 1, "group_is_hidden": null, "group_name": "daemon", "group_users": "daemon:pollinate:vboxadd", "group_uuid": null }])"_json));
+                                                             R"([{"group_description": null, "group_id": 1, "group_id_signed": 1, "group_is_hidden": 0, "group_name": "daemon", "group_users": "daemon:pollinate:vboxadd", "group_uuid": null }])"_json));
     EXPECT_CALL(*spInfoWrapper, users()).WillRepeatedly(Return
-                                                        (R"([{"host_ip":"192.168.0.84","login_status":0,"login_tty":"pts/0","login_type":"user","process_pid":"129870","user_auth_failed_count":null,"user_auth_failed_timestamp":null,"user_created":null,"user_full_name":"root","user_group_id":0,"user_group_id_signed":0,"user_groups":null,"user_home":"/root","user_id":0,"user_is_hidden":null,"user_is_remote":1,"user_last_login":"1749605216","user_name":"root","user_password_expiration_date":-1,"user_password_hash_algorithm":"y","user_password_inactive_days":-1,"user_password_last_change":20228,"user_password_last_set_time":null,"user_password_max_days_between_changes":99999,"user_password_min_days_between_changes":0,"user_password_status":"active","user_password_warning_days_before_expiration":7,"user_roles_sudo":1,"user_shell":"/bin/bash","user_type":null,"user_uid_signed":0,"user_uuid":null}])"_json));
+                                                        (R"([{"host_ip":"192.168.0.84","login_status":0,"login_tty":"pts/0","login_type":"user","process_pid":"129870","user_auth_failed_count":0,"user_auth_failed_timestamp":0,"user_created":0,"user_full_name":"root","user_group_id":0,"user_group_id_signed":0,"user_groups":0,"user_home":"/root","user_id":0,"user_is_hidden":0,"user_is_remote":1,"user_last_login":"1749605216","user_name":"root","user_password_expiration_date":-1,"user_password_hash_algorithm":"y","user_password_inactive_days":-1,"user_password_last_change":20228,"user_password_last_set_time":0,"user_password_max_days_between_changes":99999,"user_password_min_days_between_changes":0,"user_password_status":"active","user_password_warning_days_before_expiration":7,"user_roles":"sudo","user_shell":"/bin/bash","user_type":null,"user_uid_signed":0,"user_uuid":null}])"_json));
 
     CallbackMock wrapper;
     std::function<void(const std::string&)> callbackData
@@ -1063,7 +1063,7 @@ TEST_F(SyscollectorImpTest, noPackages)
     };
     const auto expectedResult22
     {
-        R"({"data":{"checksum":"8c431a0b1998efae2d9792251d614ff7558f58ba","group_description":null,"group_id":1,"group_id_signed":1,"group_is_hidden":null,"group_name":"daemon","group_users":"daemon:pollinate:vboxadd","group_uuid":null},"operation":"INSERTED","type":"dbsync_groups"})"
+        R"({"data":{"checksum":"81793e529c565256a60eff6c6345e2f5c5ee8cb0","group_description":null,"group_id":1,"group_id_signed":1,"group_is_hidden":0,"group_name":"daemon","group_users":"daemon:pollinate:vboxadd","group_uuid":null},"operation":"INSERTED","type":"dbsync_groups"})"
     };
     const auto expectedResult23
     {
@@ -1075,7 +1075,7 @@ TEST_F(SyscollectorImpTest, noPackages)
     };
     const auto expectedResult25
     {
-        R"({"data":{"checksum":"786cc53b6766ed4deab1c2bd279877f50537a29e","host_ip":"192.168.0.84","login_status":0,"login_tty":"pts/0","login_type":"user","process_pid":"129870","user_auth_failed_count":null,"user_auth_failed_timestamp":null,"user_created":null,"user_full_name":"root","user_group_id":0,"user_group_id_signed":0,"user_groups":null,"user_home":"/root","user_id":0,"user_is_hidden":null,"user_is_remote":1,"user_last_login":"1749605216","user_name":"root","user_password_expiration_date":-1,"user_password_hash_algorithm":"y","user_password_inactive_days":-1,"user_password_last_change":20228,"user_password_last_set_time":null,"user_password_max_days_between_changes":99999,"user_password_min_days_between_changes":0,"user_password_status":"active","user_password_warning_days_before_expiration":7,"user_roles_sudo":1,"user_shell":"/bin/bash","user_type":null,"user_uid_signed":0,"user_uuid":null},"operation":"INSERTED","type":"dbsync_users"})"
+        R"({"data":{"checksum":"04e92f4fc7ee1d8a5b9f94337c62e88e2e3cee58","host_ip":"192.168.0.84","login_status":0,"login_tty":"pts/0","login_type":"user","process_pid":"129870","user_auth_failed_count":0,"user_auth_failed_timestamp":0,"user_created":0,"user_full_name":"root","user_group_id":0,"user_group_id_signed":0,"user_groups":0,"user_home":"/root","user_id":0,"user_is_hidden":0,"user_is_remote":1,"user_last_login":"1749605216","user_name":"root","user_password_expiration_date":-1,"user_password_hash_algorithm":"y","user_password_inactive_days":-1,"user_password_last_change":20228,"user_password_last_set_time":0,"user_password_max_days_between_changes":99999,"user_password_min_days_between_changes":0,"user_password_status":"active","user_password_warning_days_before_expiration":7,"user_roles":"sudo","user_shell":"/bin/bash","user_type":null,"user_uid_signed":0,"user_uuid":null},"operation":"INSERTED","type":"dbsync_users"})"
     };
 
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult1)).Times(1);
@@ -1149,9 +1149,9 @@ TEST_F(SyscollectorImpTest, noPorts)
               (R"({"egroup":"root","euser":"root","fgroup":"root","name":"kworker/u256:2-","scan_time":"2020/12/28 21:49:50", "nice":0,"nlwp":1,"pgrp":0,"pid":"431625","ppid":2,"priority":20,"processor":1,"resident":0,"rgroup":"root","ruser":"root","session":0,"sgroup":"root","share":0,"size":0,"start_time":9302261,"state":"I","stime":3,"suser":"root","tgid":431625,"tty":0,"utime":0,"vm_size":0})"_json));
 
     EXPECT_CALL(*spInfoWrapper, groups()).WillRepeatedly(Return(
-                                                             R"([{"group_description": null, "group_id": 1, "group_id_signed": 1, "group_is_hidden": null, "group_name": "daemon", "group_users": "daemon:pollinate:vboxadd", "group_uuid": null }])"_json));
+                                                             R"([{"group_description": null, "group_id": 1, "group_id_signed": 1, "group_is_hidden": 0, "group_name": "daemon", "group_users": "daemon:pollinate:vboxadd", "group_uuid": null }])"_json));
     EXPECT_CALL(*spInfoWrapper, users()).WillRepeatedly(Return
-                                                        (R"([{"host_ip":"192.168.0.84","login_status":0,"login_tty":"pts/0","login_type":"user","process_pid":"129870","user_auth_failed_count":null,"user_auth_failed_timestamp":null,"user_created":null,"user_full_name":"root","user_group_id":0,"user_group_id_signed":0,"user_groups":null,"user_home":"/root","user_id":0,"user_is_hidden":null,"user_is_remote":1,"user_last_login":"1749605216","user_name":"root","user_password_expiration_date":-1,"user_password_hash_algorithm":"y","user_password_inactive_days":-1,"user_password_last_change":20228,"user_password_last_set_time":null,"user_password_max_days_between_changes":99999,"user_password_min_days_between_changes":0,"user_password_status":"active","user_password_warning_days_before_expiration":7,"user_roles_sudo":1,"user_shell":"/bin/bash","user_type":null,"user_uid_signed":0,"user_uuid":null}])"_json));
+                                                        (R"([{"host_ip":"192.168.0.84","login_status":0,"login_tty":"pts/0","login_type":"user","process_pid":"129870","user_auth_failed_count":0,"user_auth_failed_timestamp":0,"user_created":0,"user_full_name":"root","user_group_id":0,"user_group_id_signed":0,"user_groups":0,"user_home":"/root","user_id":0,"user_is_hidden":0,"user_is_remote":1,"user_last_login":"1749605216","user_name":"root","user_password_expiration_date":-1,"user_password_hash_algorithm":"y","user_password_inactive_days":-1,"user_password_last_change":20228,"user_password_last_set_time":0,"user_password_max_days_between_changes":99999,"user_password_min_days_between_changes":0,"user_password_status":"active","user_password_warning_days_before_expiration":7,"user_roles":"sudo","user_shell":"/bin/bash","user_type":null,"user_uid_signed":0,"user_uuid":null}])"_json));
 
     CallbackMock wrapper;
     std::function<void(const std::string&)> callbackData
@@ -1260,7 +1260,7 @@ TEST_F(SyscollectorImpTest, noPorts)
     };
     const auto expectedResult22
     {
-        R"({"data":{"checksum":"8c431a0b1998efae2d9792251d614ff7558f58ba","group_description":null,"group_id":1,"group_id_signed":1,"group_is_hidden":null,"group_name":"daemon","group_users":"daemon:pollinate:vboxadd","group_uuid":null},"operation":"INSERTED","type":"dbsync_groups"})"
+        R"({"data":{"checksum":"81793e529c565256a60eff6c6345e2f5c5ee8cb0","group_description":null,"group_id":1,"group_id_signed":1,"group_is_hidden":0,"group_name":"daemon","group_users":"daemon:pollinate:vboxadd","group_uuid":null},"operation":"INSERTED","type":"dbsync_groups"})"
     };
     const auto expectedResult23
     {
@@ -1272,7 +1272,7 @@ TEST_F(SyscollectorImpTest, noPorts)
     };
     const auto expectedResult25
     {
-        R"({"data":{"checksum":"786cc53b6766ed4deab1c2bd279877f50537a29e","host_ip":"192.168.0.84","login_status":0,"login_tty":"pts/0","login_type":"user","process_pid":"129870","user_auth_failed_count":null,"user_auth_failed_timestamp":null,"user_created":null,"user_full_name":"root","user_group_id":0,"user_group_id_signed":0,"user_groups":null,"user_home":"/root","user_id":0,"user_is_hidden":null,"user_is_remote":1,"user_last_login":"1749605216","user_name":"root","user_password_expiration_date":-1,"user_password_hash_algorithm":"y","user_password_inactive_days":-1,"user_password_last_change":20228,"user_password_last_set_time":null,"user_password_max_days_between_changes":99999,"user_password_min_days_between_changes":0,"user_password_status":"active","user_password_warning_days_before_expiration":7,"user_roles_sudo":1,"user_shell":"/bin/bash","user_type":null,"user_uid_signed":0,"user_uuid":null},"operation":"INSERTED","type":"dbsync_users"})"
+        R"({"data":{"checksum":"04e92f4fc7ee1d8a5b9f94337c62e88e2e3cee58","host_ip":"192.168.0.84","login_status":0,"login_tty":"pts/0","login_type":"user","process_pid":"129870","user_auth_failed_count":0,"user_auth_failed_timestamp":0,"user_created":0,"user_full_name":"root","user_group_id":0,"user_group_id_signed":0,"user_groups":0,"user_home":"/root","user_id":0,"user_is_hidden":0,"user_is_remote":1,"user_last_login":"1749605216","user_name":"root","user_password_expiration_date":-1,"user_password_hash_algorithm":"y","user_password_inactive_days":-1,"user_password_last_change":20228,"user_password_last_set_time":0,"user_password_max_days_between_changes":99999,"user_password_min_days_between_changes":0,"user_password_status":"active","user_password_warning_days_before_expiration":7,"user_roles":"sudo","user_shell":"/bin/bash","user_type":null,"user_uid_signed":0,"user_uuid":null},"operation":"INSERTED","type":"dbsync_users"})"
     };
 
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult1)).Times(1);
@@ -1347,9 +1347,9 @@ TEST_F(SyscollectorImpTest, noPortsAll)
               (R"({"egroup":"root","euser":"root","fgroup":"root","name":"kworker/u256:2-","scan_time":"2020/12/28 21:49:50", "nice":0,"nlwp":1,"pgrp":0,"pid":"431625","ppid":2,"priority":20,"processor":1,"resident":0,"rgroup":"root","ruser":"root","session":0,"sgroup":"root","share":0,"size":0,"start_time":9302261,"state":"I","stime":3,"suser":"root","tgid":431625,"tty":0,"utime":0,"vm_size":0})"_json));
 
     EXPECT_CALL(*spInfoWrapper, groups()).WillRepeatedly(Return(
-                                                             R"([{"group_description": null, "group_id": 1, "group_id_signed": 1, "group_is_hidden": null, "group_name": "daemon", "group_users": "daemon:pollinate:vboxadd", "group_uuid": null }])"_json));
+                                                             R"([{"group_description": null, "group_id": 1, "group_id_signed": 1, "group_is_hidden": 0, "group_name": "daemon", "group_users": "daemon:pollinate:vboxadd", "group_uuid": null }])"_json));
     EXPECT_CALL(*spInfoWrapper, users()).WillRepeatedly(Return
-                                                        (R"([{"host_ip":"192.168.0.84","login_status":0,"login_tty":"pts/0","login_type":"user","process_pid":"129870","user_auth_failed_count":null,"user_auth_failed_timestamp":null,"user_created":null,"user_full_name":"root","user_group_id":0,"user_group_id_signed":0,"user_groups":null,"user_home":"/root","user_id":0,"user_is_hidden":null,"user_is_remote":1,"user_last_login":"1749605216","user_name":"root","user_password_expiration_date":-1,"user_password_hash_algorithm":"y","user_password_inactive_days":-1,"user_password_last_change":20228,"user_password_last_set_time":null,"user_password_max_days_between_changes":99999,"user_password_min_days_between_changes":0,"user_password_status":"active","user_password_warning_days_before_expiration":7,"user_roles_sudo":1,"user_shell":"/bin/bash","user_type":null,"user_uid_signed":0,"user_uuid":null}])"_json));
+                                                        (R"([{"host_ip":"192.168.0.84","login_status":0,"login_tty":"pts/0","login_type":"user","process_pid":"129870","user_auth_failed_count":0,"user_auth_failed_timestamp":0,"user_created":0,"user_full_name":"root","user_group_id":0,"user_group_id_signed":0,"user_groups":0,"user_home":"/root","user_id":0,"user_is_hidden":0,"user_is_remote":1,"user_last_login":"1749605216","user_name":"root","user_password_expiration_date":-1,"user_password_hash_algorithm":"y","user_password_inactive_days":-1,"user_password_last_change":20228,"user_password_last_set_time":0,"user_password_max_days_between_changes":99999,"user_password_min_days_between_changes":0,"user_password_status":"active","user_password_warning_days_before_expiration":7,"user_roles":"sudo","user_shell":"/bin/bash","user_type":null,"user_uid_signed":0,"user_uuid":null}])"_json));
 
     CallbackMock wrapper;
     std::function<void(const std::string&)> callbackData
@@ -1466,7 +1466,7 @@ TEST_F(SyscollectorImpTest, noPortsAll)
     };
     const auto expectedResult22
     {
-        R"({"data":{"checksum":"8c431a0b1998efae2d9792251d614ff7558f58ba","group_description":null,"group_id":1,"group_id_signed":1,"group_is_hidden":null,"group_name":"daemon","group_users":"daemon:pollinate:vboxadd","group_uuid":null},"operation":"INSERTED","type":"dbsync_groups"})"
+        R"({"data":{"checksum":"81793e529c565256a60eff6c6345e2f5c5ee8cb0","group_description":null,"group_id":1,"group_id_signed":1,"group_is_hidden":0,"group_name":"daemon","group_users":"daemon:pollinate:vboxadd","group_uuid":null},"operation":"INSERTED","type":"dbsync_groups"})"
     };
     const auto expectedResult23
     {
@@ -1478,7 +1478,7 @@ TEST_F(SyscollectorImpTest, noPortsAll)
     };
     const auto expectedResult25
     {
-        R"({"data":{"checksum":"786cc53b6766ed4deab1c2bd279877f50537a29e","host_ip":"192.168.0.84","login_status":0,"login_tty":"pts/0","login_type":"user","process_pid":"129870","user_auth_failed_count":null,"user_auth_failed_timestamp":null,"user_created":null,"user_full_name":"root","user_group_id":0,"user_group_id_signed":0,"user_groups":null,"user_home":"/root","user_id":0,"user_is_hidden":null,"user_is_remote":1,"user_last_login":"1749605216","user_name":"root","user_password_expiration_date":-1,"user_password_hash_algorithm":"y","user_password_inactive_days":-1,"user_password_last_change":20228,"user_password_last_set_time":null,"user_password_max_days_between_changes":99999,"user_password_min_days_between_changes":0,"user_password_status":"active","user_password_warning_days_before_expiration":7,"user_roles_sudo":1,"user_shell":"/bin/bash","user_type":null,"user_uid_signed":0,"user_uuid":null},"operation":"INSERTED","type":"dbsync_users"})"
+        R"({"data":{"checksum":"04e92f4fc7ee1d8a5b9f94337c62e88e2e3cee58","host_ip":"192.168.0.84","login_status":0,"login_tty":"pts/0","login_type":"user","process_pid":"129870","user_auth_failed_count":0,"user_auth_failed_timestamp":0,"user_created":0,"user_full_name":"root","user_group_id":0,"user_group_id_signed":0,"user_groups":0,"user_home":"/root","user_id":0,"user_is_hidden":0,"user_is_remote":1,"user_last_login":"1749605216","user_name":"root","user_password_expiration_date":-1,"user_password_hash_algorithm":"y","user_password_inactive_days":-1,"user_password_last_change":20228,"user_password_last_set_time":0,"user_password_max_days_between_changes":99999,"user_password_min_days_between_changes":0,"user_password_status":"active","user_password_warning_days_before_expiration":7,"user_roles":"sudo","user_shell":"/bin/bash","user_type":null,"user_uid_signed":0,"user_uuid":null},"operation":"INSERTED","type":"dbsync_users"})"
     };
 
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult1)).Times(1);
@@ -1552,9 +1552,9 @@ TEST_F(SyscollectorImpTest, noProcesses)
     EXPECT_CALL(*spInfoWrapper, processes(_)).Times(0);
 
     EXPECT_CALL(*spInfoWrapper, groups()).WillRepeatedly(Return(
-                                                             R"([{"group_description": null, "group_id": 1, "group_id_signed": 1, "group_is_hidden": null, "group_name": "daemon", "group_users": "daemon:pollinate:vboxadd", "group_uuid": null }])"_json));
+                                                             R"([{"group_description": null, "group_id": 1, "group_id_signed": 1, "group_is_hidden": 0, "group_name": "daemon", "group_users": "daemon:pollinate:vboxadd", "group_uuid": null }])"_json));
     EXPECT_CALL(*spInfoWrapper, users()).WillRepeatedly(Return
-                                                        (R"([{"host_ip":"192.168.0.84","login_status":0,"login_tty":"pts/0","login_type":"user","process_pid":"129870","user_auth_failed_count":null,"user_auth_failed_timestamp":null,"user_created":null,"user_full_name":"root","user_group_id":0,"user_group_id_signed":0,"user_groups":null,"user_home":"/root","user_id":0,"user_is_hidden":null,"user_is_remote":1,"user_last_login":"1749605216","user_name":"root","user_password_expiration_date":-1,"user_password_hash_algorithm":"y","user_password_inactive_days":-1,"user_password_last_change":20228,"user_password_last_set_time":null,"user_password_max_days_between_changes":99999,"user_password_min_days_between_changes":0,"user_password_status":"active","user_password_warning_days_before_expiration":7,"user_roles_sudo":1,"user_shell":"/bin/bash","user_type":null,"user_uid_signed":0,"user_uuid":null}])"_json));
+                                                        (R"([{"host_ip":"192.168.0.84","login_status":0,"login_tty":"pts/0","login_type":"user","process_pid":"129870","user_auth_failed_count":0,"user_auth_failed_timestamp":0,"user_created":0,"user_full_name":"root","user_group_id":0,"user_group_id_signed":0,"user_groups":0,"user_home":"/root","user_id":0,"user_is_hidden":0,"user_is_remote":1,"user_last_login":"1749605216","user_name":"root","user_password_expiration_date":-1,"user_password_hash_algorithm":"y","user_password_inactive_days":-1,"user_password_last_change":20228,"user_password_last_set_time":0,"user_password_max_days_between_changes":99999,"user_password_min_days_between_changes":0,"user_password_status":"active","user_password_warning_days_before_expiration":7,"user_roles":"sudo","user_shell":"/bin/bash","user_type":null,"user_uid_signed":0,"user_uuid":null}])"_json));
 
     CallbackMock wrapper;
     std::function<void(const std::string&)> callbackData
@@ -1663,7 +1663,7 @@ TEST_F(SyscollectorImpTest, noProcesses)
     };
     const auto expectedResult22
     {
-        R"({"data":{"checksum":"8c431a0b1998efae2d9792251d614ff7558f58ba","group_description":null,"group_id":1,"group_id_signed":1,"group_is_hidden":null,"group_name":"daemon","group_users":"daemon:pollinate:vboxadd","group_uuid":null},"operation":"INSERTED","type":"dbsync_groups"})"
+        R"({"data":{"checksum":"81793e529c565256a60eff6c6345e2f5c5ee8cb0","group_description":null,"group_id":1,"group_id_signed":1,"group_is_hidden":0,"group_name":"daemon","group_users":"daemon:pollinate:vboxadd","group_uuid":null},"operation":"INSERTED","type":"dbsync_groups"})"
     };
     const auto expectedResult23
     {
@@ -1675,7 +1675,7 @@ TEST_F(SyscollectorImpTest, noProcesses)
     };
     const auto expectedResult25
     {
-        R"({"data":{"checksum":"786cc53b6766ed4deab1c2bd279877f50537a29e","host_ip":"192.168.0.84","login_status":0,"login_tty":"pts/0","login_type":"user","process_pid":"129870","user_auth_failed_count":null,"user_auth_failed_timestamp":null,"user_created":null,"user_full_name":"root","user_group_id":0,"user_group_id_signed":0,"user_groups":null,"user_home":"/root","user_id":0,"user_is_hidden":null,"user_is_remote":1,"user_last_login":"1749605216","user_name":"root","user_password_expiration_date":-1,"user_password_hash_algorithm":"y","user_password_inactive_days":-1,"user_password_last_change":20228,"user_password_last_set_time":null,"user_password_max_days_between_changes":99999,"user_password_min_days_between_changes":0,"user_password_status":"active","user_password_warning_days_before_expiration":7,"user_roles_sudo":1,"user_shell":"/bin/bash","user_type":null,"user_uid_signed":0,"user_uuid":null},"operation":"INSERTED","type":"dbsync_users"})"
+        R"({"data":{"checksum":"04e92f4fc7ee1d8a5b9f94337c62e88e2e3cee58","host_ip":"192.168.0.84","login_status":0,"login_tty":"pts/0","login_type":"user","process_pid":"129870","user_auth_failed_count":0,"user_auth_failed_timestamp":0,"user_created":0,"user_full_name":"root","user_group_id":0,"user_group_id_signed":0,"user_groups":0,"user_home":"/root","user_id":0,"user_is_hidden":0,"user_is_remote":1,"user_last_login":"1749605216","user_name":"root","user_password_expiration_date":-1,"user_password_hash_algorithm":"y","user_password_inactive_days":-1,"user_password_last_change":20228,"user_password_last_set_time":0,"user_password_max_days_between_changes":99999,"user_password_min_days_between_changes":0,"user_password_status":"active","user_password_warning_days_before_expiration":7,"user_roles":"sudo","user_shell":"/bin/bash","user_type":null,"user_uid_signed":0,"user_uuid":null},"operation":"INSERTED","type":"dbsync_users"})"
     };
 
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult1)).Times(1);
@@ -1750,9 +1750,9 @@ TEST_F(SyscollectorImpTest, noHotfixes)
               (R"({"egroup":"root","euser":"root","fgroup":"root","name":"kworker/u256:2-","scan_time":"2020/12/28 21:49:50", "nice":0,"nlwp":1,"pgrp":0,"pid":"431625","ppid":2,"priority":20,"processor":1,"resident":0,"rgroup":"root","ruser":"root","session":0,"sgroup":"root","share":0,"size":0,"start_time":9302261,"state":"I","stime":3,"suser":"root","tgid":431625,"tty":0,"utime":0,"vm_size":0})"_json));
 
     EXPECT_CALL(*spInfoWrapper, groups()).WillRepeatedly(Return(
-                                                             R"([{"group_description": null, "group_id": 1, "group_id_signed": 1, "group_is_hidden": null, "group_name": "daemon", "group_users": "daemon:pollinate:vboxadd", "group_uuid": null }])"_json));
+                                                             R"([{"group_description": null, "group_id": 1, "group_id_signed": 1, "group_is_hidden": 0, "group_name": "daemon", "group_users": "daemon:pollinate:vboxadd", "group_uuid": null }])"_json));
     EXPECT_CALL(*spInfoWrapper, users()).WillRepeatedly(Return
-                                                        (R"([{"host_ip":"192.168.0.84","login_status":0,"login_tty":"pts/0","login_type":"user","process_pid":"129870","user_auth_failed_count":null,"user_auth_failed_timestamp":null,"user_created":null,"user_full_name":"root","user_group_id":0,"user_group_id_signed":0,"user_groups":null,"user_home":"/root","user_id":0,"user_is_hidden":null,"user_is_remote":1,"user_last_login":"1749605216","user_name":"root","user_password_expiration_date":-1,"user_password_hash_algorithm":"y","user_password_inactive_days":-1,"user_password_last_change":20228,"user_password_last_set_time":null,"user_password_max_days_between_changes":99999,"user_password_min_days_between_changes":0,"user_password_status":"active","user_password_warning_days_before_expiration":7,"user_roles_sudo":1,"user_shell":"/bin/bash","user_type":null,"user_uid_signed":0,"user_uuid":null}])"_json));
+                                                        (R"([{"host_ip":"192.168.0.84","login_status":0,"login_tty":"pts/0","login_type":"user","process_pid":"129870","user_auth_failed_count":0,"user_auth_failed_timestamp":0,"user_created":0,"user_full_name":"root","user_group_id":0,"user_group_id_signed":0,"user_groups":0,"user_home":"/root","user_id":0,"user_is_hidden":0,"user_is_remote":1,"user_last_login":"1749605216","user_name":"root","user_password_expiration_date":-1,"user_password_hash_algorithm":"y","user_password_inactive_days":-1,"user_password_last_change":20228,"user_password_last_set_time":0,"user_password_max_days_between_changes":99999,"user_password_min_days_between_changes":0,"user_password_status":"active","user_password_warning_days_before_expiration":7,"user_roles":"sudo","user_shell":"/bin/bash","user_type":null,"user_uid_signed":0,"user_uuid":null}])"_json));
 
     CallbackMock wrapper;
     std::function<void(const std::string&)> callbackData
@@ -1861,7 +1861,7 @@ TEST_F(SyscollectorImpTest, noHotfixes)
     };
     const auto expectedResult20
     {
-        R"({"data":{"checksum":"8c431a0b1998efae2d9792251d614ff7558f58ba","group_description":null,"group_id":1,"group_id_signed":1,"group_is_hidden":null,"group_name":"daemon","group_users":"daemon:pollinate:vboxadd","group_uuid":null},"operation":"INSERTED","type":"dbsync_groups"})"
+        R"({"data":{"checksum":"81793e529c565256a60eff6c6345e2f5c5ee8cb0","group_description":null,"group_id":1,"group_id_signed":1,"group_is_hidden":0,"group_name":"daemon","group_users":"daemon:pollinate:vboxadd","group_uuid":null},"operation":"INSERTED","type":"dbsync_groups"})"
     };
     const auto expectedResult21
     {
@@ -1873,7 +1873,7 @@ TEST_F(SyscollectorImpTest, noHotfixes)
     };
     const auto expectedResult23
     {
-        R"({"data":{"checksum":"786cc53b6766ed4deab1c2bd279877f50537a29e","host_ip":"192.168.0.84","login_status":0,"login_tty":"pts/0","login_type":"user","process_pid":"129870","user_auth_failed_count":null,"user_auth_failed_timestamp":null,"user_created":null,"user_full_name":"root","user_group_id":0,"user_group_id_signed":0,"user_groups":null,"user_home":"/root","user_id":0,"user_is_hidden":null,"user_is_remote":1,"user_last_login":"1749605216","user_name":"root","user_password_expiration_date":-1,"user_password_hash_algorithm":"y","user_password_inactive_days":-1,"user_password_last_change":20228,"user_password_last_set_time":null,"user_password_max_days_between_changes":99999,"user_password_min_days_between_changes":0,"user_password_status":"active","user_password_warning_days_before_expiration":7,"user_roles_sudo":1,"user_shell":"/bin/bash","user_type":null,"user_uid_signed":0,"user_uuid":null},"operation":"INSERTED","type":"dbsync_users"})"
+        R"({"data":{"checksum":"04e92f4fc7ee1d8a5b9f94337c62e88e2e3cee58","host_ip":"192.168.0.84","login_status":0,"login_tty":"pts/0","login_type":"user","process_pid":"129870","user_auth_failed_count":0,"user_auth_failed_timestamp":0,"user_created":0,"user_full_name":"root","user_group_id":0,"user_group_id_signed":0,"user_groups":0,"user_home":"/root","user_id":0,"user_is_hidden":0,"user_is_remote":1,"user_last_login":"1749605216","user_name":"root","user_password_expiration_date":-1,"user_password_hash_algorithm":"y","user_password_inactive_days":-1,"user_password_last_change":20228,"user_password_last_set_time":0,"user_password_max_days_between_changes":99999,"user_password_min_days_between_changes":0,"user_password_status":"active","user_password_warning_days_before_expiration":7,"user_roles":"sudo","user_shell":"/bin/bash","user_type":null,"user_uid_signed":0,"user_uuid":null},"operation":"INSERTED","type":"dbsync_users"})"
     };
 
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult1)).Times(1);
@@ -1948,7 +1948,7 @@ TEST_F(SyscollectorImpTest, noUsers)
               (R"({"egroup":"root","euser":"root","fgroup":"root","name":"kworker/u256:2-","scan_time":"2020/12/28 21:49:50", "nice":0,"nlwp":1,"pgrp":0,"pid":"431625","ppid":2,"priority":20,"processor":1,"resident":0,"rgroup":"root","ruser":"root","session":0,"sgroup":"root","share":0,"size":0,"start_time":9302261,"state":"I","stime":3,"suser":"root","tgid":431625,"tty":0,"utime":0,"vm_size":0})"_json));
 
     EXPECT_CALL(*spInfoWrapper, groups()).WillRepeatedly(Return(
-                                                             R"([{"group_description": null, "group_id": 1, "group_id_signed": 1, "group_is_hidden": null, "group_name": "daemon", "group_users": "daemon:pollinate:vboxadd", "group_uuid": null }])"_json));
+                                                             R"([{"group_description": null, "group_id": 1, "group_id_signed": 1, "group_is_hidden": 0, "group_name": "daemon", "group_users": "daemon:pollinate:vboxadd", "group_uuid": null }])"_json));
 
 
     EXPECT_CALL(*spInfoWrapper, users()).Times(0);
@@ -2072,7 +2072,7 @@ TEST_F(SyscollectorImpTest, noUsers)
     };
     const auto expectedResult23
     {
-        R"({"data":{"checksum":"8c431a0b1998efae2d9792251d614ff7558f58ba","group_description":null,"group_id":1,"group_id_signed":1,"group_is_hidden":null,"group_name":"daemon","group_users":"daemon:pollinate:vboxadd","group_uuid":null},"operation":"INSERTED","type":"dbsync_groups"})"
+        R"({"data":{"checksum":"81793e529c565256a60eff6c6345e2f5c5ee8cb0","group_description":null,"group_id":1,"group_id_signed":1,"group_is_hidden":0,"group_name":"daemon","group_users":"daemon:pollinate:vboxadd","group_uuid":null},"operation":"INSERTED","type":"dbsync_groups"})"
     };
 
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult1)).Times(1);
@@ -2149,7 +2149,7 @@ TEST_F(SyscollectorImpTest, noGroups)
     EXPECT_CALL(*spInfoWrapper, groups()).Times(0);
 
     EXPECT_CALL(*spInfoWrapper, users()).WillRepeatedly(Return
-                                                        (R"([{"host_ip":"192.168.0.84","login_status":0,"login_tty":"pts/0","login_type":"user","process_pid":"129870","user_auth_failed_count":null,"user_auth_failed_timestamp":null,"user_created":null,"user_full_name":"root","user_group_id":0,"user_group_id_signed":0,"user_groups":null,"user_home":"/root","user_id":0,"user_is_hidden":null,"user_is_remote":1,"user_last_login":"1749605216","user_name":"root","user_password_expiration_date":-1,"user_password_hash_algorithm":"y","user_password_inactive_days":-1,"user_password_last_change":20228,"user_password_last_set_time":null,"user_password_max_days_between_changes":99999,"user_password_min_days_between_changes":0,"user_password_status":"active","user_password_warning_days_before_expiration":7,"user_roles_sudo":1,"user_shell":"/bin/bash","user_type":null,"user_uid_signed":0,"user_uuid":null}])"_json));
+                                                        (R"([{"host_ip":"192.168.0.84","login_status":0,"login_tty":"pts/0","login_type":"user","process_pid":"129870","user_auth_failed_count":0,"user_auth_failed_timestamp":0,"user_created":0,"user_full_name":"root","user_group_id":0,"user_group_id_signed":0,"user_groups":0,"user_home":"/root","user_id":0,"user_is_hidden":0,"user_is_remote":1,"user_last_login":"1749605216","user_name":"root","user_password_expiration_date":-1,"user_password_hash_algorithm":"y","user_password_inactive_days":-1,"user_password_last_change":20228,"user_password_last_set_time":0,"user_password_max_days_between_changes":99999,"user_password_min_days_between_changes":0,"user_password_status":"active","user_password_warning_days_before_expiration":7,"user_roles":"sudo","user_shell":"/bin/bash","user_type":null,"user_uid_signed":0,"user_uuid":null}])"_json));
 
     CallbackMock wrapper;
     std::function<void(const std::string&)> callbackData
@@ -2270,7 +2270,7 @@ TEST_F(SyscollectorImpTest, noGroups)
     };
     const auto expectedResult25
     {
-        R"({"data":{"checksum":"786cc53b6766ed4deab1c2bd279877f50537a29e","host_ip":"192.168.0.84","login_status":0,"login_tty":"pts/0","login_type":"user","process_pid":"129870","user_auth_failed_count":null,"user_auth_failed_timestamp":null,"user_created":null,"user_full_name":"root","user_group_id":0,"user_group_id_signed":0,"user_groups":null,"user_home":"/root","user_id":0,"user_is_hidden":null,"user_is_remote":1,"user_last_login":"1749605216","user_name":"root","user_password_expiration_date":-1,"user_password_hash_algorithm":"y","user_password_inactive_days":-1,"user_password_last_change":20228,"user_password_last_set_time":null,"user_password_max_days_between_changes":99999,"user_password_min_days_between_changes":0,"user_password_status":"active","user_password_warning_days_before_expiration":7,"user_roles_sudo":1,"user_shell":"/bin/bash","user_type":null,"user_uid_signed":0,"user_uuid":null},"operation":"INSERTED","type":"dbsync_users"})"
+        R"({"data":{"checksum":"04e92f4fc7ee1d8a5b9f94337c62e88e2e3cee58","host_ip":"192.168.0.84","login_status":0,"login_tty":"pts/0","login_type":"user","process_pid":"129870","user_auth_failed_count":0,"user_auth_failed_timestamp":0,"user_created":0,"user_full_name":"root","user_group_id":0,"user_group_id_signed":0,"user_groups":0,"user_home":"/root","user_id":0,"user_is_hidden":0,"user_is_remote":1,"user_last_login":"1749605216","user_name":"root","user_password_expiration_date":-1,"user_password_hash_algorithm":"y","user_password_inactive_days":-1,"user_password_last_change":20228,"user_password_last_set_time":0,"user_password_max_days_between_changes":99999,"user_password_min_days_between_changes":0,"user_password_status":"active","user_password_warning_days_before_expiration":7,"user_roles":"sudo","user_shell":"/bin/bash","user_type":null,"user_uid_signed":0,"user_uuid":null},"operation":"INSERTED","type":"dbsync_users"})"
     };
 
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult1)).Times(1);
@@ -2344,9 +2344,9 @@ TEST_F(SyscollectorImpTest, pushMessageOk)
               (R"({"egroup":"root","euser":"root","fgroup":"root","name":"kworker/u256:2-","scan_time":"2020/12/28 21:49:50", "nice":0,"nlwp":1,"pgrp":0,"pid":431625,"ppid":2,"priority":20,"processor":1,"resident":0,"rgroup":"root","ruser":"root","session":0,"sgroup":"root","share":0,"size":0,"start_time":9302261,"state":"I","stime":3,"suser":"root","tgid":431625,"tty":0,"utime":0,"vm_size":0})"_json));
 
     EXPECT_CALL(*spInfoWrapper, groups()).WillRepeatedly(Return(
-                                                             R"([{"group_description": null, "group_id": 1, "group_id_signed": 1, "group_is_hidden": null, "group_name": "daemon", "group_users": "daemon:pollinate:vboxadd", "group_uuid": null }])"_json));
+                                                             R"([{"group_description": null, "group_id": 1, "group_id_signed": 1, "group_is_hidden": 0, "group_name": "daemon", "group_users": "daemon:pollinate:vboxadd", "group_uuid": null }])"_json));
     EXPECT_CALL(*spInfoWrapper, users()).WillRepeatedly(Return
-                                                        (R"([{"host_ip":"192.168.0.84","login_status":0,"login_tty":"pts/0","login_type":"user","process_pid":"129870","user_auth_failed_count":null,"user_auth_failed_timestamp":null,"user_created":null,"user_full_name":"root","user_group_id":0,"user_group_id_signed":0,"user_groups":null,"user_home":"/root","user_id":0,"user_is_hidden":null,"user_is_remote":1,"user_last_login":"1749605216","user_name":"root","user_password_expiration_date":-1,"user_password_hash_algorithm":"y","user_password_inactive_days":-1,"user_password_last_change":20228,"user_password_last_set_time":null,"user_password_max_days_between_changes":99999,"user_password_min_days_between_changes":0,"user_password_status":"active","user_password_warning_days_before_expiration":7,"user_roles_sudo":1,"user_shell":"/bin/bash","user_type":null,"user_uid_signed":0,"user_uuid":null}])"_json));
+                                                        (R"([{"host_ip":"192.168.0.84","login_status":0,"login_tty":"pts/0","login_type":"user","process_pid":"129870","user_auth_failed_count":0,"user_auth_failed_timestamp":0,"user_created":0,"user_full_name":"root","user_group_id":0,"user_group_id_signed":0,"user_groups":0,"user_home":"/root","user_id":0,"user_is_hidden":0,"user_is_remote":1,"user_last_login":"1749605216","user_name":"root","user_password_expiration_date":-1,"user_password_hash_algorithm":"y","user_password_inactive_days":-1,"user_password_last_change":20228,"user_password_last_set_time":0,"user_password_max_days_between_changes":99999,"user_password_min_days_between_changes":0,"user_password_status":"active","user_password_warning_days_before_expiration":7,"user_roles":"sudo","user_shell":"/bin/bash","user_type":null,"user_uid_signed":0,"user_uuid":null}])"_json));
 
     std::thread t
     {
@@ -2396,10 +2396,10 @@ TEST_F(SyscollectorImpTest, pushMessageOk1)
               (R"({"egroup":"root","euser":"root","fgroup":"root","name":"kworker/u256:2-","scan_time":"2020/12/28 21:49:50", "nice":0,"nlwp":1,"pgrp":0,"pid":"45","ppid":2,"priority":20,"processor":1,"resident":0,"rgroup":"root","ruser":"root","session":0,"sgroup":"root","share":0,"size":0,"start_time":9302261,"state":"I","stime":3,"suser":"root","tgid":431625,"tty":0,"utime":0,"vm_size":0})"_json));
 
     EXPECT_CALL(*spInfoWrapper, groups()).WillRepeatedly(Return(
-                                                             R"([{"group_description": null, "group_id": 1, "group_id_signed": 1, "group_is_hidden": null, "group_name": "daemon", "group_users": "daemon:pollinate:vboxadd", "group_uuid": null }])"_json));
+                                                             R"([{"group_description": null, "group_id": 1, "group_id_signed": 1, "group_is_hidden": 0, "group_name": "daemon", "group_users": "daemon:pollinate:vboxadd", "group_uuid": null }])"_json));
 
     EXPECT_CALL(*spInfoWrapper, users()).WillRepeatedly(Return
-                                                        (R"([{"host_ip":"192.168.0.84","login_status":0,"login_tty":"pts/0","login_type":"user","process_pid":"129870","user_auth_failed_count":null,"user_auth_failed_timestamp":null,"user_created":null,"user_full_name":"root","user_group_id":0,"user_group_id_signed":0,"user_groups":null,"user_home":"/root","user_id":0,"user_is_hidden":null,"user_is_remote":1,"user_last_login":"1749605216","user_name":"root","user_password_expiration_date":-1,"user_password_hash_algorithm":"y","user_password_inactive_days":-1,"user_password_last_change":20228,"user_password_last_set_time":null,"user_password_max_days_between_changes":99999,"user_password_min_days_between_changes":0,"user_password_status":"active","user_password_warning_days_before_expiration":7,"user_roles_sudo":1,"user_shell":"/bin/bash","user_type":null,"user_uid_signed":0,"user_uuid":null}])"_json));
+                                                        (R"([{"host_ip":"192.168.0.84","login_status":0,"login_tty":"pts/0","login_type":"user","process_pid":"129870","user_auth_failed_count":0,"user_auth_failed_timestamp":0,"user_created":0,"user_full_name":"root","user_group_id":0,"user_group_id_signed":0,"user_groups":0,"user_home":"/root","user_id":0,"user_is_hidden":0,"user_is_remote":1,"user_last_login":"1749605216","user_name":"root","user_password_expiration_date":-1,"user_password_hash_algorithm":"y","user_password_inactive_days":-1,"user_password_last_change":20228,"user_password_last_set_time":0,"user_password_max_days_between_changes":99999,"user_password_min_days_between_changes":0,"user_password_status":"active","user_password_warning_days_before_expiration":7,"user_roles":"sudo","user_shell":"/bin/bash","user_type":null,"user_uid_signed":0,"user_uuid":null}])"_json));
     CallbackMock wrapper;
     std::function<void(const std::string&)> callbackData
     {
@@ -2515,7 +2515,7 @@ TEST_F(SyscollectorImpTest, pushMessageOk1)
     };
     const auto expectedResult23
     {
-        R"({"data":{"checksum":"8c431a0b1998efae2d9792251d614ff7558f58ba","group_description":null,"group_id":1,"group_id_signed":1,"group_is_hidden":null,"group_name":"daemon","group_users":"daemon:pollinate:vboxadd","group_uuid":null},"operation":"INSERTED","type":"dbsync_groups"})"
+        R"({"data":{"checksum":"81793e529c565256a60eff6c6345e2f5c5ee8cb0","group_description":null,"group_id":1,"group_id_signed":1,"group_is_hidden":0,"group_name":"daemon","group_users":"daemon:pollinate:vboxadd","group_uuid":null},"operation":"INSERTED","type":"dbsync_groups"})"
     };
     const auto expectedResult24
     {
@@ -2523,7 +2523,7 @@ TEST_F(SyscollectorImpTest, pushMessageOk1)
     };
     const auto expectedResult25
     {
-        R"({"data":{"checksum":"786cc53b6766ed4deab1c2bd279877f50537a29e","host_ip":"192.168.0.84","login_status":0,"login_tty":"pts/0","login_type":"user","process_pid":"129870","user_auth_failed_count":null,"user_auth_failed_timestamp":null,"user_created":null,"user_full_name":"root","user_group_id":0,"user_group_id_signed":0,"user_groups":null,"user_home":"/root","user_id":0,"user_is_hidden":null,"user_is_remote":1,"user_last_login":"1749605216","user_name":"root","user_password_expiration_date":-1,"user_password_hash_algorithm":"y","user_password_inactive_days":-1,"user_password_last_change":20228,"user_password_last_set_time":null,"user_password_max_days_between_changes":99999,"user_password_min_days_between_changes":0,"user_password_status":"active","user_password_warning_days_before_expiration":7,"user_roles_sudo":1,"user_shell":"/bin/bash","user_type":null,"user_uid_signed":0,"user_uuid":null},"operation":"INSERTED","type":"dbsync_users"})"
+        R"({"data":{"checksum":"04e92f4fc7ee1d8a5b9f94337c62e88e2e3cee58","host_ip":"192.168.0.84","login_status":0,"login_tty":"pts/0","login_type":"user","process_pid":"129870","user_auth_failed_count":0,"user_auth_failed_timestamp":0,"user_created":0,"user_full_name":"root","user_group_id":0,"user_group_id_signed":0,"user_groups":0,"user_home":"/root","user_id":0,"user_is_hidden":0,"user_is_remote":1,"user_last_login":"1749605216","user_name":"root","user_password_expiration_date":-1,"user_password_hash_algorithm":"y","user_password_inactive_days":-1,"user_password_last_change":20228,"user_password_last_set_time":0,"user_password_max_days_between_changes":99999,"user_password_min_days_between_changes":0,"user_password_status":"active","user_password_warning_days_before_expiration":7,"user_roles":"sudo","user_shell":"/bin/bash","user_type":null,"user_uid_signed":0,"user_uuid":null},"operation":"INSERTED","type":"dbsync_users"})"
     };
 
     EXPECT_CALL(wrapper, callbackMock(expectedResult1)).Times(1);
@@ -2599,9 +2599,9 @@ TEST_F(SyscollectorImpTest, pushMessageInvalid)
               (R"({"egroup":"root","euser":"root","fgroup":"root","name":"kworker/u256:2-","scan_time":"2020/12/28 21:49:50", "nice":0,"nlwp":1,"pgrp":0,"pid":431625,"ppid":2,"priority":20,"processor":1,"resident":0,"rgroup":"root","ruser":"root","session":0,"sgroup":"root","share":0,"size":0,"start_time":9302261,"state":"I","stime":3,"suser":"root","tgid":431625,"tty":0,"utime":0,"vm_size":0})"_json));
 
     EXPECT_CALL(*spInfoWrapper, groups()).WillRepeatedly(Return(
-                                                             R"([{"group_description": null, "group_id": 1, "group_id_signed": 1, "group_is_hidden": null, "group_name": "daemon", "group_users": "daemon:pollinate:vboxadd", "group_uuid": null }])"_json));
+                                                             R"([{"group_description": null, "group_id": 1, "group_id_signed": 1, "group_is_hidden": 0, "group_name": "daemon", "group_users": "daemon:pollinate:vboxadd", "group_uuid": null }])"_json));
     EXPECT_CALL(*spInfoWrapper, users()).WillRepeatedly(Return
-                                                        (R"([{"host_ip":"192.168.0.84","login_status":0,"login_tty":"pts/0","login_type":"user","process_pid":"129870","user_auth_failed_count":null,"user_auth_failed_timestamp":null,"user_created":null,"user_full_name":"root","user_group_id":0,"user_group_id_signed":0,"user_groups":null,"user_home":"/root","user_id":0,"user_is_hidden":null,"user_is_remote":1,"user_last_login":"1749605216","user_name":"root","user_password_expiration_date":-1,"user_password_hash_algorithm":"y","user_password_inactive_days":-1,"user_password_last_change":20228,"user_password_last_set_time":null,"user_password_max_days_between_changes":99999,"user_password_min_days_between_changes":0,"user_password_status":"active","user_password_warning_days_before_expiration":7,"user_roles_sudo":1,"user_shell":"/bin/bash","user_type":null,"user_uid_signed":0,"user_uuid":null}])"_json));
+                                                        (R"([{"host_ip":"192.168.0.84","login_status":0,"login_tty":"pts/0","login_type":"user","process_pid":"129870","user_auth_failed_count":0,"user_auth_failed_timestamp":0,"user_created":0,"user_full_name":"root","user_group_id":0,"user_group_id_signed":0,"user_groups":0,"user_home":"/root","user_id":0,"user_is_hidden":0,"user_is_remote":1,"user_last_login":"1749605216","user_name":"root","user_password_expiration_date":-1,"user_password_hash_algorithm":"y","user_password_inactive_days":-1,"user_password_last_change":20228,"user_password_last_set_time":0,"user_password_max_days_between_changes":99999,"user_password_min_days_between_changes":0,"user_password_status":"active","user_password_warning_days_before_expiration":7,"user_roles":"sudo","user_shell":"/bin/bash","user_type":null,"user_uid_signed":0,"user_uuid":null}])"_json));
 
     std::thread t
     {
@@ -2651,9 +2651,9 @@ TEST_F(SyscollectorImpTest, scanInvalidData)
               (R"({"egroup":"root","euser":"root","fgroup":"root","name":"kworker/u256:2-","scan_time":"2020/12/28 21:49:50", "nice":0,"nlwp":1,"pgrp":0,"pid":431625,"ppid":2,"priority":20,"processor":1,"resident":0,"rgroup":"root","ruser":"root","session":0,"sgroup":"root","share":0,"size":0,"start_time":9302261,"state":"I","stime":3,"suser":"root","tgid":431625,"tty":0,"utime":0,"vm_size":0})"_json));
 
     EXPECT_CALL(*spInfoWrapper, groups()).WillRepeatedly(Return(
-                                                             R"([{"group_description": null, "group_id": 1, "group_id_signed": 1, "group_is_hidden": null, "group_name": "daemon", "group_users": "daemon:pollinate:vboxadd", "group_uuid": null }])"_json));
+                                                             R"([{"group_description": null, "group_id": 1, "group_id_signed": 1, "group_is_hidden": 0, "group_name": "daemon", "group_users": "daemon:pollinate:vboxadd", "group_uuid": null }])"_json));
     EXPECT_CALL(*spInfoWrapper, users()).WillRepeatedly(Return
-                                                        (R"([{"host_ip":"192.168.0.84","login_status":0,"login_tty":"pts/0","login_type":"user","process_pid":"129870","user_auth_failed_count":null,"user_auth_failed_timestamp":null,"user_created":null,"user_full_name":"root","user_group_id":0,"user_group_id_signed":0,"user_groups":null,"user_home":"/root","user_id":0,"user_is_hidden":null,"user_is_remote":1,"user_last_login":"1749605216","user_name":"root","user_password_expiration_date":-1,"user_password_hash_algorithm":"y","user_password_inactive_days":-1,"user_password_last_change":20228,"user_password_last_set_time":null,"user_password_max_days_between_changes":99999,"user_password_min_days_between_changes":0,"user_password_status":"active","user_password_warning_days_before_expiration":7,"user_roles_sudo":1,"user_shell":"/bin/bash","user_type":null,"user_uid_signed":0,"user_uuid":null}])"_json));
+                                                        (R"([{"host_ip":"192.168.0.84","login_status":0,"login_tty":"pts/0","login_type":"user","process_pid":"129870","user_auth_failed_count":0,"user_auth_failed_timestamp":0,"user_created":0,"user_full_name":"root","user_group_id":0,"user_group_id_signed":0,"user_groups":0,"user_home":"/root","user_id":0,"user_is_hidden":0,"user_is_remote":1,"user_last_login":"1749605216","user_name":"root","user_password_expiration_date":-1,"user_password_hash_algorithm":"y","user_password_inactive_days":-1,"user_password_last_change":20228,"user_password_last_set_time":0,"user_password_max_days_between_changes":99999,"user_password_min_days_between_changes":0,"user_password_status":"active","user_password_warning_days_before_expiration":7,"user_roles":"sudo","user_shell":"/bin/bash","user_type":null,"user_uid_signed":0,"user_uuid":null}])"_json));
 
     std::thread t
     {
@@ -3019,10 +3019,10 @@ TEST_F(SyscollectorImpTest, sanitizeJsonValues)
               (R"({"egroup":" root ","euser":" root","fgroup":"root ","name":" kworker/u256:2-  ","scan_time":"2020/12/28 21:49:50", "nice":0,"nlwp":1,"pgrp":0,"pid":"  431625  ","ppid":2,"priority":20,"processor":1,"resident":0,"rgroup":"root","ruser":"root","session":0,"sgroup":"root","share":0,"size":0,"start_time":9302261,"state":"I","stime":3,"suser":"root","tgid":431625,"tty":0,"utime":0,"vm_size":0})"_json));
 
     EXPECT_CALL(*spInfoWrapper, groups()).WillRepeatedly(Return(
-                                                             R"([{"group_description": null, "group_id": 1, "group_id_signed": 1, "group_is_hidden": null, "group_name": "daemon", "group_users": "daemon:pollinate:vboxadd", "group_uuid": null }])"_json));
+                                                             R"([{"group_description": null, "group_id": 1, "group_id_signed": 1, "group_is_hidden": 0, "group_name": "daemon", "group_users": "daemon:pollinate:vboxadd", "group_uuid": null }])"_json));
 
     EXPECT_CALL(*spInfoWrapper, users()).WillRepeatedly(Return
-                                                        (R"([{"host_ip":"192.168.0.84","login_status":0,"login_tty":"pts/0","login_type":"user","process_pid":"129870","user_auth_failed_count":null,"user_auth_failed_timestamp":null,"user_created":null,"user_full_name":"root","user_group_id":0,"user_group_id_signed":0,"user_groups":null,"user_home":"/root","user_id":0,"user_is_hidden":null,"user_is_remote":1,"user_last_login":"1749605216","user_name":"root","user_password_expiration_date":-1,"user_password_hash_algorithm":"y","user_password_inactive_days":-1,"user_password_last_change":20228,"user_password_last_set_time":null,"user_password_max_days_between_changes":99999,"user_password_min_days_between_changes":0,"user_password_status":"active","user_password_warning_days_before_expiration":7,"user_roles_sudo":1,"user_shell":"/bin/bash","user_type":null,"user_uid_signed":0,"user_uuid":null}])"_json));
+                                                        (R"([{"host_ip":"192.168.0.84","login_status":0,"login_tty":"pts/0","login_type":"user","process_pid":"129870","user_auth_failed_count":0,"user_auth_failed_timestamp":0,"user_created":0,"user_full_name":"root","user_group_id":0,"user_group_id_signed":0,"user_groups":0,"user_home":"/root","user_id":0,"user_is_hidden":0,"user_is_remote":1,"user_last_login":"1749605216","user_name":"root","user_password_expiration_date":-1,"user_password_hash_algorithm":"y","user_password_inactive_days":-1,"user_password_last_change":20228,"user_password_last_set_time":0,"user_password_max_days_between_changes":99999,"user_password_min_days_between_changes":0,"user_password_status":"active","user_password_warning_days_before_expiration":7,"user_roles":"sudo","user_shell":"/bin/bash","user_type":null,"user_uid_signed":0,"user_uuid":null}])"_json));
 
     CallbackMock wrapper;
     std::function<void(const std::string&)> callbackData
@@ -3135,7 +3135,7 @@ TEST_F(SyscollectorImpTest, sanitizeJsonValues)
     };
     const auto expectedResult21
     {
-        R"({"data":{"checksum":"8c431a0b1998efae2d9792251d614ff7558f58ba","group_description":null,"group_id":1,"group_id_signed":1,"group_is_hidden":null,"group_name":"daemon","group_users":"daemon:pollinate:vboxadd","group_uuid":null},"operation":"INSERTED","type":"dbsync_groups"})"
+        R"({"data":{"checksum":"81793e529c565256a60eff6c6345e2f5c5ee8cb0","group_description":null,"group_id":1,"group_id_signed":1,"group_is_hidden":0,"group_name":"daemon","group_users":"daemon:pollinate:vboxadd","group_uuid":null},"operation":"INSERTED","type":"dbsync_groups"})"
     };
     const auto expectedResult22
     {
@@ -3147,7 +3147,7 @@ TEST_F(SyscollectorImpTest, sanitizeJsonValues)
     };
     const auto expectedResult24
     {
-        R"({"data":{"checksum":"786cc53b6766ed4deab1c2bd279877f50537a29e","host_ip":"192.168.0.84","login_status":0,"login_tty":"pts/0","login_type":"user","process_pid":"129870","user_auth_failed_count":null,"user_auth_failed_timestamp":null,"user_created":null,"user_full_name":"root","user_group_id":0,"user_group_id_signed":0,"user_groups":null,"user_home":"/root","user_id":0,"user_is_hidden":null,"user_is_remote":1,"user_last_login":"1749605216","user_name":"root","user_password_expiration_date":-1,"user_password_hash_algorithm":"y","user_password_inactive_days":-1,"user_password_last_change":20228,"user_password_last_set_time":null,"user_password_max_days_between_changes":99999,"user_password_min_days_between_changes":0,"user_password_status":"active","user_password_warning_days_before_expiration":7,"user_roles_sudo":1,"user_shell":"/bin/bash","user_type":null,"user_uid_signed":0,"user_uuid":null},"operation":"INSERTED","type":"dbsync_users"})"
+        R"({"data":{"checksum":"04e92f4fc7ee1d8a5b9f94337c62e88e2e3cee58","host_ip":"192.168.0.84","login_status":0,"login_tty":"pts/0","login_type":"user","process_pid":"129870","user_auth_failed_count":0,"user_auth_failed_timestamp":0,"user_created":0,"user_full_name":"root","user_group_id":0,"user_group_id_signed":0,"user_groups":0,"user_home":"/root","user_id":0,"user_is_hidden":0,"user_is_remote":1,"user_last_login":"1749605216","user_name":"root","user_password_expiration_date":-1,"user_password_hash_algorithm":"y","user_password_inactive_days":-1,"user_password_last_change":20228,"user_password_last_set_time":0,"user_password_max_days_between_changes":99999,"user_password_min_days_between_changes":0,"user_password_status":"active","user_password_warning_days_before_expiration":7,"user_roles":"sudo","user_shell":"/bin/bash","user_type":null,"user_uid_signed":0,"user_uuid":null},"operation":"INSERTED","type":"dbsync_users"})"
     };
 
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult1)).Times(1);

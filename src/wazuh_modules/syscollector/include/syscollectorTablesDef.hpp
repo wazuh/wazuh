@@ -915,7 +915,7 @@ constexpr auto USERS_SQL_STATEMENT
         user_group_id INTEGER,
         user_group_id_signed INTEGER,
         user_created DOUBLE,
-        user_roles_sudo INTEGER,
+        user_roles TEXT,
         user_shell TEXT,
         user_type TEXT,
         user_is_hidden INTEGER,

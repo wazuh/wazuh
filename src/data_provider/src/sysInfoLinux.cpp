@@ -639,7 +639,7 @@ nlohmann::json SysInfo::getGroups() const
         groupItem["group_description"] = nullptr;
         groupItem["group_id_signed"] = group["gid_signed"];
         groupItem["group_uuid"] = nullptr;
-        groupItem["group_is_hidden"] = nullptr;
+        groupItem["group_is_hidden"] = 0;
 
         std::set<gid_t> gids {static_cast<gid_t>(group["gid"].get<int>())};
         auto collectedUsersGroups = userGroupsProvider.getUserNamesByGid(gids);
@@ -734,11 +734,11 @@ nlohmann::json SysInfo::getUsers() const
         userItem["user_uuid"] = nullptr;
 
         // Macos
-        userItem["user_password_last_set_time"] = nullptr;
-        userItem["user_is_hidden"] = nullptr;
-        userItem["user_created"] = nullptr;
-        userItem["user_auth_failed_count"] = nullptr;
-        userItem["user_auth_failed_timestamp"] = nullptr;
+        userItem["user_password_last_set_time"] = 0;
+        userItem["user_is_hidden"] = 0;
+        userItem["user_created"] = 0;
+        userItem["user_auth_failed_count"] = 0;
+        userItem["user_auth_failed_timestamp"] = 0;
 
         auto matched = false;
 
@@ -769,12 +769,12 @@ nlohmann::json SysInfo::getUsers() const
 
         if (!matched)
         {
-            userItem["login_status"] = nullptr;
+            userItem["login_status"] = 0;
             userItem["login_tty"] = nullptr;
             userItem["login_type"] = nullptr;
             userItem["host_ip"] = nullptr;
-            userItem["process_pid"] = nullptr;
-            userItem["user_last_login"] = nullptr;
+            userItem["process_pid"] = 0;
+            userItem["user_last_login"] = 0;
         }
 
         matched = false;
@@ -798,14 +798,14 @@ nlohmann::json SysInfo::getUsers() const
 
         if (!matched)
         {
-            userItem["user_password_expiration_date"] = nullptr;
+            userItem["user_password_expiration_date"] = 0;
             userItem["user_password_hash_algorithm"] = nullptr;
-            userItem["user_password_inactive_days"] = nullptr;
-            userItem["user_password_last_change"] = nullptr;
-            userItem["user_password_max_days_between_changes"] = nullptr;
-            userItem["user_password_min_days_between_changes"] = nullptr;
+            userItem["user_password_inactive_days"] = 0;
+            userItem["user_password_last_change"] = 0;
+            userItem["user_password_max_days_between_changes"] = 0;
+            userItem["user_password_min_days_between_changes"] = 0;
             userItem["user_password_status"] = nullptr;
-            userItem["user_password_warning_days_before_expiration"] = nullptr;
+            userItem["user_password_warning_days_before_expiration"] = 0;
         }
 
 
@@ -813,7 +813,7 @@ nlohmann::json SysInfo::getUsers() const
         auto collectedSudoers = sudoersProvider.collect();
 
         // By default, user is not sudoer.
-        userItem["user_roles_sudo"] = 0;
+        userItem["user_roles"] = nullptr;
 
         for (auto& singleSudoer : collectedSudoers)
         {
@@ -823,7 +823,7 @@ nlohmann::json SysInfo::getUsers() const
             if (header.find(username) != std::string::npos)
             {
                 //TODO: user_roles_sudo_sudo_rule_details has more detailed information.
-                userItem["user_roles_sudo"] = 1;
+                userItem["user_roles"] = "sudo";
 
             }
         }
