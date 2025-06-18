@@ -9,6 +9,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 include_directories(
   include
   ${CMAKE_SOURCE_DIR}/../external/nlohmann/
+  ${CMAKE_CURRENT_SOURCE_DIR}/../wrappers/unix/darwin
 )
 
 link_directories(/opt/homebrew/lib)
