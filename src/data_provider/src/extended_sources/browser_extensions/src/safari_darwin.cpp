@@ -5,8 +5,8 @@
 #include <algorithm>
 #include <plist/plist.h>
 #include <fstream>
+#include <unistd.h>
 
-#define kAppPath "/Applications/"
 #define kAppPluginsPath "Contents/PlugIns/"
 #define kAppPluginPlistPath "Contents/Info.plist"
 #define kSafariFilterString "com.apple.Safari"
@@ -16,11 +16,14 @@ const std::vector<std::string> kExtensionsAppDirsToExclude = {
     "/Safari.app",
 };
 
-BrowsersProvider::BrowsersProvider() {
+BrowserExtensionsProvider::BrowserExtensionsProvider(
+  std::shared_ptr<IBrowserExtensionsWrapper> browser_extensions_wrapper) : 
+  browser_extensions_wrapper_(std::move(browser_extensions_wrapper)) {}
 
-}
+BrowserExtensionsProvider::BrowserExtensionsProvider() : 
+  browser_extensions_wrapper_(std::make_shared<BrowserExtensionsWrapper>()) {}
 
-void BrowsersProvider::printExtensions(const ExtensionsData& extensions) {
+void BrowserExtensionsProvider::printExtensions(const BrowserExtensionsData& extensions) {
   for(auto& data : extensions){
     std::cout << std::endl;
     std::cout << data.bundle_version << std::endl;
@@ -35,11 +38,11 @@ void BrowsersProvider::printExtensions(const ExtensionsData& extensions) {
   }
 }
 
-void BrowsersProvider::printExtensions(const nlohmann::json& extensions_json) {
+void BrowserExtensionsProvider::printExtensions(const nlohmann::json& extensions_json) {
   std::cout << extensions_json.dump(4) << std::endl;
 }
 
-nlohmann::json BrowsersProvider::toJson(const ExtensionsData& extensions) {
+nlohmann::json BrowserExtensionsProvider::toJson(const BrowserExtensionsData& extensions) {
   nlohmann::json results = nlohmann::json::array();
   for(auto& extension : extensions) {
     nlohmann::json entry;
@@ -57,15 +60,16 @@ nlohmann::json BrowsersProvider::toJson(const ExtensionsData& extensions) {
   return results;
 }
 
-nlohmann::json BrowsersProvider::collect() {
-  // Check if kAppPath exists
-  std::filesystem::path apps_path{kAppPath};
+nlohmann::json BrowserExtensionsProvider::collect() {
+  // Check if applications_path exists
+  const std::string applications_path = browser_extensions_wrapper_->getApplicationsPath();
+  std::filesystem::path apps_path{applications_path};
   if(!std::filesystem::exists(apps_path)){
-    std::cout << "Path does not exist" << std::endl;
+    std::cout << "Path does not exist: " << apps_path << std::endl;
   }
 
-  ExtensionsData extensions_data;
-  // Create list of directories inside of kAppPath
+  BrowserExtensionsData browser_extensions;
+  // Create list of directories inside of applications_path
   for(auto& app_path : std::filesystem::directory_iterator(apps_path)){
     // For each app directory, exclude the ones in kExtensionsAppDirsToExclude
     std::string app_name = "/" + app_path.path().filename().string();
@@ -120,12 +124,10 @@ nlohmann::json BrowsersProvider::collect() {
             plist_get_string_val(extension_type_node, &extension_type);
             std::string extension_type_str(extension_type);
             free(extension_type);
+            
             if (!(extension_type_str.find(kSafariFilterString) != std::string::npos)) {
-              // Not a Safari extension
-              continue;
+              continue; // Not a Safari extension
             }
-
-            // Creating an ExtensionData object
 
             plist_t identifier_node = plist_dict_get_item(plist_dict, "CFBundleIdentifier");
             plist_t name_node = plist_dict_get_item(plist_dict, "CFBundleDisplayName");
@@ -135,75 +137,75 @@ nlohmann::json BrowsersProvider::collect() {
             plist_t copyright_node = plist_dict_get_item(plist_dict, "NSHumanReadableCopyright");
             plist_t description_node = plist_dict_get_item(plist_dict, "NSHumanReadableDescription");
             
-            ExtensionData extension_data;
-            extension_data.path = extension_path;
-            // TODO: Fix this, implement the correct logic for detecting user id
-            extension_data.uid = "501";
+            // Creating an BrowserExtensionData object
+            BrowserExtensionData browser_extension_data;
+            browser_extension_data.path = extension_path;
+            browser_extension_data.uid = std::to_string(getuid());
             if(identifier_node && plist_get_node_type(identifier_node) == PLIST_STRING){
               char* identifier_str = nullptr;
               plist_get_string_val(identifier_node, &identifier_str);
-              extension_data.identifier = identifier_str;
+              browser_extension_data.identifier = identifier_str;
               free(identifier_str);
             } else {
-              extension_data.identifier = "";
+              browser_extension_data.identifier = "";
             }
 
             if(name_node && plist_get_node_type(name_node) == PLIST_STRING){
               char* name_str = nullptr;
               plist_get_string_val(name_node, &name_str);
-              extension_data.name = name_str;
+              browser_extension_data.name = name_str;
               free(name_str);
             } else {
-              extension_data.name = "";
+              browser_extension_data.name = "";
             }
 
             if(sdk_node && plist_get_node_type(sdk_node) == PLIST_STRING){
               char* sdk_str = nullptr;
               plist_get_string_val(sdk_node, &sdk_str);
-              extension_data.sdk = sdk_str;
+              browser_extension_data.sdk = sdk_str;
               free(sdk_str);
             } else {
-              extension_data.sdk = "";
+              browser_extension_data.sdk = "";
             }
 
             if(version_string_node && plist_get_node_type(version_string_node) == PLIST_STRING){
               char* version_string_str = nullptr;
               plist_get_string_val(version_string_node, &version_string_str);
-              extension_data.version = version_string_str;
+              browser_extension_data.version = version_string_str;
               free(version_string_str);
             } else {
-              extension_data.version = "";
+              browser_extension_data.version = "";
             }
 
             if(bundle_version_node && plist_get_node_type(bundle_version_node) == PLIST_STRING){
               char* bundle_version_str = nullptr;
               plist_get_string_val(bundle_version_node, &bundle_version_str);
-              extension_data.bundle_version = bundle_version_str;
+              browser_extension_data.bundle_version = bundle_version_str;
               free(bundle_version_str);
             } else {
-              extension_data.bundle_version = "";
+              browser_extension_data.bundle_version = "";
             }
 
             if(copyright_node && plist_get_node_type(copyright_node) == PLIST_STRING){
               char* copyright_str = nullptr;
               plist_get_string_val(copyright_node, &copyright_str);
-              extension_data.copyright = copyright_str;
+              browser_extension_data.copyright = copyright_str;
               free(copyright_str);
             } else {
-              extension_data.copyright = "";
+              browser_extension_data.copyright = "";
             }
 
             if(description_node && plist_get_node_type(description_node) == PLIST_STRING){
               char* description_str = nullptr;
               plist_get_string_val(description_node, &description_str);
-              extension_data.description = description_str;
+              browser_extension_data.description = description_str;
               free(description_str);
             } else {
-              extension_data.description = "";
+              browser_extension_data.description = "";
             }
 
             // Add to array of extensions
-            extensions_data.emplace_back(extension_data);
+            browser_extensions.emplace_back(browser_extension_data);
           } else {
             // TODO: Improve error handling
             std::cerr << "Failed to parse NSExtensionPointIdentifier" << std::endl;
@@ -216,8 +218,5 @@ nlohmann::json BrowsersProvider::collect() {
     }
   }
 
-  // printExtensions(toJson(extensions_data));
-  nlohmann::json extensions_json = toJson(extensions_data);
-  printExtensions(extensions_json);
-  return extensions_json;
+  return toJson(browser_extensions);
 }
