@@ -24,8 +24,9 @@ target_include_directories(base
 )
 target_link_libraries(base
     PUBLIC
-    fmt::fmt-header-only
+    fmt::fmt
     spdlog::spdlog
+    RapidJSON::RapidJSON
 )
 
 # Tests

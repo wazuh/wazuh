@@ -69,9 +69,25 @@ EXTERNAL_CPYTHON=external/cpython/
 EXTERNAL_MSGPACK=external/msgpack/
 EXTERNAL_BZIP2=external/bzip2/
 EXTERNAL_GOOGLE_TEST=external/googletest/
-EXTERNAL_GOOGLE_BENCHMARK=external/benchmark/
+EXTERNAL_GOOGLE_BENCHMARK=external/benchmark-1_8_5/benchmark-1.8.5/
 EXTERNAL_ROCKSDB=external/rocksdb/
+EXTERNAL_RE2=external/re2-2024_06_01/re2-2024-06-01
+EXTERNAL_ABSEILCPP=external/abseil-cpp-20240116.3/
 EXTERNAL_FLATBUFFERS=external/flatbuffers/
+EXTERNAL_FMT=external/fmt/fmt-8.1.1/
+EXTERNAL_SPDLOG=external/spdlog-1_14_1/spdlog-1.14.1/
+EXTERNAL_RAPIDJSON=external/rapidjson-a95e013b/rapidjson-a95e013b97ca6523f32da23f5095fcc9dd6067e5/
+EXTERNAL_RXCPP=external/rxcpp-4_1_1/RxCpp-4.1.1/
+EXTERNAL_GTEST=external/gtest-1_15_0/googletest-1.15.0/
+EXTERNAL_YAMLCPP=external/yaml-cpp-0.8.0/
+#EXTERNAL_OPENTELEMETRY=external/opentelemetry-cpp-1_8_3/opentelemetry-cpp-1.8.3/
+EXTERNAL_PUGIXML=external/pugixml-1_15/pugixml-1.15/
+EXTERNAL_MAXMINDDB=external/libmaxminddb-1_9_1/libmaxminddb-1.9.1/
+EXTERNAL_PROTOBUF=external/protobuf-21_12/protobuf-21.12/
+EXTERNAL_DATE=external/date-1ead6715/date/
+EXTERNAL_FAST_FLOAT=external/v6.1.4/fast_float-6.1.4/
+EXTERNAL_TASKFLOW=external/taskflow-3_7_0/taskflow-3.7.0/
+EXTERNAL_CONCURRENTQUEUE=external/concurrentqueue-1_0_4/concurrentqueue-1.0.4/
 EXTERNAL_LZMA=external/lzma/
 EXTERNAL_LUA=external/lua/
 EXTERNAL_LIBPCRE2=external/libpcre2/
@@ -435,7 +451,7 @@ endif
 
 OSSEC_CFLAGS+=${DEFINES}
 OSSEC_CFLAGS+=-pipe -Wall -Wextra -std=gnu99
-OSSEC_CFLAGS+=-I./ -I./headers/ -I${EXTERNAL_OPENSSL}include -I$(EXTERNAL_JSON) -I${EXTERNAL_LIBYAML}include -I${EXTERNAL_CURL}include -I${EXTERNAL_MSGPACK}include -I${EXTERNAL_BZIP2} -I${SHARED_MODULES}common -I${DBSYNC}include -I${RSYNC}include -I${SYSCOLLECTOR}include  -I${SYSINFO}include  -I${EXTERNAL_LIBPCRE2}include -I${EXTERNAL_RPM}/builddir/output/include -I${SYSCHECK}include -I${ROUTER}include -I${CONTENT_MANAGER}include -I${VULNERABILITY_SCANNER}include -I${INVENTORY_HARVESTER}include -I./shared_modules/
+OSSEC_CFLAGS+=-I./ -I./headers/ -I${EXTERNAL_FMT}include -I${EXTERNAL_RXCPP}Rx/v2/src -I${EXTERNAL_OPENSSL}include -I$(EXTERNAL_JSON) -I${EXTERNAL_LIBYAML}include -I${EXTERNAL_CURL}include -I${EXTERNAL_MSGPACK}include -I${EXTERNAL_BZIP2} -I${SHARED_MODULES}common -I${DBSYNC}include -I${RSYNC}include -I${SYSCOLLECTOR}include  -I${SYSINFO}include  -I${EXTERNAL_LIBPCRE2}include -I${EXTERNAL_RPM}/builddir/output/include -I${SYSCHECK}include -I${ROUTER}include -I${CONTENT_MANAGER}include -I${VULNERABILITY_SCANNER}include -I${INVENTORY_HARVESTER}include -I./shared_modules/
 
 OSSEC_CFLAGS += ${CFLAGS}
 OSSEC_LDFLAGS += ${LDFLAGS}
@@ -946,7 +962,18 @@ POPT_LIB = $(EXTERNAL_POPT)build/output/src/.libs/libpopt.a
 RPM_LIB = $(EXTERNAL_RPM)builddir/librpm.a
 JEMALLOC_LIB = $(EXTERNAL_JEMALLOC)lib/libjemalloc.so.2
 ROCKSDB_LIB = $(EXTERNAL_ROCKSDB)build/librocksdb.so
+ABSEILCPP_LIB = $(EXTERNAL_ABSEILCPP)build/lib/libabsl.a
+RE2_LIB = $(EXTERNAL_RE2)build/libre2.a
 FLATBUFFERS_LIB = $(EXTERNAL_FLATBUFFERS)build/libflatbuffers.a
+SPDLOG_LIB = $(EXTERNAL_SPDLOG)build/libspdlog.a
+GTEST_LIB = $(EXTERNAL_GTEST)build/libgtest.a
+YAMLCPP_LIB = $(EXTERNAL_YAMLCPP)build/libyamlcpp.a
+#OPENTELEMETRY_LIB = $(EXTERNAL_OPENTELEMETRY)build/libopentelemetry.a
+PUGIXML_LIB = $(EXTERNAL_PUGIXML)build/libpugixml.a
+MAXMINDDB_LIB = $(EXTERNAL_MAXMINDDB)build/libmaxminddb.a
+PROTOBUF_LIB = $(EXTERNAL_PROTOBUF)build/libprotobuf.a
+DATE_LIB = $(EXTERNAL_DATE)build/libdate-tz.a
+FMT_LIB = $(EXTERNAL_FMT)build/libfmt.a
 LZMA_LIB = $(EXTERNAL_LZMA)build/liblzma.a
 LUA_LIB = ${EXTERNAL_LUA}install/lib/liblua.a
 LIBBPF_LIB = $(EXTERNAL_LIBBPF)build/modern.bpf.o
@@ -965,7 +992,7 @@ endif
 # Adding libraries only for server
 ifeq (${TARGET},server)
 	EXTERNAL_LIBS_NO_WHOLE += $(ROCKSDB_LIB) $(FLATBUFFERS_LIB)
-	EXTERNAL_LIBS += $(LZMA_LIB) $(MINIZIP_LIB)
+	EXTERNAL_LIBS += $(LZMA_LIB) $(MINIZIP_LIB) $(SPDLOG_LIB)
 endif
 
 ifneq (${TARGET},winagent)
@@ -1001,7 +1028,7 @@ external: build_gtest build_benchmark
 endif
 
 ifeq (${TARGET},server)
-external: $(ROCKSDB_LIB)
+external: $(ROCKSDB_LIB) $(SPDLOG_LIB) $(GTEST_LIB) $(YAMLCPP_LIB) $(PUGIXML_LIB) $(MAXMINDDB_LIB) $(DATE_LIB) $(FMT_LIB) $(FAST_FLOAT_LIB) $(PROTOBUF_LIB) $(ABSEILCPP_LIB) $(RE2_LIB)  build_benchmark #$(OPENTELEMETRY_LIB)
 endif
 
 ifeq (${uname_S},Linux)
@@ -1079,9 +1106,69 @@ $(LIBBPF_LIB):
 ${ROCKSDB_LIB}:
 	cd $(EXTERNAL_ROCKSDB) && mkdir -p build && cd build && cmake .. -DCMAKE_BUILD_TYPE=Release -DWITH_GFLAGS=0 -DWITH_TESTS=0 -DWITH_BENCHMARK_TOOLS=0 -DWITH_TOOLS=0 -DUSE_RTTI=1 -DROCKSDB_BUILD_SHARED=1 -DWITH_BZ2=1 -DBZIP2_INCLUDE_DIR=$(realpath $(EXTERNAL_BZIP2)) -DBZIP2_LIBRARIES=$(realpath $(BZIP2_LIB)) -DCMAKE_POSITION_INDEPENDENT_CODE=1 -DWITH_ALL_TESTS=0 -DWITH_RUNTIME_DEBUG=0 -DWITH_TRACE_TOOLS=0 -DPORTABLE=1 && ${MAKE}
 
+## abseilcpp ###
+${ABSEILCPP_LIB}:
+	mkdir -p $(EXTERNAL_ABSEILCPP)/build
+	cd $(EXTERNAL_ABSEILCPP)/build && \
+	  cmake .. \
+	    -DCMAKE_BUILD_TYPE=Release \
+	    -DABSL_BUILD_TESTING=OFF \
+	    -DABSL_USE_GOOGLETEST_HEAD=OFF \
+	    -DCMAKE_CXX_STANDARD=17 \
+	    -DCMAKE_INSTALL_PREFIX=./build_result && \
+	  make install
+
+${RE2_LIB}: $(ABSEILCPP_LIB)
+	mkdir -p $(EXTERNAL_RE2)/build && \
+	cd $(EXTERNAL_RE2)/build && \
+	cmake .. \
+	-DCMAKE_BUILD_TYPE=Release \
+	-DRE2_BUILD_TESTING=OFF \
+	-DBUILD_SHARED_LIBS=OFF \
+	-DCMAKE_PREFIX_PATH=/workspaces/devContainer/wazuh/src/external/abseil-cpp-20240116.3/build/build_result \
+	-DCMAKE_POSITION_INDEPENDENT_CODE=ON \
+	-DCMAKE_INSTALL_PREFIX=./result && \
+	${MAKE}
+
 ### flatbuffers ###
 ${FLATBUFFERS_LIB}:
 	cd $(EXTERNAL_FLATBUFFERS) && mkdir -p build && cd build && cmake .. -DCMAKE_BUILD_TYPE=Release -DFLATBUFFERS_BUILD_TESTS=0 -DFLATBUFFERS_INSTALL=0 -DCMAKE_POSITION_INDEPENDENT_CODE=1 && ${MAKE}
+
+### spdlog ###
+${SPDLOG_LIB}:
+	cd $(EXTERNAL_SPDLOG) && mkdir -p build && cd build && cmake .. -DCMAKE_BUILD_TYPE=Release -DSPDLOG_BUILD_EXAMPLE=OFF -DSPDLOG_BUILD_TESTS=OFF -DSPDLOG_BUILD_BENCH=OFF -DSPDLOG_FMT_EXTERNAL=OFF -DBUILD_SHARED_LIBS=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=ON && ${MAKE}
+
+### gtest ###
+${GTEST_LIB}:
+	cd $(EXTERNAL_GTEST) && mkdir -p build && cd build && cmake .. -DCMAKE_BUILD_TYPE=Release -DBUILD_GMOCK=ON -Dgtest_build_samples=OFF -Dgtest_build_tests=OFF -DBUILD_SHARED_LIBS=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=ON && ${MAKE}
+
+### yaml-cpp ###
+${YAMLCPP_LIB}:
+	cd $(EXTERNAL_YAMLCPP) && mkdir -p build && cd build && cmake .. -DCMAKE_BUILD_TYPE=Release -DYAML_CPP_BUILD_TOOLS=OFF -DYAML_CPP_BUILD_TESTS=OFF && ${MAKE}
+
+### opentelemetry ###
+# ${OPENTELEMETRY_LIB}:
+# 	cd $(EXTERNAL_OPENTELEMETRY) && mkdir -p build && cd build && cmake .. -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF -DWITH_EXAMPLES=OFF -DOPENTELEMETRY_INSTALL=ON -DWITH_ABSEIL=OFF -DWITH_STL=ON -DWITH_BENCHMARK=OFF && ${MAKE}
+
+### pugixml ###
+${PUGIXML_LIB}:
+	cd $(EXTERNAL_PUGIXML) && mkdir -p build && cd build && cmake .. -DCMAKE_BUILD_TYPE=Release DPUGIXML_BUILD_TESTS=OFF && ${MAKE}
+
+### maxminddb ###
+${MAXMINDDB_LIB}:
+	cd $(EXTERNAL_MAXMINDDB) && mkdir -p build && cd build && cmake .. -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF && ${MAKE}
+
+### protobuf ###
+${PROTOBUF_LIB}:
+	cd $(EXTERNAL_PROTOBUF) && mkdir -p build && cd build && cmake .. -DCMAKE_BUILD_TYPE=Release -Dprotobuf_BUILD_TESTS=OFF -DBUILD_SHARED_LIBS=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=ON && ${MAKE}
+
+### date ###
+${DATE_LIB}:
+	cd $(EXTERNAL_DATE) && mkdir -p build && cd build && cmake .. -DCMAKE_BUILD_TYPE=Release -DENABLE_DATE_TESTING=OFF -DUSE_SYSTEM_TZ_DB=OFF -DBUILD_TZ_LIB=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=ON && ${MAKE}
+
+### fmt ###
+${FMT_LIB}:
+	cd $(EXTERNAL_FMT) && mkdir -p build && cd build && cmake .. -DCMAKE_BUILD_TYPE=Release -DFMT_TEST=OFF -DFMT_DOC=OFF -DBUILD_SHARED_LIBS=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=ON && ${MAKE}
 
 ### lzma ###
 ${LZMA_LIB}:
@@ -2760,6 +2847,13 @@ ifneq ($(wildcard external/*/*),)
 	rm -rf $(EXTERNAL_ROCKSDB)build
 	rm -rf $(EXTERNAL_LIBBPF)build
 	rm -rf $(EXTERNAL_FLATBUFFERS)build
+	# rm -rf $(EXTERNAL_FMT)
+	# rm -rf $(EXTERNAL_RAPIDJSON)
+	# rm -rf $(EXTERNAL_RXCPP)
+	# rm -rf $(EXTERNAL_TASKFLOW)
+	# rm -rf $(EXTERNAL_DATE)
+	# rm -rf $(EXTERNAL_CONCURRENTQUEUE)
+	# rm -rf $(EXTERNAL_FAST_FLOAT)
 	rm -rf $(EXTERNAL_LZMA)build
 	-cd ${EXTERNAL_LIBPLIST} && ${MAKE} clean && rm -rf bin/*
 	-cd ${EXTERNAL_LIBPCRE2} && ${MAKE} distclean && rm -rf include/*

@@ -13,9 +13,7 @@
       "generator": "Unix Makefiles",
       "binaryDir": "${sourceDir}/build",
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Debug",
-        "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
-        "VCPKG_OVERLAY_PORTS": "${sourceDir}/ports-overlays"
+        "CMAKE_BUILD_TYPE": "Debug"
       }
     },
     {
@@ -33,12 +31,10 @@
       "binaryDir": "${sourceDir}/build",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
-        "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
         "CMAKE_CXX_FLAGS": "-fsanitize=address -fno-omit-frame-pointer",
         "CMAKE_C_FLAGS": "-fsanitize=address -fno-omit-frame-pointer",
         "CMAKE_EXE_LINKER_FLAGS": "-fsanitize=address",
-        "CMAKE_SHARED_LINKER_FLAGS": "-fsanitize=address",
-        "VCPKG_OVERLAY_PORTS": "${sourceDir}/ports-overlays"
+        "CMAKE_SHARED_LINKER_FLAGS": "-fsanitize=address"
       }
     },
     {
@@ -56,12 +52,10 @@
       "binaryDir": "${sourceDir}/build",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
-        "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
         "CMAKE_CXX_FLAGS": "-fsanitize=undefined -fno-omit-frame-pointer",
         "CMAKE_C_FLAGS": "-fsanitize=undefined -fno-omit-frame-pointer",
         "CMAKE_EXE_LINKER_FLAGS": "-fsanitize=undefined",
-        "CMAKE_SHARED_LINKER_FLAGS": "-fsanitize=undefined",
-        "VCPKG_OVERLAY_PORTS": "${sourceDir}/ports-overlays"
+        "CMAKE_SHARED_LINKER_FLAGS": "-fsanitize=undefined"
       }
     },
     {
@@ -79,12 +73,10 @@
       "binaryDir": "${sourceDir}/build",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
-        "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
         "CMAKE_CXX_FLAGS": "-fsanitize=thread -fno-omit-frame-pointer",
         "CMAKE_C_FLAGS": "-fsanitize=thread -fno-omit-frame-pointer",
         "CMAKE_EXE_LINKER_FLAGS": "-fsanitize=thread",
-        "CMAKE_SHARED_LINKER_FLAGS": "-fsanitize=thread",
-        "VCPKG_OVERLAY_PORTS": "${sourceDir}/ports-overlays"
+        "CMAKE_SHARED_LINKER_FLAGS": "-fsanitize=thread"
       }
     },
     {
@@ -102,12 +94,10 @@
       "binaryDir": "${sourceDir}/build",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
-        "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
         "CMAKE_CXX_FLAGS": "-g -O0 --coverage -fprofile-update=atomic",
         "CMAKE_C_FLAGS": "-g -O0 --coverage -fprofile-update=atomic",
         "CMAKE_EXE_LINKER_FLAGS": "--coverage -fprofile-update=atomic",
         "CMAKE_SHARED_LINKER_FLAGS": "--coverage -fprofile-update=atomic",
-        "VCPKG_OVERLAY_PORTS": "${sourceDir}/ports-overlays",
         "ENABLE_COVERAGE_REPORT": "ON"
       }
     },
@@ -124,9 +114,7 @@
       "displayName": "Release",
       "binaryDir": "${sourceDir}/build",
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Release",
-        "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
-        "VCPKG_OVERLAY_PORTS": "${sourceDir}/ports-overlays"
+        "CMAKE_BUILD_TYPE": "Release"
       }
     },
     {
@@ -141,9 +129,7 @@
       "displayName": "RelWithDebInfo",
       "binaryDir": "${sourceDir}/build",
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "RelWithDebInfo",
-        "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
-        "VCPKG_OVERLAY_PORTS": "${sourceDir}/ports-overlays"
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo"
       }
     },
     {
@@ -158,9 +144,7 @@
       "displayName": "MinSizeRel",
       "binaryDir": "${sourceDir}/build",
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "MinSizeRel",
-        "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
-        "VCPKG_OVERLAY_PORTS": "${sourceDir}/ports-overlays"
+        "CMAKE_BUILD_TYPE": "MinSizeRel"
       }
     },
     {

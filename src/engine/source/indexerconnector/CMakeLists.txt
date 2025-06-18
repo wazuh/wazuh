@@ -22,7 +22,7 @@ target_link_libraries(indexerconnector
   PUBLIC
    indexerconnector::iindexerconnector
   PRIVATE
-  RocksDB::rocksdb
+  rocksdb
   urlrequest
 )
 

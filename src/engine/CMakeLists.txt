@@ -57,91 +57,99 @@ MACRO_ENSURE_OUT_OF_SOURCE_BUILD(
     "${CMAKE_PROJECT_NAME} requires an out of source build."
 )
 
-if(DEFINED VCPKG_TARGET_TRIPLET)
-    message(STATUS "Using VCPKG triplet: ${VCPKG_TARGET_TRIPLET}")
-else()
-    message(WARNING "VCPKG_TARGET_TRIPLET is not defined. Make sure you are using the vcpkg toolchain.")
-    FATAL_ERROR("VCPKG_TARGET_TRIPLET is not defined.")
-endif()
-
 ####################################################################################################
 # Dependencies
 ####################################################################################################
-function(action package_name target_name)
-    if (${package_name}_FOUND)
-        if (NOT TARGET ${target_name})
-            add_library(${target_name} INTERFACE IMPORTED)
-            set_target_properties(${target_name} PROPERTIES
-                INTERFACE_INCLUDE_DIRECTORIES "${${package_name}_INCLUDE_DIRS}")
-            message(STATUS "Created imported target ${target_name}")
-        else()
-            message(STATUS "Target ${target_name} already exists")
-        endif()
-    else()
-        message(FATAL_ERROR "${package_name} not found!")
+function(add_manual_imported alias header_dir static_lib)
+  string(REPLACE "::" "_" internal "${alias}")
+
+  if(static_lib)
+    if(NOT TARGET ${internal})
+      add_library(${internal} STATIC IMPORTED GLOBAL)
+      set_target_properties(${internal}
+        PROPERTIES
+          IMPORTED_LOCATION "${static_lib}"
+          INTERFACE_INCLUDE_DIRECTORIES "${header_dir}"
+      )
+      message(STATUS "  → Imported static library target ${internal} (from ${static_lib})")
     endif()
-endfunction()
+  else()
+    if(NOT TARGET ${internal})
+      add_library(${internal} INTERFACE)
+      target_include_directories(${internal}
+        INTERFACE
+          "${header_dir}"
+      )
+      message(STATUS "  → Header-only interface target ${internal} (includes from ${header_dir})")
+    endif()
+  endif()
 
-function(find_and_create_imported_target package_name target_name)
-    find_package(${package_name} CONFIG REQUIRED)
-    action(${package_name} ${target_name})
-endfunction()
-
-function(find_and_create_imported_target_ex package_name target_name)
-    find_package(${package_name} REQUIRED)
-    action(${package_name} ${target_name})
+  # Alias con namespace para usar alias::name
+  if(NOT TARGET ${alias})
+    add_library(${alias} ALIAS ${internal})
+    message(STATUS "  → Alias target ${alias} -> ${internal}")
+  endif()
 endfunction()
 
 # Build test
 if(ENGINE_BUILD_TEST)
 include(CTest)
-find_and_create_imported_target("GTest" "GTest::gtest")
-find_and_create_imported_target("GTest" "GTest::gtest_main")
-find_and_create_imported_target("GTest" "GTest::gmock")
-find_and_create_imported_target("GTest" "GTest::gmock_main")
+# GTest y GMock
+add_manual_imported(GTest::gtest         "${CMAKE_SOURCE_DIR}/external/gtest-1_15_0/googletest-1.15.0/googletest/include" "${CMAKE_SOURCE_DIR}/external/gtest-1_15_0/googletest-1.15.0/build/lib/libgtest.a")
+add_manual_imported(GTest::gtest_main    "${CMAKE_SOURCE_DIR}/external/gtest-1_15_0/googletest-1.15.0/googletest/include" "${CMAKE_SOURCE_DIR}/external/gtest-1_15_0/googletest-1.15.0/build/lib/libgtest_main.a")
+add_manual_imported(GTest::gmock         "${CMAKE_SOURCE_DIR}/external/gtest-1_15_0/googletest-1.15.0/googlemock/include" "${CMAKE_SOURCE_DIR}/external/gtest-1_15_0/googletest-1.15.0/build/lib/libgmock.a")
+add_manual_imported(GTest::gmock_main    "${CMAKE_SOURCE_DIR}/external/gtest-1_15_0/googletest-1.15.0/googlemock/include" "${CMAKE_SOURCE_DIR}/external/gtest-1_15_0/googletest-1.15.0/build/lib/libgmock_main.a")
+
+set_target_properties(GTest_gtest_main  PROPERTIES INTERFACE_LINK_LIBRARIES "GTest_gtest")
+set_target_properties(GTest_gmock       PROPERTIES INTERFACE_LINK_LIBRARIES "GTest_gtest")
+set_target_properties(GTest_gmock_main  PROPERTIES INTERFACE_LINK_LIBRARIES "GTest_gmock;GTest_gtest")
 include(GoogleTest)
 endif(ENGINE_BUILD_TEST)
 
-find_and_create_imported_target("RapidJSON" "RapidJSON::RapidJSON")
-find_and_create_imported_target("rxcpp" "RxCpp::RxCpp")
-# yaml-cpp::yaml-cpp vs yaml-cpp #FIXME 70 stars on github
-find_and_create_imported_target("yaml-cpp" "yaml-cpp::yaml-cpp")
-find_and_create_imported_target("spdlog" "spdlog::spdlog")
-find_and_create_imported_target("FastFloat" "FastFloat::fast-float")
-find_and_create_imported_target("fmt" "fmt::fmt-header-only")
-find_and_create_imported_target("RocksDB" "RocksDB::rocksdb")
-find_and_create_imported_target("Taskflow" "Taskflow::Taskflow")
-find_and_create_imported_target("unofficial-concurrentqueue" "unofficial-concurrentqueue::concurrentqueue")
-find_and_create_imported_target("re2" "re2::re2")
-find_and_create_imported_target("CURL" "CURL::libcurl")
-find_and_create_imported_target("maxminddb" "maxminddb::maxminddb")
-find_and_create_imported_target("benchmark" "benchmark::benchmark")
-find_and_create_imported_target("pugixml" "pugixml::pugixml")
-
-find_and_create_imported_target("opentelemetry-cpp" "opentelemetry-cpp::api")
-find_and_create_imported_target("opentelemetry-cpp" "opentelemetry-cpp::sdk")
-find_and_create_imported_target("opentelemetry-cpp" "opentelemetry-cpp::logs")
-find_and_create_imported_target("opentelemetry-cpp" "opentelemetry-cpp::metrics")
-find_and_create_imported_target("opentelemetry-cpp" "opentelemetry-cpp::resources")
-
-find_and_create_imported_target("Protobuf" "protobuf::libprotobuf")
-find_and_create_imported_target("httplib" "httplib::httplib")
-
-find_and_create_imported_target("date" "date::date")
-find_and_create_imported_target("date" "date::date-tz")
-
-find_and_create_imported_target_ex("OpenSSL" "OpenSSL::SSL")
-find_and_create_imported_target_ex("OpenSSL" "OpenSSL::Crypto")
-
+####################################################################################################
+# Rocksdb dynamic link
+####################################################################################################
+include_directories(${CMAKE_SOURCE_DIR}/external/rocksdb/include)
+link_directories(${CMAKE_SOURCE_DIR}/external/rocksdb/build)
 ####################################################################################################
 # Targets
 ####################################################################################################
 # Build main
 add_executable(main ${ENGINE_SOURCE_DIR}/main.cpp)
 
-add_subdirectory(${ENGINE_SOURCE_DIR}/wazuh-http-request)
-# TODO: Until the indexer connector is unified with the rest of wazuh-manager
-# add_subdirectory(${ENGINE_SOURCE_DIR}/indexerconnector) 
+if (NOT SRC_FOLDER)
+    get_filename_component(SRC_FOLDER     ${CMAKE_SOURCE_DIR}/ ABSOLUTE)
+endif()
+
+message("PATH: ${CMAKE_SOURCE_DIR}")
+add_manual_imported(fmt::fmt               "${CMAKE_SOURCE_DIR}/external/fmt/fmt-8.1.1/include" "${CMAKE_SOURCE_DIR}/external/fmt/fmt-8.1.1/build/libfmt.a")
+add_manual_imported(spdlog::spdlog         "${CMAKE_SOURCE_DIR}/external/spdlog-1_14_1/spdlog-1.14.1/include" "${CMAKE_SOURCE_DIR}/external/spdlog-1_14_1/spdlog-1.14.1/build/libspdlog.a")
+add_manual_imported(yaml-cpp::yaml-cpp     "${CMAKE_SOURCE_DIR}/external/yaml-cpp-0.8.0/include" "${CMAKE_SOURCE_DIR}/external/yaml-cpp-0.8.0/build/libyaml-cpp.a")
+add_manual_imported(RapidJSON::RapidJSON   "${CMAKE_SOURCE_DIR}/external/rapidjson-a95e013b/rapidjson-a95e013b97ca6523f32da23f5095fcc9dd6067e5/include" "")
+add_manual_imported(RxCpp::RxCpp           "${CMAKE_SOURCE_DIR}/external/rxcpp-4_1_1/RxCpp-4.1.1/Rx/v2/src/" "")
+add_manual_imported(FastFloat::fast-float  "${CMAKE_SOURCE_DIR}/external/v6.1.4/fast_float-6.1.4/include" "")
+add_manual_imported(Taskflow::Taskflow     "${CMAKE_SOURCE_DIR}/external/taskflow-3_7_0/taskflow-3.7.0" "")
+add_manual_imported(unofficial-concurrentqueue::concurrentqueue "${CMAKE_SOURCE_DIR}/external/concurrentqueue-1_0_4" "")
+add_manual_imported(OpenSSL::SSL           "${CMAKE_SOURCE_DIR}/external/openssl/include" "${CMAKE_SOURCE_DIR}/external/openssl/libssl.a")
+add_manual_imported(OpenSSL::Crypto        "${CMAKE_SOURCE_DIR}/external/openssl/include" "${CMAKE_SOURCE_DIR}/external/openssl/libcrypto.a")
+add_manual_imported(ZLIB::ZLIB             "${CMAKE_SOURCE_DIR}/external/zlib" "${CMAKE_SOURCE_DIR}/external/zlib/libz.a")
+add_manual_imported(CURL::libcurl          "${CMAKE_SOURCE_DIR}/external/curl/include" "${CMAKE_SOURCE_DIR}/external/curl/lib/.libs/libcurl.a")
+set_target_properties(CURL_libcurl PROPERTIES INTERFACE_LINK_LIBRARIES "ZLIB_ZLIB;OpenSSL_SSL;OpenSSL_Crypto")
+add_manual_imported(maxminddb::maxminddb   "${CMAKE_SOURCE_DIR}/external/libmaxminddb-1_9_1/libmaxminddb-1.9.1/include" "${CMAKE_SOURCE_DIR}/external/libmaxminddb-1_9_1/libmaxminddb-1.9.1/build/libmaxminddb.a")
+target_include_directories(maxminddb_maxminddb INTERFACE "${CMAKE_SOURCE_DIR}/external/libmaxminddb-1_9_1/libmaxminddb-1.9.1/build/generated")
+add_manual_imported(benchmark::benchmark   "${CMAKE_SOURCE_DIR}/external/benchmark-1_8_5/benchmark-1.8.5/include" "${CMAKE_SOURCE_DIR}/external/benchmark-1_8_5/benchmark-1.8.5/build/src/libbenchmark.a")
+add_manual_imported(benchmark::benchmark_main "${CMAKE_SOURCE_DIR}/external/benchmark-1_8_5/benchmark-1.8.5/src" "${CMAKE_SOURCE_DIR}/external/benchmark-1_8_5/benchmark-1.8.5/build/src/libbenchmark_main.a")
+set_target_properties(benchmark_benchmark_main PROPERTIES INTERFACE_LINK_LIBRARIES "benchmark_benchmark")
+add_manual_imported(pugixml::pugixml       "${CMAKE_SOURCE_DIR}/external/pugixml-1_15/pugixml-1.15/src" "${CMAKE_SOURCE_DIR}/external/pugixml-1_15/pugixml-1.15/build/libpugixml.a")
+add_manual_imported(protobuf::libprotobuf  "${CMAKE_SOURCE_DIR}/external/protobuf-21_12/protobuf-21.12/src" "${CMAKE_SOURCE_DIR}/external/protobuf-21_12/protobuf-21.12/build/libprotobuf.a")
+set(PROTOBUF_DIR "${CMAKE_SOURCE_DIR}/external/protobuf-21_12/protobuf-21.12")
+add_manual_imported(httplib::httplib       "${CMAKE_SOURCE_DIR}/external/cpp-httplib-0.16.2" "")
+add_manual_imported(date::date             "${CMAKE_SOURCE_DIR}/external/date-1ead6715/date/include" "")
+add_manual_imported(date::date-tz          "${CMAKE_SOURCE_DIR}/external/date-1ead6715/date/include" "${CMAKE_SOURCE_DIR}/external/date-1ead6715/date/build/libdate-tz.a")
+add_manual_imported(absl::absl             "${CMAKE_SOURCE_DIR}/external/abseil-cpp-20240116.3" "${CMAKE_SOURCE_DIR}/external/abseil-cpp-20240116.3/build/build_result/lib/libabsl_all.a")
+add_manual_imported(re2::re2               "${CMAKE_SOURCE_DIR}/external/re2-2024_06_01/re2-2024-06-01" "${CMAKE_SOURCE_DIR}/external/re2-2024_06_01/re2-2024-06-01/build/libre2.a")
+set_target_properties(re2_re2 PROPERTIES INTERFACE_LINK_LIBRARIES "absl_absl")
+
 add_subdirectory(${ENGINE_SOURCE_DIR}/base)
 add_subdirectory(${ENGINE_SOURCE_DIR}/bk)
 add_subdirectory(${ENGINE_SOURCE_DIR}/api)
@@ -236,7 +244,7 @@ if(DEFINED ENABLE_COVERAGE_REPORT AND ENABLE_COVERAGE_REPORT)
     # Add coverage flags
     add_custom_target(coverage
         COMMAND lcov --capture --directory ${CMAKE_BINARY_DIR} --output-file ${CMAKE_BINARY_DIR}/coverage.info --ignore-errors mismatch
-        COMMAND lcov --remove ${CMAKE_BINARY_DIR}/coverage.info '/usr/*' '*/test/*' '*/build/vcpkg_installed/*' --output-file ${CMAKE_BINARY_DIR}/coverage.info --ignore-errors mismatch
+        COMMAND lcov --remove ${CMAKE_BINARY_DIR}/coverage.info '/usr/*' '*/test/*' --output-file ${CMAKE_BINARY_DIR}/coverage.info --ignore-errors mismatch
         COMMAND genhtml ${CMAKE_BINARY_DIR}/coverage.info --output-directory ${CMAKE_BINARY_DIR}/coverage_report
         COMMENT "Generating coverage report in ${CMAKE_BINARY_DIR}/coverage_report"
     )
