@@ -53,7 +53,8 @@ public:
     {
         // Queries for connections
         constexpr std::string_view queryConnection = "SELECT id, connection_status AS status FROM agent WHERE id > 0;";
-        constexpr std::string_view queryOs = "SELECT id, os_platform AS platform FROM agent WHERE id > 0;";
+        constexpr std::string_view queryOs = "SELECT id, os_platform AS platform FROM agent WHERE id > 0 AND "
+                                             "os_platform IS NOT NULL AND os_platform <> '';";
         constexpr std::string_view queryGroup =
             "SELECT b.id_agent, g.name AS group_name FROM belongs b JOIN 'group' g "
             "ON b.id_group=g.id WHERE b.id_agent > 0 AND g.name IS NOT NULL AND g.name <> '';";
@@ -64,7 +65,7 @@ public:
 
         constexpr std::string_view queryOsNoFilter =
             "SELECT COUNT(*) as quantity, os_platform AS platform FROM agent WHERE id > 0 "
-            "GROUP BY platform ORDER BY quantity DESC limit 5;";
+            "AND os_platform IS NOT NULL AND os_platform <> '' GROUP BY platform ORDER BY quantity DESC limit 5;";
 
         constexpr std::string_view queryGroupsNoFilter =
             "SELECT COUNT(*) as q, g.name AS group_name FROM belongs b JOIN 'group' g ON b.id_group=g.id WHERE "
