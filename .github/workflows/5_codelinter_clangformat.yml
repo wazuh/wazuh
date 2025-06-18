@@ -1,0 +1,57 @@
+name: 5_codelinter_clangformat
+
+on:
+  workflow_dispatch:
+  pull_request:
+    # Pull request events
+    types: [synchronize, opened, reopened, ready_for_review]
+
+jobs:
+  style:
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Cancel previous runs
+        uses: fkirc/skip-duplicate-actions@master
+        with:
+          cancel_others: 'true'
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          skip_after_successful_duplicate: 'false'
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Router - Coding style
+        id: router_style
+        continue-on-error: true
+        uses: ./.github/actions/clang_format
+        with:
+          path: src/shared_modules/router
+
+      - name: Inventory sync - Coding style
+        id: inventory_sync_style
+        continue-on-error: true
+        uses: ./.github/actions/clang_format
+        with:
+          path: src/wazuh_modules/inventory_sync
+
+      - name: Check all coding style results
+        if: always()
+        run: |
+          FAILED_STEPS=""
+          
+          if [ "${{ steps.router_style.outcome }}" != "success" ]; then
+            FAILED_STEPS="$FAILED_STEPS Router"
+          fi
+          
+          if [ "${{ steps.inventory_sync_style.outcome }}" != "success" ]; then
+            FAILED_STEPS="$FAILED_STEPS InventorySync"
+          fi
+          
+          if [ -n "$FAILED_STEPS" ]; then
+            echo "❌ The following modules failed coding style verification:$FAILED_STEPS"
+            exit 1
+          else
+            echo "✅ All modules passed coding style verification"
+          fi
