@@ -74,7 +74,7 @@ protected:
 // Construction + start/stop
 TEST_F(UdsrvServerTest, StartStopBasic)
 {
-    server = std::make_shared<udsrv::Server>([&](std::string&& m) {}, socketPath);
+    server = std::make_shared<udsrv::Server>([&](std::string_view m) {}, socketPath);
     EXPECT_NO_THROW(server->start(1));
     EXPECT_NO_THROW(server->stop());
 }
@@ -82,14 +82,14 @@ TEST_F(UdsrvServerTest, StartStopBasic)
 // start(0) must throw
 TEST_F(UdsrvServerTest, StartZeroPoolThrows)
 {
-    server = std::make_shared<udsrv::Server>([&](std::string&&) {}, socketPath);
+    server = std::make_shared<udsrv::Server>([&](std::string_view) {}, socketPath);
     EXPECT_THROW(server->start(0), std::runtime_error);
 }
 
 // double‐start must throw
 TEST_F(UdsrvServerTest, DoubleStartThrows)
 {
-    server = std::make_shared<udsrv::Server>([&](std::string&&) {}, socketPath);
+    server = std::make_shared<udsrv::Server>([&](std::string_view) {}, socketPath);
     server->start(2);
     EXPECT_THROW(server->start(1), std::runtime_error);
     server->stop();
@@ -98,7 +98,7 @@ TEST_F(UdsrvServerTest, DoubleStartThrows)
 // stop before start is no‐op
 TEST_F(UdsrvServerTest, StopWithoutStart)
 {
-    server = std::make_shared<udsrv::Server>([&](std::string&&) {}, socketPath);
+    server = std::make_shared<udsrv::Server>([&](std::string_view) {}, socketPath);
     EXPECT_NO_THROW(server->stop());
 }
 
@@ -108,10 +108,10 @@ TEST_F(UdsrvServerTest, SingleDatagramDispatch)
     std::unique_lock lk(m);
     // set up handler to capture
     server = std::make_shared<udsrv::Server>(
-        [&](std::string&& msg)
+        [&](std::string_view msg)
         {
             std::lock_guard lk(m);
-            received.push_back(std::move(msg));
+            received.emplace_back(msg);
             cv.notify_one();
         },
         socketPath);
@@ -134,10 +134,10 @@ TEST_F(UdsrvServerTest, SingleDatagramDispatch)
 TEST_F(UdsrvServerTest, MultipleDatagramsDispatch)
 {
     server = std::make_shared<udsrv::Server>(
-        [&](std::string&& msg)
+        [&](std::string_view msg)
         {
             std::lock_guard lk(m);
-            received.push_back(std::move(msg));
+            received.emplace_back(msg);
             cv.notify_all();
         },
         socketPath);
@@ -166,7 +166,7 @@ TEST_F(UdsrvServerTest, MultipleDatagramsDispatch)
 TEST_F(UdsrvServerTest, DestructorUnlinksSocket)
 {
     {
-        auto srv = std::make_shared<udsrv::Server>([&](std::string&&) {}, socketPath);
+        auto srv = std::make_shared<udsrv::Server>([&](std::string_view) {}, socketPath);
         srv->start(1);
         srv->stop();
         // destructor at end of scope

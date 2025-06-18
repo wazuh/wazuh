@@ -464,20 +464,10 @@ int main(int argc, char* argv[])
 
         // Server
         {
-            g_engineServer = std::make_shared<udsrv::Server>(
-                [orchestrator, archiver](std::string&& msg)
-                {
-                    try
-                    {
-                        orchestrator->postEvent(base::eventParsers::parseLegacyEvent(std::move(msg)));
-                    }
-                    catch (const std::exception& e)
-                    {
-                        // Is not necessary
-                        LOG_WARNING_L("Parse event", "Error parsing event: {}. Message: {}", e.what(), msg);
-                    }
-                },
-                confManager.get<std::string>(conf::key::SERVER_EVENT_SOCKET));
+            g_engineServer =
+                std::make_shared<udsrv::Server>([orchestrator, archiver](std::string_view msg)
+                                                { orchestrator->postEvent(base::eventParsers::parseLegacyEvent(msg)); },
+                                                confManager.get<std::string>(conf::key::SERVER_EVENT_SOCKET));
             g_engineServer->start(confManager.get<int>(conf::key::SERVER_EVENT_THREADS));
             LOG_INFO("Engine initialized and started.");
         }

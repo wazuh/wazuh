@@ -21,7 +21,7 @@ constexpr char DEFAULT_MANAGTER_ID[] = "000"; // Default manager ID if not speci
 
 /**
  * @brief Get the hostname of the Manager
- * 
+ *
  * This function retrieves the hostname of the machine where the Manager is running.
  * @note: The hostname is cached after the first call to avoid repeated system calls, the function is thread-safe.
  * @return const std::string&
@@ -118,26 +118,26 @@ bool parseLegacyLocation(std::string& location, std::shared_ptr<json::Json>& eve
 
 } // namespace
 
-Event parseLegacyEvent(std::string&& event)
+Event parseLegacyEvent(std::string_view rawEvent)
 {
     auto parseEvent = std::make_shared<json::Json>();
 
     // "<byte>:a:b" is at least 5 bytes.
-    if (event.size() < 5 || event[1] != ':')
+    if (rawEvent.size() < 5 || rawEvent[1] != ':')
     {
         throw std::runtime_error("Invalid format: event must be at least 5 bytes (\"<byte>:<location>:<message>\")");
     }
 
     // Extract the queue identifier
-    const int queue = static_cast<unsigned char>(event[0]);
+    const int queue = static_cast<unsigned char>(rawEvent[0]);
     parseEvent->setInt(queue, EVENT_QUEUE_ID);
 
     // Extract location, start searching at index 2 (first character of location).
-    std::size_t n = event.size();
+    std::size_t n = rawEvent.size();
     std::size_t separatorPos = std::string::npos;
     for (std::size_t i = LOCATION_OFFSET; i < n; ++i)
     {
-        if (event[i] == ':' && event[i - 1] != '|')
+        if (rawEvent[i] == ':' && rawEvent[i - 1] != '|')
         {
             separatorPos = i;
             break;
@@ -148,32 +148,31 @@ Event parseLegacyEvent(std::string&& event)
     {
         throw std::runtime_error("Invalid format: missing unescaped ':' between location and message");
     }
-    event[separatorPos] = '\0'; // Temporarily null-terminate the string for easier parsing.
 
     // Extract the raw "location" substring (may contain "|:" sequences).
-    std::string_view rawLocationView(event.data() + LOCATION_OFFSET, separatorPos - LOCATION_OFFSET);
-    if (rawLocationView.empty())
+    auto rawLocView = rawEvent.substr(LOCATION_OFFSET, separatorPos - LOCATION_OFFSET);
+    if (rawLocView.empty())
     {
         throw std::runtime_error("Invalid format: location cannot be empty");
     }
 
     // Unescape "|:" sequences → ':' in the final location.
     std::string rawLocation;
-    rawLocation.reserve(rawLocationView.size());
-    for (std::size_t i = 0; i < rawLocationView.size(); ++i)
+    rawLocation.reserve(rawLocView.size());
+    for (size_t i = 0, m = rawLocView.size(); i < m; ++i)
     {
-        if (rawLocationView[i] == '|' && (i + 1) < rawLocationView.size() && rawLocationView[i + 1] == ':')
+        if (rawLocView[i] == '|' && i + 1 < m && rawLocView[i + 1] == ':')
         {
             rawLocation.push_back(':');
-            ++i; // skip the ':' after '|'
+            ++i;
         }
         else
         {
-            rawLocation.push_back(rawLocationView[i]);
+            rawLocation.push_back(rawLocView[i]);
         }
     }
 
-    // If the location is in the legacy format "[ID] (Name) IP->Module", parse it.
+    // If the location is in the legacy agent format "[ID] (Name) IP->Module", parse it.
     if (!parseLegacyLocation(rawLocation, parseEvent))
     {
         parseEvent->setString(getHostName(), EVENT_AGENT_NAME);
@@ -183,8 +182,10 @@ Event parseLegacyEvent(std::string&& event)
 
     // Set the manager
     parseEvent->setString(getHostName(), EVENT_MANAGER_NAME);
+
     // Set the original event message.
-    parseEvent->setString(std::string_view(event.data() + separatorPos + 1), EVENT_MESSAGE_ID);
+    auto msgView = rawEvent.substr(separatorPos + 1);
+    parseEvent->setString(msgView, EVENT_MESSAGE_ID);
 
     return parseEvent;
 }

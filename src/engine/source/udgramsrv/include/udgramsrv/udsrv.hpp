@@ -34,11 +34,11 @@ private:
      */
     void workerLoop();
 
-    std::function<void(std::string&&)> m_handler; ///< User‐provided handler for each received message
-    std::string m_socketPath;                     ///< Filesystem path of the UNIX datagram socket
-    int m_sockFd;                                 ///< File descriptor of the bound socket (or -1 if closed)
-    std::atomic<bool> m_running;                  ///< True while threads should keep running
-    std::vector<std::thread> m_threads;           ///< Worker threads
+    std::function<void(std::string_view)> m_handler; ///< User‐provided handler for each received message
+    std::string m_socketPath;                        ///< Filesystem path of the UNIX datagram socket
+    int m_sockFd;                                    ///< File descriptor of the bound socket (or -1 if closed)
+    std::atomic<bool> m_running;                     ///< True while threads should keep running
+    std::vector<std::thread> m_threads;              ///< Worker threads
 
 public:
     /**
@@ -52,7 +52,7 @@ public:
      * @note The server creates a socket with mode 0660 (read/write for owner, group) based on @c getuid() and
      *       @c getgid().
      */
-    explicit Server(std::function<void(std::string&&)> handler, std::string socketPath);
+    explicit Server(std::function<void(std::string_view)> handler, std::string socketPath);
 
     /// No copy construction
     Server(const Server&) = delete;

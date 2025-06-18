@@ -37,7 +37,7 @@ TEST_P(EventParserRawLocationParamTest, ParseLegacyEvent)
 
     try
     {
-        auto event = ep::parseLegacyEvent(std::move(input));
+        auto event = ep::parseLegacyEvent(input);
         ASSERT_TRUE(expected.has_value());
         auto eventQueueId = event->getInt(ep::EVENT_QUEUE_ID);
         auto eventLocation = event->getString(ep::EVENT_LOCATION_ID);
@@ -58,7 +58,6 @@ TEST_P(EventParserRawLocationParamTest, ParseLegacyEvent)
         ASSERT_EQ(eventAgentId.value(), "000") << "Agent ID does not match expected value";
         ASSERT_EQ(eventAgentName.value(), hostNameStr) << "Agent name does not match expected value";
         ASSERT_EQ(eventManagerName.value(), hostNameStr) << "Manager name does not match expected value";
-
     }
     catch (const std::runtime_error& e)
     {
@@ -103,7 +102,7 @@ Test fixture for legacy-location prefix cases
 
 struct LegacyLocationParam
 {
-    std::string input;
+    std::string_view input;
     int expectedQueue;
     std::string expectedModule;
     std::string expectedMessage;
@@ -129,7 +128,7 @@ TEST_P(EventParserLegacyLocationParamTest, ParseLegacyEvent_WithAgentInfo)
     std::string hostNameStr(hostname);
 
     // Call parseLegacyEvent
-    auto event = ep::parseLegacyEvent(std::move(param.input));
+    auto event = ep::parseLegacyEvent(param.input);
 
     // Verify queue, module (location), and message
     auto eventQueueId = event->getInt(ep::EVENT_QUEUE_ID);

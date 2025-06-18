@@ -29,7 +29,7 @@ static void BM_ServerStartStop(benchmark::State& state)
     {
         auto path = makeSocketPath();
         // handler vacío
-        udsrv::Server srv([](std::string&&) {}, path);
+        udsrv::Server srv([](std::string_view) {}, path);
         benchmark::DoNotOptimize(srv);
         srv.start(poolSize);
         srv.stop();
@@ -93,7 +93,7 @@ static void BM_ServerSingleDispatch(benchmark::State& state)
     DispatchFixture fix;
 
     udsrv::Server srv(
-        [&](std::string&&)
+        [&](std::string_view)
         {
             std::lock_guard lk(fix.mtx);
             fix.received = true;

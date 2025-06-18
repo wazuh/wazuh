@@ -3,6 +3,7 @@
 #include <cstdio>
 #include <cstring>
 #include <stdexcept>
+
 #include <sys/socket.h>
 #include <sys/stat.h>
 #include <sys/un.h>
@@ -10,10 +11,12 @@
 
 #include <fmt/format.h>
 
+#include <base/logging.hpp>
+
 namespace udsrv
 {
 
-Server::Server(std::function<void(std::string&&)> handler, std::string socketPath)
+Server::Server(std::function<void(std::string_view)> handler, std::string socketPath)
     : m_handler(std::move(handler))
     , m_socketPath(std::move(socketPath))
     , m_sockFd(-1)
@@ -36,11 +39,10 @@ Server::Server(std::function<void(std::string&&)> handler, std::string socketPat
     if (m_socketPath.size() >= sizeof(addr.sun_path))
     {
         ::close(m_sockFd);
-        throw std::runtime_error(fmt::format(
-            "Event Server: socket path '{}' is too long ({} chars, max {})",
-            m_socketPath,
-            m_socketPath.size(),
-            sizeof(addr.sun_path) - 1));
+        throw std::runtime_error(fmt::format("Event Server: socket path '{}' is too long ({} chars, max {})",
+                                             m_socketPath,
+                                             m_socketPath.size(),
+                                             sizeof(addr.sun_path) - 1));
     }
     std::strncpy(addr.sun_path, m_socketPath.c_str(), sizeof(addr.sun_path) - 1);
 
@@ -52,7 +54,8 @@ Server::Server(std::function<void(std::string&&)> handler, std::string socketPat
     {
         int err = errno;
         ::close(m_sockFd);
-        throw std::runtime_error(fmt::format("Event Server: setsockopt(SO_RCVTIMEO) failed ({}): {}", err, std::strerror(err)));
+        throw std::runtime_error(
+            fmt::format("Event Server: setsockopt(SO_RCVTIMEO) failed ({}): {}", err, std::strerror(err)));
     }
 
     // Bind the socket to the path
@@ -126,14 +129,15 @@ Server::~Server()
 
 void Server::workerLoop()
 {
-    // Each worker allocates a buffer of size 65536 bytes (max datagram)
+    // Each worker allocates a buffer of size 65536 bytes (max size of a datagram)
     constexpr size_t MAX_DATAGRAM = (0x1 << 16);
-    std::vector<char> buffer(MAX_DATAGRAM);
+    std::vector<char> buffer;
+    buffer.reserve(MAX_DATAGRAM);
 
     while (m_running.load())
     {
-        // Block on recv(), with a timeout set to 1 second
-        ssize_t n = ::recv(m_sockFd, buffer.data(), buffer.size(), 0);
+        buffer.clear();
+        ssize_t n = ::recv(m_sockFd, buffer.data(), buffer.capacity(), 0); // Block on recv() with a timeout
         if (n <= 0)
         {
             // Ignore signals unless we are not running
@@ -144,8 +148,15 @@ void Server::workerLoop()
             continue;
         }
 
-        std::string msg(buffer.data(), static_cast<size_t>(n));
-        m_handler(std::move(msg));
+        try
+        {
+            m_handler(std::string_view(buffer.data(), static_cast<size_t>(n)));
+        }
+        catch (const std::exception& e)
+        {
+            LOG_WARNING_L(
+                "Server event", "Error handling event: {}. Message: {}", e.what(), std::string(buffer.data(), n));
+        }
     }
 }
 

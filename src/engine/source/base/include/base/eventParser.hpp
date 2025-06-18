@@ -23,8 +23,8 @@ constexpr char EVENT_MANAGER_NAME[] {"/agent/manager_name"};
  * @throw std::runtime_error if the message is not a valid Wazuh legacy message
  * @note The message must be in the format: "queue:location:message"
  */
-Event parseLegacyEvent(std::string&& event);
+Event parseLegacyEvent(std::string_view event);
 
-} // namespace base::parseEvent
+} // namespace base::eventParsers
 
 #endif // _EVENT_UTILS_H
