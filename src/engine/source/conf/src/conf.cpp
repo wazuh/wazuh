@@ -83,7 +83,7 @@ Conf::Conf(std::shared_ptr<IApiLoader> apiLoader)
                          "/run/wazuh-server/engine.socket");
 
     // TZDB module
-    addUnit<std::string>(key::TZDB_PATH, "WAZUH_TZDB_PATH", "/var/ossec/engine/tzdb");
+    addUnit<std::string>(key::TZDB_PATH, "WAZUH_TZDB_PATH", "/var/ossec/queue/tzdb");
     addUnit<bool>(key::TZDB_AUTO_UPDATE, "WAZUH_TZDB_AUTO_UPDATE", false);
     addUnit<std::string>(key::TZDB_FORCE_VERSION_UPDATE, "WAZUH_TZDB_FORCE_VERSION_UPDATE", "");
 
