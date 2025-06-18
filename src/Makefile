@@ -69,25 +69,25 @@ EXTERNAL_CPYTHON=external/cpython/
 EXTERNAL_MSGPACK=external/msgpack/
 EXTERNAL_BZIP2=external/bzip2/
 EXTERNAL_GOOGLE_TEST=external/googletest/
-EXTERNAL_GOOGLE_BENCHMARK=external/benchmark-1_8_5/benchmark-1.8.5/
+EXTERNAL_GOOGLE_BENCHMARK=external/benchmark-1.8.5/
 EXTERNAL_ROCKSDB=external/rocksdb/
-EXTERNAL_RE2=external/re2-2024_06_01/re2-2024-06-01
+EXTERNAL_RE2=external/re2-2024-06-01
 EXTERNAL_ABSEILCPP=external/abseil-cpp-20240116.3/
 EXTERNAL_FLATBUFFERS=external/flatbuffers/
-EXTERNAL_FMT=external/fmt/fmt-8.1.1/
-EXTERNAL_SPDLOG=external/spdlog-1_14_1/spdlog-1.14.1/
-EXTERNAL_RAPIDJSON=external/rapidjson-a95e013b/rapidjson-a95e013b97ca6523f32da23f5095fcc9dd6067e5/
-EXTERNAL_RXCPP=external/rxcpp-4_1_1/RxCpp-4.1.1/
-EXTERNAL_GTEST=external/gtest-1_15_0/googletest-1.15.0/
+EXTERNAL_FMT=external/fmt-8.1.1/
+EXTERNAL_SPDLOG=external/spdlog-1.14.1/
+EXTERNAL_RAPIDJSON=external/rapidjson-a95e013b97ca6523f32da23f5095fcc9dd6067e5/
+EXTERNAL_RXCPP=external/RxCpp-4.1.1/
+EXTERNAL_GTEST=external/googletest-1.15.0/
 EXTERNAL_YAMLCPP=external/yaml-cpp-0.8.0/
 #EXTERNAL_OPENTELEMETRY=external/opentelemetry-cpp-1_8_3/opentelemetry-cpp-1.8.3/
-EXTERNAL_PUGIXML=external/pugixml-1_15/pugixml-1.15/
-EXTERNAL_MAXMINDDB=external/libmaxminddb-1_9_1/libmaxminddb-1.9.1/
-EXTERNAL_PROTOBUF=external/protobuf-21_12/protobuf-21.12/
-EXTERNAL_DATE=external/date-1ead6715/date/
-EXTERNAL_FAST_FLOAT=external/v6.1.4/fast_float-6.1.4/
-EXTERNAL_TASKFLOW=external/taskflow-3_7_0/taskflow-3.7.0/
-EXTERNAL_CONCURRENTQUEUE=external/concurrentqueue-1_0_4/concurrentqueue-1.0.4/
+EXTERNAL_PUGIXML=external/pugixml-1.15/
+EXTERNAL_MAXMINDDB=external/libmaxminddb-1.9.1/
+EXTERNAL_PROTOBUF=external/protobuf-21.12/
+EXTERNAL_DATE=external/date/
+EXTERNAL_FAST_FLOAT=external/fast_float-6.1.4/
+EXTERNAL_TASKFLOW=external/taskflow-3.7.0/
+EXTERNAL_CONCURRENTQUEUE=external/concurrentqueue-1.0.4/
 EXTERNAL_LZMA=external/lzma/
 EXTERNAL_LUA=external/lua/
 EXTERNAL_LIBPCRE2=external/libpcre2/
@@ -451,7 +451,7 @@ endif
 
 OSSEC_CFLAGS+=${DEFINES}
 OSSEC_CFLAGS+=-pipe -Wall -Wextra -std=gnu99
-OSSEC_CFLAGS+=-I./ -I./headers/ -I${EXTERNAL_FMT}include -I${EXTERNAL_RXCPP}Rx/v2/src -I${EXTERNAL_OPENSSL}include -I$(EXTERNAL_JSON) -I${EXTERNAL_LIBYAML}include -I${EXTERNAL_CURL}include -I${EXTERNAL_MSGPACK}include -I${EXTERNAL_BZIP2} -I${SHARED_MODULES}common -I${DBSYNC}include -I${RSYNC}include -I${SYSCOLLECTOR}include  -I${SYSINFO}include  -I${EXTERNAL_LIBPCRE2}include -I${EXTERNAL_RPM}/builddir/output/include -I${SYSCHECK}include -I${ROUTER}include -I${CONTENT_MANAGER}include -I${VULNERABILITY_SCANNER}include -I${INVENTORY_HARVESTER}include -I./shared_modules/
+OSSEC_CFLAGS+=-I./ -I./headers/ -I${EXTERNAL_OPENSSL}include -I$(EXTERNAL_JSON) -I${EXTERNAL_LIBYAML}include -I${EXTERNAL_CURL}include -I${EXTERNAL_MSGPACK}include -I${EXTERNAL_BZIP2} -I${SHARED_MODULES}common -I${DBSYNC}include -I${RSYNC}include -I${SYSCOLLECTOR}include  -I${SYSINFO}include  -I${EXTERNAL_LIBPCRE2}include -I${EXTERNAL_RPM}/builddir/output/include -I${SYSCHECK}include -I${ROUTER}include -I${CONTENT_MANAGER}include -I${VULNERABILITY_SCANNER}include -I${INVENTORY_HARVESTER}include -I./shared_modules/
 
 OSSEC_CFLAGS += ${CFLAGS}
 OSSEC_LDFLAGS += ${LDFLAGS}
@@ -992,7 +992,7 @@ endif
 # Adding libraries only for server
 ifeq (${TARGET},server)
 	EXTERNAL_LIBS_NO_WHOLE += $(ROCKSDB_LIB) $(FLATBUFFERS_LIB)
-	EXTERNAL_LIBS += $(LZMA_LIB) $(MINIZIP_LIB) $(SPDLOG_LIB)
+	EXTERNAL_LIBS += $(LZMA_LIB) $(MINIZIP_LIB)
 endif
 
 ifneq (${TARGET},winagent)
@@ -1125,7 +1125,7 @@ ${RE2_LIB}: $(ABSEILCPP_LIB)
 	-DCMAKE_BUILD_TYPE=Release \
 	-DRE2_BUILD_TESTING=OFF \
 	-DBUILD_SHARED_LIBS=OFF \
-	-DCMAKE_PREFIX_PATH=/workspaces/devContainer/wazuh/src/external/abseil-cpp-20240116.3/build/build_result \
+	-DCMAKE_PREFIX_PATH=${ROUTE_PATH}/${EXTERNAL_ABSEILCPP}/build/build_result \
 	-DCMAKE_POSITION_INDEPENDENT_CODE=ON \
 	-DCMAKE_INSTALL_PREFIX=./result && \
 	${MAKE}

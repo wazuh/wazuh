@@ -60,6 +60,16 @@ MACRO_ENSURE_OUT_OF_SOURCE_BUILD(
 ####################################################################################################
 # Dependencies
 ####################################################################################################
+# ---------------------------------------------------------------------------
+# add_manual_imported(<alias> <include_dir> [<lib_or_dir>])
+#
+# <alias>        Public target name, e.g. MyLib::core
+# <include_dir>  Header directory
+# <lib_or_dir>   (optional)
+#                • single file: /path/libfoo.a or foo.lib
+#                • directory   : /path/to/libs   (all *.a / *.lib will be used)
+#                • omitted     : header-only target
+# ---------------------------------------------------------------------------
 function(add_manual_imported alias header_dir static_lib)
   string(REPLACE "::" "_" internal "${alias}")
 
@@ -84,7 +94,9 @@ function(add_manual_imported alias header_dir static_lib)
     endif()
   endif()
 
-  # Alias con namespace para usar alias::name
+  # -------------------------------------------------------------------------
+  # Create namespace alias
+  # -------------------------------------------------------------------------
   if(NOT TARGET ${alias})
     add_library(${alias} ALIAS ${internal})
     message(STATUS "  → Alias target ${alias} -> ${internal}")
@@ -95,10 +107,10 @@ endfunction()
 if(ENGINE_BUILD_TEST)
 include(CTest)
 # GTest y GMock
-add_manual_imported(GTest::gtest         "${CMAKE_SOURCE_DIR}/external/gtest-1_15_0/googletest-1.15.0/googletest/include" "${CMAKE_SOURCE_DIR}/external/gtest-1_15_0/googletest-1.15.0/build/lib/libgtest.a")
-add_manual_imported(GTest::gtest_main    "${CMAKE_SOURCE_DIR}/external/gtest-1_15_0/googletest-1.15.0/googletest/include" "${CMAKE_SOURCE_DIR}/external/gtest-1_15_0/googletest-1.15.0/build/lib/libgtest_main.a")
-add_manual_imported(GTest::gmock         "${CMAKE_SOURCE_DIR}/external/gtest-1_15_0/googletest-1.15.0/googlemock/include" "${CMAKE_SOURCE_DIR}/external/gtest-1_15_0/googletest-1.15.0/build/lib/libgmock.a")
-add_manual_imported(GTest::gmock_main    "${CMAKE_SOURCE_DIR}/external/gtest-1_15_0/googletest-1.15.0/googlemock/include" "${CMAKE_SOURCE_DIR}/external/gtest-1_15_0/googletest-1.15.0/build/lib/libgmock_main.a")
+add_manual_imported(GTest::gtest         "${CMAKE_SOURCE_DIR}/external/googletest-1.15.0/googletest/include" "${CMAKE_SOURCE_DIR}/external/googletest-1.15.0/build/lib/libgtest.a")
+add_manual_imported(GTest::gtest_main    "${CMAKE_SOURCE_DIR}/external/googletest-1.15.0/googletest/include" "${CMAKE_SOURCE_DIR}/external/googletest-1.15.0/build/lib/libgtest_main.a")
+add_manual_imported(GTest::gmock         "${CMAKE_SOURCE_DIR}/external/googletest-1.15.0/googlemock/include" "${CMAKE_SOURCE_DIR}/external/googletest-1.15.0/build/lib/libgmock.a")
+add_manual_imported(GTest::gmock_main    "${CMAKE_SOURCE_DIR}/external/googletest-1.15.0/googlemock/include" "${CMAKE_SOURCE_DIR}/external/googletest-1.15.0/build/lib/libgmock_main.a")
 
 set_target_properties(GTest_gtest_main  PROPERTIES INTERFACE_LINK_LIBRARIES "GTest_gtest")
 set_target_properties(GTest_gmock       PROPERTIES INTERFACE_LINK_LIBRARIES "GTest_gtest")
@@ -122,32 +134,32 @@ if (NOT SRC_FOLDER)
 endif()
 
 message("PATH: ${CMAKE_SOURCE_DIR}")
-add_manual_imported(fmt::fmt               "${CMAKE_SOURCE_DIR}/external/fmt/fmt-8.1.1/include" "${CMAKE_SOURCE_DIR}/external/fmt/fmt-8.1.1/build/libfmt.a")
-add_manual_imported(spdlog::spdlog         "${CMAKE_SOURCE_DIR}/external/spdlog-1_14_1/spdlog-1.14.1/include" "${CMAKE_SOURCE_DIR}/external/spdlog-1_14_1/spdlog-1.14.1/build/libspdlog.a")
+add_manual_imported(fmt::fmt               "${CMAKE_SOURCE_DIR}/external/fmt-8.1.1/include" "${CMAKE_SOURCE_DIR}/external/fmt-8.1.1/build/libfmt.a")
+add_manual_imported(spdlog::spdlog         "${CMAKE_SOURCE_DIR}/external/spdlog-1.14.1/include" "${CMAKE_SOURCE_DIR}/external/spdlog-1.14.1/build/libspdlog.a")
 add_manual_imported(yaml-cpp::yaml-cpp     "${CMAKE_SOURCE_DIR}/external/yaml-cpp-0.8.0/include" "${CMAKE_SOURCE_DIR}/external/yaml-cpp-0.8.0/build/libyaml-cpp.a")
-add_manual_imported(RapidJSON::RapidJSON   "${CMAKE_SOURCE_DIR}/external/rapidjson-a95e013b/rapidjson-a95e013b97ca6523f32da23f5095fcc9dd6067e5/include" "")
-add_manual_imported(RxCpp::RxCpp           "${CMAKE_SOURCE_DIR}/external/rxcpp-4_1_1/RxCpp-4.1.1/Rx/v2/src/" "")
-add_manual_imported(FastFloat::fast-float  "${CMAKE_SOURCE_DIR}/external/v6.1.4/fast_float-6.1.4/include" "")
-add_manual_imported(Taskflow::Taskflow     "${CMAKE_SOURCE_DIR}/external/taskflow-3_7_0/taskflow-3.7.0" "")
-add_manual_imported(unofficial-concurrentqueue::concurrentqueue "${CMAKE_SOURCE_DIR}/external/concurrentqueue-1_0_4" "")
+add_manual_imported(RapidJSON::RapidJSON   "${CMAKE_SOURCE_DIR}/external/rapidjson-a95e013b97ca6523f32da23f5095fcc9dd6067e5/include" "")
+add_manual_imported(RxCpp::RxCpp           "${CMAKE_SOURCE_DIR}/external/RxCpp-4.1.1/Rx/v2/src/" "")
+add_manual_imported(FastFloat::fast-float  "${CMAKE_SOURCE_DIR}/external/fast_float-6.1.4/include" "")
+add_manual_imported(Taskflow::Taskflow     "${CMAKE_SOURCE_DIR}/external/taskflow-3.7.0" "")
+add_manual_imported(unofficial-concurrentqueue::concurrentqueue "${CMAKE_SOURCE_DIR}/external/concurrentqueue-1.0.4" "")
 add_manual_imported(OpenSSL::SSL           "${CMAKE_SOURCE_DIR}/external/openssl/include" "${CMAKE_SOURCE_DIR}/external/openssl/libssl.a")
 add_manual_imported(OpenSSL::Crypto        "${CMAKE_SOURCE_DIR}/external/openssl/include" "${CMAKE_SOURCE_DIR}/external/openssl/libcrypto.a")
 add_manual_imported(ZLIB::ZLIB             "${CMAKE_SOURCE_DIR}/external/zlib" "${CMAKE_SOURCE_DIR}/external/zlib/libz.a")
 add_manual_imported(CURL::libcurl          "${CMAKE_SOURCE_DIR}/external/curl/include" "${CMAKE_SOURCE_DIR}/external/curl/lib/.libs/libcurl.a")
 set_target_properties(CURL_libcurl PROPERTIES INTERFACE_LINK_LIBRARIES "ZLIB_ZLIB;OpenSSL_SSL;OpenSSL_Crypto")
-add_manual_imported(maxminddb::maxminddb   "${CMAKE_SOURCE_DIR}/external/libmaxminddb-1_9_1/libmaxminddb-1.9.1/include" "${CMAKE_SOURCE_DIR}/external/libmaxminddb-1_9_1/libmaxminddb-1.9.1/build/libmaxminddb.a")
-target_include_directories(maxminddb_maxminddb INTERFACE "${CMAKE_SOURCE_DIR}/external/libmaxminddb-1_9_1/libmaxminddb-1.9.1/build/generated")
-add_manual_imported(benchmark::benchmark   "${CMAKE_SOURCE_DIR}/external/benchmark-1_8_5/benchmark-1.8.5/include" "${CMAKE_SOURCE_DIR}/external/benchmark-1_8_5/benchmark-1.8.5/build/src/libbenchmark.a")
-add_manual_imported(benchmark::benchmark_main "${CMAKE_SOURCE_DIR}/external/benchmark-1_8_5/benchmark-1.8.5/src" "${CMAKE_SOURCE_DIR}/external/benchmark-1_8_5/benchmark-1.8.5/build/src/libbenchmark_main.a")
+add_manual_imported(maxminddb::maxminddb   "${CMAKE_SOURCE_DIR}/external/libmaxminddb-1.9.1/include" "${CMAKE_SOURCE_DIR}/external/libmaxminddb-1.9.1/build/libmaxminddb.a")
+target_include_directories(maxminddb_maxminddb INTERFACE "${CMAKE_SOURCE_DIR}/external/libmaxminddb-1.9.1/build/generated")
+add_manual_imported(benchmark::benchmark   "${CMAKE_SOURCE_DIR}/external/benchmark-1.8.5/include" "${CMAKE_SOURCE_DIR}/external/benchmark-1.8.5/build/src/libbenchmark.a")
+add_manual_imported(benchmark::benchmark_main "${CMAKE_SOURCE_DIR}/external/benchmark-1.8.5/src" "${CMAKE_SOURCE_DIR}/external/benchmark-1.8.5/build/src/libbenchmark_main.a")
 set_target_properties(benchmark_benchmark_main PROPERTIES INTERFACE_LINK_LIBRARIES "benchmark_benchmark")
-add_manual_imported(pugixml::pugixml       "${CMAKE_SOURCE_DIR}/external/pugixml-1_15/pugixml-1.15/src" "${CMAKE_SOURCE_DIR}/external/pugixml-1_15/pugixml-1.15/build/libpugixml.a")
-add_manual_imported(protobuf::libprotobuf  "${CMAKE_SOURCE_DIR}/external/protobuf-21_12/protobuf-21.12/src" "${CMAKE_SOURCE_DIR}/external/protobuf-21_12/protobuf-21.12/build/libprotobuf.a")
-set(PROTOBUF_DIR "${CMAKE_SOURCE_DIR}/external/protobuf-21_12/protobuf-21.12")
+add_manual_imported(pugixml::pugixml       "${CMAKE_SOURCE_DIR}/external/pugixml-1.15/src" "${CMAKE_SOURCE_DIR}/external/pugixml-1.15/build/libpugixml.a")
+add_manual_imported(protobuf::libprotobuf  "${CMAKE_SOURCE_DIR}/external/protobuf-21.12/src" "${CMAKE_SOURCE_DIR}/external/protobuf-21.12/build/libprotobuf.a")
+set(PROTOBUF_DIR "${CMAKE_SOURCE_DIR}/external/protobuf-21.12")
 add_manual_imported(httplib::httplib       "${CMAKE_SOURCE_DIR}/external/cpp-httplib-0.16.2" "")
-add_manual_imported(date::date             "${CMAKE_SOURCE_DIR}/external/date-1ead6715/date/include" "")
-add_manual_imported(date::date-tz          "${CMAKE_SOURCE_DIR}/external/date-1ead6715/date/include" "${CMAKE_SOURCE_DIR}/external/date-1ead6715/date/build/libdate-tz.a")
+add_manual_imported(date::date             "${CMAKE_SOURCE_DIR}/external/date/include" "")
+add_manual_imported(date::date-tz          "${CMAKE_SOURCE_DIR}/external/date/include" "${CMAKE_SOURCE_DIR}/external/date/build/libdate-tz.a")
 add_manual_imported(absl::absl             "${CMAKE_SOURCE_DIR}/external/abseil-cpp-20240116.3" "${CMAKE_SOURCE_DIR}/external/abseil-cpp-20240116.3/build/build_result/lib/libabsl_all.a")
-add_manual_imported(re2::re2               "${CMAKE_SOURCE_DIR}/external/re2-2024_06_01/re2-2024-06-01" "${CMAKE_SOURCE_DIR}/external/re2-2024_06_01/re2-2024-06-01/build/libre2.a")
+add_manual_imported(re2::re2               "${CMAKE_SOURCE_DIR}/external/re2-2024-06-01" "${CMAKE_SOURCE_DIR}/external/re2-2024-06-01/build/libre2.a")
 set_target_properties(re2_re2 PROPERTIES INTERFACE_LINK_LIBRARIES "absl_absl")
 
 add_subdirectory(${ENGINE_SOURCE_DIR}/base)

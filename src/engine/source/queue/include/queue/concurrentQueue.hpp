@@ -12,7 +12,7 @@
 #include <string>
 #include <type_traits>
 
-#include <concurrentqueue-1.0.4/blockingconcurrentqueue.h>
+#include <blockingconcurrentqueue.h>
 // TODO: Until the indexer connector is unified with the rest of wazuh-manager
 // #include <metrics/imanager.hpp>
 #include <queue/iqueue.hpp>
