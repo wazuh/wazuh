@@ -13,11 +13,9 @@
 #include <regex>
 #include <locale>
 #include <vector>
-#include <filesystem>
 #include <fstream>
 
 #include "filesystemHelper.h"
-#include "fileSystem.hpp"
 #include "stringHelper.h"
 
 #include "sudoers_unix.hpp"
@@ -55,7 +53,7 @@ void SudoersProvider::genSudoersFile(const std::string& fileName,
         return;
     }
 
-    if (!std::filesystem::exists(fileName) || !std::filesystem::is_regular_file(fileName))
+    if (!Utils::existsRegular(fileName))
     {
         // std::cout << "sudoers file doesn't exists: " << fileName << std::endl;
         return;
@@ -156,7 +154,7 @@ void SudoersProvider::genSudoersFile(const std::string& fileName,
             // support both relative and full paths
             if (ruleDetails.at(0) != '/')
             {
-                ruleDetails = RealFileSystem::resolvePath(fileName, ruleDetails);
+                ruleDetails = Utils::resolvePath(fileName, ruleDetails);
             }
 
             std::vector<std::string> inc_files = Utils::enumerateDir(ruleDetails);
@@ -169,7 +167,7 @@ void SudoersProvider::genSudoersFile(const std::string& fileName,
 
             for (const auto& incFile : inc_files)
             {
-                std::string incBasename = std::filesystem::path(incFile).filename().string();
+                std::string incBasename = Utils::getFilename(incFile);
 
                 // Per sudoers(5): Any files in the included directory that
                 // contain a '.' or end with '~' are ignored.
@@ -189,7 +187,7 @@ void SudoersProvider::genSudoersFile(const std::string& fileName,
             // Relative or full paths
             if (ruleDetails.at(0) != '/')
             {
-                ruleDetails = RealFileSystem::resolvePath(fileName, ruleDetails);
+                ruleDetails = Utils::resolvePath(fileName, ruleDetails);
             }
 
             genSudoersFile(ruleDetails, level + 1, results);

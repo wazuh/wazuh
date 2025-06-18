@@ -11,13 +11,28 @@
 #include "gtest/gtest.h"
 #include "gmock/gmock.h"
 
-#include <filesystem>
 #include <fstream>
 
-static const auto SUDOERS_FILE_PATH
+static std::string getTempFilePath()
 {
-    std::filesystem::temp_directory_path() / "example_sudoers"
-};
+    const char* tmpDir = std::getenv("TMPDIR");
+
+    if (!tmpDir || std::strlen(tmpDir) == 0)
+    {
+        tmpDir = "/tmp";
+    }
+
+    std::string path = std::string(tmpDir);
+
+    if (path.back() != '/')
+    {
+        path += '/';
+    }
+
+    return path;
+}
+
+static const std::string SUDOERS_FILE_PATH = getTempFilePath() + "example_sudoers";
 
 static const std::string SUDOERS_FILE_CONTENT = R"(
 #
@@ -55,7 +70,7 @@ class SudoersProviderTest : public ::testing::Test
 
         void TearDown() override
         {
-            std::filesystem::remove(SUDOERS_FILE_PATH);
+            std::remove(SUDOERS_FILE_PATH.c_str());
         };
 };
 
