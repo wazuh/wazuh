@@ -134,7 +134,6 @@ public:
     }
 
     // Group data fields
-
     std::string_view groupName() const
     {
         if (m_type == VariantType::Delta)
@@ -306,7 +305,6 @@ public:
     }
 
     // User data fields
-
     std::string_view userName() const
     {
         if (m_type == VariantType::Delta)
@@ -741,7 +739,7 @@ public:
         return "";
     }
 
-    double userPasswordLastSetTime() const
+    double userPasswordLastSetTimeRaw() const
     {
         if (m_type == VariantType::Delta)
         {
@@ -764,7 +762,18 @@ public:
         return 0.0;
     }
 
-    int userPasswordExpirationDate() const
+    std::string_view userPasswordLastSetTime()
+    {
+        const auto passwordLastSetTimeRaw = static_cast<uint32_t>(userPasswordLastSetTimeRaw());
+        if (passwordLastSetTimeRaw == 0.0)
+        {
+            return "";
+        }
+        m_userPasswordLastSetTimeISO8601 = Utils::rawTimestampToISO8601(passwordLastSetTimeRaw);
+        return m_userPasswordLastSetTimeISO8601;
+    }
+
+    int userPasswordExpirationDateRaw() const
     {
         if (m_type == VariantType::Delta)
         {
@@ -785,6 +794,17 @@ public:
             return 0;
         }
         return 0;
+    }
+
+    std::string_view userPasswordExpirationDate()
+    {
+        const auto passwordExpirationDateRaw = static_cast<const uint32_t>(userPasswordExpirationDateRaw());
+        if (passwordExpirationDateRaw == 0)
+        {
+            return "";
+        }
+        m_userPasswordExpirationDateISO8601 = Utils::rawTimestampToISO8601(passwordExpirationDateRaw);
+        return m_userPasswordExpirationDateISO8601;
     }
 
     int userPasswordInactiveDays() const
@@ -810,7 +830,7 @@ public:
         return 0;
     }
 
-    double userCreated() const
+    double userCreatedRaw() const
     {
         if (m_type == VariantType::Delta)
         {
@@ -833,7 +853,18 @@ public:
         return 0.0;
     }
 
-    int64_t userLastLogin() const
+    std::string_view userCreated()
+    {
+        const auto createdRaw = static_cast<const uint32_t>(userCreatedRaw());
+        if (createdRaw == 0.0)
+        {
+            return "";
+        }
+        m_userCreatedISO8601 = Utils::rawTimestampToISO8601(createdRaw);
+        return m_userCreatedISO8601;
+    }
+
+    int64_t userLastLoginRaw() const
     {
         if (m_type == VariantType::Delta)
         {
@@ -856,27 +887,39 @@ public:
         return 0;
     }
 
-    int userRolesSudo() const
+    std::string_view userLastLogin()
+    {
+        const auto lastLoginRaw = static_cast<const uint32_t>(userLastLoginRaw());
+        if (lastLoginRaw == 0)
+        {
+            return "";
+        }
+        m_userLastLoginISO8601 = Utils::rawTimestampToISO8601(lastLoginRaw);
+        return m_userLastLoginISO8601;
+    }
+
+    std::string_view userRolesSudo() const
     {
         if (m_type == VariantType::Delta)
         {
-            if (m_delta->data_as_dbsync_users())
+            if (m_delta->data_as_dbsync_users() && m_delta->data_as_dbsync_users()->user_roles_sudo())
             {
-                return m_delta->data_as_dbsync_users()->user_roles_sudo();
+                return m_delta->data_as_dbsync_users()->user_roles_sudo()->string_view();
             }
         }
         else if (m_type == VariantType::SyncMsg)
         {
-            if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_users())
+            if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_users() &&
+                m_syncMsg->data_as_state()->attributes_as_syscollector_users()->user_roles_sudo())
             {
-                return m_syncMsg->data_as_state()->attributes_as_syscollector_users()->user_roles_sudo();
+                return m_syncMsg->data_as_state()->attributes_as_syscollector_users()->user_roles_sudo()->string_view();
             }
         }
         else
         {
-            return 0;
+            return "";
         }
-        return 0;
+        return "";
     }
 
     std::string_view userGroups() const
@@ -926,7 +969,7 @@ public:
         return 0;
     }
 
-    double userAuthFailuresTimestamp() const
+    double userAuthFailuresTimestampRaw() const
     {
         if (m_type == VariantType::Delta)
         {
@@ -947,6 +990,17 @@ public:
             return 0.0;
         }
         return 0.0;
+    }
+
+    std::string_view userAuthFailuresTimestamp()
+    {
+        const auto authFailuresTimestampRaw = static_cast<const uint32_t>(userAuthFailuresTimestampRaw());
+        if (authFailuresTimestampRaw == 0.0)
+        {
+            return "";
+        }
+        m_userAuthFailuresTimestampISO8601 = Utils::rawTimestampToISO8601(authFailuresTimestampRaw);
+        return m_userAuthFailuresTimestampISO8601;
     }
 
     bool userLoginStatus() const
@@ -1043,7 +1097,7 @@ public:
         return 0;
     }
 
-    std::string_view userHostIp()
+    std::string_view userHostIp() const
     {
         if (m_type == VariantType::Delta)
         {
@@ -3247,6 +3301,11 @@ private:
     std::string m_installTimeISO8601;
     std::string m_portLocalIpSanitized;
     std::string m_portRemoteIpSanitized;
+    std::string m_userPasswordLastSetTimeISO8601;
+    std::string m_userPasswordExpirationDateISO8601;
+    std::string m_userCreatedISO8601;
+    std::string m_userLastLoginISO8601;
+    std::string m_userAuthFailuresTimestampISO8601;
 
     /**
      * @brief Scan context.

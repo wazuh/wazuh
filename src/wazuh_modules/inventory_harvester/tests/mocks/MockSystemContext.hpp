@@ -39,6 +39,8 @@ public:
         NetworkProtocol,
         NetIfaces,
         NetAddress,
+        Users,
+        Groups,
         Invalid
     };
 
@@ -53,6 +55,8 @@ public:
         NetProto,
         NetIface,
         NetworkAddress,
+        User,
+        Group,
         Invalid
     };
 
@@ -141,6 +145,49 @@ public:
     MOCK_METHOD(std::string_view, netIfaceState, (), (const));
     MOCK_METHOD(std::string_view, netIfaceType, (), (const));
     MOCK_METHOD(std::string_view, netIfaceItemId, (), (const));
+
+    // Users
+    MOCK_METHOD(std::string_view, userName, (), (const));
+    MOCK_METHOD(int, userId, (), (const));
+    MOCK_METHOD(int, userUidSigned, (), (const));
+    MOCK_METHOD(int, userGroupId, (), (const));
+    MOCK_METHOD(int, userGroupIdSigned, (), (const));
+    MOCK_METHOD(std::string_view, userHome, (), (const));
+    MOCK_METHOD(std::string_view, userShell, (), (const));
+    MOCK_METHOD(std::string_view, userType, (), (const));
+    MOCK_METHOD(std::string_view, userUuid, (), (const));
+    MOCK_METHOD(std::string_view, userFullName, (), (const));
+    MOCK_METHOD(bool, userIsHidden, (), (const));
+    MOCK_METHOD(bool, userIsRemote, (), (const));
+    MOCK_METHOD(std::string_view, userPasswordHashAlgorithm, (), (const));
+    MOCK_METHOD(int, userPasswordLastChange, (), (const));
+    MOCK_METHOD(int, userPasswordMaxDays, (), (const));
+    MOCK_METHOD(int, userPasswordMinDays, (), (const));
+    MOCK_METHOD(int, userPasswordWarningDays, (), (const));
+    MOCK_METHOD(std::string_view, userPasswordStatus, (), (const));
+    MOCK_METHOD(std::string_view, userPasswordLastSetTime, (), (const));
+    MOCK_METHOD(std::string_view, userPasswordExpirationDate, (), (const));
+    MOCK_METHOD(int, userPasswordInactiveDays, (), (const));
+    MOCK_METHOD(std::string_view, userCreated, (), (const));
+    MOCK_METHOD(std::string_view, userLastLogin, (), (const));
+    MOCK_METHOD(std::string_view, userRolesSudo, (), (const));
+    MOCK_METHOD(std::string_view, userGroups, (), (const));
+    MOCK_METHOD(int, userAuthFailuresCount, (), (const));
+    MOCK_METHOD(std::string_view, userAuthFailuresTimestamp, (), (const));
+    MOCK_METHOD(bool, userLoginStatus, (), (const));
+    MOCK_METHOD(std::string_view, userLoginType, (), (const));
+    MOCK_METHOD(std::string_view, userLoginTty, (), (const));
+    MOCK_METHOD(int64_t, userProcessPid, (), (const));
+    MOCK_METHOD(std::string_view, userHostIp, (), (const));
+
+    // Groups
+    MOCK_METHOD(std::string_view, groupName, (), (const));
+    MOCK_METHOD(int64_t, groupId, (), (const));
+    MOCK_METHOD(int64_t, groupIdSigned, (), (const));
+    MOCK_METHOD(std::string_view, groupDescription, (), (const));
+    MOCK_METHOD(std::string_view, groupUuid, (), (const));
+    MOCK_METHOD(bool, groupIsHidden, (), (const));
+    MOCK_METHOD(std::string_view, groupUsers, (), (const));
 
     std::string m_serializedElement;
 };

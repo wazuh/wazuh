@@ -163,7 +163,7 @@ table dbsync_users {
     user_group_id:int;
     user_group_id_signed:int;
     user_created:double;
-    user_roles_sudo:int;
+    user_roles_sudo:string;
     user_shell:string;
     user_type:string;
     user_is_hidden:bool;

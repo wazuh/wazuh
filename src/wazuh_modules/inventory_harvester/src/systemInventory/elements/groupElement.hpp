@@ -42,58 +42,52 @@ public:
             throw std::runtime_error("GroupElement::build: Agent ID is empty.");
         }
 
-        auto groupItemId_sv = context->groupItemId();
-        if (groupItemId_sv.empty())
-        {
-            throw std::runtime_error("GroupElement::build: Group Item ID is empty.");
-        }
-
         DataHarvester<InventoryGroupHarvester> element;
-        element.id = std::string(agentId_sv) + "_" + std::string(groupItemId_sv);
+        // element.id = std::string(agentId_sv) + "_" + std::string(groupItemId_sv);
         element.operation = "INSERTED";
 
-        element.data.agent.id = agentId_sv;
-        element.data.agent.name = context->agentName();
-        element.data.agent.version = context->agentVersion();
+        // element.data.agent.id = agentId_sv;
+        // element.data.agent.name = context->agentName();
+        // element.data.agent.version = context->agentVersion();
 
-        auto agentIp_sv = context->agentIp();
-        if (!agentIp_sv.empty() && agentIp_sv.compare("any") != 0)
-        {
-            element.data.agent.host.ip = agentIp_sv;
-        } else {
-            element.data.agent.host.ip = "";
-        }
+        // auto agentIp_sv = context->agentIp();
+        // if (!agentIp_sv.empty() && agentIp_sv.compare("any") != 0)
+        // {
+        //     element.data.agent.host.ip = agentIp_sv;
+        // } else {
+        //     element.data.agent.host.ip = "";
+        // }
 
-        auto& instancePolicyManager = PolicyHarvesterManager::instance();
-        element.data.wazuh.cluster.name = instancePolicyManager.getClusterName();
-        if (instancePolicyManager.getClusterStatus())
-        {
-            element.data.wazuh.cluster.node = instancePolicyManager.getClusterNodeName();
-        }
+        // auto& instancePolicyManager = PolicyHarvesterManager::instance();
+        // element.data.wazuh.cluster.name = instancePolicyManager.getClusterName();
+        // if (instancePolicyManager.getClusterStatus())
+        // {
+        //     element.data.wazuh.cluster.node = instancePolicyManager.getClusterNodeName();
+        // }
 
-        element.data.group.name = context->groupName();
+        // element.data.group.name = context->groupName();
 
         long gid_val = 0;
         unsigned long ugid_val = 0;
-        std::string_view groupId_sv = context->groupId();
-        if(!groupId_sv.empty()){
-            std::string temp_str(groupId_sv);
-            try {
-                gid_val = std::stol(temp_str);
-                if (gid_val >= 0) {
-                    ugid_val = static_cast<unsigned long>(gid_val);
-                }
-            } catch (const std::invalid_argument&) { /* default 0 */ }
-              catch (const std::out_of_range&) { /* default 0 */ }
-        }
-        element.data.group.id_signed = gid_val;
-        element.data.group.id = ugid_val;
+        // std::string_view groupId_sv = context->groupId();
+        // if(!groupId_sv.empty()){
+        //     std::string temp_str(groupId_sv);
+        //     try {
+        //         gid_val = std::stol(temp_str);
+        //         if (gid_val >= 0) {
+        //             ugid_val = static_cast<unsigned long>(gid_val);
+        //         }
+        //     } catch (const std::invalid_argument&) { /* default 0 */ }
+        //       catch (const std::out_of_range&) { /* default 0 */ }
+        // }
+        // element.data.group.id_signed = gid_val;
+        // element.data.group.id = ugid_val;
 
-        element.data.group.description = context->groupDescription();
-        element.data.group.uuid = context->groupUuid();
-        element.data.group.is_hidden = context->groupIsHidden();
+        // element.data.group.description = context->groupDescription();
+        // element.data.group.uuid = context->groupUuid();
+        // element.data.group.is_hidden = context->groupIsHidden();
 
-        element.data.group.users = context->groupUsers();
+        // element.data.group.users = context->groupUsers();
 
         return element;
     }
@@ -106,14 +100,9 @@ public:
             throw std::runtime_error("GroupElement::deleteElement: Agent ID is empty.");
         }
 
-        auto groupItemId_sv = context->groupItemId();
-        if (groupItemId_sv.empty())
-        {
-            throw std::runtime_error("GroupElement::deleteElement: Group Item ID is empty.");
-        }
 
         NoDataHarvester element;
-        element.id = std::string(agentId_sv) + "_" + std::string(groupItemId_sv);
+        // element.id = std::string(agentId_sv) + "_" + std::string(groupItemId_sv);
         element.operation = "DELETED";
         return element;
     }
