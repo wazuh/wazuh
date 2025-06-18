@@ -12,8 +12,9 @@
 #include <string>
 #include <vector>
 #include "json.hpp"
+#include "browser_extensions_wrapper.hpp"
 
-struct ExtensionData {
+struct BrowserExtensionData {
   std::string bundle_version; // CF Bundle Version
   std::string copyright;      // NS Human Readable Copyright
   std::string description;    // Human Readable Description
@@ -25,17 +26,19 @@ struct ExtensionData {
   std::string version;        // Extension Version
 };
 
-using ExtensionsData = std::vector<ExtensionData>;
+using BrowserExtensionsData = std::vector<BrowserExtensionData>;
 
-class BrowsersProvider
+class BrowserExtensionsProvider
 {
   public:
+  explicit BrowserExtensionsProvider(
+    std::shared_ptr<IBrowserExtensionsWrapper> browser_extensions_wrapper);
   /// @brief Default constructor.
-  BrowsersProvider();
-
+  BrowserExtensionsProvider();
   nlohmann::json collect();
-  private:
-  void printExtensions(const ExtensionsData& extensions);
   void printExtensions(const nlohmann::json& extensions_json);
-  nlohmann::json toJson(const ExtensionsData& extensions);
+  private:
+  void printExtensions(const BrowserExtensionsData& extensions);
+  nlohmann::json toJson(const BrowserExtensionsData& extensions);
+  std::shared_ptr<IBrowserExtensionsWrapper> browser_extensions_wrapper_;
 };
