@@ -3461,9 +3461,9 @@ void test_wdb_users_save_success(void **state) {
     expect_value(__wrap_sqlite3_bind_double, index, 12);
     expect_value(__wrap_sqlite3_bind_double, value, 1.0);
     will_return(__wrap_sqlite3_bind_double, 0);
-    expect_value(__wrap_sqlite3_bind_int, index, 13);
-    expect_value(__wrap_sqlite3_bind_int, value, 1);
-    will_return(__wrap_sqlite3_bind_int, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 13);
+    expect_value(__wrap_sqlite3_bind_text, buffer, "sudo");
+    will_return(__wrap_sqlite3_bind_text, 0);
     expect_value(__wrap_sqlite3_bind_text, pos, 14);
     expect_string(__wrap_sqlite3_bind_text, buffer, "shell");
     will_return(__wrap_sqlite3_bind_text, 0);
@@ -3532,7 +3532,7 @@ void test_wdb_users_save_success(void **state) {
     will_return(__wrap_sqlite3_bind_text, 0);
     will_return(__wrap_wdb_step, SQLITE_DONE);
 
-    output = wdb_users_save(data, "scan_id", "scan_time", "name", "full_name", "home", 1, 1, "uuid", "groups", 1, 1, 1.0, 1,
+    output = wdb_users_save(data, "scan_id", "scan_time", "name", "full_name", "home", 1, 1, "uuid", "groups", 1, 1, 1.0, "sudo",
                             "shell", "type", true, false, 1, 1, 1.0, 1.0, 1, "hash", 1, 1, 1, 1, "status", 1, 1, "ip", true, 
                             "type", "tty", "checksum", false);    
     assert_int_equal(output, 0);
@@ -3580,9 +3580,9 @@ void test_wdb_users_insert_sql_fail(void **state) {
     expect_value(__wrap_sqlite3_bind_double, index, 12);
     expect_value(__wrap_sqlite3_bind_double, value, 1.0);
     will_return(__wrap_sqlite3_bind_double, 0);
-    expect_value(__wrap_sqlite3_bind_int, index, 13);
-    expect_value(__wrap_sqlite3_bind_int, value, 1);
-    will_return(__wrap_sqlite3_bind_int, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 13);
+    expect_value(__wrap_sqlite3_bind_text, buffer, "sudo");
+    will_return(__wrap_sqlite3_bind_text, 0);
     expect_value(__wrap_sqlite3_bind_text, pos, 14);
     expect_string(__wrap_sqlite3_bind_text, buffer, "shell");
     will_return(__wrap_sqlite3_bind_text, 0);
@@ -3654,7 +3654,7 @@ void test_wdb_users_insert_sql_fail(void **state) {
     will_return(__wrap_sqlite3_errmsg, "ERROR");
     expect_string(__wrap__merror, formatted_msg, "SQLite: ERROR");
 
-    output = wdb_users_insert(data, "scan_id", "scan_time", "name", "full_name", "home", 1, 1, "uuid", "groups", 1, 1, 1.0, 1,
+    output = wdb_users_insert(data, "scan_id", "scan_time", "name", "full_name", "home", 1, 1, "uuid", "groups", 1, 1, 1.0, "sudo",
                             "shell", "type", true, false, 1, 1, 1.0, 1.0, 1, "hash", 1, 1, 1, 1, "status", 1, 1, "ip", true, 
                             "type", "tty", "checksum", false);    
     assert_int_equal(output, -1);
@@ -3700,9 +3700,9 @@ void test_wdb_groups_save_success(void **state) {
     expect_value(__wrap_sqlite3_bind_text, pos, 2);
     expect_string(__wrap_sqlite3_bind_text, buffer, "scan_time");
     will_return(__wrap_sqlite3_bind_text, 0);
-    expect_value(__wrap_sqlite3_bind_int, index, 3);
-    expect_value(__wrap_sqlite3_bind_int, value, 1);
-    will_return(__wrap_sqlite3_bind_int, 0);
+    expect_value(__wrap_sqlite3_bind_int64, index, 3);
+    expect_value(__wrap_sqlite3_bind_int64, value, 1);
+    will_return(__wrap_sqlite3_bind_int64, 0);
     expect_value(__wrap_sqlite3_bind_text, pos, 4);
     expect_string(__wrap_sqlite3_bind_text, buffer, "name");
     will_return(__wrap_sqlite3_bind_text, 0);
@@ -3742,9 +3742,9 @@ void test_wdb_groups_insert_sql_fail(void **state) {
     expect_value(__wrap_sqlite3_bind_text, pos, 2);
     expect_string(__wrap_sqlite3_bind_text, buffer, "scan_time");
     will_return(__wrap_sqlite3_bind_text, 0);
-    expect_value(__wrap_sqlite3_bind_int, index, 3);
-    expect_value(__wrap_sqlite3_bind_int, value, 1);
-    will_return(__wrap_sqlite3_bind_int, 0);
+    expect_value(__wrap_sqlite3_bind_int64, index, 3);
+    expect_value(__wrap_sqlite3_bind_int64, value, 1);
+    will_return(__wrap_sqlite3_bind_int64, 0);
     expect_value(__wrap_sqlite3_bind_text, pos, 4);
     expect_string(__wrap_sqlite3_bind_text, buffer, "name");
     will_return(__wrap_sqlite3_bind_text, 0);

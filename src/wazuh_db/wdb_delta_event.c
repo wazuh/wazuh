@@ -24,7 +24,13 @@ const char * HWINFO_FIELDS[] = {
 const char * USERINFO_FIELDS[] = {
     "user_id",
     "user_group_id",
-    "user_auth_failures_count",
+    "user_last_login",
+    "user_auth_failed_count",
+    "user_auth_failed_timestamp",
+    "user_password_last_set_time",
+    "user_password_expiration_date",
+    "user_password_inactive_days",
+    "user_password_last_change",
     "user_password_max_days_between_changes",
     "user_password_min_days_between_changes",
     "user_password_warning_days_before_expiration", 
@@ -58,6 +64,18 @@ const char * USERINFO_FIELDS[] = {
     !strncmp(field_name, USERINFO_FIELDS[5], strlen(USERINFO_FIELDS[5])) ? \
         (GT(field_value, 0) || EQ(field_value, 0)) : \
     !strncmp(field_name, USERINFO_FIELDS[6], strlen(USERINFO_FIELDS[6])) ? \
+        (GT(field_value, 0) || EQ(field_value, 0)) : \ 
+    !strncmp(field_name, USERINFO_FIELDS[7], strlen(USERINFO_FIELDS[7])) ? \
+        (GT(field_value, 0) || EQ(field_value, 0)) : \ 
+    !strncmp(field_name, USERINFO_FIELDS[8], strlen(USERINFO_FIELDS[8])) ? \
+        (GT(field_value, 0) || EQ(field_value, 0)) : \ 
+    !strncmp(field_name, USERINFO_FIELDS[9], strlen(USERINFO_FIELDS[9])) ? \
+        (GT(field_value, 0) || EQ(field_value, 0)) : \ 
+    !strncmp(field_name, USERINFO_FIELDS[10], strlen(USERINFO_FIELDS[10])) ? \
+        (GT(field_value, 0) || EQ(field_value, 0)) : \ 
+    !strncmp(field_name, USERINFO_FIELDS[11], strlen(USERINFO_FIELDS[11])) ? \
+        (GT(field_value, 0) || EQ(field_value, 0)) : \ 
+    !strncmp(field_name, USERINFO_FIELDS[12], strlen(USERINFO_FIELDS[12])) ? \
         (GT(field_value, 0) || EQ(field_value, 0)) : true \
 )
 
