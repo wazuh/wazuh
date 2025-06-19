@@ -12,8 +12,6 @@ include_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}/../wrappers/unix/darwin
 )
 
-link_directories(/opt/homebrew/lib)
-
 set(SRC_FILES "")
 
 list(APPEND SRC_FILES 
