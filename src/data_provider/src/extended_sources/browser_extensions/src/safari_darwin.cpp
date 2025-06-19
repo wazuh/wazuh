@@ -1,5 +1,4 @@
 #include "safari_darwin.hpp"
-
 #include <iostream>
 #include <filesystem>
 #include <algorithm>
