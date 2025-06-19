@@ -2,4 +2,6 @@ include_directories(wrappers)
 
 add_subdirectory(groups)
 add_subdirectory(users)
-add_subdirectory(browser_extensions)
+if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+  add_subdirectory(browser_extensions)
+endif()
