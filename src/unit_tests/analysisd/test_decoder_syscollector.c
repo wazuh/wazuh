@@ -923,17 +923,28 @@ int test_setup_users_valid_msg_inserted(void **state)
             \"data\":{ \
                 \"checksum\":\"da281181ada27e31ce8649ba38c0e2de9b242e40\", \
                 \"host_ip\":null, \
-                \"process_pid\":null, \
+                \"process_pid\":123, \
                 \"scan_time\":\"2025/06/04 20:16:55\", \
+                \"login_status\":1, \
+                \"login_tty\":\"pts/1\", \
+                \"login_type\":\"user\", \
+                \"user_auth_failed_count\":0, \
+                \"user_auth_failed_timestamp\":1750358060, \
+                \"user_created\":1750358060, \
+                \"user_last_login\":1750358060, \
                 \"user_full_name\":\"daemon\", \
                 \"user_group_id\":1, \
-                \"user_group_id_signed\":1, \
-                \"user_home\":\"/usr/sbin\", \
+                \"user_group_id_signed\":-1, \
+                \"user_groups\":\"staff,wheel\", \
+                \"user_home\":\"/home/user\", \
                 \"user_id\":1, \
+                \"user_is_hidden\":0, \
                 \"user_is_remote\":1, \
                 \"user_last_login\":null, \
                 \"user_name\":\"daemon\", \
-                \"user_password_expiration_date\":-1, \
+                \"user_roles\":\"sudo\", \
+                \"user_password_last_set_time\":1750358060, \
+                \"user_password_expiration_date\":1750358060, \
                 \"user_password_hash_algorithm\":null, \
                 \"user_password_inactive_days\":-1, \
                 \"user_password_last_change\":19977, \
@@ -941,8 +952,10 @@ int test_setup_users_valid_msg_inserted(void **state)
                 \"user_password_min_days_between_changes\":0, \
                 \"user_password_status\":\"locked\", \
                 \"user_password_warning_days_before_expiration\":7, \
-                \"user_shell\":\"/usr/sbin/nologin\", \
-                \"user_uid_signed\":1 \
+                \"user_shell\":\"/usr/bin/zsh\", \
+                \"user_type\":\"local\", \
+                \"user_uid_signed\":-1, \
+                \"user_uuid\":\"uuid\" \
             }, \
             \"operation\":\"INSERTED\", \
             \"type\":\"dbsync_users\" \
@@ -2781,17 +2794,28 @@ void test_syscollector_dbsync_users_valid_msg_inserted(void **state)
         "{" 
             "\"checksum\":\"da281181ada27e31ce8649ba38c0e2de9b242e40\","
             "\"host_ip\":null,"
-            "\"process_pid\":null,"
+            "\"process_pid\":123,"
             "\"scan_time\":\"2025/06/04 20:16:55\","
+            "\"login_status\":1,"
+            "\"login_tty\":\"pts/1\","
+            "\"login_type\":\"user\","
+            "\"user_auth_failed_count\":0,"
+            "\"user_auth_failed_timestamp\":1750358060,"
+            "\"user_created\":1750358060,"
+            "\"user_last_login\":1750358060,"
             "\"user_full_name\":\"daemon\","
             "\"user_group_id\":1,"
-            "\"user_group_id_signed\":1,"
-            "\"user_home\":\"/usr/sbin\","
+            "\"user_group_id_signed\":-1,"
+            "\"user_groups\":\"staff,wheel\","
+            "\"user_home\":\"/home/user\","
             "\"user_id\":1,"
+            "\"user_is_hidden\":0,"
             "\"user_is_remote\":1,"
             "\"user_last_login\":null,"
             "\"user_name\":\"daemon\","
-            "\"user_password_expiration_date\":-1,"
+            "\"user_roles\":\"sudo\","
+            "\"user_password_last_set_time\":1750358060,"
+            "\"user_password_expiration_date\":1750358060,"
             "\"user_password_hash_algorithm\":null,"
             "\"user_password_inactive_days\":-1,"
             "\"user_password_last_change\":19977,"
@@ -2799,8 +2823,10 @@ void test_syscollector_dbsync_users_valid_msg_inserted(void **state)
             "\"user_password_min_days_between_changes\":0,"
             "\"user_password_status\":\"locked\","
             "\"user_password_warning_days_before_expiration\":7,"
-            "\"user_shell\":\"/usr/sbin/nologin\","
-            "\"user_uid_signed\":1"
+            "\"user_shell\":\"/usr/bin/zsh\","
+            "\"user_type\":\"local\","
+            "\"user_uid_signed\":-1,"
+            "\"user_uuid\":\"uuid\""
         "}";
     const char *result = "ok ";
     int sock = 1;

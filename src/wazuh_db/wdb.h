@@ -881,9 +881,9 @@ int wdb_port_delete(wdb_t * wdb, const char * scan_id);
 // Save user info into DB.
 int wdb_users_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * user_name, const char * user_full_name, 
                    const char * user_home, int user_id, int user_uid_signed, const char * user_uuid, const char * user_groups, 
-                   int user_group_id, int user_group_id_signed, double user_created, int user_roles_sudo, const char * user_shell, 
+                   int user_group_id, int user_group_id_signed, double user_created, const char * user_roles, const char * user_shell, 
                    const char * user_type, const bool user_is_hidden, const bool user_is_remote, long user_last_login, 
-                   int user_auth_failures_count, double user_auth_failures_timestamp, double user_password_last_set_time, 
+                   int user_auth_failed_count, double user_auth_failed_timestamp, double user_password_last_set_time, 
                    int user_password_expiration_date, const char * user_password_hash_algorithm, int user_password_inactive_days,
                    int user_password_last_change, int user_password_max_days_between_changes, int user_password_min_days_between_changes,
                    const char * user_password_status, int user_password_warning_days_before_expiration, long process_pid, const char * host_ip,
@@ -892,9 +892,9 @@ int wdb_users_save(wdb_t * wdb, const char * scan_id, const char * scan_time, co
 // Insert user info tuple. Return 0 on success or -1 on error.
 int wdb_users_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * user_name, const char * user_full_name, 
                      const char * user_home, int user_id, int user_uid_signed, const char * user_uuid, const char * user_groups, 
-                     int user_group_id, int user_group_id_signed, double user_created, int user_roles_sudo, const char * user_shell, 
+                     int user_group_id, int user_group_id_signed, double user_created, const char * user_roles, const char * user_shell, 
                      const char * user_type, const bool user_is_hidden, const bool user_is_remote, long user_last_login, 
-                     int user_auth_failures_count, double user_auth_failures_timestamp, double user_password_last_set_time, 
+                     int user_auth_failed_count, double user_auth_failed_timestamp, double user_password_last_set_time, 
                      int user_password_expiration_date, const char * user_password_hash_algorithm, int user_password_inactive_days,
                      int user_password_last_change, int user_password_max_days_between_changes, int user_password_min_days_between_changes,
                      const char * user_password_status, int user_password_warning_days_before_expiration, long process_pid, const char * host_ip,
@@ -902,12 +902,12 @@ int wdb_users_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, 
 
 // Save group info into DB.
 int wdb_groups_save(wdb_t * wdb, const char * scan_id, const char * scan_time, long group_id, const char * group_name, 
-                    const char * group_description, long group_id_signed, const char * group_uuid, bool group_is_hidden, 
+                    const char * group_description, long group_id_signed, const char * group_uuid, const bool group_is_hidden, 
                     const char * group_users, const char * checksum, const bool replace);
 
 // Insert group info tuple. Return 0 on success or -1 on error.
 int wdb_groups_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, long group_id, const char * group_name, 
-                      const char * group_description, long group_id_signed, const char * group_uuid, bool group_is_hidden, 
+                      const char * group_description, long group_id_signed, const char * group_uuid, const bool group_is_hidden, 
                       const char * group_users, const char * checksum, const bool replace);
 
 int wdb_syscollector_save2(wdb_t * wdb, wdb_component_t component, const char * payload);
