@@ -12,17 +12,17 @@
 #ifndef USER_ELEMENT_HPP
 #define USER_ELEMENT_HPP
 
-#include "../systemContext.hpp"
 #include "../../wcsModel/data.hpp"
-#include "../../wcsModel/noData.hpp"
 #include "../../wcsModel/inventoryUserHarvester.hpp"
+#include "../../wcsModel/noData.hpp"
 #include "../policyHarvesterManager.hpp"
-#include "timeHelper.h"
+#include "../systemContext.hpp"
 #include "stringHelper.h"
+#include "timeHelper.h"
 
 #include <stdexcept>
 
-template <typename TContext>
+template<typename TContext>
 class UserElement final
 {
 public:
@@ -34,30 +34,74 @@ public:
     ~UserElement() = default;
     // LCOV_EXCL_STOP
 
-    static DataHarvester<InventoryUserHarvester> build(TContext* context)
+    static DataHarvester<InventoryUserHarvester> build(TContext* data)
     {
-        auto agentId_sv = context->agentId();
-        if (agentId_sv.empty())
+        auto agentId = data->agentId();
+        if (agentId.empty())
         {
             throw std::runtime_error("UserElement::build: Agent ID is empty.");
         }
 
+        auto userName = data->userName();
+        if (userName.empty())
+        {
+            throw std::runtime_error("UserElement::build: User name is empty.");
+        }
+
         DataHarvester<InventoryUserHarvester> element;
-        // element.id = std::string(agentId_sv) + "_" + std::string(userItemId_sv);
+        element.id = agentId;
+        element.id += "_";
+        element.id += userName;
+
         element.operation = "INSERTED";
 
-        element.data.agent.id = agentId_sv;
-        element.data.agent.name = context->agentName();
-        element.data.agent.version = context->agentVersion();
+        element.data.host.ip = Utils::splitView(data->userHostIp(), ',');
 
-        auto agentIp_sv = context->agentIp();
-        if (!agentIp_sv.empty() && agentIp_sv.compare("any") != 0)
+        element.data.login.status = data->userLoginStatus();
+        element.data.login.tty = data->userLoginTty();
+        element.data.login.type = data->userLoginType();
+
+        element.data.process.pid = data->userProcessPid();
+        element.data.user.id = std::to_string(data->userId());
+        element.data.user.name = userName;
+        element.data.user.full_name = data->userFullName();
+        element.data.user.created = data->userCreated();
+        element.data.user.home = data->userHome();
+        element.data.user.shell = data->userShell();
+        element.data.user.type = data->userType();
+        element.data.user.last_login = data->userLastLogin();
+        element.data.user.uid_signed = data->userUidSigned();
+        element.data.user.uuid = data->userUuid();
+        element.data.user.is_hidden = data->userIsHidden();
+        element.data.user.is_remote = data->userIsRemote();
+
+        element.data.user.group.id = data->userGroupId();
+        element.data.user.group.id_signed = data->userGroupIdSigned();
+
+        element.data.user.groups = Utils::splitView(data->userGroups(), ',');
+
+        element.data.user.auth_failures.count = data->userAuthFailuresCount();
+        element.data.user.auth_failures.timestamp = data->userAuthFailuresTimestamp();
+
+        element.data.user.password.status = data->userPasswordStatus();
+        element.data.user.password.last_change = data->userPasswordLastChange();
+        element.data.user.password.expiration_date = data->userPasswordExpirationDate();
+        element.data.user.password.hash_algorithm = data->userPasswordHashAlgorithm();
+        element.data.user.password.inactive_days = data->userPasswordInactiveDays();
+        element.data.user.password.last_set_time = data->userPasswordLastSetTime();
+        element.data.user.password.max_days_between_changes = data->userPasswordMaxDays();
+        element.data.user.password.min_days_between_changes = data->userPasswordMinDays();
+        element.data.user.password.warning_days_before_expiration = data->userPasswordWarningDays();
+
+        element.data.user.roles = Utils::splitView(data->userRolesSudo(), ',');
+
+        element.data.agent.id = agentId;
+        element.data.agent.name = data->agentName();
+        element.data.agent.version = data->agentVersion();
+
+        if (auto agentIp = data->agentIp(); agentIp.compare("any") != 0)
         {
-            element.data.agent.host.ip = agentIp_sv;
-            element.data.host.ip = agentIp_sv;
-        } else {
-            element.data.agent.host.ip = "";
-            element.data.host.ip = "";
+            element.data.agent.host.ip = agentIp;
         }
 
         auto& instancePolicyManager = PolicyHarvesterManager::instance();
@@ -67,79 +111,30 @@ public:
             element.data.wazuh.cluster.node = instancePolicyManager.getClusterNodeName();
         }
 
-        // element.data.login.status = context->userLoginStatus();
-        // element.data.login.tty = context->userLoginTty();
-        // element.data.login.type = context->userLoginType();
-
-        // element.data.user.id = context->userId();
-        // element.data.user.name = context->userName();
-
-        long gid_val = 0;
-        unsigned long ugid_val = 0;
-        // std::string_view userGroupId_sv = context->userGroupId();
-        // if (!userGroupId_sv.empty()) {
-        //     std::string temp_str(userGroupId_sv);
-        //     try {
-        //         gid_val = std::stol(temp_str);
-        //         if (gid_val >= 0) {
-        //             ugid_val = static_cast<unsigned long>(gid_val);
-        //         }
-        //     } catch (const std::invalid_argument&) { /* default 0 */ }
-        //       catch (const std::out_of_range&) { /* default 0 */ }
-        // }
-        // element.data.user.group.id_signed = gid_val;
-        // element.data.user.group.id = ugid_val;
-
-        // element.data.user.home = context->userHome();
-        // element.data.user.shell = context->userShell();
-        // element.data.user.uuid = context->userUuid();
-        // element.data.user.full_name = context->userFullName();
-        // element.data.user.is_hidden = context->userIsHidden();
-        // element.data.user.is_remote = context->userIsRemote();
-        // element.data.user.created = context->userCreated();
-        // element.data.user.last_login = context->userLastLogin();
-
-        long uid_signed_val = 0;
-        // std::string_view userId_sv = context->userId();
-        // if (!userId_sv.empty()) {
-        //      std::string temp_str(userId_sv);
-        //     try {
-        //         uid_signed_val = std::stol(temp_str);
-        //     } catch (const std::invalid_argument&) { /* default 0 */ }
-        //       catch (const std::out_of_range&) { /* default 0 */ }
-        // }
-        // element.data.user.uid_signed = uid_signed_val;
-
-        // element.data.user.password.status = context->userPasswordStatus();
-        // element.data.user.password.last_change = context->userPasswordLastChange();
-        // element.data.user.password.expiration_date = context->userPasswordExpirationDate();
-        // element.data.user.password.hash_algorithm = context->userPasswordHashAlgorithm();
-        // element.data.user.password.inactive_days = context->userPasswordInactiveDays();
-        // element.data.user.password.last_set_time = context->userPasswordLastSetTime();
-        // element.data.user.password.max_days_between_changes = context->userPasswordMaxDays();
-        // element.data.user.password.min_days_between_changes = context->userPasswordMinDays();
-        // element.data.user.password.warning_days_before_expiration = context->userPasswordWarningDays();
-
-        // element.data.user.roles = context->userRoles();
-        // element.data.user.groups = context->userGroups();
-
-        // element.data.user.auth_failures.count = context->userAuthFailuresCount();
-        // element.data.user.auth_failures.timestamp = context->userAuthFailuresTimestamp();
-
         return element;
     }
 
-    static NoDataHarvester deleteElement(TContext* context)
+    static NoDataHarvester deleteElement(TContext* data)
     {
-        auto agentId_sv = context->agentId();
-        if (agentId_sv.empty())
+        auto agentId = data->agentId();
+        if (agentId.empty())
         {
             throw std::runtime_error("UserElement::deleteElement: Agent ID is empty.");
         }
 
+        auto userName = data->userName();
+        if (userName.empty())
+        {
+            throw std::runtime_error("UserElement::deleteElement: User name is empty.");
+        }
+
         NoDataHarvester element;
-        // element.id = std::string(agentId_sv) + "_" + std::string(userItemId_sv);
+        element.id = agentId;
+        element.id += "_";
+        element.id += userName;
+
         element.operation = "DELETED";
+
         return element;
     }
 };

@@ -679,14 +679,14 @@ TEST_F(SystemInventoryUpsertElement, validAgentID_Users)
     EXPECT_CALL(*context, agentId()).WillOnce(testing::Return("001"));
     EXPECT_CALL(*context, agentName()).WillOnce(testing::Return("agentName"));
     EXPECT_CALL(*context, agentVersion()).WillOnce(testing::Return("agentVersion"));
-    EXPECT_CALL(*context, agentIp()).WillOnce(testing::Return("agentIp"));
+    EXPECT_CALL(*context, agentIp()).WillOnce(testing::Return("192.168.0.1"));
     EXPECT_CALL(*context, userName()).WillOnce(testing::Return("userName"));
     EXPECT_CALL(*context, userId()).WillOnce(testing::Return(1001));
     EXPECT_CALL(*context, userUidSigned()).WillOnce(testing::Return(-1001));
     EXPECT_CALL(*context, userGroupId()).WillOnce(testing::Return(1001));
     EXPECT_CALL(*context, userGroupIdSigned()).WillOnce(testing::Return(-1001));
-    EXPECT_CALL(*context, userHome()).WillOnce(testing::Return("userHome"));
-    EXPECT_CALL(*context, userShell()).WillOnce(testing::Return("userShell"));
+    EXPECT_CALL(*context, userHome()).WillOnce(testing::Return("/home/user"));
+    EXPECT_CALL(*context, userShell()).WillOnce(testing::Return("/bin/bash"));
     EXPECT_CALL(*context, userType()).WillOnce(testing::Return("userType"));
     EXPECT_CALL(*context, userUuid()).WillOnce(testing::Return("userUuid"));
     EXPECT_CALL(*context, userFullName()).WillOnce(testing::Return("userFullName"));
@@ -697,7 +697,7 @@ TEST_F(SystemInventoryUpsertElement, validAgentID_Users)
     EXPECT_CALL(*context, userPasswordMaxDays()).WillOnce(testing::Return(99999));
     EXPECT_CALL(*context, userPasswordMinDays()).WillOnce(testing::Return(0));
     EXPECT_CALL(*context, userPasswordWarningDays()).WillOnce(testing::Return(7));
-    EXPECT_CALL(*context, userPasswordStatus()).WillOnce(testing::Return("userPassword"));
+    EXPECT_CALL(*context, userPasswordStatus()).WillOnce(testing::Return("userPasswordStatus"));
     EXPECT_CALL(*context, userPasswordLastSetTime()).WillOnce(testing::Return("2024-04-25T10:15:05.707Z"));
     EXPECT_CALL(*context, userPasswordExpirationDate()).WillOnce(testing::Return("2024-04-25T10:15:05.707Z"));
     EXPECT_CALL(*context, userPasswordInactiveDays()).WillOnce(testing::Return(10));
@@ -718,7 +718,7 @@ TEST_F(SystemInventoryUpsertElement, validAgentID_Users)
 
     EXPECT_EQ(
         context->m_serializedElement,
-        R"({"id":"001_userName","operation":"INSERTED","data":{"host":{"ip":"192.168.1.2"},"login":{"status":true,"type":"user","tty":"pts/1"},"process":{"pid":2187},"user":{"auth_failures":{"count":3,"timestamp":"2024-04-25T10:15:05.707Z"},"created":"2024-04-25T10:15:05.707Z","full_name":"Wazuh Agent","id":"1001","name":"wazuh","home":"/home/wazuh","shell":"/bin/bash","type":"local","group":{"id":1001,"id_signed":-1001},"groups":"staff,wheel","last_login":"2025-05-21T12:10:04Z","uid_signed":-1001,"uuid":"D883AD4F-AF58-4BA6-AE07...","is_hidden":false,"is_remote":true,"password":{"status":"active","hash_algorithm":"hash","last_change":19842,"min_days_between_changes":0,"max_days_between_changes":99999,"warning_days_before_expiration":7,"inactive_days":10,"expiration_date":"2025-05-21T12:10:04Z","last_set_time":"2025-05-21T12:10:04Z"},"roles":"sudo"},"agent":{"id":"001","name":"agentName","host":{"ip":"192.168.0.1"},"version":"agentVersion"},"wazuh":{"cluster":{"name":"clusterName"},"schema":{"version":"1.0"}}}})");
+        R"({"id":"001_userName","operation":"INSERTED","data":{"host":{"ip":["192.168.1.2"]},"login":{"status":true,"type":"user","tty":"pts/1"},"process":{"pid":2187},"user":{"auth_failures":{"count":3,"timestamp":"2024-04-25T10:15:05.707Z"},"created":"2024-04-25T10:15:05.707Z","full_name":"userFullName","id":"1001","name":"userName","home":"/home/user","shell":"/bin/bash","type":"userType","group":{"id":1001,"id_signed":-1001},"groups":["staff","wheel"],"last_login":"2024-04-25T10:15:05.707Z","uid_signed":-1001,"uuid":"userUuid","is_hidden":false,"is_remote":true,"password":{"status":"userPasswordStatus","hash_algorithm":"userHash","last_change":19842,"min_days_between_changes":0,"max_days_between_changes":99999,"warning_days_before_expiration":7,"inactive_days":10,"expiration_date":"2024-04-25T10:15:05.707Z","last_set_time":"2024-04-25T10:15:05.707Z"},"roles":["sudo"]},"agent":{"id":"001","name":"agentName","host":{"ip":"192.168.0.1"},"version":"agentVersion"},"wazuh":{"cluster":{"name":"clusterName"},"schema":{"version":"1.0"}}}})");
 }
 
 /*
@@ -744,7 +744,7 @@ TEST_F(SystemInventoryUpsertElement, validAgentID_Groups)
     EXPECT_CALL(*context, agentId()).WillOnce(testing::Return("001"));
     EXPECT_CALL(*context, agentName()).WillOnce(testing::Return("agentName"));
     EXPECT_CALL(*context, agentVersion()).WillOnce(testing::Return("agentVersion"));
-    EXPECT_CALL(*context, agentIp()).WillOnce(testing::Return("agentIp"));
+    EXPECT_CALL(*context, agentIp()).WillOnce(testing::Return("192.168.0.1"));
     EXPECT_CALL(*context, groupId()).WillOnce(testing::Return(80));
     EXPECT_CALL(*context, groupName()).WillOnce(testing::Return("groupName"));
     EXPECT_CALL(*context, groupIdSigned()).WillOnce(testing::Return(-80));
@@ -757,5 +757,5 @@ TEST_F(SystemInventoryUpsertElement, validAgentID_Groups)
 
     EXPECT_EQ(
         context->m_serializedElement,
-        R"({"id":"001_80","operation":"INSERTED","data":{"group":{"id":80,"name":"admin","description":"Administrative group","id_signed":-80,"uuid":"S-1-5-21-3623811015-...","is_hidden":false,"users":"alice,bob,charlie"},"agent":{"id":"001","name":"agentName","host":{"ip": "192.168.0.1"},"version":"agentVersion"},"wazuh":{"cluster":{"name":"clusterName"},"schema":{"version":"1.0"}}}})");
+        R"({"id":"001_80","operation":"INSERTED","data":{"group":{"id":80,"name":"groupName","description":"groupDescription","id_signed":-80,"uuid":"groupUuid","is_hidden":false,"users":["user1","user2","user3"]},"agent":{"id":"001","name":"agentName","host":{"ip":"192.168.0.1"},"version":"agentVersion"},"wazuh":{"cluster":{"name":"clusterName"},"schema":{"version":"1.0"}}}})");
 }

@@ -14,10 +14,11 @@
 
 #include "reflectiveJson.hpp"
 #include "wcsClasses/agent.hpp"
-#include "wcsClasses/wazuh.hpp"
 #include "wcsClasses/user.hpp"
+#include "wcsClasses/wazuh.hpp"
 
-struct InventoryUserHarvester final {
+struct InventoryUserHarvester final
+{
     Agent agent;
     User user;
     Wazuh wazuh;
@@ -25,12 +26,12 @@ struct InventoryUserHarvester final {
     User::Login login;
     User::Process process;
 
-    REFLECTABLE(MAKE_FIELD("agent", &InventoryUserHarvester::agent),
-                MAKE_FIELD("user", &InventoryUserHarvester::user),
-                MAKE_FIELD("wazuh", &InventoryUserHarvester::wazuh),
-                MAKE_FIELD("host", &InventoryUserHarvester::host),
+    REFLECTABLE(MAKE_FIELD("host", &InventoryUserHarvester::host),
                 MAKE_FIELD("login", &InventoryUserHarvester::login),
-                MAKE_FIELD("process", &InventoryUserHarvester::process));
+                MAKE_FIELD("process", &InventoryUserHarvester::process),
+                MAKE_FIELD("user", &InventoryUserHarvester::user),
+                MAKE_FIELD("agent", &InventoryUserHarvester::agent),
+                MAKE_FIELD("wazuh", &InventoryUserHarvester::wazuh));
 };
 
 #endif // _INVENTORY_USER_HARVESTER_HPP

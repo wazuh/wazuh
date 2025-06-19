@@ -24,25 +24,26 @@
 #define _WCS_GROUP_HPP
 
 #include "reflectiveJson.hpp"
-#include <string_view>
 #include <cstdint>
+#include <string_view>
 
-struct Group final {
+struct Group final
+{
     std::string_view description;
-    std::int64_t id = 0;
-    std::int64_t id_signed = 0;
+    std::uint64_t id = DEFAULT_INT_VALUE;
+    std::int64_t id_signed = DEFAULT_INT_VALUE;
     bool is_hidden = false;
     std::string_view name;
-    std::string_view users;
+    std::vector<std::string_view> users;
     std::string_view uuid;
 
-    REFLECTABLE(MAKE_FIELD("description", &Group::description),
-                MAKE_FIELD("id", &Group::id),
-                MAKE_FIELD("id_signed", &Group::id_signed),
-                MAKE_FIELD("is_hidden", &Group::is_hidden),
+    REFLECTABLE(MAKE_FIELD("id", &Group::id),
                 MAKE_FIELD("name", &Group::name),
-                MAKE_FIELD("users", &Group::users),
-                MAKE_FIELD("uuid", &Group::uuid));
+                MAKE_FIELD("description", &Group::description),
+                MAKE_FIELD("id_signed", &Group::id_signed),
+                MAKE_FIELD("uuid", &Group::uuid),
+                MAKE_FIELD("is_hidden", &Group::is_hidden),
+                MAKE_FIELD("users", &Group::users));
 };
 
 #endif // _WCS_GROUP_HPP
