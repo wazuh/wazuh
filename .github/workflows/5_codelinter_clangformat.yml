@@ -28,6 +28,13 @@ jobs:
         uses: ./.github/actions/clang_format
         with:
           path: src/shared_modules/router
+      
+      - name: Content manager - Coding style 
+        id: content_manager_style
+        continue-on-error: true
+        uses: ./.github/actions/clang_format
+        with:
+          path: src/shared_modules/content_manager
 
       - name: Inventory sync - Coding style
         id: inventory_sync_style
@@ -45,6 +52,10 @@ jobs:
             FAILED_STEPS="$FAILED_STEPS Router"
           fi
           
+          if [ "${{ steps.content_manager_style.outcome }}" != "success" ]; then
+            FAILED_STEPS="$FAILED_STEPS ContentManager"
+          fi
+
           if [ "${{ steps.inventory_sync_style.outcome }}" != "success" ]; then
             FAILED_STEPS="$FAILED_STEPS InventorySync"
           fi
