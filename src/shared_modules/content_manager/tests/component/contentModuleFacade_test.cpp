@@ -197,6 +197,7 @@ TEST_F(ContentModuleFacadeTest, TestSingletonAndChangeSchedulerIntervalWithoutPr
                                 logCalled = true;
                                 ASSERT_EQ(level, LOGLEVEL_DEBUG);
                             }};
+    Log::deassignLogFunction(); // Ensure clean state
     Log::assignLogFunction(logFunction);
     DEFER([]() { Log::deassignLogFunction(); });
 
@@ -276,6 +277,7 @@ TEST_F(ContentModuleFacadeTest, TestSingletonAndStartOnDemandWithoutProvider)
                                 logCalled = true;
                                 ASSERT_EQ(level, LOGLEVEL_DEBUG);
                             }};
+    Log::deassignLogFunction(); // Ensure clean state
     Log::assignLogFunction(logFunction);
     DEFER([]() { Log::deassignLogFunction(); });
 
@@ -357,6 +359,7 @@ TEST_F(ContentModuleFacadeTest, TestSingletonAndStartSchedulingWithoutProvider)
                                 logCalled = true;
                                 ASSERT_EQ(level, LOGLEVEL_DEBUG);
                             }};
+    Log::deassignLogFunction(); // Ensure clean state
     Log::assignLogFunction(logFunction);
     DEFER([]() { Log::deassignLogFunction(); });
 
