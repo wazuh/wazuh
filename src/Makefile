@@ -69,25 +69,23 @@ EXTERNAL_CPYTHON=external/cpython/
 EXTERNAL_MSGPACK=external/msgpack/
 EXTERNAL_BZIP2=external/bzip2/
 EXTERNAL_GOOGLE_TEST=external/googletest/
-EXTERNAL_GOOGLE_BENCHMARK=external/benchmark-1.8.5/
+EXTERNAL_GOOGLE_BENCHMARK=external/benchmark/
 EXTERNAL_ROCKSDB=external/rocksdb/
-EXTERNAL_RE2=external/re2-2024-06-01
-EXTERNAL_ABSEILCPP=external/abseil-cpp-20240116.3/
+EXTERNAL_RE2=external/re2/
+EXTERNAL_ABSEILCPP=external/abseil-cpp/
 EXTERNAL_FLATBUFFERS=external/flatbuffers/
-EXTERNAL_FMT=external/fmt-8.1.1/
-EXTERNAL_SPDLOG=external/spdlog-1.14.1/
-EXTERNAL_RAPIDJSON=external/rapidjson-a95e013b97ca6523f32da23f5095fcc9dd6067e5/
-EXTERNAL_RXCPP=external/RxCpp-4.1.1/
-EXTERNAL_GTEST=external/googletest-1.15.0/
-EXTERNAL_YAMLCPP=external/yaml-cpp-0.8.0/
-#EXTERNAL_OPENTELEMETRY=external/opentelemetry-cpp-1_8_3/opentelemetry-cpp-1.8.3/
-EXTERNAL_PUGIXML=external/pugixml-1.15/
-EXTERNAL_MAXMINDDB=external/libmaxminddb-1.9.1/
-EXTERNAL_PROTOBUF=external/protobuf-21.12/
+EXTERNAL_FMT=external/fmt/
+EXTERNAL_SPDLOG=external/spdlog/
+EXTERNAL_RAPIDJSON=external/rapidjson/
+EXTERNAL_RXCPP=external/RxCpp/
+EXTERNAL_YAMLCPP=external/yaml-cpp/
+EXTERNAL_PUGIXML=external/pugixml/
+EXTERNAL_MAXMINDDB=external/libmaxminddb/
+EXTERNAL_PROTOBUF=external/protobuf/
 EXTERNAL_DATE=external/date/
-EXTERNAL_FAST_FLOAT=external/fast_float-6.1.4/
-EXTERNAL_TASKFLOW=external/taskflow-3.7.0/
-EXTERNAL_CONCURRENTQUEUE=external/concurrentqueue-1.0.4/
+EXTERNAL_FAST_FLOAT=external/fast_float/
+EXTERNAL_TASKFLOW=external/taskflow/
+EXTERNAL_CONCURRENTQUEUE=external/concurrentqueue/
 EXTERNAL_LZMA=external/lzma/
 EXTERNAL_LUA=external/lua/
 EXTERNAL_LIBPCRE2=external/libpcre2/
@@ -966,9 +964,7 @@ ABSEILCPP_LIB = $(EXTERNAL_ABSEILCPP)build/lib/libabsl.a
 RE2_LIB = $(EXTERNAL_RE2)build/libre2.a
 FLATBUFFERS_LIB = $(EXTERNAL_FLATBUFFERS)build/libflatbuffers.a
 SPDLOG_LIB = $(EXTERNAL_SPDLOG)build/libspdlog.a
-GTEST_LIB = $(EXTERNAL_GTEST)build/libgtest.a
 YAMLCPP_LIB = $(EXTERNAL_YAMLCPP)build/libyamlcpp.a
-#OPENTELEMETRY_LIB = $(EXTERNAL_OPENTELEMETRY)build/libopentelemetry.a
 PUGIXML_LIB = $(EXTERNAL_PUGIXML)build/libpugixml.a
 MAXMINDDB_LIB = $(EXTERNAL_MAXMINDDB)build/libmaxminddb.a
 PROTOBUF_LIB = $(EXTERNAL_PROTOBUF)build/libprotobuf.a
@@ -1028,7 +1024,7 @@ external: build_gtest build_benchmark
 endif
 
 ifeq (${TARGET},server)
-external: $(ROCKSDB_LIB) $(SPDLOG_LIB) $(GTEST_LIB) $(YAMLCPP_LIB) $(PUGIXML_LIB) $(MAXMINDDB_LIB) $(DATE_LIB) $(FMT_LIB) $(FAST_FLOAT_LIB) $(PROTOBUF_LIB) $(ABSEILCPP_LIB) $(RE2_LIB)  build_benchmark #$(OPENTELEMETRY_LIB)
+external: $(ROCKSDB_LIB) $(SPDLOG_LIB) $(YAMLCPP_LIB) $(PUGIXML_LIB) $(MAXMINDDB_LIB) $(DATE_LIB) $(FMT_LIB) $(FAST_FLOAT_LIB) $(PROTOBUF_LIB) $(ABSEILCPP_LIB) $(RE2_LIB)  build_gtest build_benchmark
 endif
 
 ifeq (${uname_S},Linux)
@@ -1119,11 +1115,12 @@ ${ABSEILCPP_LIB}:
 	  make install
 
 ${RE2_LIB}: $(ABSEILCPP_LIB)
-	mkdir -p $(EXTERNAL_RE2)/build && \
-	cd $(EXTERNAL_RE2)/build && \
+	mkdir -p $(EXTERNAL_RE2)build && \
+	cd $(EXTERNAL_RE2)build && \
 	cmake .. \
 	-DCMAKE_BUILD_TYPE=Release \
 	-DRE2_BUILD_TESTING=OFF \
+	-DCMAKE_CXX_STANDARD=17 \
 	-DBUILD_SHARED_LIBS=OFF \
 	-DCMAKE_PREFIX_PATH=${ROUTE_PATH}/${EXTERNAL_ABSEILCPP}/build/build_result \
 	-DCMAKE_POSITION_INDEPENDENT_CODE=ON \
@@ -1138,21 +1135,13 @@ ${FLATBUFFERS_LIB}:
 ${SPDLOG_LIB}:
 	cd $(EXTERNAL_SPDLOG) && mkdir -p build && cd build && cmake .. -DCMAKE_BUILD_TYPE=Release -DSPDLOG_BUILD_EXAMPLE=OFF -DSPDLOG_BUILD_TESTS=OFF -DSPDLOG_BUILD_BENCH=OFF -DSPDLOG_FMT_EXTERNAL=OFF -DBUILD_SHARED_LIBS=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=ON && ${MAKE}
 
-### gtest ###
-${GTEST_LIB}:
-	cd $(EXTERNAL_GTEST) && mkdir -p build && cd build && cmake .. -DCMAKE_BUILD_TYPE=Release -DBUILD_GMOCK=ON -Dgtest_build_samples=OFF -Dgtest_build_tests=OFF -DBUILD_SHARED_LIBS=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=ON && ${MAKE}
-
 ### yaml-cpp ###
 ${YAMLCPP_LIB}:
 	cd $(EXTERNAL_YAMLCPP) && mkdir -p build && cd build && cmake .. -DCMAKE_BUILD_TYPE=Release -DYAML_CPP_BUILD_TOOLS=OFF -DYAML_CPP_BUILD_TESTS=OFF && ${MAKE}
 
-### opentelemetry ###
-# ${OPENTELEMETRY_LIB}:
-# 	cd $(EXTERNAL_OPENTELEMETRY) && mkdir -p build && cd build && cmake .. -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF -DWITH_EXAMPLES=OFF -DOPENTELEMETRY_INSTALL=ON -DWITH_ABSEIL=OFF -DWITH_STL=ON -DWITH_BENCHMARK=OFF && ${MAKE}
-
 ### pugixml ###
 ${PUGIXML_LIB}:
-	cd $(EXTERNAL_PUGIXML) && mkdir -p build && cd build && cmake .. -DCMAKE_BUILD_TYPE=Release DPUGIXML_BUILD_TESTS=OFF && ${MAKE}
+	cd $(EXTERNAL_PUGIXML) && mkdir -p build && cd build && cmake .. -DCMAKE_BUILD_TYPE=Release -DPUGIXML_BUILD_TESTS=OFF && ${MAKE}
 
 ### maxminddb ###
 ${MAXMINDDB_LIB}:
@@ -2847,13 +2836,20 @@ ifneq ($(wildcard external/*/*),)
 	rm -rf $(EXTERNAL_ROCKSDB)build
 	rm -rf $(EXTERNAL_LIBBPF)build
 	rm -rf $(EXTERNAL_FLATBUFFERS)build
-	# rm -rf $(EXTERNAL_FMT)
-	# rm -rf $(EXTERNAL_RAPIDJSON)
-	# rm -rf $(EXTERNAL_RXCPP)
-	# rm -rf $(EXTERNAL_TASKFLOW)
-	# rm -rf $(EXTERNAL_DATE)
-	# rm -rf $(EXTERNAL_CONCURRENTQUEUE)
-	# rm -rf $(EXTERNAL_FAST_FLOAT)
+	rm -rf $(EXTERNAL_FMT)
+	rm -rf $(EXTERNAL_SPDLOG)
+	rm -rf $(EXTERNAL_RAPIDJSON)
+	rm -rf $(EXTERNAL_RXCPP)
+	rm -rf $(EXTERNAL_TASKFLOW)
+	rm -rf $(EXTERNAL_DATE)
+	rm -rf $(EXTERNAL_CONCURRENTQUEUE)
+	rm -rf $(EXTERNAL_FAST_FLOAT)
+	rm -rf $(EXTERNAL_PUGIXML)
+	rm -rf $(EXTERNAL_YAMLCPP)
+	rm -rf $(EXTERNAL_ABSEILCPP)
+	rm -rf $(EXTERNAL_MAXMINDDB)
+	rm -rf $(EXTERNAL_RE2)
+	rm -rf $(EXTERNAL_PROTOBUF)
 	rm -rf $(EXTERNAL_LZMA)build
 	-cd ${EXTERNAL_LIBPLIST} && ${MAKE} clean && rm -rf bin/*
 	-cd ${EXTERNAL_LIBPCRE2} && ${MAKE} distclean && rm -rf include/*

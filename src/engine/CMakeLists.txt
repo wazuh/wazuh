@@ -61,28 +61,54 @@ MACRO_ENSURE_OUT_OF_SOURCE_BUILD(
 # Dependencies
 ####################################################################################################
 # ---------------------------------------------------------------------------
-# add_manual_imported(<alias> <include_dir> [<lib_or_dir>])
+# register_external_library(<alias> <include_dir> [<lib_or_dir>])
 #
 # <alias>        Public target name, e.g. MyLib::core
 # <include_dir>  Header directory
 # <lib_or_dir>   (optional)
 #                • single file: /path/libfoo.a or foo.lib
 #                • directory   : /path/to/libs   (all *.a / *.lib will be used)
-#                • omitted     : header-only target
 # ---------------------------------------------------------------------------
-function(add_manual_imported alias header_dir static_lib)
+function(register_external_library alias header_dir static_lib)
   string(REPLACE "::" "_" internal "${alias}")
 
-  if(static_lib)
+  if(static_lib AND IS_DIRECTORY "${static_lib}")
+    if(NOT TARGET ${internal})
+      add_library(${internal} INTERFACE)
+      target_include_directories(${internal}
+        INTERFACE
+          "${header_dir}"
+      )
+
+      # Recursive search .a y .so
+      file(GLOB_RECURSE _a_libs   "${static_lib}/*.a")
+      file(GLOB_RECURSE _so_libs  "${static_lib}/*.so")
+      set(_all_libs ${_a_libs} ${_so_libs})
+
+      if(_all_libs)
+        target_link_libraries(${internal}
+          INTERFACE
+            $<$<LINK_LANGUAGE:CXX>:-Wl,--start-group>
+            ${_all_libs}
+            $<$<LINK_LANGUAGE:CXX>:-Wl,--end-group>
+        )
+        message(STATUS "  → Imported libs from dir (recursive) ${static_lib}: ${_all_libs}")
+      else()
+        message(WARNING "  → No .a/.so found recursively in ${static_lib}")
+      endif()
+    endif()
+
+  elseif(static_lib)
     if(NOT TARGET ${internal})
       add_library(${internal} STATIC IMPORTED GLOBAL)
       set_target_properties(${internal}
         PROPERTIES
-          IMPORTED_LOCATION "${static_lib}"
+          IMPORTED_LOCATION             "${static_lib}"
           INTERFACE_INCLUDE_DIRECTORIES "${header_dir}"
       )
-      message(STATUS "  → Imported static library target ${internal} (from ${static_lib})")
+      message(STATUS "  → Imported static library ${internal} (from ${static_lib})")
     endif()
+
   else()
     if(NOT TARGET ${internal})
       add_library(${internal} INTERFACE)
@@ -90,13 +116,10 @@ function(add_manual_imported alias header_dir static_lib)
         INTERFACE
           "${header_dir}"
       )
-      message(STATUS "  → Header-only interface target ${internal} (includes from ${header_dir})")
+      message(STATUS "  → Header-only interface target ${internal}")
     endif()
   endif()
 
-  # -------------------------------------------------------------------------
-  # Create namespace alias
-  # -------------------------------------------------------------------------
   if(NOT TARGET ${alias})
     add_library(${alias} ALIAS ${internal})
     message(STATUS "  → Alias target ${alias} -> ${internal}")
@@ -107,10 +130,10 @@ endfunction()
 if(ENGINE_BUILD_TEST)
 include(CTest)
 # GTest y GMock
-add_manual_imported(GTest::gtest         "${CMAKE_SOURCE_DIR}/external/googletest-1.15.0/googletest/include" "${CMAKE_SOURCE_DIR}/external/googletest-1.15.0/build/lib/libgtest.a")
-add_manual_imported(GTest::gtest_main    "${CMAKE_SOURCE_DIR}/external/googletest-1.15.0/googletest/include" "${CMAKE_SOURCE_DIR}/external/googletest-1.15.0/build/lib/libgtest_main.a")
-add_manual_imported(GTest::gmock         "${CMAKE_SOURCE_DIR}/external/googletest-1.15.0/googlemock/include" "${CMAKE_SOURCE_DIR}/external/googletest-1.15.0/build/lib/libgmock.a")
-add_manual_imported(GTest::gmock_main    "${CMAKE_SOURCE_DIR}/external/googletest-1.15.0/googlemock/include" "${CMAKE_SOURCE_DIR}/external/googletest-1.15.0/build/lib/libgmock_main.a")
+register_external_library(GTest::gtest         "${CMAKE_SOURCE_DIR}/external/googletest/googletest/include" "${CMAKE_SOURCE_DIR}/external/googletest/build/lib/libgtest.a")
+register_external_library(GTest::gtest_main    "${CMAKE_SOURCE_DIR}/external/googletest/googletest/include" "${CMAKE_SOURCE_DIR}/external/googletest/build/lib/libgtest_main.a")
+register_external_library(GTest::gmock         "${CMAKE_SOURCE_DIR}/external/googletest/googlemock/include" "${CMAKE_SOURCE_DIR}/external/googletest/build/lib/libgmock.a")
+register_external_library(GTest::gmock_main    "${CMAKE_SOURCE_DIR}/external/googletest/googlemock/include" "${CMAKE_SOURCE_DIR}/external/googletest/build/lib/libgmock_main.a")
 
 set_target_properties(GTest_gtest_main  PROPERTIES INTERFACE_LINK_LIBRARIES "GTest_gtest")
 set_target_properties(GTest_gmock       PROPERTIES INTERFACE_LINK_LIBRARIES "GTest_gtest")
@@ -123,9 +146,7 @@ endif(ENGINE_BUILD_TEST)
 ####################################################################################################
 include_directories(${CMAKE_SOURCE_DIR}/external/rocksdb/include)
 link_directories(${CMAKE_SOURCE_DIR}/external/rocksdb/build)
-####################################################################################################
-# Targets
-####################################################################################################
+
 # Build main
 add_executable(main ${ENGINE_SOURCE_DIR}/main.cpp)
 
@@ -134,32 +155,31 @@ if (NOT SRC_FOLDER)
 endif()
 
 message("PATH: ${CMAKE_SOURCE_DIR}")
-add_manual_imported(fmt::fmt               "${CMAKE_SOURCE_DIR}/external/fmt-8.1.1/include" "${CMAKE_SOURCE_DIR}/external/fmt-8.1.1/build/libfmt.a")
-add_manual_imported(spdlog::spdlog         "${CMAKE_SOURCE_DIR}/external/spdlog-1.14.1/include" "${CMAKE_SOURCE_DIR}/external/spdlog-1.14.1/build/libspdlog.a")
-add_manual_imported(yaml-cpp::yaml-cpp     "${CMAKE_SOURCE_DIR}/external/yaml-cpp-0.8.0/include" "${CMAKE_SOURCE_DIR}/external/yaml-cpp-0.8.0/build/libyaml-cpp.a")
-add_manual_imported(RapidJSON::RapidJSON   "${CMAKE_SOURCE_DIR}/external/rapidjson-a95e013b97ca6523f32da23f5095fcc9dd6067e5/include" "")
-add_manual_imported(RxCpp::RxCpp           "${CMAKE_SOURCE_DIR}/external/RxCpp-4.1.1/Rx/v2/src/" "")
-add_manual_imported(FastFloat::fast-float  "${CMAKE_SOURCE_DIR}/external/fast_float-6.1.4/include" "")
-add_manual_imported(Taskflow::Taskflow     "${CMAKE_SOURCE_DIR}/external/taskflow-3.7.0" "")
-add_manual_imported(unofficial-concurrentqueue::concurrentqueue "${CMAKE_SOURCE_DIR}/external/concurrentqueue-1.0.4" "")
-add_manual_imported(OpenSSL::SSL           "${CMAKE_SOURCE_DIR}/external/openssl/include" "${CMAKE_SOURCE_DIR}/external/openssl/libssl.a")
-add_manual_imported(OpenSSL::Crypto        "${CMAKE_SOURCE_DIR}/external/openssl/include" "${CMAKE_SOURCE_DIR}/external/openssl/libcrypto.a")
-add_manual_imported(ZLIB::ZLIB             "${CMAKE_SOURCE_DIR}/external/zlib" "${CMAKE_SOURCE_DIR}/external/zlib/libz.a")
-add_manual_imported(CURL::libcurl          "${CMAKE_SOURCE_DIR}/external/curl/include" "${CMAKE_SOURCE_DIR}/external/curl/lib/.libs/libcurl.a")
+register_external_library(fmt::fmt               "${CMAKE_SOURCE_DIR}/external/fmt/include" "${CMAKE_SOURCE_DIR}/external/fmt/build/libfmt.a")
+register_external_library(spdlog::spdlog         "${CMAKE_SOURCE_DIR}/external/spdlog/include" "${CMAKE_SOURCE_DIR}/external/spdlog/build/libspdlog.a")
+register_external_library(yaml-cpp::yaml-cpp     "${CMAKE_SOURCE_DIR}/external/yaml-cpp/include" "${CMAKE_SOURCE_DIR}/external/yaml-cpp/build/libyaml-cpp.a")
+register_external_library(RapidJSON::RapidJSON   "${CMAKE_SOURCE_DIR}/external/rapidjson/include" "")
+register_external_library(RxCpp::RxCpp           "${CMAKE_SOURCE_DIR}/external/RxCpp/Rx/v2/src/" "")
+register_external_library(FastFloat::fast-float  "${CMAKE_SOURCE_DIR}/external/fast_float/include" "")
+register_external_library(Taskflow::Taskflow     "${CMAKE_SOURCE_DIR}/external/taskflow" "")
+register_external_library(unofficial-concurrentqueue::concurrentqueue "${CMAKE_SOURCE_DIR}/external/concurrentqueue" "")
+register_external_library(OpenSSL::SSL           "${CMAKE_SOURCE_DIR}/external/openssl/include" "${CMAKE_SOURCE_DIR}/external/openssl/libssl.a")
+register_external_library(OpenSSL::Crypto        "${CMAKE_SOURCE_DIR}/external/openssl/include" "${CMAKE_SOURCE_DIR}/external/openssl/libcrypto.a")
+register_external_library(ZLIB::ZLIB             "${CMAKE_SOURCE_DIR}/external/zlib" "${CMAKE_SOURCE_DIR}/external/zlib/libz.a")
+register_external_library(CURL::libcurl          "${CMAKE_SOURCE_DIR}/external/curl/include" "${CMAKE_SOURCE_DIR}/external/curl/lib/.libs/libcurl.a")
 set_target_properties(CURL_libcurl PROPERTIES INTERFACE_LINK_LIBRARIES "ZLIB_ZLIB;OpenSSL_SSL;OpenSSL_Crypto")
-add_manual_imported(maxminddb::maxminddb   "${CMAKE_SOURCE_DIR}/external/libmaxminddb-1.9.1/include" "${CMAKE_SOURCE_DIR}/external/libmaxminddb-1.9.1/build/libmaxminddb.a")
-target_include_directories(maxminddb_maxminddb INTERFACE "${CMAKE_SOURCE_DIR}/external/libmaxminddb-1.9.1/build/generated")
-add_manual_imported(benchmark::benchmark   "${CMAKE_SOURCE_DIR}/external/benchmark-1.8.5/include" "${CMAKE_SOURCE_DIR}/external/benchmark-1.8.5/build/src/libbenchmark.a")
-add_manual_imported(benchmark::benchmark_main "${CMAKE_SOURCE_DIR}/external/benchmark-1.8.5/src" "${CMAKE_SOURCE_DIR}/external/benchmark-1.8.5/build/src/libbenchmark_main.a")
+register_external_library(maxminddb::maxminddb   "${CMAKE_SOURCE_DIR}/external/libmaxminddb/include" "${CMAKE_SOURCE_DIR}/external/libmaxminddb/build/libmaxminddb.a")
+target_include_directories(maxminddb_maxminddb INTERFACE "${CMAKE_SOURCE_DIR}/external/libmaxminddb/build/generated")
+register_external_library(benchmark::benchmark   "${CMAKE_SOURCE_DIR}/external/benchmark/include" "${CMAKE_SOURCE_DIR}/external/benchmark/build/src/libbenchmark.a")
+register_external_library(benchmark::benchmark_main "${CMAKE_SOURCE_DIR}/external/benchmark/src" "${CMAKE_SOURCE_DIR}/external/benchmark/build/src/libbenchmark_main.a")
 set_target_properties(benchmark_benchmark_main PROPERTIES INTERFACE_LINK_LIBRARIES "benchmark_benchmark")
-add_manual_imported(pugixml::pugixml       "${CMAKE_SOURCE_DIR}/external/pugixml-1.15/src" "${CMAKE_SOURCE_DIR}/external/pugixml-1.15/build/libpugixml.a")
-add_manual_imported(protobuf::libprotobuf  "${CMAKE_SOURCE_DIR}/external/protobuf-21.12/src" "${CMAKE_SOURCE_DIR}/external/protobuf-21.12/build/libprotobuf.a")
-set(PROTOBUF_DIR "${CMAKE_SOURCE_DIR}/external/protobuf-21.12")
-add_manual_imported(httplib::httplib       "${CMAKE_SOURCE_DIR}/external/cpp-httplib-0.16.2" "")
-add_manual_imported(date::date             "${CMAKE_SOURCE_DIR}/external/date/include" "")
-add_manual_imported(date::date-tz          "${CMAKE_SOURCE_DIR}/external/date/include" "${CMAKE_SOURCE_DIR}/external/date/build/libdate-tz.a")
-add_manual_imported(absl::absl             "${CMAKE_SOURCE_DIR}/external/abseil-cpp-20240116.3" "${CMAKE_SOURCE_DIR}/external/abseil-cpp-20240116.3/build/build_result/lib/libabsl_all.a")
-add_manual_imported(re2::re2               "${CMAKE_SOURCE_DIR}/external/re2-2024-06-01" "${CMAKE_SOURCE_DIR}/external/re2-2024-06-01/build/libre2.a")
+register_external_library(pugixml::pugixml       "${CMAKE_SOURCE_DIR}/external/pugixml/src" "${CMAKE_SOURCE_DIR}/external/pugixml/build/libpugixml.a")
+register_external_library(protobuf::libprotobuf  "${CMAKE_SOURCE_DIR}/external/protobuf/src" "${CMAKE_SOURCE_DIR}/external/protobuf/build/libprotobuf.a")
+set(PROTOBUF_DIR "${CMAKE_SOURCE_DIR}/external/protobuf")
+register_external_library(date::date             "${CMAKE_SOURCE_DIR}/external/date/include" "")
+register_external_library(date::date-tz          "${CMAKE_SOURCE_DIR}/external/date/include" "${CMAKE_SOURCE_DIR}/external/date/build/libdate-tz.a")
+register_external_library(absl::absl             "${CMAKE_SOURCE_DIR}/external/abseil-cpp" "${CMAKE_SOURCE_DIR}/external/abseil-cpp/build/build_result")
+register_external_library(re2::re2               "${CMAKE_SOURCE_DIR}/external/re2" "${CMAKE_SOURCE_DIR}/external/re2/build/libre2.a")
 set_target_properties(re2_re2 PROPERTIES INTERFACE_LINK_LIBRARIES "absl_absl")
 
 add_subdirectory(${ENGINE_SOURCE_DIR}/base)
@@ -216,7 +236,6 @@ target_link_libraries(main
 if(NOT CMAKE_CXX_FLAGS MATCHES "-fsanitize=.*")
     target_link_libraries(main -static-libgcc -static-libstdc++)
 endif()
-
 
 # Create a custom test target
 function(get_all_targets _result _dir)
