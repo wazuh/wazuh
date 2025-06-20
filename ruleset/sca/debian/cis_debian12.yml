@@ -3679,8 +3679,8 @@ checks:
       - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
     condition: all
     rules:
-      - "c:systemctl is-enabled systemd-journald.service -> r:static"
-      - "c:systemctl is-active systemd-journald.service -> r:active"
+      - "c:systemctl is-enabled systemd-journald.service -> r:^static"
+      - "c:systemctl is-active systemd-journald.service -> r:^active"
 
   # 6.1.1.2 Ensure journald log file access is configured. (Manual) - Not Implemented
   # 6.1.1.3 Ensure journald log file rotation is configured. (Manual) - Not Implemented
@@ -4282,6 +4282,8 @@ checks:
       - soc_2: ["CC5.2", "CC7.2"]
     condition: all
     rules:
+      - "d:/etc/audit/rules.d"
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b64|-F arch=b32 && r:-S && r:creat && r:open && r:openat && r:truncate && r:ftruncate && r:-F exit=-EACCES && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k access|key=access'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b64|-F arch=b32 && r:-S && r:creat && r:open && r:openat && r:truncate && r:ftruncate && r:-F exit=-EPERM && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k access|key=access'
       - 'c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b64|-F arch=b32 && r:-S && r:creat && r:open && r:openat && r:truncate && r:ftruncate && r:-F exit=-EACCES && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k access|key=access'
@@ -4314,11 +4316,11 @@ checks:
       - "d:/etc/audit/rules.d"
       - 'd:/etc/audit/rules.d -> r:\.+.rules$'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/nsswitch.conf && r:-p wa && r:-k identity|key=identity'
-      - "c:auditctl -l-> r:^-w && r:/etc/nsswitch.conf && r:-p wa && r:-k identity|key=identity"
+      - "c:auditctl -l -> r:^-w && r:/etc/nsswitch.conf && r:-p wa && r:-k identity|key=identity"
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/pam.conf && r:-p wa && r:-k identity|key=identity'
-      - "c:auditctl -l-> r:^-w && r:/etc/pam.conf && r:-p wa && r:-k identity|key=identity"
+      - "c:auditctl -l -> r:^-w && r:/etc/pam.conf && r:-p wa && r:-k identity|key=identity"
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/pam.d && r:-p wa && r:-k identity|key=identity'
-      - "c:auditctl -l-> r:^-w && r:/etc/pam.d && r:-p wa && r:-k identity|key=identity"
+      - "c:auditctl -l -> r:^-w && r:/etc/pam.d && r:-p wa && r:-k identity|key=identity"
 
   # 6.2.3.9 Ensure discretionary access control permission modification events are collected. (Automated)
   - id: 33261
@@ -4341,6 +4343,8 @@ checks:
       - soc_2: ["CC5.2", "CC7.2"]
     condition: all
     rules:
+      - "d:/etc/audit/rules.d"
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a always,exit && r:-F arch=b64|-F arch=b32 && r:-S && r:chmod && r:fchmod && r:fchmodat && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k perm_mod|key=perm_mod'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a always,exit && r:-F arch=b64|-F arch=b32 && r:-S && r:chown && r:fchown && r:lchown && r:fchownat && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k perm_mod|key=perm_mod'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a always,exit && r:-F arch=b64|-F arch=b32 && r:-S && r:setxattr && r:lsetxattr && r:fsetxattr && r:removexattr && r:lremovexattr && r:fremovexattr && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset  && r:-k perm_mod|key=perm_mod'
@@ -4369,6 +4373,8 @@ checks:
       - soc_2: ["CC5.2", "CC7.2"]
     condition: all
     rules:
+      - "d:/etc/audit/rules.d"
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b64|-F arch=b32 && r:-S mount && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k mounts|key=mounts'
       - 'c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b64|-F arch=b32 && r:-S mount && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k mounts|key=mounts'
 
@@ -4393,6 +4399,8 @@ checks:
       - soc_2: ["CC5.2", "CC7.2"]
     condition: all
     rules:
+      - "d:/etc/audit/rules.d"
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/var/run/utmp && r:-p wa && r:-k session|key=session'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/var/log/wtmp && r:-p wa && r:-k session|key=session'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/var/log/btmp && r:-p wa && r:-k session|key=session'
@@ -4449,6 +4457,8 @@ checks:
       - soc_2: ["CC5.2", "CC7.2"]
     condition: all
     rules:
+      - "d:/etc/audit/rules.d"
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b64|-F arch=b32 && r:-S && r:unlink && r:unlinkat && r:rename && r:renameat && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k delete|key=delete'
       - 'c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b64|-F arch=b32 && r:-S && r:unlink && r:unlinkat && r:rename && r:renameat && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k delete|key=delete'
 
@@ -4473,6 +4483,8 @@ checks:
       - soc_2: ["CC5.2", "CC7.2"]
     condition: all
     rules:
+      - "d:/etc/audit/rules.d"
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/apparmor/|/etc/apparmor\s+ && r:-p wa && r:-k MAC-policy|key=MAC-policy'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/apparmor.d/|/etc/apparmor.d\s+ && r:-p wa && r:-k MAC-policy|key=MAC-policy'
       - 'c:auditctl -l -> r:^-w && r:/etc/apparmor/|/etc/apparmor\\s+ && r:-p wa && r:-k MAC-policy|key=MAC-policy'
@@ -4499,8 +4511,10 @@ checks:
       - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
     condition: all
     rules:
+      - "d:/etc/audit/rules.d"
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F path=/usr/bin/chcon && r:-F perm=x && r:-F auid>=1000 && -F auid!=unset && r:-k perm_chng'
-      - "c:auditctl -l -> r:^-a && r:always,exit|exit,always  && r: -S all && r:-F path=/usr/bin/chcon && r:-F perm=x && r:-F auid>=1000 && r: -F auid!=-1 && r:-F key=perm_chng"
+      - "c:auditctl -l -> r:^-a && r:always,exit|exit,always  && r:-S all && r:-F path=/usr/bin/chcon && r:-F perm=x && r:-F auid>=1000 && r:-F auid!=-1 && r:-F key=perm_chng"
 
   # 6.2.3.16 Ensure successful and unsuccessful attempts to use the setfacl command are collected. (Automated)
   - id: 33268
@@ -4523,8 +4537,10 @@ checks:
       - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
     condition: all
     rules:
+      - "d:/etc/audit/rules.d"
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F path=/usr/bin/setfacl && r:-F perm=x && r:-F auid>=1000 && -F auid!=unset && r:-k perm_chng'
-      - "c:auditctl -l -> r:^-a && r:always,exit|exit,always  && r: -S all && r:-F path=/usr/bin/setfacl && r:-F perm=x && r:-F auid>=1000 && r: -F auid!=-1 && r:-F key=perm_chng"
+      - "c:auditctl -l -> r:^-a && r:always,exit|exit,always  && r:-S all && r:-F path=/usr/bin/setfacl && r:-F perm=x && r:-F auid>=1000 && r:-F auid!=-1 && r:-F key=perm_chng"
 
   # 6.2.3.17 Ensure successful and unsuccessful attempts to use the chacl command are collected. (Automated)
   - id: 33269
@@ -4547,8 +4563,10 @@ checks:
       - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
     condition: all
     rules:
+      - "d:/etc/audit/rules.d"
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F path=/usr/bin/chacl && r:-F perm=x && r:-F auid>=1000 && -F auid!=unset && r:-k perm_chng'
-      - "c:auditctl -l -> r:^-a && r:always,exit|exit,always  && r: -S all && r:-F path=/usr/bin/chacl && r:-F perm=x && r:-F auid>=1000 && r: -F auid!=-1 && r:-F key=perm_chng"
+      - "c:auditctl -l -> r:^-a && r:always,exit|exit,always  && r:-S all && r:-F path=/usr/bin/chacl && r:-F perm=x && r:-F auid>=1000 && r:-F auid!=-1 && r:-F key=perm_chng"
 
   # 6.2.3.18 Ensure successful and unsuccessful attempts to use the usermod command are collected. (Automated)
   - id: 33270
@@ -4571,8 +4589,10 @@ checks:
       - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
     condition: all
     rules:
+      - "d:/etc/audit/rules.d"
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F path=/usr/bin/usermod && r:-F perm=x && r:-F auid>=1000 && -F auid!=unset && r:-k usermod'
-      - "c:auditctl -l -> r:^-a && r:always,exit|exit,always  && r: -S all && r:-F path=/usr/bin/usermod && r:-F perm=x && r:-F auid>=1000 && r: -F auid!=-1 && r:-F key=usermod"
+      - "c:auditctl -l -> r:^-a && r:always,exit|exit,always  && r:-S all && r:-F path=/usr/bin/usermod && r:-F perm=x && r:-F auid>=1000 && r:-F auid!=-1 && r:-F key=usermod"
 
   # 6.2.3.19 Ensure kernel module loading unloading and modification is collected. (Automated)
   - id: 33271
@@ -4624,6 +4644,8 @@ checks:
       - soc_2: ["CC5.2", "CC6.1", "CC7.2"]
     condition: all
     rules:
+      - "d:/etc/audit/rules.d"
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$'
       - 'd:/etc/audit/rules.d -> r:\.*.rules -> r:-e 2'
 
   # 6.2.3.21 Ensure the running and on disk configuration is the same. (Manual)
