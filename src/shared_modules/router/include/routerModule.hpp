@@ -37,7 +37,7 @@ public:
      *
      * @param logFunction Log function to be used.
      */
-    static void initialize(const std::function<void(const modules_log_level_t, const std::string&)>& logFunction);
+    static void initialize(std::function<void(const modules_log_level_t, const std::string&)> logFunction);
 
     /**
      * @brief Router socket init.

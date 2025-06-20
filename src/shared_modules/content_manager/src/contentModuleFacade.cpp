@@ -93,9 +93,11 @@ void ContentModuleFacade::changeSchedulerInterval(const std::string& name, const
     {
         if (const auto providerIt {m_providers.find(name)}; providerIt != m_providers.end())
         {
+            std::cout << "Changing scheduler interval for provider: " << name << " to " << interval << std::endl;
             providerIt->second->changeSchedulerInterval(interval);
             return;
         }
+        std::cout << "Provider not found: " << name << std::endl;
         logDebug1(WM_CONTENTUPDATER, "Couldn't change scheduled interval: Provider '%s' not found.", name.c_str());
     }
     catch (const std::exception& e)
