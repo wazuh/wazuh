@@ -216,6 +216,34 @@ class WazuhDBHTTPClient:
         """
         await self._post('/agents/sync', agents_sync, empty_response=True)
 
+    async def get_agents_restart_info(self, ids: list, negate: bool) -> list[dict]:
+        """Retrieve restart information for agents.
+
+        Parameters
+        ----------
+        ids : list[int]
+            List of agent IDs to query
+        negate : bool
+            Whether to negate the ID filter (i.e., exclude these IDs).
+
+        Returns
+        -------
+        list[dict]
+            A list of agent restart information dicts.
+        """
+        request_data = {
+            "ids": [int(id) for id in ids],
+            "negate": negate
+        }
+
+        data = await self._post('/agents/restartinfo', request_data)
+        agents_restart_info = data.get('items', [])
+
+        for info in agents_restart_info:
+            info['id'] = f"{int(info['id']):03}"
+
+        return agents_restart_info
+
 
 @asynccontextmanager
 async def get_wdb_http_client() -> AsyncIterator[WazuhDBHTTPClient]:
