@@ -219,8 +219,9 @@ def reconnect_agents(agent_list: Union[list, str] = None) -> AffectedItemsWazuhR
 
 
 @expose_resources(actions=["agent:restart"], resources=["agent:id:{agent_list}"],
-                  post_proc_kwargs={'exclude_codes': [1701, 1703, 1707]})
-def restart_agents(agent_list: list = None) -> AffectedItemsWazuhResult:
+                  post_proc_kwargs={'exclude_codes': [1701, 1703, 1707]},
+                  post_proc_func=async_list_handler)
+async def restart_agents(agent_list: list = None) -> AffectedItemsWazuhResult:
     """Restart a list of agents.
 
     Parameters
@@ -248,8 +249,8 @@ def restart_agents(agent_list: list = None) -> AffectedItemsWazuhResult:
         system_agents = get_agents_info()
         rbac_filters = get_rbac_filters(system_resources=system_agents, permitted_resources=list(agent_list))
 
-        with WazuhDBQueryAgents(limit=None, query='status=active', select=['id', 'version'], **rbac_filters) as query_data:
-            active_agents = query_data.run()['items']
+        async with get_wdb_http_client() as wdb_client: 
+            active_agents = await wdb_client.get_agents_restart_info(rbac_filters['filters']['rbac_ids'], rbac_filters['rbac_negate'])
 
         # Convert list of dictionaries to dictionary
         active_agents = {agent['id']: agent['version'] for agent in active_agents}
