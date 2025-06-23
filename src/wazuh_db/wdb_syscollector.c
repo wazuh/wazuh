@@ -1140,13 +1140,13 @@ int wdb_process_delete(wdb_t * wdb, const char * scan_id) {
 
 // Function to save users info into the DB. Return 0 on success or -1 on error.
 int wdb_users_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * user_name, const char * user_full_name, 
-                   const char * user_home, int user_id, int user_uid_signed, const char * user_uuid, const char * user_groups, 
-                   int user_group_id, int user_group_id_signed, double user_created, const char * user_roles, const char * user_shell, 
-                   const char * user_type, const bool user_is_hidden, const bool user_is_remote, long user_last_login, 
-                   int user_auth_failed_count, double user_auth_failed_timestamp, double user_password_last_set_time, 
+                   const char * user_home, long long user_id, long long user_uid_signed, const char * user_uuid, const char * user_groups, 
+                   long long user_group_id, long long user_group_id_signed, double user_created, const char * user_roles, const char * user_shell, 
+                   const char * user_type, const bool user_is_hidden, const bool user_is_remote, long long user_last_login, 
+                   long long user_auth_failed_count, double user_auth_failed_timestamp, double user_password_last_set_time, 
                    int user_password_expiration_date, const char * user_password_hash_algorithm, int user_password_inactive_days,
                    int user_password_last_change, int user_password_max_days_between_changes, int user_password_min_days_between_changes,
-                   const char * user_password_status, int user_password_warning_days_before_expiration, long process_pid, const char * host_ip,
+                   const char * user_password_status, int user_password_warning_days_before_expiration, long long process_pid, const char * host_ip,
                    const bool login_status, const char * login_type, const char * login_tty, const char * checksum, const bool replace)
 {
     if (!wdb->transaction && wdb_begin2(wdb) < 0){
@@ -1168,13 +1168,13 @@ int wdb_users_save(wdb_t * wdb, const char * scan_id, const char * scan_time, co
 
 // Insert user info tuple. Return 0 on success or -1 on error.
 int wdb_users_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * user_name, const char * user_full_name, 
-                     const char * user_home, int user_id, int user_uid_signed, const char * user_uuid, const char * user_groups, 
-                     int user_group_id, int user_group_id_signed, double user_created, const char * user_roles, const char * user_shell, 
-                     const char * user_type, const bool user_is_hidden, const bool user_is_remote, long user_last_login, 
-                     int user_auth_failed_count, double user_auth_failed_timestamp, double user_password_last_set_time, 
+                     const char * user_home, long long user_id, long long user_uid_signed, const char * user_uuid, const char * user_groups, 
+                     long long user_group_id, long long user_group_id_signed, double user_created, const char * user_roles, const char * user_shell, 
+                     const char * user_type, const bool user_is_hidden, const bool user_is_remote, long long user_last_login, 
+                     long long user_auth_failed_count, double user_auth_failed_timestamp, double user_password_last_set_time, 
                      int user_password_expiration_date, const char * user_password_hash_algorithm, int user_password_inactive_days,
                      int user_password_last_change, int user_password_max_days_between_changes, int user_password_min_days_between_changes,
-                     const char * user_password_status, int user_password_warning_days_before_expiration, long process_pid, const char * host_ip,
+                     const char * user_password_status, int user_password_warning_days_before_expiration, long long process_pid, const char * host_ip,
                      const bool login_status, const char * login_type, const char * login_tty, const char * checksum, const bool replace)
 {
     sqlite3_stmt *stmt = NULL;
@@ -1196,46 +1196,50 @@ int wdb_users_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, 
     sqlite3_bind_text(stmt, 4, user_full_name, -1, NULL);
     sqlite3_bind_text(stmt, 5, user_home, -1, NULL);
     if (user_id >= 0) {
-        sqlite3_bind_int(stmt, 6, user_id);
+        sqlite3_bind_int64(stmt, 6, user_id);
     } else {
         sqlite3_bind_null(stmt, 6);
     }
-    sqlite3_bind_int(stmt, 7, user_uid_signed);
+    sqlite3_bind_int64(stmt, 7, user_uid_signed);
     sqlite3_bind_text(stmt, 8, user_uuid, -1, NULL);
     sqlite3_bind_text(stmt, 9, user_groups, -1, NULL);
     if (user_group_id >= 0) {
-        sqlite3_bind_int(stmt, 10, user_group_id);
+        sqlite3_bind_int64(stmt, 10, user_group_id);
     } else {
         sqlite3_bind_null(stmt, 10);
     }
-    sqlite3_bind_int(stmt, 11, user_group_id_signed);
-    sqlite3_bind_double(stmt, 12, user_created);
+    sqlite3_bind_int64(stmt, 11, user_group_id_signed);
+    if (user_created > 0) {
+        sqlite3_bind_double(stmt, 12, user_created);
+    } else {
+        sqlite3_bind_null(stmt, 12);
+    }
     sqlite3_bind_text(stmt, 13, user_roles, -1, NULL);
     sqlite3_bind_text(stmt, 14, user_shell, -1, NULL);
     sqlite3_bind_text(stmt, 15, user_type, -1, NULL);
     sqlite3_bind_int(stmt, 16, user_is_hidden);
     sqlite3_bind_int(stmt, 17, user_is_remote);
-    if (user_last_login >= 0) {
-        sqlite3_bind_int64(stmt, 18, user_last_login);
+    if (user_last_login > 0) {
+        sqlite3_bind_int64(stmt, 18, user_last_login); 
     } else {
         sqlite3_bind_null(stmt, 18);
     }
     if (user_auth_failed_count >= 0) {
-        sqlite3_bind_int(stmt, 19, user_auth_failed_count);
+        sqlite3_bind_int64(stmt, 19, user_auth_failed_count);
     } else {
         sqlite3_bind_null(stmt, 19);
     }
-    if (user_auth_failed_timestamp >= 0) {
+    if (user_auth_failed_timestamp > 0) {
         sqlite3_bind_double(stmt, 20, user_auth_failed_timestamp);
     } else { 
         sqlite3_bind_null(stmt, 20);
     }
-    if (user_password_last_set_time >= 0) {
+    if (user_password_last_set_time > 0) {
         sqlite3_bind_double(stmt, 21, user_password_last_set_time);
     } else {
         sqlite3_bind_null(stmt, 21);
     }
-    if (user_password_expiration_date >= 0) {
+    if (user_password_expiration_date > 0) {
         sqlite3_bind_int(stmt, 22, user_password_expiration_date);
     } else {
         sqlite3_bind_null(stmt, 22);
@@ -1287,8 +1291,8 @@ int wdb_users_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, 
 }
 
 // Function to save groups info into the DB. Return 0 on success or -1 on error.
-int wdb_groups_save(wdb_t * wdb, const char * scan_id, const char * scan_time, long group_id, const char * group_name, 
-                    const char * group_description, long group_id_signed, const char * group_uuid, const bool group_is_hidden, 
+int wdb_groups_save(wdb_t * wdb, const char * scan_id, const char * scan_time, long long group_id, const char * group_name, 
+                    const char * group_description, long long group_id_signed, const char * group_uuid, const bool group_is_hidden, 
                     const char * group_users, const char * checksum, const bool replace)
 {
     if (!wdb->transaction && wdb_begin2(wdb) < 0){
@@ -1305,8 +1309,8 @@ int wdb_groups_save(wdb_t * wdb, const char * scan_id, const char * scan_time, l
 }
 
 // Insert group info tuple. Return 0 on success or -1 on error.
-int wdb_groups_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, long group_id, const char * group_name, 
-                      const char * group_description, long group_id_signed, const char * group_uuid, const bool group_is_hidden, 
+int wdb_groups_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, long long group_id, const char * group_name, 
+                      const char * group_description, long long group_id_signed, const char * group_uuid, const bool group_is_hidden, 
                       const char * group_users, const char * checksum, const bool replace){
     sqlite3_stmt *stmt = NULL;
 
@@ -1571,10 +1575,10 @@ int wdb_syscollector_groups_save2(wdb_t * wdb, const cJSON * attributes)
 {
     const char * scan_id = "0";
     const char * scan_time = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "scan_time"));
-    const long group_id = cJSON_GetObjectItem(attributes, "group_id") ? cJSON_GetObjectItem(attributes, "group_id")->valuedouble : 0;
+    const long long group_id = cJSON_GetObjectItem(attributes, "group_id") ? cJSON_GetObjectItem(attributes, "group_id")->valuedouble : 0;
     const char * group_name = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "group_name"));
     const char * group_description = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "group_description"));
-    const long group_id_signed = cJSON_GetObjectItem(attributes, "group_id_signed") ? cJSON_GetObjectItem(attributes, "group_id_signed")->valuedouble : 0;
+    const long long group_id_signed = cJSON_GetObjectItem(attributes, "group_id_signed") ? cJSON_GetObjectItem(attributes, "group_id_signed")->valuedouble : 0;
     const char * group_uuid = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "group_uuid"));
     const bool group_is_hidden = cJSON_GetObjectItem(attributes, "group_is_hidden") ? cJSON_GetObjectItem(attributes, "group_is_hidden")->valueint : false;
     char * group_users = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "group_users"));
