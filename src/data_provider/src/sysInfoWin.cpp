@@ -1057,7 +1057,7 @@ nlohmann::json SysInfo::getUsers() const
     {
         nlohmann::json userItem {};
 
-        auto username = user["username"].get<std::string>();
+        std::string username = user["username"].get<std::string>();
 
         userItem["user_id"] = user["uid"];
         userItem["user_full_name"] = user["description"];
@@ -1102,13 +1102,14 @@ nlohmann::json SysInfo::getUsers() const
         userItem["user_is_remote"] = 0;
 
         // Only Macos
-        userItem["user_password_last_set_time"] = 0;
-        userItem["user_is_hidden"] = 0;
-        userItem["user_created"] = 0;
-        userItem["user_auth_failed_count"] = 0;
-        userItem["user_auth_failed_timestamp"] = 0;
+        userItem["user_password_last_set_time"] = nullptr;
+        userItem["user_is_hidden"] = nullptr;
+        userItem["user_created"] = nullptr;
+        userItem["user_auth_failed_count"] = nullptr;
+        userItem["user_auth_failed_timestamp"] = nullptr;
 
         auto matched = false;
+        auto lastLogin = 0;
 
         //TODO: Avoid this iteration, move logic to LoggedInUsersProvider
         for (auto& item : collectedLoggedInUser)
@@ -1121,17 +1122,20 @@ nlohmann::json SysInfo::getUsers() const
             {
                 matched = true;
                 userItem["login_status"] = 1;
-                userItem["login_tty"] = userItem["login_tty"].is_null() ? item["tty"].get<std::string>() :
-                                        (userItem["login_tty"].get<std::string>() + primaryArraySeparator + item["tty"].get<std::string>());
-                userItem["login_type"] = userItem["login_type"].is_null() ? item["type"].get<std::string>() :
-                                         (userItem["login_type"].get<std::string>() + primaryArraySeparator + item["type"].get<std::string>());
+
+                auto newDate = item["time"].get<int32_t>();
+
+                if (newDate > lastLogin)
+                {
+                    lastLogin = newDate;
+                    userItem["user_last_login"] = newDate;
+                    userItem["login_tty"] = item["tty"].get<std::string>();
+                    userItem["login_type"] = item["type"].get<std::string>();
+                    userItem["process_pid"] = item["pid"].get<int32_t>();
+                }
+
                 userItem["host_ip"] = userItem["host_ip"].is_null() ? item["host"].get<std::string>() :
                                       (userItem["host_ip"].get<std::string>() + primaryArraySeparator + item["host"].get<std::string>());
-                //transform to string and then append each case
-                userItem["process_pid"] = userItem["process_pid"].is_null() ? std::to_string(item["pid"].get<int32_t>()) :
-                                          ( userItem["process_pid"].get<std::string>() + primaryArraySeparator + std::to_string(item["pid"].get<int32_t>()) );
-                userItem["user_last_login"] = userItem["user_last_login"].is_null() ? std::to_string(item["time"].get<int32_t>()) :
-                                              ( userItem["process_pid"].get<std::string>() + primaryArraySeparator + std::to_string(item["time"].get<int32_t>()) );
             }
         }
 
@@ -1141,18 +1145,18 @@ nlohmann::json SysInfo::getUsers() const
             userItem["login_tty"] = nullptr;
             userItem["login_type"] = nullptr;
             userItem["host_ip"] = nullptr;
-            userItem["process_pid"] = 0;
-            userItem["user_last_login"] = 0;
+            userItem["process_pid"] = nullptr;
+            userItem["user_last_login"] = nullptr;
         }
 
-        userItem["user_password_expiration_date"] = 0;
+        userItem["user_password_expiration_date"] = nullptr;
         userItem["user_password_hash_algorithm"] = nullptr;
-        userItem["user_password_inactive_days"] = 0;
-        userItem["user_password_last_change"] = 0;
-        userItem["user_password_max_days_between_changes"] = 0;
-        userItem["user_password_min_days_between_changes"] = 0;
+        userItem["user_password_inactive_days"] = nullptr;
+        userItem["user_password_last_change"] = nullptr;
+        userItem["user_password_max_days_between_changes"] = nullptr;
+        userItem["user_password_min_days_between_changes"] = nullptr;
         userItem["user_password_status"] = nullptr;
-        userItem["user_password_warning_days_before_expiration"] = 0;
+        userItem["user_password_warning_days_before_expiration"] = nullptr;
 
         result.push_back(std::move(userItem));
     }
