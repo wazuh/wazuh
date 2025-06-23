@@ -778,32 +778,32 @@ async def put_restart(pretty: bool = False, nodes_list: str = '*') -> ConnexionR
     f_kwargs = {'node_list': nodes_list}
 
     nodes = raise_if_exc(await get_system_nodes())
-    # The master node is always the first item in the list
+    # Remove the master from the list to restart all workers without issuing the command locally yet.
+    # The master node is always the first item in the list.
     master_node = nodes.pop(0)
 
+    if nodes_list == [master_node]:
+        return json_response(manager.restart(), pretty=pretty, status_code=202)
+
     dapi = DistributedAPI(f=manager.restart,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='distributed_master',
-                          is_async=False,
-                          logger=logger,
-                          broadcasting=nodes_list == '*',
-                          rbac_permissions=request.context['token_info']['rbac_policies'],
-                          nodes=nodes
-                          )
-    data = raise_if_exc(await dapi.distribute_function())
+                        f_kwargs=remove_nones_to_dict(f_kwargs),
+                        request_type='distributed_master',
+                        is_async=False,
+                        logger=logger,
+                        broadcasting=nodes_list == '*',
+                        rbac_permissions=request.context['token_info']['rbac_policies'],
+                        wait_for_complete=True,
+                        nodes=nodes
+                        )
+    result = raise_if_exc(await dapi.distribute_function())
 
-    dapi_master = DistributedAPI(f=manager.restart,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='local_master',
-                          is_async=False,
-                          logger=logger,
-                          broadcasting=False,
-                          rbac_permissions=request.context['token_info']['rbac_policies'],
-                          nodes=[master_node]
-                          )
-    data_master = raise_if_exc(await dapi_master.distribute_function())
+    if nodes_list == '*' or master_node in nodes_list:
+        _ = manager.restart()
 
-    return json_response(data + data_master, pretty=pretty, status_code=202)
+        result.affected_items.insert(0, master_node)
+        result.total_affected_items += 1
+
+    return json_response(result, pretty=pretty, status_code=202)
 
 
 async def get_conf_validation(pretty: bool = False, wait_for_complete: bool = False,
