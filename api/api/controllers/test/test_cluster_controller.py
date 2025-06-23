@@ -572,24 +572,23 @@ async def test_get_api_config(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock
 @patch('api.controllers.cluster_controller.DistributedAPI.__init__', return_value=None)
 async def test_put_restart(mock_dapi, mock_remove, mock_dfunc, mock_request):
     """Verify 'put_restart' endpoint is working as expected."""
-    system_nodes_mock = MagicMock()
+    system_nodes_mock = AsyncMock()
     system_nodes_mock.return_value = ['master-node', 'worker-node']
-    with patch('api.controllers.cluster_controller.get_system_nodes', return_value=AsyncMock()), \
-    patch('api.controllers.cluster_controller.raise_if_exc', return_value=system_nodes_mock):
-        result = await put_restart()
-        f_kwargs = {'node_list': '*'}
+    with patch('api.controllers.cluster_controller.get_system_nodes', return_value=system_nodes_mock), \
+    patch('api.controllers.cluster_controller.raise_if_exc', return_value=system_nodes_mock.return_value), \
+    patch('wazuh.manager.manager_restart'):
+        result = await put_restart(nodes_list='worker-node')
+        f_kwargs = {'node_list': 'worker-node'}
         mock_dapi.assert_called_once_with(f=manager.restart,
                                           f_kwargs=mock_remove.return_value,
                                           request_type='distributed_master',
                                           is_async=False,
                                           logger=ANY,
-                                          broadcasting=True,
+                                          broadcasting=False,
                                           rbac_permissions=mock_request.context['token_info']['rbac_policies'],
-                                          nodes=system_nodes_mock.return_value[1]
+                                          wait_for_complete=True,
+                                          nodes=system_nodes_mock.return_value
                                           )
-        system_nodes_mock.assert_has_calls([call(system_nodes_mock.return_value[1]),
-                                   call(mock_dfunc.return_value)])
-        assert system_nodes_mock.call_count == 2
         mock_remove.assert_called_once_with(f_kwargs)
         assert isinstance(result, ConnexionResponse)
 
