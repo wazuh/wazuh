@@ -50,19 +50,19 @@ bool connect_server(int server_id, bool verbose)
     timeout = getDefine_Int("agent", "recv_timeout", 1, 600);
 
     /* Close socket if available */
-    if (agt->sock >= 0) {
-        OS_CloseSocket(agt->sock);
-        agt->sock = -1;
+    // if (agt->sock >= 0) {
+    //     OS_CloseSocket(agt->sock);
+    //     agt->sock = -1;
 
-        if (agt->server[agt->rip_id].rip) {
-            if (verbose) {
-                minfo("Closing connection to server ([%s]:%d/%s).",
-                    agt->server[agt->rip_id].rip,
-                    agt->server[agt->rip_id].port,
-                    agt->server[agt->rip_id].protocol == IPPROTO_UDP ? "udp" : "tcp");
-            }
-        }
-    }
+    //     if (agt->server[agt->rip_id].rip) {
+    //         if (verbose) {
+    //             minfo("Closing connection to server ([%s]:%d/%s).",
+    //                 agt->server[agt->rip_id].rip,
+    //                 agt->server[agt->rip_id].port,
+    //                 agt->server[agt->rip_id].protocol == IPPROTO_UDP ? "udp" : "tcp");
+    //         }
+    //     }
+    // }
 
     char *ip_address = NULL;
     char *tmp_str = strchr(agt->server[server_id].rip, '/');
@@ -93,10 +93,12 @@ bool connect_server(int server_id, bool verbose)
             agt->server[server_id].port,
             agt->server[server_id].protocol == IPPROTO_UDP ? "udp" : "tcp");
     }
-    if (agt->server[server_id].protocol == IPPROTO_UDP) {
-        agt->sock = OS_ConnectUDP(agt->server[server_id].port, ip_address, strchr(ip_address, ':') != NULL ? 1 : 0, agt->server[server_id].network_interface);
-    } else {
-        agt->sock = OS_ConnectTCP(agt->server[server_id].port, ip_address, strchr(ip_address, ':') != NULL ? 1 : 0, agt->server[server_id].network_interface);
+    if (agt->sock == -1) {
+        if (agt->server[server_id].protocol == IPPROTO_UDP) {
+            agt->sock = OS_ConnectUDP(agt->server[server_id].port, ip_address, strchr(ip_address, ':') != NULL ? 1 : 0, agt->server[server_id].network_interface);
+        } else {
+            agt->sock = OS_ConnectTCP(agt->server[server_id].port, ip_address, strchr(ip_address, ':') != NULL ? 1 : 0, agt->server[server_id].network_interface);
+        }
     }
 
     if (agt->sock < 0) {

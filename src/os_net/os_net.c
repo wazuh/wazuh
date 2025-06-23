@@ -601,6 +601,7 @@ int OS_CloseSocket(int socket)
 {
 #ifdef WIN32
     shutdown(socket, SD_BOTH);
+    mwarn("Closing socket %d", socket);
     return (closesocket(socket));
 #else
     shutdown(socket, SHUT_RDWR);

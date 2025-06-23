@@ -78,6 +78,7 @@ int local_start()
 {
     // This must be always the first instruction
     enable_dll_verification();
+    if (agt) plain_minfo("DEBUG: agt->sock at local_start() entry: %d", (int)agt->sock);
 
     char *cfg = OSSECCONF;
     WSADATA wsaData;
@@ -108,7 +109,9 @@ int local_start()
     }
 
     /* Start agent */
-    os_calloc(1, sizeof(agent), agt);
+    if (!agt) {
+        os_calloc(1, sizeof(agent), agt);
+    }
 
     /* Configuration file not present */
     if (File_DateofChange(cfg) < 0) {
@@ -261,7 +264,9 @@ int local_start()
     os_setwait();
 
     /* Socket connection */
-    agt->sock = -1;
+    if (agt->sock <= 0) {
+        agt->sock = -1;
+    }
 
     /* Initialize random numbers */
     srandom(time(0));
@@ -300,6 +305,7 @@ int local_start()
                      0,
                      (LPDWORD)&threadID);
 
+    plain_minfo("DEBUG: agt->sock before start_agent: %d", (int)agt->sock);
     start_agent(1);
 
     os_delwait();
@@ -321,6 +327,7 @@ int local_start()
     atexit(send_agent_stopped_message);
 
     /* Start receiver -- main process here */
+    plain_minfo("DEBUG: agt->sock before connect: %d", (int)agt->sock);
     receiver_messages();
 
     if (sysinfo_module){

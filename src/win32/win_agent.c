@@ -20,6 +20,8 @@
 #include "os_execd/execd.h"
 #include "os_crypto/md5/md5_op.h"
 #include "external/cJSON/cJSON.h"
+#include "socket_reload.h"
+#include "wazuh_reload.h"
 
 #ifndef ARGV0
 #define ARGV0 "wazuh-agent"
@@ -92,11 +94,46 @@ int main(int argc, char **argv)
             agent_help();
         } else if (strcmp(argv[1], "help") == 0) {
             agent_help();
+        } else if (argc > 2 && strcmp(argv[1], "control") == 0 && strcmp(argv[2], "reload") == 0) {
+            // Send a reload command to the agent control pipe
+            HANDLE hPipe = CreateFileA(
+                RELOAD_PIPE_CONTROL, GENERIC_WRITE, 0, NULL, OPEN_EXISTING, 0, NULL
+            );
+            if (hPipe == INVALID_HANDLE_VALUE) {
+                printf("Cannot connect to agent control pipe (is agent running?): %d\n", GetLastError());
+                return 1;
+            }
+            DWORD written;
+            if (!WriteFile(hPipe, "reload", 6, &written, NULL)) {
+                printf("Failed to write reload command.\n");
+            }
+            CloseHandle(hPipe);
+            printf("Reload command sent.\n");
+            return 0;
+        }
+        else if (argc > 2 && strcmp(argv[1], "--reload-child") == 0) {
+            // This is the child process that will handle the reload
+            plain_minfo("Hello from reload child, restoring socket...");
+            if (handle_reload_child(argv[2]) != 0) {
+                plain_merror("Reload child: failed to restore socket.");
+                exit(1);
+            }
+            // Continue normal operation after restoring the socket
+            // start_reload_control_thread(myfinalpath);
+            // if (!os_WinMain(argc, argv)) {
+            //     plain_merror_exit("Unable to start WinMain.");
+            // }
+            plain_minfo("Reload child: socket restored, continuing normal operation.");
+            // return os_start_service();
+            return local_start();
         } else {
             plain_merror("Unknown option: %s", argv[1]);
             exit(1);
         }
     }
+
+    // Start the reload control thread
+    start_reload_control_thread(myfinalpath);
 
     /* Start it */
     if (!os_WinMain(argc, argv)) {
