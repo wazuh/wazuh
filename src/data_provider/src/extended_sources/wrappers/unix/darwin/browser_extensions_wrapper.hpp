@@ -16,8 +16,9 @@
 
 class BrowserExtensionsWrapper : public IBrowserExtensionsWrapper
 {
-  public:
-  std::string getApplicationsPath() override {
-    return std::string(kAppPath);
-  }
+    public:
+        std::string getApplicationsPath() override
+        {
+            return std::string(kAppPath);
+        }
 };
