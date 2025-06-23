@@ -3395,10 +3395,30 @@ void test_wdb_users_save_transaction_fail(void **state) {
     data->transaction = 0;
     will_return(__wrap_wdb_begin2, -1);
     expect_string(__wrap__mdebug1, formatted_msg, "at wdb_users_save(): cannot begin transaction");
+ 
+    const long long user_id = 1;
+    const long long user_uid_signed = -1; 
+    const long long user_group_id = 1; 
+    const long long user_group_id_signed = -1;
+    const double user_created = 1750696338.665;  
+    const long long user_last_login = 1750696338;
+    const long long user_auth_failed_count = 1;
+    const double user_auth_failed_timestamp = 1750696338.665;
+    const double user_password_last_set_time = 1750696338; 
+    const int user_password_expiration_date = 1750696338; 
+    const int user_password_inactive_days = 0;
+    const int user_password_last_change = 10; 
+    const int user_password_max_days_between_changes = 9999;
+    const int user_password_min_days_between_changes = 0;
+    const int user_password_warning_days_before_expiration = 10;
+    const long long process_pid = 1010;
 
-    output = wdb_users_save(data, "scan_id", "scan_time", "name", "full_name", "home", 1, 1, "uuid", "groups", 1, 1, 1.0, 1,
-                            "shell", "type", true, false, 1, 1, 1.0, 1.0, 1, "hash", 1, 1, 1, 1, "status", 1, 1, "ip", true, 
-                            "type", "tty", "checksum", false);
+    output = wdb_users_save(data, "scan_id", "scan_time", "name", "full_name", "home", user_id, user_uid_signed, "uuid", "group1,group2", 
+                            user_group_id, user_group_id_signed, user_created, "roles", "shell", "type", true, false, user_last_login, 
+                            user_auth_failed_count, user_auth_failed_timestamp, user_password_last_set_time, user_password_expiration_date, 
+                            "hash", user_password_inactive_days, user_password_last_change, user_password_max_days_between_changes, 
+                            user_password_min_days_between_changes, "status", user_password_warning_days_before_expiration, process_pid, 
+                            "192.168.0.1,192.168.0.2", true, "type", "tty", "checksum", false);
     assert_int_equal(output, -1);
 }
 
@@ -3411,9 +3431,29 @@ void test_wdb_users_save_insert_fail(void **state) {
     will_return(__wrap_wdb_stmt_cache, -1);
     expect_string(__wrap__mdebug1, formatted_msg, "at wdb_users_insert(): cannot cache statement");
 
-    output = wdb_users_save(data, "scan_id", "scan_time", "name", "full_name", "home", 1, 1, "uuid", "groups", 1, 1, 1.0, 1,
-                            "shell", "type", true, false, 1, 1, 1.0, 1.0, 1, "hash", 1, 1, 1, 1, "status", 1, 1, "ip", true, 
-                            "type", "tty", "checksum", false);    
+    const long long user_id = 1;
+    const long long user_uid_signed = -1; 
+    const long long user_group_id = 1; 
+    const long long user_group_id_signed = -1;
+    const double user_created = 1750696338.665;  
+    const long long user_last_login = 1750696338;
+    const long long user_auth_failed_count = 1;
+    const double user_auth_failed_timestamp = 1750696338.665;
+    const double user_password_last_set_time = 1750696338; 
+    const int user_password_expiration_date = 1750696338; 
+    const int user_password_inactive_days = 0;
+    const int user_password_last_change = 10; 
+    const int user_password_max_days_between_changes = 9999;
+    const int user_password_min_days_between_changes = 0;
+    const int user_password_warning_days_before_expiration = 10;
+    const long long process_pid = 1010;
+
+    output = wdb_users_save(data, "scan_id", "scan_time", "name", "full_name", "home", user_id, user_uid_signed, "uuid", "group1,group2", 
+                            user_group_id, user_group_id_signed, user_created, "roles", "shell", "type", true, false, user_last_login, 
+                            user_auth_failed_count, user_auth_failed_timestamp, user_password_last_set_time, user_password_expiration_date, 
+                            "hash", user_password_inactive_days, user_password_last_change, user_password_max_days_between_changes, 
+                            user_password_min_days_between_changes, "status", user_password_warning_days_before_expiration, process_pid, 
+                            "192.168.0.1,192.168.0.2", true, "type", "tty", "checksum", false);    
     assert_int_equal(output, -1);
 }
 
@@ -3424,7 +3464,25 @@ void test_wdb_users_save_success(void **state) {
     data->transaction = 0;
     will_return(__wrap_wdb_begin2, 0);
 
+    const long long user_id = 1;
+    const long long user_uid_signed = -1; 
+    const long long user_group_id = 1; 
+    const long long user_group_id_signed = -1;
+    const double user_created = 1750696338.665;  
+    const long long user_last_login = 1750696338;
+    const long long user_auth_failed_count = 1;
+    const double user_auth_failed_timestamp = 1750696338.665;
+    const double user_password_last_set_time = 1750696338; 
+    const int user_password_expiration_date = 1750696338; 
+    const int user_password_inactive_days = 0;
+    const int user_password_last_change = 10; 
+    const int user_password_max_days_between_changes = 9999;
+    const int user_password_min_days_between_changes = 0;
+    const int user_password_warning_days_before_expiration = 10;
+    const long long process_pid = 1010;
+
     will_return(__wrap_wdb_stmt_cache, 0);
+
     expect_value(__wrap_sqlite3_bind_text, pos, 1);
     expect_string(__wrap_sqlite3_bind_text, buffer, "scan_id");
     will_return(__wrap_sqlite3_bind_text, 0);
@@ -3440,29 +3498,29 @@ void test_wdb_users_save_success(void **state) {
     expect_value(__wrap_sqlite3_bind_text, pos, 5);
     expect_string(__wrap_sqlite3_bind_text, buffer, "home");
     will_return(__wrap_sqlite3_bind_text, 0);
-    expect_value(__wrap_sqlite3_bind_int, index, 6);
-    expect_value(__wrap_sqlite3_bind_int, value, 1);
-    will_return(__wrap_sqlite3_bind_int, 0);
-    expect_value(__wrap_sqlite3_bind_int, index, 7);
-    expect_value(__wrap_sqlite3_bind_int, value, 1);
-    will_return(__wrap_sqlite3_bind_int, 0);
+    expect_value(__wrap_sqlite3_bind_int64, index, 6);
+    expect_value(__wrap_sqlite3_bind_int64, value, user_id);
+    will_return(__wrap_sqlite3_bind_int64, 0);
+    expect_value(__wrap_sqlite3_bind_int64, index, 7);
+    expect_value(__wrap_sqlite3_bind_int64, value, user_uid_signed);
+    will_return(__wrap_sqlite3_bind_int64, 0);
     expect_value(__wrap_sqlite3_bind_text, pos, 8);
     expect_string(__wrap_sqlite3_bind_text, buffer, "uuid");
     will_return(__wrap_sqlite3_bind_text, 0);
     expect_value(__wrap_sqlite3_bind_text, pos, 9);
-    expect_string(__wrap_sqlite3_bind_text, buffer, "groups");
+    expect_string(__wrap_sqlite3_bind_text, buffer, "group1,group2");
     will_return(__wrap_sqlite3_bind_text, 0);
-    expect_value(__wrap_sqlite3_bind_int, index, 10);
-    expect_value(__wrap_sqlite3_bind_int, value, 1);
-    will_return(__wrap_sqlite3_bind_int, 0);
-    expect_value(__wrap_sqlite3_bind_int, index, 11);
-    expect_value(__wrap_sqlite3_bind_int, value, 1);
-    will_return(__wrap_sqlite3_bind_int, 0);
+    expect_value(__wrap_sqlite3_bind_int64, index, 10);
+    expect_value(__wrap_sqlite3_bind_int64, value, user_group_id);
+    will_return(__wrap_sqlite3_bind_int64, 0);
+    expect_value(__wrap_sqlite3_bind_int64, index, 11);
+    expect_value(__wrap_sqlite3_bind_int64, value, user_group_id_signed);
+    will_return(__wrap_sqlite3_bind_int64, 0);
     expect_value(__wrap_sqlite3_bind_double, index, 12);
-    expect_value(__wrap_sqlite3_bind_double, value, 1.0);
+    expect_value(__wrap_sqlite3_bind_double, value, user_created);
     will_return(__wrap_sqlite3_bind_double, 0);
     expect_value(__wrap_sqlite3_bind_text, pos, 13);
-    expect_value(__wrap_sqlite3_bind_text, buffer, "sudo");
+    expect_value(__wrap_sqlite3_bind_text, buffer, "roles");
     will_return(__wrap_sqlite3_bind_text, 0);
     expect_value(__wrap_sqlite3_bind_text, pos, 14);
     expect_string(__wrap_sqlite3_bind_text, buffer, "shell");
@@ -3477,46 +3535,46 @@ void test_wdb_users_save_success(void **state) {
     expect_value(__wrap_sqlite3_bind_int, value, false);
     will_return(__wrap_sqlite3_bind_int, 0);
     expect_value(__wrap_sqlite3_bind_int64, index, 18);
-    expect_value(__wrap_sqlite3_bind_int64, value, 1);
+    expect_value(__wrap_sqlite3_bind_int64, value, user_last_login);
     will_return(__wrap_sqlite3_bind_int64, 0);  
-    expect_value(__wrap_sqlite3_bind_int, index, 19);
-    expect_value(__wrap_sqlite3_bind_int, value, 1);
-    will_return(__wrap_sqlite3_bind_int, 0); 
+    expect_value(__wrap_sqlite3_bind_int64, index, 19);
+    expect_value(__wrap_sqlite3_bind_int64, value, user_auth_failed_count);
+    will_return(__wrap_sqlite3_bind_int64, 0); 
     expect_value(__wrap_sqlite3_bind_double, index, 20);
-    expect_value(__wrap_sqlite3_bind_double, value, 1.0);
+    expect_value(__wrap_sqlite3_bind_double, value, user_auth_failed_timestamp);
     will_return(__wrap_sqlite3_bind_double, 0);
     expect_value(__wrap_sqlite3_bind_double, index, 21);
-    expect_value(__wrap_sqlite3_bind_double, value, 1.0);
+    expect_value(__wrap_sqlite3_bind_double, value, user_password_last_set_time);
     will_return(__wrap_sqlite3_bind_double, 0);    
     expect_value(__wrap_sqlite3_bind_int, index, 22);
-    expect_value(__wrap_sqlite3_bind_int, value, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, user_password_expiration_date);
     will_return(__wrap_sqlite3_bind_int, 0);
     expect_value(__wrap_sqlite3_bind_text, pos, 23);
     expect_string(__wrap_sqlite3_bind_text, buffer, "hash");
     will_return(__wrap_sqlite3_bind_text, 0);
     expect_value(__wrap_sqlite3_bind_int, index, 24);
-    expect_value(__wrap_sqlite3_bind_int, value, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, user_password_inactive_days);
     will_return(__wrap_sqlite3_bind_int, 0);    
     expect_value(__wrap_sqlite3_bind_int, index, 25);
-    expect_value(__wrap_sqlite3_bind_int, value, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, user_password_last_change);
     will_return(__wrap_sqlite3_bind_int, 0);    
     expect_value(__wrap_sqlite3_bind_int, index, 26);
-    expect_value(__wrap_sqlite3_bind_int, value, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, user_password_max_days_between_changes);
     will_return(__wrap_sqlite3_bind_int, 0);    
     expect_value(__wrap_sqlite3_bind_int, index, 27);
-    expect_value(__wrap_sqlite3_bind_int, value, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, user_password_min_days_between_changes);
     will_return(__wrap_sqlite3_bind_int, 0);
     expect_value(__wrap_sqlite3_bind_text, pos, 28);
     expect_string(__wrap_sqlite3_bind_text, buffer, "status");
     will_return(__wrap_sqlite3_bind_text, 0);
     expect_value(__wrap_sqlite3_bind_int, index, 29);
-    expect_value(__wrap_sqlite3_bind_int, value, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, user_password_warning_days_before_expiration);
     will_return(__wrap_sqlite3_bind_int, 0);
     expect_value(__wrap_sqlite3_bind_int64, index, 30);
-    expect_value(__wrap_sqlite3_bind_int64, value, 1);
+    expect_value(__wrap_sqlite3_bind_int64, value, process_pid);
     will_return(__wrap_sqlite3_bind_int64, 0);
     expect_value(__wrap_sqlite3_bind_text, pos, 31);
-    expect_string(__wrap_sqlite3_bind_text, buffer, "ip");
+    expect_string(__wrap_sqlite3_bind_text, buffer, "192.168.0.1,192.168.0.2");
     will_return(__wrap_sqlite3_bind_text, 0);
     expect_value(__wrap_sqlite3_bind_int, index, 32);
     expect_value(__wrap_sqlite3_bind_int, value, true);
@@ -3532,9 +3590,12 @@ void test_wdb_users_save_success(void **state) {
     will_return(__wrap_sqlite3_bind_text, 0);
     will_return(__wrap_wdb_step, SQLITE_DONE);
 
-    output = wdb_users_save(data, "scan_id", "scan_time", "name", "full_name", "home", 1, 1, "uuid", "groups", 1, 1, 1.0, "sudo",
-                            "shell", "type", true, false, 1, 1, 1.0, 1.0, 1, "hash", 1, 1, 1, 1, "status", 1, 1, "ip", true, 
-                            "type", "tty", "checksum", false);    
+    output = wdb_users_save(data, "scan_id", "scan_time", "name", "full_name", "home", user_id, user_uid_signed, "uuid", "group1,group2", 
+                            user_group_id, user_group_id_signed, user_created, "roles", "shell", "type", true, false, user_last_login, 
+                            user_auth_failed_count, user_auth_failed_timestamp, user_password_last_set_time, user_password_expiration_date, 
+                            "hash", user_password_inactive_days, user_password_last_change, user_password_max_days_between_changes, 
+                            user_password_min_days_between_changes, "status", user_password_warning_days_before_expiration, process_pid, 
+                            "192.168.0.1,192.168.0.2", true, "type", "tty", "checksum", false);    
     assert_int_equal(output, 0);
 }
 
@@ -3542,6 +3603,23 @@ void test_wdb_users_save_success(void **state) {
 void test_wdb_users_insert_sql_fail(void **state) {
     int output = 0;
     wdb_t *data = (wdb_t *)*state;
+
+    const long long user_id = 1;
+    const long long user_uid_signed = -1; 
+    const long long user_group_id = 1; 
+    const long long user_group_id_signed = -1;
+    const double user_created = 1750696338.665;  
+    const long long user_last_login = 1750696338;
+    const long long user_auth_failed_count = 1;
+    const double user_auth_failed_timestamp = 1750696338.665;
+    const double user_password_last_set_time = 1750696338; 
+    const int user_password_expiration_date = 1750696338; 
+    const int user_password_inactive_days = 0;
+    const int user_password_last_change = 10; 
+    const int user_password_max_days_between_changes = 9999;
+    const int user_password_min_days_between_changes = 0;
+    const int user_password_warning_days_before_expiration = 10;
+    const long long process_pid = 1010;
 
     will_return(__wrap_wdb_stmt_cache, 0);
     expect_value(__wrap_sqlite3_bind_text, pos, 1);
@@ -3559,29 +3637,29 @@ void test_wdb_users_insert_sql_fail(void **state) {
     expect_value(__wrap_sqlite3_bind_text, pos, 5);
     expect_string(__wrap_sqlite3_bind_text, buffer, "home");
     will_return(__wrap_sqlite3_bind_text, 0);
-    expect_value(__wrap_sqlite3_bind_int, index, 6);
-    expect_value(__wrap_sqlite3_bind_int, value, 1);
-    will_return(__wrap_sqlite3_bind_int, 0);
-    expect_value(__wrap_sqlite3_bind_int, index, 7);
-    expect_value(__wrap_sqlite3_bind_int, value, 1);
-    will_return(__wrap_sqlite3_bind_int, 0);
+    expect_value(__wrap_sqlite3_bind_int64, index, 6);
+    expect_value(__wrap_sqlite3_bind_int64, value, user_id);
+    will_return(__wrap_sqlite3_bind_int64, 0);
+    expect_value(__wrap_sqlite3_bind_int64, index, 7);
+    expect_value(__wrap_sqlite3_bind_int64, value, user_uid_signed);
+    will_return(__wrap_sqlite3_bind_int64, 0);
     expect_value(__wrap_sqlite3_bind_text, pos, 8);
     expect_string(__wrap_sqlite3_bind_text, buffer, "uuid");
     will_return(__wrap_sqlite3_bind_text, 0);
     expect_value(__wrap_sqlite3_bind_text, pos, 9);
-    expect_string(__wrap_sqlite3_bind_text, buffer, "groups");
+    expect_string(__wrap_sqlite3_bind_text, buffer, "group1,group2");
     will_return(__wrap_sqlite3_bind_text, 0);
-    expect_value(__wrap_sqlite3_bind_int, index, 10);
-    expect_value(__wrap_sqlite3_bind_int, value, 1);
-    will_return(__wrap_sqlite3_bind_int, 0);
-    expect_value(__wrap_sqlite3_bind_int, index, 11);
-    expect_value(__wrap_sqlite3_bind_int, value, 1);
-    will_return(__wrap_sqlite3_bind_int, 0);
+    expect_value(__wrap_sqlite3_bind_int64, index, 10);
+    expect_value(__wrap_sqlite3_bind_int64, value, user_group_id);
+    will_return(__wrap_sqlite3_bind_int64, 0);
+    expect_value(__wrap_sqlite3_bind_int64, index, 11);
+    expect_value(__wrap_sqlite3_bind_int64, value, user_group_id_signed);
+    will_return(__wrap_sqlite3_bind_int64, 0);
     expect_value(__wrap_sqlite3_bind_double, index, 12);
-    expect_value(__wrap_sqlite3_bind_double, value, 1.0);
+    expect_value(__wrap_sqlite3_bind_double, value, user_created);
     will_return(__wrap_sqlite3_bind_double, 0);
     expect_value(__wrap_sqlite3_bind_text, pos, 13);
-    expect_value(__wrap_sqlite3_bind_text, buffer, "sudo");
+    expect_value(__wrap_sqlite3_bind_text, buffer, "roles");
     will_return(__wrap_sqlite3_bind_text, 0);
     expect_value(__wrap_sqlite3_bind_text, pos, 14);
     expect_string(__wrap_sqlite3_bind_text, buffer, "shell");
@@ -3596,46 +3674,46 @@ void test_wdb_users_insert_sql_fail(void **state) {
     expect_value(__wrap_sqlite3_bind_int, value, false);
     will_return(__wrap_sqlite3_bind_int, 0);
     expect_value(__wrap_sqlite3_bind_int64, index, 18);
-    expect_value(__wrap_sqlite3_bind_int64, value, 1);
+    expect_value(__wrap_sqlite3_bind_int64, value, user_last_login);
     will_return(__wrap_sqlite3_bind_int64, 0);  
-    expect_value(__wrap_sqlite3_bind_int, index, 19);
-    expect_value(__wrap_sqlite3_bind_int, value, 1);
-    will_return(__wrap_sqlite3_bind_int, 0); 
+    expect_value(__wrap_sqlite3_bind_int64, index, 19);
+    expect_value(__wrap_sqlite3_bind_int64, value, user_auth_failed_count);
+    will_return(__wrap_sqlite3_bind_int64, 0); 
     expect_value(__wrap_sqlite3_bind_double, index, 20);
-    expect_value(__wrap_sqlite3_bind_double, value, 1.0);
+    expect_value(__wrap_sqlite3_bind_double, value, user_auth_failed_timestamp);
     will_return(__wrap_sqlite3_bind_double, 0);
     expect_value(__wrap_sqlite3_bind_double, index, 21);
-    expect_value(__wrap_sqlite3_bind_double, value, 1.0);
+    expect_value(__wrap_sqlite3_bind_double, value, user_password_last_set_time);
     will_return(__wrap_sqlite3_bind_double, 0);    
     expect_value(__wrap_sqlite3_bind_int, index, 22);
-    expect_value(__wrap_sqlite3_bind_int, value, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, user_password_expiration_date);
     will_return(__wrap_sqlite3_bind_int, 0);
     expect_value(__wrap_sqlite3_bind_text, pos, 23);
     expect_string(__wrap_sqlite3_bind_text, buffer, "hash");
     will_return(__wrap_sqlite3_bind_text, 0);
     expect_value(__wrap_sqlite3_bind_int, index, 24);
-    expect_value(__wrap_sqlite3_bind_int, value, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, user_password_inactive_days);
     will_return(__wrap_sqlite3_bind_int, 0);    
     expect_value(__wrap_sqlite3_bind_int, index, 25);
-    expect_value(__wrap_sqlite3_bind_int, value, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, user_password_last_change);
     will_return(__wrap_sqlite3_bind_int, 0);    
     expect_value(__wrap_sqlite3_bind_int, index, 26);
-    expect_value(__wrap_sqlite3_bind_int, value, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, user_password_max_days_between_changes);
     will_return(__wrap_sqlite3_bind_int, 0);    
     expect_value(__wrap_sqlite3_bind_int, index, 27);
-    expect_value(__wrap_sqlite3_bind_int, value, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, user_password_min_days_between_changes);
     will_return(__wrap_sqlite3_bind_int, 0);
     expect_value(__wrap_sqlite3_bind_text, pos, 28);
     expect_string(__wrap_sqlite3_bind_text, buffer, "status");
     will_return(__wrap_sqlite3_bind_text, 0);
     expect_value(__wrap_sqlite3_bind_int, index, 29);
-    expect_value(__wrap_sqlite3_bind_int, value, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, user_password_warning_days_before_expiration);
     will_return(__wrap_sqlite3_bind_int, 0);
     expect_value(__wrap_sqlite3_bind_int64, index, 30);
-    expect_value(__wrap_sqlite3_bind_int64, value, 1);
+    expect_value(__wrap_sqlite3_bind_int64, value, process_pid);
     will_return(__wrap_sqlite3_bind_int64, 0);
     expect_value(__wrap_sqlite3_bind_text, pos, 31);
-    expect_string(__wrap_sqlite3_bind_text, buffer, "ip");
+    expect_string(__wrap_sqlite3_bind_text, buffer, "192.168.0.1,192.168.0.2");
     will_return(__wrap_sqlite3_bind_text, 0);
     expect_value(__wrap_sqlite3_bind_int, index, 32);
     expect_value(__wrap_sqlite3_bind_int, value, true);
@@ -3654,9 +3732,12 @@ void test_wdb_users_insert_sql_fail(void **state) {
     will_return(__wrap_sqlite3_errmsg, "ERROR");
     expect_string(__wrap__merror, formatted_msg, "SQLite: ERROR");
 
-    output = wdb_users_insert(data, "scan_id", "scan_time", "name", "full_name", "home", 1, 1, "uuid", "groups", 1, 1, 1.0, "sudo",
-                            "shell", "type", true, false, 1, 1, 1.0, 1.0, 1, "hash", 1, 1, 1, 1, "status", 1, 1, "ip", true, 
-                            "type", "tty", "checksum", false);    
+    output = wdb_users_insert(data, "scan_id", "scan_time", "name", "full_name", "home", user_id, user_uid_signed, "uuid", "group1,group2", 
+                              user_group_id, user_group_id_signed, user_created, "roles", "shell", "type", true, false, user_last_login, 
+                              user_auth_failed_count, user_auth_failed_timestamp, user_password_last_set_time, user_password_expiration_date, 
+                              "hash", user_password_inactive_days, user_password_last_change, user_password_max_days_between_changes, 
+                              user_password_min_days_between_changes, "status", user_password_warning_days_before_expiration, process_pid, 
+                              "192.168.0.1,192.168.0.2", true, "type", "tty", "checksum", false);    
     assert_int_equal(output, -1);
 }
 
@@ -3669,7 +3750,10 @@ void test_wdb_groups_save_transaction_fail(void **state) {
     will_return(__wrap_wdb_begin2, -1);
     expect_string(__wrap__mdebug1, formatted_msg, "at wdb_groups_save(): cannot begin transaction");
 
-    output = wdb_groups_save(data, "scan_id", "scan_time", 1, "name", "description", 1, "uuid", true, "users", "checksum", false);
+    const long long group_id = 1; 
+    const long long group_id_signed = -1; 
+
+    output = wdb_groups_save(data, "scan_id", "scan_time", group_id, "name", "description", group_id_signed, "uuid", true, "users", "checksum", false);
     assert_int_equal(output, -1);
 }
 
@@ -3682,7 +3766,10 @@ void test_wdb_groups_save_insert_fail(void **state) {
     will_return(__wrap_wdb_stmt_cache, -1);
     expect_string(__wrap__mdebug1, formatted_msg, "at wdb_groups_insert(): cannot cache statement");
 
-    output = wdb_groups_save(data, "scan_id", "scan_time", 1, "name", "description", 1, "uuid", true, "users", "checksum", false);
+    const long long group_id = 1; 
+    const long long group_id_signed = -1; 
+
+    output = wdb_groups_save(data, "scan_id", "scan_time", group_id, "name", "description", group_id_signed, "uuid", true, "users", "checksum", false);
     assert_int_equal(output, -1);
 }
 
@@ -3693,6 +3780,9 @@ void test_wdb_groups_save_success(void **state) {
     data->transaction = 0;
     will_return(__wrap_wdb_begin2, 0);
 
+    const long long group_id = 1; 
+    const long long group_id_signed = -1; 
+
     will_return(__wrap_wdb_stmt_cache, 0);
     expect_value(__wrap_sqlite3_bind_text, pos, 1);
     expect_string(__wrap_sqlite3_bind_text, buffer, "scan_id");
@@ -3701,7 +3791,7 @@ void test_wdb_groups_save_success(void **state) {
     expect_string(__wrap_sqlite3_bind_text, buffer, "scan_time");
     will_return(__wrap_sqlite3_bind_text, 0);
     expect_value(__wrap_sqlite3_bind_int64, index, 3);
-    expect_value(__wrap_sqlite3_bind_int64, value, 1);
+    expect_value(__wrap_sqlite3_bind_int64, value, group_id);
     will_return(__wrap_sqlite3_bind_int64, 0);
     expect_value(__wrap_sqlite3_bind_text, pos, 4);
     expect_string(__wrap_sqlite3_bind_text, buffer, "name");
@@ -3710,7 +3800,7 @@ void test_wdb_groups_save_success(void **state) {
     expect_string(__wrap_sqlite3_bind_text, buffer, "description");
     will_return(__wrap_sqlite3_bind_text, 0);
     expect_value(__wrap_sqlite3_bind_int64, index, 6);
-    expect_value(__wrap_sqlite3_bind_int64, value, 1);
+    expect_value(__wrap_sqlite3_bind_int64, value, group_id_signed);
     will_return(__wrap_sqlite3_bind_int64, 0);
     expect_value(__wrap_sqlite3_bind_text, pos, 7);
     expect_string(__wrap_sqlite3_bind_text, buffer, "uuid");
@@ -3726,7 +3816,7 @@ void test_wdb_groups_save_success(void **state) {
     will_return(__wrap_sqlite3_bind_text, 0);
     will_return(__wrap_wdb_step, SQLITE_DONE);
 
-    output = wdb_groups_save(data, "scan_id", "scan_time", 1, "name", "description", 1, "uuid", true, "users", "checksum", false);
+    output = wdb_groups_save(data, "scan_id", "scan_time", group_id, "name", "description", group_id_signed, "uuid", true, "users", "checksum", false);
     assert_int_equal(output, 0);
 }
 
@@ -3734,6 +3824,9 @@ void test_wdb_groups_save_success(void **state) {
 void test_wdb_groups_insert_sql_fail(void **state) {
     int output = 0;
     wdb_t *data = (wdb_t *)*state;
+
+    const long long group_id = 1; 
+    const long long group_id_signed = -1; 
 
     will_return(__wrap_wdb_stmt_cache, 0);
     expect_value(__wrap_sqlite3_bind_text, pos, 1);
@@ -3743,7 +3836,7 @@ void test_wdb_groups_insert_sql_fail(void **state) {
     expect_string(__wrap_sqlite3_bind_text, buffer, "scan_time");
     will_return(__wrap_sqlite3_bind_text, 0);
     expect_value(__wrap_sqlite3_bind_int64, index, 3);
-    expect_value(__wrap_sqlite3_bind_int64, value, 1);
+    expect_value(__wrap_sqlite3_bind_int64, value, group_id);
     will_return(__wrap_sqlite3_bind_int64, 0);
     expect_value(__wrap_sqlite3_bind_text, pos, 4);
     expect_string(__wrap_sqlite3_bind_text, buffer, "name");
@@ -3752,7 +3845,7 @@ void test_wdb_groups_insert_sql_fail(void **state) {
     expect_string(__wrap_sqlite3_bind_text, buffer, "description");
     will_return(__wrap_sqlite3_bind_text, 0);
     expect_value(__wrap_sqlite3_bind_int64, index, 6);
-    expect_value(__wrap_sqlite3_bind_int64, value, 1);
+    expect_value(__wrap_sqlite3_bind_int64, value, group_id_signed);
     will_return(__wrap_sqlite3_bind_int64, 0);
     expect_value(__wrap_sqlite3_bind_text, pos, 7);
     expect_string(__wrap_sqlite3_bind_text, buffer, "uuid");
@@ -3771,7 +3864,7 @@ void test_wdb_groups_insert_sql_fail(void **state) {
     will_return(__wrap_sqlite3_errmsg, "ERROR");
     expect_string(__wrap__merror, formatted_msg, "SQLite: ERROR");
 
-    output = wdb_groups_insert(data, "scan_id", "scan_time", 1, "name", "description", 1, "uuid", true, "users", "checksum", false);
+    output = wdb_groups_insert(data, "scan_id", "scan_time", group_id, "name", "description", group_id_signed, "uuid", true, "users", "checksum", false);
     assert_int_equal(output, -1);
 }
 
