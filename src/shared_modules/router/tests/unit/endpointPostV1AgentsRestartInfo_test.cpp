@@ -25,8 +25,8 @@ using ::testing::Sequence;
 class EndpointPostV1AgentsRestartInfoTest : public ::testing::Test
 {
 public:
-    std::shared_ptr<NiceMock<MockSQLiteStatement>> stmt;
-    std::shared_ptr<std::vector<std::string>> queries;
+    std::shared_ptr<NiceMock<MockSQLiteStatement>> stmt; ///< SQLite statement mock
+    std::shared_ptr<std::vector<std::string>> queries;   ///< SQLite queries mock
 
 protected:
     /**
