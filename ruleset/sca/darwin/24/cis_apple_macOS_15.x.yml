@@ -308,7 +308,7 @@ checks:
       - soc_2: ["CC6.3", "CC6.6", "CC7.1", "CC8.1"]
     condition: all
     rules:
-      - 'c:sh -c "launchctl list | grep -c com.apple.screensharing" -> r:^0$'
+      - 'not c:launchctl list -> r:com.apple.screensharing$'
 
   # 2.3.3.3 Ensure File Sharing Is Disabled. (Automated)
   - id: 35012
