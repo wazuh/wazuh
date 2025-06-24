@@ -5,7 +5,6 @@ project(browser_extensions)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# TODO: Make sure this does not fail for Windows and Linux machines
 include_directories(
   include
   ${CMAKE_SOURCE_DIR}/../external/nlohmann/
