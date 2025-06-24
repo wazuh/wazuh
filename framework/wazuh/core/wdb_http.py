@@ -222,7 +222,7 @@ class WazuhDBHTTPClient:
         Parameters
         ----------
         ids : list[int]
-            List of agent IDs to query
+            List of agent IDs to query.
         negate : bool
             Whether to negate the ID filter (i.e., exclude these IDs).
 
@@ -232,15 +232,15 @@ class WazuhDBHTTPClient:
             A list of agent restart information dicts.
         """
         request_data = {
-            "ids": [int(id) for id in ids],
-            "negate": negate
+            'ids': [int(id) for id in ids],
+            'negate': negate
         }
 
         data = await self._post('/agents/restartinfo', request_data)
         agents_restart_info = data.get('items', [])
 
         for info in agents_restart_info:
-            info['id'] = f"{int(info['id']):03}"
+            info['id'] = str(info['id']).zfill(3)
 
         return agents_restart_info
 
