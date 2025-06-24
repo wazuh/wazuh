@@ -1,0 +1,12 @@
+{
+    "agent_info": {
+        "agent_id": "001",
+        "agent_ip": "any",
+        "agent_name": "DESKTOP-5RL9J34",
+        "agent_version": "v4.10.1"
+    },
+    "action": "deleteGroup",
+    "data": {
+        "group_id": 585
+    }
+}

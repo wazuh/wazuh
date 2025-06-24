@@ -76,7 +76,7 @@ struct User final
                     MAKE_FIELD("last_set_time", &Password::last_set_time));
     };
 
-    AuthFailed auth_failed;
+    AuthFailed auth_failures;
     std::string_view created;
     std::string_view full_name;
     UserGroupInfo group;
@@ -94,7 +94,7 @@ struct User final
     std::int64_t uid_signed = DEFAULT_INT_VALUE;
     std::string_view uuid;
 
-    REFLECTABLE(MAKE_FIELD("auth_failed", &User::auth_failed),
+    REFLECTABLE(MAKE_FIELD("auth_failures", &User::auth_failures),
                 MAKE_FIELD("created", &User::created),
                 MAKE_FIELD("full_name", &User::full_name),
                 MAKE_FIELD("id", &User::id),

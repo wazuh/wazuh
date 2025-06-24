@@ -1,0 +1,34 @@
+[
+    {
+        "index_name": "wazuh-states-inventory-groups-cluster01",
+        "data": [
+            {
+                "agent": {
+                    "id": "001",
+                    "name": "centos9",
+                    "version": "v4.10.1"
+                },
+                "group": {
+                    "description": "Les membres de ce groupe peuvent se connecter à cet ordinateur à l'aide de SSH.",
+                    "id": 585,
+                    "id_signed": -585,
+                    "is_hidden": false,
+                    "name": "Utilisateurs OpenSSH",
+                    "users": [
+                        "user1",
+                        "user2"
+                    ],
+                    "uuid": "S-1-5-32-585"
+                },
+                "wazuh": {
+                    "cluster": {
+                        "name": "cluster01"
+                    },
+                    "schema": {
+                        "version": "1.0"
+                    }
+                }
+            }
+        ]
+    }
+]

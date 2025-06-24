@@ -1,0 +1,16 @@
+{
+  "agent_info": {
+      "agent_id": "001",
+      "agent_ip": "any",
+      "agent_name": "DESKTOP-5RL9J34",
+      "agent_version": "v4.10.1"
+  },
+  "data_type": "integrity_check_global",
+  "data": {
+      "attributes_type": "syscollector_groups",
+      "begin": "1",
+      "checksum": "b6f269e8909d15554ee7f41fa118890bb665bdf7",
+      "end": "92",
+      "id": 1740672009
+  }
+}

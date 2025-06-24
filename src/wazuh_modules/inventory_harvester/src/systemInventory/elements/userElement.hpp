@@ -55,7 +55,10 @@ public:
 
         element.operation = "INSERTED";
 
-        element.data.host.ip = Utils::splitView(data->userHostIp(), ',');
+        if (!data->userHostIp().empty())
+        {
+            element.data.host.ip = Utils::splitView(data->userHostIp(), ',');
+        }
 
         element.data.login.status = data->userLoginStatus();
         element.data.login.tty = data->userLoginTty();
@@ -78,10 +81,13 @@ public:
         element.data.user.group.id = data->userGroupId();
         element.data.user.group.id_signed = data->userGroupIdSigned();
 
-        element.data.user.groups = Utils::splitView(data->userGroups(), ',');
+        if (!data->userGroups().empty())
+        {
+            element.data.user.groups = Utils::splitView(data->userGroups(), ',');
+        }
 
-        element.data.user.auth_failed.count = data->userAuthFailedCount();
-        element.data.user.auth_failed.timestamp = data->userAuthFailedTimestamp();
+        element.data.user.auth_failures.count = data->userAuthFailedCount();
+        element.data.user.auth_failures.timestamp = data->userAuthFailedTimestamp();
 
         element.data.user.password.status = data->userPasswordStatus();
         element.data.user.password.last_change = data->userPasswordLastChange();
@@ -93,7 +99,10 @@ public:
         element.data.user.password.min_days_between_changes = data->userPasswordMinDays();
         element.data.user.password.warning_days_before_expiration = data->userPasswordWarningDays();
 
-        element.data.user.roles = Utils::splitView(data->userRoles(), ',');
+        if (!data->userRoles().empty())
+        {
+            element.data.user.roles = Utils::splitView(data->userRoles(), ',');
+        }
 
         element.data.agent.id = agentId;
         element.data.agent.name = data->agentName();

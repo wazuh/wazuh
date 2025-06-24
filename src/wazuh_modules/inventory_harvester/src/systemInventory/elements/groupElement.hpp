@@ -60,8 +60,16 @@ public:
         element.data.group.description = data->groupDescription();
         element.data.group.id_signed = data->groupIdSigned();
         element.data.group.uuid = data->groupUuid();
-        element.data.group.is_hidden = data->groupIsHidden();
-        element.data.group.users = Utils::splitView(data->groupUsers(), ',');
+
+        if (std::nullopt != data->groupIsHidden())
+        {
+            element.data.group.is_hidden = data->groupIsHidden().value();
+        }
+
+        if (!data->groupUsers().empty())
+        {
+            element.data.group.users = Utils::splitView(data->groupUsers(), ',');
+        }
 
         element.data.agent.id = agentId;
         element.data.agent.name = data->agentName();

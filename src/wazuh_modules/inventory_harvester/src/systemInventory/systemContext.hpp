@@ -17,6 +17,7 @@
 #include "stringHelper.h"
 #include "timeHelper.h"
 #include <json.hpp>
+#include <loggerHelper.h>
 #include <variant>
 
 struct SystemContext final
@@ -181,9 +182,12 @@ public:
         }
         else
         {
-            return 0;
+            if (m_jsonData->contains("/data/group_id"_json_pointer))
+            {
+                return m_jsonData->at("/data/group_id"_json_pointer).get<std::int64_t>();
+            }
         }
-        return 0;
+        return -1;
     }
 
     int64_t groupIdSigned() const
@@ -266,14 +270,14 @@ public:
         return "";
     }
 
-    bool groupIsHidden() const
+    std::optional<bool> groupIsHidden() const
     {
         if (m_type == VariantType::Delta)
         {
             if (m_delta->data_as_dbsync_groups() &&
                 std::optional<bool>(m_delta->data_as_dbsync_groups()->group_is_hidden()).has_value())
             {
-                return std::optional<bool>(m_delta->data_as_dbsync_groups()->group_is_hidden()).value();
+                return std::optional<bool>(m_delta->data_as_dbsync_groups()->group_is_hidden());
             }
         }
         else if (m_type == VariantType::SyncMsg)
@@ -283,15 +287,14 @@ public:
                     .has_value())
             {
                 return std::optional<bool>(
-                           m_syncMsg->data_as_state()->attributes_as_syscollector_groups()->group_is_hidden())
-                    .value();
+                    m_syncMsg->data_as_state()->attributes_as_syscollector_groups()->group_is_hidden());
             }
         }
         else
         {
-            return false;
+            return std::nullopt;
         }
-        return false;
+        return std::nullopt;
     }
 
     std::string_view groupUsers() const
@@ -338,7 +341,10 @@ public:
         }
         else
         {
-            return "";
+            if (m_jsonData->contains("/data/user_name"_json_pointer))
+            {
+                return m_jsonData->at("/data/user_name"_json_pointer).get<std::string_view>();
+            }
         }
         return "";
     }
