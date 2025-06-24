@@ -12,13 +12,13 @@
 #include <string>
 #include "ibrowser_extensions_wrapper.hpp"
 
-#define kAppPath "/Applications/"
+#define APP_PATH "/Applications"
 
 class BrowserExtensionsWrapper : public IBrowserExtensionsWrapper
 {
     public:
         std::string getApplicationsPath() override
         {
-            return std::string(kAppPath);
+            return std::string(APP_PATH);
         }
 };
