@@ -80,8 +80,8 @@ public:
 
         element.data.user.groups = Utils::splitView(data->userGroups(), ',');
 
-        element.data.user.auth_failures.count = data->userAuthFailuresCount();
-        element.data.user.auth_failures.timestamp = data->userAuthFailuresTimestamp();
+        element.data.user.auth_failed.count = data->userAuthFailedCount();
+        element.data.user.auth_failed.timestamp = data->userAuthFailedTimestamp();
 
         element.data.user.password.status = data->userPasswordStatus();
         element.data.user.password.last_change = data->userPasswordLastChange();
@@ -93,7 +93,7 @@ public:
         element.data.user.password.min_days_between_changes = data->userPasswordMinDays();
         element.data.user.password.warning_days_before_expiration = data->userPasswordWarningDays();
 
-        element.data.user.roles = Utils::splitView(data->userRolesSudo(), ',');
+        element.data.user.roles = Utils::splitView(data->userRoles(), ',');
 
         element.data.agent.id = agentId;
         element.data.agent.name = data->agentName();

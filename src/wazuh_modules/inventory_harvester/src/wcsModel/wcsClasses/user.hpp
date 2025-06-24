@@ -40,16 +40,16 @@ struct User final
         REFLECTABLE(MAKE_FIELD("pid", &Process::pid));
     };
 
-    struct AuthFailures final
+    struct AuthFailed final
     {
         std::int32_t count = DEFAULT_INT32_VALUE;
         std::string_view timestamp;
-        REFLECTABLE(MAKE_FIELD("count", &AuthFailures::count), MAKE_FIELD("timestamp", &AuthFailures::timestamp));
+        REFLECTABLE(MAKE_FIELD("count", &AuthFailed::count), MAKE_FIELD("timestamp", &AuthFailed::timestamp));
     };
 
     struct UserGroupInfo final
     {
-        std::uint64_t id = DEFAULT_INT_VALUE;
+        std::uint64_t id = DEFAULT_INT_VALUE; // Huge positive number.
         std::int64_t id_signed = DEFAULT_INT_VALUE;
         REFLECTABLE(MAKE_FIELD("id", &UserGroupInfo::id), MAKE_FIELD("id_signed", &UserGroupInfo::id_signed));
     };
@@ -76,7 +76,7 @@ struct User final
                     MAKE_FIELD("last_set_time", &Password::last_set_time));
     };
 
-    AuthFailures auth_failures;
+    AuthFailed auth_failed;
     std::string_view created;
     std::string_view full_name;
     UserGroupInfo group;
@@ -94,7 +94,7 @@ struct User final
     std::int64_t uid_signed = DEFAULT_INT_VALUE;
     std::string_view uuid;
 
-    REFLECTABLE(MAKE_FIELD("auth_failures", &User::auth_failures),
+    REFLECTABLE(MAKE_FIELD("auth_failed", &User::auth_failed),
                 MAKE_FIELD("created", &User::created),
                 MAKE_FIELD("full_name", &User::full_name),
                 MAKE_FIELD("id", &User::id),
