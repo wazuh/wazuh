@@ -66,7 +66,7 @@ public:
             jsonBody = nlohmann::json::parse(req.body);
         }
 
-        std::string sqlQuery = "SELECT id, version, connection_status FROM agent";
+        std::string sqlQuery = "SELECT id, version FROM agent WHERE connection_status = 'active'";
         bool isFiltered {false};
 
         if (jsonBody.contains("ids") && jsonBody.at("ids").is_array() && !jsonBody.at("ids").empty())
@@ -75,7 +75,7 @@ public:
             std::string selectIds;
             bool negateFilter {false};
 
-            for (const auto& id : jsonBody.at("ids"))
+            for (size_t i = 0; i < jsonBody.at("ids").size(); ++i)
             {
                 selectIds.empty() ? selectIds.append("?") : selectIds.append(",?");
             }
@@ -85,7 +85,7 @@ public:
                 negateFilter = jsonBody.at("negate").get<bool>();
             }
 
-            sqlQuery.append(" WHERE id ");
+            sqlQuery.append(" AND id ");
             if (negateFilter)
             {
                 sqlQuery.append("NOT ");
@@ -117,7 +117,7 @@ public:
         }
 
         std::string jsonResponse;
-        serializeToJSON(response, jsonResponse);
+        serializeToJSON<Response, false>(response, jsonResponse);
         res.body = std::move(jsonResponse);
         res.set_header("Content-Type", "application/json");
     }

@@ -73,7 +73,7 @@ TEST_F(EndpointPostV1AgentsRestartInfoTest, AllAgents)
 
     EXPECT_CALL(*stmt, valueString(1))
         .WillOnce(testing::Return("v4.13.0"))
-        .WillOnce(testing::Return("v4.12.0"))
+        .WillOnce(testing::Return(""))
         .WillOnce(testing::Return("v4.11.0"));
 
     EXPECT_CALL(*stmt, valueString(2))
@@ -85,11 +85,11 @@ TEST_F(EndpointPostV1AgentsRestartInfoTest, AllAgents)
 
     EXPECT_EQ(
         res.body,
-        R"({"items":[{"id":1,"version":"v4.13.0","status":"active"},{"id":2,"version":"v4.12.0","status":"disconnected"},{"id":3,"version":"v4.11.0","status":"never_connected"}]})");
+        R"({"items":[{"id":1,"version":"v4.13.0","status":"active"},{"id":2,"version":"","status":"disconnected"},{"id":3,"version":"v4.11.0","status":"never_connected"}]})");
 
     ASSERT_EQ(queries->size(), 1);
 
-    EXPECT_EQ((*queries)[0], "SELECT id, version, connection_status FROM agent;");
+    EXPECT_EQ((*queries)[0], "SELECT id, version FROM agent WHERE connection_status = 'active';");
 }
 
 TEST_F(EndpointPostV1AgentsRestartInfoTest, SomeAgents)
@@ -130,7 +130,7 @@ TEST_F(EndpointPostV1AgentsRestartInfoTest, SomeAgents)
 
     ASSERT_EQ(queries->size(), 1);
 
-    EXPECT_EQ((*queries)[0], "SELECT id, version, connection_status FROM agent WHERE id IN (?,?);");
+    EXPECT_EQ((*queries)[0], "SELECT id, version FROM agent WHERE connection_status = 'active' AND id IN (?,?);");
 }
 
 TEST_F(EndpointPostV1AgentsRestartInfoTest, SomeAgentsNegated)
@@ -165,7 +165,7 @@ TEST_F(EndpointPostV1AgentsRestartInfoTest, SomeAgentsNegated)
 
     ASSERT_EQ(queries->size(), 1);
 
-    EXPECT_EQ((*queries)[0], "SELECT id, version, connection_status FROM agent WHERE id NOT IN (?,?);");
+    EXPECT_EQ((*queries)[0], "SELECT id, version FROM agent WHERE connection_status = 'active' AND id NOT IN (?,?);");
 }
 
 TEST_F(EndpointPostV1AgentsRestartInfoTest, NoAgents)
@@ -191,9 +191,9 @@ TEST_F(EndpointPostV1AgentsRestartInfoTest, NoAgents)
 
     TEndpointPostV1AgentsRestartInfo<MockSQLiteConnection, TrampolineSQLiteStatement>::call(db, req, res);
 
-    EXPECT_EQ(res.body, R"({})");
+    EXPECT_EQ(res.body, R"({"items":[]})");
 
     ASSERT_EQ(queries->size(), 1);
 
-    EXPECT_EQ((*queries)[0], "SELECT id, version, connection_status FROM agent WHERE id NOT IN (?,?,?);");
+    EXPECT_EQ((*queries)[0], "SELECT id, version FROM agent WHERE connection_status = 'active' AND id NOT IN (?,?,?);");
 }

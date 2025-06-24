@@ -15,6 +15,7 @@
 #include <array>
 #include <charconv>
 #include <functional>
+#include <iostream>
 #include <list>
 #include <map>
 #include <string>
@@ -304,9 +305,9 @@ std::string jsonFieldToString(const std::unordered_map<K, V>& map)
     return json;
 }
 
-template<typename T>
+template<typename T, bool NOEMPTY, bool NOSINGLESPACE>
 std::string jsonFieldToString(const T& obj);
-template<typename T>
+template<typename T, bool NOEMPTY, bool NOSINGLESPACE>
 void jsonFieldToString(const T& obj, std::string& json);
 
 template<typename T, bool NOEMPTY = true, bool NOSINGLESPACE = true>
@@ -444,7 +445,7 @@ std::enable_if_t<IsReflectable<T>::value, void> serializeToJSON(const T& obj, st
                              }
                              else
                              {
-                                 jsonFieldToString(value, json);
+                                 jsonFieldToString<std::decay_t<decltype(value)>, NOEMPTY, NOSINGLESPACE>(value, json);
                              }
                          }
                          json.push_back('}');
@@ -495,14 +496,14 @@ std::enable_if_t<IsReflectable<T>::value, void> serializeToJSON(const T& obj, st
                              }
                              else
                              {
-                                 jsonFieldToString(v, json);
+                                 jsonFieldToString<std::decay_t<decltype(v)>, NOEMPTY, NOSINGLESPACE>(v, json);
                              }
                          }
                          json.push_back(']');
                      }
                      else
                      {
-                         jsonFieldToString(data, json);
+                         jsonFieldToString<std::decay_t<decltype(data)>, NOEMPTY, NOSINGLESPACE>(data, json);
                      }
                  }()),
              ...);
@@ -525,7 +526,7 @@ std::enable_if_t<IsReflectable<T>::value, std::string> serializeToJSON(const T& 
         std::string json;
         json.reserve(1024);
 
-        jsonFieldToString(data, json);
+        jsonFieldToString<std::decay_t<decltype(data)>, NOEMPTY, NOSINGLESPACE>(data, json);
         return json;
     }
 
@@ -544,6 +545,8 @@ std::enable_if_t<IsReflectable<T>::value, std::string> serializeToJSON(const T& 
                      const auto& data = obj.*(std::get<2>(field));
                      if constexpr (NOEMPTY)
                      {
+                         std::cout << "2NOEMPTY" << std::endl;
+                         std::cout << NOEMPTY << std::endl;
                          if (isEmpty(data))
                          {
                              return;
@@ -704,7 +707,7 @@ std::enable_if_t<IsReflectable<T>::value, std::string> serializeToJSON(const T& 
                                      }
                                      else
                                      {
-                                         jsonFieldToString(v, json);
+                                         jsonFieldToString<std::decay_t<decltype(v)>, NOEMPTY, NOSINGLESPACE>(v, json);
                                      }
                                  }
                                  json.push_back(']');
@@ -712,14 +715,14 @@ std::enable_if_t<IsReflectable<T>::value, std::string> serializeToJSON(const T& 
 
                              else
                              {
-                                 jsonFieldToString(value, json);
+                                 jsonFieldToString<std::decay_t<decltype(value)>, NOEMPTY, NOSINGLESPACE>(value, json);
                              }
                          }
                          json.push_back('}');
                      }
                      else
                      {
-                         jsonFieldToString(data, json);
+                         jsonFieldToString<std::decay_t<decltype(data)>, NOEMPTY, NOSINGLESPACE>(data, json);
                      }
                  }()),
              ...);
@@ -730,7 +733,7 @@ std::enable_if_t<IsReflectable<T>::value, std::string> serializeToJSON(const T& 
     return json;
 }
 
-template<typename T>
+template<typename T, bool NOEMPTY, bool NOSINGLESPACE>
 std::enable_if_t<IS_VECTOR_V<T>, void> serializeToJSON(const T& vec, std::string& json)
 {
     size_t count = 0;
@@ -776,22 +779,22 @@ std::enable_if_t<IS_VECTOR_V<T>, void> serializeToJSON(const T& vec, std::string
         }
         else
         {
-            jsonFieldToString(v, json);
+            jsonFieldToString<std::decay_t<decltype(v)>, NOEMPTY, NOSINGLESPACE>(v, json);
         }
     }
     json.push_back(']');
 }
 
-template<typename T>
+template<typename T, bool NOEMPTY, bool NOSINGLESPACE>
 std::string jsonFieldToString(const T& obj)
 {
-    return serializeToJSON(obj);
+    return serializeToJSON<T, NOEMPTY, NOSINGLESPACE>(obj);
 }
 
-template<typename T>
+template<typename T, bool NOEMPTY, bool NOSINGLESPACE>
 void jsonFieldToString(const T& obj, std::string& json)
 {
-    serializeToJSON(obj, json);
+    serializeToJSON<T, NOEMPTY, NOSINGLESPACE>(obj, json);
 }
 
 #endif // _REFLECTIVE_JSON_HPP
