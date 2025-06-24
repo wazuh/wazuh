@@ -37,7 +37,7 @@ unsigned int count_reload_retries;
 static const char *const AUDISP_OLD_CONFIGURATION = "active = yes\ndirection = out\npath = builtin_af_unix\n"
                                                 "type = builtin\nargs = 0640 %s\nformat = string\n";
 static const char *const AUDISP_CONFIGURATION = "active = yes\ndirection = out\npath = /sbin/audisp-af_unix\n"
-                                                "type = always\nargs = 0640 %s\nformat = string\n";
+                                                "type = always\nargs = 0640 %s string\nformat = binary\n";
 
 w_queue_t * audit_queue;
 
@@ -83,14 +83,41 @@ int check_auditd_enabled(void) {
     return auditd_pid;
 }
 
-int configure_audisp(const char *audisp_path, const char *audisp_config) {
+int configure_audisp(const char *audisp_path, const char *abs_path_socket, const char *audisp_config) {
     FILE *fp;
+    struct stat st;
 
     minfo(FIM_AUDIT_SOCKET, audisp_path);
+
+    if (lstat(audisp_path, &st) == 0) {
+        if (unlink(audisp_path) < 0) {
+            merror(UNLINK_ERROR, audisp_path, errno, strerror(errno));
+            return -1;
+        }
+    }
+
+    if (lstat(abs_path_socket, &st) == 0) {
+        if (unlink(abs_path_socket) < 0) {
+            merror(UNLINK_ERROR, abs_path_socket, errno, strerror(errno));
+            return -1;
+        }
+    }
 
     fp = wfopen(audisp_path, "w");
     if (!fp) {
         merror(FOPEN_ERROR, audisp_path, errno, strerror(errno));
+        return -1;
+    }
+
+    if (fchmod(fileno(fp), 0640) < 0) {
+        merror("Unable to set permissions on %s: %s", audisp_path, strerror(errno));
+        fclose(fp);
+        return -1;
+    }
+
+    if (fchown(fileno(fp), 0, 0) < 0) {
+        merror("Unable to set owner on %s: %s", audisp_path, strerror(errno));
+        fclose(fp);
         return -1;
     }
 
@@ -146,12 +173,12 @@ int set_auditd_config(void) {
     OS_SHA1_Str(configuration, configuration_length, configuration_sha1);
 
     if (OS_SHA1_File(audisp_path, file_sha1, OS_TEXT) != 0) {
-        retval = configure_audisp(audisp_path, configuration);
+        retval = configure_audisp(audisp_path, abs_path_socket, configuration);
         goto end;
     }
 
     if (strcmp(file_sha1, configuration_sha1) != 0) {
-        retval = configure_audisp(audisp_path, configuration);
+        retval = configure_audisp(audisp_path, abs_path_socket, configuration);
         goto end;
     }
 
