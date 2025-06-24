@@ -141,6 +141,21 @@ namespace Utils
         }
         return path.substr(pos + 1);
     }
+
+    static std::string getFileExtension(const std::string& path)
+    {
+        const std::string fileName = getFilename(path);
+        return "." + split(fileName, '.').back();
+    }
+
+    static std::string getParentPath(const std::string& path)
+    {
+        char baseCopy[PATH_MAX] = {'\0'};
+        strncpy(baseCopy, path.c_str(), sizeof(baseCopy) - 1);
+
+        std::string parentDir(dirname(baseCopy));
+        return parentDir;
+    }
 }
 
 #pragma GCC diagnostic pop
