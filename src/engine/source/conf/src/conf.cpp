@@ -1,5 +1,6 @@
 #include <conf/conf.hpp>
 
+#include <filesystem>
 #include <unistd.h>
 
 #include <fmt/format.h>
@@ -35,6 +36,9 @@ Conf::Conf(std::shared_ptr<IApiLoader> apiLoader)
     {
         throw std::invalid_argument("The API loader cannot be null.");
     }
+
+    // fs path
+    const std::filesystem::path wazuhRoot {"/var/ossec/"};
 
     // Register aviablable configuration units with Default Settings
 
@@ -73,14 +77,16 @@ Conf::Conf(std::shared_ptr<IApiLoader> apiLoader)
     addUnit<bool>(key::QUEUE_DROP_ON_FLOOD, "WAZUH_QUEUE_DROP_ON_FLOOD", true);
 
     // Orchestrator module
-    addUnit<int>(key::ORCHESTRATOR_THREADS, "WAZUH_ORCHESTRATOR_THREADS", 1);
+    addUnit<int>(key::ORCHESTRATOR_THREADS, "WAZUH_ORCHESTRATOR_THREADS", 1); // TODO: Change to -1 for auto-detect
 
     // Http server module
     addUnit<std::string>(key::SERVER_API_SOCKET, "WAZUH_SERVER_API_SOCKET", "/run/wazuh-server/engine-api.socket");
     addUnit<int>(key::SERVER_API_TIMEOUT, "WAZUH_SERVER_API_TIMEOUT", 5000);
-    addUnit<std::string>(key::SERVER_EVENT_SOCKET,
-                         "WAZUH_SERVER_EVENT_SOCKET",
-                         "/run/wazuh-server/engine.socket");
+
+    // Event server (dgram)
+    addUnit<std::string>(
+        key::SERVER_EVENT_SOCKET, "WAZUH_SERVER_EVENT_SOCKET", (wazuhRoot / "queue/sockets/queue").c_str());
+    addUnit<int>(key::SERVER_EVENT_THREADS, "WAZUH_SERVER_EVENT_THREADS", 1);
 
     // TZDB module
     addUnit<std::string>(key::TZDB_PATH, "WAZUH_TZDB_PATH", "/var/lib/wazuh-server/engine/tzdb");

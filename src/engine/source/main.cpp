@@ -14,6 +14,7 @@
 #include <api/policy/policy.hpp>
 #include <archiver/archiver.hpp>
 #include <base/logging.hpp>
+#include <base/eventParser.hpp>
 #include <base/utils/singletonLocator.hpp>
 #include <base/utils/singletonLocatorStrategies.hpp>
 #include <bk/rx/controller.hpp>
@@ -26,6 +27,7 @@
 #include <geo/downloader.hpp>
 #include <geo/manager.hpp>
 #include <httpsrv/server.hpp>
+#include <udgramsrv/udsrv.hpp>
 // TODO: Until the indexer connector is unified with the rest of wazuh-manager
 // #include <indexerConnector/indexerConnector.hpp>
 #include <kvdb/kvdbManager.hpp>
@@ -50,13 +52,14 @@ struct QueueTraits : public moodycamel::ConcurrentQueueDefaultTraits
 };
 } // namespace
 
-std::shared_ptr<httpsrv::Server> g_engineServer {};
+std::shared_ptr<udsrv::Server> g_engineServer {};
 
 void sigintHandler(const int signum)
 {
     if (g_engineServer)
     {
-        g_engineServer.reset();
+        g_engineServer->stop();
+        LOG_INFO("Received signal {}: Stopping the engine server.", signum);
     }
 }
 
@@ -451,6 +454,7 @@ int main(int argc, char* argv[])
             LOG_DEBUG("Tester API registered.");
 
             // Archiver
+            // should be refactored to use the rotation and dont use a semaphore for writing
             api::archiver::handlers::registerHandlers(archiver, apiServer);
             LOG_DEBUG("Archiver API registered.");
 
@@ -460,11 +464,18 @@ int main(int argc, char* argv[])
 
         // Server
         {
-            g_engineServer = std::make_shared<httpsrv::Server>("EVENT_SRV");
-            g_engineServer->addRoute(
-                httpsrv::Method::POST,
-                "/events/stateless",
-                api::event::handlers::pushEvent(orchestrator, api::event::protocol::getNDJsonParser(), archiver));
+            g_engineServer =
+                std::make_shared<udsrv::Server>([orchestrator, archiver](std::string_view msg)
+                                                { orchestrator->postEvent(base::eventParsers::parseLegacyEvent(msg)); },
+                                                confManager.get<std::string>(conf::key::SERVER_EVENT_SOCKET));
+            g_engineServer->start(confManager.get<int>(conf::key::SERVER_EVENT_THREADS));
+            LOG_INFO("Engine initialized and started.");
+        }
+
+        // Do not exit until the server is running
+        while (g_engineServer->isRunning())
+        {
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
         }
     }
     catch (const std::exception& e)
@@ -473,17 +484,6 @@ int main(int argc, char* argv[])
         LOG_ERROR("An error occurred while initializing the modules: {}.", msg);
         exitHandler.execute();
         exit(EXIT_FAILURE);
-    }
-
-    // Start server
-    try
-    {
-        g_engineServer->start(confManager.get<std::string>(conf::key::SERVER_EVENT_SOCKET),
-                              false); // Start in this thread
-    }
-    catch (const std::exception& e)
-    {
-        LOG_ERROR("An error occurred while running the server: {}.", utils::getExceptionStack(e));
     }
 
     // Clean exit

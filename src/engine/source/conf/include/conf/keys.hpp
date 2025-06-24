@@ -34,9 +34,11 @@ constexpr std::string_view QUEUE_DROP_ON_FLOOD = "/engine/queue/drop_on_flood";
 
 constexpr std::string_view ORCHESTRATOR_THREADS = "/engine/orchestrator/threads";
 
-constexpr std::string_view SERVER_EVENT_SOCKET = "/engine/server/event_socket";
 constexpr std::string_view SERVER_API_SOCKET = "/engine/server/api_socket";
 constexpr std::string_view SERVER_API_TIMEOUT = "/engine/server/api_timeout";
+
+constexpr std::string_view SERVER_EVENT_SOCKET = "/engine/server/event_socket";
+constexpr std::string_view SERVER_EVENT_THREADS = "/engine/server/event_threads";
 
 constexpr std::string_view TZDB_PATH = "/engine/tzdb/path";
 constexpr std::string_view TZDB_AUTO_UPDATE = "/engine/tzdb/auto_update";

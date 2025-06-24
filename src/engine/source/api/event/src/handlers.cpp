@@ -1,8 +1,7 @@
 #include <api/event/handlers.hpp>
 #include <base/logging.hpp>
 
-// TODO add metrics
-// TODO add fallback file for events that could not be parsed ??
+// TODO Delete this
 
 namespace api::event::handlers
 {
