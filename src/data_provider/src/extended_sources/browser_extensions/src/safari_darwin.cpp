@@ -1,49 +1,23 @@
 #include "safari_darwin.hpp"
+#include "filesystemHelper.h"
 #include <iostream>
-#include <filesystem>
 #include <algorithm>
 #include <plist/plist.h>
 #include <fstream>
 #include <unistd.h>
 
-#define kAppPluginsPath "Contents/PlugIns/"
-#define kAppPluginPlistPath "Contents/Info.plist"
-#define kSafariFilterString "com.apple.Safari"
-
-const std::vector<std::string> kExtensionsAppDirsToExclude =
+const std::vector<std::string> EXTENSIONS_APP_DIRS_TO_EXCLUDE =
 {
     "/Xcode.app",
     "/Safari.app",
 };
 
 BrowserExtensionsProvider::BrowserExtensionsProvider(
-    std::shared_ptr<IBrowserExtensionsWrapper> browser_extensions_wrapper) :
-    browser_extensions_wrapper_(std::move(browser_extensions_wrapper)) {}
+    std::shared_ptr<IBrowserExtensionsWrapper> browserExtensionsWrapper) :
+    m_browserExtensionsWrapper(std::move(browserExtensionsWrapper)) {}
 
 BrowserExtensionsProvider::BrowserExtensionsProvider() :
-    browser_extensions_wrapper_(std::make_shared<BrowserExtensionsWrapper>()) {}
-
-void BrowserExtensionsProvider::printExtensions(const BrowserExtensionsData& extensions)
-{
-    for (auto& data : extensions)
-    {
-        std::cout << std::endl;
-        std::cout << data.bundle_version << std::endl;
-        std::cout << data.copyright << std::endl;
-        std::cout << data.description << std::endl;
-        std::cout << data.identifier << std::endl;
-        std::cout << data.name << std::endl;
-        std::cout << data.path << std::endl;
-        std::cout << data.sdk << std::endl;
-        std::cout << data.uid << std::endl;
-        std::cout << data.version << std::endl;
-    }
-}
-
-void BrowserExtensionsProvider::printExtensions(const nlohmann::json& extensions_json)
-{
-    std::cout << extensions_json.dump(4) << std::endl;
-}
+    m_browserExtensionsWrapper(std::make_shared<BrowserExtensionsWrapper>()) {}
 
 nlohmann::json BrowserExtensionsProvider::toJson(const BrowserExtensionsData& extensions)
 {
@@ -69,212 +43,216 @@ nlohmann::json BrowserExtensionsProvider::toJson(const BrowserExtensionsData& ex
 
 nlohmann::json BrowserExtensionsProvider::collect()
 {
-    // Check if applications_path exists
-    const std::string applications_path = browser_extensions_wrapper_->getApplicationsPath();
-    std::filesystem::path apps_path{applications_path};
+    // Check if applicationsPathString exists
+    const std::string applicationsPathString = m_browserExtensionsWrapper->getApplicationsPath();
 
-    if (!std::filesystem::exists(apps_path))
+    if (!Utils::existsDir(applicationsPathString))
     {
-        std::cout << "Path does not exist: " << apps_path << std::endl;
+        std::cerr << "Path does not exist: " << applicationsPathString << std::endl;
     }
 
-    BrowserExtensionsData browser_extensions;
+    BrowserExtensionsData browserExtensions;
 
-    // Create list of directories inside of applications_path
-    for (auto& app_path : std::filesystem::directory_iterator(apps_path))
+    // Create list of directories inside of applicationsPathString
+    for (auto& appPath : Utils::enumerateDir(applicationsPathString))
     {
-        // For each app directory, exclude the ones in kExtensionsAppDirsToExclude
-        std::string app_name = "/" + app_path.path().filename().string();
+        appPath = applicationsPathString + "/" + appPath;
 
-        if (std::find(kExtensionsAppDirsToExclude.begin(), kExtensionsAppDirsToExclude.end(), app_name) != kExtensionsAppDirsToExclude.end())
+        // For each app directory, exclude the ones in EXTENSIONS_APP_DIRS_TO_EXCLUDE
+        std::string appName = "/" + Utils::getFilename(appPath);
+
+        if (std::find(EXTENSIONS_APP_DIRS_TO_EXCLUDE.begin(), EXTENSIONS_APP_DIRS_TO_EXCLUDE.end(), appName) != EXTENSIONS_APP_DIRS_TO_EXCLUDE.end())
         {
             continue;
         }
 
-        if (app_path.is_directory())
+        if (Utils::existsDir(appPath)) // check if it's a directory
         {
-            auto app_plugins_path = app_path.path() / std::filesystem::path(kAppPluginsPath);
+            auto appPluginsPath = appPath + "/" + APP_PLUGINS_PATH;
 
-            if (!std::filesystem::exists(app_plugins_path))
+            if (!Utils::existsDir(appPluginsPath))
             {
                 continue;
             }
 
-            for (auto& element : std::filesystem::directory_iterator(app_plugins_path))
+            for (auto& element : Utils::enumerateDir(appPluginsPath))
             {
-                if (element.path().extension().string() != ".appex")
+                element = appPluginsPath + element;
+
+                if (Utils::getFileExtension(element) != ".appex")
                 {
                     continue;
                 }
 
-                auto app_plugin_plist_path = element.path() / std::filesystem::path(kAppPluginPlistPath);
+                auto appPluginPlistPath = element + "/" + APP_PLUGIN_PLIST_PATH;
 
-                if (!std::filesystem::exists(app_plugin_plist_path))
+                if (!Utils::existsRegular(appPluginPlistPath))
                 {
                     continue;
                 }
 
-                std::string extension_path = app_plugin_plist_path.string();
-                std::ifstream plist_file(extension_path, std::ios::binary | std::ios::ate);
+                std::string extensionPath = appPluginPlistPath;
 
-                if (!plist_file)
+                std::ifstream plistFile(extensionPath, std::ios::binary | std::ios::ate);
+
+                if (!plistFile)
                 {
                     // TODO: Improve error handling
-                    std::cerr << "Failed to open file.\n";
+                    // std::cerr << "Failed to open file.\n";
                 }
 
-                std::streamsize file_size = plist_file.tellg();
-                plist_file.seekg(0);
-                std::vector<char> read_buffer(file_size);
+                std::streamsize fileSize = plistFile.tellg();
+                plistFile.seekg(0);
+                std::vector<char> readBuffer(fileSize);
 
-                if (!plist_file.read(read_buffer.data(), file_size))
+                if (!plistFile.read(readBuffer.data(), fileSize))
                 {
                     // TODO: Improve error handling
-                    std::cerr << "Failed to read file\n";
+                    // std::cerr << "Failed to read file\n";
                 }
 
-                plist_t plist_dict = nullptr;
-                plist_from_memory(read_buffer.data(), read_buffer.size(), &plist_dict);
+                plist_t plistDict = nullptr;
+                plist_from_memory(readBuffer.data(), readBuffer.size(), &plistDict);
 
-                if (!plist_dict || plist_get_node_type(plist_dict) != PLIST_DICT)
+                if (!plistDict || plist_get_node_type(plistDict) != PLIST_DICT)
                 {
                     // TODO: Improve error handling
-                    std::cerr << "Failed to parse plist\n";
+                    // std::cerr << "Failed to parse plist\n";
                 }
 
                 // Let's filter out the ones that are not Safari Extensions
-                plist_t ns_extension_node = plist_dict_get_item(plist_dict, "NSExtension");
+                plist_t nsExtensionNode = plist_dict_get_item(plistDict, "NSExtension");
 
-                if (ns_extension_node && plist_get_node_type(ns_extension_node) == PLIST_DICT)
+                if (nsExtensionNode && plist_get_node_type(nsExtensionNode) == PLIST_DICT)
                 {
-                    plist_t extension_type_node = plist_dict_get_item(ns_extension_node, "NSExtensionPointIdentifier");
+                    plist_t extensionTypeNode = plist_dict_get_item(nsExtensionNode, "NSExtensionPointIdentifier");
 
-                    if (extension_type_node && plist_get_node_type(extension_type_node) == PLIST_STRING)
+                    if (extensionTypeNode && plist_get_node_type(extensionTypeNode) == PLIST_STRING)
                     {
-                        char* extension_type = nullptr;
-                        plist_get_string_val(extension_type_node, &extension_type);
-                        std::string extension_type_str(extension_type);
-                        free(extension_type);
+                        char* extensionType = nullptr;
+                        plist_get_string_val(extensionTypeNode, &extensionType);
+                        std::string extensionTypeString(extensionType);
+                        free(extensionType);
 
-                        if (!(extension_type_str.find(kSafariFilterString) != std::string::npos))
+                        if (!(extensionTypeString.find(SAFARI_FILTER_STRING) != std::string::npos))
                         {
                             continue; // Not a Safari extension
                         }
 
-                        plist_t identifier_node = plist_dict_get_item(plist_dict, "CFBundleIdentifier");
-                        plist_t name_node = plist_dict_get_item(plist_dict, "CFBundleDisplayName");
-                        plist_t sdk_node = plist_dict_get_item(plist_dict, "CFBundleInfoDictionaryVersion");
-                        plist_t version_string_node = plist_dict_get_item(plist_dict, "CFBundleShortVersionString");
-                        plist_t bundle_version_node = plist_dict_get_item(plist_dict, "CFBundleVersion");
-                        plist_t copyright_node = plist_dict_get_item(plist_dict, "NSHumanReadableCopyright");
-                        plist_t description_node = plist_dict_get_item(plist_dict, "NSHumanReadableDescription");
+                        plist_t identifierNode = plist_dict_get_item(plistDict, "CFBundleIdentifier");
+                        plist_t nameNode = plist_dict_get_item(plistDict, "CFBundleDisplayName");
+                        plist_t sdkNode = plist_dict_get_item(plistDict, "CFBundleInfoDictionaryVersion");
+                        plist_t versionStringNode = plist_dict_get_item(plistDict, "CFBundleShortVersionString");
+                        plist_t bundleVersionNode = plist_dict_get_item(plistDict, "CFBundleVersion");
+                        plist_t copyrightNode = plist_dict_get_item(plistDict, "NSHumanReadableCopyright");
+                        plist_t descriptionNode = plist_dict_get_item(plistDict, "NSHumanReadableDescription");
 
                         // Creating an BrowserExtensionData object
-                        BrowserExtensionData browser_extension_data;
-                        browser_extension_data.path = extension_path;
-                        browser_extension_data.uid = std::to_string(getuid());
+                        BrowserExtensionData browserExtensionData;
+                        browserExtensionData.path = extensionPath;
+                        browserExtensionData.uid = std::to_string(getuid());
 
-                        if (identifier_node && plist_get_node_type(identifier_node) == PLIST_STRING)
+                        if (identifierNode && plist_get_node_type(identifierNode) == PLIST_STRING)
                         {
-                            char* identifier_str = nullptr;
-                            plist_get_string_val(identifier_node, &identifier_str);
-                            browser_extension_data.identifier = identifier_str;
-                            free(identifier_str);
+                            char* identifierString = nullptr;
+                            plist_get_string_val(identifierNode, &identifierString);
+                            browserExtensionData.identifier = identifierString;
+                            free(identifierString);
                         }
                         else
                         {
-                            browser_extension_data.identifier = "";
+                            browserExtensionData.identifier = "";
                         }
 
-                        if (name_node && plist_get_node_type(name_node) == PLIST_STRING)
+                        if (nameNode && plist_get_node_type(nameNode) == PLIST_STRING)
                         {
-                            char* name_str = nullptr;
-                            plist_get_string_val(name_node, &name_str);
-                            browser_extension_data.name = name_str;
-                            free(name_str);
+                            char* nameString = nullptr;
+                            plist_get_string_val(nameNode, &nameString);
+                            browserExtensionData.name = nameString;
+                            free(nameString);
                         }
                         else
                         {
-                            browser_extension_data.name = "";
+                            browserExtensionData.name = "";
                         }
 
-                        if (sdk_node && plist_get_node_type(sdk_node) == PLIST_STRING)
+                        if (sdkNode && plist_get_node_type(sdkNode) == PLIST_STRING)
                         {
-                            char* sdk_str = nullptr;
-                            plist_get_string_val(sdk_node, &sdk_str);
-                            browser_extension_data.sdk = sdk_str;
-                            free(sdk_str);
+                            char* sdkString = nullptr;
+                            plist_get_string_val(sdkNode, &sdkString);
+                            browserExtensionData.sdk = sdkString;
+                            free(sdkString);
                         }
                         else
                         {
-                            browser_extension_data.sdk = "";
+                            browserExtensionData.sdk = "";
                         }
 
-                        if (version_string_node && plist_get_node_type(version_string_node) == PLIST_STRING)
+                        if (versionStringNode && plist_get_node_type(versionStringNode) == PLIST_STRING)
                         {
-                            char* version_string_str = nullptr;
-                            plist_get_string_val(version_string_node, &version_string_str);
-                            browser_extension_data.version = version_string_str;
-                            free(version_string_str);
+                            char* versionString = nullptr;
+                            plist_get_string_val(versionStringNode, &versionString);
+                            browserExtensionData.version = versionString;
+                            free(versionString);
                         }
                         else
                         {
-                            browser_extension_data.version = "";
+                            browserExtensionData.version = "";
                         }
 
-                        if (bundle_version_node && plist_get_node_type(bundle_version_node) == PLIST_STRING)
+                        if (bundleVersionNode && plist_get_node_type(bundleVersionNode) == PLIST_STRING)
                         {
-                            char* bundle_version_str = nullptr;
-                            plist_get_string_val(bundle_version_node, &bundle_version_str);
-                            browser_extension_data.bundle_version = bundle_version_str;
-                            free(bundle_version_str);
+                            char* bundleVersionString = nullptr;
+                            plist_get_string_val(bundleVersionNode, &bundleVersionString);
+                            browserExtensionData.bundle_version = bundleVersionString;
+                            free(bundleVersionString);
                         }
                         else
                         {
-                            browser_extension_data.bundle_version = "";
+                            browserExtensionData.bundle_version = "";
                         }
 
-                        if (copyright_node && plist_get_node_type(copyright_node) == PLIST_STRING)
+                        if (copyrightNode && plist_get_node_type(copyrightNode) == PLIST_STRING)
                         {
-                            char* copyright_str = nullptr;
-                            plist_get_string_val(copyright_node, &copyright_str);
-                            browser_extension_data.copyright = copyright_str;
-                            free(copyright_str);
+                            char* copyrightString = nullptr;
+                            plist_get_string_val(copyrightNode, &copyrightString);
+                            browserExtensionData.copyright = copyrightString;
+                            free(copyrightString);
                         }
                         else
                         {
-                            browser_extension_data.copyright = "";
+                            browserExtensionData.copyright = "";
                         }
 
-                        if (description_node && plist_get_node_type(description_node) == PLIST_STRING)
+                        if (descriptionNode && plist_get_node_type(descriptionNode) == PLIST_STRING)
                         {
-                            char* description_str = nullptr;
-                            plist_get_string_val(description_node, &description_str);
-                            browser_extension_data.description = description_str;
-                            free(description_str);
+                            char* descriptionString = nullptr;
+                            plist_get_string_val(descriptionNode, &descriptionString);
+                            browserExtensionData.description = descriptionString;
+                            free(descriptionString);
                         }
                         else
                         {
-                            browser_extension_data.description = "";
+                            browserExtensionData.description = "";
                         }
 
                         // Add to array of extensions
-                        browser_extensions.emplace_back(browser_extension_data);
+                        browserExtensions.emplace_back(browserExtensionData);
                     }
                     else
                     {
                         // TODO: Improve error handling
-                        std::cerr << "Failed to parse NSExtensionPointIdentifier" << std::endl;
+                        // std::cerr << "Failed to parse NSExtensionPointIdentifier" << std::endl;
                     }
                 }
                 else
                 {
                     // TODO: Improve error handling
-                    std::cerr << "Failed to parse NSExtension" << std::endl;
+                    // std::cerr << "Failed to parse NSExtension" << std::endl;
                 }
             }
         }
     }
 
-    return toJson(browser_extensions);
+    return toJson(browserExtensions);
 }
