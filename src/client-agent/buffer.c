@@ -125,7 +125,11 @@ int buffer_append(const char *msg){
         return(-1);
 
     }else{
-
+        // if (buffer[i] != NULL) {
+        //     mwarn("BUFFER MEMORY SHOUL BE FREE buffer[%u].",i);
+        //     os_free(buffer[i]);
+        //     mwarn("AFTER FREE BUFFER MEMORY SHOUL BE FREE buffer[%u].",i);
+        // }
         buffer[i] = strdup(msg);
         forward(i, agt->buflength + 1);
         w_cond_signal(&cond_no_empty);
@@ -149,6 +153,7 @@ void *dispatch_buffer(__attribute__((unused)) void * arg){
     char warn_str[OS_SIZE_2048];
     struct timespec ts0;
     struct timespec ts1;
+
 
     while(1){
         gettime(&ts0);
@@ -198,7 +203,7 @@ void *dispatch_buffer(__attribute__((unused)) void * arg){
         }
 
         char * msg_output = buffer[j];
-        // unsigned int original_j_for_nulling = j;
+        unsigned int original_j_for_nulling = j;
         forward(j, agt->buflength + 1);
         w_mutex_unlock(&mutex_lock);
 
@@ -236,14 +241,15 @@ void *dispatch_buffer(__attribute__((unused)) void * arg){
         }
 
         os_wait();
+        // UNDO AFTER DOUBLE CHECK
         if (msg_output == NULL) {
             // Handle the NULL message error gracefully
             mwarn("Attempted to send a NULL message. Skipping.");
         }else{
             send_msg(msg_output, -1);
             os_free(msg_output);
+            buffer[original_j_for_nulling] = NULL;
         }
-        // buffer[original_j_for_nulling] = NULL;
 
         gettime(&ts1);
         time_sub(&ts1, &ts0);
@@ -292,7 +298,9 @@ void w_agentd_free_buffer(unsigned int current_capacity) {
     }
 
     mdebug2("Freeing the client-buffer.");
-    w_FreeArray(buffer);
+    for ( int i=0; i <= agt->buflength; i++) {
+        if (buffer[i] != NULL ) os_free(buffer[i]);
+    }
     os_free(buffer);
 
     agt->buflength = 0;
@@ -319,39 +327,37 @@ int resize_internal_buffer(unsigned int current_capacity, unsigned int desired_c
 
     // Attempt to reallocate the buffer
     w_mutex_lock(&mutex_lock);
+
+    char **temp_buffer = NULL;
     if (desired_capacity > current_capacity) {
-        char **new_buffer_ptr = NULL;
-        os_calloc(desired_capacity, sizeof(char *), new_buffer_ptr);
+        // We add +1 to the desired capacity for internal management of the circular buffer,
+        // allowing it to distinguish between full and empty states.
+        os_calloc(desired_capacity+1, sizeof(char *), temp_buffer);
 
         // Copy data in logical order to the new buffer
         if (j < i ) {
             mdebug2("Copying contiguous data to new buffer. Count: %u events, tail: %d, head: %d\n",
             agent_msg_count, j, i);
-            memcpy(new_buffer_ptr, &buffer[j], agent_msg_count * sizeof(char *));
+            memcpy(temp_buffer, &buffer[j], agent_msg_count * sizeof(char *));
         } else {
             int first_part = current_capacity - j;
             mdebug2("Wrapped buffer detected. Copying in two parts:\n");
             mdebug2("  Part 1: %d bytes from old[tail=%d] → new[0]\n", first_part, j);
             mdebug2("  Part 2: %d bytes from old[0] → new[%d]\n", i, first_part);
-            memcpy(new_buffer_ptr, &buffer[j], first_part * sizeof(char *));
-            memcpy(new_buffer_ptr + first_part, buffer, i * sizeof(char *));
+            memcpy(temp_buffer, &buffer[j], first_part * sizeof(char *));
+            memcpy(temp_buffer + first_part, buffer, i * sizeof(char *));
         }
-
-        os_free(buffer);
-        buffer = new_buffer_ptr;
     }else{
         mwarn("Shrinking client buffer from %u to %u (messages: %u).",
             current_capacity, desired_capacity, agent_msg_count);
 
-        unsigned int new_actual_message_count = (agent_msg_count < desired_capacity) ? agent_msg_count : desired_capacity;
-        unsigned int messages_to_discard = agent_msg_count - new_actual_message_count;
+        unsigned int retained_message_count = (agent_msg_count < desired_capacity) ? agent_msg_count : desired_capacity;
 
         // Allocate a new temporary buffer of the desired smaller size
-        char **temp_buffer=NULL;
-        os_calloc(desired_capacity, sizeof(char *),temp_buffer);
+        os_calloc(desired_capacity+1, sizeof(char *), temp_buffer);
 
         // Copy the N oldest messages that will be preserved
-        for (unsigned int k = 0; k < new_actual_message_count; k++) {
+        for (unsigned int k = 0; k < retained_message_count; k++) {
             unsigned int old_idx = (j + k) % current_capacity;
             if (buffer[old_idx]) {
                 temp_buffer[k] = buffer[old_idx];
@@ -359,28 +365,27 @@ int resize_internal_buffer(unsigned int current_capacity, unsigned int desired_c
                 mdebug2("Moving message from old[%u] to new[%u] (ptr: %p)", old_idx, k, (void*)temp_buffer[k]);
             }
         }
-        minfo("Successfully copied %u messages to the new buffer.", new_actual_message_count);
-
+        minfo("Successfully copied %u messages to the new buffer.", retained_message_count);
 
         // Now free everything in the old buffer
-        for (unsigned int idx = 0; idx < current_capacity; idx++) {
+        // Loop up to and including 'current_capacity' as the buffer was sized for 'current_capacity + 1' elements.
+        for (unsigned int idx = 0; idx <= current_capacity; idx++) {
             if (buffer[idx]) {
                 mdebug2("Freeing buffer[%u] (ptr: %p)\n", idx, (void *)buffer[idx]);
                 os_free(buffer[idx]);
             }
         }
 
-        os_free(buffer);
-        buffer = temp_buffer;
-
         // Update global buffer state variables for the new smaller buffer
-        agent_msg_count = new_actual_message_count;
+        agent_msg_count = retained_message_count;
         w_agentd_state_update(RESET_MSG_COUNT_ON_SHRINK, &agent_msg_count);
     }
 
-    // Reset head and tail indices for the new buffer
-    j = 0; // Tail is now at the start
-    i = agent_msg_count; // Head is after the last copied message
+    // Reset tail and head indices for the new buffer
+    j = 0;
+    i = agent_msg_count;
+    os_free(buffer);
+    buffer = temp_buffer;
     w_mutex_unlock(&mutex_lock);
 
     minfo("Client buffer resized from %u to %u elements.", current_capacity, desired_capacity);
