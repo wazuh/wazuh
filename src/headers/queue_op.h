@@ -72,9 +72,18 @@ int queue_empty(const w_queue_t * queue);
  * */
 int queue_empty_ex(w_queue_t * queue);
 
+/*
+ * @brief Returns the number of elements in the queue divided by the size
+ *
+ * @param queue the queue
+ * @return float value between 0 and 1 representing the percentage of the queue filled
+ * @return -1 if requested queue is NULL
+ */
+float queue_get_percentage_ex(const w_queue_t * queue);
+
 /**
  * @brief Tries to insert an element into the queue
- * 
+ *
  * @param queue the queue
  * @param data data to be inserted
  * @return -1 if queue is full
