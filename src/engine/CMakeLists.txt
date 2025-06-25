@@ -20,9 +20,13 @@ set(ENGINE_SOURCE_DIR ${PROJECT_SOURCE_DIR}/source)
 set(ENGINE_DOC_DIR ${PROJECT_SOURCE_DIR}/docs)
 
 # Options
-option(ENGINE_BUILD_TEST "Generate tests" ON)
-option(ENGINE_BUILD_BENCHMARK "Generate benchmarks" ON)
-option(ENGINE_BUILD_DOCUMENTATION "Generate doxygen documentation" ON)
+option(ENGINE_BUILD_TEST "Generate tests" OFF)
+option(ENGINE_BUILD_BENCHMARK "Generate benchmarks" OFF)
+if(UNIT_TEST)
+    set(ENGINE_BUILD_TEST ON CACHE BOOL "Generate tests" FORCE)
+    set(ENGINE_BUILD_BENCHMARK ON CACHE BOOL "Generate benchmarks" FORCE)
+endif()
+option(ENGINE_BUILD_DOCUMENTATION "Generate doxygen documentation" OFF)
 option(ENGINE_ASSERT_WITH_SYMBOLS "Exports exe symbols to have asserts with full symbolicated functions" ON)
 option(ENGINE_GENERATE_PROTO "Generate protobuf code" OFF)
 
