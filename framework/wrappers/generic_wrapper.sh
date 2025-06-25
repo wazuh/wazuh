@@ -11,4 +11,4 @@ SCRIPT_NAME="$(basename ${SCRIPT_PATH_NAME})"
 
 PYTHON_SCRIPT="${WAZUH_PATH}/framework/scripts/${SCRIPT_NAME}.py"
 
-${PYTHON_SCRIPT} "$@"
+${WPYTHON_BIN} ${PYTHON_SCRIPT} "$@"
