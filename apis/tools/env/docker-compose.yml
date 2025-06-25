@@ -19,12 +19,12 @@ services:
       # Default configuration
       - ./wazuh-server/wazuh-server.yml:/tmp/wazuh-server.yml
       # Source code mappings
-      - ../../../framework/scripts/wazuh_server.py:/usr/share/wazuh-server/framework/scripts/wazuh-server.py
-      - ../../server_management/scripts/wazuh_server_management_apid.py:/usr/share/wazuh-server/apis/scripts/wazuh-server-management-apid.py
-      - ../../communications/scripts/wazuh_comms_apid.py:/usr/share/wazuh-server/apis/scripts/wazuh-comms-apid.py
-      - ../../../framework/wazuh:/usr/share/wazuh-server/framework/python/lib/python${WAZUH_PYTHON_VERSION}/site-packages/wazuh
-      - ../../server_management/server_management_api:/usr/share/wazuh-server/framework/python/lib/python${WAZUH_PYTHON_VERSION}/site-packages/server_management_api
-      - ../../communications/comms_api:/usr/share/wazuh-server/framework/python/lib/python${WAZUH_PYTHON_VERSION}/site-packages/comms_api
+      - ./../../../framework/scripts/wazuh_server.py:/usr/share/wazuh-server/framework/scripts/wazuh-server.py
+      - ./../../server_management/scripts/wazuh_server_management_apid.py:/usr/share/wazuh-server/apis/scripts/wazuh-server-management-apid.py
+      - ./../../communications/scripts/wazuh_comms_apid.py:/usr/share/wazuh-server/apis/scripts/wazuh-comms-apid.py
+      - ./../../../framework/wazuh:/usr/share/wazuh-server/framework/python/lib/python${WAZUH_PYTHON_VERSION}/site-packages/wazuh
+      - ./../../server_management/server_management_api:/usr/share/wazuh-server/framework/python/lib/python${WAZUH_PYTHON_VERSION}/site-packages/server_management_api
+      - ./../../communications/comms_api:/usr/share/wazuh-server/framework/python/lib/python${WAZUH_PYTHON_VERSION}/site-packages/comms_api
       # Vulnerability Detector feed
       - vd_feed:/var/lib/wazuh-server/queue
     ports:
