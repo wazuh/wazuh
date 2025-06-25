@@ -78,6 +78,13 @@ target_link_libraries(builder
     date::date
 )
 
+option(REVERSE_ORDER_DECODERS "Enable reverse order decoders" OFF)
+if(REVERSE_ORDER_DECODERS)
+    target_compile_definitions(builder PRIVATE REVERSE_ORDER_DECODERS=true)
+else()
+    target_compile_definitions(builder PRIVATE REVERSE_ORDER_DECODERS=false)
+endif()
+
 # Tests
 if(ENGINE_BUILD_TEST)
 
@@ -175,5 +182,11 @@ target_link_libraries(builder_utest
     indexerconnector::mocks
 )
 gtest_discover_tests(builder_utest)
+
+if(REVERSE_ORDER_DECODERS)
+    target_compile_definitions(builder_utest PRIVATE REVERSE_ORDER_DECODERS=true)
+else()
+    target_compile_definitions(builder_utest PRIVATE REVERSE_ORDER_DECODERS=false)
+endif()
 
 endif(ENGINE_BUILD_TEST)

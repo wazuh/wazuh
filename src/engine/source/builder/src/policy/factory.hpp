@@ -353,6 +353,8 @@ base::Expression buildSubgraphExpression(const Graph<base::Name, Asset>& subgrap
                     assetChildren->getOperands().push_back(visitRef(child, current, visitRef));
                 }
 
+#if defined(REVERSE_ORDER_DECODERS) && REVERSE_ORDER_DECODERS == true
+
                 if constexpr (std::is_same_v<ChildOperator, base::Or>)
                 {
                     if (const auto env = std::getenv("WAZUH_REVERSE_ORDER_DECODERS");
@@ -362,6 +364,9 @@ base::Expression buildSubgraphExpression(const Graph<base::Name, Asset>& subgrap
                         std::reverse(ops.begin(), ops.end());
                     }
                 }
+
+#endif // !REVERSE_ORDER_DECODERS
+
             }
             else
             {

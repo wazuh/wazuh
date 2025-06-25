@@ -54,7 +54,7 @@ TEST_P(ReadData, Doc)
 using D = factory::PolicyData::Params;
 using A = std::unordered_map<store::NamespaceId, std::unordered_set<base::Name>>;
 
-// TODO: add integration testss
+// TODO: add integration tests
 INSTANTIATE_TEST_SUITE_P(
     PolicyFactory,
     ReadData,
@@ -878,29 +878,6 @@ INSTANTIATE_TEST_SUITE_P(OrOperation,
                                                return Or::create("__ROOT__", {impl});
                                            }()},
 
-                             // Same graph as before with reverseOrderDecoders=true.
-                             // Since P has only one child, reversing does nothing.
-                             SubgraphCase {/* subgraph */ []()
-                                           {
-                                               auto g = makeEmptyGraph();
-                                               Asset aP("P", assetExpr("P"), std::vector<base::Name> {"__ROOT__"});
-                                               g.addNode("P", std::move(aP));
-                                               g.addEdge("__ROOT__", "P");
-                                               Asset aC("C", assetExpr("C"), std::vector<base::Name> {"P"});
-                                               g.addNode("C", std::move(aC));
-                                               g.addEdge("P", "C");
-                                               return g;
-                                           }(),
-                                           /* reverseOrderDecoders */ true,
-                                           /* expected */
-                                           []()
-                                           {
-                                               auto children = Or::create("P/Children", {});
-                                               children->getOperands().push_back(assetExpr("C"));
-                                               auto impl = Implication::create("P/Node", assetExpr("P"), children);
-                                               return Or::create("__ROOT__", {impl});
-                                           }()},
-
                              // Parent "P" with two children "C1" and "C2" in that order:
                              SubgraphCase {/* subgraph */ []()
                                            {
@@ -927,31 +904,6 @@ INSTANTIATE_TEST_SUITE_P(OrOperation,
                                                return Or::create("__ROOT__", {impl});
                                            }()},
 
-                             // Same graph as before, but reverseOrderDecoders = true → reverses to [C2, C1]
-                             SubgraphCase {/* subgraph */ []()
-                                           {
-                                               auto g = makeEmptyGraph();
-                                               Asset aP("P", assetExpr("P"), std::vector<base::Name> {"__ROOT__"});
-                                               g.addNode("P", std::move(aP));
-                                               g.addEdge("__ROOT__", "P");
-                                               Asset aC1("C1", assetExpr("C1"), std::vector<base::Name> {"P"});
-                                               g.addNode("C1", std::move(aC1));
-                                               g.addEdge("P", "C1");
-                                               Asset aC2("C2", assetExpr("C2"), std::vector<base::Name> {"P"});
-                                               g.addNode("C2", std::move(aC2));
-                                               g.addEdge("P", "C2");
-                                               return g;
-                                           }(),
-                                           /* reverseOrderDecoders */ true,
-                                           /* expected */
-                                           []()
-                                           {
-                                               auto children = Or::create("P/Children", {});
-                                               children->getOperands().push_back(assetExpr("C2"));
-                                               children->getOperands().push_back(assetExpr("C1"));
-                                               auto impl = Implication::create("P/Node", assetExpr("P"), children);
-                                               return Or::create("__ROOT__", {impl});
-                                           }()},
 
                              // Two parents "P1" and "P2" sharing child "C":
                              SubgraphCase {/* subgraph */ []()
@@ -982,6 +934,56 @@ INSTANTIATE_TEST_SUITE_P(OrOperation,
                                                auto impl2 = Implication::create("P2/Node", assetExpr("P2"), children2);
 
                                                return Or::create("__ROOT__", {impl1, impl2});
+                                           }()}
+
+#if defined(REVERSE_ORDER_DECODERS) && REVERSE_ORDER_DECODERS == true
+                             // Same graph as before with reverseOrderDecoders=true.
+                             // Since P has only one child, reversing does nothing.
+                             ,SubgraphCase {/* subgraph */ []()
+                                           {
+                                               auto g = makeEmptyGraph();
+                                               Asset aP("P", assetExpr("P"), std::vector<base::Name> {"__ROOT__"});
+                                               g.addNode("P", std::move(aP));
+                                               g.addEdge("__ROOT__", "P");
+                                               Asset aC("C", assetExpr("C"), std::vector<base::Name> {"P"});
+                                               g.addNode("C", std::move(aC));
+                                               g.addEdge("P", "C");
+                                               return g;
+                                           }(),
+                                           /* reverseOrderDecoders */ true,
+                                           /* expected */
+                                           []()
+                                           {
+                                               auto children = Or::create("P/Children", {});
+                                               children->getOperands().push_back(assetExpr("C"));
+                                               auto impl = Implication::create("P/Node", assetExpr("P"), children);
+                                               return Or::create("__ROOT__", {impl});
+                                           }()},
+
+                             // Same graph as before, but reverseOrderDecoders = true → reverses to [C2, C1]
+                             SubgraphCase {/* subgraph */ []()
+                                           {
+                                               auto g = makeEmptyGraph();
+                                               Asset aP("P", assetExpr("P"), std::vector<base::Name> {"__ROOT__"});
+                                               g.addNode("P", std::move(aP));
+                                               g.addEdge("__ROOT__", "P");
+                                               Asset aC1("C1", assetExpr("C1"), std::vector<base::Name> {"P"});
+                                               g.addNode("C1", std::move(aC1));
+                                               g.addEdge("P", "C1");
+                                               Asset aC2("C2", assetExpr("C2"), std::vector<base::Name> {"P"});
+                                               g.addNode("C2", std::move(aC2));
+                                               g.addEdge("P", "C2");
+                                               return g;
+                                           }(),
+                                           /* reverseOrderDecoders */ true,
+                                           /* expected */
+                                           []()
+                                           {
+                                               auto children = Or::create("P/Children", {});
+                                               children->getOperands().push_back(assetExpr("C2"));
+                                               children->getOperands().push_back(assetExpr("C1"));
+                                               auto impl = Implication::create("P/Node", assetExpr("P"), children);
+                                               return Or::create("__ROOT__", {impl});
                                            }()},
 
                              // Two parents "P1" and "P2", each with two children, using reverse.
@@ -1023,6 +1025,7 @@ INSTANTIATE_TEST_SUITE_P(OrOperation,
                                                auto impl2 = Implication::create("P2/Node", assetExpr("P2"), children2);
 
                                                return Or::create("__ROOT__", {impl1, impl2});
-                                           }()}));
-
+                                           }()}
+#endif // !REVERSE_ORDER_DECODERS
+                                           ));
 } // namespace buildsubgraphtest
