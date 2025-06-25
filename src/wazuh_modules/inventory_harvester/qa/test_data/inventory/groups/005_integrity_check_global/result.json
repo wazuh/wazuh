@@ -34,9 +34,16 @@
                     "id_signed": -585,
                     "is_hidden": false,
                     "name": "Utilisateurs OpenSSH",
+                    "users": [
+                        "user1",
+                        "user2"
+                    ],
                     "uuid": "S-1-5-32-585"
                 },
                 "wazuh": {
+                    "cluster": {
+                        "name": "cluster01"
+                    },
                     "schema": {
                         "version": "1.0"
                     }

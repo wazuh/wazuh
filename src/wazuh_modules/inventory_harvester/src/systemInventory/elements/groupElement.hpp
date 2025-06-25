@@ -62,9 +62,10 @@ public:
         element.data.group.uuid = data->groupUuid();
         element.data.group.is_hidden = data->groupIsHidden();
 
-        if (!data->groupUsers().empty())
+        std::string_view groupUsersView = data->groupUsers();
+        if (!groupUsersView.empty())
         {
-            element.data.group.users = Utils::splitView(data->groupUsers(), ',');
+            element.data.group.users = Utils::splitView(groupUsersView, ',');
         }
 
         element.data.agent.id = agentId;

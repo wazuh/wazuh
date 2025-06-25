@@ -55,9 +55,10 @@ public:
 
         element.operation = "INSERTED";
 
-        if (!data->userHostIp().empty())
+        std::string_view userHostIpView = data->userHostIp();
+        if (!userHostIpView.empty())
         {
-            element.data.host.ip = Utils::splitView(data->userHostIp(), ',');
+            element.data.host.ip = Utils::splitView(userHostIpView, ',');
         }
 
         element.data.login.status = data->userLoginStatus();
@@ -81,9 +82,10 @@ public:
         element.data.user.group.id = data->userGroupId();
         element.data.user.group.id_signed = data->userGroupIdSigned();
 
-        if (!data->userGroups().empty())
+        std::string_view userGroupsView = data->userGroups();
+        if (!userGroupsView.empty())
         {
-            element.data.user.groups = Utils::splitView(data->userGroups(), ',');
+            element.data.user.groups = Utils::splitView(userGroupsView, ',');
         }
 
         element.data.user.auth_failures.count = data->userAuthFailedCount();
@@ -99,9 +101,10 @@ public:
         element.data.user.password.min_days_between_changes = data->userPasswordMinDays();
         element.data.user.password.warning_days_before_expiration = data->userPasswordWarningDays();
 
-        if (!data->userRoles().empty())
+        std::string_view userRolesView = data->userRoles();
+        if (!userRolesView.empty())
         {
-            element.data.user.roles = Utils::splitView(data->userRoles(), ',');
+            element.data.user.roles = Utils::splitView(userRolesView, ',');
         }
 
         element.data.agent.id = agentId;

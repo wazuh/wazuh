@@ -13,7 +13,7 @@
         "group_id_signed": -585,
         "group_is_hidden": null,
         "group_name": "Utilisateurs OpenSSH",
-        "group_users": null,
+        "group_users": "user1,user2",
         "group_uuid": "S-1-5-32-585",
         "scan_time": "2025/06/11 14:59:57"
     },
