@@ -136,7 +136,7 @@ LIST(APPEND analysisd_flags "-Wl,--wrap,FreeDecoderInfo")
 
 LIST(APPEND analysisd_names "test_decode-xml")
 LIST(APPEND analysisd_flags "-Wl,--wrap,_os_analysisd_add_logmsg -Wl,--wrap,OSStore_Create \
-                             -Wl,--wrap,OSStore_Put ${DEBUG_OP_WRAPPERS}")
+                             -Wl,--wrap,OSStore_Put_ex ${DEBUG_OP_WRAPPERS}")
 
 LIST(APPEND analysisd_names "test_lists_list")
 LIST(APPEND analysisd_flags "-Wl,--wrap,OSMatch_FreePattern")
