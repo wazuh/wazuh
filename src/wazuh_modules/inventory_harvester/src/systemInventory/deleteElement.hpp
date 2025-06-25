@@ -13,6 +13,7 @@
 #define _DELETE_SYSTEM_ELEMENT_HPP
 
 #include "chainOfResponsability.hpp"
+#include "elements/groupElement.hpp"
 #include "elements/hotfixElement.hpp"
 #include "elements/hwElement.hpp"
 #include "elements/netElement.hpp"
@@ -23,7 +24,6 @@
 #include "elements/portElement.hpp"
 #include "elements/processElement.hpp"
 #include "elements/userElement.hpp"
-#include "elements/groupElement.hpp"
 #include "loggerHelper.h"
 
 template<typename TContext>

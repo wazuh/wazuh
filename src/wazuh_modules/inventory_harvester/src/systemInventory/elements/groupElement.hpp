@@ -60,11 +60,7 @@ public:
         element.data.group.description = data->groupDescription();
         element.data.group.id_signed = data->groupIdSigned();
         element.data.group.uuid = data->groupUuid();
-
-        if (std::nullopt != data->groupIsHidden())
-        {
-            element.data.group.is_hidden = data->groupIsHidden().value();
-        }
+        element.data.group.is_hidden = data->groupIsHidden();
 
         if (!data->groupUsers().empty())
         {

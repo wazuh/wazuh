@@ -140,19 +140,16 @@ public:
                 PolicyHarvesterManager::instance().buildIndexerUpdateTemplatePath("networks",
                                                                                   InventoryType::SYSTEM_INVENTORY),
                 Log::GLOBAL_LOG_FUNCTION);
-        m_indexerConnectorInstances[SystemContext::AffectedComponentType::User] =
-            std::make_unique<IndexerConnector>(
-                PolicyHarvesterManager::instance().buildIndexerConfig("users", InventoryType::SYSTEM_INVENTORY),
-                PolicyHarvesterManager::instance().buildIndexerTemplatePath("users", InventoryType::SYSTEM_INVENTORY),
-                PolicyHarvesterManager::instance().buildIndexerUpdateTemplatePath("users",
-                                                                                  InventoryType::SYSTEM_INVENTORY),
+        m_indexerConnectorInstances[SystemContext::AffectedComponentType::User] = std::make_unique<IndexerConnector>(
+            PolicyHarvesterManager::instance().buildIndexerConfig("users", InventoryType::SYSTEM_INVENTORY),
+            PolicyHarvesterManager::instance().buildIndexerTemplatePath("users", InventoryType::SYSTEM_INVENTORY),
+            PolicyHarvesterManager::instance().buildIndexerUpdateTemplatePath("users", InventoryType::SYSTEM_INVENTORY),
             Log::GLOBAL_LOG_FUNCTION);
-        m_indexerConnectorInstances[SystemContext::AffectedComponentType::Group] =
-            std::make_unique<IndexerConnector>(
-                PolicyHarvesterManager::instance().buildIndexerConfig("groups", InventoryType::SYSTEM_INVENTORY),
-                PolicyHarvesterManager::instance().buildIndexerTemplatePath("groups", InventoryType::SYSTEM_INVENTORY),
-                PolicyHarvesterManager::instance().buildIndexerUpdateTemplatePath("groups",
-                                                                                  InventoryType::SYSTEM_INVENTORY),
+        m_indexerConnectorInstances[SystemContext::AffectedComponentType::Group] = std::make_unique<IndexerConnector>(
+            PolicyHarvesterManager::instance().buildIndexerConfig("groups", InventoryType::SYSTEM_INVENTORY),
+            PolicyHarvesterManager::instance().buildIndexerTemplatePath("groups", InventoryType::SYSTEM_INVENTORY),
+            PolicyHarvesterManager::instance().buildIndexerUpdateTemplatePath("groups",
+                                                                              InventoryType::SYSTEM_INVENTORY),
             Log::GLOBAL_LOG_FUNCTION);
 
         m_orchestrations[SystemContext::Operation::Upsert] =

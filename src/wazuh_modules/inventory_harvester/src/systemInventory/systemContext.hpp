@@ -270,14 +270,14 @@ public:
         return "";
     }
 
-    std::optional<bool> groupIsHidden() const
+    bool groupIsHidden() const
     {
         if (m_type == VariantType::Delta)
         {
             if (m_delta->data_as_dbsync_groups() &&
                 std::optional<bool>(m_delta->data_as_dbsync_groups()->group_is_hidden()).has_value())
             {
-                return std::optional<bool>(m_delta->data_as_dbsync_groups()->group_is_hidden());
+                return std::optional<bool>(m_delta->data_as_dbsync_groups()->group_is_hidden()).value();
             }
         }
         else if (m_type == VariantType::SyncMsg)
@@ -287,14 +287,15 @@ public:
                     .has_value())
             {
                 return std::optional<bool>(
-                    m_syncMsg->data_as_state()->attributes_as_syscollector_groups()->group_is_hidden());
+                           m_syncMsg->data_as_state()->attributes_as_syscollector_groups()->group_is_hidden())
+                    .value();
             }
         }
         else
         {
-            return std::nullopt;
+            return false;
         }
-        return std::nullopt;
+        return false;
     }
 
     std::string_view groupUsers() const

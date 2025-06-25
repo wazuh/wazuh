@@ -463,4 +463,3 @@ TEST_F(SystemInventoryDeleteElement, validAgentID_Groups)
 
     EXPECT_EQ(context->m_serializedElement, R"({"id":"001_12345","operation":"DELETED"})");
 }
-
