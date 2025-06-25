@@ -1459,7 +1459,7 @@ TAR := tar -xf
 GUNZIP := gunzip
 GZIP := gzip
 CURL := curl -so
-DEPS_VERSION = 43
+DEPS_VERSION = 99-29585
 RESOURCES_URL_BASE := https://packages.wazuh.com/deps/
 RESOURCES_URL := $(RESOURCES_URL_BASE)$(DEPS_VERSION)
 CPYTHON := cpython
@@ -1544,7 +1544,7 @@ EXTERNAL_RES := cJSON curl libdb libffi libyaml openssl procps sqlite zlib audit
 ifneq (${TARGET},agent)
 ifneq (${TARGET},winagent)
 	# Manager extra dependency
-	EXTERNAL_RES += $(CPYTHON) jemalloc flatbuffers
+	EXTERNAL_RES += $(CPYTHON) jemalloc flatbuffers spdlog yaml-cpp pugixml libmaxminddb date fmt abseil-cpp re2 protobuf rapidjson taskflow RxCpp concurrentqueue fast_float
 endif
 endif
 
