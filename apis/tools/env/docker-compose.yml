@@ -39,6 +39,8 @@ services:
       - manager
     depends_on:
       - wazuh-indexer
+    networks:
+      - opensearch-net
 
   wazuh-indexer:
     build:
@@ -71,6 +73,9 @@ services:
       - cluster.blocks.create_index=false
       # Prevent execution of bundled demo script which installs demo certificates and security configurations to OpenSearch
       - DISABLE_INSTALL_DEMO_CONFIG=true
+    networks:
+      - opensearch-net
+
 
   nginx-lb:
     build:
@@ -82,6 +87,8 @@ services:
       - /scripts/entrypoint.sh
     depends_on:
       - wazuh-manager
+    networks:
+      - opensearch-net
 
   wazuh-agent:
     build:
@@ -100,3 +107,8 @@ services:
 
 volumes:
   vd_feed:
+
+networks:
+  opensearch-net:
+    driver: bridge
+
