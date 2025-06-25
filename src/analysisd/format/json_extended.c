@@ -13,7 +13,8 @@
 #define MAX_STRING_LESS 30
 
 static const char *pattern = "^[A-Z][a-z][a-z] [ 0123][0-9] [0-9][0-9]:[0-9][0-9]:[0-9][0-9] ([^ ]+)";
-regex_t * regexCompiled;
+static regex_t * regexCompiled; // Shared regex between write thread, AR thread and logtest thread
+static pthread_rwlock_t regexMutex = PTHREAD_RWLOCK_INITIALIZER;
 
 void W_ParseJSON(cJSON* root, const Eventinfo* lf)
 {
@@ -420,16 +421,29 @@ void W_JSON_ParseHostname(cJSON* root,const Eventinfo* lf)
     }
 
     // Get predecoder hostname
-
+    w_rwlock_rdlock(&regexMutex);
     if (!regexCompiled) {
-        os_malloc(sizeof(regex_t), regexCompiled);
+        // Change regex mutex to write lock
+        w_rwlock_unlock(&regexMutex);
+        w_rwlock_wrlock(&regexMutex);
 
-        if (regcomp(regexCompiled, pattern, REG_EXTENDED)) {
-            merror_exit("Can not compile regular expression.");
+        // re-check if regex is not compiled, compile it (Prevent leak)
+        if (!regexCompiled) {
+            os_malloc(sizeof(regex_t), regexCompiled);
+
+            if (regcomp(regexCompiled, pattern, REG_EXTENDED)) {
+                merror_exit("Can not compile regular expression.");
+            }
         }
+        // Change regex mutex to read lock
+        w_rwlock_unlock(&regexMutex);
+        w_rwlock_rdlock(&regexMutex);
     }
 
-    if(regexec(regexCompiled, lf->full_log, 2, match, 0) == 0){
+    int regex_status = regexec(regexCompiled, lf->full_log, 2, match, 0);
+    w_rwlock_unlock(&regexMutex);
+
+    if (regex_status == 0) {
         match_size = match[1].rm_eo - match[1].rm_so;
         os_malloc(match_size + 1, agent_hostname);
         snprintf (agent_hostname, match_size + 1, "%.*s", match_size, lf->full_log + match[1].rm_so);

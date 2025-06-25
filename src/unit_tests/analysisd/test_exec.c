@@ -167,7 +167,7 @@ void test_all_agents_success_json_string(void **state)
     char *exec_msg = "(local_source) [] NNS 005 restart-wazuh0 - - 160987966.80794 554 (ubuntu) any->syscheck /home/vagrant/file/n44.txt -";
 
     Config.ar = 1;
-    __crt_ftell = 80794;
+    set_global_alert_second_id(80794);
 
     int *array = NULL;
     os_malloc(sizeof(int)*3, array);
@@ -256,7 +256,7 @@ void test_all_agents_success_json_string_wdb(void **state)
     char *exec_msg = "(local_source) [] NNS 005 restart-wazuh0 - - 160987966.80794 554 (ubuntu) any->syscheck /home/vagrant/file/n44.txt -";
 
     Config.ar = 1;
-    __crt_ftell = 80794;
+    set_global_alert_second_id(80794);
 
     int *array = NULL;
     os_malloc(sizeof(int)*3, array);
@@ -479,7 +479,7 @@ void test_specific_agent_success_string(void **state)
     char *exec_msg = "(local_source) [] NNS 002 restart-wazuh0 - - 160987966.80794 554 (ubuntu) any->syscheck /home/vagrant/file/n44.txt -";
 
     Config.ar = 1;
-    __crt_ftell = 80794;
+    set_global_alert_second_id(80794);
 
     wlabel_t *labels = NULL;
     os_calloc(2, sizeof(wlabel_t), labels);
@@ -520,7 +520,7 @@ void test_specific_agent_success_string_wdb(void **state)
     char *exec_msg = "(local_source) [] NNS 002 restart-wazuh0 - - 160987966.80794 554 (ubuntu) any->syscheck /home/vagrant/file/n44.txt -";
 
     Config.ar = 1;
-    __crt_ftell = 80794;
+    set_global_alert_second_id(80794);
 
     wlabel_t *labels = NULL;
     os_calloc(1, sizeof(wlabel_t), labels);
@@ -680,7 +680,7 @@ void test_remote_agent_success_string(void **state)
     char *exec_msg = "(local_source) [] NRN 001 restart-wazuh0 - - 160987966.80794 554 (ubuntu) any->syscheck /home/vagrant/file/n44.txt -";
 
     Config.ar = 1;
-    __crt_ftell = 80794;
+    set_global_alert_second_id(80794);
 
     wlabel_t *labels = NULL;
     os_calloc(2, sizeof(wlabel_t), labels);
@@ -721,7 +721,7 @@ void test_remote_agent_success_string_wdb(void **state)
     char *exec_msg = "(local_source) [] NRN 001 restart-wazuh0 - - 160987966.80794 554 (ubuntu) any->syscheck /home/vagrant/file/n44.txt -";
 
     Config.ar = 1;
-    __crt_ftell = 80794;
+    set_global_alert_second_id(80794);
 
     wlabel_t *labels = NULL;
     os_calloc(1, sizeof(wlabel_t), labels);
