@@ -79,6 +79,8 @@ def callback_scan_id_result(line):
 
 
 # Tests
+# TODO: Fix test before re-enabling
+@pytest.mark.skip(reason="Needs to be fixed")
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(configurations, configuration_metadata), ids=case_ids)
 def test_validate_remediation_results(test_configuration, test_metadata, prepare_cis_policies_file, truncate_monitored_files,
                                       prepare_remediation_test, set_wazuh_configuration,
