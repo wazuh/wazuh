@@ -126,7 +126,16 @@ private:
             return input.map(
                 [op = term->getFn(), tracer = params.publisher](RxEvent result)
                 {
-                    *result = op(result->payload());
+                    try
+                    {
+                        *result = op(result->payload());
+                    }
+                    catch (const std::exception& e)
+                    {
+                        result->setStatus(false);
+                        result->setTrace(fmt::format("Exception thrown on term: {}", e.what()));
+                    }
+
                     // TODO: should we allow to not include tracer?
                     if (tracer != nullptr)
                     {
