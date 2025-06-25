@@ -96,6 +96,7 @@ add_subdirectory(${FLATBUFFERS_ROOT_DIR} flatbuffers_build EXCLUDE_FROM_ALL)
 # -----------------------------------------------------------------------------
 add_library(agent_sync_protocol STATIC
   src/agent_sync_protocol.cpp
+  src/persistent_queue.cpp
   ${GENERATED_HEADER}
 )
 add_dependencies(agent_sync_protocol generate_flatbuffers)

@@ -1,9 +1,16 @@
 #include "agent_sync_protocol.hpp"
+#include "ipersistent_queue.hpp"
+#include "persistent_queue.hpp"
 
 #include <flatbuffers/flatbuffers.h>
 #include <iostream>
 
 using namespace Wazuh::SyncSchema;
+
+AgentSyncProtocol::AgentSyncProtocol(std::shared_ptr<IPersistentQueue> queue)
+    : m_persistentQueue(queue != nullptr ? std::move(queue) : std::make_shared<PersistentQueue>())
+{
+}
 
 void AgentSyncProtocol::persistDifference(const std::string& module,
                                           const std::string& id,

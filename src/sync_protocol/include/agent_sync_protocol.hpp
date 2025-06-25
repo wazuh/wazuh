@@ -2,6 +2,7 @@
 #define AGENT_SYNC_PROTOCOL_HPP
 
 #include "inventorySync_generated.h"
+#include "ipersistent_queue.hpp"
 
 #include <memory>
 #include <string>
@@ -25,6 +26,8 @@ public:
 class AgentSyncProtocol : public IAgentSyncProtocol
 {
 public:
+    explicit AgentSyncProtocol(std::shared_ptr<IPersistentQueue> queue = nullptr);
+
     void persistDifference(const std::string& module,
                            const std::string& id,
                            Wazuh::SyncSchema::Operation operation,
@@ -34,16 +37,9 @@ public:
     void synchronizeModule(const std::string& module, Wazuh::SyncSchema::Mode mode, bool realtime) override;
 
 private:
-    struct PersistedData
-    {
-        uint64_t seq;
-        std::string id;
-        std::string index;
-        std::string data;
-        Wazuh::SyncSchema::Operation operation;
-    };
 
     std::unordered_map<std::string, std::vector<PersistedData>> m_data;
+    std::shared_ptr<IPersistentQueue> m_persistentQueue;
     uint64_t m_seqCounter = 0;
 
     bool sendStartAndWaitAck(const std::string& module, Wazuh::SyncSchema::Mode mode, bool realtime, uint64_t& session);
