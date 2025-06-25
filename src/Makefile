@@ -1111,6 +1111,7 @@ ${ABSEILCPP_LIB}:
 	    -DABSL_BUILD_TESTING=OFF \
 	    -DABSL_USE_GOOGLETEST_HEAD=OFF \
 	    -DCMAKE_CXX_STANDARD=17 \
+		-DCMAKE_POSITION_INDEPENDENT_CODE=1 \
 	    -DCMAKE_INSTALL_PREFIX=./build_result && \
 	  make install
 
@@ -1137,15 +1138,15 @@ ${SPDLOG_LIB}:
 
 ### yaml-cpp ###
 ${YAMLCPP_LIB}:
-	cd $(EXTERNAL_YAMLCPP) && mkdir -p build && cd build && cmake .. -DCMAKE_BUILD_TYPE=Release -DYAML_CPP_BUILD_TOOLS=OFF -DYAML_CPP_BUILD_TESTS=OFF && ${MAKE}
+	cd $(EXTERNAL_YAMLCPP) && mkdir -p build && cd build && cmake .. -DCMAKE_BUILD_TYPE=Release -DYAML_CPP_BUILD_TOOLS=OFF -DYAML_CPP_BUILD_TESTS=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=1 && ${MAKE}
 
 ### pugixml ###
 ${PUGIXML_LIB}:
-	cd $(EXTERNAL_PUGIXML) && mkdir -p build && cd build && cmake .. -DCMAKE_BUILD_TYPE=Release -DPUGIXML_BUILD_TESTS=OFF && ${MAKE}
+	cd $(EXTERNAL_PUGIXML) && mkdir -p build && cd build && cmake .. -DCMAKE_BUILD_TYPE=Release -DPUGIXML_BUILD_TESTS=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=1 && ${MAKE}
 
 ### maxminddb ###
 ${MAXMINDDB_LIB}:
-	cd $(EXTERNAL_MAXMINDDB) && mkdir -p build && cd build && cmake .. -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF && ${MAKE}
+	cd $(EXTERNAL_MAXMINDDB) && mkdir -p build && cd build && cmake .. -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=1 && ${MAKE}
 
 ### protobuf ###
 ${PROTOBUF_LIB}:
