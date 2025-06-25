@@ -10,6 +10,7 @@ import sys
 from hashlib import md5
 from json import dumps
 from os.path import abspath, dirname
+import time
 
 from dateutil.parser import parse
 from requests import HTTPError, get
@@ -20,6 +21,7 @@ from azure_utils import (
     CREDENTIALS_URL,
     DATETIME_MASK,
     DEPRECATED_MESSAGE,
+    MAX_EPS,
     get_token,
     offset_to_datetime,
     read_auth_file,
@@ -180,7 +182,17 @@ def get_graph_events(url: str, headers: dict, md5_hash: str, query: str, tag: st
         response_json = response.json()
         values_json = response_json.get('value')
         with SocketConnection() as socket:
+            eps_counter = 0
+            start = time.monotonic()
             for value in values_json:
+                now = time.monotonic()
+                time_passed = now - start
+                if time_passed <= 1 and eps_counter == MAX_EPS:
+                    sleep_time = 1 + time_passed
+                    logging.info('Sleeping %f sec, since the max 100 EPS was exceeded.', sleep_time)
+                    time.sleep(sleep_time)
+                    eps_counter = 0
+                    start = time.monotonic()
                 try:
                     date = value['activityDateTime']
                 except KeyError:

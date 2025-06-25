@@ -36,6 +36,8 @@ DEPRECATED_MESSAGE = (
 )
 URL_LOGGING = 'https://login.microsoftonline.com'
 
+MAX_EPS = 100
+
 
 def set_logger(debug_level: int):
     """Set the logger configuration."""

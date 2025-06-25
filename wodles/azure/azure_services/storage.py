@@ -11,6 +11,7 @@ from datetime import datetime
 from hashlib import md5
 from json import JSONDecodeError, dumps, loads
 from os.path import abspath, dirname
+import time
 
 from azure.core.exceptions import AzureError, ClientAuthenticationError, HttpResponseError
 from azure.storage.blob import BlobServiceClient
@@ -21,6 +22,7 @@ sys.path.insert(0, dirname(dirname(abspath(__file__))))
 from azure_utils import (
     CREDENTIALS_URL,
     DEPRECATED_MESSAGE,
+    MAX_EPS,
     offset_to_datetime,
     read_auth_file,
     SocketConnection,
@@ -177,6 +179,7 @@ def get_blobs(
         )
         with SocketConnection() as socket:
             for blob in blobs:
+                eps_counter = 0
                 # Skip if the blob is empty
                 if blob.size == 0:
                     logging.debug(f'Empty blob {blob.name}, skipping')
@@ -227,16 +230,36 @@ def get_blobs(
                             )
                             continue
                         else:
+                            start = time.monotonic()
                             for log_record in records:
+                                now = time.monotonic()
+                                time_passed = now - start
+                                if time_passed <= 1 and eps_counter == MAX_EPS:
+                                    sleep_time = 1 + time_passed
+                                    logging.info('Sleeping %f sec, since the max 100 EPS was exceeded.', sleep_time)
+                                    time.sleep(sleep_time)
+                                    eps_counter = 0
+                                    start = time.monotonic()
                                 # Add azure tags
                                 log_record['azure_tag'] = 'azure-storage'
                                 if tag:
                                     log_record['azure_storage_tag'] = tag
                                 logging.info('Storage: Sending event by socket.')
                                 socket.send_message(dumps(log_record))
+                                eps_counter += 1
                     # Process the data as plain text
                     else:
+                        start = time.monotonic()
                         for line in [s for s in str(data.readall()).splitlines() if s]:
+                            now = time.monotonic()
+                            time_passed = now - start
+                            if time_passed <= 1 and eps_counter == MAX_EPS:
+                                sleep_time = 1 + time_passed
+                                logging.info('Sleeping %f sec, since the max 100 EPS was exceeded.', sleep_time)
+                                time.sleep(sleep_time)
+                                eps_counter = 0
+                                start = time.monotonic()
+
                             if json_inline:
                                 msg = '{"azure_tag": "azure-storage"'
                                 if tag:
@@ -249,6 +272,7 @@ def get_blobs(
                                 msg = f'{msg} {line}'
                             logging.info('Storage: Sending event by socket.')
                             socket.send_message(msg)
+                            eps_counter += 1
                 update_row_object(
                     table=orm.Storage,
                     md5_hash=md5_hash,

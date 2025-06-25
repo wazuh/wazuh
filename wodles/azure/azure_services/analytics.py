@@ -10,6 +10,7 @@ import sys
 from hashlib import md5
 from json import dumps
 from os.path import abspath, dirname
+import time
 
 from dateutil.parser import parse
 from requests import HTTPError, get
@@ -20,6 +21,7 @@ from azure_utils import (
     CREDENTIALS_URL,
     DATETIME_MASK,
     DEPRECATED_MESSAGE,
+    MAX_EPS,
     get_token,
     offset_to_datetime,
     read_auth_file,
@@ -247,7 +249,17 @@ def iter_log_analytics_events(columns: list, rows: list, tag: str):
         columns.append({'type': 'string', 'name': 'log_analytics_tag'})
 
     with SocketConnection() as socket:
+        eps_counter = 0
+        start = time.monotonic()
         for row in rows:
+            now = time.monotonic()
+            time_passed = now - start
+            if time_passed <= 1 and eps_counter == MAX_EPS:
+                sleep_time = 1 + time_passed
+                logging.info('Sleeping %f sec, since the max 100 EPS was exceeded.', sleep_time)
+                time.sleep(sleep_time)
+                eps_counter = 0
+                start = time.monotonic()
             # Add tag values
             row.append('azure-log-analytics')
             if tag:
