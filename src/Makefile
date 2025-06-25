@@ -960,11 +960,11 @@ POPT_LIB = $(EXTERNAL_POPT)build/output/src/.libs/libpopt.a
 RPM_LIB = $(EXTERNAL_RPM)builddir/librpm.a
 JEMALLOC_LIB = $(EXTERNAL_JEMALLOC)lib/libjemalloc.so.2
 ROCKSDB_LIB = $(EXTERNAL_ROCKSDB)build/librocksdb.so
-ABSEILCPP_LIB = $(EXTERNAL_ABSEILCPP)build/lib/libabsl.a
+ABSEILCPP_LIB = $(EXTERNAL_ABSEILCPP)build/build_result/lib*/libabsl_*.a
 RE2_LIB = $(EXTERNAL_RE2)build/libre2.a
 FLATBUFFERS_LIB = $(EXTERNAL_FLATBUFFERS)build/libflatbuffers.a
 SPDLOG_LIB = $(EXTERNAL_SPDLOG)build/libspdlog.a
-YAMLCPP_LIB = $(EXTERNAL_YAMLCPP)build/libyamlcpp.a
+YAMLCPP_LIB = $(EXTERNAL_YAMLCPP)build/libyaml-cpp.a
 PUGIXML_LIB = $(EXTERNAL_PUGIXML)build/libpugixml.a
 MAXMINDDB_LIB = $(EXTERNAL_MAXMINDDB)build/libmaxminddb.a
 PROTOBUF_LIB = $(EXTERNAL_PROTOBUF)build/libprotobuf.a
@@ -1024,7 +1024,7 @@ external: build_gtest build_benchmark
 endif
 
 ifeq (${TARGET},server)
-external: $(ROCKSDB_LIB) $(SPDLOG_LIB) $(YAMLCPP_LIB) $(PUGIXML_LIB) $(MAXMINDDB_LIB) $(DATE_LIB) $(FMT_LIB) $(FAST_FLOAT_LIB) $(PROTOBUF_LIB) $(ABSEILCPP_LIB) $(RE2_LIB)  build_gtest build_benchmark
+external: $(ROCKSDB_LIB) $(SPDLOG_LIB) $(YAMLCPP_LIB) $(PUGIXML_LIB) $(MAXMINDDB_LIB) $(DATE_LIB) $(FMT_LIB) $(FAST_FLOAT_LIB) $(PROTOBUF_LIB) $(ABSEILCPP_LIB) $(RE2_LIB)
 endif
 
 ifeq (${uname_S},Linux)
