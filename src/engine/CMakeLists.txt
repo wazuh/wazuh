@@ -22,7 +22,7 @@ set(ENGINE_DOC_DIR ${PROJECT_SOURCE_DIR}/docs)
 # Options
 option(ENGINE_BUILD_TEST "Generate tests" OFF)
 option(ENGINE_BUILD_BENCHMARK "Generate benchmarks" OFF)
-if(UNIT_TEST)
+if(WAZUH_ENGINE_TEST)
     set(ENGINE_BUILD_TEST ON CACHE BOOL "Generate tests" FORCE)
     set(ENGINE_BUILD_BENCHMARK ON CACHE BOOL "Generate benchmarks" FORCE)
 endif()

@@ -1019,8 +1019,14 @@ endif
 .PHONY: external test_external
 external: test_external $(EXTERNAL_LIBS) $(JEMALLOC_LIB)
 
-ifneq (,$(filter ${TEST},YES yes y Y 1))
+ifneq (,$(filter ${TEST},YES yes y Y 1)$(filter $(ENGINE_TEST),YES yes y Y 1))
 external: build_gtest build_benchmark
+# only auto-define the CMake flag if TEST was NOT provided
+ifeq ($(TEST),)
+  CMAKE_ENGINE_OPTS = -DWAZUH_ENGINE_TEST=ON
+else
+  $(warning TEST is defined; skipping CMake engine test option)
+endif
 endif
 
 ifeq (${TARGET},server)
@@ -1934,7 +1940,7 @@ endif
 
 #### Wazuh cmake ###
 build_wazuh_cmake: $(WAZUHEXT_LIB) $(EXTERNAL_LIBS_NO_WHOLE) build_syscollector
-	mkdir -p build && cd build && cmake .. -DTARGET=${TARGET} ${CMAKE_OPTS} ${WAZUH_RELEASE_TYPE} ${WAZUH_TEST} && ${MAKE}
+	mkdir -p build && cd build && cmake .. -DTARGET=${TARGET} ${CMAKE_OPTS} ${WAZUH_RELEASE_TYPE} ${WAZUH_TEST} ${CMAKE_ENGINE_OPTS} && ${MAKE}
 
 #### Wazuh modules ##
 wmodules_c := $(wildcard wazuh_modules/wm*.c) $(wildcard wazuh_modules/agent_upgrade/*.c)
