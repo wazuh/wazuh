@@ -39,6 +39,16 @@ int queue_full(const w_queue_t * queue) {
     return (queue->begin + 1) % queue->size == queue->end;
 }
 
+int queue_full_ex(const w_queue_t * queue) {
+    int is_full;
+
+    w_mutex_lock(&queue->mutex);
+    is_full = queue_full(queue);
+    w_mutex_unlock(&queue->mutex);
+
+    return is_full;
+}
+
 int queue_empty(const w_queue_t * queue) {
     return queue->begin == queue->end;
 }
