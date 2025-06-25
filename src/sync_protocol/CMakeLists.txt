@@ -27,7 +27,9 @@ endif()
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Compiler flags
-set(CMAKE_CXX_FLAGS "-Wall -Wextra -Wshadow -Wnon-virtual-dtor -Woverloaded-virtual -Wunused -Wcast-align -Wformat=2")
+set(CMAKE_CXX_FLAGS
+    "-Wall -Wextra -Wshadow -Wnon-virtual-dtor -Woverloaded-virtual -Wunused -Wcast-align -Wformat=2"
+)
 set(CMAKE_CXX_FLAGS_DEBUG "-g")
 if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   set(CMAKE_CXX_FLAGS_RELEASE "-O3")
@@ -52,17 +54,14 @@ include(ExternalProject)
 
 set(FLATBUFFERS_ROOT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../external/flatbuffers")
 
-ExternalProject_Add(flatc_host_tool
+ExternalProject_Add(
+  flatc_host_tool
   SOURCE_DIR ${FLATBUFFERS_ROOT_DIR}
-  CMAKE_ARGS
-    -DCMAKE_BUILD_TYPE=Release
-    -DFLATBUFFERS_BUILD_TESTS=OFF
-    -DFLATBUFFERS_BUILD_FLATLIB=OFF
-    -DFLATBUFFERS_BUILD_FLATC=ON
-    -DCMAKE_INSTALL_PREFIX=<INSTALL_DIR>
+  CMAKE_ARGS -DCMAKE_BUILD_TYPE=Release -DFLATBUFFERS_BUILD_TESTS=OFF
+             -DFLATBUFFERS_BUILD_FLATLIB=OFF -DFLATBUFFERS_BUILD_FLATC=ON
+             -DCMAKE_INSTALL_PREFIX=<INSTALL_DIR>
   BUILD_ALWAYS 1
-  BUILD_BYPRODUCTS <INSTALL_DIR>/bin/flatc
-)
+  BUILD_BYPRODUCTS <INSTALL_DIR>/bin/flatc)
 
 ExternalProject_Get_Property(flatc_host_tool install_dir)
 set(FLATC_EXECUTABLE ${install_dir}/bin/flatc)
@@ -81,8 +80,7 @@ add_custom_command(
           ${CMAKE_CURRENT_BINARY_DIR} ${SCHEMA_FILE}
   DEPENDS ${SCHEMA_FILE} flatc_host_tool
   COMMENT "Generating FlatBuffers schema"
-  VERBATIM
-)
+  VERBATIM)
 
 add_custom_target(generate_flatbuffers ALL DEPENDS ${GENERATED_HEADER})
 
@@ -109,6 +107,7 @@ target_include_directories(agent_sync_protocol
     ${FLATBUFFERS_ROOT_DIR}/include
     ${CMAKE_CURRENT_SOURCE_DIR}/../
     ${CMAKE_CURRENT_SOURCE_DIR}/../shared_modules/utils/
+    ${CMAKE_SOURCE_DIR}/../headers
 )
 
 target_link_libraries(agent_sync_protocol
