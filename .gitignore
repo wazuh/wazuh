@@ -49,6 +49,9 @@ src/wazuh-slack
 # Visual Studio Code files
 .vscode
 
+# PyCharm files
+.idea
+
 # temporary vim files
 *.swp
 *.swo
