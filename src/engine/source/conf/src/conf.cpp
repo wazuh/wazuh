@@ -89,8 +89,9 @@ Conf::Conf(std::shared_ptr<IApiLoader> apiLoader)
     addUnit<int>(key::SERVER_EVENT_THREADS, "WAZUH_SERVER_EVENT_THREADS", 1);
 
     // TZDB module
-    addUnit<std::string>(key::TZDB_PATH, "WAZUH_TZDB_PATH", "/var/lib/wazuh-server/engine/tzdb");
+    addUnit<std::string>(key::TZDB_PATH, "WAZUH_TZDB_PATH", "/var/ossec/queue/tzdb");
     addUnit<bool>(key::TZDB_AUTO_UPDATE, "WAZUH_TZDB_AUTO_UPDATE", false);
+    addUnit<std::string>(key::TZDB_FORCE_VERSION_UPDATE, "WAZUH_TZDB_FORCE_VERSION_UPDATE", "");
 
     // Metrics module
     addUnit<bool>(key::METRICS_ENABLED, "WAZUH_METRICS_ENABLED", false);

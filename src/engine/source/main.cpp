@@ -257,7 +257,9 @@ int main(int argc, char* argv[])
         // HLP
         {
             hlp::initTZDB(confManager.get<std::string>(conf::key::TZDB_PATH),
-                          confManager.get<bool>(conf::key::TZDB_AUTO_UPDATE));
+                          confManager.get<bool>(conf::key::TZDB_AUTO_UPDATE),
+                          confManager.get<std::string>(conf::key::TZDB_FORCE_VERSION_UPDATE)
+                        );
 
             base::Name logparFieldOverrides({"schema", "wazuh-logpar-overrides", "0"});
             auto res = store->readInternalDoc(logparFieldOverrides);

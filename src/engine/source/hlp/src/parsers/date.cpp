@@ -191,6 +191,8 @@ bool loadTimeZoneDB(const std::string& version, bool autoUpdate)
  * @brief Download and install the timezone database.
  *
  * @param version The version to download
+ * @throw std::runtime_error if the download or installation fails.
+ *
  * @note Date library is compiled with AUTO_DOWNLOAD=0 and HAS_REMOTE_API=1
  */
 void downloadAndInstallTimeZoneDB(const std::string& version)
@@ -200,26 +202,32 @@ void downloadAndInstallTimeZoneDB(const std::string& version)
 
     if (!date::remote_download(version, errorBuffer.data()))
     {
-        LOG_WARNING("Failed to download timezone database: '{}'", errorBuffer.data());
-        return;
+        throw std::runtime_error(fmt::format("Failed to download timezone database: '{}'", errorBuffer.data()));
     }
 
     if (!date::remote_install(version))
     {
-        LOG_WARNING("Failed to install timezone database.");
-        return;
+        throw std::runtime_error("Failed to install timezone database");
     }
 
     date::reload_tzdb();
 }
 } // namespace
 
-void initTZDB(const std::string& path, const bool autoUpdate)
+void initTZDB(const std::string& path, bool autoUpdate, const std::string& forceVersion)
+
 {
     date::set_install(path);
 
-    std::string rv = "2024a"; // TODO: change to date::remote_version();
+    std::string rv = date::remote_version();
     LOG_DEBUG("Remote timezone database version: '{}'", rv);
+
+    if (!forceVersion.empty())
+    {
+        LOG_INFO("Forcing timezone database version: '{}'", forceVersion);
+        rv = forceVersion;
+        autoUpdate= true;
+    }
 
     if (loadTimeZoneDB(rv, autoUpdate))
     {
