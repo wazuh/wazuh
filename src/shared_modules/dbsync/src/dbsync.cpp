@@ -130,6 +130,8 @@ TXN_HANDLE dbsync_create_txn(const DBSYNC_HANDLE handle,
             {
                 [callback_data](ReturnTypeCallback result, const nlohmann::json & jsonResult)
                 {
+                    log_message("dbsync_create_txn");
+                    log_message(jsonResult.dump());
                     const std::unique_ptr<cJSON, CJsonSmartDeleter> spJson{ cJSON_Parse(jsonResult.dump().c_str()) };
                     callback_data.callback(result, spJson.get(), callback_data.user_data);
                 }

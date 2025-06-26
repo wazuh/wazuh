@@ -28,7 +28,7 @@ void FileItemTest::SetUp()
     std::snprintf(data->hash_md5, sizeof(data->hash_md5), "4b531524aa13c8a54614100b570b3dc7");
     std::snprintf(data->hash_sha1, sizeof(data->hash_sha1), "7902feb66d0bcbe4eb88e1bfacf28befc38bd58b");
     std::snprintf(data->hash_sha256, sizeof(data->hash_sha256), "e403b83dd73a41b286f8db2ee36d6b0ea6e80b49f02c476e0a20b4181a3a062a");
-    data->inode = 1152921500312810880;
+    data->inode = 1152921500312810881;
     data->last_event = 1596489275;
     data->mode = FIM_SCHEDULED;
     data->mtime = 1578075431;
@@ -101,7 +101,7 @@ TEST_F(FileItemTest, fileItemConstructorFromJSON)
         {
             "attributes":"10", "checksum":"a2fbef8f81af27155dcee5e3927ff6243593b91a", "dev":2051, "gid":"0", "group_name":"root",
             "hash_md5":"4b531524aa13c8a54614100b570b3dc7", "hash_sha1":"7902feb66d0bcbe4eb88e1bfacf28befc38bd58b",
-            "hash_sha256":"e403b83dd73a41b286f8db2ee36d6b0ea6e80b49f02c476e0a20b4181a3a062a", "inode":1152921500312810880, "last_event":1596489275,
+            "hash_sha256":"e403b83dd73a41b286f8db2ee36d6b0ea6e80b49f02c476e0a20b4181a3a062a", "inode":1152921500312810881, "last_event":1596489275,
             "mode":0, "mtime":1578075431, "options":131583, "path":"/etc/wgetrc", "perm":"-rw-rw-r--", "scanned":1, "size":4925,
             "uid":"0", "user_name":"fakeUser"
         }
@@ -148,7 +148,7 @@ TEST_F(FileItemTest, getFIMEntryWithJSONCtr)
         {
             "attributes":"10", "checksum":"a2fbef8f81af27155dcee5e3927ff6243593b91a", "dev":2051, "gid":"0", "group_name":"root",
             "hash_md5":"4b531524aa13c8a54614100b570b3dc7", "hash_sha1":"7902feb66d0bcbe4eb88e1bfacf28befc38bd58b",
-            "hash_sha256":"e403b83dd73a41b286f8db2ee36d6b0ea6e80b49f02c476e0a20b4181a3a062a", "inode":1152921500312810880, "last_event":1596489275,
+            "hash_sha256":"e403b83dd73a41b286f8db2ee36d6b0ea6e80b49f02c476e0a20b4181a3a062a", "inode":1152921500312810881, "last_event":1596489275,
             "mode":0, "mtime":1578075431, "options":131583, "path":"/etc/wgetrc", "perm":"-rw-rw-r--", "scanned":1, "size":4925,
             "uid":"0", "user_name":"fakeUser"
         }
@@ -186,7 +186,7 @@ TEST_F(FileItemTest, getJSONWithFimCtr)
             "table": "file_entry",
             "data":[{"attributes":"10", "checksum":"a2fbef8f81af27155dcee5e3927ff6243593b91a", "dev":2051, "gid":"0", "group_name":"root",
             "hash_md5":"4b531524aa13c8a54614100b570b3dc7", "hash_sha1":"7902feb66d0bcbe4eb88e1bfacf28befc38bd58b",
-            "hash_sha256":"e403b83dd73a41b286f8db2ee36d6b0ea6e80b49f02c476e0a20b4181a3a062a", "inode":1152921500312810880, "last_event":1596489275,
+            "hash_sha256":"e403b83dd73a41b286f8db2ee36d6b0ea6e80b49f02c476e0a20b4181a3a062a", "inode":1152921500312810881, "last_event":1596489275,
             "mode":0, "mtime":1578075431, "options":131583, "path":"/etc/wgetrc", "perm":"-rw-rw-r--", "scanned":1, "size":4925,
             "uid":"0", "user_name":"fakeUser"}]
         }
@@ -203,7 +203,7 @@ TEST_F(FileItemTest, getJSONWithJSONCtr)
             "table": "file_entry",
             "data":[{"attributes":"10", "checksum":"a2fbef8f81af27155dcee5e3927ff6243593b91a", "dev":2051, "gid":"0", "group_name":"root",
             "hash_md5":"4b531524aa13c8a54614100b570b3dc7", "hash_sha1":"7902feb66d0bcbe4eb88e1bfacf28befc38bd58b",
-            "hash_sha256":"e403b83dd73a41b286f8db2ee36d6b0ea6e80b49f02c476e0a20b4181a3a062a", "inode":1152921500312810880, "last_event":1596489275,
+            "hash_sha256":"e403b83dd73a41b286f8db2ee36d6b0ea6e80b49f02c476e0a20b4181a3a062a", "inode":1152921500312810881, "last_event":1596489275,
             "mode":0, "mtime":1578075431, "options":131583, "path":"/etc/wgetrc", "perm":"-rw-rw-r--", "scanned":1, "size":4925,
             "uid":"0", "user_name":"fakeUser"}]
         }
@@ -220,7 +220,7 @@ TEST_F(FileItemTest, fileItemReportOldData)
             "table": "file_entry",
             "data":[{"attributes":"10", "checksum":"a2fbef8f81af27155dcee5e3927ff6243593b91a", "dev":2051, "gid":"0", "group_name":"root",
             "hash_md5":"4b531524aa13c8a54614100b570b3dc7", "hash_sha1":"7902feb66d0bcbe4eb88e1bfacf28befc38bd58b",
-            "hash_sha256":"e403b83dd73a41b286f8db2ee36d6b0ea6e80b49f02c476e0a20b4181a3a062a", "inode":1152921500312810880, "last_event":1596489275,
+            "hash_sha256":"e403b83dd73a41b286f8db2ee36d6b0ea6e80b49f02c476e0a20b4181a3a062a", "inode":1152921500312810881, "last_event":1596489275,
             "mode":0, "mtime":1578075431, "options":131583, "path":"/etc/wgetrc", "perm":"-rw-rw-r--", "scanned":1, "size":4925,
             "uid":"0", "user_name":"fakeUser"}],"options":{"return_old_data": true, "ignore":["last_event"]}
         }

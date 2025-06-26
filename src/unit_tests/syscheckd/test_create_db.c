@@ -200,7 +200,7 @@ static int setup_fim_data(void **state) {
     fim_data->new_data->user_name = strdup("test1");
     fim_data->new_data->group_name = strdup("testing1");
     fim_data->new_data->mtime = 1570184224;
-    fim_data->new_data->inode = 1152921500312810880;
+    fim_data->new_data->inode = 1152921500312810881;
     strcpy(fim_data->new_data->hash_md5, "3691689a513ace7e508297b583d7550d");
     strcpy(fim_data->new_data->hash_sha1, "07f05add1049244e7e75ad0f54f24d8094cd8f8b");
     strcpy(fim_data->new_data->hash_sha256, "672a8ceaea40a441f0268ca9bbb33e9959643c6262667b61fbe57694df224d40");

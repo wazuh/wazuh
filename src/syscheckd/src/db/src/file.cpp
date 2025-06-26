@@ -577,7 +577,19 @@ FIMDBErrorCode fim_db_file_update(fim_entry* data, callback_context_t callback)
             create_json_event_ctx* ctx { reinterpret_cast<create_json_event_ctx*>(callback.context)};
             DB::instance().updateFile(*file->toJSON(), ctx, [callback](const nlohmann::json jsonResult)
             {
-                const std::unique_ptr<cJSON, CJsonSmartDeleter> spJson{ cJSON_Parse(jsonResult.dump().c_str()) };
+                nlohmann::json patchedJson = jsonResult;
+                FIMDB::instance().logFunction(LOG_ERROR, "fim_db_file_update");
+                FIMDB::instance().logFunction(LOG_ERROR, patchedJson.dump());
+                if (patchedJson.contains("data") && patchedJson["data"].contains("attributes")) {
+                    auto& attributes = patchedJson["data"]["attributes"];
+                    if (attributes.contains("inode") && attributes["inode"].is_number()) {
+                        uint64_t inode = attributes["inode"].get<uint64_t>();
+                        attributes["inode"] = std::to_string(inode);
+                    }
+                }
+                FIMDB::instance().logFunction(LOG_ERROR, patchedJson.dump());
+
+                const std::unique_ptr<cJSON, CJsonSmartDeleter> spJson{ cJSON_Parse(patchedJson.dump().c_str()) };
                 callback.callback(spJson.get(), callback.context);
             });
             retVal = FIMDB_OK;

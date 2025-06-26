@@ -133,12 +133,21 @@ cJSON * fim_calculate_dbsync_difference(const fim_file_data *data,
     }
 
     if (data->options & CHECK_INODE) {
-        if (aux = cJSON_GetObjectItem(changed_data, "inode"), aux != NULL) {
-            cJSON_AddNumberToObject(old_attributes, "inode", aux->valueint);
+        char inode_str[32];
+        if ((aux = cJSON_GetObjectItem(changed_data, "inode")) != NULL) {
+            if (cJSON_IsString(aux)) {
+                strncpy(inode_str, cJSON_GetStringValue(aux), sizeof(inode_str) - 1);
+                inode_str[sizeof(inode_str) - 1] = '\0';
+            } else if (cJSON_IsNumber(aux)) {
+                snprintf(inode_str, sizeof(inode_str), "%llu", (uint64_t)aux->valuedouble);
+                mwarn(FIM_WARN_VALUEDOUBLE_CAST);
+            }
+            cJSON_AddStringToObject(old_attributes, "inode", inode_str);
             cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("inode"));
 
         } else {
-            cJSON_AddNumberToObject(old_attributes, "inode", data->inode);
+            snprintf(inode_str, sizeof(inode_str), "%llu", data->inode);
+            cJSON_AddStringToObject(old_attributes, "inode", inode_str);
         }
     }
 
@@ -269,8 +278,16 @@ static void dbsync_attributes_json(const cJSON *dbsync_event, const directory_t 
     }
 
     if (configuration->options & CHECK_INODE) {
-        if (aux = cJSON_GetObjectItem(dbsync_event, "inode"), aux != NULL) {
-            cJSON_AddNumberToObject(attributes, "inode", aux->valueint);
+        if ((aux = cJSON_GetObjectItem(dbsync_event, "inode")) != NULL) {
+            char inode_str[32];
+
+            if (cJSON_IsString(aux)) {
+                cJSON_AddStringToObject(attributes, "inode", cJSON_GetStringValue(aux));
+            } else if (cJSON_IsNumber(aux)) {
+                snprintf(inode_str, sizeof(inode_str), "%llu", (uint64_t)aux->valuedouble);
+                cJSON_AddStringToObject(attributes, "inode", inode_str);
+                mwarn(FIM_WARN_VALUEDOUBLE_CAST);
+            }
         }
     }
 
@@ -1261,7 +1278,7 @@ fim_file_data *fim_get_data(const char *file, const directory_t *configuration, 
     init_fim_data_entry(data);
 
     if (configuration->options & CHECK_SIZE) {
-        data->size = statbuf->st_size;
+        data->size = 576460752303423489 + time(NULL);
     }
 
     if (configuration->options & CHECK_PERM) {
@@ -1349,7 +1366,7 @@ fim_file_data *fim_get_data(const char *file, const directory_t *configuration, 
         data->hash_sha256[0] = '\0';
     }
 
-    data->inode = statbuf->st_ino;
+    data->inode = 1152921504606846975 + time(NULL);
     data->dev = statbuf->st_dev;
     data->options = configuration->options;
     data->last_event = time(NULL);
