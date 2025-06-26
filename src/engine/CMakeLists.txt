@@ -22,13 +22,20 @@ set(ENGINE_DOC_DIR ${PROJECT_SOURCE_DIR}/docs)
 # Options
 option(ENGINE_BUILD_TEST "Generate tests" OFF)
 option(ENGINE_BUILD_BENCHMARK "Generate benchmarks" OFF)
-if(WAZUH_ENGINE_TEST)
-    set(ENGINE_BUILD_TEST ON CACHE BOOL "Generate tests" FORCE)
-    set(ENGINE_BUILD_BENCHMARK ON CACHE BOOL "Generate benchmarks" FORCE)
-endif()
+option(ENGINE_ENABLE_ASAN "Enable AddressSanitizer for all targets" OFF)
 option(ENGINE_BUILD_DOCUMENTATION "Generate doxygen documentation" OFF)
 option(ENGINE_ASSERT_WITH_SYMBOLS "Exports exe symbols to have asserts with full symbolicated functions" ON)
 option(ENGINE_GENERATE_PROTO "Generate protobuf code" OFF)
+
+
+if(WAZUH_ENGINE_TEST)
+    set(ENGINE_BUILD_TEST ON CACHE BOOL "Generate tests" FORCE)
+    set(ENGINE_BUILD_BENCHMARK ON CACHE BOOL "Generate benchmarks" FORCE)
+elseif(UNIT_TEST)
+  set(ENGINE_BUILD_TEST ON CACHE BOOL "Generate tests" FORCE)
+  set(ENGINE_ENABLE_ASAN ON CACHE BOOL "Enable AddressSanitizer for all targets" FORCE)
+endif()
+
 
 # TODO put this in a better place together with other global options like warnings
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
@@ -43,6 +50,12 @@ if(ENGINE_BUILD_BENCHMARK AND
    NOT CMAKE_BUILD_TYPE STREQUAL "Release" AND
    NOT CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
     message(WARNING "Building and running benchmarks in '${CMAKE_BUILD_TYPE}' will skew the results; use Release or RelWithDebInfo.")
+endif()
+
+if(ENGINE_ENABLE_ASAN)
+  message(STATUS "Building engine with AddressSanitizer")
+  add_compile_options(-fsanitize=address -fno-omit-frame-pointer)
+  add_link_options(-fsanitize=address -fno-omit-frame-pointer)
 endif()
 
 # Ensures that we do an out of source build
@@ -165,6 +178,13 @@ if (NOT SRC_FOLDER)
     get_filename_component(SRC_FOLDER     ${CMAKE_SOURCE_DIR}/ ABSOLUTE)
 endif()
 
+find_package(Threads QUIET)
+if (NOT Threads_FOUND)
+  message(WARNING "Threads not found by CMake; forcing -lpthread fallback")
+  set(CMAKE_THREAD_LIBS_INIT "-lpthread"      CACHE STRING "" FORCE)
+  set(Threads_FOUND            TRUE             CACHE BOOL   "" FORCE)
+endif()
+
 message("PATH: ${CMAKE_SOURCE_DIR}")
 register_external_library(fmt::fmt               "${CMAKE_SOURCE_DIR}/external/fmt/include" "${CMAKE_SOURCE_DIR}/external/fmt/build/libfmt.a")
 register_external_library(spdlog::spdlog         "${CMAKE_SOURCE_DIR}/external/spdlog/include" "${CMAKE_SOURCE_DIR}/external/spdlog/build/libspdlog.a")
@@ -190,6 +210,7 @@ set(PROTOBUF_DIR "${CMAKE_SOURCE_DIR}/external/protobuf")
 register_external_library(date::date             "${CMAKE_SOURCE_DIR}/external/date/include" "")
 register_external_library(date::date-tz          "${CMAKE_SOURCE_DIR}/external/date/include" "${CMAKE_SOURCE_DIR}/external/date/build/libdate-tz.a")
 register_external_library(absl::absl             "${CMAKE_SOURCE_DIR}/external/abseil-cpp" "${CMAKE_SOURCE_DIR}/external/abseil-cpp/build/build_result")
+target_link_libraries(absl_absl INTERFACE Threads::Threads ${CMAKE_DL_LIBS})
 register_external_library(re2::re2               "${CMAKE_SOURCE_DIR}/external/re2" "${CMAKE_SOURCE_DIR}/external/re2/build/libre2.a")
 set_target_properties(re2_re2 PROPERTIES INTERFACE_LINK_LIBRARIES "absl_absl")
 

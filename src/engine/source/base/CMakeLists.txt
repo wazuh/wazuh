@@ -22,7 +22,7 @@ target_include_directories(base
     ${INC_DIR}/base
     ${SRC_DIR}
 )
-find_package(Threads REQUIRED)
+
 target_link_libraries(base
     PUBLIC
     fmt::fmt
