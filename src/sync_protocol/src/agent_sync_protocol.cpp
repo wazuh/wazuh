@@ -18,25 +18,27 @@ void AgentSyncProtocol::persistDifference(const std::string& module,
                                           const std::string& index,
                                           const std::string& data)
 {
-    m_data[module].emplace_back(
-        PersistedData {.seq = ++m_seqCounter, .id = id, .index = index, .data = data, .operation = operation});
+    m_persistentQueue->submit(module, id, index, data, operation);
 }
 
 void AgentSyncProtocol::synchronizeModule(const std::string& module, Mode mode, bool realtime)
 {
     uint64_t session = 0;
-    if (!sendStartAndWaitAck(module, mode, realtime, session))
+    std::vector<PersistedData> data = m_persistentQueue->fetchAll(module);
+
+    if (!sendStartAndWaitAck(module, mode, realtime, session, data))
     {
         std::cerr << "StartAck failed for module: " << module << std::endl;
         return;
     }
 
-    sendDataMessages(module, session);
+    sendDataMessages(session, data);
     sendEnd(session);
 
     while (true)
     {
         bool success = false;
+
         if (receiveEndAck(success))
         {
             if (success)
@@ -47,25 +49,28 @@ void AgentSyncProtocol::synchronizeModule(const std::string& module, Mode mode, 
             {
                 std::cerr << "EndAck failed for module: " << module << std::endl;
             }
+
             return;
         }
 
         const auto ranges = receiveReqRet();
+
         if (!ranges.empty())
         {
-            sendDataMessages(module, session, &ranges);
+            std::vector<PersistedData> rangeData = m_persistentQueue->fetchRange(module, ranges);
+            sendDataMessages(session, rangeData);
         }
     }
 }
 
-bool AgentSyncProtocol::sendStartAndWaitAck(const std::string& module, Mode mode, bool realtime, uint64_t& session)
+bool AgentSyncProtocol::sendStartAndWaitAck(const std::string& module, Mode mode, bool realtime, uint64_t& session, const std::vector<PersistedData>& data)
 {
     flatbuffers::FlatBufferBuilder builder;
     auto moduleStr = builder.CreateString(module);
 
     StartBuilder startBuilder(builder);
     startBuilder.add_mode(mode);
-    startBuilder.add_size(static_cast<uint64_t>(m_data[module].size()));
+    startBuilder.add_size(static_cast<uint64_t>(data.size()));
     startBuilder.add_realtime(realtime);
     startBuilder.add_module_(moduleStr);
     auto startOffset = startBuilder.Finish();
@@ -80,31 +85,11 @@ bool AgentSyncProtocol::sendStartAndWaitAck(const std::string& module, Mode mode
     return true;
 }
 
-void AgentSyncProtocol::sendDataMessages(const std::string& module,
-                                         uint64_t session,
-                                         const std::vector<std::pair<uint64_t, uint64_t>>* ranges)
+void AgentSyncProtocol::sendDataMessages(uint64_t session,
+                                         const std::vector<PersistedData>& data)
 {
-    for (const auto& item : m_data[module])
+    for (const auto& item : data)
     {
-        bool inRange = true;
-        if (ranges)
-        {
-            inRange = false;
-            for (const auto& [begin, end] : *ranges)
-            {
-                if (item.seq >= begin && item.seq <= end)
-                {
-                    inRange = true;
-                    break;
-                }
-            }
-        }
-
-        if (!inRange)
-        {
-            continue;
-        }
-
         flatbuffers::FlatBufferBuilder builder;
         auto idStr = builder.CreateString(item.id);
         auto idxStr = builder.CreateString(item.index);
@@ -167,7 +152,7 @@ std::vector<std::pair<uint64_t, uint64_t>> AgentSyncProtocol::receiveReqRet()
 
 void AgentSyncProtocol::clearPersistedDifferences(const std::string& module)
 {
-    m_data.erase(module);
+    m_persistentQueue->removeAll(module);
 }
 
 void AgentSyncProtocol::sendFlatBufferMessageAsString(flatbuffers::span<uint8_t> fbData)
