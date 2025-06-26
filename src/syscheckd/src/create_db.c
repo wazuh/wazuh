@@ -133,12 +133,21 @@ cJSON * fim_calculate_dbsync_difference(const fim_file_data *data,
     }
 
     if (data->options & CHECK_INODE) {
-        if (aux = cJSON_GetObjectItem(changed_data, "inode"), aux != NULL) {
-            cJSON_AddNumberToObject(old_attributes, "inode", aux->valueint);
+        char inode_str[32];
+        if ((aux = cJSON_GetObjectItem(changed_data, "inode")) != NULL) {
+            if (cJSON_IsString(aux)) {
+                strncpy(inode_str, cJSON_GetStringValue(aux), sizeof(inode_str) - 1);
+                inode_str[sizeof(inode_str) - 1] = '\0';
+            } else if (cJSON_IsNumber(aux)) {
+                snprintf(inode_str, sizeof(inode_str), "%llu", (uint64_t)aux->valuedouble);
+                mwarn(FIM_WARN_VALUEDOUBLE_CAST);
+            }
+            cJSON_AddStringToObject(old_attributes, "inode", inode_str);
             cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("inode"));
 
         } else {
-            cJSON_AddNumberToObject(old_attributes, "inode", data->inode);
+            snprintf(inode_str, sizeof(inode_str), "%llu", data->inode);
+            cJSON_AddStringToObject(old_attributes, "inode", inode_str);
         }
     }
 
@@ -269,8 +278,16 @@ static void dbsync_attributes_json(const cJSON *dbsync_event, const directory_t 
     }
 
     if (configuration->options & CHECK_INODE) {
-        if (aux = cJSON_GetObjectItem(dbsync_event, "inode"), aux != NULL) {
-            cJSON_AddNumberToObject(attributes, "inode", aux->valueint);
+        if ((aux = cJSON_GetObjectItem(dbsync_event, "inode")) != NULL) {
+            char inode_str[32];
+
+            if (cJSON_IsString(aux)) {
+                cJSON_AddStringToObject(attributes, "inode", cJSON_GetStringValue(aux));
+            } else if (cJSON_IsNumber(aux)) {
+                snprintf(inode_str, sizeof(inode_str), "%llu", (uint64_t)aux->valuedouble);
+                cJSON_AddStringToObject(attributes, "inode", inode_str);
+                mwarn(FIM_WARN_VALUEDOUBLE_CAST);
+            }
         }
     }
 
@@ -1512,7 +1529,9 @@ cJSON * fim_attributes_json(const fim_file_data * data) {
     }
 
     if (data->options & CHECK_INODE) {
-        cJSON_AddNumberToObject(attributes, "inode", data->inode);
+        char inode_str[32];
+        snprintf(inode_str, sizeof(inode_str), "%llu", data->inode);
+        cJSON_AddStringToObject(attributes, "inode", inode_str);
     }
 
     if (data->options & CHECK_MTIME) {
