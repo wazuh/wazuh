@@ -27,8 +27,8 @@ fi
 
 AUTHOR="Wazuh Inc."
 USE_JSON=false
-DAEMONS="wazuh-clusterd wazuh-modulesd wazuh-monitord wazuh-logcollector wazuh-remoted wazuh-syscheckd wazuh-analysisd wazuh-maild wazuh-execd wazuh-db wazuh-authd wazuh-agentlessd wazuh-integratord wazuh-dbd wazuh-csyslogd wazuh-apid"
-OP_DAEMONS="wazuh-clusterd wazuh-maild wazuh-agentlessd wazuh-integratord wazuh-dbd wazuh-csyslogd"
+DAEMONS="wazuh-clusterd wazuh-modulesd wazuh-monitord wazuh-logcollector wazuh-remoted wazuh-syscheckd wazuh-engine wazuh-execd wazuh-db wazuh-authd wazuh-agentlessd wazuh-integratord wazuh-csyslogd wazuh-apid"
+OP_DAEMONS="wazuh-clusterd wazuh-agentlessd wazuh-integratord wazuh-csyslogd"
 DEPRECATED_DAEMONS="ossec-authd"
 
 # Reverse order of daemons
@@ -237,6 +237,9 @@ testconfig()
 {
     # We first loop to check the config.
     for i in ${SDAEMONS}; do
+        if [ "$i" = "wazuh-engine" ]; then
+            continue
+        fi
         ${DIR}/bin/${i} -t ${DEBUG_CLI};
         if [ $? != 0 ]; then
             if [ $USE_JSON = true ]; then
@@ -255,23 +258,64 @@ testconfig()
     done
 }
 
+wait_for_engine_ready()
+{
+    local pid=$1
+    local attempts=0
+    local max_attempts=10
+
+    while [ $attempts -lt $max_attempts ]; do
+        curl --silent --fail --unix-socket /run/wazuh-server/engine-api.socket \
+            -X POST -H "Content-Type: application/json" \
+            -d '{"name": "default"}' \
+            http://localhost/router/route/get > /dev/null 2>&1
+
+        if [ $? -eq 0 ]; then
+            return 0  # Success
+        fi
+
+        # Verify that the process is still alive
+        if ! kill -0 "$pid" 2>/dev/null; then
+            echo "wazuh-engine died during route check."
+            return 1
+        fi
+
+        attempts=$((attempts + 1))
+        sleep 1
+    done
+
+    echo "wazuh-engine did not respond correctly after $max_attempts attempts."
+    return 1
+}
+
+start_engine()
+{
+    local binary="${DIR}/bin/wazuh-engine"
+    local log_file="/var/ossec/logs/engine.log"
+
+    mkdir -p "$(dirname "$log_file")"
+
+    $binary >> "$log_file" 2>&1 &
+    ENGINE_PID=$!
+    echo "$ENGINE_PID" > "${DIR}/var/run/wazuh-engine-${ENGINE_PID}.pid"
+
+    wait_for_engine_ready "$ENGINE_PID"
+    if [ $? -ne 0 ]; then
+        rm -f ${DIR}/var/run/wazuh-engine.start
+        touch ${DIR}/var/run/wazuh-engine.failed
+        rm -f ${DIR}/var/run/*.start
+        rm -f ${DIR}/var/run/.restart
+        unlock
+        exit 1
+    fi
+}
+
 # Start function
 start_service()
 {
 
     if [ $USE_JSON = false ]; then
         echo "Starting Wazuh $VERSION..."
-    fi
-
-    TEST=$(${DIR}/bin/wazuh-logtest-legacy -t  2>&1 | grep "ERROR")
-    if [ ! -z "$TEST" ]; then
-        if [ $USE_JSON = true ]; then
-            echo -n '{"error":21,"message":"OSSEC analysisd: Testing rules failed. Configuration error."}'
-        else
-            echo "OSSEC analysisd: Testing rules failed. Configuration error. Exiting."
-        fi
-        touch ${DIR}/var/run/wazuh-analysisd.failed
-        exit 1;
     fi
 
     checkpid;
@@ -296,13 +340,6 @@ start_service()
         echo -n '{"error":0,"data":['
     fi
     for i in ${SDAEMONS}; do
-        ## If wazuh-maild is disabled, don't try to start it.
-        if [ X"$i" = "Xwazuh-maild" ]; then
-             grep "<email_notification>no<" ${DIR}/etc/ossec.conf >/dev/null 2>&1
-             if [ $? = 0 ]; then
-                 continue
-             fi
-        fi
         ## If wazuh-clusterd is disabled, don't try to start it.
         if [ X"$i" = "Xwazuh-clusterd" ]; then
              start_config="$(grep -n "<cluster>" ${DIR}/etc/ossec.conf | cut -d':' -f 1)"
@@ -344,7 +381,11 @@ start_service()
             if [ $USE_JSON = true ]; then
                 ${DIR}/bin/${i} ${DEBUG_CLI} > /dev/null 2>&1;
             else
-                ${DIR}/bin/${i} ${DEBUG_CLI};
+                if [ "$i" = "wazuh-engine" ]; then
+                    start_engine
+                else
+                    ${DIR}/bin/${i} ${DEBUG_CLI};
+                fi
             fi
             if [ $? != 0 ]; then
                 failed=true
@@ -488,7 +529,11 @@ stop_service()
             fi
 
             pid=`cat ${DIR}/var/run/${i}-*.pid`
-            kill $pid
+            if [ ${i} = "wazuh-engine" ]; then
+                kill -2 $pid
+            else
+                kill $pid
+            fi
 
             if wait_pid $pid
             then
