@@ -10,17 +10,17 @@
                 },
                 "host": {
                     "architecture": "x86_64",
-                    "hostname": "c0ce505227a4",
+                    "hostname": "ubuntu",
                     "os": {
-                        "codename": "noble",
+                        "codename": "trusty",
                         "kernel": {
                             "name": "Linux",
-                            "release": "6.6.75-2-MANJARO",
-                            "version": "#1 SMP PREEMPT_DYNAMIC Mon Feb  3 17:53:46 UTC 2025"
+                            "release": "5.4.0-155-generic",
+                            "version": "#172-Ubuntu SMP Fri Jul 7 16:10:02 UTC 2023"
                         },
                         "name": "Ubuntu",
                         "platform": "ubuntu",
-                        "version": "24.04.1 LTS (Noble Numbat)"
+                        "version": "Trusty Tahr"
                     }
                 },
                 "wazuh": {

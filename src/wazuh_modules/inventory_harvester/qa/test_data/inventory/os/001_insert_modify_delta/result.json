@@ -10,7 +10,7 @@
                     "architecture": "x86_64",
                     "hostname": "ubuntu",
                     "os": {
-                        "codename": "trusty",
+                        "codename": "noble",
                         "kernel": {
                             "name": "Linux",
                             "release": "5.4.0-155-generic",
@@ -18,7 +18,7 @@
                         },
                         "name": "Ubuntu",
                         "platform": "ubuntu",
-                        "version": "Trusty Tahr"
+                        "version": "Noble Tahr"
                     }
                 },
                 "wazuh": {

@@ -10,21 +10,21 @@
     "attributes_type": "syscollector_osinfo",
     "attributes": {
       "architecture": "x86_64",
-      "checksum": "1740613627100363237",
-      "hostname": "c0ce505227a4",
-      "os_codename": "noble",
-      "os_major": "24",
+      "checksum": "1691178971959743855",
+      "hostname": "ubuntu",
+      "os_codename": "trusty",
+      "os_major": "20",
       "os_minor": "04",
       "os_name": "Ubuntu",
-      "os_patch": "1",
+      "os_patch": "6",
       "os_platform": "ubuntu",
-      "os_version": "24.04.1 LTS (Noble Numbat)",
-      "release": "6.6.75-2-MANJARO",
-      "scan_time": "2025/02/26 23:47:08",
+      "os_version": "Trusty Tahr",
+      "release": "5.4.0-155-generic",
+      "scan_time": "2023/08/04 19:56:11",
       "sysname": "Linux",
-      "version": "#1 SMP PREEMPT_DYNAMIC Mon Feb  3 17:53:46 UTC 2025"
+      "version": "#172-Ubuntu SMP Fri Jul 7 16:10:02 UTC 2023"
     },
-    "index": "Ubuntu",
+    "index": "d4aa8b01955e438235d586585492f3f5edceec1b",
     "timestamp": ""
   }
 }
