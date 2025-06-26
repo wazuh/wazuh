@@ -344,28 +344,28 @@ jobs:
         if: ${{ env.SHOULD_UPLOAD == 'true' }}
         working-directory: packages
         run: |
-          aws s3 cp /tmp/${{ env.PACKAGE_NAME }} s3://packages-dev.internal.wazuh.com/development/wazuh/4.x/main/packages/
-          s3uri="s3://packages-dev.internal.wazuh.com/development/wazuh/4.x/main/packages/${{ env.PACKAGE_NAME }}"
+          aws s3 cp /tmp/${{ env.PACKAGE_NAME }} s3://xdrsiem-packages-dev-internal/development/wazuh/4.x/main/packages/
+          s3uri="s3://xdrsiem-packages-dev-internal/development/wazuh/4.x/main/packages/${{ env.PACKAGE_NAME }}"
           echo "S3 URI: ${s3uri}"
 
       - name: Upload checksum to S3
         if: ${{ env.SHOULD_UPLOAD_CHECKSUM == 'true' }}
         run: |
-          aws s3 cp /tmp/${{ env.PACKAGE_NAME }}.sha512 s3://packages-dev.internal.wazuh.com/development/wazuh/4.x/main/packages/
-          aws s3 cp /tmp/${{ env.PACKAGE_SYMBOLS_NAME }}.sha512 s3://packages-dev.internal.wazuh.com/development/wazuh/4.x/main/packages/
-          s3uri="s3://packages-dev.internal.wazuh.com/development/wazuh/4.x/main/packages/${{ env.PACKAGE_NAME }}.sha512"
+          aws s3 cp /tmp/${{ env.PACKAGE_NAME }}.sha512 s3://xdrsiem-packages-dev-internal/development/wazuh/4.x/main/packages/
+          aws s3 cp /tmp/${{ env.PACKAGE_SYMBOLS_NAME }}.sha512 s3://xdrsiem-packages-dev-internal/development/wazuh/4.x/main/packages/
+          s3uri="s3://xdrsiem-packages-dev-internal/development/wazuh/4.x/main/packages/${{ env.PACKAGE_NAME }}.sha512"
           echo "S3 sha512 URI: ${s3uri}"
 
       - name: Upload debug symbols to S3
         if: ${{ env.SHOULD_UPLOAD == 'true' }}
         run: |
-          aws s3 cp /tmp/${{ env.PACKAGE_SYMBOLS_NAME }} s3://packages-dev.internal.wazuh.com/development/wazuh/4.x/main/packages/
-          symbols="s3://packages-dev.internal.wazuh.com/development/wazuh/4.x/main/packages/${{ env.PACKAGE_SYMBOLS_NAME }}"
+          aws s3 cp /tmp/${{ env.PACKAGE_SYMBOLS_NAME }} s3://xdrsiem-packages-dev-internal/development/wazuh/4.x/main/packages/
+          symbols="s3://xdrsiem-packages-dev-internal/development/wazuh/4.x/main/packages/${{ env.PACKAGE_SYMBOLS_NAME }}"
           echo "S3 symbols URI: ${symbols}"
 
       - name: Upload debug symbols checksum to S3
         if: ${{ env.SHOULD_UPLOAD_CHECKSUM == 'true' }}
         run: |
-          aws s3 cp /tmp/${{ env.PACKAGE_SYMBOLS_NAME }}.sha512 s3://packages-dev.internal.wazuh.com/development/wazuh/4.x/main/packages/
-          symbols="s3://packages-dev.internal.wazuh.com/development/wazuh/4.x/main/packages/${{ env.PACKAGE_SYMBOLS_NAME }}.sha512"
+          aws s3 cp /tmp/${{ env.PACKAGE_SYMBOLS_NAME }}.sha512 s3://xdrsiem-packages-dev-internal/development/wazuh/4.x/main/packages/
+          symbols="s3://xdrsiem-packages-dev-internal/development/wazuh/4.x/main/packages/${{ env.PACKAGE_SYMBOLS_NAME }}.sha512"
           echo "S3 symbols sha512 URI: ${symbols}"
