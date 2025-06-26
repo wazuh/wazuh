@@ -3,15 +3,10 @@
 #include "inventorySync_generated.h"
 
 #include <optional>
+#include <vector>
 
-enum class ModuleType {
-    FIM,
-    SCA,
-    INV,
-    OTHER
-};
-
-struct PersistedData {
+struct PersistedData
+{
     uint64_t seq;
     std::string id;
     std::string index;
@@ -19,14 +14,18 @@ struct PersistedData {
     Wazuh::SyncSchema::Operation operation;
 };
 
-class IPersistentQueue {
-public:
-    virtual ~IPersistentQueue() = default;
+class IPersistentQueue
+{
+    public:
+        virtual ~IPersistentQueue() = default;
 
-    virtual uint64_t submit(ModuleType module, const std::string& id,
-                            const std::string& index,
-                            const std::string& data,
-                            Wazuh::SyncSchema::Operation operation) = 0;
-    virtual std::optional<PersistedData> fetchNext(ModuleType module) = 0;
-    virtual void remove(ModuleType module, uint64_t sequence) = 0;
+        virtual uint64_t submit(const std::string& module, const std::string& id,
+                                const std::string& index,
+                                const std::string& data,
+                                Wazuh::SyncSchema::Operation operation) = 0;
+        virtual std::optional<PersistedData> fetchNext(const std::string& module) = 0;
+        virtual std::vector<PersistedData> fetchAll(const std::string& module) = 0;
+        virtual std::vector<PersistedData> fetchRange(const std::string& module, const std::vector<std::pair<uint64_t, uint64_t>>& ranges) = 0;
+        virtual void remove(const std::string& module, uint64_t sequence) = 0;
+        virtual void removeAll(const std::string& module) = 0;
 };
