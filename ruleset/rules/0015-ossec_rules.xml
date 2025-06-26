@@ -169,6 +169,12 @@
     <group>rootcheck,</group>
   </rule>
 
+  <rule id="522" level="2">
+    <if_sid>510</if_sid>
+    <regex>File '(\S+)' is owned by root and has written permissions to anyone</regex>
+    <description>File with world writable permissions found.</description>
+  </rule>
+
   <!-- Process monitoring rules -->
   <rule id="530" level="0">
     <if_sid>500</if_sid>
