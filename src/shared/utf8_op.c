@@ -12,6 +12,12 @@
 
 #include <shared.h>
 
+#ifdef WIN32
+#include <windows.h>
+#include <stdlib.h>
+#include <string.h>
+#endif
+
 #define REPLACEMENT_INC 4096
 
 /* Single byte: 0xxxxxxx */
@@ -126,3 +132,44 @@ char * w_utf8_filter(const char * string, bool replacement) {
     copy[i] = '\0';
     return copy;
 }
+
+#ifdef WIN32
+// Converts an ANSI string to UTF-8. Returns a heap-allocated string (must be freed).
+char *w_utf8_convert_ansi_to_utf8(const char *ansi_str) {
+    wchar_t *wide_str = NULL;
+    char *utf8_str = NULL;
+
+    if (!ansi_str) {
+        return NULL;
+    }
+
+    int wlen = MultiByteToWideChar(CP_ACP, 0, ansi_str, -1, NULL, 0);
+    if (wlen == 0) {
+        return NULL;
+    }
+
+    os_malloc(wlen * sizeof(wchar_t), wide_str);
+    if (!wide_str) {
+        return NULL;
+    }
+
+    MultiByteToWideChar(CP_ACP, 0, ansi_str, -1, wide_str, wlen);
+
+    int utf8len = WideCharToMultiByte(CP_UTF8, 0, wide_str, -1, NULL, 0, NULL, NULL);
+    if (utf8len == 0) {
+        os_free(wide_str);
+        return NULL;
+    }
+
+    os_malloc(utf8len, utf8_str);
+    if (!utf8_str) {
+        os_free(wide_str);
+        return NULL;
+    }
+
+    WideCharToMultiByte(CP_UTF8, 0, wide_str, -1, utf8_str, utf8len, NULL, NULL);
+    os_free(wide_str);
+
+    return utf8_str;
+}
+#endif

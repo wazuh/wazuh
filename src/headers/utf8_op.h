@@ -36,3 +36,13 @@ const char * w_utf8_drop(const char * string);
  * @return Return a new string with valid UTF-8 characters only.
  */
 char * w_utf8_filter(const char * string, bool replacement);
+
+#ifdef WIN32
+/**
+ * @brief Convert ansi string to utf8.
+ *
+ * @param ansi_str String to be converted.
+ * @return Return a new string with valid UTF-8 characters only. Needs to be freed.
+*/
+char * w_utf8_convert_ansi_to_utf8(const char * ansi_str);
+#endif
