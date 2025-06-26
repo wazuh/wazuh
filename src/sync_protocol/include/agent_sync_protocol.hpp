@@ -11,50 +11,47 @@
 
 class IAgentSyncProtocol
 {
-public:
-    virtual void persistDifference(const std::string& module,
-                                   const std::string& id,
-                                   Wazuh::SyncSchema::Operation operation,
-                                   const std::string& index,
-                                   const std::string& data) = 0;
+    public:
+        virtual void persistDifference(const std::string& module,
+                                       const std::string& id,
+                                       Wazuh::SyncSchema::Operation operation,
+                                       const std::string& index,
+                                       const std::string& data) = 0;
 
-    virtual void synchronizeModule(const std::string& module, Wazuh::SyncSchema::Mode mode, bool realtime) = 0;
+        virtual void synchronizeModule(const std::string& module, Wazuh::SyncSchema::Mode mode, bool realtime) = 0;
 
-    virtual ~IAgentSyncProtocol() = default;
+        virtual ~IAgentSyncProtocol() = default;
 };
 
 class AgentSyncProtocol : public IAgentSyncProtocol
 {
-public:
-    explicit AgentSyncProtocol(std::shared_ptr<IPersistentQueue> queue = nullptr);
+    public:
+        explicit AgentSyncProtocol(std::shared_ptr<IPersistentQueue> queue = nullptr);
 
-    void persistDifference(const std::string& module,
-                           const std::string& id,
-                           Wazuh::SyncSchema::Operation operation,
-                           const std::string& index,
-                           const std::string& data) override;
+        void persistDifference(const std::string& module,
+                               const std::string& id,
+                               Wazuh::SyncSchema::Operation operation,
+                               const std::string& index,
+                               const std::string& data) override;
 
-    void synchronizeModule(const std::string& module, Wazuh::SyncSchema::Mode mode, bool realtime) override;
+        void synchronizeModule(const std::string& module, Wazuh::SyncSchema::Mode mode, bool realtime) override;
 
-private:
+    private:
 
-    std::unordered_map<std::string, std::vector<PersistedData>> m_data;
-    std::shared_ptr<IPersistentQueue> m_persistentQueue;
-    uint64_t m_seqCounter = 0;
+        std::shared_ptr<IPersistentQueue> m_persistentQueue;
 
-    bool sendStartAndWaitAck(const std::string& module, Wazuh::SyncSchema::Mode mode, bool realtime, uint64_t& session);
+        bool sendStartAndWaitAck(const std::string& module, Wazuh::SyncSchema::Mode mode, bool realtime, uint64_t& session, const std::vector<PersistedData>& data);
 
-    void sendDataMessages(const std::string& module,
-                          uint64_t session,
-                          const std::vector<std::pair<uint64_t, uint64_t>>* ranges = nullptr);
+        void sendDataMessages(uint64_t session,
+                              const std::vector<PersistedData>& data);
 
-    void sendEnd(uint64_t session);
-    void sendFlatBufferMessageAsString(flatbuffers::span<uint8_t> fbData);
-    void clearPersistedDifferences(const std::string& module);
+        void sendEnd(uint64_t session);
+        void sendFlatBufferMessageAsString(flatbuffers::span<uint8_t> fbData);
+        void clearPersistedDifferences(const std::string& module);
 
-    // Simulated server communication
-    std::vector<std::pair<uint64_t, uint64_t>> receiveReqRet();
-    bool receiveEndAck(bool& success);
+        // Simulated server communication
+        std::vector<std::pair<uint64_t, uint64_t>> receiveReqRet();
+        bool receiveEndAck(bool& success);
 };
 
 #endif // AGENT_SYNC_PROTOCOL_HPP

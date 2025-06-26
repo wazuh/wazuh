@@ -97,6 +97,7 @@ add_subdirectory(${FLATBUFFERS_ROOT_DIR} flatbuffers_build EXCLUDE_FROM_ALL)
 add_library(agent_sync_protocol STATIC
   src/agent_sync_protocol.cpp
   src/persistent_queue.cpp
+  src/persistent_queue_storage.cpp
   ${GENERATED_HEADER}
 )
 add_dependencies(agent_sync_protocol generate_flatbuffers)
@@ -106,8 +107,14 @@ target_include_directories(agent_sync_protocol
     ${CMAKE_CURRENT_SOURCE_DIR}/include
     ${CMAKE_CURRENT_BINARY_DIR}
     ${FLATBUFFERS_ROOT_DIR}/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../
 )
-target_link_libraries(agent_sync_protocol PRIVATE flatbuffers)
+
+target_link_libraries(agent_sync_protocol
+  PRIVATE
+    flatbuffers
+    ${CMAKE_CURRENT_SOURCE_DIR}/../external/sqlite/libsqlite3.a
+)
 
 if(UNIT_TEST)
   add_subdirectory(tests)
