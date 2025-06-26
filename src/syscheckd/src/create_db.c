@@ -134,11 +134,19 @@ cJSON * fim_calculate_dbsync_difference(const fim_file_data *data,
 
     if (data->options & CHECK_INODE) {
         if (aux = cJSON_GetObjectItem(changed_data, "inode"), aux != NULL) {
-            cJSON_AddNumberToObject(old_attributes, "inode", aux->valueint);
+            minfo("Me voy a volver loco: %s", cJSON_Print(aux));
+            // cJSON_AddNumberToObject(old_attributes, "inode", aux->valueint);
+            cJSON_AddItemToObject(old_attributes, "inode", aux->valuestring);
             cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("inode"));
+            minfo("Check cJSON old_attributes: %s", cJSON_Print(old_attributes));
+            minfo("Check cJSON changed_attributes: %s", cJSON_Print(changed_attributes));
 
         } else {
-            cJSON_AddNumberToObject(old_attributes, "inode", data->inode);
+            // cJSON_AddNumberToObject(old_attributes, "inode", data->inode);
+            char inode_str[OS_SIZE_64];
+            snprintf(inode_str, OS_SIZE_64, "%llu", data->inode);
+            cJSON_AddStringToObject(old_attributes, "inode", inode_str);
+            minfo("Check cJSON old_attributes: %s", cJSON_Print(old_attributes));
         }
     }
 
@@ -270,7 +278,10 @@ static void dbsync_attributes_json(const cJSON *dbsync_event, const directory_t 
 
     if (configuration->options & CHECK_INODE) {
         if (aux = cJSON_GetObjectItem(dbsync_event, "inode"), aux != NULL) {
-            cJSON_AddNumberToObject(attributes, "inode", aux->valueint);
+            minfo("Check cJSON dbsync_event: %s", cJSON_Print(dbsync_event));
+            minfo("Valor de aux en delete: %s", aux->valuestring);
+            cJSON_AddItemToObject(attributes, "inode", aux->valuestring);
+            minfo("Check cJSON attributes: %s", cJSON_Print(attributes));
         }
     }
 
@@ -323,6 +334,7 @@ static void transaction_callback(ReturnTypeCallback resultType, const cJSON* res
     cJSON* timestamp = NULL;
     directory_t *configuration = NULL;
     fim_txn_context_t *txn_context = (fim_txn_context_t *) user_data;
+    // mwarn("result_json: %s", cJSON_Print(result_json));
 
     // In case of deletions, latest_entry is NULL, so we need to get the path from the json event
     if (resultType == DELETED) {
@@ -1349,7 +1361,7 @@ fim_file_data *fim_get_data(const char *file, const directory_t *configuration, 
         data->hash_sha256[0] = '\0';
     }
 
-    data->inode = statbuf->st_ino;
+    data->inode = 1152921500312810881;
     data->dev = statbuf->st_dev;
     data->options = configuration->options;
     data->last_event = time(NULL);
@@ -1512,7 +1524,13 @@ cJSON * fim_attributes_json(const fim_file_data * data) {
     }
 
     if (data->options & CHECK_INODE) {
-        cJSON_AddNumberToObject(attributes, "inode", data->inode);
+        // cJSON_AddNumberToObject(attributes, "inode", data->inode);
+        minfo("Before attributes2 - data->inode = %llu", data->inode);
+        // Convert data->inode in string
+        char inode_str[OS_SIZE_64];
+        snprintf(inode_str, OS_SIZE_64, "%llu", data->inode);
+        cJSON_AddStringToObject(attributes, "inode", inode_str);
+        minfo("Check cJSON attributes2: %s", cJSON_Print(attributes));
     }
 
     if (data->options & CHECK_MTIME) {
@@ -1602,6 +1620,7 @@ cJSON * fim_json_compare_attrs(const fim_file_data * old_data, const fim_file_da
 #ifndef WIN32
     if ( (old_data->options & CHECK_INODE) && (old_data->inode != new_data->inode) ) {
         cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("inode"));
+        minfo("Check cJSON changed_attributes2: %s", cJSON_Print(changed_attributes));
     }
 #endif
 
