@@ -46,6 +46,11 @@ static pthread_cond_t cond_no_empty;
 
 static time_t start, end;
 
+
+char state_str[OS_MAXSTR]="NORMAL";
+char resize_event[OS_MAXSTR]="";
+int event_lost=0;
+
 /**
  * @brief Sleep according to max_eps parameter
  *
@@ -92,6 +97,7 @@ int buffer_append(const char *msg){
                 state = WARNING;
                 buff.warn = 1;
             }
+            event_lost=0;
             break;
 
         case WARNING:
@@ -100,6 +106,7 @@ int buffer_append(const char *msg){
                 state = FULL;
                 start = time(0);
             }
+            event_lost=0;
             break;
 
         case FULL:
@@ -107,6 +114,7 @@ int buffer_append(const char *msg){
             if (end - start >= tolerance){
                 state = FLOOD;
                 buff.flood = 1;
+                event_lost=1;
             }
             break;
 
@@ -137,6 +145,7 @@ int buffer_append(const char *msg){
 
         return(0);
     }
+
 }
 
 /* Send messages from buffer to the server */
@@ -149,7 +158,6 @@ void *dispatch_buffer(__attribute__((unused)) void * arg){
     char full_msg[OS_MAXSTR];
     char warn_msg[OS_MAXSTR];
     char normal_msg[OS_MAXSTR];
-
     char warn_str[OS_SIZE_2048];
     struct timespec ts0;
     struct timespec ts1;
@@ -172,6 +180,8 @@ void *dispatch_buffer(__attribute__((unused)) void * arg){
         switch (state) {
 
             case NORMAL:
+                strcpy(state_str, "NORMAL");
+                event_lost=0;
                 break;
 
             case WARNING:
@@ -179,6 +189,8 @@ void *dispatch_buffer(__attribute__((unused)) void * arg){
                     state = NORMAL;
                     buff.normal = 1;
                 }
+                strcpy(state_str, "WARNING");
+                event_lost=0;
                 break;
 
             case FULL:
@@ -189,6 +201,8 @@ void *dispatch_buffer(__attribute__((unused)) void * arg){
                     state = NORMAL;
                     buff.normal = 1;
                 }
+                strcpy(state_str, "FULL");
+                event_lost=0;
                 break;
 
             case FLOOD:
@@ -199,6 +213,8 @@ void *dispatch_buffer(__attribute__((unused)) void * arg){
                     state = NORMAL;
                     buff.normal = 1;
                 }
+                strcpy(state_str, "FLOOD");
+                event_lost=1;
                 break;
         }
 
@@ -240,6 +256,9 @@ void *dispatch_buffer(__attribute__((unused)) void * arg){
             send_msg(normal_msg, -1);
         }
 
+        mwarn("JSON,%f,%s,%i,%s",capacity(i,j), state_str, event_lost, resize_event);
+        strcpy(resize_event,"NULL");
+
         os_wait();
         // UNDO AFTER DOUBLE CHECK
         if (msg_output == NULL) {
@@ -257,8 +276,7 @@ void *dispatch_buffer(__attribute__((unused)) void * arg){
         if (ts1.tv_sec >= 0) {
             delay(&ts1);
         }
-
-        minfo("Buffer status: head(i) %i, tail j %i, count: %i ", i ,j, w_agentd_get_buffer_lenght());
+        // minfo("Buffer status: head(i) %i, tail j %i, count: %i ", i ,j, w_agentd_get_buffer_lenght());
     }
 }
 
@@ -310,6 +328,9 @@ void w_agentd_free_buffer(unsigned int current_capacity) {
     // Signal to end the dispatch_buffer thread.
     w_cond_signal(&cond_no_empty);
     w_mutex_unlock(&mutex_lock);
+    strcpy(resize_event,"OFF");
+    mwarn("JSON,%f,%s,%i,%s",capacity(i,j), state_str, event_lost, resize_event);
+
     minfo("Client buffer freed successfully.");
 }
 
@@ -387,7 +408,7 @@ int resize_internal_buffer(unsigned int current_capacity, unsigned int desired_c
     os_free(buffer);
     buffer = temp_buffer;
     w_mutex_unlock(&mutex_lock);
-
+    snprintf(resize_event, sizeof(resize_event), "{%u,%u}", current_capacity, desired_capacity);
     minfo("Client buffer resized from %u to %u elements.", current_capacity, desired_capacity);
     return 0;
 }
