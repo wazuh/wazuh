@@ -425,18 +425,6 @@ UpdateStopOSSEC()
 
 UpdateOldVersions()
 {
-    if [ "$INSTYPE" = "server" ]; then
-        # Delete deprecated rules & decoders
-        echo "Searching for deprecated rules and decoders..."
-        DEPRECATED=`cat ./src/init/wazuh/deprecated_ruleset.txt`
-        for i in $DEPRECATED; do
-            DEL_FILE="$INSTALLDIR/ruleset/$i"
-            if [ -f ${DEL_FILE} ]; then
-                echo "Deleting '${DEL_FILE}'."
-                rm -f ${DEL_FILE}
-            fi
-        done
-    fi
 
     # If it is Wazuh 2.0 or newer, exit
     if [ "X$USER_OLD_NAME" = "XWazuh" ]; then

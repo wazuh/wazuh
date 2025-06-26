@@ -19,8 +19,6 @@
 HEADER_TEMPLATE="./etc/templates/config/generic/header-comments.template"
 GLOBAL_TEMPLATE="./etc/templates/config/generic/global.template"
 GLOBAL_AR_TEMPLATE="./etc/templates/config/generic/global-ar.template"
-RULES_TEMPLATE="./etc/templates/config/generic/rules.template"
-RULE_TEST_TEMPLATE="./etc/templates/config/generic/rule_test.template"
 AR_COMMANDS_TEMPLATE="./etc/templates/config/generic/ar-commands.template"
 AR_DEFINITIONS_TEMPLATE="./etc/templates/config/generic/ar-definitions.template"
 ALERTS_TEMPLATE="./etc/templates/config/generic/alerts.template"
@@ -600,14 +598,6 @@ WriteManager()
     fi
 
 
-    # Writting rules configuration
-    cat ${RULES_TEMPLATE} >> $NEWCONFIG
-    echo "" >> $NEWCONFIG
-
-    # Writting wazuh-logtest configuration
-    cat ${RULE_TEST_TEMPLATE} >> $NEWCONFIG
-    echo "" >> $NEWCONFIG
-
     # Writting auth configuration
     if [ "X${AUTHD}" = "Xyes" ]; then
         sed -e "s|\${INSTALLDIR}|$INSTALLDIR|g" "${AUTH_TEMPLATE}" >> $NEWCONFIG
@@ -734,14 +724,6 @@ WriteLocal()
       cat ${LOCALFILE_EXTRA_TEMPLATE} >> $NEWCONFIG
       echo "" >> $NEWCONFIG
     fi
-
-    # Writting rules configuration
-    cat ${RULES_TEMPLATE} >> $NEWCONFIG
-    echo "" >> $NEWCONFIG
-
-    # Writting wazuh-logtest configuration
-    cat ${RULE_TEST_TEMPLATE} >> $NEWCONFIG
-    echo "" >> $NEWCONFIG
 
     echo "</ossec_config>" >> $NEWCONFIG
 }
@@ -1076,13 +1058,52 @@ InstallCommon()
 
 }
 
+
+installEngineStore()
+{
+    DEST_FULL_PATH=${INSTALLDIR}/engine
+    ENGINE_SRC_PATH=./engine
+
+    # TODO: Get from content delivery, and if not available, use local store
+
+    # Fallback store installation
+    local STORE_PATH=${DEST_FULL_PATH}/store
+    local KVDB_PATH=${DEST_FULL_PATH}/kvdb
+    local SCHEMA_PATH=${STORE_PATH}/schema
+    local ENGINE_SCHEMA_PATH=${SCHEMA_PATH}/engine-schema/
+    local ENGINE_LOGPAR_TYPE_PATH=${SCHEMA_PATH}/wazuh-logpar-overrides
+    local ENGINE_ALLOWED_FIELDS_PATH=${SCHEMA_PATH}/allowed-fields
+
+    mkdir -p "${KVDB_PATH}"
+    mkdir -p "${ENGINE_SCHEMA_PATH}"
+    mkdir -p "${ENGINE_LOGPAR_TYPE_PATH}"
+    mkdir -p "${ENGINE_ALLOWED_FIELDS_PATH}"
+
+    # Copying the store files
+    echo "Copying store files..."
+    cp "${ENGINE_SRC_PATH}/ruleset/schemas/engine-schema.json" "${ENGINE_SCHEMA_PATH}/0"
+    cp "${ENGINE_SRC_PATH}/ruleset/schemas/wazuh-logpar-overrides.json" "${ENGINE_LOGPAR_TYPE_PATH}/0"
+    cp "${ENGINE_SRC_PATH}/ruleset/schemas/allowed-fields.json" "${ENGINE_ALLOWED_FIELDS_PATH}/0"
+
+    if [ ! -f "${ENGINE_SCHEMA_PATH}/0" ] || [ ! -f "${ENGINE_LOGPAR_TYPE_PATH}/0" ] || [ ! -f "${ENGINE_ALLOWED_FIELDS_PATH}/0" ]; then
+        echo "Error: Failed to copy store files."
+        exit 1
+    fi
+
+    chown -R ${WAZUH_USER}:${WAZUH_GROUP} ${STORE_PATH}
+    chown -R ${WAZUH_USER}:${WAZUH_GROUP} ${KVDB_PATH}
+    find ${STORE_PATH} -type d -exec chmod 750 {} \; -o -type f -exec chmod 640 {} \;
+    find ${KVDB_PATH} -type d -exec chmod 750 {} \; -o -type f -exec chmod 640 {} \;
+
+    echo "Engine store installed successfully."
+
+}
+
 InstallLocal()
 {
 
     InstallCommon
 
-    ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/etc/decoders
-    ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/etc/rules
     ${INSTALL} -d -m 0770 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/var/multigroups
     ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/var/db
     ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/var/download
@@ -1093,11 +1114,9 @@ InstallLocal()
     ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/etc/rootcheck
 
     ${INSTALL} -m 0750 -o root -g 0 wazuh-agentlessd ${INSTALLDIR}/bin
-    ${INSTALL} -m 0750 -o root -g 0 wazuh-analysisd ${INSTALLDIR}/bin
     ${INSTALL} -m 0750 -o root -g 0 wazuh-monitord ${INSTALLDIR}/bin
     ${INSTALL} -m 0750 -o root -g 0 wazuh-reportd ${INSTALLDIR}/bin
     ${INSTALL} -m 0750 -o root -g 0 wazuh-maild ${INSTALLDIR}/bin
-    ${INSTALL} -m 0750 -o root -g 0 wazuh-logtest-legacy ${INSTALLDIR}/bin
     ${INSTALL} -m 0750 -o root -g 0 wazuh-csyslogd ${INSTALLDIR}/bin
     ${INSTALL} -m 0750 -o root -g 0 wazuh-dbd ${INSTALLDIR}/bin
     ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} verify-agent-conf ${INSTALLDIR}/bin/
@@ -1106,42 +1125,15 @@ InstallLocal()
     ${INSTALL} -m 0750 -o root -g 0 agent_control ${INSTALLDIR}/bin/
     ${INSTALL} -m 0750 -o root -g 0 wazuh-integratord ${INSTALLDIR}/bin/
     ${INSTALL} -m 0750 -o root -g 0 wazuh-db ${INSTALLDIR}/bin/
+    ${INSTALL} -m 0750 -o root -g 0 build/engine/wazuh-engine ${INSTALLDIR}/bin
 
-    ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/stats
-    ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/ruleset/decoders
-    ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/ruleset/rules
+    installEngineStore
 
-    ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} -b ../ruleset/rules/*.xml ${INSTALLDIR}/ruleset/rules
-    ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} -b ../ruleset/decoders/*.xml ${INSTALLDIR}/ruleset/decoders
+    # TODO Deletes old ruleset and stats, rootcheck and SCA?
     ${INSTALL} -m 0660 -o root -g ${WAZUH_GROUP} ../ruleset/rootcheck/db/*.txt ${INSTALLDIR}/etc/rootcheck
 
     InstallSecurityConfigurationAssessmentFiles "manager"
 
-    if [ ! -f ${INSTALLDIR}/etc/decoders/local_decoder.xml ]; then
-        ${INSTALL} -m 0660 -o ${WAZUH_USER} -g ${WAZUH_GROUP} -b ../etc/local_decoder.xml ${INSTALLDIR}/etc/decoders/local_decoder.xml
-    fi
-    if [ ! -f ${INSTALLDIR}/etc/rules/local_rules.xml ]; then
-        ${INSTALL} -m 0660 -o ${WAZUH_USER} -g ${WAZUH_GROUP} -b ../etc/local_rules.xml ${INSTALLDIR}/etc/rules/local_rules.xml
-    fi
-    if [ ! -f ${INSTALLDIR}/etc/lists ]; then
-        ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/etc/lists
-    fi
-    if [ ! -f ${INSTALLDIR}/etc/lists/amazon ]; then
-        ${INSTALL} -d -m 0770 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/etc/lists/amazon
-        ${INSTALL} -m 0660 -o ${WAZUH_USER} -g ${WAZUH_GROUP} -b ../ruleset/lists/amazon/* ${INSTALLDIR}/etc/lists/amazon/
-    fi
-    if [ ! -f ${INSTALLDIR}/etc/lists/audit-keys ]; then
-        ${INSTALL} -m 0660 -o ${WAZUH_USER} -g ${WAZUH_GROUP} -b ../ruleset/lists/audit-keys ${INSTALLDIR}/etc/lists/audit-keys
-    fi
-    if [ ! -f ${INSTALLDIR}/etc/lists/malicious-ioc/malicious-ip ]; then
-        ${INSTALL} -d -m 0770 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/etc/lists/malicious-ioc
-        ${INSTALL} -m 0660 -o ${WAZUH_USER} -g ${WAZUH_GROUP} -b ../ruleset/lists/malicious-ioc/* ${INSTALLDIR}/etc/lists/malicious-ioc/
-    fi
-    if [ ! -f ${INSTALLDIR}/etc/lists/security-eventchannel ]; then
-        ${INSTALL} -m 0660 -o ${WAZUH_USER} -g ${WAZUH_GROUP} -b ../ruleset/lists/security-eventchannel ${INSTALLDIR}/etc/lists/security-eventchannel
-    fi
-
-    ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/fts
     ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/agentless
     ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/db
 
