@@ -12,6 +12,7 @@
 #include "router.h"
 #include <gtest/gtest.h>
 #include <string>
+#include <thread>
 #include <vector>
 
 // Simple log callback for testing
@@ -360,3 +361,340 @@ TEST_F(RouterAPITest, TestStopAPI)
 
     EXPECT_NO_THROW(router_stop_api(socketPath));
 }
+
+/*
+ * @brief Tests API registration with null module
+ */
+TEST_F(RouterAPITest, TestRegisterAPIEndpointNullModule)
+{
+    router_start();
+
+    const char* socketPath = "test-socket";
+    const char* method = "GET";
+    const char* endpoint = "/test";
+
+    EXPECT_NO_THROW(router_register_api_endpoint(nullptr, socketPath, method, endpoint, nullptr, nullptr));
+}
+
+/*
+ * @brief Tests API registration with null socket path
+ */
+TEST_F(RouterAPITest, TestRegisterAPIEndpointNullSocketPath)
+{
+    router_start();
+
+    const char* module = "test-module";
+    const char* method = "GET";
+    const char* endpoint = "/test";
+
+    EXPECT_NO_THROW(router_register_api_endpoint(module, nullptr, method, endpoint, nullptr, nullptr));
+}
+
+/*
+ * @brief Tests API registration with null method
+ */
+TEST_F(RouterAPITest, TestRegisterAPIEndpointNullMethod)
+{
+    router_start();
+
+    const char* module = "test-module";
+    const char* socketPath = "test-socket";
+    const char* endpoint = "/test";
+
+    EXPECT_NO_THROW(router_register_api_endpoint(module, socketPath, nullptr, endpoint, nullptr, nullptr));
+}
+
+/*
+ * @brief Tests API registration with null endpoint
+ */
+TEST_F(RouterAPITest, TestRegisterAPIEndpointNullEndpoint)
+{
+    router_start();
+
+    const char* module = "test-module";
+    const char* socketPath = "test-socket";
+    const char* method = "GET";
+
+    EXPECT_NO_THROW(router_register_api_endpoint(module, socketPath, method, nullptr, nullptr, nullptr));
+}
+
+/*
+ * @brief Tests API registration with POST method
+ */
+TEST_F(RouterAPITest, TestRegisterAPIEndpointPOST)
+{
+    router_start();
+
+    const char* module = "test-module";
+    const char* socketPath = "test-socket-post";
+    const char* method = "POST";
+    const char* endpoint = "/test";
+
+    EXPECT_NO_THROW(router_register_api_endpoint(module, socketPath, method, endpoint, nullptr, nullptr));
+}
+
+/*
+ * @brief Tests API registration with invalid method
+ */
+TEST_F(RouterAPITest, TestRegisterAPIEndpointInvalidMethod)
+{
+    router_start();
+
+    const char* module = "test-module";
+    const char* socketPath = "test-socket";
+    const char* method = "PUT"; // Invalid method
+    const char* endpoint = "/test";
+
+    EXPECT_NO_THROW(router_register_api_endpoint(module, socketPath, method, endpoint, nullptr, nullptr));
+}
+
+/*
+ * @brief Tests API start with null socket path
+ */
+TEST_F(RouterAPITest, TestStartAPINullSocketPath)
+{
+    router_start();
+
+    EXPECT_NO_THROW(router_start_api(nullptr));
+}
+
+/*
+ * @brief Tests API start with non-existent socket path
+ */
+TEST_F(RouterAPITest, TestStartAPINonExistentSocketPath)
+{
+    router_start();
+
+    const char* socketPath = "non-existent-socket";
+
+    EXPECT_NO_THROW(router_start_api(socketPath));
+}
+
+/*
+ * @brief Tests API stop with null socket path
+ */
+TEST_F(RouterAPITest, TestStopAPINullSocketPath)
+{
+    router_start();
+
+    EXPECT_NO_THROW(router_stop_api(nullptr));
+}
+
+/*
+ * @brief Tests API stop with non-existent socket path
+ */
+TEST_F(RouterAPITest, TestStopAPINonExistentSocketPath)
+{
+    router_start();
+
+    const char* socketPath = "non-existent-socket";
+
+    EXPECT_NO_THROW(router_stop_api(socketPath));
+}
+
+/*
+ * @brief Tests multiple API endpoints on same socket
+ */
+TEST_F(RouterAPITest, TestMultipleAPIEndpointsSameSocket)
+{
+    router_start();
+
+    const char* module = "test-module";
+    const char* socketPath = "shared-socket";
+
+    // Register multiple endpoints
+    EXPECT_NO_THROW(router_register_api_endpoint(module, socketPath, "GET", "/endpoint1", nullptr, nullptr));
+    EXPECT_NO_THROW(router_register_api_endpoint(module, socketPath, "POST", "/endpoint2", nullptr, nullptr));
+    EXPECT_NO_THROW(router_register_api_endpoint(module, socketPath, "GET", "/endpoint3", nullptr, nullptr));
+
+    EXPECT_NO_THROW(router_start_api(socketPath));
+    EXPECT_NO_THROW(router_stop_api(socketPath));
+}
+
+/*
+ * @brief Tests router functionality without initialization
+ */
+// TEST_F(RouterAPITest, TestOperationsWithoutInitialization)
+// {
+//     // Note: This test runs without calling router_initialize first
+//     EXPECT_EQ(-1, router_start());
+//     EXPECT_EQ(-1, router_stop());
+
+//     ROUTER_PROVIDER_HANDLE handle = router_provider_create("test", true);
+//     EXPECT_EQ(nullptr, handle);
+// }
+
+/*
+ * @brief Tests provider operations with invalid handle
+ */
+TEST_F(RouterAPITest, TestProviderOperationsInvalidHandle)
+{
+    router_start();
+
+    // Create fake handle
+    auto fakeHandle = reinterpret_cast<ROUTER_PROVIDER_HANDLE>(0xDEADBEEF);
+
+    const char* message = "test";
+    EXPECT_EQ(-1, router_provider_send(fakeHandle, message, strlen(message)));
+    EXPECT_EQ(-1, router_provider_send_fb(fakeHandle, message, "schema"));
+
+    EXPECT_NO_THROW(router_provider_destroy(fakeHandle));
+}
+
+/*
+ * @brief Tests concurrent provider operations
+ */
+TEST_F(RouterAPITest, TestConcurrentProviderOperations)
+{
+    router_start();
+
+    const int numThreads = 4;
+    const int numProvidersPerThread = 5;
+    std::vector<std::thread> threads;
+    threads.reserve(numThreads);
+    std::vector<std::vector<ROUTER_PROVIDER_HANDLE>> allHandles(numThreads);
+
+    // Create providers concurrently
+    for (int t = 0; t < numThreads; ++t)
+    {
+        threads.emplace_back(
+            [&, t]()
+            {
+                for (int i = 0; i < numProvidersPerThread; ++i)
+                {
+                    std::string providerName = "thread-" + std::to_string(t) + "-provider-" + std::to_string(i);
+                    ROUTER_PROVIDER_HANDLE handle = router_provider_create(providerName.c_str(), true);
+                    EXPECT_NE(nullptr, handle);
+                    allHandles[t].push_back(handle);
+                }
+            });
+    }
+
+    // Wait for all creation threads
+    for (auto& thread : threads)
+    {
+        thread.join();
+    }
+
+    threads.clear();
+
+    // Send messages concurrently
+    for (int t = 0; t < numThreads; ++t)
+    {
+        threads.emplace_back(
+            [&, t]()
+            {
+                for (auto handle : allHandles[t])
+                {
+                    const char* message = "concurrent test message";
+                    EXPECT_EQ(0, router_provider_send(handle, message, strlen(message)));
+                }
+            });
+    }
+
+    // Wait for all send threads
+    for (auto& thread : threads)
+    {
+        thread.join();
+    }
+
+    // Clean up
+    for (int t = 0; t < numThreads; ++t)
+    {
+        for (auto handle : allHandles[t])
+        {
+            router_provider_destroy(handle);
+        }
+    }
+}
+
+/*
+ * @brief Tests large message sending
+ */
+TEST_F(RouterAPITest, TestLargeMessageSend)
+{
+    router_start();
+
+    const char* providerName = "large-message-provider";
+    ROUTER_PROVIDER_HANDLE handle = router_provider_create(providerName, true);
+    EXPECT_NE(nullptr, handle);
+
+    // Create a large message (1MB)
+    const size_t largeSize = 1024 * 1024;
+    std::vector<char> largeMessage(largeSize, 'A');
+
+    EXPECT_EQ(0, router_provider_send(handle, largeMessage.data(), largeMessage.size()));
+
+    router_provider_destroy(handle);
+}
+
+/*
+ * @brief Tests empty message sending
+ */
+TEST_F(RouterAPITest, TestEmptyMessageSend)
+{
+    router_start();
+
+    const char* providerName = "empty-message-provider";
+    ROUTER_PROVIDER_HANDLE handle = router_provider_create(providerName, true);
+    EXPECT_NE(nullptr, handle);
+
+    const char* emptyMessage = "";
+    EXPECT_NE(0, router_provider_send(handle, emptyMessage, 0));
+
+    router_provider_destroy(handle);
+}
+
+/*
+ * @brief Tests provider creation with very long name
+ */
+// TEST_F(RouterAPITest, TestProviderCreateLongName)
+// {
+//     router_start();
+
+//     // Create a very long provider name
+//     std::string longName(1024, 'X');
+//     ROUTER_PROVIDER_HANDLE handle = router_provider_create(longName.c_str(), true);
+//     EXPECT_NE(nullptr, handle);
+
+//     router_provider_destroy(handle);
+// }
+
+/*
+ * @brief Tests router double stop without start
+ */
+TEST_F(RouterAPITest, TestDoubleStopWithoutStart)
+{
+    EXPECT_EQ(-1, router_stop());
+    EXPECT_EQ(-1, router_stop());
+}
+
+/*
+ * @brief Tests multiple consecutive start calls
+ */
+TEST_F(RouterAPITest, TestMultipleStartCalls)
+{
+    EXPECT_EQ(0, router_start());
+    EXPECT_EQ(-1, router_start()); // Second start should fail
+    EXPECT_EQ(0, router_stop());
+}
+
+/*
+ * @brief Tests provider operations after router stop
+ */
+// TEST_F(RouterAPITest, TestProviderOperationsAfterStop)
+// {
+//     router_start();
+
+//     const char* providerName = "test-provider";
+//     ROUTER_PROVIDER_HANDLE handle = router_provider_create(providerName, true);
+//     EXPECT_NE(nullptr, handle);
+
+//     router_stop();
+
+//     // Operations should still work with existing handles
+//     const char* message = "test message";
+//     EXPECT_EQ(0, router_provider_send(handle, message, strlen(message)));
+
+//     router_provider_destroy(handle);
+// }

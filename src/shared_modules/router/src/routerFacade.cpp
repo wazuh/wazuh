@@ -19,6 +19,8 @@ constexpr auto DEFAULT_SOCKET_PATH = "queue/router/";
 
 void RouterFacade::initialize()
 {
+    std::lock_guard lock(m_initializationMutex);
+
     if (m_providerRegistrationServer)
     {
         throw std::runtime_error("Already initialized");
@@ -65,6 +67,8 @@ void RouterFacade::initialize()
 
 void RouterFacade::destroy()
 {
+    std::lock_guard lock(m_initializationMutex);
+
     if (!m_providerRegistrationServer)
     {
         throw std::runtime_error("Not initialized");
@@ -77,6 +81,11 @@ void RouterFacade::destroy()
 
 void RouterFacade::initProviderLocal(const std::string& endpointName)
 {
+    if (endpointName.empty())
+    {
+        throw std::runtime_error("Provider name cannot be empty");
+    }
+
     std::unique_lock<std::shared_mutex> lock {m_providersMutex};
     // Create if not exist.
     if (m_providers.find(endpointName) == m_providers.end())
@@ -153,7 +162,7 @@ void RouterFacade::addSubscriberRemote(const std::string& name,
         std::make_shared<RemoteSubscriber>(name, subscriberId, callback, DEFAULT_SOCKET_PATH, onConnect);
 }
 
-void RouterFacade::removeSubscriberRemote(const std::string& name, const std::string& subscriberId)
+void RouterFacade::removeSubscriberRemote(const std::string& name, const std::string& /*subscriberId*/)
 {
     std::lock_guard<std::mutex> lock {m_remoteSubscribersMutex};
     // If not exist throw exception

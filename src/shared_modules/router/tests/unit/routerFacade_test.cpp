@@ -270,9 +270,279 @@ TEST_F(RouterFacadeTest, TestRemoveSubscriberRemote)
     {
         callbackCalled = true;
     };
+
     auto onConnect = []() {
     };
 
     RouterFacade::instance().addSubscriberRemote(providerName, subscriberId, callback, onConnect);
     EXPECT_NO_THROW(RouterFacade::instance().removeSubscriberRemote(providerName, subscriberId));
+}
+
+/*
+ * @brief Tests concurrent provider initialization
+ */
+TEST_F(RouterFacadeTest, TestConcurrentProviderInitialization)
+{
+    RouterFacade::instance().initialize();
+
+    const int numThreads = 4;
+    std::vector<std::thread> threads;
+    threads.reserve(numThreads);
+    std::atomic<int> successCount {0};
+
+    for (int i = 0; i < numThreads; ++i)
+    {
+        threads.emplace_back(
+            [&, i]()
+            {
+                try
+                {
+                    std::string providerName = "concurrent-provider-" + std::to_string(i);
+                    RouterFacade::instance().initProviderLocal(providerName);
+                    successCount++;
+                }
+                catch (...)
+                {
+                    // Ignore exceptions for this test
+                }
+            });
+    }
+
+    for (auto& thread : threads)
+    {
+        thread.join();
+    }
+
+    EXPECT_EQ(numThreads, successCount.load());
+}
+
+/*
+ * @brief Tests concurrent subscriber addition
+ */
+TEST_F(RouterFacadeTest, TestConcurrentSubscriberAddition)
+{
+    RouterFacade::instance().initialize();
+
+    const std::string providerName = "concurrent-provider";
+    const int numThreads = 4;
+    std::vector<std::thread> threads;
+    threads.reserve(numThreads);
+    std::atomic<int> successCount {0};
+
+    for (int i = 0; i < numThreads; ++i)
+    {
+        threads.emplace_back(
+            [&, i]()
+            {
+                try
+                {
+                    std::string subscriberId = "subscriber-" + std::to_string(i);
+                    auto callback = [](const std::vector<char>& data) {
+                    };
+                    RouterFacade::instance().addSubscriber(providerName, subscriberId, callback);
+                    successCount++;
+                }
+                catch (...)
+                {
+                    // Ignore exceptions for this test
+                }
+            });
+    }
+
+    for (auto& thread : threads)
+    {
+        thread.join();
+    }
+
+    EXPECT_EQ(numThreads, successCount.load());
+}
+
+/*
+ * @brief Tests push to multiple providers
+ */
+TEST_F(RouterFacadeTest, TestPushToMultipleProviders)
+{
+    RouterFacade::instance().initialize();
+
+    const int numProviders = 5;
+    std::vector<std::string> providerNames;
+
+    for (int i = 0; i < numProviders; ++i)
+    {
+        std::string providerName = "multi-provider-" + std::to_string(i);
+        providerNames.push_back(providerName);
+        RouterFacade::instance().initProviderLocal(providerName);
+    }
+
+    const std::vector<char> testData = {'m', 'u', 'l', 't', 'i', 'c', 'a', 's', 't'};
+
+    for (const auto& providerName : providerNames)
+    {
+        EXPECT_NO_THROW(RouterFacade::instance().push(providerName, testData));
+    }
+}
+
+/*
+ * @brief Tests subscriber callback execution
+ */
+TEST_F(RouterFacadeTest, TestSubscriberCallbackExecution)
+{
+    RouterFacade::instance().initialize();
+
+    const std::string providerName = "callback-provider";
+    const std::string subscriberId = "callback-subscriber";
+    bool callbackCalled = false;
+    std::vector<char> receivedData;
+
+    auto callback = [&callbackCalled, &receivedData](const std::vector<char>& data)
+    {
+        callbackCalled = true;
+        receivedData = data;
+    };
+
+    RouterFacade::instance().addSubscriber(providerName, subscriberId, callback);
+
+    const std::vector<char> testData = {'c', 'a', 'l', 'l', 'b', 'a', 'c', 'k'};
+    RouterFacade::instance().push(providerName, testData);
+
+    // Give some time for asynchronous processing
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+    EXPECT_TRUE(callbackCalled);
+    EXPECT_EQ(testData, receivedData);
+}
+
+/*
+ * @brief Tests provider removal after data push
+ */
+TEST_F(RouterFacadeTest, TestProviderRemovalAfterPush)
+{
+    RouterFacade::instance().initialize();
+
+    const std::string providerName = "removal-provider";
+    RouterFacade::instance().initProviderLocal(providerName);
+
+    const std::vector<char> testData = {'r', 'e', 'm', 'o', 'v', 'a', 'l'};
+    RouterFacade::instance().push(providerName, testData);
+
+    EXPECT_NO_THROW(RouterFacade::instance().removeProviderLocal(providerName));
+}
+
+/*
+ * @brief Tests subscriber removal after provider deletion
+ */
+TEST_F(RouterFacadeTest, TestSubscriberRemovalAfterProviderDeletion)
+{
+    RouterFacade::instance().initialize();
+
+    const std::string providerName = "deletion-provider";
+    const std::string subscriberId = "deletion-subscriber";
+
+    auto callback = [](const std::vector<char>& data) {
+    };
+    RouterFacade::instance().addSubscriber(providerName, subscriberId, callback);
+
+    // Remove provider first
+    RouterFacade::instance().removeProviderLocal(providerName);
+
+    // Then try to remove subscriber - should not throw
+    EXPECT_NO_THROW(RouterFacade::instance().removeSubscriberLocal(providerName, subscriberId));
+}
+
+/*
+ * @brief Tests empty data push
+ */
+TEST_F(RouterFacadeTest, TestEmptyDataPush)
+{
+    RouterFacade::instance().initialize();
+
+    const std::string providerName = "empty-data-provider";
+    RouterFacade::instance().initProviderLocal(providerName);
+
+    const std::vector<char> emptyData;
+    EXPECT_NO_THROW(RouterFacade::instance().push(providerName, emptyData));
+}
+
+/*
+ * @brief Tests large data push
+ */
+TEST_F(RouterFacadeTest, TestLargeDataPush)
+{
+    RouterFacade::instance().initialize();
+
+    const std::string providerName = "large-data-provider";
+    RouterFacade::instance().initProviderLocal(providerName);
+
+    // Create large data (100KB)
+    const size_t largeSize = 100 * 1024;
+    std::vector<char> largeData(largeSize, 'L');
+
+    EXPECT_NO_THROW(RouterFacade::instance().push(providerName, largeData));
+}
+
+/*
+ * @brief Tests provider creation with empty name
+ */
+TEST_F(RouterFacadeTest, TestProviderCreationEmptyName)
+{
+    RouterFacade::instance().initialize();
+
+    const std::string emptyProviderName = "";
+    EXPECT_ANY_THROW(RouterFacade::instance().initProviderLocal(emptyProviderName));
+}
+
+/*
+ * @brief Tests provider creation with special characters
+ */
+TEST_F(RouterFacadeTest, TestProviderCreationSpecialCharacters)
+{
+    RouterFacade::instance().initialize();
+
+    const std::string specialProviderName = "provider-with-special!@#$%^&*()_+{}|:<>?[]\\;'\".,/";
+    EXPECT_ANY_THROW(RouterFacade::instance().initProviderLocal(specialProviderName));
+}
+
+/*
+ * @brief Tests removing non-existent remote provider
+ */
+TEST_F(RouterFacadeTest, TestRemoveNonExistentRemoteProvider)
+{
+    RouterFacade::instance().initialize();
+
+    const std::string nonExistentProvider = "non-existent-remote-provider";
+    EXPECT_THROW(RouterFacade::instance().removeProviderRemote(nonExistentProvider), std::runtime_error);
+}
+
+/*
+ * @brief Tests multiple destroy calls
+ */
+TEST_F(RouterFacadeTest, TestMultipleDestroyCalls)
+{
+    RouterFacade::instance().initialize();
+
+    EXPECT_NO_THROW(RouterFacade::instance().destroy());
+    EXPECT_THROW(RouterFacade::instance().destroy(), std::runtime_error);
+}
+
+/*
+ * @brief Tests state persistence between operations
+ */
+TEST_F(RouterFacadeTest, TestStatePersistence)
+{
+    RouterFacade::instance().initialize();
+
+    const std::string providerName = "persistent-provider";
+    const std::string subscriberId = "persistent-subscriber";
+
+    // Create provider and subscriber
+    RouterFacade::instance().initProviderLocal(providerName);
+    auto callback = [](const std::vector<char>& data) {
+    };
+    RouterFacade::instance().addSubscriber(providerName, subscriberId, callback);
+
+    // Verify state exists by attempting operations that depend on it
+    const std::vector<char> testData = {'p', 'e', 'r', 's', 'i', 's', 't'};
+    EXPECT_NO_THROW(RouterFacade::instance().push(providerName, testData));
+    EXPECT_NO_THROW(RouterFacade::instance().removeSubscriberLocal(providerName, subscriberId));
+    EXPECT_NO_THROW(RouterFacade::instance().removeProviderLocal(providerName));
 }
