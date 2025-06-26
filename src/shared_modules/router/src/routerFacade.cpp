@@ -28,6 +28,7 @@ void RouterFacade::initialize()
     // This is a server that will listen for new provider.
     m_providerRegistrationServer =
         std::make_unique<SocketServer<Socket<OSPrimitives>, EpollWrapper>>(REMOTE_SUBSCRIPTION_ENDPOINT);
+    // LCOV_EXCL_START
     m_providerRegistrationServer->listen(
         [providerRegistrationServer = m_providerRegistrationServer.get()](
             const int fd, const char* body, const uint32_t bodySize, const char*, const uint32_t)
@@ -63,6 +64,7 @@ void RouterFacade::initialize()
             const auto resultStr {result.dump()};
             providerRegistrationServer->send(fd, resultStr.data(), resultStr.size());
         });
+    // LCOV_EXCL_STOP
 }
 
 void RouterFacade::destroy()

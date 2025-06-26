@@ -15,7 +15,6 @@
 #include <chrono>
 #include <functional>
 #include <gtest/gtest.h>
-#include <iostream>
 #include <memory>
 #include <mutex>
 #include <string>

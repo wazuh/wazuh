@@ -1,7 +1,7 @@
 /*
  * Wazuh router - RouterModule tests
  * Copyright (C) 2015, Wazuh Inc.
- * March 25, 2023.
+ * June 25, 2025.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public

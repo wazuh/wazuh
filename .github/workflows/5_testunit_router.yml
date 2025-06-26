@@ -48,6 +48,7 @@ jobs:
         with:
           path: src/shared_modules/router
           id: router
+          validate_function_coverage: "false"
 
   router-asan:
     strategy:

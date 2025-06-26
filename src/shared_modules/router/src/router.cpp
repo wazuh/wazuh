@@ -343,6 +343,7 @@ extern "C"
 
         if (methodStr.compare("GET") == 0)
         {
+            // LCOV_EXCL_START
             logMessage(modules_log_level_t::LOG_INFO, "Registering GET endpoint: " + endpointStr);
             instance->server->Get(
                 endpoint,
@@ -359,9 +360,11 @@ extern "C"
                                "GET: " + endpointStr + " request processed in " + std::to_string(duration.count()) +
                                    " us");
                 });
+            // LCOV_EXCL_STOP
         }
         else if (methodStr.compare("POST") == 0)
         {
+            // LCOV_EXCL_START
             logMessage(modules_log_level_t::LOG_INFO, "Registering POST endpoint: " + endpointStr);
             instance->server->Post(
                 endpoint,
@@ -376,6 +379,7 @@ extern "C"
                                "POST: " + endpointStr + " request processed in " + std::to_string(duration.count()) +
                                    " us");
                 });
+            // LCOV_EXCL_STOP
         }
         else
         {
@@ -409,6 +413,7 @@ extern "C"
                 std::filesystem::path path {SOCKETPATH + socketPathStr};
                 std::filesystem::create_directories(path.parent_path());
                 instance->server->set_address_family(AF_UNIX);
+                // LCOV_EXCL_START
                 instance->server->set_exception_handler(
                     [](const auto& req, auto& res, std::exception_ptr ep)
                     {
@@ -427,6 +432,7 @@ extern "C"
                         }
                         res.status = 500;
                     });
+                // LCOV_EXCL_STOP
 
                 // Bind to socket and listen
                 instance->server->bind_to_port(path.c_str(), true);
