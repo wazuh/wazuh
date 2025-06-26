@@ -250,6 +250,13 @@ nlohmann::json BrowserExtensionsProvider::collect()
                     // TODO: Improve error handling
                     // std::cerr << "Failed to parse NSExtension" << std::endl;
                 }
+
+                // Only the root plist dictionary needs to be freed, the children will be
+                // handled automatically.
+                if (plistDict)
+                {
+                    plist_free(plistDict); // Free the plist dictionary
+                }
             }
         }
     }
