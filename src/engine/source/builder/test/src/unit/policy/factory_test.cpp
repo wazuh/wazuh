@@ -808,7 +808,6 @@ using buildgraphtest::assetExpr;
 struct SubgraphCase
 {
     Graph<base::Name, Asset> subgraph;
-    bool reverseOrderDecoders; // only applies for Or
     std::shared_ptr<base::Operation> expected;
 };
 
@@ -820,10 +819,8 @@ TEST_P(BuildSubgraphOr, OrOperation)
 {
     const auto& param = GetParam();
     const auto& graph = param.subgraph;
-    bool reverseOrderDecoders = param.reverseOrderDecoders;
 
-    reverseOrderDecoders == true ? setenv("WAZUH_REVERSE_ORDER_DECODERS", "true", 1)
-                                 : unsetenv("WAZUH_REVERSE_ORDER_DECODERS");
+    unsetenv("WAZUH_REVERSE_ORDER_DECODERS");
 
     base::Expression got;
     ASSERT_NO_THROW({ got = factory::buildSubgraphExpression<base::Or>(graph); });
@@ -853,7 +850,6 @@ INSTANTIATE_TEST_SUITE_P(OrOperation,
                                                g.addEdge("__ROOT__", "H");
                                                return g;
                                            }(),
-                                           /* reverseOrderDecoders */ false,
                                            /* expected */ Or::create("__ROOT__", {assetExpr("H")})},
 
                              // Parent "P" with one child "C"
@@ -868,7 +864,6 @@ INSTANTIATE_TEST_SUITE_P(OrOperation,
                                                g.addEdge("P", "C");
                                                return g;
                                            }(),
-                                           /* reverseOrderDecoders */ false,
                                            /* expected */
                                            []()
                                            {
@@ -893,7 +888,6 @@ INSTANTIATE_TEST_SUITE_P(OrOperation,
                                                g.addEdge("P", "C2");
                                                return g;
                                            }(),
-                                           /* reverseOrderDecoders */ false,
                                            /* expected */
                                            []()
                                            {
@@ -903,7 +897,6 @@ INSTANTIATE_TEST_SUITE_P(OrOperation,
                                                auto impl = Implication::create("P/Node", assetExpr("P"), children);
                                                return Or::create("__ROOT__", {impl});
                                            }()},
-
 
                              // Two parents "P1" and "P2" sharing child "C":
                              SubgraphCase {/* subgraph */ []()
@@ -921,7 +914,6 @@ INSTANTIATE_TEST_SUITE_P(OrOperation,
                                                g.addEdge("P2", "C");
                                                return g;
                                            }(),
-                                           /* reverseOrderDecoders */ false,
                                            /* expected */
                                            []()
                                            {
@@ -934,12 +926,34 @@ INSTANTIATE_TEST_SUITE_P(OrOperation,
                                                auto impl2 = Implication::create("P2/Node", assetExpr("P2"), children2);
 
                                                return Or::create("__ROOT__", {impl1, impl2});
-                                           }()}
+                                           }()}));
 
-#if defined(REVERSE_ORDER_DECODERS) && REVERSE_ORDER_DECODERS == true
+class BuildSubgraphOrReverted : public ::testing::TestWithParam<SubgraphCase>
+{
+};
+
+TEST_P(BuildSubgraphOrReverted, RevertedOrOperation)
+{
+#ifndef ENGINE_ENABLE_REVERSE_ORDER_DECODERS_FEATURE
+    GTEST_SKIP() << "This test is skipped because it needs ENGINE_ENABLE_REVERSE_ORDER_DECODERS_FEATURE to be defined.";
+#endif // ENGINE_ENABLE_REVERSE_ORDER_DECODERS_FEATURE
+    const auto& param = GetParam();
+    const auto& graph = param.subgraph;
+
+    setenv("WAZUH_REVERSE_ORDER_DECODERS", "true", 1);
+
+    base::Expression got;
+    ASSERT_NO_THROW({ got = factory::buildSubgraphExpression<base::Or>(graph); });
+
+    builder::test::assertEqualExpr(got, param.expected);
+}
+
+INSTANTIATE_TEST_SUITE_P(RevertedOrOperation,
+                         BuildSubgraphOrReverted,
+                         ::testing::Values(
                              // Same graph as before with reverseOrderDecoders=true.
                              // Since P has only one child, reversing does nothing.
-                             ,SubgraphCase {/* subgraph */ []()
+                             SubgraphCase {/* subgraph */ []()
                                            {
                                                auto g = makeEmptyGraph();
                                                Asset aP("P", assetExpr("P"), std::vector<base::Name> {"__ROOT__"});
@@ -950,7 +964,6 @@ INSTANTIATE_TEST_SUITE_P(OrOperation,
                                                g.addEdge("P", "C");
                                                return g;
                                            }(),
-                                           /* reverseOrderDecoders */ true,
                                            /* expected */
                                            []()
                                            {
@@ -975,7 +988,6 @@ INSTANTIATE_TEST_SUITE_P(OrOperation,
                                                g.addEdge("P", "C2");
                                                return g;
                                            }(),
-                                           /* reverseOrderDecoders */ true,
                                            /* expected */
                                            []()
                                            {
@@ -1010,7 +1022,6 @@ INSTANTIATE_TEST_SUITE_P(OrOperation,
                                                g.addEdge("P2", "D");
                                                return g;
                                            }(),
-                                           /* reverseOrderDecoders */ true,
                                            /* expected */
                                            []()
                                            {
@@ -1025,7 +1036,5 @@ INSTANTIATE_TEST_SUITE_P(OrOperation,
                                                auto impl2 = Implication::create("P2/Node", assetExpr("P2"), children2);
 
                                                return Or::create("__ROOT__", {impl1, impl2});
-                                           }()}
-#endif // !REVERSE_ORDER_DECODERS
-                                           ));
+                                           }()}));
 } // namespace buildsubgraphtest
