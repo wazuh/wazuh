@@ -5928,7 +5928,7 @@ void test_wdb_global_insert_agent_belong_transaction_fail(void **state)
 
     result = wdb_global_insert_agent_belong(data->wdb, id_group, id_agent, priority);
 
-    assert_int_equal(result, OS_INVALID);
+    assert_int_equal(result, OS_UNDEF);
 }
 
 void test_wdb_global_insert_agent_belong_cache_fail(void **state)
@@ -5945,7 +5945,7 @@ void test_wdb_global_insert_agent_belong_cache_fail(void **state)
 
     result = wdb_global_insert_agent_belong(data->wdb, id_group, id_agent, priority);
 
-    assert_int_equal(result, OS_INVALID);
+    assert_int_equal(result, OS_UNDEF);
 }
 
 void test_wdb_global_insert_agent_belong_bind1_fail(void **state)
@@ -5967,7 +5967,7 @@ void test_wdb_global_insert_agent_belong_bind1_fail(void **state)
 
     result = wdb_global_insert_agent_belong(data->wdb, id_group, id_agent, priority);
 
-    assert_int_equal(result, OS_INVALID);
+    assert_int_equal(result, OS_UNDEF);
 }
 
 void test_wdb_global_insert_agent_belong_bind2_fail(void **state)
@@ -5993,7 +5993,7 @@ void test_wdb_global_insert_agent_belong_bind2_fail(void **state)
 
     result = wdb_global_insert_agent_belong(data->wdb, id_group, id_agent, priority);
 
-    assert_int_equal(result, OS_INVALID);
+    assert_int_equal(result, OS_UNDEF);
 }
 
 void test_wdb_global_insert_agent_belong_bind3_fail(void **state)
@@ -6022,7 +6022,7 @@ void test_wdb_global_insert_agent_belong_bind3_fail(void **state)
 
     result = wdb_global_insert_agent_belong(data->wdb, id_group, id_agent, priority);
 
-    assert_int_equal(result, OS_INVALID);
+    assert_int_equal(result, OS_UNDEF);
 }
 
 void test_wdb_global_insert_agent_belong_step_fail(void **state)
@@ -8378,7 +8378,7 @@ void test_wdb_global_assign_agent_group_insert_belong_error(void **state) {
         // wdb_global_insert_agent_belong
         will_return(__wrap_wdb_begin2, OS_INVALID);
         expect_string(__wrap__mdebug1, formatted_msg, "Cannot begin transaction");
-        snprintf(debug_message[i], OS_MAXSTR, "Unable to insert group '%s' for agent '%d'", group_name[i], agent_id);
+        snprintf(debug_message[i], OS_MAXSTR, "Unable to insert group '%s' for agent '%d', undefined error.", group_name[i], agent_id);
         expect_string(__wrap__mdebug1, formatted_msg, debug_message[i]);
     }
 
@@ -8728,7 +8728,7 @@ void test_wdb_global_unassign_agent_group_error_assign_default_group(void **stat
 
     will_return(__wrap_wdb_begin2, -1);
     expect_string(__wrap__mdebug1, formatted_msg, "Cannot begin transaction");
-    expect_string(__wrap__mdebug1, formatted_msg, "Unable to insert group 'default' for agent '1'");
+    expect_string(__wrap__mdebug1, formatted_msg, "Unable to insert group 'default' for agent '1', undefined error.");
 
     expect_string(__wrap__merror, formatted_msg, "There was an error assigning the agent '001' to default group");
 
@@ -9869,6 +9869,188 @@ void test_wdb_global_recalculate_all_agent_groups_hash_recalculate_error(void **
     assert_int_equal(result, OS_INVALID);
 }
 
+void test_wdb_global_assign_agent_group_agent_not_exists_success(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+    int agent_id = 1;
+    int group_id = 1;
+    int priority = 0;
+    char group_name[] = "test_group";
+    cJSON *j_groups = __real_cJSON_CreateArray();
+    cJSON_AddItemToArray(j_groups, cJSON_CreateString(group_name));
+
+    cJSON *find_group_resp = cJSON_Parse("[{\"id\":1}]");
+
+    // wdb_global_find_group
+    will_return(__wrap_wdb_begin2, 1);
+    will_return(__wrap_wdb_stmt_cache, 1);
+    expect_value(__wrap_sqlite3_bind_text, pos, 1);
+    expect_string(__wrap_sqlite3_bind_text, buffer, group_name);
+    will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
+    will_return(__wrap_wdb_exec_stmt, find_group_resp);
+
+    expect_function_call(__wrap_cJSON_Delete);
+    
+    // Mock: wdb_global_insert_agent_belong
+    will_return(__wrap_wdb_begin2, 1);
+    will_return(__wrap_wdb_stmt_cache, 1);
+    expect_value(__wrap_sqlite3_bind_int, index, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, group_id);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+    expect_value(__wrap_sqlite3_bind_int, index, 2);
+    expect_value(__wrap_sqlite3_bind_int, value, agent_id);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+    expect_value(__wrap_sqlite3_bind_int, index, 3);
+    expect_value(__wrap_sqlite3_bind_int, value, priority);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+    will_return(__wrap_wdb_exec_stmt_silent, OS_INVALID);
+
+    // Mock: wdb_global_agent_exists
+    will_return(__wrap_wdb_begin2, 1);
+    will_return(__wrap_wdb_stmt_cache, 1);
+    expect_value(__wrap_sqlite3_bind_int, index, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, agent_id);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+    will_return(__wrap_wdb_step, SQLITE_DONE);
+
+    // Mock: time in the caller.
+    will_return(__wrap_time, 0);
+
+    // Mock: wdb_global_insert_agent
+    will_return(__wrap_wdb_begin2, 1);
+    will_return(__wrap_wdb_stmt_cache, 1);
+    expect_value(__wrap_sqlite3_bind_int, index, 1); // id
+    expect_value(__wrap_sqlite3_bind_int, value, agent_id);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+    expect_value(__wrap_sqlite3_bind_text, pos, 2); // name
+    expect_string(__wrap_sqlite3_bind_text, buffer, "unknown");
+    will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
+    expect_value(__wrap_sqlite3_bind_text, pos, 3); // ip
+    expect_string(__wrap_sqlite3_bind_text, buffer, "0.0.0.0");
+    will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
+    expect_value(__wrap_sqlite3_bind_text, pos, 4); // register_ip
+    expect_string(__wrap_sqlite3_bind_text, buffer, "0.0.0.0");
+    will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
+    expect_value(__wrap_sqlite3_bind_text, pos, 5); // key
+    will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
+    expect_value(__wrap_sqlite3_bind_int, index, 6); // date_add
+    expect_value(__wrap_sqlite3_bind_int, value, 0);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+    expect_value(__wrap_sqlite3_bind_text, pos, 7); // group
+    will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
+    will_return(__wrap_wdb_exec_stmt_silent, OS_SUCCESS);
+
+    // Mock: wdb_global_insert_agent_belong
+    will_return(__wrap_wdb_begin2, 1);
+    will_return(__wrap_wdb_stmt_cache, 1);
+    expect_value(__wrap_sqlite3_bind_int, index, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, group_id);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+    expect_value(__wrap_sqlite3_bind_int, index, 2);
+    expect_value(__wrap_sqlite3_bind_int, value, agent_id);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+    expect_value(__wrap_sqlite3_bind_int, index, 3);
+    expect_value(__wrap_sqlite3_bind_int, value, priority);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+    will_return(__wrap_wdb_exec_stmt_silent, OS_SUCCESS);
+
+    wdbc_result result = wdb_global_assign_agent_group(data->wdb, agent_id, j_groups, priority);
+
+    assert_int_equal(result, WDBC_OK);
+    __real_cJSON_Delete(j_groups);
+    __real_cJSON_Delete(find_group_resp);
+}
+void test_wdb_global_assign_agent_group_agent_not_exists_insert_fail(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+    int agent_id = 1;
+    int group_id = 1;
+    int priority = 0;
+    char group_name[] = "test_group";
+    cJSON *j_groups = __real_cJSON_CreateArray();
+    cJSON_AddItemToArray(j_groups, cJSON_CreateString(group_name));
+
+    cJSON *find_group_resp = cJSON_Parse("[{\"id\":1}]");
+
+    // wdb_global_find_group
+    will_return(__wrap_wdb_begin2, 1);
+    will_return(__wrap_wdb_stmt_cache, 1);
+    expect_value(__wrap_sqlite3_bind_text, pos, 1);
+    expect_string(__wrap_sqlite3_bind_text, buffer, group_name);
+    will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
+    will_return(__wrap_wdb_exec_stmt, find_group_resp);
+
+    expect_function_call(__wrap_cJSON_Delete);
+    
+    // Mock: wdb_global_insert_agent_belong
+    will_return(__wrap_wdb_begin2, 1);
+    will_return(__wrap_wdb_stmt_cache, 1);
+    expect_value(__wrap_sqlite3_bind_int, index, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, group_id);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+    expect_value(__wrap_sqlite3_bind_int, index, 2);
+    expect_value(__wrap_sqlite3_bind_int, value, agent_id);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+    expect_value(__wrap_sqlite3_bind_int, index, 3);
+    expect_value(__wrap_sqlite3_bind_int, value, priority);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+    will_return(__wrap_wdb_exec_stmt_silent, OS_INVALID);
+
+    // Mock: wdb_global_agent_exists
+    will_return(__wrap_wdb_begin2, 1);
+    will_return(__wrap_wdb_stmt_cache, 1);
+    expect_value(__wrap_sqlite3_bind_int, index, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, agent_id);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+    will_return(__wrap_wdb_step, SQLITE_DONE);
+
+    // Mock: time in the caller.
+    will_return(__wrap_time, 0);
+
+    // Mock: wdb_global_insert_agent
+    will_return(__wrap_wdb_begin2, 1);
+    will_return(__wrap_wdb_stmt_cache, 1);
+    expect_value(__wrap_sqlite3_bind_int, index, 1); // id
+    expect_value(__wrap_sqlite3_bind_int, value, agent_id);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+    expect_value(__wrap_sqlite3_bind_text, pos, 2); // name
+    expect_string(__wrap_sqlite3_bind_text, buffer, "unknown");
+    will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
+    expect_value(__wrap_sqlite3_bind_text, pos, 3); // ip
+    expect_string(__wrap_sqlite3_bind_text, buffer, "0.0.0.0");
+    will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
+    expect_value(__wrap_sqlite3_bind_text, pos, 4); // register_ip
+    expect_string(__wrap_sqlite3_bind_text, buffer, "0.0.0.0");
+    will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
+    expect_value(__wrap_sqlite3_bind_text, pos, 5); // key
+    will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
+    expect_value(__wrap_sqlite3_bind_int, index, 6); // date_add
+    expect_value(__wrap_sqlite3_bind_int, value, 0);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+    expect_value(__wrap_sqlite3_bind_text, pos, 7); // group
+    will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
+    will_return(__wrap_wdb_exec_stmt_silent, OS_SUCCESS);
+
+    // Mock: wdb_global_insert_agent_belong
+    will_return(__wrap_wdb_begin2, 1);
+    will_return(__wrap_wdb_stmt_cache, 1);
+    expect_value(__wrap_sqlite3_bind_int, index, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, group_id);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+    expect_value(__wrap_sqlite3_bind_int, index, 2);
+    expect_value(__wrap_sqlite3_bind_int, value, agent_id);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+    expect_value(__wrap_sqlite3_bind_int, index, 3);
+    expect_value(__wrap_sqlite3_bind_int, value, priority);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+    will_return(__wrap_wdb_exec_stmt_silent, OS_INVALID);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Unable to insert group 'test_group' for agent '1', retry failed after creating agent in never_connected state.");
+
+    wdbc_result result = wdb_global_assign_agent_group(data->wdb, agent_id, j_groups, priority);
+
+    assert_int_equal(result, WDBC_ERROR);
+    __real_cJSON_Delete(j_groups);
+    __real_cJSON_Delete(find_group_resp);
+}
 
 int main()
 {
@@ -10308,6 +10490,8 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_global_assign_agent_group_insert_belong_error,
                                         test_setup,
                                         test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_assign_agent_group_agent_not_exists_success, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_assign_agent_group_agent_not_exists_insert_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_assign_agent_group_find_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_assign_agent_group_invalid_json, test_setup, test_teardown),
         /* Tests wdb_global_unassign_agent_group */

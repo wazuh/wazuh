@@ -248,6 +248,7 @@ int main(int argc, char ** argv)
     router_register_api_endpoint("wazuh-db","wdb-http.sock", "POST", "/v1/agents/summary", (void*)&wdb_global_pre, (void*)&wdb_global_post);
     router_register_api_endpoint("wazuh-db","wdb-http.sock", "GET", "/v1/agents/sync", (void*)&wdb_global_pre, (void*)&wdb_global_post);
     router_register_api_endpoint("wazuh-db","wdb-http.sock", "POST", "/v1/agents/sync", (void*)&wdb_global_pre, (void*)&wdb_global_post);
+    router_register_api_endpoint("wazuh-db","wdb-http.sock", "POST", "/v1/agents/restartinfo", (void*)&wdb_global_pre, (void*)&wdb_global_post);
 
     router_start_api("wdb-http.sock");
 

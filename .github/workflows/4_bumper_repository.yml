@@ -129,7 +129,7 @@ jobs:
       - name: Merge pull request
         run: |
           # Any checks for the PR are bypassed since the branch is expected to be functional (i.e. the bump process does not introduce any bugs)
-          gh pr merge "${{ steps.create_pr.outputs.pull_request_url }}" --merge
+          gh pr merge "${{ steps.create_pr.outputs.pull_request_url }}" --merge --admin
 
       - name: Show logs
         run: |
