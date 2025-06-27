@@ -14,11 +14,32 @@
                     "id_signed": -585,
                     "is_hidden": false,
                     "name": "Utilisateurs OpenSSH",
+                    "uuid": "S-1-5-32-585"
+                },
+                "wazuh": {
+                    "cluster": {
+                        "name": "cluster01"
+                    },
+                    "schema": {
+                        "version": "1.0"
+                    }
+                }
+            },
+            {
+                "agent": {
+                    "id": "003",
+                    "name": "centos9",
+                    "version": "v4.10.1"
+                },
+                "group": {
+                    "id": 585,
+                    "id_signed": -585,
+                    "is_hidden": false,
                     "users": [
                         "user1",
-                        "user2"
-                    ],
-                    "uuid": "S-1-5-32-585"
+                        "user2",
+                        "user3"
+                    ]
                 },
                 "wazuh": {
                     "cluster": {

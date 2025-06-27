@@ -25,7 +25,6 @@
 #include <vector>
 
 constexpr auto DEFAULT_INT_VALUE = INT64_MIN;
-constexpr auto DEFAULT_INT32_VALUE = INT32_MIN;
 constexpr auto DEFAULT_DOUBLE_VALUE = 0.0;
 constexpr auto CHAR_SIZE {256};
 constexpr auto BUFFER_SIZE {32};

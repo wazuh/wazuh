@@ -1574,13 +1574,13 @@ int wdb_syscollector_groups_save2(wdb_t * wdb, const cJSON * attributes)
 {
     const char * scan_id = "0";
     const char * scan_time = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "scan_time"));
-    const long long group_id = cJSON_GetObjectItem(attributes, "group_id") ? cJSON_GetObjectItem(attributes, "group_id")->valuedouble : 0;
+    const long long group_id = cJSON_GetObjectItem(attributes, "group_id") ? cJSON_GetObjectItem(attributes, "group_id")->valuedouble : -1; // Since it is PK, an invalid value should use the default value.
     const char * group_name = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "group_name"));
     const char * group_description = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "group_description"));
     const long long group_id_signed = cJSON_GetObjectItem(attributes, "group_id_signed") ? cJSON_GetObjectItem(attributes, "group_id_signed")->valuedouble : 0;
     const char * group_uuid = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "group_uuid"));
     const bool group_is_hidden = cJSON_GetObjectItem(attributes, "group_is_hidden") ? cJSON_GetObjectItem(attributes, "group_is_hidden")->valueint : false;
-    char * group_users = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "group_users"));
+    const char * group_users = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "group_users"));
     const char * checksum = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "checksum"));
     return wdb_groups_save(wdb, scan_id, scan_time, group_id, group_name, group_description, group_id_signed, group_uuid, group_is_hidden,
                            group_users, checksum, TRUE);

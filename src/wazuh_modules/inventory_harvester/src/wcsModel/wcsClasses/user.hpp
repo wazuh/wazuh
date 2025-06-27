@@ -42,7 +42,7 @@ struct User final
 
     struct AuthFailed final
     {
-        std::int32_t count = DEFAULT_INT32_VALUE;
+        std::int64_t count = DEFAULT_INT_VALUE;
         std::string_view timestamp;
         REFLECTABLE(MAKE_FIELD("count", &AuthFailed::count), MAKE_FIELD("timestamp", &AuthFailed::timestamp));
     };
@@ -58,13 +58,13 @@ struct User final
     {
         std::string_view expiration_date;
         std::string_view hash_algorithm;
-        std::int32_t inactive_days = DEFAULT_INT32_VALUE;
-        std::int32_t last_change = DEFAULT_INT32_VALUE;
+        std::int64_t inactive_days = DEFAULT_INT_VALUE;
+        std::int64_t last_change = DEFAULT_INT_VALUE;
         std::string_view last_set_time;
-        std::int32_t max_days_between_changes = DEFAULT_INT32_VALUE;
-        std::int32_t min_days_between_changes = DEFAULT_INT32_VALUE;
+        std::int64_t max_days_between_changes = DEFAULT_INT_VALUE;
+        std::int64_t min_days_between_changes = DEFAULT_INT_VALUE;
         std::string_view status;
-        std::int32_t warning_days_before_expiration = DEFAULT_INT32_VALUE;
+        std::int64_t warning_days_before_expiration = DEFAULT_INT_VALUE;
         REFLECTABLE(MAKE_FIELD("status", &Password::status),
                     MAKE_FIELD("hash_algorithm", &Password::hash_algorithm),
                     MAKE_FIELD("last_change", &Password::last_change),

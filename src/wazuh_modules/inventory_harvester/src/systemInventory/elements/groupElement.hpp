@@ -60,12 +60,13 @@ public:
         element.data.group.description = data->groupDescription();
         element.data.group.id_signed = data->groupIdSigned();
         element.data.group.uuid = data->groupUuid();
+        // To be consistent with SQLite information default value is false
         element.data.group.is_hidden = data->groupIsHidden();
 
         std::string_view groupUsersView = data->groupUsers();
         if (!groupUsersView.empty())
         {
-            element.data.group.users = Utils::splitView(groupUsersView, ',');
+            element.data.group.users = Utils::splitView(groupUsersView, ':');
         }
 
         element.data.agent.id = agentId;

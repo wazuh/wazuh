@@ -20,7 +20,7 @@
         "user_full_name": "root",
         "user_group_id": 100,
         "user_group_id_signed": -100,
-        "user_groups": "group1,group2",
+        "user_groups": "group1:group2",
         "user_home": "/root",
         "user_id": 10,
         "user_is_hidden": null,

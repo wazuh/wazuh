@@ -61,12 +61,22 @@ public:
             element.data.host.ip = Utils::splitView(userHostIpView, ',');
         }
 
+        // To be consistent with SQLite information default value is false
         element.data.login.status = data->userLoginStatus();
         element.data.login.tty = data->userLoginTty();
         element.data.login.type = data->userLoginType();
 
-        element.data.process.pid = data->userProcessPid();
-        element.data.user.id = std::to_string(data->userId());
+        auto userProcessPid = data->userProcessPid();
+        if (userProcessPid >= 0)
+        {
+            element.data.process.pid = userProcessPid;
+        }
+
+        auto userId = data->userId();
+        if (userId >= 0)
+        {
+            element.data.user.id = std::to_string(userId);
+        }
         element.data.user.name = userName;
         element.data.user.full_name = data->userFullName();
         element.data.user.created = data->userCreated();
@@ -76,30 +86,59 @@ public:
         element.data.user.last_login = data->userLastLogin();
         element.data.user.uid_signed = data->userUidSigned();
         element.data.user.uuid = data->userUuid();
+        // To be consistent with SQLite information default value is false
         element.data.user.is_hidden = data->userIsHidden();
         element.data.user.is_remote = data->userIsRemote();
 
-        element.data.user.group.id = data->userGroupId();
+        auto userGroupId = data->userGroupId();
+        if (userGroupId >= 0)
+        {
+            element.data.user.group.id = userGroupId;
+        }
         element.data.user.group.id_signed = data->userGroupIdSigned();
 
         std::string_view userGroupsView = data->userGroups();
         if (!userGroupsView.empty())
         {
-            element.data.user.groups = Utils::splitView(userGroupsView, ',');
+            element.data.user.groups = Utils::splitView(userGroupsView, ':');
         }
 
-        element.data.user.auth_failures.count = data->userAuthFailedCount();
+        auto userAuthFailedCount = data->userAuthFailedCount();
+        if (userAuthFailedCount >= 0)
+        {
+            element.data.user.auth_failures.count = userAuthFailedCount;
+        }
         element.data.user.auth_failures.timestamp = data->userAuthFailedTimestamp();
 
         element.data.user.password.status = data->userPasswordStatus();
-        element.data.user.password.last_change = data->userPasswordLastChange();
+        auto userPasswordLastChange = data->userPasswordLastChange();
+        if (userPasswordLastChange >= 0)
+        {
+            element.data.user.password.last_change = userPasswordLastChange;
+        }
         element.data.user.password.expiration_date = data->userPasswordExpirationDate();
         element.data.user.password.hash_algorithm = data->userPasswordHashAlgorithm();
-        element.data.user.password.inactive_days = data->userPasswordInactiveDays();
+        auto userPasswordInactiveDays = data->userPasswordInactiveDays();
+        if (userPasswordInactiveDays >= 0)
+        {
+            element.data.user.password.inactive_days = userPasswordInactiveDays;
+        }
         element.data.user.password.last_set_time = data->userPasswordLastSetTime();
-        element.data.user.password.max_days_between_changes = data->userPasswordMaxDays();
-        element.data.user.password.min_days_between_changes = data->userPasswordMinDays();
-        element.data.user.password.warning_days_before_expiration = data->userPasswordWarningDays();
+        auto userPasswordMaxDays = data->userPasswordMaxDays();
+        if (userPasswordMaxDays >= 0)
+        {
+            element.data.user.password.max_days_between_changes = userPasswordMaxDays;
+        }
+        auto userPasswordMinDays = data->userPasswordMinDays();
+        if (userPasswordMinDays >= 0)
+        {
+            element.data.user.password.min_days_between_changes = userPasswordMinDays;
+        }
+        auto userPasswordWarningDays = data->userPasswordWarningDays();
+        if (userPasswordWarningDays >= 0)
+        {
+            element.data.user.password.warning_days_before_expiration = userPasswordWarningDays;
+        }
 
         std::string_view userRolesView = data->userRoles();
         if (!userRolesView.empty())
