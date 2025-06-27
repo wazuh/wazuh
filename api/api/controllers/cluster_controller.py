@@ -806,16 +806,16 @@ async def put_restart(pretty: bool = False, nodes_list: str = '*') -> ConnexionR
     result = raise_if_exc(await dapi.distribute_function())
 
     if nodes_list == '*' or master_node in nodes_list:
-        dapi = DistributedAPI(
+        dapi_master = DistributedAPI(
             f=manager.restart,
             request_type='local_master',
             logger=logger,
             rbac_permissions=request.context['token_info']['rbac_policies'],
         )
-        _ = raise_if_exc(await dapi.distribute_function())
-
-        result.affected_items.insert(0, master_node)
-        result.total_affected_items += 1
+        master_result = raise_if_exc(await dapi_master.distribute_function())
+        if master_result.total_affected_items > 0:
+            result.affected_items.insert(0, master_node)
+            result.total_affected_items += 1
 
     return json_response(result, pretty=pretty, status_code=202)
 
