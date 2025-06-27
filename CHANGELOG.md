@@ -14,6 +14,18 @@ All notable changes to this project will be documented in this file.
 
 ## [v4.13.1]
 
+### Agent
+
+#### Added
+
+- Added Ms-Graph token validation before performing requests. ([#30377](https://github.com/wazuh/wazuh/pull/30377))
+
+### RESTful API
+
+#### Added
+
+- Added /agents/summary endpoint. ([#29589](https://github.com/wazuh/wazuh/pull/29589))
+
 
 ## [v4.13.0]
 
@@ -24,10 +36,12 @@ All notable changes to this project will be documented in this file.
 - Added Analysisd ability to do a hot ruleset reload. ([#29458](https://github.com/wazuh/wazuh/pull/29458))
 - Added support for hot ruleset reload via API. ([#29954](https://github.com/wazuh/wazuh/pull/29954))
 - Added support for global queries of FIM and system inventory data. ([#27894](https://github.com/wazuh/wazuh/issues/27894))
+- Added sanity checks for hotfix values in Vulnerability Detector. ([#30504](https://github.com/wazuh/wazuh/pull/30504))
 
 #### Fixed
 - Fixed missing agent version handling in Vulnerability Detector. ([#29181](https://github.com/wazuh/wazuh/pull/29181))
 - Fixed race condition in agent status synchronization between worker and master. ([#29624](https://github.com/wazuh/wazuh/pull/29624))
+- Fixed agent-group assignment for missing agents with improved error handling. ([#30534](https://github.com/wazuh/wazuh/pull/30534))
 
 #### Changed
 - Improved reports functionality to avoid duplicated daily FIM reports. ([#29232](https://github.com/wazuh/wazuh/pull/29232))
@@ -44,6 +58,7 @@ All notable changes to this project will be documented in this file.
 - Added support for Rocky Linux and AlmaLinux in the agent upgrade module. ([#29391](https://github.com/wazuh/wazuh/pull/29391))
 - Added handling of CentOS 9 SCA files in package specs. ([#29393](https://github.com/wazuh/wazuh-packages/pull/29393))
 - Added SCA support for Oracle Linux 10. ([#29139](https://github.com/wazuh/wazuh/pull/29139))
+- Added Rootcheck rule to detect root-owned files with world-writable permissions. ([#30556](https://github.com/wazuh/wazuh/pull/30556))
 
 #### Fixed
 - Fixed incorrect handling of events in the Custom logs bucket. ([#29312](https://github.com/wazuh/wazuh/pull/29312))
@@ -53,6 +68,7 @@ All notable changes to this project will be documented in this file.
 - Fixed hidden port detection and netstat availability handling. ([#29561](https://github.com/wazuh/wazuh/pull/29561))
 - Replaced `select()` with `sleep()` in Logcollector to prevent errors during Docker deployment. ([#29905](https://github.com/wazuh/wazuh/pull/29905))
 - Fixed NetNTLMv2 exposure by filtering UNC paths and mapped drives in Windows agent. ([#30060](https://github.com/wazuh/wazuh/pull/30060))
+- Fixed Windows agent not starting after manual upgrade by deferring service start to post-install. ([#29820](https://github.com/wazuh/wazuh/pull/29820))
 
 #### Changed
 - Improved agent synchronization to reduce redundant payload transfers. ([#29426](https://github.com/wazuh/wazuh/pull/29426))
