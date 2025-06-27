@@ -5,6 +5,7 @@
 #include <cstring>
 #include <mutex>
 #include <string>
+#include <stdexcept>
 #include <unistd.h>
 
 #include <sys/socket.h>

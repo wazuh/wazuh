@@ -62,7 +62,7 @@ if(ENGINE_BUILD_TEST)
     )
     target_include_directories(router_ctest PRIVATE ${SRC_DIR})
     target_link_libraries(router_ctest
-        GTest::gtest_main
+        GTest::gmock_main
         base
         router::router
         builder::mocks
@@ -84,7 +84,7 @@ if(ENGINE_BUILD_TEST)
     )
     target_include_directories(router_utest PRIVATE ${SRC_DIR})
     target_link_libraries(router_utest
-        GTest::gtest_main
+        GTest::gmock_main
         base
         router::router
         builder::mocks

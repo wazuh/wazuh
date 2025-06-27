@@ -17,17 +17,14 @@ add_library(kvdb STATIC
     ${SRC_DIR}/refCounter.cpp
 )
 
-
 target_include_directories(kvdb
     PUBLIC
     ${INC_DIR}
-## TODO: private, after implement pimpl pattern
-    ${rocksdb_SOURCE_DIR}/include
 )
 
 target_link_libraries(kvdb
     PRIVATE
-    RocksDB::rocksdb
+    rocksdb
     base
     PUBLIC
     kvdb::ikvdb

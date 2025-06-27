@@ -71,7 +71,21 @@ EXTERNAL_BZIP2=external/bzip2/
 EXTERNAL_GOOGLE_TEST=external/googletest/
 EXTERNAL_GOOGLE_BENCHMARK=external/benchmark/
 EXTERNAL_ROCKSDB=external/rocksdb/
+EXTERNAL_RE2=external/re2/
+EXTERNAL_ABSEILCPP=external/abseil-cpp/
 EXTERNAL_FLATBUFFERS=external/flatbuffers/
+EXTERNAL_FMT=external/fmt/
+EXTERNAL_SPDLOG=external/spdlog/
+EXTERNAL_RAPIDJSON=external/rapidjson/
+EXTERNAL_RXCPP=external/RxCpp/
+EXTERNAL_YAMLCPP=external/yaml-cpp/
+EXTERNAL_PUGIXML=external/pugixml/
+EXTERNAL_MAXMINDDB=external/libmaxminddb/
+EXTERNAL_PROTOBUF=external/protobuf/
+EXTERNAL_DATE=external/date/
+EXTERNAL_FAST_FLOAT=external/fast_float/
+EXTERNAL_TASKFLOW=external/taskflow/
+EXTERNAL_CONCURRENTQUEUE=external/concurrentqueue/
 EXTERNAL_LZMA=external/lzma/
 EXTERNAL_LUA=external/lua/
 EXTERNAL_LIBPCRE2=external/libpcre2/
@@ -946,7 +960,16 @@ POPT_LIB = $(EXTERNAL_POPT)build/output/src/.libs/libpopt.a
 RPM_LIB = $(EXTERNAL_RPM)builddir/librpm.a
 JEMALLOC_LIB = $(EXTERNAL_JEMALLOC)lib/libjemalloc.so.2
 ROCKSDB_LIB = $(EXTERNAL_ROCKSDB)build/librocksdb.so
+ABSEILCPP_LIB = $(EXTERNAL_ABSEILCPP)build/build_result/lib*/libabsl_*.a
+RE2_LIB = $(EXTERNAL_RE2)build/libre2.a
 FLATBUFFERS_LIB = $(EXTERNAL_FLATBUFFERS)build/libflatbuffers.a
+SPDLOG_LIB = $(EXTERNAL_SPDLOG)build/libspdlog.a
+YAMLCPP_LIB = $(EXTERNAL_YAMLCPP)build/libyaml-cpp.a
+PUGIXML_LIB = $(EXTERNAL_PUGIXML)build/libpugixml.a
+MAXMINDDB_LIB = $(EXTERNAL_MAXMINDDB)build/libmaxminddb.a
+PROTOBUF_LIB = $(EXTERNAL_PROTOBUF)build/libprotobuf.a
+DATE_LIB = $(EXTERNAL_DATE)build/libdate-tz.a
+FMT_LIB = $(EXTERNAL_FMT)build/libfmt.a
 LZMA_LIB = $(EXTERNAL_LZMA)build/liblzma.a
 LUA_LIB = ${EXTERNAL_LUA}install/lib/liblua.a
 LIBBPF_LIB = $(EXTERNAL_LIBBPF)build/modern.bpf.o
@@ -996,12 +1019,18 @@ endif
 .PHONY: external test_external
 external: test_external $(EXTERNAL_LIBS) $(JEMALLOC_LIB)
 
-ifneq (,$(filter ${TEST},YES yes y Y 1))
+ifneq (,$(filter ${TEST},YES yes y Y 1)$(filter $(ENGINE_TEST),YES yes y Y 1))
 external: build_gtest build_benchmark
+# only auto-define the CMake flag if TEST was NOT provided
+ifeq ($(TEST),)
+  CMAKE_ENGINE_OPTS = -DWAZUH_ENGINE_TEST=ON
+else
+  $(warning TEST is defined; skipping CMake engine test option)
+endif
 endif
 
 ifeq (${TARGET},server)
-external: $(ROCKSDB_LIB)
+external: $(ROCKSDB_LIB) $(SPDLOG_LIB) $(YAMLCPP_LIB) $(PUGIXML_LIB) $(MAXMINDDB_LIB) $(DATE_LIB) $(FMT_LIB) $(FAST_FLOAT_LIB) $(PROTOBUF_LIB) $(ABSEILCPP_LIB) $(RE2_LIB)
 endif
 
 ifeq (${uname_S},Linux)
@@ -1079,9 +1108,63 @@ $(LIBBPF_LIB):
 ${ROCKSDB_LIB}:
 	cd $(EXTERNAL_ROCKSDB) && mkdir -p build && cd build && cmake .. -DCMAKE_BUILD_TYPE=Release -DWITH_GFLAGS=0 -DWITH_TESTS=0 -DWITH_BENCHMARK_TOOLS=0 -DWITH_TOOLS=0 -DUSE_RTTI=1 -DROCKSDB_BUILD_SHARED=1 -DWITH_BZ2=1 -DBZIP2_INCLUDE_DIR=$(realpath $(EXTERNAL_BZIP2)) -DBZIP2_LIBRARIES=$(realpath $(BZIP2_LIB)) -DCMAKE_POSITION_INDEPENDENT_CODE=1 -DWITH_ALL_TESTS=0 -DWITH_RUNTIME_DEBUG=0 -DWITH_TRACE_TOOLS=0 -DPORTABLE=1 && ${MAKE}
 
+## abseilcpp ###
+${ABSEILCPP_LIB}:
+	mkdir -p $(EXTERNAL_ABSEILCPP)/build
+	cd $(EXTERNAL_ABSEILCPP)/build && \
+	  cmake .. \
+	    -DCMAKE_BUILD_TYPE=Release \
+	    -DABSL_BUILD_TESTING=OFF \
+	    -DABSL_USE_GOOGLETEST_HEAD=OFF \
+	    -DCMAKE_CXX_STANDARD=17 \
+		-DCMAKE_POSITION_INDEPENDENT_CODE=1 \
+	    -DCMAKE_INSTALL_PREFIX=./build_result && \
+	  make install
+
+${RE2_LIB}: $(ABSEILCPP_LIB)
+	mkdir -p $(EXTERNAL_RE2)build && \
+	cd $(EXTERNAL_RE2)build && \
+	cmake .. \
+	-DCMAKE_BUILD_TYPE=Release \
+	-DRE2_BUILD_TESTING=OFF \
+	-DCMAKE_CXX_STANDARD=17 \
+	-DBUILD_SHARED_LIBS=OFF \
+	-DCMAKE_PREFIX_PATH=${ROUTE_PATH}/${EXTERNAL_ABSEILCPP}/build/build_result \
+	-DCMAKE_POSITION_INDEPENDENT_CODE=ON \
+	-DCMAKE_INSTALL_PREFIX=./result && \
+	${MAKE}
+
 ### flatbuffers ###
 ${FLATBUFFERS_LIB}:
 	cd $(EXTERNAL_FLATBUFFERS) && mkdir -p build && cd build && cmake .. -DCMAKE_BUILD_TYPE=Release -DFLATBUFFERS_BUILD_TESTS=0 -DFLATBUFFERS_INSTALL=0 -DCMAKE_POSITION_INDEPENDENT_CODE=1 && ${MAKE}
+
+### spdlog ###
+${SPDLOG_LIB}:
+	cd $(EXTERNAL_SPDLOG) && mkdir -p build && cd build && cmake .. -DCMAKE_BUILD_TYPE=Release -DSPDLOG_BUILD_EXAMPLE=OFF -DSPDLOG_BUILD_TESTS=OFF -DSPDLOG_BUILD_BENCH=OFF -DSPDLOG_FMT_EXTERNAL=OFF -DBUILD_SHARED_LIBS=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=ON && ${MAKE}
+
+### yaml-cpp ###
+${YAMLCPP_LIB}:
+	cd $(EXTERNAL_YAMLCPP) && mkdir -p build && cd build && cmake .. -DCMAKE_BUILD_TYPE=Release -DYAML_CPP_BUILD_TOOLS=OFF -DYAML_CPP_BUILD_TESTS=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=1 && ${MAKE}
+
+### pugixml ###
+${PUGIXML_LIB}:
+	cd $(EXTERNAL_PUGIXML) && mkdir -p build && cd build && cmake .. -DCMAKE_BUILD_TYPE=Release -DPUGIXML_BUILD_TESTS=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=1 && ${MAKE}
+
+### maxminddb ###
+${MAXMINDDB_LIB}:
+	cd $(EXTERNAL_MAXMINDDB) && mkdir -p build && cd build && cmake .. -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=1 && ${MAKE}
+
+### protobuf ###
+${PROTOBUF_LIB}:
+	cd $(EXTERNAL_PROTOBUF) && mkdir -p build && cd build && cmake .. -DCMAKE_BUILD_TYPE=Release -Dprotobuf_BUILD_TESTS=OFF -DBUILD_SHARED_LIBS=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=ON && ${MAKE}
+
+### date ###
+${DATE_LIB}:
+	cd $(EXTERNAL_DATE) && mkdir -p build && cd build && cmake .. -DCMAKE_BUILD_TYPE=Release -DENABLE_DATE_TESTING=OFF -DUSE_SYSTEM_TZ_DB=OFF -DBUILD_TZ_LIB=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=ON && ${MAKE}
+
+### fmt ###
+${FMT_LIB}:
+	cd $(EXTERNAL_FMT) && mkdir -p build && cd build && cmake .. -DCMAKE_BUILD_TYPE=Release -DFMT_TEST=OFF -DFMT_DOC=OFF -DBUILD_SHARED_LIBS=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=ON && ${MAKE}
 
 ### lzma ###
 ${LZMA_LIB}:
@@ -1383,7 +1466,7 @@ TAR := tar -xf
 GUNZIP := gunzip
 GZIP := gzip
 CURL := curl -so
-DEPS_VERSION = 43
+DEPS_VERSION = 99-29585
 RESOURCES_URL_BASE := https://packages.wazuh.com/deps/
 RESOURCES_URL := $(RESOURCES_URL_BASE)$(DEPS_VERSION)
 CPYTHON := cpython
@@ -1468,7 +1551,7 @@ EXTERNAL_RES := cJSON curl libdb libffi libyaml openssl procps sqlite zlib audit
 ifneq (${TARGET},agent)
 ifneq (${TARGET},winagent)
 	# Manager extra dependency
-	EXTERNAL_RES += $(CPYTHON) jemalloc flatbuffers
+	EXTERNAL_RES += $(CPYTHON) jemalloc flatbuffers spdlog yaml-cpp pugixml libmaxminddb date fmt abseil-cpp re2 protobuf rapidjson taskflow RxCpp concurrentqueue fast_float
 endif
 endif
 
@@ -1857,7 +1940,7 @@ endif
 
 #### Wazuh cmake ###
 build_wazuh_cmake: $(WAZUHEXT_LIB) $(EXTERNAL_LIBS_NO_WHOLE) build_syscollector
-	mkdir -p build && cd build && cmake .. -DTARGET=${TARGET} ${CMAKE_OPTS} ${WAZUH_RELEASE_TYPE} ${WAZUH_TEST} && ${MAKE}
+	mkdir -p build && cd build && cmake .. -DTARGET=${TARGET} ${CMAKE_OPTS} ${WAZUH_RELEASE_TYPE} ${WAZUH_TEST} ${CMAKE_ENGINE_OPTS} && ${MAKE}
 
 #### Wazuh modules ##
 wmodules_c := $(wildcard wazuh_modules/wm*.c) $(wildcard wazuh_modules/agent_upgrade/*.c)
@@ -2760,6 +2843,20 @@ ifneq ($(wildcard external/*/*),)
 	rm -rf $(EXTERNAL_ROCKSDB)build
 	rm -rf $(EXTERNAL_LIBBPF)build
 	rm -rf $(EXTERNAL_FLATBUFFERS)build
+	rm -rf $(EXTERNAL_FMT)
+	rm -rf $(EXTERNAL_SPDLOG)
+	rm -rf $(EXTERNAL_RAPIDJSON)
+	rm -rf $(EXTERNAL_RXCPP)
+	rm -rf $(EXTERNAL_TASKFLOW)
+	rm -rf $(EXTERNAL_DATE)
+	rm -rf $(EXTERNAL_CONCURRENTQUEUE)
+	rm -rf $(EXTERNAL_FAST_FLOAT)
+	rm -rf $(EXTERNAL_PUGIXML)
+	rm -rf $(EXTERNAL_YAMLCPP)
+	rm -rf $(EXTERNAL_ABSEILCPP)
+	rm -rf $(EXTERNAL_MAXMINDDB)
+	rm -rf $(EXTERNAL_RE2)
+	rm -rf $(EXTERNAL_PROTOBUF)
 	rm -rf $(EXTERNAL_LZMA)build
 	-cd ${EXTERNAL_LIBPLIST} && ${MAKE} clean && rm -rf bin/*
 	-cd ${EXTERNAL_LIBPCRE2} && ${MAKE} distclean && rm -rf include/*

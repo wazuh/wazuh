@@ -13,7 +13,8 @@ constexpr auto SOCKET_CONFIG {"/run/wazuh-server/config-server.sock"};          
 json::Json ApiLoader::load() const
 {
     // Allow starting the engine without the API
-    // bool skipApiConfig = const auto env = std::getenv("WAZUH_CONFIG_SKIP_API"); env != nullptr && std::string(env) == "true";
+    // bool skipApiConfig = const auto env = std::getenv("WAZUH_CONFIG_SKIP_API"); env != nullptr && std::string(env) ==
+    // "true";
     bool skipApiConfig = true; // TODO: We disable the API until the configuration is redefined again.
     if (skipApiConfig)
     {
@@ -23,22 +24,17 @@ json::Json ApiLoader::load() const
 
     // Send the request to the API
     std::string json_response {};
-    struct RequestParameters requestParam
-    {
-        .url = HttpUnixSocketURL(SOCKET_CONFIG, URL_CONFIG)
-    };
 
-    struct PostRequestParameters postRequestParameters
-    {
+    struct PostRequestParameters postRequestParameters {
         .onSuccess = [&json_response](const std::string& msg) mutable -> void { json_response = msg; },
         .onError = [](const std::string& msg, const long responseCode) mutable -> void
         {
             throw std::runtime_error(
                 fmt::format("Error while loading configuration from API: '{}' - '{}'", msg, responseCode));
-        }
-    };
+        }};
 
-    UNIXSocketRequest::instance().get(requestParam, postRequestParameters, {});
+    UNIXSocketRequest::instance().get(
+        RequestParameters {.url = HttpUnixSocketURL(SOCKET_CONFIG, URL_CONFIG)}, postRequestParameters, {});
 
     // Parse the response
     json::Json config {};

@@ -22,10 +22,14 @@ target_include_directories(base
     ${INC_DIR}/base
     ${SRC_DIR}
 )
+
 target_link_libraries(base
     PUBLIC
-    fmt::fmt-header-only
+    fmt::fmt
     spdlog::spdlog
+    RapidJSON::RapidJSON
+    Threads::Threads
+    ${CMAKE_DL_LIBS}
 )
 
 # Tests

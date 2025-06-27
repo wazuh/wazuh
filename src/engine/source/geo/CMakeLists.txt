@@ -22,12 +22,6 @@ set(PUBLIC_LINKS
     store::istore
 )
 
-# Patch the maxminddb target
-set_target_properties(maxminddb::maxminddb
-  PROPERTIES
-  INTERFACE_INCLUDE_DIRECTORIES ""
-)
-
 add_library(geo
       ${SRCS}
 )

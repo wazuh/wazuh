@@ -18,13 +18,13 @@ add_library(bk_taskf STATIC
 target_include_directories(bk_taskf
     PUBLIC
     ${INC_DIR}
-    ${taskflow_SOURCE_DIR}
+    ${Taskflow_SOURCE_DIR}
 
     PRIVATE
     ${TASKF_SRC_DIR}
     ${INC_DIR}/bk/taskf
 )
-target_link_libraries(bk_taskf PUBLIC bk::ibk)
+target_link_libraries(bk_taskf PUBLIC Taskflow::Taskflow bk::ibk)
 add_library(bk::taskf ALIAS bk_taskf)
 
 # RxCpp
@@ -42,7 +42,7 @@ target_include_directories(bk_rx
     ${RXCPP_SRC_DIR}
     ${INC_DIR}/bk/rx
 )
-target_link_libraries(bk_rx PUBLIC bk::ibk)
+target_link_libraries(bk_rx PUBLIC RxCpp::RxCpp bk::ibk)
 add_library(bk::rx ALIAS bk_rx)
 
 # Tests

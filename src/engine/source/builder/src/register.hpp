@@ -3,7 +3,7 @@
 
 #include <memory>
 
-#include "builder.hpp"
+#include "builder/builder.hpp"
 #include "iregistry.hpp"
 #include "syntax.hpp"
 
@@ -44,7 +44,7 @@ namespace builder::detail
  * @param deps Builders dependencies
  */
 template<typename Registry>
-void registerOpBuilders(const std::shared_ptr<Registry>& registry, const BuilderDeps& deps)
+void registerOpBuilders(const std::shared_ptr<Registry>& registry, const builder::BuilderDeps& deps)
 {
     // Filter builders
     registry->template add<builders::OpBuilderEntry>(
