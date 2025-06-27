@@ -223,15 +223,17 @@ nlohmann::json IndexerConnector::getAgentDocumentsIds(const std::string& url,
     nlohmann::json postData;
     nlohmann::json responseJson;
     constexpr auto ELEMENTS_PER_QUERY {10000}; // The max value for queries is 10000 in the wazuh-indexer.
+    std::string scrollId;
 
     postData["query"]["match"]["agent.id"] = agentId;
     postData["size"] = ELEMENTS_PER_QUERY;
     postData["_source"] = nlohmann::json::array({"_id"});
 
     {
-        const auto onSuccess = [&responseJson](const std::string& response)
+        const auto onSuccess = [&responseJson, &scrollId](const std::string& response)
         {
             responseJson = nlohmann::json::parse(response);
+            scrollId = responseJson.at("_scroll_id").get_ref<const std::string&>();
         };
 
         const auto onError = [](const std::string& error, const long statusCode)
@@ -278,6 +280,24 @@ nlohmann::json IndexerConnector::getAgentDocumentsIds(const std::string& url,
                                          ConfigurationParameters {});
         }
     }
+
+    // Delete the scroll id.Add commentMore actions
+    const auto deleteScrollUrl = url + "/_search/scroll/" + scrollId;
+    const auto onError = [&](const std::string& error, const long statusCode)
+    {
+        logError(IC_NAME, "%s, status code: %ld.", error.c_str(), statusCode);
+        logError(IC_NAME, "Url: %s", deleteScrollUrl.c_str());
+    };
+
+    const auto onSuccess = [](const std::string& response)
+    {
+        logDebug2(IC_NAME, "Response: %s", response.c_str());
+    };
+
+    HTTPRequest::instance().delete_(
+        RequestParameters {.url = HttpURL(deleteScrollUrl), .secureCommunication = secureCommunication},
+        PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
+        ConfigurationParameters {});
 
     return responseJson;
 }
