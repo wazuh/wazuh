@@ -1,3 +1,12 @@
+/* Copyright (C) 2015, Wazuh Inc.
+ * All rights reserved.
+ *
+ * This program is free software; you can redistribute it
+ * and/or modify it under the terms of the GNU General Public
+ * License (version 2) as published by the FSF - Free Software
+ * Foundation.
+ */
+
 #include "ibrowser_extensions_wrapper.hpp"
 #include "safari_darwin.hpp"
 #include <string>
@@ -18,8 +27,8 @@ TEST(BrowserExtensionsTests, IgnoresNonExtensionApp)
     std::string appsPath = Utils::getParentPath(__FILE__) + "/input_files/apps_mock_dir";
     EXPECT_CALL(*mockExtensionsWrapper, getApplicationsPath()).WillOnce(::testing::Return(appsPath));
 
-    BrowserExtensionsProvider browserExtensionsProvider(mockExtensionsWrapper);
-    nlohmann::json extensionsJson = browserExtensionsProvider.collect();
+    SafariExtensionsProvider safariExtensionsProvider(mockExtensionsWrapper);
+    nlohmann::json extensionsJson = safariExtensionsProvider.collect();
 
     // It should only detect 2 safari extensions.
     ASSERT_EQ(extensionsJson.size(), static_cast<size_t>(2));
@@ -31,8 +40,8 @@ TEST(BrowserExtensionsTests, CollectReturnsExpectedJson)
     std::string appsPath = Utils::getParentPath(__FILE__) + "/input_files/apps_mock_dir";
     EXPECT_CALL(*mockExtensionsWrapper, getApplicationsPath()).WillOnce(::testing::Return(appsPath));
 
-    BrowserExtensionsProvider browserExtensionsProvider(mockExtensionsWrapper);
-    nlohmann::json extensionsJson = browserExtensionsProvider.collect();
+    SafariExtensionsProvider safariExtensionsProvider(mockExtensionsWrapper);
+    nlohmann::json extensionsJson = safariExtensionsProvider.collect();
 
     std::string uidString = std::to_string(getuid());
     // The darker Info.plist file is in standard XML format
