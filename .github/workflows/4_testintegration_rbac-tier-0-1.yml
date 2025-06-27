@@ -85,6 +85,8 @@ jobs:
         run: |
           cd tests/integration
           sudo python -m pytest test_api/test_rbac/ --tier 0 --tier 1
+      - name: Force fail for logs test
+        run: exit 1
       # Collect logs if tests fail
       - name: Collect logs on failure
         if: failure()
