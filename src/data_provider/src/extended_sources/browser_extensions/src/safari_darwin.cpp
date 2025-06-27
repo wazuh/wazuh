@@ -1,3 +1,12 @@
+/* Copyright (C) 2015, Wazuh Inc.
+ * All rights reserved.
+ *
+ * This program is free software; you can redistribute it
+ * and/or modify it under the terms of the GNU General Public
+ * License (version 2) as published by the FSF - Free Software
+ * Foundation.
+ */
+
 #include "safari_darwin.hpp"
 #include "filesystemHelper.h"
 #include <iostream>
@@ -12,14 +21,14 @@ const std::vector<std::string> EXTENSIONS_APP_DIRS_TO_EXCLUDE =
     "/Safari.app",
 };
 
-BrowserExtensionsProvider::BrowserExtensionsProvider(
+SafariExtensionsProvider::SafariExtensionsProvider(
     std::shared_ptr<IBrowserExtensionsWrapper> browserExtensionsWrapper) :
     m_browserExtensionsWrapper(std::move(browserExtensionsWrapper)) {}
 
-BrowserExtensionsProvider::BrowserExtensionsProvider() :
+SafariExtensionsProvider::SafariExtensionsProvider() :
     m_browserExtensionsWrapper(std::make_shared<BrowserExtensionsWrapper>()) {}
 
-nlohmann::json BrowserExtensionsProvider::toJson(const BrowserExtensionsData& extensions)
+nlohmann::json SafariExtensionsProvider::toJson(const BrowserExtensionsData& extensions)
 {
     nlohmann::json results = nlohmann::json::array();
 
@@ -41,14 +50,15 @@ nlohmann::json BrowserExtensionsProvider::toJson(const BrowserExtensionsData& ex
     return results;
 }
 
-nlohmann::json BrowserExtensionsProvider::collect()
+nlohmann::json SafariExtensionsProvider::collect()
 {
     // Check if applicationsPathString exists
     const std::string applicationsPathString = m_browserExtensionsWrapper->getApplicationsPath();
 
     if (!Utils::existsDir(applicationsPathString))
     {
-        std::cerr << "Path does not exist: " << applicationsPathString << std::endl;
+        // TODO: Improve error handling
+        // std::cerr << "Path does not exist: " << applicationsPathString << std::endl;
     }
 
     BrowserExtensionsData browserExtensions;
@@ -99,6 +109,7 @@ nlohmann::json BrowserExtensionsProvider::collect()
                 {
                     // TODO: Improve error handling
                     // std::cerr << "Failed to open file.\n";
+                    continue;
                 }
 
                 std::streamsize fileSize = plistFile.tellg();
@@ -109,6 +120,7 @@ nlohmann::json BrowserExtensionsProvider::collect()
                 {
                     // TODO: Improve error handling
                     // std::cerr << "Failed to read file\n";
+                    continue;
                 }
 
                 plist_t plistDict = nullptr;
@@ -118,6 +130,12 @@ nlohmann::json BrowserExtensionsProvider::collect()
                 {
                     // TODO: Improve error handling
                     // std::cerr << "Failed to parse plist\n";
+                    if (plistDict)
+                    {
+                        plist_free(plistDict);
+                    }
+
+                    continue;
                 }
 
                 // Let's filter out the ones that are not Safari Extensions
@@ -136,7 +154,13 @@ nlohmann::json BrowserExtensionsProvider::collect()
 
                         if (!(extensionTypeString.find(SAFARI_FILTER_STRING) != std::string::npos))
                         {
-                            continue; // Not a Safari extension
+                            // Not a Safari extension, skip it
+                            if (plistDict)
+                            {
+                                plist_free(plistDict);
+                            }
+
+                            continue;
                         }
 
                         plist_t identifierNode = plist_dict_get_item(plistDict, "CFBundleIdentifier");
@@ -255,7 +279,7 @@ nlohmann::json BrowserExtensionsProvider::collect()
                 // handled automatically.
                 if (plistDict)
                 {
-                    plist_free(plistDict); // Free the plist dictionary
+                    plist_free(plistDict);
                 }
             }
         }
