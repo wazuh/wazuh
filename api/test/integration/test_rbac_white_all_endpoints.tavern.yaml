@@ -512,6 +512,32 @@ stages:
     response:
       <<: *empty_response
 
+
+---
+test_name: GET /agents/summary
+
+stages:
+
+ - name: Try to get the agents summary
+   request:
+     verify: False
+     url: "{protocol:s}://{host:s}:{port:d}/agents/summary"
+     method: GET
+     headers:
+       Authorization: "Bearer {test_login_token}"
+   response:
+      status_code: 200
+      json:
+        error: !anyint
+        data:
+          status:
+            active: 0
+            disconnected: 0
+            never_connected: 0
+            pending: 0
+          os: !anything
+          groups: !anything
+
 ---
 test_name: GET /agents/summary/os
 

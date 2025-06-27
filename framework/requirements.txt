@@ -72,7 +72,7 @@ python-multipart==0.0.20
 pytz==2020.1
 PyYAML==5.4.1
 referencing==0.31.1
-requests==2.32.2
+requests==2.32.4
 rfc3339-validator==0.1.4
 rpds-py==0.15.2
 rsa==4.7.2

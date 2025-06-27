@@ -1618,7 +1618,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      status_code: 200
+      status_code: 202
       json:
         error: 0
         data:
@@ -1698,7 +1698,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      status_code: 200
+      status_code: 202
       json:
         error: 0
         data:
@@ -1749,7 +1749,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      status_code: 200
+      status_code: 202
       json:
         error: 0
         data:
