@@ -37,12 +37,12 @@ using BrowserExtensionsData = std::vector<BrowserExtensionData>;
 /// This class interacts with a browser extensions wrapper to gather information about installed browser extensions,
 /// such as their paths, identifiers, names, versions, and other relevant metadata.
 /// It formats the collected data into a structured JSON format for easy consumption and further processing.
-class BrowserExtensionsProvider
+class SafariExtensionsProvider
 {
     public:
-        /// @brief Constructs a BrowserExtensionsProvider with the given browser extensions wrapper.
+        /// @brief Constructs a SafariExtensionsProvider with the given browser extensions wrapper.
         /// @param browserExtensionsWrapper A shared pointer to an IBrowserExtensionsWrapper instance.
-        /// This constructor initializes the BrowserExtensionsProvider with a specific IBrowserExtensionsWrapper,
+        /// This constructor initializes the SafariExtensionsProvider with a specific IBrowserExtensionsWrapper,
         /// allowing it to interact with the browser extensions data source. The wrapper is expected to provide
         /// methods for accessing browser extensions information, such as retrieving paths, identifiers, and other
         /// relevant details about the extensions installed in the browser.
@@ -50,15 +50,15 @@ class BrowserExtensionsProvider
         /// want to use for collecting browser extensions data. It allows for flexibility in choosing the underlying
         /// implementation of the browser extensions wrapper, enabling the provider to work with different browser
         /// extensions sources or configurations as needed.
-        explicit BrowserExtensionsProvider(
+        explicit SafariExtensionsProvider(
             std::shared_ptr<IBrowserExtensionsWrapper> browserExtensionsWrapper);
-        /// @brief Default constructor for BrowserExtensionsProvider, initializes with a default IBrowserExtensionsWrapper.
-        /// This constructor creates a BrowserExtensionsProvider instance using a default-constructed shared pointer to an
+        /// @brief Default constructor for SafariExtensionsProvider, initializes with a default IBrowserExtensionsWrapper.
+        /// This constructor creates a SafariExtensionsProvider instance using a default-constructed shared pointer to an
         /// IBrowserExtensionsWrapper, allowing the provider to function without requiring an explicit wrapper instance.
         /// This is useful for scenarios where the wrapper is not provided externally, such as in unit tests or simple use cases.
-        /// The default constructor ensures that the BrowserExtensionsProvider can be instantiated without any parameters,
+        /// The default constructor ensures that the SafariExtensionsProvider can be instantiated without any parameters,
         /// while still maintaining the ability to collect and manage browser extensions data.
-        BrowserExtensionsProvider();
+        SafariExtensionsProvider();
         /// @brief Collects browser extensions data and returns it as a JSON object.
         /// @return A JSON object containing browser extensions data.
         /// The JSON object includes details such as bundle version, copyright, description, identifier, name,
@@ -77,7 +77,7 @@ class BrowserExtensionsProvider
         /// is an array of these extension objects, allowing for easy serialization and transmission of the data.
         /// The JSON format is designed to be compatible with various applications and services that consume browser
         /// extensions data, providing a standardized way to represent the information.
-        /// @note This method is private and intended for internal use within the BrowserExtensionsProvider class.
+        /// @note This method is private and intended for internal use within the SafariExtensionsProvider class.
         /// It is called by the collect method to format the collected data before returning it as a JSON object.
         /// The method ensures that the data is structured correctly and includes all necessary fields for
         /// representing browser extensions in a JSON format.
