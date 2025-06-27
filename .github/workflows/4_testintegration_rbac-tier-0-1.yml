@@ -85,3 +85,17 @@ jobs:
         run: |
           cd tests/integration
           sudo python -m pytest test_api/test_rbac/ --tier 0 --tier 1
+      # Collect logs if tests fail
+      - name: Collect logs on failure
+        if: failure()
+        run: |
+          mkdir -p wazuh-logs
+          sudo journalctl -u wazuh-manager > wazuh-logs/wazuh-manager.service.log || true
+          sudo tar -czf wazuh-logs.tar.gz wazuh-logs
+      # Upload logs artifact if test fails
+      - name: Upload logs artifact
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: wazuh-logs-${{ github.job }}
+          path: wazuh-logs.tar.gz

@@ -87,3 +87,19 @@ jobs:
         run: |
           cd tests/integration
           sudo python -m pytest --tier 0 --tier 1 test_api/
+      # Collect logs if tests fail
+      - name: Collect logs on failure
+        if: failure()
+        run: |
+          mkdir -p wazuh-logs
+          sudo cp /var/ossec/logs/ossec.log wazuh-logs/ || true
+          sudo cp /var/ossec/logs/api.log wazuh-logs/ || true
+          sudo journalctl -u wazuh-manager > wazuh-logs/wazuh-manager.service.log || true
+          sudo tar -czf wazuh-logs.tar.gz wazuh-logs
+      # Upload logs artifact if test fails
+      - name: Upload logs artifact
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: wazuh-logs-${{ github.job }}
+          path: wazuh-logs.tar.gz
