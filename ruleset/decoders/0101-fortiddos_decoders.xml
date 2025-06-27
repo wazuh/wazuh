@@ -9,13 +9,15 @@
   Reference: 
     https://help.fortinet.com/fddos/4-7-0/fortiddos/Appendix_B-Remote-Syslog-Reference.htm
     https://help.fortinet.com/fddos/4-3-0/FortiDDoS/log_ref.htm
+    https://fortinetweb.s3.amazonaws.com/docs.fortinet.com/v2/attachments/99169f5e-af8c-11eb-b70b-00505692583a/fortiddos-f-6.1.1-handbook.pdf
   
   Sample logs:
     device_id=FI200B3914000081 date=2017-10-18 time=11:10:00 tz=PDT.type=attack spp=1 evecode=2 evesubcode=18 description="UDP.port.flood" dir=1 protocol=17 sip=0.0.0.0 dip=61.255.0.253 dport=19160 dropcount=188 subnetid=61 facility=Local0 level=Notice
+    device_id=SYSLOG-AC1E997F type=generic pri=information itime=1431633173 msg="date=2015-05-13,time=13:25:13,tz=PDT,devid=FI800B3913000032,log_id=0000002168,type=event,subtype=config,level=information,msg_id=426204,user=admin,ui=ssh(172.30.153.9),action=none,status=none,reason=none,msg='changed settings for 'ddos spp setting' on domain 'SPP-1''"
 -->
 
 <decoder name="fortiddos-like">
-  <prematch>device_id=\S+ date=\S+ time=\S+ |devid=\S+ date=\S+ time=\S+</prematch>
+  <prematch>device_id=\S+ date=\S+ time=\S+ |devid=\S+ date=\S+ time=\S+ |device_id=\S+ type=\S+ pri=\S+ itime=\S+ msg="</prematch>
 </decoder>
 
 <decoder name="fortiddos-like-child">
@@ -162,3 +164,14 @@
   <order>severity</order>
 </decoder>
 
+<decoder name="fortiddos-like-child">
+  <parent>fortiddos-like</parent>
+  <regex>action=(\S+),|action="(\.+)"|action=(\S+)</regex>
+  <order>action</order>
+</decoder>
+
+<decoder name="fortiddos-like-child">
+  <parent>fortiddos-like</parent>
+  <regex>appcat=(\S+),|appcat="(\.+)"|appcat=(\S+)</regex>
+  <order>appcat</order>
+</decoder>
