@@ -172,7 +172,7 @@ include_directories(${CMAKE_SOURCE_DIR}/external/rocksdb/include)
 link_directories(${CMAKE_SOURCE_DIR}/external/rocksdb/build)
 
 # Build main
-add_executable(main ${ENGINE_SOURCE_DIR}/main.cpp)
+add_executable(wazuh-engine ${ENGINE_SOURCE_DIR}/main.cpp)
 
 if (NOT SRC_FOLDER)
     get_filename_component(SRC_FOLDER     ${CMAKE_SOURCE_DIR}/ ABSOLUTE)
@@ -238,7 +238,7 @@ add_subdirectory(${ENGINE_SOURCE_DIR}/httpsrv)
 add_subdirectory(${ENGINE_SOURCE_DIR}/udgramsrv)
 add_subdirectory(${ENGINE_SOURCE_DIR}/archiver)
 
-target_link_libraries(main
+target_link_libraries(wazuh-engine
     base
     conf
     yml
@@ -266,7 +266,7 @@ target_link_libraries(main
 
 # If ASAN, UBSAN or any other sanitizers are enabled do not link with static libraries
 if(NOT CMAKE_CXX_FLAGS MATCHES "-fsanitize=.*")
-    target_link_libraries(main -static-libgcc -static-libstdc++)
+    target_link_libraries(wazuh-engine -static-libgcc -static-libstdc++)
 endif()
 
 # Create a custom test target

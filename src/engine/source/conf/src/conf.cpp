@@ -46,10 +46,10 @@ Conf::Conf(std::shared_ptr<IApiLoader> apiLoader)
     addUnit<std::string>(key::LOGGING_LEVEL, "WAZUH_LOG_LEVEL", "info");
 
     // Store module
-    addUnit<std::string>(key::STORE_PATH, "WAZUH_STORE_PATH", "/var/lib/wazuh-server/engine/store");
+    addUnit<std::string>(key::STORE_PATH, "WAZUH_STORE_PATH", "/var/ossec/engine/store");
 
     // KVDB module
-    addUnit<std::string>(key::KVDB_PATH, "WAZUH_KVDB_PATH", "/var/lib/wazuh-server/engine/kvdb/");
+    addUnit<std::string>(key::KVDB_PATH, "WAZUH_KVDB_PATH", "/var/ossec/engine/kvdb/");
 
     // Indexer connector
     addUnit<std::string>(key::INDEXER_INDEX, "WAZUH_INDEXER_INDEX", "wazuh-alerts-5.x-0001");
@@ -77,10 +77,10 @@ Conf::Conf(std::shared_ptr<IApiLoader> apiLoader)
     addUnit<bool>(key::QUEUE_DROP_ON_FLOOD, "WAZUH_QUEUE_DROP_ON_FLOOD", true);
 
     // Orchestrator module
-    addUnit<int>(key::ORCHESTRATOR_THREADS, "WAZUH_ORCHESTRATOR_THREADS", 1); // TODO: Change to -1 for auto-detect
+    addUnit<int>(key::ORCHESTRATOR_THREADS, "WAZUH_ORCHESTRATOR_THREADS", 1); // TODO: Change to 0 for auto-detect
 
     // Http server module
-    addUnit<std::string>(key::SERVER_API_SOCKET, "WAZUH_SERVER_API_SOCKET", "/run/wazuh-server/engine-api.socket");
+    addUnit<std::string>(key::SERVER_API_SOCKET, "WAZUH_SERVER_API_SOCKET", (wazuhRoot / "queue/sockets/engine-api").c_str());
     addUnit<int>(key::SERVER_API_TIMEOUT, "WAZUH_SERVER_API_TIMEOUT", 5000);
 
     // Event server (dgram)
@@ -100,7 +100,7 @@ Conf::Conf(std::shared_ptr<IApiLoader> apiLoader)
 
     // Archiver module
     addUnit<bool>(key::ARCHIVER_ENABLED, "WAZUH_ARCHIVER_ENABLED", false);
-    addUnit<std::string>(key::ARCHIVER_PATH, "WAZUH_ARCHIVER_PATH", "/var/lib/wazuh-server/engine/archives.json");
+    addUnit<std::string>(key::ARCHIVER_PATH, "WAZUH_ARCHIVER_PATH", "/var/ossec/logs/archives/archives.json");
 };
 
 void Conf::validate(const json::Json& config) const
