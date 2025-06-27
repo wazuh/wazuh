@@ -156,4 +156,6 @@ INSTANTIATE_TEST_SUITE_P(InventorySyncByAffectedComponentType,
                                            MockSystemContext::AffectedComponentType::NetIface,
                                            MockSystemContext::AffectedComponentType::NetworkAddress,
                                            MockSystemContext::AffectedComponentType::NetProto,
+                                           MockSystemContext::AffectedComponentType::User,
+                                           MockSystemContext::AffectedComponentType::Group,
                                            MockSystemContext::AffectedComponentType::Invalid));

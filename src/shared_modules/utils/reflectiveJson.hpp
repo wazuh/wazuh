@@ -151,7 +151,9 @@ constexpr bool IS_REFLECTABLE_MEMBER =
     std::is_same_v<std::decay_t<T>, std::pmr::string> || std::is_same_v<std::decay_t<T>, double> ||
     std::is_same_v<std::decay_t<T>, bool> || IsMap<std::decay_t<T>>::value || IsVector<std::decay_t<T>>::value ||
     IsList<std::decay_t<T>>::value || IsReflectable<std::decay_t<T>>::value ||
-    std::is_same_v<std::decay_t<T>, std::int64_t>;
+    std::is_same_v<std::decay_t<T>, std::int64_t> ||
+    std::is_same_v<std::decay_t<T>, std::int32_t> ||
+    std::is_same_v<std::decay_t<T>, std::uint64_t>;
 
 template<typename C, typename T>
 constexpr auto makeFieldChecked(const char* keyLiteral, const char* keyLiteralField, T C::*member)

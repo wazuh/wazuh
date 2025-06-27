@@ -363,6 +363,12 @@ void w_inc_agent_syscollector_times(struct timeval time, int type) {
     case WDB_SYSCOLLECTOR_OSINFO:
         timeradd(&wdb_state.queries_breakdown.agent_breakdown.syscollector.syscollector_osinfo_time, &time, &wdb_state.queries_breakdown.agent_breakdown.syscollector.syscollector_osinfo_time);
         break;
+    case WDB_SYSCOLLECTOR_GROUPS:
+        timeradd(&wdb_state.queries_breakdown.agent_breakdown.syscollector.syscollector_groups_time, &time, &wdb_state.queries_breakdown.agent_breakdown.syscollector.syscollector_groups_time);
+        break;
+    case WDB_SYSCOLLECTOR_USERS:
+        timeradd(&wdb_state.queries_breakdown.agent_breakdown.syscollector.syscollector_users_time, &time, &wdb_state.queries_breakdown.agent_breakdown.syscollector.syscollector_users_time);
+        break;
     default:
         break;
     }

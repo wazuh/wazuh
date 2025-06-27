@@ -14,6 +14,7 @@
 
 #include "stringHelper.h"
 #include <chrono>
+#include <cmath>
 #include <ctime>
 #include <iomanip>
 #include <sstream>
@@ -200,7 +201,7 @@ namespace Utils
         return output.str();
     }
 
-    static std::string rawTimestampToISO8601(const uint32_t timestamp)
+    static std::string rawTimestampToISO8601(const double timestamp)
     {
         std::time_t time = timestamp;
         auto itt = std::chrono::system_clock::from_time_t(time);
@@ -216,12 +217,20 @@ namespace Utils
 
         output << std::put_time(localTime, "%FT%T");
 
-        // Get milliseconds from the current time
-        auto milliseconds =
-            std::chrono::duration_cast<std::chrono::milliseconds>(itt.time_since_epoch()).count() % 1000;
+        if (timestamp - static_cast<int>(timestamp) == 0)
+        {
+            // Get milliseconds from the current time
+            auto milliseconds =
+                std::chrono::duration_cast<std::chrono::milliseconds>(itt.time_since_epoch()).count() % 1000;
 
-        // ISO 8601
-        output << '.' << std::setfill('0') << std::setw(3) << milliseconds << 'Z';
+            // ISO 8601
+            output << '.' << std::setfill('0') << std::setw(3) << milliseconds << 'Z';
+        }
+        else
+        {
+            output << '.' << std::setfill('0') << std::setw(3)
+                   << static_cast<int>(std::round((timestamp - static_cast<int>(timestamp)) * 1000)) << 'Z';
+        }
 
         return output.str();
     }

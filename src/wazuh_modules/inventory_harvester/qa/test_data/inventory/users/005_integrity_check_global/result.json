@@ -1,0 +1,128 @@
+[
+    {
+        "index_name": "wazuh-states-inventory-users-cluster01",
+        "data": [
+            {
+                "agent": {
+                    "id": "002",
+                    "name": "jammy",
+                    "version": "v4.10.1"
+                },
+                "host": {
+                    "ip": [
+                        "192.168.0.127",
+                        "192.168.0.127"
+                    ]
+                },
+                "login": {
+                    "status": true,
+                    "tty": "pts/0",
+                    "type": "user"
+                },
+                "process": {
+                    "pid": 92036
+                },
+                "user": {
+                    "auth_failures": {
+                        "count": 0
+                    },
+                    "full_name": "admin",
+                    "group": {
+                        "id": 0,
+                        "id_signed": 0
+                    },
+                    "home": "/admin",
+                    "id": "0",
+                    "is_hidden": false,
+                    "is_remote": true,
+                    "last_login": "2025-06-10T15:43:56.000Z",
+                    "name": "admin",
+                    "password": {
+                        "expiration_date": "1969-12-31T23:59:59.000Z",
+                        "hash_algorithm": "hashAlgorithm",
+                        "inactive_days": -1,
+                        "last_change": 20228,
+                        "max_days_between_changes": 99999,
+                        "min_days_between_changes": 0,
+                        "status": "active",
+                        "warning_days_before_expiration": 7
+                    },
+                    "shell": "/bin/bash",
+                    "uid_signed": 0
+                },
+                "wazuh": {
+                    "schema": {
+                        "version": "1.0"
+                    }
+                }
+            },
+            {
+                "agent": {
+                    "id": "001",
+                    "name": "centos9",
+                    "version": "v4.10.1"
+                },
+                "host": {
+                    "ip": [
+                        "192.168.0.127",
+                        "192.168.0.127"
+                    ]
+                },
+                "login": {
+                    "status": true,
+                    "tty": "pts/0",
+                    "type": "user"
+                },
+                "process": {
+                    "pid": 92036
+                },
+                "user": {
+                    "auth_failures": {
+                        "count": 20,
+                        "timestamp": "2020-11-13T01:54:25.665Z"
+                    },
+                    "created": "2020-11-13T01:54:25.665Z",
+                    "full_name": "root",
+                    "group": {
+                        "id": 100,
+                        "id_signed": -100
+                    },
+                    "groups": [
+                        "group1",
+                        "group2"
+                    ],
+                    "home": "/root",
+                    "id": "10",
+                    "is_hidden": false,
+                    "is_remote": true,
+                    "last_login": "2025-06-10T15:43:56.000Z",
+                    "name": "root",
+                    "password": {
+                        "expiration_date": "2025-06-10T15:43:56.000Z",
+                        "hash_algorithm": "hashAlgorithm",
+                        "inactive_days": 71,
+                        "last_change": 20228,
+                        "last_set_time": "2020-11-13T01:54:25.665Z",
+                        "max_days_between_changes": 99999,
+                        "min_days_between_changes": 0,
+                        "status": "active",
+                        "warning_days_before_expiration": 7
+                    },
+                    "roles": [
+                        "sudo"
+                    ],
+                    "shell": "/bin/bash",
+                    "uid_signed": -10
+                },
+                "wazuh": {
+                    "cluster": {
+                        "name": "cluster01"
+                    },
+                    "schema": {
+                        "version": "1.0"
+                    }
+                }
+            }
+        ]
+    }
+]
