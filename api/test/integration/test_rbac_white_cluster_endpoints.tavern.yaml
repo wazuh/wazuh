@@ -658,7 +658,7 @@ stages:
       params:
         nodes_list: 'worker1,worker2'
     response:
-      status_code: 200
+      status_code: 202
       json:
         error: !anyint
         data:
@@ -680,8 +680,10 @@ stages:
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
+      params:
+        nodes_list: 'worker2'
     response:
-      status_code: 200
+      status_code: 202
       json:
         error: !anyint
         data:

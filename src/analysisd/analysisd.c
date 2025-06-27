@@ -1229,7 +1229,7 @@ void * ad_input_main(void * args) {
             w_rwlock_rdlock(&g_hotreload_ruleset_mutex);
 
             if (msg[0] == SYSCHECK_MQ) {
-                if (!queue_full(decode_queue_syscheck_input)) {
+                if (!queue_full_ex(decode_queue_syscheck_input)) {
                     os_strdup(buffer, copy);
 
                     result = queue_push_ex(decode_queue_syscheck_input, copy);
@@ -1251,7 +1251,7 @@ void * ad_input_main(void * args) {
                     }
                 }
             } else if (msg[0] == ROOTCHECK_MQ) {
-                if (!queue_full(decode_queue_rootcheck_input)) {
+                if (!queue_full_ex(decode_queue_rootcheck_input)) {
                     os_strdup(buffer, copy);
 
                     result = queue_push_ex(decode_queue_rootcheck_input, copy);
@@ -1272,7 +1272,7 @@ void * ad_input_main(void * args) {
                     }
                 }
             } else if (msg[0] == SCA_MQ) {
-                if (!queue_full(decode_queue_sca_input)) {
+                if (!queue_full_ex(decode_queue_sca_input)) {
                     os_strdup(buffer, copy);
 
                     result = queue_push_ex(decode_queue_sca_input, copy);
@@ -1293,7 +1293,7 @@ void * ad_input_main(void * args) {
                     }
                 }
             } else if (msg[0] == SYSCOLLECTOR_MQ) {
-                if (!queue_full(decode_queue_syscollector_input)) {
+                if (!queue_full_ex(decode_queue_syscollector_input)) {
                     os_strdup(buffer, copy);
 
                     result = queue_push_ex(decode_queue_syscollector_input, copy);
@@ -1314,7 +1314,7 @@ void * ad_input_main(void * args) {
                     }
                 }
             } else if (msg[0] == HOSTINFO_MQ) {
-                if (!queue_full(decode_queue_hostinfo_input)) {
+                if (!queue_full_ex(decode_queue_hostinfo_input)) {
                     os_strdup(buffer, copy);
 
                     result = queue_push_ex(decode_queue_hostinfo_input, copy);
@@ -1335,7 +1335,7 @@ void * ad_input_main(void * args) {
                     }
                 }
             } else if (msg[0] == WIN_EVT_MQ) {
-                if (!queue_full(decode_queue_winevt_input)) {
+                if (!queue_full_ex(decode_queue_winevt_input)) {
                     os_strdup(buffer, copy);
 
                     result = queue_push_ex(decode_queue_winevt_input, copy);
@@ -1356,7 +1356,7 @@ void * ad_input_main(void * args) {
                     }
                 }
             } else if (msg[0] == DBSYNC_MQ) {
-                if (!queue_full(dispatch_dbsync_input)) {
+                if (!queue_full_ex(dispatch_dbsync_input)) {
                     os_strdup(buffer, copy);
 
                     result = queue_push_ex(dispatch_dbsync_input, copy);
@@ -1377,7 +1377,7 @@ void * ad_input_main(void * args) {
                     }
                 }
             } else if (msg[0] == UPGRADE_MQ) {
-                if (!queue_full(upgrade_module_input)) {
+                if (!queue_full_ex(upgrade_module_input)) {
                     os_strdup(buffer, copy);
 
                     result = queue_push_ex(upgrade_module_input, copy);
@@ -1398,7 +1398,7 @@ void * ad_input_main(void * args) {
                     }
                 }
             } else {
-                if (!queue_full(decode_queue_event_input)) {
+                if (!queue_full_ex(decode_queue_event_input)) {
                     os_strdup(buffer, copy);
 
                     result = queue_push_ex(decode_queue_event_input, copy);
