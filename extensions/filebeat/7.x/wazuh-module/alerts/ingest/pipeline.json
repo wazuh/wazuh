@@ -76,6 +76,24 @@
     },
     {
       "geoip": {
+        "field": "data.properties.initiatedBy.user.ipAddress",
+        "target_field": "GeoLocation",
+        "properties": ["city_name", "country_name", "region_name", "location"],
+        "ignore_missing": true,
+        "ignore_failure": true
+      }
+    },
+        {
+      "geoip": {
+        "field": "data.callerIpAddress",
+        "target_field": "GeoLocation",
+        "properties": ["city_name", "country_name", "region_name", "location"],
+        "ignore_missing": true,
+        "ignore_failure": true
+      }
+    },
+    {
+      "geoip": {
         "field": "data.gcp.jsonPayload.sourceIP",
         "target_field": "GeoLocation",
         "properties": ["city_name", "country_name", "region_name", "location"],
