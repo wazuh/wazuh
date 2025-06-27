@@ -9,6 +9,8 @@
     <packages>yes</packages>
     <ports all="no">no</ports>
     <processes>no</processes>
+    <users>no</users>
+    <groups>no</groups>
 
     <!-- Database synchronization settings -->
     <synchronization>
