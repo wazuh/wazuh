@@ -363,10 +363,21 @@ FIMDBErrorCode fim_db_transaction_sync_row(TXN_HANDLE txn_handler, const fim_ent
 
         try
         {
+            nlohmann::json patchedJson = *syncItem->toJSON();
+            FIMDB::instance().logFunction(LOG_ERROR, "fim_db_transaction_sync_row");
+            FIMDB::instance().logFunction(LOG_ERROR, patchedJson.dump());
+            if (patchedJson.contains("data") && patchedJson["data"].is_array()) {
+                for (auto& entryarray : patchedJson["data"]) {
+                    if (entryarray.contains("inode")) {
+                        uint64_t inode = entryarray["inode"].get<uint64_t>();
+                        entryarray["inode"] = std::to_string(inode);
+                    }
+                }
+            }
+            FIMDB::instance().logFunction(LOG_ERROR, patchedJson.dump());
 
-            const std::unique_ptr<cJSON, CJsonSmartDeleter> jsInput
-            {
-                cJSON_Parse((*syncItem->toJSON()).dump().c_str())
+            const std::unique_ptr<cJSON, CJsonSmartDeleter> jsInput{
+                cJSON_Parse(patchedJson.dump().c_str())
             };
 
             if (dbsync_sync_txn_row(txn_handler, jsInput.get()) == 0)

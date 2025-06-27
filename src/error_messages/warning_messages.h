@@ -76,6 +76,7 @@
 #define FIM_REALTIME_FILE_NOT_SUPPORTED         "(6957): Realtime mode only supports directories, not files. Switching to scheduled mode. File: '%s'"
 #define FIM_FULL_EBPF_KERNEL_QUEUE              "(6958): Internal ebpf queue for kernel events is full. Too many eBPF events from system files. Next scheduled scan will recover lost data."
 #define FIM_ERROR_EBPF_HEALTHCHECK              "(6959): The eBPF healthcheck has failed. Switching all whodata eBPF configuration to audit."
+#define FIM_WARN_VALUEDOUBLE_CAST               "(6960): Inode value received as floating point (valuedouble) and cast to unsigned long long. Precision may be lost if the value exceeds 2^53."
 
 /* Monitord warning messages */
 #define ROTATE_LOG_LONG_PATH                    "(7500): The path of the rotated log is too long."
