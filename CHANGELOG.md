@@ -3,6 +3,24 @@ All notable changes to this project will be documented in this file.
 
 ## [v4.14.0]
 
+### Manager
+
+#### Added
+
+- Added groups users tables in wazuh-db. ([#30404](https://github.com/wazuh/wazuh/pull/30404))
+
+#### Fixed
+
+- Fixed internal decoder RC startup. ([#29663](https://github.com/wazuh/wazuh/pull/29663))
+- Fixed queue stats RC over wazuh-analysisd. ([#29673](https://github.com/wazuh/wazuh/pull/29673))
+- Fixed race condition in the event queue. ([#29672](https://github.com/wazuh/wazuh/pull/29672))
+
+### Agent
+
+#### Added
+
+- Added support for parquet version 2 in AWS Wodle. ([#30235](https://github.com/wazuh/wazuh/pull/30235))
+
 ### Ruleset
 
 #### Changed
@@ -10,6 +28,11 @@ All notable changes to this project will be documented in this file.
 - Fixed multiple Rocky Linux SCA checks generating incorrect results. ([#29976](https://github.com/wazuh/wazuh/pull/29976))
 - Fixed missing Check (2.3.7.6) in Windows Server 2019 v2.0.0. ([#30173](https://github.com/wazuh/wazuh/pull/30173))
 - Fix camel casing in ownCloud ruleset header. ([#30276](https://github.com/wazuh/wazuh/pull/30276))
+
+### Other
+
+#### Changed
+- Updated `requests` to version 2.32.4. ([#30536](https://github.com/wazuh/wazuh/pull/30536))
 
 
 ## [v4.13.1]
