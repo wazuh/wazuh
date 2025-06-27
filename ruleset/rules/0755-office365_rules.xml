@@ -956,7 +956,7 @@ ID: 91531 - 91650
     <rule id="91700" level="14">
         <if_sid>91532</if_sid>
         <field name="office365.Operation" type="osregex">^FileMalwareDetected$</field>
-        <description>Office 365: Detected malware in file $(office_365.SourceFileName).</description>
+        <description>Office 365: Detected malware in file $(office365.SourceFileName).</description>
         <options>no_full_log</options>
         <group>OneDrive,SharePoint,hipaa_164.312.b,pci_dss_10.6.1</group>
     </rule>
@@ -1181,8 +1181,8 @@ ID: 91531 - 91650
     -->
     <rule id="91724" level="10" frequency="100" timeframe="60" ignore="30">
         <if_matched_sid>91702</if_matched_sid>
-        <same_field>office_365.UserId</same_field>
-        <description>Office 365: Suspicious download activity by user: $(office_365.UserId)</description>
+        <same_field>office365.UserId</same_field>
+        <description>Office 365: Suspicious download activity by user: $(office365.UserId)</description>
         <options>no_full_log</options>
         <group>OneDrive,SharePoint</group>
         <mitre>
@@ -1193,7 +1193,7 @@ ID: 91531 - 91650
     <rule id="91725" level="10">
         <if_sid>91705</if_sid>
         <field name="office365.Parameters" type="pcre2">\"Value\":\s*\"FullAccess\"</field>
-        <description>Office 365: User $(office_365.UserId) got FullAccess permissions in Exchange</description>
+        <description>Office 365: User $(office365.UserId) got FullAccess permissions in Exchange</description>
         <options>no_full_log</options>
         <group>Exchange,hipaa_164.312.a.1,pci_dss_10.2.2</group>
         <mitre>
