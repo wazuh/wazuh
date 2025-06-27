@@ -783,7 +783,15 @@ async def put_restart(pretty: bool = False, nodes_list: str = '*') -> ConnexionR
     master_node = nodes.pop(0)
 
     if nodes_list == [master_node]:
-        return json_response(manager.restart(), pretty=pretty, status_code=202)
+        dapi = DistributedAPI(
+            f=manager.restart,
+            request_type='local_master',
+            logger=logger,
+            rbac_permissions=request.context['token_info']['rbac_policies'],
+        )
+        result = raise_if_exc(await dapi.distribute_function())
+        
+        return json_response(result, pretty=pretty, status_code=202)
 
     dapi = DistributedAPI(f=manager.restart,
                         f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -798,7 +806,13 @@ async def put_restart(pretty: bool = False, nodes_list: str = '*') -> ConnexionR
     result = raise_if_exc(await dapi.distribute_function())
 
     if nodes_list == '*' or master_node in nodes_list:
-        _ = manager.restart()
+        dapi = DistributedAPI(
+            f=manager.restart,
+            request_type='local_master',
+            logger=logger,
+            rbac_permissions=request.context['token_info']['rbac_policies'],
+        )
+        _ = raise_if_exc(await dapi.distribute_function())
 
         result.affected_items.insert(0, master_node)
         result.total_affected_items += 1
