@@ -3,6 +3,18 @@ All notable changes to this project will be documented in this file.
 
 ## [v4.13.1]
 
+### Agent
+
+#### Added
+
+- Added Ms-Graph token validation before performing requests. ([#30377](https://github.com/wazuh/wazuh/pull/30377))
+
+### RESTful API
+
+#### Added
+
+- Added /agents/summary endpoint. ([#29589](https://github.com/wazuh/wazuh/pull/29589))
+
 
 ## [v4.13.0]
 
