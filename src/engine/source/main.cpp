@@ -13,8 +13,9 @@
 #include <api/handlers.hpp>
 #include <api/policy/policy.hpp>
 #include <archiver/archiver.hpp>
-#include <base/logging.hpp>
 #include <base/eventParser.hpp>
+#include <base/logging.hpp>
+#include <base/process.hpp>
 #include <base/utils/singletonLocator.hpp>
 #include <base/utils/singletonLocatorStrategies.hpp>
 #include <bk/rx/controller.hpp>
@@ -63,10 +64,47 @@ void sigintHandler(const int signum)
     }
 }
 
+void printUsage(const char* progName)
+{
+    std::cout << "Usage: " << progName << " [options]\n"
+              << "Options:\n"
+              << "  -f    Run in foreground (do not daemonize)\n"
+              << "  -h    Show this help message and exit\n";
+}
+
+void parseOptions(int argc, char* argv[], bool& run_foreground)
+{
+    for (int i = 1; i < argc; ++i)
+    {
+        if (std::strcmp(argv[i], "-f") == 0)
+        {
+            run_foreground = true;
+        }
+        else if (std::strcmp(argv[i], "-h") == 0)
+        {
+            printUsage(argv[0]);
+            std::exit(0);
+        }
+    }
+}
+
 int main(int argc, char* argv[])
 {
     // exit handler
     cmd::details::StackExecutor exitHandler {};
+
+    bool run_foreground = false;
+    parseOptions(argc, argv, run_foreground);
+
+    if (!run_foreground)
+    {
+        const auto daemonError = base::goDaemon();
+        if (base::isError(daemonError))
+        {
+            throw std::runtime_error(
+                (fmt::format("Could not create PID file for the engine: {}", base::getError(daemonError).message)));
+        }
+    }
 
     // Initialize logging
     {
@@ -140,7 +178,7 @@ int main(int argc, char* argv[])
         // Metrics
         /*
         TODO: Until the indexer connector is unified with the rest of wazuh-manager
-        
+
         {
             SingletonLocator::registerManager<metrics::IManager,
                                               base::PtrSingleton<metrics::IManager, metrics::Manager>>();
@@ -151,7 +189,7 @@ int main(int argc, char* argv[])
             config->exportTimeout =
                 std::chrono::milliseconds(confManager.get<int64_t>(conf::key::METRICS_EXPORT_TIMEOUT));
 
-            
+
             IndexerConnectorOptions icConfig {};
             icConfig.name = "metrics-index";
             icConfig.hosts = confManager.get<std::vector<std::string>>(conf::key::INDEXER_HOST);
@@ -258,8 +296,7 @@ int main(int argc, char* argv[])
         {
             hlp::initTZDB(confManager.get<std::string>(conf::key::TZDB_PATH),
                           confManager.get<bool>(conf::key::TZDB_AUTO_UPDATE),
-                          confManager.get<std::string>(conf::key::TZDB_FORCE_VERSION_UPDATE)
-                        );
+                          confManager.get<std::string>(conf::key::TZDB_FORCE_VERSION_UPDATE));
 
             base::Name logparFieldOverrides({"schema", "wazuh-logpar-overrides", "0"});
             auto res = store->readInternalDoc(logparFieldOverrides);
@@ -472,6 +509,15 @@ int main(int argc, char* argv[])
                                                 confManager.get<std::string>(conf::key::SERVER_EVENT_SOCKET));
             g_engineServer->start(confManager.get<int>(conf::key::SERVER_EVENT_THREADS));
             LOG_INFO("Engine initialized and started.");
+        }
+
+        /* Create PID file */
+        const auto pidError =
+            base::createPID(confManager.get<std::string>(conf::key::PID_FILE_PATH), "wazuh-engine", getpid());
+        if (base::isError(pidError))
+        {
+            throw std::runtime_error(
+                (fmt::format("Could not create PID file for the engine: {}", base::getError(pidError).message)));
         }
 
         // Do not exit until the server is running

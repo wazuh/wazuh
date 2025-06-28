@@ -101,6 +101,9 @@ Conf::Conf(std::shared_ptr<IApiLoader> apiLoader)
     // Archiver module
     addUnit<bool>(key::ARCHIVER_ENABLED, "WAZUH_ARCHIVER_ENABLED", false);
     addUnit<std::string>(key::ARCHIVER_PATH, "WAZUH_ARCHIVER_PATH", "/var/ossec/logs/archives/archives.json");
+
+    // PID file path
+    addUnit<std::string>(key::PID_FILE_PATH, "WAZUH_ENGINE_PID_FILE_PATH", "/var/ossec/var/run/");
 };
 
 void Conf::validate(const json::Json& config) const

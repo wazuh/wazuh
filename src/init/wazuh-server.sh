@@ -258,24 +258,50 @@ testconfig()
     done
 }
 
-wait_for_engine_ready()
+get_wazuh_engine_pid()
 {
-    local pid=$1
+    local max_wait=10
+    local interval=0.1
+    local elapsed=0
+    local pidfile
+
+    ${DIR}/bin/wazuh-engine
+
+    while awk "BEGIN { exit !($elapsed < $max_wait) }"; do
+        pidfile=$(ls ${DIR}/var/run/wazuh-engine-*.pid 2>/dev/null | head -n1)
+        if [ -n "$pidfile" ]; then
+            echo "${pidfile##*-}" | sed 's/\.pid$//'
+            return 0
+        fi
+        sleep $interval
+        elapsed=$(awk "BEGIN { print $elapsed + $interval }")
+    done
+
+    return 1  # timeout
+}
+
+wait_for_wazuh_engine_ready()
+{
     local attempts=0
     local max_attempts=10
 
-    while [ $attempts -lt $max_attempts ]; do
-        curl --silent --fail --unix-socket /run/wazuh-server/engine-api.socket \
-            -X POST -H "Content-Type: application/json" \
-            -d '{"name": "default"}' \
-            http://localhost/router/route/get > /dev/null 2>&1
+    ENGINE_PID=$(get_wazuh_engine_pid)
+    if [ $? -ne 0 ]; then
+        echo "Failed to obtain PID for wazuh-engine"
+        return 1
+    fi
 
+    while [ $attempts -lt $max_attempts ]; do
+        curl --silent --unix-socket /var/ossec/queue/sockets/engine-api \
+            -X POST -H "Content-Type: application/json" \
+            -d '{"name":"default"}' \
+            http://localhost/router/route/get \
+            > /dev/null 2>&1
         if [ $? -eq 0 ]; then
-            return 0  # Success
+            return 0
         fi
 
-        # Verify that the process is still alive
-        if ! kill -0 "$pid" 2>/dev/null; then
+        if ! kill -0 "$ENGINE_PID" 2>/dev/null; then
             echo "wazuh-engine died during route check."
             return 1
         fi
@@ -285,29 +311,8 @@ wait_for_engine_ready()
     done
 
     echo "wazuh-engine did not respond correctly after $max_attempts attempts."
+    kill -2 $ENGINE_PID
     return 1
-}
-
-start_engine()
-{
-    local binary="${DIR}/bin/wazuh-engine"
-    local log_file="/var/ossec/logs/engine.log"
-
-    mkdir -p "$(dirname "$log_file")"
-
-    $binary >> "$log_file" 2>&1 &
-    ENGINE_PID=$!
-    echo "$ENGINE_PID" > "${DIR}/var/run/wazuh-engine-${ENGINE_PID}.pid"
-
-    wait_for_engine_ready "$ENGINE_PID"
-    if [ $? -ne 0 ]; then
-        rm -f ${DIR}/var/run/wazuh-engine.start
-        touch ${DIR}/var/run/wazuh-engine.failed
-        rm -f ${DIR}/var/run/*.start
-        rm -f ${DIR}/var/run/.restart
-        unlock
-        exit 1
-    fi
 }
 
 # Start function
@@ -382,7 +387,7 @@ start_service()
                 ${DIR}/bin/${i} ${DEBUG_CLI} > /dev/null 2>&1;
             else
                 if [ "$i" = "wazuh-engine" ]; then
-                    start_engine
+                    wait_for_wazuh_engine_ready
                 else
                     ${DIR}/bin/${i} ${DEBUG_CLI};
                 fi

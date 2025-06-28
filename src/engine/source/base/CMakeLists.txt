@@ -58,6 +58,7 @@ add_executable(base_utest
     ${UNIT_SRC_DIR}/error_test.cpp
     ${UNIT_SRC_DIR}/timer_test.cpp
     ${UNIT_SRC_DIR}/expression_test.cpp
+    ${UNIT_SRC_DIR}/process_test.cpp
     ${UNIT_SRC_DIR}/utils/singletonLocator_test.cpp
     ${UNIT_SRC_DIR}/utils/keyValue_test.cpp
     ${UNIT_SRC_DIR}/utils/evpHelper_test.cpp

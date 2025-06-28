@@ -51,6 +51,8 @@ constexpr std::string_view METRICS_EXPORT_TIMEOUT = "/engine/metrics/export_time
 constexpr std::string_view ARCHIVER_ENABLED = "/engine/archiver/enabled";
 constexpr std::string_view ARCHIVER_PATH = "/engine/archiver/path";
 
+constexpr std::string_view PID_FILE_PATH = "/engine/pid/path";
+
 }; // namespace conf::key
 
 #endif // _CONF_KEYS_HPP
