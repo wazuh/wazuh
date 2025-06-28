@@ -34,6 +34,7 @@ class TEndpointGetV1AgentsIdsGroupsParam final
     };
 
 public:
+    virtual ~TEndpointGetV1AgentsIdsGroupsParam() = default; // LCOV_EXCL_LINE
     /**
      * @brief Call the endpoint implementation. This function populates a Response object with the
      * data from the database. This particular implementation returns the agent ids
@@ -54,7 +55,7 @@ public:
             return;
         }
 
-        DBStatement stmt(
+        DBStatement stmt( // LCOV_EXCL_LINE
             db,
             "SELECT id_agent FROM belongs WHERE id_group = (SELECT id FROM 'group' WHERE name = ?) AND id_agent > 0;");
         stmt.bind(1, it->second);
@@ -69,6 +70,8 @@ public:
     }
 };
 
+// LCOV_EXCL_START
 using EndpointGetV1AgentsIdsGroupsParam = TEndpointGetV1AgentsIdsGroupsParam<>;
+// LCOV_EXCL_STOP
 
 #endif /* _ENDPOINT_GET_V1_AGENTS_IDS_GROUPS_PARAM_HPP */

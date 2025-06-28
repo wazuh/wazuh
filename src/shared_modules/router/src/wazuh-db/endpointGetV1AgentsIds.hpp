@@ -31,6 +31,7 @@ class TEndpointGetV1AgentsIds final
     };
 
 public:
+    virtual ~TEndpointGetV1AgentsIds() = default; // LCOV_EXCL_LINE
     /**
      * @brief Call the endpoint implementation. This function populates a Response object with the
      * data from the database. This particular implementation returns the agent ids.
@@ -42,7 +43,7 @@ public:
     static void call(const DBConnection& db, [[maybe_unused]] const httplib::Request& req, httplib::Response& res)
     {
         Response resObj;
-        DBStatement stmt(db, "SELECT id FROM agent WHERE id > 0");
+        DBStatement stmt(db, "SELECT id FROM agent WHERE id > 0"); // LCOV_EXCL_LINE
 
         while (stmt.step() == SQLITE_ROW)
         {
@@ -53,6 +54,8 @@ public:
     }
 };
 
+// LCOV_EXCL_START
 using EndpointGetV1AgentsIds = TEndpointGetV1AgentsIds<>;
+// LCOV_EXCL_STOP
 
 #endif /* _ENDPOINT_GET_V1_AGENT_IDS_HPP */

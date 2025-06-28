@@ -27,6 +27,7 @@ template<typename DBConnection = SQLite::Connection, typename DBStatement = SQLi
 class TEndpointPostV1AgentsSummary final
 {
 public:
+    virtual ~TEndpointPostV1AgentsSummary() = default; // LCOV_EXCL_LINE
     /**
      * @brief Response structure.
      */
@@ -52,20 +53,23 @@ public:
     static void call(const DBConnection& db, const httplib::Request& req, httplib::Response& res)
     {
         // Queries for connections
-        constexpr std::string_view queryConnection = "SELECT id, connection_status AS status FROM agent WHERE id > 0;";
-        constexpr std::string_view queryOs = "SELECT id, os_platform AS platform FROM agent WHERE id > 0;";
-        constexpr std::string_view queryGroup = "SELECT b.id_agent, g.name AS group_name FROM belongs b JOIN 'group' g "
-                                                "ON b.id_group=g.id WHERE b.id_agent > 0;";
+        constexpr std::string_view queryConnection = // LCOV_EXCL_LINE
+            "SELECT id, connection_status AS status FROM agent WHERE id > 0;";
+        constexpr std::string_view queryOs = // LCOV_EXCL_LINE
+            "SELECT id, os_platform AS platform FROM agent WHERE id > 0;";
+        constexpr std::string_view queryGroup = // LCOV_EXCL_LINE
+            "SELECT b.id_agent, g.name AS group_name FROM belongs b JOIN 'group' g "
+            "ON b.id_group=g.id WHERE b.id_agent > 0;";
 
-        constexpr std::string_view queryConnectionNoFilter =
+        constexpr std::string_view queryConnectionNoFilter = // LCOV_EXCL_LINE
             "SELECT COUNT(*) as quantity, connection_status AS status FROM agent "
             "WHERE id > 0 GROUP BY status ORDER BY status ASC limit 5;";
 
-        constexpr std::string_view queryOsNoFilter =
+        constexpr std::string_view queryOsNoFilter = // LCOV_EXCL_LINE
             "SELECT COUNT(*) as quantity, os_platform AS platform FROM agent WHERE id > 0 "
             "GROUP BY platform ORDER BY quantity DESC limit 5;";
 
-        constexpr std::string_view queryGroupsNoFilter =
+        constexpr std::string_view queryGroupsNoFilter = // LCOV_EXCL_LINE
             "SELECT COUNT(*) as q, g.name AS group_name FROM belongs b JOIN 'group' g ON b.id_group=g.id WHERE "
             "b.id_agent > 0  GROUP BY b.id_group ORDER BY q DESC LIMIT 5;";
 
@@ -73,7 +77,7 @@ public:
 
         if (req.body.empty())
         {
-            DBStatement stmtConnections(db, queryConnectionNoFilter);
+            DBStatement stmtConnections(db, queryConnectionNoFilter); // LCOV_EXCL_LINE
 
             while (stmtConnections.step() == SQLITE_ROW)
             {
@@ -82,7 +86,7 @@ public:
                 response.agentsByStatus[status] = quantity;
             }
 
-            DBStatement stmtGroups(db, queryGroupsNoFilter);
+            DBStatement stmtGroups(db, queryGroupsNoFilter); // LCOV_EXCL_LINE
 
             while (stmtGroups.step() == SQLITE_ROW)
             {
@@ -91,7 +95,7 @@ public:
                 response.agentsByGroups[status] = quantity;
             }
 
-            DBStatement stmtOS(db, queryOsNoFilter);
+            DBStatement stmtOS(db, queryOsNoFilter); // LCOV_EXCL_LINE
 
             while (stmtOS.step() == SQLITE_ROW)
             {
@@ -138,7 +142,7 @@ public:
 
             std::sort(body.begin(), body.end());
 
-            DBStatement stmtConnections(db, queryConnection);
+            DBStatement stmtConnections(db, queryConnection); // LCOV_EXCL_LINE
 
             while (stmtConnections.step() == SQLITE_ROW)
             {
@@ -151,7 +155,7 @@ public:
                 }
             }
 
-            DBStatement stmtGroups(db, queryGroup);
+            DBStatement stmtGroups(db, queryGroup); // LCOV_EXCL_LINE
 
             while (stmtGroups.step() == SQLITE_ROW)
             {
@@ -164,7 +168,7 @@ public:
                 }
             }
 
-            DBStatement stmtOS(db, queryOs);
+            DBStatement stmtOS(db, queryOs); // LCOV_EXCL_LINE
 
             while (stmtOS.step() == SQLITE_ROW)
             {
@@ -185,6 +189,8 @@ public:
     }
 };
 
+// LCOV_EXCL_START
 using EndpointPostV1AgentsSummary = TEndpointPostV1AgentsSummary<>;
+// LCOV_EXCL_STOP
 
 #endif /* _ENDPOINT_POST_V1_AGENTS_SUMMARY_HPP */

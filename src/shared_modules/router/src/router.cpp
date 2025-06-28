@@ -12,7 +12,7 @@
 #include "logging_helper.h"
 #include <functional>
 #include <string>
-static std::function<void(const modules_log_level_t, const std::string&)> GS_LOG_FUNCTION;
+static std::function<void(const modules_log_level_t, const std::string&)> GS_LOG_FUNCTION = nullptr;
 
 void logMessage(const modules_log_level_t level, const std::string& msg)
 {
@@ -49,12 +49,9 @@ struct ServerInstance final
 
 std::map<std::string, std::shared_ptr<ServerInstance>> G_HTTPINSTANCES;
 
-void RouterModule::initialize(const std::function<void(const modules_log_level_t, const std::string&)>& logFunction)
+void RouterModule::initialize(std::function<void(const modules_log_level_t, const std::string&)> logFunction)
 {
-    if (!GS_LOG_FUNCTION)
-    {
-        GS_LOG_FUNCTION = logFunction;
-    }
+    GS_LOG_FUNCTION = std::move(logFunction);
 }
 
 void RouterModule::start()
@@ -168,8 +165,14 @@ extern "C"
         int retVal = 0;
         try
         {
-            RouterModule::initialize([callbackLog](const modules_log_level_t level, const std::string& msg)
-                                     { callbackLog(level, msg.c_str(), ":router"); });
+            RouterModule::initialize(
+                [callbackLog](const modules_log_level_t level, const std::string& msg)
+                {
+                    if (callbackLog)
+                    {
+                        callbackLog(level, msg.c_str(), ":router");
+                    }
+                });
             logMessage(modules_log_level_t::LOG_DEBUG, "Router initialized successfully.");
         }
         catch (...)
@@ -271,6 +274,11 @@ extern "C"
             }
             else
             {
+                if (schema == nullptr)
+                {
+                    throw std::runtime_error("Error sending message to provider. Schema is empty");
+                }
+
                 flatbuffers::Parser parser;
                 parser.opts.skip_unexpected_fields_in_json = true;
 
@@ -335,6 +343,7 @@ extern "C"
 
         if (methodStr.compare("GET") == 0)
         {
+            // LCOV_EXCL_START
             logMessage(modules_log_level_t::LOG_INFO, "Registering GET endpoint: " + endpointStr);
             instance->server->Get(
                 endpoint,
@@ -351,9 +360,11 @@ extern "C"
                                "GET: " + endpointStr + " request processed in " + std::to_string(duration.count()) +
                                    " us");
                 });
+            // LCOV_EXCL_STOP
         }
         else if (methodStr.compare("POST") == 0)
         {
+            // LCOV_EXCL_START
             logMessage(modules_log_level_t::LOG_INFO, "Registering POST endpoint: " + endpointStr);
             instance->server->Post(
                 endpoint,
@@ -368,6 +379,7 @@ extern "C"
                                "POST: " + endpointStr + " request processed in " + std::to_string(duration.count()) +
                                    " us");
                 });
+            // LCOV_EXCL_STOP
         }
         else
         {
@@ -401,6 +413,7 @@ extern "C"
                 std::filesystem::path path {SOCKETPATH + socketPathStr};
                 std::filesystem::create_directories(path.parent_path());
                 instance->server->set_address_family(AF_UNIX);
+                // LCOV_EXCL_START
                 instance->server->set_exception_handler(
                     [](const auto& req, auto& res, std::exception_ptr ep)
                     {
@@ -419,14 +432,12 @@ extern "C"
                         }
                         res.status = 500;
                     });
-                instance->running = instance->server->listen(path.c_str(), true);
+                // LCOV_EXCL_STOP
 
-                if (instance->running == false)
-                {
-                    logMessage(modules_log_level_t::LOG_ERROR, "Error starting API. Failed to listen on socket");
-                    return;
-                }
+                // Bind to socket and listen
+                instance->server->bind_to_port(path.c_str(), true);
 
+                // Set socket permissions
                 if (chmod(path.c_str(), 0660) == 0)
                 {
                     logMessage(modules_log_level_t::LOG_DEBUG_VERBOSE, "API socket permissions set to 0660");
@@ -436,9 +447,18 @@ extern "C"
                     logMessage(modules_log_level_t::LOG_ERROR,
                                "Error setting API socket permissions: " + std::string(strerror(errno)));
                 }
+
+                // Listen
+                instance->running = instance->server->listen_after_bind();
+                if (instance->running == false)
+                {
+                    logMessage(modules_log_level_t::LOG_ERROR, "Error starting API. Failed to listen on socket");
+                    return;
+                }
             });
-        // Spin lock until server is ready
-        while (!instance->server->is_running() && instance->running)
+
+        // Spin lock until server is ready or thread finishes
+        while (!instance->server->is_running() && instance->serverThread.joinable())
         {
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
         }

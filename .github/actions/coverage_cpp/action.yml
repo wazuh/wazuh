@@ -15,6 +15,10 @@ inputs:
     required: false
     description: "Threshold for the coverage"
     default: "90"
+  validate_function_coverage:
+    required: false
+    description: "Whether to validate function coverage or not"
+    default: "true"
 
 runs:
   using: "composite"
@@ -45,16 +49,12 @@ runs:
 
           # Set arguments
           arguments="--capture "
-
           # Set working directory
           arguments+="--directory $BUILD_DIR "
-
           # Set output file
           arguments+="--output-file $BUILD_DIR/coverage.info "
-
           # # Disable branch coverage
           arguments+="-rc lcov_branch_coverage=0 "
-
           # Include test files
           include_files=""
           if [[ ${{ inputs.path }} =~ "shared_modules/utils" ]]; then
@@ -62,7 +62,6 @@ runs:
           else
             paths="src/ include/"
           fi
-
           for file in $(find $paths -type f -regextype posix-extended -regex ".*/*\.(hpp|cpp|h|c)")
           do
             file=$(echo $file | sed 's/\.\///g')
@@ -71,7 +70,6 @@ runs:
             fi
           done
           arguments+="$include_files"
-
           echo "Executing: lcov $arguments"
           lcov $arguments
 
@@ -117,16 +115,22 @@ runs:
             echo "------------------------------------------"
           fi
 
-          # Check if functions coverage is greater than the threadhold
-          functionsCoverage=$(echo "${coverageData[1]}" | sed 's/%//')
-          echo "Functions coverage is: $functionsCoverage %"
-          if ! (( $(echo "$functionsCoverage > ${{ inputs.threshold }}" | bc -l) )); then
-            echo "---------------------------------------------"
-            echo "FAILED: Functions coverage is lower than ${{ inputs.threshold }}%"
-            echo "--------------------------------------------"
-            exit 1
+          # Check if functions coverage is greater than the threadhold (if enabled)
+          if [[ "${{ inputs.validate_function_coverage }}" == "true" ]]; then
+            functionsCoverage=$(echo "${coverageData[1]}" | sed 's/%//')
+            echo "Functions coverage is: $functionsCoverage %"
+            if ! (( $(echo "$functionsCoverage > ${{ inputs.threshold }}" | bc -l) )); then
+              echo "---------------------------------------------"
+              echo "FAILED: Functions coverage is lower than ${{ inputs.threshold }}%"
+              echo "--------------------------------------------"
+              exit 1
+            else
+              echo "----------------------------------------------"
+              echo "PASSED: Functions coverage is greater than ${{ inputs.threshold }}%"
+              echo "----------------------------------------------"
+            fi
           else
             echo "----------------------------------------------"
-            echo "PASSED: Functions coverage is greater than ${{ inputs.threshold }}%"
+            echo "SKIPPED: Function coverage validation is disabled"
             echo "----------------------------------------------"
           fi

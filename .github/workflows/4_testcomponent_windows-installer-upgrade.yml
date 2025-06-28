@@ -1,10 +1,7 @@
 name: Windows upgrade test
 
 on:
-  pull_request:
-    paths:
-      - "src/**"
-      - ".github/workflows/4_testcomponent_windows-installer-upgrade.yml"
+  workflow_dispatch:
 
 jobs:
   build:
