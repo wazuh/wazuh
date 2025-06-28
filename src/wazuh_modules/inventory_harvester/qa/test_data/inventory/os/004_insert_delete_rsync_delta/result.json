@@ -16,7 +16,7 @@
                             "release": "5.4.0-155-generic",
                             "version": "#172-Ubuntu SMP Fri Jul 7 16:10:02 UTC 2023"
                         },
-                        "name": "Ubuntu",
+                        "name": "Ubuntu Trusty",
                         "platform": "ubuntu",
                         "version": "Trusty Tahr"
                     }
