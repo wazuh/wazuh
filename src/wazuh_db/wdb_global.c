@@ -1490,6 +1490,15 @@ wdbc_result wdb_global_set_agent_groups(wdb_t *wdb, wdb_groups_set_mode_t mode, 
                     merror("There was an error un-assigning the groups to agent '%03d'", agent_id);
                 }
             } else {
+                if (!wdb_global_agent_exists(wdb, agent_id)) {
+                    // Create agent in never_connected state
+                    const char *unknown = "unknown";
+                    const char *ip = "0.0.0.0";
+                    if (OS_INVALID == wdb_global_insert_agent(wdb, agent_id, (char*)unknown, (char*)ip, (char*)ip, NULL, NULL, time(NULL))) {
+                        merror("Unable to create agent '%d' in never_connected state, skipping group assignment", agent_id);
+                        ret = WDBC_ERROR;
+                    }
+                }
                 if (mode == WDB_GROUP_OVERRIDE) {
                     if (OS_INVALID == wdb_global_delete_agent_belong(wdb, agent_id)) {
                         ret = WDBC_ERROR;
