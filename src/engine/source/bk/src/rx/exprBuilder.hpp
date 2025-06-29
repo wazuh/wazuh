@@ -6,6 +6,7 @@
 
 #include <base/baseTypes.hpp>
 #include <base/expression.hpp>
+#include <base/logging.hpp>
 
 #include "tracer.hpp"
 
@@ -124,9 +125,23 @@ private:
         {
             auto term = expression->getPtr<base::Term<base::EngineOp>>();
             return input.map(
-                [op = term->getFn(), tracer = params.publisher](RxEvent result)
+                [op = term->getFn(), tracer = params.publisher, name = expression->getName()](RxEvent result)
                 {
-                    *result = op(result->payload());
+                    try
+                    {
+                        *result = op(result->payload());
+                    }
+                    catch (const std::exception& e)
+                    {
+                        LOG_ERROR("Unexpected error processing term: {} in '{}' with {}.",
+                                  e.what(),
+                                  name,
+                                  result->payload()->str());
+                        const std::string errorMsg =
+                            fmt::format(R"([{}] -> Failure: operation throw exception.)", name);
+                        *result = base::result::makeFailure(result->payload(), errorMsg);
+                    }
+
                     // TODO: should we allow to not include tracer?
                     if (tracer != nullptr)
                     {

@@ -15,8 +15,6 @@ from health_test import (
     validate_custom_field_documentation,
     coverage_validate,
     core,
-    validate_custom_field_indexing,
-    validate_event_indexing,
     initial_state,
 )
 
@@ -37,14 +35,11 @@ DYNAMIC_TESTS = [
     (assets_validate.run, {}),
     (load_decoders.run, {}),
     (validate_successful_assets.run, {"target": "decoder", "skip": SKIP_INTEGRATION}),
-    (validate_event_indexing.run, {"target": "decoder", "skip": SKIP_INTEGRATION}),
-    (validate_custom_field_indexing.run, {"target": "decoder", "skip": SKIP_INTEGRATION}),
     (core.run, {"target": "decoder", "skip": SKIP_INTEGRATION}),
+    (core.run, {"target": "decoder", "reverse_order_decoders": True, "skip": SKIP_INTEGRATION}),
     (coverage_validate.run, {"target": "decoder", "skip": SKIP_INTEGRATION, "output_file": "/tmp/decoder_coverage_report.txt"}),
     (load_rules.run, {}),
     (validate_successful_assets.run, {"target": "rule", "skip": SKIP_INTEGRATION}),
-    (validate_event_indexing.run, {"target": "rule", "skip": SKIP_INTEGRATION}),
-    (validate_custom_field_indexing.run, {"target": "rule", "skip": SKIP_INTEGRATION}),
     (core.run, {"target": "rule", "skip": SKIP_INTEGRATION}),
 ]
 

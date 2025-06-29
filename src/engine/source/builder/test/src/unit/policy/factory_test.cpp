@@ -54,7 +54,7 @@ TEST_P(ReadData, Doc)
 using D = factory::PolicyData::Params;
 using A = std::unordered_map<store::NamespaceId, std::unordered_set<base::Name>>;
 
-// TODO: add integration testss
+// TODO: add integration tests
 INSTANTIATE_TEST_SUITE_P(
     PolicyFactory,
     ReadData,
@@ -801,3 +801,240 @@ INSTANTIATE_TEST_SUITE_P(
             ));
 
 } // namespace buildexpressiontest
+namespace buildsubgraphtest
+{
+using buildgraphtest::assetExpr;
+
+struct SubgraphCase
+{
+    Graph<base::Name, Asset> subgraph;
+    std::shared_ptr<base::Operation> expected;
+};
+
+class BuildSubgraphOr : public ::testing::TestWithParam<SubgraphCase>
+{
+};
+
+TEST_P(BuildSubgraphOr, OrOperation)
+{
+    const auto& param = GetParam();
+    const auto& graph = param.subgraph;
+
+    unsetenv("WAZUH_REVERSE_ORDER_DECODERS");
+
+    base::Expression got;
+    ASSERT_NO_THROW({ got = factory::buildSubgraphExpression<base::Or>(graph); });
+
+    builder::test::assertEqualExpr(got, param.expected);
+}
+
+static Graph<base::Name, Asset> makeEmptyGraph()
+{
+    Graph<base::Name, Asset> g;
+    g.setRoot("__ROOT__",
+              Asset("__ROOT__", assetExpr("__ROOT__"), std::vector<base::Name> {} // root has no parents
+                    ));
+    return g;
+}
+
+using namespace base;
+INSTANTIATE_TEST_SUITE_P(OrOperation,
+                         BuildSubgraphOr,
+                         ::testing::Values(
+                             // A single child "H" under the root.
+                             SubgraphCase {/* subgraph */ []()
+                                           {
+                                               auto g = makeEmptyGraph();
+                                               Asset aH("H", assetExpr("H"), std::vector<base::Name> {"__ROOT__"});
+                                               g.addNode("H", std::move(aH));
+                                               g.addEdge("__ROOT__", "H");
+                                               return g;
+                                           }(),
+                                           /* expected */ Or::create("__ROOT__", {assetExpr("H")})},
+
+                             // Parent "P" with one child "C"
+                             SubgraphCase {/* subgraph */ []()
+                                           {
+                                               auto g = makeEmptyGraph();
+                                               Asset aP("P", assetExpr("P"), std::vector<base::Name> {"__ROOT__"});
+                                               g.addNode("P", std::move(aP));
+                                               g.addEdge("__ROOT__", "P");
+                                               Asset aC("C", assetExpr("C"), std::vector<base::Name> {"P"});
+                                               g.addNode("C", std::move(aC));
+                                               g.addEdge("P", "C");
+                                               return g;
+                                           }(),
+                                           /* expected */
+                                           []()
+                                           {
+                                               auto children = Or::create("P/Children", {});
+                                               children->getOperands().push_back(assetExpr("C"));
+                                               auto impl = Implication::create("P/Node", assetExpr("P"), children);
+                                               return Or::create("__ROOT__", {impl});
+                                           }()},
+
+                             // Parent "P" with two children "C1" and "C2" in that order:
+                             SubgraphCase {/* subgraph */ []()
+                                           {
+                                               auto g = makeEmptyGraph();
+                                               Asset aP("P", assetExpr("P"), std::vector<base::Name> {"__ROOT__"});
+                                               g.addNode("P", std::move(aP));
+                                               g.addEdge("__ROOT__", "P");
+                                               Asset aC1("C1", assetExpr("C1"), std::vector<base::Name> {"P"});
+                                               g.addNode("C1", std::move(aC1));
+                                               g.addEdge("P", "C1");
+                                               Asset aC2("C2", assetExpr("C2"), std::vector<base::Name> {"P"});
+                                               g.addNode("C2", std::move(aC2));
+                                               g.addEdge("P", "C2");
+                                               return g;
+                                           }(),
+                                           /* expected */
+                                           []()
+                                           {
+                                               auto children = Or::create("P/Children", {});
+                                               children->getOperands().push_back(assetExpr("C1"));
+                                               children->getOperands().push_back(assetExpr("C2"));
+                                               auto impl = Implication::create("P/Node", assetExpr("P"), children);
+                                               return Or::create("__ROOT__", {impl});
+                                           }()},
+
+                             // Two parents "P1" and "P2" sharing child "C":
+                             SubgraphCase {/* subgraph */ []()
+                                           {
+                                               auto g = makeEmptyGraph();
+                                               Asset aP1("P1", assetExpr("P1"), std::vector<base::Name> {"__ROOT__"});
+                                               g.addNode("P1", std::move(aP1));
+                                               g.addEdge("__ROOT__", "P1");
+                                               Asset aP2("P2", assetExpr("P2"), std::vector<base::Name> {"__ROOT__"});
+                                               g.addNode("P2", std::move(aP2));
+                                               g.addEdge("__ROOT__", "P2");
+                                               Asset aC("C", assetExpr("C"), std::vector<base::Name> {"P1", "P2"});
+                                               g.addNode("C", std::move(aC));
+                                               g.addEdge("P1", "C");
+                                               g.addEdge("P2", "C");
+                                               return g;
+                                           }(),
+                                           /* expected */
+                                           []()
+                                           {
+                                               auto children1 = Or::create("P1/Children", {});
+                                               children1->getOperands().push_back(assetExpr("C"));
+                                               auto impl1 = Implication::create("P1/Node", assetExpr("P1"), children1);
+
+                                               auto children2 = Or::create("P2/Children", {});
+                                               children2->getOperands().push_back(assetExpr("C"));
+                                               auto impl2 = Implication::create("P2/Node", assetExpr("P2"), children2);
+
+                                               return Or::create("__ROOT__", {impl1, impl2});
+                                           }()}));
+
+class BuildSubgraphOrReverted : public ::testing::TestWithParam<SubgraphCase>
+{
+};
+
+TEST_P(BuildSubgraphOrReverted, RevertedOrOperation)
+{
+#ifndef ENGINE_ENABLE_REVERSE_ORDER_DECODERS_FEATURE
+    GTEST_SKIP() << "This test is skipped because it needs ENGINE_ENABLE_REVERSE_ORDER_DECODERS_FEATURE to be defined.";
+#endif // ENGINE_ENABLE_REVERSE_ORDER_DECODERS_FEATURE
+    const auto& param = GetParam();
+    const auto& graph = param.subgraph;
+
+    setenv("WAZUH_REVERSE_ORDER_DECODERS", "true", 1);
+
+    base::Expression got;
+    ASSERT_NO_THROW({ got = factory::buildSubgraphExpression<base::Or>(graph); });
+
+    builder::test::assertEqualExpr(got, param.expected);
+}
+
+INSTANTIATE_TEST_SUITE_P(RevertedOrOperation,
+                         BuildSubgraphOrReverted,
+                         ::testing::Values(
+                             // Same graph as before with reverseOrderDecoders=true.
+                             // Since P has only one child, reversing does nothing.
+                             SubgraphCase {/* subgraph */ []()
+                                           {
+                                               auto g = makeEmptyGraph();
+                                               Asset aP("P", assetExpr("P"), std::vector<base::Name> {"__ROOT__"});
+                                               g.addNode("P", std::move(aP));
+                                               g.addEdge("__ROOT__", "P");
+                                               Asset aC("C", assetExpr("C"), std::vector<base::Name> {"P"});
+                                               g.addNode("C", std::move(aC));
+                                               g.addEdge("P", "C");
+                                               return g;
+                                           }(),
+                                           /* expected */
+                                           []()
+                                           {
+                                               auto children = Or::create("P/Children", {});
+                                               children->getOperands().push_back(assetExpr("C"));
+                                               auto impl = Implication::create("P/Node", assetExpr("P"), children);
+                                               return Or::create("__ROOT__", {impl});
+                                           }()},
+
+                             // Same graph as before, but reverseOrderDecoders = true → reverses to [C2, C1]
+                             SubgraphCase {/* subgraph */ []()
+                                           {
+                                               auto g = makeEmptyGraph();
+                                               Asset aP("P", assetExpr("P"), std::vector<base::Name> {"__ROOT__"});
+                                               g.addNode("P", std::move(aP));
+                                               g.addEdge("__ROOT__", "P");
+                                               Asset aC1("C1", assetExpr("C1"), std::vector<base::Name> {"P"});
+                                               g.addNode("C1", std::move(aC1));
+                                               g.addEdge("P", "C1");
+                                               Asset aC2("C2", assetExpr("C2"), std::vector<base::Name> {"P"});
+                                               g.addNode("C2", std::move(aC2));
+                                               g.addEdge("P", "C2");
+                                               return g;
+                                           }(),
+                                           /* expected */
+                                           []()
+                                           {
+                                               auto children = Or::create("P/Children", {});
+                                               children->getOperands().push_back(assetExpr("C2"));
+                                               children->getOperands().push_back(assetExpr("C1"));
+                                               auto impl = Implication::create("P/Node", assetExpr("P"), children);
+                                               return Or::create("__ROOT__", {impl});
+                                           }()},
+
+                             // Two parents "P1" and "P2", each with two children, using reverse.
+                             SubgraphCase {/* subgraph */ []()
+                                           {
+                                               auto g = makeEmptyGraph();
+                                               Asset aP1("P1", assetExpr("P1"), std::vector<base::Name> {"__ROOT__"});
+                                               g.addNode("P1", std::move(aP1));
+                                               g.addEdge("__ROOT__", "P1");
+                                               Asset aP2("P2", assetExpr("P2"), std::vector<base::Name> {"__ROOT__"});
+                                               g.addNode("P2", std::move(aP2));
+                                               g.addEdge("__ROOT__", "P2");
+                                               Asset aA("A", assetExpr("A"), std::vector<base::Name> {"P1"});
+                                               g.addNode("A", std::move(aA));
+                                               g.addEdge("P1", "A");
+                                               Asset aB("B", assetExpr("B"), std::vector<base::Name> {"P1"});
+                                               g.addNode("B", std::move(aB));
+                                               g.addEdge("P1", "B");
+                                               Asset aC("C", assetExpr("C"), std::vector<base::Name> {"P2"});
+                                               g.addNode("C", std::move(aC));
+                                               g.addEdge("P2", "C");
+                                               Asset aD("D", assetExpr("D"), std::vector<base::Name> {"P2"});
+                                               g.addNode("D", std::move(aD));
+                                               g.addEdge("P2", "D");
+                                               return g;
+                                           }(),
+                                           /* expected */
+                                           []()
+                                           {
+                                               auto children1 = Or::create("P1/Children", {});
+                                               children1->getOperands().push_back(assetExpr("B"));
+                                               children1->getOperands().push_back(assetExpr("A"));
+                                               auto impl1 = Implication::create("P1/Node", assetExpr("P1"), children1);
+
+                                               auto children2 = Or::create("P2/Children", {});
+                                               children2->getOperands().push_back(assetExpr("D"));
+                                               children2->getOperands().push_back(assetExpr("C"));
+                                               auto impl2 = Implication::create("P2/Node", assetExpr("P2"), children2);
+
+                                               return Or::create("__ROOT__", {impl1, impl2});
+                                           }()}));
+} // namespace buildsubgraphtest
