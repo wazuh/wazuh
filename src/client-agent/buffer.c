@@ -46,11 +46,6 @@ static pthread_cond_t cond_no_empty;
 
 static time_t start, end;
 
-
-char state_str[OS_MAXSTR]="NORMAL";
-char resize_event[OS_MAXSTR]="";
-int event_lost=0;
-
 /**
  * @brief Sleep according to max_eps parameter
  *
@@ -97,7 +92,6 @@ int buffer_append(const char *msg){
                 state = WARNING;
                 buff.warn = 1;
             }
-            event_lost=0;
             break;
 
         case WARNING:
@@ -106,7 +100,6 @@ int buffer_append(const char *msg){
                 state = FULL;
                 start = time(0);
             }
-            event_lost=0;
             break;
 
         case FULL:
@@ -114,7 +107,6 @@ int buffer_append(const char *msg){
             if (end - start >= tolerance){
                 state = FLOOD;
                 buff.flood = 1;
-                event_lost=1;
             }
             break;
 
@@ -125,19 +117,13 @@ int buffer_append(const char *msg){
     w_agentd_state_update(INCREMENT_MSG_COUNT, NULL);
 
     /* When buffer is full, event is dropped */
-
-    if (full(i, j, agt->buflength + 1)){
+    if (full(i, j, agt->buflength + 1)) {
 
         w_mutex_unlock(&mutex_lock);
         mdebug2("Unable to store new packet: Buffer is full.");
         return(-1);
 
-    }else{
-        // if (buffer[i] != NULL) {
-        //     mwarn("BUFFER MEMORY SHOUL BE FREE buffer[%u].",i);
-        //     os_free(buffer[i]);
-        //     mwarn("AFTER FREE BUFFER MEMORY SHOUL BE FREE buffer[%u].",i);
-        // }
+    } else {
         buffer[i] = strdup(msg);
         forward(i, agt->buflength + 1);
         w_cond_signal(&cond_no_empty);
@@ -145,14 +131,13 @@ int buffer_append(const char *msg){
 
         return(0);
     }
-
 }
 
 /* Send messages from buffer to the server */
 #ifdef WIN32
 DWORD WINAPI dispatch_buffer(__attribute__((unused)) LPVOID arg) {
 #else
-void *dispatch_buffer(__attribute__((unused)) void * arg){
+void *dispatch_buffer(__attribute__((unused)) void * arg) {
 #endif
     char flood_msg[OS_MAXSTR];
     char full_msg[OS_MAXSTR];
@@ -163,11 +148,11 @@ void *dispatch_buffer(__attribute__((unused)) void * arg){
     struct timespec ts1;
 
 
-    while(1){
+    while(1) {
         gettime(&ts0);
 
         w_mutex_lock(&mutex_lock);
-        while(empty(i, j) && agt->buffer){
+        while(empty(i, j) && agt->buffer) {
             w_cond_wait(&cond_no_empty, &mutex_lock);
         }
 
@@ -180,41 +165,33 @@ void *dispatch_buffer(__attribute__((unused)) void * arg){
         switch (state) {
 
             case NORMAL:
-                strcpy(state_str, "NORMAL");
-                event_lost=0;
                 break;
 
             case WARNING:
-                if (normal(i, j)){
+                if (normal(i, j)) {
                     state = NORMAL;
                     buff.normal = 1;
                 }
-                strcpy(state_str, "WARNING");
-                event_lost=0;
                 break;
 
             case FULL:
                 if (nowarn(i, j))
                     state = WARNING;
 
-                if (normal(i, j)){
+                if (normal(i, j)) {
                     state = NORMAL;
                     buff.normal = 1;
                 }
-                strcpy(state_str, "FULL");
-                event_lost=0;
                 break;
 
             case FLOOD:
                 if (nowarn(i, j))
                     state = WARNING;
 
-                if (normal(i, j)){
+                if (normal(i, j)) {
                     state = NORMAL;
                     buff.normal = 1;
                 }
-                strcpy(state_str, "FLOOD");
-                event_lost=1;
                 break;
         }
 
@@ -223,7 +200,7 @@ void *dispatch_buffer(__attribute__((unused)) void * arg){
         forward(j, agt->buflength + 1);
         w_mutex_unlock(&mutex_lock);
 
-        if (buff.warn){
+        if (buff.warn) {
 
             buff.warn = 0;
             mwarn(WARN_BUFFER, warn_level);
@@ -232,7 +209,7 @@ void *dispatch_buffer(__attribute__((unused)) void * arg){
             send_msg(warn_msg, -1);
         }
 
-        if (buff.full){
+        if (buff.full) {
 
             buff.full = 0;
             mwarn(FULL_BUFFER);
@@ -240,7 +217,7 @@ void *dispatch_buffer(__attribute__((unused)) void * arg){
             send_msg(full_msg, -1);
         }
 
-        if (buff.flood){
+        if (buff.flood) {
 
             buff.flood = 0;
             mwarn(FLOODED_BUFFER);
@@ -248,7 +225,7 @@ void *dispatch_buffer(__attribute__((unused)) void * arg){
             send_msg(flood_msg, -1);
         }
 
-        if (buff.normal){
+        if (buff.normal) {
 
             buff.normal = 0;
             minfo(NORMAL_BUFFER, normal_level);
@@ -256,15 +233,9 @@ void *dispatch_buffer(__attribute__((unused)) void * arg){
             send_msg(normal_msg, -1);
         }
 
-        mwarn("JSON,%f,%s,%i,%s",capacity(i,j), state_str, event_lost, resize_event);
-        strcpy(resize_event,"NULL");
-
         os_wait();
-        // UNDO AFTER DOUBLE CHECK
-        if (msg_output == NULL) {
-            // Handle the NULL message error gracefully
-            mwarn("Attempted to send a NULL message. Skipping.");
-        }else{
+
+        if (msg_output != NULL) {
             send_msg(msg_output, -1);
             os_free(msg_output);
             buffer[original_j_for_nulling] = NULL;
@@ -276,7 +247,6 @@ void *dispatch_buffer(__attribute__((unused)) void * arg){
         if (ts1.tv_sec >= 0) {
             delay(&ts1);
         }
-        // minfo("Buffer status: head(i) %i, tail j %i, count: %i ", i ,j, w_agentd_get_buffer_lenght());
     }
 }
 
@@ -305,7 +275,7 @@ int w_agentd_get_buffer_lenght() {
     return retval;
 }
 
-void w_agentd_free_buffer(unsigned int current_capacity) {
+void w_agentd_buffer_free(unsigned int current_capacity) {
     w_mutex_lock(&mutex_lock);
 
     // Ensure the buffer is actually allocated before trying to free.
@@ -316,7 +286,7 @@ void w_agentd_free_buffer(unsigned int current_capacity) {
     }
 
     mdebug2("Freeing the client-buffer.");
-    for ( int i=0; i <= agt->buflength; i++) {
+    for ( int i=0; i <= current_capacity; i++) {
         if (buffer[i] != NULL ) os_free(buffer[i]);
     }
     os_free(buffer);
@@ -328,14 +298,11 @@ void w_agentd_free_buffer(unsigned int current_capacity) {
     // Signal to end the dispatch_buffer thread.
     w_cond_signal(&cond_no_empty);
     w_mutex_unlock(&mutex_lock);
-    strcpy(resize_event,"OFF");
-    mwarn("JSON,%f,%s,%i,%s",capacity(i,j), state_str, event_lost, resize_event);
 
     minfo("Client buffer freed successfully.");
 }
 
-int resize_internal_buffer(unsigned int current_capacity, unsigned int desired_capacity) {
-    unsigned int agent_msg_count = w_agentd_get_buffer_lenght();
+int w_agentd_buffer_resize(unsigned int current_capacity, unsigned int desired_capacity) {
 
     if (desired_capacity <= 0) {
         merror("Invalid new buffer capacity requested: %u.", desired_capacity);
@@ -347,6 +314,7 @@ int resize_internal_buffer(unsigned int current_capacity, unsigned int desired_c
     }
 
     // Attempt to reallocate the buffer
+    unsigned int agent_msg_count = w_agentd_get_buffer_lenght();
     w_mutex_lock(&mutex_lock);
 
     char **temp_buffer = NULL;
@@ -361,14 +329,16 @@ int resize_internal_buffer(unsigned int current_capacity, unsigned int desired_c
             agent_msg_count, j, i);
             memcpy(temp_buffer, &buffer[j], agent_msg_count * sizeof(char *));
         } else {
-            int first_part = current_capacity - j;
+            int first_part = (current_capacity - j) + 1;
             mdebug2("Wrapped buffer detected. Copying in two parts:\n");
             mdebug2("  Part 1: %d bytes from old[tail=%d] → new[0]\n", first_part, j);
             mdebug2("  Part 2: %d bytes from old[0] → new[%d]\n", i, first_part);
             memcpy(temp_buffer, &buffer[j], first_part * sizeof(char *));
             memcpy(temp_buffer + first_part, buffer, i * sizeof(char *));
         }
-    }else{
+
+    } else {
+
         mwarn("Shrinking client buffer from %u to %u (messages: %u).",
             current_capacity, desired_capacity, agent_msg_count);
 
@@ -379,13 +349,14 @@ int resize_internal_buffer(unsigned int current_capacity, unsigned int desired_c
 
         // Copy the N oldest messages that will be preserved
         for (unsigned int k = 0; k < retained_message_count; k++) {
-            unsigned int old_idx = (j + k) % current_capacity;
+            unsigned int old_idx = (j + k) % (current_capacity + 1);
             if (buffer[old_idx]) {
                 temp_buffer[k] = buffer[old_idx];
                 buffer[old_idx] = NULL;
                 mdebug2("Moving message from old[%u] to new[%u] (ptr: %p)", old_idx, k, (void*)temp_buffer[k]);
             }
         }
+
         minfo("Successfully copied %u messages to the new buffer.", retained_message_count);
 
         // Now free everything in the old buffer
@@ -408,7 +379,6 @@ int resize_internal_buffer(unsigned int current_capacity, unsigned int desired_c
     os_free(buffer);
     buffer = temp_buffer;
     w_mutex_unlock(&mutex_lock);
-    snprintf(resize_event, sizeof(resize_event), "{%u,%u}", current_capacity, desired_capacity);
     minfo("Client buffer resized from %u to %u elements.", current_capacity, desired_capacity);
     return 0;
 }

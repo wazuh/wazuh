@@ -203,9 +203,11 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
             int current_buffer_flag = agt->buffer;
 
             mdebug2("Buffer pre-update, enable: %i size: %i ", agt->buffer, current_capacity);
+
             if (ReadConfig(CBUFFER, cfg, NULL, agt) < 0) {
                 mlerror_exit(LOGLEVEL_ERROR, CLIENT_ERROR);
             }
+
             #ifdef CLIENT
             if(agt->flags.remote_conf) {
                 ReadConfig(CBUFFER | CAGENT_CONFIG, AGENTCONFIG, NULL, agt);
@@ -214,17 +216,15 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
             #endif
 
             //  Buffer was enabled, needs to be disabled
-            if(agt->buffer == 0 && current_buffer_flag != 0) {
-                w_agentd_free_buffer(current_capacity);
-            }else if (current_buffer_flag == 0 && agt->buffer != 0)
-            {
+            if (agt->buffer == 0 && current_buffer_flag != 0) {
+                w_agentd_buffer_free(current_capacity);
+            } else if (current_buffer_flag == 0 && agt->buffer != 0) {
                 // Buffer was disabled, needs to be enabled
                 buffer_init();
                 w_create_thread(dispatch_buffer, (void *)NULL);
-            }else
-            {
+            } else if (agt->buffer != 0) {
                 // Buffer was enabled, stays enabled (potential resize)
-                resize_internal_buffer(current_capacity, agt->buflength);
+                w_agentd_buffer_resize(current_capacity, agt->buflength);
             }
 
             mdebug2("Buffer updated, enable: %i size: %i ", agt->buffer, agt->buflength);
