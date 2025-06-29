@@ -37,7 +37,8 @@ typedef enum {
     UPDATE_KEEPALIVE,    ///< Update keepalive represented by time_t
     UPDATE_ACK,          ///< Update last ack represented by time_t
     INCREMENT_MSG_COUNT, ///< Increment number of messages sent to the buffer
-    INCREMENT_MSG_SEND   ///< Increment number of messages sent to the manager
+    INCREMENT_MSG_SEND,   ///< Increment number of messages sent to the manager
+    RESET_MSG_COUNT_ON_SHRINK ///< Reset message counter due to buffer shrinking, taking into account new buffer capacity.
 } w_agentd_state_update_t;
 
 /**
