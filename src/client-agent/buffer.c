@@ -305,7 +305,7 @@ int w_agentd_get_buffer_lenght() {
     return retval;
 }
 
-void w_agentd_free_buffer(unsigned int current_capacity) {
+void w_agentd_buffer_free(unsigned int current_capacity) {
     w_mutex_lock(&mutex_lock);
 
     // Ensure the buffer is actually allocated before trying to free.
@@ -328,13 +328,13 @@ void w_agentd_free_buffer(unsigned int current_capacity) {
     // Signal to end the dispatch_buffer thread.
     w_cond_signal(&cond_no_empty);
     w_mutex_unlock(&mutex_lock);
-    strcpy(resize_event,"OFF");
-    mwarn("JSON,%f,%s,%i,%s",capacity(i,j), state_str, event_lost, resize_event);
+    // strcpy(resize_event,"OFF");
+    // mwarn("JSON,%f,%s,%i,%s",capacity(i,j), state_str, event_lost, resize_event);
 
     minfo("Client buffer freed successfully.");
 }
 
-int resize_internal_buffer(unsigned int current_capacity, unsigned int desired_capacity) {
+int w_agentd_buffer_resize(unsigned int current_capacity, unsigned int desired_capacity) {
     unsigned int agent_msg_count = w_agentd_get_buffer_lenght();
 
     if (desired_capacity <= 0) {

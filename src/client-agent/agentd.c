@@ -215,7 +215,7 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
 
             //  Buffer was enabled, needs to be disabled
             if(agt->buffer == 0 && current_buffer_flag != 0) {
-                w_agentd_free_buffer(current_capacity);
+                w_agentd_buffer_free(current_capacity);
             }else if (current_buffer_flag == 0 && agt->buffer != 0)
             {
                 // Buffer was disabled, needs to be enabled
@@ -224,7 +224,7 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
             }else
             {
                 // Buffer was enabled, stays enabled (potential resize)
-                resize_internal_buffer(current_capacity, agt->buflength);
+                w_agentd_buffer_resize(current_capacity, agt->buflength);
             }
 
             mdebug2("Buffer updated, enable: %i size: %i ", agt->buffer, agt->buflength);

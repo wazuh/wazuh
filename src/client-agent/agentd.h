@@ -76,7 +76,7 @@ int buffer_append(const char *msg);
  * @note If the desired capacity is smaller than the current number of messages,
  * the buffer will truncate the newest messages to preserve the oldest ones.
  */
-int resize_internal_buffer(unsigned int current_capacity, unsigned int desired_capacity);
+int w_agentd_buffer_resize(unsigned int current_capacity, unsigned int desired_capacity);
 
 /**
  * @brief Frees all dynamically allocated memory associated with the agent's message buffer.
@@ -93,7 +93,7 @@ int resize_internal_buffer(unsigned int current_capacity, unsigned int desired_c
  * @param current_capacity The current allocated capacity of the buffer to be freed.
  * This parameter is crucial for iterating over the correct number of slots.
  */
-void w_agentd_free_buffer(unsigned int current_capacity);
+void w_agentd_buffer_free(unsigned int current_capacity);
 
 /* Thread to dispatch messages from the buffer */
 #ifdef WIN32
