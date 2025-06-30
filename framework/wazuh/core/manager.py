@@ -8,6 +8,8 @@ import os
 import re
 import socket
 import ssl
+import logging
+import time
 from collections import OrderedDict
 from datetime import datetime, timezone
 from enum import Enum
@@ -27,6 +29,7 @@ from wazuh.core.wazuh_socket import WazuhSocket
 
 
 _re_logtest = re.compile(r"^.*(?:ERROR: |CRITICAL: )(?:\[.*\] )?(.*)$")
+logger = logging.getLogger('wazuh-api')
 
 OSSEC_LOG_FIELDS = ['timestamp', 'tag', 'level', 'description']
 CTI_URL = get_cti_url()
@@ -195,6 +198,7 @@ def validate_ossec_conf() -> str:
     wcom_socket_path = common.WCOM_SOCKET
     # Message for checking Wazuh configuration
     wcom_msg = common.CHECK_CONFIG_COMMAND
+    start_time = time.perf_counter()
 
     # Connect to wcom socket
     if exists(wcom_socket_path):
@@ -218,6 +222,8 @@ def validate_ossec_conf() -> str:
         raise WazuhInternalError(1014, extra_message=str(e))
     finally:
         wcom_socket.close()
+
+    logger.info(f"Finished getting configuration: {(time.perf_counter() - start_time):.3f}s.")
 
     try:
         response = parse_execd_output(buffer.decode('utf-8').rstrip('\0'))
