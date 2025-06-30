@@ -16,7 +16,7 @@
 <!-- ID -->
 <decoder name="auditd-syscall">
   <parent>auditd</parent>
-  <prematch offset="after_parent">^SYSCALL|^EXECVE </prematch>
+  <prematch offset="after_parent">^SYSCALL|^EXECVE</prematch>
   <regex offset="after_parent">^(\S+) msg=audit\(\d+.\d+:(\d+)\): </regex>
   <order>audit.type,audit.id</order>
 </decoder>
