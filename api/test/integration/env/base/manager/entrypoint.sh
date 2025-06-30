@@ -3,6 +3,12 @@
 # Apply API configuration
 cp -rf /tmp_volume/config/* /var/ossec/ && chown -R wazuh:wazuh /var/ossec/api
 
+# Apply debug logging
+echo 'wazuh_modules.debug=2' >> /var/ossec/etc/local_internal_options.conf
+echo 'analysisd.debug=2' >> /var/ossec/etc/local_internal_options.conf
+echo 'execd.debug=2' >> /var/ossec/etc/local_internal_options.conf
+echo 'monitord.debug=2' >> /var/ossec/etc/local_internal_options.conf
+
 # Modify ossec.conf
 for conf_file in /tmp_volume/configuration_files/*.conf; do
   python3 /tools/xml_parser.py /var/ossec/etc/ossec.conf $conf_file
