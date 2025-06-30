@@ -88,6 +88,7 @@ def register_agent_main_server(receiver_sockets, Name, Group=None, IP=None):
     if IP:
         message += " IP:'{}'".format(IP)
 
+    message += '\n'
     receiver_sockets[0].open()
     receiver_sockets[0].send(message, size=False)
     timeout = time.time() + 10
