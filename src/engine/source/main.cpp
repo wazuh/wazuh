@@ -178,6 +178,32 @@ int main(int argc, char* argv[])
 
     try
     {
+        // Changing user and group
+        {
+            /* Check if the user/group given are valid */
+            const auto user = confManager.get<std::string>(conf::key::USER);
+            const auto group = confManager.get<std::string>(conf::key::GROUP);
+            const auto uid = base::process::privSepGetUser(user);
+            const auto gid = base::process::privSepGetGroup(group);
+
+            if (uid == static_cast<uid_t>(-1) || gid == static_cast<gid_t>(-1))
+            {
+                throw std::runtime_error {fmt::format(base::process::USER_ERROR, user, group, strerror(errno), errno)};
+            }
+
+            /* Privilege separation only if we got valid IDs */
+            if (base::process::privSepSetGroup(gid) < 0)
+            {
+                throw std::runtime_error {fmt::format(base::process::SETGID_ERROR, group, errno, strerror(errno))};
+            }
+
+            /* Changing user only if we got a valid UID */
+            if (base::process::privSepSetUser(uid) < 0)
+            {
+                throw std::runtime_error {fmt::format(base::process::SETUID_ERROR, user, errno, strerror(errno))};
+            }
+        }
+
         // Set new log level if it is different from the default
         {
             const auto level = logging::strToLevel(confManager.get<std::string>(conf::key::LOGGING_LEVEL));
@@ -308,9 +334,10 @@ int main(int argc, char* argv[])
 
         // HLP
         {
-            hlp::initTZDB(confManager.get<std::string>(conf::key::TZDB_PATH),
-                          confManager.get<bool>(conf::key::TZDB_AUTO_UPDATE),
-                          confManager.get<std::string>(conf::key::TZDB_FORCE_VERSION_UPDATE));
+            hlp::initTZDB(
+                (std::filesystem::path {confManager.get<std::string>(conf::key::TZDB_PATH)} / "iana").string(),
+                confManager.get<bool>(conf::key::TZDB_AUTO_UPDATE),
+                confManager.get<std::string>(conf::key::TZDB_FORCE_VERSION_UPDATE));
 
             base::Name logparFieldOverrides({"schema", "wazuh-logpar-overrides", "0"});
             auto res = store->readInternalDoc(logparFieldOverrides);

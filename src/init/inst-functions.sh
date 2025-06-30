@@ -1128,7 +1128,7 @@ InstallLocal()
     ${INSTALL} -m 0750 -o root -g 0 build/engine/wazuh-engine ${INSTALLDIR}/bin
 
     installEngineStore
-
+    ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/tzdb
     # TODO Deletes old ruleset and stats, rootcheck and SCA?
     ${INSTALL} -m 0660 -o root -g ${WAZUH_GROUP} ../ruleset/rootcheck/db/*.txt ${INSTALLDIR}/etc/rootcheck
 

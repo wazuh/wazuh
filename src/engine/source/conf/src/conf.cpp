@@ -102,8 +102,10 @@ Conf::Conf(std::shared_ptr<IApiLoader> apiLoader)
     addUnit<bool>(key::ARCHIVER_ENABLED, "WAZUH_ARCHIVER_ENABLED", false);
     addUnit<std::string>(key::ARCHIVER_PATH, "WAZUH_ARCHIVER_PATH", (wazuhRoot / "logs/archives/archives.json").c_str());
 
-    // PID file path
+    // Process module
     addUnit<std::string>(key::PID_FILE_PATH, "WAZUH_ENGINE_PID_FILE_PATH", (wazuhRoot / "var/run/").c_str());
+    addUnit<std::string>(key::USER, "WAZUH_ENGINE_USER", "wazuh");
+    addUnit<std::string>(key::GROUP, "WAZUH_ENGINE_GROUP", "wazuh");
 };
 
 void Conf::validate(const json::Json& config) const
