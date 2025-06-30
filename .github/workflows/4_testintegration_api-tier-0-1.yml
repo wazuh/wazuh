@@ -97,6 +97,7 @@ jobs:
           sudo cp /var/ossec/logs/ossec.log /tmp/wazuh-logs/ || true
           sudo cp /var/ossec/logs/api.log /tmp/wazuh-logs/ || true
           sudo journalctl -u wazuh-manager > /tmp/wazuh-logs/wazuh-manager.service.log || true
+          sudo chown -R $(whoami):$(whoami) /tmp/wazuh-logs || true
       # Upload logs artifact if test fails
       - name: Upload logs artifact
         if: failure()
