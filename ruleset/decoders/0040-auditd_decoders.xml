@@ -16,7 +16,7 @@
 <!-- ID -->
 <decoder name="auditd-syscall">
   <parent>auditd</parent>
-  <prematch offset="after_parent">^SYSCALL</prematch>
+  <prematch offset="after_parent">^SYSCALL|^EXECVE </prematch>
   <regex offset="after_parent">^(\S+) msg=audit\(\d+.\d+:(\d+)\): </regex>
   <order>audit.type,audit.id</order>
 </decoder>
@@ -50,83 +50,76 @@
 </decoder>
 
 <!-- EXECVE -->
-<decoder name="auditd-execve">
-  <parent>auditd</parent>
-  <prematch offset="after_parent">^EXECVE </prematch>
-  <regex offset="after_parent">^(\S+) msg=audit\(\d+.\d+:(\d+)\): </regex>
-  <order>audit.type,audit.id</order>
-</decoder>
-
-<decoder name="auditd-execve">
+<decoder name="auditd-syscall">
   <parent>auditd</parent>
   <regex offset="after_regex">argc=(\d+)</regex>
   <order>audit.execve.argc</order>
 </decoder>
 
-<decoder name="auditd-execve">
+<decoder name="auditd-syscall">
   <parent>auditd</parent>
   <regex offset="after_regex">a0="(\S+)"</regex>
   <order>audit.execve.a0</order>
 </decoder>
 
-<decoder name="auditd-execve">
+<decoder name="auditd-syscall">
   <parent>auditd</parent>
   <regex offset="after_regex">a1="(\S+)"</regex>
   <order>audit.execve.a1</order>
 </decoder>
 
-<decoder name="auditd-execve">
+<decoder name="auditd-syscall">
   <parent>auditd</parent>
   <regex offset="after_regex">a2="(\S+)"</regex>
   <order>audit.execve.a2</order>
 </decoder>
 
-<decoder name="auditd-execve">
+<decoder name="auditd-syscall">
   <parent>auditd</parent>
   <regex offset="after_regex">a3="(\S+)"</regex>
   <order>audit.execve.a3</order>
 </decoder>
 
-<decoder name="auditd-execve">
+<decoder name="auditd-syscall">
   <parent>auditd</parent>
   <regex offset="after_regex">a4="(\S+)"</regex>
   <order>audit.execve.a4</order>
 </decoder>
 
-<decoder name="auditd-execve">
+<decoder name="auditd-syscall">
   <parent>auditd</parent>
   <regex offset="after_regex">a5="(\S+)"</regex>
   <order>audit.execve.a5</order>
 </decoder>
 
-<decoder name="auditd-execve">
+<decoder name="auditd-syscall">
   <parent>auditd</parent>
   <regex offset="after_regex">a6="(\S+)"</regex>
   <order>audit.execve.a6</order>
 </decoder>
 
-<decoder name="auditd-execve">
+<decoder name="auditd-syscall">
   <parent>auditd</parent>
   <regex offset="after_regex">a7="(\S+)"</regex>
   <order>audit.execve.a7</order>
 </decoder>
 
 <!-- CWD -->
-<decoder name="auditd-cwd">
+<decoder name="auditd-syscall">
   <parent>auditd</parent>
   <regex offset="after_regex">type=CWD msg=audit\(\S+\):\s+cwd="(\S+)" </regex>
   <order>audit.cwd</order>
 </decoder>
 
 <!-- PATH - DIRECTORY: mode=04* -->
-<decoder name="auditd-path">
+<decoder name="auditd-syscall">
   <parent>auditd</parent>
   <regex offset="after_regex">type=PATH msg=audit\(\S+\): item=\S+ name="(\S+)" inode=(\S+) dev=\S+ mode=(04\S+) ouid=\S+ ogid=\S+ </regex>
   <order>audit.directory.name, audit.directory.inode, audit.directory.mode</order>
 </decoder>
 
 <!-- PATH - FILE -->
-<decoder name="auditd-path">
+<decoder name="auditd-syscall">
   <parent>auditd</parent>
   <regex offset="after_regex">type=PATH msg=audit\(\S+\): item=\S+ name="(\S+)" inode=(\S+) dev=\S+ mode=(\S+) ouid=\S+ ogid=\S+ |type=PATH msg=audit\(\S+\): item=\S+ name=\((null)\) inode=(\S+) dev=\S+ mode=(\S+) ouid=\S+ ogid=\S+ </regex>
   <order>audit.file.name, audit.file.inode, audit.file.mode</order>
@@ -360,3 +353,28 @@
   <regex>res=(\w+)</regex>
   <order>audit.res</order>
 </decoder>
+
+<decoder name="auditd-generic">
+  <parent>auditd</parent>
+  <regex>name="(\S+)"</regex>
+  <order>audit.directory.name</order>
+</decoder>
+
+<decoder name="auditd-generic">
+  <parent>auditd</parent>
+  <regex>inode=(\S+)</regex>
+  <order>audit.inode</order>
+</decoder>
+
+<decoder name="auditd-generic">
+  <parent>auditd</parent>
+  <regex>mode=(\S+)</regex>
+  <order>audit.mode</order>
+</decoder>
+
+<decoder name="auditd-generic">
+  <parent>auditd</parent>
+  <regex>cwd="(\S+)"</regex>
+  <order>audit.cwd</order>
+</decoder>
+
