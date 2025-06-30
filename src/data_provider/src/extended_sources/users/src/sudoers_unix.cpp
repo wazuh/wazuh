@@ -20,8 +20,8 @@
 
 #include "sudoers_unix.hpp"
 
-SudoersProvider::SudoersProvider(const std::string fileName)
-    : m_sudoFile(fileName)
+SudoersProvider::SudoersProvider(std::string fileName)
+    : m_sudoFile(std::move(fileName))
 {
 }
 

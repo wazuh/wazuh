@@ -17,7 +17,7 @@ class SudoersProvider
 {
     public:
         /// Constructor
-        explicit SudoersProvider(const std::string fileName);
+        explicit SudoersProvider(std::string fileName);
 
         /// Default constructor
         SudoersProvider();

@@ -391,9 +391,9 @@ void Syscollector::init(const std::shared_ptr<ISysInfo>& spInfo,
                         const bool notifyOnFirstScan)
 {
     m_spInfo = spInfo;
-    m_reportDiffFunction = reportDiffFunction;
-    m_reportSyncFunction = reportSyncFunction;
-    m_logFunction = logFunction;
+    m_reportDiffFunction = std::move(reportDiffFunction);
+    m_reportSyncFunction = std::move(reportSyncFunction);
+    m_logFunction = std::move(logFunction);
     m_intervalValue = interval;
     m_scanOnStart = scanOnStart;
     m_hardware = hardware;
@@ -408,11 +408,17 @@ void Syscollector::init(const std::shared_ptr<ISysInfo>& spInfo,
     m_groups = groups;
     m_users = users;
 
+    auto dbSync = std::make_unique<DBSync>(HostType::AGENT, DbEngineType::SQLITE3, dbPath, getCreateStatement());
+    auto remoteSync = std::make_unique<RemoteSync>();
+    auto normalizer = std::make_unique<SysNormalizer>(normalizerConfigPath, normalizerType);
+
     std::unique_lock<std::mutex> lock{m_mutex};
     m_stopping = false;
-    m_spDBSync = std::make_unique<DBSync>(HostType::AGENT, DbEngineType::SQLITE3, dbPath, getCreateStatement());
-    m_spRsync = std::make_unique<RemoteSync>();
-    m_spNormalizer = std::make_unique<SysNormalizer>(normalizerConfigPath, normalizerType);
+
+    m_spDBSync      = std::move(dbSync);
+    m_spRsync       = std::move(remoteSync);
+    m_spNormalizer  = std::move(normalizer);
+
     registerWithRsync();
     syncLoop(lock);
 }
