@@ -42,7 +42,7 @@ assignees: ''
   - [ ] Add the OS and each architecture to the JobFlow testing tool.
   - [ ] Add the OS and each architecture to the GitHub Deployability and Upgrade release templates.
 - [ ] Add the OS and its supported architectures to the E2E UX Tests spreadsheet (OS sheet).
-- [ ] Create an [issue](https://github.com/wazuh/internal-documentation-requests/issues/new?template=new-OSs-support-request.md) (using the new OSs template), for the documentation team to add support for the new OS version in the full support release version.
+- [ ] Create an [issue](https://github.com/wazuh/internal-documentation-requests/issues/new?template=new-OSs-support-request.md) using the "New OSs Support Request" template, requesting the content team to add support for the new OS version in the full support release version, once this issue has been approved and closed.
 -->
 
 <!-- Uncomment for CPPSERVER issue
