@@ -426,13 +426,13 @@ HANDLE wCreateFile(LPCSTR   lpFileName,
         mwarn(NETWORK_PATH_EXECUTED, lpFileName);
         return (INVALID_HANDLE_VALUE);
     }
-    return CreateFile(lpFileName,
-                      dwDesiredAccess,
-                      dwShareMode,
-                      lpSecurityAttributes,
-                      dwCreationDisposition,
-                      dwFlagsAndAttributes,
-                      hTemplateFile);
+    return utf8_CreateFile(lpFileName,
+                           dwDesiredAccess,
+                           dwShareMode,
+                           lpSecurityAttributes,
+                           dwCreationDisposition,
+                           dwFlagsAndAttributes,
+                           hTemplateFile);
 }
 
 BOOL wCreateProcessW(LPCWSTR               lpApplicationName,
@@ -470,7 +470,7 @@ int w_stat64(const char * pathname,
         mwarn(NETWORK_PATH_EXECUTED, pathname);
         return (-1);
     }
-    return _stat64(pathname, statbuf);
+    return utf8_stat64(pathname, statbuf);
 }
 #endif
 
@@ -1369,7 +1369,7 @@ char *basename_ex(char *path)
 int rename_ex(const char *source, const char *destination)
 {
     BOOL file_created = FALSE;
-    DWORD dwFileAttributes = GetFileAttributes(destination);
+    DWORD dwFileAttributes = utf8_GetFileAttributes(destination);
 
     if (dwFileAttributes == INVALID_FILE_ATTRIBUTES) {
         // If the destination file does not exist, create it.
@@ -1530,7 +1530,7 @@ int mkstemp_ex(char *tmp_path)
     sa.lpSecurityDescriptor = pSD;
     sa.bInheritHandle = FALSE;
 
-    h = CreateFileA(
+    h = wCreateFile(
             tmp_path,
             GENERIC_WRITE,
             0,
@@ -2185,7 +2185,7 @@ FILE * w_fopen_r(const char *file, const char * mode, BY_HANDLE_FILE_INFORMATION
 }
 
 char **expand_win32_wildcards(const char *path) {
-    WIN32_FIND_DATA FindFileData;
+    WIN32_FIND_DATAW fd;
     HANDLE hFind;
     char **pending_expand = NULL;
     char **expanded_paths = NULL;
@@ -2231,7 +2231,14 @@ char **expand_win32_wildcards(const char *path) {
                 *look_back = '\0';
             }
 
-            hFind = FindFirstFile(pattern, &FindFileData);
+            wchar_t *wpattern = utf8_to_wide(pattern);
+            if (!wpattern) {
+                continue;
+            }
+
+            hFind = FindFirstFileW(wpattern, &fd);
+            os_free(wpattern);
+
             if (hFind == INVALID_HANDLE_VALUE) {
                 long unsigned errcode = GetLastError();
                 if (errcode == 2) {
@@ -2248,20 +2255,26 @@ char **expand_win32_wildcards(const char *path) {
                 continue;
             }
             do {
-                if (strcmp(FindFileData.cFileName, ".") == 0 || strcmp(FindFileData.cFileName, "..") == 0) {
+                if (wcscmp(fd.cFileName, L".") == 0 || wcscmp(fd.cFileName, L"..") == 0) {
                     continue;
                 }
 
-                if ((FindFileData.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT)) {
+                if ((fd.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT)) {
                     continue;
                 }
 
-                if ((FindFileData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) == 0 && next_glob != NULL) {
+                if ((fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) == 0 && next_glob != NULL) {
+                    continue;
+                }
+
+                char *utf8_name = wide_to_utf8(fd.cFileName);
+                if (!utf8_name) {
                     continue;
                 }
 
                 os_strdup(parent_path, expanded_paths[expanded_index]);
-                wm_strcat(&expanded_paths[expanded_index], FindFileData.cFileName, PATH_SEP);
+                wm_strcat(&expanded_paths[expanded_index], utf8_name, PATH_SEP);
+                os_free(utf8_name);
 
                 if (next_glob != NULL) {
                     wm_strcat(&expanded_paths[expanded_index], next_glob, PATH_SEP);
@@ -2270,8 +2283,7 @@ char **expand_win32_wildcards(const char *path) {
                 os_realloc(expanded_paths, (expanded_index + 2) * sizeof(char *), expanded_paths);
                 expanded_index++;
                 expanded_paths[expanded_index] = NULL;
-
-            } while(FindNextFile(hFind, &FindFileData));
+            } while (FindNextFileW(hFind, &fd));
 
             FindClose(hFind);
             // Now, free the memory, as the path that needed to be expanded is no longer needed and it's expansion is
@@ -3293,40 +3305,52 @@ DWORD FileSizeWin(const char * file) {
 }
 
 float DirSize(const char *path) {
-    WIN32_FIND_DATA fdFile;
+    WIN32_FIND_DATAW fdFile;
     HANDLE hFind = NULL;
     float folder_size = 0.0;
     float file_size = 0.0;
 
-    char sPath[2048];
+    wchar_t *wPathInput = utf8_to_wide(path);
+    if (!wPathInput) {
+        return 0;
+    }
+
+    wchar_t wsPath[2048];
 
     // Specify a file mask. *.* = We want everything!
-    sprintf(sPath, "%s\\*.*", path);
+    swprintf(wsPath, sizeof(wsPath) / sizeof(wsPath[0]), L"%s\\*.*", wPathInput);
 
-    if ((hFind = FindFirstFile(sPath, &fdFile)) == INVALID_HANDLE_VALUE) {
+    if ((hFind = FindFirstFileW(wsPath, &fdFile)) == INVALID_HANDLE_VALUE) {
         merror(FILE_ERROR, path);
+        os_free(wPathInput);
         return 0;
     }
 
     do {
-        if (strcmp(fdFile.cFileName, ".") != 0 && strcmp(fdFile.cFileName, "..") != 0) {
+        if (wcscmp(fdFile.cFileName, L".") != 0 && wcscmp(fdFile.cFileName, L"..") != 0) {
             // Build up our file path using the passed in
             //  [path] and the file/foldername we just found:
-            sprintf(sPath, "%s\\%s", path, fdFile.cFileName);
+            swprintf(wsPath, sizeof(wsPath) / sizeof(wsPath[0]), L"%s\\%s", wPathInput, fdFile.cFileName);
 
-            if (fdFile.dwFileAttributes &FILE_ATTRIBUTE_DIRECTORY) {
-                folder_size += DirSize(sPath);
+            char *utf8_file = wide_to_utf8(wsPath);
+            if (!utf8_file) {
+                continue;
+            }
+
+            if (fdFile.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
+                folder_size += DirSize(utf8_file);
             }
             else {
-                if (file_size = FileSizeWin(sPath), file_size != -1) {
+                if (file_size = FileSizeWin(utf8_file), file_size != -1) {
                     folder_size += file_size;
                 }
             }
+            os_free(utf8_file);
         }
-    } while (FindNextFile(hFind, &fdFile));
+    } while (FindNextFileW(hFind, &fdFile));
 
     FindClose(hFind);
-
+    os_free(wPathInput);
     return folder_size;
 }
 
