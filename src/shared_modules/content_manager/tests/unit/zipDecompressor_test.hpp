@@ -43,11 +43,11 @@ protected:
     void SetUp() override
     {
         m_spContext = std::make_shared<UpdaterContext>();
-        m_spContext->spUpdaterBaseContext = std::make_shared<UpdaterBaseContext>(
-            m_spStopActionCondition,
-            [](const std::string& msg, std::shared_ptr<ConditionSync> shouldStop) -> FileProcessingResult {
-                return {0, "", false};
-            });
+        m_spContext->spUpdaterBaseContext =
+            std::make_shared<UpdaterBaseContext>(m_spStopActionCondition,
+                                                 [](const std::string& msg) -> FileProcessingResult {
+                                                     return {0, "", false};
+                                                 });
         m_spContext->spUpdaterBaseContext->outputFolder = OUTPUT_FOLDER;
 
         std::filesystem::create_directory(OUTPUT_FOLDER);

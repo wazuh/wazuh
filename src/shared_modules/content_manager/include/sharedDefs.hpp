@@ -22,7 +22,6 @@
 #include "loggerHelper.h"
 
 using FileProcessingResult = std::tuple<int, std::string, bool>;
-using FileProcessingCallback =
-    std::function<FileProcessingResult(const std::string& message, std::shared_ptr<ConditionSync> shouldStop)>;
+using FileProcessingCallback = std::function<FileProcessingResult(const std::string& message)>;
 
 #endif // _SHARED_DEFS_H

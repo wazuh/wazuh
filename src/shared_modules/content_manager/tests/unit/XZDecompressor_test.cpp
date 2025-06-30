@@ -35,11 +35,11 @@ static const std::filesystem::path SAMPLE_B_OUTPUT_FILE {CONTENT_FOLDER / "sampl
 void XZDecompressorTest::SetUp()
 {
     m_spUpdaterContext = std::make_shared<UpdaterContext>();
-    m_spUpdaterContext->spUpdaterBaseContext = std::make_shared<UpdaterBaseContext>(
-        m_spStopActionCondition,
-        [](const std::string& msg, std::shared_ptr<ConditionSync> shouldStop) -> FileProcessingResult {
-            return {0, "", false};
-        });
+    m_spUpdaterContext->spUpdaterBaseContext =
+        std::make_shared<UpdaterBaseContext>(m_spStopActionCondition,
+                                             [](const std::string& msg) -> FileProcessingResult {
+                                                 return {0, "", false};
+                                             });
     // The input files folder simulates the Content Manager output folder.
     m_spUpdaterContext->spUpdaterBaseContext->outputFolder = INPUT_FILES_FOLDER;
 
