@@ -49,6 +49,26 @@
                         "version": "1.0"
                     }
                 }
+            },
+            {
+                "agent": {
+                    "id": "005",
+                    "name": "centos9",
+                    "version": "v4.10.1"
+                },
+                "group": {
+                    "id": 585,
+                    "id_signed": -585,
+                    "is_hidden": true
+                },
+                "wazuh": {
+                    "cluster": {
+                        "name": "cluster01"
+                    },
+                    "schema": {
+                        "version": "1.0"
+                    }
+                }
             }
         ]
     }

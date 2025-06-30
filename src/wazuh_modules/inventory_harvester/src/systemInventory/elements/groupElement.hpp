@@ -56,17 +56,24 @@ public:
         element.operation = "INSERTED";
 
         element.data.group.id = groupId;
-        element.data.group.name = data->groupName();
-        element.data.group.description = data->groupDescription();
+        if (auto groupName = data->groupName(); groupName.compare(" ") != 0)
+        {
+            element.data.group.name = groupName;
+        }
+        if (auto groupDescription = data->groupDescription(); groupDescription.compare(" ") != 0)
+        {
+            element.data.group.description = groupDescription;
+        }
         element.data.group.id_signed = data->groupIdSigned();
-        element.data.group.uuid = data->groupUuid();
+        if (auto groupUuid = data->groupUuid(); groupUuid.compare(" ") != 0)
+        {
+            element.data.group.uuid = groupUuid;
+        }
         // To be consistent with SQLite information default value is false
         element.data.group.is_hidden = data->groupIsHidden();
-
-        std::string_view groupUsersView = data->groupUsers();
-        if (!groupUsersView.empty())
+        if (auto groupUsers = data->groupUsers(); !groupUsers.empty() && groupUsers.compare(" ") != 0)
         {
-            element.data.group.users = Utils::splitView(groupUsersView, ':');
+            element.data.group.users = Utils::splitView(groupUsers, ':');
         }
 
         element.data.agent.id = agentId;

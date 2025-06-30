@@ -55,16 +55,21 @@ public:
 
         element.operation = "INSERTED";
 
-        std::string_view userHostIpView = data->userHostIp();
-        if (!userHostIpView.empty())
+        if (auto userHostIp = data->userHostIp(); !userHostIp.empty() && userHostIp.compare(" ") != 0)
         {
-            element.data.host.ip = Utils::splitView(userHostIpView, ',');
+            element.data.host.ip = Utils::splitView(userHostIp, ',');
         }
 
         // To be consistent with SQLite information default value is false
         element.data.login.status = data->userLoginStatus();
-        element.data.login.tty = data->userLoginTty();
-        element.data.login.type = data->userLoginType();
+        if (auto userLoginTty = data->userLoginTty(); userLoginTty.compare(" ") != 0)
+        {
+            element.data.login.tty = userLoginTty;
+        }
+        if (auto userLoginType = data->userLoginType(); userLoginType.compare(" ") != 0)
+        {
+            element.data.login.type = userLoginType;
+        }
 
         auto userProcessPid = data->userProcessPid();
         if (userProcessPid >= 0)
@@ -78,14 +83,29 @@ public:
             element.data.user.id = std::to_string(userId);
         }
         element.data.user.name = userName;
-        element.data.user.full_name = data->userFullName();
+        if (auto userFullName = data->userFullName(); userFullName.compare(" ") != 0)
+        {
+            element.data.user.full_name = userFullName;
+        }
         element.data.user.created = data->userCreated();
-        element.data.user.home = data->userHome();
-        element.data.user.shell = data->userShell();
-        element.data.user.type = data->userType();
+        if (auto userHome = data->userHome(); userHome.compare(" ") != 0)
+        {
+            element.data.user.home = userHome;
+        }
+        if (auto userShell = data->userShell(); userShell.compare(" ") != 0)
+        {
+            element.data.user.shell = userShell;
+        }
+        if (auto userType = data->userType(); userType.compare(" ") != 0)
+        {
+            element.data.user.type = userType;
+        }
         element.data.user.last_login = data->userLastLogin();
         element.data.user.uid_signed = data->userUidSigned();
-        element.data.user.uuid = data->userUuid();
+        if (auto userUuid = data->userUuid(); userUuid.compare(" ") != 0)
+        {
+            element.data.user.uuid = userUuid;
+        }
         // To be consistent with SQLite information default value is false
         element.data.user.is_hidden = data->userIsHidden();
         element.data.user.is_remote = data->userIsRemote();
@@ -97,10 +117,9 @@ public:
         }
         element.data.user.group.id_signed = data->userGroupIdSigned();
 
-        std::string_view userGroupsView = data->userGroups();
-        if (!userGroupsView.empty())
+        if (auto userGroups = data->userGroups(); !userGroups.empty() && userGroups.compare(" ") != 0)
         {
-            element.data.user.groups = Utils::splitView(userGroupsView, ':');
+            element.data.user.groups = Utils::splitView(userGroups, ':');
         }
 
         auto userAuthFailedCount = data->userAuthFailedCount();
@@ -140,10 +159,9 @@ public:
             element.data.user.password.warning_days_before_expiration = userPasswordWarningDays;
         }
 
-        std::string_view userRolesView = data->userRoles();
-        if (!userRolesView.empty())
+        if (auto userRoles = data->userRoles(); !userRoles.empty() && userRoles.compare(" ") != 0)
         {
-            element.data.user.roles = Utils::splitView(userRolesView, ',');
+            element.data.user.roles = Utils::splitView(userRoles, ',');
         }
 
         element.data.agent.id = agentId;

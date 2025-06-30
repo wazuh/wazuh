@@ -344,6 +344,53 @@
                         "version": "1.0"
                     }
                 }
+            },
+            {
+                "agent": {
+                    "id": "009",
+                    "name": "centos9",
+                    "version": "v4.10.1"
+                },
+                "login": {
+                    "status": true
+                },
+                "process": {
+                    "pid": 92036
+                },
+                "user": {
+                    "auth_failures": {
+                        "count": 20,
+                        "timestamp": "2020-11-13T01:54:25.665Z"
+                    },
+                    "created": "2020-11-13T01:54:25.665Z",
+                    "group": {
+                        "id": 100,
+                        "id_signed": -100
+                    },
+                    "id": "10",
+                    "is_hidden": true,
+                    "is_remote": true,
+                    "last_login": "2025-06-10T15:43:56.000Z",
+                    "name": "root",
+                    "password": {
+                        "expiration_date": "2025-06-10T15:43:56.000Z",
+                        "inactive_days": 71,
+                        "last_change": 20228,
+                        "last_set_time": "2020-11-13T01:54:25.665Z",
+                        "max_days_between_changes": 99999,
+                        "min_days_between_changes": 0,
+                        "warning_days_before_expiration": 7
+                    },
+                    "uid_signed": -10
+                },
+                "wazuh": {
+                    "cluster": {
+                        "name": "cluster01"
+                    },
+                    "schema": {
+                        "version": "1.0"
+                    }
+                }
             }
         ]
     }
