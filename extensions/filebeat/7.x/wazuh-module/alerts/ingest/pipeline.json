@@ -83,7 +83,7 @@
         "ignore_failure": true
       }
     },
-        {
+    {
       "geoip": {
         "field": "data.callerIpAddress",
         "target_field": "GeoLocation",
