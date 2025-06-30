@@ -3,8 +3,8 @@
 
 #include <algorithm>
 
-PersistentQueue::PersistentQueue()
-    : m_storage(std::make_shared<PersistentQueueStorage>())
+PersistentQueue::PersistentQueue(std::shared_ptr<IPersistentQueueStorage> storage)
+    : m_storage(storage ? std::move(storage) : std::make_shared<PersistentQueueStorage>())
 {
     try
     {

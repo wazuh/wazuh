@@ -14,7 +14,8 @@
 class PersistentQueue : public IPersistentQueue
 {
     public:
-        PersistentQueue();
+        explicit PersistentQueue(std::shared_ptr<IPersistentQueueStorage> storage = nullptr);
+
         ~PersistentQueue() override;
 
         uint64_t submit(const std::string& module, const std::string& id,

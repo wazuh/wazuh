@@ -20,6 +20,7 @@ link_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../external/googletest/lib/)
 add_executable(agent_sync_protocol_tests
     main.cpp
     test_persistent_queue_storage.cpp
+    test_persistent_queue.cpp
 )
 
 # Include paths
@@ -33,7 +34,13 @@ target_include_directories(agent_sync_protocol_tests PRIVATE
 target_link_libraries(agent_sync_protocol_tests
     PRIVATE
     agent_sync_protocol
-    gtest
-    gtest_main
+    debug gtestd
+    debug gmockd
+    debug gtest_maind
+    debug gmock_maind
+    optimized gtest
+    optimized gmock
+    optimized gtest_main
+    optimized gmock_main
     pthread
 )
