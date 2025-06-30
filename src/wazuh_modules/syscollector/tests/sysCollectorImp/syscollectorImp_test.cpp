@@ -210,7 +210,7 @@ TEST_F(SyscollectorImpTest, defaultCtor)
     };
     const auto expectedResult22
     {
-        R"({"component":"syscollector_groups","data":{"begin":"1","end":"1"},"type":"integrity_check_global"})"
+        R"({"component":"syscollector_groups","data":{"begin":"daemon","end":"daemon"},"type":"integrity_check_global"})"
     };
     const auto expectedResult23
     {
@@ -497,7 +497,7 @@ TEST_F(SyscollectorImpTest, noHardware)
     };
     const auto expectedResult23
     {
-        R"({"component":"syscollector_groups","data":{"begin":"1","end":"1"},"type":"integrity_check_global"})"
+        R"({"component":"syscollector_groups","data":{"begin":"daemon","end":"daemon"},"type":"integrity_check_global"})"
     };
     const auto expectedResult24
     {
@@ -695,7 +695,7 @@ TEST_F(SyscollectorImpTest, noOs)
     };
     const auto expectedResult23
     {
-        R"({"component":"syscollector_groups","data":{"begin":"1","end":"1"},"type":"integrity_check_global"})"
+        R"({"component":"syscollector_groups","data":{"begin":"daemon","end":"daemon"},"type":"integrity_check_global"})"
     };
     const auto expectedResult24
     {
@@ -876,7 +876,7 @@ TEST_F(SyscollectorImpTest, noNetwork)
     };
     const auto expectedResult24
     {
-        R"({"component":"syscollector_groups","data":{"begin":"1","end":"1"},"type":"integrity_check_global"})"
+        R"({"component":"syscollector_groups","data":{"begin":"daemon","end":"daemon"},"type":"integrity_check_global"})"
     };
     const auto expectedResult25
     {
@@ -1067,7 +1067,7 @@ TEST_F(SyscollectorImpTest, noPackages)
     };
     const auto expectedResult23
     {
-        R"({"component":"syscollector_groups","data":{"begin":"1","end":"1"},"type":"integrity_check_global"})"
+        R"({"component":"syscollector_groups","data":{"begin":"daemon","end":"daemon"},"type":"integrity_check_global"})"
     };
     const auto expectedResult24
     {
@@ -1264,7 +1264,7 @@ TEST_F(SyscollectorImpTest, noPorts)
     };
     const auto expectedResult23
     {
-        R"({"component":"syscollector_groups","data":{"begin":"1","end":"1"},"type":"integrity_check_global"})"
+        R"({"component":"syscollector_groups","data":{"begin":"daemon","end":"daemon"},"type":"integrity_check_global"})"
     };
     const auto expectedResult24
     {
@@ -1470,7 +1470,7 @@ TEST_F(SyscollectorImpTest, noPortsAll)
     };
     const auto expectedResult23
     {
-        R"({"component":"syscollector_groups","data":{"begin":"1","end":"1"},"type":"integrity_check_global"})"
+        R"({"component":"syscollector_groups","data":{"begin":"daemon","end":"daemon"},"type":"integrity_check_global"})"
     };
     const auto expectedResult24
     {
@@ -1667,7 +1667,7 @@ TEST_F(SyscollectorImpTest, noProcesses)
     };
     const auto expectedResult23
     {
-        R"({"component":"syscollector_groups","data":{"begin":"1","end":"1"},"type":"integrity_check_global"})"
+        R"({"component":"syscollector_groups","data":{"begin":"daemon","end":"daemon"},"type":"integrity_check_global"})"
     };
     const auto expectedResult24
     {
@@ -1865,7 +1865,7 @@ TEST_F(SyscollectorImpTest, noHotfixes)
     };
     const auto expectedResult21
     {
-        R"({"component":"syscollector_groups","data":{"begin":"1","end":"1"},"type":"integrity_check_global"})"
+        R"({"component":"syscollector_groups","data":{"begin":"daemon","end":"daemon"},"type":"integrity_check_global"})"
     };
     const auto expectedResult22
     {
@@ -2068,7 +2068,7 @@ TEST_F(SyscollectorImpTest, noUsers)
     };
     const auto expectedResult22
     {
-        R"({"component":"syscollector_groups","data":{"begin":"1","end":"1"},"type":"integrity_check_global"})"
+        R"({"component":"syscollector_groups","data":{"begin":"daemon","end":"daemon"},"type":"integrity_check_global"})"
     };
     const auto expectedResult23
     {
@@ -2511,7 +2511,7 @@ TEST_F(SyscollectorImpTest, pushMessageOk1)
     };
     const auto expectedResult22
     {
-        R"({"component":"syscollector_groups","data":{"begin":"1","end":"1"},"type":"integrity_check_global"})"
+        R"({"component":"syscollector_groups","data":{"begin":"daemon","end":"daemon"},"type":"integrity_check_global"})"
     };
     const auto expectedResult23
     {
@@ -3139,7 +3139,7 @@ TEST_F(SyscollectorImpTest, sanitizeJsonValues)
     };
     const auto expectedResult22
     {
-        R"({"component":"syscollector_groups","data":{"begin":"1","end":"1"},"type":"integrity_check_global"})"
+        R"({"component":"syscollector_groups","data":{"begin":"daemon","end":"daemon"},"type":"integrity_check_global"})"
     };
     const auto expectedResult23
     {

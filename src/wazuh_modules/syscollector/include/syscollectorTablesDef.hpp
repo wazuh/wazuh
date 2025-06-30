@@ -948,28 +948,28 @@ constexpr auto GROUPS_START_CONFIG_STATEMENT
     R"({"table":"dbsync_groups",
         "first_query":
             {
-                "column_list":["group_id"],
+                "column_list":["group_name"],
                 "row_filter":" ",
                 "distinct_opt":false,
-                "order_by_opt":"group_id DESC",
+                "order_by_opt":"group_name DESC",
                 "count_opt":1
             },
         "last_query":
             {
-                "column_list":["group_id"],
+                "column_list":["group_name"],
                 "row_filter":" ",
                 "distinct_opt":false,
-                "order_by_opt":"group_id ASC",
+                "order_by_opt":"group_name ASC",
                 "count_opt":1
             },
         "component":"syscollector_groups",
-        "index":"group_id",
+        "index":"group_name",
         "last_event":"last_event",
         "checksum_field":"checksum",
         "range_checksum_query_json":
             {
-                "row_filter":"WHERE group_id BETWEEN '?' and '?' ORDER BY group_id",
-                "column_list":["group_id, checksum"],
+                "row_filter":"WHERE group_name BETWEEN '?' and '?' ORDER BY group_name",
+                "column_list":["group_name, checksum"],
                 "distinct_opt":false,
                 "order_by_opt":"",
                 "count_opt":1000
@@ -984,29 +984,29 @@ constexpr auto GROUPS_SYNC_CONFIG_STATEMENT
         "decoder_type":"JSON_RANGE",
         "table":"dbsync_groups",
         "component":"syscollector_groups",
-        "index":"group_id",
+        "index":"group_name",
         "checksum_field":"checksum",
         "no_data_query_json": {
-                "row_filter":"WHERE group_id BETWEEN '?' and '?' ORDER BY group_id",
+                "row_filter":"WHERE group_name BETWEEN '?' and '?' ORDER BY group_name",
                 "column_list":["*"],
                 "distinct_opt":false,
                 "order_by_opt":""
         },
         "count_range_query_json": {
-                "row_filter":"WHERE group_id BETWEEN '?' and '?' ORDER BY group_id",
+                "row_filter":"WHERE group_name BETWEEN '?' and '?' ORDER BY group_name",
                 "count_field_name":"count",
                 "column_list":["count(*) AS count "],
                 "distinct_opt":false,
                 "order_by_opt":""
         },
         "row_data_query_json": {
-                "row_filter":"WHERE group_id ='?'",
+                "row_filter":"WHERE group_name ='?'",
                 "column_list":["*"],
                 "distinct_opt":false,
                 "order_by_opt":""
         },
         "range_checksum_query_json": {
-                "row_filter":"WHERE group_id BETWEEN '?' and '?' ORDER BY group_id",
+                "row_filter":"WHERE group_name BETWEEN '?' and '?' ORDER BY group_name",
                 "column_list":["*"],
                 "distinct_opt":false,
                 "order_by_opt":""
@@ -1026,7 +1026,7 @@ constexpr auto GROUPS_SQL_STATEMENT
     group_is_hidden INTEGER,
     group_users TEXT,
     checksum TEXT,
-    PRIMARY KEY (group_id)) WITHOUT ROWID;)"
+    PRIMARY KEY (group_name)) WITHOUT ROWID;)"
 };
 
 constexpr auto NET_IFACE_TABLE    { "dbsync_network_iface"    };
