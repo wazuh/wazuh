@@ -6,12 +6,21 @@
 PersistentQueue::PersistentQueue()
     : m_storage(std::make_shared<PersistentQueueStorage>())
 {
-    for (auto mod :
-            {"FIM", "SCA", "INV", "OTHER"
-            })
+    try
     {
-        m_seqCounter[mod] = 0;
-        loadFromStorage(mod);
+        for (auto mod :
+                {
+                    "FIM", "SCA", "INV", "OTHER"
+                })
+        {
+            m_seqCounter[mod] = 0;
+            loadFromStorage(mod);
+        }
+    }
+    catch (const std::exception& ex)
+    {
+        std::cerr << "[PersistentQueue] Unexpected error: " << ex.what() << std::endl;
+        throw;
     }
 }
 
@@ -26,7 +35,17 @@ uint64_t PersistentQueue::submit(const std::string& module, const std::string& i
     uint64_t seq = ++m_seqCounter[module];
     PersistedData msg{seq, id, index, data, operation};
     m_store[module].push_back(msg);
-    persistMessage(module, msg);
+
+    try
+    {
+        persistMessage(module, msg);
+    }
+    catch (const std::exception& ex)
+    {
+        std::cerr << "[PersistentQueue] Error persisting message: " << ex.what() << std::endl;
+        throw;
+    }
+
     return seq;
 }
 
@@ -96,28 +115,55 @@ void PersistentQueue::remove(const std::string& module, uint64_t sequence)
     {
         return data.seq == sequence;
     }), queue.end());
-    deleteMessage(module, sequence);
+
+    try
+    {
+        deleteMessage(module, sequence);
+    }
+    catch (const std::exception& ex)
+    {
+        std::cerr << "[PersistentQueue] Error deleting message from database: " << ex.what() << std::endl;
+        throw;
+    }
 }
 
 void PersistentQueue::removeAll(const std::string& module)
 {
     std::lock_guard<std::mutex> lock(m_mutex);
     m_store[module].clear();
-    deleteAllMessages(module);
+    m_seqCounter[module] = 0;
+
+    try
+    {
+        deleteAllMessages(module);
+    }
+    catch (const std::exception& ex)
+    {
+        std::cerr << "[PersistentQueue] Error deleting all messages: " << ex.what() << std::endl;
+        throw;
+    }
 }
 
 void PersistentQueue::loadFromStorage(const std::string& module)
 {
-    const auto data = m_storage->loadAll(module);
-    uint64_t maxSeq = 0;
-
-    for (const auto& item : data)
+    try
     {
-        m_store[module].push_back(item);
-        maxSeq = std::max(maxSeq, item.seq);
-    }
+        const auto data = m_storage->loadAll(module);
+        uint64_t maxSeq = 0;
 
-    m_seqCounter[module] = maxSeq;
+        for (const auto& item : data)
+        {
+            m_store[module].push_back(item);
+            maxSeq = std::max(maxSeq, item.seq);
+        }
+
+        m_seqCounter[module] = maxSeq;
+    }
+    catch (const std::exception& ex)
+    {
+        std::cerr << "[PersistentQueue] Error loading messages from database: " << ex.what() << std::endl;
+        throw;
+    }
 }
 
 void PersistentQueue::persistMessage(const std::string& module, const PersistedData& data)
