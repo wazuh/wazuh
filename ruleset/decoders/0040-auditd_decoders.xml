@@ -16,8 +16,8 @@
 <!-- ID -->
 <decoder name="auditd-syscall">
   <parent>auditd</parent>
-  <prematch offset="after_parent">^SYSCALL </prematch>
-  <regex offset="after_parent">^(SYSCALL) msg=audit\(\d\d\d\d\d\d\d\d\d\d.\d\d\d:(\d+)\): </regex>
+  <prematch offset="after_parent">^SYSCALL|^EXECVE </prematch>
+  <regex offset="after_parent">^(\S+) msg=audit\(\d\d\d\d\d\d\d\d\d\d.\d\d\d:(\d+)\): </regex>
   <order>audit.type,audit.id</order>
 </decoder>
 
@@ -52,49 +52,55 @@
 <!-- EXECVE -->
 <decoder name="auditd-syscall">
   <parent>auditd</parent>
-  <regex offset="after_regex">type=EXECVE msg=audit\(\S+\): argc=\d+ a0="(\.+)" </regex>
+  <regex offset="after_regex">argc=(\d+)</regex>
+  <order>audit.execve.argc</order>
+</decoder>
+
+<decoder name="auditd-syscall">
+  <parent>auditd</parent>
+  <regex offset="after_regex">a0="(\.+)"</regex>
   <order>audit.execve.a0</order>
 </decoder>
 
 <decoder name="auditd-syscall">
   <parent>auditd</parent>
-  <regex offset="after_regex">a1="(\.+)" </regex>
+  <regex offset="after_regex">a1="(\.+)"</regex>
   <order>audit.execve.a1</order>
 </decoder>
 
 <decoder name="auditd-syscall">
   <parent>auditd</parent>
-  <regex offset="after_regex">a2="(\.+)" </regex>
+  <regex offset="after_regex">a2="(\.+)"</regex>
   <order>audit.execve.a2</order>
 </decoder>
 
 <decoder name="auditd-syscall">
   <parent>auditd</parent>
-  <regex offset="after_regex">a3="(\.+)" </regex>
+  <regex offset="after_regex">a3="(\.+)"</regex>
   <order>audit.execve.a3</order>
 </decoder>
 
 <decoder name="auditd-syscall">
   <parent>auditd</parent>
-  <regex offset="after_regex">a4="(\.+)" </regex>
+  <regex offset="after_regex">a4="(\.+)"</regex>
   <order>audit.execve.a4</order>
 </decoder>
 
 <decoder name="auditd-syscall">
   <parent>auditd</parent>
-  <regex offset="after_regex">a5="(\.+)" </regex>
+  <regex offset="after_regex">a5="(\.+)"</regex>
   <order>audit.execve.a5</order>
 </decoder>
 
 <decoder name="auditd-syscall">
   <parent>auditd</parent>
-  <regex offset="after_regex">a6="(\.+)" </regex>
+  <regex offset="after_regex">a6="(\.+)"</regex>
   <order>audit.execve.a6</order>
 </decoder>
 
 <decoder name="auditd-syscall">
   <parent>auditd</parent>
-  <regex offset="after_regex">a7="(\.+)" </regex>
+  <regex offset="after_regex">a7="(\.+)"</regex>
   <order>audit.execve.a7</order>
 </decoder>
 
