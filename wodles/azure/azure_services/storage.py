@@ -22,13 +22,16 @@ sys.path.insert(0, dirname(dirname(abspath(__file__))))
 from azure_utils import (
     CREDENTIALS_URL,
     DEPRECATED_MESSAGE,
-    MAX_EPS,
+    EXCEED_EPS_WAIT,
+    get_max_eps_value,
     offset_to_datetime,
     read_auth_file,
     SocketConnection,
 )
 from db import orm
 from db.utils import create_new_row, update_row_object
+
+MAX_EPS = get_max_eps_value()
 
 
 def start_storage(args):
@@ -235,8 +238,10 @@ def get_blobs(
                                 now = time.monotonic()
                                 time_passed = now - start
                                 if time_passed <= 1 and eps_counter == MAX_EPS:
-                                    sleep_time = 1 + time_passed
-                                    logging.info('Sleeping %f sec, since the max 100 EPS was exceeded.', sleep_time)
+                                    sleep_time = EXCEED_EPS_WAIT + time_passed
+                                    logging.info(
+                                        'Sleeping %f sec, since the max %i EPS was exceeded.', sleep_time, MAX_EPS
+                                    )
                                     time.sleep(sleep_time)
                                     eps_counter = 0
                                     start = time.monotonic()
@@ -254,8 +259,10 @@ def get_blobs(
                             now = time.monotonic()
                             time_passed = now - start
                             if time_passed <= 1 and eps_counter == MAX_EPS:
-                                sleep_time = 1 + time_passed
-                                logging.info('Sleeping %f sec, since the max 100 EPS was exceeded.', sleep_time)
+                                sleep_time = EXCEED_EPS_WAIT + time_passed
+                                logging.info(
+                                    'Sleeping %f sec, since the max %i EPS was exceeded.', sleep_time, MAX_EPS
+                                )
                                 time.sleep(sleep_time)
                                 eps_counter = 0
                                 start = time.monotonic()

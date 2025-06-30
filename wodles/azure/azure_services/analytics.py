@@ -20,8 +20,9 @@ sys.path.insert(0, dirname(dirname(abspath(__file__))))
 from azure_utils import (
     CREDENTIALS_URL,
     DATETIME_MASK,
+    EXCEED_EPS_WAIT,
     DEPRECATED_MESSAGE,
-    MAX_EPS,
+    get_max_eps_value,
     get_token,
     offset_to_datetime,
     read_auth_file,
@@ -31,6 +32,7 @@ from db import orm
 from db.utils import create_new_row, update_row_object
 
 URL_ANALYTICS = 'https://api.loganalytics.io'
+MAX_EPS = get_max_eps_value()
 
 
 def start_log_analytics(args):
@@ -255,8 +257,8 @@ def iter_log_analytics_events(columns: list, rows: list, tag: str):
             now = time.monotonic()
             time_passed = now - start
             if time_passed <= 1 and eps_counter == MAX_EPS:
-                sleep_time = 1 + time_passed
-                logging.info('Sleeping %f sec, since the max 100 EPS was exceeded.', sleep_time)
+                sleep_time = EXCEED_EPS_WAIT + time_passed
+                logging.info('Sleeping %f sec, since the max %i EPS was exceeded.', sleep_time, MAX_EPS)
                 time.sleep(sleep_time)
                 eps_counter = 0
                 start = time.monotonic()

@@ -36,7 +36,7 @@ DEPRECATED_MESSAGE = (
 )
 URL_LOGGING = 'https://login.microsoftonline.com'
 
-MAX_EPS = 100
+EXCEED_EPS_WAIT = 1
 
 
 def set_logger(debug_level: int):
@@ -467,3 +467,21 @@ def offset_to_datetime(offset: str):
 
     logging.error('Invalid offset format. Use "h", "m" or "d" time unit.')
     exit(1)
+
+
+def get_max_eps_value() -> int:
+    """Read the `wazuh_modules.max_eps` value from the internal_options.conf file
+
+    Returns
+    -------
+    int
+        The value of the max_eps configuration
+    """
+
+    max_eps_conf = ''
+    with open('/var/ossec/etc/internal_options.conf', 'r') as file:
+        for line in file.readlines():
+            if line.startswith('wazuh_modules.max_eps'):
+                max_eps_conf = line.strip()
+
+    return int(max_eps_conf.split('=')[1])
