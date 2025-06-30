@@ -4,7 +4,6 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import datetime
-import glob
 import os
 from collections.abc import KeysView
 from io import StringIO
@@ -2020,7 +2019,7 @@ def test_get_utc_now():
 
 
 @freeze_time('1970-01-01')
-def test_get_utc_now():
+def test_get_utc_strptime():
     """Test if the result is the expected date."""
     mock_date = '1970-01-01'
     default_format = '%Y-%M-%d'
@@ -2093,8 +2092,8 @@ def test_check_wazuh_limits_unchanged(new_conf, unchanged_limits_conf, original_
 def test_agents_allow_higher_versions(new_conf, agents_conf):
     """Check if ossec.conf agents versions are protected by the API.
 
-    When 'allow_higher_versions': {'allow': False} is set in the API configuration, the agent versions in ossec.conf 
-    cannot be changed. However, other configuration sections can be added, 
+    When 'allow_higher_versions': {'allow': False} is set in the API configuration, the agent versions in ossec.conf
+    cannot be changed. However, other configuration sections can be added,
     removed or modified.
 
     Parameters
@@ -2190,11 +2189,11 @@ def test_check_indexer(new_conf, original_conf, indexer_changed, indexer_allowed
 @patch('wazuh.core.utils.chmod')
 @patch('wazuh.core.common.wazuh_gid')
 @patch('wazuh.core.common.wazuh_uid')
-def test_upload_file(mock_uid, mock_gid, 
+def test_upload_file(mock_uid, mock_gid,
                      mock_chmod, mock_mks,
                      chk_xml, content):
     """Test upload_file function.
-    
+
     Parameters
     ----------
     mock_uid: Mock
