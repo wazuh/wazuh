@@ -27,8 +27,8 @@ fi
 
 AUTHOR="Wazuh Inc."
 USE_JSON=false
-DAEMONS="wazuh-clusterd wazuh-modulesd wazuh-monitord wazuh-logcollector wazuh-remoted wazuh-syscheckd wazuh-engine wazuh-execd wazuh-db wazuh-authd wazuh-agentlessd wazuh-integratord wazuh-csyslogd wazuh-apid"
-OP_DAEMONS="wazuh-clusterd wazuh-agentlessd wazuh-integratord wazuh-csyslogd"
+DAEMONS="wazuh-clusterd wazuh-modulesd wazuh-monitord wazuh-logcollector wazuh-remoted wazuh-syscheckd wazuh-engine wazuh-maild wazuh-execd wazuh-db wazuh-authd wazuh-agentlessd wazuh-integratord wazuh-csyslogd wazuh-apid"
+OP_DAEMONS="wazuh-clusterd wazuh-maild wazuh-agentlessd wazuh-integratord wazuh-csyslogd"
 DEPRECATED_DAEMONS="ossec-authd"
 
 # Reverse order of daemons
@@ -237,9 +237,6 @@ testconfig()
 {
     # We first loop to check the config.
     for i in ${SDAEMONS}; do
-        if [ "$i" = "wazuh-engine" ]; then
-            continue
-        fi
         ${DIR}/bin/${i} -t ${DEBUG_CLI};
         if [ $? != 0 ]; then
             if [ $USE_JSON = true ]; then
@@ -292,7 +289,7 @@ wait_for_wazuh_engine_ready()
     fi
 
     while [ $attempts -lt $max_attempts ]; do
-        curl --silent --unix-socket /var/ossec/queue/sockets/engine-api \
+        curl --silent --unix-socket ${DIR}/queue/sockets/engine-api \
             -X POST -H "Content-Type: application/json" \
             -d '{"name":"default"}' \
             http://localhost/router/route/get \
@@ -311,7 +308,7 @@ wait_for_wazuh_engine_ready()
     done
 
     echo "wazuh-engine did not respond correctly after $max_attempts attempts."
-    kill -2 $ENGINE_PID
+    kill $ENGINE_PID
     return 1
 }
 
@@ -345,6 +342,13 @@ start_service()
         echo -n '{"error":0,"data":['
     fi
     for i in ${SDAEMONS}; do
+        ## If wazuh-maild is disabled, don't try to start it.
+        if [ X"$i" = "Xwazuh-maild" ]; then
+             grep "<email_notification>no<" ${DIR}/etc/ossec.conf >/dev/null 2>&1
+             if [ $? = 0 ]; then
+                 continue
+             fi
+        fi
         ## If wazuh-clusterd is disabled, don't try to start it.
         if [ X"$i" = "Xwazuh-clusterd" ]; then
              start_config="$(grep -n "<cluster>" ${DIR}/etc/ossec.conf | cut -d':' -f 1)"
@@ -534,11 +538,7 @@ stop_service()
             fi
 
             pid=`cat ${DIR}/var/run/${i}-*.pid`
-            if [ ${i} = "wazuh-engine" ]; then
-                kill -2 $pid
-            else
-                kill $pid
-            fi
+            kill $pid
 
             if wait_pid $pid
             then

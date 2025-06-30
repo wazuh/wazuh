@@ -2,7 +2,7 @@
 
 #include <base/process.hpp>
 
-using namespace base;
+using namespace base::process;
 namespace fs = std::filesystem;
 
 // Exit codes for goDaemon functional test
@@ -62,8 +62,12 @@ TEST(GoDaemonFunctionalTest, ContinuesInGrandchild)
     {
         // Child context for goDaemon
         close(fds[0]);
-        auto err = goDaemon();
-        if (isError(err))
+
+        try
+        {
+            goDaemon();
+        }
+        catch (...)
         {
             exit(EXIT_DAEMON_FAILURE);
         }
