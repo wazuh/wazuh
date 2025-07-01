@@ -2,7 +2,11 @@ cmake_minimum_required(VERSION 3.12.4)
 
 project(agent_sync_protocol_tests)
 
-set(CMAKE_CXX_FLAGS_DEBUG "-g --coverage -fsanitize=address,leak,undefined")
+set(CMAKE_CXX_FLAGS_DEBUG "-g --coverage")
+
+if(FSANITIZE)
+  set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fsanitize=address,leak,undefined")
+endif(FSANITIZE)
 
 message(STATUS "SRC_FOLDER is: ${SRC_FOLDER}")
 
