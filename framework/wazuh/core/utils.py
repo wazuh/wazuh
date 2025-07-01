@@ -1643,7 +1643,7 @@ class WazuhDBQuery(object):
     def _add_sort_to_query(self):
         if self.sort:
             if self.sort['fields']:
-                sort_fields, allowed_sort_fields = self.sort['fields'], set(self.fields.keys())
+                sort_fields, allowed_sort_fields = self.sort['fields'], set(self.fields.keys()) - self.extra_fields
                 # Check every element in sort['fields'] is in allowed_sort_fields
                 if not set(sort_fields).issubset(allowed_sort_fields):
                     raise WazuhError(1403, "Allowed sort fields: {}. Fields: {}".format(
@@ -1698,7 +1698,7 @@ class WazuhDBQuery(object):
 
         level = 0
         for open_level, field, operator, value, close_level, separator in self.query_regex.findall(self.q):
-            if field not in self.fields.keys():
+            if field not in set(self.fields.keys()) - self.extra_fields:
                 raise WazuhError(1408, "Available fields: {}. Field: {}".format(', '.join(self.fields), field))
             if operator not in self.query_operators:
                 raise WazuhError(1409,
