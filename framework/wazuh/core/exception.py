@@ -208,7 +208,7 @@ class WazuhException(Exception):
                'remediation': 'Please select a limit between 1 and 1000'
                },
         1407: 'Query does not match expected format',
-        1408: 'Field does not exist.',
+        1408: 'Field does not exist',
         1409: 'Invalid query operator',
         1410: 'Selecting more than one field in distinct mode',
         1411: 'TimeFrame is not valid',
