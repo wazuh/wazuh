@@ -50,6 +50,7 @@ uint64_t PersistentQueue::submit(const std::string& module, const std::string& i
     }
     catch (const std::exception& ex)
     {
+        --m_seqCounter[module];
         std::cerr << "[PersistentQueue] Error persisting message: " << ex.what() << std::endl;
         throw;
     }

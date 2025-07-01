@@ -47,6 +47,25 @@ TEST(PersistentQueueTest, SubmitStoresInMemoryAndStorage)
     queue.submit("FIM", "id1", "index1", "{}", Wazuh::SyncSchema::Operation::Upsert);
 }
 
+TEST(PersistentQueueTest, SubmitRollbackSequenceOnPersistError)
+{
+    auto mockStorage = std::make_shared<MockPersistentQueueStorage>();
+
+    EXPECT_CALL(*mockStorage, loadAll).Times(3).WillRepeatedly(Return(std::vector<PersistedData> {}));
+
+    EXPECT_CALL(*mockStorage, save("FIM", _)).WillOnce(testing::Throw(std::runtime_error("Simulated DB error")));
+
+    PersistentQueue queue(mockStorage);
+
+    EXPECT_THROW(queue.submit("FIM", "id1", "idx1", "{}", Wazuh::SyncSchema::Operation::Upsert), std::exception);
+
+    EXPECT_CALL(*mockStorage, save("FIM", _)).Times(1);
+
+    auto seq = queue.submit("FIM", "id2", "idx2", "{}", Wazuh::SyncSchema::Operation::Upsert);
+
+    EXPECT_EQ(seq, static_cast<uint64_t>(1));
+}
+
 TEST(PersistentQueueTest, FetchAllReturnsAllMessages)
 {
     auto mockStorage = std::make_shared<MockPersistentQueueStorage>();
