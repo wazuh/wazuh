@@ -49,7 +49,7 @@ class AgentSyncProtocol : public IAgentSyncProtocol
 
         std::shared_ptr<IPersistentQueue> m_persistentQueue;
 
-        bool sendStartAndWaitAck(const std::string& module, Wazuh::SyncSchema::Mode mode, bool realtime, uint64_t& session, const std::vector<PersistedData>& data);
+        bool sendStartAndWaitAck(const std::string& module, Wazuh::SyncSchema::Mode mode, bool realtime, uint64_t& session, size_t dataSize);
 
         void sendDataMessages(uint64_t session,
                               const std::vector<PersistedData>& data);

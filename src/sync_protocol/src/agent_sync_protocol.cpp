@@ -35,7 +35,7 @@ void AgentSyncProtocol::synchronizeModule(const std::string& module, Mode mode, 
     uint64_t session = 0;
     std::vector<PersistedData> data = m_persistentQueue->fetchAll(module);
 
-    if (!sendStartAndWaitAck(module, mode, realtime, session, data))
+    if (!sendStartAndWaitAck(module, mode, realtime, session, data.size()))
     {
         std::cerr << "StartAck failed for module: " << module << std::endl;
         return;
@@ -72,14 +72,14 @@ void AgentSyncProtocol::synchronizeModule(const std::string& module, Mode mode, 
     }
 }
 
-bool AgentSyncProtocol::sendStartAndWaitAck(const std::string& module, Mode mode, bool realtime, uint64_t& session, const std::vector<PersistedData>& data)
+bool AgentSyncProtocol::sendStartAndWaitAck(const std::string& module, Mode mode, bool realtime, uint64_t& session, size_t dataSize)
 {
     flatbuffers::FlatBufferBuilder builder;
     auto moduleStr = builder.CreateString(module);
 
     StartBuilder startBuilder(builder);
     startBuilder.add_mode(mode);
-    startBuilder.add_size(static_cast<uint64_t>(data.size()));
+    startBuilder.add_size(static_cast<uint64_t>(dataSize));
     startBuilder.add_realtime(realtime);
     startBuilder.add_module_(moduleStr);
     auto startOffset = startBuilder.Finish();
