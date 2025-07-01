@@ -37,6 +37,8 @@ on:
 
 jobs:
   Upload-package-building-images:
+    permissions:
+      packages: write
     runs-on: ${{ (inputs.architecture == 'arm64' || inputs.architecture == 'aarch64') && 'wz-linux-arm64' || 'ubuntu-24.04' }}
     timeout-minutes: 140
     name: Package - Upload pkg_${{ inputs.system }}_server_builder_${{ inputs.architecture }} with tag ${{ inputs.docker_image_tag }}
