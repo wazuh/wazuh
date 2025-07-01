@@ -22,7 +22,7 @@
     "user_group_id_signed": -100,
     "user_groups": "group1:group2",
     "user_home": "/root",
-    "user_id": 10,
+    "user_id": -1,
     "user_is_hidden": 0,
     "user_is_remote": 0,
     "user_last_login": -1,

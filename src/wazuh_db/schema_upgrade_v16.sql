@@ -60,7 +60,7 @@ CREATE TABLE IF NOT EXISTS sys_groups (
     group_is_hidden INTEGER,
     group_users TEXT,
     checksum TEXT NOT NULL CHECK (checksum <> ''),
-    PRIMARY KEY (group_id)
+    PRIMARY KEY (group_name)
 );
 
 INSERT INTO sync_info (component) VALUES ('syscollector-users');

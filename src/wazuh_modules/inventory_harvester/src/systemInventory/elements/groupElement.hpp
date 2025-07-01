@@ -42,24 +42,24 @@ public:
             throw std::runtime_error("GroupElement::build: Agent ID is empty.");
         }
 
-        auto groupId = data->groupId();
-        if (groupId < 0)
+        auto groupName = data->groupName();
+        if (groupName.empty())
         {
-            throw std::runtime_error("GroupElement::build: Group ID is invalid.");
+            throw std::runtime_error("GroupElement::build: Group name is empty.");
         }
 
         DataHarvester<InventoryGroupHarvester> element;
         element.id = agentId;
         element.id += "_";
-        element.id += std::to_string(groupId);
+        element.id += groupName;
 
         element.operation = "INSERTED";
 
-        element.data.group.id = groupId;
-        if (auto groupName = data->groupName(); groupName.compare(" ") != 0)
+        if (auto groupId = data->groupId(); groupId >= 0)
         {
-            element.data.group.name = groupName;
+            element.data.group.id = groupId;
         }
+        element.data.group.name = groupName;
         if (auto groupDescription = data->groupDescription(); groupDescription.compare(" ") != 0)
         {
             element.data.group.description = groupDescription;
@@ -103,16 +103,16 @@ public:
             throw std::runtime_error("GroupElement::deleteElement: Agent ID is empty.");
         }
 
-        auto groupId = data->groupId();
-        if (groupId < 0)
+        auto groupName = data->groupName();
+        if (groupName.empty())
         {
-            throw std::runtime_error("GroupElement::deleteElement: Group ID is invalid.");
+            throw std::runtime_error("GroupElement::build: Group name is empty.");
         }
 
         NoDataHarvester element;
         element.id = agentId;
         element.id += "_";
-        element.id += std::to_string(groupId);
+        element.id += groupName;
         element.operation = "DELETED";
 
         return element;

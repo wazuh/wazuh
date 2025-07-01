@@ -154,7 +154,10 @@ public:
         }
         else
         {
-            return "";
+            if (m_jsonData->contains("/data/group_name"_json_pointer))
+            {
+                return m_jsonData->at("/data/group_name"_json_pointer).get<std::string_view>();
+            }
         }
         return "";
     }
@@ -182,10 +185,7 @@ public:
         }
         else
         {
-            if (m_jsonData->contains("/data/group_id"_json_pointer))
-            {
-                return m_jsonData->at("/data/group_id"_json_pointer).get<std::int64_t>();
-            }
+            return -1;
         }
         return -1;
     }
@@ -372,9 +372,9 @@ public:
         }
         else
         {
-            return 0;
+            return -1;
         }
-        return 0;
+        return -1;
     }
 
     int64_t userUidSigned() const

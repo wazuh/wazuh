@@ -9,12 +9,10 @@
                     "version": "v4.10.1"
                 },
                 "group": {
-                    "description": "Les membres de ce groupe peuvent se connecter à cet ordinateur à l'aide de SSH.",
                     "id": 585,
                     "id_signed": -585,
-                    "is_hidden": false,
-                    "name": "Utilisateurs OpenSSH",
-                    "uuid": "S-1-5-32-585"
+                    "is_hidden": true,
+                    "name": "Utilisateurs OpenSSH"
                 },
                 "wazuh": {
                     "cluster": {
@@ -27,19 +25,15 @@
             },
             {
                 "agent": {
-                    "id": "003",
+                    "id": "002",
                     "name": "centos9",
                     "version": "v4.10.1"
                 },
                 "group": {
                     "id": 585,
                     "id_signed": -585,
-                    "is_hidden": true,
-                    "users": [
-                        "user1",
-                        "user2",
-                        "user3"
-                    ]
+                    "is_hidden": false,
+                    "name": "Utilisateurs OpenSSH"
                 },
                 "wazuh": {
                     "cluster": {
@@ -57,9 +51,116 @@
                     "version": "v4.10.1"
                 },
                 "group": {
+                    "description": "Les membres de ce groupe peuvent se connecter à cet ordinateur à l'aide de SSH.",
                     "id": 585,
                     "id_signed": -585,
-                    "is_hidden": true
+                    "is_hidden": true,
+                    "name": "Utilisateurs OpenSSH",
+                    "users": [
+                        "user1",
+                        "user2"
+                    ],
+                    "uuid": "S-1-5-32-585"
+                },
+                "wazuh": {
+                    "cluster": {
+                        "name": "cluster01"
+                    },
+                    "schema": {
+                        "version": "1.0"
+                    }
+                }
+            },
+            {
+                "agent": {
+                    "id": "006",
+                    "name": "centos9",
+                    "version": "v4.10.1"
+                },
+                "group": {
+                    "description": "Les membres de ce groupe peuvent se connecter à cet ordinateur à l'aide de SSH.",
+                    "id": 0,
+                    "id_signed": -585,
+                    "is_hidden": true,
+                    "name": "Utilisateurs OpenSSH",
+                    "users": [
+                        "user1",
+                        "user2"
+                    ],
+                    "uuid": "S-1-5-32-585"
+                },
+                "wazuh": {
+                    "cluster": {
+                        "name": "cluster01"
+                    },
+                    "schema": {
+                        "version": "1.0"
+                    }
+                }
+            },
+            {
+                "agent": {
+                    "id": "007",
+                    "name": "centos9",
+                    "version": "v4.10.1"
+                },
+                "group": {
+                    "description": "Les membres de ce groupe peuvent se connecter à cet ordinateur à l'aide de SSH.",
+                    "id_signed": -585,
+                    "is_hidden": true,
+                    "name": "Utilisateurs OpenSSH",
+                    "users": [
+                        "user1",
+                        "user2"
+                    ],
+                    "uuid": "S-1-5-32-585"
+                },
+                "wazuh": {
+                    "cluster": {
+                        "name": "cluster01"
+                    },
+                    "schema": {
+                        "version": "1.0"
+                    }
+                }
+            },
+            {
+                "agent": {
+                    "id": "008",
+                    "name": "centos9",
+                    "version": "v4.10.1"
+                },
+                "group": {
+                    "description": "Les membres de ce groupe peuvent se connecter à cet ordinateur à l'aide de SSH.",
+                    "id_signed": 0,
+                    "is_hidden": false,
+                    "name": "Utilisateurs OpenSSH",
+                    "users": [
+                        "user1",
+                        "user2"
+                    ],
+                    "uuid": "S-1-5-32-585"
+                },
+                "wazuh": {
+                    "cluster": {
+                        "name": "cluster01"
+                    },
+                    "schema": {
+                        "version": "1.0"
+                    }
+                }
+            },
+            {
+                "agent": {
+                    "id": "009",
+                    "name": "centos9",
+                    "version": "v4.10.1"
+                },
+                "group": {
+                    "id": 585,
+                    "id_signed": -585,
+                    "is_hidden": true,
+                    "name": "Utilisateurs OpenSSH"
                 },
                 "wazuh": {
                     "cluster": {

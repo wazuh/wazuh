@@ -1307,7 +1307,7 @@ int wdb_groups_insert(wdb_t * wdb, const char * scan_id, const char * scan_time,
                       const char * group_users, const char * checksum, const bool replace){
     sqlite3_stmt *stmt = NULL;
 
-    if (group_id < 0){
+    if (NULL == group_name){
         return OS_INVALID;
     }
 
@@ -1320,7 +1320,11 @@ int wdb_groups_insert(wdb_t * wdb, const char * scan_id, const char * scan_time,
 
     sqlite3_bind_text(stmt, 1, scan_id, -1, NULL);
     sqlite3_bind_text(stmt, 2, scan_time, -1, NULL);
-    sqlite3_bind_int64(stmt, 3, group_id);
+    if (group_id >= 0) {
+        sqlite3_bind_int64(stmt, 3, group_id);
+    } else {
+        sqlite3_bind_null(stmt, 3);
+    }
     sqlite3_bind_text(stmt, 4, group_name, -1, NULL);
     sqlite3_bind_text(stmt, 5, group_description, -1, NULL);
     sqlite3_bind_int64(stmt, 6, group_id_signed);
@@ -1574,7 +1578,7 @@ int wdb_syscollector_groups_save2(wdb_t * wdb, const cJSON * attributes)
 {
     const char * scan_id = "0";
     const char * scan_time = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "scan_time"));
-    const long long group_id = cJSON_GetObjectItem(attributes, "group_id") ? cJSON_GetObjectItem(attributes, "group_id")->valuedouble : -1; // Since it is PK, an invalid value should use the default value.
+    const long long group_id = cJSON_GetObjectItem(attributes, "group_id") ? cJSON_GetObjectItem(attributes, "group_id")->valuedouble : 0;
     const char * group_name = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "group_name"));
     const char * group_description = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "group_description"));
     const long long group_id_signed = cJSON_GetObjectItem(attributes, "group_id_signed") ? cJSON_GetObjectItem(attributes, "group_id_signed")->valuedouble : 0;

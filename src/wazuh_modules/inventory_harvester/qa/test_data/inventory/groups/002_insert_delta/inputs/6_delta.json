@@ -1,6 +1,6 @@
 {
     "agent_info": {
-        "agent_id": "004",
+        "agent_id": "006",
         "agent_ip": "any",
         "agent_name": "centos9",
         "agent_version": "v4.10.1"
@@ -8,13 +8,13 @@
     "data_type": "dbsync_groups",
     "data": {
         "checksum": "d5f83681b670e52728a3aca36715237452e94d10",
-        "group_description": null,
-        "group_id": 585,
+        "group_description": "Les membres de ce groupe peuvent se connecter à cet ordinateur à l'aide de SSH.",
+        "group_id": 0,
         "group_id_signed": -585,
-        "group_is_hidden": 0,
-        "group_name": "",
-        "group_users": null,
-        "group_uuid": null,
+        "group_is_hidden": 1,
+        "group_name": "Utilisateurs OpenSSH",
+        "group_users": "user1:user2",
+        "group_uuid": "S-1-5-32-585",
         "scan_time": "2025/06/11 14:59:57"
     },
     "operation": "INSERTED"

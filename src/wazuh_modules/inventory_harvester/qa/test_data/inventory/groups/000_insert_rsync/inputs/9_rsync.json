@@ -1,6 +1,6 @@
 {
     "agent_info": {
-        "agent_id": "003",
+        "agent_id": "009",
         "agent_ip": "any",
         "agent_name": "centos9",
         "agent_version": "v4.10.1"
@@ -10,13 +10,13 @@
         "attributes_type": "syscollector_groups",
         "attributes": {
             "checksum": "d5f83681b670e52728a3aca36715237452e94d10",
-            "group_description": null,
+            "group_description": " ",
             "group_id": 585,
             "group_id_signed": -585,
-            "group_is_hidden": 0,
-            "group_name": null,
-            "group_users": null,
-            "group_uuid": null,
+            "group_is_hidden": 1,
+            "group_name": "Utilisateurs OpenSSH",
+            "group_users": " ",
+            "group_uuid": " ",
             "scan_time": "2025/06/11 14:59:57"
         }
     }

@@ -7,6 +7,6 @@
     },
     "action": "deleteGroup",
     "data": {
-        "group_id": 585
+        "group_name": "Utilisateurs OpenSSH"
     }
 }

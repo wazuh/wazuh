@@ -137,7 +137,7 @@ void wdbi_report_removed(const char* agent_id, wdb_component_t component, sqlite
                 break;
             case WDB_SYSCOLLECTOR_GROUPS:
                 cJSON_AddStringToObject(j_msg_to_send, "action", "deleteGroup");
-                cJSON_AddItemToObject(j_data, "group_id", cJSON_CreateNumber(sqlite3_column_int64(stmt, 0)));
+                cJSON_AddItemToObject(j_data, "group_name", cJSON_CreateString((const char*) sqlite3_column_text(stmt, 0)));
                 router_handle = router_inventory_events_handle;
                 break;
             case WDB_FIM:

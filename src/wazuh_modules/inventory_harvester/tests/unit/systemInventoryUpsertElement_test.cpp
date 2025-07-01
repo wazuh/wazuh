@@ -837,13 +837,13 @@ TEST_F(SystemInventoryUpsertElement, emptyAgentID_Groups)
     EXPECT_ANY_THROW(upsertElement->handleRequest(context));
 }
 
-TEST_F(SystemInventoryUpsertElement, negativeGroupID_Groups)
+TEST_F(SystemInventoryUpsertElement, emptyGroupName_Groups)
 {
     auto context = std::make_shared<MockSystemContext>();
     auto upsertElement = std::make_shared<UpsertSystemElement<MockSystemContext>>();
 
     EXPECT_CALL(*context, agentId()).WillOnce(testing::Return("001"));
-    EXPECT_CALL(*context, groupId()).WillOnce(testing::Return(-1));
+    EXPECT_CALL(*context, groupName()).WillOnce(testing::Return(""));
     EXPECT_CALL(*context, originTable()).WillOnce(testing::Return(MockSystemContext::OriginTable::Groups));
 
     EXPECT_ANY_THROW(upsertElement->handleRequest(context));
@@ -859,7 +859,7 @@ TEST_F(SystemInventoryUpsertElement, validEmptyStrings_Groups)
     EXPECT_CALL(*context, agentVersion()).WillOnce(testing::Return("agentVersion"));
     EXPECT_CALL(*context, agentIp()).WillOnce(testing::Return("192.168.0.1"));
     EXPECT_CALL(*context, groupId()).WillOnce(testing::Return(80));
-    EXPECT_CALL(*context, groupName()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, groupName()).WillOnce(testing::Return("sudo"));
     EXPECT_CALL(*context, groupIdSigned()).WillOnce(testing::Return(-80));
     EXPECT_CALL(*context, groupDescription()).WillOnce(testing::Return(""));
     EXPECT_CALL(*context, groupUuid()).WillOnce(testing::Return(""));
@@ -871,7 +871,7 @@ TEST_F(SystemInventoryUpsertElement, validEmptyStrings_Groups)
 
     EXPECT_EQ(
         context->m_serializedElement,
-        R"({"id":"001_80","operation":"INSERTED","data":{"group":{"id":80,"id_signed":-80,"is_hidden":false},"agent":{"id":"001","name":"agentName","host":{"ip":"192.168.0.1"},"version":"agentVersion"},"wazuh":{"cluster":{"name":"clusterName"},"schema":{"version":"1.0"}}}})");
+        R"({"id":"001_sudo","operation":"INSERTED","data":{"group":{"id":80,"name":"sudo","id_signed":-80,"is_hidden":false},"agent":{"id":"001","name":"agentName","host":{"ip":"192.168.0.1"},"version":"agentVersion"},"wazuh":{"cluster":{"name":"clusterName"},"schema":{"version":"1.0"}}}})");
 }
 
 TEST_F(SystemInventoryUpsertElement, validEmptyStringsSingleUser_Groups)
@@ -884,7 +884,7 @@ TEST_F(SystemInventoryUpsertElement, validEmptyStringsSingleUser_Groups)
     EXPECT_CALL(*context, agentVersion()).WillOnce(testing::Return("agentVersion"));
     EXPECT_CALL(*context, agentIp()).WillOnce(testing::Return("192.168.0.1"));
     EXPECT_CALL(*context, groupId()).WillOnce(testing::Return(80));
-    EXPECT_CALL(*context, groupName()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, groupName()).WillOnce(testing::Return("sudo"));
     EXPECT_CALL(*context, groupIdSigned()).WillOnce(testing::Return(-80));
     EXPECT_CALL(*context, groupDescription()).WillOnce(testing::Return(""));
     EXPECT_CALL(*context, groupUuid()).WillOnce(testing::Return(""));
@@ -896,7 +896,7 @@ TEST_F(SystemInventoryUpsertElement, validEmptyStringsSingleUser_Groups)
 
     EXPECT_EQ(
         context->m_serializedElement,
-        R"({"id":"001_80","operation":"INSERTED","data":{"group":{"id":80,"id_signed":-80,"is_hidden":false,"users":["user1"]},"agent":{"id":"001","name":"agentName","host":{"ip":"192.168.0.1"},"version":"agentVersion"},"wazuh":{"cluster":{"name":"clusterName"},"schema":{"version":"1.0"}}}})");
+        R"({"id":"001_sudo","operation":"INSERTED","data":{"group":{"id":80,"name":"sudo","id_signed":-80,"is_hidden":false,"users":["user1"]},"agent":{"id":"001","name":"agentName","host":{"ip":"192.168.0.1"},"version":"agentVersion"},"wazuh":{"cluster":{"name":"clusterName"},"schema":{"version":"1.0"}}}})");
 }
 
 TEST_F(SystemInventoryUpsertElement, validEmptyStringsMultipleUsers_Groups)
@@ -909,7 +909,7 @@ TEST_F(SystemInventoryUpsertElement, validEmptyStringsMultipleUsers_Groups)
     EXPECT_CALL(*context, agentVersion()).WillOnce(testing::Return("agentVersion"));
     EXPECT_CALL(*context, agentIp()).WillOnce(testing::Return("192.168.0.1"));
     EXPECT_CALL(*context, groupId()).WillOnce(testing::Return(80));
-    EXPECT_CALL(*context, groupName()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, groupName()).WillOnce(testing::Return("sudo"));
     EXPECT_CALL(*context, groupIdSigned()).WillOnce(testing::Return(-80));
     EXPECT_CALL(*context, groupDescription()).WillOnce(testing::Return(""));
     EXPECT_CALL(*context, groupUuid()).WillOnce(testing::Return(""));
@@ -920,5 +920,29 @@ TEST_F(SystemInventoryUpsertElement, validEmptyStringsMultipleUsers_Groups)
 
     EXPECT_EQ(
         context->m_serializedElement,
-        R"({"id":"001_80","operation":"INSERTED","data":{"group":{"id":80,"id_signed":-80,"is_hidden":true,"users":["user1","user2","user3"]},"agent":{"id":"001","name":"agentName","host":{"ip":"192.168.0.1"},"version":"agentVersion"},"wazuh":{"cluster":{"name":"clusterName"},"schema":{"version":"1.0"}}}})");
+        R"({"id":"001_sudo","operation":"INSERTED","data":{"group":{"id":80,"name":"sudo","id_signed":-80,"is_hidden":true,"users":["user1","user2","user3"]},"agent":{"id":"001","name":"agentName","host":{"ip":"192.168.0.1"},"version":"agentVersion"},"wazuh":{"cluster":{"name":"clusterName"},"schema":{"version":"1.0"}}}})");
+}
+
+TEST_F(SystemInventoryUpsertElement, negativeGroupID_Groups)
+{
+    auto context = std::make_shared<MockSystemContext>();
+    auto upsertElement = std::make_shared<UpsertSystemElement<MockSystemContext>>();
+
+    EXPECT_CALL(*context, agentId()).WillOnce(testing::Return("001"));
+    EXPECT_CALL(*context, agentName()).WillOnce(testing::Return("agentName"));
+    EXPECT_CALL(*context, agentVersion()).WillOnce(testing::Return("agentVersion"));
+    EXPECT_CALL(*context, agentIp()).WillOnce(testing::Return("192.168.0.1"));
+    EXPECT_CALL(*context, groupId()).WillOnce(testing::Return(-80));
+    EXPECT_CALL(*context, groupName()).WillOnce(testing::Return("sudo"));
+    EXPECT_CALL(*context, groupIdSigned()).WillOnce(testing::Return(-80));
+    EXPECT_CALL(*context, groupDescription()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, groupUuid()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, groupIsHidden()).WillOnce(testing::Return(true));
+    EXPECT_CALL(*context, groupUsers()).WillOnce(testing::Return("user1:user2:user3"));
+    EXPECT_CALL(*context, originTable()).WillOnce(testing::Return(MockSystemContext::OriginTable::Groups));
+    EXPECT_NO_THROW(upsertElement->handleRequest(context));
+
+    EXPECT_EQ(
+        context->m_serializedElement,
+        R"({"id":"001_sudo","operation":"INSERTED","data":{"group":{"name":"sudo","id_signed":-80,"is_hidden":true,"users":["user1","user2","user3"]},"agent":{"id":"001","name":"agentName","host":{"ip":"192.168.0.1"},"version":"agentVersion"},"wazuh":{"cluster":{"name":"clusterName"},"schema":{"version":"1.0"}}}})");
 }

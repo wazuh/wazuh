@@ -450,16 +450,28 @@ TEST_F(SystemInventoryDeleteElement, emptyAgentID_Groups)
     EXPECT_ANY_THROW(deleteElement->handleRequest(context));
 }
 
+TEST_F(SystemInventoryDeleteElement, emptyGroupName_Groups)
+{
+    auto context = std::make_shared<MockSystemContext>();
+    auto deleteElement = std::make_shared<DeleteSystemElement<MockSystemContext>>();
+
+    EXPECT_CALL(*context, agentId()).WillOnce(testing::Return("001"));
+    EXPECT_CALL(*context, groupName()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, originTable()).WillOnce(testing::Return(MockSystemContext::OriginTable::Groups));
+
+    EXPECT_ANY_THROW(deleteElement->handleRequest(context));
+}
+
 TEST_F(SystemInventoryDeleteElement, validAgentID_Groups)
 {
     auto context = std::make_shared<MockSystemContext>();
     auto deleteElement = std::make_shared<DeleteSystemElement<MockSystemContext>>();
 
     EXPECT_CALL(*context, agentId()).WillOnce(testing::Return("001"));
-    EXPECT_CALL(*context, groupId()).WillOnce(testing::Return(12345));
+    EXPECT_CALL(*context, groupName()).WillOnce(testing::Return("sudo"));
     EXPECT_CALL(*context, originTable()).WillOnce(testing::Return(MockSystemContext::OriginTable::Groups));
 
     EXPECT_NO_THROW(deleteElement->handleRequest(context));
 
-    EXPECT_EQ(context->m_serializedElement, R"({"id":"001_12345","operation":"DELETED"})");
+    EXPECT_EQ(context->m_serializedElement, R"({"id":"001_sudo","operation":"DELETED"})");
 }

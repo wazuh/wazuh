@@ -191,7 +191,7 @@
                     },
                     "full_name": "root",
                     "group": {
-                        "id": 100,
+                        "id": 0,
                         "id_signed": -100
                     },
                     "groups": [
@@ -199,7 +199,7 @@
                         "group2"
                     ],
                     "home": "/root",
-                    "id": "10",
+                    "id": "0",
                     "is_hidden": false,
                     "is_remote": false,
                     "name": "root",
@@ -256,7 +256,6 @@
                         "group2"
                     ],
                     "home": "/root",
-                    "id": "10",
                     "is_hidden": false,
                     "is_remote": false,
                     "name": "root",
@@ -315,7 +314,6 @@
                         "group2"
                     ],
                     "home": "/root",
-                    "id": "10",
                     "is_hidden": false,
                     "is_remote": false,
                     "name": "root",
