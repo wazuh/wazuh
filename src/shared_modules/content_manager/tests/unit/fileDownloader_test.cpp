@@ -44,11 +44,10 @@ void FileDownloaderTest::TearDownTestSuite()
 
 void FileDownloaderTest::SetUp()
 {
-    m_spUpdaterBaseContext = std::make_shared<UpdaterBaseContext>(
-        m_spStopActionCondition,
-        [](const std::string& msg, std::shared_ptr<ConditionSync> shouldStop) -> FileProcessingResult {
-            return {0, "", false};
-        });
+    m_spUpdaterBaseContext = std::make_shared<UpdaterBaseContext>(m_spStopActionCondition,
+                                                                  [](const std::string& msg) -> FileProcessingResult {
+                                                                      return {0, "", false};
+                                                                  });
     m_spUpdaterBaseContext->downloadsFolder = (m_outputFolder / "downloads").string();
     m_spUpdaterBaseContext->contentsFolder = (m_outputFolder / "contents").string();
 
