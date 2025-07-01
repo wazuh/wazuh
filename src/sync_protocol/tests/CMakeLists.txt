@@ -10,8 +10,7 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../external/googletest/google
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../external/googletest/googlemock/include/)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../external/sqlite/)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../external/flatbuffers/include/)
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../sync_protocol/)
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../sync_protocol/src)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../shared_modules/utils/)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../)
 
 link_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../external/googletest/lib/)
@@ -26,7 +25,6 @@ add_executable(agent_sync_protocol_tests
 # Include paths
 target_include_directories(agent_sync_protocol_tests PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/../include
-    ${CMAKE_CURRENT_SOURCE_DIR}/../src
     ${CMAKE_CURRENT_BINARY_DIR}/..
 )
 

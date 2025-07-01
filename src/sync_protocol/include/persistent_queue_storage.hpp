@@ -10,7 +10,7 @@
 #pragma once
 
 #include "ipersistent_queue_storage.hpp"
-#include "../../shared_modules/utils/sqlite3Wrapper.hpp"
+#include "sqlite3Wrapper.hpp"
 
 /// @brief SQLite-backed implementation of IPersistentQueueStorage.
 ///

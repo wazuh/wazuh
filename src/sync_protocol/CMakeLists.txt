@@ -108,6 +108,7 @@ target_include_directories(agent_sync_protocol
     ${CMAKE_CURRENT_BINARY_DIR}
     ${FLATBUFFERS_ROOT_DIR}/include
     ${CMAKE_CURRENT_SOURCE_DIR}/../
+    ${CMAKE_CURRENT_SOURCE_DIR}/../shared_modules/utils/
 )
 
 target_link_libraries(agent_sync_protocol
