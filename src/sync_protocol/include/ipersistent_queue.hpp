@@ -59,11 +59,6 @@ class IPersistentQueue
                                 const std::string& data,
                                 Wazuh::SyncSchema::Operation operation) = 0;
 
-        /// @brief Fetches the next message in the queue for a given module.
-        /// @param module The module name.
-        /// @return The next message if available, otherwise std::nullopt.
-        virtual std::optional<PersistedData> fetchNext(const std::string& module) = 0;
-
         /// @brief Returns all messages queued for a given module.
         /// @param module The module name.
         /// @return A vector of all queued messages.
@@ -74,11 +69,6 @@ class IPersistentQueue
         /// @param ranges A list of (start, end) inclusive ranges to filter messages.
         /// @return A vector containing all matching messages.
         virtual std::vector<PersistedData> fetchRange(const std::string& module, const std::vector<std::pair<uint64_t, uint64_t>>& ranges) = 0;
-
-        /// @brief Removes a single message from the queue.
-        /// @param module The module name.
-        /// @param sequence The sequence number of the message to remove.
-        virtual void remove(const std::string& module, uint64_t sequence) = 0;
 
         /// @brief Removes all messages queued for a given module.
         /// @param module The module name.

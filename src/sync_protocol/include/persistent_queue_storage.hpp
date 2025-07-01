@@ -35,11 +35,6 @@ class PersistentQueueStorage : public IPersistentQueueStorage
         /// @param data The message data to persist.
         void save(const std::string& module, const PersistedData& data) override;
 
-        /// @brief Deletes a specific message from persistent storage.
-        /// @param module The module identifier.
-        /// @param sequence The sequence number of the message to delete.
-        void remove(const std::string& module, uint64_t sequence) override;
-
         /// @brief Deletes all messages belonging to a specific module.
         /// @param module The module whose messages will be removed.
         void removeAll(const std::string& module) override;

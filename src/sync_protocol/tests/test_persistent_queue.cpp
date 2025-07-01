@@ -21,7 +21,6 @@ class MockPersistentQueueStorage : public IPersistentQueueStorage
 {
     public:
         MOCK_METHOD(void, save, (const std::string& module, const PersistedData& data), (override));
-        MOCK_METHOD(void, remove, (const std::string& module, uint64_t sequence), (override));
         MOCK_METHOD(void, removeAll, (const std::string& module), (override));
         MOCK_METHOD(std::vector<PersistedData>, loadAll, (const std::string& module), (override));
 };
@@ -33,7 +32,6 @@ TEST(PersistentQueueTest, ConstructorCallsLoadAllForEachModule)
     EXPECT_CALL(*mockStorage, loadAll("FIM")).WillOnce(Return(std::vector<PersistedData> {}));
     EXPECT_CALL(*mockStorage, loadAll("SCA")).WillOnce(Return(std::vector<PersistedData> {}));
     EXPECT_CALL(*mockStorage, loadAll("INV")).WillOnce(Return(std::vector<PersistedData> {}));
-    EXPECT_CALL(*mockStorage, loadAll("OTHER")).WillOnce(Return(std::vector<PersistedData> {}));
 
     PersistentQueue queue(mockStorage);
 }
@@ -41,7 +39,7 @@ TEST(PersistentQueueTest, ConstructorCallsLoadAllForEachModule)
 TEST(PersistentQueueTest, SubmitStoresInMemoryAndStorage)
 {
     auto mockStorage = std::make_shared<MockPersistentQueueStorage>();
-    EXPECT_CALL(*mockStorage, loadAll).Times(4).WillRepeatedly(Return(std::vector<PersistedData> {}));
+    EXPECT_CALL(*mockStorage, loadAll).Times(3).WillRepeatedly(Return(std::vector<PersistedData> {}));
     EXPECT_CALL(*mockStorage, save("FIM", _)).Times(1);
 
     PersistentQueue queue(mockStorage);
@@ -49,25 +47,10 @@ TEST(PersistentQueueTest, SubmitStoresInMemoryAndStorage)
     queue.submit("FIM", "id1", "index1", "{}", Wazuh::SyncSchema::Operation::Upsert);
 }
 
-TEST(PersistentQueueTest, FetchNextReturnsFirstPersistedData)
-{
-    auto mockStorage = std::make_shared<MockPersistentQueueStorage>();
-    EXPECT_CALL(*mockStorage, loadAll).Times(4).WillRepeatedly(Return(std::vector<PersistedData> {}));
-    EXPECT_CALL(*mockStorage, save).Times(1);
-
-    PersistentQueue queue(mockStorage);
-
-    uint64_t seq = queue.submit("FIM", "id", "idx", "{}", Wazuh::SyncSchema::Operation::Upsert);
-
-    auto data = queue.fetchNext("FIM");
-    ASSERT_TRUE(data.has_value());
-    EXPECT_EQ(data->seq, seq);
-}
-
 TEST(PersistentQueueTest, FetchAllReturnsAllMessages)
 {
     auto mockStorage = std::make_shared<MockPersistentQueueStorage>();
-    EXPECT_CALL(*mockStorage, loadAll).Times(4).WillRepeatedly(Return(std::vector<PersistedData> {}));
+    EXPECT_CALL(*mockStorage, loadAll).Times(3).WillRepeatedly(Return(std::vector<PersistedData> {}));
     EXPECT_CALL(*mockStorage, save).Times(2);
 
     PersistentQueue queue(mockStorage);
@@ -81,7 +64,7 @@ TEST(PersistentQueueTest, FetchAllReturnsAllMessages)
 TEST(PersistentQueueTest, FetchRangeReturnsCorrectSubset)
 {
     auto mockStorage = std::make_shared<MockPersistentQueueStorage>();
-    EXPECT_CALL(*mockStorage, loadAll).Times(4).WillRepeatedly(Return(std::vector<PersistedData> {}));
+    EXPECT_CALL(*mockStorage, loadAll).Times(3).WillRepeatedly(Return(std::vector<PersistedData> {}));
     EXPECT_CALL(*mockStorage, save).Times(3);
 
     PersistentQueue queue(mockStorage);
@@ -96,25 +79,10 @@ TEST(PersistentQueueTest, FetchRangeReturnsCorrectSubset)
     EXPECT_EQ(filtered[1].seq, static_cast<uint64_t>(3));
 }
 
-TEST(PersistentQueueTest, RemoveDeletesMessageInMemoryAndStorage)
-{
-    auto mockStorage = std::make_shared<MockPersistentQueueStorage>();
-    EXPECT_CALL(*mockStorage, loadAll).Times(4).WillRepeatedly(Return(std::vector<PersistedData> {}));
-    EXPECT_CALL(*mockStorage, save).Times(1);
-
-    PersistentQueue queue(mockStorage);
-    uint64_t seq = queue.submit("FIM", "id", "idx", "{}", Wazuh::SyncSchema::Operation::Upsert);
-
-    EXPECT_CALL(*mockStorage, remove("FIM", seq)).Times(1);
-    queue.remove("FIM", seq);
-
-    EXPECT_FALSE(queue.fetchNext("FIM").has_value());
-}
-
 TEST(PersistentQueueTest, RemoveAllClearsMemoryAndStorage)
 {
     auto mockStorage = std::make_shared<MockPersistentQueueStorage>();
-    EXPECT_CALL(*mockStorage, loadAll).Times(4).WillRepeatedly(Return(std::vector<PersistedData> {}));
+    EXPECT_CALL(*mockStorage, loadAll).Times(3).WillRepeatedly(Return(std::vector<PersistedData> {}));
     EXPECT_CALL(*mockStorage, save).Times(2);
 
     PersistentQueue queue(mockStorage);

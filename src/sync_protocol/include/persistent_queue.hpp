@@ -50,11 +50,6 @@ class PersistentQueue : public IPersistentQueue
                         const std::string& data,
                         Wazuh::SyncSchema::Operation operation) override;
 
-        /// @brief Fetches the next message in the queue for a given module.
-        /// @param module The module name.
-        /// @return The next message if available, otherwise std::nullopt.
-        std::optional<PersistedData> fetchNext(const std::string& module) override;
-
         /// @brief Returns all messages queued for a given module.
         /// @param module The module name.
         /// @return A vector of all queued messages.
@@ -65,11 +60,6 @@ class PersistentQueue : public IPersistentQueue
         /// @param ranges A list of (start, end) inclusive ranges to filter messages.
         /// @return A vector containing all matching messages.
         std::vector<PersistedData> fetchRange(const std::string& module, const std::vector<std::pair<uint64_t, uint64_t>>& ranges) override;
-
-        /// @brief Removes a single message from the queue.
-        /// @param module The module name.
-        /// @param sequence The sequence number of the message to remove.
-        void remove(const std::string& module, uint64_t sequence) override;
 
         /// @brief Removes all messages queued for a given module.
         /// @param module The module name.
@@ -96,11 +86,6 @@ class PersistentQueue : public IPersistentQueue
         /// @param module Module name.
         /// @param data Message to persist.
         void persistMessage(const std::string& module, const PersistedData& data);
-
-        /// @brief Deletes a message from storage.
-        /// @param module Module name.
-        /// @param sequence Sequence number.
-        void deleteMessage(const std::string& module, uint64_t sequence);
 
         /// @brief Deletes all messages for a module from storage.
         /// @param module Module name.

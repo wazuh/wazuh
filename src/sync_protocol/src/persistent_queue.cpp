@@ -19,7 +19,7 @@ PersistentQueue::PersistentQueue(std::shared_ptr<IPersistentQueueStorage> storag
     {
         for (auto mod :
                 {
-                    "FIM", "SCA", "INV", "OTHER"
+                    "FIM", "SCA", "INV"
                 })
         {
             m_seqCounter[mod] = 0;
@@ -56,18 +56,6 @@ uint64_t PersistentQueue::submit(const std::string& module, const std::string& i
     }
 
     return seq;
-}
-
-std::optional<PersistedData> PersistentQueue::fetchNext(const std::string& module)
-{
-    std::lock_guard<std::mutex> lock(m_mutex);
-
-    if (m_store[module].empty())
-    {
-        return std::nullopt;
-    }
-
-    return m_store[module].front();
 }
 
 std::vector<PersistedData> PersistentQueue::fetchAll(const std::string& module)
@@ -116,26 +104,6 @@ std::vector<PersistedData> PersistentQueue::fetchRange(
     return result;
 }
 
-void PersistentQueue::remove(const std::string& module, uint64_t sequence)
-{
-    std::lock_guard<std::mutex> lock(m_mutex);
-    auto& queue = m_store[module];
-    queue.erase(std::remove_if(queue.begin(), queue.end(), [&](const PersistedData & data)
-    {
-        return data.seq == sequence;
-    }), queue.end());
-
-    try
-    {
-        deleteMessage(module, sequence);
-    }
-    catch (const std::exception& ex)
-    {
-        std::cerr << "[PersistentQueue] Error deleting message from database: " << ex.what() << std::endl;
-        throw;
-    }
-}
-
 void PersistentQueue::removeAll(const std::string& module)
 {
     std::lock_guard<std::mutex> lock(m_mutex);
@@ -178,11 +146,6 @@ void PersistentQueue::loadFromStorage(const std::string& module)
 void PersistentQueue::persistMessage(const std::string& module, const PersistedData& data)
 {
     m_storage->save(module, data);
-}
-
-void PersistentQueue::deleteMessage(const std::string& module, uint64_t sequence)
-{
-    m_storage->remove(module, sequence);
 }
 
 void PersistentQueue::deleteAllMessages(const std::string& module)

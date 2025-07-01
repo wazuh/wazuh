@@ -78,25 +78,6 @@ void PersistentQueueStorage::save(const std::string& module, const PersistedData
     }
 }
 
-void PersistentQueueStorage::remove(const std::string& module, uint64_t sequence)
-{
-    try
-    {
-        const std::string query =
-            "DELETE FROM persistent_queue WHERE seq = ? AND module = ?;";
-
-        Statement stmt(m_connection, query);
-        stmt.bind(1, static_cast<int64_t>(sequence));
-        stmt.bind(2, module);
-        stmt.step();
-    }
-    catch (const Sqlite3Error& ex)
-    {
-        std::cerr << "[PersistentQueueStorage] SQLite error: " << ex.what() << std::endl;
-        throw;
-    }
-}
-
 void PersistentQueueStorage::removeAll(const std::string& module)
 {
     try
