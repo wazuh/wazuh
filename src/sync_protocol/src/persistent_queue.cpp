@@ -43,7 +43,6 @@ uint64_t PersistentQueue::submit(const std::string& module, const std::string& i
     std::lock_guard<std::mutex> lock(m_mutex);
     uint64_t seq = ++m_seqCounter[module];
     PersistedData msg{seq, id, index, data, operation};
-    m_store[module].push_back(msg);
 
     try
     {
@@ -54,6 +53,8 @@ uint64_t PersistentQueue::submit(const std::string& module, const std::string& i
         std::cerr << "[PersistentQueue] Error persisting message: " << ex.what() << std::endl;
         throw;
     }
+
+    m_store[module].push_back(msg);
 
     return seq;
 }
@@ -107,8 +108,6 @@ std::vector<PersistedData> PersistentQueue::fetchRange(
 void PersistentQueue::removeAll(const std::string& module)
 {
     std::lock_guard<std::mutex> lock(m_mutex);
-    m_store[module].clear();
-    m_seqCounter[module] = 0;
 
     try
     {
@@ -119,6 +118,9 @@ void PersistentQueue::removeAll(const std::string& module)
         std::cerr << "[PersistentQueue] Error deleting all messages: " << ex.what() << std::endl;
         throw;
     }
+
+    m_store[module].clear();
+    m_seqCounter[module] = 0;
 }
 
 void PersistentQueue::loadFromStorage(const std::string& module)
