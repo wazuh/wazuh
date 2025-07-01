@@ -639,3 +639,169 @@ The following sections present representative examples of the supported modules 
   }
 }
 ```
+
+### Groups
+
+- Linux
+```json
+{
+  "agent": {
+    "id": "001",
+    "name": "c9cc11ad8298",
+    "version": "v4.14.0"
+  },
+  "group": {
+    "id": 1000,
+    "id_signed": 1000,
+    "is_hidden": false,
+    "name": "docker",
+    "users": [
+      "wazuh_user1"
+    ]
+  },
+  "wazuh": {
+    "cluster": {
+      "name": "jammy"
+    },
+    "schema": {
+      "version": "1.0"
+    }
+  }
+}
+```
+
+- Windows
+```json
+{
+  "agent": {
+    "id": "001",
+    "name": "vagrant",
+    "version": "v4.14.0"
+  },
+  "group": {
+    "id": 1005,
+    "id_signed": 1005,
+    "is_hidden": false,
+    "name": "devteam",
+    "users": [
+      "miguel"
+    ],
+    "uuid": "S-1-5-21-1333024871-3948894769-956662955-1005"
+  },
+  "wazuh": {
+    "cluster": {
+      "name": "jammy"
+    },
+    "schema": {
+      "version": "1.0"
+    }
+  }
+}
+```
+
+### Users
+
+- Linux
+```json
+{
+  "agent": {
+    "id": "001",
+    "name": "c9cc11ad8298",
+    "version": "v4.14.0"
+  },
+  "login": {
+    "status": false
+  },
+  "process": {
+    "pid": 0
+  },
+  "user": {
+    "auth_failures": {
+      "count": 0
+    },
+    "group": {
+      "id": 0,
+      "id_signed": 0
+    },
+    "groups": [
+      "root",
+      "docker"
+    ],
+    "home": "/home/wazuh_user1",
+    "id": "1000",
+    "is_hidden": false,
+    "is_remote": true,
+    "name": "wazuh_user1",
+    "password": {
+      "last_change": 20270,
+      "max_days_between_changes": 99999,
+      "min_days_between_changes": 0,
+      "status": "not_set",
+      "warning_days_before_expiration": 7
+    },
+    "shell": "/bin/bash",
+    "uid_signed": 1000
+  },
+  "wazuh": {
+    "cluster": {
+      "name": "jammy"
+    },
+    "schema": {
+      "version": "1.0"
+    }
+  }
+}
+```
+
+- Windows
+```json
+{
+  "agent": {
+    "id": "001",
+    "name": "vagrant",
+    "version": "v4.14.0"
+  },
+  "login": {
+    "status": false
+  },
+  "process": {
+    "pid": 0
+  },
+  "user": {
+    "auth_failures": {
+      "count": 0
+    },
+    "full_name": "Test user",
+    "group": {
+      "id": 1001,
+      "id_signed": 1001
+    },
+    "groups": [
+      "devteam"
+    ],
+    "id": "1006",
+    "is_hidden": false,
+    "is_remote": false,
+    "name": "miguel",
+    "password": {
+      "inactive_days": 0,
+      "last_change": 0,
+      "max_days_between_changes": 0,
+      "min_days_between_changes": 0,
+      "warning_days_before_expiration": 0
+    },
+    "shell": "C:\\Windows\\system32\\cmd.exe",
+    "type": "local",
+    "uid_signed": 1006,
+    "uuid": "S-1-5-21-1333024871-3948894769-956662955-1006"
+  },
+  "wazuh": {
+    "cluster": {
+      "name": "jammy"
+    },
+    "schema": {
+      "version": "1.0"
+    }
+  }
+}
+```
