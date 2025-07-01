@@ -7,17 +7,17 @@
     "architecture": "x86_64",
     "checksum": "1691178971959743855",
     "hostname": "ubuntu",
-    "os_codename": "trusty",
-    "os_major": "20",
+    "os_codename": "noble",
+    "os_major": "24",
     "os_minor": "04",
     "os_name": "Ubuntu",
-    "os_patch": "6",
+    "os_patch": "0",
     "os_platform": "ubuntu",
-    "os_version": "Trusty Tahr",
+    "os_version": "Noble Tahr",
     "release": "5.4.0-155-generic",
     "scan_time": "2023/08/04 19:56:11",
     "sysname": "Linux",
     "version": "#172-Ubuntu SMP Fri Jul 7 16:10:02 UTC 2023"
   },
-  "operation": "DELETED"
+  "operation": "MODIFIED"
 }

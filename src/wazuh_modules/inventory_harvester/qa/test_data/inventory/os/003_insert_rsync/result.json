@@ -4,7 +4,9 @@
         "data": [
             {
                 "agent": {
-                    "id": "001"
+                    "id": "001",
+                    "name": "c0ce505227a4",
+                    "version": "v4.11.0"
                 },
                 "host": {
                     "architecture": "x86_64",
