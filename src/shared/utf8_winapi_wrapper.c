@@ -100,6 +100,23 @@ DWORD utf8_GetFileAttributes(const char *utf8_path) {
     return attr;
 }
 
+char *utf8_GetShortPathName(const char* utf8_path) {
+    wchar_t *wpath = utf8_to_wide(utf8_path);
+    if (!wpath) {
+        return NULL;
+    }
+
+    wchar_t short_path[MAX_PATH] = {0};
+    DWORD len = GetShortPathNameW(wpath, short_path, MAX_PATH);
+    os_free(wpath);
+
+    if (len == 0 || len >= MAX_PATH) {
+        return NULL;
+    }
+
+    return wide_to_utf8(short_path);
+}
+
 BOOL utf8_GetFileSecurity(const char *utf8_path, SECURITY_INFORMATION si, PSECURITY_DESCRIPTOR psd, DWORD len, LPDWORD needed) {
     wchar_t *wpath = utf8_to_wide(utf8_path);
     if (!wpath) {

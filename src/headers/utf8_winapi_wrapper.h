@@ -43,6 +43,9 @@ HANDLE utf8_CreateFile(const char* utf8_path,
 /// Get file attributes
 DWORD utf8_GetFileAttributes(const char* utf8_path);
 
+/// Get short path
+char *utf8_GetShortPathName(const char* utf8_path);
+
 /// Get file security
 BOOL utf8_GetFileSecurity(
     const char* utf8_path, SECURITY_INFORMATION si, PSECURITY_DESCRIPTOR psd, DWORD len, LPDWORD needed);

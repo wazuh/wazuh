@@ -677,7 +677,14 @@ char *fim_diff_generate(const diff_data *diff) {
     int status = -1;
 
     uncompress_file_filtered = filter(diff->uncompress_file);
+#ifdef WIN32
+    file_origin_filtered = utf8_GetShortPathName(diff->file_origin);
+    if (file_origin_filtered == NULL) {
+        file_origin_filtered = filter(diff->file_origin);
+    }
+#else
     file_origin_filtered = filter(diff->file_origin);
+#endif
     diff_file_filtered = filter(diff->diff_file);
 
     if (!(uncompress_file_filtered && file_origin_filtered && diff_file_filtered)) {
