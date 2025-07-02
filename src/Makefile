@@ -118,7 +118,6 @@ VULNERABILITY_SCANNER=wazuh_modules/vulnerability_scanner/
 INVENTORY_HARVESTER=wazuh_modules/inventory_harvester/
 SYSINFO=data_provider/
 SYSCHECK=syscheckd/
-USE_ZEROMQ?=no
 USE_INOTIFY=no
 USE_BIG_ENDIAN=no
 USE_AUDIT=no
@@ -547,11 +546,6 @@ ifneq (,$(filter ${USE_BIG_ENDIAN},YES yes y Y 1))
 	DEFINES+=-DOS_BIG_ENDIAN
 endif
 
-ifneq (,$(filter ${USE_ZEROMQ},YES auto yes y Y 1))
-	DEFINES+=-DZEROMQ_OUTPUT_ENABLED
-	OSSEC_LIBS+=-lzmq -lczmq
-endif # USE_ZEROMQ
-
 SYSINFO_LIB+=-lsysinfo
 
 ifeq (${TARGET}, winagent)
@@ -619,7 +613,6 @@ help: failtarget
 	@echo "   make CLEANFULL=yes           						Makes the alert mailing subject clear in the format: '<location> - <level> - <description>'. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make RESOURCES_URL           						Set the Wazuh resources URL"
 	@echo "   make EXTERNAL_SRC_ONLY=yes   						Combined with 'deps', it downloads only the external source code to be compiled as part of Wazuh building."
-	@echo "   make USE_ZEROMQ=yes          						Build with zeromq support. Allowed values are auto, 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make USE_INOTIFY=yes         						Build with inotify support. Allowed values are auto, 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make USE_BIG_ENDIAN=yes      						Build with big endian support. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make USE_SELINUX=yes         						Build with SELinux policies. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
@@ -660,7 +653,6 @@ settings:
 	@echo "    WAZUH_GROUP:        ${WAZUH_GROUP}"
 	@echo "    WAZUH_USER:         ${WAZUH_USER}"
 	@echo "USE settings:"
-	@echo "    USE_ZEROMQ:         ${USE_ZEROMQ}"
 	@echo "    USE_INOTIFY:        ${USE_INOTIFY}"
 	@echo "    USE_BIG_ENDIAN:     ${USE_BIG_ENDIAN}"
 	@echo "    USE_SELINUX:        ${USE_SELINUX}"

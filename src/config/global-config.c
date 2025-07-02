@@ -138,10 +138,6 @@ int Read_Global(const OS_XML *xml, XML_NODE node, void *configp, void *mailp)
     const char *xml_integrity = "integrity_checking";
     const char *xml_rootcheckd = "rootkit_detection";
     const char *xml_hostinfo = "host_information";
-    const char *xml_zeromq_output = "zeromq_output";
-    const char *xml_zeromq_output_uri = "zeromq_uri";
-    const char *xml_zeromq_output_server_cert = "zeromq_server_cert";
-    const char *xml_zeromq_output_client_cert = "zeromq_client_cert";
     const char *xml_jsonout_output = "jsonout_output";
     const char *xml_alerts_log = "alerts_log";
     const char *xml_stats = "stats";
@@ -270,33 +266,6 @@ int Read_Global(const OS_XML *xml, XML_NODE node, void *configp, void *mailp)
             } else {
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return (OS_INVALID);
-            }
-        }
-        /* ZeroMQ output */
-        else if (strcmp(node[i]->element, xml_zeromq_output) == 0) {
-            if (strcmp(node[i]->content, "yes") == 0) {
-                if (Config) {
-                    Config->zeromq_output = 1;
-                }
-            } else if (strcmp(node[i]->content, "no") == 0) {
-                if (Config) {
-                    Config->zeromq_output = 0;
-                }
-            } else {
-                merror(XML_VALUEERR, node[i]->element, node[i]->content);
-                return (OS_INVALID);
-            }
-        } else if (strcmp(node[i]->element, xml_zeromq_output_uri) == 0) {
-            if (Config) {
-                Config->zeromq_output_uri = strdup(node[i]->content);
-            }
-        } else if (strcmp(node[i]->element, xml_zeromq_output_server_cert) == 0) {
-            if (Config) {
-                Config->zeromq_output_server_cert = strdup(node[i]->content);
-            }
-        } else if (strcmp(node[i]->element, xml_zeromq_output_client_cert) == 0) {
-            if (Config) {
-                Config->zeromq_output_client_cert = strdup(node[i]->content);
             }
         }
         /* jsonout output */
@@ -719,18 +688,6 @@ void config_free(_Config *config) {
 
     if (!config) {
         return;
-    }
-
-    if (config->zeromq_output_uri) {
-        free(config->zeromq_output_uri);
-    }
-
-    if (config->zeromq_output_server_cert) {
-        free(config->zeromq_output_server_cert);
-    }
-
-    if (config->zeromq_output_client_cert) {
-        free(config->zeromq_output_client_cert);
     }
 
     if (config->custom_alert_output_format) {

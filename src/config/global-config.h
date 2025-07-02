@@ -50,13 +50,6 @@ typedef struct __Config {
     long agents_disconnection_time;
     long agents_disconnection_alert_time;
 
-
-    /* ZEROMQ Export */
-    u_int8_t zeromq_output;
-    char *zeromq_output_uri;
-    char *zeromq_output_server_cert;
-    char *zeromq_output_client_cert;
-
     /* JSONOUT Export */
     u_int8_t jsonout_output;
 
