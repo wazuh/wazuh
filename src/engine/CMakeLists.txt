@@ -26,6 +26,7 @@ option(ENGINE_ENABLE_ASAN "Enable AddressSanitizer for all targets" OFF)
 option(ENGINE_BUILD_DOCUMENTATION "Generate doxygen documentation" OFF)
 option(ENGINE_ASSERT_WITH_SYMBOLS "Exports exe symbols to have asserts with full symbolicated functions" ON)
 option(ENGINE_GENERATE_PROTO "Generate protobuf code" OFF)
+option(ENGINE_ENABLE_REVERSE_ORDER_DECODERS_FEATURE "Enable reverse order decoders" OFF)
 
 
 if(WAZUH_ENGINE_TEST)

@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
 from health_test.core import run as test_run
-from health_test.validate_custom_field_indexing import run as validate_custom_field_indexing_run
-from health_test.validate_event_indexing import run as validate_event_indexing_run
 import sys
 from argparse import ArgumentParser, Namespace
 
@@ -156,44 +154,6 @@ def parse_args() -> Namespace:
         '--skip', help='Skip the tests with the specified name', default=None)
     validate_successful_assets_parser.set_defaults(func=validate_successful_assets_run)
 
-    # validate event indexing subcommand
-    validate_event_indexing_parser = dynamic_subparsers.add_parser(
-        'validate_event_indexing', help=(
-            'Creates an opensearch instance along with an index. Ingests different events to the engine and compares '
-            'the output with the document searched by hash in the index an expected one. '
-            'If you do not specify a specific argument, an error will be thrown. '
-            'However, if you specify the argumnet, only one is accepted.'))
-    validate_event_indexing_parser.add_argument(
-        '--integration', help='Specify the name of the integration to test.', default=None)
-    validate_event_indexing_parser.add_argument(
-        '--integration_rule', help='Specify the name of the integration rule to test', default=None)
-    validate_event_indexing_parser.add_argument(
-        '--skip', help='Skip the tests with the specified name', required=False)
-    validate_event_indexing_parser.add_argument(
-        '--target',
-        help='Specify the asset type (decoder or rule). If it is a decoder, the tests are carried out for all decoders. The same for the rules.',
-        required=False)
-    validate_event_indexing_parser.set_defaults(func=validate_event_indexing_run)
-
-    # validate custom field indexing
-    validate_custom_field_indexing_parser = dynamic_subparsers.add_parser(
-        'validate_custom_field_indexing', help=(
-            'Creates an opensearch instance along with an index. It ingests different events to the engine and extracts all the custom fields. '
-            'It then verifies that each of the custom fields are present in the opensearch index.'
-            'If you do not specify a specific argument, an error will be raised. '
-            'However, if you specify the argument, only one is accepted.'))
-    validate_custom_field_indexing_parser.add_argument(
-        '--integration', help='Specify the name of the integration to test.', default=None)
-    validate_custom_field_indexing_parser.add_argument(
-        '--integration_rule', help='Specify the name of the integration rule to test', default=None)
-    validate_custom_field_indexing_parser.add_argument(
-        '--skip', help='Skip the tests with the specified name', required=False)
-    validate_custom_field_indexing_parser.add_argument(
-        '--target',
-        help='Specify the asset type (decoder or rule). If it is a decoder, the tests are carried out for all decoders. The same for the rules.',
-        required=False)
-    validate_custom_field_indexing_parser.set_defaults(func=validate_custom_field_indexing_run)
-
     # test subcommand
     test_parser = dynamic_subparsers.add_parser(
         'run', help=(
@@ -209,6 +169,11 @@ def parse_args() -> Namespace:
     test_parser.add_argument(
         '--target',
         help='Specify the asset type (decoder or rule). If it is a decoder, the tests are carried out for all decoders. The same for the rules.',
+        required=False)
+    test_parser.add_argument(
+        '--reverse_order_decoders',
+        action='store_true',
+        help='If set, the decoders will be processed in reverse order. This is useful for testing the order of decoder processing.',
         required=False)
     test_parser.set_defaults(func=test_run)
 
