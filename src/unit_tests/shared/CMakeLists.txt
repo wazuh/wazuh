@@ -339,7 +339,6 @@ foreach(counter RANGE ${count})
             ${test_name}
             ${WAZUHLIB}
             ${WAZUHEXT}
-            ANALYSISD_O
             ${TEST_DEPS}
         )
     else()

@@ -13,7 +13,6 @@
 #include <cmocka.h>
 
 #include "../headers/syscheck_op.h"
-// #include "../analysisd/eventinfo.h"
 
 #include "../wrappers/externals/cJSON/cJSON_wrappers.h"
 #include "../wrappers/posix/grp_wrappers.h"
@@ -47,11 +46,16 @@ typedef struct __sk_decode_data_s {
     char *w_sum;
 }sk_decode_data_t;
 
+/*****************************************************************************************
+ TODO-LEGACY-ANALYSISD-FIM: Delete this function when the new system is ready
+ Should not depend on analsysid code
+
 typedef struct __sk_fill_event_s {
     sk_sum_t *sum;
     Eventinfo *lf;
     char *f_name;
 }sk_fill_event_t;
+*****************************************************************************************/
 
 typedef struct __sk_build_sum_s {
     sk_sum_t sum;
@@ -171,7 +175,9 @@ static int teardown_get_registry_group(void **state) {
 #endif
 
 #if defined(TEST_SERVER)
-
+/*****************************************************************************************
+ TODO-LEGACY-ANALYSISD-FIM: Delete this function when the new system is ready
+ Should not depend on analsysid code
 static int setup_sk_decode(void **state) {
     sk_decode_data_t *data = calloc(1, sizeof(sk_decode_data_t));
 
@@ -237,6 +243,7 @@ static int teardown_sk_fill_event(void **state) {
     }
     return 0;
 }
+*/
 
 static int setup_sk_build_sum(void **state) {
     sk_build_sum_t* data = calloc(1, sizeof(sk_build_sum_t));
@@ -567,7 +574,11 @@ static void test_remove_empty_folders_error_removing_dir(void **state) {
 }
 
 #if defined(TEST_SERVER)
-/* sk_decode_sum tests */
+/*****************************************************************************************
+ TODO-LEGACY-ANALYSISD-FIM: Delete this function when the new system is ready
+ Should not depend on analsysid code
+
+// sk_decode_sum tests 
 static void test_sk_decode_sum_no_decode(void **state) {
     sk_decode_data_t *data = *state;
 
@@ -1455,7 +1466,7 @@ static void test_sk_decode_sum_extra_data_null_c_sum(void **state) {
     expect_assert_failure(sk_decode_sum(&data->sum, NULL, NULL));
 }
 
-/* sk_decode_extradata tests */
+// sk_decode_extradata tests
 static void test_sk_decode_extradata_null_sum(void **state) {
     sk_decode_data_t *data = *state;
     data->c_sum = strdup("some string");
@@ -1532,7 +1543,7 @@ static void test_sk_decode_extradata_all_fields(void **state) {
     assert_string_equal(data->sum.symbolic_path, "a symbolic path");
 }
 
-/* sk_fill_event tests */
+// sk_fill_event tests 
 static void test_sk_fill_event_full_event(void **state) {
     sk_fill_event_t *data = *state;
 
@@ -1700,7 +1711,7 @@ static void test_sk_fill_event_null_sum(void **state) {
     expect_assert_failure(sk_fill_event(data->lf, data->f_name, NULL));
 }
 
-/* sk_build_sum tests */
+// sk_build_sum tests
 static void test_sk_build_sum_full_message(void **state) {
     sk_build_sum_t *data = *state;
     int ret;
@@ -1818,7 +1829,7 @@ static void test_sk_build_sum_null_output(void **state) {
     expect_assert_failure(sk_build_sum(&data->sum, NULL, OS_MAXSTR));
 }
 
-/* sk_sum_clean tests */
+// sk_sum_clean tests
 static void test_sk_sum_clean_full_message(void **state) {
     sk_decode_data_t *data = *state;
     int ret;
@@ -1897,6 +1908,8 @@ static void test_sk_sum_clean_invalid_message(void **state) {
 static void test_sk_sum_clean_null_sum(void **state) {
     expect_assert_failure(sk_sum_clean(NULL));
 }
+
+*****************************************************************************************/
 #endif
 #ifndef TEST_WINAGENT
 /* unescape_syscheck_field tests */
@@ -4768,6 +4781,9 @@ int main(int argc, char *argv[]) {
 
 #if defined(TEST_SERVER)
         /* sk_decode_sum tests */
+        /*****************************************************************************************
+        TODO-LEGACY-ANALYSISD-FIM: Delete this function when the new system is ready
+         Should not depend on analsysid code
         cmocka_unit_test_setup_teardown(test_sk_decode_sum_no_decode, setup_sk_decode, teardown_sk_decode),
         cmocka_unit_test_setup_teardown(test_sk_decode_sum_deleted_file, setup_sk_decode, teardown_sk_decode),
         cmocka_unit_test_setup_teardown(test_sk_decode_sum_no_perm, setup_sk_decode, teardown_sk_decode),
@@ -4808,7 +4824,7 @@ int main(int argc, char *argv[]) {
         cmocka_unit_test_setup_teardown(test_sk_decode_sum_extra_data_null_sum, setup_sk_decode, teardown_sk_decode),
         cmocka_unit_test_setup_teardown(test_sk_decode_sum_extra_data_null_c_sum, setup_sk_decode, teardown_sk_decode),
 
-        /* sk_decode_extradata tests */
+        // sk_decode_extradata tests
         cmocka_unit_test_setup_teardown(test_sk_decode_extradata_null_sum, setup_sk_decode, teardown_sk_decode),
         cmocka_unit_test_setup_teardown(test_sk_decode_extradata_null_c_sum, setup_sk_decode, teardown_sk_decode),
         cmocka_unit_test_setup_teardown(test_sk_decode_extradata_no_changes, setup_sk_decode, teardown_sk_decode),
@@ -4816,7 +4832,7 @@ int main(int argc, char *argv[]) {
         cmocka_unit_test_setup_teardown(test_sk_decode_extradata_no_sym_path, setup_sk_decode, teardown_sk_decode),
         cmocka_unit_test_setup_teardown(test_sk_decode_extradata_all_fields, setup_sk_decode, teardown_sk_decode),
 
-        /* sk_fill_event tests */
+        // sk_fill_event tests
         cmocka_unit_test_setup_teardown(test_sk_fill_event_full_event, setup_sk_fill_event, teardown_sk_fill_event),
         cmocka_unit_test_setup_teardown(test_sk_fill_event_empty_event, setup_sk_fill_event, teardown_sk_fill_event),
         cmocka_unit_test_setup_teardown(test_sk_fill_event_win_perm, setup_sk_fill_event, teardown_sk_fill_event),
@@ -4824,7 +4840,7 @@ int main(int argc, char *argv[]) {
         cmocka_unit_test_setup_teardown(test_sk_fill_event_null_f_name, setup_sk_fill_event, teardown_sk_fill_event),
         cmocka_unit_test_setup_teardown(test_sk_fill_event_null_sum, setup_sk_fill_event, teardown_sk_fill_event),
 
-        /* sk_build_sum tests */
+        // sk_build_sum tests
         cmocka_unit_test_setup_teardown(test_sk_build_sum_full_message, setup_sk_build_sum, teardown_sk_build_sum),
         cmocka_unit_test_setup_teardown(test_sk_build_sum_skip_fields_message, setup_sk_build_sum, teardown_sk_build_sum),
         cmocka_unit_test_setup_teardown(test_sk_build_sum_win_perm, setup_sk_build_sum, teardown_sk_build_sum),
@@ -4832,11 +4848,12 @@ int main(int argc, char *argv[]) {
         cmocka_unit_test_setup_teardown(test_sk_build_sum_null_sum, setup_sk_build_sum, teardown_sk_build_sum),
         cmocka_unit_test_setup_teardown(test_sk_build_sum_null_output, setup_sk_build_sum, teardown_sk_build_sum),
 
-        /* sk_sum_clean tests */
+        // sk_sum_clean tests
         cmocka_unit_test_setup_teardown(test_sk_sum_clean_full_message, setup_sk_decode, teardown_sk_decode),
         cmocka_unit_test_setup_teardown(test_sk_sum_clean_shortest_valid_message, setup_sk_decode, teardown_sk_decode),
         cmocka_unit_test_setup_teardown(test_sk_sum_clean_invalid_message, setup_sk_decode, teardown_sk_decode),
         cmocka_unit_test_setup_teardown(test_sk_sum_clean_null_sum, setup_sk_decode, teardown_sk_decode),
+        */
 #endif
 #ifndef TEST_WINAGENT
         /* unescape_syscheck_field tests */
