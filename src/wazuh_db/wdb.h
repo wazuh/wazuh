@@ -918,10 +918,10 @@ typedef struct {
 } user_record_t;
 
 // Save user info into DB.
-int wdb_users_save(wdb_t * wdb, user_record_t user_record, const bool replace);
+int wdb_users_save(wdb_t * wdb, const user_record_t * user_record, const bool replace);
 
 // Insert user info tuple. Return 0 on success or -1 on error.
-int wdb_users_insert(wdb_t * wdb, user_record_t user_record, const bool replace);
+int wdb_users_insert(wdb_t * wdb, const user_record_t * user_record, const bool replace);
 
 // Save group info into DB.
 int wdb_groups_save(wdb_t * wdb, const char * scan_id, const char * scan_time, long long group_id, const char * group_name,
