@@ -116,14 +116,6 @@ typedef struct __Config {
     socket_forwarder *socket_list;
 
 
-#ifdef LIBGEOIP_ENABLED
-    /* GeoIP support */
-    u_int8_t loggeoip;
-    char *geoip_db_path;
-    char *geoip6_db_path;
-    int geoip_jsonout;
-#endif
-
     wlabel_t *labels; /* null-ended label set */
     int label_cache_maxage;
     int show_hidden_labels;

@@ -173,11 +173,6 @@ int Read_Global(const OS_XML *xml, XML_NODE node, void *configp, void *mailp)
     const char *xml_queue_size = "queue_size";
     const char *xml_forwardto = "forward_to";
 
-#ifdef LIBGEOIP_ENABLED
-    const char *xml_geoip_db_path = "geoip_db_path";
-    const char *xml_geoip6_db_path = "geoip6_db_path";
-#endif
-
     _Config *Config;
     MailConfig *Mail;
 
@@ -625,20 +620,6 @@ int Read_Global(const OS_XML *xml, XML_NODE node, void *configp, void *mailp)
                 }
             }
         }
-#ifdef LIBGEOIP_ENABLED
-        /* GeoIP v4 DB location */
-        else if (strcmp(node[i]->element, xml_geoip_db_path) == 0) {
-            if (Config) {
-                os_strdup(node[i]->content, Config->geoip_db_path);
-            }
-        }
-        /* GeoIP v6 DB location */
-        else if (strcmp(node[i]->element, xml_geoip6_db_path) == 0) {
-            if (Config) {
-                os_strdup(node[i]->content, Config->geoip6_db_path);
-            }
-        }
-#endif
         else if (strcmp(node[i]->element, xml_rotate_interval) == 0) {
             if (Config) {
                 char c;
@@ -863,15 +844,6 @@ void config_free(_Config *config) {
         }
         free(config->hostname_white_list);
     }
-
-#ifdef LIBGEOIP_ENABLED
-    if (config->geoip_db_path) {
-        free(config->geoip_db_path);
-    }
-    if (config->geoip6_db_path) {
-        free(config->geoip6_db_path);
-    }
-#endif
 
     labels_free(config->labels); /* null-ended label set */
 

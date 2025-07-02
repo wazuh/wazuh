@@ -1,5 +1,4 @@
 # Copyright (C) 2015, Wazuh Inc.
-# TODO: mysql and postgresql?
 #
 # Copyright (C) 2015, Wazuh Inc.
 #
@@ -102,8 +101,6 @@ EXTERNAL_POPT=external/popt/
 EXTERNAL_LIBBPF=external/libbpf-bootstrap/
 endif
 # XXX Becareful NO EXTRA Spaces here
-PG_CONFIG?=pg_config
-MY_CONFIG?=mysql_config
 PRELUDE_CONFIG?=libprelude-config
 WAZUH_GROUP?=wazuh
 WAZUH_USER?=wazuh
@@ -124,7 +121,6 @@ SYSINFO=data_provider/
 SYSCHECK=syscheckd/
 USE_PRELUDE?=no
 USE_ZEROMQ?=no
-USE_GEOIP?=no
 USE_INOTIFY=no
 USE_BIG_ENDIAN=no
 USE_AUDIT=no
@@ -565,11 +561,6 @@ ifneq (,$(filter ${USE_ZEROMQ},YES auto yes y Y 1))
 	OSSEC_LIBS+=-lzmq -lczmq
 endif # USE_ZEROMQ
 
-ifneq (,$(filter ${USE_GEOIP},YES auto yes y Y 1))
-	DEFINES+=-DLIBGEOIP_ENABLED
-	OSSEC_LIBS+=-lGeoIP
-endif # USE_GEOIP
-
 SYSINFO_LIB+=-lsysinfo
 
 ifeq (${TARGET}, winagent)
@@ -587,80 +578,6 @@ ifeq (,$(filter ${DISABLE_SYSC}, YES yes y Y 1))
 	SYSCOLLECTOR_LIB+=-lsyscollector
 endif
 
-MI :=
-PI :=
-ifdef DATABASE
-
-	ifeq (${DATABASE},mysql)
-		DEFINES+=-DMYSQL_DATABASE_ENABLED
-
-		ifdef MYSQL_CFLAGS
-			MI = ${MYSQL_CFLAGS}
-		else
-			MI := $(shell sh -c '${MY_CONFIG} --include 2>/dev/null || echo ')
-
-			ifeq (${MI},) # BEGIN MI manual detection
-				ifneq (,$(wildcard /usr/include/mysql/mysql.h))
-					MI="-I/usr/include/mysql/"
-				else
-					ifneq (,$(wildcard /usr/local/include/mysql/mysql.h))
-						MI="-I/usr/local/include/mysql/"
-					endif  #
-				endif  #MI
-
-			endif
-		endif # MYSQL_CFLAGS
-
-		ifdef MYSQL_LIBS
-			ML = ${MYSQL_LIBS}
-		else
-			ML := $(shell sh -c '${MY_CONFIG} --libs 2>/dev/null || echo ')
-
-			ifeq (${ML},)
-				ifneq (,$(wildcard /usr/lib/mysql/*))
-					ML="-L/usr/lib/mysql"
-				else
-					ifneq (,$(wildcard /usr/lib64/mysql/*))
-						ML="-L/usr/lib64/mysql"
-					else
-						ifneq (,$(wildcard /usr/local/lib/mysql/*))
-							ML="-L/usr/local/lib/mysql"
-						else
-							ifneq (,$(wildcard /usr/local/lib64/mysql/*))
-								ML="-L/usr/local/lib64/mysql"
-							endif # local/lib64
-						endif # local/lib
-					endif # lib54
-				endif # lib
-			endif
-		endif # MYSQL_LIBS
-
-		OSSEC_LIBS+=${ML} -lmysqlclient
-
-	else # DATABASE
-
-		ifeq (${DATABASE}, pgsql)
-			DEFINES+=-DPGSQL_DATABASE_ENABLED
-
-			ifneq (${PGSQL_LIBS},)
-				PL:=${PGSQL_LIBS}
-			else
-				PL:=$(shell sh -c '(${PG_CONFIG} --libdir --pkglibdir 2>/dev/null | sed "s/^/-L/g" | xargs ) || echo ')
-			endif
-
-			ifneq (${PGSQL_CFLAGS},)
-				PI:=${PGSQL_CFLAGS}
-			else
-				PI:=$(shell sh -c '(${PG_CONFIG} --includedir --pkgincludedir 2>/dev/null | sed "s/^/-I/g" | xargs ) || echo ')
-			endif
-
-			# XXX need some basic autodetech stuff here.
-
-			OSSEC_LIBS+=${PL} -lpq
-
-		endif # pgsql
-	endif # mysql
-endif # DATABASE
 
 ####################
 #### Target ########
@@ -728,15 +645,6 @@ help: failtarget
 	@echo "   make CA_NAME="DigiCert Assured ID Root CA" 		This flag controls the CA name used to verify the dll and exe files signature. The default value is DigiCert Assured ID Root CA."
 	@echo "   make deps HTTP_REQUEST_BRANCH=main 				Build dependencies for http-request tool from selected branch/tag only if submodule isn't checked out, valid at make deps stage. Allowed values are any existing branch/tag.
 	@echo
-	@echo "Database options: "
-	@echo "   make DATABASE=mysql          Build with MYSQL Support"
-	@echo "                                Use MYSQL_CFLAGS adn MYSQL_LIBS to override defaults"
-	@echo "   make DATABASE=pgsql          Build with PostgreSQL Support "
-	@echo "                                Use PGSQL_CFLAGS adn PGSQL_LIBS to override defaults"
-	@echo
-	@echo "Geoip support: "
-	@echo "   make USE_GEOIP=yes           Build with GeoIP support. Allowed values are auto 1, yes, YES, y and Y, otherwise, the flag is ignored"
-	@echo
 	@echo "User options: "
 	@echo "   make WAZUH_GROUP=wazuh       Set wazuh group"
 	@echo "   make WAZUH_USER=wazuh        Set wazuh user"
@@ -763,7 +671,6 @@ settings:
 	@echo "    WAZUH_USER:         ${WAZUH_USER}"
 	@echo "USE settings:"
 	@echo "    USE_ZEROMQ:         ${USE_ZEROMQ}"
-	@echo "    USE_GEOIP:          ${USE_GEOIP}"
 	@echo "    USE_PRELUDE:        ${USE_PRELUDE}"
 	@echo "    USE_INOTIFY:        ${USE_INOTIFY}"
 	@echo "    USE_BIG_ENDIAN:     ${USE_BIG_ENDIAN}"

@@ -552,7 +552,7 @@ void test_send_json_message_socket_error_time_again(void **state) {
 
     expect_value(__wrap_time, time, 0);
     will_return(__wrap_time, 1);
-    expect_string(__wrap__mdebug2, formatted_msg, "Discarding event from analysisd due to connection issue with 'fluentd_test', No such file or directory. (Abort).");
+    expect_string(__wrap__mdebug2, formatted_msg, "Discarding event from engine due to connection issue with 'fluentd_test', No such file or directory. (Abort).");
 
     SendJSONtoSCK(json_msg,socket_info);
 
