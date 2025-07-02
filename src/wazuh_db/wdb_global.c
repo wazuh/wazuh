@@ -1513,7 +1513,7 @@ wdbc_result wdb_global_set_agent_groups(wdb_t *wdb, wdb_groups_set_mode_t mode, 
                     }
                 }
                 if (valid_groups = wdb_global_validate_groups(wdb, j_groups, agent_id), OS_SUCCESS == valid_groups) {
-                    if (WDBC_ERROR == wdb_global_assign_agent_group(wdb, agent_id, j_groups, group_priority, mode == WDB_GROUP_OVERRIDE ? true : false)) {
+                    if (WDBC_ERROR == wdb_global_assign_agent_group(wdb, agent_id, j_groups, group_priority, false)) {
                         ret = WDBC_ERROR;
                         merror("There was an error assigning the groups to agent '%03d'", agent_id);
                     }
