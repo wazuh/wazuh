@@ -46,10 +46,10 @@ Conf::Conf(std::shared_ptr<IApiLoader> apiLoader)
     addUnit<std::string>(key::LOGGING_LEVEL, "WAZUH_LOG_LEVEL", "info");
 
     // Store module
-    addUnit<std::string>(key::STORE_PATH, "WAZUH_STORE_PATH", "/var/ossec/engine/store");
+    addUnit<std::string>(key::STORE_PATH, "WAZUH_STORE_PATH", (wazuhRoot / "engine/store").c_str());
 
     // KVDB module
-    addUnit<std::string>(key::KVDB_PATH, "WAZUH_KVDB_PATH", "/var/ossec/engine/kvdb/");
+    addUnit<std::string>(key::KVDB_PATH, "WAZUH_KVDB_PATH", (wazuhRoot / "engine/kvdb/").c_str());
 
     // Indexer connector
     addUnit<std::string>(key::INDEXER_INDEX, "WAZUH_INDEXER_INDEX", "wazuh-alerts-5.x-0001");
@@ -89,7 +89,7 @@ Conf::Conf(std::shared_ptr<IApiLoader> apiLoader)
     addUnit<int>(key::SERVER_EVENT_THREADS, "WAZUH_SERVER_EVENT_THREADS", 1);
 
     // TZDB module
-    addUnit<std::string>(key::TZDB_PATH, "WAZUH_TZDB_PATH", "/var/ossec/queue/tzdb");
+    addUnit<std::string>(key::TZDB_PATH, "WAZUH_TZDB_PATH", (wazuhRoot / "queue/tzdb").c_str());
     addUnit<bool>(key::TZDB_AUTO_UPDATE, "WAZUH_TZDB_AUTO_UPDATE", false);
     addUnit<std::string>(key::TZDB_FORCE_VERSION_UPDATE, "WAZUH_TZDB_FORCE_VERSION_UPDATE", "");
 
@@ -100,7 +100,12 @@ Conf::Conf(std::shared_ptr<IApiLoader> apiLoader)
 
     // Archiver module
     addUnit<bool>(key::ARCHIVER_ENABLED, "WAZUH_ARCHIVER_ENABLED", false);
-    addUnit<std::string>(key::ARCHIVER_PATH, "WAZUH_ARCHIVER_PATH", "/var/ossec/logs/archives/archives.json");
+    addUnit<std::string>(key::ARCHIVER_PATH, "WAZUH_ARCHIVER_PATH", (wazuhRoot / "logs/archives/archives.json").c_str());
+
+    // Process module
+    addUnit<std::string>(key::PID_FILE_PATH, "WAZUH_ENGINE_PID_FILE_PATH", (wazuhRoot / "var/run/").c_str());
+    addUnit<std::string>(key::USER, "WAZUH_ENGINE_USER", "wazuh");
+    addUnit<std::string>(key::GROUP, "WAZUH_ENGINE_GROUP", "wazuh");
 };
 
 void Conf::validate(const json::Json& config) const

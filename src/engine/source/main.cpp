@@ -12,8 +12,9 @@
 #include <api/handlers.hpp>
 #include <api/policy/policy.hpp>
 #include <archiver/archiver.hpp>
-#include <base/logging.hpp>
 #include <base/eventParser.hpp>
+#include <base/logging.hpp>
+#include <base/process.hpp>
 #include <base/utils/singletonLocator.hpp>
 #include <base/utils/singletonLocatorStrategies.hpp>
 #include <bk/rx/controller.hpp>
@@ -62,10 +63,58 @@ void sigintHandler(const int signum)
     }
 }
 
+struct Options
+{
+    bool runForeground = false;
+    bool testConfig = false;
+};
+
+void printUsage(const char* progName)
+{
+    std::cout << "Usage: " << progName << " [options]\n"
+              << "Options:\n"
+              << "  -f    Run in foreground (do not daemonize)\n"
+              << "  -t    Test configuration\n"
+              << "  -h    Show this help message and exit\n";
+    std::exit(EXIT_SUCCESS);
+}
+
+Options parseOptions(int argc, char* argv[])
+{
+    Options opts;
+    int c;
+    while ((c = getopt(argc, argv, "fth")) != -1)
+    {
+        switch (c)
+        {
+            case 'f': opts.runForeground = true; break;
+            case 't': opts.testConfig = true; break;
+            case 'h':
+            default: printUsage(argv[0]);
+        }
+    }
+    return opts;
+}
+
 int main(int argc, char* argv[])
 {
     // exit handler
     cmd::details::StackExecutor exitHandler {};
+
+    // CLI parse
+    {
+        const auto opts = parseOptions(argc, argv);
+        if (opts.testConfig)
+        {
+            return EXIT_SUCCESS;
+        }
+
+        // Daemonize the process
+        if (!opts.runForeground)
+        {
+            base::process::goDaemon();
+        }
+    }
 
     // Initialize logging
     {
@@ -89,14 +138,17 @@ int main(int argc, char* argv[])
         exit(EXIT_FAILURE);
     }
 
-    // Set signal [SIGINT]: Crt+C handler
+    // Set signal [SIGINT]: Crt+C handler and signal [SIGTERM]: kill handler
     {
         // Set the signal handler for SIGINT
         struct sigaction sigIntHandler = {};
         sigIntHandler.sa_handler = sigintHandler;
         sigemptyset(&sigIntHandler.sa_mask);
         sigIntHandler.sa_flags = 0;
-        sigaction(SIGINT, &sigIntHandler, nullptr);
+        for (int sig : {SIGINT, SIGTERM})
+        {
+            sigaction(sig, &sigIntHandler, nullptr);
+        }
     }
     // Set signal [EPIPE]: Broken pipe handler
     {
@@ -125,6 +177,32 @@ int main(int argc, char* argv[])
 
     try
     {
+        // Changing user and group
+        {
+            /* Check if the user/group given are valid */
+            const auto user = confManager.get<std::string>(conf::key::USER);
+            const auto group = confManager.get<std::string>(conf::key::GROUP);
+            const auto uid = base::process::privSepGetUser(user);
+            const auto gid = base::process::privSepGetGroup(group);
+
+            if (uid == static_cast<uid_t>(-1) || gid == static_cast<gid_t>(-1))
+            {
+                throw std::runtime_error {fmt::format(base::process::USER_ERROR, user, group, strerror(errno), errno)};
+            }
+
+            /* Privilege separation only if we got valid IDs */
+            if (base::process::privSepSetGroup(gid) < 0)
+            {
+                throw std::runtime_error {fmt::format(base::process::SETGID_ERROR, group, errno, strerror(errno))};
+            }
+
+            /* Changing user only if we got a valid UID */
+            if (base::process::privSepSetUser(uid) < 0)
+            {
+                throw std::runtime_error {fmt::format(base::process::SETUID_ERROR, user, errno, strerror(errno))};
+            }
+        }
+
         // Set new log level if it is different from the default
         {
             const auto level = logging::strToLevel(confManager.get<std::string>(conf::key::LOGGING_LEVEL));
@@ -139,7 +217,7 @@ int main(int argc, char* argv[])
         // Metrics
         /*
         TODO: Until the indexer connector is unified with the rest of wazuh-manager
-        
+
         {
             SingletonLocator::registerManager<metrics::IManager,
                                               base::PtrSingleton<metrics::IManager, metrics::Manager>>();
@@ -150,7 +228,7 @@ int main(int argc, char* argv[])
             config->exportTimeout =
                 std::chrono::milliseconds(confManager.get<int64_t>(conf::key::METRICS_EXPORT_TIMEOUT));
 
-            
+
             IndexerConnectorOptions icConfig {};
             icConfig.name = "metrics-index";
             icConfig.hosts = confManager.get<std::vector<std::string>>(conf::key::INDEXER_HOST);
@@ -255,10 +333,10 @@ int main(int argc, char* argv[])
 
         // HLP
         {
-            hlp::initTZDB(confManager.get<std::string>(conf::key::TZDB_PATH),
-                          confManager.get<bool>(conf::key::TZDB_AUTO_UPDATE),
-                          confManager.get<std::string>(conf::key::TZDB_FORCE_VERSION_UPDATE)
-                        );
+            hlp::initTZDB(
+                (std::filesystem::path {confManager.get<std::string>(conf::key::TZDB_PATH)} / "iana").string(),
+                confManager.get<bool>(conf::key::TZDB_AUTO_UPDATE),
+                confManager.get<std::string>(conf::key::TZDB_FORCE_VERSION_UPDATE));
 
             base::Name logparFieldOverrides({"schema", "wazuh-logpar-overrides", "0"});
             auto res = store->readInternalDoc(logparFieldOverrides);
@@ -471,6 +549,17 @@ int main(int argc, char* argv[])
                                                 confManager.get<std::string>(conf::key::SERVER_EVENT_SOCKET));
             g_engineServer->start(confManager.get<int>(conf::key::SERVER_EVENT_THREADS));
             LOG_INFO("Engine initialized and started.");
+        }
+
+        /* Create PID file */
+        {
+            const auto pidError = base::process::createPID(
+                confManager.get<std::string>(conf::key::PID_FILE_PATH), "wazuh-engine", getpid());
+            if (base::isError(pidError))
+            {
+                throw std::runtime_error(
+                    (fmt::format("Could not create PID file for the engine: {}", base::getError(pidError).message)));
+            }
         }
 
         // Do not exit until the server is running
