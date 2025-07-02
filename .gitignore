@@ -12,7 +12,6 @@
 # Auto generated build files
 src/LOCATION
 src/isbigendian.c
-src/analysisd/compiled_rules/compiled_rules.h
 etc/ossec.mc
 src/Config.OS
 src/selinux/*.mod

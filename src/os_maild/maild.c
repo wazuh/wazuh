@@ -145,12 +145,6 @@ int main(int argc, char **argv)
                                       "full_subject",
                                       0, 1);
 
-#ifdef LIBGEOIP_ENABLED
-    /* Get GeoIP */
-    mail.geoip = getDefine_Int("maild",
-                               "geoip",
-                               0, 1);
-#endif
 
     /* Exit here if test config is set */
     if (test_config) {
