@@ -56,11 +56,6 @@ Install()
     echo "DIR=\"${INSTALLDIR}\""
 
     # Changing Config.OS with the new C flags
-    # Checking if debug is enabled
-    if [ "X${SET_DEBUG}" = "Xdebug" ]; then
-        CEXTRA="${CEXTRA} -DDEBUGAD"
-    fi
-
     echo "CEXTRA=${CEXTRA}" >> ./src/Config.OS
 
     MAKEBIN=make

@@ -11,8 +11,6 @@
 #ifndef SYSCHECK_OP_H
 #define SYSCHECK_OP_H
 
-extern const char *SYSCHECK_EVENT_STRINGS[];
-
 #ifndef WIN32
 
 #include <sys/types.h>
@@ -87,7 +85,6 @@ typedef struct _reg_path_struct {
 #endif
 
 #include "../syscheckd/include/syscheck.h"
-#include "../analysisd/eventinfo.h"
 #include "../os_net/os_net.h"
 
 #define FILE_ATTRIBUTE_INTEGRITY_STREAM         0x00008000
@@ -250,7 +247,11 @@ int sk_decode_extradata(sk_sum_t *sum, char *c_sum);
  * @param [in] f_name File name for the event
  * @param [in] sum File sum used to fill the event
  */
+/*****************************************************************************************
+ TODO-LEGACY-ANALYSISD-FIM: Delete this function when the new system is ready
+ Should not depend on analsysid code
 void sk_fill_event(Eventinfo *lf, const char *f_name, const sk_sum_t *sum);
+ ****************************************************************************************/
 
 /**
  * @brief Fills a buffer with a specific file sum

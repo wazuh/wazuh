@@ -71,9 +71,7 @@ int Read_Global(const OS_XML *xml, XML_NODE node, void *d1, void *d2);
 int Read_GlobalSK(XML_NODE node, void *configp, void *mailp);
 int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *d1, void *d2, int modules);
 int Read_Rootcheck(XML_NODE node, void *d1, void *d2);
-int Read_Alerts(XML_NODE node, void *d1, void *d2);
 int Read_EmailAlerts(XML_NODE node, void *d1, void *d2);
-int Read_DB(XML_NODE node, void *config1, void *config2);
 int Read_CSyslog(XML_NODE node, void *config1, void *config2);
 int Read_CAgentless(XML_NODE node, void *config1, void *config2);
 int Read_Localfile(XML_NODE node, void *d1, void *d2);
@@ -111,7 +109,6 @@ int Read_GCP_pubsub(const OS_XML *xml, xml_node *node, void *d1);
 int Read_GCP_bucket(const OS_XML *xml, xml_node *node, void *d1);
 
 #ifndef WIN32
-int Read_Rules(XML_NODE node, void *d1, void *d2);
 int Read_Fluent_Forwarder(const OS_XML *xml, xml_node *node, void *d1);
 int Read_Authd(const OS_XML *xml, XML_NODE node, void *d1, void *d2);
 #ifndef CLIENT
