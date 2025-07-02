@@ -101,36 +101,50 @@ int LogCollectorConfig(const char *cfgfile)
     return (1);
 }
 
+void _getLocalfilesListJSON(logreader* reader, cJSON* array, const char *gpath)
+{
+    cJSON* file = cJSON_CreateObject();
 
-void _getLocalfilesListJSON(logreader* reader, cJSON* array, const char *gpath) {
-    unsigned int i;
-    cJSON *file = cJSON_CreateObject();
-
-    if (gpath) cJSON_AddStringToObject(file, "file", gpath);
-    else if (reader->ffile) cJSON_AddStringToObject(file, "file", reader->ffile);
-    else if (reader->file) cJSON_AddStringToObject(file,"file",reader->file);
-    if (reader->channel_str != NULL) cJSON_AddStringToObject(file, "channel", reader->channel_str);
-    if (reader->logformat) cJSON_AddStringToObject(file,"logformat",reader->logformat);
-    if (reader->command) cJSON_AddStringToObject(file,"command",reader->command);
-    if (reader->djb_program_name) cJSON_AddStringToObject(file,"djb_program_name",reader->djb_program_name);
-    if (reader->alias) cJSON_AddStringToObject(file,"alias",reader->alias);
-    if (reader->query != NULL) {
-        cJSON * query = cJSON_CreateObject();
-        if (*reader->query != '\0') {
+    if (gpath)
+        cJSON_AddStringToObject(file, "file", gpath);
+    else if (reader->ffile)
+       cJSON_AddStringToObject(file, "file", reader->ffile);
+    else if (reader->file)
+        cJSON_AddStringToObject(file, "file", reader->file);
+    if (reader->channel_str != NULL)
+        cJSON_AddStringToObject(file, "channel", reader->channel_str);
+    if (reader->logformat)
+        cJSON_AddStringToObject(file, "logformat", reader->logformat);
+    if (reader->command)
+        cJSON_AddStringToObject(file, "command", reader->command);
+    if (reader->djb_program_name)
+        cJSON_AddStringToObject(file, "djb_program_name", reader->djb_program_name);
+    if (reader->alias)
+        cJSON_AddStringToObject(file, "alias", reader->alias);
+    if (reader->query != NULL)
+    {
+        cJSON* query = cJSON_CreateObject();
+        if (*reader->query != '\0')
+        {
             cJSON_AddStringToObject(query, "value", reader->query);
         }
-        if (reader->query_level != NULL) {
+        if (reader->query_level != NULL)
+        {
             cJSON_AddStringToObject(query, "level", reader->query_level);
         }
-        if (reader->query_type > 0) {
-            cJSON *type = cJSON_CreateArray();
-            if (reader->query_type & MACOS_LOG_TYPE_LOG) {
+        if (reader->query_type > 0)
+        {
+            cJSON* type = cJSON_CreateArray();
+            if (reader->query_type & MACOS_LOG_TYPE_LOG)
+            {
                 cJSON_AddItemToArray(type, cJSON_CreateString(MACOS_LOG_TYPE_LOG_STR));
             }
-            if (reader->query_type & MACOS_LOG_TYPE_ACTIVITY) {
+            if (reader->query_type & MACOS_LOG_TYPE_ACTIVITY)
+            {
                 cJSON_AddItemToArray(type, cJSON_CreateString(MACOS_LOG_TYPE_ACTIVITY_STR));
             }
-            if (reader->query_type & MACOS_LOG_TYPE_TRACE) {
+            if (reader->query_type & MACOS_LOG_TYPE_TRACE)
+            {
                 cJSON_AddItemToArray(type, cJSON_CreateString(MACOS_LOG_TYPE_TRACE_STR));
             }
             cJSON_AddItemToObject(query, "type", type);
@@ -138,21 +152,26 @@ void _getLocalfilesListJSON(logreader* reader, cJSON* array, const char *gpath) 
         cJSON_AddItemToObject(file, "query", query);
     }
     // Invalid configuration for journal logs
-    if (reader->journal_log == NULL) {
+    if (reader->journal_log == NULL)
+    {
         cJSON_AddStringToObject(file, "ignore_binaries", reader->filter_binary ? "yes" : "no");
     }
 
-    if (reader->age_str) cJSON_AddStringToObject(file,"age",reader->age_str);
-    if (reader->exclude) cJSON_AddStringToObject(file,"exclude",reader->exclude);
+    if (reader->age_str)
+        cJSON_AddStringToObject(file, "age", reader->age_str);
+    if (reader->exclude)
+        cJSON_AddStringToObject(file, "exclude", reader->exclude);
 
-    if (reader->logformat != NULL &&
-        strcmp(reader->logformat, EVENTLOG) != 0 &&
-        strcmp(reader->logformat, "command") != 0 &&
-        strcmp(reader->logformat, "full_command") != 0) {
+    if (reader->logformat != NULL && strcmp(reader->logformat, EVENTLOG) != 0 && strcmp(reader->logformat, "command") != 0 &&
+        strcmp(reader->logformat, "full_command") != 0)
+    {
 
-        if (reader->future == 1){
+        if (reader->future == 1)
+        {
             cJSON_AddStringToObject(file, "only-future-events", "yes");
-        } else {
+        }
+        else
+        {
             char offset[OFFSET_SIZE] = {0};
             sprintf(offset, "%ld", reader->diff_max_size);
             cJSON_AddStringToObject(file, "only-future-events", "no");
@@ -160,61 +179,76 @@ void _getLocalfilesListJSON(logreader* reader, cJSON* array, const char *gpath) 
         }
     }
 
-    if (reader->target && *reader->target) {
-        cJSON *target = cJSON_CreateArray();
-        for (i=0;reader->target[i];i++) {
+    if (reader->target && *reader->target)
+    {
+        cJSON* target = cJSON_CreateArray();
+        for (int i = 0; reader->target[i]; i++)
+        {
             cJSON_AddItemToArray(target, cJSON_CreateString(reader->target[i]));
         }
-        cJSON_AddItemToObject(file,"target",target);
+        cJSON_AddItemToObject(file, "target", target);
     }
-    if (reader->out_format && *reader->out_format) {
-        cJSON *outformat = cJSON_CreateArray();
-        for (i=0;reader->out_format[i] && reader->out_format[i]->format;i++) {
-            cJSON *item = cJSON_CreateObject();
+    if (reader->out_format && *reader->out_format)
+    {
+        cJSON* outformat = cJSON_CreateArray();
+        for (int i = 0; reader->out_format[i] && reader->out_format[i]->format; i++)
+        {
+            cJSON* item = cJSON_CreateObject();
             if (reader->out_format[i]->target)
-                cJSON_AddStringToObject(item,"target",reader->out_format[i]->target);
+                cJSON_AddStringToObject(item, "target", reader->out_format[i]->target);
             else
-                cJSON_AddStringToObject(item,"target","all");
-            cJSON_AddStringToObject(item,"format",reader->out_format[i]->format);
+                cJSON_AddStringToObject(item, "target", "all");
+            cJSON_AddStringToObject(item, "format", reader->out_format[i]->format);
             cJSON_AddItemToArray(outformat, item);
         }
-        cJSON_AddItemToObject(file,"out_format",outformat);
+        cJSON_AddItemToObject(file, "out_format", outformat);
     }
-    if (reader->duplicated) cJSON_AddNumberToObject(file,"duplicate",reader->duplicated);
-    if (reader->labels && reader->labels[0].key) {
-        cJSON *label = cJSON_CreateObject();
-        for (i=0;reader->labels[i].key;i++) {
-            cJSON_AddStringToObject(label,reader->labels[i].key,reader->labels[i].value);
+    if (reader->duplicated)
+        cJSON_AddNumberToObject(file, "duplicate", reader->duplicated);
+    if (reader->labels && reader->labels[0].key)
+    {
+        cJSON* label = cJSON_CreateObject();
+        for (int i = 0; reader->labels[i].key; i++)
+        {
+            cJSON_AddStringToObject(label, reader->labels[i].key, reader->labels[i].value);
         }
-        cJSON_AddItemToObject(file,"labels",label);
+        cJSON_AddItemToObject(file, "labels", label);
     }
-    if (reader->ign && reader->logformat != NULL && (strcmp(reader->logformat,"command")==0 || strcmp(reader->logformat,"full_command")==0)) cJSON_AddNumberToObject(file,"frequency",reader->ign);
-    if (reader->reconnect_time && reader->logformat != NULL && strcmp(reader->logformat,"eventchannel")==0) cJSON_AddNumberToObject(file,"reconnect_time",reader->reconnect_time);
-    if (reader->multiline) {
-        cJSON * multiline = cJSON_CreateObject();
+    if (reader->ign && reader->logformat != NULL &&
+        (strcmp(reader->logformat, "command") == 0 || strcmp(reader->logformat, "full_command") == 0))
+        cJSON_AddNumberToObject(file, "frequency", reader->ign);
+    if (reader->reconnect_time && reader->logformat != NULL && strcmp(reader->logformat, "eventchannel") == 0)
+        cJSON_AddNumberToObject(file, "reconnect_time", reader->reconnect_time);
+    if (reader->multiline)
+    {
+        cJSON* multiline = cJSON_CreateObject();
         cJSON_AddStringToObject(multiline, "match", multiline_attr_match_str(reader->multiline->match_type));
         cJSON_AddStringToObject(multiline, "replace", multiline_attr_replace_str(reader->multiline->replace_type));
         cJSON_AddStringToObject(multiline, "regex", w_expression_get_regex_pattern(reader->multiline->regex));
         cJSON_AddNumberToObject(multiline, "timeout", reader->multiline->timeout);
         cJSON_AddItemToObject(file, "multiline_regex", multiline);
     }
-    if (reader->journal_log != NULL && reader->journal_log->filters != NULL) {
+    if (reader->journal_log != NULL && reader->journal_log->filters != NULL)
+    {
 
-        cJSON * filters = w_journal_filter_list_as_json(reader->journal_log->filters);
-        if (filters != NULL) {
+        cJSON* filters = w_journal_filter_list_as_json(reader->journal_log->filters);
+        if (filters != NULL)
+        {
             cJSON_AddItemToObject(file, "filters", filters);
         }
 
         cJSON_AddBoolToObject(file, "filters_disabled", reader->journal_log->disable_filters);
     }
-    if (reader->regex_ignore != NULL) {
-        OSListNode *node_it;
-        w_expression_t *exp_it;
-        cJSON * ignore_array = cJSON_CreateArray();
+    if (reader->regex_ignore != NULL)
+    {
+        OSListNode* node_it;
+        w_expression_t* exp_it;
+        cJSON* ignore_array = cJSON_CreateArray();
 
-        OSList_foreach(node_it, reader->regex_ignore) {
+        OSList_foreach(node_it, reader->regex_ignore)
+        {
             exp_it = node_it->data;
-            cJSON * ignore_object = cJSON_CreateObject();
+            cJSON* ignore_object = cJSON_CreateObject();
 
             cJSON_AddStringToObject(ignore_object, "value", w_expression_get_regex_pattern(exp_it));
             cJSON_AddStringToObject(ignore_object, "type", w_expression_get_regex_type(exp_it));
@@ -222,20 +256,25 @@ void _getLocalfilesListJSON(logreader* reader, cJSON* array, const char *gpath) 
             cJSON_AddItemToArray(ignore_array, ignore_object);
         }
 
-        if (cJSON_GetArraySize(ignore_array) > 0) {
+        if (cJSON_GetArraySize(ignore_array) > 0)
+        {
             cJSON_AddItemToObject(file, "ignore", ignore_array);
-        } else {
+        }
+        else
+        {
             cJSON_free(ignore_array);
         }
     }
-    if (reader->regex_restrict != NULL) {
-        OSListNode *node_it;
-        w_expression_t *exp_it;
-        cJSON * restrict_array = cJSON_CreateArray();
+    if (reader->regex_restrict != NULL)
+    {
+        OSListNode* node_it;
+        w_expression_t* exp_it;
+        cJSON* restrict_array = cJSON_CreateArray();
 
-        OSList_foreach(node_it, reader->regex_restrict) {
+        OSList_foreach(node_it, reader->regex_restrict)
+        {
             exp_it = node_it->data;
-            cJSON * restrict_object = cJSON_CreateObject();
+            cJSON* restrict_object = cJSON_CreateObject();
 
             cJSON_AddStringToObject(restrict_object, "value", w_expression_get_regex_pattern(exp_it));
             cJSON_AddStringToObject(restrict_object, "type", w_expression_get_regex_type(exp_it));
@@ -243,16 +282,18 @@ void _getLocalfilesListJSON(logreader* reader, cJSON* array, const char *gpath) 
             cJSON_AddItemToArray(restrict_array, restrict_object);
         }
 
-        if (cJSON_GetArraySize(restrict_array) > 0) {
+        if (cJSON_GetArraySize(restrict_array) > 0)
+        {
             cJSON_AddItemToObject(file, "restrict", restrict_array);
-        } else {
+        }
+        else
+        {
             cJSON_free(restrict_array);
         }
     }
 
     cJSON_AddItemToArray(array, file);
 }
-
 
 cJSON *getLocalfileConfig(void) {
 
