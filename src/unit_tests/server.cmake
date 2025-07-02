@@ -13,7 +13,6 @@ link_libraries(-fsanitize=address -fsanitize=undefined)
 link_directories("${SRC_FOLDER}/syscheckd/build/lib/")
 set(TEST_DEPS ${WAZUHLIB} ${WAZUHEXT} -lpthread -ldl -lfimebpf -lcmocka -fprofile-arcs -ftest-coverage)
 
-add_subdirectory(analysisd)
 add_subdirectory(remoted)
 add_subdirectory(wazuh_db)
 add_subdirectory(os_auth)
