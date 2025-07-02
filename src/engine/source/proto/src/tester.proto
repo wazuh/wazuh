@@ -130,16 +130,15 @@ message TableGet_Response
 /***************************************************
  * Run a test
  *
- * Currently, the only test available is the test of a single event with a format in NDJSON:
- *  - First line: header
- *  - Next line: event (Only support one event)
+ * Currently, the only test available is the test of a single event with a format:
+ *  - queue:location:message
  * command: tester.run/post
  **************************************************/
 message RunPost_Request
 {
     string name = 1; // Name of the session.
     // Event to test
-    string ndjson_event = 2; // Event to test in NDJSON format
+    string event = 2; // Event to test
     // Configuration of test
     TraceLevel trace_level = 5;      // Level of traces
     repeated string asset_trace = 6; // Asset of which you only want to have details

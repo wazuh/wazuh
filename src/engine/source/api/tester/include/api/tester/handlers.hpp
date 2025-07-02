@@ -2,8 +2,8 @@
 #define _API_TESTER_HANDLERS_HPP
 
 #include <api/adapter/adapter.hpp>
-#include <api/event/ndJsonParser.hpp>
 #include <api/policy/ipolicy.hpp>
+#include <base/eventParser.hpp>
 #include <router/iapi.hpp>
 #include <store/istore.hpp>
 
@@ -21,7 +21,7 @@ adapter::RouteHandler tableGet(const std::shared_ptr<::router::ITesterAPI>& test
 // Use of session
 adapter::RouteHandler runPost(const std::shared_ptr<::router::ITesterAPI>& tester,
                               const std::shared_ptr<store::IStoreReader>& store,
-                              const event::protocol::ProtocolHandler& protocolHandler);
+                              const base::eventParsers::ProtocolHandler& protocolHandler);
 
 inline void registerHandlers(const std::shared_ptr<::router::ITesterAPI>& tester,
                              const std::shared_ptr<store::IStoreReader>& store,
@@ -35,9 +35,9 @@ inline void registerHandlers(const std::shared_ptr<::router::ITesterAPI>& tester
 
     server->addRoute(httpsrv::Method::POST, "/tester/table/get", tableGet(tester, policy));
 
-    // Add ndjson parser with forceSubheader set to false
+    // Add Legacy Event parser
     server->addRoute(
-        httpsrv::Method::POST, "/tester/run/post", runPost(tester, store, event::protocol::getNDJsonParser()));
+        httpsrv::Method::POST, "/tester/run/post", runPost(tester, store, base::eventParsers::parseLegacyEvent));
 }
 
 } // namespace api::tester::handlers

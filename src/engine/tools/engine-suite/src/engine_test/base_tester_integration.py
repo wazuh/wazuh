@@ -9,7 +9,12 @@ except ImportError:
 
 from google.protobuf.json_format import MessageToDict
 
-
+from engine_test.event_splitters.base_splitter import SplitterEvent
+from engine_test.event_splitters.single_line import SingleLineSplitter
+from engine_test.event_splitters.multi_line import MultilineSplitter
+from engine_test.event_splitters.dynamic_multi_line import DynamicMultilineSplitter
+from engine_test.event_splitters.eventchannel import EventChannelSplitter
+from engine_test.conf.integration import CollectModes
 from engine_test.event_splitters.base_splitter import SplitterEvent
 
 from engine_test.conf.integration import IntegrationConf
@@ -107,6 +112,24 @@ class BaseIntegrationTester(ABC):
                         f.write(f"{event}\n")
         except Exception as ex:
             print("Failed to register the output file. Error: {}".format(ex))
+
+    def get_splitter(self, iconf : IntegrationConf) -> SplitterEvent:
+        '''
+        Get the parser according to the integration configuration
+        '''
+        try:
+            if iconf.collect_mode == CollectModes.SINGLE_LINE:
+                return SingleLineSplitter()
+            elif iconf.collect_mode == CollectModes.MULTI_LINE:
+                return MultilineSplitter(iconf.lines)
+            elif iconf.collect_mode == CollectModes.DYNAMIC_MULTI_LINE:
+                return DynamicMultilineSplitter()
+            elif iconf.collect_mode == CollectModes.WINDOWS_EVENTCHANNEL:
+                return EventChannelSplitter()
+            else:
+                raise Exception(f"Invalid collect mode: {iconf.collect_mode}")
+        except Exception as ex:
+            print("An error occurred while trying to obtain the integration collect mode. Error: {}".format(ex))
 
     @abstractmethod
     def run(self):
