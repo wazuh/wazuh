@@ -106,7 +106,7 @@ public:
         auto groupName = data->groupName();
         if (groupName.empty())
         {
-            throw std::runtime_error("GroupElement::build: Group name is empty.");
+            throw std::runtime_error("GroupElement::deleteElement: Group name is empty.");
         }
 
         NoDataHarvester element;

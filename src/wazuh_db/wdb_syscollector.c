@@ -1307,7 +1307,7 @@ int wdb_groups_insert(wdb_t * wdb, const char * scan_id, const char * scan_time,
                       const char * group_users, const char * checksum, const bool replace){
     sqlite3_stmt *stmt = NULL;
 
-    if (NULL == group_name){
+    if (NULL == group_name || strlen(group_name) == 0){
         return OS_INVALID;
     }
 

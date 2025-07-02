@@ -9,17 +9,6 @@
  * Foundation.
  */
 
-/*
- * Wazuh inventory harvester
- * Copyright (C) 2015, Wazuh Inc.
- * June 16, 2025.
- *
- * This program is free software; you can redistribute it
- * and/or modify it under the terms of the GNU General Public
- * License (version 2) as published by the FSF - Free Software
- * Foundation.
- */
-
 #ifndef _WCS_GROUP_HPP
 #define _WCS_GROUP_HPP
 

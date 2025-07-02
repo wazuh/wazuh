@@ -217,7 +217,7 @@ namespace Utils
 
         output << std::put_time(localTime, "%FT%T");
 
-        if (timestamp - static_cast<int>(timestamp) == 0)
+        if (std::abs(timestamp - static_cast<int>(timestamp)) < 1e-9)
         {
             // Get milliseconds from the current time
             auto milliseconds =
