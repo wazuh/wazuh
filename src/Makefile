@@ -101,7 +101,6 @@ EXTERNAL_POPT=external/popt/
 EXTERNAL_LIBBPF=external/libbpf-bootstrap/
 endif
 # XXX Becareful NO EXTRA Spaces here
-PRELUDE_CONFIG?=libprelude-config
 WAZUH_GROUP?=wazuh
 WAZUH_USER?=wazuh
 SHARED=so
@@ -119,7 +118,6 @@ VULNERABILITY_SCANNER=wazuh_modules/vulnerability_scanner/
 INVENTORY_HARVESTER=wazuh_modules/inventory_harvester/
 SYSINFO=data_provider/
 SYSCHECK=syscheckd/
-USE_PRELUDE?=no
 USE_ZEROMQ?=no
 USE_INOTIFY=no
 USE_BIG_ENDIAN=no
@@ -549,13 +547,6 @@ ifneq (,$(filter ${USE_BIG_ENDIAN},YES yes y Y 1))
 	DEFINES+=-DOS_BIG_ENDIAN
 endif
 
-ifneq (,$(filter ${USE_PRELUDE},YES auto yes y Y 1))
-	DEFINES+=-DPRELUDE_OUTPUT_ENABLED
-	OSSEC_LIBS+=-lprelude
-	OSSEC_LDFLAGS+=$(shell sh -c '${PRELUDE_CONFIG} --pthread-cflags')
-	OSSEC_LIBS+=$(shell sh -c '${PRELUDE_CONFIG} --libs')
-endif # USE_PRELUDE
-
 ifneq (,$(filter ${USE_ZEROMQ},YES auto yes y Y 1))
 	DEFINES+=-DZEROMQ_OUTPUT_ENABLED
 	OSSEC_LIBS+=-lzmq -lczmq
@@ -629,7 +620,6 @@ help: failtarget
 	@echo "   make RESOURCES_URL           						Set the Wazuh resources URL"
 	@echo "   make EXTERNAL_SRC_ONLY=yes   						Combined with 'deps', it downloads only the external source code to be compiled as part of Wazuh building."
 	@echo "   make USE_ZEROMQ=yes          						Build with zeromq support. Allowed values are auto, 1, yes, YES, y and Y, otherwise, the flag is ignored"
-	@echo "   make USE_PRELUDE=yes         						Build with prelude support. Allowed values are auto, 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make USE_INOTIFY=yes         						Build with inotify support. Allowed values are auto, 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make USE_BIG_ENDIAN=yes      						Build with big endian support. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make USE_SELINUX=yes         						Build with SELinux policies. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
@@ -671,7 +661,6 @@ settings:
 	@echo "    WAZUH_USER:         ${WAZUH_USER}"
 	@echo "USE settings:"
 	@echo "    USE_ZEROMQ:         ${USE_ZEROMQ}"
-	@echo "    USE_PRELUDE:        ${USE_PRELUDE}"
 	@echo "    USE_INOTIFY:        ${USE_INOTIFY}"
 	@echo "    USE_BIG_ENDIAN:     ${USE_BIG_ENDIAN}"
 	@echo "    USE_SELINUX:        ${USE_SELINUX}"

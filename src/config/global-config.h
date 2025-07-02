@@ -50,15 +50,6 @@ typedef struct __Config {
     long agents_disconnection_time;
     long agents_disconnection_alert_time;
 
-    /* Prelude support */
-    u_int8_t prelude;
-    /* which min. level the alert must be sent to prelude */
-    u_int8_t prelude_log_level;
-    /* prelude profile name */
-    char *prelude_profile;
-
-    /* GeoIP DB */
-    char *geoipdb_file;
 
     /* ZEROMQ Export */
     u_int8_t zeromq_output;
