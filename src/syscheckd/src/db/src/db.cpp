@@ -162,7 +162,7 @@ FIMDBErrorCode fim_db_init(int storage,
                         json["data"]["attributes"].erase("options");
                         json["data"]["attributes"].erase("path");
                         json["data"]["attributes"].erase("scanned");
-                        auto& obj = json.at("data").at("attributes").at("attributes");
+                        auto& obj = json.at("data").at("attributes");
 
                         if (obj.contains("inode") && !obj["inode"].is_string())
                         {

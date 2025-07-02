@@ -39,6 +39,7 @@ extern void mock_assert(const int result, const char* const expression,
 
 // Global variables
 static int _base_line = 0;
+#define JS_SAFE_INTEGER_LIMIT ((double)(1ULL << 53))
 
 static const char *FIM_EVENT_TYPE_ARRAY[] = {
     "added",
@@ -138,7 +139,7 @@ cJSON * fim_calculate_dbsync_difference(const fim_file_data *data,
             if (cJSON_IsString(aux)) {
                 strncpy(inode_str, cJSON_GetStringValue(aux), sizeof(inode_str) - 1);
                 inode_str[sizeof(inode_str) - 1] = '\0';
-            } else if (cJSON_IsNumber(aux)) {
+            } else if (cJSON_IsNumber(aux) && aux->valuedouble > JS_SAFE_INTEGER_LIMIT) {
                 snprintf(inode_str, sizeof(inode_str), "%llu", (uint64_t)aux->valuedouble);
                 mwarn(FIM_WARN_VALUEDOUBLE_CAST);
             }
@@ -283,7 +284,7 @@ static void dbsync_attributes_json(const cJSON *dbsync_event, const directory_t 
 
             if (cJSON_IsString(aux)) {
                 cJSON_AddStringToObject(attributes, "inode", cJSON_GetStringValue(aux));
-            } else if (cJSON_IsNumber(aux)) {
+            } else if (cJSON_IsNumber(aux) && aux->valuedouble > JS_SAFE_INTEGER_LIMIT) {
                 snprintf(inode_str, sizeof(inode_str), "%llu", (uint64_t)aux->valuedouble);
                 cJSON_AddStringToObject(attributes, "inode", inode_str);
                 mwarn(FIM_WARN_VALUEDOUBLE_CAST);
