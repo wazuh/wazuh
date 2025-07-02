@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 
 ### Manager
 
-### Added
+#### Added
 
 - Added Analysisd ability to do a hot ruleset reload. ([#29458](https://github.com/wazuh/wazuh/pull/29458))
 - Added support for hot ruleset reload via API. ([#29954](https://github.com/wazuh/wazuh/pull/29954))
