@@ -26,6 +26,7 @@ option(ENGINE_BUILD_BENCHMARK "Generate benchmarks" ON)
 option(ENGINE_BUILD_DOCUMENTATION "Generate doxygen documentation" ON)
 option(ENGINE_ASSERT_WITH_SYMBOLS "Exports exe symbols to have asserts with full symbolicated functions" ON)
 option(ENGINE_GENERATE_PROTO "Generate protobuf code" OFF)
+option(ENGINE_ENABLE_REVERSE_ORDER_DECODERS_FEATURE "Enable reverse order decoders" OFF)
 
 # TODO put this in a better place together with other global options like warnings
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")

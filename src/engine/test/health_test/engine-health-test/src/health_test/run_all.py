@@ -40,6 +40,7 @@ DYNAMIC_TESTS = [
     (validate_event_indexing.run, {"target": "decoder", "skip": SKIP_INTEGRATION}),
     (validate_custom_field_indexing.run, {"target": "decoder", "skip": SKIP_INTEGRATION}),
     (core.run, {"target": "decoder", "skip": SKIP_INTEGRATION}),
+    (core.run, {"target": "decoder", "reverse_order_decoders": True, "skip": SKIP_INTEGRATION}),
     (coverage_validate.run, {"target": "decoder", "skip": SKIP_INTEGRATION, "output_file": "/tmp/decoder_coverage_report.txt"}),
     (load_rules.run, {}),
     (validate_successful_assets.run, {"target": "rule", "skip": SKIP_INTEGRATION}),
