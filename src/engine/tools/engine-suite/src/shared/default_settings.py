@@ -13,7 +13,7 @@ class Constants:
         DEFAULT_API_TIMEOUT (int): Default timeout (in microseconds) configured on the server
                                    for API requests.
     """
-    SOCKET_PATH: str = '/run/wazuh-server/engine-api.socket'
+    SOCKET_PATH: str = '/var/ossec/queue/sockets/engine-api'
     DEFAULT_POLICY: str = 'policy/wazuh/0'
     DEFAULT_SESSION: str = 'default'
     DEFAULT_NS: str = 'user'

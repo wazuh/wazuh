@@ -7,6 +7,7 @@
 
 namespace base::eventParsers
 {
+using ProtocolHandler = std::function<base::Event(std::string_view)>;
 // TODO: Add to the schema
 constexpr char EVENT_QUEUE_ID[] {"/wazuh/queue"};
 constexpr char EVENT_LOCATION_ID[] {"/wazuh/location"};

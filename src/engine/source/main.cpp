@@ -9,7 +9,6 @@
 
 #include <api/archiver/handlers.hpp>
 #include <api/catalog/catalog.hpp>
-#include <api/event/ndJsonParser.hpp>
 #include <api/handlers.hpp>
 #include <api/policy/policy.hpp>
 #include <archiver/archiver.hpp>

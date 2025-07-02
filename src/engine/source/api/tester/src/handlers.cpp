@@ -366,7 +366,7 @@ adapter::RouteHandler tableGet(const std::shared_ptr<::router::ITesterAPI>& test
 
 adapter::RouteHandler runPost(const std::shared_ptr<::router::ITesterAPI>& tester,
                               const std::shared_ptr<store::IStoreReader>& store,
-                              const event::protocol::ProtocolHandler& protocolHandler)
+                              const base::eventParsers::ProtocolHandler& protocolHandler)
 {
     return [wTester = std::weak_ptr<::router::ITesterAPI>(tester),
             wStore = std::weak_ptr<store::IStoreReader>(store),
@@ -426,30 +426,22 @@ adapter::RouteHandler runPost(const std::shared_ptr<::router::ITesterAPI>& teste
         }
 
         // Create The event to test
-        auto ndJsonEvents = protoReq.ndjson_event();
-        std::queue<base::Event> events;
+        base::Event event;
         try
         {
-            events = protocolHandler(std::move(ndJsonEvents));
+            event = protocolHandler(protoReq.event());
         }
         catch (const std::exception& e)
         {
-            res = adapter::userErrorResponse<ResponseType>(fmt::format("Error parsing events: {}", e.what()));
-            return;
-        }
-
-        if (events.size() != 1)
-        {
-            res = adapter::userErrorResponse<ResponseType>(
-                fmt::format("Can only test one event at a time, but got {}", events.size()));
+            res = adapter::userErrorResponse<ResponseType>(fmt::format("Error parsing event: {}", e.what()));
             return;
         }
 
         // Run the test
         auto opt = ::router::test::Options(traceLevel, assetToTrace, protoReq.name());
 
-        auto futureResult = tester->ingestTest(std::move(events.front()), opt);
-        events.pop();
+        auto futureResult = tester->ingestTest(std::move(event), opt);
+        event = nullptr;
 
         futureResult.wait_for(std::chrono::seconds(5));
         auto response = futureResult.get();
