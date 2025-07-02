@@ -88,6 +88,34 @@ HANDLE utf8_CreateFile(const char *utf8_path, DWORD access, DWORD share, LPSECUR
     return h;
 }
 
+BOOL utf8_ReplaceFile(const char* old_name, const char* new_name, const char* backup_name, DWORD flags) {
+    wchar_t *wold_name = utf8_to_wide(old_name);
+    wchar_t *wnew_name = utf8_to_wide(new_name);
+    wchar_t *wbackup_name = utf8_to_wide(backup_name);
+    if (!wold_name || !wnew_name) {
+        return FALSE;
+    }
+
+    BOOL ok = ReplaceFileW(wold_name, wnew_name, wbackup_name, flags, NULL, NULL);
+
+    os_free(wold_name);
+    os_free(wnew_name);
+    os_free(wbackup_name);
+    return ok;
+}
+
+BOOL utf8_DeleteFile(const char* utf8_path) {
+    wchar_t *wpath = utf8_to_wide(utf8_path);
+    if (!wpath) {
+        return FALSE;
+    }
+
+    BOOL ok = DeleteFileW(wpath);
+
+    os_free(wpath);
+    return ok;
+}
+
 DWORD utf8_GetFileAttributes(const char *utf8_path) {
     wchar_t *wpath = utf8_to_wide(utf8_path);
     if (!wpath) {

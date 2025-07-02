@@ -1390,12 +1390,12 @@ int rename_ex(const char *source, const char *destination)
         file_created = TRUE;
     }
 
-    if (!ReplaceFile(destination, source, NULL, 0, NULL, NULL)) {
+    if (!utf8_ReplaceFile(destination, source, NULL, 0)) {
         mferror("Could not move (%s) to (%s) which returned (%lu)", source, destination, GetLastError());
 
         if (file_created) {
             // Delete the destination file as it's been created by this function.
-            DeleteFile(destination);
+            utf8_DeleteFile(destination);
         }
 
         return (-1);

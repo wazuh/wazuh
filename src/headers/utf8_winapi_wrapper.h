@@ -40,6 +40,12 @@ HANDLE utf8_CreateFile(const char* utf8_path,
                        DWORD flags,
                        HANDLE h_template);
 
+/// Replace a file with utf8 path
+BOOL utf8_ReplaceFile(const char* old_name, const char* new_name, const char* backup_name, DWORD flags);
+
+/// Delete a file with utf8 path
+BOOL utf8_DeleteFile(const char* utf8_path);
+
 /// Get file attributes
 DWORD utf8_GetFileAttributes(const char* utf8_path);
 
