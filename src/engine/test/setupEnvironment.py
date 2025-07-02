@@ -27,7 +27,7 @@ def setup_engine(engine_src_dir, environment_dir):
 
 
     # Copy engine binary
-    engine_bin = Path(engine_src_dir) / 'build' / 'main'
+    engine_bin = Path(engine_src_dir) / '..' / 'build' / 'engine' / 'wazuh-engine'
     engine_bin_dest = Path(environment_dir) / 'wazuh-engine'
     print(f"Copying from {engine_bin} to {engine_bin_dest}")
     # If source not exists, show error message

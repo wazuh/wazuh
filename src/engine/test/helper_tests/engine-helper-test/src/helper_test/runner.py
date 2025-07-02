@@ -22,7 +22,8 @@ POLICY_NAME = "policy/wazuh/0"
 ASSET_NAME = "decoder/test/0"
 SESSION_NAME = "test"
 NAMESPACE = "user"
-
+QUEUE = 1
+LOCATION = "[any_id] (any_name) ->any_module"
 
 def configure(subparsers):
     """
@@ -528,25 +529,7 @@ def build_run_post_request(input_data: dict, level: api_tester.TraceLevel) -> ap
     request.name = SESSION_NAME
     request.trace_level = level
 
-    test_event_header : dict = {
-        "agent": {
-            "id": "000",
-            "name": "test",
-        }
-    }
-
-    test_event_subheader : dict = {
-        "collector": "file",
-        "module": "logcollector"
-    }
-
-    test_event : dict = {
-        "event": {
-            "original": json.dumps(input_data, separators=(',', ':'))
-        }
-    }
-
-    request.ndjson_event = json.dumps(test_event_header) + "\n" + json.dumps(test_event_subheader) + "\n" + json.dumps(test_event)
+    request.event = f"{QUEUE}:{LOCATION}:{json.dumps(input_data, separators=(',', ':'))}"
 
     request.namespaces.extend([NAMESPACE])
     return request
