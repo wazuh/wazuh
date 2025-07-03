@@ -120,7 +120,7 @@ void test_buffer_append(void **state)
     agt->buflength = 5;
     i = 0;
     j = 0;
-    char var[]="Testing";
+    char var[] = "Testing";
 
     expect_function_call(__wrap_getDefine_Int);
     will_return(__wrap_getDefine_Int, 90);
@@ -162,7 +162,7 @@ void test_w_agentd_buffer_resize_shrink(void **state)
     agt->buflength = 5;
     i = 0;
     j = 0;
-    char var[]="Testing";
+    char var[] = "Testing";
 
     expect_function_call(__wrap_getDefine_Int);
     will_return(__wrap_getDefine_Int, 90);
@@ -173,7 +173,7 @@ void test_w_agentd_buffer_resize_shrink(void **state)
 
     buffer_init();
 
-    for ( int k=0; k < agt->buflength; k++) {
+    for (int k = 0; k < agt->buflength; k++) {
         // Loock w_agentd_buffer_resize
         expect_function_call(__wrap_pthread_mutex_lock);
         // Look and unlock w_agentd_get_buffer_lenght
@@ -225,7 +225,7 @@ void test_w_agentd_buffer_resize_grow_continue(void **state)
     agt->buflength = 2;
     i = 0;
     j = 0;
-    char var[]="Testing";
+    char var[] = "Testing";
 
     expect_function_call(__wrap_getDefine_Int);
     will_return(__wrap_getDefine_Int, 90);
@@ -236,7 +236,7 @@ void test_w_agentd_buffer_resize_grow_continue(void **state)
 
     buffer_init();
 
-    for ( int k=0; k < agt->buflength; k++) {
+    for (int k = 0; k < agt->buflength; k++) {
         // Loock w_agentd_buffer_resize
         expect_function_call(__wrap_pthread_mutex_lock);
         // Look and unlock w_agentd_get_buffer_lenght
@@ -283,7 +283,7 @@ void test_w_agentd_buffer_resize_grow_two_parts(void **state)
     agt->buflength = 2;
     i = 1;
     j = 1;
-    char var[]="Testing";
+    char var[] = "Testing";
 
     expect_function_call(__wrap_getDefine_Int);
     will_return(__wrap_getDefine_Int, 90);
@@ -294,7 +294,7 @@ void test_w_agentd_buffer_resize_grow_two_parts(void **state)
 
     buffer_init();
 
-    for ( int k=0; k < agt->buflength; k++) {
+    for (int k = 0; k < agt->buflength; k++) {
         // Loock w_agentd_buffer_resize
         expect_function_call(__wrap_pthread_mutex_lock);
         // Look and unlock w_agentd_get_buffer_lenght
@@ -341,7 +341,7 @@ void test_w_agentd_buffer_free(void **state)
     agt->buflength = 5;
     i = 0;
     j = 0;
-    char var[]="Testing";
+    char var[] = "Testing";
 
     expect_function_call(__wrap_getDefine_Int);
     will_return(__wrap_getDefine_Int, 90);
@@ -352,7 +352,7 @@ void test_w_agentd_buffer_free(void **state)
 
     buffer_init();
 
-    for ( int k=0; k < agt->buflength; k++) {
+    for (int k = 0; k < agt->buflength; k++) {
         // Loock w_agentd_buffer_resize
         expect_function_call(__wrap_pthread_mutex_lock);
         // Look and unlock w_agentd_get_buffer_lenght
