@@ -21,9 +21,9 @@
 
 static const char AG_IN_RCON[] = "wazuh: Invalid remote configuration";
 
-void * restartAgent() {
+void * reloadAgent() {
 
-	char req[] = "restart";
+	char req[] = "reload";
 
 	#ifndef WIN32
 
@@ -38,11 +38,11 @@ void * restartAgent() {
 	if (sock = OS_ConnectUnixDomain(sockname, SOCK_STREAM, OS_MAXSTR), sock < 0) {
 		switch (errno) {
 		case ECONNREFUSED:
-			merror("Could not auto-restart agent. Is Active Response enabled?");
+			merror("Could not auto-reload agent. Is Active Response enabled?");
 			break;
 
 		default:
-			merror("At restartAgent(): Could not connect to socket '%s': %s (%d).", sockname, strerror(errno), errno);
+			merror("At reloadAgent(): Could not connect to socket '%s': %s (%d).", sockname, strerror(errno), errno);
 		}
 	} else {
 		if (OS_SendSecureTCP(sock, length, req)) {
