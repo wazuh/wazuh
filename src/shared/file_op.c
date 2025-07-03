@@ -3318,7 +3318,7 @@ float DirSize(const char *path) {
     wchar_t wsPath[2048];
 
     // Specify a file mask. *.* = We want everything!
-    swprintf(wsPath, sizeof(wsPath) / sizeof(wsPath[0]), L"%s\\*.*", wPathInput);
+    swprintf(wsPath, sizeof(wsPath) / sizeof(wsPath[0]), L"%ls\\*.*", wPathInput);
 
     if ((hFind = FindFirstFileW(wsPath, &fdFile)) == INVALID_HANDLE_VALUE) {
         merror(FILE_ERROR, path);
@@ -3330,7 +3330,7 @@ float DirSize(const char *path) {
         if (wcscmp(fdFile.cFileName, L".") != 0 && wcscmp(fdFile.cFileName, L"..") != 0) {
             // Build up our file path using the passed in
             //  [path] and the file/foldername we just found:
-            swprintf(wsPath, sizeof(wsPath) / sizeof(wsPath[0]), L"%s\\%s", wPathInput, fdFile.cFileName);
+            swprintf(wsPath, sizeof(wsPath) / sizeof(wsPath[0]), L"%ls\\%ls", wPathInput, fdFile.cFileName);
 
             char *utf8_file = wide_to_utf8(wsPath);
             if (!utf8_file) {

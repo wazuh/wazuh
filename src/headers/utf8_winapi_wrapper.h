@@ -28,6 +28,9 @@ wchar_t* utf8_to_wide(const char* input);
 /// Convert wide string to utf8
 char *wide_to_utf8(const wchar_t *input);
 
+/// Convert ansi string to utf8
+char *ansi_to_utf8(const char *ansi_path);
+
 /// Stat a file with utf8 path
 int utf8_stat64(const char * pathname, struct _stat64 * statbuf);
 
