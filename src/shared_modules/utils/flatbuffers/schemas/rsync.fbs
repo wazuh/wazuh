@@ -176,11 +176,10 @@ table syscollector_users {
     user_last_login:long = null;
     user_auth_failed_count:long = null;
     user_auth_failed_timestamp:double = null;
-    user_password_last_set_time:double = null;
     user_password_expiration_date:int = null;
     user_password_hash_algorithm:string;
     user_password_inactive_days:int = null;
-    user_password_last_change:int = null;
+    user_password_last_change:double = null;
     user_password_max_days_between_changes:int = null;
     user_password_min_days_between_changes:int = null;
     user_password_status:string;

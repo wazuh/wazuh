@@ -33,7 +33,6 @@
             "user_password_hash_algorithm": "hashAlgorithm",
             "user_password_inactive_days": -1,
             "user_password_last_change": -1,
-            "user_password_last_set_time": -1,
             "user_password_max_days_between_changes": -1,
             "user_password_min_days_between_changes": -1,
             "user_password_status": "active",

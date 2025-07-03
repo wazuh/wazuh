@@ -822,26 +822,26 @@ public:
         return "";
     }
 
-    double userPasswordLastSetTimeRaw() const
+    double userPasswordLastChangeRaw() const
     {
         if (m_type == VariantType::Delta)
         {
             if (m_delta->data_as_dbsync_users() &&
-                std::optional<double>(m_delta->data_as_dbsync_users()->user_password_last_set_time()).has_value())
+                std::optional<double>(m_delta->data_as_dbsync_users()->user_password_last_change()).has_value())
             {
-                return std::optional<double>(m_delta->data_as_dbsync_users()->user_password_last_set_time()).value();
+                return std::optional<double>(m_delta->data_as_dbsync_users()->user_password_last_change()).value();
             }
         }
         else if (m_type == VariantType::SyncMsg)
         {
             if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_users() &&
                 std::optional<double>(
-                    m_syncMsg->data_as_state()->attributes_as_syscollector_users()->user_password_last_set_time())
+                    m_syncMsg->data_as_state()->attributes_as_syscollector_users()->user_password_last_change())
                     .has_value())
             {
                 return std::optional<double>(m_syncMsg->data_as_state()
                                                  ->attributes_as_syscollector_users()
-                                                 ->user_password_last_set_time())
+                                                 ->user_password_last_change())
                     .value();
             }
         }
@@ -852,16 +852,16 @@ public:
         return 0.0;
     }
 
-    std::string_view userPasswordLastSetTime()
+    std::string_view userPasswordLastChange()
     {
-        const auto passwordLastSetTimeRaw = userPasswordLastSetTimeRaw();
+        const auto passwordLastChangeRaw = userPasswordLastChangeRaw();
         // For dates, valid values are > 0
-        if (passwordLastSetTimeRaw <= 0.0)
+        if (passwordLastChangeRaw <= 0.0)
         {
             return "";
         }
-        m_userPasswordLastSetTimeISO8601 = Utils::rawTimestampToISO8601(passwordLastSetTimeRaw);
-        return m_userPasswordLastSetTimeISO8601;
+        m_userPasswordLastChangeISO8601 = Utils::rawTimestampToISO8601(passwordLastChangeRaw);
+        return m_userPasswordLastChangeISO8601;
     }
 
     int userPasswordExpirationDateRaw() const
@@ -3443,7 +3443,7 @@ private:
     std::string m_installTimeISO8601;
     std::string m_portLocalIpSanitized;
     std::string m_portRemoteIpSanitized;
-    std::string m_userPasswordLastSetTimeISO8601;
+    std::string m_userPasswordLastChangeISO8601;
     std::string m_userPasswordExpirationDateISO8601;
     std::string m_userCreatedISO8601;
     std::string m_userLastLoginISO8601;

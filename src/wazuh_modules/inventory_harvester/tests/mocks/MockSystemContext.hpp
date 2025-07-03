@@ -160,12 +160,11 @@ public:
     MOCK_METHOD(bool, userIsHidden, (), (const));
     MOCK_METHOD(bool, userIsRemote, (), (const));
     MOCK_METHOD(std::string_view, userPasswordHashAlgorithm, (), (const));
-    MOCK_METHOD(int, userPasswordLastChange, (), (const));
     MOCK_METHOD(int, userPasswordMaxDays, (), (const));
     MOCK_METHOD(int, userPasswordMinDays, (), (const));
     MOCK_METHOD(int, userPasswordWarningDays, (), (const));
     MOCK_METHOD(std::string_view, userPasswordStatus, (), (const));
-    MOCK_METHOD(std::string_view, userPasswordLastSetTime, (), (const));
+    MOCK_METHOD(std::string_view, userPasswordLastChange, (), (const));
     MOCK_METHOD(std::string_view, userPasswordExpirationDate, (), (const));
     MOCK_METHOD(int, userPasswordInactiveDays, (), (const));
     MOCK_METHOD(std::string_view, userCreated, (), (const));

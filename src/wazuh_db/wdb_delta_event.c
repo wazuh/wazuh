@@ -34,13 +34,12 @@ const char * USERINFO_FIELDS[] = {
     "user_last_login",
     "user_auth_failed_count",
     "user_auth_failed_timestamp",
-    "user_password_last_set_time",
+    "user_password_last_change",
     "user_password_expiration_date",
     "user_password_inactive_days",
-    "user_password_last_change",
     "user_password_max_days_between_changes",
     "user_password_min_days_between_changes",
-    "user_password_warning_days_before_expiration", 
+    "user_password_warning_days_before_expiration",
     "process_pid"
 };
 
@@ -88,8 +87,6 @@ const char * USERINFO_FIELDS[] = {
     !strncmp(field_name, USERINFO_FIELDS[11], strlen(USERINFO_FIELDS[11])) ? \
         GE(field_value, 0) : \
     !strncmp(field_name, USERINFO_FIELDS[12], strlen(USERINFO_FIELDS[12])) ? \
-        GE(field_value, 0) : \
-    !strncmp(field_name, USERINFO_FIELDS[13], strlen(USERINFO_FIELDS[13])) ? \
         GE(field_value, 0) : true \
 )
 

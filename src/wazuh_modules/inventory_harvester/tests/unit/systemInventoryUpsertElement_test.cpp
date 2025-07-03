@@ -693,12 +693,11 @@ TEST_F(SystemInventoryUpsertElement, validNegativeUserIdGroupId_Users)
     EXPECT_CALL(*context, userIsHidden()).WillOnce(testing::Return(false));
     EXPECT_CALL(*context, userIsRemote()).WillOnce(testing::Return(true));
     EXPECT_CALL(*context, userPasswordHashAlgorithm()).WillOnce(testing::Return("userHash"));
-    EXPECT_CALL(*context, userPasswordLastChange()).WillOnce(testing::Return(19842));
     EXPECT_CALL(*context, userPasswordMaxDays()).WillOnce(testing::Return(99999));
     EXPECT_CALL(*context, userPasswordMinDays()).WillOnce(testing::Return(0));
     EXPECT_CALL(*context, userPasswordWarningDays()).WillOnce(testing::Return(7));
     EXPECT_CALL(*context, userPasswordStatus()).WillOnce(testing::Return("userPasswordStatus"));
-    EXPECT_CALL(*context, userPasswordLastSetTime()).WillOnce(testing::Return("2024-04-25T10:15:05.707Z"));
+    EXPECT_CALL(*context, userPasswordLastChange()).WillOnce(testing::Return("2024-04-25T10:15:05.707Z"));
     EXPECT_CALL(*context, userPasswordExpirationDate()).WillOnce(testing::Return("2024-04-25T10:15:05.000Z"));
     EXPECT_CALL(*context, userPasswordInactiveDays()).WillOnce(testing::Return(10));
     EXPECT_CALL(*context, userCreated()).WillOnce(testing::Return("2024-04-25T10:15:05.707Z"));
@@ -718,7 +717,7 @@ TEST_F(SystemInventoryUpsertElement, validNegativeUserIdGroupId_Users)
 
     EXPECT_EQ(
         context->m_serializedElement,
-        R"({"id":"001_userName","operation":"INSERTED","data":{"host":{"ip":["192.168.1.2"]},"login":{"status":true,"type":"user","tty":"pts/1"},"process":{"pid":2187},"user":{"auth_failures":{"count":3,"timestamp":"2024-04-25T10:15:05.707Z"},"created":"2024-04-25T10:15:05.707Z","full_name":"userFullName","name":"userName","home":"/home/user","shell":"/bin/bash","type":"userType","group":{"id_signed":-1001},"groups":["staff","wheel"],"last_login":"2024-04-25T10:15:05.000Z","uid_signed":-1001,"uuid":"userUuid","is_hidden":false,"is_remote":true,"password":{"status":"userPasswordStatus","hash_algorithm":"userHash","last_change":19842,"min_days_between_changes":0,"max_days_between_changes":99999,"warning_days_before_expiration":7,"inactive_days":10,"expiration_date":"2024-04-25T10:15:05.000Z","last_set_time":"2024-04-25T10:15:05.707Z"},"roles":["sudo"]},"agent":{"id":"001","name":"agentName","host":{"ip":"192.168.0.1"},"version":"agentVersion"},"wazuh":{"cluster":{"name":"clusterName"},"schema":{"version":"1.0"}}}})");
+        R"({"id":"001_userName","operation":"INSERTED","data":{"host":{"ip":["192.168.1.2"]},"login":{"status":true,"type":"user","tty":"pts/1"},"process":{"pid":2187},"user":{"auth_failures":{"count":3,"timestamp":"2024-04-25T10:15:05.707Z"},"created":"2024-04-25T10:15:05.707Z","full_name":"userFullName","name":"userName","home":"/home/user","shell":"/bin/bash","type":"userType","group":{"id_signed":-1001},"groups":["staff","wheel"],"last_login":"2024-04-25T10:15:05.000Z","uid_signed":-1001,"uuid":"userUuid","is_hidden":false,"is_remote":true,"password":{"status":"userPasswordStatus","hash_algorithm":"userHash","min_days_between_changes":0,"max_days_between_changes":99999,"warning_days_before_expiration":7,"inactive_days":10,"expiration_date":"2024-04-25T10:15:05.000Z","last_change":"2024-04-25T10:15:05.707Z"},"roles":["sudo"]},"agent":{"id":"001","name":"agentName","host":{"ip":"192.168.0.1"},"version":"agentVersion"},"wazuh":{"cluster":{"name":"clusterName"},"schema":{"version":"1.0"}}}})");
 }
 
 TEST_F(SystemInventoryUpsertElement, validNegativeCounterValues_Users)
@@ -743,12 +742,11 @@ TEST_F(SystemInventoryUpsertElement, validNegativeCounterValues_Users)
     EXPECT_CALL(*context, userIsHidden()).WillOnce(testing::Return(false));
     EXPECT_CALL(*context, userIsRemote()).WillOnce(testing::Return(true));
     EXPECT_CALL(*context, userPasswordHashAlgorithm()).WillOnce(testing::Return("userHash"));
-    EXPECT_CALL(*context, userPasswordLastChange()).WillOnce(testing::Return(-1));
     EXPECT_CALL(*context, userPasswordMaxDays()).WillOnce(testing::Return(-1));
     EXPECT_CALL(*context, userPasswordMinDays()).WillOnce(testing::Return(-1));
     EXPECT_CALL(*context, userPasswordWarningDays()).WillOnce(testing::Return(-1));
     EXPECT_CALL(*context, userPasswordStatus()).WillOnce(testing::Return("userPasswordStatus"));
-    EXPECT_CALL(*context, userPasswordLastSetTime()).WillOnce(testing::Return("2024-04-25T10:15:05.707Z"));
+    EXPECT_CALL(*context, userPasswordLastChange()).WillOnce(testing::Return("2024-04-25T10:15:05.707Z"));
     EXPECT_CALL(*context, userPasswordExpirationDate()).WillOnce(testing::Return("2024-04-25T10:15:05.000Z"));
     EXPECT_CALL(*context, userPasswordInactiveDays()).WillOnce(testing::Return(-1));
     EXPECT_CALL(*context, userCreated()).WillOnce(testing::Return("2024-04-25T10:15:05.707Z"));
@@ -769,7 +767,7 @@ TEST_F(SystemInventoryUpsertElement, validNegativeCounterValues_Users)
     // Uses defined default values for invalid negative values.
     EXPECT_EQ(
         context->m_serializedElement,
-        R"({"id":"001_userName","operation":"INSERTED","data":{"host":{"ip":["192.168.1.2"]},"login":{"status":true,"type":"user","tty":"pts/1"},"user":{"auth_failures":{"timestamp":"2024-04-25T10:15:05.707Z"},"created":"2024-04-25T10:15:05.707Z","full_name":"userFullName","id":"1001","name":"userName","home":"/home/user","shell":"/bin/bash","type":"userType","group":{"id":1001,"id_signed":-1001},"groups":["staff","wheel"],"last_login":"2024-04-25T10:15:05.000Z","uid_signed":-1001,"uuid":"userUuid","is_hidden":false,"is_remote":true,"password":{"status":"userPasswordStatus","hash_algorithm":"userHash","expiration_date":"2024-04-25T10:15:05.000Z","last_set_time":"2024-04-25T10:15:05.707Z"},"roles":["sudo"]},"agent":{"id":"001","name":"agentName","host":{"ip":"192.168.0.1"},"version":"agentVersion"},"wazuh":{"cluster":{"name":"clusterName"},"schema":{"version":"1.0"}}}})");
+        R"({"id":"001_userName","operation":"INSERTED","data":{"host":{"ip":["192.168.1.2"]},"login":{"status":true,"type":"user","tty":"pts/1"},"user":{"auth_failures":{"timestamp":"2024-04-25T10:15:05.707Z"},"created":"2024-04-25T10:15:05.707Z","full_name":"userFullName","id":"1001","name":"userName","home":"/home/user","shell":"/bin/bash","type":"userType","group":{"id":1001,"id_signed":-1001},"groups":["staff","wheel"],"last_login":"2024-04-25T10:15:05.000Z","uid_signed":-1001,"uuid":"userUuid","is_hidden":false,"is_remote":true,"password":{"status":"userPasswordStatus","hash_algorithm":"userHash","expiration_date":"2024-04-25T10:15:05.000Z","last_change":"2024-04-25T10:15:05.707Z"},"roles":["sudo"]},"agent":{"id":"001","name":"agentName","host":{"ip":"192.168.0.1"},"version":"agentVersion"},"wazuh":{"cluster":{"name":"clusterName"},"schema":{"version":"1.0"}}}})");
 }
 
 TEST_F(SystemInventoryUpsertElement, validEmptyStrings_Users)
@@ -794,12 +792,11 @@ TEST_F(SystemInventoryUpsertElement, validEmptyStrings_Users)
     EXPECT_CALL(*context, userIsHidden()).WillOnce(testing::Return(false));
     EXPECT_CALL(*context, userIsRemote()).WillOnce(testing::Return(true));
     EXPECT_CALL(*context, userPasswordHashAlgorithm()).WillOnce(testing::Return(""));
-    EXPECT_CALL(*context, userPasswordLastChange()).WillOnce(testing::Return(19842));
     EXPECT_CALL(*context, userPasswordMaxDays()).WillOnce(testing::Return(99999));
     EXPECT_CALL(*context, userPasswordMinDays()).WillOnce(testing::Return(0));
     EXPECT_CALL(*context, userPasswordWarningDays()).WillOnce(testing::Return(7));
     EXPECT_CALL(*context, userPasswordStatus()).WillOnce(testing::Return(""));
-    EXPECT_CALL(*context, userPasswordLastSetTime()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, userPasswordLastChange()).WillOnce(testing::Return(""));
     EXPECT_CALL(*context, userPasswordExpirationDate()).WillOnce(testing::Return(""));
     EXPECT_CALL(*context, userPasswordInactiveDays()).WillOnce(testing::Return(10));
     EXPECT_CALL(*context, userCreated()).WillOnce(testing::Return(""));
@@ -819,7 +816,7 @@ TEST_F(SystemInventoryUpsertElement, validEmptyStrings_Users)
 
     EXPECT_EQ(
         context->m_serializedElement,
-        R"({"id":"001_userName","operation":"INSERTED","data":{"login":{"status":true},"process":{"pid":2187},"user":{"auth_failures":{"count":3},"id":"1001","name":"userName","group":{"id":1001,"id_signed":-1001},"uid_signed":-1001,"is_hidden":false,"is_remote":true,"password":{"last_change":19842,"min_days_between_changes":0,"max_days_between_changes":99999,"warning_days_before_expiration":7,"inactive_days":10}},"agent":{"id":"001","name":"agentName","host":{"ip":"192.168.0.1"},"version":"agentVersion"},"wazuh":{"cluster":{"name":"clusterName"},"schema":{"version":"1.0"}}}})");
+        R"({"id":"001_userName","operation":"INSERTED","data":{"login":{"status":true},"process":{"pid":2187},"user":{"auth_failures":{"count":3},"id":"1001","name":"userName","group":{"id":1001,"id_signed":-1001},"uid_signed":-1001,"is_hidden":false,"is_remote":true,"password":{"min_days_between_changes":0,"max_days_between_changes":99999,"warning_days_before_expiration":7,"inactive_days":10}},"agent":{"id":"001","name":"agentName","host":{"ip":"192.168.0.1"},"version":"agentVersion"},"wazuh":{"cluster":{"name":"clusterName"},"schema":{"version":"1.0"}}}})");
 }
 
 /*

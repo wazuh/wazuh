@@ -900,11 +900,10 @@ typedef struct {
     long long user_last_login;
     long long user_auth_failed_count;
     double user_auth_failed_timestamp;
-    double user_password_last_set_time;
+    double user_password_last_change;
     int user_password_expiration_date;
     const char *user_password_hash_algorithm;
     int user_password_inactive_days;
-    int user_password_last_change;
     int user_password_max_days_between_changes;
     int user_password_min_days_between_changes;
     const char *user_password_status;

@@ -130,11 +130,6 @@ public:
         element.data.user.auth_failures.timestamp = data->userAuthFailedTimestamp();
 
         element.data.user.password.status = data->userPasswordStatus();
-        auto userPasswordLastChange = data->userPasswordLastChange();
-        if (userPasswordLastChange >= 0)
-        {
-            element.data.user.password.last_change = userPasswordLastChange;
-        }
         element.data.user.password.expiration_date = data->userPasswordExpirationDate();
         element.data.user.password.hash_algorithm = data->userPasswordHashAlgorithm();
         auto userPasswordInactiveDays = data->userPasswordInactiveDays();
@@ -142,7 +137,7 @@ public:
         {
             element.data.user.password.inactive_days = userPasswordInactiveDays;
         }
-        element.data.user.password.last_set_time = data->userPasswordLastSetTime();
+        element.data.user.password.last_change = data->userPasswordLastChange();
         auto userPasswordMaxDays = data->userPasswordMaxDays();
         if (userPasswordMaxDays >= 0)
         {

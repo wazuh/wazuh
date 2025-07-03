@@ -59,21 +59,19 @@ struct User final
         std::string_view expiration_date;
         std::string_view hash_algorithm;
         std::int64_t inactive_days = DEFAULT_INT_VALUE;
-        std::int64_t last_change = DEFAULT_INT_VALUE;
-        std::string_view last_set_time;
+        std::string_view last_change;
         std::int64_t max_days_between_changes = DEFAULT_INT_VALUE;
         std::int64_t min_days_between_changes = DEFAULT_INT_VALUE;
         std::string_view status;
         std::int64_t warning_days_before_expiration = DEFAULT_INT_VALUE;
         REFLECTABLE(MAKE_FIELD("status", &Password::status),
                     MAKE_FIELD("hash_algorithm", &Password::hash_algorithm),
-                    MAKE_FIELD("last_change", &Password::last_change),
                     MAKE_FIELD("min_days_between_changes", &Password::min_days_between_changes),
                     MAKE_FIELD("max_days_between_changes", &Password::max_days_between_changes),
                     MAKE_FIELD("warning_days_before_expiration", &Password::warning_days_before_expiration),
                     MAKE_FIELD("inactive_days", &Password::inactive_days),
                     MAKE_FIELD("expiration_date", &Password::expiration_date),
-                    MAKE_FIELD("last_set_time", &Password::last_set_time));
+                    MAKE_FIELD("last_change", &Password::last_change));
     };
 
     AuthFailed auth_failures;

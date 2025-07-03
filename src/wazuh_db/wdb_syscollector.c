@@ -1215,8 +1215,8 @@ int wdb_users_insert(wdb_t * wdb, const user_record_t * user_record, const bool 
     } else {
         sqlite3_bind_null(stmt, 20);
     }
-    if (user_record->user_password_last_set_time > 0) {
-        sqlite3_bind_double(stmt, 21, user_record->user_password_last_set_time);
+    if (user_record->user_password_last_change > 0) {
+        sqlite3_bind_double(stmt, 21, user_record->user_password_last_change);
     } else {
         sqlite3_bind_null(stmt, 21);
     }
@@ -1231,37 +1231,32 @@ int wdb_users_insert(wdb_t * wdb, const user_record_t * user_record, const bool 
     } else {
         sqlite3_bind_null(stmt, 24);
     }
-    if (user_record->user_password_last_change >= 0) {
-        sqlite3_bind_int(stmt, 25, user_record->user_password_last_change);
+    if (user_record->user_password_max_days_between_changes >= 0) {
+        sqlite3_bind_int(stmt, 25, user_record->user_password_max_days_between_changes);
     } else {
         sqlite3_bind_null(stmt, 25);
     }
-    if (user_record->user_password_max_days_between_changes >= 0) {
-        sqlite3_bind_int(stmt, 26, user_record->user_password_max_days_between_changes);
+    if (user_record->user_password_min_days_between_changes >= 0) {
+        sqlite3_bind_int(stmt, 26, user_record->user_password_min_days_between_changes);
     } else {
         sqlite3_bind_null(stmt, 26);
     }
-    if (user_record->user_password_min_days_between_changes >= 0) {
-        sqlite3_bind_int(stmt, 27, user_record->user_password_min_days_between_changes);
-    } else {
-        sqlite3_bind_null(stmt, 27);
-    }
-    sqlite3_bind_text(stmt, 28, user_record->user_password_status, -1, NULL);
+    sqlite3_bind_text(stmt, 27, user_record->user_password_status, -1, NULL);
     if (user_record->user_password_warning_days_before_expiration >= 0) {
-        sqlite3_bind_int(stmt, 29, user_record->user_password_warning_days_before_expiration);
+        sqlite3_bind_int(stmt, 28, user_record->user_password_warning_days_before_expiration);
+    } else {
+        sqlite3_bind_null(stmt, 28);
+    }
+    if (user_record->process_pid >= 0) {
+        sqlite3_bind_int64(stmt, 29, user_record->process_pid);
     } else {
         sqlite3_bind_null(stmt, 29);
     }
-    if (user_record->process_pid >= 0) {
-        sqlite3_bind_int64(stmt, 30, user_record->process_pid);
-    } else {
-        sqlite3_bind_null(stmt, 30);
-    }
-    sqlite3_bind_text(stmt, 31, user_record->host_ip, -1, NULL);
-    sqlite3_bind_int(stmt, 32, user_record->login_status);
-    sqlite3_bind_text(stmt, 33, user_record->login_type, -1, NULL);
-    sqlite3_bind_text(stmt, 34, user_record->login_tty, -1, NULL);
-    sqlite3_bind_text(stmt, 35, user_record->checksum, -1, NULL);
+    sqlite3_bind_text(stmt, 30, user_record->host_ip, -1, NULL);
+    sqlite3_bind_int(stmt, 31, user_record->login_status);
+    sqlite3_bind_text(stmt, 32, user_record->login_type, -1, NULL);
+    sqlite3_bind_text(stmt, 33, user_record->login_tty, -1, NULL);
+    sqlite3_bind_text(stmt, 34, user_record->checksum, -1, NULL);
 
     if (wdb_step(stmt) == SQLITE_DONE){
         return OS_SUCCESS;
@@ -1533,11 +1528,10 @@ int wdb_syscollector_users_save2(wdb_t * wdb, const cJSON * attributes)
     const long long user_last_login = cJSON_GetObjectItem(attributes, "user_last_login") ? cJSON_GetObjectItem(attributes, "user_last_login")->valuedouble : 0;
     const long long user_auth_failed_count = cJSON_GetObjectItem(attributes, "user_auth_failed_count") ? cJSON_GetObjectItem(attributes, "user_auth_failed_count") ->valuedouble : 0;
     const double user_auth_failed_timestamp = cJSON_GetObjectItem(attributes, "user_auth_failed_timestamp") ? cJSON_GetObjectItem(attributes, "user_auth_failed_timestamp") ->valuedouble : 0.0;
-    const double user_password_last_set_time = cJSON_GetObjectItem(attributes, "user_password_last_set_time") ? cJSON_GetObjectItem(attributes, "user_password_last_set_time")->valuedouble : 0.0;
+    const double user_password_last_change = cJSON_GetObjectItem(attributes, "user_password_last_change") ? cJSON_GetObjectItem(attributes, "user_password_last_change")->valuedouble : 0.0;
     const int user_password_expiration_date = cJSON_GetObjectItem(attributes, "user_password_expiration_date") ? cJSON_GetObjectItem(attributes, "user_password_expiration_date")->valueint : 0;
     const char * user_password_hash_algorithm = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "user_password_hash_algorithm"));
     const int user_password_inactive_days = cJSON_GetObjectItem(attributes, "user_password_inactive_days") ? cJSON_GetObjectItem(attributes, "user_password_inactive_days")->valueint : 0;
-    const int user_password_last_change = cJSON_GetObjectItem(attributes, "user_password_last_change") ? cJSON_GetObjectItem(attributes, "user_password_last_change")->valueint : 0;
     const int user_password_max_days_between_changes = cJSON_GetObjectItem(attributes, "user_password_max_days_between_changes") ? cJSON_GetObjectItem(attributes, "user_password_max_days_between_changes")->valueint : 0;
     const int user_password_min_days_between_changes = cJSON_GetObjectItem(attributes, "user_password_min_days_between_changes") ? cJSON_GetObjectItem(attributes, "user_password_min_days_between_changes")->valueint : 0;
     const char * user_password_status = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "user_password_status"));
@@ -1556,9 +1550,9 @@ int wdb_syscollector_users_save2(wdb_t * wdb, const cJSON * attributes)
         .user_created = user_created, .user_roles = user_roles, .user_shell = user_shell, .user_type = user_type,
         .user_is_hidden = user_is_hidden, .user_is_remote = user_is_remote, .user_last_login = user_last_login,
         .user_auth_failed_count = user_auth_failed_count, .user_auth_failed_timestamp = user_auth_failed_timestamp,
-        .user_password_last_set_time = user_password_last_set_time, .user_password_expiration_date = user_password_expiration_date,
-        .user_password_hash_algorithm = user_password_hash_algorithm, .user_password_inactive_days = user_password_inactive_days,
-        .user_password_last_change = user_password_last_change, .user_password_max_days_between_changes = user_password_max_days_between_changes,
+        .user_password_expiration_date = user_password_expiration_date, .user_password_hash_algorithm = user_password_hash_algorithm,
+        .user_password_inactive_days = user_password_inactive_days, .user_password_last_change = user_password_last_change,
+        .user_password_max_days_between_changes = user_password_max_days_between_changes,
         .user_password_min_days_between_changes = user_password_min_days_between_changes, .user_password_status = user_password_status,
         .user_password_warning_days_before_expiration = user_password_warning_days_before_expiration, .process_pid = process_pid,
         .host_ip = host_ip, .login_status = login_status, .login_type = login_type, .login_tty = login_tty, .checksum = checksum};
