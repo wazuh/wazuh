@@ -62,6 +62,29 @@ char *wide_to_utf8(const wchar_t *input) {
     return output;
 }
 
+char *ansi_to_utf8(const char *ansi_path) {
+    if (!ansi_path) {
+        return NULL;
+    }
+
+    int wlen = MultiByteToWideChar(CP_ACP, 0, ansi_path, -1, NULL, 0);
+    if (wlen == 0) {
+        return NULL;
+    }
+
+    wchar_t *wbuf = NULL;
+    os_calloc(wlen, sizeof(wchar_t), wbuf);
+
+    if (!MultiByteToWideChar(CP_ACP, 0, ansi_path, -1, wbuf, wlen)) {
+        os_free(wbuf);
+        return NULL;
+    }
+
+    char *utf8 = wide_to_utf8(wbuf);
+
+    os_free(wbuf);
+    return utf8;
+}
 
 int utf8_stat64(const char * pathname, struct _stat64 * statbuf) {
     wchar_t *wpath = utf8_to_wide(pathname);
