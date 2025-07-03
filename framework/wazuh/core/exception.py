@@ -198,7 +198,7 @@ class WazuhException(Exception):
         1402: {'message': 'Invalid sort_ascending field',
                'remediation': 'Please, use only true if ascending or false if descending'
                },
-        1403: {'message': 'Not a valid sort field ',
+        1403: {'message': 'Not a valid sort field',
                'remediation': 'Please, use only allowed sort fields'
                },
         1405: {'message': 'Specified limit exceeds maximum allowed',
