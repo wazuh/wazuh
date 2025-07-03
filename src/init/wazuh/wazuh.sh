@@ -4,13 +4,6 @@
 # Install functions for Wazuh
 # Wazuh.com (https://github.com/wazuh)
 
-patch_version(){
-        rm -rf $PREINSTALLEDDIR/etc/shared/ssh > /dev/null 2>&1
-}
-WazuhSetup(){
-    patch_version
-}
-
 InstallSELinuxPolicyPackage(){
 
     if command -v semodule > /dev/null && command -v getenforce > /dev/null; then

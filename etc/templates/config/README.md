@@ -12,8 +12,6 @@
 
         logging.template
 
-        alerts.template
-
         remote-secure.template
 
         [remote-syslog.template]

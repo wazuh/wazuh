@@ -183,8 +183,6 @@ https://www.gnu.org/licenses/gpl.html\n"
 /* Active Response queue */
 #define ARQUEUE         "queue/alerts/ar"
 
-/* Decoder file */
-#define XML_LDECODER    "etc/decoders/local_decoder.xml"
 
 /* Agent groups location */
 #define GROUPS_DIR    "queue/agent-groups"
