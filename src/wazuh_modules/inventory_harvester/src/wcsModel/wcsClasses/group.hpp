@@ -19,7 +19,7 @@
 struct Group final
 {
     std::string_view description;
-    std::uint64_t id = DEFAULT_INT_VALUE; // Huge positive number.
+    std::int64_t id = DEFAULT_INT_VALUE;
     std::int64_t id_signed = DEFAULT_INT_VALUE;
     bool is_hidden = false;
     std::string_view name;

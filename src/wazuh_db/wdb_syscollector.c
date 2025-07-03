@@ -1513,11 +1513,11 @@ int wdb_syscollector_users_save2(wdb_t * wdb, const cJSON * attributes)
     const char * user_name = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "user_name"));
     const char * user_full_name = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "user_full_name"));
     const char * user_home = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "user_home"));
-    const long long user_id = cJSON_GetObjectItem(attributes, "user_id") ? cJSON_GetObjectItem(attributes, "user_id")->valuedouble : 0;
+    const long long user_id = cJSON_GetObjectItem(attributes, "user_id") ? cJSON_GetObjectItem(attributes, "user_id")->valuedouble : -1;
     const long long user_uid_signed = cJSON_GetObjectItem(attributes, "user_uid_signed") ? cJSON_GetObjectItem(attributes, "user_uid_signed")->valuedouble : 0;
     const char * user_uuid = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "user_uuid"));
     const char * user_groups = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "user_groups"));
-    const long long user_group_id =  cJSON_GetObjectItem(attributes, "user_group_id") ? cJSON_GetObjectItem(attributes, "user_group_id")->valuedouble : 0;
+    const long long user_group_id =  cJSON_GetObjectItem(attributes, "user_group_id") ? cJSON_GetObjectItem(attributes, "user_group_id")->valuedouble : -1;
     const long long user_group_id_signed =  cJSON_GetObjectItem(attributes, "user_group_id_signed") ? cJSON_GetObjectItem(attributes, "user_group_id_signed")->valuedouble : 0;
     const double user_created = cJSON_GetObjectItem(attributes, "user_created") ? cJSON_GetObjectItem(attributes, "user_created")->valuedouble : 0.0;
     const char * user_roles = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "user_roles"));
@@ -1526,17 +1526,17 @@ int wdb_syscollector_users_save2(wdb_t * wdb, const cJSON * attributes)
     const bool user_is_hidden = cJSON_GetObjectItem(attributes, "user_is_hidden") ? cJSON_GetObjectItem(attributes, "user_is_hidden")->valueint : false;
     const bool user_is_remote = cJSON_GetObjectItem(attributes, "user_is_remote") ? cJSON_GetObjectItem(attributes, "user_is_remote")->valueint : false;
     const long long user_last_login = cJSON_GetObjectItem(attributes, "user_last_login") ? cJSON_GetObjectItem(attributes, "user_last_login")->valuedouble : 0;
-    const long long user_auth_failed_count = cJSON_GetObjectItem(attributes, "user_auth_failed_count") ? cJSON_GetObjectItem(attributes, "user_auth_failed_count") ->valuedouble : 0;
+    const long long user_auth_failed_count = cJSON_GetObjectItem(attributes, "user_auth_failed_count") ? cJSON_GetObjectItem(attributes, "user_auth_failed_count") ->valuedouble : -1;
     const double user_auth_failed_timestamp = cJSON_GetObjectItem(attributes, "user_auth_failed_timestamp") ? cJSON_GetObjectItem(attributes, "user_auth_failed_timestamp") ->valuedouble : 0.0;
     const double user_password_last_change = cJSON_GetObjectItem(attributes, "user_password_last_change") ? cJSON_GetObjectItem(attributes, "user_password_last_change")->valuedouble : 0.0;
     const int user_password_expiration_date = cJSON_GetObjectItem(attributes, "user_password_expiration_date") ? cJSON_GetObjectItem(attributes, "user_password_expiration_date")->valueint : 0;
     const char * user_password_hash_algorithm = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "user_password_hash_algorithm"));
-    const int user_password_inactive_days = cJSON_GetObjectItem(attributes, "user_password_inactive_days") ? cJSON_GetObjectItem(attributes, "user_password_inactive_days")->valueint : 0;
-    const int user_password_max_days_between_changes = cJSON_GetObjectItem(attributes, "user_password_max_days_between_changes") ? cJSON_GetObjectItem(attributes, "user_password_max_days_between_changes")->valueint : 0;
-    const int user_password_min_days_between_changes = cJSON_GetObjectItem(attributes, "user_password_min_days_between_changes") ? cJSON_GetObjectItem(attributes, "user_password_min_days_between_changes")->valueint : 0;
+    const int user_password_inactive_days = cJSON_GetObjectItem(attributes, "user_password_inactive_days") ? cJSON_GetObjectItem(attributes, "user_password_inactive_days")->valueint : -1;
+    const int user_password_max_days_between_changes = cJSON_GetObjectItem(attributes, "user_password_max_days_between_changes") ? cJSON_GetObjectItem(attributes, "user_password_max_days_between_changes")->valueint : -1;
+    const int user_password_min_days_between_changes = cJSON_GetObjectItem(attributes, "user_password_min_days_between_changes") ? cJSON_GetObjectItem(attributes, "user_password_min_days_between_changes")->valueint : -1;
     const char * user_password_status = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "user_password_status"));
-    const int user_password_warning_days_before_expiration = cJSON_GetObjectItem(attributes, "user_password_warning_days_before_expiration") ? cJSON_GetObjectItem(attributes, "user_password_warning_days_before_expiration")->valueint : 0;
-    const long long process_pid = cJSON_GetObjectItem(attributes, "process_pid") ? cJSON_GetObjectItem(attributes, "process_pid")->valuedouble : 0;
+    const int user_password_warning_days_before_expiration = cJSON_GetObjectItem(attributes, "user_password_warning_days_before_expiration") ? cJSON_GetObjectItem(attributes, "user_password_warning_days_before_expiration")->valueint : -1;
+    const long long process_pid = cJSON_GetObjectItem(attributes, "process_pid") ? cJSON_GetObjectItem(attributes, "process_pid")->valuedouble : -1;
     const char * host_ip = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "host_ip"));
     const bool login_status = cJSON_GetObjectItem(attributes, "login_status") ? cJSON_GetObjectItem(attributes, "login_status")->valueint : false;
     const char * login_type = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "login_type"));
@@ -1564,7 +1564,7 @@ int wdb_syscollector_groups_save2(wdb_t * wdb, const cJSON * attributes)
 {
     const char * scan_id = "0";
     const char * scan_time = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "scan_time"));
-    const long long group_id = cJSON_GetObjectItem(attributes, "group_id") ? cJSON_GetObjectItem(attributes, "group_id")->valuedouble : 0;
+    const long long group_id = cJSON_GetObjectItem(attributes, "group_id") ? cJSON_GetObjectItem(attributes, "group_id")->valuedouble : -1;
     const char * group_name = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "group_name"));
     const char * group_description = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "group_description"));
     const long long group_id_signed = cJSON_GetObjectItem(attributes, "group_id_signed") ? cJSON_GetObjectItem(attributes, "group_id_signed")->valuedouble : 0;

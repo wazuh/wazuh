@@ -429,9 +429,9 @@ public:
         }
         else
         {
-            return 0;
+            return -1;
         }
-        return 0;
+        return -1;
     }
 
     int64_t userGroupIdSigned() const
@@ -723,9 +723,9 @@ public:
         }
         else
         {
-            return 0;
+            return -1;
         }
-        return 0;
+        return -1;
     }
 
     int userPasswordMinDays() const
@@ -756,9 +756,9 @@ public:
         }
         else
         {
-            return 0;
+            return -1;
         }
-        return 0;
+        return -1;
     }
 
     int userPasswordWarningDays() const
@@ -790,9 +790,9 @@ public:
         }
         else
         {
-            return 0;
+            return -1;
         }
-        return 0;
+        return -1;
     }
 
     std::string_view userPasswordStatus() const
@@ -839,9 +839,8 @@ public:
                     m_syncMsg->data_as_state()->attributes_as_syscollector_users()->user_password_last_change())
                     .has_value())
             {
-                return std::optional<double>(m_syncMsg->data_as_state()
-                                                 ->attributes_as_syscollector_users()
-                                                 ->user_password_last_change())
+                return std::optional<double>(
+                           m_syncMsg->data_as_state()->attributes_as_syscollector_users()->user_password_last_change())
                     .value();
             }
         }
@@ -931,9 +930,9 @@ public:
         }
         else
         {
-            return 0;
+            return -1;
         }
-        return 0;
+        return -1;
     }
 
     double userCreatedRaw() const
@@ -1089,9 +1088,9 @@ public:
         }
         else
         {
-            return 0;
+            return -1;
         }
-        return 0;
+        return -1;
     }
 
     double userAuthFailedTimestampRaw() const
@@ -1234,9 +1233,9 @@ public:
         }
         else
         {
-            return 0;
+            return -1;
         }
-        return 0;
+        return -1;
     }
 
     std::string_view userHostIp() const

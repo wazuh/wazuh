@@ -49,7 +49,7 @@ struct User final
 
     struct UserGroupInfo final
     {
-        std::uint64_t id = DEFAULT_INT_VALUE; // Huge positive number.
+        std::int64_t id = DEFAULT_INT_VALUE;
         std::int64_t id_signed = DEFAULT_INT_VALUE;
         REFLECTABLE(MAKE_FIELD("id", &UserGroupInfo::id), MAKE_FIELD("id_signed", &UserGroupInfo::id_signed));
     };
@@ -58,12 +58,12 @@ struct User final
     {
         std::string_view expiration_date;
         std::string_view hash_algorithm;
-        std::int64_t inactive_days = DEFAULT_INT_VALUE;
+        std::int32_t inactive_days = DEFAULT_INT32_VALUE;
         std::string_view last_change;
-        std::int64_t max_days_between_changes = DEFAULT_INT_VALUE;
-        std::int64_t min_days_between_changes = DEFAULT_INT_VALUE;
+        std::int32_t max_days_between_changes = DEFAULT_INT32_VALUE;
+        std::int32_t min_days_between_changes = DEFAULT_INT32_VALUE;
         std::string_view status;
-        std::int64_t warning_days_before_expiration = DEFAULT_INT_VALUE;
+        std::int32_t warning_days_before_expiration = DEFAULT_INT32_VALUE;
         REFLECTABLE(MAKE_FIELD("status", &Password::status),
                     MAKE_FIELD("hash_algorithm", &Password::hash_algorithm),
                     MAKE_FIELD("min_days_between_changes", &Password::min_days_between_changes),
