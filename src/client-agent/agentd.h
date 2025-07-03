@@ -194,8 +194,8 @@ DWORD WINAPI req_receiver(LPVOID arg);
 void * req_receiver(void * arg);
 #endif
 
-// Restart agent
-void * restartAgent();
+// Reload agent
+void * reloadAgent();
 
 // Verify remote configuration. Return 0 on success or -1 on error.
 int verifyRemoteConf();
