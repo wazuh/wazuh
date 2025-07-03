@@ -940,7 +940,8 @@ def test_WazuhDBQuery_protected_sort_query(mock_socket_conn, mock_conn_db, mock_
     ({'order': 'asc', 'fields': None}, None),
     ({'order': 'asc', 'fields': ['1']}, None),
     ({'order': 'asc', 'fields': ['bad_field']}, 1403),
-    ({'order': 'asc', 'fields': ['1', '2', '3', '4']}, None)
+    ({'order': 'asc', 'fields': ['1', '2', '3', '4']}, None),
+    ({'order': 'asc', 'fields': ['internal_key']}, 1403)
 ])
 @patch('wazuh.core.utils.path.exists', return_value=True)
 @patch('wazuh.core.utils.glob.glob', return_value=True)
@@ -953,6 +954,7 @@ def test_WazuhDBQuery_protected_add_sort_to_query(mock_socket_conn, mock_conn_db
     query = utils.WazuhDBQuery(offset=0, limit=1, table='agent', sort=sort,
                                search=None, select=None, filters=None,
                                fields=fields,
+                               extra_fields={'internal_key'},
                                default_sort_field=None, query=None,
                                backend=utils.WazuhDBBackend(agent_id=1),
                                count=5, get_data=None)
@@ -1145,7 +1147,8 @@ def test_WazuhDBQuery_protected_parse_query_regex(mock_backend_connect, mock_exi
     ('os.name=debian;os.version>12e),(os.name=ubuntu;os.version>12e)', False, None),
     ('bad_query', True, 1407),
     ('os.bad_field=ubuntu', True, 1408),
-    ('os.name=!ubuntu', True, 1409)
+    ('os.name=!ubuntu', True, 1409),
+    ('internal_key=test', True, 1408)
 ])
 @patch('wazuh.core.utils.path.exists', return_value=True)
 @patch('wazuh.core.utils.glob.glob', return_value=True)
@@ -1156,7 +1159,8 @@ def test_WazuhDBQuery_protected_parse_query(mock_socket_conn, mock_conn_db, mock
     """Test WazuhDBQuery._parse_query function."""
     query = utils.WazuhDBQuery(offset=0, limit=1, table='agent', sort=None,
                                search=None, select=None, filters=None,
-                               fields={'os.name': None, 'os.version': None},
+                               fields={'os.name': None, 'os.version': None, 'internal_key': None},
+                               extra_fields={'internal_key'},
                                default_sort_field=None, query=q,
                                backend=utils.WazuhDBBackend(agent_id=1),
                                count=5, get_data=None)
