@@ -6,7 +6,7 @@
 
   <localfile>
     <log_format>full_command</log_format>
-    <command>netstat -tulpn | sed 's/\([[:alnum:]]\+\)\ \+[[:digit:]]\+\ \+[[:digit:]]\+\ \+\(.*\):\([[:digit:]]*\)\ \+\([0-9\.\:\*]\+\).\+\ \([[:digit:]]*\/[[:alnum:]\-]*\).*/\1 \2 == \3 == \4 \5/' | sort -k 4 -g | sed 's/ == \(.*\) ==/:\1/' | sed 1,2d</command>
+    <command>(ss -tulpn | awk '/^(tcp|udp)/ { proto=$1; split($5, local, ":"); ip=local[1]; gsub(/%[a-zA-Z0-9_]+/, "", ip); port=local[2]; foreign=$6; match($0, /users:\(\("([^"]+)",pid=([0-9]+)/, proc); program=proc[2] "/" proc[1]; if (port != "") print proto, ip ":" port, foreign, program }' | sort -t: -k2,2n) 2>/dev/null || (netstat -tulpn | sed 's/\([[:alnum:]]\+\)\ \+[[:digit:]]\+\ \+[[:digit:]]\+\ \+\(.*\):\([[:digit:]]*\)\ \+\([0-9\.\:\*]\+\).\+\ \([[:digit:]]*\/[[:alnum:]\-]*\).*/\1 \2 == \3 == \4 \5/' | sort -k 4 -g | sed 's/ == \(.*\) ==/:\1/' | sed 1,2d)</command>
     <alias>netstat listening ports</alias>
     <frequency>360</frequency>
   </localfile>
