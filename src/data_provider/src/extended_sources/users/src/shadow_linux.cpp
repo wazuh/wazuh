@@ -13,6 +13,8 @@
 #include "shadow_wrapper.hpp"
 #include <shadow_linux.hpp>
 
+constexpr double SECONDS_PER_DAY = 60.0 * 60.0 * 24.0;
+
 ShadowProvider::ShadowProvider(std::shared_ptr<IShadowWrapper> shadowWrapper)
     : m_shadowWrapper(std::move(shadowWrapper))
 {
@@ -43,7 +45,7 @@ nlohmann::json ShadowProvider::collect()
     while ((shadow_entry = m_shadowWrapper->getspent()) != NULL)
     {
         nlohmann::json entry;
-        entry["last_change"] = shadow_entry->sp_lstchg;
+        entry["last_change"] = static_cast<double>(shadow_entry->sp_lstchg) * SECONDS_PER_DAY;
         entry["min"] = shadow_entry->sp_min;
         entry["max"] = shadow_entry->sp_max;
         entry["warning"] = shadow_entry->sp_warn;

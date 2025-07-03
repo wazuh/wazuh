@@ -51,7 +51,7 @@ TEST(ShadowProviderTests, CollectReturnsExpectedJson)
     auto result = provider.collect();
 
     ASSERT_EQ(result.size(), static_cast<size_t>(1));
-    EXPECT_EQ(result[0]["last_change"], 20228);
+    EXPECT_EQ(result[0]["last_change"], 1747699200.0);
     EXPECT_EQ(result[0]["min"], 0);
     EXPECT_EQ(result[0]["max"], 99999);
     EXPECT_EQ(result[0]["warning"], 7);
@@ -105,7 +105,7 @@ TEST(ShadowProviderTests, CollectReturnsJsonArray)
     auto result = provider.collect();
 
     ASSERT_EQ(result.size(), static_cast<size_t>(2));
-    EXPECT_EQ(result[0]["last_change"], 20228);
+    EXPECT_EQ(result[0]["last_change"], 1747699200.0);
     EXPECT_EQ(result[0]["min"], 0);
     EXPECT_EQ(result[0]["max"], 99999);
     EXPECT_EQ(result[0]["warning"], 7);
@@ -114,7 +114,7 @@ TEST(ShadowProviderTests, CollectReturnsJsonArray)
     EXPECT_EQ(result[0]["username"], "testuser");
     EXPECT_EQ(result[0]["password_status"], "active");
 
-    EXPECT_EQ(result[1]["last_change"], 20228);
+    EXPECT_EQ(result[1]["last_change"], 1747699200.0);
     EXPECT_EQ(result[1]["min"], 0);
     EXPECT_EQ(result[1]["max"], 99999);
     EXPECT_EQ(result[1]["warning"], 7);

@@ -1102,7 +1102,6 @@ nlohmann::json SysInfo::getUsers() const
         userItem["user_is_remote"] = 0;
 
         // Only Macos
-        userItem["user_password_last_set_time"] = 0;
         userItem["user_is_hidden"] = 0;
         userItem["user_created"] = 0;
         userItem["user_auth_failed_count"] = 0;

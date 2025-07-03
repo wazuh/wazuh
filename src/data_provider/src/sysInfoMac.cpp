@@ -586,7 +586,7 @@ nlohmann::json SysInfo::getUsers() const
         }
 
         // Macos
-        userItem["user_password_last_set_time"] = user["password_last_set_time"];
+        userItem["user_password_last_change"] = user["password_last_set_time"];
         userItem["user_is_hidden"] = user["is_hidden"];
         userItem["user_created"] = user["creation_time"];
         userItem["user_auth_failed_count"] = user["failed_login_count"];
@@ -644,7 +644,6 @@ nlohmann::json SysInfo::getUsers() const
         userItem["user_password_expiration_date"] = 0;
         userItem["user_password_hash_algorithm"] = UNKNOWN_VALUE;
         userItem["user_password_inactive_days"] = 0;
-        userItem["user_password_last_change"] = 0;
         userItem["user_password_max_days_between_changes"] = 0;
         userItem["user_password_min_days_between_changes"] = 0;
         userItem["user_password_status"] = UNKNOWN_VALUE;
