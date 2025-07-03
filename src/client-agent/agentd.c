@@ -51,7 +51,7 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
         merror_exit(SETUID_ERROR, user, errno, strerror(errno));
     }
 
-    if(agt->enrollment_cfg && agt->enrollment_cfg->enabled) {
+    if (agt->enrollment_cfg && agt->enrollment_cfg->enabled) {
         // If autoenrollment is enabled, we will avoid exit if there is no valid key
         OS_PassEmptyKeyfile();
     } else {
@@ -209,7 +209,7 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
             }
 
             #ifdef CLIENT
-            if(agt->flags.remote_conf) {
+            if (agt->flags.remote_conf) {
                 ReadConfig(CBUFFER | CAGENT_CONFIG, AGENTCONFIG, NULL, agt);
                 minfo("Buffer agent.conf updated, enable: %i size: %i ", agt->buffer, agt->buflength);
             }

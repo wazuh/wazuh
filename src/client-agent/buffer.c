@@ -158,6 +158,7 @@ void *dispatch_buffer(__attribute__((unused)) void * arg) {
 
         if (!agt->buffer) {
             minfo("Dispatch buffer thread received stop signal. Exiting.");
+            w_mutex_unlock(&mutex_lock);
             break;
         }
 
@@ -287,8 +288,9 @@ void w_agentd_buffer_free(unsigned int current_capacity) {
 
     mdebug2("Freeing the client-buffer.");
     for ( int i=0; i <= current_capacity; i++) {
-        if (buffer[i] != NULL ) os_free(buffer[i]);
+        os_free(buffer[i]);
     }
+
     os_free(buffer);
 
     agt->buflength = 0;
@@ -321,12 +323,12 @@ int w_agentd_buffer_resize(unsigned int current_capacity, unsigned int desired_c
     if (desired_capacity > current_capacity) {
         // We add +1 to the desired capacity for internal management of the circular buffer,
         // allowing it to distinguish between full and empty states.
-        os_calloc(desired_capacity+1, sizeof(char *), temp_buffer);
+        os_calloc(desired_capacity + 1, sizeof(char *), temp_buffer);
 
-        // Copy data in logical order to the new buffer
-        if (j < i ) {
-            mdebug2("Copying contiguous data to new buffer. Count: %u events, tail: %d, head: %d\n",
-            agent_msg_count, j, i);
+        // Copy data in logical ordecoder to the new buffer
+        if (j < i) {
+            mdebug2("Copying contiguous data to new buffer. Count: %u events, "
+                    "tail: %d, head: %d\n", agent_msg_count, j, i);
             memcpy(temp_buffer, &buffer[j], agent_msg_count * sizeof(char *));
         } else {
             int first_part = (current_capacity - j) + 1;
@@ -340,12 +342,12 @@ int w_agentd_buffer_resize(unsigned int current_capacity, unsigned int desired_c
     } else {
 
         mwarn("Shrinking client buffer from %u to %u (messages: %u).",
-            current_capacity, desired_capacity, agent_msg_count);
+              current_capacity, desired_capacity, agent_msg_count);
 
         unsigned int retained_message_count = (agent_msg_count < desired_capacity) ? agent_msg_count : desired_capacity;
 
         // Allocate a new temporary buffer of the desired smaller size
-        os_calloc(desired_capacity+1, sizeof(char *), temp_buffer);
+        os_calloc(desired_capacity + 1, sizeof(char *), temp_buffer);
 
         // Copy the N oldest messages that will be preserved
         for (unsigned int k = 0; k < retained_message_count; k++) {
@@ -353,7 +355,8 @@ int w_agentd_buffer_resize(unsigned int current_capacity, unsigned int desired_c
             if (buffer[old_idx]) {
                 temp_buffer[k] = buffer[old_idx];
                 buffer[old_idx] = NULL;
-                mdebug2("Moving message from old[%u] to new[%u] (ptr: %p)", old_idx, k, (void*)temp_buffer[k]);
+                mdebug2("Moving message from old[%u] to new[%u] (ptr: %p)",
+                        old_idx, k, (void*)temp_buffer[k]);
             }
         }
 
@@ -379,6 +382,7 @@ int w_agentd_buffer_resize(unsigned int current_capacity, unsigned int desired_c
     os_free(buffer);
     buffer = temp_buffer;
     w_mutex_unlock(&mutex_lock);
-    minfo("Client buffer resized from %u to %u elements.", current_capacity, desired_capacity);
+    minfo("Client buffer resized from %u to %u elements.",
+          current_capacity, desired_capacity);
     return 0;
 }
