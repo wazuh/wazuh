@@ -271,6 +271,13 @@ if [ -d %{_localstatedir}/queue/rootcheck ]; then
   rm -rf %{_localstatedir}/queue/rootcheck/* > /dev/null 2>&1
 fi
 
+if [ -d %{_localstatedir}/etc/lists ]; then
+  # Get lists before upgrade
+  if [ $1 = 2 ]; then
+    find %{_localstatedir}/etc/lists/ -type f -exec realpath --relative-to=%{_localstatedir} --no-symlinks -- {} \; > %{_localstatedir}/tmp/lists.old.manifest
+  fi
+fi
+
 # Delete old API backups
 if [ $1 = 2 ]; then
   if [ -d %{_localstatedir}/~api ]; then
@@ -331,6 +338,14 @@ if [ $1 = 2 ]; then
     CONFIG_INDEXER_TEMPLATE="%{_localstatedir}/packages_files/manager_installation_scripts/etc/templates/config/generic/wodle-indexer.manager.template"
     . "$FILE_PATH"
     updateIndexerTemplate "%{_localstatedir}/etc/ossec.conf" $CONFIG_INDEXER_TEMPLATE
+  fi
+
+  # Add new CDB lists into configuration
+  if [ -f %{_localstatedir}/tmp/lists.old.manifest ]; then
+      . %{_localstatedir}/packages_files/manager_installation_scripts/src/init/update-ruleset-lists.sh
+      find %{_localstatedir}/etc/lists/ -type f -exec realpath --relative-to=%{_localstatedir} --no-symlinks -- {} \; > %{_localstatedir}/tmp/lists.new.manifest
+      updateRulesetLists "%{_localstatedir}/etc/ossec.conf" %{_localstatedir}/tmp/lists.old.manifest %{_localstatedir}/tmp/lists.new.manifest
+      rm %{_localstatedir}/tmp/lists.*.manifest
   fi
 fi
 
