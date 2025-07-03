@@ -127,11 +127,6 @@ Install()
 
     cd ../
 
-    # Install Wazuh ruleset updater
-    if [ "X$INSTYPE" = "Xserver" ]; then
-        WazuhSetup
-    fi
-
     # Calling the init script to start Wazuh during boot
     runInit $INSTYPE ${update_only}
     runinit_value=$?
