@@ -133,20 +133,13 @@ int Read_Global(const OS_XML *xml, XML_NODE node, void *configp, void *mailp)
 
     /* XML definitions */
     const char *xml_mailnotify = "email_notification";
-    const char *xml_logall = "logall";
-    const char *xml_logall_json = "logall_json";
     const char *xml_integrity = "integrity_checking";
     const char *xml_rootcheckd = "rootkit_detection";
     const char *xml_hostinfo = "host_information";
     const char *xml_jsonout_output = "jsonout_output";
     const char *xml_alerts_log = "alerts_log";
-    const char *xml_stats = "stats";
-    const char *xml_memorysize = "memory_size";
     const char *xml_white_list = "white_list";
     const char *xml_compress_alerts = "compress_alerts";
-    const char *xml_custom_alert_output = "custom_alert_output";
-    const char *xml_rotate_interval = "rotate_interval";
-    const char *xml_max_output_size = "max_output_size";
     const char *xml_agents_disconnection_time = "agents_disconnection_time";
     const char *xml_agents_disconnection_alert_time = "agents_disconnection_alert_time";
     const char *xml_limits = "limits";
@@ -211,7 +204,7 @@ int Read_Global(const OS_XML *xml, XML_NODE node, void *configp, void *mailp)
     if (Config) {
         Config->update_check = 1;
     }
-    
+
     while (node[i]) {
         if (!node[i]->element) {
             merror(XML_ELEMNULL);
@@ -219,11 +212,6 @@ int Read_Global(const OS_XML *xml, XML_NODE node, void *configp, void *mailp)
         } else if (!node[i]->content) {
             merror(XML_VALUENULL, node[i]->element);
             return (OS_INVALID);
-        } else if (strcmp(node[i]->element, xml_custom_alert_output) == 0) {
-            if (Config) {
-                Config->custom_alert_output = 1;
-                os_strdup(node[i]->content, Config->custom_alert_output_format);
-            }
         }
         /* Socket forwarding */
         else if (strcmp(node[i]->element, xml_forwardto) == 0) {
@@ -298,36 +286,6 @@ int Read_Global(const OS_XML *xml, XML_NODE node, void *configp, void *mailp)
                 return (OS_INVALID);
             }
         }
-        /* Log all */
-        else if (strcmp(node[i]->element, xml_logall) == 0) {
-            if (strcmp(node[i]->content, "yes") == 0) {
-                if (Config) {
-                    Config->logall = 1;
-                }
-            } else if (strcmp(node[i]->content, "no") == 0) {
-                if (Config) {
-                    Config->logall = 0;
-                }
-            } else {
-                merror(XML_VALUEERR, node[i]->element, node[i]->content);
-                return (OS_INVALID);
-            }
-        }
-        /* Log all JSON*/
-        else if (strcmp(node[i]->element, xml_logall_json) == 0) {
-            if (strcmp(node[i]->content, "yes") == 0) {
-                if (Config) {
-                    Config->logall_json = 1;
-                }
-            } else if (strcmp(node[i]->content, "no") == 0) {
-                if (Config) {
-                    Config->logall_json = 0;
-                }
-            } else {
-                merror(XML_VALUEERR, node[i]->element, node[i]->content);
-                return (OS_INVALID);
-            }
-        }
         /* update check system */
         else if (strcmp(node[i]->element, xml_update_check) == 0) {
             if (strcmp(node[i]->content, "yes") == 0) {
@@ -375,24 +333,6 @@ int Read_Global(const OS_XML *xml, XML_NODE node, void *configp, void *mailp)
             }
             if (Config) {
                 Config->hostinfo = (u_int8_t) atoi(node[i]->content);
-            }
-        }
-        /* stats */
-        else if (strcmp(node[i]->element, xml_stats) == 0) {
-            if (!OS_StrIsNum(node[i]->content)) {
-                merror(XML_VALUEERR, node[i]->element, node[i]->content);
-                return (OS_INVALID);
-            }
-            if (Config) {
-                Config->stats = (u_int8_t) atoi(node[i]->content);
-            }
-        } else if (strcmp(node[i]->element, xml_memorysize) == 0) {
-            if (!OS_StrIsNum(node[i]->content)) {
-                merror(XML_VALUEERR, node[i]->element, node[i]->content);
-                return (OS_INVALID);
-            }
-            if (Config) {
-                Config->memorysize = atoi(node[i]->content);
             }
 #ifndef CLIENT
         } else if (strcmp(node[i]->element, xml_limits) == 0) {
@@ -550,82 +490,6 @@ int Read_Global(const OS_XML *xml, XML_NODE node, void *configp, void *mailp)
                     Mail->source = MAIL_SOURCE_JSON;
                 }
             }
-        }
-        else if (strcmp(node[i]->element, xml_rotate_interval) == 0) {
-            if (Config) {
-                char c;
-
-                switch (sscanf(node[i]->content, "%d%c", &Config->rotate_interval, &c)) {
-                case 1:
-                    break;
-
-                case 2:
-                    switch (c) {
-                    case 'd':
-                        Config->rotate_interval *= 86400;
-                        break;
-                    case 'h':
-                        Config->rotate_interval *= 3600;
-                        break;
-                    case 'm':
-                        Config->rotate_interval *= 60;
-                        break;
-                    case 's':
-                        break;
-                    default:
-                        merror(XML_VALUEERR, node[i]->element, node[i]->content);
-                        return (OS_INVALID);
-                    }
-
-                    break;
-
-                default:
-                    merror(XML_VALUEERR, node[i]->element, node[i]->content);
-                    return (OS_INVALID);
-                }
-
-                if (Config->rotate_interval < 0) {
-                    merror(XML_VALUEERR, node[i]->element, node[i]->content);
-                    return (OS_INVALID);
-                }
-            }
-        } else if (strcmp(node[i]->element, xml_max_output_size) == 0) {
-            if (Config) {
-                char c;
-
-                switch (sscanf(node[i]->content, "%zd%c", &Config->max_output_size, &c)) {
-                case 1:
-                    break;
-
-                case 2:
-                    switch (c) {
-                    case 'G':
-                    case 'g':
-                        Config->max_output_size *= 1073741824;
-                        break;
-                    case 'M':
-                    case 'm':
-                        Config->max_output_size *= 1048576;
-                        break;
-                    case 'K':
-                    case 'k':
-                        Config->max_output_size *= 1024;
-                        break;
-                    case 'B':
-                    case 'b':
-                        break;
-                    default:
-                        merror(XML_VALUEERR, node[i]->element, node[i]->content);
-                        return (OS_INVALID);
-                    }
-
-                    break;
-
-                default:
-                    merror(XML_VALUEERR, node[i]->element, node[i]->content);
-                    return (OS_INVALID);
-                }
-            }
         } else if (strcmp(node[i]->element, xml_queue_size) == 0) {
             if (Config) {
                 char * end;
@@ -690,10 +554,6 @@ void config_free(_Config *config) {
         return;
     }
 
-    if (config->custom_alert_output_format) {
-        free(config->custom_alert_output_format);
-    }
-
     if (config->syscheck_ignore) {
         int i = 0;
         while (config->syscheck_ignore[i]) {
@@ -712,39 +572,9 @@ void config_free(_Config *config) {
         free(config->white_list);
     }
 
-    if (config->includes) {
-        int i = 0;
-        while (config->includes[i]) {
-            free(config->includes[i]);
-            i++;
-        }
-        free(config->includes);
-    }
-
-    if (config->lists) {
-        int i = 0;
-        while (config->lists[i]) {
-            free(config->lists[i]);
-            i++;
-        }
-        free(config->lists);
-    }
-
-    if (config->decoders) {
-        int i = 0;
-        while (config->decoders[i]) {
-            free(config->decoders[i]);
-            i++;
-        }
-        free(config->decoders);
-    }
 
     if (config->forwarders_list) {
       free_strarray(config->forwarders_list);
-    }
-
-    if (config->g_rules_hash) {
-        OSHash_Free(config->g_rules_hash);
     }
 
     if (config->hostname_white_list) {
