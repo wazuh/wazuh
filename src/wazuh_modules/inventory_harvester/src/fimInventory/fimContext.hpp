@@ -450,13 +450,13 @@ public:
         return 0;
     }
 
-    uint64_t inode()
+    std::string_view inode()
     {
         if (m_type == VariantType::Delta)
         {
             if (m_delta->data() && m_delta->data()->attributes())
             {
-                return m_delta->data()->attributes()->inode();
+                return m_delta->data()->attributes()->inode()->string_view();
             }
         }
         else if (m_type == VariantType::SyncMsg)
@@ -465,15 +465,15 @@ public:
             {
                 if (m_syncMsg->data_as_state()->attributes_as_fim_file())
                 {
-                    return m_syncMsg->data_as_state()->attributes_as_fim_file()->inode();
+                    return m_syncMsg->data_as_state()->attributes_as_fim_file()->inode()->string_view();
                 }
             }
         }
         else
         {
-            return 0;
+            return "";
         }
-        return 0;
+        return "";
     }
 
     std::string_view valueType()

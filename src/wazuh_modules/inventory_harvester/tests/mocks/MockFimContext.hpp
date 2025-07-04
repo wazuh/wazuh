@@ -55,7 +55,7 @@ public:
     MOCK_METHOD(std::string_view, sha1, (), (const));
     MOCK_METHOD(std::string_view, sha256, (), (const));
     MOCK_METHOD(uint64_t, size, (), (const));
-    MOCK_METHOD(uint64_t, inode, (), (const));
+    MOCK_METHOD(std::string_view, inode, (), (const));
     MOCK_METHOD(std::string_view, valueType, (), (const));
     MOCK_METHOD(std::string_view, userName, (), (const));
     MOCK_METHOD(std::string_view, groupName, (), (const));

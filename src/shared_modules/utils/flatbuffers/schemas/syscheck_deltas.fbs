@@ -14,7 +14,7 @@ table Attributes {
     user_name: string;
     gid: string;
     group_name: string;
-    inode: long;
+    inode: string;
     mtime: long;
     checksum: string;
     size: long;
