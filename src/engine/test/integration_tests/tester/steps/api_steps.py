@@ -212,7 +212,7 @@ def step_impl(context, message: str, session_name: str, debug_level: str, agent_
     request = api_tester.RunPost_Request()
     request.name = session_name
     request.trace_level = debug_level_to_int[debug_level]
-    LOCATION = f"[{agent_id}] (any_name) ->any_module"
+    LOCATION = f"[{agent_id}] (agent-ex) any->SomeModule"
     QUEUE = 1
     request.event = f"{QUEUE}:{LOCATION}:{message}"
     request.namespaces.extend([namespace])

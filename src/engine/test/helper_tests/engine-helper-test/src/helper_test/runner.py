@@ -23,7 +23,7 @@ ASSET_NAME = "decoder/test/0"
 SESSION_NAME = "test"
 NAMESPACE = "user"
 QUEUE = 1
-LOCATION = "[any_id] (any_name) ->any_module"
+LOCATION = "[agent-id] (agent-ex) any->SomeModule"
 
 def configure(subparsers):
     """
