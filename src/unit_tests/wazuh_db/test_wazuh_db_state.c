@@ -251,10 +251,6 @@ static int test_setup(void ** state) {
     wdb_state.queries_breakdown.task_breakdown.tasks.set_timeout_time.tv_usec = 23002;
     wdb_state.queries_breakdown.task_breakdown.tasks.delete_old_time.tv_sec = 0;
     wdb_state.queries_breakdown.task_breakdown.tasks.delete_old_time.tv_usec = 12000;
-    wdb_state.queries_breakdown.mitre_queries = 2;
-    wdb_state.queries_breakdown.mitre_breakdown.sql_queries = 2;
-    wdb_state.queries_breakdown.mitre_breakdown.sql_time.tv_sec = 0;
-    wdb_state.queries_breakdown.mitre_breakdown.sql_time.tv_usec = 15202;
 
     return 0;
 }
@@ -456,15 +452,6 @@ void test_wazuhdb_create_state_json(void ** state) {
     assert_non_null(cJSON_GetObjectItem(global_labels_queries_breakdown, "get-labels"));
     assert_int_equal(cJSON_GetObjectItem(global_labels_queries_breakdown, "get-labels")->valueint, 1);
 
-    assert_non_null(cJSON_GetObjectItem(received_breakdown, "mitre"));
-    assert_int_equal(cJSON_GetObjectItem(received_breakdown, "mitre")->valueint, 2);
-
-    cJSON* mitre_queries_breakdown = cJSON_GetObjectItem(received_breakdown, "mitre_breakdown");
-
-    cJSON* mitre_queries_db = cJSON_GetObjectItem(mitre_queries_breakdown, "db");
-    assert_non_null(cJSON_GetObjectItem(mitre_queries_db, "sql"));
-    assert_int_equal(cJSON_GetObjectItem(mitre_queries_db, "sql")->valueint, 2);
-
     assert_non_null(cJSON_GetObjectItem(received_breakdown, "task"));
     assert_int_equal(cJSON_GetObjectItem(received_breakdown, "task")->valueint, 45);
 
@@ -507,7 +494,7 @@ void test_wazuhdb_create_state_json(void ** state) {
     cJSON* time = cJSON_GetObjectItem(metrics, "time");
 
     assert_non_null(cJSON_GetObjectItem(time, "execution"));
-    assert_int_equal(cJSON_GetObjectItem(time, "execution")->valueint, 26227);
+    assert_int_equal(cJSON_GetObjectItem(time, "execution")->valueint, 26212);
 
     cJSON* execution_breakdown = cJSON_GetObjectItem(time, "execution_breakdown");
 
@@ -682,15 +669,6 @@ void test_wazuhdb_create_state_json(void ** state) {
     cJSON* global_labels_time_breakdown = cJSON_GetObjectItem(global_time_tables, "labels");
     assert_non_null(cJSON_GetObjectItem(global_labels_time_breakdown, "get-labels"));
     assert_int_equal(cJSON_GetObjectItem(global_labels_time_breakdown, "get-labels")->valueint, 120);
-
-    assert_non_null(cJSON_GetObjectItem(execution_breakdown, "mitre"));
-    assert_int_equal(cJSON_GetObjectItem(execution_breakdown, "mitre")->valueint, 15);
-
-    cJSON* mitre_time_breakdown = cJSON_GetObjectItem(execution_breakdown, "mitre_breakdown");
-
-    cJSON* mitre_time_db = cJSON_GetObjectItem(mitre_time_breakdown, "db");
-    assert_non_null(cJSON_GetObjectItem(mitre_time_db, "sql"));
-    assert_int_equal(cJSON_GetObjectItem(mitre_time_db, "sql")->valueint, 15);
 
     assert_non_null(cJSON_GetObjectItem(execution_breakdown, "task"));
     assert_int_equal(cJSON_GetObjectItem(execution_breakdown, "task")->valueint, 456);

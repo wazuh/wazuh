@@ -2326,7 +2326,7 @@ ifneq (,$(filter ${OPTIMIZE_CPYTHON},YES yes y Y 1))
 CPYTHON_FLAGS=--enable-optimizations
 endif
 
-wpython: install_dependencies install_framework install_api install_mitre
+wpython: install_dependencies install_framework install_api
 
 build_python:
 ifeq (,${INSTALLDIR})
@@ -2363,9 +2363,6 @@ install_framework: install_python
 
 install_api: install_python
 	cd ../api && ${WPYTHON_DIR}/bin/python3 -m pip install . --use-pep517 --prefix=${WPYTHON_DIR} && rm -rf build/
-
-install_mitre: install_python
-	cd ../tools/mitre && ${WPYTHON_DIR}/bin/python3 mitredb.py -d ${INSTALLDIR}/var/db/mitre.db
 
 ####################
 #### test ##########
