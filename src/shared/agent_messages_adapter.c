@@ -14,6 +14,10 @@
 #include "defs.h"
 #include <string.h>
 #include <stdbool.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <stdint.h>
+#include <limits.h>
 
 void *agent_data_hash_duplicator(void* data) {
     return cJSON_Duplicate((cJSON*)data, true);
@@ -75,6 +79,19 @@ char* adapt_delta_message(const char* data, const char* name, const char* id, co
 
     cJSON_AddItemToObject(j_msg_to_send, "data_type", cJSON_DetachItemFromObject(j_msg, "type"));
 
+    // For agents prior to v4.13.0, the "inode" data is a long value and now is a string. This normalizes the data type to string.
+    cJSON* j_attrs = cJSON_GetObjectItem(j_msg, "attributes");
+    cJSON* j_inode = j_attrs ? cJSON_GetObjectItem(j_attrs, "inode") : NULL;
+    if (j_inode && cJSON_IsNumber(j_inode)) {
+        double val = j_inode->valuedouble;
+        if (val >= (double)LLONG_MIN && val <= (double)LLONG_MAX && (double)(long long)val == val) {
+            char converted[32];
+            snprintf(converted, sizeof(converted), "%lld", (long long)val);
+            // Replace number with string
+            cJSON_ReplaceItemInObject(j_attrs, "inode", cJSON_CreateString(converted));
+        }
+    }
+
     cJSON_AddItemToObject(j_msg_to_send, "data", cJSON_DetachItemFromObject(j_msg, "data"));
     cJSON_AddItemToObject(j_msg_to_send, "operation", cJSON_DetachItemFromObject(j_msg, "operation"));
 
@@ -133,6 +150,20 @@ char* adapt_sync_message(const char* data, const char* name, const char* id, con
     if (j_data_msg) {
         j_data = cJSON_CreateObject();
         cJSON_AddItemToObject(j_data, "attributes_type", cJSON_DetachItemFromObject(j_msg, "component"));
+
+        // For agents prior to v4.13.0, the "inode" data is a long value and now is a string. This normalizes the data type to string.
+        cJSON* j_attrs = cJSON_GetObjectItem(j_data_msg, "attributes");
+        cJSON* j_inode = j_attrs ? cJSON_GetObjectItem(j_attrs, "inode") : NULL;
+        if (j_inode && cJSON_IsNumber(j_inode)) {
+            double val = j_inode->valuedouble;
+            if (val >= (double)LLONG_MIN && val <= (double)LLONG_MAX && (double)(long long)val == val) {
+                char converted[32];
+                snprintf(converted, sizeof(converted), "%lld", (long long)val);
+                // Replace number with string
+                cJSON_ReplaceItemInObject(j_attrs, "inode", cJSON_CreateString(converted));
+            }
+        }
+
         for (cJSON* j_item = j_data_msg->child; j_item; j_item = j_item->next) {
             cJSON_AddItemToObject(j_data, j_item->string, cJSON_Duplicate(cJSON_GetObjectItem(j_data_msg, j_item->string), true));
         }
