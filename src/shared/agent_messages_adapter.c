@@ -17,7 +17,6 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdint.h>
-#include <limits.h>
 
 void *agent_data_hash_duplicator(void* data) {
     return cJSON_Duplicate((cJSON*)data, true);
@@ -83,13 +82,10 @@ char* adapt_delta_message(const char* data, const char* name, const char* id, co
     cJSON* j_attrs = cJSON_GetObjectItem(j_msg, "attributes");
     cJSON* j_inode = j_attrs ? cJSON_GetObjectItem(j_attrs, "inode") : NULL;
     if (j_inode && cJSON_IsNumber(j_inode)) {
-        double val = j_inode->valuedouble;
-        if (val >= (double)LLONG_MIN && val <= (double)LLONG_MAX && (double)(long long)val == val) {
-            char converted[32];
-            snprintf(converted, sizeof(converted), "%lld", (long long)val);
-            // Replace number with string
-            cJSON_ReplaceItemInObject(j_attrs, "inode", cJSON_CreateString(converted));
-        }
+        char converted[32];
+        snprintf(converted, sizeof(converted), "%lld", (long long)j_inode->valuedouble);
+        // Replace number with string
+        cJSON_ReplaceItemInObject(j_attrs, "inode", cJSON_CreateString(converted));
     }
 
     cJSON_AddItemToObject(j_msg_to_send, "data", cJSON_DetachItemFromObject(j_msg, "data"));
@@ -155,13 +151,10 @@ char* adapt_sync_message(const char* data, const char* name, const char* id, con
         cJSON* j_attrs = cJSON_GetObjectItem(j_data_msg, "attributes");
         cJSON* j_inode = j_attrs ? cJSON_GetObjectItem(j_attrs, "inode") : NULL;
         if (j_inode && cJSON_IsNumber(j_inode)) {
-            double val = j_inode->valuedouble;
-            if (val >= (double)LLONG_MIN && val <= (double)LLONG_MAX && (double)(long long)val == val) {
-                char converted[32];
-                snprintf(converted, sizeof(converted), "%lld", (long long)val);
-                // Replace number with string
-                cJSON_ReplaceItemInObject(j_attrs, "inode", cJSON_CreateString(converted));
-            }
+            char converted[32];
+            snprintf(converted, sizeof(converted), "%lld", (long long)j_inode->valuedouble);
+            // Replace number with string
+            cJSON_ReplaceItemInObject(j_attrs, "inode", cJSON_CreateString(converted));
         }
 
         for (cJSON* j_item = j_data_msg->child; j_item; j_item = j_item->next) {

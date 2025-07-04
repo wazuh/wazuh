@@ -415,15 +415,7 @@ int wdb_fim_insert_entry2(wdb_t * wdb, const cJSON * data) {
             } else if (strcmp(element->string, "mtime") == 0) {
                 sqlite3_bind_int(stmt, 12, element->valueint);
             } else if (strcmp(element->string, "inode") == 0) {
-                if (element->valuestring) {
-                    // New 4.13.0 version of the message, inode is a string.
-                    int64_t inode_value = strtoll(element->valuestring, NULL, 10);
-                    sqlite3_bind_int64(stmt, 13, inode_value);
-                }
-                else {
-                    // Old versions of the message, inode is a number.
-                    sqlite3_bind_int64(stmt, 13, element->valuedouble);
-                }
+                sqlite3_bind_int64(stmt, 13, element->valuedouble);
             } else {
                 merror("DB(%s) Invalid attribute name: %s", wdb->id, element->string);
                 os_free(perm);
@@ -460,6 +452,10 @@ int wdb_fim_insert_entry2(wdb_t * wdb, const cJSON * data) {
                 sqlite3_bind_text(stmt, 15, element->valuestring, -1, NULL);
             } else if (strcmp(element->string, "value_type") == 0) {
                 sqlite3_bind_text(stmt, 20, element->valuestring, -1, NULL);
+            } else if (strcmp(element->string, "inode") == 0) {
+                // New 4.13.0 version of the message, inode is a string.
+                int64_t inode_value = strtoll(element->valuestring, NULL, 10);
+                sqlite3_bind_int64(stmt, 13, inode_value);
             } else {
                 merror("DB(%s) Invalid attribute name: %s", wdb->id, element->string);
                 os_free(perm);
