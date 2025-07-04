@@ -854,7 +854,7 @@ public:
     std::string_view userPasswordLastChange()
     {
         const auto passwordLastChangeRaw = userPasswordLastChangeRaw();
-        // For dates, valid values are > 0
+        // For dates, valid values are > 0.
         if (passwordLastChangeRaw <= 0.0)
         {
             return "";
@@ -896,7 +896,7 @@ public:
     std::string_view userPasswordExpirationDate()
     {
         const auto passwordExpirationDateRaw = userPasswordExpirationDateRaw();
-        // For dates, valid values are > 0
+        // For dates, valid values are > 0.
         if (passwordExpirationDateRaw <= 0)
         {
             return "";
@@ -966,7 +966,7 @@ public:
     std::string_view userCreated()
     {
         const auto createdRaw = userCreatedRaw();
-        // For dates, valid values are > 0
+        // For dates, valid values are > 0.
         if (createdRaw <= 0.0)
         {
             return "";
@@ -1007,7 +1007,7 @@ public:
     std::string_view userLastLogin()
     {
         const auto lastLoginRaw = userLastLoginRaw();
-        // For dates, valid values are > 0
+        // For dates, valid values are > 0.
         if (lastLoginRaw <= 0)
         {
             return "";
@@ -1125,7 +1125,7 @@ public:
     std::string_view userAuthFailedTimestamp()
     {
         const auto authFailedTimestampRaw = userAuthFailedTimestampRaw();
-        // For dates, valid values are > 0
+        // For dates, valid values are > 0.
         if (authFailedTimestampRaw <= 0.0)
         {
             return "";
