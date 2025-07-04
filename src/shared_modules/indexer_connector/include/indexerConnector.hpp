@@ -13,10 +13,15 @@
 #define _INDEXER_CONNECTOR_HPP
 
 #include "secureCommunication.hpp"
+#include <atomic>
+#include <condition_variable>
 #include <json.hpp>
 #include <memory>
+#include <span>
 #include <stdexcept>
 #include <string>
+#include <string_view>
+#include <thread>
 
 #if __GNUC__ >= 4
 #define EXPORTED __attribute__((visibility("default")))
@@ -49,37 +54,21 @@ class EXPORTED IndexerConnectorSync final
      */
     SecureCommunication m_secureCommunication;
     std::unique_ptr<ServerSelector> m_selector;
+    std::string m_bulkData;
+    std::map<std::string, nlohmann::json> m_deleteByQuery;
+    std::vector<std::function<void()>> m_notify;
+    std::chrono::steady_clock::time_point m_lastBulkTime;
+    std::condition_variable m_cv;
+    std::mutex m_mutex;
+    std::thread m_bulkThread;
+    std::atomic<bool> m_stopping;
+    std::vector<size_t> m_boundaries;
+
+    void processBulk();
+    void splitAndProcessBulk();
+    void processBulkChunk(std::string_view data, std::span<const size_t> boundaries);
 
 public:
-    struct Builder final
-    {
-        static void bulkDelete(std::string& bulkData, std::string_view id, std::string_view index)
-        {
-            bulkData.append(R"({"delete":{"_index":")");
-            bulkData.append(index);
-            bulkData.append(R"(","_id":")");
-            bulkData.append(id);
-            bulkData.append(R"("}})");
-            bulkData.append("\n");
-        }
-
-        static void deleteByQuery(nlohmann::json& bulkData, const std::string& agentId)
-        {
-            bulkData["query"]["bool"]["filter"]["terms"]["agent.id"].push_back(agentId);
-        }
-
-        static void bulkIndex(std::string& bulkData, std::string_view id, std::string_view index, std::string_view data)
-        {
-            bulkData.append(R"({"index":{"_index":")");
-            bulkData.append(index);
-            bulkData.append(R"(","_id":")");
-            bulkData.append(id);
-            bulkData.append(R"("}})");
-            bulkData.append("\n");
-            bulkData.append(data);
-            bulkData.append("\n");
-        }
-    };
     /**
      * @brief Class constructor that initializes the publisher.
      *
@@ -98,12 +87,13 @@ public:
 
     ~IndexerConnectorSync();
 
-    /**
-     * @brief Publish a message into the queue map.
-     *
-     * @param message Message to be published.
-     */
-    void bulk(const std::string& message);
+    // /**
+    //  * @brief Publish a message into the queue map with 413 error handling.
+    //  *
+    //  * @param message Message to be published.
+    //  * @param initialOperationCount Initial number of operations in the message.
+    //  */
+    // void bulk(const std::string& message, size_t initialOperationCount);
 
     /**
      * @brief Publish a message into the queue map.
@@ -111,7 +101,24 @@ public:
      * @param message Message to be published.
      * @param index Index name.
      */
-    void deleteByQuery(const std::string& message, const std::string& index);
+    void deleteByQuery(const std::string& index, const std::string& agentId);
+
+    /**
+     * @brief Bulk delete.
+     *
+     * @param id ID.
+     * @param index Index name.
+     */
+    void bulkDelete(std::string_view id, std::string_view index);
+
+    /**
+     * @brief Bulk index.
+     *
+     * @param id ID.
+     * @param index Index name.
+     * @param data Data.
+     */
+    void bulkIndex(std::string_view id, std::string_view index, std::string_view data);
 };
 
 /**

@@ -71,6 +71,9 @@ class InventorySyncFacadeImpl final
                                                    TRouterSubscriber,
                                                    TIndexerConnector,
                                                    TRocksDBWrapper>>;
+    static constexpr int m_threadCount = 1;
+    static constexpr int m_bulkDataSize = 10 * 1024 * 1024;
+
     void run(const std::vector<char>& dataRaw)
     {
         auto message = Wazuh::SyncSchema::GetMessage(dataRaw.data());
@@ -202,27 +205,29 @@ public:
             [this, &preIndexerAction](const Response& res)
             {
                 std::cout << "Indexer queue action...\n";
+                auto sessionIt = m_agentSessions.find(res.context->sessionId);
+                if (sessionIt == m_agentSessions.end())
+                {
+                    std::cerr << "InventorySyncFacade::start: Session not found, sessionId: " << res.context->sessionId
+                              << std::endl;
+                    return;
+                }
+
                 try
                 {
-                    auto sessionIt = m_agentSessions.find(res.context->sessionId);
-                    if (sessionIt == m_agentSessions.end())
-                    {
-                        throw InventorySyncException("Session not found");
-                    }
-
+                    // VD ?
                     preIndexerAction();
 
                     // Send delete by query to indexer if mode is full.
                     if (res.context->mode == Wazuh::SyncSchema::Mode_Full)
                     {
-                        nlohmann::json bulkData;
-                        IndexerConnectorSync::Builder::deleteByQuery(bulkData, std::to_string(res.context->agentId));
-                        m_indexerConnector->deleteByQuery(bulkData.dump(), std::to_string(res.context->agentId));
+                        m_indexerConnector->deleteByQuery(res.context->moduleName,
+                                                          std::to_string(res.context->agentId));
                     }
 
-                    std::string bulkData;
-                    std::string prefix = std::to_string(res.context->sessionId) + "_";
-                    // Send bulk query (with handling of 429 error).
+                    const auto prefix = std::to_string(res.context->sessionId) + "_";
+
+                    // Send bulk query (with handling of 413 error).
                     for (const auto& [key, value] : m_dataStore->seek(prefix))
                     {
                         flatbuffers::Verifier verifier(reinterpret_cast<const uint8_t*>(value.data()), value.size());
@@ -232,16 +237,14 @@ public:
                             auto data = message->content_as_Data();
                             if (data->operation() == Wazuh::SyncSchema::Operation_Upsert)
                             {
-                                IndexerConnectorSync::Builder::bulkIndex(
-                                    bulkData,
+                                m_indexerConnector->bulkIndex(
                                     data->id()->string_view(),
                                     data->index()->string_view(),
                                     std::string_view((const char*)data->data()->data(), data->data()->size()));
                             }
                             else if (data->operation() == Wazuh::SyncSchema::Operation_Delete)
                             {
-                                IndexerConnectorSync::Builder::bulkDelete(
-                                    bulkData, data->index()->str(), data->id()->str());
+                                m_indexerConnector->bulkDelete(data->index()->string_view(), data->id()->string_view());
                             }
                             else
                             {
@@ -253,26 +256,52 @@ public:
                             throw InventorySyncException("Invalid message type");
                         }
                     }
-                    std::cout << "Bulk data: " << bulkData << std::endl;
-                    m_indexerConnector->bulk(bulkData);
-
-                    // Send ACK to agent.
-                    m_responseDispatcher->sendEndAck(Wazuh::SyncSchema::Status_Ok, res.context);
-                    // Delete data from database.
-                    m_dataStore->deleteByPrefix(std::to_string(res.context->sessionId));
-                    // Delete Session.
-                    m_agentSessions.erase(sessionIt);
+                    // m_indexerConnector->registerNotify(
+                    //     [this, ctx = res.context]()
+                    //     {
+                    //         // Send ACK to agent.
+                    //         m_responseDispatcher->sendEndAck(Wazuh::SyncSchema::Status_Ok, ctx);
+                    //         // Delete data from database.
+                    //         m_dataStore->deleteByPrefix(std::to_string(ctx->sessionId));
+                    //         // Delete Session.
+                    //         if (m_agentSessions.erase(ctx->sessionId) == 0)
+                    //         {
+                    //             std::cerr
+                    //                 << "InventorySyncFacade::start: Session not found, sessionId: " << ctx->sessionId
+                    //                 << std::endl;
+                    //         }
+                    //     });
                 }
                 catch (const InventorySyncException& e)
                 {
                     std::cerr << "InventorySyncFacade::start: " << e.what() << std::endl;
+                    // Send ACK to agent.
+                    m_responseDispatcher->sendEndAck(Wazuh::SyncSchema::Status_Error, res.context);
+                    // Delete data from database.
+                    m_dataStore->deleteByPrefix(std::to_string(res.context->sessionId));
+                    // Delete Session.
+                    if (m_agentSessions.erase(res.context->sessionId) == 0)
+                    {
+                        std::cerr << "InventorySyncFacade::start: Session not found, sessionId: "
+                                  << res.context->sessionId << std::endl;
+                    }
                 }
                 catch (const std::exception& e)
                 {
                     std::cerr << "InventorySyncFacade::start: " << e.what() << std::endl;
+                    // Send ACK to agent.
+                    m_responseDispatcher->sendEndAck(Wazuh::SyncSchema::Status_Error, res.context);
+                    // Delete data from database.
+                    m_dataStore->deleteByPrefix(std::to_string(res.context->sessionId));
+                    // Delete Session.
+                    if (m_agentSessions.erase(res.context->sessionId) == 0)
+                    {
+                        std::cerr << "InventorySyncFacade::start: Session not found, sessionId: "
+                                  << res.context->sessionId << std::endl;
+                    }
                 }
             },
-            std::thread::hardware_concurrency(),
+            m_threadCount,
             UNLIMITED_QUEUE_SIZE);
 
         std::cout << "InventorySyncFacade started." << std::endl;
