@@ -489,7 +489,7 @@ int test_setup_os_valid_msg_modified(void **state)
     return 0;
 }
 
-int test_setup_users_valid_msg_modified(void **state) 
+int test_setup_users_valid_msg_modified(void **state)
 {
     Eventinfo *lf;
     os_calloc(1, sizeof(Eventinfo), lf);
@@ -513,7 +513,7 @@ int test_setup_users_valid_msg_modified(void **state)
                 \"user_password_expiration_date\":-1, \
                 \"user_password_hash_algorithm\":null, \
                 \"user_password_inactive_days\":-1, \
-                \"user_password_last_change\":19977, \
+                \"user_password_last_change\":1750696338.665, \
                 \"user_password_max_days_between_changes\":99999, \
                 \"user_password_min_days_between_changes\":0, \
                 \"user_password_status\":\"locked\", \
@@ -912,7 +912,7 @@ int test_setup_os_valid_msg_inserted(void **state)
     return 0;
 }
 
-int test_setup_users_valid_msg_inserted(void **state) 
+int test_setup_users_valid_msg_inserted(void **state)
 {
     Eventinfo *lf;
     os_calloc(1, sizeof(Eventinfo), lf);
@@ -943,11 +943,10 @@ int test_setup_users_valid_msg_inserted(void **state)
                 \"user_last_login\":null, \
                 \"user_name\":\"daemon\", \
                 \"user_roles\":\"sudo\", \
-                \"user_password_last_set_time\":1750358060, \
                 \"user_password_expiration_date\":1750358060, \
                 \"user_password_hash_algorithm\":null, \
                 \"user_password_inactive_days\":-1, \
-                \"user_password_last_change\":19977, \
+                \"user_password_last_change\":1750696338.665, \
                 \"user_password_max_days_between_changes\":99999, \
                 \"user_password_min_days_between_changes\":0, \
                 \"user_password_status\":\"locked\", \
@@ -2164,7 +2163,7 @@ void test_syscollector_dbsync_network_address_invalid_msg_modified(void **state)
     will_return(__wrap_wdbc_query_ex, 0);
     expect_string(__wrap__mdebug2, formatted_msg, "Field 'proto' cannot be obtained.");
     expect_string(__wrap__mdebug2, formatted_msg, "Error while mapping 'proto' field value.");
-    
+
     int ret = DecodeSyscollector(lf, &sock);
 
     assert_int_not_equal(ret, 0);
@@ -2269,7 +2268,7 @@ void test_syscollector_dbsync_users_valid_msg_modified(void **state)
     Eventinfo *lf = *state;
 
     const char *query = "agent 001 dbsync users MODIFIED "
-        "{" 
+        "{"
             "\"checksum\":\"da281181ada27e31ce8649ba38c0e2de9b242e40\","
             "\"host_ip\":null,"
             "\"process_pid\":null,"
@@ -2285,7 +2284,7 @@ void test_syscollector_dbsync_users_valid_msg_modified(void **state)
             "\"user_password_expiration_date\":-1,"
             "\"user_password_hash_algorithm\":null,"
             "\"user_password_inactive_days\":-1,"
-            "\"user_password_last_change\":19977,"
+            "\"user_password_last_change\":1750696338.665,"
             "\"user_password_max_days_between_changes\":99999,"
             "\"user_password_min_days_between_changes\":0,"
             "\"user_password_status\":\"locked\","
@@ -2791,7 +2790,7 @@ void test_syscollector_dbsync_users_valid_msg_inserted(void **state)
     Eventinfo *lf = *state;
 
     const char *query = "agent 001 dbsync users INSERTED "
-        "{" 
+        "{"
             "\"checksum\":\"da281181ada27e31ce8649ba38c0e2de9b242e40\","
             "\"host_ip\":null,"
             "\"process_pid\":123,"
@@ -2814,11 +2813,10 @@ void test_syscollector_dbsync_users_valid_msg_inserted(void **state)
             "\"user_last_login\":null,"
             "\"user_name\":\"daemon\","
             "\"user_roles\":\"sudo\","
-            "\"user_password_last_set_time\":1750358060,"
             "\"user_password_expiration_date\":1750358060,"
             "\"user_password_hash_algorithm\":null,"
             "\"user_password_inactive_days\":-1,"
-            "\"user_password_last_change\":19977,"
+            "\"user_password_last_change\":1750696338.665,"
             "\"user_password_max_days_between_changes\":99999,"
             "\"user_password_min_days_between_changes\":0,"
             "\"user_password_status\":\"locked\","
@@ -3131,7 +3129,7 @@ void test_syscollector_hardware_invalid_query (void **state)
     expect_any(__wrap_wdbc_query_ex, len);
     will_return(__wrap_wdbc_query_ex, result);
     will_return(__wrap_wdbc_query_ex, -1);
-    expect_string(__wrap__mdebug1, formatted_msg, 
+    expect_string(__wrap__mdebug1, formatted_msg,
             "Unable to send hardware information to Wazuh DB.");
 
     int ret = DecodeSyscollector(lf, &sock);
@@ -3150,7 +3148,7 @@ void test_syscollector_hardware_parse_result_not_ok (void **state)
     expect_any(__wrap_wdbc_query_ex, len);
     will_return(__wrap_wdbc_query_ex, result);
     will_return(__wrap_wdbc_query_ex, 0);
-    expect_string(__wrap__mdebug1, formatted_msg, 
+    expect_string(__wrap__mdebug1, formatted_msg,
             "Unable to send hardware information to Wazuh DB.");
 
     int ret = DecodeSyscollector(lf, &sock);
@@ -3206,7 +3204,7 @@ void test_syscollector_hotfix_invalid_query (void **state)
     expect_any(__wrap_wdbc_query_ex, len);
     will_return(__wrap_wdbc_query_ex, result);
     will_return(__wrap_wdbc_query_ex, -1);
-    expect_string(__wrap__mdebug1, formatted_msg, 
+    expect_string(__wrap__mdebug1, formatted_msg,
             "Unable to send hotfixes information to Wazuh DB.");
 
     int ret = DecodeSyscollector(lf, &sock);
@@ -3223,7 +3221,7 @@ void test_syscollector_hotfix_without_ID (void **state)
 {
     Eventinfo *lf = *state;
 
-    expect_string(__wrap__mdebug1, formatted_msg, 
+    expect_string(__wrap__mdebug1, formatted_msg,
             "Unable to send hotfixes information to Wazuh DB.");
 
     int ret = DecodeSyscollector(lf, 0);
@@ -3242,7 +3240,7 @@ void test_syscollector_hotfix_parse_result_not_ok (void **state)
     expect_any(__wrap_wdbc_query_ex, len);
     will_return(__wrap_wdbc_query_ex, result);
     will_return(__wrap_wdbc_query_ex, 0);
-    expect_string(__wrap__mdebug1, formatted_msg, 
+    expect_string(__wrap__mdebug1, formatted_msg,
             "Unable to send hotfixes information to Wazuh DB.");
 
     int ret = DecodeSyscollector(lf, &sock);
@@ -3261,7 +3259,7 @@ void test_syscollector_netinfo_valid (void **state)
             "agent 001 netproto save 100|86|1|0000:0000:0000:0:0000:0000:0000:0002|"
                 "0000:0000:0000:0:0000:0000:0000:0003|10",
             "agent 001 netaddr save 100|86|1|0000:0000:0000:0:0000:0000:0000:0000|"
-                "0000::|0000:0000:0000:0:0000:0000:0000:0001", 
+                "0000::|0000:0000:0000:0:0000:0000:0000:0001",
             "agent 001 netaddr save 100|86|1|0000:0000:0000:0:0000:0000:0001:0000|"
                 "0001::|0000:0000:0000:0:0000:0000:0001:0001" };
 
@@ -3356,7 +3354,7 @@ void test_syscollector_netinfo_valid_network_end (void **state)
 
     int ret = DecodeSyscollector(lf, &sock);
     assert_int_not_equal(ret, 0);
- 
+
     // Invalid query
     expect_any(__wrap_wdbc_query_ex, *sock);
     expect_string(__wrap_wdbc_query_ex, query, query);
@@ -3586,7 +3584,7 @@ void test_syscollector_osinfo_invalid_inventory_empty (void **state)
     expect_any(__wrap_wdbc_query_ex, len);
     will_return(__wrap_wdbc_query_ex, result);
     will_return(__wrap_wdbc_query_ex, -1);
-    expect_string(__wrap__mdebug1, formatted_msg, 
+    expect_string(__wrap__mdebug1, formatted_msg,
             "Unable to send osinfo message to Wazuh DB.");
 
     int ret = DecodeSyscollector(lf, &sock);
@@ -3598,7 +3596,7 @@ void test_syscollector_osinfo_invalid_inventory_empty (void **state)
     expect_any(__wrap_wdbc_query_ex, len);
     will_return(__wrap_wdbc_query_ex, result_not_ok);
     will_return(__wrap_wdbc_query_ex, 0);
-    expect_string(__wrap__mdebug1, formatted_msg, 
+    expect_string(__wrap__mdebug1, formatted_msg,
             "Unable to send osinfo message to Wazuh DB.");
 
     ret = DecodeSyscollector(lf, &sock);
@@ -3672,7 +3670,7 @@ void test_syscollector_package_program_empty (void **state)
     expect_any(__wrap_wdbc_query_ex, len);
     will_return(__wrap_wdbc_query_ex, result);
     will_return(__wrap_wdbc_query_ex, -1);
-    expect_string(__wrap__mdebug1, formatted_msg, 
+    expect_string(__wrap__mdebug1, formatted_msg,
             "Unable to send packages information to Wazuh DB.");
 
     ret = DecodeSyscollector(lf, &sock);
@@ -3685,7 +3683,7 @@ void test_syscollector_package_program_empty (void **state)
     expect_any(__wrap_wdbc_query_ex, len);
     will_return(__wrap_wdbc_query_ex, result_not_ok);
     will_return(__wrap_wdbc_query_ex, 0);
-    expect_string(__wrap__mdebug1, formatted_msg, 
+    expect_string(__wrap__mdebug1, formatted_msg,
             "Unable to send packages information to Wazuh DB.");
 
     ret = DecodeSyscollector(lf, &sock);
@@ -3696,7 +3694,7 @@ void test_syscollector_package_valid_without_ID (void **state)
 {
     Eventinfo *lf = *state;
 
-    expect_string(__wrap__mdebug1, formatted_msg, 
+    expect_string(__wrap__mdebug1, formatted_msg,
             "Unable to send packages information to Wazuh DB.");
 
     int ret = DecodeSyscollector(lf, NULL);
@@ -3728,7 +3726,7 @@ void test_syscollector_package_program_end (void **state)
     expect_any(__wrap_wdbc_query_ex, len);
     will_return(__wrap_wdbc_query_ex, result);
     will_return(__wrap_wdbc_query_ex, -1);
-    expect_string(__wrap__mdebug1, formatted_msg, 
+    expect_string(__wrap__mdebug1, formatted_msg,
             "Unable to send packages information to Wazuh DB.");
 
     ret = DecodeSyscollector(lf, &sock);
@@ -3745,7 +3743,7 @@ void test_syscollector_package_program_end (void **state)
     expect_any(__wrap_wdbc_query_ex, len);
     will_return(__wrap_wdbc_query_ex, result_not_ok);
     will_return(__wrap_wdbc_query_ex, 0);
-    expect_string(__wrap__mdebug1, formatted_msg, 
+    expect_string(__wrap__mdebug1, formatted_msg,
             "Unable to send packages information to Wazuh DB.");
 
     ret = DecodeSyscollector(lf, &sock);
@@ -3758,7 +3756,7 @@ void test_syscollector_package_program_end (void **state)
     expect_any(__wrap_wdbc_query_ex, len);
     will_return(__wrap_wdbc_query_ex, result_not_ok);
     will_return(__wrap_wdbc_query_ex, 0);
-    expect_string(__wrap__mdebug1, formatted_msg, 
+    expect_string(__wrap__mdebug1, formatted_msg,
             "Unable to send packages information to Wazuh DB.");
 
     ret = DecodeSyscollector(lf, &sock);
@@ -3829,7 +3827,7 @@ void test_syscollector_port_empty (void **state)
     expect_any(__wrap_wdbc_query_ex, len);
     will_return(__wrap_wdbc_query_ex, result);
     will_return(__wrap_wdbc_query_ex, -1);
-    expect_string(__wrap__mdebug1, formatted_msg, 
+    expect_string(__wrap__mdebug1, formatted_msg,
             "Unable to send ports information to Wazuh DB.");
 
     ret = DecodeSyscollector(lf, &sock);
@@ -3842,7 +3840,7 @@ void test_syscollector_port_empty (void **state)
     expect_any(__wrap_wdbc_query_ex, len);
     will_return(__wrap_wdbc_query_ex, result_not_ok);
     will_return(__wrap_wdbc_query_ex, 0);
-    expect_string(__wrap__mdebug1, formatted_msg, 
+    expect_string(__wrap__mdebug1, formatted_msg,
             "Unable to send ports information to Wazuh DB.");
 
     ret = DecodeSyscollector(lf, &sock);
@@ -3853,7 +3851,7 @@ void test_syscollector_port_valid_without_ID (void **state)
 {
     Eventinfo *lf = *state;
 
-    expect_string(__wrap__mdebug1, formatted_msg, 
+    expect_string(__wrap__mdebug1, formatted_msg,
             "Unable to send ports information to Wazuh DB.");
 
     int ret = DecodeSyscollector(lf, NULL);
@@ -3885,7 +3883,7 @@ void test_syscollector_port_end (void **state)
     expect_any(__wrap_wdbc_query_ex, len);
     will_return(__wrap_wdbc_query_ex, result);
     will_return(__wrap_wdbc_query_ex, -1);
-    expect_string(__wrap__mdebug1, formatted_msg, 
+    expect_string(__wrap__mdebug1, formatted_msg,
             "Unable to send ports information to Wazuh DB.");
 
     ret = DecodeSyscollector(lf, &sock);
@@ -3902,7 +3900,7 @@ void test_syscollector_port_end (void **state)
     expect_any(__wrap_wdbc_query_ex, len);
     will_return(__wrap_wdbc_query_ex, result_not_ok);
     will_return(__wrap_wdbc_query_ex, 0);
-    expect_string(__wrap__mdebug1, formatted_msg, 
+    expect_string(__wrap__mdebug1, formatted_msg,
             "Unable to send ports information to Wazuh DB.");
 
     ret = DecodeSyscollector(lf, &sock);
@@ -3915,7 +3913,7 @@ void test_syscollector_port_end (void **state)
     expect_any(__wrap_wdbc_query_ex, len);
     will_return(__wrap_wdbc_query_ex, result_not_ok);
     will_return(__wrap_wdbc_query_ex, 0);
-    expect_string(__wrap__mdebug1, formatted_msg, 
+    expect_string(__wrap__mdebug1, formatted_msg,
             "Unable to send ports information to Wazuh DB.");
 
     ret = DecodeSyscollector(lf, &sock);
@@ -3988,7 +3986,7 @@ void test_syscollector_process_empty (void **state)
     expect_any(__wrap_wdbc_query_ex, len);
     will_return(__wrap_wdbc_query_ex, result);
     will_return(__wrap_wdbc_query_ex, -1);
-    expect_string(__wrap__mdebug1, formatted_msg, 
+    expect_string(__wrap__mdebug1, formatted_msg,
             "Unable to send processes information to Wazuh DB.");
 
     ret = DecodeSyscollector(lf, &sock);
@@ -4001,7 +3999,7 @@ void test_syscollector_process_empty (void **state)
     expect_any(__wrap_wdbc_query_ex, len);
     will_return(__wrap_wdbc_query_ex, result_not_ok);
     will_return(__wrap_wdbc_query_ex, 0);
-    expect_string(__wrap__mdebug1, formatted_msg, 
+    expect_string(__wrap__mdebug1, formatted_msg,
             "Unable to send processes information to Wazuh DB.");
 
     ret = DecodeSyscollector(lf, &sock);
@@ -4012,7 +4010,7 @@ void test_syscollector_process_valid_without_ID (void **state)
 {
     Eventinfo *lf = *state;
 
-    expect_string(__wrap__mdebug1, formatted_msg, 
+    expect_string(__wrap__mdebug1, formatted_msg,
             "Unable to send processes information to Wazuh DB.");
 
     int ret = DecodeSyscollector(lf, NULL);
@@ -4044,7 +4042,7 @@ void test_syscollector_process_end (void **state)
     expect_any(__wrap_wdbc_query_ex, len);
     will_return(__wrap_wdbc_query_ex, result);
     will_return(__wrap_wdbc_query_ex, -1);
-    expect_string(__wrap__mdebug1, formatted_msg, 
+    expect_string(__wrap__mdebug1, formatted_msg,
             "Unable to send processes information to Wazuh DB.");
 
     ret = DecodeSyscollector(lf, &sock);
@@ -4061,7 +4059,7 @@ void test_syscollector_process_end (void **state)
     expect_any(__wrap_wdbc_query_ex, len);
     will_return(__wrap_wdbc_query_ex, result_not_ok);
     will_return(__wrap_wdbc_query_ex, 0);
-    expect_string(__wrap__mdebug1, formatted_msg, 
+    expect_string(__wrap__mdebug1, formatted_msg,
             "Unable to send processes information to Wazuh DB.");
 
     ret = DecodeSyscollector(lf, &sock);
@@ -4074,7 +4072,7 @@ void test_syscollector_process_end (void **state)
     expect_any(__wrap_wdbc_query_ex, len);
     will_return(__wrap_wdbc_query_ex, result_not_ok);
     will_return(__wrap_wdbc_query_ex, 0);
-    expect_string(__wrap__mdebug1, formatted_msg, 
+    expect_string(__wrap__mdebug1, formatted_msg,
             "Unable to send processes information to Wazuh DB.");
 
     ret = DecodeSyscollector(lf, &sock);

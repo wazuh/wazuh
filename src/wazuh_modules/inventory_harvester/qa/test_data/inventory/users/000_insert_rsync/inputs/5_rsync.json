@@ -1,0 +1,47 @@
+{
+    "agent_info": {
+        "agent_id": "005",
+        "agent_ip": "any",
+        "agent_name": "centos9",
+        "agent_version": "v4.10.1"
+    },
+    "data_type": "state",
+    "data": {
+        "attributes_type": "syscollector_users",
+        "attributes": {
+            "checksum": "2d5d1ff3be3743fc4514cb6486befd8377fcbc75",
+            "host_ip": "192.168.0.127,192.168.0.127",
+            "login_status": 0,
+            "login_tty": "pts/0",
+            "login_type": "user",
+            "process_pid": 92036,
+            "scan_time": "2025/06/10 19:55:55",
+            "user_auth_failed_count": 20,
+            "user_auth_failed_timestamp": 1605232465.665,
+            "user_created": 1605232465.665,
+            "user_full_name": "root",
+            "user_group_id": 100,
+            "user_group_id_signed": -100,
+            "user_groups": "group1:group2",
+            "user_home": "/root",
+            "user_id": 10,
+            "user_is_hidden": 0,
+            "user_is_remote": 0,
+            "user_last_login": 1749570236,
+            "user_name": "root",
+            "user_password_expiration_date": 1749570236,
+            "user_password_hash_algorithm": "hashAlgorithm",
+            "user_password_inactive_days": 71,
+            "user_password_last_change": 1605232465.665,
+            "user_password_max_days_between_changes": 99999,
+            "user_password_min_days_between_changes": 0,
+            "user_password_status": "active",
+            "user_password_warning_days_before_expiration": 7,
+            "user_roles": "sudo",
+            "user_shell": "/bin/bash",
+            "user_type": "userType",
+            "user_uid_signed": -10,
+            "user_uuid": "43B641C9-4540-489D-8713-4E2A4CD3525E"
+        }
+    }
+}

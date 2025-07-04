@@ -92,7 +92,8 @@ For the inventory harvester the data is converted into FlatBuffers and send it t
 |                              | dbsync_packages         | Installed packages. |
 |                              | dbsync_hotfixes         | Installed hotfixes. |
 |                              | dbsync_processes        | Running processes. |
-
+|                              | dbsync_users            | Operating system users. |
+|                              | dbsync_groups           | Operating system groups. |
 
 ### Inventory providers
 - Provider tables for inventory delta events.

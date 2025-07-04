@@ -39,6 +39,8 @@ static const char * COMPONENT_NAMES[] = {
     [WDB_SYSCOLLECTOR_NETINFO] = "syscollector-netinfo",
     [WDB_SYSCOLLECTOR_HWINFO] = "syscollector-hwinfo",
     [WDB_SYSCOLLECTOR_OSINFO] = "syscollector-osinfo",
+    [WDB_SYSCOLLECTOR_GROUPS] = "syscollector-groups",
+    [WDB_SYSCOLLECTOR_USERS] = "syscollector-users",
     [WDB_GENERIC_COMPONENT] = ""
 };
 
@@ -126,6 +128,16 @@ void wdbi_report_removed(const char* agent_id, wdb_component_t component, sqlite
             case WDB_SYSCOLLECTOR_NETADDRESS:
                 cJSON_AddStringToObject(j_msg_to_send, "action", "deleteNetworkAddress");
                 cJSON_AddItemToObject(j_data, "item_id", cJSON_CreateString((const char*) sqlite3_column_text(stmt, 0)));
+                router_handle = router_inventory_events_handle;
+                break;
+            case WDB_SYSCOLLECTOR_USERS:
+                cJSON_AddStringToObject(j_msg_to_send, "action", "deleteUser");
+                cJSON_AddItemToObject(j_data, "user_name", cJSON_CreateString((const char*) sqlite3_column_text(stmt, 0)));
+                router_handle = router_inventory_events_handle;
+                break;
+            case WDB_SYSCOLLECTOR_GROUPS:
+                cJSON_AddStringToObject(j_msg_to_send, "action", "deleteGroup");
+                cJSON_AddItemToObject(j_data, "group_name", cJSON_CreateString((const char*) sqlite3_column_text(stmt, 0)));
                 router_handle = router_inventory_events_handle;
                 break;
             case WDB_FIM:
@@ -427,7 +439,7 @@ int wdbi_delete(wdb_t * wdb, wdb_component_t component, const char * begin, cons
                                    [WDB_SYSCOLLECTOR_NETADDRESS] = WDB_STMT_SYSCOLLECTOR_NETADDRESS_DELETE_AROUND,
                                    [WDB_SYSCOLLECTOR_NETINFO] = WDB_STMT_SYSCOLLECTOR_NETINFO_DELETE_AROUND,
                                    [WDB_SYSCOLLECTOR_HWINFO] = WDB_STMT_SYSCOLLECTOR_HWINFO_DELETE_AROUND,
-                                   [WDB_SYSCOLLECTOR_OSINFO] = WDB_STMT_SYSCOLLECTOR_OSINFO_DELETE_AROUND, 
+                                   [WDB_SYSCOLLECTOR_OSINFO] = WDB_STMT_SYSCOLLECTOR_OSINFO_DELETE_AROUND,
                                    [WDB_SYSCOLLECTOR_USERS] = WDB_STMT_SYSCOLLECTOR_USERS_DELETE_AROUND,
                                    [WDB_SYSCOLLECTOR_GROUPS] = WDB_STMT_SYSCOLLECTOR_GROUPS_DELETE_AROUND};
     const int INDEXES_RANGE[] = { [WDB_FIM] = WDB_STMT_FIM_DELETE_RANGE,

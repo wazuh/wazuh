@@ -31,11 +31,10 @@ CREATE TABLE IF NOT EXISTS sys_users (
     user_last_login INTEGER,
     user_auth_failed_count INTEGER,
     user_auth_failed_timestamp REAL,
-    user_password_last_set_time REAL,
+    user_password_last_change REAL,
     user_password_expiration_date INTEGER,
     user_password_hash_algorithm TEXT,
     user_password_inactive_days INTEGER,
-    user_password_last_change INTEGER,
     user_password_max_days_between_changes INTEGER,
     user_password_min_days_between_changes INTEGER,
     user_password_status TEXT,
@@ -60,7 +59,7 @@ CREATE TABLE IF NOT EXISTS sys_groups (
     group_is_hidden INTEGER,
     group_users TEXT,
     checksum TEXT NOT NULL CHECK (checksum <> ''),
-    PRIMARY KEY (group_id)
+    PRIMARY KEY (group_name)
 );
 
 INSERT INTO sync_info (component) VALUES ('syscollector-users');

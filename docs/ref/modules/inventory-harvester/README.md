@@ -48,6 +48,8 @@ The **InventoryHarvester** module receives inventory data events as flatbuffer m
    - Network address: Current network connection.
    - Network interface: Descriptive information of network interfaces.
    - Ports: Details about open ports in the agent endpoint.
+   - Users: Detailed information for each user registered in the OS for control access and permissions.
+   - Groups: Detailed information for each group present in the OS for control access and permissions.
 
 2. **File Integrity Monitoring**
 
