@@ -30,9 +30,6 @@ typedef struct __eps {
 
 /* Configuration structure */
 typedef struct __Config {
-    u_int8_t logall;
-    u_int8_t logall_json;
-    u_int8_t stats;
     u_int8_t integrity;
     u_int8_t syscheck_auto_ignore;
     int syscheck_ignore_frequency;
@@ -41,7 +38,6 @@ typedef struct __Config {
     u_int8_t rootcheck;
     u_int8_t hostinfo;
     u_int8_t mailbylevel;
-    u_int8_t logbylevel;
     u_int8_t logfw;
     u_int8_t update_check;
     int decoder_order_size;
@@ -62,15 +58,9 @@ typedef struct __Config {
     /* Mail alerting */
     short int mailnotify;
 
-    /* Custom Alert output*/
-    short int custom_alert_output;
-    char *custom_alert_output_format;
-
     /* For the active response */
     int ar;
 
-    /* For the correlation */
-    int memorysize;
 
     /* List of files to ignore (syscheck) */
     char **syscheck_ignore;
@@ -80,18 +70,6 @@ typedef struct __Config {
 
     /* List of hostnames to never block */
     OSMatch **hostname_white_list;
-
-    /* List of rules */
-    char **includes;
-
-    /* List of Lists */
-    char **lists;
-
-    /* List of decoders */
-    char **decoders;
-
-    /* Global rule hash */
-    OSHash *g_rules_hash;
 
     /* Vector of targets forwarder */
     char** forwarders_list;
@@ -110,9 +88,6 @@ typedef struct __Config {
     char *node_type;
     unsigned char hide_cluster_info;
 
-    int rotate_interval;
-    int min_rotate_interval;
-    ssize_t max_output_size;
     long queue_size;
 
     // EPS limits configuration
