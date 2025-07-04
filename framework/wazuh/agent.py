@@ -12,7 +12,6 @@ from wazuh.core.InputValidator import InputValidator
 from wazuh.core.agent import WazuhDBQueryAgents, WazuhDBQueryGroupByAgents, Agent, \
     WazuhDBQueryGroup, create_upgrade_tasks, get_agents_info, get_groups, get_rbac_filters, send_restart_command, \
     GROUP_FIELDS, GROUP_REQUIRED_FIELDS, GROUP_FILES_FIELDS, GROUP_FILES_REQUIRED_FIELDS
-from wazuh.core.wdb_http import get_wdb_http_client
 from wazuh.core.cluster.cluster import get_node
 from wazuh.core.cluster.utils import read_cluster_config
 from wazuh.core.exception import WazuhError, WazuhInternalError, WazuhException, WazuhResourceNotFound
@@ -218,9 +217,8 @@ def reconnect_agents(agent_list: Union[list, str] = None) -> AffectedItemsWazuhR
 
 
 @expose_resources(actions=["agent:restart"], resources=["agent:id:{agent_list}"],
-                  post_proc_kwargs={'exclude_codes': [1701, 1703, 1707]},
-                  post_proc_func=async_list_handler)
-async def restart_agents(agent_list: list = None) -> AffectedItemsWazuhResult:
+                  post_proc_kwargs={'exclude_codes': [1701, 1703, 1707]})
+def restart_agents(agent_list: list = None) -> AffectedItemsWazuhResult:
     """Restart a list of agents.
 
     Parameters
@@ -250,9 +248,8 @@ async def restart_agents(agent_list: list = None) -> AffectedItemsWazuhResult:
     if agent_list:
         system_agents = get_agents_info()
         rbac_filters = get_rbac_filters(system_resources=system_agents, permitted_resources=list(agent_list))
-
-        async with get_wdb_http_client() as wdb_client: 
-            agents_with_data = await wdb_client.get_agents_restart_info(rbac_filters['filters']['rbac_ids'], rbac_filters['rbac_negate'])
+        with WazuhDBQueryAgents(limit=None, select=["id", "status", "version"], **rbac_filters) as query_data:
+            agents_with_data = query_data.run()['items']
 
         # Add non existent agents to failed_items
         not_found_agents = agent_list - system_agents
@@ -280,9 +277,8 @@ async def restart_agents(agent_list: list = None) -> AffectedItemsWazuhResult:
 
 
 @expose_resources(actions=['cluster:read'], resources=[f'node:id:{node_id}'],
-                  post_proc_kwargs={'exclude_codes': [1701, 1703, 1707], 'force': True},
-                  post_proc_func=async_list_handler)
-async def restart_agents_by_node(agent_list: list = None) -> AffectedItemsWazuhResult:
+                  post_proc_kwargs={'exclude_codes': [1701, 1703, 1707], 'force': True})
+def restart_agents_by_node(agent_list: list = None) -> AffectedItemsWazuhResult:
     """Restart all agents belonging to a node.
 
     Parameters
@@ -296,13 +292,12 @@ async def restart_agents_by_node(agent_list: list = None) -> AffectedItemsWazuhR
         Affected items.
     """
     '000' in agent_list and agent_list.remove('000')
-    return await restart_agents(agent_list=agent_list)
+    return restart_agents(agent_list=agent_list)
 
 
 @expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"],
-                  post_proc_kwargs={'exclude_codes': [1701, 1703, 1707], 'force': True},
-                  post_proc_func=async_list_handler)
-async def restart_agents_by_group(agent_list: list = None) -> AffectedItemsWazuhResult:
+                  post_proc_kwargs={'exclude_codes': [1701, 1703, 1707], 'force': True})
+def restart_agents_by_group(agent_list: list = None) -> AffectedItemsWazuhResult:
     """Restart all agents belonging to a group.
 
     Parameters
@@ -315,7 +310,7 @@ async def restart_agents_by_group(agent_list: list = None) -> AffectedItemsWazuh
     AffectedItemsWazuhResult
         Affected items.
     """
-    return await restart_agents(agent_list=agent_list)
+    return restart_agents(agent_list=agent_list)
 
 
 @expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"],
