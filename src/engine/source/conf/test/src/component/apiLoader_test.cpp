@@ -8,7 +8,7 @@
 
 #include <conf/apiLoader.hpp>
 
-constexpr auto serverPath {"/run/wazuh-server/config-server.sock"};
+constexpr auto serverPath {"/tmp/config-server.sock"};
 
 TEST(ApiLoader, environmentVariable)
 {

@@ -121,12 +121,12 @@ class EngineHandler:
         if log_file_path:
             with open(log_file_path, "w") as log_file:
                 self.process = subprocess.Popen(
-                    shlex.split(self.binary_path),
+                    shlex.split(f"{self.binary_path} -f"),
                     stdout=log_file,
                     stderr=log_file
                 )
         else:
-            self.process = subprocess.Popen(shlex.split(self.binary_path))
+            self.process = subprocess.Popen(shlex.split(f"{self.binary_path} -f"))
 
         # Check if the process has started successfully
         if self.process.returncode is not None and self.process.returncode != 0:

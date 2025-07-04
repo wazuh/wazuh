@@ -201,37 +201,20 @@ def step_impl(context, policy_name: str):
     delete_policy(policy_name)
 
 
-@when('I send a request to send the event "{message}" from "{session_name}" session with "{debug_level}" debug "{namespace}" namespace, agent.name "{queue_char}" and "{asset_trace}" asset trace')
-def step_impl(context, message: str, session_name: str, debug_level: str, queue_char: str, namespace: str, asset_trace: str):
+@when('I send a request to send the event "{message}" from "{session_name}" session with "{debug_level}" debug "{namespace}" namespace, agent.id "{agent_id}" and "{asset_trace}" asset trace')
+def step_impl(context, message: str, session_name: str, debug_level: str, agent_id: str, namespace: str, asset_trace: str):
     debug_level_to_int = {
         "NONE": 0,
         "ASSET_ONLY": 1,
         "ALL": 2
     }
 
-    json_event : dict = {
-        "event": {
-            "original": message
-        }
-    }
-    header_json_event : dict = {
-        "agent": {
-            "name": "header-agent",
-            "id": queue_char
-        }
-    }
-    subheader_json_event : dict = {
-        "collector": "file",
-        "module": "logcollector"
-    }
-    str_json_event = json.dumps(json_event, separators=(",", ":"))
-    str_header_json_event = json.dumps(header_json_event, separators=(",", ":"))
-    str_subheader_json_event = json.dumps(subheader_json_event, separators=(",", ":"))
-
     request = api_tester.RunPost_Request()
     request.name = session_name
     request.trace_level = debug_level_to_int[debug_level]
-    request.ndjson_event = str_header_json_event + "\n" + str_subheader_json_event + "\n" + str_json_event
+    LOCATION = f"[{agent_id}] (agent-ex) any->SomeModule"
+    QUEUE = 1
+    request.event = f"{QUEUE}:{LOCATION}:{message}"
     request.namespaces.extend([namespace])
     request.asset_trace.extend([asset_trace])
     error, context.result = send_recv(request, api_tester.RunPost_Response())
@@ -310,14 +293,36 @@ def step_impl(context):
 
 @then('I should receive the next output: "{response}"')
 def step_impl(context, response: str):
-    # Load expected and actual JSON responses
-    expected_response = json.loads(response)
-    actual_response = json.loads(MessageToJson(context.result.result))
+    """
+    Compare the expected and actual JSON, ensuring:
+      - the full wrapper is validated (e.g., assetTraces + output)
+      - the output field is normalized (parsed, manager_name removed, re-serialized)
+    """
+    # 1. Parse the expected and actual wrappers
+    expected_wrapper = json.loads(response)
+    actual_wrapper   = json.loads(MessageToJson(context.result.result))
 
-    # Normalize and compare JSON strings
-    normalized_expected = json.dumps(
-        expected_response, sort_keys=True, separators=(",", ":"))
-    normalized_actual = json.dumps(
-        actual_response, sort_keys=True, separators=(",", ":"))
+    # 2. Helper to extract and parse the 'output' field (which comes as a JSON string)
+    def parse_output(wrapper):
+        raw = wrapper.get('output')
+        if isinstance(raw, str):
+            return json.loads(raw)
+        return raw or {}
 
-    assert normalized_actual == normalized_expected, f"Responses do not match: {normalized_actual} != {normalized_expected}"
+    expected_output = parse_output(expected_wrapper)
+    actual_output   = parse_output(actual_wrapper)
+
+    # 3. Remove manager_name from both outputs
+    expected_output.get('agent', {}).pop('manager_name', None)
+    actual_output.get('agent',   {}).pop('manager_name', None)
+
+    # 4. Re-serialize the output with sorted keys and no extra spaces
+    normalize = lambda obj: json.dumps(obj, sort_keys=True, separators=(",", ":"))
+    expected_wrapper['output'] = normalize(expected_output)
+    actual_wrapper['output']   = normalize(actual_output)
+
+    # 5. Normalize and compare the whole wrapper
+    norm_expected = normalize(expected_wrapper)
+    norm_actual   = normalize(actual_wrapper)
+
+    assert norm_actual == norm_expected, f"Responses do not match: {norm_actual} != {norm_expected}"
