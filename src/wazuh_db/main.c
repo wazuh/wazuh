@@ -13,6 +13,8 @@
 #include "wdb_state.h"
 #include <os_net/os_net.h>
 #include "router.h"
+#include "config/config.h"
+#include "config/wazuh_db-config.h"
 
 #define WDB_AGENT_EVENTS_TOPIC "wdb-agent-events"
 #define WDB_FIM_EVENTS_TOPIC "wdb-fim-events"

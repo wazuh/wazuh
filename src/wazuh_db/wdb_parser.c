@@ -350,6 +350,9 @@ int wdb_parse(char * input, char * output, int peer) {
             *next++ = '\0';
         }
 
+        /*****************************************************************************************
+         TODO-LEGACY-ANALYSISD-FIM: Delete this function when the new system is ready
+         Should not depend on analsysid code
         if (strcmp(query, "syscheck") == 0) {
             w_inc_agent_syscheck();
             if (!next) {
@@ -365,6 +368,8 @@ int wdb_parse(char * input, char * output, int peer) {
                 w_inc_agent_syscheck_time(diff);
             }
         } else if (strcmp(query, "fim_file") == 0) {
+         *****************************************************************************************/
+        if (strcmp(query, "fim_file") == 0) {
             w_inc_agent_fim_file();
             if (!next) {
                 mdebug1("DB(%s) Invalid FIM file query syntax.", sagent_id);
@@ -840,65 +845,6 @@ int wdb_parse(char * input, char * output, int peer) {
             snprintf(output, OS_MAXSTR + 1, "err No agents id provided");
             result = OS_INVALID;
         }
-        return result;
-    } else if (strcmp(actor, "mitre") == 0) {
-        query = next;
-
-        w_inc_mitre();
-
-        mdebug2("Mitre query: %s", query);
-
-        if (wdb = wdb_open_mitre(), !wdb) {
-            mdebug2("Couldn't open DB mitre: %s/%s.db", WDB_DIR, WDB_MITRE_NAME);
-            snprintf(output, OS_MAXSTR + 1, "err Couldn't open DB mitre");
-            return OS_INVALID;
-        }
-        // Add the current peer to wdb structure
-        wdb->peer = peer;
-
-        if (next = wstr_chr(query, ' '), !next) {
-            mdebug1("Invalid DB query syntax.");
-            mdebug2("DB query error near: %s", query);
-            snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
-            wdb_pool_leave(wdb);
-            return OS_INVALID;
-        }
-        *next++ = '\0';
-
-        if (strcmp(query, "sql") == 0) {
-            w_inc_mitre_sql();
-            if (!next) {
-                mdebug1("Mitre DB Invalid DB query syntax.");
-                mdebug2("Mitre DB query error near: %s", query);
-                snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
-                result = OS_INVALID;
-            } else {
-                sql = next;
-
-                gettimeofday(&begin, 0);
-                data = wdb_exec(wdb->db, sql);
-                gettimeofday(&end, 0);
-                timersub(&end, &begin, &diff);
-                w_inc_mitre_sql_time(diff);
-                if (data) {
-                    out = cJSON_PrintUnformatted(data);
-                    snprintf(output, OS_MAXSTR + 1, "ok %s", out);
-                    os_free(out);
-                    cJSON_Delete(data);
-                } else {
-                    mdebug1("Mitre DB Cannot execute SQL query; err database %s/%s.db: %s", WDB_DIR, WDB_MITRE_NAME, sqlite3_errmsg(wdb->db));
-                    mdebug2("Mitre DB SQL query: %s", sql);
-                    snprintf(output, OS_MAXSTR + 1, "err Cannot execute Mitre database query; %s", sqlite3_errmsg(wdb->db));
-                    result = OS_INVALID;
-                }
-            }
-        } else {
-            mdebug1("Invalid DB query syntax.");
-            mdebug2("DB query error near: %s", query);
-            snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
-            result = OS_INVALID;
-        }
-        wdb_pool_leave(wdb);
         return result;
     } else if (strcmp(actor, "global") == 0) {
         query = next;
@@ -1856,7 +1802,9 @@ int wdb_parse_syscheck(wdb_t * wdb, wdb_component_t component, char * input, cha
             strncpy(unsc_checksum + unsc_size, mark, mark_size + 1);
             unsc_checksum[unsc_size + mark_size] = '\0';
         }
-
+/*****************************************************************************************
+ TODO-LEGACY-ANALYSISD-FIM: Delete this function when the new system is ready
+ Should not depend on analsysid code
         if (result = wdb_syscheck_save(wdb, ftype, unsc_checksum, next), result < 0) {
             mdebug1("DB(%s) Cannot save FIM.", wdb->id);
             snprintf(output, OS_MAXSTR + 1, "err Cannot save Syscheck");
@@ -1864,9 +1812,13 @@ int wdb_parse_syscheck(wdb_t * wdb, wdb_component_t component, char * input, cha
             snprintf(output, OS_MAXSTR + 1, "ok");
         }
         free(unsc_checksum);
-
         return result;
+*****************************************************************************************/
+        return -1;
     } else if (strcmp(curr, "save2") == 0) {
+/*****************************************************************************************
+ TODO-LEGACY-ANALYSISD-FIM: Delete this function when the new system is ready
+ Should not depend on analsysid code
         if (wdb_syscheck_save2(wdb, next) == OS_INVALID) {
             mdebug1("DB(%s) Cannot save FIM.", wdb->id);
             snprintf(output, OS_MAXSTR + 1, "err Cannot save Syscheck");
@@ -1875,6 +1827,8 @@ int wdb_parse_syscheck(wdb_t * wdb, wdb_component_t component, char * input, cha
 
         snprintf(output, OS_MAXSTR + 1, "ok");
         return 0;
+*****************************************************************************************/
+        return -1;
     } else if (strncmp(curr, "integrity_check_", 16) == 0) {
         dbsync_msg action = INTEGRITY_CLEAR;
         if (0 == strcmp(curr, INTEGRITY_COMMANDS[INTEGRITY_CHECK_GLOBAL])) {

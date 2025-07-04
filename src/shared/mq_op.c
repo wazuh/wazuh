@@ -309,7 +309,7 @@ int SendJSONtoSCK(char* message, socket_forwarder* Config) {
                         }
                     }
                 } else {
-                    mdebug2("Discarding event from analysisd due to connection issue with '%s', %s. (Abort).", Config->name,strerror(errno));
+                    mdebug2("Discarding event from engine due to connection issue with '%s', %s. (Abort).", Config->name,strerror(errno));
                 }
             } else {
                 mdebug2("Cannot send message to socket '%s' due %s. (Abort).", Config->name,strerror(errno));

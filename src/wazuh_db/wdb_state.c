@@ -1013,24 +1013,6 @@ void w_inc_task_upgrade_cancel_tasks_time(struct timeval time) {
     w_mutex_unlock(&db_state_t_mutex);
 }
 
-void w_inc_mitre() {
-    w_mutex_lock(&db_state_t_mutex);
-    wdb_state.queries_breakdown.mitre_queries++;
-    w_mutex_unlock(&db_state_t_mutex);
-}
-
-void w_inc_mitre_sql() {
-    w_mutex_lock(&db_state_t_mutex);
-    wdb_state.queries_breakdown.mitre_breakdown.sql_queries++;
-    w_mutex_unlock(&db_state_t_mutex);
-}
-
-void w_inc_mitre_sql_time(struct timeval time) {
-    w_mutex_lock(&db_state_t_mutex);
-    timeradd(&wdb_state.queries_breakdown.mitre_breakdown.sql_time, &time, &wdb_state.queries_breakdown.mitre_breakdown.sql_time);
-    w_mutex_unlock(&db_state_t_mutex);
-}
-
 cJSON* wdb_create_state_json() {
     wdb_state_t wdb_state_cpy;
 
@@ -1193,16 +1175,6 @@ cJSON* wdb_create_state_json() {
     cJSON_AddItemToObject(_global_tables, "labels", _global_tables_labels);
 
     cJSON_AddNumberToObject(_global_tables_labels, "get-labels", wdb_state_cpy.queries_breakdown.global_breakdown.labels.get_labels_queries);
-
-    cJSON_AddNumberToObject(_received_breakdown, "mitre", wdb_state_cpy.queries_breakdown.mitre_queries);
-
-    cJSON *_mitre_breakdown = cJSON_CreateObject();
-    cJSON_AddItemToObject(_received_breakdown, "mitre_breakdown", _mitre_breakdown);
-
-    cJSON *_mitre_db = cJSON_CreateObject();
-    cJSON_AddItemToObject(_mitre_breakdown, "db", _mitre_db);
-
-    cJSON_AddNumberToObject(_mitre_db, "sql", wdb_state_cpy.queries_breakdown.mitre_breakdown.sql_queries);
 
     cJSON_AddNumberToObject(_received_breakdown, "task", wdb_state_cpy.queries_breakdown.task_queries);
 
@@ -1386,16 +1358,6 @@ cJSON* wdb_create_state_json() {
 
     cJSON_AddNumberToObject(_global_tables_labels_t, "get-labels", timeval_to_milis(wdb_state_cpy.queries_breakdown.global_breakdown.labels.get_labels_time));
 
-    cJSON_AddNumberToObject(_execution_breakdown, "mitre", timeval_to_milis(wdb_state_cpy.queries_breakdown.mitre_breakdown.sql_time));
-
-    cJSON *_mitre_breakdown_t = cJSON_CreateObject();
-    cJSON_AddItemToObject(_execution_breakdown, "mitre_breakdown", _mitre_breakdown_t);
-
-    cJSON *_mitre_db_t = cJSON_CreateObject();
-    cJSON_AddItemToObject(_mitre_breakdown_t, "db", _mitre_db_t);
-
-    cJSON_AddNumberToObject(_mitre_db_t, "sql", timeval_to_milis(wdb_state_cpy.queries_breakdown.mitre_breakdown.sql_time));
-
     cJSON_AddNumberToObject(_execution_breakdown, "task", get_task_time(&wdb_state_cpy));
 
     cJSON *_task_breakdown_t = cJSON_CreateObject();
@@ -1533,5 +1495,5 @@ STATIC uint64_t get_task_time(wdb_state_t *state){
 }
 
 STATIC uint64_t get_time_total(wdb_state_t *state){
-    return get_task_time(state) + get_global_time(state) + get_agent_time(state) + timeval_to_milis(state->queries_breakdown.wazuhdb_breakdown.remove_time) + timeval_to_milis(state->queries_breakdown.mitre_breakdown.sql_time);
+    return get_task_time(state) + get_global_time(state) + get_agent_time(state) + timeval_to_milis(state->queries_breakdown.wazuhdb_breakdown.remove_time);
 }

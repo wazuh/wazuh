@@ -10,12 +10,16 @@
 
 #include "syscheck_op.h"
 
+/*****************************************************************************************
+ TODO-LEGACY-ANALYSISD-FIM: Delete this function when the new system is ready
+ Should not depend on analsysid code
 const char *SYSCHECK_EVENT_STRINGS[] = {
     [FIM_ADDED] = "added",
     [FIM_MODIFIED] = "modified",
     [FIM_READDED] = "readded",
     [FIM_DELETED] = "deleted"
 };
+/****************************************************************************************/
 
 #ifdef WAZUH_UNIT_TESTING
 /* Replace assert with mock_assert */
@@ -115,6 +119,9 @@ int remove_empty_folders(const char *path) {
 }
 
 #ifndef WIN32
+/*****************************************************************************************
+ TODO-LEGACY-ANALYSISD-FIM: Delete this function when the new system is ready
+ Should not depend on analsysid code
 #ifndef CLIENT
 int sk_decode_sum(sk_sum_t *sum, char *c_sum, char *w_sum) {
     assert(sum != NULL);
@@ -286,21 +293,21 @@ int sk_decode_sum(sk_sum_t *sum, char *c_sum, char *w_sum) {
             return -1;
         }
 
-        /* Look for a defined tag */
+        // Look for a defined tag 
         if (sum->tag = wstr_chr(sum->wdata.process_id, ':'), sum->tag) {
             *(sum->tag++) = '\0';
         } else {
             sum->tag = NULL;
         }
 
-        /* Look for a symbolic path */
+        // Look for a symbolic path 
         if (sum->tag && (symbolic_path = wstr_chr(sum->tag, ':'))) {
             *(symbolic_path++) = '\0';
         } else {
             symbolic_path = NULL;
         }
 
-        /* Look if it is a silent event */
+        // Look if it is a silent event 
         if (symbolic_path && (c_inode = wstr_chr(symbolic_path, ':'))) {
             *(c_inode++) = '\0';
             if (*c_inode == '+') {
@@ -537,7 +544,8 @@ void sk_sum_clean(sk_sum_t * sum) {
     os_free(sum->win_perm);
 }
 
-#endif /* #ifndef CLIENT */
+#endif // #ifndef CLIENT
+*****************************************************************************************/
 
 char *unescape_syscheck_field(char *sum) {
     char *esc_it;

@@ -2624,6 +2624,9 @@ int main()
         cmocka_unit_test_setup_teardown(test_fim_delete_ok, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_syscheck_save_noarg, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_syscheck_save_invalid_type, test_setup, test_teardown),
+        /*****************************************************************************************
+        TODO-LEGACY-ANALYSISD-FIM: Delete this function when the new system is ready
+        Should not depend on analsysid code
         cmocka_unit_test_setup_teardown(test_syscheck_save_file_type_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_syscheck_save_file_nospace, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_syscheck_save_file_type_ok, test_setup, test_teardown),
@@ -2631,6 +2634,7 @@ int main()
         cmocka_unit_test_setup_teardown(test_syscheck_save_registry_type_ok, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_syscheck_save2_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_syscheck_save2_ok, test_setup, test_teardown),
+        *****************************************************************************************/
         cmocka_unit_test_setup_teardown(test_integrity_check_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_integrity_check_no_data, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_integrity_check_checksum_fail, test_setup, test_teardown),

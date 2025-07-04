@@ -1,5 +1,4 @@
 # Copyright (C) 2015, Wazuh Inc.
-# TODO: mysql and postgresql?
 #
 # Copyright (C) 2015, Wazuh Inc.
 #
@@ -102,9 +101,6 @@ EXTERNAL_POPT=external/popt/
 EXTERNAL_LIBBPF=external/libbpf-bootstrap/
 endif
 # XXX Becareful NO EXTRA Spaces here
-PG_CONFIG?=pg_config
-MY_CONFIG?=mysql_config
-PRELUDE_CONFIG?=libprelude-config
 WAZUH_GROUP?=wazuh
 WAZUH_USER?=wazuh
 SHARED=so
@@ -122,9 +118,6 @@ VULNERABILITY_SCANNER=wazuh_modules/vulnerability_scanner/
 INVENTORY_HARVESTER=wazuh_modules/inventory_harvester/
 SYSINFO=data_provider/
 SYSCHECK=syscheckd/
-USE_PRELUDE?=no
-USE_ZEROMQ?=no
-USE_GEOIP?=no
 USE_INOTIFY=no
 USE_BIG_ENDIAN=no
 USE_AUDIT=no
@@ -375,9 +368,6 @@ ifeq (,$(filter ${DISABLE_CISCAT},YES yes y Y 1))
 	DEFINES+=-DENABLE_CISCAT
 endif
 
-ifneq (,$(filter ${DEBUGAD},YES yes y Y 1))
-	DEFINES+=-DDEBUGAD
-endif
 
 # Check if symbol table should be included in release
 ifeq (${uname_S},Linux)
@@ -556,23 +546,6 @@ ifneq (,$(filter ${USE_BIG_ENDIAN},YES yes y Y 1))
 	DEFINES+=-DOS_BIG_ENDIAN
 endif
 
-ifneq (,$(filter ${USE_PRELUDE},YES auto yes y Y 1))
-	DEFINES+=-DPRELUDE_OUTPUT_ENABLED
-	OSSEC_LIBS+=-lprelude
-	OSSEC_LDFLAGS+=$(shell sh -c '${PRELUDE_CONFIG} --pthread-cflags')
-	OSSEC_LIBS+=$(shell sh -c '${PRELUDE_CONFIG} --libs')
-endif # USE_PRELUDE
-
-ifneq (,$(filter ${USE_ZEROMQ},YES auto yes y Y 1))
-	DEFINES+=-DZEROMQ_OUTPUT_ENABLED
-	OSSEC_LIBS+=-lzmq -lczmq
-endif # USE_ZEROMQ
-
-ifneq (,$(filter ${USE_GEOIP},YES auto yes y Y 1))
-	DEFINES+=-DLIBGEOIP_ENABLED
-	OSSEC_LIBS+=-lGeoIP
-endif # USE_GEOIP
-
 SYSINFO_LIB+=-lsysinfo
 
 ifeq (${TARGET}, winagent)
@@ -590,80 +563,6 @@ ifeq (,$(filter ${DISABLE_SYSC}, YES yes y Y 1))
 	SYSCOLLECTOR_LIB+=-lsyscollector
 endif
 
-MI :=
-PI :=
-ifdef DATABASE
-
-	ifeq (${DATABASE},mysql)
-		DEFINES+=-DMYSQL_DATABASE_ENABLED
-
-		ifdef MYSQL_CFLAGS
-			MI = ${MYSQL_CFLAGS}
-		else
-			MI := $(shell sh -c '${MY_CONFIG} --include 2>/dev/null || echo ')
-
-			ifeq (${MI},) # BEGIN MI manual detection
-				ifneq (,$(wildcard /usr/include/mysql/mysql.h))
-					MI="-I/usr/include/mysql/"
-				else
-					ifneq (,$(wildcard /usr/local/include/mysql/mysql.h))
-						MI="-I/usr/local/include/mysql/"
-					endif  #
-				endif  #MI
-
-			endif
-		endif # MYSQL_CFLAGS
-
-		ifdef MYSQL_LIBS
-			ML = ${MYSQL_LIBS}
-		else
-			ML := $(shell sh -c '${MY_CONFIG} --libs 2>/dev/null || echo ')
-
-			ifeq (${ML},)
-				ifneq (,$(wildcard /usr/lib/mysql/*))
-					ML="-L/usr/lib/mysql"
-				else
-					ifneq (,$(wildcard /usr/lib64/mysql/*))
-						ML="-L/usr/lib64/mysql"
-					else
-						ifneq (,$(wildcard /usr/local/lib/mysql/*))
-							ML="-L/usr/local/lib/mysql"
-						else
-							ifneq (,$(wildcard /usr/local/lib64/mysql/*))
-								ML="-L/usr/local/lib64/mysql"
-							endif # local/lib64
-						endif # local/lib
-					endif # lib54
-				endif # lib
-			endif
-		endif # MYSQL_LIBS
-
-		OSSEC_LIBS+=${ML} -lmysqlclient
-
-	else # DATABASE
-
-		ifeq (${DATABASE}, pgsql)
-			DEFINES+=-DPGSQL_DATABASE_ENABLED
-
-			ifneq (${PGSQL_LIBS},)
-				PL:=${PGSQL_LIBS}
-			else
-				PL:=$(shell sh -c '(${PG_CONFIG} --libdir --pkglibdir 2>/dev/null | sed "s/^/-L/g" | xargs ) || echo ')
-			endif
-
-			ifneq (${PGSQL_CFLAGS},)
-				PI:=${PGSQL_CFLAGS}
-			else
-				PI:=$(shell sh -c '(${PG_CONFIG} --includedir --pkgincludedir 2>/dev/null | sed "s/^/-I/g" | xargs ) || echo ')
-			endif
-
-			# XXX need some basic autodetech stuff here.
-
-			OSSEC_LIBS+=${PL} -lpq
-
-		endif # pgsql
-	endif # mysql
-endif # DATABASE
 
 ####################
 #### Target ########
@@ -709,14 +608,11 @@ help: failtarget
 	@echo "General options: "
 	@echo "   make V=yes                   						Display full compiler messages. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make DEBUG=yes               						Build with symbols and without optimization. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
-	@echo "   make DEBUGAD=yes             						Enables extra debugging logging in wazuh-analysisd. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make INSTALLDIR=/path        						Wazuh's installation path. Mandatory when compiling the python interpreter from sources using PYTHON_SOURCE."
 	@echo "   make ONEWAY=yes              						Disables manager's ACK towards agent. It allows connecting agents without backward connection from manager. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make CLEANFULL=yes           						Makes the alert mailing subject clear in the format: '<location> - <level> - <description>'. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make RESOURCES_URL           						Set the Wazuh resources URL"
 	@echo "   make EXTERNAL_SRC_ONLY=yes   						Combined with 'deps', it downloads only the external source code to be compiled as part of Wazuh building."
-	@echo "   make USE_ZEROMQ=yes          						Build with zeromq support. Allowed values are auto, 1, yes, YES, y and Y, otherwise, the flag is ignored"
-	@echo "   make USE_PRELUDE=yes         						Build with prelude support. Allowed values are auto, 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make USE_INOTIFY=yes         						Build with inotify support. Allowed values are auto, 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make USE_BIG_ENDIAN=yes      						Build with big endian support. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make USE_SELINUX=yes         						Build with SELinux policies. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
@@ -732,15 +628,6 @@ help: failtarget
 	@echo "   make CA_NAME="DigiCert Assured ID Root CA" 		This flag controls the CA name used to verify the dll and exe files signature. The default value is DigiCert Assured ID Root CA."
 	@echo "   make deps HTTP_REQUEST_BRANCH=main 				Build dependencies for http-request tool from selected branch/tag only if submodule isn't checked out, valid at make deps stage. Allowed values are any existing branch/tag.
 	@echo
-	@echo "Database options: "
-	@echo "   make DATABASE=mysql          Build with MYSQL Support"
-	@echo "                                Use MYSQL_CFLAGS adn MYSQL_LIBS to override defaults"
-	@echo "   make DATABASE=pgsql          Build with PostgreSQL Support "
-	@echo "                                Use PGSQL_CFLAGS adn PGSQL_LIBS to override defaults"
-	@echo
-	@echo "Geoip support: "
-	@echo "   make USE_GEOIP=yes           Build with GeoIP support. Allowed values are auto 1, yes, YES, y and Y, otherwise, the flag is ignored"
-	@echo
 	@echo "User options: "
 	@echo "   make WAZUH_GROUP=wazuh       Set wazuh group"
 	@echo "   make WAZUH_USER=wazuh        Set wazuh user"
@@ -755,7 +642,6 @@ settings:
 	@echo "    TARGET:             ${TARGET}"
 	@echo "    V:                  ${V}"
 	@echo "    DEBUG:              ${DEBUG}"
-	@echo "    DEBUGAD             ${DEBUGAD}"
 	@echo "    INSTALLDIR:         ${INSTALLDIR}"
 	@echo "    DATABASE:           ${DATABASE}"
 	@echo "    ONEWAY:             ${ONEWAY}"
@@ -767,9 +653,6 @@ settings:
 	@echo "    WAZUH_GROUP:        ${WAZUH_GROUP}"
 	@echo "    WAZUH_USER:         ${WAZUH_USER}"
 	@echo "USE settings:"
-	@echo "    USE_ZEROMQ:         ${USE_ZEROMQ}"
-	@echo "    USE_GEOIP:          ${USE_GEOIP}"
-	@echo "    USE_PRELUDE:        ${USE_PRELUDE}"
 	@echo "    USE_INOTIFY:        ${USE_INOTIFY}"
 	@echo "    USE_BIG_ENDIAN:     ${USE_BIG_ENDIAN}"
 	@echo "    USE_SELINUX:        ${USE_SELINUX}"
@@ -807,9 +690,6 @@ BUILD_SERVER+=wazuh-syscheckd
 BUILD_SERVER+=wazuh-monitord
 BUILD_SERVER+=wazuh-reportd
 BUILD_SERVER+=wazuh-authd
-BUILD_SERVER+=wazuh-analysisd
-BUILD_SERVER+=wazuh-logtest-legacy
-BUILD_SERVER+=wazuh-dbd -
 BUILD_SERVER+=wazuh-integratord
 BUILD_SERVER+=wazuh-modulesd
 BUILD_SERVER+=wazuh-db
@@ -1825,9 +1705,6 @@ wrappers_windows_posix_o := $(wrappers_windows_posix_c:.c=.o)
 wrappers_wazuh_remoted_c := $(wildcard unit_tests/wrappers/wazuh/remoted/*.c)
 wrappers_wazuh_remoted_o := $(wrappers_wazuh_remoted_c:.c=.o)
 
-wrappers_wazuh_analysisd_c := $(wildcard unit_tests/wrappers/wazuh/analysisd/*.c)
-wrappers_wazuh_analysisd_o := $(wrappers_wazuh_analysisd_c:.c=.o)
-
 wrappers_wazuh_shared_modules_c := $(wildcard unit_tests/wrappers/wazuh/shared_modules/*.c)
 wrappers_wazuh_shared_modules_o := $(wrappers_wazuh_shared_modules_c:.c=.o)
 
@@ -1863,7 +1740,6 @@ ifneq (,$(filter ${TEST},YES yes y Y 1))
 	UNIT_TEST_WRAPPERS+=${wrappers_wazuh_config_o}
 	UNIT_TEST_WRAPPERS+=${wrappers_client_agent_o}
 	UNIT_TEST_WRAPPERS+=${wrappers_wazuh_remoted_o}
-	UNIT_TEST_WRAPPERS+=${wrappers_wazuh_analysisd_o}
 	UNIT_TEST_WRAPPERS+=${wrappers_data_provider_o}
 	UNIT_TEST_WRAPPERS+=${wrappers_logcollector_o}
 
@@ -2033,9 +1909,6 @@ crypto_signature_o := $(crypto_signature_c:.c=.o)
 os_crypto/signature/%.o: os_crypto/signature/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -c $< -o $@
 
-analysisd/logmsg.o: analysisd/logmsg.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -c $< -o $@
-
 
 crypto_o := ${crypto_blowfish_o} \
 					 ${crypto_md5_o} \
@@ -2051,7 +1924,7 @@ crypto_o := ${crypto_blowfish_o} \
 
 #### libwazuh #########
 
-libwazuh.a: ${config_o} ${wmodules_dep} ${crypto_o} ${shared_o} ${os_net_o} ${os_regex_o} ${os_xml_o} ${os_zlib_o} ${UNIT_TEST_WRAPPERS} os_auth/ssl.o os_auth/check_cert.o addagent/validate.o ${manage_agents} analysisd/logmsg.o
+libwazuh.a: ${config_o} ${wmodules_dep} ${crypto_o} ${shared_o} ${os_net_o} ${os_regex_o} ${os_xml_o} ${os_zlib_o} ${UNIT_TEST_WRAPPERS} os_auth/ssl.o os_auth/check_cert.o addagent/validate.o ${manage_agents}
 	${OSSEC_LINK} $@ $^
 	${OSSEC_RANLIB} $@
 
@@ -2124,18 +1997,6 @@ os_maild/%.o: os_maild/%.c
 
 wazuh-maild: ${os_maild_o}
 	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
-
-#### os_dbd ##########
-
-os_dbd_c := $(wildcard os_dbd/*.c)
-os_dbd_o := $(os_dbd_c:.c=.o)
-
-os_dbd/%.o: os_dbd/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} ${MI} ${PI} -DARGV0=\"wazuh-dbd\" -c $^ -o $@
-
-wazuh-dbd: ${os_dbd_o}
-	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} ${MI} ${PI} $^  ${OSSEC_LIBS} -o $@
-
 
 #### os_csyslogd #####
 
@@ -2430,104 +2291,6 @@ os_integrator/%.o: os_integrator/%.c
 wazuh-integratord: ${integrator_o}
 	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
-#### analysisd #####
-
-cdb_c := ${wildcard analysisd/cdb/*.c}
-cdb_o := $(cdb_c:.c=.o)
-all_analysisd_o += ${cdb_o}
-all_analysisd_libs += cdb.a
-
-analysisd/cdb/%.o: analysisd/cdb/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -DARGV0=\"wazuh-analysisd\" -I./analysisd -I./analysisd/cdb -c $^ -o $@
-
-cdb.a: ${cdb_o}
-	${OSSEC_LINK} $@ $^
-	${OSSEC_RANLIB} $@
-
-
-alerts_c := ${wildcard analysisd/alerts/*.c}
-alerts_o := $(alerts_c:.c=.o)
-all_analysisd_o += ${alerts_o}
-all_analysisd_libs += alerts.a
-
-analysisd/alerts/%.o: analysisd/alerts/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -DARGV0=\"wazuh-analysisd\" -I./analysisd -I./analysisd/alerts -c $^ -o $@
-
-alerts.a: ${alerts_o}
-	${OSSEC_LINK} $@ $^
-
-decoders_c := ${wildcard analysisd/decoders/*.c} ${wildcard analysisd/decoders/plugins/*.c} ${wildcard analysisd/compiled_rules/*.c}
-decoders_o := $(decoders_c:.c=.o)
-## XXX Nasty hack
-decoders_test_o := $(decoders_c:.c=-test.o)
-decoders_live_o := $(decoders_c:.c=-live.o)
-
-all_analysisd_o += ${decoders_o} ${decoders_test_o} ${decoders_live_o}
-all_analysisd_libs += decoders.a decoders-test.a decoders-live.a
-
-
-analysisd/decoders/%-test.o: analysisd/decoders/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -DTESTRULE -DARGV0=\"wazuh-analysisd\" -I./analysisd -I./analysisd/decoders -c $^ -o $@
-
-analysisd/decoders/%-live.o: analysisd/decoders/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -DARGV0=\"wazuh-analysisd\" -I./analysisd -I./analysisd/decoders -c $^ -o $@
-
-analysisd/decoders/plugins/%-test.o: analysisd/decoders/plugins/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -DTESTRULE -DARGV0=\"wazuh-analysisd\" -I./analysisd -I./analysisd/decoders -c $^ -o $@
-
-
-analysisd/decoders/plugins/%-live.o: analysisd/decoders/plugins/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -DARGV0=\"wazuh-analysisd\" -I./analysisd -I./analysisd/decoders -c $^ -o $@
-
-analysisd/compiled_rules/compiled_rules.h: analysisd/compiled_rules/.function_list analysisd/compiled_rules/register_rule.sh
-	./analysisd/compiled_rules/register_rule.sh build
-
-analysisd/compiled_rules/%-test.o: analysisd/compiled_rules/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -DTESTRULE -DARGV0=\"wazuh-analysisd\" -I./analysisd -I./analysisd/decoders -c $^ -o $@
-
-analysisd/compiled_rules/%-live.o: analysisd/compiled_rules/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -DARGV0=\"wazuh-analysisd\" -I./analysisd -I./analysisd/decoders -c $^ -o $@
-
-decoders-live.a: ${decoders_live_o}
-	${OSSEC_LINK} $@ $^
-
-decoders-test.a: ${decoders_test_o}
-	${OSSEC_LINK} $@ $^
-
-format_c := ${wildcard analysisd/format/*.c}
-format_o := ${format_c:.c=.o}
-all_analysisd_o += ${format_o}
-
-analysisd/format/%.o: analysisd/format/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -DARGV0=\"wazuh-analysisd\" -I./analysisd -I./analysisd/decoders -c $^ -o $@
-
-output_c := ${wildcard analysisd/output/*c}
-output_o := ${output_c:.c=.o}
-all_analysisd_o += ${output_o}
-
-analysisd/output/%.o: analysisd/output/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -DARGV0=\"wazuh-analysisd\" -I./analysisd -I./analysisd/decoders -c $^ -o $@
-
-analysisd_c := ${filter-out analysisd/logmsg.c, ${filter-out analysisd/analysisd.c, ${filter-out analysisd/testrule.c, ${filter-out analysisd/makelists.c, ${wildcard analysisd/*.c}}}}}
-analysisd_o := ${analysisd_c:.c=.o}
-all_analysisd_o += ${analysisd_o}
-
-analysisd_test_o := $(analysisd_o:.o=-test.o)
-analysisd_live_o := $(analysisd_o:.o=-live.o)
-all_analysisd_o += ${analysisd_test_o} ${analysisd_live_o} analysisd/testrule-test.o analysisd/analysisd-live.o analysisd/analysisd-test.o analysisd/makelists-live.o
-
-analysisd/%-live.o: analysisd/%.c analysisd/compiled_rules/compiled_rules.h
-	${OSSEC_CC} ${OSSEC_CFLAGS} -DARGV0=\"wazuh-analysisd\" -I./analysisd -c $< -o $@
-
-analysisd/%-test.o: analysisd/%.c analysisd/compiled_rules/compiled_rules.h
-	${OSSEC_CC} ${OSSEC_CFLAGS} -DTESTRULE -DARGV0=\"wazuh-analysisd\" -I./analysisd -c $< -o $@
-
-wazuh-logtest-legacy: ${analysisd_test_o} ${output_o} ${format_o} analysisd/testrule-test.o analysisd/analysisd-test.o alerts.a cdb.a decoders-test.a
-	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
-
-wazuh-analysisd: ${analysisd_live_o} analysisd/analysisd-live.o ${output_o} ${format_o} alerts.a cdb.a decoders-live.a analysisd/logmsg.o
-	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
-
 ### wazuh-modulesd ##
 
 wmodulesd_c := wazuh_modules/main.c
@@ -2563,7 +2326,7 @@ ifneq (,$(filter ${OPTIMIZE_CPYTHON},YES yes y Y 1))
 CPYTHON_FLAGS=--enable-optimizations
 endif
 
-wpython: install_dependencies install_framework install_api install_mitre
+wpython: install_dependencies install_framework install_api
 
 build_python:
 ifeq (,${INSTALLDIR})
@@ -2600,9 +2363,6 @@ install_framework: install_python
 
 install_api: install_python
 	cd ../api && ${WPYTHON_DIR}/bin/python3 -m pip install . --use-pep517 --prefix=${WPYTHON_DIR} && rm -rf build/
-
-install_mitre: install_python
-	cd ../tools/mitre && ${WPYTHON_DIR}/bin/python3 mitredb.py -d ${INSTALLDIR}/var/db/mitre.db
 
 ####################
 #### test ##########
@@ -2704,17 +2464,7 @@ unit_tests/wrappers/windows/libc/%.o: unit_tests/wrappers/windows/libc/%.c
 unit_tests/wrappers/wazuh/remoted/%.o: unit_tests/wrappers/wazuh/remoted/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -c $^ -o $@
 
-unit_tests/wrappers/wazuh/analysisd/%.o: unit_tests/wrappers/wazuh/analysisd/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -c $^ -o $@
-
 .PHONY: test
-
-###################
-#### Rule Tests ###
-###################
-
-test-rules:
-	( cd ../ruleset/testing && sudo python runtests.py)
 
 ####################
 #### windows #######
@@ -2903,7 +2653,6 @@ clean-internals: clean-unit-tests
 	rm -f ${os_maild_o}
 	rm -f ${crypto_o}
 	rm -f ${os_csyslogd_o}
-	rm -f ${os_dbd_o}
 	rm -f ${os_agentlessd_o}
 	rm -f ${os_execd_o}
 	rm -f ${os_logcollector_o} ${os_logcollector_eventchannel_o}
@@ -2916,7 +2665,6 @@ clean-internals: clean-unit-tests
 	rm -f ${rootcheck_o} librootcheck.a
 	rm -f ${monitor_o}
 	rm -f ${os_auth_o}
-	rm -f ${all_analysisd_o} ${all_analysisd_libs} analysisd/compiled_rules/compiled_rules.h analysisd/logmsg.o
 	rm -f ${integrator_o}
 	rm -f ${wmodulesd_o} ${wmodules_o} $(wildcard wazuh_modules/agent_upgrade/agent/*.o)
 	rm -f ${wdb_o}
@@ -2979,7 +2727,6 @@ clean-unit-tests:
 	rm -f ${wrappers_windows_posix_o}
 	rm -f ${wrappers_client_agent_o}
 	rm -f ${wrappers_wazuh_remoted_o}
-	rm -f ${wrappers_wazuh_analysisd_o}
 	rm -f ${wrappers_logcollector_o}
 	rm -f ${wrappers_macos_o}
 	rm -f ${wrappers_data_provider_o}

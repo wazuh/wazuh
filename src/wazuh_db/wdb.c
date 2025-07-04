@@ -377,28 +377,6 @@ wdb_t * wdb_open_global() {
     return wdb;
 }
 
-wdb_t * wdb_open_mitre() {
-    char path[PATH_MAX + 1];
-    wdb_t * wdb = wdb_pool_get_or_create(WDB_MITRE_NAME);
-
-    if (wdb->db != NULL) {
-        return wdb;
-    }
-
-    // Try to open DB
-
-    snprintf(path, sizeof(path), "%s/%s.db", WDB_DIR, WDB_MITRE_NAME);
-
-    if (sqlite3_open_v2(path, &wdb->db, SQLITE_OPEN_READWRITE, NULL)) {
-        merror("Can't open SQLite database '%s': %s", path, sqlite3_errmsg(wdb->db));
-        wdb_close(wdb, false);
-        wdb_pool_leave(wdb);
-        return NULL;
-    }
-
-    return wdb;
-}
-
 // Open database for agent and store in DB pool. It returns a locked database or NULL
 wdb_t * wdb_open_agent2(int agent_id) {
     char sagent_id[64];
