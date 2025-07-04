@@ -1,5 +1,8 @@
 FROM debian:8
 
+ARG GCC_MAJOR_VERSION=14
+ARG GCC_MINOR_VERSION=3
+
 RUN rm -f /etc/apt/sources.list && \
     printf 'deb [check-valid-until=no] http://archive.debian.org/debian jessie main contrib non-free\n' \
           > /etc/apt/sources.list && \
@@ -37,27 +40,27 @@ ENV PATH=/opt/gcc-8.5.0/bin:$PATH \
     CC=/opt/gcc-8.5.0/bin/gcc \
     CXX=/opt/gcc-8.5.0/bin/g++
 
-ARG GCC_FINAL_VER=15.1.0
-RUN curl -LO https://ftp.gnu.org/gnu/gcc/gcc-${GCC_FINAL_VER}/gcc-${GCC_FINAL_VER}.tar.xz && \
-    tar -xf gcc-${GCC_FINAL_VER}.tar.xz && \
-    cd gcc-${GCC_FINAL_VER} && \
+RUN curl -LO https://ftp.gnu.org/gnu/gcc/gcc-${GCC_MAJOR_VERSION}.${GCC_MINOR_VERSION}.0/gcc-${GCC_MAJOR_VERSION}.${GCC_MINOR_VERSION}.0.tar.xz && \
+    tar -xf gcc-${GCC_MAJOR_VERSION}.${GCC_MINOR_VERSION}.0.tar.xz && \
+    cd gcc-${GCC_MAJOR_VERSION}.${GCC_MINOR_VERSION}.0 && \
     ./contrib/download_prerequisites && \
     mkdir build && cd build && \
-    ../configure --prefix=/opt/gcc-${GCC_FINAL_VER%%.*} \
+    ../configure --prefix=/opt/gcc-${GCC_MAJOR_VERSION} \
                  --disable-multilib \
+                 --enable-default-dwarf=2 \
                  --enable-languages=c,c++ \
                  --with-system-zlib && \
-    make -j8 && make install-strip
+    make -j$(nproc) && make install-strip
 
 RUN apt-get install -y --allow-unauthenticated --no-install-recommends dpkg-dev && \
     mkdir -p /packages && \
-    mkdir -p /pkgbuild/gcc15/DEBIAN && \
-    printf "Package: gcc15\nVersion: 15.1-1\nSection: devel\nPriority: optional\n\
+    mkdir -p /pkgbuild/gcc${GCC_MAJOR_VERSION}/DEBIAN && \
+    printf "Package: gcc${GCC_MAJOR_VERSION}\nVersion: ${GCC_MAJOR_VERSION}.${GCC_MINOR_VERSION}-1\nSection: devel\nPriority: optional\n\
 Architecture: amd64\nMaintainer: bootstrap <root@localhost>\n\
-Provides: gcc, g++\nDescription: GNU Compiler Collection 15.1 built from source on Debian 8\n" \
-        > /pkgbuild/gcc15/DEBIAN/control && \
-    mkdir -p /pkgbuild/gcc15/opt && \
-    cp -a /opt/gcc-15 /pkgbuild/gcc15/opt/ && \
-    chmod 755 /pkgbuild/gcc15/DEBIAN && \
-    dpkg-deb --build /pkgbuild/gcc15 /packages && \
+Provides: gcc, g++\nDescription: GNU Compiler Collection ${GCC_MAJOR_VERSION}.${GCC_MINOR_VERSION} built from source on Debian 8\n" \
+        > /pkgbuild/gcc${GCC_MAJOR_VERSION}/DEBIAN/control && \
+    mkdir -p /pkgbuild/gcc${GCC_MAJOR_VERSION}/opt && \
+    cp -a /opt/gcc-${GCC_MAJOR_VERSION} /pkgbuild/gcc${GCC_MAJOR_VERSION}/opt/ && \
+    chmod 755 /pkgbuild/gcc${GCC_MAJOR_VERSION}/DEBIAN && \
+    dpkg-deb --build /pkgbuild/gcc${GCC_MAJOR_VERSION} /packages && \
     rm -rf /pkgbuild
