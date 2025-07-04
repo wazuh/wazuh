@@ -1,5 +1,8 @@
 FROM centos:7
 
+ARG GCC_MAJOR_VERSION=14
+ARG GCC_MINOR_VERSION=3
+
 RUN sed -i 's|mirrorlist=|#mirrorlist=|g' /etc/yum.repos.d/CentOS-*.repo && \
     sed -i 's|#baseurl=http://mirror.centos.org|baseurl=https://vault.centos.org|g' /etc/yum.repos.d/CentOS-*.repo
 
@@ -21,39 +24,40 @@ ENV PATH=/opt/rh/devtoolset-11/root/usr/bin:$PATH \
     CC=gcc CXX=g++
 
 WORKDIR /usr/src
-RUN wget https://ftp.gnu.org/gnu/gcc/gcc-15.1.0/gcc-15.1.0.tar.xz \
- && tar -xf gcc-15.1.0.tar.xz \
- && cd gcc-15.1.0 \
+RUN wget https://ftp.gnu.org/gnu/gcc/gcc-${GCC_MAJOR_VERSION}.${GCC_MINOR_VERSION}.0/gcc-${GCC_MAJOR_VERSION}.${GCC_MINOR_VERSION}.0.tar.xz \
+ && tar -xf gcc-${GCC_MAJOR_VERSION}.${GCC_MINOR_VERSION}.0.tar.xz \
+ && cd gcc-${GCC_MAJOR_VERSION}.${GCC_MINOR_VERSION}.0 \
  && ./contrib/download_prerequisites \
  && mkdir build && cd build \
  && ../configure \
-        --prefix=/opt/gcc-15.1 \
+        --prefix=/opt/gcc-${GCC_MAJOR_VERSION}.${GCC_MINOR_VERSION} \
         --disable-multilib \
+        --enable-default-dwarf=2 \
         --enable-languages=c,c++ \
         --with-system-zlib \
- && make -j6 \
+ && make -j$(nproc) \
  && make install-strip
 
 RUN yum -y install rpm-build
 RUN mkdir -p /packages && \
     mkdir -p /tmp/rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS} && \
-    mkdir -p /tmp/rpmbuild/SOURCES/gcc15/opt && \
-    cp -a /opt/gcc-15.1 /tmp/rpmbuild/SOURCES/gcc15/opt/gcc-15 && \
-    printf "Name: gcc15\n\
-Version: 15.1\n\
+    mkdir -p /tmp/rpmbuild/SOURCES/gcc${GCC_MAJOR_VERSION}/opt && \
+    cp -a /opt/gcc-${GCC_MAJOR_VERSION}.${GCC_MINOR_VERSION} /tmp/rpmbuild/SOURCES/gcc${GCC_MAJOR_VERSION}/opt/gcc-${GCC_MAJOR_VERSION} && \
+    printf "Name: gcc${GCC_MAJOR_VERSION}\n\
+Version: ${GCC_MAJOR_VERSION}.${GCC_MINOR_VERSION}\n\
 Release: 1\n\
-Summary: GNU Compiler Collection 15.1 built manually\n\
+Summary: GNU Compiler Collection ${GCC_MAJOR_VERSION}.${GCC_MINOR_VERSION} built manually\n\
 License: GPLv3+\n\
 Group: Development/Tools\n\
 BuildArch: x86_64\n\
 AutoReqProv: no\n\
 %%description\n\
-GCC 15.1 built manually and installed to /opt/gcc-15.\n\
+GCC ${GCC_MAJOR_VERSION}.${GCC_MINOR_VERSION} built manually and installed to /opt/gcc-${GCC_MAJOR_VERSION}.\n\
 %%install\n\
 mkdir -p %%{buildroot}/opt\n\
-cp -a %%{_sourcedir}/gcc15/opt/gcc-15 %%{buildroot}/opt/\n\
+cp -a %%{_sourcedir}/gcc${GCC_MAJOR_VERSION}/opt/gcc-${GCC_MAJOR_VERSION} %%{buildroot}/opt/\n\
 %%files\n\
-/opt/gcc-15\n" > /tmp/rpmbuild/SPECS/gcc15.spec && \
-    rpmbuild -bb --define "_topdir /tmp/rpmbuild" /tmp/rpmbuild/SPECS/gcc15.spec && \
+/opt/gcc-${GCC_MAJOR_VERSION}\n" > /tmp/rpmbuild/SPECS/gcc${GCC_MAJOR_VERSION}.spec && \
+    rpmbuild -bb --define "_topdir /tmp/rpmbuild" /tmp/rpmbuild/SPECS/gcc${GCC_MAJOR_VERSION}.spec && \
     cp /tmp/rpmbuild/RPMS/x86_64/*.rpm /packages && \
     rm -rf /tmp/rpmbuild

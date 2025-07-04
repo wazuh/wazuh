@@ -3,10 +3,14 @@ name: Build GCC Packages
 on:
   workflow_dispatch:
     inputs:
-      gcc_url:
-        description: "GCC source tarball URL"
+      gcc_major_version:
+        description: "GCC major version"
         required: true
-        default: "https://ftp.gnu.org/gnu/gcc/gcc-15.1.0/gcc-15.1.0.tar.xz"
+        default: "14"
+      gcc_minor_version:
+        description: "GCC minor version"
+        required: true
+        default: "3"
 
 jobs:
   build-deb:
@@ -17,8 +21,10 @@ jobs:
 
       - name: Docker build
         run: |
-          docker build -t gcc-deb -f packages/debs/amd64/gcc/Dockerfile .
-          docker run -it -v /tmp:/tmp gcc-deb /bin/bash -c "cp /packages/* /tmp/"
+          docker build -t gcc-deb -f packages/debs/amd64/gcc/Dockerfile \
+            --build-arg GCC_MAJOR_VERSION=${{ github.event.inputs.gcc_major_version }} \
+            --build-arg GCC_MINOR_VERSION=${{ github.event.inputs.gcc_minor_version }} .
+          docker run -v /tmp:/tmp gcc-deb /bin/bash -c "cp /packages/* /tmp/"
 
       - name: Upload .deb artifact
         uses: actions/upload-artifact@v4
@@ -34,8 +40,10 @@ jobs:
 
       - name: Docker build
         run: |
-          docker build -t gcc-rpm -f packages/rpms/amd64/gcc/Dockerfile .
-          docker run -it -v /tmp:/tmp gcc-rpm /bin/bash cp -c "/packages/* /tmp/"
+          docker build -t gcc-rpm -f packages/rpms/amd64/gcc/Dockerfile \
+            --build-arg GCC_MAJOR_VERSION=${{ github.event.inputs.gcc_major_version }} \
+            --build-arg GCC_MINOR_VERSION=${{ github.event.inputs.gcc_minor_version }} .
+          docker run -v /tmp:/tmp gcc-rpm /bin/bash -c "cp /packages/* /tmp/"
 
       - name: Upload .rpm artifact
         uses: actions/upload-artifact@v4
