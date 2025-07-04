@@ -10,6 +10,7 @@
 #ifndef AGENT_SYNC_PROTOCOL_HPP
 #define AGENT_SYNC_PROTOCOL_HPP
 
+#include "agent_sync_protocol_c_interface.h"
 #include "inventorySync_generated.h"
 #include "ipersistent_queue.hpp"
 
@@ -47,8 +48,9 @@ class AgentSyncProtocol : public IAgentSyncProtocol
 {
     public:
         /// @brief Constructs the synchronization protocol handler.
+        /// @param mqFuncs Functions used to interact with MQueue.
         /// @param queue Optional persistent queue to use for message storage and retrieval.
-        explicit AgentSyncProtocol(std::shared_ptr<IPersistentQueue> queue = nullptr);
+        explicit AgentSyncProtocol(MQ_Functions mqFuncs, std::shared_ptr<IPersistentQueue> queue = nullptr);
 
         /// @copydoc IAgentSyncProtocol::persistDifference
         void persistDifference(const std::string& module,
@@ -61,6 +63,10 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         void synchronizeModule(const std::string& module, Wazuh::SyncSchema::Mode mode, bool realtime) override;
 
     private:
+
+        /// @brief Functions used to interact with MQueue.
+        MQ_Functions m_mqFuncs;
+
         /// @brief Persistent message queue used to store and replay differences for synchronization.
         std::shared_ptr<IPersistentQueue> m_persistentQueue;
 

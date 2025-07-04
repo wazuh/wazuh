@@ -26,8 +26,9 @@ extern "C"
 
 using namespace Wazuh::SyncSchema;
 
-AgentSyncProtocol::AgentSyncProtocol(std::shared_ptr<IPersistentQueue> queue)
-    : m_persistentQueue(queue != nullptr ? std::move(queue) : std::make_shared<PersistentQueue>())
+AgentSyncProtocol::AgentSyncProtocol(MQ_Functions mqFuncs, std::shared_ptr<IPersistentQueue> queue)
+    : m_mqFuncs(mqFuncs),
+      m_persistentQueue(queue != nullptr ? std::move(queue) : std::make_shared<PersistentQueue>())
 {
 }
 
@@ -76,7 +77,7 @@ bool AgentSyncProtocol::ensureQueueAvailable()
 {
     if (m_queue < 0)
     {
-        m_queue = StartMQ(DEFAULTQUEUE, WRITE, 0);
+        m_queue = m_mqFuncs.start(DEFAULTQUEUE, WRITE, 0);
 
         if (m_queue < 0)
         {
@@ -212,12 +213,12 @@ bool AgentSyncProtocol::sendFlatBufferMessageAsString(flatbuffers::span<uint8_t>
 {
     std::string message(reinterpret_cast<const char*>(fbData.data()), fbData.size());
 
-    if (SendMSG(m_queue, message.c_str(), module.c_str(), SYNC_MQ) < 0)
+    if (m_mqFuncs.send(m_queue, message.c_str(), module.c_str(), SYNC_MQ) < 0)
     {
         std::cerr << "SendMSG failed, attempting to reinitialize queue..." << std::endl;
-        m_queue = StartMQ(DEFAULTQUEUE, WRITE, 0);
+        m_queue = m_mqFuncs.start(DEFAULTQUEUE, WRITE, 0);
 
-        if (m_queue < 0 || SendMSG(m_queue, message.c_str(), module.c_str(), SYNC_MQ) < 0)
+        if (m_queue < 0 || m_mqFuncs.send(m_queue, message.c_str(), module.c_str(), SYNC_MQ) < 0)
         {
             std::cerr << "Failed to send message after retry" << std::endl;
             return false;

@@ -97,6 +97,7 @@ add_library(agent_sync_protocol STATIC
   src/persistent_queue.cpp
   src/persistent_queue_storage.cpp
   ${GENERATED_HEADER}
+  src/agent_sync_protocol_c_interface.cpp
 )
 add_dependencies(agent_sync_protocol generate_flatbuffers)
 
