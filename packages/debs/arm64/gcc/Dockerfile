@@ -1,12 +1,12 @@
-FROM debian:8
+FROM arm64v8/debian:9
 
 ARG GCC_MAJOR_VERSION=14
 ARG GCC_MINOR_VERSION=3
 
 RUN rm -f /etc/apt/sources.list && \
-    printf 'deb [check-valid-until=no] http://archive.debian.org/debian jessie main contrib non-free\n' \
+    printf 'deb [check-valid-until=no] http://archive.debian.org/debian stretch main contrib non-free\n' \
           > /etc/apt/sources.list && \
-    printf 'deb [check-valid-until=no] http://archive.debian.org/debian-security jessie/updates main contrib non-free\n' \
+    printf 'deb [check-valid-until=no] http://archive.debian.org/debian-security stretch/updates main contrib non-free\n' \
           >> /etc/apt/sources.list && \
     echo 'Acquire::Check-Valid-Until "false";' > /etc/apt/apt.conf.d/90no-check-valid
 
@@ -55,8 +55,8 @@ RUN apt-get install -y --allow-unauthenticated --no-install-recommends dpkg-dev 
     mkdir -p /packages && \
     mkdir -p /pkgbuild/gcc${GCC_MAJOR_VERSION}/DEBIAN && \
     printf "Package: gcc${GCC_MAJOR_VERSION}\nVersion: ${GCC_MAJOR_VERSION}.${GCC_MINOR_VERSION}-1\nSection: devel\nPriority: optional\n\
-Architecture: amd64\nMaintainer: bootstrap <root@localhost>\n\
-Provides: gcc, g++\nDescription: GNU Compiler Collection ${GCC_MAJOR_VERSION}.${GCC_MINOR_VERSION} built from source on Debian 8\n" \
+Architecture: arm64\nMaintainer: bootstrap <root@localhost>\n\
+Provides: gcc, g++\nDescription: GNU Compiler Collection ${GCC_MAJOR_VERSION}.${GCC_MINOR_VERSION} built from source on Debian 9\n" \
         > /pkgbuild/gcc${GCC_MAJOR_VERSION}/DEBIAN/control && \
     mkdir -p /pkgbuild/gcc${GCC_MAJOR_VERSION}/opt && \
     cp -a /opt/gcc-${GCC_MAJOR_VERSION} /pkgbuild/gcc${GCC_MAJOR_VERSION}/opt/ && \

@@ -50,3 +50,41 @@ jobs:
         with:
           name: gcc-rpm
           path: /tmp/*.rpm
+
+  build-deb-arm64:
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Docker build
+        run: |
+          docker build -t gcc-deb-arm64 -f packages/debs/arm64/gcc/Dockerfile \
+            --build-arg GCC_MAJOR_VERSION=${{ github.event.inputs.gcc_major_version }} \
+            --build-arg GCC_MINOR_VERSION=${{ github.event.inputs.gcc_minor_version }} .
+          docker run -v /tmp:/tmp gcc-deb-arm64 /bin/bash -c "cp /packages/* /tmp/"
+
+      - name: Upload .deb artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: gcc-deb-arm64
+          path: /tmp/*.deb
+  
+  build-rpm-arm64:
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Docker build
+        run: |
+          docker build -t gcc-rpm-arm64 -f packages/rpms/arm64/gcc/Dockerfile \
+            --build-arg GCC_MAJOR_VERSION=${{ github.event.inputs.gcc_major_version }} \
+            --build-arg GCC_MINOR_VERSION=${{ github.event.inputs.gcc_minor_version }} .
+          docker run -v /tmp:/tmp gcc-rpm-arm64 /bin/bash -c "cp /packages/* /tmp/"
+
+      - name: Upload .rpm artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: gcc-rpm-arm64
+          path: /tmp/*.rpm
