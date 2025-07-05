@@ -10,7 +10,7 @@ on:
       binutils_minor_version:
         description: "Binutils minor version"
         required: true
-        default: "39"
+        default: "38"
 
 jobs:
   build-deb:
