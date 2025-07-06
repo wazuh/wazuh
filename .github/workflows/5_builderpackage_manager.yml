@@ -98,6 +98,9 @@ on:
 
 jobs:
   Build-manager-packages:
+    permissions:
+      contents: read
+      packages: write
     env:
       SHOULD_UPLOAD: ${{ inputs.upload_package }}
       SHOULD_UPLOAD_CHECKSUM: ${{ inputs.checksum && inputs.upload_package }}

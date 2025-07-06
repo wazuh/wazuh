@@ -2,6 +2,9 @@ run-name: Package - Upload pkg_${{ inputs.system }}_manager_builder_${{ inputs.a
 name: Package - Upload manager images
 
 on:
+  push:
+    paths:
+      - '.github/workflows/5_builderprecompiled_docker-images-upload-manager.yml'
   workflow_dispatch:
     inputs:
       docker_image_tag:
@@ -35,6 +38,10 @@ on:
 
 jobs:
   Upload-package-building-images:
+    permissions:
+      contents: read
+      packages: write
+
     runs-on: ${{ inputs.architecture == 'arm64' && 'wz-linux-arm64' || 'ubuntu-22.04' }}
     timeout-minutes: 140
     name: Package - Upload pkg_${{ inputs.system }}_manager_builder_${{ inputs.architecture }} with tag ${{ inputs.docker_image_tag }}
