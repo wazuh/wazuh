@@ -28,29 +28,6 @@ RUN yum install -y gcc make wget git \
     redhat-rpm-config sqlite-devel gdb tar tcl-devel tix-devel tk-devel \
     valgrind-devel python-rpm-macros python34 nodejs
 
-ADD https://packages.wazuh.com/utils/gcc/gcc-14.3-1.aarch64.rpm /tmp/gcc-14.3-1.aarch64.rpm
-RUN rpm -i /tmp/gcc-14.3-1.aarch64.rpm && \
-    ln -fs /opt/gcc-14/bin/g++ /usr/bin/c++ && \
-    ln -fs /opt/gcc-14/bin/g++ /usr/bin/g++ && \
-    ln -fs /opt/gcc-14/bin/gcc /usr/bin/gcc
-
-ENV CPLUS_INCLUDE_PATH "/opt/gcc-14/include/c++/14.3.0/"
-ENV LD_LIBRARY_PATH "/opt/gcc-14/lib64:${LD_LIBRARY_PATH}"
-ENV PATH "/opt/gcc-14/bin:${PATH}"
-
-ADD https://packages.wazuh.com/utils/binutils/binutils-2.38-1.aarch64.rpm /tmp/binutils-2.38-1.aarch64.rpm
-RUN rpm -i /tmp/binutils-2.38-1.aarch64.rpm
-
-ENV PATH "/opt/binutils-2/bin:${PATH}"
-
-ADD https://github.com/Kitware/CMake/releases/download/v3.30.4/cmake-3.30.4-linux-aarch64.sh /tmp/cmake-3.30.4-linux-aarch64.sh
-
-RUN mkdir -p /opt/cmake
-RUN sh /tmp/cmake-3.30.4-linux-aarch64.sh --prefix=/opt/cmake --skip-license
-
-RUN ln -s /opt/cmake/bin/cmake /usr/local/bin/cmake
-RUN ln -s /opt/cmake/bin/ctest /usr/local/bin/ctest
-
 # Install Perl 5.10
 RUN curl -OL http://packages.wazuh.com/utils/perl/perl-5.10.1.tar.gz && \
     gunzip perl-5.10.1.tar.gz && tar -xf perl*.tar && \
@@ -81,6 +58,29 @@ RUN curl -O http://packages.wazuh.com/utils/rpm/rpm-4.15.1.tar.bz2 && \
 RUN mkdir -p /usr/local/var/lib/rpm && \
     cp /var/lib/rpm/Packages /usr/local/var/lib/rpm/Packages && \
     /usr/local/bin/rpm --rebuilddb && rm -rf /root/rpmbuild
+
+ADD https://packages.wazuh.com/utils/gcc/gcc-14.3-1.aarch64.rpm /tmp/gcc-14.3-1.aarch64.rpm
+RUN rpm -i /tmp/gcc-14.3-1.aarch64.rpm && \
+    ln -fs /opt/gcc-14/bin/g++ /usr/bin/c++ && \
+    ln -fs /opt/gcc-14/bin/g++ /usr/bin/g++ && \
+    ln -fs /opt/gcc-14/bin/gcc /usr/bin/gcc
+
+ENV CPLUS_INCLUDE_PATH "/opt/gcc-14/include/c++/14.3.0/"
+ENV LD_LIBRARY_PATH "/opt/gcc-14/lib64:${LD_LIBRARY_PATH}"
+ENV PATH "/opt/gcc-14/bin:${PATH}"
+
+ADD https://packages.wazuh.com/utils/binutils/binutils-2.38-1.aarch64.rpm /tmp/binutils-2.38-1.aarch64.rpm
+RUN rpm -i /tmp/binutils-2.38-1.aarch64.rpm
+
+ENV PATH "/opt/binutils-2/bin:${PATH}"
+
+ADD https://github.com/Kitware/CMake/releases/download/v3.30.4/cmake-3.30.4-linux-aarch64.sh /tmp/cmake-3.30.4-linux-aarch64.sh
+
+RUN mkdir -p /opt/cmake
+RUN sh /tmp/cmake-3.30.4-linux-aarch64.sh --prefix=/opt/cmake --skip-license
+
+RUN ln -s /opt/cmake/bin/cmake /usr/local/bin/cmake
+RUN ln -s /opt/cmake/bin/ctest /usr/local/bin/ctest
 
 # Add the scripts to build the RPM package
 ADD build.sh /usr/local/bin/build_package
