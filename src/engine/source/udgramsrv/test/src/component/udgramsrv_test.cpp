@@ -2,6 +2,7 @@
 
 #include <udgramsrv/udsrv.hpp>
 
+#include <algorithm>
 #include <chrono>
 #include <condition_variable>
 #include <cstring>

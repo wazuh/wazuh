@@ -2,6 +2,7 @@
 #include <gtest/gtest.h>
 
 #include <unordered_set>
+#include <vector>
 
 TEST(GraphTest, DefaultConstructor)
 {
