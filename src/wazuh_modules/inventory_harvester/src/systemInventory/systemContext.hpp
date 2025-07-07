@@ -901,7 +901,8 @@ public:
         {
             return "";
         }
-        m_userPasswordExpirationDateISO8601 = Utils::rawTimestampToISO8601(passwordExpirationDateRaw);
+        m_userPasswordExpirationDateISO8601 =
+            Utils::rawTimestampToISO8601(static_cast<uint32_t>(passwordExpirationDateRaw));
         return m_userPasswordExpirationDateISO8601;
     }
 
@@ -1012,7 +1013,7 @@ public:
         {
             return "";
         }
-        m_userLastLoginISO8601 = Utils::rawTimestampToISO8601(lastLoginRaw);
+        m_userLastLoginISO8601 = Utils::rawTimestampToISO8601(static_cast<uint32_t>(lastLoginRaw));
         return m_userLastLoginISO8601;
     }
 

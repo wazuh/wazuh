@@ -164,14 +164,13 @@ constexpr auto makeFieldChecked(const char* keyLiteral, const char* keyLiteralFi
 #define MAKE_FIELD(keyLiteral, memberPtr) makeFieldChecked(keyLiteral, "\"" keyLiteral "\":", memberPtr)
 
 template<typename T>
-std::enable_if_t<(std::is_arithmetic_v<T> && sizeof(T) == sizeof(int32_t)), bool> isEmpty(T value)
+std::enable_if_t<std::is_same_v<int32_t, T>, bool> isEmpty(T value)
 {
     return value == DEFAULT_INT32_VALUE;
 }
 
 template<typename T>
-std::enable_if_t<(std::is_arithmetic_v<T> && sizeof(T) == sizeof(int64_t) && !std::is_same_v<double, T>), bool>
-isEmpty(T value)
+std::enable_if_t<std::is_same_v<int64_t, T>, bool> isEmpty(T value)
 {
     return value == DEFAULT_INT_VALUE;
 }
@@ -249,8 +248,12 @@ bool isSingleSpace(const T& obj)
     {
         constexpr auto fields = T::fields();
         bool allSpaces = true;
-        std::apply([&](auto&&... field) { ((allSpaces = allSpaces && isSingleSpace(obj.*(std::get<2>(field)))), ...); },
-                   fields);
+        std::apply(
+            [&](auto&&... field) {
+                ((allSpaces = allSpaces && isSingleSpace(obj.*(std::get<2>(field)))), ...);
+            },
+            fields
+    );
         return allSpaces;
     }
     else if constexpr (std::is_same_v<std::decay_t<T>, std::string> ||

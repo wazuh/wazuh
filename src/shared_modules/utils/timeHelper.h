@@ -201,65 +201,9 @@ namespace Utils
         return output.str();
     }
 
-    static std::string rawTimestampToISO8601(const double timestamp)
+    static std::string rawTimestampToISO8601(const uint32_t timestamp)
     {
         std::time_t time = timestamp;
-        auto itt = std::chrono::system_clock::from_time_t(time);
-
-        std::ostringstream output;
-        struct tm buf;
-        tm* localTime = gmtime_r(&time, &buf);
-
-        if (localTime == nullptr)
-        {
-            return "";
-        }
-
-        output << std::put_time(localTime, "%FT%T");
-
-        if (std::abs(timestamp - static_cast<int>(timestamp)) < 1e-9)
-        {
-            // Get milliseconds from the current time
-            auto milliseconds =
-                std::chrono::duration_cast<std::chrono::milliseconds>(itt.time_since_epoch()).count() % 1000;
-
-            // ISO 8601
-            output << '.' << std::setfill('0') << std::setw(3) << milliseconds << 'Z';
-        }
-        else
-        {
-            output << '.' << std::setfill('0') << std::setw(3)
-                   << static_cast<int>(std::round((timestamp - static_cast<int>(timestamp)) * 1000)) << 'Z';
-        }
-
-        return output.str();
-    }
-
-    /**
-     * @brief Get seconds from epoch, since 1970-01-01 00:00:00 UTC.
-     * @return seconds from epoch.
-     */
-    static int64_t getSecondsFromEpoch()
-    {
-        return std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch())
-            .count();
-    };
-
-#if __cplusplus >= 201703L
-    static std::string rawTimestampToISO8601(std::string_view timestamp)
-    {
-        if (timestamp.empty() || !Utils::isNumber(timestamp))
-        {
-            return "";
-        }
-        std::time_t time;
-
-        auto [ptr, ec] = std::from_chars(timestamp.data(), timestamp.data() + timestamp.size(), time);
-        if (ec != std::errc())
-        {
-            return "";
-        }
-
         auto itt = std::chrono::system_clock::from_time_t(time);
 
         std::ostringstream output;
@@ -281,6 +225,127 @@ namespace Utils
         output << '.' << std::setfill('0') << std::setw(3) << milliseconds << 'Z';
 
         return output.str();
+    }
+
+    /**
+     * @brief Get seconds from epoch, since 1970-01-01 00:00:00 UTC.
+     * @return seconds from epoch.
+     */
+    static int64_t getSecondsFromEpoch()
+    {
+        return std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch())
+            .count();
+    };
+
+#if __cplusplus >= 201703L
+    template<typename T>
+    static std::string rawTimestampToISO8601(T timestamp)
+    {
+        static_assert(std::is_same_v<std::decay_t<T>, uint32_t> || std::is_same_v<std::decay_t<T>, double> ||
+                          std::is_same_v<std::decay_t<T>, std::string> ||
+                          std::is_same_v<std::decay_t<T>, std::string_view>,
+                      "Invalid timestamp type");
+        if constexpr (std::is_same_v<std::decay_t<T>, uint32_t>)
+            {
+                std::time_t time = timestamp;
+            auto itt = std::chrono::system_clock::from_time_t(time);
+            std::ostringstream output;
+            struct tm buf;
+            tm* localTime = gmtime_r(&time, &buf);
+            if (localTime == nullptr)
+            {
+                return "";
+            }
+            output << std::put_time(localTime, "%FT%T");
+            // Get milliseconds from the current time
+            auto milliseconds =
+                std::chrono::duration_cast<std::chrono::milliseconds>(itt.time_since_epoch()).count() % 1000;
+            // ISO 8601
+            output << '.' << std::setfill('0') << std::setw(3) << milliseconds << 'Z';
+            return output.str();
+        }
+        else if constexpr (std::is_same_v<std::decay_t<T>, double>)
+        {
+            std::time_t time = timestamp;
+            auto itt = std::chrono::system_clock::from_time_t(time);
+            std::ostringstream output;
+            struct tm buf;
+            tm* localTime = gmtime_r(&time, &buf);
+            if (localTime == nullptr)
+            {
+                return "";
+            }
+            output << std::put_time(localTime, "%FT%T");
+            if (std::abs(timestamp - static_cast<int>(timestamp)) < 1e-9)
+            {
+                // Get milliseconds from the current time
+                auto milliseconds =
+                    std::chrono::duration_cast<std::chrono::milliseconds>(itt.time_since_epoch()).count() % 1000;
+                // ISO 8601
+                output << '.' << std::setfill('0') << std::setw(3) << milliseconds << 'Z';
+            }
+            else
+            {
+                output << '.' << std::setfill('0') << std::setw(3)
+                       << static_cast<int>(std::round((timestamp - static_cast<int>(timestamp)) * 1000)) << 'Z';
+            }
+            return output.str();
+        }
+        else if constexpr (std::is_same_v<std::decay_t<T>, std::string>)
+        {
+            if (timestamp.empty() || !Utils::isNumber(timestamp))
+            {
+                return "";
+            }
+            std::time_t time = std::stoi(timestamp);
+            auto itt = std::chrono::system_clock::from_time_t(time);
+            std::ostringstream output;
+            struct tm buf;
+            tm* localTime = gmtime_r(&time, &buf);
+            if (localTime == nullptr)
+            {
+                return "";
+            }
+            output << std::put_time(localTime, "%FT%T");
+            // Get milliseconds from the current time
+            auto milliseconds =
+                std::chrono::duration_cast<std::chrono::milliseconds>(itt.time_since_epoch()).count() % 1000;
+            // ISO 8601
+            output << '.' << std::setfill('0') << std::setw(3) << milliseconds << 'Z';
+            return output.str();
+        }
+        else if constexpr (std::is_same_v<std::decay_t<T>, std::string_view>)
+        {
+            if (timestamp.empty() || !Utils::isNumber(timestamp))
+            {
+                return "";
+            }
+            std::time_t time;
+            auto [ptr, ec] = std::from_chars(timestamp.data(), timestamp.data() + timestamp.size(), time);
+            if (ec != std::errc())
+            {
+                return "";
+            }
+            auto itt = std::chrono::system_clock::from_time_t(time);
+            std::ostringstream output;
+            struct tm buf;
+            tm* localTime = gmtime_r(&time, &buf);
+            if (localTime == nullptr)
+            {
+                return "";
+            }
+            output << std::put_time(localTime, "%FT%T");
+            // Get milliseconds from the current time
+            auto milliseconds =
+                std::chrono::duration_cast<std::chrono::milliseconds>(itt.time_since_epoch()).count() % 1000;
+            // ISO 8601
+            output << '.' << std::setfill('0') << std::setw(3) << milliseconds << 'Z';
+            return output.str();
+        }
+        else
+        {
+            return "";
+        }
     }
 #endif
 
