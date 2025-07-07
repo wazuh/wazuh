@@ -1,0 +1,179 @@
+name: Engine Integration Tests
+
+on:
+  # Triggers the workflow on pull request but only changes in the src/engine/ directory.
+  pull_request:
+    types: [synchronize, opened, reopened, ready_for_review]
+    paths:
+      - 'src/engine/**'
+
+# Ensures only one instance of this workflow is running per PR
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+
+env:
+  ENGINE_DIR: ${{github.workspace}}/src/engine
+
+jobs:
+  build:
+    name: Build Server
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Install CMake
+        uses: ./.github/actions/reinstall_cmake
+
+      - name: Build Wazuh server
+        run: |
+          make deps -C src TARGET=server -j$(nproc)
+          make -C src TARGET=server -j$(nproc)
+
+      - name: Upload engine binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: wazuh-engine
+          path: src/build/engine/wazuh-engine
+
+      - name: Upload wazuh shared libraries
+        uses: actions/upload-artifact@v4
+        with:
+          name: wazuh-shared-libraries
+          path: |
+            src/libwazuhext.so
+            src/libwazuhshared.so
+
+      - name: Upload rocksdb shared libraries
+        uses: actions/upload-artifact@v4
+        with:
+          name: rocksdb-shared-library
+          path: |
+            src/external/rocksdb/build/librocksdb.so
+            src/external/rocksdb/build/librocksdb.so.8
+            src/external/rocksdb/build/librocksdb.so.8.3.2
+
+  helper_tests:
+    name: Helper Functions Test
+
+    # Only runs if the PR status is different to Draft
+    if: ${{ !github.event.pull_request.draft }}
+    runs-on: ubuntu-latest
+    needs: build
+    timeout-minutes: 60
+
+    steps:
+    - name: Checkout Repo
+      uses: actions/checkout@v3
+
+    - name: Download engine binary
+      uses: actions/download-artifact@v4
+      with:
+        name: wazuh-engine
+        path: src/build/engine/
+
+    - name: Download rocksdb shared libraries
+      uses: actions/download-artifact@v4
+      with:
+        name: rocksdb-shared-library
+        path: src/external/rocksdb/build/
+
+    - name: Download wazuh shared libraries
+      uses: actions/download-artifact@v4
+      with:
+        name: wazuh-shared-libraries
+        path: src/
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: 3.12
+
+    - name: Install dependencies
+      run: |
+        ls -la src/build/engine
+        ls -la src/external/rocksdb/build
+        sudo apt-get update && sudo apt-get install -y libcap2-bin
+        pip install ${{env.ENGINE_DIR}}/tools/api-communication/
+        pip install ${{env.ENGINE_DIR}}/tools/engine-suite/
+        pip install ${{env.ENGINE_DIR}}/test/engine-test-utils/
+        pip install ${{env.ENGINE_DIR}}/test/helper_tests/engine-helper-test/
+
+    - name: Setup environment
+      run: |
+        chmod +x src/build/engine/wazuh-engine
+        python3 ${{env.ENGINE_DIR}}/test/setupEnvironment.py -e /tmp/actions
+
+    - name: Set capabilities to change user and group
+      run: sudo setcap cap_setgid,cap_setuid+ep /tmp/actions/wazuh-engine
+
+    - name: Initial state
+      run: engine-helper-test -e /tmp/actions init --mmdb ${{env.ENGINE_DIR}}/test/helper_tests/mmdb/ --conf ${{env.ENGINE_DIR}}/test/helper_tests/configuration_files/config.env
+
+    - name: Validate helper descriptions
+      run: engine-helper-test -e /tmp/actions validate --input-dir ${{env.ENGINE_DIR}}/test/helper_tests/helpers_description/
+
+    - name: Generate tests
+      run: engine-helper-test -e /tmp/actions generate-tests --input-dir ${{env.ENGINE_DIR}}/test/helper_tests/helpers_description/ -o /tmp/helper_tests/
+
+    - name: Run tests
+      run: engine-helper-test -e /tmp/actions run --input-dir /tmp/helper_tests/
+
+    - name: Validate documentation generation
+      run: engine-helper-test -e /tmp/actions generate-doc --input-dir ${{env.ENGINE_DIR}}/test/helper_tests/helpers_description/ -o /tmp/helper_docs/
+
+  api_tests:
+    name: API Endpoints Test
+
+    # Only runs if the PR status is different to Draft
+    if: ${{ !github.event.pull_request.draft }}
+    runs-on: ubuntu-latest
+    needs: build
+    timeout-minutes: 60
+
+    steps:
+    - name: Checkout Repo
+      uses: actions/checkout@v3
+
+    - name: Download engine binary
+      uses: actions/download-artifact@v4
+      with:
+        name: wazuh-engine
+        path: src/build/engine/
+
+    - name: Download rocksdb shared libraries
+      uses: actions/download-artifact@v4
+      with:
+        name: rocksdb-shared-library
+        path: src/external/rocksdb/build/
+
+    - name: Download wazuh shared libraries
+      uses: actions/download-artifact@v4
+      with:
+        name: wazuh-shared-libraries
+        path: src/
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: 3.12
+
+    - name: Install dependencies
+      run: |
+        pip install ${{env.ENGINE_DIR}}/tools/api-communication/
+        pip install ${{env.ENGINE_DIR}}/tools/engine-suite/
+        pip install ${{env.ENGINE_DIR}}/test/engine-test-utils/
+        pip install ${{env.ENGINE_DIR}}/test/integration_tests/engine-it
+
+    - name: Setup environment
+      run: |
+        chmod +x src/build/engine/wazuh-engine
+        python3 ${{env.ENGINE_DIR}}/test/setupEnvironment.py -e /tmp/actions
+
+    - name: Set capabilities to change user and group
+      run: sudo setcap cap_setgid,cap_setuid+ep /tmp/actions/wazuh-engine
+
+    - name: Initial state
+      run: engine-it -e /tmp/actions -t ${{env.ENGINE_DIR}}/test/integration_tests/  init
+
+    - name: Integration Test
+      run: engine-it -e /tmp/actions -t ${{env.ENGINE_DIR}}/test/integration_tests/ run
