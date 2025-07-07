@@ -74,4 +74,12 @@ extern "C" {
                                          static_cast<Wazuh::SyncSchema::Mode>(mode), realtime != 0);
     }
 
+    int asp_parse_response_buffer(AgentSyncProtocolHandle* handle, const uint8_t* data, size_t size)
+    {
+        if (!handle || !data || size == 0) return -1;
+
+        auto* wrapper = reinterpret_cast<AgentSyncProtocolWrapper*>(handle);
+        return wrapper->impl->parseResponseBuffer(data, size) ? 0 : -1;
+    }
+
 } // extern "C"

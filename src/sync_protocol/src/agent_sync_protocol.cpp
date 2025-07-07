@@ -227,3 +227,53 @@ bool AgentSyncProtocol::sendFlatBufferMessageAsString(flatbuffers::span<uint8_t>
 
     return true;
 }
+
+bool AgentSyncProtocol::parseResponseBuffer(const uint8_t* data, size_t size)
+{
+    if (!data || size == 0)
+    {
+        std::cerr << "Invalid buffer received.\n";
+        return false;
+    }
+
+    const auto* message = Wazuh::SyncSchema::GetMessage(data);
+    const auto messageType = message->content_type();
+
+    switch (messageType)
+    {
+        case Wazuh::SyncSchema::MessageType::StartAck:
+            {
+                const auto* startAck = message->content_as_StartAck();
+                std::cout << "[StartAck] session: " << startAck->session() << "\n";
+                break;
+            }
+
+        case Wazuh::SyncSchema::MessageType::EndAck:
+            {
+                std::cout << "[EndAck] received\n";
+                break;
+            }
+
+        case Wazuh::SyncSchema::MessageType::ReqRet:
+            {
+                const auto* reqRet = message->content_as_ReqRet();
+                std::vector<std::pair<uint64_t, uint64_t>> reqRetRanges;
+
+                for (const auto* pair : *reqRet->seq())
+                {
+                    reqRetRanges.emplace_back(pair->begin(), pair->end());
+                }
+
+                std::cout << "[ReqRet] received " << reqRetRanges.size() << " ranges\n";
+                break;
+            }
+
+        default:
+            {
+                std::cerr << "Unknown message type: " << static_cast<int>(messageType) << "\n";
+                return false;
+            }
+    }
+
+    return true;
+}

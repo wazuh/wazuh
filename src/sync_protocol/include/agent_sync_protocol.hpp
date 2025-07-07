@@ -42,6 +42,12 @@ class IAgentSyncProtocol
 
         /// @brief Destructor
         virtual ~IAgentSyncProtocol() = default;
+
+        /// @brief Parses a FlatBuffer response message received from the manager.
+        /// @param data Pointer to the FlatBuffer-encoded message buffer.
+        /// @param size Size in bytes of the buffer.
+        /// @return true if the message was successfully parsed and processed; false otherwise.
+        virtual bool parseResponseBuffer(const uint8_t* data, size_t size) = 0;
 };
 
 class AgentSyncProtocol : public IAgentSyncProtocol
@@ -61,6 +67,12 @@ class AgentSyncProtocol : public IAgentSyncProtocol
 
         /// @copydoc IAgentSyncProtocol::synchronizeModule
         void synchronizeModule(const std::string& module, Wazuh::SyncSchema::Mode mode, bool realtime) override;
+
+        /// @brief Parses a FlatBuffer response message received from the manager.
+        /// @param data Pointer to the FlatBuffer-encoded message buffer.
+        /// @param size Size in bytes of the buffer.
+        /// @return true if the message was successfully parsed and processed; false otherwise.
+        bool parseResponseBuffer(const uint8_t* data, size_t size) override;
 
     private:
 
