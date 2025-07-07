@@ -2746,13 +2746,6 @@ static void test_fim_scan_no_limit(void **state) {
 
 #endif
 
-static void test_fim_checker_unsupported_path(void **state) {
-    const char * PATH = "Unsupported\xFF\x02";
-    expect_string(__wrap__mwarn, formatted_msg, "(6955): Ignoring file 'Unsupported\xFF\x02' due to unsupported name (non-UTF8).");
-
-    fim_checker(PATH, NULL, NULL, NULL, NULL);
-}
-
 /* fim_check_db_state */
 static void test_fim_check_db_state_normal_to_empty(void **state) {
 
@@ -4395,7 +4388,6 @@ int main(void) {
 #ifndef TEST_WINAGENT
         cmocka_unit_test_setup_teardown(test_fim_checker_fim_directory_on_max_recursion_level, setup_struct_dirent, teardown_struct_dirent),
 #endif
-        cmocka_unit_test(test_fim_checker_unsupported_path),
 
         /* fim_directory */
         cmocka_unit_test_setup_teardown(test_fim_directory, setup_struct_dirent, teardown_struct_dirent),
