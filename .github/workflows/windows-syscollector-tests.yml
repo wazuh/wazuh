@@ -64,7 +64,7 @@ jobs:
           path: src/wazuh_modules/syscollector/build/bin
   run-on-windows:
     needs: build
-    runs-on: windows-latest
+    runs-on: windows-2025
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v3

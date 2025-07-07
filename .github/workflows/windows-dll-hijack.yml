@@ -49,7 +49,7 @@ jobs:
   check_dll_on_windows:
     strategy:
           matrix:
-              os: [windows-latest, windows-2022]
+              os: [windows-2025, windows-2022]
     runs-on: ${{ matrix.os }}
     needs: build
     steps:
