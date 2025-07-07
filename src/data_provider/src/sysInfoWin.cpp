@@ -1110,6 +1110,8 @@ nlohmann::json SysInfo::getUsers() const
         auto matched = false;
         auto lastLogin = 0;
 
+        userItem["host_ip"] = UNKNOWN_VALUE;
+
         //TODO: Avoid this iteration, move logic to LoggedInUsersProvider
         for (auto& item : collectedLoggedInUser)
         {
@@ -1133,8 +1135,14 @@ nlohmann::json SysInfo::getUsers() const
                     userItem["process_pid"] = item["pid"].get<int32_t>();
                 }
 
-                userItem["host_ip"] = userItem["host_ip"].is_null() ? item["host"].get<std::string>() :
-                                      (userItem["host_ip"].get<std::string>() + primaryArraySeparator + item["host"].get<std::string>());
+                const auto& hostStr = item["host"].get_ref<const std::string&>();
+
+                if (!hostStr.empty())
+                {
+                    userItem["host_ip"] = userItem["host_ip"].get<std::string>() == UNKNOWN_VALUE
+                                          ? hostStr
+                                          : (userItem["host_ip"].get<std::string>() + primaryArraySeparator + hostStr);
+                }
             }
         }
 
@@ -1143,7 +1151,6 @@ nlohmann::json SysInfo::getUsers() const
             userItem["login_status"] = 0;
             userItem["login_tty"] = UNKNOWN_VALUE;
             userItem["login_type"] = UNKNOWN_VALUE;
-            userItem["host_ip"] = UNKNOWN_VALUE;
             userItem["process_pid"] = 0;
             userItem["user_last_login"] = 0;
         }
