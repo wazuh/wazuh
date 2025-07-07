@@ -2298,6 +2298,7 @@ char **expand_win32_wildcards(const char *path) {
         pending_expand = expanded_paths;
     }
 
+    os_free(parent_path);
     return expanded_paths;
 }
 

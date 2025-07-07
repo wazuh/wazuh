@@ -137,6 +137,9 @@ BOOL utf8_ReplaceFile(const char* old_name, const char* new_name, const char* ba
     wchar_t *wnew_name = auto_to_wide(new_name);
     wchar_t *wbackup_name = auto_to_wide(backup_name);
     if (!wold_name || !wnew_name) {
+        os_free(wold_name);
+        os_free(wnew_name);
+        os_free(wbackup_name);
         return FALSE;
     }
 
