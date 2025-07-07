@@ -22,14 +22,20 @@
 #include <stdbool.h>
 // clang-format on
 
-/// Convert utf8 to wide string
-wchar_t* utf8_to_wide(const char* input);
+/// Convert ansi/utf8 to wide string
+wchar_t* auto_to_wide(const char* input);
 
 /// Convert wide string to utf8
 char *wide_to_utf8(const wchar_t *input);
 
-/// Convert ansi string to utf8
-char *ansi_to_utf8(const char *ansi_path);
+/// Convert wide string to ansi
+char *wide_to_ansi(const wchar_t *input);
+
+/// Convert ansi to utf8
+char *auto_to_utf8(const char *input);
+
+/// Convert utf8 to ansi
+char *auto_to_ansi(const char *input);
 
 /// Stat a file with utf8 path
 int utf8_stat64(const char * pathname, struct _stat64 * statbuf);

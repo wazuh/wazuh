@@ -18,7 +18,7 @@
 #include <io.h>
 #include <direct.h>
 
-wchar_t *utf8_to_wide(const char *input) {
+wchar_t *auto_to_wide(const char *input) {
     if (!input) {
         return NULL;
     }
@@ -62,32 +62,53 @@ char *wide_to_utf8(const wchar_t *input) {
     return output;
 }
 
-char *ansi_to_utf8(const char *ansi_path) {
-    if (!ansi_path) {
+char *wide_to_ansi(const wchar_t *input) {
+    if (!input) {
         return NULL;
     }
 
-    int wlen = MultiByteToWideChar(CP_ACP, 0, ansi_path, -1, NULL, 0);
-    if (wlen == 0) {
+    int len = WideCharToMultiByte(CP_ACP, 0, input, -1, NULL, 0, NULL, NULL);
+    if (len == 0) {
         return NULL;
     }
 
-    wchar_t *wbuf = NULL;
-    os_calloc(wlen, sizeof(wchar_t), wbuf);
+    char *output = NULL;
+    os_calloc(len, sizeof(char), output);
 
-    if (!MultiByteToWideChar(CP_ACP, 0, ansi_path, -1, wbuf, wlen)) {
-        os_free(wbuf);
+    if (!WideCharToMultiByte(CP_ACP, 0, input, -1, output, len, NULL, NULL)) {
+        os_free(output);
         return NULL;
     }
 
-    char *utf8 = wide_to_utf8(wbuf);
+    return output;
+}
 
-    os_free(wbuf);
+char *auto_to_utf8(const char *input) {
+    wchar_t *wstr = auto_to_wide(input);
+    if (!wstr) {
+        return NULL;
+    }
+
+    char *utf8 = wide_to_utf8(wstr);
+
+    os_free(wstr);
     return utf8;
 }
 
+char *auto_to_ansi(const char *input) {
+    wchar_t *wstr = auto_to_wide(input);
+    if (!wstr) {
+        return NULL;
+    }
+
+    char *ansi = wide_to_ansi(wstr);
+
+    os_free(wstr);
+    return ansi;
+}
+
 int utf8_stat64(const char * pathname, struct _stat64 * statbuf) {
-    wchar_t *wpath = utf8_to_wide(pathname);
+    wchar_t *wpath = auto_to_wide(pathname);
     if (!wpath) {
         errno = ENOMEM;
         return -1;
@@ -100,7 +121,7 @@ int utf8_stat64(const char * pathname, struct _stat64 * statbuf) {
 }
 
 HANDLE utf8_CreateFile(const char *utf8_path, DWORD access, DWORD share, LPSECURITY_ATTRIBUTES sa, DWORD creation, DWORD flags, HANDLE h_template) {
-    wchar_t *wpath = utf8_to_wide(utf8_path);
+    wchar_t *wpath = auto_to_wide(utf8_path);
     if (!wpath) {
         return INVALID_HANDLE_VALUE;
     }
@@ -112,9 +133,9 @@ HANDLE utf8_CreateFile(const char *utf8_path, DWORD access, DWORD share, LPSECUR
 }
 
 BOOL utf8_ReplaceFile(const char* old_name, const char* new_name, const char* backup_name, DWORD flags) {
-    wchar_t *wold_name = utf8_to_wide(old_name);
-    wchar_t *wnew_name = utf8_to_wide(new_name);
-    wchar_t *wbackup_name = utf8_to_wide(backup_name);
+    wchar_t *wold_name = auto_to_wide(old_name);
+    wchar_t *wnew_name = auto_to_wide(new_name);
+    wchar_t *wbackup_name = auto_to_wide(backup_name);
     if (!wold_name || !wnew_name) {
         return FALSE;
     }
@@ -128,7 +149,7 @@ BOOL utf8_ReplaceFile(const char* old_name, const char* new_name, const char* ba
 }
 
 BOOL utf8_DeleteFile(const char* utf8_path) {
-    wchar_t *wpath = utf8_to_wide(utf8_path);
+    wchar_t *wpath = auto_to_wide(utf8_path);
     if (!wpath) {
         return FALSE;
     }
@@ -140,7 +161,7 @@ BOOL utf8_DeleteFile(const char* utf8_path) {
 }
 
 DWORD utf8_GetFileAttributes(const char *utf8_path) {
-    wchar_t *wpath = utf8_to_wide(utf8_path);
+    wchar_t *wpath = auto_to_wide(utf8_path);
     if (!wpath) {
         return INVALID_FILE_ATTRIBUTES;
     }
@@ -152,7 +173,7 @@ DWORD utf8_GetFileAttributes(const char *utf8_path) {
 }
 
 char *utf8_GetShortPathName(const char* utf8_path) {
-    wchar_t *wpath = utf8_to_wide(utf8_path);
+    wchar_t *wpath = auto_to_wide(utf8_path);
     if (!wpath) {
         return NULL;
     }
@@ -169,7 +190,7 @@ char *utf8_GetShortPathName(const char* utf8_path) {
 }
 
 BOOL utf8_GetFileSecurity(const char *utf8_path, SECURITY_INFORMATION si, PSECURITY_DESCRIPTOR psd, DWORD len, LPDWORD needed) {
-    wchar_t *wpath = utf8_to_wide(utf8_path);
+    wchar_t *wpath = auto_to_wide(utf8_path);
     if (!wpath) {
         return FALSE;
     }
@@ -181,7 +202,7 @@ BOOL utf8_GetFileSecurity(const char *utf8_path, SECURITY_INFORMATION si, PSECUR
 }
 
 DWORD utf8_GetNamedSecurityInfo(const char *utf8_path, SE_OBJECT_TYPE obj_type, SECURITY_INFORMATION si, PSID *owner, PSID *group, PACL *dacl, PACL *sacl, PSECURITY_DESCRIPTOR *psd) {
-    wchar_t *wpath = utf8_to_wide(utf8_path);
+    wchar_t *wpath = auto_to_wide(utf8_path);
     if (!wpath) {
         return ERROR_INVALID_PARAMETER;
     }
@@ -193,7 +214,7 @@ DWORD utf8_GetNamedSecurityInfo(const char *utf8_path, SE_OBJECT_TYPE obj_type, 
 }
 
 DWORD utf8_SetNamedSecurityInfo(const char *utf8_path, SE_OBJECT_TYPE obj_type, SECURITY_INFORMATION si, PSID owner, PSID group, PACL dacl, PACL sacl) {
-    wchar_t *wpath = utf8_to_wide(utf8_path);
+    wchar_t *wpath = auto_to_wide(utf8_path);
     if (!wpath) {
         return ERROR_INVALID_PARAMETER;
     }

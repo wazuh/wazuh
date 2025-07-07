@@ -326,11 +326,14 @@ nlohmann::json DB::createJsonEvent(const nlohmann::json& fileJson, const nlohman
 
 void DB::removeFile(const std::string& path)
 {
+    std::string encodedPath = path;
+    FIMDBCreator<OS_TYPE>::encodeString(encodedPath);
+
     auto deleteQuery
     {
         DeleteQuery::builder()
         .table(FIMDB_FILE_TABLE_NAME)
-        .data({{"path", path}})
+        .data({{"path", encodedPath}})
         .rowFilter("")
         .build()
     };
@@ -340,6 +343,9 @@ void DB::removeFile(const std::string& path)
 
 void DB::getFile(const std::string& path, std::function<void(const nlohmann::json&)> callback)
 {
+    std::string encodedPath = path;
+    FIMDBCreator<OS_TYPE>::encodeString(encodedPath);
+
     auto selectQuery
     {
         SelectQuery::builder()
@@ -363,7 +369,7 @@ void DB::getFile(const std::string& path, std::function<void(const nlohmann::jso
             "hash_sha1",
             "hash_sha256",
             "mtime"})
-        .rowFilter(std::string("WHERE path=\"") + std::string(path) + "\"")
+        .rowFilter(std::string("WHERE path=\"") + encodedPath + "\"")
         .orderByOpt(FILE_PRIMARY_KEY)
         .distinctOpt(false)
         .countOpt(100)
@@ -423,7 +429,10 @@ void DB::searchFile(const SearchData& data, std::function<void(const std::string
     }
     else if (SEARCH_TYPE_PATH == searchType)
     {
-        filter = "WHERE path LIKE \"" + std::get<SEARCH_FIELD_PATH>(data) + "\"";
+        std::string encodedPath = std::get<SEARCH_FIELD_PATH>(data);
+        FIMDBCreator<OS_TYPE>::encodeString(encodedPath);
+
+        filter = "WHERE path LIKE \"" + encodedPath + "\"";
     }
     else
     {

@@ -387,7 +387,18 @@ static void transaction_callback(ReturnTypeCallback resultType, const cJSON* res
     cJSON_AddStringToObject(json_event, "type", "event");
     cJSON_AddItemToObject(json_event, "data", data);
 
+#ifdef WIN32
+    char *utf8_path = auto_to_utf8(path);
+    if (utf8_path) {
+        cJSON_AddStringToObject(data, "path", utf8_path);
+        os_free(utf8_path);
+    } else {
+        cJSON_AddStringToObject(data, "path", path);
+    }
+#else
     cJSON_AddStringToObject(data, "path", path);
+#endif
+
     cJSON_AddNumberToObject(data, "version", 2.0);
     cJSON_AddStringToObject(data, "mode", FIM_EVENT_MODE[txn_context->evt_data->mode]);
     cJSON_AddStringToObject(data, "type", FIM_EVENT_TYPE_ARRAY[txn_context->evt_data->type]);
@@ -1180,10 +1191,20 @@ directory_t *fim_configuration_directory(const char *path) {
     OSListNode *node_it;
     int top = 0;
     int match = 0;
+    char *pathname = NULL;
 
     if (!path || *path == '\0') {
         return NULL;
     }
+
+#ifdef WIN32
+    pathname = auto_to_ansi(path);
+    if (!pathname) {
+        return NULL;
+    }
+#else
+    os_strdup(path, pathname);
+#endif
 
     trail_path_separator(full_path, path, sizeof(full_path));
 
@@ -1202,6 +1223,7 @@ directory_t *fim_configuration_directory(const char *path) {
         os_free(real_path);
     }
 
+    os_free(pathname);
     return dir;
 }
 
@@ -1437,7 +1459,18 @@ cJSON *fim_json_event(const fim_entry *new_data,
     cJSON * data = cJSON_CreateObject();
     cJSON_AddItemToObject(json_event, "data", data);
 
+#ifdef WIN32
+    char *utf8_path = auto_to_utf8(new_data->file_entry.path);
+    if (utf8_path) {
+        cJSON_AddStringToObject(data, "path", utf8_path);
+        os_free(utf8_path);
+    } else {
+        cJSON_AddStringToObject(data, "path", new_data->file_entry.path);
+    }
+#else
     cJSON_AddStringToObject(data, "path", new_data->file_entry.path);
+#endif
+
     cJSON_AddNumberToObject(data, "version", 2.0);
     cJSON_AddStringToObject(data, "mode", FIM_EVENT_MODE[evt_data->mode]);
     cJSON_AddStringToObject(data, "type", FIM_EVENT_TYPE_ARRAY[evt_data->type]);

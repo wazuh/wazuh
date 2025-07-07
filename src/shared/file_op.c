@@ -2231,7 +2231,7 @@ char **expand_win32_wildcards(const char *path) {
                 *look_back = '\0';
             }
 
-            wchar_t *wpattern = utf8_to_wide(pattern);
+            wchar_t *wpattern = auto_to_wide(pattern);
             if (!wpattern) {
                 continue;
             }
@@ -3310,7 +3310,7 @@ float DirSize(const char *path) {
     float folder_size = 0.0;
     float file_size = 0.0;
 
-    wchar_t *wPathInput = utf8_to_wide(path);
+    wchar_t *wPathInput = auto_to_wide(path);
     if (!wPathInput) {
         return 0;
     }
