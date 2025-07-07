@@ -4,6 +4,7 @@ on:
         paths:
             - 'src/init/register_configure_agent.sh'
             - 'src/win32/InstallerScripts.vbs'
+            - '.github/workflows/4_testcomponent_installer-deployment-variables.yml'
 
 jobs:
     test_ubuntu:
