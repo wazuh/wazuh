@@ -10,14 +10,18 @@
 #include "agent_sync_protocol.hpp"
 #include "ipersistent_queue.hpp"
 #include "persistent_queue.hpp"
+#include "defs.h"
 
 #include <flatbuffers/flatbuffers.h>
 #include <iostream>
 
+constexpr char SYNC_MQ = 's';
+
 using namespace Wazuh::SyncSchema;
 
-AgentSyncProtocol::AgentSyncProtocol(std::shared_ptr<IPersistentQueue> queue)
-    : m_persistentQueue(queue != nullptr ? std::move(queue) : std::make_shared<PersistentQueue>())
+AgentSyncProtocol::AgentSyncProtocol(MQ_Functions mqFuncs, std::shared_ptr<IPersistentQueue> queue)
+    : m_mqFuncs(mqFuncs),
+      m_persistentQueue(queue != nullptr ? std::move(queue) : std::make_shared<PersistentQueue>())
 {
 }
 
@@ -32,44 +36,49 @@ void AgentSyncProtocol::persistDifference(const std::string& module,
 
 void AgentSyncProtocol::synchronizeModule(const std::string& module, Mode mode, bool realtime)
 {
+    if (!ensureQueueAvailable())
+    {
+        std::cerr << "Failed to open queue: " << DEFAULTQUEUE << std::endl;
+        return;
+    }
+
     uint64_t session = 0;
     std::vector<PersistedData> data = m_persistentQueue->fetchAll(module);
 
     if (!sendStartAndWaitAck(module, mode, realtime, session, data.size()))
     {
-        std::cerr << "StartAck failed for module: " << module << std::endl;
+        std::cerr << "Failed to send start message" << std::endl;
         return;
     }
 
-    sendDataMessages(session, data);
-    sendEnd(session);
-
-    while (true)
+    if (!sendDataMessages(module, session, data))
     {
-        bool success = false;
+        std::cerr << "Failed to send data messages" << std::endl;
+        return;
+    }
 
-        if (receiveEndAck(success))
+    if (!sendEndAndWaitAck(module, session))
+    {
+        std::cerr << "Failed to send end message" << std::endl;
+        return;
+    }
+
+    clearPersistedDifferences(module);
+}
+
+bool AgentSyncProtocol::ensureQueueAvailable()
+{
+    if (m_queue < 0)
+    {
+        m_queue = m_mqFuncs.start(DEFAULTQUEUE, WRITE, 0);
+
+        if (m_queue < 0)
         {
-            if (success)
-            {
-                clearPersistedDifferences(module);
-            }
-            else
-            {
-                std::cerr << "EndAck failed for module: " << module << std::endl;
-            }
-
-            return;
-        }
-
-        const auto ranges = receiveReqRet();
-
-        if (!ranges.empty())
-        {
-            std::vector<PersistedData> rangeData = m_persistentQueue->fetchRange(module, ranges);
-            sendDataMessages(session, rangeData);
+            return false;
         }
     }
+
+    return true;
 }
 
 bool AgentSyncProtocol::sendStartAndWaitAck(const std::string& module, Mode mode, bool realtime, uint64_t& session, size_t dataSize)
@@ -87,14 +96,18 @@ bool AgentSyncProtocol::sendStartAndWaitAck(const std::string& module, Mode mode
     auto message = CreateMessage(builder, MessageType::Start, startOffset.Union());
     builder.Finish(message);
 
-    sendFlatBufferMessageAsString(builder.GetBufferSpan());
+    return sendFlatBufferMessageAsString(builder.GetBufferSpan(), module) && receiveStartAck(session);
+}
 
+bool AgentSyncProtocol::receiveStartAck(uint64_t& session)
+{
     // Simulated StartAck
     session = 99999;
     return true;
 }
 
-void AgentSyncProtocol::sendDataMessages(uint64_t session,
+bool AgentSyncProtocol::sendDataMessages(const std::string& module,
+                                         uint64_t session,
                                          const std::vector<PersistedData>& data)
 {
     for (const auto& item : data)
@@ -116,11 +129,16 @@ void AgentSyncProtocol::sendDataMessages(uint64_t session,
         auto message = CreateMessage(builder, MessageType::Data, dataOffset.Union());
         builder.Finish(message);
 
-        sendFlatBufferMessageAsString(builder.GetBufferSpan());
+        if (!sendFlatBufferMessageAsString(builder.GetBufferSpan(), module))
+        {
+            return false;
+        }
     }
+
+    return true;
 }
 
-void AgentSyncProtocol::sendEnd(uint64_t session)
+bool AgentSyncProtocol::sendEndAndWaitAck(const std::string& module, uint64_t session)
 {
     flatbuffers::FlatBufferBuilder builder;
     EndBuilder endBuilder(builder);
@@ -130,20 +148,40 @@ void AgentSyncProtocol::sendEnd(uint64_t session)
     auto message = CreateMessage(builder, MessageType::End, endOffset.Union());
     builder.Finish(message);
 
-    sendFlatBufferMessageAsString(builder.GetBufferSpan());
+    if (!sendFlatBufferMessageAsString(builder.GetBufferSpan(), module))
+    {
+        return false;
+    }
+
+    while (true)
+    {
+        const auto ranges = receiveReqRet();
+
+        if (!ranges.empty())
+        {
+            std::vector<PersistedData> rangeData = m_persistentQueue->fetchRange(module, ranges);
+
+            if (!sendDataMessages(module, session, rangeData))
+            {
+                return false;
+            }
+
+            continue;
+        }
+
+        return receiveEndAck();
+    }
 }
 
-bool AgentSyncProtocol::receiveEndAck(bool& success)
+bool AgentSyncProtocol::receiveEndAck()
 {
-    static int attempt = 0;
-    attempt++;
-
-    success = (attempt > 2);        // Simulate final success
-    return success || attempt == 3; // Return true when EndAck is received
+    // Simulated EndAck
+    return true;
 }
 
 std::vector<std::pair<uint64_t, uint64_t>> AgentSyncProtocol::receiveReqRet()
 {
+    // Simulated ReqRet
     static int callCount = 0;
     callCount++;
 
@@ -164,8 +202,71 @@ void AgentSyncProtocol::clearPersistedDifferences(const std::string& module)
     m_persistentQueue->removeAll(module);
 }
 
-void AgentSyncProtocol::sendFlatBufferMessageAsString(flatbuffers::span<uint8_t> fbData)
+bool AgentSyncProtocol::sendFlatBufferMessageAsString(flatbuffers::span<uint8_t> fbData, const std::string& module)
 {
-    std::string str(reinterpret_cast<const char*>(fbData.data()), fbData.size());
-    std::cout << "[Agent->agentd] Sending message: " << str << std::endl;
+    std::string message(reinterpret_cast<const char*>(fbData.data()), fbData.size());
+
+    if (m_mqFuncs.send(m_queue, message.c_str(), module.c_str(), SYNC_MQ) < 0)
+    {
+        std::cerr << "SendMSG failed, attempting to reinitialize queue..." << std::endl;
+        m_queue = m_mqFuncs.start(DEFAULTQUEUE, WRITE, 0);
+
+        if (m_queue < 0 || m_mqFuncs.send(m_queue, message.c_str(), module.c_str(), SYNC_MQ) < 0)
+        {
+            std::cerr << "Failed to send message after retry" << std::endl;
+            return false;
+        }
+    }
+
+    return true;
+}
+
+bool AgentSyncProtocol::parseResponseBuffer(const uint8_t* data, size_t size)
+{
+    if (!data || size == 0)
+    {
+        std::cerr << "Invalid buffer received.\n";
+        return false;
+    }
+
+    const auto* message = Wazuh::SyncSchema::GetMessage(data);
+    const auto messageType = message->content_type();
+
+    switch (messageType)
+    {
+        case Wazuh::SyncSchema::MessageType::StartAck:
+            {
+                const auto* startAck = message->content_as_StartAck();
+                std::cout << "[StartAck] session: " << startAck->session() << "\n";
+                break;
+            }
+
+        case Wazuh::SyncSchema::MessageType::EndAck:
+            {
+                std::cout << "[EndAck] received\n";
+                break;
+            }
+
+        case Wazuh::SyncSchema::MessageType::ReqRet:
+            {
+                const auto* reqRet = message->content_as_ReqRet();
+                std::vector<std::pair<uint64_t, uint64_t>> reqRetRanges;
+
+                for (const auto* pair : *reqRet->seq())
+                {
+                    reqRetRanges.emplace_back(pair->begin(), pair->end());
+                }
+
+                std::cout << "[ReqRet] received " << reqRetRanges.size() << " ranges\n";
+                break;
+            }
+
+        default:
+            {
+                std::cerr << "Unknown message type: " << static_cast<int>(messageType) << "\n";
+                return false;
+            }
+    }
+
+    return true;
 }
