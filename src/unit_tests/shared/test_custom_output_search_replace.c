@@ -17,7 +17,6 @@
 
 #include "../../headers/shared.h"
 #include "../wrappers/common.h"
-#include "custom_output_search.h"
 
 // Tests
 
@@ -58,7 +57,7 @@ void test_escape_newlines(void **state)
     };
     for (int i = 0; tests[i][0] != NULL ; i++) {
         char* result = escape_newlines(tests[i][0]);
-        assert_stridg_equal(result, tests[i][1]);
+        assert_string_equal(result, tests[i][1]);
         free(result);
     }
 }
