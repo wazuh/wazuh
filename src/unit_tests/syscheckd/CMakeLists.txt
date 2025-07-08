@@ -149,7 +149,7 @@ if(${TARGET} STREQUAL "winagent")
   list(APPEND syscheckd_tests_flags "${FIM_DIFF_CHANGES_BASE_FLAGS} -Wl,--wrap=FileSizeWin -Wl,--wrap,fim_sync_push_msg \
                                      -Wl,--wrap=fim_db_get_count_registry_data -Wl,--wrap=fim_db_get_count_registry_key -Wl,--wrap=syscom_dispatch \
                                      -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize \
-                                     -Wl,--wrap=_imp__rsync_initialize -Wl,--wrap=fim_db_teardown")
+                                     -Wl,--wrap=_imp__rsync_initialize -Wl,--wrap=fim_db_teardown -Wl,--wrap=utf8_GetShortPathName")
 else()
   list(APPEND syscheckd_tests_flags "${FIM_DIFF_CHANGES_BASE_FLAGS} -Wl,--wrap=unlink -Wl,--wrap=FileSize")
 endif()

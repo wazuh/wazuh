@@ -136,10 +136,11 @@ int fim_diff_compare(const diff_data *diff);
  * @brief Generates the diff file with the result of the diff/fc command (only if nodiff is not configured)
  *
  * @param diff Structure with all the data necessary to compute differences
+ * @param is_file True if the diff is for a file
  *
  * @return String with the changes to add to the alert
  */
-char *fim_diff_generate(const diff_data *diff);
+char *fim_diff_generate(const diff_data *diff, bool is_file);
 
 /**
  * @brief Reads the diff file and generates the string with the differences
@@ -278,7 +279,7 @@ char *fim_registry_value_diff(const char *key_name,
         goto cleanup;
     }
 
-    if (diff_changes = fim_diff_generate(diff), !diff_changes){
+    if (diff_changes = fim_diff_generate(diff, false), !diff_changes){
         syscheck.diff_folder_size += backup_file_size;
         goto cleanup;
     }
@@ -462,7 +463,7 @@ char *fim_file_diff(const char *filename, const directory_t *configuration) {
         goto cleanup;
     }
 
-    if (diff_changes = fim_diff_generate(diff), !diff_changes){
+    if (diff_changes = fim_diff_generate(diff, true), !diff_changes){
         syscheck.diff_folder_size += backup_file_size;
         goto cleanup;
     }
@@ -680,7 +681,7 @@ int fim_diff_compare(const diff_data *diff) {
     return 0;
 }
 
-char *fim_diff_generate(const diff_data *diff) {
+char *fim_diff_generate(const diff_data *diff, bool is_file) {
     char diff_cmd[PATH_MAX * 3 + OS_SIZE_1024];
     char *diff_str = NULL;
     char *uncompress_file_filtered = NULL;
@@ -690,7 +691,9 @@ char *fim_diff_generate(const diff_data *diff) {
 
     uncompress_file_filtered = filter(diff->uncompress_file);
 #ifdef WIN32
-    file_origin_filtered = utf8_GetShortPathName(diff->file_origin);
+    if (is_file) {
+        file_origin_filtered = utf8_GetShortPathName(diff->file_origin);
+    }
     if (file_origin_filtered == NULL) {
         file_origin_filtered = filter(diff->file_origin);
     }
