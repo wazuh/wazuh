@@ -115,8 +115,9 @@ DBSYNC=${SHARED_MODULES}dbsync/
 SYNC_PROTOCOL=${SHARED_MODULES}sync_protocol/
 SYSCOLLECTOR=wazuh_modules/syscollector/
 SCA=wazuh_modules/sca/
-ROUTER=shared_modules/router/
-CONTENT_MANAGER=shared_modules/content_manager/
+ROUTER=${SHARED_MODULES}router/
+CONTENT_MANAGER=${SHARED_MODULES}content_manager/
+FILE_HELPER=${SHARED_MODULES}file_helper/
 VULNERABILITY_SCANNER=wazuh_modules/vulnerability_scanner/
 SYSINFO=data_provider/
 SYSCHECK=syscheckd/
@@ -149,6 +150,7 @@ endif
 ifneq (,$(filter ${TEST},YES yes y Y 1))
 SYSCHECK_TEST=-DUNIT_TEST=ON #--coverage
 DBSYNC_TEST=-DUNIT_TEST=ON #--coverage
+FILE_HELPER_TEST=-DBUILD_TESTS=ON #--coverage
 SYSCOLLECTOR_TEST=-DUNIT_TEST=ON #--coverage
 SCA_TEST=-DUNIT_TEST=ON #--coverage
 SYSINFO_TEST=-DUNIT_TEST=ON #--coverage
@@ -408,13 +410,16 @@ AR_LDFLAGS+=${OFLAGS}
 
 DBSYNC_LIB+=-ldbsync
 SYNC_PROTOCOL_LIB+=-llibagent_sync_protocol
+FILE_HELPER_LIB+=-lFilesystemWrapper -lFileIO
 
 ifeq (${TARGET}, winagent)
 	OSSEC_LDFLAGS+=-L${DBSYNC}build/bin
 	OSSEC_LDFLAGS+=-L${SYNC_PROTOCOL}build/bin
+	OSSEC_LDFLAGS+=-L${FILE_HELPER}build/bin
 else
 	OSSEC_LDFLAGS+=-L${DBSYNC}build/lib
 	OSSEC_LDFLAGS+=-L${SYNC_PROTOCOL}build/lib
+	OSSEC_LDFLAGS+=-L${FILE_HELPER}build/lib
 endif
 
 ifeq (${TARGET},server)
@@ -440,7 +445,7 @@ endif
 
 OSSEC_CFLAGS+=${DEFINES}
 OSSEC_CFLAGS+=-pipe -Wall -Wextra -std=gnu99
-OSSEC_CFLAGS+=-I./ -I./headers/ -I${EXTERNAL_OPENSSL}include -I$(EXTERNAL_JSON) -I${EXTERNAL_LIBYAML}include -I${EXTERNAL_CURL}include -I${EXTERNAL_MSGPACK}include -I${EXTERNAL_BZIP2} -I${SHARED_MODULES}common -I${DBSYNC}include -I${SYNC_PROTOCOL}include -I${SYSCOLLECTOR}include -I${SCA}include -I${SYSINFO}include -I${EXTERNAL_LIBPCRE2}include -I${EXTERNAL_RPM}/builddir/output/include -I${SYSCHECK}include -I${ROUTER}include -I${CONTENT_MANAGER}include -I${VULNERABILITY_SCANNER}include -I./shared_modules/
+OSSEC_CFLAGS+=-I./ -I./headers/ -I${EXTERNAL_OPENSSL}include -I$(EXTERNAL_JSON) -I${EXTERNAL_LIBYAML}include -I${EXTERNAL_CURL}include -I${EXTERNAL_MSGPACK}include -I${EXTERNAL_BZIP2} -I${SHARED_MODULES}common -I${DBSYNC}include -I${SYNC_PROTOCOL}include -I${SYSCOLLECTOR}include -I${SCA}include -I${SYSINFO}include -I${EXTERNAL_LIBPCRE2}include -I${EXTERNAL_RPM}/builddir/output/include -I${SYSCHECK}include -I${ROUTER}include -I${CONTENT_MANAGER}include -I${FILE_HELPER}file_io/include -I${FILE_HELPER}filesystem/include -I${VULNERABILITY_SCANNER}include -I./shared_modules/
 
 OSSEC_CFLAGS += ${CFLAGS}
 OSSEC_LDFLAGS += ${LDFLAGS}
@@ -789,6 +794,7 @@ winagent: external win32/libwinpthread-1.dll win32/libwinpthreadpatched.a ${WAZU
 win32/shared_modules: $(WAZUHEXT_LIB)
 	cd ${DBSYNC} && mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${DBSYNC_TEST} ${SHARED_MODULES_RELEASE_TYPE} ${WIN_RESOURCE_OBJ} .. && ${MAKE}
 	cd ${SYNC_PROTOCOL} && mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${SYNC_PROTOCOL_TEST} ${SYNC_PROTOCOL_RELEASE_TYPE} ${WIN_RESOURCE_OBJ} .. && ${MAKE}
+	cd ${FILE_HELPER} && mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${FILE_HELPER_TEST} ${SHARED_MODULES_RELEASE_TYPE} ${WIN_RESOURCE_OBJ} .. && ${MAKE}
 
 #### Sysinfo ##
 
@@ -1815,9 +1821,10 @@ config/%.o: config/%.c
 build_shared_modules: $(WAZUHEXT_LIB)
 	cd ${DBSYNC} && mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${DBSYNC_TEST} ${SHARED_MODULES_RELEASE_TYPE} .. && ${MAKE}
 	cd ${SYNC_PROTOCOL} && mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${SYNC_PROTOCOL_TEST} ${SYNC_PROTOCOL_RELEASE_TYPE} .. && ${MAKE}
+	cd ${FILE_HELPER} && mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${FILE_HELPER_TEST} ${SHARED_MODULES_RELEASE_TYPE} .. && ${MAKE}
 
 #### Sysinfo ##
-build_sysinfo: $(WAZUHEXT_LIB)
+build_sysinfo: build_shared_modules $(WAZUHEXT_LIB)
 	cd ${SYSINFO} && mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${SYSINFO_OS} ${SYSINFO_TEST} ${SYSINFO_RELEASE_TYPE} .. && ${MAKE}
 
 #### Syscollector ##
@@ -2602,6 +2609,7 @@ clean-internals: clean-unit-tests
 	rm -f $(WAZUH_LIB)
 	rm -rf $(DBSYNC)build
 	rm -rf $(SYNC_PROTOCOL)build
+	rm -rf $(FILE_HELPER)build
 	rm -rf $(SYSCOLLECTOR)build
 	rm -rf $(SCA)build
 	rm -rf $(SHARED_MODULES)utils/flatbuffers/include/
