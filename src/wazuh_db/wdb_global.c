@@ -738,27 +738,27 @@ int wdb_global_insert_agent_belong(wdb_t *wdb, int id_group, int id_agent, int p
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0) {
         mdebug1("Cannot begin transaction");
-        return OS_UNDEF;
+        return OS_INVALID;
     }
 
     if (wdb_stmt_cache(wdb, WDB_STMT_GLOBAL_INSERT_AGENT_BELONG) < 0) {
         mdebug1("Cannot cache statement");
-        return OS_UNDEF;
+        return OS_INVALID;
     }
 
     stmt = wdb->stmt[WDB_STMT_GLOBAL_INSERT_AGENT_BELONG];
 
     if (sqlite3_bind_int(stmt, 1, id_group) != SQLITE_OK) {
         merror("DB(%s) sqlite3_bind_int(): %s", wdb->id, sqlite3_errmsg(wdb->db));
-        return OS_UNDEF;
+        return OS_INVALID;
     }
     if (sqlite3_bind_int(stmt, 2, id_agent) != SQLITE_OK) {
         merror("DB(%s) sqlite3_bind_int(): %s", wdb->id, sqlite3_errmsg(wdb->db));
-        return OS_UNDEF;
+        return OS_INVALID;
     }
     if (sqlite3_bind_int(stmt, 3, priority) != SQLITE_OK) {
         merror("DB(%s) sqlite3_bind_int(): %s", wdb->id, sqlite3_errmsg(wdb->db));
-        return OS_UNDEF;
+        return OS_INVALID;
     }
 
     return wdb_exec_stmt_silent(stmt);
@@ -1293,32 +1293,8 @@ wdbc_result wdb_global_assign_agent_group(wdb_t *wdb, int id, cJSON* j_groups, i
             if (j_find_response && cJSON_GetArraySize(j_find_response) > 0) {
                 cJSON* j_group_id = cJSON_GetObjectItem(j_find_response->child, "id");
                 if (cJSON_IsNumber(j_group_id)) {
-                    int insert_result = wdb_global_insert_agent_belong(wdb, j_group_id->valueint, id, priority);
-                    if (OS_INVALID == insert_result) {
-                        // Check if agent exists
-                        if (!wdb_global_agent_exists(wdb, id)) {
-                            // Create agent in never_connected state
-                            const char *unknown = "unknown";
-                            const char *ip = "0.0.0.0";
-                            if (OS_INVALID == wdb_global_insert_agent(wdb, id, (char*)unknown, (char*)ip, (char*)ip, NULL, NULL, time(NULL))) {
-                                mdebug1("Unable to create agent '%d' in never_connected state", id);
-                                result = WDBC_ERROR;
-                            } else {
-                                // Try to insert the group again
-                                insert_result = wdb_global_insert_agent_belong(wdb, j_group_id->valueint, id, priority);
-                                if (OS_INVALID == insert_result || OS_UNDEF == insert_result) {
-                                    mdebug1("Unable to insert group '%s' for agent '%d', retry failed after creating agent in never_connected state.", group_name, id);
-                                    result = WDBC_ERROR;
-                                } else {
-                                    priority++;
-                                }
-                            }
-                        } else {
-                            mdebug1("Unable to insert group '%s' for agent '%d', agent already exists, groups not synced.", group_name, id);
-                            result = WDBC_ERROR;
-                        }
-                    } else if (OS_UNDEF == insert_result) {
-                        mdebug1("Unable to insert group '%s' for agent '%d', undefined error.", group_name, id);
+                    if (OS_INVALID == wdb_global_insert_agent_belong(wdb, j_group_id->valueint, id, priority)) {
+                        mdebug1("Unable to insert group '%s' for agent '%d'", group_name, id);
                         result = WDBC_ERROR;
                     } else {
                         priority++;
