@@ -191,10 +191,15 @@ public:
      * @return true if available.
      * @return false if not available.
      */
-    bool isAvailable(const std::string& serverAddress)
+    bool isAvailable(std::string_view serverAddress)
     {
         std::scoped_lock lock(m_mutex);
-        return m_servers.at(serverAddress);
+        auto it = m_servers.find(serverAddress);
+        if (it == m_servers.end())
+        {
+            throw std::out_of_range("Server not found in monitoring");
+        }
+        return it->second;
     }
 };
 

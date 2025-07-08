@@ -50,9 +50,9 @@ public:
      *
      * @return std::string Server address.
      */
-    std::string getNext()
+    std::string_view getNext()
     {
-        auto initialValue {RoundRobinSelector<std::string>::getNext()};
+        std::string_view initialValue {RoundRobinSelector<std::string>::getNext()};
         auto retValue {initialValue};
 
         while (!m_monitoring->isAvailable(retValue))

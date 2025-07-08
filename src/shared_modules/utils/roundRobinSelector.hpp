@@ -24,7 +24,7 @@ public:
     {
     }
 
-    T getNext()
+    T& getNext()
     {
         auto idx = m_index.fetch_add(1) % m_values.size();
         return m_values[idx];
