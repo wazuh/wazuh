@@ -10,19 +10,12 @@
 #include "agent_sync_protocol.hpp"
 #include "ipersistent_queue.hpp"
 #include "persistent_queue.hpp"
+#include "defs.h"
 
 #include <flatbuffers/flatbuffers.h>
 #include <iostream>
 
-extern "C"
-{
-#include "defs.h"
-
-#define SYNC_MQ 's'
-
-    int StartMQ(const char* key, short int type, short int n_attempts);
-    int SendMSG(int queue, const char* message, const char* locmsg, char loc);
-}
+constexpr char SYNC_MQ = 's';
 
 using namespace Wazuh::SyncSchema;
 
