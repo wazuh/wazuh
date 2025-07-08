@@ -611,6 +611,8 @@ class DistributedAPI:
                                                             filters=filters)['items']
             node_name = defaultdict(list)
             for element in system_agents:
+                if element.get('node_name', '') == 'unknown':
+                    continue
                 node_name[element.get('node_name', '')].append(element['id'])
 
             # Update node_name in case it is empty or a node has no agents
