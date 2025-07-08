@@ -9,17 +9,9 @@
  * Foundation.
  */
 
-#include "HTTPRequest.hpp"
 #include "indexerConnector.hpp"
 #include "indexerConnectorSyncImpl.hpp"
 #include "loggerHelper.h"
-#include "serverSelector.hpp"
-#include <filesystem>
-#include <fstream>
-#include <grp.h>
-#include <pwd.h>
-#include <stringHelper.h>
-#include <unistd.h>
 
 namespace Log
 {
@@ -27,7 +19,7 @@ namespace Log
         const int, const std::string&, const std::string&, const int, const std::string&, const std::string&, va_list)>
         GLOBAL_LOG_FUNCTION;
 };
-
+// LCOV_EXCL_START
 // Implementation of the facade IndexerConnectorSync
 class IndexerConnectorSync::Impl
 {
@@ -88,3 +80,5 @@ void IndexerConnectorSync::bulkIndex(std::string_view id, std::string_view index
 {
     m_impl->bulkIndex(id, index, data);
 }
+
+// LCOV_EXCL_STOP

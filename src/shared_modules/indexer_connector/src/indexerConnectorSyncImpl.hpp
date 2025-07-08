@@ -13,27 +13,22 @@
 #include "external/nlohmann/json.hpp"
 #include "keyStore.hpp"
 #include "serverSelector.hpp"
-
+#include "shared_modules/utils/certHelper.hpp"
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
-#include <execinfo.h>
-#include <fstream>
-#include <grp.h>
+#include <filesystem>
 #include <map>
 #include <mutex>
-#include <pwd.h>
 #include <span>
 #include <string>
 #include <thread>
-#include <unistd.h>
 #include <vector>
 
 static std::mutex G_CREDENTIAL_MUTEX;
 
 constexpr auto IC_NAME {"IndexerConnector"};
 
-constexpr auto USER_GROUP {"wazuh"};
 constexpr auto DEFAULT_PATH {"tmp/root-ca-merged.pem"};
 constexpr auto INDEXER_COLUMN {"indexer"};
 constexpr auto USER_KEY {"username"};
@@ -43,7 +38,6 @@ constexpr auto HTTP_CONTENT_LENGTH {413};
 constexpr auto HTTP_VERSION_CONFLICT {409};
 constexpr auto HTTP_TOO_MANY_REQUESTS {429};
 
-// Forward declarations
 class IndexerConnectorException : public std::exception
 {
 private:
@@ -60,59 +54,6 @@ public:
         return m_message.c_str();
     }
 };
-
-static void mergeCaRootCertificates(const std::vector<std::string>& filePaths, std::string& caRootCertificate)
-{
-    std::string caRootCertificateContentMerged;
-
-    for (const auto& filePath : filePaths)
-    {
-        if (!std::filesystem::exists(filePath))
-        {
-            throw IndexerConnectorException("The CA root certificate file: '" + filePath + "' does not exist.");
-        }
-
-        std::ifstream file(filePath);
-        if (!file.is_open())
-        {
-            throw IndexerConnectorException("Could not open CA root certificate file: '" + filePath + "'.");
-        }
-
-        caRootCertificateContentMerged.append((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
-    }
-
-    caRootCertificate = DEFAULT_PATH;
-
-    if (std::filesystem::path dirPath = std::filesystem::path(caRootCertificate).parent_path();
-        !std::filesystem::exists(dirPath) && !std::filesystem::create_directories(dirPath))
-    {
-        throw IndexerConnectorException("Could not create the directory for the CA root merged file");
-    }
-
-    std::ofstream outputFile(caRootCertificate);
-    if (!outputFile.is_open())
-    {
-        throw IndexerConnectorException("Could not write the CA root merged file");
-    }
-
-    outputFile << caRootCertificateContentMerged;
-    outputFile.close();
-
-    struct passwd const* pwd = getpwnam(USER_GROUP);
-    struct group const* grp = getgrnam(USER_GROUP);
-
-    if (pwd == nullptr || grp == nullptr)
-    {
-        throw IndexerConnectorException("Could not get the user and group information.");
-    }
-
-    if (chown(caRootCertificate.c_str(), pwd->pw_uid, grp->gr_gid) != 0)
-    {
-        throw IndexerConnectorException("Could not change the ownership of the CA root merged file");
-    }
-
-    logDebug2(IC_NAME, "All CA files merged into '%s' successfully.", caRootCertificate.c_str());
-}
 
 template<typename TSelector = ServerSelector,
          typename THttpRequest = HTTPRequest,
@@ -432,7 +373,7 @@ public:
                     config.at("ssl").at("certificate_authorities").get<std::vector<std::string>>();
                 if (filePaths.size() > 1)
                 {
-                    mergeCaRootCertificates(filePaths, caRootCertificate);
+                    Utils::CertHelper::mergeCaRootCertificates(filePaths, caRootCertificate, DEFAULT_PATH);
                 }
                 else
                 {

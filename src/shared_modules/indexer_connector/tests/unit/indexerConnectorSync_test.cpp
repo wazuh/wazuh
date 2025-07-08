@@ -732,3 +732,259 @@ TEST_F(IndexerConnectorSyncGMockTest, HandleError413WithDataSplittingValidation)
     EXPECT_GT(validateBulkFormat(firstChunk), 0) << "First chunk should contain valid bulk operations";
     EXPECT_GT(validateBulkFormat(secondChunk), 0) << "Second chunk should contain valid bulk operations";
 }
+
+// Test processBulkChunk error handling - 413 with successful recursive splitting
+TEST_F(IndexerConnectorSyncGMockTest, ProcessBulkChunkError413RecursiveSplittingSuccess)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    std::vector<std::string> callSequenceData;
+    std::vector<int> callSequenceStatusCodes;
+    std::atomic<bool> allCallsCompleted {false};
+    std::atomic<int> callCounter {0};
+
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .Times(AtLeast(2)) // At least initial bulk + some splits
+        .WillOnce(Invoke(
+            [&callSequenceData, &callSequenceStatusCodes, &callCounter](RequestParamsVariant requestParams,
+                                                                        const PostRequestParameters& postParams,
+                                                                        const ConfigurationParameters& /*configParams*/)
+            {
+                callCounter++;
+                std::string data;
+                if (std::holds_alternative<TRequestParameters<std::string>>(requestParams))
+                {
+                    data = std::get<TRequestParameters<std::string>>(requestParams).data;
+                }
+                callSequenceData.push_back(data);
+                callSequenceStatusCodes.push_back(413);
+                postParams.onError("Payload Too Large", 413);
+            }))
+        .WillRepeatedly(Invoke(
+            [&callSequenceData, &callSequenceStatusCodes, &callCounter, &allCallsCompleted](
+                RequestParamsVariant requestParams,
+                const PostRequestParameters& postParams,
+                const ConfigurationParameters& /*configParams*/)
+            {
+                callCounter++;
+                std::string data;
+                if (std::holds_alternative<TRequestParameters<std::string>>(requestParams))
+                {
+                    data = std::get<TRequestParameters<std::string>>(requestParams).data;
+                }
+                callSequenceData.push_back(data);
+                callSequenceStatusCodes.push_back(200);
+                postParams.onSuccess(R"({"took":1,"errors":false,"items":[]})");
+                if (callCounter >= 2) // Complete after at least 2 calls
+                {
+                    allCallsCompleted = true;
+                }
+            }));
+
+    IndexerConnectorSyncImplSmallBulk connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    // Add multiple documents to trigger splitting when 413 error occurs
+    for (int i = 0; i < 4; ++i)
+    {
+        std::string id = "large_doc_" + std::to_string(i);
+        std::string data = R"({"field":"value)" + std::to_string(i) + R"(","large_data":")" + std::string(200, 'x') +
+                           std::to_string(i) + R"("})";
+        connector.bulkIndex(id, "test_index", data);
+    }
+
+    connector.flush();
+
+    // Wait for completion with timeout
+    auto startTime = std::chrono::steady_clock::now();
+    while (!allCallsCompleted && std::chrono::steady_clock::now() - startTime < std::chrono::seconds(15))
+    {
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+
+    ASSERT_TRUE(allCallsCompleted) << "Timeout waiting for recursive splitting to complete";
+    EXPECT_GE(callCounter.load(), 2) << "Should have made at least 2 calls (1 initial + 1+ splits)";
+    EXPECT_EQ(callSequenceStatusCodes[0], 413); // Initial bulk fails
+    // Subsequent calls should succeed
+    for (size_t i = 1; i < callSequenceStatusCodes.size(); ++i)
+    {
+        EXPECT_EQ(callSequenceStatusCodes[i], 200) << "Split " << i << " should succeed";
+    }
+}
+
+// Test processBulkChunk error handling - 413 with single operation too large
+TEST_F(IndexerConnectorSyncGMockTest, ProcessBulkChunkError413SingleOperationTooLarge)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .Times(1) // Should be called once and fail
+        .WillOnce(Invoke([](RequestParamsVariant /*requestParams*/,
+                            const PostRequestParameters& postParams,
+                            const ConfigurationParameters& /*configParams*/)
+                         { postParams.onError("Single operation exceeds server limits", 413); }));
+
+    IndexerConnectorSyncImplSmallBulk connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    // Add a document that will trigger processing when flush is called
+    std::string id = "huge_doc";
+    std::string data = R"({"field":"value","huge_data":")" + std::string(800, 'x') + R"("})";
+
+    // This should trigger an exception during flush
+    EXPECT_THROW(
+        {
+            connector.bulkIndex(id, "test_index", data);
+            connector.flush();
+        },
+        IndexerConnectorException);
+}
+
+// Test processBulkChunk error handling - 409 Version Conflict with retry
+TEST_F(IndexerConnectorSyncGMockTest, ProcessBulkChunkError409VersionConflictWithRetry)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    std::promise<void> retryCompletedPromise;
+    std::future<void> retryCompletedFuture = retryCompletedPromise.get_future();
+
+    int callCount = 0;
+
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .Times(2) // Should retry once after 409 error
+        .WillOnce(Invoke(
+            [&callCount](RequestParamsVariant /*requestParams*/,
+                         const PostRequestParameters& postParams,
+                         const ConfigurationParameters& /*configParams*/)
+            {
+                callCount++;
+                postParams.onError("Document version conflict", 409);
+            }))
+        .WillOnce(Invoke(
+            [&callCount, &retryCompletedPromise](RequestParamsVariant /*requestParams*/,
+                                                 const PostRequestParameters& postParams,
+                                                 const ConfigurationParameters& /*configParams*/)
+            {
+                callCount++;
+                postParams.onSuccess(R"({"took":1,"errors":false,"items":[]})");
+                retryCompletedPromise.set_value();
+            }));
+
+    IndexerConnectorSyncImplNoFlushInterval connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    connector.bulkIndex("test_id", "test_index", R"({"field":"value"})");
+    connector.flush();
+
+    auto status = retryCompletedFuture.wait_for(std::chrono::seconds(10));
+    ASSERT_EQ(status, std::future_status::ready) << "Timeout waiting for version conflict retry";
+
+    EXPECT_EQ(callCount, 2) << "Should have made exactly 2 calls (1 initial + 1 retry)";
+}
+
+// Test processBulkChunk error handling - 429 Too Many Requests with retry
+TEST_F(IndexerConnectorSyncGMockTest, ProcessBulkChunkError429TooManyRequestsWithRetry)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    std::promise<void> retryCompletedPromise;
+    std::future<void> retryCompletedFuture = retryCompletedPromise.get_future();
+
+    int callCount = 0;
+
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .Times(2) // Should retry once after 429 error
+        .WillOnce(Invoke(
+            [&callCount](RequestParamsVariant /*requestParams*/,
+                         const PostRequestParameters& postParams,
+                         const ConfigurationParameters& /*configParams*/)
+            {
+                callCount++;
+                postParams.onError("Too many requests", 429);
+            }))
+        .WillOnce(Invoke(
+            [&callCount, &retryCompletedPromise](RequestParamsVariant /*requestParams*/,
+                                                 const PostRequestParameters& postParams,
+                                                 const ConfigurationParameters& /*configParams*/)
+            {
+                callCount++;
+                postParams.onSuccess(R"({"took":1,"errors":false,"items":[]})");
+                retryCompletedPromise.set_value();
+            }));
+
+    IndexerConnectorSyncImplNoFlushInterval connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    connector.bulkIndex("test_id", "test_index", R"({"field":"value"})");
+    connector.flush();
+
+    auto status = retryCompletedFuture.wait_for(std::chrono::seconds(10));
+    ASSERT_EQ(status, std::future_status::ready) << "Timeout waiting for too many requests retry";
+
+    EXPECT_EQ(callCount, 2) << "Should have made exactly 2 calls (1 initial + 1 retry)";
+}
+
+// Test processBulkChunk error handling - Generic server error should throw exception
+TEST_F(IndexerConnectorSyncGMockTest, ProcessBulkChunkGenericServerErrorThrowsException)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .Times(1)
+        .WillOnce(Invoke([](RequestParamsVariant /*requestParams*/,
+                            const PostRequestParameters& postParams,
+                            const ConfigurationParameters& /*configParams*/)
+                         { postParams.onError("Internal Server Error", 500); }));
+
+    IndexerConnectorSyncImplSmallBulk connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    connector.bulkIndex("test_id", "test_index", R"({"field":"value"})");
+
+    EXPECT_THROW({ connector.flush(); }, IndexerConnectorException);
+}
+
+// Test processBulkChunk error handling - Stopping during chunk processing
+TEST_F(IndexerConnectorSyncGMockTest, ProcessBulkChunkStoppingDuringProcessing)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    std::atomic<bool> processingStarted {false};
+    std::atomic<int> callCount {0};
+
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .Times(AtLeast(1))
+        .WillRepeatedly(Invoke(
+            [&processingStarted, &callCount](RequestParamsVariant /*requestParams*/,
+                                             const PostRequestParameters& postParams,
+                                             const ConfigurationParameters& /*configParams*/)
+            {
+                callCount++;
+                processingStarted = true;
+                // Simulate a shorter delay
+                std::this_thread::sleep_for(std::chrono::milliseconds(50));
+                postParams.onSuccess(
+                    R"({"took":1,"errors":false,"items":[]})"); // Success instead of error to avoid retries
+            }));
+
+    auto connector = std::make_unique<IndexerConnectorSyncImplNoFlushInterval>(
+        config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    connector->bulkIndex("test_id", "test_index", R"({"field":"value"})");
+    connector->flush();
+
+    // Wait for processing to start with shorter timeout
+    auto startTime = std::chrono::steady_clock::now();
+    while (!processingStarted && std::chrono::steady_clock::now() - startTime < std::chrono::seconds(2))
+    {
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+
+    ASSERT_TRUE(processingStarted) << "Processing should have started";
+
+    // Stop the connector (destructor should handle stopping gracefully)
+    connector.reset();
+
+    SUCCEED(); // If we reach here without hanging, the stop mechanism worked
+}

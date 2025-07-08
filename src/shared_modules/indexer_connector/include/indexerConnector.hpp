@@ -12,28 +12,10 @@
 #ifndef _INDEXER_CONNECTOR_HPP
 #define _INDEXER_CONNECTOR_HPP
 
-#include "../src/serverSelector.hpp"
-#include "HTTPRequest.hpp"
-#include "keyStore.hpp"
-#include "loggerHelper.h"
-#include "secureCommunication.hpp"
-#include <atomic>
-#include <chrono>
-#include <condition_variable>
-#include <filesystem>
-#include <fstream>
 #include <functional>
-#include <grp.h>
 #include <json.hpp>
-#include <map>
 #include <memory>
-#include <mutex>
-#include <pwd.h>
-#include <stringHelper.h>
 #include <string_view>
-#include <thread>
-#include <unistd.h>
-#include <vector>
 
 #if __GNUC__ >= 4
 #define EXPORTED __attribute__((visibility("default")))
