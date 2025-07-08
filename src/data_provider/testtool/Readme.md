@@ -22,6 +22,7 @@ The information output will vary based on the Operating System the tool is being
 A brief example could be similar to the following one:
 
 ```
+{"users":[{"host_ip":null,"login_status":null,"login_tty":null,"login_type":null,"process_pid":null,"user_auth_failed_count":null,"user_auth_failed_timestamp":null,"user_created":null,"user_full_name":"","user_group_id":999,"user_group_id_signed":999,"user_groups":null,"user_home":"/var/ossec","user_id":998,"user_is_hidden":null,"user_is_remote":1,"user_last_login":null,"user_name":"wazuh","user_password_expiration_date":-1,"user_password_hash_algorithm":null,"user_password_inactive_days":-1,"user_password_last_change":1745971200.0,"user_password_max_days_between_changes":-1,"user_password_min_days_between_changes":-1,"user_password_status":"locked","user_password_warning_days_before_expiration":-1,"user_roles_sudo":0,"user_shell":"/sbin/nologin","user_type":null,"user_uid_signed":998,"user_uuid":null}]}
 [{"hotfix":"KB12345678"},{"hotfix":"KB87654321"}]
 {"board_serial":" ","cpu_cores":6,"cpu_mhz":801.0,"cpu_name":"Intel(R) Core(TM) i5-9400 CPU @ 2.90GHz","ram_free":4659652,"ram_total":32746472,"ram_usage":86}
 [{"architecture":"amd64","description":"query and manipulate user account information\n The AccountService project provides a set of D-Bus\n interfaces for querying and manipulating user account\n information and an implementation of these interfaces,\n based on the useradd, usermod and userdel commands.","format":"deb","groups":"admin","multiarch":" ","name":"accountsservice","priority":"optional","size":"452","source":" ","vendor":"Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>","version":"0.6.55-0ubuntu12~20.04.4"}],
@@ -44,3 +45,5 @@ A brief example could be similar to the following one:
 | `--ports`        | Prints the current Operating System ports information only. Example: `sysinfo_test_tool --ports`                                     |
 | `--os`           | Prints the current Operating System information only. Example: `sysinfo_test_tool --os`                                              |
 | `--hotfixes`     | Prints the current Operating System hotfixes information only. Example: `sysinfo_test_tool --hotfixes`                               |
+| `--groups`       | Prints the current Operating System groups information only. Example: `sysinfo_test_tool --groups`                                   |
+| `--users`        | Prints the current Operating System users information only. Example: `sysinfo_test_tool --users`                                     |

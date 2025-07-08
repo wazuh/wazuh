@@ -13,9 +13,8 @@
 
 void SysOsInfoTest::SetUp() {};
 
-void SysOsInfoTest::TearDown()
-{
-};
+void SysOsInfoTest::TearDown() {};
+
 using ::testing::_;
 using ::testing::Return;
 
