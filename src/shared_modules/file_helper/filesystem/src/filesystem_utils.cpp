@@ -2,7 +2,7 @@
 #include <filesystem_utils.hpp>
 #include <filesystem_wrapper.hpp>
 
-#include <globHelper.hpp>
+#include <globHelper.h>
 
 #include <array>
 
