@@ -1,9 +1,0 @@
-<decoder name="ow_test">
-  <program_name>^ow_test$</program_name>
-</decoder>
-
-<decoder name="test_overwrite">
-  <program_name>^test_overwrite_field$</program_name>
-  <regex>Test example '(\w+)' field</regex>
-  <order>example</order>
-</decoder>

@@ -523,15 +523,6 @@ typedef int (*wdb_ptr_any_txn_t)(wdb_t *);
  */
 wdb_t * wdb_open_global();
 
-/**
- * @brief Open mitre database and store in DB poll.
- *
- * It is opened every time a query to Mitre database is done.
- *
- * @return wdb_t* Database Structure that store mitre database or NULL on failure.
- */
-wdb_t * wdb_open_mitre();
-
 // Open database for agent and store in DB pool. It returns a locked database or NULL
 wdb_t * wdb_open_agent2(int agent_id);
 
@@ -1739,17 +1730,6 @@ int wdb_enable_foreign_keys(sqlite3 *db);
 */
  int wdbi_strings_hash(os_sha1 hexdigest, ...);
 
-/**
- * @brief Function to get a MITRE technique's name.
- *
- * @param [in] wdb The MITRE struct database.
- * @param [in] id MITRE technique's ID.
- * @param [out] output MITRE technique's name.
- * @retval 1 Success: name found on MITRE database.
- * @retval 0 On error: name not found on MITRE database.
- * @retval -1 On error: invalid DB query syntax.
- */
-int wdb_mitre_name_get(wdb_t *wdb, char *id, char *output);
 
 /**
  * @brief Function to insert an agent.

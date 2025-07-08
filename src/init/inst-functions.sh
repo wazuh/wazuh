@@ -21,7 +21,6 @@ GLOBAL_TEMPLATE="./etc/templates/config/generic/global.template"
 GLOBAL_AR_TEMPLATE="./etc/templates/config/generic/global-ar.template"
 AR_COMMANDS_TEMPLATE="./etc/templates/config/generic/ar-commands.template"
 AR_DEFINITIONS_TEMPLATE="./etc/templates/config/generic/ar-definitions.template"
-ALERTS_TEMPLATE="./etc/templates/config/generic/alerts.template"
 LOGGING_TEMPLATE="./etc/templates/config/generic/logging.template"
 REMOTE_SEC_TEMPLATE="./etc/templates/config/generic/remote-secure.template"
 
@@ -497,10 +496,6 @@ WriteManager()
     echo "$GLOBAL_CONTENT" >> $NEWCONFIG
     echo "" >> $NEWCONFIG
 
-    # Alerts level
-    cat ${ALERTS_TEMPLATE} >> $NEWCONFIG
-    echo "" >> $NEWCONFIG
-
     # Logging format
     cat ${LOGGING_TEMPLATE} >> $NEWCONFIG
     echo "" >> $NEWCONFIG
@@ -635,10 +630,6 @@ WriteLocal()
     else
         cat ${GLOBAL_TEMPLATE} >> $NEWCONFIG
     fi
-    echo "" >> $NEWCONFIG
-
-    # Alerts level
-    cat ${ALERTS_TEMPLATE} >> $NEWCONFIG
     echo "" >> $NEWCONFIG
 
     # Logging format

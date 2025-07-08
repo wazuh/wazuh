@@ -11,9 +11,6 @@
 #include "shared.h"
 #include "maild.h"
 #include <external/cJSON/cJSON.h>
-#ifdef LIBGEOIP_ENABLED
-#include "config/config.h"
-#endif
 
 /**
  * @brief Function to add a field to the alert buffer.
@@ -77,10 +74,6 @@ MailMsg *OS_RecvMailQ(file_queue *fileq, struct tm *p, MailConfig *Mail, MailMsg
     char extra_data[OS_MAXSTR + 1];
     char log_string[OS_MAXSTR / 4 + 1];
     char *subject_host;
-#ifdef LIBGEOIP_ENABLED
-    char geoip_msg_src[OS_SIZE_1024 + 1];
-    char geoip_msg_dst[OS_SIZE_1024 + 1];
-#endif
 
     MailMsg *mail;
     alert_data *al_data;
@@ -174,38 +167,6 @@ MailMsg *OS_RecvMailQ(file_queue *fileq, struct tm *p, MailConfig *Mail, MailMsg
         *subject_host = '-';
     }
 
-#ifdef LIBGEOIP_ENABLED
-    /* Get GeoIP information */
-    if (Mail->geoip) {
-        if (al_data->srcgeoip) {
-            snprintf(geoip_msg_src, OS_SIZE_1024, "Src Location: %s\r\n", al_data->srcgeoip);
-        } else {
-            geoip_msg_src[0] = '\0';
-        }
-        if (al_data->dstgeoip) {
-            snprintf(geoip_msg_dst, OS_SIZE_1024, "Dst Location: %s\r\n", al_data->dstgeoip);
-        } else {
-            geoip_msg_dst[0] = '\0';
-        }
-    } else {
-        geoip_msg_src[0] = '\0';
-        geoip_msg_dst[0] = '\0';
-    }
-#endif
-
-    /* Body */
-#ifdef LIBGEOIP_ENABLED
-    snprintf(mail->body, BODY_SIZE - 1, MAIL_BODY,
-             al_data->date,
-             al_data->location,
-             al_data->rule,
-             al_data->level,
-             al_data->comment,
-             geoip_msg_src,
-             geoip_msg_dst,
-             extra_data,
-             logs);
-#else
     os_snprintf(mail->body, BODY_SIZE - 1, MAIL_BODY,
                 al_data->date,
                 al_data->location,
@@ -214,7 +175,7 @@ MailMsg *OS_RecvMailQ(file_queue *fileq, struct tm *p, MailConfig *Mail, MailMsg
                 al_data->comment,
                 extra_data,
                 logs);
-#endif
+
     mdebug2("OS_RecvMailQ: mail->body[%s]", mail->body);
 
     /* Check for granular email configs */

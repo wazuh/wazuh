@@ -56,11 +56,6 @@ Install()
     echo "DIR=\"${INSTALLDIR}\""
 
     # Changing Config.OS with the new C flags
-    # Checking if debug is enabled
-    if [ "X${SET_DEBUG}" = "Xdebug" ]; then
-        CEXTRA="${CEXTRA} -DDEBUGAD"
-    fi
-
     echo "CEXTRA=${CEXTRA}" >> ./src/Config.OS
 
     MAKEBIN=make
@@ -131,11 +126,6 @@ Install()
     InstallWazuh
 
     cd ../
-
-    # Install Wazuh ruleset updater
-    if [ "X$INSTYPE" = "Xserver" ]; then
-        WazuhSetup
-    fi
 
     # Calling the init script to start Wazuh during boot
     runInit $INSTYPE ${update_only}
