@@ -1065,6 +1065,7 @@ installEngineStore()
     local ENGINE_LOGPAR_TYPE_PATH=${SCHEMA_PATH}/wazuh-logpar-overrides
     local ENGINE_ALLOWED_FIELDS_PATH=${SCHEMA_PATH}/allowed-fields
 
+    ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${STORE_PATH}
     mkdir -p "${KVDB_PATH}"
     mkdir -p "${ENGINE_SCHEMA_PATH}"
     mkdir -p "${ENGINE_LOGPAR_TYPE_PATH}"

@@ -657,15 +657,13 @@ rm -fr %{buildroot}
 %attr(750, root, wazuh) %{_localstatedir}/bin/cluster_control
 %attr(750, root, root) %{_localstatedir}/bin/manage_agents
 %attr(750, root, root) %{_localstatedir}/bin/wazuh-agentlessd
-%attr(750, root, root) %{_localstatedir}/bin/wazuh-analysisd
+%attr(750, root, root) %{_localstatedir}/bin/wazuh-engine
 %attr(750, root, root) %{_localstatedir}/bin/wazuh-authd
 %attr(750, root, root) %{_localstatedir}/bin/wazuh-control
 %attr(750, root, root) %{_localstatedir}/bin/wazuh-csyslogd
-%attr(750, root, root) %{_localstatedir}/bin/wazuh-dbd
 %attr(750, root, root) %{_localstatedir}/bin/wazuh-execd
 %attr(750, root, root) %{_localstatedir}/bin/wazuh-integratord
 %attr(750, root, root) %{_localstatedir}/bin/wazuh-logcollector
-%attr(750, root, root) %{_localstatedir}/bin/wazuh-logtest-legacy
 %attr(750, root, wazuh) %{_localstatedir}/bin/wazuh-logtest
 %attr(750, root, root) %{_localstatedir}/bin/wazuh-maild
 %attr(750, root, root) %{_localstatedir}/bin/wazuh-monitord
@@ -686,23 +684,20 @@ rm -fr %{buildroot}
 %attr(640, root, wazuh) %{_localstatedir}/etc/internal_options*
 %attr(640, root, wazuh) %config(noreplace) %{_localstatedir}/etc/local_internal_options.conf
 %attr(640, root, wazuh) %{_localstatedir}/etc/localtime
-%dir %attr(770, root, wazuh) %{_localstatedir}/etc/decoders
-%attr(660, wazuh, wazuh) %config(noreplace) %{_localstatedir}/etc/decoders/local_decoder.xml
-%dir %attr(770, root, wazuh) %{_localstatedir}/etc/lists
-%dir %attr(770, wazuh, wazuh) %{_localstatedir}/etc/lists/amazon
-%attr(660, wazuh, wazuh) %config(noreplace) %{_localstatedir}/etc/lists/amazon/*
-%attr(660, wazuh, wazuh) %config(noreplace) %{_localstatedir}/etc/lists/audit-keys
-%dir %attr(770, wazuh, wazuh) %{_localstatedir}/etc/lists/malicious-ioc
-%attr(660, wazuh, wazuh) %config(noreplace) %{_localstatedir}/etc/lists/malicious-ioc/*
-%attr(660, wazuh, wazuh) %config(noreplace) %{_localstatedir}/etc/lists/security-eventchannel
 %dir %attr(770, root, wazuh) %{_localstatedir}/etc/shared
 %dir %attr(770, wazuh, wazuh) %{_localstatedir}/etc/shared/default
 %attr(660, wazuh, wazuh) %{_localstatedir}/etc/shared/agent-template.conf
 %attr(660, wazuh, wazuh) %config(noreplace) %{_localstatedir}/etc/shared/default/*
 %dir %attr(770, root, wazuh) %{_localstatedir}/etc/rootcheck
 %attr(660, root, wazuh) %{_localstatedir}/etc/rootcheck/*.txt
-%dir %attr(770, root, wazuh) %{_localstatedir}/etc/rules
-%attr(660, wazuh, wazuh) %config(noreplace) %{_localstatedir}/etc/rules/local_rules.xml
+%dir %attr(770, root, wazuh) %{_localstatedir}/engine
+%dir %attr(770, wazuh, wazuh) %{_localstatedir}/engine/kvdb
+%dir %attr(770, wazuh, wazuh) %{_localstatedir}/engine/store
+%dir %attr(770, wazuh, wazuh) %{_localstatedir}/engine/store/schema
+%dir %attr(770, wazuh, wazuh) %{_localstatedir}/engine/store/schema/allowed-fields
+%attr(640, wazuh, wazuh) %{_localstatedir}/engine/store/schema/allowed-fields/0
+%dir %attr(770, wazuh, wazuh) %{_localstatedir}/engine/store/schema/engine-schema
+%attr(640, wazuh, wazuh) %{_localstatedir}/engine/store/schema/engine-schema/0
 %dir %attr(750, root, wazuh) %{_localstatedir}/framework
 %dir %attr(750, root, wazuh) %{_localstatedir}/framework/python
 %{_localstatedir}/framework/python/*
@@ -817,10 +812,6 @@ rm -fr %{buildroot}
 %dir %attr(750, wazuh, wazuh) %{_localstatedir}/queue/keystore
 %dir %attr(750, root, wazuh) %{_localstatedir}/ruleset
 %dir %attr(750, root, wazuh) %{_localstatedir}/ruleset/sca
-%dir %attr(750, root, wazuh) %{_localstatedir}/ruleset/decoders
-%attr(640, root, wazuh) %{_localstatedir}/ruleset/decoders/*
-%dir %attr(750, root, wazuh) %{_localstatedir}/ruleset/rules
-%attr(640, root, wazuh) %{_localstatedir}/ruleset/rules/*
 %dir %attr(770, root, wazuh) %{_localstatedir}/.ssh
 %dir %attr(750, wazuh, wazuh) %{_localstatedir}/stats
 %dir %attr(1770, root, wazuh) %{_localstatedir}/tmp

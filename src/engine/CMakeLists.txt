@@ -175,6 +175,12 @@ link_directories(${CMAKE_SOURCE_DIR}/external/rocksdb/build)
 # Build main
 add_executable(wazuh-engine ${ENGINE_SOURCE_DIR}/main.cpp)
 
+# Allows the executable to find its shared libraries of wazuh at runtime.
+set_target_properties(wazuh-engine PROPERTIES
+    INSTALL_RPATH "$ORIGIN/../lib;$ORIGIN/lib"
+    BUILD_WITH_INSTALL_RPATH ON
+)
+
 if (NOT SRC_FOLDER)
     get_filename_component(SRC_FOLDER     ${CMAKE_SOURCE_DIR}/ ABSOLUTE)
 endif()

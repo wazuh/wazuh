@@ -120,21 +120,10 @@ case "$1" in
     if [ -f ${WAZUH_TMP_DIR}/local_internal_options.conf ]; then
         mv ${WAZUH_TMP_DIR}/local_internal_options.conf ${DIR}/etc/local_internal_options.conf
     fi
-    # Restore lists
-    if [ -d ${WAZUH_TMP_DIR}/lists ]; then
-        cp -rp ${WAZUH_TMP_DIR}/lists  ${DIR}/etc/
-    fi
+
     # Restore ossec.conf configuration
     if [ -f ${WAZUH_TMP_DIR}/ossec.conf ]; then
         mv ${WAZUH_TMP_DIR}/ossec.conf ${DIR}/etc/ossec.conf
-    fi
-    # Restore local_rules.xml configuration
-    if [ -f ${WAZUH_TMP_DIR}/local_rules.xml ]; then
-        mv ${WAZUH_TMP_DIR}/local_rules.xml ${DIR}/etc/rules/local_rules.xml
-    fi
-    # Restore local_decoders.xml configuration
-    if [ -f ${WAZUH_TMP_DIR}/local_decoder.xml ]; then
-        mv ${WAZUH_TMP_DIR}/local_decoder.xml ${DIR}/etc/decoders/local_decoder.xml
     fi
 
     # Restore group files
