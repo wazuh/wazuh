@@ -4,7 +4,7 @@ Version:     %{_version}
 Release:     %{_release}
 License:     GPL
 URL:         https://www.wazuh.com/
-Vendor:      Wazuh, Inc <info@wazuh.com>
+Vendor:      Wazuh, Inc.
 Packager:    Wazuh, Inc <info@wazuh.com>
 Summary:     The Wazuh agent, used for threat detection, incident response and integrity monitoring.
 
