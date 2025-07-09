@@ -54,7 +54,8 @@ TEST_F(FileIOUtilsTest, ReadLineByLine_CallsCallbackForEachLine)
 
 TEST_F(FileIOUtilsTest, ReadLineByLine_CreateIfstreamFails_ThrowsException)
 {
-    EXPECT_CALL(*mockFileIOWrapper, create_ifstream(filePath, std::ios_base::in)).WillOnce(Return(nullptr));
+    EXPECT_CALL(*mockFileIOWrapper, create_ifstream(filePath, std::ios_base::in))
+        .WillOnce(Return(ByMove(std::unique_ptr<std::ifstream>(nullptr))));
 
     EXPECT_THROW(
         { mockFileIO->readLineByLine(filePath, [](const std::string& /*line*/) { return true; }); },
@@ -92,7 +93,8 @@ TEST_F(FileIOUtilsTest, ReadLineByLine_EmptyFile_NoCallbackCalled)
 
 TEST_F(FileIOUtilsTest, GetFileContent_CreateIfstreamFails_ReturnsEmptyString)
 {
-    EXPECT_CALL(*mockFileIOWrapper, create_ifstream(filePath, std::ios_base::in)).WillOnce(Return(nullptr));
+    EXPECT_CALL(*mockFileIOWrapper, create_ifstream(filePath, std::ios_base::in))
+        .WillOnce(Return(ByMove(std::unique_ptr<std::ifstream>(nullptr))));
 
     const std::string content = mockFileIO->getFileContent(filePath);
     EXPECT_EQ(content, "");
@@ -135,7 +137,8 @@ TEST_F(FileIOUtilsTest, GetBinaryContent_FileIsNotOpen_ReturnsEmptyVector)
 
 TEST_F(FileIOUtilsTest, GetBinaryContent_CreateIfstreamFails_ReturnsEmptyVector)
 {
-    EXPECT_CALL(*mockFileIOWrapper, create_ifstream(filePath, testing::_)).WillOnce(Return(nullptr));
+    EXPECT_CALL(*mockFileIOWrapper, create_ifstream(filePath, testing::_))
+        .WillOnce(Return(ByMove(std::unique_ptr<std::ifstream>(nullptr))));
 
     const std::vector<char> content = mockFileIO->getBinaryContent(filePath);
     EXPECT_EQ(content.size(), 0);
