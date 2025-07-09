@@ -18,6 +18,7 @@
 #include <shared_mutex>
 #include <string_view>
 #include <thread>
+#include <cstdarg>
 #include <unordered_map>
 
 #if __GNUC__ >= 4
