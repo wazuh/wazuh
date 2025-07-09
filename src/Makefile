@@ -804,7 +804,7 @@ win32/shared_modules: $(WAZUHEXT_LIB)
 
 #### Sysinfo ##
 
-win32/sysinfo: $(WAZUHEXT_LIB) win32/version-dll.o
+win32/sysinfo: $(WAZUHEXT_LIB) win32/shared_modules win32/version-dll.o
 	cd ${SYSINFO} && mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${SYSINFO_OS} ${SYSINFO_TEST} ${SYSINFO_RELEASE_TYPE} ${WIN_RESOURCE_OBJ} .. && ${MAKE}
 
 #### Syscollector ##
