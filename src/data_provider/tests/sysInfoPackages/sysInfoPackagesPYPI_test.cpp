@@ -19,12 +19,12 @@ TEST_F(PYPITest, getPackagesTest)
 {
     std::vector<std::filesystem::path> fakeFiles = {"/fake/dir/file1", "/fake/dir/file2", "/fake/dir/file3"};
 
-    EXPECT_CALL(*pypi, exists(_)).WillRepeatedly(Return(true));
+    EXPECT_CALL(*mockFileSystem, exists(_)).WillRepeatedly(Return(true));
 
-    EXPECT_CALL(*pypi, is_directory(_))
+    EXPECT_CALL(*mockFileSystem, is_directory(_))
     .WillRepeatedly(Return(true));
 
-    EXPECT_CALL(*pypi, directory_iterator(_))
+    EXPECT_CALL(*mockFileSystem, list_directory(_))
     .WillRepeatedly(Return(fakeFiles));
 
     EXPECT_CALL(*pypi, readLineByLine(_, _))
@@ -47,11 +47,11 @@ TEST_F(PYPITest, getPackages_NoFilesInDirectoryTest)
 {
     std::vector<std::filesystem::path> fakeFiles = {};
 
-    EXPECT_CALL(*pypi, exists(_)).WillRepeatedly(Return(true));
+    EXPECT_CALL(*mockFileSystem, exists(_)).WillRepeatedly(Return(true));
 
-    EXPECT_CALL(*pypi, is_directory(_)).WillRepeatedly(Return(true));
+    EXPECT_CALL(*mockFileSystem, is_directory(_)).WillRepeatedly(Return(true));
 
-    EXPECT_CALL(*pypi, directory_iterator(_)).WillRepeatedly(Return(fakeFiles));
+    EXPECT_CALL(*mockFileSystem, list_directory(_)).WillRepeatedly(Return(fakeFiles));
 
     nlohmann::json capturedJson;
     auto callback = [&](nlohmann::json & j)
@@ -68,9 +68,9 @@ TEST_F(PYPITest, getPackages_NoFilesInDirectoryTest)
 
 TEST_F(PYPITest, getPackages_NonDirectoryPathTest)
 {
-    EXPECT_CALL(*pypi, exists(_))
+    EXPECT_CALL(*mockFileSystem, exists(_))
     .WillRepeatedly(Return(true));
-    EXPECT_CALL(*pypi, is_directory(_))
+    EXPECT_CALL(*mockFileSystem, is_directory(_))
     .WillRepeatedly(Return(false));
 
     std::set<std::string> folders = { "/usr/local/lib/python3.9/site-packages" };
@@ -87,10 +87,10 @@ TEST_F(PYPITest, getPackages_OneValidPackageTestEggInfo)
 {
     std::vector<std::filesystem::path> fakeFiles = {"/fake/dir/egg-info"};
 
-    EXPECT_CALL(*pypi, exists(_)).WillRepeatedly(Return(true));
-    EXPECT_CALL(*pypi, is_directory(_)).WillRepeatedly(Return(true));
-    EXPECT_CALL(*pypi, directory_iterator(_)).WillRepeatedly(Return(fakeFiles));
-    EXPECT_CALL(*pypi, is_regular_file(_)).WillRepeatedly(Return(true));
+    EXPECT_CALL(*mockFileSystem, exists(_)).WillRepeatedly(Return(true));
+    EXPECT_CALL(*mockFileSystem, is_directory(_)).WillRepeatedly(Return(true));
+    EXPECT_CALL(*mockFileSystem, list_directory(_)).WillRepeatedly(Return(fakeFiles));
+    EXPECT_CALL(*mockFileSystem, is_regular_file(_)).WillRepeatedly(Return(true));
 
     std::vector<std::string> fakePackageLines = {"Name: TestPackage", "Version: 1.0.0"};
     EXPECT_CALL(*pypi, readLineByLine(std::filesystem::path("/fake/dir/egg-info"), _)).WillOnce([&](const std::filesystem::path&, const std::function<bool(const std::string&)>& callback)
@@ -119,10 +119,10 @@ TEST_F(PYPITest, getPackages_OneValidPackageTestNoRegularFileDistInfo)
 {
     std::vector<std::filesystem::path> fakeFiles = {"/fake/dir/dist-info"};
 
-    EXPECT_CALL(*pypi, exists(_)).WillRepeatedly(Return(true));
-    EXPECT_CALL(*pypi, is_directory(_)).WillRepeatedly(Return(true));
-    EXPECT_CALL(*pypi, directory_iterator(_)).WillRepeatedly(Return(fakeFiles));
-    EXPECT_CALL(*pypi, is_regular_file(_)).WillRepeatedly(Return(false));
+    EXPECT_CALL(*mockFileSystem, exists(_)).WillRepeatedly(Return(true));
+    EXPECT_CALL(*mockFileSystem, is_directory(_)).WillRepeatedly(Return(true));
+    EXPECT_CALL(*mockFileSystem, list_directory(_)).WillRepeatedly(Return(fakeFiles));
+    EXPECT_CALL(*mockFileSystem, is_regular_file(_)).WillRepeatedly(Return(false));
 
     std::vector<std::string> fakePackageLines = {"Name: TestPackage", "Version: 1.0.0"};
     EXPECT_CALL(*pypi, readLineByLine(std::filesystem::path("/fake/dir/dist-info/METADATA"), _)).WillOnce([&](const std::filesystem::path&, const std::function<bool(const std::string&)>& callback)
@@ -151,10 +151,10 @@ TEST_F(PYPITest, getPackages_OneValidPackageTestDistInfo)
 {
     std::vector<std::filesystem::path> fakeFiles = {"/fake/dir/dist-info"};
 
-    EXPECT_CALL(*pypi, exists(_)).WillRepeatedly(Return(true));
-    EXPECT_CALL(*pypi, is_directory(_)).WillRepeatedly(Return(true));
-    EXPECT_CALL(*pypi, directory_iterator(_)).WillRepeatedly(Return(fakeFiles));
-    EXPECT_CALL(*pypi, is_regular_file(_)).WillRepeatedly(Return(true));
+    EXPECT_CALL(*mockFileSystem, exists(_)).WillRepeatedly(Return(true));
+    EXPECT_CALL(*mockFileSystem, is_directory(_)).WillRepeatedly(Return(true));
+    EXPECT_CALL(*mockFileSystem, list_directory(_)).WillRepeatedly(Return(fakeFiles));
+    EXPECT_CALL(*mockFileSystem, is_regular_file(_)).WillRepeatedly(Return(true));
 
     std::vector<std::string> fakePackageLines = {"Name: TestPackage", "Version: 1.0.0"};
     EXPECT_CALL(*pypi, readLineByLine(std::filesystem::path("/fake/dir/dist-info"), _)).WillOnce([&](const std::filesystem::path&, const std::function<bool(const std::string&)>& callback)
@@ -183,10 +183,10 @@ TEST_F(PYPITest, getPackages_OneValidPackageTestNoRegularFileEggInfo)
 {
     std::vector<std::filesystem::path> fakeFiles = {"/fake/dir/egg-info"};
 
-    EXPECT_CALL(*pypi, exists(_)).WillRepeatedly(Return(true));
-    EXPECT_CALL(*pypi, is_directory(_)).WillRepeatedly(Return(true));
-    EXPECT_CALL(*pypi, directory_iterator(_)).WillRepeatedly(Return(fakeFiles));
-    EXPECT_CALL(*pypi, is_regular_file(_)).WillRepeatedly(Return(false));
+    EXPECT_CALL(*mockFileSystem, exists(_)).WillRepeatedly(Return(true));
+    EXPECT_CALL(*mockFileSystem, is_directory(_)).WillRepeatedly(Return(true));
+    EXPECT_CALL(*mockFileSystem, list_directory(_)).WillRepeatedly(Return(fakeFiles));
+    EXPECT_CALL(*mockFileSystem, is_regular_file(_)).WillRepeatedly(Return(false));
 
     std::vector<std::string> fakePackageLines = {"Name: TestPackage", "Version: 1.0.0"};
     EXPECT_CALL(*pypi, readLineByLine(std::filesystem::path("/fake/dir/egg-info/PKG-INFO"), _)).WillOnce([&](const std::filesystem::path&, const std::function<bool(const std::string&)>& callback)
@@ -216,10 +216,10 @@ TEST_F(PYPITest, getPackages_MultipleValidPackagesTest)
 {
     std::vector<std::filesystem::path> fakeFiles = {"/fake/dir1/egg-info", "/fake/dir2/dist-info"};
 
-    EXPECT_CALL(*pypi, exists(_)).WillRepeatedly(Return(true));
-    EXPECT_CALL(*pypi, is_directory(_)).WillRepeatedly(Return(true));
-    EXPECT_CALL(*pypi, directory_iterator(_)).WillRepeatedly(Return(fakeFiles));
-    EXPECT_CALL(*pypi, is_regular_file(_)).WillRepeatedly(Return(true));
+    EXPECT_CALL(*mockFileSystem, exists(_)).WillRepeatedly(Return(true));
+    EXPECT_CALL(*mockFileSystem, is_directory(_)).WillRepeatedly(Return(true));
+    EXPECT_CALL(*mockFileSystem, list_directory(_)).WillRepeatedly(Return(fakeFiles));
+    EXPECT_CALL(*mockFileSystem, is_regular_file(_)).WillRepeatedly(Return(true));
 
     std::vector<std::string> fakePackageLines1 = {"Name: TestPackage1", "Version: 1.0.0"};
     std::vector<std::string> fakePackageLines2 = {"Name: TestPackage2", "Version: 2.0.0"};
@@ -268,10 +268,10 @@ TEST_F(PYPITest, getPackages_InvalidPackageTest_NoLines)
 {
     std::vector<std::filesystem::path> fakeFiles = {"/fake/dir/egg-info"};
 
-    EXPECT_CALL(*pypi, exists(_)).WillRepeatedly(Return(true));
-    EXPECT_CALL(*pypi, is_directory(_)).WillRepeatedly(Return(true));
-    EXPECT_CALL(*pypi, directory_iterator(_)).WillRepeatedly(Return(fakeFiles));
-    EXPECT_CALL(*pypi, is_regular_file(_)).WillRepeatedly(Return(true));
+    EXPECT_CALL(*mockFileSystem, exists(_)).WillRepeatedly(Return(true));
+    EXPECT_CALL(*mockFileSystem, is_directory(_)).WillRepeatedly(Return(true));
+    EXPECT_CALL(*mockFileSystem, list_directory(_)).WillRepeatedly(Return(fakeFiles));
+    EXPECT_CALL(*mockFileSystem, is_regular_file(_)).WillRepeatedly(Return(true));
 
     std::vector<std::string> fakePackageLines = {};
 
@@ -300,10 +300,10 @@ TEST_F(PYPITest, getPackages_InvalidPackageTest_InvalidLines)
 {
     std::vector<std::filesystem::path> fakeFiles = {"/fake/dir/dist-info"};
 
-    EXPECT_CALL(*pypi, exists(_)).WillRepeatedly(Return(true));
-    EXPECT_CALL(*pypi, is_directory(_)).WillRepeatedly(Return(true));
-    EXPECT_CALL(*pypi, directory_iterator(_)).WillRepeatedly(Return(fakeFiles));
-    EXPECT_CALL(*pypi, is_regular_file(_)).WillRepeatedly(Return(true));
+    EXPECT_CALL(*mockFileSystem, exists(_)).WillRepeatedly(Return(true));
+    EXPECT_CALL(*mockFileSystem, is_directory(_)).WillRepeatedly(Return(true));
+    EXPECT_CALL(*mockFileSystem, list_directory(_)).WillRepeatedly(Return(fakeFiles));
+    EXPECT_CALL(*mockFileSystem, is_regular_file(_)).WillRepeatedly(Return(true));
 
     std::vector<std::string> fakePackageLines = {"Invalid: TestPackage", "Invalid: 1.0.0"};
 
@@ -332,10 +332,10 @@ TEST_F(PYPITest, getPackages_InvalidPackageTest_MissingName)
 {
     std::vector<std::filesystem::path> fakeFiles = {"/fake/dir/dist-info"};
 
-    EXPECT_CALL(*pypi, exists(_)).WillRepeatedly(Return(true));
-    EXPECT_CALL(*pypi, is_directory(_)).WillRepeatedly(Return(true));
-    EXPECT_CALL(*pypi, directory_iterator(_)).WillRepeatedly(Return(fakeFiles));
-    EXPECT_CALL(*pypi, is_regular_file(_)).WillRepeatedly(Return(true));
+    EXPECT_CALL(*mockFileSystem, exists(_)).WillRepeatedly(Return(true));
+    EXPECT_CALL(*mockFileSystem, is_directory(_)).WillRepeatedly(Return(true));
+    EXPECT_CALL(*mockFileSystem, list_directory(_)).WillRepeatedly(Return(fakeFiles));
+    EXPECT_CALL(*mockFileSystem, is_regular_file(_)).WillRepeatedly(Return(true));
 
     std::vector<std::string> fakePackageLines = {"Version: 1.0.0"};
 
@@ -364,10 +364,10 @@ TEST_F(PYPITest, getPackages_InvalidPackageTest_MissingVersion)
 {
     std::vector<std::filesystem::path> fakeFiles = {"/fake/dir/dist-info"};
 
-    EXPECT_CALL(*pypi, exists(_)).WillRepeatedly(Return(true));
-    EXPECT_CALL(*pypi, is_directory(_)).WillRepeatedly(Return(true));
-    EXPECT_CALL(*pypi, directory_iterator(_)).WillRepeatedly(Return(fakeFiles));
-    EXPECT_CALL(*pypi, is_regular_file(_)).WillRepeatedly(Return(true));
+    EXPECT_CALL(*mockFileSystem, exists(_)).WillRepeatedly(Return(true));
+    EXPECT_CALL(*mockFileSystem, is_directory(_)).WillRepeatedly(Return(true));
+    EXPECT_CALL(*mockFileSystem, list_directory(_)).WillRepeatedly(Return(fakeFiles));
+    EXPECT_CALL(*mockFileSystem, is_regular_file(_)).WillRepeatedly(Return(true));
 
     std::vector<std::string> fakePackageLines = {"Name: TestPackage"};
 

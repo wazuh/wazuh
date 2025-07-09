@@ -17,11 +17,13 @@ list(APPEND SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/filesystem/src/filesystem_wrappe
 
 get_filename_component(SRC_FOLDER ${CMAKE_SOURCE_DIR}/../ ABSOLUTE)
 add_library(FilesystemWrapper STATIC ${SOURCES})
+set_property(TARGET FilesystemWrapper PROPERTY POSITION_INDEPENDENT_CODE ON)
 target_include_directories(FilesystemWrapper PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/filesystem/include PRIVATE ${SRC_FOLDER}/utils)
 
 # File io target
 add_library(FileIO STATIC ${CMAKE_CURRENT_SOURCE_DIR}/file_io/src/file_io_utils.cpp
                           ${CMAKE_CURRENT_SOURCE_DIR}/file_io/src/file_io_wrapper.cpp)
+set_property(TARGET FileIO PROPERTY POSITION_INDEPENDENT_CODE ON)
 target_include_directories(FileIO PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/file_io/include)
 
 if(BUILD_TESTS)
