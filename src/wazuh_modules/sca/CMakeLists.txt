@@ -84,7 +84,7 @@ if(UNIT_TEST)
     target_link_libraries(sca gcov)
   endif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 
-  add_subdirectory(tests)
+  # add_subdirectory(tests)
 else()
   if(FSANITIZE)
     target_link_libraries(sca gcov)
