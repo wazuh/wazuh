@@ -2,7 +2,7 @@
     {
         "index_name": "wazuh-states-inventory-system-cluster01",
         "ids": {
-            "001": "001_Ubuntu"
+            "001": "001_a1c366cacdc2e4f2ca5e9f514afccf66ad1dfa3e"
         },
         "data": [
             {

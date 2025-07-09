@@ -65,6 +65,7 @@ public:
     MOCK_METHOD(std::string_view, agentIp, (), (const));
     MOCK_METHOD(std::string_view, osVersion, (), (const));
     MOCK_METHOD(std::string_view, osName, (), (const));
+    MOCK_METHOD(std::string_view, osHash, (), ());
     MOCK_METHOD(std::string_view, osKernelRelease, (), (const));
     MOCK_METHOD(std::string_view, osKernelSysName, (), (const));
     MOCK_METHOD(std::string_view, osKernelVersion, (), (const));

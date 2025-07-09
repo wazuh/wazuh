@@ -51,6 +51,7 @@ TEST_F(SystemInventoryUpsertElement, validAgentID_OS)
     EXPECT_CALL(*context, agentIp()).WillOnce(testing::Return("agentIp"));
     EXPECT_CALL(*context, osVersion()).WillOnce(testing::Return("osVersion"));
     EXPECT_CALL(*context, osName()).WillOnce(testing::Return("osName"));
+    EXPECT_CALL(*context, osHash()).WillOnce(testing::Return("03da153b8494f8ca993280da96c688c6ddbb142d"));
     EXPECT_CALL(*context, osKernelRelease()).WillOnce(testing::Return("osKernelRelease"));
     EXPECT_CALL(*context, osPlatform()).WillOnce(testing::Return("osPlatform"));
     EXPECT_CALL(*context, osKernelSysName()).WillOnce(testing::Return("osKernelSysName"));
@@ -63,7 +64,7 @@ TEST_F(SystemInventoryUpsertElement, validAgentID_OS)
 
     EXPECT_EQ(
         context->m_serializedElement,
-        R"({"id":"001_osName","operation":"INSERTED","data":{"agent":{"id":"001","name":"agentName","host":{"ip":"agentIp"},"version":"agentVersion"},"host":{"architecture":"osArchitecture","hostname":"osHostName","os":{"codename":"osCodeName","kernel":{"name":"osKernelSysName","release":"osKernelRelease","version":"osKernelVersion"},"name":"osName","platform":"osPlatform","version":"osVersion"}},"wazuh":{"cluster":{"name":"clusterName"},"schema":{"version":"1.0"}}}})");
+        R"({"id":"001_03da153b8494f8ca993280da96c688c6ddbb142d","operation":"INSERTED","data":{"agent":{"id":"001","name":"agentName","host":{"ip":"agentIp"},"version":"agentVersion"},"host":{"architecture":"osArchitecture","hostname":"osHostName","os":{"codename":"osCodeName","kernel":{"name":"osKernelSysName","release":"osKernelRelease","version":"osKernelVersion"},"name":"osName","platform":"osPlatform","version":"osVersion"}},"wazuh":{"cluster":{"name":"clusterName"},"schema":{"version":"1.0"}}}})");
 }
 
 TEST_F(SystemInventoryUpsertElement, validAgentIDAnyAgentIp_OS)
@@ -80,6 +81,7 @@ TEST_F(SystemInventoryUpsertElement, validAgentIDAnyAgentIp_OS)
     EXPECT_CALL(*context, agentIp()).WillOnce(testing::Return("any"));
     EXPECT_CALL(*context, osVersion()).WillOnce(testing::Return("osVersion"));
     EXPECT_CALL(*context, osName()).WillOnce(testing::Return("osName"));
+    EXPECT_CALL(*context, osHash()).WillOnce(testing::Return("03da153b8494f8ca993280da96c688c6ddbb142d"));
     EXPECT_CALL(*context, osKernelRelease()).WillOnce(testing::Return("osKernelRelease"));
     EXPECT_CALL(*context, osPlatform()).WillOnce(testing::Return("osPlatform"));
     EXPECT_CALL(*context, osKernelSysName()).WillOnce(testing::Return("osKernelSysName"));
@@ -92,7 +94,7 @@ TEST_F(SystemInventoryUpsertElement, validAgentIDAnyAgentIp_OS)
 
     EXPECT_EQ(
         context->m_serializedElement,
-        R"({"id":"001_osName","operation":"INSERTED","data":{"agent":{"id":"001","name":"agentName","version":"agentVersion"},"host":{"architecture":"osArchitecture","hostname":"osHostName","os":{"codename":"osCodeName","kernel":{"name":"osKernelSysName","release":"osKernelRelease","version":"osKernelVersion"},"name":"osName","platform":"osPlatform","version":"osVersion"}},"wazuh":{"cluster":{"name":"clusterName"},"schema":{"version":"1.0"}}}})");
+        R"({"id":"001_03da153b8494f8ca993280da96c688c6ddbb142d","operation":"INSERTED","data":{"agent":{"id":"001","name":"agentName","version":"agentVersion"},"host":{"architecture":"osArchitecture","hostname":"osHostName","os":{"codename":"osCodeName","kernel":{"name":"osKernelSysName","release":"osKernelRelease","version":"osKernelVersion"},"name":"osName","platform":"osPlatform","version":"osVersion"}},"wazuh":{"cluster":{"name":"clusterName"},"schema":{"version":"1.0"}}}})");
 }
 
 /*

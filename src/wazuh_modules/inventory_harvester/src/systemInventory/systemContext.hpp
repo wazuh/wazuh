@@ -14,6 +14,7 @@
 
 #include "flatbuffers/include/rsync_generated.h"
 #include "flatbuffers/include/syscollector_deltas_generated.h"
+#include "hashHelper.h"
 #include "stringHelper.h"
 #include "timeHelper.h"
 #include <json.hpp>
@@ -928,6 +929,19 @@ public:
                 return m_jsonData->at("/data/os_name"_json_pointer).get<std::string_view>();
             }
         }
+        return "";
+    }
+
+    std::string_view osHash()
+    {
+        if (auto osNameRaw = osName(); !osNameRaw.empty())
+        {
+            Utils::HashData hash;
+            hash.update(osNameRaw.data(), osNameRaw.size());
+            m_osHash = Utils::asciiToHex(hash.hash());
+            return m_osHash;
+        }
+
         return "";
     }
 
@@ -2312,6 +2326,7 @@ private:
     std::string m_installTimeISO8601;
     std::string m_portLocalIpSanitized;
     std::string m_portRemoteIpSanitized;
+    std::string m_osHash;
 
     /**
      * @brief Scan context.

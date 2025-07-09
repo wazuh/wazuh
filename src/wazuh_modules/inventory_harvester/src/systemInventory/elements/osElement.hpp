@@ -38,11 +38,16 @@ public:
             throw std::runtime_error("Agent ID is empty, cannot upsert system element.");
         }
 
+        auto osHash = data->osHash();
+        if (osHash.empty())
+        {
+            throw std::runtime_error("OS name hash is empty, cannot upsert system element.");
+        }
+
         DataHarvester<InventorySystemHarvester> element;
         element.id = agentId;
         element.id += "_";
-        auto osName = data->osName();
-        element.id += osName;
+        element.id += osHash;
 
         element.operation = "INSERTED";
         element.data.agent.id = agentId;
@@ -62,7 +67,7 @@ public:
         element.data.host.os.kernel.version = data->osKernelVersion();
 
         element.data.host.os.codename = data->osCodeName();
-        element.data.host.os.name = osName;
+        element.data.host.os.name = data->osName();
         element.data.host.os.platform = data->osPlatform();
         element.data.host.os.version = data->osVersion();
 
@@ -84,13 +89,18 @@ public:
             throw std::runtime_error("Agent ID is empty, cannot delete system element.");
         }
 
+        auto osHash = data->osHash();
+        if (osHash.empty())
+        {
+            throw std::runtime_error("OS name hash is empty, cannot delete system element.");
+        }
+
         NoDataHarvester element;
         element.operation = "DELETED";
 
         element.id = agentId;
         element.id += "_";
-        auto osName = data->osName();
-        element.id += osName;
+        element.id += osHash;
 
         return element;
     }
