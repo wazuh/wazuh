@@ -9,10 +9,11 @@
  * Foundation.
  */
 
-#include "HTTPRequest.hpp"
+#include "IURLRequest.hpp"
 #include "external/nlohmann/json.hpp"
 #include "keyStore.hpp"
-#include "serverSelector.hpp"
+#include "loggerHelper.h"
+#include "secureCommunication.hpp"
 #include "shared_modules/utils/certHelper.hpp"
 #include <atomic>
 #include <chrono>
@@ -55,8 +56,8 @@ public:
     }
 };
 
-template<typename TSelector = ServerSelector,
-         typename THttpRequest = HTTPRequest,
+template<typename TSelector,
+         typename THttpRequest,
          size_t MaxBulkSize = 10 * 1024 * 1024,
          size_t RetryDelay = 1,
          size_t FlushInterval = 20>
@@ -78,7 +79,7 @@ class IndexerConnectorSyncImpl final
     void processBulk()
     {
         bool needToRetry = false;
-        if (m_bulkData.empty())
+        if (m_bulkData.empty() && m_deleteByQuery.empty())
         {
             throw IndexerConnectorException("No data to process");
         }
@@ -95,10 +96,14 @@ class IndexerConnectorSyncImpl final
             if (statusCode == HTTP_VERSION_CONFLICT)
             {
                 logDebug2(IC_NAME, "Document version conflict, retrying in 1 second.");
+                // For deleteByQuery, we don't retry - just log and continue
+                return;
             }
             else if (statusCode == HTTP_TOO_MANY_REQUESTS)
             {
                 logDebug2(IC_NAME, "Too many requests, retrying in 1 second.");
+                // For deleteByQuery, we don't retry - just log and continue
+                return;
             }
             else
             {
@@ -117,7 +122,8 @@ class IndexerConnectorSyncImpl final
             url += index;
             url += "/_delete_by_query";
             m_httpRequest->post(
-                RequestParameters {.url = HttpURL(url), .data = query, .secureCommunication = m_secureCommunication},
+                RequestParameters {
+                    .url = HttpURL(url), .data = query.dump(), .secureCommunication = m_secureCommunication},
                 PostRequestParameters {.onSuccess = onSuccessDeleteByQuery, .onError = onErrorDeleteByQuery},
                 {});
         }
@@ -172,31 +178,36 @@ class IndexerConnectorSyncImpl final
             }
         };
 
-        do
+        // Only process bulk data if there is data to process
+        if (!m_bulkData.empty())
         {
-            if (m_stopping.load())
+            do
             {
-                logDebug2(IC_NAME, "Stopping requested, aborting bulk processing");
-                return;
-            }
+                if (m_stopping.load())
+                {
+                    logDebug2(IC_NAME, "Stopping requested, aborting bulk processing");
+                    return;
+                }
 
-            std::string url;
-            url += m_selector->getNext();
-            url += "/_bulk?refresh=wait_for";
+                std::string url;
+                url += m_selector->getNext();
+                url += "/_bulk?refresh=wait_for";
 
-            m_httpRequest->post(RequestParameters {.url = HttpURL(url),
-                                                   .data = m_bulkData,
-                                                   .secureCommunication = m_secureCommunication},
-                                PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
-                                {});
-            if (needToRetry && RetryDelay > 0)
-            {
-                std::this_thread::sleep_for(std::chrono::seconds(RetryDelay));
-            }
-        } while (needToRetry);
+                m_httpRequest->post(RequestParameters {.url = HttpURL(url),
+                                                       .data = m_bulkData,
+                                                       .secureCommunication = m_secureCommunication},
+                                    PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
+                                    {});
+                if (needToRetry && RetryDelay > 0)
+                {
+                    std::this_thread::sleep_for(std::chrono::seconds(RetryDelay));
+                }
+            } while (needToRetry);
+        }
 
         m_bulkData.clear();
         m_boundaries.clear();
+        m_deleteByQuery.clear();
         m_lastBulkTime = std::chrono::steady_clock::now();
     }
 
@@ -209,7 +220,7 @@ class IndexerConnectorSyncImpl final
                 "Cannot split bulk data with less than two operations. Consider increasing http.max_content_length in "
                 "Wazuh-Indexer settings.");
         }
-        logDebug2(IC_NAME, "Splitting %zu operations into dos mitades", totalOperations);
+        logDebug2(IC_NAME, "Splitting %zu operations into two halves", totalOperations);
 
         const size_t midPoint = totalOperations / 2;
         std::span<size_t> firstBoundaries(m_boundaries.begin(), m_boundaries.begin() + midPoint);
@@ -261,7 +272,6 @@ class IndexerConnectorSyncImpl final
 
     void processBulkChunk(std::string_view data, const std::span<size_t>& boundaries)
     {
-
         std::string url;
         url += m_selector->getNext();
         url += "/_bulk?refresh=wait_for";
@@ -319,6 +329,7 @@ class IndexerConnectorSyncImpl final
                 logDebug2(IC_NAME, "Stopping requested, aborting bulk chunk processing");
                 return;
             }
+            needToRetry = false;
             m_httpRequest->post(
                 RequestParameters {.url = HttpURL(url), .data = dataStr, .secureCommunication = m_secureCommunication},
                 PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
@@ -502,7 +513,7 @@ public:
     void flush()
     {
         std::lock_guard lock(m_mutex);
-        if (!m_bulkData.empty())
+        if (!m_bulkData.empty() || !m_deleteByQuery.empty())
         {
             processBulk();
         }

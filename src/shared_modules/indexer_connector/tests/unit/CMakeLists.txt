@@ -18,7 +18,7 @@ target_link_libraries(${PROJECT_NAME}
         optimized gtest_main
         optimized gmock
         optimized gmock_main
-        indexer_connector
+        keystore
         pthread
 )
 

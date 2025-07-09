@@ -12,78 +12,97 @@
 #ifndef _SERVER_SELECTOR_TEST_HPP
 #define _SERVER_SELECTOR_TEST_HPP
 
-#include "fakeOpenSearchServer.hpp"
+#include "mocks/MockHTTPRequest.hpp"
 #include "serverSelector.hpp"
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <json.hpp>
+#include <memory>
 #include <string>
+#include <variant>
 #include <vector>
 
+// Use TServerSelector with MockHTTPRequest for testing
+using TestServerSelector = TServerSelector<MockHTTPRequest>;
+
 /**
- * @brief Runs unit tests for ServerSelector class
+ * @brief Runs unit tests for ServerSelector class using mocked HTTP requests
  */
 class ServerSelectorTest : public ::testing::Test
 {
 protected:
-    inline static std::unique_ptr<FakeOpenSearchServer>
-        m_fakeOpenSearchGreenServer; ///< pointer to FakeOpenSearchServer class
-
-    inline static std::unique_ptr<FakeOpenSearchServer>
-        m_fakeOpenSearchRedServer; ///< pointer to FakeOpenSearchServer class
-
-    inline static std::unique_ptr<FakeOpenSearchServer>
-        m_fakeOpenSearchYellowServer; ///< pointer to FakeOpenSearchServer class
-
-    std::shared_ptr<ServerSelector> m_selector; ///< pointer to Selector class
-
-    std::vector<std::string> m_servers; ///< Servers
+    std::unique_ptr<::testing::NiceMock<MockHTTPRequest>> m_mockHttpRequest; ///< Mock HTTP request for testing
 
     /**
      * @brief Sets initial conditions for each test case.
      */
-    // cppcheck-suppress unusedFunction
     void SetUp() override
     {
-        // Register the host and port of the green server
-        m_servers.emplace_back("http://localhost:9209");
-        // Register the host and port of the red server
-        m_servers.emplace_back("http://localhost:9210");
-        // Register the host and port of the yellow server
-        m_servers.emplace_back("http://localhost:9211");
+        // Create mock HTTP request
+        m_mockHttpRequest = std::make_unique<::testing::NiceMock<MockHTTPRequest>>();
+    }
+
+    void TearDown() override
+    {
+        m_mockHttpRequest.reset();
     }
 
     /**
-     * @brief Creates the fakeOpenSearchServers for the runtime of the test suite
+     * @brief Helper to setup mock HTTP responses for health checks
+     *
+     * @param server1Health Status for green server (9209)
+     * @param server2Health Status for red server (9210)
+     * @param server3Health Status for yellow server (9211)
      */
-    // cppcheck-suppress unusedFunction
-    static void SetUpTestSuite()
+    void setupHealthCheckMocks(const std::string& server1Health,
+                               const std::string& server2Health,
+                               const std::string& server3Health)
     {
-        const std::string host {"localhost"};
+        using ::testing::_;
+        using ::testing::Invoke;
 
-        if (!m_fakeOpenSearchGreenServer)
-        {
-            m_fakeOpenSearchGreenServer = std::make_unique<FakeOpenSearchServer>(host, 9209, "green");
-        }
+        EXPECT_CALL(*m_mockHttpRequest, get(_, _, _))
+            .WillRepeatedly(Invoke(
+                [server1Health, server2Health, server3Health](
+                    auto requestParams, const auto& postParams, auto /*configParams*/)
+                {
+                    // Extract the URL to determine which server is being checked
+                    std::string url;
+                    if (std::holds_alternative<TRequestParameters<std::string>>(requestParams))
+                    {
+                        url = std::get<TRequestParameters<std::string>>(requestParams).url.url();
+                    }
+                    else
+                    {
+                        url = std::get<TRequestParameters<nlohmann::json>>(requestParams).url.url();
+                    }
 
-        if (!m_fakeOpenSearchRedServer)
-        {
-            m_fakeOpenSearchRedServer = std::make_unique<FakeOpenSearchServer>(host, 9210, "red");
-        }
+                    std::string response;
+                    if (url.find("9209") != std::string::npos)
+                    {
+                        // Green server
+                        response = R"([{"status":")" + server1Health + R"("}])";
+                    }
+                    else if (url.find("9210") != std::string::npos)
+                    {
+                        // Red server
+                        response = R"([{"status":")" + server2Health + R"("}])";
+                    }
+                    else if (url.find("9211") != std::string::npos)
+                    {
+                        // Yellow server
+                        response = R"([{"status":")" + server3Health + R"("}])";
+                    }
 
-        if (!m_fakeOpenSearchYellowServer)
-        {
-            m_fakeOpenSearchYellowServer = std::make_unique<FakeOpenSearchServer>(host, 9211, "yellow");
-        }
-    }
-
-    /**
-     * @brief Resets fakeOpenSearchServers causing the shutdown of the test server.
-     */
-    // cppcheck-suppress unusedFunction
-    static void TearDownTestSuite()
-    {
-        m_fakeOpenSearchGreenServer.reset();
-        m_fakeOpenSearchRedServer.reset();
-        m_fakeOpenSearchYellowServer.reset();
+                    if (!response.empty())
+                    {
+                        postParams.onSuccess(response);
+                    }
+                    else
+                    {
+                        postParams.onError("Server not found", 404);
+                    }
+                }));
     }
 };
 

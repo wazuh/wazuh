@@ -9,9 +9,11 @@
  * Foundation.
  */
 
+#include "HTTPRequest.hpp"
 #include "indexerConnector.hpp"
 #include "indexerConnectorSyncImpl.hpp"
 #include "loggerHelper.h"
+#include "serverSelector.hpp"
 
 namespace Log
 {
@@ -24,7 +26,7 @@ namespace Log
 class IndexerConnectorSync::Impl
 {
 private:
-    IndexerConnectorSyncImpl<> m_impl;
+    IndexerConnectorSyncImpl<TServerSelector<HTTPRequest>, HTTPRequest> m_impl;
 
 public:
     Impl(const nlohmann::json& config,
