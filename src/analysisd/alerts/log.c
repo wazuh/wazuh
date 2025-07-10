@@ -130,7 +130,7 @@ void OS_Log(Eventinfo *lf, FILE * fp)
             "%d %s %02d %s %s%s%s\n%sRule: %d (level %d) -> '%s'"
             "%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s\n",
             (long int)lf->time.tv_sec,
-            __crt_ftell,
+            get_global_alert_second_id(),
             lf->generated_rule->alert_opts & DO_MAILALERT ? " mail " : "",
             lf->generated_rule->group,
             lf->year,
@@ -318,7 +318,7 @@ void OS_CustomLog(const Eventinfo *lf, const char *format)
     tmp_log = searchAndReplace(log, CustomAlertTokenName[CUSTOM_ALERT_TOKEN_TIMESTAMP], tmp_buffer);
     free(log);
 
-    snprintf(tmp_buffer, 1024, "%ld", __crt_ftell);
+    snprintf(tmp_buffer, 1024, "%ld", get_global_alert_second_id());
     log = searchAndReplace(tmp_log, CustomAlertTokenName[CUSTOM_ALERT_TOKEN_FTELL], tmp_buffer);
     free(tmp_log);
 
