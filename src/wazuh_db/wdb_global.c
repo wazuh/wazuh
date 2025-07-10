@@ -1283,7 +1283,7 @@ int wdb_global_get_agent_max_group_priority(wdb_t *wdb, int id) {
     return group_priority;
 }
 
-wdbc_result wdb_global_assign_agent_group(wdb_t *wdb, int id, cJSON* j_groups, int priority) {
+wdbc_result wdb_global_assign_agent_group(wdb_t *wdb, int id, cJSON* j_groups, int priority, bool add_agent) {
     cJSON* j_group_name = NULL;
     wdbc_result result = WDBC_OK;
     cJSON_ArrayForEach (j_group_name, j_groups) {
@@ -1294,6 +1294,10 @@ wdbc_result wdb_global_assign_agent_group(wdb_t *wdb, int id, cJSON* j_groups, i
                 cJSON* j_group_id = cJSON_GetObjectItem(j_find_response->child, "id");
                 if (cJSON_IsNumber(j_group_id)) {
                     int insert_result = wdb_global_insert_agent_belong(wdb, j_group_id->valueint, id, priority);
+                    if (!add_agent) {
+                        // If the agent doesn't exist, we don't want to insert the group relationship.
+                        insert_result = OS_NOTFOUND;
+                    }
                     if (OS_INVALID == insert_result) {
                         // Check if agent exists
                         if (!wdb_global_agent_exists(wdb, id)) {
@@ -1319,6 +1323,9 @@ wdbc_result wdb_global_assign_agent_group(wdb_t *wdb, int id, cJSON* j_groups, i
                         }
                     } else if (OS_UNDEF == insert_result) {
                         mdebug1("Unable to insert group '%s' for agent '%d', undefined error.", group_name, id);
+                        result = WDBC_ERROR;
+                    } else if (OS_NOTFOUND == insert_result) {
+                        mdebug1("Unable to insert group '%s' for agent '%d', agent not found.", group_name, id);
                         result = WDBC_ERROR;
                     } else {
                         priority++;
@@ -1381,7 +1388,7 @@ int wdb_global_if_empty_set_default_agent_group(wdb_t *wdb, int id) {
     if (OS_INVALID == wdb_global_get_agent_max_group_priority(wdb, id)) {
         cJSON* j_default_group = cJSON_CreateArray();
         cJSON_AddItemToArray(j_default_group, cJSON_CreateString("default"));
-        if (WDBC_OK == wdb_global_assign_agent_group(wdb, id, j_default_group, 0)) {
+        if (WDBC_OK == wdb_global_assign_agent_group(wdb, id, j_default_group, 0, false)) {
             mdebug1("Agent '%03d' reassigned to 'default' group", id);
         } else {
             merror("There was an error assigning the agent '%03d' to default group", id);
@@ -1506,7 +1513,7 @@ wdbc_result wdb_global_set_agent_groups(wdb_t *wdb, wdb_groups_set_mode_t mode, 
                     }
                 }
                 if (valid_groups = wdb_global_validate_groups(wdb, j_groups, agent_id), OS_SUCCESS == valid_groups) {
-                    if (WDBC_ERROR == wdb_global_assign_agent_group(wdb, agent_id, j_groups, group_priority)) {
+                    if (WDBC_ERROR == wdb_global_assign_agent_group(wdb, agent_id, j_groups, group_priority, mode == WDB_GROUP_OVERRIDE ? true : false)) {
                         ret = WDBC_ERROR;
                         merror("There was an error assigning the groups to agent '%03d'", agent_id);
                     }
