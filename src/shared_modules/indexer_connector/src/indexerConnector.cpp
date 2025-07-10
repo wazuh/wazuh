@@ -523,16 +523,14 @@ IndexerConnector::IndexerConnector(
     const nlohmann::json& config,
     const std::string& templatePath,
     const std::string& updateMappingsPath,
-    bool useSeekDelete,
+    const bool useSeekDelete,
     const std::function<void(
         const int, const std::string&, const std::string&, const int, const std::string&, const std::string&, va_list)>&
         logFunction,
     const uint32_t& timeout)
+    : m_useSeekDelete(useSeekDelete)
 {
     preInitialization(logFunction, config);
-
-    // Set index delete seek data flag.
-    m_useSeekDelete = useSeekDelete;
 
     auto secureCommunication = SecureCommunication::builder();
     initConfiguration(secureCommunication, config);
@@ -629,22 +627,12 @@ IndexerConnector::IndexerConnector(
                     }
                     else
                     {
-                        rocksdb::PinnableSlice value;
-                        if (m_db->get(id, value))
+                        if (!noIndex)
                         {
-                            logDebug2(IC_NAME, "Added single document for deletion with id: %s.", id.c_str());
-
-                            if (!noIndex)
-                            {
-                                builderBulkDelete(bulkData, id, m_indexName);
-                            }
-
-                            m_db->delete_(id);
+                            builderBulkDelete(bulkData, id, m_indexName);
                         }
-                        else
-                        {
-                            logDebug2(IC_NAME, "No document found with id: %s. Skipping deletion.", id.c_str());
-                        }
+
+                        m_db->delete_(id);
                     }
                 }
                 else if (operation.compare("DELETED_BY_QUERY") == 0)
@@ -862,15 +850,13 @@ IndexerConnector::IndexerConnector(
 
 IndexerConnector::IndexerConnector(
     const nlohmann::json& config,
-    bool useSeekDelete,
+    const bool useSeekDelete,
     const std::function<void(
         const int, const std::string&, const std::string&, const int, const std::string&, const std::string&, va_list)>&
         logFunction)
+    : m_useSeekDelete(useSeekDelete)
 {
     preInitialization(logFunction, config);
-
-    // Set index delete seek data flag.
-    m_useSeekDelete = useSeekDelete;
 
     m_dispatcher = std::make_unique<ThreadDispatchQueue>(
         [this](std::queue<std::string>& dataQueue)
@@ -885,9 +871,16 @@ IndexerConnector::IndexerConnector(
                 // We only sync the local DB when the indexer is disabled
                 if (parsedData.at("operation").get_ref<const std::string&>().compare("DELETED") == 0)
                 {
-                    for (const auto& [key, _] : m_db->seek(id))
+                    if (m_useSeekDelete)
                     {
-                        m_db->delete_(key);
+                        for (const auto& [key, _] : m_db->seek(id))
+                        {
+                            m_db->delete_(key);
+                        }
+                    }
+                    else
+                    {
+                        m_db->delete_(id);
                     }
                 }
                 // We made the same operation for DELETED_BY_QUERY as for DELETED
