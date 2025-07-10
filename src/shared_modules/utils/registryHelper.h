@@ -14,16 +14,19 @@
 #ifndef _REGISTRY_HELPER_H
 #define _REGISTRY_HELPER_H
 
-#include <string>
 #include <winsock2.h>
 #include <windows.h>
 #include <winreg.h>
-#include <cstdio>
-#include <memory>
+
 #include "encodingWindowsHelper.h"
 #include "windowsHelper.h"
 #include "stringHelper.h"
 #include "globHelper.h"
+
+#include <cstdio>
+#include <memory>
+#include <exception>
+#include <string>
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-function"
@@ -35,7 +38,14 @@ namespace Utils
         public:
             Registry(const HKEY key, const std::string& subKey = "", const REGSAM access = KEY_READ)
                 : m_registryKey{openRegistry(key, subKey, access)}
-            {}
+            {
+            }
+
+            Registry(const std::string& key, const std::string& subKey = "", const REGSAM access = KEY_READ)
+               : m_registryKey {openRegistry(stringToHKEY(key), subKey, access)}
+            {
+            }
+
             ~Registry()
             {
                 close();
@@ -314,6 +324,91 @@ namespace Utils
                 return ret;
             }
 
+            std::string handleRegMultiSZ(const BYTE* data, DWORD size) const
+            {
+                if (size == 0)
+                {
+                    return "";
+                }
+
+                std::string result;
+                const char* current = reinterpret_cast<const char*>(data);
+                const char* end = reinterpret_cast<const char*>(data + size);
+
+                while (current < end && *current != '\0')
+                {
+                    size_t remaining = end - current;
+                    size_t len = strnlen(current, remaining);
+
+                    result.append(current, len);
+                    current += len + 1;
+
+                    if (current < end && *current != '\0')
+                    {
+                        result += ' ';
+                    }
+                }
+
+                return result;
+            }
+
+            std::string getValue(const std::string& valueName) const
+            {
+                DWORD type = 0;
+                DWORD size = 0;
+                LONG result = RegQueryValueExA(m_registryKey, valueName.c_str(), nullptr, &type, nullptr, &size);
+
+                if (result != ERROR_SUCCESS)
+                {
+                    throw std::system_error {result, std::system_category(), "Error reading the size of: " + valueName};
+                }
+
+                auto spBuff = std::make_unique<BYTE[]>(size);
+                result = RegQueryValueExA(m_registryKey, valueName.c_str(), nullptr, &type, spBuff.get(), &size);
+
+                if (result != ERROR_SUCCESS)
+                {
+                    throw std::system_error {result, std::system_category(), "Error reading the value of: " + valueName};
+                }
+
+                switch (type)
+                {
+                    case REG_SZ:
+                    case REG_EXPAND_SZ: return std::string(reinterpret_cast<char*>(spBuff.get()));
+                    case REG_DWORD:
+                    {
+                        DWORD dwValue;
+                        std::memcpy(&dwValue, spBuff.get(), sizeof(DWORD));
+                        return std::to_string(dwValue);
+                    }
+                    case REG_QWORD:
+                    {
+                        ULONGLONG qwValue;
+                        std::memcpy(&qwValue, spBuff.get(), sizeof(ULONGLONG));
+                        return std::to_string(qwValue);
+                    }
+                    case REG_MULTI_SZ:
+                    {
+                        return handleRegMultiSZ(spBuff.get(), size);
+                    }
+                    default: throw std::runtime_error("Unsupported registry value type for: " + valueName);
+                }
+            }
+
+            static bool keyExists(const std::string& key, const std::string& subKey)
+            {
+                HKEY hKey = nullptr;
+
+                LONG result = RegOpenKeyEx(stringToHKEY(key), subKey.c_str(), 0, KEY_READ, &hKey);
+
+                if (hKey != nullptr)
+                {
+                    RegCloseKey(hKey);
+                }
+
+                return (result == ERROR_SUCCESS);
+            }
+
         private:
             static HKEY openRegistry(const HKEY key, const std::string& subKey, const REGSAM access)
             {
@@ -335,6 +430,48 @@ namespace Utils
 
                 return ret;
             }
+
+            static HKEY stringToHKEY(const std::string& keyName)
+            {
+                if (keyName == "HKEY_CLASSES_ROOT" || keyName == "HKCR")
+                {
+                    return HKEY_CLASSES_ROOT;
+                }
+                if (keyName == "HKEY_CURRENT_USER" || keyName == "HKCU")
+                {
+                    return HKEY_CURRENT_USER;
+                }
+                if (keyName == "HKEY_LOCAL_MACHINE" || keyName == "HKLM")
+                {
+                    return HKEY_LOCAL_MACHINE;
+                }
+                if (keyName == "HKEY_USERS" || keyName == "HKU")
+                {
+                    return HKEY_USERS;
+                }
+                if (keyName == "HKEY_CURRENT_CONFIG" || keyName == "HKCC")
+                {
+                    return HKEY_CURRENT_CONFIG;
+                }
+                if (keyName == "HKEY_PERFORMANCE_DATA")
+                {
+                    return HKEY_PERFORMANCE_DATA;
+                }
+                if (keyName == "HKEY_PERFORMANCE_TEXT")
+                {
+                    return HKEY_PERFORMANCE_TEXT;
+                }
+                if (keyName == "HKEY_PERFORMANCE_NLSTEXT")
+                {
+                    return HKEY_PERFORMANCE_NLSTEXT;
+                }
+                if (keyName == "HKEY_DYN_DATA")
+                {
+                    return HKEY_DYN_DATA; // obsolete
+                }
+                throw std::invalid_argument("Unknown HKEY string: " + keyName);
+            }
+
             HKEY m_registryKey;
     };
 
