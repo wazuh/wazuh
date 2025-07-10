@@ -540,15 +540,15 @@ int OS_Sendmail(MailConfig *mail, struct tm *p)
 
         /* Send single TO: if there is at least one */
         if (p != to_list) {
-        if (sendmail) {
-            fprintf(sendmail->file_in, TO, to_list);
-        } else {
-            char hdr[1080];
-            int hl = snprintf(hdr, sizeof(hdr), TO, to_list);
-            if (hl > 0 && (size_t)hl < sizeof(hdr)) {
-            OS_SendTCP(socket, hdr);
+            if (sendmail) {
+                fprintf(sendmail->file_in, TO, to_list);
+            } else {
+                char hdr[1080];
+                int hl = snprintf(hdr, sizeof(hdr), TO, to_list);
+                if (hl > 0 && (size_t)hl < sizeof(hdr)) {
+                OS_SendTCP(socket, hdr);
+                }
             }
-        }
         }
     }
 
