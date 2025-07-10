@@ -9,14 +9,26 @@
  * Foundation.
  */
 
-#include "monitoring_test.hpp"
+#include "mocks/MockHTTPRequest.hpp"
 #include "monitoring.hpp"
-#include <chrono>
-#include <memory>
+#include <gmock/gmock.h>
+#include <gtest/gtest.h>
 #include <thread>
 
 // Healt check interval for the servers
 constexpr auto MONITORING_HEALTH_CHECK_INTERVAL {1u};
+constexpr auto MONITORING_HEALTH_CHECK_INTERVAL_ZERO {0u};
+
+/**
+ * @brief Runs unit tests for Monitoring class
+ */
+class MonitoringTest : public ::testing::Test
+{
+protected:
+    MockHTTPRequest m_mockHttpRequest; ///< Mock HTTP request object
+
+    using TestMonitoring = TMonitoring<MockHTTPRequest>;
+};
 
 /**
  * @brief Test instantiation and check the availability of valid servers.
@@ -24,52 +36,51 @@ constexpr auto MONITORING_HEALTH_CHECK_INTERVAL {1u};
  */
 TEST_F(MonitoringTest, TestInstantiationWithValidServers)
 {
-    const auto hostGreenServer {m_servers.at(0)};
-    const auto hostRedServer {m_servers.at(1)};
-    const auto hostYellowServer {m_servers.at(2)};
-    const auto hostGreenServerWithDelay {m_servers.at(3)};
+    std::vector<std::string> servers;
+    servers.emplace_back("http://localhost:9000");
+    servers.emplace_back("http://localhost:9110");
+    servers.emplace_back("http://localhost:9200");
 
-    EXPECT_NO_THROW(m_monitoring = std::make_shared<Monitoring>(m_servers, MONITORING_HEALTH_CHECK_INTERVAL));
+    const auto& hostGreenServer {servers.at(0)};
+    const auto& hostRedServer {servers.at(1)};
+    const auto& hostYellowServer {servers.at(2)};
+
+    // Set up mock expectations for different server responses
+    EXPECT_CALL(m_mockHttpRequest, get(::testing::_, ::testing::_, ::testing::_))
+        .WillRepeatedly(::testing::Invoke(
+            [](const auto& requestParams, const auto& postParams, const auto& /*configParams*/)
+            {
+                const auto& url = std::get<TRequestParameters<std::string>>(requestParams).url.url();
+                if (url.find("localhost:9000") != std::string::npos)
+                {
+                    // Green server - healthy response
+                    postParams.onSuccess(R"([{"status":"green"}])");
+                }
+                else if (url.find("localhost:9110") != std::string::npos)
+                {
+                    // Red server - unhealthy response
+                    postParams.onError("Connection failed", 503);
+                }
+                else if (url.find("localhost:9200") != std::string::npos)
+                {
+                    // Yellow server - warning but available
+                    postParams.onSuccess(R"([{"status":"yellow"}])");
+                }
+                else if (url.find("localhost:9300") != std::string::npos)
+                {
+                    // Green server with delay - healthy response
+                    postParams.onSuccess(R"([{"status":"green"}])");
+                }
+            }));
+
+    std::shared_ptr<TestMonitoring> monitoring;
+    EXPECT_NO_THROW(monitoring = std::make_shared<TestMonitoring>(
+                        servers, MONITORING_HEALTH_CHECK_INTERVAL, SecureCommunication {}, &m_mockHttpRequest));
 
     // All servers have their corresponding status the first time
-    EXPECT_TRUE(m_monitoring->isAvailable(hostGreenServer));
-    EXPECT_FALSE(m_monitoring->isAvailable(hostRedServer));
-    EXPECT_TRUE(m_monitoring->isAvailable(hostYellowServer));
-    EXPECT_TRUE(m_monitoring->isAvailable(hostGreenServerWithDelay));
-
-    // Interval to check the health of the servers
-    std::this_thread::sleep_for(std::chrono::milliseconds(MONITORING_HEALTH_CHECK_INTERVAL + 5));
-
-    // It's true because the green server is available
-    EXPECT_TRUE(m_monitoring->isAvailable(hostGreenServer));
-
-    // It's false because the red server isn't available
-    EXPECT_FALSE(m_monitoring->isAvailable(hostRedServer));
-
-    // It's false because the yellow server isn't available
-    EXPECT_TRUE(m_monitoring->isAvailable(hostYellowServer));
-
-    // It's true because the green server is available
-    EXPECT_TRUE(m_monitoring->isAvailable(hostGreenServerWithDelay));
-}
-
-/**
- * @brief Test a slow server.
- *
- */
-TEST_F(MonitoringTest, TestSlowServer)
-{
-    const auto hostGreenServerWithDelay {m_servers.at(3)};
-
-    EXPECT_NO_THROW(m_monitoring = std::make_shared<Monitoring>(m_servers, MONITORING_HEALTH_CHECK_INTERVAL));
-
-    // It's true because the green server is available
-    EXPECT_TRUE(m_monitoring->isAvailable(hostGreenServerWithDelay));
-
-    // Wait for the first health check to finish + the delay of the server
-    std::this_thread::sleep_for(std::chrono::milliseconds(MONITORING_HEALTH_CHECK_INTERVAL * 2 + 20));
-
-    EXPECT_TRUE(m_monitoring->isAvailable(hostGreenServerWithDelay));
+    EXPECT_TRUE(monitoring->isAvailable(hostGreenServer));
+    EXPECT_FALSE(monitoring->isAvailable(hostRedServer));
+    EXPECT_TRUE(monitoring->isAvailable(hostYellowServer));
 }
 
 /**
@@ -78,10 +89,15 @@ TEST_F(MonitoringTest, TestSlowServer)
  */
 TEST_F(MonitoringTest, TestInstantiationWithoutServers)
 {
-    m_servers.clear();
+    std::vector<std::string> servers;
+
+    // No HTTP calls should be made for empty server list
+    EXPECT_CALL(m_mockHttpRequest, get(::testing::_, ::testing::_, ::testing::_)).Times(0);
 
     // It doesn't throw an exception because the class Monitoring accepts vector without servers
-    EXPECT_NO_THROW(m_monitoring = std::make_shared<Monitoring>(m_servers, MONITORING_HEALTH_CHECK_INTERVAL));
+    std::shared_ptr<TestMonitoring> monitoring;
+    EXPECT_NO_THROW(monitoring = std::make_shared<TestMonitoring>(
+                        servers, MONITORING_HEALTH_CHECK_INTERVAL, SecureCommunication {}, &m_mockHttpRequest));
 }
 
 /**
@@ -90,27 +106,49 @@ TEST_F(MonitoringTest, TestInstantiationWithoutServers)
  */
 TEST_F(MonitoringTest, TestCheckIfAnUnregisteredServerIsAvailable)
 {
-    const auto unregisteredServer {"http://localhost:1000"};
-    const auto hostGreenServer {m_servers.at(0)};
-    const auto hostRedServer {m_servers.at(1)};
+    std::vector<std::string> servers;
+    servers.emplace_back("http://localhost:9000");
+    servers.emplace_back("http://localhost:9110");
+    servers.emplace_back("http://localhost:9200");
+    servers.emplace_back("http://localhost:9300");
 
-    EXPECT_NO_THROW(m_monitoring = std::make_shared<Monitoring>(m_servers, MONITORING_HEALTH_CHECK_INTERVAL));
+    const auto unregisteredServer {"http://localhost:1000"};
+    const auto& hostGreenServer {servers.at(0)};
+    const auto& hostRedServer {servers.at(1)};
+
+    // Set up mock expectations for registered servers
+    EXPECT_CALL(m_mockHttpRequest, get(::testing::_, ::testing::_, ::testing::_))
+        .WillRepeatedly(::testing::Invoke(
+            [](const auto& requestParams, const auto& postParams, const auto& /*configParams*/)
+            {
+                const auto& url = std::get<TRequestParameters<std::string>>(requestParams).url.url();
+                if (url.find("localhost:9000") != std::string::npos)
+                {
+                    // Green server - healthy response
+                    postParams.onSuccess(R"([{"status":"green"}])");
+                }
+                else if (url.find("localhost:9110") != std::string::npos)
+                {
+                    // Red server - unhealthy response
+                    postParams.onError("Connection failed", 503);
+                }
+                else
+                {
+                    // Other servers return success by default
+                    postParams.onSuccess(R"([{"status":"green"}])");
+                }
+            }));
+
+    std::shared_ptr<TestMonitoring> monitoring;
+    EXPECT_NO_THROW(monitoring = std::make_shared<TestMonitoring>(
+                        servers, MONITORING_HEALTH_CHECK_INTERVAL, SecureCommunication {}, &m_mockHttpRequest));
 
     // All servers have their corresponding status the first time
-    EXPECT_TRUE(m_monitoring->isAvailable(hostGreenServer));
-    EXPECT_FALSE(m_monitoring->isAvailable(hostRedServer));
-
-    // Interval to check the health of the servers
-    std::this_thread::sleep_for(std::chrono::milliseconds(MONITORING_HEALTH_CHECK_INTERVAL * 2));
-
-    // It's true because the green server is available
-    EXPECT_TRUE(m_monitoring->isAvailable(hostGreenServer));
-
-    // It's false because the red server isn't available
-    EXPECT_FALSE(m_monitoring->isAvailable(hostRedServer));
+    EXPECT_TRUE(monitoring->isAvailable(hostGreenServer));
+    EXPECT_FALSE(monitoring->isAvailable(hostRedServer));
 
     // It throws an exception because this is an unregistered server
-    EXPECT_THROW(m_monitoring->isAvailable(unregisteredServer), std::out_of_range);
+    EXPECT_THROW(monitoring->isAvailable(unregisteredServer), std::out_of_range);
 }
 
 /**
@@ -121,19 +159,24 @@ TEST_F(MonitoringTest, TestHTTPError)
 {
     const auto errorServer {"http://localhost:9400"};
 
-    m_servers.clear();
-    m_servers.emplace_back(errorServer);
+    std::vector<std::string> servers;
+    servers.emplace_back(errorServer);
 
-    EXPECT_NO_THROW(m_monitoring = std::make_shared<Monitoring>(m_servers, MONITORING_HEALTH_CHECK_INTERVAL));
+    // Set up mock to simulate HTTP error
+    EXPECT_CALL(m_mockHttpRequest, get(::testing::_, ::testing::_, ::testing::_))
+        .WillRepeatedly(::testing::Invoke(
+            [](const auto& /*requestParams*/, const auto& postParams, const auto& /*configParams*/)
+            {
+                // Simulate HTTP error (503 Service Unavailable)
+                postParams.onError("Service Unavailable", 503);
+            }));
+
+    std::shared_ptr<TestMonitoring> monitoring;
+    EXPECT_NO_THROW(monitoring = std::make_shared<TestMonitoring>(
+                        servers, MONITORING_HEALTH_CHECK_INTERVAL, SecureCommunication {}, &m_mockHttpRequest));
 
     // All servers have their corresponding status the first time
-    EXPECT_FALSE(m_monitoring->isAvailable(errorServer));
-
-    // Interval to check the health of the servers
-    std::this_thread::sleep_for(std::chrono::milliseconds(MONITORING_HEALTH_CHECK_INTERVAL * 2));
-
-    // It's false because the server isn't valid
-    EXPECT_FALSE(m_monitoring->isAvailable(errorServer));
+    EXPECT_FALSE(monitoring->isAvailable(errorServer));
 }
 
 /**
@@ -144,17 +187,178 @@ TEST_F(MonitoringTest, TestBadResponseFromServer)
 {
     const auto badResponseServer {"http://localhost:9500"};
 
-    m_servers.clear();
-    m_servers.emplace_back(badResponseServer);
+    std::vector<std::string> servers;
+    servers.emplace_back(badResponseServer);
 
-    EXPECT_NO_THROW(m_monitoring = std::make_shared<Monitoring>(m_servers, MONITORING_HEALTH_CHECK_INTERVAL));
+    // Set up mock to simulate bad response (malformed JSON)
+    EXPECT_CALL(m_mockHttpRequest, get(::testing::_, ::testing::_, ::testing::_))
+        .WillRepeatedly(::testing::Invoke(
+            [](const auto& /*requestParams*/, const auto& postParams, const auto& /*configParams*/)
+            {
+                // Simulate malformed JSON that cannot be parsed
+                postParams.onSuccess("{ invalid json }");
+            }));
 
-    // All servers have their corresponding status the first time
-    EXPECT_FALSE(m_monitoring->isAvailable(badResponseServer));
+    std::shared_ptr<TestMonitoring> monitoring;
+    EXPECT_ANY_THROW(monitoring = std::make_shared<TestMonitoring>(
+                         servers, MONITORING_HEALTH_CHECK_INTERVAL, SecureCommunication {}, &m_mockHttpRequest));
+}
 
-    // Interval to check the health of the servers
-    std::this_thread::sleep_for(std::chrono::milliseconds(MONITORING_HEALTH_CHECK_INTERVAL * 2));
+/**
+ * @brief Test JSON response with missing status field.
+ *
+ */
+TEST_F(MonitoringTest, TestMissingStatusField)
+{
+    const auto serverWithMissingField {"http://localhost:9600"};
 
-    // It's false because the server isn't valid
-    EXPECT_FALSE(m_monitoring->isAvailable(badResponseServer));
+    std::vector<std::string> servers;
+    servers.emplace_back(serverWithMissingField);
+
+    // Set up mock to simulate response without status field
+    EXPECT_CALL(m_mockHttpRequest, get(::testing::_, ::testing::_, ::testing::_))
+        .WillRepeatedly(::testing::Invoke(
+            [](const auto& /*requestParams*/, const auto& postParams, const auto& /*configParams*/)
+            {
+                // JSON response without status field
+                postParams.onSuccess(R"([{"cluster":"test","node.total":"1"}])");
+            }));
+
+    std::shared_ptr<TestMonitoring> monitoring;
+    EXPECT_NO_THROW(monitoring = std::make_shared<TestMonitoring>(
+                        servers, MONITORING_HEALTH_CHECK_INTERVAL, SecureCommunication {}, &m_mockHttpRequest));
+
+    // Should be false because status field is missing
+    EXPECT_FALSE(monitoring->isAvailable(serverWithMissingField));
+}
+
+/**
+ * @brief Test different HTTP status codes.
+ *
+ */
+TEST_F(MonitoringTest, TestDifferentHTTPStatusCodes)
+{
+    const auto server404 {"http://localhost:9700"};
+    const auto server500 {"http://localhost:9800"};
+
+    std::vector<std::string> servers;
+    servers.emplace_back(server404);
+    servers.emplace_back(server500);
+
+    // Set up mock to simulate different HTTP errors
+    EXPECT_CALL(m_mockHttpRequest, get(::testing::_, ::testing::_, ::testing::_))
+        .WillRepeatedly(::testing::Invoke(
+            [](const auto& requestParams, const auto& postParams, const auto& /*configParams*/)
+            {
+                const auto& url = std::get<TRequestParameters<std::string>>(requestParams).url.url();
+                if (url.find("localhost:9700") != std::string::npos)
+                {
+                    // 404 Not Found
+                    postParams.onError("Not Found", 404);
+                }
+                else if (url.find("localhost:9800") != std::string::npos)
+                {
+                    // 500 Internal Server Error
+                    postParams.onError("Internal Server Error", 500);
+                }
+            }));
+
+    std::shared_ptr<TestMonitoring> monitoring;
+    EXPECT_NO_THROW(monitoring = std::make_shared<TestMonitoring>(
+                        servers, MONITORING_HEALTH_CHECK_INTERVAL, SecureCommunication {}, &m_mockHttpRequest));
+
+    // Both servers should be unavailable due to HTTP errors
+    EXPECT_FALSE(monitoring->isAvailable(server404));
+    EXPECT_FALSE(monitoring->isAvailable(server500));
+}
+
+/**
+ * @brief Test red cluster status.
+ *
+ */
+TEST_F(MonitoringTest, TestRedClusterStatus)
+{
+    const auto redServer {"http://localhost:9900"};
+
+    std::vector<std::string> servers;
+    servers.emplace_back(redServer);
+
+    // Set up mock to simulate red cluster status
+    EXPECT_CALL(m_mockHttpRequest, get(::testing::_, ::testing::_, ::testing::_))
+        .WillRepeatedly(::testing::Invoke(
+            [](const auto& /*requestParams*/, const auto& postParams, const auto& /*configParams*/)
+            {
+                // Red cluster status - should be unavailable
+                postParams.onSuccess(R"([{"status":"red","cluster":"test"}])");
+            }));
+
+    std::shared_ptr<TestMonitoring> monitoring;
+    EXPECT_NO_THROW(monitoring = std::make_shared<TestMonitoring>(
+                        servers, MONITORING_HEALTH_CHECK_INTERVAL, SecureCommunication {}, &m_mockHttpRequest));
+
+    // Should be false because red status indicates unavailable
+    EXPECT_FALSE(monitoring->isAvailable(redServer));
+}
+
+/**
+ * @brief Test change server status from green to red.
+ *
+ */
+TEST_F(MonitoringTest, TestChangeServerStatusFromGreenToRed)
+{
+    const auto greenServer {"http://localhost:1000"};
+    const auto redServer {"http://localhost:1010"};
+
+    std::vector<std::string> servers;
+    servers.emplace_back(greenServer);
+    servers.emplace_back(redServer);
+
+    std::atomic<uint32_t> callCount {0};
+    std::atomic<uint32_t> phase {0};
+
+    // Set up mock to simulate green server status
+    EXPECT_CALL(m_mockHttpRequest, get(::testing::_, ::testing::_, ::testing::_))
+        .WillRepeatedly(::testing::Invoke(
+            [&callCount, &phase, &redServer](
+                const auto& requestParams, const auto& postParams, const auto& /*configParams*/)
+            {
+                callCount++;
+                if (phase == 0)
+                {
+                    postParams.onSuccess(R"([{"status":"green"}])");
+                }
+                else if (phase == 1)
+                {
+                    if (std::get<TRequestParameters<std::string>>(requestParams).url.url().find(redServer) !=
+                        std::string::npos)
+                    {
+                        postParams.onSuccess(R"([{"status":"red"}])");
+                    }
+                    else
+                    {
+                        postParams.onSuccess(R"([{"status":"green"}])");
+                    }
+                }
+            }));
+
+    std::shared_ptr<TestMonitoring> monitoring;
+    EXPECT_NO_THROW(monitoring = std::make_shared<TestMonitoring>(
+                        servers, MONITORING_HEALTH_CHECK_INTERVAL_ZERO, SecureCommunication {}, &m_mockHttpRequest));
+
+    // Should be true because green server is available
+    EXPECT_TRUE(monitoring->isAvailable(greenServer));
+    EXPECT_TRUE(monitoring->isAvailable(redServer));
+
+    phase = 1;
+    callCount = 0;
+    while (callCount < 3)
+    {
+        std::this_thread::yield();
+    }
+
+    // Should be false because red server is unavailable
+    EXPECT_FALSE(monitoring->isAvailable(redServer));
+
+    // Should be true because green server is still available
+    EXPECT_TRUE(monitoring->isAvailable(greenServer));
 }

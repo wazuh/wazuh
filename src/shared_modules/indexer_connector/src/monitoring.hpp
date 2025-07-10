@@ -12,7 +12,7 @@
 #ifndef _MONITORING_HPP
 #define _MONITORING_HPP
 
-#include "HTTPRequest.hpp"
+#include "IURLRequest.hpp"
 #include "secureCommunication.hpp"
 #include <atomic>
 #include <chrono>
@@ -38,7 +38,8 @@ constexpr auto SERVER_HEALTH_FIELD_NAME {"status"};
  * @brief Monitoring class.
  *
  */
-class Monitoring final
+template<typename THttpRequest>
+class TMonitoring final
 {
     std::map<std::string, bool, std::less<>> m_servers;
     std::thread m_thread;
@@ -46,6 +47,7 @@ class Monitoring final
     std::condition_variable m_condition;
     std::atomic<bool> m_stop {false};
     uint32_t m_interval {INTERVAL};
+    THttpRequest* m_httpRequest;
 
     /**
      * @brief Checks the health of a server.
@@ -107,7 +109,7 @@ class Monitoring final
         };
 
         // Get the health of the server.
-        HTTPRequest::instance().get(
+        m_httpRequest->get(
             RequestParameters {.url = HttpURL(serverAddress + "/_cat/health"), .secureCommunication = authentication},
             PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
             ConfigurationParameters {.timeout = HEALTH_CHECK_TIMEOUT_MS});
@@ -135,10 +137,13 @@ class Monitoring final
     }
 
 public:
-    ~Monitoring()
+    ~TMonitoring()
     {
-        m_stop = true;
-        m_condition.notify_one();
+        {
+            std::scoped_lock lock(m_mutex);
+            m_stop = true;
+            m_condition.notify_one();
+        }
         if (m_thread.joinable())
         {
             m_thread.join();
@@ -151,11 +156,14 @@ public:
      * @param serverAddresses Servers to be monitored.
      * @param interval Interval for monitoring.
      * @param authentication Object that provides secure communication.
+     * @param httpRequest Optional HTTP request instance for dependency injection (for testing).
      */
-    explicit Monitoring(const std::vector<std::string>& serverAddresses,
-                        const uint32_t interval = INTERVAL,
-                        const SecureCommunication& authentication = {})
+    explicit TMonitoring(const std::vector<std::string>& serverAddresses,
+                         const uint32_t interval = INTERVAL,
+                         const SecureCommunication& authentication = {},
+                         THttpRequest* httpRequest = nullptr)
         : m_interval(interval)
+        , m_httpRequest(httpRequest ? httpRequest : &THttpRequest::instance())
     {
 
         // First, initialize the status of the servers.
@@ -165,10 +173,10 @@ public:
         m_thread = std::thread(
             [this, authentication]()
             {
+                std::unique_lock lock(m_mutex);
                 while (!m_stop)
                 {
                     // Wait for the interval.
-                    std::unique_lock lock(m_mutex);
                     m_condition.wait_for(lock, std::chrono::seconds(m_interval), [this]() { return m_stop.load(); });
 
                     // If the thread is not stopped, check the health of the servers.
@@ -191,10 +199,15 @@ public:
      * @return true if available.
      * @return false if not available.
      */
-    bool isAvailable(const std::string& serverAddress)
+    bool isAvailable(std::string_view serverAddress)
     {
         std::scoped_lock lock(m_mutex);
-        return m_servers.at(serverAddress);
+        auto it = m_servers.find(serverAddress);
+        if (it == m_servers.end())
+        {
+            throw std::out_of_range("Server not found in monitoring");
+        }
+        return it->second;
     }
 };
 

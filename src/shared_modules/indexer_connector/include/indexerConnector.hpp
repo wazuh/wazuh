@@ -12,11 +12,10 @@
 #ifndef _INDEXER_CONNECTOR_HPP
 #define _INDEXER_CONNECTOR_HPP
 
-#include "secureCommunication.hpp"
+#include <functional>
 #include <json.hpp>
 #include <memory>
-#include <stdexcept>
-#include <string>
+#include <string_view>
 
 #if __GNUC__ >= 4
 #define EXPORTED __attribute__((visibility("default")))
@@ -24,68 +23,22 @@
 #define EXPORTED
 #endif
 
-class ServerSelector;
-static constexpr auto DEFAULT_INTERVAL = 60u;
-static constexpr auto IC_NAME {"indexer-connector"};
-
-class IndexerConnectorException : public std::runtime_error
-{
-public:
-    explicit IndexerConnectorException(const std::string& what)
-        : std::runtime_error(what)
-    {
-    }
-};
-
 /**
- * @brief IndexerConnector class.
+ * @brief IndexerConnectorSync class - Facade for IndexerConnectorSyncImpl.
  *
  */
 class EXPORTED IndexerConnectorSync final
 {
-    /**
-     * @brief Initialized status.
-     *
-     */
-    SecureCommunication m_secureCommunication;
-    std::unique_ptr<ServerSelector> m_selector;
+private:
+    class Impl;
+    std::unique_ptr<Impl> m_impl;
 
 public:
-    struct Builder final
-    {
-        static void bulkDelete(std::string& bulkData, std::string_view id, std::string_view index)
-        {
-            bulkData.append(R"({"delete":{"_index":")");
-            bulkData.append(index);
-            bulkData.append(R"(","_id":")");
-            bulkData.append(id);
-            bulkData.append(R"("}})");
-            bulkData.append("\n");
-        }
-
-        static void deleteByQuery(nlohmann::json& bulkData, const std::string& agentId)
-        {
-            bulkData["query"]["bool"]["filter"]["terms"]["agent.id"].push_back(agentId);
-        }
-
-        static void bulkIndex(std::string& bulkData, std::string_view id, std::string_view index, std::string_view data)
-        {
-            bulkData.append(R"({"index":{"_index":")");
-            bulkData.append(index);
-            bulkData.append(R"(","_id":")");
-            bulkData.append(id);
-            bulkData.append(R"("}})");
-            bulkData.append("\n");
-            bulkData.append(data);
-            bulkData.append("\n");
-        }
-    };
     /**
      * @brief Class constructor that initializes the publisher.
      *
      * @param config Indexer configuration, including database_path and servers.
      * @param logFunction Callback function to be called when trying to log a message.
-     * @param timeout Server selector time interval.
      */
     explicit IndexerConnectorSync(const nlohmann::json& config,
                                   const std::function<void(const int,
@@ -102,52 +55,67 @@ public:
      * @brief Publish a message into the queue map.
      *
      * @param message Message to be published.
-     */
-    void bulk(const std::string& message);
-
-    /**
-     * @brief Publish a message into the queue map.
-     *
-     * @param message Message to be published.
      * @param index Index name.
      */
-    void deleteByQuery(const std::string& message, const std::string& index);
-};
-
-/**
- * @brief IndexerConnectorAsync class.
- *
- */
-class IndexerConnectorAsync final
-{
-    SecureCommunication m_secureCommunication;
-    std::unique_ptr<ServerSelector> m_selector;
-
-public:
-    /**
-     * @brief Class constructor that initializes the publisher.
-     *
-     * @param config Indexer configuration, including database_path and servers.
-     * @param logFunction Callback function to be called when trying to log a message.
-     * @param timeout Server selector time interval.
-     */
-    explicit IndexerConnectorAsync(const nlohmann::json& config,
-                                   const std::function<void(const int,
-                                                            const std::string&,
-                                                            const std::string&,
-                                                            const int,
-                                                            const std::string&,
-                                                            const std::string&,
-                                                            va_list)>& logFunction = {});
-
-    ~IndexerConnectorAsync();
+    void deleteByQuery(const std::string& index, const std::string& agentId);
 
     /**
-     * @brief Publish a message into the queue map.
+     * @brief Bulk delete.
      *
-     * @param message Message to be published.
+     * @param id ID.
+     * @param index Index name.
      */
-    void publish(const char* message, size_t size);
+    void bulkDelete(std::string_view id, std::string_view index);
+
+    /**
+     * @brief Bulk index.
+     *
+     * @param id ID.
+     * @param index Index name.
+     * @param data Data.
+     */
+    void bulkIndex(std::string_view id, std::string_view index, std::string_view data);
+
+    /**
+     * @brief Flush the bulk data.
+     */
+    void flush();
 };
+
+// /**
+//  * @brief IndexerConnectorAsync class.
+//  *
+//  */
+// class IndexerConnectorAsync final
+// {
+//     SecureCommunication m_secureCommunication;
+//     std::unique_ptr<ServerSelector> m_selector;
+
+// public:
+//     /**
+//      * @brief Class constructor that initializes the publisher.
+//      *
+//      * @param config Indexer configuration, including database_path and servers.
+//      * @param logFunction Callback function to be called when trying to log a message.
+//      * @param timeout Server selector time interval.
+//      */
+//     explicit IndexerConnectorAsync(const nlohmann::json& config,
+//                                    const std::function<void(const int,
+//                                                             const std::string&,
+//                                                             const std::string&,
+//                                                             const int,
+//                                                             const std::string&,
+//                                                             const std::string&,
+//                                                             va_list)>& logFunction = {});
+
+//     ~IndexerConnectorAsync();
+
+//     /**
+//      * @brief Publish a message into the queue map.
+//      *
+//      * @param message Message to be published.
+//      */
+//     void publish(const char* message, size_t size);
+// };
 
 #endif // _INDEXER_CONNECTOR_HPP
