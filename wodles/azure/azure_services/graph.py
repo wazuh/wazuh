@@ -177,7 +177,7 @@ def get_graph_events(url: str, headers: dict, md5_hash: str, query: str, tag: st
 
     logging.debug(f"Graph request - URL: {url} - Headers: {headers}")
     logging.info("Graph: Requesting data")
-    response = get(url=url, headers=headers, timeout=15)
+    response = get(url=url, headers=headers, timeout=10)
 
     if response.status_code == 200:
         response_json = response.json()
