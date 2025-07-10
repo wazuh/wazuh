@@ -177,7 +177,7 @@ def get_graph_events(url: str, headers: dict, md5_hash: str, query: str, tag: st
 
     logging.debug(f"Graph request - URL: {url} - Headers: {headers}")
     logging.info("Graph: Requesting data")
-    response = get(url=url, headers=headers, timeout=10)
+    response = get(url=url, headers=headers, timeout=15)
 
     if response.status_code == 200:
         response_json = response.json()
@@ -194,6 +194,17 @@ def get_graph_events(url: str, headers: dict, md5_hash: str, query: str, tag: st
                 new_max=date,
                 query=query,
             )
+            if 'initiatedBy' in value and value['initiatedBy'] is not None:
+                app_value = value['initiatedBy'].get('app')
+                if app_value is None or isinstance(app_value, str):
+                    value['initiatedBy'].pop('app', None)
+                user_value = value['initiatedBy'].get('user')
+                if user_value is None or isinstance(user_value, str):
+                    value['initiatedBy'].pop('user', None)
+
+            if 'status' in value:
+                if value['status'] is None or isinstance(value['status'], str):
+                    value.pop('status', None)
             value['azure_tag'] = 'azure-ad-graph'
             if tag:
                 value['azure_aad_tag'] = tag
@@ -219,3 +230,4 @@ def get_graph_events(url: str, headers: dict, md5_hash: str, query: str, tag: st
     else:
         logging.error(f"Error with Graph request: {response.json()}")
         response.raise_for_status()
+        
