@@ -19,7 +19,9 @@ set(ENGINE_BIN_DIR ${PROJECT_SOURCE_DIR}/bin)
 set(ENGINE_SOURCE_DIR ${PROJECT_SOURCE_DIR}/source)
 set(ENGINE_DOC_DIR ${PROJECT_SOURCE_DIR}/docs)
 
-# Options
+####################################################################################################
+#    Configurable options
+####################################################################################################
 option(ENGINE_BUILD_TEST "Generate tests" OFF)
 option(ENGINE_BUILD_BENCHMARK "Generate benchmarks" OFF)
 option(ENGINE_ENABLE_ASAN "Enable AddressSanitizer for all targets" OFF)
@@ -29,6 +31,10 @@ option(ENGINE_GENERATE_PROTO "Generate protobuf code" OFF)
 option(ENGINE_ENABLE_REVERSE_ORDER_DECODERS_FEATURE "Enable reverse order decoders" OFF)
 
 
+####################################################################################################
+#    If WAZUH_ENGINE_TEST is defined (make ENGINE_TEST=1), we build the engine with tests and benchmarks.
+#    If UNIT_TEST is defined (make DEBUG=1 TEST=1), we build the engine with tests and enable AddressSanitizer
+####################################################################################################
 if(WAZUH_ENGINE_TEST)
     set(ENGINE_BUILD_TEST ON CACHE BOOL "Generate tests" FORCE)
     set(ENGINE_BUILD_BENCHMARK ON CACHE BOOL "Generate benchmarks" FORCE)
@@ -169,22 +175,50 @@ endif(ENGINE_BUILD_TEST)
 ####################################################################################################
 # Rocksdb dynamic link
 ####################################################################################################
+# Ser var rocksdb build directory
+set(ROCKSDB_LIB_BUILD_DIR "${CMAKE_SOURCE_DIR}/external/rocksdb/build")
 include_directories(${CMAKE_SOURCE_DIR}/external/rocksdb/include)
-link_directories(${CMAKE_SOURCE_DIR}/external/rocksdb/build)
+link_directories(${ROCKSDB_LIB_BUILD_DIR})
 
-# Build main
+####################################################################################################
+#     Main executable for the Wazuh Engine.
+####################################################################################################
 add_executable(wazuh-engine ${ENGINE_SOURCE_DIR}/main.cpp)
 
-# Allows the executable to find its shared libraries of wazuh at runtime.
-set_target_properties(wazuh-engine PROPERTIES
-    INSTALL_RPATH "$ORIGIN/../lib;$ORIGIN/lib"
-    BUILD_WITH_INSTALL_RPATH ON
-)
 
-if (NOT SRC_FOLDER)
-    get_filename_component(SRC_FOLDER     ${CMAKE_SOURCE_DIR}/ ABSOLUTE)
+####################################################################################################
+# RPATH configuration
+# This is needed to ensure that the wazuh-engine can find its dependencies at runtime.
+####################################################################################################
+get_target_property(_orig_rpath wazuh-engine INSTALL_RPATH)
+if(NOT _orig_rpath)
+  set(_orig_rpath "")
 endif()
 
+set(_new_paths
+  ${CMAKE_SOURCE_DIR}       # For shared libwazuhext.so
+  ${ROCKSDB_LIB_BUILD_DIR}
+  "$ORIGIN/../lib"
+  "$ORIGIN/lib"
+)
+
+# Append the new paths to the original RPATH
+list(APPEND _orig_rpath ${_new_paths})
+string(REPLACE ";" ":" _final_rpath "${_orig_rpath}")
+
+set_target_properties(wazuh-engine PROPERTIES
+  INSTALL_RPATH "${_final_rpath}"
+  BUILD_WITH_INSTALL_RPATH TRUE
+)
+
+# Print the final RPATH on debug
+if (CMAKE_BUILD_TYPE STREQUAL "Debug")
+    message(STATUS "RPATH for wazuh-engine: ${_final_rpath}")
+endif()
+
+####################################################################################################
+#  If Threads is not found, we force -lpthread fallback (for Centos 7)
+####################################################################################################
 find_package(Threads QUIET)
 if (NOT Threads_FOUND)
   message(WARNING "Threads not found by CMake; forcing -lpthread fallback")

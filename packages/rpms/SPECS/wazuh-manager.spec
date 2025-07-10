@@ -698,6 +698,8 @@ rm -fr %{buildroot}
 %attr(640, wazuh, wazuh) %{_localstatedir}/engine/store/schema/allowed-fields/0
 %dir %attr(770, wazuh, wazuh) %{_localstatedir}/engine/store/schema/engine-schema
 %attr(640, wazuh, wazuh) %{_localstatedir}/engine/store/schema/engine-schema/0
+%dir %attr(770, wazuh, wazuh) %{_localstatedir}/engine/store/schema/wazuh-logpar-overrides
+%attr(640, wazuh, wazuh) %{_localstatedir}/engine/store/schema/wazuh-logpar-overrides/0
 %dir %attr(750, root, wazuh) %{_localstatedir}/framework
 %dir %attr(750, root, wazuh) %{_localstatedir}/framework/python
 %{_localstatedir}/framework/python/*
@@ -801,7 +803,6 @@ rm -fr %{buildroot}
 %dir %attr(750, wazuh, wazuh) %{_localstatedir}/queue/syscollector
 %dir %attr(750, wazuh, wazuh) %{_localstatedir}/queue/syscollector/db
 %attr(640, root, wazuh) %{_localstatedir}/queue/syscollector/norm_config.json
-%dir %attr(750, wazuh, wazuh) %{_localstatedir}/queue/fts
 %dir %attr(770, wazuh, wazuh) %{_localstatedir}/queue/rids
 %dir %attr(770, wazuh, wazuh) %{_localstatedir}/queue/tasks
 %dir %attr(770, wazuh, wazuh) %{_localstatedir}/queue/sockets
@@ -813,7 +814,6 @@ rm -fr %{buildroot}
 %dir %attr(750, root, wazuh) %{_localstatedir}/ruleset
 %dir %attr(750, root, wazuh) %{_localstatedir}/ruleset/sca
 %dir %attr(770, root, wazuh) %{_localstatedir}/.ssh
-%dir %attr(750, wazuh, wazuh) %{_localstatedir}/stats
 %dir %attr(1770, root, wazuh) %{_localstatedir}/tmp
 %dir %attr(750, wazuh, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp
 %dir %attr(750, wazuh, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/applications
@@ -917,7 +917,6 @@ rm -fr %{buildroot}
 %attr(640, root, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/rocky/*
 %dir %attr(750, root, wazuh) %{_localstatedir}/var
 %dir %attr(770, root, wazuh) %{_localstatedir}/var/db
-%attr(660, root, wazuh) %{_localstatedir}/var/db/mitre.db
 %dir %attr(770, root, wazuh) %{_localstatedir}/var/download
 %dir %attr(770, wazuh, wazuh) %{_localstatedir}/var/multigroups
 %dir %attr(770, root, wazuh) %{_localstatedir}/var/run
