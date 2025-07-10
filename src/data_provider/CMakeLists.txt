@@ -77,6 +77,7 @@ include_directories(${SRC_FOLDER}/external/bzip2/)
 include_directories(${SRC_FOLDER}/external/openssl/include/)
 include_directories(${SRC_FOLDER}/shared_modules/utils)
 include_directories(${SRC_FOLDER}/shared_modules/common/)
+include_directories(${SRC_FOLDER}/shared_modules/file_helper/filesystem/include/)
 include_directories(${SRC_FOLDER}/external/openssl/include/)
 include_directories(${SRC_FOLDER}/external/libplist/bin/include/)
 include_directories(${SRC_FOLDER}/external/libdb/build_unix/)
@@ -114,10 +115,12 @@ link_directories(${SRC_FOLDER}/external/libarchive/.libs/)
 link_directories(${SRC_FOLDER}/external/rpm/builddir/)
 endif(NOT CMAKE_CHECK_CENTOS5)
 link_directories(${SRC_FOLDER}/external/openssl/)
+link_directories(${SRC_FOLDER}/shared_modules/file_helper/build)
+link_directories(${SRC_FOLDER}/shared_modules/file_helper/build/lib)
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   link_directories(${SRC_FOLDER}/shared_modules/http-request/build)
 endif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
-  link_directories(${SRC_FOLDER}/external/curl/lib/.libs/)
+link_directories(${SRC_FOLDER}/external/curl/lib/.libs/)
 
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
@@ -189,7 +192,6 @@ else()
       "${CMAKE_SOURCE_DIR}/src/osinfo/sysOsParsers.cpp")
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
-
 add_library(sysinfo SHARED
     ${SYSINFO_SRC}
     ${CMAKE_SOURCE_DIR}/src/sysInfo.cpp
@@ -226,7 +228,7 @@ elseif(APPLE)
   target_link_libraries(sysinfo cjson ${SRC_FOLDER}/external/libplist/bin/lib/libplist-2.0.a ${iokit_lib} ${corefoundation_lib})
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
-target_link_libraries(sysinfo wazuhext)
+target_link_libraries(sysinfo wazuhext FilesystemWrapper)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   set(CURL_DEP "wazuhext")

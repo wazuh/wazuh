@@ -12,7 +12,9 @@
 #ifndef _PACKAGES_NPM_HPP
 #define _PACKAGES_NPM_HPP
 
-#include "fileSystem.hpp"
+#include <ifilesystem_wrapper.hpp>
+#include <filesystem_wrapper.hpp>
+
 #include "stdFileSystemHelper.hpp"
 #include "json.hpp"
 #include "jsonIO.hpp"
@@ -21,12 +23,15 @@
 #include <fstream>
 #include <iostream>
 #include <set>
+#include <memory>
 
-template<typename TFileSystem = RealFileSystem, typename TJsonReader = JsonIO<nlohmann::json>>
+template<typename TJsonReader = JsonIO<nlohmann::json>>
 class NPM final
-    : public TFileSystem
-    , public TJsonReader
+    : public TJsonReader
 {
+    private:
+        std::unique_ptr<IFileSystemWrapper> m_fileSystemWrapper;
+
         void parsePackage(const std::filesystem::path& folderPath, std::function<void(nlohmann::json&)>& callback)
         {
             // Map to match fields
@@ -41,7 +46,7 @@ class NPM final
 
             try
             {
-                if (TFileSystem::exists(path))
+                if (m_fileSystemWrapper->exists(path))
                 {
                     // Read json from filesystem path.
                     const auto packageJson = TJsonReader::readJson(path);
@@ -90,11 +95,11 @@ class NPM final
                     // Exist and is a directory
                     const auto nodeModulesFolder {std::filesystem::path(expandedPath) / "node_modules"};
 
-                    if (TFileSystem::exists(nodeModulesFolder))
+                    if (m_fileSystemWrapper->exists(nodeModulesFolder))
                     {
-                        for (const auto& packageFolder : TFileSystem::directory_iterator(nodeModulesFolder))
+                        for (const auto& packageFolder : m_fileSystemWrapper->list_directory(nodeModulesFolder))
                         {
-                            if (TFileSystem::is_directory(packageFolder))
+                            if (m_fileSystemWrapper->is_directory(packageFolder))
                             {
                                 parsePackage(packageFolder, callback);
                             }
@@ -109,7 +114,10 @@ class NPM final
         }
 
     public:
-        NPM() = default;
+        NPM(std::unique_ptr<IFileSystemWrapper> fileSystemWrapper = nullptr)
+            : m_fileSystemWrapper(fileSystemWrapper ? std::move(fileSystemWrapper) : std::make_unique<file_system::FileSystemWrapper>())
+        {
+        }
         ~NPM() = default;
 
         void getPackages(const std::set<std::string>& osRootFolders, std::function<void(nlohmann::json&)> callback)
