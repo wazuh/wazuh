@@ -192,9 +192,6 @@ else()
       "${CMAKE_SOURCE_DIR}/src/osinfo/sysOsParsers.cpp")
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
-# add_subdirectory(${SRC_FOLDER}/shared_modules/file_helper ${SRC_FOLDER}/shared_modules/file_helper/build)
-
-
 add_library(sysinfo SHARED
     ${SYSINFO_SRC}
     ${CMAKE_SOURCE_DIR}/src/sysInfo.cpp
