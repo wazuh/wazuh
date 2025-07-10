@@ -523,12 +523,16 @@ IndexerConnector::IndexerConnector(
     const nlohmann::json& config,
     const std::string& templatePath,
     const std::string& updateMappingsPath,
+    bool useSeekDelete,
     const std::function<void(
         const int, const std::string&, const std::string&, const int, const std::string&, const std::string&, va_list)>&
         logFunction,
     const uint32_t& timeout)
 {
     preInitialization(logFunction, config);
+
+    // Set index delete seek data flag.
+    m_useSeekDelete = useSeekDelete;
 
     auto secureCommunication = SecureCommunication::builder();
     initConfiguration(secureCommunication, config);
@@ -608,17 +612,39 @@ IndexerConnector::IndexerConnector(
                 // If the element should not be indexed, only delete it from the sync database.
                 const auto noIndex = parsedData.contains("no-index") ? parsedData.at("no-index").get<bool>() : false;
 
-                if (operation.compare("DELETED") == 0)
+                if (operation == "DELETED")
                 {
-                    for (const auto& [key, _] : m_db->seek(id))
+                    if (m_useSeekDelete)
                     {
-                        logDebug2(IC_NAME, "Added document for deletion with id: %s.", key.c_str());
-                        if (!noIndex)
+                        for (const auto& [key, _] : m_db->seek(id))
                         {
-                            builderBulkDelete(bulkData, key, m_indexName);
-                        }
+                            logDebug2(IC_NAME, "Added document for deletion with id: %s.", key.c_str());
+                            if (!noIndex)
+                            {
+                                builderBulkDelete(bulkData, key, m_indexName);
+                            }
 
-                        m_db->delete_(key);
+                            m_db->delete_(key);
+                        }
+                    }
+                    else
+                    {
+                        rocksdb::PinnableSlice value;
+                        if (m_db->get(id, value))
+                        {
+                            logDebug2(IC_NAME, "Added single document for deletion with id: %s.", id.c_str());
+
+                            if (!noIndex)
+                            {
+                                builderBulkDelete(bulkData, id, m_indexName);
+                            }
+
+                            m_db->delete_(id);
+                        }
+                        else
+                        {
+                            logDebug2(IC_NAME, "No document found with id: %s. Skipping deletion.", id.c_str());
+                        }
                     }
                 }
                 else if (operation.compare("DELETED_BY_QUERY") == 0)
@@ -836,11 +862,15 @@ IndexerConnector::IndexerConnector(
 
 IndexerConnector::IndexerConnector(
     const nlohmann::json& config,
+    bool useSeekDelete,
     const std::function<void(
         const int, const std::string&, const std::string&, const int, const std::string&, const std::string&, va_list)>&
         logFunction)
 {
     preInitialization(logFunction, config);
+
+    // Set index delete seek data flag.
+    m_useSeekDelete = useSeekDelete;
 
     m_dispatcher = std::make_unique<ThreadDispatchQueue>(
         [this](std::queue<std::string>& dataQueue)

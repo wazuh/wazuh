@@ -10,7 +10,7 @@
     "os_codename": "trusty",
     "os_major": "20",
     "os_minor": "04",
-    "os_name": "Ubuntu Test",
+    "os_name": "Ubuntu",
     "os_patch": "6",
     "os_platform": "ubuntu",
     "os_version": "Trusty Tahr",
@@ -19,5 +19,5 @@
     "sysname": "Linux",
     "version": "#172-Ubuntu SMP Fri Jul 7 16:10:02 UTC 2023"
   },
-  "operation": "INSERTED"
+  "operation": "DELETED"
 }
