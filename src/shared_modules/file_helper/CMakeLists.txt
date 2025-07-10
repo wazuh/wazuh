@@ -5,6 +5,10 @@ project(FileHandler)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+
 # FilesystemWrapper target
 if(WIN32)
     set(SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/filesystem/src/filesystem_wrapper_win.cpp)
@@ -26,7 +30,7 @@ add_library(FileIO STATIC ${CMAKE_CURRENT_SOURCE_DIR}/file_io/src/file_io_utils.
 set_property(TARGET FileIO PROPERTY POSITION_INDEPENDENT_CODE ON)
 target_include_directories(FileIO PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/file_io/include)
 
-if(BUILD_TESTS)
+if(UNIT_TEST)
     enable_testing()
     add_subdirectory(filesystem/tests)
     add_subdirectory(file_io/tests)
