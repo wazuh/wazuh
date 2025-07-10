@@ -55,7 +55,7 @@ class EXPORTED IndexerConnector final
     std::unordered_map<std::string, std::chrono::system_clock::time_point> m_lastSync;
     uint32_t m_successCount {0};
     bool m_error413FirstTime {false};
-    bool m_useSeekDelete {true};
+    const bool m_useSeekDelete;
 
     /**
      * @brief Intialize method used to load template data and initialize the index.
