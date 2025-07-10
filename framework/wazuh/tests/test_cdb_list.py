@@ -327,8 +327,7 @@ def test_get_list_file(filename, raw, expected_result, total_failed_items):
 @patch('wazuh.cdb_list.delete_list_file')
 @patch('wazuh.cdb_list.remove')
 @patch('wazuh.cdb_list.exists', return_value=True)
-@patch('wazuh.cdb_list.send_reload_ruleset_msg', return_value={'error': 0})
-def test_upload_list_file(mock_reload, mock_exists, mock_remove, mock_delete_list_file, mock_upload_file,
+def test_upload_list_file(mock_exists, mock_remove, mock_delete_list_file, mock_upload_file,
                           mock_delete_file_with_backup, mock_safe_move):
     """Check that functions inside upload_list_file are called with expected params"""
     filename = 'test_file'
@@ -340,7 +339,6 @@ def test_upload_list_file(mock_reload, mock_exists, mock_remove, mock_delete_lis
     mock_delete_file_with_backup.assert_called_once_with(os.path.join(common.USER_LISTS_PATH, filename + '.backup'),
                                                          os.path.join(common.USER_LISTS_PATH, filename),
                                                          mock_delete_list_file)
-    mock_reload.assert_called_once()
 
 
 @patch('wazuh.cdb_list.common.USER_LISTS_PATH', return_value='/test/path')
@@ -377,8 +375,7 @@ def test_upload_list_file_ko(mock_remove, mock_lists_path):
 
 
 @patch('wazuh.core.cdb_list.delete_wazuh_file')
-@patch('wazuh.cdb_list.send_reload_ruleset_msg', return_value={'error': 0})
-def test_delete_list_file(mock_reload, mock_delete_file):
+def test_delete_list_file(mock_delete_file):
     """Check that expected result is returned when the file is deleted."""
     try:
         # Create directory for the test
@@ -397,7 +394,6 @@ def test_delete_list_file(mock_reload, mock_delete_file):
             pass
 
     mock_delete_file.assert_called_once_with(test_file)
-    mock_reload.assert_called_once()
 
 
 def test_delete_list_file_ko():

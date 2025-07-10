@@ -11,7 +11,6 @@ import xmltodict
 
 import wazuh.core.configuration as configuration
 from wazuh.core import common
-from wazuh.core.analysis import send_reload_ruleset_msg
 from wazuh.core.decoder import load_decoders_from_file, check_status, REQUIRED_FIELDS, SORT_FIELDS, DECODER_FIELDS, \
     DECODER_FILES_FIELDS, DECODER_FILES_REQUIRED_FIELDS
 from wazuh.core.exception import WazuhInternalError, WazuhError
@@ -375,11 +374,6 @@ def upload_decoder_file(filename: str, content: str, relative_dirname: str = Non
 
             raise exc
 
-        # After uploading the file, reload rulesets
-        socket_response = send_reload_ruleset_msg(origin={'module': 'api'})
-        if socket_response['error'] == 1:
-            raise WazuhError(1501, extra_message=socket_response['data'])
-
         result.affected_items.append(to_relative_path(full_path))
         result.total_affected_items = len(result.affected_items)
         backup_file and exists(backup_file) and remove(backup_file)
@@ -428,12 +422,6 @@ def delete_decoder_file(filename: Union[str, list], relative_dirname: str = None
                 raise WazuhError(1907) from exc
         else:
             raise WazuhError(1906)
-
-        # After deleting the file, reload rulesets
-        socket_response = send_reload_ruleset_msg(origin={'module': 'api'})
-        if socket_response['error'] == 1:
-            raise WazuhError(1508, extra_message=socket_response['data'])
-
     except WazuhError as exc:
         result.add_failed_item(id_=to_relative_path(full_path), error=exc)
     result.total_affected_items = len(result.affected_items)
