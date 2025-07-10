@@ -55,6 +55,7 @@ class EXPORTED IndexerConnector final
     std::unordered_map<std::string, std::chrono::system_clock::time_point> m_lastSync;
     uint32_t m_successCount {0};
     bool m_error413FirstTime {false};
+    bool m_useSeekDelete {true};
 
     /**
      * @brief Intialize method used to load template data and initialize the index.
@@ -134,12 +135,14 @@ public:
      * @param config Indexer configuration, including database_path and servers.
      * @param templatePath Path to the template file.
      * @param updateMappingsPath Path to the update mappings query.
+     * @param useSeekDelete If true, the connector will index the seek method to delete operation.
      * @param logFunction Callback function to be called when trying to log a message.
      * @param timeout Server selector time interval.
      */
     explicit IndexerConnector(const nlohmann::json& config,
                               const std::string& templatePath,
                               const std::string& updateMappingsPath,
+                              bool useSeekDelete = true,
                               const std::function<void(const int,
                                                        const std::string&,
                                                        const std::string&,
@@ -154,9 +157,11 @@ public:
      * only keeps the local DB synced.
      *
      * @param config Indexer configuration, including database_path and servers.
+     * @param useSeekDelete If true, the connector will index the seek method to delete operation.
      * @param logFunction Callback function to be called when trying to log a message.
      */
     explicit IndexerConnector(const nlohmann::json& config,
+                              bool useSeekDelete = true,
                               const std::function<void(const int,
                                                        const std::string&,
                                                        const std::string&,
