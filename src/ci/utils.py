@@ -39,7 +39,7 @@ HEADER_DIR = {
     'wintesttool':         "=============== Running TEST TOOL for Windows ====="
 }
 MODULE_LIST = ['wazuh_modules/syscollector', 'shared_modules/dbsync',
-               'shared_modules/rsync', 'data_provider', 'syscheckd']
+               'shared_modules/rsync', 'shared_modules/file_helper', 'data_provider', 'syscheckd']
 MODULE_LIST_STR = '|'.join(MODULE_LIST)
 TARGET_LIST = ['agent', 'server', 'winagent']
 
