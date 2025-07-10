@@ -212,6 +212,9 @@ w_queue_t * upgrade_module_input;
 /* Hourly firewall mutex */
 static pthread_mutex_t hourly_firewall_mutex = PTHREAD_MUTEX_INITIALIZER;
 
+/* Hourly event mutex */
+static pthread_mutex_t hourly_event_mutex = PTHREAD_MUTEX_INITIALIZER;
+
 /* Accumulate mutex */
 static pthread_mutex_t accumulate_mutex = PTHREAD_MUTEX_INITIALIZER;
 
@@ -1237,7 +1240,9 @@ void * ad_input_main(void * args) {
                     if (result == -1) {
                         free(copy);
                     } else {
+                        w_mutex_lock(&hourly_event_mutex);
                         hourly_events++;
+                        w_mutex_unlock(&hourly_event_mutex)
                         hourly_syscheck++;
                     }
                 }
@@ -1259,7 +1264,9 @@ void * ad_input_main(void * args) {
                     if (result == -1) {
                         free(copy);
                     } else {
+                        w_mutex_lock(&hourly_event_mutex);
                         hourly_events++;
+                        w_mutex_unlock(&hourly_event_mutex);
                     }
                 }
 
@@ -1280,7 +1287,9 @@ void * ad_input_main(void * args) {
                     if (result == -1) {
                         free(copy);
                     } else {
+                        w_mutex_lock(&hourly_event_mutex);
                         hourly_events++;
+                        w_mutex_unlock(&hourly_event_mutex);
                     }
                 }
 
@@ -1301,7 +1310,9 @@ void * ad_input_main(void * args) {
                     if (result == -1) {
                         free(copy);
                     } else {
+                        w_mutex_lock(&hourly_event_mutex);
                         hourly_events++;
+                        w_mutex_unlock(&hourly_event_mutex);
                     }
                 }
 
@@ -1322,7 +1333,9 @@ void * ad_input_main(void * args) {
                     if (result == -1) {
                         free(copy);
                     } else {
+                        w_mutex_lock(&hourly_event_mutex);
                         hourly_events++;
+                        w_mutex_unlock(&hourly_event_mutex);
                     }
                 }
 
@@ -1343,7 +1356,9 @@ void * ad_input_main(void * args) {
                     if (result == -1) {
                         free(copy);
                     } else {
+                        w_mutex_lock(&hourly_event_mutex);
                         hourly_events++;
+                        w_mutex_unlock(&hourly_event_mutex);
                     }
                 }
 
@@ -1364,7 +1379,9 @@ void * ad_input_main(void * args) {
                     if (result == -1) {
                         free(copy);
                     } else {
+                        w_mutex_lock(&hourly_event_mutex);
                         hourly_events++;
+                        w_mutex_unlock(&hourly_event_mutex);
                     }
                 }
 
@@ -1385,7 +1402,9 @@ void * ad_input_main(void * args) {
                     if (result == -1) {
                         free(copy);
                     } else {
+                        w_mutex_lock(&hourly_event_mutex);
                         hourly_events++;
+                        w_mutex_unlock(&hourly_event_mutex);
                     }
                 }
 
@@ -1406,7 +1425,9 @@ void * ad_input_main(void * args) {
                     if (result == -1) {
                         free(copy);
                     } else {
+                        w_mutex_lock(&hourly_event_mutex);
                         hourly_events++;
+                        w_mutex_unlock(&hourly_event_mutex);
                     }
                 }
 
