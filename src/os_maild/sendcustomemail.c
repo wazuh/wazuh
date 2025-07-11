@@ -210,7 +210,11 @@ int OS_SendCustomEmail(char **to, char *subject, char *smtpserver, char *from, c
             }
         }
         memset(snd_msg, 0, sizeof(snd_msg));
-        snprintf(snd_msg, sizeof(snd_msg)-1, TO, to_list);
+        int n = snprintf(snd_msg, sizeof(snd_msg) - 1, TO, to_list);
+        if (n < 0 || n >= (int)(sizeof(snd_msg)-1)) {
+            merror("Error formatting 'To' header: snprintf failed or output truncated.");
+            return OS_INVALID;
+        }
         if (sendmail) {
             fprintf(sendmail->file_in, "%s", snd_msg);
         } else {
