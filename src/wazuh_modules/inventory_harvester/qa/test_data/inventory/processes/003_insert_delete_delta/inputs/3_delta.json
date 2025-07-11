@@ -17,7 +17,7 @@
     "nice": 0,
     "nlwp": 1,
     "pgrp": 176,
-    "pid": "1760",
+    "pid": "176",
     "ppid": 9,
     "priority": 20,
     "processor": 3,
@@ -38,5 +38,5 @@
     "utime": 0,
     "vm_size": 2728
   },
-  "operation": "INSERTED"
+  "operation": "DELETED"
 }
