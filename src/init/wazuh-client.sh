@@ -95,7 +95,7 @@ unlock()
 help()
 {
     # Help message
-    echo "Usage: $0 {start|stop|restart|status|info [-v -r -t]}";
+    echo "Usage: $0 {start|stop|restart|reload|status|info [-v -r -t]}";
     exit 1;
 }
 
