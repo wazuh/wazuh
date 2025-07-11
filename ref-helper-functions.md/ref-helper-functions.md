@@ -79,12 +79,10 @@ This documentation provides an overview of the auxiliary functions available. Au
 - [erase_custom_fields](#erase_custom_fields)
 - [get_key_in](#get_key_in)
 - [kvdb_decode_bitmask](#kvdb_decode_bitmask)
-- [kvdb_delete](#kvdb_delete)
 - [kvdb_get](#kvdb_get)
 - [kvdb_get_array](#kvdb_get_array)
 - [kvdb_get_merge](#kvdb_get_merge)
 - [kvdb_get_merge_recursive](#kvdb_get_merge_recursive)
-- [kvdb_set](#kvdb_set)
 - [merge](#merge)
 - [merge_key_in](#merge_key_in)
 - [merge_recursive_key_in](#merge_recursive_key_in)
@@ -8576,75 +8574,6 @@ normalize:
 
 
 ---
-# kvdb_delete
-
-## Signature
-
-```
-
-field: kvdb_delete(db-name, key)
-```
-
-## Arguments
-
-| parameter | Type | Source | Accepted values |
-| --------- | ---- | ------ | --------------- |
-| db-name | string | value | Any string |
-| key | string | value or reference | Any string |
-
-
-## Target Field
-
-| Type | Possible values |
-| ---- | --------------- |
-| boolean | Any boolean |
-
-
-## Description
-
-Removes a key of the database. If the key does not exist, it returns an error.
-If it was able to be removed, then map `true` into the field. This helper function is typically used in the map stage
-
-
-## Keywords
-
-- `kvdb` 
-
-## Examples
-
-### Example 1
-
-Succes kvdb delete key
-
-#### Asset
-
-```yaml
-normalize:
-  - map:
-      - target_field: kvdb_delete('testing', 'key1')
-```
-
-#### Input Event
-
-```json
-{
-  "target_field": true
-}
-```
-
-#### Outcome Event
-
-```json
-{
-  "target_field": false
-}
-```
-
-*The operation was successful*
-
-
-
----
 # kvdb_get
 
 ## Signature
@@ -8955,112 +8884,6 @@ normalize:
 ```
 
 *The operation was performed with errors*
-
-
-
----
-# kvdb_set
-
-## Signature
-
-```
-
-field: kvdb_set(db-name, key, value)
-```
-
-## Arguments
-
-| parameter | Type | Source | Accepted values |
-| --------- | ---- | ------ | --------------- |
-| db-name | string | value | Any string |
-| key | string | value or reference | Any string |
-| value | object, array, string, number, boolean | value or reference | Any object |
-
-
-## Target Field
-
-| Type | Possible values |
-| ---- | --------------- |
-| boolean | Any boolean |
-
-
-## Description
-
-Inserts or updates the value of a key in a KVDB named db-name. If the value already exists, it is updated.
-If the database does not exist or the key value can't be inserted or updated, it returns an error.
-If it was able to insert the value, then map `true` into field, if not, then map `false` into field.
-Value type can be string, number, object, array or null. This helper function is typically used in the map stage
-
-
-## Keywords
-
-- `kvdb` 
-
-## Examples
-
-### Example 1
-
-Success kvdb set
-
-#### Asset
-
-```yaml
-normalize:
-  - map:
-      - target_field: kvdb_set('testing', 'new_key', 'any_value')
-```
-
-#### Input Event
-
-```json
-{
-  "target_field": true
-}
-```
-
-#### Outcome Event
-
-```json
-{
-  "target_field": true
-}
-```
-
-*The operation was successful*
-
-### Example 2
-
-Failure kvdb set
-
-#### Asset
-
-```yaml
-normalize:
-  - map:
-      - target_field: kvdb_set('testing', $key, $value)
-```
-
-#### Input Event
-
-```json
-{
-  "key": "key",
-  "value": "new_value",
-  "target_field": true
-}
-```
-
-#### Outcome Event
-
-```json
-{
-  "key": "key",
-  "value": "new_value",
-  "target_field": false
-}
-```
-
-*The operation was successful*
 
 
 
@@ -10574,6 +10397,50 @@ normalize:
 
 ### Example 2
 
+Success csv parse with slash and dotpath
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: parse_csv($input_field, 'out1.key', 'out2/key', 'out3.key/subkey')
+```
+
+#### Input Event
+
+```json
+{
+  "input_field": "value1,value2,value3",
+  "target_field": "any_value"
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "input_field": "value1,value2,value3",
+  "target_field": {
+    "out1": {
+      "key": "value1"
+    },
+    "out2": {
+      "key": "value2"
+    },
+    "out3": {
+      "key": {
+        "subkey": "value3"
+      }
+    }
+  }
+}
+```
+
+*The operation was successful*
+
+### Example 3
+
 Failure csv parse
 
 #### Asset
@@ -10793,6 +10660,50 @@ normalize:
 *The operation was successful*
 
 ### Example 2
+
+Success dsv parse with slash and dotpath
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: parse_dsv($input_field, '|', "'", '\\', 'out1.key', 'out2/key', 'out3.key/subkey')
+```
+
+#### Input Event
+
+```json
+{
+  "input_field": "value1|value2|value3",
+  "target_field": "any_value"
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "input_field": "value1|value2|value3",
+  "target_field": {
+    "out1": {
+      "key": "value1"
+    },
+    "out2": {
+      "key": "value2"
+    },
+    "out3": {
+      "key": {
+        "subkey": "value3"
+      }
+    }
+  }
+}
+```
+
+*The operation was successful*
+
+### Example 3
 
 Failure dsv parse
 
