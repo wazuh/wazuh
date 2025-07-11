@@ -13,6 +13,7 @@
 #define _BERKELEY_DB_WRAPPER_H
 
 #include "iberkeleyDbWrapper.h"
+#include <stdexcept>
 
 struct BerkeleyRpmDbDeleter final
 {
@@ -28,47 +29,48 @@ struct BerkeleyRpmDbDeleter final
 
 class BerkeleyDbWrapper final : public IBerkeleyDbWrapper
 {
-    private:
-        std::unique_ptr<DB, BerkeleyRpmDbDeleter>  m_db;
-        std::unique_ptr<DBC, BerkeleyRpmDbDeleter> m_cursor;
-    public:
-        int32_t getRow(DBT& key, DBT& data) override
+private:
+    std::unique_ptr<DB, BerkeleyRpmDbDeleter> m_db;
+    std::unique_ptr<DBC, BerkeleyRpmDbDeleter> m_cursor;
+
+public:
+    int32_t getRow(DBT& key, DBT& data) override
+    {
+        std::memset(&key, 0, sizeof(DBT));
+        std::memset(&data, 0, sizeof(DBT));
+        return m_cursor->c_get(m_cursor.get(), &key, &data, DB_NEXT);
+    }
+    // LCOV_EXCL_START
+    ~BerkeleyDbWrapper() = default;
+    // LCOV_EXCL_STOP
+    explicit BerkeleyDbWrapper(const std::string& directory)
+    {
+        int ret;
+        DB* dbp;
+        DBC* cursor;
+
+        if ((ret = db_create(&dbp, NULL, 0)) != 0)
         {
-            std::memset(&key, 0, sizeof(DBT));
-            std::memset(&data, 0, sizeof(DBT));
-            return m_cursor->c_get(m_cursor.get(), &key, &data, DB_NEXT);
+            throw std::runtime_error {db_strerror(ret)};
         }
-        // LCOV_EXCL_START
-        ~BerkeleyDbWrapper() = default;
-        // LCOV_EXCL_STOP
-        explicit BerkeleyDbWrapper(const std::string& directory)
+
+        m_db = std::unique_ptr<DB, BerkeleyRpmDbDeleter>(dbp);
+
+        // Set Big-endian order by default
+        m_db->set_lorder(m_db.get(), 1234);
+
+        if ((ret = m_db->open(m_db.get(), NULL, directory.c_str(), NULL, DB_HASH, DB_RDONLY, 0)) != 0)
         {
-            int ret;
-            DB* dbp;
-            DBC* cursor;
-
-            if ((ret = db_create(&dbp, NULL, 0)) != 0)
-            {
-                throw std::runtime_error { db_strerror(ret) };
-            }
-
-            m_db = std::unique_ptr<DB, BerkeleyRpmDbDeleter>(dbp);
-
-            // Set Big-endian order by default
-            m_db->set_lorder(m_db.get(), 1234);
-
-            if ((ret = m_db->open(m_db.get(), NULL, directory.c_str(), NULL, DB_HASH, DB_RDONLY, 0)) != 0)
-            {
-                throw std::runtime_error { std::string("Failed to open database '") + directory + "': " + db_strerror(ret) };
-            }
-
-            if ((ret = m_db->cursor(m_db.get(), NULL, &cursor, 0)) != 0)
-            {
-                throw std::runtime_error { std::string("Error creating cursor: ") + db_strerror(ret) };
-            }
-
-            m_cursor = std::unique_ptr<DBC, BerkeleyRpmDbDeleter>(cursor);
+            throw std::runtime_error {std::string("Failed to open database '") + directory + "': " + db_strerror(ret)};
         }
+
+        if ((ret = m_db->cursor(m_db.get(), NULL, &cursor, 0)) != 0)
+        {
+            throw std::runtime_error {std::string("Error creating cursor: ") + db_strerror(ret)};
+        }
+
+        m_cursor = std::unique_ptr<DBC, BerkeleyRpmDbDeleter>(cursor);
+    }
 };
 
 #endif // _BERKELEY_DB_WRAPPER_H
