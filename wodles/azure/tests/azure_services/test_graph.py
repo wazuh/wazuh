@@ -211,6 +211,18 @@ def test_get_graph_events(mock_get, mock_update, mock_send):
     assert mock_update.call_count == num_events
     assert mock_send.call_count == num_events
 
+    for call in mock_send.call_args_list:
+        sent_json = json.loads(call[0][0])
+        if 'initiatedBy' in sent_json and sent_json['initiatedBy'] is not None:
+            app_value = sent_json['initiatedBy'].get('app')
+            user_value = sent_json['initiatedBy'].get('user')
+            if app_value is not None:
+                assert not isinstance(app_value, str)
+            if user_value is not None:
+                assert not isinstance(user_value, str)
+        if 'status' in sent_json:
+            status_value = sent_json['status']
+            assert isinstance(status_value, dict)
 
 @pytest.mark.parametrize('status_code', [400, 500])
 @patch('azure_utils.logging.error')
