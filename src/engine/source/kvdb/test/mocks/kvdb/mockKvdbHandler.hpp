@@ -12,11 +12,6 @@ namespace kvdb::mocks
 // Helper functions to mock method responses
 /******************************************************************************/
 
-inline base::OptError kvdbSetOk()
-{
-    return std::nullopt;
-}
-
 inline base::RespOrError<bool> kvdbContainsOk()
 {
     return true;
