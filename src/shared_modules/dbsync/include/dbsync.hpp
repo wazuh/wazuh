@@ -30,10 +30,9 @@
 #include "db_exception.h"
 #include "commonDefs.h"
 #include "builder.hpp"
+#include "idbsync.hpp"
 
-using ResultCallbackData = const std::function<void(ReturnTypeCallback, const nlohmann::json&) >;
-
-class EXPORTED DBSync
+class EXPORTED DBSync : public IDBSync
 {
     public:
         /**
@@ -78,7 +77,7 @@ class EXPORTED DBSync
          * @param jsInput      JSON information with tables relationship.
          *
          */
-        virtual void addTableRelationship(const nlohmann::json& jsInput);
+        void addTableRelationship(const nlohmann::json& jsInput) override;
 
         /**
          * @brief Insert the \p jsInsert data in the database.
@@ -86,7 +85,7 @@ class EXPORTED DBSync
          * @param jsInsert JSON information with values to be inserted.
          *
          */
-        virtual void insertData(const nlohmann::json& jsInsert);
+        void insertData(const nlohmann::json& jsInsert) override;
 
         /**
          * @brief Sets the max rows in the \p table table.
@@ -97,8 +96,8 @@ class EXPORTED DBSync
          *
          * @details The table will work as a queue if the limit is exceeded.
          */
-        virtual void setTableMaxRow(const std::string& table,
-                                    const long long    maxRows);
+        void setTableMaxRow(const std::string& table,
+                            const long long    maxRows) override;
 
         /**
          * @brief Inserts (or modifies) a database record.
@@ -107,8 +106,8 @@ class EXPORTED DBSync
          * @param callbackData   Result callback(std::function) will be called for each result.
          *
          */
-        virtual void syncRow(const nlohmann::json& jsInput,
-                             ResultCallbackData    callbackData);
+        void syncRow(const nlohmann::json& jsInput,
+                     ResultCallbackData    callbackData) override;
 
         /**
          * @brief Select data, based in \p jsInput data, from the database table.
@@ -117,8 +116,8 @@ class EXPORTED DBSync
          * @param callbackData    Result callback(std::function) will be called for each result.
          *
          */
-        virtual void selectRows(const nlohmann::json& jsInput,
-                                ResultCallbackData    callbackData);
+        void selectRows(const nlohmann::json& jsInput,
+                        ResultCallbackData    callbackData) override;
 
         /**
          * @brief Deletes a database table record and its relationships based on \p jsInput value.
@@ -126,7 +125,7 @@ class EXPORTED DBSync
          * @param jsInput JSON information to be applied/deleted in the database.
          *
          */
-        virtual void deleteRows(const nlohmann::json& jsInput);
+        void deleteRows(const nlohmann::json& jsInput) override;
 
         /**
          * @brief Updates data table with \p jsInput information. \p jsResult value will
@@ -136,8 +135,8 @@ class EXPORTED DBSync
          * @param jsResult   JSON with deletes, creations and modifications (diffs) in rows.
          *
          */
-        virtual void updateWithSnapshot(const nlohmann::json& jsInput,
-                                        nlohmann::json&       jsResult);
+        void updateWithSnapshot(const nlohmann::json& jsInput,
+                                        nlohmann::json&       jsResult) override;
 
         /**
          * @brief Update data table, based on json_raw_snapshot bulk data based on json string.
@@ -146,8 +145,8 @@ class EXPORTED DBSync
          * @param callbackData  Result callback(std::function) will be called for each result.
          *
          */
-        virtual void updateWithSnapshot(const nlohmann::json& jsInput,
-                                        ResultCallbackData    callbackData);
+        void updateWithSnapshot(const nlohmann::json& jsInput,
+                                        ResultCallbackData    callbackData) override;
 
         /**
          * @brief Turns off the services provided by the shared library.
@@ -159,7 +158,7 @@ class EXPORTED DBSync
          *
          * @return DBSYNC_HANDLE to be used in all internal calls.
          */
-        DBSYNC_HANDLE handle()
+        DBSYNC_HANDLE handle() override
         {
             return m_dbsyncHandle;
         }
