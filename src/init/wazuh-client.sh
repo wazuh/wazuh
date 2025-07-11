@@ -95,7 +95,7 @@ unlock()
 help()
 {
     # Help message
-    echo "Usage: $0 {start|stop|restart|status|info [-v -r -t]}";
+    echo "Usage: $0 {start|stop|restart|reload|status|info [-v -r -t]}";
     exit 1;
 }
 
@@ -313,8 +313,11 @@ restart)
     restart_service
     ;;
 reload)
-    DAEMONS=$(echo $DAEMONS | sed 's/wazuh-execd//')
+    DAEMONS=$(echo $DAEMONS | sed 's/wazuh-agentd//')
     restart_service
+    # Signal agentd (SIGUSR1) to reload (reconnects execd)
+    pid=`cat ${DIR}/var/run/wazuh-agentd-*.pid`
+    kill -USR1 $pid
     ;;
 status)
     lock
