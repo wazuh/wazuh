@@ -1,6 +1,7 @@
 #pragma once
 
 #include <filesystem>
+#include <string>
 #include <vector>
 
 /// @brief Interface for file system operations.
@@ -94,4 +95,14 @@ public:
     /// @param fd File descriptor
     /// @return 0 on success, -1 on error
     virtual int close(int fd) const = 0;
+
+    /// @brief Retrieves the content of a file as a string
+    /// @param filePath Path to the file
+    /// @return The content of the file
+    virtual std::string getFileContent(const std::string& filePath) const = 0;
+
+    /// @brief Retrieves the binary content of a file as a vector of bytes
+    /// @param filePath Path to the file
+    /// @return The binary content of the file
+    virtual std::vector<char> getBinaryContent(const std::string& filePath) const = 0;
 };

@@ -57,5 +57,11 @@ namespace file_system
 
         /// @copydoc IFileSystemWrapper::close
         int close(int fd) const override;
+
+        /// @copydoc IFileSystemWrapper::getFileContent
+        std::string getFileContent(const std::string& filePath) const override;
+
+        /// @copydoc IFileSystemWrapper::getBinaryContent
+        std::vector<char> getBinaryContent(const std::string& filePath) const override;
     };
 } // namespace file_system

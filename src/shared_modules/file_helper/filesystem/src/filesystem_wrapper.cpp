@@ -1,4 +1,5 @@
 #include <filesystem_wrapper.hpp>
+#include <fstream>
 
 namespace file_system
 {
@@ -65,5 +66,60 @@ namespace file_system
     bool FileSystemWrapper::remove(const std::filesystem::path& path) const
     {
         return std::filesystem::remove(path);
+    }
+
+    std::string FileSystemWrapper::getFileContent(const std::string& filePath) const
+    {
+        const auto size = std::filesystem::file_size(filePath);
+        if (size == 0)
+        {
+            return {};
+        }
+
+        std::ifstream file(filePath, std::ios_base::in);
+        if (!file)
+        {
+            return {};
+        }
+
+        std::string content;
+        content.resize(size);
+
+        if (!file.read(content.data(), size))
+        {
+            return {};
+        }
+
+        return content;
+    }
+
+    std::vector<char> FileSystemWrapper::getBinaryContent(const std::string& filePath) const
+    {
+        try
+        {
+            const auto fileSize = std::filesystem::file_size(filePath);
+            if (fileSize == 0)
+            {
+                return {};
+            }
+
+            std::ifstream file(filePath, std::ios::binary);
+            if (!file)
+            {
+                return {};
+            }
+
+            std::vector<char> buffer(fileSize);
+            if (!file.read(buffer.data(), fileSize))
+            {
+                return {};
+            }
+
+            return buffer;
+        }
+        catch (...)
+        {
+            return {};
+        }
     }
 } // namespace file_system
