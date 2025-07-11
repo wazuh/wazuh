@@ -18,10 +18,13 @@
 #include "../wrappers/posix/pthread_wrappers.h"
 
 int w_agentd_get_buffer_lenght();
+
+#ifndef TEST_WINAGENT
 int buffer_append(const char *msg);
 int w_agentd_buffer_resize(unsigned int current_capacity, unsigned int desired_capacity);
 void w_agentd_buffer_free(unsigned int current_capacity);
 void buffer_init();
+#endif
 
 extern agent *agt;
 extern int i;
@@ -113,6 +116,7 @@ void test_w_agentd_get_buffer_lenght_buffer(void ** state)
 
 }
 
+#ifndef TEST_WINAGENT
 void test_buffer_append(void **state)
 {
     os_calloc(1, sizeof(agent), agt);
@@ -375,6 +379,7 @@ void test_w_agentd_buffer_free(void **state)
 
     os_free(agt);
 }
+#endif
 
 int main(void) {
     const struct CMUnitTest tests[] = {
@@ -382,11 +387,13 @@ int main(void) {
         cmocka_unit_test(test_w_agentd_get_buffer_lenght_buffer_disabled),
         cmocka_unit_test(test_w_agentd_get_buffer_lenght_buffer_empty),
         cmocka_unit_test(test_w_agentd_get_buffer_lenght_buffer),
+        #ifndef TEST_WINAGENT
         cmocka_unit_test(test_buffer_append),
         cmocka_unit_test(test_w_agentd_buffer_free),
         cmocka_unit_test(test_w_agentd_buffer_resize_shrink),
         cmocka_unit_test(test_w_agentd_buffer_resize_grow_continue),
         cmocka_unit_test(test_w_agentd_buffer_resize_grow_two_parts),
+        #endif
     };
 
     return cmocka_run_group_tests(tests, setup_group, teardown_group);
