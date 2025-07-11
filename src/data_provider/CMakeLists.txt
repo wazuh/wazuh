@@ -204,8 +204,11 @@ else()
       "${CMAKE_SOURCE_DIR}/src/osinfo/sysOsParsers.cpp")
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
-#TODO: should use a define to disable this?
-add_subdirectory(src/extended_sources)
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux" OR
+   CMAKE_SYSTEM_NAME STREQUAL "Darwin" OR
+   CMAKE_SYSTEM_NAME STREQUAL "Windows")
+  add_subdirectory(src/extended_sources)
+endif()
 
 add_library(sysinfo SHARED
     ${SYSINFO_SRC}
@@ -213,7 +216,7 @@ add_library(sysinfo SHARED
     ${SRC_FOLDER}/${RESOURCE_OBJ})
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
-  target_link_libraries(sysinfo psapi iphlpapi ws2_32 wbemuuid uuid wuguid ole32 oleaut32)
+  target_link_libraries(sysinfo psapi iphlpapi ws2_32 wbemuuid uuid wuguid ole32 oleaut32 groups users)
   set_target_properties(sysinfo PROPERTIES
       PREFIX ""
       SUFFIX ".dll"
@@ -240,14 +243,14 @@ elseif(APPLE)
   if(NOT corefoundation_lib)
     message(FATAL_ERROR "CoreFoundation library not found! Aborting...")
   endif()
-  target_link_libraries(sysinfo cjson ${SRC_FOLDER}/external/libplist/bin/lib/libplist-2.0.a ${iokit_lib} ${corefoundation_lib})
+  target_link_libraries(sysinfo cjson ${SRC_FOLDER}/external/libplist/bin/lib/libplist-2.0.a ${iokit_lib} ${corefoundation_lib} groups users)
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
-target_link_libraries(sysinfo groups users wazuhext)
+target_link_libraries(sysinfo wazuhext)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   set(CURL_DEP "wazuhext")
-  target_link_libraries(sysinfo urlrequest db)
+  target_link_libraries(sysinfo urlrequest db groups users)
   if(CMAKE_CHECK_CENTOS5)
       set(USE_HTTP 1)
   endif(CMAKE_CHECK_CENTOS5)

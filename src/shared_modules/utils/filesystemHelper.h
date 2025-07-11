@@ -31,6 +31,10 @@
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-function"
 
+#ifndef PATH_MAX
+    #define PATH_MAX 4096
+#endif
+
 namespace Utils
 {
     static bool existsDir(const std::string& path)
