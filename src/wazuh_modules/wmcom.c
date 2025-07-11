@@ -36,6 +36,8 @@ size_t wmcom_dispatch(char * command, char ** output){
         return wmcom_getconfig(rcv_args, output);
     } else if (strncmp(command, "query ", 6) == 0) {
         return wm_module_query(command + 6, output);
+    } else if (strstr(command, SYNC_HEADER) != NULL) {
+        return wm_module_sync_response(command, output);
     } else if (wmcom_sync(command) == 0) {
         /*
          * syscollector_hwinfo dbsync checksum_fail { ... }
