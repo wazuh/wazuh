@@ -226,4 +226,13 @@ wmodule * wm_find_module(const char * name);
  */
 size_t wm_module_query(char * query, char ** output);
 
+/**
+ * @brief Process a sync response in a module
+ *
+ * @param response Response payload
+ * @param output Output payload
+ * @return Size of the output
+ */
+size_t wm_module_sync_response(char * response, char ** output);
+
 #endif // W_MODULES
