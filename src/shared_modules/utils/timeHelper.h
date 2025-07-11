@@ -48,10 +48,12 @@ namespace Utils
     static std::string getTimestamp(const std::time_t& time, const bool utc = true)
     {
         std::stringstream ss;
-        struct tm buf;
+        struct tm buf
+        {
+        };
 
         // gmtime: result expressed as a UTC time
-        tm* localTime {utc ? gmtime_r(&time, &buf) : localtime_r(&time, &buf)};
+        tm const* localTime {utc ? gmtime_r(&time, &buf) : localtime_r(&time, &buf)};
 
         if (localTime == nullptr)
         {
@@ -89,7 +91,9 @@ namespace Utils
     static std::string getCompactTimestamp(const std::time_t& time, const bool utc = true)
     {
         std::stringstream ss;
-        struct tm buf;
+        struct tm buf
+        {
+        };
 
         // gmtime: result expressed as a UTC time
         tm const* localTime {utc ? gmtime_r(&time, &buf) : localtime_r(&time, &buf)};
@@ -117,8 +121,10 @@ namespace Utils
         auto itt = std::chrono::system_clock::to_time_t(now);
 
         std::ostringstream ss;
-        struct tm buf;
-        tm* localTime = gmtime_r(&itt, &buf);
+        struct tm buf
+        {
+        };
+        tm const* localTime = gmtime_r(&itt, &buf);
 
         if (localTime == nullptr)
         {
@@ -151,64 +157,7 @@ namespace Utils
         auto itt = std::chrono::system_clock::from_time_t(time);
 
         std::ostringstream output;
-        struct tm* localTime = gmtime_r(&time, &tm);
-
-        if (localTime == nullptr)
-        {
-            return "";
-        }
-
-        output << std::put_time(localTime, "%FT%T");
-
-        // Get milliseconds from the current time
-        auto milliseconds =
-            std::chrono::duration_cast<std::chrono::milliseconds>(itt.time_since_epoch()).count() % 1000;
-
-        // ISO 8601
-        output << '.' << std::setfill('0') << std::setw(3) << milliseconds << 'Z';
-
-        return output.str();
-    }
-
-    static std::string rawTimestampToISO8601(const std::string& timestamp)
-    {
-        if (timestamp.empty() || !Utils::isNumber(timestamp))
-        {
-            return "";
-        }
-
-        std::time_t time = std::stoi(timestamp);
-        auto itt = std::chrono::system_clock::from_time_t(time);
-
-        std::ostringstream output;
-        struct tm buf;
-        tm* localTime = gmtime_r(&time, &buf);
-
-        if (localTime == nullptr)
-        {
-            return "";
-        }
-
-        output << std::put_time(localTime, "%FT%T");
-
-        // Get milliseconds from the current time
-        auto milliseconds =
-            std::chrono::duration_cast<std::chrono::milliseconds>(itt.time_since_epoch()).count() % 1000;
-
-        // ISO 8601
-        output << '.' << std::setfill('0') << std::setw(3) << milliseconds << 'Z';
-
-        return output.str();
-    }
-
-    static std::string rawTimestampToISO8601(const uint32_t timestamp)
-    {
-        std::time_t time = timestamp;
-        auto itt = std::chrono::system_clock::from_time_t(time);
-
-        std::ostringstream output;
-        struct tm buf;
-        tm* localTime = gmtime_r(&time, &buf);
+        struct tm const* localTime = gmtime_r(&time, &tm);
 
         if (localTime == nullptr)
         {
@@ -246,12 +195,14 @@ namespace Utils
                           std::is_same_v<std::decay_t<T>, std::string_view>,
                       "Invalid timestamp type");
         if constexpr (std::is_same_v<std::decay_t<T>, uint32_t>)
-            {
-                std::time_t time = timestamp;
+        {
+            std::time_t time = timestamp;
             auto itt = std::chrono::system_clock::from_time_t(time);
             std::ostringstream output;
-            struct tm buf;
-            tm* localTime = gmtime_r(&time, &buf);
+            struct tm buf
+            {
+            };
+            tm const* localTime = gmtime_r(&time, &buf);
             if (localTime == nullptr)
             {
                 return "";
@@ -269,8 +220,10 @@ namespace Utils
             std::time_t time = timestamp;
             auto itt = std::chrono::system_clock::from_time_t(time);
             std::ostringstream output;
-            struct tm buf;
-            tm* localTime = gmtime_r(&time, &buf);
+            struct tm buf
+            {
+            };
+            tm const* localTime = gmtime_r(&time, &buf);
             if (localTime == nullptr)
             {
                 return "";
@@ -300,8 +253,10 @@ namespace Utils
             std::time_t time = std::stoi(timestamp);
             auto itt = std::chrono::system_clock::from_time_t(time);
             std::ostringstream output;
-            struct tm buf;
-            tm* localTime = gmtime_r(&time, &buf);
+            struct tm buf
+            {
+            };
+            tm const* localTime = gmtime_r(&time, &buf);
             if (localTime == nullptr)
             {
                 return "";
@@ -328,8 +283,10 @@ namespace Utils
             }
             auto itt = std::chrono::system_clock::from_time_t(time);
             std::ostringstream output;
-            struct tm buf;
-            tm* localTime = gmtime_r(&time, &buf);
+            struct tm buf
+            {
+            };
+            tm const* localTime = gmtime_r(&time, &buf);
             if (localTime == nullptr)
             {
                 return "";
