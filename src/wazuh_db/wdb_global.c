@@ -1294,7 +1294,7 @@ wdbc_result wdb_global_assign_agent_group(wdb_t *wdb, int id, cJSON* j_groups, i
                 cJSON* j_group_id = cJSON_GetObjectItem(j_find_response->child, "id");
                 if (cJSON_IsNumber(j_group_id)) {
                     int insert_result = wdb_global_insert_agent_belong(wdb, j_group_id->valueint, id, priority);
-                    if (!add_agent) {
+                    if (!add_agent && OS_INVALID == insert_result) {
                         // If the agent doesn't exist, we don't want to insert the group relationship.
                         insert_result = OS_NOTFOUND;
                     }
@@ -1513,7 +1513,7 @@ wdbc_result wdb_global_set_agent_groups(wdb_t *wdb, wdb_groups_set_mode_t mode, 
                     }
                 }
                 if (valid_groups = wdb_global_validate_groups(wdb, j_groups, agent_id), OS_SUCCESS == valid_groups) {
-                    if (WDBC_ERROR == wdb_global_assign_agent_group(wdb, agent_id, j_groups, group_priority, false)) {
+                    if (WDBC_ERROR == wdb_global_assign_agent_group(wdb, agent_id, j_groups, group_priority, mode == WDB_GROUP_OVERRIDE ? true : false)) {
                         ret = WDBC_ERROR;
                         merror("There was an error assigning the groups to agent '%03d'", agent_id);
                     }
