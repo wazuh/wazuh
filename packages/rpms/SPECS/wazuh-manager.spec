@@ -759,6 +759,8 @@ rm -fr %{buildroot}
 %attr(0440, root, wazuh) %{_localstatedir}/templates/wazuh-states-inventory-interfaces.json
 %attr(0440, root, wazuh) %{_localstatedir}/templates/wazuh-states-inventory-hotfixes.json
 %attr(0440, root, wazuh) %{_localstatedir}/templates/wazuh-states-inventory-ports.json
+%attr(0440, root, wazuh) %{_localstatedir}/templates/wazuh-states-inventory-users.json
+%attr(0440, root, wazuh) %{_localstatedir}/templates/wazuh-states-inventory-groups.json
 %attr(0440, root, wazuh) %{_localstatedir}/templates/vd_states_update_mappings.json
 %attr(0440, root, wazuh) %{_localstatedir}/templates/wazuh-states-fim-files-update.json
 %attr(0440, root, wazuh) %{_localstatedir}/templates/wazuh-states-fim-registries-update.json
@@ -771,6 +773,8 @@ rm -fr %{buildroot}
 %attr(0440, root, wazuh) %{_localstatedir}/templates/wazuh-states-inventory-interfaces-update.json
 %attr(0440, root, wazuh) %{_localstatedir}/templates/wazuh-states-inventory-hotfixes-update.json
 %attr(0440, root, wazuh) %{_localstatedir}/templates/wazuh-states-inventory-ports-update.json
+%attr(0440, root, wazuh) %{_localstatedir}/templates/wazuh-states-inventory-users-update.json
+%attr(0440, root, wazuh) %{_localstatedir}/templates/wazuh-states-inventory-groups-update.json
 %dir %attr(750, wazuh, wazuh) %{_localstatedir}/logs/api
 %dir %attr(750, wazuh, wazuh) %{_localstatedir}/logs/archives
 %dir %attr(750, wazuh, wazuh) %{_localstatedir}/logs/alerts

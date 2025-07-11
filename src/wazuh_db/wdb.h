@@ -900,11 +900,10 @@ typedef struct {
     long long user_last_login;
     long long user_auth_failed_count;
     double user_auth_failed_timestamp;
-    double user_password_last_set_time;
+    double user_password_last_change;
     int user_password_expiration_date;
     const char *user_password_hash_algorithm;
     int user_password_inactive_days;
-    int user_password_last_change;
     int user_password_max_days_between_changes;
     int user_password_min_days_between_changes;
     const char *user_password_status;
@@ -918,10 +917,10 @@ typedef struct {
 } user_record_t;
 
 // Save user info into DB.
-int wdb_users_save(wdb_t * wdb, user_record_t user_record, const bool replace);
+int wdb_users_save(wdb_t * wdb, const user_record_t * user_record, const bool replace);
 
 // Insert user info tuple. Return 0 on success or -1 on error.
-int wdb_users_insert(wdb_t * wdb, user_record_t user_record, const bool replace);
+int wdb_users_insert(wdb_t * wdb, const user_record_t * user_record, const bool replace);
 
 // Save group info into DB.
 int wdb_groups_save(wdb_t * wdb, const char * scan_id, const char * scan_time, long long group_id, const char * group_name,

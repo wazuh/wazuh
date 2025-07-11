@@ -3404,26 +3404,29 @@ void test_wdb_users_save_transaction_fail(void **state) {
     const long long user_last_login = 1750696338;
     const long long user_auth_failed_count = 1;
     const double user_auth_failed_timestamp = 1750696338.665;
-    const double user_password_last_set_time = 1750696338;
+    const double user_password_last_change = 1750696338.665;
     const int user_password_expiration_date = 1750696338;
     const int user_password_inactive_days = 0;
-    const int user_password_last_change = 10;
     const int user_password_max_days_between_changes = 9999;
     const int user_password_min_days_between_changes = 0;
     const int user_password_warning_days_before_expiration = 10;
     const long long process_pid = 1010;
 
-    output = wdb_users_save(data, (user_record_t){.scan_id = "scan_id", .scan_time = "scan_time", .user_name = "name", .user_full_name = "full_name",
-                            .user_home = "home", .user_id = user_id, .user_uid_signed = user_uid_signed, .user_uuid = "uuid", .user_groups = "group1,group2",
-                            .user_group_id = user_group_id, .user_group_id_signed = user_group_id_signed, .user_created = user_created,
-                            .user_roles = "roles", .user_shell = "shell", .user_type = "type", .user_is_hidden = true, .user_is_remote = false,
-                            .user_last_login = user_last_login, .user_auth_failed_count = user_auth_failed_count, .user_auth_failed_timestamp = user_auth_failed_timestamp,
-                            .user_password_last_set_time = user_password_last_set_time, .user_password_expiration_date = user_password_expiration_date,
-                            .user_password_hash_algorithm = "hash", .user_password_inactive_days = user_password_inactive_days, .user_password_last_change = user_password_last_change,
-                            .user_password_max_days_between_changes = user_password_max_days_between_changes, .user_password_min_days_between_changes = user_password_min_days_between_changes,
-                            .user_password_status = "status", .user_password_warning_days_before_expiration = user_password_warning_days_before_expiration,
-                            .process_pid = process_pid, .host_ip = "192.168.0.1,192.168.0.2", .login_status = true, .login_type = "type", .login_tty = "tty",
-                            .checksum = "checksum"}, false);
+    user_record_t user_record = {
+        .scan_id = "scan_id", .scan_time = "scan_time", .user_name = "name", .user_full_name = "full_name",
+        .user_home = "home", .user_id = user_id, .user_uid_signed = user_uid_signed, .user_uuid = "uuid", .user_groups = "group1,group2",
+        .user_group_id = user_group_id, .user_group_id_signed = user_group_id_signed, .user_created = user_created,
+        .user_roles = "roles", .user_shell = "shell", .user_type = "type", .user_is_hidden = true, .user_is_remote = false,
+        .user_last_login = user_last_login, .user_auth_failed_count = user_auth_failed_count, .user_auth_failed_timestamp = user_auth_failed_timestamp,
+        .user_password_expiration_date = user_password_expiration_date, .user_password_hash_algorithm = "hash",
+        .user_password_inactive_days = user_password_inactive_days, .user_password_last_change = user_password_last_change,
+        .user_password_max_days_between_changes = user_password_max_days_between_changes, .user_password_min_days_between_changes = user_password_min_days_between_changes,
+        .user_password_status = "status", .user_password_warning_days_before_expiration = user_password_warning_days_before_expiration,
+        .process_pid = process_pid, .host_ip = "192.168.0.1,192.168.0.2", .login_status = true, .login_type = "type", .login_tty = "tty",
+        .checksum = "checksum"
+    };
+
+    output = wdb_users_save(data, &user_record, false);
     assert_int_equal(output, -1);
 }
 
@@ -3444,26 +3447,29 @@ void test_wdb_users_save_insert_fail(void **state) {
     const long long user_last_login = 1750696338;
     const long long user_auth_failed_count = 1;
     const double user_auth_failed_timestamp = 1750696338.665;
-    const double user_password_last_set_time = 1750696338;
+    const double user_password_last_change = 1750696338.665;
     const int user_password_expiration_date = 1750696338;
     const int user_password_inactive_days = 0;
-    const int user_password_last_change = 10;
     const int user_password_max_days_between_changes = 9999;
     const int user_password_min_days_between_changes = 0;
     const int user_password_warning_days_before_expiration = 10;
     const long long process_pid = 1010;
 
-    output = wdb_users_save(data, (user_record_t){.scan_id = "scan_id", .scan_time = "scan_time", .user_name = "name", .user_full_name = "full_name",
-                            .user_home = "home", .user_id = user_id, .user_uid_signed = user_uid_signed, .user_uuid = "uuid", .user_groups = "group1,group2",
-                            .user_group_id = user_group_id, .user_group_id_signed = user_group_id_signed, .user_created = user_created,
-                            .user_roles = "roles", .user_shell = "shell", .user_type = "type", .user_is_hidden = true, .user_is_remote = false,
-                            .user_last_login = user_last_login, .user_auth_failed_count = user_auth_failed_count, .user_auth_failed_timestamp = user_auth_failed_timestamp,
-                            .user_password_last_set_time = user_password_last_set_time, .user_password_expiration_date = user_password_expiration_date,
-                            .user_password_hash_algorithm = "hash", .user_password_inactive_days = user_password_inactive_days, .user_password_last_change = user_password_last_change,
-                            .user_password_max_days_between_changes = user_password_max_days_between_changes, .user_password_min_days_between_changes = user_password_min_days_between_changes,
-                            .user_password_status = "status", .user_password_warning_days_before_expiration = user_password_warning_days_before_expiration,
-                            .process_pid = process_pid, .host_ip = "192.168.0.1,192.168.0.2", .login_status = true, .login_type = "type", .login_tty = "tty",
-                            .checksum = "checksum"}, false);
+    user_record_t user_record = {
+        .scan_id = "scan_id", .scan_time = "scan_time", .user_name = "name", .user_full_name = "full_name",
+        .user_home = "home", .user_id = user_id, .user_uid_signed = user_uid_signed, .user_uuid = "uuid", .user_groups = "group1,group2",
+        .user_group_id = user_group_id, .user_group_id_signed = user_group_id_signed, .user_created = user_created,
+        .user_roles = "roles", .user_shell = "shell", .user_type = "type", .user_is_hidden = true, .user_is_remote = false,
+        .user_last_login = user_last_login, .user_auth_failed_count = user_auth_failed_count, .user_auth_failed_timestamp = user_auth_failed_timestamp,
+        .user_password_expiration_date = user_password_expiration_date, .user_password_hash_algorithm = "hash",
+        .user_password_inactive_days = user_password_inactive_days, .user_password_last_change = user_password_last_change,
+        .user_password_max_days_between_changes = user_password_max_days_between_changes, .user_password_min_days_between_changes = user_password_min_days_between_changes,
+        .user_password_status = "status", .user_password_warning_days_before_expiration = user_password_warning_days_before_expiration,
+        .process_pid = process_pid, .host_ip = "192.168.0.1,192.168.0.2", .login_status = true, .login_type = "type", .login_tty = "tty",
+        .checksum = "checksum"
+    };
+
+    output = wdb_users_save(data, &user_record, false);
     assert_int_equal(output, -1);
 }
 
@@ -3482,10 +3488,9 @@ void test_wdb_users_save_success(void **state) {
     const long long user_last_login = 1750696338;
     const long long user_auth_failed_count = 1;
     const double user_auth_failed_timestamp = 1750696338.665;
-    const double user_password_last_set_time = 1750696338;
+    const double user_password_last_change = 1750696338.665;
     const int user_password_expiration_date = 1750696338;
     const int user_password_inactive_days = 0;
-    const int user_password_last_change = 10;
     const int user_password_max_days_between_changes = 9999;
     const int user_password_min_days_between_changes = 0;
     const int user_password_warning_days_before_expiration = 10;
@@ -3554,7 +3559,7 @@ void test_wdb_users_save_success(void **state) {
     expect_value(__wrap_sqlite3_bind_double, value, user_auth_failed_timestamp);
     will_return(__wrap_sqlite3_bind_double, 0);
     expect_value(__wrap_sqlite3_bind_double, index, 21);
-    expect_value(__wrap_sqlite3_bind_double, value, user_password_last_set_time);
+    expect_value(__wrap_sqlite3_bind_double, value, user_password_last_change);
     will_return(__wrap_sqlite3_bind_double, 0);
     expect_value(__wrap_sqlite3_bind_int, index, 22);
     expect_value(__wrap_sqlite3_bind_int, value, user_password_expiration_date);
@@ -3566,51 +3571,52 @@ void test_wdb_users_save_success(void **state) {
     expect_value(__wrap_sqlite3_bind_int, value, user_password_inactive_days);
     will_return(__wrap_sqlite3_bind_int, 0);
     expect_value(__wrap_sqlite3_bind_int, index, 25);
-    expect_value(__wrap_sqlite3_bind_int, value, user_password_last_change);
-    will_return(__wrap_sqlite3_bind_int, 0);
-    expect_value(__wrap_sqlite3_bind_int, index, 26);
     expect_value(__wrap_sqlite3_bind_int, value, user_password_max_days_between_changes);
     will_return(__wrap_sqlite3_bind_int, 0);
-    expect_value(__wrap_sqlite3_bind_int, index, 27);
+    expect_value(__wrap_sqlite3_bind_int, index, 26);
     expect_value(__wrap_sqlite3_bind_int, value, user_password_min_days_between_changes);
     will_return(__wrap_sqlite3_bind_int, 0);
-    expect_value(__wrap_sqlite3_bind_text, pos, 28);
+    expect_value(__wrap_sqlite3_bind_text, pos, 27);
     expect_string(__wrap_sqlite3_bind_text, buffer, "status");
     will_return(__wrap_sqlite3_bind_text, 0);
-    expect_value(__wrap_sqlite3_bind_int, index, 29);
+    expect_value(__wrap_sqlite3_bind_int, index, 28);
     expect_value(__wrap_sqlite3_bind_int, value, user_password_warning_days_before_expiration);
     will_return(__wrap_sqlite3_bind_int, 0);
-    expect_value(__wrap_sqlite3_bind_int64, index, 30);
+    expect_value(__wrap_sqlite3_bind_int64, index, 29);
     expect_value(__wrap_sqlite3_bind_int64, value, process_pid);
     will_return(__wrap_sqlite3_bind_int64, 0);
-    expect_value(__wrap_sqlite3_bind_text, pos, 31);
+    expect_value(__wrap_sqlite3_bind_text, pos, 30);
     expect_string(__wrap_sqlite3_bind_text, buffer, "192.168.0.1,192.168.0.2");
     will_return(__wrap_sqlite3_bind_text, 0);
-    expect_value(__wrap_sqlite3_bind_int, index, 32);
+    expect_value(__wrap_sqlite3_bind_int, index, 31);
     expect_value(__wrap_sqlite3_bind_int, value, true);
     will_return(__wrap_sqlite3_bind_int, 0);
-    expect_value(__wrap_sqlite3_bind_text, pos, 33);
+    expect_value(__wrap_sqlite3_bind_text, pos, 32);
     expect_string(__wrap_sqlite3_bind_text, buffer, "type");
     will_return(__wrap_sqlite3_bind_text, 0);
-    expect_value(__wrap_sqlite3_bind_text, pos, 34);
+    expect_value(__wrap_sqlite3_bind_text, pos, 33);
     expect_string(__wrap_sqlite3_bind_text, buffer, "tty");
     will_return(__wrap_sqlite3_bind_text, 0);
-    expect_value(__wrap_sqlite3_bind_text, pos, 35);
+    expect_value(__wrap_sqlite3_bind_text, pos, 34);
     expect_string(__wrap_sqlite3_bind_text, buffer, "checksum");
     will_return(__wrap_sqlite3_bind_text, 0);
     will_return(__wrap_wdb_step, SQLITE_DONE);
 
-    output = wdb_users_save(data, (user_record_t){.scan_id = "scan_id", .scan_time = "scan_time", .user_name = "name", .user_full_name = "full_name",
-                            .user_home = "home", .user_id = user_id, .user_uid_signed = user_uid_signed, .user_uuid = "uuid", .user_groups = "group1,group2",
-                            .user_group_id = user_group_id, .user_group_id_signed = user_group_id_signed, .user_created = user_created,
-                            .user_roles = "roles", .user_shell = "shell", .user_type = "type", .user_is_hidden = true, .user_is_remote = false,
-                            .user_last_login = user_last_login, .user_auth_failed_count = user_auth_failed_count, .user_auth_failed_timestamp = user_auth_failed_timestamp,
-                            .user_password_last_set_time = user_password_last_set_time, .user_password_expiration_date = user_password_expiration_date,
-                            .user_password_hash_algorithm = "hash", .user_password_inactive_days = user_password_inactive_days, .user_password_last_change = user_password_last_change,
-                            .user_password_max_days_between_changes = user_password_max_days_between_changes, .user_password_min_days_between_changes = user_password_min_days_between_changes,
-                            .user_password_status = "status", .user_password_warning_days_before_expiration = user_password_warning_days_before_expiration,
-                            .process_pid = process_pid, .host_ip = "192.168.0.1,192.168.0.2", .login_status = true, .login_type = "type", .login_tty = "tty",
-                            .checksum = "checksum"}, false);
+    user_record_t user_record = {
+        .scan_id = "scan_id", .scan_time = "scan_time", .user_name = "name", .user_full_name = "full_name",
+        .user_home = "home", .user_id = user_id, .user_uid_signed = user_uid_signed, .user_uuid = "uuid", .user_groups = "group1,group2",
+        .user_group_id = user_group_id, .user_group_id_signed = user_group_id_signed, .user_created = user_created,
+        .user_roles = "roles", .user_shell = "shell", .user_type = "type", .user_is_hidden = true, .user_is_remote = false,
+        .user_last_login = user_last_login, .user_auth_failed_count = user_auth_failed_count, .user_auth_failed_timestamp = user_auth_failed_timestamp,
+        .user_password_expiration_date = user_password_expiration_date, .user_password_hash_algorithm = "hash",
+        .user_password_inactive_days = user_password_inactive_days, .user_password_last_change = user_password_last_change,
+        .user_password_max_days_between_changes = user_password_max_days_between_changes, .user_password_min_days_between_changes = user_password_min_days_between_changes,
+        .user_password_status = "status", .user_password_warning_days_before_expiration = user_password_warning_days_before_expiration,
+        .process_pid = process_pid, .host_ip = "192.168.0.1,192.168.0.2", .login_status = true, .login_type = "type", .login_tty = "tty",
+        .checksum = "checksum"
+    };
+
+    output = wdb_users_save(data, &user_record, false);
     assert_int_equal(output, 0);
 }
 
@@ -3627,10 +3633,9 @@ void test_wdb_users_insert_sql_fail(void **state) {
     const long long user_last_login = 1750696338;
     const long long user_auth_failed_count = 1;
     const double user_auth_failed_timestamp = 1750696338.665;
-    const double user_password_last_set_time = 1750696338;
+    const double user_password_last_change = 1750696338.665;
     const int user_password_expiration_date = 1750696338;
     const int user_password_inactive_days = 0;
-    const int user_password_last_change = 10;
     const int user_password_max_days_between_changes = 9999;
     const int user_password_min_days_between_changes = 0;
     const int user_password_warning_days_before_expiration = 10;
@@ -3698,7 +3703,7 @@ void test_wdb_users_insert_sql_fail(void **state) {
     expect_value(__wrap_sqlite3_bind_double, value, user_auth_failed_timestamp);
     will_return(__wrap_sqlite3_bind_double, 0);
     expect_value(__wrap_sqlite3_bind_double, index, 21);
-    expect_value(__wrap_sqlite3_bind_double, value, user_password_last_set_time);
+    expect_value(__wrap_sqlite3_bind_double, value, user_password_last_change);
     will_return(__wrap_sqlite3_bind_double, 0);
     expect_value(__wrap_sqlite3_bind_int, index, 22);
     expect_value(__wrap_sqlite3_bind_int, value, user_password_expiration_date);
@@ -3710,36 +3715,33 @@ void test_wdb_users_insert_sql_fail(void **state) {
     expect_value(__wrap_sqlite3_bind_int, value, user_password_inactive_days);
     will_return(__wrap_sqlite3_bind_int, 0);
     expect_value(__wrap_sqlite3_bind_int, index, 25);
-    expect_value(__wrap_sqlite3_bind_int, value, user_password_last_change);
-    will_return(__wrap_sqlite3_bind_int, 0);
-    expect_value(__wrap_sqlite3_bind_int, index, 26);
     expect_value(__wrap_sqlite3_bind_int, value, user_password_max_days_between_changes);
     will_return(__wrap_sqlite3_bind_int, 0);
-    expect_value(__wrap_sqlite3_bind_int, index, 27);
+    expect_value(__wrap_sqlite3_bind_int, index, 26);
     expect_value(__wrap_sqlite3_bind_int, value, user_password_min_days_between_changes);
     will_return(__wrap_sqlite3_bind_int, 0);
-    expect_value(__wrap_sqlite3_bind_text, pos, 28);
+    expect_value(__wrap_sqlite3_bind_text, pos, 27);
     expect_string(__wrap_sqlite3_bind_text, buffer, "status");
     will_return(__wrap_sqlite3_bind_text, 0);
-    expect_value(__wrap_sqlite3_bind_int, index, 29);
+    expect_value(__wrap_sqlite3_bind_int, index, 28);
     expect_value(__wrap_sqlite3_bind_int, value, user_password_warning_days_before_expiration);
     will_return(__wrap_sqlite3_bind_int, 0);
-    expect_value(__wrap_sqlite3_bind_int64, index, 30);
+    expect_value(__wrap_sqlite3_bind_int64, index, 29);
     expect_value(__wrap_sqlite3_bind_int64, value, process_pid);
     will_return(__wrap_sqlite3_bind_int64, 0);
-    expect_value(__wrap_sqlite3_bind_text, pos, 31);
+    expect_value(__wrap_sqlite3_bind_text, pos, 30);
     expect_string(__wrap_sqlite3_bind_text, buffer, "192.168.0.1,192.168.0.2");
     will_return(__wrap_sqlite3_bind_text, 0);
-    expect_value(__wrap_sqlite3_bind_int, index, 32);
+    expect_value(__wrap_sqlite3_bind_int, index, 31);
     expect_value(__wrap_sqlite3_bind_int, value, true);
     will_return(__wrap_sqlite3_bind_int, 0);
-    expect_value(__wrap_sqlite3_bind_text, pos, 33);
+    expect_value(__wrap_sqlite3_bind_text, pos, 32);
     expect_string(__wrap_sqlite3_bind_text, buffer, "type");
     will_return(__wrap_sqlite3_bind_text, 0);
-    expect_value(__wrap_sqlite3_bind_text, pos, 34);
+    expect_value(__wrap_sqlite3_bind_text, pos, 33);
     expect_string(__wrap_sqlite3_bind_text, buffer, "tty");
     will_return(__wrap_sqlite3_bind_text, 0);
-    expect_value(__wrap_sqlite3_bind_text, pos, 35);
+    expect_value(__wrap_sqlite3_bind_text, pos, 34);
     expect_string(__wrap_sqlite3_bind_text, buffer, "checksum");
     will_return(__wrap_sqlite3_bind_text, 0);
 
@@ -3747,17 +3749,21 @@ void test_wdb_users_insert_sql_fail(void **state) {
     will_return(__wrap_sqlite3_errmsg, "ERROR");
     expect_string(__wrap__merror, formatted_msg, "SQLite: ERROR");
 
-    output = wdb_users_insert(data, (user_record_t){.scan_id = "scan_id", .scan_time = "scan_time", .user_name = "name", .user_full_name = "full_name",
-                            .user_home = "home", .user_id = user_id, .user_uid_signed = user_uid_signed, .user_uuid = "uuid", .user_groups = "group1,group2",
-                            .user_group_id = user_group_id, .user_group_id_signed = user_group_id_signed, .user_created = user_created,
-                            .user_roles = "roles", .user_shell = "shell", .user_type = "type", .user_is_hidden = true, .user_is_remote = false,
-                            .user_last_login = user_last_login, .user_auth_failed_count = user_auth_failed_count, .user_auth_failed_timestamp = user_auth_failed_timestamp,
-                            .user_password_last_set_time = user_password_last_set_time, .user_password_expiration_date = user_password_expiration_date,
-                            .user_password_hash_algorithm = "hash", .user_password_inactive_days = user_password_inactive_days, .user_password_last_change = user_password_last_change,
-                            .user_password_max_days_between_changes = user_password_max_days_between_changes, .user_password_min_days_between_changes = user_password_min_days_between_changes,
-                            .user_password_status = "status", .user_password_warning_days_before_expiration = user_password_warning_days_before_expiration,
-                            .process_pid = process_pid, .host_ip = "192.168.0.1,192.168.0.2", .login_status = true, .login_type = "type", .login_tty = "tty",
-                            .checksum = "checksum"}, false);
+    user_record_t user_record = {
+        .scan_id = "scan_id", .scan_time = "scan_time", .user_name = "name", .user_full_name = "full_name",
+        .user_home = "home", .user_id = user_id, .user_uid_signed = user_uid_signed, .user_uuid = "uuid", .user_groups = "group1,group2",
+        .user_group_id = user_group_id, .user_group_id_signed = user_group_id_signed, .user_created = user_created,
+        .user_roles = "roles", .user_shell = "shell", .user_type = "type", .user_is_hidden = true, .user_is_remote = false,
+        .user_last_login = user_last_login, .user_auth_failed_count = user_auth_failed_count, .user_auth_failed_timestamp = user_auth_failed_timestamp,
+        .user_password_expiration_date = user_password_expiration_date, .user_password_hash_algorithm = "hash",
+        .user_password_inactive_days = user_password_inactive_days, .user_password_last_change = user_password_last_change,
+        .user_password_max_days_between_changes = user_password_max_days_between_changes, .user_password_min_days_between_changes = user_password_min_days_between_changes,
+        .user_password_status = "status", .user_password_warning_days_before_expiration = user_password_warning_days_before_expiration,
+        .process_pid = process_pid, .host_ip = "192.168.0.1,192.168.0.2", .login_status = true, .login_type = "type", .login_tty = "tty",
+        .checksum = "checksum"
+    };
+
+    output = wdb_users_insert(data, &user_record, false);
     assert_int_equal(output, -1);
 }
 
