@@ -21,7 +21,7 @@
 !define MUI_ICON install.ico
 !define MUI_UNICON uninstall.ico
 !define VERSION "4.13.0"
-!define REVISION "beta1"
+!define REVISION "rc1"
 !define NAME "Wazuh"
 !define SERVICE "WazuhSvc"
 
