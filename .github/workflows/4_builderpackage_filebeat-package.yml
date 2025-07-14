@@ -75,7 +75,7 @@ jobs:
 
     env:
       FILEBEAT_VERSION: 7.10.2
-      S3_BUCKET_PATH: s3://packages-dev.internal.wazuh.com/development/wazuh/4.x/secondary/filebeat/packages/
+      S3_BUCKET_PATH: s3://xdrsiem-packages-dev-internal/development/wazuh/4.x/secondary/filebeat/packages/
 
     steps:
       - name: Cancel previous runs
