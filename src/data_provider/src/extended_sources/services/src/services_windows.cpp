@@ -8,35 +8,43 @@
 #include <string>
 #include <vector>
 
-#include "services_windows.hpp"
-// #include <nlohmann/json.hpp>
-// #include "windows_api_wrapper.hpp"
 #include "encodingWindowsHelper.h"
+#include "services_windows.hpp"
 
 using json = nlohmann::json;
 
-std::optional<std::string> expandEnvString(const std::string& str) {
-    DWORD size = ExpandEnvironmentStringsA(str.c_str(), nullptr, 0);
-    if (size == 0) {
+std::optional<std::wstring> expandEnvStringW(const std::wstring& input)
+{
+    DWORD size = ExpandEnvironmentStringsW(input.c_str(), nullptr, 0);
+
+    if (size == 0)
+    {
         return std::nullopt;
     }
-    std::string result(size, '\0');
-    ExpandEnvironmentStringsA(str.c_str(), &result[0], size);
-    result.pop_back(); // remove null terminator
+
+    std::wstring result(size, L'\0');
+
+    if (ExpandEnvironmentStringsW(input.c_str(), &result[0], size) == 0)
+    {
+        return std::nullopt;
+    }
+
+    result.pop_back(); // Remove null terminator
     return result;
 }
 
 const std::string kSvcStartType[] = {"BOOT_START", "SYSTEM_START", "AUTO_START", "DEMAND_START", "DISABLED"};
 
-const std::string kSvcStatus[] = {
-    "UNKNOWN", "STOPPED", "START_PENDING", "STOP_PENDING", "RUNNING", "CONTINUE_PENDING", "PAUSE_PENDING", "PAUSED"};
+const std::string kSvcStatus[] =
+{
+    "UNKNOWN", "STOPPED", "START_PENDING", "STOP_PENDING", "RUNNING", "CONTINUE_PENDING", "PAUSE_PENDING", "PAUSED"
+};
 
 /* Possible values defined here (dwServiceType):
  * https://learn.microsoft.com/en-us/windows/win32/api/winsvc/ns-winsvc-service_status
  * https://learn.microsoft.com/en-us/windows/win32/api/winsvc/ns-winsvc-query_service_configw
  */
-const std::map<int, std::string> kServiceType = {
-    {0x00000001, "KERNEL_DRIVER"},
+const std::map<int, std::string> kServiceType = {{0x00000001, "KERNEL_DRIVER"},
     {0x00000002, "FILE_SYSTEM_DRIVER"},
     {0x00000010, "OWN_PROCESS"},
     {0x00000020, "SHARE_PROCESS"},
@@ -49,45 +57,64 @@ const std::map<int, std::string> kServiceType = {
     {0x00000120, "SHARE_PROCESS(Interactive)"}
 };
 
-std::optional<std::string> readRegistryValue(HKEY root,
-                                             const std::string& subkey,
-                                             const std::string& valueName) {
-    HKEY hKey;
-    if (RegOpenKeyExA(root, subkey.c_str(), 0, KEY_READ, &hKey) != ERROR_SUCCESS) {
+std::optional<std::wstring> readServiceDllFromParameters(const std::wstring& serviceName)
+{
+    const std::wstring subkey = L"SYSTEM\\CurrentControlSet\\Services\\" + serviceName + L"\\Parameters";
+    HKEY hKey = nullptr;
+
+    LSTATUS status = RegOpenKeyExW(HKEY_LOCAL_MACHINE, subkey.c_str(), 0, KEY_READ, &hKey);
+
+    if (status != ERROR_SUCCESS)
+    {
         return std::nullopt;
     }
 
     DWORD type = 0;
     DWORD dataSize = 0;
-    if (RegQueryValueExA(hKey, valueName.c_str(), nullptr, &type, nullptr, &dataSize) != ERROR_SUCCESS ||
-        type != REG_SZ) {
+    status = RegQueryValueExW(hKey, L"ServiceDll", nullptr, &type, nullptr, &dataSize);
+
+    if (status != ERROR_SUCCESS || (type != REG_SZ && type != REG_EXPAND_SZ))
+    {
         RegCloseKey(hKey);
         return std::nullopt;
     }
 
-    std::vector<char> data(dataSize);
-    if (RegQueryValueExA(hKey, valueName.c_str(), nullptr, nullptr,
-                         reinterpret_cast<LPBYTE>(data.data()), &dataSize) != ERROR_SUCCESS) {
-        RegCloseKey(hKey);
-        return std::nullopt;
-    }
+    std::wstring buffer(dataSize / sizeof(wchar_t), L'\0');
+    status = RegQueryValueExW(hKey, L"ServiceDll", nullptr, nullptr, reinterpret_cast<LPBYTE>(&buffer[0]), &dataSize);
 
     RegCloseKey(hKey);
-    return std::string(data.data());
+
+    if (status != ERROR_SUCCESS)
+    {
+        return std::nullopt;
+    }
+
+    if (!buffer.empty() && buffer.back() == L'\0')
+    {
+        buffer.pop_back();
+    }
+
+    return buffer;
 }
 
-bool ServicesProvider::getService(SC_HANDLE scmHandle, const ENUM_SERVICE_STATUS_PROCESS& svc, json& results) {
+ServicesProvider::ServicesProvider() {}
+
+bool ServicesProvider::getService(SC_HANDLE scmHandle, const ENUM_SERVICE_STATUS_PROCESSW& svc, json& results)
+{
 
     auto svcHandle = OpenServiceW(scmHandle, svc.lpServiceName, SERVICE_QUERY_CONFIG);
 
-    if (!svcHandle) {
+    if (!svcHandle)
+    {
         std::cerr << "Error opening service handle: " << GetLastError() << "\n";
         return false;
     }
 
     DWORD cbBufSize = 0;
     QueryServiceConfigW(svcHandle, nullptr, 0, &cbBufSize);
-    if (GetLastError() != ERROR_INSUFFICIENT_BUFFER) {
+
+    if (GetLastError() != ERROR_INSUFFICIENT_BUFFER)
+    {
         std::cerr << "Error getting config size: " << GetLastError() << "\n";
         CloseServiceHandle(svcHandle);
         return false;
@@ -96,7 +123,8 @@ bool ServicesProvider::getService(SC_HANDLE scmHandle, const ENUM_SERVICE_STATUS
     auto configBuf = std::make_unique<wchar_t[]>(cbBufSize);
     auto config = reinterpret_cast<LPQUERY_SERVICE_CONFIGW>(configBuf.get());
 
-    if (!QueryServiceConfigW(svcHandle, config, cbBufSize, &cbBufSize)) {
+    if (!QueryServiceConfigW(svcHandle, config, cbBufSize, &cbBufSize))
+    {
         std::cerr << "Error reading service config: " << GetLastError() << "\n";
         CloseServiceHandle(svcHandle);
         return false;
@@ -113,33 +141,49 @@ bool ServicesProvider::getService(SC_HANDLE scmHandle, const ENUM_SERVICE_STATUS
     item["path"] = Utils::EncodingWindowsHelper::wstringToStringUTF8(config->lpBinaryPathName);
     item["user_account"] = Utils::EncodingWindowsHelper::wstringToStringUTF8(config->lpServiceStartName);
 
-    if (kServiceType.count(config->dwServiceType) > 0) {
+    if (kServiceType.count(config->dwServiceType) > 0)
+    {
         item["service_type"] = kServiceType.at(config->dwServiceType);
-    } else {
+    }
+    else
+    {
         item["service_type"] = "UNKNOWN";
     }
 
+    item["description"] = "";
+
     DWORD descBufSize = 0;
     QueryServiceConfig2W(svcHandle, SERVICE_CONFIG_DESCRIPTION, nullptr, 0, &descBufSize);
-    if (GetLastError() == ERROR_INSUFFICIENT_BUFFER && descBufSize > 0) {
-        auto descBuf = std::make_unique<BYTE[]>(descBufSize);
-        auto desc = reinterpret_cast<LPSERVICE_DESCRIPTION>(descBuf.get());
 
-        if (QueryServiceConfig2W(svcHandle, SERVICE_CONFIG_DESCRIPTION,
-                                descBuf.get(), descBufSize, &descBufSize)) {
-            if (desc->lpDescription != nullptr) {
+    if (GetLastError() == ERROR_INSUFFICIENT_BUFFER && descBufSize > 0)
+    {
+        auto descBuf = std::make_unique<BYTE[]>(descBufSize);
+        auto desc = reinterpret_cast<LPSERVICE_DESCRIPTIONW>(descBuf.get());
+
+        if (QueryServiceConfig2W(svcHandle, SERVICE_CONFIG_DESCRIPTION, descBuf.get(), descBufSize, &descBufSize))
+        {
+            if (desc->lpDescription != nullptr)
+            {
                 item["description"] = Utils::EncodingWindowsHelper::wstringToStringUTF8(desc->lpDescription);
             }
-        } else {
+        }
+        else
+        {
             std::cerr << "Warning: Failed to get service description. Error: " << GetLastError() << "\n";
         }
     }
 
-    std::string regPath = "SYSTEM\\CurrentControlSet\\Services\\" + item["name"].get<std::string>() + "\\Parameters";
-    auto serviceDll = readRegistryValue(HKEY_LOCAL_MACHINE, regPath, "ServiceDll");
-    if (serviceDll.has_value()) {
-        auto expanded = expandEnvString(serviceDll.value());
-        item["module_path"] = expanded.value_or(serviceDll.value());
+    auto serviceDll = readServiceDllFromParameters(svc.lpServiceName);
+
+    if (serviceDll.has_value())
+    {
+        auto expanded = expandEnvStringW(serviceDll.value());
+        std::wstring finalPath = expanded.value_or(serviceDll.value());
+        item["module_path"] = Utils::EncodingWindowsHelper::wstringToStringUTF8(finalPath);
+    }
+    else
+    {
+        item["module_path"] = "";
     }
 
     results.push_back(item);
@@ -147,44 +191,62 @@ bool ServicesProvider::getService(SC_HANDLE scmHandle, const ENUM_SERVICE_STATUS
     return true;
 }
 
-nlohmann::json ServicesProvider::collect() {
+nlohmann::json ServicesProvider::collect()
+{
 
     json results = json::array();
 
     auto scmHandle = OpenSCManager(nullptr, nullptr, GENERIC_READ);
 
-    if (!scmHandle) {
+    if (!scmHandle)
+    {
         std::cerr << "Failed to connect to Service Connection Manager: " << GetLastError() << "\n";
         return results;
     }
 
     DWORD bytesNeeded = 0;
     DWORD serviceCount = 0;
-    EnumServicesStatusEx(scmHandle, SC_ENUM_PROCESS_INFO,
-                         SERVICE_WIN32 | SERVICE_DRIVER, SERVICE_STATE_ALL,
-                         nullptr, 0, &bytesNeeded, &serviceCount,
-                         nullptr, nullptr);
+    EnumServicesStatusExW(scmHandle,
+                          SC_ENUM_PROCESS_INFO,
+                          SERVICE_WIN32 | SERVICE_DRIVER,
+                          SERVICE_STATE_ALL,
+                          nullptr,
+                          0,
+                          &bytesNeeded,
+                          &serviceCount,
+                          nullptr,
+                          nullptr);
 
-    if (GetLastError() != ERROR_MORE_DATA) {
+    if (GetLastError() != ERROR_MORE_DATA)
+    {
         std::cerr << "Error querying buffer size: " << GetLastError() << "\n";
         CloseServiceHandle(scmHandle);
         return results;
     }
 
     auto buffer = std::make_unique<BYTE[]>(bytesNeeded);
-    auto services = reinterpret_cast<ENUM_SERVICE_STATUS_PROCESS*>(buffer.get());
+    auto services = reinterpret_cast<ENUM_SERVICE_STATUS_PROCESSW*>(buffer.get());
 
-    if (!EnumServicesStatusEx(scmHandle, SC_ENUM_PROCESS_INFO,
-                              SERVICE_WIN32 | SERVICE_DRIVER, SERVICE_STATE_ALL,
-                              buffer.get(), bytesNeeded, &bytesNeeded,
-                              &serviceCount, nullptr, nullptr)) {
+    if (!EnumServicesStatusExW(scmHandle,
+                               SC_ENUM_PROCESS_INFO,
+                               SERVICE_WIN32 | SERVICE_DRIVER,
+                               SERVICE_STATE_ALL,
+                               buffer.get(),
+                               bytesNeeded,
+                               &bytesNeeded,
+                               &serviceCount,
+                               nullptr,
+                               nullptr))
+    {
         std::cerr << "Error enumerating services: " << GetLastError() << "\n";
         CloseServiceHandle(scmHandle);
         return results;
     }
 
-    for (DWORD i = 0; i < serviceCount; ++i) {
-        if (!getService(scmHandle, services[i], results)) {
+    for (DWORD i = 0; i < serviceCount; ++i)
+    {
+        if (!getService(scmHandle, services[i], results))
+        {
             std::cerr << "Warning: Failed to get details for service\n";
         }
     }
