@@ -9,6 +9,8 @@
 
 #pragma once
 
+#include <windows.h>
+#include <winsvc.h>
 #include "json.hpp"
 
 class ServicesProvider
@@ -27,6 +29,6 @@ class ServicesProvider
         /// @param svc The service status to retrieve details for.
         /// @param results The JSON array to append the service details to.
         /// @return True if successful, false otherwise.
-        bool getService(SC_HANDLE scmHandle, const ENUM_SERVICE_STATUS_PROCESS& svc, nlohmann::json& results);
+        bool getService(SC_HANDLE scmHandle, const ENUM_SERVICE_STATUS_PROCESSW& svc, nlohmann::json& results);
 
 };

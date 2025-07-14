@@ -23,7 +23,6 @@ set(SRC_FILES "")
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   list(APPEND SRC_FILES src/services_windows.cpp)
-  #set(PLATFORM_LIBS_SERVICES netapi32 advapi32)
 else()
   if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     list(APPEND SRC_FILES src/systemd_units_linux.cpp)
@@ -31,13 +30,6 @@ else()
 endif()
 
 add_library(services STATIC ${SRC_FILES})
-
-if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
-  # target_link_libraries(services
-  #     wtsapi32
-  #     ${PLATFORM_LIBS_SERVICES}
-  # )
-endif()
 
 if(UNIT_TEST)
   if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
