@@ -4195,7 +4195,7 @@ checks:
        - soc_2: ["CC6.1"]
      condition: any
      rules:
-      - 'f:/etc/pam.d/common-password -> !r:^# && r:password && r:pam_pwquality\.so && n:remember=(\d+) compare >= 5'
+      - 'f:/etc/pam.d/common-password -> !r:^# && r:password && r:pam_pwhistory\.so && n:remember=(\d+) compare >= 5'
       - 'f:/etc/pam.d/common-password -> !r:^# && r:password && r:pam_unix\.so && n:remember=(\d+) compare >= 5'
 
   # 5.3.3.1.1 Ensure password failed attempts lockout is configured. (Automated)
