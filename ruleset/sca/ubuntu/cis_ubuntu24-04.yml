@@ -6524,7 +6524,6 @@ checks:
      condition: all
      rules:
       - 'c:stat -Lc "%n %a %u %U %g %G" /etc/security/opasswd -> r:0 root 0 root && r:600|400|500'
-      - 'c:stat -Lc "%n %a %u %U %g %G" /etc/security/opasswd.old -> r:0 root 0 root && r:600|400|500'
 
   # 7.1.11 Ensure world writable files and directories are secured. (Automated) - Not Implemented
   # 7.1.12 Ensure no files or directories without an owner and a group exist. (Automated) - Not Implemented
