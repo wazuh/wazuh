@@ -8,16 +8,18 @@ All notable changes to this project will be documented in this file.
 #### Added
 
 - Added Analysisd ability to do a hot ruleset reload. ([#29458](https://github.com/wazuh/wazuh/pull/29458))
-- Added support for hot ruleset reload via API. ([#29954](https://github.com/wazuh/wazuh/pull/29954))
 - Added support for global queries of FIM and system inventory data. ([#27894](https://github.com/wazuh/wazuh/issues/27894))
 - Added sanity checks for hotfix values in Vulnerability Detector. ([#30504](https://github.com/wazuh/wazuh/pull/30504))
 
 #### Fixed
+
 - Fixed missing agent version handling in Vulnerability Detector. ([#29181](https://github.com/wazuh/wazuh/pull/29181))
 - Fixed race condition in agent status synchronization between worker and master. ([#29624](https://github.com/wazuh/wazuh/pull/29624))
 - Fixed agent-group assignment for missing agents with improved error handling. ([#30534](https://github.com/wazuh/wazuh/pull/30534))
+- Fixed missing OS info updates in global inventory after first scan. ([#30818](https://github.com/wazuh/wazuh/pull/30818))
 
 #### Changed
+
 - Improved reports functionality to avoid duplicated daily FIM reports. ([#29232](https://github.com/wazuh/wazuh/pull/29232))
 - Optimized agent query endpoints. ([#29363](https://github.com/wazuh/wazuh/pull/29363))
 - Implemented RBAC resource cache with TTL support. ([#29406](https://github.com/wazuh/wazuh/pull/29406))
@@ -29,12 +31,14 @@ All notable changes to this project will be documented in this file.
 ### Agent
 
 #### Added
+
 - Added support for Rocky Linux and AlmaLinux in the agent upgrade module. ([#29391](https://github.com/wazuh/wazuh/pull/29391))
 - Added handling of CentOS 9 SCA files in package specs. ([#29393](https://github.com/wazuh/wazuh-packages/pull/29393))
 - Added SCA support for Oracle Linux 10. ([#29139](https://github.com/wazuh/wazuh/pull/29139))
 - Added Rootcheck rule to detect root-owned files with world-writable permissions. ([#30556](https://github.com/wazuh/wazuh/pull/30556))
 
 #### Fixed
+
 - Fixed incorrect handling of events in the Custom logs bucket. ([#29312](https://github.com/wazuh/wazuh/pull/29312))
 - Fixed download Azure's blob race condition. ([29317](https://github.com/wazuh/wazuh/pull/29317))
 - Fixed FIM reports false files. ([#28962](https://github.com/wazuh/wazuh/pull/28962))
@@ -45,6 +49,7 @@ All notable changes to this project will be documented in this file.
 - Fixed Windows agent not starting after manual upgrade by deferring service start to post-install. ([#29820](https://github.com/wazuh/wazuh/pull/29820))
 
 #### Changed
+
 - Improved agent synchronization to reduce redundant payload transfers. ([#29426](https://github.com/wazuh/wazuh/pull/29426))
 - Improved Syscollector to report only Python packages managed by `dpkg`. ([#28688](https://github.com/wazuh/wazuh/pull/28688))
 - Improved `wazuh-db` JSON handling performance by updating external dependencies. ([#29399](https://github.com/wazuh/wazuh/issues/29399))
@@ -55,8 +60,8 @@ All notable changes to this project will be documented in this file.
 ### RESTful API
 
 #### Added
+
 - Added the server uuid to the /manager/info endpoint. ([#29524](https://github.com/wazuh/wazuh/pull/29524))
-- Added support for hot ruleset reload in the related API endpoints. ([#29954](https://github.com/wazuh/wazuh/pull/29954))
 
 #### Fixed
 
@@ -82,6 +87,7 @@ All notable changes to this project will be documented in this file.
 ### Other
 
 #### Changed
+
 - Updated Python dependencies: `setuptools`, `Jinja2`, and `PyJWT`. ([#29610](https://github.com/wazuh/wazuh/pull/29610))
 - Upgraded Python embedded interpreter to 3.10.16. ([#28646](https://github.com/wazuh/wazuh/pull/28646))
 - Upgraded h11 to 0.16.0 and httpcore to 1.0.9. ([#29735](https://github.com/wazuh/wazuh/pull/29735))
