@@ -51,4 +51,11 @@
 #define HC_INVALID_VERSION_RESPONSE     "Agent version must be lower or equal to manager version"
 #define HC_INVALID_VERSION              "Incompatible version"
 #define HC_RETRIEVE_VERSION             "Couldn't retrieve version"
+
+/* Sync responses */
+#define SYNC_HEADER                     "_sync "
+#define FIM_SYNC_HEADER                 "fim" SYNC_HEADER
+#define SYSCOLECTOR_SYNC_HEADER         "syscollector" SYNC_HEADER
+#define SCA_SYNC_HEADER                 "sca" SYNC_HEADER
+
 #endif /* RC_H */
