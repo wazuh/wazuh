@@ -249,6 +249,9 @@ void *dispatch_buffer(__attribute__((unused)) void * arg) {
             delay(&ts1);
         }
     }
+
+    return NULL;
+
 }
 
 void delay(struct timespec * ts_loop) {
@@ -316,9 +319,21 @@ int w_agentd_buffer_resize(unsigned int current_capacity, unsigned int desired_c
     }
 
     // Attempt to reallocate the buffer
-    unsigned int agent_msg_count = w_agentd_get_buffer_lenght();
-    w_mutex_lock(&mutex_lock);
+    int tmp_agent_msg_count = w_agentd_get_buffer_lenght();
+    if (tmp_agent_msg_count < 0) {
+        merror("Failed to get buffer length.");
+        return -1;
+    }
 
+    unsigned int agent_msg_count = (unsigned int)tmp_agent_msg_count;
+    if (agent_msg_count > (current_capacity + 1)) {
+        merror("Agent message count (%u) exceeds current buffer capacity (%u).",
+            agent_msg_count, current_capacity + 1);
+        return -1;
+    }
+
+    w_mutex_lock(&mutex_lock);
+    
     char **temp_buffer = NULL;
     if (desired_capacity > current_capacity) {
         // We add +1 to the desired capacity for internal management of the circular buffer,
