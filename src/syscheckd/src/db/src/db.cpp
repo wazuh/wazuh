@@ -146,22 +146,17 @@ FIMDBErrorCode fim_db_init(int storage,
 
                     if (json.at("type") == "state")
                     {
-                        std::string perm_string = json["data"]["attributes"]["perm"];
+                        std::string perm_string = json["data"]["attributes"]["permissions"];
                         auto perm_json = nlohmann::json::parse(perm_string, nullptr, false);
 
                         if (!perm_json.is_discarded())
                         {
-                            json["data"]["attributes"].erase("perm");
-                            json["data"]["attributes"]["perm"] = perm_json;
+                            json["data"]["attributes"].erase("permissions");
+                            json["data"]["attributes"]["permissions"] = perm_json;
                         }
 
                         json["data"]["attributes"]["type"] = "file";
-                        json["data"]["attributes"].erase("dev");
-                        json["data"]["attributes"].erase("last_event");
-                        json["data"]["attributes"].erase("mode");
-                        json["data"]["attributes"].erase("options");
                         json["data"]["attributes"].erase("path");
-                        json["data"]["attributes"].erase("scanned");
 
                         FIMDB::instance().setTimeLastSyncMsg();
                     }
@@ -195,18 +190,18 @@ FIMDBErrorCode fim_db_init(int storage,
                             const auto registryType { json.at("data").at("attributes").at("type").get<uint32_t>() };
                             json["data"]["attributes"]["value_type"] = RegistryTypes<OS_TYPE>::typeText(registryType);
                             json["data"]["attributes"]["type"] = "registry_value";
-                            json["data"]["value_name"] = json["data"]["attributes"]["name"];
-                            json["data"]["attributes"].erase("name");
+                            json["data"]["value_name"] = json["data"]["attributes"]["value"];
+                            json["data"]["attributes"].erase("value");
                         }
                         else
                         {
-                            std::string perm_string = json["data"]["attributes"]["perm"];
+                            std::string perm_string = json["data"]["attributes"]["permissions"];
                             auto perm_json = nlohmann::json::parse(perm_string, nullptr, false);
 
                             if (!perm_json.is_discarded())
                             {
-                                json["data"]["attributes"].erase("perm");
-                                json["data"]["attributes"]["perm"] = perm_json;
+                                json["data"]["attributes"].erase("permissions");
+                                json["data"]["attributes"]["permissions"] = perm_json;
                             }
 
                             json["data"]["attributes"]["type"] = "registry_key";
@@ -214,12 +209,9 @@ FIMDBErrorCode fim_db_init(int storage,
 
                         json["data"]["path"] = json["data"]["attributes"]["path"];
                         json["data"]["attributes"].erase("path");
-                        json["data"]["arch"] = json["data"]["attributes"]["arch"];
-                        json["data"]["attributes"].erase("arch");
+                        json["data"]["architecture"] = json["data"]["attributes"]["architecture"];
+                        json["data"]["attributes"].erase("architecture");
 
-                        json["data"]["attributes"].erase("hash_full_path");
-                        json["data"]["attributes"].erase("last_event");
-                        json["data"]["attributes"].erase("scanned");
                         json["data"]["version"] = 3;
 
                         FIMDB::instance().setTimeLastSyncMsg();

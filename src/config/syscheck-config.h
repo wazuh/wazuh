@@ -268,68 +268,56 @@ typedef struct registry_ignore_regex {
 #endif
 
 typedef struct fim_file_data {
-    // Checksum attributes
-    unsigned long long int size;
 #ifdef WIN32
     cJSON * perm_json;
 #endif
-    char * perm;
+    char * permissions;
     char * attributes;
     char * uid;
     char * gid;
-    char * user_name;
-    char * group_name;
+    char * owner;
+    char * group;
     time_t mtime;
+    unsigned long long int size;
     unsigned long long int inode;
+    unsigned long int device;
     os_md5 hash_md5;
     os_sha1 hash_sha1;
     os_sha256 hash_sha256;
 
-    // Options
-    fim_event_mode mode;
-    time_t last_event;
-    unsigned long int dev;
-    unsigned int scanned;
-    int options;
+    // Checksum
     os_sha1 checksum;
 } fim_file_data;
 
 typedef struct fim_registry_key {
-    unsigned int id;
     char* path;
-    char* hash_full_path;
+#ifdef WIN32
     cJSON* perm_json;
-    char* perm;
+#endif
+    char* permissions;
     char* uid;
     char* gid;
-    char* user_name;
-    char* group_name;
+    char* owner;
+    char* group;
     time_t mtime;
-    int arch;
+    int architecture;
 
-    unsigned int scanned;
-    time_t last_event;
-    // perm:uid:user_name:gid:group_name:mtime
+    // Checksum
     os_sha1 checksum;
 } fim_registry_key;
 
 typedef struct fim_registry_value_data {
-    unsigned int id;
     char* path;
-    char* hash_full_path;
-    int arch;
-    char* name;
+    char* value;
     unsigned int type;
     unsigned long long int size;
     os_md5 hash_md5;
     os_sha1 hash_sha1;
     os_sha256 hash_sha256;
+    int architecture;
 
-    unsigned int scanned;
-    time_t last_event;
-    // type:size:hash_md5:hash_sha1:hash_sha256
+    // Checksum
     os_sha1 checksum;
-    fim_event_mode mode;
 } fim_registry_value_data;
 
 typedef struct fim_entry {

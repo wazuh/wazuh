@@ -53,6 +53,7 @@ static const char *FIM_EVENT_MODE[] = {
 };
 
 cJSON * fim_calculate_dbsync_difference(const fim_file_data *data,
+                                        const directory_t *configuration,
                                         const cJSON* changed_data,
                                         cJSON* old_attributes,
                                         cJSON* changed_attributes) {
@@ -65,7 +66,7 @@ cJSON * fim_calculate_dbsync_difference(const fim_file_data *data,
 
     cJSON_AddStringToObject(old_attributes, "type", "file");
 
-    if (data->options & CHECK_SIZE) {
+    if (configuration->options & CHECK_SIZE) {
         if (aux = cJSON_GetObjectItem(changed_data, "size"), aux != NULL) {
             cJSON_AddNumberToObject(old_attributes, "size", aux->valueint);
             cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("size"));
@@ -74,25 +75,25 @@ cJSON * fim_calculate_dbsync_difference(const fim_file_data *data,
         }
     }
 
-    if (data->options & CHECK_PERM) {
-        if (aux = cJSON_GetObjectItem(changed_data, "perm"), aux != NULL) {
+    if (configuration->options & CHECK_PERM) {
+        if (aux = cJSON_GetObjectItem(changed_data, "permissions"), aux != NULL) {
 #ifndef WIN32
-            cJSON_AddStringToObject(old_attributes, "perm", cJSON_GetStringValue(aux));
+            cJSON_AddStringToObject(old_attributes, "permissions", cJSON_GetStringValue(aux));
 #else
-            cJSON_AddItemToObject(old_attributes, "perm", cJSON_Parse(cJSON_GetStringValue(aux)));
+            cJSON_AddItemToObject(old_attributes, "permissions", cJSON_Parse(cJSON_GetStringValue(aux)));
 #endif
-            cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("permission"));
+            cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("permissions"));
 
         } else {
 #ifndef WIN32
-            cJSON_AddStringToObject(old_attributes, "perm", data->perm);
+            cJSON_AddStringToObject(old_attributes, "permissions", data->permissions);
 #else
-            cJSON_AddItemToObject(old_attributes, "perm", cJSON_Parse(data->perm));
+            cJSON_AddItemToObject(old_attributes, "permissions", cJSON_Parse(data->permissions));
 #endif
         }
     }
 
-    if (data->options & CHECK_OWNER) {
+    if (configuration->options & CHECK_OWNER) {
         if (aux = cJSON_GetObjectItem(changed_data, "uid"), aux != NULL) {
             cJSON_AddStringToObject(old_attributes, "uid", cJSON_GetStringValue(aux));
             cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("uid"));
@@ -102,7 +103,7 @@ cJSON * fim_calculate_dbsync_difference(const fim_file_data *data,
         }
     }
 
-    if (data->options & CHECK_GROUP) {
+    if (configuration->options & CHECK_GROUP) {
         if (aux = cJSON_GetObjectItem(changed_data, "gid"), aux != NULL) {
             cJSON_AddStringToObject(old_attributes, "gid", cJSON_GetStringValue(aux));
             cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("gid"));
@@ -112,27 +113,27 @@ cJSON * fim_calculate_dbsync_difference(const fim_file_data *data,
         }
     }
 
-    if (data->user_name) {
-        if (aux = cJSON_GetObjectItem(changed_data, "user_name"), aux != NULL) {
-            cJSON_AddStringToObject(old_attributes, "user_name", cJSON_GetStringValue(aux));
-            cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("user_name"));
+    if (data->owner) {
+        if (aux = cJSON_GetObjectItem(changed_data, "owner"), aux != NULL) {
+            cJSON_AddStringToObject(old_attributes, "owner", cJSON_GetStringValue(aux));
+            cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("owner"));
 
         } else {
-            cJSON_AddStringToObject(old_attributes, "user_name", data->user_name);
+            cJSON_AddStringToObject(old_attributes, "owner", data->owner);
         }
     }
 
-    if (data->group_name) {
-        if (aux = cJSON_GetObjectItem(changed_data, "group_name"), aux != NULL) {
-            cJSON_AddStringToObject(old_attributes, "group_name", cJSON_GetStringValue(aux));
-            cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("group_name"));
+    if (data->group) {
+        if (aux = cJSON_GetObjectItem(changed_data, "group"), aux != NULL) {
+            cJSON_AddStringToObject(old_attributes, "group", cJSON_GetStringValue(aux));
+            cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("group"));
 
         } else {
-            cJSON_AddStringToObject(old_attributes, "group_name", data->group_name);
+            cJSON_AddStringToObject(old_attributes, "group", data->group);
         }
     }
 
-    if (data->options & CHECK_INODE) {
+    if (configuration->options & CHECK_INODE) {
         if (aux = cJSON_GetObjectItem(changed_data, "inode"), aux != NULL) {
             cJSON_AddNumberToObject(old_attributes, "inode", aux->valueint);
             cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("inode"));
@@ -142,7 +143,7 @@ cJSON * fim_calculate_dbsync_difference(const fim_file_data *data,
         }
     }
 
-    if (data->options & CHECK_MTIME) {
+    if (configuration->options & CHECK_MTIME) {
         if (aux = cJSON_GetObjectItem(changed_data, "mtime"), aux != NULL) {
             cJSON_AddNumberToObject(old_attributes, "mtime", aux->valueint);
             cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("mtime"));
@@ -152,7 +153,7 @@ cJSON * fim_calculate_dbsync_difference(const fim_file_data *data,
         }
     }
 
-    if (data->options & CHECK_MD5SUM) {
+    if (configuration->options & CHECK_MD5SUM) {
         if (aux = cJSON_GetObjectItem(changed_data, "hash_md5"), aux != NULL) {
             cJSON_AddStringToObject(old_attributes, "hash_md5", cJSON_GetStringValue(aux));
             cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("md5"));
@@ -162,7 +163,7 @@ cJSON * fim_calculate_dbsync_difference(const fim_file_data *data,
         }
     }
 
-    if (data->options & CHECK_SHA1SUM) {
+    if (configuration->options & CHECK_SHA1SUM) {
         if (aux = cJSON_GetObjectItem(changed_data, "hash_sha1"), aux != NULL) {
             cJSON_AddStringToObject(old_attributes, "hash_sha1", cJSON_GetStringValue(aux));
             cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("sha1"));
@@ -172,7 +173,7 @@ cJSON * fim_calculate_dbsync_difference(const fim_file_data *data,
         }
     }
 
-    if (data->options & CHECK_SHA256SUM) {
+    if (configuration->options & CHECK_SHA256SUM) {
         if (aux = cJSON_GetObjectItem(changed_data, "hash_sha256"), aux != NULL) {
             cJSON_AddStringToObject(old_attributes, "hash_sha256", cJSON_GetStringValue(aux));
             cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("sha256"));
@@ -183,7 +184,7 @@ cJSON * fim_calculate_dbsync_difference(const fim_file_data *data,
     }
 
 #ifdef WIN32
-    if (data->options & CHECK_ATTRS) {
+    if (configuration->options & CHECK_ATTRS) {
         if (aux = cJSON_GetObjectItem(changed_data, "attributes"), aux != NULL) {
             cJSON_AddStringToObject(old_attributes, "attributes", cJSON_GetStringValue(aux));
             cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("attributes"));
@@ -227,11 +228,11 @@ static void dbsync_attributes_json(const cJSON *dbsync_event, const directory_t 
     }
 
     if (configuration->options & CHECK_PERM) {
-        if (aux = cJSON_GetObjectItem(dbsync_event, "perm"), aux != NULL) {
+        if (aux = cJSON_GetObjectItem(dbsync_event, "permissions"), aux != NULL) {
 #ifndef WIN32
-            cJSON_AddStringToObject(attributes, "perm", cJSON_GetStringValue(aux));
+            cJSON_AddStringToObject(attributes, "permissions", cJSON_GetStringValue(aux));
 #else
-            cJSON_AddItemToObject(attributes, "perm", cJSON_Parse(cJSON_GetStringValue(aux)));
+            cJSON_AddItemToObject(attributes, "permissions", cJSON_Parse(cJSON_GetStringValue(aux)));
 #endif
         }
     }
@@ -254,17 +255,17 @@ static void dbsync_attributes_json(const cJSON *dbsync_event, const directory_t 
         }
     }
 
-    if (aux = cJSON_GetObjectItem(dbsync_event, "user_name"), aux != NULL) {
-        char *user_name = cJSON_GetStringValue(aux);
-        if (user_name != NULL && *user_name != '\0') {
-            cJSON_AddStringToObject(attributes, "user_name", cJSON_GetStringValue(aux));
+    if (aux = cJSON_GetObjectItem(dbsync_event, "owner"), aux != NULL) {
+        char *owner = cJSON_GetStringValue(aux);
+        if (owner != NULL && *owner != '\0') {
+            cJSON_AddStringToObject(attributes, "owner", cJSON_GetStringValue(aux));
         }
     }
 
-    if (aux = cJSON_GetObjectItem(dbsync_event, "group_name"), aux != NULL) {
-        char *group_name = cJSON_GetStringValue(aux);
-        if (group_name != NULL && *group_name != '\0') {
-            cJSON_AddStringToObject(attributes, "group_name", cJSON_GetStringValue(aux));
+    if (aux = cJSON_GetObjectItem(dbsync_event, "group"), aux != NULL) {
+        char *group = cJSON_GetStringValue(aux);
+        if (group != NULL && *group != '\0') {
+            cJSON_AddStringToObject(attributes, "group", cJSON_GetStringValue(aux));
         }
     }
 
@@ -320,7 +321,6 @@ static void transaction_callback(ReturnTypeCallback resultType, const cJSON* res
     cJSON* changed_attributes = NULL;
     cJSON* old_data = NULL;
     cJSON *attributes = NULL;
-    cJSON* timestamp = NULL;
     directory_t *configuration = NULL;
     fim_txn_context_t *txn_context = (fim_txn_context_t *) user_data;
 
@@ -392,19 +392,13 @@ static void transaction_callback(ReturnTypeCallback resultType, const cJSON* res
     cJSON_AddStringToObject(data, "mode", FIM_EVENT_MODE[txn_context->evt_data->mode]);
     cJSON_AddStringToObject(data, "type", FIM_EVENT_TYPE_ARRAY[txn_context->evt_data->type]);
 
-    if(timestamp = cJSON_GetObjectItem(result_json, "last_event"), timestamp != NULL){
-        cJSON_AddNumberToObject(data, "timestamp", timestamp->valueint);
-    } else {
-        cJSON_AddNumberToObject(data, "timestamp", txn_context->latest_entry->file_entry.data->last_event);
-    }
-
     if (resultType == DELETED || txn_context->latest_entry == NULL) {
         // We need to add the `type` field to the attributes JSON. This avoid modifying the dbsync event.
         attributes = cJSON_CreateObject();
         dbsync_attributes_json(result_json, configuration, attributes);
         cJSON_AddItemToObject(data, "attributes", attributes);
     } else {
-        cJSON_AddItemToObject(data, "attributes", fim_attributes_json(txn_context->latest_entry->file_entry.data));
+        cJSON_AddItemToObject(data, "attributes", fim_attributes_json(txn_context->latest_entry->file_entry.data, configuration));
 
         old_data = cJSON_GetObjectItem(result_json, "old");
         if (old_data) {
@@ -413,6 +407,7 @@ static void transaction_callback(ReturnTypeCallback resultType, const cJSON* res
             cJSON_AddItemToObject(data, "old_attributes", old_attributes);
             cJSON_AddItemToObject(data, "changed_attributes", changed_attributes);
             fim_calculate_dbsync_difference(txn_context->latest_entry->file_entry.data,
+                                            configuration,
                                             old_data,
                                             old_attributes,
                                             changed_attributes);
@@ -873,13 +868,13 @@ void fim_event_callback(void* data, void * ctx)
 
 #ifdef WIN32
         cJSON* attributes_json = cJSON_GetObjectItem(data_json, "attributes");
-        char* perm_string = cJSON_GetStringValue(cJSON_GetObjectItem(attributes_json, "perm"));
-        cJSON_ReplaceItemInObject(attributes_json, "perm", cJSON_Parse(perm_string));
+        char* perm_string = cJSON_GetStringValue(cJSON_GetObjectItem(attributes_json, "permissions"));
+        cJSON_ReplaceItemInObject(attributes_json, "permissions", cJSON_Parse(perm_string));
 
         cJSON* old_attributes_json = cJSON_GetObjectItem(data_json, "old_attributes");
         if (old_attributes_json) {
-            char* old_perm_string = cJSON_GetStringValue(cJSON_GetObjectItem(old_attributes_json, "perm"));
-            cJSON_ReplaceItemInObject(old_attributes_json, "perm", cJSON_Parse(old_perm_string));
+            char* old_perm_string = cJSON_GetStringValue(cJSON_GetObjectItem(old_attributes_json, "permissions"));
+            cJSON_ReplaceItemInObject(old_attributes_json, "permissions", cJSON_Parse(old_perm_string));
         }
 #endif
         send_syscheck_msg(json_event);
@@ -1276,9 +1271,9 @@ fim_file_data *fim_get_data(const char *file, const directory_t *configuration, 
         }
 
         decode_win_acl_json(data->perm_json);
-        data->perm = cJSON_PrintUnformatted(data->perm_json);
+        data->permissions = cJSON_PrintUnformatted(data->perm_json);
 #else
-        data->perm = agent_file_perm(statbuf->st_mode);
+        data->permissions = agent_file_perm(statbuf->st_mode);
 #endif
     }
 
@@ -1299,7 +1294,7 @@ fim_file_data *fim_get_data(const char *file, const directory_t *configuration, 
 
 #ifdef WIN32
     if (configuration->options & CHECK_OWNER) {
-        data->user_name = get_file_user(file, &data->uid);
+        data->owner = get_file_user(file, &data->uid);
     }
 #else
     if (configuration->options & CHECK_OWNER) {
@@ -1307,7 +1302,7 @@ fim_file_data *fim_get_data(const char *file, const directory_t *configuration, 
         snprintf(aux, OS_SIZE_64, "%u", statbuf->st_uid);
         os_strdup(aux, data->uid);
 
-        data->user_name = get_user(statbuf->st_uid);
+        data->owner = get_user(statbuf->st_uid);
     }
 
     if (configuration->options & CHECK_GROUP) {
@@ -1315,16 +1310,13 @@ fim_file_data *fim_get_data(const char *file, const directory_t *configuration, 
         snprintf(aux, OS_SIZE_64, "%u", statbuf->st_gid);
         os_strdup(aux, data->gid);
 
-        data->group_name = get_group(statbuf->st_gid);
+        data->group = get_group(statbuf->st_gid);
     }
 #endif
 
     snprintf(data->hash_md5, sizeof(os_md5), "%s", "d41d8cd98f00b204e9800998ecf8427e");
     snprintf(data->hash_sha1, sizeof(os_sha1), "%s", "da39a3ee5e6b4b0d3255bfef95601890afd80709");
     snprintf(data->hash_sha256, sizeof(os_sha256), "%s", "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
-
-    // The file exists and we don't have to delete it from the hash tables
-    data->scanned = 1;
 
     // We won't calculate hash for symbolic links, empty or large files
     if (S_ISREG(statbuf->st_mode) && (statbuf->st_size > 0 && statbuf->st_size < syscheck.file_max_size) &&
@@ -1350,9 +1342,7 @@ fim_file_data *fim_get_data(const char *file, const directory_t *configuration, 
     }
 
     data->inode = statbuf->st_ino;
-    data->dev = statbuf->st_dev;
-    data->options = configuration->options;
-    data->last_event = time(NULL);
+    data->device = statbuf->st_dev;
     fim_get_checksum(data);
 
     return data;
@@ -1360,15 +1350,15 @@ fim_file_data *fim_get_data(const char *file, const directory_t *configuration, 
 
 void init_fim_data_entry(fim_file_data *data) {
     data->size = 0;
-    data->perm = NULL;
+    data->permissions = NULL;
 #ifdef WIN32
     data->perm_json = NULL;
 #endif
     data->attributes = NULL;
     data->uid = NULL;
     data->gid = NULL;
-    data->user_name = NULL;
-    data->group_name = NULL;
+    data->owner = NULL;
+    data->group = NULL;
     data->mtime = 0;
     data->inode = 0;
     data->hash_md5[0] = '\0';
@@ -1384,12 +1374,12 @@ void fim_get_checksum (fim_file_data * data) {
             0,
             "%llu:%s:%s:%s:%s:%s:%s:%lu:%llu:%s:%s:%s",
             data->size,
-            data->perm ? data->perm : "",
+            data->permissions ? data->permissions : "",
             data->attributes ? data->attributes : "",
             data->uid ? data->uid : "",
             data->gid ? data->gid : "",
-            data->user_name ? data->user_name : "",
-            data->group_name ? data->group_name : "",
+            data->owner ? data->owner : "",
+            data->group ? data->group : "",
             data->mtime,
             data->inode,
             data->hash_md5,
@@ -1401,12 +1391,12 @@ void fim_get_checksum (fim_file_data * data) {
             size + 1,
             "%llu:%s:%s:%s:%s:%s:%s:%lu:%llu:%s:%s:%s",
             data->size,
-            data->perm ? data->perm : "",
+            data->permissions ? data->permissions : "",
             data->attributes ? data->attributes : "",
             data->uid ? data->uid : "",
             data->gid ? data->gid : "",
-            data->user_name ? data->user_name : "",
-            data->group_name ? data->group_name : "",
+            data->owner ? data->owner : "",
+            data->group ? data->group : "",
             data->mtime,
             data->inode,
             data->hash_md5,
@@ -1427,7 +1417,7 @@ cJSON *fim_json_event(const fim_entry *new_data,
     assert(new_data != NULL);
 
     if (old_data != NULL) {
-        changed_attributes = fim_json_compare_attrs(old_data, new_data->file_entry.data);
+        changed_attributes = fim_json_compare_attrs(old_data, new_data->file_entry.data, configuration);
 
         // If no such changes, do not send event.
 
@@ -1447,13 +1437,12 @@ cJSON *fim_json_event(const fim_entry *new_data,
     cJSON_AddNumberToObject(data, "version", 2.0);
     cJSON_AddStringToObject(data, "mode", FIM_EVENT_MODE[evt_data->mode]);
     cJSON_AddStringToObject(data, "type", FIM_EVENT_TYPE_ARRAY[evt_data->type]);
-    cJSON_AddNumberToObject(data, "timestamp", new_data->file_entry.data->last_event);
 
-    cJSON_AddItemToObject(data, "attributes", fim_attributes_json(new_data->file_entry.data));
+    cJSON_AddItemToObject(data, "attributes", fim_attributes_json(new_data->file_entry.data, configuration));
 
     if (old_data) {
         cJSON_AddItemToObject(data, "changed_attributes", changed_attributes);
-        cJSON_AddItemToObject(data, "old_attributes", fim_attributes_json(old_data));
+        cJSON_AddItemToObject(data, "old_attributes", fim_attributes_json(old_data, configuration));
     }
 
     char * tags = NULL;
@@ -1476,63 +1465,63 @@ cJSON *fim_json_event(const fim_entry *new_data,
 
 // Create file attribute set JSON from a FIM entry structure
 
-cJSON * fim_attributes_json(const fim_file_data * data) {
+cJSON * fim_attributes_json(const fim_file_data * data, const directory_t *configuration) {
     cJSON * attributes = cJSON_CreateObject();
 
     // TODO: Read structure.
     // SQLite Development
     cJSON_AddStringToObject(attributes, "type", "file");
 
-    if (data->options & CHECK_SIZE) {
+    if (configuration->options & CHECK_SIZE) {
         cJSON_AddNumberToObject(attributes, "size", data->size);
     }
 
-    if (data->options & CHECK_PERM) {
+    if (configuration->options & CHECK_PERM) {
 #ifndef WIN32
-        cJSON_AddStringToObject(attributes, "perm", data->perm);
+        cJSON_AddStringToObject(attributes, "permissions", data->permissions);
 #else
-        cJSON_AddItemToObject(attributes, "perm", cJSON_Parse(data->perm));
+        cJSON_AddItemToObject(attributes, "permissions", cJSON_Parse(data->permissions));
 #endif
     }
 
-    if (data->options & CHECK_OWNER && data->uid && *data->uid != '\0' ) {
+    if (configuration->options & CHECK_OWNER && data->uid && *data->uid != '\0' ) {
         cJSON_AddStringToObject(attributes, "uid", data->uid);
     }
 
-    if (data->options & CHECK_GROUP && data->gid && *data->gid != '\0' ) {
+    if (configuration->options & CHECK_GROUP && data->gid && *data->gid != '\0' ) {
         cJSON_AddStringToObject(attributes, "gid", data->gid);
     }
 
-    if (data->user_name && *data->user_name != '\0' ) {
-        cJSON_AddStringToObject(attributes, "user_name", data->user_name);
+    if (data->owner && *data->owner != '\0' ) {
+        cJSON_AddStringToObject(attributes, "owner", data->owner);
     }
 
-    if (data->group_name && *data->group_name != '\0') {
-        cJSON_AddStringToObject(attributes, "group_name", data->group_name);
+    if (data->group && *data->group != '\0') {
+        cJSON_AddStringToObject(attributes, "group", data->group);
     }
 
-    if (data->options & CHECK_INODE) {
+    if (configuration->options & CHECK_INODE) {
         cJSON_AddNumberToObject(attributes, "inode", data->inode);
     }
 
-    if (data->options & CHECK_MTIME) {
+    if (configuration->options & CHECK_MTIME) {
         cJSON_AddNumberToObject(attributes, "mtime", data->mtime);
     }
 
-    if (data->options & CHECK_MD5SUM) {
+    if (configuration->options & CHECK_MD5SUM) {
         cJSON_AddStringToObject(attributes, "hash_md5", data->hash_md5);
     }
 
-    if (data->options & CHECK_SHA1SUM) {
+    if (configuration->options & CHECK_SHA1SUM) {
         cJSON_AddStringToObject(attributes, "hash_sha1", data->hash_sha1);
     }
 
-    if (data->options & CHECK_SHA256SUM) {
+    if (configuration->options & CHECK_SHA256SUM) {
         cJSON_AddStringToObject(attributes, "hash_sha256", data->hash_sha256);
     }
 
 #ifdef WIN32
-    if (data->options & CHECK_ATTRS) {
+    if (configuration->options & CHECK_ATTRS) {
         cJSON_AddStringToObject(attributes, "attributes", data->attributes);
     }
 #endif
@@ -1546,74 +1535,74 @@ cJSON * fim_attributes_json(const fim_file_data * data) {
 
 // Create file attribute comparison JSON object
 
-cJSON * fim_json_compare_attrs(const fim_file_data * old_data, const fim_file_data * new_data) {
+cJSON * fim_json_compare_attrs(const fim_file_data * old_data, const fim_file_data * new_data, const directory_t *configuration) {
     cJSON * changed_attributes = cJSON_CreateArray();
 
-    if ( (old_data->options & CHECK_SIZE) && (old_data->size != new_data->size) ) {
+    if ( (configuration->options & CHECK_SIZE) && (old_data->size != new_data->size) ) {
         cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("size"));
     }
 
 #ifndef WIN32
-    if ( (old_data->options & CHECK_PERM) && strcmp(old_data->perm, new_data->perm) != 0 ) {
-        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("permission"));
+    if ( (configuration->options & CHECK_PERM) && strcmp(old_data->permissions, new_data->permissions) != 0 ) {
+        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("permissions"));
     }
 #else
-    if ( (old_data->options & CHECK_PERM) && compare_win_permissions(old_data->perm_json, new_data->perm_json) == false ) {
-        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("permission"));
+    if ( (configuration->options & CHECK_PERM) && compare_win_permissions(old_data->perm_json, new_data->perm_json) == false ) {
+        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("permissions"));
     }
 
-    if ( (old_data->options & CHECK_ATTRS) && strcmp(old_data->attributes, new_data->attributes) != 0 ) {
+    if ( (configuration->options & CHECK_ATTRS) && strcmp(old_data->attributes, new_data->attributes) != 0 ) {
         cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("attributes"));
     }
 #endif
 
-    if (old_data->options & CHECK_OWNER) {
+    if (configuration->options & CHECK_OWNER) {
         if (old_data->uid && new_data->uid && strcmp(old_data->uid, new_data->uid) != 0) {
             cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("uid"));
         }
 
 #ifndef WIN32
-        if (old_data->user_name && new_data->user_name && strcmp(old_data->user_name, new_data->user_name) != 0) {
-            cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("user_name"));
+        if (old_data->owner && new_data->owner && strcmp(old_data->owner, new_data->owner) != 0) {
+            cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("owner"));
         }
 #else
         // AD might fail to solve the user name, we don't trigger an event if the user name is empty
-        if (old_data->user_name && *old_data->user_name != '\0' && new_data->user_name &&
-            *new_data->user_name != '\0' && strcmp(old_data->user_name, new_data->user_name) != 0) {
-            cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("user_name"));
+        if (old_data->owner && *old_data->owner != '\0' && new_data->owner &&
+            *new_data->owner != '\0' && strcmp(old_data->owner, new_data->owner) != 0) {
+            cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("owner"));
         }
 #endif
     }
 
-    if (old_data->options & CHECK_GROUP) {
+    if (configuration->options & CHECK_GROUP) {
         if (old_data->gid && new_data->gid && strcmp(old_data->gid, new_data->gid) != 0) {
             cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("gid"));
         }
 
-        if (old_data->group_name && new_data->group_name && strcmp(old_data->group_name, new_data->group_name) != 0) {
-            cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("group_name"));
+        if (old_data->group && new_data->group && strcmp(old_data->group, new_data->group) != 0) {
+            cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("group"));
         }
     }
 
-    if ( (old_data->options & CHECK_MTIME) && (old_data->mtime != new_data->mtime) ) {
+    if ( (configuration->options & CHECK_MTIME) && (old_data->mtime != new_data->mtime) ) {
         cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("mtime"));
     }
 
 #ifndef WIN32
-    if ( (old_data->options & CHECK_INODE) && (old_data->inode != new_data->inode) ) {
+    if ( (configuration->options & CHECK_INODE) && (old_data->inode != new_data->inode) ) {
         cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("inode"));
     }
 #endif
 
-    if ( (old_data->options & CHECK_MD5SUM) && (strcmp(old_data->hash_md5, new_data->hash_md5) != 0) ) {
+    if ( (configuration->options & CHECK_MD5SUM) && (strcmp(old_data->hash_md5, new_data->hash_md5) != 0) ) {
         cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("md5"));
     }
 
-    if ( (old_data->options & CHECK_SHA1SUM) && (strcmp(old_data->hash_sha1, new_data->hash_sha1) != 0) ) {
+    if ( (configuration->options & CHECK_SHA1SUM) && (strcmp(old_data->hash_sha1, new_data->hash_sha1) != 0) ) {
         cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("sha1"));
     }
 
-    if ( (old_data->options & CHECK_SHA256SUM) && (strcmp(old_data->hash_sha256, new_data->hash_sha256) != 0) ) {
+    if ( (configuration->options & CHECK_SHA256SUM) && (strcmp(old_data->hash_sha256, new_data->hash_sha256) != 0) ) {
         cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("sha256"));
     }
 
@@ -1713,12 +1702,12 @@ void free_file_data(fim_file_data * data) {
 #ifdef WIN32
     cJSON_Delete(data->perm_json);
 #endif
-    os_free(data->perm);
+    os_free(data->permissions);
     os_free(data->attributes);
     os_free(data->uid);
     os_free(data->gid);
-    os_free(data->user_name);
-    os_free(data->group_name);
+    os_free(data->owner);
+    os_free(data->group);
 
     os_free(data);
 }

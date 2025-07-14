@@ -24,22 +24,18 @@ void FileItem::createFimEntry()
         if (data)
         {
             data->size = m_size;
-            data->perm = const_cast<char*>(m_perm.c_str());
+            data->permissions = const_cast<char*>(m_permissions.c_str());
             data->attributes = const_cast<char*>(m_attributes.c_str());
             data->uid = const_cast<char*>(m_uid.c_str());
             data->gid = const_cast<char*>(m_gid.c_str());
-            data->user_name = const_cast<char*>(m_username.c_str());
-            data->group_name = const_cast<char*>(m_groupname.c_str());
+            data->owner = const_cast<char*>(m_username.c_str());
+            data->group = const_cast<char*>(m_group.c_str());
             data->mtime = m_time;
             data->inode = m_inode;
+            data->device = m_device;
             std::snprintf(data->hash_md5, sizeof(data->hash_md5), "%s", m_md5.c_str());
             std::snprintf(data->hash_sha1, sizeof(data->hash_sha1), "%s", m_sha1.c_str());
             std::snprintf(data->hash_sha256, sizeof(data->hash_sha256), "%s", m_sha256.c_str());
-            data->mode = m_mode;
-            data->last_event = m_lastEvent;
-            data->dev = m_dev;
-            data->scanned = m_scanned;
-            data->options = m_options;
             std::snprintf(data->checksum, sizeof(data->checksum), "%s", m_checksum.c_str());
 
             fim->file_entry.data = data;
@@ -70,20 +66,16 @@ void FileItem::createJSON()
 
     conf["table"] = FIMDB_FILE_TABLE_NAME;
     data["path"] = m_identifier;
-    data["mode"] = m_mode;
-    data["last_event"] = m_lastEvent;
-    data["scanned"] = m_scanned;
-    data["options"] = m_options;
     data["checksum"] = m_checksum;
-    data["dev"] = m_dev;
+    data["device"] = m_device;
     data["inode"] = m_inode;
     data["size"] = m_size;
-    data["perm"] = m_perm;
+    data["permissions"] = m_permissions;
     data["attributes"] = m_attributes;
     data["uid"] = m_uid;
     data["gid"] = m_gid;
-    data["user_name"] = m_username;
-    data["group_name"] = m_groupname;
+    data["owner"] = m_username;
+    data["group"] = m_group;
     data["hash_md5"] = m_md5;
     data["hash_sha1"] = m_sha1;
     data["hash_sha256"] = m_sha256;

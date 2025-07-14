@@ -792,10 +792,11 @@ unsigned int get_realtime_watches();
  * }
  *
  * @param data Pointer to a FIM entry structure.
+ * @param configuration Pointer to the configuration structure.
  * @pre data is mutex-blocked.
  * @return Pointer to cJSON structure.
  */
-cJSON * fim_attributes_json(const fim_file_data * data);
+cJSON * fim_attributes_json(const fim_file_data * data, const directory_t *configuration);
 
 /**
  * @brief Create file attribute comparison JSON object
@@ -815,9 +816,10 @@ cJSON * fim_attributes_json(const fim_file_data * data);
  *
  * @param old_data
  * @param new_data
+ * @param configuration
  * @return cJSON*
  */
-cJSON * fim_json_compare_attrs(const fim_file_data * old_data, const fim_file_data * new_data);
+cJSON * fim_json_compare_attrs(const fim_file_data * old_data, const fim_file_data * new_data, const directory_t *configuration);
 
 /**
  * @brief Create file audit data JSON object

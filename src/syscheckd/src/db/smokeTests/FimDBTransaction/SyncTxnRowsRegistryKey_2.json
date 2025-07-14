@@ -8,17 +8,13 @@
             {
                 "checksum": "c2cf8f9f8f021c65c8f1b143bac977d7eeb0196e",
                 "gid": "0",
-                "group_name": "root",
-                "arch": "[x32]",
-                "last_event": 1596489275,
-                "mode": 0,
+                "group": "root",
+                "architecture": "[x32]",
                 "mtime": 1578075431,
                 "path": "HKEY_LOCAL_MACHINE\\SOFTWARE\\FAKE_APP",
-                "perm": "-rw-rw-r--",
-                "scanned": 1,
+                "permissions": "-rw-rw-r--",
                 "uid": "0",
-                "user_name": "fakeUser",
-                "hash_full_path": "c26e28e20da25627fb939c9c67b04ef9d1c89f12"
+                "owner": "fakeUser"
             }
         ]
     }

@@ -73,17 +73,14 @@ static void registry_key_transaction_callback(ReturnTypeCallback resultType,
     cJSON *json_event = NULL;
     cJSON *json_path = NULL;
     cJSON *json_arch = NULL;
-    cJSON *json_hash = NULL;
     cJSON *old_data = NULL;
     cJSON *old_attributes = NULL;
     cJSON *changed_attributes = NULL;
     cJSON *aux = NULL;
-    cJSON *timestamp = NULL;
     fim_key_txn_context_t *event_data = (fim_key_txn_context_t *) user_data;
     fim_registry_key* key = event_data->key;
     char *path = NULL;
     int arch = -1;
-    char *hash_full_path;
 
     // Do not process if it's the first scan
     if (_base_line == 0) {
@@ -95,20 +92,15 @@ static void registry_key_transaction_callback(ReturnTypeCallback resultType,
         if (json_path = cJSON_GetObjectItem(result_json, "path"), json_path == NULL) {
             goto end;
         }
-        if (json_arch = cJSON_GetObjectItem(result_json, "arch"), json_arch == NULL) {
-            goto end;
-        }
-        if (json_hash = cJSON_GetObjectItem(result_json, "hash_full_path"), json_hash == NULL) {
+        if (json_arch = cJSON_GetObjectItem(result_json, "architecture"), json_arch == NULL) {
             goto end;
         }
         path = cJSON_GetStringValue(json_path);
         arch = (strcmp(cJSON_GetStringValue(json_arch), "[x32]") == 0) ? ARCH_32BIT: ARCH_64BIT;
-        hash_full_path = cJSON_GetStringValue(json_hash);
 
     } else {
         path = key->path;
-        arch = key->arch;
-        hash_full_path = key->hash_full_path;
+        arch = key->architecture;
     }
 
     configuration = fim_registry_configuration(path, arch);
@@ -153,16 +145,10 @@ static void registry_key_transaction_callback(ReturnTypeCallback resultType,
     cJSON_AddItemToObject(json_event, "data", data);
 
     cJSON_AddStringToObject(data, "path", path);
-    cJSON_AddStringToObject(data, "index", hash_full_path);
     cJSON_AddNumberToObject(data, "version", 3.0);
     cJSON_AddStringToObject(data, "mode", FIM_EVENT_MODE[event_data->evt_data->mode]);
     cJSON_AddStringToObject(data, "type", FIM_EVENT_TYPE_ARRAY[event_data->evt_data->type]);
-    cJSON_AddStringToObject(data, "arch", arch == ARCH_32BIT ? "[x32]" : "[x64]");
-    if(timestamp = cJSON_GetObjectItem(result_json, "last_event"), timestamp != NULL){
-        cJSON_AddNumberToObject(data, "timestamp", timestamp->valueint);
-    } else {
-        cJSON_AddNumberToObject(data, "timestamp", key->last_event);
-    }
+    cJSON_AddStringToObject(data, "architecture", arch == ARCH_32BIT ? "[x32]" : "[x64]");
     cJSON_AddItemToObject(data, "attributes", fim_registry_key_attributes_json(result_json, key, configuration));
 
     old_data = cJSON_GetObjectItem(result_json, "old");
@@ -208,49 +194,41 @@ static void registry_value_transaction_callback(ReturnTypeCallback resultType,
     cJSON *json_event = NULL;
     cJSON *json_path = NULL;
     cJSON *json_arch = NULL;
-    cJSON *json_name = NULL;
-    cJSON *json_hash = NULL;
+    cJSON *json_value = NULL;
     cJSON *old_attributes = NULL;
     cJSON *old_data = NULL;
     cJSON *changed_attributes = NULL;
     cJSON *aux = NULL;
-    cJSON *timestamp = NULL;
     char *path = NULL;
-    char *name = NULL;
+    char *value = NULL;
     int arch = -1;
     fim_val_txn_context_t *event_data = (fim_val_txn_context_t *) user_data;
     char* diff = event_data->diff;
-    fim_registry_value_data *value = event_data->data;
-    char *hash_full_path;
+    fim_registry_value_data *value_data = event_data->data;
 
     // Do not process if it's the first scan
     if (_base_line == 0) {
         return;
     }
 
-    // In case of deletions, value is NULL, so we need to get the path and arch from the json event
-    if (value == NULL) {
+    // In case of deletions, value_data is NULL, so we need to get the path and arch from the json event
+    if (value_data == NULL) {
         if (json_path = cJSON_GetObjectItem(result_json, "path"), json_path == NULL) {
             goto end;
         }
-        if (json_arch = cJSON_GetObjectItem(result_json, "arch"), json_arch == NULL) {
+        if (json_arch = cJSON_GetObjectItem(result_json, "architecture"), json_arch == NULL) {
             goto end;
         }
-        if (json_name = cJSON_GetObjectItem(result_json, "name"), json_name == NULL) {
-            goto end;
-        }
-        if (json_hash = cJSON_GetObjectItem(result_json, "hash_full_path"), json_hash == NULL) {
+        if (json_value = cJSON_GetObjectItem(result_json, "value"), json_value == NULL) {
             goto end;
         }
         path = cJSON_GetStringValue(json_path);
         arch = (strcmp(cJSON_GetStringValue(json_arch), "[x32]") == 0) ? ARCH_32BIT: ARCH_64BIT;
-        name = cJSON_GetStringValue(json_name);
-        hash_full_path = cJSON_GetStringValue(json_hash);
+        value = cJSON_GetStringValue(json_value);
     } else {
-        path = value->path;
-        arch = value->arch;
-        name = value->name;
-        hash_full_path = value->hash_full_path;
+        path = value_data->path;
+        arch = value_data->architecture;
+        value = value_data->value;
     }
 
     configuration = fim_registry_configuration(path, arch);
@@ -269,7 +247,7 @@ static void registry_value_transaction_callback(ReturnTypeCallback resultType,
 
         case DELETED:
             if (configuration->opts & CHECK_SEECHANGES) {
-                fim_diff_process_delete_value(path, name, arch);
+                fim_diff_process_delete_value(path, value, arch);
             }
             event_data->evt_data->type = FIM_DELETE;
             break;
@@ -294,20 +272,12 @@ static void registry_value_transaction_callback(ReturnTypeCallback resultType,
     cJSON_AddItemToObject(json_event, "data", data);
 
     cJSON_AddStringToObject(data, "path", path);
-    cJSON_AddStringToObject(data, "index", hash_full_path);
     cJSON_AddNumberToObject(data, "version", 3.0);
     cJSON_AddStringToObject(data, "mode", FIM_EVENT_MODE[event_data->evt_data->mode]);
     cJSON_AddStringToObject(data, "type", FIM_EVENT_TYPE_ARRAY[event_data->evt_data->type]);
-    cJSON_AddStringToObject(data, "arch", arch == ARCH_32BIT ? "[x32]" : "[x64]");
-    cJSON_AddStringToObject(data, "value_name", name);
-
-    if(timestamp = cJSON_GetObjectItem(result_json, "last_event"), timestamp != NULL){
-        cJSON_AddNumberToObject(data, "timestamp", timestamp->valueint);
-    } else {
-        cJSON_AddNumberToObject(data, "timestamp", value->last_event);
-    }
-
-    cJSON_AddItemToObject(data, "attributes", fim_registry_value_attributes_json(result_json, value, configuration));
+    cJSON_AddStringToObject(data, "architecture", arch == ARCH_32BIT ? "[x32]" : "[x64]");
+    cJSON_AddStringToObject(data, "value", value);
+    cJSON_AddItemToObject(data, "attributes", fim_registry_value_attributes_json(result_json, value_data, configuration));
 
     old_data = cJSON_GetObjectItem(result_json, "old");
     if (old_data != NULL) {
@@ -315,7 +285,7 @@ static void registry_value_transaction_callback(ReturnTypeCallback resultType,
         changed_attributes = cJSON_CreateArray();
         cJSON_AddItemToObject(data, "old_attributes", old_attributes);
         cJSON_AddItemToObject(data, "changed_attributes", changed_attributes);
-        fim_calculate_dbsync_difference_value(value,
+        fim_calculate_dbsync_difference_value(value_data,
                                               configuration,
                                               old_data,
                                               changed_attributes,
@@ -517,24 +487,24 @@ void fim_registry_get_checksum_key(fim_registry_key *data) {
     size = snprintf(0,
             0,
             "%s:%s:%s:%s:%s:%lu",
-            data->perm ? data->perm : "",
+            data->permissions ? data->permissions : "",
             data->uid ? data->uid : "",
-            data->user_name ? data->user_name : "",
+            data->owner ? data->owner : "",
             data->gid ? data->gid : "",
-            data->group_name ? data->group_name : "",
+            data->group ? data->group : "",
             data->mtime);
 
     os_calloc(size + 1, sizeof(char), checksum);
     snprintf(checksum,
             size + 1,
             "%s:%s:%s:%s:%s:%lu:%d",
-            data->perm ? data->perm : "",
+            data->permissions ? data->permissions : "",
             data->uid ? data->uid : "",
             data->gid ? data->gid : "",
-            data->user_name ? data->user_name : "",
-            data->group_name ? data->group_name : "",
+            data->owner ? data->owner : "",
+            data->group ? data->group : "",
             data->mtime,
-            data->arch);
+            data->architecture);
 
     OS_SHA1_Str(checksum, -1, data->checksum);
     free(checksum);
@@ -740,12 +710,12 @@ void fim_registry_calculate_hashes(fim_entry *entry, registry_t *configuration, 
 void fim_registry_free_key(fim_registry_key *key) {
     if (key) {
         os_free(key->path);
-        os_free(key->perm);
+        os_free(key->permissions);
         cJSON_Delete(key->perm_json);
         os_free(key->uid);
         os_free(key->gid);
-        os_free(key->user_name);
-        os_free(key->group_name);
+        os_free(key->owner);
+        os_free(key->group);
         free(key);
     }
 }
@@ -765,14 +735,14 @@ fim_registry_key *fim_registry_get_key_data(HKEY key_handle, const char *path, c
 
     os_strdup(path, key->path);
 
-    key->arch = configuration->arch;
+    key->architecture = configuration->arch;
 
      if (configuration->opts & CHECK_OWNER) {
-        key->user_name = get_registry_user(path, &key->uid, key_handle);
+        key->owner = get_registry_user(path, &key->uid, key_handle);
     }
 
     if (configuration->opts & CHECK_GROUP) {
-        key->group_name = get_registry_group(&key->gid, key_handle);
+        key->group = get_registry_group(&key->gid, key_handle);
     }
 
     if (configuration->opts & CHECK_PERM) {
@@ -787,14 +757,12 @@ fim_registry_key *fim_registry_get_key_data(HKEY key_handle, const char *path, c
         }
 
         decode_win_acl_json(key->perm_json);
-        key->perm = cJSON_PrintUnformatted(key->perm_json);
+        key->permissions = cJSON_PrintUnformatted(key->perm_json);
     }
 
     if (configuration->opts & CHECK_MTIME) {
         key->mtime = get_registry_mtime(key_handle);
     }
-
-    key->last_event = time(NULL);
 
     fim_registry_get_checksum_key(key);
 
@@ -808,7 +776,7 @@ fim_registry_key *fim_registry_get_key_data(HKEY key_handle, const char *path, c
  */
 void fim_registry_free_value_data(fim_registry_value_data *data) {
     if (data) {
-        os_free(data->name);
+        os_free(data->value);
         free(data);
     }
 }
@@ -850,10 +818,9 @@ void fim_read_values(HKEY key_handle,
     size_t value_path_length;
     registry_t *configuration = NULL;
     char* diff = NULL;
-    os_sha1 hash_full_path;
     char* arch_string;
 
-    value_data.arch = arch;
+    value_data.architecture = arch;
     value_data.path = path;
     new.registry_entry.value = &value_data;
     new.registry_entry.key = NULL;
@@ -876,43 +843,35 @@ void fim_read_values(HKEY key_handle,
             break;
         }
 
-        new.registry_entry.value->name = value_buffer;
+        new.registry_entry.value->value = value_buffer;
         new.registry_entry.value->type = data_type <= REG_QWORD ? data_type : REG_UNKNOWN;
         new.registry_entry.value->size = data_size;
-        new.registry_entry.value->last_event = time(NULL);
-        new.registry_entry.value->scanned = 0;
         new.type = FIM_TYPE_REGISTRY;
 
-        value_path_length = strlen(new.registry_entry.value->path) + strlen(new.registry_entry.value->name) + 2;
+        value_path_length = strlen(new.registry_entry.value->path) + strlen(new.registry_entry.value->value) + 2;
 
         os_malloc(value_path_length, value_path);
-        snprintf(value_path, value_path_length, "%s\\%s", new.registry_entry.value->path, new.registry_entry.value->name);
+        snprintf(value_path, value_path_length, "%s\\%s", new.registry_entry.value->path, new.registry_entry.value->value);
 
         if (fim_registry_validate_ignore(value_path, configuration, 0)) {
             os_free(value_path);
-            os_free(value_data.name);
+            os_free(value_data.value);
             continue;
         }
         os_free(value_path);
 
-        if (fim_check_restrict(new.registry_entry.value->name, configuration->restrict_value)) {
+        if (fim_check_restrict(new.registry_entry.value->value, configuration->restrict_value)) {
             continue;
         }
 
         arch_string = (arch == ARCH_32BIT) ? "[x32]" : "[x64]";
-
-        // Hash containing "value", arch, key path and value name
-        // Index used in wazuh manager DB
-        OS_SHA1_strings(hash_full_path, "value", arch_string, new.registry_entry.value->path,
-                        new.registry_entry.value->name, NULL);
-        new.registry_entry.value->hash_full_path = hash_full_path;
 
         fim_registry_calculate_hashes(&new, configuration, data_buffer);
 
         fim_registry_get_checksum_value(new.registry_entry.value);
 
         if (configuration->opts & CHECK_SEECHANGES) {
-            diff = fim_registry_value_diff(new.registry_entry.value->path, new.registry_entry.value->name,
+            diff = fim_registry_value_diff(new.registry_entry.value->path, new.registry_entry.value->value,
                                        (char *)data_buffer, new.registry_entry.value->type, configuration);
         }
         txn_ctx_regval->diff = diff;
@@ -926,7 +885,7 @@ void fim_read_values(HKEY key_handle,
     }
 
     new.registry_entry.value = NULL;
-    os_free(value_data.name);
+    os_free(value_data.value);
     os_free(data_buffer);
 }
 
@@ -962,7 +921,6 @@ void fim_open_key(HKEY root_key_handle,
     fim_entry new;
     registry_t *configuration;
     int result_transaction = -1;
-    os_sha1 hash_full_path;
     char* arch_string;
 
     if (root_key_handle == NULL || full_key == NULL || sub_key == NULL) {
@@ -1049,11 +1007,6 @@ void fim_open_key(HKEY root_key_handle,
 
     arch_string = (arch == ARCH_32BIT) ? "[x32]" : "[x64]";
 
-    // Hash containing "key", arch and key path
-    // Index used in wazuh manager DB
-    OS_SHA1_strings(hash_full_path, "key", arch_string, new.registry_entry.key->path, NULL);
-    new.registry_entry.key->hash_full_path = hash_full_path;
-
     txn_ctx_reg->key = new.registry_entry.key;
 
     result_transaction = fim_db_transaction_sync_row(regkey_txn_handler, &new);
@@ -1063,7 +1016,7 @@ void fim_open_key(HKEY root_key_handle,
     }
 
     if (value_count) {
-        fim_read_values(current_key_handle, new.registry_entry.key->path, new.registry_entry.key->arch, value_count, max_value_length, max_value_data_length,
+        fim_read_values(current_key_handle, new.registry_entry.key->path, new.registry_entry.key->architecture, value_count, max_value_length, max_value_data_length,
                         regval_txn_handler, txn_ctx_regval);
     }
 

@@ -39,45 +39,38 @@ constexpr auto CREATE_FILE_DB_STATEMENT
 {
     R"(CREATE TABLE IF NOT EXISTS file_entry (
     path TEXT NOT NULL,
-    mode INTEGER,
-    last_event INTEGER,
-    scanned INTEGER,
-    options INTEGER,
     checksum TEXT NOT NULL,
-    dev INTEGER,
+    device INTEGER,
     inode INTEGER,
     size INTEGER,
-    perm TEXT,
+    permissions TEXT,
     attributes TEXT,
     uid TEXT,
     gid TEXT,
-    user_name TEXT,
-    group_name TEXT,
+    owner TEXT,
+    group TEXT,
     hash_md5 TEXT,
     hash_sha1 TEXT,
     hash_sha256 TEXT,
     mtime INTEGER,
     PRIMARY KEY(path)) WITHOUT ROWID;
     CREATE INDEX IF NOT EXISTS path_index ON file_entry (path);
-    CREATE INDEX IF NOT EXISTS inode_index ON file_entry (dev, inode);)"
+    CREATE INDEX IF NOT EXISTS inode_index ON file_entry (device, inode);)"
 };
 
 constexpr auto CREATE_REGISTRY_KEY_DB_STATEMENT
 {
     R"(CREATE TABLE IF NOT EXISTS registry_key (
     path TEXT NOT NULL,
-    perm TEXT,
+    permissions TEXT,
     uid TEXT,
     gid TEXT,
-    user_name TEXT,
-    group_name TEXT,
+    owner TEXT,
+    group TEXT,
     mtime INTEGER,
-    arch TEXT CHECK (arch IN ('[x32]', '[x64]')),
-    scanned INTEGER,
-    last_event INTEGER,
+    architecture TEXT CHECK (architecture IN ('[x32]', '[x64]')),
     checksum TEXT NOT NULL,
-    hash_full_path TEXT NOT NULL,
-    PRIMARY KEY (arch, path)) WITHOUT ROWID;
+    PRIMARY KEY (architecture, path)) WITHOUT ROWID;
     CREATE INDEX IF NOT EXISTS path_index ON registry_key (path);)"
 };
 
@@ -85,21 +78,18 @@ constexpr auto CREATE_REGISTRY_VALUE_DB_STATEMENT
 {
     R"(CREATE TABLE IF NOT EXISTS registry_data (
     path TEXT,
-    arch TEXT CHECK (arch IN ('[x32]', '[x64]')),
-    name TEXT NOT NULL,
+    architecture TEXT CHECK (architecture IN ('[x32]', '[x64]')),
+    value TEXT NOT NULL,
     type INTEGER,
     size INTEGER,
     hash_md5 TEXT,
     hash_sha1 TEXT,
     hash_sha256 TEXT,
-    scanned INTEGER,
-    last_event INTEGER,
     checksum TEXT NOT NULL,
-    hash_full_path TEXT NOT NULL,
-    PRIMARY KEY(path, arch, name)
+    PRIMARY KEY(path, architecture, value)
     FOREIGN KEY (path) REFERENCES registry_key(path)
-    FOREIGN KEY (arch) REFERENCES registry_key(arch)) WITHOUT ROWID;
-    CREATE INDEX IF NOT EXISTS key_name_index ON registry_data (path, name);)"
+    FOREIGN KEY (architecture) REFERENCES registry_key(architecture)) WITHOUT ROWID;
+    CREATE INDEX IF NOT EXISTS key_name_index ON registry_data (path, value);)"
 };
 
 class FIMDB

@@ -72,7 +72,7 @@ nlohmann::json DB::createJsonEvent(const nlohmann::json& fileJson, const nlohman
 
     if (ctx->config->options & CHECK_PERM)
     {
-        jsonEvent["data"]["attributes"]["perm"] = data.at("perm");
+        jsonEvent["data"]["attributes"]["permissions"] = data.at("permissions");
     }
 
     if (data.contains("uid") && data.at("uid") != "" && ctx->config->options & CHECK_OWNER)
@@ -85,14 +85,14 @@ nlohmann::json DB::createJsonEvent(const nlohmann::json& fileJson, const nlohman
         jsonEvent["data"]["attributes"]["gid"] = data.at("gid");
     }
 
-    if (data.at("user_name") != "")
+    if (data.at("owner") != "")
     {
-        jsonEvent["data"]["attributes"]["user_name"] = data.at("user_name");
+        jsonEvent["data"]["attributes"]["owner"] = data.at("owner");
     }
 
-    if (data.at("group_name") != "")
+    if (data.at("group") != "")
     {
-        jsonEvent["data"]["attributes"]["group_name"] = data.at("group_name");
+        jsonEvent["data"]["attributes"]["group"] = data.at("group");
     }
 
     if (ctx->config->options & CHECK_INODE)
@@ -130,16 +130,6 @@ nlohmann::json DB::createJsonEvent(const nlohmann::json& fileJson, const nlohman
         jsonEvent["data"]["attributes"]["attributes"] = data.at("attributes");
     }
 
-    // Last event
-    if (resultJson.contains("last_event"))
-    {
-        jsonEvent["data"]["timestamp"] = resultJson.at("last_event");
-    }
-    else
-    {
-        jsonEvent["data"]["timestamp"] = data.at("last_event");
-    }
-
     // Old data attributes
     if (resultJson.contains("old"))
     {
@@ -164,14 +154,14 @@ nlohmann::json DB::createJsonEvent(const nlohmann::json& fileJson, const nlohman
 
         if (ctx->config->options & CHECK_PERM)
         {
-            if (old_data.contains("perm"))
+            if (old_data.contains("permissions"))
             {
-                jsonEvent["data"]["old_attributes"]["perm"] = old_data["perm"];
-                changed_attributes.push_back("permission");
+                jsonEvent["data"]["old_attributes"]["permissions"] = old_data["permissions"];
+                changed_attributes.push_back("permissions");
             }
             else
             {
-                jsonEvent["data"]["old_attributes"]["perm"] = data.at("perm");
+                jsonEvent["data"]["old_attributes"]["permissions"] = data.at("permissions");
             }
         }
 
@@ -201,29 +191,29 @@ nlohmann::json DB::createJsonEvent(const nlohmann::json& fileJson, const nlohman
             }
         }
 
-        if (data.at("user_name") != "")
+        if (data.at("owner") != "")
         {
-            if (old_data.contains("user_name"))
+            if (old_data.contains("owner"))
             {
-                jsonEvent["data"]["old_attributes"]["user_name"] = old_data["user_name"];
-                changed_attributes.push_back("user_name");
+                jsonEvent["data"]["old_attributes"]["owner"] = old_data["owner"];
+                changed_attributes.push_back("owner");
             }
             else
             {
-                jsonEvent["data"]["old_attributes"]["user_name"] = data.at("user_name");
+                jsonEvent["data"]["old_attributes"]["owner"] = data.at("owner");
             }
         }
 
-        if (data.at("group_name") != "")
+        if (data.at("group") != "")
         {
-            if (old_data.contains("group_name"))
+            if (old_data.contains("group"))
             {
-                jsonEvent["data"]["old_attributes"]["group_name"] = old_data["group_name"];
-                changed_attributes.push_back("group_name");
+                jsonEvent["data"]["old_attributes"]["group"] = old_data["group"];
+                changed_attributes.push_back("group");
             }
             else
             {
-                jsonEvent["data"]["old_attributes"]["group_name"] = data.at("group_name");
+                jsonEvent["data"]["old_attributes"]["group"] = data.at("group");
             }
         }
 
@@ -345,20 +335,16 @@ void DB::getFile(const std::string& path, std::function<void(const nlohmann::jso
         SelectQuery::builder()
         .table(FIMDB_FILE_TABLE_NAME)
         .columnList({"path",
-            "mode",
-            "last_event",
-            "scanned",
-            "options",
             "checksum",
-            "dev",
+            "device",
             "inode",
             "size",
-            "perm",
+            "permissions",
             "attributes",
             "uid",
             "gid",
-            "user_name",
-            "group_name",
+            "owner",
+            "group",
             "hash_md5",
             "hash_sha1",
             "hash_sha256",

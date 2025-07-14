@@ -23,18 +23,15 @@ void RegistryKey::createFimEntry()
 
         if (key)
         {
-            key->arch = m_arch;
+            key->architecture = m_architecture;
             std::snprintf(key->checksum, sizeof(key->checksum), "%s", m_checksum.c_str());
             key->gid = const_cast<char*>(m_gid.c_str());
             key->uid = const_cast<char*>(m_uid.c_str());
-            key->group_name = const_cast<char*>(m_groupname.c_str());
-            key->last_event = m_lastEvent;
+            key->group = const_cast<char*>(m_group.c_str());
             key->mtime = m_time;
             key->path = const_cast<char*>(m_identifier.c_str());
-            key->hash_full_path = const_cast<char*>(m_hashpath.c_str());
-            key->perm = const_cast<char*>(m_perm.c_str());
-            key->scanned =  m_scanned;
-            key->user_name = const_cast<char*>(m_username.c_str());
+            key->permissions = const_cast<char*>(m_permissions.c_str());
+            key->owner = const_cast<char*>(m_owner.c_str());
 
             fim->registry_entry.key = key;
             m_fimEntry = std::unique_ptr<fim_entry, FimRegistryKeyDeleter>(fim);
@@ -64,17 +61,14 @@ void RegistryKey::createJSON()
 
     conf["table"] = FIMDB_REGISTRY_KEY_TABLENAME;
     data["path"] = m_identifier;
-    data["arch"] = ((m_arch == 0) ? "[x32]" : "[x64]");
-    data["last_event"] = m_lastEvent;
-    data["scanned"] = m_scanned;
+    data["architecture"] = ((m_architecture == 0) ? "[x32]" : "[x64]");
     data["checksum"] = m_checksum;
-    data["perm"] = m_perm;
+    data["permissions"] = m_permissions;
     data["uid"] = m_uid;
     data["gid"] = m_gid;
-    data["user_name"] = m_username;
-    data["group_name"] = m_groupname;
+    data["owner"] = m_owner;
+    data["group"] = m_group;
     data["mtime"] = m_time;
-    data["hash_full_path"] = m_hashpath;
 
     conf["data"] = nlohmann::json::array({data});
 
