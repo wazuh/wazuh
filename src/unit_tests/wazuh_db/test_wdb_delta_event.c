@@ -29,6 +29,8 @@ cJSON * wdb_dbsync_get_field_default(const struct field * field);
 #define ANY_PTR_VALUE 1
 #define TEST_INDEX    1
 #define HWINFO_TABLE "sys_hwinfo"
+#define USERS_TABLE "sys_users"
+#define GROUPS_TABLE "sys_groups"
 
 /* wdb_dbsync_stmt_bind_from_json */
 
@@ -359,6 +361,77 @@ void test_wdb_dbsync_stmt_bind_hwinfo_ram_usage_from_valid_value_to_number (void
     expect_value(__wrap_sqlite3_bind_int, value, 100);
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
     assert_true(wdb_dbsync_stmt_bind_from_json((sqlite3_stmt *) ANY_PTR_VALUE, TEST_INDEX, FIELD_INTEGER, value, "ram_usage", HWINFO_TABLE, true));
+    cJSON_Delete(value);
+}
+
+/* wdb_dbsync_stmt_bind_from_json for users */
+void test_wdb_dbsync_stmt_bind_users_multiple_fields_from_negative_value_to_null(void **state) {
+    cJSON * value = cJSON_CreateNumber(-1);
+    const char * fields[] = {
+        "user_password_expiration_date",                     // First integer field
+        "user_password_inactive_days",
+        "user_password_max_days_between_changes",
+        "user_password_min_days_between_changes",
+        "user_password_warning_days_before_expiration",
+        "user_id",                                           // First long field
+        "user_group_id",
+        "user_last_login",
+        "user_auth_failed_count",
+        "process_pid",
+        "user_created",                                      // First double field
+        "user_auth_failed_timestamp",
+        "user_password_last_change",
+    };
+
+    for (int i = 0; i < (sizeof(fields)/sizeof(fields[0])); ++i) {
+        expect_value(__wrap_sqlite3_bind_null, index, TEST_INDEX);
+        will_return(__wrap_sqlite3_bind_null, SQLITE_OK);
+        int field_type = FIELD_INTEGER;
+        if (i >= 6 && i <= 10) {
+            field_type = FIELD_INTEGER_LONG;
+        }
+        if (i >= 11) {
+            field_type = FIELD_REAL;
+        }
+        assert_true(wdb_dbsync_stmt_bind_from_json((sqlite3_stmt *) ANY_PTR_VALUE, TEST_INDEX, field_type, value, fields[i], USERS_TABLE, true));
+    }
+
+    cJSON_Delete(value);
+}
+
+void test_wdb_dbsync_stmt_bind_users_multiple_fields_from_zero_value_to_null(void **state) {
+    cJSON * value = cJSON_CreateNumber(0);
+    const char * fields[] = {
+        "user_password_expiration_date",                     // First integer field
+        "user_last_login",                                   // First long field
+        "user_created",                                      // First double field
+        "user_auth_failed_timestamp",
+        "user_password_last_change",
+    };
+
+    for (int i = 0; i < (sizeof(fields)/sizeof(fields[0])); ++i) {
+        expect_value(__wrap_sqlite3_bind_null, index, TEST_INDEX);
+        will_return(__wrap_sqlite3_bind_null, SQLITE_OK);
+        int field_type = FIELD_REAL;
+        if (i == 0) {
+            field_type = FIELD_INTEGER;
+        }
+        if (i == 1) {
+            field_type = FIELD_INTEGER_LONG;
+        }
+        assert_true(wdb_dbsync_stmt_bind_from_json((sqlite3_stmt *) ANY_PTR_VALUE, TEST_INDEX, field_type, value, fields[i], USERS_TABLE, true));
+    }
+
+    cJSON_Delete(value);
+}
+
+/* wdb_dbsync_stmt_bind_from_json for groups */
+void test_wdb_dbsync_stmt_bind_groups_multiple_fields_from_negative_value_to_null(void **state) {
+    cJSON * value = cJSON_CreateNumber(-1);
+    expect_value(__wrap_sqlite3_bind_null, index, TEST_INDEX);
+    will_return(__wrap_sqlite3_bind_null, SQLITE_OK);
+    assert_true(wdb_dbsync_stmt_bind_from_json((sqlite3_stmt *) ANY_PTR_VALUE, TEST_INDEX, FIELD_INTEGER_LONG, value, "group_id", GROUPS_TABLE, true));
+
     cJSON_Delete(value);
 }
 
@@ -937,6 +1010,11 @@ int main() {
         cmocka_unit_test(test_wdb_dbsync_stmt_bind_hwinfo_ram_free_from_valid_value_to_number),
         cmocka_unit_test(test_wdb_dbsync_stmt_bind_hwinfo_ram_total_from_valid_value_to_number),
         cmocka_unit_test(test_wdb_dbsync_stmt_bind_hwinfo_ram_usage_from_valid_value_to_number),
+        // wdb_dbsync_stmt_bind_from_json for users
+        cmocka_unit_test(test_wdb_dbsync_stmt_bind_users_multiple_fields_from_negative_value_to_null),
+        cmocka_unit_test(test_wdb_dbsync_stmt_bind_users_multiple_fields_from_zero_value_to_null),
+        // wdb_dbsync_stmt_bind_from_json for groups
+        cmocka_unit_test(test_wdb_dbsync_stmt_bind_groups_multiple_fields_from_negative_value_to_null),
         /* wdb_upsert_dbsync */
         cmocka_unit_test(test_wdb_upsert_dbsync_err),
         cmocka_unit_test(test_wdb_upsert_dbsync_bad_cache),
