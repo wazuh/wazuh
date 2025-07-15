@@ -12,10 +12,19 @@
 #include <windows.h>
 #include <winsvc.h>
 #include "json.hpp"
+#include "iwinsvc_wrapper.hpp"
+#include "iwindows_api_wrapper.hpp"
 
 class ServicesProvider
 {
     public:
+        /// @brief Constructs a ServicesProvider with a specific wrapper.
+        /// @param winSvcWrapper A shared pointer to an IWinSvcWrapper instance for Windows
+        /// service control manager operations.
+        /// @param winApiWrapper A shared pointer to an IWindowsApiWrapper instance for Windows API operations.
+        explicit ServicesProvider(std::shared_ptr<IWinSvcWrapper> winSvcWrapper,
+                                  std::shared_ptr<IWindowsApiWrapper> winApiWrapper);
+
         /// @brief Default constructor.
         ServicesProvider();
 
@@ -24,6 +33,9 @@ class ServicesProvider
         nlohmann::json collect();
 
     private:
+        std::shared_ptr<IWinSvcWrapper> m_winSvcWrapper;
+        std::shared_ptr<IWindowsApiWrapper> m_winApiWrapper;
+
         /// @brief Retrieves details of a specific service.
         /// @param scmHandle Handle to the Service Control Manager.
         /// @param svc The service status to retrieve details for.
