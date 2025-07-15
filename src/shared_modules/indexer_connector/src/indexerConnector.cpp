@@ -810,7 +810,11 @@ IndexerConnector::IndexerConnector(
 
     m_initializeThread = std::thread(
         // coverity[copy_constructor_call]
-        [this, templateData, updateMappingsData, selector, secureCommunication]()
+        [this,
+         templateData,
+         updateMappingsData,
+         selector = std::move(selector),
+         secureCommunication = std::move(secureCommunication)]()
         {
             auto sleepTime = std::chrono::seconds(START_TIME);
             std::unique_lock lock(m_mutex);
