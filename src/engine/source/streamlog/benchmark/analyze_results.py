@@ -286,30 +286,30 @@ def main():
     """
     # Benchmark output data
     benchmark_output = """
-BM_SyncMultiThreadWithFlush/1/100000/manual_time          188713500 ns      3717313 ns            4 items_per_second=529.904k/s
-BM_SyncMultiThreadWithFlush/2/50000/manual_time           225693667 ns      3210783 ns            3 items_per_second=443.078k/s
-BM_SyncMultiThreadWithFlush/4/25000/manual_time           282218500 ns      2530993 ns            2 items_per_second=354.335k/s
-BM_SyncMultiThreadWithFlush/8/12500/manual_time           425777500 ns      2968770 ns            2 items_per_second=234.864k/s
-BM_SyncMultiThreadWithFlush/16/6250/manual_time           637579000 ns       655411 ns            1 items_per_second=156.843k/s
-BM_SyncMultiThreadWithFlush/32/3125/manual_time           632881000 ns      1385818 ns            1 items_per_second=158.008k/s
-BM_SyncMultiThreadWithoutFlush/1/100000/manual_time       182057750 ns      3415937 ns            4 items_per_second=549.276k/s
-BM_SyncMultiThreadWithoutFlush/2/50000/manual_time        227218667 ns      3618372 ns            3 items_per_second=440.105k/s
-BM_SyncMultiThreadWithoutFlush/4/25000/manual_time        245894333 ns      3932608 ns            3 items_per_second=406.679k/s
-BM_SyncMultiThreadWithoutFlush/8/12500/manual_time        366069000 ns      3305534 ns            2 items_per_second=273.173k/s
-BM_SyncMultiThreadWithoutFlush/16/6250/manual_time        627557000 ns       628921 ns            1 items_per_second=159.348k/s
-BM_SyncMultiThreadWithoutFlush/32/3125/manual_time        591381000 ns      1302421 ns            1 items_per_second=169.096k/s
-BM_AsyncDedicatedWriterWithFlush/1/100000/manual_time      90455333 ns      4519000 ns            6 items_per_second=1.10552M/s
-BM_AsyncDedicatedWriterWithFlush/2/50000/manual_time       92311000 ns      4681576 ns            7 items_per_second=1083.29k/s
-BM_AsyncDedicatedWriterWithFlush/4/25000/manual_time      100370333 ns      4605915 ns            6 items_per_second=996.31k/s
-BM_AsyncDedicatedWriterWithFlush/8/12500/manual_time      117740000 ns      4484970 ns            5 items_per_second=849.329k/s
-BM_AsyncDedicatedWriterWithFlush/16/6250/manual_time      165509500 ns      4523030 ns            4 items_per_second=604.195k/s
-BM_AsyncDedicatedWriterWithFlush/32/3125/manual_time      189690000 ns      4218919 ns            3 items_per_second=527.176k/s
-BM_AsyncDedicatedWriterWithoutFlush/1/100000/manual_time   63347727 ns      5046982 ns           11 items_per_second=1.57859M/s
-BM_AsyncDedicatedWriterWithoutFlush/2/50000/manual_time    65417444 ns      4877073 ns            9 items_per_second=1.52864M/s
-BM_AsyncDedicatedWriterWithoutFlush/4/25000/manual_time    81617889 ns      4713206 ns            9 items_per_second=1.22522M/s
-BM_AsyncDedicatedWriterWithoutFlush/8/12500/manual_time    93680833 ns      4888334 ns            6 items_per_second=1067.45k/s
-BM_AsyncDedicatedWriterWithoutFlush/16/6250/manual_time   136086400 ns      4782047 ns            5 items_per_second=734.827k/s
-BM_AsyncDedicatedWriterWithoutFlush/32/3125/manual_time   170498200 ns      5341679 ns            5 items_per_second=586.516k/s
+BM_SyncMultiThreadWithFlush/1/100000/manual_time          181093250 ns      3606016 ns            4 items_per_second=552.202k/s
+BM_SyncMultiThreadWithFlush/2/50000/manual_time           226247333 ns      3578711 ns            3 items_per_second=441.994k/s
+BM_SyncMultiThreadWithFlush/4/25000/manual_time           291865000 ns      2820322 ns            2 items_per_second=342.624k/s
+BM_SyncMultiThreadWithFlush/8/12500/manual_time           312059000 ns      3140885 ns            2 items_per_second=320.452k/s
+BM_SyncMultiThreadWithFlush/16/6250/manual_time           611303000 ns       663376 ns            1 items_per_second=163.585k/s
+BM_SyncMultiThreadWithFlush/32/3125/manual_time           631545000 ns      1220197 ns            1 items_per_second=158.342k/s
+BM_SyncMultiThreadWithoutFlush/1/100000/manual_time       185037250 ns      4903041 ns            4 items_per_second=540.432k/s
+BM_SyncMultiThreadWithoutFlush/2/50000/manual_time        236136000 ns      3190721 ns            3 items_per_second=423.485k/s
+BM_SyncMultiThreadWithoutFlush/4/25000/manual_time        276510500 ns      2398262 ns            2 items_per_second=361.65k/s
+BM_SyncMultiThreadWithoutFlush/8/12500/manual_time        357347500 ns      3651517 ns            2 items_per_second=279.84k/s
+BM_SyncMultiThreadWithoutFlush/16/6250/manual_time        626672000 ns       702955 ns            1 items_per_second=159.573k/s
+BM_SyncMultiThreadWithoutFlush/32/3125/manual_time        648979000 ns      1226675 ns            1 items_per_second=154.088k/s
+BM_AsyncDedicatedWriterWithFlush/1/100000/manual_time      96357429 ns      8701524 ns            7 items_per_second=1037.8k/s
+BM_AsyncDedicatedWriterWithFlush/2/50000/manual_time       73849667 ns      8898078 ns            9 items_per_second=1.3541M/s
+BM_AsyncDedicatedWriterWithFlush/4/25000/manual_time       82225000 ns      8640440 ns            9 items_per_second=1.21618M/s
+BM_AsyncDedicatedWriterWithFlush/8/12500/manual_time       78184556 ns      9240360 ns            9 items_per_second=1.27902M/s
+BM_AsyncDedicatedWriterWithFlush/16/6250/manual_time       86069444 ns     10387423 ns            9 items_per_second=1.16185M/s
+BM_AsyncDedicatedWriterWithFlush/32/3125/manual_time       95542286 ns      9396873 ns            7 items_per_second=1046.66k/s
+BM_AsyncDedicatedWriterWithoutFlush/1/100000/manual_time   86841625 ns      8358890 ns            8 items_per_second=1.15152M/s
+BM_AsyncDedicatedWriterWithoutFlush/2/50000/manual_time    51346000 ns      8542054 ns           12 items_per_second=1.94757M/s
+BM_AsyncDedicatedWriterWithoutFlush/4/25000/manual_time    61803667 ns      9017903 ns           12 items_per_second=1.61803M/s
+BM_AsyncDedicatedWriterWithoutFlush/8/12500/manual_time    58767308 ns      9342549 ns           13 items_per_second=1.70163M/s
+BM_AsyncDedicatedWriterWithoutFlush/16/6250/manual_time    54897000 ns      9154467 ns           13 items_per_second=1.82159M/s
+BM_AsyncDedicatedWriterWithoutFlush/32/3125/manual_time    69677444 ns     10007337 ns            9 items_per_second=1.43518M/s
     """
 
     # Parse the data
