@@ -11,7 +11,7 @@
 #include "sysInfo.hpp"
 #include "cmdHelper.h"
 #include "stringHelper.h"
-#include "filesystemHelper.h"
+#include <filesystem_wrapper.hpp>
 #include "osinfo/sysOsParsers.h"
 #include <libproc.h>
 #include <pwd.h>
@@ -105,9 +105,11 @@ nlohmann::json SysInfo::getHardware() const
 
 static void getPackagesFromPath(const std::string& pkgDirectory, const int pkgType, std::function<void(nlohmann::json&)> callback)
 {
+    const file_system::FileSystemWrapper fs;
+
     if (MACPORTS == pkgType)
     {
-        if (Utils::existsRegular(pkgDirectory + "/" + MACPORTS_DB_NAME))
+        if (fs.is_regular_file(pkgDirectory + "/" + MACPORTS_DB_NAME))
         {
             try
             {
@@ -148,7 +150,7 @@ static void getPackagesFromPath(const std::string& pkgDirectory, const int pkgTy
     }
     else
     {
-        const auto packages { Utils::enumerateDir(pkgDirectory) };
+        const auto packages { fs.list_directory(pkgDirectory) };
 
         for (const auto& package : packages)
         {
@@ -175,7 +177,7 @@ static void getPackagesFromPath(const std::string& pkgDirectory, const int pkgTy
             {
                 if (!Utils::startsWith(package, "."))
                 {
-                    const auto packageVersions { Utils::enumerateDir(pkgDirectory + "/" + package) };
+                    const auto packageVersions { fs.list_directory(pkgDirectory / package) };
 
                     for (const auto& version : packageVersions)
                     {
@@ -421,11 +423,13 @@ void SysInfo::getProcessesInfo(std::function<void(nlohmann::json&)> callback) co
 
 void SysInfo::getPackages(std::function<void(nlohmann::json&)> callback) const
 {
+    const file_system::FileSystemWrapper fs;
+
     for (const auto& packageDirectory : s_mapPackagesDirectories)
     {
         const auto pkgDirectory { packageDirectory.first };
 
-        if (Utils::existsDir(pkgDirectory))
+        if (fs.is_directory(pkgDirectory))
         {
             getPackagesFromPath(pkgDirectory, packageDirectory.second, callback);
         }
