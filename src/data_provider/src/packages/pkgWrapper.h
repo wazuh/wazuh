@@ -19,7 +19,7 @@
 #include "ipackageWrapper.h"
 #include "sharedDefs.h"
 #include "plist/plist.h"
-#include "filesystemHelper.h"
+#include <file_io_utils.hpp>
 
 static const std::string APP_INFO_PATH      { "Contents/Info.plist" };
 static const std::string PLIST_BINARY_START { "bplist00"            };
@@ -340,7 +340,9 @@ class PKGWrapper final : public IPackageWrapper
         {
             std::string xmlContent;
             plist_t rootNode { nullptr };
-            const auto binaryContent { Utils::getBinaryContent(filePath) };
+
+            const file_io::FileIOUtils ioUtils;
+            const auto binaryContent { ioUtils.getBinaryContent(filePath) };
 
             // plist C++ APIs calls - to be used when Makefile and external are updated.
             // const auto dataFromBin { PList::Structure::FromBin(binaryContent) };

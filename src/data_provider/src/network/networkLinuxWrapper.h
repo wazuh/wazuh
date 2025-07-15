@@ -17,7 +17,7 @@
 #include <sys/socket.h>
 #include "inetworkWrapper.h"
 #include "networkHelper.h"
-#include "filesystemHelper.h"
+#include <file_io_utils.hpp>
 #include "stringHelper.h"
 #include "sharedDefs.h"
 
@@ -263,7 +263,8 @@ class NetworkLinuxInterface final : public INetworkInterfaceWrapper
             }
             else
             {
-                auto fileData { Utils::getFileContent(std::string(WM_SYS_NET_DIR) + "route") };
+                const file_io::FileIOUtils ioUtils;
+                auto fileData { ioUtils.getFileContent(std::string(WM_SYS_NET_DIR) + "route") };
                 const auto ifName { this->name() };
 
                 if (!fileData.empty())
@@ -374,7 +375,8 @@ class NetworkLinuxInterface final : public INetworkInterfaceWrapper
 
         std::string dhcp() const override
         {
-            auto fileData { Utils::getFileContent(WM_SYS_IF_FILE) };
+            const file_io::FileIOUtils ioUtils;
+            auto fileData { ioUtils.getFileContent(WM_SYS_IF_FILE) };
             std::string retVal { "unknown" };
             const auto family { this->family() };
             const auto ifName { this->name() };
@@ -409,8 +411,8 @@ class NetworkLinuxInterface final : public INetworkInterfaceWrapper
             else
             {
                 const auto fileName { "ifcfg-" + ifName };
-                fileData = Utils::getFileContent(WM_SYS_IF_DIR_RH + fileName);
-                fileData = fileData.empty() ? Utils::getFileContent(WM_SYS_IF_DIR_SUSE + fileName) : fileData;
+                fileData = ioUtils.getFileContent(WM_SYS_IF_DIR_RH + fileName);
+                fileData = fileData.empty() ? ioUtils.getFileContent(WM_SYS_IF_DIR_SUSE + fileName) : fileData;
 
                 if (!fileData.empty())
                 {
@@ -449,7 +451,8 @@ class NetworkLinuxInterface final : public INetworkInterfaceWrapper
         uint32_t mtu() const override
         {
             uint32_t retVal { 0 };
-            const auto mtuFileContent { Utils::getFileContent(std::string(WM_SYS_IFDATA_DIR) + this->name() + "/mtu") };
+            const file_io::FileIOUtils ioUtils;
+            const auto mtuFileContent {ioUtils.getFileContent(std::string(WM_SYS_IFDATA_DIR) + this->name() + "/mtu")};
 
             if (!mtuFileContent.empty())
             {
@@ -465,7 +468,8 @@ class NetworkLinuxInterface final : public INetworkInterfaceWrapper
 
             try
             {
-                const auto devData { Utils::getFileContent(std::string(WM_SYS_NET_DIR) + "dev") };
+                const file_io::FileIOUtils ioUtils;
+                const auto devData {ioUtils.getFileContent(std::string(WM_SYS_NET_DIR) + "dev")};
 
                 if (!devData.empty())
                 {
@@ -508,7 +512,8 @@ class NetworkLinuxInterface final : public INetworkInterfaceWrapper
 
         std::string type() const override
         {
-            const auto networkTypeCode { Utils::getFileContent(std::string(WM_SYS_IFDATA_DIR) + this->name() + "/type") };
+            const file_io::FileIOUtils ioUtils;
+            const auto networkTypeCode {ioUtils.getFileContent(std::string(WM_SYS_IFDATA_DIR) + this->name() + "/type")};
             std::string type { UNKNOWN_VALUE };
 
             if (!networkTypeCode.empty())
@@ -521,7 +526,9 @@ class NetworkLinuxInterface final : public INetworkInterfaceWrapper
 
         std::string state() const override
         {
-            const std::string operationalState { Utils::getFileContent(std::string(WM_SYS_IFDATA_DIR) + this->name() + "/operstate") };
+            const file_io::FileIOUtils ioUtils;
+            const std::string operationalState {
+                ioUtils.getFileContent(std::string(WM_SYS_IFDATA_DIR) + this->name() + "/operstate")};
 
             std::string state { UNKNOWN_VALUE };
 
@@ -535,7 +542,9 @@ class NetworkLinuxInterface final : public INetworkInterfaceWrapper
 
         std::string MAC() const override
         {
-            const std::string macContent { Utils::getFileContent(std::string(WM_SYS_IFDATA_DIR) + this->name() + "/address")};
+            const file_io::FileIOUtils ioUtils;
+            const std::string macContent {
+            ioUtils.getFileContent(std::string(WM_SYS_IFDATA_DIR) + this->name() + "/address")};
 
             std::string mac { UNKNOWN_VALUE };
 
