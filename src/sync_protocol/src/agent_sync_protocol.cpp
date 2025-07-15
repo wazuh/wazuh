@@ -14,6 +14,8 @@
 
 #include <flatbuffers/flatbuffers.h>
 #include <iostream>
+#include <chrono>
+#include <thread>
 
 constexpr char SYNC_MQ = 's';
 
@@ -42,27 +44,27 @@ void AgentSyncProtocol::synchronizeModule(const std::string& module, Mode mode, 
         return;
     }
 
-    uint64_t session = 0;
     std::vector<PersistedData> data = m_persistentQueue->fetchAll(module);
 
-    if (!sendStartAndWaitAck(module, mode, realtime, session, data.size()))
+    if (!sendStartAndWaitAck(module, mode, realtime, data.size()))
     {
         std::cerr << "Failed to send start message" << std::endl;
         return;
     }
 
-    if (!sendDataMessages(module, session, data))
+    if (!sendDataMessages(module, m_syncState.session, data))
     {
         std::cerr << "Failed to send data messages" << std::endl;
         return;
     }
 
-    if (!sendEndAndWaitAck(module, session))
+    if (!sendEndAndWaitAck(module, m_syncState.session))
     {
         std::cerr << "Failed to send end message" << std::endl;
         return;
     }
 
+    m_syncState.reset();
     clearPersistedDifferences(module);
 }
 
@@ -81,7 +83,7 @@ bool AgentSyncProtocol::ensureQueueAvailable()
     return true;
 }
 
-bool AgentSyncProtocol::sendStartAndWaitAck(const std::string& module, Mode mode, bool realtime, uint64_t& session, size_t dataSize)
+bool AgentSyncProtocol::sendStartAndWaitAck(const std::string& module, Mode mode, bool realtime, size_t dataSize)
 {
     flatbuffers::FlatBufferBuilder builder;
     auto moduleStr = builder.CreateString(module);
@@ -96,14 +98,51 @@ bool AgentSyncProtocol::sendStartAndWaitAck(const std::string& module, Mode mode
     auto message = CreateMessage(builder, MessageType::Start, startOffset.Union());
     builder.Finish(message);
 
-    return sendFlatBufferMessageAsString(builder.GetBufferSpan(), module) && receiveStartAck(session);
+    const auto messageSpan = builder.GetBufferSpan();
+
+    const auto retryInterval = std::chrono::seconds(30);
+
+    for (int attempt = 1; ; ++attempt)
+    {
+        {
+            std::lock_guard<std::mutex> lock(m_syncState.mtx);
+            m_syncState.reset();
+            m_syncState.phase = SyncPhase::WaitingStartAck;
+        }
+
+        if (!sendFlatBufferMessageAsString(messageSpan, module))
+        {
+            std::cerr << "[Sync] Failed to send Start message. Retrying in " << retryInterval.count() << "s...\n";
+            {
+                std::lock_guard<std::mutex> lock(m_syncState.mtx);
+                m_syncState.reset();
+            }
+            std::this_thread::sleep_for(retryInterval);
+            continue;
+        }
+
+        if (receiveStartAck(retryInterval))
+        {
+            std::lock_guard<std::mutex> lock(m_syncState.mtx);
+
+            std::cout << "[Sync] StartAck received. Session " << m_syncState.session << " established.\n";
+
+            return true;
+        }
+
+        std::cout << "[Sync] Timed out waiting for StartAck. Retrying...\n";
+    }
+
+    return false;
 }
 
-bool AgentSyncProtocol::receiveStartAck(uint64_t& session)
+bool AgentSyncProtocol::receiveStartAck(std::chrono::seconds timeout)
 {
-    // Simulated StartAck
-    session = 99999;
-    return true;
+    std::unique_lock<std::mutex> lock(m_syncState.mtx);
+    return m_syncState.cv.wait_for(lock, timeout, [&]
+    {
+        return m_syncState.startAckReceived;
+    });
 }
 
 bool AgentSyncProtocol::sendDataMessages(const std::string& module,
@@ -221,9 +260,9 @@ bool AgentSyncProtocol::sendFlatBufferMessageAsString(flatbuffers::span<uint8_t>
     return true;
 }
 
-bool AgentSyncProtocol::parseResponseBuffer(const uint8_t* data, size_t size)
+bool AgentSyncProtocol::parseResponseBuffer(const uint8_t* data)
 {
-    if (!data || size == 0)
+    if (!data)
     {
         std::cerr << "Invalid buffer received.\n";
         return false;
@@ -232,12 +271,31 @@ bool AgentSyncProtocol::parseResponseBuffer(const uint8_t* data, size_t size)
     const auto* message = Wazuh::SyncSchema::GetMessage(data);
     const auto messageType = message->content_type();
 
+    std::unique_lock<std::mutex> lock(m_syncState.mtx);
+
     switch (messageType)
     {
         case Wazuh::SyncSchema::MessageType::StartAck:
             {
                 const auto* startAck = message->content_as_StartAck();
-                std::cout << "[StartAck] session: " << startAck->session() << "\n";
+                const uint64_t incomingSession = startAck->session();
+
+                std::cout << "[StartAck] session: " << incomingSession << "\n";
+
+                if (m_syncState.phase == SyncPhase::WaitingStartAck)
+                {
+                    m_syncState.session = incomingSession;
+                    m_syncState.startAckReceived = true;
+                    m_syncState.cv.notify_all();
+
+                    std::cout << "[StartAck] Received and accepted for new session: " << m_syncState.session << "\n";
+                }
+                else
+                {
+                    std::cerr << "[StartAck] Discarded. Not in WaitingStartAck phase. Current phase: "
+                              << static_cast<int>(m_syncState.phase) << "\n";
+                }
+
                 break;
             }
 
@@ -254,10 +312,10 @@ bool AgentSyncProtocol::parseResponseBuffer(const uint8_t* data, size_t size)
 
                 for (const auto* pair : *reqRet->seq())
                 {
-                    reqRetRanges.emplace_back(pair->begin(), pair->end());
+                    m_syncState.reqRetRanges.emplace_back(pair->begin(), pair->end());
                 }
 
-                std::cout << "[ReqRet] received " << reqRetRanges.size() << " ranges\n";
+                std::cout << "[ReqRet] received " << m_syncState.reqRetRanges.size() << " ranges\n";
                 break;
             }
 

@@ -18,6 +18,7 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
+#include <condition_variable>
 
 class IAgentSyncProtocol
 {
@@ -45,9 +46,8 @@ class IAgentSyncProtocol
 
         /// @brief Parses a FlatBuffer response message received from the manager.
         /// @param data Pointer to the FlatBuffer-encoded message buffer.
-        /// @param size Size in bytes of the buffer.
         /// @return true if the message was successfully parsed and processed; false otherwise.
-        virtual bool parseResponseBuffer(const uint8_t* data, size_t size) = 0;
+        virtual bool parseResponseBuffer(const uint8_t* data) = 0;
 };
 
 class AgentSyncProtocol : public IAgentSyncProtocol
@@ -70,9 +70,8 @@ class AgentSyncProtocol : public IAgentSyncProtocol
 
         /// @brief Parses a FlatBuffer response message received from the manager.
         /// @param data Pointer to the FlatBuffer-encoded message buffer.
-        /// @param size Size in bytes of the buffer.
         /// @return true if the message was successfully parsed and processed; false otherwise.
-        bool parseResponseBuffer(const uint8_t* data, size_t size) override;
+        bool parseResponseBuffer(const uint8_t* data) override;
 
     private:
 
@@ -93,15 +92,14 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         /// @param module Module name
         /// @param mode Sync mode
         /// @param realtime Realtime sync
-        /// @param session Session id reference
         /// @param dataSize Size of data to send
         /// @return True on success, false on failure
-        bool sendStartAndWaitAck(const std::string& module, Wazuh::SyncSchema::Mode mode, bool realtime, uint64_t& session, size_t dataSize);
+        bool sendStartAndWaitAck(const std::string& module, Wazuh::SyncSchema::Mode mode, bool realtime, size_t dataSize);
 
         /// @brief Receives a startack message from the server
-        /// @param session Session id reference
+        /// @param timeout Timeout to wait for Ack
         /// @return True on success, false on failure
-        bool receiveStartAck(uint64_t& session);
+        bool receiveStartAck(std::chrono::seconds timeout);
 
         /// @brief Sends data messages to the server
         /// @param module Module name
@@ -135,6 +133,62 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         /// @param module Module name
         /// @return True on success, false on failure
         bool sendFlatBufferMessageAsString(flatbuffers::span<uint8_t> fbData, const std::string& module);
+
+        /// @brief Defines the possible phases of a synchronization process.
+        enum class SyncPhase
+        {
+            /// @brief The protocol is not in an active synchronization process.
+            Idle,
+            /// @brief A start message has been sent, waiting for the manager's StartAck.
+            WaitingStartAck,
+            /// @brief An end message has been sent, waiting for the manager's EndAck.
+            WaitingEndAck
+        };
+
+        /// @brief Synchronization state shared between threads during module sync.
+        ///
+        /// This structure holds synchronization primitives and state flags used to
+        /// coordinate between the main synchronization thread and the response handler.
+        /// It stores whether specific acknowledgments have been received and the ranges
+        /// requested by the manager.
+        struct SyncState
+        {
+            /// @brief Mutex used to protect access to the synchronization state.
+            std::mutex mtx;
+
+            /// @brief Condition variable used to signal waiting threads.
+            std::condition_variable cv;
+
+            /// @brief Indicates whether a StartAck response has been received.
+            bool startAckReceived = false;
+
+            /// @brief Indicates whether an EndAck response has been received.
+            bool endAckReceived = false;
+
+            /// @brief Ranges requested by the manager via ReqRet message.
+            std::vector<std::pair<uint64_t, uint64_t>> reqRetRanges;
+
+            /// @brief Current phase of the synchronization process.
+            SyncPhase phase = SyncPhase::Idle;
+
+            /// @brief Unique identifier for the current synchronization session, received from the manager.
+            uint64_t session = 0;
+
+            /// @brief Resets all internal flags and clears received ranges.
+            ///
+            /// This should be called before starting a new synchronization cycle.
+            void reset()
+            {
+                startAckReceived = false;
+                endAckReceived = false;
+                reqRetRanges.clear();
+                phase = SyncPhase::Idle;
+                session = 0;
+            }
+        };
+
+        /// @brief Manages the state for the current synchronization operation.
+        SyncState m_syncState;
 };
 
 #endif // AGENT_SYNC_PROTOCOL_HPP
