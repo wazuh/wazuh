@@ -78,7 +78,7 @@ char* adapt_delta_message(const char* data, const char* name, const char* id, co
 
     cJSON_AddItemToObject(j_msg_to_send, "data_type", cJSON_DetachItemFromObject(j_msg, "type"));
 
-    // For agents prior to v4.13.0, the "inode" data is a long value and now is a string. This normalizes the data type to string.
+    // For agents prior to v4.13.1, the "inode" data is a long value and now is a string. This normalizes the data type to string.
     cJSON* j_attrs = cJSON_GetObjectItem(j_msg, "attributes");
     cJSON* j_inode = j_attrs ? cJSON_GetObjectItem(j_attrs, "inode") : NULL;
     if (j_inode && cJSON_IsNumber(j_inode)) {
@@ -147,7 +147,7 @@ char* adapt_sync_message(const char* data, const char* name, const char* id, con
         j_data = cJSON_CreateObject();
         cJSON_AddItemToObject(j_data, "attributes_type", cJSON_DetachItemFromObject(j_msg, "component"));
 
-        // For agents prior to v4.13.0, the "inode" data is a long value and now is a string. This normalizes the data type to string.
+        // For agents prior to v4.13.1, the "inode" data is a long value and now is a string. This normalizes the data type to string.
         cJSON* j_attrs = cJSON_GetObjectItem(j_data_msg, "attributes");
         cJSON* j_inode = j_attrs ? cJSON_GetObjectItem(j_attrs, "inode") : NULL;
         if (j_inode && cJSON_IsNumber(j_inode)) {
