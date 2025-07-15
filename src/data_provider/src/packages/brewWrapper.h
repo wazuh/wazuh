@@ -15,7 +15,7 @@
 #include "ipackageWrapper.h"
 #include "sharedDefs.h"
 #include "stringHelper.h"
-#include "filesystemHelper.h"
+#include <file_io_utils.hpp>
 
 class BrewWrapper final : public IPackageWrapper
 {
@@ -34,7 +34,8 @@ class BrewWrapper final : public IPackageWrapper
             , m_vendor{UNKNOWN_VALUE}
             , m_installTime{UNKNOWN_VALUE}
         {
-            const auto rows { Utils::split(Utils::getFileContent(ctx.filePath + "/" + ctx.package + "/" + ctx.version + "/.brew/" + ctx.package + ".rb"), '\n')};
+            const file_io::FileIOUtils ioUtils;
+            const auto rows { Utils::split(ioUtils.getFileContent(ctx.filePath + "/" + ctx.package + "/" + ctx.version + "/.brew/" + ctx.package + ".rb"), '\n')};
 
             for (const auto& row : rows)
             {
