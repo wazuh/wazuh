@@ -8,6 +8,7 @@ target_include_directories(streamlogger
 target_link_libraries(streamlogger
     PUBLIC
     base
+    queue
     PRIVATE
     urlrequest
 )

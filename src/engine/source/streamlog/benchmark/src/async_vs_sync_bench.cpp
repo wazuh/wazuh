@@ -1,4 +1,5 @@
 #include <benchmark/benchmark.h>
+#include <queue/concurrentQueue.hpp>
 #include <streamlog/logger.hpp>
 
 #include <atomic>
@@ -27,50 +28,11 @@ static std::string generateEvent()
     return event;
 }
 
-// Thread-safe queue for asynchronous writing
-class EventQueue
-{
-private:
-    std::queue<std::string> m_queue;
-    std::mutex m_mutex;
-    std::condition_variable m_cv;
-    std::atomic<bool> m_finished {false};
-
-public:
-    void push(const std::string& event)
-    {
-        std::lock_guard<std::mutex> lock(m_mutex);
-        m_queue.push(event);
-        m_cv.notify_one();
-    }
-
-    bool pop(std::string& event)
-    {
-        std::unique_lock<std::mutex> lock(m_mutex);
-        m_cv.wait(lock, [this] { return !m_queue.empty() || m_finished.load(); });
-
-        if (m_queue.empty())
-        {
-            return false;
-        }
-
-        event = std::move(m_queue.front());
-        m_queue.pop();
-        return true;
-    }
-
-    void finish()
-    {
-        m_finished.store(true);
-        m_cv.notify_all();
-    }
-
-    bool isFinished() const { return m_finished.load(); }
-};
-
 // Benchmark: Multiple threads writing synchronously to the same file (with flush)
 static void BM_SyncMultiThreadWithFlush(benchmark::State& state)
 {
+    logging::testInit();
+
     const int numThreads = state.range(0);
     const int eventsPerThread = state.range(1);
     const std::string filename = "/tmp/sync_bench_flush.log";
@@ -142,6 +104,7 @@ static void BM_SyncMultiThreadWithFlush(benchmark::State& state)
 // Benchmark: Multiple threads writing synchronously to the same file (without flush)
 static void BM_SyncMultiThreadWithoutFlush(benchmark::State& state)
 {
+    logging::testInit();
     const int numThreads = state.range(0);
     const int eventsPerThread = state.range(1);
     const std::string filename = "/tmp/sync_bench_no_flush.log";
@@ -213,6 +176,7 @@ static void BM_SyncMultiThreadWithoutFlush(benchmark::State& state)
 // Benchmark: Asynchronous writing with dedicated writer thread (with flush)
 static void BM_AsyncDedicatedWriterWithFlush(benchmark::State& state)
 {
+    logging::testInit();
     const int numProducers = state.range(0);
     const int eventsPerProducer = state.range(1);
     const std::string filename = "/tmp/async_bench_flush.log";
@@ -222,12 +186,14 @@ static void BM_AsyncDedicatedWriterWithFlush(benchmark::State& state)
         // Remove file if exists
         fs::remove(filename);
 
-        EventQueue eventQueue;
+        // Create ConcurrentQueue without flooding file
+        base::queue::ConcurrentQueue<std::string> eventQueue(1000000, "benchmark");
         std::vector<std::thread> producers;
         const std::string event = generateEvent();
 
         std::atomic<bool> ready {false};
         std::atomic<int> ready_count {0};
+        std::atomic<bool> writerFinished {false};
 
         // Create writer thread but don't start timing yet
         std::thread writer(
@@ -244,11 +210,19 @@ static void BM_AsyncDedicatedWriterWithFlush(benchmark::State& state)
 
                 std::ofstream file(filename);
                 std::string eventToWrite;
-                while (eventQueue.pop(eventToWrite))
+                int totalExpected = numProducers * eventsPerProducer;
+                int processed = 0;
+
+                while (processed < totalExpected)
                 {
-                    file << eventToWrite << '\n';
-                    file.flush();
+                    if (eventQueue.waitPop(eventToWrite, 100000)) // 100ms timeout
+                    {
+                        file << eventToWrite << '\n';
+                        file.flush();
+                        processed++;
+                    }
                 }
+                writerFinished.store(true);
             });
 
         // Create producer threads but don't start timing yet
@@ -268,7 +242,7 @@ static void BM_AsyncDedicatedWriterWithFlush(benchmark::State& state)
 
                     for (int j = 0; j < eventsPerProducer; ++j)
                     {
-                        eventQueue.push(event);
+                        eventQueue.push(std::string(event));
                     }
                 });
         }
@@ -291,8 +265,12 @@ static void BM_AsyncDedicatedWriterWithFlush(benchmark::State& state)
             p.join();
         }
 
-        // Signal writer to finish and wait
-        eventQueue.finish();
+        // Wait for writer to finish processing all events
+        while (!writerFinished.load())
+        {
+            std::this_thread::yield();
+        }
+
         writer.join();
 
         auto end = std::chrono::high_resolution_clock::now();
@@ -307,6 +285,7 @@ static void BM_AsyncDedicatedWriterWithFlush(benchmark::State& state)
 // Benchmark: Asynchronous writing with dedicated writer thread (without flush)
 static void BM_AsyncDedicatedWriterWithoutFlush(benchmark::State& state)
 {
+    logging::testInit();
     const int numProducers = state.range(0);
     const int eventsPerProducer = state.range(1);
     const std::string filename = "/tmp/async_bench_no_flush.log";
@@ -316,12 +295,14 @@ static void BM_AsyncDedicatedWriterWithoutFlush(benchmark::State& state)
         // Remove file if exists
         fs::remove(filename);
 
-        EventQueue eventQueue;
+        // Create ConcurrentQueue without flooding file
+        base::queue::ConcurrentQueue<std::string> eventQueue(1000000, "benchmark");
         std::vector<std::thread> producers;
         const std::string event = generateEvent();
 
         std::atomic<bool> ready {false};
         std::atomic<int> ready_count {0};
+        std::atomic<bool> writerFinished {false};
 
         // Create writer thread but don't start timing yet
         std::thread writer(
@@ -338,11 +319,19 @@ static void BM_AsyncDedicatedWriterWithoutFlush(benchmark::State& state)
 
                 std::ofstream file(filename);
                 std::string eventToWrite;
-                while (eventQueue.pop(eventToWrite))
+                int totalExpected = numProducers * eventsPerProducer;
+                int processed = 0;
+
+                while (processed < totalExpected)
                 {
-                    file << eventToWrite << '\n';
-                    // No flush here
+                    if (eventQueue.waitPop(eventToWrite, 100000)) // 100ms timeout
+                    {
+                        file << eventToWrite << '\n';
+                        // No flush here
+                        processed++;
+                    }
                 }
+                writerFinished.store(true);
             });
 
         // Create producer threads but don't start timing yet
@@ -362,7 +351,7 @@ static void BM_AsyncDedicatedWriterWithoutFlush(benchmark::State& state)
 
                     for (int j = 0; j < eventsPerProducer; ++j)
                     {
-                        eventQueue.push(event);
+                        eventQueue.push(std::string(event));
                     }
                 });
         }
@@ -385,8 +374,12 @@ static void BM_AsyncDedicatedWriterWithoutFlush(benchmark::State& state)
             p.join();
         }
 
-        // Signal writer to finish and wait
-        eventQueue.finish();
+        // Wait for writer to finish processing all events
+        while (!writerFinished.load())
+        {
+            std::this_thread::yield();
+        }
+
         writer.join();
 
         auto end = std::chrono::high_resolution_clock::now();
