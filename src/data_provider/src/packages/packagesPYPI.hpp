@@ -15,7 +15,8 @@
 #include <ifilesystem_wrapper.hpp>
 #include <filesystem_wrapper.hpp>
 
-#include "fileIO.hpp"
+#include <file_io_utils.hpp>
+#include <ifile_io_utils.hpp>
 #include "stdFileSystemHelper.hpp"
 #include "json.hpp"
 #include "sharedDefs.h"
@@ -27,9 +28,9 @@
 
 const static std::map<std::string, std::string> FILE_MAPPING_PYPI {{"egg-info", "PKG-INFO"}, {"dist-info", "METADATA"}};
 
-template<typename TFileIO = FileIO>
-class PYPI final : public TFileIO
+class PYPI final
 {
+        std::unique_ptr<IFileIOUtils> m_fileIOUtils;
         std::unique_ptr<IFileSystemWrapper> m_fileSystemWrapper;
         std::unordered_set<std::string> m_pathsToExclude;
 
@@ -57,7 +58,7 @@ class PYPI final : public TFileIO
             packageInfo["install_time"] = UNKNOWN_VALUE;
             // The multiarch field won't have a default value
 
-            TFileIO::readLineByLine(path,
+            m_fileIOUtils->readLineByLine(path,
                                     [&packageInfo](const std::string & line) -> bool
             {
                 const auto it {
@@ -146,8 +147,11 @@ class PYPI final : public TFileIO
         }
 
     public:
-        PYPI(std::unique_ptr<IFileSystemWrapper> fileSystemWrapper = nullptr)
-            : m_fileSystemWrapper(fileSystemWrapper ? std::move(fileSystemWrapper) : std::make_unique<file_system::FileSystemWrapper>())
+        PYPI(std::unique_ptr<IFileIOUtils> fileIOUtils = nullptr,
+            std::unique_ptr<IFileSystemWrapper> fileSystemWrapper = nullptr)
+            : m_fileIOUtils(fileIOUtils ? std::move(fileIOUtils) : std::make_unique<file_io::FileIOUtils>())
+            , m_fileSystemWrapper(fileSystemWrapper ? std::move(fileSystemWrapper)
+                                                : std::make_unique<file_system::FileSystemWrapper>())
         {
         }
         ~PYPI() = default;
