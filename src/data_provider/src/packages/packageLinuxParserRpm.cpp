@@ -15,7 +15,6 @@
 #include "sharedDefs.h"
 #include "packageLinuxRpmParserHelper.h"
 #include "packageLinuxRpmParserHelperLegacy.h"
-#include "filesystemHelper.h"
 #include "stringHelper.h"
 #include "rpmlib.h"
 
