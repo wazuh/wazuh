@@ -11,6 +11,7 @@
 
 #include <windows.h>
 #include <lm.h>
+#include <sddl.h>
 #include <memory>
 #include <string>
 #include <vector>
