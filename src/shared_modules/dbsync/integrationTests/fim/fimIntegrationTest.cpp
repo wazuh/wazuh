@@ -73,7 +73,7 @@ TEST_F(DBSyncFimIntegrationTest, FIMDB_STMT_GET_PATH)
             "device":2051,
             "entry_type":0,
             "gid":0,
-            "group":"root",
+            "group_":"root",
             "hash_md5":"4b531524aa13c8a54614100b570b3dc7",
             "hash_sha1":"7902feb66d0bcbe4eb88e1bfacf28befc38bd58b",
             "hash_sha256":"e403b83dd73a41b286f8db2ee36d6b0ea6e80b49f02c476e0a20b4181a3a062a",
@@ -90,7 +90,7 @@ TEST_F(DBSyncFimIntegrationTest, FIMDB_STMT_GET_PATH)
     const auto selectSql
     {
         R"({"table":"entry_path",
-           "query":{"column_list":["path, inode_id, entry_type, checksum, device, inode, size, permissions, attributes, uid, gid, owner, group, hash_md5, hash_sha1, hash_sha256, mtime"],
+           "query":{"column_list":["path, inode_id, entry_type, checksum, device, inode, size, permissions, attributes, uid, gid, owner, group_, hash_md5, hash_sha1, hash_sha256, mtime"],
            "row_filter":"INNER JOIN entry_data ON path ='/etc/wgetrc' AND entry_data.rowid = entry_path.inode_id",
            "distinct_opt":false,
            "order_by_opt":"",
@@ -164,7 +164,7 @@ TEST_F(DBSyncFimIntegrationTest, FIMDB_STMT_GET_ALL_ENTRIES)
                                     uid,
                                     gid,
                                     owner,
-                                    group,
+                                    group_,
                                     hash_md5,
                                     hash_sha1,
                                     hash_sha256,
@@ -207,7 +207,7 @@ TEST_F(DBSyncFimIntegrationTest, FIMDB_STMT_GET_PATH_RANGE)
     const auto expectedResult1
     {
         R"({"checksum":"e100589b9f75b293ea2fc718fb39ecedddf1f381",
-            "device":2051,"entry_type":0,"gid":0,"group":"root",
+            "device":2051,"entry_type":0,"gid":0,"group_":"root",
             "hash_md5":"d41d8cd98f00b204e9800998ecf8427e",
             "hash_sha1":"da39a3ee5e6b4b0d3255bfef95601890afd80709",
             "hash_sha256":"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
@@ -218,7 +218,7 @@ TEST_F(DBSyncFimIntegrationTest, FIMDB_STMT_GET_PATH_RANGE)
     const auto expectedResult2
     {
         R"({"checksum":"eeb46d0e85f635cd8595afc3447b21686c8fedb3",
-           "device":2051,"entry_type":0,"gid":0,"group":"root",
+           "device":2051,"entry_type":0,"gid":0,"group_":"root",
            "hash_md5":"349e00330684b1b1443904956aa0b241",
            "hash_sha1":"f945fe1ad48aa9c367d2a131a4f7a659db6c1967",
            "hash_sha256":"0e3a78178a75c13d71cfc2fafb3072a009733414a90802b2b67ccc7279e050cd",
@@ -229,7 +229,7 @@ TEST_F(DBSyncFimIntegrationTest, FIMDB_STMT_GET_PATH_RANGE)
     const auto expectedResult3
     {
         R"({"checksum":"e24f1dfcba64d3dea78c6840893c77539f44638f",
-           "device":2051,"entry_type":0,"gid":0,"group":"root",
+           "device":2051,"entry_type":0,"gid":0,"group_":"root",
            "hash_md5":"7449031222431c7cbac19313af55aca4",
            "hash_sha1":"640746d2388b9500b300e2a45878e81e5473aa83",
            "hash_sha256":"ee7da6f7be6623cc6da7613777def9c9801073d725f686eb4e3812584e3e417d",
@@ -252,7 +252,7 @@ TEST_F(DBSyncFimIntegrationTest, FIMDB_STMT_GET_PATH_RANGE)
                                     uid,
                                     gid,
                                     owner,
-                                    group,
+                                    group_,
                                     hash_md5,
                                     hash_sha1,
                                     hash_sha256,

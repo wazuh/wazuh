@@ -81,7 +81,7 @@ void DB::teardown()
 const std::map<COUNT_SELECT_TYPE, std::vector<std::string>> COUNT_SELECT_TYPE_MAP
 {
     { COUNT_SELECT_TYPE::COUNT_ALL, {"count(*) AS count"} },
-    { COUNT_SELECT_TYPE::COUNT_INODE, {"count(DISTINCT (inode || ',' || dev)) AS count"} },
+    { COUNT_SELECT_TYPE::COUNT_INODE, {"count(DISTINCT (inode || ',' || device)) AS count"} },
 };
 
 int DB::countEntries(const std::string& tableName, const COUNT_SELECT_TYPE selectType)

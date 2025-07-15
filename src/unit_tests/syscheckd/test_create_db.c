@@ -869,67 +869,6 @@ static void test_fim_attributes_json_without_options(void **state) {
     assert_string_equal(cJSON_GetStringValue(checksum), "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
 }
 
-static void test_fim_json_compare_attrs(void **state) {
-    fim_data_t *fim_data = *state;
-    int i = 0;
-
-    fim_data->json = fim_json_compare_attrs(
-        fim_data->old_data,
-        fim_data->new_data
-    );
-
-    assert_non_null(fim_data->json);
-#ifdef TEST_WINAGENT
-    assert_int_equal(cJSON_GetArraySize(fim_data->json), 10);
-#else
-    assert_int_equal(cJSON_GetArraySize(fim_data->json), 11);
-#endif
-
-    cJSON *size = cJSON_GetArrayItem(fim_data->json, i++);
-    assert_string_equal(cJSON_GetStringValue(size), "size");
-    cJSON *permission = cJSON_GetArrayItem(fim_data->json, i++);
-    assert_string_equal(cJSON_GetStringValue(permission), "permission");
-    cJSON *uid = cJSON_GetArrayItem(fim_data->json, i++);
-    assert_string_equal(cJSON_GetStringValue(uid), "uid");
-    cJSON *user_name = cJSON_GetArrayItem(fim_data->json, i++);
-    assert_string_equal(cJSON_GetStringValue(user_name), "user_name");
-    cJSON *gid = cJSON_GetArrayItem(fim_data->json, i++);
-    assert_string_equal(cJSON_GetStringValue(gid), "gid");
-    cJSON *group_name = cJSON_GetArrayItem(fim_data->json, i++);
-    assert_string_equal(cJSON_GetStringValue(group_name), "group_name");
-    cJSON *mtime = cJSON_GetArrayItem(fim_data->json, i++);
-    assert_string_equal(cJSON_GetStringValue(mtime), "mtime");
-#ifndef TEST_WINAGENT
-    cJSON *inode = cJSON_GetArrayItem(fim_data->json, i++);
-    assert_string_equal(cJSON_GetStringValue(inode), "inode");
-#endif
-    cJSON *md5 = cJSON_GetArrayItem(fim_data->json, i++);
-    assert_string_equal(cJSON_GetStringValue(md5), "md5");
-    cJSON *sha1 = cJSON_GetArrayItem(fim_data->json, i++);
-    assert_string_equal(cJSON_GetStringValue(sha1), "sha1");
-    cJSON *sha256 = cJSON_GetArrayItem(fim_data->json, i++);
-    assert_string_equal(cJSON_GetStringValue(sha256), "sha256");
-
-}
-
-static void test_fim_json_compare_attrs_without_options(void **state) {
-    fim_data_t *fim_data = *state;
-
-    fim_data->old_data->options = 0;
-
-    fim_data->json = fim_json_compare_attrs(
-        fim_data->old_data,
-        fim_data->new_data
-    );
-
-    fim_data->old_data->options = 511;
-
-    assert_non_null(fim_data->json);
-    assert_int_equal(cJSON_GetArraySize(fim_data->json), 0);
-
-}
-
-
 static void test_fim_audit_json(void **state) {
     fim_data_t *fim_data = *state;
 
@@ -4292,10 +4231,6 @@ int main(void) {
         /* fim_attributes_json */
         cmocka_unit_test_teardown(test_fim_attributes_json, teardown_delete_json),
         cmocka_unit_test_teardown(test_fim_attributes_json_without_options, teardown_delete_json),
-
-        /* fim_json_compare_attrs */
-        cmocka_unit_test_teardown(test_fim_json_compare_attrs, teardown_delete_json),
-        cmocka_unit_test_teardown(test_fim_json_compare_attrs_without_options, teardown_delete_json),
 
         /* fim_audit_json */
         cmocka_unit_test_teardown(test_fim_audit_json, teardown_delete_json),

@@ -75,7 +75,7 @@ void FileItem::createJSON()
     data["uid"] = m_uid;
     data["gid"] = m_gid;
     data["owner"] = m_username;
-    data["group"] = m_group;
+    data["group_"] = m_group;
     data["hash_md5"] = m_md5;
     data["hash_sha1"] = m_sha1;
     data["hash_sha256"] = m_sha256;

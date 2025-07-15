@@ -791,12 +791,13 @@ unsigned int get_realtime_watches();
  *   checksum:    string
  * }
  *
+ * @param dbsync_event Pointer to event dbsync JSON structure.
  * @param data Pointer to a FIM entry structure.
  * @param configuration Pointer to the configuration structure.
  * @pre data is mutex-blocked.
  * @return Pointer to cJSON structure.
  */
-cJSON * fim_attributes_json(const fim_file_data * data, const directory_t *configuration);
+cJSON * fim_attributes_json(const cJSON *dbsync_event, const fim_file_data *data, const directory_t *configuration);
 
 /**
  * @brief Create file attribute comparison JSON object

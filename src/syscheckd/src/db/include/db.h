@@ -141,13 +141,13 @@ EXPORTED FIMDBErrorCode fim_db_file_update(fim_entry* data,
  * @brief Find entries using the inode.
  *
  * @param inode Inode.
- * @param dev Device.
+ * @param device Device.
  * @param data Pointer to the data structure where the callback context will be stored.
  *
  * @return FIMDB_OK on success.
  */
 EXPORTED FIMDBErrorCode fim_db_file_inode_search(unsigned long long int inode,
-                                                 unsigned long int dev,
+                                                 unsigned long int device,
                                                  callback_context_t data);
 
 /**

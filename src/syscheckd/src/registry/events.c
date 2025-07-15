@@ -81,11 +81,11 @@ void fim_calculate_dbsync_difference_key(const fim_registry_key* registry_data,
         } else {
             cJSON_AddStringToObject(old_attributes, "gid", registry_data->uid);
         }
-        if (aux = cJSON_GetObjectItem(old_data, "group"), aux != NULL) {
-            cJSON_AddStringToObject(old_attributes, "group", cJSON_GetStringValue(aux));
-            cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("group"));
+        if (aux = cJSON_GetObjectItem(old_data, "group_"), aux != NULL) {
+            cJSON_AddStringToObject(old_attributes, "group_", cJSON_GetStringValue(aux));
+            cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("group_"));
         } else {
-            cJSON_AddStringToObject(old_attributes, "group", registry_data->group);
+            cJSON_AddStringToObject(old_attributes, "group_", registry_data->group);
         }
     }
 
@@ -268,7 +268,7 @@ cJSON *fim_registry_key_attributes_json(const cJSON* dbsync_event, const fim_reg
             cJSON_AddStringToObject(attributes, "gid", data->gid);
 
             if (data->group) {
-                cJSON_AddStringToObject(attributes, "group", data->group);
+                cJSON_AddStringToObject(attributes, "group_", data->group);
             }
         }
 
@@ -304,8 +304,8 @@ cJSON *fim_registry_key_attributes_json(const cJSON* dbsync_event, const fim_reg
                 cJSON_AddStringToObject(attributes, "gid", cJSON_GetStringValue(gid));
             }
 
-            if (group = cJSON_GetObjectItem(dbsync_event, "group"), group != NULL) {
-                cJSON_AddStringToObject(attributes, "group", cJSON_GetStringValue(group));
+            if (group = cJSON_GetObjectItem(dbsync_event, "group_"), group != NULL) {
+                cJSON_AddStringToObject(attributes, "group_", cJSON_GetStringValue(group));
             }
 
         }

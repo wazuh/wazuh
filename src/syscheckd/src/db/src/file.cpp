@@ -90,9 +90,9 @@ nlohmann::json DB::createJsonEvent(const nlohmann::json& fileJson, const nlohman
         jsonEvent["data"]["attributes"]["owner"] = data.at("owner");
     }
 
-    if (data.at("group") != "")
+    if (data.at("group_") != "")
     {
-        jsonEvent["data"]["attributes"]["group"] = data.at("group");
+        jsonEvent["data"]["attributes"]["group_"] = data.at("group_");
     }
 
     if (ctx->config->options & CHECK_INODE)
@@ -204,16 +204,16 @@ nlohmann::json DB::createJsonEvent(const nlohmann::json& fileJson, const nlohman
             }
         }
 
-        if (data.at("group") != "")
+        if (data.at("group_") != "")
         {
-            if (old_data.contains("group"))
+            if (old_data.contains("group_"))
             {
-                jsonEvent["data"]["old_attributes"]["group"] = old_data["group"];
-                changed_attributes.push_back("group");
+                jsonEvent["data"]["old_attributes"]["group_"] = old_data["group_"];
+                changed_attributes.push_back("group_");
             }
             else
             {
-                jsonEvent["data"]["old_attributes"]["group"] = data.at("group");
+                jsonEvent["data"]["old_attributes"]["group_"] = data.at("group_");
             }
         }
 
@@ -344,7 +344,7 @@ void DB::getFile(const std::string& path, std::function<void(const nlohmann::jso
             "uid",
             "gid",
             "owner",
-            "group",
+            "group_",
             "hash_md5",
             "hash_sha1",
             "hash_sha256",
@@ -405,7 +405,7 @@ void DB::searchFile(const SearchData& data, std::function<void(const std::string
 
     if (SEARCH_TYPE_INODE == searchType)
     {
-        filter = "WHERE inode=" + std::get<SEARCH_FIELD_INODE>(data) + " AND dev=" + std::get<SEARCH_FIELD_DEV>(data);
+        filter = "WHERE inode=" + std::get<SEARCH_FIELD_INODE>(data) + " AND device=" + std::get<SEARCH_FIELD_DEV>(data);
     }
     else if (SEARCH_TYPE_PATH == searchType)
     {
@@ -585,7 +585,7 @@ FIMDBErrorCode fim_db_file_update(fim_entry* data, callback_context_t callback)
 }
 
 FIMDBErrorCode fim_db_file_inode_search(const unsigned long long int inode,
-                                        const unsigned long dev,
+                                        const unsigned long device,
                                         callback_context_t callback)
 {
     auto retVal { FIMDB_ERR };
@@ -598,7 +598,7 @@ FIMDBErrorCode fim_db_file_inode_search(const unsigned long long int inode,
     {
         try
         {
-            DB::instance().searchFile(std::make_tuple(SEARCH_TYPE_INODE, "", std::to_string(inode), std::to_string(dev)),
+            DB::instance().searchFile(std::make_tuple(SEARCH_TYPE_INODE, "", std::to_string(inode), std::to_string(device)),
                                       [callback] (const std::string & path)
             {
                 char* entry = const_cast<char*>(path.c_str());

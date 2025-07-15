@@ -124,12 +124,12 @@ cJSON * fim_calculate_dbsync_difference(const fim_file_data *data,
     }
 
     if (data->group) {
-        if (aux = cJSON_GetObjectItem(changed_data, "group"), aux != NULL) {
-            cJSON_AddStringToObject(old_attributes, "group", cJSON_GetStringValue(aux));
-            cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("group"));
+        if (aux = cJSON_GetObjectItem(changed_data, "group_"), aux != NULL) {
+            cJSON_AddStringToObject(old_attributes, "group_", cJSON_GetStringValue(aux));
+            cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("group_"));
 
         } else {
-            cJSON_AddStringToObject(old_attributes, "group", data->group);
+            cJSON_AddStringToObject(old_attributes, "group_", data->group);
         }
     }
 
@@ -206,112 +206,6 @@ cJSON * fim_calculate_dbsync_difference(const fim_file_data *data,
     return old_attributes;
 }
 
-/**
- * @brief Function to calculate the `attributes` field using the information returned by dbsync.
- *
- * @param dbsync_event Information returned by dbsync.
- * @param configuration Configuration of the specific entry.
- * @param attributes JSON where the information will be stored.
- */
-static void dbsync_attributes_json(const cJSON *dbsync_event, const directory_t *configuration, cJSON *attributes) {
-    if (attributes == NULL || dbsync_event == NULL || configuration == NULL) {
-        return;
-    }
-
-    cJSON *aux = NULL;
-
-    cJSON_AddStringToObject(attributes, "type", "file");
-
-    if (configuration->options & CHECK_SIZE) {
-        if (aux = cJSON_GetObjectItem(dbsync_event, "size"), aux != NULL)
-        cJSON_AddNumberToObject(attributes, "size", aux->valueint);
-    }
-
-    if (configuration->options & CHECK_PERM) {
-        if (aux = cJSON_GetObjectItem(dbsync_event, "permissions"), aux != NULL) {
-#ifndef WIN32
-            cJSON_AddStringToObject(attributes, "permissions", cJSON_GetStringValue(aux));
-#else
-            cJSON_AddItemToObject(attributes, "permissions", cJSON_Parse(cJSON_GetStringValue(aux)));
-#endif
-        }
-    }
-
-    if (configuration->options & CHECK_OWNER) {
-        if (aux = cJSON_GetObjectItem(dbsync_event, "uid"), aux != NULL) {
-            char *uid = cJSON_GetStringValue(aux);
-            if (uid != NULL && *uid != '\0') {
-                cJSON_AddStringToObject(attributes, "uid", uid);
-            }
-        }
-    }
-
-    if (configuration->options & CHECK_GROUP) {
-        if (aux = cJSON_GetObjectItem(dbsync_event, "gid"), aux != NULL) {
-            char *gid = cJSON_GetStringValue(aux);
-            if (gid != NULL && *gid != '\0') {
-                cJSON_AddStringToObject(attributes, "gid", gid);
-            }
-        }
-    }
-
-    if (aux = cJSON_GetObjectItem(dbsync_event, "owner"), aux != NULL) {
-        char *owner = cJSON_GetStringValue(aux);
-        if (owner != NULL && *owner != '\0') {
-            cJSON_AddStringToObject(attributes, "owner", cJSON_GetStringValue(aux));
-        }
-    }
-
-    if (aux = cJSON_GetObjectItem(dbsync_event, "group"), aux != NULL) {
-        char *group = cJSON_GetStringValue(aux);
-        if (group != NULL && *group != '\0') {
-            cJSON_AddStringToObject(attributes, "group", cJSON_GetStringValue(aux));
-        }
-    }
-
-    if (configuration->options & CHECK_INODE) {
-        if (aux = cJSON_GetObjectItem(dbsync_event, "inode"), aux != NULL) {
-            cJSON_AddNumberToObject(attributes, "inode", aux->valueint);
-        }
-    }
-
-    if (configuration->options & CHECK_MTIME) {
-        if (aux = cJSON_GetObjectItem(dbsync_event, "mtime"), aux != NULL) {
-            cJSON_AddNumberToObject(attributes, "mtime", aux->valueint);
-        }
-    }
-
-    if (configuration->options & CHECK_MD5SUM) {
-        if (aux = cJSON_GetObjectItem(dbsync_event, "hash_md5"), aux != NULL) {
-            cJSON_AddStringToObject(attributes, "hash_md5", cJSON_GetStringValue(aux));
-        }
-    }
-
-    if (configuration->options & CHECK_SHA1SUM) {
-        if (aux = cJSON_GetObjectItem(dbsync_event, "hash_sha1"), aux != NULL) {
-            cJSON_AddStringToObject(attributes, "hash_sha1", cJSON_GetStringValue(aux));
-        }
-    }
-
-    if (configuration->options & CHECK_SHA256SUM) {
-        if (aux = cJSON_GetObjectItem(dbsync_event, "hash_sha256"), aux != NULL) {
-            cJSON_AddStringToObject(attributes, "hash_sha256", cJSON_GetStringValue(aux));
-        }
-    }
-
-#ifdef WIN32
-    if (configuration->options & CHECK_ATTRS) {
-        if (aux = cJSON_GetObjectItem(dbsync_event, "attributes"), aux != NULL) {
-            cJSON_AddStringToObject(attributes, "attributes", cJSON_GetStringValue(aux));
-        }
-    }
-#endif
-
-    if (aux = cJSON_GetObjectItem(dbsync_event, "checksum"), aux != NULL) {
-        cJSON_AddStringToObject(attributes, "checksum", cJSON_GetStringValue(aux));
-    }
-}
-
 static void transaction_callback(ReturnTypeCallback resultType, const cJSON* result_json, void* user_data) {
     char *path = NULL;
     char *diff = NULL;
@@ -320,7 +214,6 @@ static void transaction_callback(ReturnTypeCallback resultType, const cJSON* res
     cJSON* old_attributes = NULL;
     cJSON* changed_attributes = NULL;
     cJSON* old_data = NULL;
-    cJSON *attributes = NULL;
     directory_t *configuration = NULL;
     fim_txn_context_t *txn_context = (fim_txn_context_t *) user_data;
 
@@ -378,13 +271,13 @@ static void transaction_callback(ReturnTypeCallback resultType, const cJSON* res
     }
 
     json_event = cJSON_CreateObject();
-    data = cJSON_CreateObject();
-
-    if (json_event == NULL || data == NULL) {
+    if (json_event == NULL) {
         goto end; // LCOV_EXCL_LINE
     }
 
     cJSON_AddStringToObject(json_event, "type", "event");
+
+    data = cJSON_CreateObject();
     cJSON_AddItemToObject(json_event, "data", data);
 
     cJSON_AddStringToObject(data, "path", path);
@@ -394,14 +287,12 @@ static void transaction_callback(ReturnTypeCallback resultType, const cJSON* res
 
     if (resultType == DELETED || txn_context->latest_entry == NULL) {
         // We need to add the `type` field to the attributes JSON. This avoid modifying the dbsync event.
-        attributes = cJSON_CreateObject();
-        dbsync_attributes_json(result_json, configuration, attributes);
-        cJSON_AddItemToObject(data, "attributes", attributes);
+        cJSON_AddItemToObject(data, "attributes", fim_attributes_json(result_json, NULL, configuration));
     } else {
-        cJSON_AddItemToObject(data, "attributes", fim_attributes_json(txn_context->latest_entry->file_entry.data, configuration));
+        cJSON_AddItemToObject(data, "attributes", fim_attributes_json(NULL, txn_context->latest_entry->file_entry.data, configuration));
 
         old_data = cJSON_GetObjectItem(result_json, "old");
-        if (old_data) {
+        if (old_data != NULL) {
             old_attributes = cJSON_CreateObject();
             changed_attributes = cJSON_CreateArray();
             cJSON_AddItemToObject(data, "old_attributes", old_attributes);
@@ -975,11 +866,11 @@ void fim_whodata_event(whodata_evt * w_evt) {
         w_rwlock_unlock(&syscheck.directories_lock);
 #ifndef WIN32
         const unsigned long int inode = strtoul(w_evt->inode, NULL, 10);
-        const unsigned long int dev = strtoul(w_evt->dev, NULL, 10);
+        const unsigned long int device = strtoul(w_evt->dev, NULL, 10);
         callback_context_t callback_data;
         callback_data.callback = create_windows_who_data_events;
         callback_data.context = w_evt;
-        fim_db_file_inode_search(inode, dev, callback_data);
+        fim_db_file_inode_search(inode, device, callback_data);
 #endif
     }
 }
@@ -1412,25 +1303,20 @@ cJSON *fim_json_event(const fim_entry *new_data,
                       const directory_t *configuration,
                       const event_data_t *evt_data,
                       const char *diff) {
-    cJSON * changed_attributes = NULL;
-
     assert(new_data != NULL);
 
-    if (old_data != NULL) {
-        changed_attributes = fim_json_compare_attrs(old_data, new_data->file_entry.data, configuration);
+    cJSON *json_event = NULL;
+    cJSON *data = NULL;
+    cJSON *changed_attributes = NULL;
 
-        // If no such changes, do not send event.
-
-        if (cJSON_GetArraySize(changed_attributes) == 0) {
-            cJSON_Delete(changed_attributes);
-            return NULL;
-        }
+    json_event = cJSON_CreateObject();
+    if (json_event == NULL) {
+        return NULL;
     }
 
-    cJSON * json_event = cJSON_CreateObject();
     cJSON_AddStringToObject(json_event, "type", "event");
 
-    cJSON * data = cJSON_CreateObject();
+    data = cJSON_CreateObject();
     cJSON_AddItemToObject(json_event, "data", data);
 
     cJSON_AddStringToObject(data, "path", new_data->file_entry.path);
@@ -1438,26 +1324,31 @@ cJSON *fim_json_event(const fim_entry *new_data,
     cJSON_AddStringToObject(data, "mode", FIM_EVENT_MODE[evt_data->mode]);
     cJSON_AddStringToObject(data, "type", FIM_EVENT_TYPE_ARRAY[evt_data->type]);
 
-    cJSON_AddItemToObject(data, "attributes", fim_attributes_json(new_data->file_entry.data, configuration));
+    cJSON_AddItemToObject(data, "attributes", fim_attributes_json(NULL, new_data->file_entry.data, configuration));
 
-    if (old_data) {
+    if (old_data != NULL) {
+        changed_attributes = fim_json_compare_attrs(old_data, new_data->file_entry.data, configuration);
+
+        if (cJSON_GetArraySize(changed_attributes) == 0) {
+            cJSON_Delete(changed_attributes);
+            cJSON_Delete(json_event);
+            return NULL;
+        }
+
+        cJSON_AddItemToObject(data, "old_attributes", fim_attributes_json(NULL, old_data, configuration));
         cJSON_AddItemToObject(data, "changed_attributes", changed_attributes);
-        cJSON_AddItemToObject(data, "old_attributes", fim_attributes_json(old_data, configuration));
     }
 
-    char * tags = NULL;
     if (evt_data->w_evt) {
         cJSON_AddItemToObject(data, "audit", fim_audit_json(evt_data->w_evt));
     }
-
-    tags = configuration->tag;
 
     if (diff != NULL) {
         cJSON_AddStringToObject(data, "content_changes", diff);
     }
 
-    if (tags != NULL) {
-        cJSON_AddStringToObject(data, "tags", tags);
+    if (configuration->tag != NULL) {
+        cJSON_AddStringToObject(data, "tags", configuration->tag);
     }
 
     return json_event;
@@ -1465,69 +1356,162 @@ cJSON *fim_json_event(const fim_entry *new_data,
 
 // Create file attribute set JSON from a FIM entry structure
 
-cJSON * fim_attributes_json(const fim_file_data * data, const directory_t *configuration) {
+cJSON * fim_attributes_json(const cJSON *dbsync_event, const fim_file_data *data, const directory_t *configuration) {
     cJSON * attributes = cJSON_CreateObject();
+    cJSON *aux = NULL;
 
-    // TODO: Read structure.
-    // SQLite Development
     cJSON_AddStringToObject(attributes, "type", "file");
 
-    if (configuration->options & CHECK_SIZE) {
-        cJSON_AddNumberToObject(attributes, "size", data->size);
-    }
+    if (data) {
+        if (configuration->options & CHECK_SIZE) {
+            cJSON_AddNumberToObject(attributes, "size", data->size);
+        }
 
-    if (configuration->options & CHECK_PERM) {
+        if (configuration->options & CHECK_PERM) {
 #ifndef WIN32
-        cJSON_AddStringToObject(attributes, "permissions", data->permissions);
+            cJSON_AddStringToObject(attributes, "permissions", data->permissions);
 #else
-        cJSON_AddItemToObject(attributes, "permissions", cJSON_Parse(data->permissions));
+            cJSON_AddItemToObject(attributes, "permissions", cJSON_Parse(data->permissions));
 #endif
-    }
+        }
 
-    if (configuration->options & CHECK_OWNER && data->uid && *data->uid != '\0' ) {
-        cJSON_AddStringToObject(attributes, "uid", data->uid);
-    }
+        if (configuration->options & CHECK_OWNER && data->uid && *data->uid != '\0' ) {
+            cJSON_AddStringToObject(attributes, "uid", data->uid);
+        }
 
-    if (configuration->options & CHECK_GROUP && data->gid && *data->gid != '\0' ) {
-        cJSON_AddStringToObject(attributes, "gid", data->gid);
-    }
+        if (configuration->options & CHECK_GROUP && data->gid && *data->gid != '\0' ) {
+            cJSON_AddStringToObject(attributes, "gid", data->gid);
+        }
 
-    if (data->owner && *data->owner != '\0' ) {
-        cJSON_AddStringToObject(attributes, "owner", data->owner);
-    }
+        if (data->owner && *data->owner != '\0' ) {
+            cJSON_AddStringToObject(attributes, "owner", data->owner);
+        }
 
-    if (data->group && *data->group != '\0') {
-        cJSON_AddStringToObject(attributes, "group", data->group);
-    }
+        if (data->group && *data->group != '\0') {
+            cJSON_AddStringToObject(attributes, "group_", data->group);
+        }
 
-    if (configuration->options & CHECK_INODE) {
-        cJSON_AddNumberToObject(attributes, "inode", data->inode);
-    }
+        if (configuration->options & CHECK_INODE) {
+            cJSON_AddNumberToObject(attributes, "inode", data->inode);
+        }
 
-    if (configuration->options & CHECK_MTIME) {
-        cJSON_AddNumberToObject(attributes, "mtime", data->mtime);
-    }
+        if (configuration->options & CHECK_MTIME) {
+            cJSON_AddNumberToObject(attributes, "mtime", data->mtime);
+        }
 
-    if (configuration->options & CHECK_MD5SUM) {
-        cJSON_AddStringToObject(attributes, "hash_md5", data->hash_md5);
-    }
+        if (configuration->options & CHECK_MD5SUM) {
+            cJSON_AddStringToObject(attributes, "hash_md5", data->hash_md5);
+        }
 
-    if (configuration->options & CHECK_SHA1SUM) {
-        cJSON_AddStringToObject(attributes, "hash_sha1", data->hash_sha1);
-    }
+        if (configuration->options & CHECK_SHA1SUM) {
+            cJSON_AddStringToObject(attributes, "hash_sha1", data->hash_sha1);
+        }
 
-    if (configuration->options & CHECK_SHA256SUM) {
-        cJSON_AddStringToObject(attributes, "hash_sha256", data->hash_sha256);
-    }
+        if (configuration->options & CHECK_SHA256SUM) {
+            cJSON_AddStringToObject(attributes, "hash_sha256", data->hash_sha256);
+        }
 
 #ifdef WIN32
-    if (configuration->options & CHECK_ATTRS) {
-        cJSON_AddStringToObject(attributes, "attributes", data->attributes);
-    }
+        if (configuration->options & CHECK_ATTRS) {
+            cJSON_AddStringToObject(attributes, "attributes", data->attributes);
+        }
 #endif
 
-    if (*data->checksum) {
-        cJSON_AddStringToObject(attributes, "checksum", data->checksum);
+        if (*data->checksum) {
+            cJSON_AddStringToObject(attributes, "checksum", data->checksum);
+        }
+
+    } else {
+        if (configuration->options & CHECK_SIZE) {
+            if (aux = cJSON_GetObjectItem(dbsync_event, "size"), aux != NULL) {
+                cJSON_AddNumberToObject(attributes, "size", aux->valueint);
+            }
+        }
+
+        if (configuration->options & CHECK_PERM) {
+            if (aux = cJSON_GetObjectItem(dbsync_event, "permissions"), aux != NULL) {
+#ifndef WIN32
+                cJSON_AddStringToObject(attributes, "permissions", cJSON_GetStringValue(aux));
+#else
+                cJSON_AddItemToObject(attributes, "permissions", cJSON_Parse(cJSON_GetStringValue(aux)));
+#endif
+            }
+        }
+
+        if (configuration->options & CHECK_OWNER) {
+            if (aux = cJSON_GetObjectItem(dbsync_event, "uid"), aux != NULL) {
+                char *uid = cJSON_GetStringValue(aux);
+                if (uid != NULL && *uid != '\0') {
+                    cJSON_AddStringToObject(attributes, "uid", uid);
+                }
+            }
+        }
+
+        if (configuration->options & CHECK_GROUP) {
+            if (aux = cJSON_GetObjectItem(dbsync_event, "gid"), aux != NULL) {
+                char *gid = cJSON_GetStringValue(aux);
+                if (gid != NULL && *gid != '\0') {
+                    cJSON_AddStringToObject(attributes, "gid", gid);
+                }
+            }
+        }
+
+        if (aux = cJSON_GetObjectItem(dbsync_event, "owner"), aux != NULL) {
+            char *owner = cJSON_GetStringValue(aux);
+            if (owner != NULL && *owner != '\0') {
+                cJSON_AddStringToObject(attributes, "owner", cJSON_GetStringValue(aux));
+            }
+        }
+
+        if (aux = cJSON_GetObjectItem(dbsync_event, "group_"), aux != NULL) {
+            char *group = cJSON_GetStringValue(aux);
+            if (group != NULL && *group != '\0') {
+                cJSON_AddStringToObject(attributes, "group_", cJSON_GetStringValue(aux));
+            }
+        }
+
+        if (configuration->options & CHECK_INODE) {
+            if (aux = cJSON_GetObjectItem(dbsync_event, "inode"), aux != NULL) {
+                cJSON_AddNumberToObject(attributes, "inode", aux->valueint);
+            }
+        }
+
+        if (configuration->options & CHECK_MTIME) {
+            if (aux = cJSON_GetObjectItem(dbsync_event, "mtime"), aux != NULL) {
+                cJSON_AddNumberToObject(attributes, "mtime", aux->valueint);
+            }
+        }
+
+        if (configuration->options & CHECK_MD5SUM) {
+            if (aux = cJSON_GetObjectItem(dbsync_event, "hash_md5"), aux != NULL) {
+                cJSON_AddStringToObject(attributes, "hash_md5", cJSON_GetStringValue(aux));
+            }
+        }
+
+        if (configuration->options & CHECK_SHA1SUM) {
+            if (aux = cJSON_GetObjectItem(dbsync_event, "hash_sha1"), aux != NULL) {
+                cJSON_AddStringToObject(attributes, "hash_sha1", cJSON_GetStringValue(aux));
+            }
+        }
+
+        if (configuration->options & CHECK_SHA256SUM) {
+            if (aux = cJSON_GetObjectItem(dbsync_event, "hash_sha256"), aux != NULL) {
+                cJSON_AddStringToObject(attributes, "hash_sha256", cJSON_GetStringValue(aux));
+            }
+        }
+
+#ifdef WIN32
+        if (configuration->options & CHECK_ATTRS) {
+            if (aux = cJSON_GetObjectItem(dbsync_event, "attributes"), aux != NULL) {
+                cJSON_AddStringToObject(attributes, "attributes", cJSON_GetStringValue(aux));
+            }
+        }
+#endif
+
+        if (aux = cJSON_GetObjectItem(dbsync_event, "checksum"), aux != NULL) {
+            cJSON_AddStringToObject(attributes, "checksum", cJSON_GetStringValue(aux));
+        }
+
     }
 
     return attributes;
@@ -1580,7 +1564,7 @@ cJSON * fim_json_compare_attrs(const fim_file_data * old_data, const fim_file_da
         }
 
         if (old_data->group && new_data->group && strcmp(old_data->group, new_data->group) != 0) {
-            cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("group"));
+            cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("group_"));
         }
     }
 

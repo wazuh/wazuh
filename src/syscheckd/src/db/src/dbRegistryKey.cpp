@@ -67,7 +67,7 @@ void RegistryKey::createJSON()
     data["uid"] = m_uid;
     data["gid"] = m_gid;
     data["owner"] = m_owner;
-    data["group"] = m_group;
+    data["group_"] = m_group;
     data["mtime"] = m_time;
 
     conf["data"] = nlohmann::json::array({data});
@@ -80,5 +80,4 @@ void RegistryKey::createJSON()
     }
 
     m_statementConf = std::make_unique<nlohmann::json>(conf);
-
 }
