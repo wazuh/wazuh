@@ -57,26 +57,6 @@ cJSON *fim_registry_value_attributes_json(const cJSON* dbsync_event, const fim_r
 cJSON *fim_registry_key_attributes_json(const cJSON* dbsync_event, const fim_registry_key *data, const registry_t *configuration);
 
 /**
- * @brief Check and trigger a FIM event on a registry.
- *
- * @param new_entry New data aquired from the actual registry entry.
- * @param saved Registry information retrieved from the FIM DB.
- * @param configuration Configuration associated with the given registry.
- * @param mode FIM event mode which caused the event.
- * @param event_type Added, modifed or deleted event.
- * @param w_evt Whodata information associated with the current event.
- * @param diff A string holding the difference between the original and new value of the registry.
- * @return A cJSON object holding the generated event, NULL on error.
- */
-cJSON *fim_registry_event(const fim_entry *new_entry,
-                          const fim_entry *saved,
-                          const registry_t  *configuration,
-                          fim_event_mode mode,
-                          unsigned int event_type,
-                          whodata_evt *w_evt,
-                          const char *diff);
-
-/**
  * @brief Calculates the `changed_attributes` and `old_attributes` for registry keys using the
  *        information collected by the scan and the old attributes returned by DBSync.
  *
