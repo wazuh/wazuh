@@ -93,42 +93,46 @@ def start_storage(args):
     logging.info('Storage: Authenticated.')
 
     # Get the blobs
-    for container in containers:
-        md5_hash = md5(name.encode()).hexdigest()
-        offset = args.storage_time_offset
-        try:
-            item = orm.get_row(orm.Storage, md5=md5_hash)
-            if item is None:
-                item = create_new_row(
-                    table=orm.Storage, query=name, md5_hash=md5_hash, offset=offset
+    with SocketConnection() as socket:
+        for container in containers:
+            md5_hash = md5(name.encode()).hexdigest()
+            offset = args.storage_time_offset
+            try:
+                item = orm.get_row(orm.Storage, md5=md5_hash)
+                if item is None:
+                    item = create_new_row(
+                        table=orm.Storage, query=name, md5_hash=md5_hash, offset=offset
+                    )
+            except orm.AzureORMError as e:
+                logging.error(
+                    f'Error trying to obtain row object from "{orm.Storage.__tablename__}" using md5="{md5}": {e}'
                 )
-        except orm.AzureORMError as e:
-            logging.error(
-                f'Error trying to obtain row object from "{orm.Storage.__tablename__}" using md5="{md5}": {e}'
-            )
-            sys.exit(1)
+                sys.exit(1)
 
-        min_datetime = parse(item.min_processed_date, fuzzy=True)
-        max_datetime = parse(item.max_processed_date, fuzzy=True)
-        desired_datetime = offset_to_datetime(offset) if offset else max_datetime
-        get_blobs(
-            container_name=container,
-            prefix=args.prefix,
-            service_client=service_client,
-            md5_hash=md5_hash,
-            min_datetime=min_datetime,
-            max_datetime=max_datetime,
-            desired_datetime=desired_datetime,
-            tag=args.storage_tag,
-            reparse=args.reparse,
-            json_file=args.json_file,
-            json_inline=args.json_inline,
-            blob_extension=args.blobs,
-        )
+            min_datetime = parse(item.min_processed_date, fuzzy=True)
+            max_datetime = parse(item.max_processed_date, fuzzy=True)
+            desired_datetime = offset_to_datetime(offset) if offset else max_datetime
+
+            get_blobs(
+                socket=socket,
+                container_name=container,
+                prefix=args.prefix,
+                service_client=service_client,
+                md5_hash=md5_hash,
+                min_datetime=min_datetime,
+                max_datetime=max_datetime,
+                desired_datetime=desired_datetime,
+                tag=args.storage_tag,
+                reparse=args.reparse,
+                json_file=args.json_file,
+                json_inline=args.json_inline,
+                blob_extension=args.blobs,
+            )
     logging.info('Storage: End')
 
 
 def get_blobs(
+    socket: SocketConnection,
     container_name: str,
     service_client: BlobServiceClient,
     md5_hash: str,
@@ -180,84 +184,61 @@ def get_blobs(
             f'Storage: The search starts from the date: {desired_datetime} for blobs in '
             f'container: "{container_name}" and prefix: "/{prefix if prefix is not None else ""}"'
         )
-        with SocketConnection() as socket:
-            for blob in blobs:
-                eps_counter = 0
-                # Skip if the blob is empty
-                if blob.size == 0:
-                    logging.debug(f'Empty blob {blob.name}, skipping')
-                    continue
-                # Skip the blob if nested under the set prefix
-                if prefix is not None and len(blob.name.split('/')) > 2:
-                    logging.debug(
-                        f'Skipped blob {blob.name}, nested under set prefix {prefix}'
-                    )
-                    continue
-                # Skip the blob if its name has not the expected format
-                if blob_extension and blob_extension not in blob.name:
-                    logging.debug(
-                        f'Skipped blob, name {blob.name} does not match with the format "{blob_extension}"'
-                    )
-                    continue
+        for blob in blobs:
+            eps_counter = 0
+            # Skip if the blob is empty
+            if blob.size == 0:
+                logging.debug(f'Empty blob {blob.name}, skipping')
+                continue
+            # Skip the blob if nested under the set prefix
+            if prefix is not None and len(blob.name.split('/')) > 2:
+                logging.debug(
+                    f'Skipped blob {blob.name}, nested under set prefix {prefix}'
+                )
+                continue
+            # Skip the blob if its name has not the expected format
+            if blob_extension and blob_extension not in blob.name:
+                logging.debug(
+                    f'Skipped blob, name {blob.name} does not match with the format "{blob_extension}"'
+                )
+                continue
 
-                # Skip the blob if already processed
-                last_modified = blob.last_modified
-                if not reparse and (
-                    last_modified < desired_datetime
-                    or (min_datetime <= last_modified <= max_datetime)
-                ):
-                    logging.info(f"Storage: Skipping blob {blob.name} due to being already processed")
-                    continue
+            # Skip the blob if already processed
+            last_modified = blob.last_modified
+            if not reparse and (
+                last_modified < desired_datetime
+                or (min_datetime <= last_modified <= max_datetime)
+            ):
+                logging.info(f"Storage: Skipping blob {blob.name} due to being already processed")
+                continue
 
-                # Get the blob data
-                try:
-                    logging.info(f"Getting data from blob {blob.name}")
-                    data = container_client.download_blob(blob, encoding="UTF-8", max_concurrency=2)
-                except (ValueError, AzureError, HttpResponseError) as e:
-                    logging.error(f'Storage: Error reading the blob data: "{e}".')
-                    continue
-                else:
-                    # Process the data as a JSON
-                    if json_file:
-                        try:
-                            content_list = loads(data.readall())
-                            records = content_list['records']
-                        except (JSONDecodeError, TypeError) as e:
-                            logging.error(
-                                f'Storage: Error reading the contents of the blob: "{e}".'
-                            )
-                            continue
-                        except KeyError as e:
-                            logging.error(
-                                f'Storage: No records found in the blob\'s contents: "{e}".'
-                            )
-                            continue
-                        else:
-                            start = time.monotonic()
-                            for log_record in records:
-                                now = time.monotonic()
-                                time_passed = now - start
-                                if time_passed <= 1 and eps_counter == MAX_EPS:
-                                    sleep_time = EXCEED_EPS_WAIT + time_passed
-                                    logging.info(
-                                        'Sleeping %f sec, since the max %i EPS was exceeded.', sleep_time, MAX_EPS
-                                    )
-                                    time.sleep(sleep_time)
-                                    eps_counter = 0
-                                    start = time.monotonic()
-                                # Add azure tags
-                                log_record['azure_tag'] = 'azure-storage'
-                                if tag:
-                                    log_record['azure_storage_tag'] = tag
-                                logging.info('Storage: Sending event by socket.')
-                                socket.send_message(dumps(log_record))
-                                eps_counter += 1
-                    # Process the data as plain text
+            # Get the blob data
+            try:
+                logging.info(f"Getting data from blob {blob.name}")
+                data = container_client.download_blob(blob, encoding="UTF-8", max_concurrency=2)
+            except (ValueError, AzureError, HttpResponseError) as e:
+                logging.error(f'Storage: Error reading the blob data: "{e}".')
+                continue
+            else:
+                # Process the data as a JSON
+                if json_file:
+                    try:
+                        content_list = loads(data.readall())
+                        records = content_list['records']
+                    except (JSONDecodeError, TypeError) as e:
+                        logging.error(
+                            f'Storage: Error reading the contents of the blob: "{e}".'
+                        )
+                        continue
+                    except KeyError as e:
+                        logging.error(
+                            f'Storage: No records found in the blob\'s contents: "{e}".'
+                        )
+                        continue
                     else:
-                        start = time.monotonic()
-                        for line in [s for s in str(data.readall()).splitlines() if s]:
-                            now = time.monotonic()
-                            time_passed = now - start
+                        for log_record in records:
+                            start = time.monotonic()
+                            time_passed = time.monotonic() - start
                             if time_passed <= 1 and eps_counter == MAX_EPS:
                                 sleep_time = EXCEED_EPS_WAIT + time_passed
                                 logging.info(
@@ -266,24 +247,44 @@ def get_blobs(
                                 time.sleep(sleep_time)
                                 eps_counter = 0
                                 start = time.monotonic()
-
-                            if json_inline:
-                                msg = '{"azure_tag": "azure-storage"'
-                                if tag:
-                                    msg = f'{msg}, "azure_storage_tag": "{tag}"'
-                                msg = f'{msg}, {line[1:]}'
-                            else:
-                                msg = 'azure_tag: azure-storage.'
-                                if tag:
-                                    msg = f'{msg} azure_storage_tag: {tag}.'
-                                msg = f'{msg} {line}'
+                            # Add azure tags
+                            log_record['azure_tag'] = 'azure-storage'
+                            if tag:
+                                log_record['azure_storage_tag'] = tag
                             logging.info('Storage: Sending event by socket.')
-                            socket.send_message(msg)
+                            socket.send_message(dumps(log_record))
                             eps_counter += 1
-                update_row_object(
-                    table=orm.Storage,
-                    md5_hash=md5_hash,
-                    query=container_name,
-                    new_min=last_modified.strftime('%Y-%m-%dT%H:%M:%S.%fZ'),
-                    new_max=last_modified.strftime('%Y-%m-%dT%H:%M:%S.%fZ'),
-                )
+                # Process the data as plain text
+                else:
+                    for line in [s for s in str(data.readall()).splitlines() if s]:
+                        start = time.monotonic()
+                        time_passed = time.monotonic() - start
+                        if time_passed <= 1 and eps_counter == MAX_EPS:
+                            sleep_time = EXCEED_EPS_WAIT + time_passed
+                            logging.info(
+                                'Sleeping %f sec, since the max %i EPS was exceeded.', sleep_time, MAX_EPS
+                            )
+                            time.sleep(sleep_time)
+                            eps_counter = 0
+                            start = time.monotonic()
+
+                        if json_inline:
+                            msg = '{"azure_tag": "azure-storage"'
+                            if tag:
+                                msg = f'{msg}, "azure_storage_tag": "{tag}"'
+                            msg = f'{msg}, {line[1:]}'
+                        else:
+                            msg = 'azure_tag: azure-storage.'
+                            if tag:
+                                msg = f'{msg} azure_storage_tag: {tag}.'
+                            msg = f'{msg} {line}'
+                        logging.info('Storage: Sending event by socket.')
+                        socket.send_message(msg)
+                        eps_counter += 1
+            update_row_object(
+                table=orm.Storage,
+                md5_hash=md5_hash,
+                query=container_name,
+                new_min=last_modified.strftime('%Y-%m-%dT%H:%M:%S.%fZ'),
+                new_max=last_modified.strftime('%Y-%m-%dT%H:%M:%S.%fZ'),
+            )
