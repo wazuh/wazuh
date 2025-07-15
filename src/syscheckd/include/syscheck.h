@@ -778,9 +778,9 @@ unsigned int get_realtime_watches();
  * {
  *   type:        "file"|"registry"
  *   size:        number
- *   perm:        string
- *   user_name:   string
- *   group_name:  string
+ *   permissions: string
+ *   owner:       string
+ *   group_:      string
  *   uid:         string
  *   gid:         string
  *   inode:       number
@@ -788,6 +788,7 @@ unsigned int get_realtime_watches();
  *   hash_md5:    string
  *   hash_sha1:   string
  *   hash_sha256: string
+ *   attributes:  string
  *   checksum:    string
  * }
  *
@@ -804,11 +805,12 @@ cJSON * fim_attributes_json(const cJSON *dbsync_event, const fim_file_data *data
  *
  * Format: array of strings, with the following possible strings:
  * - size
- * - permission
+ * - permissions
+ * - attributes
  * - uid
- * - user_name
+ * - owner
  * - gid
- * - group_name
+ * - group_
  * - mtime
  * - inode (UNIX only)
  * - md5

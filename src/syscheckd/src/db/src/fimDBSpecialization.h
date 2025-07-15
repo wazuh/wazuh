@@ -49,23 +49,23 @@ static auto registryKeySyncConfig
     RegisterConfiguration::builder().decoderType("JSON_RANGE")
     .table("registry_key")
     .component("fim_registry_key")
-    .index("hash_full_path")
+    .index("path")
     .checksumField("checksum")
     .lastEvent("last_event")
-    .noData(QueryParameter::builder().rowFilter("WHERE hash_full_path BETWEEN '?' and '?' ORDER BY hash_full_path")
+    .noData(QueryParameter::builder().rowFilter("WHERE path BETWEEN '?' and '?' ORDER BY path")
             .columnList({"*"})
             .distinctOpt(false)
             .orderByOpt(""))
-    .countRange(QueryParameter::builder().rowFilter("WHERE hash_full_path BETWEEN '?' and '?' ORDER BY hash_full_path")
+    .countRange(QueryParameter::builder().rowFilter("WHERE path BETWEEN '?' and '?' ORDER BY path")
             .countFieldName("count")
             .columnList({"count(*) AS count"})
             .distinctOpt(false)
             .orderByOpt(""))
-    .rowData(QueryParameter::builder().rowFilter("WHERE hash_full_path = '?'")
+    .rowData(QueryParameter::builder().rowFilter("WHERE path = '?'")
             .columnList({"*"})
             .distinctOpt(false)
             .orderByOpt(""))
-    .rangeChecksum(QueryParameter::builder().rowFilter("WHERE hash_full_path BETWEEN '?' and '?' ORDER BY hash_full_path")
+    .rangeChecksum(QueryParameter::builder().rowFilter("WHERE path BETWEEN '?' and '?' ORDER BY path")
             .columnList({"*"})
             .distinctOpt(false)
             .orderByOpt(""))
@@ -76,23 +76,23 @@ static auto registryValueSyncConfig
     RegisterConfiguration::builder().decoderType("JSON_RANGE")
     .table("registry_data")
     .component("fim_registry_value")
-    .index("hash_full_path")
+    .index("path")
     .checksumField("checksum")
     .lastEvent("last_event")
-    .noData(QueryParameter::builder().rowFilter("WHERE hash_full_path BETWEEN '?' and '?' ORDER BY hash_full_path")
+    .noData(QueryParameter::builder().rowFilter("WHERE path BETWEEN '?' and '?' ORDER BY path")
             .columnList({"*"})
             .distinctOpt(false)
             .orderByOpt(""))
-    .countRange(QueryParameter::builder().rowFilter("WHERE hash_full_path BETWEEN '?' and '?' ORDER BY hash_full_path")
+    .countRange(QueryParameter::builder().rowFilter("WHERE path BETWEEN '?' and '?' ORDER BY path")
             .countFieldName("count")
             .columnList({"count(*) AS count"})
             .distinctOpt(false)
             .orderByOpt(""))
-    .rowData(QueryParameter::builder().rowFilter("WHERE hash_full_path = '?'")
+    .rowData(QueryParameter::builder().rowFilter("WHERE path = '?'")
             .columnList({"*"})
             .distinctOpt(false)
             .orderByOpt(""))
-    .rangeChecksum(QueryParameter::builder().rowFilter("WHERE hash_full_path BETWEEN '?' and '?' ORDER BY hash_full_path")
+    .rangeChecksum(QueryParameter::builder().rowFilter("WHERE path BETWEEN '?' and '?' ORDER BY path")
             .columnList({"*"})
             .distinctOpt(false)
             .orderByOpt(""))
@@ -139,28 +139,28 @@ constexpr auto FIM_REGISTRY_START_CONFIG_STATEMENT
     R"({"table":"registry_key",
         "first_query":
             {
-                "column_list":["hash_full_path"],
+                "column_list":["path"],
                 "row_filter":" ",
                 "distinct_opt":false,
-                "order_by_opt":"hash_full_path DESC",
+                "order_by_opt":"path DESC",
                 "count_opt":1
             },
         "last_query":
             {
-                "column_list":["hash_full_path"],
+                "column_list":["path"],
                 "row_filter":" ",
                 "distinct_opt":false,
-                "order_by_opt":"hash_full_path ASC",
+                "order_by_opt":"path ASC",
                 "count_opt":1
             },
         "component":"fim_registry_key",
-        "index":"hash_full_path",
+        "index":"path",
         "last_event":"last_event",
         "checksum_field":"checksum",
         "range_checksum_query_json":
             {
-                "row_filter":"WHERE hash_full_path BETWEEN '?' and '?' ORDER BY hash_full_path",
-                "column_list":["hash_full_path, checksum"],
+                "row_filter":"WHERE path BETWEEN '?' and '?' ORDER BY path",
+                "column_list":["path, checksum"],
                 "distinct_opt":false,
                 "order_by_opt":"",
                 "count_opt":100
@@ -174,28 +174,28 @@ constexpr auto FIM_VALUE_START_CONFIG_STATEMENT
     R"({"table":"registry_data",
         "first_query":
             {
-                "column_list":["hash_full_path"],
+                "column_list":["path"],
                 "row_filter":" ",
                 "distinct_opt":false,
-                "order_by_opt":"hash_full_path DESC",
+                "order_by_opt":"path DESC",
                 "count_opt":1
             },
         "last_query":
             {
-                "column_list":["hash_full_path"],
+                "column_list":["path"],
                 "row_filter":" ",
                 "distinct_opt":false,
-                "order_by_opt":"hash_full_path ASC",
+                "order_by_opt":"path ASC",
                 "count_opt":1
             },
         "component":"fim_registry_value",
-        "index":"hash_full_path",
+        "index":"path",
         "last_event":"last_event",
         "checksum_field":"checksum",
         "range_checksum_query_json":
             {
-                "row_filter":"WHERE hash_full_path BETWEEN '?' and '?' ORDER BY hash_full_path",
-                "column_list":["hash_full_path, checksum"],
+                "row_filter":"WHERE path BETWEEN '?' and '?' ORDER BY path",
+                "column_list":["path, checksum"],
                 "distinct_opt":false,
                 "order_by_opt":"",
                 "count_opt":100
