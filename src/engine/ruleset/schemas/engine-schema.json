@@ -1,0 +1,6809 @@
+{
+  "name": "schema/engine-schema/0",
+  "fields": {
+    "@timestamp": {
+      "type": "date",
+      "array": false
+    },
+    "agent.build.original": {
+      "type": "keyword",
+      "array": false
+    },
+    "agent.ephemeral_id": {
+      "type": "keyword",
+      "array": false
+    },
+    "agent.id": {
+      "type": "keyword",
+      "array": false
+    },
+    "agent.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "agent.type": {
+      "type": "keyword",
+      "array": false
+    },
+    "agent.version": {
+      "type": "keyword",
+      "array": false
+    },
+    "client.address": {
+      "type": "keyword",
+      "array": false
+    },
+    "client.as.number": {
+      "type": "long",
+      "array": false
+    },
+    "client.as.organization.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "client.bytes": {
+      "type": "long",
+      "array": false
+    },
+    "client.domain": {
+      "type": "keyword",
+      "array": false
+    },
+    "client.geo.city_name": {
+      "type": "keyword",
+      "array": false
+    },
+    "client.geo.continent_code": {
+      "type": "keyword",
+      "array": false
+    },
+    "client.geo.continent_name": {
+      "type": "keyword",
+      "array": false
+    },
+    "client.geo.country_iso_code": {
+      "type": "keyword",
+      "array": false
+    },
+    "client.geo.country_name": {
+      "type": "keyword",
+      "array": false
+    },
+    "client.geo.location": {
+      "type": "geo_point",
+      "array": false
+    },
+    "client.geo.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "client.geo.postal_code": {
+      "type": "keyword",
+      "array": false
+    },
+    "client.geo.region_iso_code": {
+      "type": "keyword",
+      "array": false
+    },
+    "client.geo.region_name": {
+      "type": "keyword",
+      "array": false
+    },
+    "client.geo.timezone": {
+      "type": "keyword",
+      "array": false
+    },
+    "client.ip": {
+      "type": "ip",
+      "array": false
+    },
+    "client.mac": {
+      "type": "keyword",
+      "array": false
+    },
+    "client.nat.ip": {
+      "type": "ip",
+      "array": false
+    },
+    "client.nat.port": {
+      "type": "long",
+      "array": false
+    },
+    "client.packets": {
+      "type": "long",
+      "array": false
+    },
+    "client.port": {
+      "type": "long",
+      "array": false
+    },
+    "client.registered_domain": {
+      "type": "keyword",
+      "array": false
+    },
+    "client.subdomain": {
+      "type": "keyword",
+      "array": false
+    },
+    "client.top_level_domain": {
+      "type": "keyword",
+      "array": false
+    },
+    "client.user.domain": {
+      "type": "keyword",
+      "array": false
+    },
+    "client.user.email": {
+      "type": "keyword",
+      "array": false
+    },
+    "client.user.full_name": {
+      "type": "keyword",
+      "array": false
+    },
+    "client.user.group.domain": {
+      "type": "keyword",
+      "array": false
+    },
+    "client.user.group.id": {
+      "type": "keyword",
+      "array": false
+    },
+    "client.user.group.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "client.user.hash": {
+      "type": "keyword",
+      "array": false
+    },
+    "client.user.id": {
+      "type": "keyword",
+      "array": false
+    },
+    "client.user.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "client.user.roles": {
+      "type": "keyword",
+      "array": true
+    },
+    "cloud.account.id": {
+      "type": "keyword",
+      "array": false
+    },
+    "cloud.account.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "cloud.availability_zone": {
+      "type": "keyword",
+      "array": false
+    },
+    "cloud.instance.id": {
+      "type": "keyword",
+      "array": false
+    },
+    "cloud.instance.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "cloud.machine.type": {
+      "type": "keyword",
+      "array": false
+    },
+    "cloud.origin.account.id": {
+      "type": "keyword",
+      "array": false
+    },
+    "cloud.origin.account.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "cloud.origin.availability_zone": {
+      "type": "keyword",
+      "array": false
+    },
+    "cloud.origin.instance.id": {
+      "type": "keyword",
+      "array": false
+    },
+    "cloud.origin.instance.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "cloud.origin.machine.type": {
+      "type": "keyword",
+      "array": false
+    },
+    "cloud.origin.project.id": {
+      "type": "keyword",
+      "array": false
+    },
+    "cloud.origin.project.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "cloud.origin.provider": {
+      "type": "keyword",
+      "array": false
+    },
+    "cloud.origin.region": {
+      "type": "keyword",
+      "array": false
+    },
+    "cloud.origin.service.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "cloud.project.id": {
+      "type": "keyword",
+      "array": false
+    },
+    "cloud.project.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "cloud.provider": {
+      "type": "keyword",
+      "array": false
+    },
+    "cloud.region": {
+      "type": "keyword",
+      "array": false
+    },
+    "cloud.service.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "cloud.target.account.id": {
+      "type": "keyword",
+      "array": false
+    },
+    "cloud.target.account.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "cloud.target.availability_zone": {
+      "type": "keyword",
+      "array": false
+    },
+    "cloud.target.instance.id": {
+      "type": "keyword",
+      "array": false
+    },
+    "cloud.target.instance.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "cloud.target.machine.type": {
+      "type": "keyword",
+      "array": false
+    },
+    "cloud.target.project.id": {
+      "type": "keyword",
+      "array": false
+    },
+    "cloud.target.project.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "cloud.target.provider": {
+      "type": "keyword",
+      "array": false
+    },
+    "cloud.target.region": {
+      "type": "keyword",
+      "array": false
+    },
+    "cloud.target.service.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "container.cpu.usage": {
+      "type": "scaled_float",
+      "array": false
+    },
+    "container.disk.read.bytes": {
+      "type": "long",
+      "array": false
+    },
+    "container.disk.write.bytes": {
+      "type": "long",
+      "array": false
+    },
+    "container.id": {
+      "type": "keyword",
+      "array": false
+    },
+    "container.image.hash.all": {
+      "type": "keyword",
+      "array": true
+    },
+    "container.image.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "container.image.tag": {
+      "type": "keyword",
+      "array": true
+    },
+    "container.labels": {
+      "type": "object",
+      "array": false
+    },
+    "container.memory.usage": {
+      "type": "scaled_float",
+      "array": false
+    },
+    "container.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "container.network.egress.bytes": {
+      "type": "long",
+      "array": false
+    },
+    "container.network.ingress.bytes": {
+      "type": "long",
+      "array": false
+    },
+    "container.runtime": {
+      "type": "keyword",
+      "array": false
+    },
+    "container.security_context.privileged": {
+      "type": "boolean",
+      "array": false
+    },
+    "data_stream.dataset": {
+      "type": "keyword",
+      "array": false
+    },
+    "data_stream.namespace": {
+      "type": "keyword",
+      "array": false
+    },
+    "data_stream.type": {
+      "type": "keyword",
+      "array": false
+    },
+    "destination.address": {
+      "type": "keyword",
+      "array": false
+    },
+    "destination.as.number": {
+      "type": "long",
+      "array": false
+    },
+    "destination.as.organization.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "destination.bytes": {
+      "type": "long",
+      "array": false
+    },
+    "destination.domain": {
+      "type": "keyword",
+      "array": false
+    },
+    "destination.geo.city_name": {
+      "type": "keyword",
+      "array": false
+    },
+    "destination.geo.continent_code": {
+      "type": "keyword",
+      "array": false
+    },
+    "destination.geo.continent_name": {
+      "type": "keyword",
+      "array": false
+    },
+    "destination.geo.country_iso_code": {
+      "type": "keyword",
+      "array": false
+    },
+    "destination.geo.country_name": {
+      "type": "keyword",
+      "array": false
+    },
+    "destination.geo.location": {
+      "type": "geo_point",
+      "array": false
+    },
+    "destination.geo.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "destination.geo.postal_code": {
+      "type": "keyword",
+      "array": false
+    },
+    "destination.geo.region_iso_code": {
+      "type": "keyword",
+      "array": false
+    },
+    "destination.geo.region_name": {
+      "type": "keyword",
+      "array": false
+    },
+    "destination.geo.timezone": {
+      "type": "keyword",
+      "array": false
+    },
+    "destination.ip": {
+      "type": "ip",
+      "array": false
+    },
+    "destination.mac": {
+      "type": "keyword",
+      "array": false
+    },
+    "destination.nat.ip": {
+      "type": "ip",
+      "array": false
+    },
+    "destination.nat.port": {
+      "type": "long",
+      "array": false
+    },
+    "destination.packets": {
+      "type": "long",
+      "array": false
+    },
+    "destination.port": {
+      "type": "long",
+      "array": false
+    },
+    "destination.registered_domain": {
+      "type": "keyword",
+      "array": false
+    },
+    "destination.subdomain": {
+      "type": "keyword",
+      "array": false
+    },
+    "destination.top_level_domain": {
+      "type": "keyword",
+      "array": false
+    },
+    "destination.user.domain": {
+      "type": "keyword",
+      "array": false
+    },
+    "destination.user.email": {
+      "type": "keyword",
+      "array": false
+    },
+    "destination.user.full_name": {
+      "type": "keyword",
+      "array": false
+    },
+    "destination.user.group.domain": {
+      "type": "keyword",
+      "array": false
+    },
+    "destination.user.group.id": {
+      "type": "keyword",
+      "array": false
+    },
+    "destination.user.group.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "destination.user.hash": {
+      "type": "keyword",
+      "array": false
+    },
+    "destination.user.id": {
+      "type": "keyword",
+      "array": false
+    },
+    "destination.user.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "destination.user.roles": {
+      "type": "keyword",
+      "array": true
+    },
+    "device.id": {
+      "type": "keyword",
+      "array": false
+    },
+    "device.manufacturer": {
+      "type": "keyword",
+      "array": false
+    },
+    "device.model.identifier": {
+      "type": "keyword",
+      "array": false
+    },
+    "device.model.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "device.serial_number": {
+      "type": "keyword",
+      "array": false
+    },
+    "dll.code_signature.digest_algorithm": {
+      "type": "keyword",
+      "array": false
+    },
+    "dll.code_signature.exists": {
+      "type": "boolean",
+      "array": false
+    },
+    "dll.code_signature.flags": {
+      "type": "keyword",
+      "array": false
+    },
+    "dll.code_signature.signing_id": {
+      "type": "keyword",
+      "array": false
+    },
+    "dll.code_signature.status": {
+      "type": "keyword",
+      "array": false
+    },
+    "dll.code_signature.subject_name": {
+      "type": "keyword",
+      "array": false
+    },
+    "dll.code_signature.team_id": {
+      "type": "keyword",
+      "array": false
+    },
+    "dll.code_signature.timestamp": {
+      "type": "date",
+      "array": false
+    },
+    "dll.code_signature.trusted": {
+      "type": "boolean",
+      "array": false
+    },
+    "dll.code_signature.valid": {
+      "type": "boolean",
+      "array": false
+    },
+    "dll.hash.cdhash": {
+      "type": "keyword",
+      "array": false
+    },
+    "dll.hash.md5": {
+      "type": "keyword",
+      "array": false
+    },
+    "dll.hash.sha1": {
+      "type": "keyword",
+      "array": false
+    },
+    "dll.hash.sha256": {
+      "type": "keyword",
+      "array": false
+    },
+    "dll.hash.sha384": {
+      "type": "keyword",
+      "array": false
+    },
+    "dll.hash.sha512": {
+      "type": "keyword",
+      "array": false
+    },
+    "dll.hash.ssdeep": {
+      "type": "keyword",
+      "array": false
+    },
+    "dll.hash.tlsh": {
+      "type": "keyword",
+      "array": false
+    },
+    "dll.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "dll.path": {
+      "type": "keyword",
+      "array": false
+    },
+    "dll.pe.architecture": {
+      "type": "keyword",
+      "array": false
+    },
+    "dll.pe.company": {
+      "type": "keyword",
+      "array": false
+    },
+    "dll.pe.description": {
+      "type": "keyword",
+      "array": false
+    },
+    "dll.pe.file_version": {
+      "type": "keyword",
+      "array": false
+    },
+    "dll.pe.go_import_hash": {
+      "type": "keyword",
+      "array": false
+    },
+    "dll.pe.go_imports": {
+      "type": "object",
+      "array": false
+    },
+    "dll.pe.go_imports_names_entropy": {
+      "type": "long",
+      "array": false
+    },
+    "dll.pe.go_imports_names_var_entropy": {
+      "type": "long",
+      "array": false
+    },
+    "dll.pe.go_stripped": {
+      "type": "boolean",
+      "array": false
+    },
+    "dll.pe.imphash": {
+      "type": "keyword",
+      "array": false
+    },
+    "dll.pe.import_hash": {
+      "type": "keyword",
+      "array": false
+    },
+    "dll.pe.imports": {
+      "type": "object",
+      "array": true
+    },
+    "dll.pe.imports_names_entropy": {
+      "type": "long",
+      "array": false
+    },
+    "dll.pe.imports_names_var_entropy": {
+      "type": "long",
+      "array": false
+    },
+    "dll.pe.original_file_name": {
+      "type": "keyword",
+      "array": false
+    },
+    "dll.pe.pehash": {
+      "type": "keyword",
+      "array": false
+    },
+    "dll.pe.product": {
+      "type": "keyword",
+      "array": false
+    },
+    "dll.pe.sections": {
+      "type": "nested",
+      "array": true
+    },
+    "dll.pe.sections.entropy": {
+      "type": "long",
+      "array": false
+    },
+    "dll.pe.sections.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "dll.pe.sections.physical_size": {
+      "type": "long",
+      "array": false
+    },
+    "dll.pe.sections.var_entropy": {
+      "type": "long",
+      "array": false
+    },
+    "dll.pe.sections.virtual_size": {
+      "type": "long",
+      "array": false
+    },
+    "dns.answers": {
+      "type": "object",
+      "array": true
+    },
+    "dns.answers.class": {
+      "type": "keyword",
+      "array": false
+    },
+    "dns.answers.data": {
+      "type": "keyword",
+      "array": false
+    },
+    "dns.answers.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "dns.answers.ttl": {
+      "type": "long",
+      "array": false
+    },
+    "dns.answers.type": {
+      "type": "keyword",
+      "array": false
+    },
+    "dns.header_flags": {
+      "type": "keyword",
+      "array": true
+    },
+    "dns.id": {
+      "type": "keyword",
+      "array": false
+    },
+    "dns.op_code": {
+      "type": "keyword",
+      "array": false
+    },
+    "dns.question.class": {
+      "type": "keyword",
+      "array": false
+    },
+    "dns.question.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "dns.question.registered_domain": {
+      "type": "keyword",
+      "array": false
+    },
+    "dns.question.subdomain": {
+      "type": "keyword",
+      "array": false
+    },
+    "dns.question.top_level_domain": {
+      "type": "keyword",
+      "array": false
+    },
+    "dns.question.type": {
+      "type": "keyword",
+      "array": false
+    },
+    "dns.resolved_ip": {
+      "type": "ip",
+      "array": true
+    },
+    "dns.response_code": {
+      "type": "keyword",
+      "array": false
+    },
+    "dns.type": {
+      "type": "keyword",
+      "array": false
+    },
+    "ecs.version": {
+      "type": "keyword",
+      "array": false
+    },
+    "email.attachments": {
+      "type": "nested",
+      "array": true
+    },
+    "email.attachments.file.extension": {
+      "type": "keyword",
+      "array": false
+    },
+    "email.attachments.file.hash.cdhash": {
+      "type": "keyword",
+      "array": false
+    },
+    "email.attachments.file.hash.md5": {
+      "type": "keyword",
+      "array": false
+    },
+    "email.attachments.file.hash.sha1": {
+      "type": "keyword",
+      "array": false
+    },
+    "email.attachments.file.hash.sha256": {
+      "type": "keyword",
+      "array": false
+    },
+    "email.attachments.file.hash.sha384": {
+      "type": "keyword",
+      "array": false
+    },
+    "email.attachments.file.hash.sha512": {
+      "type": "keyword",
+      "array": false
+    },
+    "email.attachments.file.hash.ssdeep": {
+      "type": "keyword",
+      "array": false
+    },
+    "email.attachments.file.hash.tlsh": {
+      "type": "keyword",
+      "array": false
+    },
+    "email.attachments.file.mime_type": {
+      "type": "keyword",
+      "array": false
+    },
+    "email.attachments.file.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "email.attachments.file.size": {
+      "type": "long",
+      "array": false
+    },
+    "email.bcc.address": {
+      "type": "keyword",
+      "array": true
+    },
+    "email.cc.address": {
+      "type": "keyword",
+      "array": true
+    },
+    "email.content_type": {
+      "type": "keyword",
+      "array": false
+    },
+    "email.delivery_timestamp": {
+      "type": "date",
+      "array": false
+    },
+    "email.direction": {
+      "type": "keyword",
+      "array": false
+    },
+    "email.from.address": {
+      "type": "keyword",
+      "array": true
+    },
+    "email.local_id": {
+      "type": "keyword",
+      "array": false
+    },
+    "email.message_id": {
+      "type": "wildcard",
+      "array": false
+    },
+    "email.origination_timestamp": {
+      "type": "date",
+      "array": false
+    },
+    "email.reply_to.address": {
+      "type": "keyword",
+      "array": true
+    },
+    "email.sender.address": {
+      "type": "keyword",
+      "array": false
+    },
+    "email.subject": {
+      "type": "keyword",
+      "array": false
+    },
+    "email.to.address": {
+      "type": "keyword",
+      "array": true
+    },
+    "email.x_mailer": {
+      "type": "keyword",
+      "array": false
+    },
+    "error.code": {
+      "type": "keyword",
+      "array": false
+    },
+    "error.id": {
+      "type": "keyword",
+      "array": false
+    },
+    "error.message": {
+      "type": "text",
+      "array": false
+    },
+    "error.stack_trace": {
+      "type": "wildcard",
+      "array": false
+    },
+    "error.type": {
+      "type": "keyword",
+      "array": false
+    },
+    "event.action": {
+      "type": "keyword",
+      "array": false
+    },
+    "event.agent_id_status": {
+      "type": "keyword",
+      "array": false
+    },
+    "event.category": {
+      "type": "keyword",
+      "array": true
+    },
+    "event.code": {
+      "type": "keyword",
+      "array": false
+    },
+    "event.created": {
+      "type": "date",
+      "array": false
+    },
+    "event.dataset": {
+      "type": "keyword",
+      "array": false
+    },
+    "event.duration": {
+      "type": "long",
+      "array": false
+    },
+    "event.end": {
+      "type": "date",
+      "array": false
+    },
+    "event.hash": {
+      "type": "keyword",
+      "array": false
+    },
+    "event.id": {
+      "type": "keyword",
+      "array": false
+    },
+    "event.ingested": {
+      "type": "date",
+      "array": false
+    },
+    "event.kind": {
+      "type": "keyword",
+      "array": false
+    },
+    "event.module": {
+      "type": "keyword",
+      "array": false
+    },
+    "event.original": {
+      "type": "keyword",
+      "array": false
+    },
+    "event.outcome": {
+      "type": "keyword",
+      "array": false
+    },
+    "event.provider": {
+      "type": "keyword",
+      "array": false
+    },
+    "event.reason": {
+      "type": "keyword",
+      "array": false
+    },
+    "event.reference": {
+      "type": "keyword",
+      "array": false
+    },
+    "event.risk_score": {
+      "type": "float",
+      "array": false
+    },
+    "event.risk_score_norm": {
+      "type": "float",
+      "array": false
+    },
+    "event.sequence": {
+      "type": "long",
+      "array": false
+    },
+    "event.severity": {
+      "type": "long",
+      "array": false
+    },
+    "event.start": {
+      "type": "date",
+      "array": false
+    },
+    "event.timezone": {
+      "type": "keyword",
+      "array": false
+    },
+    "event.type": {
+      "type": "keyword",
+      "array": true
+    },
+    "event.url": {
+      "type": "keyword",
+      "array": false
+    },
+    "faas.coldstart": {
+      "type": "boolean",
+      "array": false
+    },
+    "faas.execution": {
+      "type": "keyword",
+      "array": false
+    },
+    "faas.id": {
+      "type": "keyword",
+      "array": false
+    },
+    "faas.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "faas.trigger.request_id": {
+      "type": "keyword",
+      "array": false
+    },
+    "faas.trigger.type": {
+      "type": "keyword",
+      "array": false
+    },
+    "faas.version": {
+      "type": "keyword",
+      "array": false
+    },
+    "file.accessed": {
+      "type": "date",
+      "array": false
+    },
+    "file.attributes": {
+      "type": "keyword",
+      "array": true
+    },
+    "file.code_signature.digest_algorithm": {
+      "type": "keyword",
+      "array": false
+    },
+    "file.code_signature.exists": {
+      "type": "boolean",
+      "array": false
+    },
+    "file.code_signature.flags": {
+      "type": "keyword",
+      "array": false
+    },
+    "file.code_signature.signing_id": {
+      "type": "keyword",
+      "array": false
+    },
+    "file.code_signature.status": {
+      "type": "keyword",
+      "array": false
+    },
+    "file.code_signature.subject_name": {
+      "type": "keyword",
+      "array": false
+    },
+    "file.code_signature.team_id": {
+      "type": "keyword",
+      "array": false
+    },
+    "file.code_signature.timestamp": {
+      "type": "date",
+      "array": false
+    },
+    "file.code_signature.trusted": {
+      "type": "boolean",
+      "array": false
+    },
+    "file.code_signature.valid": {
+      "type": "boolean",
+      "array": false
+    },
+    "file.created": {
+      "type": "date",
+      "array": false
+    },
+    "file.ctime": {
+      "type": "date",
+      "array": false
+    },
+    "file.device": {
+      "type": "keyword",
+      "array": false
+    },
+    "file.directory": {
+      "type": "keyword",
+      "array": false
+    },
+    "file.drive_letter": {
+      "type": "keyword",
+      "array": false
+    },
+    "file.elf.architecture": {
+      "type": "keyword",
+      "array": false
+    },
+    "file.elf.byte_order": {
+      "type": "keyword",
+      "array": false
+    },
+    "file.elf.cpu_type": {
+      "type": "keyword",
+      "array": false
+    },
+    "file.elf.creation_date": {
+      "type": "date",
+      "array": false
+    },
+    "file.elf.exports": {
+      "type": "object",
+      "array": true
+    },
+    "file.elf.go_import_hash": {
+      "type": "keyword",
+      "array": false
+    },
+    "file.elf.go_imports": {
+      "type": "object",
+      "array": false
+    },
+    "file.elf.go_imports_names_entropy": {
+      "type": "long",
+      "array": false
+    },
+    "file.elf.go_imports_names_var_entropy": {
+      "type": "long",
+      "array": false
+    },
+    "file.elf.go_stripped": {
+      "type": "boolean",
+      "array": false
+    },
+    "file.elf.header.abi_version": {
+      "type": "keyword",
+      "array": false
+    },
+    "file.elf.header.class": {
+      "type": "keyword",
+      "array": false
+    },
+    "file.elf.header.data": {
+      "type": "keyword",
+      "array": false
+    },
+    "file.elf.header.entrypoint": {
+      "type": "long",
+      "array": false
+    },
+    "file.elf.header.object_version": {
+      "type": "keyword",
+      "array": false
+    },
+    "file.elf.header.os_abi": {
+      "type": "keyword",
+      "array": false
+    },
+    "file.elf.header.type": {
+      "type": "keyword",
+      "array": false
+    },
+    "file.elf.header.version": {
+      "type": "keyword",
+      "array": false
+    },
+    "file.elf.import_hash": {
+      "type": "keyword",
+      "array": false
+    },
+    "file.elf.imports": {
+      "type": "object",
+      "array": true
+    },
+    "file.elf.imports_names_entropy": {
+      "type": "long",
+      "array": false
+    },
+    "file.elf.imports_names_var_entropy": {
+      "type": "long",
+      "array": false
+    },
+    "file.elf.sections": {
+      "type": "nested",
+      "array": true
+    },
+    "file.elf.sections.chi2": {
+      "type": "long",
+      "array": false
+    },
+    "file.elf.sections.entropy": {
+      "type": "long",
+      "array": false
+    },
+    "file.elf.sections.flags": {
+      "type": "keyword",
+      "array": false
+    },
+    "file.elf.sections.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "file.elf.sections.physical_offset": {
+      "type": "keyword",
+      "array": false
+    },
+    "file.elf.sections.physical_size": {
+      "type": "long",
+      "array": false
+    },
+    "file.elf.sections.type": {
+      "type": "keyword",
+      "array": false
+    },
+    "file.elf.sections.var_entropy": {
+      "type": "long",
+      "array": false
+    },
+    "file.elf.sections.virtual_address": {
+      "type": "long",
+      "array": false
+    },
+    "file.elf.sections.virtual_size": {
+      "type": "long",
+      "array": false
+    },
+    "file.elf.segments": {
+      "type": "nested",
+      "array": true
+    },
+    "file.elf.segments.sections": {
+      "type": "keyword",
+      "array": false
+    },
+    "file.elf.segments.type": {
+      "type": "keyword",
+      "array": false
+    },
+    "file.elf.shared_libraries": {
+      "type": "keyword",
+      "array": true
+    },
+    "file.elf.telfhash": {
+      "type": "keyword",
+      "array": false
+    },
+    "file.extension": {
+      "type": "keyword",
+      "array": false
+    },
+    "file.fork_name": {
+      "type": "keyword",
+      "array": false
+    },
+    "file.gid": {
+      "type": "keyword",
+      "array": false
+    },
+    "file.group": {
+      "type": "keyword",
+      "array": false
+    },
+    "file.hash.cdhash": {
+      "type": "keyword",
+      "array": false
+    },
+    "file.hash.md5": {
+      "type": "keyword",
+      "array": false
+    },
+    "file.hash.sha1": {
+      "type": "keyword",
+      "array": false
+    },
+    "file.hash.sha256": {
+      "type": "keyword",
+      "array": false
+    },
+    "file.hash.sha384": {
+      "type": "keyword",
+      "array": false
+    },
+    "file.hash.sha512": {
+      "type": "keyword",
+      "array": false
+    },
+    "file.hash.ssdeep": {
+      "type": "keyword",
+      "array": false
+    },
+    "file.hash.tlsh": {
+      "type": "keyword",
+      "array": false
+    },
+    "file.inode": {
+      "type": "keyword",
+      "array": false
+    },
+    "file.macho.go_import_hash": {
+      "type": "keyword",
+      "array": false
+    },
+    "file.macho.go_imports": {
+      "type": "object",
+      "array": false
+    },
+    "file.macho.go_imports_names_entropy": {
+      "type": "long",
+      "array": false
+    },
+    "file.macho.go_imports_names_var_entropy": {
+      "type": "long",
+      "array": false
+    },
+    "file.macho.go_stripped": {
+      "type": "boolean",
+      "array": false
+    },
+    "file.macho.import_hash": {
+      "type": "keyword",
+      "array": false
+    },
+    "file.macho.imports": {
+      "type": "object",
+      "array": true
+    },
+    "file.macho.imports_names_entropy": {
+      "type": "long",
+      "array": false
+    },
+    "file.macho.imports_names_var_entropy": {
+      "type": "long",
+      "array": false
+    },
+    "file.macho.sections": {
+      "type": "nested",
+      "array": true
+    },
+    "file.macho.sections.entropy": {
+      "type": "long",
+      "array": false
+    },
+    "file.macho.sections.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "file.macho.sections.physical_size": {
+      "type": "long",
+      "array": false
+    },
+    "file.macho.sections.var_entropy": {
+      "type": "long",
+      "array": false
+    },
+    "file.macho.sections.virtual_size": {
+      "type": "long",
+      "array": false
+    },
+    "file.macho.symhash": {
+      "type": "keyword",
+      "array": false
+    },
+    "file.mime_type": {
+      "type": "keyword",
+      "array": false
+    },
+    "file.mode": {
+      "type": "keyword",
+      "array": false
+    },
+    "file.mtime": {
+      "type": "date",
+      "array": false
+    },
+    "file.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "file.owner": {
+      "type": "keyword",
+      "array": false
+    },
+    "file.path": {
+      "type": "keyword",
+      "array": false
+    },
+    "file.pe.architecture": {
+      "type": "keyword",
+      "array": false
+    },
+    "file.pe.company": {
+      "type": "keyword",
+      "array": false
+    },
+    "file.pe.description": {
+      "type": "keyword",
+      "array": false
+    },
+    "file.pe.file_version": {
+      "type": "keyword",
+      "array": false
+    },
+    "file.pe.go_import_hash": {
+      "type": "keyword",
+      "array": false
+    },
+    "file.pe.go_imports": {
+      "type": "object",
+      "array": false
+    },
+    "file.pe.go_imports_names_entropy": {
+      "type": "long",
+      "array": false
+    },
+    "file.pe.go_imports_names_var_entropy": {
+      "type": "long",
+      "array": false
+    },
+    "file.pe.go_stripped": {
+      "type": "boolean",
+      "array": false
+    },
+    "file.pe.imphash": {
+      "type": "keyword",
+      "array": false
+    },
+    "file.pe.import_hash": {
+      "type": "keyword",
+      "array": false
+    },
+    "file.pe.imports": {
+      "type": "object",
+      "array": true
+    },
+    "file.pe.imports_names_entropy": {
+      "type": "long",
+      "array": false
+    },
+    "file.pe.imports_names_var_entropy": {
+      "type": "long",
+      "array": false
+    },
+    "file.pe.original_file_name": {
+      "type": "keyword",
+      "array": false
+    },
+    "file.pe.pehash": {
+      "type": "keyword",
+      "array": false
+    },
+    "file.pe.product": {
+      "type": "keyword",
+      "array": false
+    },
+    "file.pe.sections": {
+      "type": "nested",
+      "array": true
+    },
+    "file.pe.sections.entropy": {
+      "type": "long",
+      "array": false
+    },
+    "file.pe.sections.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "file.pe.sections.physical_size": {
+      "type": "long",
+      "array": false
+    },
+    "file.pe.sections.var_entropy": {
+      "type": "long",
+      "array": false
+    },
+    "file.pe.sections.virtual_size": {
+      "type": "long",
+      "array": false
+    },
+    "file.size": {
+      "type": "long",
+      "array": false
+    },
+    "file.target_path": {
+      "type": "keyword",
+      "array": false
+    },
+    "file.type": {
+      "type": "keyword",
+      "array": false
+    },
+    "file.uid": {
+      "type": "keyword",
+      "array": false
+    },
+    "file.x509.alternative_names": {
+      "type": "keyword",
+      "array": true
+    },
+    "file.x509.issuer.common_name": {
+      "type": "keyword",
+      "array": true
+    },
+    "file.x509.issuer.country": {
+      "type": "keyword",
+      "array": true
+    },
+    "file.x509.issuer.distinguished_name": {
+      "type": "keyword",
+      "array": false
+    },
+    "file.x509.issuer.locality": {
+      "type": "keyword",
+      "array": true
+    },
+    "file.x509.issuer.organization": {
+      "type": "keyword",
+      "array": true
+    },
+    "file.x509.issuer.organizational_unit": {
+      "type": "keyword",
+      "array": true
+    },
+    "file.x509.issuer.state_or_province": {
+      "type": "keyword",
+      "array": true
+    },
+    "file.x509.not_after": {
+      "type": "date",
+      "array": false
+    },
+    "file.x509.not_before": {
+      "type": "date",
+      "array": false
+    },
+    "file.x509.public_key_algorithm": {
+      "type": "keyword",
+      "array": false
+    },
+    "file.x509.public_key_curve": {
+      "type": "keyword",
+      "array": false
+    },
+    "file.x509.public_key_exponent": {
+      "type": "long",
+      "array": false
+    },
+    "file.x509.public_key_size": {
+      "type": "long",
+      "array": false
+    },
+    "file.x509.serial_number": {
+      "type": "keyword",
+      "array": false
+    },
+    "file.x509.signature_algorithm": {
+      "type": "keyword",
+      "array": false
+    },
+    "file.x509.subject.common_name": {
+      "type": "keyword",
+      "array": true
+    },
+    "file.x509.subject.country": {
+      "type": "keyword",
+      "array": true
+    },
+    "file.x509.subject.distinguished_name": {
+      "type": "keyword",
+      "array": false
+    },
+    "file.x509.subject.locality": {
+      "type": "keyword",
+      "array": true
+    },
+    "file.x509.subject.organization": {
+      "type": "keyword",
+      "array": true
+    },
+    "file.x509.subject.organizational_unit": {
+      "type": "keyword",
+      "array": true
+    },
+    "file.x509.subject.state_or_province": {
+      "type": "keyword",
+      "array": true
+    },
+    "file.x509.version_number": {
+      "type": "keyword",
+      "array": false
+    },
+    "group.domain": {
+      "type": "keyword",
+      "array": false
+    },
+    "group.id": {
+      "type": "keyword",
+      "array": false
+    },
+    "group.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "host.architecture": {
+      "type": "keyword",
+      "array": false
+    },
+    "host.boot.id": {
+      "type": "keyword",
+      "array": false
+    },
+    "host.cpu.usage": {
+      "type": "scaled_float",
+      "array": false
+    },
+    "host.disk.read.bytes": {
+      "type": "long",
+      "array": false
+    },
+    "host.disk.write.bytes": {
+      "type": "long",
+      "array": false
+    },
+    "host.domain": {
+      "type": "keyword",
+      "array": false
+    },
+    "host.geo.city_name": {
+      "type": "keyword",
+      "array": false
+    },
+    "host.geo.continent_code": {
+      "type": "keyword",
+      "array": false
+    },
+    "host.geo.continent_name": {
+      "type": "keyword",
+      "array": false
+    },
+    "host.geo.country_iso_code": {
+      "type": "keyword",
+      "array": false
+    },
+    "host.geo.country_name": {
+      "type": "keyword",
+      "array": false
+    },
+    "host.geo.location": {
+      "type": "geo_point",
+      "array": false
+    },
+    "host.geo.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "host.geo.postal_code": {
+      "type": "keyword",
+      "array": false
+    },
+    "host.geo.region_iso_code": {
+      "type": "keyword",
+      "array": false
+    },
+    "host.geo.region_name": {
+      "type": "keyword",
+      "array": false
+    },
+    "host.geo.timezone": {
+      "type": "keyword",
+      "array": false
+    },
+    "host.hostname": {
+      "type": "keyword",
+      "array": false
+    },
+    "host.id": {
+      "type": "keyword",
+      "array": false
+    },
+    "host.ip": {
+      "type": "ip",
+      "array": true
+    },
+    "host.mac": {
+      "type": "keyword",
+      "array": true
+    },
+    "host.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "host.network.egress.bytes": {
+      "type": "long",
+      "array": false
+    },
+    "host.network.egress.packets": {
+      "type": "long",
+      "array": false
+    },
+    "host.network.ingress.bytes": {
+      "type": "long",
+      "array": false
+    },
+    "host.network.ingress.packets": {
+      "type": "long",
+      "array": false
+    },
+    "host.os.family": {
+      "type": "keyword",
+      "array": false
+    },
+    "host.os.full": {
+      "type": "keyword",
+      "array": false
+    },
+    "host.os.kernel": {
+      "type": "keyword",
+      "array": false
+    },
+    "host.os.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "host.os.platform": {
+      "type": "keyword",
+      "array": false
+    },
+    "host.os.type": {
+      "type": "keyword",
+      "array": false
+    },
+    "host.os.version": {
+      "type": "keyword",
+      "array": false
+    },
+    "host.pid_ns_ino": {
+      "type": "keyword",
+      "array": false
+    },
+    "host.risk.calculated_level": {
+      "type": "keyword",
+      "array": false
+    },
+    "host.risk.calculated_score": {
+      "type": "float",
+      "array": false
+    },
+    "host.risk.calculated_score_norm": {
+      "type": "float",
+      "array": false
+    },
+    "host.risk.static_level": {
+      "type": "keyword",
+      "array": false
+    },
+    "host.risk.static_score": {
+      "type": "float",
+      "array": false
+    },
+    "host.risk.static_score_norm": {
+      "type": "float",
+      "array": false
+    },
+    "host.type": {
+      "type": "keyword",
+      "array": false
+    },
+    "host.uptime": {
+      "type": "long",
+      "array": false
+    },
+    "http.request.body.bytes": {
+      "type": "long",
+      "array": false
+    },
+    "http.request.body.content": {
+      "type": "wildcard",
+      "array": false
+    },
+    "http.request.bytes": {
+      "type": "long",
+      "array": false
+    },
+    "http.request.id": {
+      "type": "keyword",
+      "array": false
+    },
+    "http.request.method": {
+      "type": "keyword",
+      "array": false
+    },
+    "http.request.mime_type": {
+      "type": "keyword",
+      "array": false
+    },
+    "http.request.referrer": {
+      "type": "keyword",
+      "array": false
+    },
+    "http.response.body.bytes": {
+      "type": "long",
+      "array": false
+    },
+    "http.response.body.content": {
+      "type": "wildcard",
+      "array": false
+    },
+    "http.response.bytes": {
+      "type": "long",
+      "array": false
+    },
+    "http.response.mime_type": {
+      "type": "keyword",
+      "array": false
+    },
+    "http.response.status_code": {
+      "type": "long",
+      "array": false
+    },
+    "http.version": {
+      "type": "keyword",
+      "array": false
+    },
+    "labels": {
+      "type": "object",
+      "array": false
+    },
+    "log.file.path": {
+      "type": "keyword",
+      "array": false
+    },
+    "log.level": {
+      "type": "keyword",
+      "array": false
+    },
+    "log.logger": {
+      "type": "keyword",
+      "array": false
+    },
+    "log.origin.file.line": {
+      "type": "long",
+      "array": false
+    },
+    "log.origin.file.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "log.origin.function": {
+      "type": "keyword",
+      "array": false
+    },
+    "log.syslog": {
+      "type": "object",
+      "array": false
+    },
+    "log.syslog.appname": {
+      "type": "keyword",
+      "array": false
+    },
+    "log.syslog.facility.code": {
+      "type": "long",
+      "array": false
+    },
+    "log.syslog.facility.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "log.syslog.hostname": {
+      "type": "keyword",
+      "array": false
+    },
+    "log.syslog.msgid": {
+      "type": "keyword",
+      "array": false
+    },
+    "log.syslog.priority": {
+      "type": "long",
+      "array": false
+    },
+    "log.syslog.procid": {
+      "type": "keyword",
+      "array": false
+    },
+    "log.syslog.severity.code": {
+      "type": "long",
+      "array": false
+    },
+    "log.syslog.severity.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "log.syslog.structured_data": {
+      "type": "object",
+      "array": false
+    },
+    "log.syslog.version": {
+      "type": "keyword",
+      "array": false
+    },
+    "message": {
+      "type": "text",
+      "array": false
+    },
+    "network.application": {
+      "type": "keyword",
+      "array": false
+    },
+    "network.bytes": {
+      "type": "long",
+      "array": false
+    },
+    "network.community_id": {
+      "type": "keyword",
+      "array": false
+    },
+    "network.direction": {
+      "type": "keyword",
+      "array": false
+    },
+    "network.forwarded_ip": {
+      "type": "ip",
+      "array": false
+    },
+    "network.iana_number": {
+      "type": "keyword",
+      "array": false
+    },
+    "network.inner": {
+      "type": "object",
+      "array": false
+    },
+    "network.inner.vlan.id": {
+      "type": "keyword",
+      "array": false
+    },
+    "network.inner.vlan.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "network.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "network.packets": {
+      "type": "long",
+      "array": false
+    },
+    "network.protocol": {
+      "type": "keyword",
+      "array": false
+    },
+    "network.transport": {
+      "type": "keyword",
+      "array": false
+    },
+    "network.type": {
+      "type": "keyword",
+      "array": false
+    },
+    "network.vlan.id": {
+      "type": "keyword",
+      "array": false
+    },
+    "network.vlan.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "observer.egress": {
+      "type": "object",
+      "array": false
+    },
+    "observer.egress.interface.alias": {
+      "type": "keyword",
+      "array": false
+    },
+    "observer.egress.interface.id": {
+      "type": "keyword",
+      "array": false
+    },
+    "observer.egress.interface.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "observer.egress.vlan.id": {
+      "type": "keyword",
+      "array": false
+    },
+    "observer.egress.vlan.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "observer.egress.zone": {
+      "type": "keyword",
+      "array": false
+    },
+    "observer.geo.city_name": {
+      "type": "keyword",
+      "array": false
+    },
+    "observer.geo.continent_code": {
+      "type": "keyword",
+      "array": false
+    },
+    "observer.geo.continent_name": {
+      "type": "keyword",
+      "array": false
+    },
+    "observer.geo.country_iso_code": {
+      "type": "keyword",
+      "array": false
+    },
+    "observer.geo.country_name": {
+      "type": "keyword",
+      "array": false
+    },
+    "observer.geo.location": {
+      "type": "geo_point",
+      "array": false
+    },
+    "observer.geo.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "observer.geo.postal_code": {
+      "type": "keyword",
+      "array": false
+    },
+    "observer.geo.region_iso_code": {
+      "type": "keyword",
+      "array": false
+    },
+    "observer.geo.region_name": {
+      "type": "keyword",
+      "array": false
+    },
+    "observer.geo.timezone": {
+      "type": "keyword",
+      "array": false
+    },
+    "observer.hostname": {
+      "type": "keyword",
+      "array": false
+    },
+    "observer.ingress": {
+      "type": "object",
+      "array": false
+    },
+    "observer.ingress.interface.alias": {
+      "type": "keyword",
+      "array": false
+    },
+    "observer.ingress.interface.id": {
+      "type": "keyword",
+      "array": false
+    },
+    "observer.ingress.interface.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "observer.ingress.vlan.id": {
+      "type": "keyword",
+      "array": false
+    },
+    "observer.ingress.vlan.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "observer.ingress.zone": {
+      "type": "keyword",
+      "array": false
+    },
+    "observer.ip": {
+      "type": "ip",
+      "array": true
+    },
+    "observer.mac": {
+      "type": "keyword",
+      "array": true
+    },
+    "observer.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "observer.os.family": {
+      "type": "keyword",
+      "array": false
+    },
+    "observer.os.full": {
+      "type": "keyword",
+      "array": false
+    },
+    "observer.os.kernel": {
+      "type": "keyword",
+      "array": false
+    },
+    "observer.os.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "observer.os.platform": {
+      "type": "keyword",
+      "array": false
+    },
+    "observer.os.type": {
+      "type": "keyword",
+      "array": false
+    },
+    "observer.os.version": {
+      "type": "keyword",
+      "array": false
+    },
+    "observer.product": {
+      "type": "keyword",
+      "array": false
+    },
+    "observer.serial_number": {
+      "type": "keyword",
+      "array": false
+    },
+    "observer.type": {
+      "type": "keyword",
+      "array": false
+    },
+    "observer.vendor": {
+      "type": "keyword",
+      "array": false
+    },
+    "observer.version": {
+      "type": "keyword",
+      "array": false
+    },
+    "orchestrator.api_version": {
+      "type": "keyword",
+      "array": false
+    },
+    "orchestrator.cluster.id": {
+      "type": "keyword",
+      "array": false
+    },
+    "orchestrator.cluster.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "orchestrator.cluster.url": {
+      "type": "keyword",
+      "array": false
+    },
+    "orchestrator.cluster.version": {
+      "type": "keyword",
+      "array": false
+    },
+    "orchestrator.namespace": {
+      "type": "keyword",
+      "array": false
+    },
+    "orchestrator.organization": {
+      "type": "keyword",
+      "array": false
+    },
+    "orchestrator.resource.annotation": {
+      "type": "keyword",
+      "array": true
+    },
+    "orchestrator.resource.id": {
+      "type": "keyword",
+      "array": false
+    },
+    "orchestrator.resource.ip": {
+      "type": "ip",
+      "array": true
+    },
+    "orchestrator.resource.label": {
+      "type": "keyword",
+      "array": true
+    },
+    "orchestrator.resource.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "orchestrator.resource.parent.type": {
+      "type": "keyword",
+      "array": false
+    },
+    "orchestrator.resource.type": {
+      "type": "keyword",
+      "array": false
+    },
+    "orchestrator.type": {
+      "type": "keyword",
+      "array": false
+    },
+    "organization.id": {
+      "type": "keyword",
+      "array": false
+    },
+    "organization.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "package.architecture": {
+      "type": "keyword",
+      "array": false
+    },
+    "package.build_version": {
+      "type": "keyword",
+      "array": false
+    },
+    "package.checksum": {
+      "type": "keyword",
+      "array": false
+    },
+    "package.description": {
+      "type": "keyword",
+      "array": false
+    },
+    "package.install_scope": {
+      "type": "keyword",
+      "array": false
+    },
+    "package.installed": {
+      "type": "date",
+      "array": false
+    },
+    "package.license": {
+      "type": "keyword",
+      "array": false
+    },
+    "package.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "package.path": {
+      "type": "keyword",
+      "array": false
+    },
+    "package.reference": {
+      "type": "keyword",
+      "array": false
+    },
+    "package.size": {
+      "type": "long",
+      "array": false
+    },
+    "package.type": {
+      "type": "keyword",
+      "array": false
+    },
+    "package.version": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.args": {
+      "type": "keyword",
+      "array": true
+    },
+    "process.args_count": {
+      "type": "long",
+      "array": false
+    },
+    "process.code_signature.digest_algorithm": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.code_signature.exists": {
+      "type": "boolean",
+      "array": false
+    },
+    "process.code_signature.flags": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.code_signature.signing_id": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.code_signature.status": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.code_signature.subject_name": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.code_signature.team_id": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.code_signature.timestamp": {
+      "type": "date",
+      "array": false
+    },
+    "process.code_signature.trusted": {
+      "type": "boolean",
+      "array": false
+    },
+    "process.code_signature.valid": {
+      "type": "boolean",
+      "array": false
+    },
+    "process.command_line": {
+      "type": "wildcard",
+      "array": false
+    },
+    "process.elf.architecture": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.elf.byte_order": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.elf.cpu_type": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.elf.creation_date": {
+      "type": "date",
+      "array": false
+    },
+    "process.elf.exports": {
+      "type": "object",
+      "array": true
+    },
+    "process.elf.go_import_hash": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.elf.go_imports": {
+      "type": "object",
+      "array": false
+    },
+    "process.elf.go_imports_names_entropy": {
+      "type": "long",
+      "array": false
+    },
+    "process.elf.go_imports_names_var_entropy": {
+      "type": "long",
+      "array": false
+    },
+    "process.elf.go_stripped": {
+      "type": "boolean",
+      "array": false
+    },
+    "process.elf.header.abi_version": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.elf.header.class": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.elf.header.data": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.elf.header.entrypoint": {
+      "type": "long",
+      "array": false
+    },
+    "process.elf.header.object_version": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.elf.header.os_abi": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.elf.header.type": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.elf.header.version": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.elf.import_hash": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.elf.imports": {
+      "type": "object",
+      "array": true
+    },
+    "process.elf.imports_names_entropy": {
+      "type": "long",
+      "array": false
+    },
+    "process.elf.imports_names_var_entropy": {
+      "type": "long",
+      "array": false
+    },
+    "process.elf.sections": {
+      "type": "nested",
+      "array": true
+    },
+    "process.elf.sections.chi2": {
+      "type": "long",
+      "array": false
+    },
+    "process.elf.sections.entropy": {
+      "type": "long",
+      "array": false
+    },
+    "process.elf.sections.flags": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.elf.sections.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.elf.sections.physical_offset": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.elf.sections.physical_size": {
+      "type": "long",
+      "array": false
+    },
+    "process.elf.sections.type": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.elf.sections.var_entropy": {
+      "type": "long",
+      "array": false
+    },
+    "process.elf.sections.virtual_address": {
+      "type": "long",
+      "array": false
+    },
+    "process.elf.sections.virtual_size": {
+      "type": "long",
+      "array": false
+    },
+    "process.elf.segments": {
+      "type": "nested",
+      "array": true
+    },
+    "process.elf.segments.sections": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.elf.segments.type": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.elf.shared_libraries": {
+      "type": "keyword",
+      "array": true
+    },
+    "process.elf.telfhash": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.end": {
+      "type": "date",
+      "array": false
+    },
+    "process.entity_id": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.entry_leader.args": {
+      "type": "keyword",
+      "array": true
+    },
+    "process.entry_leader.args_count": {
+      "type": "long",
+      "array": false
+    },
+    "process.entry_leader.attested_groups.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.entry_leader.attested_user.id": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.entry_leader.attested_user.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.entry_leader.command_line": {
+      "type": "wildcard",
+      "array": false
+    },
+    "process.entry_leader.entity_id": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.entry_leader.entry_meta.source.ip": {
+      "type": "ip",
+      "array": false
+    },
+    "process.entry_leader.entry_meta.type": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.entry_leader.executable": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.entry_leader.group.id": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.entry_leader.group.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.entry_leader.interactive": {
+      "type": "boolean",
+      "array": false
+    },
+    "process.entry_leader.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.entry_leader.parent.entity_id": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.entry_leader.parent.pid": {
+      "type": "long",
+      "array": false
+    },
+    "process.entry_leader.parent.session_leader.entity_id": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.entry_leader.parent.session_leader.pid": {
+      "type": "long",
+      "array": false
+    },
+    "process.entry_leader.parent.session_leader.start": {
+      "type": "date",
+      "array": false
+    },
+    "process.entry_leader.parent.session_leader.vpid": {
+      "type": "long",
+      "array": false
+    },
+    "process.entry_leader.parent.start": {
+      "type": "date",
+      "array": false
+    },
+    "process.entry_leader.parent.vpid": {
+      "type": "long",
+      "array": false
+    },
+    "process.entry_leader.pid": {
+      "type": "long",
+      "array": false
+    },
+    "process.entry_leader.real_group.id": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.entry_leader.real_group.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.entry_leader.real_user.id": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.entry_leader.real_user.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.entry_leader.same_as_process": {
+      "type": "boolean",
+      "array": false
+    },
+    "process.entry_leader.saved_group.id": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.entry_leader.saved_group.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.entry_leader.saved_user.id": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.entry_leader.saved_user.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.entry_leader.start": {
+      "type": "date",
+      "array": false
+    },
+    "process.entry_leader.supplemental_groups.id": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.entry_leader.supplemental_groups.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.entry_leader.tty": {
+      "type": "object",
+      "array": false
+    },
+    "process.entry_leader.tty.char_device.major": {
+      "type": "long",
+      "array": false
+    },
+    "process.entry_leader.tty.char_device.minor": {
+      "type": "long",
+      "array": false
+    },
+    "process.entry_leader.user.id": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.entry_leader.user.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.entry_leader.vpid": {
+      "type": "long",
+      "array": false
+    },
+    "process.entry_leader.working_directory": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.env_vars": {
+      "type": "keyword",
+      "array": true
+    },
+    "process.executable": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.exit_code": {
+      "type": "long",
+      "array": false
+    },
+    "process.group.id": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.group.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.group_leader.args": {
+      "type": "keyword",
+      "array": true
+    },
+    "process.group_leader.args_count": {
+      "type": "long",
+      "array": false
+    },
+    "process.group_leader.command_line": {
+      "type": "wildcard",
+      "array": false
+    },
+    "process.group_leader.entity_id": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.group_leader.executable": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.group_leader.group.id": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.group_leader.group.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.group_leader.interactive": {
+      "type": "boolean",
+      "array": false
+    },
+    "process.group_leader.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.group_leader.pid": {
+      "type": "long",
+      "array": false
+    },
+    "process.group_leader.real_group.id": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.group_leader.real_group.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.group_leader.real_user.id": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.group_leader.real_user.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.group_leader.same_as_process": {
+      "type": "boolean",
+      "array": false
+    },
+    "process.group_leader.saved_group.id": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.group_leader.saved_group.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.group_leader.saved_user.id": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.group_leader.saved_user.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.group_leader.start": {
+      "type": "date",
+      "array": false
+    },
+    "process.group_leader.supplemental_groups.id": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.group_leader.supplemental_groups.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.group_leader.tty": {
+      "type": "object",
+      "array": false
+    },
+    "process.group_leader.tty.char_device.major": {
+      "type": "long",
+      "array": false
+    },
+    "process.group_leader.tty.char_device.minor": {
+      "type": "long",
+      "array": false
+    },
+    "process.group_leader.user.id": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.group_leader.user.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.group_leader.vpid": {
+      "type": "long",
+      "array": false
+    },
+    "process.group_leader.working_directory": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.hash.cdhash": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.hash.md5": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.hash.sha1": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.hash.sha256": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.hash.sha384": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.hash.sha512": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.hash.ssdeep": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.hash.tlsh": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.interactive": {
+      "type": "boolean",
+      "array": false
+    },
+    "process.io": {
+      "type": "object",
+      "array": false
+    },
+    "process.io.bytes_skipped": {
+      "type": "object",
+      "array": true
+    },
+    "process.io.bytes_skipped.length": {
+      "type": "long",
+      "array": false
+    },
+    "process.io.bytes_skipped.offset": {
+      "type": "long",
+      "array": false
+    },
+    "process.io.max_bytes_per_process_exceeded": {
+      "type": "boolean",
+      "array": false
+    },
+    "process.io.text": {
+      "type": "wildcard",
+      "array": false
+    },
+    "process.io.total_bytes_captured": {
+      "type": "long",
+      "array": false
+    },
+    "process.io.total_bytes_skipped": {
+      "type": "long",
+      "array": false
+    },
+    "process.io.type": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.macho.go_import_hash": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.macho.go_imports": {
+      "type": "object",
+      "array": false
+    },
+    "process.macho.go_imports_names_entropy": {
+      "type": "long",
+      "array": false
+    },
+    "process.macho.go_imports_names_var_entropy": {
+      "type": "long",
+      "array": false
+    },
+    "process.macho.go_stripped": {
+      "type": "boolean",
+      "array": false
+    },
+    "process.macho.import_hash": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.macho.imports": {
+      "type": "object",
+      "array": true
+    },
+    "process.macho.imports_names_entropy": {
+      "type": "long",
+      "array": false
+    },
+    "process.macho.imports_names_var_entropy": {
+      "type": "long",
+      "array": false
+    },
+    "process.macho.sections": {
+      "type": "nested",
+      "array": true
+    },
+    "process.macho.sections.entropy": {
+      "type": "long",
+      "array": false
+    },
+    "process.macho.sections.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.macho.sections.physical_size": {
+      "type": "long",
+      "array": false
+    },
+    "process.macho.sections.var_entropy": {
+      "type": "long",
+      "array": false
+    },
+    "process.macho.sections.virtual_size": {
+      "type": "long",
+      "array": false
+    },
+    "process.macho.symhash": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.parent.args": {
+      "type": "keyword",
+      "array": true
+    },
+    "process.parent.args_count": {
+      "type": "long",
+      "array": false
+    },
+    "process.parent.code_signature.digest_algorithm": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.parent.code_signature.exists": {
+      "type": "boolean",
+      "array": false
+    },
+    "process.parent.code_signature.flags": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.parent.code_signature.signing_id": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.parent.code_signature.status": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.parent.code_signature.subject_name": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.parent.code_signature.team_id": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.parent.code_signature.timestamp": {
+      "type": "date",
+      "array": false
+    },
+    "process.parent.code_signature.trusted": {
+      "type": "boolean",
+      "array": false
+    },
+    "process.parent.code_signature.valid": {
+      "type": "boolean",
+      "array": false
+    },
+    "process.parent.command_line": {
+      "type": "wildcard",
+      "array": false
+    },
+    "process.parent.elf.architecture": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.parent.elf.byte_order": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.parent.elf.cpu_type": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.parent.elf.creation_date": {
+      "type": "date",
+      "array": false
+    },
+    "process.parent.elf.exports": {
+      "type": "object",
+      "array": true
+    },
+    "process.parent.elf.go_import_hash": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.parent.elf.go_imports": {
+      "type": "object",
+      "array": false
+    },
+    "process.parent.elf.go_imports_names_entropy": {
+      "type": "long",
+      "array": false
+    },
+    "process.parent.elf.go_imports_names_var_entropy": {
+      "type": "long",
+      "array": false
+    },
+    "process.parent.elf.go_stripped": {
+      "type": "boolean",
+      "array": false
+    },
+    "process.parent.elf.header.abi_version": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.parent.elf.header.class": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.parent.elf.header.data": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.parent.elf.header.entrypoint": {
+      "type": "long",
+      "array": false
+    },
+    "process.parent.elf.header.object_version": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.parent.elf.header.os_abi": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.parent.elf.header.type": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.parent.elf.header.version": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.parent.elf.import_hash": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.parent.elf.imports": {
+      "type": "object",
+      "array": true
+    },
+    "process.parent.elf.imports_names_entropy": {
+      "type": "long",
+      "array": false
+    },
+    "process.parent.elf.imports_names_var_entropy": {
+      "type": "long",
+      "array": false
+    },
+    "process.parent.elf.sections": {
+      "type": "nested",
+      "array": true
+    },
+    "process.parent.elf.sections.chi2": {
+      "type": "long",
+      "array": false
+    },
+    "process.parent.elf.sections.entropy": {
+      "type": "long",
+      "array": false
+    },
+    "process.parent.elf.sections.flags": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.parent.elf.sections.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.parent.elf.sections.physical_offset": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.parent.elf.sections.physical_size": {
+      "type": "long",
+      "array": false
+    },
+    "process.parent.elf.sections.type": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.parent.elf.sections.var_entropy": {
+      "type": "long",
+      "array": false
+    },
+    "process.parent.elf.sections.virtual_address": {
+      "type": "long",
+      "array": false
+    },
+    "process.parent.elf.sections.virtual_size": {
+      "type": "long",
+      "array": false
+    },
+    "process.parent.elf.segments": {
+      "type": "nested",
+      "array": true
+    },
+    "process.parent.elf.segments.sections": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.parent.elf.segments.type": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.parent.elf.shared_libraries": {
+      "type": "keyword",
+      "array": true
+    },
+    "process.parent.elf.telfhash": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.parent.end": {
+      "type": "date",
+      "array": false
+    },
+    "process.parent.entity_id": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.parent.executable": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.parent.exit_code": {
+      "type": "long",
+      "array": false
+    },
+    "process.parent.group.id": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.parent.group.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.parent.group_leader.entity_id": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.parent.group_leader.pid": {
+      "type": "long",
+      "array": false
+    },
+    "process.parent.group_leader.start": {
+      "type": "date",
+      "array": false
+    },
+    "process.parent.group_leader.vpid": {
+      "type": "long",
+      "array": false
+    },
+    "process.parent.hash.cdhash": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.parent.hash.md5": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.parent.hash.sha1": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.parent.hash.sha256": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.parent.hash.sha384": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.parent.hash.sha512": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.parent.hash.ssdeep": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.parent.hash.tlsh": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.parent.interactive": {
+      "type": "boolean",
+      "array": false
+    },
+    "process.parent.macho.go_import_hash": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.parent.macho.go_imports": {
+      "type": "object",
+      "array": false
+    },
+    "process.parent.macho.go_imports_names_entropy": {
+      "type": "long",
+      "array": false
+    },
+    "process.parent.macho.go_imports_names_var_entropy": {
+      "type": "long",
+      "array": false
+    },
+    "process.parent.macho.go_stripped": {
+      "type": "boolean",
+      "array": false
+    },
+    "process.parent.macho.import_hash": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.parent.macho.imports": {
+      "type": "object",
+      "array": true
+    },
+    "process.parent.macho.imports_names_entropy": {
+      "type": "long",
+      "array": false
+    },
+    "process.parent.macho.imports_names_var_entropy": {
+      "type": "long",
+      "array": false
+    },
+    "process.parent.macho.sections": {
+      "type": "nested",
+      "array": true
+    },
+    "process.parent.macho.sections.entropy": {
+      "type": "long",
+      "array": false
+    },
+    "process.parent.macho.sections.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.parent.macho.sections.physical_size": {
+      "type": "long",
+      "array": false
+    },
+    "process.parent.macho.sections.var_entropy": {
+      "type": "long",
+      "array": false
+    },
+    "process.parent.macho.sections.virtual_size": {
+      "type": "long",
+      "array": false
+    },
+    "process.parent.macho.symhash": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.parent.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.parent.pe.architecture": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.parent.pe.company": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.parent.pe.description": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.parent.pe.file_version": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.parent.pe.go_import_hash": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.parent.pe.go_imports": {
+      "type": "object",
+      "array": false
+    },
+    "process.parent.pe.go_imports_names_entropy": {
+      "type": "long",
+      "array": false
+    },
+    "process.parent.pe.go_imports_names_var_entropy": {
+      "type": "long",
+      "array": false
+    },
+    "process.parent.pe.go_stripped": {
+      "type": "boolean",
+      "array": false
+    },
+    "process.parent.pe.imphash": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.parent.pe.import_hash": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.parent.pe.imports": {
+      "type": "object",
+      "array": true
+    },
+    "process.parent.pe.imports_names_entropy": {
+      "type": "long",
+      "array": false
+    },
+    "process.parent.pe.imports_names_var_entropy": {
+      "type": "long",
+      "array": false
+    },
+    "process.parent.pe.original_file_name": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.parent.pe.pehash": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.parent.pe.product": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.parent.pe.sections": {
+      "type": "nested",
+      "array": true
+    },
+    "process.parent.pe.sections.entropy": {
+      "type": "long",
+      "array": false
+    },
+    "process.parent.pe.sections.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.parent.pe.sections.physical_size": {
+      "type": "long",
+      "array": false
+    },
+    "process.parent.pe.sections.var_entropy": {
+      "type": "long",
+      "array": false
+    },
+    "process.parent.pe.sections.virtual_size": {
+      "type": "long",
+      "array": false
+    },
+    "process.parent.pgid": {
+      "type": "long",
+      "array": false
+    },
+    "process.parent.pid": {
+      "type": "long",
+      "array": false
+    },
+    "process.parent.real_group.id": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.parent.real_group.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.parent.real_user.id": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.parent.real_user.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.parent.saved_group.id": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.parent.saved_group.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.parent.saved_user.id": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.parent.saved_user.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.parent.start": {
+      "type": "date",
+      "array": false
+    },
+    "process.parent.supplemental_groups.id": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.parent.supplemental_groups.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.parent.thread.capabilities.effective": {
+      "type": "keyword",
+      "array": true
+    },
+    "process.parent.thread.capabilities.permitted": {
+      "type": "keyword",
+      "array": true
+    },
+    "process.parent.thread.id": {
+      "type": "long",
+      "array": false
+    },
+    "process.parent.thread.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.parent.title": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.parent.tty": {
+      "type": "object",
+      "array": false
+    },
+    "process.parent.tty.char_device.major": {
+      "type": "long",
+      "array": false
+    },
+    "process.parent.tty.char_device.minor": {
+      "type": "long",
+      "array": false
+    },
+    "process.parent.uptime": {
+      "type": "long",
+      "array": false
+    },
+    "process.parent.user.id": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.parent.user.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.parent.vpid": {
+      "type": "long",
+      "array": false
+    },
+    "process.parent.working_directory": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.pe.architecture": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.pe.company": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.pe.description": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.pe.file_version": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.pe.go_import_hash": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.pe.go_imports": {
+      "type": "object",
+      "array": false
+    },
+    "process.pe.go_imports_names_entropy": {
+      "type": "long",
+      "array": false
+    },
+    "process.pe.go_imports_names_var_entropy": {
+      "type": "long",
+      "array": false
+    },
+    "process.pe.go_stripped": {
+      "type": "boolean",
+      "array": false
+    },
+    "process.pe.imphash": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.pe.import_hash": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.pe.imports": {
+      "type": "object",
+      "array": true
+    },
+    "process.pe.imports_names_entropy": {
+      "type": "long",
+      "array": false
+    },
+    "process.pe.imports_names_var_entropy": {
+      "type": "long",
+      "array": false
+    },
+    "process.pe.original_file_name": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.pe.pehash": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.pe.product": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.pe.sections": {
+      "type": "nested",
+      "array": true
+    },
+    "process.pe.sections.entropy": {
+      "type": "long",
+      "array": false
+    },
+    "process.pe.sections.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.pe.sections.physical_size": {
+      "type": "long",
+      "array": false
+    },
+    "process.pe.sections.var_entropy": {
+      "type": "long",
+      "array": false
+    },
+    "process.pe.sections.virtual_size": {
+      "type": "long",
+      "array": false
+    },
+    "process.pgid": {
+      "type": "long",
+      "array": false
+    },
+    "process.pid": {
+      "type": "long",
+      "array": false
+    },
+    "process.previous.args": {
+      "type": "keyword",
+      "array": true
+    },
+    "process.previous.args_count": {
+      "type": "long",
+      "array": false
+    },
+    "process.previous.executable": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.real_group.id": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.real_group.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.real_user.id": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.real_user.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.saved_group.id": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.saved_group.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.saved_user.id": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.saved_user.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.session_leader.args": {
+      "type": "keyword",
+      "array": true
+    },
+    "process.session_leader.args_count": {
+      "type": "long",
+      "array": false
+    },
+    "process.session_leader.command_line": {
+      "type": "wildcard",
+      "array": false
+    },
+    "process.session_leader.entity_id": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.session_leader.executable": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.session_leader.group.id": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.session_leader.group.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.session_leader.interactive": {
+      "type": "boolean",
+      "array": false
+    },
+    "process.session_leader.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.session_leader.parent.entity_id": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.session_leader.parent.pid": {
+      "type": "long",
+      "array": false
+    },
+    "process.session_leader.parent.session_leader.entity_id": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.session_leader.parent.session_leader.pid": {
+      "type": "long",
+      "array": false
+    },
+    "process.session_leader.parent.session_leader.start": {
+      "type": "date",
+      "array": false
+    },
+    "process.session_leader.parent.session_leader.vpid": {
+      "type": "long",
+      "array": false
+    },
+    "process.session_leader.parent.start": {
+      "type": "date",
+      "array": false
+    },
+    "process.session_leader.parent.vpid": {
+      "type": "long",
+      "array": false
+    },
+    "process.session_leader.pid": {
+      "type": "long",
+      "array": false
+    },
+    "process.session_leader.real_group.id": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.session_leader.real_group.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.session_leader.real_user.id": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.session_leader.real_user.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.session_leader.same_as_process": {
+      "type": "boolean",
+      "array": false
+    },
+    "process.session_leader.saved_group.id": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.session_leader.saved_group.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.session_leader.saved_user.id": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.session_leader.saved_user.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.session_leader.start": {
+      "type": "date",
+      "array": false
+    },
+    "process.session_leader.supplemental_groups.id": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.session_leader.supplemental_groups.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.session_leader.tty": {
+      "type": "object",
+      "array": false
+    },
+    "process.session_leader.tty.char_device.major": {
+      "type": "long",
+      "array": false
+    },
+    "process.session_leader.tty.char_device.minor": {
+      "type": "long",
+      "array": false
+    },
+    "process.session_leader.user.id": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.session_leader.user.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.session_leader.vpid": {
+      "type": "long",
+      "array": false
+    },
+    "process.session_leader.working_directory": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.start": {
+      "type": "date",
+      "array": false
+    },
+    "process.supplemental_groups.id": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.supplemental_groups.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.thread.capabilities.effective": {
+      "type": "keyword",
+      "array": true
+    },
+    "process.thread.capabilities.permitted": {
+      "type": "keyword",
+      "array": true
+    },
+    "process.thread.id": {
+      "type": "long",
+      "array": false
+    },
+    "process.thread.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.title": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.tty": {
+      "type": "object",
+      "array": false
+    },
+    "process.tty.char_device.major": {
+      "type": "long",
+      "array": false
+    },
+    "process.tty.char_device.minor": {
+      "type": "long",
+      "array": false
+    },
+    "process.tty.columns": {
+      "type": "long",
+      "array": false
+    },
+    "process.tty.rows": {
+      "type": "long",
+      "array": false
+    },
+    "process.uptime": {
+      "type": "long",
+      "array": false
+    },
+    "process.user.id": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.user.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "process.vpid": {
+      "type": "long",
+      "array": false
+    },
+    "process.working_directory": {
+      "type": "keyword",
+      "array": false
+    },
+    "registry.data.bytes": {
+      "type": "keyword",
+      "array": false
+    },
+    "registry.data.strings": {
+      "type": "wildcard",
+      "array": true
+    },
+    "registry.data.type": {
+      "type": "keyword",
+      "array": false
+    },
+    "registry.hive": {
+      "type": "keyword",
+      "array": false
+    },
+    "registry.key": {
+      "type": "keyword",
+      "array": false
+    },
+    "registry.path": {
+      "type": "keyword",
+      "array": false
+    },
+    "registry.value": {
+      "type": "keyword",
+      "array": false
+    },
+    "related.hash": {
+      "type": "keyword",
+      "array": true
+    },
+    "related.hosts": {
+      "type": "keyword",
+      "array": true
+    },
+    "related.ip": {
+      "type": "ip",
+      "array": true
+    },
+    "related.user": {
+      "type": "keyword",
+      "array": true
+    },
+    "rule.author": {
+      "type": "keyword",
+      "array": true
+    },
+    "rule.category": {
+      "type": "keyword",
+      "array": false
+    },
+    "rule.description": {
+      "type": "keyword",
+      "array": false
+    },
+    "rule.id": {
+      "type": "keyword",
+      "array": false
+    },
+    "rule.license": {
+      "type": "keyword",
+      "array": false
+    },
+    "rule.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "rule.reference": {
+      "type": "keyword",
+      "array": false
+    },
+    "rule.ruleset": {
+      "type": "keyword",
+      "array": false
+    },
+    "rule.uuid": {
+      "type": "keyword",
+      "array": false
+    },
+    "rule.version": {
+      "type": "keyword",
+      "array": false
+    },
+    "server.address": {
+      "type": "keyword",
+      "array": false
+    },
+    "server.as.number": {
+      "type": "long",
+      "array": false
+    },
+    "server.as.organization.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "server.bytes": {
+      "type": "long",
+      "array": false
+    },
+    "server.domain": {
+      "type": "keyword",
+      "array": false
+    },
+    "server.geo.city_name": {
+      "type": "keyword",
+      "array": false
+    },
+    "server.geo.continent_code": {
+      "type": "keyword",
+      "array": false
+    },
+    "server.geo.continent_name": {
+      "type": "keyword",
+      "array": false
+    },
+    "server.geo.country_iso_code": {
+      "type": "keyword",
+      "array": false
+    },
+    "server.geo.country_name": {
+      "type": "keyword",
+      "array": false
+    },
+    "server.geo.location": {
+      "type": "geo_point",
+      "array": false
+    },
+    "server.geo.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "server.geo.postal_code": {
+      "type": "keyword",
+      "array": false
+    },
+    "server.geo.region_iso_code": {
+      "type": "keyword",
+      "array": false
+    },
+    "server.geo.region_name": {
+      "type": "keyword",
+      "array": false
+    },
+    "server.geo.timezone": {
+      "type": "keyword",
+      "array": false
+    },
+    "server.ip": {
+      "type": "ip",
+      "array": false
+    },
+    "server.mac": {
+      "type": "keyword",
+      "array": false
+    },
+    "server.nat.ip": {
+      "type": "ip",
+      "array": false
+    },
+    "server.nat.port": {
+      "type": "long",
+      "array": false
+    },
+    "server.packets": {
+      "type": "long",
+      "array": false
+    },
+    "server.port": {
+      "type": "long",
+      "array": false
+    },
+    "server.registered_domain": {
+      "type": "keyword",
+      "array": false
+    },
+    "server.subdomain": {
+      "type": "keyword",
+      "array": false
+    },
+    "server.top_level_domain": {
+      "type": "keyword",
+      "array": false
+    },
+    "server.user.domain": {
+      "type": "keyword",
+      "array": false
+    },
+    "server.user.email": {
+      "type": "keyword",
+      "array": false
+    },
+    "server.user.full_name": {
+      "type": "keyword",
+      "array": false
+    },
+    "server.user.group.domain": {
+      "type": "keyword",
+      "array": false
+    },
+    "server.user.group.id": {
+      "type": "keyword",
+      "array": false
+    },
+    "server.user.group.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "server.user.hash": {
+      "type": "keyword",
+      "array": false
+    },
+    "server.user.id": {
+      "type": "keyword",
+      "array": false
+    },
+    "server.user.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "server.user.roles": {
+      "type": "keyword",
+      "array": true
+    },
+    "service.address": {
+      "type": "keyword",
+      "array": false
+    },
+    "service.environment": {
+      "type": "keyword",
+      "array": false
+    },
+    "service.ephemeral_id": {
+      "type": "keyword",
+      "array": false
+    },
+    "service.id": {
+      "type": "keyword",
+      "array": false
+    },
+    "service.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "service.node.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "service.node.role": {
+      "type": "keyword",
+      "array": false
+    },
+    "service.node.roles": {
+      "type": "keyword",
+      "array": true
+    },
+    "service.origin.address": {
+      "type": "keyword",
+      "array": false
+    },
+    "service.origin.environment": {
+      "type": "keyword",
+      "array": false
+    },
+    "service.origin.ephemeral_id": {
+      "type": "keyword",
+      "array": false
+    },
+    "service.origin.id": {
+      "type": "keyword",
+      "array": false
+    },
+    "service.origin.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "service.origin.node.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "service.origin.node.role": {
+      "type": "keyword",
+      "array": false
+    },
+    "service.origin.node.roles": {
+      "type": "keyword",
+      "array": true
+    },
+    "service.origin.state": {
+      "type": "keyword",
+      "array": false
+    },
+    "service.origin.type": {
+      "type": "keyword",
+      "array": false
+    },
+    "service.origin.version": {
+      "type": "keyword",
+      "array": false
+    },
+    "service.state": {
+      "type": "keyword",
+      "array": false
+    },
+    "service.target.address": {
+      "type": "keyword",
+      "array": false
+    },
+    "service.target.environment": {
+      "type": "keyword",
+      "array": false
+    },
+    "service.target.ephemeral_id": {
+      "type": "keyword",
+      "array": false
+    },
+    "service.target.id": {
+      "type": "keyword",
+      "array": false
+    },
+    "service.target.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "service.target.node.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "service.target.node.role": {
+      "type": "keyword",
+      "array": false
+    },
+    "service.target.node.roles": {
+      "type": "keyword",
+      "array": true
+    },
+    "service.target.state": {
+      "type": "keyword",
+      "array": false
+    },
+    "service.target.type": {
+      "type": "keyword",
+      "array": false
+    },
+    "service.target.version": {
+      "type": "keyword",
+      "array": false
+    },
+    "service.type": {
+      "type": "keyword",
+      "array": false
+    },
+    "service.version": {
+      "type": "keyword",
+      "array": false
+    },
+    "source.address": {
+      "type": "keyword",
+      "array": false
+    },
+    "source.as.number": {
+      "type": "long",
+      "array": false
+    },
+    "source.as.organization.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "source.bytes": {
+      "type": "long",
+      "array": false
+    },
+    "source.domain": {
+      "type": "keyword",
+      "array": false
+    },
+    "source.geo.city_name": {
+      "type": "keyword",
+      "array": false
+    },
+    "source.geo.continent_code": {
+      "type": "keyword",
+      "array": false
+    },
+    "source.geo.continent_name": {
+      "type": "keyword",
+      "array": false
+    },
+    "source.geo.country_iso_code": {
+      "type": "keyword",
+      "array": false
+    },
+    "source.geo.country_name": {
+      "type": "keyword",
+      "array": false
+    },
+    "source.geo.location": {
+      "type": "geo_point",
+      "array": false
+    },
+    "source.geo.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "source.geo.postal_code": {
+      "type": "keyword",
+      "array": false
+    },
+    "source.geo.region_iso_code": {
+      "type": "keyword",
+      "array": false
+    },
+    "source.geo.region_name": {
+      "type": "keyword",
+      "array": false
+    },
+    "source.geo.timezone": {
+      "type": "keyword",
+      "array": false
+    },
+    "source.ip": {
+      "type": "ip",
+      "array": false
+    },
+    "source.mac": {
+      "type": "keyword",
+      "array": false
+    },
+    "source.nat.ip": {
+      "type": "ip",
+      "array": false
+    },
+    "source.nat.port": {
+      "type": "long",
+      "array": false
+    },
+    "source.packets": {
+      "type": "long",
+      "array": false
+    },
+    "source.port": {
+      "type": "long",
+      "array": false
+    },
+    "source.registered_domain": {
+      "type": "keyword",
+      "array": false
+    },
+    "source.subdomain": {
+      "type": "keyword",
+      "array": false
+    },
+    "source.top_level_domain": {
+      "type": "keyword",
+      "array": false
+    },
+    "source.user.domain": {
+      "type": "keyword",
+      "array": false
+    },
+    "source.user.email": {
+      "type": "keyword",
+      "array": false
+    },
+    "source.user.full_name": {
+      "type": "keyword",
+      "array": false
+    },
+    "source.user.group.domain": {
+      "type": "keyword",
+      "array": false
+    },
+    "source.user.group.id": {
+      "type": "keyword",
+      "array": false
+    },
+    "source.user.group.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "source.user.hash": {
+      "type": "keyword",
+      "array": false
+    },
+    "source.user.id": {
+      "type": "keyword",
+      "array": false
+    },
+    "source.user.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "source.user.roles": {
+      "type": "keyword",
+      "array": true
+    },
+    "span.id": {
+      "type": "keyword",
+      "array": false
+    },
+    "tags": {
+      "type": "keyword",
+      "array": true
+    },
+    "threat.enrichments": {
+      "type": "nested",
+      "array": true
+    },
+    "threat.enrichments.indicator": {
+      "type": "object",
+      "array": false
+    },
+    "threat.enrichments.indicator.as.number": {
+      "type": "long",
+      "array": false
+    },
+    "threat.enrichments.indicator.as.organization.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.enrichments.indicator.confidence": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.enrichments.indicator.description": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.enrichments.indicator.email.address": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.enrichments.indicator.file.accessed": {
+      "type": "date",
+      "array": false
+    },
+    "threat.enrichments.indicator.file.attributes": {
+      "type": "keyword",
+      "array": true
+    },
+    "threat.enrichments.indicator.file.code_signature.digest_algorithm": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.enrichments.indicator.file.code_signature.exists": {
+      "type": "boolean",
+      "array": false
+    },
+    "threat.enrichments.indicator.file.code_signature.flags": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.enrichments.indicator.file.code_signature.signing_id": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.enrichments.indicator.file.code_signature.status": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.enrichments.indicator.file.code_signature.subject_name": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.enrichments.indicator.file.code_signature.team_id": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.enrichments.indicator.file.code_signature.timestamp": {
+      "type": "date",
+      "array": false
+    },
+    "threat.enrichments.indicator.file.code_signature.trusted": {
+      "type": "boolean",
+      "array": false
+    },
+    "threat.enrichments.indicator.file.code_signature.valid": {
+      "type": "boolean",
+      "array": false
+    },
+    "threat.enrichments.indicator.file.created": {
+      "type": "date",
+      "array": false
+    },
+    "threat.enrichments.indicator.file.ctime": {
+      "type": "date",
+      "array": false
+    },
+    "threat.enrichments.indicator.file.device": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.enrichments.indicator.file.directory": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.enrichments.indicator.file.drive_letter": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.enrichments.indicator.file.elf.architecture": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.enrichments.indicator.file.elf.byte_order": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.enrichments.indicator.file.elf.cpu_type": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.enrichments.indicator.file.elf.creation_date": {
+      "type": "date",
+      "array": false
+    },
+    "threat.enrichments.indicator.file.elf.exports": {
+      "type": "object",
+      "array": true
+    },
+    "threat.enrichments.indicator.file.elf.go_import_hash": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.enrichments.indicator.file.elf.go_imports": {
+      "type": "object",
+      "array": false
+    },
+    "threat.enrichments.indicator.file.elf.go_imports_names_entropy": {
+      "type": "long",
+      "array": false
+    },
+    "threat.enrichments.indicator.file.elf.go_imports_names_var_entropy": {
+      "type": "long",
+      "array": false
+    },
+    "threat.enrichments.indicator.file.elf.go_stripped": {
+      "type": "boolean",
+      "array": false
+    },
+    "threat.enrichments.indicator.file.elf.header.abi_version": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.enrichments.indicator.file.elf.header.class": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.enrichments.indicator.file.elf.header.data": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.enrichments.indicator.file.elf.header.entrypoint": {
+      "type": "long",
+      "array": false
+    },
+    "threat.enrichments.indicator.file.elf.header.object_version": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.enrichments.indicator.file.elf.header.os_abi": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.enrichments.indicator.file.elf.header.type": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.enrichments.indicator.file.elf.header.version": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.enrichments.indicator.file.elf.import_hash": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.enrichments.indicator.file.elf.imports": {
+      "type": "object",
+      "array": true
+    },
+    "threat.enrichments.indicator.file.elf.imports_names_entropy": {
+      "type": "long",
+      "array": false
+    },
+    "threat.enrichments.indicator.file.elf.imports_names_var_entropy": {
+      "type": "long",
+      "array": false
+    },
+    "threat.enrichments.indicator.file.elf.sections": {
+      "type": "nested",
+      "array": true
+    },
+    "threat.enrichments.indicator.file.elf.sections.chi2": {
+      "type": "long",
+      "array": false
+    },
+    "threat.enrichments.indicator.file.elf.sections.entropy": {
+      "type": "long",
+      "array": false
+    },
+    "threat.enrichments.indicator.file.elf.sections.flags": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.enrichments.indicator.file.elf.sections.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.enrichments.indicator.file.elf.sections.physical_offset": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.enrichments.indicator.file.elf.sections.physical_size": {
+      "type": "long",
+      "array": false
+    },
+    "threat.enrichments.indicator.file.elf.sections.type": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.enrichments.indicator.file.elf.sections.var_entropy": {
+      "type": "long",
+      "array": false
+    },
+    "threat.enrichments.indicator.file.elf.sections.virtual_address": {
+      "type": "long",
+      "array": false
+    },
+    "threat.enrichments.indicator.file.elf.sections.virtual_size": {
+      "type": "long",
+      "array": false
+    },
+    "threat.enrichments.indicator.file.elf.segments": {
+      "type": "nested",
+      "array": true
+    },
+    "threat.enrichments.indicator.file.elf.segments.sections": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.enrichments.indicator.file.elf.segments.type": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.enrichments.indicator.file.elf.shared_libraries": {
+      "type": "keyword",
+      "array": true
+    },
+    "threat.enrichments.indicator.file.elf.telfhash": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.enrichments.indicator.file.extension": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.enrichments.indicator.file.fork_name": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.enrichments.indicator.file.gid": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.enrichments.indicator.file.group": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.enrichments.indicator.file.hash.cdhash": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.enrichments.indicator.file.hash.md5": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.enrichments.indicator.file.hash.sha1": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.enrichments.indicator.file.hash.sha256": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.enrichments.indicator.file.hash.sha384": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.enrichments.indicator.file.hash.sha512": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.enrichments.indicator.file.hash.ssdeep": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.enrichments.indicator.file.hash.tlsh": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.enrichments.indicator.file.inode": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.enrichments.indicator.file.mime_type": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.enrichments.indicator.file.mode": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.enrichments.indicator.file.mtime": {
+      "type": "date",
+      "array": false
+    },
+    "threat.enrichments.indicator.file.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.enrichments.indicator.file.owner": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.enrichments.indicator.file.path": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.enrichments.indicator.file.pe.architecture": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.enrichments.indicator.file.pe.company": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.enrichments.indicator.file.pe.description": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.enrichments.indicator.file.pe.file_version": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.enrichments.indicator.file.pe.go_import_hash": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.enrichments.indicator.file.pe.go_imports": {
+      "type": "object",
+      "array": false
+    },
+    "threat.enrichments.indicator.file.pe.go_imports_names_entropy": {
+      "type": "long",
+      "array": false
+    },
+    "threat.enrichments.indicator.file.pe.go_imports_names_var_entropy": {
+      "type": "long",
+      "array": false
+    },
+    "threat.enrichments.indicator.file.pe.go_stripped": {
+      "type": "boolean",
+      "array": false
+    },
+    "threat.enrichments.indicator.file.pe.imphash": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.enrichments.indicator.file.pe.import_hash": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.enrichments.indicator.file.pe.imports": {
+      "type": "object",
+      "array": true
+    },
+    "threat.enrichments.indicator.file.pe.imports_names_entropy": {
+      "type": "long",
+      "array": false
+    },
+    "threat.enrichments.indicator.file.pe.imports_names_var_entropy": {
+      "type": "long",
+      "array": false
+    },
+    "threat.enrichments.indicator.file.pe.original_file_name": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.enrichments.indicator.file.pe.pehash": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.enrichments.indicator.file.pe.product": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.enrichments.indicator.file.pe.sections": {
+      "type": "nested",
+      "array": true
+    },
+    "threat.enrichments.indicator.file.pe.sections.entropy": {
+      "type": "long",
+      "array": false
+    },
+    "threat.enrichments.indicator.file.pe.sections.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.enrichments.indicator.file.pe.sections.physical_size": {
+      "type": "long",
+      "array": false
+    },
+    "threat.enrichments.indicator.file.pe.sections.var_entropy": {
+      "type": "long",
+      "array": false
+    },
+    "threat.enrichments.indicator.file.pe.sections.virtual_size": {
+      "type": "long",
+      "array": false
+    },
+    "threat.enrichments.indicator.file.size": {
+      "type": "long",
+      "array": false
+    },
+    "threat.enrichments.indicator.file.target_path": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.enrichments.indicator.file.type": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.enrichments.indicator.file.uid": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.enrichments.indicator.file.x509.alternative_names": {
+      "type": "keyword",
+      "array": true
+    },
+    "threat.enrichments.indicator.file.x509.issuer.common_name": {
+      "type": "keyword",
+      "array": true
+    },
+    "threat.enrichments.indicator.file.x509.issuer.country": {
+      "type": "keyword",
+      "array": true
+    },
+    "threat.enrichments.indicator.file.x509.issuer.distinguished_name": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.enrichments.indicator.file.x509.issuer.locality": {
+      "type": "keyword",
+      "array": true
+    },
+    "threat.enrichments.indicator.file.x509.issuer.organization": {
+      "type": "keyword",
+      "array": true
+    },
+    "threat.enrichments.indicator.file.x509.issuer.organizational_unit": {
+      "type": "keyword",
+      "array": true
+    },
+    "threat.enrichments.indicator.file.x509.issuer.state_or_province": {
+      "type": "keyword",
+      "array": true
+    },
+    "threat.enrichments.indicator.file.x509.not_after": {
+      "type": "date",
+      "array": false
+    },
+    "threat.enrichments.indicator.file.x509.not_before": {
+      "type": "date",
+      "array": false
+    },
+    "threat.enrichments.indicator.file.x509.public_key_algorithm": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.enrichments.indicator.file.x509.public_key_curve": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.enrichments.indicator.file.x509.public_key_exponent": {
+      "type": "long",
+      "array": false
+    },
+    "threat.enrichments.indicator.file.x509.public_key_size": {
+      "type": "long",
+      "array": false
+    },
+    "threat.enrichments.indicator.file.x509.serial_number": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.enrichments.indicator.file.x509.signature_algorithm": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.enrichments.indicator.file.x509.subject.common_name": {
+      "type": "keyword",
+      "array": true
+    },
+    "threat.enrichments.indicator.file.x509.subject.country": {
+      "type": "keyword",
+      "array": true
+    },
+    "threat.enrichments.indicator.file.x509.subject.distinguished_name": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.enrichments.indicator.file.x509.subject.locality": {
+      "type": "keyword",
+      "array": true
+    },
+    "threat.enrichments.indicator.file.x509.subject.organization": {
+      "type": "keyword",
+      "array": true
+    },
+    "threat.enrichments.indicator.file.x509.subject.organizational_unit": {
+      "type": "keyword",
+      "array": true
+    },
+    "threat.enrichments.indicator.file.x509.subject.state_or_province": {
+      "type": "keyword",
+      "array": true
+    },
+    "threat.enrichments.indicator.file.x509.version_number": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.enrichments.indicator.first_seen": {
+      "type": "date",
+      "array": false
+    },
+    "threat.enrichments.indicator.geo.city_name": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.enrichments.indicator.geo.continent_code": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.enrichments.indicator.geo.continent_name": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.enrichments.indicator.geo.country_iso_code": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.enrichments.indicator.geo.country_name": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.enrichments.indicator.geo.location": {
+      "type": "geo_point",
+      "array": false
+    },
+    "threat.enrichments.indicator.geo.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.enrichments.indicator.geo.postal_code": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.enrichments.indicator.geo.region_iso_code": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.enrichments.indicator.geo.region_name": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.enrichments.indicator.geo.timezone": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.enrichments.indicator.ip": {
+      "type": "ip",
+      "array": false
+    },
+    "threat.enrichments.indicator.last_seen": {
+      "type": "date",
+      "array": false
+    },
+    "threat.enrichments.indicator.marking.tlp": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.enrichments.indicator.marking.tlp_version": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.enrichments.indicator.modified_at": {
+      "type": "date",
+      "array": false
+    },
+    "threat.enrichments.indicator.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.enrichments.indicator.port": {
+      "type": "long",
+      "array": false
+    },
+    "threat.enrichments.indicator.provider": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.enrichments.indicator.reference": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.enrichments.indicator.registry.data.bytes": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.enrichments.indicator.registry.data.strings": {
+      "type": "wildcard",
+      "array": true
+    },
+    "threat.enrichments.indicator.registry.data.type": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.enrichments.indicator.registry.hive": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.enrichments.indicator.registry.key": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.enrichments.indicator.registry.path": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.enrichments.indicator.registry.value": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.enrichments.indicator.scanner_stats": {
+      "type": "long",
+      "array": false
+    },
+    "threat.enrichments.indicator.sightings": {
+      "type": "long",
+      "array": false
+    },
+    "threat.enrichments.indicator.type": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.enrichments.indicator.url.domain": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.enrichments.indicator.url.extension": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.enrichments.indicator.url.fragment": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.enrichments.indicator.url.full": {
+      "type": "wildcard",
+      "array": false
+    },
+    "threat.enrichments.indicator.url.original": {
+      "type": "wildcard",
+      "array": false
+    },
+    "threat.enrichments.indicator.url.password": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.enrichments.indicator.url.path": {
+      "type": "wildcard",
+      "array": false
+    },
+    "threat.enrichments.indicator.url.port": {
+      "type": "long",
+      "array": false
+    },
+    "threat.enrichments.indicator.url.query": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.enrichments.indicator.url.registered_domain": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.enrichments.indicator.url.scheme": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.enrichments.indicator.url.subdomain": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.enrichments.indicator.url.top_level_domain": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.enrichments.indicator.url.username": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.enrichments.indicator.x509.alternative_names": {
+      "type": "keyword",
+      "array": true
+    },
+    "threat.enrichments.indicator.x509.issuer.common_name": {
+      "type": "keyword",
+      "array": true
+    },
+    "threat.enrichments.indicator.x509.issuer.country": {
+      "type": "keyword",
+      "array": true
+    },
+    "threat.enrichments.indicator.x509.issuer.distinguished_name": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.enrichments.indicator.x509.issuer.locality": {
+      "type": "keyword",
+      "array": true
+    },
+    "threat.enrichments.indicator.x509.issuer.organization": {
+      "type": "keyword",
+      "array": true
+    },
+    "threat.enrichments.indicator.x509.issuer.organizational_unit": {
+      "type": "keyword",
+      "array": true
+    },
+    "threat.enrichments.indicator.x509.issuer.state_or_province": {
+      "type": "keyword",
+      "array": true
+    },
+    "threat.enrichments.indicator.x509.not_after": {
+      "type": "date",
+      "array": false
+    },
+    "threat.enrichments.indicator.x509.not_before": {
+      "type": "date",
+      "array": false
+    },
+    "threat.enrichments.indicator.x509.public_key_algorithm": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.enrichments.indicator.x509.public_key_curve": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.enrichments.indicator.x509.public_key_exponent": {
+      "type": "long",
+      "array": false
+    },
+    "threat.enrichments.indicator.x509.public_key_size": {
+      "type": "long",
+      "array": false
+    },
+    "threat.enrichments.indicator.x509.serial_number": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.enrichments.indicator.x509.signature_algorithm": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.enrichments.indicator.x509.subject.common_name": {
+      "type": "keyword",
+      "array": true
+    },
+    "threat.enrichments.indicator.x509.subject.country": {
+      "type": "keyword",
+      "array": true
+    },
+    "threat.enrichments.indicator.x509.subject.distinguished_name": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.enrichments.indicator.x509.subject.locality": {
+      "type": "keyword",
+      "array": true
+    },
+    "threat.enrichments.indicator.x509.subject.organization": {
+      "type": "keyword",
+      "array": true
+    },
+    "threat.enrichments.indicator.x509.subject.organizational_unit": {
+      "type": "keyword",
+      "array": true
+    },
+    "threat.enrichments.indicator.x509.subject.state_or_province": {
+      "type": "keyword",
+      "array": true
+    },
+    "threat.enrichments.indicator.x509.version_number": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.enrichments.matched.atomic": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.enrichments.matched.field": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.enrichments.matched.id": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.enrichments.matched.index": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.enrichments.matched.occurred": {
+      "type": "date",
+      "array": false
+    },
+    "threat.enrichments.matched.type": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.feed.dashboard_id": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.feed.description": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.feed.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.feed.reference": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.framework": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.group.alias": {
+      "type": "keyword",
+      "array": true
+    },
+    "threat.group.id": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.group.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.group.reference": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.indicator.as.number": {
+      "type": "long",
+      "array": false
+    },
+    "threat.indicator.as.organization.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.indicator.confidence": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.indicator.description": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.indicator.email.address": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.indicator.file.accessed": {
+      "type": "date",
+      "array": false
+    },
+    "threat.indicator.file.attributes": {
+      "type": "keyword",
+      "array": true
+    },
+    "threat.indicator.file.code_signature.digest_algorithm": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.indicator.file.code_signature.exists": {
+      "type": "boolean",
+      "array": false
+    },
+    "threat.indicator.file.code_signature.flags": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.indicator.file.code_signature.signing_id": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.indicator.file.code_signature.status": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.indicator.file.code_signature.subject_name": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.indicator.file.code_signature.team_id": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.indicator.file.code_signature.timestamp": {
+      "type": "date",
+      "array": false
+    },
+    "threat.indicator.file.code_signature.trusted": {
+      "type": "boolean",
+      "array": false
+    },
+    "threat.indicator.file.code_signature.valid": {
+      "type": "boolean",
+      "array": false
+    },
+    "threat.indicator.file.created": {
+      "type": "date",
+      "array": false
+    },
+    "threat.indicator.file.ctime": {
+      "type": "date",
+      "array": false
+    },
+    "threat.indicator.file.device": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.indicator.file.directory": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.indicator.file.drive_letter": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.indicator.file.elf.architecture": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.indicator.file.elf.byte_order": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.indicator.file.elf.cpu_type": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.indicator.file.elf.creation_date": {
+      "type": "date",
+      "array": false
+    },
+    "threat.indicator.file.elf.exports": {
+      "type": "object",
+      "array": true
+    },
+    "threat.indicator.file.elf.go_import_hash": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.indicator.file.elf.go_imports": {
+      "type": "object",
+      "array": false
+    },
+    "threat.indicator.file.elf.go_imports_names_entropy": {
+      "type": "long",
+      "array": false
+    },
+    "threat.indicator.file.elf.go_imports_names_var_entropy": {
+      "type": "long",
+      "array": false
+    },
+    "threat.indicator.file.elf.go_stripped": {
+      "type": "boolean",
+      "array": false
+    },
+    "threat.indicator.file.elf.header.abi_version": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.indicator.file.elf.header.class": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.indicator.file.elf.header.data": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.indicator.file.elf.header.entrypoint": {
+      "type": "long",
+      "array": false
+    },
+    "threat.indicator.file.elf.header.object_version": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.indicator.file.elf.header.os_abi": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.indicator.file.elf.header.type": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.indicator.file.elf.header.version": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.indicator.file.elf.import_hash": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.indicator.file.elf.imports": {
+      "type": "object",
+      "array": true
+    },
+    "threat.indicator.file.elf.imports_names_entropy": {
+      "type": "long",
+      "array": false
+    },
+    "threat.indicator.file.elf.imports_names_var_entropy": {
+      "type": "long",
+      "array": false
+    },
+    "threat.indicator.file.elf.sections": {
+      "type": "nested",
+      "array": true
+    },
+    "threat.indicator.file.elf.sections.chi2": {
+      "type": "long",
+      "array": false
+    },
+    "threat.indicator.file.elf.sections.entropy": {
+      "type": "long",
+      "array": false
+    },
+    "threat.indicator.file.elf.sections.flags": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.indicator.file.elf.sections.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.indicator.file.elf.sections.physical_offset": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.indicator.file.elf.sections.physical_size": {
+      "type": "long",
+      "array": false
+    },
+    "threat.indicator.file.elf.sections.type": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.indicator.file.elf.sections.var_entropy": {
+      "type": "long",
+      "array": false
+    },
+    "threat.indicator.file.elf.sections.virtual_address": {
+      "type": "long",
+      "array": false
+    },
+    "threat.indicator.file.elf.sections.virtual_size": {
+      "type": "long",
+      "array": false
+    },
+    "threat.indicator.file.elf.segments": {
+      "type": "nested",
+      "array": true
+    },
+    "threat.indicator.file.elf.segments.sections": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.indicator.file.elf.segments.type": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.indicator.file.elf.shared_libraries": {
+      "type": "keyword",
+      "array": true
+    },
+    "threat.indicator.file.elf.telfhash": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.indicator.file.extension": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.indicator.file.fork_name": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.indicator.file.gid": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.indicator.file.group": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.indicator.file.hash.cdhash": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.indicator.file.hash.md5": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.indicator.file.hash.sha1": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.indicator.file.hash.sha256": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.indicator.file.hash.sha384": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.indicator.file.hash.sha512": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.indicator.file.hash.ssdeep": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.indicator.file.hash.tlsh": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.indicator.file.inode": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.indicator.file.mime_type": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.indicator.file.mode": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.indicator.file.mtime": {
+      "type": "date",
+      "array": false
+    },
+    "threat.indicator.file.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.indicator.file.owner": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.indicator.file.path": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.indicator.file.pe.architecture": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.indicator.file.pe.company": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.indicator.file.pe.description": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.indicator.file.pe.file_version": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.indicator.file.pe.go_import_hash": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.indicator.file.pe.go_imports": {
+      "type": "object",
+      "array": false
+    },
+    "threat.indicator.file.pe.go_imports_names_entropy": {
+      "type": "long",
+      "array": false
+    },
+    "threat.indicator.file.pe.go_imports_names_var_entropy": {
+      "type": "long",
+      "array": false
+    },
+    "threat.indicator.file.pe.go_stripped": {
+      "type": "boolean",
+      "array": false
+    },
+    "threat.indicator.file.pe.imphash": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.indicator.file.pe.import_hash": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.indicator.file.pe.imports": {
+      "type": "object",
+      "array": true
+    },
+    "threat.indicator.file.pe.imports_names_entropy": {
+      "type": "long",
+      "array": false
+    },
+    "threat.indicator.file.pe.imports_names_var_entropy": {
+      "type": "long",
+      "array": false
+    },
+    "threat.indicator.file.pe.original_file_name": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.indicator.file.pe.pehash": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.indicator.file.pe.product": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.indicator.file.pe.sections": {
+      "type": "nested",
+      "array": true
+    },
+    "threat.indicator.file.pe.sections.entropy": {
+      "type": "long",
+      "array": false
+    },
+    "threat.indicator.file.pe.sections.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.indicator.file.pe.sections.physical_size": {
+      "type": "long",
+      "array": false
+    },
+    "threat.indicator.file.pe.sections.var_entropy": {
+      "type": "long",
+      "array": false
+    },
+    "threat.indicator.file.pe.sections.virtual_size": {
+      "type": "long",
+      "array": false
+    },
+    "threat.indicator.file.size": {
+      "type": "long",
+      "array": false
+    },
+    "threat.indicator.file.target_path": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.indicator.file.type": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.indicator.file.uid": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.indicator.file.x509.alternative_names": {
+      "type": "keyword",
+      "array": true
+    },
+    "threat.indicator.file.x509.issuer.common_name": {
+      "type": "keyword",
+      "array": true
+    },
+    "threat.indicator.file.x509.issuer.country": {
+      "type": "keyword",
+      "array": true
+    },
+    "threat.indicator.file.x509.issuer.distinguished_name": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.indicator.file.x509.issuer.locality": {
+      "type": "keyword",
+      "array": true
+    },
+    "threat.indicator.file.x509.issuer.organization": {
+      "type": "keyword",
+      "array": true
+    },
+    "threat.indicator.file.x509.issuer.organizational_unit": {
+      "type": "keyword",
+      "array": true
+    },
+    "threat.indicator.file.x509.issuer.state_or_province": {
+      "type": "keyword",
+      "array": true
+    },
+    "threat.indicator.file.x509.not_after": {
+      "type": "date",
+      "array": false
+    },
+    "threat.indicator.file.x509.not_before": {
+      "type": "date",
+      "array": false
+    },
+    "threat.indicator.file.x509.public_key_algorithm": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.indicator.file.x509.public_key_curve": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.indicator.file.x509.public_key_exponent": {
+      "type": "long",
+      "array": false
+    },
+    "threat.indicator.file.x509.public_key_size": {
+      "type": "long",
+      "array": false
+    },
+    "threat.indicator.file.x509.serial_number": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.indicator.file.x509.signature_algorithm": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.indicator.file.x509.subject.common_name": {
+      "type": "keyword",
+      "array": true
+    },
+    "threat.indicator.file.x509.subject.country": {
+      "type": "keyword",
+      "array": true
+    },
+    "threat.indicator.file.x509.subject.distinguished_name": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.indicator.file.x509.subject.locality": {
+      "type": "keyword",
+      "array": true
+    },
+    "threat.indicator.file.x509.subject.organization": {
+      "type": "keyword",
+      "array": true
+    },
+    "threat.indicator.file.x509.subject.organizational_unit": {
+      "type": "keyword",
+      "array": true
+    },
+    "threat.indicator.file.x509.subject.state_or_province": {
+      "type": "keyword",
+      "array": true
+    },
+    "threat.indicator.file.x509.version_number": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.indicator.first_seen": {
+      "type": "date",
+      "array": false
+    },
+    "threat.indicator.geo.city_name": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.indicator.geo.continent_code": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.indicator.geo.continent_name": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.indicator.geo.country_iso_code": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.indicator.geo.country_name": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.indicator.geo.location": {
+      "type": "geo_point",
+      "array": false
+    },
+    "threat.indicator.geo.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.indicator.geo.postal_code": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.indicator.geo.region_iso_code": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.indicator.geo.region_name": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.indicator.geo.timezone": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.indicator.id": {
+      "type": "keyword",
+      "array": true
+    },
+    "threat.indicator.ip": {
+      "type": "ip",
+      "array": false
+    },
+    "threat.indicator.last_seen": {
+      "type": "date",
+      "array": false
+    },
+    "threat.indicator.marking.tlp": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.indicator.marking.tlp_version": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.indicator.modified_at": {
+      "type": "date",
+      "array": false
+    },
+    "threat.indicator.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.indicator.port": {
+      "type": "long",
+      "array": false
+    },
+    "threat.indicator.provider": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.indicator.reference": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.indicator.registry.data.bytes": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.indicator.registry.data.strings": {
+      "type": "wildcard",
+      "array": true
+    },
+    "threat.indicator.registry.data.type": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.indicator.registry.hive": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.indicator.registry.key": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.indicator.registry.path": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.indicator.registry.value": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.indicator.scanner_stats": {
+      "type": "long",
+      "array": false
+    },
+    "threat.indicator.sightings": {
+      "type": "long",
+      "array": false
+    },
+    "threat.indicator.type": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.indicator.url.domain": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.indicator.url.extension": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.indicator.url.fragment": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.indicator.url.full": {
+      "type": "wildcard",
+      "array": false
+    },
+    "threat.indicator.url.original": {
+      "type": "wildcard",
+      "array": false
+    },
+    "threat.indicator.url.password": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.indicator.url.path": {
+      "type": "wildcard",
+      "array": false
+    },
+    "threat.indicator.url.port": {
+      "type": "long",
+      "array": false
+    },
+    "threat.indicator.url.query": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.indicator.url.registered_domain": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.indicator.url.scheme": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.indicator.url.subdomain": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.indicator.url.top_level_domain": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.indicator.url.username": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.indicator.x509.alternative_names": {
+      "type": "keyword",
+      "array": true
+    },
+    "threat.indicator.x509.issuer.common_name": {
+      "type": "keyword",
+      "array": true
+    },
+    "threat.indicator.x509.issuer.country": {
+      "type": "keyword",
+      "array": true
+    },
+    "threat.indicator.x509.issuer.distinguished_name": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.indicator.x509.issuer.locality": {
+      "type": "keyword",
+      "array": true
+    },
+    "threat.indicator.x509.issuer.organization": {
+      "type": "keyword",
+      "array": true
+    },
+    "threat.indicator.x509.issuer.organizational_unit": {
+      "type": "keyword",
+      "array": true
+    },
+    "threat.indicator.x509.issuer.state_or_province": {
+      "type": "keyword",
+      "array": true
+    },
+    "threat.indicator.x509.not_after": {
+      "type": "date",
+      "array": false
+    },
+    "threat.indicator.x509.not_before": {
+      "type": "date",
+      "array": false
+    },
+    "threat.indicator.x509.public_key_algorithm": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.indicator.x509.public_key_curve": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.indicator.x509.public_key_exponent": {
+      "type": "long",
+      "array": false
+    },
+    "threat.indicator.x509.public_key_size": {
+      "type": "long",
+      "array": false
+    },
+    "threat.indicator.x509.serial_number": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.indicator.x509.signature_algorithm": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.indicator.x509.subject.common_name": {
+      "type": "keyword",
+      "array": true
+    },
+    "threat.indicator.x509.subject.country": {
+      "type": "keyword",
+      "array": true
+    },
+    "threat.indicator.x509.subject.distinguished_name": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.indicator.x509.subject.locality": {
+      "type": "keyword",
+      "array": true
+    },
+    "threat.indicator.x509.subject.organization": {
+      "type": "keyword",
+      "array": true
+    },
+    "threat.indicator.x509.subject.organizational_unit": {
+      "type": "keyword",
+      "array": true
+    },
+    "threat.indicator.x509.subject.state_or_province": {
+      "type": "keyword",
+      "array": true
+    },
+    "threat.indicator.x509.version_number": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.software.alias": {
+      "type": "keyword",
+      "array": true
+    },
+    "threat.software.id": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.software.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.software.platforms": {
+      "type": "keyword",
+      "array": true
+    },
+    "threat.software.reference": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.software.type": {
+      "type": "keyword",
+      "array": false
+    },
+    "threat.tactic.id": {
+      "type": "keyword",
+      "array": true
+    },
+    "threat.tactic.name": {
+      "type": "keyword",
+      "array": true
+    },
+    "threat.tactic.reference": {
+      "type": "keyword",
+      "array": true
+    },
+    "threat.technique.id": {
+      "type": "keyword",
+      "array": true
+    },
+    "threat.technique.name": {
+      "type": "keyword",
+      "array": true
+    },
+    "threat.technique.reference": {
+      "type": "keyword",
+      "array": true
+    },
+    "threat.technique.subtechnique.id": {
+      "type": "keyword",
+      "array": true
+    },
+    "threat.technique.subtechnique.name": {
+      "type": "keyword",
+      "array": true
+    },
+    "threat.technique.subtechnique.reference": {
+      "type": "keyword",
+      "array": true
+    },
+    "tls.cipher": {
+      "type": "keyword",
+      "array": false
+    },
+    "tls.client.certificate": {
+      "type": "keyword",
+      "array": false
+    },
+    "tls.client.certificate_chain": {
+      "type": "keyword",
+      "array": true
+    },
+    "tls.client.hash.md5": {
+      "type": "keyword",
+      "array": false
+    },
+    "tls.client.hash.sha1": {
+      "type": "keyword",
+      "array": false
+    },
+    "tls.client.hash.sha256": {
+      "type": "keyword",
+      "array": false
+    },
+    "tls.client.issuer": {
+      "type": "keyword",
+      "array": false
+    },
+    "tls.client.ja3": {
+      "type": "keyword",
+      "array": false
+    },
+    "tls.client.not_after": {
+      "type": "date",
+      "array": false
+    },
+    "tls.client.not_before": {
+      "type": "date",
+      "array": false
+    },
+    "tls.client.server_name": {
+      "type": "keyword",
+      "array": false
+    },
+    "tls.client.subject": {
+      "type": "keyword",
+      "array": false
+    },
+    "tls.client.supported_ciphers": {
+      "type": "keyword",
+      "array": true
+    },
+    "tls.client.x509.alternative_names": {
+      "type": "keyword",
+      "array": true
+    },
+    "tls.client.x509.issuer.common_name": {
+      "type": "keyword",
+      "array": true
+    },
+    "tls.client.x509.issuer.country": {
+      "type": "keyword",
+      "array": true
+    },
+    "tls.client.x509.issuer.distinguished_name": {
+      "type": "keyword",
+      "array": false
+    },
+    "tls.client.x509.issuer.locality": {
+      "type": "keyword",
+      "array": true
+    },
+    "tls.client.x509.issuer.organization": {
+      "type": "keyword",
+      "array": true
+    },
+    "tls.client.x509.issuer.organizational_unit": {
+      "type": "keyword",
+      "array": true
+    },
+    "tls.client.x509.issuer.state_or_province": {
+      "type": "keyword",
+      "array": true
+    },
+    "tls.client.x509.not_after": {
+      "type": "date",
+      "array": false
+    },
+    "tls.client.x509.not_before": {
+      "type": "date",
+      "array": false
+    },
+    "tls.client.x509.public_key_algorithm": {
+      "type": "keyword",
+      "array": false
+    },
+    "tls.client.x509.public_key_curve": {
+      "type": "keyword",
+      "array": false
+    },
+    "tls.client.x509.public_key_exponent": {
+      "type": "long",
+      "array": false
+    },
+    "tls.client.x509.public_key_size": {
+      "type": "long",
+      "array": false
+    },
+    "tls.client.x509.serial_number": {
+      "type": "keyword",
+      "array": false
+    },
+    "tls.client.x509.signature_algorithm": {
+      "type": "keyword",
+      "array": false
+    },
+    "tls.client.x509.subject.common_name": {
+      "type": "keyword",
+      "array": true
+    },
+    "tls.client.x509.subject.country": {
+      "type": "keyword",
+      "array": true
+    },
+    "tls.client.x509.subject.distinguished_name": {
+      "type": "keyword",
+      "array": false
+    },
+    "tls.client.x509.subject.locality": {
+      "type": "keyword",
+      "array": true
+    },
+    "tls.client.x509.subject.organization": {
+      "type": "keyword",
+      "array": true
+    },
+    "tls.client.x509.subject.organizational_unit": {
+      "type": "keyword",
+      "array": true
+    },
+    "tls.client.x509.subject.state_or_province": {
+      "type": "keyword",
+      "array": true
+    },
+    "tls.client.x509.version_number": {
+      "type": "keyword",
+      "array": false
+    },
+    "tls.curve": {
+      "type": "keyword",
+      "array": false
+    },
+    "tls.established": {
+      "type": "boolean",
+      "array": false
+    },
+    "tls.next_protocol": {
+      "type": "keyword",
+      "array": false
+    },
+    "tls.resumed": {
+      "type": "boolean",
+      "array": false
+    },
+    "tls.server.certificate": {
+      "type": "keyword",
+      "array": false
+    },
+    "tls.server.certificate_chain": {
+      "type": "keyword",
+      "array": true
+    },
+    "tls.server.hash.md5": {
+      "type": "keyword",
+      "array": false
+    },
+    "tls.server.hash.sha1": {
+      "type": "keyword",
+      "array": false
+    },
+    "tls.server.hash.sha256": {
+      "type": "keyword",
+      "array": false
+    },
+    "tls.server.issuer": {
+      "type": "keyword",
+      "array": false
+    },
+    "tls.server.ja3s": {
+      "type": "keyword",
+      "array": false
+    },
+    "tls.server.not_after": {
+      "type": "date",
+      "array": false
+    },
+    "tls.server.not_before": {
+      "type": "date",
+      "array": false
+    },
+    "tls.server.subject": {
+      "type": "keyword",
+      "array": false
+    },
+    "tls.server.x509.alternative_names": {
+      "type": "keyword",
+      "array": true
+    },
+    "tls.server.x509.issuer.common_name": {
+      "type": "keyword",
+      "array": true
+    },
+    "tls.server.x509.issuer.country": {
+      "type": "keyword",
+      "array": true
+    },
+    "tls.server.x509.issuer.distinguished_name": {
+      "type": "keyword",
+      "array": false
+    },
+    "tls.server.x509.issuer.locality": {
+      "type": "keyword",
+      "array": true
+    },
+    "tls.server.x509.issuer.organization": {
+      "type": "keyword",
+      "array": true
+    },
+    "tls.server.x509.issuer.organizational_unit": {
+      "type": "keyword",
+      "array": true
+    },
+    "tls.server.x509.issuer.state_or_province": {
+      "type": "keyword",
+      "array": true
+    },
+    "tls.server.x509.not_after": {
+      "type": "date",
+      "array": false
+    },
+    "tls.server.x509.not_before": {
+      "type": "date",
+      "array": false
+    },
+    "tls.server.x509.public_key_algorithm": {
+      "type": "keyword",
+      "array": false
+    },
+    "tls.server.x509.public_key_curve": {
+      "type": "keyword",
+      "array": false
+    },
+    "tls.server.x509.public_key_exponent": {
+      "type": "long",
+      "array": false
+    },
+    "tls.server.x509.public_key_size": {
+      "type": "long",
+      "array": false
+    },
+    "tls.server.x509.serial_number": {
+      "type": "keyword",
+      "array": false
+    },
+    "tls.server.x509.signature_algorithm": {
+      "type": "keyword",
+      "array": false
+    },
+    "tls.server.x509.subject.common_name": {
+      "type": "keyword",
+      "array": true
+    },
+    "tls.server.x509.subject.country": {
+      "type": "keyword",
+      "array": true
+    },
+    "tls.server.x509.subject.distinguished_name": {
+      "type": "keyword",
+      "array": false
+    },
+    "tls.server.x509.subject.locality": {
+      "type": "keyword",
+      "array": true
+    },
+    "tls.server.x509.subject.organization": {
+      "type": "keyword",
+      "array": true
+    },
+    "tls.server.x509.subject.organizational_unit": {
+      "type": "keyword",
+      "array": true
+    },
+    "tls.server.x509.subject.state_or_province": {
+      "type": "keyword",
+      "array": true
+    },
+    "tls.server.x509.version_number": {
+      "type": "keyword",
+      "array": false
+    },
+    "tls.version": {
+      "type": "keyword",
+      "array": false
+    },
+    "tls.version_protocol": {
+      "type": "keyword",
+      "array": false
+    },
+    "trace.id": {
+      "type": "keyword",
+      "array": false
+    },
+    "transaction.id": {
+      "type": "keyword",
+      "array": false
+    },
+    "url.domain": {
+      "type": "keyword",
+      "array": false
+    },
+    "url.extension": {
+      "type": "keyword",
+      "array": false
+    },
+    "url.fragment": {
+      "type": "keyword",
+      "array": false
+    },
+    "url.full": {
+      "type": "wildcard",
+      "array": false
+    },
+    "url.original": {
+      "type": "wildcard",
+      "array": false
+    },
+    "url.password": {
+      "type": "keyword",
+      "array": false
+    },
+    "url.path": {
+      "type": "wildcard",
+      "array": false
+    },
+    "url.port": {
+      "type": "long",
+      "array": false
+    },
+    "url.query": {
+      "type": "keyword",
+      "array": false
+    },
+    "url.registered_domain": {
+      "type": "keyword",
+      "array": false
+    },
+    "url.scheme": {
+      "type": "keyword",
+      "array": false
+    },
+    "url.subdomain": {
+      "type": "keyword",
+      "array": false
+    },
+    "url.top_level_domain": {
+      "type": "keyword",
+      "array": false
+    },
+    "url.username": {
+      "type": "keyword",
+      "array": false
+    },
+    "user.changes.domain": {
+      "type": "keyword",
+      "array": false
+    },
+    "user.changes.email": {
+      "type": "keyword",
+      "array": false
+    },
+    "user.changes.full_name": {
+      "type": "keyword",
+      "array": false
+    },
+    "user.changes.group.domain": {
+      "type": "keyword",
+      "array": false
+    },
+    "user.changes.group.id": {
+      "type": "keyword",
+      "array": false
+    },
+    "user.changes.group.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "user.changes.hash": {
+      "type": "keyword",
+      "array": false
+    },
+    "user.changes.id": {
+      "type": "keyword",
+      "array": false
+    },
+    "user.changes.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "user.changes.roles": {
+      "type": "keyword",
+      "array": true
+    },
+    "user.domain": {
+      "type": "keyword",
+      "array": false
+    },
+    "user.effective.domain": {
+      "type": "keyword",
+      "array": false
+    },
+    "user.effective.email": {
+      "type": "keyword",
+      "array": false
+    },
+    "user.effective.full_name": {
+      "type": "keyword",
+      "array": false
+    },
+    "user.effective.group.domain": {
+      "type": "keyword",
+      "array": false
+    },
+    "user.effective.group.id": {
+      "type": "keyword",
+      "array": false
+    },
+    "user.effective.group.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "user.effective.hash": {
+      "type": "keyword",
+      "array": false
+    },
+    "user.effective.id": {
+      "type": "keyword",
+      "array": false
+    },
+    "user.effective.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "user.effective.roles": {
+      "type": "keyword",
+      "array": true
+    },
+    "user.email": {
+      "type": "keyword",
+      "array": false
+    },
+    "user.full_name": {
+      "type": "keyword",
+      "array": false
+    },
+    "user.group.domain": {
+      "type": "keyword",
+      "array": false
+    },
+    "user.group.id": {
+      "type": "keyword",
+      "array": false
+    },
+    "user.group.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "user.hash": {
+      "type": "keyword",
+      "array": false
+    },
+    "user.id": {
+      "type": "keyword",
+      "array": false
+    },
+    "user.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "user.risk.calculated_level": {
+      "type": "keyword",
+      "array": false
+    },
+    "user.risk.calculated_score": {
+      "type": "float",
+      "array": false
+    },
+    "user.risk.calculated_score_norm": {
+      "type": "float",
+      "array": false
+    },
+    "user.risk.static_level": {
+      "type": "keyword",
+      "array": false
+    },
+    "user.risk.static_score": {
+      "type": "float",
+      "array": false
+    },
+    "user.risk.static_score_norm": {
+      "type": "float",
+      "array": false
+    },
+    "user.roles": {
+      "type": "keyword",
+      "array": true
+    },
+    "user.target.domain": {
+      "type": "keyword",
+      "array": false
+    },
+    "user.target.email": {
+      "type": "keyword",
+      "array": false
+    },
+    "user.target.full_name": {
+      "type": "keyword",
+      "array": false
+    },
+    "user.target.group.domain": {
+      "type": "keyword",
+      "array": false
+    },
+    "user.target.group.id": {
+      "type": "keyword",
+      "array": false
+    },
+    "user.target.group.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "user.target.hash": {
+      "type": "keyword",
+      "array": false
+    },
+    "user.target.id": {
+      "type": "keyword",
+      "array": false
+    },
+    "user.target.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "user.target.roles": {
+      "type": "keyword",
+      "array": true
+    },
+    "user_agent.device.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "user_agent.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "user_agent.original": {
+      "type": "keyword",
+      "array": false
+    },
+    "user_agent.os.family": {
+      "type": "keyword",
+      "array": false
+    },
+    "user_agent.os.full": {
+      "type": "keyword",
+      "array": false
+    },
+    "user_agent.os.kernel": {
+      "type": "keyword",
+      "array": false
+    },
+    "user_agent.os.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "user_agent.os.platform": {
+      "type": "keyword",
+      "array": false
+    },
+    "user_agent.os.type": {
+      "type": "keyword",
+      "array": false
+    },
+    "user_agent.os.version": {
+      "type": "keyword",
+      "array": false
+    },
+    "user_agent.version": {
+      "type": "keyword",
+      "array": false
+    },
+    "volume.bus_type": {
+      "type": "keyword",
+      "array": false
+    },
+    "volume.default_access": {
+      "type": "keyword",
+      "array": false
+    },
+    "volume.device_name": {
+      "type": "keyword",
+      "array": false
+    },
+    "volume.device_type": {
+      "type": "keyword",
+      "array": false
+    },
+    "volume.dos_name": {
+      "type": "keyword",
+      "array": false
+    },
+    "volume.file_system_type": {
+      "type": "keyword",
+      "array": false
+    },
+    "volume.mount_name": {
+      "type": "keyword",
+      "array": false
+    },
+    "volume.nt_name": {
+      "type": "keyword",
+      "array": false
+    },
+    "volume.product_id": {
+      "type": "keyword",
+      "array": false
+    },
+    "volume.product_name": {
+      "type": "keyword",
+      "array": false
+    },
+    "volume.removable": {
+      "type": "boolean",
+      "array": false
+    },
+    "volume.serial_number": {
+      "type": "keyword",
+      "array": false
+    },
+    "volume.size": {
+      "type": "long",
+      "array": false
+    },
+    "volume.vendor_id": {
+      "type": "keyword",
+      "array": false
+    },
+    "volume.vendor_name": {
+      "type": "keyword",
+      "array": false
+    },
+    "volume.writable": {
+      "type": "boolean",
+      "array": false
+    },
+    "vulnerability.category": {
+      "type": "keyword",
+      "array": true
+    },
+    "vulnerability.classification": {
+      "type": "keyword",
+      "array": false
+    },
+    "vulnerability.description": {
+      "type": "keyword",
+      "array": false
+    },
+    "vulnerability.enumeration": {
+      "type": "keyword",
+      "array": false
+    },
+    "vulnerability.id": {
+      "type": "keyword",
+      "array": false
+    },
+    "vulnerability.reference": {
+      "type": "keyword",
+      "array": false
+    },
+    "vulnerability.report_id": {
+      "type": "keyword",
+      "array": false
+    },
+    "vulnerability.scanner.vendor": {
+      "type": "keyword",
+      "array": false
+    },
+    "vulnerability.score.base": {
+      "type": "float",
+      "array": false
+    },
+    "vulnerability.score.environmental": {
+      "type": "float",
+      "array": false
+    },
+    "vulnerability.score.temporal": {
+      "type": "float",
+      "array": false
+    },
+    "vulnerability.score.version": {
+      "type": "keyword",
+      "array": false
+    },
+    "vulnerability.severity": {
+      "type": "keyword",
+      "array": false
+    },
+    "agent.groups": {
+      "type": "keyword",
+      "array": true
+    },
+    "agent.host.hostname": {
+      "type": "keyword",
+      "array": false
+    },
+    "agent.host.os.platform": {
+      "type": "keyword",
+      "array": false
+    },
+    "agent.host.os.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "agent.host.architecture": {
+      "type": "keyword",
+      "array": false
+    },
+    "agent.host.ip": {
+      "type": "ip",
+      "array": true
+    },
+    "event.collector": {
+      "type": "keyword",
+      "array": false
+    },
+    "wazuh.decoders": {
+      "type": "keyword",
+      "array": true
+    },
+    "wazuh.rules": {
+      "type": "keyword",
+      "array": true
+    }
+  }
+}

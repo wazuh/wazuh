@@ -7,15 +7,6 @@ on:
         description: 'Base branch'
         required: true
         default: 'main'
-  pull_request:
-    paths:
-        - ".github/workflows/4_testintegration_integratord-tier-0-1.yml"
-        - "src/config/integrator-config.c"
-        - "src/config/integrator-config.h"
-        - "src/os_integrator/**"
-        - "src/Makefile"
-        - "tests/integration/conftest.py"
-        - "tests/integration/test_integratord/**"
 
 jobs:
   build:

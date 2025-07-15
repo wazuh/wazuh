@@ -1,0 +1,37 @@
+# Name of the helper function
+name: is_ipv6
+
+metadata:
+  description: |
+    Checks if the IP address stored in the field is an IPv6.
+    IPv6:
+      - ::1
+      - fd00:abcd::1234
+      - a03:2880:f10c:83:face:b00c::25de
+    This helper function is typically used in the check stage
+
+  keywords:
+    - undefined
+
+helper_type: filter
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: false
+
+target_field:
+  type: string
+  generate: ip
+
+test:
+  - target_field: 127.0.0.1
+    should_pass: false
+    description: Invalid IPv6. It's an IPv4
+  - target_field: ::1
+    should_pass: true
+    description: Valid special IPv6
+  - target_field:  fd00:abcd::1234
+    should_pass: true
+    description: Valid special IPv6
+  - target_field: a03:2880:f10c:83:face:b00c::25de
+    should_pass: true
+    description: Valid public IPv6

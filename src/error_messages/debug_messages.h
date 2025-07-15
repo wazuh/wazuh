@@ -241,9 +241,5 @@
 #define LOGCOLLECTOR_JOURNAL_LOG_READING      "(9008): Reading from journal: '%s'."
 #define LOGCOLLECTOR_JOURNAL_LOG_SET_LAST     "(9009): Setting last read timestamp to '%" PRIu64 "'"
 
-/* Analysisd */
-
-#define MESSAGE_TOO_LONG                    "(9200): Long message, cannot be processed."
-#define UNABLE_TO_SEND_INFORMATION_TO_WDB   "(9201): Unable to send dbsync information to Wazuh DB."
 
 #endif /* DEBUG_MESSAGES_H */

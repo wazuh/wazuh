@@ -7,16 +7,6 @@ on:
         description: 'Base branch'
         required: true
         default: 'main'
-  pull_request:
-    paths:
-        - ".github/workflows/4_testintegration_logtest-tier-0-1.yml"
-        - "src/analysisd/logtest.c"
-        - "src/analysisd/logtest.h"
-        - "src/config/logtest-config.c"
-        - "src/config/logtest-config.h"
-        - "src/Makefile"
-        - "tests/integration/conftest.py"
-        - "tests/integration/test_logtest/**"
 
 jobs:
   build:

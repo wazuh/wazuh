@@ -1,0 +1,51 @@
+# Name of the helper function
+name: split
+
+metadata:
+  description: |
+    The operation splits a string into parts by a separator character.
+    The parts are put into an array of strings. The result of the split into array (split) operation is mapped to “field”.
+    If the “field” already exists, then it will be replaced. In case of errors “field” will not be modified.
+    This helper function is typically used in the map stage
+  keywords:
+    - string
+
+helper_type: transformation
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: false
+
+# Arguments expected by the helper function
+arguments:
+  input_field:
+    type: string  # Accept only string
+    generate: string
+    source: reference # Includes only references (their names start with $)
+  character:
+    type: string  # Accept only string
+    generate: string
+    source: value # includes only values
+
+skipped:
+  - success_cases # string generation is random
+
+# the type of the target field is not verified
+target_field:
+  type:
+    - object
+    - array
+    - string
+    - number
+    - boolean
+
+test:
+  - arguments:
+      input_field: "val 1 | val 2 | val 3"
+      character: '|'
+    target_field: ""
+    should_pass: true
+    expected:
+      - "val 1 "
+      - " val 2 "
+      - " val 3"
+    description: Success split

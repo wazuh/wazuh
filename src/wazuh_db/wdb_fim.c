@@ -62,7 +62,6 @@ int wdb_syscheck_load(wdb_t * wdb, const char * file, char * output, size_t size
         }
 
         output[size - 1] = '\0';
-        return sk_build_sum(&sum, output, size);
 
     case SQLITE_DONE:
         *output = 0;
@@ -73,7 +72,9 @@ int wdb_syscheck_load(wdb_t * wdb, const char * file, char * output, size_t size
         return -1;
     }
 }
-
+/*****************************************************************************************
+ TODO-LEGACY-ANALYSISD-FIM: Delete this function when the new system is ready
+ Should not depend on analsysid code
 int wdb_syscheck_save(wdb_t * wdb, int ftype, char * checksum, const char * file) {
     sk_sum_t sum;
     int retval = -1;
@@ -125,6 +126,7 @@ end:
     sk_sum_clean(&sum);
     return retval;
 }
+*****************************************************************************************/
 
 // LCOV_EXCL_STOP
 int wdb_syscheck_save2(wdb_t * wdb, const char * payload) {

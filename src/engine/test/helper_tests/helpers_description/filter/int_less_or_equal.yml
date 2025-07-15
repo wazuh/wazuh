@@ -1,0 +1,49 @@
+# Name of the helper function
+name: int_less_or_equal
+
+metadata:
+  description: |
+    Checkers whether the integer number stored in field is less than or equal to the one provided.
+    If they're not, the function evaluates to false. In case of error, the function will evaluate to false.
+    This helper function is typically used in the check stage
+  keywords:
+    - integer
+    - comparison
+
+helper_type: filter
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: false
+
+# Arguments expected by the helper function
+arguments:
+  any_number:
+    type: number  # Expected type is integer
+    generate: integer
+    source: both # includes values or references (their names start with $)
+
+# do not compare with target field to avoid failure
+skipped:
+  - success_cases
+
+target_field:
+  type: number
+  generate: integer
+
+
+test:
+  - arguments:
+      any_number: 22
+    target_field: 2
+    should_pass: true
+    description: Success int less or equal
+  - arguments:
+      any_number: 22
+    target_field: 22
+    should_pass: true
+    description: Success int less or equal
+  - arguments:
+      any_number: 2
+    target_field: 22
+    should_pass: false
+    description: Failure int less or equal

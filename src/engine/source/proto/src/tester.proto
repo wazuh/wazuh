@@ -1,0 +1,153 @@
+syntax = "proto3";
+
+import "engine.proto";
+
+package com.wazuh.api.engine.tester;
+
+enum State
+{
+    STATE_UNKNOWN = 0; ///< Unset state
+    DISABLED = 1;      ///< Entry is inactive, it's not being used or error
+    ENABLED = 2;       ///< Entry is active, it's being used
+}
+
+enum Sync
+{
+    SYNC_UNKNOWN = 0; ///< Unset state
+    UPDATED = 1;      ///< Policy is updated
+    OUTDATED = 2;     ///< Policy is outdated respect to the store
+    ERROR = 3;        ///< Error, can't get the policy status
+}
+
+message SessionPost
+{
+    string name = 1;                 // Name of the session
+    string policy = 2;               // Policy associated to the session
+    uint32 lifetime = 3;             // Lifetime of the session
+    optional string description = 4; // Optional description of the session
+}
+
+message Session
+{
+    string name = 1;                 // Name of the session
+    string policy = 2;               // Policy associated to the session
+    uint32 lifetime = 3;             // Lifetime of the session
+    optional string description = 4; // Optional description of the session
+
+    Sync policy_sync = 6;   // Status of the policy [updated|updated|error]
+    State entry_status = 7; // Status of the session [INACTIVE|ACTIVE]
+    uint32 last_use = 8;    // Last use of the session
+}
+
+/***************************************************
+ * Result of the testing event in the session
+ **************************************************/
+message Result
+{
+    message AssetTrace // Trace of an asset
+    {
+        string asset = 1;           // Asset name
+        bool success = 2;           // If the asset was successfully decoded
+        repeated string traces = 3; // Traces of the asset
+    }
+    string output = 1;                    // JSON output of the event
+    repeated AssetTrace asset_traces = 2; // Asset traces
+}
+
+enum TraceLevel
+{
+    NONE = 0;       ///< No traces
+    ASSET_ONLY = 1; ///< Only asset traces
+    ALL = 2;        ///< Full traces
+}
+
+/***************************************************
+ * Create a new session
+ *
+ * command: tester.session/post
+ **************************************************/
+message SessionPost_Request
+{
+    optional SessionPost session = 1; // Session data
+}
+
+// message SessionPost_Response -> Return a GenericStatus_Response
+
+/***************************************************
+ * Delete a session
+ *
+ * command: tester.session/delete
+ **************************************************/
+message SessionDelete_Request
+{
+    string name = 1; // test session name
+}
+
+// message SessionDelete_Response -> Return a GenericStatus_Response
+/***************************************************
+ * Get a session's data from the session manager
+ *
+ * command: tester.session/get
+ **************************************************/
+message SessionGet_Request
+{
+    string name = 1; // test session name
+}
+
+message SessionGet_Response
+{
+    ReturnStatus status = 1;      // Status of the query
+    optional string error = 2;    // Error message if status is ERROR
+    optional Session session = 3; // Session data if status is OK
+}
+
+/***************************************************
+ * Reload a session
+ *
+ * command: tester.session/reload
+ **************************************************/
+message SessionReload_Request
+{
+    string name = 1; // test session name
+}
+
+// message SessionReload_Response -> Return a GenericStatus_Response
+
+/***************************************************
+ * Get sessions list (Table of sessions)
+ *
+ * command: tester.table/get
+ **************************************************/
+message TableGet_Request {}
+
+message TableGet_Response
+{
+    ReturnStatus status = 1;       // Status of the query
+    optional string error = 2;     // Error message if status is ERROR
+    repeated Session sessions = 3; // Sessions list if status is OK
+}
+
+/***************************************************
+ * Run a test
+ *
+ * Currently, the only test available is the test of a single event with a format:
+ *  - queue:location:message
+ * command: tester.run/post
+ **************************************************/
+message RunPost_Request
+{
+    string name = 1; // Name of the session.
+    // Event to test
+    string event = 2; // Event to test
+    // Configuration of test
+    TraceLevel trace_level = 5;      // Level of traces
+    repeated string asset_trace = 6; // Asset of which you only want to have details
+    repeated string namespaces = 7;  // Namespaces where are the assets to test
+}
+
+message RunPost_Response
+{
+    ReturnStatus status = 1;    // Status of the query
+    optional string error = 2;  // Error message if status is ERROR
+    optional Result result = 3; // Result of the test
+}

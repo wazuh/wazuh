@@ -23,9 +23,6 @@ static int read_main_elements(const OS_XML *xml, int modules,
 {
     int i = 0;
     const char *osglobal = "global";                            /* Server Config */
-#ifndef WIN32
-    const char *osrules = "ruleset";                            /* Server Config */
-#endif
     const char *ossyscheck = "syscheck";                        /* Agent Config  */
     const char *osrootcheck = "rootcheck";                      /* Agent Config  */
     const char *osalerts = "alerts";                            /* Server Config */
@@ -89,10 +86,6 @@ static int read_main_elements(const OS_XML *xml, int modules,
             if ((modules & CMAIL) && (Read_EmailAlerts(chld_node, d1, d2) < 0)) {
                 goto fail;
             }
-        } else if (chld_node && (strcmp(node[i]->element, osdbd) == 0)) {
-            if ((modules & CDBD) && (Read_DB(chld_node, d1, d2) < 0)) {
-                goto fail;
-            }
         } else if (chld_node && (strcmp(node[i]->element, oscsyslogd) == 0)) {
             if ((modules & CSYSLOGD) && (Read_CSyslog(chld_node, d1, d2) < 0)) {
                 goto fail;
@@ -105,15 +98,7 @@ static int read_main_elements(const OS_XML *xml, int modules,
             if ((modules & CAGENTLESS) && (Read_CAgentless(chld_node, d1, d2) < 0)) {
                 goto fail;
             }
-        }
-#ifndef WIN32
-        else if (chld_node && (strcmp(node[i]->element, osrules) == 0)) {
-            if ((modules & CRULES) && (Read_Rules(chld_node, d1, d2) < 0)) {
-                goto fail;
-            }
-        }
-#endif
-        else if (strcmp(node[i]->element, ossyscheck) == 0) {
+        } else if (strcmp(node[i]->element, ossyscheck) == 0) {
             if ((modules & CSYSCHECK) && (Read_Syscheck(xml, chld_node, d1, d2, modules) < 0)) {
                 goto fail;
             }
@@ -122,10 +107,6 @@ static int read_main_elements(const OS_XML *xml, int modules,
             }
         } else if (strcmp(node[i]->element, osrootcheck) == 0) {
             if ((modules & CROOTCHECK) && (Read_Rootcheck(chld_node, d1, d2) < 0)) {
-                goto fail;
-            }
-        } else if (chld_node && (strcmp(node[i]->element, osalerts) == 0)) {
-            if ((modules & CALERTS) && (Read_Alerts(chld_node, d1, d2) < 0)) {
                 goto fail;
             }
         } else if (chld_node && (strcmp(node[i]->element, oslocalfile) == 0)) {
@@ -253,13 +234,6 @@ static int read_main_elements(const OS_XML *xml, int modules,
             }
         } else if (chld_node && (strcmp(node[i]->element, ossocket) == 0)) {
             if ((modules & CLGCSOCKET) && (Read_LogCollecSocket(chld_node, d1, d2) < 0)) {
-                goto fail;
-            }
-            if ((modules & CANDSOCKET) && (Read_AnalysisdSocket(chld_node, d1, d2) < 0)) {
-                goto fail;
-            }
-        } else if (chld_node && (strcmp(node[i]->element, wlogtest) == 0)) {
-            if ((modules & CLOGTEST) && (Read_Logtest(chld_node) < 0)) {
                 goto fail;
             }
         } else if (chld_node && (strcmp(node[i]->element, agent_upgrade) == 0)) {
