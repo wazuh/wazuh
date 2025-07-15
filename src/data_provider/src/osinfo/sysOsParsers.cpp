@@ -11,7 +11,6 @@
 
 #include "osinfo/sysOsParsers.h"
 #include "stringHelper.h"
-#include "filesystemHelper.h"
 #include "sharedDefs.h"
 
 static bool parseUnixFile(const std::vector<std::pair<std::string, std::string>>& keyMapping,
