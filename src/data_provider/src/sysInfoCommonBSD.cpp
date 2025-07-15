@@ -13,7 +13,6 @@
 #include "sysInfo.hpp"
 #include "cmdHelper.h"
 #include "stringHelper.h"
-#include "filesystemHelper.h"
 #include "networkUnixHelper.h"
 #include "network/networkBSDWrapper.h"
 #include "network/networkFamilyDataAFactory.h"
