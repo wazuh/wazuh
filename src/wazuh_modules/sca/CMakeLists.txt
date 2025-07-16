@@ -63,7 +63,17 @@ endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 file(GLOB SCA_SRC "${CMAKE_SOURCE_DIR}/src/*.cpp")
 
 add_library(sca SHARED ${SCA_SRC} ${SRC_FOLDER}/${RESOURCE_OBJ})
-target_link_libraries(sca SCAImpl)
+
+# Find the same libraries that SCAImpl depends on
+find_library(SYSINFO_LIB sysinfo 
+    HINTS ${SRC_FOLDER}/data_provider/build/lib
+    NO_DEFAULT_PATH)
+if(NOT SYSINFO_LIB)
+    set(SYSINFO_LIB sysinfo)
+    message(STATUS "sysinfo library not found, using target name")
+endif()
+
+target_link_libraries(sca SCAImpl ${SYSINFO_LIB})
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   set_target_properties(
