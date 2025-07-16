@@ -679,7 +679,7 @@ async def get_user_info(agent_id: str, pretty: bool = False, wait_for_complete: 
 
     dapi = DistributedAPI(f=syscollector.get_item_agent,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='local_master',
+                          request_type='distributed_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
