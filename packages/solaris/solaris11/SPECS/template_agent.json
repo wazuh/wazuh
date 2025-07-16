@@ -271,14 +271,6 @@
         "type": "directory",
         "user": "root"
     },
-    "/var/ossec/bin/agent-auth": {
-        "class": "static",
-        "group": "root",
-        "mode": "0750",
-        "prot": "-rwxr-x---",
-        "type": "file",
-        "user": "root"
-    },
     "/var/ossec/bin/manage_agents": {
         "class": "static",
         "group": "root",
@@ -1744,14 +1736,6 @@
         "user": "root"
     },
     "/var/ossec/var/run/wazuh-modulesd-*.pid": {
-        "class": "dynamic",
-        "group": "wazuh",
-        "mode": "0640",
-        "prot": "-rw-r-----",
-        "type": "file",
-        "user": "root"
-    },
-    "/var/ossec/var/run/agent-auth-*.pid": {
         "class": "dynamic",
         "group": "wazuh",
         "mode": "0640",
