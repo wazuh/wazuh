@@ -17,25 +17,30 @@
 #include "packagesPYPI.hpp"
 #include "json.hpp"
 #include <filesystem>
+#include <ifile_io_utils.hpp>
 #include <ifilesystem_wrapper.hpp>
-#include "../shared_modules/file_helper/filesystem/mock_filesystem_wrapper.hpp"
+#include "../../../shared_modules/file_helper/filesystem/tests/mocks/mock_filesystem_wrapper.hpp"
 
-class MockFileIO
+class MockFileIO : public IFileIOUtils
 {
 public:
-    MOCK_METHOD(void, readLineByLine, (const std::filesystem::path&, const std::function<bool(const std::string&)>&), ());
+    MOCK_METHOD(void, readLineByLine, (const std::filesystem::path& filePath, const std::function<bool(const std::string&)>& callback), (const, override));
+    MOCK_METHOD(std::string, getFileContent, (const std::string& filePath), (const, override));
+    MOCK_METHOD(std::vector<char>, getBinaryContent, (const std::string& filePath), (const, override));
 };
 
 class PYPITest : public ::testing::Test
 {
 protected:
     MockFileSystemWrapper* mockFileSystem; // Raw pointer - pypi will own it
-    std::unique_ptr<PYPI<MockFileIO>> pypi;
+    MockFileIO* mockFileIO; // Raw pointer - pypi will own it
+    std::unique_ptr<PYPI> pypi;
 
     void SetUp() override
     {
         mockFileSystem = new MockFileSystemWrapper();
-        pypi = std::make_unique<PYPI<MockFileIO>>(std::unique_ptr<IFileSystemWrapper>(mockFileSystem));
+        mockFileIO = new MockFileIO();
+        pypi = std::make_unique<PYPI>(std::unique_ptr<MockFileIO>(mockFileIO), std::unique_ptr<IFileSystemWrapper>(mockFileSystem));
     }
 
     void TearDown() override

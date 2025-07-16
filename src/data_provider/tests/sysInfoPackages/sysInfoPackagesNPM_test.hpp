@@ -18,7 +18,7 @@
 #include "json.hpp"
 #include <filesystem>
 #include <ifilesystem_wrapper.hpp>
-#include "../shared_modules/file_helper/filesystem/mock_filesystem_wrapper.hpp"
+#include "../../../shared_modules/file_helper/filesystem/tests/mocks/mock_filesystem_wrapper.hpp"
 
 class MockJsonIO
 {
