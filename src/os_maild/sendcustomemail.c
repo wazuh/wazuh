@@ -26,7 +26,7 @@
 #define DATAMSG             "DATA\r\n"
 #define FROM                "From: " __ossec_name " <%s>\r\n"
 #define REPLYTO             "Reply-To: " __ossec_name " <%s>\r\n"
-#define TO                  "To: <%s>\r\n"
+#define TO                  "To: %s\r\n"
 #define CC                  "Cc: <%s>\r\n"
 #define SUBJECT             "Subject: %s\r\n"
 #define ENDHEADER           "\r\n"
@@ -171,16 +171,7 @@ int OS_SendCustomEmail(char **to, char *subject, char *smtpserver, char *from, c
         free(msg);
     }
 
-    /* Build "From" and "To" in the e-mail header */
-    memset(snd_msg, '\0', 128);
-    snprintf(snd_msg, 127, TO, to[0]);
-
-    if (sendmail) {
-        fprintf(sendmail->file_in, "%s", snd_msg);
-    } else {
-        OS_SendTCP(socket, snd_msg);
-    }
-
+    /* Build "From" in the e-mail header */
     memset(snd_msg, '\0', 128);
     snprintf(snd_msg, 127, FROM, from);
 
@@ -201,24 +192,33 @@ int OS_SendCustomEmail(char **to, char *subject, char *smtpserver, char *from, c
         }
     }
 
-    /* Add CCs */
-    if (to[1]) {
-        i = 1;
-        while (1) {
-            if (to[i] == NULL) {
-                break;
-            }
-
-            memset(snd_msg, '\0', 128);
-            snprintf(snd_msg, 127, TO, to[i]);
-
-            if (sendmail) {
-                fprintf(sendmail->file_in, "%s", snd_msg);
+    /* Build a single "To" header with all recipients */
+    {
+        char to_list[1024] = "";
+        size_t to_rem = sizeof(to_list);
+        int first_to = 1;
+        for (i = 0; to[i]; i++) {
+            if (!first_to) {
+                int n = snprintf(to_list + strlen(to_list), to_rem, ", <%s>", to[i]);
+                if (n < 0 || (size_t)n >= to_rem) break;
+                to_rem -= n;
             } else {
-                OS_SendTCP(socket, snd_msg);
+                int n = snprintf(to_list, to_rem, "<%s>", to[i]);
+                if (n < 0 || (size_t)n >= to_rem) break;
+                to_rem -= n;
+                first_to = 0;
             }
-
-            i++;
+        }
+        memset(snd_msg, 0, sizeof(snd_msg));
+        int n = snprintf(snd_msg, sizeof(snd_msg) - 1, TO, to_list);
+        if (n < 0 || n >= (int)(sizeof(snd_msg)-1)) {
+            merror("Error formatting 'To' header: snprintf failed or output truncated.");
+            return OS_INVALID;
+        }
+        if (sendmail) {
+            fprintf(sendmail->file_in, "%s", snd_msg);
+        } else {
+            OS_SendTCP(socket, snd_msg);
         }
     }
 
