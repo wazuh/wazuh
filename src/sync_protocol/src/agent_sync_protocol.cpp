@@ -98,7 +98,9 @@ bool AgentSyncProtocol::sendStartAndWaitAck(const std::string& module, Mode mode
     auto message = CreateMessage(builder, MessageType::Start, startOffset.Union());
     builder.Finish(message);
 
-    const auto messageSpan = builder.GetBufferSpan();
+    const uint8_t* buffer_ptr = builder.GetBufferPointer();
+    const size_t buffer_size = builder.GetSize();
+    std::vector<uint8_t> messageVector(buffer_ptr, buffer_ptr + buffer_size);
 
     const auto retryInterval = std::chrono::seconds(30);
 
@@ -110,7 +112,7 @@ bool AgentSyncProtocol::sendStartAndWaitAck(const std::string& module, Mode mode
             m_syncState.phase = SyncPhase::WaitingStartAck;
         }
 
-        if (!sendFlatBufferMessageAsString(messageSpan, module))
+        if (!sendFlatBufferMessageAsString(messageVector, module))
         {
             std::cerr << "[Sync] Failed to send Start message. Retrying in " << retryInterval.count() << "s...\n";
             {
@@ -168,7 +170,11 @@ bool AgentSyncProtocol::sendDataMessages(const std::string& module,
         auto message = CreateMessage(builder, MessageType::Data, dataOffset.Union());
         builder.Finish(message);
 
-        if (!sendFlatBufferMessageAsString(builder.GetBufferSpan(), module))
+        const uint8_t* buffer_ptr = builder.GetBufferPointer();
+        const size_t buffer_size = builder.GetSize();
+        std::vector<uint8_t> messageVector(buffer_ptr, buffer_ptr + buffer_size);
+
+        if (!sendFlatBufferMessageAsString(messageVector, module))
         {
             return false;
         }
@@ -187,7 +193,11 @@ bool AgentSyncProtocol::sendEndAndWaitAck(const std::string& module, uint64_t se
     auto message = CreateMessage(builder, MessageType::End, endOffset.Union());
     builder.Finish(message);
 
-    if (!sendFlatBufferMessageAsString(builder.GetBufferSpan(), module))
+    const uint8_t* buffer_ptr = builder.GetBufferPointer();
+    const size_t buffer_size = builder.GetSize();
+    std::vector<uint8_t> messageVector(buffer_ptr, buffer_ptr + buffer_size);
+
+    if (!sendFlatBufferMessageAsString(messageVector, module))
     {
         return false;
     }
@@ -241,16 +251,14 @@ void AgentSyncProtocol::clearPersistedDifferences(const std::string& module)
     m_persistentQueue->removeAll(module);
 }
 
-bool AgentSyncProtocol::sendFlatBufferMessageAsString(flatbuffers::span<uint8_t> fbData, const std::string& module)
+bool AgentSyncProtocol::sendFlatBufferMessageAsString(const std::vector<uint8_t>& fbData, const std::string& module)
 {
-    std::string message(reinterpret_cast<const char*>(fbData.data()), fbData.size());
-
-    if (m_mqFuncs.send(m_queue, message.c_str(), module.c_str(), SYNC_MQ) < 0)
+    if (m_mqFuncs.send_binary(m_queue, fbData.data(), fbData.size(), module.c_str(), SYNC_MQ) < 0)
     {
         std::cerr << "SendMSG failed, attempting to reinitialize queue..." << std::endl;
         m_queue = m_mqFuncs.start(DEFAULTQUEUE, WRITE, 0);
 
-        if (m_queue < 0 || m_mqFuncs.send(m_queue, message.c_str(), module.c_str(), SYNC_MQ) < 0)
+        if (m_queue < 0 || m_mqFuncs.send_binary(m_queue, fbData.data(), fbData.size(), module.c_str(), SYNC_MQ) < 0)
         {
             std::cerr << "Failed to send message after retry" << std::endl;
             return false;

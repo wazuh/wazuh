@@ -132,7 +132,7 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         /// @param fbData Flatbuffer data
         /// @param module Module name
         /// @return True on success, false on failure
-        bool sendFlatBufferMessageAsString(flatbuffers::span<uint8_t> fbData, const std::string& module);
+        bool sendFlatBufferMessageAsString(const std::vector<uint8_t>& fbData, const std::string& module);
 
         /// @brief Defines the possible phases of a synchronization process.
         enum class SyncPhase

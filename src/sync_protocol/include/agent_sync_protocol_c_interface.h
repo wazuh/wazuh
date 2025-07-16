@@ -24,10 +24,11 @@ typedef int (*mq_start_fn)(const char* key, short type, short attempts);
 ///
 /// @param queue The queue identifier.
 /// @param message The message payload to send.
+/// @param message_len The length of the message payload in bytes.
 /// @param locmsg Additional location/context message (optional).
 /// @param loc A character representing the message location or type.
 /// @return Integer status code (0 on success, non-zero on failure).
-typedef int (*mq_send_fn)(int queue, const char* message, const char* locmsg, char loc);
+typedef int (*mq_send_binary_fn)(int queue, const void* message, size_t message_len, const char* locmsg, char loc);
 
 /// @brief Struct containing function pointers for MQ operations.
 ///
@@ -38,7 +39,7 @@ typedef struct MQ_Functions
     mq_start_fn start;
 
     /// Callback to send a message.
-    mq_send_fn send;
+    mq_send_binary_fn send_binary;
 } MQ_Functions;
 
 /// @brief Creates an instance of AgentSyncProtocol.
