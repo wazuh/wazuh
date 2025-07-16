@@ -10,7 +10,7 @@ type: integration
 brief: These tests will check if the 'wazuh-authd' daemon correctly handles the enrollment requests,
        generating consistent responses to the requests received on its IP v4 network socket.
        The 'wazuh-authd' daemon can automatically add a Wazuh agent to a Wazuh manager and provide
-       the key to the agent. It is used along with the 'agent-auth' application.
+       the key to the agent. 
 
 components:
     - authd
