@@ -47,6 +47,8 @@ if(APPLE)
   set(CMAKE_MACOSX_RPATH 1)
 endif(APPLE)
 
+add_subdirectory(sca_impl)
+
 include_directories(${SRC_FOLDER}/headers)
 include_directories(${SRC_FOLDER}/external/cJSON/)
 include_directories(${CMAKE_SOURCE_DIR}/include)
@@ -61,6 +63,7 @@ endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 file(GLOB SCA_SRC "${CMAKE_SOURCE_DIR}/src/*.cpp")
 
 add_library(sca SHARED ${SCA_SRC} ${SRC_FOLDER}/${RESOURCE_OBJ})
+target_link_libraries(sca SCAImpl)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   set_target_properties(
