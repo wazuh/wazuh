@@ -42,6 +42,10 @@ if [ "$TYPE" = "manager" ]; then
     fi
 fi
 
-${PWD}/bin/wazuh-control $PARAM_ACTION
+if command -v systemctl >/dev/null 2>&1; then
+    systemctl $PARAM_ACTION wazuh-$TYPE
+else
+    ${PWD}/bin/wazuh-control $PARAM_ACTION
+fi
 
 exit $?;
