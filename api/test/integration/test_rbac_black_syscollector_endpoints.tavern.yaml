@@ -387,3 +387,63 @@ stages:
       <<: *hotfix_request_deny
     response:
       <<: *permission_denied
+
+---
+test_name: Get users syscollector RBAC
+
+stages:
+
+  - name: Get users from an agent (Allow)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/syscollector/004/users"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+    response:
+      status_code: 200
+      json:
+        error: !anyint
+        data:
+          affected_items: !anything
+          total_affected_items: !anyint
+
+  - name: Get users from an agent (Deny)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/syscollector/001/users"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+    response:
+      <<: *permission_denied
+
+---
+test_name: Get groups syscollector RBAC
+
+stages:
+
+  - name: Get groups from an agent (Allow)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/syscollector/002/groups"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+    response:
+      status_code: 200
+      json:
+        error: !anyint
+        data:
+          affected_items: !anything
+          total_affected_items: !anyint
+
+  - name: Get groups from an agent (Deny)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/syscollector/001/groups"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+    response:
+      <<: *permission_denied
