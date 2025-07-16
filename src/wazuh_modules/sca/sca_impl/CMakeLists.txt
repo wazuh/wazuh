@@ -13,13 +13,14 @@ get_filename_component(SRC_FOLDER ${CMAKE_SOURCE_DIR}/../../ ABSOLUTE)
 message(STATUS "SRC_FOLDER: ${SRC_FOLDER}")
 link_directories(${SRC_FOLDER})
 link_directories(${SRC_FOLDER}/external/cJSON/)
-link_directories(${SRC_FOLDER}/external/nlohmann/)
-link_directories(${SRC_FOLDER}/external/libpcre2/)
-link_directories(${SRC_FOLDER}/external/nlohmann/)
+link_directories(${SRC_FOLDER}/external/libpcre2/.libs/)
+link_directories(${SRC_FOLDER}/external/libyaml/src/.libs/)
 link_directories(${SRC_FOLDER}/shared_modules/file_helper/build)
 link_directories(${SRC_FOLDER}/shared_modules/file_helper/build/lib)
 link_directories(${SRC_FOLDER}/shared_modules/dbsync/build)
 link_directories(${SRC_FOLDER}/shared_modules/dbsync/build/lib)
+link_directories(${SRC_FOLDER}/data_provider/build)
+link_directories(${SRC_FOLDER}/data_provider/build/lib)
 include_directories(${SRC_FOLDER}/external/cJSON/)
 include_directories(${SRC_FOLDER}/external/libpcre2/include)
 include_directories(${SRC_FOLDER}/external/nlohmann/)
@@ -31,8 +32,56 @@ include_directories(${SRC_FOLDER}/shared_modules/dbsync/include/)
 include_directories(${SRC_FOLDER}/shared_modules/utils/)
 include_directories(${SRC_FOLDER}/data_provider/include/)
 
+# Dependencies should be built externally and made available
+# Use find_library to locate dependencies, but fall back to target names if not found
+
+find_library(FILESYSTEM_WRAPPER_LIB FilesystemWrapper 
+    HINTS ${SRC_FOLDER}/shared_modules/file_helper/build/lib
+    NO_DEFAULT_PATH)
+find_library(FILE_IO_LIB FileIO 
+    HINTS ${SRC_FOLDER}/shared_modules/file_helper/build/lib  
+    NO_DEFAULT_PATH)
+find_library(DBSYNC_LIB dbsync 
+    HINTS ${SRC_FOLDER}/shared_modules/dbsync/build/lib
+    NO_DEFAULT_PATH)
+find_library(SYSINFO_LIB sysinfo 
+    HINTS ${SRC_FOLDER}/data_provider/build/lib
+    NO_DEFAULT_PATH)
+find_library(YAML_LIB yaml 
+    HINTS ${SRC_FOLDER}/external/libyaml/src/.libs
+    NO_DEFAULT_PATH)
+find_library(PCRE2_LIB pcre2-8 
+    HINTS ${SRC_FOLDER}/external/libpcre2/.libs
+    NO_DEFAULT_PATH)
+
+# Set fallback values if libraries aren't found (for fresh builds)
+if(NOT FILESYSTEM_WRAPPER_LIB)
+    set(FILESYSTEM_WRAPPER_LIB FilesystemWrapper)
+    message(STATUS "FilesystemWrapper library not found, using target name")
+endif()
+if(NOT FILE_IO_LIB)
+    set(FILE_IO_LIB FileIO)
+    message(STATUS "FileIO library not found, using target name")
+endif()
+if(NOT DBSYNC_LIB)
+    set(DBSYNC_LIB dbsync)
+    message(STATUS "dbsync library not found, using target name")
+endif()
+if(NOT SYSINFO_LIB)
+    set(SYSINFO_LIB sysinfo)
+    message(STATUS "sysinfo library not found, using target name")
+endif()
+if(NOT YAML_LIB)
+    set(YAML_LIB yaml)
+    message(STATUS "yaml library not found, using target name")
+endif()
+if(NOT PCRE2_LIB)
+    set(PCRE2_LIB pcre2-8)
+    message(STATUS "pcre2-8 library not found, using target name")
+endif()
+
 add_library(
-    SCAImpl
+    SCAImpl STATIC
     src/sca_impl.cpp
     src/yaml_document.cpp
     src/yaml_node.cpp
@@ -52,18 +101,16 @@ target_compile_definitions(SCAImpl PRIVATE PCRE2_CODE_UNIT_WIDTH=8)
 
 target_link_libraries(
     SCAImpl
-    PUBLIC FilesystemWrapper # theres another wrapper in 4.x
-           FileIO # readLineByLine and getFileContent are in 4.x
-           dbsync # used extensively, available in 4.x, but no interface
-           sysinfo # available in 4.x, uses processes method
-           # nlohmann_json::nlohmann_json
-    PRIVATE yaml
-            # PCRE2::8BIT
-            hash_helper # uses Utils::HashData class available in 4.x hashHelper.h
-            string_helper # uses Utils::trim and Utils::asciiToHex (available in 4.x stringHelper.h)
-            time_helper # uses Utils::getCurrentISO8601 available in 4.x timeHelper.h
-            $<$<PLATFORM_ID:Windows>:registry_helper>) # uses Utils::Registry class (available) and Utils::KeyExists
-                                                       # (not available)
+    PRIVATE ${FILESYSTEM_WRAPPER_LIB}
+            ${FILE_IO_LIB}
+            ${DBSYNC_LIB}
+            ${SYSINFO_LIB}
+            wazuhext # contains hash_helper, string_helper, time_helper utilities
+            cjson
+            ${YAML_LIB}
+            ${PCRE2_LIB}
+            $<$<PLATFORM_ID:Windows>:registry_helper> # Windows registry support
+)
 
 if(BUILD_TESTS)
     enable_testing()
