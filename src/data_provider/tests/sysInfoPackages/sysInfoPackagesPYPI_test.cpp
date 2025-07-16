@@ -27,7 +27,7 @@ TEST_F(PYPITest, getPackagesTest)
     EXPECT_CALL(*mockFileSystem, list_directory(_))
     .WillRepeatedly(Return(fakeFiles));
 
-    EXPECT_CALL(*pypi, readLineByLine(_, _))
+    EXPECT_CALL(*mockFileIO, readLineByLine(_, _))
     .WillRepeatedly(Return());
 
     nlohmann::json capturedJson;
@@ -93,7 +93,7 @@ TEST_F(PYPITest, getPackages_OneValidPackageTestEggInfo)
     EXPECT_CALL(*mockFileSystem, is_regular_file(_)).WillRepeatedly(Return(true));
 
     std::vector<std::string> fakePackageLines = {"Name: TestPackage", "Version: 1.0.0"};
-    EXPECT_CALL(*pypi, readLineByLine(std::filesystem::path("/fake/dir/egg-info"), _)).WillOnce([&](const std::filesystem::path&, const std::function<bool(const std::string&)>& callback)
+    EXPECT_CALL(*mockFileIO, readLineByLine(std::filesystem::path("/fake/dir/egg-info"), _)).WillOnce([&](const std::filesystem::path&, const std::function<bool(const std::string&)>& callback)
     {
         for (const auto& line : fakePackageLines)
         {
@@ -125,7 +125,7 @@ TEST_F(PYPITest, getPackages_OneValidPackageTestNoRegularFileDistInfo)
     EXPECT_CALL(*mockFileSystem, is_regular_file(_)).WillRepeatedly(Return(false));
 
     std::vector<std::string> fakePackageLines = {"Name: TestPackage", "Version: 1.0.0"};
-    EXPECT_CALL(*pypi, readLineByLine(std::filesystem::path("/fake/dir/dist-info/METADATA"), _)).WillOnce([&](const std::filesystem::path&, const std::function<bool(const std::string&)>& callback)
+    EXPECT_CALL(*mockFileIO, readLineByLine(std::filesystem::path("/fake/dir/dist-info/METADATA"), _)).WillOnce([&](const std::filesystem::path&, const std::function<bool(const std::string&)>& callback)
     {
         for (const auto& line : fakePackageLines)
         {
@@ -157,7 +157,7 @@ TEST_F(PYPITest, getPackages_OneValidPackageTestDistInfo)
     EXPECT_CALL(*mockFileSystem, is_regular_file(_)).WillRepeatedly(Return(true));
 
     std::vector<std::string> fakePackageLines = {"Name: TestPackage", "Version: 1.0.0"};
-    EXPECT_CALL(*pypi, readLineByLine(std::filesystem::path("/fake/dir/dist-info"), _)).WillOnce([&](const std::filesystem::path&, const std::function<bool(const std::string&)>& callback)
+    EXPECT_CALL(*mockFileIO, readLineByLine(std::filesystem::path("/fake/dir/dist-info"), _)).WillOnce([&](const std::filesystem::path&, const std::function<bool(const std::string&)>& callback)
     {
         for (const auto& line : fakePackageLines)
         {
@@ -189,7 +189,7 @@ TEST_F(PYPITest, getPackages_OneValidPackageTestNoRegularFileEggInfo)
     EXPECT_CALL(*mockFileSystem, is_regular_file(_)).WillRepeatedly(Return(false));
 
     std::vector<std::string> fakePackageLines = {"Name: TestPackage", "Version: 1.0.0"};
-    EXPECT_CALL(*pypi, readLineByLine(std::filesystem::path("/fake/dir/egg-info/PKG-INFO"), _)).WillOnce([&](const std::filesystem::path&, const std::function<bool(const std::string&)>& callback)
+    EXPECT_CALL(*mockFileIO, readLineByLine(std::filesystem::path("/fake/dir/egg-info/PKG-INFO"), _)).WillOnce([&](const std::filesystem::path&, const std::function<bool(const std::string&)>& callback)
     {
         for (const auto& line : fakePackageLines)
         {
@@ -224,7 +224,7 @@ TEST_F(PYPITest, getPackages_MultipleValidPackagesTest)
     std::vector<std::string> fakePackageLines1 = {"Name: TestPackage1", "Version: 1.0.0"};
     std::vector<std::string> fakePackageLines2 = {"Name: TestPackage2", "Version: 2.0.0"};
 
-    EXPECT_CALL(*pypi, readLineByLine(std::filesystem::path("/fake/dir1/egg-info"), _)).WillOnce([&](const std::filesystem::path&, const std::function<bool(const std::string&)>& callback)
+    EXPECT_CALL(*mockFileIO, readLineByLine(std::filesystem::path("/fake/dir1/egg-info"), _)).WillOnce([&](const std::filesystem::path&, const std::function<bool(const std::string&)>& callback)
     {
         for (const auto& line : fakePackageLines1)
         {
@@ -232,7 +232,7 @@ TEST_F(PYPITest, getPackages_MultipleValidPackagesTest)
         }
     });
 
-    EXPECT_CALL(*pypi, readLineByLine(std::filesystem::path("/fake/dir2/dist-info"), _)).WillOnce([&](const std::filesystem::path&, const std::function<bool(const std::string&)>& callback)
+    EXPECT_CALL(*mockFileIO, readLineByLine(std::filesystem::path("/fake/dir2/dist-info"), _)).WillOnce([&](const std::filesystem::path&, const std::function<bool(const std::string&)>& callback)
     {
         for (const auto& line : fakePackageLines2)
         {
@@ -275,7 +275,7 @@ TEST_F(PYPITest, getPackages_InvalidPackageTest_NoLines)
 
     std::vector<std::string> fakePackageLines = {};
 
-    EXPECT_CALL(*pypi, readLineByLine(std::filesystem::path("/fake/dir/egg-info"), _)).WillOnce([&](const std::filesystem::path&, const std::function<bool(const std::string&)>& callback)
+    EXPECT_CALL(*mockFileIO, readLineByLine(std::filesystem::path("/fake/dir/egg-info"), _)).WillOnce([&](const std::filesystem::path&, const std::function<bool(const std::string&)>& callback)
     {
         for (const auto& line : fakePackageLines)
         {
@@ -307,7 +307,7 @@ TEST_F(PYPITest, getPackages_InvalidPackageTest_InvalidLines)
 
     std::vector<std::string> fakePackageLines = {"Invalid: TestPackage", "Invalid: 1.0.0"};
 
-    EXPECT_CALL(*pypi, readLineByLine(std::filesystem::path("/fake/dir/dist-info"), _)).WillOnce([&](const std::filesystem::path&, const std::function<bool(const std::string&)>& callback)
+    EXPECT_CALL(*mockFileIO, readLineByLine(std::filesystem::path("/fake/dir/dist-info"), _)).WillOnce([&](const std::filesystem::path&, const std::function<bool(const std::string&)>& callback)
     {
         for (const auto& line : fakePackageLines)
         {
@@ -339,7 +339,7 @@ TEST_F(PYPITest, getPackages_InvalidPackageTest_MissingName)
 
     std::vector<std::string> fakePackageLines = {"Version: 1.0.0"};
 
-    EXPECT_CALL(*pypi, readLineByLine(std::filesystem::path("/fake/dir/dist-info"), _)).WillOnce([&](const std::filesystem::path&, const std::function<bool(const std::string&)>& callback)
+    EXPECT_CALL(*mockFileIO, readLineByLine(std::filesystem::path("/fake/dir/dist-info"), _)).WillOnce([&](const std::filesystem::path&, const std::function<bool(const std::string&)>& callback)
     {
         for (const auto& line : fakePackageLines)
         {
@@ -371,7 +371,7 @@ TEST_F(PYPITest, getPackages_InvalidPackageTest_MissingVersion)
 
     std::vector<std::string> fakePackageLines = {"Name: TestPackage"};
 
-    EXPECT_CALL(*pypi, readLineByLine(std::filesystem::path("/fake/dir/dist-info"), _)).WillOnce([&](const std::filesystem::path&, const std::function<bool(const std::string&)>& callback)
+    EXPECT_CALL(*mockFileIO, readLineByLine(std::filesystem::path("/fake/dir/dist-info"), _)).WillOnce([&](const std::filesystem::path&, const std::function<bool(const std::string&)>& callback)
     {
         for (const auto& line : fakePackageLines)
         {
