@@ -163,7 +163,7 @@ table fim_file {
     hash_md5:string;
     hash_sha1:string;
     hash_sha256:string;
-    inode:string;
+    inode:long;
     mtime:long;
     size:long;
     type:string;

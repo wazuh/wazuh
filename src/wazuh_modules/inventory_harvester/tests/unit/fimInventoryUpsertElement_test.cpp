@@ -125,7 +125,7 @@ TEST_F(FimInventoryUpsertElement, valid_File)
     EXPECT_CALL(*context, userName()).WillRepeatedly(testing::Return("sysadmin"));
     EXPECT_CALL(*context, size()).WillRepeatedly(testing::Return(512));
     EXPECT_CALL(*context, mtimeISO8601()).WillRepeatedly(testing::Return("2025-04-09T12:00:00Z"));
-    EXPECT_CALL(*context, inode()).WillRepeatedly(testing::Return("112233"));
+    EXPECT_CALL(*context, inode()).WillRepeatedly(testing::Return(112233));
 
     EXPECT_NO_THROW(upsertElement->handleRequest(context));
 

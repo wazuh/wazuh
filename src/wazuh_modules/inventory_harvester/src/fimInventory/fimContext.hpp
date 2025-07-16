@@ -450,13 +450,13 @@ public:
         return 0;
     }
 
-    std::string_view inode()
+    uint64_t inode()
     {
         if (m_type == VariantType::Delta)
         {
             if (m_delta->data() && m_delta->data()->attributes())
             {
-                return m_delta->data()->attributes()->inode()->string_view();
+                return m_delta->data()->attributes()->inode();
             }
         }
         else if (m_type == VariantType::SyncMsg)
@@ -465,15 +465,15 @@ public:
             {
                 if (m_syncMsg->data_as_state()->attributes_as_fim_file())
                 {
-                    return m_syncMsg->data_as_state()->attributes_as_fim_file()->inode()->string_view();
+                    return m_syncMsg->data_as_state()->attributes_as_fim_file()->inode();
                 }
             }
         }
         else
         {
-            return "";
+            return 0;
         }
-        return "";
+        return 0;
     }
 
     std::string_view valueType()
@@ -795,6 +795,7 @@ private:
     std::string m_valueNameSanitized;
     std::string m_mtimeISO8601;
     std::string m_keySanitized;
+    std::string m_inodeStr;
 
     /**
      * @brief Scan context.
