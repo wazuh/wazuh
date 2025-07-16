@@ -1,4 +1,4 @@
-#include "sca.hpp"
+#include <sca.hpp>
 #include <iostream>
 
 #ifdef __cplusplus
