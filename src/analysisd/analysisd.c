@@ -1497,13 +1497,13 @@ void * w_writer_log_thread(__attribute__((unused)) void * args ){
             w_inc_alerts_written(lf->agent_id);
 
             if (Config.custom_alert_output) {
-                __crt_ftell = ftell(_aflog);
+                set_global_alert_second_id(ftell(_aflog));
                 OS_CustomLog(lf, Config.custom_alert_output_format);
             } else if (Config.alerts_log) {
-                __crt_ftell = ftell(_aflog);
+                set_global_alert_second_id(ftell(_aflog));
                 OS_Log(lf, _aflog);
             } else if (Config.jsonout_output) {
-                __crt_ftell = ftell(_jflog);
+                set_global_alert_second_id(ftell(_jflog));
             }
             /* Log to json file */
             if (Config.jsonout_output) {
@@ -2303,13 +2303,13 @@ void * w_writer_log_statistical_thread(__attribute__((unused)) void * args ){
             w_inc_stats_written();
 
             if (Config.custom_alert_output) {
-                __crt_ftell = ftell(_aflog);
+                set_global_alert_second_id(ftell(_aflog));
                 OS_CustomLog(lf, Config.custom_alert_output_format);
             } else if (Config.alerts_log) {
-                __crt_ftell = ftell(_aflog);
+                set_global_alert_second_id(ftell(_aflog));
                 OS_Log(lf, _aflog);
             } else if (Config.jsonout_output) {
-                __crt_ftell = ftell(_jflog);
+                set_global_alert_second_id(ftell(_jflog));
             }
 
             /* Log to json file */

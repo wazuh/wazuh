@@ -21,7 +21,6 @@
 #include "GeoIP.h"
 #endif
 
-extern long int __crt_ftell; /* Global ftell pointer */
 extern _Config Config;       /* Global Config structure */
 
 #ifdef LIBGEOIP_ENABLED
@@ -42,5 +41,23 @@ void _getRulesListJSON(RuleNode *list, cJSON *array);
 cJSON *getAnalysisInternalOptions(void);
 cJSON *getManagerLabelsConfig(void);
 void getActiveResponseInJSON(const Eventinfo *lf, const active_response *ar, char *extra_args, char *temp_msg, bool escape);
+
+/**
+ * @brief Get the value for the second part of the alert id
+ *
+ * @return long - The next value store for alert id
+ * @note This function is thread-safe.
+ * @warning this function not crate the id, previusly the id must be created with
+ * the function set_global_alert_second_id
+ */
+long get_global_alert_second_id(void);
+
+/**
+ * @brief Set the value for the second part of the alert id
+ *
+ * @param v - The value to set
+ * @note This function is thread-safe.
+ */
+void set_global_alert_second_id(long v);
 
 #endif /* CONFIG_H */

@@ -553,7 +553,7 @@ void OS_ReadMSG(char *ut_str)
         exit(1);
     }
 
-    __crt_ftell = 1;
+    set_global_alert_second_id(0);
 
     /* Get current time before starting */
     c_time = time(NULL);
@@ -715,7 +715,7 @@ void OS_ReadMSG(char *ut_str)
                     if (alert_only) {
                         OS_Log(lf, stdout);
                         fflush(stdout);
-                        __crt_ftell++;
+                        set_global_alert_second_id(get_global_alert_second_id() + 1);
                     } else {
                         print_out("**Alert to be generated.\n\n");
                     }
