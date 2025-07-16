@@ -31,38 +31,6 @@ TransformOp KVDBGet(std::shared_ptr<IKVDBManager> kvdbManager,
                     bool isRecursive = false);
 
 /**
- * @brief Builder for KVDB set operation
- *
- * This builder is not intended to be used directly, i.e. it is not registered. It is exposed for testing purposes.
- *
- * @param targetField target field of the helper
- *
- * @param opArgs vector of parameters as present in the raw definition
- * @return TransformOp
- */
-TransformOp KVDBSet(std::shared_ptr<IKVDBManager> kvdbManager,
-                    const std::string& kvdbScopeName,
-                    const Reference& targetField,
-                    const std::vector<OpArg>& opArgs,
-                    const std::shared_ptr<const IBuildCtx>& buildCtx);
-
-/**
- * @brief Builder for KVDB delete operation
- *
- * This builder is not intended to be used directly, i.e. it is not registered. It is exposed for testing purposes.
- *
- * @param targetField target field of the helper
- * @param opArgs vector of parameters as present in the raw definition
- * @param buildCtx Build context
- * @return TransformOp
- */
-TransformOp KVDBDelete(std::shared_ptr<IKVDBManager> kvdbManager,
-                       const std::string& kvdbScopeName,
-                       const Reference& targetField,
-                       const std::vector<OpArg>& opArgs,
-                       const std::shared_ptr<const IBuildCtx>& buildCtx);
-
-/**
  * @brief Builds KVDB extract function helper
  *
  * @param kvdbScope KVDB Scope
@@ -102,22 +70,6 @@ FilterBuilder getOpBuilderKVDBMatch(std::shared_ptr<IKVDBManager> kvdbManager, c
  * @return Builder
  */
 FilterBuilder getOpBuilderKVDBNotMatch(std::shared_ptr<IKVDBManager> kvdbManager, const std::string& kvdbScopeName);
-
-/**
- * @brief Get the KVDB Set function helper builder
- *
- * @param kvdbScope KVDB Scope
- * @return Builder
- */
-TransformBuilder getOpBuilderKVDBSet(std::shared_ptr<IKVDBManager> kvdbManager, const std::string& kvdbScopeName);
-
-/**
- * @brief Delete a KVDB function helper builder
- *
- * @param kvdbScope KVDB Scope
- * @return Builder
- */
-TransformBuilder getOpBuilderKVDBDelete(std::shared_ptr<IKVDBManager> kvdbManager, const std::string& kvdbScopeName);
 
 /**
  * @brief Get the KVDB Get Array function helper builder
