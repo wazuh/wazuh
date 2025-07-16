@@ -1828,7 +1828,7 @@ build_syscollector: build_shared_modules build_sysinfo
 endif
 
 #### SCA ##
-build_sca: build_shared_modules
+build_sca: build_shared_modules build_sysinfo
 	cd ${SCA} && mkdir -p build && cd build && cmake -DTARGET=${TARGET} ${CMAKE_OPTS} ${SOLARIS_CMAKE_OPTS} ${SCA_TEST} ${SCA_RELEASE_TYPE} .. && ${MAKE}
 
 #### Wazuh cmake ###
