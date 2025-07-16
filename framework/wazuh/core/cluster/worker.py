@@ -816,15 +816,14 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         if has_to_reload_ruleset:
             try:
                 response = analysis.send_reload_ruleset_msg(origin={'module': 'cluster'})
-                if response['error'] == 0:
+                if response.is_ok():
                     result_logs['debug2']["analysisd"].append("Successful ruleset reload")
-                    # If there is any warning
-                    if len(response['data']) > 0:
-                        for elem in response['data']:
+                    if response.has_warnings():
+                        for elem in response.warnings:
                             result_logs['debug2']["analysisd"].append(elem)
                 else:
                     errors['analysisd'] += 1
-                    result_logs["error"]["analysisd"].append(f"Error reloading ruleset {response['data']}")
+                    result_logs["error"]["analysisd"].append(f"Error reloading ruleset {response.errors}")
             except Exception as e:
                 errors['analysisd'] += 1
                 result_logs["error"]["analysisd"].append(f"Error reloading ruleset {e}")

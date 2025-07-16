@@ -1,5 +1,6 @@
 import os
 from json import dumps, loads
+from typing import List
 
 from wazuh.core import common
 from wazuh.core.wazuh_socket import create_wazuh_socket_message, WazuhSocket
@@ -41,7 +42,69 @@ def is_ruleset_file(filename: str) -> bool:
         for path in ruleset_paths
     )
 
-def send_reload_ruleset_msg(origin: dict[str, str]) -> dict:
+class RulesetReloadResponse:
+    """
+    Encapsulates the response from a ruleset reload operation.
+
+    Parses the response dictionary returned by `send_reload_ruleset_msg` and provides
+    access to success status, warnings, and errors.
+
+    Attributes
+    ----------
+    success : bool
+        True if the reload was successful, False otherwise.
+    message : str
+        Message returned in the response.
+    warnings : list of str
+        List of warning messages if present.
+    errors : list of str
+        List of error messages if present.
+    """
+
+    def __init__(self, response: dict):
+        """
+        Initialize a RulesetReloadResponse instance.
+
+        Parameters
+        ----------
+        response : dict
+            Response dictionary from `send_reload_ruleset_msg`.
+        """
+        self.success = response['error'] == 0
+        self.message = response['message']
+
+        self.warnings: List[str] = []
+        self.errors: List[str] = []
+
+        data = response['data']
+        if self.success:
+            self.warnings = data if len(data) > 0 else []
+        else:
+            self.errors = data if len(data) > 0 else []
+
+    def has_warnings(self) -> bool:
+        """
+        Check if the response contains any warnings.
+
+        Returns
+        -------
+        bool
+            True if there are warnings, False otherwise.
+        """
+        return len(self.warnings) > 0
+
+    def is_ok(self) -> bool:
+        """
+        Check if the reload operation was successful.
+
+        Returns
+        -------
+        bool
+            True if successful, False otherwise.
+        """
+        return self.success
+
+def send_reload_ruleset_msg(origin: dict[str, str]) -> RulesetReloadResponse:
     """Send the reload ruleset command to Analysisd socket.
 
     Parameters
@@ -62,4 +125,4 @@ def send_reload_ruleset_msg(origin: dict[str, str]) -> dict:
     data = loads(socket.receive().decode())
     socket.close()
 
-    return data
+    return RulesetReloadResponse(data)
