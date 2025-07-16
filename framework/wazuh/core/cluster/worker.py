@@ -15,7 +15,7 @@ from time import perf_counter
 from typing import Tuple, Dict, Callable, List
 from typing import Union
 
-from wazuh.core import cluster as metadata, common, exception, utils
+from wazuh.core import cluster as metadata, common, exception, utils, analysis
 from wazuh.core.cluster import client, cluster, common as c_common
 from wazuh.core.cluster.utils import log_subprocess_execution
 from wazuh.core.cluster.dapi import dapi
@@ -753,7 +753,8 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                           ownership=(common.wazuh_uid(), common.wazuh_gid())
                           )
 
-        errors = {'shared': 0, 'missing': 0, 'extra': 0}
+        has_to_reload_ruleset = False
+        errors = {'shared': 0, 'missing': 0, 'extra': 0, 'analysisd': 0}
         result_logs = {'debug2': defaultdict(list), 'error': defaultdict(list), 'generic_errors': []}
 
         for filetype, files in ko_files.items():
@@ -762,6 +763,10 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                 for filename, data in files.items():
                     try:
                         result_logs['debug2'][filename].append(f"Processing file {filename}")
+                        if analysis.is_ruleset_file(filename):
+                            result_logs['debug2'][filename].append(f"This file update will trigger a hot-reload in analysisd")
+                            has_to_reload_ruleset = True
+
                         overwrite_or_create_files(filename, data)
                     except Exception as e:
                         errors[filetype] += 1
@@ -773,6 +778,10 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                 for file_to_remove in files:
                     try:
                         result_logs['debug2'][file_to_remove].append(f"Remove file: '{file_to_remove}'")
+                        if analysis.is_ruleset_file(file_to_remove):
+                            result_logs['debug2'][file_to_remove].append(f"This file update will trigger a hot-reload in analysisd")
+                            has_to_reload_ruleset = True
+
                         file_path = os.path.join(common.WAZUH_PATH, file_to_remove)
                         try:
                             os.remove(file_path)
@@ -802,6 +811,24 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                 errors['extra'] += 1
                 result_logs["debug2"][directory].append(f"Error removing directory '{directory}': {e}")
                 continue
+
+        # If analysisd must be reloaded
+        if has_to_reload_ruleset:
+            try:
+                response = analysis.send_reload_ruleset_msg(origin={'module': 'cluster'})
+                if response['error'] == 0:
+                    result_logs['debug2']["analysisd"].append("Successful ruleset reload")
+                    # If there is any warning
+                    if len(response['data']) > 0:
+                        for elem in response['data']:
+                            result_logs['debug2']["analysisd"].append(elem)
+                else:
+                    errors['analysisd'] += 1
+                    result_logs["error"]["analysisd"].append(f"Error reloading ruleset {response['data']}")
+            except Exception as e:
+                errors['analysisd'] += 1
+                result_logs["error"]["analysisd"].append(f"Error reloading ruleset {e}")
+
 
         if sum(errors.values()) > 0:
             result_logs['generic_errors'].append(f"Found errors: {errors['shared']} overwriting, "
