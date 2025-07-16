@@ -10,7 +10,6 @@ type: integration
 brief: These tests will check if the 'remote enrollment' option of the 'wazuh-authd' daemon
        settings is working properly. The 'wazuh-authd' daemon can automatically add
        a Wazuh agent to a Wazuh manager and provide the key to the agent.
-       It is used along with the 'agent-auth' application.
 
 components:
     - authd
