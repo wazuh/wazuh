@@ -505,7 +505,7 @@ def upload_rule_file(filename: str, content: str, relative_dirname: str = None,
         socket_response = send_reload_ruleset_msg(origin={'module': 'api'})
         if socket_response.is_ok():
             if socket_response.has_warnings():
-                result.all_msg(','.join(socket_response.warnings))
+                result.all_msg = ','.join(socket_response.warnings)
         else:
             raise WazuhError(1212, extra_message=','.join(socket_response.errors))
 
@@ -561,7 +561,7 @@ def delete_rule_file(filename: Union[str, list], relative_dirname: str = None) -
         socket_response = send_reload_ruleset_msg(origin={'module': 'api'})
         if socket_response.is_ok():
             if socket_response.has_warnings():
-                result.all_msg(','.join(socket_response.warnings))
+                result.all_msg = ','.join(socket_response.warnings)
         else:
             raise WazuhError(1212, extra_message=','.join(socket_response.errors))
     except WazuhError as exc:

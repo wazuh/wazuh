@@ -379,7 +379,7 @@ def upload_decoder_file(filename: str, content: str, relative_dirname: str = Non
         socket_response = send_reload_ruleset_msg(origin={'module': 'api'})
         if socket_response.is_ok():
             if socket_response.has_warnings():
-                result.all_msg(','.join(socket_response.warnings))
+                result.all_msg = ','.join(socket_response.warnings)
         else:
             raise WazuhError(1508, extra_message=','.join(socket_response.errors))
 
@@ -436,7 +436,7 @@ def delete_decoder_file(filename: Union[str, list], relative_dirname: str = None
         socket_response = send_reload_ruleset_msg(origin={'module': 'api'})
         if socket_response.is_ok():
             if socket_response.has_warnings():
-                result.all_msg(','.join(socket_response.warnings))
+                result.all_msg = ','.join(socket_response.warnings)
         else:
             raise WazuhError(1508, extra_message=','.join(socket_response.errors))
 
