@@ -350,11 +350,12 @@ async def put_file(body: bytes, filename: str = None, overwrite: bool = False,
 
     dapi = DistributedAPI(f=rule_framework.upload_rule_file,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='local_master',
+                          request_type='distributed_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
-                          rbac_permissions=request.context['token_info']['rbac_policies']
+                          rbac_permissions=request.context['token_info']['rbac_policies'],
+                          broadcasting=True
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
@@ -387,11 +388,12 @@ async def delete_file(filename: str = None,
 
     dapi = DistributedAPI(f=rule_framework.delete_rule_file,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='local_master',
+                          request_type='distributed_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
-                          rbac_permissions=request.context['token_info']['rbac_policies']
+                          rbac_permissions=request.context['token_info']['rbac_policies'],
+                          broadcasting=True
                           )
     data = raise_if_exc(await dapi.distribute_function())
 

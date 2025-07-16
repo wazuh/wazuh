@@ -155,11 +155,12 @@ async def put_file(body: bytes, overwrite: bool = False, pretty: bool = False, w
 
     dapi = DistributedAPI(f=cdb_list.upload_list_file,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='local_master',
+                          request_type='distributed_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
-                          rbac_permissions=request.context['token_info']['rbac_policies']
+                          rbac_permissions=request.context['token_info']['rbac_policies'],
+                          broadcasting=True
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
@@ -188,11 +189,12 @@ async def delete_file(pretty: bool = False, wait_for_complete: bool = False,
 
     dapi = DistributedAPI(f=cdb_list.delete_list_file,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='local_master',
+                          request_type='distributed_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
-                          rbac_permissions=request.context['token_info']['rbac_policies']
+                          rbac_permissions=request.context['token_info']['rbac_policies'],
+                          broadcasting=True
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
