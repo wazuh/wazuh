@@ -3,6 +3,7 @@
 #include "yaml_node.hpp"
 
 #include <fstream>
+#include <sstream>
 
 #include <iostream>
 
