@@ -1,9 +1,11 @@
-include_directories(${SRC_FOLDER}/../external/googletest/googletest/include/)
-include_directories(${SRC_FOLDER}/../external/googletest/googlemock/include/)
-link_directories(${SRC_FOLDER}/../external/googletest/lib/)
+include_directories(${SRC_FOLDER}/external/googletest/googletest/include/)
+include_directories(${SRC_FOLDER}/external/googletest/googlemock/include/)
+link_directories(${SRC_FOLDER}/external/googletest/lib/)
 
 add_executable(filesystem_unit_test filesystem_utils_test.cpp)
 target_include_directories(filesystem_unit_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../src)
+target_include_directories(filesystem_unit_test PRIVATE ${SRC_FOLDER}/external/googletest/googletest/include)
+target_include_directories(filesystem_unit_test PRIVATE ${SRC_FOLDER}/external/googletest/googlemock/include)
 target_link_libraries(filesystem_unit_test PRIVATE FilesystemWrapper
     debug gtestd
     debug gmockd
