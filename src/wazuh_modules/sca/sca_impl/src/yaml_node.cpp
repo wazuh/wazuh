@@ -270,101 +270,113 @@ int YamlNode::GetId() const
 
 YamlNode YamlNode::CreateEmptySequence(const std::string& key)
 {
-    // if (!IsMap())
-    // {
-    //     throw std::runtime_error("Not a map node");
-    // }
+    if (!IsMap())
+    {
+        throw std::runtime_error("Not a map node");
+    }
 
-    // yaml_char_t* const key_str = reinterpret_cast<yaml_char_t*>(strdup(key.c_str()));
-    // const yaml_char_t* tag = reinterpret_cast<const yaml_char_t*>(YAML_STR_TAG);
-    // const int key_id =
-    //     yaml_document_add_scalar(m_document, tag, key_str, static_cast<int>(key.length()), YAML_PLAIN_SCALAR_STYLE);
+    yaml_char_t* const key_str = reinterpret_cast<yaml_char_t*>(strdup(key.c_str()));
+    yaml_char_t* const tag = reinterpret_cast<yaml_char_t*>(strdup(YAML_STR_TAG));
+    const int key_id =
+        yaml_document_add_scalar(m_document, tag, key_str, static_cast<int>(key.length()), YAML_PLAIN_SCALAR_STYLE);
 
-    // // Free the key string - yaml_document_add_scalar will make its own copy
-    // free(key_str);
+    // Free the key string - yaml_document_add_scalar will make its own copy
+    free(key_str);
 
-    // const int seq_id = yaml_document_add_sequence(m_document, tag, YAML_BLOCK_SEQUENCE_STYLE);
+    const int seq_id = yaml_document_add_sequence(m_document, tag, YAML_BLOCK_SEQUENCE_STYLE);
 
-    // const int mapping_id = GetId();
+    free(tag);
+    const int mapping_id = GetId();
 
-    // yaml_document_append_mapping_pair(m_document, mapping_id, key_id, seq_id);
+    yaml_document_append_mapping_pair(m_document, mapping_id, key_id, seq_id);
 
-    // // important to clear our cache here
-    // map_cache.clear();
+    // important to clear our cache here
+    map_cache.clear();
 
-    // yaml_node_t* const sequence_node = yaml_document_get_node(m_document, seq_id);
-    // return YamlNode(m_document, sequence_node);
-    return {};
+    yaml_node_t* const sequence_node = yaml_document_get_node(m_document, seq_id);
+    return YamlNode(m_document, sequence_node);
 }
 
 void YamlNode::AppendToSequence(const std::string& value)
 {
-    // if (!IsSequence())
-    // {
-    //     throw std::runtime_error("Not a sequence node");
-    // }
+    if (!IsSequence())
+    {
+        throw std::runtime_error("Not a sequence node");
+    }
 
-    // yaml_char_t* const val_str = reinterpret_cast<yaml_char_t*>(strdup(value.c_str()));
-    // const int scalar_id = yaml_document_add_scalar(m_document,
-    //                                                reinterpret_cast<const yaml_char_t*>(YAML_STR_TAG),
-    //                                                val_str,
-    //                                                static_cast<int>(value.length()),
-    //                                                YAML_PLAIN_SCALAR_STYLE);
+    yaml_char_t* const val_str = reinterpret_cast<yaml_char_t*>(strdup(value.c_str()));
+    yaml_char_t* const tag = reinterpret_cast<yaml_char_t*>(strdup(YAML_STR_TAG));
+    const int scalar_id = yaml_document_add_scalar(m_document,
+                                                   tag,
+                                                   val_str,
+                                                   static_cast<int>(value.length()),
+                                                   YAML_PLAIN_SCALAR_STYLE);
 
-    // free(val_str);
+    free(val_str);
+    free(tag);
 
-    // yaml_document_append_sequence_item(m_document, GetId(), scalar_id);
-    // sequence_cache.clear();
+    yaml_document_append_sequence_item(m_document, GetId(), scalar_id);
+    sequence_cache.clear();
 }
 
 YamlNode YamlNode::CloneInto(yaml_document_t* dest_doc) const
 {
-    // switch (GetNodeType())
-    // {
-    //     case Type::Scalar:
-    //     {
-    //         const std::string value = AsString();
-    //         yaml_char_t* const val_str = reinterpret_cast<yaml_char_t*>(strdup(value.c_str()));
-    //         const int scalar_id = yaml_document_add_scalar(dest_doc,
-    //                                                        reinterpret_cast<const yaml_char_t*>(YAML_STR_TAG),
-    //                                                        val_str,
-    //                                                        static_cast<int>(value.length()),
-    //                                                        YAML_PLAIN_SCALAR_STYLE);
-    //         free(val_str);
-    //         return YamlNode(dest_doc, yaml_document_get_node(dest_doc, scalar_id));
-    //     }
-    //     case Type::Sequence:
-    //     {
-    //         const int seq_id = yaml_document_add_sequence(
-    //             dest_doc, reinterpret_cast<const yaml_char_t*>(YAML_SEQ_TAG), YAML_BLOCK_SEQUENCE_STYLE);
-    //         for (const auto& item : AsSequence())
-    //         {
-    //             const YamlNode cloned = item.CloneInto(dest_doc);
-    //             yaml_document_append_sequence_item(dest_doc, seq_id, cloned.GetId());
-    //         }
-    //         return YamlNode(dest_doc, yaml_document_get_node(dest_doc, seq_id));
-    //     }
-    //     case Type::Mapping:
-    //     {
-    //         const int map_id = yaml_document_add_mapping(
-    //             dest_doc, reinterpret_cast<const yaml_char_t*>(YAML_MAP_TAG), YAML_BLOCK_MAPPING_STYLE);
-    //         for (const auto& [key, val] : AsMap())
-    //         {
-    //             yaml_char_t* const key_str = reinterpret_cast<yaml_char_t*>(strdup(key.c_str()));
-    //             const int key_id = yaml_document_add_scalar(dest_doc,
-    //                                                         reinterpret_cast<const yaml_char_t*>(YAML_STR_TAG),
-    //                                                         key_str,
-    //                                                         static_cast<int>(key.length()),
-    //                                                         YAML_PLAIN_SCALAR_STYLE);
-    //             free(key_str);
-    //             const YamlNode cloned_val = val.CloneInto(dest_doc);
-    //             yaml_document_append_mapping_pair(dest_doc, map_id, key_id, cloned_val.GetId());
-    //         }
-    //         return YamlNode(dest_doc, yaml_document_get_node(dest_doc, map_id));
-    //     }
-    //     case Type::Undefined: // fallthrough
-    //     default: throw std::runtime_error("Unsupported or undefined node type");
-    // }
+    switch (GetNodeType())
+    {
+        case Type::Scalar:
+        {
+            const std::string value = AsString();
+            yaml_char_t* const val_str = reinterpret_cast<yaml_char_t*>(strdup(value.c_str()));
+            yaml_char_t* const tag = reinterpret_cast<yaml_char_t*>(strdup(YAML_STR_TAG));
+            const int scalar_id = yaml_document_add_scalar(dest_doc,
+                                                           tag,
+                                                           val_str,
+                                                           static_cast<int>(value.length()),
+                                                           YAML_PLAIN_SCALAR_STYLE);
+            free(val_str);
+            free(tag);
+
+            return YamlNode(dest_doc, yaml_document_get_node(dest_doc, scalar_id));
+        }
+        case Type::Sequence:
+        {
+            yaml_char_t* const tag = reinterpret_cast<yaml_char_t*>(strdup(YAML_SEQ_TAG));
+            const int seq_id = yaml_document_add_sequence(dest_doc, tag, YAML_BLOCK_SEQUENCE_STYLE);
+            free(tag);
+
+            for (const auto& item : AsSequence())
+            {
+                const YamlNode cloned = item.CloneInto(dest_doc);
+                yaml_document_append_sequence_item(dest_doc, seq_id, cloned.GetId());
+            }
+            return YamlNode(dest_doc, yaml_document_get_node(dest_doc, seq_id));
+        }
+        case Type::Mapping:
+        {
+            yaml_char_t* const tag = reinterpret_cast<yaml_char_t*>(strdup(YAML_MAP_TAG));
+            const int map_id = yaml_document_add_mapping(dest_doc, tag, YAML_BLOCK_MAPPING_STYLE);
+            free(tag);
+
+            for (const auto& [key, val] : AsMap())
+            {
+                yaml_char_t* const key_str = reinterpret_cast<yaml_char_t*>(strdup(key.c_str()));
+                yaml_char_t* const key_tag = reinterpret_cast<yaml_char_t*>(strdup(YAML_STR_TAG));
+
+                const int key_id = yaml_document_add_scalar(dest_doc,
+                                                            key_tag,
+                                                            key_str,
+                                                            static_cast<int>(key.length()),
+                                                            YAML_PLAIN_SCALAR_STYLE);
+                free(key_str);
+                free(key_tag);
+                const YamlNode cloned_val = val.CloneInto(dest_doc);
+                yaml_document_append_mapping_pair(dest_doc, map_id, key_id, cloned_val.GetId());
+            }
+            return YamlNode(dest_doc, yaml_document_get_node(dest_doc, map_id));
+        }
+        case Type::Undefined: // fallthrough
+        default: throw std::runtime_error("Unsupported or undefined node type");
+    }
 }
 
 YamlDocument YamlNode::Clone() const
