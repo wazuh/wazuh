@@ -7,6 +7,7 @@ import sys
 import glob
 from unittest.mock import patch, mock_open, MagicMock
 from wazuh.core.common import USER_RULES_PATH
+from wazuh.core.analysis import RulesetReloadResponse
 import pytest
 
 with patch('wazuh.core.common.wazuh_uid'):
@@ -351,7 +352,7 @@ def test_upload_file(mock_logtest, mock_safe_move, mock_remove, mock_xml, mock_f
         ret_validation = rule.validate_upload_delete_dir(relative_dirname=relative_dirname)
         with patch('wazuh.rule.validate_upload_delete_dir', return_value=ret_validation):
             with patch('wazuh.rule.exists', return_value=overwrite):
-                with patch('wazuh.rule.send_reload_ruleset_msg', return_value={'error': 0}) as mock_reload:
+                with patch('wazuh.rule.send_reload_ruleset_msg', return_value=RulesetReloadResponse({'error': 0})) as mock_reload:
                     result = rule.upload_rule_file(filename=file, relative_dirname=relative_dirname,
                                                     content=content, overwrite=overwrite)
 
@@ -437,7 +438,7 @@ def test_delete_rule_file(file, relative_dirname):
     with patch('wazuh.core.configuration.get_ossec_conf', return_value=get_rule_file_ossec_conf):
         with patch('wazuh.rule.exists', return_value=True):
             with patch('wazuh.rule.remove'):
-                with patch('wazuh.rule.send_reload_ruleset_msg', return_value={'error': 0}) as mock_reload:
+                with patch('wazuh.rule.send_reload_ruleset_msg', return_value=RulesetReloadResponse({'error': 0})) as mock_reload:
                     # Assert returned type is AffectedItemsWazuhResult when everything is correct
                     assert(isinstance(rule.delete_rule_file(filename=file, relative_dirname=relative_dirname),
                                     AffectedItemsWazuhResult))

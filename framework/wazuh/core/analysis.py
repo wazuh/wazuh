@@ -71,12 +71,12 @@ class RulesetReloadResponse:
             Response dictionary from `send_reload_ruleset_msg`.
         """
         self.success = response['error'] == 0
-        self.message = response['message']
+        self.message = response.get('message', '')
 
         self.warnings: List[str] = []
         self.errors: List[str] = []
 
-        data = response['data']
+        data = response.get('data', '')
         if self.success:
             self.warnings = data if len(data) > 0 else []
         else:

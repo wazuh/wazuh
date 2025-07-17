@@ -181,7 +181,8 @@ async def test_put_file(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_reque
                                               wait_for_complete=False,
                                               logger=ANY,
                                               rbac_permissions=mock_request.context['token_info']['rbac_policies'],
-                                              broadcasting=True
+                                              broadcasting=True,
+                                              nodes=None
                                               )
             mock_exc.assert_called_once_with(mock_dfunc.return_value)
             mock_remove.assert_called_once_with(f_kwargs)
@@ -207,7 +208,8 @@ async def test_delete_file(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_re
                                       wait_for_complete=False,
                                       logger=ANY,
                                       rbac_permissions=mock_request.context['token_info']['rbac_policies'],
-                                      broadcasting=True
+                                      broadcasting=True,
+                                      nodes=None
                                       )
     mock_exc.assert_called_once_with(mock_dfunc.return_value)
     mock_remove.assert_called_once_with(f_kwargs)

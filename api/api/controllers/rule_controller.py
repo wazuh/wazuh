@@ -12,6 +12,7 @@ from api.controllers.util import json_response, XML_CONTENT_TYPE
 from api.models.base_model_ import Body
 from api.util import remove_nones_to_dict, parse_api_param, raise_if_exc
 from wazuh import rule as rule_framework
+from wazuh.core.cluster.control import get_system_nodes
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
 from wazuh.core.results import AffectedItemsWazuhResult
 
@@ -348,6 +349,10 @@ async def put_file(body: bytes, filename: str = None, overwrite: bool = False,
                 'relative_dirname': relative_dirname,
                 'content': parsed_body}
 
+    nodes = await get_system_nodes()
+    if isinstance(nodes, Exception):
+        nodes = None
+
     dapi = DistributedAPI(f=rule_framework.upload_rule_file,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
@@ -355,7 +360,8 @@ async def put_file(body: bytes, filename: str = None, overwrite: bool = False,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
                           rbac_permissions=request.context['token_info']['rbac_policies'],
-                          broadcasting=True
+                          broadcasting=True,
+                          nodes=nodes
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
@@ -386,6 +392,10 @@ async def delete_file(filename: str = None,
     """
     f_kwargs = {'filename': filename, 'relative_dirname': relative_dirname}
 
+    nodes = await get_system_nodes()
+    if isinstance(nodes, Exception):
+        nodes = None
+
     dapi = DistributedAPI(f=rule_framework.delete_rule_file,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
@@ -393,7 +403,8 @@ async def delete_file(filename: str = None,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
                           rbac_permissions=request.context['token_info']['rbac_policies'],
-                          broadcasting=True
+                          broadcasting=True,
+                          nodes=nodes
                           )
     data = raise_if_exc(await dapi.distribute_function())
 

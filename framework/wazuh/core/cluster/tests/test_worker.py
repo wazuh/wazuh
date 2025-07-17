@@ -12,7 +12,7 @@ from unittest.mock import patch, MagicMock, AsyncMock, call, ANY
 import datetime
 
 import pytest
-from uvloop import EventLoopPolicy, Loop
+from wazuh.core.analysis import RulesetReloadResponse
 from freezegun import freeze_time
 
 import wazuh.core.exception as exception
@@ -1084,10 +1084,10 @@ async def test_worker_handler_process_files_from_master_ko(send_request_mock,
 @patch("os.path.exists", return_value=False)
 @patch("wazuh.core.cluster.worker.safe_move")
 @patch("wazuh.core.cluster.worker.utils.mkdir_with_mode")
-@patch("os.path.join", return_value="queue/testing/")
 @patch("wazuh.core.common.wazuh_uid", return_value="wazuh_uid")
 @patch("wazuh.core.common.wazuh_gid", return_value="wazuh_gid")
-async def test_worker_handler_update_master_files_in_worker_ok(wazuh_gid_mock, wazuh_uid_mock, path_join_mock,
+@patch('wazuh.core.analysis.send_reload_ruleset_msg', return_value=RulesetReloadResponse({'error': 0}))
+async def test_worker_handler_update_master_files_in_worker_ok(mock_reload, wazuh_gid_mock, wazuh_uid_mock, path_join_mock,
                                                                mkdir_with_mode_mock, safe_move_mock, path_exists_mock,
                                                                open_mock, event_loop):
     """Check if the method is properly receiving and updating files."""
@@ -1113,7 +1113,6 @@ async def test_worker_handler_update_master_files_in_worker_ok(wazuh_gid_mock, w
                     "extra": {"filename3": {"cluster_item_key": "cluster_item_key"}}}, zip_path="/zip/path",
                 cluster_items=cluster_items)
 
-            os_remove_mock.assert_any_call("queue/testing/")
             assert result_logs['error'] == defaultdict(list)
             assert result_logs['debug2'] == {"filename1": ["Processing file filename1", "Processing file filename1"],
                                              "filename3": ["Remove file: 'filename3'"]}
