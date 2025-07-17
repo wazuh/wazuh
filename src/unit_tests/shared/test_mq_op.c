@@ -422,6 +422,98 @@ void test_SendMSGAction_secure_msg_keepalive(void ** state){
     assert_int_equal(ret, 0);
 }
 
+void test_SendBinaryMSGAction_secure_mq_not_supported(void **state) {
+    (void)state;
+
+    expect_string(__wrap__merror, formatted_msg, "SendBinaryMSGAction does not support SECURE_MQ mode.");
+
+    int ret = SendBinaryMSG(0, "payload", 7, "location", SECURE_MQ);
+
+    assert_int_equal(ret, -1);
+}
+
+void test_SendBinaryMSGAction_message_too_large(void **state) {
+    (void)state;
+
+    char dummy_payload;
+    size_t large_size = OS_MAXSTR;
+
+    expect_any(__wrap__mwarn, formatted_msg);
+
+    int ret = SendBinaryMSG(0, &dummy_payload, large_size, "some_location", 's');
+
+    assert_int_equal(ret, -1);
+}
+
+void test_SendBinaryMSGAction_queue_not_available(void **state) {
+    (void)state;
+
+    int ret = SendBinaryMSG(-1, "payload", 7, "location", 's');
+
+    assert_int_equal(ret, -1);
+}
+
+void test_SendBinaryMSGAction_socket_error(void **state) {
+    (void)state;
+    int queue = 123;
+    const char *payload = "bin_data";
+    size_t payload_len = 8;
+
+    expect_value(__wrap_OS_SendUnix, socket, queue);
+    expect_any(__wrap_OS_SendUnix, msg);
+    expect_value(__wrap_OS_SendUnix, size, 19);
+    will_return(__wrap_OS_SendUnix, OS_SOCKTERR);
+
+    expect_string(__wrap__merror, formatted_msg, "socketerr (not available).");
+
+    int ret = SendBinaryMSG(queue, payload, payload_len, "location", 's');
+
+    assert_int_equal(ret, -1);
+}
+
+void test_SendBinaryMSGAction_success(void **state) {
+    (void)state;
+    int queue = 123;
+    const char payload[] = {'d', 'a', 't', 'a', '\0', 'm', 'o', 'r', 'e'};
+    size_t payload_len = sizeof(payload);
+    const char *locmsg = "FIM";
+    char loc = 's';
+
+    char expected_msg[100];
+    snprintf(expected_msg, sizeof(expected_msg), "%c:%s:", loc, locmsg);
+    size_t header_len = strlen(expected_msg);
+    memcpy(expected_msg + header_len, payload, payload_len);
+    size_t total_len = header_len + payload_len;
+
+    expect_value(__wrap_OS_SendUnix, socket, queue);
+    expect_memory(__wrap_OS_SendUnix, msg, expected_msg, total_len);
+    expect_value(__wrap_OS_SendUnix, size, total_len);
+    will_return(__wrap_OS_SendUnix, 0);
+
+    int ret = SendBinaryMSG(queue, payload, payload_len, locmsg, loc);
+
+    assert_int_equal(ret, 0);
+}
+
+void test_SendBinaryMSGAction_socket_busy(void **state) {
+    (void)state;
+    int queue = 123;
+    const char *payload = "data";
+    size_t payload_len = 4;
+    size_t total_len = strlen("s:loc:") + payload_len;
+
+    expect_value(__wrap_OS_SendUnix, socket, queue);
+    expect_any(__wrap_OS_SendUnix, msg);
+    expect_value(__wrap_OS_SendUnix, size, total_len);
+    will_return(__wrap_OS_SendUnix, OS_INVALID);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "Socket busy, discarding binary message.");
+    expect_string(__wrap__mwarn, formatted_msg, "Socket busy, discarding binary message.");
+
+    int ret = SendBinaryMSG(queue, payload, payload_len, "loc", 's');
+
+    assert_int_equal(ret, 0);
+}
 
 // Main test function
 
@@ -446,6 +538,13 @@ int main(void){
        cmocka_unit_test(test_SendMSGAction_non_secure_msg),
        cmocka_unit_test(test_SendMSGAction_secure_msg),
        cmocka_unit_test(test_SendMSGAction_secure_msg_keepalive),
+       // Test test_SendBinaryMSG
+       cmocka_unit_test(test_SendBinaryMSGAction_secure_mq_not_supported),
+       cmocka_unit_test(test_SendBinaryMSGAction_message_too_large),
+       cmocka_unit_test(test_SendBinaryMSGAction_queue_not_available),
+       cmocka_unit_test(test_SendBinaryMSGAction_socket_error),
+       cmocka_unit_test(test_SendBinaryMSGAction_success),
+       cmocka_unit_test(test_SendBinaryMSGAction_socket_busy),
        };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
