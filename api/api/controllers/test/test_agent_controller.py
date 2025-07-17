@@ -414,7 +414,7 @@ async def test_restart_agent(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_
     mock_dapi.assert_called_once_with(f=agent.restart_agents,
                                       f_kwargs=mock_remove.return_value,
                                       request_type='distributed_master',
-                                      is_async=True,
+                                      is_async=False,
                                       wait_for_complete=False,
                                       logger=ANY,
                                       rbac_permissions=mock_request.context['token_info']['rbac_policies']
@@ -1001,7 +1001,7 @@ async def test_restart_agents_by_group(mock_aiwr, mock_dapi, mock_remove, mock_d
         calls_restart_agents_by_group = [call(f=agent.restart_agents_by_group,
                                               f_kwargs=mock_remove.return_value,
                                               request_type='distributed_master',
-                                              is_async=True,
+                                              is_async=False,
                                               wait_for_complete=False,
                                               logger=ANY,
                                               rbac_permissions=mock_request.context['token_info']['rbac_policies']
