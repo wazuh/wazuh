@@ -118,9 +118,11 @@ else()
       link_directories(${SRC_FOLDER}/external/openssl/)
       link_directories(${SRC_FOLDER}/external/lzma/build/)
       link_directories(${SRC_FOLDER}/external/zlib/contrib/minizip/)
+      link_directories(${SRC_FOLDER}/shared_modules/file_helper/build/lib/)
 
       include_directories(${SRC_FOLDER}/shared_modules/common)
       include_directories(${SRC_FOLDER}/shared_modules/utils)
+      include_directories(${SRC_FOLDER}/shared_modules/file_helper/file_io/include)
       include_directories(${SRC_FOLDER}/external/cJSON)
       include_directories(${SRC_FOLDER}/external/nlohmann)
       include_directories(${SRC_FOLDER}/external/rocksdb/include)
@@ -143,6 +145,7 @@ else()
         debug gmockd
         optimized gtest
         optimized gmock
+        FileIO
         rocksdb
         crypto
         dl
