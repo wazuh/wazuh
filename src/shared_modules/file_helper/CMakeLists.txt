@@ -19,10 +19,12 @@ endif()
 list(APPEND SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/filesystem/src/filesystem_wrapper.cpp
      ${CMAKE_CURRENT_SOURCE_DIR}/filesystem/src/filesystem_utils.cpp)
 
-get_filename_component(SRC_FOLDER ${CMAKE_SOURCE_DIR}/../ ABSOLUTE)
+if (NOT SRC_FOLDER)
+    get_filename_component(SRC_FOLDER ${CMAKE_SOURCE_DIR}/../../ ABSOLUTE)
+endif()
 add_library(FilesystemWrapper STATIC ${SOURCES})
 set_property(TARGET FilesystemWrapper PROPERTY POSITION_INDEPENDENT_CODE ON)
-target_include_directories(FilesystemWrapper PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/filesystem/include PRIVATE ${SRC_FOLDER}/utils)
+target_include_directories(FilesystemWrapper PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/filesystem/include PRIVATE ${SRC_FOLDER}/shared_modules/utils)
 
 # File io target
 add_library(FileIO STATIC ${CMAKE_CURRENT_SOURCE_DIR}/file_io/src/file_io_utils.cpp
