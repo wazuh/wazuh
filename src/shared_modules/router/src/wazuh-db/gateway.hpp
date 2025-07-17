@@ -18,7 +18,6 @@
 #include "endpointGetV1AgentsParamGroups.hpp"
 #include "endpointGetV1AgentsSync.hpp"
 #include "endpointPostV1AgentsSummary.hpp"
-#include "endpointPostV1AgentsRestartInfo.hpp"
 #include "endpointPostV1AgentsSync.hpp"
 #include "external/cpp-httplib/httplib.h"
 #include "external/sqlite/sqlite3.h"
