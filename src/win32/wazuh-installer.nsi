@@ -211,7 +211,6 @@ Section "Wazuh Agent (required)" MainSec
     File /oname=libwinpthread-1.dll libwinpthread-1.dll
     File /oname=libgcc_s_dw2-1.dll libgcc_s_dw2-1.dll
     File /oname=libstdc++-6.dll libstdc++-6.dll
-    File agent-auth.exe
     File /oname=wpk_root.pem ..\..\etc\wpk_root.pem
     File /oname=libwazuhext.dll ..\libwazuhext.dll
     File /oname=libwazuhshared.dll ..\libwazuhshared.dll
@@ -478,7 +477,6 @@ Section "Uninstall"
 
     ; remove files and uninstaller
     Delete "$INSTDIR\wazuh-agent.exe"
-    Delete "$INSTDIR\agent-auth.exe"
     Delete "$INSTDIR\manage_agents.exe"
     Delete "$INSTDIR\ossec.conf"
     Delete "$INSTDIR\uninstall.exe"
