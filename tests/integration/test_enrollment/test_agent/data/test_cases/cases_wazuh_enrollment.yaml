@@ -440,7 +440,6 @@
     pre_existent_keys:
       - ""
     expected_error:
-      agent-auth: "ERROR: Invalid IP address provided for sender IP."
       agent-enrollment: "ERROR: (4104): Invalid hostname: '56FE::2159:5BBC::6594'."
     expected_fail:
       os: win32
@@ -484,7 +483,6 @@
     pre_existent_keys:
       - ""
     expected_error:
-      agent-auth: "ERROR: Invalid IP address provided for sender IP."
       agent-enrollment: "ERROR: (4104): Invalid hostname: '11AA:11AA:11AA:11AA:11AA:11AA:11AA:11AA:11AA'."
     expected_fail:
       os: win32
@@ -508,7 +506,6 @@
     pre_existent_keys:
       - ""
     expected_error:
-      agent-auth: "ERROR: Invalid IP address provided for sender IP."
       agent-enrollment: "ERROR: (4104): Invalid hostname: '02db:4660:46af:invalid:d05e:a62e:4ca7:8e58'."
     expected_fail:
       os: win32
