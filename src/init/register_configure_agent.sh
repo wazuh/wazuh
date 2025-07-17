@@ -58,7 +58,7 @@ edit_value_tag() {
     fi
     
     if [ "$?" != "0" ]; then
-        echo "$(date '+%Y/%m/%d %H:%M:%S') agent-auth: Error updating $2 with variable $1." >> "${INSTALLDIR}/logs/ossec.log"
+        echo "$(date '+%Y/%m/%d %H:%M:%S') Error updating $2 with variable $1." >> "${INSTALLDIR}/logs/ossec.log"
     fi
 
 }
