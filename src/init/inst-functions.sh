@@ -243,17 +243,17 @@ WriteLogs()
   HAS_JOURNALD=`command -v journalctl`
 
   # If has journald, add journald to the configuration file
-  if [ "X$HAS_JOURNALD" != "X" ]; then
-    if [ "$1" = "echo" ]; then
-      echo "    -- journald"
-    elif [ "$1" = "add" ]; then
-      echo "  <localfile>" >> $NEWCONFIG
-      echo "    <log_format>journald</log_format>" >> $NEWCONFIG
-      echo "    <location>journald</location>" >> $NEWCONFIG
-      echo "  </localfile>" >> $NEWCONFIG
-      echo "" >> $NEWCONFIG
-    fi
-  fi
+  # if [ "X$HAS_JOURNALD" != "X" ]; then
+  #   if [ "$1" = "echo" ]; then
+  #     echo "    -- journald"
+  #   elif [ "$1" = "add" ]; then
+  #     echo "  <localfile>" >> $NEWCONFIG
+  #     echo "    <log_format>journald</log_format>" >> $NEWCONFIG
+  #     echo "    <location>journald</location>" >> $NEWCONFIG
+  #     echo "  </localfile>" >> $NEWCONFIG
+  #     echo "" >> $NEWCONFIG
+  #   fi
+  # fi
 
   OLD_IFS="$IFS"  # Save the current IFS
   IFS='
@@ -280,16 +280,16 @@ WriteLogs()
 
       # If journald is not available, change the log_format from '[!journald] ${log_type}' to '${log_type}'
       NEGATE_JOURNALD=$(echo "$LOG_FORMAT" | grep "\[!journald\] ")
-      if [ "X$HAS_JOURNALD" = "X" ]; then
-        if [ -n "$NEGATE_JOURNALD" ]; then
-          LOG_FORMAT=$(echo "$LOG_FORMAT" | sed -e "s|\[!journald\] ||g")
-        fi
-      # If journald is available, skip if LOG_FORMAT start with '[!journald]'
-      else
-        if [ -n "$NEGATE_JOURNALD" ]; then
-          continue
-        fi
+      # if [ "X$HAS_JOURNALD" = "X" ]; then
+      if [ -n "$NEGATE_JOURNALD" ]; then
+        LOG_FORMAT=$(echo "$LOG_FORMAT" | sed -e "s|\[!journald\] ||g")
       fi
+      # If journald is available, skip if LOG_FORMAT start with '[!journald]'
+      # else
+      #   if [ -n "$NEGATE_JOURNALD" ]; then
+      #     continue
+      #   fi
+      # fi
 
       # If log file present or skip file
       if [ -f "$FILE" ] || [ "X$SKIP_CHECK_FILE" = "Xyes" ]; then
