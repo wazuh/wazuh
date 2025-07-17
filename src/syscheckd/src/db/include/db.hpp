@@ -74,42 +74,14 @@ class EXPORTED DB final
         * @brief Init facade with database connection
         *
         * @param storage Storage type.
-        * @param syncInterval Sync sync interval.
-        * @param sync_max_interval Maximum interval allowed for the synchronization process.
-        * @param sync_response_timeout Minimum interval for the synchronization process.
-        * @param callbackSyncFileWrapper Callback sync file values.
-        * @param callbackSyncRegistryWrapper Callback sync registry values.
         * @param callbackLogWrapper Callback to log lines.
         * @param fileLimit File limit.
         * @param valueLimit Registry value limit.
-        * @param syncRegistryEnabled Flag to enable/disable the registry sync mechanism.
-        * @param syncThreadPool Number of threads used by RSync.
-        * @param syncQueueSize Number to define the size of the queue to be synchronized.
         */
         void init(const int storage,
-                  const int syncInterval,
-                  const uint32_t syncMaxInterval,
-                  const uint32_t syncResponseTimeout,
-                  std::function<void(const std::string&)> callbackSyncFileWrapper,
-                  std::function<void(const std::string&)> callbackSyncRegistryWrapper,
                   std::function<void(modules_log_level_t, const std::string&)> callbackLogWrapper,
-                  int fileLimit,
-                  int valueLimit,
-                  bool syncRegistryEnabled,
-                  const int syncThreadPool,
-                  const int syncQueueSize);
-
-        /**
-        * @brief runIntegrity Execute the integrity mechanism.
-        */
-        void runIntegrity();
-
-        /**
-        * @brief pushMessage Push a message to the queue of the integrity mechanism.
-        *
-        * @param message Message payload comming from the manager.
-        */
-        void pushMessage(const std::string& message);
+                  const int fileLimit,
+                  const int valueLimit);
 
         /**
         * @brief DBSyncHandle return the dbsync handle, for operations with the database.

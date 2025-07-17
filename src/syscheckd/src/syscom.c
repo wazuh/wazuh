@@ -78,14 +78,7 @@ size_t syscom_dispatch(char * command, char ** output){
     assert(command != NULL);
     assert(output != NULL);
 
-    if (strncmp(command, HC_FIM_FILE, strlen(HC_FIM_FILE)) == 0
-        || strncmp(command, HC_FIM_REGISTRY, strlen(HC_FIM_REGISTRY)) == 0
-        || strncmp(command, HC_FIM_REGISTRY_KEY, strlen(HC_FIM_REGISTRY_KEY)) == 0
-        || strncmp(command, HC_FIM_REGISTRY_VALUE, strlen(HC_FIM_REGISTRY_VALUE)) == 0) {
-
-        fim_sync_push_msg(command);
-        return 0;
-    } else if (strncmp(command, HC_SK, strlen(HC_SK)) == 0 ||
+    if (strncmp(command, HC_SK, strlen(HC_SK)) == 0 ||
                strncmp(command, HC_GETCONFIG, strlen(HC_GETCONFIG)) == 0 ||
                strncmp(command, HC_RESTART, strlen(HC_RESTART)) == 0) {
         char *rcv_comm = NULL;

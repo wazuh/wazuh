@@ -121,7 +121,7 @@ TEST_F(RegistryValueTest, getJSONWithJSONCtrOldData)
             "data":[{"architecture":"[x32]","checksum":"a2fbef8f81af27155dcee5e3927ff6243593b91a","hash_md5":"4b531524aa13c8a54614100b570b3dc7",
             "hash_sha1":"7902feb66d0bcbe4eb88e1bfacf28befc38bd58b","hash_sha256":"e403b83dd73a41b286f8db2ee36d6b0ea6e80b49f02c476e0a20b4181a3a062a",
             "value":"testRegistry","path":"pathTestRegistry","size":4925,"type":0}],"table":"registry_data",
-            "options":{"return_old_data": true, "ignore":["last_event"]}
+            "options":{"return_old_data": true}
             }
         )"_json;
     auto value = new RegistryValue(fimEntryTest, true);

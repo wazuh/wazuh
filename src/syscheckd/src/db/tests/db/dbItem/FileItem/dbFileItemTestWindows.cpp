@@ -172,6 +172,6 @@ TEST_F(FileItemTest, fileItemReportOldData)
 {
     auto file = std::make_unique<FileItem>(fimEntryTest, true);
     const auto returnValue = *file->toJSON();
-    const auto expectedValue = R"({"return_old_data": true, "ignore":["last_event"]})"_json;
+    const auto expectedValue = R"({"return_old_data": true})"_json;
     ASSERT_TRUE(returnValue["options"] == expectedValue);
 }

@@ -1031,39 +1031,6 @@ void test_check_max_fps_sleep(void **state) {
     check_max_fps();
 }
 
-void test_send_sync_state(void **state) {
-    char debug_msg[OS_SIZE_256] = {0};
-    char *event = "{\"data\":\"random_string\"}";
-
-    snprintf(debug_msg, OS_SIZE_256, FIM_DBSYNC_SEND, event);
-    syscheck.sync_max_eps = 1;
-
-    expect_function_call(__wrap_pthread_mutex_lock);
-    expect_w_send_sync_msg(event, "fim_file", DBSYNC_MQ, fim_shutdown_process_on, 0);
-#ifdef TEST_WINAGENT
-    expect_value(wrap_Sleep, dwMilliseconds, 1 * 1000);
-#else
-    expect_value(__wrap_sleep, seconds, 1);
-#endif
-    expect_string(__wrap__mdebug2, formatted_msg, debug_msg);
-    expect_function_call(__wrap_pthread_mutex_unlock);
-
-    fim_send_sync_state("fim_file", event);
-}
-
-void test_send_sync_state_without_max_eps(void **state) {
-    char debug_msg[OS_SIZE_256] = {0};
-    char *event = "{\"data\":\"random_string\"}";
-
-    snprintf(debug_msg, OS_SIZE_256, FIM_DBSYNC_SEND, event);
-    syscheck.sync_max_eps = 0;
-
-    expect_w_send_sync_msg(event, "fim_file", DBSYNC_MQ, fim_shutdown_process_on, 0);
-    expect_string(__wrap__mdebug2, formatted_msg, debug_msg);
-
-    fim_send_sync_state("fim_file", event);
-}
-
 void test_fim_db_remove_validated_path(void **state){
 
     char* path = "path";
@@ -1115,8 +1082,6 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_fim_run_realtime_w_wait_success, setup_hash, teardown_hash),
         cmocka_unit_test(test_fim_run_realtime_w_sleep),
 #endif
-        cmocka_unit_test(test_send_sync_state),
-        cmocka_unit_test(test_send_sync_state_without_max_eps),
     };
 
     return cmocka_run_group_tests(tests, setup_group, teardown_group);

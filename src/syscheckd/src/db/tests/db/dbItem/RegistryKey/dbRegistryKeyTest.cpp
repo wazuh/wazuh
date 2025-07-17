@@ -108,7 +108,7 @@ TEST_F(RegistryKeyTest, getJSONWithJSONCtrReportOldData)
             {
                 "data":[{"architecture":"[x64]","checksum":"a2fbef8f81af27155dcee5e3927ff6243593b91a","gid":"0","group_":"root",
                 "mtime":1578075431,"path":"HKEY_LOCAL_MACHINE\\SOFTWARE","permissions":"-rw-rw-r--","uid":"0", "owner":"fakeUser"}],
-                "table":"registry_key","options":{"return_old_data": true,"ignore":["last_event"]}
+                "table":"registry_key","options":{"return_old_data": true}
             }
         )"_json;
     auto key = new RegistryKey(fimEntryTest, true);

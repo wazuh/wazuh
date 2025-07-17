@@ -36,9 +36,6 @@ const auto insertRegistryValueStatement = R"({
     }
 )"_json;
 
-const auto minSyncInterval {10};
-const auto maxInterval {600};
-
 void transaction_callback(ReturnTypeCallback resultType, const cJSON* result_json, void* user_data)
 {
     fim_txn_context_s* event_data = (fim_txn_context_s*)user_data;
@@ -77,65 +74,6 @@ TEST_F(DBTestFixture, TestFimDBInit)
     EXPECT_NO_THROW({
         const auto fileFIMTest {std::make_unique<FileItem>(insertFileStatement)};
         ASSERT_EQ(fim_db_file_update(fileFIMTest->toFimEntry(), callback_data_added), FIMDB_OK);
-    });
-}
-
-TEST_F(DBTestFixture, TestFimSyncPushMsg)
-{
-    const auto test {
-        R"(fim_file no_data {"begin":"a2fbef8f81af27155dcee5e3927ff6243593b91a","end":"a2fbef8f81af27155dcee5e3927ff6243593b91b","id":1})"};
-    const auto fileFIMTest {std::make_unique<FileItem>(insertFileStatement)};
-    ASSERT_EQ(fim_db_file_update(fileFIMTest->toFimEntry(), callback_data_added), FIMDB_OK);
-    EXPECT_CALL(*mockLog, loggingFunction(LOG_INFO, "FIM sync module started.")).Times(1);
-    EXPECT_CALL(*mockLog, loggingFunction(LOG_DEBUG, "Executing FIM sync.")).Times(1);
-    EXPECT_CALL(*mockLog, loggingFunction(LOG_DEBUG, "Finished FIM sync.")).Times(1);
-    EXPECT_CALL(*mockSync, syncMsg("fim_file", testing::_)).Times(1);
-#ifdef WIN32
-    EXPECT_CALL(*mockSync, syncMsg("fim_registry_key", testing::_)).Times(1);
-    EXPECT_CALL(*mockSync, syncMsg("fim_registry_value", testing::_)).Times(1);
-#endif
-    EXPECT_NO_THROW({
-        auto result = fim_run_integrity();
-        ASSERT_EQ(result, FIMDB_OK);
-        result = fim_sync_push_msg(test);
-        ASSERT_EQ(result, FIMDB_OK);
-    });
-}
-
-TEST_F(DBTestFixture, TestFimRunIntegrity)
-{
-    EXPECT_CALL(*mockLog, loggingFunction(LOG_INFO, "FIM sync module started.")).Times(1);
-    EXPECT_CALL(*mockLog, loggingFunction(LOG_DEBUG, "Executing FIM sync.")).Times(1);
-    EXPECT_CALL(*mockLog, loggingFunction(LOG_DEBUG, "Finished FIM sync.")).Times(1);
-    EXPECT_CALL(*mockSync, syncMsg("fim_file", testing::_)).Times(1);
-#ifdef WIN32
-    EXPECT_CALL(*mockSync, syncMsg("fim_registry_key", testing::_)).Times(1);
-    EXPECT_CALL(*mockSync, syncMsg("fim_registry_value", testing::_)).Times(1);
-#endif
-
-    EXPECT_NO_THROW({
-        auto result = fim_run_integrity();
-        ASSERT_EQ(result, FIMDB_OK);
-    });
-}
-
-TEST_F(DBTestFixture, TestFimRunIntegrityInitTwice)
-{
-    EXPECT_CALL(*mockLog, loggingFunction(LOG_ERROR, "FIM integrity thread already running.")).Times(1);
-    EXPECT_CALL(*mockLog, loggingFunction(LOG_INFO, "FIM sync module started.")).Times(1);
-    EXPECT_CALL(*mockLog, loggingFunction(LOG_DEBUG, "Executing FIM sync.")).Times(1);
-    EXPECT_CALL(*mockLog, loggingFunction(LOG_DEBUG, "Finished FIM sync.")).Times(1);
-    EXPECT_CALL(*mockSync, syncMsg("fim_file", testing::_)).Times(1);
-#ifdef WIN32
-    EXPECT_CALL(*mockSync, syncMsg("fim_registry_key", testing::_)).Times(1);
-    EXPECT_CALL(*mockSync, syncMsg("fim_registry_value", testing::_)).Times(1);
-#endif
-
-    EXPECT_NO_THROW({
-        auto result = fim_run_integrity();
-        ASSERT_EQ(result, FIMDB_OK);
-        result = fim_run_integrity();
-        ASSERT_EQ(result, FIMDB_ERR);
     });
 }
 
@@ -211,50 +149,30 @@ TEST_F(DBTestFixture, TestSyncDeletedRowsTransactionWithInvalidParameters)
 TEST(DBTest, TestInvalidFimLimit)
 {
     mockLog = new MockLoggingCall();
-    mockSync = new MockSyncMsg();
 
     EXPECT_CALL(*mockLog,
                 loggingFunction(LOG_ERROR_EXIT, "Error, id: dbEngine: Invalid row limit, values below 0 not allowed."))
         .Times(1);
     auto result {fim_db_init(FIM_DB_MEMORY,
-                             300,
-                             maxInterval,
-                             minSyncInterval,
-                             mockSyncMessage,
                              mockLoggingFunction,
                              -1,
                              -1,
-                             true,
-                             0,
-                             0,
-                             nullptr,
                              nullptr)};
     ASSERT_EQ(result, FIMDB_ERR);
 
     delete mockLog;
-    delete mockSync;
 }
 
 TEST(DBTest, TestValidFimLimit)
 {
     mockLog = new MockLoggingCall();
-    mockSync = new MockSyncMsg();
 
     auto result {fim_db_init(FIM_DB_MEMORY,
-                             300,
-                             maxInterval,
-                             minSyncInterval,
-                             mockSyncMessage,
                              mockLoggingFunction,
                              100,
                              100000,
-                             true,
-                             0,
-                             0,
-                             nullptr,
                              nullptr)};
     ASSERT_EQ(result, FIMDB_OK);
 
     delete mockLog;
-    delete mockSync;
 }

@@ -213,61 +213,6 @@ struct SearchFileAction final : public IAction
     }
 };
 
-struct RunIntegrityAction final : public IAction
-{
-    void execute(std::unique_ptr<TestContext>& ctx, const nlohmann::json& /*value*/) override
-    {
-        auto retVal = false;
-        try
-        {
-            DB::instance().runIntegrity();
-            retVal = true;
-        }
-        catch (const std::exception &e)
-        {
-            std::cout << "Error running integrity: " << e.what() << std::endl;
-        }
-        std::stringstream oFileName;
-        oFileName << "action_" << ctx->currentId << ".json";
-        const auto outputFileName{ ctx->outputPath + "/" + oFileName.str() };
-
-        std::ofstream outputFile{ outputFileName };
-        const nlohmann::json jsonResult = {
-                {"result", retVal },
-                {"action", "RunIntegrity" }
-            };
-        outputFile << jsonResult.dump() << std::endl;
-    }
-};
-
-struct PushMessageAction final : public IAction
-{
-    void execute(std::unique_ptr<TestContext>& ctx, const nlohmann::json& value) override
-    {
-        auto retVal = false;
-        try
-        {
-            const auto message = value.at("message").get_ref<const std::string&>();
-            DB::instance().pushMessage(message);
-            retVal = true;
-        }
-        catch (const std::exception &e)
-        {
-            std::cout << "Error pushing message: " << e.what() << std::endl;
-        }
-        std::stringstream oFileName;
-        oFileName << "action_" << ctx->currentId << ".json";
-        const auto outputFileName{ ctx->outputPath + "/" + oFileName.str() };
-
-        std::ofstream outputFile{ outputFileName };
-        const nlohmann::json jsonResult = {
-                {"result", retVal },
-                {"action", "PushMessage" }
-            };
-        outputFile << jsonResult.dump() << std::endl;
-    }
-};
-
 struct StartTransactionAction final : public IAction
 {
     void execute(std::unique_ptr<TestContext>& ctx, const nlohmann::json& value) override

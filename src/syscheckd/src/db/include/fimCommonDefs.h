@@ -30,7 +30,6 @@ typedef enum FIMDBErrorCode
     FIMDB_FULL = -2
 } FIMDBErrorCode;
 
-typedef void((*fim_sync_callback_t)(const char *tag, const char* buffer));
 typedef void((*logging_callback_t)(const modules_log_level_t level, const char* log));
 typedef void((*callback_t)(void *return_data, void *user_data));
 

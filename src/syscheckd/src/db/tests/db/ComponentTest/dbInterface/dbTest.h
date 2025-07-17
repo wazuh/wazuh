@@ -24,7 +24,6 @@ typedef struct txn_context_test_s {
     event_data_t *evt_data;
 } txn_context_test;
 MockLoggingCall* mockLog;
-MockSyncMsg* mockSync;
 callback_context_t callback_data_added;
 callback_context_t callback_data_modified;
 callback_context_t callback_null;
@@ -38,11 +37,6 @@ callback_ctx ctx2;
 void mockLoggingFunction(const modules_log_level_t logLevel, const char* tag)
 {
     mockLog->loggingFunction(logLevel, tag);
-}
-
-void mockSyncMessage(const char* log, const char* tag)
-{
-    mockSync->syncMsg(log, tag);
 }
 
 static void callbackFileUpdateAdded(void* return_data, void* user_data)
@@ -78,20 +72,11 @@ class DBTestFixture : public testing::Test {
         void SetUp() override
         {
             mockLog = new MockLoggingCall();
-            mockSync = new MockSyncMsg();
 
             fim_db_init(FIM_DB_MEMORY,
-                        300,
-                        600,
-                        10,
-                        mockSyncMessage,
                         mockLoggingFunction,
                         MAX_FILE_LIMIT,
                         100000,
-                        true,
-                        1,
-                        0,
-                        nullptr,
                         nullptr);
 
             evt_data = {};
@@ -133,7 +118,6 @@ class DBTestFixture : public testing::Test {
         {
             fim_db_teardown();
             delete mockLog;
-            delete mockSync;
         }
 };
 

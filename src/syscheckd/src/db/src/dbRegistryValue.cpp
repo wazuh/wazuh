@@ -73,7 +73,6 @@ void RegistryValue::createJSON()
     if (m_oldData)
     {
         options["return_old_data"] = true;
-        options["ignore"] = nlohmann::json::array({"last_event"});
         conf["options"] = options;
     }
 

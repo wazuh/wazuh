@@ -47,33 +47,18 @@ extern "C" {
  *
  * It will be dbsync the responsible of managing the DB.
  * @param storage storage 1 Store database in memory, disk otherwise.
- * @param sync_interval Interval when the synchronization will be performed.
- * @param sync_max_interval Maximum interval allowed for the synchronization process.
- * @param sync_response_timeout Minimum interval for the synchronization process.
- * @param sync_callback Callback to send the synchronization messages.
  * @param log_callback Callback to perform logging operations.
  * @param file_limit Maximum number of files to be monitored.
  * @param value_limit Maximum number of registry values to be monitored.
- * @param sync_registry_enable Flag to enable the registry synchronization.
- * @param sync_queue_size Number to define the size of the queue to be synchronized.
  * @param dbsync_log_function Logging function for dbsync module.
- * @param rsync_log_function Logging function for rsync module.
  *
  * @return FIMDB_OK on success, FIMDB_ERROR on error.
  */
 EXPORTED FIMDBErrorCode fim_db_init(int storage,
-                                    int sync_interval,
-                                    uint32_t sync_max_interval,
-                                    uint32_t sync_response_timeout,
-                                    fim_sync_callback_t sync_callback,
                                     logging_callback_t log_callback,
                                     int file_limit,
                                     int value_limit,
-                                    bool sync_registry_enabled,
-                                    int sync_thread_pool,
-                                    unsigned int sync_queue_size,
-                                    log_fnc_t dbsync_log_function,
-                                    log_fnc_t rsync_log_function);
+                                    log_fnc_t dbsync_log_function);
 
 /**
  * @brief Get entry data using path.
@@ -149,22 +134,6 @@ EXPORTED FIMDBErrorCode fim_db_file_update(fim_entry* data,
 EXPORTED FIMDBErrorCode fim_db_file_inode_search(unsigned long long int inode,
                                                  unsigned long int device,
                                                  callback_context_t data);
-
-/**
- * @brief Push a message to the syscheck queue
- *
- * @param msg The specific message to be pushed
- *
- * @return FIMDB_OK on success.
- */
-EXPORTED FIMDBErrorCode fim_sync_push_msg(const char* msg);
-
-/**
- * @brief Thread that performs the syscheck data synchronization
- *
- * @return FIMDB_OK on success.
- */
-EXPORTED FIMDBErrorCode fim_run_integrity();
 
 /*
  * @brief Function that starts a new DBSync transaction.

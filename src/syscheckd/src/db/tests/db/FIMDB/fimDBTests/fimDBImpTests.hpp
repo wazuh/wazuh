@@ -34,61 +34,22 @@ class MockDBSyncHandler: public DBSync
         MOCK_METHOD(void, selectRows, (const nlohmann::json&, ResultCallbackData), (override));
 };
 
-class MockRSyncHandler: public RemoteSync
-{
-
-    public:
-        MockRSyncHandler() {};
-        ~MockRSyncHandler() {};
-        MOCK_METHOD(void, registerSyncID, (const std::string&, const DBSYNC_HANDLE, const nlohmann::json&, SyncCallbackData), (override));
-        MOCK_METHOD(void, startSync, (const DBSYNC_HANDLE, const nlohmann::json&, SyncCallbackData), (override));
-        MOCK_METHOD(void, pushMessage, (const std::vector<uint8_t>&), (override));
-};
-
 class MockFIMDB: public FIMDB
 {
     public:
         MockFIMDB() {};
         ~MockFIMDB() {};
 
-        void stopIntegrity()
-        {
-            FIMDB::stopIntegrity();
-        }
-
         void teardown()
         {
             FIMDB::teardown();
         }
-
-        void runIntegrity()
-        {
-            FIMDB::runIntegrity();
-        }
-
-        void syncAlgorithm()
-        {
-            FIMDB::syncAlgorithm();
-        }
-
-        void setTimeLastSyncMsg()
-        {
-            FIMDB::setTimeLastSyncMsg();
-        }
-
-        MOCK_METHOD(time_t, getCurrentTime, (), (const override));
 };
 
 class MockLoggingCall
 {
     public:
         MOCK_METHOD(void, loggingFunction, (const modules_log_level_t, const std::string&), ());
-};
-
-class MockSyncMsg
-{
-    public:
-        MOCK_METHOD(void, syncMsg, (const std::string&, const std::string&), ());
 };
 
 #endif //_FIMDB_IMP_TEST_H

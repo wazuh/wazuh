@@ -49,8 +49,6 @@ DWORD WINAPI fim_run_realtime(__attribute__((unused)) void * args);
 void * fim_run_realtime(__attribute__((unused)) void * args);
 #endif
 
-void fim_sync_check_eps();
-
 int fim_whodata_initialize();
 #ifdef WIN32
 STATIC void set_priority_windows_thread();
@@ -88,33 +86,6 @@ STATIC void fim_send_msg(char mq, const char * location, const char * msg) {
 
         // Try to send it again
         SendMSGPredicated(syscheck.queue, msg, location, mq, fim_shutdown_process_on);
-    }
-}
-
-void fim_sync_check_eps() {
-    static long n_msg_sent = 0;
-
-    if (++n_msg_sent == syscheck.sync_max_eps) {
-        sleep(1);
-        n_msg_sent = 0;
-    }
-}
-// Send a state synchronization message
-void fim_send_sync_state(const char *location, const char* msg) {
-
-    if (syscheck.sync_max_eps == 0) {
-        fim_send_msg(DBSYNC_MQ, location, msg);
-        mdebug2(FIM_DBSYNC_SEND, msg);
-    } else {
-        static pthread_mutex_t sync_eps_mutex = PTHREAD_MUTEX_INITIALIZER;
-
-        w_mutex_lock(&sync_eps_mutex);
-
-        fim_send_msg(DBSYNC_MQ, location, msg);
-        mdebug2(FIM_DBSYNC_SEND, msg);
-        fim_sync_check_eps();
-
-        w_mutex_unlock(&sync_eps_mutex);
     }
 }
 
@@ -281,11 +252,6 @@ void start_daemon()
     // Create File integrity monitoring base-line
     minfo(FIM_FREQUENCY_TIME, syscheck.time);
     fim_scan();
-
-    // Launch inventory synchronization thread, if enabled
-    if (syscheck.enable_synchronization) {
-        fim_run_integrity();
-    }
 
 #ifndef WIN32
     // Launch Real-time thread
