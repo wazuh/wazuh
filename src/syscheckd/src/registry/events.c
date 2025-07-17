@@ -11,10 +11,6 @@
 
 #include "../../include/syscheck.h"
 
-static const char *FIM_EVENT_TYPE_ARRAY[] = { "added", "deleted", "modified" };
-
-static const char *FIM_EVENT_MODE[] = { "scheduled", "realtime", "whodata" };
-
 static const char *VALUE_TYPE[] = {
     [REG_NONE] = "REG_NONE",
     [REG_SZ] = "REG_SZ",
@@ -42,8 +38,6 @@ void fim_calculate_dbsync_difference_key(const fim_registry_key* registry_data,
         return; //LCOV_EXCL_LINE
     }
     cJSON *aux = NULL;
-
-    cJSON_AddStringToObject(old_attributes, "type", "registry_key");
 
     if (configuration->opts & CHECK_PERM) {
         if (aux = cJSON_GetObjectItem(old_data, "permissions"), aux != NULL) {
@@ -101,7 +95,6 @@ void fim_calculate_dbsync_difference_key(const fim_registry_key* registry_data,
     if (*registry_data->checksum) {
         cJSON_AddStringToObject(old_attributes, "checksum", registry_data->checksum);
     }
-
 }
 
 void fim_calculate_dbsync_difference_value(const fim_registry_value_data* value_data,
@@ -115,8 +108,6 @@ void fim_calculate_dbsync_difference_value(const fim_registry_value_data* value_
     }
 
     cJSON *aux = NULL;
-
-    cJSON_AddStringToObject(old_attributes, "type", "registry_value");
 
     if (configuration->opts & CHECK_SIZE) {
         if (aux = cJSON_GetObjectItem(old_data, "size"), aux != NULL) {
@@ -168,8 +159,6 @@ cJSON *fim_registry_value_attributes_json(const cJSON* dbsync_event, const fim_r
                                           const registry_t *configuration) {
 
     cJSON *attributes = cJSON_CreateObject();
-
-    cJSON_AddStringToObject(attributes, "type", "registry_value");
 
     if (data) {
         if (configuration->opts & CHECK_TYPE) {
@@ -248,8 +237,6 @@ cJSON *fim_registry_value_attributes_json(const cJSON* dbsync_event, const fim_r
  */
 cJSON *fim_registry_key_attributes_json(const cJSON* dbsync_event, const fim_registry_key *data, const registry_t *configuration) {
     cJSON *attributes = cJSON_CreateObject();
-
-    cJSON_AddStringToObject(attributes, "type", "registry_key");
 
     if (data) {
         if (configuration->opts & CHECK_PERM) {

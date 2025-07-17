@@ -808,19 +808,6 @@ void test_fim_whodata_initialize_eventchannel(void **state) {
 #endif  // WIN_WHODATA
 #endif
 
-void test_fim_send_scan_info(void **state) {
-    (void) state;
-    const char *msg = "{\"type\":\"scan_start\",\"data\":{\"timestamp\":1}}";
-#ifndef TEST_WINAGENT
-    will_return(__wrap_time, 1);
-#endif
-    expect_function_call_any(__wrap_pthread_mutex_lock);
-    expect_function_call_any(__wrap_pthread_mutex_unlock);
-    expect_string(__wrap__mdebug2, formatted_msg, "(6321): Sending FIM event: {\"type\":\"scan_start\",\"data\":{\"timestamp\":1}}");
-    expect_w_send_sync_msg(msg, SYSCHECK, SYSCHECK_MQ, fim_shutdown_process_on, 0);
-    fim_send_scan_info(FIM_SCAN_START);
-}
-
 #ifndef TEST_WINAGENT
 void test_fim_link_update(void **state) {
     char *new_path = "/new_path";
@@ -1081,7 +1068,7 @@ void test_fim_db_remove_validated_path(void **state){
 
     char* path = "path";
     directory_t mock_config;
-    get_data_ctx mock_data;
+    callback_ctx mock_data;
     mock_data.config = &mock_config;
 
     expect_fim_configuration_directory_call(path, &mock_config);
@@ -1105,7 +1092,6 @@ int main(void) {
 
         cmocka_unit_test(test_log_realtime_status),
         cmocka_unit_test(test_fim_db_remove_validated_path),
-        cmocka_unit_test(test_fim_send_scan_info),
         cmocka_unit_test_setup_teardown(test_check_max_fps_no_sleep, setup_max_fps, teardown_max_fps),
         cmocka_unit_test_setup_teardown(test_check_max_fps_sleep, setup_max_fps, teardown_max_fps),
 #ifndef TEST_WINAGENT

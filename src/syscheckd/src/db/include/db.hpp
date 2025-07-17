@@ -131,7 +131,7 @@ class EXPORTED DB final
         nlohmann::json createJsonEvent(const nlohmann::json& fileJson,
                                        const nlohmann::json& resultJson,
                                        ReturnTypeCallback type,
-                                       create_json_event_ctx* ctx);
+                                       callback_ctx* ctx);
 
         /**
         * @brief removeFile Remove a file from the database.
@@ -167,7 +167,7 @@ class EXPORTED DB final
         * @param callback Callback to send the fim message.
         */
         void updateFile(const nlohmann::json& file,
-                        create_json_event_ctx* ctx,
+                        callback_ctx* ctx,
                         std::function<void(nlohmann::json)> callbackPrimitive);
 
         /**

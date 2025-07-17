@@ -155,9 +155,6 @@ FIMDBErrorCode fim_db_init(int storage,
                             json["data"]["attributes"]["permissions"] = perm_json;
                         }
 
-                        json["data"]["attributes"]["type"] = "file";
-                        json["data"]["attributes"].erase("path");
-
                         FIMDB::instance().setTimeLastSyncMsg();
                     }
 
@@ -188,10 +185,8 @@ FIMDBErrorCode fim_db_init(int storage,
                         if (component == FIM_COMPONENT_REGISTRY_VALUE)
                         {
                             const auto registryType { json.at("data").at("attributes").at("type").get<uint32_t>() };
-                            json["data"]["attributes"]["value_type"] = RegistryTypes<OS_TYPE>::typeText(registryType);
-                            json["data"]["attributes"]["type"] = "registry_value";
-                            json["data"]["value_name"] = json["data"]["attributes"]["value"];
-                            json["data"]["attributes"].erase("value");
+                            json["data"]["attributes"].erase("type");
+                            json["data"]["attributes"]["type"] = RegistryTypes<OS_TYPE>::typeText(registryType);
                         }
                         else
                         {
@@ -203,16 +198,7 @@ FIMDBErrorCode fim_db_init(int storage,
                                 json["data"]["attributes"].erase("permissions");
                                 json["data"]["attributes"]["permissions"] = perm_json;
                             }
-
-                            json["data"]["attributes"]["type"] = "registry_key";
                         }
-
-                        json["data"]["path"] = json["data"]["attributes"]["path"];
-                        json["data"]["attributes"].erase("path");
-                        json["data"]["architecture"] = json["data"]["attributes"]["architecture"];
-                        json["data"]["attributes"].erase("architecture");
-
-                        json["data"]["version"] = 3;
 
                         FIMDB::instance().setTimeLastSyncMsg();
                     }

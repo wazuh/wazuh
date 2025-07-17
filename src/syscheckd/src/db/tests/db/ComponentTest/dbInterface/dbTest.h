@@ -32,8 +32,8 @@ event_data_t evt_data1;
 event_data_t evt_data2;
 directory_t configuration1;
 directory_t configuration2;
-create_json_event_ctx ctx1;
-create_json_event_ctx ctx2;
+callback_ctx ctx1;
+callback_ctx ctx2;
 
 void mockLoggingFunction(const modules_log_level_t logLevel, const char* tag)
 {

@@ -348,7 +348,7 @@ add_executable(test_create_db test_create_db.c)
 
 target_compile_options(test_create_db PRIVATE "-Wall")
 
-set(CREATE_DB_BASE_FLAGS "-Wl,--wrap,fim_send_scan_info -Wl,--wrap,send_syscheck_msg \
+set(CREATE_DB_BASE_FLAGS "-Wl,--wrap,send_syscheck_msg \
                           -Wl,--wrap,readdir -Wl,--wrap,opendir -Wl,--wrap,closedir -Wl,--wrap,realtime_adddir \
                           -Wl,--wrap,HasFilesystem -Wl,--wrap,fim_db_get_path \
                           -Wl,--wrap,delete_target_file -Wl,--wrap,OS_MD5_SHA1_SHA256_File \

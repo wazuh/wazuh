@@ -141,13 +141,13 @@ struct UpdateFileAction final : public IAction
         evt_data.mode = FIM_REALTIME;
         evt_data.w_evt = NULL;
 
-        create_json_event_ctx callback_ctx = {};
-        callback_ctx.event = &evt_data;
-        callback_ctx.config = &configuration;
+        callback_ctx cb_ctx = {};
+        cb_ctx.event = &evt_data;
+        cb_ctx.config = &configuration;
 
         try
         {
-            DB::instance().updateFile(value, &callback_ctx,
+            DB::instance().updateFile(value, &cb_ctx,
             [&jsonEvent](const nlohmann::json data) {
                 jsonEvent.push_back(data);
             });

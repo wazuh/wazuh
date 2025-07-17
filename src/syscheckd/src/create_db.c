@@ -52,19 +52,17 @@ static const char *FIM_EVENT_MODE[] = {
     "whodata"
 };
 
-cJSON * fim_calculate_dbsync_difference(const fim_file_data *data,
+void fim_calculate_dbsync_difference(const fim_file_data *data,
                                         const directory_t *configuration,
                                         const cJSON* changed_data,
                                         cJSON* old_attributes,
                                         cJSON* changed_attributes) {
 
     if (old_attributes == NULL || changed_attributes == NULL || !cJSON_IsArray(changed_attributes)) {
-        return NULL;
+        return;
     }
 
     cJSON *aux = NULL;
-
-    cJSON_AddStringToObject(old_attributes, "type", "file");
 
     if (configuration->options & CHECK_SIZE) {
         if (aux = cJSON_GetObjectItem(changed_data, "size"), aux != NULL) {
@@ -202,8 +200,6 @@ cJSON * fim_calculate_dbsync_difference(const fim_file_data *data,
             cJSON_AddStringToObject(old_attributes, "checksum", data->checksum);
         }
     }
-
-    return old_attributes;
 }
 
 static void transaction_callback(ReturnTypeCallback resultType, const cJSON* result_json, void* user_data) {
@@ -275,13 +271,10 @@ static void transaction_callback(ReturnTypeCallback resultType, const cJSON* res
         goto end; // LCOV_EXCL_LINE
     }
 
-    cJSON_AddStringToObject(json_event, "type", "event");
-
     data = cJSON_CreateObject();
     cJSON_AddItemToObject(json_event, "data", data);
 
     cJSON_AddStringToObject(data, "path", path);
-    cJSON_AddNumberToObject(data, "version", 2.0);
     cJSON_AddStringToObject(data, "mode", FIM_EVENT_MODE[txn_context->evt_data->mode]);
     cJSON_AddStringToObject(data, "type", FIM_EVENT_TYPE_ARRAY[txn_context->evt_data->type]);
 
@@ -329,7 +322,7 @@ void process_delete_event(void * data, void * ctx)
 {
     cJSON *json_event = NULL;
     fim_entry *new_entry = (fim_entry *)data;
-    struct get_data_ctx *ctx_data = (struct get_data_ctx *)ctx;
+    struct callback_ctx *ctx_data = (struct callback_ctx *)ctx;
 
     // Remove path from the DB.
     if (fim_db_remove_path(new_entry->file_entry.path) == FIMDB_ERR)
@@ -352,10 +345,9 @@ int fim_generate_delete_event(const char *file_path,
                               const void *_evt_data,
                               const void *configuration) {
     const directory_t *original_configuration = (const directory_t *)configuration;
-    get_data_ctx ctx = {
+    callback_ctx ctx = {
         .event = (event_data_t *)_evt_data,
         .config = original_configuration,
-        .path = file_path
     };
     callback_context_t callback_data;
     callback_data.callback = process_delete_event;
@@ -391,8 +383,6 @@ time_t fim_scan() {
     cputime_start = clock();
     gettime(&start);
     minfo(FIM_FREQUENCY_STARTED);
-    fim_send_scan_info(FIM_SCAN_START);
-
 
     TXN_HANDLE db_transaction_handle = fim_db_transaction_start(FIMDB_FILE_TXN_TABLE, transaction_callback, &txn_ctx);
     if (db_transaction_handle == NULL) {
@@ -506,7 +496,6 @@ time_t fim_scan() {
     }
 
     minfo(FIM_FREQUENCY_ENDED);
-    fim_send_scan_info(FIM_SCAN_END);
 
     if (isDebug()) {
         fim_print_info(start, end, cputime_start); // LCOV_EXCL_LINE
@@ -590,20 +579,7 @@ void fim_checker(const char *path,
         // Delete alerts in scheduled scan is triggered in the transaction delete rows operation.
         if (evt_data->mode != FIM_SCHEDULED) {
             evt_data->type = FIM_DELETE;
-            get_data_ctx ctx = {
-                .event = (event_data_t *)evt_data,
-                .config = configuration,
-                .path = path
-            };
-            callback_context_t callback_data;
-            callback_data.callback = process_delete_event;
-            callback_data.context = &ctx;
-            fim_db_get_path(path, callback_data);
-
-            if (configuration->options & CHECK_SEECHANGES)
-            {
-                fim_diff_process_delete_file(path);
-            }
+            fim_generate_delete_event(path, evt_data, configuration);
         }
 
         return;
@@ -722,9 +698,9 @@ int fim_directory(const char *dir,
     return 0;
 }
 
-void fim_event_callback(void* data, void * ctx)
+void fim_event_callback(void * data, void * ctx)
 {
-    struct create_json_event_ctx* ctx_data = (struct create_json_event_ctx*)ctx;
+    struct callback_ctx* ctx_data = (struct callback_ctx*)ctx;
     cJSON* json_event = (cJSON*)data;
 
     if (json_event != NULL) {
@@ -801,7 +777,7 @@ void fim_file(const char *path,
         free_file_data(new_entry.file_entry.data);
         txn_context->latest_entry = NULL;
     } else {
-        create_json_event_ctx ctx = {
+        callback_ctx ctx = {
             .event = evt_data,
             .config = configuration,
         };
@@ -879,7 +855,7 @@ void fim_whodata_event(whodata_evt * w_evt) {
 void fim_db_remove_entry(void * data, void * ctx)
 {
     char *path = (char *)data;
-    get_data_ctx *ctx_data = (struct get_data_ctx *)ctx;
+    callback_ctx *ctx_data = (struct callback_ctx *)ctx;
 
     fim_generate_delete_event(path, ctx_data->event, ctx_data->config);
 }
@@ -897,10 +873,9 @@ void fim_process_wildcard_removed(directory_t *configuration) {
 
     // Create the sqlite LIKE pattern -> "pathname/%"
     snprintf(pattern, PATH_MAX, "%s%c%%", configuration->path, PATH_SEP);
-    get_data_ctx ctx = {
+    callback_ctx ctx = {
         .event = (event_data_t *)&evt_data,
         .config = configuration,
-        .path = configuration->path
     };
     callback_context_t callback_data;
     callback_data.callback = fim_db_remove_entry;
@@ -912,7 +887,7 @@ void fim_process_wildcard_removed(directory_t *configuration) {
 void fim_db_process_missing_entry(void * data, void * ctx)
 {
     fim_entry *new_entry = (fim_entry *)data;
-    struct get_data_ctx *ctx_data = (struct get_data_ctx *)ctx;
+    struct callback_ctx *ctx_data = (struct callback_ctx *)ctx;
 
     fim_checker(new_entry->file_entry.path, ctx_data->event, NULL, NULL, NULL);
 }
@@ -927,10 +902,9 @@ void fim_process_missing_entry(char * pathname, fim_event_mode mode, whodata_evt
         return;
     }
 
-    get_data_ctx ctx = {
+    callback_ctx ctx = {
         .event = (event_data_t *)&evt_data,
         .config = configuration,
-        .path = pathname
     };
 
     callback_context_t callback_data;
@@ -1314,13 +1288,10 @@ cJSON *fim_json_event(const fim_entry *new_data,
         return NULL;
     }
 
-    cJSON_AddStringToObject(json_event, "type", "event");
-
     data = cJSON_CreateObject();
     cJSON_AddItemToObject(json_event, "data", data);
 
     cJSON_AddStringToObject(data, "path", new_data->file_entry.path);
-    cJSON_AddNumberToObject(data, "version", 2.0);
     cJSON_AddStringToObject(data, "mode", FIM_EVENT_MODE[evt_data->mode]);
     cJSON_AddStringToObject(data, "type", FIM_EVENT_TYPE_ARRAY[evt_data->type]);
 
@@ -1359,8 +1330,6 @@ cJSON *fim_json_event(const fim_entry *new_data,
 cJSON * fim_attributes_json(const cJSON *dbsync_event, const fim_file_data *data, const directory_t *configuration) {
     cJSON * attributes = cJSON_CreateObject();
     cJSON *aux = NULL;
-
-    cJSON_AddStringToObject(attributes, "type", "file");
 
     if (data) {
         if (configuration->options & CHECK_SIZE) {
@@ -1618,18 +1587,6 @@ cJSON * fim_audit_json(const whodata_evt * w_evt) {
     return fim_audit;
 }
 
-// Create scan info JSON event
-
-cJSON * fim_scan_info_json(fim_scan_event event, long timestamp) {
-    cJSON * root = cJSON_CreateObject();
-    cJSON * data = cJSON_CreateObject();
-
-    cJSON_AddStringToObject(root, "type", event == FIM_SCAN_START ? "scan_start" : "scan_end");
-    cJSON_AddItemToObject(root, "data", data);
-    cJSON_AddNumberToObject(data, "timestamp", timestamp);
-
-    return root;
-}
 
 int fim_check_ignore (const char *file_name) {
     // Check if the file should be ignored

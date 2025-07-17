@@ -39,16 +39,14 @@ enum SEARCH_FIELDS
     SEARCH_FIELD_DEV
 };
 
-nlohmann::json DB::createJsonEvent(const nlohmann::json& fileJson, const nlohmann::json& resultJson, ReturnTypeCallback type, create_json_event_ctx* ctx)
+nlohmann::json DB::createJsonEvent(const nlohmann::json& fileJson, const nlohmann::json& resultJson, ReturnTypeCallback type, callback_ctx* ctx)
 {
     nlohmann::json jsonEvent;
     nlohmann::json data;
 
     data = fileJson.at("data")[0];
 
-    jsonEvent["type"] = "event";
     jsonEvent["data"]["path"] = data.at("path");
-    jsonEvent["data"]["version"] = "2.0";
     jsonEvent["data"]["mode"] = FIM_EVENT_MODE[ctx->event->mode];
 
     if (ReturnTypeCallback::MODIFIED == type)
@@ -63,8 +61,6 @@ nlohmann::json DB::createJsonEvent(const nlohmann::json& fileJson, const nlohman
     jsonEvent["data"]["type"] = FIM_EVENT_TYPE_ARRAY[ctx->event->type];
 
     // Attributes
-    jsonEvent["data"]["attributes"]["type"] = "file";
-
     if (ctx->config->options & CHECK_SIZE)
     {
         jsonEvent["data"]["attributes"]["size"] = data.at("size");
@@ -136,8 +132,6 @@ nlohmann::json DB::createJsonEvent(const nlohmann::json& fileJson, const nlohman
 
         nlohmann::json old_data = resultJson.at("old");
         nlohmann::json changed_attributes = nlohmann::json::array();
-
-        jsonEvent["data"]["old_attributes"]["type"] = "file";
 
         if (ctx->config->options & CHECK_SIZE)
         {
@@ -380,7 +374,7 @@ void DB::getFile(const std::string& path, std::function<void(const nlohmann::jso
     }
 }
 
-void DB::updateFile(const nlohmann::json& file, create_json_event_ctx* ctx, std::function<void(nlohmann::json)> callbackPrimitive)
+void DB::updateFile(const nlohmann::json& file, callback_ctx* ctx, std::function<void(nlohmann::json)> callbackPrimitive)
 {
     const auto callback
     {
@@ -560,7 +554,7 @@ FIMDBErrorCode fim_db_file_update(fim_entry* data, callback_context_t callback)
         try
         {
             const auto file { std::make_unique<FileItem>(data, true) };
-            create_json_event_ctx* ctx { reinterpret_cast<create_json_event_ctx*>(callback.context)};
+            callback_ctx* ctx { reinterpret_cast<callback_ctx*>(callback.context)};
             DB::instance().updateFile(*file->toJSON(), ctx, [callback](const nlohmann::json jsonResult)
             {
                 const std::unique_ptr<cJSON, CJsonSmartDeleter> spJson{ cJSON_Parse(jsonResult.dump().c_str()) };

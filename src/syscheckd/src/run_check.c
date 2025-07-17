@@ -139,14 +139,6 @@ void send_syscheck_msg(const cJSON *_msg) {
     }
 }
 
-// Send a scan info event
-void fim_send_scan_info(fim_scan_event event) {
-    cJSON * json = fim_scan_info_json(event, time(NULL));
-
-    send_syscheck_msg(json);
-
-    cJSON_Delete(json);
-}
 
 void check_max_fps() {
 #ifndef WAZUH_UNIT_TESTING
@@ -659,7 +651,7 @@ void log_realtime_status(int next) {
 void fim_db_remove_validated_path(void * data, void * ctx)
 {
     char *path = (char *)data;
-    struct get_data_ctx *ctx_data = (struct get_data_ctx *)ctx;
+    struct callback_ctx *ctx_data = (struct callback_ctx *)ctx;
 
     directory_t *validated_configuration = fim_configuration_directory(path);
 
@@ -837,10 +829,9 @@ STATIC void fim_link_delete_range(directory_t *configuration) {
     event_data_t evt_data = { .mode = FIM_SCHEDULED, .report_event = false, .w_evt = NULL, .type = FIM_DELETE };
     char pattern[PATH_MAX] = {0};
 
-    get_data_ctx ctx = {
+    callback_ctx ctx = {
         .event = (event_data_t *)&evt_data,
         .config = configuration,
-        .path = configuration->path
     };
     // Create the sqlite LIKE pattern.
     snprintf(pattern, PATH_MAX, "%s%c%%", configuration->symbolic_links, PATH_SEP);

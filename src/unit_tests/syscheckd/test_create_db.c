@@ -44,8 +44,8 @@ void update_wildcards_config();
 void fim_process_wildcard_removed(directory_t *configuration);
 void transaction_callback(ReturnTypeCallback resultType, const cJSON* result_json, void* user_data);
 void fim_event_callback(void* data, void * ctx);
-cJSON * fim_calculate_dbsync_difference(const fim_file_data *data, const directory_t *configuration,
-                                        const cJSON* changed_data, cJSON* old_attributes, cJSON* changed_attributes);
+void fim_calculate_dbsync_difference(const fim_file_data *data, const directory_t *configuration,
+                                     const cJSON* changed_data, cJSON* old_attributes, cJSON* changed_attributes);
 void create_windows_who_data_events(void * data, void * ctx);
 void fim_db_remove_entry(void * data, void * ctx);
 void process_delete_event(void * data, void * ctx);
@@ -641,8 +641,6 @@ static void test_fim_json_event(void **state) {
     fim_data->json = fim_json_event(&entry, fim_data->old_data, &configuration, &evt_data, NULL);
 
     assert_non_null(fim_data->json);
-    cJSON *type = cJSON_GetObjectItem(fim_data->json, "type");
-    assert_string_equal(cJSON_GetStringValue(type), "event");
     cJSON *data = cJSON_GetObjectItem(fim_data->json, "data");
     assert_non_null(data);
     cJSON *path = cJSON_GetObjectItem(data, "path");
@@ -667,8 +665,8 @@ static void test_fim_json_event(void **state) {
 #else
     assert_int_equal(cJSON_GetArraySize(changed_attributes), 11);
 #endif
-    assert_int_equal(cJSON_GetArraySize(attributes), 13);
-    assert_int_equal(cJSON_GetArraySize(old_attributes), 13);
+    assert_int_equal(cJSON_GetArraySize(attributes), 12);
+    assert_int_equal(cJSON_GetArraySize(old_attributes), 12);
 
 }
 
@@ -693,8 +691,6 @@ static void test_fim_json_event_whodata(void **state) {
     ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 1))->options &= ~CHECK_SEECHANGES;
 
     assert_non_null(fim_data->json);
-    cJSON *type = cJSON_GetObjectItem(fim_data->json, "type");
-    assert_string_equal(cJSON_GetStringValue(type), "event");
     cJSON *data = cJSON_GetObjectItem(fim_data->json, "data");
     assert_non_null(data);
     cJSON *path = cJSON_GetObjectItem(data, "path");
@@ -741,8 +737,6 @@ static void test_fim_json_event_hardlink_one_path(void **state) {
     fim_data->json = fim_json_event(&entry, fim_data->old_data, &configuration, &evt_data, NULL);
 
     assert_non_null(fim_data->json);
-    cJSON *type = cJSON_GetObjectItem(fim_data->json, "type");
-    assert_string_equal(cJSON_GetStringValue(type), "event");
     cJSON *data = cJSON_GetObjectItem(fim_data->json, "data");
     assert_non_null(data);
     cJSON *path = cJSON_GetObjectItem(data, "path");
@@ -767,8 +761,8 @@ static void test_fim_json_event_hardlink_one_path(void **state) {
 #else
     assert_int_equal(cJSON_GetArraySize(changed_attributes), 10);
 #endif
-    assert_int_equal(cJSON_GetArraySize(attributes), 13);
-    assert_int_equal(cJSON_GetArraySize(old_attributes), 13);
+    assert_int_equal(cJSON_GetArraySize(attributes), 12);
+    assert_int_equal(cJSON_GetArraySize(old_attributes), 12);
 }
 
 static void test_fim_attributes_json(void **state) {
@@ -779,13 +773,11 @@ static void test_fim_attributes_json(void **state) {
 
     assert_non_null(fim_data->json);
 #ifndef TEST_WINAGENT
-    assert_int_equal(cJSON_GetArraySize(fim_data->json), 13);
+    assert_int_equal(cJSON_GetArraySize(fim_data->json), 12);
 #else
-    assert_int_equal(cJSON_GetArraySize(fim_data->json), 14);
+    assert_int_equal(cJSON_GetArraySize(fim_data->json), 13);
 #endif
 
-    cJSON *type = cJSON_GetObjectItem(fim_data->json, "type");
-    assert_string_equal(cJSON_GetStringValue(type), "file");
     cJSON *size = cJSON_GetObjectItem(fim_data->json, "size");
     assert_non_null(size);
     assert_int_equal(size->valueint, 1500);
@@ -1046,38 +1038,6 @@ static void test_fim_check_restrict_null_restriction(void **state) {
     ret = fim_check_restrict("my_test", NULL);
 
     assert_int_equal(ret, 0);
-}
-
-
-static void test_fim_scan_info_json_start(void **state) {
-    fim_data_t *fim_data = *state;
-
-    fim_data->json = fim_scan_info_json(FIM_SCAN_START, 1570184220);
-
-    assert_non_null(fim_data->json);
-    cJSON *type = cJSON_GetObjectItem(fim_data->json, "type");
-    assert_string_equal(type->valuestring, "scan_start");
-    cJSON *data = cJSON_GetObjectItem(fim_data->json, "data");
-    assert_non_null(data);
-    cJSON *timestamp = cJSON_GetObjectItem(data, "timestamp");
-    assert_non_null(timestamp);
-    assert_int_equal(timestamp->valueint, 1570184220);
-}
-
-
-static void test_fim_scan_info_json_end(void **state) {
-    fim_data_t *fim_data = *state;
-
-    fim_data->json = fim_scan_info_json(FIM_SCAN_END, 1570184220);
-
-    assert_non_null(fim_data->json);
-    cJSON *type = cJSON_GetObjectItem(fim_data->json, "type");
-    assert_string_equal(type->valuestring, "scan_end");
-    cJSON *data = cJSON_GetObjectItem(fim_data->json, "data");
-    assert_non_null(data);
-    cJSON *timestamp = cJSON_GetObjectItem(data, "timestamp");
-    assert_non_null(timestamp);
-    assert_int_equal(timestamp->valueint, 1570184220);
 }
 
 
@@ -3939,7 +3899,7 @@ static void test_fim_event_callback(void **state) {
     whodata_evt w_event = {.user_name = "audit_user_name" };
     event_data_t evt_data = { .report_event = true, .w_evt = &w_event };
     directory_t configuration = { .options = -1, .tag = "tag_name" };
-    create_json_event_ctx callback_ctx = { .event = &evt_data, .config = &configuration };
+    callback_ctx cb_ctx = { .event = &evt_data, .config = &configuration };
 
     cJSON* json_event = cJSON_CreateObject();
     cJSON* data = cJSON_CreateObject();
@@ -3951,7 +3911,7 @@ static void test_fim_event_callback(void **state) {
 
     expect_function_call(__wrap_send_syscheck_msg);
 
-    fim_event_callback(json_event, &callback_ctx);
+    fim_event_callback(json_event, &cb_ctx);
 #ifndef TEST_WINAGENT
     char* test_event = "{\"data\":{\"path\":\"/path/to/file\",\"audit\":{\"user_name\":\"audit_user_name\",\"process_id\":0,\"ppid\":0},\"tags\":\"tag_name\"}}";
 #else
@@ -3968,7 +3928,7 @@ static void test_fim_event_callback_empty_changed_attributes(void **state) {
     whodata_evt w_event = {.user_name = "audit_user_name" };
     event_data_t evt_data = { .report_event = true, .w_evt = &w_event };
     directory_t configuration = { .options = -1, .tag = "tag_name" };
-    create_json_event_ctx callback_ctx = { .event = &evt_data, .config = &configuration };
+    callback_ctx cb_ctx = { .event = &evt_data, .config = &configuration };
 
     cJSON* json_event = cJSON_CreateObject();
     cJSON* data = cJSON_CreateObject();
@@ -3979,7 +3939,7 @@ static void test_fim_event_callback_empty_changed_attributes(void **state) {
 
     expect_string(__wrap__mdebug2, formatted_msg, "(6954): Entry '/path/to/file' does not have any modified fields. No event will be generated.");
 
-    fim_event_callback(json_event, &callback_ctx);
+    fim_event_callback(json_event, &cb_ctx);
 
     char* test_event = "{\"data\":{\"path\":\"/path/to/file\",\"changed_attributes\":[]}}";
     char* string_event = cJSON_PrintUnformatted(json_event);
@@ -3987,16 +3947,6 @@ static void test_fim_event_callback_empty_changed_attributes(void **state) {
 
     os_free(string_event);
     cJSON_Delete(json_event);
-}
-
-void test_fim_calculate_dbsync_difference_no_attributes(void **state){
-
-    cJSON* output = fim_calculate_dbsync_difference(NULL,
-                                        NULL,
-                                        NULL,
-                                        NULL,
-                                        NULL);
-    assert_null(output);
 }
 
 /* fim_calculate_dbsync_difference */
@@ -4106,7 +4056,7 @@ void test_process_delete_event(void **state){
     evt.mode = FIM_SCHEDULED;
     evt.type = FIM_ADD;
     evt.report_event = 1;
-    get_data_ctx ctx_data;
+    callback_ctx ctx_data;
     ctx_data.config = &config;
     ctx_data.event = &evt;
     entry->fentry->file_entry.path = "path";
@@ -4146,7 +4096,7 @@ void test_fim_db_remove_entry(void **state){
     char *path = fim_data->w_evt->path;
     directory_t config;
     config.options = CHECK_SEECHANGES;
-    get_data_ctx get_data;
+    callback_ctx get_data;
     get_data.config = &config;
 
     expect_string(__wrap_fim_db_get_path, file_path, path);
@@ -4160,7 +4110,7 @@ void test_fim_db_process_missing_entry(void **state){
     fim_data_t* fim_data = (fim_data_t*) *state;
     fim_data->fentry->file_entry.path = "mock_path";
     directory_t config;
-    get_data_ctx get_data;
+    callback_ctx get_data;
     get_data.config = &config;
 
     #ifndef TEST_WINAGENT
@@ -4187,7 +4137,7 @@ static void test_dbsync_attributes_json(void **state) {
     directory_t configuration = { .options = -1, .tag = "tag_name" };
     json_struct_t *data = *state;
 #ifndef TEST_WINAGENT
-    const char *result_str = "{\"type\":\"file\",\"size\":11,\"permissions\":\"rw-r--r--\",\"uid\":\"0\",\"gid\":\"0\",\"owner\":\"root\",\"group_\":\"root\",\"inode\":271017,\"mtime\":1646124392,\"hash_md5\":\"d73b04b0e696b0945283defa3eee4538\",\"hash_sha1\":\"e7509a8c032f3bc2a8df1df476f8ef03436185fa\",\"hash_sha256\":\"8cd07f3a5ff98f2a78cfc366c13fb123eb8d29c1ca37c79df190425d5b9e424d\",\"checksum\":\"c0edc82c463da5f4ab8dd420a778a9688a923a72\"}";
+    const char *result_str = "{\"size\":11,\"permissions\":\"rw-r--r--\",\"uid\":\"0\",\"gid\":\"0\",\"owner\":\"root\",\"group_\":\"root\",\"inode\":271017,\"mtime\":1646124392,\"hash_md5\":\"d73b04b0e696b0945283defa3eee4538\",\"hash_sha1\":\"e7509a8c032f3bc2a8df1df476f8ef03436185fa\",\"hash_sha256\":\"8cd07f3a5ff98f2a78cfc366c13fb123eb8d29c1ca37c79df190425d5b9e424d\",\"checksum\":\"c0edc82c463da5f4ab8dd420a778a9688a923a72\"}";
     cJSON *dbsync_event = cJSON_Parse("{\"attributes\":\"\",\"checksum\":\"c0edc82c463da5f4ab8dd420a778a9688a923a72\",\"device\":64768,\"gid\":\"0\",\"group_\":\"root\",\"hash_md5\":\"d73b04b0e696b0945283defa3eee4538\",\"hash_sha1\":\"e7509a8c032f3bc2a8df1df476f8ef03436185fa\",\"hash_sha256\":\"8cd07f3a5ff98f2a78cfc366c13fb123eb8d29c1ca37c79df190425d5b9e424d\",\"inode\":271017,\"mtime\":1646124392,\"path\":\"/etc/testfile\",\"permissions\":\"rw-r--r--\",\"size\":11,\"uid\":\"0\",\"owner\":\"root\"}");
 #else
     cJSON *dbsync_event = cJSON_Parse("{\"size\":0, \"permissions\":\"{\\\"S-1-5-32-544\\\":{\\\"name\\\":\\\"Administrators\\\",\\\"allowed\\\":[\\\"delete\\\",\\\"read_control\\\",\\\"write_dac\\\",\\\"write_owner\\\",\\\"synchronize\\\",\\\"read_data\\\",\\\"write_data\\\",\\\"append_data\\\",\\\"read_ea\\\",\\\"write_ea\\\",\\\"execute\\\",\\\"read_attributes\\\",\\\"write_attributes\\\"]},\\\"S-1-5-18\\\":{\\\"name\\\":\\\"SYSTEM\\\",\\\"allowed\\\":[\\\"delete\\\",\\\"read_control\\\",\\\"write_dac\\\",\\\"write_owner\\\",\\\"synchronize\\\",\\\"read_data\\\",\\\"write_data\\\",\\\"append_data\\\",\\\"read_ea\\\",\\\"write_ea\\\",\\\"execute\\\",\\\"read_attributes\\\",\\\"write_attributes\\\"]},\\\"S-1-5-32-545\\\":{\\\"name\\\":\\\"Users\\\",\\\"allowed\\\":[\\\"read_control\\\",\\\"synchronize\\\",\\\"read_data\\\",\\\"read_ea\\\",\\\"execute\\\",\\\"read_attributes\\\"]},\\\"S-1-5-11\\\":{\\\"name\\\":\\\"Authenticated Users\\\",\\\"allowed\\\":[\\\"delete\\\",\\\"read_control\\\",\\\"synchronize\\\",\\\"read_data\\\",\\\"write_data\\\",\\\"append_data\\\",\\\"read_ea\\\",\\\"write_ea\\\",\\\"execute\\\",\\\"read_attributes\\\",\\\"write_attributes\\\"]}}\", \"attributes\":\"ARCHIVE\", \"uid\":\"0\", \"gid\":\"0\", \
@@ -4195,7 +4145,7 @@ static void test_dbsync_attributes_json(void **state) {
         \"hash_sha1\":\"da39a3ee5e6b4b0d3255bfef95601890afd80709\", \"hash_sha256\":\"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\", \
         \"checksum\":\"ac962fef86e12e656b882fc88170fff24bf10a77\" }");
 
-    char *result_str = "{\"type\":\"file\",\"size\":0,\"permissions\":{\"S-1-5-32-544\":{\"name\":\"Administrators\",\"allowed\":[\"delete\",\"read_control\",\"write_dac\",\"write_owner\",\"synchronize\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\",\"read_attributes\",\"write_attributes\"]},\"S-1-5-18\":{\"name\":\"SYSTEM\",\"allowed\":[\"delete\",\"read_control\",\"write_dac\",\"write_owner\",\"synchronize\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\",\"read_attributes\",\"write_attributes\"]},\"S-1-5-32-545\":{\"name\":\"Users\",\"allowed\":[\"read_control\",\"synchronize\",\"read_data\",\"read_ea\",\"execute\",\"read_attributes\"]},\"S-1-5-11\":{\"name\":\"Authenticated Users\",\"allowed\":[\"delete\",\"read_control\",\"synchronize\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\",\"read_attributes\",\"write_attributes\"]}},\"uid\":\"0\",\"gid\":\"0\",\"owner\":\"Administrators\",\"inode\":0,\"mtime\":1646145212,\"hash_md5\":\"d41d8cd98f00b204e9800998ecf8427e\",\"hash_sha1\":\"da39a3ee5e6b4b0d3255bfef95601890afd80709\",\"hash_sha256\":\"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\",\"attributes\":\"ARCHIVE\",\"checksum\":\"ac962fef86e12e656b882fc88170fff24bf10a77\"}";
+    char *result_str = "{\"size\":0,\"permissions\":{\"S-1-5-32-544\":{\"name\":\"Administrators\",\"allowed\":[\"delete\",\"read_control\",\"write_dac\",\"write_owner\",\"synchronize\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\",\"read_attributes\",\"write_attributes\"]},\"S-1-5-18\":{\"name\":\"SYSTEM\",\"allowed\":[\"delete\",\"read_control\",\"write_dac\",\"write_owner\",\"synchronize\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\",\"read_attributes\",\"write_attributes\"]},\"S-1-5-32-545\":{\"name\":\"Users\",\"allowed\":[\"read_control\",\"synchronize\",\"read_data\",\"read_ea\",\"execute\",\"read_attributes\"]},\"S-1-5-11\":{\"name\":\"Authenticated Users\",\"allowed\":[\"delete\",\"read_control\",\"synchronize\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\",\"read_attributes\",\"write_attributes\"]}},\"uid\":\"0\",\"gid\":\"0\",\"owner\":\"Administrators\",\"inode\":0,\"mtime\":1646145212,\"hash_md5\":\"d41d8cd98f00b204e9800998ecf8427e\",\"hash_sha1\":\"da39a3ee5e6b4b0d3255bfef95601890afd80709\",\"hash_sha256\":\"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\",\"attributes\":\"ARCHIVE\",\"checksum\":\"ac962fef86e12e656b882fc88170fff24bf10a77\"}";
 #endif
     cJSON *attributes = cJSON_CreateObject();
 
@@ -4239,10 +4189,6 @@ int main(void) {
         cmocka_unit_test(test_fim_check_restrict_failure),
         cmocka_unit_test(test_fim_check_restrict_null_filename),
         cmocka_unit_test(test_fim_check_restrict_null_restriction),
-
-        /* fim_scan_info */
-        cmocka_unit_test_teardown(test_fim_scan_info_json_start, teardown_delete_json),
-        cmocka_unit_test_teardown(test_fim_scan_info_json_end, teardown_delete_json),
 
         /* fim_get_checksum */
         cmocka_unit_test(test_fim_get_checksum),
@@ -4376,7 +4322,6 @@ int main(void) {
         cmocka_unit_test(test_fim_event_callback),
         cmocka_unit_test(test_fim_event_callback_empty_changed_attributes),
 
-        cmocka_unit_test(test_fim_calculate_dbsync_difference_no_attributes),
         cmocka_unit_test(test_fim_calculate_dbsync_difference),
         cmocka_unit_test(test_fim_calculate_dbsync_difference_no_changed_data),
         cmocka_unit_test_setup_teardown(test_create_windows_who_data_events, setup_fim_data, teardown_fim_data),

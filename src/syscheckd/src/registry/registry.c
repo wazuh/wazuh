@@ -76,7 +76,6 @@ static void registry_key_transaction_callback(ReturnTypeCallback resultType,
     cJSON *old_data = NULL;
     cJSON *old_attributes = NULL;
     cJSON *changed_attributes = NULL;
-    cJSON *aux = NULL;
     fim_key_txn_context_t *event_data = (fim_key_txn_context_t *) user_data;
     fim_registry_key* key = event_data->key;
     char *path = NULL;
@@ -139,13 +138,10 @@ static void registry_key_transaction_callback(ReturnTypeCallback resultType,
         return;
     }
 
-    cJSON_AddStringToObject(json_event, "type", "event");
-
     cJSON* data = cJSON_CreateObject();
     cJSON_AddItemToObject(json_event, "data", data);
 
     cJSON_AddStringToObject(data, "path", path);
-    cJSON_AddNumberToObject(data, "version", 3.0);
     cJSON_AddStringToObject(data, "mode", FIM_EVENT_MODE[event_data->evt_data->mode]);
     cJSON_AddStringToObject(data, "type", FIM_EVENT_TYPE_ARRAY[event_data->evt_data->type]);
     cJSON_AddStringToObject(data, "architecture", arch == ARCH_32BIT ? "[x32]" : "[x64]");
@@ -198,7 +194,6 @@ static void registry_value_transaction_callback(ReturnTypeCallback resultType,
     cJSON *old_attributes = NULL;
     cJSON *old_data = NULL;
     cJSON *changed_attributes = NULL;
-    cJSON *aux = NULL;
     char *path = NULL;
     char *value = NULL;
     int arch = -1;
@@ -266,13 +261,10 @@ static void registry_value_transaction_callback(ReturnTypeCallback resultType,
         goto end;
     }
 
-    cJSON_AddStringToObject(json_event, "type", "event");
-
     cJSON* data = cJSON_CreateObject();
     cJSON_AddItemToObject(json_event, "data", data);
 
     cJSON_AddStringToObject(data, "path", path);
-    cJSON_AddNumberToObject(data, "version", 3.0);
     cJSON_AddStringToObject(data, "mode", FIM_EVENT_MODE[event_data->evt_data->mode]);
     cJSON_AddStringToObject(data, "type", FIM_EVENT_TYPE_ARRAY[event_data->evt_data->type]);
     cJSON_AddStringToObject(data, "architecture", arch == ARCH_32BIT ? "[x32]" : "[x64]");
