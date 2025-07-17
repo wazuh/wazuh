@@ -173,11 +173,26 @@ TEST_F(ServerSelectorTest, TestGetNextBeforeAndAfterHealthCheck)
 
                 if (!response.empty())
                 {
-                    postParams.onSuccess(response);
+                    if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                    {
+                        std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess(response);
+                    }
+                    else
+                    {
+                        std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess(std::move(response));
+                    }
                 }
                 else
                 {
-                    postParams.onError("Server not found", 404);
+                    if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                    {
+                        std::get<TPostRequestParameters<const std::string&>>(postParams)
+                            .onError("Server not found", 404);
+                    }
+                    else
+                    {
+                        std::get<TPostRequestParameters<std::string&&>>(postParams).onError("Server not found", 404);
+                    }
                 }
             }));
 

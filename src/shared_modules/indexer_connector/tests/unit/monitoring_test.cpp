@@ -54,22 +54,57 @@ TEST_F(MonitoringTest, TestInstantiationWithValidServers)
                 if (url.find("localhost:9000") != std::string::npos)
                 {
                     // Green server - healthy response
-                    postParams.onSuccess(R"([{"status":"green"}])");
+                    if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                    {
+                        std::get<TPostRequestParameters<const std::string&>>(postParams)
+                            .onSuccess(R"([{"status":"green"}])");
+                    }
+                    else
+                    {
+                        std::get<TPostRequestParameters<std::string&&>>(postParams)
+                            .onSuccess(R"([{"status":"green"}])");
+                    }
                 }
                 else if (url.find("localhost:9110") != std::string::npos)
                 {
                     // Red server - unhealthy response
-                    postParams.onError("Connection failed", 503);
+                    if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                    {
+                        std::get<TPostRequestParameters<const std::string&>>(postParams)
+                            .onError("Connection failed", 503);
+                    }
+                    else
+                    {
+                        std::get<TPostRequestParameters<std::string&&>>(postParams).onError("Connection failed", 503);
+                    }
                 }
                 else if (url.find("localhost:9200") != std::string::npos)
                 {
                     // Yellow server - warning but available
-                    postParams.onSuccess(R"([{"status":"yellow"}])");
+                    if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                    {
+                        std::get<TPostRequestParameters<const std::string&>>(postParams)
+                            .onSuccess(R"([{"status":"yellow"}])");
+                    }
+                    else
+                    {
+                        std::get<TPostRequestParameters<std::string&&>>(postParams)
+                            .onSuccess(R"([{"status":"yellow"}])");
+                    }
                 }
                 else if (url.find("localhost:9300") != std::string::npos)
                 {
                     // Green server with delay - healthy response
-                    postParams.onSuccess(R"([{"status":"green"}])");
+                    if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                    {
+                        std::get<TPostRequestParameters<const std::string&>>(postParams)
+                            .onSuccess(R"([{"status":"green"}])");
+                    }
+                    else
+                    {
+                        std::get<TPostRequestParameters<std::string&&>>(postParams)
+                            .onSuccess(R"([{"status":"green"}])");
+                    }
                 }
             }));
 
@@ -125,17 +160,43 @@ TEST_F(MonitoringTest, TestCheckIfAnUnregisteredServerIsAvailable)
                 if (url.find("localhost:9000") != std::string::npos)
                 {
                     // Green server - healthy response
-                    postParams.onSuccess(R"([{"status":"green"}])");
+                    if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                    {
+                        std::get<TPostRequestParameters<const std::string&>>(postParams)
+                            .onSuccess(R"([{"status":"green"}])");
+                    }
+                    else
+                    {
+                        std::get<TPostRequestParameters<std::string&&>>(postParams)
+                            .onSuccess(R"([{"status":"green"}])");
+                    }
                 }
                 else if (url.find("localhost:9110") != std::string::npos)
                 {
                     // Red server - unhealthy response
-                    postParams.onError("Connection failed", 503);
+                    if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                    {
+                        std::get<TPostRequestParameters<const std::string&>>(postParams)
+                            .onError("Connection failed", 503);
+                    }
+                    else
+                    {
+                        std::get<TPostRequestParameters<std::string&&>>(postParams).onError("Connection failed", 503);
+                    }
                 }
                 else
                 {
                     // Other servers return success by default
-                    postParams.onSuccess(R"([{"status":"green"}])");
+                    if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                    {
+                        std::get<TPostRequestParameters<const std::string&>>(postParams)
+                            .onSuccess(R"([{"status":"green"}])");
+                    }
+                    else
+                    {
+                        std::get<TPostRequestParameters<std::string&&>>(postParams)
+                            .onSuccess(R"([{"status":"green"}])");
+                    }
                 }
             }));
 
@@ -168,7 +229,15 @@ TEST_F(MonitoringTest, TestHTTPError)
             [](const auto& /*requestParams*/, const auto& postParams, const auto& /*configParams*/)
             {
                 // Simulate HTTP error (503 Service Unavailable)
-                postParams.onError("Service Unavailable", 503);
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams)
+                        .onError("Service Unavailable", 503);
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams).onError("Service Unavailable", 503);
+                }
             }));
 
     std::shared_ptr<TestMonitoring> monitoring;
@@ -196,7 +265,14 @@ TEST_F(MonitoringTest, TestBadResponseFromServer)
             [](const auto& /*requestParams*/, const auto& postParams, const auto& /*configParams*/)
             {
                 // Simulate malformed JSON that cannot be parsed
-                postParams.onSuccess("{ invalid json }");
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess("{ invalid json }");
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess("{ invalid json }");
+                }
             }));
 
     std::shared_ptr<TestMonitoring> monitoring;
@@ -221,7 +297,16 @@ TEST_F(MonitoringTest, TestMissingStatusField)
             [](const auto& /*requestParams*/, const auto& postParams, const auto& /*configParams*/)
             {
                 // JSON response without status field
-                postParams.onSuccess(R"([{"cluster":"test","node.total":"1"}])");
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams)
+                        .onSuccess(R"([{"cluster":"test","node.total":"1"}])");
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams)
+                        .onSuccess(R"([{"cluster":"test","node.total":"1"}])");
+                }
             }));
 
     std::shared_ptr<TestMonitoring> monitoring;
@@ -254,12 +339,28 @@ TEST_F(MonitoringTest, TestDifferentHTTPStatusCodes)
                 if (url.find("localhost:9700") != std::string::npos)
                 {
                     // 404 Not Found
-                    postParams.onError("Not Found", 404);
+                    if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                    {
+                        std::get<TPostRequestParameters<const std::string&>>(postParams).onError("Not Found", 404);
+                    }
+                    else
+                    {
+                        std::get<TPostRequestParameters<std::string&&>>(postParams).onError("Not Found", 404);
+                    }
                 }
                 else if (url.find("localhost:9800") != std::string::npos)
                 {
                     // 500 Internal Server Error
-                    postParams.onError("Internal Server Error", 500);
+                    if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                    {
+                        std::get<TPostRequestParameters<const std::string&>>(postParams)
+                            .onError("Internal Server Error", 500);
+                    }
+                    else
+                    {
+                        std::get<TPostRequestParameters<std::string&&>>(postParams)
+                            .onError("Internal Server Error", 500);
+                    }
                 }
             }));
 
@@ -289,7 +390,16 @@ TEST_F(MonitoringTest, TestRedClusterStatus)
             [](const auto& /*requestParams*/, const auto& postParams, const auto& /*configParams*/)
             {
                 // Red cluster status - should be unavailable
-                postParams.onSuccess(R"([{"status":"red","cluster":"test"}])");
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams)
+                        .onSuccess(R"([{"status":"red","cluster":"test"}])");
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams)
+                        .onSuccess(R"([{"status":"red","cluster":"test"}])");
+                }
             }));
 
     std::shared_ptr<TestMonitoring> monitoring;
@@ -325,18 +435,45 @@ TEST_F(MonitoringTest, TestChangeServerStatusFromGreenToRed)
                 callCount++;
                 if (phase == 0)
                 {
-                    postParams.onSuccess(R"([{"status":"green"}])");
+                    if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                    {
+                        std::get<TPostRequestParameters<const std::string&>>(postParams)
+                            .onSuccess(R"([{"status":"green"}])");
+                    }
+                    else
+                    {
+                        std::get<TPostRequestParameters<std::string&&>>(postParams)
+                            .onSuccess(R"([{"status":"green"}])");
+                    }
                 }
                 else if (phase == 1)
                 {
                     if (std::get<TRequestParameters<std::string>>(requestParams).url.url().find(redServer) !=
                         std::string::npos)
                     {
-                        postParams.onSuccess(R"([{"status":"red"}])");
+                        if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                        {
+                            std::get<TPostRequestParameters<const std::string&>>(postParams)
+                                .onSuccess(R"([{"status":"red"}])");
+                        }
+                        else
+                        {
+                            std::get<TPostRequestParameters<std::string&&>>(postParams)
+                                .onSuccess(R"([{"status":"red"}])");
+                        }
                     }
                     else
                     {
-                        postParams.onSuccess(R"([{"status":"green"}])");
+                        if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                        {
+                            std::get<TPostRequestParameters<const std::string&>>(postParams)
+                                .onSuccess(R"([{"status":"green"}])");
+                        }
+                        else
+                        {
+                            std::get<TPostRequestParameters<std::string&&>>(postParams)
+                                .onSuccess(R"([{"status":"green"}])");
+                        }
                     }
                 }
             }));

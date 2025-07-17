@@ -64,7 +64,7 @@ protected:
     }
 
     void simulateSuccessfulPost(RequestParamsVariant requestParams,
-                                const PostRequestParameters& postParams,
+                                PostRequestParametersVariant postParams,
                                 ConfigurationParameters /*configParams*/)
     {
         callCount++;
@@ -82,7 +82,16 @@ protected:
         receivedData.push_back(data);
 
         // Simulate successful response
-        postParams.onSuccess(R"({"took":1,"errors":false,"items":[]})");
+        if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+        {
+            std::get<TPostRequestParameters<const std::string&>>(postParams)
+                .onSuccess(R"({"took":1,"errors":false,"items":[]})");
+        }
+        else
+        {
+            std::get<TPostRequestParameters<std::string&&>>(postParams)
+                .onSuccess(R"({"took":1,"errors":false,"items":[]})");
+        }
     }
 };
 
@@ -138,7 +147,7 @@ TEST_F(IndexerConnectorSyncTest, HandleError413PayloadTooLarge)
     EXPECT_CALL(mockHttpRequest, post(_, _, _))
         .Times(AtLeast(0)) // May or may not be called depending on size validation
         .WillRepeatedly(Invoke(
-            [this](RequestParamsVariant requestParams, const PostRequestParameters& postParams, ConfigurationParameters)
+            [this](auto requestParams, auto postParams, ConfigurationParameters)
             {
                 this->callCount++;
 
@@ -154,7 +163,14 @@ TEST_F(IndexerConnectorSyncTest, HandleError413PayloadTooLarge)
                 }
                 this->receivedData.push_back(data);
 
-                postParams.onError("Payload Too Large", 413);
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams).onError("Payload Too Large", 413);
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams).onError("Payload Too Large", 413);
+                }
             }));
 
     IndexerConnectorSyncImplSmallBulk connector(config, nullptr, &mockHttpRequest);
@@ -176,8 +192,7 @@ TEST_F(IndexerConnectorSyncTest, HandleError409VersionConflict)
     EXPECT_CALL(mockHttpRequest, post(_, _, _))
         .Times(AtLeast(2))
         .WillRepeatedly(Invoke(
-            [this, &errorCallCount](
-                RequestParamsVariant requestParams, const PostRequestParameters& postParams, ConfigurationParameters)
+            [this, &errorCallCount](auto requestParams, auto postParams, ConfigurationParameters)
             {
                 this->callCount++;
 
@@ -196,11 +211,28 @@ TEST_F(IndexerConnectorSyncTest, HandleError409VersionConflict)
                 if (errorCallCount == 0)
                 {
                     errorCallCount++;
-                    postParams.onError("Version Conflict", 409);
+                    if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                    {
+                        std::get<TPostRequestParameters<const std::string&>>(postParams)
+                            .onError("Version Conflict", 409);
+                    }
+                    else
+                    {
+                        std::get<TPostRequestParameters<std::string&&>>(postParams).onError("Version Conflict", 409);
+                    }
                 }
                 else
                 {
-                    postParams.onSuccess(R"({"took":1,"errors":false,"items":[]})");
+                    if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                    {
+                        std::get<TPostRequestParameters<const std::string&>>(postParams)
+                            .onSuccess(R"({"took":1,"errors":false,"items":[]})");
+                    }
+                    else
+                    {
+                        std::get<TPostRequestParameters<std::string&&>>(postParams)
+                            .onSuccess(R"({"took":1,"errors":false,"items":[]})");
+                    }
                 }
             }));
 
@@ -231,8 +263,7 @@ TEST_F(IndexerConnectorSyncTest, HandleError429TooManyRequests)
     EXPECT_CALL(mockHttpRequest, post(_, _, _))
         .Times(AtLeast(2))
         .WillRepeatedly(Invoke(
-            [this, &errorCallCount](
-                RequestParamsVariant requestParams, const PostRequestParameters& postParams, ConfigurationParameters)
+            [this, &errorCallCount](auto requestParams, auto postParams, ConfigurationParameters)
             {
                 this->callCount++;
 
@@ -251,11 +282,28 @@ TEST_F(IndexerConnectorSyncTest, HandleError429TooManyRequests)
                 if (errorCallCount == 0)
                 {
                     errorCallCount++;
-                    postParams.onError("Too Many Requests", 429);
+                    if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                    {
+                        std::get<TPostRequestParameters<const std::string&>>(postParams)
+                            .onError("Too Many Requests", 429);
+                    }
+                    else
+                    {
+                        std::get<TPostRequestParameters<std::string&&>>(postParams).onError("Too Many Requests", 429);
+                    }
                 }
                 else
                 {
-                    postParams.onSuccess(R"({"took":1,"errors":false,"items":[]})");
+                    if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                    {
+                        std::get<TPostRequestParameters<const std::string&>>(postParams)
+                            .onSuccess(R"({"took":1,"errors":false,"items":[]})");
+                    }
+                    else
+                    {
+                        std::get<TPostRequestParameters<std::string&&>>(postParams)
+                            .onSuccess(R"({"took":1,"errors":false,"items":[]})");
+                    }
                 }
             }));
 
@@ -284,7 +332,7 @@ TEST_F(IndexerConnectorSyncTest, HandleError500InternalServerError)
     EXPECT_CALL(mockHttpRequest, post(_, _, _))
         .Times(AtLeast(1))
         .WillRepeatedly(Invoke(
-            [this](RequestParamsVariant requestParams, const PostRequestParameters& postParams, ConfigurationParameters)
+            [this](auto requestParams, auto postParams, ConfigurationParameters)
             {
                 this->callCount++;
 
@@ -300,7 +348,15 @@ TEST_F(IndexerConnectorSyncTest, HandleError500InternalServerError)
                 }
                 this->receivedData.push_back(data);
 
-                postParams.onError("Internal Server Error", 500);
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams)
+                        .onError("Internal Server Error", 500);
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams).onError("Internal Server Error", 500);
+                }
             }));
 
     IndexerConnectorSyncImplSmallBulk connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
@@ -327,9 +383,7 @@ TEST_F(IndexerConnectorSyncTest, VerifyDataSentToHttpRequest)
 
     EXPECT_CALL(mockHttpRequest, post(_, _, _))
         .Times(AtLeast(1))
-        .WillRepeatedly(Invoke([this](RequestParamsVariant requestParams,
-                                      const PostRequestParameters& postParams,
-                                      const ConfigurationParameters& configParams)
+        .WillRepeatedly(Invoke([this](auto requestParams, auto postParams, const ConfigurationParameters& configParams)
                                { this->simulateSuccessfulPost(requestParams, postParams, configParams); }));
 
     IndexerConnectorSyncImplSmallBulk connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
@@ -359,9 +413,7 @@ TEST_F(IndexerConnectorSyncTest, TestSuccessfulBulkOperation)
 
     EXPECT_CALL(mockHttpRequest, post(_, _, _))
         .Times(AtLeast(1))
-        .WillRepeatedly(Invoke([this](RequestParamsVariant requestParams,
-                                      const PostRequestParameters& postParams,
-                                      const ConfigurationParameters& configParams)
+        .WillRepeatedly(Invoke([this](auto requestParams, auto postParams, const ConfigurationParameters& configParams)
                                { this->simulateSuccessfulPost(requestParams, postParams, configParams); }));
 
     IndexerConnectorSyncImplSmallBulk connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
@@ -464,9 +516,7 @@ TEST_F(IndexerConnectorSyncTest, SmallBulkSizeTriggersFrequentSending)
 
     EXPECT_CALL(mockHttpRequest, post(_, _, _))
         .Times(AtLeast(1)) // At least one call should be made
-        .WillRepeatedly(Invoke([this](RequestParamsVariant requestParams,
-                                      const PostRequestParameters& postParams,
-                                      const ConfigurationParameters& configParams)
+        .WillRepeatedly(Invoke([this](auto requestParams, auto postParams, const ConfigurationParameters& configParams)
                                { this->simulateSuccessfulPost(requestParams, postParams, configParams); }));
 
     IndexerConnectorSyncImplSmallBulk connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
@@ -517,11 +567,11 @@ TEST_F(IndexerConnectorSyncTest, BackgroundFlushTest)
 
     EXPECT_CALL(mockHttpRequest, post(_, _, _))
         .Times(1) // One call should be made
-        .WillOnce(DoAll(Invoke([this](RequestParamsVariant requestParams,
-                                      const PostRequestParameters& postParams,
-                                      const ConfigurationParameters& configParams)
-                               { this->simulateSuccessfulPost(requestParams, postParams, configParams); }),
-                        Invoke([&postCalledPromise](auto, auto, auto) { postCalledPromise.set_value(); })));
+        .WillOnce(DoAll(
+            Invoke(
+                [this](RequestParamsVariant requestParams, auto postParams, const ConfigurationParameters& configParams)
+                { this->simulateSuccessfulPost(requestParams, postParams, configParams); }),
+            Invoke([&postCalledPromise](auto, auto, auto) { postCalledPromise.set_value(); })));
 
     IndexerConnectorSyncImplNoFlushInterval connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
 
@@ -555,9 +605,8 @@ TEST_F(IndexerConnectorSyncTest, HandleError413WithDataSplittingValidation)
     EXPECT_CALL(mockHttpRequest, post(_, _, _))
         .Times(3) // Should be called 3 times: 1 initial failure + 2 successful chunks
         .WillOnce(Invoke(
-            [&callSequenceData, &callSequenceIsError, &callCounter](RequestParamsVariant requestParams,
-                                                                    const PostRequestParameters& postParams,
-                                                                    const ConfigurationParameters& /*configParams*/)
+            [&callSequenceData, &callSequenceIsError, &callCounter](
+                auto requestParams, auto postParams, const ConfigurationParameters& /*configParams*/)
             {
                 callCounter++;
 
@@ -566,6 +615,10 @@ TEST_F(IndexerConnectorSyncTest, HandleError413WithDataSplittingValidation)
                 if (std::holds_alternative<TRequestParameters<std::string>>(requestParams))
                 {
                     data = std::get<TRequestParameters<std::string>>(requestParams).data;
+                }
+                else if (std::holds_alternative<TRequestParameters<std::string_view>>(requestParams))
+                {
+                    data = std::get<TRequestParameters<std::string_view>>(requestParams).data;
                 }
                 else
                 {
@@ -576,12 +629,18 @@ TEST_F(IndexerConnectorSyncTest, HandleError413WithDataSplittingValidation)
                 callSequenceIsError.push_back(true);
 
                 // First call should fail with 413
-                postParams.onError("Payload Too Large", 413);
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams).onError("Payload Too Large", 413);
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams).onError("Payload Too Large", 413);
+                }
             }))
         .WillOnce(Invoke(
-            [&callSequenceData, &callSequenceIsError, &callCounter](RequestParamsVariant requestParams,
-                                                                    const PostRequestParameters& postParams,
-                                                                    const ConfigurationParameters& /*configParams*/)
+            [&callSequenceData, &callSequenceIsError, &callCounter](
+                auto requestParams, auto postParams, const ConfigurationParameters& /*configParams*/)
             {
                 callCounter++;
 
@@ -590,6 +649,10 @@ TEST_F(IndexerConnectorSyncTest, HandleError413WithDataSplittingValidation)
                 if (std::holds_alternative<TRequestParameters<std::string>>(requestParams))
                 {
                     data = std::get<TRequestParameters<std::string>>(requestParams).data;
+                }
+                else if (std::holds_alternative<TRequestParameters<std::string_view>>(requestParams))
+                {
+                    data = std::get<TRequestParameters<std::string_view>>(requestParams).data;
                 }
                 else
                 {
@@ -600,13 +663,20 @@ TEST_F(IndexerConnectorSyncTest, HandleError413WithDataSplittingValidation)
                 callSequenceIsError.push_back(false);
 
                 // Second call (first chunk) should succeed
-                postParams.onSuccess(R"({"took":1,"errors":false,"items":[]})");
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams)
+                        .onSuccess(R"({"took":1,"errors":false,"items":[]})");
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams)
+                        .onSuccess(R"({"took":1,"errors":false,"items":[]})");
+                }
             }))
         .WillOnce(Invoke(
             [&callSequenceData, &callSequenceIsError, &callCounter, &allCallsCompletedPromise](
-                RequestParamsVariant requestParams,
-                const PostRequestParameters& postParams,
-                const ConfigurationParameters& /*configParams*/)
+                auto requestParams, auto postParams, const ConfigurationParameters& /*configParams*/)
             {
                 callCounter++;
 
@@ -615,6 +685,10 @@ TEST_F(IndexerConnectorSyncTest, HandleError413WithDataSplittingValidation)
                 if (std::holds_alternative<TRequestParameters<std::string>>(requestParams))
                 {
                     data = std::get<TRequestParameters<std::string>>(requestParams).data;
+                }
+                else if (std::holds_alternative<TRequestParameters<std::string_view>>(requestParams))
+                {
+                    data = std::get<TRequestParameters<std::string_view>>(requestParams).data;
                 }
                 else
                 {
@@ -625,7 +699,16 @@ TEST_F(IndexerConnectorSyncTest, HandleError413WithDataSplittingValidation)
                 callSequenceIsError.push_back(false);
 
                 // Third call (second chunk) should succeed
-                postParams.onSuccess(R"({"took":1,"errors":false,"items":[]})");
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams)
+                        .onSuccess(R"({"took":1,"errors":false,"items":[]})");
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams)
+                        .onSuccess(R"({"took":1,"errors":false,"items":[]})");
+                }
 
                 // Signal that all calls are completed
                 allCallsCompletedPromise.set_value();
@@ -746,9 +829,8 @@ TEST_F(IndexerConnectorSyncTest, ProcessBulkChunkError413RecursiveSplittingSucce
     EXPECT_CALL(mockHttpRequest, post(_, _, _))
         .Times(AtLeast(2)) // At least initial bulk + some splits
         .WillOnce(Invoke(
-            [&callSequenceData, &callSequenceStatusCodes, &callCounter](RequestParamsVariant requestParams,
-                                                                        const PostRequestParameters& postParams,
-                                                                        const ConfigurationParameters& /*configParams*/)
+            [&callSequenceData, &callSequenceStatusCodes, &callCounter](
+                auto requestParams, auto /*postParams*/, const ConfigurationParameters& /*configParams*/)
             {
                 callCounter++;
                 std::string data;
@@ -756,15 +838,20 @@ TEST_F(IndexerConnectorSyncTest, ProcessBulkChunkError413RecursiveSplittingSucce
                 {
                     data = std::get<TRequestParameters<std::string>>(requestParams).data;
                 }
+                else if (std::holds_alternative<TRequestParameters<std::string_view>>(requestParams))
+                {
+                    data = std::get<TRequestParameters<std::string_view>>(requestParams).data;
+                }
+                else
+                {
+                    data = std::get<TRequestParameters<nlohmann::json>>(requestParams).data.dump();
+                }
                 callSequenceData.push_back(data);
                 callSequenceStatusCodes.push_back(413);
-                postParams.onError("Payload Too Large", 413);
             }))
         .WillRepeatedly(Invoke(
             [&callSequenceData, &callSequenceStatusCodes, &callCounter, &allCallsCompleted](
-                RequestParamsVariant requestParams,
-                const PostRequestParameters& postParams,
-                const ConfigurationParameters& /*configParams*/)
+                RequestParamsVariant requestParams, auto postParams, const ConfigurationParameters& /*configParams*/)
             {
                 callCounter++;
                 std::string data;
@@ -774,7 +861,16 @@ TEST_F(IndexerConnectorSyncTest, ProcessBulkChunkError413RecursiveSplittingSucce
                 }
                 callSequenceData.push_back(data);
                 callSequenceStatusCodes.push_back(200);
-                postParams.onSuccess(R"({"took":1,"errors":false,"items":[]})");
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams)
+                        .onSuccess(R"({"took":1,"errors":false,"items":[]})");
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams)
+                        .onSuccess(R"({"took":1,"errors":false,"items":[]})");
+                }
                 if (callCounter >= 2) // Complete after at least 2 calls
                 {
                     allCallsCompleted = true;
@@ -819,10 +915,20 @@ TEST_F(IndexerConnectorSyncTest, ProcessBulkChunkError413SingleOperationTooLarge
 
     EXPECT_CALL(mockHttpRequest, post(_, _, _))
         .Times(1) // Should be called once and fail
-        .WillOnce(Invoke([](RequestParamsVariant /*requestParams*/,
-                            const PostRequestParameters& postParams,
-                            const ConfigurationParameters& /*configParams*/)
-                         { postParams.onError("Single operation exceeds server limits", 413); }));
+        .WillOnce(Invoke(
+            [](RequestParamsVariant /*requestParams*/, auto postParams, const ConfigurationParameters& /*configParams*/)
+            {
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams)
+                        .onError("Single operation exceeds server limits", 413);
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams)
+                        .onError("Single operation exceeds server limits", 413);
+                }
+            }));
 
     IndexerConnectorSyncImplSmallBulk connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
 
@@ -854,19 +960,37 @@ TEST_F(IndexerConnectorSyncTest, ProcessBulkChunkError409VersionConflictWithRetr
         .Times(2) // Should retry once after 409 error
         .WillOnce(Invoke(
             [&callCount](RequestParamsVariant /*requestParams*/,
-                         const PostRequestParameters& postParams,
+                         auto postParams,
                          const ConfigurationParameters& /*configParams*/)
             {
                 callCount++;
-                postParams.onError("Document version conflict", 409);
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams)
+                        .onError("Document version conflict", 409);
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams)
+                        .onError("Document version conflict", 409);
+                }
             }))
         .WillOnce(Invoke(
             [&callCount, &retryCompletedPromise](RequestParamsVariant /*requestParams*/,
-                                                 const PostRequestParameters& postParams,
+                                                 auto postParams,
                                                  const ConfigurationParameters& /*configParams*/)
             {
                 callCount++;
-                postParams.onSuccess(R"({"took":1,"errors":false,"items":[]})");
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams)
+                        .onSuccess(R"({"took":1,"errors":false,"items":[]})");
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams)
+                        .onSuccess(R"({"took":1,"errors":false,"items":[]})");
+                }
                 retryCompletedPromise.set_value();
             }));
 
@@ -896,19 +1020,35 @@ TEST_F(IndexerConnectorSyncTest, ProcessBulkChunkError429TooManyRequestsWithRetr
         .Times(2) // Should retry once after 429 error
         .WillOnce(Invoke(
             [&callCount](RequestParamsVariant /*requestParams*/,
-                         const PostRequestParameters& postParams,
+                         auto postParams,
                          const ConfigurationParameters& /*configParams*/)
             {
                 callCount++;
-                postParams.onError("Too many requests", 429);
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams).onError("Too many requests", 429);
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams).onError("Too many requests", 429);
+                }
             }))
         .WillOnce(Invoke(
             [&callCount, &retryCompletedPromise](RequestParamsVariant /*requestParams*/,
-                                                 const PostRequestParameters& postParams,
+                                                 auto postParams,
                                                  const ConfigurationParameters& /*configParams*/)
             {
                 callCount++;
-                postParams.onSuccess(R"({"took":1,"errors":false,"items":[]})");
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams)
+                        .onSuccess(R"({"took":1,"errors":false,"items":[]})");
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams)
+                        .onSuccess(R"({"took":1,"errors":false,"items":[]})");
+                }
                 retryCompletedPromise.set_value();
             }));
 
@@ -931,10 +1071,19 @@ TEST_F(IndexerConnectorSyncTest, ProcessBulkChunkGenericServerErrorThrowsExcepti
 
     EXPECT_CALL(mockHttpRequest, post(_, _, _))
         .Times(1)
-        .WillOnce(Invoke([](RequestParamsVariant /*requestParams*/,
-                            const PostRequestParameters& postParams,
-                            const ConfigurationParameters& /*configParams*/)
-                         { postParams.onError("Internal Server Error", 500); }));
+        .WillOnce(Invoke(
+            [](RequestParamsVariant /*requestParams*/, auto postParams, const ConfigurationParameters& /*configParams*/)
+            {
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams)
+                        .onError("Internal Server Error", 500);
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams).onError("Internal Server Error", 500);
+                }
+            }));
 
     IndexerConnectorSyncImplSmallBulk connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
 
@@ -956,15 +1105,23 @@ TEST_F(IndexerConnectorSyncTest, ProcessBulkChunkStoppingDuringProcessing)
         .Times(AtLeast(1))
         .WillRepeatedly(Invoke(
             [&processingStarted, &callCount](RequestParamsVariant /*requestParams*/,
-                                             const PostRequestParameters& postParams,
+                                             auto postParams,
                                              const ConfigurationParameters& /*configParams*/)
             {
                 callCount++;
                 processingStarted = true;
                 // Simulate a shorter delay
                 std::this_thread::sleep_for(std::chrono::milliseconds(50));
-                postParams.onSuccess(
-                    R"({"took":1,"errors":false,"items":[]})"); // Success instead of error to avoid retries
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams)
+                        .onSuccess(R"({"took":1,"errors":false,"items":[]})");
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams)
+                        .onSuccess(R"({"took":1,"errors":false,"items":[]})");
+                }
             }));
 
     auto connector = std::make_unique<IndexerConnectorSyncImplNoFlushInterval>(
@@ -998,10 +1155,18 @@ TEST_F(IndexerConnectorSyncTest, DeleteByQuerySuccessCallback)
 
     EXPECT_CALL(mockHttpRequest, post(_, _, _))
         .WillRepeatedly(Invoke(
-            [&callbackCalled](RequestParamsVariant, const PostRequestParameters& postParams, ConfigurationParameters)
+            [&callbackCalled](RequestParamsVariant, auto postParams, ConfigurationParameters)
             {
                 callbackCalled = true;
-                postParams.onSuccess(R"({"took":5,"deleted":10})");
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams)
+                        .onSuccess(R"({"took":5,"deleted":10})");
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess(R"({"took":5,"deleted":10})");
+                }
             }));
 
     IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
@@ -1017,9 +1182,20 @@ TEST_F(IndexerConnectorSyncTest, DeleteByQueryError409DoesNotThrow)
     EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
 
     EXPECT_CALL(mockHttpRequest, post(_, _, _))
-        .WillRepeatedly(
-            Invoke([](RequestParamsVariant, const PostRequestParameters& postParams, ConfigurationParameters)
-                   { postParams.onError("Document version conflict", 409); }));
+        .WillRepeatedly(Invoke(
+            [](RequestParamsVariant, auto postParams, ConfigurationParameters)
+            {
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams)
+                        .onError("Document version conflict", 409);
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams)
+                        .onError("Document version conflict", 409);
+                }
+            }));
 
     IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
     connector.deleteByQuery("test-index", "agent-123");
@@ -1034,9 +1210,18 @@ TEST_F(IndexerConnectorSyncTest, DeleteByQueryError429DoesNotThrow)
     EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
 
     EXPECT_CALL(mockHttpRequest, post(_, _, _))
-        .WillRepeatedly(
-            Invoke([](RequestParamsVariant, const PostRequestParameters& postParams, ConfigurationParameters)
-                   { postParams.onError("Too many requests", 429); }));
+        .WillRepeatedly(Invoke(
+            [](RequestParamsVariant, auto postParams, ConfigurationParameters)
+            {
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams).onError("Too many requests", 429);
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams).onError("Too many requests", 429);
+                }
+            }));
 
     IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
     connector.deleteByQuery("test-index", "agent-123");
@@ -1051,9 +1236,19 @@ TEST_F(IndexerConnectorSyncTest, DeleteByQueryGenericErrorThrows)
     EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
 
     EXPECT_CALL(mockHttpRequest, post(_, _, _))
-        .WillRepeatedly(
-            Invoke([](RequestParamsVariant, const PostRequestParameters& postParams, ConfigurationParameters)
-                   { postParams.onError("Internal server error", 500); }));
+        .WillRepeatedly(Invoke(
+            [](RequestParamsVariant, auto postParams, ConfigurationParameters)
+            {
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams)
+                        .onError("Internal server error", 500);
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams).onError("Internal server error", 500);
+                }
+            }));
 
     IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
     connector.deleteByQuery("test-index", "agent-123");
@@ -1076,22 +1271,38 @@ TEST_F(IndexerConnectorSyncTest, ProcessBulkChunkDirectExecution)
         .Times(AtLeast(3)) // Initial bulk + 2 chunks from split
         .WillOnce(Invoke(
             [&callCount](RequestParamsVariant /*requestParams*/,
-                         const PostRequestParameters& postParams,
+                         auto postParams,
                          const ConfigurationParameters& /*configParams*/)
             {
                 callCount++;
                 // First call fails with 413 to trigger splitAndProcessBulk
-                postParams.onError("Payload Too Large", 413);
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams).onError("Payload Too Large", 413);
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams).onError("Payload Too Large", 413);
+                }
             }))
         .WillRepeatedly(Invoke(
             [&callCount, &processBulkChunkCalled](RequestParamsVariant /*requestParams*/,
-                                                  const PostRequestParameters& postParams,
+                                                  auto postParams,
                                                   const ConfigurationParameters& /*configParams*/)
             {
                 callCount++;
                 processBulkChunkCalled = true;
                 // Subsequent calls succeed
-                postParams.onSuccess(R"({"took":1,"errors":false,"items":[]})");
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams)
+                        .onSuccess(R"({"took":1,"errors":false,"items":[]})");
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams)
+                        .onSuccess(R"({"took":1,"errors":false,"items":[]})");
+                }
             }));
 
     // Use a larger bulk size to ensure we have enough data to trigger splitting
@@ -1132,22 +1343,37 @@ TEST_F(IndexerConnectorSyncTest, ProcessBulkChunkOnErrorExecution)
         .Times(2) // Initial bulk + 1 chunk (the flow is interrupted by exception)
         .WillOnce(Invoke(
             [&callCount](RequestParamsVariant /*requestParams*/,
-                         const PostRequestParameters& postParams,
+                         auto postParams,
                          const ConfigurationParameters& /*configParams*/)
             {
                 callCount++;
                 // First call fails with 413 to trigger splitAndProcessBulk
-                postParams.onError("Payload Too Large", 413);
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams).onError("Payload Too Large", 413);
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams).onError("Payload Too Large", 413);
+                }
             }))
         .WillOnce(Invoke(
             [&callCount, &onErrorCalled](RequestParamsVariant /*requestParams*/,
-                                         const PostRequestParameters& postParams,
+                                         auto postParams,
                                          const ConfigurationParameters& /*configParams*/)
             {
                 callCount++;
                 // Second call (first chunk) fails with 500 to trigger onError without retry
                 onErrorCalled = true;
-                postParams.onError("Internal Server Error", 500);
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams)
+                        .onError("Internal Server Error", 500);
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams).onError("Internal Server Error", 500);
+                }
             }));
 
     // Use a larger bulk size to ensure we have enough data to trigger splitting
@@ -1189,29 +1415,63 @@ TEST_F(IndexerConnectorSyncTest, ProcessBulkChunkError413Then429ThenSuccess)
         .WillRepeatedly(Invoke(
             [&callCount, &error413Called, &error429Called, &error409Called, &successCalled, &finished](
                 RequestParamsVariant /*requestParams*/,
-                const PostRequestParameters& postParams,
+                auto postParams,
                 const ConfigurationParameters& /*configParams*/)
             {
                 ++callCount;
                 if (callCount == 1)
                 {
                     error413Called = true;
-                    postParams.onError("Payload Too Large", 413);
+                    if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                    {
+                        std::get<TPostRequestParameters<const std::string&>>(postParams)
+                            .onError("Payload Too Large", 413);
+                    }
+                    else
+                    {
+                        std::get<TPostRequestParameters<std::string&&>>(postParams).onError("Payload Too Large", 413);
+                    }
                 }
                 else if (callCount == 2)
                 {
                     error429Called = true;
-                    postParams.onError("Too Many Requests", 429);
+                    if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                    {
+                        std::get<TPostRequestParameters<const std::string&>>(postParams)
+                            .onError("Too Many Requests", 429);
+                    }
+                    else
+                    {
+                        std::get<TPostRequestParameters<std::string&&>>(postParams).onError("Too Many Requests", 429);
+                    }
                 }
                 else if (callCount == 3)
                 {
                     error409Called = true;
-                    postParams.onError("Document version conflict", 409);
+                    if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                    {
+                        std::get<TPostRequestParameters<const std::string&>>(postParams)
+                            .onError("Document version conflict", 409);
+                    }
+                    else
+                    {
+                        std::get<TPostRequestParameters<std::string&&>>(postParams)
+                            .onError("Document version conflict", 409);
+                    }
                 }
                 else
                 {
                     successCalled = true;
-                    postParams.onSuccess(R"({"took":1,"errors":false,"items":[]})");
+                    if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                    {
+                        std::get<TPostRequestParameters<const std::string&>>(postParams)
+                            .onSuccess(R"({"took":1,"errors":false,"items":[]})");
+                    }
+                    else
+                    {
+                        std::get<TPostRequestParameters<std::string&&>>(postParams)
+                            .onSuccess(R"({"took":1,"errors":false,"items":[]})");
+                    }
                     finished = true;
                 }
             }));
@@ -1254,24 +1514,49 @@ TEST_F(IndexerConnectorSyncTest, ProcessBulkChunkError413Then413ThenSuccess)
         .WillRepeatedly(Invoke(
             [&callCount, &error413CalledFirst, &error413CalledSecond, &successCalled, &finished](
                 RequestParamsVariant /*requestParams*/,
-                const PostRequestParameters& postParams,
+                auto postParams,
                 const ConfigurationParameters& /*configParams*/)
             {
                 ++callCount;
                 if (callCount == 1)
                 {
                     error413CalledFirst = true;
-                    postParams.onError("Payload Too Large", 413);
+                    if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                    {
+                        std::get<TPostRequestParameters<const std::string&>>(postParams)
+                            .onError("Payload Too Large", 413);
+                    }
+                    else
+                    {
+                        std::get<TPostRequestParameters<std::string&&>>(postParams).onError("Payload Too Large", 413);
+                    }
                 }
                 else if (callCount == 2)
                 {
                     error413CalledSecond = true;
-                    postParams.onError("Too Many Requests", 413);
+                    if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                    {
+                        std::get<TPostRequestParameters<const std::string&>>(postParams)
+                            .onError("Too Many Requests", 413);
+                    }
+                    else
+                    {
+                        std::get<TPostRequestParameters<std::string&&>>(postParams).onError("Too Many Requests", 413);
+                    }
                 }
                 else
                 {
                     successCalled = true;
-                    postParams.onSuccess(R"({"took":1,"errors":false,"items":[]})");
+                    if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                    {
+                        std::get<TPostRequestParameters<const std::string&>>(postParams)
+                            .onSuccess(R"({"took":1,"errors":false,"items":[]})");
+                    }
+                    else
+                    {
+                        std::get<TPostRequestParameters<std::string&&>>(postParams)
+                            .onSuccess(R"({"took":1,"errors":false,"items":[]})");
+                    }
                     finished = true;
                 }
             }));
@@ -1313,24 +1598,49 @@ TEST_F(IndexerConnectorSyncTest, ProcessBulkChunkError413Then413ThenException)
         .WillRepeatedly(Invoke(
             [&callCount, &error413CalledFirst, &error413CalledSecond, &successCalled, &finished](
                 RequestParamsVariant /*requestParams*/,
-                const PostRequestParameters& postParams,
+                auto postParams,
                 const ConfigurationParameters& /*configParams*/)
             {
                 ++callCount;
                 if (callCount == 1)
                 {
                     error413CalledFirst = true;
-                    postParams.onError("Payload Too Large", 413);
+                    if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                    {
+                        std::get<TPostRequestParameters<const std::string&>>(postParams)
+                            .onError("Payload Too Large", 413);
+                    }
+                    else
+                    {
+                        std::get<TPostRequestParameters<std::string&&>>(postParams).onError("Payload Too Large", 413);
+                    }
                 }
                 else if (callCount == 2)
                 {
                     error413CalledSecond = true;
-                    postParams.onError("Too Many Requests", 413);
+                    if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                    {
+                        std::get<TPostRequestParameters<const std::string&>>(postParams)
+                            .onError("Too Many Requests", 413);
+                    }
+                    else
+                    {
+                        std::get<TPostRequestParameters<std::string&&>>(postParams).onError("Too Many Requests", 413);
+                    }
                 }
                 else
                 {
                     successCalled = true;
-                    postParams.onSuccess(R"({"took":1,"errors":false,"items":[]})");
+                    if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                    {
+                        std::get<TPostRequestParameters<const std::string&>>(postParams)
+                            .onSuccess(R"({"took":1,"errors":false,"items":[]})");
+                    }
+                    else
+                    {
+                        std::get<TPostRequestParameters<std::string&&>>(postParams)
+                            .onSuccess(R"({"took":1,"errors":false,"items":[]})");
+                    }
                     finished = true;
                 }
             }));

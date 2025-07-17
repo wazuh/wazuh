@@ -11,6 +11,7 @@
 
 #include "IURLRequest.hpp"
 #include "external/nlohmann/json.hpp"
+#include "indexerConnector.hpp"
 #include "keyStore.hpp"
 #include "loggerHelper.h"
 #include "secureCommunication.hpp"
@@ -28,8 +29,6 @@
 
 static std::mutex G_CREDENTIAL_MUTEX;
 
-constexpr auto IC_NAME {"IndexerConnector"};
-
 constexpr auto DEFAULT_PATH {"tmp/root-ca-merged.pem"};
 constexpr auto INDEXER_COLUMN {"indexer"};
 constexpr auto USER_KEY {"username"};
@@ -38,23 +37,6 @@ constexpr auto PASSWORD_KEY {"password"};
 constexpr auto HTTP_CONTENT_LENGTH {413};
 constexpr auto HTTP_VERSION_CONFLICT {409};
 constexpr auto HTTP_TOO_MANY_REQUESTS {429};
-
-class IndexerConnectorException : public std::exception
-{
-private:
-    std::string m_message;
-
-public:
-    explicit IndexerConnectorException(std::string message)
-        : m_message(std::move(message))
-    {
-    }
-
-    const char* what() const noexcept override
-    {
-        return m_message.c_str();
-    }
-};
 
 template<typename TSelector,
          typename THttpRequest,
@@ -277,8 +259,6 @@ class IndexerConnectorSyncImpl final
         url += "/_bulk?refresh=wait_for";
         bool needToRetry = false;
 
-        std::string dataStr(data);
-
         const auto onSuccess = [](const std::string& response)
         {
             logDebug2(IC_NAME, "Chunk processed successfully: %s", response.c_str());
@@ -330,10 +310,11 @@ class IndexerConnectorSyncImpl final
                 return;
             }
             needToRetry = false;
-            m_httpRequest->post(
-                RequestParameters {.url = HttpURL(url), .data = dataStr, .secureCommunication = m_secureCommunication},
-                PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
-                {});
+            m_httpRequest->post(RequestParametersStringView {.url = HttpURL(url),
+                                                             .data = data,
+                                                             .secureCommunication = m_secureCommunication},
+                                PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
+                                {});
             if (needToRetry && RetryDelay > 0)
             {
                 std::this_thread::sleep_for(std::chrono::seconds(RetryDelay));

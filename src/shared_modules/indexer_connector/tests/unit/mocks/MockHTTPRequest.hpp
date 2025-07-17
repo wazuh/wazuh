@@ -19,7 +19,11 @@
 #include <vector>
 
 // Type aliases to avoid GMock issues with comma in template parameters
-using RequestParamsVariant = std::variant<TRequestParameters<std::string>, TRequestParameters<nlohmann::json>>;
+using RequestParamsVariant = std::
+    variant<TRequestParameters<std::string>, TRequestParameters<nlohmann::json>, TRequestParameters<std::string_view>>;
+
+using PostRequestParametersVariant =
+    std::variant<TPostRequestParameters<const std::string&>, TPostRequestParameters<std::string&&>>;
 
 /**
  * @brief GMock-based mock for HTTPRequest class
@@ -33,42 +37,42 @@ public:
     MOCK_METHOD(void,
                 download,
                 (RequestParamsVariant requestParameters,
-                 PostRequestParameters postRequestParameters,
+                 PostRequestParametersVariant postRequestParameters,
                  ConfigurationParameters configurationParameters),
                 (override));
 
     MOCK_METHOD(void,
                 post,
                 (RequestParamsVariant requestParameters,
-                 PostRequestParameters postRequestParameters,
+                 PostRequestParametersVariant postRequestParameters,
                  ConfigurationParameters configurationParameters),
                 (override));
 
     MOCK_METHOD(void,
                 get,
                 (RequestParamsVariant requestParameters,
-                 PostRequestParameters postRequestParameters,
+                 PostRequestParametersVariant postRequestParameters,
                  ConfigurationParameters configurationParameters),
                 (override));
 
     MOCK_METHOD(void,
                 put,
                 (RequestParamsVariant requestParameters,
-                 PostRequestParameters postRequestParameters,
+                 PostRequestParametersVariant postRequestParameters,
                  ConfigurationParameters configurationParameters),
                 (override));
 
     MOCK_METHOD(void,
                 patch,
                 (RequestParamsVariant requestParameters,
-                 PostRequestParameters postRequestParameters,
+                 PostRequestParametersVariant postRequestParameters,
                  ConfigurationParameters configurationParameters),
                 (override));
 
     MOCK_METHOD(void,
                 delete_,
                 (RequestParamsVariant requestParameters,
-                 PostRequestParameters postRequestParameters,
+                 PostRequestParametersVariant postRequestParameters,
                  ConfigurationParameters configurationParameters),
                 (override));
 

@@ -4,6 +4,7 @@ project(indexer_connector_utest)
 
 file(GLOB SOURCES
         *.cpp
+
 )
 
 add_executable(${PROJECT_NAME} ${SOURCES})
