@@ -11,7 +11,7 @@ from api.controllers.util import json_response
 from api.models.base_model_ import Body
 from api.util import remove_nones_to_dict, parse_api_param, raise_if_exc
 from wazuh import cdb_list
-from wazuh.core.cluster.control import get_system_nodes
+from wazuh.core.cluster.control import get_system_nodes_or_none
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
 from wazuh.core.results import AffectedItemsWazuhResult
 
@@ -154,9 +154,7 @@ async def put_file(body: bytes, overwrite: bool = False, pretty: bool = False, w
                 'overwrite': overwrite,
                 'content': parsed_body}
 
-    nodes = await get_system_nodes()
-    if isinstance(nodes, Exception):
-        nodes = None
+    nodes = await get_system_nodes_or_none()
 
     dapi = DistributedAPI(f=cdb_list.upload_list_file,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -193,9 +191,7 @@ async def delete_file(pretty: bool = False, wait_for_complete: bool = False,
     """
     f_kwargs = {'filename': filename}
 
-    nodes = await get_system_nodes()
-    if isinstance(nodes, Exception):
-        nodes = None
+    nodes = await get_system_nodes_or_none()
 
     dapi = DistributedAPI(f=cdb_list.delete_list_file,
                           f_kwargs=remove_nones_to_dict(f_kwargs),

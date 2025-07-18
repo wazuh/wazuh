@@ -12,7 +12,7 @@ from api.controllers.util import json_response, XML_CONTENT_TYPE
 from api.models.base_model_ import Body
 from api.util import remove_nones_to_dict, parse_api_param, raise_if_exc
 from wazuh import decoder as decoder_framework
-from wazuh.core.cluster.control import get_system_nodes
+from wazuh.core.cluster.control import get_system_nodes_or_none
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
 from wazuh.core.results import AffectedItemsWazuhResult
 
@@ -293,9 +293,7 @@ async def put_file(body: bytes, filename: str = None, relative_dirname: str = No
                 'content': parsed_body,
                 'relative_dirname': relative_dirname}
 
-    nodes = await get_system_nodes()
-    if isinstance(nodes, Exception):
-        nodes = None
+    nodes = await get_system_nodes_or_none()
 
     dapi = DistributedAPI(f=decoder_framework.upload_decoder_file,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -334,9 +332,7 @@ async def delete_file(filename: str = None, relative_dirname: str = None,
     """
     f_kwargs = {'filename': filename, 'relative_dirname': relative_dirname}
 
-    nodes = await get_system_nodes()
-    if isinstance(nodes, Exception):
-        nodes = None
+    nodes = await get_system_nodes_or_none()
 
     dapi = DistributedAPI(f=decoder_framework.delete_decoder_file,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
