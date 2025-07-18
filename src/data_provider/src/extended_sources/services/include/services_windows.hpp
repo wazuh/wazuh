@@ -9,20 +9,22 @@
 
 #pragma once
 
-#include <windows.h>
-#include <winsvc.h>
-#include "json.hpp"
+#include "iservices_utils_wrapper.hpp"
 #include "iwinsvc_wrapper.hpp"
 #include "iwindows_api_wrapper.hpp"
+#include "json.hpp"
 
+/// @brief ServicesProvider class for managing Windows services.
 class ServicesProvider
 {
     public:
         /// @brief Constructs a ServicesProvider with a specific wrapper.
+        /// @param servicesHelper A shared pointer to an IServicesHelper instance for service operations.
         /// @param winSvcWrapper A shared pointer to an IWinSvcWrapper instance for Windows
         /// service control manager operations.
         /// @param winApiWrapper A shared pointer to an IWindowsApiWrapper instance for Windows API operations.
-        explicit ServicesProvider(std::shared_ptr<IWinSvcWrapper> winSvcWrapper,
+        explicit ServicesProvider(std::shared_ptr<IServicesHelper> servicesHelper,
+                                  std::shared_ptr<IWinSvcWrapper> winSvcWrapper,
                                   std::shared_ptr<IWindowsApiWrapper> winApiWrapper);
 
         /// @brief Default constructor.
@@ -33,6 +35,7 @@ class ServicesProvider
         nlohmann::json collect();
 
     private:
+        std::shared_ptr<IServicesHelper> m_servicesHelper;
         std::shared_ptr<IWinSvcWrapper> m_winSvcWrapper;
         std::shared_ptr<IWindowsApiWrapper> m_winApiWrapper;
 
@@ -42,5 +45,4 @@ class ServicesProvider
         /// @param results The JSON array to append the service details to.
         /// @return True if successful, false otherwise.
         bool getService(SC_HANDLE scmHandle, const ENUM_SERVICE_STATUS_PROCESSW& svc, nlohmann::json& results);
-
 };
