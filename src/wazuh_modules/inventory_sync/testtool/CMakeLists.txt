@@ -7,4 +7,4 @@ file(GLOB INVENTORY_SYNC_TESTTOOL_SRC
 
 add_executable(inventory_sync_testtool ${INVENTORY_SYNC_TESTTOOL_SRC})
 
-target_link_libraries(inventory_sync_testtool inventory_sync rocksdb router indexer_connector)
+target_link_libraries(inventory_sync_testtool inventory_sync rocksdb router indexer_connector pthread)
