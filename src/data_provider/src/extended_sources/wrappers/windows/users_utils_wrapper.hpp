@@ -222,11 +222,6 @@ class UsersHelper : public IUsersHelper
         /// @brief Default constructor.
         UsersHelper();
 
-        /// @brief Converts a UTF-8 std::string to a wide string (wstring).
-        /// @param src Input UTF-8 string.
-        /// @return Converted wide string.
-        std::wstring stringToWstring(const std::string& src);
-
         /// @brief Retrieves the shell path for the user identified by the SID.
         /// @param sid String representation of the user's SID.
         /// @return The shell executable path.

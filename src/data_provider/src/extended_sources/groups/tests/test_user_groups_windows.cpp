@@ -13,6 +13,7 @@
 #include "iusers_utils_wrapper.hpp"
 #include "iwindows_api_wrapper.hpp"
 #include "user_groups_windows.hpp"
+#include "encodingWindowsHelper.h"
 
 class MockWindowsApiWrapper : public IWindowsApiWrapper
 {
@@ -42,7 +43,6 @@ class MockWindowsApiWrapper : public IWindowsApiWrapper
 class MockUsersHelper : public IUsersHelper
 {
     public:
-        MOCK_METHOD(std::wstring, stringToWstring, (const std::string&), (override));
         MOCK_METHOD(std::string, getUserShell, (const std::string&), (override));
         MOCK_METHOD(std::unique_ptr<BYTE[]>, getSidFromAccountName, (const std::wstring&), (override));
         MOCK_METHOD(std::string, psidToString, (PSID), (override));
@@ -120,9 +120,8 @@ TEST_F(UserGroupsProviderTest, CollectNoGroupsForUserReturnsEmpty)
 
     EXPECT_CALL(*usersHelper, processLocalAccounts(::testing::_)).WillOnce(::testing::Return(localUsers));
     EXPECT_CALL(*groupsHelper, processLocalGroups()).WillOnce(::testing::Return(localGroups));
-    EXPECT_CALL(*usersHelper, stringToWstring("user1")).WillOnce(::testing::Return(L"user1"));
     EXPECT_CALL(*winapiWrapper, NetUserGetLocalGroupsWrapper(
-                    ::testing::_, ::testing::_, 0, 1, ::testing::_, MAX_PREFERRED_LENGTH, ::testing::_, ::testing::_))
+                    ::testing::_, ::testing::StrEq(L"user1"), 0, 1, ::testing::_, MAX_PREFERRED_LENGTH, ::testing::_, ::testing::_))
     .WillOnce(::testing::Return(NERR_Success));
 
     auto result = provider->collect({});
@@ -157,7 +156,6 @@ TEST_F(UserGroupsProviderTest, CollectUserWithValidGroupReturnsGroupInfo)
 
     EXPECT_CALL(*usersHelper, processLocalAccounts(::testing::_)).WillOnce(::testing::Return(localUsers));
     EXPECT_CALL(*groupsHelper, processLocalGroups()).WillOnce(::testing::Return(localGroups));
-    EXPECT_CALL(*usersHelper, stringToWstring("user1")).WillOnce(::testing::Return(L"user1"));
 
     auto groupName = L"Admins";
     auto buffer = std::make_unique<LOCALGROUP_USERS_INFO_0[]>(1);
@@ -167,7 +165,7 @@ TEST_F(UserGroupsProviderTest, CollectUserWithValidGroupReturnsGroupInfo)
     DWORD totalGroups = 1;
 
     EXPECT_CALL(*winapiWrapper, NetUserGetLocalGroupsWrapper(
-                    ::testing::_, ::testing::_, 0, 1, ::testing::_, MAX_PREFERRED_LENGTH, ::testing::_, ::testing::_))
+                    ::testing::_, ::testing::StrEq(L"user1"), 0, 1, ::testing::_, MAX_PREFERRED_LENGTH, ::testing::_, ::testing::_))
     .WillOnce([&](LPCWSTR, LPCWSTR, DWORD, DWORD, LPBYTE * buf, DWORD, LPDWORD ng, LPDWORD tg)
     {
         *buf = reinterpret_cast<LPBYTE>(buffer.get());
@@ -203,7 +201,6 @@ TEST_F(UserGroupsProviderTest, CollectWithSpecificUidReturnsFilteredResults)
     EXPECT_CALL(*groupsHelper, processLocalGroups()).WillOnce(::testing::Return(localGroups));
 
     // Expect calls for user1
-    EXPECT_CALL(*usersHelper, stringToWstring("user1")).WillOnce(::testing::Return(L"user1"));
     static LOCALGROUP_USERS_INFO_0 buffer[1];
     static std::wstring groupName = L"Admins";
     buffer[0].lgrui0_name = const_cast<LPWSTR>(groupName.c_str());
@@ -220,7 +217,6 @@ TEST_F(UserGroupsProviderTest, CollectWithSpecificUidReturnsFilteredResults)
     });
 
     // No calls for user2
-    EXPECT_CALL(*usersHelper, stringToWstring("user2")).Times(0);
     EXPECT_CALL(*winapiWrapper,
                 NetUserGetLocalGroupsWrapper(::testing::_, ::testing::StrEq(L"user2"),
                                              0, 1, ::testing::_, MAX_PREFERRED_LENGTH, ::testing::_, ::testing::_))
@@ -257,7 +253,6 @@ TEST_F(UserGroupsProviderTest, CollectIgnoresSystemUsers)
     EXPECT_CALL(*groupsHelper, processLocalGroups()).WillOnce(::testing::Return(localGroups));
 
     // Expect calls only for regular_user
-    EXPECT_CALL(*usersHelper, stringToWstring("regular_user")).WillOnce(::testing::Return(L"regular_user"));
     auto buffer = std::make_unique<LOCALGROUP_USERS_INFO_0[]>(1);
     buffer[0].lgrui0_name = const_cast<LPWSTR>(L"Users");
     EXPECT_CALL(*winapiWrapper, NetUserGetLocalGroupsWrapper(
@@ -269,11 +264,6 @@ TEST_F(UserGroupsProviderTest, CollectIgnoresSystemUsers)
         *tg = 1;
         return NERR_Success;
     });
-
-    // Ensure no calls for system users
-    EXPECT_CALL(*usersHelper, stringToWstring("LOCAL SERVICE")).Times(0);
-    EXPECT_CALL(*usersHelper, stringToWstring("SYSTEM")).Times(0);
-    EXPECT_CALL(*usersHelper, stringToWstring("NETWORK SERVICE")).Times(0);
 
     auto result = provider->collect({});
 
@@ -302,13 +292,11 @@ TEST_F(UserGroupsProviderTest, CollectHandlesNetUserGetLocalGroupsFailure)
     EXPECT_CALL(*groupsHelper, processLocalGroups()).WillOnce(::testing::Return(localGroups));
 
     // user1 fails NetUserGetLocalGroupsWrapper
-    EXPECT_CALL(*usersHelper, stringToWstring("user1")).WillOnce(::testing::Return(L"user1"));
     EXPECT_CALL(*winapiWrapper, NetUserGetLocalGroupsWrapper(
                     ::testing::_, ::testing::StrEq(L"user1"), 0, 1, ::testing::_, MAX_PREFERRED_LENGTH, ::testing::_, ::testing::_))
     .WillOnce(::testing::Return(ERROR_ACCESS_DENIED)); // Simulate failure
 
     // user2 succeeds
-    EXPECT_CALL(*usersHelper, stringToWstring("user2")).WillOnce(::testing::Return(L"user2"));
     auto buffer2 = std::make_unique<LOCALGROUP_USERS_INFO_0[]>(1);
     buffer2[0].lgrui0_name = const_cast<LPWSTR>(L"Admins");
     EXPECT_CALL(*winapiWrapper, NetUserGetLocalGroupsWrapper(
@@ -345,7 +333,6 @@ TEST_F(UserGroupsProviderTest, CollectHandlesGroupNotFound)
 
     EXPECT_CALL(*usersHelper, processLocalAccounts(::testing::_)).WillOnce(::testing::Return(localUsers));
     EXPECT_CALL(*groupsHelper, processLocalGroups()).WillOnce(::testing::Return(localGroups));
-    EXPECT_CALL(*usersHelper, stringToWstring("user1")).WillOnce(::testing::Return(L"user1"));
 
     auto groupName = L"NonExistentGroup";
     auto buffer = std::make_unique<LOCALGROUP_USERS_INFO_0[]>(1);
@@ -355,7 +342,7 @@ TEST_F(UserGroupsProviderTest, CollectHandlesGroupNotFound)
     DWORD totalGroups = 1;
 
     EXPECT_CALL(*winapiWrapper, NetUserGetLocalGroupsWrapper(
-                    ::testing::_, ::testing::_, 0, 1, ::testing::_, MAX_PREFERRED_LENGTH, ::testing::_, ::testing::_))
+                    ::testing::_, ::testing::StrEq(L"user1"), 0, 1, ::testing::_, MAX_PREFERRED_LENGTH, ::testing::_, ::testing::_))
     .WillOnce([&](LPCWSTR, LPCWSTR, DWORD, DWORD, LPBYTE * buf, DWORD, LPDWORD ng, LPDWORD tg)
     {
         *buf = reinterpret_cast<LPBYTE>(buffer.get());
@@ -389,9 +376,6 @@ TEST_F(UserGroupsProviderTest, GetGroupNamesByUidSingleUid)
 
     EXPECT_CALL(*groupsHelper, processLocalGroups())
     .WillOnce(::testing::Return(localGroups));
-
-    EXPECT_CALL(*usersHelper, stringToWstring("testuser"))
-    .WillOnce(::testing::Return(L"testuser"));
 
     static std::wstring gA = L"groupA";
     static std::wstring gB = L"groupB";
@@ -441,11 +425,6 @@ TEST_F(UserGroupsProviderTest, GetGroupNamesByUidMultipleUids)
 
     EXPECT_CALL(*groupsHelper, processLocalGroups())
     .WillOnce(::testing::Return(localGroups));
-
-    EXPECT_CALL(*usersHelper, stringToWstring("user1"))
-    .WillOnce(::testing::Return(L"user1"));
-    EXPECT_CALL(*usersHelper, stringToWstring("user2"))
-    .WillOnce(::testing::Return(L"user2"));
 
     static std::wstring gA = L"groupA";
     static std::wstring gB = L"groupB";
@@ -517,11 +496,6 @@ TEST_F(UserGroupsProviderTest, GetGroupNamesByUidAllUsers)
     EXPECT_CALL(*groupsHelper, processLocalGroups())
     .WillOnce(::testing::Return(localGroups));
 
-    EXPECT_CALL(*usersHelper, stringToWstring("user1"))
-    .WillOnce(::testing::Return(L"user1"));
-    EXPECT_CALL(*usersHelper, stringToWstring("user2"))
-    .WillOnce(::testing::Return(L"user2"));
-
     static std::wstring gA = L"groupA";
     static std::wstring gB = L"groupB";
     static std::wstring gC = L"groupC";
@@ -589,11 +563,6 @@ TEST_F(UserGroupsProviderTest, GetUserNamesByGidSingleGid)
     EXPECT_CALL(*groupsHelper, processLocalGroups())
     .WillOnce(::testing::Return(groups));
 
-    EXPECT_CALL(*usersHelper, stringToWstring("alice"))
-    .WillOnce(::testing::Return(L"alice"));
-    EXPECT_CALL(*usersHelper, stringToWstring("bob"))
-    .WillOnce(::testing::Return(L"bob"));
-
     EXPECT_CALL(*winapiWrapper, NetUserGetLocalGroupsWrapper(::testing::_, ::testing::StrEq(L"alice"), 0, 1, ::testing::_, MAX_PREFERRED_LENGTH, ::testing::_, ::testing::_))
     .WillOnce(ReturnGroups({ L"developers" }));
 
@@ -626,11 +595,6 @@ TEST_F(UserGroupsProviderTest, GetUserNamesByGidMultipleGids)
     .WillOnce(::testing::Return(users));
     EXPECT_CALL(*groupsHelper, processLocalGroups())
     .WillOnce(::testing::Return(groups));
-
-    EXPECT_CALL(*usersHelper, stringToWstring("alice"))
-    .WillOnce(::testing::Return(L"alice"));
-    EXPECT_CALL(*usersHelper, stringToWstring("bob"))
-    .WillOnce(::testing::Return(L"bob"));
 
     EXPECT_CALL(*winapiWrapper, NetUserGetLocalGroupsWrapper(::testing::_, ::testing::StrEq(L"alice"), 0, 1, ::testing::_, MAX_PREFERRED_LENGTH, ::testing::_, ::testing::_))
     .WillOnce(ReturnGroups({ L"developers", L"admins" }));
@@ -666,11 +630,6 @@ TEST_F(UserGroupsProviderTest, GetUserNamesByGidAllGroups)
     .WillOnce(::testing::Return(users));
     EXPECT_CALL(*groupsHelper, processLocalGroups())
     .WillOnce(::testing::Return(groups));
-
-    EXPECT_CALL(*usersHelper, stringToWstring("alice"))
-    .WillOnce(::testing::Return(L"alice"));
-    EXPECT_CALL(*usersHelper, stringToWstring("bob"))
-    .WillOnce(::testing::Return(L"bob"));
 
     EXPECT_CALL(*winapiWrapper, NetUserGetLocalGroupsWrapper(::testing::_, ::testing::StrEq(L"alice"), 0, 1, ::testing::_, MAX_PREFERRED_LENGTH, ::testing::_, ::testing::_))
     .WillOnce(ReturnGroups({ L"developers", L"admins" }));

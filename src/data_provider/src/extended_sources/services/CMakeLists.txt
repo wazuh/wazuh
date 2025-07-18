@@ -22,7 +22,9 @@ endif()
 set(SRC_FILES "")
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
-  list(APPEND SRC_FILES src/services_windows.cpp)
+  list(APPEND SRC_FILES
+    src/services_windows.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../wrappers/windows/services_utils_wrapper.cpp)
   set(PLATFORM_LIBS_SERVICES netapi32)
 else()
   if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
@@ -35,3 +37,13 @@ add_library(services STATIC ${SRC_FILES})
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   target_link_libraries(services ${PLATFORM_LIBS_SERVICES})
 endif()
+
+if(UNIT_TEST)
+  if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+      target_link_libraries(services -fprofile-arcs)
+  else()
+      target_link_libraries(services gcov)
+  endif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+
+  add_subdirectory(tests)
+endif(UNIT_TEST)

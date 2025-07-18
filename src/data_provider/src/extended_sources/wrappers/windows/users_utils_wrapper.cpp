@@ -24,7 +24,7 @@ std::string UsersHelper::getUserHomeDir(const std::string& sid)
 {
     std::wstring profile_key_path = kRegProfileKey;
     profile_key_path += kRegSep;
-    profile_key_path += stringToWstring(sid);
+    profile_key_path += Utils::EncodingWindowsHelper::stringUTF8ToWstring(sid);
 
     HKEY hkey;
     auto ret = m_winapiWrapper->RegOpenKeyExWWrapper(
@@ -231,23 +231,6 @@ std::optional<std::vector<std::string>> UsersHelper::getRoamingProfileSids()
     }
 
     return subkeys_names;
-}
-
-std::wstring UsersHelper::stringToWstring(const std::string& src)
-{
-    std::wstring utf16le_str;
-
-    try
-    {
-        std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
-        utf16le_str = converter.from_bytes(src);
-    }
-    catch (const std::exception& /* e */)
-    {
-        // std::cout << "Failed to convert string to wstring " << src;
-    }
-
-    return utf16le_str;
 }
 
 std::string UsersHelper::getUserShell(const std::string& sid)
