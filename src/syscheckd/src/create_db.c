@@ -133,12 +133,17 @@ cJSON * fim_calculate_dbsync_difference(const fim_file_data *data,
     }
 
     if (data->options & CHECK_INODE) {
-        if (aux = cJSON_GetObjectItem(changed_data, "inode"), aux != NULL) {
-            cJSON_AddNumberToObject(old_attributes, "inode", aux->valueint);
-            cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("inode"));
-
+        if ((aux = cJSON_GetObjectItem(changed_data, "inode")) != NULL) {
+            if (cJSON_IsString(aux)) {
+                cJSON_AddStringToObject(old_attributes, "inode", cJSON_GetStringValue(aux));
+                cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("inode"));
+            } else {
+                mwarn(FIM_WARN_INODE_WRONG_TYPE);
+            }
         } else {
-            cJSON_AddNumberToObject(old_attributes, "inode", data->inode);
+            char inode_str[32];
+            snprintf(inode_str, sizeof(inode_str), "%llu", data->inode);
+            cJSON_AddStringToObject(old_attributes, "inode", inode_str);
         }
     }
 
@@ -269,8 +274,12 @@ static void dbsync_attributes_json(const cJSON *dbsync_event, const directory_t 
     }
 
     if (configuration->options & CHECK_INODE) {
-        if (aux = cJSON_GetObjectItem(dbsync_event, "inode"), aux != NULL) {
-            cJSON_AddNumberToObject(attributes, "inode", aux->valueint);
+        if ((aux = cJSON_GetObjectItem(dbsync_event, "inode")) != NULL) {
+            if (cJSON_IsString(aux)) {
+                cJSON_AddStringToObject(attributes, "inode", cJSON_GetStringValue(aux));
+            } else {
+                mwarn(FIM_WARN_INODE_WRONG_TYPE);
+            }
         }
     }
 
@@ -1539,7 +1548,9 @@ cJSON * fim_attributes_json(const fim_file_data * data) {
     }
 
     if (data->options & CHECK_INODE) {
-        cJSON_AddNumberToObject(attributes, "inode", data->inode);
+        char inode_str[32];
+        snprintf(inode_str, sizeof(inode_str), "%llu", data->inode);
+        cJSON_AddStringToObject(attributes, "inode", inode_str);
     }
 
     if (data->options & CHECK_MTIME) {
