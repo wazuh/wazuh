@@ -15,6 +15,7 @@ link_directories(${SRC_FOLDER})
 link_directories(${SRC_FOLDER}/external/cJSON/)
 link_directories(${SRC_FOLDER}/external/libpcre2/.libs/)
 link_directories(${SRC_FOLDER}/external/libyaml/src/.libs/)
+link_directories(${SRC_FOLDER}/external/openssl/)
 link_directories(${SRC_FOLDER}/shared_modules/file_helper/build)
 link_directories(${SRC_FOLDER}/shared_modules/file_helper/build/lib)
 link_directories(${SRC_FOLDER}/shared_modules/dbsync/build)
@@ -25,6 +26,7 @@ include_directories(${SRC_FOLDER}/external/cJSON/)
 include_directories(${SRC_FOLDER}/external/libpcre2/include)
 include_directories(${SRC_FOLDER}/external/nlohmann/)
 include_directories(${SRC_FOLDER}/external/libyaml/include)
+include_directories(${SRC_FOLDER}/external/openssl/include/) # needed for hash_helper
 include_directories(${SRC_FOLDER}/shared_modules/common/)
 include_directories(${SRC_FOLDER}/shared_modules/file_helper/filesystem/include/)
 include_directories(${SRC_FOLDER}/shared_modules/file_helper/file_io/include/)
@@ -35,23 +37,26 @@ include_directories(${SRC_FOLDER}/data_provider/include/)
 # Dependencies should be built externally and made available
 # Use find_library to locate dependencies, but fall back to target names if not found
 
-find_library(FILESYSTEM_WRAPPER_LIB FilesystemWrapper 
+find_library(FILESYSTEM_WRAPPER_LIB FilesystemWrapper
     HINTS ${SRC_FOLDER}/shared_modules/file_helper/build/lib
     NO_DEFAULT_PATH)
-find_library(FILE_IO_LIB FileIO 
-    HINTS ${SRC_FOLDER}/shared_modules/file_helper/build/lib  
+find_library(FILE_IO_LIB FileIO
+    HINTS ${SRC_FOLDER}/shared_modules/file_helper/build/lib
     NO_DEFAULT_PATH)
-find_library(DBSYNC_LIB dbsync 
+find_library(DBSYNC_LIB dbsync
     HINTS ${SRC_FOLDER}/shared_modules/dbsync/build/lib
     NO_DEFAULT_PATH)
-find_library(SYSINFO_LIB sysinfo 
+find_library(SYSINFO_LIB sysinfo
     HINTS ${SRC_FOLDER}/data_provider/build/lib
     NO_DEFAULT_PATH)
-find_library(YAML_LIB yaml 
+find_library(YAML_LIB yaml
     HINTS ${SRC_FOLDER}/external/libyaml/src/.libs
     NO_DEFAULT_PATH)
-find_library(PCRE2_LIB pcre2-8 
+find_library(PCRE2_LIB pcre2-8
     HINTS ${SRC_FOLDER}/external/libpcre2/.libs
+    NO_DEFAULT_PATH)
+find_library(OPENSSL_LIB ssl
+    HINTS ${SRC_FOLDER}/external/openssl
     NO_DEFAULT_PATH)
 
 # Set fallback values if libraries aren't found (for fresh builds)
@@ -110,6 +115,7 @@ target_link_libraries(
             ${YAML_LIB}
             ${PCRE2_LIB}
             $<$<PLATFORM_ID:Windows>:registry_helper> # Windows registry support
+            ${OPENSSL_LIB}
 )
 
 if(BUILD_TESTS)
