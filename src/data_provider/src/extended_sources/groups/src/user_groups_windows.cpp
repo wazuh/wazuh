@@ -183,7 +183,7 @@ std::vector<Group> UserGroupsProvider::getLocalGroups()
 
 std::vector<std::string> UserGroupsProvider::getLocalGroupNamesForUser(const std::string& username)
 {
-    std::wstring wUsername = m_usersHelper->stringToWstring(username);
+    std::wstring wUsername = Utils::EncodingWindowsHelper::stringUTF8ToWstring(username);
     DWORD groupInfoLevel = 0;
     DWORD numGroups = 0;
     DWORD totalGroups = 0;
