@@ -33,14 +33,14 @@ jobs:
       - name: Router - Build tests
         uses: ./.github/actions/build_target_cpp
         with:
-          target: "router_ctest"
+          target: "librouter_ctest"
           test: "true"
           asan: "false"
 
       - name: Router - Run tests
         uses: ./.github/actions/test_cpp
         with:
-          target: "router_ctest"
+          target: "librouter_ctest"
           valgrind: "true"
 
 
@@ -68,12 +68,12 @@ jobs:
       - name: Router - Build tests
         uses: ./.github/actions/build_target_cpp
         with:
-          target: "router_ctest"
+          target: "librouter_ctest"
           test: "true"
           asan: "true"
 
       - name: Router - Run tests
         uses: ./.github/actions/test_cpp
         with:
-          target: "router_ctest"
+          target: "librouter_ctest"
           valgrind: "false"

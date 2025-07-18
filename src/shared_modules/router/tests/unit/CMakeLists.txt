@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.12.4)
 
-project(router_utest)
+project(librouter_utest)
 
 file(GLOB SOURCES
         *.cpp
