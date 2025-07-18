@@ -33,7 +33,7 @@ jobs:
       - name: Router - Build tests
         uses: ./.github/actions/build_target_cpp
         with:
-          target: "router_utest"
+          target: "librouter_utest"
           test: "true"
           asan: "false"
 
@@ -41,7 +41,7 @@ jobs:
         uses: ./.github/actions/test_cpp
         with:
           valgrind: "true"
-          target: "router_utest"
+          target: "librouter_utest"
 
       - name: Router - Coverage
         uses: ./.github/actions/coverage_cpp
@@ -67,12 +67,12 @@ jobs:
       - name: Router - Build tests
         uses: ./.github/actions/build_target_cpp
         with:
-          target: "router_utest"
+          target: "librouter_utest"
           test: "true"
           asan: "true"
 
       - name: Router - Run tests
         uses: ./.github/actions/test_cpp
         with:
-          target: "router_utest"
+          target: "librouter_utest"
           valgrind: "false"
