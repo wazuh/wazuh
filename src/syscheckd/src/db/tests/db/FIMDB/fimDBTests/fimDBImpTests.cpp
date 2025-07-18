@@ -17,7 +17,6 @@
 #include <thread>
 
 constexpr auto MOCK_DB_PATH {"temp_fimdb_ut.db"};
-constexpr auto MOCK_DB_MEM {":memory:"};
 MockLoggingCall* mockLog;
 
 void mockLoggingFunction(const modules_log_level_t logLevel, const char* tag)

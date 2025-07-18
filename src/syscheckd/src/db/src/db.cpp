@@ -29,8 +29,11 @@ void DB::init(const int storage,
               const int valueLimit)
 {
     auto path {storage == FIM_DB_MEMORY ? FIM_DB_MEMORY_PATH : FIM_DB_DISK_PATH};
-    auto dbsyncHandler {std::make_shared<DBSync>(
-        HostType::AGENT, DbEngineType::SQLITE3, path, FIMDBCreator<OS_TYPE>::CreateStatement())};
+    auto dbsyncHandler {std::make_shared<DBSync>(HostType::AGENT,
+                                                 DbEngineType::SQLITE3,
+                                                 path,
+                                                 FIMDBCreator<OS_TYPE>::CreateStatement(),
+                                                 DbManagement::PERSISTENT)};
 
     FIMDB::instance().init(callbackLogWrapper, dbsyncHandler, fileLimit, valueLimit);
 }

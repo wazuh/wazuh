@@ -479,10 +479,6 @@ cJSON *getSyscheckConfig(void) {
     cJSON_AddNumberToObject(syscfg, "max_eps", syscheck.max_eps);
     cJSON_AddNumberToObject(syscfg, "process_priority", syscheck.process_priority);
 
-    // Add sql database information
-    cJSON_AddStringToObject(syscfg, "database", syscheck.database_store ? "memory" : "disk");
-
-
     cJSON_AddItemToObject(root,"syscheck",syscfg);
 
     return root;

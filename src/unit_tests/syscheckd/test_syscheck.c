@@ -49,7 +49,6 @@ static int teardown_group(void **state) {
 static int setup_syscheck_config(void **state) {
     syscheck_config *syscheck_conf = calloc(1, sizeof(syscheck_config));
 
-    syscheck_conf->database_store            = FIM_DB_DISK;
     syscheck_conf->file_entry_limit          = 100000;
 #ifdef WIN32
     syscheck_conf->db_entry_registry_limit   = 100000;
@@ -98,11 +97,11 @@ void test_fim_initialize(void **state)
     syscheck_config *syscheck_conf = *state;
 
 #ifdef TEST_WINAGENT
-    expect_wrapper_fim_db_init(syscheck_conf->database_store,
+    expect_wrapper_fim_db_init(FIM_DB_DISK,
                                syscheck_conf->file_entry_limit,
                                syscheck_conf->db_entry_registry_limit);
 #else
-    expect_wrapper_fim_db_init(syscheck_conf->database_store,
+    expect_wrapper_fim_db_init(FIM_DB_DISK,
                                syscheck_conf->file_entry_limit,
                                0);
 #endif

@@ -80,13 +80,13 @@ void read_internal(int debug_level)
 void fim_initialize() {
     // Create store data
 #ifndef WIN32
-    FIMDBErrorCode ret_val = fim_db_init(syscheck.database_store,
+    FIMDBErrorCode ret_val = fim_db_init(FIM_DB_DISK,
                                          loggingFunction,
                                          syscheck.file_entry_limit,
                                          0,
                                          NULL);
 #else
-    FIMDBErrorCode ret_val = fim_db_init(syscheck.database_store,
+    FIMDBErrorCode ret_val = fim_db_init(FIM_DB_DISK,
                                          loggingFunction,
                                          syscheck.file_entry_limit,
                                          syscheck.db_entry_registry_limit,

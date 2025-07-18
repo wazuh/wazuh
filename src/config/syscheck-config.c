@@ -66,7 +66,6 @@ int initialize_syscheck_configuration(syscheck_config *syscheck) {
 
     syscheck->rootcheck                       = 0;
     syscheck->disabled                        = SK_CONF_UNPARSED;
-    syscheck->database_store                  = FIM_DB_DISK;
     syscheck->skip_fs.nfs                     = 1;
     syscheck->skip_fs.dev                     = 1;
     syscheck->skip_fs.sys                     = 1;
@@ -1525,7 +1524,6 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
     const char *xml_registry = "windows_registry";
     const char *xml_time = "frequency";
     const char *xml_scanday = "scan_day";
-    const char *xml_database = "database";
     const char *xml_scantime = "scan_time";
     const char *xml_file_limit = "file_limit";
     const char *xml_enabled = "enabled";
@@ -1631,18 +1629,6 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
 
             syscheck->wdata.interval_scan = atoi(node[i]->content);
 #endif
-        }
-
-        /*  Store database in memory or in disk.
-        *   By default disk.
-        */
-        else if (strcmp(node[i]->element, xml_database) == 0) {
-            if (strcmp(node[i]->content, "memory") == 0) {
-                syscheck->database_store = FIM_DB_MEMORY;
-            }
-            else if (strcmp(node[i]->content, "disk") == 0){
-                syscheck->database_store = FIM_DB_DISK;
-            }
         }
 
         /* Get frequency */

@@ -422,7 +422,6 @@ typedef struct _config {
 #endif
     rtfim *realtime;
     fdb_t *database;
-    int database_store;
 
     char **prefilter_cmd;
     int process_priority; // Adjusts the priority of the process (or threads in Windows)
