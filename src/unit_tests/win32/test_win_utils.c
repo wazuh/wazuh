@@ -308,6 +308,70 @@ static void test_SendMSGAction_multi_escape(void **state) {
     assert_int_equal(ret, 0);
 }
 
+static void test_SendBinaryMSGAction_mutex_abandoned(void **state) {
+    (void) state;
+
+    expect_any(wrap_WaitForSingleObject, hMutex);
+    expect_value(wrap_WaitForSingleObject, value, 1000000L);
+    will_return(wrap_WaitForSingleObject, WAIT_ABANDONED);
+
+    expect_string(__wrap__merror, formatted_msg, "Error waiting mutex (abandoned).");
+
+    int ret = SendBinaryMSG(0, "data", 4, "locmsg", 's');
+    assert_int_equal(ret, -1);
+}
+
+static void test_SendBinaryMSGAction_message_too_large(void **state) {
+    (void) state;
+
+    size_t payload_len = OS_MAXSTR;
+    char payload[payload_len];
+    memset(payload, 'A', payload_len);
+
+    expect_any(wrap_WaitForSingleObject, hMutex);
+    expect_value(wrap_WaitForSingleObject, value, 1000000L);
+    will_return(wrap_WaitForSingleObject, WAIT_OBJECT_0);
+
+    expect_string(__wrap__mwarn, formatted_msg, "Binary message is too large to be sent (65542 bytes required, 65536 max). Payload of 65536 bytes for module 'FIM' was dropped.");
+
+    expect_any(wrap_ReleaseMutex, hMutex);
+    will_return(wrap_ReleaseMutex, 1);
+
+    int ret = SendBinaryMSG(0, payload, payload_len, "FIM", 's');
+    assert_int_equal(ret, -1);
+}
+
+static void test_SendBinaryMSGAction_direct_send_success(void **state) {
+    (void) state;
+
+    agt->buffer = 0;
+
+    const char payload[] = {'d', 'a', 't', 'a', '\0', 'm', 'o', 'r', 'e'};
+    size_t payload_len = sizeof(payload);
+    const char *locmsg = "FIM";
+    char loc = 's';
+
+    char expected_msg[100];
+    char *p = expected_msg;
+    strcpy(p, "s:FIM:");
+    p += strlen("s:FIM:");
+    memcpy(p, payload, payload_len);
+    size_t total_len = strlen("s:FIM:") + payload_len;
+
+    expect_any(wrap_WaitForSingleObject, hMutex);
+    expect_value(wrap_WaitForSingleObject, value, 1000000L);
+    will_return(wrap_WaitForSingleObject, WAIT_OBJECT_0);
+
+    expect_memory(__wrap_send_msg, msg, expected_msg, total_len);
+    will_return(__wrap_send_msg, 0);
+
+    expect_any(wrap_ReleaseMutex, hMutex);
+    will_return(wrap_ReleaseMutex, 1);
+
+    int ret = SendBinaryMSG(0, payload, payload_len, locmsg, loc);
+    assert_int_equal(ret, 0);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_get_agent_ip_legacy_win32_update_ip_success), cmocka_unit_test(test_get_agent_ip_legacy_win32_sysinfo_error),
@@ -320,7 +384,9 @@ int main(void) {
         cmocka_unit_test(test_SendMSGAction_mutex_abandoned), cmocka_unit_test(test_SendMSGAction_mutex_error),
         cmocka_unit_test(test_SendMSGAction_non_escape), cmocka_unit_test(test_SendMSGAction_escape),
         cmocka_unit_test(test_SendMSGAction_multi_escape),
-
+        cmocka_unit_test(test_SendBinaryMSGAction_mutex_abandoned),
+        cmocka_unit_test(test_SendBinaryMSGAction_message_too_large),
+        cmocka_unit_test(test_SendBinaryMSGAction_direct_send_success),
     };
 
     return cmocka_run_group_tests(tests, setup_group, NULL);
