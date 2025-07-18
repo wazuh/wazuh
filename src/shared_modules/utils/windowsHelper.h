@@ -24,6 +24,7 @@
 #include <time.h>
 #include <ws2tcpip.h>
 #include <iphlpapi.h>
+#include <netioapi.h>
 #include <versionhelpers.h>
 #include "mem_op.h"
 #include "stringHelper.h"
@@ -128,7 +129,7 @@ namespace Utils
         return ret;
     }
 
-    typedef NETIOAPI_API (WINAPI* ConvertLengthToIpv4Mask_t)(ULONG, PULONG);
+    typedef DWORD (WINAPI* ConvertLengthToIpv4Mask_t)(ULONG, PULONG);
     static ConvertLengthToIpv4Mask_t getConvertLengthToIpv4MaskFunctionAddress()
     {
         ConvertLengthToIpv4Mask_t ret{nullptr};
@@ -142,7 +143,7 @@ namespace Utils
         return ret;
     }
 
-    typedef NETIOAPI_API (WINAPI* GetIfEntry2_t)(PMIB_IF_ROW2);
+    typedef DWORD (WINAPI* GetIfEntry2_t)(PMIB_IF_ROW2);
     static GetIfEntry2_t getIfEntry2FunctionAddress()
     {
         GetIfEntry2_t ret{nullptr};
