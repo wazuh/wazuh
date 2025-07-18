@@ -3,7 +3,7 @@
 #include <sca_utils.hpp>
 
 // #include <logger.hpp>
-#include <registryHelper.hpp>
+#include <registryHelper.h>
 
 #include <windows.h>
 
