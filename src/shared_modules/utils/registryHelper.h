@@ -314,6 +314,55 @@ namespace Utils
                 return ret;
             }
 
+            std::string getValue(const std::string& valueName) const
+            {
+                return string(valueName);
+            }
+
+            static HKEY stringToHKEY(const std::string& rootKey)
+            {
+                if (rootKey == "HKEY_CLASSES_ROOT")
+                    return HKEY_CLASSES_ROOT;
+                else if (rootKey == "HKEY_CURRENT_CONFIG")
+                    return HKEY_CURRENT_CONFIG;
+                else if (rootKey == "HKEY_CURRENT_USER")
+                    return HKEY_CURRENT_USER;
+                else if (rootKey == "HKEY_LOCAL_MACHINE")
+                    return HKEY_LOCAL_MACHINE;
+                else if (rootKey == "HKEY_PERFORMANCE_DATA")
+                    return HKEY_PERFORMANCE_DATA;
+                else if (rootKey == "HKEY_USERS")
+                    return HKEY_USERS;
+                else
+                    throw std::invalid_argument("Invalid registry root key: " + rootKey);
+            }
+
+            static bool KeyExists(const std::string& rootKey, const std::string& subKey)
+            {
+                try
+                {
+                    HKEY hKey = stringToHKEY(rootKey);
+                    HKEY hOpenKey;
+                    LONG result = RegOpenKeyEx(hKey, subKey.c_str(), 0, KEY_READ, &hOpenKey);
+
+                    if (result == ERROR_SUCCESS)
+                    {
+                        RegCloseKey(hOpenKey);
+                        return true;
+                    }
+                    return false;
+                }
+                catch (...)
+                {
+                    return false;
+                }
+            }
+
+            // Constructor that accepts string root key
+            Registry(const std::string& rootKey, const std::string& subKey = "", const REGSAM access = KEY_READ)
+                : m_registryKey{openRegistry(stringToHKEY(rootKey), subKey, access)}
+            {}
+
         private:
             static HKEY openRegistry(const HKEY key, const std::string& subKey, const REGSAM access)
             {

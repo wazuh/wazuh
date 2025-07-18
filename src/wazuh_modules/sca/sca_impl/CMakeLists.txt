@@ -31,6 +31,7 @@ include_directories(${SRC_FOLDER}/external/libpcre2/include)
 include_directories(${SRC_FOLDER}/external/nlohmann/)
 include_directories(${SRC_FOLDER}/external/libyaml/include)
 include_directories(${SRC_FOLDER}/external/openssl/include/) # needed for hash_helper
+include_directories(${SRC_FOLDER}/headers/)
 include_directories(${SRC_FOLDER}/shared_modules/common/)
 include_directories(${SRC_FOLDER}/shared_modules/file_helper/filesystem/include/)
 include_directories(${SRC_FOLDER}/shared_modules/file_helper/file_io/include/)
@@ -118,7 +119,6 @@ target_link_libraries(
             cjson
             ${YAML_LIB}
             ${PCRE2_LIB}
-            $<$<PLATFORM_ID:Windows>:registry_helper> # Windows registry support
             ${OPENSSL_LIB}
 )
 
