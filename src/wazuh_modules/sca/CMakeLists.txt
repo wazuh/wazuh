@@ -55,6 +55,8 @@ include_directories(${CMAKE_SOURCE_DIR}/include)
 
 link_directories(${SRC_FOLDER})
 link_directories(${SRC_FOLDER}/external/cJSON/)
+link_directories(${SRC_FOLDER}/shared_modules/dbsync/build/lib)
+link_directories(${SRC_FOLDER}/data_provider/build/lib)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   add_definitions(-DWIN32=1 -D_WIN32_WINNT=0x600 -DWIN_EXPORT)
@@ -64,16 +66,7 @@ file(GLOB SCA_SRC "${CMAKE_SOURCE_DIR}/src/*.cpp")
 
 add_library(sca SHARED ${SCA_SRC} ${SRC_FOLDER}/${RESOURCE_OBJ})
 
-# Find the same libraries that SCAImpl depends on
-find_library(SYSINFO_LIB sysinfo 
-    HINTS ${SRC_FOLDER}/data_provider/build/lib
-    NO_DEFAULT_PATH)
-if(NOT SYSINFO_LIB)
-    set(SYSINFO_LIB sysinfo)
-    message(STATUS "sysinfo library not found, using target name")
-endif()
-
-target_link_libraries(sca SCAImpl ${SYSINFO_LIB})
+target_link_libraries(sca SCAImpl sysinfo)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   set_target_properties(
