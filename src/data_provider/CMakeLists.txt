@@ -81,7 +81,6 @@ include_directories(${SRC_FOLDER}/shared_modules/utils)
 include_directories(${SRC_FOLDER}/shared_modules/common/)
 include_directories(${SRC_FOLDER}/shared_modules/file_helper/filesystem/include/)
 include_directories(${SRC_FOLDER}/shared_modules/file_helper/file_io/include/)
-include_directories(${SRC_FOLDER}/external/openssl/include/)
 include_directories(${SRC_FOLDER}/external/libplist/bin/include/)
 include_directories(${SRC_FOLDER}/external/libdb/build_unix/)
 if(NOT CMAKE_CHECK_CENTOS5) # Avoid incompatible libraries in CentOS 5 and Red Hat 5
