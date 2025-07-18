@@ -71,15 +71,6 @@ public:
         return *this;
     }
 };
-static bool enabled = false;
-void* operator new(size_t size)
-{
-    if (enabled)
-    {
-        printf("OCTA: new %zu\n", size);
-    }
-    return malloc(size);
-}
 
 using ThreadDispatchQueue = ThreadEventDispatcher<std::string, std::function<void(std::queue<std::string>&)>>;
 using ThreadLoggerQueue = Utils::AsyncValueDispatcher<IndexerResponse, std::function<void(IndexerResponse&&)>>;
@@ -199,7 +190,6 @@ public:
                     logDebug2(IC_NAME, "Failed to parse the indexer response %s", data.m_response.c_str());
                     return;
                 }
-                enabled = true;
 
                 // Check if the response has errors and contains items
                 if (!parsedResponse.value("errors", false) || !parsedResponse.contains("items"))
@@ -247,7 +237,6 @@ public:
                             payload.size(),
                             payload.data());
                 }
-                enabled = false;
             });
 
         m_dispatcher = std::make_unique<ThreadDispatchQueue>(
