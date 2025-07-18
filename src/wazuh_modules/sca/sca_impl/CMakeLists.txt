@@ -51,9 +51,6 @@ find_library(FILE_IO_LIB FileIO
 find_library(DBSYNC_LIB dbsync
     HINTS ${SRC_FOLDER}/shared_modules/dbsync/build/lib
     NO_DEFAULT_PATH)
-find_library(SYSINFO_LIB sysinfo
-    HINTS ${SRC_FOLDER}/data_provider/build/lib
-    NO_DEFAULT_PATH)
 find_library(YAML_LIB yaml
     HINTS ${SRC_FOLDER}/external/libyaml/src/.libs
     NO_DEFAULT_PATH)
@@ -76,10 +73,6 @@ endif()
 if(NOT DBSYNC_LIB)
     set(DBSYNC_LIB dbsync)
     message(STATUS "dbsync library not found, using target name")
-endif()
-if(NOT SYSINFO_LIB)
-    set(SYSINFO_LIB sysinfo)
-    message(STATUS "sysinfo library not found, using target name")
 endif()
 if(NOT YAML_LIB)
     set(YAML_LIB yaml)
@@ -114,7 +107,7 @@ target_link_libraries(
     PRIVATE ${FILESYSTEM_WRAPPER_LIB}
             ${FILE_IO_LIB}
             ${DBSYNC_LIB}
-            ${SYSINFO_LIB}
+            sysinfo
             wazuhext # contains hash_helper, string_helper, time_helper utilities
             cjson
             ${YAML_LIB}
