@@ -793,7 +793,6 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                             else:
                                 raise e
                     except Exception as e:
-                        print(f"Error {e}")
                         errors['extra'] += 1
                         result_logs["debug2"][file_to_remove].append(f"Error removing file "
                                                                      f"'{file_to_remove}': {e}")
