@@ -764,7 +764,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                     try:
                         result_logs['debug2'][filename].append(f"Processing file {filename}")
                         if analysis.is_ruleset_file(filename):
-                            result_logs['debug2'][filename].append(f"This file update will trigger a hot-reload in analysisd")
+                            result_logs['debug2'][filename].append("This file update will trigger a hot-reload in analysisd")
                             has_to_reload_ruleset = True
 
                         overwrite_or_create_files(filename, data)
@@ -779,7 +779,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                     try:
                         result_logs['debug2'][file_to_remove].append(f"Remove file: '{file_to_remove}'")
                         if analysis.is_ruleset_file(file_to_remove):
-                            result_logs['debug2'][file_to_remove].append(f"This file update will trigger a hot-reload in analysisd")
+                            result_logs['debug2'][file_to_remove].append("This file update will trigger a hot-reload in analysisd")
                             has_to_reload_ruleset = True
 
                         file_path = os.path.join(common.WAZUH_PATH, file_to_remove)
@@ -824,10 +824,10 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                             result_logs['debug2']["analysisd"].append(elem)
                 else:
                     errors['analysisd'] += 1
-                    result_logs["error"]["analysisd"].append(f"Error reloading ruleset {response.errors}")
+                    result_logs["error"]["analysisd"].append(f"Error reloading the ruleset {response.errors}")
             except Exception as e:
                 errors['analysisd'] += 1
-                result_logs["error"]["analysisd"].append(f"Error reloading ruleset {e}")
+                result_logs["error"]["analysisd"].append(f"Error reloading the ruleset {e}")
 
 
         if sum(errors.values()) > 0:
