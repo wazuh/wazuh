@@ -39,7 +39,6 @@ extern void mock_assert(const int result, const char* const expression,
 
 // Global variables
 static int _base_line = 0;
-#define JS_SAFE_INTEGER_LIMIT ((double)(1ULL << 53))
 
 static const char *FIM_EVENT_TYPE_ARRAY[] = {
     "added",
@@ -134,19 +133,15 @@ cJSON * fim_calculate_dbsync_difference(const fim_file_data *data,
     }
 
     if (data->options & CHECK_INODE) {
-        char inode_str[32];
         if ((aux = cJSON_GetObjectItem(changed_data, "inode")) != NULL) {
             if (cJSON_IsString(aux)) {
-                strncpy(inode_str, cJSON_GetStringValue(aux), sizeof(inode_str) - 1);
-                inode_str[sizeof(inode_str) - 1] = '\0';
-            } else if (cJSON_IsNumber(aux) && aux->valuedouble > JS_SAFE_INTEGER_LIMIT) {
-                snprintf(inode_str, sizeof(inode_str), "%llu", (uint64_t)aux->valuedouble);
-                mwarn(FIM_WARN_VALUEDOUBLE_CAST);
+                cJSON_AddStringToObject(old_attributes, "inode", cJSON_GetStringValue(aux));
+                cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("inode"));
+            } else {
+                mwarn(FIM_WARN_INODE_WRONG_TYPE);
             }
-            cJSON_AddStringToObject(old_attributes, "inode", inode_str);
-            cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("inode"));
-
         } else {
+            char inode_str[32];
             snprintf(inode_str, sizeof(inode_str), "%llu", data->inode);
             cJSON_AddStringToObject(old_attributes, "inode", inode_str);
         }
@@ -280,14 +275,10 @@ static void dbsync_attributes_json(const cJSON *dbsync_event, const directory_t 
 
     if (configuration->options & CHECK_INODE) {
         if ((aux = cJSON_GetObjectItem(dbsync_event, "inode")) != NULL) {
-            char inode_str[32];
-
             if (cJSON_IsString(aux)) {
                 cJSON_AddStringToObject(attributes, "inode", cJSON_GetStringValue(aux));
-            } else if (cJSON_IsNumber(aux) && aux->valuedouble > JS_SAFE_INTEGER_LIMIT) {
-                snprintf(inode_str, sizeof(inode_str), "%llu", (uint64_t)aux->valuedouble);
-                cJSON_AddStringToObject(attributes, "inode", inode_str);
-                mwarn(FIM_WARN_VALUEDOUBLE_CAST);
+            } else {
+                mwarn(FIM_WARN_INODE_WRONG_TYPE);
             }
         }
     }
