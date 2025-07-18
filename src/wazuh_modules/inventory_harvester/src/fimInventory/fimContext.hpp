@@ -795,7 +795,6 @@ private:
     std::string m_valueNameSanitized;
     std::string m_mtimeISO8601;
     std::string m_keySanitized;
-    std::string m_inodeStr;
 
     /**
      * @brief Scan context.
