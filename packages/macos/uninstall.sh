@@ -5,7 +5,7 @@ sudo /Library/Ossec/bin/wazuh-control stop
 sudo /bin/rm -r /Library/Ossec*
 
 # remove launchdaemons
-/bin/rm -f /Library/LaunchDaemons/com.wazuh.agent.plist
+/bin/rm -f /Library/LaunchDaemons/com.Wazuh.agent.plist
 
 ## remove StartupItems
 /bin/rm -rf /Library/StartupItems/WAZUH
@@ -14,8 +14,8 @@ sudo /bin/rm -r /Library/Ossec*
 /usr/bin/dscl . -delete "/Users/wazuh"
 /usr/bin/dscl . -delete "/Groups/wazuh"
 
-/usr/sbin/pkgutil --forget com.wazuh.pkg.wazuh-agent
-/usr/sbin/pkgutil --forget com.wazuh.pkg.wazuh-agent-etc
+/usr/sbin/pkgutil --forget com.Wazuh.pkg.wazuh-agent
+/usr/sbin/pkgutil --forget com.Wazuh.pkg.wazuh-agent-etc
 
 # In case it was installed via Puppet pkgdmg provider
 

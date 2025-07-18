@@ -177,5 +177,5 @@ fi
 
 if [ -n "${upgrade}" ] && [ -n "${restart}" ]; then
     echo "Restarting Wazuh..."
-    launchctl bootstrap system /Library/LaunchDaemons/com.wazuh.agent.plist
+    launchctl bootstrap system /Library/LaunchDaemons/com.Wazuh.agent.plist
 fi

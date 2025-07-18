@@ -4,7 +4,7 @@
     "postinstall_action": "none",
     "preserve_xattr": true,
     "name": "PACKAGE_NAME.pkg",
-    "identifier": "com.wazuh.pkg.wazuh-agent",
+    "identifier": "com.Wazuh.pkg.wazuh-agent",
     "install_location": "/",
     "version": "VERSION",
     "distribution_style": false
