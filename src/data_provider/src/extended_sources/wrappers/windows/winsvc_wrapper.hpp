@@ -96,8 +96,9 @@ class WinSvcWrapper : public IWinSvcWrapper
 
         /// @brief Closes a handle to a service control manager database.
         /// @param hSCManager Handle to the service control manager database.
-        void CloseServiceHandleWrapper(SC_HANDLE hSCManager) override
+        /// @return TRUE if successful, FALSE otherwise.
+        BOOL CloseServiceHandleWrapper(SC_HANDLE hSCManager) override
         {
-            CloseServiceHandle(hSCManager);
+            return CloseServiceHandle(hSCManager);
         }
 };
