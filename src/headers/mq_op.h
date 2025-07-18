@@ -93,6 +93,22 @@ int SendMSGPredicated(int queue, const char *message, const char *locmsg, char l
 int SendMSG(int queue, const char *message, const char *locmsg, char loc) __attribute__((nonnull));
 
 /**
+ * Sends a message binary through a message queue
+ * @param queue file descriptor of the queue where the message will be sent (UNIX)
+ * @param message binary containing the message
+ * @param message_len The length of the message payload in bytes
+ * @param locmsg path to the queue file
+ * @param loc  queue location (WIN32)
+ * @return
+ * UNIX -> 0 if file descriptor is still available
+ * UNIX -> -1 if there is an error in the socket. The socket will be closed before returning (StartMQ should be called to restore queue)
+ * WIN32 -> 0 on success
+ * WIN32 -> -1 on error
+ * Notes: (UNIX) If the socket is busy when trying to send a message a DEBUG2 message will be loggeed but the return code will be 0
+ */
+int SendBinaryMSG(int queue, const void *message, size_t message_len, const char *locmsg, char loc);
+
+/**
  * Sends a message to a socket. If the socket has not been created yet it will be created based on
  * the target information. If a message fails to be sent the method will not try to send it again until *sock_fail_time* has passed
  * @param queue file descriptor of the queue where the error message will be sent (UNIX)

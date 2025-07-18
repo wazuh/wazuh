@@ -40,7 +40,27 @@ struct{
   unsigned int normal:1;
 } buff;
 
-static char ** buffer;
+/**
+ * @brief Represents a single message stored in the event buffer.
+ *
+ * This structure is used to hold a message that can be either a null-terminated
+ * text string or a raw binary data buffer. It pairs a pointer to the data with
+ * its explicit size, allowing the system to handle binary content safely
+ * without truncation at null bytes.
+ */
+typedef struct {
+    /** @brief Pointer to the dynamically allocated message data. */
+    void *data;
+
+    /** @brief The exact size of the data in bytes. */
+    size_t size;
+} buffered_message;
+
+/**
+ * @brief The agent's main event buffer.
+ */
+static buffered_message *buffer;
+
 static pthread_mutex_t mutex_lock;
 static pthread_cond_t cond_no_empty;
 
@@ -58,8 +78,9 @@ static void delay(struct timespec * ts_loop);
 /* Create agent buffer */
 void buffer_init(){
 
-    if (!buffer)
-        os_calloc(agt->buflength+1, sizeof(char *), buffer);
+    if (!buffer) {
+        os_calloc(agt->buflength + 1, sizeof(buffered_message), buffer);
+    }
 
     /* Read internal configuration */
     warn_level = getDefine_Int("agent", "warn_level", 1, 100);
@@ -76,7 +97,7 @@ void buffer_init(){
 }
 
 /* Send messages to buffer. */
-int buffer_append(const char *msg){
+int buffer_append(const char *msg, ssize_t msg_len) {
 
     w_mutex_lock(&mutex_lock);
 
@@ -126,7 +147,17 @@ int buffer_append(const char *msg){
 
     }else{
 
-        buffer[i] = strdup(msg);
+        size_t size_to_alloc;
+        if (msg_len < 0) { // It's a null-terminated string.
+            size_to_alloc = strlen(msg) + 1;
+        } else { // It's a binary buffer with a known length.
+            size_to_alloc = (size_t)msg_len;
+        }
+
+        os_malloc(size_to_alloc, buffer[i].data);
+        memcpy(buffer[i].data, msg, size_to_alloc);
+        buffer[i].size = size_to_alloc;
+
         forward(i, agt->buflength + 1);
         w_cond_signal(&cond_no_empty);
         w_mutex_unlock(&mutex_lock);
@@ -192,7 +223,7 @@ void *dispatch_buffer(__attribute__((unused)) void * arg){
                 break;
         }
 
-        char * msg_output = buffer[j];
+        buffered_message msg_to_dispatch = buffer[j];
         forward(j, agt->buflength + 1);
         w_mutex_unlock(&mutex_lock);
 
@@ -230,8 +261,8 @@ void *dispatch_buffer(__attribute__((unused)) void * arg){
         }
 
         os_wait();
-        send_msg(msg_output, -1);
-        free(msg_output);
+        send_msg(msg_to_dispatch.data, msg_to_dispatch.size);
+        os_free(msg_to_dispatch.data);
 
         gettime(&ts1);
         time_sub(&ts1, &ts0);

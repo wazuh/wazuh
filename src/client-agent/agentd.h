@@ -61,8 +61,18 @@ int receiver_messages(void);
 /* Initialize agent buffer */
 void buffer_init();
 
-/* Send message to a buffer with the aim to avoid flooding issues */
-int buffer_append(const char *msg);
+/**
+ * @brief Appends a message to the event buffer.
+ *
+ * This function stores a message in the agent's event buffer for later dispatch.
+ * It handles both null-terminated text strings and binary data buffers.
+ * The buffer has anti-flooding mechanisms.
+ *
+ * @param msg Pointer to the message data.
+ * @param msg_len The length of the message in bytes. If less than 0, `msg` is treated as a null-terminated string.
+ * @return 0 on success, -1 if the buffer is full or a memory allocation error occurs.
+ */
+int buffer_append(const char *msg, ssize_t msg_len);
 
 /* Thread to dispatch messages from the buffer */
 #ifdef WIN32
