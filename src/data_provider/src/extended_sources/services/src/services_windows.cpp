@@ -1,39 +1,14 @@
-#include <windows.h>
-#include <winsvc.h>
-
 #include <iostream>
 #include <map>
 #include <memory>
 #include <optional>
 #include <string>
-#include <vector>
 
 #include "services_windows.hpp"
+#include "services_utils_wrapper.hpp"
 #include "winsvc_wrapper.hpp"
 #include "windows_api_wrapper.hpp"
 #include "encodingWindowsHelper.h"
-
-using json = nlohmann::json;
-
-std::optional<std::wstring> expandEnvStringW(const std::wstring& input)
-{
-    DWORD size = ExpandEnvironmentStringsW(input.c_str(), nullptr, 0);
-
-    if (size == 0)
-    {
-        return std::nullopt;
-    }
-
-    std::wstring result(size, L'\0');
-
-    if (ExpandEnvironmentStringsW(input.c_str(), &result[0], size) == 0)
-    {
-        return std::nullopt;
-    }
-
-    result.pop_back(); // Remove null terminator
-    return result;
-}
 
 const std::string K_SERVICE_START_TYPE[] = {"BOOT_START", "SYSTEM_START", "AUTO_START", "DEMAND_START", "DISABLED"};
 
@@ -59,58 +34,21 @@ const std::map<int, std::string> K_SERVICE_TYPE = {{0x00000001, "KERNEL_DRIVER"}
     {0x00000120, "SHARE_PROCESS(Interactive)"}
 };
 
-std::optional<std::wstring> readServiceDllFromParameters(const std::wstring& serviceName)
-{
-    const std::wstring subkey = L"SYSTEM\\CurrentControlSet\\Services\\" + serviceName + L"\\Parameters";
-    HKEY hKey = nullptr;
-
-    LSTATUS status = RegOpenKeyExW(HKEY_LOCAL_MACHINE, subkey.c_str(), 0, KEY_READ, &hKey);
-
-    if (status != ERROR_SUCCESS)
-    {
-        return std::nullopt;
-    }
-
-    DWORD type = 0;
-    DWORD dataSize = 0;
-    status = RegQueryValueExW(hKey, L"ServiceDll", nullptr, &type, nullptr, &dataSize);
-
-    if (status != ERROR_SUCCESS || (type != REG_SZ && type != REG_EXPAND_SZ))
-    {
-        RegCloseKey(hKey);
-        return std::nullopt;
-    }
-
-    std::wstring buffer(dataSize / sizeof(wchar_t), L'\0');
-    status = RegQueryValueExW(hKey, L"ServiceDll", nullptr, nullptr, reinterpret_cast<LPBYTE>(&buffer[0]), &dataSize);
-
-    RegCloseKey(hKey);
-
-    if (status != ERROR_SUCCESS)
-    {
-        return std::nullopt;
-    }
-
-    if (!buffer.empty() && buffer.back() == L'\0')
-    {
-        buffer.pop_back();
-    }
-
-    return buffer;
-}
-
-ServicesProvider::ServicesProvider(std::shared_ptr<IWinSvcWrapper> winSvcWrapper,
+ServicesProvider::ServicesProvider(std::shared_ptr<IServicesHelper> servicesHelper,
+                                   std::shared_ptr<IWinSvcWrapper> winSvcWrapper,
                                    std::shared_ptr<IWindowsApiWrapper> winApiWrapper)
-    : m_winSvcWrapper(std::move(winSvcWrapper))
+    : m_servicesHelper(std::move(servicesHelper))
+    , m_winSvcWrapper(std::move(winSvcWrapper))
     , m_winApiWrapper(std::move(winApiWrapper))
 {}
 
 ServicesProvider::ServicesProvider()
-    : m_winSvcWrapper(std::make_shared<WinSvcWrapper>())
+    : m_servicesHelper(std::make_shared<ServicesHelper>())
+    , m_winSvcWrapper(std::make_shared<WinSvcWrapper>())
     , m_winApiWrapper(std::make_shared<WindowsApiWrapper>())
 {}
 
-bool ServicesProvider::getService(SC_HANDLE scmHandle, const ENUM_SERVICE_STATUS_PROCESSW& svc, json& results)
+bool ServicesProvider::getService(SC_HANDLE scmHandle, const ENUM_SERVICE_STATUS_PROCESSW& svc, nlohmann::json& results)
 {
 
     auto svcHandle = m_winSvcWrapper->OpenServiceWWrapper(scmHandle, svc.lpServiceName, SERVICE_QUERY_CONFIG);
@@ -141,7 +79,7 @@ bool ServicesProvider::getService(SC_HANDLE scmHandle, const ENUM_SERVICE_STATUS
         return false;
     }
 
-    json item;
+    nlohmann::json item;
     item["name"] = Utils::EncodingWindowsHelper::wstringToStringUTF8(svc.lpServiceName);
     item["display_name"] = Utils::EncodingWindowsHelper::wstringToStringUTF8(svc.lpDisplayName);
     item["status"] = K_SERVICE_STATUS[svc.ServiceStatusProcess.dwCurrentState];
@@ -180,15 +118,15 @@ bool ServicesProvider::getService(SC_HANDLE scmHandle, const ENUM_SERVICE_STATUS
         }
         else
         {
-            std::cerr << "Warning: Failed to get service description. Error: " << GetLastError() << "\n";
+            std::cerr << "Warning: Failed to get service description. Error: " << m_winApiWrapper->GetLastErrorWrapper() << "\n";
         }
     }
 
-    auto serviceDll = readServiceDllFromParameters(svc.lpServiceName);
+    auto serviceDll = m_servicesHelper->readServiceDllFromParameters(svc.lpServiceName);
 
     if (serviceDll.has_value())
     {
-        auto expanded = expandEnvStringW(serviceDll.value());
+        auto expanded = m_servicesHelper->expandEnvStringW(serviceDll.value());
         std::wstring finalPath = expanded.value_or(serviceDll.value());
         item["module_path"] = Utils::EncodingWindowsHelper::wstringToStringUTF8(finalPath);
     }
@@ -204,7 +142,7 @@ bool ServicesProvider::getService(SC_HANDLE scmHandle, const ENUM_SERVICE_STATUS
 
 nlohmann::json ServicesProvider::collect()
 {
-    json results = json::array();
+    nlohmann::json results = nlohmann::json::array();
 
     auto scmHandle = m_winSvcWrapper->OpenSCManagerWrapper(nullptr, nullptr, GENERIC_READ);
 
