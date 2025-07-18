@@ -813,7 +813,7 @@ win32/syscollector: win32/shared_modules win32/sysinfo win32/version-dll.o
 	cd ${SYSCOLLECTOR} && mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${SYSCOLLECTOR_TEST} ${SYSCOLLECTOR_RELEASE_TYPE} ${WIN_RESOURCE_OBJ} .. && ${MAKE}
 
 ### SCA ##
-win32/sca: win32/shared_modules
+win32/sca: win32/shared_modules win32/sysinfo
 	cd ${SCA} && mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${SCA_TEST} ${SCA_RELEASE_TYPE} ${WIN_RESOURCE_OBJ} .. && ${MAKE}
 
 win32/syscheck: win32/shared_modules $(WAZUHEXT_LIB)
