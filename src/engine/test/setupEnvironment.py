@@ -25,18 +25,9 @@ def setup_engine(engine_src_dir, environment_dir):
     for directory in dirs_to_create:
         os.makedirs(directory, exist_ok=True)
 
-    # Copy TZDB to bin directory (Remove this fix when the issue tzdb is fixed)
-    tzdb_path = Path(engine_src_dir) / 'build' / 'tzdb'
-    tzdb_dest = Path(environment_dir) / 'tzdb'
-    print(f"Copying from {tzdb_path} to {tzdb_dest}")
-    # If source not exists, show error message
-    if not tzdb_path.exists():
-        print(f"Error: TZDB in {tzdb_path} not exists, compile the engine first")
-        exit(1)
-    shutil.copytree(tzdb_path, tzdb_dest)
 
     # Copy engine binary
-    engine_bin = Path(engine_src_dir) / 'build' / 'main'
+    engine_bin = Path(engine_src_dir) / '..' / 'build' / 'engine' / 'wazuh-engine'
     engine_bin_dest = Path(environment_dir) / 'wazuh-engine'
     print(f"Copying from {engine_bin} to {engine_bin_dest}")
     # If source not exists, show error message

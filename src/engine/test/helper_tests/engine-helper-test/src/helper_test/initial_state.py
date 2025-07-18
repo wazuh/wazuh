@@ -2,6 +2,9 @@
 import shutil
 
 import sys
+import os
+import pwd
+import grp
 from typing import Optional, Tuple
 from pathlib import Path
 from google.protobuf.json_format import ParseDict
@@ -9,8 +12,8 @@ from google.protobuf.json_format import ParseDict
 from api_communication.proto import engine_pb2 as api_engine
 from api_communication.proto import geo_pb2 as api_geo
 from engine_handler.handler import EngineHandler
-
-PLACEHOLDER = "ENV_PATH_PLACEHOLDER"
+from shared.default_settings import Constants
+from engine_handler.handler import EngineHandler
 
 
 def configure(subparsers):
@@ -35,7 +38,21 @@ def cpy_conf(env_path: Path, conf_path: Path) -> Path:
     if dest_conf_file.is_file():
         dest_conf_file.rename(dest_conf_file.with_suffix('.bak'))
 
-    conf_str = serv_conf_file.read_text().replace(PLACEHOLDER, env_path.as_posix())
+    # Read the source config once
+    conf_str = serv_conf_file.read_text()
+
+    # Replace path placeholder
+    conf_str = conf_str.replace(Constants.PLACEHOLDER, env_path.as_posix())
+
+    # Get current system user and group
+    current_user = pwd.getpwuid(os.geteuid()).pw_name
+    current_group = grp.getgrgid(os.getegid()).gr_name
+
+    # Perform chained replacements for user and group
+    conf_str = conf_str.replace(Constants.AUTOMATIC_USER_PLACEHOLDER, current_user)
+    conf_str = conf_str.replace(Constants.AUTOMATIC_GROUP_PLACEHOLDER, current_group)
+
+    # Write updated config to destination
     dest_conf_file.write_text(conf_str)
 
     return dest_conf_file

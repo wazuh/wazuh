@@ -9,16 +9,17 @@ class Constants:
         DEFAULT_POLICY (str): Default policy path used when none is explicitly provided.
         DEFAULT_SESSION (str): Default session name.
         DEFAULT_NS (str): Default namespace under which requests are made.
-        INDEX_PATTERN (str): Default OpenSearch index pattern where Wazuh alerts are stored.
         DEFAULT_API_TIMEOUT (int): Default timeout (in microseconds) configured on the server
                                    for API requests.
     """
-    SOCKET_PATH: str = '/run/wazuh-server/engine-api.socket'
+    SOCKET_PATH: str = '/var/ossec/queue/sockets/engine-api'
     DEFAULT_POLICY: str = 'policy/wazuh/0'
     DEFAULT_SESSION: str = 'default'
     DEFAULT_NS: str = 'user'
-    INDEX_PATTERN: str = 'wazuh-alerts-5.x-0001'
     DEFAULT_API_TIMEOUT: int = 1000000
+    PLACEHOLDER = "ENV_PATH_PLACEHOLDER"
+    AUTOMATIC_USER_PLACEHOLDER = "AUTOMATIC_USER_PLACEHOLDER"
+    AUTOMATIC_GROUP_PLACEHOLDER = "AUTOMATIC_GROUP_PLACEHOLDER"
 
 class CONFIG_ENV_KEYS(Enum):
     API_SERVER_SOCKET: str = 'WAZUH_SERVER_API_SOCKET'

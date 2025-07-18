@@ -143,7 +143,7 @@ class TestWazuhDBHTTPClient:
     
     async def test_get_agents_summary(self, client_mock: AsyncMock, module_instance: WazuhDBHTTPClient):
         """Check that the `get_agents_summary` method works as expected."""
-        agent_ids = [1, 2, 3]
+        agent_ids = []
         expected_result = AgentsSummary(
             agents_by_groups={
                 'default': 30,
@@ -154,7 +154,9 @@ class TestWazuhDBHTTPClient:
             },
             agents_by_status={
                 'active': 10,
-                'disconnected': 20
+                'disconnected': 20,
+                'never_connected': 0,
+                'pending': 0
             },
         )
         response = MagicMock()
@@ -175,9 +177,7 @@ class TestWazuhDBHTTPClient:
         client_mock.post.return_value = response
 
         result = await module_instance.get_agents_summary(agent_ids)
-        assert result.groups == expected_result.groups
-        assert result.os == expected_result.os
-        assert result.status == expected_result.status
+        assert result.to_dict() == expected_result.to_dict()
 
         client_mock.assert_has_calls([
             call.post(

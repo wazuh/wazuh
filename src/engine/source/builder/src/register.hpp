@@ -3,7 +3,7 @@
 
 #include <memory>
 
-#include "builder.hpp"
+#include "builder/builder.hpp"
 #include "iregistry.hpp"
 #include "syntax.hpp"
 
@@ -44,7 +44,7 @@ namespace builder::detail
  * @param deps Builders dependencies
  */
 template<typename Registry>
-void registerOpBuilders(const std::shared_ptr<Registry>& registry, const BuilderDeps& deps)
+void registerOpBuilders(const std::shared_ptr<Registry>& registry, const builder::BuilderDeps& deps)
 {
     // Filter builders
     registry->template add<builders::OpBuilderEntry>(
@@ -298,9 +298,6 @@ void registerOpBuilders(const std::shared_ptr<Registry>& registry, const Builder
 
     // KVDB builders
     registry->template add<builders::OpBuilderEntry>(
-        "kvdb_delete",
-        {schemf::runtimeValidation(), builders::getOpBuilderKVDBDelete(deps.kvdbManager, deps.kvdbScopeName)});
-    registry->template add<builders::OpBuilderEntry>(
         "kvdb_get", {schemf::runtimeValidation(), builders::getOpBuilderKVDBGet(deps.kvdbManager, deps.kvdbScopeName)});
     registry->template add<builders::OpBuilderEntry>(
         "kvdb_get_merge",
@@ -316,8 +313,6 @@ void registerOpBuilders(const std::shared_ptr<Registry>& registry, const Builder
     registry->template add<builders::OpBuilderEntry>(
         "kvdb_not_match",
         {schemf::runtimeValidation(), builders::getOpBuilderKVDBNotMatch(deps.kvdbManager, deps.kvdbScopeName)});
-    registry->template add<builders::OpBuilderEntry>(
-        "kvdb_set", {schemf::runtimeValidation(), builders::getOpBuilderKVDBSet(deps.kvdbManager, deps.kvdbScopeName)});
     registry->template add<builders::OpBuilderEntry>(
         "kvdb_get_array",
         {schemf::runtimeValidation(), builders::getOpBuilderKVDBGetArray(deps.kvdbManager, deps.kvdbScopeName)});

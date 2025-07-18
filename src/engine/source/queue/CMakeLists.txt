@@ -18,7 +18,6 @@ add_library(queue STATIC
 target_include_directories(queue
   PUBLIC
   ${INC_DIR}
-  ${CameronQueue_SOURCE_DIR}
 )
 
 target_link_libraries(queue

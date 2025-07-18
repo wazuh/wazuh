@@ -27,8 +27,8 @@ fi
 
 AUTHOR="Wazuh Inc."
 USE_JSON=false
-DAEMONS="wazuh-clusterd wazuh-modulesd wazuh-monitord wazuh-logcollector wazuh-remoted wazuh-syscheckd wazuh-analysisd wazuh-maild wazuh-execd wazuh-db wazuh-authd wazuh-agentlessd wazuh-integratord wazuh-dbd wazuh-csyslogd wazuh-apid"
-OP_DAEMONS="wazuh-clusterd wazuh-maild wazuh-agentlessd wazuh-integratord wazuh-dbd wazuh-csyslogd"
+DAEMONS="wazuh-clusterd wazuh-modulesd wazuh-monitord wazuh-logcollector wazuh-remoted wazuh-syscheckd wazuh-engine wazuh-maild wazuh-execd wazuh-db wazuh-authd wazuh-agentlessd wazuh-integratord wazuh-csyslogd wazuh-apid"
+OP_DAEMONS="wazuh-clusterd wazuh-maild wazuh-agentlessd wazuh-integratord wazuh-csyslogd"
 DEPRECATED_DAEMONS="ossec-authd"
 
 # Reverse order of daemons
@@ -255,23 +255,69 @@ testconfig()
     done
 }
 
+get_wazuh_engine_pid()
+{
+    local max_wait=10
+    local interval=0.1
+    local elapsed=0
+    local pidfile
+
+    ${DIR}/bin/wazuh-engine
+
+    while awk "BEGIN { exit !($elapsed < $max_wait) }"; do
+        pidfile=$(ls ${DIR}/var/run/wazuh-engine-*.pid 2>/dev/null | head -n1)
+        if [ -n "$pidfile" ]; then
+            echo "${pidfile##*-}" | sed 's/\.pid$//'
+            return 0
+        fi
+        sleep $interval
+        elapsed=$(awk "BEGIN { print $elapsed + $interval }")
+    done
+
+    return 1  # timeout
+}
+
+wait_for_wazuh_engine_ready()
+{
+    local attempts=0
+    local max_attempts=10
+
+    ENGINE_PID=$(get_wazuh_engine_pid)
+    if [ $? -ne 0 ]; then
+        echo "Failed to obtain PID for wazuh-engine"
+        return 1
+    fi
+
+    while [ $attempts -lt $max_attempts ]; do
+        curl --silent --unix-socket ${DIR}/queue/sockets/engine-api \
+            -X POST -H "Content-Type: application/json" \
+            -d '{"name":"default"}' \
+            http://localhost/router/route/get \
+            > /dev/null 2>&1
+        if [ $? -eq 0 ]; then
+            return 0
+        fi
+
+        if ! kill -0 "$ENGINE_PID" 2>/dev/null; then
+            echo "wazuh-engine died during route check."
+            return 1
+        fi
+
+        attempts=$((attempts + 1))
+        sleep 1
+    done
+
+    echo "wazuh-engine did not respond correctly after $max_attempts attempts."
+    kill $ENGINE_PID
+    return 1
+}
+
 # Start function
 start_service()
 {
 
     if [ $USE_JSON = false ]; then
         echo "Starting Wazuh $VERSION..."
-    fi
-
-    TEST=$(${DIR}/bin/wazuh-logtest-legacy -t  2>&1 | grep "ERROR")
-    if [ ! -z "$TEST" ]; then
-        if [ $USE_JSON = true ]; then
-            echo -n '{"error":21,"message":"OSSEC analysisd: Testing rules failed. Configuration error."}'
-        else
-            echo "OSSEC analysisd: Testing rules failed. Configuration error. Exiting."
-        fi
-        touch ${DIR}/var/run/wazuh-analysisd.failed
-        exit 1;
     fi
 
     checkpid;
@@ -344,7 +390,11 @@ start_service()
             if [ $USE_JSON = true ]; then
                 ${DIR}/bin/${i} ${DEBUG_CLI} > /dev/null 2>&1;
             else
-                ${DIR}/bin/${i} ${DEBUG_CLI};
+                if [ "$i" = "wazuh-engine" ]; then
+                    wait_for_wazuh_engine_ready
+                else
+                    ${DIR}/bin/${i} ${DEBUG_CLI};
+                fi
             fi
             if [ $? != 0 ]; then
                 failed=true

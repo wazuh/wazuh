@@ -731,7 +731,7 @@ int wdb_update_groups(const char *dirname, int *sock) {
                 continue;
             }
 
-            dp = opendir(group_path);
+            dp = wopendir(group_path);
 
             /* Group doesn't exists anymore, delete it */
             if (!dp) {
@@ -749,7 +749,7 @@ int wdb_update_groups(const char *dirname, int *sock) {
     DIR *dp = NULL;
     struct dirent *dirent = NULL;
 
-    if (!(dp = opendir(dirname))) {
+    if (!(dp = wopendir(dirname))) {
         merror("Couldn't open directory '%s': %s.", dirname, strerror(errno));
         if (!sock) {
             wdbc_close(&aux_sock);

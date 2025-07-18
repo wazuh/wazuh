@@ -139,13 +139,16 @@ int receive_msg()
                     || strncmp(tmp_msg, HC_FIM_FILE, strlen(HC_FIM_FILE)) == 0
                     || strncmp(tmp_msg, HC_FIM_REGISTRY, strlen(HC_FIM_REGISTRY)) == 0
                     || strncmp(tmp_msg, HC_FIM_REGISTRY_KEY, strlen(HC_FIM_REGISTRY_KEY)) == 0
-                    || strncmp(tmp_msg, HC_FIM_REGISTRY_VALUE, strlen(HC_FIM_REGISTRY_VALUE)) == 0) {
+                    || strncmp(tmp_msg, HC_FIM_REGISTRY_VALUE, strlen(HC_FIM_REGISTRY_VALUE)) == 0
+                    || strncmp(tmp_msg, FIM_SYNC_HEADER, strlen(FIM_SYNC_HEADER)) == 0) {
                 ag_send_syscheck(tmp_msg);
                 continue;
             }
 
             /* Syscollector */
-            else if (strncmp(tmp_msg, HC_SYSCOLLECTOR, strlen(HC_SYSCOLLECTOR)) == 0) {
+            else if (strncmp(tmp_msg, HC_SYSCOLLECTOR, strlen(HC_SYSCOLLECTOR)) == 0
+                    || strncmp(tmp_msg, SYSCOLECTOR_SYNC_HEADER, strlen(SYSCOLECTOR_SYNC_HEADER)) == 0
+                    || strncmp(tmp_msg, SCA_SYNC_HEADER, strlen(SCA_SYNC_HEADER)) == 0) {
                 wmcom_send(tmp_msg);
                 continue;
             }

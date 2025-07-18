@@ -19,7 +19,7 @@
 #define FIM_WARN_DELETE                         "(6901): Could not delete from filesystem '%s'"
 #define FIM_WARN_DELETE_HASH_TABLE              "(6902): Could not delete from hash table '%s'"
 #define FIM_WARN_SYMLINKS_UNSUPPORTED           "(6903) Links are not supported: '%s'"
-#define FIM_WARN_STAT_BROKEN_LINK               "(6904): Error in stat() function: %s. This may be caused by a broken symbolic link (%s)."
+#define FIM_WARN_STAT_BROKEN_LINK               "(6904): Error in w_stat() function: %s. This may be caused by a broken symbolic link (%s)."
 #define FIM_WARN_ALLOW_PREFILTER                "(6905): Ignoring prefilter option '%s'. Enable <%s> to use it."
 #define FIM_WARN_REALTIME_OVERFLOW              "(6906): Real time process: no data. Probably buffer overflow."
 #define FIM_WARN_REALTIME_OPENFAIL              "(6907): '%s' does not exist. Monitoring discarded."
@@ -93,40 +93,6 @@
 #define LOGTEST_WARN_FIELD_NOT_BOOLEAN_IGNORE   "(7006): '%s' field must be a boolean. The parameter will be ignored"
 
 
-/* Ruleset reading warnings */
-#define ANALYSISD_INV_VALUE_RULE                "(7600): Invalid value '%s' for attribute '%s' in rule %d."
-#define ANALYSISD_INV_VALUE_DEFAULT             "(7601): Invalid value for attribute '%s' in '%s' option " \
-                                                        "(decoder `%s`). Default value will be used."
-#define ANALYSISD_INV_OPT_VALUE_DEFAULT         "(7602): Invalid value '%s' in '%s' option " \
-                                                        "(decoder `%s`). Default value will be used."
-#define ANALYSISD_DEC_DEPRECATED_OPT_VALUE      "(7603): Deprecated value '%s' in '%s' option " \
-                                                        "(decoder `%s`). Default value will be used."
-#define ANALYSISD_IGNORE_RULE                   "(7604): Rule '%d' will be ignored."
-#define ANALYSISD_INV_OVERWRITE                 "(7605): It is not possible to overwrite '%s' value " \
-                                                        "in rule '%d'. The original value is retained."
-#define ANALYSISD_INV_SIG_ID                    "(7607): Invalid '%s'. Signature ID must be an integer. " \
-                                                        "Rule '%d' will be ignored."
-#define ANALYSISD_LEVEL_NOT_FOUND               "(7608): Level ID '%d' was not found. Invalid 'if_level'. " \
-                                                        "Rule '%d' will be ignored."
-#define ANALYSISD_INV_IF_LEVEL                  "(7609): Invalid 'if_level' value: '%s'. Rule '%d' will be ignored."
-#define ANALYSISD_GROUP_NOT_FOUND               "(7610): Group '%s' was not found. Invalid 'if_group'. " \
-                                                        "Rule '%d' will be ignored."
-#define ANALYSISD_CATEGORY_NOT_FOUND            "(7611): Category was not found. Invalid 'category'. " \
-                                                        "Rule '%d' will be ignored."
-#define ANALYSISD_DUPLICATED_SIG_ID             "(7612): Rule ID '%d' is duplicated. Only the first occurrence will be "\
-                                                        "considered."
-#define ANALYSISD_OVERWRITE_MISSING_RULE        "(7613): Rule ID '%d' does not exist but 'overwrite' is set to 'yes'. "\
-                                                        "Still, the rule will be loaded."
-#define ANALYSISD_NULL_RULE                     "(7614): Rule pointer is NULL. Skipping."
-#define ANALYSISD_INV_IF_MATCHED_SID            "(7615): Invalid 'if_matched_sid' value: '%s'. Rule '%d' will be ignored."
-#define ANALYSISD_LIST_NOT_LOADED               "(7616): List '%s' could not be loaded. Rule '%d' will be ignored."
-#define ANALYSISD_SIG_ID_NOT_FOUND              "(7617): Signature ID '%d' was not found and will be ignored "\
-                                                        "in the 'if_sid' option of rule '%d'."
-#define ANALYSISD_INVALID_IF_SID                "(7618): Invalid 'if_sid' value: '%s'. Rule '%d' will be ignored."
-#define ANALYSISD_EMPTY_SID                     "(7619): Empty 'if_sid' value. Rule '%d' will be ignored."
-#define ANALYSISD_SIG_ID_NOT_FOUND_MID          "(7620): Signature ID '%d' was not found. Invalid 'if_matched_sid'."\
-                                                         "Rule '%d' will be ignored."
-
 /* Logcollector */
 #define LOGCOLLECTOR_INV_VALUE_DEFAULT          "(8000): Invalid value '%s' for attribute '%s' in '%s' option. " \
                                                 "Default value will be used."
@@ -168,4 +134,9 @@
                                                 " Default value (%s) will be used."
 #define REMOTED_INV_VALUE_DEFAULT               "(9004): Invalid value '%s' in '%s' option. " \
                                                 "Default value will be used."
+
+/* Other */
+#define NETWORK_PATH_EXECUTED           "(9800): File access denied. Network path usage is not allowed: '%s'."
+#define NETWORK_PATH_CONFIGURED         "(9801): Network path not allowed in configuration. '%s': %s."
+
 #endif /* WARN_MESSAGES_H */

@@ -114,6 +114,23 @@ size_t syscom_dispatch(char * command, char ** output){
             os_set_restart_syscheck();
             return 0;
         }
+    } else if (strncmp(command, FIM_SYNC_HEADER, strlen(FIM_SYNC_HEADER)) == 0) {
+        char *data = command;
+
+        data += strlen(FIM_SYNC_HEADER);
+
+        mdebug2("WMCOM Syncing module with data '%s'.", data);
+
+        int ret = 0;
+        // TODO: int ret = fim_sync_response(data);
+
+        if (ret != 0) {
+            mdebug1("WMCOM Error syncing module.");
+            os_strdup("err Error syncing module", *output);
+            return strlen(*output);
+        }
+
+        return 0;
     }
 
     mdebug1(FIM_SYSCOM_UNRECOGNIZED_COMMAND, command);

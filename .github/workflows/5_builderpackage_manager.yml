@@ -1,0 +1,374 @@
+run-name: Package - Build ${{ inputs.system }} wazuh-manager on ${{ inputs.architecture }} ${{ inputs.is_stage && '- is stage' || '' }} ${{ inputs.checksum && '- checksum' || '' }} ${{ inputs.debug && '- debug' || '' }} ${{ inputs.id }}
+name: Package - Build Wazuh manager
+
+on:
+  workflow_dispatch:
+    inputs:
+      upload_package:
+        description: |
+          Set to true to upload the package to the S3 bucket. By default is 'true'
+        default: true
+        type: boolean
+        required: false
+      docker_image_tag:
+        description: |
+          Tag name of the Docker image to be downloaded.
+          Use 'developer' to set branch name as tag.
+          Use 'auto' to set branch version as tag.
+          If using a custom tag, use only '-', '_', '.' and alphanumeric characters.
+          Default is 'auto'.
+        default: "auto"
+        type: string
+        required: false
+      architecture:
+        description: |
+          Architecture of the package [amd64, x86_64, arm64, aarch64]
+        type: choice
+        options:
+          - amd64
+          - x86_64
+          - arm64
+          - aarch64
+        required: true
+      system:
+        description: "Package format [deb, rpm]"
+        type: choice
+        options:
+          - deb
+          - rpm
+        required: true
+      revision:
+        description: |
+          Set the value to "1" for packages in release format.
+          You can also add other values, such as issue numbers.
+          By default, it is set to "0" for development.
+        default: "0"
+        type: string
+        required: false
+      is_stage:
+        description: |
+          Build package with release format.
+          By default: false
+        type: boolean
+        required: false
+      debug:
+        description: |
+          Build the binaries as debug (without optimizations).
+          By default: false
+        type: boolean
+        required: false
+      checksum:
+        description: Generate package checksum.
+        type: boolean
+        required: false
+      id:
+        type: string
+        description: |
+          ID used to identify the workflow uniquely.
+        required: false
+
+  workflow_call:
+    inputs:
+      docker_image_tag:
+        required: false
+        default: "auto"
+        type: string
+      architecture:
+        type: string
+        required: true
+      system:
+        type: string
+        required: true
+      revision:
+        default: "0"
+        type: string
+        required: false
+      is_stage:
+        type: boolean
+        required: false
+      debug:
+        type: boolean
+        required: false
+      checksum:
+        type: boolean
+        required: false
+      id:
+        type: string
+        required: false
+
+jobs:
+  Build-manager-packages:
+    permissions:
+      contents: read
+      packages: write
+    env:
+      SHOULD_UPLOAD: ${{ inputs.upload_package }}
+      SHOULD_UPLOAD_CHECKSUM: ${{ inputs.checksum && inputs.upload_package }}
+
+    runs-on: ${{ (inputs.architecture == 'arm64' || inputs.architecture == 'aarch64') && 'wz-linux-arm64' || 'ubuntu-22.04' }}
+    timeout-minutes: 35
+    name: Build ${{ inputs.system }} wazuh-manager on ${{ inputs.architecture }}
+
+    steps:
+      - name: Cancel previous runs
+        uses: fkirc/skip-duplicate-actions@master
+        with:
+          cancel_others: "true"
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          skip_after_successful_duplicate: "false"
+
+      - uses: actions/checkout@v4
+
+      - name: Set ARCH and PACKAGE_ARCH
+        run: |
+          case "${{ inputs.system }}" in
+            rpm)
+              case "${{ inputs.architecture }}" in
+                x86_64|amd64)
+                  arch="x86_64"
+                  pkg_arch="amd64"
+                  ;;
+                aarch64|arm64)
+                  arch="aarch64"
+                  pkg_arch="arm64"
+                  ;;
+              esac
+              ;;
+            deb)
+              case "${{ inputs.architecture }}" in
+                x86_64|amd64)
+                  arch="amd64"
+                  pkg_arch="amd64"
+                  ;;
+                aarch64|arm64)
+                  arch="arm64"
+                  pkg_arch="arm64"
+                  ;;
+              esac
+              ;;
+          esac
+
+          echo "ARCH=$arch" >> $GITHUB_ENV
+          echo "PACKAGE_ARCH=$pkg_arch" >> $GITHUB_ENV
+
+      - name: Set tag and container name
+        run: |
+          VERSION="$(grep '"version"' $GITHUB_WORKSPACE/VERSION.json | sed -E 's/.*"version": *"([^"]+)".*/\1/')"
+          if [ "${{ inputs.docker_image_tag }}" == "auto" ]; then echo "TAG=$VERSION" >> $GITHUB_ENV;
+          elif [ "${{ inputs.docker_image_tag }}" == "developer" ]; then echo "TAG=$(sed 's|[/\]|--|g' <<< ${{ github.ref_name }})" >> $GITHUB_ENV;
+          else echo "TAG=${{ inputs.docker_image_tag }}" >> $GITHUB_ENV; fi
+          echo "CONTAINER_NAME=pkg_${{ inputs.system }}_manager_builder_${{ env.PACKAGE_ARCH }}" >> $GITHUB_ENV
+
+      - name: Download docker image for package building
+        run: |
+          bash $GITHUB_WORKSPACE/.github/actions/ghcr-pull-and-push/pull_image_from_ghcr.sh ${{ secrets.GITHUB_TOKEN }} ${{ github.actor}} $CONTAINER_NAME ${{ env.TAG }}
+
+      - name: Append short commit to VERSION file
+        run: |
+          SHORT_COMMIT=$(git rev-parse --short HEAD)
+          echo "Found commit: $SHORT_COMMIT"
+          if [ -z "$SHORT_COMMIT" ]; then echo "No commit found"; exit 1; fi
+          sed -i '/"stage":/s/$/,/; /"stage":/a \    "commit": "'"$SHORT_COMMIT"'"' VERSION.json || exit 1
+          cat VERSION.json
+
+      - name: Build ${{ inputs.system }} wazuh-manager on ${{ inputs.architecture }}
+        working-directory: packages
+        run: |
+          SHORT_COMMIT=$(git rev-parse --short HEAD)
+          REVISION=${{ inputs.revision }}
+          FLAGS="--verbose -t manager -s /tmp --dont-build-docker -j $(nproc) "
+          if [ -z "$REVISION" ]; then FLAGS+="-r 0 "; else FLAGS+="-r $REVISION "; fi
+          if [ "${{ inputs.is_stage }}" == "true" ]; then FLAGS+="--is_stage "; fi
+          if [ "${{ inputs.checksum }}" == "true" ]; then FLAGS+="--checksum "; fi
+          if [ "${{ inputs.debug}}" == "true" ]; then FLAGS+="--debug "; fi
+          # Every call to this workflow will be internally managed as amd64, which is synonymous with x86_64
+          echo "generate_package.sh -a ${{ env.PACKAGE_ARCH }} --tag ${{ env.TAG }} --system ${{ inputs.system }} $FLAGS"
+          bash generate_package.sh -a ${{ env.PACKAGE_ARCH }} --tag ${{ env.TAG }} --system ${{ inputs.system }} $FLAGS
+
+          if [ "${{ inputs.system }}" == "deb" ]; then
+            SYMBOLS_TAG="dbg"
+          else
+            SYMBOLS_TAG="debuginfo"
+          fi
+          # Find all files starting with 'wazuh-manager' and ending with '.rpm or .deb'
+          for file in $(find /tmp -maxdepth 1 -type f -name 'wazuh-manager*.${{ inputs.system }}' -exec basename {} 2>/dev/null \;); do
+            if [[ "$file" == *"$SYMBOLS_TAG"* ]]; then
+              PACKAGE_SYMBOLS_NAME="$file"
+            else
+              PACKAGE_NAME="$file"
+            fi
+          done
+
+          echo "FLAGS=$FLAGS" >> $GITHUB_ENV
+          echo "PACKAGE_NAME=${PACKAGE_NAME}" | tee -a $GITHUB_ENV
+          echo "PACKAGE_SYMBOLS_NAME=${PACKAGE_SYMBOLS_NAME}" | tee -a $GITHUB_ENV
+
+      - name: Test install built manager
+        run: |
+          TESTS_PATH=$GITHUB_WORKSPACE/.github/actions/test-install-components/
+          if [ -z "${{ env.PACKAGE_NAME }}" ]; then echo "No package found matching the pattern!"; exit 1; fi
+          
+          CONTAINER_ID=$(sudo docker run -d -v $TESTS_PATH/:/tests -v /tmp/:/packages -v /var/ossec:/var/ossec \
+            --entrypoint '/bin/sh' $CONTAINER_NAME:${{ env.TAG }} -c "tail -f /dev/null")
+          
+          sudo docker exec $CONTAINER_ID /tests/install_component.sh $PACKAGE_NAME manager
+
+          # Check if Wazuh was installed. The /tmp/status.log file was generated in the previous step.
+          if grep -iq " installed.*wazuh-manager" /tmp/status.log ; then
+            echo "Installation successfully."
+          else
+            echo "The installation could not be completed. The package will not be uploaded.";
+            exit 1;
+          fi
+          
+          echo "CONTAINER_ID=$CONTAINER_ID" >> $GITHUB_ENV
+          echo "WAZUH_UID=$(cat $TESTS_PATH/wazuh_uid)" | tee -a $GITHUB_ENV
+          echo "WAZUH_GID=$(cat $TESTS_PATH/wazuh_gid)" | tee -a $GITHUB_ENV
+
+      - name: Check installed files
+        uses: ./.github/actions/check_files
+        with:
+          expected_files: manager_base.csv
+          wazuh_uid: ${{ env.WAZUH_UID }}
+          wazuh_gid: ${{ env.WAZUH_GID }}
+          size_check: "false"
+          ignore: "site-packages,/var/ossec/framework/python"
+
+      - name: Test uninstall built manager
+        run: |
+          if [ -z "${{ env.PACKAGE_NAME }}" ] || [ -z "${{ env.CONTAINER_ID }}" ]; then 
+            echo "No package or container found!";
+            exit 1;
+          fi
+
+          sudo docker exec $CONTAINER_ID chmod +x /tests/uninstall_component.sh
+          sudo docker exec $CONTAINER_ID /tests/uninstall_component.sh $PACKAGE_NAME manager
+          sudo docker stop $CONTAINER_ID && sudo docker rm $CONTAINER_ID
+
+      - name: Get latest Wazuh release from GitHub
+        run: |
+          apt-get update && apt-get install -y curl jq
+
+          CURRENT_TAG="${{ env.TAG }}"
+          PREVIOUS_TAG=$(curl -s https://api.github.com/repos/wazuh/wazuh/releases | jq -r '.[].tag_name' | grep -vE 'alpha|beta|rc' | sed 's/^v//' | grep -E '^4\.[0-9]+\.[0-9]+$' | \
+          grep -v "^${CURRENT_TAG}$" | sort -V | awk -v current="$CURRENT_TAG" '$0 < current' | tail -n1)
+          
+          echo "Latest release detected: $PREVIOUS_TAG"
+          echo "PUBLIC_RELEASE_VERSION=$PREVIOUS_TAG" >> $GITHUB_ENV
+
+      - name: Download latest public wazuh-manager package
+        run: |
+          ARCH=${{ env.ARCH }}
+          VERSION=${{ env.PUBLIC_RELEASE_VERSION }}
+
+          if [ "${{ inputs.system }}" = "deb" ]; then
+            FILE_NAME_PUBLIC="wazuh-manager_${VERSION}-1_${ARCH}.deb"
+            BASE_URL="https://packages.wazuh.com/4.x/apt/pool/main/w/wazuh-manager"
+          elif [ "${{ inputs.system }}" = "rpm" ]; then
+            FILE_NAME_PUBLIC="wazuh-manager-${VERSION}-1.${ARCH}.rpm"
+            BASE_URL="https://packages.wazuh.com/4.x/yum"
+          else
+            echo "Unsupported system type: ${{ inputs.system }}"
+            exit 1
+          fi
+
+          PACKAGE_URL="$BASE_URL/$FILE_NAME_PUBLIC"
+          echo "Downloading: $PACKAGE_URL"
+          curl -fSL "$PACKAGE_URL" -o "/tmp/$FILE_NAME_PUBLIC"
+          echo "PUBLIC_PACKAGE_NAME=$FILE_NAME_PUBLIC" >> $GITHUB_ENV
+
+      - name: Run container and install public wazuh-manager
+        run: |
+          FILE_NAME=${{ env.PUBLIC_PACKAGE_NAME }}
+          SYSTEM=${{ inputs.system }}
+
+          if [ "$SYSTEM" = "deb" ]; then
+            BASE_IMAGE="ubuntu:22.04"
+            INSTALL_CMD="dpkg -i /packages/$FILE_NAME || apt-get -f install -y"
+            UPDATE_CMD="apt-get update"
+            docker run --name wazuh_previous -d -v /tmp:/packages $BASE_IMAGE tail -f /dev/null
+            sleep 5
+          else
+            BASE_IMAGE="centos:8"
+            INSTALL_CMD="yum localinstall -y /packages/$FILE_NAME"
+            UPDATE_CMD="yum update -y"
+            docker run --name wazuh_previous -d -v /tmp:/packages $BASE_IMAGE tail -f /dev/null
+            # Configuring CentOS 8 repositories
+            docker exec wazuh_previous bash -c "sed -i.bak 's/mirrorlist/#mirrorlist/g' /etc/yum.repos.d/CentOS-*"
+            docker exec wazuh_previous bash -c "sed -i.bak 's|#baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g' /etc/yum.repos.d/CentOS-*"
+            sleep 5
+          fi
+
+          docker exec wazuh_previous bash -c "$UPDATE_CMD"
+          docker exec wazuh_previous bash -c "$INSTALL_CMD"
+          docker exec wazuh_previous bash -c "/var/ossec/bin/wazuh-control info || echo 'Manager not started yet'"
+
+      - name: Upgrade to current Wazuh version
+        run: |
+          SYSTEM=${{ inputs.system }}
+          FILE_NAME=${{ env.PACKAGE_NAME }}
+
+          if [ "$SYSTEM" = "deb" ]; then
+            INSTALL_CMD="dpkg -i /packages/$FILE_NAME || apt-get -f install -y"
+          else
+            INSTALL_CMD="yum localinstall -y /packages/$FILE_NAME"
+          fi
+
+          echo "Upgrading to current version with package: $FILE_NAME"
+          docker cp /tmp/$FILE_NAME wazuh_previous:/packages/$FILE_NAME
+          docker exec wazuh_previous bash -c "$INSTALL_CMD"
+          docker exec wazuh_previous bash -c "/var/ossec/bin/wazuh-control info || echo 'Manager not started yet after upgrade'"
+
+      - name: Upload package to GitHub
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.PACKAGE_NAME }}
+          path: /tmp/${{ env.PACKAGE_NAME }}
+          if-no-files-found: error
+
+      - name: Upload debug symbols to GitHub
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.PACKAGE_SYMBOLS_NAME }}
+          path: /tmp/${{ env.PACKAGE_SYMBOLS_NAME }}
+          if-no-files-found: error
+
+      - name: Set up AWS CLI
+        if: ${{ env.SHOULD_UPLOAD == 'true' }}
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.CI_INTERNAL_DEVELOPMENT_BUCKET_USER_ACCESS_KEY }}
+          aws-secret-access-key: ${{ secrets.CI_INTERNAL_DEVELOPMENT_BUCKET_USER_SECRET_KEY }}
+          aws-region: ${{ secrets.CI_AWS_REGION }}
+
+      - name: Upload package to S3
+        if: ${{ env.SHOULD_UPLOAD == 'true' }}
+        working-directory: packages
+        run: |
+          aws s3 cp /tmp/${{ env.PACKAGE_NAME }} s3://packages-dev.internal.wazuh.com/development/wazuh/4.x/main/packages/
+          s3uri="s3://packages-dev.internal.wazuh.com/development/wazuh/4.x/main/packages/${{ env.PACKAGE_NAME }}"
+          echo "S3 URI: ${s3uri}"
+
+      - name: Upload checksum to S3
+        if: ${{ env.SHOULD_UPLOAD_CHECKSUM == 'true' }}
+        run: |
+          aws s3 cp /tmp/${{ env.PACKAGE_NAME }}.sha512 s3://packages-dev.internal.wazuh.com/development/wazuh/4.x/main/packages/
+          aws s3 cp /tmp/${{ env.PACKAGE_SYMBOLS_NAME }}.sha512 s3://packages-dev.internal.wazuh.com/development/wazuh/4.x/main/packages/
+          s3uri="s3://packages-dev.internal.wazuh.com/development/wazuh/4.x/main/packages/${{ env.PACKAGE_NAME }}.sha512"
+          echo "S3 sha512 URI: ${s3uri}"
+
+      - name: Upload debug symbols to S3
+        if: ${{ env.SHOULD_UPLOAD == 'true' }}
+        run: |
+          aws s3 cp /tmp/${{ env.PACKAGE_SYMBOLS_NAME }} s3://packages-dev.internal.wazuh.com/development/wazuh/4.x/main/packages/
+          symbols="s3://packages-dev.internal.wazuh.com/development/wazuh/4.x/main/packages/${{ env.PACKAGE_SYMBOLS_NAME }}"
+          echo "S3 symbols URI: ${symbols}"
+
+      - name: Upload debug symbols checksum to S3
+        if: ${{ env.SHOULD_UPLOAD_CHECKSUM == 'true' }}
+        run: |
+          aws s3 cp /tmp/${{ env.PACKAGE_SYMBOLS_NAME }}.sha512 s3://packages-dev.internal.wazuh.com/development/wazuh/4.x/main/packages/
+          symbols="s3://packages-dev.internal.wazuh.com/development/wazuh/4.x/main/packages/${{ env.PACKAGE_SYMBOLS_NAME }}.sha512"
+          echo "S3 symbols sha512 URI: ${symbols}"

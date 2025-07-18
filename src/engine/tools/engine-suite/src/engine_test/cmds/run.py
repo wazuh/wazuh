@@ -25,7 +25,7 @@ def run(args):
 
 
 def configure(subparsers):
-    parser = subparsers.add_parser("run", help='Run test on an integration')
+    parser = subparsers.add_parser("run", help='Run test on an integration. It can only work if the integration has a template.')
 
     parser.add_argument('--api-socket', help=f'Socket to connect to the API',
                         type=str, default=DefaultSettings.SOCKET_PATH, dest='api-socket')

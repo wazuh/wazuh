@@ -12,7 +12,6 @@
 # Auto generated build files
 src/LOCATION
 src/isbigendian.c
-src/analysisd/compiled_rules/compiled_rules.h
 etc/ossec.mc
 src/Config.OS
 src/selinux/*.mod
@@ -99,6 +98,7 @@ src/win32/route-null.cmd
 src/win32/netsh-win-2016.cmd
 src/win32/route-null-2012.cmd
 src/win32/netsh.cmd
+src/win32/VERSION.json
 src/libwazuhshared.*
 src/libwazuhext.*
 

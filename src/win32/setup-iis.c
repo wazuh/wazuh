@@ -32,7 +32,7 @@ int direxist(char *dir)
     DIR *dp;
 
     /* Open dir */
-    dp = opendir(dir);
+    dp = wopendir(dir);
     if (dp == NULL) {
         return (0);
     }

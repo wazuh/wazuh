@@ -13,6 +13,8 @@
 #include "wdb_state.h"
 #include <os_net/os_net.h>
 #include "router.h"
+#include "config/config.h"
+#include "config/wazuh_db-config.h"
 
 #define WDB_AGENT_EVENTS_TOPIC "wdb-agent-events"
 #define WDB_FIM_EVENTS_TOPIC "wdb-fim-events"
@@ -248,6 +250,7 @@ int main(int argc, char ** argv)
     router_register_api_endpoint("wazuh-db","wdb-http.sock", "POST", "/v1/agents/summary", (void*)&wdb_global_pre, (void*)&wdb_global_post);
     router_register_api_endpoint("wazuh-db","wdb-http.sock", "GET", "/v1/agents/sync", (void*)&wdb_global_pre, (void*)&wdb_global_post);
     router_register_api_endpoint("wazuh-db","wdb-http.sock", "POST", "/v1/agents/sync", (void*)&wdb_global_pre, (void*)&wdb_global_post);
+    router_register_api_endpoint("wazuh-db","wdb-http.sock", "POST", "/v1/agents/restartinfo", (void*)&wdb_global_pre, (void*)&wdb_global_post);
 
     router_start_api("wdb-http.sock");
 
@@ -530,7 +533,7 @@ void * run_up(__attribute__((unused)) void * args) {
     os_calloc(PATH_MAX + 1, sizeof(char), db_folder);
     snprintf(db_folder, PATH_MAX, "%s", WDB2_DIR);
 
-    fd = opendir(db_folder);
+    fd = wopendir(db_folder);
 
     if (!fd) {
         mdebug1("Opening directory: '%s': %s", db_folder, strerror(errno));

@@ -6,13 +6,27 @@
   "template": {
     "settings": {
       "index": {
+        "auto_expand_replicas": "0-1",
         "number_of_replicas": "0",
         "number_of_shards": "1",
         "query.default_field": [
+          "agent.host.architecture",
+          "agent.host.ip",
           "agent.id",
+          "agent.name",
+          "agent.version",
+          "host.network.egress.queue",
+          "host.network.ingress.queue",
+          "file.inode",
+          "interface.state",
+          "network.transport",
           "process.name",
+          "process.pid",
           "source.ip",
-          "destination.ip"
+          "destination.ip",
+          "wazuh.cluster.name",
+          "wazuh.cluster.node",
+          "wazuh.schema.version"
         ],
         "refresh_interval": "5s"
       }

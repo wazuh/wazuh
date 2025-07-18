@@ -17,15 +17,32 @@ project(wazuh-engine
 set(ENGINE_BIN_DIR ${PROJECT_SOURCE_DIR}/bin)
 # set(LIB_DIR ${PROJECT_SOURCE_DIR}/lib)
 set(ENGINE_SOURCE_DIR ${PROJECT_SOURCE_DIR}/source)
-set(ENGINE_BENCHMARK_DIR ${PROJECT_SOURCE_DIR}/benchmark)
 set(ENGINE_DOC_DIR ${PROJECT_SOURCE_DIR}/docs)
 
-# Options
-option(ENGINE_BUILD_TEST "Generate tests" ON)
-option(ENGINE_BUILD_BENCHMARK "Generate benchmarks" ON)
-option(ENGINE_BUILD_DOCUMENTATION "Generate doxygen documentation" ON)
+####################################################################################################
+#    Configurable options
+####################################################################################################
+option(ENGINE_BUILD_TEST "Generate tests" OFF)
+option(ENGINE_BUILD_BENCHMARK "Generate benchmarks" OFF)
+option(ENGINE_ENABLE_ASAN "Enable AddressSanitizer for all targets" OFF)
+option(ENGINE_BUILD_DOCUMENTATION "Generate doxygen documentation" OFF)
 option(ENGINE_ASSERT_WITH_SYMBOLS "Exports exe symbols to have asserts with full symbolicated functions" ON)
 option(ENGINE_GENERATE_PROTO "Generate protobuf code" OFF)
+option(ENGINE_ENABLE_REVERSE_ORDER_DECODERS_FEATURE "Enable reverse order decoders" OFF)
+
+
+####################################################################################################
+#    If WAZUH_ENGINE_TEST is defined (make ENGINE_TEST=1), we build the engine with tests and benchmarks.
+#    If UNIT_TEST is defined (make DEBUG=1 TEST=1), we build the engine with tests and enable AddressSanitizer
+####################################################################################################
+if(WAZUH_ENGINE_TEST)
+    set(ENGINE_BUILD_TEST ON CACHE BOOL "Generate tests" FORCE)
+    set(ENGINE_BUILD_BENCHMARK ON CACHE BOOL "Generate benchmarks" FORCE)
+elseif(UNIT_TEST)
+  set(ENGINE_BUILD_TEST ON CACHE BOOL "Generate tests" FORCE)
+  set(ENGINE_ENABLE_ASAN ON CACHE BOOL "Enable AddressSanitizer for all targets" FORCE)
+endif()
+
 
 # TODO put this in a better place together with other global options like warnings
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
@@ -36,6 +53,17 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     add_compile_definitions ( WAZUH_DEBUG )
 endif()
 
+if(ENGINE_BUILD_BENCHMARK AND
+   NOT CMAKE_BUILD_TYPE STREQUAL "Release" AND
+   NOT CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
+    message(WARNING "Building and running benchmarks in '${CMAKE_BUILD_TYPE}' will skew the results; use Release or RelWithDebInfo.")
+endif()
+
+if(ENGINE_ENABLE_ASAN)
+  message(STATUS "Building engine with AddressSanitizer")
+  add_compile_options(-fsanitize=address -fno-omit-frame-pointer)
+  add_link_options(-fsanitize=address -fno-omit-frame-pointer)
+endif()
 
 # Ensures that we do an out of source build
 MACRO(MACRO_ENSURE_OUT_OF_SOURCE_BUILD MSG)
@@ -53,154 +81,180 @@ MACRO_ENSURE_OUT_OF_SOURCE_BUILD(
     "${CMAKE_PROJECT_NAME} requires an out of source build."
 )
 
-if(DEFINED VCPKG_TARGET_TRIPLET)
-    message(STATUS "Using VCPKG triplet: ${VCPKG_TARGET_TRIPLET}")
-else()
-    message(WARNING "VCPKG_TARGET_TRIPLET is not defined. Make sure you are using the vcpkg toolchain.")
-    FATAL_ERROR("VCPKG_TARGET_TRIPLET is not defined.")
-endif()
-
-####################################################################################################
-# Temporary IANA Time Zone Database fixed
-####################################################################################################
-function(configure_tzdb)
-
-    set(TZDB_VERSION "2024a")
-    set(TZDB_URL "https://ftp.iana.org/tz/releases/tzdb-${TZDB_VERSION}.tar.lz")
-    set(TZDB_DIR "${CMAKE_BINARY_DIR}/tzdb")
-    set(TZDB_TAR "${CMAKE_BINARY_DIR}/tzcode${TZDB_VERSION}.tar.lz")
-    set(TZDB_HLP_TEST_DIR "${CMAKE_BINARY_DIR}/source/hlp/data")
-
-    find_program(WGET wget)
-    find_program(TAR tar)
-    find_program(LZIP lzip)
-
-    if(NOT WGET)
-        message(FATAL_ERROR "wget is required but not found. Please install wget.")
-    endif()
-
-    if(NOT TAR)
-        message(FATAL_ERROR "tar is required but not found. Please install tar.")
-    endif()
-
-    if(NOT LZIP)
-        message(FATAL_ERROR "lzip is required but not found. Please install lzip.")
-    endif()
-
-    # Download tzdb
-    if(NOT EXISTS ${TZDB_TAR})
-        message(STATUS "Downloading tzdb version ${TZDB_VERSION} from ${TZDB_URL}")
-        execute_process(
-            COMMAND ${WGET} ${TZDB_URL} -O ${TZDB_TAR}
-            RESULT_VARIABLE DOWNLOAD_RESULT
-        )
-        if(NOT DOWNLOAD_RESULT EQUAL 0)
-            message(FATAL_ERROR "Failed to download tzdb from ${TZDB_URL}")
-        endif()
-    endif()
-
-    # Check if tzdb directory exists if not extract it
-    if(NOT EXISTS ${TZDB_DIR})
-        message(STATUS "Creating directory ${TZDB_DIR} for extraction")
-        file(MAKE_DIRECTORY ${TZDB_DIR})  # Crear el directorio de destino
-
-        message(STATUS "Extracting tzdb version ${TZDB_VERSION} into ${TZDB_DIR}")
-        execute_process(
-            COMMAND ${TAR} --lzip --strip-components=1 -xvf ${TZDB_TAR} -C ${TZDB_DIR}
-            RESULT_VARIABLE EXTRACT_RESULT
-        )
-        if(NOT EXTRACT_RESULT EQUAL 0)
-            message(FATAL_ERROR "Failed to extract tzdb file ${TZDB_TAR}")
-        endif()
-    endif()
-
-    file(MAKE_DIRECTORY ${TZDB_HLP_TEST_DIR})
-    file(COPY ${TZDB_DIR} DESTINATION ${TZDB_HLP_TEST_DIR} FILES_MATCHING PATTERN "*")
-
-
-endfunction()
-# Temporaty fix for IANA Time Zone Database
-configure_tzdb()
-
-
 ####################################################################################################
 # Dependencies
 ####################################################################################################
-function(action package_name target_name)
-    if (${package_name}_FOUND)
-        if (NOT TARGET ${target_name})
-            add_library(${target_name} INTERFACE IMPORTED)
-            set_target_properties(${target_name} PROPERTIES
-                INTERFACE_INCLUDE_DIRECTORIES "${${package_name}_INCLUDE_DIRS}")
-            message(STATUS "Created imported target ${target_name}")
-        else()
-            message(STATUS "Target ${target_name} already exists")
-        endif()
-    else()
-        message(FATAL_ERROR "${package_name} not found!")
+# ---------------------------------------------------------------------------
+# register_external_library(<alias> <include_dir> [<lib_or_dir>])
+#
+# <alias>        Public target name, e.g. MyLib::core
+# <include_dir>  Header directory
+# <lib_or_dir>   (optional)
+#                • single file: /path/libfoo.a or foo.lib
+#                • directory   : /path/to/libs   (all *.a / *.lib will be used)
+# ---------------------------------------------------------------------------
+function(register_external_library alias header_dir static_lib)
+  string(REPLACE "::" "_" internal "${alias}")
+
+  if(static_lib AND IS_DIRECTORY "${static_lib}")
+    if(NOT TARGET ${internal})
+      add_library(${internal} INTERFACE)
+      target_include_directories(${internal}
+        INTERFACE
+          "${header_dir}"
+      )
+
+      # Recursive search .a y .so
+      file(GLOB_RECURSE _a_libs   "${static_lib}/*.a")
+      file(GLOB_RECURSE _so_libs  "${static_lib}/*.so")
+      set(_all_libs ${_a_libs} ${_so_libs})
+
+      if(_all_libs)
+        target_link_libraries(${internal}
+          INTERFACE
+            $<$<LINK_LANGUAGE:CXX>:-Wl,--start-group>
+            ${_all_libs}
+            $<$<LINK_LANGUAGE:CXX>:-Wl,--end-group>
+        )
+        message(STATUS "  → Imported libs from dir (recursive) ${static_lib}: ${_all_libs}")
+      else()
+        message(WARNING "  → No .a/.so found recursively in ${static_lib}")
+      endif()
     endif()
-endfunction()
 
-function(find_and_create_imported_target package_name target_name)
-    find_package(${package_name} CONFIG REQUIRED)
-    action(${package_name} ${target_name})
-endfunction()
+  elseif(static_lib)
+    if(NOT TARGET ${internal})
+      add_library(${internal} STATIC IMPORTED GLOBAL)
+      set_target_properties(${internal}
+        PROPERTIES
+          IMPORTED_LOCATION             "${static_lib}"
+          INTERFACE_INCLUDE_DIRECTORIES "${header_dir}"
+      )
+      message(STATUS "  → Imported static library ${internal} (from ${static_lib})")
+    endif()
 
-function(find_and_create_imported_target_ex package_name target_name)
-    find_package(${package_name} REQUIRED)
-    action(${package_name} ${target_name})
+  else()
+    if(NOT TARGET ${internal})
+      add_library(${internal} INTERFACE)
+      target_include_directories(${internal}
+        INTERFACE
+          "${header_dir}"
+      )
+      message(STATUS "  → Header-only interface target ${internal}")
+    endif()
+  endif()
+
+  if(NOT TARGET ${alias})
+    add_library(${alias} ALIAS ${internal})
+    message(STATUS "  → Alias target ${alias} -> ${internal}")
+  endif()
 endfunction()
 
 # Build test
 if(ENGINE_BUILD_TEST)
 include(CTest)
-find_and_create_imported_target("GTest" "GTest::gtest")
-find_and_create_imported_target("GTest" "GTest::gtest_main")
-find_and_create_imported_target("GTest" "GTest::gmock")
-find_and_create_imported_target("GTest" "GTest::gmock_main")
+# GTest y GMock
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+  register_external_library(GTest::gtest         "${CMAKE_SOURCE_DIR}/external/googletest/googletest/include" "${CMAKE_SOURCE_DIR}/external/googletest/build/lib/libgtestd.a")
+  register_external_library(GTest::gtest_main    "${CMAKE_SOURCE_DIR}/external/googletest/googletest/include" "${CMAKE_SOURCE_DIR}/external/googletest/build/lib/libgtest_maind.a")
+  register_external_library(GTest::gmock         "${CMAKE_SOURCE_DIR}/external/googletest/googlemock/include" "${CMAKE_SOURCE_DIR}/external/googletest/build/lib/libgmockd.a")
+  register_external_library(GTest::gmock_main    "${CMAKE_SOURCE_DIR}/external/googletest/googlemock/include" "${CMAKE_SOURCE_DIR}/external/googletest/build/lib/libgmock_maind.a")
+else()
+  register_external_library(GTest::gtest         "${CMAKE_SOURCE_DIR}/external/googletest/googletest/include" "${CMAKE_SOURCE_DIR}/external/googletest/build/lib/libgtest.a")
+  register_external_library(GTest::gtest_main    "${CMAKE_SOURCE_DIR}/external/googletest/googletest/include" "${CMAKE_SOURCE_DIR}/external/googletest/build/lib/libgtest_main.a")
+  register_external_library(GTest::gmock         "${CMAKE_SOURCE_DIR}/external/googletest/googlemock/include" "${CMAKE_SOURCE_DIR}/external/googletest/build/lib/libgmock.a")
+  register_external_library(GTest::gmock_main    "${CMAKE_SOURCE_DIR}/external/googletest/googlemock/include" "${CMAKE_SOURCE_DIR}/external/googletest/build/lib/libgmock_main.a")
+endif()
+
+set_target_properties(GTest_gtest_main  PROPERTIES INTERFACE_LINK_LIBRARIES "GTest_gtest")
+set_target_properties(GTest_gmock       PROPERTIES INTERFACE_LINK_LIBRARIES "GTest_gtest")
+set_target_properties(GTest_gmock_main  PROPERTIES INTERFACE_LINK_LIBRARIES "GTest_gmock;GTest_gtest")
 include(GoogleTest)
 endif(ENGINE_BUILD_TEST)
 
-find_and_create_imported_target("RapidJSON" "RapidJSON::RapidJSON")
-find_and_create_imported_target("rxcpp" "RxCpp::RxCpp")
-# yaml-cpp::yaml-cpp vs yaml-cpp #FIXME 70 stars on github
-find_and_create_imported_target("yaml-cpp" "yaml-cpp::yaml-cpp")
-find_and_create_imported_target("spdlog" "spdlog::spdlog")
-find_and_create_imported_target("FastFloat" "FastFloat::fast-float")
-find_and_create_imported_target("fmt" "fmt::fmt-header-only")
-find_and_create_imported_target("RocksDB" "RocksDB::rocksdb")
-find_and_create_imported_target("Taskflow" "Taskflow::Taskflow")
-find_and_create_imported_target("unofficial-concurrentqueue" "unofficial-concurrentqueue::concurrentqueue")
-find_and_create_imported_target("re2" "re2::re2")
-find_and_create_imported_target("CURL" "CURL::libcurl")
-find_and_create_imported_target("maxminddb" "maxminddb::maxminddb")
-find_and_create_imported_target("benchmark" "benchmark::benchmark")
-find_and_create_imported_target("pugixml" "pugixml::pugixml")
-
-find_and_create_imported_target("opentelemetry-cpp" "opentelemetry-cpp::api")
-find_and_create_imported_target("opentelemetry-cpp" "opentelemetry-cpp::sdk")
-find_and_create_imported_target("opentelemetry-cpp" "opentelemetry-cpp::logs")
-find_and_create_imported_target("opentelemetry-cpp" "opentelemetry-cpp::metrics")
-find_and_create_imported_target("opentelemetry-cpp" "opentelemetry-cpp::resources")
-
-find_and_create_imported_target("Protobuf" "protobuf::libprotobuf")
-find_and_create_imported_target("httplib" "httplib::httplib")
-
-find_and_create_imported_target("date" "date::date")
-find_and_create_imported_target("date" "date::date-tz")
-
-find_and_create_imported_target_ex("OpenSSL" "OpenSSL::SSL")
-find_and_create_imported_target_ex("OpenSSL" "OpenSSL::Crypto")
+####################################################################################################
+# Rocksdb dynamic link
+####################################################################################################
+# Ser var rocksdb build directory
+set(ROCKSDB_LIB_BUILD_DIR "${CMAKE_SOURCE_DIR}/external/rocksdb/build")
+include_directories(${CMAKE_SOURCE_DIR}/external/rocksdb/include)
+link_directories(${ROCKSDB_LIB_BUILD_DIR})
 
 ####################################################################################################
-# Targets
+#     Main executable for the Wazuh Engine.
 ####################################################################################################
-# Build main
-add_executable(main ${ENGINE_SOURCE_DIR}/main.cpp)
+add_executable(wazuh-engine ${ENGINE_SOURCE_DIR}/main.cpp)
 
-add_subdirectory(${ENGINE_SOURCE_DIR}/wazuh-http-request)
-# TODO: Until the indexer connector is unified with the rest of wazuh-manager
-# add_subdirectory(${ENGINE_SOURCE_DIR}/indexerconnector) 
+
+####################################################################################################
+# RPATH configuration
+# This is needed to ensure that the wazuh-engine can find its dependencies at runtime.
+####################################################################################################
+get_target_property(_orig_rpath wazuh-engine INSTALL_RPATH)
+if(NOT _orig_rpath)
+  set(_orig_rpath "")
+endif()
+
+set(_new_paths
+  ${CMAKE_SOURCE_DIR}       # For shared libwazuhext.so
+  ${ROCKSDB_LIB_BUILD_DIR}
+  "$ORIGIN/../lib"
+  "$ORIGIN/lib"
+)
+
+# Append the new paths to the original RPATH
+list(APPEND _orig_rpath ${_new_paths})
+string(REPLACE ";" ":" _final_rpath "${_orig_rpath}")
+
+set_target_properties(wazuh-engine PROPERTIES
+  INSTALL_RPATH "${_final_rpath}"
+  BUILD_WITH_INSTALL_RPATH TRUE
+)
+
+# Print the final RPATH on debug
+if (CMAKE_BUILD_TYPE STREQUAL "Debug")
+    message(STATUS "RPATH for wazuh-engine: ${_final_rpath}")
+endif()
+
+####################################################################################################
+#  If Threads is not found, we force -lpthread fallback (for Centos 7)
+####################################################################################################
+find_package(Threads QUIET)
+if (NOT Threads_FOUND)
+  message(WARNING "Threads not found by CMake; forcing -lpthread fallback")
+  set(CMAKE_THREAD_LIBS_INIT "-lpthread"      CACHE STRING "" FORCE)
+  set(Threads_FOUND            TRUE             CACHE BOOL   "" FORCE)
+endif()
+
+message("PATH: ${CMAKE_SOURCE_DIR}")
+register_external_library(fmt::fmt               "${CMAKE_SOURCE_DIR}/external/fmt/include" "${CMAKE_SOURCE_DIR}/external/fmt/build/libfmt.a")
+register_external_library(spdlog::spdlog         "${CMAKE_SOURCE_DIR}/external/spdlog/include" "${CMAKE_SOURCE_DIR}/external/spdlog/build/libspdlog.a")
+register_external_library(yaml-cpp::yaml-cpp     "${CMAKE_SOURCE_DIR}/external/yaml-cpp/include" "${CMAKE_SOURCE_DIR}/external/yaml-cpp/build/libyaml-cpp.a")
+register_external_library(RapidJSON::RapidJSON   "${CMAKE_SOURCE_DIR}/external/rapidjson/include" "")
+register_external_library(RxCpp::RxCpp           "${CMAKE_SOURCE_DIR}/external/RxCpp/Rx/v2/src/" "")
+register_external_library(FastFloat::fast-float  "${CMAKE_SOURCE_DIR}/external/fast_float/include" "")
+register_external_library(Taskflow::Taskflow     "${CMAKE_SOURCE_DIR}/external/taskflow" "")
+register_external_library(unofficial-concurrentqueue::concurrentqueue "${CMAKE_SOURCE_DIR}/external/concurrentqueue" "")
+register_external_library(OpenSSL::SSL           "${CMAKE_SOURCE_DIR}/external/openssl/include" "${CMAKE_SOURCE_DIR}/external/openssl/libssl.a")
+register_external_library(OpenSSL::Crypto        "${CMAKE_SOURCE_DIR}/external/openssl/include" "${CMAKE_SOURCE_DIR}/external/openssl/libcrypto.a")
+register_external_library(ZLIB::ZLIB             "${CMAKE_SOURCE_DIR}/external/zlib" "${CMAKE_SOURCE_DIR}/external/zlib/libz.a")
+register_external_library(CURL::libcurl          "${CMAKE_SOURCE_DIR}/external/curl/include" "${CMAKE_SOURCE_DIR}/external/curl/lib/.libs/libcurl.a")
+set_target_properties(CURL_libcurl PROPERTIES INTERFACE_LINK_LIBRARIES "ZLIB_ZLIB;OpenSSL_SSL;OpenSSL_Crypto")
+register_external_library(maxminddb::maxminddb   "${CMAKE_SOURCE_DIR}/external/libmaxminddb/include" "${CMAKE_SOURCE_DIR}/external/libmaxminddb/build/libmaxminddb.a")
+target_include_directories(maxminddb_maxminddb INTERFACE "${CMAKE_SOURCE_DIR}/external/libmaxminddb/build/generated")
+register_external_library(benchmark::benchmark   "${CMAKE_SOURCE_DIR}/external/benchmark/include" "${CMAKE_SOURCE_DIR}/external/benchmark/build/src/libbenchmark.a")
+register_external_library(benchmark::benchmark_main "${CMAKE_SOURCE_DIR}/external/benchmark/src" "${CMAKE_SOURCE_DIR}/external/benchmark/build/src/libbenchmark_main.a")
+set_target_properties(benchmark_benchmark_main PROPERTIES INTERFACE_LINK_LIBRARIES "benchmark_benchmark")
+register_external_library(pugixml::pugixml       "${CMAKE_SOURCE_DIR}/external/pugixml/src" "${CMAKE_SOURCE_DIR}/external/pugixml/build/libpugixml.a")
+register_external_library(protobuf::libprotobuf  "${CMAKE_SOURCE_DIR}/external/protobuf/src" "${CMAKE_SOURCE_DIR}/external/protobuf/build/libprotobuf.a")
+set(PROTOBUF_DIR "${CMAKE_SOURCE_DIR}/external/protobuf")
+register_external_library(date::date             "${CMAKE_SOURCE_DIR}/external/date/include" "")
+register_external_library(date::date-tz          "${CMAKE_SOURCE_DIR}/external/date/include" "${CMAKE_SOURCE_DIR}/external/date/build/libdate-tz.a")
+register_external_library(absl::absl             "${CMAKE_SOURCE_DIR}/external/abseil-cpp" "${CMAKE_SOURCE_DIR}/external/abseil-cpp/build/build_result")
+target_link_libraries(absl_absl INTERFACE Threads::Threads ${CMAKE_DL_LIBS})
+register_external_library(re2::re2               "${CMAKE_SOURCE_DIR}/external/re2" "${CMAKE_SOURCE_DIR}/external/re2/build/libre2.a")
+set_target_properties(re2_re2 PROPERTIES INTERFACE_LINK_LIBRARIES "absl_absl")
+
 add_subdirectory(${ENGINE_SOURCE_DIR}/base)
 add_subdirectory(${ENGINE_SOURCE_DIR}/bk)
 add_subdirectory(${ENGINE_SOURCE_DIR}/api)
@@ -222,9 +276,10 @@ add_subdirectory(${ENGINE_SOURCE_DIR}/proto)
 add_subdirectory(${ENGINE_SOURCE_DIR}/geo)
 add_subdirectory(${ENGINE_SOURCE_DIR}/queue)
 add_subdirectory(${ENGINE_SOURCE_DIR}/httpsrv)
+add_subdirectory(${ENGINE_SOURCE_DIR}/udgramsrv)
 add_subdirectory(${ENGINE_SOURCE_DIR}/archiver)
 
-target_link_libraries(main
+target_link_libraries(wazuh-engine
     base
     conf
     yml
@@ -244,6 +299,7 @@ target_link_libraries(main
     geo::igeo
     # indexerconnector # TODO: Comment until indexerconnector is unified with the old one
     httpsrv
+    udgramsrv::udgramsrv
     api::event
     queue
     archiver
@@ -251,13 +307,8 @@ target_link_libraries(main
 
 # If ASAN, UBSAN or any other sanitizers are enabled do not link with static libraries
 if(NOT CMAKE_CXX_FLAGS MATCHES "-fsanitize=.*")
-    target_link_libraries(main -static-libgcc -static-libstdc++)
+    target_link_libraries(wazuh-engine -static-libgcc -static-libstdc++)
 endif()
-
-# Build benchmark
-if(ENGINE_BUILD_BENCHMARK)
-add_subdirectory(${ENGINE_BENCHMARK_DIR})
-endif(ENGINE_BUILD_BENCHMARK)
 
 # Create a custom test target
 function(get_all_targets _result _dir)
@@ -297,7 +348,7 @@ if(DEFINED ENABLE_COVERAGE_REPORT AND ENABLE_COVERAGE_REPORT)
     # Add coverage flags
     add_custom_target(coverage
         COMMAND lcov --capture --directory ${CMAKE_BINARY_DIR} --output-file ${CMAKE_BINARY_DIR}/coverage.info --ignore-errors mismatch
-        COMMAND lcov --remove ${CMAKE_BINARY_DIR}/coverage.info '/usr/*' '*/test/*' '*/build/vcpkg_installed/*' --output-file ${CMAKE_BINARY_DIR}/coverage.info --ignore-errors mismatch
+        COMMAND lcov --remove ${CMAKE_BINARY_DIR}/coverage.info '/usr/*' '*/test/*' --output-file ${CMAKE_BINARY_DIR}/coverage.info --ignore-errors mismatch
         COMMAND genhtml ${CMAKE_BINARY_DIR}/coverage.info --output-directory ${CMAKE_BINARY_DIR}/coverage_report
         COMMENT "Generating coverage report in ${CMAKE_BINARY_DIR}/coverage_report"
     )

@@ -8,10 +8,12 @@
 
 #include <conf/apiLoader.hpp>
 
-constexpr auto serverPath {"/run/wazuh-server/config-server.sock"};
+constexpr auto serverPath {"/tmp/config-server.sock"};
 
 TEST(ApiLoader, environmentVariable)
 {
+    GTEST_SKIP() << "Skipping ApiLoaderServerTest until the new config method is defined";
+
     logging::testInit();
     std::shared_ptr<conf::IApiLoader> apiLoader = std::make_shared<conf::ApiLoader>();
     json::Json cnf {};

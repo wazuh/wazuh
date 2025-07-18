@@ -738,27 +738,27 @@ int wdb_global_insert_agent_belong(wdb_t *wdb, int id_group, int id_agent, int p
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0) {
         mdebug1("Cannot begin transaction");
-        return OS_INVALID;
+        return OS_UNDEF;
     }
 
     if (wdb_stmt_cache(wdb, WDB_STMT_GLOBAL_INSERT_AGENT_BELONG) < 0) {
         mdebug1("Cannot cache statement");
-        return OS_INVALID;
+        return OS_UNDEF;
     }
 
     stmt = wdb->stmt[WDB_STMT_GLOBAL_INSERT_AGENT_BELONG];
 
     if (sqlite3_bind_int(stmt, 1, id_group) != SQLITE_OK) {
         merror("DB(%s) sqlite3_bind_int(): %s", wdb->id, sqlite3_errmsg(wdb->db));
-        return OS_INVALID;
+        return OS_UNDEF;
     }
     if (sqlite3_bind_int(stmt, 2, id_agent) != SQLITE_OK) {
         merror("DB(%s) sqlite3_bind_int(): %s", wdb->id, sqlite3_errmsg(wdb->db));
-        return OS_INVALID;
+        return OS_UNDEF;
     }
     if (sqlite3_bind_int(stmt, 3, priority) != SQLITE_OK) {
         merror("DB(%s) sqlite3_bind_int(): %s", wdb->id, sqlite3_errmsg(wdb->db));
-        return OS_INVALID;
+        return OS_UNDEF;
     }
 
     return wdb_exec_stmt_silent(stmt);
@@ -1293,8 +1293,32 @@ wdbc_result wdb_global_assign_agent_group(wdb_t *wdb, int id, cJSON* j_groups, i
             if (j_find_response && cJSON_GetArraySize(j_find_response) > 0) {
                 cJSON* j_group_id = cJSON_GetObjectItem(j_find_response->child, "id");
                 if (cJSON_IsNumber(j_group_id)) {
-                    if (OS_INVALID == wdb_global_insert_agent_belong(wdb, j_group_id->valueint, id, priority)) {
-                        mdebug1("Unable to insert group '%s' for agent '%d'", group_name, id);
+                    int insert_result = wdb_global_insert_agent_belong(wdb, j_group_id->valueint, id, priority);
+                    if (OS_INVALID == insert_result) {
+                        // Check if agent exists
+                        if (!wdb_global_agent_exists(wdb, id)) {
+                            // Create agent in never_connected state
+                            const char *unknown = "unknown";
+                            const char *ip = "0.0.0.0";
+                            if (OS_INVALID == wdb_global_insert_agent(wdb, id, (char*)unknown, (char*)ip, (char*)ip, NULL, NULL, time(NULL))) {
+                                mdebug1("Unable to create agent '%d' in never_connected state", id);
+                                result = WDBC_ERROR;
+                            } else {
+                                // Try to insert the group again
+                                insert_result = wdb_global_insert_agent_belong(wdb, j_group_id->valueint, id, priority);
+                                if (OS_INVALID == insert_result || OS_UNDEF == insert_result) {
+                                    mdebug1("Unable to insert group '%s' for agent '%d', retry failed after creating agent in never_connected state.", group_name, id);
+                                    result = WDBC_ERROR;
+                                } else {
+                                    priority++;
+                                }
+                            }
+                        } else {
+                            mdebug1("Unable to insert group '%s' for agent '%d', agent already exists, groups not synced.", group_name, id);
+                            result = WDBC_ERROR;
+                        }
+                    } else if (OS_UNDEF == insert_result) {
+                        mdebug1("Unable to insert group '%s' for agent '%d', undefined error.", group_name, id);
                         result = WDBC_ERROR;
                     } else {
                         priority++;
@@ -2103,7 +2127,7 @@ int wdb_global_create_backup(wdb_t* wdb, char* output, const char* tag) {
 }
 
 int wdb_global_remove_old_backups() {
-    DIR* dp = opendir(WDB_BACKUP_FOLDER);
+    DIR* dp = wopendir(WDB_BACKUP_FOLDER);
 
     if(!dp) {
         mdebug1("Unable to open backup directory '%s'", WDB_BACKUP_FOLDER);
@@ -2143,7 +2167,7 @@ cJSON* wdb_global_get_backups() {
     cJSON* j_backups = NULL;
     struct dirent *entry = NULL;
 
-    DIR* dp = opendir(WDB_BACKUP_FOLDER);
+    DIR* dp = wopendir(WDB_BACKUP_FOLDER);
 
     if(!dp) {
         mdebug1("Unable to open backup directory '%s'", WDB_BACKUP_FOLDER);
@@ -2225,7 +2249,7 @@ end:
 }
 
 time_t wdb_global_get_most_recent_backup(char **most_recent_backup_name) {
-    DIR* dp = opendir(WDB_BACKUP_FOLDER);
+    DIR* dp = wopendir(WDB_BACKUP_FOLDER);
 
     if(!dp) {
         mdebug1("Unable to open backup directory '%s'", WDB_BACKUP_FOLDER);
@@ -2244,7 +2268,7 @@ time_t wdb_global_get_most_recent_backup(char **most_recent_backup_name) {
         struct stat backup_info = {0};
 
         snprintf(tmp_path, OS_SIZE_512, "%s/%s", WDB_BACKUP_FOLDER, entry->d_name);
-        if(!stat(tmp_path, &backup_info)) {
+        if(!w_stat(tmp_path, &backup_info)) {
             if(backup_info.st_mtime >= most_recent_backup_time) {
                 most_recent_backup_time = backup_info.st_mtime;
                 tmp_backup_name = entry->d_name;
@@ -2261,7 +2285,7 @@ time_t wdb_global_get_most_recent_backup(char **most_recent_backup_name) {
 }
 
 time_t wdb_global_get_oldest_backup(char **oldest_backup_name) {
-    DIR* dp = opendir(WDB_BACKUP_FOLDER);
+    DIR* dp = wopendir(WDB_BACKUP_FOLDER);
 
     if(!dp) {
         mdebug1("Unable to open backup directory '%s'", WDB_BACKUP_FOLDER);
@@ -2282,7 +2306,7 @@ time_t wdb_global_get_oldest_backup(char **oldest_backup_name) {
         struct stat backup_info = {0};
 
         snprintf(tmp_path, OS_SIZE_512, "%s/%s", WDB_BACKUP_FOLDER, entry->d_name);
-        if(!stat(tmp_path, &backup_info)) {
+        if(!w_stat(tmp_path, &backup_info)) {
             if((current_time - backup_info.st_mtime) >= aux_time_var) {
                 aux_time_var = current_time - backup_info.st_mtime;
                 oldest_backup_time = backup_info.st_mtime;

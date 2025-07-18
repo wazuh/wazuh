@@ -17,7 +17,7 @@
 #include "agent_op_wrappers.h"
 
 #include "../../headers/shared.h"
-#include "../../analysisd/logmsg.h"
+// #include "../../analysisd/logmsg.h"
 
 int __wrap_auth_connect() {
     return mock();
