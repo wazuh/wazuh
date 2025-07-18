@@ -60,6 +60,7 @@ link_directories(${SRC_FOLDER}/data_provider/build/lib)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   add_definitions(-DWIN32=1 -D_WIN32_WINNT=0x600 -DWIN_EXPORT)
+  link_directories(${SRC_FOLDER}/data_provider/build/bin)
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
 file(GLOB SCA_SRC "${CMAKE_SOURCE_DIR}/src/*.cpp")
