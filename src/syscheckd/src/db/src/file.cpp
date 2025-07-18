@@ -9,27 +9,17 @@
  * Foundation.
  */
 
-#include "fimCommonDefs.h"
-#include "json.hpp"
+#include "cjsonSmartDeleter.hpp"
 #include "db.h"
 #include "db.hpp"
-#include "fimDB.hpp"
 #include "dbFileItem.hpp"
-#include "cjsonSmartDeleter.hpp"
+#include "fimCommonDefs.h"
+#include "fimDB.hpp"
+#include "json.hpp"
 
-static const char* FIM_EVENT_TYPE_ARRAY[] =
-{
-    "added",
-    "deleted",
-    "modified"
-};
+static const char* FIM_EVENT_TYPE_ARRAY[] = {"added", "deleted", "modified"};
 
-static const char* FIM_EVENT_MODE[] =
-{
-    "scheduled",
-    "realtime",
-    "whodata"
-};
+static const char* FIM_EVENT_MODE[] = {"scheduled", "realtime", "whodata"};
 
 enum SEARCH_FIELDS
 {
@@ -39,7 +29,10 @@ enum SEARCH_FIELDS
     SEARCH_FIELD_DEV
 };
 
-nlohmann::json DB::createJsonEvent(const nlohmann::json& fileJson, const nlohmann::json& resultJson, ReturnTypeCallback type, callback_ctx* ctx)
+nlohmann::json DB::createJsonEvent(const nlohmann::json& fileJson,
+                                   const nlohmann::json& resultJson,
+                                   ReturnTypeCallback type,
+                                   callback_ctx* ctx)
 {
     nlohmann::json jsonEvent;
     nlohmann::json data;
@@ -304,63 +297,49 @@ nlohmann::json DB::createJsonEvent(const nlohmann::json& fileJson, const nlohman
         jsonEvent["data"]["changed_attributes"] = changed_attributes;
     }
 
-
     return jsonEvent;
 }
 
 void DB::removeFile(const std::string& path)
 {
-    auto deleteQuery
-    {
-        DeleteQuery::builder()
-        .table(FIMDB_FILE_TABLE_NAME)
-        .data({{"path", path}})
-        .rowFilter("")
-        .build()
-    };
+    auto deleteQuery {DeleteQuery::builder().table(FIMDB_FILE_TABLE_NAME).data({{"path", path}}).rowFilter("").build()};
 
     FIMDB::instance().removeItem(deleteQuery.query());
 }
 
 void DB::getFile(const std::string& path, std::function<void(const nlohmann::json&)> callback)
 {
-    auto selectQuery
-    {
-        SelectQuery::builder()
-        .table(FIMDB_FILE_TABLE_NAME)
-        .columnList({"path",
-            "checksum",
-            "device",
-            "inode",
-            "size",
-            "permissions",
-            "attributes",
-            "uid",
-            "gid",
-            "owner",
-            "group_",
-            "hash_md5",
-            "hash_sha1",
-            "hash_sha256",
-            "mtime"})
-        .rowFilter(std::string("WHERE path=\"") + std::string(path) + "\"")
-        .orderByOpt(FILE_PRIMARY_KEY)
-        .distinctOpt(false)
-        .countOpt(100)
-        .build()
-    };
+    auto selectQuery {SelectQuery::builder()
+                          .table(FIMDB_FILE_TABLE_NAME)
+                          .columnList({"path",
+                                       "checksum",
+                                       "device",
+                                       "inode",
+                                       "size",
+                                       "permissions",
+                                       "attributes",
+                                       "uid",
+                                       "gid",
+                                       "owner",
+                                       "group_",
+                                       "hash_md5",
+                                       "hash_sha1",
+                                       "hash_sha256",
+                                       "mtime"})
+                          .rowFilter(std::string("WHERE path=\"") + std::string(path) + "\"")
+                          .orderByOpt(FILE_PRIMARY_KEY)
+                          .distinctOpt(false)
+                          .countOpt(100)
+                          .build()};
 
     std::vector<nlohmann::json> entryFromPath;
-    const auto internalCallback
-    {
-        [&entryFromPath](ReturnTypeCallback type, const nlohmann::json & jsonResult)
-        {
-            if (ReturnTypeCallback::SELECTED == type)
-            {
-                entryFromPath.push_back(jsonResult);
-            }
-        }
-    };
+    const auto internalCallback {[&entryFromPath](ReturnTypeCallback type, const nlohmann::json& jsonResult)
+                                 {
+                                     if (ReturnTypeCallback::SELECTED == type)
+                                     {
+                                         entryFromPath.push_back(jsonResult);
+                                     }
+                                 }};
 
     FIMDB::instance().executeQuery(selectQuery.query(), internalCallback);
 
@@ -370,22 +349,21 @@ void DB::getFile(const std::string& path, std::function<void(const nlohmann::jso
     }
     else
     {
-        throw no_entry_found { "No entry found for " + path};
+        throw no_entry_found {"No entry found for " + path};
     }
 }
 
-void DB::updateFile(const nlohmann::json& file, callback_ctx* ctx, std::function<void(nlohmann::json)> callbackPrimitive)
+void DB::updateFile(const nlohmann::json& file,
+                    callback_ctx* ctx,
+                    std::function<void(nlohmann::json)> callbackPrimitive)
 {
-    const auto callback
-    {
-        [file, callbackPrimitive, ctx, this](ReturnTypeCallback type, const nlohmann::json resultJson)
-        {
-            if (ctx->event->report_event)
-            {
-                callbackPrimitive(createJsonEvent(file, resultJson, type, ctx));
-            }
-        }
-    };
+    const auto callback {[file, callbackPrimitive, ctx, this](ReturnTypeCallback type, const nlohmann::json resultJson)
+                         {
+                             if (ctx->event->report_event)
+                             {
+                                 callbackPrimitive(createJsonEvent(file, resultJson, type, ctx));
+                             }
+                         }};
 
     FIMDB::instance().updateItem(file, callback);
 
@@ -394,12 +372,13 @@ void DB::updateFile(const nlohmann::json& file, callback_ctx* ctx, std::function
 
 void DB::searchFile(const SearchData& data, std::function<void(const std::string&)> callback)
 {
-    const auto searchType { std::get<SEARCH_FIELD_TYPE>(data) };
+    const auto searchType {std::get<SEARCH_FIELD_TYPE>(data)};
     std::string filter;
 
     if (SEARCH_TYPE_INODE == searchType)
     {
-        filter = "WHERE inode=" + std::get<SEARCH_FIELD_INODE>(data) + " AND device=" + std::get<SEARCH_FIELD_DEV>(data);
+        filter =
+            "WHERE inode=" + std::get<SEARCH_FIELD_INODE>(data) + " AND device=" + std::get<SEARCH_FIELD_DEV>(data);
     }
     else if (SEARCH_TYPE_PATH == searchType)
     {
@@ -407,62 +386,103 @@ void DB::searchFile(const SearchData& data, std::function<void(const std::string
     }
     else
     {
-        throw std::runtime_error{ "Invalid search type" };
+        throw std::runtime_error {"Invalid search type"};
     }
 
-    auto selectQuery
-    {
-        SelectQuery::builder()
-        .table(FIMDB_FILE_TABLE_NAME)
-        .columnList({"path"})
-        .rowFilter(filter)
-        .orderByOpt(FILE_PRIMARY_KEY)
-        .distinctOpt(false)
-        .build()
-    };
+    auto selectQuery {SelectQuery::builder()
+                          .table(FIMDB_FILE_TABLE_NAME)
+                          .columnList({"path"})
+                          .rowFilter(filter)
+                          .orderByOpt(FILE_PRIMARY_KEY)
+                          .distinctOpt(false)
+                          .build()};
 
-
-    const auto localCallback
-    {
-        [callback](ReturnTypeCallback type, const nlohmann::json & jsonResult)
-        {
-            if (ReturnTypeCallback::SELECTED == type)
-            {
-                callback(jsonResult.at("path"));
-            }
-        }
-    };
+    const auto localCallback {[callback](ReturnTypeCallback type, const nlohmann::json& jsonResult)
+                              {
+                                  if (ReturnTypeCallback::SELECTED == type)
+                                  {
+                                      callback(jsonResult.at("path"));
+                                  }
+                              }};
 
     FIMDB::instance().executeQuery(selectQuery.query(), localCallback);
 }
 
-
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 
-FIMDBErrorCode fim_db_get_path(const char* file_path, callback_context_t callback)
-{
-    auto retVal { FIMDB_ERR };
+    FIMDBErrorCode fim_db_get_path(const char* file_path, callback_context_t callback)
+    {
+        auto retVal {FIMDB_ERR};
 
-    if (!file_path || !callback.callback)
-    {
-        FIMDB::instance().logFunction(LOG_ERROR, "Invalid parameters");
+        if (!file_path || !callback.callback)
+        {
+            FIMDB::instance().logFunction(LOG_ERROR, "Invalid parameters");
+        }
+        else
+        {
+            try
+            {
+                DB::instance().getFile(file_path,
+                                       [&callback](const nlohmann::json& jsonResult)
+                                       {
+                                           const auto file {std::make_unique<FileItem>(jsonResult)};
+                                           callback.callback(file->toFimEntry(), callback.context);
+                                       });
+                retVal = FIMDB_OK;
+            }
+            catch (const no_entry_found& err)
+            {
+                FIMDB::instance().logFunction(LOG_DEBUG_VERBOSE, err.what());
+            }
+            // LCOV_EXCL_START
+            catch (const std::exception& err)
+            {
+                FIMDB::instance().logFunction(LOG_ERROR, err.what());
+            }
+
+            // LCOV_EXCL_STOP
+        }
+
+        return retVal;
     }
-    else
+
+    FIMDBErrorCode fim_db_remove_path(const char* path)
     {
+        auto retVal {FIMDB_ERR};
+
+        if (!path)
+        {
+            FIMDB::instance().logFunction(LOG_ERROR, "Invalid parameters");
+        }
+        else
+        {
+            try
+            {
+                DB::instance().removeFile(path);
+                retVal = FIMDB_OK;
+            }
+            // LCOV_EXCL_START
+            catch (const std::exception& err)
+            {
+                FIMDB::instance().logFunction(LOG_ERROR, err.what());
+            }
+
+            // LCOV_EXCL_STOP
+        }
+
+        return retVal;
+    }
+
+    int fim_db_get_count_file_inode()
+    {
+        auto count {0};
+
         try
         {
-            DB::instance().getFile(file_path, [&callback](const nlohmann::json & jsonResult)
-            {
-                const auto file { std::make_unique<FileItem>(jsonResult) };
-                callback.callback(file->toFimEntry(), callback.context);
-            });
-            retVal = FIMDB_OK;
-        }
-        catch (const no_entry_found& err)
-        {
-            FIMDB::instance().logFunction(LOG_DEBUG_VERBOSE, err.what());
+            count = DB::instance().countEntries(FIMDB_FILE_TABLE_NAME, COUNT_SELECT_TYPE::COUNT_INODE);
         }
         // LCOV_EXCL_START
         catch (const std::exception& err)
@@ -471,25 +491,17 @@ FIMDBErrorCode fim_db_get_path(const char* file_path, callback_context_t callbac
         }
 
         // LCOV_EXCL_STOP
+
+        return count;
     }
 
-    return retVal;
-}
-
-FIMDBErrorCode fim_db_remove_path(const char* path)
-{
-    auto retVal { FIMDB_ERR };
-
-    if (!path)
+    int fim_db_get_count_file_entry()
     {
-        FIMDB::instance().logFunction(LOG_ERROR, "Invalid parameters");
-    }
-    else
-    {
+        auto count {0};
+
         try
         {
-            DB::instance().removeFile(path);
-            retVal = FIMDB_OK;
+            count = DB::instance().countEntries(FIMDB_FILE_TABLE_NAME, COUNT_SELECT_TYPE::COUNT_ALL);
         }
         // LCOV_EXCL_START
         catch (const std::exception& err)
@@ -498,152 +510,118 @@ FIMDBErrorCode fim_db_remove_path(const char* path)
         }
 
         // LCOV_EXCL_STOP
+
+        return count;
     }
 
-    return retVal;
-}
-
-int fim_db_get_count_file_inode()
-{
-    auto count { 0 };
-
-    try
+    FIMDBErrorCode fim_db_file_update(fim_entry* data, callback_context_t callback)
     {
-        count = DB::instance().countEntries(FIMDB_FILE_TABLE_NAME, COUNT_SELECT_TYPE::COUNT_INODE);
-    }
-    // LCOV_EXCL_START
-    catch (const std::exception& err)
-    {
-        FIMDB::instance().logFunction(LOG_ERROR, err.what());
-    }
+        auto retVal {FIMDB_ERR};
 
-    // LCOV_EXCL_STOP
-
-    return count;
-}
-
-int fim_db_get_count_file_entry()
-{
-    auto count { 0 };
-
-    try
-    {
-        count = DB::instance().countEntries(FIMDB_FILE_TABLE_NAME, COUNT_SELECT_TYPE::COUNT_ALL);
-    }
-    // LCOV_EXCL_START
-    catch (const std::exception& err)
-    {
-        FIMDB::instance().logFunction(LOG_ERROR, err.what());
-    }
-
-    // LCOV_EXCL_STOP
-
-    return count;
-}
-
-FIMDBErrorCode fim_db_file_update(fim_entry* data, callback_context_t callback)
-{
-    auto retVal { FIMDB_ERR };
-
-    if (!data || !callback.callback)
-    {
-        FIMDB::instance().logFunction(LOG_ERROR, "Invalid parameters");
-    }
-    else
-    {
-        try
+        if (!data || !callback.callback)
         {
-            const auto file { std::make_unique<FileItem>(data, true) };
-            callback_ctx* ctx { reinterpret_cast<callback_ctx*>(callback.context)};
-            DB::instance().updateFile(*file->toJSON(), ctx, [callback](const nlohmann::json jsonResult)
+            FIMDB::instance().logFunction(LOG_ERROR, "Invalid parameters");
+        }
+        else
+        {
+            try
             {
-                const std::unique_ptr<cJSON, CJsonSmartDeleter> spJson{ cJSON_Parse(jsonResult.dump().c_str()) };
-                callback.callback(spJson.get(), callback.context);
-            });
-            retVal = FIMDB_OK;
-        }
-        // LCOV_EXCL_START
-        catch (DbSync::max_rows_error& max_row)
-        {
-            FIMDB::instance().logFunction(LOG_WARNING, "Reached maximum files limit monitored, due to db_entry_limit configuration for files.");
-        }
-        catch (std::exception& err)
-        {
-            FIMDB::instance().logFunction(LOG_ERROR, err.what());
-        }
-
-        // LCOV_EXCL_STOP
-    }
-
-    return retVal;
-}
-
-FIMDBErrorCode fim_db_file_inode_search(const unsigned long long int inode,
-                                        const unsigned long device,
-                                        callback_context_t callback)
-{
-    auto retVal { FIMDB_ERR };
-
-    if (!callback.callback)
-    {
-        FIMDB::instance().logFunction(LOG_ERROR, "Invalid parameters");
-    }
-    else
-    {
-        try
-        {
-            DB::instance().searchFile(std::make_tuple(SEARCH_TYPE_INODE, "", std::to_string(inode), std::to_string(device)),
-                                      [callback] (const std::string & path)
+                const auto file {std::make_unique<FileItem>(data, true)};
+                callback_ctx* ctx {reinterpret_cast<callback_ctx*>(callback.context)};
+                DB::instance().updateFile(*file->toJSON(),
+                                          ctx,
+                                          [callback](const nlohmann::json jsonResult)
+                                          {
+                                              const std::unique_ptr<cJSON, CJsonSmartDeleter> spJson {
+                                                  cJSON_Parse(jsonResult.dump().c_str())};
+                                              callback.callback(spJson.get(), callback.context);
+                                          });
+                retVal = FIMDB_OK;
+            }
+            // LCOV_EXCL_START
+            catch (DbSync::max_rows_error& max_row)
             {
-                char* entry = const_cast<char*>(path.c_str());
-                callback.callback(entry, callback.context);
-            });
-            retVal = FIMDB_OK;
-        }
-        // LCOV_EXCL_START
-        catch (const std::exception& err)
-        {
-            FIMDB::instance().logFunction(LOG_ERROR, err.what());
-        }
-
-        // LCOV_EXCL_STOP
-    }
-
-    return retVal;
-}
-
-FIMDBErrorCode fim_db_file_pattern_search(const char* pattern, callback_context_t callback)
-{
-    auto retVal { FIMDB_ERR };
-
-    if (!pattern || !callback.callback)
-    {
-        FIMDB::instance().logFunction(LOG_ERROR, "Invalid parameters");
-    }
-    else
-    {
-        try
-        {
-            DB::instance().searchFile(std::make_tuple(SEARCH_TYPE_PATH, pattern, "", ""),
-                                      [callback] (const std::string & path)
+                FIMDB::instance().logFunction(
+                    LOG_WARNING,
+                    "Reached maximum files limit monitored, due to db_entry_limit configuration for files.");
+            }
+            catch (std::exception& err)
             {
-                char* entry = const_cast<char*>(path.c_str());
-                callback.callback(entry, callback.context);
-            });
-            retVal = FIMDB_OK;
-        }
-        // LCOV_EXCL_START
-        catch (const std::exception& err)
-        {
-            FIMDB::instance().logFunction(LOG_ERROR, err.what());
+                FIMDB::instance().logFunction(LOG_ERROR, err.what());
+            }
+
+            // LCOV_EXCL_STOP
         }
 
-        // LCOV_EXCL_STOP
+        return retVal;
     }
 
-    return retVal;
-}
+    FIMDBErrorCode fim_db_file_inode_search(const unsigned long long int inode,
+                                            const unsigned long device,
+                                            callback_context_t callback)
+    {
+        auto retVal {FIMDB_ERR};
 
+        if (!callback.callback)
+        {
+            FIMDB::instance().logFunction(LOG_ERROR, "Invalid parameters");
+        }
+        else
+        {
+            try
+            {
+                DB::instance().searchFile(
+                    std::make_tuple(SEARCH_TYPE_INODE, "", std::to_string(inode), std::to_string(device)),
+                    [callback](const std::string& path)
+                    {
+                        char* entry = const_cast<char*>(path.c_str());
+                        callback.callback(entry, callback.context);
+                    });
+                retVal = FIMDB_OK;
+            }
+            // LCOV_EXCL_START
+            catch (const std::exception& err)
+            {
+                FIMDB::instance().logFunction(LOG_ERROR, err.what());
+            }
+
+            // LCOV_EXCL_STOP
+        }
+
+        return retVal;
+    }
+
+    FIMDBErrorCode fim_db_file_pattern_search(const char* pattern, callback_context_t callback)
+    {
+        auto retVal {FIMDB_ERR};
+
+        if (!pattern || !callback.callback)
+        {
+            FIMDB::instance().logFunction(LOG_ERROR, "Invalid parameters");
+        }
+        else
+        {
+            try
+            {
+                DB::instance().searchFile(std::make_tuple(SEARCH_TYPE_PATH, pattern, "", ""),
+                                          [callback](const std::string& path)
+                                          {
+                                              char* entry = const_cast<char*>(path.c_str());
+                                              callback.callback(entry, callback.context);
+                                          });
+                retVal = FIMDB_OK;
+            }
+            // LCOV_EXCL_START
+            catch (const std::exception& err)
+            {
+                FIMDB::instance().logFunction(LOG_ERROR, err.what());
+            }
+
+            // LCOV_EXCL_STOP
+        }
+
+        return retVal;
+    }
 
 #ifdef __cplusplus
 }

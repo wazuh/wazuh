@@ -13,7 +13,6 @@
 #include "fimDBSpecialization.h"
 #include <future>
 
-
 void FIMDB::init(std::function<void(modules_log_level_t, const std::string&)> callbackLogWrapper,
                  std::shared_ptr<DBSync> dbsyncHandler,
                  const int fileLimit,
@@ -63,7 +62,7 @@ void FIMDB::teardown()
     // LCOV_EXCL_START
     catch (const std::exception& ex)
     {
-        auto errmsg { "There is a problem to close FIMDB " + std::string(ex.what()) };
+        auto errmsg {"There is a problem to close FIMDB " + std::string(ex.what())};
         m_loggingFunction(LOG_ERROR, errmsg);
     }
 

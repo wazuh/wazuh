@@ -9,10 +9,9 @@
  * Foundation.
  */
 
-#include "dbTest.h"
 #include "db.h"
 #include "db.hpp"
-
+#include "dbTest.h"
 
 const auto insertRegistryKeyStatement1 = R"({
         "checksum":"a2fbef8f81af27155dcee5e3927ff6243593b91a", "gid":"0", "group_":"root", "architecture":1,
@@ -46,14 +45,15 @@ const auto insertRegistryValueStatement2 = R"({
     }
 )"_json;
 
-void transaction_callback( __attribute__((unused)) ReturnTypeCallback resultType,
-                           __attribute__((unused)) const cJSON* result_json,
-                           __attribute__((unused)) void* user_data){}
+void transaction_callback(__attribute__((unused)) ReturnTypeCallback resultType,
+                          __attribute__((unused)) const cJSON* result_json,
+                          __attribute__((unused)) void* user_data)
+{
+}
 
 TEST_F(DBTestFixture, TestFimDBGetCountRegistryEntry)
 {
-    EXPECT_NO_THROW(
-    {
+    EXPECT_NO_THROW({
         auto result = fim_db_get_count_registry_key();
         ASSERT_EQ(result, 0);
 
@@ -63,7 +63,7 @@ TEST_F(DBTestFixture, TestFimDBGetCountRegistryEntry)
         ASSERT_TRUE(handler);
 
         // First update
-        const auto registryKeyFIMTest1 { std::make_unique<RegistryKey>(insertRegistryKeyStatement1) };
+        const auto registryKeyFIMTest1 {std::make_unique<RegistryKey>(insertRegistryKeyStatement1)};
         result = fim_db_transaction_sync_row(handler, registryKeyFIMTest1->toFimEntry());
         ASSERT_EQ(result, FIMDB_OK);
 
@@ -71,7 +71,7 @@ TEST_F(DBTestFixture, TestFimDBGetCountRegistryEntry)
         ASSERT_EQ(result, 1);
 
         // Second update
-        const auto registryKeyFIMTest2 { std::make_unique<RegistryKey>(insertRegistryKeyStatement2) };
+        const auto registryKeyFIMTest2 {std::make_unique<RegistryKey>(insertRegistryKeyStatement2)};
         result = fim_db_transaction_sync_row(handler, registryKeyFIMTest2->toFimEntry());
         ASSERT_EQ(result, FIMDB_OK);
 
@@ -104,8 +104,7 @@ TEST_F(DBTestFixture, TestFimDBGetCountRegistryEntry)
 
 TEST_F(DBTestFixture, TestFimDBGetCountRegistryValueEntry)
 {
-    EXPECT_NO_THROW(
-    {
+    EXPECT_NO_THROW({
         auto result = fim_db_get_count_registry_data();
         ASSERT_EQ(result, 0);
 
@@ -115,7 +114,7 @@ TEST_F(DBTestFixture, TestFimDBGetCountRegistryValueEntry)
         ASSERT_TRUE(handler);
 
         // First update
-        const auto registryValueFIMTest1 { std::make_unique<RegistryValue>(insertRegistryValueStatement1) };
+        const auto registryValueFIMTest1 {std::make_unique<RegistryValue>(insertRegistryValueStatement1)};
         result = fim_db_transaction_sync_row(handler, registryValueFIMTest1->toFimEntry());
         ASSERT_EQ(result, FIMDB_OK);
 
@@ -123,7 +122,7 @@ TEST_F(DBTestFixture, TestFimDBGetCountRegistryValueEntry)
         ASSERT_EQ(result, 1);
 
         // Second update
-        const auto registryValueFIMTest2 { std::make_unique<RegistryValue>(insertRegistryValueStatement2) };
+        const auto registryValueFIMTest2 {std::make_unique<RegistryValue>(insertRegistryValueStatement2)};
         result = fim_db_transaction_sync_row(handler, registryValueFIMTest2->toFimEntry());
         ASSERT_EQ(result, FIMDB_OK);
 

@@ -15,7 +15,8 @@
 void RegistryValue::createFimEntry()
 {
     fim_entry* fim = reinterpret_cast<fim_entry*>(std::calloc(1, sizeof(fim_entry)));
-    fim_registry_value_data* value = reinterpret_cast<fim_registry_value_data*>(std::calloc(1, sizeof(fim_registry_value_data)));
+    fim_registry_value_data* value =
+        reinterpret_cast<fim_registry_value_data*>(std::calloc(1, sizeof(fim_registry_value_data)));
 
     if (fim)
     {

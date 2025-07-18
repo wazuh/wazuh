@@ -11,15 +11,15 @@
 
 #ifndef DB_COMMONDEFS_H
 #define DB_COMMONDEFS_H
-#include "logging_helper.h"
 #include "commonDefs.h"
+#include "logging_helper.h"
 
 #define FIMDB_FILE_TABLE_NAME "file_entry"
-#define FIMDB_FILE_TXN_TABLE "{\"table\": \"file_entry\"}"
-#define FILE_PRIMARY_KEY "path"
+#define FIMDB_FILE_TXN_TABLE  "{\"table\": \"file_entry\"}"
+#define FILE_PRIMARY_KEY      "path"
 
-#define FIMDB_REGISTRY_KEY_TABLENAME "registry_key"
-#define FIMDB_REGISTRY_KEY_TXN_TABLE "{\"table\": \"registry_key\"}"
+#define FIMDB_REGISTRY_KEY_TABLENAME   "registry_key"
+#define FIMDB_REGISTRY_KEY_TXN_TABLE   "{\"table\": \"registry_key\"}"
 #define FIMDB_REGISTRY_VALUE_TABLENAME "registry_data"
 #define FIMDB_REGISTRY_VALUE_TXN_TABLE "{\"table\": \"registry_data\"}"
 
@@ -31,7 +31,7 @@ typedef enum FIMDBErrorCode
 } FIMDBErrorCode;
 
 typedef void((*logging_callback_t)(const modules_log_level_t level, const char* log));
-typedef void((*callback_t)(void *return_data, void *user_data));
+typedef void((*callback_t)(void* return_data, void* user_data));
 
 /**
  * @brief callback context.
@@ -39,7 +39,7 @@ typedef void((*callback_t)(void *return_data, void *user_data));
 typedef struct
 {
     callback_t callback;
-    void *context;
+    void* context;
 } callback_context_t;
 
 enum OSType
@@ -47,6 +47,5 @@ enum OSType
     OTHERS,
     WINDOWS
 };
-
 
 #endif // DB_COMMONDEFS_H
