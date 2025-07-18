@@ -218,14 +218,6 @@ testconfig()
 start_service()
 {
     echo "Starting Wazuh $VERSION..."
-    TEST=$(${DIR}/bin/wazuh-logtest-legacy -t  2>&1)
-    echo $TEST
-
-    if [ ! -z "$TEST" ]; then
-        echo "wazuh-analysisd: Configuration error. Exiting."
-        touch ${DIR}/var/run/wazuh-analysisd.failed
-        exit 1;
-    fi
 
     checkpid;
 
