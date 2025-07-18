@@ -12,7 +12,7 @@
 #include <string>
 #include <type_traits>
 
-#include <concurrentqueue/blockingconcurrentqueue.h>
+#include <blockingconcurrentqueue.h>
 // TODO: Until the indexer connector is unified with the rest of wazuh-manager
 // #include <metrics/imanager.hpp>
 #include <queue/iqueue.hpp>
@@ -219,7 +219,7 @@ public:
     explicit ConcurrentQueue(const int capacity,
                              const std::string& metricModuleName,
                              const std::string& pathFloodedFile = {},
-                             const int maxAttempts = -1,
+                             const int maxAttempts = 3,
                              const int waitTime = -1,
                              const bool discard = false)
         : m_floodingFile {nullptr}
@@ -229,25 +229,24 @@ public:
         {
             throw std::runtime_error("The capacity of the queue must be greater than 0");
         }
-
-        m_queue = moodycamel::BlockingConcurrentQueue<T, D>(capacity);
         m_minCapacity = capacity;
+
+        if (maxAttempts <= 0)
+        {
+            throw std::runtime_error("The maximum number of attempts must be greater than 0");
+        }
+        m_maxAttempts = maxAttempts;
+        m_queue = moodycamel::BlockingConcurrentQueue<T, D>(capacity);
 
         // Verify if the pathFloodedFile is provided
         if (!pathFloodedFile.empty())
         {
-            if (maxAttempts <= 0)
-            {
-                throw std::runtime_error("The maximum number of attempts must be greater than 0");
-            }
-
             if (waitTime <= 0)
             {
                 throw std::runtime_error("The wait time must be greater than 0");
             }
 
             m_waitTime = std::chrono::microseconds(waitTime);
-            m_maxAttempts = maxAttempts;
 
             m_floodingFile = std::make_shared<FloodingFile>(pathFloodedFile);
             if (m_floodingFile->getError())

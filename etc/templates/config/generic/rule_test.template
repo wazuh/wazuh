@@ -1,6 +1,0 @@
-  <rule_test>
-    <enabled>yes</enabled>
-    <threads>1</threads>
-    <max_sessions>64</max_sessions>
-    <session_timeout>15m</session_timeout>
-  </rule_test>

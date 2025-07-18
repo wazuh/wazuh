@@ -39,5 +39,7 @@ if (TARGET compile_schemas_input)
     add_dependencies(inventory_sync compile_schemas_input)
 endif()
 
+if(UNIT_TEST)
 add_subdirectory(tests)
+endif()
 add_subdirectory(testtool)

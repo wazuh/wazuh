@@ -13,7 +13,7 @@ set(TEST_SRC_DIR ${CMAKE_CURRENT_LIST_DIR}/test/src)
 add_executable(parsec_test
     ${TEST_SRC_DIR}/parsec_test.cpp
 )
-target_link_libraries(parsec_test parsec GTest::gtest_main)
+target_link_libraries(parsec_test parsec GTest::gtest_main GTest::gtest)
 gtest_discover_tests(parsec_test)
 
 endif(ENGINE_BUILD_TEST)

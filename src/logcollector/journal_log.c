@@ -184,7 +184,7 @@ STATIC INLINE char * find_library_path(const char * library_name) {
  */
 STATIC INLINE bool is_owned_by_root(const char * library_path) {
     struct stat file_stat;
-    if (stat(library_path, &file_stat) != 0) {
+    if (w_stat(library_path, &file_stat) != 0) {
         return false;
     }
 

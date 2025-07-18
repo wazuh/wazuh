@@ -80,6 +80,10 @@ target_link_libraries(builder
     date::date
 )
 
+if(ENGINE_ENABLE_REVERSE_ORDER_DECODERS_FEATURE)
+    target_compile_definitions(builder PRIVATE ENGINE_ENABLE_REVERSE_ORDER_DECODERS_FEATURE)
+endif()
+
 # Tests
 if(ENGINE_BUILD_TEST)
 
@@ -179,5 +183,9 @@ target_link_libraries(builder_utest
     # indexerconnector::mocks
 )
 gtest_discover_tests(builder_utest)
+
+if(ENGINE_ENABLE_REVERSE_ORDER_DECODERS_FEATURE)
+    target_compile_definitions(builder_utest PRIVATE ENGINE_ENABLE_REVERSE_ORDER_DECODERS_FEATURE)
+endif()
 
 endif(ENGINE_BUILD_TEST)

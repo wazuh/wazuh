@@ -19,6 +19,10 @@ from typing import Union
 from wazuh.core import common
 from wazuh.core.common import LOGTEST_SOCKET
 
+# *****************************************************************************************
+#  TODO-LEGACY-ANALYSISD-Logtest: This script is part of the legacy analysisd system.
+#  Should be removed when the new system is ready.
+# *****************************************************************************************/
 
 def init_argparse() -> argparse.Namespace:
     """Setup argparse for handle command line parameters.

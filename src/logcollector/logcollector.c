@@ -691,7 +691,7 @@ void LogCollectorStart()
 #else
                     HANDLE h1;
 
-                    h1 = CreateFile(current->file, GENERIC_READ,
+                    h1 = wCreateFile(current->file, GENERIC_READ,
                                     FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE,
                                     NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
                     if (h1 == INVALID_HANDLE_VALUE) {
@@ -815,7 +815,7 @@ void LogCollectorStart()
                         int file_exists = 1;
                         HANDLE h1;
 
-                        h1 = CreateFile(current->file, GENERIC_READ,
+                        h1 = wCreateFile(current->file, GENERIC_READ,
                                         FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE,
                                         NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
                         if (h1 == INVALID_HANDLE_VALUE) {
@@ -877,7 +877,7 @@ void LogCollectorStart()
                     if (j >= 0) {
 #ifndef WIN32
                         struct stat stat_fd;
-                        if (stat(current->file, &stat_fd) == -1 && ENOENT == errno) {
+                        if (w_stat(current->file, &stat_fd) == -1 && ENOENT == errno) {
 #else
                         if (!PathFileExists(current->file)) {
 #endif
@@ -1542,7 +1542,7 @@ int check_pattern_expand(int do_seek) {
                                 exists. Deleted files can still appear due to caching */
                             HANDLE h1;
 
-                            h1 = CreateFile(full_path, GENERIC_READ,
+                            h1 = wCreateFile(full_path, GENERIC_READ,
                                             FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE,
                                             NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 
@@ -1948,7 +1948,7 @@ void * w_output_thread(void * args){
 #ifdef CLIENT
                     merror("Unable to send message to '%s' (wazuh-agentd might be down). Attempting to reconnect.", DEFAULTQUEUE);
 #else
-                    merror("Unable to send message to '%s' (wazuh-analysisd might be down). Attempting to reconnect.", DEFAULTQUEUE);
+                    merror("Unable to send message to '%s' (wazuh-engine might be down). Attempting to reconnect.", DEFAULTQUEUE);
 #endif
                 }
                 // Retry to connect infinitely.
@@ -2436,7 +2436,7 @@ static void check_pattern_expand_excluded() {
                 *wildcard = '\0';
                 wildcard++;
 
-                if (dir = opendir(global_path), !dir) {
+                if (dir = wopendir(global_path), !dir) {
                     merror("Couldn't open directory '%s' due to: %s", global_path, win_strerror(WSAGetLastError()));
                     os_free(global_path);
                     continue;
@@ -2455,7 +2455,7 @@ static void check_pattern_expand_excluded() {
                     /* Skip file if it is a directory */
                     DIR *is_dir = NULL;
 
-                    if (is_dir = opendir(full_path), is_dir) {
+                    if (is_dir = wopendir(full_path), is_dir) {
                         mdebug2("File %s is a directory. Skipping it.", full_path);
                         closedir(is_dir);
                         continue;
@@ -2663,7 +2663,7 @@ STATIC void w_load_files_status(cJSON * global_json) {
 
         struct stat stat_fd;
 
-        if (stat(path_str, &stat_fd) == -1) {
+        if (w_stat(path_str, &stat_fd) == -1) {
             continue;
         }
 

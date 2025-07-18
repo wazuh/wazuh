@@ -45,7 +45,7 @@ target_link_libraries(defs_utest
   PRIVATE
   defs::mocks
   defs
-  GTest::gtest_main
+  GTest::gmock_main
 )
 
 gtest_discover_tests(defs_utest)

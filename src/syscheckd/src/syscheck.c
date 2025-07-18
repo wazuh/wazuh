@@ -322,9 +322,6 @@ void check_ebpf_availability() {
     fimebpf_initialize(fim_configuration_directory, get_user, get_group, fim_whodata_event,
                        free_whodata_event, loggingFunction, abspath, fim_shutdown_process_on, syscheck.queue_size);
     if (ebpf_whodata_healthcheck()) {
-        directory_t *dir_it;
-        OSListNode *node_it;
-
         mwarn(FIM_ERROR_EBPF_HEALTHCHECK);
 
         // Switch whodata eBPF to whodata audit

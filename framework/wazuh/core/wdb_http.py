@@ -21,20 +21,48 @@ class AgentIDGroups:
 class AgentStatus:
     """Agent status."""
 
-    def __init__(self, active: int, disconnected: int, never_connected: int, pending: int):
+    def __init__(self, active: int = 0, disconnected: int = 0, never_connected: int = 0, pending: int = 0):
         self.active = active
         self.disconnected = disconnected
         self.never_connected = never_connected
         self.pending = pending
-
+    
+    def to_dict(self) -> dict:
+        """Transform the class into a dictionary.
+        
+        Returns
+        -------
+        dict
+            Dictionary containing the information.
+        """
+        return {
+            'active': self.active,
+            'disconnected': self.disconnected,
+            'never_connected': self.never_connected,
+            'pending': self.pending
+        }
 
 class AgentsSummary:
     """Agents summary."""
 
-    def __init__(self, agents_by_status: AgentStatus, agents_by_os: Any, agents_by_groups: Any):
-        self.status = agents_by_status
+    def __init__(self, agents_by_status: dict = {}, agents_by_os: dict = {}, agents_by_groups: dict = {}):
+        self.status = AgentStatus(**agents_by_status)
         self.os = agents_by_os
         self.groups = agents_by_groups
+    
+    def to_dict(self) -> dict:
+        """Transform the class into a dictionary.
+        
+        Returns
+        -------
+        dict
+            Dictionary containing the information.
+        """
+        return {
+            'status': self.status.to_dict(),
+            'os': self.os,
+            'groups': self.groups
+        }
 
 
 class WazuhDBHTTPClient:
@@ -215,6 +243,34 @@ class WazuhDBHTTPClient:
             Agenst synchronization information.
         """
         await self._post('/agents/sync', agents_sync, empty_response=True)
+
+    async def get_agents_restart_info(self, ids: list, negate: bool) -> list[dict]:
+        """Retrieve restart information for agents.
+
+        Parameters
+        ----------
+        ids : list[int]
+            List of agent IDs to query.
+        negate : bool
+            Whether to negate the ID filter (i.e., exclude these IDs).
+
+        Returns
+        -------
+        list[dict]
+            A list of agent restart information dicts.
+        """
+        request_data = {
+            'ids': [int(id) for id in ids],
+            'negate': negate
+        }
+
+        data = await self._post('/agents/restartinfo', request_data)
+        agents_restart_info = data.get('items', [])
+
+        for info in agents_restart_info:
+            info['id'] = str(info['id']).zfill(3)
+
+        return agents_restart_info
 
 
 @asynccontextmanager

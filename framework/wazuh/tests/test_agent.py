@@ -12,6 +12,7 @@ from grp import getgrnam
 from json import dumps
 from pwd import getpwnam
 from unittest.mock import AsyncMock, MagicMock, patch, call
+from typing import Any
 
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '../..'))
 
@@ -25,8 +26,8 @@ with patch('wazuh.core.common.wazuh_uid'):
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
 
         from wazuh.agent import add_agent, assign_agents_to_group, create_group, delete_agents, delete_groups, \
-            get_agent_conf, get_agent_config, get_agent_groups, get_agents, get_agents_in_group, \
-            get_agents_keys, get_agents_summary_os, get_agents_summary_status, get_agents_sync_group, \
+            get_agent_conf, get_agent_config, get_agent_groups, get_agents, get_agents_in_group, get_agents_keys, \
+            get_agents_summary, get_agents_summary_os, get_agents_summary_status, get_agents_sync_group, \
             get_distinct_agents, get_file_conf, get_full_overview, get_group_files, get_outdated_agents, \
             get_upgrade_result, remove_agent_from_group, remove_agent_from_groups, remove_agents_from_group, \
             restart_agents, upgrade_agents, upload_group_file, restart_agents_by_node, reconnect_agents, \
@@ -37,6 +38,7 @@ with patch('wazuh.core.common.wazuh_uid'):
         from wazuh.core.tests.test_agent import InitAgent
         from api.util import remove_nones_to_dict
         from wazuh.core.exception import WazuhResourceNotFound
+        from wazuh.core.wdb_http import AgentsSummary
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
 test_agent_path = os.path.join(test_data_path, 'agent')
@@ -48,6 +50,12 @@ test_data = InitAgent(data_path=test_data_path)
 full_agent_list = ['000', '001', '002', '003', '004', '005', '006', '007', '008', '009']
 short_agent_list = ['000', '001', '002', '003', '004', '005']
 
+def send_msg_to_wdb_http_post_restartinfo(endpoint: str, data: Any, empty_response: bool = False):
+    ids = ",".join(map(str, data["ids"]))
+    negate = "NOT" if data['negate'] else ""
+    query = f"SELECT id, version, connection_status as status FROM agent WHERE id {negate} IN ({ids});"
+    result = [ dict(row) for row in test_data.cur.execute(query).fetchall() ]
+    return {"items": result} if result else {}
 
 def send_msg_to_wdb(msg, raw=False):
     query = ' '.join(msg.split(' ')[2:])
@@ -159,6 +167,21 @@ def test_agent_sort_order(socket_mock, send_mock, fields, order, expected_items)
                                                            f'"{expected_items}". '
 
 
+@patch('wazuh.core.wdb_http.WazuhDBHTTPClient')
+async def test_get_agents_summary(wdb_http_client_mock: AsyncMock):
+    """Test if get_agent_groups() asks for agent's groups correctly."""
+    agent_ids = []
+    summary = AgentsSummary(agents_by_status={'active': 10, 'disconnected': 2})
+    wdb_http_client_mock.return_value.close = AsyncMock()
+    get_agents_summary_mock = AsyncMock(return_value=summary)
+    wdb_http_client_mock.return_value.get_agents_summary = get_agents_summary_mock
+
+    agents_summary = await get_agents_summary(agent_ids)
+    assert agents_summary['data'] == summary.to_dict()
+
+    get_agents_summary_mock.assert_called_once_with(agent_ids)
+
+
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
 def test_agent_get_agents_summary_status(socket_mock, send_mock):
@@ -221,9 +244,9 @@ def test_agent_reconnect_agents(socket_mock, send_mock, agents_info_mock, reconn
 ])
 @patch('wazuh.agent.send_restart_command')
 @patch('wazuh.agent.get_agents_info', return_value=set(short_agent_list))
-@patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
+@patch('wazuh.core.wdb_http.WazuhDBHTTPClient._post', side_effect=send_msg_to_wdb_http_post_restartinfo)
 @patch('socket.socket.connect')
-def test_agent_restart_agents(socket_mock, send_mock, agents_info_mock, send_restart_mock, agent_list,
+async def test_agent_restart_agents(socket_mock, send_http_mock, agents_info_mock, send_restart_mock, agent_list,
                               expected_items, error_code):
     """Test `restart_agents` function from agent module.
 
@@ -236,7 +259,7 @@ def test_agent_restart_agents(socket_mock, send_mock, agents_info_mock, send_res
     error_code : int
         The expected error code.
     """
-    result = restart_agents(agent_list)
+    result = await restart_agents(agent_list)
     assert isinstance(result, AffectedItemsWazuhResult), 'The returned object is not an "AffectedItemsWazuhResult".'
     assert result.affected_items == expected_items, f'"Affected_items" does not match. Should be "{expected_items}".'
     if result.failed_items:
@@ -250,9 +273,9 @@ def test_agent_restart_agents(socket_mock, send_mock, agents_info_mock, send_res
 ])
 @patch('wazuh.agent.send_restart_command')
 @patch('wazuh.agent.get_agents_info', return_value=set(short_agent_list))
-@patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
+@patch('wazuh.core.wdb_http.WazuhDBHTTPClient._post', side_effect=send_msg_to_wdb_http_post_restartinfo)
 @patch('socket.socket.connect')
-def test_agent_restart_agents_by_node(socket_mock, send_mock, agents_info_mock, send_restart_mock, agent_list,
+async def test_agent_restart_agents_by_node(socket_mock, send_http_mock, agents_info_mock, send_restart_mock, agent_list,
                                       expected_items, error_code):
     """Test `restart_agents_by_node` function from agent module.
 
@@ -265,7 +288,7 @@ def test_agent_restart_agents_by_node(socket_mock, send_mock, agents_info_mock, 
     error_code : int
         The expected error code.
     """
-    result = restart_agents_by_node(agent_list)
+    result = await restart_agents_by_node(agent_list)
     assert isinstance(result, AffectedItemsWazuhResult), 'The returned object is not an "AffectedItemsWazuhResult".'
     assert result.affected_items == expected_items, f'"Affected_items" does not match. Should be "{expected_items}".'
     if result.failed_items:
