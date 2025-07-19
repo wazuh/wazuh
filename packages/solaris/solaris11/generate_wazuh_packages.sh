@@ -244,7 +244,6 @@ config() {
     echo USER_AGENT_SERVER_IP="MANAGER_IP" >> $CONFIG
     echo USER_ENABLE_SYSCHECK="y" >> $CONFIG
     echo USER_ENABLE_ROOTCHECK="y" >> $CONFIG
-    echo USER_ENABLE_OPENSCAP="y" >> $CONFIG
     echo USER_ENABLE_ACTIVE_RESPONSE="y" >> $CONFIG
     echo USER_CA_STORE="n" >> $CONFIG
 }
