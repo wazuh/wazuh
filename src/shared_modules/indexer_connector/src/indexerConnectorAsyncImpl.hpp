@@ -17,11 +17,13 @@
 #include "loggerHelper.h"
 #include "secureCommunication.hpp"
 #include "shared_modules/utils/certHelper.hpp"
+#include "simdjson.h"
 #include "threadEventDispatcher.hpp"
 #include <filesystem>
 #include <mutex>
 #include <queue>
 #include <string>
+#include <string_view>
 #include <vector>
 
 static std::mutex G_CREDENTIAL_MUTEX;
@@ -183,59 +185,96 @@ public:
         m_loggerProcessor = std::make_unique<ThreadLoggerQueue>(
             [this](const IndexerResponse& data)
             {
-                // Parse the response JSON with error handling
-                const auto parsedResponse = nlohmann::json::parse(data.m_response, nullptr, false);
-                if (parsedResponse.is_discarded())
+                // Use thread_local parser for better performance and memory reuse
+                thread_local simdjson::dom::parser parser;
+                simdjson::dom::element parsedResponse;
+
+                if (auto parseResult = parser.parse(data.m_response).get(parsedResponse);
+                    parseResult != simdjson::SUCCESS)
                 {
                     logDebug2(IC_NAME, "Failed to parse the indexer response %s", data.m_response.c_str());
                     return;
                 }
 
-                // Check if the response has errors and contains items
-                if (!parsedResponse.value("errors", false) || !parsedResponse.contains("items"))
+                // Fast path: check errors field first
+                if (simdjson::dom::element errorsElement;
+                    parsedResponse["errors"].get(errorsElement) != simdjson::SUCCESS ||
+                    !errorsElement.get_bool().value_unsafe())
                 {
                     return;
                 }
 
-                // Verify that the sizes of events and response items match
-                const auto& items = parsedResponse.at("items");
-                if (data.m_boundaries.size() != items.size())
+                // Get items array
+                simdjson::dom::array itemsArray;
+                if (parsedResponse["items"].get_array().get(itemsArray) != simdjson::SUCCESS)
+                {
+                    return;
+                }
+
+                const size_t itemsSize = itemsArray.size();
+                if (data.m_boundaries.size() != itemsSize)
                 {
                     logWarn(IC_NAME,
-                            "Mismatch between the number of events (%d) and response items (%d)",
+                            "Mismatch between the number of events (%zu) and response items (%zu)",
                             data.m_boundaries.size(),
-                            items.size());
+                            itemsSize);
                     return;
                 }
 
-                // Iterate over events and corresponding response items
-                for (size_t i = 0; i < items.size(); ++i)
-                {
-                    const auto& item = items.at(i);
-                    const auto& itemIndex = item.at("index");
+                // Pre-compute payload view once
+                const std::string_view payloadView = data.m_payload;
+                const size_t payloadSize = payloadView.size();
 
-                    // Check if "error" exists in "index" and is an object (indicating an error occurred)
-                    if (auto errorIt = itemIndex.find("error"); errorIt == itemIndex.end() || !errorIt->is_object())
+                // Process items with optimized iteration
+                size_t itemIndex = 0;
+                for (const auto& item : itemsArray)
+                {
+                    simdjson::dom::element indexElement;
+                    if (item["index"].get(indexElement) != simdjson::SUCCESS)
                     {
-                        continue; // Skip items without error details
+                        ++itemIndex;
+                        continue;
                     }
 
-                    // Extract and log error details
-                    const auto& errorReason = item.at("index").at("error").value("reason", "Unknown reason");
-                    const auto& errorType = item.at("index").at("error").value("type", "Unknown type");
+                    simdjson::dom::element errorElement;
+                    if (indexElement["error"].get(errorElement) != simdjson::SUCCESS)
+                    {
+                        ++itemIndex;
+                        continue;
+                    }
 
-                    std::string_view payloadView = data.m_payload;
-                    auto payload = payloadView.substr(data.m_boundaries.at(i),
-                                                      (i == (items.size() - 1))
-                                                          ? payloadView.size() - data.m_boundaries.at(i)
-                                                          : data.m_boundaries.at(i + 1) - data.m_boundaries.at(i));
+                    // Extract error details with zero-copy string views
+                    std::string_view errorReason = "Unknown reason";
+                    std::string_view errorType = "Unknown type";
+
+                    if (simdjson::dom::element reasonElement;
+                        errorElement["reason"].get(reasonElement) == simdjson::SUCCESS)
+                    {
+                        errorReason = reasonElement.get_string().value_unsafe();
+                    }
+
+                    if (simdjson::dom::element typeElement; errorElement["type"].get(typeElement) == simdjson::SUCCESS)
+                    {
+                        errorType = typeElement.get_string().value_unsafe();
+                    }
+
+                    // Optimized payload extraction with boundary checks
+                    const size_t startPos = data.m_boundaries[itemIndex];
+                    const size_t endPos =
+                        (itemIndex == (itemsSize - 1)) ? payloadSize : data.m_boundaries[itemIndex + 1];
+
+                    const std::string_view payload = payloadView.substr(startPos, endPos - startPos);
 
                     logWarn(IC_NAME,
-                            "Error indexing document (type %s - reason: '%s') - Associated event: %.*s",
-                            errorType,
-                            errorReason,
-                            payload.size(),
+                            "Error indexing document (type %.*s - reason: '%.*s') - Associated event: %.*s",
+                            static_cast<int>(errorType.size()),
+                            errorType.data(),
+                            static_cast<int>(errorReason.size()),
+                            errorReason.data(),
+                            static_cast<int>(payload.size()),
                             payload.data());
+
+                    ++itemIndex;
                 }
             });
 
@@ -300,8 +339,8 @@ public:
                             if (bulkSize / 2 < MINIMAL_ELEMENTS_PER_BULK)
                             {
                                 // If the bulk size is too small, log an error and throw an exception.
-                                // This error will be fixed by the user by increasing the http.max_content_length value
-                                // in the wazuh-indexer settings.
+                                // This error will be fixed by the user by increasing the http.max_content_length
+                                // value in the wazuh-indexer settings.
                                 if (m_error413Logged == false)
                                 {
                                     m_error413Logged = true;

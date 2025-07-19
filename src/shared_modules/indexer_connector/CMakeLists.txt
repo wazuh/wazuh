@@ -45,7 +45,7 @@ add_library(indexer_connector SHARED
     ${INDEXER_CONNECTOR_SRC}
     )
 
-target_link_libraries(indexer_connector rocksdb urlrequest gcc_s wazuhext keystore)
+target_link_libraries(indexer_connector rocksdb urlrequest gcc_s wazuhext keystore simdjson)
 
 set_target_properties(indexer_connector PROPERTIES
         BUILD_RPATH_USE_ORIGIN TRUE
