@@ -162,6 +162,13 @@ else()
 list(APPEND shared_tests_flags " ")
 endif()
 
+list(APPEND shared_tests_names "test_custom_buffer_op")
+if(${TARGET} STREQUAL "winagent")
+list(APPEND shared_tests_flags "-Wl,--wrap,syscom_dispatch -Wl,--wrap,Start_win32_Syscheck ${DEBUG_OP_WRAPPERS}")
+else()
+list(APPEND shared_tests_flags " ")
+endif()
+
 list(APPEND shared_tests_names "test_utf8_op")
 if(${TARGET} STREQUAL "winagent")
 list(APPEND shared_tests_flags "-Wl,--wrap,syscom_dispatch -Wl,--wrap,Start_win32_Syscheck \
