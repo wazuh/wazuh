@@ -4,8 +4,10 @@
 #include <chrono>
 #include <filesystem>
 #include <functional>
+#include <memory>
 #include <optional>
 #include <string>
+#include <unordered_map>
 
 /**
  * @brief Asynchronous, rotating log management module. Handles named, rotating log channels with asynchronous writes.
@@ -14,6 +16,7 @@
  *   - Registration of named log channels with rotation configuration.
  *   - Retrieval of lightweight writer functors for application code.
  *   - Asynchronous, thread-safe writes into date- and size-rotated files via a dedicated I/O thread.
+ *   - The non-starvation of writings, allowing for efficient log management.
  *   - Runtime reconfiguration and on-demand rotation.
  *   - Hard-link “latest” pointer to the current log file for each channel.
  *
@@ -108,10 +111,20 @@
 namespace streamlog
 {
 
+// Forward declaration
+class LogManagerImpl;
+
+/**
+ * @brief Abstract base class for writer event handlers.
+ *
+ * WriterEvent defines an interface for handling log messages.
+ * Derived classes must implement the function call operator to process messages.
+ */
 class WriterEvent
 {
 public:
-    void operator()(std::string&& message);
+    virtual ~WriterEvent() = default;
+    virtual void operator()(std::string&& message) = 0;
 };
 
 /**
@@ -125,7 +138,7 @@ struct RotationConfig
     std::filesystem::path basePath; ///< The base directory path where log files will be stored, should be an absolute
                                     ///< path and must exist and be writable.
     std::string pattern;            ///< The pattern used for naming log files, which can include placeholders.
-    std::optional<size_t> maxSize;  ///< Optional maximum size (in bytes) for a log file before rotation.
+    size_t maxSize;                 ///< Optional maximum size (in bytes) for a log file before rotation, 0 means no size limit.
     size_t bufferSize = 1 << 20;    ///<  The size (in events) of the buffer used for logging operations.
 };
 
@@ -150,7 +163,6 @@ private:
         std::shared_ptr<WriterEvent> writer; ///< A shared pointer to the writer event for this channel, only can
                                              ///< destroy the channel if nobody has a writer for it.
         std::filesystem::path latestLink;                   ///< The hard link to the latest log file
-        std::chrono::system_clock::time_point lastRotation; ///< The last time the log file was rotated.
     };
 
     std::unordered_map<std::string, ChannelState> channels;
