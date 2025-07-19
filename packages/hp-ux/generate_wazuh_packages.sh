@@ -86,7 +86,6 @@ config() {
     echo USER_AGENT_SERVER_IP="MANAGER_IP" >> ${configuration_file}
     echo USER_ENABLE_SYSCHECK="y" >> ${configuration_file}
     echo USER_ENABLE_ROOTCHECK="y" >> ${configuration_file}
-    echo USER_ENABLE_OPENSCAP="y" >> ${configuration_file}
     echo USER_ENABLE_ACTIVE_RESPONSE="y" >> ${configuration_file}
     echo USER_CA_STORE="n" >> ${configuration_file}
 }
@@ -174,7 +173,6 @@ create_package() {
 
     #Build package
     VERSION=`cat /tmp/VERSION`
-    rm ${install_path}/wodles/oscap/content/*.xml
     wazuh_version=`echo "${wazuh_version}" | cut -d v -f 2`
     pkg_tar_file="wazuh-agent-${wazuh_version}-${wazuh_revision}-hpux-11v3-ia64.tar"
     tar cvpf ${target_dir}/${pkg_tar_file} ${install_path} /sbin/init.d/wazuh-agent /sbin/rc2.d/S97wazuh-agent /sbin/rc3.d/S97wazuh-agent
