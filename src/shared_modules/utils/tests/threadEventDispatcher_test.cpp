@@ -12,8 +12,10 @@
 #include "threadEventDispatcher_test.hpp"
 #include "threadEventDispatcher.hpp"
 
-void ThreadEventDispatcherTest::SetUp() {
-    // Not implemented
+void ThreadEventDispatcherTest::SetUp()
+{
+    // Remove folder.
+    std::filesystem::remove_all("test.db");
 };
 
 void ThreadEventDispatcherTest::TearDown() {
@@ -23,13 +25,13 @@ void ThreadEventDispatcherTest::TearDown() {
 constexpr auto BULK_SIZE {50};
 TEST_F(ThreadEventDispatcherTest, Ctor)
 {
-    static const std::vector<int> MESSAGES_TO_SEND_LIST {120, 100};
+    static const std::vector<size_t> MESSAGES_TO_SEND_LIST {120, 100};
 
     for (auto MESSAGES_TO_SEND : MESSAGES_TO_SEND_LIST)
     {
         std::atomic<size_t> counter {0};
         std::promise<void> promise;
-        auto index {0};
+        size_t index {0};
 
         ThreadEventDispatcher<std::string, std::function<void(std::queue<std::string>&)>> dispatcher(
             [&counter, &index, &MESSAGES_TO_SEND, &promise](std::queue<std::string>& data)
@@ -49,9 +51,12 @@ TEST_F(ThreadEventDispatcherTest, Ctor)
                 }
             },
             "test.db",
-            BULK_SIZE);
+            BULK_SIZE,
+            UNLIMITED_QUEUE_SIZE,
+            1,
+            0);
 
-        for (int i = 0; i < MESSAGES_TO_SEND; ++i)
+        for (size_t i = 0; i < MESSAGES_TO_SEND; ++i)
         {
             dispatcher.push(std::to_string(i));
         }
@@ -62,7 +67,7 @@ TEST_F(ThreadEventDispatcherTest, Ctor)
 
 TEST_F(ThreadEventDispatcherTest, CtorNoWorker)
 {
-    static const std::vector<int> MESSAGES_TO_SEND_LIST {120, 100};
+    static const std::vector<size_t> MESSAGES_TO_SEND_LIST {120, 100};
 
     for (auto MESSAGES_TO_SEND : MESSAGES_TO_SEND_LIST)
     {
@@ -70,10 +75,10 @@ TEST_F(ThreadEventDispatcherTest, CtorNoWorker)
         std::promise<void> promise;
         auto index {0};
 
-        ThreadEventDispatcher<std::string, std::function<void(std::queue<std::string>&)>> dispatcher("test.db",
-                                                                                                     BULK_SIZE);
+        ThreadEventDispatcher<std::string, std::function<void(std::queue<std::string>&)>> dispatcher(
+            "test.db", BULK_SIZE, UNLIMITED_QUEUE_SIZE, 1, 0);
 
-        for (int i = 0; i < MESSAGES_TO_SEND; ++i)
+        for (size_t i = 0; i < MESSAGES_TO_SEND; ++i)
         {
             dispatcher.push(std::to_string(i));
         }
@@ -134,7 +139,10 @@ TEST_F(ThreadEventDispatcherTest, CtorPopFeature)
             }
         },
         "test.db",
-        BULK_SIZE);
+        BULK_SIZE,
+        UNLIMITED_QUEUE_SIZE,
+        0,
+        0);
 
     for (int i = 0; i < MESSAGES_TO_SEND; ++i)
     {
@@ -144,4 +152,3 @@ TEST_F(ThreadEventDispatcherTest, CtorPopFeature)
     promise.get_future().wait_for(std::chrono::seconds(10));
     EXPECT_EQ(MESSAGES_TO_SEND, counter);
 }
-
