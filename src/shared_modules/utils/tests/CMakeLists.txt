@@ -164,3 +164,4 @@ endif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 
 add_test(NAME utils_utest
          COMMAND utils_utest)
+set_tests_properties(utils_utest PROPERTIES LABELS utils_utest)

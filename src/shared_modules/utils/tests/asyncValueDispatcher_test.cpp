@@ -30,16 +30,8 @@ void AsyncValueDispatcherTest::TearDown() {
     // Not implemented
 };
 
-static int allocationCounter = 0;
-static bool enableAllocationCounter = false;
-
-void* operator new(size_t size)
-{
-    if (enableAllocationCounter)
-
-        allocationCounter++;
-    return malloc(size);
-}
+extern int ALLOCATION_COUNTER;
+extern bool ENABLE_ALLOCATION_COUNTER;
 
 constexpr auto BULK_SIZE {50};
 TEST_F(AsyncValueDispatcherTest, Ctor)
@@ -62,7 +54,7 @@ TEST_F(AsyncValueDispatcherTest, Ctor)
         },
         1,
         BULK_SIZE);
-    enableAllocationCounter = true;
+    ENABLE_ALLOCATION_COUNTER = true;
     while (!MESSAGES_TO_SEND_LIST.empty())
     {
         dispatcher.push(std::move(MESSAGES_TO_SEND_LIST.front()));
@@ -70,9 +62,9 @@ TEST_F(AsyncValueDispatcherTest, Ctor)
     }
     promise.get_future().wait();
     EXPECT_EQ(2, counter);
-    EXPECT_EQ(0, allocationCounter);
-    enableAllocationCounter = false;
-    allocationCounter = 0;
+    EXPECT_EQ(0, ALLOCATION_COUNTER);
+    ENABLE_ALLOCATION_COUNTER = false;
+    ALLOCATION_COUNTER = 0;
 }
 
 TEST_F(AsyncValueDispatcherTest, MultiThreadedProcessing)
