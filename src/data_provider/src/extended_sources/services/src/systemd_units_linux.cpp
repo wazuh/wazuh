@@ -8,8 +8,22 @@
  */
 
 #include <iostream>
-#include <systemd/sd-bus.h>
+#include "sdbus_wrapper.hpp"
+#include "system_wrapper.hpp"
 #include "systemd_units_linux.hpp"
+
+SystemdUnitsProvider::SystemdUnitsProvider(std::shared_ptr<ISDBusWrapper> dbusWrapper,
+                                           std::shared_ptr<ISystemWrapper> systemWrapper)
+    : m_dbusWrapper(std::move(dbusWrapper))
+    , m_systemWrapper(std::move(systemWrapper))
+{
+}
+
+SystemdUnitsProvider::SystemdUnitsProvider()
+    : m_dbusWrapper(std::make_shared<SDBusWrapper>())
+    , m_systemWrapper(std::make_shared<SystemWrapper>())
+{
+}
 
 nlohmann::json SystemdUnitsProvider::collect()
 {
@@ -49,16 +63,16 @@ nlohmann::json SystemdUnitsProvider::collect()
 bool SystemdUnitsProvider::getSystemdUnits(std::vector<SystemdUnit>& output)
 {
     sd_bus* bus = nullptr;
-    int ret = sd_bus_open_system(&bus);
+    int ret = m_dbusWrapper->sd_bus_open_system(&bus);
 
     if (ret < 0)
     {
-        std::cerr << "Failed to connect to system bus: " << strerror(-ret) << std::endl;
+        std::cerr << "Failed to connect to system bus: " << m_systemWrapper->strerror(-ret) << std::endl;
         return false;
     }
 
     sd_bus_message* reply = nullptr;
-    ret = sd_bus_call_method(
+    ret = m_dbusWrapper->sd_bus_call_method(
               bus,
               "org.freedesktop.systemd1",             // service
               "/org/freedesktop/systemd1",            // path
@@ -70,22 +84,22 @@ bool SystemdUnitsProvider::getSystemdUnits(std::vector<SystemdUnit>& output)
 
     if (ret < 0)
     {
-        std::cerr << "Failed to call ListUnits: " << strerror(-ret) << std::endl;
-        sd_bus_unref(bus);
+        std::cerr << "Failed to call ListUnits: " << m_systemWrapper->strerror(-ret) << std::endl;
+        m_dbusWrapper->sd_bus_unref(bus);
         return false;
     }
 
-    ret = sd_bus_message_enter_container(reply, SD_BUS_TYPE_ARRAY, "(ssssssouso)");
+    ret = m_dbusWrapper->sd_bus_message_enter_container(reply, SD_BUS_TYPE_ARRAY, "(ssssssouso)");
 
     if (ret < 0)
     {
-        std::cerr << "Failed to enter array: " << strerror(-ret) << std::endl;
-        sd_bus_message_unref(reply);
-        sd_bus_unref(bus);
+        std::cerr << "Failed to enter array: " << m_systemWrapper->strerror(-ret) << std::endl;
+        m_dbusWrapper->sd_bus_message_unref(reply);
+        m_dbusWrapper->sd_bus_unref(bus);
         return false;
     }
 
-    while ((ret = sd_bus_message_enter_container(reply, SD_BUS_TYPE_STRUCT, "ssssssouso")) > 0)
+    while ((ret = m_dbusWrapper->sd_bus_message_enter_container(reply, SD_BUS_TYPE_STRUCT, "ssssssouso")) > 0)
     {
         SystemdUnit unit;
 
@@ -100,7 +114,7 @@ bool SystemdUnitsProvider::getSystemdUnits(std::vector<SystemdUnit>& output)
         const char* jobType;
         const char* jobPath;
 
-        ret = sd_bus_message_read(
+        ret = m_dbusWrapper->sd_bus_message_read(
                   reply, "ssssssouso",
                   &id,
                   &description,
@@ -115,7 +129,7 @@ bool SystemdUnitsProvider::getSystemdUnits(std::vector<SystemdUnit>& output)
 
         if (ret < 0)
         {
-            std::cerr << "Failed to read unit struct: " << strerror(-ret) << std::endl;
+            std::cerr << "Failed to read unit struct: " << m_systemWrapper->strerror(-ret) << std::endl;
             break;
         }
 
@@ -134,7 +148,7 @@ bool SystemdUnitsProvider::getSystemdUnits(std::vector<SystemdUnit>& output)
         for (const auto& query : m_propertyQueryList)
         {
             char* propValueCstring = nullptr;
-            ret = sd_bus_get_property_string(
+            ret = m_dbusWrapper->sd_bus_get_property_string(
                       bus,
                       "org.freedesktop.systemd1",
                       unit.objectPath.c_str(),
@@ -147,7 +161,7 @@ bool SystemdUnitsProvider::getSystemdUnits(std::vector<SystemdUnit>& output)
             {
                 std::cerr << "Error reading property "
                           << query.propertyName << " from "
-                          << unit.objectPath << ": " << strerror(-ret) << std::endl;
+                          << unit.objectPath << ": " << m_systemWrapper->strerror(-ret) << std::endl;
             }
 
             std::string propValue = "";
@@ -177,12 +191,12 @@ bool SystemdUnitsProvider::getSystemdUnits(std::vector<SystemdUnit>& output)
         }
 
         output.emplace_back(std::move(unit));
-        sd_bus_message_exit_container(reply);
+        m_dbusWrapper->sd_bus_message_exit_container(reply);
     }
 
-    sd_bus_message_exit_container(reply);
-    sd_bus_message_unref(reply);
-    sd_bus_unref(bus);
+    m_dbusWrapper->sd_bus_message_exit_container(reply);
+    m_dbusWrapper->sd_bus_message_unref(reply);
+    m_dbusWrapper->sd_bus_unref(bus);
 
     return true;
 }

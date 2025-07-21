@@ -9,9 +9,10 @@
 
 #pragma once
 
-#include <systemd/sd-bus.h>
 #include <string>
 #include <vector>
+#include "isdbus_wrapper.hpp"
+#include "isystem_wrapper.hpp"
 #include "json.hpp"
 
 /// @brief Class to collect systemd units information from the systemd service manager.
@@ -20,14 +21,26 @@
 class SystemdUnitsProvider
 {
     public:
+        /// @brief Constructor that initializes the SystemdUnitsProvider with D-Bus and system wrappers.
+        /// @param dbusWrapper Pointer to the D-Bus wrapper for system operations.
+        /// @param systemWrapper Pointer to the system wrapper for system calls.
+        explicit SystemdUnitsProvider(std::shared_ptr<ISDBusWrapper> dbusWrapper,
+                                      std::shared_ptr<ISystemWrapper> systemWrapper);
+
         /// @brief Default constructor.
-        SystemdUnitsProvider() = default;
+        SystemdUnitsProvider();
 
         /// @brief Collects systemd units information.
         /// @return A JSON object containing the collected systemd units information.
         nlohmann::json collect();
 
     private:
+        /// @brief Pointer to the D-Bus wrapper for system operations.
+        std::shared_ptr<ISDBusWrapper> m_dbusWrapper;
+
+        /// @brief Pointer to the system wrapper for system calls.
+        std::shared_ptr<ISystemWrapper> m_systemWrapper;
+
         /// @brief Structure to hold information about a systemd unit.
         struct SystemdUnit
         {
