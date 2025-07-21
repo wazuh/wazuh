@@ -10,6 +10,7 @@
  */
 
 #include "wmodules.h"
+#include "wm_exec.h"
 
 #ifdef WIN32
 static DWORD WINAPI wm_command_main(void *arg);             // Module main function. It won't return
