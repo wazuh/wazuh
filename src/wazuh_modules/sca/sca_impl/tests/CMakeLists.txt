@@ -9,6 +9,7 @@ include_directories(
     ${SRC_FOLDER}/wazuh_modules/sca/sca_impl/include
     ${SRC_FOLDER}/wazuh_modules/sca/sca_impl/tests
     ${SRC_FOLDER}/wazuh_modules/sca/sca_impl/tests/mocks
+    ${SRC_FOLDER}/shared_modules/dbsync/tests/mocks
     ${SRC_FOLDER}/shared_modules/file_helper/filesystem/tests/mocks
     ${SRC_FOLDER}/shared_modules/file_helper/file_io/tests/mocks
     ${SRC_FOLDER}/shared_modules/utils/tests/mocks
