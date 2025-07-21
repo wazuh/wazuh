@@ -27,6 +27,8 @@
  * @brief IndexerConnectorSync class - Facade for IndexerConnectorSyncImpl.
  *
  */
+
+constexpr auto IC_NAME {"IndexerConnector"};
 class EXPORTED IndexerConnectorSync final
 {
 private:
@@ -82,40 +84,68 @@ public:
     void flush();
 };
 
-// /**
-//  * @brief IndexerConnectorAsync class.
-//  *
-//  */
-// class IndexerConnectorAsync final
-// {
-//     SecureCommunication m_secureCommunication;
-//     std::unique_ptr<ServerSelector> m_selector;
+/**
+ * @brief IndexerConnectorAsync class.
+ *
+ */
+class IndexerConnectorAsync final
+{
+private:
+    class Impl;
+    std::unique_ptr<Impl> m_impl;
 
-// public:
-//     /**
-//      * @brief Class constructor that initializes the publisher.
-//      *
-//      * @param config Indexer configuration, including database_path and servers.
-//      * @param logFunction Callback function to be called when trying to log a message.
-//      * @param timeout Server selector time interval.
-//      */
-//     explicit IndexerConnectorAsync(const nlohmann::json& config,
-//                                    const std::function<void(const int,
-//                                                             const std::string&,
-//                                                             const std::string&,
-//                                                             const int,
-//                                                             const std::string&,
-//                                                             const std::string&,
-//                                                             va_list)>& logFunction = {});
+public:
+    /**
+     * @brief Class constructor that initializes the publisher.
+     *
+     * @param config Indexer configuration, including database_path and servers.
+     * @param logFunction Callback function to be called when trying to log a message.
+     * @param timeout Server selector time interval.
+     */
+    explicit IndexerConnectorAsync(const nlohmann::json& config,
+                                   const std::function<void(const int,
+                                                            const std::string&,
+                                                            const std::string&,
+                                                            const int,
+                                                            const std::string&,
+                                                            const std::string&,
+                                                            va_list)>& logFunction = {});
 
-//     ~IndexerConnectorAsync();
+    ~IndexerConnectorAsync();
 
-//     /**
-//      * @brief Publish a message into the queue map.
-//      *
-//      * @param message Message to be published.
-//      */
-//     void publish(const char* message, size_t size);
-// };
+    /**
+     * @brief Index a document.
+     *
+     * @param id ID of the document.
+     * @param index Index name.
+     * @param data Data.
+     */
+    void index(std::string_view id, std::string_view index, std::string_view data);
+
+    /**
+     * @brief Index a document.
+     *
+     * @param index Index name.
+     * @param data Data.
+     */
+    void index(std::string_view index, std::string_view data);
+};
+
+class IndexerConnectorException : public std::exception
+{
+private:
+    std::string m_message;
+
+public:
+    explicit IndexerConnectorException(std::string message)
+        : m_message(std::move(message))
+    {
+    }
+
+    const char* what() const noexcept override
+    {
+        return m_message.c_str();
+    }
+};
 
 #endif // _INDEXER_CONNECTOR_HPP

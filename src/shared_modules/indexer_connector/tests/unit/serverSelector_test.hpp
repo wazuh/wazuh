@@ -64,7 +64,7 @@ protected:
         EXPECT_CALL(*m_mockHttpRequest, get(_, _, _))
             .WillRepeatedly(Invoke(
                 [server1Health, server2Health, server3Health](
-                    auto requestParams, const auto& postParams, auto /*configParams*/)
+                    auto requestParams, PostRequestParametersVariant postParams, auto /*configParams*/)
                 {
                     // Extract the URL to determine which server is being checked
                     std::string url;
@@ -96,11 +96,27 @@ protected:
 
                     if (!response.empty())
                     {
-                        postParams.onSuccess(response);
+                        if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                        {
+                            std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess(response);
+                        }
+                        else
+                        {
+                            std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess(std::move(response));
+                        }
                     }
                     else
                     {
-                        postParams.onError("Server not found", 404);
+                        if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                        {
+                            std::get<TPostRequestParameters<const std::string&>>(postParams)
+                                .onError("Server not found", 404);
+                        }
+                        else
+                        {
+                            std::get<TPostRequestParameters<std::string&&>>(postParams)
+                                .onError("Server not found", 404);
+                        }
                     }
                 }));
     }

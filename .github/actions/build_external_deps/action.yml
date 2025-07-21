@@ -32,6 +32,7 @@ runs:
           make build_gtest TARGET=server -j2
           make build_benchmark TARGET=server -j2
           make libwazuhext.so TARGET=server -j2          
+          make external/simdjson/build/libsimdjson.a TARGET=server -j2
         shell: bash
 
       - name: Build http-request
