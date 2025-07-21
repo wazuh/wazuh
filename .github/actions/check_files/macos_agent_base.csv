@@ -4,7 +4,6 @@ full_filename,owner_name,group_name,mode,type,prot_permissions,size_bytes,size_e
 /Library/Ossec/bin/wazuh-logcollector,root,wheel,750,file,-rwxr-x---,,
 /Library/Ossec/bin/wazuh-execd,root,wheel,750,file,-rwxr-x---,,
 /Library/Ossec/bin/wazuh-syscheckd,root,wheel,750,file,-rwxr-x---,,
-/Library/Ossec/bin/manage_agents,root,wheel,750,file,-rwxr-x---,,
 /Library/Ossec/bin/wazuh-agentd,root,wheel,750,file,-rwxr-x---,,
 /Library/Ossec/bin/wazuh-modulesd,root,wheel,750,file,-rwxr-x---,,
 /Library/Ossec/agentless/ssh.exp,root,wazuh,750,file,-rwxr-x---,,
