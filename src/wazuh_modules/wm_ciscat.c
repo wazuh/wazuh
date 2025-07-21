@@ -10,6 +10,7 @@
  */
 #ifdef ENABLE_CISCAT
 #include "wmodules.h"
+#include "wm_exec.h"
 
 static wm_ciscat *ciscat;                             // Pointer to configuration
 static wm_rule_data *head;                            // Pointer to head of rules data
