@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
 
-#include <sca.hpp>
+#include <sca_impl.hpp>
 
 #include <dbsync.hpp>
 
