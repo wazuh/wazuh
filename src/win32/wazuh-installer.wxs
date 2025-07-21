@@ -247,9 +247,6 @@
                     <Component Id="LIBSTDCPP_6.DLL" DiskId="1" Guid="23EDBF99-6824-4128-8571-D77967B2980E">
                         <File Id="LIBSTDCPP_6.DLL" Name="libstdc++-6.dll" Source="libstdc++-6.dll" />
                     </Component>
-                    <Component Id="MANAGE_AGENTS.EXE" DiskId="1" Guid="C15C5883-00FB-41D7-B7E6-53C8BC30761F">
-                        <File Id="MANAGE_AGENTS.EXE" Name="manage_agents.exe" Source="manage_agents.exe" />
-                    </Component>
                     <Component Id="WAZUH_AGENT_EVENTCHANNEL.EXE" DiskId="1" Guid="044E7997-12B6-4178-BD00-B90500DBA53F">
                         <File Id="WAZUH_AGENT_EVENTCHANNEL.EXE" Name="wazuh-agent.exe" Source="wazuh-agent-eventchannel.exe" />
                         <ServiceInstall Name="WazuhSvc" Type="ownProcess" Start="auto" ErrorControl="normal" Description="Wazuh Windows Agent" DisplayName="Wazuh" Id="svc_install_eventchannel" />
@@ -286,7 +283,6 @@
                         <RemoveFile Id="NSIS_LIBGCC_S_SJLJ_1.DLL" Name="libgcc_s_sjlj-1.dll" On="install" />
                         <RemoveFile Id="NSIS_LIBGCC_S_DW2_1.DLL" Name="libgcc_s_dw2-1.dll" On="install" />
                         <RemoveFile Id="NSIS_LIBSTDCPP_6.DLL" Name="libstdc++-6.dll" On="install" />
-                        <RemoveFile Id="NSIS_MANAGE_AGENTS_EXE" Name="manage_agents.exe" On="install" />
                         <RemoveFile Id="NSIS_OSSEC_AGENT_EXE" Name="ossec-agent.exe" On="install" />
                         <RemoveFile Id="NSIS_OSSEC_AGENT_STATE" Name="ossec-agent.state" On="install" />
                         <RemoveFile Id="NSIS_WAZUH_AGENT_EXE" Name="wazuh-agent.exe" On="install" />
