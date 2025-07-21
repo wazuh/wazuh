@@ -8,6 +8,7 @@
 #include <stringHelper.h>
 #include <sysInfo.hpp>
 #include <sysInfoInterface.h>
+#include <wm_exec.h>
 
 #include <stack>
 #include <stdexcept>
@@ -152,25 +153,43 @@ CommandRuleEvaluator::CommandRuleEvaluator(PolicyEvaluationContext ctx,
                                            std::unique_ptr<IFileSystemWrapper> fileSystemWrapper,
                                            CommandExecFunc commandExecFunc)
     : RuleEvaluator(std::move(ctx), std::move(fileSystemWrapper))
-    , m_commandExecFunc(std::move(commandExecFunc))
-    /*
-    for 5.x
-    , m_commandExecFunc(commandExecFunc ? std::move(commandExecFunc) : [this](const std::string& command)
-    {
-        // use wm_exec with this signature:
-        // int wm_exec(char *command, char **output, int *exitcode, int secs, const char * add_path)
-        // return a ExecResult
-        // for example:
-            char *cmd_output = NULL;
-            int result_code;
-            const int wmExecResult = wm_exec(command, &cmd_output, &result_code, data->commands_timeout, NULL);
-            ExecResult execResult;
-            execResult.StdOut = std::string(cmd_output);
-            execResult.ExitCode = result_code;
-            return execResult;
-    })
-    */
 {
+    if (commandExecFunc)
+    {
+        m_commandExecFunc = std::move(commandExecFunc);
+    }
+    else
+    {
+        m_commandExecFunc = [](const std::string& command) -> std::optional<ExecResult>
+        {
+            char *cmdOutput = nullptr;
+            int resultCode = 0;
+
+            const int timeoutSeconds = 30;
+            std::string mutableCommand = command;
+
+            const auto wmExecResult = wm_exec(const_cast<char*>(mutableCommand.c_str()), &cmdOutput, &resultCode, timeoutSeconds, nullptr);
+
+            ExecResult execResult;
+            execResult.StdOut = cmdOutput ? std::string(cmdOutput) : "";
+            execResult.StdErr = ""; // wm_exec doesn't provide stderr separately
+            execResult.ExitCode = resultCode;
+
+            if (cmdOutput)
+            {
+                free(cmdOutput);
+            }
+
+            if (wmExecResult == 0)
+            {
+                return execResult;
+            }
+            else
+            {
+                return std::nullopt;
+            }
+        };
+    }
 }
 
 RuleResult CommandRuleEvaluator::Evaluate()
