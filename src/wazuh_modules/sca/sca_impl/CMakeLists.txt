@@ -32,6 +32,7 @@ include_directories(${SRC_FOLDER}/external/nlohmann/)
 include_directories(${SRC_FOLDER}/external/libyaml/include)
 include_directories(${SRC_FOLDER}/external/openssl/include/) # needed for hash_helper
 include_directories(${SRC_FOLDER}/headers/)
+include_directories(${SRC_FOLDER}/wazuh_modules/)
 include_directories(${SRC_FOLDER}/shared_modules/common/)
 include_directories(${SRC_FOLDER}/shared_modules/file_helper/filesystem/include/)
 include_directories(${SRC_FOLDER}/shared_modules/file_helper/file_io/include/)
