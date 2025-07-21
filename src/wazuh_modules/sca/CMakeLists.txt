@@ -25,7 +25,7 @@ if(COVERITY)
 endif(COVERITY)
 
 set(CMAKE_CXX_FLAGS
-    "-Wall -Wextra -Wshadow -Wnon-virtual-dtor -Woverloaded-virtual -Wunused -Wcast-align -Wformat=2 -std=c++14 -pthread"
+    "-Wall -Wextra -Wshadow -Wnon-virtual-dtor -Woverloaded-virtual -Wunused -Wcast-align -Wformat=2 -std=c++17 -pthread"
 )
 
 set(CMAKE_CXX_FLAGS_DEBUG "-g")
@@ -51,6 +51,12 @@ add_subdirectory(sca_impl)
 
 include_directories(${SRC_FOLDER}/headers)
 include_directories(${SRC_FOLDER}/external/cJSON/)
+include_directories(${SRC_FOLDER}/external/nlohmann/)
+include_directories(${SRC_FOLDER}/shared_modules/dbsync/include/)
+include_directories(${SRC_FOLDER}/shared_modules/utils/)
+include_directories(${SRC_FOLDER}/shared_modules/common/)
+include_directories(${SRC_FOLDER}/shared_modules/file_helper/filesystem/include/)
+include_directories(${SRC_FOLDER}/wazuh_modules/)
 include_directories(${CMAKE_SOURCE_DIR}/include)
 
 link_directories(${SRC_FOLDER})
