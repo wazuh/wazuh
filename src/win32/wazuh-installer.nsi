@@ -188,7 +188,6 @@ Section "Wazuh Agent (required)" MainSec
     File wazuh-agent.exe
     File wazuh-agent-eventchannel.exe
     File default-ossec.conf
-    File manage_agents.exe
     File /oname=win32ui.exe os_win32ui.exe
     File internal_options.conf
     File default-local_internal_options.conf
