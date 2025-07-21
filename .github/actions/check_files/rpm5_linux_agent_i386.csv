@@ -85,7 +85,6 @@ full_filename,owner_name,group_name,mode,type,prot_permissions,size_bytes,size_e
 /var/ossec/bin/wazuh-execd,root,root,750,file,-rwxr-x---,1219241,0.1
 /var/ossec/bin/wazuh-logcollector,root,root,750,file,-rwxr-x---,1322746,0.1
 /var/ossec/bin/wazuh-control,root,root,750,file,-rwxr-x---,7146,0.1
-/var/ossec/bin/manage_agents,root,root,750,file,-rwxr-x---,336121,0.1
 /var/ossec/bin/wazuh-modulesd,root,root,750,file,-rwxr-x---,1175029,0.1
 /var/ossec/bin/wazuh-agentd,root,root,750,file,-rwxr-x---,1275711,0.1
 /var/ossec/lib/libwazuhshared.so,root,wazuh,750,file,-rwxr-x---,236571,0.1
