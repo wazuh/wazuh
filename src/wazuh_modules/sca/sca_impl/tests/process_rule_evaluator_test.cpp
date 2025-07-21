@@ -29,7 +29,7 @@ protected:
 
     ProcessRuleEvaluator CreateEvaluator()
     {
-        return {m_ctx, std::move(m_fsMock), std::move(m_sysInfoMock), m_processesMock};
+        return ProcessRuleEvaluator{m_ctx, std::move(m_fsMock), std::move(m_sysInfoMock), m_processesMock};
     }
 };
 
