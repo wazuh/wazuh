@@ -12,6 +12,7 @@ include_directories(
     ${SRC_FOLDER}/shared_modules/file_helper/filesystem/tests/mocks
     ${SRC_FOLDER}/shared_modules/file_helper/file_io/tests/mocks
     ${SRC_FOLDER}/shared_modules/utils/tests/mocks
+    ${SRC_FOLDER}/data_provider/tests/mocks
 )
 
 link_directories(${SRC_FOLDER}/external/googletest/lib/)
