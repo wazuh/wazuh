@@ -3031,6 +3031,33 @@ stages:
     response:
       <<: *permission_denied
 
+---
+test_name: GET /syscollector/{agent_id}/users
+
+stages:
+  - name: Try to get agent users (syscollector)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/syscollector/001/users"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied
+
+---
+test_name: GET /syscollector/{agent_id}/groups
+
+stages:
+  - name: Try to get agent groups (syscollector)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/syscollector/001/groups"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied
 
 ---
 test_name: GET /tasks/status
