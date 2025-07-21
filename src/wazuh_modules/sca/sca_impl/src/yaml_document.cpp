@@ -39,8 +39,8 @@ YamlDocument::~YamlDocument()
     if (m_loaded)
     {
         yaml_document_delete(&m_document);
+        yaml_parser_delete(&m_parser);
     }
-    yaml_parser_delete(&m_parser);
 }
 
 bool YamlDocument::IsValidDocument() const
