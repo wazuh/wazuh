@@ -4,7 +4,7 @@
 
 #include <sca_event_handler.hpp>
 
-#include "mockdbsync.hpp"
+#include <mock_dbsync.hpp>
 
 namespace sca_event_handler
 {
