@@ -4,7 +4,7 @@
 
 #include <dbsync.hpp>
 
-#include "mocks/mockdbsync.hpp"
+#include <mock_dbsync.hpp>
 
 #include <memory>
 #include <string>
