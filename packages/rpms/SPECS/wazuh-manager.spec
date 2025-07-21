@@ -656,7 +656,11 @@ rm -fr %{buildroot}
 %attr(750, root, wazuh) %{_localstatedir}/bin/agent_upgrade
 %attr(750, root, root) %{_localstatedir}/bin/clear_stats
 %attr(750, root, wazuh) %{_localstatedir}/bin/cluster_control
+<<<<<<< HEAD
 %attr(750, root, root) %{_localstatedir}/bin/manage_agents
+=======
+%attr(750, root, root) %{_localstatedir}/bin/wazuh-agentlessd
+>>>>>>> 39f1840866 (fix: update checkfiles and packages files to remove manage_agents binary)
 %attr(750, root, root) %{_localstatedir}/bin/wazuh-engine
 %attr(750, root, root) %{_localstatedir}/bin/wazuh-authd
 %attr(750, root, root) %{_localstatedir}/bin/wazuh-control
