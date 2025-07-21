@@ -652,6 +652,7 @@ rm -fr %{buildroot}
 %attr(750, root, wazuh) %{_localstatedir}/bin/agent_groups
 %attr(750, root, wazuh) %{_localstatedir}/bin/agent_upgrade
 %attr(750, root, wazuh) %{_localstatedir}/bin/cluster_control
+%attr(750, root, root) %{_localstatedir}/bin/wazuh-agentlessd
 %attr(750, root, root) %{_localstatedir}/bin/wazuh-engine
 %attr(750, root, root) %{_localstatedir}/bin/wazuh-forwarder
 %attr(750, root, root) %{_localstatedir}/bin/wazuh-authd
