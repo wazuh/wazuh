@@ -4,7 +4,7 @@
 #include <sca_policy.hpp>
 #include <sca_policy_loader.hpp>
 
-#include "mocks/mockdbsync.hpp"
+#include <mock_dbsync.hpp>
 #include <mock_filesystem_wrapper.hpp>
 
 #include <memory>
