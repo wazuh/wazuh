@@ -10,6 +10,7 @@
  */
 
 #include "wmodules.h"
+#include "wm_exec.h"
 
 #ifdef WIN32
 static DWORD WINAPI wm_oscap_main(wm_oscap *arg);       // Module main function. It won't return
