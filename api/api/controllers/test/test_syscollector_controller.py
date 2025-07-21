@@ -16,7 +16,8 @@ with patch('wazuh.common.wazuh_uid'):
         from api.controllers.syscollector_controller import (
             get_hardware_info, get_hotfix_info, get_network_address_info,
             get_network_interface_info, get_network_protocol_info, get_os_info,
-            get_packages_info, get_ports_info, get_processes_info)
+            get_packages_info, get_ports_info, get_processes_info, get_user_info,
+            get_group_info)
         from wazuh import syscollector
         from wazuh.tests.util import RBAC_bypasser
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
@@ -341,6 +342,74 @@ async def test_get_processes_info(mock_exc, mock_dapi, mock_remove, mock_dfunc, 
                 'search': None,
                 'filters': filters,
                 'element_type': 'processes',
+                'q': None,
+                'distinct': False
+                }
+    mock_dapi.assert_called_once_with(f=syscollector.get_item_agent,
+                                      f_kwargs=mock_remove.return_value,
+                                      request_type='distributed_master',
+                                      is_async=False,
+                                      wait_for_complete=False,
+                                      logger=ANY,
+                                      rbac_permissions=mock_request.context['token_info']['rbac_policies']
+                                      )
+    mock_exc.assert_called_once_with(mock_dfunc.return_value)
+    mock_remove.assert_called_once_with(f_kwargs)
+    assert isinstance(result, ConnexionResponse)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("mock_request", ["syscollector_controller"], indirect=True)
+@patch('api.controllers.syscollector_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
+@patch('api.controllers.syscollector_controller.remove_nones_to_dict')
+@patch('api.controllers.syscollector_controller.DistributedAPI.__init__', return_value=None)
+@patch('api.controllers.syscollector_controller.raise_if_exc', return_value=CustomAffectedItems())
+async def test_get_user_info(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request):
+    """Verify 'get_user_info' endpoint is working as expected."""
+    result = await get_user_info(agent_id='001')
+    filters = {}
+    f_kwargs = {'agent_list': ['001'],
+                'offset': 0,
+                'limit': None,
+                'select': None,
+                'sort': None,
+                'search': None,
+                'filters': filters,
+                'element_type': 'users',
+                'q': None,
+                'distinct': False
+                }
+    mock_dapi.assert_called_once_with(f=syscollector.get_item_agent,
+                                      f_kwargs=mock_remove.return_value,
+                                      request_type='distributed_master',
+                                      is_async=False,
+                                      wait_for_complete=False,
+                                      logger=ANY,
+                                      rbac_permissions=mock_request.context['token_info']['rbac_policies']
+                                      )
+    mock_exc.assert_called_once_with(mock_dfunc.return_value)
+    mock_remove.assert_called_once_with(f_kwargs)
+    assert isinstance(result, ConnexionResponse)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("mock_request", ["syscollector_controller"], indirect=True)
+@patch('api.controllers.syscollector_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
+@patch('api.controllers.syscollector_controller.remove_nones_to_dict')
+@patch('api.controllers.syscollector_controller.DistributedAPI.__init__', return_value=None)
+@patch('api.controllers.syscollector_controller.raise_if_exc', return_value=CustomAffectedItems())
+async def test_get_group_info(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request):
+    """Verify 'get_group_info' endpoint is working as expected."""
+    result = await get_group_info(agent_id='001')
+    filters = {}
+    f_kwargs = {'agent_list': ['001'],
+                'offset': 0,
+                'limit': None,
+                'select': None,
+                'sort': None,
+                'search': None,
+                'filters': filters,
+                'element_type': 'groups',
                 'q': None,
                 'distinct': False
                 }

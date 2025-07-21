@@ -19,6 +19,8 @@ class Type(Enum):
     NETPROTO = 'netproto'
     NETIFACE = 'netiface'
     HOTFIXES = 'hotfixes'
+    USERS = 'users'
+    GROUPS = 'groups'
 
 
 def get_valid_fields(element_type: Type, agent_id: str = None) -> dict:
@@ -76,7 +78,32 @@ def get_valid_fields(element_type: Type, agent_id: str = None) -> dict:
                                          'tx.bytes': 'tx_bytes', 'rx.bytes': 'rx_bytes', 'tx.errors': 'tx_errors',
                                          'rx.errors': 'rx_errors', 'tx.dropped': 'tx_dropped',
                                          'rx.dropped': 'rx_dropped'}),
-        Type.HOTFIXES: ('sys_hotfixes', {'scan_id': 'scan_id', 'scan_time': 'scan_time', 'hotfix': 'hotfix'})
+        Type.HOTFIXES: ('sys_hotfixes', {'scan_id': 'scan_id', 'scan_time': 'scan_time', 'hotfix': 'hotfix'}),
+        Type.USERS: ('sys_users', {'scan.id': 'scan_id', 'scan.time': 'scan_time', 'user.name': 'user_name',
+                                   'user.full_name': 'user_full_name', 'user.home': 'user_home', 'user.id': 'user_id',
+                                   'user.uid_signed': 'user_uid_signed', 'user.uuid': 'user_uuid',
+                                   'user.groups': 'user_groups', 'user.group_id': 'user_group_id', 
+                                   'user.group_id_signed': 'user_group_id_signed', 'user.created': 'user_created',
+                                   'user.roles': 'user_roles', 'user.shell': 'user_shell', 'user.type': 'user_type',
+                                   'user.is_hidden': 'user_is_hidden', 'user.is_remote': 'user_is_remote',
+                                   'user.last_login': 'user_last_login',
+                                   'user.auth_failed_count': 'user_auth_failed_count',
+                                   'user.auth_failed_timestamp': 'user_auth_failed_timestamp',
+                                   'user.password_expiration_date': 'user_password_expiration_date',
+                                   'user.password_hash_algorithm': 'user_password_hash_algorithm',
+                                   'user.password_inactive_days': 'user_password_inactive_days',
+                                   'user.password_last_change': 'user_password_last_change',
+                                   'user.password_max_days_between_changes': 'user_password_max_days_between_changes',
+                                   'user.password_min_days_between_changes': 'user_password_min_days_between_changes',
+                                   'user.password_status': 'user_password_status', 
+                                   'user.password_warning_days_before_expiration': 'user_password_warning_days_before_expiration',
+                                   'process_pid': 'process_pid', 'host_ip': 'host_ip', 'login.status': 'login_status',
+                                   'login.tty': 'login_tty', 'login.type': 'login_type', 'checksum': 'checksum'}),
+        Type.GROUPS: ('sys_groups', {'scan.id': 'scan_id', 'scan.time': 'scan_time', 'group.id': 'group_id',
+                                     'group.name': 'group_name', 'group.description': 'group_description',
+                                     'group.id_signed': 'group_id_signed', 'group.uuid': 'group_uuid',
+                                     'group.is_hidden': 'group_is_hidden', 'group.users': 'group_users',
+                                     'checksum': 'checksum'}),
     }
 
     if element_type == Type.OS:
