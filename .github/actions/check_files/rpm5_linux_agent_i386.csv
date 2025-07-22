@@ -79,7 +79,6 @@ full_filename,owner_name,group_name,mode,type,prot_permissions,size_bytes,size_e
 /var/ossec/agentless/main.exp,root,wazuh,750,file,-rwxr-x---,2453,0.1
 /var/ossec/agentless/ssh_nopass.exp,root,wazuh,750,file,-rwxr-x---,1616,0.1
 /var/ossec/var/selinux/wazuh.pp,root,wazuh,640,file,-rw-r-----,3163,0.1
-/var/ossec/bin/agent-auth,root,root,750,file,-rwxr-x---,324649,0.1
 /var/ossec/bin/wazuh-syscheckd,root,root,750,file,-rwxr-x---,1423062,0.1
 /var/ossec/bin/wazuh-execd,root,root,750,file,-rwxr-x---,1219241,0.1
 /var/ossec/bin/wazuh-logcollector,root,root,750,file,-rwxr-x---,1322746,0.1
