@@ -40,7 +40,6 @@ def plot_combined_metrics(timestamps, metrics_dict, title, filename):
     # Define line styles and markers for each memory metric
     styles = {
         'RSS': {'color': 'blue', 'linestyle': '-', 'marker': 'o', 'markersize': 2},
-        'VMS': {'color': 'green', 'linestyle': '--', 'marker': 's', 'markersize': 2},
         'USS': {'color': 'red', 'linestyle': '-.', 'marker': '^', 'markersize': 2},
         'PSS': {'color': 'purple', 'linestyle': ':', 'marker': 'D', 'markersize': 2}
     }
@@ -111,7 +110,9 @@ def plot_combined_metrics(timestamps, metrics_dict, title, filename):
     # Adjust x-axis for all subplots
     for ax in [ax1, ax2, ax3]:
         ax.xaxis.set_major_locator(plt.MaxNLocator(6))
-        ax.set_xticklabels([f"{x:.0f}" for x in ax.get_xticks()])
+        ticks = ax.get_xticks()
+        ax.set_xticks(ticks)
+        ax.set_xticklabels([f"{tick:.0f}" for tick in ticks])
 
     plt.tight_layout()
     plt.subplots_adjust(right=0.8, hspace=0.4)  # Adjust spacing
@@ -174,7 +175,6 @@ def process_data(file_path, process_name, plot_enabled):
         metrics_dict = {
             'memory': {
                 'RSS': rssKB,
-                'VMS': vmsKB,
                 'USS': ussKB,
                 'PSS': pssKB
             },
