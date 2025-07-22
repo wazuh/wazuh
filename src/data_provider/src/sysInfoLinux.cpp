@@ -32,7 +32,7 @@
 #include "groups_linux.hpp"
 #include "user_groups_linux.hpp"
 
-#include "logged_in_users_unix.hpp"
+#include "logged_in_users_linux.hpp"
 #include "shadow_linux.hpp"
 #include "sudoers_unix.hpp"
 #include "users_linux.hpp"
