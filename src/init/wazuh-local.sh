@@ -26,7 +26,7 @@ if [ $? = 0 ]; then
 fi
 
 AUTHOR="Wazuh Inc."
-DAEMONS="wazuh-modulesd wazuh-monitord wazuh-logcollector wazuh-syscheckd wazuh-analysisd wazuh-maild wazuh-execd wazuh-db wazuh-agentlessd wazuh-integratord wazuh-csyslogd"
+DAEMONS="wazuh-modulesd wazuh-monitord wazuh-logcollector wazuh-syscheckd wazuh-analysisd wazuh-execd wazuh-db"
 
 # Reverse order of daemons
 SDAEMONS=$(echo $DAEMONS | awk '{ for (i=NF; i>1; i--) printf("%s ",$i); print $1; }')
