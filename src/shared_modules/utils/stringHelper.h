@@ -519,6 +519,29 @@ namespace Utils
 
         return tokens;
     }
+    /**
+     * @brief Split a maintainer field into name and email.
+     *
+     * @param input Input string containing the maintainer field.
+     * @param name Output parameter for the name.
+     * @param email Output parameter for the email.
+     */
+    static void splitMaintainerField(const std::string& input, std::string& name, std::string& email)
+    {
+        const auto start = input.find('<');
+        const auto end = input.find('>');
+
+        if (start != std::string::npos && end != std::string::npos && start < end)
+        {
+            name  = Utils::trim(input.substr(0, start));
+            email = input.substr(start + 1, end - start - 1);
+        }
+        else
+        {
+            name = input;
+            email.clear();
+        }
+    }
 
 #if __cplusplus >= 201703L
 

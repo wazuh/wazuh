@@ -7,12 +7,12 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 INSTALLATION_PATH=${1}
-SERVICE=/Library/LaunchDaemons/com.Wazuh.agent.plist
+SERVICE=/Library/LaunchDaemons/com.wazuh.agent.plist
 STARTUP=/Library/StartupItems/WAZUH/StartupParameters.plist
 LAUNCHER_SCRIPT=/Library/StartupItems/WAZUH/Wazuh-launcher
 STARTUP_SCRIPT=/Library/StartupItems/WAZUH/WAZUH
 
-launchctl unload /Library/LaunchDaemons/com.Wazuh.agent.plist 2> /dev/null
+launchctl unload /Library/LaunchDaemons/com.wazuh.agent.plist 2> /dev/null
 mkdir -p /Library/StartupItems/WAZUH
 chown root:wheel /Library/StartupItems/WAZUH
 rm -f $STARTUP $STARTUP_SCRIPT $SERVICE
@@ -25,7 +25,7 @@ echo '<?xml version="1.0" encoding="UTF-8"?>
  <plist version="1.0">
      <dict>
          <key>Label</key>
-         <string>com.Wazuh.agent</string>
+         <string>com.wazuh.agent</string>
          <key>ProgramArguments</key>
          <array>
              <string>'$LAUNCHER_SCRIPT'</string>

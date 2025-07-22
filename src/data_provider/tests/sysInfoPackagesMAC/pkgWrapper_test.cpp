@@ -44,7 +44,7 @@ TEST_F(PKGWrapperTest, LongVersion)
     EXPECT_EQ(wrapper->osPatch(), "");
     EXPECT_EQ(wrapper->source(), "utilities");
     EXPECT_EQ(wrapper->location(), inputPath + "/" + package + "/" + APP_INFO_PATH);
-    EXPECT_EQ(wrapper->vendor(), "operasoftware");
+    EXPECT_EQ(wrapper->vendor(), "Operasoftware");
     EXPECT_EQ(wrapper->priority(), UNKNOWN_VALUE);
     EXPECT_EQ(wrapper->size(), 0);
     EXPECT_EQ(wrapper->install_time(), UNKNOWN_VALUE);
@@ -73,7 +73,7 @@ TEST_F(PKGWrapperTest, ShortVersion)
     EXPECT_EQ(wrapper->osPatch(), "");
     EXPECT_EQ(wrapper->source(), "utilities");
     EXPECT_EQ(wrapper->location(), inputPath + "/" + package + "/" + APP_INFO_PATH);
-    EXPECT_EQ(wrapper->vendor(), "operasoftware");
+    EXPECT_EQ(wrapper->vendor(), "Operasoftware");
     EXPECT_EQ(wrapper->priority(), UNKNOWN_VALUE);
     EXPECT_EQ(wrapper->size(), 0);
     EXPECT_EQ(wrapper->install_time(), UNKNOWN_VALUE);
@@ -102,7 +102,7 @@ TEST_F(PKGWrapperTest, NameDifferentExecutable)
     EXPECT_EQ(wrapper->osPatch(), "");
     EXPECT_EQ(wrapper->source(), "utilities");
     EXPECT_EQ(wrapper->location(), inputPath + "/" + package + "/" + APP_INFO_PATH);
-    EXPECT_EQ(wrapper->vendor(), "operasoftware");
+    EXPECT_EQ(wrapper->vendor(), "Operasoftware");
     EXPECT_EQ(wrapper->priority(), UNKNOWN_VALUE);
     EXPECT_EQ(wrapper->size(), 0);
     EXPECT_EQ(wrapper->install_time(), UNKNOWN_VALUE);
@@ -131,7 +131,7 @@ TEST_F(PKGWrapperTest, NameFirst)
     EXPECT_EQ(wrapper->osPatch(), "");
     EXPECT_EQ(wrapper->source(), "utilities");
     EXPECT_EQ(wrapper->location(), inputPath + "/" + package + "/" + APP_INFO_PATH);
-    EXPECT_EQ(wrapper->vendor(), "operasoftware");
+    EXPECT_EQ(wrapper->vendor(), "Operasoftware");
     EXPECT_EQ(wrapper->priority(), UNKNOWN_VALUE);
     EXPECT_EQ(wrapper->size(), 0);
     EXPECT_EQ(wrapper->install_time(), UNKNOWN_VALUE);
@@ -160,7 +160,7 @@ TEST_F(PKGWrapperTest, NoNameButExecutable)
     EXPECT_EQ(wrapper->osPatch(), "");
     EXPECT_EQ(wrapper->source(), "utilities");
     EXPECT_EQ(wrapper->location(), inputPath + "/" + package + "/" + APP_INFO_PATH);
-    EXPECT_EQ(wrapper->vendor(), "operasoftware");
+    EXPECT_EQ(wrapper->vendor(), "Operasoftware");
     EXPECT_EQ(wrapper->priority(), UNKNOWN_VALUE);
     EXPECT_EQ(wrapper->size(), 0);
     EXPECT_EQ(wrapper->install_time(), UNKNOWN_VALUE);
@@ -189,7 +189,7 @@ TEST_F(PKGWrapperTest, NoNameNoExecutable)
     EXPECT_EQ(wrapper->osPatch(), "");
     EXPECT_EQ(wrapper->source(), "utilities");
     EXPECT_EQ(wrapper->location(), inputPath + "/" + package + "/" + APP_INFO_PATH);
-    EXPECT_EQ(wrapper->vendor(), "operasoftware");
+    EXPECT_EQ(wrapper->vendor(), "Operasoftware");
     EXPECT_EQ(wrapper->priority(), UNKNOWN_VALUE);
     EXPECT_EQ(wrapper->size(), 0);
     EXPECT_EQ(wrapper->install_time(), UNKNOWN_VALUE);
@@ -218,7 +218,7 @@ TEST_F(PKGWrapperTest, NoVersion)
     EXPECT_EQ(wrapper->osPatch(), "");
     EXPECT_EQ(wrapper->source(), "utilities");
     EXPECT_EQ(wrapper->location(), inputPath + "/" + package + "/" + APP_INFO_PATH);
-    EXPECT_EQ(wrapper->vendor(), "operasoftware");
+    EXPECT_EQ(wrapper->vendor(), "Operasoftware");
     EXPECT_EQ(wrapper->priority(), UNKNOWN_VALUE);
     EXPECT_EQ(wrapper->size(), 0);
     EXPECT_EQ(wrapper->install_time(), UNKNOWN_VALUE);
@@ -247,7 +247,7 @@ TEST_F(PKGWrapperTest, NoGroups)
     EXPECT_EQ(wrapper->osPatch(), "");
     EXPECT_EQ(wrapper->source(), "utilities");
     EXPECT_EQ(wrapper->location(), inputPath + "/" + package + "/" + APP_INFO_PATH);
-    EXPECT_EQ(wrapper->vendor(), "operasoftware");
+    EXPECT_EQ(wrapper->vendor(), "Operasoftware");
     EXPECT_EQ(wrapper->priority(), UNKNOWN_VALUE);
     EXPECT_EQ(wrapper->size(), 0);
     EXPECT_EQ(wrapper->install_time(), UNKNOWN_VALUE);
@@ -317,7 +317,7 @@ TEST_F(PKGWrapperTest, pkgVersionXML)
     std::string inputPath;
     inputPath += getwd(NULL);
     inputPath += "/input_files";
-    std::string package { "com.Wazuh.pkg.wazuh-agent.plist" };
+    std::string package { "com.wazuh.pkg.wazuh-agent.plist" };
 
     struct PackageContext ctx
     {
@@ -328,13 +328,13 @@ TEST_F(PKGWrapperTest, pkgVersionXML)
     EXPECT_EQ(wrapper->name(), "wazuh-agent");
     EXPECT_EQ(wrapper->version(), "4.10.1");
     EXPECT_EQ(wrapper->groups(), " ");
-    EXPECT_EQ(wrapper->description(), "com.Wazuh.pkg.wazuh-agent");
+    EXPECT_EQ(wrapper->description(), "com.wazuh.pkg.wazuh-agent");
     EXPECT_EQ(wrapper->architecture(), " ");
     EXPECT_EQ(wrapper->format(), "pkg");
     EXPECT_EQ(wrapper->osPatch(), "");
     EXPECT_EQ(wrapper->source(), "receipts");
     EXPECT_EQ(wrapper->location(), inputPath + "/" + package);
-    EXPECT_EQ(wrapper->vendor(), "wazuh");
+    EXPECT_EQ(wrapper->vendor(), "Wazuh");
     EXPECT_EQ(wrapper->priority(), " ");
     EXPECT_EQ(wrapper->size(), 0);
     EXPECT_EQ(wrapper->install_time(), "2024-11-07T08:58:38Z");
@@ -363,7 +363,7 @@ TEST_F(PKGWrapperTest, pkgVersionBin)
     EXPECT_EQ(wrapper->osPatch(), "");
     EXPECT_EQ(wrapper->source(), "receipts");
     EXPECT_EQ(wrapper->location(), inputPath + "/" + package);
-    EXPECT_EQ(wrapper->vendor(), "zoom");
+    EXPECT_EQ(wrapper->vendor(), "Zoom");
     EXPECT_EQ(wrapper->priority(), " ");
     EXPECT_EQ(wrapper->size(), 0);
     EXPECT_EQ(wrapper->install_time(), "2024-11-08T11:44:04Z");

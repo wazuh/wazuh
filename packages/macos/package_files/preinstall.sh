@@ -74,7 +74,7 @@ if [ -d "${DIR}" ]; then
 
     if pkgutil --pkgs | grep -i wazuh-agent-etc > /dev/null 2>&1 ; then
         echo "Removing previous package receipt for wazuh-agent-etc"
-        pkgutil --forget com.Wazuh.pkg.wazuh-agent-etc
+        pkgutil --forget com.wazuh.pkg.wazuh-agent-etc
     fi
 fi
 
