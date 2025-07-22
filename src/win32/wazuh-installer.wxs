@@ -629,7 +629,6 @@
             <ComponentRef Id="LIBWINPTHREAD_1.DLL" />
             <ComponentRef Id="LIBGCC_S_DW2_1.DLL" />
             <ComponentRef Id="LIBSTDCPP_6.DLL" />
-            <ComponentRef Id="MANAGE_AGENTS.EXE" />
             <ComponentRef Id="WAZUH_AGENT_EVENTCHANNEL.EXE" />
             <ComponentRef Id="WAZUH_AGENT.EXE" />
             <ComponentRef Id="VISTA_SEC.TXT" />
