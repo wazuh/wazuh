@@ -105,13 +105,11 @@ async def test_put_file(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_reque
                         }
             mock_dapi.assert_called_once_with(f=cdb_list.upload_list_file,
                                               f_kwargs=mock_remove.return_value,
-                                              request_type='distributed_master',
+                                              request_type='local_master',
                                               is_async=False,
                                               wait_for_complete=False,
                                               logger=ANY,
-                                              rbac_permissions=mock_request.context['token_info']['rbac_policies'],
-                                              broadcasting=True,
-                                              nodes=None
+                                              rbac_permissions=mock_request.context['token_info']['rbac_policies']
                                               )
             mock_exc.assert_called_once_with(mock_dfunc.return_value)
             mock_remove.assert_called_once_with(f_kwargs)
@@ -131,13 +129,11 @@ async def test_delete_file(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_re
                 }
     mock_dapi.assert_called_once_with(f=cdb_list.delete_list_file,
                                       f_kwargs=mock_remove.return_value,
-                                      request_type='distributed_master',
+                                      request_type='local_master',
                                       is_async=False,
                                       wait_for_complete=False,
                                       logger=ANY,
-                                      rbac_permissions=mock_request.context['token_info']['rbac_policies'],
-                                      broadcasting=True,
-                                      nodes=None
+                                      rbac_permissions=mock_request.context['token_info']['rbac_policies']
                                       )
     mock_exc.assert_called_once_with(mock_dfunc.return_value)
     mock_remove.assert_called_once_with(f_kwargs)
