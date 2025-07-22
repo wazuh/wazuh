@@ -22,7 +22,6 @@ src/generated_headers/*.h
 src/generated_headers/*.hpp
 
 # Compiled programs
-src/agent-auth
 src/agent_control
 src/clear_stats
 src/isbigendian
