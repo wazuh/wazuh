@@ -76,16 +76,7 @@
     },
     {
       "geoip": {
-        "field": "data.properties.initiatedBy.user.ipAddress",
-        "target_field": "GeoLocation",
-        "properties": ["city_name", "country_name", "region_name", "location"],
-        "ignore_missing": true,
-        "ignore_failure": true
-      }
-    },
-    {
-      "geoip": {
-        "field": "data.callerIpAddress",
+        "field": "data.ms-graph.ipAddress",
         "target_field": "GeoLocation",
         "properties": ["city_name", "country_name", "region_name", "location"],
         "ignore_missing": true,
