@@ -2,7 +2,7 @@
   description: 'Check for register an agent with name same as manager: rejected'
   configuration_parameters:
   metadata:
-    input: OSSEC A:'{}'
+    input: "OSSEC A:'{}'\n"
     output:
       status: error
       message: 'Invalid agent name: {}'
@@ -13,7 +13,7 @@
   description: 'Default manager configuration: registered'
   configuration_parameters:
   metadata:
-    input: OSSEC A:'user1'
+    input: "OSSEC A:'user1'\n"
     output:
       status: success
       name: user1
@@ -25,7 +25,7 @@
   description: 'Agent name too short < 2: rejected'
   configuration_parameters:
   metadata:
-    input: OSSEC A:'n'
+    input: "OSSEC A:'n'\n"
     output:
       status: error
       message: 'Invalid agent name: n'
@@ -36,7 +36,7 @@
   description: 'Agent name length = 2: registered'
   configuration_parameters:
   metadata:
-    input: OSSEC A:'nn'
+    input: "OSSEC A:'nn'\n"
     output:
       status: success
       name: nn
@@ -49,7 +49,7 @@
   configuration_parameters:
   metadata:
     input: "OSSEC A:'userxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\
-            xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'"
+            xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'\n"
     output:
       status: success
       name: userxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
@@ -62,7 +62,7 @@
   configuration_parameters:
   metadata:
     input: "OSSEC A:'userxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\
-            xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'"
+            xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'\n"
     output:
       status: error
       message: "Invalid agent name: userxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\
@@ -74,7 +74,7 @@
   description: "Agent name with '*': rejected"
   configuration_parameters:
   metadata:
-    input: OSSEC A:'user*1'
+    input: "OSSEC A:'user*1'\n"
     output:
       status: error
       message: 'Invalid agent name: user\*1'
@@ -85,7 +85,7 @@
   description: "Agent name with '-': registered"
   configuration_parameters:
   metadata:
-    input: OSSEC A:'user-1'
+    input: "OSSEC A:'user-1'\n"
     output:
       status: success
       name: user-1
@@ -97,7 +97,7 @@
   description: "Agent name with '_': registered"
   configuration_parameters:
   metadata:
-    input: OSSEC A:'user_1'
+    input: "OSSEC A:'user_1'\n"
     output:
       status: success
       name: user_1
@@ -109,7 +109,7 @@
   description: "Agent name with '.': registered"
   configuration_parameters:
   metadata:
-    input: OSSEC A:'user.1'
+    input: "OSSEC A:'user.1'\n"
     output:
       status: success
       name: user.1
@@ -121,7 +121,7 @@
   description: 'Try register an agent with valid IP: register'
   configuration_parameters:
   metadata:
-    input: OSSEC A:'user1' IP:'10.10.10.10'
+    input: "OSSEC A:'user1' IP:'10.10.10.10'\n"
     output:
       status: success
       name: user1
@@ -133,7 +133,7 @@
   description: 'Try register an agent with invalid IP: rejected'
   configuration_parameters:
   metadata:
-    input: OSSEC A:'user1' IP:'10.10.10'
+    input: "OSSEC A:'user1' IP:'10.10.10'\n"
     output:
       status: error
       message: 'Invalid IP: 10.10.10'
@@ -144,7 +144,7 @@
   description: 'Try register an agent with invalid IP: rejected'
   configuration_parameters:
   metadata:
-    input: OSSEC A:'user1' IP:'10.10.10.nn'
+    input: "OSSEC A:'user1' IP:'10.10.10.nn'\n"
     output:
       status: error
       message: 'Invalid IP: 10.10.10.nn'
@@ -156,7 +156,7 @@
   # The manager should validate the IP https://github.com/wazuh/wazuh/issues/4965
   configuration_parameters:
   metadata:
-    input: OSSEC A:'user1' IP:'10.10.10.257'
+    input: "OSSEC A:'user1' IP:'10.10.10.257'\n"
     output:
       status: error
       message: 'Invalid IP: 10.10.10.257'
@@ -168,7 +168,7 @@
   # The manager should validate the IP https://github.com/wazuh/wazuh/issues/4965
   configuration_parameters:
   metadata:
-    input: OSSEC A:'user1' IP:'257.257.257.257'
+    input: "OSSEC A:'user1' IP:'257.257.257.257'\n"
     output:
       status: error
       message: 'Invalid IP: 257.257.257.257'
@@ -179,7 +179,7 @@
   description: 'Try register an agent with invalid IP: rejected'
   configuration_parameters:
   metadata:
-    input: OSSEC A:'user1' IP:'999.9999.999.999'
+    input: "OSSEC A:'user1' IP:'999.9999.999.999'\n"
     output:
       status: error
       message: 'Invalid IP: 999.9999.999.999'
@@ -190,7 +190,7 @@
   description: 'Ip with mask: register'
   configuration_parameters:
   metadata:
-    input: OSSEC A:'user1' IP:'10.10.10.10/0'
+    input: "OSSEC A:'user1' IP:'10.10.10.10/0'\n"
     output:
       status: success
       name: user1
@@ -202,7 +202,7 @@
   description: 'Ip with mask /24: register'
   configuration_parameters:
   metadata:
-    input: OSSEC A:'user1' IP:'10.10.10.1/24'
+    input: "OSSEC A:'user1' IP:'10.10.10.1/24'\n"
     output:
       status: success
       name: user1
@@ -214,7 +214,7 @@
   description: 'Ip with mask /32: register'
   configuration_parameters:
   metadata:
-    input: OSSEC A:'user1' IP:'10.10.10.1/32'
+    input: "OSSEC A:'user1' IP:'10.10.10.1/32'\n"
     output:
       status: success
       name: user1
@@ -226,7 +226,7 @@
   description: 'Invalid mask: rejected'
   configuration_parameters:
   metadata:
-    input: OSSEC A:'user1' IP:'10.10.10.1/55'
+    input: "OSSEC A:'user1' IP:'10.10.10.1/55'\n"
     output:
       status: error
       message: 'Invalid IP: 10.10.10.1'
@@ -237,7 +237,7 @@
   description: 'Invalid mask, wrong character: rejected'
   configuration_parameters:
   metadata:
-    input: OSSEC A:'user1' IP:'10.10.10.1/2{'
+    input: "OSSEC A:'user1' IP:'10.10.10.1/2{'\n"
     output:
       status: error
       message: 'Invalid IP: 10.10.10.1'
@@ -248,7 +248,7 @@
   description: 'Invalid mask, wrong character: rejected'
   configuration_parameters:
   metadata:
-    input: OSSEC A:'user1' IP:'10.10.10.1/<'
+    input: "OSSEC A:'user1' IP:'10.10.10.1/<'\n"
     output:
       status: error
       message: 'Invalid IP: 10.10.10.1'
@@ -259,7 +259,7 @@
   description: 'Try register an agent with valid IPv6: register'
   configuration_parameters:
   metadata:
-    input: OSSEC A:'user1' IP:'02db:4660:46af:e523:d05e:a62e:4ca7:8e58'
+    input: "OSSEC A:'user1' IP:'02db:4660:46af:e523:d05e:a62e:4ca7:8e58'\n"
     output:
       status: success
       name: user1
@@ -271,7 +271,7 @@
   description: 'Try register an agent with valid compressed IPv6: register'
   configuration_parameters:
   metadata:
-    input: OSSEC A:'user1' IP:'2001:db8:0:b::1A'
+    input: "OSSEC A:'user1' IP:'2001:db8:0:b::1A'\n"
     output:
       status: success
       name: user1
@@ -283,7 +283,7 @@
   description: 'Try register an agent with invalid IPv6: rejected'
   configuration_parameters:
   metadata:
-    input: OSSEC A:'user1' IP:'56FE::2159:5BBC::6594'
+    input: "OSSEC A:'user1' IP:'56FE::2159:5BBC::6594'\n"
     output:
       status: error
       message: 'Invalid IP: 56FE::2159:5BBC::6594'
@@ -294,7 +294,7 @@
   description: Try register an agent with valid compressed IPv6
   configuration_parameters:
   metadata:
-    input: OSSEC A:'user1' IP:'11AA:11AA:11AA:11AA:11AA:11AA:11AA:11AA:11AA'
+    input: "OSSEC A:'user1' IP:'11AA:11AA:11AA:11AA:11AA:11AA:11AA:11AA:11AA'\n"
     output:
       status: error
       message: 'Invalid IP: 11AA:11AA:11AA:11AA:11AA:11AA:11AA:11AA:11AA'
@@ -305,7 +305,7 @@
   description: Try to register an invalid agent_address
   configuration_parameters:
   metadata:
-    input: OSSEC A:'user1' IP:'02db:4660:46af:invalid:d05e:a62e:4ca7:8e58'
+    input: "OSSEC A:'user1' IP:'02db:4660:46af:invalid:d05e:a62e:4ca7:8e58'\n"
     output:
       status: error
       message: 'Invalid IP: 02db:4660:46af:invalid:d05e:a62e:4ca7:8e58'
