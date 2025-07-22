@@ -6,10 +6,11 @@
 
 #include <dbsync.hpp>
 #include <filesystem_wrapper.hpp>
-// #include <logger.hpp>
 
 #include <thread>
 #include <iostream>
+
+#include "logging_helper.hpp"
 
 // Static member definition
 int (*SecurityConfigurationAssessment::s_wmExecFunc)(char*, char**, int*, int, const char*) = nullptr;
@@ -60,19 +61,19 @@ void SecurityConfigurationAssessment::Run()
 {
     if (!m_enabled)
     {
-        // LogInfo("SCA module is disabled.");
+        LoggingHelper::getInstance().log(LOG_INFO, "SCA module is disabled.");
         return;
     }
 
     m_keepRunning = true;
 
-    // LogInfo("SCA module running.");
+    LoggingHelper::getInstance().log(LOG_INFO, "SCA module running.");
 
     while(m_keepRunning)
     {
         if (m_scanOnStart)
         {
-            // LogInfo("SCA module scan on start.");
+            LoggingHelper::getInstance().log(LOG_INFO, "SCA module scan on start.");
             for (auto& policy : m_policies)
             {
                 if (!m_keepRunning)
@@ -126,7 +127,8 @@ void SecurityConfigurationAssessment::Stop()
     {
         policy->Stop();
     }
-    // LogInfo("SCA module stopped.");
+
+    LoggingHelper::getInstance().log(LOG_INFO, "SCA module stopped.");
 }
 
 const std::string& SecurityConfigurationAssessment::Name() const
