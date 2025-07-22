@@ -1,9 +1,15 @@
+# Defs
+set(IFACE_DIR ${CMAKE_CURRENT_LIST_DIR}/interface)
+set(SRC_DIR ${CMAKE_CURRENT_LIST_DIR}/src)
+set(INC_DIR ${CMAKE_CURRENT_LIST_DIR}/include)
+
 add_library(streamlogger STATIC
-    src/logger.cpp
+    ${SRC_DIR}/logger.cpp
+    ${SRC_DIR}/channel.cpp
 )
 target_include_directories(streamlogger
     PUBLIC
-    ${CMAKE_CURRENT_LIST_DIR}/include
+    ${INC_DIR}
 )
 target_link_libraries(streamlogger
     PUBLIC
@@ -22,8 +28,10 @@ set(COMPONENT_SRC_DIR ${TEST_SRC_DIR}/component)
 
 add_executable(streamlogger_utest
     ${UNIT_SRC_DIR}/logger_test.cpp
+    ${UNIT_SRC_DIR}/channel_test.cpp
 )
 target_link_libraries(streamlogger_utest GTest::gtest_main GTest::gmock streamlogger)
+target_include_directories(streamlogger_utest PRIVATE ${SRC_DIR})
 gtest_discover_tests(streamlogger_utest)
 
 add_executable(streamlogger_ctest

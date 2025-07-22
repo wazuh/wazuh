@@ -252,7 +252,6 @@ public:
      * @brief Construct a new Concurrent Queue object
      *
      * @param capacity The capacity of the queue. (Approximate)
-     * @param metricModuleName The name of the module for the metrics.
      * @param pathFloodedFile The path to the file where the queue will be flooded.
      * @param maxAttempts The maximum number of attempts to push an element to the queue. (ignored if
      * pathFloodedFile is not provided)
@@ -266,7 +265,6 @@ public:
      * @note If the pathFloodedFile is provided, T must be a shared_ptr with str() method.
      */
     explicit ConcurrentQueue(const int capacity,
-                             const std::string& metricModuleName,
                              const std::string& pathFloodedFile = {},
                              const int maxAttempts = 3,
                              const int waitTime = -1,
