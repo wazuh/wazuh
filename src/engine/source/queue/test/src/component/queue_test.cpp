@@ -25,7 +25,6 @@ public:
 class ConcurrentQueueTest : public ::testing::Test
 {
 protected:
-    std::string m_metricModuleName;
 
     ConcurrentQueueTest() {}
 
@@ -34,7 +33,6 @@ protected:
     void SetUp() override
     {
         logging::testInit();
-        m_metricModuleName = "testConcurrentQueue";
     }
 
     void TearDown() override {}
@@ -82,7 +80,7 @@ TEST(FloodingFileTest, CannotOpenFile)
 
 TEST_F(ConcurrentQueueTest, CanConstruct)
 {
-    ConcurrentQueue<std::shared_ptr<Dummy>> cq(2, m_metricModuleName);
+    ConcurrentQueue<std::shared_ptr<Dummy>> cq(2);
     ASSERT_TRUE(cq.empty());
     ASSERT_EQ(cq.size(), 0);
 }
@@ -90,13 +88,13 @@ TEST_F(ConcurrentQueueTest, CanConstruct)
 TEST_F(ConcurrentQueueTest, errorConstructor)
 {
     ASSERT_THROW(
-        ConcurrentQueue<std::shared_ptr<Dummy>> cq(1, m_metricModuleName, "/nonexistent_dir/nonexistent_file.txt"),
+        ConcurrentQueue<std::shared_ptr<Dummy>> cq(1, "/nonexistent_dir/nonexistent_file.txt"),
         std::runtime_error);
 }
 
 TEST_F(ConcurrentQueueTest, CanPushAndPop)
 {
-    ConcurrentQueue<std::shared_ptr<Dummy>> cq(2, m_metricModuleName);
+    ConcurrentQueue<std::shared_ptr<Dummy>> cq(2);
     ASSERT_TRUE(cq.empty());
     cq.push(std::make_shared<Dummy>(1));
     ASSERT_FALSE(cq.empty());
@@ -113,7 +111,7 @@ TEST_F(ConcurrentQueueTest, FloodsWhenFull)
     std::string flood_file = "floodfile.txt";
     // 32 is the size of one block in the queue, for 1 producer and 1 consumer thread
     // the queue has 1 block, so it will flood after 32 pushes
-    ConcurrentQueue<std::shared_ptr<Dummy>> cq(32, m_metricModuleName, flood_file, 3, 500);
+    ConcurrentQueue<std::shared_ptr<Dummy>> cq(32, flood_file, 3, 500);
 
     for (int i = 0; i < 35; i++)
     {
@@ -138,7 +136,7 @@ TEST_F(ConcurrentQueueTest, FloodsWhenFull)
 
 TEST_F(ConcurrentQueueTest, Timeout)
 {
-    ConcurrentQueue<std::shared_ptr<Dummy>> cq(2, m_metricModuleName);
+    ConcurrentQueue<std::shared_ptr<Dummy>> cq(2);
     auto d = std::make_shared<Dummy>(0);
     ASSERT_FALSE(cq.waitPop(d, 0));
     ASSERT_EQ(d->value, 0);
