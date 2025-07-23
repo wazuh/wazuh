@@ -72,7 +72,30 @@ void* so_check_module_loaded(const char *so){
 
 void* so_get_function_sym(void *handle, const char *function_name){
 #ifndef WIN32
-    return dlsym(handle, function_name);
+    if (!handle) {
+        printf("DEBUG: so_get_function_sym called with NULL handle for %s\n", function_name);
+        return NULL;
+    }
+    if (!function_name) {
+        printf("DEBUG: so_get_function_sym called with NULL function_name\n");
+        return NULL;
+    }
+    
+    printf("DEBUG: About to call dlsym(handle=%p, function_name='%s')\n", handle, function_name);
+    fflush(stdout);
+    
+    void *result = dlsym(handle, function_name);
+    
+    printf("DEBUG: dlsym returned %p for %s\n", result, function_name);
+    fflush(stdout);
+    
+    if (!result) {
+        const char *error = dlerror();
+        printf("DEBUG: dlsym error for %s: %s\n", function_name, error ? error : "unknown");
+        fflush(stdout);
+    }
+    
+    return result;
 #else
     return (void *)(intptr_t)GetProcAddress((HINSTANCE)handle, function_name);
 #endif
