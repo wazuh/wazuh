@@ -2040,7 +2040,7 @@ addagent_c := $(wildcard addagent/*.c)
 addagent_o := $(addagent_c:.c=.o)
 
 addagent/%.o: addagent/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -I./addagent -DARGV0=\"manage_agents\" -c $^ -o $@
+	${OSSEC_CC} ${OSSEC_CFLAGS} -I./addagent -c $^ -o $@
 
 #### Active Response ####
 
