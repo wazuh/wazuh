@@ -730,16 +730,17 @@ void fim_checker(const char *path,
         }
     }
 #endif
+    int file_or_directory = evt_data->statbuf.st_mode & S_IFMT;
 
     if (HasFilesystem(path, syscheck.skip_fs)) {
         return;
     }
 
-    if (fim_check_ignore(path) == 1) {
+    if (fim_check_ignore(path, file_or_directory) == 1) {
         return;
     }
 
-    switch (evt_data->statbuf.st_mode & S_IFMT) {
+    switch (file_or_directory) {
 #ifndef WIN32
     case FIM_LINK:
         // Fallthrough
@@ -1658,7 +1659,7 @@ cJSON * fim_scan_info_json(fim_scan_event event, long timestamp) {
     return root;
 }
 
-int fim_check_ignore (const char *file_name) {
+int fim_check_ignore (const char *file_name, int file_or_directory) {
     // Check if the file should be ignored
     if (syscheck.ignore) {
         int i = 0;
@@ -1673,11 +1674,16 @@ int fim_check_ignore (const char *file_name) {
 
     // Check in the regex entry
     if (syscheck.ignore_regex) {
+        
         int i = 0;
         while (syscheck.ignore_regex[i] != NULL) {
             if (OSMatch_Execute(file_name, strlen(file_name), syscheck.ignore_regex[i])) {
-                mdebug2(FIM_IGNORE_SREGEX, file_name, syscheck.ignore_regex[i]->raw);
-                return 1;
+                if(file_or_directory == FIM_DIRECTORY && syscheck.ignore_regex[i]->raw[0] == '!')
+                    return 0;
+                else{
+                    mdebug2(FIM_IGNORE_SREGEX, file_name, syscheck.ignore_regex[i]->raw);
+                    return 1;
+                }
             }
             i++;
         }

@@ -986,7 +986,7 @@ static void test_fim_check_ignore_strncasecmp(void **state) {
 
     expect_string(__wrap__mdebug2, formatted_msg, debug_msg);
 
-    ret = fim_check_ignore("/EtC/dumPDateS");
+    ret = fim_check_ignore("/EtC/dumPDateS",FIM_REGULAR);
 
     assert_int_equal(ret, 1);
 }
@@ -1024,7 +1024,7 @@ static void test_fim_check_ignore_regex(void **state) {
     expect_string(__wrap__mdebug2, formatted_msg, debug_msg);
 #endif
 
-    ret = fim_check_ignore("/test/files/test.swp");
+    ret = fim_check_ignore("/test/files/test.swp",FIM_REGULAR);
 
     assert_int_equal(ret, 1);
 }
@@ -1033,7 +1033,7 @@ static void test_fim_check_ignore_regex(void **state) {
 static void test_fim_check_ignore_failure(void **state) {
    int ret;
 
-    ret = fim_check_ignore("/test/files/test.sp");
+    ret = fim_check_ignore("/test/files/test.sp",FIM_REGULAR);
 
     assert_int_equal(ret, 0);
 }
