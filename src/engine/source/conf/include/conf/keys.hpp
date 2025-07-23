@@ -52,6 +52,7 @@ constexpr std::string_view ARCHIVER_ENABLED = "/engine/archiver/enabled";
 constexpr std::string_view ARCHIVER_PATH = "/engine/archiver/path";
 
 constexpr std::string_view PID_FILE_PATH = "/engine/pid/path";
+constexpr std::string_view SKIP_USER_CHANGE = "/engine/user_change_skip";
 constexpr std::string_view USER = "/engine/user";
 constexpr std::string_view GROUP = "/engine/group";
 }; // namespace conf::key
