@@ -78,7 +78,7 @@ void * wm_sca_main(wm_sca_t * data) {
         pthread_exit(NULL);
     }
 
-    if (sca_module = so_get_module_handle("sca"), sca_module)
+    if (sca_module = so_get_module_handle(SCA_WM_NAME), sca_module)
     {
         sca_start_ptr = so_get_function_sym(sca_module, "sca_start");
         sca_stop_ptr = so_get_function_sym(sca_module, "sca_stop");
@@ -90,7 +90,7 @@ void * wm_sca_main(wm_sca_t * data) {
             sca_set_wm_exec_ptr(wm_exec);
         }
     } else {
-        merror("Can't get syscollector module handle.");
+        merror("Can't get SCA module handle.");
         pthread_exit(NULL);
     }
 

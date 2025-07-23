@@ -910,6 +910,22 @@ InstallCommon()
         fi
     fi
 
+    if [ ${NUNAME} = 'Darwin' ]
+    then
+        if [ -f wazuh_modules/sca/build/lib/libsca.dylib ]
+        then
+            ${INSTALL} -m 0750 -o root -g 0 wazuh_modules/sca/build/lib/libsca.dylib ${INSTALLDIR}/lib
+            install_name_tool -id @rpath/../lib/libsca.dylib ${INSTALLDIR}/lib/libsca.dylib
+        fi
+    elif [ -f wazuh_modules/sca/build/lib/libsca.so ]
+    then
+        ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} wazuh_modules/sca/build/lib/libsca.so ${INSTALLDIR}/lib
+
+        if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]) && [ ${DIST_VER} -le 5 ]; then
+            chcon -t textrel_shlib_t ${INSTALLDIR}/lib/libsca.so
+        fi
+    fi
+
     if [ ${DIST_NAME} = 'AIX' ]
     then
         if [ -f libstdc++.a ]
