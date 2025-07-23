@@ -635,7 +635,6 @@ rm -fr %{buildroot}
 /usr/lib/systemd/system/wazuh-manager.service
 %dir %attr(750, root, wazuh) %{_localstatedir}
 %attr(440, wazuh, wazuh) %{_localstatedir}/VERSION.json
-%attr(750, root, wazuh) %{_localstatedir}/agentless
 %dir %attr(750, root, wazuh) %{_localstatedir}/active-response
 %dir %attr(750, root, wazuh) %{_localstatedir}/active-response/bin
 %attr(750, root, wazuh) %{_localstatedir}/active-response/bin/*
@@ -789,7 +788,6 @@ rm -fr %{buildroot}
 %attr(640, wazuh, wazuh) %missingok %{_localstatedir}/tmp/%{_vdfilename}
 %dir %attr(750, root, wazuh) %{_localstatedir}/queue
 %attr(600, root, wazuh) %{_localstatedir}/queue/agents-timestamp
-%dir %attr(750, wazuh, wazuh) %{_localstatedir}/queue/agentless
 %dir %attr(770, wazuh, wazuh) %{_localstatedir}/queue/alerts
 %dir %attr(770, wazuh, wazuh) %{_localstatedir}/queue/cluster
 %dir %attr(750, wazuh, wazuh) %{_localstatedir}/queue/db
