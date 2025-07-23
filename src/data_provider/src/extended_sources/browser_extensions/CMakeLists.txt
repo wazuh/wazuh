@@ -9,7 +9,7 @@ set(SRC_FILES "")
 
 include_directories(
   include
-  ${CMAKE_SOURCE_DIR}/../external/nlohmann/
+  ${SRC_FOLDER}/external/nlohmann/
 )
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
@@ -30,4 +30,20 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
     target_link_libraries(browser_extensions -fprofile-arcs)
     add_subdirectory(tests)
   endif(UNIT_TEST)
+elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+  include_directories(
+    ${SRC_FOLDER}/external/openssl/include/
+  )
+
+  list(APPEND SRC_FILES 
+    src/chrome.cpp
+  )
+
+  add_library(chrome_extensions STATIC ${SRC_FILES})
+  target_link_libraries(chrome_extensions
+    ${SRC_FOLDER}/external/openssl/libcrypto.a
+  )
+
+  add_executable(chrome_main src/main.cpp)
+  target_link_libraries(chrome_main chrome_extensions)
 endif()
