@@ -78,37 +78,43 @@ void * wm_sca_main(wm_sca_t * data) {
         pthread_exit(NULL);
     }
 
-    if (sca_module = so_get_module_handle(SCA_WM_NAME), sca_module)
+    // Get SCA module handle directly without using global variable
+    void *local_sca_handle = so_get_module_handle(SCA_WM_NAME);
+    if (local_sca_handle)
     {
         minfo("SCA handle acquired.");
         
-        // Use local variable to avoid global variable corruption
-        void *local_sca_module = sca_module;
+        // Debug: Check the handle
+        printf("DEBUG: local_sca_handle = %p\n", local_sca_handle);
+        fflush(stdout);
         
-        sca_start_ptr = so_get_function_sym(local_sca_module, "sca_start");
+        sca_start_ptr = so_get_function_sym(local_sca_handle, "sca_start");
         if (!sca_start_ptr) {
             merror("Failed to get sca_start function pointer");
             pthread_exit(NULL);
         }
         minfo("SCA start function pointer acquired.");
-        sca_stop_ptr = so_get_function_sym(local_sca_module, "sca_stop");
+        sca_stop_ptr = so_get_function_sym(local_sca_handle, "sca_stop");
         if (!sca_stop_ptr) {
             merror("Failed to get sca_stop function pointer");
             pthread_exit(NULL);
         }
         minfo("SCA stop function pointer acquired.");
-        sca_sync_message_ptr = so_get_function_sym(local_sca_module, "sca_sync_message");
+        sca_sync_message_ptr = so_get_function_sym(local_sca_handle, "sca_sync_message");
         if (!sca_sync_message_ptr) {
             merror("Failed to get sca_sync_message function pointer");
             pthread_exit(NULL);
         }
         minfo("SCA sync message function pointer acquired.");
-        sca_set_wm_exec_ptr = so_get_function_sym(local_sca_module, "sca_set_wm_exec");
+        sca_set_wm_exec_ptr = so_get_function_sym(local_sca_handle, "sca_set_wm_exec");
         if (!sca_set_wm_exec_ptr) {
             merror("Failed to get sca_set_wm_exec function pointer");
             pthread_exit(NULL);
         }
         minfo("SCA set wm_exec function pointer acquired.");
+        
+        // Store in global variable only after successful symbol loading
+        sca_module = local_sca_handle;
         // Set the wm_exec function pointer in the SCA module
         if (sca_set_wm_exec_ptr) {
             sca_set_wm_exec_ptr(wm_exec);
