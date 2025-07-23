@@ -45,7 +45,7 @@ static void * wm_sca_main(wm_sca_t * data);   // Module main function. It won't 
 static void wm_sca_destroy(wm_sca_t * data);  // Destroy data
 static int wm_sca_start(wm_sca_t * data);  // Start
 
-cJSON *wm_sca_dump();     // Read config
+cJSON *wm_sca_dump(const wm_sca_t * data);     // Read config
 
 const wm_context WM_SCA_CONTEXT = {
     .name = SCA_WM_NAME,
@@ -80,22 +80,45 @@ void * wm_sca_main(wm_sca_t * data) {
 
     if (sca_module = so_get_module_handle(SCA_WM_NAME), sca_module)
     {
+        minfo("SCA handle acquired.");
         sca_start_ptr = so_get_function_sym(sca_module, "sca_start");
+        if (!sca_start_ptr) {
+            merror("Failed to get sca_start function pointer");
+            pthread_exit(NULL);
+        }
+        minfo("SCA start function pointer acquired.");
         sca_stop_ptr = so_get_function_sym(sca_module, "sca_stop");
+        if (!sca_stop_ptr) {
+            merror("Failed to get sca_stop function pointer");
+            pthread_exit(NULL);
+        }
+        minfo("SCA stop function pointer acquired.");
         sca_sync_message_ptr = so_get_function_sym(sca_module, "sca_sync_message");
+        if (!sca_sync_message_ptr) {
+            merror("Failed to get sca_sync_message function pointer");
+            pthread_exit(NULL);
+        }
+        minfo("SCA sync message function pointer acquired.");
         sca_set_wm_exec_ptr = so_get_function_sym(sca_module, "sca_set_wm_exec");
-        
+        if (!sca_set_wm_exec_ptr) {
+            merror("Failed to get sca_set_wm_exec function pointer");
+            pthread_exit(NULL);
+        }
+        minfo("SCA set wm_exec function pointer acquired.");
         // Set the wm_exec function pointer in the SCA module
         if (sca_set_wm_exec_ptr) {
             sca_set_wm_exec_ptr(wm_exec);
+            minfo("SCA wm_exec function pointer set.");
         }
     } else {
         merror("Can't get SCA module handle.");
         pthread_exit(NULL);
     }
 
-    wm_sca_start(data);
+    minfo("Starting SCA module...");
 
+    wm_sca_start(data);
+    minfo("SCA module started.");
 #ifdef WIN32
     return 0;
 #else
@@ -124,11 +147,11 @@ void wm_sca_destroy(wm_sca_t * data) {
     os_free(data);
 }
 
-cJSON *wm_sca_dump() {
+cJSON *wm_sca_dump(const wm_sca_t * data) {
     cJSON *root = cJSON_CreateObject();
     cJSON *wm_wd = cJSON_CreateObject();
 
-    cJSON_AddStringToObject(wm_wd, "enabled", "yes");
+    cJSON_AddStringToObject(wm_wd, "enabled", data->enabled ? "yes" : "no");
 
     cJSON_AddItemToObject(root,"sca",wm_wd);
 
