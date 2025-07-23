@@ -9,6 +9,7 @@
 // #include <logger.hpp>
 
 #include <thread>
+#include <iostream>
 
 // Static member definition
 int (*SecurityConfigurationAssessment::s_wmExecFunc)(char*, char**, int*, int, const char*) = nullptr;
@@ -53,6 +54,7 @@ SecurityConfigurationAssessment::SecurityConfigurationAssessment(
     , m_fileSystemWrapper(fileSystemWrapper ? std::move(fileSystemWrapper)
                                             : std::make_shared<file_system::FileSystemWrapper>())
 {
+    std::cout << "SecurityConfigurationAssessment initialized with agent UUID: " << m_agentUUID << std::endl;
 }
 
 void SecurityConfigurationAssessment::Run()
@@ -140,6 +142,7 @@ void SecurityConfigurationAssessment::SetPushMessageFunction(const std::function
 
 void SecurityConfigurationAssessment::SetGlobalWmExecFunction(int (*wmExecFunc)(char*, char**, int*, int, const char*))
 {
+    std::cout << "Setting global wm_exec function pointer." << std::endl;
     s_wmExecFunc = wmExecFunc;
 }
 
