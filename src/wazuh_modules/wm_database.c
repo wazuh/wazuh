@@ -13,7 +13,7 @@
 #include "sec.h"
 #include "remoted_op.h"
 #include "wazuh_db/helpers/wdb_global_helpers.h"
-#include "addagent/manage_agents.h" // FILE_SIZE
+#include "addagent/validate.h" // FILE_SIZE
 #include "external/cJSON/cJSON.h"
 
 #ifndef CLIENT
