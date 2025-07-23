@@ -178,6 +178,7 @@ int main(int argc, char* argv[])
     try
     {
         // Changing user and group
+        if (!confManager.get<bool>(conf::key::SKIP_USER_CHANGE))
         {
             /* Check if the user/group given are valid */
             const auto user = confManager.get<std::string>(conf::key::USER);
