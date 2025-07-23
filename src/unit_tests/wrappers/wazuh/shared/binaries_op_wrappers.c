@@ -12,6 +12,7 @@
 #include <stddef.h>
 #include <stdarg.h>
 #include <setjmp.h>
+#include <stdint.h>
 #include <cmocka.h>
 
 int __wrap_get_binary_path(const char *command, char **path) {
