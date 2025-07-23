@@ -7,7 +7,7 @@
  * Foundation.
  */
 
-#include "logged_in_users_unix.hpp"
+#include "logged_in_users_darwin.hpp"
 #include "utmpx_wrapper.hpp"
 
 #include <utmpx.h>

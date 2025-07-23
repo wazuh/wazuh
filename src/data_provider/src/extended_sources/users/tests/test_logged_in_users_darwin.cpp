@@ -10,7 +10,7 @@
 #include "gtest/gtest.h"
 #include "gmock/gmock.h"
 
-#include "logged_in_users_unix.hpp"
+#include "logged_in_users_darwin.hpp"
 #include "iutmpx_wrapper.hpp"
 
 class MockUtmpxWrapper : public IUtmpxWrapper
@@ -29,7 +29,7 @@ TEST(LoggedInUsersProviderTest, CollectReturnsExpectedJson)
     struct utmpx fakeEntry = {};
     fakeEntry.ut_type = USER_PROCESS;
     fakeEntry.ut_pid = 1234;
-    strncpy(fakeEntry.ut_user, "testuser", sizeof(fakeEntry.ut_user));
+    strncpy(fakeEntry.ut_user, "darwinuser", sizeof(fakeEntry.ut_user));
     strncpy(fakeEntry.ut_line, "pts/0", sizeof(fakeEntry.ut_line));
     strncpy(fakeEntry.ut_host, "localhost", sizeof(fakeEntry.ut_host));
     fakeEntry.ut_tv.tv_sec = 1715520000;
@@ -45,7 +45,7 @@ TEST(LoggedInUsersProviderTest, CollectReturnsExpectedJson)
     auto result = provider.collect();
 
     ASSERT_EQ(result.size(), static_cast<size_t>(1));
-    EXPECT_EQ(result[0]["user"], "testuser");
+    EXPECT_EQ(result[0]["user"], "darwinuser");
     EXPECT_EQ(result[0]["type"], "user");
     EXPECT_EQ(result[0]["tty"], "pts/0");
     EXPECT_EQ(result[0]["host"], "localhost");

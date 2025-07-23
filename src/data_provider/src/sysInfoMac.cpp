@@ -31,7 +31,7 @@
 #include "packages/modernPackageDataRetriever.hpp"
 #include "groups_darwin.hpp"
 #include "user_groups_darwin.hpp"
-#include "logged_in_users_unix.hpp"
+#include "logged_in_users_darwin.hpp"
 #include "sudoers_unix.hpp"
 #include "users_darwin.hpp"
 
