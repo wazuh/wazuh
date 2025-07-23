@@ -10,6 +10,9 @@
 
 #include <thread>
 
+// Static member definition
+int (*SecurityConfigurationAssessment::s_wmExecFunc)(char*, char**, int*, int, const char*) = nullptr;
+
 constexpr auto POLICY_SQL_STATEMENT {
     R"(CREATE TABLE IF NOT EXISTS sca_policy (
     id TEXT PRIMARY KEY,
@@ -133,6 +136,16 @@ const std::string& SecurityConfigurationAssessment::Name() const
 void SecurityConfigurationAssessment::SetPushMessageFunction(const std::function<int(const std::string&)>& pushMessage)
 {
     m_pushMessage = pushMessage;
+}
+
+void SecurityConfigurationAssessment::SetGlobalWmExecFunction(int (*wmExecFunc)(char*, char**, int*, int, const char*))
+{
+    s_wmExecFunc = wmExecFunc;
+}
+
+int (*SecurityConfigurationAssessment::GetGlobalWmExecFunction())(char*, char**, int*, int, const char*)
+{
+    return s_wmExecFunc;
 }
 
 std::string SecurityConfigurationAssessment::GetCreateStatement() const
