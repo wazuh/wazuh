@@ -11,6 +11,7 @@
 #include <stddef.h>
 #include <stdarg.h>
 #include <setjmp.h>
+#include <stdint.h>
 #include <cmocka.h>
 
 void __wrap_w_macos_create_log_env(logreader * lf, w_sysinfo_helpers_t * global_sysinfo) {

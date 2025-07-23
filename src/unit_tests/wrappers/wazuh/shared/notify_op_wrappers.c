@@ -13,6 +13,7 @@
 #include <stddef.h>
 #include <stdarg.h>
 #include <setjmp.h>
+#include <stdint.h>
 #include <cmocka.h>
 
 int __wrap_wnotify_modify(wnotify_t * notify, int fd, const woperation_t op) {

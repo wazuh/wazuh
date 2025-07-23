@@ -11,6 +11,7 @@
 #include <stddef.h>
 #include <stdarg.h>
 #include <setjmp.h>
+#include <stdint.h>
 #include <cmocka.h>
 
 w_linked_queue_node_t * __wrap_linked_queue_push_ex(w_linked_queue_t * queue, void * data) {
