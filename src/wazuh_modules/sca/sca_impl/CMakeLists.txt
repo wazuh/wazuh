@@ -85,7 +85,7 @@ if(NOT PCRE2_LIB)
 endif()
 
 add_library(
-    SCAImpl STATIC
+    SCAImpl SHARED
     src/sca_impl.cpp
     src/yaml_document.cpp
     src/yaml_node.cpp
@@ -97,7 +97,6 @@ add_library(
     src/sca_utils.cpp
     src/check_condition_evaluator.cpp
     $<$<PLATFORM_ID:Windows>:src/sca_policy_check_win.cpp>
-    $<$<BOOL:${UNIT_TEST}>:tests/wm_exec_stub.cpp>
     ${SRC_FOLDER}/${RESOURCE_OBJ})
 
 target_include_directories(SCAImpl PUBLIC include PRIVATE src)
