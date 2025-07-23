@@ -162,7 +162,7 @@ Here you can find all the automation tools maintained by the Wazuh team.
 
 ## Documentation
 
-* [Full documentation](http://documentation.wazuh.com)
+* [Full documentation](https://documentation.wazuh.com)
 * [Wazuh installation guide](https://documentation.wazuh.com/current/installation-guide/index.html)
 
 ## Get involved
@@ -175,7 +175,7 @@ You can also join our [Slack community channel](https://wazuh.com/community/join
 
 Stay up to date on news, releases, engineering articles and more.
 
-* [Wazuh website](http://wazuh.com)
+* [Wazuh website](https://wazuh.com)
 * [Linkedin](https://www.linkedin.com/company/wazuh)
 * [YouTube](https://www.youtube.com/c/wazuhsecurity)
 * [Twitter](https://twitter.com/wazuh)
