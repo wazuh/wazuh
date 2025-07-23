@@ -56,6 +56,11 @@ int sca_sync_message(const char* data)
     return ret;
 }
 
+void sca_set_wm_exec(wm_exec_callback_t wm_exec_callback)
+{
+    SecurityConfigurationAssessment::SetGlobalWmExecFunction(wm_exec_callback);
+}
+
 SCA::SCA()
 : m_logFunction {nullptr}
 {
