@@ -753,8 +753,8 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                           ownership=(common.wazuh_uid(), common.wazuh_gid())
                           )
 
-        has_to_reload_ruleset = False
-        errors = {'shared': 0, 'missing': 0, 'extra': 0, 'analysisd': 0}
+        reload_ruleset_files = []
+        errors = {'shared': 0, 'missing': 0, 'extra': 0}
         result_logs = {'debug2': defaultdict(list), 'error': defaultdict(list), 'generic_errors': []}
 
         for filetype, files in ko_files.items():
@@ -765,7 +765,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                         result_logs['debug2'][filename].append(f"Processing file {filename}")
                         if analysis.is_ruleset_file(filename):
                             result_logs['debug2'][filename].append("This file update will trigger a hot-reload in analysisd")
-                            has_to_reload_ruleset = True
+                            reload_ruleset_files.append({'type': filetype, 'file': filename})
 
                         overwrite_or_create_files(filename, data)
                     except Exception as e:
@@ -780,7 +780,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                         result_logs['debug2'][file_to_remove].append(f"Remove file: '{file_to_remove}'")
                         if analysis.is_ruleset_file(file_to_remove):
                             result_logs['debug2'][file_to_remove].append("This file update will trigger a hot-reload in analysisd")
-                            has_to_reload_ruleset = True
+                            reload_ruleset_files.append({'type': filetype, 'file': file_to_remove})
 
                         file_path = os.path.join(common.WAZUH_PATH, file_to_remove)
                         try:
@@ -813,20 +813,31 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                 continue
 
         # If analysisd must be reloaded
-        if has_to_reload_ruleset:
+        if len(reload_ruleset_files) > 0:
             try:
                 response = analysis.send_reload_ruleset_msg(origin={'module': 'cluster'})
                 if response.is_ok():
-                    result_logs['debug2']["analysisd"].append("Successful ruleset reload")
                     if response.has_warnings():
-                        for elem in response.warnings:
-                            result_logs['debug2']["analysisd"].append(elem)
+                        for warning in response.warnings:
+                            matched = [file_info for file_info in reload_ruleset_files if file_info['file'] in warning]
+                            if matched:
+                                for match in matched:
+                                    result_logs['debug2'][match['file']].append(warning)
+                            else:
+                                result_logs['debug2']['warnings'].append(warning)
+
                 else:
-                    errors['analysisd'] += 1
-                    result_logs["error"]["analysisd"].append(f"Error reloading the ruleset {response.errors}")
+                    for error in response.errors:
+                        matched = [file_info for file_info in reload_ruleset_files if file_info['file'] in error]
+                        if matched:
+                            for match in matched:
+                                result_logs['error'][match['type']].append(f"Error reloading {match['type']} "
+                                                                      f"file '{match['file']}': {error}")
+                        else:
+                            result_logs['generic_errors'].append(f"Error reloading ruleset {error}")
+
             except Exception as e:
-                errors['analysisd'] += 1
-                result_logs["error"]["analysisd"].append(f"Error reloading the ruleset {e}")
+                result_logs['generic_errors'].append(f"Error reloading ruleset {e}")
 
 
         if sum(errors.values()) > 0:
