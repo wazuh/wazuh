@@ -9,7 +9,7 @@
  */
 
 #include "cJSON.h"
-#include "manage_agents.h"
+#include "validate.h"
 #include "os_crypto/md5/md5_op.h"
 #include "os_err.h"
 #include "wazuh_db/wdb.h"

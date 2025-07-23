@@ -18,7 +18,7 @@
 #include "shared.h"
 #include "../../os_auth/auth.h"
 #include "../../headers/sec.h"
-#include "../../addagent/manage_agents.h"
+#include "../../addagent/validate.h"
 
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../wrappers/wazuh/os_auth/os_auth_wrappers.h"
