@@ -711,7 +711,7 @@ int fim_whodata_initialize();
  * @param file_name The name of the file to check
  * @return 1 if it has been configured to be ignored, 0 if not
  */
-int fim_check_ignore(const char *file_name);
+int fim_check_ignore(const char *file_name, int file_or_directory);
 
 /**
  * @brief Checks if a specific folder has been configured to be checked with a specific restriction
