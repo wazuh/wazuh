@@ -85,7 +85,7 @@ if(NOT PCRE2_LIB)
 endif()
 
 add_library(
-    SCAImpl SHARED
+    SCAImpl STATIC
     src/sca_impl.cpp
     src/yaml_document.cpp
     src/yaml_node.cpp
@@ -98,6 +98,9 @@ add_library(
     src/check_condition_evaluator.cpp
     $<$<PLATFORM_ID:Windows>:src/sca_policy_check_win.cpp>
     ${SRC_FOLDER}/${RESOURCE_OBJ})
+
+# Set position independent code for static library to be linked into shared library
+set_target_properties(SCAImpl PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
 target_include_directories(SCAImpl PUBLIC include PRIVATE src)
 
