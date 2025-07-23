@@ -128,20 +128,6 @@ WriteSyscollector()
 }
 
 ##########
-# Osquery()
-##########
-WriteOsquery()
-{
-    # Adding to the config file
-    OSQUERY_TEMPLATE=$(GetTemplate "osquery.$1.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
-    if [ "$OSQUERY_TEMPLATE" = "ERROR_NOT_FOUND" ]; then
-        OSQUERY_TEMPLATE=$(GetTemplate "osquery.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
-    fi
-    sed -e "s|\${INSTALLDIR}|$INSTALLDIR|g" "${OSQUERY_TEMPLATE}" >> $NEWCONFIG
-    echo "" >> $NEWCONFIG
-}
-
-##########
 # WriteConfigurationAssessment()
 ##########
 WriteConfigurationAssessment()
@@ -382,9 +368,6 @@ WriteAgent()
     # Rootcheck
     WriteRootcheck "agent"
 
-    # Write osquery
-    WriteOsquery "agent"
-
     # Syscollector configuration
     WriteSyscollector "agent"
 
@@ -488,9 +471,6 @@ WriteManager()
 
     # Write rootcheck
     WriteRootcheck "manager"
-
-    # Write osquery
-    WriteOsquery "manager"
 
     # Syscollector configuration
     WriteSyscollector "manager"
@@ -613,9 +593,6 @@ WriteLocal()
 
     # Write rootcheck
     WriteRootcheck "manager"
-
-    # Write osquery
-    WriteOsquery "manager"
 
     # Vulnerability Detector
     cat ${VULN_TEMPLATE} >> $NEWCONFIG

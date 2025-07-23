@@ -74,11 +74,8 @@ int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2)
     // Select module by name
 
     //osQuery monitor module
-    if (!strcmp(node->values[0], WM_OSQUERYMONITOR_CONTEXT.name)) {
-        if (wm_osquery_monitor_read(children, cur_wmodule) < 0) {
-            OS_ClearNode(children);
-            return OS_INVALID;
-        }
+    if (!strcmp(node->values[0], "osquery")) {
+        mwarn("Module name 'osquery' is deprecated.");
     }
     else if (!strcmp(node->values[0], "open-scap")) {
         mwarn("Module name 'open-scap' is deprecated.");
