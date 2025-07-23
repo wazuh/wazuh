@@ -50,7 +50,21 @@ void* so_get_module_handle(const char *so){
 #else
     snprintf(file_name, 4096-1, "lib%s.so", so);
 #endif
-    return dlopen(file_name, RTLD_LAZY);
+    printf("DEBUG: so_get_module_handle attempting to load '%s'\n", file_name);
+    fflush(stdout);
+    
+    void *handle = dlopen(file_name, RTLD_LAZY);
+    
+    printf("DEBUG: dlopen returned handle %p for '%s'\n", handle, file_name);
+    fflush(stdout);
+    
+    if (!handle) {
+        const char *error = dlerror();
+        printf("DEBUG: dlopen error for '%s': %s\n", file_name, error ? error : "unknown");
+        fflush(stdout);
+    }
+    
+    return handle;
 #endif
 }
 
