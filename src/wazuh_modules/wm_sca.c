@@ -16,6 +16,9 @@
 #include "os_crypto/sha256/sha256_op.h"
 #include "expression.h"
 #include "shared.h"
+#include "wm_exec.h"
+
+#include "sca.h"
 
 #undef minfo
 #undef mwarn
@@ -54,6 +57,12 @@ const wm_context WM_SCA_CONTEXT = {
     .query = NULL,
 };
 
+void *sca_module = NULL;
+sca_start_func sca_start_ptr = NULL;
+sca_stop_func sca_stop_ptr = NULL;
+sca_sync_message_func sca_sync_message_ptr = NULL;
+sca_set_wm_exec_func sca_set_wm_exec_ptr = NULL;
+
 // Module main function. It won't return
 #ifdef WIN32
 DWORD WINAPI wm_sca_main(void *arg) {
@@ -66,6 +75,22 @@ void * wm_sca_main(wm_sca_t * data) {
         minfo("New SCA Module started.");
     } else {
         minfo("Module disabled. Exiting.");
+        pthread_exit(NULL);
+    }
+
+    if (sca_module = so_get_module_handle("sca"), sca_module)
+    {
+        sca_start_ptr = so_get_function_sym(sca_module, "sca_start");
+        sca_stop_ptr = so_get_function_sym(sca_module, "sca_stop");
+        sca_sync_message_ptr = so_get_function_sym(sca_module, "sca_sync_message");
+        sca_set_wm_exec_ptr = so_get_function_sym(sca_module, "sca_set_wm_exec");
+        
+        // Set the wm_exec function pointer in the SCA module
+        if (sca_set_wm_exec_ptr) {
+            sca_set_wm_exec_ptr(wm_exec);
+        }
+    } else {
+        merror("Can't get syscollector module handle.");
         pthread_exit(NULL);
     }
 
