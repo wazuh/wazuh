@@ -8,7 +8,7 @@
  * Foundation
  */
 
-#include "addagent/manage_agents.h"
+#include "addagent/validate.h"
 #include "sec.h"
 #include "external/cJSON/cJSON.h"
 
