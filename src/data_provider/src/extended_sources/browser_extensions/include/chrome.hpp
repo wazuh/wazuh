@@ -1,6 +1,7 @@
-#include <vector>
 #include <string>
-#include <tuple>
+#include <vector>
+#include <filesystem>
+#include "json.hpp"
 
 namespace chrome {
 
@@ -68,32 +69,40 @@ const ChromePathSuffixMap kLinuxPathList = {
 	{ChromeBrowserType::Vivaldi, ".config/vivaldi"},
 };
 
-// const ExtensionPropertyMap kExtensionPropertyList = {
-//     {ExtensionProperty::Type::String, "name", "name"},
-//     {ExtensionProperty::Type::String, "update_url", "update_url"},
-//     {ExtensionProperty::Type::String, "version", "version"},
-//     {ExtensionProperty::Type::String, "author", "author"},
-//     {ExtensionProperty::Type::String, "default_locale", "default_locale"},
-//     {ExtensionProperty::Type::String, "current_locale", "current_locale"},
-//     {ExtensionProperty::Type::String, "background.persistent", "persistent"},
-//     {ExtensionProperty::Type::String, "description", "description"},
-//     {ExtensionProperty::Type::StringArray, "permissions", "permissions"},
-
-//     {ExtensionProperty::Type::StringArray,
-//      "optional_permissions",
-//      "optional_permissions"},
-
-//     {ExtensionProperty::Type::String, "key", "key"},
-// };
-
 const std::vector<std::string> kPossibleConfigFileNames = {"Preferences", "Secure Preferences"};
 const std::string kExtensionsFolderName{"Extensions"};
 const std::string kExtensionManifestName{"manifest.json"};
+const std::string kExtensionLocalesDir{"_locales"};
+const std::string kExtensionLocaleFile{"messages.json"};
 
 class ChromeExtensions {
 	public:
 	ChromeExtensions() = default;
-	private:
+  std::vector<std::string> getUsers();
+  bool isValidChromeProfile(const std::filesystem::path& profilePath);
+  std::string jsonArrayToString(const nlohmann::json& jsonArray);
+  std::string remove_substring(const std::string& input, const std::string& to_remove);
+  bool is_snake_case(const std::string& s);
+  void to_lowercase(std::string& str);
+  void localizeParameters(chrome::ChromeExtension& extension);
+  std::string hash_to_hex_string(const uint8_t* hash, size_t length);
+  int hexCharToInt(char c);
+  std::string webkitToUnixTime(std::string webkit_timestamp);
+  std::string hexToLetters(const std::string& hex);
+  std::string generateIdentifier(const std::string& key);
+  std::string sha256_file(const std::filesystem::path& filepath);
+  void parseManifest(nlohmann::json& manifestJson, chrome::ChromeExtension& extension);
+  void parsePreferenceSettings(chrome::ChromeExtension& extension, const std::string& key, const nlohmann::json& value);
+  void getCommonSettings(chrome::ChromeExtension& extension, const std::filesystem::path& manifestPath, const nlohmann::json& preferencesJson);
+  chrome::ChromeExtensionList getReferencedExtensions(const std::filesystem::path& profilePath);
+  chrome::ChromeExtensionList getUnreferencedExtensions(const std::filesystem::path& profilePath);
+  chrome::ChromeUserProfileList getUserProfile();
+  void printExtensions(const chrome::ChromeExtensionList& extensions);
+  nlohmann::json toJson(const chrome::ChromeExtensionList& extensions);
+  void getExtensionsFromPath(chrome::ChromeExtensionList& extensions, const std::filesystem::path& path);
+  void getExtensionsFromProfiles(chrome::ChromeExtensionList& extensions, const chrome::ChromeUserProfileList& profilePaths);
+	
+  private:
 };
 
 } // namespace chrome
