@@ -18,7 +18,7 @@
 
 #include "../../headers/shared.h"
 #include "../../headers/sec.h"
-#include "../../addagent/manage_agents.h"
+#include "../../addagent/validate.h"
 
 #include "../wrappers/common.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
