@@ -56,6 +56,14 @@ public:
     /// @copydoc IModule::SetPushMessageFunction
     void SetPushMessageFunction(const std::function<int(const std::string&)>& pushMessage) ;
 
+    /// @brief Set the global wm_exec function pointer (static)
+    /// @param wmExecFunc Function pointer to wm_exec
+    static void SetGlobalWmExecFunction(int (*wmExecFunc)(char*, char**, int*, int, const char*));
+
+    /// @brief Get the global wm_exec function pointer (static)
+    /// @return Function pointer to wm_exec or nullptr if not set
+    static int (*GetGlobalWmExecFunction())(char*, char**, int*, int, const char*);
+
 private:
     /// @brief Get the create statement for the database
     std::string GetCreateStatement() const;
@@ -92,4 +100,7 @@ private:
 
     /// @brief Flag to keep the module running
     std::atomic<bool> m_keepRunning {true};
+
+    /// @brief Static/global function pointer to wm_exec
+    static int (*s_wmExecFunc)(char*, char**, int*, int, const char*);
 };
