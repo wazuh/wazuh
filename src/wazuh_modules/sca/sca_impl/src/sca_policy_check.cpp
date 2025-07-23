@@ -1,6 +1,7 @@
 #include <sca_policy_check.hpp>
 
 #include <sca_utils.hpp>
+#include <sca_impl.hpp>
 
 #include <file_io_utils.hpp>
 #include <filesystem_wrapper.hpp>
@@ -165,32 +166,37 @@ CommandRuleEvaluator::CommandRuleEvaluator(PolicyEvaluationContext ctx,
     {
         m_commandExecFunc = [](const std::string& command) -> std::optional<ExecResult>
         {
-            // char *cmdOutput = nullptr;
-            // int resultCode = 0;
+            auto wmExecCallback = SecurityConfigurationAssessment::GetGlobalWmExecFunction();
 
-            // const int timeoutSeconds = 30;
-            // std::string mutableCommand = command;
-
-            // const auto wmExecResult = wm_exec(const_cast<char*>(mutableCommand.c_str()), &cmdOutput, &resultCode, timeoutSeconds, nullptr);
-
-            // ExecResult execResult;
-            // execResult.StdOut = cmdOutput ? std::string(cmdOutput) : "";
-            // execResult.StdErr = ""; // wm_exec doesn't provide stderr separately
-            // execResult.ExitCode = resultCode;
-
-            // if (cmdOutput)
-            // {
-            //     free(cmdOutput);
-            // }
-
-            // if (wmExecResult == 0)
-            // {
-            //     return execResult;
-            // }
-            // else
-            // {
+            if (!wmExecCallback)
+            {
                 return std::nullopt;
-            // }
+            }
+
+            char *cmdOutput = nullptr;
+            int resultCode = 0;
+            const int timeoutSeconds = 30;
+
+            const auto wmExecResult = wmExecCallback(const_cast<char*>(command.c_str()), &cmdOutput, &resultCode, timeoutSeconds, nullptr);
+
+            ExecResult execResult;
+            execResult.StdOut = cmdOutput ? std::string(cmdOutput) : "";
+            execResult.StdErr = ""; // wm_exec doesn't provide stderr separately
+            execResult.ExitCode = resultCode;
+
+            if (cmdOutput)
+            {
+                free(cmdOutput);
+            }
+
+            if (wmExecResult == 0)
+            {
+                return execResult;
+            }
+            else
+            {
+                return std::nullopt;
+            }
         };
     }
 }
