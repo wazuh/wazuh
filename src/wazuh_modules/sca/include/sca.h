@@ -24,11 +24,15 @@ extern "C"
 
     typedef void((*send_data_callback_t)(const void* buffer));
 
-    EXPORTED void sca_start2(log_callback_t callbackLog);
+    typedef int (*wm_exec_callback_t)(char *command, char **output, int *exitcode, int secs, const char * add_path);
+
+    EXPORTED void sca_start(log_callback_t callbackLog);
 
     EXPORTED void sca_stop();
 
     EXPORTED int sca_sync_message(const char* data);
+
+    EXPORTED void sca_set_wm_exec(wm_exec_callback_t wm_exec_callback);
 
 #ifdef __cplusplus
 }
@@ -39,5 +43,7 @@ typedef void (*sca_start_func)(log_callback_t callbackLog);
 typedef void (*sca_stop_func)();
 
 typedef int (*sca_sync_message_func)(const char* data);
+
+typedef void (*sca_set_wm_exec_func)(int (*wm_exec_callback)(char *command, char **output, int *exitcode, int secs, const char * add_path));
 
 #endif //_SCA_H
