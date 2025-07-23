@@ -24,7 +24,7 @@ extern "C"
 
     typedef void((*send_data_callback_t)(const void* buffer));
 
-    EXPORTED void sca_start(log_callback_t callbackLog);
+    EXPORTED void sca_start2(log_callback_t callbackLog);
 
     EXPORTED void sca_stop();
 
