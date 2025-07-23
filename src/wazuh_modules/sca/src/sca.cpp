@@ -11,7 +11,7 @@ extern "C"
 #include "../../wm_sca.h"
 #include "../wazuh_modules/wmodules_def.h"
 
-void sca_start2(log_callback_t callbackLog)
+void sca_start(log_callback_t callbackLog)
 {
     std::function<void(const modules_log_level_t, const std::string&)> callbackLogWrapper {
         [callbackLog](const modules_log_level_t level, const std::string& data)
