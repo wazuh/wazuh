@@ -56,6 +56,7 @@ void* so_get_module_handle(const char *so){
     void *handle = dlopen(file_name, RTLD_LAZY);
     
     printf("DEBUG: dlopen returned handle %p for '%s'\n", handle, file_name);
+    printf("DEBUG: About to return handle %p from so_get_module_handle\n", handle);
     fflush(stdout);
     
     if (!handle) {
