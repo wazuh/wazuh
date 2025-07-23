@@ -56,11 +56,11 @@ add_executable(file_rule_evaluator_test file_rule_evaluator_test.cpp)
 target_link_libraries(file_rule_evaluator_test PRIVATE SCAImpl)
 add_test(NAME FileRuleEvaluatorTest COMMAND file_rule_evaluator_test)
 
-add_executable(command_rule_evaluator_test command_rule_evaluator_test.cpp wm_exec_stub.cpp)
+add_executable(command_rule_evaluator_test command_rule_evaluator_test.cpp)
 target_link_libraries(command_rule_evaluator_test PRIVATE SCAImpl)
 add_test(NAME CommandRuleEvaluatorTest COMMAND command_rule_evaluator_test)
 
-add_executable(directory_rule_evaluator_test directory_rule_evaluator_test.cpp wm_exec_stub.cpp)
+add_executable(directory_rule_evaluator_test directory_rule_evaluator_test.cpp)
 target_link_libraries(directory_rule_evaluator_test PRIVATE SCAImpl)
 add_test(NAME DirectoryRuleEvaluatorTest COMMAND directory_rule_evaluator_test)
 
