@@ -703,6 +703,14 @@
         "type": "file",
         "user": "root"
     },
+    "/var/ossec/lib/libsca.so": {
+        "class": "static",
+        "group": "wazuh",
+        "mode": "0750",
+        "prot": "-rwxr-x---",
+        "type": "file",
+        "user": "root"
+    },
     "/var/ossec/logs": {
         "class": "static",
         "group": "wazuh",
