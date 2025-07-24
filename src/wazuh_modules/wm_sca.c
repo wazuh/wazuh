@@ -79,40 +79,18 @@ void * wm_sca_main(wm_sca_t * data) {
         pthread_exit(NULL);
     }
 
-    // TEST: Use only stack variables and immediate function calls
-    void *tmp_handle = so_get_module_handle(SCA_WM_NAME);
-    printf("DEBUG: tmp_handle = %p\n", tmp_handle); fflush(stdout);
-    
-    if (tmp_handle)
+    if (sca_module = so_get_module_handle(SCA_WM_NAME), sca_module)
     {
         minfo("SCA handle acquired.");
+        sca_start_ptr = so_get_function_sym(sca_module, "sca_start");
+        sca_stop_ptr = so_get_function_sym(sca_module, "sca_stop");
+        sca_sync_message_ptr = so_get_function_sym(sca_module, "sca_sync_message");
+        sca_set_wm_exec_ptr = so_get_function_sym(sca_module, "sca_set_wm_exec");
         
-        printf("DEBUG: About to call dlsym directly with tmp_handle = %p\n", tmp_handle); fflush(stdout);
-        
-        // Try calling so_get_function_sym immediately without storing result
-        void *test_symbol = so_get_function_sym(tmp_handle, "sca_start");
-        printf("DEBUG: so_get_function_sym returned: %p\n", test_symbol); fflush(stdout);
-        printf("DEBUG: tmp_handle after dlsym = %p\n", tmp_handle); fflush(stdout);
-        
-        if (test_symbol) {
-            minfo("SUCCESS: sca_start symbol loaded successfully!");
-            
-            // Only now assign to globals if it worked
-            sca_module = tmp_handle;
-            sca_start_ptr = (sca_start_func)test_symbol;
-            sca_stop_ptr = so_get_function_sym(tmp_handle, "sca_stop");
-            sca_sync_message_ptr = so_get_function_sym(tmp_handle, "sca_sync_message");
-            sca_set_wm_exec_ptr = so_get_function_sym(tmp_handle, "sca_set_wm_exec");
-            
-            // Set the wm_exec function pointer in the SCA module
-            if (sca_set_wm_exec_ptr) {
-                sca_set_wm_exec_ptr(wm_exec);
-                minfo("SCA wm_exec function pointer set.");
-            }
-        } else {
-            merror("Failed to get sca_start symbol");
-            so_free_library(tmp_handle);
-            pthread_exit(NULL);
+        // Set the wm_exec function pointer in the SCA module
+        if (sca_set_wm_exec_ptr) {
+            sca_set_wm_exec_ptr(wm_exec);
+            minfo("SCA wm_exec function pointer set.");
         }
     } else {
         merror("Can't get SCA module handle.");
@@ -140,7 +118,7 @@ void wm_sca_push_request_win(char * msg){
 static int wm_sca_start(wm_sca_t *sca) {
     do
     {
-
+        sca_start_ptr(sca);
     } while(FOREVER());
 
     return 0;
