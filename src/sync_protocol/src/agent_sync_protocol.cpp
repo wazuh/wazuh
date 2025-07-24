@@ -38,56 +38,46 @@ void AgentSyncProtocol::persistDifference(const std::string& module,
     m_persistentQueue->submit(module, id, index, data, operation);
 }
 
-void AgentSyncProtocol::synchronizeModule(const std::string& module, Mode mode, bool realtime)
+bool AgentSyncProtocol::synchronizeModule(const std::string& module, Mode mode, bool realtime)
 {
     if (!ensureQueueAvailable())
     {
         std::cerr << "Failed to open queue: " << DEFAULTQUEUE << std::endl;
-        return;
+        return false;
     }
 
-    for (;;)
+    const auto deadline = std::chrono::steady_clock::now() + SYNC_GLOBAL_TIMEOUT;
+
+    clearSyncState();
+
+    std::vector<PersistedData> data = m_persistentQueue->fetchAll(module);
+
+    if (!sendStartAndWaitAck(module, mode, realtime, data.size(), deadline))
     {
-        const auto deadLine = std::chrono::steady_clock::now() + SYNC_GLOBAL_TIMEOUT;
-
-        {
-            std::lock_guard<std::mutex> lock(m_syncState.mtx);
-            m_syncState.reset();
-        }
-
-        std::vector<PersistedData> data = m_persistentQueue->fetchAll(module);
-
-        if (!sendStartAndWaitAck(module, mode, realtime, data.size(), deadLine))
-        {
-            std::cerr << "Failed to send start message or timed out. Retrying sync process...\n";
-            std::this_thread::sleep_for(SYNC_RETRY_TIMEOUT);
-            continue;
-        }
-
-
-        if (!sendDataMessages(module, m_syncState.session, data))
-        {
-            std::cerr << "Failed to send data messages. Retrying sync process...\n";
-            std::this_thread::sleep_for(SYNC_RETRY_TIMEOUT);
-            continue;
-        }
-
-        if (!sendEndAndWaitAck(module, m_syncState.session, deadLine))
-        {
-            std::cerr << "Failed to send end message or timed out. Retrying sync process...\n";
-            std::this_thread::sleep_for(SYNC_RETRY_TIMEOUT);
-            continue;
-        }
-
-        std::cout << "[Sync] Module '" << module << "' synchronized successfully.\n";
-        clearPersistedDifferences(module);
-
-        {
-            std::lock_guard<std::mutex> lock(m_syncState.mtx);
-            m_syncState.reset();
-        }
-        break;
+        std::cerr << "Failed to send start message or timed out.\n";
+        clearSyncState();
+        return false;
     }
+
+    if (!sendDataMessages(module, m_syncState.session, data))
+    {
+        std::cerr << "Failed to send data messages.\n";
+        clearSyncState();
+        return false;
+    }
+
+    if (!sendEndAndWaitAck(module, m_syncState.session, deadline))
+    {
+        std::cerr << "Failed to send end message or timed out.\n";
+        clearSyncState();
+        return false;
+    }
+
+    std::cout << "[Sync] Module '" << module << "' synchronized successfully.\n";
+    clearPersistedDifferences(module);
+    clearSyncState();
+
+    return true;
 }
 
 bool AgentSyncProtocol::ensureQueueAvailable()
@@ -447,4 +437,10 @@ bool AgentSyncProtocol::validatePhaseAndSession(const SyncPhase receivedPhase, c
     }
 
     return true;
+}
+
+void AgentSyncProtocol::clearSyncState()
+{
+    std::lock_guard<std::mutex> lock(m_syncState.mtx);
+    m_syncState.reset();
 }

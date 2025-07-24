@@ -39,7 +39,8 @@ class IAgentSyncProtocol
         /// @param module Module name
         /// @param mode Sync mode
         /// @param realtime Realtime sync
-        virtual void synchronizeModule(const std::string& module, Wazuh::SyncSchema::Mode mode, bool realtime) = 0;
+        /// @return true if the sync was successfully processed; false otherwise.
+        virtual bool synchronizeModule(const std::string& module, Wazuh::SyncSchema::Mode mode, bool realtime) = 0;
 
         /// @brief Destructor
         virtual ~IAgentSyncProtocol() = default;
@@ -66,7 +67,7 @@ class AgentSyncProtocol : public IAgentSyncProtocol
                                const std::string& data) override;
 
         /// @copydoc IAgentSyncProtocol::synchronizeModule
-        void synchronizeModule(const std::string& module, Wazuh::SyncSchema::Mode mode, bool realtime) override;
+        bool synchronizeModule(const std::string& module, Wazuh::SyncSchema::Mode mode, bool realtime) override;
 
         /// @brief Parses a FlatBuffer response message received from the manager.
         /// @param data Pointer to the FlatBuffer-encoded message buffer.
@@ -149,6 +150,9 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         /// @param incomingSession Session received in message
         /// @return True if current phase and session match the expected ones
         bool validatePhaseAndSession(const SyncPhase receivedPhase, const uint64_t incomingSession);
+
+        /// @brief Safely resets the synchronization state by acquiring a lock.
+        void clearSyncState();
 
         /// @brief Synchronization state shared between threads during module sync.
         ///

@@ -62,16 +62,16 @@ extern "C" {
                                          index, data);
     }
 
-    void asp_sync_module(AgentSyncProtocolHandle* handle,
+    bool asp_sync_module(AgentSyncProtocolHandle* handle,
                          const char* module,
                          int mode,
                          int realtime)
     {
-        if (!handle || !module) return;
+        if (!handle || !module) return false;
 
         auto* wrapper = reinterpret_cast<AgentSyncProtocolWrapper*>(handle);
-        wrapper->impl->synchronizeModule(module,
-                                         static_cast<Wazuh::SyncSchema::Mode>(mode), realtime != 0);
+        return wrapper->impl->synchronizeModule(module,
+                                                static_cast<Wazuh::SyncSchema::Mode>(mode), realtime != 0);
     }
 
     int asp_parse_response_buffer(AgentSyncProtocolHandle* handle, const uint8_t* data)
