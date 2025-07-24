@@ -157,6 +157,7 @@ full_filename,owner_name,group_name,mode,type,prot_permissions,size_bytes,size_e
 /var/ossec/lib/librsync.so,root,wazuh,750,file,-rwxr-x---,,
 /var/ossec/lib/libstdc++.so.6,root,wazuh,750,file,-rwxr-x---,,
 /var/ossec/lib/libsyscollector.so,root,wazuh,750,file,-rwxr-x---,,
+/var/ossec/lib/libsca.so,root,wazuh,750,file,-rwxr-x---,,
 /var/ossec/lib/libsysinfo.so,root,wazuh,750,file,-rwxr-x---,,
 /var/ossec/lib/libvulnerability_scanner.so,root,wazuh,750,file,-rwxr-x---,,
 /var/ossec/lib/libinventory_harvester.so,root,wazuh,750,file,-rwxr-x---,,
