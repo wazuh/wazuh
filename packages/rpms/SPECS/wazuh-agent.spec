@@ -689,6 +689,7 @@ rm -fr %{buildroot}
 %attr(750, root, wazuh) %{_localstatedir}/lib/libdbsync.so
 %attr(750, root, wazuh) %{_localstatedir}/lib/libagent_sync_protocol.so
 %attr(750, root, wazuh) %{_localstatedir}/lib/libsyscollector.so
+%attr(750, root, wazuh) %{_localstatedir}/lib/libsca.so
 %attr(750, root, wazuh) %{_localstatedir}/lib/libsysinfo.so
 %attr(750, root, wazuh) %{_localstatedir}/lib/libstdc++.so.6
 %attr(750, root, wazuh) %{_localstatedir}/lib/libgcc_s.so.1
