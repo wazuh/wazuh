@@ -70,7 +70,7 @@ void SCA::init(const std::function<void(const modules_log_level_t, const std::st
 {
     // TODO Start doing whatever the module does
     m_sca = std::make_unique<SecurityConfigurationAssessment>(".", "agent-uuid-placeholder");
-    logFunction(LOG_INFO, "SCA module initialized successfully.");
+    // logFunction(LOG_INFO, "SCA module initialized successfully.");
 }
 
 void SCA::destroy()
