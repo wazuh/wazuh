@@ -250,7 +250,10 @@ async def restart_agents(agent_list: list = None) -> AffectedItemsWazuhResult:
         rbac_filters = get_rbac_filters(system_resources=system_agents, permitted_resources=list(agent_list))
 
         async with get_wdb_http_client() as wdb_client: 
-            active_agents = await wdb_client.get_agents_restart_info(rbac_filters['filters']['rbac_ids'], rbac_filters['rbac_negate'])
+            active_agents = await wdb_client.get_agents_restart_info(
+                rbac_filters['filters']['rbac_ids'],
+                rbac_filters['rbac_negate']
+            )
 
         # Convert list of dictionaries to dictionary
         active_agents = {agent['id']: agent['version'] for agent in active_agents}
