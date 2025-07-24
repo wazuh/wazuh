@@ -137,16 +137,12 @@ int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2)
         }
     }
 #endif
-    else if (!strcmp(node->values[0], WM_AZURE_CONTEXT.name)) {
-        if (wm_azure_read(xml, children, cur_wmodule) < 0) {
-            OS_ClearNode(children);
-            return OS_INVALID;
-        }
+    else if (!strcmp(node->values[0], "azure-logs")) {
+       mwarn("The 'azure-logs' module is no longer supported. Change it to '%s'.", WM_MS_GRAPH_CONTEXT.name);
     }
 #endif
     else {
-        if (!strcmp(node->values[0], VU_WM_NAME) || !strcmp(node->values[0], AZ_WM_NAME) ||
-            !strcmp(node->values[0], KEY_WM_NAME)) {
+        if (!strcmp(node->values[0], VU_WM_NAME) || !strcmp(node->values[0], KEY_WM_NAME)) {
             mwarn("The '%s' module only works for the manager", node->values[0]);
         } else {
             merror("Unknown module '%s'", node->values[0]);

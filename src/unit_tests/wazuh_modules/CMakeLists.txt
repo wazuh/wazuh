@@ -9,7 +9,6 @@ cmake_minimum_required(VERSION 3.10)
 
 if(${TARGET} STREQUAL "server")
   add_subdirectory(aws)
-  add_subdirectory(azure)
   add_subdirectory(ciscat)
   add_subdirectory(command)
   add_subdirectory(database)
