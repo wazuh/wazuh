@@ -6,8 +6,8 @@
 ### Looking up for the execution directory
 cd `dirname $0`
 
-
 ### Looking for echo -n
+### Detect compatible 'echo -n' behavior across different Unix systems
 ECHO="echo -n"
 hs=`echo -n "a"`
 if [ ! "X$hs" = "Xa" ]; then
@@ -78,6 +78,7 @@ Install()
           MAKEBIN=/opt/freeware/bin/gmake
     fi
     if [ $(grep "Alpine Linux" /etc/os-release > /dev/null  && echo 1) ]; then
+        # Set ALPINE_DEPS flag when Alpine Linux is detected to modify dependency behavior during build
         ALPINE_DEPS="EXTERNAL_SRC_ONLY=1"
     fi
 
@@ -146,7 +147,6 @@ Install()
         echo "Starting Wazuh..."
         UpdateStartOSSEC
     fi
-
 }
 
 ##########
@@ -173,7 +173,6 @@ UseSyscheck()
             ;;
     esac
 }
-
 
 ##########
 # UseRootcheck()
@@ -224,6 +223,7 @@ UseSecurityConfigurationAssessment()
 
 UseSSLCert()
 {
+    # Determine whether to use SSL certificates based on user input then set SSL_CERT flag accordingly
     if [ "X${USER_CREATE_SSL_CERT}" = "Xn" ]; then
         SSL_CERT="no"
     else
@@ -255,6 +255,8 @@ EnableAuthd()
     else
         AS=${USER_ENABLE_AUTHD}
     fi
+
+    # Prompt the user to enable or disable the Wazuh authentication daemon (authd) and set the AUTHD variable accordingly
     echo ""
     case $AS in
         $nomatch)
@@ -273,6 +275,7 @@ EnableAuthd()
 ##########
 ConfigureBoot()
 {
+    # Ask the user whether to auto-start Wazuh after installation
     NB=$1
     if [ "X$INSTYPE" != "Xagent" ]; then
 
@@ -303,6 +306,7 @@ ConfigureBoot()
 ##########
 SetupLogs()
 {
+    # Displays log setup instructions, writes logs, shows message, and optionally pauses for user input
     NB=$1
     echo ""
     echo "  $NB- ${readlogs}"
@@ -324,6 +328,7 @@ SetupLogs()
 ##########
 ConfigureClient()
 {
+    # Configuring the client (agent) installation
     echo ""
     echo "3- ${configuring} $NAME."
     echo ""
@@ -363,6 +368,7 @@ ConfigureClient()
 
     UseSecurityConfigurationAssessment
 
+    # Prompt user to enable or disable Active Response functionality
     echo ""
     $ECHO "  3.5 - ${enable_ar} ($yes/$no) [$yes]: "
 
@@ -400,6 +406,7 @@ ConfigureClient()
 ##########
 ConfigureServer()
 {
+    # Configuring the server installation
     echo ""
     echo "3- ${configuring} $NAME."
 
@@ -414,6 +421,7 @@ ConfigureServer()
         ANSWER=${USER_ENABLE_EMAIL}
     fi
 
+    # Handle user input to configure email notifications, validate email format, resolve SMTP host, and prompt for SMTP server if needed
     case $ANSWER in
         $yesmatch)
             EMAILNOTIFY="yes"
@@ -451,6 +459,7 @@ ConfigureServer()
               fi
             fi
 
+            # Prompt user to confirm or manually enter SMTP server address if not predefined
             if [ "X${USER_EMAIL_SMTP}" = "X" ]; then
                 if [ "X${SMTPHOST}" != "X" ]; then
                     echo ""
@@ -588,6 +597,7 @@ setInstallDir()
 ##########
 setEnv()
 {
+    # Set compile-time environment flags based on installation type (agent or local)
     echo ""
     echo "    - ${installat} ${INSTALLDIR} ."
 
@@ -603,6 +613,7 @@ setEnv()
 ##########
 askForDelete()
 {
+    # Prompt user to delete existing Wazuh installation directory and remove it if confirmed
     if [ -d "$INSTALLDIR" ]; then
         if [ "X${USER_DELETE_DIR}" = "X" ]; then
             echo ""
@@ -632,6 +643,7 @@ askForDelete()
 ##########
 checkDependencies()
 {
+    # Sets up PATH modifications to include system-specific binary locations necessary for compilation on uncommon OSes like Solaris and AIX
     echo ""
     OLDOPATH=$PATH
     if [ "X$NUNAME" = "XSunOS" ]; then
@@ -651,6 +663,7 @@ checkDependencies()
 ##########
 AddWhite()
 {
+    # Prompts the user to add IPs to the Active Response whitelist to avoid blocking them
     while [ 1 ]
     do
         echo ""
@@ -691,6 +704,7 @@ AddWhite()
 ##########
 AddCAStore()
 {
+    # Prompt user to optionally add a custom CA certificate store and validate it
     while [ 1 ]
     do
         echo ""
@@ -726,7 +740,6 @@ AddCAStore()
     done
 
     # Check the certificate
-
     if [ -n "$CA_STORE" ]
     then
         if [ -f $CA_STORE ]
@@ -785,8 +798,7 @@ main()
         . ${PREDEF_FILE}
     fi
 
-    # If user language is not set
-
+    # If user language is not set, prompt the user to choose a language
     if [ "X${USER_LANGUAGE}" = "X" ]; then
 
         # Choosing the language.
@@ -815,7 +827,6 @@ main()
         LANGUAGE=${USER_LG}
 
     else
-
         # If provided language is not valid, default to english
         if [ -d "${TEMPLATE}/${USER_LANGUAGE}" ]; then
             LANGUAGE=${USER_LANGUAGE}
@@ -893,7 +904,6 @@ main()
                     ;;
             esac
         done
-
 
         # Do some of the update steps.
         if [ "X${update_only}" = "Xyes" ]; then
@@ -1022,9 +1032,7 @@ main()
     echo " - ${configat} $INSTALLDIR/etc/ossec.conf"
     echo ""
 
-
     catMsg "0x103-thanksforusing"
-
 
     if [ "X${update_only}" = "Xyes" ]; then
         # Message for the update
@@ -1049,18 +1057,16 @@ main()
         exit 0;
     fi
 
-
     if [ "X$USER_NO_STOP" = "X" ]; then
         read ANY
     fi
-
 
     # PF firewall message
     if [ "X`sh ./src/init/fw-check.sh`" = "XPF" ]; then
         AddPFTable
     fi
 
-
+    # If the installation is a server, we add the agent message
     if [ "X$INSTYPE" = "Xserver" ]; then
         echo ""
         echo " - ${addserveragent}"
@@ -1069,6 +1075,7 @@ main()
         echo "   https://documentation.wazuh.com/"
         echo ""
 
+    # If the installation is an agent, we add the agent message
     elif [ "X$INSTYPE" = "Xagent" ]; then
         echo ""
         echo " - ${moreinfo}"
@@ -1076,6 +1083,7 @@ main()
         echo ""
     fi
 
+    # If the installation is a local install, we add the local message
     if [ "X$notmodified" = "Xyes" ]; then
         catMsg "0x105-noboot"
         echo "      $INSTALLDIR/bin/wazuh-control start"
@@ -1092,8 +1100,9 @@ fi
 ### Calling main function where everything happens
 main
 
-
 if [ "x$HYBID" = "xgo" ]; then
+    # If hybrid install was selected, re-run the install with agent-specific preloaded vars
+    # This configures the agent side after the server install completes
     echo "   --------------------------------------------"
     echo "   Finishing Hybrid setup (agent configuration)"
     echo "   --------------------------------------------"

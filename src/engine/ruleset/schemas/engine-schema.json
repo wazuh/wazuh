@@ -413,6 +413,14 @@
       "type": "geo_point",
       "array": false
     },
+    "destination.geo.location.lat": {
+      "type": "float",
+      "array": false
+    },
+    "destination.geo.location.lon": {
+      "type": "float",
+      "array": false
+    },
     "destination.geo.name": {
       "type": "keyword",
       "array": false
@@ -4223,6 +4231,14 @@
     },
     "source.geo.location": {
       "type": "geo_point",
+      "array": false
+    },
+    "source.geo.location.lat": {
+      "type": "float",
+      "array": false
+    },
+    "source.geo.location.lon": {
+      "type": "float",
       "array": false
     },
     "source.geo.name": {
