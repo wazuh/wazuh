@@ -906,7 +906,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      <<: *empty_response
+      <<: *permission_denied
 
   - name: Try to restart master-node node (specific)
     request:
