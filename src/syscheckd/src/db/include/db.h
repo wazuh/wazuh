@@ -63,12 +63,13 @@ extern "C"
      *
      * @param file_path File path can be a pattern or a primary key
      * @param data Pointer to the data structure where the callback context will be stored.
+     * @param to_delete True if the entry is to be deleted
      *
      * @retval FIMDB_OK on success.
      * @retval FIMDB_FULL if the table limit was reached.
      * @retval FIMDB_ERR on failure.
      */
-    EXPORTED FIMDBErrorCode fim_db_get_path(const char* file_path, callback_context_t data);
+    EXPORTED FIMDBErrorCode fim_db_get_path(const char* file_path, callback_context_t data, bool to_delete);
 
     /**
      * @brief Find entries based on pattern search.
@@ -81,17 +82,6 @@ extern "C"
      * @retval FIMDB_ERR on failure.
      */
     EXPORTED FIMDBErrorCode fim_db_file_pattern_search(const char* pattern, callback_context_t data);
-
-    /**
-     * @brief Delete entry from the DB using file path.
-     *
-     * @param path Path of the entry to be removed.
-     *
-     * @retval FIMDB_OK on success.
-     * @retval FIMDB_FULL if the table limit was reached.
-     * @retval FIMDB_ERR on failure.
-     */
-    EXPORTED FIMDBErrorCode fim_db_remove_path(const char* path);
 
     /**
      * @brief Get count of all inodes in file_entry table.

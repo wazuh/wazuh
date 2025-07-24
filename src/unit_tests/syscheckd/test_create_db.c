@@ -41,14 +41,11 @@
 fim_state_db _files_db_state = FIM_STATE_DB_NORMAL;
 
 void update_wildcards_config();
-void fim_process_wildcard_removed(directory_t *configuration);
 void transaction_callback(ReturnTypeCallback resultType, const cJSON* result_json, void* user_data);
-void fim_event_callback(void* data, void * ctx);
 void fim_calculate_dbsync_difference(const fim_file_data *data, const directory_t *configuration,
                                      const cJSON* changed_data, cJSON* old_attributes, cJSON* changed_attributes);
-void create_windows_who_data_events(void * data, void * ctx);
+void create_unix_who_data_events(void * data, void * ctx);
 void fim_db_remove_entry(void * data, void * ctx);
-void process_delete_event(void * data, void * ctx);
 void fim_db_process_missing_entry(void * data, void * ctx);
 
 /* auxiliary structs */
@@ -66,7 +63,7 @@ typedef struct __fim_data_s {
 } fim_data_t;
 
 typedef struct _txn_data_s {
-    fim_txn_context_t *txn_context;
+    callback_ctx *txn_context;
     char *diff;
     cJSON *dbsync_event;
 } txn_data_t;
@@ -550,14 +547,14 @@ static int setup_transaction_callback(void **state) {
         return 1;
     }
 
-    txn_data->txn_context = calloc(1, sizeof(fim_txn_context_t));
+    txn_data->txn_context = calloc(1, sizeof(callback_ctx));
     if (txn_data->txn_context == NULL) {
         return 1;
     }
-    txn_data->txn_context->evt_data = calloc(1, sizeof(event_data_t));
-    txn_data->txn_context->evt_data->report_event = true;
-    txn_data->txn_context->evt_data->mode = FIM_SCHEDULED;
-    txn_data->txn_context->evt_data->type = FIM_DELETE;
+    txn_data->txn_context->event = calloc(1, sizeof(event_data_t));
+    txn_data->txn_context->event->report_event = true;
+    txn_data->txn_context->event->mode = FIM_SCHEDULED;
+    txn_data->txn_context->event->type = FIM_DELETE;
 
     *state = txn_data;
     return 0;
@@ -572,8 +569,8 @@ static int teardown_transaction_callback(void **state) {
     }
 
     if (txn_data->txn_context != NULL) {
-        if (txn_data->txn_context->evt_data != NULL) {
-            free(txn_data->txn_context->evt_data);
+        if (txn_data->txn_context->event != NULL) {
+            free(txn_data->txn_context->event);
         }
         free(txn_data->txn_context);
     }
@@ -632,139 +629,6 @@ void expect_get_data (char *user, char *group, char *file_path, int calculate_ch
 }
 
 /* tests */
-static void test_fim_json_event(void **state) {
-    fim_data_t *fim_data = *state;
-    fim_entry entry = { .file_entry.path = "test.file", .file_entry.data = fim_data->new_data };
-    event_data_t evt_data = { .mode = FIM_REALTIME, .w_evt = NULL, .report_event = true, .type = FIM_MODIFICATION };
-    directory_t configuration = { .options = 511, .tag = "tag1,tag2" };
-
-    fim_data->json = fim_json_event(&entry, fim_data->old_data, &configuration, &evt_data, NULL);
-
-    assert_non_null(fim_data->json);
-    cJSON *data = cJSON_GetObjectItem(fim_data->json, "data");
-    assert_non_null(data);
-    cJSON *path = cJSON_GetObjectItem(data, "path");
-    assert_string_equal(cJSON_GetStringValue(path), "test.file");
-    cJSON *data_type = cJSON_GetObjectItem(data, "type");
-    assert_string_equal(cJSON_GetStringValue(data_type), "modified");
-    cJSON *tags = cJSON_GetObjectItem(data, "tags");
-    assert_string_equal(cJSON_GetStringValue(tags), "tag1,tag2");
-#ifndef TEST_WINAGENT
-    cJSON *hard_links = cJSON_GetObjectItem(data, "hard_links");
-    assert_null(hard_links);
-#endif
-    cJSON *attributes = cJSON_GetObjectItem(data, "attributes");
-    assert_non_null(attributes);
-    cJSON *changed_attributes = cJSON_GetObjectItem(data, "changed_attributes");
-    assert_non_null(changed_attributes);
-    cJSON *old_attributes = cJSON_GetObjectItem(data, "old_attributes");
-    assert_non_null(old_attributes);
-
-#ifdef TEST_WINAGENT
-    assert_int_equal(cJSON_GetArraySize(changed_attributes), 10);
-#else
-    assert_int_equal(cJSON_GetArraySize(changed_attributes), 11);
-#endif
-    assert_int_equal(cJSON_GetArraySize(attributes), 12);
-    assert_int_equal(cJSON_GetArraySize(old_attributes), 12);
-
-}
-
-
-static void test_fim_json_event_whodata(void **state) {
-    fim_data_t *fim_data = *state;
-    fim_entry entry = { .file_entry.path = "test.file", .file_entry.data = fim_data->new_data };
-    event_data_t evt_data = {
-        .mode = FIM_WHODATA, .w_evt = fim_data->w_evt, .report_event = true, .type = FIM_MODIFICATION
-    };
-    directory_t configuration = { .options = 511, .tag = "tag1,tag2" };
-
-    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
-    expect_function_call_any(__wrap_pthread_mutex_lock);
-    expect_function_call_any(__wrap_pthread_mutex_unlock);
-    expect_function_call_any(__wrap_pthread_rwlock_unlock);
-
-    ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 1))->options |= CHECK_SEECHANGES;
-
-    fim_data->json = fim_json_event(&entry, fim_data->old_data, &configuration, &evt_data, "diff");
-
-    ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 1))->options &= ~CHECK_SEECHANGES;
-
-    assert_non_null(fim_data->json);
-    cJSON *data = cJSON_GetObjectItem(fim_data->json, "data");
-    assert_non_null(data);
-    cJSON *path = cJSON_GetObjectItem(data, "path");
-    assert_string_equal(cJSON_GetStringValue(path), "test.file");
-    cJSON *data_type = cJSON_GetObjectItem(data, "type");
-    assert_string_equal(cJSON_GetStringValue(data_type), "modified");
-    cJSON *tags = cJSON_GetObjectItem(data, "tags");
-    assert_string_equal(cJSON_GetStringValue(tags), "tag1,tag2");
-#ifndef TEST_WINAGENT
-    cJSON *hard_links = cJSON_GetObjectItem(data, "hard_links");
-    assert_null(hard_links);
-#endif
-    cJSON *audit = cJSON_GetObjectItem(data, "audit");
-    assert_non_null(audit);
-#ifdef TEST_WINAGENT
-    assert_int_equal(cJSON_GetArraySize(audit), 4);
-#else
-    assert_int_equal(cJSON_GetArraySize(audit), 14);
-#endif
-    cJSON *diff = cJSON_GetObjectItem(data, "content_changes");
-    assert_string_equal(cJSON_GetStringValue(diff), "diff");
-}
-
-
-static void test_fim_json_event_no_changes(void **state) {
-    fim_data_t *fim_data = *state;
-    fim_entry entry = { .file_entry.path = "test.file", .file_entry.data = fim_data->new_data };
-    event_data_t evt_data = {
-        .mode = FIM_WHODATA, .w_evt = fim_data->w_evt, .report_event = true, .type = FIM_MODIFICATION
-    };
-    directory_t configuration = { .options = 511, .tag = "tag1,tag2" };
-
-    fim_data->json = fim_json_event(&entry, fim_data->new_data, &configuration, &evt_data, NULL);
-
-    assert_null(fim_data->json);
-}
-
-static void test_fim_json_event_hardlink_one_path(void **state) {
-    fim_data_t *fim_data = *state;
-    fim_entry entry = { .file_entry.path = "test.file", .file_entry.data = fim_data->new_data };
-    event_data_t evt_data = { .mode = FIM_REALTIME, .w_evt = NULL, .report_event = true, .type = FIM_MODIFICATION };
-    directory_t configuration = { .options = 511, .tag = NULL };
-
-    fim_data->json = fim_json_event(&entry, fim_data->old_data, &configuration, &evt_data, NULL);
-
-    assert_non_null(fim_data->json);
-    cJSON *data = cJSON_GetObjectItem(fim_data->json, "data");
-    assert_non_null(data);
-    cJSON *path = cJSON_GetObjectItem(data, "path");
-    assert_string_equal(cJSON_GetStringValue(path), "test.file");
-    cJSON *data_type = cJSON_GetObjectItem(data, "type");
-    assert_string_equal(cJSON_GetStringValue(data_type), "modified");
-    cJSON *tags = cJSON_GetObjectItem(data, "tags");
-    assert_null(tags);
-#ifndef TEST_WINAGENT
-    cJSON *hard_links = cJSON_GetObjectItem(data, "hard_links");
-    assert_null(hard_links);
-#endif
-    cJSON *attributes = cJSON_GetObjectItem(data, "attributes");
-    assert_non_null(attributes);
-    cJSON *changed_attributes = cJSON_GetObjectItem(data, "changed_attributes");
-    assert_non_null(changed_attributes);
-    cJSON *old_attributes = cJSON_GetObjectItem(data, "old_attributes");
-    assert_non_null(old_attributes);
-
-#ifndef TEST_WINAGENT
-    assert_int_equal(cJSON_GetArraySize(changed_attributes), 11);
-#else
-    assert_int_equal(cJSON_GetArraySize(changed_attributes), 10);
-#endif
-    assert_int_equal(cJSON_GetArraySize(attributes), 12);
-    assert_int_equal(cJSON_GetArraySize(old_attributes), 12);
-}
-
 static void test_fim_attributes_json(void **state) {
     fim_data_t *fim_data = *state;
     directory_t configuration = { .options = -1 };
@@ -813,67 +677,6 @@ static void test_fim_attributes_json(void **state) {
 #endif
     cJSON *checksum = cJSON_GetObjectItem(fim_data->json, "checksum");
     assert_string_equal(cJSON_GetStringValue(checksum), "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
-}
-
-static void test_fim_json_compare_attrs(void **state) {
-    fim_data_t *fim_data = *state;
-    int i = 0;
-    directory_t configuration = { .options = 511 };
-
-    fim_data->json = fim_json_compare_attrs(
-        fim_data->old_data,
-        fim_data->new_data,
-        &configuration
-    );
-
-    assert_non_null(fim_data->json);
-#ifdef TEST_WINAGENT
-    assert_int_equal(cJSON_GetArraySize(fim_data->json), 10);
-#else
-    assert_int_equal(cJSON_GetArraySize(fim_data->json), 11);
-#endif
-
-    cJSON *size = cJSON_GetArrayItem(fim_data->json, i++);
-    assert_string_equal(cJSON_GetStringValue(size), "size");
-    cJSON *permissions = cJSON_GetArrayItem(fim_data->json, i++);
-    assert_string_equal(cJSON_GetStringValue(permissions), "permissions");
-    cJSON *uid = cJSON_GetArrayItem(fim_data->json, i++);
-    assert_string_equal(cJSON_GetStringValue(uid), "uid");
-    cJSON *owner = cJSON_GetArrayItem(fim_data->json, i++);
-    assert_string_equal(cJSON_GetStringValue(owner), "owner");
-    cJSON *gid = cJSON_GetArrayItem(fim_data->json, i++);
-    assert_string_equal(cJSON_GetStringValue(gid), "gid");
-    cJSON *group = cJSON_GetArrayItem(fim_data->json, i++);
-    assert_string_equal(cJSON_GetStringValue(group), "group_");
-    cJSON *mtime = cJSON_GetArrayItem(fim_data->json, i++);
-    assert_string_equal(cJSON_GetStringValue(mtime), "mtime");
-#ifndef TEST_WINAGENT
-    cJSON *inode = cJSON_GetArrayItem(fim_data->json, i++);
-    assert_string_equal(cJSON_GetStringValue(inode), "inode");
-#endif
-    cJSON *md5 = cJSON_GetArrayItem(fim_data->json, i++);
-    assert_string_equal(cJSON_GetStringValue(md5), "md5");
-    cJSON *sha1 = cJSON_GetArrayItem(fim_data->json, i++);
-    assert_string_equal(cJSON_GetStringValue(sha1), "sha1");
-    cJSON *sha256 = cJSON_GetArrayItem(fim_data->json, i++);
-    assert_string_equal(cJSON_GetStringValue(sha256), "sha256");
-
-}
-
-static void test_fim_json_compare_attrs_without_options(void **state) {
-    fim_data_t *fim_data = *state;
-
-    directory_t configuration = { .options = 0 };
-
-    fim_data->json = fim_json_compare_attrs(
-        fim_data->old_data,
-        fim_data->new_data,
-        &configuration
-    );
-
-    assert_non_null(fim_data->json);
-    assert_int_equal(cJSON_GetArraySize(fim_data->json), 0);
-
 }
 
 static void test_fim_audit_json(void **state) {
@@ -1247,7 +1050,7 @@ static void test_fim_file_modify_transaction(void **state) {
                                              CHECK_SHA1SUM | CHECK_SHA256SUM };
     TXN_HANDLE mock_handle = (TXN_HANDLE)1;
 
-    fim_txn_context_t mock_context = {0};
+    callback_ctx mock_context = {0};
 
 #ifdef TEST_WINAGENT
     char file_path[OS_SIZE_256] = "c:\\windows\\system32\\cmd.exe";
@@ -1577,7 +1380,6 @@ static void test_fim_checker_deleted_file_enoent(void **state) {
     errno = ENOENT;
 
     expect_fim_db_get_path("/media/test.file", FIMDB_ERR);
-    expect_fim_diff_process_delete_file(path, 0);
 
     fim_checker(path, &evt_data, NULL, NULL, NULL);
 
@@ -2227,8 +2029,6 @@ static void test_fim_checker_deleted_file_enoent(void **state) {
     expect_string(__wrap_fim_db_get_path, file_path, expanded_path);
     will_return(__wrap_fim_db_get_path, FIMDB_ERR);
 
-    expect_fim_diff_process_delete_file(expanded_path, 0);
-
     fim_checker(expanded_path, &evt_data, NULL, NULL, NULL);
 
     errno = 0;
@@ -2434,7 +2234,7 @@ static void test_fim_checker_root_file_within_recursion_level(void **state) {
     expect_function_call_any(__wrap_pthread_mutex_lock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
     TXN_HANDLE txn_handle = (TXN_HANDLE) 1;
-    fim_txn_context_t mock_context = {0};
+    callback_ctx mock_context = {0};
     statbuf.st_size = 0;
 
     // Inside fim_file
@@ -3309,7 +3109,11 @@ static void test_fim_process_missing_entry_data_exists(void **state) {
     expect_string(__wrap_fim_db_get_path, file_path, fim_data->w_evt->path);
     will_return(__wrap_fim_db_get_path, FIMDB_OK);
 
-    fim_process_missing_entry(fim_data->w_evt->path, FIM_WHODATA, fim_data->w_evt);
+#ifndef TEST_WINAGENT
+    fim_process_missing_entry(fim_data->w_evt->path, FIM_REALTIME, fim_data->w_evt);
+#else
+    fim_process_missing_entry(fim_data->w_evt->path, FIM_SCHEDULED, fim_data->w_evt);
+#endif
 }
 
 void test_fim_process_missing_entry_whodata_disabled(void **state){
@@ -3341,9 +3145,6 @@ void test_fim_process_missing_entry_whodata_disabled(void **state){
     expect_function_call_any(__wrap_pthread_mutex_lock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
 #endif
-
-    expect_string(__wrap_fim_db_get_path, file_path, fim_data->w_evt->path);
-    will_return(__wrap_fim_db_get_path, FIMDB_ERR);
 
     fim_process_missing_entry(fim_data->w_evt->path, FIM_WHODATA, fim_data->w_evt);
 }
@@ -3386,83 +3187,11 @@ void test_fim_process_missing_entry(void **state){
     expect_string(__wrap_fim_db_file_pattern_search, pattern, pattern);
     will_return(__wrap_fim_db_file_pattern_search, FIMDB_OK);
 
+#ifndef TEST_WINAGENT
+    fim_process_missing_entry(fim_data->w_evt->path, FIM_WHODATA, fim_data->w_evt);
+#else
     fim_process_missing_entry(fim_data->w_evt->path, FIM_SCHEDULED, fim_data->w_evt);
-}
-
-static void test_fim_process_wildcard_removed_no_data(void **state) {
-
-    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
-    expect_function_call_any(__wrap_pthread_rwlock_unlock);
-
-    directory_t *directory0 = OSList_GetFirstNode(removed_entries)->data;
-
-    char buff[OS_SIZE_128] = {0};
-    snprintf(buff, OS_SIZE_128, "%s%c%%", directory0->path, PATH_SEP);
-    expect_string(__wrap_fim_db_file_pattern_search, pattern, buff);
-    will_return(__wrap_fim_db_file_pattern_search, FIMDB_OK);
-
-    expect_string(__wrap_fim_db_get_path, file_path, directory0->path);
-    will_return(__wrap_fim_db_get_path, NULL);
-
-
-    fim_process_wildcard_removed(directory0);
-}
-
-static void test_fim_process_wildcard_removed_failure(void **state) {
-    fim_tmp_file *file = calloc(1, sizeof(fim_tmp_file));
-    file->elements = 1;
-
-    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
-    expect_function_call_any(__wrap_pthread_rwlock_unlock);
-
-    directory_t *directory0 = OSList_GetFirstNode(removed_entries)->data;
-
-    char buff[OS_SIZE_128] = {0};
-
-    snprintf(buff, OS_SIZE_128, "%s%c%%", directory0->path, PATH_SEP);
-    expect_string(__wrap_fim_db_file_pattern_search, pattern, buff);
-    will_return(__wrap_fim_db_file_pattern_search, FIMDB_OK);
-    expect_string(__wrap_fim_db_get_path, file_path, directory0->path);
-    will_return(__wrap_fim_db_get_path, NULL);
-
-    fim_process_wildcard_removed(directory0);
-
-    free(file);
-}
-
-static void test_fim_process_wildcard_removed_data_exists(void **state) {
-
-    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
-    expect_function_call_any(__wrap_pthread_rwlock_unlock);
-
-    fim_data_t *fim_data = *state;
-    directory_t *directory0 = OSList_GetFirstNode(removed_entries)->data;
-
-    fim_data->fentry->file_entry.path = strdup("file");
-    fim_data->fentry->file_entry.data = fim_data->local_data;
-
-    fim_data->local_data->size = 1500;
-    fim_data->local_data->permissions = strdup("0664");
-    fim_data->local_data->attributes = strdup("r--r--r--");
-    fim_data->local_data->uid = strdup("100");
-    fim_data->local_data->gid = strdup("1000");
-    fim_data->local_data->owner = strdup("test");
-    fim_data->local_data->group = strdup("testing");
-    fim_data->local_data->mtime = 1570184223;
-    fim_data->local_data->inode = 606060;
-    strcpy(fim_data->local_data->hash_md5, "3691689a513ace7e508297b583d7050d");
-    strcpy(fim_data->local_data->hash_sha1, "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
-    strcpy(fim_data->local_data->hash_sha256, "672a8ceaea40a441f0268ca9bbb33e99f9643c6262667b61fbe57694df224d40");
-    fim_data->local_data->device = 12345678;
-    strcpy(fim_data->local_data->checksum, "");
-    char pattern[100];
-    snprintf(pattern, PATH_MAX, "%s%c%%", directory0->path, PATH_SEP);
-    expect_string(__wrap_fim_db_file_pattern_search, pattern, pattern);
-    will_return(__wrap_fim_db_file_pattern_search, FIMDB_OK);
-    expect_string(__wrap_fim_db_get_path, file_path, directory0->path);
-    will_return(__wrap_fim_db_get_path, fim_data->fentry);
-
-    fim_process_wildcard_removed(directory0);
+#endif
 }
 
 void test_fim_diff_folder_size(void **state) {
@@ -3579,16 +3308,16 @@ static void test_update_wildcards_config_remove_config() {
 
     // Remove configuration loop
     expect_string(__wrap_fim_db_get_path, file_path, resolvedpath2);
-    will_return(__wrap_fim_db_get_path, NULL);
+    will_return(__wrap_fim_db_get_path, FIMDB_ERR);
 
     expect_string(__wrap_fim_db_get_path, file_path, resolvedpath1);
-    will_return(__wrap_fim_db_get_path, NULL);
+    will_return(__wrap_fim_db_get_path, FIMDB_ERR);
 
     expect_string(__wrap_fim_db_file_pattern_search, pattern, pattern2);
-    will_return(__wrap_fim_db_file_pattern_search, 0);
+    will_return(__wrap_fim_db_file_pattern_search, FIMDB_OK);
 
     expect_string(__wrap_fim_db_file_pattern_search, pattern, pattern1);
-    will_return(__wrap_fim_db_file_pattern_search, 0);
+    will_return(__wrap_fim_db_file_pattern_search, FIMDB_OK);
     update_wildcards_config();
 
     // Empty config
@@ -3617,11 +3346,11 @@ static void test_transaction_callback_add(void **state) {
     char *path = "c:\\windows\\a_test_file.txt";
 #endif
 
-    fim_txn_context_t *txn_context = data->txn_context;
+    callback_ctx *txn_context = data->txn_context;
     fim_entry entry = {.type = FIM_TYPE_FILE, .file_entry.path = path, .file_entry.data=&DEFAULT_FILE_DATA};
     cJSON *result = cJSON_Parse("[{\"attributes\":\"\",\"checksum\":\"d0e2e27875639745261c5d1365eb6c9fb7319247\",\"device\":64768,\"gid\":0,\"group_\":\"root\",\"hash_md5\":\"d41d8cd98f00b204e9800998ecf8427e\",\"hash_sha1\":\"da39a3ee5e6b4b0d3255bfef95601890afd80709\",\"hash_sha256\":\"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\",\"inode\":801978,\"mtime\":1645001030,\"path\":\"/etc/a_test_file.txt\",\"permissions\":\"rw-r--r--\",\"size\":0,\"uid\":0,\"owner\":\"root\"}]");
 
-    txn_context->latest_entry = &entry;
+    txn_context->entry = &entry;
     data->dbsync_event = result;
 
 #ifndef TEST_WINAGENT // The order of the functions is different between windows an linux
@@ -3642,9 +3371,9 @@ static void test_transaction_callback_add(void **state) {
     expect_function_call(__wrap_send_syscheck_msg);
 
     transaction_callback(INSERTED, result, txn_context);
-    assert_int_equal(txn_context->evt_data->type, FIM_ADD);
+    assert_int_equal(txn_context->event->type, FIM_ADD);
 
-    data->txn_context->latest_entry = NULL;
+    data->txn_context->entry = NULL;
 }
 
 static void test_transaction_callback_modify(void **state) {
@@ -3654,9 +3383,9 @@ static void test_transaction_callback_modify(void **state) {
 #else
     char *path = "c:\\windows\\a_test_file.txt";
 #endif
-    fim_txn_context_t *txn_context = data->txn_context;
+    callback_ctx *txn_context = data->txn_context;
     fim_entry entry = {.type = FIM_TYPE_FILE, .file_entry.path = path, .file_entry.data=&DEFAULT_FILE_DATA};
-    txn_context->latest_entry = &entry;
+    txn_context->entry = &entry;
 
     cJSON *result = cJSON_Parse("[{\"new\":{\"checksum\":\"cfdd740677ed8b250e93081e72b4d97b1c846fdc\",\"hash_md5\":\"d73b04b0e696b0945283defa3eee4538\",\"hash_sha1\":\"e7509a8c032f3bc2a8df1df476f8ef03436185fa\",\"hash_sha256\":\"8cd07f3a5ff98f2a78cfc366c13fb123eb8d29c1ca37c79df190425d5b9e424d\",\"mtime\":1645001693,\"path\":\"/etc/a_test_file.txt\",\"size\":11},\"old\":{\"checksum\":\"d0e2e27875639745261c5d1365eb6c9fb7319247\",\"hash_md5\":\"d41d8cd98f00b204e9800998ecf8427e\",\"hash_sha1\":\"da39a3ee5e6b4b0d3255bfef95601890afd80709\",\"hash_sha256\":\"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\",\"mtime\":1645001030,\"path\":\"/etc/a_test_file.txt\",\"size\":0}}]");
     data->dbsync_event = result;
@@ -3679,9 +3408,9 @@ static void test_transaction_callback_modify(void **state) {
     expect_function_call(__wrap_send_syscheck_msg);
 
     transaction_callback(MODIFIED, result, txn_context);
-    assert_int_equal(txn_context->evt_data->type, FIM_MODIFICATION);
+    assert_int_equal(txn_context->event->type, FIM_MODIFICATION);
 
-    data->txn_context->latest_entry = NULL;
+    data->txn_context->entry = NULL;
 }
 
 static void test_transaction_callback_modify_empty_changed_attributes(void **state) {
@@ -3691,9 +3420,9 @@ static void test_transaction_callback_modify_empty_changed_attributes(void **sta
 #else
     char *path = "c:\\windows\\a_test_file.txt";
 #endif
-    fim_txn_context_t *txn_context = data->txn_context;
+    callback_ctx *txn_context = data->txn_context;
     fim_entry entry = {.type = FIM_TYPE_FILE, .file_entry.path = path, .file_entry.data=&DEFAULT_FILE_DATA};
-    txn_context->latest_entry = &entry;
+    txn_context->entry = &entry;
 
     cJSON *result = cJSON_Parse("{\"new\":{\"checksum\":\"cfdd740677ed8b250e93081e72b4d97b1c846fdc\",\"hash_md5\":\"d73b04b0e696b0945283defa3eee4538\",\"hash_sha1\":\"e7509a8c032f3bc2a8df1df476f8ef03436185fa\",\"hash_sha256\":\"8cd07f3a5ff98f2a78cfc366c13fb123eb8d29c1ca37c79df190425d5b9e424d\",\"mtime\":1645001693,\"path\":\"/etc/a_test_file.txt\",\"size\":11},\"old\":{\"path\":\"/etc/a_test_file.txt\"}}");
     data->dbsync_event = result;
@@ -3719,9 +3448,9 @@ static void test_transaction_callback_modify_empty_changed_attributes(void **sta
     expect_string(__wrap__mdebug2, formatted_msg, "(6954): Entry 'c:\\windows\\a_test_file.txt' does not have any modified fields. No event will be generated.");
 #endif
     transaction_callback(MODIFIED, result, txn_context);
-    assert_int_equal(txn_context->evt_data->type, FIM_MODIFICATION);
+    assert_int_equal(txn_context->event->type, FIM_MODIFICATION);
 
-    data->txn_context->latest_entry = NULL;
+    data->txn_context->entry = NULL;
 }
 
 static void test_transaction_callback_modify_report_changes(void **state) {
@@ -3731,9 +3460,9 @@ static void test_transaction_callback_modify_report_changes(void **state) {
 #else
     char *path = "c:\\windows\\a_test_file.txt";
 #endif
-    fim_txn_context_t *txn_context = data->txn_context;
+    callback_ctx *txn_context = data->txn_context;
     fim_entry entry = {.type = FIM_TYPE_FILE, .file_entry.path = path, .file_entry.data=&DEFAULT_FILE_DATA};
-    txn_context->latest_entry = &entry;
+    txn_context->entry = &entry;
 
 
     cJSON *result = cJSON_Parse("[{\"new\":{\"checksum\":\"cfdd740677ed8b250e93081e72b4d97b1c846fdc\",\"hash_md5\":\"d73b04b0e696b0945283defa3eee4538\",\"hash_sha1\":\"e7509a8c032f3bc2a8df1df476f8ef03436185fa\",\"hash_sha256\":\"8cd07f3a5ff98f2a78cfc366c13fb123eb8d29c1ca37c79df190425d5b9e424d\",\"mtime\":1645001693,\"path\":\"/etc/a_test_file.txt\",\"size\":11},\"old\":{\"checksum\":\"d0e2e27875639745261c5d1365eb6c9fb7319247\",\"hash_md5\":\"d41d8cd98f00b204e9800998ecf8427e\",\"hash_sha1\":\"da39a3ee5e6b4b0d3255bfef95601890afd80709\",\"hash_sha256\":\"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\",\"mtime\":1645001030,\"path\":\"/etc/a_test_file.txt\",\"size\":0}}]");
@@ -3753,9 +3482,9 @@ static void test_transaction_callback_modify_report_changes(void **state) {
     expect_function_call(__wrap_send_syscheck_msg);
 
     transaction_callback(MODIFIED, result, txn_context);
-    assert_int_equal(txn_context->evt_data->type, FIM_MODIFICATION);
+    assert_int_equal(txn_context->event->type, FIM_MODIFICATION);
 
-    data->txn_context->latest_entry = NULL;
+    data->txn_context->entry = NULL;
 
     ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 1))->options &= ~CHECK_SEECHANGES;
 }
@@ -3768,7 +3497,7 @@ static void test_transaction_callback_delete(void **state) {
     cJSON *result = cJSON_Parse("{\"path\":\"c:\\\\windows\\\\a_test_file.txt\",\"size\":11,\"permissions\":\"rw-r--r--\",\"uid\":\"0\",\"gid\":\"0\",\"owner\":\"root\",\"group_\":\"root\",\"inode\":801978,\"mtime\":1645001693,\"hash_md5\":\"d73b04b0e696b0945283defa3eee4538\",\"hash_sha1\":\"e7509a8c032f3bc2a8df1df476f8ef03436185fa\",\"hash_sha256\":\"8cd07f3a5ff98f2a78cfc366c13fb123eb8d29c1ca37c79df190425d5b9e424d\",\"checksum\":\"cfdd740677ed8b250e93081e72b4d97b1c846fdc\"}");
 #endif
 
-    fim_txn_context_t *txn_context = data->txn_context;
+    callback_ctx *txn_context = data->txn_context;
     data->dbsync_event = result;
 
     // These functions are called every time transaction_callback calls fim_configuration_directory
@@ -3789,13 +3518,13 @@ static void test_transaction_callback_delete(void **state) {
     expect_function_call(__wrap_send_syscheck_msg);
 
     transaction_callback(DELETED, result, txn_context);
-    assert_int_equal(txn_context->evt_data->type, FIM_DELETE);
+    assert_int_equal(txn_context->event->type, FIM_DELETE);
 }
 
 static void test_transaction_callback_delete_report_changes(void **state) {
     txn_data_t *data = (txn_data_t *) *state;
 
-    fim_txn_context_t *txn_context = data->txn_context;
+    callback_ctx *txn_context = data->txn_context;
 #ifndef TEST_WINAGENT
     const char* path = "/etc/a_test_file.txt";
     cJSON *result = cJSON_Parse("{\"path\":\"/etc/a_test_file.txt\",\"size\":11,\"permissions\":\"rw-r--r--\",\"uid\":\"0\",\"gid\":\"0\",\"owner\":\"root\",\"group_\":\"root\",\"inode\":801978,\"mtime\":1645001693,\"hash_md5\":\"d73b04b0e696b0945283defa3eee4538\",\"hash_sha1\":\"e7509a8c032f3bc2a8df1df476f8ef03436185fa\",\"hash_sha256\":\"8cd07f3a5ff98f2a78cfc366c13fb123eb8d29c1ca37c79df190425d5b9e424d\",\"checksum\":\"cfdd740677ed8b250e93081e72b4d97b1c846fdc\"}");
@@ -3820,7 +3549,7 @@ static void test_transaction_callback_delete_report_changes(void **state) {
     expect_function_call(__wrap_send_syscheck_msg);
 
     transaction_callback(DELETED, result, txn_context);
-    assert_int_equal(txn_context->evt_data->type, FIM_DELETE);
+    assert_int_equal(txn_context->event->type, FIM_DELETE);
 
     ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 1))->options &= ~CHECK_SEECHANGES;
 }
@@ -3833,7 +3562,7 @@ static void test_transaction_callback_delete_full_db(void **state) {
     cJSON *result = cJSON_Parse("{\"path\":\"c:\\\\windows\\\\a_test_file.txt\",\"size\":11,\"permissions\":\"rw-r--r--\",\"uid\":\"0\",\"gid\":\"0\",\"owner\":\"root\",\"group_\":\"root\",\"inode\":801978,\"mtime\":1645001693,\"hash_md5\":\"d73b04b0e696b0945283defa3eee4538\",\"hash_sha1\":\"e7509a8c032f3bc2a8df1df476f8ef03436185fa\",\"hash_sha256\":\"8cd07f3a5ff98f2a78cfc366c13fb123eb8d29c1ca37c79df190425d5b9e424d\",\"checksum\":\"cfdd740677ed8b250e93081e72b4d97b1c846fdc\"}");
 #endif
 
-    fim_txn_context_t *txn_context = data->txn_context;
+    callback_ctx *txn_context = data->txn_context;
     data->dbsync_event = result;
 
     // These functions are called every time transaction_callback calls fim_configuration_directory
@@ -3854,7 +3583,7 @@ static void test_transaction_callback_delete_full_db(void **state) {
     expect_function_call(__wrap_send_syscheck_msg);
 
     transaction_callback(DELETED, result, txn_context);
-    assert_int_equal(txn_context->evt_data->type, FIM_DELETE);
+    assert_int_equal(txn_context->event->type, FIM_DELETE);
 }
 
 static void test_transaction_callback_full_db(void **state) {
@@ -3868,10 +3597,10 @@ static void test_transaction_callback_full_db(void **state) {
 #endif
     char debug_msg[OS_SIZE_128] = {0};
 
-    fim_txn_context_t *txn_context = data->txn_context;
+    callback_ctx *txn_context = data->txn_context;
     fim_entry entry = {.type = FIM_TYPE_FILE, .file_entry.path = path, .file_entry.data=&DEFAULT_FILE_DATA};
 
-    txn_context->latest_entry = &entry;
+    txn_context->entry = &entry;
     data->dbsync_event = result;
 
     // These functions are called every time transaction_callback calls fim_configuration_directory
@@ -3893,60 +3622,6 @@ static void test_transaction_callback_full_db(void **state) {
     expect_string(__wrap__mdebug1, formatted_msg, debug_msg);
 
     transaction_callback(MAX_ROWS, result, txn_context);
-}
-
-static void test_fim_event_callback(void **state) {
-    whodata_evt w_event = {.user_name = "audit_user_name" };
-    event_data_t evt_data = { .report_event = true, .w_evt = &w_event };
-    directory_t configuration = { .options = -1, .tag = "tag_name" };
-    callback_ctx cb_ctx = { .event = &evt_data, .config = &configuration };
-
-    cJSON* json_event = cJSON_CreateObject();
-    cJSON* data = cJSON_CreateObject();
-
-    cJSON_AddStringToObject(data, "path", "/path/to/file");
-    cJSON_AddItemToObject(json_event, "data", data);
-
-    expect_fim_file_diff("/path/to/file", strdup("diff"));
-
-    expect_function_call(__wrap_send_syscheck_msg);
-
-    fim_event_callback(json_event, &cb_ctx);
-#ifndef TEST_WINAGENT
-    char* test_event = "{\"data\":{\"path\":\"/path/to/file\",\"audit\":{\"user_name\":\"audit_user_name\",\"process_id\":0,\"ppid\":0},\"tags\":\"tag_name\"}}";
-#else
-    char* test_event = "{\"data\":{\"path\":\"/path/to/file\",\"audit\":{\"user_name\":\"audit_user_name\",\"process_id\":0},\"tags\":\"tag_name\"}}";
-#endif
-    char* string_event = cJSON_PrintUnformatted(json_event);
-    assert_string_equal(string_event, test_event);
-
-    os_free(string_event);
-    cJSON_Delete(json_event);
-}
-
-static void test_fim_event_callback_empty_changed_attributes(void **state) {
-    whodata_evt w_event = {.user_name = "audit_user_name" };
-    event_data_t evt_data = { .report_event = true, .w_evt = &w_event };
-    directory_t configuration = { .options = -1, .tag = "tag_name" };
-    callback_ctx cb_ctx = { .event = &evt_data, .config = &configuration };
-
-    cJSON* json_event = cJSON_CreateObject();
-    cJSON* data = cJSON_CreateObject();
-
-    cJSON_AddStringToObject(data, "path", "/path/to/file");
-    cJSON_AddArrayToObject(data, "changed_attributes");
-    cJSON_AddItemToObject(json_event, "data", data);
-
-    expect_string(__wrap__mdebug2, formatted_msg, "(6954): Entry '/path/to/file' does not have any modified fields. No event will be generated.");
-
-    fim_event_callback(json_event, &cb_ctx);
-
-    char* test_event = "{\"data\":{\"path\":\"/path/to/file\",\"changed_attributes\":[]}}";
-    char* string_event = cJSON_PrintUnformatted(json_event);
-    assert_string_equal(string_event, test_event);
-
-    os_free(string_event);
-    cJSON_Delete(json_event);
 }
 
 /* fim_calculate_dbsync_difference */
@@ -4047,29 +3722,7 @@ void test_fim_calculate_dbsync_difference_no_changed_data(void **state){
     cJSON_Delete(changed_attributes);
 }
 
-void test_process_delete_event(void **state){
-    fim_data_t* entry = (fim_data_t*) *state;
-    directory_t config;
-    config.tag = "tag";
-    event_data_t evt;
-    evt.w_evt = NULL;
-    evt.mode = FIM_SCHEDULED;
-    evt.type = FIM_ADD;
-    evt.report_event = 1;
-    callback_ctx ctx_data;
-    ctx_data.config = &config;
-    ctx_data.event = &evt;
-    entry->fentry->file_entry.path = "path";
-    expect_string(__wrap_fim_db_remove_path, path, entry->fentry->file_entry.path);
-    will_return(__wrap_fim_db_remove_path, 0);
-
-    expect_function_call(__wrap_send_syscheck_msg);
-
-    process_delete_event(entry->fentry, &ctx_data);
-    entry->fentry->file_entry.path = NULL;
-}
-
-void test_create_windows_who_data_events(void **state){
+void test_create_unix_who_data_events(void **state){
     fim_data_t* fim_data = (fim_data_t*) *state;
     char *path = fim_data->w_evt->path;
 
@@ -4088,7 +3741,7 @@ void test_create_windows_who_data_events(void **state){
     #endif
 
     expect_string(__wrap__mdebug2, formatted_msg, "(6319): No configuration found for (file):'./test/test.file'");
-    create_windows_who_data_events(path, fim_data->w_evt);
+    create_unix_who_data_events(path, fim_data->w_evt);
 }
 
 void test_fim_db_remove_entry(void **state){
@@ -4101,8 +3754,6 @@ void test_fim_db_remove_entry(void **state){
 
     expect_string(__wrap_fim_db_get_path, file_path, path);
     will_return(__wrap_fim_db_get_path, FIMDB_OK);
-    expect_string(__wrap_fim_diff_process_delete_file, filename, path);
-    will_return(__wrap_fim_diff_process_delete_file, 0);
     fim_db_remove_entry(path, &get_data);
 }
 
@@ -4162,19 +3813,9 @@ static void test_dbsync_attributes_json(void **state) {
 
 int main(void) {
     const struct CMUnitTest tests[] = {
-        /* fim_json_event */
-        cmocka_unit_test_teardown(test_fim_json_event, teardown_delete_json),
-        cmocka_unit_test_teardown(test_fim_json_event_whodata, teardown_delete_json),
-        cmocka_unit_test_teardown(test_fim_json_event_no_changes, teardown_delete_json),
-        cmocka_unit_test_teardown(test_fim_json_event_hardlink_one_path, teardown_delete_json),
-
         /* fim_attributes_json */
         cmocka_unit_test_teardown(test_fim_attributes_json, teardown_delete_json),
         cmocka_unit_test_setup_teardown(test_dbsync_attributes_json, setup_json_event_attributes, teardown_json_event_attributes),
-
-        /* fim_json_compare_attrs */
-        cmocka_unit_test_teardown(test_fim_json_compare_attrs, teardown_delete_json),
-        cmocka_unit_test_teardown(test_fim_json_compare_attrs_without_options, teardown_delete_json),
 
         /* fim_audit_json */
         cmocka_unit_test_teardown(test_fim_audit_json, teardown_delete_json),
@@ -4300,11 +3941,6 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_fim_process_missing_entry_whodata_disabled, setup_fim_data, teardown_fim_data),
         cmocka_unit_test_setup_teardown(test_fim_process_missing_entry, setup_fim_entry, teardown_fim_entry),
 
-        /* fim_process_wildcard_removed */
-        cmocka_unit_test(test_fim_process_wildcard_removed_no_data),
-        cmocka_unit_test(test_fim_process_wildcard_removed_failure),
-        cmocka_unit_test_setup_teardown(test_fim_process_wildcard_removed_data_exists, setup_fim_entry, teardown_fim_entry),
-
         /* fim_diff_folder_size */
         cmocka_unit_test(test_fim_diff_folder_size),
 
@@ -4318,14 +3954,9 @@ int main(void) {
         cmocka_unit_test_setup_teardown (test_transaction_callback_delete_full_db, setup_transaction_callback, teardown_transaction_callback),
         cmocka_unit_test_setup_teardown(test_transaction_callback_full_db, setup_transaction_callback, teardown_transaction_callback),
 
-        /* fim_event_callback */
-        cmocka_unit_test(test_fim_event_callback),
-        cmocka_unit_test(test_fim_event_callback_empty_changed_attributes),
-
         cmocka_unit_test(test_fim_calculate_dbsync_difference),
         cmocka_unit_test(test_fim_calculate_dbsync_difference_no_changed_data),
-        cmocka_unit_test_setup_teardown(test_create_windows_who_data_events, setup_fim_data, teardown_fim_data),
-        cmocka_unit_test_setup_teardown(test_process_delete_event, setup_fim_entry, teardown_fim_entry),
+        cmocka_unit_test_setup_teardown(test_create_unix_who_data_events, setup_fim_data, teardown_fim_data),
         cmocka_unit_test_setup_teardown(test_fim_db_remove_entry, setup_fim_entry, teardown_fim_entry),
         cmocka_unit_test_setup_teardown(test_fim_db_process_missing_entry, setup_fim_entry, teardown_fim_entry),
     };

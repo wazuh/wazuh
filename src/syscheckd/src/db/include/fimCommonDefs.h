@@ -32,13 +32,18 @@ typedef enum FIMDBErrorCode
 
 typedef void((*logging_callback_t)(const modules_log_level_t level, const char* log));
 typedef void((*callback_t)(void* return_data, void* user_data));
+typedef void((*callback_txn_t)(ReturnTypeCallback result_type, const cJSON* result_json, void* user_data));
 
 /**
  * @brief callback context.
  */
 typedef struct
 {
-    callback_t callback;
+    union
+    {
+        callback_t callback;
+        callback_txn_t callback_txn;
+    };
     void* context;
 } callback_context_t;
 

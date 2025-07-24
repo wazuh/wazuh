@@ -810,7 +810,6 @@ void fim_read_values(HKEY key_handle,
     size_t value_path_length;
     registry_t *configuration = NULL;
     char* diff = NULL;
-    char* arch_string;
 
     value_data.architecture = arch;
     value_data.path = path;
@@ -855,8 +854,6 @@ void fim_read_values(HKEY key_handle,
         if (fim_check_restrict(new.registry_entry.value->value, configuration->restrict_value)) {
             continue;
         }
-
-        arch_string = (arch == ARCH_32BIT) ? "[x32]" : "[x64]";
 
         fim_registry_calculate_hashes(&new, configuration, data_buffer);
 
@@ -913,7 +910,6 @@ void fim_open_key(HKEY root_key_handle,
     fim_entry new;
     registry_t *configuration;
     int result_transaction = -1;
-    char* arch_string;
 
     if (root_key_handle == NULL || full_key == NULL || sub_key == NULL) {
         return;
@@ -996,8 +992,6 @@ void fim_open_key(HKEY root_key_handle,
     if (new.registry_entry.key == NULL) {
         return;
     }
-
-    arch_string = (arch == ARCH_32BIT) ? "[x32]" : "[x64]";
 
     txn_ctx_reg->key = new.registry_entry.key;
 

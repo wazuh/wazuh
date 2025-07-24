@@ -137,12 +137,6 @@ TEST_F(DBTestFixture, TestFimDBRemovePath)
         ASSERT_EQ(result, FIMDB_OK);
         result = fim_db_file_update(fileFIMTest3->toFimEntry(), callback_data_added);
         ASSERT_EQ(result, FIMDB_OK);
-        result = fim_db_remove_path("/etc/wgetrc");
-        ASSERT_EQ(result, FIMDB_OK);
-        result = fim_db_remove_path("/tmp/test.txt");
-        ASSERT_EQ(result, FIMDB_OK);
-        result = fim_db_remove_path("/tmp/test2.txt");
-        ASSERT_EQ(result, FIMDB_OK);
     });
 }
 
@@ -163,7 +157,7 @@ TEST_F(DBTestFixture, TestFimDBGetPath)
         callback_context_t callback_data;
         callback_data.callback = callBackTestFIMEntry;
         callback_data.context = fileFIMTest->toFimEntry();
-        result = fim_db_get_path("/etc/wgetrc", callback_data);
+        result = fim_db_get_path("/etc/wgetrc", callback_data, false);
         ASSERT_EQ(result, FIMDB_OK);
     });
 }
@@ -185,26 +179,6 @@ TEST_F(DBTestFixture, TestFimDBGetCountFileEntry)
         ASSERT_EQ(result, FIMDB_OK);
         count = fim_db_get_count_file_entry();
         ASSERT_EQ(count, 3);
-        result = fim_db_remove_path("/etc/wgetrc");
-        ASSERT_EQ(result, FIMDB_OK);
-        count = fim_db_get_count_file_entry();
-        ASSERT_EQ(count, 2);
-        result = fim_db_file_update(fileFIMTest1->toFimEntry(), callback_data_added);
-        ASSERT_EQ(result, FIMDB_OK);
-        count = fim_db_get_count_file_entry();
-        ASSERT_EQ(count, 3);
-        result = fim_db_file_update(fileFIMTest1->toFimEntry(), callback_data_modified);
-        ASSERT_EQ(result, FIMDB_OK);
-        count = fim_db_get_count_file_entry();
-        ASSERT_EQ(count, 3);
-        result = fim_db_remove_path("/etc/wgetrc");
-        ASSERT_EQ(result, FIMDB_OK);
-        result = fim_db_remove_path("/tmp/test.txt");
-        ASSERT_EQ(result, FIMDB_OK);
-        result = fim_db_remove_path("/tmp/test2.txt");
-        ASSERT_EQ(result, FIMDB_OK);
-        count = fim_db_get_count_file_entry();
-        ASSERT_EQ(count, 0);
     });
 }
 
@@ -225,26 +199,6 @@ TEST_F(DBTestFixture, TestFimDBGetCountFileInode)
         ASSERT_EQ(result, FIMDB_OK);
         count = fim_db_get_count_file_inode();
         ASSERT_EQ(count, 3);
-        result = fim_db_remove_path("/etc/wgetrc");
-        ASSERT_EQ(result, FIMDB_OK);
-        count = fim_db_get_count_file_inode();
-        ASSERT_EQ(count, 2);
-        result = fim_db_file_update(fileFIMTest1->toFimEntry(), callback_data_added);
-        ASSERT_EQ(result, FIMDB_OK);
-        count = fim_db_get_count_file_inode();
-        ASSERT_EQ(count, 3);
-        result = fim_db_file_update(fileFIMTest1->toFimEntry(), callback_data_modified);
-        ASSERT_EQ(result, FIMDB_OK);
-        count = fim_db_get_count_file_inode();
-        ASSERT_EQ(count, 3);
-        result = fim_db_remove_path("/etc/wgetrc");
-        ASSERT_EQ(result, FIMDB_OK);
-        result = fim_db_remove_path("/tmp/test.txt");
-        ASSERT_EQ(result, FIMDB_OK);
-        result = fim_db_remove_path("/tmp/test2.txt");
-        ASSERT_EQ(result, FIMDB_OK);
-        count = fim_db_get_count_file_inode();
-        ASSERT_EQ(count, 0);
     });
 }
 
@@ -330,16 +284,10 @@ TEST_F(DBTestFixture, TestFimDBGetPathNullParameters)
     EXPECT_CALL(*mockLog, loggingFunction(LOG_ERROR, "Invalid parameters")).Times(testing::AtLeast(1));
     EXPECT_NO_THROW({
         callback_context_t callback_data {};
-        ASSERT_EQ(fim_db_get_path("/etc/wgetrc", callback_data), FIMDB_ERR);
+        ASSERT_EQ(fim_db_get_path("/etc/wgetrc", callback_data, false), FIMDB_ERR);
         callback_data.callback = callBackTestFIMEntry;
-        ASSERT_EQ(fim_db_get_path(nullptr, callback_data), FIMDB_ERR);
+        ASSERT_EQ(fim_db_get_path(nullptr, callback_data, false), FIMDB_ERR);
     });
-}
-
-TEST_F(DBTestFixture, TestFimDBRemovePathNullParameter)
-{
-    EXPECT_CALL(*mockLog, loggingFunction(LOG_ERROR, "Invalid parameters")).Times(testing::AtLeast(1));
-    EXPECT_NO_THROW({ ASSERT_EQ(fim_db_remove_path(nullptr), FIMDB_ERR); });
 }
 
 TEST_F(DBTestFixture, TestFimDBFileUpdateNullParameters)
@@ -358,7 +306,7 @@ TEST_F(DBTestFixture, TestFimDBGetPathNoFile)
     callback_context_t callback_data {callBackTestFIMEntry, nullptr};
     EXPECT_CALL(*mockLog, loggingFunction(LOG_DEBUG_VERBOSE, "No entry found for /etc/wgetrc"))
         .Times(testing::AtLeast(1));
-    EXPECT_NO_THROW({ ASSERT_EQ(fim_db_get_path("/etc/wgetrc", callback_data), FIMDB_ERR); });
+    EXPECT_NO_THROW({ ASSERT_EQ(fim_db_get_path("/etc/wgetrc", callback_data, false), FIMDB_ERR); });
 }
 
 TEST_F(DBTestFixture, TestFimDBInvalidSearchPath)

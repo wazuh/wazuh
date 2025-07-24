@@ -113,13 +113,8 @@ typedef struct callback_ctx
 {
     event_data_t* event;
     const directory_t* config;
+    fim_entry* entry;
 } callback_ctx;
-
-typedef struct fim_txn_context_s
-{
-    event_data_t* evt_data;
-    fim_entry* latest_entry;
-} fim_txn_context_t;
 
 #ifdef WIN32
 /* Flags to know if a directory/file's watcher has been removed */
@@ -193,7 +188,7 @@ void fim_checker(const char* path,
                  event_data_t* evt_data,
                  const directory_t* parent_configuration,
                  TXN_HANDLE dbsync_txn,
-                 fim_txn_context_t* ctx);
+                 callback_ctx* ctx);
 
 /**
  * @brief Check file integrity monitoring on a specific folder
@@ -210,7 +205,7 @@ int fim_directory(const char* dir,
                   event_data_t* evt_data,
                   const directory_t* configuration,
                   TXN_HANDLE dbsync_txn,
-                  fim_txn_context_t* ctx);
+                  callback_ctx* ctx);
 
 /**
  * @brief Check file integrity monitoring on a specific file
@@ -225,7 +220,7 @@ void fim_file(const char* path,
               const directory_t* configuration,
               event_data_t* evt_data,
               TXN_HANDLE txn_handle,
-              fim_txn_context_t* ctx);
+              callback_ctx* ctx);
 
 /**
  * @brief Process FIM realtime event
@@ -311,39 +306,6 @@ void fim_print_info(struct timespec start, struct timespec end, clock_t cputime_
  *
  */
 void fim_rt_delay();
-
-/**
- * @brief Produce a file change JSON event
- *
- * {
- *   type:                  "event"
- *   data: {
- *     path:                string
- *     mode:                "scheduled"|"real-time"|"whodata"
- *     type:                "added"|"deleted"|"modified"
- *     timestamp:           number
- *     tags:                string
- *     content_changes:     string
- *     changed_attributes:  array   fim_json_compare_attrs()    [Only if old_data]
- *     old_attributes:      object  fim_attributes_json()       [Only if old_data]
- *     attributes:          object  fim_attributes_json()
- *     audit:               object  fim_audit_json()
- *   }
- * }
- *
- * @param new_data Current file state.
- * @param old_data Previous file state.
- * @param configuration Pointer to the related configuration stanza.
- * @param evt_data Information associated to the triggered event
- * @param diff File diff if applicable.
- * @return File event JSON object.
- * @retval NULL No changes detected. Do not send an event.
- */
-cJSON* fim_json_event(const fim_entry* new_data,
-                      const fim_file_data* old_data,
-                      const directory_t* configuration,
-                      const event_data_t* evt_data,
-                      const char* diff);
 
 /**
  * @brief Frees the memory of a FIM entry data structure
@@ -777,7 +739,6 @@ unsigned int get_realtime_watches();
  *
  * Format:
  * {
- *   type:        "file"|"registry"
  *   size:        number
  *   permissions: string
  *   owner:       string
@@ -800,31 +761,6 @@ unsigned int get_realtime_watches();
  * @return Pointer to cJSON structure.
  */
 cJSON* fim_attributes_json(const cJSON* dbsync_event, const fim_file_data* data, const directory_t* configuration);
-
-/**
- * @brief Create file attribute comparison JSON object
- *
- * Format: array of strings, with the following possible strings:
- * - size
- * - permissions
- * - attributes
- * - uid
- * - owner
- * - gid
- * - group_
- * - mtime
- * - inode (UNIX only)
- * - md5
- * - sha1
- * - sha256
- *
- * @param old_data
- * @param new_data
- * @param configuration
- * @return cJSON*
- */
-cJSON*
-fim_json_compare_attrs(const fim_file_data* old_data, const fim_file_data* new_data, const directory_t* configuration);
 
 /**
  * @brief Create file audit data JSON object
@@ -878,7 +814,7 @@ char* fim_get_real_path(const directory_t* dir);
  * @param configuration Directory configuration to be deleted.
  *
  */
-int fim_generate_delete_event(const char* file_path, const void* evt_data, const void* configuration);
+void fim_generate_delete_event(const char* file_path, const void* evt_data, const void* configuration);
 
 /**
  * @brief Get shutdown process flag.

@@ -132,23 +132,10 @@ struct UpdateFileAction final : public IAction
     {
         auto retVal { false };
         nlohmann::json jsonEvent;
-
-        directory_t configuration = {};
-        configuration.options = -1;
-
-        event_data_t evt_data = {};
-        evt_data.report_event = true;
-        evt_data.mode = FIM_REALTIME;
-        evt_data.w_evt = NULL;
-
-        callback_ctx cb_ctx = {};
-        cb_ctx.event = &evt_data;
-        cb_ctx.config = &configuration;
-
         try
         {
-            DB::instance().updateFile(value, &cb_ctx,
-            [&jsonEvent](const nlohmann::json data) {
+            DB::instance().updateFile(value,
+            [&jsonEvent](int, const nlohmann::json data) {
                 jsonEvent.push_back(data);
             });
             retVal = true;

@@ -39,26 +39,18 @@ void mockLoggingFunction(const modules_log_level_t logLevel, const char* tag)
     mockLog->loggingFunction(logLevel, tag);
 }
 
-static void callbackFileUpdateAdded(void* return_data, void* user_data)
+static void callbackFileUpdateAdded(ReturnTypeCallback result_type, const cJSON* result_json, void* user_data)
 {
-    cJSON* json_event = (cJSON*)return_data;
+    ASSERT_TRUE(result_type == ReturnTypeCallback::INSERTED);
+    ASSERT_TRUE(result_json);
     ASSERT_TRUE(user_data);
-    ASSERT_TRUE(json_event);
-
-    cJSON* data = cJSON_GetObjectItem(json_event, "data");
-    char* type = cJSON_GetStringValue(cJSON_GetObjectItem(data, "type"));
-    ASSERT_FALSE(strcmp("added", type));
 }
 
-static void callbackFileUpdateModified(void* return_data, void* user_data)
+static void callbackFileUpdateModified(ReturnTypeCallback result_type, const cJSON* result_json, void* user_data)
 {
-    cJSON* json_event = (cJSON*)return_data;
+    ASSERT_TRUE(result_type == ReturnTypeCallback::MODIFIED);
+    ASSERT_TRUE(result_json);
     ASSERT_TRUE(user_data);
-    ASSERT_TRUE(json_event);
-
-    cJSON* data = cJSON_GetObjectItem(json_event, "data");
-    char* type = cJSON_GetStringValue(cJSON_GetObjectItem(data, "type"));
-    ASSERT_FALSE(strcmp("modified", type));
 }
 
 class DBTestFixture : public testing::Test
@@ -104,9 +96,9 @@ protected:
         ctx2.event = &evt_data2;
         ctx2.config = &configuration2;
 
-        callback_data_added.callback = callbackFileUpdateAdded;
+        callback_data_added.callback_txn = callbackFileUpdateAdded;
         callback_data_added.context = &ctx1;
-        callback_data_modified.callback = callbackFileUpdateModified;
+        callback_data_modified.callback_txn = callbackFileUpdateModified;
         callback_data_modified.context = &ctx2;
         callback_null.callback = NULL;
         callback_null.context = NULL;

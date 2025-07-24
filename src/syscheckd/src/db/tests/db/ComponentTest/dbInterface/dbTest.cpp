@@ -38,7 +38,7 @@ const auto insertRegistryValueStatement = R"({
 
 void transaction_callback(ReturnTypeCallback resultType, const cJSON* result_json, void* user_data)
 {
-    fim_txn_context_s* event_data = (fim_txn_context_s*)user_data;
+    callback_ctx* event_data = (callback_ctx*)user_data;
     auto expectedValue = R"([{
         "architecture": "[x64]",
         "checksum": "a2fbef8f81af27155dcee5e3927ff6243593b91a",
@@ -53,7 +53,7 @@ void transaction_callback(ReturnTypeCallback resultType, const cJSON* result_jso
     const cJSON* dbsync_event = NULL;
     cJSON* json_path = NULL;
     ASSERT_EQ(INSERTED, resultType);
-    ASSERT_EQ(FIM_ADD, event_data->evt_data->type);
+    ASSERT_EQ(FIM_ADD, event_data->event->type);
 
     if (cJSON_IsArray(result_json))
     {
