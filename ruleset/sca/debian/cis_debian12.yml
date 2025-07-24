@@ -493,7 +493,7 @@ checks:
     condition: any
     rules:
       - "c:systemctl is-enabled autofs -> r:disabled"
-      - "c:dpkg -s autofs -> r:package 'autofs' is not installed"
+      - "c:! dpkg -s autofs"
 
   # 1.1.23 Disable USB Storage (Automated)
   - id: 33024
@@ -538,8 +538,10 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
     condition: any
     rules:
-      - "c:dpkg -s sudo -> r:install ok installed"
-      - "c:dpkg -s sudo-ldap -> r:install ok installed"
+#      - "c:LANG=C dpkg -s sudo | grep -q 'install ok installed'"
+#      - "c:LANG=C dpkg -s sudo-ldap | grep -q 'install ok installed'"
+      - "c:LANG=C dpkg -s sudo 2>/dev/null | grep -q 'install ok installed'"
+      - "c:LANG=C dpkg -s sudo-ldap 2>/dev/null | grep -q 'install ok installed'"
 
   # 1.3.2 Ensure sudo commands use pty (Automated)
   - id: 33026
@@ -596,8 +598,8 @@ checks:
       - pci_dss_v3.2.1: ["10.2.1", "11.5"]
     condition: all
     rules:
-      - "c:dpkg -s aide -> r:Status: install ok installed"
-      - "c:dpkg -s aide-common -> r:Status: install ok installed"
+      - "c:LANG=C dpkg -s aide | grep -q 'Status: install ok installed'"
+      - "c:LANG=C dpkg -s aide-common | grep -q 'Status: install ok installed'"
 
   # 1.4.2 Ensure filesystem integrity is regularly checked (Automated)
   - id: 33029
@@ -641,7 +643,8 @@ checks:
       - pci_dss_v3.2.1: ["2.2"]
     condition: all
     rules:
-      - 'c:stat /boot/grub/grub.cfg -> r:Access:\s*\(0400/-r--------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+      - "c:LANG=C stat -c '%a %u %g' /boot/grub/grub.cfg | grep -q '^400 0 0$'"
+#      - 'c:LANG=C stat /boot/grub/grub.cfg -> r:Access:\s*\(0400/-r--------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
   # 1.5.2 Ensure bootloader password is set (Automated)
   - id: 33031
@@ -734,7 +737,7 @@ checks:
       - pci_dss_v3.2.1: ["10.2.1", "11.5"]
     condition: all
     rules:
-      - "c:dpkg -s prelink -> r:package 'prelink' is not installed"
+      - "c:! dpkg -s prelink"
 
   # 1.6.4 Ensure core dumps are restricted (Automated)
   - id: 33036
@@ -781,7 +784,7 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
     condition: all
     rules:
-      - "c:dpkg -s apparmor -> r:install ok installed"
+      - "c:LANG=C dpkg -s apparmor | grep -q 'install ok installed'"
 
   # 1.7.1.2 Ensure AppArmor is enabled in the bootloader configuration (Automated)
   - id: 33038
@@ -879,7 +882,8 @@ checks:
       - pci_dss_v3.2.1: ["2.2"]
     condition: all
     rules:
-      - 'c:stat /etc/issue.net -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+      - "c:LANG=C stat -c '%a %u %g' //etc/issue.net | grep -q '^644 0 0$'"
+#      - 'c:LANG=C stat /etc/issue.net -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
     # 1.8.3 Ensure permissions on /etc/issue are configured (Automated)
   - id: 33043
@@ -897,7 +901,8 @@ checks:
       - pci_dss_v3.2.1: ["2.2"]
     condition: all
     rules:
-      - 'c:stat /etc/issue -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+      - "c:LANG=C stat -c '%a %u %g' //etc/issue | grep -q '^644 0 0$'"
+#      - 'c:LANG=C stat /etc/issue -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
     # 1.8.4 Ensure permissions on /etc/motd are configured (Automated)
   - id: 33044
@@ -916,7 +921,8 @@ checks:
     condition: any
     rules:
       - "not f:/etc/motd"
-      - 'c:stat -L /etc/motd -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+      - "c:LANG=C stat -c '%a %u %g' /etc/motd | grep -q '^644 0 0$'"
+#      - 'c:LANG=C stat -L /etc/motd -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
     # 1.8.5 Ensure remote login warning banner is configured properly (Automated)
   - id: 33045
@@ -970,7 +976,7 @@ checks:
       - pci_dss_v3.2.1: ["2.2"]
     condition: all
     rules:
-      - "c:dpkg -s GDM -> r:install ok installed"
+      - "c:LANG=C dpkg -s GDM | grep -q 'install ok installed'"
       - "f:/etc/gdm3/greeter.dconf-defaults -> r:banner-message-enable=true"
       - 'f:/etc/gdm3/greeter.dconf-defaults -> r:banner-message-text=\S+'
       - "f:/etc/gdm3/greeter.dconf-defaults -> r:disable-user-list=true"
@@ -1000,8 +1006,8 @@ checks:
     condition: any
     rules:
       - "c:systemctl is-enabled systemd-timesyncd -> r:enabled"
-      - "c:dpkg -s chrony -> r:install ok installed"
-      - "c:dpkg -s ntp -> r:install ok installed"
+      - "c:! dpkg -s ntp"
+      - "c:! dpkg -s chrony"
 
     # 2.1.1.2 Ensure systemd-timesyncd is configured (Manual)
   - id: 33050
@@ -1018,8 +1024,8 @@ checks:
       - pci_dss_v3.2.1: ["10.4"]
     condition: all
     rules:
-      - "c:dpkg -s ntp -> r:package 'ntp' is not installed"
-      - "c:dpkg -s chrony -> r:package 'chrony' is not installed"
+      - "c:! dpkg -s ntp"
+      - "c:! dpkg -s chrony"
       - "c:systemctl is-enabled systemd-timesyncd.service -> r:enabled"
       - "c:timedatectl status -> r:NTP enabled: yes | NTP synchronized: yes"
 
@@ -1038,7 +1044,7 @@ checks:
       - pci_dss_v3.2.1: ["10.4"]
     condition: all
     rules:
-      - "c:dpkg -s ntp -> r:package 'ntp' is not installed"
+      - "c:! dpkg -s chrony"
       - "c:systemctl is-enabled systemd-timesyncd -> r:masked"
       - 'f:/etc/chrony/chrony.conf -> r:server\s*\S+'
       - "c:ps -ef -> r:_chrony"
@@ -1058,7 +1064,7 @@ checks:
       - pci_dss_v3.2.1: ["10.4"]
     condition: all
     rules:
-      - "c:dpkg -s chrony -> r:package 'ntp' is not installed"
+      - "c:! dpkg -s ntp"
       - "c:systemctl is-enabled systemd-timesyncd -> r:masked"
       - "f:/etc/ntp.conf -> r:restrict -(d+) && r:default && r:kod && r:nomodify && r:notrap && r:nopeer && r:noquery"
       - "f:/etc/ntp.conf -> r:restrict -6 && r:default && r:kod && r:nomodify && r:notrap && r:nopeer && r:noquery"
@@ -1081,7 +1087,7 @@ checks:
       - nist_sp_800-53: ["CM-11"]
     condition: none
     rules:
-      - 'c:dpkg -l xserver-xorg* -> r:^\w\s*xserver-xorg'
+      - 'c:LANG=C dpkg -l xserver-xorg* -> r:^\w\s*xserver-xorg'
 
     # 2.1.3 Ensure Avahi Server is not installed (Automated)
   - id: 33054
@@ -1099,7 +1105,7 @@ checks:
       - pci_dss_v3.2.1: ["1.2.1", "2.2.2", "2.2.5"]
     condition: all
     rules:
-      - "c:dpkg -s avahi-daemon -> r:package 'avahi-daemon' is not installed"
+      - "c:! dpkg -s avahi-daemon"
 
     # 2.1.4 Ensure CUPS is not installed (Automated)
   - id: 33055
@@ -1120,7 +1126,7 @@ checks:
       - pci_dss_v3.2.1: ["1.2.1", "2.2.2", "2.2.5"]
     condition: all
     rules:
-      - "c:dpkg -s cups -> r:package 'cups' is not installed"
+      - "c:! dpkg -s cups"
 
     # 2.1.5 Ensure DHCP Server is not installed (Automated)
   - id: 33056
@@ -1140,7 +1146,7 @@ checks:
       - pci_dss_v3.2.1: ["1.2.1", "2.2.2", "2.2.5"]
     condition: all
     rules:
-      - "c:dpkg -s isc-dhcp-server -> r:package 'isc-dhcp-server' is not installed"
+      - "c:! dpkg -s isc-dhcp-server"
 
     # 2.1.6 Ensure LDAP server is not installed (Automated)
   - id: 33057
@@ -1160,7 +1166,7 @@ checks:
       - pci_dss_v3.2.1: ["1.2.1", "2.2.2", "2.2.5"]
     condition: all
     rules:
-      - "c:dpkg -s slapd -> r:package 'slapd' is not installed"
+      - "c:! dpkg -s slapd"
 
     # 2.1.7 Ensure NFS is not installed (Automated)
   - id: 33058
@@ -1178,7 +1184,7 @@ checks:
       - pci_dss_v3.2.1: ["1.2.1", "2.2.2", "2.2.5"]
     condition: all
     rules:
-      - "c:dpkg -s nfs-kernel-server -> r:package 'nfs-kernel-server' is not installed"
+      - "c:! dpkg -s nfs-kernel-server"
 
     # 2.1.8 Ensure DNS Server is not installed (Automated)
   - id: 33059
@@ -1196,7 +1202,7 @@ checks:
       - pci_dss_v3.2.1: ["1.2.1", "2.2.2", "2.2.5"]
     condition: all
     rules:
-      - "c:dpkg -s bind9 -> r:package 'bind9' is not installed"
+      - "c:! dpkg -s bind9"
 
     # 2.1.9 Ensure FTP Server is not installed (Automated)
   - id: 33060
@@ -1214,7 +1220,7 @@ checks:
       - pci_dss_v3.2.1: ["1.2.1", "2.2.2", "2.2.5"]
     condition: all
     rules:
-      - "c:dpkg -s vsftpd -> r:package 'vsftpd' is not installed"
+      - "c:! dpkg -s vsftpd"
 
     # 2.1.10 Ensure HTTP server is not installed (Automated)
   - id: 33061
@@ -1232,7 +1238,7 @@ checks:
       - pci_dss_v3.2.1: ["1.2.1", "2.2.2", "2.2.5"]
     condition: all
     rules:
-      - "c:dpkg -s apache2 -> r:package 'apache2' is not installed"
+      - "c:! dpkg -s apache2"
 
     # 2.1.11 Ensure IMAP and POP3 server are not installed (Automated)
   - id: 33062
@@ -1250,8 +1256,8 @@ checks:
       - pci_dss_v3.2.1: ["1.2.1", "2.2.2", "2.2.5"]
     condition: all
     rules:
-      - "c:dpkg -s dovecot-imapd -> r:package 'dovecot-imapd' is not installed"
-      - "c:dpkg -s dovecot-pop3d -> r:package 'dovecot-pop3d' is not installed"
+      - "c:! dpkg -s dovecot-imapd"
+      - "c:! dpkg -s dovecot-pop3d"
 
     # 2.1.12 Ensure Samba is not installed (Automated)
   - id: 33063
@@ -1269,7 +1275,7 @@ checks:
       - pci_dss_v3.2.1: ["1.2.1", "2.2.2", "2.2.5"]
     condition: all
     rules:
-      - "c:dpkg -s samba -> r:package 'samba' is not installed"
+      - "c:! dpkg -s samba"
 
   # 2.1.13 Ensure HTTP Proxy Server is not installed (Automated)
   - id: 33064
@@ -1287,7 +1293,7 @@ checks:
       - pci_dss_v3.2.1: ["1.2.1", "2.2.2", "2.2.5"]
     condition: all
     rules:
-      - "c:dpkg -s squid -> r:package 'squid' is not installed"
+      - "c:! dpkg -s squid"
 
   # 2.1.14 Ensure SNMP Server is not installed (Automated)
   - id: 33065
@@ -1305,7 +1311,7 @@ checks:
       - pci_dss_v3.2.1: ["1.2.1", "2.2.2", "2.2.5"]
     condition: all
     rules:
-      - "c:dpkg -s snmpd -> r:package 'snmpd' is not installed"
+      - "c:! dpkg -s snmpd"
 
   # 2.1.15 Ensure mail transfer agent is configured for local-only mode (Automated)
   - id: 33066
@@ -1341,7 +1347,7 @@ checks:
       - pci_dss_v3.2.1: ["1.2.1", "2.2.2", "2.2.5"]
     condition: all
     rules:
-      - "c:dpkg -s rsync -> r:package 'rsync' is not installed"
+      - "c:! dpkg -s rsync"
 
   # 2.1.17 Ensure NIS Server is not installed (Automated)
   - id: 33068
@@ -1359,7 +1365,7 @@ checks:
       - pci_dss_v3.2.1: ["1.2.1", "2.2.2", "2.2.5"]
     condition: all
     rules:
-      - "c:dpkg -s nis -> r:package 'nis' is not installed"
+      - "c:! dpkg -s nis"
 
   #####################################
   # 2.2 Service Clients
@@ -1381,7 +1387,7 @@ checks:
       - nist_sp_800-53: ["CM-11"]
     condition: all
     rules:
-      - "c:dpkg -s nis -> r:package 'nis' is not installed"
+      - "c:! dpkg -s nis"
 
   # 2.2.2 Ensure rsh client is not installed (Automated)
   - id: 33070
@@ -1399,7 +1405,7 @@ checks:
       - pci_dss_v3.2.1: ["2.3", "8.3", "8.3.1", "8.3.2"]
     condition: all
     rules:
-      - "c:dpkg -s rsh-client -> r:package 'rsh-client' is not installed"
+      - "c:! dpkg -s rsh-client"
 
   # 2.2.3 Ensure talk client is not installed (Automated)
   - id: 33071
@@ -1417,7 +1423,7 @@ checks:
       - nist_sp_800-53: ["CM-11"]
     condition: all
     rules:
-      - "c:dpkg -s talk -> r:package 'talk' is not installed"
+      - "c:! dpkg -s talk"
 
   # 2.2.4 Ensure telnet client is not installed (Automated)
   - id: 33072
@@ -1435,7 +1441,7 @@ checks:
       - pci_dss_v3.2.1: ["2.3", "8.3", "8.3.1", "8.3.2"]
     condition: all
     rules:
-      - "c:dpkg -s telnet -> r:package 'telnet' is not installed"
+      - "c:! dpkg -s telnet"
 
   # 2.2.5 Ensure LDAP client is not installed (Automated)
   - id: 33073
@@ -1453,7 +1459,7 @@ checks:
       - nist_sp_800-53: ["CM-11"]
     condition: all
     rules:
-      - "c:dpkg -s ldap-utils -> r:package 'ldap-utils' is not installed"
+      - "c:! dpkg -s ldap-utils"
 
   # 2.2.6 Ensure RPC is not installed (Automated)
   - id: 33074
@@ -1471,7 +1477,7 @@ checks:
       - pci_dss_v3.2.1: ["1.2.1", "2.2.2", "2.2.5"]
     condition: all
     rules:
-      - "c:dpkg -s rpcbind -> r:package 'rpcbind' is not installed"
+      - "c:! dpkg -s rpcbind"
 
   # 2.3 Ensure nonessential services are removed or masked (Manual) - Not Implemented
   ###################################################
@@ -1658,7 +1664,7 @@ checks:
       - pci_dss_v3.2.1: ["1.4"]
     condition: all
     rules:
-      - "c:dpkg -s ufw -> r:install ok installed"
+      - "c:LANG=C dpkg -s ufw | grep -q 'install ok installed'"
 
   # 3.6.1.2 Ensure iptables-persistent is not installed. (Automated)
   - id: 33083
@@ -1674,7 +1680,8 @@ checks:
       - pci_dss_v3.2.1: ["1.4"]
     condition: all
     rules:
-      - "c:dpkg-query -s iptables-persistent -> r:package 'iptables-persistent' is not installed"
+      - "c:! dpkg -s iptables-persistent"
+#      - "c:LANG=C dpkg -s iptables-persistent | grep -q 'package 'iptables-persistent' is not installed'"
 
   # 3.6.1.3 Ensure ufw service is enabled. (Automated)
   - id: 33084
@@ -1737,7 +1744,8 @@ checks:
       - pci_dss_v3.2.1: ["1.4"]
     condition: all
     rules:
-      - "c:dpkg-query -s nftables -> r:install ok installed"
+#      - "c:LANG=C dpkg-query -s nftables -> r:install ok installed"
+      - "c:! dpkg -s nftables"
 
   # 3.6.2.2 Ensure Uncomplicated Firewall is not installed or disabled. (Automated)
   - id: 33087
@@ -1753,7 +1761,7 @@ checks:
       - pci_dss_v3.2.1: ["1.4"]
     condition: any
     rules:
-      - "c:dpkg-query -s ufw -> r:package 'ufw' is not installed"
+      - "c:LANG=C dpkg-query -s ufw -> r:package 'ufw' is not installed"
       - "c:ufw status -> r:inactive"
 
   # 3.6.2.3 Ensure iptables are flushed. (Manual)
@@ -1901,7 +1909,7 @@ checks:
       - pci_dss_v3.2.1: ["1.4"]
     condition: all
     rules:
-      - "c:dpkg -s nftables -> r:package 'nftables' is not installed"
+      - "c:LANG=C dpkg -s nftables | grep -q 'package 'nftables' is not installed'"
 
   # 3.6.3.1.3 Ensure Uncomplicated Firewall is not installed or disabled. (Automated)
   - id: 33096
@@ -1917,7 +1925,7 @@ checks:
       - pci_dss_v3.2.1: ["1.4"]
     condition: any
     rules:
-      - "c:dpkg-query -s ufw -> r:package 'ufw' is not installed"
+      - "c:LANG=C dpkg-query -s ufw -> r:package 'ufw' is not installed"
       - "c:ufw status -> r:inactive"
       - "c:systemctl is-enabled ufw -> r:masked"
 
@@ -2028,8 +2036,8 @@ checks:
       - pci_dss_v3.2.1: ["10.2", "10.3"]
     condition: all
     rules:
-      - "c:dpkg -s auditd -> r:install ok installed"
-      - "c:dpkg -s audispd-plugins -> r:install ok installed"
+      - "c:LANG=C dpkg -s auditd | grep -q 'install ok installed'"
+      - "c:LANG=C dpkg -s audispd-plugins | grep -q 'install ok installed'"
 
   # 4.1.1.2 Ensure auditd service is enabled. (Automated)
   - id: 33102
@@ -2458,7 +2466,7 @@ checks:
       - pci_dss_v3.2.1: ["10.2", "10.3"]
     condition: all
     rules:
-      - "c:dpkg -s rsyslog -> r:install ok installed"
+      - "c:LANG=C dpkg -s rsyslog | grep -q 'install ok installed'"
 
   # 4.2.1.2 Ensure rsyslog Service is enabled. (Automated)
   - id: 33123
@@ -2616,7 +2624,8 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
     condition: all
     rules:
-      - 'c:stat /etc/crontab -> r:^Access: \(0600/-rw-------\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*0/\s*root\)$'
+#      - 'c:LANG=C stat /etc/crontab -> r:^Access: \(0600/-rw-------\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*0/\s*root\)$'
+      - "c:LANG=C stat -c \"%a %U %G\" /etc/crontab | grep -q '^600 root root$'"
 
   # 5.1.3 Ensure permissions on /etc/cron.hourly are configured. (Automated)
   - id: 33131
@@ -2634,7 +2643,8 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
     condition: all
     rules:
-      - 'c:stat /etc/cron.hourly -> r:^Access: \(0700/drwx------\)\s*Uid: \(\s*0/\s*root\)\s*Gid: \(\s*0/\s*root\)$'
+#      - 'c:LANG=C stat /etc/cron.hourly -> r:^Access: \(0700/drwx------\)\s*Uid: \(\s*0/\s*root\)\s*Gid: \(\s*0/\s*root\)$'
+      - "c:LANG=C stat -c \"%a %U %G\" /etc/cron.hourly | grep -q '^0700 root root$'"
 
   # 5.1.4 Ensure permissions on /etc/cron.daily are configured. (Automated)
   - id: 33132
@@ -2652,7 +2662,8 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
     condition: all
     rules:
-      - 'c:stat /etc/cron.daily -> r:^Access: \(0700/drwx------\)\s*Uid: \(\s*0/\s*root\)\s*Gid: \(\s*0/\s*root\)$'
+#      - 'c:LANG=C stat /etc/cron.daily -> r:^Access: \(0700/drwx------\)\s*Uid: \(\s*0/\s*root\)\s*Gid: \(\s*0/\s*root\)$'
+      - "c:LANG=C stat -c \"%a %U %G\" /etc/cron.daily | grep -q '^0700 root root$'"
 
   # 5.1.5 Ensure permissions on /etc/cron.weekly are configured. (Automated)
   - id: 33133
@@ -2670,7 +2681,8 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
     condition: all
     rules:
-      - 'c:stat /etc/cron.weekly -> r:^Access: \(0700/drwx------\)\s*Uid: \(\s*0/\s*root\)\s*Gid: \(\s*0/\s*root\)$'
+#      - 'c:LANG=C stat /etc/cron.weekly -> r:^Access: \(0700/drwx------\)\s*Uid: \(\s*0/\s*root\)\s*Gid: \(\s*0/\s*root\)$'
+      - "c:LANG=C stat -c \"%a %U %G\" /etc/cron.weekly | grep -q '^0700 root root$'"
 
   # 5.1.6 Ensure permissions on /etc/cron.monthly are configured. (Automated)
   - id: 33134
@@ -2688,7 +2700,8 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
     condition: all
     rules:
-      - 'c:stat /etc/cron.monthly -> r:^Access: \(0700/drwx------\)\s*Uid: \(\s*0/\s*root\)\s*Gid: \(\s*0/\s*root\)$'
+#      - 'c:LANG=C stat /etc/cron.monthly -> r:^Access: \(0700/drwx------\)\s*Uid: \(\s*0/\s*root\)\s*Gid: \(\s*0/\s*root\)$'
+      - "c:LANG=C stat -c \"%a %U %G\" /etc/cron.monthly | grep -q '^0700 root root$'"
 
   # 5.1.7 Ensure permissions on /etc/cron.d are configured. (Automated)
   - id: 33135
@@ -2706,7 +2719,8 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
     condition: all
     rules:
-      - 'c:stat /etc/cron.d -> r:^Access: \(0700/drwx------\)\s*Uid: \(\s*0/\s*root\)\s*Gid: \(\s*0/\s*root\)$'
+#      - 'c:LANG=C stat /etc/cron.d -> r:^Access: \(0700/drwx------\)\s*Uid: \(\s*0/\s*root\)\s*Gid: \(\s*0/\s*root\)$'
+      - "c:LANG=C stat -c \"%a %U %G\" /etc/cron.d | grep -q '^0700 root root$'"
 
   # 5.1.8 Ensure cron is restricted to authorized users. (Automated)
   - id: 33136
@@ -2726,7 +2740,8 @@ checks:
     rules:
       - "f:/etc/cron.allow"
       - "not f:/etc/cron.deny"
-      - 'c:stat /etc/cron.allow -> r:^Access: \(0640/-rw-r-----\)\s*Uid: \(\s*0/\s*root\)\s*Gid: \(\s*0/\s*root\)$'
+#      - 'c:LANG=C stat /etc/cron.allow -> r:^Access: \(0640/-rw-r-----\)\s*Uid: \(\s*0/\s*root\)\s*Gid: \(\s*0/\s*root\)$'
+      - "c:LANG=C stat -c \"%a %U %G\" /etc/cron.allow | grep -q '^640 root root$'"
 
   # 5.1.9 Ensure at is restricted to authorized users. (Automated)
   - id: 33137
@@ -2746,7 +2761,8 @@ checks:
     rules:
       - "f:/etc/at.allow"
       - "not f:/etc/at.deny"
-      - 'c:stat /etc/at.allow -> r:^Access: \(0640/-rw-r-----\)\s*Uid: \(\s*0/\s*root\)\s*Gid: \(\s*0/\s*root\)$'
+#      - 'c:LANG=C stat /etc/at.allow -> r:^Access: \(0640/-rw-r-----\)\s*Uid: \(\s*0/\s*root\)\s*Gid: \(\s*0/\s*root\)$'
+      - "c:LANG=C stat -c \"%a %U %G\" /etc/at.allow | grep -q '^640 root root$'"
 
   #####################################
   # 5.2 Configure SSH Server
@@ -2768,7 +2784,8 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
     condition: all
     rules:
-      - 'c:stat -L /etc/ssh/sshd_config -> r:^Access: \(0600/-rw-------\)\s*Uid: \(\s*0/\s*root\)\s*Gid: \(\s*0/\s*root\)$'
+#      - 'c:LANG=C stat -L /etc/ssh/sshd_config -> r:^Access: \(0600/-rw-------\)\s*Uid: \(\s*0/\s*root\)\s*Gid: \(\s*0/\s*root\)$'
+      - "c:LANG=C stat -c \"%a %U %G\" /etc/ssh/sshd_config | grep -q '^600 root root$'"
 
   # 5.2.2 Ensure permissions on SSH private host key files are configured. (Automated)
   - id: 33139
@@ -3373,7 +3390,8 @@ checks:
       - pci_dss_v3.2.1: ["3.2", "8.2.1"]
     condition: all
     rules:
-      - 'c:stat /etc/passwd -> r:^Access: \(0644/-rw-r--r--\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*0/\s*root\)$'
+#      - 'c:LANG=C stat /etc/passwd -> r:^Access: \(0644/-rw-r--r--\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*0/\s*root\)$'
+      - "c:stat -c \"%a %U %G\" /etc/passwd | grep -q '^644 root root$'"
 
   # 6.1.3 Ensure permissions on /etc/passwd- are configured. (Automated)
   - id: 33171
@@ -3390,7 +3408,8 @@ checks:
       - pci_dss_v3.2.1: ["3.2", "8.2.1"]
     condition: all
     rules:
-      - 'c:stat /etc/passwd- -> r:^Access: \(0644/-rw-r--r--\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*0/\s*root\)$'
+#      - 'c:LANG=C stat /etc/passwd- -> r:^Access: \(0644/-rw-r--r--\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*0/\s*root\)$'
+      - "c:stat -c \"%a %U %G\" /etc/passwd- | grep -q '^644 root root$'"
 
   # 6.1.4 Ensure permissions on /etc/group are configured. (Automated)
   - id: 33172
@@ -3407,7 +3426,8 @@ checks:
       - pci_dss_v3.2.1: ["3.2", "8.2.1"]
     condition: all
     rules:
-      - 'c:stat /etc/group -> r:^Access: \(0644/-rw-r--r--\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*0/\s*root\)$'
+#      - 'c:LANG=C stat /etc/group -> r:^Access: \(0644/-rw-r--r--\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*0/\s*root\)$'
+      - "c:stat -c \"%a %U %G\" /etc/group | grep -q '^644 root root$'"
 
   # 6.1.5 Ensure permissions on /etc/group- are configured. (Automated)
   - id: 33173
@@ -3424,7 +3444,8 @@ checks:
       - pci_dss_v3.2.1: ["3.2", "8.2.1"]
     condition: all
     rules:
-      - 'c:stat /etc/group- -> r:^Access: \(0644/-rw-r--r--\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*0/\s*root\)$'
+#      - 'c:LANG=C stat /etc/group- -> r:^Access: \(0644/-rw-r--r--\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*0/\s*root\)$'
+      - "c:stat -c \"%a %U %G\" /etc/group- | grep -q '^644 root root$'"
 
   # 6.1.6 Ensure permissions on /etc/shadow are configured. (Automated)
   - id: 33174
@@ -3441,7 +3462,8 @@ checks:
       - pci_dss_v3.2.1: ["3.2", "8.2.1"]
     condition: all
     rules:
-      - 'c:stat /etc/shadow -> r:^Access: \(0640/-rw-r-----\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*0/\s*root\)$|^Access: \(0640/-rw-r-----\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*\d+/\s*shadow\)$'
+#      - 'c:LANG=C stat /etc/shadow -> r:^Access: \(0640/-rw-r-----\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*0/\s*root\)$|^Access: \(0640/-rw-r-----\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*\d+/\s*shadow\)$'
+      - "c:stat -c \"%a %U %G\" /etc/shadow | grep -q '^640 root root$'"
 
   # 6.1.7 Ensure permissions on /etc/shadow- are configured. (Automated)
   - id: 33175
@@ -3458,7 +3480,8 @@ checks:
       - pci_dss_v3.2.1: ["3.2", "8.2.1"]
     condition: all
     rules:
-      - 'c:stat /etc/shadow- -> r:^Access: \(0640/-rw-r-----\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*0/\s*root\)$|^Access: \(0640/-rw-r-----\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*\d+/\s*shadow\)$'
+#      - 'c:LANG=C stat /etc/shadow- -> r:^Access: \(0640/-rw-r-----\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*0/\s*root\)$|^Access: \(0640/-rw-r-----\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*\d+/\s*shadow\)$'
+      - "c:stat -c \"%a %U %G\" /etc/shadow- | grep -q '^640 root root$'"
 
   # 6.1.8 Ensure permissions on /etc/gshadow are configured. (Automated)
   - id: 33176
@@ -3475,7 +3498,8 @@ checks:
       - pci_dss_v3.2.1: ["3.2", "8.2.1"]
     condition: all
     rules:
-      - 'c:stat /etc/gshadow -> r:^Access: \(0640/-rw-r-----\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*0/\s*root\)$|^Access: \(0640/-rw-r-----\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*\d+/\s*shadow\)$'
+#      - 'c:LANG=C stat /etc/gshadow -> r:^Access: \(0640/-rw-r-----\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*0/\s*root\)$|^Access: \(0640/-rw-r-----\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*\d+/\s*shadow\)$'
+      - "c:stat -c \"%a %U %G\" /etc/gshadow | grep -q '^640 root root$'"
 
   # 6.1.9 Ensure permissions on /etc/gshadow- are configured. (Automated)
   - id: 33177
@@ -3492,7 +3516,8 @@ checks:
       - pci_dss_v3.2.1: ["3.2", "8.2.1"]
     condition: all
     rules:
-      - 'c:stat /etc/gshadow- -> r:^Access: \(0640/-rw-r-----\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*0/\s*root\)$|^Access: \(0640/-rw-r-----\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*\d+/\s*shadow\)$'
+#      - 'c:LANG=C stat /etc/gshadow- -> r:^Access: \(0640/-rw-r-----\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*0/\s*root\)$|^Access: \(0640/-rw-r-----\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*\d+/\s*shadow\)$'
+      - "c:stat -c \"%a %U %G\" /etc/gshadow- | grep -q '^640 root root$'"
 
   # 6.1.10 Ensure no world writable files exist. (Automated) - Not Implemented
   # 6.1.11 Ensure no unowned files or directories exist. (Automated) - Not Implemented
