@@ -50,22 +50,7 @@ void* so_get_module_handle(const char *so){
 #else
     snprintf(file_name, 4096-1, "lib%s.so", so);
 #endif
-    printf("DEBUG: so_get_module_handle attempting to load '%s'\n", file_name);
-    fflush(stdout);
-    
-    void *handle = dlopen(file_name, RTLD_LAZY);
-    
-    printf("DEBUG: dlopen returned handle %p for '%s'\n", handle, file_name);
-    printf("DEBUG: About to return handle %p from so_get_module_handle\n", handle);
-    fflush(stdout);
-    
-    if (!handle) {
-        const char *error = dlerror();
-        printf("DEBUG: dlopen error for '%s': %s\n", file_name, error ? error : "unknown");
-        fflush(stdout);
-    }
-    
-    return handle;
+    return dlopen(file_name, RTLD_LAZY);
 #endif
 }
 
@@ -87,30 +72,7 @@ void* so_check_module_loaded(const char *so){
 
 void* so_get_function_sym(void *handle, const char *function_name){
 #ifndef WIN32
-    if (!handle) {
-        printf("DEBUG: so_get_function_sym called with NULL handle for %s\n", function_name);
-        return NULL;
-    }
-    if (!function_name) {
-        printf("DEBUG: so_get_function_sym called with NULL function_name\n");
-        return NULL;
-    }
-    
-    printf("DEBUG: About to call dlsym(handle=%p, function_name='%s')\n", handle, function_name);
-    fflush(stdout);
-    
-    void *result = dlsym(handle, function_name);
-    
-    printf("DEBUG: dlsym returned %p for %s\n", result, function_name);
-    fflush(stdout);
-    
-    if (!result) {
-        const char *error = dlerror();
-        printf("DEBUG: dlsym error for %s: %s\n", function_name, error ? error : "unknown");
-        fflush(stdout);
-    }
-    
-    return result;
+    return dlsym(handle, function_name);
 #else
     return (void *)(intptr_t)GetProcAddress((HINSTANCE)handle, function_name);
 #endif
