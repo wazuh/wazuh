@@ -68,6 +68,25 @@ namespace Utils
                 return retVal;
             }
 
+            static std::wstring stringUTF8ToWstring(const std::string& inputArgument)
+            {
+                std::wstring retVal;
+
+                if (!inputArgument.empty())
+                {
+                    const auto inputArgumentSize{static_cast<int>(inputArgument.size())};
+                    const auto sizeNeeded {MultiByteToWideChar(CP_UTF8, 0, inputArgument.data(), inputArgumentSize, nullptr, 0)};
+                    auto buffer{std::make_unique<wchar_t[]>(sizeNeeded)};
+
+                    if (MultiByteToWideChar(CP_UTF8, 0, inputArgument.data(), inputArgumentSize, buffer.get(), sizeNeeded) > 0)
+                    {
+                        retVal.assign(buffer.get(), sizeNeeded);
+                    }
+                }
+
+                return retVal;
+            }
+
             static std::string stringAnsiToStringUTF8(const std::string& inputArgument)
             {
                 return wstringToStringUTF8(stringToWStringAnsi(inputArgument));
