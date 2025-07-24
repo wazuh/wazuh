@@ -365,74 +365,111 @@ void test_wdb_dbsync_stmt_bind_hwinfo_ram_usage_from_valid_value_to_number (void
 }
 
 /* wdb_dbsync_stmt_bind_from_json for users */
-void test_wdb_dbsync_stmt_bind_users_multiple_fields_from_negative_value_to_null(void **state) {
-    cJSON * value = cJSON_CreateNumber(-1);
+void test_wdb_dbsync_stmt_bind_users_multiple_fields_valid_numeric_value(void **state) {
+    cJSON * values[3] = {
+        cJSON_CreateNumber(-1),
+        cJSON_CreateNumber(0),
+        cJSON_CreateNumber(1)
+    };
+
     const char * fields[] = {
-        "user_password_expiration_date",                     // First integer field
+        "user_password_expiration_date",                  // First integer field
         "user_password_inactive_days",
         "user_password_max_days_between_changes",
         "user_password_min_days_between_changes",
         "user_password_warning_days_before_expiration",
-        "user_id",                                           // First long field
+        "user_last_login",                                // First long field
+        "user_id",
         "user_group_id",
-        "user_last_login",
         "user_auth_failed_count",
         "process_pid",
-        "user_created",                                      // First double field
+        "user_uid_signed",
+        "user_group_id_signed",
+        "user_created",                                   // First double field
         "user_auth_failed_timestamp",
-        "user_password_last_change",
+        "user_password_last_change"
     };
 
-    for (int i = 0; i < (sizeof(fields)/sizeof(fields[0])); ++i) {
-        expect_value(__wrap_sqlite3_bind_null, index, TEST_INDEX);
-        will_return(__wrap_sqlite3_bind_null, SQLITE_OK);
-        int field_type = FIELD_INTEGER;
-        if (i >= 6 && i <= 10) {
-            field_type = FIELD_INTEGER_LONG;
+    for (int i = 0; i < sizeof(values)/sizeof(values[0]); ++i) {
+        int value = i - 1;
+        for (int j = 0; j < sizeof(fields)/sizeof(fields[0]); ++j) {
+            int field_type = FIELD_INTEGER;
+            // Testing integer values
+            if (j < 5) {
+                // Call expected mocks. All fields should be greater or equal than zero,
+                // except user_password_expiration_date that should be greater than zero.
+                if ((i > 1 && j == 0) || (i > 0 && j > 0)) {
+                    expect_value(__wrap_sqlite3_bind_int, index, TEST_INDEX);
+                    expect_value(__wrap_sqlite3_bind_int, value, value);
+                    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+                } else {
+                    expect_value(__wrap_sqlite3_bind_null, index, TEST_INDEX);
+                    will_return(__wrap_sqlite3_bind_null, SQLITE_OK);
+                }
+            }
+            // Testing long values
+            if (j >= 5 && j < 12) {
+                field_type = FIELD_INTEGER_LONG;
+                // Call expected mocks. user_last_login should be greater than zero.
+                // user_id,  user_group_id, user_auth_failed_count, process_pid should be greater or equal than zero.
+                // The rest of the fields do not have any contraints.
+                if ((i > 1 && j == 5) || (i > 0 && j >= 6 && j < 10 ) || j >= 10) {
+                    expect_value(__wrap_sqlite3_bind_int64, index, TEST_INDEX);
+                    expect_value(__wrap_sqlite3_bind_int64, value, value);
+                    will_return(__wrap_sqlite3_bind_int64, SQLITE_OK);
+                } else {
+                    expect_value(__wrap_sqlite3_bind_null, index, TEST_INDEX);
+                    will_return(__wrap_sqlite3_bind_null, SQLITE_OK);
+                }
+            }
+            // Testing double values
+            if (j >= 12) {
+                field_type = FIELD_REAL;
+                // Call expected mocks. All fields should be greater than zero.
+                if (i > 1) {
+                    expect_value(__wrap_sqlite3_bind_double, index, TEST_INDEX);
+                    expect_value(__wrap_sqlite3_bind_double, value, value);
+                    will_return(__wrap_sqlite3_bind_double, SQLITE_OK);
+                } else {
+                    expect_value(__wrap_sqlite3_bind_null, index, TEST_INDEX);
+                    will_return(__wrap_sqlite3_bind_null, SQLITE_OK);
+                }
+            }
+            assert_true(wdb_dbsync_stmt_bind_from_json((sqlite3_stmt *) ANY_PTR_VALUE, TEST_INDEX, field_type, values[i], fields[j], USERS_TABLE, true));
         }
-        if (i >= 11) {
-            field_type = FIELD_REAL;
-        }
-        assert_true(wdb_dbsync_stmt_bind_from_json((sqlite3_stmt *) ANY_PTR_VALUE, TEST_INDEX, field_type, value, fields[i], USERS_TABLE, true));
+        cJSON_Delete(values[i]);
     }
-
-    cJSON_Delete(value);
-}
-
-void test_wdb_dbsync_stmt_bind_users_multiple_fields_from_zero_value_to_null(void **state) {
-    cJSON * value = cJSON_CreateNumber(0);
-    const char * fields[] = {
-        "user_password_expiration_date",                     // First integer field
-        "user_last_login",                                   // First long field
-        "user_created",                                      // First double field
-        "user_auth_failed_timestamp",
-        "user_password_last_change",
-    };
-
-    for (int i = 0; i < (sizeof(fields)/sizeof(fields[0])); ++i) {
-        expect_value(__wrap_sqlite3_bind_null, index, TEST_INDEX);
-        will_return(__wrap_sqlite3_bind_null, SQLITE_OK);
-        int field_type = FIELD_REAL;
-        if (i == 0) {
-            field_type = FIELD_INTEGER;
-        }
-        if (i == 1) {
-            field_type = FIELD_INTEGER_LONG;
-        }
-        assert_true(wdb_dbsync_stmt_bind_from_json((sqlite3_stmt *) ANY_PTR_VALUE, TEST_INDEX, field_type, value, fields[i], USERS_TABLE, true));
-    }
-
-    cJSON_Delete(value);
 }
 
 /* wdb_dbsync_stmt_bind_from_json for groups */
-void test_wdb_dbsync_stmt_bind_groups_multiple_fields_from_negative_value_to_null(void **state) {
-    cJSON * value = cJSON_CreateNumber(-1);
-    expect_value(__wrap_sqlite3_bind_null, index, TEST_INDEX);
-    will_return(__wrap_sqlite3_bind_null, SQLITE_OK);
-    assert_true(wdb_dbsync_stmt_bind_from_json((sqlite3_stmt *) ANY_PTR_VALUE, TEST_INDEX, FIELD_INTEGER_LONG, value, "group_id", GROUPS_TABLE, true));
+void test_wdb_dbsync_stmt_bind_groups_multiple_fields_numeric_values(void **state) {
+    cJSON * values[3] = {
+        cJSON_CreateNumber(-1),
+        cJSON_CreateNumber(0),
+        cJSON_CreateNumber(1)
+    };
 
-    cJSON_Delete(value);
+    const char * fields [] = {
+        "group_id",
+        "group_id_signed"
+    };
+
+    for (int i = 0; i < sizeof(values)/sizeof(values[0]); ++i) {
+        int value = i - 1;
+        for (int j = 0; j < sizeof(fields)/sizeof(fields[0]); ++j) {
+            // If field is group_id the accepted value is greater or equal than zero.
+            if ((i > 0 && j == 0) || j ==1) {
+                expect_value(__wrap_sqlite3_bind_int64, index, TEST_INDEX);
+                expect_value(__wrap_sqlite3_bind_int64, value, value);
+                will_return(__wrap_sqlite3_bind_int64, SQLITE_OK);
+            } else {
+                expect_value(__wrap_sqlite3_bind_null, index, TEST_INDEX);
+                will_return(__wrap_sqlite3_bind_null, SQLITE_OK);
+            }
+            assert_true(wdb_dbsync_stmt_bind_from_json((sqlite3_stmt *) ANY_PTR_VALUE, TEST_INDEX, FIELD_INTEGER_LONG, values[i], fields[j], GROUPS_TABLE, true));
+        }
+        cJSON_Delete(values[i]);
+    }
 }
 
 /* wdb_upsert_dsync */
@@ -1011,10 +1048,9 @@ int main() {
         cmocka_unit_test(test_wdb_dbsync_stmt_bind_hwinfo_ram_total_from_valid_value_to_number),
         cmocka_unit_test(test_wdb_dbsync_stmt_bind_hwinfo_ram_usage_from_valid_value_to_number),
         // wdb_dbsync_stmt_bind_from_json for users
-        cmocka_unit_test(test_wdb_dbsync_stmt_bind_users_multiple_fields_from_negative_value_to_null),
-        cmocka_unit_test(test_wdb_dbsync_stmt_bind_users_multiple_fields_from_zero_value_to_null),
+        cmocka_unit_test(test_wdb_dbsync_stmt_bind_users_multiple_fields_valid_numeric_value),
         // wdb_dbsync_stmt_bind_from_json for groups
-        cmocka_unit_test(test_wdb_dbsync_stmt_bind_groups_multiple_fields_from_negative_value_to_null),
+        cmocka_unit_test(test_wdb_dbsync_stmt_bind_groups_multiple_fields_numeric_values),
         /* wdb_upsert_dbsync */
         cmocka_unit_test(test_wdb_upsert_dbsync_err),
         cmocka_unit_test(test_wdb_upsert_dbsync_bad_cache),

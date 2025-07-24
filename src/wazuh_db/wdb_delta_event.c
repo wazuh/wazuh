@@ -15,78 +15,106 @@
 #define GE(X, Y) (X >= Y ? true : false)
 #define LE(X, Y) (X <= Y ? true : false)
 
+typedef enum hw_fields {
+    CPU_CORES,
+    CPU_MHZ,
+    RAM_TOTAL,
+    RAM_FREE,
+    RAM_USAGE
+} hw_fields;
+
 const char * HWINFO_FIELDS[] = {
-    "cpu_cores",
-    "cpu_mhz",
-    "ram_total",
-    "ram_free",
-    "ram_usage"
+    [CPU_CORES] = "cpu_cores",
+    [CPU_MHZ] = "cpu_mhz",
+    [RAM_TOTAL] = "ram_total",
+    [RAM_FREE] = "ram_free",
+    [RAM_USAGE] = "ram_usage"
 };
+
+typedef enum group_fields {
+    GROUP_ID
+} group_fields;
 
 const char * GROUPINFO_FIELDS[] = {
-    "group_id"
+    [GROUP_ID] = "group_id"
 };
 
+typedef enum user_fields {
+    USER_ID,
+    USER_GROUP_ID,
+    USER_CREATED,
+    USER_LAST_LOGIN,
+    USER_AUTH_FAILED_COUNT,
+    USER_AUTH_FAILED_TIMESTAMP,
+    USER_PASSWORD_LAST_CHANGE,
+    USER_PASSWORD_EXPIRATION_DATE,
+    USER_PASSWORD_INACTIVE_DAYS,
+    USER_PASSWORD_MAX_DAYS_BETWEEN_CHANGES,
+    USER_PASSWORD_MIN_DAYS_BETWEEN_CHANGES,
+    USER_PASSWORD_WARNING_DAYS_BEFORE_EXPIRATION,
+    PROCESS_PID
+} user_fields;
+
 const char * USERINFO_FIELDS[] = {
-    "user_id",
-    "user_group_id",
-    "user_created",
-    "user_last_login",
-    "user_auth_failed_count",
-    "user_auth_failed_timestamp",
-    "user_password_last_change",
-    "user_password_expiration_date",
-    "user_password_inactive_days",
-    "user_password_max_days_between_changes",
-    "user_password_min_days_between_changes",
-    "user_password_warning_days_before_expiration",
-    "process_pid"
+    [USER_ID] = "user_id",
+    [USER_GROUP_ID] = "user_group_id",
+    [USER_CREATED] = "user_created",
+    [USER_LAST_LOGIN] = "user_last_login",
+    [USER_AUTH_FAILED_COUNT] = "user_auth_failed_count",
+    [USER_AUTH_FAILED_TIMESTAMP] = "user_auth_failed_timestamp",
+    [USER_PASSWORD_LAST_CHANGE] = "user_password_last_change",
+    [USER_PASSWORD_EXPIRATION_DATE] = "user_password_expiration_date",
+    [USER_PASSWORD_INACTIVE_DAYS] = "user_password_inactive_days",
+    [USER_PASSWORD_MAX_DAYS_BETWEEN_CHANGES] = "user_password_max_days_between_changes",
+    [USER_PASSWORD_MIN_DAYS_BETWEEN_CHANGES] = "user_password_min_days_between_changes",
+    [USER_PASSWORD_WARNING_DAYS_BEFORE_EXPIRATION] = "user_password_warning_days_before_expiration",
+    [PROCESS_PID] = "process_pid"
 };
 
 #define IS_VALID_GROUPS_VALUE(field_name, field_value) ( \
-    !strncmp(field_name, GROUPINFO_FIELDS[0], strlen(GROUPINFO_FIELDS[0])) ? \
+    !strcmp(field_name, GROUPINFO_FIELDS[GROUP_ID]) ? \
         GE(field_value, 0) : true \
 )
 
 #define IS_VALID_HWINFO_VALUE(field_name, field_value) ( \
-    !strncmp(field_name, HWINFO_FIELDS[0], strlen(HWINFO_FIELDS[0])) ? \
+    !strcmp(field_name, HWINFO_FIELDS[CPU_CORES]) ? \
         GT(field_value, 0) : \
-    !strncmp(field_name, HWINFO_FIELDS[1], strlen(HWINFO_FIELDS[1])) ? \
+    !strcmp(field_name, HWINFO_FIELDS[CPU_MHZ]) ? \
         GT(field_value, 0) : \
-    !strncmp(field_name, HWINFO_FIELDS[2], strlen(HWINFO_FIELDS[2])) ? \
+    !strcmp(field_name, HWINFO_FIELDS[RAM_TOTAL]) ? \
         GT(field_value, 0) : \
-    !strncmp(field_name, HWINFO_FIELDS[3], strlen(HWINFO_FIELDS[3])) ? \
+    !strcmp(field_name, HWINFO_FIELDS[RAM_FREE]) ? \
         GT(field_value, 0) : \
-    !strncmp(field_name, HWINFO_FIELDS[4], strlen(HWINFO_FIELDS[4])) ? \
+    !strcmp(field_name, HWINFO_FIELDS[RAM_USAGE]) ? \
         (GT(field_value, 0) && (LE(field_value, 100))): true \
 )
 
 #define IS_VALID_USERS_VALUE(field_name, field_value) ( \
-    !strncmp(field_name, USERINFO_FIELDS[0], strlen(USERINFO_FIELDS[0])) ? \
+    !strcmp(field_name, USERINFO_FIELDS[USER_ID]) ? \
         GE(field_value, 0) : \
-    !strncmp(field_name, USERINFO_FIELDS[1], strlen(USERINFO_FIELDS[1])) ? \
+    !strcmp(field_name, USERINFO_FIELDS[USER_GROUP_ID]) ? \
         GE(field_value, 0) : \
-    !strncmp(field_name, USERINFO_FIELDS[2], strlen(USERINFO_FIELDS[1])) ? \
+    !strcmp(field_name, USERINFO_FIELDS[USER_CREATED]) ? \
         GT(field_value, 0) : \
-    !strncmp(field_name, USERINFO_FIELDS[3], strlen(USERINFO_FIELDS[3])) ? \
+    !strcmp(field_name, USERINFO_FIELDS[USER_LAST_LOGIN]) ? \
         GT(field_value, 0) : \
-    !strncmp(field_name, USERINFO_FIELDS[4], strlen(USERINFO_FIELDS[4])) ? \
+    !strcmp(field_name, USERINFO_FIELDS[USER_AUTH_FAILED_COUNT]) ? \
         GE(field_value, 0) : \
-    !strncmp(field_name, USERINFO_FIELDS[5], strlen(USERINFO_FIELDS[5])) ? \
+    !strcmp(field_name, USERINFO_FIELDS[USER_AUTH_FAILED_TIMESTAMP]) ? \
         GT(field_value, 0) : \
-    !strncmp(field_name, USERINFO_FIELDS[6], strlen(USERINFO_FIELDS[6])) ? \
+    !strcmp(field_name, USERINFO_FIELDS[USER_PASSWORD_LAST_CHANGE]) ? \
         GT(field_value, 0) : \
-    !strncmp(field_name, USERINFO_FIELDS[7], strlen(USERINFO_FIELDS[7])) ? \
+    !strcmp(field_name, USERINFO_FIELDS[USER_PASSWORD_EXPIRATION_DATE]) ? \
         GT(field_value, 0) : \
-    !strncmp(field_name, USERINFO_FIELDS[8], strlen(USERINFO_FIELDS[8])) ? \
+    !strcmp(field_name, USERINFO_FIELDS[USER_PASSWORD_INACTIVE_DAYS]) ? \
         GE(field_value, 0) : \
-    !strncmp(field_name, USERINFO_FIELDS[9], strlen(USERINFO_FIELDS[9])) ? \
+    !strcmp(field_name, USERINFO_FIELDS[USER_PASSWORD_MAX_DAYS_BETWEEN_CHANGES]) ? \
         GE(field_value, 0) : \
-    !strncmp(field_name, USERINFO_FIELDS[10], strlen(USERINFO_FIELDS[10])) ? \
+    !strcmp(field_name, USERINFO_FIELDS[USER_PASSWORD_MIN_DAYS_BETWEEN_CHANGES]) ? \
         GE(field_value, 0) : \
-    !strncmp(field_name, USERINFO_FIELDS[11], strlen(USERINFO_FIELDS[11])) ? \
+    !strcmp(field_name, USERINFO_FIELDS[USER_PASSWORD_WARNING_DAYS_BEFORE_EXPIRATION]) ? \
         GE(field_value, 0) : \
-    !strncmp(field_name, USERINFO_FIELDS[12], strlen(USERINFO_FIELDS[12])) ? \
+    !strcmp(field_name, USERINFO_FIELDS[PROCESS_PID]) ? \
         GE(field_value, 0) : true \
 )
 
