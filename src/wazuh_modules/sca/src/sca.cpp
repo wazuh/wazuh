@@ -11,6 +11,8 @@ extern "C"
 #include "../../wm_sca.h"
 #include "../wazuh_modules/wmodules_def.h"
 
+#include "logging_helper.hpp"
+
 /* SCA db directory */
 #ifndef WAZUH_UNIT_TESTING
 #define SCA_DB_DISK_PATH "queue/sca/db/sca.db"
@@ -75,12 +77,13 @@ void sca_set_wm_exec(wm_exec_callback_t wm_exec_callback)
 }
 
 SCA::SCA()
-: m_logFunction {nullptr}
 {
 }
 
 void SCA::init(const std::function<void(const modules_log_level_t, const std::string&)> logFunction)
 {
+    LoggingHelper::setLogCallback(logFunction);
+
     // TODO Start doing whatever the module does
     if (!m_sca)
     {
@@ -90,16 +93,8 @@ void SCA::init(const std::function<void(const modules_log_level_t, const std::st
         // Set a simple print function for m_pushMessage so we can see the SCA checks
         // being processed in the OSSEC log
         auto simplePrintFunction = [this](const std::string& message) -> int {
-            if (m_logFunction)
-            {
                 // Commented out to avoid printing to console and mess integration tests
-                // m_logFunction(LOG_INFO, "SCA Event: " + message);
-            }
-            else
-            {
-                // Commented out to avoid printing to console and mess integration tests
-                // std::cout << "SCA Event: " << message << std::endl;
-            }
+                // LoggingHelper::getInstance().log(LOG_INFO, "SCA Event: " + message);
             return 0;
         };
 
@@ -107,9 +102,8 @@ void SCA::init(const std::function<void(const modules_log_level_t, const std::st
         // Should be removed ultimately and replaced
         m_sca->SetPushMessageFunction(simplePrintFunction);
     }
-    m_logFunction = logFunction;
 
-    // logFunction(LOG_INFO, "SCA module initialized successfully.");
+    // LoggingHelper::getInstance().log(LOG_INFO, "SCA module initialized successfully.");
 }
 
 void SCA::setup(const struct wm_sca_t* sca_config)
