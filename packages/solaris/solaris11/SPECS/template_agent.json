@@ -279,14 +279,6 @@
         "type": "file",
         "user": "root"
     },
-    "/var/ossec/bin/manage_agents": {
-        "class": "static",
-        "group": "root",
-        "mode": "0750",
-        "prot": "-rwxr-x---",
-        "type": "file",
-        "user": "root"
-    },
     "/var/ossec/bin/wazuh-agentd": {
         "class": "static",
         "group": "root",

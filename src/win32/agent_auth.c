@@ -24,7 +24,7 @@
 #include "os_net/os_net.h"
 #include "os_regex/os_regex.h"
 #include "defs.h"
-#include "addagent/manage_agents.h"
+#include "addagent/validate.h"
 
 #define IO_BUFFER_SIZE  0x10000
 
