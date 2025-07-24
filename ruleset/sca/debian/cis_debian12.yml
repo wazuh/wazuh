@@ -72,7 +72,7 @@ checks:
       - pci_dss_v3.2.1: ["2.2"]
     condition: all
     rules:
-      - "c:modprobe -n -v freevxfs -> r: install /bin/true"
+      - "c:modprobe -n -v freevxfs -> r:install /bin/true"
       - "not c:lsmod -> r:freevxfs"
 
   # 1.1.1.3 Ensure mounting of jffs2 filesystems is disabled (Automated)
