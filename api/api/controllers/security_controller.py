@@ -20,7 +20,7 @@ from api.models.security_model import (CreateUserModel, PolicyModel, RoleModel,
 from api.util import (deprecate_endpoint, parse_api_param, raise_if_exc,
                       remove_nones_to_dict)
 from wazuh import security, __version__
-from wazuh.core.cluster.control import get_system_nodes
+from wazuh.core.cluster.control import get_system_nodes, get_system_nodes_or_none
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
 from wazuh.core.exception import WazuhException, WazuhPermissionError
 from wazuh.core.results import AffectedItemsWazuhResult, WazuhResult
@@ -1198,9 +1198,7 @@ async def revoke_all_tokens(pretty: bool = False) -> ConnexionResponse:
     """
     f_kwargs = {}
 
-    nodes = await get_system_nodes()
-    if isinstance(nodes, Exception):
-        nodes = None
+    nodes = await get_system_nodes_or_none()
 
     dapi = DistributedAPI(f=security.wrapper_revoke_tokens,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -1252,9 +1250,7 @@ async def get_security_config(pretty: bool = False, wait_for_complete: bool = Fa
 
 async def security_revoke_tokens():
     """Revokes all tokens on all nodes after a change in security configuration."""
-    nodes = await get_system_nodes()
-    if isinstance(nodes, Exception):
-        nodes = None
+    nodes = await get_system_nodes_or_none()
 
     dapi = DistributedAPI(f=revoke_tokens,
                           request_type='distributed_master' if nodes is not None else 'local_any',
