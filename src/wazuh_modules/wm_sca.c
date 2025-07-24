@@ -18,6 +18,7 @@
 #include "shared.h"
 #include "wm_exec.h"
 #include "sym_load.h"
+#include "logging_helper.h"
 
 #include "sca.h"
 
@@ -63,6 +64,27 @@ sca_start_func sca_start_ptr = NULL;
 sca_stop_func sca_stop_ptr = NULL;
 sca_sync_message_func sca_sync_message_ptr = NULL;
 sca_set_wm_exec_func sca_set_wm_exec_ptr = NULL;
+
+// Logging callback function for SCA module
+static void sca_log_callback(const modules_log_level_t level, const char* log, const char* tag) {
+    switch(level) {
+        case LOG_DEBUG:
+            mdebug1("%s", log);
+            break;
+        case LOG_INFO:
+            minfo("%s", log);
+            break;
+        case LOG_WARNING:
+            mwarn("%s", log);
+            break;
+        case LOG_ERROR:
+            merror("%s", log);
+            break;
+        default:
+            minfo("%s", log);
+            break;
+    }
+}
 
 // Module main function. It won't return
 #ifdef WIN32
@@ -118,7 +140,8 @@ void wm_sca_push_request_win(char * msg){
 static int wm_sca_start(wm_sca_t *sca) {
     do
     {
-        sca_start_ptr(sca);
+        // Call sca_start with proper logging callback instead of data structure
+        sca_start_ptr(sca_log_callback);
     } while(FOREVER());
 
     return 0;
