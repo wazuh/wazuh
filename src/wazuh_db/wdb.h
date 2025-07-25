@@ -387,6 +387,7 @@ typedef struct wdb_config {
     int max_fragmentation;
     int check_fragmentation_interval;
     wdb_backup_settings_node** wdb_backup_settings;
+    bool is_worker_node; ///< Indicates if the node is a cluster worker node
 } wdb_config;
 
 /// Enumeration of components supported by the integrity library.
@@ -2190,10 +2191,11 @@ int wdb_global_get_agent_max_group_priority(wdb_t *wdb, int id);
  * @param [in] id ID of the agent to add new groups.
  * @param [in] j_groups JSON array with all the groups of the agent.
  * @param [in] priority Initial priority to insert the groups.
- * @param [in] add_agent If true and the agent doesn't exist, it will be created.
+ * @param [in] create_agent_name If not null and the agent doesn't exist, it will be created with the given name.
  * @return wdbc_result representing the status of the command.
  */
-wdbc_result wdb_global_assign_agent_group(wdb_t *wdb, int id, cJSON* j_groups, int priority, bool add_agent);
+wdbc_result
+wdb_global_assign_agent_group(wdb_t* wdb, int id, cJSON* j_groups, int priority, const char* create_agent_name);
 
 /**
  * @brief Deletes groups of an agent.

@@ -1283,7 +1283,7 @@ int wdb_global_get_agent_max_group_priority(wdb_t *wdb, int id) {
     return group_priority;
 }
 
-wdbc_result wdb_global_assign_agent_group(wdb_t *wdb, int id, cJSON* j_groups, int priority, bool add_agent) {
+wdbc_result wdb_global_assign_agent_group(wdb_t *wdb, int id, cJSON* j_groups, int priority, const char* create_agent_name) {
     cJSON* j_group_name = NULL;
     wdbc_result result = WDBC_OK;
     cJSON_ArrayForEach (j_group_name, j_groups) {
@@ -1294,7 +1294,7 @@ wdbc_result wdb_global_assign_agent_group(wdb_t *wdb, int id, cJSON* j_groups, i
                 cJSON* j_group_id = cJSON_GetObjectItem(j_find_response->child, "id");
                 if (cJSON_IsNumber(j_group_id)) {
                     int insert_result = wdb_global_insert_agent_belong(wdb, j_group_id->valueint, id, priority);
-                    if (!add_agent && OS_INVALID == insert_result) {
+                    if (!create_agent_name && OS_INVALID == insert_result) {
                         // If the agent doesn't exist, we don't want to insert the group relationship.
                         insert_result = OS_NOTFOUND;
                     }
@@ -1302,7 +1302,7 @@ wdbc_result wdb_global_assign_agent_group(wdb_t *wdb, int id, cJSON* j_groups, i
                         // Check if agent exists
                         if (!wdb_global_agent_exists(wdb, id)) {
                             // Create agent in never_connected state
-                            const char *unknown = "unknown";
+                            const char *unknown = create_agent_name ? create_agent_name : "unknown";
                             const char *ip = "0.0.0.0";
                             if (OS_INVALID == wdb_global_insert_agent(wdb, id, (char*)unknown, (char*)ip, (char*)ip, NULL, NULL, time(NULL))) {
                                 mdebug1("Unable to create agent '%d' in never_connected state", id);
@@ -1388,7 +1388,7 @@ int wdb_global_if_empty_set_default_agent_group(wdb_t *wdb, int id) {
     if (OS_INVALID == wdb_global_get_agent_max_group_priority(wdb, id)) {
         cJSON* j_default_group = cJSON_CreateArray();
         cJSON_AddItemToArray(j_default_group, cJSON_CreateString("default"));
-        if (WDBC_OK == wdb_global_assign_agent_group(wdb, id, j_default_group, 0, false)) {
+        if (WDBC_OK == wdb_global_assign_agent_group(wdb, id, j_default_group, 0, NULL)) {
             mdebug1("Agent '%03d' reassigned to 'default' group", id);
         } else {
             merror("There was an error assigning the agent '%03d' to default group", id);
@@ -1513,7 +1513,25 @@ wdbc_result wdb_global_set_agent_groups(wdb_t *wdb, wdb_groups_set_mode_t mode, 
                     }
                 }
                 if (valid_groups = wdb_global_validate_groups(wdb, j_groups, agent_id), OS_SUCCESS == valid_groups) {
-                    if (WDBC_ERROR == wdb_global_assign_agent_group(wdb, agent_id, j_groups, group_priority, mode == WDB_GROUP_OVERRIDE ? true : false)) {
+                    char* agent_name = NULL;
+
+                    // For override mode, require agent name
+                    if (mode == WDB_GROUP_OVERRIDE) {
+                        cJSON* j_agent_name = cJSON_GetObjectItem(j_group_info, "name");
+                        if (j_agent_name && cJSON_IsString(j_agent_name)) {
+                            agent_name = j_agent_name->valuestring;
+                        } else if (wconfig.is_worker_node) {
+                            merror("Agent name is required when overriding groups for agent '%03d'", agent_id);
+                            ret = WDBC_ERROR;
+                            continue;
+                        } else {
+                            mdebug1("Agent name is not provided for agent '%03d', the agent not will not be created if "
+                                    "it does not exist",
+                                    agent_id);
+                        }
+                    }
+
+                    if (WDBC_ERROR == wdb_global_assign_agent_group(wdb, agent_id, j_groups, group_priority, agent_name)) {
                         ret = WDBC_ERROR;
                         merror("There was an error assigning the groups to agent '%03d'", agent_id);
                     }

@@ -191,7 +191,7 @@ static const char *SQL_STMT[] = {
     [WDB_STMT_GLOBAL_SYNC_REQ_KEEPALIVE_GET] = "SELECT id, last_keepalive FROM agent WHERE id > ? AND sync_status = 'syncreq_keepalive' LIMIT 1;",
     [WDB_STMT_GLOBAL_SYNC_GET] = "SELECT sync_status FROM agent WHERE id = ?;",
     [WDB_STMT_GLOBAL_SYNC_SET] = "UPDATE agent SET sync_status = ? WHERE id = ?;",
-    [WDB_STMT_GLOBAL_GROUP_SYNC_REQ_GET] = "SELECT id FROM agent WHERE id > ? AND group_sync_status = 'syncreq' AND date_add < ? LIMIT 1;",
+    [WDB_STMT_GLOBAL_GROUP_SYNC_REQ_GET] = "SELECT id, name FROM agent WHERE id > ? AND group_sync_status = 'syncreq' AND date_add < ? LIMIT 1;",
     [WDB_STMT_GLOBAL_GROUP_SYNC_ALL_GET] = "SELECT id FROM agent WHERE id > ? AND date_add < ? LIMIT 1;",
     [WDB_STMT_GLOBAL_GROUP_SYNCREQ_FIND] = "SELECT 1 FROM agent WHERE group_sync_status = 'syncreq';",
     [WDB_STMT_GLOBAL_AGENT_GROUPS_NUMBER_GET] = "SELECT count(id_group) groups_number from belongs WHERE id_agent = ?;",
