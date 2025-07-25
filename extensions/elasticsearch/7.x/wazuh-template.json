@@ -295,6 +295,7 @@
       "data.ms-graph.freeStorageSpaceInBytes",
       "data.ms-graph.iccid",
       "data.ms-graph.imei",
+      "data.ms-graph.ipAddress",
       "data.ms-graph.isEncrypted",
       "data.ms-graph.isSupervised",
       "data.ms-graph.jailBroken",
