@@ -33,10 +33,11 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   include_directories(
     ${SRC_FOLDER}/external/openssl/include/
+    ${CMAKE_CURRENT_SOURCE_DIR}/../wrappers/unix/darwin
   )
 
   list(APPEND SRC_FILES 
-    src/chrome.cpp
+    src/chrome_linux.cpp
   )
 
   add_library(chrome_extensions STATIC ${SRC_FILES})
@@ -46,4 +47,9 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
 
   add_executable(chrome_main src/main.cpp)
   target_link_libraries(chrome_main chrome_extensions)
+
+  if(UNIT_TEST)
+    target_link_libraries(chrome_extensions gcov)
+    add_subdirectory(tests)
+  endif(UNIT_TEST)
 endif()

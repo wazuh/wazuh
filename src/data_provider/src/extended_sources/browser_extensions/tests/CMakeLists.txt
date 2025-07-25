@@ -11,16 +11,36 @@ link_directories(${CMAKE_SOURCE_DIR}/../external/googletest/lib/)
 
 set(TEST_SRC "main.cpp")
 
-list(APPEND TEST_SRC test_safari_darwin.cpp)
+if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+  list(APPEND TEST_SRC 
+    test_safari_darwin.cpp
+  )
 
-add_executable(extended_sources_browser_extensions_unit_test ${TEST_SRC})
-target_link_libraries(extended_sources_browser_extensions_unit_test
-  browser_extensions
-  gtestd
-  gmockd
-  gtest_maind
-  gmock_maind
-  pthread
-)
+  add_executable(extended_sources_browser_extensions_unit_test ${TEST_SRC})
+  target_link_libraries(extended_sources_browser_extensions_unit_test
+    browser_extensions
+    gtestd
+    gmockd
+    gtest_maind
+    gmock_maind
+    pthread
+  )
 
-add_test(NAME BrowsersExtensionsTests COMMAND extended_sources_browser_extensions_unit_test)
+  add_test(NAME BrowsersExtensionsTests COMMAND extended_sources_browser_extensions_unit_test)
+elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+  list(APPEND TEST_SRC 
+    test_chrome_linux.cpp
+  )
+
+  add_executable(extended_sources_browser_extensions_unit_test ${TEST_SRC})
+  target_link_libraries(extended_sources_browser_extensions_unit_test
+    chrome_extensions
+    gtestd
+    gmockd
+    gtest_maind
+    gmock_maind
+    pthread
+  )
+
+  add_test(NAME BrowsersExtensionsTests COMMAND extended_sources_browser_extensions_unit_test)
+endif()
