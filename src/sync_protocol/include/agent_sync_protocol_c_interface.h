@@ -74,7 +74,8 @@ void asp_persist_diff(AgentSyncProtocolHandle* handle,
 /// @param module The name of the module to synchronize.
 /// @param mode Synchronization mode (e.g., full, delta).
 /// @param realtime Boolean flag (non-zero = realtime mode, zero = batch mode).
-void asp_sync_module(AgentSyncProtocolHandle* handle,
+/// @return true if the sync was successfully processed; false otherwise.
+bool asp_sync_module(AgentSyncProtocolHandle* handle,
                      const char* module,
                      int mode,
                      int realtime);

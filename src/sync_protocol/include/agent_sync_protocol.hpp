@@ -39,7 +39,8 @@ class IAgentSyncProtocol
         /// @param module Module name
         /// @param mode Sync mode
         /// @param realtime Realtime sync
-        virtual void synchronizeModule(const std::string& module, Wazuh::SyncSchema::Mode mode, bool realtime) = 0;
+        /// @return true if the sync was successfully processed; false otherwise.
+        virtual bool synchronizeModule(const std::string& module, Wazuh::SyncSchema::Mode mode, bool realtime) = 0;
 
         /// @brief Destructor
         virtual ~IAgentSyncProtocol() = default;
@@ -66,7 +67,7 @@ class AgentSyncProtocol : public IAgentSyncProtocol
                                const std::string& data) override;
 
         /// @copydoc IAgentSyncProtocol::synchronizeModule
-        void synchronizeModule(const std::string& module, Wazuh::SyncSchema::Mode mode, bool realtime) override;
+        bool synchronizeModule(const std::string& module, Wazuh::SyncSchema::Mode mode, bool realtime) override;
 
         /// @brief Parses a FlatBuffer response message received from the manager.
         /// @param data Pointer to the FlatBuffer-encoded message buffer.
@@ -93,8 +94,9 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         /// @param mode Sync mode
         /// @param realtime Realtime sync
         /// @param dataSize Size of data to send
-        /// @return True on success, false on failure
-        bool sendStartAndWaitAck(const std::string& module, Wazuh::SyncSchema::Mode mode, bool realtime, size_t dataSize);
+        /// @param deadLine The time point by which the operation must complete.
+        /// @return True on success, false on failure or timeout
+        bool sendStartAndWaitAck(const std::string& module, Wazuh::SyncSchema::Mode mode, bool realtime, size_t dataSize, const std::chrono::steady_clock::time_point& deadLine);
 
         /// @brief Receives a startack message from the server
         /// @param timeout Timeout to wait for Ack
@@ -113,16 +115,14 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         /// @brief Sends an end message to the server
         /// @param module Module name
         /// @param session Session id
-        /// @return True on success, false on failure
-        bool sendEndAndWaitAck(const std::string& module, uint64_t session);
+        /// @param deadLine The time point by which the operation must complete.
+        /// @return True on success, false on failure or timeout
+        bool sendEndAndWaitAck(const std::string& module, uint64_t session, const std::chrono::steady_clock::time_point& deadLine);
 
         /// @brief Receives an endack message from the server
+        /// @param timeout Timeout to wait for Ack
         /// @return True on success, false on failure
-        bool receiveEndAck();
-
-        /// @brief Receives a reqret message from the server
-        /// @return Ranges received
-        std::vector<std::pair<uint64_t, uint64_t>> receiveReqRet();
+        bool receiveEndAck(std::chrono::seconds timeout);
 
         /// @brief Clears persisted differences for a module
         /// @param module Module name
@@ -145,6 +145,15 @@ class AgentSyncProtocol : public IAgentSyncProtocol
             WaitingEndAck
         };
 
+        /// @brief Validate phase and session
+        /// @param receivedPhase Received synchronization phase
+        /// @param incomingSession Session received in message
+        /// @return True if current phase and session match the expected ones
+        bool validatePhaseAndSession(const SyncPhase receivedPhase, const uint64_t incomingSession);
+
+        /// @brief Safely resets the synchronization state by acquiring a lock.
+        void clearSyncState();
+
         /// @brief Synchronization state shared between threads during module sync.
         ///
         /// This structure holds synchronization primitives and state flags used to
@@ -165,6 +174,9 @@ class AgentSyncProtocol : public IAgentSyncProtocol
             /// @brief Indicates whether an EndAck response has been received.
             bool endAckReceived = false;
 
+            /// @brief Indicates that a ReqRet message has been received.
+            bool reqRetReceived = false;
+
             /// @brief Ranges requested by the manager via ReqRet message.
             std::vector<std::pair<uint64_t, uint64_t>> reqRetRanges;
 
@@ -181,6 +193,7 @@ class AgentSyncProtocol : public IAgentSyncProtocol
             {
                 startAckReceived = false;
                 endAckReceived = false;
+                reqRetReceived = false;
                 reqRetRanges.clear();
                 phase = SyncPhase::Idle;
                 session = 0;
