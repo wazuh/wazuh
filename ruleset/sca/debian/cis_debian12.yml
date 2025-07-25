@@ -72,7 +72,7 @@ checks:
       - pci_dss_v3.2.1: ["2.2"]
     condition: all
     rules:
-      - "c:modprobe -n -v freevxfs -> r: install /bin/true"
+      - 'c:modprobe -n -v freevxfs -> r:^install\s+/bin/true'
       - "not c:lsmod -> r:freevxfs"
 
   # 1.1.1.3 Ensure mounting of jffs2 filesystems is disabled (Automated)
@@ -91,7 +91,7 @@ checks:
       - pci_dss_v3.2.1: ["2.2"]
     condition: all
     rules:
-      - "c:modprobe -n -v jffs2 -> r:install /bin/true"
+      - 'c:modprobe -n -v jffs2 -> r:^install\s+/bin/true'
       - "not c:lsmod -> r:jffs2"
 
   # 1.1.1.4 Ensure mounting of hfs filesystems is disabled (Automated)
@@ -110,7 +110,7 @@ checks:
       - pci_dss_v3.2.1: ["2.2"]
     condition: all
     rules:
-      - "c:modprobe -n -v hfs -> r:install /bin/true"
+      - 'c:modprobe -n -v hfs -> r:^install\s+/bin/true'
       - "not c:lsmod -> r:hfs"
 
   # 1.1.1.5 Ensure mounting of hfsplus filesystems is disabled (Automated)
@@ -129,7 +129,7 @@ checks:
       - pci_dss_v3.2.1: ["2.2"]
     condition: all
     rules:
-      - "c:modprobe -n -v hfsplus -> r:install /bin/true"
+      - 'c:modprobe -n -v hfsplus -> r:^install\s+/bin/true'
       - "not c:lsmod -> r:hfsplus"
 
   # 1.1.1.6 Ensure mounting of squashfs filesystems is disabled (Manual)
@@ -149,7 +149,7 @@ checks:
       - pci_dss_v3.2.1: ["2.2"]
     condition: all
     rules:
-      - "c:modprobe -n -v squashfs -> r:install /bin/true"
+      - 'c:modprobe -n -v squashfs -> r:^install\s+/bin/true'
       - "not c:lsmod -> r:squashfs"
 
   # 1.1.1.7 Ensure mounting of udf filesystems is disabled (Automated)
@@ -168,7 +168,7 @@ checks:
       - pci_dss_v3.2.1: ["2.2"]
     condition: all
     rules:
-      - "c:modprobe -n -v udf -> r:install /bin/true"
+      - 'c:modprobe -n -v udf -> r:^install\s+/bin/true'
       - "not c:lsmod -> r:udf"
 
   # 1.1.2 Ensure /tmp is configured (Automated)
@@ -191,7 +191,7 @@ checks:
       - pci_dss_v3.2.1: ["2.2"]
     condition: any
     rules:
-      - "c:mount -> r:tmpfs on /tmp type tmpfs"
+      - "c:mount -> r:^tmpfs on /tmp type tmpfs \\(.*noexec.*nosuid.*nodev.*"
       - 'f:/etc/fstab -> !r:^\s*\t*# && r:tmpfs /tmp tmpfs'
       - "c:systemctl is-enabled tmp.mount -> r:^enabled"
 
@@ -510,7 +510,7 @@ checks:
       - nist_sp_800-53: ["SI-3"]
     condition: all
     rules:
-      - "c:modprobe -n -v usb-storage -> r:install /bin/true"
+      - 'c:modprobe -n -v usb-storage -> r:^install\s+/bin/true'
       - "not c:lsmod -> r:usb-storage"
 
   ##################################################
