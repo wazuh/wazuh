@@ -2,6 +2,7 @@
 #include <vector>
 #include <filesystem>
 #include "json.hpp"
+#include "chrome_extensions_wrapper.hpp"
 
 namespace chrome {
 
@@ -75,20 +76,28 @@ const std::string kExtensionManifestName{"manifest.json"};
 const std::string kExtensionLocalesDir{"_locales"};
 const std::string kExtensionLocaleFile{"messages.json"};
 
-class ChromeExtensions {
+class ChromeExtensionsProvider {
 	public:
-	ChromeExtensions() = default;
-  std::vector<std::string> getUsers();
+  explicit ChromeExtensionsProvider(
+            std::shared_ptr<IChromeExtensionsWrapper> chromeExtensionsWrapper);
+	ChromeExtensionsProvider();
+  void printExtensions(const chrome::ChromeExtensionList& extensions);
+  nlohmann::json collect();
+
+  private:
+  chrome::ChromeUserProfileList getProfileDirs();
+  void getExtensionsFromProfiles(chrome::ChromeExtensionList& extensions, const chrome::ChromeUserProfileList& profilePaths);
+  nlohmann::json toJson(const chrome::ChromeExtensionList& extensions);
+  // std::filesystem::path getHomePath();
   bool isValidChromeProfile(const std::filesystem::path& profilePath);
   std::string jsonArrayToString(const nlohmann::json& jsonArray);
   std::string remove_substring(const std::string& input, const std::string& to_remove);
   bool is_snake_case(const std::string& s);
   void to_lowercase(std::string& str);
   void localizeParameters(chrome::ChromeExtension& extension);
-  std::string hash_to_hex_string(const uint8_t* hash, size_t length);
-  int hexCharToInt(char c);
+  std::string hashToLetterString(const uint8_t* hash, size_t length);
+  std::string hashToHexString(const uint8_t* hash, size_t length);
   std::string webkitToUnixTime(std::string webkit_timestamp);
-  std::string hexToLetters(const std::string& hex);
   std::string generateIdentifier(const std::string& key);
   std::string sha256_file(const std::filesystem::path& filepath);
   void parseManifest(nlohmann::json& manifestJson, chrome::ChromeExtension& extension);
@@ -96,13 +105,9 @@ class ChromeExtensions {
   void getCommonSettings(chrome::ChromeExtension& extension, const std::filesystem::path& manifestPath, const nlohmann::json& preferencesJson);
   chrome::ChromeExtensionList getReferencedExtensions(const std::filesystem::path& profilePath);
   chrome::ChromeExtensionList getUnreferencedExtensions(const std::filesystem::path& profilePath);
-  chrome::ChromeUserProfileList getUserProfile();
-  void printExtensions(const chrome::ChromeExtensionList& extensions);
-  nlohmann::json toJson(const chrome::ChromeExtensionList& extensions);
   void getExtensionsFromPath(chrome::ChromeExtensionList& extensions, const std::filesystem::path& path);
-  void getExtensionsFromProfiles(chrome::ChromeExtensionList& extensions, const chrome::ChromeUserProfileList& profilePaths);
-	
-  private:
+
+  std::shared_ptr<IChromeExtensionsWrapper> m_chromeExtensionsWrapper;
 };
 
 } // namespace chrome
