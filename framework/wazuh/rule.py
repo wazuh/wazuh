@@ -503,8 +503,7 @@ def upload_rule_file(filename: str, content: str, relative_dirname: str = None,
 
         # After uploading the file, reload rulesets
         socket_response = send_reload_ruleset_msg(origin={'module': 'api'})
-        if socket_response['error'] == 1:
-            raise WazuhError(1212, extra_message=socket_response['data'])
+        socket_response.update_affected_items(results=result, error_code=1212)
 
         result.affected_items.append(to_relative_path(full_path))
         result.total_affected_items = len(result.affected_items)
@@ -556,8 +555,7 @@ def delete_rule_file(filename: Union[str, list], relative_dirname: str = None) -
 
         # After deleting the file, reload rulesets
         socket_response = send_reload_ruleset_msg(origin={'module': 'api'})
-        if socket_response['error'] == 1:
-            raise WazuhError(1212, extra_message=socket_response['data'])
+        socket_response.update_affected_items(results=result, error_code=1212)
     except WazuhError as exc:
         result.add_failed_item(id_=to_relative_path(full_path), error=exc)
     result.total_affected_items = len(result.affected_items)
