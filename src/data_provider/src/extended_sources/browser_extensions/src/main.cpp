@@ -1,15 +1,20 @@
 #include <iostream>
-#include "chrome.hpp"
+#include "chrome_linux.hpp"
+
+class MockChromeExtensionsWrapper : public IChromeExtensionsWrapper
+{
+	public:
+	std::filesystem::path getHomePath() override
+	{
+		std::filesystem::path mockHomePath = std::filesystem::path(__FILE__).parent_path() / "../tests/mock_home";
+		return mockHomePath;
+	}
+};
 
 int main() {
-	chrome::ChromeExtensions chromeExtensions;
-
-	auto profilePaths = chromeExtensions.getUserProfile();
-	chrome::ChromeExtensionList extensions;
-	chromeExtensions.getExtensionsFromProfiles(extensions, profilePaths);
-
-	// chromeExtensions.printExtensions(extensions);
-	std::cout << chromeExtensions.toJson(extensions) << std::endl;
+	auto mockExtensionsWrapper = std::make_shared<MockChromeExtensionsWrapper>();
+	chrome::ChromeExtensionsProvider chromeExtensionsProvider(mockExtensionsWrapper);
+	std::cout << chromeExtensionsProvider.collect() << std::endl;
 
 	return 0;
 }
