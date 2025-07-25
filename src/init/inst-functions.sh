@@ -1113,8 +1113,6 @@ InstallLocal()
     installEngineStore
     ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/tzdb
 
-    # TODO Deletes old ruleset and stats, rootcheck and SCA?
-
     InstallSecurityConfigurationAssessmentFiles "manager"
 
     ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/db

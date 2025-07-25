@@ -267,10 +267,6 @@ if [ -d %{_localstatedir}/queue/agent-info ]; then
   rm -rf %{_localstatedir}/queue/agent-info/* > /dev/null 2>&1
 fi
 
-if [ -d %{_localstatedir}/queue/rootcheck ]; then
-  rm -rf %{_localstatedir}/queue/rootcheck/* > /dev/null 2>&1
-fi
-
 # Delete old API backups
 if [ $1 = 2 ]; then
   if [ -d %{_localstatedir}/~api ]; then
@@ -678,8 +674,6 @@ rm -fr %{buildroot}
 %dir %attr(770, wazuh, wazuh) %{_localstatedir}/etc/shared/default
 %attr(660, wazuh, wazuh) %{_localstatedir}/etc/shared/agent-template.conf
 %attr(660, wazuh, wazuh) %config(noreplace) %{_localstatedir}/etc/shared/default/*
-%dir %attr(770, root, wazuh) %{_localstatedir}/etc/rootcheck
-%attr(660, root, wazuh) %{_localstatedir}/etc/rootcheck/*.txt
 %dir %attr(770, root, wazuh) %{_localstatedir}/engine
 %dir %attr(770, wazuh, wazuh) %{_localstatedir}/engine/kvdb
 %dir %attr(770, wazuh, wazuh) %{_localstatedir}/engine/store
