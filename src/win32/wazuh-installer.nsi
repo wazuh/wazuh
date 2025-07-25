@@ -196,12 +196,7 @@ Section "Wazuh Agent (required)" MainSec
     File setup-iis.exe
     File doc.html
     File favicon.ico
-    File /oname=shared\rootkit_trojans.txt ..\..\ruleset\rootcheck\db\rootkit_trojans.txt
-    File /oname=shared\rootkit_files.txt ..\..\ruleset\rootcheck\db\rootkit_files.txt
     File LICENSE.txt
-    File /oname=shared\win_applications_rcl.txt ..\..\ruleset\rootcheck\db\win_applications_rcl.txt
-    File /oname=shared\win_malware_rcl.txt ..\..\ruleset\rootcheck\db\win_malware_rcl.txt
-    File /oname=shared\win_audit_rcl.txt ..\..\ruleset\rootcheck\db\win_audit_rcl.txt
     File /oname=help.txt help_win.txt
     File vista_sec.txt
     File /oname=active-response\bin\route-null.exe route-null.exe
