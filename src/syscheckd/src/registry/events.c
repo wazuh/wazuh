@@ -155,6 +155,15 @@ void fim_calculate_dbsync_difference_value(const fim_registry_value_data* value_
     }
 }
 
+/**
+ * @brief Create a cJSON object holding the attributes associated with a fim_registry_value_data according to its
+ * configuration.
+ *
+ * @param dbsync_event A cJSON object holding the dbsync event.
+ * @param data A fim_registry_value_data object holding the key attributes to be tranlated.
+ * @param configuration The configuration associated with the registry key.
+ * @return A pointer to a cJSON object the translated key attributes.
+ */
 cJSON *fim_registry_value_attributes_json(const cJSON* dbsync_event, const fim_registry_value_data *data,
                                           const registry_t *configuration) {
 
@@ -231,6 +240,7 @@ cJSON *fim_registry_value_attributes_json(const cJSON* dbsync_event, const fim_r
  * @brief Create a cJSON object holding the attributes associated with a fim_registry_key according to its
  * configuration.
  *
+ * @param dbsync_event A cJSON object holding the dbsync event.
  * @param data A fim_registry_key object holding the key attributes to be tranlated.
  * @param configuration The configuration associated with the registry key.
  * @return A pointer to a cJSON object the translated key attributes.

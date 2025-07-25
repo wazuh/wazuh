@@ -14,7 +14,6 @@
 
 #include "syscheck.h"
 #include "registry/registry.h"
-#include "registry/registry.c"
 
 #include "../../wrappers/common.h"
 #include "../../wrappers/windows/sddl_wrappers.h"
@@ -848,7 +847,7 @@ static void test_fim_registry_scan_RegQueryInfoKey_fail(void **state) {
 
 static void test_fim_registry_key_transaction_callback_empty_changed_attributes(){
     _base_line = 1;
-    event_data_t event_data = {.mode = FIM_SCHEDULED};
+    event_data_t event_data = {.mode = FIM_SCHEDULED, .report_event = true};
     fim_registry_key key = {
         .path = "HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile",
         .architecture = ARCH_64BIT,
@@ -897,7 +896,7 @@ static void test_fim_registry_key_transaction_callback_null_configuration(){
 
 static void test_fim_registry_key_transaction_callback_insert(){
     _base_line = 1;
-    event_data_t event_data = {.mode = FIM_SCHEDULED};
+    event_data_t event_data = {.mode = FIM_SCHEDULED, .report_event = true};
     ReturnTypeCallback resultType = INSERTED;
     const char* json_string = "{\"path\":\"HKEY_LOCAL_MACHINE\\\\Software\\\\Classes\\\\batfile\", \"architecture\":\"[x64]\"}";
     const cJSON* result_json = cJSON_Parse(json_string);
@@ -910,7 +909,7 @@ static void test_fim_registry_key_transaction_callback_insert(){
 
 static void test_fim_registry_key_transaction_callback_modify(){
     _base_line = 1;
-    event_data_t event_data = {.mode = FIM_SCHEDULED};
+    event_data_t event_data = {.mode = FIM_SCHEDULED, .report_event = true};
     ReturnTypeCallback resultType = MODIFIED;
     const char* json_string = "{\"path\":\"HKEY_LOCAL_MACHINE\\\\Software\\\\Classes\\\\batfile\", \"architecture\":\"[x64]\"}";
     const cJSON* result_json = cJSON_Parse(json_string);
@@ -923,14 +922,13 @@ static void test_fim_registry_key_transaction_callback_modify(){
 
 static void test_fim_registry_key_transaction_callback_delete(){
     _base_line = 1;
-    event_data_t event_data = {.mode = FIM_SCHEDULED};
+    event_data_t event_data = {.mode = FIM_SCHEDULED, .report_event = true};
     ReturnTypeCallback resultType = DELETED;
     const char* json_string = "{\"path\":\"HKEY_LOCAL_MACHINE\\\\Software\\\\Classes\\\\batfile\", \"architecture\":\"[x64]\"}";
     const cJSON* result_json = cJSON_Parse(json_string);
     fim_key_txn_context_t user_data = {.key = NULL, .evt_data = &event_data};
 
     expect_function_call(__wrap_send_syscheck_msg);
-    expect_string(__wrap__mdebug2, formatted_msg, "(6355): Can't remove folder 'queue/diff/registry/[x64] b9b175e8810d3475f15976dd3b5f9210f3af6604', it does not exist.");
 
     registry_key_transaction_callback(resultType, result_json, &user_data);
 }
@@ -953,7 +951,7 @@ static void test_fim_registry_key_transaction_callback_max_rows(){
 
 static void test_fim_registry_value_transaction_callback_empty_changed_attributes(){
     _base_line = 1;
-    event_data_t event_data = {.mode = FIM_SCHEDULED};
+    event_data_t event_data = {.mode = FIM_SCHEDULED, .report_event = true};
     fim_registry_value_data value;
     memset(&value, 0, sizeof(fim_registry_value_data));
     value.path = "HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile";
@@ -1004,7 +1002,7 @@ static void test_fim_registry_value_transaction_callback_null_configuration(){
 
 static void test_fim_registry_value_transaction_callback_insert(){
     _base_line = 1;
-    event_data_t event_data = {.mode = FIM_SCHEDULED};
+    event_data_t event_data = {.mode = FIM_SCHEDULED, .report_event = true};
     ReturnTypeCallback resultType = INSERTED;
     const char* json_string = "{\"path\":\"HKEY_LOCAL_MACHINE\\\\Software\\\\Classes\\\\batfile\",\"architecture\":\"[x64]\", \"value\":\"mock_name_value\"}";
     const cJSON* result_json = cJSON_Parse(json_string);
@@ -1017,7 +1015,7 @@ static void test_fim_registry_value_transaction_callback_insert(){
 
 static void test_fim_registry_value_transaction_callback_modify(){
     _base_line = 1;
-    event_data_t event_data = {.mode = FIM_SCHEDULED};
+    event_data_t event_data = {.mode = FIM_SCHEDULED, .report_event = true};
     ReturnTypeCallback resultType = MODIFIED;
     const char* json_string = "{\"path\":\"HKEY_LOCAL_MACHINE\\\\Software\\\\Classes\\\\batfile\",\"architecture\":\"[x64]\",\"value\":\"mock_name_value\"}";
     const cJSON* result_json = cJSON_Parse(json_string);
@@ -1030,7 +1028,7 @@ static void test_fim_registry_value_transaction_callback_modify(){
 
 static void test_fim_registry_value_transaction_callback_modify_with_diff(){
     _base_line = 1;
-    event_data_t event_data = {.mode = FIM_SCHEDULED};
+    event_data_t event_data = {.mode = FIM_SCHEDULED, .report_event = true};
     ReturnTypeCallback resultType = MODIFIED;
     const char* json_string = "{\"path\":\"HKEY_LOCAL_MACHINE\\\\Software\\\\Classes\\\\batfile\",\"architecture\":\"[x64]\",\"value\":\"mock_name_value\"}";
     const cJSON* result_json = cJSON_Parse(json_string);
@@ -1043,7 +1041,7 @@ static void test_fim_registry_value_transaction_callback_modify_with_diff(){
 
 static void test_fim_registry_value_transaction_callback_delete(){
     _base_line = 1;
-    event_data_t event_data = {.mode = FIM_SCHEDULED};
+    event_data_t event_data = {.mode = FIM_SCHEDULED, .report_event = true};
     ReturnTypeCallback resultType = DELETED;
     const char* json_string = "{\"path\":\"HKEY_LOCAL_MACHINE\\\\Software\\\\Classes\\\\batfile\", \"architecture\":\"[x64]\", \"value\":\"mock_name_value\"}";
     const cJSON* result_json = cJSON_Parse(json_string);
@@ -1057,7 +1055,7 @@ static void test_fim_registry_value_transaction_callback_delete(){
 
 static void test_fim_registry_value_transaction_callback_max_rows(){
     _base_line = 1;
-    event_data_t event_data = {.mode = FIM_SCHEDULED};
+    event_data_t event_data = {.mode = FIM_SCHEDULED, .report_event = true};
     fim_registry_value_data value;
     memset(&value, 0, sizeof(fim_registry_value_data));
     value.path = "HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile";

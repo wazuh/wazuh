@@ -16,6 +16,7 @@
 #include "debug_op.h"
 #include "syscheck.h"
 #include "syscheck_op.h"
+#include "file/file.h"
 
 #ifdef WAZUH_UNIT_TESTING
 #ifdef WIN32
@@ -301,7 +302,6 @@ int realtime_update_watch(const char *wd, const char *dir) {
     configuration = fim_configuration_directory(dir);
 
     if (configuration == NULL) {
-        mdebug2(FIM_CONFIGURATION_NOTFOUND, "file", dir);
         inotify_rm_watch(syscheck.realtime->fd, atoi(wd));
         free(OSHash_Delete_ex(syscheck.realtime->dirtb, wd));
         return 0;

@@ -22,7 +22,7 @@
 #include "syscheck.h"
 #include "../os_crypto/md5_sha1_sha256/md5_sha1_sha256_op.h"
 #include "../rootcheck/rootcheck.h"
-#include "db/include/db.h"
+#include "file/file.h"
 #include "ebpf/include/ebpf_whodata.h"
 
 #ifdef WAZUH_UNIT_TESTING
@@ -59,7 +59,6 @@ STATIC void set_whodata_mode_changes();
 static void *symlink_checker_thread(__attribute__((unused)) void * data);
 STATIC void fim_link_update(const char *new_path, directory_t *configuration);
 STATIC void fim_link_check_delete(directory_t *configuration);
-STATIC void fim_link_delete_range(directory_t *configuration);
 STATIC void fim_link_silent_scan(const char *path, directory_t *configuration);
 STATIC void fim_link_reload_broken_link(char *path, directory_t *configuration);
 #endif
@@ -613,20 +612,6 @@ void log_realtime_status(int next) {
     }
 }
 
-//Callback
-void fim_db_remove_validated_path(void * data, void * ctx)
-{
-    char *path = (char *)data;
-    struct callback_ctx *ctx_data = (struct callback_ctx *)ctx;
-
-    directory_t *validated_configuration = fim_configuration_directory(path);
-
-    if (validated_configuration == ctx_data->config)
-    {
-        fim_generate_delete_event(path, ctx_data->event, ctx_data->config);
-    }
-}
-
 #ifndef WIN32
 // LCOV_EXCL_START
 static void *symlink_checker_thread(__attribute__((unused)) void * data) {
@@ -789,23 +774,6 @@ STATIC void fim_link_check_delete(directory_t *configuration) {
         os_free(configuration->symbolic_links);
         w_mutex_unlock(&syscheck.fim_symlink_mutex);
     }
-}
-
-STATIC void fim_link_delete_range(directory_t *configuration) {
-    event_data_t evt_data = { .mode = FIM_SCHEDULED, .report_event = false, .w_evt = NULL, .type = FIM_DELETE };
-    char pattern[PATH_MAX] = {0};
-
-    callback_ctx ctx = {
-        .event = (event_data_t *)&evt_data,
-        .config = configuration,
-    };
-    // Create the sqlite LIKE pattern.
-    snprintf(pattern, PATH_MAX, "%s%c%%", configuration->symbolic_links, PATH_SEP);
-    callback_context_t callback_data;
-    callback_data.callback = fim_db_remove_validated_path;
-    callback_data.context = &ctx;
-
-    fim_db_file_pattern_search(pattern, callback_data);
 }
 
 STATIC void fim_link_silent_scan(const char *path, directory_t *configuration) {

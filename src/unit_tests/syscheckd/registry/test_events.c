@@ -21,16 +21,6 @@
 
 fim_registry_key DEFAULT_REGISTRY_KEY = { .path = "HKEY_USERS\\Some\\random\\key", .perm_json = NULL, .permissions = "", .uid = "110", .gid = "220", .owner = "user_old_name", .group = "group_old_name", .mtime = 1100, .architecture = ARCH_64BIT, .checksum = "234567890ABCDEF1234567890ABCDEF123456789"};
 fim_registry_value_data DEFAULT_REGISTRY_VALUE = { .path = "key\\path", .architecture = ARCH_64BIT, .value = "the\\value", .type = REG_SZ, .size = 50, .hash_md5 = "1234567890ABCDEF1234567890ABCDEF", .hash_sha1 = "1234567890ABCDEF1234567890ABCDEF12345678", .hash_sha256 = "1234567890ABCDEF1234567890ABCDEF1234567890ABCDEF1234567890ABCDEF", .checksum = "1234567890ABCDEF1234567890ABCDEF12345678" };
-typedef struct fim_key_txn_context_s {
-    event_data_t *evt_data;
-    fim_registry_key *key;
-} fim_key_txn_context_t;
-
-typedef struct fim_val_txn_context_s {
-    event_data_t *evt_data;
-    fim_registry_value_data *data;
-    char* diff;
-} fim_val_txn_context_t;
 
 typedef struct key_difference_s {
     cJSON *old_data;

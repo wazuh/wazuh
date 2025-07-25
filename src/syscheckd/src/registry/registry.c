@@ -25,8 +25,11 @@
 #ifdef WAZUH_UNIT_TESTING
 #include "../../../unit_tests/wrappers/windows/winreg_wrappers.h"
 extern int _base_line;
+// Remove static qualifier when unit testing
+#define STATIC
 #else
 static int _base_line = 0;
+#define STATIC static
 #endif
 
 /* Default values */
@@ -45,17 +48,6 @@ static const char *FIM_EVENT_MODE[] = {
     "whodata"
 };
 
-typedef struct fim_key_txn_context_s {
-    event_data_t *evt_data;
-    fim_registry_key *key;
-} fim_key_txn_context_t;
-
-typedef struct fim_val_txn_context_s {
-    event_data_t *evt_data;
-    fim_registry_value_data *data;
-    char* diff;
-} fim_val_txn_context_t;
-
 // DBSync Callbacks
 
 /**
@@ -65,29 +57,23 @@ typedef struct fim_val_txn_context_s {
  * @param result_json Data returned by dbsync in JSON format.
  * @param user_data Registry key transaction context.
  */
-static void registry_key_transaction_callback(ReturnTypeCallback resultType,
+STATIC void registry_key_transaction_callback(ReturnTypeCallback resultType,
                                               const cJSON* result_json,
                                               void* user_data) {
 
-    registry_t *configuration = NULL;
     cJSON *json_event = NULL;
     cJSON *json_path = NULL;
     cJSON *json_arch = NULL;
     cJSON *old_data = NULL;
     cJSON *old_attributes = NULL;
     cJSON *changed_attributes = NULL;
-    fim_key_txn_context_t *event_data = (fim_key_txn_context_t *) user_data;
-    fim_registry_key* key = event_data->key;
     char *path = NULL;
     int arch = -1;
 
-    // Do not process if it's the first scan
-    if (_base_line == 0) {
-        return;
-    }
+    fim_key_txn_context_t *event_data = (fim_key_txn_context_t *) user_data;
 
     // In case of deletions, key is NULL, so we need to get the path and arch from the json event
-    if (key == NULL) {
+    if (event_data->key == NULL) {
         if (json_path = cJSON_GetObjectItem(result_json, "path"), json_path == NULL) {
             goto end;
         }
@@ -98,14 +84,15 @@ static void registry_key_transaction_callback(ReturnTypeCallback resultType,
         arch = (strcmp(cJSON_GetStringValue(json_arch), "[x32]") == 0) ? ARCH_32BIT: ARCH_64BIT;
 
     } else {
-        path = key->path;
-        arch = key->architecture;
+        path = event_data->key->path;
+        arch = event_data->key->architecture;
     }
 
-    configuration = fim_registry_configuration(path, arch);
-
-    if (configuration == NULL) {
-        goto end;
+    if (event_data->config == NULL) {
+        event_data->config = fim_registry_configuration(path, arch);
+        if (event_data->config == NULL) {
+            goto end;
+        }
     }
 
     switch (resultType) {
@@ -118,9 +105,6 @@ static void registry_key_transaction_callback(ReturnTypeCallback resultType,
             break;
 
         case DELETED:
-            if (configuration->opts & CHECK_SEECHANGES) {
-                fim_diff_process_delete_registry(path, arch);
-            }
             event_data->evt_data->type = FIM_DELETE;
             break;
 
@@ -131,6 +115,16 @@ static void registry_key_transaction_callback(ReturnTypeCallback resultType,
         default:
             goto end;
             break;
+    }
+
+    // Do not process if it's the first scan
+    if (_base_line == 0) {
+        return;
+    }
+
+    // Do not process if report_event is false
+    if (event_data->evt_data->report_event == false) {
+        goto end;
     }
 
     json_event = cJSON_CreateObject();
@@ -145,7 +139,7 @@ static void registry_key_transaction_callback(ReturnTypeCallback resultType,
     cJSON_AddStringToObject(data, "mode", FIM_EVENT_MODE[event_data->evt_data->mode]);
     cJSON_AddStringToObject(data, "type", FIM_EVENT_TYPE_ARRAY[event_data->evt_data->type]);
     cJSON_AddStringToObject(data, "architecture", arch == ARCH_32BIT ? "[x32]" : "[x64]");
-    cJSON_AddItemToObject(data, "attributes", fim_registry_key_attributes_json(result_json, key, configuration));
+    cJSON_AddItemToObject(data, "attributes", fim_registry_key_attributes_json(result_json, event_data->key, event_data->config));
 
     old_data = cJSON_GetObjectItem(result_json, "old");
     if (old_data != NULL) {
@@ -153,8 +147,8 @@ static void registry_key_transaction_callback(ReturnTypeCallback resultType,
         changed_attributes = cJSON_CreateArray();
         cJSON_AddItemToObject(data, "old_attributes", old_attributes);
         cJSON_AddItemToObject(data, "changed_attributes", changed_attributes);
-        fim_calculate_dbsync_difference_key(key,
-                                            configuration,
+        fim_calculate_dbsync_difference_key(event_data->key,
+                                            event_data->config,
                                             old_data,
                                             changed_attributes,
                                             old_attributes);
@@ -165,14 +159,14 @@ static void registry_key_transaction_callback(ReturnTypeCallback resultType,
         }
     }
 
-    if (configuration->tag != NULL) {
-        cJSON_AddStringToObject(data, "tags", configuration->tag);
+    if (event_data->config->tag != NULL) {
+        cJSON_AddStringToObject(data, "tags", event_data->config->tag);
     }
 
     send_syscheck_msg(json_event);
 
-    end:
-        cJSON_Delete(json_event);
+end:
+    cJSON_Delete(json_event);
 }
 
 /**
@@ -182,32 +176,25 @@ static void registry_key_transaction_callback(ReturnTypeCallback resultType,
  * @param result_json Data returned by dbsync in JSON format.
  * @param user_data Registry value transaction context.
  */
-static void registry_value_transaction_callback(ReturnTypeCallback resultType,
+STATIC void registry_value_transaction_callback(ReturnTypeCallback resultType,
                                                 const cJSON* result_json,
                                                 void* user_data) {
 
-    registry_t *configuration = NULL;
     cJSON *json_event = NULL;
     cJSON *json_path = NULL;
     cJSON *json_arch = NULL;
     cJSON *json_value = NULL;
-    cJSON *old_attributes = NULL;
     cJSON *old_data = NULL;
+    cJSON *old_attributes = NULL;
     cJSON *changed_attributes = NULL;
     char *path = NULL;
     char *value = NULL;
     int arch = -1;
+
     fim_val_txn_context_t *event_data = (fim_val_txn_context_t *) user_data;
-    char* diff = event_data->diff;
-    fim_registry_value_data *value_data = event_data->data;
 
-    // Do not process if it's the first scan
-    if (_base_line == 0) {
-        return;
-    }
-
-    // In case of deletions, value_data is NULL, so we need to get the path and arch from the json event
-    if (value_data == NULL) {
+    // In case of deletions, data is NULL, so we need to get the path and arch from the json event
+    if (event_data->data == NULL) {
         if (json_path = cJSON_GetObjectItem(result_json, "path"), json_path == NULL) {
             goto end;
         }
@@ -221,14 +208,16 @@ static void registry_value_transaction_callback(ReturnTypeCallback resultType,
         arch = (strcmp(cJSON_GetStringValue(json_arch), "[x32]") == 0) ? ARCH_32BIT: ARCH_64BIT;
         value = cJSON_GetStringValue(json_value);
     } else {
-        path = value_data->path;
-        arch = value_data->architecture;
-        value = value_data->value;
+        path = event_data->data->path;
+        arch = event_data->data->architecture;
+        value = event_data->data->value;
     }
 
-    configuration = fim_registry_configuration(path, arch);
-    if (configuration == NULL) {
-         goto end;
+    if (event_data->config == NULL) {
+        event_data->config = fim_registry_configuration(path, arch);
+        if (event_data->config == NULL) {
+            goto end;
+        }
     }
 
     switch (resultType) {
@@ -241,7 +230,7 @@ static void registry_value_transaction_callback(ReturnTypeCallback resultType,
             break;
 
         case DELETED:
-            if (configuration->opts & CHECK_SEECHANGES) {
+            if (event_data->config->opts & CHECK_SEECHANGES) {
                 fim_diff_process_delete_value(path, value, arch);
             }
             event_data->evt_data->type = FIM_DELETE;
@@ -254,6 +243,16 @@ static void registry_value_transaction_callback(ReturnTypeCallback resultType,
         default:
             goto end;
             break;
+    }
+
+    // Do not process if it's the first scan
+    if (_base_line == 0) {
+        return;
+    }
+
+    // Do not process if report_event is false
+    if (event_data->evt_data->report_event == false) {
+        goto end;
     }
 
     json_event = cJSON_CreateObject();
@@ -269,7 +268,7 @@ static void registry_value_transaction_callback(ReturnTypeCallback resultType,
     cJSON_AddStringToObject(data, "type", FIM_EVENT_TYPE_ARRAY[event_data->evt_data->type]);
     cJSON_AddStringToObject(data, "architecture", arch == ARCH_32BIT ? "[x32]" : "[x64]");
     cJSON_AddStringToObject(data, "value", value);
-    cJSON_AddItemToObject(data, "attributes", fim_registry_value_attributes_json(result_json, value_data, configuration));
+    cJSON_AddItemToObject(data, "attributes", fim_registry_value_attributes_json(result_json, event_data->data, event_data->config));
 
     old_data = cJSON_GetObjectItem(result_json, "old");
     if (old_data != NULL) {
@@ -277,8 +276,8 @@ static void registry_value_transaction_callback(ReturnTypeCallback resultType,
         changed_attributes = cJSON_CreateArray();
         cJSON_AddItemToObject(data, "old_attributes", old_attributes);
         cJSON_AddItemToObject(data, "changed_attributes", changed_attributes);
-        fim_calculate_dbsync_difference_value(value_data,
-                                              configuration,
+        fim_calculate_dbsync_difference_value(event_data->data,
+                                              event_data->config,
                                               old_data,
                                               changed_attributes,
                                               old_attributes);
@@ -289,22 +288,19 @@ static void registry_value_transaction_callback(ReturnTypeCallback resultType,
         }
     }
 
-    if (configuration->tag != NULL) {
-        cJSON_AddStringToObject(data, "tags", configuration->tag);
+    if (event_data->config->tag != NULL) {
+        cJSON_AddStringToObject(data, "tags", event_data->config->tag);
     }
 
-    if (diff != NULL && resultType == MODIFIED) {
-        cJSON_AddStringToObject(data, "content_changes", diff);
+    if (event_data->diff != NULL && resultType == MODIFIED) {
+        cJSON_AddStringToObject(data, "content_changes", event_data->diff);
     }
 
     send_syscheck_msg(json_event);
 
-
 end:
+    os_free(event_data->diff);
     cJSON_Delete(json_event);
-    if(diff != NULL){
-        os_free(diff);
-    }
 }
 
 /**
@@ -467,6 +463,31 @@ int fim_registry_validate_ignore(const char *entry, const registry_t *configurat
     }
     return 0;
 }
+
+/**
+ * @brief Checks if a specific folder has been configured to be checked with a specific restriction
+ *
+ * @param entry A string holding the full path of the key or the name of the value to be validated.
+ * @param restriction The regex restriction to be checked
+ * @return 1 if the folder has been configured with the specified restriction, 0 if not
+ */
+int fim_registry_validate_restrict(const char *entry, OSMatch *restriction) {
+    if (entry == NULL) {
+        merror(NULL_ERROR);
+        return 1;
+    }
+
+    // Restrict file types
+    if (restriction) {
+        if (!OSMatch_Execute(entry, strlen(entry), restriction)) {
+            mdebug2(FIM_FILE_IGNORE_RESTRICT, entry, restriction->raw);
+            return 1;
+        }
+    }
+
+    return 0;
+}
+
 /**
  * @brief Compute checksum of a registry key
  *
@@ -851,7 +872,7 @@ void fim_read_values(HKEY key_handle,
         }
         os_free(value_path);
 
-        if (fim_check_restrict(new.registry_entry.value->value, configuration->restrict_value)) {
+        if (fim_registry_validate_restrict(new.registry_entry.value->value, configuration->restrict_value)) {
             continue;
         }
 
@@ -865,12 +886,15 @@ void fim_read_values(HKEY key_handle,
         }
         txn_ctx_regval->diff = diff;
         txn_ctx_regval->data = new.registry_entry.value;
+        txn_ctx_regval->config = configuration;
 
         int result_transaction = fim_db_transaction_sync_row(regval_txn_handler, &new);
 
         if (result_transaction < 0) {
             mdebug2("dbsync transaction failed due to %d", result_transaction);
         }
+
+        txn_ctx_regval->config = NULL;
     }
 
     new.registry_entry.value = NULL;
@@ -980,7 +1004,7 @@ void fim_open_key(HKEY root_key_handle,
     }
 
     // Restrict check
-    if (fim_check_restrict(full_key, configuration->restrict_key)) {
+    if (fim_registry_validate_restrict(full_key, configuration->restrict_key)) {
         return;
     }
 
@@ -994,6 +1018,7 @@ void fim_open_key(HKEY root_key_handle,
     }
 
     txn_ctx_reg->key = new.registry_entry.key;
+    txn_ctx_reg->config = configuration;
 
     result_transaction = fim_db_transaction_sync_row(regkey_txn_handler, &new);
 
@@ -1006,6 +1031,8 @@ void fim_open_key(HKEY root_key_handle,
                         regval_txn_handler, txn_ctx_regval);
     }
 
+    txn_ctx_reg->config = NULL;
+
     fim_registry_free_key(new.registry_entry.key);
     RegCloseKey(current_key_handle);
 }
@@ -1015,10 +1042,10 @@ void fim_registry_scan() {
     const char *sub_key = NULL;
     int i = 0;
     event_data_t evt_data_registry_key = { .report_event = true, .mode = FIM_SCHEDULED, .w_evt = NULL };
-    fim_key_txn_context_t txn_ctx_reg = { .evt_data = &evt_data_registry_key };
+    fim_key_txn_context_t txn_ctx_reg = { .evt_data = &evt_data_registry_key, .config = NULL };
     TXN_HANDLE regkey_txn_handler = fim_db_transaction_start(FIMDB_REGISTRY_KEY_TXN_TABLE, registry_key_transaction_callback, &txn_ctx_reg);
     event_data_t evt_data_registry_value = { .report_event = true, .mode = FIM_SCHEDULED, .w_evt = NULL };
-    fim_val_txn_context_t txn_ctx_regval = { .evt_data = &evt_data_registry_value };
+    fim_val_txn_context_t txn_ctx_regval = { .evt_data = &evt_data_registry_value, .config = NULL };
     TXN_HANDLE regval_txn_handler = fim_db_transaction_start(FIMDB_REGISTRY_VALUE_TXN_TABLE,
                                                              registry_value_transaction_callback, &txn_ctx_regval);
 

@@ -38,7 +38,7 @@ const auto insertRegistryValueStatement = R"({
 
 void transaction_callback(ReturnTypeCallback resultType, const cJSON* result_json, void* user_data)
 {
-    callback_ctx* event_data = (callback_ctx*)user_data;
+    callback_ctx_test* event_data = (callback_ctx_test*)user_data;
     auto expectedValue = R"([{
         "architecture": "[x64]",
         "checksum": "a2fbef8f81af27155dcee5e3927ff6243593b91a",

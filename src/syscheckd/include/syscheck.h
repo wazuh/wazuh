@@ -109,13 +109,6 @@ typedef struct diff_data
     char* diff_file;
 } diff_data;
 
-typedef struct callback_ctx
-{
-    event_data_t* event;
-    const directory_t* config;
-    fim_entry* entry;
-} callback_ctx;
-
 #ifdef WIN32
 /* Flags to know if a directory/file's watcher has been removed */
 #define FIM_RT_HANDLE_CLOSED 0
@@ -177,52 +170,6 @@ time_t fim_scan();
 void check_max_fps();
 
 /**
- * @brief
- *
- * @param [in] path Path of the file to check
- * @param [in] evt_data Information associated to the triggered event
- * @param [in] configuration Configuration block associated with a previous event.
- * @param [in] dbsync_txn Handle to an active dbsync transaction.
- */
-void fim_checker(const char* path,
-                 event_data_t* evt_data,
-                 const directory_t* parent_configuration,
-                 TXN_HANDLE dbsync_txn,
-                 callback_ctx* ctx);
-
-/**
- * @brief Check file integrity monitoring on a specific folder
- *
- * @param [in] dir
- * @param [in] evt_data Information associated to the triggered event
- * @param [in] configuration Configuration block associated with the directory.
- * @param [in] txn_handle DBSync transaction handler. Can be NULL.
- *
- * @return 0 on success, -1 on failure
- */
-
-int fim_directory(const char* dir,
-                  event_data_t* evt_data,
-                  const directory_t* configuration,
-                  TXN_HANDLE dbsync_txn,
-                  callback_ctx* ctx);
-
-/**
- * @brief Check file integrity monitoring on a specific file
- *
- * @param [in] path Path of the file to check
- * @param [in] configuration Configuration block associated with a previous event.
- * @param [in] evt_data Information associated to the triggered event
- * @param [in] txn_handle DBSync transaction handler. Can be NULL.
- * @param [in] ctx DBSync transaction context.
- */
-void fim_file(const char* path,
-              const directory_t* configuration,
-              event_data_t* evt_data,
-              TXN_HANDLE txn_handle,
-              callback_ctx* ctx);
-
-/**
  * @brief Process FIM realtime event
  *
  * @param [in] file Path of the file to check
@@ -237,63 +184,10 @@ void fim_realtime_event(char* file);
 void fim_whodata_event(whodata_evt* w_evt);
 
 /**
- * @brief Process a path that has possibly been deleted
- *
- * @note On Windows, calls function fim_checker meanwhile, on Linux, calls function fim_audit_inode_event. It's because
- * Windows haven't got inodes.
- * @param pathname Name of path
- * @param mode Monitoring FIM mode
- * @param w_evt Pointer to whodata information
- */
-void fim_process_missing_entry(char* pathname, fim_event_mode mode, whodata_evt* w_evt);
-
-/**
- * @brief Search the position of the path in directories array
- *
- * @param path Path to seek in the directories array
- * @return Returns a pointer to the configuration associated with the provided path, NULL if the path is not found
- */
-directory_t* fim_configuration_directory(const char* path);
-
-/**
  * @brief Update directories configuration with the wildcard list, at runtime
  *
  */
 void update_wildcards_config();
-
-/**
- * @brief Evaluates the depth of the directory or file to check if it exceeds the configured max_depth value
- *
- * @param path File name of the file/directory to check
- * @param configuration Configuration associated with the file
- * @return Depth of the directory/file, -1 on error
- */
-int fim_check_depth(const char* path, const directory_t* configuration);
-
-/**
- * @brief Get data from file
- *
- * @param file Name of the file to get the data from
- * @param [in] configuration Configuration block associated with a previous event.
- * @param [in] statbuf Buffer acquired from a stat command with information linked to 'path'
- *
- * @return A fim_file_data structure with the data from the file
- */
-fim_file_data* fim_get_data(const char* file, const directory_t* configuration, const struct stat* statbuf);
-
-/**
- * @brief Initialize a fim_file_data structure
- *
- * @param [out] data Data to initialize
- */
-void init_fim_data_entry(fim_file_data* data);
-
-/**
- * @brief Calculate checksum of a FIM entry data
- *
- * @param data FIM entry data to calculate the checksum with
- */
-void fim_get_checksum(fim_file_data* data);
 
 /**
  * @brief Prints the scan information
@@ -306,13 +200,6 @@ void fim_print_info(struct timespec start, struct timespec end, clock_t cputime_
  *
  */
 void fim_rt_delay();
-
-/**
- * @brief Frees the memory of a FIM entry data structure
- *
- * @param [out] data The FIM entry data to be freed
- */
-void free_file_data(fim_file_data* data);
 
 /**
  * @brief Start real time monitoring
@@ -400,12 +287,11 @@ void free_whodata_event(whodata_evt* w_evt);
  */
 void send_syscheck_msg(const cJSON* msg) __attribute__((nonnull));
 
-// TODO
 /**
- * @brief
+ * @brief Send a log message
  *
- * @param msg
- * @return int
+ * @param msg The message to be sent
+ * @return 0 on success, -1 on error
  */
 int send_log_msg(const char* msg);
 
@@ -599,24 +485,6 @@ void audit_restore();
  */
 
 long unsigned int WINAPI state_checker(__attribute__((unused)) void* _void);
-
-/**
- * @brief Function that generates the diff file of a Windows registry when the option report_changes is activated
- * It creates a file with the content of the value, to compute differences
- *
- * @param key_name Path of the registry key monitored
- * @param value_name Name of the value that has generated the alert
- * @param value_data Content of the value to be checked
- * @param data_type The type of value we are checking
- * @param configuration Config of the registry key
- * @return String with the changes to add to the alert
- */
-
-char* fim_registry_value_diff(const char* key_name,
-                              const char* value_name,
-                              const char* value_data,
-                              DWORD data_type,
-                              const registry_t* configuration);
 #endif
 
 /**
@@ -638,12 +506,22 @@ void fim_diff_process_delete_file(const char* filename);
 
 #ifdef WIN32
 /**
- * @brief Deletes the registry diff folder and modify diff_folder_size if disk_quota enabled
+ * @brief Function that generates the diff file of a Windows registry when the option report_changes is activated
+ * It creates a file with the content of the value, to compute differences
  *
- * @param key_name Path of the registry that has been deleted
- * @param arch Arch type of the registry
+ * @param key_name Path of the registry key monitored
+ * @param value_name Name of the value that has generated the alert
+ * @param value_data Content of the value to be checked
+ * @param data_type The type of value we are checking
+ * @param configuration Config of the registry key
+ * @return String with the changes to add to the alert
  */
-void fim_diff_process_delete_registry(const char* key_name, int arch);
+
+char* fim_registry_value_diff(const char* key_name,
+                              const char* value_name,
+                              const char* value_data,
+                              DWORD data_type,
+                              const registry_t* configuration);
 
 /**
  * @brief Deletes the value diff folder and modifies diff_folder_size if disk_quota enabled
@@ -666,23 +544,6 @@ void fim_initialize();
  *
  */
 int fim_whodata_initialize();
-
-/**
- * @brief Checks if a specific file has been configured to be ignored
- *
- * @param file_name The name of the file to check
- * @return 1 if it has been configured to be ignored, 0 if not
- */
-int fim_check_ignore(const char* file_name);
-
-/**
- * @brief Checks if a specific folder has been configured to be checked with a specific restriction
- *
- * @param file_name The name of the file to check
- * @param restriction The regex restriction to be checked
- * @return 1 if the folder has been configured with the specified restriction, 0 if not
- */
-int fim_check_restrict(const char* file_name, OSMatch* restriction);
 
 #ifndef WIN32
 
@@ -724,8 +585,6 @@ int w_update_sacl(const char* obj_path);
 #endif
 
 #ifdef WIN32
-#define check_removed_file(x) ({ strstr(x, ":\\$recycle.bin") ? 1 : 0; })
-
 /**
  * @brief Get the number of realtime watches opened by FIM.
  *
@@ -733,57 +592,6 @@ int w_update_sacl(const char* obj_path);
  */
 unsigned int get_realtime_watches();
 #endif
-
-/**
- * @brief Create file attribute set JSON from a FIM entry structure
- *
- * Format:
- * {
- *   size:        number
- *   permissions: string
- *   owner:       string
- *   group_:      string
- *   uid:         string
- *   gid:         string
- *   inode:       number
- *   mtime:       number
- *   hash_md5:    string
- *   hash_sha1:   string
- *   hash_sha256: string
- *   attributes:  string
- *   checksum:    string
- * }
- *
- * @param dbsync_event Pointer to event dbsync JSON structure.
- * @param data Pointer to a FIM entry structure.
- * @param configuration Pointer to the configuration structure.
- * @pre data is mutex-blocked.
- * @return Pointer to cJSON structure.
- */
-cJSON* fim_attributes_json(const cJSON* dbsync_event, const fim_file_data* data, const directory_t* configuration);
-
-/**
- * @brief Create file audit data JSON object
- *
- * Format:
- * {
- *   user_id:        string
- *   user_name:      string
- *   group_id:       string
- *   group_name:     string
- *   process_name:   string
- *   audit_uid:      string
- *   audit_name:     string
- *   effective_uid:  string
- *   effective_name: string
- *   ppid:           number
- *   process_id:     number
- * }
- *
- * @param w_evt Pointer to event whodata structure
- * @return cJSON object pointer.
- */
-cJSON* fim_audit_json(const whodata_evt* w_evt);
 
 /**
  * @brief Checks the DB state, sends a message alert if necessary
@@ -796,25 +604,6 @@ void fim_check_db_state();
  *
  */
 void fim_diff_folder_size();
-
-/**
- * @brief Get the directory that will be effectively monitored depending on configuration the entry configuration and
- * physical object in the filesystem
- *
- * @param dir Pointer to the configuration associated with the directory
- * @return A string holding the element being monitored. It must be freed after it's usage.
- */
-char* fim_get_real_path(const directory_t* dir);
-
-/**
- * @brief Create a delete event and removes the entry from the database.
- *
- * @param file_path path data to be removed.
- * @param evt_data Information associated to the triggered event.
- * @param configuration Directory configuration to be deleted.
- *
- */
-void fim_generate_delete_event(const char* file_path, const void* evt_data, const void* configuration);
 
 /**
  * @brief Get shutdown process flag.

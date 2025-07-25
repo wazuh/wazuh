@@ -19,6 +19,12 @@
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 
+typedef struct callback_ctx_test_s
+{
+    event_data_t* event;
+    const directory_t* config;
+    fim_entry* entry;
+} callback_ctx_test;
 typedef struct txn_context_test_s
 {
     event_data_t* evt_data;
@@ -31,8 +37,8 @@ event_data_t evt_data1;
 event_data_t evt_data2;
 directory_t configuration1;
 directory_t configuration2;
-callback_ctx ctx1;
-callback_ctx ctx2;
+callback_ctx_test ctx1;
+callback_ctx_test ctx2;
 
 void mockLoggingFunction(const modules_log_level_t logLevel, const char* tag)
 {

@@ -14,6 +14,19 @@
 
 #include "../../include/syscheck.h"
 
+typedef struct fim_key_txn_context_s {
+    event_data_t *evt_data;
+    registry_t *config;
+    fim_registry_key *key;
+} fim_key_txn_context_t;
+
+typedef struct fim_val_txn_context_s {
+    event_data_t *evt_data;
+    registry_t *config;
+    fim_registry_value_data *data;
+    char* diff;
+} fim_val_txn_context_t;
+
 /**
  * @brief Retrieves the configuration associated with a given registry element.
  *

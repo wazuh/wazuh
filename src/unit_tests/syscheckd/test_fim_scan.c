@@ -33,6 +33,7 @@
 #include "../wrappers/wazuh/shared/file_op_wrappers.h"
 
 #include "syscheck.h"
+#include "file/file.h"
 #include "../../config/syscheck-config.h"
 #include "db/include/db.h"
 
@@ -40,10 +41,7 @@
 
 fim_state_db _files_db_state = FIM_STATE_DB_NORMAL;
 
-void update_wildcards_config();
 void transaction_callback(ReturnTypeCallback resultType, const cJSON* result_json, void* user_data);
-void fim_calculate_dbsync_difference(const fim_file_data *data, const directory_t *configuration,
-                                     const cJSON* changed_data, cJSON* old_attributes, cJSON* changed_attributes);
 void create_unix_who_data_events(void * data, void * ctx);
 void fim_db_remove_entry(void * data, void * ctx);
 void fim_db_process_missing_entry(void * data, void * ctx);
@@ -1002,6 +1000,8 @@ static void test_fim_configuration_directory_not_found(void **state) {
     expect_function_call_any(__wrap_pthread_mutex_lock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
 #endif
+
+    expect_string(__wrap__mdebug2, formatted_msg, "(6319): No configuration found for (file):'/invalid'");
 
     ret = fim_configuration_directory(path);
 
@@ -3649,8 +3649,8 @@ void test_fim_calculate_dbsync_difference(void **state){
     fim_calculate_dbsync_difference(&DEFAULT_FILE_DATA,
                                         &configuration,
                                         changed_data_json,
-                                        old_attributes,
-                                        changed_attributes);
+                                        changed_attributes,
+                                        old_attributes);
 
     assert_int_equal(cJSON_GetObjectItem(old_attributes, "size")->valueint, 0);
     #ifdef TEST_WINAGENT
@@ -3693,8 +3693,8 @@ void test_fim_calculate_dbsync_difference_no_changed_data(void **state){
     fim_calculate_dbsync_difference(&DEFAULT_FILE_DATA,
                                         &configuration,
                                         changed_data_json,
-                                        old_attributes,
-                                        changed_attributes);
+                                        changed_attributes,
+                                        old_attributes);
 
     assert_int_equal(cJSON_GetObjectItem(old_attributes, "size")->valueint, 0);
 #ifndef TEST_WINAGENT
@@ -3954,6 +3954,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown (test_transaction_callback_delete_full_db, setup_transaction_callback, teardown_transaction_callback),
         cmocka_unit_test_setup_teardown(test_transaction_callback_full_db, setup_transaction_callback, teardown_transaction_callback),
 
+        /* fim_calculate_dbsync_difference */
         cmocka_unit_test(test_fim_calculate_dbsync_difference),
         cmocka_unit_test(test_fim_calculate_dbsync_difference_no_changed_data),
         cmocka_unit_test_setup_teardown(test_create_unix_who_data_events, setup_fim_data, teardown_fim_data),

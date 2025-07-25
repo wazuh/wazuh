@@ -15,6 +15,7 @@
 #include "shared.h"
 #include "syscheck.h"
 #include "../rootcheck/rootcheck.h"
+#include "file/file.h"
 #include "db/include/db.h"
 #include "db/include/fimCommonDefs.h"
 #include "ebpf/include/ebpf_whodata.h"
