@@ -306,7 +306,7 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
                 cJSON *version = NULL;
                 if (version = cJSON_GetObjectItem(agent_info, "version"), cJSON_IsString(version)) {
                     // Update agent data to keep context of events to forward
-                    OSHash_Set_ex(agent_data_hash, key->id, cJSON_Duplicate(agent_info, true));
+                    OSHash_Set_ex(agent_data_hash, key->id, strdup(version->valuestring));
                     if (!logr.allow_higher_versions &&
                         compare_wazuh_versions(__ossec_version, version->valuestring, false) < 0) {
 
@@ -332,7 +332,8 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
             mdebug1("Agent %s sent HC_SHUTDOWN from '%s'", key->name, aux_ip);
             is_shutdown = 1;
             rem_inc_recv_ctrl_shutdown(key->id);
-            cJSON_Delete(OSHash_Delete_ex(agent_data_hash, key->id));
+            void *deleted = OSHash_Delete_ex(agent_data_hash, key->id);
+            os_free(deleted);
         }
     } else {
         /* Clean msg and shared files (remove random string) */
@@ -1802,7 +1803,7 @@ void manager_init()
  * @param data The cJSON pointer to remove.
  */
 void agent_data_hash_cleaner(void *data) {
-    cJSON_Delete((cJSON*)data);
+    os_free(data);
 }
 
 void manager_free() {

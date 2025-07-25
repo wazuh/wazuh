@@ -15,17 +15,9 @@
 #include "../wazuh_db/helpers/wdb_global_helpers.h"
 #include "router.h"
 #include "sym_load.h"
-#include "utils/flatbuffers/include/rsync_schema.h"
-#include "utils/flatbuffers/include/syscollector_deltas_schema.h"
-#include "utils/flatbuffers/include/syscheck_deltas_schema.h"
 #include "agent_messages_adapter.h"
 
-enum msg_type {
-    MT_INVALID,
-    MT_SYS_DELTAS,
-    MT_SYNC,
-    MT_SYSCHECK_DELTAS,
-} msg_type_t;
+
 #ifdef WAZUH_UNIT_TESTING
 // Remove static qualifier when unit testing
 #define STATIC
@@ -520,18 +512,6 @@ STATIC void * close_fp_main(void * args) {
     return NULL;
 }
 
-STATIC const char * get_schema(const int type)
-{
-    if (type == MT_SYS_DELTAS) {
-        return syscollector_deltas_SCHEMA;
-    } else if (type == MT_SYNC) {
-        return rsync_SCHEMA;
-    } else if (type == MT_SYSCHECK_DELTAS) {
-        return syscheck_deltas_SCHEMA;
-    }
-    return NULL;
-
-}
 STATIC void HandleSecureMessage(const message_t *message, w_linked_queue_t * control_msg_queue) {
     int agentid;
     const int protocol = (message->sock == USING_UDP_NO_CLIENT_SOCKET) ? REMOTED_NET_PROTOCOL_UDP : REMOTED_NET_PROTOCOL_TCP;
@@ -948,25 +928,34 @@ void router_message_forward(char* msg, const char* agent_id, const char* agent_i
         return;
     }
 
-    char* msg_to_send = NULL;
     char* msg_start = msg + message_header_size;
     size_t msg_size = strnlen(msg_start, OS_MAXSTR - message_header_size);
     if ((msg_size + message_header_size) < OS_MAXSTR) {
-        if (schema_type == MT_SYS_DELTAS || schema_type == MT_SYSCHECK_DELTAS) {
-            msg_to_send = adapt_delta_message(msg_start, agent_name, agent_id, agent_ip, agent_data_hash);
-        } else if (schema_type == MT_SYNC) {
-            msg_to_send = adapt_sync_message(msg_start, agent_name, agent_id, agent_ip, agent_data_hash);
-        }
-        else {
-            mdebug2("Message parsed with flatbuffer %s", msg);
-        }
+        agent_ctx agent_ctx = {
+            .agent_id = agent_id,
+            .agent_name = agent_name,
+            .agent_ip = agent_ip,
+            .agent_version = (char *)OSHash_Get_ex(agent_data_hash, agent_id)
+        };
 
-        if (msg_to_send) {
-            if (router_provider_send_fb(router_handle, msg_to_send, get_schema(schema_type)) != 0) {
-                mdebug2("Unable to forward message '%s' for agent '%s'.", msg_to_send, agent_id);
-            }
-            cJSON_free(msg_to_send);
+        if (router_provider_send_fb_json(router_handle, msg_start, &agent_ctx, schema_type) != 0) {
+            mdebug2("Unable to forward message '%s' for agent '%s'.", msg_start, agent_id);
         }
+        // if (schema_type == MT_SYS_DELTAS || schema_type == MT_SYSCHECK_DELTAS) {
+        //     msg_to_send = adapt_delta_message(msg_start, agent_name, agent_id, agent_ip, agent_data_hash);
+        // } else if (schema_type == MT_SYNC) {
+        //     msg_to_send = adapt_sync_message(msg_start, agent_name, agent_id, agent_ip, agent_data_hash);
+        // }
+        // else {
+        //     mdebug2("Message parsed with flatbuffer %s", msg);
+        // }
+
+        // if (msg_to_send) {
+        //     if (router_provider_send_fb(router_handle, msg_to_send, get_schema(schema_type)) != 0) {
+        //         mdebug2("Unable to forward message '%s' for agent '%s'.", msg_to_send, agent_id);
+        //     }
+        //     cJSON_free(msg_to_send);
+        // }
     }
 }
 

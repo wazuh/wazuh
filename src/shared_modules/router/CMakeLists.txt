@@ -26,6 +26,7 @@ include_directories(${SRC_FOLDER}/external/rocksdb/include)
 include_directories(${SRC_FOLDER}/external/nlohmann)
 include_directories(${SRC_FOLDER}/external/cJSON)
 include_directories(${SRC_FOLDER}/external/flatbuffers/include)
+include_directories(${SRC_FOLDER}/external/simdjson/include)
 include_directories(${SHARED_MODULES}/utils)
 
 # Link directories
@@ -40,7 +41,7 @@ add_library(router SHARED
     ${ROUTER_SRC}
     )
 
-target_link_libraries(router gcc_s flatbuffers wazuhext)
+target_link_libraries(router gcc_s flatbuffers wazuhext simdjson)
 
 set_target_properties(router PROPERTIES
         BUILD_RPATH_USE_ORIGIN TRUE
