@@ -25,7 +25,7 @@
 #define CPPCODEC_DETAIL_CONFIG_HPP
 
 #ifndef __has_attribute
-  #define __has_attribute(x) 0
+#define __has_attribute(x) 0
 #endif
 
 #if __GNUC__ || __has_attribute(always_inline)

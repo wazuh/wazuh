@@ -26,22 +26,30 @@
 
 #include "base64_url.hpp"
 
-namespace cppcodec {
-
-namespace detail {
-
-class base64_url_unpadded : public base64_url
+namespace cppcodec
 {
-public:
-    template <typename Codec> using codec_impl = stream_codec<Codec, base64_url_unpadded>;
 
-    static CPPCODEC_ALWAYS_INLINE constexpr bool generates_padding() { return false; }
-    static CPPCODEC_ALWAYS_INLINE constexpr bool requires_padding() { return false; }
-};
+    namespace detail
+    {
 
-} // namespace detail
+        class base64_url_unpadded : public base64_url
+        {
+            public:
+                template <typename Codec> using codec_impl = stream_codec<Codec, base64_url_unpadded>;
 
-using base64_url_unpadded = detail::codec<detail::base64<detail::base64_url_unpadded>>;
+                static CPPCODEC_ALWAYS_INLINE constexpr bool generates_padding()
+                {
+                    return false;
+                }
+                static CPPCODEC_ALWAYS_INLINE constexpr bool requires_padding()
+                {
+                    return false;
+                }
+        };
+
+    } // namespace detail
+
+    using base64_url_unpadded = detail::codec<detail::base64<detail::base64_url_unpadded>>;
 
 } // namespace cppcodec
 
