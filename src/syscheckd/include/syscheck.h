@@ -711,7 +711,7 @@ int fim_whodata_initialize();
  * @param file_or_directory Indicates if the path is a file (FIM REGULAR) or directory (FIM DIRECTORY)
  * @return 1 if it has been configured to be ignored, 0 if not
  */
-int fim_check_ignore(const char *file_name, int file_or_directory);
+int fim_check_ignore(const char *file_name, mode_t path_type);
 
 /**
  * @brief Checks if a specific folder has been configured to be checked with a specific restriction
