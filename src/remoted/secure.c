@@ -18,7 +18,6 @@
 #include "agent_messages_adapter.h"
 #include "indexed_queue_op.h"
 
-
 #ifdef WAZUH_UNIT_TESTING
 // Remove static qualifier when unit testing
 #define STATIC
