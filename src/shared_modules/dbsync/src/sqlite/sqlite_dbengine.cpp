@@ -377,6 +377,8 @@ void SQLiteDBEngine::returnRowsMarkedForDelete(const nlohmann::json& tableNames,
                                                const DbSync::ResultCallback callback,
                                                std::unique_lock<std::shared_timed_mutex>& lock)
 {
+    if (!m_transaction) return;
+
     m_transaction->commit();
     m_transaction = m_sqliteFactory->createTransaction(m_sqliteConnection);
 

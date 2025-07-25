@@ -11,6 +11,7 @@
 #include <stddef.h>
 #include <stdarg.h>
 #include <setjmp.h>
+#include <stdint.h>
 #include <cmocka.h>
 
 int __wrap_OS_MD5_File(const char *fname, os_md5 output, int mode) {

@@ -15,7 +15,8 @@
 #include "packages/modernPackageDataRetriever.hpp"
 #include "sharedDefs.h"
 #include "stringHelper.h"
-#include "filesystemHelper.h"
+#include <file_io_utils.hpp>
+#include <filesystem_wrapper.hpp>
 #include "cmdHelper.h"
 #include "osinfo/sysOsParsers.h"
 #include "sysInfo.hpp"
@@ -199,15 +200,18 @@ static int getCpuMHz()
     else
     {
         int cpuFreq { 0 };
-        const auto cpusInfo { Utils::enumerateDir(WM_SYS_CPU_FREC_DIR) };
+
+        const file_system::FileSystemWrapper fileSystemWrapper;
+        const auto cpusInfo {fileSystemWrapper.list_directory(WM_SYS_CPU_FREC_DIR)};
+
         constexpr auto CPU_FREQ_DIRNAME_PATTERN {"cpu[0-9]+"};
         const std::regex cpuDirectoryRegex {CPU_FREQ_DIRNAME_PATTERN};
 
         for (const auto& cpu : cpusInfo)
         {
-            if (std::regex_match(cpu, cpuDirectoryRegex))
+            if (std::regex_match(cpu.string(), cpuDirectoryRegex))
             {
-                std::fstream file{WM_SYS_CPU_FREC_DIR + cpu + "/cpufreq/cpuinfo_max_freq", std::ios_base::in};
+                std::fstream file{WM_SYS_CPU_FREC_DIR + cpu.string() + "/cpufreq/cpuinfo_max_freq", std::ios_base::in};
 
                 if (file.is_open())
                 {
@@ -421,7 +425,8 @@ ProcessInfo portProcessInfo(const std::string& procPath, const std::deque<int64_
     {
         // Get stat file content.
         std::string processInfo { UNKNOWN_VALUE };
-        const std::string statContent {Utils::getFileContent(filePath)};
+        const file_io::FileIOUtils ioUtils;
+        const std::string statContent {ioUtils.getFileContent(filePath)};
 
         const auto openParenthesisPos {statContent.find("(")};
         const auto closeParenthesisPos {statContent.find(")")};
@@ -453,32 +458,33 @@ ProcessInfo portProcessInfo(const std::string& procPath, const std::deque<int64_
         return std::stoll(match);
     };
 
-    if (Utils::existsDir(procPath))
+    const file_system::FileSystemWrapper fs;
+    if (fs.is_directory(procPath))
     {
-        std::vector<std::string> procFiles = Utils::enumerateDir(procPath);
+        auto procFiles = fs.list_directory(procPath);
 
         // Iterate proc directory.
         for (const auto& procFile : procFiles)
         {
             // Only directories that represent a PID are inspected.
-            const std::string procFilePath {procPath + "/" + procFile};
+            const std::string procFilePath {procPath / procFile};
 
-            if (Utils::isNumber(procFile) && Utils::existsDir(procFilePath))
+            if (Utils::isNumber(procFile) && fs.is_directory(procFilePath))
             {
                 // Only fd directory is inspected.
                 const std::string pidFilePath {procFilePath + "/fd"};
 
-                if (Utils::existsDir(pidFilePath))
+                if (fs.is_directory(pidFilePath))
                 {
-                    std::vector<std::string> fdFiles = Utils::enumerateDir(pidFilePath);
+                    auto fdFiles = fs.list_directory(pidFilePath);
 
                     // Iterate fd directory.
                     for (const auto& fdFile : fdFiles)
                     {
                         // Only sysmlinks that represent a socket are read.
-                        const std::string fdFilePath {pidFilePath + "/" + fdFile};
+                        const std::string fdFilePath {pidFilePath / fdFile};
 
-                        if (!Utils::startsWith(fdFile, ".") && Utils::existsSocket(fdFilePath))
+                        if (!Utils::startsWith(fdFile, ".") && fs.is_socket(fdFilePath))
                         {
                             try
                             {
@@ -517,7 +523,8 @@ nlohmann::json SysInfo::getPorts() const
 
     for (const auto& portType : PORTS_TYPE)
     {
-        const auto fileContent { Utils::getFileContent(WM_SYS_NET_DIR + portType.second) };
+        const file_io::FileIOUtils ioUtils;
+        const auto fileContent {ioUtils.getFileContent(WM_SYS_NET_DIR + portType.second)};
         auto rows { Utils::split(fileContent, '\n') };
         auto fileBody { false };
 

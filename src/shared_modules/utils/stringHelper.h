@@ -16,6 +16,7 @@
 #include <iomanip>
 #include <memory>
 #include <regex>
+#include <map>
 #include <sstream>
 #include <string>
 #include <vector>

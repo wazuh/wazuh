@@ -17,7 +17,7 @@
 #include "sysInfo.hpp"
 #include "cmdHelper.h"
 #include "timeHelper.h"
-#include "filesystemHelper.h"
+#include <filesystem_wrapper.hpp>
 #include "packages/packageSolaris.h"
 #include "packages/solarisWrapper.h"
 #include "packages/packageFamilyDataAFactory.h"
@@ -87,12 +87,14 @@ nlohmann::json SysInfo::getHardware() const
 
 static void getPackagesFromPath(const std::string& pkgDirectory, std::function<void(nlohmann::json&)> callback)
 {
-    const auto packages { Utils::enumerateDir(pkgDirectory) };
+    const file_system::FileSystemWrapper fs;
+
+    const auto packages { fs.list_directory(pkgDirectory) };
 
     for (const auto& package : packages)
     {
         nlohmann::json jsPackage;
-        const auto fullPath {  pkgDirectory + package };
+        const auto fullPath {  pkgDirectory + package.string()};
         const auto pkgWrapper{ std::make_shared<SolarisWrapper>(fullPath) };
 
         FactoryPackageFamilyCreator<OSPlatformType::SOLARIS>::create(pkgWrapper)->buildPackageData(jsPackage);
@@ -224,7 +226,9 @@ void SysInfo::getPackages(std::function<void(nlohmann::json&)> callback) const
 {
     const auto pkgDirectory { SUN_APPS_PATH };
 
-    if (Utils::existsDir(pkgDirectory))
+    const file_system::FileSystemWrapper fs;
+
+    if (fs.is_directory(pkgDirectory))
     {
         getPackagesFromPath(pkgDirectory, callback);
     }
