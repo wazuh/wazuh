@@ -391,21 +391,6 @@
                         </Component>
                     </Directory>
                     <Directory Id="SHARED" Name="shared">
-                        <Component Id="ROOTKIT_FILES.TXT" DiskId="1" Guid="FE45C8B7-CD37-4E13-B6CA-5838771DF2C2">
-                            <File Id="ROOTKIT_FILES.TXT" Name="rootkit_files.txt" Source="..\..\ruleset\rootcheck\db\rootkit_files.txt" />
-                        </Component>
-                        <Component Id="ROOTKIT_TROJANS.TXT" DiskId="1" Guid="6A2D5202-A610-4E00-B6E3-41FA24EA8B88">
-                            <File Id="ROOTKIT_TROJANS.TXT" Name="rootkit_trojans.txt" Source="..\..\ruleset\rootcheck\db\rootkit_trojans.txt" />
-                        </Component>
-                        <Component Id="WIN_APPLICATIONS_RCL.TXT" DiskId="1" Guid="833B42BC-7BEF-4801-A91D-737774F05800">
-                            <File Id="WIN_APPLICATIONS_RCL.TXT" Name="win_applications_rcl.txt" Source="..\..\ruleset\rootcheck\db\win_applications_rcl.txt" />
-                        </Component>
-                        <Component Id="WIN_AUDIT_RCL.TXT" DiskId="1" Guid="DB5DA081-B508-43CF-B83B-97649697636D">
-                            <File Id="WIN_AUDIT_RCL.TXT" Name="win_audit_rcl.txt" Source="..\..\ruleset\rootcheck\db\win_audit_rcl.txt" />
-                        </Component>
-                        <Component Id="WIN_MALWARE_RCL.TXT" DiskId="1" Guid="8FFA7C93-43A4-4946-B3B6-2255D8BFEA11">
-                            <File Id="WIN_MALWARE_RCL.TXT" Name="win_malware_rcl.txt" Source="..\..\ruleset\rootcheck\db\win_malware_rcl.txt" />
-                        </Component>
                     </Directory>
                     <Directory Id="RULESET" Name="ruleset">
                         <Directory Id="SECURITY_CONFIGURATION_ASSESSMENT" Name="sca">
@@ -636,11 +621,6 @@
             <ComponentRef Id="ROUTE_NULL.EXE" />
             <ComponentRef Id="NETSH.EXE" />
             <ComponentRef Id="ACTIVE_RESPONSES.LOG" />
-            <ComponentRef Id="ROOTKIT_FILES.TXT" />
-            <ComponentRef Id="ROOTKIT_TROJANS.TXT" />
-            <ComponentRef Id="WIN_APPLICATIONS_RCL.TXT" />
-            <ComponentRef Id="WIN_AUDIT_RCL.TXT" />
-            <ComponentRef Id="WIN_MALWARE_RCL.TXT" />
             <ComponentRef Id="StartMenuShortcuts" />
             <ComponentRef Id="WIN32UI.EXE" />
             <ComponentRef Id="CMP_ACTIVE_RESPONSE" />
