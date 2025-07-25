@@ -6,9 +6,9 @@
 
 #include <dbsync.hpp>
 #include <filesystem_wrapper.hpp>
-// #include <logger.hpp>
 
 #include <algorithm>
+#include "logging_helper.hpp"
 
 SCAPolicyLoader::SCAPolicyLoader(const std::vector<std::string>& policies,
                                  const std::vector<std::string>& disabledPolicies,
@@ -30,7 +30,7 @@ SCAPolicyLoader::SCAPolicyLoader(const std::vector<std::string>& policies,
             }
             else
             {
-                // LogWarn("Policy file does not exist: {}", policy);
+                LoggingHelper::getInstance().log(LOG_WARNING, "Policy file does not exist: " + policy);
             }
         }
         return policiesPaths;
@@ -64,7 +64,7 @@ std::vector<std::unique_ptr<ISCAPolicy>> SCAPolicyLoader::LoadPolicies(const Cre
         {
             try
             {
-                // LogDebug("Loading policy from {}", path.string());
+                LoggingHelper::getInstance().log(LOG_DEBUG, "Loading policy from " + path.string());
 
                 PolicyParser parser(path);
 
@@ -74,12 +74,12 @@ std::vector<std::unique_ptr<ISCAPolicy>> SCAPolicyLoader::LoadPolicies(const Cre
                 }
                 else
                 {
-                    // LogWarn("Failed to parse policy from: {}", path.string());
+                    LoggingHelper::getInstance().log(LOG_WARNING, "Failed to parse policy from  " + path.string());
                 }
             }
             catch (const std::exception& e)
             {
-                // LogWarn("Failed to load policy from {}: {}", path.string(), e.what());
+                LoggingHelper::getInstance().log(LOG_WARNING, "Failed to parse policy from  " + path.string() + ": " + e.what());
             }
         }
     }
@@ -90,7 +90,7 @@ std::vector<std::unique_ptr<ISCAPolicy>> SCAPolicyLoader::LoadPolicies(const Cre
     }
     else
     {
-        // LogWarn("No policies and checks found to synchronize");
+        LoggingHelper::getInstance().log(LOG_WARNING, "No policies and checks found to synchronize");
     }
 
     return policies;
@@ -107,7 +107,7 @@ void SCAPolicyLoader::SyncPoliciesAndReportDelta(const nlohmann::json& data, con
     }
     else
     {
-        // LogError("No policies found in data");
+        LoggingHelper::getInstance().log(LOG_ERROR, "No policies found in data");
         return;
     }
 
@@ -131,13 +131,13 @@ void SCAPolicyLoader::SyncPoliciesAndReportDelta(const nlohmann::json& data, con
             }
             catch (const std::exception& e)
             {
-                // LogError("Failed to update check result: {}", e.what());
+                LoggingHelper::getInstance().log(LOG_ERROR, std::string("Failed to update check result: ") + e.what());
             }
         }
     }
     else
     {
-        // LogError("No checks found in data");
+        LoggingHelper::getInstance().log(LOG_ERROR, "No checks found in data");
         return;
     }
 
@@ -152,7 +152,7 @@ std::unordered_map<std::string, nlohmann::json> SCAPolicyLoader::SyncWithDBSync(
 
     if (!m_dBSync)
     {
-        // LogError("DBSync is null, cannot synchronize data");
+        LoggingHelper::getInstance().log(LOG_ERROR, "DBSync is null, cannot synchronize data");
         return modifiedDataMap;
     }
 
@@ -180,12 +180,12 @@ std::unordered_map<std::string, nlohmann::json> SCAPolicyLoader::SyncWithDBSync(
                                  }
                                  else
                                  {
-                                     // LogError("Invalid data: {}", rowData.dump());
+                                    LoggingHelper::getInstance().log(LOG_ERROR, "Invalid data:  " + rowData.dump());
                                  }
                              }
                              else
                              {
-                                 // LogError("DB error: {}", rowData.dump());
+                                    LoggingHelper::getInstance().log(LOG_ERROR, "Failed to parse policy from  " + rowData.dump());
                              }
                          }};
 
@@ -206,7 +206,7 @@ void SCAPolicyLoader::UpdateCheckResult(const nlohmann::json& check) const
 {
     if (!m_dBSync)
     {
-        // LogError("DBSync is null, cannot update check result");
+        LoggingHelper::getInstance().log(LOG_ERROR, "DBSync is null, cannot update check result");
         return;
     }
 

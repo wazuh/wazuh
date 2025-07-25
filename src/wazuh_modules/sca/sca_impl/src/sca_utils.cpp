@@ -10,6 +10,8 @@
 #include <sstream>
 #include <stdexcept>
 
+#include "logging_helper.hpp"
+
 namespace
 {
     std::pair<bool, std::string> Pcre2Match(const std::string& content, const std::string& pattern)
@@ -318,7 +320,7 @@ namespace sca
         }
         catch (const std::exception& e)
         {
-            // LogError("Exception '{}' was caught while evaluating pattern '{}'.", e.what(), pattern);
+            LoggingHelper::getInstance().log(LOG_ERROR, std::string("Exception '") + e.what() + "' was caught while evaluating pattern '" + pattern + "'.");
             return std::nullopt;
         }
     }
