@@ -150,6 +150,12 @@ std::unordered_map<std::string, nlohmann::json> SCAPolicyLoader::SyncWithDBSync(
     static std::unordered_map<std::string, nlohmann::json> modifiedDataMap;
     modifiedDataMap.clear();
 
+    if (!m_dBSync)
+    {
+        // LogError("DBSync is null, cannot synchronize data");
+        return modifiedDataMap;
+    }
+
     const auto callback {[](ReturnTypeCallback result, const nlohmann::json& rowData)
                          {
                              if (result != DB_ERROR)
@@ -198,6 +204,12 @@ std::unordered_map<std::string, nlohmann::json> SCAPolicyLoader::SyncWithDBSync(
 
 void SCAPolicyLoader::UpdateCheckResult(const nlohmann::json& check) const
 {
+    if (!m_dBSync)
+    {
+        // LogError("DBSync is null, cannot update check result");
+        return;
+    }
+
     auto updateResultQuery = SyncRowQuery::builder().table(SCA_CHECK_TABLE_NAME).data(check).build();
 
     const auto callback = [](ReturnTypeCallback, const nlohmann::json&) {
