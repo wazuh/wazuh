@@ -16,7 +16,6 @@
 #include "router.h"
 #include "shared_modules/utils/flatbuffers/include/inventorySync_schema.h"
 
-
 #ifdef WAZUH_UNIT_TESTING
 // Remove static qualifier when unit testing
 #define STATIC
