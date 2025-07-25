@@ -4,7 +4,7 @@
 #include <sca_policy.hpp>
 #include <sca_policy_loader.hpp>
 
-// #include <dbsync.hpp>
+#include <dbsync.hpp>
 #include <filesystem_wrapper.hpp>
 // #include <logger.hpp>
 
@@ -43,14 +43,13 @@ SecurityConfigurationAssessment::SecurityConfigurationAssessment(
     std::shared_ptr<IDBSync> dbSync,
     std::shared_ptr<IFileSystemWrapper> fileSystemWrapper)
     : m_agentUUID(std::move(agentUUID))
-    , m_dBSync(std::move(dbSync))
-    // , m_dBSync(dbSync ? std::move(dbSync)
-    //                   : std::make_shared<DBSync>(
-    //                         HostType::AGENT,
-    //                         DbEngineType::SQLITE3,
-    //                         dbFolderPath + "/" + SCA_DB_DISK_NAME,
-    //                         GetCreateStatement(),
-    //                         DbManagement::PERSISTENT))
+    , m_dBSync(dbSync ? std::move(dbSync)
+                      : std::make_shared<DBSync>(
+                            HostType::AGENT,
+                            DbEngineType::SQLITE3,
+                            dbFolderPath + "/" + SCA_DB_DISK_NAME,
+                            GetCreateStatement(),
+                            DbManagement::PERSISTENT))
     , m_fileSystemWrapper(fileSystemWrapper ? std::move(fileSystemWrapper)
                                             : std::make_shared<file_system::FileSystemWrapper>())
 {
