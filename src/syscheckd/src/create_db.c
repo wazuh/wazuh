@@ -133,12 +133,17 @@ cJSON * fim_calculate_dbsync_difference(const fim_file_data *data,
     }
 
     if (data->options & CHECK_INODE) {
-        if (aux = cJSON_GetObjectItem(changed_data, "inode"), aux != NULL) {
-            cJSON_AddNumberToObject(old_attributes, "inode", aux->valueint);
-            cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("inode"));
-
+        if ((aux = cJSON_GetObjectItem(changed_data, "inode")) != NULL) {
+            if (cJSON_IsString(aux)) {
+                cJSON_AddStringToObject(old_attributes, "inode", cJSON_GetStringValue(aux));
+                cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("inode"));
+            } else {
+                mwarn(FIM_WARN_INODE_WRONG_TYPE);
+            }
         } else {
-            cJSON_AddNumberToObject(old_attributes, "inode", data->inode);
+            char inode_str[32];
+            snprintf(inode_str, sizeof(inode_str), "%llu", data->inode);
+            cJSON_AddStringToObject(old_attributes, "inode", inode_str);
         }
     }
 
@@ -269,8 +274,12 @@ static void dbsync_attributes_json(const cJSON *dbsync_event, const directory_t 
     }
 
     if (configuration->options & CHECK_INODE) {
-        if (aux = cJSON_GetObjectItem(dbsync_event, "inode"), aux != NULL) {
-            cJSON_AddNumberToObject(attributes, "inode", aux->valueint);
+        if ((aux = cJSON_GetObjectItem(dbsync_event, "inode")) != NULL) {
+            if (cJSON_IsString(aux)) {
+                cJSON_AddStringToObject(attributes, "inode", cJSON_GetStringValue(aux));
+            } else {
+                mwarn(FIM_WARN_INODE_WRONG_TYPE);
+            }
         }
     }
 
@@ -387,7 +396,18 @@ static void transaction_callback(ReturnTypeCallback resultType, const cJSON* res
     cJSON_AddStringToObject(json_event, "type", "event");
     cJSON_AddItemToObject(json_event, "data", data);
 
+#ifdef WIN32
+    char *utf8_path = auto_to_utf8(path);
+    if (utf8_path) {
+        cJSON_AddStringToObject(data, "path", utf8_path);
+        os_free(utf8_path);
+    } else {
+        cJSON_AddStringToObject(data, "path", path);
+    }
+#else
     cJSON_AddStringToObject(data, "path", path);
+#endif
+
     cJSON_AddNumberToObject(data, "version", 2.0);
     cJSON_AddStringToObject(data, "mode", FIM_EVENT_MODE[txn_context->evt_data->mode]);
     cJSON_AddStringToObject(data, "type", FIM_EVENT_TYPE_ARRAY[txn_context->evt_data->type]);
@@ -643,11 +663,6 @@ void fim_checker(const char *path,
                  fim_txn_context_t *ctx) {
     directory_t *configuration;
     int depth;
-
-    if (!w_utf8_valid(path)) {
-        mwarn(FIM_INVALID_FILE_NAME, path);
-        return;
-    }
 
 #ifdef WIN32
     // Ignore the recycle bin.
@@ -961,7 +976,6 @@ void create_windows_who_data_events(void * data, void * ctx)
 }
 
 void fim_whodata_event(whodata_evt * w_evt) {
-
     struct stat file_stat;
 
     // If the file exists, generate add or modify events.
@@ -1186,10 +1200,20 @@ directory_t *fim_configuration_directory(const char *path) {
     OSListNode *node_it;
     int top = 0;
     int match = 0;
+    char *pathname = NULL;
 
     if (!path || *path == '\0') {
         return NULL;
     }
+
+#ifdef WIN32
+    pathname = auto_to_ansi(path);
+    if (!pathname) {
+        return NULL;
+    }
+#else
+    os_strdup(path, pathname);
+#endif
 
     trail_path_separator(full_path, path, sizeof(full_path));
 
@@ -1208,6 +1232,7 @@ directory_t *fim_configuration_directory(const char *path) {
         os_free(real_path);
     }
 
+    os_free(pathname);
     return dir;
 }
 
@@ -1443,7 +1468,18 @@ cJSON *fim_json_event(const fim_entry *new_data,
     cJSON * data = cJSON_CreateObject();
     cJSON_AddItemToObject(json_event, "data", data);
 
+#ifdef WIN32
+    char *utf8_path = auto_to_utf8(new_data->file_entry.path);
+    if (utf8_path) {
+        cJSON_AddStringToObject(data, "path", utf8_path);
+        os_free(utf8_path);
+    } else {
+        cJSON_AddStringToObject(data, "path", new_data->file_entry.path);
+    }
+#else
     cJSON_AddStringToObject(data, "path", new_data->file_entry.path);
+#endif
+
     cJSON_AddNumberToObject(data, "version", 2.0);
     cJSON_AddStringToObject(data, "mode", FIM_EVENT_MODE[evt_data->mode]);
     cJSON_AddStringToObject(data, "type", FIM_EVENT_TYPE_ARRAY[evt_data->type]);
@@ -1512,7 +1548,9 @@ cJSON * fim_attributes_json(const fim_file_data * data) {
     }
 
     if (data->options & CHECK_INODE) {
-        cJSON_AddNumberToObject(attributes, "inode", data->inode);
+        char inode_str[32];
+        snprintf(inode_str, sizeof(inode_str), "%llu", data->inode);
+        cJSON_AddStringToObject(attributes, "inode", inode_str);
     }
 
     if (data->options & CHECK_MTIME) {

@@ -198,7 +198,7 @@ class WazuhException(Exception):
         1402: {'message': 'Invalid sort_ascending field',
                'remediation': 'Please, use only true if ascending or false if descending'
                },
-        1403: {'message': 'Not a valid sort field ',
+        1403: {'message': 'Not a valid sort field',
                'remediation': 'Please, use only allowed sort fields'
                },
         1405: {'message': 'Specified limit exceeds maximum allowed',
@@ -208,7 +208,7 @@ class WazuhException(Exception):
                'remediation': 'Please select a limit between 1 and 1000'
                },
         1407: 'Query does not match expected format',
-        1408: 'Field does not exist.',
+        1408: 'Field does not exist',
         1409: 'Invalid query operator',
         1410: 'Selecting more than one field in distinct mode',
         1411: 'TimeFrame is not valid',

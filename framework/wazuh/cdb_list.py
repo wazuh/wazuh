@@ -153,8 +153,7 @@ def upload_list_file(filename: str = None, content: str = None, overwrite: bool 
 
         # After uploading the file, reload rulesets
         socket_response = send_reload_ruleset_msg(origin={'module': 'api'})
-        if socket_response['error'] == 1:
-            raise WazuhError(1811, extra_message=socket_response['data'])
+        socket_response.update_affected_items(results=result, error_code=1811)
 
         result.affected_items.append(to_relative_path(full_path))
         result.total_affected_items = len(result.affected_items)
@@ -192,8 +191,7 @@ def delete_list_file(filename: list) -> AffectedItemsWazuhResult:
 
         # After deleting the file, reload rulesets
         socket_response = send_reload_ruleset_msg(origin={'module': 'api'})
-        if socket_response['error'] == 1:
-            raise WazuhError(1811, extra_message=socket_response['data'])
+        socket_response.update_affected_items(results=result, error_code=1811)
 
         result.affected_items.append(to_relative_path(full_path))
     except WazuhError as e:

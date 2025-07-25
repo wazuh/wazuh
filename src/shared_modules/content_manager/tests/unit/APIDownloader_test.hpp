@@ -49,11 +49,11 @@ protected:
     {
         m_spAPIDownloader = std::make_shared<APIDownloader>(HTTPRequest::instance());
         // Create a updater base context
-        m_spUpdaterBaseContext = std::make_shared<UpdaterBaseContext>(
-            m_spStopActionCondition,
-            [](const std::string& msg, std::shared_ptr<ConditionSync> shouldStop) -> FileProcessingResult {
-                return {0, "", false};
-            });
+        m_spUpdaterBaseContext =
+            std::make_shared<UpdaterBaseContext>(m_spStopActionCondition,
+                                                 [](const std::string& msg) -> FileProcessingResult {
+                                                     return {0, "", false};
+                                                 });
         m_spUpdaterBaseContext->outputFolder = "/tmp/api-downloader-tests";
         m_spUpdaterBaseContext->downloadsFolder = m_spUpdaterBaseContext->outputFolder / DOWNLOAD_FOLDER;
         m_spUpdaterBaseContext->contentsFolder = m_spUpdaterBaseContext->outputFolder / CONTENTS_FOLDER;

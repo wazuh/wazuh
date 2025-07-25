@@ -8345,7 +8345,7 @@ void test_wdb_global_assign_agent_group_success(void **state) {
         will_return(__wrap_wdb_exec_stmt_silent, OS_SUCCESS);
     }
 
-    wdbc_result result = wdb_global_assign_agent_group(data->wdb, agent_id, j_groups, initial_priority);
+    wdbc_result result = wdb_global_assign_agent_group(data->wdb, agent_id, j_groups, initial_priority, false);
 
     assert_int_equal(result, WDBC_OK);
     __real_cJSON_Delete(j_groups);
@@ -8382,7 +8382,7 @@ void test_wdb_global_assign_agent_group_insert_belong_error(void **state) {
         expect_string(__wrap__mdebug1, formatted_msg, debug_message[i]);
     }
 
-    wdbc_result result = wdb_global_assign_agent_group(data->wdb, agent_id, j_groups, initial_priority);
+    wdbc_result result = wdb_global_assign_agent_group(data->wdb, agent_id, j_groups, initial_priority, false);
 
     assert_int_equal(result, WDBC_ERROR);
     __real_cJSON_Delete(j_groups);
@@ -8410,7 +8410,7 @@ void test_wdb_global_assign_agent_group_find_error(void **state) {
         expect_function_call(__wrap_cJSON_Delete);
     }
 
-    wdbc_result result = wdb_global_assign_agent_group(data->wdb, agent_id, j_groups, initial_priority);
+    wdbc_result result = wdb_global_assign_agent_group(data->wdb, agent_id, j_groups, initial_priority, false);
 
     assert_int_equal(result, WDBC_ERROR);
     __real_cJSON_Delete(j_groups);
@@ -8429,7 +8429,7 @@ void test_wdb_global_assign_agent_group_invalid_json(void **state) {
         expect_string(__wrap__mdebug1, formatted_msg, "Invalid groups set information");
     }
 
-    wdbc_result result = wdb_global_assign_agent_group(data->wdb, agent_id, j_groups, initial_priority);
+    wdbc_result result = wdb_global_assign_agent_group(data->wdb, agent_id, j_groups, initial_priority, false);
 
     assert_int_equal(result, WDBC_ERROR);
     __real_cJSON_Delete(j_groups);
@@ -9953,7 +9953,7 @@ void test_wdb_global_assign_agent_group_agent_not_exists_success(void **state) {
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
     will_return(__wrap_wdb_exec_stmt_silent, OS_SUCCESS);
 
-    wdbc_result result = wdb_global_assign_agent_group(data->wdb, agent_id, j_groups, priority);
+    wdbc_result result = wdb_global_assign_agent_group(data->wdb, agent_id, j_groups, priority, true);
 
     assert_int_equal(result, WDBC_OK);
     __real_cJSON_Delete(j_groups);
@@ -10045,7 +10045,7 @@ void test_wdb_global_assign_agent_group_agent_not_exists_insert_fail(void **stat
 
     expect_string(__wrap__mdebug1, formatted_msg, "Unable to insert group 'test_group' for agent '1', retry failed after creating agent in never_connected state.");
 
-    wdbc_result result = wdb_global_assign_agent_group(data->wdb, agent_id, j_groups, priority);
+    wdbc_result result = wdb_global_assign_agent_group(data->wdb, agent_id, j_groups, priority, true);
 
     assert_int_equal(result, WDBC_ERROR);
     __real_cJSON_Delete(j_groups);

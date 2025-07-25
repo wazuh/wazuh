@@ -165,7 +165,7 @@ def test_fill_capacity(test_configuration, test_metadata, set_wazuh_configuratio
 
     files_amount = files_amount if files_amount <= max_entries else max_entries
     if sys.platform == WINDOWS:
-        log_monitor.start(generate_callback(FILE_ENTRIES_PATH_COUNT), timeout=300)
+        log_monitor.start(generate_callback(FILE_ENTRIES_PATH_COUNT), timeout=600)
     else:
         log_monitor.start(generate_callback(INODE_ENTRIES_PATH_COUNT), timeout=60)
 

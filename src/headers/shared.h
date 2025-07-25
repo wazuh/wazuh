@@ -296,4 +296,8 @@ extern const char *__local_name;
 #include "../shared_modules/rsync/include/rsync.h"
 #include "../shared_modules/dbsync/include/dbsync.h"
 
+#ifdef WIN32
+#include <utf8_winapi_wrapper.h>
+#endif
+
 #endif /* SHARED_H */

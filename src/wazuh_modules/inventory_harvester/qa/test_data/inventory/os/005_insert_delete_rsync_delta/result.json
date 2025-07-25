@@ -1,0 +1,35 @@
+[
+    {
+        "index_name": "wazuh-states-inventory-system-cluster01",
+        "data": [
+            {
+                "agent": {
+                    "id": "001"
+                },
+                "host": {
+                    "architecture": "x86_64",
+                    "hostname": "ubuntu",
+                    "os": {
+                        "codename": "trusty",
+                        "kernel": {
+                            "name": "Linux",
+                            "release": "5.4.0-155-generic",
+                            "version": "#172-Ubuntu SMP Fri Jul 7 16:10:02 UTC 2023"
+                        },
+                        "name": "Ubuntu Trusty",
+                        "platform": "ubuntu",
+                        "version": "Trusty Tahr"
+                    }
+                },
+                "wazuh": {
+                    "cluster": {
+                        "name": "cluster01"
+                    },
+                    "schema": {
+                        "version": "1.0"
+                    }
+                }
+            }
+        ]
+    }
+]

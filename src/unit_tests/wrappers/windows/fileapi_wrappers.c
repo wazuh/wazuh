@@ -30,11 +30,6 @@ HANDLE wrap_CreateFile(LPCSTR lpFileName,
     }
 }
 
-void expect_CreateFile_call(const char *filename, HANDLE ret) {
-    expect_string(wrap_CreateFile, lpFileName, filename);
-    will_return(wrap_CreateFile, (HANDLE)ret);
-}
-
 DWORD wrap_GetFileAttributesA(LPCSTR lpFileName) {
     check_expected(lpFileName);
     return mock();
@@ -112,25 +107,25 @@ BOOL wrap_GetFileTime(HANDLE     hFile,
     return mock_type(BOOL);
 }
 
-HANDLE wrap_FindFirstFile(LPCSTR lpFileName,  LPWIN32_FIND_DATA lpFindFileData) {
+HANDLE wrap_FindFirstFile(LPCWSTR lpFileName,  LPWIN32_FIND_DATAW lpFindFileData) {
     char *file_name;
     check_expected(lpFileName);
 
     file_name = mock_type(char *);
     if (file_name != NULL) {
-        strcpy(lpFindFileData->cFileName, file_name);
+        mbstowcs(lpFindFileData->cFileName, file_name, MAX_PATH);
         lpFindFileData->dwFileAttributes = mock_type(DWORD);
     }
 
     return mock_type(HANDLE);
 }
 
-BOOL wrap_FindNextFile(HANDLE hFindFile, LPWIN32_FIND_DATA lpFindFileData) {
+BOOL wrap_FindNextFile(HANDLE hFindFile, LPWIN32_FIND_DATAW lpFindFileData) {
     char *file_name;
     check_expected(hFindFile);
     file_name = mock_type(char *);
     if (file_name != NULL) {
-        strcpy(lpFindFileData->cFileName, file_name);
+        mbstowcs(lpFindFileData->cFileName, file_name, MAX_PATH);
         lpFindFileData->dwFileAttributes = mock_type(DWORD);
     }
     return mock_type(BOOL);

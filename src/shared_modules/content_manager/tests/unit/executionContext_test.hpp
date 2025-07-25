@@ -50,11 +50,11 @@ protected:
         m_spExecutionContext = std::make_shared<ExecutionContext>();
         // Create a updater context
         m_spUpdaterContext = std::make_shared<UpdaterContext>();
-        m_spUpdaterBaseContext = std::make_shared<UpdaterBaseContext>(
-            m_spStopActionCondition,
-            [](const std::string& msg, std::shared_ptr<ConditionSync> shouldStop) -> FileProcessingResult {
-                return {0, "", false};
-            });
+        m_spUpdaterBaseContext =
+            std::make_shared<UpdaterBaseContext>(m_spStopActionCondition,
+                                                 [](const std::string& msg) -> FileProcessingResult {
+                                                     return {0, "", false};
+                                                 });
         m_spUpdaterBaseContext->configData["outputFolder"] = m_outputFolder.string();
         m_spUpdaterBaseContext->configData["consumerName"] = m_consumerName;
     }

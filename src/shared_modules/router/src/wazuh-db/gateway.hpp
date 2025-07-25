@@ -17,7 +17,6 @@
 #include "endpointGetV1AgentsIdsGroupsParam.hpp"
 #include "endpointGetV1AgentsParamGroups.hpp"
 #include "endpointGetV1AgentsSync.hpp"
-#include "endpointPostV1AgentsRestartInfo.hpp"
 #include "endpointPostV1AgentsSummary.hpp"
 #include "endpointPostV1AgentsSync.hpp"
 #include "external/cpp-httplib/httplib.h"
@@ -106,10 +105,6 @@ public:
             else if (endpoint.compare("/v1/agents/sync") == 0)
             {
                 EndpointPostV1AgentsSync::call(connection, req, res);
-            }
-            else if (endpoint.compare("/v1/agents/restartinfo") == 0)
-            {
-                EndpointPostV1AgentsRestartInfo::call(connection, req, res);
             }
             else
             {

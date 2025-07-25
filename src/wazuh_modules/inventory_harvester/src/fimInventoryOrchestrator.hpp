@@ -78,11 +78,13 @@ public:
             PolicyHarvesterManager::instance().buildIndexerConfig("files", InventoryType::FIM),
             PolicyHarvesterManager::instance().buildIndexerTemplatePath("files", InventoryType::FIM),
             PolicyHarvesterManager::instance().buildIndexerUpdateTemplatePath("files", InventoryType::FIM),
+            false, // Don't use seek for delete operation
             Log::GLOBAL_LOG_FUNCTION);
         m_indexerConnectorInstances[FimContext::AffectedComponentType::Registry] = std::make_unique<IndexerConnector>(
             PolicyHarvesterManager::instance().buildIndexerConfig("registries", InventoryType::FIM),
             PolicyHarvesterManager::instance().buildIndexerTemplatePath("registries", InventoryType::FIM),
             PolicyHarvesterManager::instance().buildIndexerUpdateTemplatePath("registries", InventoryType::FIM),
+            false, // Don't use seek for delete operation
             Log::GLOBAL_LOG_FUNCTION);
 
         m_orchestrations[FimContext::Operation::Upsert] =

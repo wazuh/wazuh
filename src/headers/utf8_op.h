@@ -9,6 +9,7 @@
  * June 19, 2019
  */
 
+#include <stdbool.h>
 
 /**
  * @brief Return whether a string is UTF-8.

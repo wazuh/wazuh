@@ -4193,10 +4193,10 @@ checks:
        - mitre_techniques: ["T1110", "T1110.001", "T1110.002", "T1110.003", "T1178.001", "T1178.002", "T1178.003", "T1178.004"]
        - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
        - soc_2: ["CC6.1"]
-     condition: all
+     condition: any
      rules:
-      - 'f:/etc/pam.d/common-password -> !r:^# && r:password\s*\t*required\s*\t*pam_pwhistory.so && n:remember\s*\t*=\s*\t*(\d+) compare => 5'
-      - 'f:/etc/pam.d/common-password -> !r:^# && r:password && r:success && r:default\s*=\s*ignore && r:pam_unix.so && r:use_authtok'
+      - 'f:/etc/pam.d/common-password -> !r:^# && r:password && r:pam_pwhistory\.so && n:remember=(\d+) compare >= 5'
+      - 'f:/etc/pam.d/common-password -> !r:^# && r:password && r:pam_unix\.so && n:remember=(\d+) compare >= 5'
 
   # 5.3.3.1.1 Ensure password failed attempts lockout is configured. (Automated)
    - id: 35676
@@ -4505,8 +4505,7 @@ checks:
        - soc_2: ["CC6.1"]
      condition: all
      rules:
-      - 'f:/etc/pam.d/common-password -> !r:^# && r:password\s*\t*requisite\s*\t*pam_pwhistory.so && n:remember\s*\t*=\s*\t*(\d+) compare => 5'
-      - 'f:/etc/pam.d/common-password -> !r:^# && r:password && r:success && r:default\s*=\s*ignore && r:pam_unix.so && r:use_authtok'
+      - "f:/etc/pam.d/common-password -> !r:^# && r:pam_pwhistory.so && r:use_authtok"
 
   # 5.3.3.4.1 Ensure pam_unix does not include nullok. (Automated)
    - id: 35690
@@ -5274,12 +5273,12 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition: all
+     condition: any
      rules:
-      - 'f:/etc/rsyslog.conf -> r:^\s*\t*module\(load="imtcp"\)'
-      - 'd:/etc/rsyslog.d -> r:\.*.conf -> r:^\s*\t*module\(load="imtcp"\)'
-      - 'f:/etc/rsyslog.conf -> r:^\s*\t*input\(type="imtcp" port="514"\)'
-      - 'd:/etc/rsyslog.d -> r:\.*.conf -> r:^\s*\t*input\(type="imtcp" port="514"\)'
+      - 'f:/etc/rsyslog.conf -> !r:^# && r:^\s*\t*module\(load="imtcp"\)'
+      - 'd:/etc/rsyslog.d -> !r:^# && r:\.*.conf -> r:^\s*\t*module\(load="imtcp"\)'
+      - 'f:/etc/rsyslog.conf -> !r:^# && r:^\s*\t*input\(type="imtcp" port="514"\)'
+      - 'd:/etc/rsyslog.d -> !r:^# && r:\.*.conf -> r:^\s*\t*input\(type="imtcp" port="514"\)'
 
   # 6.1.3.8 Ensure logrotate is configured. (Manual) - Not Implemented
 
@@ -6404,8 +6403,7 @@ checks:
        - soc_2: ["CC5.2", "CC6.1"]
      condition: all
      rules:
-      - 'c:stat /etc/shadow -> r:^Access:\s*\(0640/-rw-r-----\)|Access:\s*\(0600/-rw-------\) && r:\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
-      - 'c:stat /etc/shadow -> r:^Access:\s*\(0640/-rw-r-----\)|Access:\s*\(0600/-rw-------\) && r:\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*\d+/\s*\t*shadow\)'
+      - 'c:stat -Lc "%n %a %u %U %g %G" /etc/shadow -> r:0 root \d+ shadow|0 root 0 root && r:640|604|600|400|500'
 
   # 7.1.6 Ensure permissions on /etc/shadow- are configured. (Automated)
    - id: 35766
@@ -6429,8 +6427,7 @@ checks:
        - soc_2: ["CC5.2", "CC6.1"]
      condition: all
      rules:
-      - 'c:stat /etc/shadow- -> r:^Access:\s*\(0640/-rw-r-----\)|Access:\s*\(0600/-rw-------\) && r:\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
-      - 'c:stat /etc/shadow- -> r:^Access:\s*\(0640/-rw-r-----\)|Access:\s*\(0600/-rw-------\) && r:\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*\d+/\s*\t*shadow\)'
+      - 'c:stat -Lc "%n %a %u %U %g %G" /etc/shadow- -> r:0 root \d+ shadow|0 root 0 root && r:640|604|600|400|500'
 
   # 7.1.7 Ensure permissions on /etc/gshadow are configured. (Automated)
    - id: 35767
@@ -6454,8 +6451,7 @@ checks:
        - soc_2: ["CC5.2", "CC6.1"]
      condition: all
      rules:
-      - 'c:stat /etc/gshadow -> r:^Access:\s*\(0640/-rw-r-----\)|Access:\s*\(0600/-rw-------\) && r:\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
-      - 'c:stat /etc/gshadow -> r:^Access:\s*\(0640/-rw-r-----\)|Access:\s*\(0600/-rw-------\) && r:\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*\d+/\s*\t*shadow\)'
+      - 'c:stat -Lc "%n %a %u %U %g %G" /etc/gshadow -> r:0 root \d+ shadow|0 root 0 root && r:640|604|600|400|500'
 
   # 7.1.8 Ensure permissions on /etc/gshadow- are configured. (Automated)
    - id: 35768
@@ -6479,8 +6475,7 @@ checks:
        - soc_2: ["CC5.2", "CC6.1"]
      condition: all
      rules:
-      - 'c:stat /etc/gshadow- -> r:^Access:\s*\(0640/-rw-r-----\)|Access:\s*\(0600/-rw-------\) && r:\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
-      - 'c:stat /etc/gshadow- -> r:^Access:\s*\(0640/-rw-r-----\)|Access:\s*\(0600/-rw-------\) && r:\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*\d+/\s*\t*shadow\)'
+      - 'c:stat -Lc "%n %a %u %U %g %G" /etc/gshadow- -> r:0 root \d+ shadow|0 root 0 root && r: r:640|604|600|400|500'
 
   # 7.1.9 Ensure permissions on /etc/shells are configured. (Automated)
    - id: 35769
@@ -6528,8 +6523,8 @@ checks:
        - soc_2: ["CC5.2", "CC6.1"]
      condition: all
      rules:
-      - 'c:stat /etc/security/opasswd -> r:Access:\s*\(0600/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
-      - 'c:stat /etc/security/opasswd.old -> r:Access:\s*\(0600/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat -Lc "%n %a %u %U %g %G" /etc/security/opasswd -> r:0 root 0 root && r:600|400|500'
+      - 'c:stat -Lc "%n %a %u %U %g %G" /etc/security/opasswd.old -> r:0 root 0 root && r:600|400|500'
 
   # 7.1.11 Ensure world writable files and directories are secured. (Automated) - Not Implemented
   # 7.1.12 Ensure no files or directories without an owner and a group exist. (Automated) - Not Implemented

@@ -1,0 +1,9 @@
+{
+  "agent_info": {
+    "agent_id": "001"
+  },
+  "action": "deleteOs",
+  "data": {
+    "os_name": "Ubuntu"
+  }
+}

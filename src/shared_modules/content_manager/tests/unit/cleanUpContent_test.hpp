@@ -53,11 +53,11 @@ protected:
     void SetUp() override
     {
         // Initialize contexts
-        m_spUpdaterBaseContext = std::make_shared<UpdaterBaseContext>(
-            m_spStopActionCondition,
-            [](const std::string& msg, std::shared_ptr<ConditionSync> shouldStop) -> FileProcessingResult {
-                return {0, "", false};
-            });
+        m_spUpdaterBaseContext =
+            std::make_shared<UpdaterBaseContext>(m_spStopActionCondition,
+                                                 [](const std::string& msg) -> FileProcessingResult {
+                                                     return {0, "", false};
+                                                 });
 
         m_spUpdaterContext = std::make_shared<UpdaterContext>();
         m_spUpdaterContext->spUpdaterBaseContext = m_spUpdaterBaseContext;

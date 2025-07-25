@@ -1643,11 +1643,12 @@ class WazuhDBQuery(object):
     def _add_sort_to_query(self):
         if self.sort:
             if self.sort['fields']:
-                sort_fields, allowed_sort_fields = self.sort['fields'], set(self.fields.keys())
+                sort_fields, allowed_sort_fields = self.sort['fields'], set(self.fields.keys()) - self.extra_fields
                 # Check every element in sort['fields'] is in allowed_sort_fields
                 if not set(sort_fields).issubset(allowed_sort_fields):
                     raise WazuhError(1403, "Allowed sort fields: {}. Fields: {}".format(
-                        sorted(allowed_sort_fields, key=str), ', '.join(set(sort_fields) - allowed_sort_fields)
+                        ', '.join(sorted(allowed_sort_fields)),
+                        ', '.join(set(sort_fields) - allowed_sort_fields)
                     ))
                 self.query += ' ORDER BY ' + ','.join([self._sort_query(i) for i in sort_fields])
             else:
@@ -1666,16 +1667,16 @@ class WazuhDBQuery(object):
 
     def _parse_select_filter(self, select_fields):
         if select_fields:
-            set_select_fields = set(select_fields)
-            set_fields_keys = set(self.fields.keys()) - self.extra_fields
+            select_fields_set = set(select_fields)
+            allowed_select_fields = set(self.fields.keys()) - self.extra_fields
 
             # if select is empty, it will be a subset of any set
-            if not set_select_fields or not set_select_fields.issubset(set_fields_keys):
-                raise WazuhError(1724, "Allowed select fields: {0}. Fields {1}". \
-                                 format(', '.join(self.fields.keys()),
-                                        ', '.join(set_select_fields - set_fields_keys)))
+            if not select_fields_set or not select_fields_set.issubset(allowed_select_fields):
+                raise WazuhError(1724, "Allowed select fields: {0}. Fields: {1}". \
+                                 format(', '.join(sorted(allowed_select_fields)),
+                                        ', '.join(select_fields_set - allowed_select_fields)))
 
-            select_fields = set_select_fields
+            select_fields = select_fields_set
         else:
             select_fields = self.fields.keys()
 
@@ -1697,9 +1698,12 @@ class WazuhDBQuery(object):
             raise WazuhError(1407, self.q)
 
         level = 0
+        allowed_query_fields = set(self.fields.keys()) - self.extra_fields
         for open_level, field, operator, value, close_level, separator in self.query_regex.findall(self.q):
-            if field not in self.fields.keys():
-                raise WazuhError(1408, "Available fields: {}. Field: {}".format(', '.join(self.fields), field))
+            if field not in allowed_query_fields:
+                raise WazuhError(1408, "Available fields: {}. Field: {}".format(
+                    ', '.join(sorted(allowed_query_fields)), field)
+                )
             if operator not in self.query_operators:
                 raise WazuhError(1409,
                                  "Valid operators: {}. Used operator: {}".format(', '.join(self.query_operators),

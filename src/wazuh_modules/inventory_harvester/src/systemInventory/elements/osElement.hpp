@@ -40,6 +40,10 @@ public:
 
         DataHarvester<InventorySystemHarvester> element;
         element.id = agentId;
+        element.id += "_";
+        auto osName = data->osName();
+        element.id += osName;
+
         element.operation = "INSERTED";
         element.data.agent.id = agentId;
         element.data.agent.name = data->agentName();
@@ -58,7 +62,7 @@ public:
         element.data.host.os.kernel.version = data->osKernelVersion();
 
         element.data.host.os.codename = data->osCodeName();
-        element.data.host.os.name = data->osName();
+        element.data.host.os.name = osName;
         element.data.host.os.platform = data->osPlatform();
         element.data.host.os.version = data->osVersion();
 
@@ -82,7 +86,12 @@ public:
 
         NoDataHarvester element;
         element.operation = "DELETED";
+
         element.id = agentId;
+        element.id += "_";
+        auto osName = data->osName();
+        element.id += osName;
+
         return element;
     }
 };

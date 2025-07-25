@@ -23,6 +23,7 @@
 #include "../wrappers/wazuh/os_net/os_net_wrappers.h"
 #include "../wrappers/wazuh/shared/file_op_wrappers.h"
 #include "../wrappers/wazuh/shared/privsep_op_wrappers.h"
+#include "../wrappers/wazuh/shared/utf8_winapi_wrapper_wrappers.h"
 #include "../wrappers/common.h"
 
 #ifdef TEST_WINAGENT
@@ -3654,7 +3655,8 @@ static void test_win_perm_to_json_error_splitting_permissions(void **state) {
 static void test_get_file_user_CreateFile_error_access_denied(void **state) {
     char **array = *state;
 
-    expect_CreateFile_call("C:\\a\\path", INVALID_HANDLE_VALUE);
+    expect_string(__wrap_utf8_CreateFile, utf8_path, "C:\\a\\path");
+    will_return(__wrap_utf8_CreateFile, (HANDLE)INVALID_HANDLE_VALUE);
 
     expect_GetLastError_call(ERROR_ACCESS_DENIED);
 
@@ -3672,7 +3674,8 @@ static void test_get_file_user_CreateFile_error_access_denied(void **state) {
 static void test_get_file_user_CreateFile_error_sharing_violation(void **state) {
     char **array = *state;
 
-    expect_CreateFile_call("C:\\a\\path", INVALID_HANDLE_VALUE);
+    expect_string(__wrap_utf8_CreateFile, utf8_path, "C:\\a\\path");
+    will_return(__wrap_utf8_CreateFile, (HANDLE)INVALID_HANDLE_VALUE);
 
     expect_GetLastError_call(ERROR_SHARING_VIOLATION);
 
@@ -3690,7 +3693,8 @@ static void test_get_file_user_CreateFile_error_sharing_violation(void **state) 
 static void test_get_file_user_CreateFile_error_generic(void **state) {
     char **array = *state;
 
-    expect_CreateFile_call("C:\\a\\path", INVALID_HANDLE_VALUE);
+    expect_string(__wrap_utf8_CreateFile, utf8_path, "C:\\a\\path");
+    will_return(__wrap_utf8_CreateFile, (HANDLE)INVALID_HANDLE_VALUE);
 
     expect_GetLastError_call(127);
 
@@ -3709,7 +3713,8 @@ static void test_get_file_user_GetSecurityInfo_error(void **state) {
     char **array = *state;
     char error_msg[OS_SIZE_1024];
 
-    expect_CreateFile_call("C:\\a\\path", (HANDLE)1234);
+    expect_string(__wrap_utf8_CreateFile, utf8_path, "C:\\a\\path");
+    will_return(__wrap_utf8_CreateFile, (HANDLE)1234);
 
     expect_CloseHandle_call((HANDLE)1234, 1);
 
@@ -3736,7 +3741,8 @@ static void test_get_file_user_GetSecurityInfo_error(void **state) {
 static void test_get_file_user_LookupAccountSid_error(void **state) {
     char **array = *state;
 
-    expect_CreateFile_call("C:\\a\\path", (HANDLE)1234);
+    expect_string(__wrap_utf8_CreateFile, utf8_path, "C:\\a\\path");
+    will_return(__wrap_utf8_CreateFile, (HANDLE)1234);
 
     expect_CloseHandle_call((HANDLE)1234, 1);
 
@@ -3759,7 +3765,8 @@ static void test_get_file_user_LookupAccountSid_error_none_mapped(void **state) 
     char **array = *state;
     char error_msg[OS_SIZE_1024];
 
-    expect_CreateFile_call("C:\\a\\path", (HANDLE)1234);
+    expect_string(__wrap_utf8_CreateFile, utf8_path, "C:\\a\\path");
+    will_return(__wrap_utf8_CreateFile, (HANDLE)1234);
 
     expect_CloseHandle_call((HANDLE)1234, 1);
 
@@ -3786,7 +3793,8 @@ static void test_get_file_user_LookupAccountSid_error_none_mapped(void **state) 
 static void test_get_file_user_success(void **state) {
     char **array = *state;
 
-    expect_CreateFile_call("C:\\a\\path", (HANDLE)1234);
+    expect_string(__wrap_utf8_CreateFile, utf8_path, "C:\\a\\path");
+    will_return(__wrap_utf8_CreateFile, (HANDLE)1234);
 
     expect_CloseHandle_call((HANDLE)1234, 1);
 
@@ -3865,9 +3873,9 @@ void test_w_get_file_permissions_GetFileSecurity_error_on_size(void **state) {
     cJSON *permissions = NULL;
     int ret;
 
-    expect_string(wrap_GetFileSecurity, lpFileName, "C:\\a\\path");
-    will_return(wrap_GetFileSecurity, 0);
-    will_return(wrap_GetFileSecurity, 0);
+    expect_string(__wrap_utf8_GetFileSecurity, utf8_path, "C:\\a\\path");
+    will_return(__wrap_utf8_GetFileSecurity, 0);
+    will_return(__wrap_utf8_GetFileSecurity, 0);
 
     will_return(wrap_GetLastError, ERROR_ACCESS_DENIED);
 
@@ -3881,13 +3889,13 @@ void test_w_get_file_permissions_GetFileSecurity_error(void **state) {
     cJSON *permissions = NULL;
     int ret;
 
-    expect_string(wrap_GetFileSecurity, lpFileName, "C:\\a\\path");
-    will_return(wrap_GetFileSecurity, OS_SIZE_1024);
-    will_return(wrap_GetFileSecurity, 1);
+    expect_string(__wrap_utf8_GetFileSecurity, utf8_path, "C:\\a\\path");
+    will_return(__wrap_utf8_GetFileSecurity, OS_SIZE_1024);
+    will_return(__wrap_utf8_GetFileSecurity, 1);
 
-    expect_string(wrap_GetFileSecurity, lpFileName, "C:\\a\\path");
-    will_return(wrap_GetFileSecurity, NULL);
-    will_return(wrap_GetFileSecurity, 0);
+    expect_string(__wrap_utf8_GetFileSecurity, utf8_path, "C:\\a\\path");
+    will_return(__wrap_utf8_GetFileSecurity, NULL);
+    will_return(__wrap_utf8_GetFileSecurity, 0);
 
     will_return(wrap_GetLastError, ERROR_ACCESS_DENIED);
 
@@ -3902,13 +3910,13 @@ void test_w_get_file_permissions_create_cjson_error(void **state) {
     int ret;
     SECURITY_DESCRIPTOR sec_desc;
 
-    expect_string(wrap_GetFileSecurity, lpFileName, "C:\\a\\path");
-    will_return(wrap_GetFileSecurity, OS_SIZE_1024);
-    will_return(wrap_GetFileSecurity, 1);
+    expect_string(__wrap_utf8_GetFileSecurity, utf8_path, "C:\\a\\path");
+    will_return(__wrap_utf8_GetFileSecurity, OS_SIZE_1024);
+    will_return(__wrap_utf8_GetFileSecurity, 1);
 
-    expect_string(wrap_GetFileSecurity, lpFileName, "C:\\a\\path");
-    will_return(wrap_GetFileSecurity, &sec_desc);
-    will_return(wrap_GetFileSecurity, 1);
+    expect_string(__wrap_utf8_GetFileSecurity, utf8_path, "C:\\a\\path");
+    will_return(__wrap_utf8_GetFileSecurity, &sec_desc);
+    will_return(__wrap_utf8_GetFileSecurity, 1);
 
     will_return(__wrap_cJSON_CreateObject, NULL);
 
@@ -3925,13 +3933,13 @@ void test_w_get_file_permissions_GetSecurityDescriptorDacl_error(void **state) {
     int ret;
     SECURITY_DESCRIPTOR sec_desc;
 
-    expect_string(wrap_GetFileSecurity, lpFileName, "C:\\a\\path");
-    will_return(wrap_GetFileSecurity, OS_SIZE_1024);
-    will_return(wrap_GetFileSecurity, 1);
+    expect_string(__wrap_utf8_GetFileSecurity, utf8_path, "C:\\a\\path");
+    will_return(__wrap_utf8_GetFileSecurity, OS_SIZE_1024);
+    will_return(__wrap_utf8_GetFileSecurity, 1);
 
-    expect_string(wrap_GetFileSecurity, lpFileName, "C:\\a\\path");
-    will_return(wrap_GetFileSecurity, &sec_desc);
-    will_return(wrap_GetFileSecurity, 1);
+    expect_string(__wrap_utf8_GetFileSecurity, utf8_path, "C:\\a\\path");
+    will_return(__wrap_utf8_GetFileSecurity, &sec_desc);
+    will_return(__wrap_utf8_GetFileSecurity, 1);
 
     will_return(__wrap_cJSON_CreateObject, __real_cJSON_CreateObject());
 
@@ -3953,13 +3961,13 @@ void test_w_get_file_permissions_no_dacl(void **state) {
     int ret;
     SECURITY_DESCRIPTOR sec_desc;
 
-    expect_string(wrap_GetFileSecurity, lpFileName, "C:\\a\\path");
-    will_return(wrap_GetFileSecurity, OS_SIZE_1024);
-    will_return(wrap_GetFileSecurity, 1);
+    expect_string(__wrap_utf8_GetFileSecurity, utf8_path, "C:\\a\\path");
+    will_return(__wrap_utf8_GetFileSecurity, OS_SIZE_1024);
+    will_return(__wrap_utf8_GetFileSecurity, 1);
 
-    expect_string(wrap_GetFileSecurity, lpFileName, "C:\\a\\path");
-    will_return(wrap_GetFileSecurity, &sec_desc);
-    will_return(wrap_GetFileSecurity, 1);
+    expect_string(__wrap_utf8_GetFileSecurity, utf8_path, "C:\\a\\path");
+    will_return(__wrap_utf8_GetFileSecurity, &sec_desc);
+    will_return(__wrap_utf8_GetFileSecurity, 1);
 
     will_return(__wrap_cJSON_CreateObject, __real_cJSON_CreateObject());
 
@@ -3979,13 +3987,13 @@ void test_w_get_file_permissions_GetAclInformation_error(void **state) {
     int ret;
     SECURITY_DESCRIPTOR sec_desc;
 
-    expect_string(wrap_GetFileSecurity, lpFileName, "C:\\a\\path");
-    will_return(wrap_GetFileSecurity, OS_SIZE_1024);
-    will_return(wrap_GetFileSecurity, 1);
+    expect_string(__wrap_utf8_GetFileSecurity, utf8_path, "C:\\a\\path");
+    will_return(__wrap_utf8_GetFileSecurity, OS_SIZE_1024);
+    will_return(__wrap_utf8_GetFileSecurity, 1);
 
-    expect_string(wrap_GetFileSecurity, lpFileName, "C:\\a\\path");
-    will_return(wrap_GetFileSecurity, &sec_desc);
-    will_return(wrap_GetFileSecurity, 1);
+    expect_string(__wrap_utf8_GetFileSecurity, utf8_path, "C:\\a\\path");
+    will_return(__wrap_utf8_GetFileSecurity, &sec_desc);
+    will_return(__wrap_utf8_GetFileSecurity, 1);
 
     will_return(__wrap_cJSON_CreateObject, __real_cJSON_CreateObject());
 
@@ -4012,13 +4020,13 @@ void test_w_get_file_permissions_GetAce_error(void **state) {
     SECURITY_DESCRIPTOR sec_desc;
     ACL_SIZE_INFORMATION acl_size = { .AceCount = 1 };
 
-    expect_string(wrap_GetFileSecurity, lpFileName, "C:\\a\\path");
-    will_return(wrap_GetFileSecurity, OS_SIZE_1024);
-    will_return(wrap_GetFileSecurity, 1);
+    expect_string(__wrap_utf8_GetFileSecurity, utf8_path, "C:\\a\\path");
+    will_return(__wrap_utf8_GetFileSecurity, OS_SIZE_1024);
+    will_return(__wrap_utf8_GetFileSecurity, 1);
 
-    expect_string(wrap_GetFileSecurity, lpFileName, "C:\\a\\path");
-    will_return(wrap_GetFileSecurity, &sec_desc);
-    will_return(wrap_GetFileSecurity, 1);
+    expect_string(__wrap_utf8_GetFileSecurity, utf8_path, "C:\\a\\path");
+    will_return(__wrap_utf8_GetFileSecurity, &sec_desc);
+    will_return(__wrap_utf8_GetFileSecurity, 1);
 
     will_return(__wrap_cJSON_CreateObject, __real_cJSON_CreateObject());
 
@@ -4053,13 +4061,13 @@ void test_w_get_file_permissions_success(void **state) {
         .Header.AceType = ACCESS_ALLOWED_ACE_TYPE,
     };
 
-    expect_string(wrap_GetFileSecurity, lpFileName, "C:\\a\\path");
-    will_return(wrap_GetFileSecurity, OS_SIZE_1024);
-    will_return(wrap_GetFileSecurity, 1);
+    expect_string(__wrap_utf8_GetFileSecurity, utf8_path, "C:\\a\\path");
+    will_return(__wrap_utf8_GetFileSecurity, OS_SIZE_1024);
+    will_return(__wrap_utf8_GetFileSecurity, 1);
 
-    expect_string(wrap_GetFileSecurity, lpFileName, "C:\\a\\path");
-    will_return(wrap_GetFileSecurity, &sec_desc);
-    will_return(wrap_GetFileSecurity, 1);
+    expect_string(__wrap_utf8_GetFileSecurity, utf8_path, "C:\\a\\path");
+    will_return(__wrap_utf8_GetFileSecurity, &sec_desc);
+    will_return(__wrap_utf8_GetFileSecurity, 1);
 
     will_return(__wrap_cJSON_CreateObject, __real_cJSON_CreateObject());
 
@@ -4119,13 +4127,13 @@ void test_w_get_file_permissions_process_ace_info_error(void **state) {
         .Header.AceType = SYSTEM_AUDIT_ACE_TYPE,
     };
 
-    expect_string(wrap_GetFileSecurity, lpFileName, "C:\\a\\path");
-    will_return(wrap_GetFileSecurity, OS_SIZE_1024);
-    will_return(wrap_GetFileSecurity, 1);
+    expect_string(__wrap_utf8_GetFileSecurity, utf8_path, "C:\\a\\path");
+    will_return(__wrap_utf8_GetFileSecurity, OS_SIZE_1024);
+    will_return(__wrap_utf8_GetFileSecurity, 1);
 
-    expect_string(wrap_GetFileSecurity, lpFileName, "C:\\a\\path");
-    will_return(wrap_GetFileSecurity, &sec_desc);
-    will_return(wrap_GetFileSecurity, 1);
+    expect_string(__wrap_utf8_GetFileSecurity, utf8_path, "C:\\a\\path");
+    will_return(__wrap_utf8_GetFileSecurity, &sec_desc);
+    will_return(__wrap_utf8_GetFileSecurity, 1);
 
     will_return(__wrap_cJSON_CreateObject, __real_cJSON_CreateObject());
 
@@ -4154,8 +4162,8 @@ void test_w_get_file_permissions_process_ace_info_error(void **state) {
 void test_w_get_file_attrs_error(void **state) {
     int ret;
 
-    expect_string(wrap_GetFileAttributesA, lpFileName, "C:\\a\\path");
-    will_return(wrap_GetFileAttributesA, INVALID_FILE_ATTRIBUTES);
+    expect_string(__wrap_utf8_GetFileAttributes, utf8_path, "C:\\a\\path");
+    will_return(__wrap_utf8_GetFileAttributes, INVALID_FILE_ATTRIBUTES);
 
     will_return(wrap_GetLastError, ERROR_ACCESS_DENIED);
 
@@ -4169,8 +4177,8 @@ void test_w_get_file_attrs_error(void **state) {
 void test_w_get_file_attrs_success(void **state) {
     int ret;
 
-    expect_string(wrap_GetFileAttributesA, lpFileName, "C:\\a\\path");
-    will_return(wrap_GetFileAttributesA, 123456);
+    expect_string(__wrap_utf8_GetFileAttributes, utf8_path, "C:\\a\\path");
+    will_return(__wrap_utf8_GetFileAttributes, 123456);
 
     ret = w_get_file_attrs("C:\\a\\path");
 
@@ -4190,8 +4198,8 @@ void test_w_directory_exists_error_getting_attrs(void **state) {
 
     // Inside w_get_file_attrs
     {
-        expect_string(wrap_GetFileAttributesA, lpFileName, "C:\\a\\path");
-        will_return(wrap_GetFileAttributesA, INVALID_FILE_ATTRIBUTES);
+        expect_string(__wrap_utf8_GetFileAttributes, utf8_path, "C:\\a\\path");
+        will_return(__wrap_utf8_GetFileAttributes, INVALID_FILE_ATTRIBUTES);
 
         will_return(wrap_GetLastError, ERROR_ACCESS_DENIED);
 
@@ -4209,8 +4217,8 @@ void test_w_directory_exists_path_is_not_dir(void **state) {
 
     // Inside w_get_file_attrs
     {
-        expect_string(wrap_GetFileAttributesA, lpFileName, "C:\\a\\path");
-        will_return(wrap_GetFileAttributesA, FILE_ATTRIBUTE_NORMAL);
+        expect_string(__wrap_utf8_GetFileAttributes, utf8_path, "C:\\a\\path");
+        will_return(__wrap_utf8_GetFileAttributes, FILE_ATTRIBUTE_NORMAL);
     }
 
     ret = w_directory_exists("C:\\a\\path");
@@ -4223,8 +4231,8 @@ void test_w_directory_exists_path_is_dir(void **state) {
 
     // Inside w_get_file_attrs
     {
-        expect_string(wrap_GetFileAttributesA, lpFileName, "C:\\a\\path");
-        will_return(wrap_GetFileAttributesA, FILE_ATTRIBUTE_DIRECTORY);
+        expect_string(__wrap_utf8_GetFileAttributes, utf8_path, "C:\\a\\path");
+        will_return(__wrap_utf8_GetFileAttributes, FILE_ATTRIBUTE_DIRECTORY);
     }
 
     ret = w_directory_exists("C:\\a\\path");

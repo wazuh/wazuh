@@ -55,11 +55,11 @@ protected:
     void SetUp() override
     {
         // Initialize contexts
-        m_spUpdaterBaseContext = std::make_shared<UpdaterBaseContext>(
-            m_spStopActionCondition,
-            [](const std::string& msg, std::shared_ptr<ConditionSync> shouldStop) -> FileProcessingResult {
-                return {0, "", false};
-            });
+        m_spUpdaterBaseContext =
+            std::make_shared<UpdaterBaseContext>(m_spStopActionCondition,
+                                                 [](const std::string& msg) -> FileProcessingResult {
+                                                     return {0, "", false};
+                                                 });
         m_spUpdaterBaseContext->spRocksDB = std::make_unique<Utils::RocksDBWrapper>(DATABASE_FOLDER);
         m_spUpdaterBaseContext->spRocksDB->createColumn(Components::Columns::CURRENT_OFFSET);
         m_spUpdaterBaseContext->spRocksDB->put(

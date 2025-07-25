@@ -214,8 +214,15 @@ private:
             catch (const std::exception& ex)
             {
                 // Sleep for a second to avoid busy loop
-                std::this_thread::sleep_for(std::chrono::seconds(1));
-                std::cerr << "Dispatch handler error, " << ex.what() << "\n";
+                if (m_running)
+                {
+                    std::this_thread::sleep_for(std::chrono::seconds(1));
+                    std::cerr << "Dispatch handler error, " << ex.what() << "\n";
+                }
+                else
+                {
+                    std::cout << "ThreadEventDispatcher dispatch end.\n";
+                }
             }
         }
     }

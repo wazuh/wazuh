@@ -37,8 +37,45 @@ const std::string WindowsSpecialization::registryTypeToText(const int type)
     return VALUE_TYPE.at(type);
 }
 
+bool WindowsSpecialization::isUTF8String(const std::string& str)
+{
+    int c = 0;
+
+    for (size_t i = 0; i < str.size(); ++i)
+    {
+        unsigned char b = static_cast<unsigned char>(str[i]);
+
+        if (c)
+        {
+            if ((b >> 6) != 0x2) return false;
+
+            --c;
+        }
+        else if ((b >> 5) == 0x6)
+        {
+            c = 1;
+        }
+        else if ((b >> 4) == 0xE)
+        {
+            c = 2;
+        }
+        else if ((b >> 3) == 0x1E)
+        {
+            c = 3;
+        }
+        else if ((b >> 7))
+        {
+            return false;
+        }
+    }
+
+    return c == 0;
+}
+
 void WindowsSpecialization::encodeString(std::string& str)
 {
-
-    str = Utils::EncodingWindowsHelper::stringAnsiToStringUTF8(str);
+    if (!isUTF8String(str))
+    {
+        str = Utils::EncodingWindowsHelper::stringAnsiToStringUTF8(str);
+    }
 }

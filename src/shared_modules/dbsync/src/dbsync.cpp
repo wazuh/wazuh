@@ -130,7 +130,22 @@ TXN_HANDLE dbsync_create_txn(const DBSYNC_HANDLE handle,
             {
                 [callback_data](ReturnTypeCallback result, const nlohmann::json & jsonResult)
                 {
-                    const std::unique_ptr<cJSON, CJsonSmartDeleter> spJson{ cJSON_Parse(jsonResult.dump().c_str()) };
+                    nlohmann::json patchedJson = jsonResult;
+                    auto convert_inode = [](nlohmann::json & obj)
+                    {
+                        if (obj.contains("inode"))
+                        {
+                            obj["inode"] = std::to_string(obj["inode"].get<uint64_t>());
+                        }
+                    };
+
+                    convert_inode(patchedJson);
+
+                    if (patchedJson.contains("new")) convert_inode(patchedJson["new"]);
+
+                    if (patchedJson.contains("old")) convert_inode(patchedJson["old"]);
+
+                    const std::unique_ptr<cJSON, CJsonSmartDeleter> spJson{ cJSON_Parse(patchedJson.dump().c_str()) };
                     callback_data.callback(result, spJson.get(), callback_data.user_data);
                 }
             };
@@ -506,7 +521,15 @@ int dbsync_get_deleted_rows(const TXN_HANDLE  txn,
             {
                 [callback_data](ReturnTypeCallback result, const nlohmann::json & jsonResult)
                 {
-                    const std::unique_ptr<cJSON, CJsonSmartDeleter> spJson{ cJSON_Parse(jsonResult.dump().c_str()) };
+                    nlohmann::json patchedJson = jsonResult;
+
+                    if (patchedJson.contains("inode"))
+                    {
+                        uint64_t inode = patchedJson["inode"].get<uint64_t>();
+                        patchedJson["inode"] = std::to_string(inode);
+                    }
+
+                    const std::unique_ptr<cJSON, CJsonSmartDeleter> spJson{ cJSON_Parse(patchedJson.dump().c_str()) };
                     callback_data.callback(result, spJson.get(), callback_data.user_data);
                 }
             };

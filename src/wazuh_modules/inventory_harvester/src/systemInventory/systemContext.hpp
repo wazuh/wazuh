@@ -2057,7 +2057,10 @@ public:
         }
         else
         {
-            return "";
+            if (m_jsonData->contains("/data/os_name"_json_pointer))
+            {
+                return m_jsonData->at("/data/os_name"_json_pointer).get<std::string_view>();
+            }
         }
         return "";
     }
@@ -3798,6 +3801,12 @@ private:
             action.compare("deleteAgent") == 0)
         {
             m_operation = Operation::DeleteAgent;
+        }
+        else if (action.compare("deleteOs") == 0)
+        {
+            m_operation = Operation::Delete;
+            m_affectedComponentType = AffectedComponentType::System;
+            m_originTable = OriginTable::Os;
         }
         else if (action.compare("deletePackage") == 0)
         {

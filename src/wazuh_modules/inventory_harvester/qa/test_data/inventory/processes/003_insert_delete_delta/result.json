@@ -1,6 +1,36 @@
 [
     {
         "index_name": "wazuh-states-inventory-processes-cluster01",
-        "data": []
+        "data": [
+            {
+                "agent": {
+                    "id": "001",
+                    "name": "c0ce505227a4",
+                    "version": "v4.11.0"
+                },
+                "process": {
+                    "args": [
+                        "-f",
+                        "logs/ossec.log"
+                    ],
+                    "args_count": 2,
+                    "command_line": "tail",
+                    "name": "tail",
+                    "parent": {
+                        "pid": 9
+                    },
+                    "pid": 1760,
+                    "start": "2025-02-27T15:58:54.000Z"
+                },
+                "wazuh": {
+                    "cluster": {
+                        "name": "cluster01"
+                    },
+                    "schema": {
+                        "version": "1.0"
+                    }
+                }
+            }
+        ]
     }
 ]
