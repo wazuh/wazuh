@@ -1463,6 +1463,22 @@
         "type": "directory",
         "user": "wazuh"
     },
+    "/var/ossec/queue/sca": {
+        "class": "static",
+        "group": "wazuh",
+        "mode": "0750",
+        "prot": "drwxr-x---",
+        "type": "directory",
+        "user": "wazuh"
+    },
+    "/var/ossec/queue/sca/db": {
+        "class": "static",
+        "group": "wazuh",
+        "mode": "0750",
+        "prot": "drwxr-x---",
+        "type": "directory",
+        "user": "wazuh"
+    },
     "/var/ossec/queue/syscollector/norm_config.json": {
         "class": "static",
         "group": "wazuh",

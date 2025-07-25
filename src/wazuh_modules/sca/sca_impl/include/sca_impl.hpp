@@ -19,11 +19,11 @@ class SecurityConfigurationAssessment
 {
 public:
     /// @brief Constructor
-    /// @param dbFolderPath Path to the database folder
+    /// @param dbPath Path to the database file
     /// @param agentUUID Agent UUID
     /// @param dbSync Pointer to IDBSync for database synchronization
     /// @param fileSystemWrapper File system wrapper for file operations
-    SecurityConfigurationAssessment(std::string dbFolderPath,
+    SecurityConfigurationAssessment(std::string dbPath,
                                     std::string agentUUID,
                                     std::shared_ptr<IDBSync> dbSync = nullptr,
                                     std::shared_ptr<IFileSystemWrapper> fileSystemWrapper = nullptr);
@@ -67,9 +67,6 @@ public:
 private:
     /// @brief Get the create statement for the database
     std::string GetCreateStatement() const;
-
-    /// @brief SCA db file name
-    const std::string SCA_DB_DISK_NAME = "sca.db";
 
     /// @brief SCA module name
     std::string m_name = "SCA";
