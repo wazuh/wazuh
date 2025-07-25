@@ -75,14 +75,8 @@ int rootcheck_init(int test_config)
     /* Zero the structure, initialize default values */
     rootcheck.workdir = NULL;
     rootcheck.basedir = NULL;
-    rootcheck.unixaudit = NULL;
     rootcheck.ignore = NULL;
     rootcheck.ignore_sregex = NULL;
-    rootcheck.rootkit_files = NULL;
-    rootcheck.rootkit_trojans = NULL;
-    rootcheck.winaudit = NULL;
-    rootcheck.winmalware = NULL;
-    rootcheck.winapps = NULL;
     rootcheck.daemon = 1;
     rootcheck.notify = QUEUE;
     rootcheck.scanall = 0;
@@ -93,19 +87,10 @@ int rootcheck_init(int test_config)
     rootcheck.time = ROOTCHECK_WAIT;
 
     rootcheck.checks.rc_dev = 1;
-    rootcheck.checks.rc_files = 0;
     rootcheck.checks.rc_if = 1;
     rootcheck.checks.rc_pids = 1;
     rootcheck.checks.rc_ports = 1;
     rootcheck.checks.rc_sys = 1;
-    rootcheck.checks.rc_trojans = 0;
-#ifdef WIN32
-    rootcheck.checks.rc_winaudit = 0;
-    rootcheck.checks.rc_winmalware = 0;
-    rootcheck.checks.rc_winapps = 0;
-#else
-    rootcheck.checks.rc_unixaudit = 0;
-#endif
 
     /* We store up to 255 alerts in there */
     os_calloc(256, sizeof(char *), rootcheck.alert_msg);
@@ -179,18 +164,6 @@ int rootcheck_init(int test_config)
         return (1);
     }
 
-#ifndef WIN32
-    if(rootcheck.checks.rc_unixaudit && !test_config) {
-        mwarn("The check_unixaudit option is deprecated in favor of the SCA module.");
-    }
-#endif
-
-#ifdef WIN32
-    if(rootcheck.checks.rc_winaudit && !test_config) {
-        mwarn("The check_winaudit option is deprecated in favor of the SCA module.");
-    }
-#endif
-
     rootcheck.tsleep = getDefine_Int("rootcheck", "sleep", 0, 1000);
 
     /* If testing config, exit here */
@@ -203,13 +176,6 @@ int rootcheck_init(int test_config)
         mtinfo(ARGV0, "Rootcheck disabled.");
         return (1);
     }
-
-#ifndef WIN32
-    /* Check if Unix audit file is configured */
-    if (rootcheck.checks.rc_unixaudit && !rootcheck.unixaudit) {
-        mtferror(ARGV0, "System audit file not configured.");
-    }
-#endif
 
     /* Set default values */
 #ifndef OSSECHIDS
