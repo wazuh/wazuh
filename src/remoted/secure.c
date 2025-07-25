@@ -19,6 +19,10 @@
 #include "indexed_queue_op.h"
 
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> f7860ef43e (Enhancement in remoted daemon binary to process more data.)
 #ifdef WAZUH_UNIT_TESTING
 // Remove static qualifier when unit testing
 #define STATIC
@@ -552,7 +556,7 @@ STATIC void * close_fp_main(void * args) {
     return NULL;
 }
 
-STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * control_msg_queue) {
+STATIC void HandleSecureMessage(const message_t *message, w_linked_queue_t * control_msg_queue) {
     int agentid;
     const int protocol = (message->sock == USING_UDP_NO_CLIENT_SOCKET) ? REMOTED_NET_PROTOCOL_UDP : REMOTED_NET_PROTOCOL_TCP;
     char cleartext_msg[OS_MAXSTR + 1];
@@ -1024,6 +1028,21 @@ void router_message_forward(char* msg, const char* agent_id, const char* agent_i
         if (router_provider_send_fb_json(router_handle, msg_start, &agent_ctx, schema_type) != 0) {
             mdebug2("Unable to forward message '%s' for agent '%s'.", msg_start, agent_id);
         }
+        // if (schema_type == MT_SYS_DELTAS || schema_type == MT_SYSCHECK_DELTAS) {
+        //     msg_to_send = adapt_delta_message(msg_start, agent_name, agent_id, agent_ip, agent_data_hash);
+        // } else if (schema_type == MT_SYNC) {
+        //     msg_to_send = adapt_sync_message(msg_start, agent_name, agent_id, agent_ip, agent_data_hash);
+        // }
+        // else {
+        //     mdebug2("Message parsed with flatbuffer %s", msg);
+        // }
+
+        // if (msg_to_send) {
+        //     if (router_provider_send_fb(router_handle, msg_to_send, get_schema(schema_type)) != 0) {
+        //         mdebug2("Unable to forward message '%s' for agent '%s'.", msg_to_send, agent_id);
+        //     }
+        //     cJSON_free(msg_to_send);
+        // }
     }
 }
 
