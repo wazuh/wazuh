@@ -21,6 +21,7 @@ typedef struct wm_sca_t
 {
     int enabled : 1;
     int scan_on_start : 1;
+    unsigned int timeout;
 } wm_sca_t;
 
 extern const wm_context WM_SCA_CONTEXT;
