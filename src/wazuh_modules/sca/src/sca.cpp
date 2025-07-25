@@ -82,32 +82,39 @@ SCA::SCA()
 void SCA::init(const std::function<void(const modules_log_level_t, const std::string&)> logFunction)
 {
     // TODO Start doing whatever the module does
-    m_sca = std::make_unique<SecurityConfigurationAssessment>(SCA_DB_DISK_PATH, "agent-uuid-placeholder");
+    if (!m_sca)
+    {
+        m_sca = std::make_unique<SecurityConfigurationAssessment>(SCA_DB_DISK_PATH, "agent-uuid-placeholder");
+
+        // TODO remove this, it's only for testing purposes
+        // Set a simple print function for m_pushMessage so we can see the SCA checks
+        // being processed in the OSSEC log
+        auto simplePrintFunction = [this](const std::string& message) -> int {
+            if (m_logFunction)
+            {
+                // Commented out to avoid printing to console and mess integration tests
+                // m_logFunction(LOG_INFO, "SCA Event: " + message);
+            }
+            else
+            {
+                // Commented out to avoid printing to console and mess integration tests
+                // std::cout << "SCA Event: " << message << std::endl;
+            }
+            return 0;
+        };
+
+        // Uncomment to see SCA events in the OSSEC log
+        // Should be removed ultimately and replaced
+        m_sca->SetPushMessageFunction(simplePrintFunction);
+    }
     m_logFunction = logFunction;
-
-    // TODO remove this, it's only for testing purposes
-    // Set a simple print function for m_pushMessage so we can see the SCA checks
-    // being processed in the OSSEC log
-    auto simplePrintFunction = [this](const std::string& message) -> int {
-        if (m_logFunction)
-        {
-            m_logFunction(LOG_INFO, "SCA Event: " + message);
-        }
-        else
-        {
-            std::cout << "SCA Event: " << message << std::endl;
-        }
-        return 0;
-    };
-
-    m_sca->SetPushMessageFunction(simplePrintFunction);
 
     // logFunction(LOG_INFO, "SCA module initialized successfully.");
 }
 
 void SCA::setup(const struct wm_sca_t* sca_config)
 {
-    if (m_sca && sca_config) {
+    if (m_sca && sca_config && !m_setupCalled) {
         // Extract configuration values from wm_sca_t
         bool enabled = sca_config->enabled != 0;
         bool scan_on_start = sca_config->scan_on_start != 0;
@@ -132,7 +139,10 @@ void SCA::setup(const struct wm_sca_t* sca_config)
                 }
             }
         }
+
+        // Call Setup only once during initialization
         m_sca->Setup(enabled, scan_on_start, scanInterval, policies, disabledPolicies);
+        m_setupCalled = true;
     }
 }
 
@@ -149,7 +159,7 @@ void SCA::destroy()
         return;
     }
     m_sca->Stop();
-    m_sca.reset();
+    // m_sca.reset();
 }
 
 void SCA::push(const std::string& data)
