@@ -34,12 +34,6 @@ int Read_Rootcheck(XML_NODE node, void *configp, __attribute__((unused)) void *m
     rkconfig *rootcheck;
 
     /* XML Definitions */
-    const char *xml_rootkit_files = "rootkit_files";
-    const char *xml_rootkit_trojans = "rootkit_trojans";
-    const char *xml_winaudit = "windows_audit";
-    const char *xml_unixaudit = "system_audit";
-    const char *xml_winapps = "windows_apps";
-    const char *xml_winmalware = "windows_malware";
     const char *xml_scanall = "scanall";
     const char *xml_readall = "readall";
     const char *xml_time = "frequency";
@@ -49,16 +43,10 @@ int Read_Rootcheck(XML_NODE node, void *configp, __attribute__((unused)) void *m
     const char *xml_ignore = "ignore";
 
     const char *xml_check_dev = "check_dev";
-    const char *xml_check_files = "check_files";
     const char *xml_check_if = "check_if";
     const char *xml_check_pids = "check_pids";
     const char *xml_check_ports = "check_ports";
     const char *xml_check_sys = "check_sys";
-    const char *xml_check_trojans = "check_trojans";
-    const char *xml_check_unixaudit = "check_unixaudit";
-    const char *xml_check_winapps = "check_winapps";
-    const char *xml_check_winaudit = "check_winaudit";
-    const char *xml_check_winmalware = "check_winmalware";
 
     rootcheck = (rkconfig *)configp;
 
@@ -118,30 +106,14 @@ int Read_Rootcheck(XML_NODE node, void *configp, __attribute__((unused)) void *m
                 mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
                 return (OS_INVALID);
             }
-        } else if (strcmp(node[i]->element, xml_rootkit_files) == 0) {
-            os_strdup(node[i]->content, rootcheck->rootkit_files);
-        } else if (strcmp(node[i]->element, xml_rootkit_trojans) == 0) {
-            os_strdup(node[i]->content, rootcheck->rootkit_trojans);
-        } else if (strcmp(node[i]->element, xml_winaudit) == 0) {
-#ifdef WIN32
-            rootcheck->checks.rc_winaudit = 1;
-#endif
-            os_strdup(node[i]->content, rootcheck->winaudit);
-        } else if (strcmp(node[i]->element, xml_unixaudit) == 0) {
-            unsigned int j = 0;
-            while (rootcheck->unixaudit && rootcheck->unixaudit[j]) {
-                j++;
-            }
-
-            os_realloc(rootcheck->unixaudit, sizeof(char *) * (j + 2),
-                       rootcheck->unixaudit);
-            rootcheck->unixaudit[j] = NULL;
-            rootcheck->unixaudit[j + 1] = NULL;
-
-#ifndef WIN32
-            rootcheck->checks.rc_unixaudit = 1;
-#endif
-            os_strdup(node[i]->content, rootcheck->unixaudit[j]);
+        } else if (strcmp(node[i]->element, "rootkit_files") == 0) {
+            mwarn("Rootcheck option 'rootkit_files' is no longer supported. Use the FIM module instead.");
+        } else if (strcmp(node[i]->element, "rootkit_trojans") == 0) {
+            mwarn("Rootcheck option 'rootkit_trojans' is no longer supported. Use the FIM module instead.");
+        } else if (strcmp(node[i]->element, "windows_audit") == 0) {
+            mwarn("Rootcheck option 'windows_audit' is no longer supported. Use the SCA module instead.");
+        } else if (strcmp(node[i]->element, "system_audit") == 0) {
+            mwarn("Rootcheck option 'system_audit' is no longer supported. Use the SCA module instead.");
         } else if (strcmp(node[i]->element, xml_ignore) == 0) {
             unsigned int j = 0;
             while (rootcheck->ignore && rootcheck->ignore[j]) {
@@ -174,16 +146,10 @@ int Read_Rootcheck(XML_NODE node, void *configp, __attribute__((unused)) void *m
                     return OS_INVALID;
                 }
             }
-        } else if (strcmp(node[i]->element, xml_winmalware) == 0) {
-#ifdef WIN32
-            rootcheck->checks.rc_winmalware = 1;
-#endif
-            os_strdup(node[i]->content, rootcheck->winmalware);
-        } else if (strcmp(node[i]->element, xml_winapps) == 0) {
-#ifdef WIN32
-            rootcheck->checks.rc_winapps = 1;
-#endif
-            os_strdup(node[i]->content, rootcheck->winapps);
+        } else if (strcmp(node[i]->element, "windows_malware") == 0) {
+            mwarn("Rootcheck option 'windows_malware' is no longer supported. Use the SCA module instead.");
+        } else if (strcmp(node[i]->element, "windows_apps") == 0) {
+            mwarn("Rootcheck option 'windows_apps' is no longer supported. Use the SCA module instead.");
         } else if (strcmp(node[i]->element, xml_base_dir) == 0) {
             os_strdup(node[i]->content, rootcheck->basedir);
         } else if (strcmp(node[i]->element, xml_check_dev) == 0) {
@@ -192,12 +158,9 @@ int Read_Rootcheck(XML_NODE node, void *configp, __attribute__((unused)) void *m
                 mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
                 return (OS_INVALID);
             }
-        } else if (strcmp(node[i]->element, xml_check_files) == 0) {
-            rootcheck->checks.rc_files = eval_bool(node[i]->content);
-            if (rootcheck->checks.rc_files == OS_INVALID) {
-                mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
-                return (OS_INVALID);
-            }
+        } else if (strcmp(node[i]->element, "check_files") == 0) {
+            mwarn("Rootcheck option 'check_files' is no longer supported. Use the FIM module instead.");
+
         } else if (strcmp(node[i]->element, xml_check_if) == 0) {
             rootcheck->checks.rc_if = eval_bool(node[i]->content);
             if (rootcheck->checks.rc_if == OS_INVALID) {
@@ -222,44 +185,16 @@ int Read_Rootcheck(XML_NODE node, void *configp, __attribute__((unused)) void *m
                 mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
                 return (OS_INVALID);
             }
-        } else if (strcmp(node[i]->element, xml_check_trojans) == 0) {
-            rootcheck->checks.rc_trojans = eval_bool(node[i]->content);
-            if (rootcheck->checks.rc_trojans == OS_INVALID) {
-                mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
-                return (OS_INVALID);
-            }
-        } else if (strcmp(node[i]->element, xml_check_unixaudit) == 0) {
-#ifndef WIN32
-            rootcheck->checks.rc_unixaudit = eval_bool(node[i]->content);
-            if (rootcheck->checks.rc_unixaudit == OS_INVALID) {
-                mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
-                return (OS_INVALID);
-            }
-#endif
-        } else if (strcmp(node[i]->element, xml_check_winapps) == 0) {
-#ifdef WIN32
-            rootcheck->checks.rc_winapps = eval_bool(node[i]->content);
-            if (rootcheck->checks.rc_winapps == OS_INVALID) {
-                mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
-                return (OS_INVALID);
-            }
-#endif
-        } else if (strcmp(node[i]->element, xml_check_winaudit) == 0) {
-#ifdef WIN32
-            rootcheck->checks.rc_winaudit = eval_bool(node[i]->content);
-            if (rootcheck->checks.rc_winaudit == OS_INVALID) {
-                mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
-                return (OS_INVALID);
-            }
-#endif
-        } else if (strcmp(node[i]->element, xml_check_winmalware) == 0) {
-#ifdef WIN32
-            rootcheck->checks.rc_winmalware = eval_bool(node[i]->content);
-            if (rootcheck->checks.rc_winmalware == OS_INVALID) {
-                mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
-                return (OS_INVALID);
-            }
-#endif
+        } else if (strcmp(node[i]->element, "check_trojans") == 0) {
+            mwarn("Rootcheck option 'check_trojans' is no longer supported. Use the FIM module instead.");
+        } else if (strcmp(node[i]->element, "check_unixaudit") == 0) {
+            mwarn("Rootcheck option 'check_unixaudit' is no longer supported. Use the SCA module instead.");
+        } else if (strcmp(node[i]->element, "check_winapps") == 0) {
+            mwarn("Rootcheck option 'check_winapps' is no longer supported. Use the SCA module instead.");
+        } else if (strcmp(node[i]->element, "check_winaudit") == 0) {
+            mwarn("Rootcheck option 'check_winaudit' is no longer supported. Use the SCA module instead.");
+        } else if (strcmp(node[i]->element, "check_winmalware") == 0) {
+            mwarn("Rootcheck option 'check_winmalware' is no longer supported. Use the SCA module instead.");
         } else {
             mwarn(XML_INVELEM, node[i]->element);
             return (OS_INVALID);
@@ -292,23 +227,12 @@ void Free_Rootcheck(rkconfig * config){
         int i;
         free((char*) config->workdir);
         free(config->basedir);
-        free(config->rootkit_files);
-        free(config->rootkit_trojans);
-        if (config->unixaudit) {
-            for (i=0; config->unixaudit[i] != NULL; i++) {
-                free(config->unixaudit[i]);
-            }
-            free(config->unixaudit);
-        }
         if (config->ignore) {
             for (i=0; config->ignore[i] != NULL; i++) {
                 free(config->ignore[i]);
             }
             free(config->ignore);
         }
-        free(config->winaudit);
-        free(config->winmalware);
-        free(config->winapps);
         if (config->alert_msg) {
             for (i=0; config->alert_msg[i] != NULL; i++) {
                 free(config->alert_msg[i]);
