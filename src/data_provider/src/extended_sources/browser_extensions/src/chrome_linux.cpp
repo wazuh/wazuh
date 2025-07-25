@@ -1,4 +1,4 @@
-#include "chrome.hpp"
+#include "chrome_linux.hpp"
 #include <tuple>
 #include <iostream>
 #include <fstream>
@@ -9,22 +9,37 @@
 
 namespace chrome {
 
-std::vector<std::string> ChromeExtensions::getUsers(){
-	std::vector<std::string> users;
-	for (const auto& entry : std::filesystem::directory_iterator("/home")) {
-		if (entry.is_directory()) {
-			users.push_back(entry.path().filename().string());
+ChromeExtensionsProvider::ChromeExtensionsProvider(std::shared_ptr<IChromeExtensionsWrapper> chromeExtensionsWrapper) : m_chromeExtensionsWrapper(std::move(chromeExtensionsWrapper)) {}
+
+ChromeExtensionsProvider::ChromeExtensionsProvider() : m_chromeExtensionsWrapper(std::make_shared<ChromeExtensionsWrapper>()){}
+
+chrome::ChromeUserProfileList ChromeExtensionsProvider::getProfileDirs(){
+	chrome::ChromeUserProfileList userProfiles;
+	std::filesystem::path homePath = m_chromeExtensionsWrapper->getHomePath();
+	for(const auto& user : std::filesystem::directory_iterator(homePath)){
+		if(!user.is_directory()) continue;
+
+		const std::filesystem::path userHomePath = homePath / user;
+		if(!std::filesystem::exists(userHomePath)) {
+			// std::cerr << "Directory does not exist: " << user << std::endl;
+			continue;
 		}
+		const std::filesystem::path profilePath = userHomePath / ".config/google-chrome";
+		if(!std::filesystem::exists(profilePath)) {
+			// std::cerr << "Chrome path does not exist\n";
+			continue;
+		}
+		userProfiles.emplace_back(profilePath);
 	}
-	return users;
+	return userProfiles;
 }
 
-bool ChromeExtensions::isValidChromeProfile(const std::filesystem::path& profilePath) {
+bool ChromeExtensionsProvider::isValidChromeProfile(const std::filesystem::path& profilePath) {
 	return std::filesystem::is_regular_file(profilePath / "Preferences") ||
 				std::filesystem::is_regular_file(profilePath / "Secure Preferences");
 }
 
-std::string ChromeExtensions::jsonArrayToString(const nlohmann::json& jsonArray) {
+std::string ChromeExtensionsProvider::jsonArrayToString(const nlohmann::json& jsonArray) {
 	std::string result;
 	for (const auto& item : jsonArray) {
 		result += item.get<std::string>() + ", ";
@@ -36,16 +51,16 @@ std::string ChromeExtensions::jsonArrayToString(const nlohmann::json& jsonArray)
 	return result;
 }
 
-std::string ChromeExtensions::remove_substring(const std::string& input, const std::string& to_remove) {
-		std::string result = input;
-		size_t pos;
-		while ((pos = result.find(to_remove)) != std::string::npos) {
-				result.erase(pos, to_remove.length());
-		}
-		return result;
+std::string ChromeExtensionsProvider::remove_substring(const std::string& input, const std::string& to_remove) {
+	std::string result = input;
+	size_t pos;
+	while ((pos = result.find(to_remove)) != std::string::npos) {
+			result.erase(pos, to_remove.length());
+	}
+	return result;
 }
 
-bool ChromeExtensions::is_snake_case(const std::string& s) {
+bool ChromeExtensionsProvider::is_snake_case(const std::string& s) {
 	if (s.empty() || s.front() == '_' || s.back() == '_') return false;
 
 	bool has_underscore = false;
@@ -65,12 +80,12 @@ bool ChromeExtensions::is_snake_case(const std::string& s) {
 	return has_underscore; // must contain at least one underscore
 }
 
-void ChromeExtensions::to_lowercase(std::string& str) {
+void ChromeExtensionsProvider::to_lowercase(std::string& str) {
 		std::transform(str.begin(), str.end(), str.begin(),
 									[](unsigned char c) { return std::tolower(c); });
 }
 
-void ChromeExtensions::localizeParameters(chrome::ChromeExtension& extension){
+void ChromeExtensionsProvider::localizeParameters(chrome::ChromeExtension& extension){
 	std::filesystem::path extensionPath(extension.path);
 	std::filesystem::path localesPath = extensionPath / chrome::kExtensionLocalesDir;
 	std::filesystem::path defaultLocalePath = localesPath / extension.default_locale;
@@ -91,85 +106,70 @@ void ChromeExtensions::localizeParameters(chrome::ChromeExtension& extension){
 		extension.name = messagesJson.contains(nameKey) ? messagesJson[nameKey]["message"].get<std::string>() : extension.name;
 		extension.description = messagesJson.contains(descriptionKey) ? messagesJson[descriptionKey]["message"].get<std::string>() : extension.description;
 	} else {
-		std::cerr << "Default locale file does not exist: " << messagesFilePath << std::endl;
+		// std::cerr << "Default locale file does not exist: " << messagesFilePath << std::endl;
 	}
 }
 
-std::string ChromeExtensions::hash_to_hex_string(const uint8_t* hash, size_t length) {
-	std::stringstream ss;
-	ss << std::hex << std::setfill('0');
+std::string ChromeExtensionsProvider::hashToLetterString(const uint8_t* hash, size_t length) {
+	std::string result;
+	result.reserve(length * 2); // two letters per byte (high and low nibble)
+
 	for (size_t i = 0; i < length; ++i) {
-			ss << std::setw(2) << static_cast<int>(hash[i]);
+		uint8_t byte = hash[i];
+		// high nibble
+		result.push_back('a' + ((byte >> 4) & 0x0F));
+		// low nibble
+		result.push_back('a' + (byte & 0x0F));
 	}
-	return ss.str();
+
+	return result;
 }
 
-int ChromeExtensions::hexCharToInt(char c) {
-		if ('0' <= c && c <= '9') return c - '0';
-		else if ('a' <= c && c <= 'f') return 10 + (c - 'a');
-		else if ('A' <= c && c <= 'F') return 10 + (c - 'A');
-		else throw std::invalid_argument("Invalid hex digit");
+std::string ChromeExtensionsProvider::generateIdentifier(const std::string& key){
+	auto decodedVector = cppcodec::base64_rfc4648::decode(key);
+	uint8_t hash[SHA256_DIGEST_LENGTH];
+	SHA256(decodedVector.data(), decodedVector.size(), hash);
+	std::string letters_string = hashToLetterString(hash, SHA256_DIGEST_LENGTH);
+	return letters_string.substr(0, 32);
 }
 
-std::string ChromeExtensions::webkitToUnixTime(std::string webkit_timestamp) {
+std::string ChromeExtensionsProvider::hashToHexString(const uint8_t* hash, size_t length) {
+	std::ostringstream oss;
+	oss << std::hex << std::setfill('0');
+	for (size_t i = 0; i < length; ++i) {
+		oss << std::setw(2) << static_cast<int>(hash[i]);
+	}
+	return oss.str();
+}
+
+std::string ChromeExtensionsProvider::sha256_file(const std::filesystem::path& filepath) {
+	std::ifstream file(filepath, std::ios::binary);
+	if (!file) {
+		throw std::runtime_error("Cannot open file: " + filepath.string());
+	}
+
+	SHA256_CTX sha256;
+	SHA256_Init(&sha256);
+
+	std::vector<char> buffer(8192);
+	while (file.read(buffer.data(), buffer.size()) || file.gcount() > 0) {
+		SHA256_Update(&sha256, buffer.data(), file.gcount());
+	}
+
+	uint8_t hash[SHA256_DIGEST_LENGTH];
+	SHA256_Final(hash, &sha256);
+
+	// Reuse the same hex function if needed
+	return hashToHexString(hash, SHA256_DIGEST_LENGTH);
+}
+
+std::string ChromeExtensionsProvider::webkitToUnixTime(std::string webkit_timestamp) {
 	int64_t timestamp = std::stoll(webkit_timestamp);
 	std::time_t unix_timestap = (timestamp - 11644473600000000LL) / 1000000;
 	return std::to_string(unix_timestap);
 }
 
-// Converts a hex string to a string of letters 'a'..'p'
-std::string ChromeExtensions::hexToLetters(const std::string& hex) {
-		std::string result;
-		result.reserve(hex.size());
-
-		for (char c : hex) {
-				int value = hexCharToInt(c);
-				// Map 0-15 to 'a' - 'p'
-				char letter = 'a' + value;
-				result.push_back(letter);
-		}
-
-		return result;
-}
-
-std::string ChromeExtensions::generateIdentifier(const std::string& key){
-	std::vector<uint8_t> decodedVector = cppcodec::base64_rfc4648::decode(key);
-	uint8_t hash[SHA256_DIGEST_LENGTH];
-	SHA256(decodedVector.data(), decodedVector.size(), hash);
-	std::string letters_string = hexToLetters(hash_to_hex_string(hash, SHA256_DIGEST_LENGTH));
-	return letters_string.substr(0, 32);
-}
-
-std::string ChromeExtensions::sha256_file(const std::filesystem::path& filepath) {
-		std::ifstream file(filepath, std::ios::binary);
-		if (!file) {
-				throw std::runtime_error("Cannot open file: " + filepath.string());
-		}
-
-		SHA256_CTX sha256;
-		SHA256_Init(&sha256);
-
-		std::vector<char> buffer(8192);
-		while (file.good()) {
-				file.read(buffer.data(), buffer.size());
-				std::streamsize bytes_read = file.gcount();
-				if (bytes_read > 0) {
-						SHA256_Update(&sha256, buffer.data(), bytes_read);
-				}
-		}
-
-		std::vector<unsigned char> hash(SHA256_DIGEST_LENGTH);
-		SHA256_Final(hash.data(), &sha256);
-
-		std::ostringstream oss;
-		oss << std::hex << std::setfill('0');
-		for (unsigned char byte : hash) {
-				oss << std::setw(2) << (int)byte;
-		}
-		return oss.str();
-}
-
-void ChromeExtensions::parseManifest(nlohmann::json& manifestJson, chrome::ChromeExtension& extension) {
+void ChromeExtensionsProvider::parseManifest(nlohmann::json& manifestJson, chrome::ChromeExtension& extension) {
 	extension.name = manifestJson.contains("name") ? manifestJson["name"].get<std::string>() : "";
 	extension.update_url = manifestJson.contains("update_url") ? manifestJson["update_url"].get<std::string>() : "";
 	extension.version = manifestJson.contains("version") ? manifestJson["version"].get<std::string>() : "";
@@ -190,7 +190,7 @@ void ChromeExtensions::parseManifest(nlohmann::json& manifestJson, chrome::Chrom
 	localizeParameters(extension);
 }
 
-void ChromeExtensions::parsePreferenceSettings(chrome::ChromeExtension& extension, const std::string& key, const nlohmann::json& value){
+void ChromeExtensionsProvider::parsePreferenceSettings(chrome::ChromeExtension& extension, const std::string& key, const nlohmann::json& value){
 	extension.state = value.contains("state") ? value["state"].get<std::string>() : "";
 	if(value.contains("from_webstore")) {
 		extension.from_webstore = value["from_webstore"].get<bool>() ? "true" : "false";
@@ -202,18 +202,18 @@ void ChromeExtensions::parsePreferenceSettings(chrome::ChromeExtension& extensio
 	extension.referenced_identifier = key;
 }
 
-void ChromeExtensions::getCommonSettings(chrome::ChromeExtension& extension, const std::filesystem::path& manifestPath, const nlohmann::json& preferencesJson){
+void ChromeExtensionsProvider::getCommonSettings(chrome::ChromeExtension& extension, const std::filesystem::path& manifestPath, const nlohmann::json& preferencesJson){
 	extension.browser_type = "chrome"; // TODO: Improve this for all chrome types
 	extension.profile = (preferencesJson.contains("profile") && preferencesJson["profile"].contains("name")) ? preferencesJson["profile"]["name"].get<std::string>() : "";
 	extension.uid = std::to_string(getuid()); // TODO: Make sure this is the correct way to get this property
 	extension.manifest_hash = sha256_file(manifestPath);
 }
 
-chrome::ChromeExtensionList ChromeExtensions::getReferencedExtensions(const std::filesystem::path& profilePath) {
+chrome::ChromeExtensionList ChromeExtensionsProvider::getReferencedExtensions(const std::filesystem::path& profilePath) {
 	std::filesystem::path configFilePath = profilePath / "Preferences";
 	if(!std::filesystem::exists(configFilePath)) {
 		// TODO: Improve handling this error.
-		std::cerr << "Preferences file does not exist: " << configFilePath << std::endl;
+		// std::cerr << "Preferences file does not exist: " << configFilePath << std::endl;
 		return chrome::ChromeExtensionList();
 	}
 	std::ifstream preferencesFile(configFilePath);
@@ -256,17 +256,17 @@ chrome::ChromeExtensionList ChromeExtensions::getReferencedExtensions(const std:
 	return extensions;
 }
 
-chrome::ChromeExtensionList ChromeExtensions::getUnreferencedExtensions(const std::filesystem::path& profilePath){
+chrome::ChromeExtensionList ChromeExtensionsProvider::getUnreferencedExtensions(const std::filesystem::path& profilePath){
 	std::filesystem::path extensionPath = profilePath / chrome::kExtensionsFolderName;
 	if(!std::filesystem::exists(extensionPath)) {
 		// TODO: Improve handling this error.
-		std::cerr << "Extensions folder does not exist: " << extensionPath << std::endl;
+		// std::cerr << "Extensions folder does not exist: " << extensionPath << std::endl;
 		return chrome::ChromeExtensionList();
 	}
 	std::filesystem::path configFilePath = profilePath / "Preferences";
 	if(!std::filesystem::exists(configFilePath)) {
 		// TODO: Improve handling this error.
-		std::cerr << "Preferences file does not exist: " << configFilePath << std::endl;
+		// std::cerr << "Preferences file does not exist: " << configFilePath << std::endl;
 		return chrome::ChromeExtensionList();
 	}
 	std::ifstream preferencesFile(configFilePath);
@@ -296,7 +296,7 @@ chrome::ChromeExtensionList ChromeExtensions::getUnreferencedExtensions(const st
 
 						extensions.emplace_back(extension);
 					} else {
-						std::cerr << "Manifest file does not exist in: " << subSubDir.path() << std::endl;
+						// std::cerr << "Manifest file does not exist in: " << subSubDir.path() << std::endl;
 					}
 				}
 			}
@@ -306,25 +306,7 @@ chrome::ChromeExtensionList ChromeExtensions::getUnreferencedExtensions(const st
 	return extensions;
 }
 
-chrome::ChromeUserProfileList ChromeExtensions::getUserProfile(){
-	chrome::ChromeUserProfileList userProfiles;
-	for(const auto& user : getUsers()){
-		const std::filesystem::path userHomePath("/home/" + user);
-		if(!std::filesystem::exists(userHomePath)) {
-			std::cerr << "Directory does not exist: " << user << std::endl;
-			continue;
-		}
-		const std::filesystem::path profilePath = userHomePath / ".config/google-chrome";
-		if(!std::filesystem::exists(profilePath)) {
-			std::cerr << "Chrome path does not exist\n";
-			continue;
-		}
-		userProfiles.emplace_back(profilePath);
-	}
-	return userProfiles;
-}
-
-void ChromeExtensions::printExtensions(const chrome::ChromeExtensionList& extensions){
+void ChromeExtensionsProvider::printExtensions(const chrome::ChromeExtensionList& extensions){
 	for(const auto& extension : extensions){
 		std::cout << "<-------------------------------Extension----------------------------->" << std::endl
 		<< extension.author << std::endl
@@ -357,7 +339,7 @@ void ChromeExtensions::printExtensions(const chrome::ChromeExtensionList& extens
 	}
 }
 
-nlohmann::json ChromeExtensions::toJson(const chrome::ChromeExtensionList& extensions)
+nlohmann::json ChromeExtensionsProvider::toJson(const chrome::ChromeExtensionList& extensions)
 {
 	nlohmann::json results = nlohmann::json::array();
 
@@ -393,7 +375,7 @@ nlohmann::json ChromeExtensions::toJson(const chrome::ChromeExtensionList& exten
 	return results;
 }
 
-void ChromeExtensions::getExtensionsFromPath(chrome::ChromeExtensionList& extensions, const std::filesystem::path& path) {
+void ChromeExtensionsProvider::getExtensionsFromPath(chrome::ChromeExtensionList& extensions, const std::filesystem::path& path) {
 	chrome::ChromeExtensionList referencedExtensions = getReferencedExtensions(path);
 	extensions.insert(extensions.end(), referencedExtensions.begin(), referencedExtensions.end());
 
@@ -412,7 +394,7 @@ void ChromeExtensions::getExtensionsFromPath(chrome::ChromeExtensionList& extens
 	}
 }
 
-void ChromeExtensions::getExtensionsFromProfiles(chrome::ChromeExtensionList& extensions, const chrome::ChromeUserProfileList& profilePaths){
+void ChromeExtensionsProvider::getExtensionsFromProfiles(chrome::ChromeExtensionList& extensions, const chrome::ChromeUserProfileList& profilePaths){
 	for(auto& profilePath : profilePaths) {
 		if(isValidChromeProfile(profilePath)) {
 			getExtensionsFromPath(extensions, profilePath);
@@ -425,5 +407,15 @@ void ChromeExtensions::getExtensionsFromProfiles(chrome::ChromeExtensionList& ex
 		}
 	}
 }
+
+nlohmann::json ChromeExtensionsProvider::collect() {
+	auto profilePaths = getProfileDirs();
+	chrome::ChromeExtensionList extensions;
+	getExtensionsFromProfiles(extensions, profilePaths);
+
+	// chromeExtensionsProvider.printExtensions(extensions);
+	return toJson(extensions);
+}
+
 
 } // namespace chrome
