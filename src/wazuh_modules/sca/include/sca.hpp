@@ -46,4 +46,11 @@ private:
     std::function<void(const modules_log_level_t, const std::string&)> m_logFunction;
 
     std::unique_ptr<SecurityConfigurationAssessment> m_sca;
+
+    // workaround for integration tests
+    // it should be possible to call setup multiple times
+    // but there's segfault when commiting a db transaction
+    // on a second setup call
+    // this is a temporary solution until the issue is resolved
+    bool m_setupCalled = false;
 };
