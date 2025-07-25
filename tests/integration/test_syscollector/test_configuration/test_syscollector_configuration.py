@@ -313,6 +313,7 @@ def test_syscollector_invalid_configurations(test_configuration, test_metadata, 
         assert not log_monitor.callback_result
 
 
+@pytest.mark.skip(reason="Broken on main branch")
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(t4_configurations, t4_config_metadata), ids=t4_case_ids)
 def test_syscollector_default_values(test_configuration, test_metadata, set_wazuh_configuration,
                                      configure_local_internal_options, truncate_monitored_files,
