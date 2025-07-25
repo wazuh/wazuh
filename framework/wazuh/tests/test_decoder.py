@@ -303,6 +303,7 @@ def test_upload_file(mock_logtest, mock_safe_move, mock_remove, mock_upload_file
                 'delete_decoder_file function not called with expected parameters'
                 mock_remove.assert_called_once()
                 mock_safe_move.assert_called_once()
+                mock_reload.assert_called_once()
 
 
 @patch('wazuh.decoder.delete_decoder_file', side_effect=WazuhError(1019))

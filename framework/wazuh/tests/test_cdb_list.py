@@ -341,7 +341,7 @@ def test_upload_list_file(mock_reload, mock_exists, mock_remove, mock_delete_lis
     mock_delete_file_with_backup.assert_called_once_with(os.path.join(common.USER_LISTS_PATH, filename + '.backup'),
                                                          os.path.join(common.USER_LISTS_PATH, filename),
                                                          mock_delete_list_file)
-
+    mock_reload.assert_called_once()
 
 @patch('wazuh.cdb_list.common.USER_LISTS_PATH', return_value='/test/path')
 @patch('wazuh.cdb_list.remove')
@@ -397,7 +397,7 @@ def test_delete_list_file(mock_reload, mock_delete_file):
             pass
 
     mock_delete_file.assert_called_once_with(test_file)
-
+    mock_reload.assert_called_once()
 
 def test_delete_list_file_ko():
     """Check that expected error code is returned when the file can't be deleted."""
