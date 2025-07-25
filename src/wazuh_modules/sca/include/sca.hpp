@@ -32,6 +32,8 @@ public:
     }
 
     void init(const std::function<void(const modules_log_level_t, const std::string&)> logFunction);
+    void setup(const struct wm_sca_t* sca_config);
+    void run();
     void destroy();
     void push(const std::string& data);
 
