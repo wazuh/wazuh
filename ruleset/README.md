@@ -12,7 +12,6 @@ The ruleset includes compliance mapping with PCI DSS v3.1 and CIS.
 ## Directory structure
 
     ├── wazuh/ruleset
-    │ ├── rootcheck           # Wazuh rootchecks created/updated by Wazuh
     │ ├── sca                 # Security Configuration Assessment created/updated by Wazuh
     │ ├── README.md
 
