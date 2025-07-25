@@ -364,10 +364,6 @@ ifeq (,$(filter ${DISABLE_SYSC},YES yes y Y 1))
 	DEFINES+=-DENABLE_SYSC
 endif
 
-ifeq (,$(filter ${DISABLE_CISCAT},YES yes y Y 1))
-	DEFINES+=-DENABLE_CISCAT
-endif
-
 
 # Check if symbol table should be included in release
 ifeq (${uname_S},Linux)
