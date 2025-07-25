@@ -22,14 +22,34 @@
 
 #include "logging_helper.h"
 
+enum msg_type
+{
+    MT_INVALID,
+    MT_SYS_DELTAS,
+    MT_SYNC,
+    MT_SYSCHECK_DELTAS,
+};
+
+struct agent_ctx
+{
+    const char* agent_id;
+    const char* agent_name;
+    const char* agent_ip;
+    const char* agent_version;
+};
+
 #ifdef __cplusplus
 extern "C"
 {
 #endif
+
     /**
      * @brief Represents the handle associated with router manipulation.
      */
     typedef void* ROUTER_PROVIDER_HANDLE;
+
+    typedef struct agent_ctx agent_ctx;
+    typedef enum msg_type msg_type;
 
     /**
      * @brief Log callback function.
@@ -89,6 +109,21 @@ extern "C"
      * @return false if the message was not sent successfully.
      */
     EXPORTED int router_provider_send_fb(ROUTER_PROVIDER_HANDLE handle, const char* message, const char* schema);
+
+    /**
+     * @brief Send a message to the router provider using flatbuffers and json.
+     *
+     * @param handle Handle to the router provider.
+     * @param message Message to send.
+     * @param schema Schema of the message.
+     * @param agent_ctx Agent context.
+     * @return true if the message was sent successfully.
+     * @return false if the message was not sent successfully.
+     */
+    EXPORTED int router_provider_send_fb_json(ROUTER_PROVIDER_HANDLE handle,
+                                              const char* message,
+                                              const agent_ctx* agent_ctx,
+                                              msg_type schema);
 
     /**
      * @brief Destroy a router provider.
