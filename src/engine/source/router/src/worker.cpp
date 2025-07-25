@@ -37,10 +37,18 @@ void Worker::start(const EpsLimit& epsLimit)
                 }
 
                 // Process production queue
-                base::Event event {};
-                if (!epsLimit() && m_rQueue->waitPop(event, WAIT_DEQUEUE_TIMEOUT_USEC) && event != nullptr)
+                if (!epsLimit())
                 {
-                    m_router->ingest(std::move(event));
+                    base::Event event {};
+                    if (m_rQueue->waitPop(event, WAIT_DEQUEUE_TIMEOUT_USEC) && event != nullptr)
+                    {
+                        m_router->ingest(std::move(event));
+                    }
+                }
+                else
+                {
+                    // If EPS limit is reached, wait for a while before processing the next event
+                    std::this_thread::sleep_for(std::chrono::milliseconds(WAIT_EPS_TIMEOUT_MSEC));
                 }
             }
             LOG_DEBUG_L(functionName.c_str(), "Router Worker {} finished", tID);

@@ -4,3 +4,4 @@ matplotlib
 seaborn
 pandas
 psutil
+numpy
