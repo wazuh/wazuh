@@ -471,6 +471,9 @@
                             <Directory Id="SYSCOLLECTOR_DB" Name="db" />
                         </Directory>
                         <Directory Id="LOGCOLLECTOR" Name="logcollector" />
+                        <Directory Id="SCA" Name="sca">
+                            <Directory Id="SCA_DB" Name="db" />
+                        </Directory>
                     </Directory>
                     <Directory Id="BOOKMARKS" Name="bookmarks" />
                     <Directory Id="LOGS" Name="logs" />
@@ -545,6 +548,15 @@
                 <CreateFolder />
                 <RemoveFile Id="purgue_syscollector_db" Name="*.*" On="uninstall" />
                 <RemoveFolder Id="purgue_syscollector_db_dir" On="uninstall" />
+            </Component>
+        </DirectoryRef>
+        <DirectoryRef Id="SCA_DB">
+            <Component Id="CMP_SCA_DB" Guid="562a47a2-48ab-4b83-8303-2d8eff912970" KeyPath="yes" NeverOverwrite="yes" Permanent="yes">
+                <CreateFolder>
+                    <Permission User="Everyone" GenericAll="yes" />
+                </CreateFolder>
+                <RemoveFile Id="purgue_sca_db" Name="*.*" On="uninstall" />
+                <RemoveFolder Id="purgue_sca_db_dir" On="uninstall" />
             </Component>
         </DirectoryRef>
         <DirectoryRef Id="LOGCOLLECTOR">
@@ -666,6 +678,7 @@
             <ComponentRef Id="CMP_FIM_DB" />
             <ComponentRef Id="CMP_SYSCOLLECTOR" />
             <ComponentRef Id="CMP_SYSCOLLECTOR_DB" />
+            <ComponentRef Id="CMP_SCA_DB" />
             <ComponentRef Id="CMP_LOGCOLLECTOR" />
             <ComponentRef Id="CMP_RULESET" />
             <ComponentRef Id="CMP_SECURITY_CONFIGURATION_ASSESSMENT" />

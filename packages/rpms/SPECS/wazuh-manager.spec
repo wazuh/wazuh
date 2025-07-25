@@ -797,6 +797,8 @@ rm -fr %{buildroot}
 %dir %attr(750, wazuh, wazuh) %{_localstatedir}/queue/fim/db
 %dir %attr(750, wazuh, wazuh) %{_localstatedir}/queue/syscollector
 %dir %attr(750, wazuh, wazuh) %{_localstatedir}/queue/syscollector/db
+%dir %attr(750, wazuh, wazuh) %{_localstatedir}/queue/sca
+%dir %attr(750, wazuh, wazuh) %{_localstatedir}/queue/sca/db
 %attr(640, root, wazuh) %{_localstatedir}/queue/syscollector/norm_config.json
 %dir %attr(770, wazuh, wazuh) %{_localstatedir}/queue/rids
 %dir %attr(770, wazuh, wazuh) %{_localstatedir}/queue/tasks

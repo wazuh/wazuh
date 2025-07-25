@@ -11,6 +11,17 @@ extern "C"
 #include "../../wm_sca.h"
 #include "../wazuh_modules/wmodules_def.h"
 
+/* SCA db directory */
+#ifndef WAZUH_UNIT_TESTING
+#define SCA_DB_DISK_PATH "queue/sca/db/sca.db"
+#else
+#ifndef WIN32
+#define SCA_DB_DISK_PATH    "./sca.db"
+#else
+#define SCA_DB_DISK_PATH    ".\\sca.db"
+#endif // WIN32
+#endif // WAZUH_UNIT_TESTING
+
 void sca_start(log_callback_t callbackLog, const struct wm_sca_t* sca_config)
 {
     std::function<void(const modules_log_level_t, const std::string&)> callbackLogWrapper {
@@ -71,7 +82,7 @@ SCA::SCA()
 void SCA::init(const std::function<void(const modules_log_level_t, const std::string&)> logFunction)
 {
     // TODO Start doing whatever the module does
-    m_sca = std::make_unique<SecurityConfigurationAssessment>(".", "agent-uuid-placeholder");
+    m_sca = std::make_unique<SecurityConfigurationAssessment>(SCA_DB_DISK_PATH, "agent-uuid-placeholder");
     m_logFunction = logFunction;
 
     // TODO remove this, it's only for testing purposes
