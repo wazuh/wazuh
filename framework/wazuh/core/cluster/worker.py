@@ -833,8 +833,18 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                             for match in matched:
                                 result_logs['error'][match['type']].append(f"Error reloading {match['type']} "
                                                                       f"file '{match['file']}': {error}")
+                                errors[match['type']] += 1
                         else:
                             result_logs['generic_errors'].append(f"Error reloading ruleset {error}")
+
+                            # Add an error to all filetypes if we can't specify the file
+                            unique_types = []
+                            for file_info in reload_ruleset_files:
+                                unique_types.append(file_info['type'])
+
+                            for file_type in set(unique_types):
+                                errors[file_type] += 1
+
 
             except Exception as e:
                 result_logs['generic_errors'].append(f"Error reloading ruleset {e}")
