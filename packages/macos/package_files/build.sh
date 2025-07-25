@@ -28,7 +28,6 @@ function configure() {
     echo USER_ENABLE_SYSCHECK="y" >> ${CONFIG}
     echo USER_ENABLE_ROOTCHECK="y" >> ${CONFIG}
     echo USER_ENABLE_OPENSCAP="n" >> ${CONFIG}
-    echo USER_ENABLE_CISCAT="n" >> ${CONFIG}
     echo USER_ENABLE_ACTIVE_RESPONSE="y" >> ${CONFIG}
     echo USER_CA_STORE="n" >> ${CONFIG}
 }
