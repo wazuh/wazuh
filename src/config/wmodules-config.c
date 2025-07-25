@@ -97,14 +97,9 @@ int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2)
             return OS_INVALID;
         }
     }
-#ifdef ENABLE_CISCAT
-    else if (!strcmp(node->values[0], WM_CISCAT_CONTEXT.name)) {
-        if (wm_ciscat_read(xml, children, cur_wmodule) < 0) {
-            OS_ClearNode(children);
-            return OS_INVALID;
-        }
+    else if (!strcmp(node->values[0], "cis-cat")) {
+        mwarn("Module name 'cis-cat' is deprecated.");
     }
-#endif
     else if (!strcmp(node->values[0], WM_AWS_CONTEXT.name) || !strcmp(node->values[0], "aws-cloudtrail")) {
 #ifndef WIN32
         if (!strcmp(node->values[0], "aws-cloudtrail")) mwarn("Module name 'aws-cloudtrail' is deprecated. Change it to '%s'", WM_AWS_CONTEXT.name);
