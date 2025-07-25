@@ -676,9 +676,6 @@ settings:
 	@echo "    CC                ${CC}"
 	@echo "    MAKE              ${MAKE}"
 
-BUILD_SERVER+=wazuh-maild -
-BUILD_SERVER+=wazuh-csyslogd -
-BUILD_SERVER+=wazuh-agentlessd -
 BUILD_SERVER+=wazuh-execd -
 BUILD_SERVER+=wazuh-logcollector -
 BUILD_SERVER+=wazuh-remoted
@@ -688,9 +685,7 @@ BUILD_SERVER+=utils
 BUILD_SERVER+=active-responses
 BUILD_SERVER+=wazuh-syscheckd
 BUILD_SERVER+=wazuh-monitord
-BUILD_SERVER+=wazuh-reportd
 BUILD_SERVER+=wazuh-authd
-BUILD_SERVER+=wazuh-integratord
 BUILD_SERVER+=wazuh-modulesd
 BUILD_SERVER+=wazuh-db
 BUILD_SERVER+=wazuh-keystore
@@ -1987,40 +1982,6 @@ endif
 endif
 endif
 
-#### os_mail #########
-
-os_maild_c := $(wildcard os_maild/*.c)
-os_maild_o := $(os_maild_c:.c=.o)
-
-os_maild/%.o: os_maild/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -DARGV0=\"wazuh-maild\" -c $^ -o $@
-
-wazuh-maild: ${os_maild_o}
-	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
-
-#### os_csyslogd #####
-
-os_csyslogd_c := $(wildcard os_csyslogd/*.c)
-os_csyslogd_o := $(os_csyslogd_c:.c=.o)
-
-os_csyslogd/%.o: os_csyslogd/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -DARGV0=\"wazuh-csyslogd\" -c $^ -o $@
-
-wazuh-csyslogd: ${os_csyslogd_o}
-	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
-
-
-#### agentlessd ####
-
-os_agentlessd_c := $(wildcard agentlessd/*.c)
-os_agentlessd_o := $(os_agentlessd_c:.c=.o)
-
-agentlessd/%.o: agentlessd/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -DARGV0=\"wazuh-agentlessd\" -c $^ -o $@
-
-wazuh-agentlessd: ${os_agentlessd_o}
-	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
-
 #### os_execd #####
 
 os_execd_c := $(wildcard os_execd/*.c)
@@ -2250,19 +2211,7 @@ monitor_o := $(monitor_c:.c=.o)
 monitord/%.o: monitord/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -DARGV0=\"wazuh-monitord\" -c $< -o $@
 
-wazuh-monitord: ${monitor_o} os_maild/sendcustomemail.o
-	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
-
-
-#### reportd #######
-
-report_c := reportd/report.c
-report_o := $(report_c:.c=.o)
-
-reportd/%.o: reportd/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -DARGV0=\"wazuh-reportd\" -c $^ -o $@
-
-wazuh-reportd: ${report_o}
+wazuh-monitord: ${monitor_o}
 	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
 
@@ -2278,17 +2227,6 @@ agent-auth: addagent/validate.o os_auth/main-client.o os_auth/ssl.o os_auth/chec
 	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
 wazuh-authd: addagent/validate.o os_auth/main-server.o os_auth/local-server.o os_auth/ssl.o os_auth/check_cert.o os_auth/config.o os_auth/authcom.o os_auth/auth.o os_auth/key_request.o os_auth/generate_cert.o
-	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
-
-#### integratord #####
-
-integrator_c := ${wildcard os_integrator/*.c}
-integrator_o := $(integrator_c:.c=.o)
-
-os_integrator/%.o: os_integrator/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS}  -I./os_integrator -DARGV0=\"wazuh-integratord\" -c $^ -o $@
-
-wazuh-integratord: ${integrator_o}
 	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
 ### wazuh-modulesd ##
@@ -2650,14 +2588,10 @@ clean-internals: clean-unit-tests
 	rm -f ${os_net_o}
 	rm -f ${shared_o} shared/debug_op_proc.o shared/file_op_proc.o
 	rm -f ${config_o}
-	rm -f ${os_maild_o}
 	rm -f ${crypto_o}
-	rm -f ${os_csyslogd_o}
-	rm -f ${os_agentlessd_o}
 	rm -f ${os_execd_o}
 	rm -f ${os_logcollector_o} ${os_logcollector_eventchannel_o}
 	rm -f ${remoted_o}
-	rm -f ${report_o}
 	rm -f ${client_agent_o}
 	rm -f ${addagent_o}
 	rm -f ${active_response_o} ${active_response_programs} firewall-drop
@@ -2665,7 +2599,6 @@ clean-internals: clean-unit-tests
 	rm -f ${rootcheck_o} librootcheck.a
 	rm -f ${monitor_o}
 	rm -f ${os_auth_o}
-	rm -f ${integrator_o}
 	rm -f ${wmodulesd_o} ${wmodules_o} $(wildcard wazuh_modules/agent_upgrade/agent/*.o)
 	rm -f ${wdb_o}
 	rm -f wazuh_db/*.o
