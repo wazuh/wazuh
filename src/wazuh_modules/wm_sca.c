@@ -95,24 +95,22 @@ void * wm_sca_main(wm_sca_t * data) {
 #endif
     // If module is disabled, exit
     if (data->enabled) {
-        minfo("New SCA Module started.");
+        minfo("SCA module enabled.");
     } else {
-        minfo("Module disabled. Exiting.");
+        minfo("SCA module disabled. Exiting.");
         pthread_exit(NULL);
     }
 
     if (sca_module = so_get_module_handle(SCA_WM_NAME), sca_module)
     {
-        minfo("SCA handle acquired.");
         sca_start_ptr = so_get_function_sym(sca_module, "sca_start");
         sca_stop_ptr = so_get_function_sym(sca_module, "sca_stop");
         sca_sync_message_ptr = so_get_function_sym(sca_module, "sca_sync_message");
         sca_set_wm_exec_ptr = so_get_function_sym(sca_module, "sca_set_wm_exec");
-        
+
         // Set the wm_exec function pointer in the SCA module
         if (sca_set_wm_exec_ptr) {
             sca_set_wm_exec_ptr(wm_exec);
-            minfo("SCA wm_exec function pointer set.");
         }
     } else {
         merror("Can't get SCA module handle.");
@@ -122,7 +120,7 @@ void * wm_sca_main(wm_sca_t * data) {
     minfo("Starting SCA module...");
 
     wm_sca_start(data);
-    minfo("SCA module started.");
+
 #ifdef WIN32
     return 0;
 #else
@@ -132,24 +130,23 @@ void * wm_sca_main(wm_sca_t * data) {
 
 #ifdef WIN32
 void wm_sca_push_request_win(char * msg){
-   
 }
 
 #endif
 
 static int wm_sca_start(wm_sca_t *sca) {
-    do
-    {
-        // Call sca_start with proper logging callback instead of data structure
-        sca_start_ptr(sca_log_callback);
-    } while(FOREVER());
-
+    sca_start_ptr(sca_log_callback, sca);
     return 0;
 }
 
 // Destroy data
 void wm_sca_destroy(wm_sca_t * data) {
-    os_free(data);
+
+    sca_stop_ptr();
+
+    if (data) {
+        os_free(data);
+    }
 }
 
 cJSON *wm_sca_dump(const wm_sca_t * data) {
@@ -157,9 +154,9 @@ cJSON *wm_sca_dump(const wm_sca_t * data) {
     cJSON *wm_wd = cJSON_CreateObject();
 
     cJSON_AddStringToObject(wm_wd, "enabled", data->enabled ? "yes" : "no");
-
+    cJSON_AddStringToObject(wm_wd, "scan_on_start", data->scan_on_start ? "yes" : "no");
+    cJSON_AddNumberToObject(wm_wd, "timeout", data->timeout);
     cJSON_AddItemToObject(root,"sca",wm_wd);
-
 
     return root;
 }

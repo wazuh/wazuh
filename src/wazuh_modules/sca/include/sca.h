@@ -20,13 +20,16 @@ extern "C"
 #endif
 #include "logging_helper.h"
 
+    // Forward declaration of wm_sca_t
+    struct wm_sca_t;
+
     typedef void((*log_callback_t)(const modules_log_level_t level, const char* log, const char* tag));
 
     typedef void((*send_data_callback_t)(const void* buffer));
 
     typedef int (*wm_exec_callback_t)(char *command, char **output, int *exitcode, int secs, const char * add_path);
 
-    EXPORTED void sca_start(log_callback_t callbackLog);
+    EXPORTED void sca_start(log_callback_t callbackLog, const struct wm_sca_t* sca_config);
 
     EXPORTED void sca_stop();
 
@@ -38,7 +41,7 @@ extern "C"
 }
 #endif
 
-typedef void (*sca_start_func)(log_callback_t callbackLog);
+typedef void (*sca_start_func)(log_callback_t callbackLog, const struct wm_sca_t* sca_config);
 
 typedef void (*sca_stop_func)();
 
