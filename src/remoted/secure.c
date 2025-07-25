@@ -18,11 +18,6 @@
 #include "agent_messages_adapter.h"
 #include "indexed_queue_op.h"
 
-
-<<<<<<< HEAD
-=======
-
->>>>>>> f7860ef43e (Enhancement in remoted daemon binary to process more data.)
 #ifdef WAZUH_UNIT_TESTING
 // Remove static qualifier when unit testing
 #define STATIC
