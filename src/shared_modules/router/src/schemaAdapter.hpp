@@ -15,7 +15,6 @@
 #include "logging_helper.h"
 #include "router.h"
 #include "simdjson.h"
-#include "stringHelper.h"
 #include <stdexcept>
 
 extern void logMessage(modules_log_level_t level, const std::string& msg);
@@ -78,19 +77,18 @@ public:
 
             if (!dataElem.error())
             {
-                if (type == "state")
+                if (type == "state" || type == "integrity_check_global" || type == "integrity_clear")
                 {
-                    auto data = simdjson::minify(dataElem);
-                    std::string_view dataView(data);
+                    static thread_local simdjson::internal::string_builder<> sb;
+                    sb.clear();
+                    sb.append(dataElem.get_object());
+                    auto dataView = sb.str();
+
                     buffer.append(R"("data":{"attributes_type":")");
                     buffer.append(componentElem.get_string().value());
                     buffer.append(R"(",)");
                     buffer.append(dataView.substr(1));
                     buffer.append(R"(})");
-                }
-                else if (type == "integrity_check_global" || type == "integrity_clear")
-                {
-                    buffer.append(message.substr(1));
                 }
                 else
                 {

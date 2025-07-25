@@ -48,6 +48,12 @@ set_target_properties(router PROPERTIES
         BUILD_RPATH "$ORIGIN/../lib"
 )
 
+if (TARGET compile_schemas_input)
+    # If target isn't defined, only this project is being built and not the whole Wazuh project.
+    # The schemas must be compiled manually before building this project in that case.
+    add_dependencies(router compile_schemas_input)
+endif()
+
 add_subdirectory(testtool)
 if(UNIT_TEST)
     add_subdirectory(tests)
