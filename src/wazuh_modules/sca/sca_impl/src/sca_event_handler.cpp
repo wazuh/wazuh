@@ -57,6 +57,12 @@ void SCAEventHandler::ReportCheckResult(const std::string& policyId,
                                         const std::string& checkId,
                                         const std::string& checkResult) const
 {
+    if (!m_dBSync)
+    {
+        // LogError("DBSync is null, cannot report check result");
+        return;
+    }
+
     auto policyData = GetPolicyById(policyId);
     auto checkData = GetPolicyCheckById(checkId);
     checkData["result"] = checkResult;
@@ -156,6 +162,12 @@ std::vector<nlohmann::json> SCAEventHandler::GetChecksForPolicy(const std::strin
 {
     std::vector<nlohmann::json> checks;
 
+    if (!m_dBSync)
+    {
+        // LogError("DBSync is null, cannot get checks for policy");
+        return checks;
+    }
+
     const std::string filter = "WHERE policy_id = '" + policyId + "'";
     auto selectQuery = SelectQuery::builder()
                            .table("sca_check")
@@ -191,6 +203,12 @@ nlohmann::json SCAEventHandler::GetPolicyById(const std::string& policyId) const
 {
     nlohmann::json policy;
 
+    if (!m_dBSync)
+    {
+        // LogError("DBSync is null, cannot get policy by id");
+        return policy;
+    }
+
     const std::string filter = "WHERE id = '" + policyId + "'";
     auto selectQuery = SelectQuery::builder()
                            .table("sca_policy")
@@ -214,6 +232,12 @@ nlohmann::json SCAEventHandler::GetPolicyById(const std::string& policyId) const
 nlohmann::json SCAEventHandler::GetPolicyCheckById(const std::string& policyCheckId) const
 {
     nlohmann::json check;
+
+    if (!m_dBSync)
+    {
+        // LogError("DBSync is null, cannot get policy check by id");
+        return check;
+    }
 
     const std::string filter = "WHERE id = '" + policyCheckId + "'";
     auto selectQuery = SelectQuery::builder()
