@@ -27,48 +27,67 @@
 #include "detail/codec.hpp"
 #include "detail/hex.hpp"
 
-namespace cppcodec {
-
-namespace detail {
-
-static constexpr const char hex_lower_alphabet[] = {
-        '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', // at index 10
-        'a', 'b', 'c', 'd', 'e', 'f'
-};
-
-class hex_lower
+namespace cppcodec
 {
-public:
-    template <typename Codec> using codec_impl = stream_codec<Codec, hex_lower>;
 
-    static CPPCODEC_ALWAYS_INLINE constexpr size_t alphabet_size() {
-        static_assert(sizeof(hex_lower_alphabet) == 16, "hex alphabet must have 16 values");
-        return sizeof(hex_lower_alphabet);
-    }
-    static CPPCODEC_ALWAYS_INLINE constexpr char symbol(alphabet_index_t index)
+    namespace detail
     {
-        return hex_lower_alphabet[index];
-    }
-    static CPPCODEC_ALWAYS_INLINE constexpr char normalized_symbol(char c)
-    {
-        // Hex decoding is always case-insensitive (even in RFC 4648), the question
-        // is only for encoding whether to use upper-case or lower-case letters.
-        return (c >= 'A' && c <= 'F') ? (c - 'A' + 'a') : c;
-    }
 
-    static CPPCODEC_ALWAYS_INLINE constexpr bool generates_padding() { return false; }
-    // FIXME: doesn't require padding, but requires a multiple of the encoded block size (2)
-    static CPPCODEC_ALWAYS_INLINE constexpr bool requires_padding() { return false; }
-    static CPPCODEC_ALWAYS_INLINE constexpr bool is_padding_symbol(char) { return false; }
-    static CPPCODEC_ALWAYS_INLINE constexpr bool is_eof_symbol(char c) { return c == '\0'; }
+        static constexpr const char hex_lower_alphabet[] =
+        {
+            '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', // at index 10
+            'a', 'b', 'c', 'd', 'e', 'f'
+        };
 
-    // Sometimes hex strings include whitespace, but this variant forbids it.
-    static CPPCODEC_ALWAYS_INLINE constexpr bool should_ignore(char) { return false; }
-};
+        class hex_lower
+        {
+            public:
+                template <typename Codec> using codec_impl = stream_codec<Codec, hex_lower>;
 
-} // namespace detail
+                static CPPCODEC_ALWAYS_INLINE constexpr size_t alphabet_size()
+                {
+                    static_assert(sizeof(hex_lower_alphabet) == 16, "hex alphabet must have 16 values");
+                    return sizeof(hex_lower_alphabet);
+                }
+                static CPPCODEC_ALWAYS_INLINE constexpr char symbol(alphabet_index_t index)
+                {
+                    return hex_lower_alphabet[index];
+                }
+                static CPPCODEC_ALWAYS_INLINE constexpr char normalized_symbol(char c)
+                {
+                    // Hex decoding is always case-insensitive (even in RFC 4648), the question
+                    // is only for encoding whether to use upper-case or lower-case letters.
+                    return (c >= 'A' && c <= 'F') ? (c - 'A' + 'a') : c;
+                }
 
-using hex_lower = detail::codec<detail::hex<detail::hex_lower>>;
+                static CPPCODEC_ALWAYS_INLINE constexpr bool generates_padding()
+                {
+                    return false;
+                }
+                // FIXME: doesn't require padding, but requires a multiple of the encoded block size (2)
+                static CPPCODEC_ALWAYS_INLINE constexpr bool requires_padding()
+                {
+                    return false;
+                }
+                static CPPCODEC_ALWAYS_INLINE constexpr bool is_padding_symbol(char)
+                {
+                    return false;
+                }
+                static CPPCODEC_ALWAYS_INLINE constexpr bool is_eof_symbol(char c)
+                {
+                    return c == '\0';
+                }
+
+                // Sometimes hex strings include whitespace, but this variant forbids it.
+                static CPPCODEC_ALWAYS_INLINE constexpr bool should_ignore(char)
+                {
+                    return false;
+                }
+        };
+
+    } // namespace detail
+
+    using hex_lower = detail::codec<detail::hex<detail::hex_lower>>;
 
 } // namespace cppcodec
 
