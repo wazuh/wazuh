@@ -7,6 +7,8 @@
 
 #include <iostream>
 
+#include "logging_helper.hpp"
+
 YamlDocument::YamlDocument()
     : m_loaded(false) {};
 
@@ -20,7 +22,7 @@ YamlDocument::YamlDocument(const std::filesystem::path& filename)
 
     if (!Load(file))
     {
-        // TODO: Log("Failed to parse YAML document:" filename.string().c_str());
+        LoggingHelper::getInstance().log(LOG_DEBUG, "Failed to parse YAML document:" + filename.string());
     }
 }
 
@@ -30,7 +32,7 @@ YamlDocument::YamlDocument(const std::string& yaml_content)
 
     if (!Load(ss))
     {
-        // TODO: Log("Failed to parse YAML content");
+        LoggingHelper::getInstance().log(LOG_DEBUG, "Failed to parse YAML content");
     }
 }
 

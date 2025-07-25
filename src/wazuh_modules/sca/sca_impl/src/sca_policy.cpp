@@ -3,7 +3,7 @@
 #include <check_condition_evaluator.hpp>
 #include <sca_utils.hpp>
 
-// #include <logger.hpp>
+#include "logging_helper.hpp"
 
 SCAPolicy::SCAPolicy(std::string id, Check requirements, std::vector<Check> checks)
     : m_id(std::move(id))
@@ -39,7 +39,7 @@ void SCAPolicy::Scan(
 
     if (!m_requirements.rules.empty())
     {
-        // LogDebug("Starting Policy requirements evaluation for policy \"{}\".", m_id);
+        LoggingHelper::getInstance().log(LOG_DEBUG, "Starting Policy requirements evaluation for policy \"" + m_id + "\".");
 
         auto resultEvaluator = CheckConditionEvaluator::FromString(m_requirements.condition);
 
@@ -54,14 +54,12 @@ void SCAPolicy::Scan(
 
         requirementsOk = resultEvaluator.Result();
 
-        // LogDebug("Policy requirements evaluation completed for policy \"{}\", result: {}.",
-                //  m_id,
-                //  sca::CheckResultToString(requirementsOk));
+        LoggingHelper::getInstance().log(LOG_DEBUG, "Policy requirements evaluation completed for policy \"" + m_id + "\", result: " + sca::CheckResultToString(requirementsOk));
     }
 
     if (requirementsOk == sca::CheckResult::Passed)
     {
-        // LogDebug("Starting Policy checks evaluation for policy \"{}\".", m_id);
+        LoggingHelper::getInstance().log(LOG_DEBUG, "Starting Policy checks evaluation for policy \"" + m_id + "\".");
 
         for (const auto& check : m_checks)
         {
@@ -79,16 +77,13 @@ void SCAPolicy::Scan(
             const auto result = resultEvaluator.Result();
 
             // NOLINTBEGIN(bugprone-unchecked-optional-access)
-            // LogDebug("Policy check \"{}\" evaluation completed for policy \"{}\", result: {}.",
-                    //  check.id.value(),
-                    //  m_id,
-                    //  sca::CheckResultToString(result));
+            LoggingHelper::getInstance().log(LOG_DEBUG, "Policy check \"" + check.id.value() + "\" evaluation completed for policy \"" + m_id + "\", result: " + sca::CheckResultToString(result) + ".");
 
             reportCheckResult(m_id, check.id.value(), sca::CheckResultToString(result));
             // NOLINTEND(bugprone-unchecked-optional-access)
         }
 
-        // LogDebug("Policy checks evaluation completed for policy \"{}\"", m_id);
+        LoggingHelper::getInstance().log(LOG_DEBUG, "Policy checks evaluation completed for policy \"" + m_id + "\"");
     }
     else
     {
@@ -104,7 +99,7 @@ void SCAPolicy::Stop()
 {
     if (m_scanInProgress)
     {
-        // LogDebug("Aborting current scan for policy \"{}\"", m_id);
+        LoggingHelper::getInstance().log(LOG_DEBUG, "Aborting current scan for policy \"" + m_id + "\"");
     }
 
     m_keepRunning = false;
