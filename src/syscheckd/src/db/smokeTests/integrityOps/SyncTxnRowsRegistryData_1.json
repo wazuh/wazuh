@@ -6,19 +6,15 @@
         "data":
         [
             {
-                "name": "testRegistry",
-                "scanned": 1,
-                "last_event": 1596489275,
+                "value": "testRegistry",
                 "checksum": "a2fbef8f81af27155dcee5e3927ff6243593b91a",
-                "mode": 0,
                 "size": 4925,
                 "type": 0,
                 "hash_md5": "4b531524aa13c8a54614100b570b3dc7",
                 "hash_sha1": "7902feb66d0bcbe4eb88e1bfacf28befc38bd58b",
                 "hash_sha256": "e403b83dd73a41b286f8db2ee36d6b0ea6e80b49f02c476e0a20b4181a3a062a",
-                "arch": "[x64]",
-                "path": "/tmp/pathTestRegistry",
-                "hash_full_path": "c26e28e20da25627fb939c9c67b04ef9d1c89f12"
+                "architecture": "[x64]",
+                "path": "/tmp/pathTestRegistry"
             }
         ]
     }

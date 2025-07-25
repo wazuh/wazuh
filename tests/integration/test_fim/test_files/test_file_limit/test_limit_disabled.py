@@ -94,7 +94,8 @@ if sys.platform == WINDOWS: local_internal_options.update({AGENTD_WINDOWS_DEBUG:
 
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=cases_ids)
 def test_limit_disabled(test_configuration, test_metadata, set_wazuh_configuration, truncate_monitored_files,
-                        configure_local_internal_options, folder_to_monitor, daemons_handler, start_monitoring):
+                        configure_local_internal_options, folder_to_monitor, clean_fim_db, daemons_handler,
+                        start_monitoring):
     '''
     description: Check if the 'wazuh-syscheckd' daemon detects that the 'file_limit' feature of FIM is disabled.
                  For this purpose, the test will monitor a testing directory, and finally, it will verify

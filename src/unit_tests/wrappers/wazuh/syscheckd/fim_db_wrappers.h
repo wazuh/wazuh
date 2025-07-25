@@ -40,26 +40,13 @@ FIMDBErrorCode __wrap_fim_db_get_path(const char *file_path, callback_context_t 
 void expect_fim_db_get_path(const char* path, int ret_val);
 
 FIMDBErrorCode __wrap_fim_db_init(int storage,
-                                  int sync_interval,
-                                  uint32_t sync_max_interval,
-                                  uint32_t sync_response_timeout,
-                                  fim_sync_callback_t sync_callback,
                                   logging_callback_t log_callback,
                                   int file_limit,
-                                  int value_limit,
-                                  int sync_registry_enable,
-                                  int sync_thread_pool,
-                                  int sync_queue_size);
+                                  int value_limit);
 
 void expect_wrapper_fim_db_init(int storage,
-                                int sync_interval,
-                                uint32_t sync_max_interval,
-                                uint32_t sync_response_timeout,
                                 int file_limit,
-                                int value_limit,
-                                int sync_registry_enable,
-                                int sync_thread_pool,
-                                int sync_queue_size);
+                                int value_limit);
 
 FIMDBErrorCode __wrap_fim_db_remove_path(const char *path);
 

@@ -87,38 +87,6 @@ void test_syscom_dispatch_getconfig_noargs(void **state)
 }
 
 
-void test_syscom_dispatch_dbsync(void **state)
-{
-    (void) state;
-    size_t ret;
-
-    char command[] = "fim_file dbsync args";
-    char *output;
-
-    expect_string(__wrap_fim_sync_push_msg, msg, "fim_file dbsync args");
-
-    ret = syscom_dispatch(command, &output);
-
-    assert_int_equal(ret, 0);
-}
-
-
-void test_syscom_dispatch_dbsync_noargs(void **state)
-{
-    (void) state;
-    size_t ret;
-
-    char command[] = "fim_file dbsync";
-    char *output;
-
-    expect_string(__wrap_fim_sync_push_msg, msg, "fim_file dbsync");
-
-    ret = syscom_dispatch(command, &output);
-
-    assert_int_equal(ret, 0);
-}
-
-
 void test_syscom_dispatch_restart_agent(void **state)
 {
     (void) state;
@@ -313,8 +281,6 @@ int main(void) {
         cmocka_unit_test_teardown(test_syscom_dispatch_getconfig_agent, delete_string),
         cmocka_unit_test_teardown(test_syscom_dispatch_getconfig_manager, delete_string),
         cmocka_unit_test_teardown(test_syscom_dispatch_getconfig_noargs, delete_string),
-        cmocka_unit_test(test_syscom_dispatch_dbsync),
-        cmocka_unit_test(test_syscom_dispatch_dbsync_noargs),
         cmocka_unit_test(test_syscom_dispatch_restart_agent),
         cmocka_unit_test(test_syscom_dispatch_restart_manager),
         cmocka_unit_test_teardown(test_syscom_dispatch_getconfig_unrecognized, delete_string),

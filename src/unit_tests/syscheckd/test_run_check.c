@@ -58,8 +58,6 @@ void fim_link_reload_broken_link(char *path, directory_t *configuration);
 void fim_realtime_delete_watches(const directory_t *configuration);
 #endif
 
-void fim_db_remove_validated_path(void * data, void * ctx);
-
 extern time_t last_time;
 extern unsigned int files_read;
 
@@ -808,19 +806,6 @@ void test_fim_whodata_initialize_eventchannel(void **state) {
 #endif  // WIN_WHODATA
 #endif
 
-void test_fim_send_scan_info(void **state) {
-    (void) state;
-    const char *msg = "{\"type\":\"scan_start\",\"data\":{\"timestamp\":1}}";
-#ifndef TEST_WINAGENT
-    will_return(__wrap_time, 1);
-#endif
-    expect_function_call_any(__wrap_pthread_mutex_lock);
-    expect_function_call_any(__wrap_pthread_mutex_unlock);
-    expect_string(__wrap__mdebug2, formatted_msg, "(6321): Sending FIM event: {\"type\":\"scan_start\",\"data\":{\"timestamp\":1}}");
-    expect_w_send_sync_msg(msg, SYSCHECK, SYSCHECK_MQ, fim_shutdown_process_on, 0);
-    fim_send_scan_info(FIM_SCAN_START);
-}
-
 #ifndef TEST_WINAGENT
 void test_fim_link_update(void **state) {
     char *new_path = "/new_path";
@@ -1044,52 +1029,6 @@ void test_check_max_fps_sleep(void **state) {
     check_max_fps();
 }
 
-void test_send_sync_state(void **state) {
-    char debug_msg[OS_SIZE_256] = {0};
-    char *event = "{\"data\":\"random_string\"}";
-
-    snprintf(debug_msg, OS_SIZE_256, FIM_DBSYNC_SEND, event);
-    syscheck.sync_max_eps = 1;
-
-    expect_function_call(__wrap_pthread_mutex_lock);
-    expect_w_send_sync_msg(event, "fim_file", DBSYNC_MQ, fim_shutdown_process_on, 0);
-#ifdef TEST_WINAGENT
-    expect_value(wrap_Sleep, dwMilliseconds, 1 * 1000);
-#else
-    expect_value(__wrap_sleep, seconds, 1);
-#endif
-    expect_string(__wrap__mdebug2, formatted_msg, debug_msg);
-    expect_function_call(__wrap_pthread_mutex_unlock);
-
-    fim_send_sync_state("fim_file", event);
-}
-
-void test_send_sync_state_without_max_eps(void **state) {
-    char debug_msg[OS_SIZE_256] = {0};
-    char *event = "{\"data\":\"random_string\"}";
-
-    snprintf(debug_msg, OS_SIZE_256, FIM_DBSYNC_SEND, event);
-    syscheck.sync_max_eps = 0;
-
-    expect_w_send_sync_msg(event, "fim_file", DBSYNC_MQ, fim_shutdown_process_on, 0);
-    expect_string(__wrap__mdebug2, formatted_msg, debug_msg);
-
-    fim_send_sync_state("fim_file", event);
-}
-
-void test_fim_db_remove_validated_path(void **state){
-
-    char* path = "path";
-    directory_t mock_config;
-    get_data_ctx mock_data;
-    mock_data.config = &mock_config;
-
-    expect_fim_configuration_directory_call(path, &mock_config);
-    expect_function_call(__wrap_fim_generate_delete_event);
-
-    fim_db_remove_validated_path(path, &mock_data);
-}
-
 int main(void) {
 #ifndef WIN_WHODATA
     const struct CMUnitTest tests[] = {
@@ -1104,8 +1043,6 @@ int main(void) {
 #endif
 
         cmocka_unit_test(test_log_realtime_status),
-        cmocka_unit_test(test_fim_db_remove_validated_path),
-        cmocka_unit_test(test_fim_send_scan_info),
         cmocka_unit_test_setup_teardown(test_check_max_fps_no_sleep, setup_max_fps, teardown_max_fps),
         cmocka_unit_test_setup_teardown(test_check_max_fps_sleep, setup_max_fps, teardown_max_fps),
 #ifndef TEST_WINAGENT
@@ -1129,8 +1066,6 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_fim_run_realtime_w_wait_success, setup_hash, teardown_hash),
         cmocka_unit_test(test_fim_run_realtime_w_sleep),
 #endif
-        cmocka_unit_test(test_send_sync_state),
-        cmocka_unit_test(test_send_sync_state_without_max_eps),
     };
 
     return cmocka_run_group_tests(tests, setup_group, teardown_group);

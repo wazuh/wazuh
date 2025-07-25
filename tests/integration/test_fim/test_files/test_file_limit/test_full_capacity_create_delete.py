@@ -98,7 +98,7 @@ if sys.platform == WINDOWS:
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=cases_ids)
 def test_full_capacity_create_delete(test_configuration, test_metadata, set_wazuh_configuration, truncate_monitored_files,
                                      configure_local_internal_options, folder_to_monitor, fill_folder_to_monitor,
-                                     daemons_handler, start_monitoring):
+                                     clean_fim_db, daemons_handler, start_monitoring):
     '''
     description: Check if a testing file is not inserted in the FIM database when the maximum monitored
                  files limit has already been reached, and if the FIM event 'delete' is generated when

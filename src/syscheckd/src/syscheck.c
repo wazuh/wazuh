@@ -15,6 +15,7 @@
 #include "shared.h"
 #include "syscheck.h"
 #include "../rootcheck/rootcheck.h"
+#include "file/file.h"
 #include "db/include/db.h"
 #include "db/include/fimCommonDefs.h"
 #include "ebpf/include/ebpf_whodata.h"
@@ -80,32 +81,16 @@ void read_internal(int debug_level)
 void fim_initialize() {
     // Create store data
 #ifndef WIN32
-    FIMDBErrorCode ret_val = fim_db_init(syscheck.database_store,
-                                         syscheck.sync_interval,
-                                         syscheck.sync_max_interval,
-                                         syscheck.sync_response_timeout,
-                                         fim_send_sync_state,
+    FIMDBErrorCode ret_val = fim_db_init(FIM_DB_DISK,
                                          loggingFunction,
                                          syscheck.file_entry_limit,
                                          0,
-                                         false,
-                                         syscheck.sync_thread_pool,
-                                         syscheck.sync_queue_size,
-                                         NULL,
                                          NULL);
 #else
-    FIMDBErrorCode ret_val = fim_db_init(syscheck.database_store,
-                                         syscheck.sync_interval,
-                                         syscheck.sync_max_interval,
-                                         syscheck.sync_response_timeout,
-                                         fim_send_sync_state,
+    FIMDBErrorCode ret_val = fim_db_init(FIM_DB_DISK,
                                          loggingFunction,
                                          syscheck.file_entry_limit,
                                          syscheck.db_entry_registry_limit,
-                                         syscheck.enable_registry_synchronization,
-                                         syscheck.sync_thread_pool,
-                                         syscheck.sync_queue_size,
-                                         loggingErrorFunction,
                                          loggingErrorFunction);
 #endif
 

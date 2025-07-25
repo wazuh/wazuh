@@ -17,53 +17,54 @@
 #include "fimDB.hpp"
 #endif
 
-#include "dbRegistryValue.hpp"
-#include "dbRegistryKey.hpp"
-#include "fimCommonDefs.h"
 #include "db.h"
 #include "db.hpp"
+#include "dbRegistryKey.hpp"
+#include "dbRegistryValue.hpp"
+#include "fimCommonDefs.h"
 
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 
-int fim_db_get_count_registry_key()
-{
-    auto count { 0 };
-
-    try
+    int fim_db_get_count_registry_key()
     {
-        count = DB::instance().countEntries(FIMDB_REGISTRY_KEY_TABLENAME, COUNT_SELECT_TYPE::COUNT_ALL);
-    }
-    // LCOV_EXCL_START
-    catch (const std::exception& err)
-    {
-        FIMDB::instance().logFunction(LOG_ERROR, err.what());
-    }
+        auto count {0};
 
-    // LCOV_EXCL_STOP
+        try
+        {
+            count = DB::instance().countEntries(FIMDB_REGISTRY_KEY_TABLENAME, COUNT_SELECT_TYPE::COUNT_ALL);
+        }
+        // LCOV_EXCL_START
+        catch (const std::exception& err)
+        {
+            FIMDB::instance().logFunction(LOG_ERROR, err.what());
+        }
 
-    return count;
-}
+        // LCOV_EXCL_STOP
 
-int fim_db_get_count_registry_data()
-{
-    auto count { 0 };
-
-    try
-    {
-        count = DB::instance().countEntries(FIMDB_REGISTRY_VALUE_TABLENAME, COUNT_SELECT_TYPE::COUNT_ALL);
-    }
-    // LCOV_EXCL_START
-    catch (const std::exception& err)
-    {
-        FIMDB::instance().logFunction(LOG_ERROR, err.what());
+        return count;
     }
 
-    // LCOV_EXCL_STOP
+    int fim_db_get_count_registry_data()
+    {
+        auto count {0};
 
-    return count;
-}
+        try
+        {
+            count = DB::instance().countEntries(FIMDB_REGISTRY_VALUE_TABLENAME, COUNT_SELECT_TYPE::COUNT_ALL);
+        }
+        // LCOV_EXCL_START
+        catch (const std::exception& err)
+        {
+            FIMDB::instance().logFunction(LOG_ERROR, err.what());
+        }
+
+        // LCOV_EXCL_STOP
+
+        return count;
+    }
 
 #ifdef __cplusplus
 }

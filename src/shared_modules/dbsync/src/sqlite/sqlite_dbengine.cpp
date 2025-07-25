@@ -377,7 +377,10 @@ void SQLiteDBEngine::returnRowsMarkedForDelete(const nlohmann::json& tableNames,
                                                const DbSync::ResultCallback callback,
                                                std::unique_lock<std::shared_timed_mutex>& lock)
 {
-    m_transaction->commit();
+    if (m_transaction)
+    {
+        m_transaction->commit();
+    }
     m_transaction = m_sqliteFactory->createTransaction(m_sqliteConnection);
 
     for (const auto& tableValue : tableNames)
@@ -605,6 +608,11 @@ void SQLiteDBEngine::initialize(const std::string&              path,
                 m_sqliteConnection->execute("PRAGMA user_version = " + std::to_string(i + 2) + ";");
             }
 
+            m_transaction = m_sqliteFactory->createTransaction(m_sqliteConnection);
+        }
+
+        else
+        {
             m_transaction = m_sqliteFactory->createTransaction(m_sqliteConnection);
         }
     }

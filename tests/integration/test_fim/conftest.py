@@ -17,9 +17,10 @@ if sys.platform == 'win32':
 from typing import Any
 from pathlib import Path
 
+from wazuh_testing.constants.paths.databases import FIM_DB_PATH
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.constants.platforms import WINDOWS, MACOS, CENTOS, UBUNTU, DEBIAN
-from wazuh_testing.modules.fim.patterns import MONITORING_PATH, EVENT_TYPE_SCAN_END
+from wazuh_testing.modules.fim.patterns import MONITORING_PATH, FIM_SCAN_END
 from wazuh_testing.modules.fim.utils import create_registry, delete_registry
 from wazuh_testing.tools.monitors.file_monitor import FileMonitor
 from wazuh_testing.tools.simulators.authd_simulator import AuthdSimulator
@@ -173,7 +174,7 @@ def create_registry_key(test_metadata: dict) -> None:
 @pytest.fixture()
 def detect_end_scan(test_metadata: dict) -> None:
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
-    wazuh_log_monitor.start(timeout=60, callback=generate_callback(EVENT_TYPE_SCAN_END))
+    wazuh_log_monitor.start(timeout=60, callback=generate_callback(FIM_SCAN_END))
     assert wazuh_log_monitor.callback_result
 
 
@@ -206,3 +207,16 @@ def create_paths_files(test_metadata: dict) -> str:
     for item in to_edit:
         item_path = Path(item)
         file.delete_path_recursively(item_path)
+
+
+@pytest.fixture()
+def clean_fim_db():
+    """
+    Fixture to delete the persistent FIM DB file (fim.db) before each test.
+    Works on both Linux and Windows agents.
+    """
+    try:
+        if os.path.exists(FIM_DB_PATH):
+            os.remove(FIM_DB_PATH)
+    except Exception as e:
+        pytest.fail(f"Failed to delete FIM DB file at {FIM_DB_PATH}: {e}")

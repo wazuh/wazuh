@@ -90,7 +90,7 @@ test_configuration = load_configuration_template(config_path, test_configuration
 local_internal_options = {configuration.SYSCHECK_DEBUG: 2, AGENTD_DEBUG: 2, MONITORD_ROTATE_LOG: 0}
 if sys.platform == WINDOWS: local_internal_options.update({AGENTD_WINDOWS_DEBUG: 2})
 
-base_checks = [configuration.ATTR_CHECKSUM, configuration.ATTR_TYPE]
+base_checks = [configuration.ATTR_CHECKSUM]
 
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=cases_ids)
 def test_checkers(test_configuration, test_metadata, set_wazuh_configuration, configure_local_internal_options,
