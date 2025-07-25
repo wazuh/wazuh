@@ -63,7 +63,7 @@ TEST_F(SystemInventoryUpsertElement, validAgentID_OS)
 
     EXPECT_EQ(
         context->m_serializedElement,
-        R"({"id":"001","operation":"INSERTED","data":{"agent":{"id":"001","name":"agentName","host":{"ip":"agentIp"},"version":"agentVersion"},"host":{"architecture":"osArchitecture","hostname":"osHostName","os":{"codename":"osCodeName","kernel":{"name":"osKernelSysName","release":"osKernelRelease","version":"osKernelVersion"},"name":"osName","platform":"osPlatform","version":"osVersion"}},"wazuh":{"cluster":{"name":"clusterName"},"schema":{"version":"1.0"}}}})");
+        R"({"id":"001_osName","operation":"INSERTED","data":{"agent":{"id":"001","name":"agentName","host":{"ip":"agentIp"},"version":"agentVersion"},"host":{"architecture":"osArchitecture","hostname":"osHostName","os":{"codename":"osCodeName","kernel":{"name":"osKernelSysName","release":"osKernelRelease","version":"osKernelVersion"},"name":"osName","platform":"osPlatform","version":"osVersion"}},"wazuh":{"cluster":{"name":"clusterName"},"schema":{"version":"1.0"}}}})");
 }
 
 TEST_F(SystemInventoryUpsertElement, validAgentIDAnyAgentIp_OS)
@@ -92,7 +92,7 @@ TEST_F(SystemInventoryUpsertElement, validAgentIDAnyAgentIp_OS)
 
     EXPECT_EQ(
         context->m_serializedElement,
-        R"({"id":"001","operation":"INSERTED","data":{"agent":{"id":"001","name":"agentName","version":"agentVersion"},"host":{"architecture":"osArchitecture","hostname":"osHostName","os":{"codename":"osCodeName","kernel":{"name":"osKernelSysName","release":"osKernelRelease","version":"osKernelVersion"},"name":"osName","platform":"osPlatform","version":"osVersion"}},"wazuh":{"cluster":{"name":"clusterName"},"schema":{"version":"1.0"}}}})");
+        R"({"id":"001_osName","operation":"INSERTED","data":{"agent":{"id":"001","name":"agentName","version":"agentVersion"},"host":{"architecture":"osArchitecture","hostname":"osHostName","os":{"codename":"osCodeName","kernel":{"name":"osKernelSysName","release":"osKernelRelease","version":"osKernelVersion"},"name":"osName","platform":"osPlatform","version":"osVersion"}},"wazuh":{"cluster":{"name":"clusterName"},"schema":{"version":"1.0"}}}})");
 }
 
 /*
