@@ -30,7 +30,7 @@ with patch('wazuh.core.common.getgrnam'):
 test_data_path = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 decoder_ossec_conf = {
     'ruleset': {
-        'decoder_dir': ['tests/data/decoders', 
+        'decoder_dir': ['tests/data/decoders',
                         'tests/data/etc/decoders',
                         'tests/data/etc/decoders2',
                         'tests/data/etc/decoders/subpath'],
@@ -152,7 +152,7 @@ def test_get_decoders_files_filters(status, relative_dirname, filename, expected
 ])
 def test_get_decoder_file_path(filename, relative_dirname, result, mock_wazuh_paths):
     """Test get_decoder_file_path function."""
-    res = decoder.get_decoder_file_path(filename=filename, 
+    res = decoder.get_decoder_file_path(filename=filename,
                                          relative_dirname=relative_dirname)
     assert res == os.path.join(wazuh.core.common.WAZUH_PATH, result) if result else not res and isinstance(res, str)
 
@@ -287,7 +287,7 @@ def test_upload_file(mock_logtest, mock_safe_move, mock_remove, mock_upload_file
                                                             relative_dirname=relative_dirname,
                                                             overwrite=overwrite)
 
-            # Assert data match what was expected, type of the result 
+            # Assert data match what was expected, type of the result
             # and correct parameters in delete() method.
             assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type'
 
@@ -303,7 +303,8 @@ def test_upload_file(mock_logtest, mock_safe_move, mock_remove, mock_upload_file
                 'delete_decoder_file function not called with expected parameters'
                 mock_remove.assert_called_once()
                 mock_safe_move.assert_called_once()
-            mock_reload.assert_called_once()
+                mock_reload.assert_called_once()
+
 
 @patch('wazuh.decoder.delete_decoder_file', side_effect=WazuhError(1019))
 @patch('wazuh.decoder.upload_file')
@@ -357,7 +358,7 @@ def test_upload_file_ko(*_):
     assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type'
     assert result.render()['data']['failed_items'][0]['error']['code'] == 1507,\
         'Error code not expected.'
-    
+
     # clean backup files
     search_pattern = os.path.join(wazuh.core.common.WAZUH_PATH, "**", "*.backup")
     for bkp in glob.glob(search_pattern, recursive=True):

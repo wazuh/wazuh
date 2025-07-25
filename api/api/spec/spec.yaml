@@ -6115,7 +6115,7 @@ components:
       in: query
       name: purge
       description: |
-        Permanently delete an agent from the key store. The wazuh-authd `purge` configuration option has 
+        Permanently delete an agent from the key store. The wazuh-authd `purge` configuration option has
         precedence over this parameter, when enabled, agents will be permanently deleted regardless of this value.
       schema:
         type: boolean
@@ -9001,7 +9001,7 @@ paths:
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
-  
+
   /agents/summary:
     get:
       tags:
