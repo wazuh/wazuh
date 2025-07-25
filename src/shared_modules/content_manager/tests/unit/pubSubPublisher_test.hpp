@@ -44,11 +44,11 @@ protected:
         m_spPubSubPublisher = std::make_shared<PubSubPublisher>();
         // Create a updater context
         m_spUpdaterContext = std::make_shared<UpdaterContext>();
-        m_spUpdaterBaseContext = std::make_shared<UpdaterBaseContext>(
-            m_spStopActionCondition,
-            [](const std::string& msg, std::shared_ptr<ConditionSync> shouldStop) -> FileProcessingResult {
-                return {0, "", true};
-            });
+        m_spUpdaterBaseContext =
+            std::make_shared<UpdaterBaseContext>(m_spStopActionCondition,
+                                                 [](const std::string& msg) -> FileProcessingResult {
+                                                     return {0, "", true};
+                                                 });
     }
 };
 

@@ -225,7 +225,7 @@ int set_winsacl(const char *dir, directory_t *configuration) {
 
     privilege_enabled = 1;
 
-    if (result = GetNamedSecurityInfo(dir, SE_FILE_OBJECT, SACL_SECURITY_INFORMATION, NULL, NULL, NULL, &old_sacl, &security_descriptor), result != ERROR_SUCCESS) {
+    if (result = utf8_GetNamedSecurityInfo(dir, SE_FILE_OBJECT, SACL_SECURITY_INFORMATION, NULL, NULL, NULL, &old_sacl, &security_descriptor), result != ERROR_SUCCESS) {
         merror(FIM_ERROR_SACL_GETSECURITYINFO, result);
         goto end;
     }
@@ -314,7 +314,7 @@ int set_winsacl(const char *dir, directory_t *configuration) {
     }
 
     // Set a new ACL for the security descriptor
-    if (result = SetNamedSecurityInfo((char *) dir, SE_FILE_OBJECT, SACL_SECURITY_INFORMATION, NULL, NULL, NULL, new_sacl), result != ERROR_SUCCESS) {
+    if (result = utf8_SetNamedSecurityInfo((char *) dir, SE_FILE_OBJECT, SACL_SECURITY_INFORMATION, NULL, NULL, NULL, new_sacl), result != ERROR_SUCCESS) {
         merror(FIM_ERROR_SACL_SETSECURITYINFO, result);
         goto end;
     }
@@ -498,8 +498,8 @@ void restore_sacls() {
         if (dir_it->dirs_status.status & WD_IGNORE_REST) {
             sacl_it = NULL;
 
-            result = GetNamedSecurityInfo(dir_it->path, SE_FILE_OBJECT, SACL_SECURITY_INFORMATION, NULL, NULL, NULL,
-                                          &sacl_it, &security_descriptor);
+            result = utf8_GetNamedSecurityInfo(dir_it->path, SE_FILE_OBJECT, SACL_SECURITY_INFORMATION, NULL, NULL, NULL,
+                                               &sacl_it, &security_descriptor);
             if (result != ERROR_SUCCESS) {
                 merror(FIM_ERROR_SACL_GETSECURITYINFO, result);
                 break;
@@ -512,7 +512,7 @@ void restore_sacls() {
             }
 
             // Set the SACL
-            result = SetNamedSecurityInfo(dir_it->path, SE_FILE_OBJECT, SACL_SECURITY_INFORMATION, NULL, NULL, NULL, sacl_it);
+            result = utf8_SetNamedSecurityInfo(dir_it->path, SE_FILE_OBJECT, SACL_SECURITY_INFORMATION, NULL, NULL, NULL, sacl_it);
             if (result != ERROR_SUCCESS) {
                 merror(FIM_ERROR_SACL_SETSECURITYINFO, result);
                 break;
@@ -1412,7 +1412,7 @@ int check_object_sacl(char *obj, int is_file) {
     }
 
     privilege_enabled = 1;
-    if (result = GetNamedSecurityInfo(obj, SE_FILE_OBJECT, SACL_SECURITY_INFORMATION, NULL, NULL, NULL, &sacl, &security_descriptor), result != ERROR_SUCCESS) {
+    if (result = utf8_GetNamedSecurityInfo(obj, SE_FILE_OBJECT, SACL_SECURITY_INFORMATION, NULL, NULL, NULL, &sacl, &security_descriptor), result != ERROR_SUCCESS) {
         merror(FIM_ERROR_SACL_GETSECURITYINFO, result);
         goto end;
     }
@@ -1751,7 +1751,7 @@ int w_update_sacl(const char *obj_path) {
 
     privilege_enabled = 1;
 
-    if (result = GetNamedSecurityInfo(obj_path, SE_FILE_OBJECT, SACL_SECURITY_INFORMATION, NULL, NULL, NULL, &old_sacl, &security_descriptor), result != ERROR_SUCCESS) {
+    if (result = utf8_GetNamedSecurityInfo(obj_path, SE_FILE_OBJECT, SACL_SECURITY_INFORMATION, NULL, NULL, NULL, &old_sacl, &security_descriptor), result != ERROR_SUCCESS) {
         merror(FIM_ERROR_WHODATA_GETNAMEDSECURITY, result);
         goto end;
     }
@@ -1813,7 +1813,7 @@ int w_update_sacl(const char *obj_path) {
         goto end;
     }
 
-    if (result = SetNamedSecurityInfo((char *) obj_path, SE_FILE_OBJECT, SACL_SECURITY_INFORMATION, NULL, NULL, NULL, new_sacl), result != ERROR_SUCCESS) {
+    if (result = utf8_SetNamedSecurityInfo((char *) obj_path, SE_FILE_OBJECT, SACL_SECURITY_INFORMATION, NULL, NULL, NULL, new_sacl), result != ERROR_SUCCESS) {
         merror(FIM_ERROR_WHODATA_SETNAMEDSECURITY, result);
         goto end;
     }

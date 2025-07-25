@@ -218,7 +218,7 @@ def get_decoder_file_path(filename: str,
     if len(decoders) == 0:
         return ''
     elif len(decoders) > 1:
-        # if many files match the filename criteria, 
+        # if many files match the filename criteria,
         # filter decoders that starts with rel_dir of the file
         # and from the result, select the decoder with the shorter
         # relative path length
@@ -302,7 +302,7 @@ def validate_upload_delete_dir(relative_dirname: Union[str, None]) -> Tuple[str,
     relative_dirname = relative_dirname.rstrip('/') if relative_dirname \
         else to_relative_path(common.USER_DECODERS_PATH)
     wazuh_error = None
-    if not relative_dirname in ruleset_conf['decoder_dir']:
+    if relative_dirname not in ruleset_conf['decoder_dir']:
         wazuh_error = WazuhError(1505)
     elif commonpath([join(common.WAZUH_PATH, relative_dirname), common.DECODERS_PATH]) == common.DECODERS_PATH:
         wazuh_error = WazuhError(1506)
@@ -315,7 +315,7 @@ def validate_upload_delete_dir(relative_dirname: Union[str, None]) -> Tuple[str,
 def upload_decoder_file(filename: str, content: str, relative_dirname: str = None,
                         overwrite: bool = False) -> AffectedItemsWazuhResult:
     """Upload a new decoder file or update an existing one.
-    
+
     If relative_dirname is not valid, raise an exception.
     If the content is not valid, raise an exception.
     If the decoder file is found, update the file if overwrite is true.
@@ -377,8 +377,7 @@ def upload_decoder_file(filename: str, content: str, relative_dirname: str = Non
 
         # After uploading the file, reload rulesets
         socket_response = send_reload_ruleset_msg(origin={'module': 'api'})
-        if socket_response['error'] == 1:
-            raise WazuhError(1501, extra_message=socket_response['data'])
+        socket_response.update_affected_items(results=result, error_code=1508)
 
         result.affected_items.append(to_relative_path(full_path))
         result.total_affected_items = len(result.affected_items)
@@ -404,7 +403,7 @@ def delete_decoder_file(filename: Union[str, list], relative_dirname: str = None
         Name of the decoder file.
     relative_dirname : str
         Relative directory where the decoder file is located.
-        
+
     Returns
     -------
     AffectedItemsWazuhResult
@@ -431,8 +430,7 @@ def delete_decoder_file(filename: Union[str, list], relative_dirname: str = None
 
         # After deleting the file, reload rulesets
         socket_response = send_reload_ruleset_msg(origin={'module': 'api'})
-        if socket_response['error'] == 1:
-            raise WazuhError(1508, extra_message=socket_response['data'])
+        socket_response.update_affected_items(results=result, error_code=1508)
 
     except WazuhError as exc:
         result.add_failed_item(id_=to_relative_path(full_path), error=exc)

@@ -1812,6 +1812,12 @@ shared/%.o: shared/%.c
 shared/debug_op_proc.o: shared/debug_op.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -fPIC -DMA -DARGV0=\"wazuh-remoted\" -c $^ -o $@
 
+shared/utf8_op.o: shared/utf8_op.c
+	$(OSSEC_CC) $(OSSEC_CFLAGS) -fPIC -c $< -o $@
+
+shared/utf8_winapi_wrapper.o: shared/utf8_winapi_wrapper.c
+	$(OSSEC_CC) $(OSSEC_CFLAGS) -fPIC -c $< -o $@
+
 shared/file_op_proc.o: shared/file_op.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -fPIC -DCLIENT -DARGV0=\"wazuh-remoted\" -c $^ -o $@
 
@@ -2145,7 +2151,7 @@ active_response_programs = default-firewall-drop pf npf ipfw firewalld-drop disa
 $(active_response_programs): ${WAZUH_LIB} ${WAZUHEXT_LIB}
 
 # Minimal dependencies for building active responses programs
-AR_PROGRAMS_DEPS = os_regex/os_regex.o os_regex/os_regex_compile.o os_regex/os_match_free_pattern.o os_regex/os_regex_maps.o os_regex/os_regex_execute.o os_regex/os_regex_free_pattern.o os_regex/os_match_execute.o os_regex/os_match_compile.o shared/expression.o shared/randombytes.o shared/validate_op.o shared/regex_op.o shared/string_op.o shared/exec_op.o shared/file_op_proc.o shared/debug_op_proc.o shared/time_op.o shared/privsep_op.o shared/version_op.o shared/binaries_op.o os_xml/os_xml.o os_xml/os_xml_access.o os_regex/os_regex_strbreak.o os_net/os_net.o
+AR_PROGRAMS_DEPS = os_regex/os_regex.o os_regex/os_regex_compile.o os_regex/os_match_free_pattern.o os_regex/os_regex_maps.o os_regex/os_regex_execute.o os_regex/os_regex_free_pattern.o os_regex/os_match_execute.o os_regex/os_match_compile.o shared/expression.o shared/randombytes.o shared/validate_op.o shared/regex_op.o shared/string_op.o shared/exec_op.o shared/file_op_proc.o shared/utf8_winapi_wrapper.o shared/utf8_op.o shared/debug_op_proc.o shared/time_op.o shared/privsep_op.o shared/version_op.o shared/binaries_op.o os_xml/os_xml.o os_xml/os_xml_access.o os_regex/os_regex_strbreak.o os_net/os_net.o
 
 ifneq (,$(filter ${TEST},YES yes y Y 1))
 AR_PROGRAMS_DEPS += unit_tests/wrappers/externals/pcre2/pcre2_wrappers.o
@@ -2718,13 +2724,13 @@ win32/os_win32ui.exe: win32/ui_resource.o win32/version-app.o win32/win_service_
 win32/agent-auth.exe: win32/auth_resource.o win32/version-app.o win32/win_service_rk.o os_auth/main-client.o os_auth/ssl.o os_auth/check_cert.o addagent/validate.o
 	${OSSEC_CCBIN} -DARGV0=\"agent-auth\" -DOSSECHIDS ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -lshlwapi -lwsock32 -lsecur32 -lws2_32 -flto -o $@
 
-win32/restart-wazuh.exe: win32/restart_wazuh_resource.o win32/version-app.o active-response/active_responses.o active-response/restart-wazuh.o shared/cryptography.o shared/dll_load_notify.o shared/debug_op_proc.o shared/time_op.o shared/file_op_proc.o ${WAZUH_LIB} ${WAZUHEXT_LIB}
+win32/restart-wazuh.exe: win32/restart_wazuh_resource.o win32/version-app.o active-response/active_responses.o active-response/restart-wazuh.o shared/cryptography.o shared/dll_load_notify.o shared/debug_op_proc.o shared/time_op.o shared/file_op_proc.o shared/utf8_winapi_wrapper.o shared/utf8_op.o ${WAZUH_LIB} ${WAZUHEXT_LIB}
 	${OSSEC_CCBIN} -DARGV0=\"restart-wazuh\" ${AR_LDFLAGS} $^ -lwintrust -lpsapi -lcrypt32 -lshlwapi -lmpr -o $@
 
-win32/route-null.exe: win32/route_null_resource.o win32/version-app.o active-response/active_responses.o active-response/route-null.o shared/cryptography.o shared/dll_load_notify.o shared/debug_op_proc.o shared/time_op.o shared/file_op_proc.o ${WAZUH_LIB} ${WAZUHEXT_LIB}
+win32/route-null.exe: win32/route_null_resource.o win32/version-app.o active-response/active_responses.o active-response/route-null.o shared/cryptography.o shared/dll_load_notify.o shared/debug_op_proc.o shared/time_op.o shared/file_op_proc.o shared/utf8_winapi_wrapper.o shared/utf8_op.o ${WAZUH_LIB} ${WAZUHEXT_LIB}
 	${OSSEC_CCBIN} -DARGV0=\"route-null\" ${AR_LDFLAGS} $^ -lwintrust -lpsapi -lcrypt32 -lshlwapi -lmpr -o $@
 
-win32/netsh.exe: win32/netsh_resource.o win32/version-app.o active-response/active_responses.o active-response/netsh.o shared/cryptography.o shared/dll_load_notify.o shared/debug_op_proc.o shared/time_op.o shared/file_op_proc.o ${WAZUH_LIB} ${WAZUHEXT_LIB}
+win32/netsh.exe: win32/netsh_resource.o win32/version-app.o active-response/active_responses.o active-response/netsh.o shared/cryptography.o shared/dll_load_notify.o shared/debug_op_proc.o shared/time_op.o shared/file_op_proc.o shared/utf8_winapi_wrapper.o shared/utf8_op.o ${WAZUH_LIB} ${WAZUHEXT_LIB}
 	${OSSEC_CCBIN} -DARGV0=\"netsh\" ${AR_LDFLAGS} $^ -lwintrust -lpsapi -lcrypt32 -lshlwapi -lmpr -o $@
 
 
@@ -2801,7 +2807,7 @@ clean-internals: clean-unit-tests
 	rm -f ${os_xml_o}
 	rm -f ${os_regex_o}
 	rm -f ${os_net_o}
-	rm -f ${shared_o} shared/debug_op_proc.o shared/file_op_proc.o
+	rm -f ${shared_o} shared/debug_op_proc.o shared/file_op_proc.o shared/utf8_winapi_wrapper.o shared/utf8_op.o
 	rm -f ${config_o}
 	rm -f ${os_maild_o}
 	rm -f ${crypto_o}
