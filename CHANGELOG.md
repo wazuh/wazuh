@@ -3,17 +3,35 @@ All notable changes to this project will be documented in this file.
 
 ## [v4.13.1]
 
+### Manager
+
+#### Fixed
+
+- Fixed DFM graceful shutdown. ([#30627](https://github.com/wazuh/wazuh/pull/30627))
+- Fixed inode field as string in FIM JSON messages to ensure schema consistency. ([#30718](https://github.com/wazuh/wazuh/pull/30718))
+
 ### Agent
 
 #### Added
 
 - Added Ms-Graph token validation before performing requests. ([#30377](https://github.com/wazuh/wazuh/pull/30377))
+- Added support for UTF-8 characters in file paths for FIM. ([#30763](https://github.com/wazuh/wazuh/pull/30763))
+
+#### Fixed
+
+- Fixed the loss of precision of the FIM inode field at values higher than 2ˆ53. ([#30552](https://github.com/wazuh/wazuh/pull/30552))
+- Fixed expanded file list in logcollector getconfig output. ([#30614](https://github.com/wazuh/wazuh/pull/30614))
 
 ### RESTful API
 
 #### Added
 
 - Added /agents/summary endpoint. ([#29589](https://github.com/wazuh/wazuh/pull/29589))
+- Added support for hot ruleset reload via API. ([#29954](https://github.com/wazuh/wazuh/pull/29954))
+
+#### Changed
+
+- Removed internal_key from queries filters. ([#30637](https://github.com/wazuh/wazuh/pull/30637))
 
 
 ## [v4.13.0]
