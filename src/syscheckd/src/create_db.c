@@ -1673,8 +1673,7 @@ int fim_check_ignore (const char *file_name, int file_or_directory) {
     }
 
     // Check in the regex entry
-    if (syscheck.ignore_regex) {
-        
+    if (syscheck.ignore_regex) {   
         int i = 0;
         while (syscheck.ignore_regex[i] != NULL) {
             if (OSMatch_Execute(file_name, strlen(file_name), syscheck.ignore_regex[i])) {
