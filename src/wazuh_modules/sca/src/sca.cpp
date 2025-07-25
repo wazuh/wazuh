@@ -73,6 +73,24 @@ void SCA::init(const std::function<void(const modules_log_level_t, const std::st
     // TODO Start doing whatever the module does
     m_sca = std::make_unique<SecurityConfigurationAssessment>(".", "agent-uuid-placeholder");
     m_logFunction = logFunction;
+
+    // TODO remove this, it's only for testing purposes
+    // Set a simple print function for m_pushMessage so we can see the SCA checks
+    // being processed in the OSSEC log
+    auto simplePrintFunction = [this](const std::string& message) -> int {
+        if (m_logFunction)
+        {
+            m_logFunction(LOG_INFO, "SCA Event: " + message);
+        }
+        else
+        {
+            std::cout << "SCA Event: " << message << std::endl;
+        }
+        return 0;
+    };
+
+    m_sca->SetPushMessageFunction(simplePrintFunction);
+
     // logFunction(LOG_INFO, "SCA module initialized successfully.");
 }
 
