@@ -755,7 +755,7 @@ void fim_checker(const char *path,
         return;
     }
 
-    switch (file_or_directory) {
+    switch (path_type) {
 #ifndef WIN32
     case FIM_LINK:
         // Fallthrough
