@@ -38,7 +38,7 @@ constexpr auto CHECK_SQL_STATEMENT {
     rules TEXT);)"};
 
 SecurityConfigurationAssessment::SecurityConfigurationAssessment(
-    std::string dbFolderPath,
+    std::string dbPath,
     std::string agentUUID,
     std::shared_ptr<IDBSync> dbSync,
     std::shared_ptr<IFileSystemWrapper> fileSystemWrapper)
@@ -47,7 +47,7 @@ SecurityConfigurationAssessment::SecurityConfigurationAssessment(
                       : std::make_shared<DBSync>(
                             HostType::AGENT,
                             DbEngineType::SQLITE3,
-                            dbFolderPath + "/" + SCA_DB_DISK_NAME,
+                            dbPath,
                             GetCreateStatement(),
                             DbManagement::PERSISTENT))
     , m_fileSystemWrapper(fileSystemWrapper ? std::move(fileSystemWrapper)
