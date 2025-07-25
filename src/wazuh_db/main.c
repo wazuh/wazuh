@@ -105,6 +105,8 @@ int main(int argc, char ** argv)
     wconfig.max_fragmentation = getDefine_Int("wazuh_db", "max_fragmentation", 0, 100);
     wconfig.check_fragmentation_interval = getDefine_Int("wazuh_db", "check_fragmentation_interval", 1, 30758400);
 
+    wconfig.is_worker_node = w_is_worker() == 1;
+
     // Allocating memory for configuration structures and setting default values
     wdb_init_conf();
 
