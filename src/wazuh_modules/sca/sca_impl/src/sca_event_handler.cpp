@@ -2,11 +2,12 @@
 
 #include <dbsync.hpp>
 #include <hashHelper.h>
-// #include <logger.hpp>
 #include <stringHelper.h>
 #include <timeHelper.h>
 
 #include <sstream>
+
+#include "logging_helper.hpp"
 
 /// @brief Map of stateful operations
 static const std::map<ReturnTypeCallback, std::string> STATEFUL_OPERATION_MAP {
@@ -59,7 +60,7 @@ void SCAEventHandler::ReportCheckResult(const std::string& policyId,
 {
     if (!m_dBSync)
     {
-        // LogError("DBSync is null, cannot report check result");
+        LoggingHelper::getInstance().log(LOG_ERROR, "DBSync is null, cannot report check result");
         return;
     }
 
@@ -83,7 +84,7 @@ void SCAEventHandler::ReportCheckResult(const std::string& policyId,
         }
         else
         {
-            // LogDebug("Failed to update check result: {}", rowData.dump());
+            LoggingHelper::getInstance().log(LOG_DEBUG, "Failed to update check result: " + rowData.dump());
         }
     };
 
@@ -152,7 +153,7 @@ SCAEventHandler::ProcessEvents(const std::unordered_map<std::string, nlohmann::j
     }
     catch (const std::exception& e)
     {
-        // LogError("Failed to create events: {}", e.what());
+        LoggingHelper::getInstance().log(LOG_ERROR, std::string("Failed to create events: ") + e.what());
     }
 
     return events;
@@ -164,7 +165,7 @@ std::vector<nlohmann::json> SCAEventHandler::GetChecksForPolicy(const std::strin
 
     if (!m_dBSync)
     {
-        // LogError("DBSync is null, cannot get checks for policy");
+        LoggingHelper::getInstance().log(LOG_ERROR, "DBSync is null, cannot get checks for policy");
         return checks;
     }
 
@@ -205,7 +206,7 @@ nlohmann::json SCAEventHandler::GetPolicyById(const std::string& policyId) const
 
     if (!m_dBSync)
     {
-        // LogError("DBSync is null, cannot get policy by id");
+        LoggingHelper::getInstance().log(LOG_ERROR, "DBSync is null, cannot get policy by id");
         return policy;
     }
 
@@ -235,7 +236,7 @@ nlohmann::json SCAEventHandler::GetPolicyCheckById(const std::string& policyChec
 
     if (!m_dBSync)
     {
-        // LogError("DBSync is null, cannot get policy check by id");
+        LoggingHelper::getInstance().log(LOG_ERROR, "DBSync is null, cannot get policy check by id");
         return check;
     }
 
@@ -292,7 +293,7 @@ nlohmann::json SCAEventHandler::ProcessStateful(const nlohmann::json& event) con
         }
         else
         {
-            // LogError("Stateful event does not contain check");
+            LoggingHelper::getInstance().log(LOG_ERROR,"Stateful event does not contain check");
             return {};
         }
 
@@ -309,7 +310,7 @@ nlohmann::json SCAEventHandler::ProcessStateful(const nlohmann::json& event) con
         }
         else
         {
-            // LogError("Stateful event does not contain policy");
+            LoggingHelper::getInstance().log(LOG_ERROR,"Stateful event does not contain policy");
             return {};
         }
 
@@ -323,7 +324,7 @@ nlohmann::json SCAEventHandler::ProcessStateful(const nlohmann::json& event) con
     }
     catch (const std::exception& e)
     {
-        // LogError("Error processing stateful event: {}", e.what());
+        LoggingHelper::getInstance().log(LOG_ERROR, std::string("Error processing stateful event: ") + e.what());
     }
 
     return nlohmann::json {{"event", jsonEvent}, {"metadata", jsonMetadata}};
@@ -369,7 +370,7 @@ nlohmann::json SCAEventHandler::ProcessStateless(const nlohmann::json& event) co
         }
         else
         {
-            // LogError("Stateless event does not contain check");
+            LoggingHelper::getInstance().log(LOG_ERROR, "Stateless event does not contain check");
             return {};
         }
 
@@ -403,7 +404,7 @@ nlohmann::json SCAEventHandler::ProcessStateless(const nlohmann::json& event) co
         }
         else
         {
-            // LogError("Stateless event does not contain policy");
+            LoggingHelper::getInstance().log(LOG_ERROR, "Stateless event does not contain policy");
             return {};
         }
 
@@ -427,7 +428,7 @@ nlohmann::json SCAEventHandler::ProcessStateless(const nlohmann::json& event) co
     }
     catch (const std::exception& e)
     {
-        // LogError("Error processing stateless event: {}", e.what());
+        LoggingHelper::getInstance().log(LOG_ERROR, std::string("Error processing stateless event: ") + e.what());
     }
 
     return nlohmann::json {{"event", jsonEvent}, {"metadata", jsonMetadata}};
@@ -462,7 +463,7 @@ void SCAEventHandler::PushStateful(const nlohmann::json& event, const nlohmann::
 
     m_pushMessage(statefulMessage);
 
-    // LogTrace("Stateful event queued: {}, metadata {}", event.dump(), metadata.dump());
+    LoggingHelper::getInstance().log(LOG_DEBUG_VERBOSE, "Stateful event queued: " + event.dump() + ", metadata " + metadata.dump());
 }
 
 void SCAEventHandler::PushStateless(const nlohmann::json& event, const nlohmann::json& metadata) const
@@ -482,8 +483,7 @@ void SCAEventHandler::PushStateless(const nlohmann::json& event, const nlohmann:
     const auto statelessMessage = statelessJson.dump();
 
     m_pushMessage(statelessMessage);
-
-    // LogTrace("Stateless event queued: {}, metadata {}", event.dump(), metadata.dump());
+    LoggingHelper::getInstance().log(LOG_DEBUG_VERBOSE, "Stateless event queued: " + event.dump() + ", metadata " + metadata.dump());
 }
 
 nlohmann::json SCAEventHandler::StringToJsonArray(const std::string& input) const
