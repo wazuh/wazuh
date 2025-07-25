@@ -59,6 +59,7 @@ cJSON *getRootcheckConfig(void) {
     if (rootcheck.checks.rc_pids) cJSON_AddStringToObject(rtck,"check_pids","yes"); else cJSON_AddStringToObject(rtck,"check_pids","no");
     if (rootcheck.checks.rc_ports) cJSON_AddStringToObject(rtck,"check_ports","yes"); else cJSON_AddStringToObject(rtck,"check_ports","no");
     if (rootcheck.checks.rc_sys) cJSON_AddStringToObject(rtck,"check_sys","yes"); else cJSON_AddStringToObject(rtck,"check_sys","no");
+
     if (rootcheck.ignore) {
         cJSON *igns = NULL;
         cJSON *ignsregex = NULL;
