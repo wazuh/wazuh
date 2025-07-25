@@ -155,7 +155,7 @@ cJSON *wm_sca_dump(const wm_sca_t * data) {
 
     cJSON_AddStringToObject(wm_wd, "enabled", data->enabled ? "yes" : "no");
     cJSON_AddStringToObject(wm_wd, "scan_on_start", data->scan_on_start ? "yes" : "no");
-    cJSON_AddNumberToObject(wm_wd, "timeout", data->timeout);
+    cJSON_AddNumberToObject(wm_wd, "commands_timeout", data->commands_timeout);
     cJSON_AddItemToObject(root,"sca",wm_wd);
 
     return root;
