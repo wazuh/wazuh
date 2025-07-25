@@ -24,10 +24,8 @@ src/generated_headers/*.hpp
 # Compiled programs
 src/agent-auth
 src/agent_control
-src/clear_stats
 src/isbigendian
 src/list_agents
-src/manage_agents
 src/ossec-agentd
 src/ossec-agentlessd
 src/ossec-analysisd
@@ -49,7 +47,6 @@ src/ossec-integratord
 src/rootcheck_control
 src/syscheck_control
 src/syscheck_update
-src/verify-agent-conf
 src/wazuh-modulesd
 src/wazuh-auth
 src/wazuh-db

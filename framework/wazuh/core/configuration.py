@@ -1013,8 +1013,6 @@ def upload_group_configuration(group_id: str, file_content: str) -> str:
         XML syntax error.
     WazuhError(1114)
         Wazuh syntax error.
-    WazuhError(1115)
-        Error executing verify-agent-conf.
     WazuhInternalError(1743)
         Error running Wazuh syntax validator.
     WazuhInternalError(1016)
@@ -1063,29 +1061,6 @@ def upload_group_configuration(group_id: str, file_content: str) -> str:
         raise WazuhError(1113, str(e))
 
     try:
-        # check Wazuh xml format
-        try:
-            subprocess.check_output([os_path.join(common.WAZUH_PATH, "bin", "verify-agent-conf"), '-f', tmp_file_path],
-                                    stderr=subprocess.STDOUT)
-        except subprocess.CalledProcessError as e:
-            # extract error message from output.
-            # Example of raw output
-            # 2019/01/08 14:51:09 verify-agent-conf: ERROR: (1230):
-            # Invalid element in the configuration: 'agent_conf'.\n2019/01/08 14:51:09 verify-agent-conf: ERROR: (1207):
-            # Syscheck remote configuration in '/var/ossec/tmp/api_tmp_file_2019-01-08-01-1546959069.xml' is corrupted.
-            # \n\n
-            # Example of desired output:
-            # Invalid element in the configuration: 'agent_conf'.
-            # Syscheck remote configuration in '/var/ossec/tmp/api_tmp_file_2019-01-08-01-1546959069.xml' is corrupted.
-            output_regex = re.findall(pattern=r"\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}:\d{2} verify-agent-conf: ERROR: "
-                                              r"\(\d+\): ([\w \/ \_ \- \. ' :]+)", string=e.output.decode())
-            if output_regex:
-                raise WazuhError(1114, ' '.join(output_regex))
-            else:
-                raise WazuhError(1115, e.output.decode())
-        except Exception as e:
-            raise WazuhInternalError(1743, str(e))
-
         # move temporary file to group folder
         try:
             new_conf_path = os_path.join(common.SHARED_PATH, group_id, "agent.conf")

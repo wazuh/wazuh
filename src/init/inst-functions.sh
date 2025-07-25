@@ -944,7 +944,6 @@ InstallCommon()
   ${INSTALL} -m 0750 -o root -g 0 wazuh-logcollector ${INSTALLDIR}/bin
   ${INSTALL} -m 0750 -o root -g 0 syscheckd/build/bin/wazuh-syscheckd ${INSTALLDIR}/bin
   ${INSTALL} -m 0750 -o root -g 0 wazuh-execd ${INSTALLDIR}/bin
-  ${INSTALL} -m 0750 -o root -g 0 manage_agents ${INSTALLDIR}/bin
   ${INSTALL} -m 0750 -o root -g 0 ${OSSEC_CONTROL_SRC} ${INSTALLDIR}/bin/wazuh-control
   ${INSTALL} -m 0750 -o root -g 0 wazuh-modulesd ${INSTALLDIR}/bin/
 
@@ -1110,8 +1109,6 @@ InstallLocal()
     ${INSTALL} -m 0750 -o root -g 0 wazuh-reportd ${INSTALLDIR}/bin
     ${INSTALL} -m 0750 -o root -g 0 wazuh-maild ${INSTALLDIR}/bin
     ${INSTALL} -m 0750 -o root -g 0 wazuh-csyslogd ${INSTALLDIR}/bin
-    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} verify-agent-conf ${INSTALLDIR}/bin/
-    ${INSTALL} -m 0750 -o root -g 0 clear_stats ${INSTALLDIR}/bin/
     ${INSTALL} -m 0750 -o root -g 0 wazuh-regex ${INSTALLDIR}/bin/
     ${INSTALL} -m 0750 -o root -g 0 agent_control ${INSTALLDIR}/bin/
     ${INSTALL} -m 0750 -o root -g 0 wazuh-integratord ${INSTALLDIR}/bin/

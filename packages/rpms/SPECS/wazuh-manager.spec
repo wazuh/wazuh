@@ -654,9 +654,7 @@ rm -fr %{buildroot}
 %attr(750, root, root) %{_localstatedir}/bin/agent_control
 %attr(750, root, wazuh) %{_localstatedir}/bin/agent_groups
 %attr(750, root, wazuh) %{_localstatedir}/bin/agent_upgrade
-%attr(750, root, root) %{_localstatedir}/bin/clear_stats
 %attr(750, root, wazuh) %{_localstatedir}/bin/cluster_control
-%attr(750, root, root) %{_localstatedir}/bin/manage_agents
 %attr(750, root, root) %{_localstatedir}/bin/wazuh-agentlessd
 %attr(750, root, root) %{_localstatedir}/bin/wazuh-engine
 %attr(750, root, root) %{_localstatedir}/bin/wazuh-authd
@@ -665,14 +663,12 @@ rm -fr %{buildroot}
 %attr(750, root, root) %{_localstatedir}/bin/wazuh-execd
 %attr(750, root, root) %{_localstatedir}/bin/wazuh-integratord
 %attr(750, root, root) %{_localstatedir}/bin/wazuh-logcollector
-%attr(750, root, wazuh) %{_localstatedir}/bin/wazuh-logtest
 %attr(750, root, root) %{_localstatedir}/bin/wazuh-maild
 %attr(750, root, root) %{_localstatedir}/bin/wazuh-monitord
 %attr(750, root, root) %{_localstatedir}/bin/wazuh-regex
 %attr(750, root, root) %{_localstatedir}/bin/wazuh-remoted
 %attr(750, root, root) %{_localstatedir}/bin/wazuh-reportd
 %attr(750, root, root) %{_localstatedir}/bin/wazuh-syscheckd
-%attr(750, root, wazuh) %{_localstatedir}/bin/verify-agent-conf
 %attr(750, root, wazuh) %{_localstatedir}/bin/wazuh-apid
 %attr(750, root, wazuh) %{_localstatedir}/bin/wazuh-clusterd
 %attr(750, root, root) %{_localstatedir}/bin/wazuh-db
