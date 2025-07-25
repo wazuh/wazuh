@@ -405,6 +405,8 @@ void save_controlmsg(const keyentry * key, char *r_msg, int *wdb_sock, bool *pos
             if (agent_info = cJSON_Parse(strchr(r_msg, '{')), agent_info) {
                 cJSON *version = NULL;
                 if (version = cJSON_GetObjectItem(agent_info, "version"), cJSON_IsString(version)) {
+                    // Update agent data to keep context of events to forward
+                    OSHash_Set_ex(agent_data_hash, key->id, strdup(version->valuestring));
                     if (!logr.allow_higher_versions &&
                         compare_wazuh_versions(__ossec_version, version->valuestring, false) < 0) {
 
@@ -422,6 +424,14 @@ void save_controlmsg(const keyentry * key, char *r_msg, int *wdb_sock, bool *pos
                 }
                 cJSON_Delete(agent_info);
             }
+            is_startup = 1;
+            rem_inc_recv_ctrl_startup(key->id);
+        } else {
+            mdebug1("Agent %s sent HC_SHUTDOWN from '%s'", key->name, aux_ip);
+            is_shutdown = 1;
+            rem_inc_recv_ctrl_shutdown(key->id);
+            void *deleted = OSHash_Delete_ex(agent_data_hash, key->id);
+            os_free(deleted);
         }
     } else if (!is_shutdown) {
         /* Clean msg and shared files (remove random string) for keepalive messages */
