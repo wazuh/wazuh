@@ -364,21 +364,6 @@
       "data.oscap.scan.id",
       "data.oscap.scan.profile.id",
       "data.oscap.scan.profile.title",
-      "data.osquery.columns.address",
-      "data.osquery.columns.command",
-      "data.osquery.columns.description",
-      "data.osquery.columns.dst_ip",
-      "data.osquery.columns.gid",
-      "data.osquery.columns.hostname",
-      "data.osquery.columns.md5",
-      "data.osquery.columns.path",
-      "data.osquery.columns.sha1",
-      "data.osquery.columns.sha256",
-      "data.osquery.columns.src_ip",
-      "data.osquery.columns.user",
-      "data.osquery.columns.username",
-      "data.osquery.name",
-      "data.osquery.pack",
       "data.port.process",
       "data.port.protocol",
       "data.port.state",
@@ -2701,22 +2686,6 @@
                 }
               },
               "severity": {
-                "type": "keyword"
-              }
-            }
-          },
-          "osquery": {
-            "properties": {
-              "name": {
-                "type": "keyword"
-              },
-              "pack": {
-                "type": "keyword"
-              },
-              "action": {
-                "type": "keyword"
-              },
-              "calendarTime": {
                 "type": "keyword"
               }
             }
