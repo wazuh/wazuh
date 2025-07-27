@@ -45,7 +45,7 @@ checks:
       - soc_2: ["CC6.1"]
     condition: all
     rules:
-      - 'c:net.exe accounts -> n:Length of password history maintained:\s+(\d+) compare >= 24'
+      - 'c:powershell secedit /export /cfg $env:TEMP\secpol.cfg; Get-Content $env:TEMP\secpol.cfg | Select-String "PasswordHistorySize"; Remove-Item $env:TEMP\secpol.cfg -> n:PasswordHistorySize = (\d+) compare >= 24'
 
  # 1.1.2 (L1) Ensure 'Maximum password age' is set to '365 or fewer days, but not 0'. (Automated)
   - id: 26001
@@ -66,8 +66,9 @@ checks:
       - soc_2: ["CC6.1"]
     condition: all
     rules:
-      - 'c:net.exe accounts -> n:Maximum password age \(days\):\s+(\d+) compare <= 365'
-      - 'c:net.exe accounts -> n:Maximum password age \(days\):\s+(\d+) compare > 0'
+      - 'c:powershell secedit /export /cfg $env:TEMP\secpol.cfg; Get-Content $env:TEMP\secpol.cfg | Select-String "MaximumPasswordAge"; Remove-Item $env:TEMP\secpol.cfg -> n:MaximumPasswordAge = (\d+) compare <= 365'
+      - 'c:powershell secedit /export /cfg $env:TEMP\secpol.cfg; Get-Content $env:TEMP\secpol.cfg | Select-String "MaximumPasswordAge"; Remove-Item $env:TEMP\secpol.cfg -> n:MaximumPasswordAge = (\d+) compare > 0'
+
 
  # 1.1.3 (L1) Ensure 'Minimum password age' is set to '1 or more day(s)'. (Automated)
   - id: 26002
@@ -88,7 +89,7 @@ checks:
       - soc_2: ["CC6.1"]
     condition: all
     rules:
-      - 'c:net.exe accounts -> n:Minimum password age \(days\):\s+(\d+) compare >= 1'
+      - 'c:powershell secedit /export /cfg $env:TEMP\secpol.cfg; Get-Content $env:TEMP\secpol.cfg | Select-String "MinimumPasswordAge"; Remove-Item $env:TEMP\secpol.cfg -> n:MinimumPasswordAge = (\d+) compare >= 1'
 
  # 1.1.4 (L1) Ensure 'Minimum password length' is set to '14 or more character(s)'. (Automated)
   - id: 26003
@@ -110,7 +111,7 @@ checks:
       - soc_2: ["CC6.1"]
     condition: all
     rules:
-      - 'c:net.exe accounts -> n:Minimum password length:\s+(\d+) compare >= 14'
+      - 'c:powershell secedit /export /cfg $env:TEMP\secpol.cfg; Get-Content $env:TEMP\secpol.cfg | Select-String "MinimumPasswordLength"; Remove-Item $env:TEMP\secpol.cfg -> n:MinimumPasswordLength = (\d+) compare >= 14'
 
  # 1.1.5 (L1) Ensure 'Password must meet complexity requirements' is set to 'Enabled'. (Automated) - Not Implemented
 
@@ -158,7 +159,7 @@ checks:
       - pci_dss_v4.0: ["8.3.4"]
     condition: all
     rules:
-      - 'c:net.exe accounts -> n:Lockout duration \(minutes\):\s+(\d+) compare >= 15'
+      - 'c:powershell secedit /export /cfg $env:TEMP\secpol.cfg; Get-Content $env:TEMP\secpol.cfg | Select-String "LockoutDuration"; Remove-Item $env:TEMP\secpol.cfg -> n:LockoutDuration = (\d+) compare >= 15'
 
  # 1.2.2 (L1) Ensure 'Account lockout threshold' is set to '5 or fewer invalid logon attempt(s), but not 0'. (Automated)
   - id: 26006
@@ -177,8 +178,8 @@ checks:
       - pci_dss_v4.0: ["8.3.4"]
     condition: all
     rules:
-      - 'c:net.exe accounts -> n:Lockout threshold:\s+(\d+) compare > 0'
-      - 'c:net.exe accounts -> n:Lockout threshold:\s+(\d+) compare <= 5'
+      - 'c:powershell secedit /export /cfg $env:TEMP\secpol.cfg; Get-Content $env:TEMP\secpol.cfg | Select-String "LockoutBadCount"; Remove-Item $env:TEMP\secpol.cfg -> n:LockoutBadCount = (\d+) compare <= 5'
+      - 'c:powershell secedit /export /cfg $env:TEMP\secpol.cfg; Get-Content $env:TEMP\secpol.cfg | Select-String "LockoutBadCount"; Remove-Item $env:TEMP\secpol.cfg -> n:LockoutBadCount = (\d+) compare > 0'
 
  # 1.2.3 (L1) Ensure 'Allow Administrator account lockout' is set to 'Enabled'. (Manual)
 
@@ -199,7 +200,7 @@ checks:
       - pci_dss_v4.0: ["8.3.4"]
     condition: all
     rules:
-      - 'c:net.exe accounts -> n:Lockout observation window \(minutes\):\s+(\d+) compare >= 15'
+      - 'c:powershell secedit /export /cfg $env:TEMP\secpol.cfg; Get-Content $env:TEMP\secpol.cfg | Select-String "ResetLockoutCount"; Remove-Item $env:TEMP\secpol.cfg -> n:ResetLockoutCount = (\d+) compare >= 15'
 
  # 2.2.1 (L1) Ensure 'Access Credential Manager as a trusted caller' is set to 'No One'. (Automated) - Not Implemented
  # 2.2.2 (L1) Ensure 'Access this computer from the network' is set to 'Administrators, Remote Desktop Users'. (Automated) - Not Implemented
@@ -278,7 +279,7 @@ checks:
       - pci_dss_v3.2.1: ["2.1", "2.1.1"]
       - pci_dss_v4.0: ["2.2.2", "2.3.1"]
       - soc_2: ["CC6.3"]
-    condition: any
+    condition: all
     rules:
       - 'c:net user guest -> r:Account active\s+No'
       - 'c:net user guest -> r:The user name could not be found.'
@@ -1837,9 +1838,6 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
     condition: all
     rules:
-      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services'
-      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\PNRPsvc'
-      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\PNRPsvc -> Start'
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\PNRPsvc -> Start -> 4'
 
  # 5.14 (L2) Ensure 'Peer Networking Grouping (p2psvc)' is set to 'Disabled'. (Automated)
@@ -1860,9 +1858,6 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
     condition: all
     rules:
-      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services'
-      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\p2psvc'
-      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\p2psvc -> Start'
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\p2psvc -> Start -> 4'
 
  # 5.15 (L2) Ensure 'Peer Networking Identity Manager (p2pimsvc)' is set to 'Disabled'. (Automated)
@@ -1883,9 +1878,6 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
     condition: all
     rules:
-      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services'
-      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\p2pimsvc'
-      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\p2pimsvc -> Start'
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\p2pimsvc -> Start -> 4'
 
  # 5.16 (L2) Ensure 'PNRP Machine Name Publication Service (PNRPAutoReg)' is set to 'Disabled'. (Automated)
@@ -1906,9 +1898,6 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
     condition: all
     rules:
-      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services'
-      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\PNRPAutoReg'
-      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\PNRPAutoReg -> Start'
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\PNRPAutoReg -> Start -> 4'
 
  # 5.17 (L2) Ensure 'Print Spooler (Spooler)' is set to 'Disabled'. (Automated)
@@ -5660,11 +5649,11 @@ checks:
       - 'https://learn.microsoft.com/en-us/windows-server/identity/laps/laps-management-policy-settings'
     compliance:
       - cis: ["18.9.25.2"]
-    condition: any
+    condition: all
     rules:
-      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\LAPS'
-      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\LAPS -> PasswordExpirationProtectionEnabled'
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\LAPS -> PasswordExpirationProtectionEnabled -> 1'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\LAPS'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\LAPS -> PwdExpirationProtectionEnabled'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\LAPS -> PwdExpirationProtectionEnabled -> 1'
 
  # 18.9.25.3 (L1) Ensure 'Enable password encryption' is set to 'Enabled'. (Automated)
   - id: 26263
@@ -5735,7 +5724,7 @@ checks:
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\LAPS'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\LAPS -> PasswordLength'
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\LAPS -> PasswordLength -> n:^(\d+) compare >= 15'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\LAPS -> PasswordLength -> 15'
 
  # 18.9.25.6 (L1) Ensure 'Password Settings: Password Age (Days)' is set to 'Enabled: 30 or fewer'. (Automated)
   - id: 26266
@@ -7400,7 +7389,29 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE -> RDVEnforceUserCert'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE -> RDVEnforceUserCert -> 1'
 
- # 18.10.9.3.14 (BL) Ensure 'Deny write access to removable drives not protected by BitLocker' is set to 'Enabled'. (Automated) - Not Implemented
+ # 18.10.9.3.14 (BL) Ensure 'Deny write access to removable drives not protected by BitLocker' is set to 'Enabled'. (Automated)
+  - id: 26349
+    title: "Ensure 'Deny write access to removable drives not protected by BitLocker' is set to 'Enabled'."
+    description: "This policy setting configures whether BitLocker protection is required for a computer to be able to write data to a removable data drive. All removable data drives that are not BitLocker-protected will be mounted as read-only. If the drive is protected by BitLocker, it will be mounted with read and write access. The recommended state for this setting is: Enabled."
+    rationale: "Users may not voluntarily encrypt removable drives prior to saving important data to the drive."
+    impact: "All removable data drives that are not BitLocker-protected will be mounted as read-only. If the drive is protected by BitLocker, it will be mounted with read and write access."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\BitLocker Drive Encryption\\Removable Data Drives\\Deny write access to removable drives not protected by BitLocker Note: This Group Policy path is provided by the Group Policy template VolumeEncryption.admx/adml that is included with the Microsoft Windows 7 & Server 2008 R2 Administrative Templates (or newer)."
+    compliance:
+      - cis: ["18.10.9.3.14"]
+      - cis_csc_v8: ["3.9"]
+      - cis_csc_v7: ["13.6", "13.8"]
+      - cmmc_v2.0: ["MP.L2-3.8.6", "MP.L2-3.8.7"]
+      - hipaa: ["164.310(d)(1)"]
+      - iso_27001-2013: ["A.6.2.1", "A.8.3.1"]
+      - nist_sp_800-53: ["MP-5"]
+      - pci_dss_v3.2.1: ["3.4"]
+      - pci_dss_v4.0: ["3.5.1.2"]
+      - soc_2: ["CC6.1"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE -> RDVDenyWriteAccess'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE -> RDVDenyWriteAccess -> 1'
 
  # 18.10.9.3.15 (BL) Ensure 'Deny write access to removable drives not protected by BitLocker: Do not allow write access to devices configured in another organization' is set to 'Enabled: False' (Automated)
   - id: 26350
