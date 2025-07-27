@@ -158,8 +158,8 @@ checks:
      - soc_2: ["CC6.3"]
     condition: any
     rules:
-      - 'c:net user guest -> r:Account active\s+No'
-      - 'c:net user guest -> r:The user name could not be found.'
+      - 'c:wmic useraccount where (sid like "s-1-5-21-%-501") get Disabled -> r:TRUE'
+      - 'c:wmic useraccount where (sid like "s-1-5-21-%-501") get Disabled -> r:No Instance\(s\) Available.'
 
   # 2.3.1.3 (L1) Ensure 'Accounts: Limit local account use of blank passwords to console logon only' is set to 'Enabled'. (Automated)
   - id: 16003
