@@ -516,7 +516,8 @@ void IndexerConnector::preInitialization(
         throw std::runtime_error("Index name must be lowercase: " + m_indexName);
     }
 
-    m_db = std::make_unique<Utils::RocksDBWrapper>(std::string(DATABASE_BASE_PATH) + "db/" + m_indexName);
+    m_db = std::make_unique<Utils::RocksDBWrapper>(
+        std::string(DATABASE_BASE_PATH) + "db/" + m_indexName, true, true, true);
 }
 
 IndexerConnector::IndexerConnector(

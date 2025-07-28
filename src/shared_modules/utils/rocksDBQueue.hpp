@@ -39,14 +39,14 @@ public:
         {
             auto& sharedBuffers = RocksDBSharedBuffers::getInstance();
             m_writeManager = sharedBuffers.getWriteBufferManager();
+            m_readCache = sharedBuffers.getReadCache();
         }
         else
         {
             // Write buffer manager is used to manage the memory used for writing data to the disk.
-            m_writeManager = std::make_shared<rocksdb::WriteBufferManager>(128 * 1024 * 1024);
+            m_readCache = rocksdb::NewLRUCache(16 * 1024 * 1024);
+            m_writeManager = std::make_shared<rocksdb::WriteBufferManager>(128 * 1024 * 1024, m_readCache);
         }
-        // Read cache is used to cache the data in memory.
-        m_readCache = rocksdb::NewLRUCache(16 * 1024 * 1024);
 
         rocksdb::BlockBasedTableOptions tableOptions;
         tableOptions.block_cache = m_readCache;

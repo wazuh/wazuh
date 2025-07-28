@@ -25,17 +25,36 @@ public:
         return instance;
     }
 
+    static constexpr size_t SHARED_BUFFER_SIZE {128 * 1024 * 1024};    // 128MB
+    static constexpr size_t SHARED_READ_CACHE_SIZE {32 * 1024 * 1024}; // 32MB
+
+    std::shared_ptr<rocksdb::Cache> getReadCache()
+    {
+        std::lock_guard lock(m_mutex);
+        if (!m_readCache)
+        {
+            m_readCache = rocksdb::NewLRUCache(SHARED_READ_CACHE_SIZE);
+        }
+        return m_readCache;
+    }
+
     std::shared_ptr<rocksdb::WriteBufferManager> getWriteBufferManager()
     {
         std::lock_guard lock(m_mutex);
+
+        if (!m_readCache)
+        {
+            m_readCache = rocksdb::NewLRUCache(SHARED_READ_CACHE_SIZE);
+        }
+
         if (!m_writeBufferManager)
         {
             // Single shared write buffer manager for all instances with strict limit
             // Enable cost_to_cache to enforce stricter memory limits
             m_writeBufferManager = std::make_shared<rocksdb::WriteBufferManager>(
-                128 * 1024 * 1024, // 128MB strict limit
-                nullptr,           // No cache (we have separate read cache)
-                true               // allow_stall = true, stalls writes when limit exceeded
+                SHARED_BUFFER_SIZE, // strict limit
+                m_readCache,        // No cache (we have separate read cache)
+                true                // allow_stall = true, stalls writes when limit exceeded
             );
         }
         return m_writeBufferManager;
@@ -49,6 +68,7 @@ private:
 
     std::mutex m_mutex;
     std::shared_ptr<rocksdb::WriteBufferManager> m_writeBufferManager;
+    std::shared_ptr<rocksdb::Cache> m_readCache;
 };
 
 #endif // _ROCKS_DB_SHARED_BUFFERS_HPP
