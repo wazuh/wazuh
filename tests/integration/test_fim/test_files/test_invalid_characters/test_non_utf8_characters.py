@@ -72,7 +72,7 @@ from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.modules.agentd.configuration import AGENTD_DEBUG, AGENTD_WINDOWS_DEBUG
 from wazuh_testing.modules.fim import configuration
 from wazuh_testing.modules.fim.patterns import (IGNORING_DUE_TO_INVALID_NAME,
-                                                SYNC_INTEGRITY_MESSAGE)
+                                                FIM_EVENT_JSON)
 from wazuh_testing.modules.monitord.configuration import MONITORD_ROTATE_LOG
 from wazuh_testing.tools.monitors.file_monitor import FileMonitor
 from wazuh_testing.utils import file
@@ -162,5 +162,5 @@ def test_valid_utf8_filenames_do_not_trigger_warning(test_configuration, test_me
         except:
             raise
 
-        monitor.start(generate_callback(SYNC_INTEGRITY_MESSAGE))
+        monitor.start(generate_callback(FIM_EVENT_JSON))
         assert monitor.callback_result

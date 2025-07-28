@@ -82,7 +82,7 @@ static const char *STR_MORE_CHANGES = "More changes...";
 
 #define DEFAULT_OPTIONS                                                                                    \
     CHECK_MD5SUM | CHECK_SHA1SUM | CHECK_SHA256SUM | CHECK_PERM | CHECK_SIZE | CHECK_OWNER | CHECK_GROUP | \
-    CHECK_MTIME | CHECK_INODE
+    CHECK_MTIME | CHECK_INODE | CHECK_DEVICE
 
 typedef struct gen_diff_struct {
     diff_data *diff;

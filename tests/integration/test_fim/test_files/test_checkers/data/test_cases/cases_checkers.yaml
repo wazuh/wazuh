@@ -12,6 +12,7 @@
     file_to_monitor:  !!python/object/apply:os.path.join [/test_dir, testfile.log]
     fim_mode: whodata
     checks: []
+    checks_hash: []
 
 - name: Check All - Who-data
   description: When a real-time monitored directory es deleted
@@ -27,18 +28,20 @@
     file_to_monitor:  !!python/object/apply:os.path.join [/test_dir, testfile.log]
     fim_mode: whodata
     checks:
-      - 'hash_sha1'
-      - 'hash_md5'
-      - 'hash_sha256'
+      - 'hash'
       - 'size'
       - 'uid'
       - 'owner'
       - 'gid'
-      - 'group_'
+      - 'group'
       - 'permissions'
       - 'mtime'
       - 'inode'
-      - 'checksum'
+      - 'device'
+    checks_hash:
+      - 'sha1'
+      - 'md5'
+      - 'sha256'
 
 - name: Check All but check_mtime - Who-data
   description: When a real-time monitored directory es deleted
@@ -55,17 +58,19 @@
     file_to_monitor:  !!python/object/apply:os.path.join [/test_dir, testfile.log]
     fim_mode: whodata
     checks:
-      - 'hash_sha1'
-      - 'hash_md5'
-      - 'hash_sha256'
+      - 'hash'
       - 'size'
       - 'uid'
       - 'owner'
       - 'gid'
-      - 'group_'
+      - 'group'
       - 'permissions'
       - 'inode'
-      - 'checksum'
+      - 'device'
+    checks_hash:
+      - 'sha1'
+      - 'md5'
+      - 'sha256'
 
 - name: Check All but check_size - Who-data
   description: When a real-time monitored directory es deleted
@@ -82,17 +87,19 @@
     file_to_monitor:  !!python/object/apply:os.path.join [/test_dir, testfile.log]
     fim_mode: whodata
     checks:
-      - 'hash_sha1'
-      - 'hash_md5'
-      - 'hash_sha256'
+      - 'hash'
       - 'uid'
       - 'owner'
       - 'gid'
-      - 'group_'
+      - 'group'
       - 'permissions'
       - 'mtime'
       - 'inode'
-      - 'checksum'
+      - 'device'
+    checks_hash:
+      - 'sha1'
+      - 'md5'
+      - 'sha256'
 
 - name: Check All but check_sha256sum - Who-data
   description: When a real-time monitored directory es deleted
@@ -109,17 +116,19 @@
     file_to_monitor:  !!python/object/apply:os.path.join [/test_dir, testfile.log]
     fim_mode: whodata
     checks:
-      - 'hash_sha1'
-      - 'hash_md5'
+      - 'hash'
       - 'size'
       - 'uid'
       - 'owner'
       - 'gid'
-      - 'group_'
+      - 'group'
       - 'permissions'
       - 'mtime'
       - 'inode'
-      - 'checksum'
+      - 'device'
+    checks_hash:
+      - 'sha1'
+      - 'md5'
 
 - name: Check All but check_md5sum - Who-data
   description: When a real-time monitored directory es deleted
@@ -136,17 +145,19 @@
     file_to_monitor:  !!python/object/apply:os.path.join [/test_dir, testfile.log]
     fim_mode: whodata
     checks:
-      - 'hash_sha1'
-      - 'hash_sha256'
+      - 'hash'
       - 'size'
       - 'uid'
       - 'owner'
       - 'gid'
-      - 'group_'
+      - 'group'
       - 'permissions'
       - 'mtime'
       - 'inode'
-      - 'checksum'
+      - 'device'
+    checks_hash:
+      - 'sha1'
+      - 'sha256'
 
 - name: Check All but check_sha1sum - Who-data
   description: When a real-time monitored directory es deleted
@@ -163,17 +174,19 @@
     file_to_monitor:  !!python/object/apply:os.path.join [/test_dir, testfile.log]
     fim_mode: whodata
     checks:
-      - 'hash_md5'
-      - 'hash_sha256'
+      - 'hash'
       - 'size'
       - 'uid'
       - 'owner'
       - 'gid'
-      - 'group_'
+      - 'group'
       - 'permissions'
       - 'mtime'
       - 'inode'
-      - 'checksum'
+      - 'device'
+    checks_hash:
+      - 'md5'
+      - 'sha256'
 
 - name: Check None - Scheduled
   description: When a real-time monitored directory es deleted
@@ -189,6 +202,7 @@
     file_to_monitor:  !!python/object/apply:os.path.join [/test_dir, testfile.log]
     fim_mode: scheduled
     checks: []
+    checks_hash: []
 
 - name: Check All - Scheduled
   description: When a real-time monitored directory es deleted
@@ -204,18 +218,20 @@
     file_to_monitor:  !!python/object/apply:os.path.join [/test_dir, testfile.log]
     fim_mode: scheduled
     checks:
-      - 'hash_sha1'
-      - 'hash_md5'
-      - 'hash_sha256'
+      - 'hash'
       - 'size'
       - 'uid'
       - 'owner'
       - 'gid'
-      - 'group_'
+      - 'group'
       - 'permissions'
       - 'mtime'
       - 'inode'
-      - 'checksum'
+      - 'device'
+    checks_hash:
+      - 'sha1'
+      - 'md5'
+      - 'sha256'
 
 - name: Check All but check_mtime - Scheduled
   description: When a real-time monitored directory es deleted
@@ -232,17 +248,19 @@
     file_to_monitor:  !!python/object/apply:os.path.join [/test_dir, testfile.log]
     fim_mode: scheduled
     checks:
-      - 'hash_sha1'
-      - 'hash_md5'
-      - 'hash_sha256'
+      - 'hash'
       - 'size'
       - 'uid'
       - 'owner'
       - 'gid'
-      - 'group_'
+      - 'group'
       - 'permissions'
       - 'inode'
-      - 'checksum'
+      - 'device'
+    checks_hash:
+      - 'sha1'
+      - 'md5'
+      - 'sha256'
 
 - name: Check All but check_size - Scheduled
   description: When a real-time monitored directory es deleted
@@ -259,17 +277,19 @@
     file_to_monitor:  !!python/object/apply:os.path.join [/test_dir, testfile.log]
     fim_mode: scheduled
     checks:
-      - 'hash_sha1'
-      - 'hash_md5'
-      - 'hash_sha256'
+      - 'hash'
       - 'uid'
       - 'owner'
       - 'gid'
-      - 'group_'
+      - 'group'
       - 'permissions'
       - 'mtime'
       - 'inode'
-      - 'checksum'
+      - 'device'
+    checks_hash:
+      - 'sha1'
+      - 'md5'
+      - 'sha256'
 
 - name: Check All but check_sha256sum - Scheduled
   description: When a real-time monitored directory es deleted
@@ -286,17 +306,19 @@
     file_to_monitor:  !!python/object/apply:os.path.join [/test_dir, testfile.log]
     fim_mode: scheduled
     checks:
-      - 'hash_sha1'
-      - 'hash_md5'
+      - 'hash'
       - 'size'
       - 'uid'
       - 'owner'
       - 'gid'
-      - 'group_'
+      - 'group'
       - 'permissions'
       - 'mtime'
       - 'inode'
-      - 'checksum'
+      - 'device'
+    checks_hash:
+      - 'sha1'
+      - 'md5'
 
 - name: Check All but check_md5sum - Scheduled
   description: When a real-time monitored directory es deleted
@@ -313,17 +335,19 @@
     file_to_monitor:  !!python/object/apply:os.path.join [/test_dir, testfile.log]
     fim_mode: scheduled
     checks:
-      - 'hash_sha1'
-      - 'hash_sha256'
+      - 'hash'
       - 'size'
       - 'uid'
       - 'owner'
       - 'gid'
-      - 'group_'
+      - 'group'
       - 'permissions'
       - 'mtime'
       - 'inode'
-      - 'checksum'
+      - 'device'
+    checks_hash:
+      - 'sha1'
+      - 'sha256'
 
 - name: Check All but check_sha1sum - Scheduled
   description: When a real-time monitored directory es deleted
@@ -340,17 +364,19 @@
     file_to_monitor:  !!python/object/apply:os.path.join [/test_dir, testfile.log]
     fim_mode: scheduled
     checks:
-      - 'hash_md5'
-      - 'hash_sha256'
+      - 'hash'
       - 'size'
       - 'uid'
       - 'owner'
       - 'gid'
-      - 'group_'
+      - 'group'
       - 'permissions'
       - 'mtime'
       - 'inode'
-      - 'checksum'
+      - 'device'
+    checks_hash:
+      - 'md5'
+      - 'sha256'
 
 - name: Check None - Real-Time
   description: When a real-time monitored directory es deleted
@@ -366,6 +392,7 @@
     file_to_monitor:  !!python/object/apply:os.path.join [/test_dir, testfile.log]
     fim_mode: realtime
     checks: []
+    checks_hash: []
 
 - name: Check All - Real-Time
   description: When a real-time monitored directory es deleted
@@ -381,18 +408,20 @@
     file_to_monitor:  !!python/object/apply:os.path.join [/test_dir, testfile.log]
     fim_mode: realtime
     checks:
-      - 'hash_sha1'
-      - 'hash_md5'
-      - 'hash_sha256'
+      - 'hash'
       - 'size'
       - 'uid'
       - 'owner'
       - 'gid'
-      - 'group_'
+      - 'group'
       - 'permissions'
       - 'mtime'
       - 'inode'
-      - 'checksum'
+      - 'device'
+    checks_hash:
+      - 'sha1'
+      - 'md5'
+      - 'sha256'
 
 - name: Check All but check_mtime - Real-Time
   description: When a real-time monitored directory es deleted
@@ -409,17 +438,19 @@
     file_to_monitor:  !!python/object/apply:os.path.join [/test_dir, testfile.log]
     fim_mode: realtime
     checks:
-      - 'hash_sha1'
-      - 'hash_md5'
-      - 'hash_sha256'
+      - 'hash'
       - 'size'
       - 'uid'
       - 'owner'
       - 'gid'
-      - 'group_'
+      - 'group'
       - 'permissions'
       - 'inode'
-      - 'checksum'
+      - 'device'
+    checks_hash:
+      - 'sha1'
+      - 'md5'
+      - 'sha256'
 
 - name: Check All but check_size - Real-Time
   description: When a real-time monitored directory es deleted
@@ -436,17 +467,19 @@
     file_to_monitor:  !!python/object/apply:os.path.join [/test_dir, testfile.log]
     fim_mode: realtime
     checks:
-      - 'hash_sha1'
-      - 'hash_md5'
-      - 'hash_sha256'
+      - 'hash'
       - 'uid'
       - 'owner'
       - 'gid'
-      - 'group_'
+      - 'group'
       - 'permissions'
       - 'mtime'
       - 'inode'
-      - 'checksum'
+      - 'device'
+    checks_hash:
+      - 'sha1'
+      - 'md5'
+      - 'sha256'
 
 - name: Check All but check_sha256sum - Real-Time
   description: When a real-time monitored directory es deleted
@@ -463,17 +496,19 @@
     file_to_monitor:  !!python/object/apply:os.path.join [/test_dir, testfile.log]
     fim_mode: realtime
     checks:
-      - 'hash_sha1'
-      - 'hash_md5'
+      - 'hash'
       - 'size'
       - 'uid'
       - 'owner'
       - 'gid'
-      - 'group_'
+      - 'group'
       - 'permissions'
       - 'mtime'
       - 'inode'
-      - 'checksum'
+      - 'device'
+    checks_hash:
+      - 'sha1'
+      - 'md5'
 
 - name: Check All but check_md5sum - Real-Time
   description: When a real-time monitored directory es deleted
@@ -490,17 +525,19 @@
     file_to_monitor:  !!python/object/apply:os.path.join [/test_dir, testfile.log]
     fim_mode: realtime
     checks:
-      - 'hash_sha1'
-      - 'hash_sha256'
+      - 'hash'
       - 'size'
       - 'uid'
       - 'owner'
       - 'gid'
-      - 'group_'
+      - 'group'
       - 'permissions'
       - 'mtime'
       - 'inode'
-      - 'checksum'
+      - 'device'
+    checks_hash:
+      - 'sha1'
+      - 'sha256'
 
 - name: Check All but check_sha1sum - Real-Time
   description: When a real-time monitored directory es deleted
@@ -517,14 +554,16 @@
     file_to_monitor:  !!python/object/apply:os.path.join [/test_dir, testfile.log]
     fim_mode: realtime
     checks:
-      - 'hash_md5'
-      - 'hash_sha256'
+      - 'hash'
       - 'size'
       - 'uid'
       - 'owner'
       - 'gid'
-      - 'group_'
+      - 'group'
       - 'permissions'
       - 'mtime'
       - 'inode'
-      - 'checksum'
+      - 'device'
+    checks_hash:
+      - 'md5'
+      - 'sha256'

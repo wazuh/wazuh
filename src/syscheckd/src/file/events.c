@@ -9,8 +9,7 @@
 
 #include "../../include/syscheck.h"
 
-void fim_calculate_dbsync_difference(const fim_file_data* data,
-                                     const directory_t *configuration,
+void fim_calculate_dbsync_difference(const directory_t *configuration,
                                      const cJSON* old_data,
                                      cJSON* changed_attributes,
                                      cJSON* old_attributes) {
@@ -30,10 +29,38 @@ void fim_calculate_dbsync_difference(const fim_file_data* data,
 
     if (configuration->options & CHECK_PERM) {
         if (aux = cJSON_GetObjectItem(old_data, "permissions"), aux != NULL) {
-#ifndef WIN32
-            cJSON_AddStringToObject(old_attributes, "permissions", cJSON_GetStringValue(aux));
+#ifdef WIN32
+            const char *perm_str = cJSON_GetStringValue(aux);
+            cJSON *parsed = cJSON_Parse(perm_str);
+
+            if (parsed && cJSON_IsObject(parsed)) {
+                cJSON *perm_array = cJSON_CreateArray();
+
+                cJSON *entry = NULL;
+                cJSON_ArrayForEach(entry, parsed) {
+                    const char *permission = entry->string;
+
+                    cJSON *wrapper = cJSON_CreateObject();
+                    cJSON_AddItemToObject(wrapper, permission, cJSON_Duplicate(entry, 1));
+
+                    char *json_string = cJSON_PrintUnformatted(wrapper);
+                    cJSON_AddItemToArray(perm_array, cJSON_CreateString(json_string));
+
+                    cJSON_Delete(wrapper);
+                    free(json_string);
+                }
+
+                cJSON_AddItemToObject(old_attributes, "permissions", perm_array);
+                cJSON_Delete(parsed);
+            } else {
+                cJSON *perm_array = cJSON_CreateArray();
+                cJSON_AddItemToArray(perm_array, cJSON_CreateString(perm_str));
+                cJSON_AddItemToObject(old_attributes, "permissions", perm_array);
+            }
 #else
-            cJSON_AddItemToObject(old_attributes, "permissions", cJSON_Parse(cJSON_GetStringValue(aux)));
+            cJSON *perm_array = cJSON_CreateArray();
+            cJSON_AddItemToArray(perm_array, cJSON_CreateString(cJSON_GetStringValue(aux)));
+            cJSON_AddItemToObject(old_attributes, "permissions", perm_array);
 #endif
             cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("file.permissions"));
         }
@@ -44,6 +71,11 @@ void fim_calculate_dbsync_difference(const fim_file_data* data,
             cJSON_AddStringToObject(old_attributes, "uid", cJSON_GetStringValue(aux));
             cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("file.uid"));
         }
+
+        if (aux = cJSON_GetObjectItem(old_data, "owner"), aux != NULL) {
+            cJSON_AddStringToObject(old_attributes, "owner", cJSON_GetStringValue(aux));
+            cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("file.owner"));
+        }
     }
 
     if (configuration->options & CHECK_GROUP) {
@@ -51,16 +83,7 @@ void fim_calculate_dbsync_difference(const fim_file_data* data,
             cJSON_AddStringToObject(old_attributes, "gid", cJSON_GetStringValue(aux));
             cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("file.gid"));
         }
-    }
 
-    if (data->owner) {
-        if (aux = cJSON_GetObjectItem(old_data, "owner"), aux != NULL) {
-            cJSON_AddStringToObject(old_attributes, "owner", cJSON_GetStringValue(aux));
-            cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("file.owner"));
-        }
-    }
-
-    if (data->group) {
         if (aux = cJSON_GetObjectItem(old_data, "group_"), aux != NULL) {
             cJSON_AddStringToObject(old_attributes, "group", cJSON_GetStringValue(aux));
             cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("file.group"));
@@ -77,6 +100,13 @@ void fim_calculate_dbsync_difference(const fim_file_data* data,
              }
          }
      }
+
+    if (configuration->options & CHECK_DEVICE) {
+        if (aux = cJSON_GetObjectItem(old_data, "device"), aux != NULL) {
+            cJSON_AddNumberToObject(old_attributes, "device", aux->valueint);
+            cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("file.device"));
+        }
+    }
 
     if (configuration->options & CHECK_MTIME) {
         if (aux = cJSON_GetObjectItem(old_data, "mtime"), aux != NULL) {
@@ -121,18 +151,13 @@ void fim_calculate_dbsync_difference(const fim_file_data* data,
 #ifdef WIN32
     if (configuration->options & CHECK_ATTRS) {
         if (aux = cJSON_GetObjectItem(old_data, "attributes"), aux != NULL) {
-            cJSON_AddStringToObject(old_attributes, "attributes", cJSON_GetStringValue(aux));
+            cJSON *attr_array = cJSON_CreateArray();
+            cJSON_AddItemToArray(attr_array, cJSON_CreateString(cJSON_GetStringValue(aux)));
+            cJSON_AddItemToObject(old_attributes, "attributes", attr_array);
             cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("file.attributes"));
         }
     }
 #endif
-
-    if (data->device > 0) {
-        if (aux = cJSON_GetObjectItem(old_data, "device"), aux != NULL) {
-            cJSON_AddNumberToObject(old_attributes, "device", aux->valueint);
-            cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("file.device"));
-        }
-    }
 }
 
 cJSON * fim_attributes_json(const cJSON *dbsync_event, const fim_file_data *data, const directory_t *configuration) {
@@ -145,10 +170,37 @@ cJSON * fim_attributes_json(const cJSON *dbsync_event, const fim_file_data *data
         }
 
         if (configuration->options & CHECK_PERM) {
-#ifndef WIN32
-            cJSON_AddStringToObject(attributes, "permissions", data->permissions);
+#ifdef WIN32
+            cJSON *parsed = cJSON_Parse(data->permissions);
+
+            if (parsed && cJSON_IsObject(parsed)) {
+                cJSON *perm_array = cJSON_CreateArray();
+
+                cJSON *entry = NULL;
+                cJSON_ArrayForEach(entry, parsed) {
+                    const char *permission = entry->string;
+
+                    cJSON *wrapper = cJSON_CreateObject();
+                    cJSON_AddItemToObject(wrapper, permission, cJSON_Duplicate(entry, 1));
+
+                    char *json_string = cJSON_PrintUnformatted(wrapper);
+                    cJSON_AddItemToArray(perm_array, cJSON_CreateString(json_string));
+
+                    cJSON_Delete(wrapper);
+                    free(json_string);
+                }
+
+                cJSON_AddItemToObject(attributes, "permissions", perm_array);
+                cJSON_Delete(parsed);
+            } else {
+                cJSON *perm_array = cJSON_CreateArray();
+                cJSON_AddItemToArray(perm_array, cJSON_CreateString(data->permissions));
+                cJSON_AddItemToObject(attributes, "permissions", perm_array);
+            }
 #else
-            cJSON_AddItemToObject(attributes, "permissions", cJSON_Parse(data->permissions));
+            cJSON *perm_array = cJSON_CreateArray();
+            cJSON_AddItemToArray(perm_array, cJSON_CreateString(data->permissions));
+            cJSON_AddItemToObject(attributes, "permissions", perm_array);
 #endif
         }
 
@@ -156,15 +208,15 @@ cJSON * fim_attributes_json(const cJSON *dbsync_event, const fim_file_data *data
             cJSON_AddStringToObject(attributes, "uid", data->uid);
         }
 
+        if (configuration->options & CHECK_OWNER && data->owner && *data->owner != '\0' ) {
+            cJSON_AddStringToObject(attributes, "owner", data->owner);
+        }
+
         if (configuration->options & CHECK_GROUP && data->gid && *data->gid != '\0' ) {
             cJSON_AddStringToObject(attributes, "gid", data->gid);
         }
 
-        if (data->owner && *data->owner != '\0' ) {
-            cJSON_AddStringToObject(attributes, "owner", data->owner);
-        }
-
-        if (data->group && *data->group != '\0') {
+        if (configuration->options & CHECK_GROUP && data->group && *data->group != '\0') {
             cJSON_AddStringToObject(attributes, "group", data->group);
         }
 
@@ -172,6 +224,10 @@ cJSON * fim_attributes_json(const cJSON *dbsync_event, const fim_file_data *data
             char inode_str[32];
             snprintf(inode_str, sizeof(inode_str), "%llu", data->inode);
             cJSON_AddStringToObject(attributes, "inode", inode_str);
+        }
+
+        if (configuration->options & CHECK_DEVICE) {
+            cJSON_AddNumberToObject(attributes, "device", data->device);
         }
 
         if (configuration->options & CHECK_MTIME) {
@@ -204,13 +260,11 @@ cJSON * fim_attributes_json(const cJSON *dbsync_event, const fim_file_data *data
 
 #ifdef WIN32
         if (configuration->options & CHECK_ATTRS) {
-            cJSON_AddStringToObject(attributes, "attributes", data->attributes);
+            cJSON *attr_array = cJSON_CreateArray();
+            cJSON_AddItemToArray(attr_array, cJSON_CreateString(data->attributes));
+            cJSON_AddItemToObject(attributes, "attributes", attr_array);
         }
 #endif
-
-        if (data->device > 0) {
-            cJSON_AddNumberToObject(attributes, "device", data->device);
-        }
 
     } else {
         if (configuration->options & CHECK_SIZE) {
@@ -221,10 +275,38 @@ cJSON * fim_attributes_json(const cJSON *dbsync_event, const fim_file_data *data
 
         if (configuration->options & CHECK_PERM) {
             if (aux = cJSON_GetObjectItem(dbsync_event, "permissions"), aux != NULL) {
-#ifndef WIN32
-                cJSON_AddStringToObject(attributes, "permissions", cJSON_GetStringValue(aux));
+#ifdef WIN32
+                const char *perm_str = cJSON_GetStringValue(aux);
+                cJSON *parsed = cJSON_Parse(perm_str);
+
+                if (parsed && cJSON_IsObject(parsed)) {
+                    cJSON *perm_array = cJSON_CreateArray();
+
+                    cJSON *entry = NULL;
+                    cJSON_ArrayForEach(entry, parsed) {
+                        const char *permission = entry->string;
+
+                        cJSON *wrapper = cJSON_CreateObject();
+                        cJSON_AddItemToObject(wrapper, permission, cJSON_Duplicate(entry, 1));
+
+                        char *json_string = cJSON_PrintUnformatted(wrapper);
+                        cJSON_AddItemToArray(perm_array, cJSON_CreateString(json_string));
+
+                        cJSON_Delete(wrapper);
+                        free(json_string);
+                    }
+
+                    cJSON_AddItemToObject(attributes, "permissions", perm_array);
+                    cJSON_Delete(parsed);
+                } else {
+                    cJSON *perm_array = cJSON_CreateArray();
+                    cJSON_AddItemToArray(perm_array, cJSON_CreateString(perm_str));
+                    cJSON_AddItemToObject(attributes, "permissions", perm_array);
+                }
 #else
-                cJSON_AddItemToObject(attributes, "permissions", cJSON_Parse(cJSON_GetStringValue(aux)));
+                cJSON *perm_array = cJSON_CreateArray();
+                cJSON_AddItemToArray(perm_array, cJSON_CreateString(cJSON_GetStringValue(aux)));
+                cJSON_AddItemToObject(attributes, "permissions", perm_array);
 #endif
             }
         }
@@ -236,6 +318,13 @@ cJSON * fim_attributes_json(const cJSON *dbsync_event, const fim_file_data *data
                     cJSON_AddStringToObject(attributes, "uid", uid);
                 }
             }
+
+            if (aux = cJSON_GetObjectItem(dbsync_event, "owner"), aux != NULL) {
+                char *owner = cJSON_GetStringValue(aux);
+                if (owner != NULL && *owner != '\0') {
+                    cJSON_AddStringToObject(attributes, "owner", cJSON_GetStringValue(aux));
+                }
+            }
         }
 
         if (configuration->options & CHECK_GROUP) {
@@ -245,19 +334,12 @@ cJSON * fim_attributes_json(const cJSON *dbsync_event, const fim_file_data *data
                     cJSON_AddStringToObject(attributes, "gid", gid);
                 }
             }
-        }
 
-        if (aux = cJSON_GetObjectItem(dbsync_event, "owner"), aux != NULL) {
-            char *owner = cJSON_GetStringValue(aux);
-            if (owner != NULL && *owner != '\0') {
-                cJSON_AddStringToObject(attributes, "owner", cJSON_GetStringValue(aux));
-            }
-        }
-
-        if (aux = cJSON_GetObjectItem(dbsync_event, "group_"), aux != NULL) {
-            char *group = cJSON_GetStringValue(aux);
-            if (group != NULL && *group != '\0') {
-                cJSON_AddStringToObject(attributes, "group", cJSON_GetStringValue(aux));
+            if (aux = cJSON_GetObjectItem(dbsync_event, "group_"), aux != NULL) {
+                char *group = cJSON_GetStringValue(aux);
+                if (group != NULL && *group != '\0') {
+                    cJSON_AddStringToObject(attributes, "group", cJSON_GetStringValue(aux));
+                }
             }
         }
 
@@ -268,6 +350,12 @@ cJSON * fim_attributes_json(const cJSON *dbsync_event, const fim_file_data *data
                 } else {
                     mwarn(FIM_WARN_INODE_WRONG_TYPE);
                 }
+            }
+        }
+
+        if (configuration->options & CHECK_DEVICE) {
+            if (aux = cJSON_GetObjectItem(dbsync_event, "device"), aux != NULL) {
+                cJSON_AddNumberToObject(attributes, "device", aux->valueint);
             }
         }
 
@@ -310,14 +398,12 @@ cJSON * fim_attributes_json(const cJSON *dbsync_event, const fim_file_data *data
 #ifdef WIN32
         if (configuration->options & CHECK_ATTRS) {
             if (aux = cJSON_GetObjectItem(dbsync_event, "attributes"), aux != NULL) {
-                cJSON_AddStringToObject(attributes, "attributes", cJSON_GetStringValue(aux));
+                cJSON *attr_array = cJSON_CreateArray();
+                cJSON_AddItemToArray(attr_array, cJSON_CreateString(cJSON_GetStringValue(aux)));
+                cJSON_AddItemToObject(attributes, "attributes", attr_array);
             }
         }
 #endif
-
-        if (aux = cJSON_GetObjectItem(dbsync_event, "device"), aux != NULL) {
-            cJSON_AddNumberToObject(attributes, "device", aux->valueint);
-        }
     }
 
     return attributes;

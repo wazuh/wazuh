@@ -163,8 +163,7 @@ STATIC void transaction_callback(ReturnTypeCallback resultType,
         cJSON_AddItemToObject(file, "previous", old_attributes);
         cJSON_AddItemToObject(event, "changed_fields", changed_attributes);
 
-        fim_calculate_dbsync_difference(txn_context->entry->file_entry.data,
-                                        txn_context->config,
+        fim_calculate_dbsync_difference(txn_context->config,
                                         old_data,
                                         changed_attributes,
                                         old_attributes);

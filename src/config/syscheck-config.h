@@ -100,6 +100,7 @@ typedef enum fdb_stmt {
 #define WHODATA_ACTIVE      00200000
 #define SCHEDULED_ACTIVE    00400000
 #define CHECK_TYPE          01000000
+#define CHECK_DEVICE        02000000
 #define EBPF_PROVIDER       00000000
 #define AUDIT_PROVIDER      00000001
 

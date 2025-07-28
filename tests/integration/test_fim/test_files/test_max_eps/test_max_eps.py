@@ -65,6 +65,7 @@ import sys
 import os
 import time
 import re
+import json
 from datetime import datetime
 
 import pytest
@@ -76,7 +77,7 @@ from wazuh_testing.modules.fim.configuration import SYSCHECK_DEBUG
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.utils.callbacks import generate_callback
 from wazuh_testing.utils import file
-from wazuh_testing.modules.fim.patterns import SENDING_FIM_EVENT, PATH_MONITORED_REALTIME, PATH_MONITORED_WHODATA, PATH_MONITORED_WHODATA_WINDOWS
+from wazuh_testing.modules.fim.patterns import FIM_EVENT_JSON, PATH_MONITORED_REALTIME, PATH_MONITORED_WHODATA, PATH_MONITORED_WHODATA_WINDOWS
 
 from . import TEST_CASES_PATH, CONFIGS_PATH
 
@@ -174,7 +175,7 @@ def test_max_eps(test_configuration, test_metadata, configure_local_internal_opt
 
     n_results = max_eps * 3
 
-    wazuh_log_monitor.start(accumulations=n_results, callback=generate_callback(SENDING_FIM_EVENT))
+    wazuh_log_monitor.start(accumulations=n_results, callback=generate_callback(FIM_EVENT_JSON))
     assert wazuh_log_monitor.callback_result
 
     result = parse_integrity_message(wazuh_log_monitor.callback_result)
@@ -193,7 +194,12 @@ def test_max_eps(test_configuration, test_metadata, configure_local_internal_opt
 def parse_integrity_message(lines):
     result = []
     for line in lines:
-        match = re.match(r"(\d{4}/\d{2}/\d{2} \d{2}:\d{2}:\d{2}).*({.*?})$", line)
-        if match:
-            result.append(datetime.strptime(match.group(1), '%Y/%m/%d %H:%M:%S'))
+        if isinstance(line, tuple):
+            line = line[0]
+        try:
+            log = json.loads(line)
+            timestamp = log["data"]["event"]["created"]
+            result.append(datetime.strptime(timestamp, '%Y-%m-%dT%H:%M:%S.%fZ'))
+        except (json.JSONDecodeError, KeyError, ValueError):
+            continue
     return result

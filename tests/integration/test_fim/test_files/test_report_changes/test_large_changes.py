@@ -194,13 +194,13 @@ def test_large_changes(test_configuration, test_metadata, configure_local_intern
 
     # Assert 'More changes' is shown when the command returns more than 'limit' characters
     if test_metadata.get('has_more_changes'):
-        assert 'More changes' in event['content_changes'], 'Did not find event with "More changes" within content_changes.'
+        assert 'More changes' in event['file']['content_changes'], 'Did not find event with "More changes" within content_changes.'
     else:
-        assert 'More changes' not in event['content_changes'], '"More changes" found within content_changes.'
+        assert 'More changes' not in event['file']['content_changes'], '"More changes" found within content_changes.'
 
     # Assert old content is shown in content_changes
-    assert '0' in event['content_changes'], '"0" is the old value but it is not found within content_changes'
+    assert '0' in event['file']['content_changes'], '"0" is the old value but it is not found within content_changes'
 
     # Assert new content is shown when old content is lower than the limit or platform is Windows
     if test_metadata.get('original_size') < limit or sys.platform == WINDOWS:
-        assert '1' in event['content_changes'], '"1" is the new value but it is not found within content_changes'
+        assert '1' in event['file']['content_changes'], '"1" is the new value but it is not found within content_changes'

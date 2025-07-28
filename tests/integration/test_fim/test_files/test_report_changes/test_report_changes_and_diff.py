@@ -212,12 +212,12 @@ def test_reports_file_and_nodiff(test_configuration, test_metadata, configure_lo
 
     # Validate content_changes value is truncated if the file is set to no_diff
     if is_truncated:
-        assert "Diff truncated due to 'nodiff' configuration detected for this file." in event.get('content_changes'), \
+        assert "Diff truncated due to 'nodiff' configuration detected for this file." in event['file']['content_changes'], \
             'content_changes is not truncated'
     else:
-        assert 'test_string' in event.get('content_changes'), 'Wrong content_changes field'
+        assert 'test_string' in event['file']['content_changes'], 'Wrong content_changes field'
 
     truncate_file(WAZUH_LOG_PATH)
     delete_files_in_folder(folder)
     wazuh_log_monitor.start(generate_callback(EVENT_TYPE_DELETED))
-    assert get_fim_event_data(wazuh_log_monitor.callback_result)['mode'] == test_metadata.get('fim_mode')
+    assert get_fim_event_data(wazuh_log_monitor.callback_result)['file']['mode'] == test_metadata.get('fim_mode')

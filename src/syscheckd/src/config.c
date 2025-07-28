@@ -204,6 +204,9 @@ cJSON *getSyscheckConfig(void) {
             if (dir_it->options & CHECK_INODE) {
                 cJSON_AddItemToArray(opts, cJSON_CreateString("check_inode"));
             }
+            if (dir_it->options & CHECK_DEVICE) {
+                cJSON_AddItemToArray(opts, cJSON_CreateString("check_device"));
+            }
             if (dir_it->options & REALTIME_ACTIVE) {
                 cJSON_AddItemToArray(opts, cJSON_CreateString("realtime"));
             }

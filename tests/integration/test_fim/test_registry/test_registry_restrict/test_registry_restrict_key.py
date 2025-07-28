@@ -154,17 +154,17 @@ def test_restrict_key(test_configuration, test_metadata,configure_local_internal
         wazuh_log_monitor.start(callback=generate_callback(EVENT_TYPE_ADDED))
         assert wazuh_log_monitor.callback_result
         event = get_fim_event_data(wazuh_log_monitor.callback_result)
-        assert event['type'] == 'added', 'Event type not equal'
-        assert event['path'] == os.path.join(test_metadata['key'], test_metadata['sub_key']), 'Event path not equal'
-        assert event['architecture'].strip('[]') == test_metadata['arch'], 'Arch not equal'
+        assert event['event']['type'] == 'added', 'Event type not equal'
+        assert event['registry']['path'] == os.path.join(test_metadata['key'], test_metadata['sub_key']), 'Event path not equal'
+        assert event['registry']['architecture'].strip('[]') == test_metadata['arch'], 'Arch not equal'
 
         delete_registry(win32con.HKEY_LOCAL_MACHINE, test_metadata['sub_key'], KEY_WOW64_64KEY if test_metadata['arch'] == 'x64' else KEY_WOW64_32KEY)
         wazuh_log_monitor.start(callback=generate_callback(EVENT_TYPE_DELETED))
         assert wazuh_log_monitor.callback_result
         event = get_fim_event_data(wazuh_log_monitor.callback_result)
-        assert event['type'] == 'deleted', 'Event type not equal'
-        assert event['path'] == os.path.join(test_metadata['key'], test_metadata['sub_key']), 'Event path not equal'
-        assert event['architecture'].strip('[]') == test_metadata['arch'], 'Arch not equal'
+        assert event['event']['type'] == 'deleted', 'Event type not equal'
+        assert event['registry']['path'] == os.path.join(test_metadata['key'], test_metadata['sub_key']), 'Event path not equal'
+        assert event['registry']['architecture'].strip('[]') == test_metadata['arch'], 'Arch not equal'
     else:
         wazuh_log_monitor.start(callback=generate_callback(IGNORING_DUE_TO_RESTRICTION))
         assert wazuh_log_monitor.callback_result

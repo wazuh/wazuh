@@ -28,8 +28,7 @@ static const char *VALUE_TYPE[] = {
 };
 
 
-void fim_calculate_dbsync_difference_key(const fim_registry_key* registry_data,
-                                         const registry_t *configuration,
+void fim_calculate_dbsync_difference_key(const registry_t *configuration,
                                          const cJSON* old_data,
                                          cJSON* changed_attributes,
                                          cJSON* old_attributes) {
@@ -37,11 +36,38 @@ void fim_calculate_dbsync_difference_key(const fim_registry_key* registry_data,
     if (old_attributes == NULL || changed_attributes == NULL || !cJSON_IsArray(changed_attributes)) {
         return; //LCOV_EXCL_LINE
     }
+
     cJSON *aux = NULL;
 
     if (configuration->opts & CHECK_PERM) {
         if (aux = cJSON_GetObjectItem(old_data, "permissions"), aux != NULL) {
-            cJSON_AddItemToObject(old_attributes, "permissions", cJSON_Parse(cJSON_GetStringValue(aux)));
+            const char *perm_str = cJSON_GetStringValue(aux);
+            cJSON *parsed = cJSON_Parse(perm_str);
+
+            if (parsed && cJSON_IsObject(parsed)) {
+                cJSON *perm_array = cJSON_CreateArray();
+
+                cJSON *entry = NULL;
+                cJSON_ArrayForEach(entry, parsed) {
+                    const char *permission = entry->string;
+
+                    cJSON *wrapper = cJSON_CreateObject();
+                    cJSON_AddItemToObject(wrapper, permission, cJSON_Duplicate(entry, 1));
+
+                    char *json_string = cJSON_PrintUnformatted(wrapper);
+                    cJSON_AddItemToArray(perm_array, cJSON_CreateString(json_string));
+
+                    cJSON_Delete(wrapper);
+                    free(json_string);
+                }
+
+                cJSON_AddItemToObject(old_attributes, "permissions", perm_array);
+                cJSON_Delete(parsed);
+            } else {
+                cJSON *perm_array = cJSON_CreateArray();
+                cJSON_AddItemToArray(perm_array, cJSON_CreateString(perm_str));
+                cJSON_AddItemToObject(old_attributes, "permissions", perm_array);
+            }
             cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("registry.permissions"));
         }
     }
@@ -81,13 +107,11 @@ void fim_calculate_dbsync_difference_key(const fim_registry_key* registry_data,
     }
 }
 
-void fim_calculate_dbsync_difference_value(const fim_registry_value_data* value_data,
-                                           const registry_t* configuration,
+void fim_calculate_dbsync_difference_value(const registry_t* configuration,
                                            const cJSON* old_data,
                                            cJSON* changed_attributes,
                                            cJSON* old_attributes) {
-    if (value_data == NULL || old_attributes == NULL ||
-        changed_attributes == NULL || !cJSON_IsArray(changed_attributes)) {
+    if (old_attributes == NULL || changed_attributes == NULL || !cJSON_IsArray(changed_attributes)) {
         return; //LCOV_EXCL_LINE
     }
 
@@ -290,7 +314,32 @@ cJSON *fim_registry_key_attributes_json(const cJSON* dbsync_event, const fim_reg
 
     if (data) {
         if (configuration->opts & CHECK_PERM) {
-            cJSON_AddItemToObject(attributes, "permissions", cJSON_Parse(data->permissions));
+            cJSON *parsed = cJSON_Parse(data->permissions);
+
+            if (parsed && cJSON_IsObject(parsed)) {
+                cJSON *perm_array = cJSON_CreateArray();
+
+                cJSON *entry = NULL;
+                cJSON_ArrayForEach(entry, parsed) {
+                    const char *permission = entry->string;
+
+                    cJSON *wrapper = cJSON_CreateObject();
+                    cJSON_AddItemToObject(wrapper, permission, cJSON_Duplicate(entry, 1));
+
+                    char *json_string = cJSON_PrintUnformatted(wrapper);
+                    cJSON_AddItemToArray(perm_array, cJSON_CreateString(json_string));
+
+                    cJSON_Delete(wrapper);
+                    free(json_string);
+                }
+
+                cJSON_AddItemToObject(attributes, "permissions", perm_array);
+                cJSON_Delete(parsed);
+            } else {
+                cJSON *perm_array = cJSON_CreateArray();
+                cJSON_AddItemToArray(perm_array, cJSON_CreateString(data->permissions));
+                cJSON_AddItemToObject(attributes, "permissions", perm_array);
+            }
         }
 
         if (configuration->opts & CHECK_OWNER) {
@@ -318,7 +367,39 @@ cJSON *fim_registry_key_attributes_json(const cJSON* dbsync_event, const fim_reg
 
         if (configuration->opts & CHECK_PERM) {
             if (permissions = cJSON_GetObjectItem(dbsync_event, "permissions"), permissions != NULL) {
-                cJSON_AddItemToObject(attributes, "permissions", cJSON_Parse(cJSON_GetStringValue(permissions)));
+#ifdef WIN32
+                const char *perm_str = cJSON_GetStringValue(permissions);
+                cJSON *parsed = cJSON_Parse(perm_str);
+
+                if (parsed && cJSON_IsObject(parsed)) {
+                    cJSON *perm_array = cJSON_CreateArray();
+
+                    cJSON *entry = NULL;
+                    cJSON_ArrayForEach(entry, parsed) {
+                        const char *permission = entry->string;
+
+                        cJSON *wrapper = cJSON_CreateObject();
+                        cJSON_AddItemToObject(wrapper, permission, cJSON_Duplicate(entry, 1));
+
+                        char *json_string = cJSON_PrintUnformatted(wrapper);
+                        cJSON_AddItemToArray(perm_array, cJSON_CreateString(json_string));
+
+                        cJSON_Delete(wrapper);
+                        free(json_string);
+                    }
+
+                    cJSON_AddItemToObject(attributes, "permissions", perm_array);
+                    cJSON_Delete(parsed);
+                } else {
+                    cJSON *perm_array = cJSON_CreateArray();
+                    cJSON_AddItemToArray(perm_array, cJSON_CreateString(perm_str));
+                    cJSON_AddItemToObject(attributes, "permissions", perm_array);
+                }
+#else
+                cJSON *perm_array = cJSON_CreateArray();
+                cJSON_AddItemToArray(perm_array, cJSON_CreateString(cJSON_GetStringValue(permissions)));
+                cJSON_AddItemToObject(attributes, "permissions", perm_array);
+#endif
             }
         }
 

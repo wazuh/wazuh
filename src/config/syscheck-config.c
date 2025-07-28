@@ -750,6 +750,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
     const char *xml_check_perm = "check_perm";
     const char *xml_check_mtime = "check_mtime";
     const char *xml_check_inode = "check_inode";
+    const char *xml_check_device = "check_device";
     const char *xml_check_attrs = "check_attrs";
     const char *xml_follow_symbolic_link = "follow_symbolic_link";
     const char *xml_real_time = "realtime";
@@ -795,7 +796,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                 fim_set_check_all(&opts);
             } else if (strcmp(*values, "no") == 0) {
                 opts &= ~ ( CHECK_MD5SUM | CHECK_SHA1SUM | CHECK_PERM | CHECK_SHA256SUM | CHECK_SIZE
-                        | CHECK_OWNER | CHECK_GROUP | CHECK_MTIME | CHECK_INODE);
+                        | CHECK_OWNER | CHECK_GROUP | CHECK_MTIME | CHECK_INODE | CHECK_DEVICE);
 
 #ifdef WIN32
                 opts &= ~ CHECK_ATTRS;
@@ -924,6 +925,17 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                 opts |= CHECK_INODE;
             } else if (strcmp(*values, "no") == 0) {
                 opts &= ~ CHECK_INODE;
+            } else {
+                mwarn(FIM_INVALID_OPTION_SKIP, *values, *attrs, dirs);
+                goto out_free;
+            }
+        }
+        /* Check device */
+        else if (strcmp(*attrs, xml_check_device) == 0) {
+            if (strcmp(*values, "yes") == 0) {
+                opts |= CHECK_DEVICE;
+            } else if (strcmp(*values, "no") == 0) {
+                opts &= ~ CHECK_DEVICE;
             } else {
                 mwarn(FIM_INVALID_OPTION_SKIP, *values, *attrs, dirs);
                 goto out_free;
@@ -2148,6 +2160,7 @@ char *syscheck_opts2str(char *buf, int buflen, int opts) {
         CHECK_GROUP,
         CHECK_MTIME,
         CHECK_INODE,
+        CHECK_DEVICE,
         CHECK_MD5SUM,
         CHECK_SHA1SUM,
         CHECK_SHA256SUM,
@@ -2167,6 +2180,7 @@ char *syscheck_opts2str(char *buf, int buflen, int opts) {
         "group",
     	"mtime",
         "inode",
+        "device",
         "hash_md5",
         "hash_sha1",
         "hash_sha256",
@@ -2176,7 +2190,7 @@ char *syscheck_opts2str(char *buf, int buflen, int opts) {
         "realtime",
         "whodata",
         "scheduled",
-        "reg_value_type",
+        "type",
 	    NULL
 	};
 
@@ -2505,6 +2519,7 @@ static void fim_set_check_all(int *opt) {
     *opt |= CHECK_GROUP;
     *opt |= CHECK_MTIME;
     *opt |= CHECK_INODE;
+    *opt |= CHECK_DEVICE;
 #ifdef WIN32
     *opt |= CHECK_ATTRS;
 #endif

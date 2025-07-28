@@ -218,14 +218,12 @@ cJSON* fim_audit_json(const whodata_evt* w_evt);
  * @brief Calculates the `changed_attributes` and `old_attributes` for files using the
  *        information collected by the scan and the old attributes returned by DBSync.
  *
- * @param data Data collected by the FIM scan.
  * @param configuration Configuration of the entry.
  * @param old_data Old attributes returned by DBSync.
  * @param changed_attributes JSON Array where the changed attributes will be stored.
  * @param old_attributes JSON where the old attributes will be stored.
  */
-void fim_calculate_dbsync_difference(const fim_file_data *data,
-                                     const directory_t *configuration,
+void fim_calculate_dbsync_difference(const directory_t *configuration,
                                      const cJSON* old_data,
                                      cJSON* changed_attributes,
                                      cJSON* old_attributes);

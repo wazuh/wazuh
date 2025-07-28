@@ -644,10 +644,10 @@ static void test_fim_attributes_json(void **state) {
     assert_non_null(size);
     assert_int_equal(size->valueint, 1500);
     cJSON *permissions = cJSON_GetObjectItem(fim_data->json, "permissions");
+    cJSON *permission_item = cJSON_GetArrayItem(permissions, 0);
+    assert_non_null(permission_item);
 #ifndef TEST_WINAGENT
-    assert_string_equal(cJSON_GetStringValue(permissions), "0664");
-#else
-    assert_non_null(permissions);
+    assert_string_equal(permission_item->valuestring, "0664");
 #endif
     cJSON *uid = cJSON_GetObjectItem(fim_data->json, "uid");
     assert_string_equal(cJSON_GetStringValue(uid), "100");
@@ -673,7 +673,9 @@ static void test_fim_attributes_json(void **state) {
     assert_string_equal(cJSON_GetStringValue(hash_sha256), "672a8ceaea40a441f0268ca9bbb33e99f9643c6262667b61fbe57694df224d40");
 #ifdef TEST_WINAGENT
     cJSON *attributes = cJSON_GetObjectItem(fim_data->json, "attributes");
-    assert_string_equal(cJSON_GetStringValue(attributes), "r--r--r--");
+    cJSON *attribute_item = cJSON_GetArrayItem(attributes, 0);
+    assert_non_null(attribute_item);
+    assert_string_equal(attribute_item->valuestring, "r--r--r--");
 #endif
 }
 
@@ -3620,7 +3622,7 @@ static void test_transaction_callback_full_db(void **state) {
 /* fim_calculate_dbsync_difference */
 void test_fim_calculate_dbsync_difference(void **state){
     directory_t configuration = { .options = (CHECK_SIZE | CHECK_PERM | CHECK_OWNER | CHECK_GROUP | CHECK_MTIME |
-                                              CHECK_INODE | CHECK_MD5SUM | CHECK_SHA1SUM | CHECK_SHA256SUM) };
+                                              CHECK_INODE | CHECK_DEVICE | CHECK_MD5SUM | CHECK_SHA1SUM | CHECK_SHA256SUM) };
 
     #ifndef TEST_WINAGENT
         char* changed_data = "{\"size\":0, \"permissions\":\"rw-rw-r--\", \"attributes\":\"NULL\", \"uid\":\"1000\", \"gid\":\"1000\", \
@@ -3639,18 +3641,25 @@ void test_fim_calculate_dbsync_difference(void **state){
     cJSON* old_attributes = cJSON_CreateObject();
     cJSON* changed_attributes = cJSON_CreateArray();
 
-    fim_calculate_dbsync_difference(&DEFAULT_FILE_DATA,
-                                        &configuration,
+    fim_calculate_dbsync_difference(&configuration,
                                         changed_data_json,
                                         changed_attributes,
                                         old_attributes);
 
     assert_int_equal(cJSON_GetObjectItem(old_attributes, "size")->valueint, 0);
     #ifdef TEST_WINAGENT
-    assert_string_equal(cJSON_PrintUnformatted(cJSON_GetObjectItem(old_attributes, "permissions")), "{\"S-1-5-32-544\":{\"name\":\"Administrators\",\"allowed\":[\"delete\",\"read_control\",\"write_dac\",\"write_owner\",\"synchronize\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\",\"read_attributes\",\"write_attributes\"]},\"S-1-5-18\":{\"name\":\"SYSTEM\",\"allowed\":[\"delete\",\"read_control\",\"write_dac\",\"write_owner\",\"synchronize\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\",\"read_attributes\",\"write_attributes\"]},\"S-1-5-32-545\":{\"name\":\"Users\",\"allowed\":[\"read_control\",\"synchronize\",\"read_data\",\"read_ea\",\"execute\",\"read_attributes\"]},\"S-1-5-11\":{\"name\":\"Authenticated Users\",\"allowed\":[\"delete\",\"read_control\",\"synchronize\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\",\"read_attributes\",\"write_attributes\"]}}");
-    assert_string_equal(cJSON_GetObjectItem(old_attributes, "attributes")->valuestring, "NULL");
+    cJSON *permissions = cJSON_GetObjectItem(old_attributes, "permissions");
+    assert_int_equal(cJSON_GetArraySize(permissions), 4);
+
+    cJSON *attributes = cJSON_GetObjectItem(old_attributes, "attributes");
+    cJSON *attribute_item = cJSON_GetArrayItem(attributes, 0);
+    assert_non_null(attribute_item);
+    assert_string_equal(attribute_item->valuestring, "NULL");
     #else
-    assert_string_equal(cJSON_GetObjectItem(old_attributes, "permissions")->valuestring, "rw-rw-r--");
+    cJSON *permissions = cJSON_GetObjectItem(old_attributes, "permissions");
+    cJSON *permission_item = cJSON_GetArrayItem(permissions, 0);
+    assert_non_null(permission_item);
+    assert_string_equal(permission_item->valuestring, "rw-rw-r--");
     #endif
 
     assert_string_equal(cJSON_GetObjectItem(old_attributes, "uid")->valuestring, "1000");
@@ -3677,15 +3686,14 @@ void test_fim_calculate_dbsync_difference_no_changed_data(void **state){
     cJSON* changed_attributes = cJSON_CreateArray();
 
     directory_t configuration = { .options = (CHECK_SIZE | CHECK_PERM | CHECK_OWNER | CHECK_GROUP | CHECK_MTIME |
-                                              CHECK_INODE | CHECK_MD5SUM | CHECK_SHA1SUM | CHECK_SHA256SUM) };
+                                              CHECK_INODE | CHECK_DEVICE | CHECK_MD5SUM | CHECK_SHA1SUM | CHECK_SHA256SUM) };
 
 #ifdef TEST_WINAGENT
     DEFAULT_FILE_DATA.attributes = "NULL";
     configuration.options |= CHECK_ATTRS;
 #endif
 
-    fim_calculate_dbsync_difference(&DEFAULT_FILE_DATA,
-                                        &configuration,
+    fim_calculate_dbsync_difference(&configuration,
                                         changed_data_json,
                                         changed_attributes,
                                         old_attributes);
@@ -3761,7 +3769,7 @@ static void test_dbsync_attributes_json(void **state) {
     directory_t configuration = { .options = -1, .tag = "tag_name" };
     json_struct_t *data = *state;
 #ifndef TEST_WINAGENT
-    const char *result_str = "{\"size\":11,\"permissions\":\"rw-r--r--\",\"uid\":\"0\",\"gid\":\"0\",\"owner\":\"root\",\"group\":\"root\",\"inode\":\"271017\",\"mtime\":1646124392,\"hash\":{\"md5\":\"d73b04b0e696b0945283defa3eee4538\",\"sha1\":\"e7509a8c032f3bc2a8df1df476f8ef03436185fa\",\"sha256\":\"8cd07f3a5ff98f2a78cfc366c13fb123eb8d29c1ca37c79df190425d5b9e424d\"},\"device\":64768}";
+    const char *result_str = "{\"size\":11,\"permissions\":[\"rw-r--r--\"],\"uid\":\"0\",\"owner\":\"root\",\"gid\":\"0\",\"group\":\"root\",\"inode\":\"271017\",\"device\":64768,\"mtime\":1646124392,\"hash\":{\"md5\":\"d73b04b0e696b0945283defa3eee4538\",\"sha1\":\"e7509a8c032f3bc2a8df1df476f8ef03436185fa\",\"sha256\":\"8cd07f3a5ff98f2a78cfc366c13fb123eb8d29c1ca37c79df190425d5b9e424d\"}}";
     cJSON *dbsync_event = cJSON_Parse("{\"attributes\":\"\",\"checksum\":\"c0edc82c463da5f4ab8dd420a778a9688a923a72\",\"device\":64768,\"gid\":\"0\",\"group_\":\"root\",\"hash_md5\":\"d73b04b0e696b0945283defa3eee4538\",\"hash_sha1\":\"e7509a8c032f3bc2a8df1df476f8ef03436185fa\",\"hash_sha256\":\"8cd07f3a5ff98f2a78cfc366c13fb123eb8d29c1ca37c79df190425d5b9e424d\",\"inode\":\"271017\",\"mtime\":1646124392,\"path\":\"/etc/testfile\",\"permissions\":\"rw-r--r--\",\"size\":11,\"uid\":\"0\",\"owner\":\"root\"}");
 #else
     cJSON *dbsync_event = cJSON_Parse("{\"size\":0, \"permissions\":\"{\\\"S-1-5-32-544\\\":{\\\"name\\\":\\\"Administrators\\\",\\\"allowed\\\":[\\\"delete\\\",\\\"read_control\\\",\\\"write_dac\\\",\\\"write_owner\\\",\\\"synchronize\\\",\\\"read_data\\\",\\\"write_data\\\",\\\"append_data\\\",\\\"read_ea\\\",\\\"write_ea\\\",\\\"execute\\\",\\\"read_attributes\\\",\\\"write_attributes\\\"]},\\\"S-1-5-18\\\":{\\\"name\\\":\\\"SYSTEM\\\",\\\"allowed\\\":[\\\"delete\\\",\\\"read_control\\\",\\\"write_dac\\\",\\\"write_owner\\\",\\\"synchronize\\\",\\\"read_data\\\",\\\"write_data\\\",\\\"append_data\\\",\\\"read_ea\\\",\\\"write_ea\\\",\\\"execute\\\",\\\"read_attributes\\\",\\\"write_attributes\\\"]},\\\"S-1-5-32-545\\\":{\\\"name\\\":\\\"Users\\\",\\\"allowed\\\":[\\\"read_control\\\",\\\"synchronize\\\",\\\"read_data\\\",\\\"read_ea\\\",\\\"execute\\\",\\\"read_attributes\\\"]},\\\"S-1-5-11\\\":{\\\"name\\\":\\\"Authenticated Users\\\",\\\"allowed\\\":[\\\"delete\\\",\\\"read_control\\\",\\\"synchronize\\\",\\\"read_data\\\",\\\"write_data\\\",\\\"append_data\\\",\\\"read_ea\\\",\\\"write_ea\\\",\\\"execute\\\",\\\"read_attributes\\\",\\\"write_attributes\\\"]}}\", \"attributes\":\"ARCHIVE\", \"uid\":\"0\", \"gid\":\"0\", \
@@ -3769,7 +3777,15 @@ static void test_dbsync_attributes_json(void **state) {
         \"hash_sha1\":\"da39a3ee5e6b4b0d3255bfef95601890afd80709\", \"hash_sha256\":\"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\", \
         \"checksum\":\"ac962fef86e12e656b882fc88170fff24bf10a77\" }");
 
-    char *result_str = "{\"size\":0,\"permissions\":{\"S-1-5-32-544\":{\"name\":\"Administrators\",\"allowed\":[\"delete\",\"read_control\",\"write_dac\",\"write_owner\",\"synchronize\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\",\"read_attributes\",\"write_attributes\"]},\"S-1-5-18\":{\"name\":\"SYSTEM\",\"allowed\":[\"delete\",\"read_control\",\"write_dac\",\"write_owner\",\"synchronize\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\",\"read_attributes\",\"write_attributes\"]},\"S-1-5-32-545\":{\"name\":\"Users\",\"allowed\":[\"read_control\",\"synchronize\",\"read_data\",\"read_ea\",\"execute\",\"read_attributes\"]},\"S-1-5-11\":{\"name\":\"Authenticated Users\",\"allowed\":[\"delete\",\"read_control\",\"synchronize\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\",\"read_attributes\",\"write_attributes\"]}},\"uid\":\"0\",\"gid\":\"0\",\"owner\":\"Administrators\",\"inode\":\"0\",\"mtime\":1646145212,\"hash\":{\"md5\":\"d41d8cd98f00b204e9800998ecf8427e\",\"sha1\":\"da39a3ee5e6b4b0d3255bfef95601890afd80709\",\"sha256\":\"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\"},\"attributes\":\"ARCHIVE\"}";
+    char *result_str = "{\"size\":0,\"permissions\":["
+        "\"{\\\"S-1-5-32-544\\\":{\\\"name\\\":\\\"Administrators\\\",\\\"allowed\\\":[\\\"delete\\\",\\\"read_control\\\",\\\"write_dac\\\",\\\"write_owner\\\",\\\"synchronize\\\",\\\"read_data\\\",\\\"write_data\\\",\\\"append_data\\\",\\\"read_ea\\\",\\\"write_ea\\\",\\\"execute\\\",\\\"read_attributes\\\",\\\"write_attributes\\\"]}}\","
+        "\"{\\\"S-1-5-18\\\":{\\\"name\\\":\\\"SYSTEM\\\",\\\"allowed\\\":[\\\"delete\\\",\\\"read_control\\\",\\\"write_dac\\\",\\\"write_owner\\\",\\\"synchronize\\\",\\\"read_data\\\",\\\"write_data\\\",\\\"append_data\\\",\\\"read_ea\\\",\\\"write_ea\\\",\\\"execute\\\",\\\"read_attributes\\\",\\\"write_attributes\\\"]}}\","
+        "\"{\\\"S-1-5-32-545\\\":{\\\"name\\\":\\\"Users\\\",\\\"allowed\\\":[\\\"read_control\\\",\\\"synchronize\\\",\\\"read_data\\\",\\\"read_ea\\\",\\\"execute\\\",\\\"read_attributes\\\"]}}\","
+        "\"{\\\"S-1-5-11\\\":{\\\"name\\\":\\\"Authenticated Users\\\",\\\"allowed\\\":[\\\"delete\\\",\\\"read_control\\\",\\\"synchronize\\\",\\\"read_data\\\",\\\"write_data\\\",\\\"append_data\\\",\\\"read_ea\\\",\\\"write_ea\\\",\\\"execute\\\",\\\"read_attributes\\\",\\\"write_attributes\\\"]}}\"],"
+        "\"uid\":\"0\",\"owner\":\"Administrators\",\"gid\":\"0\",\"inode\":\"0\",\"mtime\":1646145212,"
+        "\"hash\":{\"md5\":\"d41d8cd98f00b204e9800998ecf8427e\",\"sha1\":\"da39a3ee5e6b4b0d3255bfef95601890afd80709\",\"sha256\":\"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\"},"
+        "\"attributes\":[\"ARCHIVE\"]}";
+
 #endif
     cJSON *attributes = cJSON_CreateObject();
 

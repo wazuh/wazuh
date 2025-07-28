@@ -90,8 +90,6 @@ test_configuration = load_configuration_template(config_path, test_configuration
 local_internal_options = {configuration.SYSCHECK_DEBUG: 2, AGENTD_DEBUG: 2, MONITORD_ROTATE_LOG: 0}
 if sys.platform == WINDOWS: local_internal_options.update({AGENTD_WINDOWS_DEBUG: 2})
 
-base_checks = [configuration.ATTR_CHECKSUM]
-
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=cases_ids)
 def test_checkers(test_configuration, test_metadata, set_wazuh_configuration, configure_local_internal_options,
                   truncate_monitored_files, folder_to_monitor, file_to_monitor, daemons_handler, start_monitoring):
@@ -158,6 +156,7 @@ def test_checkers(test_configuration, test_metadata, set_wazuh_configuration, co
     monitor = FileMonitor(WAZUH_LOG_PATH)
     fim_mode = test_metadata.get('fim_mode')
     checks = set(test_metadata.get('checks'))
+    checks_hash = set(test_metadata.get('checks_hash'))
 
     # Update
     file.truncate_file(WAZUH_LOG_PATH)
@@ -165,11 +164,12 @@ def test_checkers(test_configuration, test_metadata, set_wazuh_configuration, co
     monitor.start(generate_callback(EVENT_TYPE_MODIFIED))
     if not checks:
         assert not monitor.callback_result
-        checks.update(configuration.ATTR_BASE)
     else:
         fim_data = get_fim_event_data(monitor.callback_result)
-        assert fim_data['mode'] == fim_mode
-        assert set(fim_data['attributes'].keys()) == checks
+        assert fim_data['file']['mode'] == fim_mode
+        assert checks.issubset(fim_data['file'].keys())
+        if checks_hash:
+            assert checks_hash.issubset(fim_data['file']['hash'].keys())
         time.sleep(0.1)
 
     # Delete
@@ -177,13 +177,19 @@ def test_checkers(test_configuration, test_metadata, set_wazuh_configuration, co
     file.remove_file(file_to_monitor)
     monitor.start(generate_callback(EVENT_TYPE_DELETED))
     fim_data = get_fim_event_data(monitor.callback_result)
-    assert fim_data['mode'] == fim_mode
-    assert set(fim_data['attributes'].keys()) == checks
+    assert fim_data['file']['mode'] == fim_mode
+    if checks:
+        assert checks.issubset(fim_data['file'].keys())
+        if checks_hash:
+            assert checks_hash.issubset(fim_data['file']['hash'].keys())
 
     # Create
     file.truncate_file(WAZUH_LOG_PATH)
     file.write_file(file_to_monitor)
     monitor.start(generate_callback(EVENT_TYPE_ADDED))
     fim_data = get_fim_event_data(monitor.callback_result)
-    assert fim_data['mode'] == fim_mode
-    assert set(fim_data['attributes'].keys()) == checks
+    assert fim_data['file']['mode'] == fim_mode
+    if checks:
+        assert checks.issubset(fim_data['file'].keys())
+        if checks_hash:
+            assert checks_hash.issubset(fim_data['file']['hash'].keys())

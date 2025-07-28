@@ -48,6 +48,60 @@ static const char *FIM_EVENT_MODE[] = {
     "whodata"
 };
 
+/**
+ * @brief Get the abbreviation of the registry hive from the full path.
+ *
+ * @param path The full path of the registry key.
+ * @return The abbreviation of the registry hive.
+ */
+STATIC const char* get_registry_hive_abbreviation(const char* path) {
+    struct {
+        const char *full;
+        const char *abbr;
+    } hives[] = {
+        {"HKEY_CLASSES_ROOT", "HKCR"},
+        {"HKEY_CURRENT_USER", "HKCU"},
+        {"HKEY_LOCAL_MACHINE", "HKLM"},
+        {"HKEY_USERS", "HKU"},
+        {"HKEY_CURRENT_CONFIG", "HKCC"}
+    };
+
+    for (size_t i = 0; i < sizeof(hives)/sizeof(hives[0]); ++i) {
+        size_t len = strlen(hives[i].full);
+        if (strncmp(path, hives[i].full, len) == 0 &&
+            (path[len] == '\\' || path[len] == '\0')) {
+            return hives[i].abbr;
+        }
+    }
+
+    return "";
+}
+
+/**
+ * @brief Get the full registry key path without the hive abbreviation.
+ *
+ * @param path The full path of the registry key.
+ * @return The full registry key path without the hive abbreviation.
+ */
+STATIC const char* get_registry_key(const char* path) {
+    const char *prefixes[] = {
+        "HKEY_CLASSES_ROOT\\",
+        "HKEY_CURRENT_USER\\",
+        "HKEY_LOCAL_MACHINE\\",
+        "HKEY_USERS\\",
+        "HKEY_CURRENT_CONFIG\\"
+    };
+
+    for (size_t i = 0; i < sizeof(prefixes)/sizeof(prefixes[0]); ++i) {
+        size_t len = strlen(prefixes[i]);
+        if (strncmp(path, prefixes[i], len) == 0) {
+            return path + len;
+        }
+    }
+
+    return path;
+}
+
 // DBSync Callbacks
 
 /**
@@ -150,6 +204,22 @@ STATIC void registry_key_transaction_callback(ReturnTypeCallback resultType,
     cJSON_AddItemToObject(data, "registry", registry);
 
     cJSON_AddStringToObject(registry, "path", path);
+
+    const char *hive = get_registry_hive_abbreviation(path);
+    const char *key = get_registry_key(path);
+
+    if (strlen(hive) > 0 && strlen(key) > 0) {
+        size_t full_key_len = strlen(hive) + 1 + strlen(key) + 1;
+        char *full_key = NULL;
+        os_malloc(full_key_len, full_key);
+        snprintf(full_key, full_key_len, "%s\\%s", hive, key);
+        cJSON_AddStringToObject(registry, "key", full_key);
+        os_free(full_key);
+    } else {
+        cJSON_AddStringToObject(registry, "key", path);
+    }
+    cJSON_AddStringToObject(registry, "hive", hive);
+
     cJSON_AddStringToObject(registry, "architecture", arch == ARCH_32BIT ? "[x32]" : "[x64]");
     cJSON_AddStringToObject(registry, "mode", FIM_EVENT_MODE[event_data->evt_data->mode]);
 
@@ -160,8 +230,7 @@ STATIC void registry_key_transaction_callback(ReturnTypeCallback resultType,
         cJSON_AddItemToObject(registry, "previous", old_attributes);
         cJSON_AddItemToObject(event, "changed_fields", changed_attributes);
 
-        fim_calculate_dbsync_difference_key(event_data->key,
-                                            event_data->config,
+        fim_calculate_dbsync_difference_key(event_data->config,
                                             old_data,
                                             changed_attributes,
                                             old_attributes);
@@ -291,6 +360,22 @@ STATIC void registry_value_transaction_callback(ReturnTypeCallback resultType,
     cJSON_AddItemToObject(data, "registry", registry);
 
     cJSON_AddStringToObject(registry, "path", path);
+
+    const char *hive = get_registry_hive_abbreviation(path);
+    const char *key = get_registry_key(path);
+
+    if (strlen(hive) > 0 && strlen(key) > 0) {
+        size_t full_key_len = strlen(hive) + 1 + strlen(key) + 1;
+        char *full_key = NULL;
+        os_malloc(full_key_len, full_key);
+        snprintf(full_key, full_key_len, "%s\\%s", hive, key);
+        cJSON_AddStringToObject(registry, "key", full_key);
+        os_free(full_key);
+    } else {
+        cJSON_AddStringToObject(registry, "key", path);
+    }
+    cJSON_AddStringToObject(registry, "hive", hive);
+
     cJSON_AddStringToObject(registry, "architecture", arch == ARCH_32BIT ? "[x32]" : "[x64]");
     cJSON_AddStringToObject(registry, "value", value);
     cJSON_AddStringToObject(registry, "mode", FIM_EVENT_MODE[event_data->evt_data->mode]);
@@ -302,8 +387,7 @@ STATIC void registry_value_transaction_callback(ReturnTypeCallback resultType,
         cJSON_AddItemToObject(registry, "previous", old_attributes);
         cJSON_AddItemToObject(event, "changed_fields", changed_attributes);
 
-        fim_calculate_dbsync_difference_value(event_data->data,
-                                              event_data->config,
+        fim_calculate_dbsync_difference_value(event_data->config,
                                               old_data,
                                               changed_attributes,
                                               old_attributes);
