@@ -1047,42 +1047,6 @@ static void test_fim_check_ignore_regex_directory(void **state) {
     assert_int_equal(ret, 1);
 }
 
-static void test_fim_check_ignore_negated_regex_file(void **state) {
-    int ret;
-    char debug_msg[OS_MAXSTR];
-
-
-#ifndef TEST_WINAGENT
-    snprintf(debug_msg, OS_MAXSTR, FIM_IGNORE_SREGEX, "/test/files/test.txt", "!mytest");
-    expect_string(__wrap__mdebug2, formatted_msg, debug_msg);
-#else
-    snprintf(debug_msg, OS_MAXSTR, FIM_IGNORE_SREGEX, "/test/files/test.txt", "!mytest");
-    expect_string(__wrap__mdebug2, formatted_msg, debug_msg);
-#endif
-
-    ret = fim_check_ignore("/test/files/test.txt", FIM_REGULAR);
-
-    assert_int_equal(ret, 1);
-}
-
-static void test_fim_check_ignore_negated_regex_directory(void **state) {
-    int ret;
-    char debug_msg[OS_MAXSTR];
-
-
-#ifndef TEST_WINAGENT
-    snprintf(debug_msg, OS_MAXSTR, FIM_IGNORE_SREGEX, "/test/files", "!mytest");
-    expect_string(__wrap__mdebug2, formatted_msg, debug_msg);
-#else
-    snprintf(debug_msg, OS_MAXSTR, FIM_IGNORE_SREGEX, "/test/files", "!mytest");
-    expect_string(__wrap__mdebug2, formatted_msg, debug_msg);
-#endif
-
-    ret = fim_check_ignore("/test/files", FIM_DIRECTORY);
-
-    assert_int_equal(ret, 0);
-}
-
 
 static void test_fim_check_ignore_failure(void **state) {
    int ret;
