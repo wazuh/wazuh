@@ -14,12 +14,9 @@
 
 #include <flatbuffers/flatbuffers.h>
 #include <iostream>
-#include <chrono>
 #include <thread>
 
 constexpr char SYNC_MQ = 's';
-constexpr auto SYNC_GLOBAL_TIMEOUT = std::chrono::minutes(5);
-constexpr auto SYNC_RETRY_TIMEOUT = std::chrono::seconds(20);
 
 using namespace Wazuh::SyncSchema;
 
@@ -38,7 +35,7 @@ void AgentSyncProtocol::persistDifference(const std::string& module,
     m_persistentQueue->submit(module, id, index, data, operation);
 }
 
-bool AgentSyncProtocol::synchronizeModule(const std::string& module, Mode mode, bool realtime)
+bool AgentSyncProtocol::synchronizeModule(const std::string& module, Mode mode, bool realtime, std::chrono::seconds timeout, unsigned int retries)
 {
     if (!ensureQueueAvailable())
     {
@@ -46,13 +43,11 @@ bool AgentSyncProtocol::synchronizeModule(const std::string& module, Mode mode, 
         return false;
     }
 
-    const auto deadline = std::chrono::steady_clock::now() + SYNC_GLOBAL_TIMEOUT;
-
     clearSyncState();
 
     std::vector<PersistedData> data = m_persistentQueue->fetchAll(module);
 
-    if (!sendStartAndWaitAck(module, mode, realtime, data.size(), deadline))
+    if (!sendStartAndWaitAck(module, mode, realtime, data.size(), timeout, retries))
     {
         std::cerr << "Failed to send start message or timed out.\n";
         clearSyncState();
@@ -66,7 +61,7 @@ bool AgentSyncProtocol::synchronizeModule(const std::string& module, Mode mode, 
         return false;
     }
 
-    if (!sendEndAndWaitAck(module, m_syncState.session, deadline))
+    if (!sendEndAndWaitAck(module, m_syncState.session, timeout, retries))
     {
         std::cerr << "Failed to send end message or timed out.\n";
         clearSyncState();
@@ -95,7 +90,7 @@ bool AgentSyncProtocol::ensureQueueAvailable()
     return true;
 }
 
-bool AgentSyncProtocol::sendStartAndWaitAck(const std::string& module, Mode mode, bool realtime, size_t dataSize, const std::chrono::steady_clock::time_point& deadLine)
+bool AgentSyncProtocol::sendStartAndWaitAck(const std::string& module, Mode mode, bool realtime, size_t dataSize, const std::chrono::seconds timeout, unsigned int retries)
 {
     flatbuffers::FlatBufferBuilder builder;
     auto moduleStr = builder.CreateString(module);
@@ -119,31 +114,15 @@ bool AgentSyncProtocol::sendStartAndWaitAck(const std::string& module, Mode mode
         m_syncState.phase = SyncPhase::WaitingStartAck;
     }
 
-    for (;;)
+    for (unsigned int attempt = 0; attempt <= retries; ++attempt)
     {
-        if (std::chrono::steady_clock::now() >= deadLine)
-        {
-            std::cerr << "[Sync] Global timeout reached while waiting for StartAck.\n";
-            return false;
-        }
-
         if (!sendFlatBufferMessageAsString(messageVector, module))
         {
-            std::cerr << "[Sync] Failed to send Start message. Retrying in " << SYNC_RETRY_TIMEOUT.count() << "s...\n";
-            std::this_thread::sleep_for(SYNC_RETRY_TIMEOUT);
+            std::cerr << "[Sync] Failed to send Start message.\n";
             continue;
         }
 
-        auto remainingTime = std::chrono::duration_cast<std::chrono::seconds>(deadLine - std::chrono::steady_clock::now());
-        auto waitTime = std::min(SYNC_RETRY_TIMEOUT, remainingTime);
-
-        if (waitTime.count() <= 0)
-        {
-            std::cout << "[Sync] Timed out waiting for StartAck.\n";
-            return false;
-        }
-
-        if (receiveStartAck(waitTime))
+        if (receiveStartAck(timeout))
         {
             std::lock_guard<std::mutex> lock(m_syncState.mtx);
             std::cout << "[Sync] StartAck received. Session " << m_syncState.session << " established.\n";
@@ -152,6 +131,8 @@ bool AgentSyncProtocol::sendStartAndWaitAck(const std::string& module, Mode mode
 
         std::cout << "[Sync] Timed out waiting for StartAck. Retrying...\n";
     }
+
+    return false;
 }
 
 bool AgentSyncProtocol::receiveStartAck(std::chrono::seconds timeout)
@@ -199,7 +180,7 @@ bool AgentSyncProtocol::sendDataMessages(const std::string& module,
     return true;
 }
 
-bool AgentSyncProtocol::sendEndAndWaitAck(const std::string& module, uint64_t session, const std::chrono::steady_clock::time_point& deadLine)
+bool AgentSyncProtocol::sendEndAndWaitAck(const std::string& module, uint64_t session, const std::chrono::seconds timeout, unsigned int retries)
 {
     flatbuffers::FlatBufferBuilder builder;
     EndBuilder endBuilder(builder);
@@ -220,31 +201,15 @@ bool AgentSyncProtocol::sendEndAndWaitAck(const std::string& module, uint64_t se
 
     bool sendEnd = true;
 
-    for (;;)
+    for (unsigned int attempt = 0; attempt <= retries; ++attempt)
     {
-        if (std::chrono::steady_clock::now() >= deadLine)
-        {
-            std::cerr << "[Sync] Global timeout reached while waiting for EndAck/ReqRet.\n";
-            return false;
-        }
-
         if (sendEnd && !sendFlatBufferMessageAsString(messageVector, module))
         {
-            std::cerr << "[Sync] Failed to send End message. Retrying in " << SYNC_RETRY_TIMEOUT.count() << "s...\n";
-            std::this_thread::sleep_for(SYNC_RETRY_TIMEOUT);
+            std::cerr << "[Sync] Failed to send End message.\n";
             continue;
         }
 
-        auto remainingTime = std::chrono::duration_cast<std::chrono::seconds>(deadLine - std::chrono::steady_clock::now());
-        auto waitTime = std::min(SYNC_RETRY_TIMEOUT, remainingTime);
-
-        if (waitTime.count() <= 0)
-        {
-            std::cout << "[Sync] Timeout waiting for EndAck or ReqRet.\n";
-            return false;
-        }
-
-        if (!receiveEndAck(waitTime))
+        if (!receiveEndAck(timeout))
         {
             std::cout << "[Sync] Timeout waiting for EndAck or ReqRet. Retrying...\n";
             continue;
@@ -294,6 +259,8 @@ bool AgentSyncProtocol::sendEndAndWaitAck(const std::string& module, uint64_t se
             }
         }
     }
+
+    return false;
 }
 
 bool AgentSyncProtocol::receiveEndAck(std::chrono::seconds timeout)

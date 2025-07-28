@@ -74,11 +74,15 @@ void asp_persist_diff(AgentSyncProtocolHandle* handle,
 /// @param module The name of the module to synchronize.
 /// @param mode Synchronization mode (e.g., full, delta).
 /// @param realtime Boolean flag (non-zero = realtime mode, zero = batch mode).
+/// @param sync_timeout The timeout for each attempt to receive a response, in seconds.
+/// @param sync_retries The maximum number of attempts for re-sending Start and End messages.
 /// @return true if the sync was successfully processed; false otherwise.
 bool asp_sync_module(AgentSyncProtocolHandle* handle,
                      const char* module,
                      int mode,
-                     int realtime);
+                     int realtime,
+                     unsigned int sync_timeout,
+                     unsigned int sync_retries);
 
 /// @brief Parses a response buffer encoded in FlatBuffer format.
 /// @param handle Protocol handle.

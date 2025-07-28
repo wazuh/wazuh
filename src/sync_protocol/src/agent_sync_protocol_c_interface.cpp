@@ -1,6 +1,7 @@
 #include "agent_sync_protocol_c_interface.h"
 #include "agent_sync_protocol.hpp"
 #include "persistent_queue.hpp"
+#include <chrono>
 #include <memory>
 #include <string>
 
@@ -65,13 +66,18 @@ extern "C" {
     bool asp_sync_module(AgentSyncProtocolHandle* handle,
                          const char* module,
                          int mode,
-                         int realtime)
+                         int realtime,
+                         unsigned int sync_timeout,
+                         unsigned int retries)
     {
         if (!handle || !module) return false;
 
         auto* wrapper = reinterpret_cast<AgentSyncProtocolWrapper*>(handle);
         return wrapper->impl->synchronizeModule(module,
-                                                static_cast<Wazuh::SyncSchema::Mode>(mode), realtime != 0);
+                                                static_cast<Wazuh::SyncSchema::Mode>(mode),
+                                                realtime != 0,
+                                                std::chrono::seconds(sync_timeout),
+                                                retries);
     }
 
     int asp_parse_response_buffer(AgentSyncProtocolHandle* handle, const uint8_t* data)
