@@ -635,9 +635,9 @@ static void test_fim_attributes_json(void **state) {
 
     assert_non_null(fim_data->json);
 #ifndef TEST_WINAGENT
-    assert_int_equal(cJSON_GetArraySize(fim_data->json), 12);
+    assert_int_equal(cJSON_GetArraySize(fim_data->json), 10);
 #else
-    assert_int_equal(cJSON_GetArraySize(fim_data->json), 13);
+    assert_int_equal(cJSON_GetArraySize(fim_data->json), 11);
 #endif
 
     cJSON *size = cJSON_GetObjectItem(fim_data->json, "size");
@@ -655,26 +655,26 @@ static void test_fim_attributes_json(void **state) {
     assert_string_equal(cJSON_GetStringValue(gid), "1000");
     cJSON *owner = cJSON_GetObjectItem(fim_data->json, "owner");
     assert_string_equal(cJSON_GetStringValue(owner), "test");
-    cJSON *group_ = cJSON_GetObjectItem(fim_data->json, "group_");
-    assert_string_equal(cJSON_GetStringValue(group_), "testing");
+    cJSON *group = cJSON_GetObjectItem(fim_data->json, "group");
+    assert_string_equal(cJSON_GetStringValue(group), "testing");
     cJSON *inode = cJSON_GetObjectItem(fim_data->json, "inode");
     assert_non_null(inode);
     assert_int_equal(inode->valueint, 606060);
     cJSON *mtime = cJSON_GetObjectItem(fim_data->json, "mtime");
     assert_non_null(mtime);
     assert_int_equal(mtime->valueint, 1570184223);
-    cJSON *hash_md5 = cJSON_GetObjectItem(fim_data->json, "hash_md5");
+    cJSON *hash = cJSON_GetObjectItem(fim_data->json, "hash");
+    assert_non_null(hash);
+    cJSON *hash_md5 = cJSON_GetObjectItem(hash, "md5");
     assert_string_equal(cJSON_GetStringValue(hash_md5), "3691689a513ace7e508297b583d7050d");
-    cJSON *hash_sha1 = cJSON_GetObjectItem(fim_data->json, "hash_sha1");
+    cJSON *hash_sha1 = cJSON_GetObjectItem(hash, "sha1");
     assert_string_equal(cJSON_GetStringValue(hash_sha1), "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
-    cJSON *hash_sha256 = cJSON_GetObjectItem(fim_data->json, "hash_sha256");
+    cJSON *hash_sha256 = cJSON_GetObjectItem(hash, "sha256");
     assert_string_equal(cJSON_GetStringValue(hash_sha256), "672a8ceaea40a441f0268ca9bbb33e99f9643c6262667b61fbe57694df224d40");
 #ifdef TEST_WINAGENT
     cJSON *attributes = cJSON_GetObjectItem(fim_data->json, "attributes");
     assert_string_equal(cJSON_GetStringValue(attributes), "r--r--r--");
 #endif
-    cJSON *checksum = cJSON_GetObjectItem(fim_data->json, "checksum");
-    assert_string_equal(cJSON_GetStringValue(checksum), "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
 }
 
 static void test_fim_audit_json(void **state) {
@@ -3663,13 +3663,14 @@ void test_fim_calculate_dbsync_difference(void **state){
     assert_string_equal(cJSON_GetObjectItem(old_attributes, "uid")->valuestring, "1000");
     assert_string_equal(cJSON_GetObjectItem(old_attributes, "gid")->valuestring, "1000");
     assert_string_equal(cJSON_GetObjectItem(old_attributes, "owner")->valuestring, "root");
-    assert_string_equal(cJSON_GetObjectItem(old_attributes, "group_")->valuestring, "root");
+    assert_string_equal(cJSON_GetObjectItem(old_attributes, "group")->valuestring, "root");
     assert_int_equal(cJSON_GetObjectItem(old_attributes, "mtime")->valueint, 123456789);
     assert_int_equal(cJSON_GetObjectItem(old_attributes, "inode")->valueint, 1);
-    assert_string_equal(cJSON_GetObjectItem(old_attributes, "hash_md5")->valuestring, "0123456789abcdef0123456789abcdef");
-    assert_string_equal(cJSON_GetObjectItem(old_attributes, "hash_sha1")->valuestring, "0123456789abcdef0123456789abcdef01234567");
-    assert_string_equal(cJSON_GetObjectItem(old_attributes, "hash_sha256")->valuestring, "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef");
-    assert_string_equal(cJSON_GetObjectItem(old_attributes, "checksum")->valuestring, "0123456789abcdef0123456789abcdef01234567");
+    cJSON* hash = cJSON_GetObjectItem(old_attributes, "hash");
+    assert_non_null(hash);
+    assert_string_equal(cJSON_GetObjectItem(hash, "md5")->valuestring, "0123456789abcdef0123456789abcdef");
+    assert_string_equal(cJSON_GetObjectItem(hash, "sha1")->valuestring, "0123456789abcdef0123456789abcdef01234567");
+    assert_string_equal(cJSON_GetObjectItem(hash, "sha256")->valuestring, "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef");
     cJSON_Delete(changed_data_json);
     cJSON_Delete(old_attributes);
     cJSON_Delete(changed_attributes);
@@ -3696,28 +3697,7 @@ void test_fim_calculate_dbsync_difference_no_changed_data(void **state){
                                         changed_attributes,
                                         old_attributes);
 
-    assert_int_equal(cJSON_GetObjectItem(old_attributes, "size")->valueint, 0);
-#ifndef TEST_WINAGENT
-    assert_string_equal(cJSON_GetObjectItem(old_attributes, "permissions")->valuestring, "rw-rw-r--");
-#else
-    assert_string_equal(cJSON_PrintUnformatted(cJSON_GetObjectItem(old_attributes, "permissions")), "{\"S-1-5-32-544\":{\"name\":\"Administrators\",\"allowed\":[\"delete\",\"read_control\",\"write_dac\",\"write_owner\",\"synchronize\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\",\"read_attributes\",\"write_attributes\"]},\"S-1-5-18\":{\"name\":\"SYSTEM\",\"allowed\":[\"delete\",\"read_control\",\"write_dac\",\"write_owner\",\"synchronize\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\",\"read_attributes\",\"write_attributes\"]},\"S-1-5-32-545\":{\"name\":\"Users\",\"allowed\":[\"read_control\",\"synchronize\",\"read_data\",\"read_ea\",\"execute\",\"read_attributes\"]},\"S-1-5-11\":{\"name\":\"Authenticated Users\",\"allowed\":[\"delete\",\"read_control\",\"synchronize\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\",\"read_attributes\",\"write_attributes\"]}}");
-    assert_string_equal(cJSON_GetObjectItem(old_attributes, "attributes")->valuestring, "NULL");
-#endif
-
-    assert_string_equal(cJSON_GetObjectItem(old_attributes, "uid")->valuestring, "1000");
-    assert_string_equal(cJSON_GetObjectItem(old_attributes, "gid")->valuestring, "1000");
-    assert_string_equal(cJSON_GetObjectItem(old_attributes, "owner")->valuestring, "root");
-    assert_string_equal(cJSON_GetObjectItem(old_attributes, "group_")->valuestring, "root");
-    assert_int_equal(cJSON_GetObjectItem(old_attributes, "mtime")->valueint, 123456789);
-    assert_int_equal(cJSON_GetObjectItem(old_attributes, "inode")->valueint, 1);
-    assert_string_equal(cJSON_GetObjectItem(old_attributes, "hash_md5")->valuestring, "0123456789abcdef0123456789abcdef");
-    assert_string_equal(cJSON_GetObjectItem(old_attributes, "hash_sha1")->valuestring, "0123456789abcdef0123456789abcdef01234567");
-    assert_string_equal(cJSON_GetObjectItem(old_attributes, "hash_sha256")->valuestring, "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef");
-#ifdef TEST_WINAGENT
-    assert_string_equal(cJSON_GetObjectItem(old_attributes, "checksum")->valuestring, "6ec831114b5d930f19a90d7c34996e0fce4e7b84");
-#else
-    assert_string_equal(cJSON_GetObjectItem(old_attributes, "checksum")->valuestring, "98e039efc1b8490965e7e1247a9dc31cf7379051");
-#endif
+    assert_int_equal(cJSON_GetArraySize(changed_attributes), 0);
     cJSON_Delete(old_attributes);
     cJSON_Delete(changed_attributes);
 }
@@ -3788,7 +3768,7 @@ static void test_dbsync_attributes_json(void **state) {
     directory_t configuration = { .options = -1, .tag = "tag_name" };
     json_struct_t *data = *state;
 #ifndef TEST_WINAGENT
-    const char *result_str = "{\"size\":11,\"permissions\":\"rw-r--r--\",\"uid\":\"0\",\"gid\":\"0\",\"owner\":\"root\",\"group_\":\"root\",\"inode\":271017,\"mtime\":1646124392,\"hash_md5\":\"d73b04b0e696b0945283defa3eee4538\",\"hash_sha1\":\"e7509a8c032f3bc2a8df1df476f8ef03436185fa\",\"hash_sha256\":\"8cd07f3a5ff98f2a78cfc366c13fb123eb8d29c1ca37c79df190425d5b9e424d\",\"checksum\":\"c0edc82c463da5f4ab8dd420a778a9688a923a72\"}";
+    const char *result_str = "{\"size\":11,\"permissions\":\"rw-r--r--\",\"uid\":\"0\",\"gid\":\"0\",\"owner\":\"root\",\"group\":\"root\",\"inode\":271017,\"mtime\":1646124392,\"hash\":{\"md5\":\"d73b04b0e696b0945283defa3eee4538\",\"sha1\":\"e7509a8c032f3bc2a8df1df476f8ef03436185fa\",\"sha256\":\"8cd07f3a5ff98f2a78cfc366c13fb123eb8d29c1ca37c79df190425d5b9e424d\"},\"device\":64768}";
     cJSON *dbsync_event = cJSON_Parse("{\"attributes\":\"\",\"checksum\":\"c0edc82c463da5f4ab8dd420a778a9688a923a72\",\"device\":64768,\"gid\":\"0\",\"group_\":\"root\",\"hash_md5\":\"d73b04b0e696b0945283defa3eee4538\",\"hash_sha1\":\"e7509a8c032f3bc2a8df1df476f8ef03436185fa\",\"hash_sha256\":\"8cd07f3a5ff98f2a78cfc366c13fb123eb8d29c1ca37c79df190425d5b9e424d\",\"inode\":271017,\"mtime\":1646124392,\"path\":\"/etc/testfile\",\"permissions\":\"rw-r--r--\",\"size\":11,\"uid\":\"0\",\"owner\":\"root\"}");
 #else
     cJSON *dbsync_event = cJSON_Parse("{\"size\":0, \"permissions\":\"{\\\"S-1-5-32-544\\\":{\\\"name\\\":\\\"Administrators\\\",\\\"allowed\\\":[\\\"delete\\\",\\\"read_control\\\",\\\"write_dac\\\",\\\"write_owner\\\",\\\"synchronize\\\",\\\"read_data\\\",\\\"write_data\\\",\\\"append_data\\\",\\\"read_ea\\\",\\\"write_ea\\\",\\\"execute\\\",\\\"read_attributes\\\",\\\"write_attributes\\\"]},\\\"S-1-5-18\\\":{\\\"name\\\":\\\"SYSTEM\\\",\\\"allowed\\\":[\\\"delete\\\",\\\"read_control\\\",\\\"write_dac\\\",\\\"write_owner\\\",\\\"synchronize\\\",\\\"read_data\\\",\\\"write_data\\\",\\\"append_data\\\",\\\"read_ea\\\",\\\"write_ea\\\",\\\"execute\\\",\\\"read_attributes\\\",\\\"write_attributes\\\"]},\\\"S-1-5-32-545\\\":{\\\"name\\\":\\\"Users\\\",\\\"allowed\\\":[\\\"read_control\\\",\\\"synchronize\\\",\\\"read_data\\\",\\\"read_ea\\\",\\\"execute\\\",\\\"read_attributes\\\"]},\\\"S-1-5-11\\\":{\\\"name\\\":\\\"Authenticated Users\\\",\\\"allowed\\\":[\\\"delete\\\",\\\"read_control\\\",\\\"synchronize\\\",\\\"read_data\\\",\\\"write_data\\\",\\\"append_data\\\",\\\"read_ea\\\",\\\"write_ea\\\",\\\"execute\\\",\\\"read_attributes\\\",\\\"write_attributes\\\"]}}\", \"attributes\":\"ARCHIVE\", \"uid\":\"0\", \"gid\":\"0\", \
@@ -3796,7 +3776,7 @@ static void test_dbsync_attributes_json(void **state) {
         \"hash_sha1\":\"da39a3ee5e6b4b0d3255bfef95601890afd80709\", \"hash_sha256\":\"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\", \
         \"checksum\":\"ac962fef86e12e656b882fc88170fff24bf10a77\" }");
 
-    char *result_str = "{\"size\":0,\"permissions\":{\"S-1-5-32-544\":{\"name\":\"Administrators\",\"allowed\":[\"delete\",\"read_control\",\"write_dac\",\"write_owner\",\"synchronize\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\",\"read_attributes\",\"write_attributes\"]},\"S-1-5-18\":{\"name\":\"SYSTEM\",\"allowed\":[\"delete\",\"read_control\",\"write_dac\",\"write_owner\",\"synchronize\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\",\"read_attributes\",\"write_attributes\"]},\"S-1-5-32-545\":{\"name\":\"Users\",\"allowed\":[\"read_control\",\"synchronize\",\"read_data\",\"read_ea\",\"execute\",\"read_attributes\"]},\"S-1-5-11\":{\"name\":\"Authenticated Users\",\"allowed\":[\"delete\",\"read_control\",\"synchronize\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\",\"read_attributes\",\"write_attributes\"]}},\"uid\":\"0\",\"gid\":\"0\",\"owner\":\"Administrators\",\"inode\":0,\"mtime\":1646145212,\"hash_md5\":\"d41d8cd98f00b204e9800998ecf8427e\",\"hash_sha1\":\"da39a3ee5e6b4b0d3255bfef95601890afd80709\",\"hash_sha256\":\"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\",\"attributes\":\"ARCHIVE\",\"checksum\":\"ac962fef86e12e656b882fc88170fff24bf10a77\"}";
+    char *result_str = "{\"size\":0,\"permissions\":{\"S-1-5-32-544\":{\"name\":\"Administrators\",\"allowed\":[\"delete\",\"read_control\",\"write_dac\",\"write_owner\",\"synchronize\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\",\"read_attributes\",\"write_attributes\"]},\"S-1-5-18\":{\"name\":\"SYSTEM\",\"allowed\":[\"delete\",\"read_control\",\"write_dac\",\"write_owner\",\"synchronize\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\",\"read_attributes\",\"write_attributes\"]},\"S-1-5-32-545\":{\"name\":\"Users\",\"allowed\":[\"read_control\",\"synchronize\",\"read_data\",\"read_ea\",\"execute\",\"read_attributes\"]},\"S-1-5-11\":{\"name\":\"Authenticated Users\",\"allowed\":[\"delete\",\"read_control\",\"synchronize\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\",\"read_attributes\",\"write_attributes\"]}},\"uid\":\"0\",\"gid\":\"0\",\"owner\":\"Administrators\",\"inode\":0,\"mtime\":1646145212,\"hash\":{\"md5\":\"d41d8cd98f00b204e9800998ecf8427e\",\"sha1\":\"da39a3ee5e6b4b0d3255bfef95601890afd80709\",\"sha256\":\"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\"},\"attributes\":\"ARCHIVE\"}";
 #endif
     cJSON *attributes = cJSON_CreateObject();
 

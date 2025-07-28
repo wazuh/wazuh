@@ -61,6 +61,7 @@ STATIC void transaction_callback(ReturnTypeCallback resultType,
     cJSON* changed_attributes = NULL;
     char *diff = NULL;
     char *path = NULL;
+    char iso_time[32];
 
     callback_ctx *txn_context = (callback_ctx *) user_data;
 
@@ -125,22 +126,32 @@ STATIC void transaction_callback(ReturnTypeCallback resultType,
         goto end; // LCOV_EXCL_LINE
     }
 
+    cJSON_AddStringToObject(json_event, "collector", "file");
+    cJSON_AddStringToObject(json_event, "module", "fim");
+
     cJSON* data = cJSON_CreateObject();
     cJSON_AddItemToObject(json_event, "data", data);
 
-    cJSON_AddStringToObject(data, "path", path);
-    cJSON_AddStringToObject(data, "mode", FIM_EVENT_MODE[txn_context->event->mode]);
-    cJSON_AddStringToObject(data, "type", FIM_EVENT_TYPE_ARRAY[txn_context->event->type]);
-    cJSON_AddItemToObject(data, "attributes", fim_attributes_json(result_json,
-                                                                  (txn_context->entry != NULL) ? txn_context->entry->file_entry.data : NULL,
-                                                                  txn_context->config));
+    cJSON* event = cJSON_CreateObject();
+    cJSON_AddItemToObject(data, "event", event);
+
+    get_iso8601_utc_time(iso_time, sizeof(iso_time));
+    cJSON_AddStringToObject(event, "created", iso_time);
+    cJSON_AddStringToObject(event, "type", FIM_EVENT_TYPE_ARRAY[txn_context->event->type]);
+
+    cJSON* file = fim_attributes_json(result_json, (txn_context->entry != NULL) ? txn_context->entry->file_entry.data : NULL, txn_context->config);
+    cJSON_AddItemToObject(data, "file", file);
+
+    cJSON_AddStringToObject(file, "path", path);
+    cJSON_AddStringToObject(file, "mode", FIM_EVENT_MODE[txn_context->event->mode]);
 
     old_data = cJSON_GetObjectItem(result_json, "old");
     if (old_data != NULL) {
         old_attributes = cJSON_CreateObject();
         changed_attributes = cJSON_CreateArray();
-        cJSON_AddItemToObject(data, "old_attributes", old_attributes);
-        cJSON_AddItemToObject(data, "changed_attributes", changed_attributes);
+        cJSON_AddItemToObject(file, "previous", old_attributes);
+        cJSON_AddItemToObject(event, "changed_fields", changed_attributes);
+
         fim_calculate_dbsync_difference(txn_context->entry->file_entry.data,
                                         txn_context->config,
                                         old_data,
@@ -154,15 +165,15 @@ STATIC void transaction_callback(ReturnTypeCallback resultType,
     }
 
     if (diff != NULL && resultType == MODIFIED) {
-        cJSON_AddStringToObject(data, "content_changes", diff);
+        cJSON_AddStringToObject(file, "content_changes", diff);
     }
 
     if (txn_context->event->w_evt) {
-        cJSON_AddItemToObject(data, "audit", fim_audit_json(txn_context->event->w_evt));
+        cJSON_AddItemToObject(file, "audit", fim_audit_json(txn_context->event->w_evt));
     }
 
     if (txn_context->config->tag != NULL) {
-        cJSON_AddStringToObject(data, "tags", txn_context->config->tag);
+        cJSON_AddStringToObject(file, "tags", txn_context->config->tag);
     }
 
     send_syscheck_msg(json_event);

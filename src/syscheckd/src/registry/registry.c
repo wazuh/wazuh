@@ -69,6 +69,7 @@ STATIC void registry_key_transaction_callback(ReturnTypeCallback resultType,
     cJSON *changed_attributes = NULL;
     char *path = NULL;
     int arch = -1;
+    char iso_time[32];
 
     fim_key_txn_context_t *event_data = (fim_key_txn_context_t *) user_data;
 
@@ -132,21 +133,33 @@ STATIC void registry_key_transaction_callback(ReturnTypeCallback resultType,
         return;
     }
 
+    cJSON_AddStringToObject(json_event, "collector", "registry_key");
+    cJSON_AddStringToObject(json_event, "module", "fim");
+
     cJSON* data = cJSON_CreateObject();
     cJSON_AddItemToObject(json_event, "data", data);
 
-    cJSON_AddStringToObject(data, "path", path);
-    cJSON_AddStringToObject(data, "mode", FIM_EVENT_MODE[event_data->evt_data->mode]);
-    cJSON_AddStringToObject(data, "type", FIM_EVENT_TYPE_ARRAY[event_data->evt_data->type]);
-    cJSON_AddStringToObject(data, "architecture", arch == ARCH_32BIT ? "[x32]" : "[x64]");
-    cJSON_AddItemToObject(data, "attributes", fim_registry_key_attributes_json(result_json, event_data->key, event_data->config));
+    cJSON* event = cJSON_CreateObject();
+    cJSON_AddItemToObject(data, "event", event);
+
+    get_iso8601_utc_time(iso_time, sizeof(iso_time));
+    cJSON_AddStringToObject(event, "created", iso_time);
+    cJSON_AddStringToObject(event, "type", FIM_EVENT_TYPE_ARRAY[event_data->evt_data->type]);
+
+    cJSON* registry = fim_registry_key_attributes_json(result_json, event_data->key, event_data->config);
+    cJSON_AddItemToObject(data, "registry", registry);
+
+    cJSON_AddStringToObject(registry, "path", path);
+    cJSON_AddStringToObject(registry, "architecture", arch == ARCH_32BIT ? "[x32]" : "[x64]");
+    cJSON_AddStringToObject(registry, "mode", FIM_EVENT_MODE[event_data->evt_data->mode]);
 
     old_data = cJSON_GetObjectItem(result_json, "old");
     if (old_data != NULL) {
         old_attributes = cJSON_CreateObject();
         changed_attributes = cJSON_CreateArray();
-        cJSON_AddItemToObject(data, "old_attributes", old_attributes);
-        cJSON_AddItemToObject(data, "changed_attributes", changed_attributes);
+        cJSON_AddItemToObject(registry, "previous", old_attributes);
+        cJSON_AddItemToObject(event, "changed_fields", changed_attributes);
+
         fim_calculate_dbsync_difference_key(event_data->key,
                                             event_data->config,
                                             old_data,
@@ -160,7 +173,7 @@ STATIC void registry_key_transaction_callback(ReturnTypeCallback resultType,
     }
 
     if (event_data->config->tag != NULL) {
-        cJSON_AddStringToObject(data, "tags", event_data->config->tag);
+        cJSON_AddStringToObject(registry, "tags", event_data->config->tag);
     }
 
     send_syscheck_msg(json_event);
@@ -190,6 +203,7 @@ STATIC void registry_value_transaction_callback(ReturnTypeCallback resultType,
     char *path = NULL;
     char *value = NULL;
     int arch = -1;
+    char iso_time[32];
 
     fim_val_txn_context_t *event_data = (fim_val_txn_context_t *) user_data;
 
@@ -260,22 +274,34 @@ STATIC void registry_value_transaction_callback(ReturnTypeCallback resultType,
         goto end;
     }
 
+    cJSON_AddStringToObject(json_event, "collector", "registry_value");
+    cJSON_AddStringToObject(json_event, "module", "fim");
+
     cJSON* data = cJSON_CreateObject();
     cJSON_AddItemToObject(json_event, "data", data);
 
-    cJSON_AddStringToObject(data, "path", path);
-    cJSON_AddStringToObject(data, "mode", FIM_EVENT_MODE[event_data->evt_data->mode]);
-    cJSON_AddStringToObject(data, "type", FIM_EVENT_TYPE_ARRAY[event_data->evt_data->type]);
-    cJSON_AddStringToObject(data, "architecture", arch == ARCH_32BIT ? "[x32]" : "[x64]");
-    cJSON_AddStringToObject(data, "value", value);
-    cJSON_AddItemToObject(data, "attributes", fim_registry_value_attributes_json(result_json, event_data->data, event_data->config));
+    cJSON* event = cJSON_CreateObject();
+    cJSON_AddItemToObject(data, "event", event);
+
+    get_iso8601_utc_time(iso_time, sizeof(iso_time));
+    cJSON_AddStringToObject(event, "created", iso_time);
+    cJSON_AddStringToObject(event, "type", FIM_EVENT_TYPE_ARRAY[event_data->evt_data->type]);
+
+    cJSON* registry = fim_registry_value_attributes_json(result_json, event_data->data, event_data->config);
+    cJSON_AddItemToObject(data, "registry", registry);
+
+    cJSON_AddStringToObject(registry, "path", path);
+    cJSON_AddStringToObject(registry, "architecture", arch == ARCH_32BIT ? "[x32]" : "[x64]");
+    cJSON_AddStringToObject(registry, "value", value);
+    cJSON_AddStringToObject(registry, "mode", FIM_EVENT_MODE[event_data->evt_data->mode]);
 
     old_data = cJSON_GetObjectItem(result_json, "old");
     if (old_data != NULL) {
         old_attributes = cJSON_CreateObject();
         changed_attributes = cJSON_CreateArray();
-        cJSON_AddItemToObject(data, "old_attributes", old_attributes);
-        cJSON_AddItemToObject(data, "changed_attributes", changed_attributes);
+        cJSON_AddItemToObject(registry, "previous", old_attributes);
+        cJSON_AddItemToObject(event, "changed_fields", changed_attributes);
+
         fim_calculate_dbsync_difference_value(event_data->data,
                                               event_data->config,
                                               old_data,
@@ -289,11 +315,11 @@ STATIC void registry_value_transaction_callback(ReturnTypeCallback resultType,
     }
 
     if (event_data->config->tag != NULL) {
-        cJSON_AddStringToObject(data, "tags", event_data->config->tag);
+        cJSON_AddStringToObject(registry, "tags", event_data->config->tag);
     }
 
     if (event_data->diff != NULL && resultType == MODIFIED) {
-        cJSON_AddStringToObject(data, "content_changes", event_data->diff);
+        cJSON_AddStringToObject(registry, "content_changes", event_data->diff);
     }
 
     send_syscheck_msg(json_event);

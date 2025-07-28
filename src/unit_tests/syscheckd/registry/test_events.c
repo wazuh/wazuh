@@ -83,7 +83,7 @@ void test_calculate_dbsync_difference_key_perm_change(void **state) {
 
     key_difference_t *data = (key_difference_t *) *state;
     registry_t configuration = { "HKEY_USERS\\Some", ARCH_64BIT, CHECK_REGISTRY_ALL, 320, 0, NULL, NULL };
-    const char* old_entry_str = "{\"permissions\":{\"S-1-5-32-545\":{\"value\":\"Users\",\"allowed\":[\"read_control\",\"read_data\",\"read_ea\",\"write_ea\"]},\"S-1-5-32-544\":{\"value\":\"Administrators\",\"allowed\":[\"delete\",\"read_control\",\"write_dac\",\"write_owner\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\"]},\"S-1-5-18\":{\"value\":\"SYSTEM\",\"allowed\":[\"delete\",\"read_control\",\"write_dac\",\"write_owner\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\"]},\"S-1-3-0\":{\"value\":\"CREATOR OWNER\",\"allowed\":[\"delete\",\"read_control\",\"write_dac\",\"write_owner\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\"]},\"S-1-15-2-1\":{\"value\":\"ALL APPLICATION PACKAGES\",\"allowed\":[\"read_control\",\"read_data\",\"read_ea\",\"write_ea\"]}},\"uid\":\"110\",\"owner\":\"user_old_name\",\"gid\":\"110\",\"group_\":\"group_old_name\",\"mtime\":1100,\"checksum\":\"234567890ABCDEF1234567890ABCDEF123456789\"}";
+    const char* old_entry_str = "{\"permissions\":{\"S-1-5-32-545\":{\"value\":\"Users\",\"allowed\":[\"read_control\",\"read_data\",\"read_ea\",\"write_ea\"]},\"S-1-5-32-544\":{\"value\":\"Administrators\",\"allowed\":[\"delete\",\"read_control\",\"write_dac\",\"write_owner\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\"]},\"S-1-5-18\":{\"value\":\"SYSTEM\",\"allowed\":[\"delete\",\"read_control\",\"write_dac\",\"write_owner\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\"]},\"S-1-3-0\":{\"value\":\"CREATOR OWNER\",\"allowed\":[\"delete\",\"read_control\",\"write_dac\",\"write_owner\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\"]},\"S-1-15-2-1\":{\"value\":\"ALL APPLICATION PACKAGES\",\"allowed\":[\"read_control\",\"read_data\",\"read_ea\",\"write_ea\"]}}}";
     cJSON *old_data = data->old_data;
     cJSON *changed_attributes = data->changed_attributes;
     cJSON *old_attributes = data->old_attributes;
@@ -94,7 +94,7 @@ void test_calculate_dbsync_difference_key_perm_change(void **state) {
     fim_registry_key registry_data =  DEFAULT_REGISTRY_KEY;
 
     fim_calculate_dbsync_difference_key(&registry_data, &configuration, old_data, changed_attributes, old_attributes);
-    assert_string_equal(cJSON_PrintUnformatted(changed_attributes), "[\"permissions\"]");
+    assert_string_equal(cJSON_PrintUnformatted(changed_attributes), "[\"registry.permissions\"]");
     assert_string_equal(cJSON_PrintUnformatted(old_attributes), old_entry_str);
 }
 
@@ -116,7 +116,7 @@ void test_calculate_dbsync_difference_key_uid_change(void **state) {
 
     key_difference_t *data = (key_difference_t *) *state;
     registry_t configuration = { "HKEY_USERS\\Some", ARCH_64BIT, CHECK_REGISTRY_ALL, 320, 0, NULL, NULL };
-    const char *old_attributes_str = "{\"uid\":\"210\",\"owner\":\"user_old_name\",\"gid\":\"110\",\"group_\":\"group_old_name\",\"mtime\":1100,\"checksum\":\"234567890ABCDEF1234567890ABCDEF123456789\"}";
+    const char *old_attributes_str = "{\"uid\":\"210\"}";
     cJSON *old_data = data->old_data;
     cJSON *changed_attributes = data->changed_attributes;
     cJSON *old_attributes = data->old_attributes;
@@ -126,14 +126,14 @@ void test_calculate_dbsync_difference_key_uid_change(void **state) {
     fim_registry_key registry_data = DEFAULT_REGISTRY_KEY;
     fim_calculate_dbsync_difference_key(&registry_data, &configuration, old_data, changed_attributes, old_attributes);
 
-    assert_string_equal(cJSON_PrintUnformatted(changed_attributes), "[\"uid\"]");
+    assert_string_equal(cJSON_PrintUnformatted(changed_attributes), "[\"registry.uid\"]");
     assert_string_equal(cJSON_PrintUnformatted(old_attributes), old_attributes_str);
 }
 
 void test_calculate_dbsync_difference_key_username_change(void **state) {
     key_difference_t *data = (key_difference_t *) *state;
     registry_t configuration = { "HKEY_USERS\\Some", ARCH_64BIT, CHECK_REGISTRY_ALL, 320, 0, NULL, NULL };
-    const char* old_attributes_str = "{\"uid\":\"110\",\"owner\":\"previous_username\",\"gid\":\"110\",\"group_\":\"group_old_name\",\"mtime\":1100,\"checksum\":\"234567890ABCDEF1234567890ABCDEF123456789\"}";
+    const char* old_attributes_str = "{\"owner\":\"previous_username\"}";
     cJSON *old_data = data->old_data;
     cJSON *changed_attributes = data->changed_attributes;
     cJSON *old_attributes = data->old_attributes;
@@ -142,7 +142,7 @@ void test_calculate_dbsync_difference_key_username_change(void **state) {
 
     fim_registry_key registry_data =  DEFAULT_REGISTRY_KEY;
     fim_calculate_dbsync_difference_key(&registry_data, &configuration, old_data, changed_attributes, old_attributes);
-    assert_string_equal(cJSON_PrintUnformatted(changed_attributes), "[\"owner\"]");
+    assert_string_equal(cJSON_PrintUnformatted(changed_attributes), "[\"registry.owner\"]");
     assert_string_equal(cJSON_PrintUnformatted(old_attributes), old_attributes_str);
 }
 
@@ -164,7 +164,7 @@ void test_calculate_dbsync_difference_key_gid_change(void **state) {
 
     key_difference_t *data = (key_difference_t *) *state;
     registry_t configuration = { "HKEY_USERS\\Some", ARCH_64BIT, CHECK_REGISTRY_ALL, 320, 0, NULL, NULL };
-    const char *old_attributes_str = "{\"uid\":\"110\",\"owner\":\"user_old_name\",\"gid\":\"210\",\"group_\":\"group_old_name\",\"mtime\":1100,\"checksum\":\"234567890ABCDEF1234567890ABCDEF123456789\"}";
+    const char *old_attributes_str = "{\"gid\":\"210\"}";
 
     cJSON *old_data = data->old_data;
     cJSON *changed_attributes = data->changed_attributes;
@@ -174,14 +174,14 @@ void test_calculate_dbsync_difference_key_gid_change(void **state) {
 
     fim_registry_key registry_data = DEFAULT_REGISTRY_KEY;
     fim_calculate_dbsync_difference_key(&registry_data, &configuration, old_data, changed_attributes, old_attributes);
-    assert_string_equal(cJSON_PrintUnformatted(changed_attributes), "[\"gid\"]");
+    assert_string_equal(cJSON_PrintUnformatted(changed_attributes), "[\"registry.gid\"]");
     assert_string_equal(cJSON_PrintUnformatted(old_attributes), old_attributes_str);
 }
 
 void test_calculate_dbsync_difference_key_groupname_change(void **state) {
     key_difference_t *data = (key_difference_t *) *state;
     registry_t configuration = { "HKEY_USERS\\Some", ARCH_64BIT, CHECK_REGISTRY_ALL, 320, 0, NULL, NULL };
-    const char* old_attributes_str = "{\"uid\":\"110\",\"owner\":\"user_old_name\",\"gid\":\"110\",\"group_\":\"previous_groupname\",\"mtime\":1100,\"checksum\":\"234567890ABCDEF1234567890ABCDEF123456789\"}";
+    const char* old_attributes_str = "{\"group\":\"previous_groupname\"}";
     cJSON *old_data = data->old_data;
     cJSON *changed_attributes = data->changed_attributes;
     cJSON *old_attributes = data->old_attributes;
@@ -190,13 +190,13 @@ void test_calculate_dbsync_difference_key_groupname_change(void **state) {
 
     fim_registry_key registry_data = DEFAULT_REGISTRY_KEY;
     fim_calculate_dbsync_difference_key(&registry_data, &configuration, old_data, changed_attributes, old_attributes);
-    assert_string_equal(cJSON_PrintUnformatted(changed_attributes), "[\"group_\"]");
+    assert_string_equal(cJSON_PrintUnformatted(changed_attributes), "[\"registry.group\"]");
     assert_string_equal(cJSON_PrintUnformatted(old_attributes), old_attributes_str);
 }
 
 void test_calculate_dbsync_difference_key_mtime_change(void **state) {
     key_difference_t *data = (key_difference_t *) *state;
-    const char* old_attributes_str = "{\"uid\":\"110\",\"owner\":\"user_old_name\",\"gid\":\"110\",\"group_\":\"group_old_name\",\"mtime\":98765432,\"checksum\":\"234567890ABCDEF1234567890ABCDEF123456789\"}";
+    const char* old_attributes_str = "{\"mtime\":98765432}";
     registry_t configuration = { "HKEY_USERS\\Some", ARCH_64BIT, CHECK_REGISTRY_ALL, 320, 0, NULL, NULL };
     cJSON *old_data = data->old_data;
     cJSON *changed_attributes = data->changed_attributes;
@@ -206,13 +206,13 @@ void test_calculate_dbsync_difference_key_mtime_change(void **state) {
 
     fim_registry_key registry_data = DEFAULT_REGISTRY_KEY;
     fim_calculate_dbsync_difference_key(&registry_data, &configuration, old_data, changed_attributes, old_attributes);
-    assert_string_equal(cJSON_PrintUnformatted(changed_attributes), "[\"mtime\"]");
+    assert_string_equal(cJSON_PrintUnformatted(changed_attributes), "[\"registry.mtime\"]");
     assert_string_equal(cJSON_PrintUnformatted(old_attributes), old_attributes_str);
 }
 
 void test_calculate_dbsync_difference_value_size_change(void **state) {
     key_difference_t *data = (key_difference_t *) *state;
-    const char *old_attributes_str = "{\"size\":98765432,\"type\":\"REG_SZ\",\"hash_md5\":\"1234567890ABCDEF1234567890ABCDEF\",\"hash_sha1\":\"1234567890ABCDEF1234567890ABCDEF12345678\",\"hash_sha256\":\"1234567890ABCDEF1234567890ABCDEF1234567890ABCDEF1234567890ABCDEF\"}";
+    const char *old_attributes_str = "{\"size\":98765432}";
     registry_t configuration = { "HKEY_USERS\\Some", ARCH_64BIT, CHECK_REGISTRY_ALL, 320, 0, NULL, NULL };
     cJSON *old_data = data->old_data;
     cJSON *changed_attributes = data->changed_attributes;
@@ -223,14 +223,14 @@ void test_calculate_dbsync_difference_value_size_change(void **state) {
     fim_registry_value_data registry_data = DEFAULT_REGISTRY_VALUE;
 
     fim_calculate_dbsync_difference_value(&registry_data, &configuration, old_data, changed_attributes, old_attributes);
-    assert_string_equal(cJSON_PrintUnformatted(changed_attributes), "[\"size\"]");
+    assert_string_equal(cJSON_PrintUnformatted(changed_attributes), "[\"registry.size\"]");
     assert_string_equal(cJSON_PrintUnformatted(old_attributes), old_attributes_str);
 
 }
 
 void test_calculate_dbsync_difference_value_type_change(void **state) {
     key_difference_t *data = (key_difference_t *) *state;
-    const char *old_attributes_str = "{\"size\":50,\"type\":\"REG_EXPAND_SZ\",\"hash_md5\":\"1234567890ABCDEF1234567890ABCDEF\",\"hash_sha1\":\"1234567890ABCDEF1234567890ABCDEF12345678\",\"hash_sha256\":\"1234567890ABCDEF1234567890ABCDEF1234567890ABCDEF1234567890ABCDEF\"}";
+    const char *old_attributes_str = "{\"data\":{\"type\":\"REG_EXPAND_SZ\"}}";
     registry_t configuration = { "HKEY_USERS\\Some", ARCH_64BIT, CHECK_REGISTRY_ALL, 320, 0, NULL, NULL };
     cJSON *old_data = data->old_data;
     cJSON *changed_attributes = data->changed_attributes;
@@ -240,13 +240,13 @@ void test_calculate_dbsync_difference_value_type_change(void **state) {
     fim_registry_value_data registry_data = DEFAULT_REGISTRY_VALUE;
 
     fim_calculate_dbsync_difference_value(&registry_data, &configuration, old_data, changed_attributes, old_attributes);
-    assert_string_equal(cJSON_PrintUnformatted(changed_attributes), "[\"type\"]");
+    assert_string_equal(cJSON_PrintUnformatted(changed_attributes), "[\"registry.data.type\"]");
     assert_string_equal(cJSON_PrintUnformatted(old_attributes), old_attributes_str);
 }
 
 void test_calculate_dbsync_difference_value_md5_change(void **state) {
     key_difference_t *data = (key_difference_t *) *state;
-    const char *old_attributes_str = "{\"size\":50,\"type\":\"REG_SZ\",\"hash_md5\":\"FEDCBA0987654321FEDCBA0987654321\",\"hash_sha1\":\"1234567890ABCDEF1234567890ABCDEF12345678\",\"hash_sha256\":\"1234567890ABCDEF1234567890ABCDEF1234567890ABCDEF1234567890ABCDEF\"}";
+    const char *old_attributes_str = "{\"data\":{\"hash\":{\"md5\":\"FEDCBA0987654321FEDCBA0987654321\"}}}";
     registry_t configuration = { "HKEY_USERS\\Some", ARCH_64BIT, CHECK_REGISTRY_ALL, 320, 0, NULL, NULL };
     cJSON *old_data = data->old_data;
     cJSON *changed_attributes = data->changed_attributes;
@@ -257,13 +257,13 @@ void test_calculate_dbsync_difference_value_md5_change(void **state) {
     fim_registry_value_data registry_data = DEFAULT_REGISTRY_VALUE;
 
     fim_calculate_dbsync_difference_value(&registry_data, &configuration, old_data, changed_attributes, old_attributes);
-    assert_string_equal(cJSON_PrintUnformatted(changed_attributes), "[\"md5\"]");
+    assert_string_equal(cJSON_PrintUnformatted(changed_attributes), "[\"registry.data.hash.md5\"]");
     assert_string_equal(cJSON_PrintUnformatted(old_attributes), old_attributes_str);
 }
 
 void test_calculate_dbsync_difference_value_sha1_change(void **state) {
     key_difference_t *data = (key_difference_t *) *state;
-    const char *old_attributes_str = "{\"size\":50,\"type\":\"REG_SZ\",\"hash_md5\":\"1234567890ABCDEF1234567890ABCDEF\",\"hash_sha1\":\"FEDCBA0987654321FEDCBA0987654321FEDCBA09\",\"hash_sha256\":\"1234567890ABCDEF1234567890ABCDEF1234567890ABCDEF1234567890ABCDEF\"}";
+    const char *old_attributes_str = "{\"data\":{\"hash\":{\"sha1\":\"FEDCBA0987654321FEDCBA0987654321FEDCBA09\"}}}";
     registry_t configuration = { "HKEY_USERS\\Some", ARCH_64BIT, CHECK_REGISTRY_ALL, 320, 0, NULL, NULL };
     cJSON *old_data = data->old_data;
     cJSON *changed_attributes = data->changed_attributes;
@@ -274,14 +274,14 @@ void test_calculate_dbsync_difference_value_sha1_change(void **state) {
     fim_registry_value_data registry_data = DEFAULT_REGISTRY_VALUE;
 
     fim_calculate_dbsync_difference_value(&registry_data, &configuration, old_data, changed_attributes, old_attributes);
-    assert_string_equal(cJSON_PrintUnformatted(changed_attributes), "[\"sha1\"]");
+    assert_string_equal(cJSON_PrintUnformatted(changed_attributes), "[\"registry.data.hash.sha1\"]");
     assert_string_equal(cJSON_PrintUnformatted(old_attributes), old_attributes_str);
 }
 
 
 void test_calculate_dbsync_difference_value_sha256_change(void **state) {
     key_difference_t *data = (key_difference_t *) *state;
-    const char *old_attributes_str = "{\"size\":50,\"type\":\"REG_SZ\",\"hash_md5\":\"1234567890ABCDEF1234567890ABCDEF\",\"hash_sha1\":\"1234567890ABCDEF1234567890ABCDEF12345678\",\"hash_sha256\":\"FEDCBA0987654321FEDCBA0987654321FEDCBA0987654321FEDCBA0987654321\"}";
+    const char *old_attributes_str = "{\"data\":{\"hash\":{\"sha256\":\"FEDCBA0987654321FEDCBA0987654321FEDCBA0987654321FEDCBA0987654321\"}}}";
 
     registry_t configuration = { "HKEY_USERS\\Some", ARCH_64BIT, CHECK_REGISTRY_ALL, 320, 0, NULL, NULL };
     cJSON *old_data = data->old_data;
@@ -293,7 +293,7 @@ void test_calculate_dbsync_difference_value_sha256_change(void **state) {
     fim_registry_value_data registry_data = DEFAULT_REGISTRY_VALUE;
 
     fim_calculate_dbsync_difference_value(&registry_data, &configuration, old_data, changed_attributes, old_attributes);
-    assert_string_equal(cJSON_PrintUnformatted(changed_attributes), "[\"sha256\"]");
+    assert_string_equal(cJSON_PrintUnformatted(changed_attributes), "[\"registry.data.hash.sha256\"]");
     assert_string_equal(cJSON_PrintUnformatted(old_attributes), old_attributes_str);
 }
 
@@ -314,7 +314,7 @@ void test_registry_key_attributes_json_entry(void **state) {
     json_data_t *data = calloc(1, sizeof(json_data_t));
     char perm_data[OS_MAXSTR] = "{\"S-1-5-32-545\":{\"value\":\"Users\",\"allowed\":[\"read_control\",\"read_data\",\"read_ea\",\"write_ea\"]},\"S-1-5-32-544\":{\"value\":\"Administrators\",\"allowed\":[\"delete\",\"read_control\",\"write_dac\",\"write_owner\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\"]},\"S-1-5-18\":{\"value\":\"SYSTEM\",\"allowed\":[\"delete\",\"read_control\",\"write_dac\",\"write_owner\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\"]},\"S-1-3-0\":{\"value\":\"CREATOR OWNER\",\"allowed\":[\"delete\",\"read_control\",\"write_dac\",\"write_owner\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\"]},\"S-1-15-2-1\":{\"value\":\"ALL APPLICATION PACKAGES\",\"allowed\":[\"read_control\",\"read_data\",\"read_ea\",\"write_ea\"]}}";
 
-    const char* event_str = "{\"permissions\":{\"S-1-5-32-545\":{\"value\":\"Users\",\"allowed\":[\"read_control\",\"read_data\",\"read_ea\",\"write_ea\"]},\"S-1-5-32-544\":{\"value\":\"Administrators\",\"allowed\":[\"delete\",\"read_control\",\"write_dac\",\"write_owner\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\"]},\"S-1-5-18\":{\"value\":\"SYSTEM\",\"allowed\":[\"delete\",\"read_control\",\"write_dac\",\"write_owner\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\"]},\"S-1-3-0\":{\"value\":\"CREATOR OWNER\",\"allowed\":[\"delete\",\"read_control\",\"write_dac\",\"write_owner\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\"]},\"S-1-15-2-1\":{\"value\":\"ALL APPLICATION PACKAGES\",\"allowed\":[\"read_control\",\"read_data\",\"read_ea\",\"write_ea\"]}},\"uid\":\"110\",\"owner\":\"user_old_name\",\"gid\":\"220\",\"group_\":\"group_old_name\",\"mtime\":1100,\"checksum\":\"234567890ABCDEF1234567890ABCDEF123456789\"}";
+    const char* event_str = "{\"permissions\":{\"S-1-5-32-545\":{\"value\":\"Users\",\"allowed\":[\"read_control\",\"read_data\",\"read_ea\",\"write_ea\"]},\"S-1-5-32-544\":{\"value\":\"Administrators\",\"allowed\":[\"delete\",\"read_control\",\"write_dac\",\"write_owner\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\"]},\"S-1-5-18\":{\"value\":\"SYSTEM\",\"allowed\":[\"delete\",\"read_control\",\"write_dac\",\"write_owner\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\"]},\"S-1-3-0\":{\"value\":\"CREATOR OWNER\",\"allowed\":[\"delete\",\"read_control\",\"write_dac\",\"write_owner\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\"]},\"S-1-15-2-1\":{\"value\":\"ALL APPLICATION PACKAGES\",\"allowed\":[\"read_control\",\"read_data\",\"read_ea\",\"write_ea\"]}},\"uid\":\"110\",\"owner\":\"user_old_name\",\"gid\":\"220\",\"group\":\"group_old_name\",\"mtime\":1100}";
     fim_registry_key registry_data = DEFAULT_REGISTRY_KEY;
     registry_t configuration = { "HKEY_USERS\\Some", ARCH_64BIT, CHECK_REGISTRY_ALL, 320, 0, NULL, NULL };
 
@@ -331,7 +331,7 @@ void test_registry_key_attributes_json_entry(void **state) {
 void test_registry_key_attributes_json_dbsync(void **state) {
     json_data_t *data = calloc(1, sizeof(json_data_t));
     cJSON *dbsync_event = cJSON_Parse("{\"permissions\":\"{\\\"S-1-5-32-545\\\":{\\\"value\\\":\\\"Users\\\",\\\"allowed\\\":[\\\"read_control\\\",\\\"read_data\\\",\\\"read_ea\\\",\\\"write_ea\\\"]},\\\"S-1-5-32-544\\\":{\\\"value\\\":\\\"Administrators\\\",\\\"allowed\\\":[\\\"delete\\\",\\\"read_control\\\",\\\"write_dac\\\",\\\"write_owner\\\",\\\"read_data\\\",\\\"write_data\\\",\\\"append_data\\\",\\\"read_ea\\\",\\\"write_ea\\\",\\\"execute\\\"]},\\\"S-1-5-18\\\":{\\\"value\\\":\\\"SYSTEM\\\",\\\"allowed\\\":[\\\"delete\\\",\\\"read_control\\\",\\\"write_dac\\\",\\\"write_owner\\\",\\\"read_data\\\",\\\"write_data\\\",\\\"append_data\\\",\\\"read_ea\\\",\\\"write_ea\\\",\\\"execute\\\"]},\\\"S-1-3-0\\\":{\\\"value\\\":\\\"CREATOR OWNER\\\",\\\"allowed\\\":[\\\"delete\\\",\\\"read_control\\\",\\\"write_dac\\\",\\\"write_owner\\\",\\\"read_data\\\",\\\"write_data\\\",\\\"append_data\\\",\\\"read_ea\\\",\\\"write_ea\\\",\\\"execute\\\"]},\\\"S-1-15-2-1\\\":{\\\"value\\\":\\\"ALL APPLICATION PACKAGES\\\",\\\"allowed\\\":[\\\"read_control\\\",\\\"read_data\\\",\\\"read_ea\\\",\\\"write_ea\\\"]}}\",\"uid\":\"110\",\"owner\":\"user_old_name\",\"gid\":\"220\",\"group_\":\"group_old_name\",\"mtime\":1100,\"checksum\":\"234567890ABCDEF1234567890ABCDEF123456789\"}");
-    const char* event_str = "{\"permissions\":{\"S-1-5-32-545\":{\"value\":\"Users\",\"allowed\":[\"read_control\",\"read_data\",\"read_ea\",\"write_ea\"]},\"S-1-5-32-544\":{\"value\":\"Administrators\",\"allowed\":[\"delete\",\"read_control\",\"write_dac\",\"write_owner\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\"]},\"S-1-5-18\":{\"value\":\"SYSTEM\",\"allowed\":[\"delete\",\"read_control\",\"write_dac\",\"write_owner\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\"]},\"S-1-3-0\":{\"value\":\"CREATOR OWNER\",\"allowed\":[\"delete\",\"read_control\",\"write_dac\",\"write_owner\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\"]},\"S-1-15-2-1\":{\"value\":\"ALL APPLICATION PACKAGES\",\"allowed\":[\"read_control\",\"read_data\",\"read_ea\",\"write_ea\"]}},\"uid\":\"110\",\"owner\":\"user_old_name\",\"gid\":\"220\",\"group_\":\"group_old_name\",\"mtime\":1100,\"checksum\":\"234567890ABCDEF1234567890ABCDEF123456789\"}";
+    const char* event_str = "{\"permissions\":{\"S-1-5-32-545\":{\"value\":\"Users\",\"allowed\":[\"read_control\",\"read_data\",\"read_ea\",\"write_ea\"]},\"S-1-5-32-544\":{\"value\":\"Administrators\",\"allowed\":[\"delete\",\"read_control\",\"write_dac\",\"write_owner\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\"]},\"S-1-5-18\":{\"value\":\"SYSTEM\",\"allowed\":[\"delete\",\"read_control\",\"write_dac\",\"write_owner\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\"]},\"S-1-3-0\":{\"value\":\"CREATOR OWNER\",\"allowed\":[\"delete\",\"read_control\",\"write_dac\",\"write_owner\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\"]},\"S-1-15-2-1\":{\"value\":\"ALL APPLICATION PACKAGES\",\"allowed\":[\"read_control\",\"read_data\",\"read_ea\",\"write_ea\"]}},\"uid\":\"110\",\"owner\":\"user_old_name\",\"gid\":\"220\",\"group\":\"group_old_name\",\"mtime\":1100}";
     registry_t configuration = { "HKEY_USERS\\Some", ARCH_64BIT, CHECK_REGISTRY_ALL, 320, 0, NULL, NULL };
 
     cJSON *event = fim_registry_key_attributes_json(dbsync_event, NULL, &configuration);
@@ -345,7 +345,7 @@ void test_registry_key_attributes_json_dbsync(void **state) {
 
 void test_registry_value_attributes_json_entry(void **state) {
     json_data_t *data = calloc(1, sizeof(json_data_t));
-    const char* event_str = "{\"type\":\"REG_SZ\",\"size\":50,\"hash_md5\":\"1234567890ABCDEF1234567890ABCDEF\",\"hash_sha1\":\"1234567890ABCDEF1234567890ABCDEF12345678\",\"hash_sha256\":\"1234567890ABCDEF1234567890ABCDEF1234567890ABCDEF1234567890ABCDEF\",\"checksum\":\"1234567890ABCDEF1234567890ABCDEF12345678\"}";
+    const char* event_str = "{\"size\":50,\"data\":{\"type\":\"REG_SZ\",\"hash\":{\"md5\":\"1234567890ABCDEF1234567890ABCDEF\",\"sha1\":\"1234567890ABCDEF1234567890ABCDEF12345678\",\"sha256\":\"1234567890ABCDEF1234567890ABCDEF1234567890ABCDEF1234567890ABCDEF\"}}}";
     fim_registry_value_data registry_data = DEFAULT_REGISTRY_VALUE;
     registry_t configuration = { "HKEY_USERS\\Some", ARCH_64BIT, CHECK_REGISTRY_ALL, 320, 0, NULL, NULL };
 
@@ -359,10 +359,9 @@ void test_registry_value_attributes_json_entry(void **state) {
 
 void test_registry_value_attributes_json_dbsync(void **state) {
     json_data_t *data = calloc(1, sizeof(json_data_t));
-    const char* event_str = "{\"type\":\"REG_SZ\",\"size\":50,\"hash_md5\":\"1234567890ABCDEF1234567890ABCDEF\",\"hash_sha1\":\"1234567890ABCDEF1234567890ABCDEF12345678\",\"hash_sha256\":\"1234567890ABCDEF1234567890ABCDEF1234567890ABCDEF1234567890ABCDEF\",\"checksum\":\"1234567890ABCDEF1234567890ABCDEF12345678\"}";
+    const char* event_str = "{\"size\":50,\"data\":{\"type\":\"REG_SZ\",\"hash\":{\"md5\":\"1234567890ABCDEF1234567890ABCDEF\",\"sha1\":\"1234567890ABCDEF1234567890ABCDEF12345678\",\"sha256\":\"1234567890ABCDEF1234567890ABCDEF1234567890ABCDEF1234567890ABCDEF\"}}}";
     cJSON *dbsync_event = cJSON_Parse("{\"architecture\":\"[x64]\",\"checksum\":\"1234567890ABCDEF1234567890ABCDEF12345678\",\"hash_md5\":\"1234567890ABCDEF1234567890ABCDEF\",\"hash_sha1\":\"1234567890ABCDEF1234567890ABCDEF12345678\",\"hash_sha256\":\"1234567890ABCDEF1234567890ABCDEF1234567890ABCDEF1234567890ABCDEF\",\"value\":\"New Value 1\",\"path\":\"HKEY_USERS\\\\Some\",\"size\":50,\"type\":1}");
     registry_t configuration = { "HKEY_USERS\\Some", ARCH_64BIT, CHECK_REGISTRY_ALL, 320, 0, NULL, NULL };
-
 
     cJSON *event = fim_registry_value_attributes_json(dbsync_event, NULL, &configuration);
     data->data1 = dbsync_event;

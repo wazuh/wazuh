@@ -42,58 +42,42 @@ void fim_calculate_dbsync_difference_key(const fim_registry_key* registry_data,
     if (configuration->opts & CHECK_PERM) {
         if (aux = cJSON_GetObjectItem(old_data, "permissions"), aux != NULL) {
             cJSON_AddItemToObject(old_attributes, "permissions", cJSON_Parse(cJSON_GetStringValue(aux)));
-            cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("permissions"));
-        } else {
-            cJSON_AddItemToObject(old_attributes, "permissions", cJSON_Parse(registry_data->permissions));
+            cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("registry.permissions"));
         }
     }
 
     if (configuration->opts & CHECK_OWNER) {
         if (aux = cJSON_GetObjectItem(old_data, "uid"), aux != NULL) {
             cJSON_AddStringToObject(old_attributes, "uid", cJSON_GetStringValue(aux));
-            cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("uid"));
-        } else {
-            cJSON_AddStringToObject(old_attributes, "uid", registry_data->uid);
+            cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("registry.uid"));
         }
 
         if (aux = cJSON_GetObjectItem(old_data, "owner"), aux != NULL) {
             char *username = cJSON_GetStringValue(aux);
-            cJSON_AddStringToObject(old_attributes, "owner", username);
             // AD might fail to solve the owner, we don't trigger an event if the owner is empty
             if (username != NULL && *username != '\0') {
-                cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("owner"));
+                cJSON_AddStringToObject(old_attributes, "owner", username);
+                cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("registry.owner"));
             }
-        } else {
-            cJSON_AddStringToObject(old_attributes, "owner", registry_data->owner);
         }
     }
 
     if (configuration->opts & CHECK_GROUP) {
         if (aux = cJSON_GetObjectItem(old_data, "gid"), aux != NULL) {
             cJSON_AddStringToObject(old_attributes, "gid", cJSON_GetStringValue(aux));
-            cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("gid"));
-        } else {
-            cJSON_AddStringToObject(old_attributes, "gid", registry_data->uid);
+            cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("registry.gid"));
         }
         if (aux = cJSON_GetObjectItem(old_data, "group_"), aux != NULL) {
-            cJSON_AddStringToObject(old_attributes, "group_", cJSON_GetStringValue(aux));
-            cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("group_"));
-        } else {
-            cJSON_AddStringToObject(old_attributes, "group_", registry_data->group);
+            cJSON_AddStringToObject(old_attributes, "group", cJSON_GetStringValue(aux));
+            cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("registry.group"));
         }
     }
 
     if (configuration->opts & CHECK_MTIME) {
          if (aux = cJSON_GetObjectItem(old_data, "mtime"), aux != NULL) {
             cJSON_AddNumberToObject(old_attributes, "mtime", aux->valueint);
-            cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("mtime"));
-        } else {
-            cJSON_AddNumberToObject(old_attributes, "mtime", registry_data->mtime);
+            cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("registry.mtime"));
         }
-    }
-
-    if (*registry_data->checksum) {
-        cJSON_AddStringToObject(old_attributes, "checksum", registry_data->checksum);
     }
 }
 
@@ -112,46 +96,61 @@ void fim_calculate_dbsync_difference_value(const fim_registry_value_data* value_
     if (configuration->opts & CHECK_SIZE) {
         if (aux = cJSON_GetObjectItem(old_data, "size"), aux != NULL) {
             cJSON_AddNumberToObject(old_attributes, "size", aux->valueint);
-            cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("size"));
-        } else {
-            cJSON_AddNumberToObject(old_attributes, "size", value_data->size);
+            cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("registry.size"));
         }
     }
+
+    bool has_data = false;
+    cJSON* data = cJSON_CreateObject();
 
     if (configuration->opts & CHECK_TYPE) {
         if (aux = cJSON_GetObjectItem(old_data, "type"), aux != NULL) {
-            cJSON_AddStringToObject(old_attributes, "type", VALUE_TYPE[aux->valueint]);
-            cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("type"));
-        } else {
-            cJSON_AddStringToObject(old_attributes, "type", VALUE_TYPE[value_data->type]);
+            cJSON_AddStringToObject(data, "type", VALUE_TYPE[aux->valueint]);
+            cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("registry.data.type"));
+            has_data = true;
         }
     }
 
+    bool has_hash = false;
+    cJSON* hash = cJSON_CreateObject();
+
     if (configuration->opts & CHECK_MD5SUM) {
         if (aux = cJSON_GetObjectItem(old_data, "hash_md5"), aux != NULL) {
-            cJSON_AddStringToObject(old_attributes, "hash_md5", cJSON_GetStringValue(aux));
-            cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("md5"));
-        } else {
-            cJSON_AddStringToObject(old_attributes, "hash_md5", value_data->hash_md5);
+            cJSON_AddStringToObject(hash, "md5", cJSON_GetStringValue(aux));
+            cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("registry.data.hash.md5"));
+            has_hash = true;
+            has_data = true;
         }
     }
 
     if (configuration->opts & CHECK_SHA1SUM) {
         if (aux = cJSON_GetObjectItem(old_data, "hash_sha1"), aux != NULL) {
-            cJSON_AddStringToObject(old_attributes, "hash_sha1", cJSON_GetStringValue(aux));
-            cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("sha1"));
-        } else {
-            cJSON_AddStringToObject(old_attributes, "hash_sha1", value_data->hash_sha1);
+            cJSON_AddStringToObject(hash, "sha1", cJSON_GetStringValue(aux));
+            cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("registry.data.hash.sha1"));
+            has_hash = true;
+            has_data = true;
         }
     }
 
     if (configuration->opts & CHECK_SHA256SUM) {
         if (aux = cJSON_GetObjectItem(old_data, "hash_sha256"), aux != NULL) {
-            cJSON_AddStringToObject(old_attributes, "hash_sha256", cJSON_GetStringValue(aux));
-            cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("sha256"));
-        } else {
-            cJSON_AddStringToObject(old_attributes, "hash_sha256", value_data->hash_sha256);
+            cJSON_AddStringToObject(hash, "sha256", cJSON_GetStringValue(aux));
+            cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("registry.data.hash.sha256"));
+            has_hash = true;
+            has_data = true;
         }
+    }
+
+    if (has_hash) {
+        cJSON_AddItemToObject(data, "hash", hash);
+    } else {
+        cJSON_Delete(hash);
+    }
+
+    if (has_data) {
+        cJSON_AddItemToObject(old_attributes, "data", data);
+    } else {
+        cJSON_Delete(data);
     }
 }
 
@@ -170,38 +169,53 @@ cJSON *fim_registry_value_attributes_json(const cJSON* dbsync_event, const fim_r
     cJSON *attributes = cJSON_CreateObject();
 
     if (data) {
-        if (configuration->opts & CHECK_TYPE) {
-            cJSON_AddStringToObject(attributes, "type", VALUE_TYPE[data->type]);
-        }
-
         if (configuration->opts & CHECK_SIZE) {
             cJSON_AddNumberToObject(attributes, "size", data->size);
         }
 
+        bool has_data = false;
+        cJSON* data_json = cJSON_CreateObject();
+
+        if (configuration->opts & CHECK_TYPE) {
+            cJSON_AddStringToObject(data_json, "type", VALUE_TYPE[data->type]);
+            has_data = true;
+        }
+
+        bool has_hash = false;
+        cJSON* hash = cJSON_CreateObject();
+
         if (configuration->opts & CHECK_MD5SUM) {
-            cJSON_AddStringToObject(attributes, "hash_md5", data->hash_md5);
+            cJSON_AddStringToObject(hash, "md5", data->hash_md5);
+            has_hash = true;
+            has_data = true;
         }
 
         if (configuration->opts & CHECK_SHA1SUM) {
-            cJSON_AddStringToObject(attributes, "hash_sha1", data->hash_sha1);
+            cJSON_AddStringToObject(hash, "sha1", data->hash_sha1);
+            has_hash = true;
+            has_data = true;
         }
 
         if (configuration->opts & CHECK_SHA256SUM) {
-            cJSON_AddStringToObject(attributes, "hash_sha256", data->hash_sha256);
+            cJSON_AddStringToObject(hash, "sha256", data->hash_sha256);
+            has_hash = true;
+            has_data = true;
         }
 
-        if (*data->checksum) {
-            cJSON_AddStringToObject(attributes, "checksum", data->checksum);
+        if (has_hash) {
+            cJSON_AddItemToObject(data_json, "hash", hash);
+        } else {
+            cJSON_Delete(hash);
+        }
+
+        if (has_data) {
+            cJSON_AddItemToObject(attributes, "data", data_json);
+        } else {
+            cJSON_Delete(data_json);
         }
 
     } else {
-        cJSON *type, *checksum, *sha256, *md5, *sha1, *size;
-
-        if (type = cJSON_GetObjectItem(dbsync_event, "type"), type != NULL) {
-            if (configuration->opts & CHECK_TYPE) {
-                cJSON_AddStringToObject(attributes, "type", VALUE_TYPE[type->valueint]);
-            }
-        }
+        cJSON *size, *type, *md5, *sha1, *sha256;
 
         if (configuration->opts & CHECK_SIZE) {
             if (size = cJSON_GetObjectItem(dbsync_event, "size"), size != NULL) {
@@ -209,28 +223,54 @@ cJSON *fim_registry_value_attributes_json(const cJSON* dbsync_event, const fim_r
             }
         }
 
+        bool has_data = false;
+        cJSON* data_json = cJSON_CreateObject();
+
+        if (type = cJSON_GetObjectItem(dbsync_event, "type"), type != NULL) {
+            if (configuration->opts & CHECK_TYPE) {
+                cJSON_AddStringToObject(data_json, "type", VALUE_TYPE[type->valueint]);
+                has_data = true;
+            }
+        }
+
+        bool has_hash = false;
+        cJSON* hash = cJSON_CreateObject();
+
         if (configuration->opts & CHECK_MD5SUM) {
-            if (md5 = cJSON_GetObjectItem(dbsync_event, "hash_md5"), md5 != NULL){
-                cJSON_AddStringToObject(attributes, "hash_md5", cJSON_GetStringValue(md5));
+            if (md5 = cJSON_GetObjectItem(dbsync_event, "hash_md5"), md5 != NULL) {
+                cJSON_AddStringToObject(hash, "md5", cJSON_GetStringValue(md5));
+                has_hash = true;
+                has_data = true;
             }
         }
 
         if (configuration->opts & CHECK_SHA1SUM) {
-            if (sha1 = cJSON_GetObjectItem(dbsync_event, "hash_sha1"), sha1 != NULL){
-                cJSON_AddStringToObject(attributes, "hash_sha1", cJSON_GetStringValue(sha1));
+            if (sha1 = cJSON_GetObjectItem(dbsync_event, "hash_sha1"), sha1 != NULL) {
+                cJSON_AddStringToObject(hash, "sha1", cJSON_GetStringValue(sha1));
+                has_hash = true;
+                has_data = true;
             }
         }
 
         if (configuration->opts & CHECK_SHA256SUM) {
-            if (sha256 = cJSON_GetObjectItem(dbsync_event, "hash_sha256"), sha256 != NULL){
-                cJSON_AddStringToObject(attributes, "hash_sha256", cJSON_GetStringValue(sha256));
+            if (sha256 = cJSON_GetObjectItem(dbsync_event, "hash_sha256"), sha256 != NULL) {
+                cJSON_AddStringToObject(hash, "sha256", cJSON_GetStringValue(sha256));
+                has_hash = true;
+                has_data = true;
             }
         }
 
-        if (checksum = cJSON_GetObjectItem(dbsync_event, "checksum"), checksum != NULL){
-            cJSON_AddStringToObject(attributes, "checksum", cJSON_GetStringValue(checksum));
+        if (has_hash) {
+            cJSON_AddItemToObject(data_json, "hash", hash);
+        } else {
+            cJSON_Delete(hash);
         }
 
+        if (has_data) {
+            cJSON_AddItemToObject(attributes, "data", data_json);
+        } else {
+            cJSON_Delete(data_json);
+        }
     }
 
     return attributes;
@@ -265,7 +305,7 @@ cJSON *fim_registry_key_attributes_json(const cJSON* dbsync_event, const fim_reg
             cJSON_AddStringToObject(attributes, "gid", data->gid);
 
             if (data->group) {
-                cJSON_AddStringToObject(attributes, "group_", data->group);
+                cJSON_AddStringToObject(attributes, "group", data->group);
             }
         }
 
@@ -273,11 +313,8 @@ cJSON *fim_registry_key_attributes_json(const cJSON* dbsync_event, const fim_reg
             cJSON_AddNumberToObject(attributes, "mtime", data->mtime);
         }
 
-        if (*data->checksum) {
-            cJSON_AddStringToObject(attributes, "checksum", data->checksum);
-        }
     } else {
-        cJSON *permissions, *uid, *owner, *gid, *group, *mtime, *checksum;
+        cJSON *permissions, *uid, *owner, *gid, *group, *mtime;
 
         if (configuration->opts & CHECK_PERM) {
             if (permissions = cJSON_GetObjectItem(dbsync_event, "permissions"), permissions != NULL) {
@@ -293,7 +330,6 @@ cJSON *fim_registry_key_attributes_json(const cJSON* dbsync_event, const fim_reg
             if (owner = cJSON_GetObjectItem(dbsync_event, "owner"), owner != NULL) {
                 cJSON_AddStringToObject(attributes, "owner", cJSON_GetStringValue(owner));
             }
-
         }
 
         if (configuration->opts & CHECK_GROUP) {
@@ -302,9 +338,8 @@ cJSON *fim_registry_key_attributes_json(const cJSON* dbsync_event, const fim_reg
             }
 
             if (group = cJSON_GetObjectItem(dbsync_event, "group_"), group != NULL) {
-                cJSON_AddStringToObject(attributes, "group_", cJSON_GetStringValue(group));
+                cJSON_AddStringToObject(attributes, "group", cJSON_GetStringValue(group));
             }
-
         }
 
         if (configuration->opts & CHECK_MTIME) {
@@ -312,11 +347,6 @@ cJSON *fim_registry_key_attributes_json(const cJSON* dbsync_event, const fim_reg
                 cJSON_AddNumberToObject(attributes, "mtime", mtime->valueint);
             }
         }
-
-        if (checksum = cJSON_GetObjectItem(dbsync_event, "checksum"), checksum != NULL) {
-            cJSON_AddStringToObject(attributes, "checksum", cJSON_GetStringValue(checksum));
-        }
-
     }
 
     return attributes;
