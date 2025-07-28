@@ -150,6 +150,7 @@ override_dh_install:
 	mkdir -p ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/rhel/10
 	mkdir -p ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/sles/11
 	mkdir -p ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/sles/12
+	mkdir -p ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/sles/16
 	mkdir -p ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/sunos
 	mkdir -p ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/suse/11
 	mkdir -p ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/suse/12
@@ -219,6 +220,7 @@ override_dh_install:
 
 	cp etc/templates/config/sles/sca.files ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/sles
 	cp etc/templates/config/sles/11/sca.files ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/sles/11
+	cp etc/templates/config/sles/16/sca.files ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/sles/16
 
 	cp etc/templates/config/suse/sca.files ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/suse
 	cp etc/templates/config/suse/11/sca.files ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/suse/11
