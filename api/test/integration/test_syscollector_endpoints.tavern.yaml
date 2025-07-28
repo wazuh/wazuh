@@ -4305,3 +4305,69 @@ stages:
       status_code: 200
       verify_response_with:
         function: tavern_utils:test_distinct_key
+
+---
+test_name: GET /syscollector/{agent_id}/users
+
+stages:
+
+  - name: Get all users from an agent
+    request: &user_request_001
+      verify: False
+      method: GET
+      url: "{protocol:s}://{host:s}:{port:d}/syscollector/001/users"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        error: !anyint
+        data:
+          affected_items: !anything
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: 0
+
+  - name: Get distinct users info
+    request:
+      verify: False
+      <<: *user_request_001
+      params:
+        distinct: true
+    response:
+      status_code: 200
+      verify_response_with:
+        function: tavern_utils:test_distinct_key
+
+---
+test_name: GET /syscollector/{agent_id}/groups
+
+stages:
+
+  - name: Get all groups from an agent
+    request: &group_request_001
+      verify: False
+      method: GET
+      url: "{protocol:s}://{host:s}:{port:d}/syscollector/001/groups"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        error: !anyint
+        data:
+          affected_items: !anything
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: 0
+
+  - name: Get distinct groups info
+    request:
+      verify: False
+      <<: *group_request_001
+      params:
+        distinct: true
+    response:
+      status_code: 200
+      verify_response_with:
+        function: tavern_utils:test_distinct_key

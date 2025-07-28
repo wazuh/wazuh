@@ -26,7 +26,6 @@
           "user.password.status",
           "user.password.last_change",
           "user.password.expiration_date",
-          "user.password.last_set_time",
           "user.roles",
           "user.last_login",
           "process.pid",
@@ -162,9 +161,6 @@
                   "type": "integer"
                 },
                 "last_change": {
-                  "type": "integer"
-                },
-                "last_set_time": {
                   "type": "date"
                 },
                 "max_days_between_changes": {

@@ -3,7 +3,6 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import logging
-from typing import Union
 
 from connexion import request
 from connexion.lifecycle import ConnexionResponse
@@ -354,7 +353,7 @@ async def put_file(body: bytes, filename: str = None, overwrite: bool = False,
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
-                          rbac_permissions=request.context['token_info']['rbac_policies']
+                          rbac_permissions=request.context['token_info']['rbac_policies'],
                           )
     data = raise_if_exc(await dapi.distribute_function())
 

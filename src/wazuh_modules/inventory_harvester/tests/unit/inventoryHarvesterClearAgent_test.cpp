@@ -77,6 +77,8 @@ TEST_F(InventoryHarvesterClearAgent, HandleRequest_SystemContextSuccess)
     auto mockIndexerHardware = std::make_unique<StrictMock<MockIndexerConnector>>();
     auto mockIndexerNetworkProtocol = std::make_unique<StrictMock<MockIndexerConnector>>();
     auto mockIndexerNetIface = std::make_unique<StrictMock<MockIndexerConnector>>();
+    auto mockIndexerUsers = std::make_unique<StrictMock<MockIndexerConnector>>();
+    auto mockIndexerGroups = std::make_unique<StrictMock<MockIndexerConnector>>();
 
     indexerConnectors.emplace(MockAffectedComponentType::Package, std::move(mockIndexerPackages));
     indexerConnectors.emplace(MockAffectedComponentType::Process, std::move(mockIndexerProcesses));
@@ -86,6 +88,8 @@ TEST_F(InventoryHarvesterClearAgent, HandleRequest_SystemContextSuccess)
     indexerConnectors.emplace(MockAffectedComponentType::Hardware, std::move(mockIndexerHardware));
     indexerConnectors.emplace(MockAffectedComponentType::NetProto, std::move(mockIndexerNetworkProtocol));
     indexerConnectors.emplace(MockAffectedComponentType::NetIface, std::move(mockIndexerNetIface));
+    indexerConnectors.emplace(MockAffectedComponentType::User, std::move(mockIndexerUsers));
+    indexerConnectors.emplace(MockAffectedComponentType::Group, std::move(mockIndexerGroups));
 
     auto context = std::make_shared<MockSystemContext>();
 
@@ -116,8 +120,14 @@ TEST_F(InventoryHarvesterClearAgent, HandleRequest_SystemContextSuccess)
     EXPECT_CALL(*indexerConnectors[MockAffectedComponentType::Hardware],
                 publish("{\"id\":\"001\",\"operation\":\"DELETED_BY_QUERY\"}"))
         .Times(1);
+    EXPECT_CALL(*indexerConnectors[MockAffectedComponentType::User],
+                publish("{\"id\":\"001\",\"operation\":\"DELETED_BY_QUERY\"}"))
+        .Times(1);
+    EXPECT_CALL(*indexerConnectors[MockAffectedComponentType::Group],
+                publish("{\"id\":\"001\",\"operation\":\"DELETED_BY_QUERY\"}"))
+        .Times(1);
 
-    EXPECT_CALL(*context, agentId()).Times(8).WillRepeatedly(Return("001"));
+    EXPECT_CALL(*context, agentId()).Times(10).WillRepeatedly(Return("001"));
 
     clearAgent.handleRequest(context);
 }

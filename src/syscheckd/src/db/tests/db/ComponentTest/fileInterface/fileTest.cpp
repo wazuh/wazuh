@@ -46,7 +46,7 @@ const auto insertStatement4 = R"({
         "table": "file_entry",
         "data":[{"attributes":"10", "checksum":"a2fbef8f81af27155dcee5e3927ff6243593b91a", "dev":8432, "gid":"0", "group_name":"root",
         "hash_md5":"4b531524aa13c8a54614100b570b3dc7", "hash_sha1":"7902feb66d0bcbe4eb88e1bfacf28befc38bd58b",
-        "hash_sha256":"e403b83dd73a41b286f8db2ee36d6b0ea6e80b49f02c476e0a20b4181a3a062a", "inode":1152921500312810880, "last_event":1596489275,
+        "hash_sha256":"e403b83dd73a41b286f8db2ee36d6b0ea6e80b49f02c476e0a20b4181a3a062a", "inode":1152921500312810881, "last_event":1596489275,
         "mode":0, "mtime":1578075431, "options":131583, "path":"/tmp/test3.txt", "perm":"-rw-rw-r--", "scanned":1, "size":4925,
         "uid":"0", "user_name":"fakeUser"}]
     }
@@ -171,6 +171,32 @@ TEST_F(DBTestFixture, TestFimDBGetPath)
         callback_data.callback = callBackTestFIMEntry;
         callback_data.context = fileFIMTest->toFimEntry();
         result = fim_db_get_path("/etc/wgetrc", callback_data);
+        ASSERT_EQ(result, FIMDB_OK);
+    });
+}
+
+TEST_F(DBTestFixture, TestFimDBWithUTF8Path)
+{
+    const auto utf8_insert = R"({
+        "table": "file_entry",
+        "data":[{"attributes":"10", "checksum":"abc123", "dev":1234, "gid":"0", "group_name":"root",
+        "hash_md5":"deadbeefdeadbeefdeadbeefdeadbeef", "hash_sha1":"abc", "hash_sha256":"abc",
+        "inode":8888, "last_event":1596489275, "mode":0, "mtime":1578075431,
+        "options":131583, "path":"/tmp/naïve.txt", "perm":"-rw-rw-r--", "scanned":1,
+        "size":4925, "uid":"0", "user_name":"utf8User"}]
+    })"_json;
+
+    EXPECT_NO_THROW(
+    {
+        const auto fileUTF8 { std::make_unique<FileItem>(utf8_insert["data"].front()) };
+        auto result = fim_db_file_update(fileUTF8->toFimEntry(), callback_data_added);
+        ASSERT_EQ(result, FIMDB_OK);
+
+        callback_context_t callback_data;
+        callback_data.callback = callBackTestFIMEntry;
+        callback_data.context = fileUTF8->toFimEntry();
+
+        result = fim_db_get_path("/tmp/naïve.txt", callback_data);
         ASSERT_EQ(result, FIMDB_OK);
     });
 }
@@ -418,7 +444,7 @@ TEST_F(DBTestFixture, TestFimDBFileInodeSearchWithBigInode)
         ASSERT_EQ(result, FIMDB_OK);
         callback_data.callback = callbackTestSearch;
         callback_data.context = NULL;
-        result = fim_db_file_inode_search(1152921500312810880, 8432, callback_data);
+        result = fim_db_file_inode_search(1152921500312810881, 8432, callback_data);
         ASSERT_EQ(result, FIMDB_OK);
     });
 }

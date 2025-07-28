@@ -1,0 +1,31 @@
+{
+  "agent_info": {
+    "agent_id": "003",
+    "agent_ip": "any",
+    "agent_name": "agent_test",
+    "agent_version": "v4.10.1"
+  },
+  "data_type": "event",
+  "data": {
+    "attributes": {
+      "checksum": "2f88e3f414fef3175799031fadfc8390c5090b92",
+      "gid": "0",
+      "group_name": "root",
+      "hash_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "hash_sha1": "da39a3ee5e6b4b0d3255bfef95601890afd80709",
+      "hash_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "inode": 28183416,
+      "mtime": 1740677067,
+      "perm": "rw-r--r--",
+      "size": 0,
+      "type": "file",
+      "uid": "0",
+      "user_name": "root"
+    },
+    "mode": "realtime",
+    "path": "/home/folderB/AFileInB.txt",
+    "timestamp": 1737929931,
+    "type": "added",
+    "version": "2.0"
+  }
+}

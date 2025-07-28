@@ -454,6 +454,21 @@ int wdb_fim_insert_entry2(wdb_t * wdb, const cJSON * data) {
                 sqlite3_bind_text(stmt, 15, element->valuestring, -1, NULL);
             } else if (strcmp(element->string, "value_type") == 0) {
                 sqlite3_bind_text(stmt, 20, element->valuestring, -1, NULL);
+            } else if (strcmp(element->string, "inode") == 0) {
+                // New 4.13.1 version of the message, inode is a string.
+                if(element->valuestring) {
+                    char* end_ptr = NULL;
+                    errno = 0;
+                    int64_t inode_value = strtoll(element->valuestring, &end_ptr, 10);
+                    if (errno != 0 || end_ptr == element->valuestring || *end_ptr != '\0') {
+                        merror("DB(%s) Invalid inode value: %s", wdb->id, element->valuestring);
+                        sqlite3_bind_int64(stmt, 13, 0); // Bind 0 if conversion fails
+                    } else {
+                        sqlite3_bind_int64(stmt, 13, inode_value);
+                    }
+                } else {
+                    sqlite3_bind_int64(stmt, 13, 0); // Bind 0 if inode is NULL
+                }
             } else {
                 merror("DB(%s) Invalid attribute name: %s", wdb->id, element->string);
                 os_free(perm);

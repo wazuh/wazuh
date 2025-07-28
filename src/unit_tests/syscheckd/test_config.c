@@ -141,6 +141,7 @@ void test_Read_Syscheck_Config_success(void **state)
     assert_int_equal(syscheck.enable_synchronization, 1);
     assert_int_equal(syscheck.restart_audit, 1);
     assert_int_equal(syscheck.enable_whodata, 1);
+    assert_int_equal(syscheck.whodata_provider, AUDIT_PROVIDER);
     assert_null(syscheck.realtime);
     assert_int_equal(syscheck.audit_healthcheck, 1);
     assert_int_equal(syscheck.process_priority, 10);
@@ -394,6 +395,8 @@ void test_getSyscheckConfig(void **state)
     assert_int_equal(cJSON_GetArraySize(whodata_audit_key), 2);
     cJSON *whodata_startup_healthcheck = cJSON_GetObjectItem(sys_whodata, "startup_healthcheck");
     assert_string_equal(cJSON_GetStringValue(whodata_startup_healthcheck), "yes");
+    cJSON *whodata_provider = cJSON_GetObjectItem(sys_whodata, "provider");
+    assert_string_equal(cJSON_GetStringValue(whodata_provider), "audit");
 #endif
 
     cJSON *allow_remote_prefilter_cmd = cJSON_GetObjectItem(sys_items, "allow_remote_prefilter_cmd");
@@ -505,6 +508,8 @@ void test_getSyscheckConfig_no_audit(void **state)
     assert_null(whodata_audit_key);
     cJSON *whodata_startup_healthcheck = cJSON_GetObjectItem(sys_whodata, "startup_healthcheck");
     assert_string_equal(cJSON_GetStringValue(whodata_startup_healthcheck), "no");
+    cJSON *whodata_provider = cJSON_GetObjectItem(sys_whodata, "provider");
+    assert_string_equal(cJSON_GetStringValue(whodata_provider), "audit");
 #else
     cJSON *windows_audit_interval = cJSON_GetObjectItem(sys_items, "windows_audit_interval");
     assert_int_equal(windows_audit_interval->valueint, 0);
