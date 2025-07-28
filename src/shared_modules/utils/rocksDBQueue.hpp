@@ -13,6 +13,7 @@
 #define _ROCKSDB_QUEUE_HPP
 
 #include "loggerHelper.h"
+#include "rocksDBSharedBuffers.hpp"
 #include "rocksdb/db.h"
 #include "rocksdb/filter_policy.h"
 #include "rocksdb/table.h"
@@ -29,17 +30,26 @@ template<typename T, typename U = T>
 class RocksDBQueue final
 {
 public:
-    explicit RocksDBQueue(const std::string& connectorName)
+    explicit RocksDBQueue(const std::string& connectorName, bool useSharedBuffers = false)
         : m_legacyKeyMode {false}
     {
-        // RocksDB initialization.
-        // Read cache is used to cache the data read from the disk.
+        // RocksDB initialization using shared buffers.
+        // Get shared buffers to reduce memory usage across multiple instances
+        if (useSharedBuffers)
+        {
+            auto& sharedBuffers = RocksDBSharedBuffers::getInstance();
+            m_writeManager = sharedBuffers.getWriteBufferManager();
+        }
+        else
+        {
+            // Write buffer manager is used to manage the memory used for writing data to the disk.
+            m_writeManager = std::make_shared<rocksdb::WriteBufferManager>(128 * 1024 * 1024);
+        }
+        // Read cache is used to cache the data in memory.
         m_readCache = rocksdb::NewLRUCache(16 * 1024 * 1024);
+
         rocksdb::BlockBasedTableOptions tableOptions;
         tableOptions.block_cache = m_readCache;
-
-        // Write buffer manager is used to manage the memory used for writing data to the disk.
-        m_writeManager = std::make_shared<rocksdb::WriteBufferManager>(128 * 1024 * 1024);
 
         rocksdb::Options options;
         options.table_factory.reset(NewBlockBasedTableFactory(tableOptions));

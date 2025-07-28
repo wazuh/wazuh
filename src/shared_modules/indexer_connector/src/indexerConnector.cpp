@@ -781,7 +781,9 @@ IndexerConnector::IndexerConnector(
             }
         },
         DATABASE_BASE_PATH + m_indexName,
-        ELEMENTS_PER_BULK);
+        ELEMENTS_PER_BULK,
+        UNLIMITED_QUEUE_SIZE,
+        true);
 
     m_syncQueue = std::make_unique<ThreadSyncQueue>(
         // coverity[missing_lock]
@@ -909,7 +911,9 @@ IndexerConnector::IndexerConnector(
             }
         },
         DATABASE_BASE_PATH + m_indexName,
-        ELEMENTS_PER_BULK);
+        ELEMENTS_PER_BULK,
+        UNLIMITED_QUEUE_SIZE,
+        true);
 
     m_syncQueue = std::make_unique<ThreadSyncQueue>(
         [](const std::string& agentId)

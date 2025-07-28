@@ -80,6 +80,13 @@ int main(int argc, char **argv)
     mdebug1(WAZUH_HOMEDIR, home_path);
     os_free(home_path);
 
+    int nofile = getDefine_Int("wazuh_modules", "rlimit_nofile", 8192, 1048576);
+    struct rlimit rlimit = { .rlim_cur=(rlim_t)nofile, .rlim_max=(rlim_t)nofile };
+
+    if (setrlimit(RLIMIT_NOFILE, &rlimit) < 0) {
+        merror("Could not set resource limit for file descriptors to %d: %s (%d)", (int)nofile, strerror(errno), errno);
+    }
+
     // Setup daemon
 
     wm_setup();
