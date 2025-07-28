@@ -1,3 +1,14 @@
+/* Copyright (C) 2015, Wazuh Inc.
+ * All rights reserved.
+ *
+ * This program is free software; you can redistribute it
+ * and/or modify it under the terms of the GNU General Public
+ * License (version 2) as published by the FSF - Free Software
+ * Foundation.
+ */
+
+#pragma once
+
 #include <string>
 #include <vector>
 #include <filesystem>
@@ -74,11 +85,12 @@ namespace chrome
         {ChromeBrowserType::Vivaldi, ".config/vivaldi"},
     };
 
-    const std::vector<std::string> kPossibleConfigFileNames = {"Preferences", "Secure Preferences"};
-    const std::string kExtensionsFolderName{"Extensions"};
-    const std::string kExtensionManifestName{"manifest.json"};
+    const std::string kPreferencesFile{"Preferences"};
+    const std::string kSecurePreferencesFile{"Secure Preferences"};
+    const std::string kExtensionsDir{"Extensions"};
+    const std::string kExtensionManifestFile{"manifest.json"};
     const std::string kExtensionLocalesDir{"_locales"};
-    const std::string kExtensionLocaleFile{"messages.json"};
+    const std::string kExtensionLocaleMessagesFile{"messages.json"};
 
     class ChromeExtensionsProvider
     {
@@ -96,18 +108,17 @@ namespace chrome
             // std::filesystem::path getHomePath();
             bool isValidChromeProfile(const std::filesystem::path& profilePath);
             std::string jsonArrayToString(const nlohmann::json& jsonArray);
-            std::string remove_substring(const std::string& input, const std::string& to_remove);
-            bool is_snake_case(const std::string& s);
-            void to_lowercase(std::string& str);
+            bool isSnakeCase(const std::string& s);
             void localizeParameters(chrome::ChromeExtension& extension);
             std::string hashToLetterString(const uint8_t* hash, size_t length);
             std::string hashToHexString(const uint8_t* hash, size_t length);
             std::string webkitToUnixTime(std::string webkit_timestamp);
             std::string generateIdentifier(const std::string& key);
-            std::string sha256_file(const std::filesystem::path& filepath);
+            std::string sha256File(const std::filesystem::path& filepath);
             void parseManifest(nlohmann::json& manifestJson, chrome::ChromeExtension& extension);
             void parsePreferenceSettings(chrome::ChromeExtension& extension, const std::string& key, const nlohmann::json& value);
             void getCommonSettings(chrome::ChromeExtension& extension, const std::filesystem::path& manifestPath, const nlohmann::json& preferencesJson);
+            chrome::ChromeExtensionList getExtensionsFromPreferences(const std::filesystem::path& profilePath, const std::filesystem::path& preferencesFilePath);
             chrome::ChromeExtensionList getReferencedExtensions(const std::filesystem::path& profilePath);
             chrome::ChromeExtensionList getUnreferencedExtensions(const std::filesystem::path& profilePath);
             void getExtensionsFromPath(chrome::ChromeExtensionList& extensions, const std::filesystem::path& path);

@@ -45,9 +45,6 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     ${SRC_FOLDER}/external/openssl/libcrypto.a
   )
 
-  add_executable(chrome_main src/main.cpp)
-  target_link_libraries(chrome_main chrome_extensions)
-
   if(UNIT_TEST)
     target_link_libraries(chrome_extensions gcov)
     add_subdirectory(tests)
