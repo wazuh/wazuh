@@ -891,7 +891,7 @@ async def test_revoke_all_tokens(mock_isins, mock_exc, mock_dapi, mock_remove, m
                                  mock_request):
     """Verify 'revoke_all_tokens' endpoint is working as expected."""
     mock_isins.return_value = True if not mock_snodes else False
-    with patch('api.controllers.security_controller.get_system_nodes', return_value=mock_snodes):
+    with patch('api.controllers.security_controller.get_system_nodes_or_none', return_value=mock_snodes):
         result = await revoke_all_tokens()
         if not mock_snodes:
             mock_isins.assert_called_once()
@@ -920,7 +920,7 @@ async def test_revoke_all_tokens(mock_isins, mock_exc, mock_dapi, mock_remove, m
 async def test_revoke_all_tokens_ko(mock_type, mock_len, mock_exc, mock_dapi, mock_remove, mock_dfunc,
                                     mock_request):
     """Verify 'revoke_all_tokens' endpoint is handling WazuhPermissionError as expected."""
-    with patch('api.controllers.security_controller.get_system_nodes', return_value=AsyncMock()) as mock_snodes:
+    with patch('api.controllers.security_controller.get_system_nodes_or_none', return_value=AsyncMock()) as mock_snodes:
         result = await revoke_all_tokens()
         mock_dapi.assert_called_once_with(f=security.wrapper_revoke_tokens,
                                           f_kwargs=mock_remove.return_value,
