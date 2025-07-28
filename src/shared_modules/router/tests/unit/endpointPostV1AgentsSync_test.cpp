@@ -148,7 +148,7 @@ TEST_F(EndpointPostV1AgentsSyncTest, StatusSingleAgent)
 {
     auto stmt = mockStmt(qdump);
 
-    EXPECT_CALL(*stmt, bindStringView).Times(1); // connection_status
+    EXPECT_CALL(*stmt, bindStringView).Times(2); // connection_status + version
     EXPECT_CALL(*stmt, bindInt64).Times(3);      // disconnection_time + status_code + id
     EXPECT_CALL(*stmt, step()).Times(1);
 
@@ -160,7 +160,8 @@ TEST_F(EndpointPostV1AgentsSyncTest, StatusSingleAgent)
     TEndpointPostV1AgentsSync<MockSQLiteConnection, TrampolineSQLiteStatement>::call(db, req, res);
 
     ASSERT_EQ(qdump->size(), 1);
-    EXPECT_EQ((*qdump)[0],
-              "UPDATE agent SET connection_status = ?, sync_status = 'synced', disconnection_time = ?, status_code = ? "
-              "WHERE id = ?;");
+    EXPECT_EQ(
+        (*qdump)[0],
+        "UPDATE agent SET connection_status = ?, sync_status = 'synced', disconnection_time = ?, status_code = ?, "
+        "version = ? WHERE id = ?;");
 }
