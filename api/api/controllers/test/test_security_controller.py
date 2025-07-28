@@ -885,16 +885,12 @@ async def test_get_rbac_actions(mock_exc, mock_dapi, mock_remove, mock_dfunc):
 @patch('api.controllers.security_controller.remove_nones_to_dict')
 @patch('api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
-@patch('api.controllers.security_controller.isinstance')
 @pytest.mark.parametrize('mock_snodes', [None, AsyncMock()])
-async def test_revoke_all_tokens(mock_isins, mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_snodes,
+async def test_revoke_all_tokens(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_snodes,
                                  mock_request):
     """Verify 'revoke_all_tokens' endpoint is working as expected."""
-    mock_isins.return_value = True if not mock_snodes else False
     with patch('api.controllers.security_controller.get_system_nodes_or_none', return_value=mock_snodes):
         result = await revoke_all_tokens()
-        if not mock_snodes:
-            mock_isins.assert_called_once()
         mock_dapi.assert_called_once_with(f=security.wrapper_revoke_tokens,
                                           f_kwargs=mock_remove.return_value,
                                           request_type='distributed_master' if mock_snodes is not None else 'local_any',
@@ -964,12 +960,10 @@ async def test_get_security_config(mock_exc, mock_dapi, mock_remove, mock_dfunc,
 @patch('api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
 @patch('api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
-@patch('api.controllers.security_controller.isinstance')
 @pytest.mark.parametrize('mock_snodes', [None, AsyncMock()])
-async def test_security_revoke_tokens(mock_isins, mock_exc, mock_dapi, mock_dfunc, mock_snodes):
+async def test_security_revoke_tokens(mock_exc, mock_dapi, mock_dfunc, mock_snodes):
     """Verify 'security_revoke_tokens' endpoint is working as expected."""
-    mock_isins.return_value = True if not mock_snodes else False
-    with patch('api.controllers.security_controller.get_system_nodes', return_value=mock_snodes):
+    with patch('api.controllers.security_controller.get_system_nodes_or_none', return_value=mock_snodes):
         await security_revoke_tokens()
         mock_dapi.assert_called_once_with(f=security.revoke_tokens,
                                           request_type='distributed_master' if mock_snodes is not None else 'local_any',
