@@ -19,9 +19,60 @@
 
 extern void logMessage(modules_log_level_t level, const std::string& msg);
 
+/**
+ * @brief Schema adapter for converting agent format to FlatBuffers parseable format
+ *
+ * The SchemaAdapter class provides functionality to adapt JSON messages from the agent
+ * (with enriched agent context) to a format that is parseable by the FlatBuffers schema.
+ * It handles different message types and schemas, transforming the data structure
+ * to be compatible with FlatBuffers parsing requirements.
+ *
+ * This class is designed to be used as a static utility class, with all methods
+ * being static. It uses thread-local storage for the JSON parser to ensure
+ * thread safety in multi-threaded environments.
+ *
+ * @note This class is final and cannot be inherited from.
+ * @note All methods are static and do not require class instantiation.
+ */
 class SchemaAdapter final
 {
 public:
+    /**
+     * @brief Adapts agent format messages to FlatBuffers parseable format
+     *
+     * This method parses a JSON message from the agent (with enriched agent context)
+     * and converts it to a format that is parseable by the FlatBuffers schema.
+     * The adapted message maintains agent information while transforming the structure
+     * to be compatible with FlatBuffers parsing requirements.
+     *
+     * The method handles different message types:
+     * - Integrity check messages (left/right) are discarded
+     * - System deltas and syscheck deltas are processed with agent context preserved
+     * - Sync messages are processed with component-specific data transformation
+     *
+     * @param[in] message The agent format JSON message to adapt (as string_view for efficiency)
+     * @param[in] schema The message type schema (MT_SYS_DELTAS, MT_SYSCHECK_DELTAS, MT_SYNC)
+     * @param[in] agentCtx Pointer to the agent context containing enriched agent information
+     * @param[out] buffer The output buffer where the FlatBuffers-parseable message will be stored
+     *
+     * @throws std::invalid_argument If agentCtx is null
+     * @throws std::invalid_argument If the agent format JSON message cannot be parsed
+     * @throws std::invalid_argument If the message is missing required fields (type, data)
+     * @throws std::invalid_argument If the message type is not implemented for the given schema
+     * @throws std::invalid_argument If the schema type is not implemented
+     *
+     * @note The method uses thread-local storage for the JSON parser to ensure
+     *       thread safety in multi-threaded environments.
+     * @note The buffer parameter is appended to, so any existing content is preserved.
+     * @note Integrity check messages (integrity_check_left, integrity_check_right) are
+     *       silently discarded and the buffer remains unchanged.
+     * @note The output format is designed to be compatible with FlatBuffers schema parsing.
+     *
+     * @see msg_type for available schema types
+     * @see agent_ctx for agent context structure
+     * @see FlatBuffers schema for output format specification
+     *
+     */
     static void
     adaptJsonMessage(std::string_view message, const msg_type schema, const agent_ctx* agentCtx, std::string& buffer)
     {

@@ -30,11 +30,24 @@ enum msg_type
     MT_SYSCHECK_DELTAS,
 };
 
+/**
+ * @brief Agent context structure containing agent information.
+ *
+ * This structure holds the essential information about an agent that can be
+ * used for routing messages and identifying the source of communications.
+ */
 struct agent_ctx
 {
+    /** @brief Unique identifier for the agent */
     const char* agent_id;
+
+    /** @brief Human-readable name of the agent */
     const char* agent_name;
+
+    /** @brief IP address of the agent */
     const char* agent_ip;
+
+    /** @brief Version string of the agent software */
     const char* agent_version;
 };
 
