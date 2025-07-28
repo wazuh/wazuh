@@ -1035,10 +1035,46 @@ static void test_fim_check_ignore_regex_directory(void **state) {
 
 
 #ifndef TEST_WINAGENT
-    snprintf(debug_msg, OS_MAXSTR, FIM_IGNORE_SREGEX, "/test/files", ".log$|.swp$");
+    snprintf(debug_msg, OS_MAXSTR, FIM_IGNORE_SREGEX, "test/my_test_directory", "test_directory");
     expect_string(__wrap__mdebug2, formatted_msg, debug_msg);
 #else
-    snprintf(debug_msg, OS_MAXSTR, FIM_IGNORE_SREGEX, "/test/files", ".log$|.htm$|.jpg$|.png$|.chm$|.pnf$|.evtx$|.swp$");
+    snprintf(debug_msg, OS_MAXSTR, FIM_IGNORE_SREGEX, "test/my_test_directory", "test_directory");
+    expect_string(__wrap__mdebug2, formatted_msg, debug_msg);
+#endif
+
+    ret = fim_check_ignore("test/my_test_directory", FIM_DIRECTORY);
+
+    assert_int_equal(ret, 1);
+}
+
+static void test_fim_check_ignore_negated_regex_file(void **state) {
+    int ret;
+    char debug_msg[OS_MAXSTR];
+
+
+#ifndef TEST_WINAGENT
+    snprintf(debug_msg, OS_MAXSTR, FIM_IGNORE_SREGEX, "/test/files/test.txt", "!mytest");
+    expect_string(__wrap__mdebug2, formatted_msg, debug_msg);
+#else
+    snprintf(debug_msg, OS_MAXSTR, FIM_IGNORE_SREGEX, "/test/files/test.txt", "!mytest");
+    expect_string(__wrap__mdebug2, formatted_msg, debug_msg);
+#endif
+
+    ret = fim_check_ignore("/test/files/test.txt", FIM_REGULAR);
+
+    assert_int_equal(ret, 1);
+}
+
+static void test_fim_check_ignore_negated_regex_directory(void **state) {
+    int ret;
+    char debug_msg[OS_MAXSTR];
+
+
+#ifndef TEST_WINAGENT
+    snprintf(debug_msg, OS_MAXSTR, FIM_IGNORE_SREGEX, "/test/files", "!mytest");
+    expect_string(__wrap__mdebug2, formatted_msg, debug_msg);
+#else
+    snprintf(debug_msg, OS_MAXSTR, FIM_IGNORE_SREGEX, "/test/files", "!mytest");
     expect_string(__wrap__mdebug2, formatted_msg, debug_msg);
 #endif
 
@@ -4320,7 +4356,10 @@ int main(void) {
 
         /* fim_check_ignore */
         cmocka_unit_test(test_fim_check_ignore_strncasecmp),
-        cmocka_unit_test(test_fim_check_ignore_regex),
+        cmocka_unit_test(test_fim_check_ignore_regex_file),
+        cmocka_unit_test(test_fim_check_ignore_regex_directory),
+        cmocka_unit_test(test_fim_check_ignore_negated_regex_file),
+        cmocka_unit_test(test_fim_check_ignore_negated_regex_directory),
         cmocka_unit_test(test_fim_check_ignore_failure),
 
         /* fim_check_restrict */
