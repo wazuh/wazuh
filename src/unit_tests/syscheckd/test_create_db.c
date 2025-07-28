@@ -1011,7 +1011,7 @@ static void test_fim_check_ignore_strncasecmp(void **state) {
 }
 #endif
 
-static void test_fim_check_ignore_regex(void **state) {
+static void test_fim_check_ignore_regex_file(void **state) {
     int ret;
     char debug_msg[OS_MAXSTR];
 
@@ -1027,6 +1027,24 @@ static void test_fim_check_ignore_regex(void **state) {
     ret = fim_check_ignore("/test/files/test.swp", FIM_REGULAR);
 
     assert_int_equal(ret, 1);
+}
+
+static void test_fim_check_ignore_regex_directory(void **state) {
+    int ret;
+    char debug_msg[OS_MAXSTR];
+
+
+#ifndef TEST_WINAGENT
+    snprintf(debug_msg, OS_MAXSTR, FIM_IGNORE_SREGEX, "/test/files", ".log$|.swp$");
+    expect_string(__wrap__mdebug2, formatted_msg, debug_msg);
+#else
+    snprintf(debug_msg, OS_MAXSTR, FIM_IGNORE_SREGEX, "/test/files", ".log$|.htm$|.jpg$|.png$|.chm$|.pnf$|.evtx$|.swp$");
+    expect_string(__wrap__mdebug2, formatted_msg, debug_msg);
+#endif
+
+    ret = fim_check_ignore("/test/files", FIM_DIRECTORY);
+
+    assert_int_equal(ret, 0);
 }
 
 
