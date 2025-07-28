@@ -64,9 +64,9 @@ full_filename,owner_name,group_name,mode,type,prot_permissions,size_bytes,size_e
 /var/ossec/tmp/sca-4.*-*-tmp/sles/12/sca.files,root,wazuh,640,file,-rw-r-----,28,0.1
 /var/ossec/tmp/sca-4.*-*-tmp/sles/12/cis_sles12_linux.yml,root,wazuh,640,file,-rw-r-----,62673,0.1
 /var/ossec/tmp/sca-4.*-*-tmp/sles/15/sca.files,root,wazuh,640,file,-rw-r-----,29,0.1
-/var/ossec/tmp/sca-4.*-*-tmp/sles/15/cis_sles15_linux.yml,root,wazuh,640,file,-rw-r-----,290194,0.
+/var/ossec/tmp/sca-4.*-*-tmp/sles/15/cis_sles15_linux.yml,root,wazuh,640,file,-rw-r-----,290194,0.1
 /var/ossec/tmp/sca-4.*-*-tmp/sles/16/sca.files,root,wazuh,640,file,-rw-r-----,29,0.1
-/var/ossec/tmp/sca-4.*-*-tmp/sles/16/cis_sles16_linux.yml,root,wazuh,640,file,-rw-r-----,290281,0.11
+/var/ossec/tmp/sca-4.*-*-tmp/sles/16/cis_sles16_linux.yml,root,wazuh,640,file,-rw-r-----,290281,0.1
 /var/ossec/tmp/sca-4.*-*-tmp/sles/11/sca.files,root,wazuh,640,file,-rw-r-----,28,0.1
 /var/ossec/tmp/sca-4.*-*-tmp/sles/11/cis_sles11_linux.yml,root,wazuh,640,file,-rw-r-----,60607,0.1
 /var/ossec/agentless/register_host.sh,root,wazuh,750,file,-rwxr-x---,2406,0.1
