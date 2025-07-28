@@ -19,6 +19,7 @@
 #include <unordered_map>
 #include <vector>
 #include <condition_variable>
+#include <chrono>
 
 class IAgentSyncProtocol
 {
@@ -39,8 +40,10 @@ class IAgentSyncProtocol
         /// @param module Module name
         /// @param mode Sync mode
         /// @param realtime Realtime sync
+        /// @param timeout The timeout for each response wait.
+        /// @param retries The maximum number of re-send attempts.
         /// @return true if the sync was successfully processed; false otherwise.
-        virtual bool synchronizeModule(const std::string& module, Wazuh::SyncSchema::Mode mode, bool realtime) = 0;
+        virtual bool synchronizeModule(const std::string& module, Wazuh::SyncSchema::Mode mode, bool realtime, std::chrono::seconds timeout, unsigned int retries) = 0;
 
         /// @brief Destructor
         virtual ~IAgentSyncProtocol() = default;
@@ -67,7 +70,7 @@ class AgentSyncProtocol : public IAgentSyncProtocol
                                const std::string& data) override;
 
         /// @copydoc IAgentSyncProtocol::synchronizeModule
-        bool synchronizeModule(const std::string& module, Wazuh::SyncSchema::Mode mode, bool realtime) override;
+        bool synchronizeModule(const std::string& module, Wazuh::SyncSchema::Mode mode, bool realtime, std::chrono::seconds timeout, unsigned int retries) override;
 
         /// @brief Parses a FlatBuffer response message received from the manager.
         /// @param data Pointer to the FlatBuffer-encoded message buffer.
@@ -94,9 +97,10 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         /// @param mode Sync mode
         /// @param realtime Realtime sync
         /// @param dataSize Size of data to send
-        /// @param deadLine The time point by which the operation must complete.
+        /// @param timeout The timeout for each response wait.
+        /// @param retries The maximum number of re-send attempts.
         /// @return True on success, false on failure or timeout
-        bool sendStartAndWaitAck(const std::string& module, Wazuh::SyncSchema::Mode mode, bool realtime, size_t dataSize, const std::chrono::steady_clock::time_point& deadLine);
+        bool sendStartAndWaitAck(const std::string& module, Wazuh::SyncSchema::Mode mode, bool realtime, size_t dataSize, const std::chrono::seconds timeout, unsigned int retries);
 
         /// @brief Receives a startack message from the server
         /// @param timeout Timeout to wait for Ack
@@ -115,9 +119,10 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         /// @brief Sends an end message to the server
         /// @param module Module name
         /// @param session Session id
-        /// @param deadLine The time point by which the operation must complete.
+        /// @param timeout The timeout for each response wait.
+        /// @param retries The maximum number of re-send attempts.
         /// @return True on success, false on failure or timeout
-        bool sendEndAndWaitAck(const std::string& module, uint64_t session, const std::chrono::steady_clock::time_point& deadLine);
+        bool sendEndAndWaitAck(const std::string& module, uint64_t session, const std::chrono::seconds timeout, unsigned int retries);
 
         /// @brief Receives an endack message from the server
         /// @param timeout Timeout to wait for Ack
