@@ -30,11 +30,12 @@ class IAgentSyncProtocol
         /// @param operation Operation type
         /// @param index Index where to send the difference
         /// @param data Difference data
-        virtual void persistDifference(const std::string& module,
-                                       const std::string& id,
-                                       Wazuh::SyncSchema::Operation operation,
-                                       const std::string& index,
-                                       const std::string& data) = 0;
+        /// @return The total number of pending differences for that module.
+        virtual size_t persistDifference(const std::string& module,
+                                         const std::string& id,
+                                         Wazuh::SyncSchema::Operation operation,
+                                         const std::string& index,
+                                         const std::string& data) = 0;
 
         /// @brief Synchronize a module with the server
         /// @param module Module name
@@ -63,11 +64,11 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         explicit AgentSyncProtocol(MQ_Functions mqFuncs, std::shared_ptr<IPersistentQueue> queue = nullptr);
 
         /// @copydoc IAgentSyncProtocol::persistDifference
-        void persistDifference(const std::string& module,
-                               const std::string& id,
-                               Wazuh::SyncSchema::Operation operation,
-                               const std::string& index,
-                               const std::string& data) override;
+        size_t persistDifference(const std::string& module,
+                                 const std::string& id,
+                                 Wazuh::SyncSchema::Operation operation,
+                                 const std::string& index,
+                                 const std::string& data) override;
 
         /// @copydoc IAgentSyncProtocol::synchronizeModule
         bool synchronizeModule(const std::string& module, Wazuh::SyncSchema::Mode mode, bool realtime, std::chrono::seconds timeout, unsigned int retries) override;

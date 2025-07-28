@@ -53,11 +53,11 @@ class IPersistentQueue
         /// @param index The message grouping key.
         /// @param data The serialized payload of the message.
         /// @param operation The type of operation (e.g., Upsert, Delete).
-        /// @return Assigned sequence number of the inserted message.
-        virtual uint64_t submit(const std::string& module, const std::string& id,
-                                const std::string& index,
-                                const std::string& data,
-                                Wazuh::SyncSchema::Operation operation) = 0;
+        /// @return The total number of items for that module in the queue after submission.
+        virtual size_t submit(const std::string& module, const std::string& id,
+                              const std::string& index,
+                              const std::string& data,
+                              Wazuh::SyncSchema::Operation operation) = 0;
 
         /// @brief Returns all messages queued for a given module.
         /// @param module The module name.

@@ -33,7 +33,8 @@ class PersistentQueueStorage : public IPersistentQueueStorage
         /// @brief Saves a new message entry into the persistent storage.
         /// @param module The module identifier.
         /// @param data The message data to persist.
-        void save(const std::string& module, const PersistedData& data) override;
+        /// @return The total number of items for the given module after the save operation.
+        size_t save(const std::string& module, const PersistedData& data) override;
 
         /// @brief Deletes all messages belonging to a specific module.
         /// @param module The module whose messages will be removed.

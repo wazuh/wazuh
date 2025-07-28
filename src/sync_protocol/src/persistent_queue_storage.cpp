@@ -54,26 +54,53 @@ void PersistentQueueStorage::createTableIfNotExists()
     }
 }
 
-void PersistentQueueStorage::save(const std::string& module, const PersistedData& data)
+size_t PersistentQueueStorage::save(const std::string& module, const PersistedData& data)
 {
     try
     {
-        const std::string query =
+        m_connection.execute("BEGIN IMMEDIATE TRANSACTION;");
+
+        const std::string insertQuery =
             "INSERT INTO persistent_queue (seq, module, id, idx, data, operation)"
             " VALUES (?, ?, ?, ?, ?, ?);";
 
-        Statement stmt(m_connection, query);
-        stmt.bind(1, data.seq);
-        stmt.bind(2, module);
-        stmt.bind(3, data.id);
-        stmt.bind(4, data.index);
-        stmt.bind(5, data.data);
-        stmt.bind(6, static_cast<int>(data.operation));
-        stmt.step();
+        Statement insertStmt(m_connection, insertQuery);
+        insertStmt.bind(1, data.seq);
+        insertStmt.bind(2, module);
+        insertStmt.bind(3, data.id);
+        insertStmt.bind(4, data.index);
+        insertStmt.bind(5, data.data);
+        insertStmt.bind(6, static_cast<int>(data.operation));
+        insertStmt.step();
+
+        const std::string countQuery = "SELECT COUNT(*) FROM persistent_queue WHERE module = ?;";
+        Statement countStmt(m_connection, countQuery);
+        countStmt.bind(1, module);
+
+        size_t count = 0;
+
+        if (countStmt.step() == SQLITE_ROW)
+        {
+            count = countStmt.value<int64_t>(0);
+        }
+
+        m_connection.execute("COMMIT;");
+
+        return count;
     }
     catch (const Sqlite3Error& ex)
     {
-        std::cerr << "[PersistentQueueStorage] SQLite error: " << ex.what() << std::endl;
+        std::cerr << "[PersistentQueueStorage] SQLite transaction failed, rolling back. Error: " << ex.what() << std::endl;
+
+        try
+        {
+            m_connection.execute("ROLLBACK;");
+        }
+        catch (const Sqlite3Error& rollback_ex)
+        {
+            std::cerr << "[PersistentQueueStorage] CRITICAL: Failed to rollback transaction: " << rollback_ex.what() << std::endl;
+        }
+
         throw;
     }
 }

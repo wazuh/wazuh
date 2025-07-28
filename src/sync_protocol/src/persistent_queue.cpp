@@ -35,18 +35,20 @@ PersistentQueue::PersistentQueue(std::shared_ptr<IPersistentQueueStorage> storag
 
 PersistentQueue::~PersistentQueue() = default;
 
-uint64_t PersistentQueue::submit(const std::string& module, const std::string& id,
-                                 const std::string& index,
-                                 const std::string& data,
-                                 Wazuh::SyncSchema::Operation operation)
+size_t PersistentQueue::submit(const std::string& module, const std::string& id,
+                               const std::string& index,
+                               const std::string& data,
+                               Wazuh::SyncSchema::Operation operation)
 {
     std::lock_guard<std::mutex> lock(m_mutex);
     uint64_t seq = ++m_seqCounter[module];
     PersistedData msg{seq, id, index, data, operation};
 
+    size_t messageCount = 0;
+
     try
     {
-        persistMessage(module, msg);
+        messageCount = persistMessage(module, msg);
     }
     catch (const std::exception& ex)
     {
@@ -57,7 +59,7 @@ uint64_t PersistentQueue::submit(const std::string& module, const std::string& i
 
     m_store[module].push_back(msg);
 
-    return seq;
+    return messageCount;
 }
 
 std::vector<PersistedData> PersistentQueue::fetchAll(const std::string& module)
@@ -146,9 +148,9 @@ void PersistentQueue::loadFromStorage(const std::string& module)
     }
 }
 
-void PersistentQueue::persistMessage(const std::string& module, const PersistedData& data)
+size_t PersistentQueue::persistMessage(const std::string& module, const PersistedData& data)
 {
-    m_storage->save(module, data);
+    return m_storage->save(module, data);
 }
 
 void PersistentQueue::deleteAllMessages(const std::string& module)
