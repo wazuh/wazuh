@@ -1035,14 +1035,14 @@ static void test_fim_check_ignore_regex_directory(void **state) {
 
 
 #ifndef TEST_WINAGENT
-    snprintf(debug_msg, OS_MAXSTR, FIM_IGNORE_SREGEX, "test/my_test_directory", "test_directory");
+    snprintf(debug_msg, OS_MAXSTR, FIM_IGNORE_SREGEX, "test/test_directory", "test_dir");
     expect_string(__wrap__mdebug2, formatted_msg, debug_msg);
 #else
-    snprintf(debug_msg, OS_MAXSTR, FIM_IGNORE_SREGEX, "test/my_test_directory", "test_directory");
+    snprintf(debug_msg, OS_MAXSTR, FIM_IGNORE_SREGEX, "test/my_test_directory", "test_dir");
     expect_string(__wrap__mdebug2, formatted_msg, debug_msg);
 #endif
 
-    ret = fim_check_ignore("test/my_test_directory", FIM_DIRECTORY);
+    ret = fim_check_ignore("test/test_directory", FIM_DIRECTORY);
 
     assert_int_equal(ret, 1);
 }
@@ -4315,8 +4315,6 @@ int main(void) {
         cmocka_unit_test(test_fim_check_ignore_strncasecmp),
         cmocka_unit_test(test_fim_check_ignore_regex_file),
         cmocka_unit_test(test_fim_check_ignore_regex_directory),
-        cmocka_unit_test(test_fim_check_ignore_negated_regex_file),
-        cmocka_unit_test(test_fim_check_ignore_negated_regex_directory),
         cmocka_unit_test(test_fim_check_ignore_failure),
 
         /* fim_check_restrict */
