@@ -45,11 +45,12 @@ TEST_F(SystemInventoryDeleteElement, validAgentID_OS)
     auto deleteElement = std::make_shared<DeleteSystemElement<MockSystemContext>>();
 
     EXPECT_CALL(*context, agentId()).WillOnce(testing::Return("001"));
+    EXPECT_CALL(*context, osName()).WillOnce(testing::Return("osName"));
     EXPECT_CALL(*context, originTable()).WillOnce(testing::Return(MockSystemContext::OriginTable::Os));
 
     EXPECT_NO_THROW(deleteElement->handleRequest(context));
 
-    EXPECT_EQ(context->m_serializedElement, R"({"id":"001","operation":"DELETED"})");
+    EXPECT_EQ(context->m_serializedElement, R"({"id":"001_osName","operation":"DELETED"})");
 }
 
 /*

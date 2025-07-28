@@ -1808,6 +1808,12 @@ int fim_fetch_attributes_state(cJSON *attr, Eventinfo *lf, char new_state) {
                 dst_data = &lf->fields[FIM_SYM_PATH].value;
             } else if (strcmp(attr_it->string, "value_type") == 0) {
                 dst_data = &lf->fields[FIM_REGISTRY_VALUE_TYPE].value;
+            } else if (strcmp(attr_it->string, "inode") == 0) { // From 4.13.1 the inode field is a string
+                if (new_state) {
+                    os_strdup(attr_it->valuestring, lf->fields[FIM_INODE].value);
+                } else {
+                    os_strdup(attr_it->valuestring, lf->fields[FIM_INODE_BEFORE].value);
+                }
             }
 
             if (dst_data) {
