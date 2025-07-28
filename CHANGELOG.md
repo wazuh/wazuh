@@ -14,12 +14,33 @@ All notable changes to this project will be documented in this file.
 - Fixed internal decoder RC startup. ([#29663](https://github.com/wazuh/wazuh/pull/29663))
 - Fixed queue stats RC over wazuh-analysisd. ([#29673](https://github.com/wazuh/wazuh/pull/29673))
 - Fixed race condition in the event queue. ([#29672](https://github.com/wazuh/wazuh/pull/29672))
+- Fixed regexCompile race condition. ([#29699](https://github.com/wazuh/wazuh/pull/29699))
+
+#### Changed
+
+- Improved databaseFeedManagerTesttool. ([#30192](https://github.com/wazuh/wazuh/pull/30192))
+- Adapted wazuh-maild to RFC5322 standard. ([#30793](https://github.com/wazuh/wazuh/pull/30793))
 
 ### Agent
 
 #### Added
 
 - Added support for parquet version 2 in AWS Wodle. ([#30235](https://github.com/wazuh/wazuh/pull/30235))
+- Added capability to do a hot configuration reload in Linux agents. ([#30797](https://github.com/wazuh/wazuh/pull/30797))
+
+#### Fixed
+
+- Fixed errors with Azure Graph event fields. ([#30831](https://github.com/wazuh/wazuh/pull/30831))
+
+### RESTful API
+
+#### Added
+
+- Added syscollector users and groups endpoints. ([#30913](https://github.com/wazuh/wazuh/pull/30913))
+
+#### Fixed
+
+- Fixed secure headers. ([#31046](https://github.com/wazuh/wazuh/pull/31046))
 
 ### Ruleset
 
@@ -27,12 +48,15 @@ All notable changes to this project will be documented in this file.
 
 - Fixed multiple Rocky Linux SCA checks generating incorrect results. ([#29976](https://github.com/wazuh/wazuh/pull/29976))
 - Fixed missing Check (2.3.7.6) in Windows Server 2019 v2.0.0. ([#30173](https://github.com/wazuh/wazuh/pull/30173))
-- Fix camel casing in ownCloud ruleset header. ([#30276](https://github.com/wazuh/wazuh/pull/30276))
+- Fixed camel casing in ownCloud ruleset header. ([#30276](https://github.com/wazuh/wazuh/pull/30276))
 
 ### Other
 
 #### Changed
+
 - Updated `requests` to version 2.32.4. ([#30536](https://github.com/wazuh/wazuh/pull/30536))
+- Updated `urllib3` to version 2.5.0 and `protobuf` to version 5.29.5. ([#30624](https://github.com/wazuh/wazuh/pull/30624))
+- Upgraded Python embedded interpreter to 3.10.18. ([#30916](https://github.com/wazuh/wazuh/pull/30916))
 
 
 ## [v4.13.1]
