@@ -176,12 +176,3 @@ full_filename,owner_name,group_name,mode,type,prot_permissions,size_bytes,size_e
 /var/ossec/wodles/aws/subscribers/sqs_queue.py,root,wazuh,750,file,-rwxr-x---,6217,0.1
 /var/ossec/wodles/aws/subscribers/s3_log_handler.py,root,wazuh,750,file,-rwxr-x---,14729,0.1
 /var/ossec/wodles/docker/DockerListener,root,wazuh,750,file,-rwxr-x---,5111,0.1
-/var/ossec/wodles/azure/azure-logs,root,wazuh,750,file,-rwxr-x---,1466,0.1
-/var/ossec/wodles/azure/azure_utils.py,root,wazuh,750,file,-rwxr-x---,13823,0.1
-/var/ossec/wodles/azure/db/utils.py,root,wazuh,750,file,-rwxr-x---,4014,0.1
-/var/ossec/wodles/azure/db/orm.py,root,wazuh,750,file,-rwxr-x---,10600,0.1
-/var/ossec/wodles/azure/db/__init__.py,root,wazuh,750,file,-rwxr-x---,0,0.1
-/var/ossec/wodles/azure/azure_services/analytics.py,root,wazuh,750,file,-rwxr-x---,8961,0.1
-/var/ossec/wodles/azure/azure_services/__init__.py,root,wazuh,750,file,-rwxr-x---,0,0.1
-/var/ossec/wodles/azure/azure_services/graph.py,root,wazuh,750,file,-rwxr-x---,7635,0.1
-/var/ossec/wodles/azure/azure_services/storage.py,root,wazuh,750,file,-rwxr-x---,11550,0.1
