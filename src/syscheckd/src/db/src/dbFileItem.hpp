@@ -112,6 +112,9 @@ private:
     std::string m_username;
     std::unique_ptr<fim_entry, FimFileDataDeleter> m_fimEntry;
     std::unique_ptr<nlohmann::json> m_statementConf;
+#ifdef WIN32
+    std::string m_pathAnsi;
+#endif
 
     void createFimEntry();
     void createJSON();

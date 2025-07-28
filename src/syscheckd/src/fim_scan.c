@@ -159,7 +159,6 @@ void create_unix_who_data_events(void * data, void * ctx)
 }
 
 void fim_whodata_event(whodata_evt * w_evt) {
-
     struct stat file_stat;
 
     // If the file exists, generate add or modify events.

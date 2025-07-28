@@ -154,14 +154,9 @@ extern "C"
 
             try
             {
-
-                const std::unique_ptr<cJSON, CJsonSmartDeleter> jsInput {
-                    cJSON_Parse((*syncItem->toJSON()).dump().c_str())};
-
-                if (dbsync_sync_txn_row(txn_handler, jsInput.get()) == 0)
-                {
-                    retval = FIMDB_OK;
-                }
+                DBSyncTxn txn(txn_handler);
+                txn.syncTxnRow(*syncItem->toJSON());
+                retval = FIMDB_OK;
             }
             catch (std::exception& err)
             {

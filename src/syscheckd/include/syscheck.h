@@ -40,8 +40,9 @@
 
 /* Win32 does not have lstat */
 #ifdef WIN32
+#define w_stat(x, y) w_stat64(x, y)
 #define w_lstat(x, y) w_stat64(x, y)
-#define stat          _stat64
+#define stat _stat64
 #else
 #define w_lstat(x, y) lstat(x, y)
 #endif

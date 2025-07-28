@@ -294,6 +294,8 @@ cJSON *getSyscheckConfig(void) {
     }
     cJSON_AddNumberToObject(whodata, "queue_size", syscheck.queue_size);
 
+    cJSON_AddStringToObject(whodata, "provider", syscheck.whodata_provider == EBPF_PROVIDER ? "ebpf" : "audit");
+
     cJSON_AddItemToObject(syscfg,"whodata",whodata);
 #endif
 

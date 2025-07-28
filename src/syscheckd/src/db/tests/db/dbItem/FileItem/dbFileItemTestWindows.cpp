@@ -29,7 +29,7 @@ void FileItemTest::SetUp()
     std::snprintf(data->hash_sha256,
                   sizeof(data->hash_sha256),
                   "e403b83dd73a41b286f8db2ee36d6b0ea6e80b49f02c476e0a20b4181a3a062a");
-    data->inode = 1152921500312810880;
+    data->inode = 1152921500312810881;
     data->mtime = 1578075431;
     data->permissions = const_cast<char*>(
         "{\"S-1-5-32-544\":{\"name\":\"Administrators\",\"allowed\":[\"delete\",\"read_control\",\"write_dac\",\"write_"
@@ -53,7 +53,7 @@ void FileItemTest::SetUp()
             {"hash_md5", "4b531524aa13c8a54614100b570b3dc7"},
             {"hash_sha1", "7902feb66d0bcbe4eb88e1bfacf28befc38bd58b"},
             {"hash_sha256", "e403b83dd73a41b286f8db2ee36d6b0ea6e80b49f02c476e0a20b4181a3a062a"},
-            {"inode", 1152921500312810880},
+            {"inode", 1152921500312810881},
             {"mtime", 1578075431},
             {"path", "/etc/wgetrc"},
             {"permissions",

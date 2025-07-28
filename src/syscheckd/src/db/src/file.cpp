@@ -27,13 +27,20 @@ enum SEARCH_FIELDS
 
 void DB::removeFile(const std::string& path)
 {
-    auto deleteQuery {DeleteQuery::builder().table(FIMDB_FILE_TABLE_NAME).data({{"path", path}}).rowFilter("").build()};
+    std::string encodedPath = path;
+    FIMDBCreator<OS_TYPE>::encodeString(encodedPath);
+
+    auto deleteQuery {
+        DeleteQuery::builder().table(FIMDB_FILE_TABLE_NAME).data({{"path", encodedPath}}).rowFilter("").build()};
 
     FIMDB::instance().removeItem(deleteQuery.query());
 }
 
 void DB::getFile(const std::string& path, std::function<void(const nlohmann::json&)> callback)
 {
+    std::string encodedPath = path;
+    FIMDBCreator<OS_TYPE>::encodeString(encodedPath);
+
     auto selectQuery {SelectQuery::builder()
                           .table(FIMDB_FILE_TABLE_NAME)
                           .columnList({"path",
@@ -51,7 +58,7 @@ void DB::getFile(const std::string& path, std::function<void(const nlohmann::jso
                                        "hash_sha1",
                                        "hash_sha256",
                                        "mtime"})
-                          .rowFilter(std::string("WHERE path=\"") + std::string(path) + "\"")
+                          .rowFilter(std::string("WHERE path=\"") + encodedPath + "\"")
                           .orderByOpt(FILE_PRIMARY_KEY)
                           .distinctOpt(false)
                           .countOpt(100)
@@ -102,7 +109,10 @@ void DB::searchFile(const SearchData& data, std::function<void(const std::string
     }
     else if (SEARCH_TYPE_PATH == searchType)
     {
-        filter = "WHERE path LIKE \"" + std::get<SEARCH_FIELD_PATH>(data) + "\"";
+        std::string encodedPath = std::get<SEARCH_FIELD_PATH>(data);
+        FIMDBCreator<OS_TYPE>::encodeString(encodedPath);
+
+        filter = "WHERE path LIKE \"" + encodedPath + "\"";
     }
     else
     {
@@ -145,23 +155,31 @@ extern "C"
         {
             try
             {
-                DB::instance().getFile(file_path,
-                                       [callback, to_delete](const nlohmann::json& resultJson)
-                                       {
-                                           if (to_delete)
-                                           {
-                                               DB::instance().removeFile(resultJson.at("path").get<std::string>());
-                                               const std::unique_ptr<cJSON, CJsonSmartDeleter> spJson {
-                                                   cJSON_Parse(resultJson.dump().c_str())};
-                                               callback.callback_txn(
-                                                   ReturnTypeCallback::DELETED, spJson.get(), callback.context);
-                                           }
-                                           else
-                                           {
-                                               const auto file {std::make_unique<FileItem>(resultJson)};
-                                               callback.callback(file->toFimEntry(), callback.context);
-                                           }
-                                       });
+                DB::instance().getFile(
+                    file_path,
+                    [callback, to_delete](const nlohmann::json& resultJson)
+                    {
+                        if (to_delete)
+                        {
+                            DB::instance().removeFile(resultJson.at("path").get<std::string>());
+
+                            nlohmann::json patchedJson = resultJson;
+
+                            if (patchedJson.contains("inode") && patchedJson["inode"].is_number())
+                            {
+                                patchedJson["inode"] = std::to_string(patchedJson["inode"].get<uint64_t>());
+                            }
+
+                            const std::unique_ptr<cJSON, CJsonSmartDeleter> spJson {
+                                cJSON_Parse(patchedJson.dump().c_str())};
+                            callback.callback_txn(ReturnTypeCallback::DELETED, spJson.get(), callback.context);
+                        }
+                        else
+                        {
+                            const auto file {std::make_unique<FileItem>(resultJson)};
+                            callback.callback(file->toFimEntry(), callback.context);
+                        }
+                    });
                 retVal = FIMDB_OK;
             }
             catch (const no_entry_found& err)
@@ -231,14 +249,37 @@ extern "C"
             try
             {
                 const auto file {std::make_unique<FileItem>(data, true)};
-                DB::instance().updateFile(
-                    *file->toJSON(),
-                    [callback](int resultType, const nlohmann::json& resultJson)
-                    {
-                        const std::unique_ptr<cJSON, CJsonSmartDeleter> spJson {cJSON_Parse(resultJson.dump().c_str())};
-                        callback.callback_txn(
-                            static_cast<ReturnTypeCallback>(resultType), spJson.get(), callback.context);
-                    });
+                DB::instance().updateFile(*file->toJSON(),
+                                          [callback](int resultType, const nlohmann::json& resultJson)
+                                          {
+                                              nlohmann::json patchedJson = resultJson;
+                                              auto convert_inode = [](nlohmann::json& obj)
+                                              {
+                                                  if (obj.contains("inode") && obj["inode"].is_number())
+                                                  {
+                                                      obj["inode"] = std::to_string(obj["inode"].get<uint64_t>());
+                                                  }
+                                              };
+
+                                              if (patchedJson.contains("data"))
+                                              {
+                                                  if (patchedJson["data"].contains("attributes"))
+                                                  {
+                                                      convert_inode(patchedJson["data"]["attributes"]);
+                                                  }
+
+                                                  if (patchedJson["data"].contains("old_attributes"))
+                                                  {
+                                                      convert_inode(patchedJson["data"]["old_attributes"]);
+                                                  }
+                                              }
+
+                                              const std::unique_ptr<cJSON, CJsonSmartDeleter> spJson {
+                                                  cJSON_Parse(patchedJson.dump().c_str())};
+                                              callback.callback_txn(static_cast<ReturnTypeCallback>(resultType),
+                                                                    spJson.get(),
+                                                                    callback.context);
+                                          });
                 retVal = FIMDB_OK;
             }
             // LCOV_EXCL_START

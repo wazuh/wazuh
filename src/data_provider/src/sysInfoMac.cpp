@@ -29,6 +29,11 @@
 #include "osPrimitivesImplMac.h"
 #include "sqliteWrapperTemp.h"
 #include "packages/modernPackageDataRetriever.hpp"
+#include "groups_darwin.hpp"
+#include "user_groups_darwin.hpp"
+#include "logged_in_users_darwin.hpp"
+#include "sudoers_unix.hpp"
+#include "users_darwin.hpp"
 
 const std::string MAC_APPS_PATH{"/Applications"};
 const std::string MAC_UTILITIES_PATH{"/Applications/Utilities"};
@@ -460,4 +465,215 @@ nlohmann::json SysInfo::getHotfixes() const
 {
     // Currently not supported for this OS.
     return nlohmann::json();
+}
+
+nlohmann::json SysInfo::getGroups() const
+{
+    nlohmann::json result;
+    GroupsProvider groupsProvider;
+    UserGroupsProvider userGroupsProvider;
+
+    auto collectedGroups = groupsProvider.collect({});
+
+    // Collect all the GIDs
+    std::set<gid_t> allGids;
+
+    for (auto& group : collectedGroups)
+    {
+        allGids.insert(static_cast<gid_t>(group["gid"].get<int>()));
+    }
+
+    // Single call to getUserNamesByGid with all GIDs
+    auto allUsersGroups = userGroupsProvider.getUserNamesByGid(allGids);
+
+    // Process each group
+    for (auto& group : collectedGroups)
+    {
+        nlohmann::json groupItem {};
+        gid_t currentGid = static_cast<gid_t>(group["gid"].get<int>());
+
+        groupItem["group_id"] = group["gid"];
+        groupItem["group_name"] = group["groupname"];
+        groupItem["group_description"] = group["comment"];
+        groupItem["group_id_signed"] = group["gid_signed"];
+        groupItem["group_uuid"] = UNKNOWN_VALUE;
+        groupItem["group_is_hidden"] = group["is_hidden"];
+
+        // Obtain the users for this specific GID
+        auto gidStr = std::to_string(currentGid);
+        nlohmann::json collectedUsersGroups = allUsersGroups.contains(gidStr) ?
+                                              allUsersGroups[gidStr] : nlohmann::json::array();
+
+        if (collectedUsersGroups.empty())
+        {
+            groupItem["group_users"] = UNKNOWN_VALUE;
+        }
+        else
+        {
+            std::string usersConcatenated;
+
+            for (const auto& user : collectedUsersGroups)
+            {
+                if (!usersConcatenated.empty())
+                {
+                    usersConcatenated += secondaryArraySeparator;
+                }
+
+                usersConcatenated += user.get<std::string>();
+            }
+
+            groupItem["group_users"] = usersConcatenated;
+        }
+
+        result.push_back(std::move(groupItem));
+    }
+
+    return result;
+}
+
+nlohmann::json SysInfo::getUsers() const
+{
+    nlohmann::json result;
+
+    UsersProvider usersProvider;
+    auto collectedUsers = usersProvider.collect();
+
+    LoggedInUsersProvider loggedInUserProvider;
+    auto collectedLoggedInUser = loggedInUserProvider.collect();
+
+    SudoersProvider sudoersProvider;
+    auto collectedSudoers = sudoersProvider.collect();
+
+    UserGroupsProvider userGroupsProvider;
+
+    for (auto& user : collectedUsers)
+    {
+        nlohmann::json userItem {};
+
+        std::string username = user["username"].get<std::string>();
+
+        userItem["user_id"] = user["uid"];
+        userItem["user_full_name"] = user["description"];
+        userItem["user_home"] = user["directory"];
+        userItem["user_name"] = username;
+        userItem["user_shell"] = user["shell"];
+        userItem["user_uid_signed"] = user["uid_signed"];
+        userItem["user_group_id_signed"] = user["gid_signed"];
+        userItem["user_group_id"] = user["gid"];
+
+        std::set<uid_t> uid {static_cast<uid_t>(user["uid"].get<int>())};
+        auto collectedUsersGroups = userGroupsProvider.getGroupNamesByUid(uid);
+
+        if (collectedUsersGroups.empty())
+        {
+            userItem["user_groups"] = UNKNOWN_VALUE;
+        }
+        else
+        {
+            std::string accumGroups;
+
+            for (const auto& group : collectedUsersGroups)
+            {
+                if (!accumGroups.empty())
+                {
+                    accumGroups += secondaryArraySeparator;
+                }
+
+                accumGroups += group.get<std::string>();
+            }
+
+            userItem["user_groups"] = accumGroups;
+        }
+
+        // Macos
+        userItem["user_password_last_change"] = user["password_last_set_time"];
+        userItem["user_is_hidden"] = user["is_hidden"];
+        userItem["user_created"] = user["creation_time"];
+        userItem["user_auth_failed_count"] = user["failed_login_count"];
+        userItem["user_auth_failed_timestamp"] = user["failed_login_timestamp"];
+        // Macos or windows
+        userItem["user_uuid"] = user["uuid"];
+
+        // Only in windows
+        userItem["user_type"] = UNKNOWN_VALUE;
+
+        // Only in Linux
+        userItem["user_is_remote"] = 0;
+
+        auto matched = false;
+        auto lastLogin = 0;
+
+        userItem["host_ip"] = UNKNOWN_VALUE;
+
+        //TODO: Avoid this iteration, move logic to LoggedInUsersProvider
+        for (auto& item : collectedLoggedInUser)
+        {
+            // By default, user is not logged in.
+            userItem["login_status"] = 0;
+
+            // tty,host,time and pid can take more than one value due to different logins.
+            if (item["user"] == username)
+            {
+                matched = true;
+                userItem["login_status"] = 1;
+
+                auto newDate = item["time"].get<int32_t>();
+
+                if (newDate > lastLogin)
+                {
+                    lastLogin = newDate;
+                    userItem["user_last_login"] = newDate;
+                    userItem["login_tty"] = item["tty"].get<std::string>();
+                    userItem["login_type"] = item["type"].get<std::string>();
+                    userItem["process_pid"] = item["pid"].get<int32_t>();
+                }
+
+                const auto& hostStr = item["host"].get_ref<const std::string&>();
+
+                if (!hostStr.empty())
+                {
+                    userItem["host_ip"] = userItem["host_ip"].get<std::string>() == UNKNOWN_VALUE
+                                          ? hostStr
+                                          : (userItem["host_ip"].get<std::string>() + primaryArraySeparator + hostStr);
+                }
+            }
+        }
+
+        if (!matched)
+        {
+            userItem["login_status"] = 0;
+            userItem["login_tty"] = UNKNOWN_VALUE;
+            userItem["login_type"] = UNKNOWN_VALUE;
+            userItem["process_pid"] = 0;
+            userItem["user_last_login"] = 0;
+        }
+
+        userItem["user_password_expiration_date"] = 0;
+        userItem["user_password_hash_algorithm"] = UNKNOWN_VALUE;
+        userItem["user_password_inactive_days"] = 0;
+        userItem["user_password_max_days_between_changes"] = 0;
+        userItem["user_password_min_days_between_changes"] = 0;
+        userItem["user_password_status"] = UNKNOWN_VALUE;
+        userItem["user_password_warning_days_before_expiration"] = 0;
+
+        // By default, user is not sudoer.
+        userItem["user_roles"] = UNKNOWN_VALUE;
+
+        for (auto& singleSudoer : collectedSudoers)
+        {
+            // Searching in content of header
+            auto header = singleSudoer["header"].get<std::string>();
+
+            if (header.find(username) != std::string::npos)
+            {
+                //TODO: user_roles_sudo_sudo_rule_details has more detailed information.
+                userItem["user_roles"] = "sudo";
+
+            }
+        }
+
+        result.push_back(std::move(userItem));
+    }
+
+    return result;
 }

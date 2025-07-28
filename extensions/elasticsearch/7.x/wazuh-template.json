@@ -1180,9 +1180,6 @@
               }
             }
           },
-          "status": {
-            "type": "keyword"
-          },
           "data": {
             "type": "keyword"
           },

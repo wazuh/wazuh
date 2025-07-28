@@ -59,6 +59,16 @@ class SysInfoPrinter final
             m_data["hotfixes"] = m_sysinfo.hotfixes();
         }
 
+        void printGroupsInfo()
+        {
+            m_data["groups"] = m_sysinfo.groups();
+        }
+
+        void printUsers()
+        {
+            m_data["users"] = m_sysinfo.users();
+        }
+
         void printData()
         {
             std::cout << m_data.dump(JSON_PRETTY_SPACES) << std::endl;
@@ -101,6 +111,7 @@ int main(int argc, const char* argv[])
             printer.printProcessesInfo();
             printer.printPortsInfo();
             printer.printHotfixes();
+            printer.printUsers();
             printer.printData();
             printer.printPackagesInfoCallback();
             printer.printProcessesInfoCallback();
@@ -137,6 +148,10 @@ int main(int argc, const char* argv[])
             {
                 printer.printHotfixes();
             }
+            else if (cmdLineArgs.usersArg())
+            {
+                printer.printUsers();
+            }
             else if (cmdLineArgs.packagesCallbackArg())
             {
                 printer.printPackagesInfoCallback();
@@ -144,6 +159,10 @@ int main(int argc, const char* argv[])
             else if (cmdLineArgs.processesCallbackArg())
             {
                 printer.printProcessesInfoCallback();
+            }
+            else if (cmdLineArgs.groupsArg())
+            {
+                printer.printGroupsInfo();
             }
             else
             {

@@ -676,9 +676,6 @@ settings:
 	@echo "    CC                ${CC}"
 	@echo "    MAKE              ${MAKE}"
 
-BUILD_SERVER+=wazuh-maild -
-BUILD_SERVER+=wazuh-csyslogd -
-BUILD_SERVER+=wazuh-agentlessd -
 BUILD_SERVER+=wazuh-execd -
 BUILD_SERVER+=wazuh-logcollector -
 BUILD_SERVER+=wazuh-remoted
@@ -688,9 +685,7 @@ BUILD_SERVER+=utils
 BUILD_SERVER+=active-responses
 BUILD_SERVER+=wazuh-syscheckd
 BUILD_SERVER+=wazuh-monitord
-BUILD_SERVER+=wazuh-reportd
 BUILD_SERVER+=wazuh-authd
-BUILD_SERVER+=wazuh-integratord
 BUILD_SERVER+=wazuh-modulesd
 BUILD_SERVER+=wazuh-db
 BUILD_SERVER+=wazuh-keystore
@@ -1771,6 +1766,12 @@ shared/%.o: shared/%.c
 shared/debug_op_proc.o: shared/debug_op.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -fPIC -DMA -DARGV0=\"wazuh-remoted\" -c $^ -o $@
 
+shared/utf8_op.o: shared/utf8_op.c
+	$(OSSEC_CC) $(OSSEC_CFLAGS) -fPIC -c $< -o $@
+
+shared/utf8_winapi_wrapper.o: shared/utf8_winapi_wrapper.c
+	$(OSSEC_CC) $(OSSEC_CFLAGS) -fPIC -c $< -o $@
+
 shared/file_op_proc.o: shared/file_op.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -fPIC -DCLIENT -DARGV0=\"wazuh-remoted\" -c $^ -o $@
 
@@ -1987,40 +1988,6 @@ endif
 endif
 endif
 
-#### os_mail #########
-
-os_maild_c := $(wildcard os_maild/*.c)
-os_maild_o := $(os_maild_c:.c=.o)
-
-os_maild/%.o: os_maild/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -DARGV0=\"wazuh-maild\" -c $^ -o $@
-
-wazuh-maild: ${os_maild_o}
-	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
-
-#### os_csyslogd #####
-
-os_csyslogd_c := $(wildcard os_csyslogd/*.c)
-os_csyslogd_o := $(os_csyslogd_c:.c=.o)
-
-os_csyslogd/%.o: os_csyslogd/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -DARGV0=\"wazuh-csyslogd\" -c $^ -o $@
-
-wazuh-csyslogd: ${os_csyslogd_o}
-	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
-
-
-#### agentlessd ####
-
-os_agentlessd_c := $(wildcard agentlessd/*.c)
-os_agentlessd_o := $(os_agentlessd_c:.c=.o)
-
-agentlessd/%.o: agentlessd/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -DARGV0=\"wazuh-agentlessd\" -c $^ -o $@
-
-wazuh-agentlessd: ${os_agentlessd_o}
-	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
-
 #### os_execd #####
 
 os_execd_c := $(wildcard os_execd/*.c)
@@ -2089,7 +2056,7 @@ active_response_programs = default-firewall-drop pf npf ipfw firewalld-drop disa
 $(active_response_programs): ${WAZUH_LIB} ${WAZUHEXT_LIB}
 
 # Minimal dependencies for building active responses programs
-AR_PROGRAMS_DEPS = os_regex/os_regex.o os_regex/os_regex_compile.o os_regex/os_match_free_pattern.o os_regex/os_regex_maps.o os_regex/os_regex_execute.o os_regex/os_regex_free_pattern.o os_regex/os_match_execute.o os_regex/os_match_compile.o shared/expression.o shared/randombytes.o shared/validate_op.o shared/regex_op.o shared/string_op.o shared/exec_op.o shared/file_op_proc.o shared/debug_op_proc.o shared/time_op.o shared/privsep_op.o shared/version_op.o shared/binaries_op.o os_xml/os_xml.o os_xml/os_xml_access.o os_regex/os_regex_strbreak.o os_net/os_net.o
+AR_PROGRAMS_DEPS = os_regex/os_regex.o os_regex/os_regex_compile.o os_regex/os_match_free_pattern.o os_regex/os_regex_maps.o os_regex/os_regex_execute.o os_regex/os_regex_free_pattern.o os_regex/os_match_execute.o os_regex/os_match_compile.o shared/expression.o shared/randombytes.o shared/validate_op.o shared/regex_op.o shared/string_op.o shared/exec_op.o shared/file_op_proc.o shared/utf8_winapi_wrapper.o shared/utf8_op.o shared/debug_op_proc.o shared/time_op.o shared/privsep_op.o shared/version_op.o shared/binaries_op.o os_xml/os_xml.o os_xml/os_xml_access.o os_regex/os_regex_strbreak.o os_net/os_net.o
 
 ifneq (,$(filter ${TEST},YES yes y Y 1))
 AR_PROGRAMS_DEPS += unit_tests/wrappers/externals/pcre2/pcre2_wrappers.o
@@ -2250,19 +2217,7 @@ monitor_o := $(monitor_c:.c=.o)
 monitord/%.o: monitord/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -DARGV0=\"wazuh-monitord\" -c $< -o $@
 
-wazuh-monitord: ${monitor_o} os_maild/sendcustomemail.o
-	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
-
-
-#### reportd #######
-
-report_c := reportd/report.c
-report_o := $(report_c:.c=.o)
-
-reportd/%.o: reportd/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -DARGV0=\"wazuh-reportd\" -c $^ -o $@
-
-wazuh-reportd: ${report_o}
+wazuh-monitord: ${monitor_o}
 	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
 
@@ -2278,17 +2233,6 @@ agent-auth: addagent/validate.o os_auth/main-client.o os_auth/ssl.o os_auth/chec
 	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
 wazuh-authd: addagent/validate.o os_auth/main-server.o os_auth/local-server.o os_auth/ssl.o os_auth/check_cert.o os_auth/config.o os_auth/authcom.o os_auth/auth.o os_auth/key_request.o os_auth/generate_cert.o
-	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
-
-#### integratord #####
-
-integrator_c := ${wildcard os_integrator/*.c}
-integrator_o := $(integrator_c:.c=.o)
-
-os_integrator/%.o: os_integrator/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS}  -I./os_integrator -DARGV0=\"wazuh-integratord\" -c $^ -o $@
-
-wazuh-integratord: ${integrator_o}
 	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
 ### wazuh-modulesd ##
@@ -2551,13 +2495,13 @@ win32/os_win32ui.exe: win32/ui_resource.o win32/version-app.o win32/win_service_
 win32/agent-auth.exe: win32/auth_resource.o win32/version-app.o win32/win_service_rk.o os_auth/main-client.o os_auth/ssl.o os_auth/check_cert.o addagent/validate.o
 	${OSSEC_CCBIN} -DARGV0=\"agent-auth\" -DOSSECHIDS ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -lshlwapi -lwsock32 -lsecur32 -lws2_32 -flto -o $@
 
-win32/restart-wazuh.exe: win32/restart_wazuh_resource.o win32/version-app.o active-response/active_responses.o active-response/restart-wazuh.o shared/cryptography.o shared/dll_load_notify.o shared/debug_op_proc.o shared/time_op.o shared/file_op_proc.o ${WAZUH_LIB} ${WAZUHEXT_LIB}
+win32/restart-wazuh.exe: win32/restart_wazuh_resource.o win32/version-app.o active-response/active_responses.o active-response/restart-wazuh.o shared/cryptography.o shared/dll_load_notify.o shared/debug_op_proc.o shared/time_op.o shared/file_op_proc.o shared/utf8_winapi_wrapper.o shared/utf8_op.o ${WAZUH_LIB} ${WAZUHEXT_LIB}
 	${OSSEC_CCBIN} -DARGV0=\"restart-wazuh\" ${AR_LDFLAGS} $^ -lwintrust -lpsapi -lcrypt32 -lshlwapi -lmpr -o $@
 
-win32/route-null.exe: win32/route_null_resource.o win32/version-app.o active-response/active_responses.o active-response/route-null.o shared/cryptography.o shared/dll_load_notify.o shared/debug_op_proc.o shared/time_op.o shared/file_op_proc.o ${WAZUH_LIB} ${WAZUHEXT_LIB}
+win32/route-null.exe: win32/route_null_resource.o win32/version-app.o active-response/active_responses.o active-response/route-null.o shared/cryptography.o shared/dll_load_notify.o shared/debug_op_proc.o shared/time_op.o shared/file_op_proc.o shared/utf8_winapi_wrapper.o shared/utf8_op.o ${WAZUH_LIB} ${WAZUHEXT_LIB}
 	${OSSEC_CCBIN} -DARGV0=\"route-null\" ${AR_LDFLAGS} $^ -lwintrust -lpsapi -lcrypt32 -lshlwapi -lmpr -o $@
 
-win32/netsh.exe: win32/netsh_resource.o win32/version-app.o active-response/active_responses.o active-response/netsh.o shared/cryptography.o shared/dll_load_notify.o shared/debug_op_proc.o shared/time_op.o shared/file_op_proc.o ${WAZUH_LIB} ${WAZUHEXT_LIB}
+win32/netsh.exe: win32/netsh_resource.o win32/version-app.o active-response/active_responses.o active-response/netsh.o shared/cryptography.o shared/dll_load_notify.o shared/debug_op_proc.o shared/time_op.o shared/file_op_proc.o shared/utf8_winapi_wrapper.o shared/utf8_op.o ${WAZUH_LIB} ${WAZUHEXT_LIB}
 	${OSSEC_CCBIN} -DARGV0=\"netsh\" ${AR_LDFLAGS} $^ -lwintrust -lpsapi -lcrypt32 -lshlwapi -lmpr -o $@
 
 
@@ -2648,16 +2592,12 @@ clean-internals: clean-unit-tests
 	rm -f ${os_xml_o}
 	rm -f ${os_regex_o}
 	rm -f ${os_net_o}
-	rm -f ${shared_o} shared/debug_op_proc.o shared/file_op_proc.o
+	rm -f ${shared_o} shared/debug_op_proc.o shared/file_op_proc.o shared/utf8_winapi_wrapper.o shared/utf8_op.o
 	rm -f ${config_o}
-	rm -f ${os_maild_o}
 	rm -f ${crypto_o}
-	rm -f ${os_csyslogd_o}
-	rm -f ${os_agentlessd_o}
 	rm -f ${os_execd_o}
 	rm -f ${os_logcollector_o} ${os_logcollector_eventchannel_o}
 	rm -f ${remoted_o}
-	rm -f ${report_o}
 	rm -f ${client_agent_o}
 	rm -f ${addagent_o}
 	rm -f ${active_response_o} ${active_response_programs} firewall-drop
@@ -2665,7 +2605,6 @@ clean-internals: clean-unit-tests
 	rm -f ${rootcheck_o} librootcheck.a
 	rm -f ${monitor_o}
 	rm -f ${os_auth_o}
-	rm -f ${integrator_o}
 	rm -f ${wmodulesd_o} ${wmodules_o} $(wildcard wazuh_modules/agent_upgrade/agent/*.o)
 	rm -f ${wdb_o}
 	rm -f wazuh_db/*.o

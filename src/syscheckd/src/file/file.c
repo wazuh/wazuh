@@ -142,7 +142,18 @@ STATIC void transaction_callback(ReturnTypeCallback resultType,
     cJSON* file = fim_attributes_json(result_json, (txn_context->entry != NULL) ? txn_context->entry->file_entry.data : NULL, txn_context->config);
     cJSON_AddItemToObject(data, "file", file);
 
-    cJSON_AddStringToObject(file, "path", path);
+#ifdef WIN32
+     char *utf8_path = auto_to_utf8(path);
+     if (utf8_path) {
+         cJSON_AddStringToObject(file, "path", utf8_path);
+         os_free(utf8_path);
+     } else {
+         cJSON_AddStringToObject(file, "path", path);
+     }
+ #else
+     cJSON_AddStringToObject(file, "path", path);
+ #endif
+
     cJSON_AddStringToObject(file, "mode", FIM_EVENT_MODE[txn_context->event->mode]);
 
     old_data = cJSON_GetObjectItem(result_json, "old");
@@ -223,10 +234,20 @@ directory_t *fim_configuration_directory(const char *key) {
     OSListNode *node_it;
     int top = 0;
     int match = 0;
+    char *pathname = NULL;
 
     if (!key || *key == '\0') {
         return NULL;
     }
+
+#ifdef WIN32
+     pathname = auto_to_ansi(key);
+     if (!pathname) {
+         return NULL;
+     }
+ #else
+     os_strdup(key, pathname);
+ #endif
 
     trail_path_separator(full_path, key, sizeof(full_path));
 
@@ -249,6 +270,7 @@ directory_t *fim_configuration_directory(const char *key) {
         mdebug2(FIM_CONFIGURATION_NOTFOUND, "file", key);
     }
 
+    os_free(pathname);
     return dir;
 }
 
@@ -546,11 +568,6 @@ void fim_checker(const char *path,
                  callback_ctx *ctx) {
     directory_t *configuration;
     int depth;
-
-    if (!w_utf8_valid(path)) {
-        mwarn(FIM_INVALID_FILE_NAME, path);
-        return;
-    }
 
 #ifdef WIN32
     // Ignore the recycle bin.

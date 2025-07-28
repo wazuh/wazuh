@@ -19,7 +19,12 @@ void FileItem::createFimEntry()
     if (fim)
     {
         fim->type = FIM_TYPE_FILE;
+#ifdef WIN32
+        m_pathAnsi = Utils::EncodingWindowsHelper::stringUTF8ToStringAnsi(m_identifier);
+        fim->file_entry.path = const_cast<char*>(m_pathAnsi.c_str());
+#else
         fim->file_entry.path = const_cast<char*>(m_identifier.c_str());
+#endif
 
         if (data)
         {

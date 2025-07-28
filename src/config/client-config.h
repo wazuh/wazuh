@@ -41,7 +41,7 @@ typedef struct _agent {
     long force_reconnect_interval;
     int main_ip_update_interval;
     char *profile;
-    int buffer;
+    volatile int buffer;
     int buflength;
     int events_persec;
     int crypto_method;

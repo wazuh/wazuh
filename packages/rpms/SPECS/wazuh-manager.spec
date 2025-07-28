@@ -133,7 +133,7 @@ mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/su
 mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/windows
 mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/fedora/{29,30,31,32,33,34,41}
 mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/almalinux/{8,9,10}
-mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/rocky/{8,9}
+mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/rocky/{8,9,10}
 
 cp -r ruleset/sca/{applications,generic,mongodb,nginx,oracledb,centos,darwin,debian,ol,rhel,sles,sunos,windows,amazon,ubuntu,rocky,almalinux} ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp
 
@@ -188,6 +188,7 @@ cp etc/templates/config/almalinux/10/sca.files ${RPM_BUILD_ROOT}%{_localstatedir
 cp etc/templates/config/rocky/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/rocky
 cp etc/templates/config/rocky/8/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/rocky/8
 cp etc/templates/config/rocky/9/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/rocky/9
+cp etc/templates/config/rocky/10/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/rocky/10
 
 # Add SUSE initscript
 sed -i "s:WAZUH_HOME_TMP:%{_localstatedir}:g" src/init/templates/ossec-hids-suse.init
@@ -635,7 +636,6 @@ rm -fr %{buildroot}
 /usr/lib/systemd/system/wazuh-manager.service
 %dir %attr(750, root, wazuh) %{_localstatedir}
 %attr(440, wazuh, wazuh) %{_localstatedir}/VERSION.json
-%attr(750, root, wazuh) %{_localstatedir}/agentless
 %dir %attr(750, root, wazuh) %{_localstatedir}/active-response
 %dir %attr(750, root, wazuh) %{_localstatedir}/active-response/bin
 %attr(750, root, wazuh) %{_localstatedir}/active-response/bin/*
@@ -657,20 +657,15 @@ rm -fr %{buildroot}
 %attr(750, root, root) %{_localstatedir}/bin/clear_stats
 %attr(750, root, wazuh) %{_localstatedir}/bin/cluster_control
 %attr(750, root, root) %{_localstatedir}/bin/manage_agents
-%attr(750, root, root) %{_localstatedir}/bin/wazuh-agentlessd
 %attr(750, root, root) %{_localstatedir}/bin/wazuh-engine
 %attr(750, root, root) %{_localstatedir}/bin/wazuh-authd
 %attr(750, root, root) %{_localstatedir}/bin/wazuh-control
-%attr(750, root, root) %{_localstatedir}/bin/wazuh-csyslogd
 %attr(750, root, root) %{_localstatedir}/bin/wazuh-execd
-%attr(750, root, root) %{_localstatedir}/bin/wazuh-integratord
 %attr(750, root, root) %{_localstatedir}/bin/wazuh-logcollector
 %attr(750, root, wazuh) %{_localstatedir}/bin/wazuh-logtest
-%attr(750, root, root) %{_localstatedir}/bin/wazuh-maild
 %attr(750, root, root) %{_localstatedir}/bin/wazuh-monitord
 %attr(750, root, root) %{_localstatedir}/bin/wazuh-regex
 %attr(750, root, root) %{_localstatedir}/bin/wazuh-remoted
-%attr(750, root, root) %{_localstatedir}/bin/wazuh-reportd
 %attr(750, root, root) %{_localstatedir}/bin/wazuh-syscheckd
 %attr(750, root, wazuh) %{_localstatedir}/bin/verify-agent-conf
 %attr(750, root, wazuh) %{_localstatedir}/bin/wazuh-apid
@@ -757,6 +752,8 @@ rm -fr %{buildroot}
 %attr(0440, root, wazuh) %{_localstatedir}/templates/wazuh-states-inventory-interfaces.json
 %attr(0440, root, wazuh) %{_localstatedir}/templates/wazuh-states-inventory-hotfixes.json
 %attr(0440, root, wazuh) %{_localstatedir}/templates/wazuh-states-inventory-ports.json
+%attr(0440, root, wazuh) %{_localstatedir}/templates/wazuh-states-inventory-users.json
+%attr(0440, root, wazuh) %{_localstatedir}/templates/wazuh-states-inventory-groups.json
 %attr(0440, root, wazuh) %{_localstatedir}/templates/vd_states_update_mappings.json
 %attr(0440, root, wazuh) %{_localstatedir}/templates/wazuh-states-fim-files-update.json
 %attr(0440, root, wazuh) %{_localstatedir}/templates/wazuh-states-fim-registries-update.json
@@ -769,6 +766,8 @@ rm -fr %{buildroot}
 %attr(0440, root, wazuh) %{_localstatedir}/templates/wazuh-states-inventory-interfaces-update.json
 %attr(0440, root, wazuh) %{_localstatedir}/templates/wazuh-states-inventory-hotfixes-update.json
 %attr(0440, root, wazuh) %{_localstatedir}/templates/wazuh-states-inventory-ports-update.json
+%attr(0440, root, wazuh) %{_localstatedir}/templates/wazuh-states-inventory-users-update.json
+%attr(0440, root, wazuh) %{_localstatedir}/templates/wazuh-states-inventory-groups-update.json
 %dir %attr(750, wazuh, wazuh) %{_localstatedir}/logs/api
 %dir %attr(750, wazuh, wazuh) %{_localstatedir}/logs/archives
 %dir %attr(750, wazuh, wazuh) %{_localstatedir}/logs/alerts
@@ -794,7 +793,6 @@ rm -fr %{buildroot}
 %attr(640, wazuh, wazuh) %missingok %{_localstatedir}/tmp/%{_vdfilename}
 %dir %attr(750, root, wazuh) %{_localstatedir}/queue
 %attr(600, root, wazuh) %{_localstatedir}/queue/agents-timestamp
-%dir %attr(750, wazuh, wazuh) %{_localstatedir}/queue/agentless
 %dir %attr(770, wazuh, wazuh) %{_localstatedir}/queue/alerts
 %dir %attr(770, wazuh, wazuh) %{_localstatedir}/queue/cluster
 %dir %attr(750, wazuh, wazuh) %{_localstatedir}/queue/db

@@ -4,10 +4,11 @@
 
 
 PARAM_TYPE=$1
+PARAM_ACTION="${2:-restart}"
 
 help()
 {
-    echo "Usage: $0 [manager|agent]"
+    echo "Usage: $0 [manager|agent] [restart|reload]"
 }
 
 # Usage
@@ -41,6 +42,10 @@ if [ "$TYPE" = "manager" ]; then
     fi
 fi
 
-${PWD}/bin/wazuh-control restart
+if command -v systemctl >/dev/null 2>&1; then
+    systemctl $PARAM_ACTION wazuh-$TYPE
+else
+    ${PWD}/bin/wazuh-control $PARAM_ACTION
+fi
 
 exit $?;

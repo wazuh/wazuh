@@ -291,8 +291,8 @@ int receive_msg()
                                     clear_merged_hash_cache();
                                     if (agt->flags.remote_conf && !verifyRemoteConf()) {
                                         if (agt->flags.auto_restart) {
-                                            minfo("Agent is restarting due to shared configuration changes.");
-                                            restartAgent();
+                                            minfo("Agent is reloading due to shared configuration changes.");
+                                            reloadAgent();
                                         } else {
                                             minfo("Shared agent configuration has been updated.");
                                         }
