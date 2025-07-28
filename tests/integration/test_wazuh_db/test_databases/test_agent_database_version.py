@@ -62,7 +62,7 @@ from wazuh_testing.tools.simulators import agent_simulator as ag
 pytestmark = [pytest.mark.server, pytest.mark.tier(level=0)]
 
 # Variables
-expected_database_version = '15'
+expected_database_version = '16'
 
 # Test daemons to restart.
 daemons_handler_configuration = {'all_daemons': True}
@@ -82,7 +82,7 @@ def test_agent_database_version(daemons_handler, simulate_agent):
             - Check that the manager database version is the expected one.
             - Check that the agent database version is the expected one.
 
-    wazuh_min_version: 4.4.0
+    wazuh_min_version: 4.14.0
 
     parameters:
         - daemons_handler:
@@ -96,7 +96,7 @@ def test_agent_database_version(daemons_handler, simulate_agent):
         - Verify that database version is the expected one.
 
     expected_output:
-        - Database version: 12
+        - Database version: 16
 
     tags:
         - wazuh_db

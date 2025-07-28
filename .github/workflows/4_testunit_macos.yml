@@ -9,9 +9,16 @@ jobs:
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v3
-      - name: Install cmocka and lcov
+      - name: Install cmocka 1.1.7 and lcov
         run: |
-          brew install cmocka lcov
+          brew install lcov
+          curl -LO https://cmocka.org/files/1.1/cmocka-1.1.7.tar.xz
+          tar -xf cmocka-1.1.7.tar.xz
+          cd cmocka-1.1.7
+          mkdir build && cd build
+          cmake .. -DCMAKE_INSTALL_PREFIX=/usr/local
+          make -j$(sysctl -n hw.ncpu)
+          sudo make install
       - name: Build wazuh agent for macOS 13 with tests flags
         run: |
           make deps -C src TARGET=agent -j4
@@ -31,13 +38,20 @@ jobs:
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v3
-      - name: Install cmocka and lcov
+      - name: Install cmocka 1.1.7 and lcov
         run: |
-          brew install cmocka lcov
+          brew install lcov
+          curl -LO https://cmocka.org/files/1.1/cmocka-1.1.7.tar.xz
+          tar -xf cmocka-1.1.7.tar.xz
+          cd cmocka-1.1.7
+          mkdir build && cd build
+          cmake .. -DCMAKE_INSTALL_PREFIX=/usr/local
+          make -j$(sysctl -n hw.ncpu)
+          sudo make install
       - name: Build wazuh agent for macOS 14 with tests flags
         run: |
           make deps -C src TARGET=agent -j3
-          C_INCLUDE_PATH=$C_INCLUDE_PATH:/opt/homebrew/include LIBRARY_PATH=/opt/homebrew/lib make -C src TARGET=agent -j3 DEBUG=1 TEST=1
+          C_INCLUDE_PATH=$C_INCLUDE_PATH:/opt/homebrew/include LIBRARY_PATH=/usr/local/lib:/opt/homebrew/lib make -C src TARGET=agent -j3 DEBUG=1 TEST=1
       - name: Run wazuh unit tests for macOS 14
         run: |
           cd src/data_provider/build

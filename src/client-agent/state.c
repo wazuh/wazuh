@@ -209,6 +209,11 @@ void w_agentd_state_update(w_agentd_state_update_t type, void * data) {
     case INCREMENT_MSG_SEND:
         agent_state.msg_sent++;
         break;
+    case RESET_MSG_COUNT_ON_SHRINK:
+        if (data != NULL) {
+            agent_state.msg_count = *((unsigned int *) data);
+        }
+        break;
     default:
         break;
     }

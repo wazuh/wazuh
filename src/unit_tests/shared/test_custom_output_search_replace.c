@@ -46,9 +46,26 @@ void test_search_and_replace(void **state)
     }
 }
 
+void test_escape_newlines(void **state)
+{
+    const char *tests[][2] = {
+        {"hello\n", "hello\\n"},
+        {"hello\r", "hello\\n"},
+        {"hello\r\n", "hello\\n\\n"},
+        {"", ""},
+        {NULL, NULL}
+    };
+    for (int i = 0; tests[i][0] != NULL ; i++) {
+        char* result = escape_newlines(tests[i][0]);
+        assert_string_equal(result, tests[i][1]);
+        free(result);
+    }
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
             cmocka_unit_test(test_search_and_replace),
+            cmocka_unit_test(test_escape_newlines),
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }

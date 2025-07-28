@@ -24,10 +24,16 @@
 #include <dirent.h>
 #include <algorithm>
 #include <array>
+#include <cstring>
+#include <libgen.h>
 #include "stringHelper.h"
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-function"
+
+#ifndef PATH_MAX
+    #define PATH_MAX 4096
+#endif
 
 namespace Utils
 {
@@ -112,6 +118,32 @@ namespace Utils
         }
 
         return std::vector<char> {spBuffer.get(), spBuffer.get() + size};
+    }
+
+    static std::string resolvePath(const std::string& baseFile, const std::string& relativePath)
+    {
+        char baseCopy[PATH_MAX];
+        strncpy(baseCopy, baseFile.c_str(), sizeof(baseCopy));
+        baseCopy[sizeof(baseCopy) - 1] = '\0';
+
+        std::string dir(dirname(baseCopy));
+
+        if (!dir.empty() && dir.back() != '/')
+        {
+            dir += '/';
+        }
+
+        return dir + relativePath;
+    }
+
+    static std::string getFilename(const std::string& path)
+    {
+        const auto pos = path.find_last_of("/\\");
+        if (pos == std::string::npos)
+        {
+            return path;
+        }
+        return path.substr(pos + 1);
     }
 }
 

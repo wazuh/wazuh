@@ -183,6 +183,58 @@ static struct column_list const TABLE_HARDWARE[HARDWARE_FIELD_COUNT+1] = {
     { .value = { FIELD_TEXT, 10, false, false, NULL, "checksum", {.text = ""}, false}, .next = NULL }
 };
 
+#define USERS_FIELD_COUNT 33
+static struct column_list const TABLE_USERS[USERS_FIELD_COUNT+1] = {
+    { .value = { FIELD_INTEGER, 1, true, false, NULL, "scan_id", {.integer = 0}, true}, .next = &TABLE_USERS[1]},
+    { .value = { FIELD_TEXT, 2, false, false, NULL, "scan_time", {.text = ""}, true}, .next = &TABLE_USERS[2]},
+    { .value = { FIELD_TEXT, 3, false, true, NULL, "user_name", {.text = ""}, true}, .next = &TABLE_USERS[3]},
+    { .value = { FIELD_TEXT, 4, false, false, NULL, "user_full_name", {.text = ""}, true}, .next = &TABLE_USERS[4]},
+    { .value = { FIELD_TEXT, 5, false, false, NULL, "user_home", {.text = ""}, true}, .next = &TABLE_USERS[5]},
+    { .value = { FIELD_INTEGER_LONG, 6, false, false, NULL, "user_id", {.integer_long = 0LL}, true}, .next = &TABLE_USERS[6]},
+    { .value = { FIELD_INTEGER_LONG, 7, false, false, NULL, "user_uid_signed", {.integer_long = 0LL}, true}, .next = &TABLE_USERS[7]},
+    { .value = { FIELD_TEXT, 8, false, false, NULL, "user_uuid", {.text = ""}, true}, .next = &TABLE_USERS[8]},
+    { .value = { FIELD_TEXT, 9, false, false, NULL, "user_groups", {.text = ""}, true}, .next = &TABLE_USERS[9]},
+    { .value = { FIELD_INTEGER_LONG, 10, false, false, NULL, "user_group_id", {.integer_long = 0LL}, true}, .next = &TABLE_USERS[10]},
+    { .value = { FIELD_INTEGER_LONG, 11, false, false, NULL, "user_group_id_signed", {.integer_long = 0LL}, true}, .next = &TABLE_USERS[11]},
+    { .value = { FIELD_REAL, 12, false, false, NULL, "user_created", {.real = 0.0}, true}, .next = &TABLE_USERS[12]},
+    { .value = { FIELD_TEXT, 13, false, false, NULL, "user_roles", {.text = ""}, true}, .next = &TABLE_USERS[13]},
+    { .value = { FIELD_TEXT, 14, false, false, NULL, "user_shell", {.text = ""}, true}, .next = &TABLE_USERS[14]},
+    { .value = { FIELD_TEXT, 15, false, false, NULL, "user_type", {.text = ""}, true}, .next = &TABLE_USERS[15]},
+    { .value = { FIELD_INTEGER, 16, false, false, NULL, "user_is_hidden", {.integer = 0}, true}, .next = &TABLE_USERS[16]},
+    { .value = { FIELD_INTEGER, 17, false, false, NULL, "user_is_remote", {.integer = 0}, true}, .next = &TABLE_USERS[17]},
+    { .value = { FIELD_INTEGER_LONG, 18, false, false, NULL, "user_last_login", {.integer_long = 0LL}, true}, .next = &TABLE_USERS[18]},
+    { .value = { FIELD_INTEGER_LONG, 19, false, false, NULL, "user_auth_failed_count", {.integer_long = 0LL}, true}, .next = &TABLE_USERS[19]},
+    { .value = { FIELD_REAL, 20, false, false, NULL, "user_auth_failed_timestamp", {.real = 0.0}, true}, .next = &TABLE_USERS[20]},
+    { .value = { FIELD_REAL, 21, false, false, NULL, "user_password_last_change", {.real = 0.0}, true}, .next = &TABLE_USERS[21]},
+    { .value = { FIELD_INTEGER, 22, false, false, NULL, "user_password_expiration_date", {.integer = 0}, true}, .next = &TABLE_USERS[22]},
+    { .value = { FIELD_TEXT, 23, false, false, NULL, "user_password_hash_algorithm", {.text = ""}, true}, .next = &TABLE_USERS[23]},
+    { .value = { FIELD_INTEGER, 24, false, false, NULL, "user_password_inactive_days", {.integer = 0}, true}, .next = &TABLE_USERS[24]},
+    { .value = { FIELD_INTEGER, 25, false, false, NULL, "user_password_max_days_between_changes", {.integer = 0}, true}, .next = &TABLE_USERS[25]},
+    { .value = { FIELD_INTEGER, 26, false, false, NULL, "user_password_min_days_between_changes", {.integer = 0}, true}, .next = &TABLE_USERS[26]},
+    { .value = { FIELD_TEXT, 27, false, false, NULL, "user_password_status", {.text = ""}, true}, .next = &TABLE_USERS[27]},
+    { .value = { FIELD_INTEGER, 28, false, false, NULL, "user_password_warning_days_before_expiration", {.integer = 0}, true}, .next = &TABLE_USERS[28]},
+    { .value = { FIELD_INTEGER_LONG, 29, false, false, NULL, "process_pid", {.integer_long = 0LL}, true}, .next = &TABLE_USERS[29]},
+    { .value = { FIELD_TEXT, 30, false, false, NULL, "host_ip", {.text = ""}, true}, .next = &TABLE_USERS[30]},
+    { .value = { FIELD_INTEGER, 31, false, false, NULL, "login_status", {.integer = 0}, true}, .next = &TABLE_USERS[31]},
+    { .value = { FIELD_TEXT, 32, false, false, NULL, "login_tty", {.text = ""}, true}, .next = &TABLE_USERS[32]},
+    { .value = { FIELD_TEXT, 33, false, false, NULL, "login_type", {.text = ""}, true}, .next = &TABLE_USERS[33]},
+    { .value = { FIELD_TEXT, 34, false, false, NULL, "checksum", {.text = ""}, true}, .next = NULL}
+};
+
+#define GROUPS_FIELD_COUNT 9
+static struct column_list const TABLE_GROUPS[GROUPS_FIELD_COUNT+1] = {
+    { .value = { FIELD_INTEGER, 1, true, false, NULL, "scan_id", {.integer = 0}, true}, .next = &TABLE_GROUPS[1]},
+    { .value = { FIELD_TEXT, 2, false, false, NULL, "scan_time", {.text = ""}, true}, .next = &TABLE_GROUPS[2]},
+    { .value = { FIELD_INTEGER_LONG, 3, false, false, NULL, "group_id", {.integer_long = 0LL}, true}, .next = &TABLE_GROUPS[3]},
+    { .value = { FIELD_TEXT, 4, false, true, NULL, "group_name", {.text = ""}, true}, .next = &TABLE_GROUPS[4]},
+    { .value = { FIELD_TEXT, 5, false, false, NULL, "group_description", {.text = ""}, true}, .next = &TABLE_GROUPS[5]},
+    { .value = { FIELD_INTEGER_LONG, 6, false, false, NULL, "group_id_signed", {.integer_long = 0LL}, true}, .next = &TABLE_GROUPS[6]},
+    { .value = { FIELD_TEXT, 7, false, false, NULL, "group_uuid", {.text = ""}, true}, .next = &TABLE_GROUPS[7]},
+    { .value = { FIELD_INTEGER, 8, false, false, NULL, "group_is_hidden", {.integer = 0}, true}, .next = &TABLE_GROUPS[8]},
+    { .value = { FIELD_TEXT, 9, false, false, NULL, "group_users", {.text = ""}, true}, .next = &TABLE_GROUPS[9]},
+    { .value = { FIELD_TEXT, 10, false, false, NULL, "checksum", {.text = ""}, true}, .next = NULL}
+};
+
 static struct kv_list const TABLE_MAP[] = {
     { .current = { "network_iface", "sys_netiface", false, TABLE_NETIFACE, NETIFACE_FIELD_COUNT }, .next = &TABLE_MAP[1]},
     { .current = { "network_protocol", "sys_netproto", false, TABLE_NETPROTO, NETPROTO_FIELD_COUNT }, .next = &TABLE_MAP[2]},
@@ -192,7 +244,9 @@ static struct kv_list const TABLE_MAP[] = {
     { .current = { "ports", "sys_ports", false, TABLE_PORTS, PORTS_FIELD_COUNT }, .next = &TABLE_MAP[6]},
     { .current = { "packages", "sys_programs", false, TABLE_PACKAGES, PACKAGES_FIELD_COUNT }, .next = &TABLE_MAP[7]},
     { .current = { "hotfixes", "sys_hotfixes",  false, TABLE_HOTFIXES, HOTFIXES_FIELD_COUNT }, .next = &TABLE_MAP[8]},
-    { .current = { "processes", "sys_processes",  false, TABLE_PROCESSES, PROCESSES_FIELD_COUNT }, .next = NULL},
+    { .current = { "processes", "sys_processes",  false, TABLE_PROCESSES, PROCESSES_FIELD_COUNT }, .next = &TABLE_MAP[9]},
+    { .current = { "users", "sys_users", false, TABLE_USERS, USERS_FIELD_COUNT }, .next = &TABLE_MAP[10]},
+    { .current = { "groups", "sys_groups", false, TABLE_GROUPS, GROUPS_FIELD_COUNT }, .next = NULL}
 };
 
 #define AGENT_ID_LEN 64
@@ -1937,6 +1991,18 @@ int wdb_parse_syscollector(wdb_t * wdb, const char * query, char * input, char *
         component = WDB_SYSCOLLECTOR_OSINFO;
         mdebug2("DB(%s) syscollector_osinfo Syscollector query. ", wdb->id);
     }
+    else if (strcmp(query, "syscollector_users") == 0)
+    {
+        w_inc_agent_syscollector_users();
+        component = WDB_SYSCOLLECTOR_USERS;
+        mdebug2("DB(%s) syscollector_users Syscollector query. ", wdb->id);
+    }
+    else if (strcmp(query, "syscollector_groups") == 0)
+    {
+        w_inc_agent_syscollector_groups();
+        component = WDB_SYSCOLLECTOR_GROUPS;
+        mdebug2("DB(%s) syscollector_groups Syscollector query. ", wdb->id);
+    }
     else
     {
         mdebug2("DB(%s) Invalid Syscollector query : %s", wdb->id, query);
@@ -2147,7 +2213,7 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
         if (scan_id->valueint < 0) {
             mdebug1("Malformed JSON: field 'id' cannot be negative");
             snprintf(output, OS_MAXSTR + 1, "err Invalid Security Configuration Assessment query syntax, near '%.32s'", curr);
-            cJSON_Delete(event);            
+            cJSON_Delete(event);
             return OS_INVALID;
         }
 
@@ -5562,7 +5628,7 @@ int wdb_parse_global_delete_agent(wdb_t * wdb, char * input, char * output) {
         j_msg_to_send = cJSON_CreateObject();
         j_agent_info = cJSON_CreateObject();
 
-        
+
         cJSON_AddStringToObject(j_agent_info, "agent_id", padded_agent_id);
         cJSON_AddItemToObject(j_msg_to_send, "agent_info", j_agent_info);
 

@@ -247,4 +247,9 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      <<: *permission_allowed
+      status_code: 202
+      json:
+        error: !anyint
+        data:
+          affected_items: !anything
+          total_failed_items: 0

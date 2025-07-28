@@ -162,6 +162,12 @@ FIMDBErrorCode fim_db_init(int storage,
                         json["data"]["attributes"].erase("options");
                         json["data"]["attributes"].erase("path");
                         json["data"]["attributes"].erase("scanned");
+                        auto& obj = json.at("data").at("attributes");
+
+                        if (obj.contains("inode") && !obj["inode"].is_string())
+                        {
+                            obj["inode"] = obj["inode"].dump();
+                        }
 
                         FIMDB::instance().setTimeLastSyncMsg();
                     }
@@ -363,16 +369,9 @@ FIMDBErrorCode fim_db_transaction_sync_row(TXN_HANDLE txn_handler, const fim_ent
 
         try
         {
-
-            const std::unique_ptr<cJSON, CJsonSmartDeleter> jsInput
-            {
-                cJSON_Parse((*syncItem->toJSON()).dump().c_str())
-            };
-
-            if (dbsync_sync_txn_row(txn_handler, jsInput.get()) == 0)
-            {
-                retval = FIMDB_OK;
-            }
+            DBSyncTxn txn(txn_handler);
+            txn.syncTxnRow(*syncItem->toJSON());
+            retval = FIMDB_OK;
         }
         catch (std::exception& err)
         {

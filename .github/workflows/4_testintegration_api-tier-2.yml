@@ -78,5 +78,21 @@ jobs:
       # Run integration tests.
       - name: Run API tests
         run: |
+          mkdir -p /tmp/wazuh-logs
+          sudo tail -F /var/ossec/logs/api.log >> /tmp/wazuh-logs/api.log 2>/dev/null &
+          sudo tail -F /var/ossec/logs/ossec.log >> /tmp/wazuh-logs/ossec.log 2>/dev/null &
           cd tests/integration
-          sudo python -m pytest --tier 2 test_api/
+          sudo python3 -m pytest --tier 2 test_api/
+      # Collect logs if tests fail
+      - name: Collect logs on failure
+        if: failure()
+        run: |
+          sudo journalctl -u wazuh-manager > /tmp/wazuh-logs/wazuh-manager.service.log || true
+          sudo chown -R $(whoami):$(whoami) /tmp/wazuh-logs || true
+      # Upload logs artifact if test fails
+      - name: Upload logs artifact
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: wazuh-logs-${{ github.job }}
+          path: /tmp/wazuh-logs
