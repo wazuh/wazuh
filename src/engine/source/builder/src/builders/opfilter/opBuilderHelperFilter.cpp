@@ -149,7 +149,7 @@ FilterOp getIntCmpFunction(const std::string& targetField,
         // empty ot not. Then if is a reference we get the value from the event, otherwise
         // we get the value from the parameter
 
-        auto lValue = event->getIntAsInt64(targetField);
+        auto lValue = event->getFloat(targetField);
         if (!lValue.has_value())
         {
             RETURN_FAILURE(runState, false, failureTrace1);
@@ -158,7 +158,7 @@ FilterOp getIntCmpFunction(const std::string& targetField,
         int64_t resolvedValue {0};
         if (std::holds_alternative<std::string>(rValue))
         {
-            auto resolvedRValue = event->getIntAsInt64(std::get<std::string>(rValue));
+            auto resolvedRValue = event->getFloat(std::get<std::string>(rValue));
             if (!resolvedRValue.has_value())
             {
                 RETURN_FAILURE(runState, false, failureTrace2);
