@@ -44,11 +44,11 @@ class PersistentQueue : public IPersistentQueue
         /// @param index The message grouping key.
         /// @param data The serialized payload of the message.
         /// @param operation The type of operation (e.g., Upsert, Delete).
-        /// @return Assigned sequence number of the inserted message.
-        uint64_t submit(const std::string& module, const std::string& id,
-                        const std::string& index,
-                        const std::string& data,
-                        Wazuh::SyncSchema::Operation operation) override;
+        /// @return The total number of items for that module in the queue after submission.
+        size_t submit(const std::string& module, const std::string& id,
+                      const std::string& index,
+                      const std::string& data,
+                      Wazuh::SyncSchema::Operation operation) override;
 
         /// @brief Returns all messages queued for a given module.
         /// @param module The module name.
@@ -85,7 +85,8 @@ class PersistentQueue : public IPersistentQueue
         /// @brief Persists a message using the storage backend.
         /// @param module Module name.
         /// @param data Message to persist.
-        void persistMessage(const std::string& module, const PersistedData& data);
+        /// @return The total number of items for that module in the queue after submission.
+        size_t persistMessage(const std::string& module, const PersistedData& data);
 
         /// @brief Deletes all messages for a module from storage.
         /// @param module Module name.

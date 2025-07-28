@@ -48,19 +48,19 @@ extern "C" {
         delete reinterpret_cast<AgentSyncProtocolWrapper*>(handle);
     }
 
-    void asp_persist_diff(AgentSyncProtocolHandle* handle,
-                          const char* module,
-                          const char* id,
-                          int operation,
-                          const char* index,
-                          const char* data)
+    size_t asp_persist_diff(AgentSyncProtocolHandle* handle,
+                            const char* module,
+                            const char* id,
+                            int operation,
+                            const char* index,
+                            const char* data)
     {
-        if (!handle || !module || !id || !index || !data) return;
+        if (!handle || !module || !id || !index || !data) return 0;
 
         auto* wrapper = reinterpret_cast<AgentSyncProtocolWrapper*>(handle);
-        wrapper->impl->persistDifference(module, id,
-                                         static_cast<Wazuh::SyncSchema::Operation>(operation),
-                                         index, data);
+        return wrapper->impl->persistDifference(module, id,
+                                                static_cast<Wazuh::SyncSchema::Operation>(operation),
+                                                index, data);
     }
 
     bool asp_sync_module(AgentSyncProtocolHandle* handle,

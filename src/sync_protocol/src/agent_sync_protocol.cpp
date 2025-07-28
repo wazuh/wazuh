@@ -26,13 +26,13 @@ AgentSyncProtocol::AgentSyncProtocol(MQ_Functions mqFuncs, std::shared_ptr<IPers
 {
 }
 
-void AgentSyncProtocol::persistDifference(const std::string& module,
-                                          const std::string& id,
-                                          Operation operation,
-                                          const std::string& index,
-                                          const std::string& data)
+size_t AgentSyncProtocol::persistDifference(const std::string& module,
+                                            const std::string& id,
+                                            Operation operation,
+                                            const std::string& index,
+                                            const std::string& data)
 {
-    m_persistentQueue->submit(module, id, index, data, operation);
+    return m_persistentQueue->submit(module, id, index, data, operation);
 }
 
 bool AgentSyncProtocol::synchronizeModule(const std::string& module, Mode mode, bool realtime, std::chrono::seconds timeout, unsigned int retries)
