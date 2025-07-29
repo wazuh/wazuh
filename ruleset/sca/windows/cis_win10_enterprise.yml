@@ -37,7 +37,7 @@ checks:
       - cis_csc: ["5.2"]
     condition: all
     rules:
-      - 'c:net.exe accounts -> n:Length of password history maintained:\s+(\d+) compare >= 24'
+      - 'c:powershell secedit /export /cfg $env:TEMP\secpol.cfg; Get-Content $env:TEMP\secpol.cfg | Select-String "PasswordHistorySize"; Remove-Item $env:TEMP\secpol.cfg -> n:PasswordHistorySize = (\d+) compare >= 24'
 
   - id: 15501
     title: "Ensure 'Maximum password age' is set to '365 or fewer days, but not 0'."
@@ -49,8 +49,8 @@ checks:
       - cis_csc: ["5.2"]
     condition: all
     rules:
-      - 'c:net.exe accounts -> n:Maximum password age \(days\):\s+(\d+) compare <= 365'
-      - 'c:net.exe accounts -> n:Maximum password age \(days\):\s+(\d+) compare > 0'
+      - 'c:powershell secedit /export /cfg $env:TEMP\secpol.cfg; Get-Content $env:TEMP\secpol.cfg | Select-String "MaximumPasswordAge"; Remove-Item $env:TEMP\secpol.cfg -> r:MaximumPasswordAge = (\d+) compare <= 365'
+      - 'c:powershell secedit /export /cfg $env:TEMP\secpol.cfg; Get-Content $env:TEMP\secpol.cfg | Select-String "MaximumPasswordAge"; Remove-Item $env:TEMP\secpol.cfg -> r:MaximumPasswordAge = (\d+) compare > 0'
 
   - id: 15502
     title: "Ensure 'Minimum password age' is set to '1 or more day(s)'."
@@ -62,7 +62,7 @@ checks:
       - cis_csc: ["5.2"]
     condition: all
     rules:
-      - 'c:net.exe accounts -> n:Minimum password age \(days\):\s+(\d+) compare >= 1'
+      - 'c:powershell secedit /export /cfg $env:TEMP\secpol.cfg; Get-Content $env:TEMP\secpol.cfg | Select-String "MinimumPasswordAge"; Remove-Item $env:TEMP\secpol.cfg -> n:MinimumPasswordAge = (\d+) compare >= 1'
 
   - id: 15503
     title: "Ensure 'Minimum password length' is set to '14 or more character(s)'."
@@ -74,7 +74,7 @@ checks:
       - cis_csc: ["5.2"]
     condition: all
     rules:
-      - 'c:net.exe accounts -> n:Minimum password length:\s+(\d+) compare >= 14'
+      - 'c:powershell secedit /export /cfg $env:TEMP\secpol.cfg; Get-Content $env:TEMP\secpol.cfg | Select-String "MinimumPasswordLength"; Remove-Item $env:TEMP\secpol.cfg -> n:MinimumPasswordLength = (\d+) compare >= 14'
 
   - id: 15505
     title: "Ensure 'Relax minimum password length limits' is set to 'Enabled'."
@@ -100,7 +100,7 @@ checks:
       - cis_csc: ["4.10"]
     condition: all
     rules:
-      - 'c:net.exe accounts -> n:Lockout duration \(minutes\):\s+(\d+) compare >= 15'
+      - 'c:powershell secedit /export /cfg $env:TEMP\secpol.cfg; Get-Content $env:TEMP\secpol.cfg | Select-String "LockoutDuration"; Remove-Item $env:TEMP\secpol.cfg -> n:LockoutDuration = (\d+) compare >= 15'
 
   - id: 15507
     title: "Ensure 'Account lockout threshold' is set to '5 or fewer invalid logon attempt(s), but not 0'."
@@ -112,8 +112,8 @@ checks:
       - cis_csc: ["4.10"]
     condition: all
     rules:
-      - 'c:net.exe accounts -> n:Lockout threshold:\s+(\d+) compare > 0'
-      - 'c:net.exe accounts -> n:Lockout threshold:\s+(\d+) compare <= 5'
+      - 'c:powershell secedit /export /cfg $env:TEMP\secpol.cfg; Get-Content $env:TEMP\secpol.cfg | Select-String "LockoutBadCount"; Remove-Item $env:TEMP\secpol.cfg -> n:LockoutBadCount = (\d+) compare <= 5'
+      - 'c:powershell secedit /export /cfg $env:TEMP\secpol.cfg; Get-Content $env:TEMP\secpol.cfg | Select-String "LockoutBadCount"; Remove-Item $env:TEMP\secpol.cfg -> n:LockoutBadCount = (\d+) compare > 0'
 
   - id: 15508
     title: "Ensure 'Reset account lockout counter after' is set to '15 or more minute(s)'."
@@ -125,7 +125,7 @@ checks:
       - cis_csc: ["4.10"]
     condition: all
     rules:
-      - 'c:net.exe accounts -> n:Lockout observation window \(minutes\):\s+(\d+) compare >= 15'
+      - 'c:powershell secedit /export /cfg $env:TEMP\secpol.cfg; Get-Content $env:TEMP\secpol.cfg | Select-String "ResetLockoutCount"; Remove-Item $env:TEMP\secpol.cfg -> n:ResetLockoutCount = (\d+) compare >= 15'
 
   - id: 15509
     title: "Ensure 'Accounts: Administrator account status' is set to 'Disabled'."
@@ -137,8 +137,8 @@ checks:
       - cis_csc: ["4.7"]
     condition: any
     rules:
-      - 'c:net user administrator -> r:Account active\s+No'
-      - "c:net user administrator -> r:The user name could not be found."
+      - 'c:wmic useraccount where (sid like "s-1-5-21-%-500") get Disabled -> r:TRUE'
+      - 'c:wmic useraccount where (sid like "s-1-5-21-%-500") get Disabled -> r:No Instance\(s\) Available.'
 
   - id: 15510
     title: "Ensure 'Accounts: Block Microsoft accounts' is set to 'Users can't add or log on with Microsoft accounts'."
@@ -165,8 +165,8 @@ checks:
       - cis_csc: ["4.7"]
     condition: any
     rules:
-      - 'c:net user guest -> r:Account active\s+No'
-      - "c:net user guest -> r:The user name could not be found."
+      - 'c:wmic useraccount where (sid like "s-1-5-21-%-501") get Disabled -> r:TRUE'
+      - 'c:wmic useraccount where (sid like "s-1-5-21-%-501") get Disabled -> r:No Instance\(s\) Available.'
 
   - id: 15512
     title: "Ensure 'Accounts: Limit local account use of blank passwords to console logon only' is set to 'Enabled'."
@@ -193,7 +193,7 @@ checks:
       - cis_csc: ["4.7"]
     condition: all
     rules:
-      - "c:net user administrator -> r:The user name could not be found."
+      - 'not c:net user -> r:Admin|Администратор|Amministratore|Beheerder|Järjestelmänvalvoja|Správce|Rendszergazda|Yönetici |Διαχειριστής|管理者|管理员|系統管理員|관리자|مسؤول | מנהל |ผู้ดูแลระบบ'
 
   - id: 15514
     title: "Configure 'Accounts: Rename guest account'."
@@ -205,7 +205,7 @@ checks:
       - cis_csc: ["4.7"]
     condition: all
     rules:
-      - "c:net user guest -> r:The user name could not be found."
+      - 'not c:net user -> r:guest|Guest|Gast|Invité|Invitado|Ospite|Convidado|Gäst |Gjest|Gæst|Vieras|Гость|Gość|Vendég|Host |Misafir|Επισκέπτης|ゲスト|来宾|來賓|게스트|ضيف|אורח|บัญชีผู้ใช้ทั่วไป'
 
   - id: 15515
     title: "Ensure 'Audit: Force audit policy subcategory settings (Windows Vista or later) to override audit policy category settings' is set to 'Enabled'."
@@ -350,8 +350,10 @@ checks:
       - cis: ["2.3.6.5"]
     condition: all
     rules:
-      - 'c:net.exe accounts -> n:Maximum password age (days):\s+(\d+) compare <= 30'
-      - 'c:net.exe accounts -> n:Maximum password age (days):\s+(\d+) compare > 0'
+    condition: all
+    rules:
+      - 'c:powershell secedit /export /cfg $env:TEMP\secpol.cfg; Get-Content $env:TEMP\secpol.cfg | Select-String "MaximumPasswordAge"; Remove-Item $env:TEMP\secpol.cfg -> r:MaximumPasswordAge = (\d+) compare <= 30'
+      - 'c:powershell secedit /export /cfg $env:TEMP\secpol.cfg; Get-Content $env:TEMP\secpol.cfg | Select-String "MaximumPasswordAge"; Remove-Item $env:TEMP\secpol.cfg -> r:MaximumPasswordAge = (\d+) compare > 0'
 
   - id: 15524
     title: "Ensure 'Domain member: Require strong (Windows 2000 or later) session key' is set to 'Enabled'."
