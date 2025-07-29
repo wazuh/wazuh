@@ -75,11 +75,16 @@ public:
         return result;
     }
 
+    std::chrono::time_point<std::chrono::steady_clock> lastUpdate() const
+    {
+        return m_lastUpdate;
+    }
+
 private:
     uint64_t m_size {0};
     std::vector<bool> m_observed;
     uint64_t m_observedCount {0};
-    std::chrono::time_point<std::chrono::steady_clock> m_lastUpdate {};
+    std::chrono::time_point<std::chrono::steady_clock> m_lastUpdate {std::chrono::steady_clock::now()};
 };
 
 #endif // _GAP_SET_HPP

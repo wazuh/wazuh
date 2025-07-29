@@ -1,12 +1,12 @@
 #ifndef _AGENT_SESSION_HPP
 #define _AGENT_SESSION_HPP
 
+#include "asyncValueDispatcher.hpp"
 #include "context.hpp"
 #include "flatbuffers/include/inventorySync_generated.h"
 #include "gapSet.hpp"
 #include "responseDispatcher.hpp"
 #include "rocksDBWrapper.hpp"
-#include "threadDispatcher.h"
 #include <functional>
 #include <memory>
 #include <string>
@@ -24,8 +24,8 @@ struct Response
     std::shared_ptr<Context> context;
 };
 
-using WorkersQueue = Utils::AsyncDispatcher<std::vector<char>, std::function<void(const std::vector<char>&)>>;
-using IndexerQueue = Utils::AsyncDispatcher<Response, std::function<void(const Response&)>>;
+using WorkersQueue = Utils::AsyncValueDispatcher<std::vector<char>, std::function<void(const std::vector<char>&)>>;
+using IndexerQueue = Utils::AsyncValueDispatcher<Response, std::function<void(const Response&)>>;
 
 class AgentSessionException : public std::exception
 {
@@ -85,8 +85,10 @@ public:
             throw AgentSessionException("Invalid id");
         }
 
-        m_context =
-            std::make_shared<Context>(Context {data->mode(), sessionId, data->agent_id(), data->module_()->str()});
+        m_context = std::make_shared<Context>(Context {.mode = data->mode(),
+                                                       .sessionId = sessionId,
+                                                       .agentId = data->agent_id(),
+                                                       .moduleName = data->module_()->str()});
 
         std::cout << "AgentSessionImpl: " << m_context->sessionId << " " << m_context->agentId << " "
                   << m_context->moduleName << std::endl;
@@ -102,7 +104,7 @@ public:
         m_store.put(std::to_string(session) + "_" + std::to_string(seq),
                     rocksdb::Slice(dataRaw.data(), dataRaw.size()));
 
-        std::lock_guard<std::mutex> lock(m_mutex);
+        std::lock_guard lock(m_mutex);
         m_gapSet->observe(data->seq());
 
         // std::cout << "Data received: " << std::to_string(session) + "_" + std::to_string(seq) << "\n";
@@ -111,24 +113,33 @@ public:
         {
             if (m_gapSet->empty())
             {
-                m_indexerQueue.push(Response({ResponseStatus::Ok, m_context}));
+                m_indexerQueue.push(Response {.status = ResponseStatus::Ok, .context = m_context});
             }
         }
     }
 
     void handleEnd(const TResponseDispatcher& responseDispatcher)
     {
-        std::lock_guard<std::mutex> lock(m_mutex);
+        std::lock_guard lock(m_mutex);
         m_endReceived = true;
         if (m_gapSet->empty())
         {
             std::cout << "End received and gap set is empty\n";
-            m_indexerQueue.push(Response({ResponseStatus::Ok, m_context}));
+            m_indexerQueue.push(Response {.status = ResponseStatus::Ok, .context = m_context});
         }
         else
         {
             responseDispatcher.sendEndMissingSeq(m_context->sessionId, m_gapSet->ranges());
         }
+    }
+
+    bool isAlive(const std::chrono::seconds timeout) const
+    {
+        if (m_gapSet->lastUpdate() + timeout < std::chrono::steady_clock::now())
+        {
+            return false;
+        }
+        return true;
     }
 };
 

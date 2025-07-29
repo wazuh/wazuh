@@ -457,9 +457,8 @@ public:
     }
     void bulkDelete(std::string_view id, std::string_view index)
     {
-        constexpr auto FORMATTED_SIZE {21 + 9 + 2 + 1};
-        std::lock_guard lock(m_mutex);
-        if (m_bulkData.length() + FORMATTED_SIZE + index.size() + id.size() > MaxBulkSize)
+        if (constexpr auto FORMATTED_SIZE {21 + 9 + 2 + 1};
+            m_bulkData.length() + FORMATTED_SIZE + index.size() + id.size() > MaxBulkSize)
         {
             processBulk();
         }
@@ -473,10 +472,8 @@ public:
     }
     void bulkIndex(std::string_view id, std::string_view index, std::string_view data)
     {
-        constexpr auto FORMATTED_SIZE {20 + 8 + 2 + 2 + 1};
-        std::lock_guard lock(m_mutex);
-
-        if (m_bulkData.length() + FORMATTED_SIZE + index.size() + id.size() + data.size() > MaxBulkSize)
+        if (constexpr auto FORMATTED_SIZE {20 + 8 + 2 + 2 + 1};
+            m_bulkData.length() + FORMATTED_SIZE + index.size() + id.size() + data.size() > MaxBulkSize)
         {
             processBulk();
         }
@@ -498,5 +495,15 @@ public:
         {
             processBulk();
         }
+    }
+
+    std::mutex& scopeLock()
+    {
+        return m_mutex;
+    }
+
+    void registerNotify(std::function<void()> callback)
+    {
+        m_notify.push_back(std::move(callback));
     }
 };

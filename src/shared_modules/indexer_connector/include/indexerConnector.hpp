@@ -82,6 +82,20 @@ public:
      * @brief Flush the bulk data.
      */
     void flush();
+
+    /**
+     * @brief Get the scope lock.
+     *
+     * @return std::mutex&
+     */
+    std::mutex& scopeLock();
+
+    /**
+     * @brief Register a callback to be called when the indexer is flushed.
+     *
+     * @param callback Callback to be called when the indexer is flushed.
+     */
+    void registerNotify(std::function<void()> callback);
 };
 
 /**
