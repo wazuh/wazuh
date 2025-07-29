@@ -39,6 +39,12 @@ This documentation provides an overview of the auxiliary functions available. Au
 - [kvdb_match](#kvdb_match)
 - [kvdb_not_match](#kvdb_not_match)
 - [match_value](#match_value)
+- [number_equal](#number_equal)
+- [number_greater](#number_greater)
+- [number_greater_or_equal](#number_greater_or_equal)
+- [number_less](#number_less)
+- [number_less_or_equal](#number_less_or_equal)
+- [number_not_equal](#number_not_equal)
 - [regex_match](#regex_match)
 - [starts_with](#starts_with)
 - [string_equal](#string_equal)
@@ -3846,6 +3852,766 @@ check:
 ```
 
 *The check was successful*
+
+
+
+---
+# number_equal
+
+## Signature
+
+```
+
+field: number_equal(any_number)
+```
+
+## Arguments
+
+| parameter | Type | Source | Accepted values |
+| --------- | ---- | ------ | --------------- |
+| any_number | number | value or reference |
+
+
+## Target Field
+
+| Type | Possible values |
+| ---- | --------------- |
+| number |
+
+
+## Description
+
+Checkers whether the number stored in field is equal to the one provided.
+If they're not, the function evaluates to false. In case of error, the function will evaluate to false.
+This helper function is typically used in the check stage
+
+
+## Keywords
+
+- `number` 
+
+- `comparison` 
+
+## Examples
+
+### Example 1
+
+Compare two different numbers
+
+#### Asset
+
+```yaml
+check:
+  - target_field: number_equal(2.6)
+```
+
+#### Input Event
+
+```json
+{
+  "target_field": 2
+}
+```
+
+*The check was performed with errors*
+
+### Example 2
+
+Compare two different numbers
+
+#### Asset
+
+```yaml
+check:
+  - target_field: number_equal($any_number)
+```
+
+#### Input Event
+
+```json
+{
+  "any_number": 6,
+  "target_field": 5.5
+}
+```
+
+*The check was performed with errors*
+
+### Example 3
+
+Compare two equals numbers
+
+#### Asset
+
+```yaml
+check:
+  - target_field: number_equal(2.3)
+```
+
+#### Input Event
+
+```json
+{
+  "target_field": 2.3
+}
+```
+
+*The check was successful*
+
+### Example 4
+
+Compare two equals numbers
+
+#### Asset
+
+```yaml
+check:
+  - target_field: number_equal($any_number)
+```
+
+#### Input Event
+
+```json
+{
+  "any_number": 2,
+  "target_field": 2.0
+}
+```
+
+*The check was successful*
+
+
+
+---
+# number_greater
+
+## Signature
+
+```
+
+field: number_greater(any_number)
+```
+
+## Arguments
+
+| parameter | Type | Source | Accepted values |
+| --------- | ---- | ------ | --------------- |
+| any_number | number | value or reference |
+
+
+## Target Field
+
+| Type | Possible values |
+| ---- | --------------- |
+| number |
+
+
+## Description
+
+Checkers whether the number stored in field is greater than to the one provided.
+If they're not, the function evaluates to false. In case of error, the function will evaluate to false.
+This helper function is typically used in the check stage
+
+
+## Keywords
+
+- `comparison` 
+
+## Examples
+
+### Example 1
+
+Success number greater
+
+#### Asset
+
+```yaml
+check:
+  - target_field: number_greater(1.5)
+```
+
+#### Input Event
+
+```json
+{
+  "target_field": 4.6
+}
+```
+
+*The check was successful*
+
+### Example 2
+
+Success number greater
+
+#### Asset
+
+```yaml
+check:
+  - target_field: number_greater($any_number)
+```
+
+#### Input Event
+
+```json
+{
+  "any_number": 1,
+  "target_field": 2.2
+}
+```
+
+*The check was successful*
+
+### Example 3
+
+Failure number greater
+
+#### Asset
+
+```yaml
+check:
+  - target_field: number_greater(3.8)
+```
+
+#### Input Event
+
+```json
+{
+  "target_field": 2.2
+}
+```
+
+*The check was performed with errors*
+
+### Example 4
+
+Failure number greater
+
+#### Asset
+
+```yaml
+check:
+  - target_field: number_greater($any_number)
+```
+
+#### Input Event
+
+```json
+{
+  "any_number": 3,
+  "target_field": 2.2
+}
+```
+
+*The check was performed with errors*
+
+
+
+---
+# number_greater_or_equal
+
+## Signature
+
+```
+
+field: number_greater_or_equal(any_number)
+```
+
+## Arguments
+
+| parameter | Type | Source | Accepted values |
+| --------- | ---- | ------ | --------------- |
+| any_number | number | value or reference |
+
+
+## Target Field
+
+| Type | Possible values |
+| ---- | --------------- |
+| number |
+
+
+## Description
+
+Checkers whether the number stored in field is greater than or equal to the one provided.
+If they're not, the function evaluates to false. In case of error, the function will evaluate to false.
+This helper function is typically used in the check stage
+
+
+## Keywords
+
+- `number` 
+
+- `comparison` 
+
+## Examples
+
+### Example 1
+
+Failure int greater or equal
+
+#### Asset
+
+```yaml
+check:
+  - target_field: number_greater_or_equal(2.6)
+```
+
+#### Input Event
+
+```json
+{
+  "target_field": 2
+}
+```
+
+*The check was performed with errors*
+
+### Example 2
+
+Failure int greater or equal
+
+#### Asset
+
+```yaml
+check:
+  - target_field: number_greater_or_equal($any_number)
+```
+
+#### Input Event
+
+```json
+{
+  "any_number": 2,
+  "target_field": 1.5
+}
+```
+
+*The check was performed with errors*
+
+### Example 3
+
+Success int greater or equal
+
+#### Asset
+
+```yaml
+check:
+  - target_field: number_greater_or_equal(2.2)
+```
+
+#### Input Event
+
+```json
+{
+  "target_field": 2.2
+}
+```
+
+*The check was successful*
+
+### Example 4
+
+Success int greater or equal
+
+#### Asset
+
+```yaml
+check:
+  - target_field: number_greater_or_equal($any_number)
+```
+
+#### Input Event
+
+```json
+{
+  "any_number": 2,
+  "target_field": 2
+}
+```
+
+*The check was successful*
+
+
+
+---
+# number_less
+
+## Signature
+
+```
+
+field: number_less(any_number)
+```
+
+## Arguments
+
+| parameter | Type | Source | Accepted values |
+| --------- | ---- | ------ | --------------- |
+| any_number | number | value or reference |
+
+
+## Target Field
+
+| Type | Possible values |
+| ---- | --------------- |
+| number |
+
+
+## Description
+
+Checkers whether the number stored in field is less than to the one provided.
+If they're not, the function evaluates to false. In case of error, the function will evaluate to false.
+This helper function is typically used in the check stage
+
+
+## Keywords
+
+- `number` 
+
+- `comparison` 
+
+## Examples
+
+### Example 1
+
+Success number less
+
+#### Asset
+
+```yaml
+check:
+  - target_field: number_less(2.2)
+```
+
+#### Input Event
+
+```json
+{
+  "target_field": 2
+}
+```
+
+*The check was successful*
+
+### Example 2
+
+Success number less
+
+#### Asset
+
+```yaml
+check:
+  - target_field: number_less($any_number)
+```
+
+#### Input Event
+
+```json
+{
+  "any_number": 2.1,
+  "target_field": 1.6
+}
+```
+
+*The check was successful*
+
+### Example 3
+
+Failure number less
+
+#### Asset
+
+```yaml
+check:
+  - target_field: number_less(2)
+```
+
+#### Input Event
+
+```json
+{
+  "target_field": 2.2
+}
+```
+
+*The check was performed with errors*
+
+### Example 4
+
+Failure number less
+
+#### Asset
+
+```yaml
+check:
+  - target_field: number_less($any_number)
+```
+
+#### Input Event
+
+```json
+{
+  "any_number": 10,
+  "target_field": 10
+}
+```
+
+*The check was performed with errors*
+
+
+
+---
+# number_less_or_equal
+
+## Signature
+
+```
+
+field: number_less_or_equal(any_number)
+```
+
+## Arguments
+
+| parameter | Type | Source | Accepted values |
+| --------- | ---- | ------ | --------------- |
+| any_number | number | value or reference |
+
+
+## Target Field
+
+| Type | Possible values |
+| ---- | --------------- |
+| number |
+
+
+## Description
+
+Checkers whether the number stored in field is less than or equal to the one provided.
+If they're not, the function evaluates to false. In case of error, the function will evaluate to false.
+This helper function is typically used in the check stage
+
+
+## Keywords
+
+- `number` 
+
+- `comparison` 
+
+## Examples
+
+### Example 1
+
+Success number less or equal
+
+#### Asset
+
+```yaml
+check:
+  - target_field: number_less_or_equal(2.2)
+```
+
+#### Input Event
+
+```json
+{
+  "target_field": 2
+}
+```
+
+*The check was successful*
+
+### Example 2
+
+Success number less or equal
+
+#### Asset
+
+```yaml
+check:
+  - target_field: number_less_or_equal($any_number)
+```
+
+#### Input Event
+
+```json
+{
+  "any_number": 2,
+  "target_field": 1.2
+}
+```
+
+*The check was successful*
+
+### Example 3
+
+Failure number less or equal
+
+#### Asset
+
+```yaml
+check:
+  - target_field: number_less_or_equal(1.8)
+```
+
+#### Input Event
+
+```json
+{
+  "target_field": 2.6
+}
+```
+
+*The check was performed with errors*
+
+### Example 4
+
+Failure number less or equal
+
+#### Asset
+
+```yaml
+check:
+  - target_field: number_less_or_equal($any_number)
+```
+
+#### Input Event
+
+```json
+{
+  "any_number": 2,
+  "target_field": 22
+}
+```
+
+*The check was performed with errors*
+
+
+
+---
+# number_not_equal
+
+## Signature
+
+```
+
+field: number_not_equal(any_number)
+```
+
+## Arguments
+
+| parameter | Type | Source | Accepted values |
+| --------- | ---- | ------ | --------------- |
+| any_number | number | value or reference |
+
+
+## Target Field
+
+| Type | Possible values |
+| ---- | --------------- |
+| number |
+
+
+## Description
+
+Checkers whether the number stored in field is not equal to the one provided.
+If they're not, the function evaluates to false. In case of error, the function will evaluate to false.
+This helper function is typically used in the check stage
+
+
+## Keywords
+
+- `number` 
+
+- `comparison` 
+
+## Examples
+
+### Example 1
+
+Success number not equal
+
+#### Asset
+
+```yaml
+check:
+  - target_field: number_not_equal(2.2)
+```
+
+#### Input Event
+
+```json
+{
+  "target_field": 2
+}
+```
+
+*The check was successful*
+
+### Example 2
+
+Success number not equal
+
+#### Asset
+
+```yaml
+check:
+  - target_field: number_not_equal($any_number)
+```
+
+#### Input Event
+
+```json
+{
+  "any_number": 1,
+  "target_field": 2.3
+}
+```
+
+*The check was successful*
+
+### Example 3
+
+Failure number not equal
+
+#### Asset
+
+```yaml
+check:
+  - target_field: number_not_equal(2.2)
+```
+
+#### Input Event
+
+```json
+{
+  "target_field": 2.2
+}
+```
+
+*The check was performed with errors*
+
+### Example 4
+
+Failure number not equal
+
+#### Asset
+
+```yaml
+check:
+  - target_field: number_not_equal($any_number)
+```
+
+#### Input Event
+
+```json
+{
+  "any_number": 2,
+  "target_field": 2
+}
+```
+
+*The check was performed with errors*
 
 
 
