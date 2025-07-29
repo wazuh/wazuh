@@ -11,6 +11,7 @@ import xmltodict
 
 import wazuh.core.configuration as configuration
 from wazuh.core import common
+from wazuh.core.analysis import send_reload_ruleset_msg
 from wazuh.core.cluster.cluster import get_node
 from wazuh.core.cluster.utils import read_cluster_config
 from wazuh.core.exception import WazuhError
@@ -337,12 +338,12 @@ def get_rule_file_path(filename: str = None, relative_dirname: str = None) -> st
     # if the filename doesn't have a relative path, the search is only by name
     # relative_dirname parameter is set to None.
     relative_dirname = relative_dirname.rstrip('/') if relative_dirname else ''
-    rules = get_rules_files(filename=[filename], 
+    rules = get_rules_files(filename=[filename],
                                   relative_dirname=relative_dirname).affected_items
     if len(rules) == 0:
         return ''
     elif len(rules) > 1:
-        # if many files match the filename criteria, 
+        # if many files match the filename criteria,
         # filter rules that starts with rel_dir of the file
         # and from the result, select the rule with the shorter
         # relative path length
@@ -362,7 +363,7 @@ def get_rule_file(filename: str = None, raw: bool = False,
     filename : str, optional
         Name of the rule file.
     raw : bool, optional
-        Whether to return the content in raw format (str->XML) or JSON. 
+        Whether to return the content in raw format (str->XML) or JSON.
         Default `False` (JSON format).
     relative_dirname : str
         Relative directory where the rule file is located.
@@ -427,7 +428,7 @@ def validate_upload_delete_dir(relative_dirname: Union[str, None]) -> Tuple[str,
     relative_dirname = relative_dirname.rstrip('/') if relative_dirname \
         else to_relative_path(common.USER_RULES_PATH)
     wazuh_error = None
-    if not relative_dirname in ruleset_conf['rule_dir']:
+    if relative_dirname not in ruleset_conf['rule_dir']:
         wazuh_error = WazuhError(1209)
     elif commonpath([join(common.WAZUH_PATH, relative_dirname), common.RULES_PATH]) == common.RULES_PATH:
         wazuh_error = WazuhError(1210)
@@ -437,7 +438,7 @@ def validate_upload_delete_dir(relative_dirname: Union[str, None]) -> Tuple[str,
 
 
 @expose_resources(actions=['rules:update'], resources=['*:*:*'])
-def upload_rule_file(filename: str, content: str, relative_dirname: str = None, 
+def upload_rule_file(filename: str, content: str, relative_dirname: str = None,
                      overwrite: bool = False) -> AffectedItemsWazuhResult:
     """Upload a new rule file or update an existing one.
 
@@ -445,7 +446,7 @@ def upload_rule_file(filename: str, content: str, relative_dirname: str = None,
     If the content is not valid, raise an exception.
     If the rule file is found, update the file if overwrite is true.
     If the rule file is not found, upload a new file.
-        
+
     Parameters
     ----------
     filename : str, optional
@@ -500,6 +501,10 @@ def upload_rule_file(filename: str, content: str, relative_dirname: str = None,
 
             raise exc
 
+        # After uploading the file, reload rulesets
+        socket_response = send_reload_ruleset_msg(origin={'module': 'api'})
+        socket_response.update_affected_items(results=result, error_code=1212)
+
         result.affected_items.append(to_relative_path(full_path))
         result.total_affected_items = len(result.affected_items)
         backup_file and exists(backup_file) and remove(backup_file)
@@ -547,6 +552,10 @@ def delete_rule_file(filename: Union[str, list], relative_dirname: str = None) -
                 raise WazuhError(1907) from exc
         else:
             raise WazuhError(1906)
+
+        # After deleting the file, reload rulesets
+        socket_response = send_reload_ruleset_msg(origin={'module': 'api'})
+        socket_response.update_affected_items(results=result, error_code=1212)
     except WazuhError as exc:
         result.add_failed_item(id_=to_relative_path(full_path), error=exc)
     result.total_affected_items = len(result.affected_items)

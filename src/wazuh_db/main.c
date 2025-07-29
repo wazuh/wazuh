@@ -12,6 +12,9 @@
 #include "wdb.h"
 #include "wdb_state.h"
 #include <os_net/os_net.h>
+#include "router.h"
+#include "config/config.h"
+#include "config/wazuh_db-config.h"
 
 #define WDB_AGENT_EVENTS_TOPIC "wdb-agent-events"
 #define WDB_FIM_EVENTS_TOPIC "wdb-fim-events"
@@ -240,6 +243,16 @@ int main(int argc, char ** argv)
 
     os_calloc(wconfig.worker_pool_size, sizeof(pthread_t), worker_pool);
 
+    router_register_api_endpoint("wazuh-db","wdb-http.sock", "GET", "/v1/agents/ids", (void*)&wdb_global_pre, (void*)&wdb_global_post);
+    router_register_api_endpoint("wazuh-db","wdb-http.sock", "GET", "/v1/agents/ids/groups/:name", (void*)&wdb_global_pre, (void*)&wdb_global_post);
+    router_register_api_endpoint("wazuh-db","wdb-http.sock", "GET", "/v1/agents/ids/groups", (void*)&wdb_global_pre, (void*)&wdb_global_post);
+    router_register_api_endpoint("wazuh-db","wdb-http.sock", "GET", "/v1/agents/:agent_id/groups", (void*)&wdb_global_pre, (void*)&wdb_global_post);
+    router_register_api_endpoint("wazuh-db","wdb-http.sock", "POST", "/v1/agents/summary", (void*)&wdb_global_pre, (void*)&wdb_global_post);
+    router_register_api_endpoint("wazuh-db","wdb-http.sock", "GET", "/v1/agents/sync", (void*)&wdb_global_pre, (void*)&wdb_global_post);
+    router_register_api_endpoint("wazuh-db","wdb-http.sock", "POST", "/v1/agents/sync", (void*)&wdb_global_pre, (void*)&wdb_global_post);
+
+    router_start_api("wdb-http.sock");
+
     for (i = 0; i < wconfig.worker_pool_size; i++) {
         if (status = pthread_create(worker_pool + i, NULL, run_worker, NULL), status != 0) {
             merror("Couldn't create 'run_worker' %d thread: %s", i + 1, strerror(status));
@@ -271,6 +284,8 @@ int main(int argc, char ** argv)
     for (i = 0; i < wconfig.worker_pool_size; i++) {
         pthread_join(worker_pool[i], NULL);
     }
+
+    router_stop_api("wdb-http.sock");
 
     wnotify_close(notify_queue);
     free(worker_pool);
@@ -517,7 +532,7 @@ void * run_up(__attribute__((unused)) void * args) {
     os_calloc(PATH_MAX + 1, sizeof(char), db_folder);
     snprintf(db_folder, PATH_MAX, "%s", WDB2_DIR);
 
-    fd = opendir(db_folder);
+    fd = wopendir(db_folder);
 
     if (!fd) {
         mdebug1("Opening directory: '%s': %s", db_folder, strerror(errno));

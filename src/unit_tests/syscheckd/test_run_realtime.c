@@ -28,6 +28,7 @@
 #include "../wrappers/wazuh/shared/syscheck_op_wrappers.h"
 #include "../wrappers/wazuh/shared/vector_op_wrappers.h"
 #include "../wrappers/wazuh/shared/file_op_wrappers.h"
+#include "../wrappers/wazuh/shared/utf8_winapi_wrapper_wrappers.h"
 #include "../wrappers/wazuh/syscheckd/create_db_wrappers.h"
 #include "../wrappers/wazuh/syscheckd/run_check_wrappers.h"
 #include "../wrappers/wazuh/syscheckd/win_whodata_wrappers.h"
@@ -1683,8 +1684,8 @@ void test_realtime_adddir_handle_error(void **state) {
     expect_string(__wrap_OSHash_Get_ex, key, "C:\\a\\path");
     will_return(__wrap_OSHash_Get_ex, 0);
 
-    expect_string(wrap_CreateFile, lpFileName, "C:\\a\\path");
-    will_return(wrap_CreateFile, INVALID_HANDLE_VALUE);
+    expect_string(__wrap_utf8_CreateFile, utf8_path, "C:\\a\\path");
+    will_return(__wrap_utf8_CreateFile, INVALID_HANDLE_VALUE);
 
     expect_string(__wrap__mdebug2, formatted_msg,
         "(6290): Unable to add directory to real time monitoring: 'C:\\a\\path'");
@@ -1712,8 +1713,8 @@ void test_realtime_adddir_success(void **state) {
     expect_string(__wrap_OSHash_Add_ex, key, "C:\\a\\path");
     will_return(__wrap_OSHash_Add_ex, 1);
 
-    expect_string(wrap_CreateFile, lpFileName, "C:\\a\\path");
-    will_return(wrap_CreateFile, (HANDLE)123456);
+    expect_string(__wrap_utf8_CreateFile, utf8_path, "C:\\a\\path");
+    will_return(__wrap_utf8_CreateFile, (HANDLE)123456);
 
     will_return(wrap_ReadDirectoryChangesW, 1);
     expect_value(__wrap_OSHash_Get_Elem_ex, self, syscheck.realtime->dirtb);
@@ -1742,7 +1743,8 @@ void test_realtime_adddir_fail_file(void **state) {
     expect_value(__wrap_OSHash_Get_Elem_ex, self, syscheck.realtime->dirtb);
     will_return(__wrap_OSHash_Get_Elem_ex, 127);
 
-    expect_CreateFile_call("C:\\a\\file", (HANDLE)123456);
+    expect_string(__wrap_utf8_CreateFile, utf8_path, "C:\\a\\file");
+    will_return(__wrap_utf8_CreateFile, (HANDLE)123456);
 
     will_return(wrap_ReadDirectoryChangesW, 0);
 

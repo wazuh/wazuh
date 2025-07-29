@@ -81,7 +81,7 @@ static void wm_sys_send_message(const void* data, const char queue_id) {
     #ifdef CLIENT
             mterror(WM_SYS_LOGTAG, "Unable to send message to '%s' (wazuh-agentd might be down). Attempting to reconnect.", DEFAULTQUEUE);
     #else
-            mterror(WM_SYS_LOGTAG, "Unable to send message to '%s' (wazuh-analysisd might be down). Attempting to reconnect.", DEFAULTQUEUE);
+            mterror(WM_SYS_LOGTAG, "Unable to send message to '%s' (wazuh-engine might be down). Attempting to reconnect.", DEFAULTQUEUE);
     #endif
             // Since this method is beign called by multiple threads it's necessary this particular portion of code
             // to be mutually exclusive. When one thread is successfully reconnected, the other ones will make use of it.
@@ -251,7 +251,9 @@ void* wm_sys_main(wm_sys_t *sys) {
                                sys->flags.portsinfo,
                                sys->flags.allports,
                                sys->flags.procinfo,
-                               sys->flags.hotfixinfo);
+                               sys->flags.hotfixinfo,
+                               sys->flags.groups,
+                               sys->flags.users);
     } else {
         mterror(WM_SYS_LOGTAG, "Can't get syscollector_start_ptr.");
         pthread_exit(NULL);
@@ -321,6 +323,8 @@ cJSON *wm_sys_dump(const wm_sys_t *sys) {
     if (sys->flags.portsinfo) cJSON_AddStringToObject(wm_sys,"ports","yes"); else cJSON_AddStringToObject(wm_sys,"ports","no");
     if (sys->flags.allports) cJSON_AddStringToObject(wm_sys,"ports_all","yes"); else cJSON_AddStringToObject(wm_sys,"ports_all","no");
     if (sys->flags.procinfo) cJSON_AddStringToObject(wm_sys,"processes","yes"); else cJSON_AddStringToObject(wm_sys,"processes","no");
+    if (sys->flags.groups) cJSON_AddStringToObject(wm_sys,"groups","yes"); else cJSON_AddStringToObject(wm_sys,"groups","no");
+    if (sys->flags.users) cJSON_AddStringToObject(wm_sys,"users","yes"); else cJSON_AddStringToObject(wm_sys,"users","no");
 #ifdef WIN32
     if (sys->flags.hotfixinfo) cJSON_AddStringToObject(wm_sys,"hotfixes","yes"); else cJSON_AddStringToObject(wm_sys,"hotfixes","no");
 #endif

@@ -13,7 +13,6 @@
 #include <cmocka.h>
 
 #include "../headers/syscheck_op.h"
-#include "../analysisd/eventinfo.h"
 
 #include "../wrappers/externals/cJSON/cJSON_wrappers.h"
 #include "../wrappers/posix/grp_wrappers.h"
@@ -23,6 +22,7 @@
 #include "../wrappers/wazuh/os_net/os_net_wrappers.h"
 #include "../wrappers/wazuh/shared/file_op_wrappers.h"
 #include "../wrappers/wazuh/shared/privsep_op_wrappers.h"
+#include "../wrappers/wazuh/shared/utf8_winapi_wrapper_wrappers.h"
 #include "../wrappers/common.h"
 
 #ifdef TEST_WINAGENT
@@ -47,11 +47,16 @@ typedef struct __sk_decode_data_s {
     char *w_sum;
 }sk_decode_data_t;
 
+/*****************************************************************************************
+ TODO-LEGACY-ANALYSISD-FIM: Delete this function when the new system is ready
+ Should not depend on analsysid code
+
 typedef struct __sk_fill_event_s {
     sk_sum_t *sum;
     Eventinfo *lf;
     char *f_name;
 }sk_fill_event_t;
+*****************************************************************************************/
 
 typedef struct __sk_build_sum_s {
     sk_sum_t sum;
@@ -171,7 +176,9 @@ static int teardown_get_registry_group(void **state) {
 #endif
 
 #if defined(TEST_SERVER)
-
+/*****************************************************************************************
+ TODO-LEGACY-ANALYSISD-FIM: Delete this function when the new system is ready
+ Should not depend on analsysid code
 static int setup_sk_decode(void **state) {
     sk_decode_data_t *data = calloc(1, sizeof(sk_decode_data_t));
 
@@ -237,6 +244,7 @@ static int teardown_sk_fill_event(void **state) {
     }
     return 0;
 }
+*/
 
 static int setup_sk_build_sum(void **state) {
     sk_build_sum_t* data = calloc(1, sizeof(sk_build_sum_t));
@@ -567,7 +575,11 @@ static void test_remove_empty_folders_error_removing_dir(void **state) {
 }
 
 #if defined(TEST_SERVER)
-/* sk_decode_sum tests */
+/*****************************************************************************************
+ TODO-LEGACY-ANALYSISD-FIM: Delete this function when the new system is ready
+ Should not depend on analsysid code
+
+// sk_decode_sum tests 
 static void test_sk_decode_sum_no_decode(void **state) {
     sk_decode_data_t *data = *state;
 
@@ -1455,7 +1467,7 @@ static void test_sk_decode_sum_extra_data_null_c_sum(void **state) {
     expect_assert_failure(sk_decode_sum(&data->sum, NULL, NULL));
 }
 
-/* sk_decode_extradata tests */
+// sk_decode_extradata tests
 static void test_sk_decode_extradata_null_sum(void **state) {
     sk_decode_data_t *data = *state;
     data->c_sum = strdup("some string");
@@ -1532,7 +1544,7 @@ static void test_sk_decode_extradata_all_fields(void **state) {
     assert_string_equal(data->sum.symbolic_path, "a symbolic path");
 }
 
-/* sk_fill_event tests */
+// sk_fill_event tests 
 static void test_sk_fill_event_full_event(void **state) {
     sk_fill_event_t *data = *state;
 
@@ -1700,7 +1712,7 @@ static void test_sk_fill_event_null_sum(void **state) {
     expect_assert_failure(sk_fill_event(data->lf, data->f_name, NULL));
 }
 
-/* sk_build_sum tests */
+// sk_build_sum tests
 static void test_sk_build_sum_full_message(void **state) {
     sk_build_sum_t *data = *state;
     int ret;
@@ -1818,7 +1830,7 @@ static void test_sk_build_sum_null_output(void **state) {
     expect_assert_failure(sk_build_sum(&data->sum, NULL, OS_MAXSTR));
 }
 
-/* sk_sum_clean tests */
+// sk_sum_clean tests
 static void test_sk_sum_clean_full_message(void **state) {
     sk_decode_data_t *data = *state;
     int ret;
@@ -1897,6 +1909,8 @@ static void test_sk_sum_clean_invalid_message(void **state) {
 static void test_sk_sum_clean_null_sum(void **state) {
     expect_assert_failure(sk_sum_clean(NULL));
 }
+
+*****************************************************************************************/
 #endif
 #ifndef TEST_WINAGENT
 /* unescape_syscheck_field tests */
@@ -3654,13 +3668,14 @@ static void test_win_perm_to_json_error_splitting_permissions(void **state) {
 static void test_get_file_user_CreateFile_error_access_denied(void **state) {
     char **array = *state;
 
-    expect_CreateFile_call("C:\\a\\path", INVALID_HANDLE_VALUE);
+    expect_string(__wrap_utf8_CreateFile, utf8_path, "C:\\a\\path");
+    will_return(__wrap_utf8_CreateFile, (HANDLE)INVALID_HANDLE_VALUE);
 
     expect_GetLastError_call(ERROR_ACCESS_DENIED);
 
     expect_FormatMessage_call("An error message");
 
-    expect_string(__wrap__mdebug1, formatted_msg, "At get_user(C:\\a\\path): CreateFile(): An error message (5)");
+    expect_string(__wrap__mdebug1, formatted_msg, "At get_user(C:\\a\\path): wCreateFile(): An error message (5)");
 
     expect_CloseHandle_call(INVALID_HANDLE_VALUE, 1);
 
@@ -3672,13 +3687,14 @@ static void test_get_file_user_CreateFile_error_access_denied(void **state) {
 static void test_get_file_user_CreateFile_error_sharing_violation(void **state) {
     char **array = *state;
 
-    expect_CreateFile_call("C:\\a\\path", INVALID_HANDLE_VALUE);
+    expect_string(__wrap_utf8_CreateFile, utf8_path, "C:\\a\\path");
+    will_return(__wrap_utf8_CreateFile, (HANDLE)INVALID_HANDLE_VALUE);
 
     expect_GetLastError_call(ERROR_SHARING_VIOLATION);
 
     expect_FormatMessage_call("An error message");
 
-    expect_string(__wrap__mdebug1, formatted_msg, "At get_user(C:\\a\\path): CreateFile(): An error message (32)");
+    expect_string(__wrap__mdebug1, formatted_msg, "At get_user(C:\\a\\path): wCreateFile(): An error message (32)");
 
     expect_CloseHandle_call(INVALID_HANDLE_VALUE, 1);
 
@@ -3690,13 +3706,14 @@ static void test_get_file_user_CreateFile_error_sharing_violation(void **state) 
 static void test_get_file_user_CreateFile_error_generic(void **state) {
     char **array = *state;
 
-    expect_CreateFile_call("C:\\a\\path", INVALID_HANDLE_VALUE);
+    expect_string(__wrap_utf8_CreateFile, utf8_path, "C:\\a\\path");
+    will_return(__wrap_utf8_CreateFile, (HANDLE)INVALID_HANDLE_VALUE);
 
     expect_GetLastError_call(127);
 
     expect_FormatMessage_call("An error message");
 
-    expect_string(__wrap__mwarn, formatted_msg, "At get_user(C:\\a\\path): CreateFile(): An error message (127)");
+    expect_string(__wrap__mwarn, formatted_msg, "At get_user(C:\\a\\path): wCreateFile(): An error message (127)");
 
     expect_CloseHandle_call(INVALID_HANDLE_VALUE, 1);
 
@@ -3709,7 +3726,8 @@ static void test_get_file_user_GetSecurityInfo_error(void **state) {
     char **array = *state;
     char error_msg[OS_SIZE_1024];
 
-    expect_CreateFile_call("C:\\a\\path", (HANDLE)1234);
+    expect_string(__wrap_utf8_CreateFile, utf8_path, "C:\\a\\path");
+    will_return(__wrap_utf8_CreateFile, (HANDLE)1234);
 
     expect_CloseHandle_call((HANDLE)1234, 1);
 
@@ -3736,7 +3754,8 @@ static void test_get_file_user_GetSecurityInfo_error(void **state) {
 static void test_get_file_user_LookupAccountSid_error(void **state) {
     char **array = *state;
 
-    expect_CreateFile_call("C:\\a\\path", (HANDLE)1234);
+    expect_string(__wrap_utf8_CreateFile, utf8_path, "C:\\a\\path");
+    will_return(__wrap_utf8_CreateFile, (HANDLE)1234);
 
     expect_CloseHandle_call((HANDLE)1234, 1);
 
@@ -3759,7 +3778,8 @@ static void test_get_file_user_LookupAccountSid_error_none_mapped(void **state) 
     char **array = *state;
     char error_msg[OS_SIZE_1024];
 
-    expect_CreateFile_call("C:\\a\\path", (HANDLE)1234);
+    expect_string(__wrap_utf8_CreateFile, utf8_path, "C:\\a\\path");
+    will_return(__wrap_utf8_CreateFile, (HANDLE)1234);
 
     expect_CloseHandle_call((HANDLE)1234, 1);
 
@@ -3786,7 +3806,8 @@ static void test_get_file_user_LookupAccountSid_error_none_mapped(void **state) 
 static void test_get_file_user_success(void **state) {
     char **array = *state;
 
-    expect_CreateFile_call("C:\\a\\path", (HANDLE)1234);
+    expect_string(__wrap_utf8_CreateFile, utf8_path, "C:\\a\\path");
+    will_return(__wrap_utf8_CreateFile, (HANDLE)1234);
 
     expect_CloseHandle_call((HANDLE)1234, 1);
 
@@ -3865,9 +3886,9 @@ void test_w_get_file_permissions_GetFileSecurity_error_on_size(void **state) {
     cJSON *permissions = NULL;
     int ret;
 
-    expect_string(wrap_GetFileSecurity, lpFileName, "C:\\a\\path");
-    will_return(wrap_GetFileSecurity, 0);
-    will_return(wrap_GetFileSecurity, 0);
+    expect_string(__wrap_utf8_GetFileSecurity, utf8_path, "C:\\a\\path");
+    will_return(__wrap_utf8_GetFileSecurity, 0);
+    will_return(__wrap_utf8_GetFileSecurity, 0);
 
     will_return(wrap_GetLastError, ERROR_ACCESS_DENIED);
 
@@ -3881,13 +3902,13 @@ void test_w_get_file_permissions_GetFileSecurity_error(void **state) {
     cJSON *permissions = NULL;
     int ret;
 
-    expect_string(wrap_GetFileSecurity, lpFileName, "C:\\a\\path");
-    will_return(wrap_GetFileSecurity, OS_SIZE_1024);
-    will_return(wrap_GetFileSecurity, 1);
+    expect_string(__wrap_utf8_GetFileSecurity, utf8_path, "C:\\a\\path");
+    will_return(__wrap_utf8_GetFileSecurity, OS_SIZE_1024);
+    will_return(__wrap_utf8_GetFileSecurity, 1);
 
-    expect_string(wrap_GetFileSecurity, lpFileName, "C:\\a\\path");
-    will_return(wrap_GetFileSecurity, NULL);
-    will_return(wrap_GetFileSecurity, 0);
+    expect_string(__wrap_utf8_GetFileSecurity, utf8_path, "C:\\a\\path");
+    will_return(__wrap_utf8_GetFileSecurity, NULL);
+    will_return(__wrap_utf8_GetFileSecurity, 0);
 
     will_return(wrap_GetLastError, ERROR_ACCESS_DENIED);
 
@@ -3902,13 +3923,13 @@ void test_w_get_file_permissions_create_cjson_error(void **state) {
     int ret;
     SECURITY_DESCRIPTOR sec_desc;
 
-    expect_string(wrap_GetFileSecurity, lpFileName, "C:\\a\\path");
-    will_return(wrap_GetFileSecurity, OS_SIZE_1024);
-    will_return(wrap_GetFileSecurity, 1);
+    expect_string(__wrap_utf8_GetFileSecurity, utf8_path, "C:\\a\\path");
+    will_return(__wrap_utf8_GetFileSecurity, OS_SIZE_1024);
+    will_return(__wrap_utf8_GetFileSecurity, 1);
 
-    expect_string(wrap_GetFileSecurity, lpFileName, "C:\\a\\path");
-    will_return(wrap_GetFileSecurity, &sec_desc);
-    will_return(wrap_GetFileSecurity, 1);
+    expect_string(__wrap_utf8_GetFileSecurity, utf8_path, "C:\\a\\path");
+    will_return(__wrap_utf8_GetFileSecurity, &sec_desc);
+    will_return(__wrap_utf8_GetFileSecurity, 1);
 
     will_return(__wrap_cJSON_CreateObject, NULL);
 
@@ -3925,13 +3946,13 @@ void test_w_get_file_permissions_GetSecurityDescriptorDacl_error(void **state) {
     int ret;
     SECURITY_DESCRIPTOR sec_desc;
 
-    expect_string(wrap_GetFileSecurity, lpFileName, "C:\\a\\path");
-    will_return(wrap_GetFileSecurity, OS_SIZE_1024);
-    will_return(wrap_GetFileSecurity, 1);
+    expect_string(__wrap_utf8_GetFileSecurity, utf8_path, "C:\\a\\path");
+    will_return(__wrap_utf8_GetFileSecurity, OS_SIZE_1024);
+    will_return(__wrap_utf8_GetFileSecurity, 1);
 
-    expect_string(wrap_GetFileSecurity, lpFileName, "C:\\a\\path");
-    will_return(wrap_GetFileSecurity, &sec_desc);
-    will_return(wrap_GetFileSecurity, 1);
+    expect_string(__wrap_utf8_GetFileSecurity, utf8_path, "C:\\a\\path");
+    will_return(__wrap_utf8_GetFileSecurity, &sec_desc);
+    will_return(__wrap_utf8_GetFileSecurity, 1);
 
     will_return(__wrap_cJSON_CreateObject, __real_cJSON_CreateObject());
 
@@ -3953,13 +3974,13 @@ void test_w_get_file_permissions_no_dacl(void **state) {
     int ret;
     SECURITY_DESCRIPTOR sec_desc;
 
-    expect_string(wrap_GetFileSecurity, lpFileName, "C:\\a\\path");
-    will_return(wrap_GetFileSecurity, OS_SIZE_1024);
-    will_return(wrap_GetFileSecurity, 1);
+    expect_string(__wrap_utf8_GetFileSecurity, utf8_path, "C:\\a\\path");
+    will_return(__wrap_utf8_GetFileSecurity, OS_SIZE_1024);
+    will_return(__wrap_utf8_GetFileSecurity, 1);
 
-    expect_string(wrap_GetFileSecurity, lpFileName, "C:\\a\\path");
-    will_return(wrap_GetFileSecurity, &sec_desc);
-    will_return(wrap_GetFileSecurity, 1);
+    expect_string(__wrap_utf8_GetFileSecurity, utf8_path, "C:\\a\\path");
+    will_return(__wrap_utf8_GetFileSecurity, &sec_desc);
+    will_return(__wrap_utf8_GetFileSecurity, 1);
 
     will_return(__wrap_cJSON_CreateObject, __real_cJSON_CreateObject());
 
@@ -3979,13 +4000,13 @@ void test_w_get_file_permissions_GetAclInformation_error(void **state) {
     int ret;
     SECURITY_DESCRIPTOR sec_desc;
 
-    expect_string(wrap_GetFileSecurity, lpFileName, "C:\\a\\path");
-    will_return(wrap_GetFileSecurity, OS_SIZE_1024);
-    will_return(wrap_GetFileSecurity, 1);
+    expect_string(__wrap_utf8_GetFileSecurity, utf8_path, "C:\\a\\path");
+    will_return(__wrap_utf8_GetFileSecurity, OS_SIZE_1024);
+    will_return(__wrap_utf8_GetFileSecurity, 1);
 
-    expect_string(wrap_GetFileSecurity, lpFileName, "C:\\a\\path");
-    will_return(wrap_GetFileSecurity, &sec_desc);
-    will_return(wrap_GetFileSecurity, 1);
+    expect_string(__wrap_utf8_GetFileSecurity, utf8_path, "C:\\a\\path");
+    will_return(__wrap_utf8_GetFileSecurity, &sec_desc);
+    will_return(__wrap_utf8_GetFileSecurity, 1);
 
     will_return(__wrap_cJSON_CreateObject, __real_cJSON_CreateObject());
 
@@ -4012,13 +4033,13 @@ void test_w_get_file_permissions_GetAce_error(void **state) {
     SECURITY_DESCRIPTOR sec_desc;
     ACL_SIZE_INFORMATION acl_size = { .AceCount = 1 };
 
-    expect_string(wrap_GetFileSecurity, lpFileName, "C:\\a\\path");
-    will_return(wrap_GetFileSecurity, OS_SIZE_1024);
-    will_return(wrap_GetFileSecurity, 1);
+    expect_string(__wrap_utf8_GetFileSecurity, utf8_path, "C:\\a\\path");
+    will_return(__wrap_utf8_GetFileSecurity, OS_SIZE_1024);
+    will_return(__wrap_utf8_GetFileSecurity, 1);
 
-    expect_string(wrap_GetFileSecurity, lpFileName, "C:\\a\\path");
-    will_return(wrap_GetFileSecurity, &sec_desc);
-    will_return(wrap_GetFileSecurity, 1);
+    expect_string(__wrap_utf8_GetFileSecurity, utf8_path, "C:\\a\\path");
+    will_return(__wrap_utf8_GetFileSecurity, &sec_desc);
+    will_return(__wrap_utf8_GetFileSecurity, 1);
 
     will_return(__wrap_cJSON_CreateObject, __real_cJSON_CreateObject());
 
@@ -4053,13 +4074,13 @@ void test_w_get_file_permissions_success(void **state) {
         .Header.AceType = ACCESS_ALLOWED_ACE_TYPE,
     };
 
-    expect_string(wrap_GetFileSecurity, lpFileName, "C:\\a\\path");
-    will_return(wrap_GetFileSecurity, OS_SIZE_1024);
-    will_return(wrap_GetFileSecurity, 1);
+    expect_string(__wrap_utf8_GetFileSecurity, utf8_path, "C:\\a\\path");
+    will_return(__wrap_utf8_GetFileSecurity, OS_SIZE_1024);
+    will_return(__wrap_utf8_GetFileSecurity, 1);
 
-    expect_string(wrap_GetFileSecurity, lpFileName, "C:\\a\\path");
-    will_return(wrap_GetFileSecurity, &sec_desc);
-    will_return(wrap_GetFileSecurity, 1);
+    expect_string(__wrap_utf8_GetFileSecurity, utf8_path, "C:\\a\\path");
+    will_return(__wrap_utf8_GetFileSecurity, &sec_desc);
+    will_return(__wrap_utf8_GetFileSecurity, 1);
 
     will_return(__wrap_cJSON_CreateObject, __real_cJSON_CreateObject());
 
@@ -4119,13 +4140,13 @@ void test_w_get_file_permissions_process_ace_info_error(void **state) {
         .Header.AceType = SYSTEM_AUDIT_ACE_TYPE,
     };
 
-    expect_string(wrap_GetFileSecurity, lpFileName, "C:\\a\\path");
-    will_return(wrap_GetFileSecurity, OS_SIZE_1024);
-    will_return(wrap_GetFileSecurity, 1);
+    expect_string(__wrap_utf8_GetFileSecurity, utf8_path, "C:\\a\\path");
+    will_return(__wrap_utf8_GetFileSecurity, OS_SIZE_1024);
+    will_return(__wrap_utf8_GetFileSecurity, 1);
 
-    expect_string(wrap_GetFileSecurity, lpFileName, "C:\\a\\path");
-    will_return(wrap_GetFileSecurity, &sec_desc);
-    will_return(wrap_GetFileSecurity, 1);
+    expect_string(__wrap_utf8_GetFileSecurity, utf8_path, "C:\\a\\path");
+    will_return(__wrap_utf8_GetFileSecurity, &sec_desc);
+    will_return(__wrap_utf8_GetFileSecurity, 1);
 
     will_return(__wrap_cJSON_CreateObject, __real_cJSON_CreateObject());
 
@@ -4154,8 +4175,8 @@ void test_w_get_file_permissions_process_ace_info_error(void **state) {
 void test_w_get_file_attrs_error(void **state) {
     int ret;
 
-    expect_string(wrap_GetFileAttributesA, lpFileName, "C:\\a\\path");
-    will_return(wrap_GetFileAttributesA, INVALID_FILE_ATTRIBUTES);
+    expect_string(__wrap_utf8_GetFileAttributes, utf8_path, "C:\\a\\path");
+    will_return(__wrap_utf8_GetFileAttributes, INVALID_FILE_ATTRIBUTES);
 
     will_return(wrap_GetLastError, ERROR_ACCESS_DENIED);
 
@@ -4169,8 +4190,8 @@ void test_w_get_file_attrs_error(void **state) {
 void test_w_get_file_attrs_success(void **state) {
     int ret;
 
-    expect_string(wrap_GetFileAttributesA, lpFileName, "C:\\a\\path");
-    will_return(wrap_GetFileAttributesA, 123456);
+    expect_string(__wrap_utf8_GetFileAttributes, utf8_path, "C:\\a\\path");
+    will_return(__wrap_utf8_GetFileAttributes, 123456);
 
     ret = w_get_file_attrs("C:\\a\\path");
 
@@ -4190,8 +4211,8 @@ void test_w_directory_exists_error_getting_attrs(void **state) {
 
     // Inside w_get_file_attrs
     {
-        expect_string(wrap_GetFileAttributesA, lpFileName, "C:\\a\\path");
-        will_return(wrap_GetFileAttributesA, INVALID_FILE_ATTRIBUTES);
+        expect_string(__wrap_utf8_GetFileAttributes, utf8_path, "C:\\a\\path");
+        will_return(__wrap_utf8_GetFileAttributes, INVALID_FILE_ATTRIBUTES);
 
         will_return(wrap_GetLastError, ERROR_ACCESS_DENIED);
 
@@ -4209,8 +4230,8 @@ void test_w_directory_exists_path_is_not_dir(void **state) {
 
     // Inside w_get_file_attrs
     {
-        expect_string(wrap_GetFileAttributesA, lpFileName, "C:\\a\\path");
-        will_return(wrap_GetFileAttributesA, FILE_ATTRIBUTE_NORMAL);
+        expect_string(__wrap_utf8_GetFileAttributes, utf8_path, "C:\\a\\path");
+        will_return(__wrap_utf8_GetFileAttributes, FILE_ATTRIBUTE_NORMAL);
     }
 
     ret = w_directory_exists("C:\\a\\path");
@@ -4223,8 +4244,8 @@ void test_w_directory_exists_path_is_dir(void **state) {
 
     // Inside w_get_file_attrs
     {
-        expect_string(wrap_GetFileAttributesA, lpFileName, "C:\\a\\path");
-        will_return(wrap_GetFileAttributesA, FILE_ATTRIBUTE_DIRECTORY);
+        expect_string(__wrap_utf8_GetFileAttributes, utf8_path, "C:\\a\\path");
+        will_return(__wrap_utf8_GetFileAttributes, FILE_ATTRIBUTE_DIRECTORY);
     }
 
     ret = w_directory_exists("C:\\a\\path");
@@ -4768,6 +4789,9 @@ int main(int argc, char *argv[]) {
 
 #if defined(TEST_SERVER)
         /* sk_decode_sum tests */
+        /*****************************************************************************************
+        TODO-LEGACY-ANALYSISD-FIM: Delete this function when the new system is ready
+         Should not depend on analsysid code
         cmocka_unit_test_setup_teardown(test_sk_decode_sum_no_decode, setup_sk_decode, teardown_sk_decode),
         cmocka_unit_test_setup_teardown(test_sk_decode_sum_deleted_file, setup_sk_decode, teardown_sk_decode),
         cmocka_unit_test_setup_teardown(test_sk_decode_sum_no_perm, setup_sk_decode, teardown_sk_decode),
@@ -4808,7 +4832,7 @@ int main(int argc, char *argv[]) {
         cmocka_unit_test_setup_teardown(test_sk_decode_sum_extra_data_null_sum, setup_sk_decode, teardown_sk_decode),
         cmocka_unit_test_setup_teardown(test_sk_decode_sum_extra_data_null_c_sum, setup_sk_decode, teardown_sk_decode),
 
-        /* sk_decode_extradata tests */
+        // sk_decode_extradata tests
         cmocka_unit_test_setup_teardown(test_sk_decode_extradata_null_sum, setup_sk_decode, teardown_sk_decode),
         cmocka_unit_test_setup_teardown(test_sk_decode_extradata_null_c_sum, setup_sk_decode, teardown_sk_decode),
         cmocka_unit_test_setup_teardown(test_sk_decode_extradata_no_changes, setup_sk_decode, teardown_sk_decode),
@@ -4816,7 +4840,7 @@ int main(int argc, char *argv[]) {
         cmocka_unit_test_setup_teardown(test_sk_decode_extradata_no_sym_path, setup_sk_decode, teardown_sk_decode),
         cmocka_unit_test_setup_teardown(test_sk_decode_extradata_all_fields, setup_sk_decode, teardown_sk_decode),
 
-        /* sk_fill_event tests */
+        // sk_fill_event tests
         cmocka_unit_test_setup_teardown(test_sk_fill_event_full_event, setup_sk_fill_event, teardown_sk_fill_event),
         cmocka_unit_test_setup_teardown(test_sk_fill_event_empty_event, setup_sk_fill_event, teardown_sk_fill_event),
         cmocka_unit_test_setup_teardown(test_sk_fill_event_win_perm, setup_sk_fill_event, teardown_sk_fill_event),
@@ -4824,7 +4848,7 @@ int main(int argc, char *argv[]) {
         cmocka_unit_test_setup_teardown(test_sk_fill_event_null_f_name, setup_sk_fill_event, teardown_sk_fill_event),
         cmocka_unit_test_setup_teardown(test_sk_fill_event_null_sum, setup_sk_fill_event, teardown_sk_fill_event),
 
-        /* sk_build_sum tests */
+        // sk_build_sum tests
         cmocka_unit_test_setup_teardown(test_sk_build_sum_full_message, setup_sk_build_sum, teardown_sk_build_sum),
         cmocka_unit_test_setup_teardown(test_sk_build_sum_skip_fields_message, setup_sk_build_sum, teardown_sk_build_sum),
         cmocka_unit_test_setup_teardown(test_sk_build_sum_win_perm, setup_sk_build_sum, teardown_sk_build_sum),
@@ -4832,11 +4856,12 @@ int main(int argc, char *argv[]) {
         cmocka_unit_test_setup_teardown(test_sk_build_sum_null_sum, setup_sk_build_sum, teardown_sk_build_sum),
         cmocka_unit_test_setup_teardown(test_sk_build_sum_null_output, setup_sk_build_sum, teardown_sk_build_sum),
 
-        /* sk_sum_clean tests */
+        // sk_sum_clean tests
         cmocka_unit_test_setup_teardown(test_sk_sum_clean_full_message, setup_sk_decode, teardown_sk_decode),
         cmocka_unit_test_setup_teardown(test_sk_sum_clean_shortest_valid_message, setup_sk_decode, teardown_sk_decode),
         cmocka_unit_test_setup_teardown(test_sk_sum_clean_invalid_message, setup_sk_decode, teardown_sk_decode),
         cmocka_unit_test_setup_teardown(test_sk_sum_clean_null_sum, setup_sk_decode, teardown_sk_decode),
+        */
 #endif
 #ifndef TEST_WINAGENT
         /* unescape_syscheck_field tests */

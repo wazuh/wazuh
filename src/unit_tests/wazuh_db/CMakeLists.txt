@@ -7,7 +7,7 @@ list(APPEND wdb_tests_flags "-Wl,--wrap,_mdebug1 -Wl,--wrap,wdb_stmt_cache -Wl,-
                          -Wl,--wrap,sqlite3_bind_text -Wl,--wrap,EVP_DigestInit_ex -Wl,--wrap,EVP_DigestUpdate -Wl,--wrap,_DigestFinal_ex \
                          -Wl,--wrap,sqlite3_bind_int64 -Wl,--wrap,sqlite3_column_text -Wl,--wrap,_mdebug2 -Wl,--wrap,wdb_exec_stmt \
                          -Wl,--wrap,time -Wl,--wrap,_mwarn -Wl,--wrap,_merror -Wl,--wrap,wdb_init_stmt_in_cache -Wl,--wrap,wdb_begin2 ${DEBUG_OP_WRAPPERS} \
-                         -Wl,--wrap,router_provider_send")
+                         -Wl,--wrap,router_provider_send -Wl,--wrap,sqlite3_column_int64")
 
 # Add server specific tests to the list
 list(APPEND wdb_tests_names "test_wdb_fim")
@@ -45,7 +45,7 @@ list(APPEND wdb_tests_flags "-Wl,--wrap,wdb_open_global -Wl,--wrap,wdb_leave -Wl
                              -Wl,--wrap,wdb_global_insert_agent -Wl,--wrap,wdb_global_update_agent_name -Wl,--wrap,wdb_global_update_agent_version \
                              -Wl,--wrap,wdb_global_get_agent_labels -Wl,--wrap,wdb_global_del_agent_labels -Wl,--wrap,wdb_global_set_agent_label \
                              -Wl,--wrap,wdb_global_update_agent_keepalive -Wl,--wrap,wdb_global_update_agent_connection_status -Wl,--wrap,wdb_global_update_agent_status_code \
-                             -Wl,--wrap,wdb_global_delete_agent -Wl,--wrap,wdb_global_select_agent_name -Wl,--wrap,wdb_global_select_agent_group \
+                             -Wl,--wrap,wdb_global_validate_sync_status -Wl,--wrap,wdb_global_delete_agent -Wl,--wrap,wdb_global_select_agent_name -Wl,--wrap,wdb_global_select_agent_group \
                              -Wl,--wrap,wdb_global_delete_agent_belong -Wl,--wrap,wdb_global_find_agent -Wl,--wrap,wdb_global_find_group \
                              -Wl,--wrap,wdb_global_insert_agent_group -Wl,--wrap,wdb_global_insert_agent_belong -Wl,--wrap,wdb_global_delete_group_belong \
                              -Wl,--wrap,wdb_global_delete_group -Wl,--wrap,wdb_global_select_groups \

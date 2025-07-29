@@ -24,8 +24,10 @@ using ParserBuilder = std::function<parser::Parser(const Params&)>;
  *
  * @param path Store path of the timezone database
  * @param autoUpdate If true, the timezone database will be updated if a new version is available
+ * @param forceVersion version of the timezone database to use, if empty, the latest version will be used
+ * @note Forcing a version activate autoUpdate, so the forced database version will be downloaded
  */
-void initTZDB(const std::string& path, const bool autoUpdate);
+void initTZDB(const std::string& path, bool autoUpdate, const std::string& forceVersion = "");
 
 namespace parsers
 {

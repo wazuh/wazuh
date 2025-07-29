@@ -15,7 +15,7 @@ from time import perf_counter
 from typing import Tuple, Dict, Callable, List
 from typing import Union
 
-from wazuh.core import cluster as metadata, common, exception, utils
+from wazuh.core import cluster as metadata, common, exception, utils, analysis
 from wazuh.core.cluster import client, cluster, common as c_common
 from wazuh.core.cluster.utils import log_subprocess_execution
 from wazuh.core.cluster.dapi import dapi
@@ -559,25 +559,31 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         Asynchronous task that is started when the worker connects to the master. It starts an agent-info
         synchronization process every 'sync_agent_info' seconds.
 
-        A list of JSON chunks with the information of all local agents is retrieved from local wazuh-db socket
+        A JSON object with the information of all local agents is retrieved from local wazuh-db socket
         and sent to the master's wazuh-db.
         """
         logger = self.task_loggers["Agent-info sync"]
-        wdb_conn = AsyncWazuhDBConnection()
-        agent_info = c_common.SyncWazuhdb(manager=self, logger=logger, cmd=b'syn_a_w_m',
-                                          data_retriever=wdb_conn.run_wdb_command,
+        agent_info = c_common.SyncWazuhdb(manager=self, logger=logger, data_retriever=None, cmd=b'syn_a_w_m',
                                           get_data_command='global sync-agent-info-get ',
                                           set_data_command='global sync-agent-info-set')
 
         while True:
             try:
                 if self.connected:
-                    start_time = get_utc_now().timestamp()
                     if await agent_info.request_permission():
                         logger.info("Starting.")
+                        start_time = get_utc_now().timestamp()
                         self.agent_info_sync_status['date_start'] = start_time
-                        chunks = await agent_info.retrieve_information()
-                        await agent_info.sync(start_time=start_time, chunks=chunks)
+
+                        agents_sync = await agent_info.retrieve_agents_information()
+                        sync_sum = len(agents_sync.get('syncreq', [])) + \
+                            len(agents_sync.get('syncreq_keepalive', [])) + \
+                            len(agents_sync.get('syncreq_status', []))
+
+                        if sync_sum > 0:
+                            await agent_info.sync(start_time=start_time, chunks=agents_sync)
+                        else:
+                            logger.info('No synchronization required, skipping.')
             except Exception as e:
                 logger.error(f"Error synchronizing agent info: {e}")
 
@@ -747,6 +753,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                           ownership=(common.wazuh_uid(), common.wazuh_gid())
                           )
 
+        reload_ruleset_files = []
         errors = {'shared': 0, 'missing': 0, 'extra': 0}
         result_logs = {'debug2': defaultdict(list), 'error': defaultdict(list), 'generic_errors': []}
 
@@ -756,6 +763,10 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                 for filename, data in files.items():
                     try:
                         result_logs['debug2'][filename].append(f"Processing file {filename}")
+                        if analysis.is_ruleset_file(filename):
+                            result_logs['debug2'][filename].append("This file update will trigger a hot-reload in analysisd")
+                            reload_ruleset_files.append({'type': filetype, 'file': filename})
+
                         overwrite_or_create_files(filename, data)
                     except Exception as e:
                         errors[filetype] += 1
@@ -767,6 +778,10 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                 for file_to_remove in files:
                     try:
                         result_logs['debug2'][file_to_remove].append(f"Remove file: '{file_to_remove}'")
+                        if analysis.is_ruleset_file(file_to_remove):
+                            result_logs['debug2'][file_to_remove].append("This file update will trigger a hot-reload in analysisd")
+                            reload_ruleset_files.append({'type': filetype, 'file': file_to_remove})
+
                         file_path = os.path.join(common.WAZUH_PATH, file_to_remove)
                         try:
                             os.remove(file_path)
@@ -796,6 +811,44 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                 errors['extra'] += 1
                 result_logs["debug2"][directory].append(f"Error removing directory '{directory}': {e}")
                 continue
+
+        # If analysisd must be reloaded
+        if len(reload_ruleset_files) > 0:
+            try:
+                response = analysis.send_reload_ruleset_msg(origin={'module': 'cluster'})
+                if response.is_ok():
+                    if response.has_warnings():
+                        for warning in response.warnings:
+                            matched = [file_info for file_info in reload_ruleset_files if file_info['file'] in warning]
+                            if matched:
+                                for match in matched:
+                                    result_logs['debug2'][match['file']].append(warning)
+                            else:
+                                result_logs['debug2']['warnings'].append(warning)
+
+                else:
+                    for error in response.errors:
+                        matched = [file_info for file_info in reload_ruleset_files if file_info['file'] in error]
+                        if matched:
+                            for match in matched:
+                                result_logs['error'][match['type']].append(f"Error reloading {match['type']} "
+                                                                      f"file '{match['file']}': {error}")
+                                errors[match['type']] += 1
+                        else:
+                            result_logs['generic_errors'].append(f"Error reloading ruleset {error}")
+
+                            # Add an error to all filetypes if we can't specify the file
+                            unique_types = []
+                            for file_info in reload_ruleset_files:
+                                unique_types.append(file_info['type'])
+
+                            for file_type in set(unique_types):
+                                errors[file_type] += 1
+
+
+            except Exception as e:
+                result_logs['generic_errors'].append(f"Error reloading ruleset {e}")
+
 
         if sum(errors.values()) > 0:
             result_logs['generic_errors'].append(f"Found errors: {errors['shared']} overwriting, "

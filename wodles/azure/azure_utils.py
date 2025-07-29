@@ -327,19 +327,19 @@ def read_auth_file(auth_path: str, fields: tuple):
                 credentials[key] = value.replace('\n', '')
         if fields[0] not in credentials or fields[1] not in credentials:
             logging.error(
-                f'Error: The authentication file does not contains the expected "{fields[0]}" '
+                f'The authentication file does not contains the expected "{fields[0]}" '
                 f'and "{fields[1]}" fields.'
             )
             sys.exit(1)
         return credentials[fields[0]], credentials[fields[1]]
     except ValueError:
         logging.error(
-            'Error: The authentication file format is not valid. '
+            'The authentication file format is not valid. '
             'Make sure that it is composed of only 2 lines with "field = value" format.'
         )
         sys.exit(1)
     except OSError as e:
-        logging.error(f'Error: The authentication file could not be opened: {e}')
+        logging.error(f'The authentication file could not be opened: {e}')
         sys.exit(1)
 
 
@@ -385,11 +385,11 @@ def get_token(client_id: str, secret: str, domain: str, scope: str):
             err_msg = f'The "{domain}" tenant domain was not found.'
         else:
             err_msg = 'Couldn\'t get the token for authentication.'
-        logging.error(f'Error: {err_msg}')
+        logging.error(f'{err_msg}')
 
     except RequestException as e:
         logging.error(
-            f'Error: An error occurred while trying to obtain the authentication token: {e}'
+            f'An error occurred while trying to obtain the authentication token: {e}'
         )
 
     sys.exit(1)
@@ -418,14 +418,14 @@ def send_message(message: str):
         s.send(encoded_msg)
     except socket_error as e:
         if e.errno == 111:
-            logging.error('ERROR: Wazuh must be running.')
+            logging.error('Wazuh must be running.')
             sys.exit(1)
         elif e.errno == 90:
             logging.error(
-                'ERROR: Message too long to send to Wazuh.  Skipping message...'
+                'Message too long to send to Wazuh.  Skipping message...'
             )
         else:
-            logging.error(f'ERROR: Error sending message to wazuh: {e}')
+            logging.error(f'Error sending message to wazuh: {e}')
             sys.exit(1)
     finally:
         s.close()

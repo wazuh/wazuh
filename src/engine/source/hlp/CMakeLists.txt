@@ -27,7 +27,7 @@ PRIVATE
   src/parsers/
   include/hlp/
 )
-target_link_libraries(hlp PUBLIC base PRIVATE FastFloat::fast_float date::date date::date-tz pthread CURL::libcurl pugixml)
+target_link_libraries(hlp PUBLIC base PRIVATE FastFloat::fast-float date::date-tz pthread CURL::libcurl pugixml::pugixml)
 
 
 # Tests
@@ -58,7 +58,7 @@ add_executable(hlp_utest
   ${UNIT_SRC_DIR}/dsv_csv_test.cpp
 )
 
-target_link_libraries(hlp_utest PRIVATE hlp GTest::gtest_main)
+target_link_libraries(hlp_utest PRIVATE hlp GTest::gtest_main GTest::gtest)
 gtest_discover_tests(hlp_utest)
 
 endif(ENGINE_BUILD_TEST)

@@ -30,11 +30,6 @@ HANDLE wrap_CreateFile(LPCSTR lpFileName,
     }
 }
 
-void expect_CreateFile_call(const char *filename, HANDLE ret) {
-    expect_string(wrap_CreateFile, lpFileName, filename);
-    will_return(wrap_CreateFile, (HANDLE)ret);
-}
-
 DWORD wrap_GetFileAttributesA(LPCSTR lpFileName) {
     check_expected(lpFileName);
     return mock();
@@ -112,26 +107,52 @@ BOOL wrap_GetFileTime(HANDLE     hFile,
     return mock_type(BOOL);
 }
 
-HANDLE wrap_FindFirstFile(LPCSTR lpFileName,  LPWIN32_FIND_DATA lpFindFileData) {
+HANDLE wrap_FindFirstFile(LPCWSTR lpFileName,  LPWIN32_FIND_DATAW lpFindFileData) {
     char *file_name;
     check_expected(lpFileName);
 
     file_name = mock_type(char *);
     if (file_name != NULL) {
-        strcpy(lpFindFileData->cFileName, file_name);
+        mbstowcs(lpFindFileData->cFileName, file_name, MAX_PATH);
         lpFindFileData->dwFileAttributes = mock_type(DWORD);
     }
 
     return mock_type(HANDLE);
 }
 
-BOOL wrap_FindNextFile(HANDLE hFindFile, LPWIN32_FIND_DATA lpFindFileData) {
+BOOL wrap_FindNextFile(HANDLE hFindFile, LPWIN32_FIND_DATAW lpFindFileData) {
     char *file_name;
     check_expected(hFindFile);
     file_name = mock_type(char *);
     if (file_name != NULL) {
-        strcpy(lpFindFileData->cFileName, file_name);
+        mbstowcs(lpFindFileData->cFileName, file_name, MAX_PATH);
         lpFindFileData->dwFileAttributes = mock_type(DWORD);
     }
     return mock_type(BOOL);
+}
+
+UINT wrap_GetDriveTypeA(LPCSTR lpRootPathName) {
+    if (lpRootPathName == NULL) {
+        // If this parameter is NULL, the function uses the root of the current directory.
+        return DRIVE_FIXED;
+    }
+
+    if (strlen(lpRootPathName) == 3 && lpRootPathName[1] == ':' && lpRootPathName[2] == '\\') {
+        switch (lpRootPathName[0]) {
+            case 'A':
+                return DRIVE_REMOVABLE;
+            case 'C':
+                return DRIVE_FIXED;
+            case 'D':
+                return DRIVE_CDROM;
+            case 'R':
+                return DRIVE_RAMDISK;
+            case 'Z':
+                return DRIVE_REMOTE;
+            default:
+                return DRIVE_UNKNOWN;
+        }
+    }
+
+    return DRIVE_NO_ROOT_DIR;
 }

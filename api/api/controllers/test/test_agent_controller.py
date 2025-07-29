@@ -19,11 +19,11 @@ with patch('wazuh.common.wazuh_uid'):
             delete_multiple_agent_single_group,
             delete_single_agent_multiple_groups,
             delete_single_agent_single_group, get_agent_config,
-            get_agent_fields, get_agent_key, get_agent_no_group,
-            get_agent_outdated, get_agent_summary_os, get_agent_uninstall_permission, get_agent_summary_status,
-            get_agent_upgrade, get_agents, get_agents_in_group, get_daemon_stats,
-            get_component_stats, get_group_config, get_group_file, get_group_files,
-            get_list_group, get_sync_agent, insert_agent, post_group,
+            get_agent_fields, get_agent_key, get_agent_no_group, get_agent_outdated,
+            get_agents_summary, get_agent_summary_os, get_agent_summary_status,
+            get_agent_uninstall_permission, get_agent_upgrade, get_agents, get_agents_in_group,
+            get_daemon_stats, get_component_stats, get_group_config, get_group_file,
+            get_group_files, get_list_group, get_sync_agent, insert_agent, post_group,
             post_new_agent, put_agent_single_group, put_group_config,
             put_multiple_agent_single_group, put_upgrade_agents,
             put_upgrade_custom_agents, reconnect_agents, restart_agent,
@@ -284,7 +284,7 @@ async def test_delete_single_agent_multiple_groups(mock_exc, mock_dapi, mock_rem
     mock_dapi.assert_called_once_with(f=agent.remove_agent_from_groups,
                                       f_kwargs=mock_remove.return_value,
                                       request_type='local_master',
-                                      is_async=False,
+                                      is_async=True,
                                       wait_for_complete=False,
                                       logger=ANY,
                                       rbac_permissions=mock_request.context['token_info']['rbac_policies']
@@ -336,7 +336,7 @@ async def test_delete_single_agent_single_group(mock_exc, mock_dapi, mock_remove
     mock_dapi.assert_called_once_with(f=agent.remove_agent_from_group,
                                       f_kwargs=mock_remove.return_value,
                                       request_type='local_master',
-                                      is_async=False,
+                                      is_async=True,
                                       wait_for_complete=False,
                                       logger=ANY,
                                       rbac_permissions=mock_request.context['token_info']['rbac_policies']
@@ -363,7 +363,7 @@ async def test_put_agent_single_group(mock_exc, mock_dapi, mock_remove, mock_dfu
     mock_dapi.assert_called_once_with(f=agent.assign_agents_to_group,
                                       f_kwargs=mock_remove.return_value,
                                       request_type='local_master',
-                                      is_async=False,
+                                      is_async=True,
                                       wait_for_complete=False,
                                       logger=ANY,
                                       rbac_permissions=mock_request.context['token_info']['rbac_policies']
@@ -682,7 +682,7 @@ async def test_delete_multiple_agent_single_group(mock_exc, mock_dapi, mock_remo
     mock_dapi.assert_called_once_with(f=agent.remove_agents_from_group,
                                       f_kwargs=mock_remove.return_value,
                                       request_type='local_master',
-                                      is_async=False,
+                                      is_async=True,
                                       wait_for_complete=False,
                                       logger=ANY,
                                       rbac_permissions=mock_request.context['token_info']['rbac_policies']
@@ -712,7 +712,7 @@ async def test_put_multiple_agent_single_group(mock_exc, mock_dapi, mock_remove,
     mock_dapi.assert_called_once_with(f=agent.assign_agents_to_group,
                                       f_kwargs=mock_remove.return_value,
                                       request_type='local_master',
-                                      is_async=False,
+                                      is_async=True,
                                       wait_for_complete=False,
                                       logger=ANY,
                                       rbac_permissions=mock_request.context['token_info']['rbac_policies']
@@ -1130,6 +1130,30 @@ async def test_get_agent_fields(mock_exc, mock_dapi, mock_remove, mock_dfunc, mo
                                       f_kwargs=mock_remove.return_value,
                                       request_type='local_master',
                                       is_async=False,
+                                      wait_for_complete=False,
+                                      logger=ANY,
+                                      rbac_permissions=mock_request.context['token_info']['rbac_policies']
+                                      )
+    mock_exc.assert_called_once_with(mock_dfunc.return_value)
+    mock_remove.assert_called_once_with(f_kwargs)
+    assert isinstance(result, ConnexionResponse)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("mock_request", ["agent_controller"], indirect=True)
+@patch('api.configuration.api_conf')
+@patch('api.controllers.agent_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
+@patch('api.controllers.agent_controller.remove_nones_to_dict')
+@patch('api.controllers.agent_controller.DistributedAPI.__init__', return_value=None)
+@patch('api.controllers.agent_controller.raise_if_exc', return_value=CustomAffectedItems())
+async def test_get_agents_summary(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_exp, mock_request):
+    """Verify 'get_agent_summary_status' endpoint is working as expected."""
+    result = await get_agents_summary()
+    f_kwargs = {'agent_list': None}
+    mock_dapi.assert_called_once_with(f=agent.get_agents_summary,
+                                      f_kwargs=mock_remove.return_value,
+                                      request_type='local_master',
+                                      is_async=True,
                                       wait_for_complete=False,
                                       logger=ANY,
                                       rbac_permissions=mock_request.context['token_info']['rbac_policies']

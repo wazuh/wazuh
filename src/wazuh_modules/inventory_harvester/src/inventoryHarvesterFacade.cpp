@@ -93,7 +93,9 @@ void InventoryHarvesterFacade::initRsyncSubscription()
                              data->data_as_state()->attributes_as_syscollector_hwinfo() ||
                              data->data_as_state()->attributes_as_syscollector_network_protocol() ||
                              data->data_as_state()->attributes_as_syscollector_network_iface() ||
-                             data->data_as_state()->attributes_as_syscollector_network_address())
+                             data->data_as_state()->attributes_as_syscollector_network_address() ||
+                             data->data_as_state()->attributes_as_syscollector_users() ||
+                             data->data_as_state()->attributes_as_syscollector_groups())
                     {
                         pushSystemEvent(message, BufferType::BufferType_RSync);
                     }
@@ -114,7 +116,9 @@ void InventoryHarvesterFacade::initRsyncSubscription()
                              attributesType.compare("syscollector_hwinfo") == 0 ||
                              attributesType.compare("syscollector_network_protocol") == 0 ||
                              attributesType.compare("syscollector_network_iface") == 0 ||
-                             attributesType.compare("syscollector_network_address") == 0)
+                             attributesType.compare("syscollector_network_address") == 0 ||
+                             attributesType.compare("syscollector_users") == 0 ||
+                             attributesType.compare("syscollector_groups") == 0)
                     {
                         pushSystemEvent(message, BufferType::BufferType_RSync);
                     }
@@ -135,7 +139,9 @@ void InventoryHarvesterFacade::initRsyncSubscription()
                              attributesType.compare("syscollector_hwinfo") == 0 ||
                              attributesType.compare("syscollector_network_protocol") == 0 ||
                              attributesType.compare("syscollector_network_iface") == 0 ||
-                             attributesType.compare("syscollector_network_address") == 0)
+                             attributesType.compare("syscollector_network_address") == 0 ||
+                             attributesType.compare("syscollector_users") == 0 ||
+                             attributesType.compare("syscollector_groups") == 0)
                     {
                         pushSystemEvent(message, BufferType::BufferType_RSync);
                     }
@@ -208,10 +214,12 @@ void InventoryHarvesterFacade::initSystemEventDispatcher() const
             }
             catch (const nlohmann::json::exception& e)
             {
-                logError(LOGGER_DEFAULT_TAG,
-                         "InventoryHarvesterFacade::initSystemEventDispatcher: json exception (%d) - Event message: %s",
-                         e.id,
-                         parseEventMessage(element).c_str());
+                logError(
+                    LOGGER_DEFAULT_TAG,
+                    "InventoryHarvesterFacade::initSystemEventDispatcher: json exception [%d](%s) - Event message: %s",
+                    e.id,
+                    e.what(),
+                    parseEventMessage(element).c_str());
             }
             catch (const std::exception& e)
             {
@@ -256,10 +264,12 @@ void InventoryHarvesterFacade::initFimEventDispatcher() const
             }
             catch (const nlohmann::json::exception& e)
             {
-                logError(LOGGER_DEFAULT_TAG,
-                         "InventoryHarvesterFacade::initFimEventDispatcher: json exception (%d) - Event message: %s",
-                         e.id,
-                         parseEventMessage(element).c_str());
+                logError(
+                    LOGGER_DEFAULT_TAG,
+                    "InventoryHarvesterFacade::initFimEventDispatcher: json exception [%d](%s) - Event message: %s",
+                    e.id,
+                    e.what(),
+                    parseEventMessage(element).c_str());
             }
             catch (const std::exception& e)
             {

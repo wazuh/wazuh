@@ -242,13 +242,19 @@ class DistributedAPI:
     @staticmethod
     def run_local(f, f_kwargs, rbac_permissions, broadcasting, nodes, current_user, origin_module):
         """Run framework SDK function locally in another process."""
-        common.rbac.set(rbac_permissions)
-        common.broadcast.set(broadcasting)
-        common.cluster_nodes.set(nodes)
-        common.current_user.set(current_user)
-        common.origin_module.set(origin_module)
-        data = f(**f_kwargs)
-        common.reset_context_cache()
+        try:
+            common.rbac.set(rbac_permissions)
+            broadcast_token = common.broadcast.set(broadcasting)
+            common.cluster_nodes.set(nodes)
+            common.current_user.set(current_user)
+            common.origin_module.set(origin_module)
+            data = f(**f_kwargs)
+        except WazuhException as e:
+            raise e
+        finally:
+            common.broadcast.reset(broadcast_token)
+            common.reset_context_cache()
+
         return data
 
     async def execute_local_request(self) -> str:
@@ -376,7 +382,10 @@ class DistributedAPI:
         try:
             common.rbac.set(self.rbac_permissions)
             node_wrapper = get_node_wrapper()
-            node = node_wrapper.affected_items[0]['node']
+            if node_wrapper is None:
+                node = 'unknown-node'
+            else:
+                node = node_wrapper.affected_items[0]['node']
         except exception.WazuhException as rbac_exception:
             if rbac_exception.code == 4000:
                 node = 'unknown-node'

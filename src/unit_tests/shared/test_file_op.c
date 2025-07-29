@@ -23,7 +23,11 @@
 #include "../wrappers/posix/unistd_wrappers.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../wrappers/wazuh/shared/file_op_wrappers.h"
+#include "../wrappers/wazuh/shared/utf8_winapi_wrapper_wrappers.h"
 #include "../wrappers/externals/zlib/zlib_wrappers.h"
+#ifdef WIN32
+#include "../wrappers/windows/fileapi_wrappers.h"
+#endif
 
 /* setups/teardowns */
 static int setup_group(void **state) {
@@ -40,7 +44,7 @@ static int teardown_group(void **state) {
 
 #define N_PATHS 5
 
-static void expect_find_first_file(const char *file_path, const char *name, DWORD attrs, HANDLE handle) {
+static void expect_find_first_file(const wchar_t *file_path, const char *name, DWORD attrs, HANDLE handle) {
     expect_string(wrap_FindFirstFile, lpFileName, file_path);
     will_return(wrap_FindFirstFile, name);
     if (name != NULL) {
@@ -998,8 +1002,8 @@ void test_get_UTC_modification_time_success(void **state) {
     modification_date.dwLowDateTime = (DWORD)1234;
     modification_date.dwHighDateTime = (DWORD)4321;
 
-    expect_string(wrap_CreateFile, lpFileName, "C:\\a\\path");
-    will_return(wrap_CreateFile, hdle);
+    expect_string(__wrap_utf8_CreateFile, utf8_path, "C:\\a\\path");
+    will_return(__wrap_utf8_CreateFile, hdle);
 
     expect_value(wrap_GetFileTime, hFile, hdle);
     will_return(wrap_GetFileTime, &modification_date);
@@ -1020,8 +1024,8 @@ void test_get_UTC_modification_time_fail_get_handle(void **state) {
     char buffer[OS_SIZE_128];
     char *path = "C:\\a\\path";
 
-    expect_string(wrap_CreateFile, lpFileName, path);
-    will_return(wrap_CreateFile, INVALID_HANDLE_VALUE);
+    expect_string(__wrap_utf8_CreateFile, utf8_path, path);
+    will_return(__wrap_utf8_CreateFile, INVALID_HANDLE_VALUE);
 
     snprintf(buffer, OS_SIZE_128, FIM_WARN_OPEN_HANDLE_FILE, path, 2);
     expect_string(__wrap__mferror, formatted_msg, buffer);
@@ -1039,8 +1043,8 @@ void test_get_UTC_modification_time_fail_get_filetime(void **state) {
     modification_date.dwLowDateTime = (DWORD)1234;
     modification_date.dwHighDateTime = (DWORD)4321;
 
-    expect_string(wrap_CreateFile, lpFileName, path);
-    will_return(wrap_CreateFile, (HANDLE)1234);
+    expect_string(__wrap_utf8_CreateFile, utf8_path, path);
+    will_return(__wrap_utf8_CreateFile, (HANDLE)1234);
 
     expect_value(wrap_GetFileTime, hFile, (HANDLE)1234);
     will_return(wrap_GetFileTime, &modification_date);
@@ -1068,32 +1072,32 @@ void test_expand_win32_wildcards_no_wildcards(void **state) {
 }
 
 void test_expand_win32_wildcards_invalid_handle(void **state) {
-    char *path = "C:\\wildcards*";
+    wchar_t *path = L"C:\\wildcards*";
     char **result;
     expect_find_first_file(path, NULL, (DWORD) 0,  INVALID_HANDLE_VALUE);
     expect_any(__wrap__mdebug2, formatted_msg);
-    result = expand_win32_wildcards(path);
+    result = expand_win32_wildcards("C:\\wildcards*");
     *state = result;
 
     assert_null(result[0]);
 }
 
 void test_expand_win32_wildcards_back_link(void **state) {
-    char *path = "C:\\.*";
+    wchar_t *path = L"C:\\.*";
     char **result;
 
     expect_find_first_file(path, ".", (DWORD) 0, (HANDLE) 1);
     expect_find_next_file((HANDLE) 1, "..", (DWORD) 0, (BOOL) 1);
     expect_find_next_file((HANDLE) 1, NULL, (DWORD) 0, (BOOL) 0);
 
-    result = expand_win32_wildcards(path);
+    result = expand_win32_wildcards("C:\\.*");
     *state = result;
 
     assert_null(result[0]);
 }
 
 void test_expand_win32_wildcards_directories(void **state) {
-    char *path = "C:\\test*";
+    wchar_t *path = L"C:\\test*";
     char **result;
     char vectors[N_PATHS][MAX_PATH] = { '\0' };
     char buffer[OS_SIZE_128] = {0};
@@ -1108,7 +1112,7 @@ void test_expand_win32_wildcards_directories(void **state) {
 
     expect_find_next_file((HANDLE) 1, NULL, (DWORD) 0, (BOOL) 0);
 
-    result = expand_win32_wildcards(path);
+    result = expand_win32_wildcards("C:\\test*");
     *state = result;
     int i;
     for (i = 0; result[i]; i++) {
@@ -1119,7 +1123,7 @@ void test_expand_win32_wildcards_directories(void **state) {
 }
 
 void test_expand_win32_wildcards_directories_reparse_point(void **state) {
-    char *path = "C:\\reparse*";
+    wchar_t *path = L"C:\\reparse*";
     char **result;
     char vectors[N_PATHS][MAX_PATH] = { '\0' };
 
@@ -1133,21 +1137,21 @@ void test_expand_win32_wildcards_directories_reparse_point(void **state) {
 
     expect_find_next_file((HANDLE) 1, NULL, (DWORD) 0, (BOOL) 0);
 
-    result = expand_win32_wildcards(path);
+    result = expand_win32_wildcards("C:\\reparse*");
     *state = result;
 
     assert_null(result[0]);
 }
 
 void test_expand_win32_wildcards_file_with_next_glob(void **state) {
-    char *path = "C:\\ignored_*\\test?";
+    wchar_t *path = L"C:\\ignored_*\\test?";
     char **result;
     char vectors[N_PATHS][MAX_PATH] = { '\0' };
     char buffer[OS_SIZE_128] = {0};
 
     // Begining to expand the first wildcard
     // files that matches the first wildcard must be ignored
-    expect_find_first_file("C:\\ignored_*", "ignored_file", FILE_ATTRIBUTE_NORMAL, (HANDLE) 1);
+    expect_find_first_file(L"C:\\ignored_*", "ignored_file", FILE_ATTRIBUTE_NORMAL, (HANDLE) 1);
 
     expect_find_next_file((HANDLE) 1, "test_folder", FILE_ATTRIBUTE_DIRECTORY, (BOOL) 1);
     // Ending to expand the first wildcard
@@ -1155,7 +1159,7 @@ void test_expand_win32_wildcards_file_with_next_glob(void **state) {
 
     // Beggining to expand the second wildcard
     snprintf(vectors[0], OS_SIZE_128, "test_%d", 0);
-    expect_find_first_file("C:\\test_folder\\test?", vectors[0], FILE_ATTRIBUTE_NORMAL, (HANDLE) 1);
+    expect_find_first_file(L"C:\\test_folder\\test?", vectors[0], FILE_ATTRIBUTE_NORMAL, (HANDLE) 1);
 
     for (int i = 1; i < N_PATHS; i++) {
         snprintf(vectors[i], OS_SIZE_128, "test_%d", i);
@@ -1164,12 +1168,204 @@ void test_expand_win32_wildcards_file_with_next_glob(void **state) {
     // Ending to expand the second wildcard
     expect_find_next_file((HANDLE) 1, NULL, 0, (BOOL) 0);
 
-    result = expand_win32_wildcards(path);
+    result = expand_win32_wildcards("C:\\ignored_*\\test?");
     *state = result;
     for (int i = 0; result[i]; i++) {
         snprintf(buffer, OS_SIZE_128, "C:\\test_folder\\%s", vectors[i]);
         assert_string_equal(buffer, result[i]);
     }
+}
+
+void test_is_network_path_null(void **state) {
+    char *path = NULL;
+    int ret = is_network_path(path);
+    assert_int_equal(ret, 0);
+
+    path = "";
+    ret = is_network_path(path);
+    assert_int_equal(ret, 0);
+}
+
+void test_is_network_path_unc(void **state) {
+    char *path = "\\\\server\\share";
+    int ret = is_network_path(path);
+    assert_int_equal(ret, 1);
+}
+
+void test_is_network_path_network(void **state) {
+    char *path = "Z:\\file.txt";
+    int ret = is_network_path(path);
+    assert_int_equal(ret, 1);
+}
+
+void test_is_network_path_local(void **state) {
+    char *path = "C:\\file.txt";
+    int ret = is_network_path(path);
+    assert_int_equal(ret, 0);
+}
+
+void test_wfopen_local_path(void **state) {
+    errno = 0;
+    char *path = "C:\\file.txt";
+    expect_string(__wrap_utf8_CreateFile, utf8_path, path);
+    will_return(__wrap_utf8_CreateFile, INVALID_HANDLE_VALUE);
+    SetLastError(0);
+    FILE *fp = wfopen(path, "r");
+    assert_int_equal(fp, NULL);
+    assert_int_equal(errno, 0);
+}
+
+void test_wfopen_network_path(void **state) {
+    errno = 0;
+    char *path = "Z:\\file.txt";
+
+    expect_string(__wrap__mwarn, formatted_msg, "(9800): File access denied. Network path usage is not allowed: 'Z:\\file.txt'.");
+
+    FILE *fp = wfopen(path, "r");
+    assert_int_equal(fp, NULL);
+    assert_int_equal(errno, EACCES);
+}
+
+void test_waccess_local_path(void **state) {
+    errno = 0;
+    char *path = "C:\\file.txt";
+
+    expect_string(__wrap_access, __name, path);
+    expect_value(__wrap_access, __type, "r");
+    will_return(__wrap_access, 0);
+
+    int ret = waccess(path, (int)"r");
+    assert_int_equal(ret, 0);
+    assert_int_equal(errno, 0);
+}
+
+void test_waccess_network_path(void **state) {
+    errno = 0;
+    char *path = "Z:\\file.txt";
+
+    expect_string(__wrap__mwarn, formatted_msg, "(9800): File access denied. Network path usage is not allowed: 'Z:\\file.txt'.");
+
+    int ret = waccess(path, (int)"r");
+    assert_int_equal(ret, -1);
+    assert_int_equal(errno, EACCES);
+}
+
+void test_wCreateFile_local_path(void **state) {
+    errno = 0;
+    HANDLE hdle = (HANDLE)1234;
+    char *path = "C:\\file.txt";
+
+    expect_string(__wrap_utf8_CreateFile, utf8_path, path);
+    will_return(__wrap_utf8_CreateFile, hdle);
+
+    HANDLE ret = wCreateFile(path, (DWORD)NULL, (DWORD)NULL, (LPSECURITY_ATTRIBUTES)NULL, (DWORD)NULL, (DWORD)NULL, (HANDLE)NULL);
+    assert_int_equal(ret, hdle);
+    assert_int_equal(errno, 0);
+}
+
+void test_wCreateFile_network_path(void **state) {
+    errno = 0;
+    char *path = "Z:\\file.txt";
+
+    expect_string(__wrap__mwarn, formatted_msg, "(9800): File access denied. Network path usage is not allowed: 'Z:\\file.txt'.");
+
+    HANDLE ret = wCreateFile(path, (DWORD)NULL, (DWORD)NULL, (LPSECURITY_ATTRIBUTES)NULL, (DWORD)NULL, (DWORD)NULL, (HANDLE)NULL);
+    assert_int_equal(ret, INVALID_HANDLE_VALUE);
+    assert_int_equal(errno, EACCES);
+}
+
+void test_wCreateProcessW_local_path(void **state) {
+    errno = 0;
+    char *path = "C:\\file.txt";
+
+    expect_string(wrap_CreateProcessW, lpCommandLine, path);
+    will_return(wrap_CreateProcessW, TRUE);
+
+    bool ret = wCreateProcessW(NULL, path, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+    assert_true(ret);
+    assert_int_equal(errno, 0);
+}
+
+void test_wCreateProcessW_network_path(void **state) {
+    errno = 0;
+    char *path = "Z:\\file.txt";
+
+    expect_string(__wrap__mwarn, formatted_msg, "(9800): File access denied. Network path usage is not allowed: 'Z:\\file.txt'.");
+
+    bool ret = wCreateProcessW(NULL, path, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+    assert_false(ret);
+    assert_int_equal(errno, EACCES);
+}
+
+void test_wopendir_local_path(void **state) {
+    errno = 0;
+    char *path = "C:\\file.txt";
+    DIR *dir = (DIR *)1;
+
+    will_return(__wrap_opendir, dir);
+
+    DIR *ret = wopendir(path);
+    assert_ptr_equal(ret, dir);
+    assert_int_equal(errno, 0);
+}
+
+void test_wopendir_network_path(void **state) {
+    errno = 0;
+    char *path = "Z:\\file.txt";
+
+    expect_string(__wrap__mwarn, formatted_msg, "(9800): File access denied. Network path usage is not allowed: 'Z:\\file.txt'.");
+
+    DIR *ret = wopendir(path);
+    assert_ptr_equal(ret, NULL);
+    assert_int_equal(errno, EACCES);
+}
+
+void test_w_stat_local_path(void **state) {
+    errno = 0;
+    char *path = "C:\\file.txt";
+
+    expect_string(__wrap_stat, __file, path);
+    will_return(__wrap_stat, NULL);
+    will_return(__wrap_stat, 0);
+
+    int ret = w_stat(path, NULL);
+    assert_int_equal(ret, 0);
+    assert_int_equal(errno, 0);
+}
+
+void test_w_stat_network_path(void **state) {
+    errno = 0;
+    char *path = "Z:\\file.txt";
+
+    expect_string(__wrap__mwarn, formatted_msg, "(9800): File access denied. Network path usage is not allowed: 'Z:\\file.txt'.");
+
+    int ret = w_stat(path, NULL);
+    assert_int_equal(ret, -1);
+    assert_int_equal(errno, EACCES);
+}
+
+void test_w_stat64_local_path(void **state) {
+    errno = 0;
+    char *path = "C:\\file.txt";
+
+    expect_string(__wrap_utf8_stat64, pathname, path);
+    will_return(__wrap_utf8_stat64, NULL);
+    will_return(__wrap_utf8_stat64, 0);
+
+    int ret = w_stat64(path, NULL);
+    assert_int_equal(ret, 0);
+    assert_int_equal(errno, 0);
+}
+
+void test_w_stat64_network_path(void **state) {
+    errno = 0;
+    char *path = "Z:\\file.txt";
+
+    expect_string(__wrap__mwarn, formatted_msg, "(9800): File access denied. Network path usage is not allowed: 'Z:\\file.txt'.");
+
+    int ret = w_stat64(path, NULL);
+    assert_int_equal(ret, -1);
+    assert_int_equal(errno, EACCES);
 }
 
 #endif
@@ -1230,7 +1426,25 @@ int main(void) {
         cmocka_unit_test_teardown(test_expand_win32_wildcards_back_link, teardown_win32_wildcards),
         cmocka_unit_test_teardown(test_expand_win32_wildcards_directories, teardown_win32_wildcards),
         cmocka_unit_test_teardown(test_expand_win32_wildcards_directories_reparse_point, teardown_win32_wildcards),
-        cmocka_unit_test_teardown(test_expand_win32_wildcards_file_with_next_glob, teardown_win32_wildcards)
+        cmocka_unit_test_teardown(test_expand_win32_wildcards_file_with_next_glob, teardown_win32_wildcards),
+        cmocka_unit_test(test_is_network_path_null),
+        cmocka_unit_test(test_is_network_path_unc),
+        cmocka_unit_test(test_is_network_path_network),
+        cmocka_unit_test(test_is_network_path_local),
+        cmocka_unit_test(test_wfopen_local_path),
+        cmocka_unit_test(test_wfopen_network_path),
+        cmocka_unit_test(test_waccess_local_path),
+        cmocka_unit_test(test_waccess_network_path),
+        cmocka_unit_test(test_wCreateFile_local_path),
+        cmocka_unit_test(test_wCreateFile_network_path),
+        cmocka_unit_test(test_wCreateProcessW_local_path),
+        cmocka_unit_test(test_wCreateProcessW_network_path),
+        cmocka_unit_test(test_wopendir_local_path),
+        cmocka_unit_test(test_wopendir_network_path),
+        cmocka_unit_test(test_w_stat_local_path),
+        cmocka_unit_test(test_w_stat_network_path),
+        cmocka_unit_test(test_w_stat64_local_path),
+        cmocka_unit_test(test_w_stat64_network_path),
 
 #endif
     };

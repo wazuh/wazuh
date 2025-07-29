@@ -12,8 +12,9 @@
 #include <string>
 #include <type_traits>
 
-#include <concurrentqueue/blockingconcurrentqueue.h>
-#include <metrics/imanager.hpp>
+#include <blockingconcurrentqueue.h>
+// TODO: Until the indexer connector is unified with the rest of wazuh-manager
+// #include <metrics/imanager.hpp>
 #include <queue/iqueue.hpp>
 
 #include <base/logging.hpp>
@@ -119,14 +120,16 @@ class ConcurrentQueue : public iQueue<T>
 private:
     static_assert(std::is_base_of_v<moodycamel::ConcurrentQueueDefaultTraits, D>,
                   "The template parameter D must be a subclass of ConcurrentQueueDefaultTraits");
-    struct Metrics
-    {
-        std::shared_ptr<metrics::IMetric> m_used;               ///< Counter for the used queue
-        std::shared_ptr<metrics::IMetric> m_queued;             ///< Counter for the queued events
-        std::shared_ptr<metrics::IMetric> m_flooded;            ///< Counter for the flooded events
-        std::shared_ptr<metrics::IMetric> m_consumed;           ///< Counter for the consumed events
-        std::shared_ptr<metrics::IMetric> m_consumendPerSecond; ///< Counter for the used queue
-    };
+
+    // TODO: Until the indexer connector is unified with the rest of wazuh-manager
+    // struct Metrics
+    // {
+    //     std::shared_ptr<metrics::IMetric> m_used;               ///< Counter for the used queue
+    //     std::shared_ptr<metrics::IMetric> m_queued;             ///< Counter for the queued events
+    //     std::shared_ptr<metrics::IMetric> m_flooded;            ///< Counter for the flooded events
+    //     std::shared_ptr<metrics::IMetric> m_consumed;           ///< Counter for the consumed events
+    //     std::shared_ptr<metrics::IMetric> m_consumendPerSecond; ///< Counter for the used queue
+    // };
 
     moodycamel::BlockingConcurrentQueue<T, D> m_queue {}; ///< The queue itself.
     std::size_t m_minCapacity;                            ///< The minimum capacity of the queue.
@@ -136,7 +139,7 @@ private:
     bool m_discard; ///< If true, the queue will discard the events when it is full instead of flooding the file or
                     ///< blocking.
 
-    Metrics m_metrics; ///< Metrics for the queue
+    // Metrics m_metrics; ///< Metrics for the queue
 
     template<typename U = T>
     std::enable_if_t<has_str_method_v<U>, void> pushWithStr(U&& element)
@@ -147,13 +150,13 @@ private:
             {
                 if (m_queue.try_enqueue(std::move(element)))
                 {
-                    m_metrics.m_queued->update(1UL);
-                    m_metrics.m_used->update(1L);
+                    // m_metrics.m_queued->update(1UL);
+                    // m_metrics.m_used->update(1L);
                     return;
                 }
                 std::this_thread::sleep_for(std::chrono::microseconds(500));
             }
-            m_metrics.m_flooded->update(1UL);
+           // m_metrics.m_flooded->update(1UL);
             return;
         }
 
@@ -165,8 +168,8 @@ private:
                 // of 5 because we are saturating the queue and we don't want to.
                 std::this_thread::sleep_for(std::chrono::microseconds(500));
             }
-            m_metrics.m_queued->update(1UL);
-            m_metrics.m_used->update(1L);
+            // m_metrics.m_queued->update(1UL);
+            // m_metrics.m_used->update(1L);
         }
         else
         {
@@ -174,8 +177,9 @@ private:
             {
                 if (m_queue.try_enqueue(std::move(element))) // TODO Wait whats? Move more than once?
                 {
-                    m_metrics.m_queued->update(1UL);
-                    m_metrics.m_used->update(1L);
+                    // TODO: Until the indexer connector is unified with the rest of wazuh-manager
+                    // m_metrics.m_queued->update(1UL);
+                    // m_metrics.m_used->update(1L);
                     return;
                 }
                 std::this_thread::sleep_for(m_waitTime);
@@ -184,8 +188,8 @@ private:
             {
                 m_floodingFile->write(element->str());
             }
-
-            m_metrics.m_flooded->update(1UL);
+            // TODO: Until the indexer connector is unified with the rest of wazuh-manager
+            // m_metrics.m_flooded->update(1UL);
         }
     }
 
@@ -215,7 +219,7 @@ public:
     explicit ConcurrentQueue(const int capacity,
                              const std::string& metricModuleName,
                              const std::string& pathFloodedFile = {},
-                             const int maxAttempts = -1,
+                             const int maxAttempts = 3,
                              const int waitTime = -1,
                              const bool discard = false)
         : m_floodingFile {nullptr}
@@ -225,25 +229,24 @@ public:
         {
             throw std::runtime_error("The capacity of the queue must be greater than 0");
         }
-
-        m_queue = moodycamel::BlockingConcurrentQueue<T, D>(capacity);
         m_minCapacity = capacity;
+
+        if (maxAttempts <= 0)
+        {
+            throw std::runtime_error("The maximum number of attempts must be greater than 0");
+        }
+        m_maxAttempts = maxAttempts;
+        m_queue = moodycamel::BlockingConcurrentQueue<T, D>(capacity);
 
         // Verify if the pathFloodedFile is provided
         if (!pathFloodedFile.empty())
         {
-            if (maxAttempts <= 0)
-            {
-                throw std::runtime_error("The maximum number of attempts must be greater than 0");
-            }
-
             if (waitTime <= 0)
             {
                 throw std::runtime_error("The wait time must be greater than 0");
             }
 
             m_waitTime = std::chrono::microseconds(waitTime);
-            m_maxAttempts = maxAttempts;
 
             m_floodingFile = std::make_shared<FloodingFile>(pathFloodedFile);
             if (m_floodingFile->getError())
@@ -260,6 +263,7 @@ public:
             LOG_INFO("No flooding file provided, the queue will not be flooded.");
         }
 
+        /*
         m_metrics = Metrics {};
         m_metrics.m_queued = metrics::getManager().addMetric(metrics::MetricType::UINTCOUNTER,
                                                              metricModuleName + ".QueuedEvents",
@@ -277,6 +281,7 @@ public:
                                                               metricModuleName + ".FloodedEvents",
                                                               "Number of flooded events from the queue",
                                                               "events");
+        */
         // TODO: Add rate metric once implemented
         // m_metrics.m_metricsScopeDelta = std::move(metricsScopeDelta);
         // m_metrics.m_consumendPerSecond =
@@ -314,11 +319,12 @@ public:
     bool tryPush(const T& element) override
     {
         auto result = m_queue.try_enqueue(element);
-        if (result)
-        {
-            m_metrics.m_queued->update(1UL);
-            m_metrics.m_used->update(1L);
-        }
+        // TODO: Until the indexer connector is unified with the rest of wazuh-manager
+        // if (result)
+        // {
+        //     m_metrics.m_queued->update(1UL);
+        //     m_metrics.m_used->update(1L);
+        // }
         return result;
     }
 
@@ -337,12 +343,13 @@ public:
     bool waitPop(T& element, int64_t timeout = WAIT_DEQUEUE_TIMEOUT_USEC) override
     {
         auto result = m_queue.wait_dequeue_timed(element, timeout);
-        if (result)
-        {
-            m_metrics.m_consumed->update(1UL);
-            m_metrics.m_used->update(-1L);
-            // m_metrics.m_consumendPerSecond->update(1UL);
-        }
+        // TODO: Until the indexer connector is unified with the rest of wazuh-manager
+        // if (result)
+        // {
+        //     m_metrics.m_consumed->update(1UL);
+        //     m_metrics.m_used->update(-1L);
+        //     // m_metrics.m_consumendPerSecond->update(1UL);
+        // }
 
         return result;
     }
@@ -350,12 +357,13 @@ public:
     bool tryPop(T& element) override
     {
         auto result = m_queue.try_dequeue(element);
-        if (result)
-        {
-            m_metrics.m_consumed->update(1UL);
-            m_metrics.m_used->update(-1L);
-            // m_metrics.m_consumendPerSecond->update(1UL);
-        }
+        // TODO: Until the indexer connector is unified with the rest of wazuh-manager
+        // if (result)
+        // {
+        //     m_metrics.m_consumed->update(1UL);
+        //     m_metrics.m_used->update(-1L);
+        //     // m_metrics.m_consumendPerSecond->update(1UL);
+        // }
         return result;
     }
 

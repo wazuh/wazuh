@@ -9,6 +9,7 @@ import re
 from unittest.mock import patch, MagicMock, call
 import pytest
 import json
+import datetime
 
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '.'))
 import aws_utils as utils
@@ -22,6 +23,8 @@ import s3_log_handler
 SAMPLE_PARQUET_KEY = 'aws/source/region=region/accountId=accountID/eventHour=YYYYMMDDHH/file.gz.parquet'
 SAMPLE_MESSAGE = {'bucket_path': utils.TEST_MESSAGE, 'log_path': SAMPLE_PARQUET_KEY}
 SAMPLE_PARQUET_EVENT_1 = {'key1': 'value1', 'key2': 'value2'}
+SAMPLE_PARQUET_EVENT_WITH_DATETIME = {"timestamp": datetime.datetime(2024, 9, 18, 12, 0, 0),
+                                       "event": "sample_event"}
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
 logs_path = os.path.join(test_data_path, 'log_files')
@@ -71,6 +74,22 @@ def test_aws_sl_subscriber_bucket_obtain_logs(mock_wazuh_integration, mock_sts_c
         events = instance.obtain_logs(utils.TEST_BUCKET, SAMPLE_PARQUET_KEY)
 
     assert events == [json.dumps(SAMPLE_PARQUET_EVENT_1)]
+    mock_get_object.assert_called_with(Bucket=utils.TEST_BUCKET, Key=SAMPLE_PARQUET_KEY)
+
+
+@patch('wazuh_integration.WazuhIntegration.get_sts_client')
+@patch('wazuh_integration.WazuhIntegration.__init__', side_effect=wazuh_integration.WazuhIntegration.__init__)
+def test_aws_sl_subscriber_bucket_obtain_logs_with_datetime(mock_wazuh_integration, mock_sts_client):
+    """Test 'obtain_information_from_parquet' correctly processes events containing datetime objects."""
+    instance = utils.get_mocked_aws_sl_subscriber_bucket()
+    mock_get_object = instance.client.get_object
+
+    with patch('pyarrow.parquet.ParquetFile', return_value=MagicMock()) as mock_parquet_file:
+        mock_parquet_file.return_value.iter_batches.return_value = [MagicMock(to_pylist=lambda: [SAMPLE_PARQUET_EVENT_WITH_DATETIME])]
+        with patch('io.BytesIO', return_value=b"fake parquet data"):
+            events = instance.obtain_logs(utils.TEST_BUCKET, SAMPLE_PARQUET_KEY)
+
+    assert events == [json.dumps(SAMPLE_PARQUET_EVENT_WITH_DATETIME, default=str)]
     mock_get_object.assert_called_with(Bucket=utils.TEST_BUCKET, Key=SAMPLE_PARQUET_KEY)
 
 

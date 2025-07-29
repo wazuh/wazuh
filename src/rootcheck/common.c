@@ -38,7 +38,7 @@ int rk_check_dir(const char *dir, const char *file, char *pattern)
 
     f_name[PATH_MAX + 1] = '\0';
 
-    dp = opendir(dir);
+    dp = wopendir(dir);
     if (!dp) {
         return (0);
     }
@@ -423,7 +423,7 @@ int isfile_ondir(const char *file, const char *dir)
 {
     DIR *dp = NULL;
     struct dirent *entry = NULL;
-    dp = opendir(dir);
+    dp = wopendir(dir);
 
     if (!dp) {
         return (0);
@@ -455,7 +455,7 @@ int is_file(char *file_name)
         return ret;
     }
 
-    dp = opendir(file_name);
+    dp = wopendir(file_name);
     if (dp) {
         closedir(dp);
         ret = 1;
@@ -466,9 +466,9 @@ int is_file(char *file_name)
     }
 
     /* Trying other calls */
-    if ((stat(file_name, &statbuf) < 0) &&
+    if ((w_stat(file_name, &statbuf) < 0) &&
 #ifndef WIN32
-            (access(file_name, F_OK) < 0) &&
+            (waccess(file_name, F_OK) < 0) &&
 #endif
             ((fp = wfopen(file_name, "r")) == NULL)) {
         return ret;

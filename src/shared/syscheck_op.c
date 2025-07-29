@@ -10,12 +10,16 @@
 
 #include "syscheck_op.h"
 
+/*****************************************************************************************
+ TODO-LEGACY-ANALYSISD-FIM: Delete this function when the new system is ready
+ Should not depend on analsysid code
 const char *SYSCHECK_EVENT_STRINGS[] = {
     [FIM_ADDED] = "added",
     [FIM_MODIFIED] = "modified",
     [FIM_READDED] = "readded",
     [FIM_DELETED] = "deleted"
 };
+/****************************************************************************************/
 
 #ifdef WAZUH_UNIT_TESTING
 /* Replace assert with mock_assert */
@@ -115,6 +119,9 @@ int remove_empty_folders(const char *path) {
 }
 
 #ifndef WIN32
+/*****************************************************************************************
+ TODO-LEGACY-ANALYSISD-FIM: Delete this function when the new system is ready
+ Should not depend on analsysid code
 #ifndef CLIENT
 int sk_decode_sum(sk_sum_t *sum, char *c_sum, char *w_sum) {
     assert(sum != NULL);
@@ -286,21 +293,21 @@ int sk_decode_sum(sk_sum_t *sum, char *c_sum, char *w_sum) {
             return -1;
         }
 
-        /* Look for a defined tag */
+        // Look for a defined tag 
         if (sum->tag = wstr_chr(sum->wdata.process_id, ':'), sum->tag) {
             *(sum->tag++) = '\0';
         } else {
             sum->tag = NULL;
         }
 
-        /* Look for a symbolic path */
+        // Look for a symbolic path 
         if (sum->tag && (symbolic_path = wstr_chr(sum->tag, ':'))) {
             *(symbolic_path++) = '\0';
         } else {
             symbolic_path = NULL;
         }
 
-        /* Look if it is a silent event */
+        // Look if it is a silent event 
         if (symbolic_path && (c_inode = wstr_chr(symbolic_path, ':'))) {
             *(c_inode++) = '\0';
             if (*c_inode == '+') {
@@ -537,7 +544,8 @@ void sk_sum_clean(sk_sum_t * sum) {
     os_free(sum->win_perm);
 }
 
-#endif /* #ifndef CLIENT */
+#endif // #ifndef CLIENT
+*****************************************************************************************/
 
 char *unescape_syscheck_field(char *sum) {
     char *esc_it;
@@ -652,7 +660,7 @@ char *get_file_user(const char *path, char **sid) {
     char *result;
 
     // Get the handle of the file object.
-    hFile = CreateFile(TEXT(path),
+    hFile = wCreateFile(TEXT(path),
                        GENERIC_READ,
                        FILE_SHARE_READ | FILE_SHARE_WRITE,
                        NULL,
@@ -676,10 +684,10 @@ char *get_file_user(const char *path, char **sid) {
         switch (dwErrorCode) {
         case ERROR_ACCESS_DENIED:     // 5
         case ERROR_SHARING_VIOLATION: // 32
-            mdebug1("At get_user(%s): CreateFile(): %s (%lu)", path, messageBuffer, dwErrorCode);
+            mdebug1("At get_user(%s): wCreateFile(): %s (%lu)", path, messageBuffer, dwErrorCode);
             break;
         default:
-            mwarn("At get_user(%s): CreateFile(): %s (%lu)", path, messageBuffer, dwErrorCode);
+            mwarn("At get_user(%s): wCreateFile(): %s (%lu)", path, messageBuffer, dwErrorCode);
         }
 
         LocalFree(messageBuffer);
@@ -958,7 +966,7 @@ int w_get_file_permissions(const char *file_path, cJSON **output_acl) {
     SECURITY_DESCRIPTOR *s_desc = NULL;
     unsigned long size = 0;
 
-    if (!GetFileSecurity(file_path, DACL_SECURITY_INFORMATION, 0, 0, &size)) {
+    if (!utf8_GetFileSecurity(file_path, DACL_SECURITY_INFORMATION, 0, 0, &size)) {
         retval = GetLastError();
 
         // We must have this error at this point
@@ -969,7 +977,7 @@ int w_get_file_permissions(const char *file_path, cJSON **output_acl) {
 
     os_calloc(size, 1, s_desc);
 
-    if (!GetFileSecurity(file_path, DACL_SECURITY_INFORMATION, s_desc, size, &size)) {
+    if (!utf8_GetFileSecurity(file_path, DACL_SECURITY_INFORMATION, s_desc, size, &size)) {
         retval = GetLastError();
         goto end;
     }
@@ -1020,7 +1028,7 @@ unsigned int w_directory_exists(const char *path){
 unsigned int w_get_file_attrs(const char *file_path) {
     unsigned int attrs;
 
-    if (attrs = GetFileAttributesA(file_path), attrs == INVALID_FILE_ATTRIBUTES) {
+    if (attrs = utf8_GetFileAttributes(file_path), attrs == INVALID_FILE_ATTRIBUTES) {
         attrs = 0;
         mdebug2("The attributes for '%s' could not be obtained. Error '%ld'.", file_path, GetLastError());
     }

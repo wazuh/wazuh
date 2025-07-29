@@ -43,6 +43,8 @@ RUN curl -OL http://packages.wazuh.com/utils/cmake/cmake-3.12.4.tar.gz && \
     linux32 ./bootstrap && linux32 make -j2 && linux32 make install && \
     cd / && rm -rf cmake-*
 
+RUN rm -f /etc/pki/tls/certs/ca-bundle.crt && curl -k -o /etc/pki/tls/certs/ca-bundle.crt https://curl.se/ca/cacert.pem
+
 RUN ln -fs $(which gcc) $(which cc)
 
 # Add the scripts to build the RPM package

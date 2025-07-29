@@ -148,6 +148,10 @@ typedef enum wdb_stmt {
     WDB_STMT_NETINFO_DEL,
     WDB_STMT_PROTO_DEL,
     WDB_STMT_ADDR_DEL,
+    WDB_STMT_USER_INSERT,
+    WDB_STMT_USER_INSERT2,
+    WDB_STMT_GROUP_INSERT,
+    WDB_STMT_GROUP_INSERT2,
     WDB_STMT_CISCAT_INSERT,
     WDB_STMT_CISCAT_DEL,
     WDB_STMT_SCAN_INFO_UPDATEFS,
@@ -244,7 +248,10 @@ typedef enum wdb_stmt {
     WDB_STMT_GLOBAL_GROUP_BELONG_FIND,
     WDB_STMT_GLOBAL_GROUP_BELONG_GET,
     WDB_STMT_GLOBAL_SELECT_GROUPS,
-    WDB_STMT_GLOBAL_SYNC_REQ_GET,
+    WDB_STMT_GLOBAL_SYNC_REQ_FULL_GET,
+    WDB_STMT_GLOBAL_SYNC_REQ_STATUS_GET,
+    WDB_STMT_GLOBAL_SYNC_REQ_KEEPALIVE_GET,
+    WDB_STMT_GLOBAL_SYNC_GET,
     WDB_STMT_GLOBAL_SYNC_SET,
     WDB_STMT_GLOBAL_GROUP_SYNC_REQ_GET,
     WDB_STMT_GLOBAL_GROUP_SYNC_ALL_GET,
@@ -332,6 +339,18 @@ typedef enum wdb_stmt {
     WDB_STMT_SYSCOLLECTOR_OSINFO_DELETE_RANGE,
     WDB_STMT_SYSCOLLECTOR_OSINFO_DELETE_BY_PK,
     WDB_STMT_SYSCOLLECTOR_OSINFO_CLEAR,
+    WDB_STMT_SYSCOLLECTOR_USERS_SELECT_CHECKSUM,
+    WDB_STMT_SYSCOLLECTOR_USERS_SELECT_CHECKSUM_RANGE,
+    WDB_STMT_SYSCOLLECTOR_USERS_DELETE_AROUND,
+    WDB_STMT_SYSCOLLECTOR_USERS_DELETE_RANGE,
+    WDB_STMT_SYSCOLLECTOR_USERS_DELETE_BY_PK,
+    WDB_STMT_SYSCOLLECTOR_USERS_CLEAR,
+    WDB_STMT_SYSCOLLECTOR_GROUPS_SELECT_CHECKSUM,
+    WDB_STMT_SYSCOLLECTOR_GROUPS_SELECT_CHECKSUM_RANGE,
+    WDB_STMT_SYSCOLLECTOR_GROUPS_DELETE_AROUND,
+    WDB_STMT_SYSCOLLECTOR_GROUPS_DELETE_RANGE,
+    WDB_STMT_SYSCOLLECTOR_GROUPS_DELETE_BY_PK,
+    WDB_STMT_SYSCOLLECTOR_GROUPS_CLEAR,
     WDB_STMT_SYS_HOTFIXES_GET,
     WDB_STMT_SYS_PROGRAMS_GET,
     WDB_STMT_SIZE // This must be the last constant
@@ -402,6 +421,8 @@ typedef enum {
     WDB_SYSCOLLECTOR_NETINFO,        ///< Net info integrity monitoring.
     WDB_SYSCOLLECTOR_HWINFO,         ///< Hardware info integrity monitoring.
     WDB_SYSCOLLECTOR_OSINFO,         ///< OS info integrity monitoring.
+    WDB_SYSCOLLECTOR_USERS,          ///< Users info integrity monitoring.
+    WDB_SYSCOLLECTOR_GROUPS,         ///< Groups info integrity monitoring.
     WDB_GENERIC_COMPONENT,           ///< Miscellaneous component
 } wdb_component_t;
 
@@ -425,12 +446,14 @@ extern char *schema_upgrade_v12_sql;
 extern char *schema_upgrade_v13_sql;
 extern char *schema_upgrade_v14_sql;
 extern char *schema_upgrade_v15_sql;
+extern char *schema_upgrade_v16_sql;
 extern char *schema_global_upgrade_v1_sql;
 extern char *schema_global_upgrade_v2_sql;
 extern char *schema_global_upgrade_v3_sql;
 extern char *schema_global_upgrade_v4_sql;
 extern char *schema_global_upgrade_v5_sql;
 extern char *schema_global_upgrade_v6_sql;
+extern char *schema_global_upgrade_v7_sql;
 
 extern wdb_config wconfig;
 extern _Config gconfig;
@@ -518,15 +541,6 @@ typedef int (*wdb_ptr_any_txn_t)(wdb_t *);
  * @return wdb_t* Database Structure locked or NULL.
  */
 wdb_t * wdb_open_global();
-
-/**
- * @brief Open mitre database and store in DB poll.
- *
- * It is opened every time a query to Mitre database is done.
- *
- * @return wdb_t* Database Structure that store mitre database or NULL on failure.
- */
-wdb_t * wdb_open_mitre();
 
 // Open database for agent and store in DB pool. It returns a locked database or NULL
 wdb_t * wdb_open_agent2(int agent_id);
@@ -855,6 +869,60 @@ int wdb_port_save(wdb_t * wdb, const char * scan_id, const char * scan_time, con
 // Delete port info about previous scan from DB.
 int wdb_port_delete(wdb_t * wdb, const char * scan_id);
 
+// User parameters struct
+typedef struct {
+    const char *scan_id;
+    const char *scan_time;
+    const char *user_name;
+    const char *user_full_name;
+    const char *user_home;
+    long long user_id;
+    long long user_uid_signed;
+    const char *user_uuid;
+    const char *user_groups;
+    long long user_group_id;
+    long long user_group_id_signed;
+    double user_created;
+    const char *user_roles;
+    const char *user_shell;
+    const char *user_type;
+    bool user_is_hidden;
+    bool user_is_remote;
+    long long user_last_login;
+    long long user_auth_failed_count;
+    double user_auth_failed_timestamp;
+    double user_password_last_change;
+    int user_password_expiration_date;
+    const char *user_password_hash_algorithm;
+    int user_password_inactive_days;
+    int user_password_max_days_between_changes;
+    int user_password_min_days_between_changes;
+    const char *user_password_status;
+    int user_password_warning_days_before_expiration;
+    long long process_pid;
+    const char *host_ip;
+    bool login_status;
+    const char *login_type;
+    const char *login_tty;
+    const char *checksum;
+} user_record_t;
+
+// Save user info into DB.
+int wdb_users_save(wdb_t * wdb, const user_record_t * user_record, const bool replace);
+
+// Insert user info tuple. Return 0 on success or -1 on error.
+int wdb_users_insert(wdb_t * wdb, const user_record_t * user_record, const bool replace);
+
+// Save group info into DB.
+int wdb_groups_save(wdb_t * wdb, const char * scan_id, const char * scan_time, long long group_id, const char * group_name,
+                    const char * group_description, long long group_id_signed, const char * group_uuid, const bool group_is_hidden,
+                    const char * group_users, const char * checksum, const bool replace);
+
+// Insert group info tuple. Return 0 on success or -1 on error.
+int wdb_groups_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, long long group_id, const char * group_name,
+                      const char * group_description, long long group_id_signed, const char * group_uuid, const bool group_is_hidden,
+                      const char * group_users, const char * checksum, const bool replace);
+
 int wdb_syscollector_save2(wdb_t * wdb, wdb_component_t component, const char * payload);
 
 // Save CIS-CAT scan results.
@@ -1003,6 +1071,9 @@ wdb_t * wdb_pool_find_prev(wdb_t * wdb);
 int wdb_stmt_cache(wdb_t * wdb, int index);
 
 int wdb_parse(char * input, char * output, int peer);
+
+sqlite3 * wdb_global_pre(void **wdb_ctx);
+void wdb_global_post(void *wdb_ctx);
 
 int wdb_parse_syscheck(wdb_t * wdb, wdb_component_t component, char * input, char * output);
 int wdb_parse_syscollector(wdb_t * wdb, const char * query, char * input, char * output);
@@ -1732,17 +1803,6 @@ int wdb_enable_foreign_keys(sqlite3 *db);
 */
  int wdbi_strings_hash(os_sha1 hexdigest, ...);
 
-/**
- * @brief Function to get a MITRE technique's name.
- *
- * @param [in] wdb The MITRE struct database.
- * @param [in] id MITRE technique's ID.
- * @param [out] output MITRE technique's name.
- * @retval 1 Success: name found on MITRE database.
- * @retval 0 On error: name not found on MITRE database.
- * @retval -1 On error: invalid DB query syntax.
- */
-int wdb_mitre_name_get(wdb_t *wdb, char *id, char *output);
 
 /**
  * @brief Function to insert an agent.
@@ -2030,6 +2090,24 @@ cJSON* wdb_global_select_groups(wdb_t *wdb);
 cJSON* wdb_global_get_group_agents(wdb_t *wdb,  wdbc_result* status, char* group_name, int last_agent_id);
 
 /**
+ * @brief Function to find and set the correct sync status value
+ *
+ * @param [in] wdb The Global struct database.
+ * @param [in] id The agent ID
+ * @param [in] requested_sync_status The value of sync_status
+*/
+char *wdb_global_validate_sync_status(wdb_t *wdb, int id, const char *requested_sync_status);
+
+/**
+ * @brief Function to get sync_status of a particular agent.
+ *
+ * @param [in] wdb The Global struct database.
+ * @param [in] id The agent ID
+ * @return The value of sync_status.
+ */
+char * wdb_global_get_sync_status(wdb_t *wdb, int id);
+
+/**
  * @brief Function to update sync_status of a particular agent.
  *
  * @param [in] wdb The Global struct database.
@@ -2165,9 +2243,10 @@ int wdb_global_get_agent_max_group_priority(wdb_t *wdb, int id);
  * @param [in] id ID of the agent to add new groups.
  * @param [in] j_groups JSON array with all the groups of the agent.
  * @param [in] priority Initial priority to insert the groups.
+ * @param [in] add_agent If true and the agent doesn't exist, it will be created.
  * @return wdbc_result representing the status of the command.
  */
-wdbc_result wdb_global_assign_agent_group(wdb_t *wdb, int id, cJSON* j_groups, int priority);
+wdbc_result wdb_global_assign_agent_group(wdb_t *wdb, int id, cJSON* j_groups, int priority, bool add_agent);
 
 /**
  * @brief Deletes groups of an agent.

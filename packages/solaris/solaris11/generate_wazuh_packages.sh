@@ -95,6 +95,9 @@ build_environment() {
     cd ..
     rm -rf *cmake-*
     ln -sf /usr/local/bin/cmake /usr/bin/cmake
+
+    export CURL_CA_BUNDLE="/etc/certs/ca-bundle.crt"
+    echo "export CURL_CA_BUNDLE=/etc/certs/ca-bundle.crt" >> /etc/profile
 }
 
 compute_version_revision() {
@@ -137,6 +140,7 @@ compile() {
     export PATH=/usr/local/gcc-5.5.0/bin:/usr/sbin:/usr/bin:/usr/ccs/bin:/opt/csw/bin
     export CPLUS_INCLUDE_PATH=/usr/local/gcc-5.5.0/include/c++/5.5.0
     export LD_LIBRARY_PATH=/usr/local/gcc-5.5.0/lib
+    export CURL_CA_BUNDLE="/etc/certs/ca-bundle.crt"
 
     cd ${current_path}
     VERSION="v$(sed -n 's/.*"version"[ \t]*:[ \t]*"\([^"]*\)".*/\1/p' ${SOURCE}/VERSION.json)"

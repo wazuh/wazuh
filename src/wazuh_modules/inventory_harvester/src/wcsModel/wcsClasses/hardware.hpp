@@ -30,13 +30,19 @@ struct Hardware final
         int64_t free = DEFAULT_INT_VALUE;
         int64_t total = DEFAULT_INT_VALUE;
         int64_t used = DEFAULT_INT_VALUE;
+        double usage = DEFAULT_DOUBLE_VALUE;
 
         REFLECTABLE(MAKE_FIELD("free", &Memory::free),
                     MAKE_FIELD("total", &Memory::total),
-                    MAKE_FIELD("used", &Memory::used));
+                    MAKE_FIELD("used", &Memory::used),
+                    MAKE_FIELD("usage", &Memory::usage));
     } memory;
 
-    REFLECTABLE(MAKE_FIELD("cpu", &Hardware::cpu), MAKE_FIELD("memory", &Hardware::memory));
+    std::string_view serial_number;
+
+    REFLECTABLE(MAKE_FIELD("cpu", &Hardware::cpu),
+                MAKE_FIELD("memory", &Hardware::memory),
+                MAKE_FIELD("serial_number", &Hardware::serial_number));
 };
 
 #endif // _HW_WCS_MODEL_HPP

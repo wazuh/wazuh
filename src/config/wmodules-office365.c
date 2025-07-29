@@ -179,7 +179,7 @@ int wm_office365_read(__attribute__((unused)) const OS_XML *xml, xml_node **node
                     merror("It is not allowed to set 'client_secret' and 'client_secret_path' at module '%s'.", WM_OFFICE365_CONTEXT.name);
                     return OS_INVALID;
                 }
-                if(access(office365_auth->client_secret_path, F_OK) != 0 ) {
+                if(waccess(office365_auth->client_secret_path, F_OK) != 0 ) {
                     merror("Invalid content for tag '%s' at module '%s': The path cannot be opened.", XML_CLIENT_SECRET_PATH, WM_OFFICE365_CONTEXT.name);
                     return OS_INVALID;
                 }

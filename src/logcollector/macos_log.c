@@ -340,18 +340,18 @@ STATIC wfd_t * w_macos_log_exec(char ** log_cmd_array, u_int32_t flags) {
 }
 
 /**
- * @brief Checks whether the `log` command can be executed or not by using the access() function
+ * @brief Checks whether the `log` command can be executed or not by using the waccess() function
  * @warning if macOS Sierra is beeing used, also `script` command will be checked.
  * @return true when `log` command can be executed, false otherwise.
  */
 STATIC INLINE bool w_macos_is_log_executable(void) {
 
-    if (w_is_macos_sierra() && access(SCRIPT_CMD_STR, X_OK) != 0) {
+    if (w_is_macos_sierra() && waccess(SCRIPT_CMD_STR, X_OK) != 0) {
         merror(ACCESS_ERROR, SCRIPT_CMD_STR, strerror(errno), errno);
         return false;
     }
 
-    const int retval = access(LOG_CMD_STR, X_OK);
+    const int retval = waccess(LOG_CMD_STR, X_OK);
     if (retval == 0) {
         return true;
     }

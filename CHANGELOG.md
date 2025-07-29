@@ -6,84 +6,187 @@ All notable changes to this project will be documented in this file.
 
 ## [v4.14.0]
 
-
-## [v4.13.0]
-
 ### Manager
+
+#### Added
+
+- Added groups users tables in wazuh-db. ([#30404](https://github.com/wazuh/wazuh/pull/30404))
+
+#### Fixed
+
+- Fixed internal decoder RC startup. ([#29663](https://github.com/wazuh/wazuh/pull/29663))
+- Fixed queue stats RC over wazuh-analysisd. ([#29673](https://github.com/wazuh/wazuh/pull/29673))
+- Fixed race condition in the event queue. ([#29672](https://github.com/wazuh/wazuh/pull/29672))
+- Fixed regexCompile race condition. ([#29699](https://github.com/wazuh/wazuh/pull/29699))
 
 #### Changed
 
-- Separated control messages from the connection handling in remoted. ([29153](https://github.com/wazuh/wazuh/pull/29153))
+- Improved databaseFeedManagerTesttool. ([#30192](https://github.com/wazuh/wazuh/pull/30192))
+- Adapted wazuh-maild to RFC5322 standard. ([#30793](https://github.com/wazuh/wazuh/pull/30793))
 
 ### Agent
 
 #### Added
 
-- Added SCA support for Oracle Linux 10. ([#29139](https://github.com/wazuh/wazuh/pull/29139))
+- Added support for parquet version 2 in AWS Wodle. ([#30235](https://github.com/wazuh/wazuh/pull/30235))
+- Added capability to do a hot configuration reload in Linux agents. ([#30797](https://github.com/wazuh/wazuh/pull/30797))
 
 #### Fixed
 
+- Fixed errors with Azure Graph event fields. ([#30831](https://github.com/wazuh/wazuh/pull/30831))
+
+### RESTful API
+
+#### Added
+
+- Added syscollector users and groups endpoints. ([#30913](https://github.com/wazuh/wazuh/pull/30913))
+
+#### Fixed
+
+- Fixed secure headers. ([#31046](https://github.com/wazuh/wazuh/pull/31046))
+
+### Ruleset
+
+#### Changed
+
+- Fixed multiple Rocky Linux SCA checks generating incorrect results. ([#29976](https://github.com/wazuh/wazuh/pull/29976))
+- Fixed missing Check (2.3.7.6) in Windows Server 2019 v2.0.0. ([#30173](https://github.com/wazuh/wazuh/pull/30173))
+- Fixed camel casing in ownCloud ruleset header. ([#30276](https://github.com/wazuh/wazuh/pull/30276))
+
+### Other
+
+#### Changed
+
+- Updated `requests` to version 2.32.4. ([#30536](https://github.com/wazuh/wazuh/pull/30536))
+- Updated `urllib3` to version 2.5.0 and `protobuf` to version 5.29.5. ([#30624](https://github.com/wazuh/wazuh/pull/30624))
+- Upgraded Python embedded interpreter to 3.10.18. ([#30916](https://github.com/wazuh/wazuh/pull/30916))
+
+
+## [v4.13.1]
+
+### Manager
+
+#### Fixed
+
+- Fixed DFM graceful shutdown. ([#30627](https://github.com/wazuh/wazuh/pull/30627))
+- Fixed inode field as string in FIM JSON messages to ensure schema consistency. ([#30718](https://github.com/wazuh/wazuh/pull/30718))
+
+### Agent
+
+#### Added
+
+- Added Ms-Graph token validation before performing requests. ([#30377](https://github.com/wazuh/wazuh/pull/30377))
+- Added support for UTF-8 characters in file paths for FIM. ([#30763](https://github.com/wazuh/wazuh/pull/30763))
+
+#### Fixed
+
+- Fixed the loss of precision of the FIM inode field at values higher than 2ˆ53. ([#30552](https://github.com/wazuh/wazuh/pull/30552))
+- Fixed expanded file list in logcollector getconfig output. ([#30614](https://github.com/wazuh/wazuh/pull/30614))
+
+### RESTful API
+
+#### Added
+
+- Added /agents/summary endpoint. ([#29589](https://github.com/wazuh/wazuh/pull/29589))
+- Added support for hot ruleset reload via API. ([#29954](https://github.com/wazuh/wazuh/pull/29954))
+
+#### Changed
+
+- Removed internal_key from queries filters. ([#30637](https://github.com/wazuh/wazuh/pull/30637))
+
+
+## [v4.13.0]
+
+### Manager
+
+#### Added
+
+- Added Analysisd ability to do a hot ruleset reload. ([#29458](https://github.com/wazuh/wazuh/pull/29458))
+- Added support for global queries of FIM and system inventory data. ([#27894](https://github.com/wazuh/wazuh/issues/27894))
+- Added sanity checks for hotfix values in Vulnerability Detector. ([#30504](https://github.com/wazuh/wazuh/pull/30504))
+
+#### Fixed
+
+- Fixed missing agent version handling in Vulnerability Detector. ([#29181](https://github.com/wazuh/wazuh/pull/29181))
+- Fixed race condition in agent status synchronization between worker and master. ([#29624](https://github.com/wazuh/wazuh/pull/29624))
+- Fixed agent-group assignment for missing agents with improved error handling. ([#30534](https://github.com/wazuh/wazuh/pull/30534))
+- Fixed missing OS info updates in global inventory after first scan. ([#30818](https://github.com/wazuh/wazuh/pull/30818))
+
+#### Changed
+
+- Improved reports functionality to avoid duplicated daily FIM reports. ([#29232](https://github.com/wazuh/wazuh/pull/29232))
+- Optimized agent query endpoints. ([#29363](https://github.com/wazuh/wazuh/pull/29363))
+- Implemented RBAC resource cache with TTL support. ([#29406](https://github.com/wazuh/wazuh/pull/29406))
+- Improved Wazuh-DB protocol to support large HTTP requests and remove pagination. ([#29514](https://github.com/wazuh/wazuh/pull/29514))
+- Added HTTP client implementation to wazuh-db. ([#29515](https://github.com/wazuh/wazuh/pull/29515))
+- Separated control messages from the connection handling in remoted. ([29153](https://github.com/wazuh/wazuh/pull/29153))
+- Added capability to re-index CVEs if documents have changed in Vulnerability detector. ([#29916](https://github.com/wazuh/wazuh/pull/29916))
+- Improved exception handling in `run_local` SDK funcition. ([#30851](https://github.com/wazuh/wazuh/pull/30851))
+
+### Agent
+
+#### Added
+
+- Added support for Rocky Linux and AlmaLinux in the agent upgrade module. ([#29391](https://github.com/wazuh/wazuh/pull/29391))
+- Added handling of CentOS 9 SCA files in package specs. ([#29393](https://github.com/wazuh/wazuh-packages/pull/29393))
+- Added SCA support for Oracle Linux 10. ([#29139](https://github.com/wazuh/wazuh/pull/29139))
+- Added Rootcheck rule to detect root-owned files with world-writable permissions. ([#30556](https://github.com/wazuh/wazuh/pull/30556))
+
+#### Fixed
+
+- Fixed incorrect handling of events in the Custom logs bucket. ([#29312](https://github.com/wazuh/wazuh/pull/29312))
 - Fixed download Azure's blob race condition. ([29317](https://github.com/wazuh/wazuh/pull/29317))
 - Fixed FIM reports false files. ([#28962](https://github.com/wazuh/wazuh/pull/28962))
 - Fixed IPv6 address format reported by WindowsHelper. ([#29502](https://github.com/wazuh/wazuh/pull/29502))
 - Fixed hidden port detection and netstat availability handling. ([#29561](https://github.com/wazuh/wazuh/pull/29561))
 - Replaced `select()` with `sleep()` in Logcollector to prevent errors during Docker deployment. ([#29905](https://github.com/wazuh/wazuh/pull/29905))
+- Fixed NetNTLMv2 exposure by filtering UNC paths and mapped drives in Windows agent. ([#30060](https://github.com/wazuh/wazuh/pull/30060))
+- Fixed Windows agent not starting after manual upgrade by deferring service start to post-install. ([#29820](https://github.com/wazuh/wazuh/pull/29820))
 
 #### Changed
 
+- Improved agent synchronization to reduce redundant payload transfers. ([#29426](https://github.com/wazuh/wazuh/pull/29426))
+- Improved Syscollector to report only Python packages managed by `dpkg`. ([#28688](https://github.com/wazuh/wazuh/pull/28688))
+- Improved `wazuh-db` JSON handling performance by updating external dependencies. ([#29399](https://github.com/wazuh/wazuh/issues/29399))
+- Improved Azure module logging capabilities. ([#29930](https://github.com/wazuh/wazuh/pull/29930))
+- Improved restart on macOS agents after an upgrade. ([#29940](https://github.com/wazuh/wazuh/pull/29940))
 - Standarized different services timeouts. ([#29443](https://github.com/wazuh/wazuh/pull/29443))
 
 ### RESTful API
+
+#### Added
+
+- Added the server uuid to the /manager/info endpoint. ([#29524](https://github.com/wazuh/wazuh/pull/29524))
 
 #### Fixed
 
 - Fixed false positive in configuration uploading. ([#28962](https://github.com/wazuh/wazuh/pull/28962))
 - Fixed sorting by version in agent list endpoint. ([#29166](https://github.com/wazuh/wazuh/pull/29166))
 
+### Ruleset
+
+#### Added
+
+- Added SCA content for CentOS Stream 9. ([#29269](https://github.com/wazuh/wazuh/pull/29269))
+- Added IOCs and rules for Wazuh 4.x ruleset improvement. ([#29653](https://github.com/wazuh/wazuh/pull/29653))
+- Added SCA content for Oracle Linux 10. ([#29139](https://github.com/wazuh/wazuh/pull/29139))
+- Added rule to minimize event flooding from Windows events on the Wazuh manager. ([#28790](https://github.com/wazuh/wazuh/pull/28790))
+
+#### Changed
+
+- Fixed bugs in Microsoft Windows 11 Enterprise SCA policy. ([#5648](https://github.com/wazuh/wazuh/pull/29221))
+- Fixed multiple checks in RHEL 9, RHEL 10, Rocky Linux 8 and Rocky Linux 9 SCA policies. ([#29040](https://github.com/wazuh/wazuh/pull/29040))
+- Fixed diff causing false negatives in rootcheck. ([#28982](https://github.com/wazuh/wazuh/pull/28982))
+- Fixed multiple RHEL 8 and CentOS 7 SCA checks generating incorrect results. ([#28711](https://github.com/wazuh/wazuh/pull/28711))
+
 ### Other
 
 #### Changed
+
+- Updated Python dependencies: `setuptools`, `Jinja2`, and `PyJWT`. ([#29610](https://github.com/wazuh/wazuh/pull/29610))
 - Upgraded Python embedded interpreter to 3.10.16. ([#28646](https://github.com/wazuh/wazuh/pull/28646))
 - Upgraded h11 to 0.16.0 and httpcore to 1.0.9. ([#29735](https://github.com/wazuh/wazuh/pull/29735))
 - Removed unused Python Azure dependencies. ([#28564](https://github.com/wazuh/wazuh/pull/28564))
-
-
-## [v4.12.2]
-
-
-## [v4.12.1]
-
-### Manager
-
-#### Fixed
-- Fixed missing agent version handling in Vulnerability Detector. ([#29181](https://github.com/wazuh/wazuh/pull/29181))
-
-#### Changed
-- Improved reports functionality to avoid duplicated daily FIM reports. ([#29232](https://github.com/wazuh/wazuh/pull/29232))
-
-### Agent
-
-#### Added
-- Added support for Rocky Linux and AlmaLinux in the agent upgrade module. ([#29391](https://github.com/wazuh/wazuh/pull/29391))
-- Added handling of CentOS 9 SCA files in package specs. ([#29393](https://github.com/wazuh/wazuh-packages/pull/29393))
-
-#### Fixed
-- Fixed incorrect handling of events in the Custom logs bucket. ([#29312](https://github.com/wazuh/wazuh/pull/29312))
-
-#### Changed
-- Improved agent synchronization to reduce redundant payload transfers. ([#29426](https://github.com/wazuh/wazuh/pull/29426))
-- Improved Syscollector to report only Python packages managed by `dpkg`. ([#28688](https://github.com/wazuh/wazuh/pull/28688))
-- Improved `wazuh-db` JSON handling performance by updating external dependencies. ([#29399](https://github.com/wazuh/wazuh/issues/29399))
-
-### RESTful API
-
-#### Added
-- Added the server uuid to the /manager/info endpoint. ([#29524](https://github.com/wazuh/wazuh/pull/29524))
-
-### Other
-
-#### Changed
-- Updated Python dependencies: `setuptools`, `Jinja2`, and `PyJWT`. ([#29489](https://github.com/wazuh/wazuh/pull/29489))
 
 
 ## [v4.12.0]
@@ -145,14 +248,22 @@ All notable changes to this project will be documented in this file.
 
 #### Added
 
+- Created SCA content for Distribution Independent Linux. ([#27749](https://github.com/wazuh/wazuh/pull/27749))
+- Created SCA policy for Ubuntu 24.04 LTS. ([#27253](https://github.com/wazuh/wazuh/pull/27253))
+- Added SCA content for CentOS Stream 10. ([#24495](https://github.com/wazuh/wazuh/issues/24495))
 - Added SCA content for Windows Server 2025. ([#26732](https://github.com/wazuh/wazuh/issues/26732))
-- Added SCA content for Fedora 41. ([#26736](https://github.com/wazuh/wazuh/issues/26736))
-- Create SCA policy for Distribution Independent Linux. ([#26837](https://github.com/wazuh/wazuh/issues/26837))
-- Create SCA policy for Ubuntu 24.04 LTS. ([#23194](https://github.com/wazuh/wazuh/issues/23194))
+- Added SCA content for RHEL 10. ([#27752](https://github.com/wazuh/wazuh/pull/27752))
+- Added SCA content for AlmaLinux 10. ([#27998](https://github.com/wazuh/wazuh/pull/27998))
 
 #### Changed
 
-- SCA rule Improvement for MacOS 15 SCA. ([#26982](https://github.com/wazuh/wazuh/issues/26982))
+- Improved SCA rule for macOS 15. ([#27751](https://github.com/wazuh/wazuh/pull/27751))
+- Updated SCA Policy for Ubuntu 22.04 LTS to CIS Benchmark v2.0.0. ([#28466](https://github.com/wazuh/wazuh/pull/28466))
+- Fixed incorrect registry key in Windows Server 2022 SCA policy. ([#27911](https://github.com/wazuh/wazuh/pull/27911))
+- Fixed duplicated SCA check IDs for Windows Server 2025. ([#29204](https://github.com/wazuh/wazuh/pull/29204))
+- Fixed Ubuntu SCA checks to ensure nftables and iptables do not co-exist ([#27913](https://github.com/wazuh/wazuh/pull/27913))
+- Fixed errors in multiple checks in Rocky Linux 9 SCA checks ([#28468](https://github.com/wazuh/wazuh/pull/28468))
+- Fixed Ubuntu 24.04 SCA parsing error. ([#28379](https://github.com/wazuh/wazuh/pull/28379))
 
 ### Other
 

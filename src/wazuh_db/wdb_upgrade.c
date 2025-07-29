@@ -47,7 +47,8 @@ wdb_t * wdb_upgrade(wdb_t *wdb) {
         schema_upgrade_v12_sql,
         schema_upgrade_v13_sql,
         schema_upgrade_v14_sql,
-        schema_upgrade_v15_sql
+        schema_upgrade_v15_sql,
+        schema_upgrade_v16_sql
     };
 
     bool database_updated = false;
@@ -118,6 +119,7 @@ wdb_t * wdb_upgrade_global(wdb_t *wdb) {
         schema_global_upgrade_v4_sql,
         schema_global_upgrade_v5_sql,
         schema_global_upgrade_v6_sql,
+        schema_global_upgrade_v7_sql,
     };
 
     char output[OS_MAXSTR + 1] = { 0 };

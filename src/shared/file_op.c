@@ -21,6 +21,9 @@
 #include "unit_tests/wrappers/windows/libc/stdio_wrappers.h"
 #include "unit_tests/wrappers/windows/fileapi_wrappers.h"
 #include "unit_tests/wrappers/windows/handleapi_wrappers.h"
+#include "unit_tests/wrappers/windows/winnetwk_wrappers.h"
+#include "unit_tests/wrappers/windows/stat64_wrappers.h"
+#include "unit_tests/wrappers/windows/processthreadsapi_wrappers.h"
 #endif
 #endif
 
@@ -28,6 +31,7 @@
 #include <regex.h>
 #else
 #include <aclapi.h>
+#include <winnetwk.h>
 #endif
 
 /* Vista product information */
@@ -397,6 +401,102 @@ int isVista;
 
 const char *__local_name = "unset";
 
+int waccess(const char *path, int mode) {
+#ifdef WIN32
+    if (is_network_path(path)) {
+        errno = EACCES;
+        mwarn(NETWORK_PATH_EXECUTED, path);
+        return (-1);
+    }
+#endif
+    return access(path, mode);
+}
+
+#ifdef WIN32
+HANDLE wCreateFile(LPCSTR   lpFileName,
+                    DWORD   dwDesiredAccess,
+                    DWORD   dwShareMode,
+                    LPSECURITY_ATTRIBUTES lpSecurityAttributes,
+                    DWORD   dwCreationDisposition,
+                    DWORD   dwFlagsAndAttributes,
+                    HANDLE  hTemplateFile) {
+
+    if (is_network_path(lpFileName)) {
+        errno = EACCES;
+        mwarn(NETWORK_PATH_EXECUTED, lpFileName);
+        return (INVALID_HANDLE_VALUE);
+    }
+    return utf8_CreateFile(lpFileName,
+                           dwDesiredAccess,
+                           dwShareMode,
+                           lpSecurityAttributes,
+                           dwCreationDisposition,
+                           dwFlagsAndAttributes,
+                           hTemplateFile);
+}
+
+BOOL wCreateProcessW(LPCWSTR               lpApplicationName,
+    	             LPWSTR                lpCommandLine,
+    	             LPSECURITY_ATTRIBUTES lpProcessAttributes,
+    	             LPSECURITY_ATTRIBUTES lpThreadAttributes,
+    	             BOOL                  bInheritHandles,
+    	             DWORD                 dwCreationFlags,
+    	             LPVOID                lpEnvironment,
+    	             LPCWSTR               lpCurrentDirectory,
+    	             LPSTARTUPINFOW        lpStartupInfo,
+    	             LPPROCESS_INFORMATION lpProcessInformation) {
+
+    if (is_network_path(lpCommandLine)) {
+        errno = EACCES;
+        mwarn(NETWORK_PATH_EXECUTED, lpCommandLine);
+        return (false);
+    }
+    return CreateProcessW(lpApplicationName,
+    	                  lpCommandLine,
+    	                  lpProcessAttributes,
+    	                  lpThreadAttributes,
+    	                  bInheritHandles,
+    	                  dwCreationFlags,
+    	                  lpEnvironment,
+    	                  lpCurrentDirectory,
+    	                  lpStartupInfo,
+    	                  lpProcessInformation);
+}
+
+int w_stat64(const char * pathname,
+             struct _stat64 * statbuf) {
+    if (is_network_path(pathname)) {
+        errno = EACCES;
+        mwarn(NETWORK_PATH_EXECUTED, pathname);
+        return (-1);
+    }
+    return utf8_stat64(pathname, statbuf);
+}
+#endif
+
+DIR * wopendir(const char *name) {
+#ifdef WIN32
+    if (is_network_path(name)) {
+        errno = EACCES;
+        mwarn(NETWORK_PATH_EXECUTED, name);
+        return (NULL);
+    }
+#endif
+    return opendir(name);
+}
+
+int w_stat(const char * pathname,
+           struct stat * statbuf) {
+#ifdef WIN32
+    if (is_network_path(pathname)) {
+        errno = EACCES;
+        mwarn(NETWORK_PATH_EXECUTED, pathname);
+        return (-1);
+    }
+#endif
+    return stat(pathname, statbuf);
+}
+
 /* Set the name of the starting program */
 void OS_SetName(const char *name)
 {
@@ -409,7 +509,7 @@ time_t File_DateofChange(const char *file)
 {
     struct stat file_status;
 
-    if (stat(file, &file_status) < 0) {
+    if (w_stat(file, &file_status) < 0) {
         return (-1);
     }
 
@@ -420,14 +520,14 @@ time_t File_DateofChange(const char *file)
 ino_t File_Inode(const char *file)
 {
     struct stat buffer;
-    return stat(file, &buffer) ? 0 : buffer.st_ino;
+    return w_stat(file, &buffer) ? 0 : buffer.st_ino;
 }
 
 
 int IsDir(const char *file)
 {
     struct stat file_status;
-    if (stat(file, &file_status) < 0) {
+    if (w_stat(file, &file_status) < 0) {
         return (-1);
     }
     if (S_ISDIR(file_status.st_mode)) {
@@ -442,7 +542,7 @@ int check_path_type(const char *dir)
     DIR *dp;
     int retval;
 
-    if (dp = opendir(dir), dp) {
+    if (dp = wopendir(dir), dp) {
         retval = 2;
         closedir(dp);
     } else if (errno == ENOTDIR){
@@ -456,14 +556,14 @@ int check_path_type(const char *dir)
 
 int IsFile(const char *file) {
     struct stat buf;
-    return (!stat(file, &buf) && S_ISREG(buf.st_mode)) ? 0 : -1;
+    return (!w_stat(file, &buf) && S_ISREG(buf.st_mode)) ? 0 : -1;
 }
 
 #ifndef WIN32
 
 int IsSocket(const char * file) {
     struct stat buf;
-    return (!stat(file, &buf) && S_ISSOCK(buf.st_mode)) ? 0 : -1;
+    return (!w_stat(file, &buf) && S_ISSOCK(buf.st_mode)) ? 0 : -1;
 }
 
 
@@ -477,7 +577,7 @@ int IsLink(const char * file) {
 
 off_t FileSize(const char * path) {
     struct stat buf;
-    return stat(path, &buf) ? -1 : buf.st_size;
+    return w_stat(path, &buf) ? -1 : buf.st_size;
 }
 
 
@@ -491,7 +591,7 @@ float DirSize(const char *path) {
     float file_size = 0.0;
     char *entry;
 
-    if (directory = opendir(path), directory == NULL) {
+    if (directory = wopendir(path), directory == NULL) {
         mdebug2("Couldn't open directory '%s'.", path);
         return -1;
     }
@@ -505,7 +605,7 @@ float DirSize(const char *path) {
         os_malloc(strlen(path) + strlen(dir->d_name) + 2, entry);
         snprintf(entry, strlen(path) + 2 + strlen(dir->d_name), "%s/%s", path, dir->d_name);
 
-        if (stat(entry, &buf) == -1) {
+        if (w_stat(entry, &buf) == -1) {
             os_free(entry);
             closedir(directory);
             return 0;
@@ -1180,7 +1280,7 @@ bool is_program_available(const char *program) {
     while (dir) {
         char fullpath[512];
         snprintf(fullpath, sizeof(fullpath), "%s/%s", dir, program);
-        if (access(fullpath, X_OK) == 0) {
+        if (waccess(fullpath, X_OK) == 0) {
             found = true;
             break;
         }
@@ -1223,7 +1323,7 @@ int get_creation_date(char *dir, SYSTEMTIME *utc) {
     FILETIME creation_date;
     int retval = 1;
 
-    if (hdle = CreateFile(dir, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL | FILE_FLAG_BACKUP_SEMANTICS, NULL), hdle == INVALID_HANDLE_VALUE) {
+    if (hdle = wCreateFile(dir, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL | FILE_FLAG_BACKUP_SEMANTICS, NULL), hdle == INVALID_HANDLE_VALUE) {
         return retval;
     }
 
@@ -1242,7 +1342,7 @@ end:
 time_t get_UTC_modification_time(const char *file){
     HANDLE hdle;
     FILETIME modification_date;
-    if (hdle = CreateFile(file, GENERIC_READ, FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL), \
+    if (hdle = wCreateFile(file, GENERIC_READ, FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL), \
         hdle == INVALID_HANDLE_VALUE) {
         mferror(FIM_WARN_OPEN_HANDLE_FILE, file, GetLastError());
         return 0;
@@ -1269,7 +1369,7 @@ char *basename_ex(char *path)
 int rename_ex(const char *source, const char *destination)
 {
     BOOL file_created = FALSE;
-    DWORD dwFileAttributes = GetFileAttributes(destination);
+    DWORD dwFileAttributes = utf8_GetFileAttributes(destination);
 
     if (dwFileAttributes == INVALID_FILE_ATTRIBUTES) {
         // If the destination file does not exist, create it.
@@ -1279,7 +1379,7 @@ int rename_ex(const char *source, const char *destination)
         const DWORD dwCreationDisposition = CREATE_ALWAYS;
         const DWORD dwFlagsAndAttributes = FILE_ATTRIBUTE_NORMAL;
 
-        HANDLE hFile = CreateFile(destination, dwDesiredAccess, dwShareMode, NULL, dwCreationDisposition, dwFlagsAndAttributes, NULL);
+        HANDLE hFile = wCreateFile(destination, dwDesiredAccess, dwShareMode, NULL, dwCreationDisposition, dwFlagsAndAttributes, NULL);
 
         if (hFile == INVALID_HANDLE_VALUE) {
             mferror("Could not create file (%s) which returned (%lu)", destination, GetLastError());
@@ -1290,12 +1390,12 @@ int rename_ex(const char *source, const char *destination)
         file_created = TRUE;
     }
 
-    if (!ReplaceFile(destination, source, NULL, 0, NULL, NULL)) {
+    if (!utf8_ReplaceFile(destination, source, NULL, 0)) {
         mferror("Could not move (%s) to (%s) which returned (%lu)", source, destination, GetLastError());
 
         if (file_created) {
             // Delete the destination file as it's been created by this function.
-            DeleteFile(destination);
+            utf8_DeleteFile(destination);
         }
 
         return (-1);
@@ -1430,7 +1530,7 @@ int mkstemp_ex(char *tmp_path)
     sa.lpSecurityDescriptor = pSD;
     sa.bInheritHandle = FALSE;
 
-    h = CreateFileA(
+    h = wCreateFile(
             tmp_path,
             GENERIC_WRITE,
             0,
@@ -2055,7 +2155,7 @@ FILE * w_fopen_r(const char *file, const char * mode, BY_HANDLE_FILE_INFORMATION
     int fd;
     HANDLE h;
 
-    h = CreateFile(file, GENERIC_READ, FILE_SHARE_DELETE|FILE_SHARE_READ|FILE_SHARE_WRITE,
+    h = wCreateFile(file, GENERIC_READ, FILE_SHARE_DELETE|FILE_SHARE_READ|FILE_SHARE_WRITE,
                    NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
     if (h == INVALID_HANDLE_VALUE) {
         return NULL;
@@ -2085,7 +2185,7 @@ FILE * w_fopen_r(const char *file, const char * mode, BY_HANDLE_FILE_INFORMATION
 }
 
 char **expand_win32_wildcards(const char *path) {
-    WIN32_FIND_DATA FindFileData;
+    WIN32_FIND_DATAW fd;
     HANDLE hFind;
     char **pending_expand = NULL;
     char **expanded_paths = NULL;
@@ -2131,7 +2231,14 @@ char **expand_win32_wildcards(const char *path) {
                 *look_back = '\0';
             }
 
-            hFind = FindFirstFile(pattern, &FindFileData);
+            wchar_t *wpattern = auto_to_wide(pattern);
+            if (!wpattern) {
+                continue;
+            }
+
+            hFind = FindFirstFileW(wpattern, &fd);
+            os_free(wpattern);
+
             if (hFind == INVALID_HANDLE_VALUE) {
                 long unsigned errcode = GetLastError();
                 if (errcode == 2) {
@@ -2148,20 +2255,26 @@ char **expand_win32_wildcards(const char *path) {
                 continue;
             }
             do {
-                if (strcmp(FindFileData.cFileName, ".") == 0 || strcmp(FindFileData.cFileName, "..") == 0) {
+                if (wcscmp(fd.cFileName, L".") == 0 || wcscmp(fd.cFileName, L"..") == 0) {
                     continue;
                 }
 
-                if ((FindFileData.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT)) {
+                if ((fd.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT)) {
                     continue;
                 }
 
-                if ((FindFileData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) == 0 && next_glob != NULL) {
+                if ((fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) == 0 && next_glob != NULL) {
+                    continue;
+                }
+
+                char *utf8_name = wide_to_utf8(fd.cFileName);
+                if (!utf8_name) {
                     continue;
                 }
 
                 os_strdup(parent_path, expanded_paths[expanded_index]);
-                wm_strcat(&expanded_paths[expanded_index], FindFileData.cFileName, PATH_SEP);
+                wm_strcat(&expanded_paths[expanded_index], utf8_name, PATH_SEP);
+                os_free(utf8_name);
 
                 if (next_glob != NULL) {
                     wm_strcat(&expanded_paths[expanded_index], next_glob, PATH_SEP);
@@ -2170,8 +2283,7 @@ char **expand_win32_wildcards(const char *path) {
                 os_realloc(expanded_paths, (expanded_index + 2) * sizeof(char *), expanded_paths);
                 expanded_index++;
                 expanded_paths[expanded_index] = NULL;
-
-            } while(FindNextFile(hFind, &FindFileData));
+            } while (FindNextFileW(hFind, &fd));
 
             FindClose(hFind);
             // Now, free the memory, as the path that needed to be expanded is no longer needed and it's expansion is
@@ -2186,6 +2298,7 @@ char **expand_win32_wildcards(const char *path) {
         pending_expand = expanded_paths;
     }
 
+    os_free(parent_path);
     return expanded_paths;
 }
 
@@ -2230,7 +2343,7 @@ int cldir_ex_ignore(const char * name, const char ** ignore) {
 
     // Erase content
 
-    dir = opendir(name);
+    dir = wopendir(name);
 
     if (!dir) {
         return -1;
@@ -2278,7 +2391,7 @@ int TempFile(File *file, const char *source, int copy) {
 #ifndef WIN32
     struct stat buf;
 
-    if (stat(source, &buf) == 0) {
+    if (w_stat(source, &buf) == 0) {
         if (fchmod(fd, buf.st_mode) < 0) {
             if (fp_src) {
                 fclose(fp_src);
@@ -2726,7 +2839,7 @@ char ** wreaddir(const char * name) {
     char ** files;
     unsigned int i = 0;
 
-    if (dir = opendir(name), !dir) {
+    if (dir = wopendir(name), !dir) {
         return NULL;
     }
 
@@ -2764,9 +2877,10 @@ FILE * wfopen(const char * pathname, const char * mode) {
     FILE * fp;
     int i;
 
-    if (pathname && strchr("\\/", pathname[0]) && strchr("\\/?\"<>|", pathname[1])) {
-        errno = EINVAL;
-        return NULL;
+    if (is_network_path(pathname)) {
+        errno = EACCES;
+        mwarn(NETWORK_PATH_EXECUTED, pathname);
+        return (NULL);
     }
 
     for (i = 0; mode[i]; ++i) {
@@ -2802,7 +2916,7 @@ FILE * wfopen(const char * pathname, const char * mode) {
         return NULL;
     }
 
-    hFile = CreateFile(pathname, dwDesiredAccess, dwShareMode, NULL, dwCreationDisposition, dwFlagsAndAttributes, NULL);
+    hFile = wCreateFile(pathname, dwDesiredAccess, dwShareMode, NULL, dwCreationDisposition, dwFlagsAndAttributes, NULL);
 
     if (hFile == INVALID_HANDLE_VALUE) {
         errno = GetLastError();
@@ -2894,7 +3008,7 @@ int w_uncompress_gzfile(const char *gzfilesrc, const char *gzfiledst) {
 
 #ifdef WIN32
     /* Win32 does not have lstat */
-    if (stat(gzfilesrc, &statbuf) < 0)
+    if (w_stat(gzfilesrc, &statbuf) < 0)
 #else
     if (lstat(gzfilesrc, &statbuf) < 0)
 #endif
@@ -3175,7 +3289,7 @@ DWORD FileSizeWin(const char * file) {
     HANDLE h1;
     BY_HANDLE_FILE_INFORMATION lpFileInfo;
 
-    h1 = CreateFile(file, GENERIC_READ,
+    h1 = wCreateFile(file, GENERIC_READ,
                     FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE,
                     NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
     if (h1 == INVALID_HANDLE_VALUE) {
@@ -3192,41 +3306,83 @@ DWORD FileSizeWin(const char * file) {
 }
 
 float DirSize(const char *path) {
-    WIN32_FIND_DATA fdFile;
+    WIN32_FIND_DATAW fdFile;
     HANDLE hFind = NULL;
     float folder_size = 0.0;
     float file_size = 0.0;
 
-    char sPath[2048];
+    wchar_t *wPathInput = auto_to_wide(path);
+    if (!wPathInput) {
+        return 0;
+    }
+
+    wchar_t wsPath[2048];
 
     // Specify a file mask. *.* = We want everything!
-    sprintf(sPath, "%s\\*.*", path);
+    swprintf(wsPath, sizeof(wsPath) / sizeof(wsPath[0]), L"%ls\\*.*", wPathInput);
 
-    if ((hFind = FindFirstFile(sPath, &fdFile)) == INVALID_HANDLE_VALUE) {
+    if ((hFind = FindFirstFileW(wsPath, &fdFile)) == INVALID_HANDLE_VALUE) {
         merror(FILE_ERROR, path);
+        os_free(wPathInput);
         return 0;
     }
 
     do {
-        if (strcmp(fdFile.cFileName, ".") != 0 && strcmp(fdFile.cFileName, "..") != 0) {
+        if (wcscmp(fdFile.cFileName, L".") != 0 && wcscmp(fdFile.cFileName, L"..") != 0) {
             // Build up our file path using the passed in
             //  [path] and the file/foldername we just found:
-            sprintf(sPath, "%s\\%s", path, fdFile.cFileName);
+            swprintf(wsPath, sizeof(wsPath) / sizeof(wsPath[0]), L"%ls\\%ls", wPathInput, fdFile.cFileName);
 
-            if (fdFile.dwFileAttributes &FILE_ATTRIBUTE_DIRECTORY) {
-                folder_size += DirSize(sPath);
+            char *utf8_file = wide_to_utf8(wsPath);
+            if (!utf8_file) {
+                continue;
+            }
+
+            if (fdFile.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
+                folder_size += DirSize(utf8_file);
             }
             else {
-                if (file_size = FileSizeWin(sPath), file_size != -1) {
+                if (file_size = FileSizeWin(utf8_file), file_size != -1) {
                     folder_size += file_size;
                 }
             }
+            os_free(utf8_file);
         }
-    } while (FindNextFile(hFind, &fdFile));
+    } while (FindNextFileW(hFind, &fdFile));
 
     FindClose(hFind);
-
+    os_free(wPathInput);
     return folder_size;
+}
+
+// Checks if a given path is located on network storage.
+
+bool is_network_path(const char *path) {
+    if (!path || !*path) {
+        return false;
+    }
+
+    // Case 1: UNC path (\\server\share\...)
+    if (PathIsUNCA(path)) {
+        return true;
+    }
+
+    // Case 2: Absolute path on mapped network drive
+    if (strlen(path) >= 2 && path[1] == ':') {
+        char root[] = "X:";
+        root[0] = toupper(path[0]);
+
+        char remoteName[MAX_PATH] = {0};
+        DWORD bufferSize = sizeof(remoteName);
+
+        DWORD result = WNetGetConnectionA(root, remoteName, &bufferSize);
+
+        if (result == NO_ERROR || result == ERROR_CONNECTION_UNAVAIL) {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 #endif
@@ -3533,7 +3689,7 @@ char *w_homedir(char *arg) {
         }
     }
 
-    if ((stat(buff, &buff_stat) < 0) || !S_ISDIR(buff_stat.st_mode)) {
+    if ((w_stat(buff, &buff_stat) < 0) || !S_ISDIR(buff_stat.st_mode)) {
         os_free(buff);
         merror_exit(HOME_ERROR);
     }

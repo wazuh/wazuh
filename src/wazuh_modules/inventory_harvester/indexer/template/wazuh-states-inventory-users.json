@@ -1,0 +1,229 @@
+{
+  "index_patterns": [
+    "wazuh-states-inventory-users*"
+  ],
+  "priority": 1,
+  "template": {
+    "settings": {
+      "index": {
+        "auto_expand_replicas": "0-1",
+        "number_of_replicas": "0",
+        "number_of_shards": "1",
+        "query.default_field": [
+          "user.id",
+          "user.name",
+          "user.home",
+          "user.type",
+          "user.created",
+          "user.groups",
+          "user.uuid",
+          "user.auth_failures.timestamp",
+          "user.auth_failures.count",
+          "user.group.id_signed",
+          "user.login.status",
+          "user.login.type",
+          "user.login.tty",
+          "user.password.status",
+          "user.password.last_change",
+          "user.password.expiration_date",
+          "user.roles",
+          "user.last_login",
+          "process.pid",
+          "host.ip"
+        ],
+        "refresh_interval": "5s"
+      }
+    },
+    "mappings": {
+      "date_detection": false,
+      "dynamic": "strict",
+      "properties": {
+        "agent": {
+          "properties": {
+            "host": {
+              "properties": {
+                "architecture": {
+                  "ignore_above": 1024,
+                  "type": "keyword"
+                },
+                "ip": {
+                  "type": "ip"
+                }
+              }
+            },
+            "id": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            },
+            "name": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            },
+            "version": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            }
+          }
+        },
+        "host": {
+          "properties": {
+            "ip": {
+              "type": "ip"
+            }
+          }
+        },
+        "login": {
+          "properties": {
+            "status": {
+              "type": "boolean"
+            },
+            "tty": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            },
+            "type": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            }
+          }
+        },
+        "process": {
+          "properties": {
+            "pid": {
+              "type": "long"
+            }
+          }
+        },
+        "user": {
+          "properties": {
+            "auth_failures": {
+              "properties": {
+                "count": {
+                  "type": "integer"
+                },
+                "timestamp": {
+                  "type": "date"
+                }
+              }
+            },
+            "created": {
+              "type": "date"
+            },
+            "full_name": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            },
+            "group": {
+              "properties": {
+                "id": {
+                  "type": "unsigned_long"
+                },
+                "id_signed": {
+                  "type": "long"
+                }
+              }
+            },
+            "groups": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            },
+            "home": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            },
+            "id": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            },
+            "is_hidden": {
+              "type": "boolean"
+            },
+            "is_remote": {
+              "type": "boolean"
+            },
+            "last_login": {
+              "type": "date"
+            },
+            "name": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            },
+            "password": {
+              "properties": {
+                "expiration_date": {
+                  "type": "date"
+                },
+                "hash_algorithm": {
+                  "ignore_above": 1024,
+                  "type": "keyword"
+                },
+                "inactive_days": {
+                  "type": "integer"
+                },
+                "last_change": {
+                  "type": "date"
+                },
+                "max_days_between_changes": {
+                  "type": "integer"
+                },
+                "min_days_between_changes": {
+                  "type": "integer"
+                },
+                "status": {
+                  "ignore_above": 1024,
+                  "type": "keyword"
+                },
+                "warning_days_before_expiration": {
+                  "type": "integer"
+                }
+              }
+            },
+            "roles": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            },
+            "shell": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            },
+            "type": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            },
+            "uid_signed": {
+              "type": "long"
+            },
+            "uuid": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            }
+          }
+        },
+        "wazuh": {
+          "properties": {
+            "cluster": {
+              "properties": {
+                "name": {
+                  "ignore_above": 1024,
+                  "type": "keyword"
+                },
+                "node": {
+                  "ignore_above": 1024,
+                  "type": "keyword"
+                }
+              }
+            },
+            "schema": {
+              "properties": {
+                "version": {
+                  "ignore_above": 1024,
+                  "type": "keyword"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

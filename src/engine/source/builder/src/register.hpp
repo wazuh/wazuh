@@ -3,7 +3,7 @@
 
 #include <memory>
 
-#include "builder.hpp"
+#include "builder/builder.hpp"
 #include "iregistry.hpp"
 #include "syntax.hpp"
 
@@ -26,7 +26,8 @@
 // Stage builders
 #include "builders/stage/check.hpp"
 #include "builders/stage/fileOutput.hpp"
-#include "builders/stage/indexerOutput.hpp"
+// TODO: Until the indexer connector is unified with the rest of wazuh-manager
+// #include "builders/stage/indexerOutput.hpp"
 #include "builders/stage/map.hpp"
 #include "builders/stage/normalize.hpp"
 #include "builders/stage/outputs.hpp"
@@ -43,7 +44,7 @@ namespace builder::detail
  * @param deps Builders dependencies
  */
 template<typename Registry>
-void registerOpBuilders(const std::shared_ptr<Registry>& registry, const BuilderDeps& deps)
+void registerOpBuilders(const std::shared_ptr<Registry>& registry, const builder::BuilderDeps& deps)
 {
     // Filter builders
     registry->template add<builders::OpBuilderEntry>(
@@ -297,9 +298,6 @@ void registerOpBuilders(const std::shared_ptr<Registry>& registry, const Builder
 
     // KVDB builders
     registry->template add<builders::OpBuilderEntry>(
-        "kvdb_delete",
-        {schemf::runtimeValidation(), builders::getOpBuilderKVDBDelete(deps.kvdbManager, deps.kvdbScopeName)});
-    registry->template add<builders::OpBuilderEntry>(
         "kvdb_get", {schemf::runtimeValidation(), builders::getOpBuilderKVDBGet(deps.kvdbManager, deps.kvdbScopeName)});
     registry->template add<builders::OpBuilderEntry>(
         "kvdb_get_merge",
@@ -315,8 +313,6 @@ void registerOpBuilders(const std::shared_ptr<Registry>& registry, const Builder
     registry->template add<builders::OpBuilderEntry>(
         "kvdb_not_match",
         {schemf::runtimeValidation(), builders::getOpBuilderKVDBNotMatch(deps.kvdbManager, deps.kvdbScopeName)});
-    registry->template add<builders::OpBuilderEntry>(
-        "kvdb_set", {schemf::runtimeValidation(), builders::getOpBuilderKVDBSet(deps.kvdbManager, deps.kvdbScopeName)});
     registry->template add<builders::OpBuilderEntry>(
         "kvdb_get_array",
         {schemf::runtimeValidation(), builders::getOpBuilderKVDBGetArray(deps.kvdbManager, deps.kvdbScopeName)});
@@ -350,8 +346,9 @@ void registerStageBuilders(const std::shared_ptr<Registry>& registry, const Buil
                                                    builders::getParseBuilder(deps.logpar, deps.logparDebugLvl));
     registry->template add<builders::StageBuilder>(syntax::asset::OUTPUTS_KEY, builders::outputsBuilder);
     registry->template add<builders::StageBuilder>(syntax::asset::FILE_OUTPUT_KEY, builders::fileOutputBuilder);
-    registry->template add<builders::StageBuilder>(syntax::asset::INDEXER_OUTPUT_KEY,
-                                                   builders::getIndexerOutputBuilder(deps.iConnector));
+    // TODO: Until the indexer connector is unified with the rest of wazuh-manager
+    // registry->template add<builders::StageBuilder>(syntax::asset::INDEXER_OUTPUT_KEY,
+    //                                                builders::getIndexerOutputBuilder(deps.iConnector));
 }
 
 } // namespace builder::detail

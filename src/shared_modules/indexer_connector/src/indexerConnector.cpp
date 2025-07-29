@@ -523,10 +523,12 @@ IndexerConnector::IndexerConnector(
     const nlohmann::json& config,
     const std::string& templatePath,
     const std::string& updateMappingsPath,
+    const bool useSeekDelete,
     const std::function<void(
         const int, const std::string&, const std::string&, const int, const std::string&, const std::string&, va_list)>&
         logFunction,
     const uint32_t& timeout)
+    : m_useSeekDelete(useSeekDelete)
 {
     preInitialization(logFunction, config);
 
@@ -608,14 +610,30 @@ IndexerConnector::IndexerConnector(
                 // If the element should not be indexed, only delete it from the sync database.
                 const auto noIndex = parsedData.contains("no-index") ? parsedData.at("no-index").get<bool>() : false;
 
-                if (operation.compare("DELETED") == 0)
+                if (operation == "DELETED")
                 {
-                    logDebug2(IC_NAME, "Added document for deletion with id: %s.", id.c_str());
-                    if (!noIndex)
+                    if (m_useSeekDelete)
                     {
-                        builderBulkDelete(bulkData, id, m_indexName);
+                        for (const auto& [key, _] : m_db->seek(id))
+                        {
+                            logDebug2(IC_NAME, "Added document for deletion with id: %s.", key.c_str());
+                            if (!noIndex)
+                            {
+                                builderBulkDelete(bulkData, key, m_indexName);
+                            }
+
+                            m_db->delete_(key);
+                        }
                     }
-                    m_db->delete_(id);
+                    else
+                    {
+                        if (!noIndex)
+                        {
+                            builderBulkDelete(bulkData, id, m_indexName);
+                        }
+
+                        m_db->delete_(id);
+                    }
                 }
                 else if (operation.compare("DELETED_BY_QUERY") == 0)
                 {
@@ -792,7 +810,11 @@ IndexerConnector::IndexerConnector(
 
     m_initializeThread = std::thread(
         // coverity[copy_constructor_call]
-        [this, templateData, updateMappingsData, selector, secureCommunication]()
+        [this,
+         templateData,
+         updateMappingsData,
+         selector = std::move(selector),
+         secureCommunication = std::move(secureCommunication)]()
         {
             auto sleepTime = std::chrono::seconds(START_TIME);
             std::unique_lock lock(m_mutex);
@@ -832,9 +854,11 @@ IndexerConnector::IndexerConnector(
 
 IndexerConnector::IndexerConnector(
     const nlohmann::json& config,
+    const bool useSeekDelete,
     const std::function<void(
         const int, const std::string&, const std::string&, const int, const std::string&, const std::string&, va_list)>&
         logFunction)
+    : m_useSeekDelete(useSeekDelete)
 {
     preInitialization(logFunction, config);
 
@@ -851,7 +875,17 @@ IndexerConnector::IndexerConnector(
                 // We only sync the local DB when the indexer is disabled
                 if (parsedData.at("operation").get_ref<const std::string&>().compare("DELETED") == 0)
                 {
-                    m_db->delete_(id);
+                    if (m_useSeekDelete)
+                    {
+                        for (const auto& [key, _] : m_db->seek(id))
+                        {
+                            m_db->delete_(key);
+                        }
+                    }
+                    else
+                    {
+                        m_db->delete_(id);
+                    }
                 }
                 // We made the same operation for DELETED_BY_QUERY as for DELETED
                 else if (parsedData.at("operation").get_ref<const std::string&>().compare("DELETED_BY_QUERY") == 0)

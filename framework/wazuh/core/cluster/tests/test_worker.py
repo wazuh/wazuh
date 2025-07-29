@@ -12,7 +12,7 @@ from unittest.mock import patch, MagicMock, AsyncMock, call, ANY
 import datetime
 
 import pytest
-from uvloop import EventLoopPolicy, Loop
+from wazuh.core.analysis import RulesetReloadResponse
 from freezegun import freeze_time
 
 import wazuh.core.exception as exception
@@ -794,7 +794,16 @@ async def test_worker_handler_sync_agent_info(SyncWazuhdb_mock, AsyncWazuhDBConn
     w_handler.connected = True
     w_handler.task_loggers['Agent-info sync'] = logger
     SyncWazuhdb_mock.return_value.request_permission = AsyncMock()
-    SyncWazuhdb_mock.return_value.retrieve_information = AsyncMock()
+    retrieve_agents_information_mock = AsyncMock()
+    agents_sync = {
+        'syncreq': [
+            {'id': 1, 'name': 'test'}
+        ],
+        'syncreq_keepalive': [],
+        'syncreq_status': [],
+    }
+    retrieve_agents_information_mock.return_value = agents_sync
+    SyncWazuhdb_mock.return_value.retrieve_agents_information = retrieve_agents_information_mock
     SyncWazuhdb_mock.return_value.sync = AsyncMock()
 
     try:
@@ -802,12 +811,12 @@ async def test_worker_handler_sync_agent_info(SyncWazuhdb_mock, AsyncWazuhDBConn
     except Exception:
         pass
 
-    SyncWazuhdb_mock.assert_called_once_with(manager=w_handler, logger=logger, cmd=b'syn_a_w_m', data_retriever=ANY,
+    SyncWazuhdb_mock.assert_called_once_with(manager=w_handler, logger=logger, cmd=b'syn_a_w_m', data_retriever=None,
                                              get_data_command='global sync-agent-info-get ',
                                              set_data_command='global sync-agent-info-set')
     SyncWazuhdb_mock.return_value.request_permission.assert_called_once()
-    SyncWazuhdb_mock.return_value.retrieve_information.assert_called_once()
-    SyncWazuhdb_mock.return_value.sync.assert_called_once_with(start_time=ANY, chunks=ANY)
+    SyncWazuhdb_mock.return_value.retrieve_agents_information.assert_called_once()
+    SyncWazuhdb_mock.return_value.sync.assert_called_once_with(start_time=ANY, chunks=agents_sync)
     assert w_handler.agent_info_sync_status == {'date_start': 0.0}
     assert logger._info == ['Starting.']
 
@@ -1069,6 +1078,34 @@ async def test_worker_handler_process_files_from_master_ko(send_request_mock,
             await asyncio.gather(worker_handler.process_files_from_master(name="task_id", file_received=event))
     send_request_mock.assert_called_with(command=b'cancel_task', data=b'task_id ')
 
+@pytest.mark.asyncio
+@patch("builtins.open")
+@patch("os.path.exists", return_value=False)
+@patch("wazuh.core.cluster.worker.safe_move")
+@patch("wazuh.core.cluster.worker.utils.mkdir_with_mode")
+@patch("os.path.join", return_value="queue/testing/")
+@patch("wazuh.core.common.wazuh_uid", return_value="wazuh_uid")
+@patch("wazuh.core.common.wazuh_gid", return_value="wazuh_gid")
+@patch('wazuh.core.analysis.is_ruleset_file', return_value=True)
+@patch('wazuh.core.analysis.send_reload_ruleset_msg', return_value=RulesetReloadResponse({'error': 0}))
+async def test_worker_handler_update_master_files_in_worker_reload(
+    mock_reload, mock_is_ruleset, wazuh_gid_mock, wazuh_uid_mock, path_join_mock,
+    mkdir_with_mode_mock, safe_move_mock, path_exists_mock, open_mock, event_loop
+):
+    """Test that updating a ruleset file triggers a reload and logs success."""
+    worker_handler = get_worker_handler(event_loop)
+    with patch("wazuh.core.cluster.cluster.unmerge_info", return_value=[("name", "content", "_")]):
+        with patch("os.remove") as os_remove_mock:
+            result_logs = worker_handler.update_master_files_in_worker(
+                ko_files={"shared": {
+                    "filename1": {"merged": "value", "cluster_item_key": "cluster_item_key"}},
+                    "missing": {
+                        "filename1": {"merged": None, "cluster_item_key": "cluster_item_key"}},
+                    "extra": {"filename3": {"cluster_item_key": "cluster_item_key"}}}, zip_path="/zip/path",
+                cluster_items=cluster_items)
+
+            mock_reload.assert_called_once()
+
 
 @pytest.mark.asyncio
 @patch("builtins.open")
@@ -1078,7 +1115,9 @@ async def test_worker_handler_process_files_from_master_ko(send_request_mock,
 @patch("os.path.join", return_value="queue/testing/")
 @patch("wazuh.core.common.wazuh_uid", return_value="wazuh_uid")
 @patch("wazuh.core.common.wazuh_gid", return_value="wazuh_gid")
-async def test_worker_handler_update_master_files_in_worker_ok(wazuh_gid_mock, wazuh_uid_mock, path_join_mock,
+@patch('wazuh.core.analysis.is_ruleset_file', return_value=False)
+@patch('wazuh.core.analysis.send_reload_ruleset_msg', return_value=RulesetReloadResponse({'error': 0}))
+async def test_worker_handler_update_master_files_in_worker_ok(mock_reload, mock_is_ruleset, wazuh_gid_mock, wazuh_uid_mock, path_join_mock,
                                                                mkdir_with_mode_mock, safe_move_mock, path_exists_mock,
                                                                open_mock, event_loop):
     """Check if the method is properly receiving and updating files."""

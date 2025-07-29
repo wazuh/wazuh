@@ -101,6 +101,7 @@ get_rbac_actions:
           - GET /agents/no_group
           - GET /agents/outdated
           - GET /agents/stats/distinct
+          - GET /agents/summary
           - GET /agents/summary/os
           - GET /agents/summary/status
           - GET /groups/{group_id}/agents
@@ -701,6 +702,8 @@ get_rbac_actions:
           - GET /syscollector/{agent_id}/packages
           - GET /syscollector/{agent_id}/ports
           - GET /syscollector/{agent_id}/processes
+          - GET /syscollector/{agent_id}/users
+          - GET /syscollector/{agent_id}/groups
       security:edit_run_as:
         description: Change the value of the allow_run_as flag for a user
         resources:

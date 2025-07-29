@@ -64,6 +64,10 @@ size_t wcom_dispatch(char *command, char ** output) {
 
     } else if (strcmp(rcv_comm, "restart") == 0 || strcmp(rcv_comm, "restart-wazuh") == 0) {
         return wcom_restart(output);
+
+    } else if (strcmp(rcv_comm, "reload")  == 0) {
+        return wcom_reload(output);
+
     } else if (strcmp(rcv_comm, "lock_restart") == 0) {
         max_restart_lock = 0;
         int timeout = -2;
@@ -191,7 +195,7 @@ size_t wcom_restart(char ** output) {
 #ifndef WIN32
         char *exec_cmd[3] = {NULL};
 
-        if (access("active-response/bin/restart.sh", F_OK) == 0) {
+        if (waccess("active-response/bin/restart.sh", F_OK) == 0) {
             exec_cmd[0] = "active-response/bin/restart.sh";
 #ifdef CLIENT
             exec_cmd[1] = "agent";
@@ -242,6 +246,64 @@ size_t wcom_restart(char ** output) {
     return strlen(*output);
 }
 
+size_t wcom_reload(char ** output) {
+    time_t lock = pending_upg - time(NULL);
+    if (lock <= 0) {
+#ifndef WIN32
+        char *exec_cmd[4] = {NULL};
+
+        if (waccess("active-response/bin/restart.sh", F_OK) == 0) {
+            exec_cmd[0] = "active-response/bin/restart.sh";
+#ifdef CLIENT
+            exec_cmd[1] = "agent";
+#else
+            exec_cmd[1] = "manager";
+#endif
+            exec_cmd[2] = "reload";
+        } else {
+            exec_cmd[0] = "bin/wazuh-control";
+            exec_cmd[1] = "reload";
+        }
+
+        switch (fork()) {
+            case -1:
+                merror("At WCOM reload: Cannot fork");
+                os_strdup("err Cannot fork", *output);
+            break;
+            case 0:
+                if (execv(exec_cmd[0], exec_cmd) < 0) {
+                    merror(EXEC_CMDERROR, *exec_cmd, strerror(errno));
+                    _exit(1);
+                }
+            break;
+            default:
+                os_strdup("ok ", *output);
+            break;
+        }
+
+#else
+        static char command[OS_FLSIZE];
+        snprintf(command, sizeof(command), "%s/%s", AR_BINDIR, "restart-wazuh.exe");
+        char *cmd[2] = { command, NULL };
+        char *cmd_parameters = "{\"version\":1,\"origin\":{\"name\":\"\",\"module\":\"wazuh-execd\"},\"command\":\"add\",\"parameters\":{\"extra_args\":[],\"alert\":{},\"program\":\"restart-wazuh.exe\"}}";
+        wfd_t *wfd = wpopenv(cmd[0], cmd, W_BIND_STDIN);
+        if (wfd) {
+            // Send alert to AR script
+            fprintf(wfd->file_in, "%s\n", cmd_parameters);
+            fflush(wfd->file_in);
+            wpclose(wfd);
+        } else {
+            merror("At WCOM restart: Cannot execute restart process");
+            os_strdup("err Cannot execute restart process", *output);
+        }
+#endif
+    } else {
+        minfo(LOCK_RES, (int)lock);
+    }
+
+    if (!*output) os_strdup("ok ", *output);
+    return strlen(*output);
+}
 
 size_t wcom_getconfig(const char * section, char ** output) {
 
@@ -319,7 +381,7 @@ error:
 
 size_t wcom_check_manager_config(char **output) {
     static const char *daemons[] = {"bin/wazuh-authd", "bin/wazuh-remoted",
-                                    "bin/wazuh-execd", "bin/wazuh-analysisd", "bin/wazuh-logcollector",
+                                    "bin/wazuh-execd", "bin/wazuh-engine", "bin/wazuh-logcollector",
                                     "bin/wazuh-integratord", "bin/wazuh-syscheckd", "bin/wazuh-maild",
                                     "bin/wazuh-modulesd", "bin/wazuh-clusterd", "bin/wazuh-agentlessd",
                                     "bin/wazuh-integratord", "bin/wazuh-dbd", "bin/wazuh-csyslogd", NULL

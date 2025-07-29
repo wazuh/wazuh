@@ -42,6 +42,10 @@
 #include "packages/packagesNPM.hpp"
 #include "packages/modernPackageDataRetriever.hpp"
 #include "utilsWrapperWin.hpp"
+#include "groups_windows.hpp"
+#include "user_groups_windows.hpp"
+#include "logged_in_users_win.hpp"
+#include "users_windows.hpp"
 
 
 constexpr auto CENTRAL_PROCESSOR_REGISTRY {"HARDWARE\\DESCRIPTION\\System\\CentralProcessor\\0"};
@@ -985,4 +989,183 @@ nlohmann::json SysInfo::getHotfixes() const
     }
 
     return ret;
+}
+
+nlohmann::json SysInfo::getGroups() const
+{
+    nlohmann::json result;
+    GroupsProvider groupsProvider;
+    UserGroupsProvider userGroupsProvider;
+
+    auto collectedGroups = groupsProvider.collect({});
+
+    for (auto& group : collectedGroups)
+    {
+        nlohmann::json groupItem {};
+
+        groupItem["group_id"] = group["gid"];
+        groupItem["group_name"] = group["groupname"];
+        groupItem["group_description"] = group["comment"];
+        groupItem["group_id_signed"] = group["gid_signed"];
+        groupItem["group_uuid"] = group["group_sid"];
+        groupItem["group_is_hidden"] = 0;
+
+        std::set<std::uint32_t> gids {static_cast<std::uint32_t>(group["gid"].get<int>())};
+        auto collectedUsersGroups = userGroupsProvider.getUserNamesByGid(gids);
+
+        if (collectedUsersGroups.empty())
+        {
+            groupItem["group_users"] = UNKNOWN_VALUE;
+        }
+        else
+        {
+            std::string usersConcatenated;
+
+            for (const auto& user : collectedUsersGroups)
+            {
+                if (!usersConcatenated.empty())
+                {
+                    usersConcatenated += secondaryArraySeparator;
+                }
+
+                usersConcatenated += user.get<std::string>();
+            }
+
+            groupItem["group_users"] = usersConcatenated;
+        }
+
+        result.push_back(std::move(groupItem));
+
+    }
+
+    return result;
+}
+
+nlohmann::json SysInfo::getUsers() const
+{
+    nlohmann::json result;
+
+    UsersProvider usersProvider;
+    auto collectedUsers = usersProvider.collect();
+
+    LoggedInUsersProvider loggedInUserProvider;
+    auto collectedLoggedInUser = loggedInUserProvider.collect();
+
+    UserGroupsProvider userGroupsProvider;
+
+    for (auto& user : collectedUsers)
+    {
+        nlohmann::json userItem {};
+
+        std::string username = user["username"].get<std::string>();
+
+        userItem["user_id"] = user["uid"];
+        userItem["user_full_name"] = user["description"];
+        userItem["user_home"] = user["directory"];
+        userItem["user_name"] = username;
+        userItem["user_shell"] = user["shell"];
+        userItem["user_uid_signed"] = user["uid_signed"];
+        userItem["user_group_id_signed"] = user["gid_signed"];
+        userItem["user_group_id"] = user["gid"];
+
+        std::set<std::uint32_t> uid {static_cast<std::uint32_t>(user["uid"].get<int>())};
+        auto collectedUsersGroups = userGroupsProvider.getGroupNamesByUid(uid);
+
+        if (collectedUsersGroups.empty())
+        {
+            userItem["user_groups"] = UNKNOWN_VALUE;
+        }
+        else
+        {
+            std::string accumGroups;
+
+            for (const auto& group : collectedUsersGroups)
+            {
+                if (!accumGroups.empty())
+                {
+                    accumGroups += secondaryArraySeparator;
+                }
+
+                accumGroups += group.get<std::string>();
+            }
+
+            userItem["user_groups"] = accumGroups;
+        }
+
+        // Only in windows
+        userItem["user_type"] = user["type"];
+
+        // Macos or windows
+        userItem["user_uuid"] = user["uuid"];
+
+        //Not in windows
+        userItem["user_is_remote"] = 0;
+
+        // Only Macos
+        userItem["user_is_hidden"] = 0;
+        userItem["user_created"] = 0;
+        userItem["user_auth_failed_count"] = 0;
+        userItem["user_auth_failed_timestamp"] = 0;
+
+        auto matched = false;
+        auto lastLogin = 0;
+
+        userItem["host_ip"] = UNKNOWN_VALUE;
+
+        //TODO: Avoid this iteration, move logic to LoggedInUsersProvider
+        for (auto& item : collectedLoggedInUser)
+        {
+            // By default, user is not logged in.
+            userItem["login_status"] = 0;
+
+            // tty,host,time and pid can take more than one value due to different logins.
+            if (item["user"] == username)
+            {
+                matched = true;
+                userItem["login_status"] = 1;
+
+                auto newDate = item["time"].get<int32_t>();
+
+                if (newDate > lastLogin)
+                {
+                    lastLogin = newDate;
+                    userItem["user_last_login"] = newDate;
+                    userItem["login_tty"] = item["tty"].get<std::string>();
+                    userItem["login_type"] = item["type"].get<std::string>();
+                    userItem["process_pid"] = item["pid"].get<int32_t>();
+                }
+
+                const auto& hostStr = item["host"].get_ref<const std::string&>();
+
+                if (!hostStr.empty())
+                {
+                    userItem["host_ip"] = userItem["host_ip"].get<std::string>() == UNKNOWN_VALUE
+                                          ? hostStr
+                                          : (userItem["host_ip"].get<std::string>() + primaryArraySeparator + hostStr);
+                }
+            }
+        }
+
+        if (!matched)
+        {
+            userItem["login_status"] = 0;
+            userItem["login_tty"] = UNKNOWN_VALUE;
+            userItem["login_type"] = UNKNOWN_VALUE;
+            userItem["process_pid"] = 0;
+            userItem["user_last_login"] = 0;
+        }
+
+        userItem["user_password_expiration_date"] = 0;
+        userItem["user_password_hash_algorithm"] = UNKNOWN_VALUE;
+        userItem["user_password_inactive_days"] = 0;
+        userItem["user_password_last_change"] = 0;
+        userItem["user_password_max_days_between_changes"] = 0;
+        userItem["user_password_min_days_between_changes"] = 0;
+        userItem["user_password_status"] = UNKNOWN_VALUE;
+        userItem["user_password_warning_days_before_expiration"] = 0;
+
+        result.push_back(std::move(userItem));
+    }
+
+    return result;
 }

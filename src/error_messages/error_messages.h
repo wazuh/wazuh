@@ -136,24 +136,7 @@
 #define SK_SHUTDOWN     "(1756): Shutdown received. Releasing resources."
 #define SK_INV_REG      "(1757): Invalid syscheck registry entry: '%s'."
 #define SK_REG_OPEN     "(1758): Unable to open registry key: '%s'."
-
-/* analysisd */
-#define FTS_LIST_ERROR          "(1260): Error initiating FTS list"
-#define CRAFTED_IP              "(1271): Invalid IP Address '%s'. Possible logging attack."
-#define CRAFTED_USER            "(1272): Invalid username '%s'. Possible logging attack."
-#define INVALID_CAT             "(1273): Invalid category '%s' chosen."
-#define INVALID_CONFIG          "(1274): Invalid configuration. Element '%s': %s."
-#define INVALID_HOSTNAME        "(1275): Invalid hostname in syslog message: '%s'."
-#define INVALID_GEOIP_DB        "(1276): Cannot open GeoIP database: '%s'."
-#define FIM_INVALID_MESSAGE     "(1277): Invalid syscheck message received."
 #define UNABLE_TO_RECONNECT     "(1278): Unable to reconnect to '%s': %s (%d)."
-#define INVALID_RULE_ELEMENT    "(1279): Invalid rule element."
-#define INVALID_PREFIX          "(1283): Incorrect prefix message, message type: %s."
-#define INVALID_OPERATION       "(1284): Incorrect/unknown operation, type: %s."
-#define INVALID_RESPONSE        "(1285): Response with unexpected content."
-#define A_QUERY_ERROR           "(1286): Wazuh-db query error, check wdb logs."
-#define INVALID_TYPE            "(1287): Incorrect/unknown type value %s."
-#define WDBC_QUERY_EX_ERROR     "(1288): Wazuh-db query execution error."
 
 /* logcollector */
 #define SYSTEM_ERROR     "(1600): Internal error. Exiting.."
@@ -272,6 +255,7 @@
 #define REGEX_COMPILE   "(1450): Syntax error on regex: '%s': %d."
 #define REGEX_SUBS      "(1451): Missing sub_strings on regex: '%s'."
 #define REGEX_SYNTAX    "(1452): Syntax error on regex: '%s'"
+#define REGEX_COMPILE_2 "(1453): Syntax error on regex: '%s'"
 
 /* Decoders */
 #define PPLUGIN_INV     "(2101): Parent decoder name invalid: '%s'."

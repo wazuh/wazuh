@@ -34,12 +34,15 @@ constexpr std::string_view QUEUE_DROP_ON_FLOOD = "/engine/queue/drop_on_flood";
 
 constexpr std::string_view ORCHESTRATOR_THREADS = "/engine/orchestrator/threads";
 
-constexpr std::string_view SERVER_EVENT_SOCKET = "/engine/server/event_socket";
 constexpr std::string_view SERVER_API_SOCKET = "/engine/server/api_socket";
 constexpr std::string_view SERVER_API_TIMEOUT = "/engine/server/api_timeout";
 
+constexpr std::string_view SERVER_EVENT_SOCKET = "/engine/server/event_socket";
+constexpr std::string_view SERVER_EVENT_THREADS = "/engine/server/event_threads";
+
 constexpr std::string_view TZDB_PATH = "/engine/tzdb/path";
 constexpr std::string_view TZDB_AUTO_UPDATE = "/engine/tzdb/auto_update";
+constexpr std::string_view TZDB_FORCE_VERSION_UPDATE = "/engine/tzdb/force_version_update";
 
 constexpr std::string_view METRICS_ENABLED = "/engine/metrics/enabled";
 constexpr std::string_view METRICS_EXPORT_INTERVAL = "/engine/metrics/export_interval";
@@ -48,6 +51,9 @@ constexpr std::string_view METRICS_EXPORT_TIMEOUT = "/engine/metrics/export_time
 constexpr std::string_view ARCHIVER_ENABLED = "/engine/archiver/enabled";
 constexpr std::string_view ARCHIVER_PATH = "/engine/archiver/path";
 
+constexpr std::string_view PID_FILE_PATH = "/engine/pid/path";
+constexpr std::string_view USER = "/engine/user";
+constexpr std::string_view GROUP = "/engine/group";
 }; // namespace conf::key
 
 #endif // _CONF_KEYS_HPP

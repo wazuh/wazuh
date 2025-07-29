@@ -152,7 +152,7 @@ void run_notify()
             merror(MEM_ERROR, errno, strerror(errno));
             return;
         }
-    } else if(stat(SHAREDCFG_FILE, &stat_fd) == -1 && ENOENT == errno) {
+    } else if(w_stat(SHAREDCFG_FILE, &stat_fd) == -1 && ENOENT == errno) {
         clear_merged_hash_cache();
     }
 

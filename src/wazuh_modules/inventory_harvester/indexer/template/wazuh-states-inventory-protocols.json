@@ -6,12 +6,20 @@
   "template": {
     "settings": {
       "index": {
+        "auto_expand_replicas": "0-1",
         "number_of_replicas": "0",
         "number_of_shards": "1",
         "query.default_field": [
-          "agent.id",
+          "agent.host.architecture",
           "agent.host.ip",
-          "observer.ingress.interface.name"
+          "agent.id",
+          "agent.name",
+          "agent.version",
+          "network.type",
+          "interface.name",
+          "wazuh.cluster.name",
+          "wazuh.cluster.node",
+          "wazuh.schema.version"
         ],
         "refresh_interval": "5s"
       }
@@ -47,6 +55,14 @@
             }
           }
         },
+        "interface": {
+          "properties": {
+            "name": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            }
+          }
+        },
         "network": {
           "properties": {
             "dhcp": {
@@ -61,23 +77,6 @@
             "type": {
               "ignore_above": 1024,
               "type": "keyword"
-            }
-          }
-        },
-        "observer": {
-          "properties": {
-            "ingress": {
-              "properties": {
-                "interface": {
-                  "properties": {
-                    "name": {
-                      "ignore_above": 1024,
-                      "type": "keyword"
-                    }
-                  }
-                }
-              },
-              "type": "object"
             }
           }
         },

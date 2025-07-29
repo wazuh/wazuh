@@ -158,7 +158,7 @@ typedef int gid_t;
 typedef int socklen_t;
 #define sleep(x) Sleep((x) * 1000)
 #define srandom(x) srand(x)
-#define lstat(x,y) stat(x,y)
+#define lstat(x,y) w_stat(x,y)
 void WinSetError();
 typedef uint32_t u_int32_t;
 typedef uint16_t u_int16_t;
@@ -295,5 +295,9 @@ extern const char *__local_name;
 #include "logging_helper.h"
 #include "../shared_modules/rsync/include/rsync.h"
 #include "../shared_modules/dbsync/include/dbsync.h"
+
+#ifdef WIN32
+#include <utf8_winapi_wrapper.h>
+#endif
 
 #endif /* SHARED_H */

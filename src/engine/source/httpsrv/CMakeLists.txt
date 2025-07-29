@@ -23,7 +23,6 @@ target_link_libraries(httpsrv
     httpsrv::ihttpsrv
     base
     eMessages
-    httplib::httplib
 )
 
 # Tests

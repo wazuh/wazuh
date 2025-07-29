@@ -9,11 +9,12 @@
 
 #include <api/archiver/handlers.hpp>
 #include <api/catalog/catalog.hpp>
-#include <api/event/ndJsonParser.hpp>
 #include <api/handlers.hpp>
 #include <api/policy/policy.hpp>
 #include <archiver/archiver.hpp>
+#include <base/eventParser.hpp>
 #include <base/logging.hpp>
+#include <base/process.hpp>
 #include <base/utils/singletonLocator.hpp>
 #include <base/utils/singletonLocatorStrategies.hpp>
 #include <bk/rx/controller.hpp>
@@ -26,18 +27,18 @@
 #include <geo/downloader.hpp>
 #include <geo/manager.hpp>
 #include <httpsrv/server.hpp>
-#include <indexerConnector/indexerConnector.hpp>
+#include <udgramsrv/udsrv.hpp>
+// TODO: Until the indexer connector is unified with the rest of wazuh-manager
+// #include <indexerConnector/indexerConnector.hpp>
 #include <kvdb/kvdbManager.hpp>
 #include <logpar/logpar.hpp>
 #include <logpar/registerParsers.hpp>
-#include <metrics/manager.hpp>
+// #include <metrics/manager.hpp>
 #include <queue/concurrentQueue.hpp>
-#include <rbac/rbac.hpp>
 #include <router/orchestrator.hpp>
 #include <schemf/schema.hpp>
 #include <store/drivers/fileDriver.hpp>
 #include <store/store.hpp>
-#include <vdscanner/scanOrchestrator.hpp>
 
 #include "base/utils/getExceptionStack.hpp"
 #include "stackExecutor.hpp"
@@ -51,20 +52,69 @@ struct QueueTraits : public moodycamel::ConcurrentQueueDefaultTraits
 };
 } // namespace
 
-std::shared_ptr<httpsrv::Server> g_engineServer {};
+std::shared_ptr<udsrv::Server> g_engineServer {};
 
 void sigintHandler(const int signum)
 {
     if (g_engineServer)
     {
-        g_engineServer.reset();
+        g_engineServer->stop();
+        LOG_INFO("Received signal {}: Stopping the engine server.", signum);
     }
+}
+
+struct Options
+{
+    bool runForeground = false;
+    bool testConfig = false;
+};
+
+void printUsage(const char* progName)
+{
+    std::cout << "Usage: " << progName << " [options]\n"
+              << "Options:\n"
+              << "  -f    Run in foreground (do not daemonize)\n"
+              << "  -t    Test configuration\n"
+              << "  -h    Show this help message and exit\n";
+    std::exit(EXIT_SUCCESS);
+}
+
+Options parseOptions(int argc, char* argv[])
+{
+    Options opts;
+    int c;
+    while ((c = getopt(argc, argv, "fth")) != -1)
+    {
+        switch (c)
+        {
+            case 'f': opts.runForeground = true; break;
+            case 't': opts.testConfig = true; break;
+            case 'h':
+            default: printUsage(argv[0]);
+        }
+    }
+    return opts;
 }
 
 int main(int argc, char* argv[])
 {
     // exit handler
     cmd::details::StackExecutor exitHandler {};
+
+    // CLI parse
+    {
+        const auto opts = parseOptions(argc, argv);
+        if (opts.testConfig)
+        {
+            return EXIT_SUCCESS;
+        }
+
+        // Daemonize the process
+        if (!opts.runForeground)
+        {
+            base::process::goDaemon();
+        }
+    }
 
     // Initialize logging
     {
@@ -88,14 +138,17 @@ int main(int argc, char* argv[])
         exit(EXIT_FAILURE);
     }
 
-    // Set signal [SIGINT]: Crt+C handler
+    // Set signal [SIGINT]: Crt+C handler and signal [SIGTERM]: kill handler
     {
         // Set the signal handler for SIGINT
         struct sigaction sigIntHandler = {};
         sigIntHandler.sa_handler = sigintHandler;
         sigemptyset(&sigIntHandler.sa_mask);
         sigIntHandler.sa_flags = 0;
-        sigaction(SIGINT, &sigIntHandler, nullptr);
+        for (int sig : {SIGINT, SIGTERM})
+        {
+            sigaction(sig, &sigIntHandler, nullptr);
+        }
     }
     // Set signal [EPIPE]: Broken pipe handler
     {
@@ -117,15 +170,39 @@ int main(int argc, char* argv[])
     std::shared_ptr<kvdbManager::KVDBManager> kvdbManager;
     std::shared_ptr<geo::Manager> geoManager;
     std::shared_ptr<schemf::Schema> schema;
-    std::shared_ptr<rbac::RBAC> rbac;
     std::shared_ptr<api::policy::IPolicy> policyManager;
-    std::shared_ptr<vdscanner::ScanOrchestrator> vdScanner;
-    std::shared_ptr<IIndexerConnector> iConnector;
+    // std::shared_ptr<IIndexerConnector> iConnector;
     std::shared_ptr<httpsrv::Server> apiServer;
     std::shared_ptr<archiver::Archiver> archiver;
 
     try
     {
+        // Changing user and group
+        {
+            /* Check if the user/group given are valid */
+            const auto user = confManager.get<std::string>(conf::key::USER);
+            const auto group = confManager.get<std::string>(conf::key::GROUP);
+            const auto uid = base::process::privSepGetUser(user);
+            const auto gid = base::process::privSepGetGroup(group);
+
+            if (uid == static_cast<uid_t>(-1) || gid == static_cast<gid_t>(-1))
+            {
+                throw std::runtime_error {fmt::format(base::process::USER_ERROR, user, group, strerror(errno), errno)};
+            }
+
+            /* Privilege separation only if we got valid IDs */
+            if (base::process::privSepSetGroup(gid) < 0)
+            {
+                throw std::runtime_error {fmt::format(base::process::SETGID_ERROR, group, errno, strerror(errno))};
+            }
+
+            /* Changing user only if we got a valid UID */
+            if (base::process::privSepSetUser(uid) < 0)
+            {
+                throw std::runtime_error {fmt::format(base::process::SETUID_ERROR, user, errno, strerror(errno))};
+            }
+        }
+
         // Set new log level if it is different from the default
         {
             const auto level = logging::strToLevel(confManager.get<std::string>(conf::key::LOGGING_LEVEL));
@@ -138,6 +215,9 @@ int main(int argc, char* argv[])
         }
 
         // Metrics
+        /*
+        TODO: Until the indexer connector is unified with the rest of wazuh-manager
+
         {
             SingletonLocator::registerManager<metrics::IManager,
                                               base::PtrSingleton<metrics::IManager, metrics::Manager>>();
@@ -148,7 +228,7 @@ int main(int argc, char* argv[])
             config->exportTimeout =
                 std::chrono::milliseconds(confManager.get<int64_t>(conf::key::METRICS_EXPORT_TIMEOUT));
 
-            // TODO Update index configuration when it is defined
+
             IndexerConnectorOptions icConfig {};
             icConfig.name = "metrics-index";
             icConfig.hosts = confManager.get<std::vector<std::string>>(conf::key::INDEXER_HOST);
@@ -202,6 +282,7 @@ int main(int argc, char* argv[])
                     SingletonLocator::clear();
                 });
         }
+        */
 
         // Store
         {
@@ -209,12 +290,6 @@ int main(int argc, char* argv[])
             auto fileDriver = std::make_shared<store::drivers::FileDriver>(fileStorage);
             store = std::make_shared<store::Store>(fileDriver);
             LOG_INFO("Store initialized.");
-        }
-
-        // RBAC
-        {
-            rbac = std::make_shared<rbac::RBAC>(store);
-            LOG_INFO("RBAC initialized.");
         }
 
         // KVDB
@@ -258,8 +333,10 @@ int main(int argc, char* argv[])
 
         // HLP
         {
-            hlp::initTZDB(confManager.get<std::string>(conf::key::TZDB_PATH),
-                          confManager.get<bool>(conf::key::TZDB_AUTO_UPDATE));
+            hlp::initTZDB(
+                (std::filesystem::path {confManager.get<std::string>(conf::key::TZDB_PATH)} / "iana").string(),
+                confManager.get<bool>(conf::key::TZDB_AUTO_UPDATE),
+                confManager.get<std::string>(conf::key::TZDB_FORCE_VERSION_UPDATE));
 
             base::Name logparFieldOverrides({"schema", "wazuh-logpar-overrides", "0"});
             auto res = store->readInternalDoc(logparFieldOverrides);
@@ -276,6 +353,8 @@ int main(int argc, char* argv[])
         }
 
         // Indexer Connector
+        /*
+        TODO: Until the indexer connector is unified with the rest of wazuh-manager
         {
             IndexerConnectorOptions icConfig {};
             icConfig.name = confManager.get<std::string>(conf::key::INDEXER_INDEX);
@@ -321,6 +400,7 @@ int main(int argc, char* argv[])
             iConnector = std::make_shared<IndexerConnector>(icConfig);
             LOG_INFO("Indexer Connector initialized.");
         }
+        */
 
         // Builder and registry
         {
@@ -330,7 +410,7 @@ int main(int argc, char* argv[])
             builderDeps.kvdbScopeName = "builder";
             builderDeps.kvdbManager = kvdbManager;
             builderDeps.geoManager = geoManager;
-            builderDeps.iConnector = iConnector;
+            // builderDeps.iConnector = iConnector;
             auto defs = std::make_shared<defs::DefinitionsBuilder>();
 
             // Build allowed fields
@@ -407,11 +487,6 @@ int main(int argc, char* argv[])
             LOG_INFO("Router initialized.");
         }
 
-        // VD Scanner
-        {
-            vdScanner = std::make_shared<vdscanner::ScanOrchestrator>();
-        }
-
         // Archiver
         {
             archiver = std::make_shared<archiver::Archiver>(confManager.get<std::string>(conf::key::ARCHIVER_PATH),
@@ -457,168 +532,8 @@ int main(int argc, char* argv[])
             api::tester::handlers::registerHandlers(orchestrator, store, policyManager, apiServer);
             LOG_DEBUG("Tester API registered.");
 
-            // Add apidoc documentation.
-            /**
-             * @api {post} /vulnerability/scan Scan OS and packages for vulnerabilities
-             * @apiName scan
-             * @apiGroup vulnerability
-             * @apiVersion 0.1.0
-             *
-             * @apiBody {String} type Type of scan to perform.
-             * @apiBody {Object} agent Agent information.
-             * @apiBody {String} agent.id ID of the agent.
-             * @apiBody {Object[]} packages List of packages to scan.
-             * @apiBody {String} packages.architecture Architecture of the package.
-             * @apiBody {String} packages.checksum Checksum of the package.
-             * @apiBody {String} packages.description Description of the package.
-             * @apiBody {String} packages.format Format of the package (e.g., deb).
-             * @apiBody {String} packages.groups Groups to which the package belongs.
-             * @apiBody {String} packages.item_id Item ID of the package.
-             * @apiBody {String} packages.multiarch Multiarch compatibility.
-             * @apiBody {String} packages.name Name of the package.
-             * @apiBody {String} packages.priority Priority of the package.
-             * @apiBody {String} packages.scan_time Scan time of the package.
-             * @apiBody {Number} packages.size Size of the package in MB.
-             * @apiBody {String} packages.source Source of the package.
-             * @apiBody {String} packages.vendor Vendor of the package.
-             * @apiBody {String} packages.version Version of the package.
-             * @apiBody {String[]} hotfixes List of hotfixes to scan.
-             * @apiBody {Object} os OS information.
-             * @apiBody {String} os.architecture OS architecture.
-             * @apiBody {String} os.checksum OS checksum.
-             * @apiBody {String} os.hostname Hostname of the OS.
-             * @apiBody {String} os.codename Codename of the OS.
-             * @apiBody {String} os.major_version Major version of the OS.
-             * @apiBody {String} os.minor_version Minor version of the OS.
-             * @apiBody {String} os.name Name of the OS.
-             * @apiBody {String} os.patch Patch level of the OS.
-             * @apiBody {String} os.platform Platform of the OS.
-             * @apiBody {String} os.version Version name of the OS.
-             * @apiBody {String} os.scan_time Scan time of the OS.
-             * @apiBody {String} os.kernel_release Kernel release version.
-             * @apiBody {String} os.kernel_name Kernel name.
-             * @apiBody {String} os.kernel_version Kernel version.
-             *
-             * @apiSuccess {Object[]} vulnerabilities List of detected vulnerabilities.
-             * @apiSuccess {String} vulnerabilities.assigner Assigner of the vulnerability.
-             * @apiSuccess {String} vulnerabilities.category Category of the vulnerability.
-             * @apiSuccess {String} vulnerabilities.classification Classification type (e.g., CVSS).
-             * @apiSuccess {String} vulnerabilities.condition Condition that triggered the vulnerability detection.
-             * @apiSuccess {Object} vulnerabilities.cvss CVSS score details.
-             * @apiSuccess {Object} vulnerabilities.cvss.cvss3 CVSS v3.0 scoring details.
-             * @apiSuccess {Object} vulnerabilities.cvss.cvss3.vector CVSS v3.0 vector details.
-             * @apiSuccess {String} vulnerabilities.cvss.cvss3.vector.attack_vector Attack vector.
-             * @apiSuccess {String} vulnerabilities.cvss.cvss3.vector.availability Availability impact.
-             * @apiSuccess {String} vulnerabilities.cvss.cvss3.vector.confidentiality_impact Confidentiality impact.
-             * @apiSuccess {String} vulnerabilities.cvss.cvss3.vector.integrity_impact Integrity impact.
-             * @apiSuccess {String} vulnerabilities.cvss.cvss3.vector.privileges_required Privileges required.
-             * @apiSuccess {String} vulnerabilities.cvss.cvss3.vector.scope Scope of the vulnerability.
-             * @apiSuccess {String} vulnerabilities.cvss.cvss3.vector.user_interaction User interaction requirement.
-             * @apiSuccess {String} vulnerabilities.cwe_reference CWE reference for the vulnerability.
-             * @apiSuccess {String} vulnerabilities.description Description of the vulnerability.
-             * @apiSuccess {String} vulnerabilities.detected_at Detection time in ISO format.
-             * @apiSuccess {String} vulnerabilities.enumeration Enumeration type (e.g., CVE).
-             * @apiSuccess {String} vulnerabilities.id ID of the vulnerability (e.g., CVE ID).
-             * @apiSuccess {String} vulnerabilities.item_id Internal item ID related to the vulnerability.
-             * @apiSuccess {String} vulnerabilities.published_at Published date of the vulnerability.
-             * @apiSuccess {String} vulnerabilities.reference URL reference for more details about the vulnerability.
-             * @apiSuccess {Object} vulnerabilities.score Vulnerability score details.
-             * @apiSuccess {Number} vulnerabilities.score.base Base score of the vulnerability.
-             * @apiSuccess {String} vulnerabilities.score.version CVSS version.
-             * @apiSuccess {String} vulnerabilities.severity Severity level (e.g., High, Medium).
-             * @apiSuccess {String} vulnerabilities.updated Last updated time of the vulnerability.
-             *
-             * @apiSuccessExample {json} Success-Response:
-             *    HTTP/1.1 200 OK
-             *   [
-             *     {
-             *       "assigner": "microsoft",
-             *       "category": "Packages",
-             *       "classification": "CVSS",
-             *       "condition": "Package equal to 2016",
-             *       "cvss": {
-             *         "cvss3": {
-             *           "vector": {
-             *             "attack_vector": "",
-             *             "availability": "HIGH",
-             *             "confidentiality_impact": "HIGH",
-             *             "integrity_impact": "HIGH",
-             *             "privileges_required": "NONE",
-             *             "scope": "UNCHANGED",
-             *             "user_interaction": "REQUIRED"
-             *           }
-             *         }
-             *       },
-             *       "cwe_reference": "CWE-20",
-             *       "description": "Microsoft Outlook Remote Code Execution Vulnerability",
-             *       "detected_at": "2024-09-04T18:00:02.747Z",
-             *       "enumeration": "CVE",
-             *       "id": "CVE-2024-38021",
-             *       "item_id": "eff251a49a142accf85b170526462e13d3265f03",
-             *       "published_at": "2024-07-09T17:15:28Z",
-             *       "reference": "https://msrc.microsoft.com/update-guide/vulnerability/CVE-2024-38021",
-             *       "score": {
-             *         "base": 8.8,
-             *         "version": "3.1"
-             *       },
-             *       "severity": "High",
-             *       "updated": "2024-07-11T16:49:16Z"
-             *     },
-             *     {
-             *       "assigner": "microsoft",
-             *       "category": "Packages",
-             *       "classification": "CVSS",
-             *       "condition": "Package equal to 2016",
-             *       "cvss": {
-             *         "cvss3": {
-             *           "vector": {
-             *             "attack_vector": "",
-             *             "availability": "NONE",
-             *             "confidentiality_impact": "HIGH",
-             *             "integrity_impact": "NONE",
-             *             "privileges_required": "NONE",
-             *             "scope": "UNCHANGED",
-             *             "user_interaction": "REQUIRED"
-             *           }
-             *         }
-             *       },
-             *       "cwe_reference": "CWE-200",
-             *       "description": "Microsoft Outlook Spoofing Vulnerability",
-             *       "detected_at": "2024-09-04T18:00:02.747Z",
-             *       "enumeration": "CVE",
-             *       "id": "CVE-2024-38020",
-             *       "item_id": "eff251a49a142accf85b170526462e13d3265f03",
-             *       "published_at": "2024-07-09T17:15:28Z",
-             *       "reference": "https://msrc.microsoft.com/update-guide/vulnerability/CVE-2024-38020",
-             *       "score": {
-             *         "base": 6.5,
-             *         "version": "3.1"
-             *       },
-             *       "severity": "Medium",
-             *       "updated": "2024-07-11T16:49:29Z"
-             *     }
-             *   ]
-             *
-             * @apiError {String} error Error message.
-             * @apiError {Number} code Error code.
-             *
-             * @apiErrorExample {json} Error-Response:
-             *   HTTP/1.1 503 Service Unavailable
-             *  {
-             *   "error": "Service Unavailable",
-             *   "code": 503
-             *  }
-             */
-            apiServer->addRoute(httpsrv::Method::POST,
-                                "/vulnerability/scan",
-                                [vdScanner](const auto& req, auto& res)
-                                {
-                                    vdScanner->processEvent(req.body, res.body);
-                                    res.set_header("Content-Type", "application/json");
-                                });
-            LOG_DEBUG("VD API endpoint registered.");
-
             // Archiver
+            // should be refactored to use the rotation and dont use a semaphore for writing
             api::archiver::handlers::registerHandlers(archiver, apiServer);
             LOG_DEBUG("Archiver API registered.");
 
@@ -628,11 +543,29 @@ int main(int argc, char* argv[])
 
         // Server
         {
-            g_engineServer = std::make_shared<httpsrv::Server>("EVENT_SRV");
-            g_engineServer->addRoute(
-                httpsrv::Method::POST,
-                "/events/stateless",
-                api::event::handlers::pushEvent(orchestrator, api::event::protocol::getNDJsonParser(), archiver));
+            g_engineServer =
+                std::make_shared<udsrv::Server>([orchestrator, archiver](std::string_view msg)
+                                                { orchestrator->postEvent(base::eventParsers::parseLegacyEvent(msg)); },
+                                                confManager.get<std::string>(conf::key::SERVER_EVENT_SOCKET));
+            g_engineServer->start(confManager.get<int>(conf::key::SERVER_EVENT_THREADS));
+            LOG_INFO("Engine initialized and started.");
+        }
+
+        /* Create PID file */
+        {
+            const auto pidError = base::process::createPID(
+                confManager.get<std::string>(conf::key::PID_FILE_PATH), "wazuh-engine", getpid());
+            if (base::isError(pidError))
+            {
+                throw std::runtime_error(
+                    (fmt::format("Could not create PID file for the engine: {}", base::getError(pidError).message)));
+            }
+        }
+
+        // Do not exit until the server is running
+        while (g_engineServer->isRunning())
+        {
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
         }
     }
     catch (const std::exception& e)
@@ -641,17 +574,6 @@ int main(int argc, char* argv[])
         LOG_ERROR("An error occurred while initializing the modules: {}.", msg);
         exitHandler.execute();
         exit(EXIT_FAILURE);
-    }
-
-    // Start server
-    try
-    {
-        g_engineServer->start(confManager.get<std::string>(conf::key::SERVER_EVENT_SOCKET),
-                              false); // Start in this thread
-    }
-    catch (const std::exception& e)
-    {
-        LOG_ERROR("An error occurred while running the server: {}.", utils::getExceptionStack(e));
     }
 
     // Clean exit

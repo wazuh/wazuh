@@ -62,7 +62,6 @@ int wdb_syscheck_load(wdb_t * wdb, const char * file, char * output, size_t size
         }
 
         output[size - 1] = '\0';
-        return sk_build_sum(&sum, output, size);
 
     case SQLITE_DONE:
         *output = 0;
@@ -73,7 +72,9 @@ int wdb_syscheck_load(wdb_t * wdb, const char * file, char * output, size_t size
         return -1;
     }
 }
-
+/*****************************************************************************************
+ TODO-LEGACY-ANALYSISD-FIM: Delete this function when the new system is ready
+ Should not depend on analsysid code
 int wdb_syscheck_save(wdb_t * wdb, int ftype, char * checksum, const char * file) {
     sk_sum_t sum;
     int retval = -1;
@@ -125,6 +126,7 @@ end:
     sk_sum_clean(&sum);
     return retval;
 }
+*****************************************************************************************/
 
 // LCOV_EXCL_STOP
 int wdb_syscheck_save2(wdb_t * wdb, const char * payload) {
@@ -452,6 +454,21 @@ int wdb_fim_insert_entry2(wdb_t * wdb, const cJSON * data) {
                 sqlite3_bind_text(stmt, 15, element->valuestring, -1, NULL);
             } else if (strcmp(element->string, "value_type") == 0) {
                 sqlite3_bind_text(stmt, 20, element->valuestring, -1, NULL);
+            } else if (strcmp(element->string, "inode") == 0) {
+                // New 4.13.1 version of the message, inode is a string.
+                if(element->valuestring) {
+                    char* end_ptr = NULL;
+                    errno = 0;
+                    int64_t inode_value = strtoll(element->valuestring, &end_ptr, 10);
+                    if (errno != 0 || end_ptr == element->valuestring || *end_ptr != '\0') {
+                        merror("DB(%s) Invalid inode value: %s", wdb->id, element->valuestring);
+                        sqlite3_bind_int64(stmt, 13, 0); // Bind 0 if conversion fails
+                    } else {
+                        sqlite3_bind_int64(stmt, 13, inode_value);
+                    }
+                } else {
+                    sqlite3_bind_int64(stmt, 13, 0); // Bind 0 if inode is NULL
+                }
             } else {
                 merror("DB(%s) Invalid attribute name: %s", wdb->id, element->string);
                 os_free(perm);

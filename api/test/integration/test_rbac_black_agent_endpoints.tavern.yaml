@@ -600,6 +600,32 @@ stages:
          total_failed_items: 0
 
 ---
+test_name: GET /agents/summary
+
+stages:
+
+ - name: Get the agents summary (Partially allowed, user agnostic)
+   request:
+     verify: False
+     url: "{protocol:s}://{host:s}:{port:d}/agents/summary"
+     method: GET
+     headers:
+       Authorization: "Bearer {test_login_token}"
+   response:
+     status_code: 200
+     json:
+       error: 0
+       data:
+         status:
+           active: 4
+           disconnected: 1
+           never_connected: 1
+           pending: 0
+         os:
+          ubuntu: 6
+         groups: !anything
+
+---
 test_name: GET /agents/summary/status
 
 stages:

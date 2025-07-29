@@ -4,7 +4,6 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import datetime
-import glob
 import os
 from collections.abc import KeysView
 from io import StringIO
@@ -940,7 +939,8 @@ def test_WazuhDBQuery_protected_sort_query(mock_socket_conn, mock_conn_db, mock_
     ({'order': 'asc', 'fields': None}, None),
     ({'order': 'asc', 'fields': ['1']}, None),
     ({'order': 'asc', 'fields': ['bad_field']}, 1403),
-    ({'order': 'asc', 'fields': ['1', '2', '3', '4']}, None)
+    ({'order': 'asc', 'fields': ['1', '2', '3', '4']}, None),
+    ({'order': 'asc', 'fields': ['internal_key']}, 1403)
 ])
 @patch('wazuh.core.utils.path.exists', return_value=True)
 @patch('wazuh.core.utils.glob.glob', return_value=True)
@@ -953,6 +953,7 @@ def test_WazuhDBQuery_protected_add_sort_to_query(mock_socket_conn, mock_conn_db
     query = utils.WazuhDBQuery(offset=0, limit=1, table='agent', sort=sort,
                                search=None, select=None, filters=None,
                                fields=fields,
+                               extra_fields={'internal_key'},
                                default_sort_field=None, query=None,
                                backend=utils.WazuhDBBackend(agent_id=1),
                                count=5, get_data=None)
@@ -1145,7 +1146,8 @@ def test_WazuhDBQuery_protected_parse_query_regex(mock_backend_connect, mock_exi
     ('os.name=debian;os.version>12e),(os.name=ubuntu;os.version>12e)', False, None),
     ('bad_query', True, 1407),
     ('os.bad_field=ubuntu', True, 1408),
-    ('os.name=!ubuntu', True, 1409)
+    ('os.name=!ubuntu', True, 1409),
+    ('internal_key=test', True, 1408)
 ])
 @patch('wazuh.core.utils.path.exists', return_value=True)
 @patch('wazuh.core.utils.glob.glob', return_value=True)
@@ -1156,7 +1158,8 @@ def test_WazuhDBQuery_protected_parse_query(mock_socket_conn, mock_conn_db, mock
     """Test WazuhDBQuery._parse_query function."""
     query = utils.WazuhDBQuery(offset=0, limit=1, table='agent', sort=None,
                                search=None, select=None, filters=None,
-                               fields={'os.name': None, 'os.version': None},
+                               fields={'os.name': None, 'os.version': None, 'internal_key': None},
+                               extra_fields={'internal_key'},
                                default_sort_field=None, query=q,
                                backend=utils.WazuhDBBackend(agent_id=1),
                                count=5, get_data=None)
@@ -1968,30 +1971,6 @@ def test_to_relative_path():
     assert utils.to_relative_path(path, prefix='etc') == os.path.basename(path)
 
 
-@patch('wazuh.core.utils.common.RULES_PATH', new=test_files_path)
-@patch('wazuh.core.utils.common.USER_RULES_PATH', new=test_files_path)
-def test_expand_rules():
-    rules = utils.expand_rules()
-    assert rules == set(map(os.path.basename, glob.glob(os.path.join(test_files_path,
-                                                                     f'*{utils.common.RULES_EXTENSION}'))))
-
-
-@patch('wazuh.core.utils.common.DECODERS_PATH', new=test_files_path)
-@patch('wazuh.core.utils.common.USER_DECODERS_PATH', new=test_files_path)
-def test_expand_decoders():
-    decoders = utils.expand_decoders()
-    assert decoders == set(map(os.path.basename, glob.glob(os.path.join(test_files_path,
-                                                                        f'*{utils.common.DECODERS_EXTENSION}'))))
-
-
-@patch('wazuh.core.utils.common.LISTS_PATH', new=test_files_path)
-@patch('wazuh.core.utils.common.USER_LISTS_PATH', new=test_files_path)
-def test_expand_lists():
-    lists = utils.expand_lists()
-    assert lists == set(filter(lambda x: len(x.split('.')) == 1, map(os.path.basename, glob.glob(os.path.join(
-        test_files_path, f'*{utils.common.LISTS_EXTENSION}')))))
-
-
 def test_full_copy():
     """Test `full_copy` function.
 
@@ -2044,7 +2023,7 @@ def test_get_utc_now():
 
 
 @freeze_time('1970-01-01')
-def test_get_utc_now():
+def test_get_utc_strptime():
     """Test if the result is the expected date."""
     mock_date = '1970-01-01'
     default_format = '%Y-%M-%d'
@@ -2117,8 +2096,8 @@ def test_check_wazuh_limits_unchanged(new_conf, unchanged_limits_conf, original_
 def test_agents_allow_higher_versions(new_conf, agents_conf):
     """Check if ossec.conf agents versions are protected by the API.
 
-    When 'allow_higher_versions': {'allow': False} is set in the API configuration, the agent versions in ossec.conf 
-    cannot be changed. However, other configuration sections can be added, 
+    When 'allow_higher_versions': {'allow': False} is set in the API configuration, the agent versions in ossec.conf
+    cannot be changed. However, other configuration sections can be added,
     removed or modified.
 
     Parameters
@@ -2214,11 +2193,11 @@ def test_check_indexer(new_conf, original_conf, indexer_changed, indexer_allowed
 @patch('wazuh.core.utils.chmod')
 @patch('wazuh.core.common.wazuh_gid')
 @patch('wazuh.core.common.wazuh_uid')
-def test_upload_file(mock_uid, mock_gid, 
+def test_upload_file(mock_uid, mock_gid,
                      mock_chmod, mock_mks,
                      chk_xml, content):
     """Test upload_file function.
-    
+
     Parameters
     ----------
     mock_uid: Mock

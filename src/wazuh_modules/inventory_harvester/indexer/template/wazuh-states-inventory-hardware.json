@@ -6,10 +6,20 @@
   "template": {
     "settings": {
       "index": {
+        "auto_expand_replicas": "0-1",
         "number_of_replicas": "0",
         "number_of_shards": "1",
         "query.default_field": [
-          "observer.board_serial"
+          "agent.host.architecture",
+          "agent.host.ip",
+          "agent.id",
+          "agent.name",
+          "agent.version",
+          "agent.host.ip",
+          "host.serial_number",
+          "wazuh.cluster.name",
+          "wazuh.cluster.node",
+          "wazuh.schema.version"
         ],
         "refresh_interval": "5s"
       }
@@ -50,7 +60,7 @@
             "cpu": {
               "properties": {
                 "cores": {
-                  "type": "long"
+                  "type": "short"
                 },
                 "name": {
                   "ignore_above": 1024,
@@ -59,8 +69,7 @@
                 "speed": {
                   "type": "long"
                 }
-              },
-              "type": "object"
+              }
             },
             "memory": {
               "properties": {
@@ -70,16 +79,15 @@
                 "total": {
                   "type": "long"
                 },
+                "usage": {
+                  "scaling_factor": 100,
+                  "type": "scaled_float"
+                },
                 "used": {
                   "type": "long"
                 }
-              },
-              "type": "object"
-            }
-          }
-        },
-        "observer": {
-          "properties": {
+              }
+            },
             "serial_number": {
               "ignore_above": 1024,
               "type": "keyword"

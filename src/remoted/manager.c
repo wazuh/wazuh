@@ -249,7 +249,7 @@ void free_file_time(void *data) {
  * wait_for_msgs (other thread) is going to deal with it
  * (only if message changed)
  */
-void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *wdb_sock)
+void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *wdb_sock, bool *startup_msg)
 {
     char msg_ack[OS_FLSIZE + 1] = "";
     char *msg = NULL;
@@ -365,9 +365,13 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
     if (data = OSHash_Get(pending_data, key->id), data && data->changed && data->message && msg && strcmp(data->message, msg) == 0) {
         w_mutex_unlock(&lastmsg_mutex);
 
+        char *sync_status = logr.worker_node ? (*startup_msg ? "syncreq" : "syncreq_keepalive") : "synced";
+
+        *startup_msg = false;
+
         agent_id = atoi(key->id);
 
-        result = wdb_update_agent_keepalive(agent_id, AGENT_CS_ACTIVE, logr.worker_node ? "syncreq" : "synced", wdb_sock);
+        result = wdb_update_agent_keepalive(agent_id, AGENT_CS_ACTIVE, sync_status, wdb_sock);
 
         if (OS_SUCCESS != result) {
             mwarn("Unable to save last keepalive and set connection status as active for agent: %s", key->id);
@@ -388,9 +392,11 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
         if (is_startup) {
             w_mutex_unlock(&lastmsg_mutex);
 
+            *startup_msg = true;
+
             agent_id = atoi(key->id);
 
-            result = wdb_update_agent_keepalive(agent_id, AGENT_CS_PENDING, logr.worker_node ? "syncreq" : "synced", wdb_sock);
+            result = wdb_update_agent_keepalive(agent_id, AGENT_CS_PENDING, logr.worker_node ? "syncreq_status" : "synced", wdb_sock);
 
             if (OS_SUCCESS != result) {
                 mwarn("Unable to save last keepalive and set connection status as pending for agent: %s", key->id);
@@ -400,7 +406,7 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
 
             agent_id = atoi(key->id);
 
-            result = wdb_update_agent_connection_status(agent_id, AGENT_CS_DISCONNECTED, logr.worker_node ? "syncreq" : "synced", wdb_sock, HC_SHUTDOWN_RECV);
+            result = wdb_update_agent_connection_status(agent_id, AGENT_CS_DISCONNECTED, logr.worker_node ? "syncreq_status" : "synced", wdb_sock, HC_SHUTDOWN_RECV);
 
             if (OS_SUCCESS != result) {
                 mwarn("Unable to set connection status as disconnected for agent: %s", key->id);
@@ -503,7 +509,9 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
 
             agent_data->id = atoi(key->id);
             os_strdup(AGENT_CS_ACTIVE, agent_data->connection_status);
-            os_strdup(logr.worker_node ? "syncreq" : "synced", agent_data->sync_status);
+            os_strdup(logr.worker_node ? (*startup_msg ? "syncreq" : "syncreq_keepalive") : "synced", agent_data->sync_status);
+
+            *startup_msg = false;
 
             w_mutex_lock(&lastmsg_mutex);
 
@@ -706,7 +714,7 @@ STATIC void c_group(const char *group, OSHash **_f_time, os_md5 *_merged_sum, ch
         }
 
         // Merge ar.conf always
-        if (stat(DEFAULTAR, &attrib) == 0) {
+        if (w_stat(DEFAULTAR, &attrib) == 0) {
             if (create_merged) {
                 if (merged_ok = MergeAppendFile(finalfp, DEFAULTAR, -1), merged_ok == 0) {
                     fclose(finalfp);
@@ -771,7 +779,7 @@ STATIC void c_group(const char *group, OSHash **_f_time, os_md5 *_merged_sum, ch
     if (OS_MD5_File(merged, md5sum, OS_TEXT) == 0) {
         snprintf((*_merged_sum), sizeof((*_merged_sum)), "%s", md5sum);
 
-        if (stat(merged, &attrib) != 0) {
+        if (w_stat(merged, &attrib) != 0) {
             merror("Unable to get entry attributes '%s'", merged);
         } else {
             ftime_add(_f_time, SHAREDCFG_FILENAME, attrib.st_mtime);
@@ -808,7 +816,7 @@ STATIC void c_multi_group(char *multi_group, OSHash **_f_time, os_md5 *_merged_s
 
             snprintf(dir, PATH_MAX + 1, "%s/%s", SHAREDCFG_DIR, group);
 
-            dp = opendir(SHAREDCFG_DIR);
+            dp = wopendir(SHAREDCFG_DIR);
 
             if (!dp) {
                 mdebug2("Opening directory: '%s': %s", SHAREDCFG_DIR, strerror(errno));
@@ -823,7 +831,7 @@ STATIC void c_multi_group(char *multi_group, OSHash **_f_time, os_md5 *_merged_s
     }
 
     /* Open the multi-group files and generate merged */
-    dp = opendir(MULTIGROUPS_DIR);
+    dp = wopendir(MULTIGROUPS_DIR);
 
     if (!dp) {
         mdebug2("Opening directory: '%s': %s", MULTIGROUPS_DIR, strerror(errno));
@@ -874,7 +882,7 @@ STATIC void process_groups() {
     struct dirent *entry = NULL;
     char path[PATH_MAX + 1];
 
-    dp = opendir(SHAREDCFG_DIR);
+    dp = wopendir(SHAREDCFG_DIR);
 
     if (!dp) {
         mdebug1("Opening directory: '%s': %s", SHAREDCFG_DIR, strerror(errno));
@@ -1188,7 +1196,7 @@ STATIC int validate_shared_files(const char *src_path, FILE *finalfp, OSHash **_
             }
         }
 
-        if (stat(file, &attrib) != 0) {
+        if (w_stat(file, &attrib) != 0) {
             merror("Unable to get entry attributes '%s'", file);
             continue;
         }
@@ -1299,7 +1307,7 @@ STATIC void copy_directory(const char *src_path, const char *dst_path, char *gro
         }
 
         /* Is a file */
-        if (dir = opendir(source_path), !dir) {
+        if (dir = wopendir(source_path), !dir) {
             ignored = 0;
 
             char agent_conf_chunck_message[PATH_MAX + 1]= {0};
@@ -1473,7 +1481,7 @@ STATIC void send_wrong_version_response(const char *agent_id, char *msg, agent_s
 
     mdebug2("Unable to connect agent: '%s': '%s'", agent_id, msg);
 
-    result = wdb_update_agent_status_code(atoi(agent_id), status_code, version, logr.worker_node ? "syncreq" : "synced", wdb_sock);
+    result = wdb_update_agent_status_code(atoi(agent_id), status_code, version, logr.worker_node ? "syncreq_status" : "synced", wdb_sock);
 
     if (OS_SUCCESS != result) {
         mwarn("Unable to set status code for agent: '%s'", agent_id);

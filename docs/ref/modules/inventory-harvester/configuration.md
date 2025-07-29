@@ -66,6 +66,8 @@ Turn off specific providers individually
 <packages>yes</packages>
 <ports all="no">yes</ports>
 <processes>yes</processes>
+<users>yes</users>
+<groups>yes</groups>
 
 <!-- Database synchronization settings -->
 <synchronization>

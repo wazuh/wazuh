@@ -12,6 +12,8 @@
     ALL_PORTS: 'no'
     PROCESSES_SCAN: 'yes'
     HOTFIXES_SCAN: 'yes'
+    GROUPS_SCAN: 'yes'
+    USERS_SCAN: 'yes'
     MAX_EPS: 10
   metadata:
     field: disabled
@@ -31,6 +33,8 @@
     ALL_PORTS: 'no'
     PROCESSES_SCAN: 'yes'
     HOTFIXES_SCAN: 'yes'
+    GROUPS_SCAN: 'yes'
+    USERS_SCAN: 'yes'
     MAX_EPS: 10
   metadata:
     field: interval
@@ -50,6 +54,8 @@
     ALL_PORTS: 'no'
     PROCESSES_SCAN: 'yes'
     HOTFIXES_SCAN: 'yes'
+    GROUPS_SCAN: 'yes'
+    USERS_SCAN: 'yes'
     MAX_EPS: 10
   metadata:
     field: scan_on_start
@@ -69,6 +75,8 @@
     ALL_PORTS: 'no'
     PROCESSES_SCAN: 'yes'
     HOTFIXES_SCAN: 'yes'
+    GROUPS_SCAN: 'yes'
+    USERS_SCAN: 'yes'
     MAX_EPS: 10
   metadata:
     field: hardware
@@ -88,6 +96,8 @@
     ALL_PORTS: 'no'
     PROCESSES_SCAN: 'yes'
     HOTFIXES_SCAN: 'yes'
+    GROUPS_SCAN: 'yes'
+    USERS_SCAN: 'yes'
     MAX_EPS: 10
   metadata:
     field: os
@@ -107,6 +117,8 @@
     ALL_PORTS: 'no'
     PROCESSES_SCAN: 'yes'
     HOTFIXES_SCAN: 'yes'
+    GROUPS_SCAN: 'yes'
+    USERS_SCAN: 'yes'
     MAX_EPS: 10
   metadata:
     field: network
@@ -126,6 +138,8 @@
     ALL_PORTS: 'no'
     PROCESSES_SCAN: 'yes'
     HOTFIXES_SCAN: 'yes'
+    GROUPS_SCAN: 'yes'
+    USERS_SCAN: 'yes'
     MAX_EPS: 10
   metadata:
     field: packages
@@ -145,6 +159,8 @@
     ALL_PORTS: 'no'
     PROCESSES_SCAN: 'yes'
     HOTFIXES_SCAN: 'yes'
+    GROUPS_SCAN: 'yes'
+    USERS_SCAN: 'yes'
     MAX_EPS: 10
   metadata:
     field: ports
@@ -164,6 +180,8 @@
     ALL_PORTS: ''
     PROCESSES_SCAN: 'yes'
     HOTFIXES_SCAN: 'yes'
+    GROUPS_SCAN: 'yes'
+    USERS_SCAN: 'yes'
     MAX_EPS: 10
   metadata:
     field: null
@@ -183,6 +201,8 @@
     ALL_PORTS: 'no'
     PROCESSES_SCAN: ''
     HOTFIXES_SCAN: 'yes'
+    GROUPS_SCAN: 'yes'
+    USERS_SCAN: 'yes'
     MAX_EPS: 10
   metadata:
     field: processes
@@ -202,6 +222,8 @@
     ALL_PORTS: 'no'
     PROCESSES_SCAN: 'yes'
     HOTFIXES_SCAN: 'yes'
+    GROUPS_SCAN: 'yes'
+    USERS_SCAN: 'yes'
     MAX_EPS: 10
   metadata:
     field: disabled
@@ -221,6 +243,8 @@
     ALL_PORTS: 'no'
     PROCESSES_SCAN: 'yes'
     HOTFIXES_SCAN: 'yes'
+    GROUPS_SCAN: 'yes'
+    USERS_SCAN: 'yes'
     MAX_EPS: 10
   metadata:
     field: interval
@@ -240,6 +264,8 @@
     ALL_PORTS: 'no'
     PROCESSES_SCAN: 'yes'
     HOTFIXES_SCAN: 'yes'
+    GROUPS_SCAN: 'yes'
+    USERS_SCAN: 'yes'
     MAX_EPS: 10
   metadata:
     field: scan_on_start
@@ -259,6 +285,8 @@
     ALL_PORTS: 'no'
     PROCESSES_SCAN: 'yes'
     HOTFIXES_SCAN: 'yes'
+    GROUPS_SCAN: 'yes'
+    USERS_SCAN: 'yes'
     MAX_EPS: 10
   metadata:
     field: hardware
@@ -278,6 +306,8 @@
     ALL_PORTS: 'no'
     PROCESSES_SCAN: 'yes'
     HOTFIXES_SCAN: 'yes'
+    GROUPS_SCAN: 'yes'
+    USERS_SCAN: 'yes'
     MAX_EPS: 10
   metadata:
     field: os
@@ -297,6 +327,8 @@
     ALL_PORTS: 'no'
     PROCESSES_SCAN: 'yes'
     HOTFIXES_SCAN: 'yes'
+    GROUPS_SCAN: 'yes'
+    USERS_SCAN: 'yes'
     MAX_EPS: 10
   metadata:
     field: network
@@ -316,6 +348,8 @@
     ALL_PORTS: 'no'
     PROCESSES_SCAN: 'yes'
     HOTFIXES_SCAN: 'yes'
+    GROUPS_SCAN: 'yes'
+    USERS_SCAN: 'yes'
     MAX_EPS: 10
   metadata:
     field: packages
@@ -335,6 +369,8 @@
     ALL_PORTS: 'no'
     PROCESSES_SCAN: 'yes'
     HOTFIXES_SCAN: 'yes'
+    GROUPS_SCAN: 'yes'
+    USERS_SCAN: 'yes'
     MAX_EPS: 10
   metadata:
     field: ports
@@ -354,6 +390,8 @@
     ALL_PORTS: invalid
     PROCESSES_SCAN: 'yes'
     HOTFIXES_SCAN: 'yes'
+    GROUPS_SCAN: 'yes'
+    USERS_SCAN: 'yes'
     MAX_EPS: 10
   metadata:
     field: null
@@ -373,6 +411,8 @@
     ALL_PORTS: 'no'
     PROCESSES_SCAN: invalid
     HOTFIXES_SCAN: 'yes'
+    GROUPS_SCAN: 'yes'
+    USERS_SCAN: 'yes'
     MAX_EPS: 10
   metadata:
     field: processes
@@ -392,6 +432,8 @@
     ALL_PORTS: 'no'
     PROCESSES_SCAN: 'yes'
     HOTFIXES_SCAN: 'yes'
+    GROUPS_SCAN: 'yes'
+    USERS_SCAN: 'yes'
     MAX_EPS: -1
   metadata:
     field: max_eps
@@ -411,6 +453,8 @@
     ALL_PORTS: 'no'
     PROCESSES_SCAN: 'yes'
     HOTFIXES_SCAN: ''
+    GROUPS_SCAN: 'yes'
+    USERS_SCAN: 'yes'
     MAX_EPS: 10
   metadata:
     field: hotfixes
@@ -430,7 +474,89 @@
     ALL_PORTS: 'no'
     PROCESSES_SCAN: 'yes'
     HOTFIXES_SCAN: invalid
+    GROUPS_SCAN: 'yes'
+    USERS_SCAN: 'yes'
     MAX_EPS: 10
   metadata:
     field: hotfixes
+    attribute: null
+
+- name: empty_value_users
+  description: Verify that the module doesn't start and an error is displayed
+  configuration_parameters:
+    DISABLED: 'no'
+    INVERVAL_SCAN: 1h
+    START_ON_START: 'yes'
+    HARDWARE_SCAN: 'yes'
+    OS_SCAN: 'yes'
+    NETWORK_SCAN: 'yes'
+    PACKAGES_SCAN: 'yes'
+    PORTS_SCAN: 'yes'
+    ALL_PORTS: 'no'
+    PROCESSES_SCAN: 'yes'
+    HOTFIXES_SCAN: 'yes'
+    USERS_SCAN: ''
+    MAX_EPS: 10
+  metadata:
+    field: users
+    attribute: null
+
+- name: invalid_value_users
+  description: Verify that the module doesn't start and an error is displayed
+  configuration_parameters:
+    DISABLED: 'no'
+    INVERVAL_SCAN: 1h
+    START_ON_START: 'yes'
+    HARDWARE_SCAN: 'yes'
+    OS_SCAN: 'yes'
+    NETWORK_SCAN: 'yes'
+    PACKAGES_SCAN: 'yes'
+    PORTS_SCAN: 'yes'
+    ALL_PORTS: 'no'
+    PROCESSES_SCAN: 'yes'
+    HOTFIXES_SCAN: 'yes'
+    USERS_SCAN: invalid
+    MAX_EPS: 10
+  metadata:
+    field: users
+    attribute: null
+
+- name: empty_value_groups
+  description: Verify that the module doesn't start and an error is displayed
+  configuration_parameters:
+    DISABLED: 'no'
+    INVERVAL_SCAN: 1h
+    START_ON_START: 'yes'
+    HARDWARE_SCAN: 'yes'
+    OS_SCAN: 'yes'
+    NETWORK_SCAN: 'yes'
+    PACKAGES_SCAN: 'yes'
+    PORTS_SCAN: 'yes'
+    ALL_PORTS: 'no'
+    PROCESSES_SCAN: 'yes'
+    HOTFIXES_SCAN: 'yes'
+    GROUPS_SCAN: ''
+    MAX_EPS: 10
+  metadata:
+    field: groups
+    attribute: null
+
+- name: invalid_value_groups
+  description: Verify that the module doesn't start and an error is displayed
+  configuration_parameters:
+    DISABLED: 'no'
+    INVERVAL_SCAN: 1h
+    START_ON_START: 'yes'
+    HARDWARE_SCAN: 'yes'
+    OS_SCAN: 'yes'
+    NETWORK_SCAN: 'yes'
+    PACKAGES_SCAN: 'yes'
+    PORTS_SCAN: 'yes'
+    ALL_PORTS: 'no'
+    PROCESSES_SCAN: 'yes'
+    HOTFIXES_SCAN: 'yes'
+    GROUPS_SCAN: invalid
+    MAX_EPS: 10
+  metadata:
+    field: groups
     attribute: null
