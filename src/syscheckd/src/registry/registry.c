@@ -115,7 +115,8 @@ STATIC void registry_key_transaction_callback(ReturnTypeCallback resultType,
                                               const cJSON* result_json,
                                               void* user_data) {
 
-    cJSON *json_event = NULL;
+    cJSON *stateless_event = NULL;
+    cJSON* stateful_event = NULL;
     cJSON *json_path = NULL;
     cJSON *json_arch = NULL;
     cJSON *old_data = NULL;
@@ -172,26 +173,21 @@ STATIC void registry_key_transaction_callback(ReturnTypeCallback resultType,
             break;
     }
 
-    // Do not process if it's the first scan
-    if (_base_line == 0) {
+    stateless_event = cJSON_CreateObject();
+    if (stateless_event == NULL) {
         return;
     }
 
-    // Do not process if report_event is false
-    if (event_data->evt_data->report_event == false) {
+    stateful_event = cJSON_CreateObject();
+    if (stateful_event == NULL) {
         goto end;
     }
 
-    json_event = cJSON_CreateObject();
-    if (json_event == NULL) {
-        return;
-    }
-
-    cJSON_AddStringToObject(json_event, "collector", "registry_key");
-    cJSON_AddStringToObject(json_event, "module", "fim");
+    cJSON_AddStringToObject(stateless_event, "collector", "registry_key");
+    cJSON_AddStringToObject(stateless_event, "module", "fim");
 
     cJSON* data = cJSON_CreateObject();
-    cJSON_AddItemToObject(json_event, "data", data);
+    cJSON_AddItemToObject(stateless_event, "data", data);
 
     cJSON* event = cJSON_CreateObject();
     cJSON_AddItemToObject(data, "event", event);
@@ -200,10 +196,14 @@ STATIC void registry_key_transaction_callback(ReturnTypeCallback resultType,
     cJSON_AddStringToObject(event, "created", iso_time);
     cJSON_AddStringToObject(event, "type", FIM_EVENT_TYPE_ARRAY[event_data->evt_data->type]);
 
-    cJSON* registry = fim_registry_key_attributes_json(result_json, event_data->key, event_data->config);
-    cJSON_AddItemToObject(data, "registry", registry);
+    cJSON* registry_stateless = fim_registry_key_attributes_json(result_json, event_data->key, event_data->config);
+    cJSON_AddItemToObject(data, "registry", registry_stateless);
 
-    cJSON_AddStringToObject(registry, "path", path);
+    cJSON* registry_stateful = cJSON_Duplicate(registry_stateless, 1);
+    cJSON_AddItemToObject(stateful_event, "registry", registry_stateful);
+
+    cJSON_AddStringToObject(registry_stateless, "path", path);
+    cJSON_AddStringToObject(registry_stateful, "path", path);
 
     const char *hive = get_registry_hive_abbreviation(path);
     const char *key = get_registry_key(path);
@@ -213,21 +213,26 @@ STATIC void registry_key_transaction_callback(ReturnTypeCallback resultType,
         char *full_key = NULL;
         os_malloc(full_key_len, full_key);
         snprintf(full_key, full_key_len, "%s\\%s", hive, key);
-        cJSON_AddStringToObject(registry, "key", full_key);
+        cJSON_AddStringToObject(registry_stateless, "key", full_key);
+        cJSON_AddStringToObject(registry_stateful, "key", full_key);
         os_free(full_key);
     } else {
-        cJSON_AddStringToObject(registry, "key", path);
+        cJSON_AddStringToObject(registry_stateless, "key", path);
+        cJSON_AddStringToObject(registry_stateful, "key", path);
     }
-    cJSON_AddStringToObject(registry, "hive", hive);
+    cJSON_AddStringToObject(registry_stateless, "hive", hive);
+    cJSON_AddStringToObject(registry_stateful, "hive", hive);
 
-    cJSON_AddStringToObject(registry, "architecture", arch == ARCH_32BIT ? "[x32]" : "[x64]");
-    cJSON_AddStringToObject(registry, "mode", FIM_EVENT_MODE[event_data->evt_data->mode]);
+    cJSON_AddStringToObject(registry_stateless, "architecture", arch == ARCH_32BIT ? "[x32]" : "[x64]");
+    cJSON_AddStringToObject(registry_stateful, "architecture", arch == ARCH_32BIT ? "[x32]" : "[x64]");
+
+    cJSON_AddStringToObject(registry_stateless, "mode", FIM_EVENT_MODE[event_data->evt_data->mode]);
 
     old_data = cJSON_GetObjectItem(result_json, "old");
     if (old_data != NULL) {
         old_attributes = cJSON_CreateObject();
         changed_attributes = cJSON_CreateArray();
-        cJSON_AddItemToObject(registry, "previous", old_attributes);
+        cJSON_AddItemToObject(registry_stateless, "previous", old_attributes);
         cJSON_AddItemToObject(event, "changed_fields", changed_attributes);
 
         fim_calculate_dbsync_difference_key(event_data->config,
@@ -242,13 +247,36 @@ STATIC void registry_key_transaction_callback(ReturnTypeCallback resultType,
     }
 
     if (event_data->config->tag != NULL) {
-        cJSON_AddStringToObject(registry, "tags", event_data->config->tag);
+        cJSON_AddStringToObject(registry_stateless, "tags", event_data->config->tag);
     }
 
-    send_syscheck_msg(json_event);
+    if (_base_line != 0 && event_data->evt_data->report_event) {
+        send_syscheck_msg(stateless_event);
+    }
+
+    // Add checksum only to stateful event
+    cJSON* checksum = cJSON_CreateObject();
+    cJSON_AddItemToObject(stateful_event, "checksum", checksum);
+    cJSON* hash = cJSON_CreateObject();
+    cJSON_AddItemToObject(checksum, "hash", hash);
+
+    if (event_data->key != NULL) {
+        cJSON_AddStringToObject(hash, "sha1", event_data->key->checksum);
+    } else {
+        cJSON *aux = cJSON_GetObjectItem(result_json, "checksum");
+        if (aux != NULL) {
+            cJSON_AddStringToObject(hash, "sha1", cJSON_GetStringValue(aux));
+        } else {
+            mdebug1("Couldn't find checksum for '%s", path);
+            goto end; // LCOV_EXCL_LINE
+        }
+    }
+
+    persist_syscheck_msg(stateful_event);
 
 end:
-    cJSON_Delete(json_event);
+    cJSON_Delete(stateless_event);
+    cJSON_Delete(stateful_event);
 }
 
 /**
@@ -262,7 +290,8 @@ STATIC void registry_value_transaction_callback(ReturnTypeCallback resultType,
                                                 const cJSON* result_json,
                                                 void* user_data) {
 
-    cJSON *json_event = NULL;
+    cJSON *stateless_event = NULL;
+    cJSON* stateful_event = NULL;
     cJSON *json_path = NULL;
     cJSON *json_arch = NULL;
     cJSON *json_value = NULL;
@@ -328,26 +357,21 @@ STATIC void registry_value_transaction_callback(ReturnTypeCallback resultType,
             break;
     }
 
-    // Do not process if it's the first scan
-    if (_base_line == 0) {
-        return;
-    }
-
-    // Do not process if report_event is false
-    if (event_data->evt_data->report_event == false) {
+    stateless_event = cJSON_CreateObject();
+    if (stateless_event == NULL) {
         goto end;
     }
 
-    json_event = cJSON_CreateObject();
-    if (json_event == NULL) {
-        goto end;
+    stateful_event = cJSON_CreateObject();
+    if (stateful_event == NULL) {
+        goto end; // LCOV_EXCL_LINE
     }
 
-    cJSON_AddStringToObject(json_event, "collector", "registry_value");
-    cJSON_AddStringToObject(json_event, "module", "fim");
+    cJSON_AddStringToObject(stateless_event, "collector", "registry_value");
+    cJSON_AddStringToObject(stateless_event, "module", "fim");
 
     cJSON* data = cJSON_CreateObject();
-    cJSON_AddItemToObject(json_event, "data", data);
+    cJSON_AddItemToObject(stateless_event, "data", data);
 
     cJSON* event = cJSON_CreateObject();
     cJSON_AddItemToObject(data, "event", event);
@@ -356,10 +380,14 @@ STATIC void registry_value_transaction_callback(ReturnTypeCallback resultType,
     cJSON_AddStringToObject(event, "created", iso_time);
     cJSON_AddStringToObject(event, "type", FIM_EVENT_TYPE_ARRAY[event_data->evt_data->type]);
 
-    cJSON* registry = fim_registry_value_attributes_json(result_json, event_data->data, event_data->config);
-    cJSON_AddItemToObject(data, "registry", registry);
+    cJSON* registry_stateless = fim_registry_value_attributes_json(result_json, event_data->data, event_data->config);
+    cJSON_AddItemToObject(data, "registry", registry_stateless);
 
-    cJSON_AddStringToObject(registry, "path", path);
+    cJSON* registry_stateful = cJSON_Duplicate(registry_stateless, 1);
+    cJSON_AddItemToObject(stateful_event, "registry", registry_stateful);
+
+    cJSON_AddStringToObject(registry_stateless, "path", path);
+    cJSON_AddStringToObject(registry_stateful, "path", path);
 
     const char *hive = get_registry_hive_abbreviation(path);
     const char *key = get_registry_key(path);
@@ -369,22 +397,28 @@ STATIC void registry_value_transaction_callback(ReturnTypeCallback resultType,
         char *full_key = NULL;
         os_malloc(full_key_len, full_key);
         snprintf(full_key, full_key_len, "%s\\%s", hive, key);
-        cJSON_AddStringToObject(registry, "key", full_key);
+        cJSON_AddStringToObject(registry_stateless, "key", full_key);
+        cJSON_AddStringToObject(registry_stateful, "key", full_key);
         os_free(full_key);
     } else {
-        cJSON_AddStringToObject(registry, "key", path);
+        cJSON_AddStringToObject(registry_stateless, "key", path);
+        cJSON_AddStringToObject(registry_stateful, "key", path);
     }
-    cJSON_AddStringToObject(registry, "hive", hive);
+    cJSON_AddStringToObject(registry_stateless, "hive", hive);
+    cJSON_AddStringToObject(registry_stateful, "hive", hive);
 
-    cJSON_AddStringToObject(registry, "architecture", arch == ARCH_32BIT ? "[x32]" : "[x64]");
-    cJSON_AddStringToObject(registry, "value", value);
-    cJSON_AddStringToObject(registry, "mode", FIM_EVENT_MODE[event_data->evt_data->mode]);
+    cJSON_AddStringToObject(registry_stateless, "architecture", arch == ARCH_32BIT ? "[x32]" : "[x64]");
+    cJSON_AddStringToObject(registry_stateful, "architecture", arch == ARCH_32BIT ? "[x32]" : "[x64]");
+    cJSON_AddStringToObject(registry_stateless, "value", value);
+    cJSON_AddStringToObject(registry_stateful, "value", value);
+
+    cJSON_AddStringToObject(registry_stateless, "mode", FIM_EVENT_MODE[event_data->evt_data->mode]);
 
     old_data = cJSON_GetObjectItem(result_json, "old");
     if (old_data != NULL) {
         old_attributes = cJSON_CreateObject();
         changed_attributes = cJSON_CreateArray();
-        cJSON_AddItemToObject(registry, "previous", old_attributes);
+        cJSON_AddItemToObject(registry_stateless, "previous", old_attributes);
         cJSON_AddItemToObject(event, "changed_fields", changed_attributes);
 
         fim_calculate_dbsync_difference_value(event_data->config,
@@ -399,18 +433,41 @@ STATIC void registry_value_transaction_callback(ReturnTypeCallback resultType,
     }
 
     if (event_data->config->tag != NULL) {
-        cJSON_AddStringToObject(registry, "tags", event_data->config->tag);
+        cJSON_AddStringToObject(registry_stateless, "tags", event_data->config->tag);
     }
 
     if (event_data->diff != NULL && resultType == MODIFIED) {
-        cJSON_AddStringToObject(registry, "content_changes", event_data->diff);
+        cJSON_AddStringToObject(registry_stateless, "content_changes", event_data->diff);
     }
 
-    send_syscheck_msg(json_event);
+    if (_base_line != 0 && event_data->evt_data->report_event) {
+        send_syscheck_msg(stateless_event);
+    }
+
+    // Add checksum only to stateful event
+    cJSON* checksum = cJSON_CreateObject();
+    cJSON_AddItemToObject(stateful_event, "checksum", checksum);
+    cJSON* hash = cJSON_CreateObject();
+    cJSON_AddItemToObject(checksum, "hash", hash);
+
+    if (event_data->data != NULL) {
+        cJSON_AddStringToObject(hash, "sha1", event_data->data->checksum);
+    } else {
+        cJSON *aux = cJSON_GetObjectItem(result_json, "checksum");
+        if (aux != NULL) {
+            cJSON_AddStringToObject(hash, "sha1", cJSON_GetStringValue(aux));
+        } else {
+            mdebug1("Couldn't find checksum for '%s", path);
+            goto end; // LCOV_EXCL_LINE
+        }
+    }
+
+    persist_syscheck_msg(stateful_event);
 
 end:
     os_free(event_data->diff);
-    cJSON_Delete(json_event);
+    cJSON_Delete(stateless_event);
+    cJSON_Delete(stateful_event);
 }
 
 /**

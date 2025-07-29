@@ -135,7 +135,8 @@ int receive_msg()
             }
 
             /* Syscheck */
-            else if (strncmp(tmp_msg, HC_SK, strlen(HC_SK)) == 0) {
+            else if (strncmp(tmp_msg, HC_SK, strlen(HC_SK)) == 0
+                     || strncmp(tmp_msg, HC_FIM_SYNC, strlen(HC_FIM_SYNC)) == 0) {
                 ag_send_syscheck(tmp_msg);
                 continue;
             }

@@ -282,11 +282,18 @@ void realtime_sanitize_watch_map();
 void free_whodata_event(whodata_evt* w_evt);
 
 /**
- * @brief Send a message related to syscheck change/addition
+ * @brief Send a message related to syscheck change/addition/deletion
  *
  * @param msg The message to be sent
  */
 void send_syscheck_msg(const cJSON* msg) __attribute__((nonnull));
+
+/**
+ * @brief Persist a message related to syscheck change/addition/deletion
+ *
+ * @param msg The message to be persisted
+ */
+void persist_syscheck_msg(const cJSON* msg) __attribute__((nonnull));
 
 /**
  * @brief Send a log message

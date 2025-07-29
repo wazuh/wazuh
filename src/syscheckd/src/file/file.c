@@ -54,7 +54,8 @@ static const char *FIM_EVENT_MODE[] = {
 STATIC void transaction_callback(ReturnTypeCallback resultType,
                                  const cJSON* result_json,
                                  void* user_data) {
-    cJSON* json_event = NULL;
+    cJSON* stateless_event = NULL;
+    cJSON* stateful_event = NULL;
     cJSON *json_path = NULL;
     cJSON* old_data = NULL;
     cJSON* old_attributes = NULL;
@@ -111,26 +112,21 @@ STATIC void transaction_callback(ReturnTypeCallback resultType,
             break;
     }
 
-    // Do not process if it's the first scan
-    if (_base_line == 0) {
+    stateless_event = cJSON_CreateObject();
+    if (stateless_event == NULL) {
         goto end; // LCOV_EXCL_LINE
     }
 
-    // Do not process if report_event is false
-    if (txn_context->event->report_event == false) {
+    stateful_event = cJSON_CreateObject();
+    if (stateful_event == NULL) {
         goto end; // LCOV_EXCL_LINE
     }
 
-    json_event = cJSON_CreateObject();
-    if (json_event == NULL) {
-        goto end; // LCOV_EXCL_LINE
-    }
-
-    cJSON_AddStringToObject(json_event, "collector", "file");
-    cJSON_AddStringToObject(json_event, "module", "fim");
+    cJSON_AddStringToObject(stateless_event, "collector", "file");
+    cJSON_AddStringToObject(stateless_event, "module", "fim");
 
     cJSON* data = cJSON_CreateObject();
-    cJSON_AddItemToObject(json_event, "data", data);
+    cJSON_AddItemToObject(stateless_event, "data", data);
 
     cJSON* event = cJSON_CreateObject();
     cJSON_AddItemToObject(data, "event", event);
@@ -139,28 +135,34 @@ STATIC void transaction_callback(ReturnTypeCallback resultType,
     cJSON_AddStringToObject(event, "created", iso_time);
     cJSON_AddStringToObject(event, "type", FIM_EVENT_TYPE_ARRAY[txn_context->event->type]);
 
-    cJSON* file = fim_attributes_json(result_json, (txn_context->entry != NULL) ? txn_context->entry->file_entry.data : NULL, txn_context->config);
-    cJSON_AddItemToObject(data, "file", file);
+    cJSON* file_stateless = fim_attributes_json(result_json, (txn_context->entry != NULL) ? txn_context->entry->file_entry.data : NULL, txn_context->config);
+    cJSON_AddItemToObject(data, "file", file_stateless);
+
+    cJSON* file_stateful = cJSON_Duplicate(file_stateless, 1);
+    cJSON_AddItemToObject(stateful_event, "file", file_stateful);
 
 #ifdef WIN32
      char *utf8_path = auto_to_utf8(path);
      if (utf8_path) {
-         cJSON_AddStringToObject(file, "path", utf8_path);
-         os_free(utf8_path);
+        cJSON_AddStringToObject(file_stateless, "path", utf8_path);
+        cJSON_AddStringToObject(file_stateful, "path", utf8_path);
+        os_free(utf8_path);
      } else {
-         cJSON_AddStringToObject(file, "path", path);
+        cJSON_AddStringToObject(file_stateless, "path", path);
+        cJSON_AddStringToObject(file_stateful, "path", path);
      }
  #else
-     cJSON_AddStringToObject(file, "path", path);
+     cJSON_AddStringToObject(file_stateless, "path", path);
+     cJSON_AddStringToObject(file_stateful, "path", path);
  #endif
 
-    cJSON_AddStringToObject(file, "mode", FIM_EVENT_MODE[txn_context->event->mode]);
+    cJSON_AddStringToObject(file_stateless, "mode", FIM_EVENT_MODE[txn_context->event->mode]);
 
     old_data = cJSON_GetObjectItem(result_json, "old");
     if (old_data != NULL) {
         old_attributes = cJSON_CreateObject();
         changed_attributes = cJSON_CreateArray();
-        cJSON_AddItemToObject(file, "previous", old_attributes);
+        cJSON_AddItemToObject(file_stateless, "previous", old_attributes);
         cJSON_AddItemToObject(event, "changed_fields", changed_attributes);
 
         fim_calculate_dbsync_difference(txn_context->config,
@@ -175,22 +177,45 @@ STATIC void transaction_callback(ReturnTypeCallback resultType,
     }
 
     if (diff != NULL && resultType == MODIFIED) {
-        cJSON_AddStringToObject(file, "content_changes", diff);
+        cJSON_AddStringToObject(file_stateless, "content_changes", diff);
     }
 
     if (txn_context->event->w_evt) {
-        cJSON_AddItemToObject(file, "audit", fim_audit_json(txn_context->event->w_evt));
+        cJSON_AddItemToObject(file_stateless, "audit", fim_audit_json(txn_context->event->w_evt));
     }
 
     if (txn_context->config->tag != NULL) {
-        cJSON_AddStringToObject(file, "tags", txn_context->config->tag);
+        cJSON_AddStringToObject(file_stateless, "tags", txn_context->config->tag);
     }
 
-    send_syscheck_msg(json_event);
+    if (_base_line != 0 && txn_context->event->report_event) {
+        send_syscheck_msg(stateless_event);
+    }
+
+    // Add checksum only to stateful event
+    cJSON* checksum = cJSON_CreateObject();
+    cJSON_AddItemToObject(stateful_event, "checksum", checksum);
+    cJSON* hash = cJSON_CreateObject();
+    cJSON_AddItemToObject(checksum, "hash", hash);
+
+    if (txn_context->entry != NULL && txn_context->entry->file_entry.data != NULL) {
+        cJSON_AddStringToObject(hash, "sha1", txn_context->entry->file_entry.data->checksum);
+    } else {
+        cJSON *aux = cJSON_GetObjectItem(result_json, "checksum");
+        if (aux != NULL) {
+            cJSON_AddStringToObject(hash, "sha1", cJSON_GetStringValue(aux));
+        } else {
+            mdebug1("Couldn't find checksum for '%s", path);
+            goto end; // LCOV_EXCL_LINE
+        }
+    }
+
+    persist_syscheck_msg(stateful_event);
 
 end:
     os_free(diff);
-    cJSON_Delete(json_event);
+    cJSON_Delete(stateless_event);
+    cJSON_Delete(stateful_event);
 }
 
 // Callback
@@ -248,7 +273,7 @@ directory_t *fim_configuration_directory(const char *key) {
      os_strdup(key, pathname);
  #endif
 
-    trail_path_separator(full_path, key, sizeof(full_path));
+    trail_path_separator(full_path, pathname, sizeof(full_path));
 
     OSList_foreach(node_it, syscheck.directories) {
         dir_it = node_it->data;

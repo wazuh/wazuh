@@ -109,6 +109,16 @@ void send_syscheck_msg(const cJSON *_msg) {
     }
 }
 
+// Persist a syscheck message
+void persist_syscheck_msg(const cJSON* _msg) {
+    char* msg = cJSON_PrintUnformatted(_msg);
+
+    mdebug2(FIM_PERSIST, msg);
+    // fim_persist_stateful_event(msg);
+
+    os_free(msg);
+}
+
 
 void check_max_fps() {
 #ifndef WAZUH_UNIT_TESTING
@@ -251,6 +261,11 @@ void start_daemon()
     // Create File integrity monitoring base-line
     minfo(FIM_FREQUENCY_TIME, syscheck.time);
     fim_scan();
+
+    // Launch inventory synchronization thread, if enabled
+    if (syscheck.enable_synchronization) {
+        // fim_run_integrity();
+    }
 
 #ifndef WIN32
     // Launch Real-time thread

@@ -481,6 +481,14 @@ cJSON *getSyscheckConfig(void) {
         os_free(full_command);
     }
 
+    cJSON * synchronization = cJSON_CreateObject();
+    cJSON_AddStringToObject(synchronization, "enabled", syscheck.enable_synchronization ? "yes" : "no");
+    cJSON_AddNumberToObject(synchronization, "interval", syscheck.sync_interval);
+    cJSON_AddNumberToObject(synchronization, "max_eps", syscheck.sync_max_eps);
+    cJSON_AddNumberToObject(synchronization, "response_timeout", syscheck.sync_response_timeout);
+
+    cJSON_AddItemToObject(syscfg, "synchronization", synchronization);
+
     cJSON_AddNumberToObject(syscfg, "max_eps", syscheck.max_eps);
     cJSON_AddNumberToObject(syscfg, "process_priority", syscheck.process_priority);
 

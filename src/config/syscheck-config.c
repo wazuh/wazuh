@@ -88,6 +88,7 @@ int initialize_syscheck_configuration(syscheck_config *syscheck) {
 
     OSList_SetFreeDataPointer(syscheck->directories, (void (*)(void *))free_directory);
     syscheck->wildcards                       = NULL;
+    syscheck->enable_synchronization          = 1;
     syscheck->restart_audit                   = 1;
     syscheck->enable_whodata                  = 0;
     syscheck->whodata_provider                = AUDIT_PROVIDER;
@@ -114,6 +115,9 @@ int initialize_syscheck_configuration(syscheck_config *syscheck) {
     syscheck->queue_size                      = 16384;
 #endif
     syscheck->prefilter_cmd                   = NULL;
+    syscheck->sync_interval                   = 300;
+    syscheck->sync_response_timeout           = 30;
+    syscheck->sync_max_eps                    = 10;
     syscheck->max_eps                         = 50;
     syscheck->max_files_per_second            = 0;
     syscheck->allow_remote_prefilter_cmd      = false;
@@ -1202,6 +1206,52 @@ out_free:
     return 1;
 }
 
+static void parse_synchronization(syscheck_config * syscheck, XML_NODE node) {
+     const char *xml_enabled = "enabled";
+     const char *xml_sync_interval = "interval";
+     const char *xml_response_timeout = "response_timeout";
+     const char *xml_max_eps = "max_eps";
+
+     for (int i = 0; node[i]; i++) {
+         if (strcmp(node[i]->element, xml_enabled) == 0) {
+             int r = w_parse_bool(node[i]->content);
+
+             if (r < 0) {
+                 mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
+             } else {
+                 syscheck->enable_synchronization = r;
+             }
+         } else if (strcmp(node[i]->element, xml_sync_interval) == 0) {
+             long t = w_parse_time(node[i]->content);
+
+             if (t <= 0) {
+                 mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
+             } else {
+                 syscheck->sync_interval = t;
+             }
+         } else if (strcmp(node[i]->element, xml_response_timeout) == 0) {
+             long response_timeout = w_parse_time(node[i]->content);
+
+             if (response_timeout < 0) {
+                 mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
+             } else {
+                 syscheck->sync_response_timeout = (uint32_t) response_timeout;
+             }
+         } else if (strcmp(node[i]->element, xml_max_eps) == 0) {
+             char * end;
+             long value = strtol(node[i]->content, &end, 10);
+
+             if (value < 0 || value > 1000000 || *end) {
+                 mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
+             } else {
+                 syscheck->sync_max_eps = value;
+             }
+         } else {
+             mwarn(XML_INVELEM, node[i]->element);
+         }
+     }
+ }
+
 int read_data_unit(const char *content) {
     size_t len_value_str = strlen(content);
     int converted_value = 0;
@@ -1575,6 +1625,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
     const char *xml_provider = "provider";
     const char *xml_audit_hc = "startup_healthcheck";
     const char *xml_process_priority = "process_priority";
+    const char *xml_synchronization = "synchronization";
     const char *xml_max_eps = "max_eps";
     const char *xml_allow_remote_prefilter_cmd = "allow_remote_prefilter_cmd";
     const char *xml_diff = "diff";
@@ -2058,7 +2109,17 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
             } else {
                 syscheck->process_priority = value;
             }
-        } else if (strcmp(node[i]->element, xml_diff) == 0) {
+        } else if (strcmp(node[i]->element, xml_synchronization) == 0) {
+            children = OS_GetElementsbyNode(xml, node[i]);
+
+            if (children == NULL) {
+                continue;
+            }
+
+            parse_synchronization(syscheck, children);
+            OS_ClearNode(children);
+        }
+         else if (strcmp(node[i]->element, xml_diff) == 0) {
             children = OS_GetElementsbyNode(xml, node[i]);
 
             if (children == NULL) {

@@ -17,6 +17,8 @@ int __wrap_send_log_msg(const char * msg);
 
 void __wrap_send_syscheck_msg(char *msg);
 
+void __wrap_persist_syscheck_msg(char *msg);
+
 void __wrap_fim_sync_check_eps();
 
 // Send a state synchronization message

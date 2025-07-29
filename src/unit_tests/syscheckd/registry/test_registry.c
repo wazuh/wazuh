@@ -898,11 +898,12 @@ static void test_fim_registry_key_transaction_callback_insert(){
     _base_line = 1;
     event_data_t event_data = {.mode = FIM_SCHEDULED, .report_event = true};
     ReturnTypeCallback resultType = INSERTED;
-    const char* json_string = "{\"path\":\"HKEY_LOCAL_MACHINE\\\\Software\\\\Classes\\\\batfile\", \"architecture\":\"[x64]\"}";
+    const char* json_string = "{\"path\":\"HKEY_LOCAL_MACHINE\\\\Software\\\\Classes\\\\batfile\", \"architecture\":\"[x64]\", \"checksum\":\"d0e2e27875639745261c5d1365eb6c9fb7319247\"}";
     const cJSON* result_json = cJSON_Parse(json_string);
     fim_key_txn_context_t user_data = {.key = NULL, .evt_data = &event_data};
 
     expect_function_call(__wrap_send_syscheck_msg);
+    expect_function_call(__wrap_persist_syscheck_msg);
 
     registry_key_transaction_callback(resultType, result_json, &user_data);
 }
@@ -911,11 +912,12 @@ static void test_fim_registry_key_transaction_callback_modify(){
     _base_line = 1;
     event_data_t event_data = {.mode = FIM_SCHEDULED, .report_event = true};
     ReturnTypeCallback resultType = MODIFIED;
-    const char* json_string = "{\"path\":\"HKEY_LOCAL_MACHINE\\\\Software\\\\Classes\\\\batfile\", \"architecture\":\"[x64]\"}";
+    const char* json_string = "{\"path\":\"HKEY_LOCAL_MACHINE\\\\Software\\\\Classes\\\\batfile\", \"architecture\":\"[x64]\", \"checksum\":\"d0e2e27875639745261c5d1365eb6c9fb7319247\"}";
     const cJSON* result_json = cJSON_Parse(json_string);
     fim_key_txn_context_t user_data = {.key = NULL, .evt_data = &event_data};
 
     expect_function_call(__wrap_send_syscheck_msg);
+    expect_function_call(__wrap_persist_syscheck_msg);
 
     registry_key_transaction_callback(resultType, result_json, &user_data);
 }
@@ -924,11 +926,12 @@ static void test_fim_registry_key_transaction_callback_delete(){
     _base_line = 1;
     event_data_t event_data = {.mode = FIM_SCHEDULED, .report_event = true};
     ReturnTypeCallback resultType = DELETED;
-    const char* json_string = "{\"path\":\"HKEY_LOCAL_MACHINE\\\\Software\\\\Classes\\\\batfile\", \"architecture\":\"[x64]\"}";
+    const char* json_string = "{\"path\":\"HKEY_LOCAL_MACHINE\\\\Software\\\\Classes\\\\batfile\", \"architecture\":\"[x64]\", \"checksum\":\"d0e2e27875639745261c5d1365eb6c9fb7319247\"}";
     const cJSON* result_json = cJSON_Parse(json_string);
     fim_key_txn_context_t user_data = {.key = NULL, .evt_data = &event_data};
 
     expect_function_call(__wrap_send_syscheck_msg);
+    expect_function_call(__wrap_persist_syscheck_msg);
 
     registry_key_transaction_callback(resultType, result_json, &user_data);
 }
@@ -1004,11 +1007,12 @@ static void test_fim_registry_value_transaction_callback_insert(){
     _base_line = 1;
     event_data_t event_data = {.mode = FIM_SCHEDULED, .report_event = true};
     ReturnTypeCallback resultType = INSERTED;
-    const char* json_string = "{\"path\":\"HKEY_LOCAL_MACHINE\\\\Software\\\\Classes\\\\batfile\",\"architecture\":\"[x64]\", \"value\":\"mock_name_value\"}";
+    const char* json_string = "{\"path\":\"HKEY_LOCAL_MACHINE\\\\Software\\\\Classes\\\\batfile\",\"architecture\":\"[x64]\",\"value\":\"mock_name_value\",\"checksum\":\"d0e2e27875639745261c5d1365eb6c9fb7319247\"}";
     const cJSON* result_json = cJSON_Parse(json_string);
     fim_val_txn_context_t user_data = {.data = NULL, .evt_data = &event_data, .diff = NULL};
 
     expect_function_call(__wrap_send_syscheck_msg);
+    expect_function_call(__wrap_persist_syscheck_msg);
 
     registry_value_transaction_callback(resultType, result_json, &user_data);
 }
@@ -1017,11 +1021,12 @@ static void test_fim_registry_value_transaction_callback_modify(){
     _base_line = 1;
     event_data_t event_data = {.mode = FIM_SCHEDULED, .report_event = true};
     ReturnTypeCallback resultType = MODIFIED;
-    const char* json_string = "{\"path\":\"HKEY_LOCAL_MACHINE\\\\Software\\\\Classes\\\\batfile\",\"architecture\":\"[x64]\",\"value\":\"mock_name_value\"}";
+    const char* json_string = "{\"path\":\"HKEY_LOCAL_MACHINE\\\\Software\\\\Classes\\\\batfile\",\"architecture\":\"[x64]\",\"value\":\"mock_name_value\",\"checksum\":\"d0e2e27875639745261c5d1365eb6c9fb7319247\"}";
     const cJSON* result_json = cJSON_Parse(json_string);
     fim_val_txn_context_t user_data = {.data = NULL, .evt_data = &event_data, .diff = NULL};
 
     expect_function_call(__wrap_send_syscheck_msg);
+    expect_function_call(__wrap_persist_syscheck_msg);
 
     registry_value_transaction_callback(resultType, result_json, &user_data);
 }
@@ -1030,11 +1035,12 @@ static void test_fim_registry_value_transaction_callback_modify_with_diff(){
     _base_line = 1;
     event_data_t event_data = {.mode = FIM_SCHEDULED, .report_event = true};
     ReturnTypeCallback resultType = MODIFIED;
-    const char* json_string = "{\"path\":\"HKEY_LOCAL_MACHINE\\\\Software\\\\Classes\\\\batfile\",\"architecture\":\"[x64]\",\"value\":\"mock_name_value\"}";
+    const char* json_string = "{\"path\":\"HKEY_LOCAL_MACHINE\\\\Software\\\\Classes\\\\batfile\",\"architecture\":\"[x64]\",\"value\":\"mock_name_value\",\"checksum\":\"d0e2e27875639745261c5d1365eb6c9fb7319247\"}";
     const cJSON* result_json = cJSON_Parse(json_string);
     fim_val_txn_context_t user_data = {.data = NULL, .evt_data = &event_data, .diff = "test diff string"};
 
     expect_function_call(__wrap_send_syscheck_msg);
+    expect_function_call(__wrap_persist_syscheck_msg);
 
     registry_value_transaction_callback(resultType, result_json, &user_data);
 }
@@ -1043,11 +1049,13 @@ static void test_fim_registry_value_transaction_callback_delete(){
     _base_line = 1;
     event_data_t event_data = {.mode = FIM_SCHEDULED, .report_event = true};
     ReturnTypeCallback resultType = DELETED;
-    const char* json_string = "{\"path\":\"HKEY_LOCAL_MACHINE\\\\Software\\\\Classes\\\\batfile\", \"architecture\":\"[x64]\", \"value\":\"mock_name_value\"}";
+    const char* json_string = "{\"path\":\"HKEY_LOCAL_MACHINE\\\\Software\\\\Classes\\\\batfile\",\"architecture\":\"[x64]\",\"value\":\"mock_name_value\",\"checksum\":\"d0e2e27875639745261c5d1365eb6c9fb7319247\"}";
     const cJSON* result_json = cJSON_Parse(json_string);
     fim_val_txn_context_t user_data = {.data = NULL, .evt_data = &event_data, .diff = NULL};
 
     expect_function_call(__wrap_send_syscheck_msg);
+    expect_function_call(__wrap_persist_syscheck_msg);
+
     expect_string(__wrap__mdebug2, formatted_msg, "(6355): Can't remove folder 'queue/diff/registry/[x64] b9b175e8810d3475f15976dd3b5f9210f3af6604/6797a8200934259ad5d56d1eb8dd24afc4f7ae2e', it does not exist.");
 
     registry_value_transaction_callback(resultType, result_json, &user_data);

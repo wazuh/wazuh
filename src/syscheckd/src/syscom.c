@@ -107,6 +107,15 @@ size_t syscom_dispatch(char * command, char ** output){
             os_set_restart_syscheck();
             return 0;
         }
+    } else if (strncmp(command, HC_FIM_SYNC, strlen(HC_FIM_SYNC)) == 0) {
+        if (syscheck.enable_synchronization) {
+            // fim_sync_push_msg(command);
+            return 0;
+        } else {
+            mdebug1("FIM synchronization is disabled");
+            os_strdup("err FIM synchronization is disabled", *output);
+            return strlen(*output);
+        }
     }
 
     mdebug1(FIM_SYSCOM_UNRECOGNIZED_COMMAND, command);

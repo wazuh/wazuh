@@ -3364,6 +3364,7 @@ static void test_transaction_callback_add(void **state) {
 #endif
 
     expect_function_call(__wrap_send_syscheck_msg);
+    expect_function_call(__wrap_persist_syscheck_msg);
 
     transaction_callback(INSERTED, result, txn_context);
     assert_int_equal(txn_context->event->type, FIM_ADD);
@@ -3401,6 +3402,7 @@ static void test_transaction_callback_modify(void **state) {
 #endif
 
     expect_function_call(__wrap_send_syscheck_msg);
+    expect_function_call(__wrap_persist_syscheck_msg);
 
     transaction_callback(MODIFIED, result, txn_context);
     assert_int_equal(txn_context->event->type, FIM_MODIFICATION);
@@ -3475,6 +3477,7 @@ static void test_transaction_callback_modify_report_changes(void **state) {
     expect_fim_file_diff(entry.file_entry.path, strdup("diff"));
 
     expect_function_call(__wrap_send_syscheck_msg);
+    expect_function_call(__wrap_persist_syscheck_msg);
 
     transaction_callback(MODIFIED, result, txn_context);
     assert_int_equal(txn_context->event->type, FIM_MODIFICATION);
@@ -3511,6 +3514,7 @@ static void test_transaction_callback_delete(void **state) {
 #endif
 
     expect_function_call(__wrap_send_syscheck_msg);
+    expect_function_call(__wrap_persist_syscheck_msg);
 
     transaction_callback(DELETED, result, txn_context);
     assert_int_equal(txn_context->event->type, FIM_DELETE);
@@ -3542,6 +3546,7 @@ static void test_transaction_callback_delete_report_changes(void **state) {
     expect_fim_diff_process_delete_file(path, 0);
 
     expect_function_call(__wrap_send_syscheck_msg);
+    expect_function_call(__wrap_persist_syscheck_msg);
 
     transaction_callback(DELETED, result, txn_context);
     assert_int_equal(txn_context->event->type, FIM_DELETE);
@@ -3576,6 +3581,7 @@ static void test_transaction_callback_delete_full_db(void **state) {
 #endif
 
     expect_function_call(__wrap_send_syscheck_msg);
+    expect_function_call(__wrap_persist_syscheck_msg);
 
     transaction_callback(DELETED, result, txn_context);
     assert_int_equal(txn_context->event->type, FIM_DELETE);

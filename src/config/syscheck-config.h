@@ -366,6 +366,7 @@ typedef struct _config {
     unsigned int restart_audit:1;                      /* Allow Syscheck restart Auditd */
     unsigned int enable_whodata:1;                     /* At least one directory configured with whodata */
     unsigned int whodata_provider:1;                   /* Select the whodata provider */
+    unsigned int enable_synchronization:1;             /* Enable database synchronization */
     unsigned int realtime_change:1;                    /* Variable to activate the change to realtime from a whodata monitoring*/
 
     OSList *directories;                               /* List of directories to be monitored */
@@ -393,6 +394,9 @@ typedef struct _config {
     char **nodiff;                                     /* list of files/dirs to never output diff */
     OSMatch **nodiff_regex;                            /* regex of files/dirs to never output diff */
 
+    uint32_t sync_interval;                            /* Synchronization interval */
+    uint32_t sync_response_timeout;                    /* Minimum interval for the synchronization process */
+    long sync_max_eps;                                 /* Maximum events per second for synchronization messages. */
     int max_eps;                                       /* Maximum events per second. */
 
     /* Windows only registry checking */

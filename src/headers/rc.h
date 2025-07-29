@@ -39,6 +39,7 @@
 #define HC_FIM_DB_ES                    "fim-db-end-scan"
 #define CFGA_DB_DUMP                    "sca-dump"
 #define HC_SK                           "syscheck "
+#define HC_FIM_SYNC                     "fim_sync "
 #define HC_SYSCOLLECTOR                 "syscollector_"
 #define HC_FORCE_RECONNECT              "force_reconnect"
 #define HC_RESTART                      "restart"
