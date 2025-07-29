@@ -29,11 +29,8 @@ class TEndpointPostV1AgentsRestartInfo final
 
         int64_t id {};
         std::string version;
-        std::string connectionStatus;
 
-        REFLECTABLE(MAKE_FIELD("id", &AgentRestartInfo::id),
-                    MAKE_FIELD("version", &AgentRestartInfo::version),
-                    MAKE_FIELD("status", &AgentRestartInfo::connectionStatus))
+        REFLECTABLE(MAKE_FIELD("id", &AgentRestartInfo::id), MAKE_FIELD("version", &AgentRestartInfo::version))
     };
     struct Response final
     {
@@ -110,10 +107,8 @@ public:
         while (stmtAgentsRestartInfo.step() == SQLITE_ROW)
         {
 
-            response.agentRestartInfo.push_back(
-                {.id = stmtAgentsRestartInfo.template value<int64_t>(0),
-                 .version = stmtAgentsRestartInfo.template value<std::string>(1),
-                 .connectionStatus = stmtAgentsRestartInfo.template value<std::string>(2)});
+            response.agentRestartInfo.push_back({.id = stmtAgentsRestartInfo.template value<int64_t>(0),
+                                                 .version = stmtAgentsRestartInfo.template value<std::string>(1)});
         }
 
         std::string jsonResponse;

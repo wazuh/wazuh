@@ -138,11 +138,12 @@ public:
                 DBStatement stmt(db,
                                  "UPDATE agent SET last_keepalive = STRFTIME('%s', 'NOW'),sync_status = 'synced',"
                                  "connection_status = 'active',disconnection_time = 0,"
-                                 "status_code = 0 WHERE id = ?;");
+                                 "status_code = 0, version = ? WHERE id = ?;");
 
                 for (const auto& agent : jsonBody.at("syncreq_keepalive"))
                 {
-                    stmt.bind(1, agent.get<int64_t>());
+                    stmt.bind(1, value<std::string_view>(agent, "version"));
+                    stmt.bind(2, id<int64_t>(agent, "id"));
                     stmt.step();
                     stmt.reset();
                 }
@@ -163,7 +164,7 @@ public:
                     stmt.bind(2, value<int64_t>(agent, "disconnection_time"));
                     stmt.bind(3, value<int64_t>(agent, "status_code"));
                     stmt.bind(4, value<std::string_view>(agent, "version"));
-                    stmt.bind(5, agent.at("id").get<int64_t>());
+                    stmt.bind(5, id<int64_t>(agent, "id"));
                     stmt.step();
                     stmt.reset();
                 }
