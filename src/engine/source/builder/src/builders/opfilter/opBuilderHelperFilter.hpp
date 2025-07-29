@@ -149,6 +149,107 @@ FilterOp opBuilderHelperStringContains(const Reference& targetField,
                                        const std::shared_ptr<const IBuildCtx>& buildCtx);
 
 //*************************************************
+//*              Number filters                      *
+//*************************************************
+
+/**
+ * @brief Builds helper number equal operation.
+ * Checks that the field is equal to an number or another numeric field
+ *
+ * The filter checks if a field in the JSON event is equal to a value.
+ * Only pass events if the fields are equal and the values are a number.
+ * @param targetField target field of the helper
+ * @param opArgs Vector of operation arguments containing numeric values to be converted.
+ * @param buildCtx Shared pointer to the build context used for the conversion operation.
+ * @return Expression The lifter with the `double_equal` filter.
+ * @throw std::runtime_error if the parameter is not a number.
+ */
+FilterOp opBuilderHelperNumberEqual(const Reference& targetField,
+                                    const std::vector<OpArg>& opArgs,
+                                    const std::shared_ptr<const IBuildCtx>& buildCtx);
+
+/**
+ * @brief Builds helper number not equal operation.
+ * Checks that the field is not equal to an number or another numeric field
+ *
+ * The filter checks if a field in the JSON event is not equal to a value.
+ * Only pass events if the fields are not equal and the values are a number.
+ * @param targetField target field of the helper
+ * @param opArgs Vector of operation arguments containing numeric values to be converted.
+ * @param buildCtx Shared pointer to the build context used for the conversion operation.
+ * @return Expression The lifter with the `double_not_equal` filter.
+ * @throw std::runtime_error if the parameter is not a number.
+ */
+FilterOp opBuilderHelperNumberNotEqual(const Reference& targetField,
+                                       const std::vector<OpArg>& opArgs,
+                                       const std::shared_ptr<const IBuildCtx>& buildCtx);
+
+/**
+ * @brief Builds helper number less than operation.
+ * Checks that the field is less than to an number or another numeric field
+ *
+ * The filter checks if a field in the JSON event is less than a value.
+ * Only pass events if the fields are less than and the values are a number.
+ * @param targetField target field of the helper
+ * @param opArgs Vector of operation arguments containing numeric values to be converted.
+ * @param buildCtx Shared pointer to the build context used for the conversion operation.
+ * @return Expression The lifter with the `double_less` filter.
+ * @throw std::runtime_error if the parameter is not a number.
+ */
+FilterOp opBuilderHelperNumberLessThan(const Reference& targetField,
+                                       const std::vector<OpArg>& opArgs,
+                                       const std::shared_ptr<const IBuildCtx>& buildCtx);
+
+/**
+ * @brief Builds helper number less than equal operation.
+ * Checks that the field is less than equal to an number or another numeric field
+ *
+ * The filter checks if a field in the JSON event is less than equal a value.
+ * Only pass events if the fields are less than equal and the values are a number.
+ * @param targetField target field of the helper
+ * @param opArgs Vector of operation arguments containing numeric values to be converted.
+ * @param buildCtx Shared pointer to the build context used for the conversion operation.
+ * @return Expression The lifter with the `double_less_or_equal` filter.
+ * @throw std::runtime_error if the parameter is not a number.
+ */
+FilterOp opBuilderHelperNumberLessThanEqual(const Reference& targetField,
+                                            const std::vector<OpArg>& opArgs,
+                                            const std::shared_ptr<const IBuildCtx>& buildCtx);
+
+/**
+ * @brief Builds helper number greater than operation.
+ * Checks that the field is greater than to an number or another numeric field
+ *
+ * The filter checks if a field in the JSON event is greater than a value.
+ * Only pass events if the fields are greater than and the values are a number.
+ * @param targetField target field of the helper
+ * @param opArgs Vector of operation arguments containing numeric values to be converted.
+ * @param buildCtx Shared pointer to the build context used for the conversion operation.
+ * @return Expression The lifter with the `double_greater` filter.
+ * @throw std::runtime_error if the parameter is not a number.
+ */
+
+FilterOp opBuilderHelperNumberGreaterThan(const Reference& targetField,
+                                          const std::vector<OpArg>& opArgs,
+                                          const std::shared_ptr<const IBuildCtx>& buildCtx);
+
+/**
+ * @brief Builds helper number greater than equal operation.
+ * Checks that the field is greater than equal to an number or another numeric field
+ *
+ * The filter checks if a field in the JSON event is greater than equal a value.
+ * Only pass events if the fields are greater than equal and the values are a number.
+ * @param targetField target field of the helper
+ * @param opArgs Vector of operation arguments containing numeric values to be converted.
+ * @param buildCtx Shared pointer to the build context used for the conversion operation.
+ * @return Expression The lifter with the `double_greater_or_equal` filter.
+ * @throw std::runtime_error if the parameter is not a number.
+ */
+FilterOp opBuilderHelperNumberGreaterThanEqual(const Reference& targetField,
+                                               const std::vector<OpArg>& opArgs,
+                                               const std::shared_ptr<const IBuildCtx>& buildCtx);
+
+//*************************************************
 //*              Int filters                      *
 //*************************************************
 

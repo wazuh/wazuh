@@ -119,6 +119,7 @@ add_executable(builder_utest
     ${UNIT_SRC_DIR}/builders/opfilter/startsWith_test.cpp
     ${UNIT_SRC_DIR}/builders/opfilter/endsWith_test.cpp
     ${UNIT_SRC_DIR}/builders/opfilter/intCmp_test.cpp
+    ${UNIT_SRC_DIR}/builders/opfilter/numberCmp_test.cpp
     ${UNIT_SRC_DIR}/builders/opfilter/strCmp_test.cpp
     ${UNIT_SRC_DIR}/builders/opfilter/regex_test.cpp
     ${UNIT_SRC_DIR}/builders/opfilter/is_ipv4_test.cpp
