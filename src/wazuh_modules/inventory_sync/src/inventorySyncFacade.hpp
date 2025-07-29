@@ -17,6 +17,8 @@
 #include "flatbuffers/include/inventorySync_generated.h"
 #include "routerSubscriber.hpp"
 #include "singleton.hpp"
+#include <asyncValueDispatcher.hpp>
+#include <filesystem>
 #include <functional>
 #include <indexerConnector.hpp>
 #include <json.hpp>
@@ -25,13 +27,12 @@
 #include <rocksdb/slice.h>
 #include <shared_mutex>
 #include <string>
-#include <threadDispatcher.h>
 #include <utility>
 
 constexpr int SINGLE_THREAD_COUNT = 1;
 
-using WorkersQueue = Utils::AsyncDispatcher<std::vector<char>, std::function<void(const std::vector<char>&)>>;
-using IndexerQueue = Utils::AsyncDispatcher<Response, std::function<void(const Response&)>>;
+using WorkersQueue = Utils::AsyncValueDispatcher<std::vector<char>, std::function<void(const std::vector<char>&)>>;
+using IndexerQueue = Utils::AsyncValueDispatcher<Response, std::function<void(const Response&)>>;
 
 class InventorySyncException : public std::exception
 {
@@ -107,7 +108,7 @@ class InventorySyncFacadeImpl final
             {
                 std::unique_lock lock(m_agentSessionsMutex);
                 // Check if session already exists.
-                if (m_agentSessions.find(sessionId) != m_agentSessions.end())
+                if (m_agentSessions.contains(sessionId))
                 {
                     throw InventorySyncException("Session already exists");
                 }
@@ -160,7 +161,7 @@ public:
     {
         std::cout << "Starting InventorySyncFacade..." << std::endl;
 
-        // TODO This database should be ephemeral and not persistent.
+        std::filesystem::remove_all("inventory_sync");
         m_dataStore = std::make_unique<TRocksDBWrapper>("inventory_sync");
         m_responseDispatcher = std::make_unique<TResponseDispatcher>();
         m_indexerConnector = std::make_unique<TIndexerConnector>(
@@ -194,19 +195,23 @@ public:
         m_inventorySubscription = std::make_unique<TRouterSubscriber>("inventory-states", "inventory-sync-module");
         m_inventorySubscription->subscribe(
             // coverity[copy_constructor_call]
-            [queue = m_workersQueue.get()](const std::vector<char>& message) { queue->push(message); });
+            [queue = m_workersQueue.get()](const std::vector<char>& message)
+            {
+                // TODO we need to add move capacity to the router module.
+                auto copy = message;
+                queue->push(std::move(copy));
+            });
 
-        const auto preIndexerAction = []()
+        const auto postIndexerAction = []()
         {
-            std::cout << "Pre-indexer action...\n";
+            std::cout << "post-indexer action...\n";
         };
 
         m_indexerQueue = std::make_unique<IndexerQueue>(
-            [this, &preIndexerAction](const Response& res)
+            [this, &postIndexerAction](const Response& res)
             {
                 std::cout << "Indexer queue action...\n";
-                auto sessionIt = m_agentSessions.find(res.context->sessionId);
-                if (sessionIt == m_agentSessions.end())
+                if (auto sessionIt = m_agentSessions.find(res.context->sessionId); sessionIt == m_agentSessions.end())
                 {
                     std::cerr << "InventorySyncFacade::start: Session not found, sessionId: " << res.context->sessionId
                               << std::endl;
@@ -216,7 +221,7 @@ public:
                 try
                 {
                     // VD ?
-                    preIndexerAction();
+                    postIndexerAction();
 
                     // Send delete by query to indexer if mode is full.
                     if (res.context->mode == Wazuh::SyncSchema::Mode_Full)
@@ -226,6 +231,9 @@ public:
                     }
 
                     const auto prefix = std::to_string(res.context->sessionId) + "_";
+
+                    // Lock indexer connector to avoid process with the timeout mechanism.
+                    std::scoped_lock lock(m_indexerConnector->scopeLock());
 
                     // Send bulk query (with handling of 413 error).
                     for (const auto& [key, value] : m_dataStore->seek(prefix))
@@ -256,21 +264,23 @@ public:
                             throw InventorySyncException("Invalid message type");
                         }
                     }
-                    // m_indexerConnector->registerNotify(
-                    //     [this, ctx = res.context]()
-                    //     {
-                    //         // Send ACK to agent.
-                    //         m_responseDispatcher->sendEndAck(Wazuh::SyncSchema::Status_Ok, ctx);
-                    //         // Delete data from database.
-                    //         m_dataStore->deleteByPrefix(std::to_string(ctx->sessionId));
-                    //         // Delete Session.
-                    //         if (m_agentSessions.erase(ctx->sessionId) == 0)
-                    //         {
-                    //             std::cerr
-                    //                 << "InventorySyncFacade::start: Session not found, sessionId: " << ctx->sessionId
-                    //                 << std::endl;
-                    //         }
-                    //     });
+
+                    // Register notify to be called when the indexer is flushed.
+                    m_indexerConnector->registerNotify(
+                        [this, ctx = res.context]()
+                        {
+                            // Send ACK to agent.
+                            m_responseDispatcher->sendEndAck(Wazuh::SyncSchema::Status_Ok, ctx);
+                            // Delete data from database.
+                            m_dataStore->deleteByPrefix(std::to_string(ctx->sessionId));
+                            // Delete Session.
+                            if (m_agentSessions.erase(ctx->sessionId) == 0)
+                            {
+                                std::cerr
+                                    << "InventorySyncFacade::start: Session not found, sessionId: " << ctx->sessionId
+                                    << std::endl;
+                            }
+                        });
                 }
                 catch (const InventorySyncException& e)
                 {
@@ -304,6 +314,29 @@ public:
             m_threadCount,
             UNLIMITED_QUEUE_SIZE);
 
+        m_sessionTimeoutThread = std::thread(
+            [this]()
+            {
+                std::unique_lock lock(m_sessionTimeoutMutex);
+                while (!m_stopping.load())
+                {
+                    m_sessionTimeoutCv.wait(lock, [this]() { return m_stopping.load(); });
+
+                    if (m_stopping.load())
+                    {
+                        break;
+                    }
+
+                    for (auto& [sessionId, session] : m_agentSessions)
+                    {
+                        if (!session.isAlive(std::chrono::seconds(10)))
+                        {
+                            m_agentSessions.erase(sessionId);
+                        }
+                    }
+                }
+            });
+
         std::cout << "InventorySyncFacade started." << std::endl;
     }
 
@@ -314,6 +347,12 @@ public:
     void stop()
     {
         std::cout << "Stopping InventorySyncFacade..." << std::endl;
+        {
+            std::lock_guard lock(m_sessionTimeoutMutex);
+            m_stopping = true;
+            m_sessionTimeoutCv.notify_all();
+        }
+
         m_inventorySubscription.reset();
         m_workersQueue.reset();
         m_indexerQueue.reset();
@@ -323,6 +362,10 @@ public:
 
 private:
     InventorySyncFacadeImpl() = default;
+    std::shared_mutex m_agentSessionsMutex;
+    std::mutex m_sessionTimeoutMutex;
+    std::condition_variable m_sessionTimeoutCv;
+    std::atomic<bool> m_stopping {false};
     std::unique_ptr<TRocksDBWrapper> m_dataStore;
     std::unique_ptr<TIndexerConnector> m_indexerConnector;
     std::unique_ptr<IndexerQueue> m_indexerQueue;
@@ -330,7 +373,7 @@ private:
     std::unique_ptr<WorkersQueue> m_workersQueue;
     std::unique_ptr<TRouterSubscriber> m_inventorySubscription;
     std::map<uint64_t, TAgentSession, std::less<>> m_agentSessions;
-    std::shared_mutex m_agentSessionsMutex;
+    std::thread m_sessionTimeoutThread;
 };
 
 using InventorySyncFacade = InventorySyncFacadeImpl<AgentSession,

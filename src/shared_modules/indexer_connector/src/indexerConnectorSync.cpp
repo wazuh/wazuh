@@ -55,6 +55,16 @@ public:
     {
         m_impl.bulkIndex(id, index, data);
     }
+
+    std::mutex& scopeLock()
+    {
+        return m_impl.scopeLock();
+    }
+
+    void registerNotify(std::function<void()> callback)
+    {
+        m_impl.registerNotify(std::move(callback));
+    }
 };
 
 IndexerConnectorSync::IndexerConnectorSync(
@@ -81,6 +91,16 @@ void IndexerConnectorSync::bulkDelete(std::string_view id, std::string_view inde
 void IndexerConnectorSync::bulkIndex(std::string_view id, std::string_view index, std::string_view data)
 {
     m_impl->bulkIndex(id, index, data);
+}
+
+std::mutex& IndexerConnectorSync::scopeLock()
+{
+    return m_impl->scopeLock();
+}
+
+void IndexerConnectorSync::registerNotify(std::function<void()> callback)
+{
+    m_impl->registerNotify(std::move(callback));
 }
 
 // LCOV_EXCL_STOP
