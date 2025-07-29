@@ -28,19 +28,18 @@ namespace conf
 
 using namespace internal;
 
-Conf::Conf(std::shared_ptr<IApiLoader> apiLoader)
-    : m_apiLoader(apiLoader)
-    , m_apiConfig(R"(null)")
+Conf::Conf(std::shared_ptr<IFileLoader> fileLoader)
+    : m_fileLoader(fileLoader)
 {
-    if (!m_apiLoader)
+    if (!m_fileLoader)
     {
-        throw std::invalid_argument("The API loader cannot be null.");
+        throw std::invalid_argument("The file loader cannot be null.");
     }
 
     // fs path
     const std::filesystem::path wazuhRoot {"/var/ossec/"};
 
-    // Register aviablable configuration units with Default Settings
+    // Register available configuration units with Default Settings
 
     // Logging module
     addUnit<std::string>(key::LOGGING_LEVEL, "WAZUH_LOG_LEVEL", "info");
@@ -77,10 +76,11 @@ Conf::Conf(std::shared_ptr<IApiLoader> apiLoader)
     addUnit<bool>(key::QUEUE_DROP_ON_FLOOD, "WAZUH_QUEUE_DROP_ON_FLOOD", true);
 
     // Orchestrator module
-    addUnit<int>(key::ORCHESTRATOR_THREADS, "WAZUH_ORCHESTRATOR_THREADS", 1);
+    addUnit<int>(key::ORCHESTRATOR_THREADS, "WAZUH_ORCHESTRATOR_THREADS", 0);
 
     // Http server module
-    addUnit<std::string>(key::SERVER_API_SOCKET, "WAZUH_SERVER_API_SOCKET", (wazuhRoot / "queue/sockets/engine-api").c_str());
+    addUnit<std::string>(
+        key::SERVER_API_SOCKET, "WAZUH_SERVER_API_SOCKET", (wazuhRoot / "queue/sockets/engine-api").c_str());
     addUnit<int>(key::SERVER_API_TIMEOUT, "WAZUH_SERVER_API_TIMEOUT", 5000);
 
     // Event server (dgram)
@@ -100,7 +100,8 @@ Conf::Conf(std::shared_ptr<IApiLoader> apiLoader)
 
     // Archiver module
     addUnit<bool>(key::ARCHIVER_ENABLED, "WAZUH_ARCHIVER_ENABLED", false);
-    addUnit<std::string>(key::ARCHIVER_PATH, "WAZUH_ARCHIVER_PATH", (wazuhRoot / "logs/archives/archives.json").c_str());
+    addUnit<std::string>(
+        key::ARCHIVER_PATH, "WAZUH_ARCHIVER_PATH", (wazuhRoot / "logs/archives/archives.json").c_str());
 
     // Process module
     addUnit<std::string>(key::PID_FILE_PATH, "WAZUH_ENGINE_PID_FILE_PATH", (wazuhRoot / "var/run/").c_str());
@@ -108,66 +109,97 @@ Conf::Conf(std::shared_ptr<IApiLoader> apiLoader)
     addUnit<std::string>(key::GROUP, "WAZUH_ENGINE_GROUP", "wazuh");
 };
 
-void Conf::validate(const json::Json& config) const
+void Conf::validate(const OptionMap& config) const
 {
-    for (const auto& [key, value] : m_units)
+    for (const auto& [key, unit] : m_units)
     {
-        if (!config.exists(key))
+        auto it = config.find(key);
+        if (it == config.end())
         {
             continue; // The configuration is not set for this key, ignore it
         }
 
-        const auto unitType = value->getType();
+        const auto& valueStr = it->second;
+        const auto unitType = unit->getType();
+
         switch (unitType)
         {
             case UnitConfType::INTEGER:
-                if (config.isInt(key) || config.isInt64(key))
+            {
+                if (!base::utils::string::isNumber(valueStr))
                 {
-                    continue;
+                    throw std::runtime_error(fmt::format(
+                        "Invalid configuration type for key '{}'. Expected integer, got '{}'.", key, valueStr));
                 }
-                throw std::runtime_error(
-                    fmt::format("Invalid configuration type for key '{}'. Expected integer, got '{}'.",
-                                key,
-                                config.str(key).value_or("errorValue")));
-            case UnitConfType::STRING:
-                if (config.isString(key))
-                {
-                    continue;
-                }
-                throw std::runtime_error(
-                    fmt::format("Invalid configuration type for key '{}'. Expected string, got '{}'.",
-                                key,
-                                config.str(key).value_or("errorValue")));
-            case UnitConfType::STRING_LIST:
-                if (config.isArray(key))
-                {
-                    auto jArr = config.getArray(key).value();
 
-                    for (const auto& item : jArr)
-                    {
-                        if (!item.isString())
-                        {
-                            throw std::runtime_error(
-                                fmt::format("Invalid configuration type for key '{}'. Expected string, got '{}'.",
-                                            key,
-                                            item.str()));
-                        }
-                    }
-                    continue;
-                }
-                throw std::runtime_error(
-                    fmt::format("Invalid configuration type for key '{}'. Expected array of strings, got '{}'.",
-                                key,
-                                config.str(key).value_or("errorValue")));
-            case UnitConfType::BOOL:
-                if (config.isBool(key))
+                std::size_t pos = 0;
+                try
                 {
-                    continue;
+                    auto v = std::stoll(valueStr, &pos);
+
+                    if (pos != valueStr.size())
+                    {
+                        throw std::runtime_error(fmt::format(
+                            "Invalid configuration type for key '{}'. Extra characters found in integer: '{}'.",
+                            key,
+                            valueStr.substr(pos)));
+                    }
                 }
-                throw std::runtime_error(
-                    fmt::format("Invalid configuration type for key '{}'. Expected boolean, got '{}'.",
-                                key,
-                                config.str(key).value_or("errorValue")));
+                catch (const std::invalid_argument& e)
+                {
+                    throw std::runtime_error(
+                        fmt::format("Invalid configuration type for key '{}'. Could not parse '{}'.", key, valueStr));
+                }
+                catch (const std::out_of_range& e)
+                {
+                    throw std::runtime_error(
+                        fmt::format("Invalid configuration type for key '{}'. Value out of range for integer: '{}'.",
+                                    key,
+                                    valueStr));
+                }
+
+                break;
+            }
+
+            case UnitConfType::STRING:
+            {
+                break;
+            }
+
+            case UnitConfType::STRING_LIST:
+            {
+                // Detect list-style formatting with brackets: [a,b]
+                if (valueStr.front() == '[' && valueStr.back() == ']')
+                {
+                    throw std::runtime_error(fmt::format(
+                        "Invalid configuration type for key '{}'. Bracket notation '[...]' is not allowed: '{}'.",
+                        key,
+                        valueStr));
+                }
+
+                if (valueStr.find(',') == std::string::npos)
+                {
+                    throw std::runtime_error(
+                        fmt::format("Invalid configuration type for key '{}'. Expected comma-separated list, got '{}'.",
+                                    key,
+                                    valueStr));
+                }
+
+                break;
+            }
+
+            case UnitConfType::BOOL:
+            {
+                std::string lowerVal = valueStr;
+                std::transform(lowerVal.begin(), lowerVal.end(), lowerVal.begin(), ::tolower);
+                if (lowerVal != "true" && lowerVal != "false")
+                {
+                    throw std::runtime_error(fmt::format(
+                        "Invalid configuration type for key '{}'. Expected boolean, got '{}'.", key, valueStr));
+                }
+                break;
+            }
+
             default: throw std::logic_error(fmt::format("Invalid configuration type for key '{}'.", key));
         }
     }
@@ -175,13 +207,13 @@ void Conf::validate(const json::Json& config) const
 
 void Conf::load()
 {
-    if (!m_apiConfig.isNull())
+    if (!m_fileConfig.empty())
     {
         throw std::logic_error("The configuration is already loaded.");
     }
-    json::Json apiConf = (*m_apiLoader)();
-    validate(apiConf);
-    m_apiConfig = std::move(apiConf);
+    auto fileConf = (*m_fileLoader)();
+    validate(fileConf);
+    m_fileConfig = std::move(fileConf);
 }
 
 } // namespace conf
