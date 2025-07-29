@@ -18,6 +18,7 @@ namespace router
 {
 
 constexpr auto WAIT_DEQUEUE_TIMEOUT_USEC = 1 * 100000;
+constexpr auto WAIT_EPS_TIMEOUT_MSEC = 1;
 
 class Worker : public IWorker
 {

@@ -15,13 +15,14 @@ import (
 
 // Struct config for rate benchmark
 type rateConfig struct {
-	rate       int    // Rate (Events/sec) of the benchmark
-	timeTest   int    // Time duration of the benchmark
-	srcFile    string // Path to dataset of event (1 event per line)
-	dstFile    string // Path to the output file
-	truncFile  bool   // Truncate the output file
-	concurrent int    // Number of concurrent connections
-	fullFormat bool   // Use full format msg. Dont preppend  1:[123] agent->server: log
+	rate             int    // Rate (Events/sec) of the benchmark
+	timeTest         int    // Time duration of the benchmark
+	srcFile          string // Path to dataset of event (1 event per line)
+	dstFile          string // Path to the output file
+	truncFile        bool   // Truncate the output file
+	concurrent       int    // Number of concurrent connections
+	fullFormat       bool   // Use full format msg. Dont preppend  1:[123] agent->server: log
+	disableRateTrack bool   // Disable processing rate tracking
 }
 
 // Report of rate benchmark
@@ -33,6 +34,10 @@ type rateReport struct {
 	// Burst info
 	repeat int // How many times the batch is sent per burst
 	rest   int // How many events are partially sent (to reach the rate) per burst
+	// Processing rate tracking
+	ppsHistory []int   // Processed per second history
+	maxPPS     int     // Maximum processed per second
+	avgPPS     float64 // Average processed per second
 }
 
 // #TODO Add a function/test/benchmark to measure the latency of log process in high load
@@ -58,6 +63,8 @@ func main() {
 	var header bool
 	// Full format msg
 	var fullFormat bool
+	// Disable processing rate tracking
+	var disableRateTrack bool
 
 	// Parcer arguments
 	// Bench
@@ -74,9 +81,9 @@ func main() {
 		`"tcp6" (IPv6-only), "udp", "udp4" (IPv4-only), `+
 		`"udp6" (IPv6-only), "ip", "ip4" (IPv4-only),`+
 		`"ip6" (IPv6-only), "unix", "unixgram" and "unixpacket". `)
-	//flag.BoolVar(&verbose, "v", false, "Verbose mode")
 	flag.BoolVar(&header, "b", false, "Use secure msg protocol. Preappend a header with size of logs (int32) before send")
 	flag.BoolVar(&fullFormat, "f", false, "Use full format msg. Dont preppend  1:[123] agent->server: log")
+	flag.BoolVar(&disableRateTrack, "R", false, "Disable rate tracking processing")
 	flag.Parse()
 
 	// Validate parameters
@@ -93,7 +100,7 @@ func main() {
 	defer conn.Close()
 
 	// if benchmark is a rate benchmark
-	rateConfig := rateConfig{rate, timeTest, datasetFile, watchedFile, truncateWatched, concurrent, fullFormat}
+	rateConfig := rateConfig{rate, timeTest, datasetFile, watchedFile, truncateWatched, concurrent, fullFormat, disableRateTrack}
 	tReport := rateTest(rateConfig, conn, header)
 	printReport(tReport, rateConfig)
 
@@ -134,6 +141,15 @@ func rateTest(config rateConfig, conn net.Conn, header bool) rateReport {
 		sleepTimeNano = 0
 	}
 
+	// Initialize tracking variables
+	if !config.disableRateTrack {
+		report.ppsHistory = make([]int, 0)
+	}
+	var previousProcessedCount int = 0
+	if !config.truncFile {
+		previousProcessedCount = safeFileLineCounter(config.dstFile)
+	}
+
 	// Start benchmark
 	report.totalEvents = 0
 	report.startTime = time.Now()
@@ -150,11 +166,34 @@ func rateTest(config rateConfig, conn net.Conn, header bool) rateReport {
 			fmt.Printf("EPS: %10d\n", eps)
 			// Wait a grace period to process the last events and flush the queue
 			time.Sleep(time.Second * 5)
-			report.proccessEvents = fileLineCounter(config.dstFile)
+			report.proccessEvents = safeFileLineCounter(config.dstFile)
+
+			// Calculate final statistics
+			if !config.disableRateTrack && len(report.ppsHistory) > 0 {
+				report.maxPPS = report.ppsHistory[0]
+				total := 0
+				for _, pps := range report.ppsHistory {
+					if pps > report.maxPPS {
+						report.maxPPS = pps
+					}
+					total += pps
+				}
+				report.avgPPS = float64(total) / float64(len(report.ppsHistory))
+			}
+
 			return report
 		case <-tick.C:
-			// Calculate the eps
-			fmt.Printf("EPS: %10d\n", eps)
+			if !config.disableRateTrack {
+				// Calculate current processed events count
+				currentProcessedCount := safeFileLineCounter(config.dstFile)
+				pps := currentProcessedCount - previousProcessedCount
+				report.ppsHistory = append(report.ppsHistory, pps)
+				previousProcessedCount = currentProcessedCount
+				// Display both sent and processed rates
+				fmt.Printf("EPS (sent): %10d | PPS (processed): %10d\n", eps, pps)
+			} else {
+				fmt.Printf("EPS (sent): %10d\n", eps)
+			}
 			eps = 0
 		default:
 			// Send the batch
@@ -165,7 +204,7 @@ func rateTest(config rateConfig, conn net.Conn, header bool) rateReport {
 					eps += 1
 					report.totalEvents++
 					for time.Now().Before(until) {
-							continue
+						continue
 					}
 
 				}
@@ -204,13 +243,29 @@ func printReport(report rateReport, config rateConfig) {
 	fmt.Printf("\n")
 
 	fmt.Printf("Results:\n")
-	fmt.Printf("Duration:         %10f seconds\n", report.endTime.Sub(report.startTime).Seconds())
+	duration := report.endTime.Sub(report.startTime).Seconds()
+	fmt.Printf("Duration:         %10.2f seconds\n", duration)
 	fmt.Printf("Sent events:      %10v\n", report.totalEvents)
-
 	fmt.Printf("Processed events: %10v\n", report.proccessEvents)
 	fmt.Printf("Lost events:      %10v\n", report.totalEvents-report.proccessEvents)
-	fmt.Printf("\n")
 
+	if duration > 0 {
+		fmt.Printf("Avg sent rate:    %10.2f events/sec\n", float64(report.totalEvents)/duration)
+		fmt.Printf("Avg proc rate:    %10.2f events/sec\n", float64(report.proccessEvents)/duration)
+	}
+
+	if !config.disableRateTrack && len(report.ppsHistory) > 0 {
+		fmt.Printf("\nProcessing Statistics:\n")
+		fmt.Printf("Max PPS:          %10d events/sec\n", report.maxPPS)
+		fmt.Printf("Avg PPS:          %10.2f events/sec\n", report.avgPPS)
+
+		// Show PPS history if we have data
+		fmt.Printf("\nPPS per second:\n")
+		for i, pps := range report.ppsHistory {
+			fmt.Printf("  Second %2d:      %10d events\n", i+1, pps)
+		}
+	}
+	fmt.Printf("\n")
 }
 
 // -----------------------------------------------------------------------------
@@ -306,4 +361,12 @@ func fileLineCounter(fileName string) int {
 			log.Fatalf("Error to open file: %s\n", err)
 		}
 	}
+}
+
+// Count lines of a file safely (returns 0 if file doesn't exist)
+func safeFileLineCounter(fileName string) int {
+	if _, err := os.Stat(fileName); os.IsNotExist(err) {
+		return 0
+	}
+	return fileLineCounter(fileName)
 }
