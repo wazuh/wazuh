@@ -260,6 +260,11 @@ public:
         return m_observedCount;
     }
 
+    std::chrono::time_point<std::chrono::steady_clock> lastUpdate() const
+    {
+        return m_lastUpdate;
+    }
+
 private:
     uint64_t m_size;                                                 ///< Total size of the observed sequence
     uint64_t m_observedCount {0};                                    ///< Total count of observed elements
