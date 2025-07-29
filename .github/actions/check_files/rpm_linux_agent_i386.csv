@@ -136,7 +136,7 @@ full_filename,owner_name,group_name,mode,type,prot_permissions,size_bytes,size_e
 /var/ossec/active-response/bin/default-firewall-drop,root,wazuh,750,file,-rwxr-x---,21136,0.1
 /var/ossec/active-response/bin/wazuh-slack,root,wazuh,750,file,-rwxr-x---,18688,0.1
 /var/ossec/active-response/bin/ip-customblock,root,wazuh,750,file,-rwxr-x---,17216,0.1
-/var/ossec/active-response/bin/restart.sh,root,wazuh,750,file,-rwxr-x---,695,0.1
+/var/ossec/active-response/bin/restart.sh,root,wazuh,750,file,-rwxr-x---,845,0.1
 /var/ossec/active-response/bin/pf,root,wazuh,750,file,-rwxr-x---,19444,0.1
 /var/ossec/active-response/bin/npf,root,wazuh,750,file,-rwxr-x---,18220,0.1
 /var/ossec/active-response/bin/disable-account,root,wazuh,750,file,-rwxr-x---,18224,0.1
