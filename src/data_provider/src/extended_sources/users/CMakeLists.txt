@@ -47,11 +47,17 @@ add_library(users STATIC ${SRC_FILES})
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   target_link_libraries(users
+      FilesystemWrapper
       wtsapi32
       ${PLATFORM_LIBS_USERS}
   )
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
-  target_link_libraries(users ${PLATFORM_LIBS_USERS})
+  target_link_libraries(users
+      FilesystemWrapper
+      ${PLATFORM_LIBS_USERS})
+else()
+  target_link_libraries(users
+      FilesystemWrapper)
 endif()
 
 if(UNIT_TEST)

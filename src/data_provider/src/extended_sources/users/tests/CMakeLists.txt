@@ -31,6 +31,7 @@ add_executable(extended_sources_users_unit_test ${TEST_SRC})
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     target_link_libraries(extended_sources_users_unit_test
         users
+        FilesystemWrapper
         debug gtestd
         debug gmockd
         debug gtest_maind
@@ -44,6 +45,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 else()
     target_link_libraries(extended_sources_users_unit_test
         users
+        FilesystemWrapper
         gtestd
         gmockd
         gtest_maind

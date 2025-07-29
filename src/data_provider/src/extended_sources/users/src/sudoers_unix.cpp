@@ -15,7 +15,9 @@
 #include <vector>
 #include <fstream>
 
-#include "filesystemHelper.h"
+#include <filesystem_wrapper.hpp>
+
+#include "utilsWrapperLinux.hpp"
 #include "stringHelper.h"
 
 #include "sudoers_unix.hpp"
@@ -46,6 +48,7 @@ void SudoersProvider::genSudoersFile(const std::string& fileName,
 {
     // sudoers(5): No more than 128 files are allowed to be nested.
     static const unsigned int kMaxNest = 128;
+    const file_system::FileSystemWrapper fs;
 
     if (level > kMaxNest)
     {
@@ -53,7 +56,7 @@ void SudoersProvider::genSudoersFile(const std::string& fileName,
         return;
     }
 
-    if (!Utils::existsRegular(fileName))
+    if (!fs.is_regular_file(fileName))
     {
         // std::cout << "sudoers file doesn't exists: " << fileName << std::endl;
         return;
@@ -154,10 +157,10 @@ void SudoersProvider::genSudoersFile(const std::string& fileName,
             // support both relative and full paths
             if (ruleDetails.at(0) != '/')
             {
-                ruleDetails = Utils::resolvePath(fileName, ruleDetails);
+                ruleDetails = fs.resolvePath(fileName, ruleDetails);
             }
 
-            std::vector<std::string> inc_files = Utils::enumerateDir(ruleDetails);
+            auto inc_files = fs.list_directory(ruleDetails);
 
             if (inc_files.empty())
             {
@@ -167,7 +170,7 @@ void SudoersProvider::genSudoersFile(const std::string& fileName,
 
             for (const auto& incFile : inc_files)
             {
-                std::string incBasename = Utils::getFilename(incFile);
+                std::string incBasename = fs.getFilename(incFile);
 
                 // Per sudoers(5): Any files in the included directory that
                 // contain a '.' or end with '~' are ignored.
@@ -187,7 +190,7 @@ void SudoersProvider::genSudoersFile(const std::string& fileName,
             // Relative or full paths
             if (ruleDetails.at(0) != '/')
             {
-                ruleDetails = Utils::resolvePath(fileName, ruleDetails);
+                ruleDetails = fs.resolvePath(fileName, ruleDetails);
             }
 
             genSudoersFile(ruleDetails, level + 1, results);

@@ -126,17 +126,6 @@ void wm_destroy();
 // Destroy module
 void wm_module_free(wmodule * config);
 
-/* Execute command with timeout of secs. exitcode can be NULL.
- *
- * command is a mutable string.
- * output is a pointer to dynamic string. Caller is responsible for freeing it!
- * On success, return 0. On another error, returns -1.
- * If the called program timed-out, returns WM_ERROR_TIMEOUT and output may
- * contain data.
- * env_path is a pointer to an string to add to the PATH environment variable.
- */
-int wm_exec(char *command, char **output, int *exitcode, int secs, const char * add_path);
-
 #ifdef WIN32
 // Add process to pool
 void wm_append_handle(HANDLE hProcess);
