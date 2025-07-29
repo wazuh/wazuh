@@ -31,6 +31,7 @@ include_directories(${SHARED_MODULES}/utils)
 
 # Link directories
 link_directories(${SRC_FOLDER}/external/flatbuffers/build/)
+link_directories(${SRC_FOLDER}/external/simdjson/build/)
 link_directories(${SRC_FOLDER}/)
 
 file(GLOB ROUTER_SRC
