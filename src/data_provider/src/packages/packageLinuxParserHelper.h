@@ -70,6 +70,7 @@ namespace PackageLinuxHelper
             std::string source {UNKNOWN_VALUE};
             std::string version {UNKNOWN_VALUE};
             std::string vendor {UNKNOWN_VALUE};
+            std::string email {UNKNOWN_VALUE};
             std::string description {UNKNOWN_VALUE};
             int64_t size { 0 };
 
@@ -126,7 +127,7 @@ namespace PackageLinuxHelper
 
             if (it != info.end())
             {
-                vendor = it->second;
+                Utils::splitMaintainerField(it->second, vendor, email);
             }
 
             it = info.find("Description");
@@ -161,6 +162,7 @@ namespace PackageLinuxHelper
         std::string name;
         std::string version;
         std::string vendor       { UNKNOWN_VALUE };
+        std::string email        { UNKNOWN_VALUE };
         std::string install_time { UNKNOWN_VALUE };
         std::string description  { UNKNOWN_VALUE };
         int64_t     size         { 0 };
@@ -199,7 +201,7 @@ namespace PackageLinuxHelper
 
             if (publisher.contains("display-name"))
             {
-                vendor = publisher.at("display-name");
+                Utils::splitMaintainerField(publisher.at("display-name"), vendor, email);
             }
         }
 
