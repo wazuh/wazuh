@@ -40,18 +40,6 @@ class SDBusWrapper : public ISDBusWrapper
             return ::sd_bus_message_unref(m);
         }
 
-        /// @brief Reads a D-Bus message.
-        /// @param m Pointer to the message to read.
-        /// @param types Format string describing the expected types.
-        int sd_bus_message_read(sd_bus_message* m, const char* types, ...) override
-        {
-            va_list args;
-            va_start(args, types);
-            int ret = ::sd_bus_message_readv(m, types, args);
-            va_end(args);
-            return ret;
-        }
-
         /// @brief Enters a container in a D-Bus message.
         /// @param m Pointer to the message.
         /// @param type The type of the container to enter (e.g., SD_BUS_TYPE_ARRAY).
@@ -68,33 +56,6 @@ class SDBusWrapper : public ISDBusWrapper
         int sd_bus_message_exit_container(sd_bus_message* m) override
         {
             return ::sd_bus_message_exit_container(m);
-        }
-
-        /// @brief Calls a method on a D-Bus service.
-        /// @param bus Pointer to the bus connection.
-        /// @param destination The D-Bus service name.
-        /// @param path The object path to call the method on.
-        /// @param interface The D-Bus interface containing the method.
-        /// @param member The name of the method to call.
-        /// @param retError Pointer to store any error that occurs.
-        /// @param reply Pointer to store the reply message.
-        /// @param types Format string describing the input parameters.
-        /// @return 0 on success, or an error number on failure.
-        int sd_bus_call_method(sd_bus* bus,
-                               const char* destination,
-                               const char* path,
-                               const char* interface,
-                               const char* member,
-                               sd_bus_error* retError,
-                               sd_bus_message** reply,
-                               const char* types,
-                               ...) override
-        {
-            va_list args;
-            va_start(args, types);
-            int ret = ::sd_bus_call_methodv(bus, destination, path, interface, member, retError, reply, types, args);
-            va_end(args);
-            return ret;
         }
 
         /// @brief Gets a property from a D-Bus object.
@@ -116,5 +77,73 @@ class SDBusWrapper : public ISDBusWrapper
         {
             return ::sd_bus_get_property_string(bus, destination, path, interface, member,
                                                 retError, ret);
+        }
+
+        /// @brief Calls the ListUnits method on the systemd D-Bus interface.
+        /// @param bus Pointer to the bus connection.
+        /// @param reply Pointer to store the reply message.
+        /// @param error Pointer to store any error that occurs.
+        /// @return 0 on success, or an error number on failure.
+        /// @note This method is used to retrieve a list of systemd units.
+        int callListUnits(sd_bus* bus, sd_bus_message** reply, sd_bus_error* error) override
+        {
+            return ::sd_bus_call_method(bus,
+                                        "org.freedesktop.systemd1",
+                                        "/org/freedesktop/systemd1",
+                                        "org.freedesktop.systemd1.Manager",
+                                        "ListUnits",
+                                        error,
+                                        reply,
+                                        "");
+        }
+
+        /// @brief Parses a systemd unit from a D-Bus message.
+        /// @param m Pointer to the message containing the unit data.
+        /// @param outData Reference to a SystemdUnit structure to store the parsed data.
+        /// @return 0 on success, or an error number on failure.
+        /// @note This method extracts various properties of the unit from the message.
+        int parseSystemdUnit(sd_bus_message* m, SystemdUnit& outData) override
+        {
+            const char* id;
+            const char* description;
+            const char* loadState;
+            const char* activeState;
+            const char* subState;
+            const char* following;
+            const char* objectPath;
+            uint32_t jobId;
+            const char* jobType;
+            const char* jobPath;
+
+            int ret = ::sd_bus_message_read(m,
+                                            "ssssssouso",
+                                            &id,
+                                            &description,
+                                            &loadState,
+                                            &activeState,
+                                            &subState,
+                                            &following,
+                                            &objectPath,
+                                            &jobId,
+                                            &jobType,
+                                            &jobPath);
+
+            if (ret < 0)
+            {
+                return ret;
+            }
+
+            outData.id = id;
+            outData.description = description;
+            outData.loadState = loadState;
+            outData.activeState = activeState;
+            outData.subState = subState;
+            outData.following = following;
+            outData.objectPath = objectPath;
+            outData.jobId = jobId;
+            outData.jobType = jobType;
+            outData.jobPath = jobPath;
+
+            return 0;
         }
 };
