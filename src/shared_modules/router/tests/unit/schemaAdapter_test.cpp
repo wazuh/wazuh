@@ -568,8 +568,20 @@ TEST_F(SchemaAdapterTest, TestSchemaAdapterMT_SYS_DELTAS_LEGACY_AGENT_END_MESSAG
     std::string buffer;
     agent_ctx agentCtx = {.agent_id = "test", .agent_name = "test", .agent_ip = "test", .agent_version = "test"};
 
+    EXPECT_NO_THROW(SchemaAdapter::adaptJsonMessage(
+        R"({"type":"scan_end","ID":1998297930,"timestamp":"2024/01/13 00:08:55"})", MT_SYS_DELTAS, &agentCtx, buffer));
+
+    // This type of message must be discarded, so buffer should be empty
+    EXPECT_EQ(buffer, "");
+}
+
+TEST_F(SchemaAdapterTest, TestSchemaAdapterMT_SYS_DELTAS_LEGACY_AGENT_START_MESSAGE)
+{
+    std::string buffer;
+    agent_ctx agentCtx = {.agent_id = "test", .agent_name = "test", .agent_ip = "test", .agent_version = "test"};
+
     EXPECT_NO_THROW(
-        SchemaAdapter::adaptJsonMessage(R"({"type":"process_end","ID":1998297930,"timestamp":"2024/01/13 00:08:55"})",
+        SchemaAdapter::adaptJsonMessage(R"({"type":"scan_start","ID":1998297930,"timestamp":"2024/01/13 00:08:55"})",
                                         MT_SYS_DELTAS,
                                         &agentCtx,
                                         buffer));

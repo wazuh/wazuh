@@ -97,9 +97,19 @@ public:
 
         auto type = typeElem.get_string().value();
 
-        if (type == "integrity_check_left" || type == "integrity_check_right")
+        if (type == "integrity_check_left" || type == "integrity_check_right" || type == "scan_start" ||
+            type == "scan_end")
         {
             // Discard integrity_check_left and integrity_check_right messages
+            return;
+        }
+
+        // Check if ID and timestamp are both present, if so, discard the message
+        auto idElem = parsedResponse["ID"];
+        auto timestampElem = parsedResponse["timestamp"];
+        if (!idElem.error() && !timestampElem.error())
+        {
+            // Discard the message
             return;
         }
 
