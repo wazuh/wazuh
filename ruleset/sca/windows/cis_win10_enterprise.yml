@@ -49,8 +49,8 @@ checks:
       - cis_csc: ["5.2"]
     condition: all
     rules:
-      - 'c:powershell secedit /export /cfg $env:TEMP\secpol.cfg; Get-Content $env:TEMP\secpol.cfg | Select-String "MaximumPasswordAge"; Remove-Item $env:TEMP\secpol.cfg -> r:MaximumPasswordAge = (\d+) compare <= 365'
-      - 'c:powershell secedit /export /cfg $env:TEMP\secpol.cfg; Get-Content $env:TEMP\secpol.cfg | Select-String "MaximumPasswordAge"; Remove-Item $env:TEMP\secpol.cfg -> r:MaximumPasswordAge = (\d+) compare > 0'
+      - 'c:powershell secedit /export /cfg $env:TEMP\secpol.cfg; Get-Content $env:TEMP\secpol.cfg | Select-String "MaximumPasswordAge"; Remove-Item $env:TEMP\secpol.cfg -> n:MaximumPasswordAge = (\d+) compare <= 365'
+      - 'c:powershell secedit /export /cfg $env:TEMP\secpol.cfg; Get-Content $env:TEMP\secpol.cfg | Select-String "MaximumPasswordAge"; Remove-Item $env:TEMP\secpol.cfg -> n:MaximumPasswordAge = (\d+) compare > 0'
 
   - id: 15502
     title: "Ensure 'Minimum password age' is set to '1 or more day(s)'."
