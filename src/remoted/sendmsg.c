@@ -104,7 +104,32 @@ int send_msg(const char *agent_id, const char *msg, ssize_t msg_length)
     } else if (keys.keyentries[key_id]->sock >= 0) {
         /* TCP mode, enqueue the message in the send buffer */
         retval = nb_queue(&netbuffer_send, keys.keyentries[key_id]->sock, crypt_msg, msg_size, keys.keyentries[key_id]->id);
+        if (retval == -1) {
+            mdebug1("Not enough buffer space... [buffer_size=%lu, used=%lu, msg_size=%lu]",
+                netbuffer_send.buffers[keys.keyentries[key_id]->sock].bqueue->max_length,
+                netbuffer_send.buffers[keys.keyentries[key_id]->sock].bqueue->length,
+                msg_size);
+        }
+        int sock = keys.keyentries[key_id]->sock;
         w_mutex_unlock(&keys.keyentries[key_id]->mutex);
+        if (retval == -1) {
+            sleep(send_timeout_to_retry);
+            w_mutex_lock(&keys.keyentries[key_id]->mutex);
+
+            /* Check if the socket is still the same */
+            if (sock == keys.keyentries[key_id]->sock) {
+                retval = nb_queue(&netbuffer_send, keys.keyentries[key_id]->sock, crypt_msg, msg_size, keys.keyentries[key_id]->id);
+                if (retval < 0) {
+                    rem_inc_send_discarded(keys.keyentries[key_id]->id);
+                    mwarn("Package dropped. Could not append data into buffer.");
+                }
+            } else {
+                rem_inc_send_discarded(keys.keyentries[key_id]->id);
+                mwarn("Package dropped. Could not append data into buffer.");
+                mdebug1("Send operation cancelled due to closed socket.");
+            }
+            w_mutex_unlock(&keys.keyentries[key_id]->mutex);
+        }
         key_unlock();
         return retval;
     } else {
