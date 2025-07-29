@@ -11,6 +11,27 @@
 
 #include <systemd/sd-bus.h>
 
+/// @brief Structure to hold information about a systemd unit.
+struct SystemdUnit
+{
+    std::string id;
+    std::string description;
+    std::string loadState;
+    std::string activeState;
+    std::string subState;
+    std::string following;
+    std::string objectPath;
+    uint32_t jobId;
+    std::string jobType;
+    std::string jobPath;
+
+    // Extra properties
+    std::string fragmentPath;
+    std::string sourcePath;
+    std::string user;
+    std::string unitFileState;
+};
+
 /// @brief Interface for the D-Bus wrapper.
 class ISDBusWrapper
 {
@@ -33,11 +54,6 @@ class ISDBusWrapper
         /// @return The unreferenced message.
         virtual sd_bus_message* sd_bus_message_unref(sd_bus_message* m) = 0;
 
-        /// @brief Reads a D-Bus message.
-        /// @param m Pointer to the message to read.
-        /// @param types Format string describing the expected types.
-        virtual int sd_bus_message_read(sd_bus_message* m, const char* types, ...) = 0;
-
         /// @brief Enters a container in a D-Bus message.
         /// @param m Pointer to the message.
         /// @param type The type of the container to enter (e.g., SD_BUS_TYPE_ARRAY).
@@ -49,26 +65,6 @@ class ISDBusWrapper
         /// @param m Pointer to the message.
         /// @return 0 on success, or an error number on failure.
         virtual int sd_bus_message_exit_container(sd_bus_message* m) = 0;
-
-        /// @brief Calls a method on a D-Bus service.
-        /// @param bus Pointer to the bus connection.
-        /// @param destination The D-Bus service name.
-        /// @param path The object path to call the method on.
-        /// @param interface The D-Bus interface containing the method.
-        /// @param member The name of the method to call.
-        /// @param retError Pointer to store any error that occurs.
-        /// @param reply Pointer to store the reply message.
-        /// @param types Format string describing the input parameters.
-        /// @return 0 on success, or an error number on failure.
-        virtual int sd_bus_call_method(sd_bus* bus,
-                                       const char* destination,
-                                       const char* path,
-                                       const char* interface,
-                                       const char* member,
-                                       sd_bus_error* retError,
-                                       sd_bus_message** reply,
-                                       const char* types,
-                                       ...) = 0;
 
         /// @brief Gets a property from a D-Bus object.
         /// @param bus Pointer to the bus connection.
@@ -86,4 +82,19 @@ class ISDBusWrapper
                                                const char* member,
                                                sd_bus_error* retError,
                                                char** ret) = 0;
+
+        /// @brief Calls the ListUnits method on the systemd D-Bus interface.
+        /// @param bus Pointer to the bus connection.
+        /// @param reply Pointer to store the reply message.
+        /// @param error Pointer to store any error that occurs.
+        /// @return 0 on success, or an error number on failure.
+        /// @note This method is used to retrieve a list of systemd units.
+        virtual int callListUnits(sd_bus* bus, sd_bus_message** reply, sd_bus_error* error) = 0;
+
+        /// @brief Parses a systemd unit from a D-Bus message.
+        /// @param m Pointer to the message containing the unit data.
+        /// @param outData Reference to a SystemdUnit structure to store the parsed data.
+        /// @return 0 on success, or an error number on failure.
+        /// @note This method extracts various properties of the unit from the message.
+        virtual int parseSystemdUnit(sd_bus_message* m, SystemdUnit& outData) = 0;
 };

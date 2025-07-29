@@ -40,3 +40,14 @@ endif()
 add_library(services STATIC ${SRC_FILES})
 
 target_link_libraries(services ${PLATFORM_LIBS_SERVICES})
+
+if(UNIT_TEST)
+  if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+      target_link_libraries(services -fprofile-arcs)
+  else()
+      target_link_libraries(services gcov)
+  endif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+
+  add_subdirectory(tests)
+endif(UNIT_TEST)
+

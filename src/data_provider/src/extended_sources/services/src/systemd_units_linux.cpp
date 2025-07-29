@@ -72,15 +72,7 @@ bool SystemdUnitsProvider::getSystemdUnits(std::vector<SystemdUnit>& output)
     }
 
     sd_bus_message* reply = nullptr;
-    ret = m_dbusWrapper->sd_bus_call_method(
-              bus,
-              "org.freedesktop.systemd1",             // service
-              "/org/freedesktop/systemd1",            // path
-              "org.freedesktop.systemd1.Manager",     // interface
-              "ListUnits",                            // method
-              nullptr,                                // input signature
-              &reply,                                 // reply
-              "");                                    // no input parameters
+    ret = m_dbusWrapper->callListUnits(bus, &reply, nullptr);
 
     if (ret < 0)
     {
@@ -102,47 +94,13 @@ bool SystemdUnitsProvider::getSystemdUnits(std::vector<SystemdUnit>& output)
     while ((ret = m_dbusWrapper->sd_bus_message_enter_container(reply, SD_BUS_TYPE_STRUCT, "ssssssouso")) > 0)
     {
         SystemdUnit unit;
-
-        const char* id;
-        const char* description;
-        const char* loadState;
-        const char* activeState;
-        const char* subState;
-        const char* following;
-        const char* path;
-        uint32_t jobId;
-        const char* jobType;
-        const char* jobPath;
-
-        ret = m_dbusWrapper->sd_bus_message_read(
-                  reply, "ssssssouso",
-                  &id,
-                  &description,
-                  &loadState,
-                  &activeState,
-                  &subState,
-                  &following,
-                  &path,
-                  &jobId,
-                  &jobType,
-                  &jobPath);
+        ret = m_dbusWrapper->parseSystemdUnit(reply, unit);
 
         if (ret < 0)
         {
             std::cerr << "Failed to read unit struct: " << m_systemWrapper->strerror(-ret) << std::endl;
             break;
         }
-
-        unit.id = id;
-        unit.description = description;
-        unit.loadState = loadState;
-        unit.activeState = activeState;
-        unit.subState = subState;
-        unit.following = following;
-        unit.objectPath = path;
-        unit.jobId = jobId;
-        unit.jobType = jobType;
-        unit.jobPath = jobPath;
 
         // Reading additional properties via D-Bus
         for (const auto& query : m_propertyQueryList)
@@ -172,11 +130,11 @@ bool SystemdUnitsProvider::getSystemdUnits(std::vector<SystemdUnit>& output)
                 free(propValueCstring);
             }
 
-            if (query.columnName == "fragmentPath")
+            if (query.columnName == "fragment_path")
             {
                 unit.fragmentPath = propValue;
             }
-            else if (query.columnName == "sourcePath")
+            else if (query.columnName == "source_path")
             {
                 unit.sourcePath = propValue;
             }
@@ -184,7 +142,7 @@ bool SystemdUnitsProvider::getSystemdUnits(std::vector<SystemdUnit>& output)
             {
                 unit.user = propValue;
             }
-            else if (query.columnName == "unitFileState")
+            else if (query.columnName == "unit_file_state")
             {
                 unit.unitFileState = propValue;
             }

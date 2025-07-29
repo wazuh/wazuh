@@ -41,27 +41,6 @@ class SystemdUnitsProvider
         /// @brief Pointer to the system wrapper for system calls.
         std::shared_ptr<ISystemWrapper> m_systemWrapper;
 
-        /// @brief Structure to hold information about a systemd unit.
-        struct SystemdUnit
-        {
-            std::string id;
-            std::string description;
-            std::string loadState;
-            std::string activeState;
-            std::string subState;
-            std::string following;
-            std::string objectPath;
-            uint32_t jobId;
-            std::string jobType;
-            std::string jobPath;
-
-            // Extra properties
-            std::string fragmentPath;
-            std::string sourcePath;
-            std::string user;
-            std::string unitFileState;
-        };
-
         /// @brief Structure to describe a property query for D-Bus.
         struct PropertyQueryDesc
         {
