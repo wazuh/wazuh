@@ -1,11 +1,11 @@
 #ifndef _STREAMLOG_LOGGER_CHANNEL_HPP
 #define _STREAMLOG_LOGGER_CHANNEL_HPP
 
-
 #include <atomic>
 #include <ctime>
 #include <fstream>
 #include <iomanip>
+#include <memory>
 #include <mutex>
 #include <regex>
 #include <sstream>
@@ -19,7 +19,15 @@
 namespace streamlog
 {
 
+enum class ChannelState : int
+{
+    Running = 0,
+    StopRequested = 1,
+    ErrorClosed = 2
+};
 
+// Forward declaration
+class ChannelHandler;
 
 /***********************************************************************************************************************
  * @brief Concrete implementation of WriterEvent for log channels
@@ -28,25 +36,39 @@ class ChannelWriter : public WriterEvent
 {
 private:
     std::shared_ptr<base::queue::ConcurrentQueue<std::string>> m_queue;
-    std::shared_ptr<std::atomic<bool>> m_closedChannel;
+    std::shared_ptr<std::atomic<ChannelState>> m_channelState;
+    std::weak_ptr<ChannelHandler> m_channelHandler; // Weak reference to avoid circular dependency
 
 public:
     ChannelWriter(std::shared_ptr<base::queue::ConcurrentQueue<std::string>> queue,
-                  std::shared_ptr<std::atomic<bool>> channelClosedDueToError)
+                  std::shared_ptr<std::atomic<ChannelState>> channelState,
+                  std::weak_ptr<ChannelHandler> channelHandler)
         : m_queue(std::move(queue))
-        , m_closedChannel(std::move(channelClosedDueToError))
+        , m_channelState(std::move(channelState))
+        , m_channelHandler(std::move(channelHandler))
     {
-        if (!m_queue || !m_closedChannel)
+        if (!m_queue || !m_channelState)
         {
-            throw std::invalid_argument("Queue and channelClosedDueToError must not be null");
+            throw std::invalid_argument("Queue and channelState must not be null");
         }
     }
 
+    // Make ChannelWriter non-copyable to prevent issues with writer counting
+    ChannelWriter(const ChannelWriter&) = delete;
+    ChannelWriter& operator=(const ChannelWriter&) = delete;
+
+    // Also disable move to keep the design simple and safe
+    ChannelWriter(ChannelWriter&&) = delete;
+    ChannelWriter& operator=(ChannelWriter&&) = delete;
+
+    // Destructor that notifies when the writer is destroyed
+    ~ChannelWriter();
+
     void operator()(std::string&& message) override
     {
-        if (!m_closedChannel->load(std::memory_order_relaxed))
+        if (m_channelState->load(std::memory_order_relaxed) == ChannelState::Running)
         {
-            m_queue->push(std::move(message));
+            m_queue->push(std::move(message)); // TODO Handle error and print message for changing the buffer size, maybe trypush con &&
         }
     }
 };
@@ -54,21 +76,23 @@ public:
 /***********************************************************************************************************************
  * @brief High-performance internal implementation that manages the async processing
  * Each channel gets its own dedicated worker thread for maximum throughput
- * TODO: Move to channel.h/cpp
  **********************************************************************************************************************/
-class ChannelHandler
+class ChannelHandler : public std::enable_shared_from_this<ChannelHandler>
 {
 private:
-    RotationConfig m_config;   ///< The rotation configuration for the log channel.
-    std::string m_channelName; ///< The name of the log channel.
+    RotationConfig m_config;                 ///< The rotation configuration for the log channel.
+    std::string m_channelName;               ///< The name of the log channel.
+    mutable std::mutex m_writersMutex;       ///< Mutex to protect the writers reference count
+    std::atomic<size_t> m_activeWriters {0}; ///< Count of active ChannelWriter instances
 
     struct AsyncChannelData
     {
         // Stream flow handling
         std::shared_ptr<base::queue::ConcurrentQueue<std::string>> queue; ///< Thread-safe queue for log messages.
-        std::ofstream outputFile;                ///< Output file stream for writing log messages.
-        std::thread workerThread;                ///< Thread that processes log messages asynchronously.
-        std::atomic<bool> stopRequested {false}; ///< Atomic flag to signal the worker thread to stop.
+        std::ofstream outputFile; ///< Output file stream for writing log messages.
+        std::thread workerThread; ///< Thread that processes log messages asynchronously.
+        std::shared_ptr<std::atomic<ChannelState>> channelState {
+            std::make_shared<std::atomic<ChannelState>>(ChannelState::Running)};
 
         // File path
         std::filesystem::path currentFile; ///< Current log file being written to.
@@ -80,32 +104,25 @@ private:
         size_t currentSize {0};                                  ///< Current size of the log file in bytes.
         size_t counter {0}; ///< Counter for the number of rotations (max size rotations).
 
-        /// @brief Flag indicating if the channel is closed due to an error.
-        std::shared_ptr<std::atomic<bool>> channelClosedDueToError {std::make_shared<std::atomic<bool>>(false)};
-
     } m_stateData; ///< State data for the channel.
 
     /**
      * @brief Replaces placeholders in a pattern string with corresponding values.
-     * @see ChannelHandler::replacePlaceholders for details.
      */
     std::string replacePlaceholders(const std::chrono::system_clock::time_point& timePoint) const;
 
     /**
      * @brief Rotation check
-     * @see ChannelHandler::needsRotation for details.
      */
     bool needsRotation(size_t messageSize);
 
     /**
      * @brief Rotates the log file for the current channel based
-     * @see ChannelHandler::rotateFile for details.
      */
     void rotateFile();
 
     /**
      * @brief Opens the output file for the current channel and creates or updates a hard link to the latest file.
-     * @see ChannelHandler::updateOutputFileAndLink for details.
      */
     void updateOutputFileAndLink();
 
@@ -114,20 +131,54 @@ private:
 
     /**
      * @brief Writes a message to the output file associated with the channel.
-     * @see ChannelHandler::writeMessage for details.
      */
     void writeMessage(const std::string& message);
 
     /**
      * @brief Worker thread, each channel has its own dedicated worker thread for maximum throughput
-     * @see ChannelHandler::workerThreadFunc for details.
      */
     void workerThreadFunc();
 
-public:
-    ChannelHandler(RotationConfig config, std::string channelName);
-};
+    /**
+     * @brief Called when a ChannelWriter is destroyed
+     */
+    void onWriterDestroyed();
 
+    /**
+     * @brief Private constructor - use create() instead
+     */
+    ChannelHandler(RotationConfig config, std::string channelName);
+
+public:
+    /**
+     * @brief Factory method to create a ChannelHandler as a shared_ptr
+     * @param config The rotation configuration for the log channel
+     * @param channelName The name of the log channel
+     * @return A shared_ptr to the newly created ChannelHandler
+     * @throws std::runtime_error if the configuration is invalid or initialization fails
+     */
+    static std::shared_ptr<ChannelHandler> create(RotationConfig config, std::string channelName);
+
+    /**
+     * @brief Creates a new ChannelWriter and starts the worker thread if it's the first writer
+     * @return A shared_ptr to a new ChannelWriter instance
+     */
+    std::shared_ptr<ChannelWriter> createWriter();
+
+    /**
+     * @brief Destructor - ensures worker thread is properly stopped
+     */
+    ~ChannelHandler();
+
+    // Make the class non-copyable and non-movable for safety
+    ChannelHandler(const ChannelHandler&) = delete;
+    ChannelHandler& operator=(const ChannelHandler&) = delete;
+    ChannelHandler(ChannelHandler&&) = delete;
+    ChannelHandler& operator=(ChannelHandler&&) = delete;
+
+    // Allow ChannelWriter to start and stop the worker thread
+    friend class ChannelWriter;
+};
 
 } // namespace streamlog
 

@@ -1,5 +1,7 @@
 #include "channel.hpp"
 
+#include <base/process.hpp>
+
 namespace streamlog
 {
 
@@ -14,8 +16,6 @@ namespace streamlog
  * - `${MM}`: 2-digit month (01-12)
  * - `${DD}`: 2-digit day of the month (01-31)
  * - `${HH}`: 2-digit hour (00-23)
- * - `${mm}`: 2-digit minute (00-59)
- * - `${ss}`: 2-digit second (00-59)
  * - `${name}`: Channel name (`m_channelName`)
  * - `${counter}`: Counter value (`m_config.counter`), only if `m_config.maxSize > 0`
  *
@@ -33,7 +33,7 @@ std::string ChannelHandler::replacePlaceholders(const std::chrono::system_clock:
     }
     const auto& tm = *tmPtr;
 
-    std::string result = m_config.pattern;
+    auto result = m_config.pattern;
 
     // Replace time placeholders
     result = std::regex_replace(result, std::regex(R"(\$\{YYYY\})"), std::to_string(tm.tm_year + 1900));
@@ -44,10 +44,6 @@ std::string ChannelHandler::replacePlaceholders(const std::chrono::system_clock:
         result, std::regex(R"(\$\{DD\})"), (tm.tm_mday < 10 ? "0" : "") + std::to_string(tm.tm_mday));
     result = std::regex_replace(
         result, std::regex(R"(\$\{HH\})"), (tm.tm_hour < 10 ? "0" : "") + std::to_string(tm.tm_hour));
-    result =
-        std::regex_replace(result, std::regex(R"(\$\{mm\})"), (tm.tm_min < 10 ? "0" : "") + std::to_string(tm.tm_min));
-    result =
-        std::regex_replace(result, std::regex(R"(\$\{ss\})"), (tm.tm_sec < 10 ? "0" : "") + std::to_string(tm.tm_sec));
 
     // Replace channel name
     result = std::regex_replace(result, std::regex(R"(\$\{name\})"), m_channelName);
@@ -101,14 +97,14 @@ bool ChannelHandler::needsRotation(const size_t messageSize)
     catch (const std::exception& e)
     {
         LOG_ERROR("Error checking rotation for channel '{}': {}", m_channelName, e.what());
-        m_stateData.channelClosedDueToError->store(true);
+        m_stateData.channelState->store(ChannelState::ErrorClosed, std::memory_order_relaxed);
     }
 
     return false;
 }
 
 /**
- * @brief Rotates the log file for the current channel based on size or other criteria.
+ * @brief Rotates the log file for the current channel based on size or date criteria.
  *
  * This function handles log file rotation by generating a new file path according to the configured pattern,
  * updating counters for size-based rotation, creating necessary directories, and managing file handles.
@@ -155,7 +151,7 @@ void ChannelHandler::rotateFile()
     catch (const std::exception& e)
     {
         LOG_ERROR("Failed to generate new file path for channel '{}': {}", m_channelName, e.what());
-        m_stateData.channelClosedDueToError->store(true);
+        m_stateData.channelState->store(ChannelState::ErrorClosed, std::memory_order_relaxed);
         return;
     }
     m_stateData.lastRotation = now;
@@ -170,7 +166,7 @@ void ChannelHandler::rotateFile()
         LOG_ERROR("Failed to rotate file for channel '{}': {}. Closing channel and discarding messages.",
                   m_channelName,
                   e.what());
-        m_stateData.channelClosedDueToError->store(true);
+        m_stateData.channelState->store(ChannelState::ErrorClosed, std::memory_order_relaxed);
         return;
     }
 
@@ -222,7 +218,6 @@ void ChannelHandler::updateOutputFileAndLink()
     LOG_DEBUG("Opened output file for channel: {} at {}", m_channelName, m_stateData.currentFile.string());
 }
 
-
 /**
  * @brief Worker thread function for processing log messages in a channel.
  *
@@ -237,8 +232,13 @@ void ChannelHandler::updateOutputFileAndLink()
  */
 void ChannelHandler::workerThreadFunc()
 {
+
+    LOG_DEBUG("Starting writer thread for channel: {}", m_channelName);
+
+    base::process::setThreadName("ChannelWriter-" + m_channelName);
+
     std::string message;
-    while (!m_stateData.stopRequested.load(std::memory_order_relaxed))
+    while (m_stateData.channelState->load(std::memory_order_relaxed) == ChannelState::Running)
     {
         // Check if we need to rotate the file
         if (m_stateData.queue->waitPop(message, 1000) && !message.empty())
@@ -247,12 +247,10 @@ void ChannelHandler::workerThreadFunc()
             {
                 rotateFile();
             }
-            if (m_stateData.channelClosedDueToError->load(std::memory_order_relaxed))
+            if (m_stateData.channelState->load(std::memory_order_relaxed) != ChannelState::Running)
             {
                 // Skip writing if channel is closed due to error
-                // In practice, this should not happend
-                m_stateData.stopRequested.store(true, std::memory_order_relaxed);
-                continue;
+                break;
             }
             writeMessage(message);
         }
@@ -263,17 +261,35 @@ void ChannelHandler::workerThreadFunc()
 
 void ChannelHandler::stopWorkerThread()
 {
-    // TODO: We should clean the queue before stopping the thread?
     if (m_stateData.workerThread.joinable())
     {
-        m_stateData.stopRequested.store(true, std::memory_order_relaxed);
+        // Request the worker thread to stop
+        m_stateData.channelState->store(ChannelState::StopRequested, std::memory_order_relaxed);
         m_stateData.workerThread.join();
+
+        // Reset the state back to Running for potential future use
+        m_stateData.channelState->store(ChannelState::Running, std::memory_order_relaxed);
+
+        // Discard any pending messages in the queue
+        std::string discardedMessage;
+        size_t discardedCount = 0;
+        while (m_stateData.queue->tryPop(discardedMessage))
+        {
+            discardedCount++;
+        }
+
+        if (discardedCount > 0)
+        {
+            LOG_WARNING("Discarded {} pending messages for channel: {}", discardedCount, m_channelName);
+        }
+
+        LOG_DEBUG("Worker thread stopped for channel: {}", m_channelName);
     }
 }
 
 void ChannelHandler::startWorkerThread()
 {
-    m_stateData.stopRequested.store(false, std::memory_order_relaxed);
+    m_stateData.channelState->store(ChannelState::Running, std::memory_order_relaxed);
     m_stateData.workerThread = std::thread(&ChannelHandler::workerThreadFunc, this);
 }
 
@@ -290,11 +306,11 @@ void ChannelHandler::startWorkerThread()
 void ChannelHandler::writeMessage(const std::string& message)
 {
     m_stateData.currentSize += message.size() + 1; // +1 for newline character
-    m_stateData.outputFile << message << std::endl;
+    m_stateData.outputFile << message << "\n";
     if (m_stateData.outputFile.fail())
     {
         LOG_ERROR("Failed to write message to output file for channel: {}", m_channelName);
-        m_stateData.channelClosedDueToError->store(true);
+        m_stateData.channelState->store(ChannelState::ErrorClosed, std::memory_order_relaxed);
         return;
     }
     m_stateData.outputFile.flush();
@@ -311,10 +327,14 @@ ChannelHandler::ChannelHandler(RotationConfig config, std::string channelName)
         throw std::runtime_error("Channel name cannot be empty");
     }
 
-    if (m_config.basePath.empty() || !std::filesystem::exists(m_config.basePath)
-        || !std::filesystem::is_directory(m_config.basePath))
+    // Ensure the base path is absolute, exist and is a dir
+    if (!m_config.basePath.is_absolute() || m_config.basePath.empty())
     {
-        throw std::runtime_error("Base path does not exist or is not a directory: " + m_config.basePath.string());
+        throw std::runtime_error("Base path must be an absolute path");
+    }
+    if (!std::filesystem::exists(m_config.basePath) || !std::filesystem::is_directory(m_config.basePath))
+    {
+        throw std::runtime_error("Base path must exist and be a directory: " + m_config.basePath.string());
     }
 
     if (m_config.pattern.empty())
@@ -329,19 +349,21 @@ ChannelHandler::ChannelHandler(RotationConfig config, std::string channelName)
     // Ajust the pattern if needed
     if (m_config.maxSize > 0 && m_config.pattern.find("${counter}") == std::string::npos)
     {
+        // Add the counter placeholder to the pattern if maxSize is set and counter is not already present
         auto lastDot = m_config.pattern.find_last_of('.');
         if (lastDot != std::string::npos)
         {
-            m_config.pattern.insert(lastDot, "-${counter}"); // Insert before the file extension
+            m_config.pattern.insert(lastDot, "-${counter}");
         }
         else
         {
-            m_config.pattern += "-${counter}"; // Append counter if no extension
+            m_config.pattern += "-${counter}";
         }
 
         if (m_config.maxSize < 0x1 << 20)
         {
-            m_config.maxSize = 0x1 << 20; // Default to 1 MiB if maxSize is too small
+            // Default to 1 MiB if maxSize is too small
+            m_config.maxSize = 0x1 << 20;
         }
     }
 
@@ -371,7 +393,7 @@ ChannelHandler::ChannelHandler(RotationConfig config, std::string channelName)
     m_stateData.lastRotation = std::chrono::system_clock::now();
     m_stateData.lastRotationCheck = m_stateData.lastRotation;
 
-    // Chec if need to create the directories
+    // Check if need to create the directories
     auto parentPath = m_stateData.currentFile.parent_path();
     if (!std::filesystem::exists(parentPath))
     {
@@ -393,6 +415,104 @@ ChannelHandler::ChannelHandler(RotationConfig config, std::string channelName)
         throw std::runtime_error("Failed to initialize channel '" + m_channelName + "': " + e.what());
     }
 
+    LOG_DEBUG("ChannelHandler '{}' initialized. Worker thread will start on first writer creation.", m_channelName);
+}
+
+/**
+ * @brief Factory method to create a ChannelHandler as a shared_ptr
+ */
+std::shared_ptr<ChannelHandler> ChannelHandler::create(RotationConfig config, std::string channelName)
+{
+    return std::shared_ptr<ChannelHandler>(new ChannelHandler(std::move(config), std::move(channelName)));
+}
+
+/**
+ * @brief Destructor - ensures worker thread is properly stopped
+ */
+ChannelHandler::~ChannelHandler()
+{
+    LOG_DEBUG("Destroying ChannelHandler for channel: {}", m_channelName);
+
+    if (m_stateData.workerThread.joinable())
+    {
+        LOG_WARNING("ChannelHandler '{}' being destroyed with active worker thread. Forcing stop.", m_channelName);
+        stopWorkerThread();
+    }
+
+    if (m_stateData.outputFile.is_open())
+    {
+        m_stateData.outputFile.flush();
+        m_stateData.outputFile.close();
+    }
+
+    LOG_DEBUG("ChannelHandler '{}' destroyed", m_channelName);
+}
+
+/**
+ * @brief Creates a new ChannelWriter instance for the channel.
+ *
+ * This method is thread-safe and ensures that the worker thread is started if this is the first writer.
+ *
+ * @return A shared pointer to the newly created ChannelWriter.
+ */
+std::shared_ptr<ChannelWriter> ChannelHandler::createWriter()
+{
+    std::lock_guard<std::mutex> lock(m_writersMutex);
+
+    const auto currentState = m_stateData.channelState->load(std::memory_order_relaxed);
+    if (currentState == ChannelState::ErrorClosed)
+    {
+        throw std::runtime_error("Cannot create writer for channel '" + m_channelName
+                                 + "' - channel is in error state");
+    }
+
+    // Check if we need to start the worker thread (first writer)
+    if (m_activeWriters.load(std::memory_order_relaxed) == 0)
+    {
+        LOG_DEBUG("Starting worker thread for channel '{}' - first writer created", m_channelName);
+        startWorkerThread();
+    }
+
+    // Increment the active writers count
+    m_activeWriters.fetch_add(1, std::memory_order_relaxed);
+
+    auto writer = std::make_shared<ChannelWriter>(m_stateData.queue, m_stateData.channelState, weak_from_this());
+
+    LOG_DEBUG("Created ChannelWriter for channel '{}'. Active writers: {}",
+              m_channelName,
+              m_activeWriters.load(std::memory_order_relaxed));
+
+    return writer;
+}
+
+/**
+ * @brief Called when a ChannelWriter is destroyed.
+ *
+ * This method updates the active writers count and stops the worker thread if there are no more active writers.
+ */
+void ChannelHandler::onWriterDestroyed()
+{
+    std::lock_guard<std::mutex> lock(m_writersMutex);
+
+    size_t currentWriters = m_activeWriters.fetch_sub(1, std::memory_order_relaxed) - 1;
+
+    LOG_DEBUG("ChannelWriter destroyed for channel '{}'. Active writers: {}", m_channelName, currentWriters);
+
+    // If this was the last writer, stop the worker thread
+    if (currentWriters == 0)
+    {
+        LOG_DEBUG("Stopping worker thread for channel '{}' - no more active writers", m_channelName);
+        stopWorkerThread();
+    }
+}
+
+// Implementation of ChannelWriter destructor
+ChannelWriter::~ChannelWriter()
+{
+    if (auto handler = m_channelHandler.lock())
+    {
+        handler->onWriterDestroyed();
+    }
 }
 
 } // namespace streamlog

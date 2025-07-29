@@ -50,7 +50,7 @@ TEST(ChannelTest, LoggerInitialization)
     logging::testInit(logging::Level::Debug);
     const auto tmpDir = getTempDir();
 
-    streamlog::ChannelHandler channelHandler(
+    auto channelHandlerPtr = streamlog::ChannelHandler::create(
         streamlog::RotationConfig {
             tmpDir.string(), // basePath
             "${YYYY}/${MMM}/wazuh-${name}-${DD}.json",

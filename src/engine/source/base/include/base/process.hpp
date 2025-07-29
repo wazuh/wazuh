@@ -246,6 +246,28 @@ int privSepSetGroup(gid_t gid)
     return (OS_SUCCESS);
 }
 
+/**
+ * @brief Sets the name of the current thread.
+ *
+ * This function assigns a name to the calling thread,
+ * On Linux, the thread name is limited to 15 characters; if the provided name is longer, it will be truncated.
+ * If the input name is empty, the function does nothing.
+ *
+ * @param name The desired name for the thread.
+ */
+void setThreadName(const std::string& name)
+{
+    if (name.empty())
+    {
+        return; // No name to set
+    }
+
+    // Limit thread name to 15 characters (Linux limit)
+    std::string threadName = name.substr(0, 15);
+    pthread_setname_np(pthread_self(), threadName.c_str());
+}
+
+
 } // namespace base::process
 
 #endif // _BASE_PROCESS_HPP
