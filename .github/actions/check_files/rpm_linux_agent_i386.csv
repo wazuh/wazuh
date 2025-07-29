@@ -91,7 +91,7 @@ full_filename,owner_name,group_name,mode,type,prot_permissions,size_bytes,size_e
 /var/ossec/lib/libwazuhshared.so,root,wazuh,750,file,-rwxr-x---,174668,0.1
 /var/ossec/lib/libwazuhext.so,root,wazuh,750,file,-rwxr-x---,10702960,0.1
 /var/ossec/lib/libdbsync.so,root,wazuh,750,file,-rwxr-x---,492352,0.1
-/var/ossec/lib/libsysinfo.so,root,wazuh,750,file,-rwxr-x---,2132848,0.1
+/var/ossec/lib/libsysinfo.so,root,wazuh,750,file,-rwxr-x---,2346320,0.1
 /var/ossec/lib/libfimdb.so,root,wazuh,750,file,-rwxr-x---,491660,0.1
 /var/ossec/lib/libbpf.so,root,wazuh,750,file,-rwxr-x---,470152,0.1
 /var/ossec/lib/libfimebpf.so,root,wazuh,750,file,-rwxr-x---,43120,0.1
@@ -136,7 +136,7 @@ full_filename,owner_name,group_name,mode,type,prot_permissions,size_bytes,size_e
 /var/ossec/active-response/bin/default-firewall-drop,root,wazuh,750,file,-rwxr-x---,21136,0.1
 /var/ossec/active-response/bin/wazuh-slack,root,wazuh,750,file,-rwxr-x---,18688,0.1
 /var/ossec/active-response/bin/ip-customblock,root,wazuh,750,file,-rwxr-x---,17216,0.1
-/var/ossec/active-response/bin/restart.sh,root,wazuh,750,file,-rwxr-x---,695,0.1
+/var/ossec/active-response/bin/restart.sh,root,wazuh,750,file,-rwxr-x---,845,0.1
 /var/ossec/active-response/bin/pf,root,wazuh,750,file,-rwxr-x---,19444,0.1
 /var/ossec/active-response/bin/npf,root,wazuh,750,file,-rwxr-x---,18220,0.1
 /var/ossec/active-response/bin/disable-account,root,wazuh,750,file,-rwxr-x---,18224,0.1
