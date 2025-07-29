@@ -30,12 +30,40 @@ void logMessage(const modules_log_level_t level, const std::string& msg)
 #include "routerModuleGateway.hpp"
 #include "routerProvider.hpp"
 #include "routerSubscriber.hpp"
+#include "schemaAdapter.hpp"
+#include "shared_modules/utils/flatbuffers/include/rsync_schema.h"
+#include "shared_modules/utils/flatbuffers/include/syscheck_deltas_schema.h"
+#include "shared_modules/utils/flatbuffers/include/syscollector_deltas_schema.h"
 #include <filesystem>
 #include <malloc.h>
 #include <utility>
 
 std::map<ROUTER_PROVIDER_HANDLE, std::shared_ptr<RouterProvider>> PROVIDERS;
 std::shared_mutex PROVIDERS_MUTEX;
+
+std::map<msg_type, flatbuffers::Parser> initSchemaParsers()
+{
+    std::map<msg_type, flatbuffers::Parser> SCHEMA_PARSERS;
+    std::map<msg_type, const char*> SCHEMA_MAP = {
+        {MT_SYS_DELTAS, syscollector_deltas_SCHEMA},
+        {MT_SYNC, rsync_SCHEMA},
+        {MT_SYSCHECK_DELTAS, syscheck_deltas_SCHEMA},
+    };
+
+    for (const auto& [type, schema] : SCHEMA_MAP)
+    {
+        SCHEMA_PARSERS[type] = flatbuffers::Parser();
+        SCHEMA_PARSERS[type].opts.skip_unexpected_fields_in_json = true;
+        SCHEMA_PARSERS[type].opts.zero_on_float_to_int =
+            true; // Avoids issues with float to int conversion, custom option made for Wazuh.
+
+        if (!SCHEMA_PARSERS[type].Parse(schema))
+        {
+            throw std::runtime_error("Error parsing schema, " + std::string(SCHEMA_PARSERS[type].error_));
+        }
+    }
+    return SCHEMA_PARSERS;
+}
 
 /**
  * @brief Struct to hold the server instance and its thread.
@@ -283,6 +311,55 @@ extern "C"
 
                 if (!parser.Parse(message))
                 {
+                    throw std::runtime_error("Error parsing message, " + std::string(parser.error_));
+                }
+
+                std::vector<char> data(parser.builder_.GetBufferPointer(),
+                                       parser.builder_.GetBufferPointer() + parser.builder_.GetSize());
+                std::shared_lock<std::shared_mutex> lock(PROVIDERS_MUTEX);
+                PROVIDERS.at(handle)->send(data);
+                retVal = 0;
+            }
+        }
+        catch (const std::exception& e)
+        {
+            logMessage(modules_log_level_t::LOG_ERROR, std::string("Error sending message to provider: ") + e.what());
+        }
+        return retVal;
+    }
+
+    int router_provider_send_fb_json(ROUTER_PROVIDER_HANDLE handle,
+                                     const char* message,
+                                     const agent_ctx* agent_ctx,
+                                     const msg_type schema)
+    {
+        int retVal = -1;
+        try
+        {
+            if (!message)
+            {
+                throw std::runtime_error("Error sending message to provider. Message is empty");
+            }
+            else
+            {
+                static thread_local auto parserMap = initSchemaParsers();
+                static thread_local std::string buffer;
+
+                auto& parser = parserMap.at(schema);
+                parser.builder_.Clear();
+
+                buffer.clear();
+
+                SchemaAdapter::adaptJsonMessage(message, schema, agent_ctx, buffer);
+
+                if (buffer.empty())
+                {
+                    return 0;
+                }
+
+                if (!parser.Parse(buffer.c_str()))
+                {
+                    logMessage(modules_log_level_t::LOG_ERROR, "JSON message: " + buffer);
                     throw std::runtime_error("Error parsing message, " + std::string(parser.error_));
                 }
 
