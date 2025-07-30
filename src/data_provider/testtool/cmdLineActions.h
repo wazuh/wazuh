@@ -25,6 +25,7 @@ constexpr auto USERS_ACTION        { "--users"};
 constexpr auto PROCESSES_CB_ACTION { "--processes-cb"};
 constexpr auto PACKAGES_CB_ACTION  { "--packages-cb"};
 constexpr auto GROUPS_ACTION       { "--groups" };
+constexpr auto SERVICES_ACTION     { "--services" };
 
 class CmdLineActions final
 {
@@ -41,6 +42,7 @@ class CmdLineActions final
             , m_processesCallback { PROCESSES_CB_ACTION == std::string(argv[1]) }
             , m_packagesCallback  { PACKAGES_CB_ACTION  == std::string(argv[1]) }
             , m_groups            { GROUPS_ACTION       == std::string(argv[1]) }
+            , m_services          { SERVICES_ACTION     == std::string(argv[1]) }
 
         {}
 
@@ -99,6 +101,11 @@ class CmdLineActions final
             return m_groups;
         };
 
+        bool servicesArg() const
+        {
+            return m_services;
+        };
+
         static void showHelp()
         {
             std::cout << "\nUsage: sysinfo_test_tool [options]\n"
@@ -115,6 +122,7 @@ class CmdLineActions final
                       << "\t--hotfixes \tPrints the current Operating System hotfixes information.\n"
                       << "\t--groups \tPrints the current Operating System groups information.\n"
                       << "\t--users \tPrints the current Operating System users information.\n"
+                      << "\t--services \tPrints the current Operating System services information.\n"
                       << "\nExamples:"
                       << "\n\t./sysinfo_test_tool"
                       << "\n\t./sysinfo_test_tool --hardware"
@@ -128,6 +136,7 @@ class CmdLineActions final
                       << "\n\t./sysinfo_test_tool --processes-cb"
                       << "\n\t./sysinfo_test_tool --packages-cb"
                       << "\n\t./sysinfo_test_tool --groups"
+                      << "\n\t./sysinfo_test_tool --services"
                       << std::endl;
         }
 
@@ -143,6 +152,7 @@ class CmdLineActions final
         const bool m_processesCallback;
         const bool m_packagesCallback;
         const bool m_groups;
+        const bool m_services;
 
 };
 

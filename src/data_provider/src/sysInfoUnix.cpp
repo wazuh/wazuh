@@ -140,3 +140,9 @@ nlohmann::json SysInfo::getUsers() const
     //TODO: Pending implementation.
     return nlohmann::json();
 }
+
+nlohmann::json SysInfo::getServices() const
+{
+    //TODO: Pending implementation.
+    return nlohmann::json();
+}

@@ -253,7 +253,9 @@ void* wm_sys_main(wm_sys_t *sys) {
                                sys->flags.procinfo,
                                sys->flags.hotfixinfo,
                                sys->flags.groups,
-                               sys->flags.users);
+                               sys->flags.users,
+                               sys->flags.services);
+
     } else {
         mterror(WM_SYS_LOGTAG, "Can't get syscollector_start_ptr.");
         pthread_exit(NULL);
@@ -325,6 +327,7 @@ cJSON *wm_sys_dump(const wm_sys_t *sys) {
     if (sys->flags.procinfo) cJSON_AddStringToObject(wm_sys,"processes","yes"); else cJSON_AddStringToObject(wm_sys,"processes","no");
     if (sys->flags.groups) cJSON_AddStringToObject(wm_sys,"groups","yes"); else cJSON_AddStringToObject(wm_sys,"groups","no");
     if (sys->flags.users) cJSON_AddStringToObject(wm_sys,"users","yes"); else cJSON_AddStringToObject(wm_sys,"users","no");
+    if (sys->flags.services) cJSON_AddStringToObject(wm_sys,"services","yes"); else cJSON_AddStringToObject(wm_sys,"services","no");
 #ifdef WIN32
     if (sys->flags.hotfixinfo) cJSON_AddStringToObject(wm_sys,"hotfixes","yes"); else cJSON_AddStringToObject(wm_sys,"hotfixes","no");
 #endif
