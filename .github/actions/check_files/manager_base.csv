@@ -534,6 +534,7 @@ full_filename,owner_name,group_name,mode,type,prot_permissions,size_bytes,size_e
 /var/ossec/ruleset/sca/cis_sles11_linux.yml*,root,wazuh,640,file,-rw-r-----,,
 /var/ossec/ruleset/sca/cis_sles12_linux.yml*,root,wazuh,640,file,-rw-r-----,,
 /var/ossec/ruleset/sca/cis_sles15_linux.yml*,root,wazuh,640,file,-rw-r-----,,
+/var/ossec/ruleset/sca/cis_sles16_linux.yml*,root,wazuh,640,file,-rw-r-----,,
 /var/ossec/ruleset/sca/cis_solaris11.4.yml*,root,wazuh,640,file,-rw-r-----,,
 /var/ossec/ruleset/sca/cis_solaris11.yml*,root,wazuh,640,file,-rw-r-----,,
 /var/ossec/ruleset/sca/cis_sqlserver_2012.yml*,root,wazuh,640,file,-rw-r-----,,
