@@ -11,6 +11,7 @@
     <processes>no</processes>
     <users>no</users>
     <groups>no</groups>
+    <services>no</services>
 
     <!-- Database synchronization settings -->
     <synchronization>

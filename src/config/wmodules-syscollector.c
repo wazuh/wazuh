@@ -226,6 +226,7 @@ int wm_syscollector_read(const OS_XML *xml, XML_NODE node, wmodule *module) {
                 syscollector->flags.groups = 0;
             else {
                 merror("Invalid content for tag '%s' at module '%s'.", XML_GROUPS, WM_SYS_CONTEXT.name);
+                return OS_INVALID;
             }
         } else if (!strcmp(node[i]->element, XML_USERS)) {
             if (!strcmp(node[i]->content, "yes"))
