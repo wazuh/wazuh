@@ -11,10 +11,11 @@
     <processes>no</processes>
     <users>no</users>
     <groups>no</groups>
+    <services>no</services>
 
     <!-- Database synchronization settings -->
     <synchronization>
       <max_eps>10</max_eps>
     </synchronization>
   </wodle>
- 
+
