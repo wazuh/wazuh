@@ -9165,7 +9165,6 @@ paths:
                         enabled: yes
                         scan_on_start: yes
                         interval: "12h"
-                        skip_nfs: yes
                       vulnerability-detection:
                         enabled: yes
                         index-status: yes
