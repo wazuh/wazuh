@@ -60,11 +60,6 @@ runrootcheck="Deseja habilitar o sistema de detecção de rootkis?"
 norootcheck="Rootcheck (Sistema de detecção de rootkits) desabilitado"
 yesrootcheck="Rootcheck (Sistema de detecção de rootkits) habilitado"
 
-# Part 3.4
-runopenscap="Deseja habilitar OpenSCAP?"
-norunopenscap="OpenSCAP desabilitado"
-yesrunopenscap="OpenSCAP desabilitado"
-
 # Parte 3.5/servidor/local
 enable_ar="Deseja habilitar o sistema de respostas automáticas?"
 noactive="Sistema de respostas automáticas desabilitado"
