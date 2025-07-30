@@ -45,8 +45,10 @@ void audit_set_db_consistency(void);
 // Prototypes
 #ifdef WIN32
 DWORD WINAPI fim_run_realtime(__attribute__((unused)) void * args);
+DWORD WINAPI fim_run_integrity(__attribute__((unused)) void * args);
 #else
 void * fim_run_realtime(__attribute__((unused)) void * args);
+void * fim_run_integrity(__attribute__((unused)) void * args);
 #endif
 
 int fim_whodata_initialize();
@@ -262,21 +264,31 @@ void start_daemon()
     minfo(FIM_FREQUENCY_TIME, syscheck.time);
     fim_scan();
 
-    // Launch inventory synchronization thread, if enabled
-    if (syscheck.enable_synchronization) {
-        // fim_run_integrity();
-    }
-
 #ifndef WIN32
     // Launch Real-time thread
     w_create_thread(fim_run_realtime, &syscheck);
 
     // Launch symbolic links checker thread
     w_create_thread(symlink_checker_thread, NULL);
+
+    if (syscheck.enable_synchronization) {
+        // Launch inventory synchronization thread
+        w_create_thread(fim_run_integrity, NULL);
+    } else {
+        mdebug1("FIM inventory synchronization is disabled");
+    }
 #else
     if (CreateThread(NULL, 0, fim_run_realtime, &syscheck, 0, NULL) == NULL) {
 
         merror(THREAD_ERROR);
+    }
+
+    if (syscheck.enable_synchronization) {
+        if (CreateThread(NULL, 0, fim_run_integrity, NULL, 0, NULL) == NULL) {
+            merror(THREAD_ERROR);
+        }
+    } else {
+        mdebug1("FIM inventory synchronization is disabled");
     }
 #endif
 
@@ -498,6 +510,27 @@ void * fim_run_realtime(__attribute__((unused)) void * args) {
     return NULL;
 }
 #endif
+
+#ifdef WIN32
+DWORD WINAPI fim_run_integrity(__attribute__((unused)) void * args) {
+#else
+void * fim_run_integrity(__attribute__((unused)) void * args) {
+#endif
+    while (FOREVER()) {
+        mdebug1("Running inventory synchronization.");
+
+        // fim_synchronize(syscheck.sync_response_timeout, syscheck.sync_max_eps);
+
+        mdebug1("Inventory synchronization finished, waiting for %d seconds before next run.", syscheck.sync_interval);
+        sleep(syscheck.sync_interval);
+    }
+
+#ifdef WIN32
+    return 0;
+#else
+    return NULL;
+#endif
+}
 // LCOV_EXCL_STOP
 
 #ifdef WIN32
