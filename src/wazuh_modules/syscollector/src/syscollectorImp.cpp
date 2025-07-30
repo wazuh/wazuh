@@ -369,6 +369,7 @@ void Syscollector::registerWithRsync()
                                   nlohmann::json::parse(USERS_SYNC_CONFIG_STATEMENT),
                                   reportSyncWrapper);
     }
+
     if (m_services)
     {
         m_spRsync->registerSyncID("syscollector_services",
@@ -805,7 +806,6 @@ nlohmann::json Syscollector::getGroupsData()
     return ret;
 }
 
-
 nlohmann::json Syscollector::getUsersData()
 {
     nlohmann::json ret;
@@ -823,7 +823,6 @@ nlohmann::json Syscollector::getUsersData()
 
     return ret;
 }
-
 
 nlohmann::json Syscollector::getServicesData()
 {
@@ -940,7 +939,7 @@ void Syscollector::scanServices()
     {
         m_logFunction(LOG_DEBUG_VERBOSE, "Starting services scan");
         const auto& servicesData { getServicesData() };
-        updateChanges("dbsync_services", servicesData);
+        updateChanges(SERVICES_TABLE, servicesData);
         m_logFunction(LOG_DEBUG_VERBOSE, "Ending services scan");
     }
 }
@@ -981,7 +980,7 @@ void Syscollector::sync()
     TRY_CATCH_TASK(syncProcesses);
     TRY_CATCH_TASK(syncGroups);
     TRY_CATCH_TASK(syncUsers);
-    TRY_CATCH_TASK(scanServices);
+    TRY_CATCH_TASK(syncServices);
     m_logFunction(LOG_DEBUG, "Ending syscollector sync");
 }
 
