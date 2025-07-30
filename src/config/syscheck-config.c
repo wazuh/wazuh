@@ -1633,9 +1633,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
     const char *xml_file_limit = "file_limit";
     const char *xml_enabled = "enabled";
     const char *xml_entries = "entries";
-#ifdef WIN32
     const char *xml_registry_limit = "registry_limit";
-#endif
     const char *xml_ignore = "ignore";
     const char *xml_registry_ignore = "registry_ignore";
 #ifdef WIN32
@@ -1819,7 +1817,6 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
             OS_ClearNode(children);
         }
 
-#ifdef WIN32
         // Get registry limit
         else if (strcmp(node[i]->element, xml_registry_limit) == 0) {
             if (!(children = OS_GetElementsbyNode(xml, node[i]))) {
@@ -1828,10 +1825,14 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
             for(j = 0; children[j]; j++) {
                 if (strcmp(children[j]->element, xml_enabled) == 0) {
                     if (strcmp(children[j]->content, "yes") == 0) {
+#ifdef WIN32
                         syscheck->registry_limit_enabled = true;
+#endif
                     }
                     else if (strcmp(children[j]->content, "no") == 0) {
+#ifdef WIN32
                         syscheck->registry_limit_enabled = false;
+#endif
                     }
                     else {
                         mwarn(XML_VALUEERR, children[j]->element, children[j]->content);
@@ -1845,23 +1846,29 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
                         OS_ClearNode(children);
                         return (OS_INVALID);
                     }
-
+#ifdef WIN32
                     syscheck->db_entry_registry_limit = atoi(children[j]->content);
 
                     if (syscheck->db_entry_registry_limit < 0) {
                         mdebug2("Maximum value allowed for registry_limit is '%d'", MAX_FILE_LIMIT);
+
                         syscheck->db_entry_registry_limit = MAX_FILE_LIMIT;
                     }
+#else
+                    if(atoi(children[j]->content) < 0){
+                        mdebug2("Maximum value allowed for registry_limit is '%d'", MAX_FILE_LIMIT);
+                    }
+#endif
                 }
             }
-
+#ifdef WIN32
             if (!syscheck->registry_limit_enabled) {
                 syscheck->db_entry_registry_limit = 0;
             }
-
+#endif
             OS_ClearNode(children);
         }
-#endif
+
 
         /* Get if xml_scan_on_start */
         else if (strcmp(node[i]->element, xml_scan_on_start) == 0) {
