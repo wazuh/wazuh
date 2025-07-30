@@ -59,11 +59,6 @@ runrootcheck="您希望运行 rootkit检测吗?"
 norootcheck="rootkit检测将不被部署"
 yesrootcheck="rootkit检测将被部署"
 
-# Part 3.4
-runopenscap="Do you want to run OpenSCAP?"
-norunopenscap="Not running OpenSCAP"
-yesrunopenscap="Running OpenSCAP"
-
 # Part 3.5/server/local
 enable_ar="您希望开启联动(active response)功能吗?"
 noactive="联动功能(Active response)被关闭"
