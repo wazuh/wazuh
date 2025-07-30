@@ -217,7 +217,7 @@ class WazuhDBHTTPClient:
         await self._post('/agents/sync', agents_sync, empty_response=True)
 
     async def get_agents_restart_info(self, ids: list, negate: bool) -> list[dict]:
-        """Retrieve restart information for agents.
+        """Retrieve agents restart information.
 
         Parameters
         ----------
@@ -237,12 +237,12 @@ class WazuhDBHTTPClient:
         }
 
         data = await self._post('/agents/restartinfo', request_data)
-        agents_restart_info = data.get('items', [])
+        active_agents = data.get('items', [])
 
-        for info in agents_restart_info:
-            info['id'] = str(info['id']).zfill(3)
+        for agent in active_agents:
+            agent['id'] = str(agent['id']).zfill(3)
 
-        return agents_restart_info
+        return active_agents
 
 
 @asynccontextmanager
