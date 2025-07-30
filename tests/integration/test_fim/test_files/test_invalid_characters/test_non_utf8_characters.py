@@ -62,10 +62,6 @@ import sys
 
 import pytest
 
-if sys.platform == "win32":
-    import win32con
-    from win32con import KEY_WOW64_64KEY
-
 from pathlib import Path
 
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
@@ -82,9 +78,8 @@ from wazuh_testing.utils.configuration import (get_test_cases_data,
 
 from . import CONFIGS_PATH, TEST_CASES_PATH
 
-# Pytest marks to run on any service type on linux or windows.
-pytestmark = [pytest.mark.agent, pytest.mark.linux,
-              pytest.mark.win32, pytest.mark.tier(level=1)]
+# Pytest marks to run on linux.
+pytestmark = [pytest.mark.agent, pytest.mark.linux, pytest.mark.tier(level=1)]
 
 # Test metadata, configuration and ids.
 cases_path = Path(TEST_CASES_PATH, 'cases_nonUTF8.yaml')
