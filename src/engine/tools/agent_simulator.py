@@ -2,9 +2,6 @@
 # -*- coding: utf-8 -*-
 
 import argparse
-from pathlib import Path
-import yaml
-from yaml import Loader
 import json
 import socket
 import sys
@@ -95,7 +92,6 @@ def get_queue_from_module(module):
         'docker-listener': 00,  # TODO check queue
         'github': 00,           # TODO check queue
         'office_365': 00,       # TODO check queue
-        'open-scap': 00,        # TODO check queue
         'osquery': 00,          # TODO check queue
         'virustotal': 00,       # TODO check queue
         'dbsync': 53,
@@ -161,27 +157,27 @@ def main():
     parser = argparse.ArgumentParser()
 
     # Agent specific fields
-    parser.add_argument('-i', '--agent-id', help=f'Agent ID for event filling',
+    parser.add_argument('-i', '--agent-id', help='Agent ID for event filling',
                         type=str, default='001', dest='agent_id')
-    parser.add_argument('-n', '--agent-name', help=f'Agent name for events filling',
+    parser.add_argument('-n', '--agent-name', help='Agent name for events filling',
                         type=str, default='agent-001', dest='agent_name')
-    parser.add_argument('-a', '--agent-ip', help=f'Agent ip address for events filling',
+    parser.add_argument('-a', '--agent-ip', help='Agent ip address for events filling',
                         type=str, default='any', dest='agent_ip')
 
     parser.add_argument(
-        '--dry-run', help=f'events wont be sent to the engine socket', action='store_false', dest='must_send')
+        '--dry-run', help='events wont be sent to the engine socket', action='store_false', dest='must_send')
     parser.add_argument(
-        '-e', '--engine-socket', help=f'Where the engine is listening to events',
+        '-e', '--engine-socket', help='Where the engine is listening to events',
         default=DEFAULT_ENGINE_SOCKET, type=str, dest='engine_socket')
 
     parser.add_argument(
-        '-o', '--output', help=f'Output file where the events will be stored, if empty events wont be saved', type=str, default='', dest='output_file')
+        '-o', '--output', help='Output file where the events will be stored, if empty events wont be saved', type=str, default='', dest='output_file')
 
     subcommands = parser.add_subparsers(dest="source")
 
     logcollector_command = subcommands.add_parser('logcollector')
     # This should be set on each module, but to avoid repetition
-    logcollector_command.add_argument('-L', '--location', help=f'logcollector location wether file path or command',
+    logcollector_command.add_argument('-L', '--location', help='logcollector location wether file path or command',
                                       type=str, dest='location')
 
     logcollector_subcommand = logcollector_command.add_subparsers(
@@ -195,7 +191,7 @@ def main():
     full_command_subcommand = logcollector_subcommand.add_parser(
         'full_command')
     json_subcommand = logcollector_subcommand.add_parser('json')
-    json_subcommand.add_argument('-l', '--labels', help=f'json object added to logcollector json event',
+    json_subcommand.add_argument('-l', '--labels', help='json object added to logcollector json event',
                                  type=str, default="", dest='labels')
 
     macos_subcommand = logcollector_subcommand.add_parser('macos')
@@ -206,7 +202,7 @@ def main():
     syslog_subcommand = logcollector_subcommand.add_parser('syslog')
 
     remote_syslog_command = subcommands.add_parser('remote-syslog')
-    remote_syslog_command.add_argument('-R', '--remote_ip', help=f'remote-syslog remote IP, random IP as default',
+    remote_syslog_command.add_argument('-R', '--remote_ip', help='remote-syslog remote IP, random IP as default',
                                        type=str, dest='remote_ip')
     remote_syslog_subcommand = remote_syslog_command.add_subparsers(
         dest="module_name")
