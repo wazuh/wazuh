@@ -60,11 +60,6 @@ runrootcheck="Do you want to run the rootkit detection engine?"
 norootcheck="Not running rootcheck (rootkit detection)"
 yesrootcheck="Running rootcheck (rootkit detection)"
 
-# Part 3.4
-runopenscap="Do you want to run policy monitoring checks? (OpenSCAP)"
-norunopenscap="Not running OpenSCAP (policy monitoring checks)"
-yesrunopenscap="Running OpenSCAP (policy monitoring checks)"
-
 # Part 3.5/server/local
 enable_ar="Do you want to enable active response?"
 noactive="Active response disabled"

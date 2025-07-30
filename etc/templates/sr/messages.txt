@@ -59,11 +59,6 @@ runrootcheck="Da li želiš da pustiš engine za otkrivanje rootkit-a?"
 norootcheck="Ne obavlja rootcheck (otkrivanje rootkit-a )"
 yesrootcheck="Obavlja rootcheck (otkrivanje rootkit-a)"
 
-# Part 3.4
-runopenscap="Da li želiš da pustiš OpenSCAP?"
-norunopenscap="Ne obavlja OpenSCAP"
-yesrunopenscap="Obavlja OpenSCAP"
-
 # Part 3.5/server/local
 enable_ar="Da li želiš da osposobiš aktivnu reakciju?"
 noactive="Aktivna reakcija onesposobljena"
