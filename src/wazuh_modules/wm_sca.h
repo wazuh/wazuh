@@ -31,7 +31,6 @@ typedef struct wm_sca_t {
     int scan_on_start;
     int msg_delay;
     unsigned int summary_delay;
-    unsigned int request_db_interval;
     wm_sca_policy_t** policies;
     char **alert_msg;
     int queue;
