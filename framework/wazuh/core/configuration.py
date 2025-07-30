@@ -56,10 +56,6 @@ CONF_SECTIONS = MappingProxyType({
         'type': 'merge',
         'list_options': ['white_list']
     },
-    'open-scap': {
-        'type': 'merge',
-        'list_options': ['content']
-    },
     'cis-cat': {
         'type': 'merge',
         'list_options': ['content']
@@ -207,21 +203,7 @@ def _read_option(section_name: str, opt: str) -> tuple:
 
     opt_name = opt.tag.lower()
 
-    if section_name == 'open-scap':
-        if opt.attrib:
-            opt_value = {}
-            for a in opt.attrib:
-                opt_value[a] = opt.attrib[a]
-            # profiles
-            profiles_list = []
-            for profiles in opt.iter():
-                profiles_list.append(profiles.text)
-
-            if profiles_list:
-                opt_value['profiles'] = profiles_list
-        else:
-            opt_value = opt.text
-    elif section_name == 'syscheck' and opt_name == 'directories':
+    if section_name == 'syscheck' and opt_name == 'directories':
         opt_value = []
 
         json_attribs = {}

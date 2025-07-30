@@ -153,6 +153,7 @@ def test_remove_files(tmp_data, parameters, expected_result):
     assert result == expected_result
 
 
+@pytest.mark.xfail(reason="Since the ruleset was removed from the repository this will fail.")
 @pytest.mark.parametrize('rule_file, rule_path, rule_status', [
     ('0015-ossec_rules.xml', 'ruleset/rules', 'enabled'),
     ('0350-amazon_rules.xml', 'ruleset/rules', 'enabled'),
