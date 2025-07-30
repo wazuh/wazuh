@@ -680,7 +680,6 @@ BUILD_SERVER+=wazuh-execd -
 BUILD_SERVER+=wazuh-logcollector -
 BUILD_SERVER+=wazuh-remoted
 BUILD_SERVER+=wazuh-agentd
-BUILD_SERVER+=manage_agents
 BUILD_SERVER+=utils
 BUILD_SERVER+=active-responses
 BUILD_SERVER+=wazuh-syscheckd
@@ -2160,7 +2159,7 @@ endif
 
 #### Util ##########
 
-util_programs = clear_stats agent_control verify-agent-conf wazuh-regex parallel-regex
+util_programs = agent_control
 
 $(util_programs): $(BUILD_LIBS)
 
@@ -2173,19 +2172,7 @@ util_o := $(util_c:.c=.o)
 util/%.o: util/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -I./util -DARGV0=\"utils\" -c $^ -o $@
 
-clear_stats: util/clear_stats.o
-	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
-
-verify-agent-conf: util/verify-agent-conf.o
-	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
-
 agent_control: util/agent_control.o addagent/validate.o
-	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
-
-wazuh-regex: util/wazuh-regex.o
-	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
-
-parallel-regex: util/parallel-regex.o
 	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
 #### rootcheck #####
