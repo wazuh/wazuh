@@ -33,7 +33,7 @@ void FileItem::createFimEntry()
             data->attributes = const_cast<char*>(m_attributes.c_str());
             data->uid = const_cast<char*>(m_uid.c_str());
             data->gid = const_cast<char*>(m_gid.c_str());
-            data->owner = const_cast<char*>(m_username.c_str());
+            data->owner = const_cast<char*>(m_owner.c_str());
             data->group = const_cast<char*>(m_group.c_str());
             data->mtime = m_time;
             data->inode = m_inode;
@@ -79,7 +79,7 @@ void FileItem::createJSON()
     data["attributes"] = m_attributes;
     data["uid"] = m_uid;
     data["gid"] = m_gid;
-    data["owner"] = m_username;
+    data["owner"] = m_owner;
     data["group_"] = m_group;
     data["hash_md5"] = m_md5;
     data["hash_sha1"] = m_sha1;

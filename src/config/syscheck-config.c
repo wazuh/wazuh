@@ -2119,7 +2119,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
             parse_synchronization(syscheck, children);
             OS_ClearNode(children);
         }
-         else if (strcmp(node[i]->element, xml_diff) == 0) {
+        else if (strcmp(node[i]->element, xml_diff) == 0) {
             children = OS_GetElementsbyNode(xml, node[i]);
 
             if (children == NULL) {

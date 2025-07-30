@@ -46,12 +46,12 @@ class FileItem final : public DBItem
             m_inode = fim->file_entry.data->inode;
 
             m_attributes = fim->file_entry.data->attributes == NULL ? "" : fim->file_entry.data->attributes;
-            m_username = fim->file_entry.data->owner == NULL ? "" : fim->file_entry.data->owner;
+            m_owner = fim->file_entry.data->owner == NULL ? "" : fim->file_entry.data->owner;
             m_group = fim->file_entry.data->group == NULL ? "" : fim->file_entry.data->group;
             m_permissions = fim->file_entry.data->permissions == NULL ? "" : fim->file_entry.data->permissions;
 
             FIMDBCreator<OS_TYPE>::encodeString(m_attributes);
-            FIMDBCreator<OS_TYPE>::encodeString(m_username);
+            FIMDBCreator<OS_TYPE>::encodeString(m_owner);
             FIMDBCreator<OS_TYPE>::encodeString(m_group);
             FIMDBCreator<OS_TYPE>::encodeString(m_permissions);
 
@@ -79,7 +79,7 @@ class FileItem final : public DBItem
             m_sha1 = fim.at("hash_sha1");
             m_sha256 = fim.at("hash_sha256");
             m_uid = fim.at("uid");
-            m_username = fim.at("owner");
+            m_owner = fim.at("owner");
 
             createFimEntry();
             m_statementConf = std::make_unique<nlohmann::json>(fim);
@@ -109,7 +109,7 @@ class FileItem final : public DBItem
         std::string m_permissions;
         std::string m_sha1;
         std::string m_sha256;
-        std::string m_username;
+        std::string m_owner;
         std::unique_ptr<fim_entry, FimFileDataDeleter> m_fimEntry;
         std::unique_ptr<nlohmann::json> m_statementConf;
 #ifdef WIN32
