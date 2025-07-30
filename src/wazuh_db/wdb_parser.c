@@ -1724,7 +1724,7 @@ int wdb_parse_syscheck(wdb_t * wdb, wdb_component_t component, char * input, cha
     char * next;
     char * checksum;
     char buffer[OS_MAXSTR - WDB_RESPONSE_BEGIN_SIZE];
-    int ftype;
+    //int ftype;
     int result;
     long ts;
 
@@ -1823,9 +1823,9 @@ int wdb_parse_syscheck(wdb_t * wdb, wdb_component_t component, char * input, cha
         *next++ = '\0';
 
         if (strcmp(curr, "file") == 0) {
-            ftype = WDB_FILE_TYPE_FILE;
+            //ftype = WDB_FILE_TYPE_FILE;
         } else if (strcmp(curr, "registry") == 0) {
-            ftype = WDB_FILE_TYPE_REGISTRY;
+            //ftype = WDB_FILE_TYPE_REGISTRY;
         } else {
             mdebug1("DB(%s) Invalid FIM query syntax.", wdb->id);
             mdebug2("DB(%s) FIM query: %s", wdb->id, curr);
@@ -1868,6 +1868,7 @@ int wdb_parse_syscheck(wdb_t * wdb, wdb_component_t component, char * input, cha
         free(unsc_checksum);
         return result;
 *****************************************************************************************/
+        os_free(unsc_checksum);
         return -1;
     } else if (strcmp(curr, "save2") == 0) {
 /*****************************************************************************************
