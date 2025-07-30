@@ -58,8 +58,6 @@ jobs:
           echo "" >> ./etc/preloaded-vars.conf
           echo 'USER_ENABLE_ROOTCHECK="n"' >> ./etc/preloaded-vars.conf
           echo "" >> ./etc/preloaded-vars.conf
-          echo 'USER_ENABLE_OPENSCAP="n"' >> ./etc/preloaded-vars.conf
-          echo "" >> ./etc/preloaded-vars.conf
           echo 'USER_WHITE_LIST="n"' >> ./etc/preloaded-vars.conf
           echo "" >> ./etc/preloaded-vars.conf
           echo 'USER_ENABLE_SYSLOG="n"' >> ./etc/preloaded-vars.conf
