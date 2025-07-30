@@ -17,7 +17,7 @@ JOBS="$(nproc)"
 
 # Extract version and description
 VERSION="$(jq -r '.version + "-" + .stage' "$ROOT_DIR/VERSION.json")"
-BRANCH="$(git -C "$ROOT_DIR" rev-parse --abbrev-ref HEAD)"
+BRANCH="$(git -C "$ROOT_DIR" describe --tags --exact-match 2>/dev/null || git -C "$ROOT_DIR" rev-parse --abbrev-ref HEAD)"
 DESCRIPTION="Version $VERSION - Git ref $BRANCH"
 
 # Usage
