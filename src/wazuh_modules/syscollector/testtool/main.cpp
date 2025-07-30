@@ -122,6 +122,7 @@ int main(int argc, const char* argv[])
                                       true,
                                       true,
                                       true,
+                                      true,
                                       true);
 
         if (thread.joinable())

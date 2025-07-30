@@ -843,3 +843,13 @@ nlohmann::json SysInfo::getUsers() const
 
     return result;
 }
+
+nlohmann::json SysInfo::getServices() const
+{
+    nlohmann::json result;
+
+    // ServicesProvider usersProvider;
+    // auto collectedServices = servicesProvider.collect();
+
+    return result;
+}
