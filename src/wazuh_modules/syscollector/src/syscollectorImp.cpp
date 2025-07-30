@@ -369,6 +369,7 @@ void Syscollector::registerWithRsync()
                                   nlohmann::json::parse(USERS_SYNC_CONFIG_STATEMENT),
                                   reportSyncWrapper);
     }
+
     if (m_services)
     {
         m_spRsync->registerSyncID("syscollector_services",
