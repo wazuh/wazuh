@@ -82,7 +82,7 @@ static const char *STR_MORE_CHANGES = "More changes...";
 
 #define DEFAULT_OPTIONS                                                                                    \
     CHECK_MD5SUM | CHECK_SHA1SUM | CHECK_SHA256SUM | CHECK_PERM | CHECK_SIZE | CHECK_OWNER | CHECK_GROUP | \
-    CHECK_MTIME | CHECK_INODE
+    CHECK_MTIME | CHECK_INODE | CHECK_DEVICE
 
 typedef struct gen_diff_struct {
     diff_data *diff;
@@ -1995,24 +1995,6 @@ void test_fim_diff_process_delete_file_folder_not_exist(void **state) {
 }
 
 #ifdef TEST_WINAGENT
-void test_fim_diff_process_delete_registry_ok(void **state) {
-    const char *key_name = strdup("HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile");
-
-    expect_fim_diff_delete_compress_folder("queue/diff/registry/[x32] " KEY_NAME_HASHED, 0, 0, 0);
-
-    fim_diff_process_delete_registry(key_name, 0);
-}
-
-void test_fim_diff_process_delete_registry_delete_error(void **state) {
-    const char *key_name = strdup("HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile");
-
-    expect_string(__wrap__merror, formatted_msg, "(6713): Cannot remove diff folder for file: 'queue/diff/registry/[x64] b9b175e8810d3475f15976dd3b5f9210f3af6604'");
-
-    expect_fim_diff_delete_compress_folder("queue/diff/registry/[x64] " KEY_NAME_HASHED, 0, -1, 0);
-
-    fim_diff_process_delete_registry(key_name, 1);
-}
-
 void test_fim_diff_process_delete_value_ok(void **state) {
     const char *key_name = strdup("HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile");
 
@@ -2160,10 +2142,6 @@ int main(void) {
         cmocka_unit_test(test_fim_diff_process_delete_file_folder_not_exist),
 
 #ifdef TEST_WINAGENT
-        // fim_diff_process_delete_registry
-        cmocka_unit_test(test_fim_diff_process_delete_registry_ok),
-        cmocka_unit_test(test_fim_diff_process_delete_registry_delete_error),
-
         // fim_diff_process_delete_value
         cmocka_unit_test(test_fim_diff_process_delete_value_ok),
         cmocka_unit_test(test_fim_diff_process_delete_value_delete_error),

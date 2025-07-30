@@ -7,7 +7,6 @@ database "<agent-id>.db" as agent.db
 actor "wazuh-manager" as manager
 actor "wazuh-agent" as fim
 participant os as os
-participant rsync
 participant dbsync
 database fim.db as fdb
 
@@ -32,21 +31,4 @@ loop scan (each ""frequency"" seconds)
 end loop
         agent.db <- manager++: update db
         agent.db --> manager --
-
-... sync databases ...
-
-loop every ""sync frequency"" seconds
-
-
-
-    fim -> rsync++ : get sync data
-    rsync -> dbsync++ : get DB data
-    dbsync -> fdb : get data
-    dbsync <-- fdb
-    rsync <-- dbsync-- : DB data
-    rsync -> rsync : build sync data
-    rsync --> fim --: sync data
-    fim --> manager : send sync data
-    manager -> agent.db: update DB
-end loop
 @enduml

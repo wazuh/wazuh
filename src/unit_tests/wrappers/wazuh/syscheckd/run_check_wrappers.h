@@ -13,11 +13,11 @@
 
 #include "../../../../syscheckd/include/syscheck.h"
 
-void __wrap_fim_send_scan_info(fim_scan_event event);
-
 int __wrap_send_log_msg(const char * msg);
 
 void __wrap_send_syscheck_msg(char *msg);
+
+void __wrap_persist_syscheck_msg(char *msg);
 
 void __wrap_fim_sync_check_eps();
 

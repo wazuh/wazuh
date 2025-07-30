@@ -76,6 +76,7 @@ add_subdirectory("src/db")
 
 file(GLOB SYSCHECKD_SRC
      "${CMAKE_SOURCE_DIR}/src/*.c"
+     "${CMAKE_SOURCE_DIR}/src/file/*.c"
      "${CMAKE_SOURCE_DIR}/src/registry/*.c"
      "${CMAKE_SOURCE_DIR}/src/whodata/*.c")
 

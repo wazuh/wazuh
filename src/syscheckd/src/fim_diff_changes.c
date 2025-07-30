@@ -1010,29 +1010,6 @@ void fim_diff_process_delete_file(const char *filename){
 }
 
 #ifdef WIN32
-void fim_diff_process_delete_registry(const char *key_name, int arch){
-    char full_path[PATH_MAX];
-    os_sha1 encoded_key;
-    int ret;
-
-    OS_SHA1_Str(key_name, strlen(key_name), encoded_key);
-
-    if (arch){
-        snprintf(full_path, PATH_MAX, "%s/registry/[x64] %s", DIFF_DIR, encoded_key);
-    } else {
-        snprintf(full_path, PATH_MAX, "%s/registry/[x32] %s", DIFF_DIR, encoded_key);
-    }
-
-    ret = fim_diff_delete_compress_folder(full_path);
-    if(ret == -1){
-        merror(FIM_DIFF_DELETE_DIFF_FOLDER_ERROR, full_path);
-    } else if (ret == -2){
-        mdebug2(FIM_DIFF_FOLDER_NOT_EXIST, full_path);
-    }
-
-    return;
-}
-
 void fim_diff_process_delete_value(const char *key_name, const char *value_name, int arch){
     char full_path[PATH_MAX];
     os_sha1 encoded_key;

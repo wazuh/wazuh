@@ -78,14 +78,7 @@ size_t syscom_dispatch(char * command, char ** output){
     assert(command != NULL);
     assert(output != NULL);
 
-    if (strncmp(command, HC_FIM_FILE, strlen(HC_FIM_FILE)) == 0
-        || strncmp(command, HC_FIM_REGISTRY, strlen(HC_FIM_REGISTRY)) == 0
-        || strncmp(command, HC_FIM_REGISTRY_KEY, strlen(HC_FIM_REGISTRY_KEY)) == 0
-        || strncmp(command, HC_FIM_REGISTRY_VALUE, strlen(HC_FIM_REGISTRY_VALUE)) == 0) {
-
-        fim_sync_push_msg(command);
-        return 0;
-    } else if (strncmp(command, HC_SK, strlen(HC_SK)) == 0 ||
+    if (strncmp(command, HC_SK, strlen(HC_SK)) == 0 ||
                strncmp(command, HC_GETCONFIG, strlen(HC_GETCONFIG)) == 0 ||
                strncmp(command, HC_RESTART, strlen(HC_RESTART)) == 0) {
         char *rcv_comm = NULL;
@@ -113,6 +106,15 @@ size_t syscom_dispatch(char * command, char ** output){
         } else if (strcmp(rcv_comm, "restart") == 0) {
             os_set_restart_syscheck();
             return 0;
+        }
+    } else if (strncmp(command, HC_FIM_SYNC, strlen(HC_FIM_SYNC)) == 0) {
+        if (syscheck.enable_synchronization) {
+            // fim_sync_push_msg(command);
+            return 0;
+        } else {
+            mdebug1("FIM synchronization is disabled");
+            os_strdup("err FIM synchronization is disabled", *output);
+            return strlen(*output);
         }
     }
 

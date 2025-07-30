@@ -62,17 +62,13 @@ import sys
 
 import pytest
 
-if sys.platform == "win32":
-    import win32con
-    from win32con import KEY_WOW64_64KEY
-
 from pathlib import Path
 
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.modules.agentd.configuration import AGENTD_DEBUG, AGENTD_WINDOWS_DEBUG
 from wazuh_testing.modules.fim import configuration
 from wazuh_testing.modules.fim.patterns import (IGNORING_DUE_TO_INVALID_NAME,
-                                                SYNC_INTEGRITY_MESSAGE)
+                                                FIM_EVENT_JSON)
 from wazuh_testing.modules.monitord.configuration import MONITORD_ROTATE_LOG
 from wazuh_testing.tools.monitors.file_monitor import FileMonitor
 from wazuh_testing.utils import file
@@ -82,9 +78,8 @@ from wazuh_testing.utils.configuration import (get_test_cases_data,
 
 from . import CONFIGS_PATH, TEST_CASES_PATH
 
-# Pytest marks to run on any service type on linux or windows.
-pytestmark = [pytest.mark.agent, pytest.mark.linux,
-              pytest.mark.win32, pytest.mark.tier(level=1)]
+# Pytest marks to run on linux.
+pytestmark = [pytest.mark.agent, pytest.mark.linux, pytest.mark.tier(level=1)]
 
 # Test metadata, configuration and ids.
 cases_path = Path(TEST_CASES_PATH, 'cases_nonUTF8.yaml')
@@ -162,5 +157,5 @@ def test_valid_utf8_filenames_do_not_trigger_warning(test_configuration, test_me
         except:
             raise
 
-        monitor.start(generate_callback(SYNC_INTEGRITY_MESSAGE))
+        monitor.start(generate_callback(FIM_EVENT_JSON))
         assert monitor.callback_result

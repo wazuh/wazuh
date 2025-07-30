@@ -151,6 +151,7 @@
 #define FIM_INODES_INFO                     "(6336): Fim inode entries: '%d', path count: '%d'"
 #define FIM_WHODATA_INVALID_UNKNOWN_UID     "(6337): The user ID could not be extracted from the event."
 #define FIM_EMPTY_DIRECTORIES_CONFIG        "(6338): Empty directories tag found in the configuration."
+#define FIM_PERSIST                         "(6339): Persisting FIM event: %s"
 
 #define FIM_DELETE_DB_TRY                   "(6340): Failed to delete FIM database '%s'- %dº try."
 #define FIM_DELETE_DB                       "(6341): Failed to delete FIM database '%s'."
