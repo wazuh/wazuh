@@ -113,12 +113,17 @@ void send_syscheck_msg(const cJSON *_msg) {
 
 // Persist a syscheck message
 void persist_syscheck_msg(const cJSON* _msg) {
-    char* msg = cJSON_PrintUnformatted(_msg);
+    if (syscheck.enable_synchronization) {
+        char* msg = cJSON_PrintUnformatted(_msg);
 
-    mdebug2(FIM_PERSIST, msg);
-    // fim_persist_stateful_event(msg);
+        mdebug2(FIM_PERSIST, msg);
 
-    os_free(msg);
+        // fim_persist_stateful_event(msg);
+
+        os_free(msg);
+    } else {
+        mdebug2("FIM synchronization is disabled");
+    }
 }
 
 
