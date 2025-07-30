@@ -381,6 +381,7 @@ void SQLiteDBEngine::returnRowsMarkedForDelete(const nlohmann::json& tableNames,
     {
         m_transaction->commit();
     }
+
     m_transaction = m_sqliteFactory->createTransaction(m_sqliteConnection);
 
     for (const auto& tableValue : tableNames)

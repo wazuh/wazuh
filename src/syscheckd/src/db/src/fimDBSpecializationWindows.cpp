@@ -18,7 +18,8 @@
 
 const std::string WindowsSpecialization::registryTypeToText(const int type)
 {
-    static const std::map<int, std::string> VALUE_TYPE = {
+    static const std::map<int, std::string> VALUE_TYPE =
+    {
         {REG_NONE, "REG_NONE"},
         {REG_SZ, "REG_SZ"},
         {REG_EXPAND_SZ, "REG_EXPAND_SZ"},
@@ -31,7 +32,8 @@ const std::string WindowsSpecialization::registryTypeToText(const int type)
         {REG_FULL_RESOURCE_DESCRIPTOR, "REG_FULL_RESOURCE_DESCRIPTOR"},
         {REG_RESOURCE_REQUIREMENTS_LIST, "REG_RESOURCE_REQUIREMENTS_LIST"},
         {REG_QWORD, "REG_QWORD"},
-        {REG_UNKNOWN, "REG_UNKNOWN"}};
+        {REG_UNKNOWN, "REG_UNKNOWN"}
+    };
     return VALUE_TYPE.at(type);
 }
 
