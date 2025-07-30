@@ -1383,7 +1383,7 @@ checks:
     rules:
       - 'r:HKLM\SYSTEM\CurrentControlSet\Control\Lsa\MSV1_0'
       - 'r:HKLM\SYSTEM\CurrentControlSet\Control\Lsa\MSV1_0 -> RestrictSendingNTLMTraffic'
-      - 'r:HKLM\SYSTEM\CurrentControlSet\Control\Lsa\MSV1_0 -> RestrictSendingNTLMTraffic -> 2'
+      - 'r:HKLM\SYSTEM\CurrentControlSet\Control\Lsa\MSV1_0 -> RestrictSendingNTLMTraffic -> r:^(1|2)$'
 
   # 2.3.15.1 (L1) Ensure 'System objects: Require case insensitivity for non-Windows subsystems' is set to 'Enabled'. (Automated)
   - id: 26062
@@ -4253,7 +4253,7 @@ checks:
     rules:
       - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\DNSClient'
       - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\DNSClient -> EnableNetbios'
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\DNSClient -> EnableNetbios -> 0'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\DNSClient -> EnableNetbios -> r:^(0|2)$'
 
   # 18.6.4.3 (L1) Ensure 'Turn off multicast name resolution' is set to 'Enabled'. (Automated)
   - id: 26193
@@ -4650,9 +4650,9 @@ checks:
       - cis: ["18.7.3"]
     condition: all
     rules:
-      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers'
-      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers -> RpcUseNamedPipeProtocol'
-      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers -> RpcUseNamedPipeProtocol -> 1'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers\\RPC'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers\\RPC -> RpcUseNamedPipeProtocol'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers\\RPC -> RpcUseNamedPipeProtocol -> 0'
 
  # 18.7.4 (L1) Ensure 'Configure RPC connection settings: Use authentication for outgoing RPC connections' is set to 'Enabled: Default'. (Automated)
   - id: 26212
@@ -4667,9 +4667,9 @@ checks:
       - cis: ["18.7.4"]
     condition: all
     rules:
-      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers'
-      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers -> RpcAuthentication'
-      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers -> RpcAuthentication -> 0'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers\\RPC'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers\\RPC -> RpcAuthentication'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers\\RPC -> RpcAuthentication -> 0'
 
  # 18.7.5 (L1) Ensure 'Configure RPC listener settings: Protocols to allow for incoming RPC connections' is set to 'Enabled: RPC over TCP'. (Automated)
   - id: 26213
@@ -4682,9 +4682,9 @@ checks:
       - cis: ["18.7.5"]
     condition: all
     rules:
-      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers'
-      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers -> RpcProtocols'
-      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers -> RpcProtocols -> 7'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers\\RPC'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers\\RPC -> RpcProtocols'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers\\RPC -> RpcProtocols -> 5'
 
  # 18.7.6 (L1) Ensure 'Configure RPC listener settings: Authentication protocol to use for incoming RPC connections:' is set to 'Enabled: Negotiate' or higher (Automated)
   - id: 26214
@@ -4697,9 +4697,9 @@ checks:
       - cis: ["18.7.5"]
     condition: all
     rules:
-      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers'
-      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers -> ForceKerberosForRpc'
-      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers -> ForceKerberosForRpc -> 1'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers\\RPC'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers\\RPC -> ForceKerberosForRpc'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers\\RPC -> ForceKerberosForRpc -> r:^(0|1)$'
 
  # 18.7.7 (L1) Ensure 'Configure RPC over TCP port' is set to 'Enabled: 0'. (Automated)
   - id: 26215
@@ -4712,9 +4712,9 @@ checks:
       - cis: ["18.7.7"]
     condition: all
     rules:
-      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers'
-      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers -> RpcTcpPort'
-      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers -> RpcTcpPort -> n:^(\d+) compare <= 65535'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers\\RPC'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers\\RPC -> RpcTcpPort'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers\\RPC -> RpcTcpPort -> 0'
 
  # 18.7.8 (L1) Ensure 'Limits print driver installation to Administrators' is set to 'Enabled'. (Automated)
   - id: 26216
@@ -4732,7 +4732,7 @@ checks:
     rules:
       - 'not r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers\PointAndPrint'
       - 'not r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers\PointAndPrint -> RestrictDriverInstallationToAdministrators'
-      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers\PointAndPrint -> RestrictDriverInstallationToAdministrators -> 0'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers\PointAndPrint -> RestrictDriverInstallationToAdministrators -> 1'
 
  # 18.7.9 (L1) Ensure 'Manage processing of Queue-specific files' is set to 'Enabled: Limit Queue-specific files to Color profiles'. (Automated)
   - id: 26217
