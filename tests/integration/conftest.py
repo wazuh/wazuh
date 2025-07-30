@@ -758,5 +758,5 @@ def simulate_agents(test_metadata):
 
     # Delete simulated agents
     control_service('start')
-    remove_agents([a.id for a in agents], 'manage_agents')
+    remove_agents([a.id for a in agents], 'wazuhdb')
     control_service('stop')

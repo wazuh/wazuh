@@ -33,5 +33,5 @@ def simulate_agents(request):
     # Delete simulated agents
     control_service('start')
     for agent in agents:
-        remove_agents(agent.id,'manage_agents')
+        remove_agents(agent.id,'wazuhdb')
     control_service('stop')
