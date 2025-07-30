@@ -439,7 +439,18 @@ checks:
       - 'c:/sbin/sysctl kernel.exec-shield -> r:\s1$'
 
   # 1.6.4 Enable XD/NX Support on 32-bit x86 Systems (Scored)
-  # TODO
+  - id: 3560
+    title: "Enable XD/NX Support on 32-bit x86 Systems"
+    description: "Recent processors in the x86 family support the ability to prevent code execution on a per memory page basis. Generically and on AMD processors, this ability is called No Execute (NX), while on Intel processors it is called Execute Disable (XD). This ability can help prevent exploitation of buffer overflow vulnerabilities and should be activated whenever possible. Extra steps must be taken to ensure that this protection is enabled, particularly on 32-bit x86 systems. Other processors, such as Itanium and POWER, have included such support since inception and the standard kernel for those platforms supports the feature."
+    rationale: "Enabling any feature that can protect against buffer overflow attacks enhances the security of the system."
+    remediation: "On 32 bit systems install a kernel with PAE support, no installation is required on 64 bit systems: If necessary configure your bootloader to load the new kernel and reboot the system. You may need to enable NX or XD support in your bios."
+    compliance:
+      - cis: ["1.6.4"]
+      - pci_dss: ["2.2.4"]
+      - nist_800_53: ["CM.1"]
+    condition: all
+    rules:
+      - 'c:sh -c "dmesg | grep NX" -> r:NX \(Execute Disable\) protection: active'
   # 1.6.5 Disable Prelink (Scored)
   - id: 3525
     title: "Disable Prelink"
