@@ -58,11 +58,6 @@ runrootcheck="Vuoi attivare il sistema di rilevamento dei rootkit?"
 norootcheck="Rootcheck (Sistema di rilevamento dei rootkit) disattivato"
 yesrootcheck="Rootcheck (Sistema di rilevamento dei rootkit) attivato"
 
-# Part 3.4
-runopenscap="Vuoi attivare OpenSCAP?"
-norunopenscap="OpenSCAP disattivato"
-yesrunopenscap="OpenSCAP attivato"
-
 # Part 3.5/server/local
 enable_ar="Vuoi abilitare la risposta attiva?"
 noactive="Risposta attiva disabilitata"

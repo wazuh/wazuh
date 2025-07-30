@@ -59,11 +59,6 @@ runrootcheck="Czy chcesz aby system detekcji rootkit'ów (rootcheck) był urucho
 norootcheck="Nie uruchomiony rootcheck (system detekcji rootkit'ów)"
 yesrootcheck="Uruchomiony rootcheck (system detekcji rootkit'ów)"
 
-# Part 3.4
-runopenscap="Czy chcesz OpenSCAP był uruchomiony?"
-norunopenscap="Nie uruchomiony OpenSCAP"
-yesrunopenscap="Uruchomiony OpenSCAP"
-
 # Część 3.5/server/local
 enable_ar="Czy chcesz uaktywnić aktywną ochrone?"
 noactive="Aktywna ochrona wyłączona"

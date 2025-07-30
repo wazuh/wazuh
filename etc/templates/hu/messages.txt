@@ -59,11 +59,6 @@ runrootcheck="Szeretné futtatni a rootkit detektáló motort?"
 norootcheck="Gyökérellenőrzés mellőzése (rootkit detektálás)"
 yesrootcheck="Gyökérellenőrzés futtatása (rootkit detektálás)"
 
-# Part 3.4
-runopenscap="Szeretné futtatni OpenSCAP?"
-norunopenscap="Rendszerellenőrzés mellőzése OpenSCAP"
-yesrunopenscap="Gyökérellenőrzés futtatása OpenSCAP"
-
 # Part 3.5/server/local
 enable_ar="Szeretné bekapcsolni az active response funkciót?"
 noactive="Active response kikapcsolva"

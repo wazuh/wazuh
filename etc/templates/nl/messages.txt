@@ -59,11 +59,6 @@ runrootcheck="Wilt u de rootkit detectie engine?"
 norootcheck="Geen rootcheck (rootkit detectie)"
 yesrootcheck="Starten van rootcheck (rootkit detectie)"
 
-# Part 3.4
-runopenscap="Wilt u OpenSCAP?"
-norunopenscap="Geen running OpenSCAP"
-yesrunopenscap="Starten OpenSCAP"
-
 # Part 3.5/server/local
 enable_ar="Wilt u actief handelen?"
 noactive="Actief handelen uitgeschakeld"

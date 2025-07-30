@@ -59,11 +59,6 @@ runrootcheck="Voulez-vous démarrer le moteur de détection de rootkit ?"
 norootcheck="Rootcheck non lancé (détection de rootkit)"
 yesrootcheck="Lancement de rootcheck (détection de rootkit)"
 
-# Part 3.4
-runopenscap="Voulez-vous démarrer OpenSCAP?"
-norunopenscap="OpenSCAP non lancé"
-yesrunopenscap="Lancement de OpenSCAP"
-
 # Part 3.5/server/local
 enable_ar="voulez-vous démarrer la réponse active ?"
 noactive="Réponse active désactivée"
