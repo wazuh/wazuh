@@ -76,16 +76,10 @@ TEST_F(EndpointPostV1AgentsRestartInfoTest, AllAgents)
         .WillOnce(testing::Return(""))
         .WillOnce(testing::Return("v4.11.0"));
 
-    EXPECT_CALL(*stmt, valueString(2))
-        .WillOnce(testing::Return("active"))
-        .WillOnce(testing::Return("disconnected"))
-        .WillOnce(testing::Return("never_connected"));
-
     TEndpointPostV1AgentsRestartInfo<MockSQLiteConnection, TrampolineSQLiteStatement>::call(db, req, res);
 
-    EXPECT_EQ(
-        res.body,
-        R"({"items":[{"id":1,"version":"v4.13.0","status":"active"},{"id":2,"version":"","status":"disconnected"},{"id":3,"version":"v4.11.0","status":"never_connected"}]})");
+    EXPECT_EQ(res.body,
+              R"({"items":[{"id":1,"version":"v4.13.0"},{"id":2,"version":""},{"id":3,"version":"v4.11.0"}]})");
 
     ASSERT_EQ(queries->size(), 1);
 
@@ -114,8 +108,6 @@ TEST_F(EndpointPostV1AgentsRestartInfoTest, SomeAgents)
 
     EXPECT_CALL(*stmt, valueString(1)).WillOnce(testing::Return("v4.13.0")).WillOnce(testing::Return("v4.11.0"));
 
-    EXPECT_CALL(*stmt, valueString(2)).WillOnce(testing::Return("active")).WillOnce(testing::Return("never_connected"));
-
     EXPECT_CALL(*stmt, step())
         .InSequence(s)
         .WillOnce(Return(SQLITE_ROW))
@@ -124,9 +116,7 @@ TEST_F(EndpointPostV1AgentsRestartInfoTest, SomeAgents)
 
     TEndpointPostV1AgentsRestartInfo<MockSQLiteConnection, TrampolineSQLiteStatement>::call(db, req, res);
 
-    EXPECT_EQ(
-        res.body,
-        R"({"items":[{"id":1,"version":"v4.13.0","status":"active"},{"id":3,"version":"v4.11.0","status":"never_connected"}]})");
+    EXPECT_EQ(res.body, R"({"items":[{"id":1,"version":"v4.13.0"},{"id":3,"version":"v4.11.0"}]})");
 
     ASSERT_EQ(queries->size(), 1);
 
@@ -155,13 +145,11 @@ TEST_F(EndpointPostV1AgentsRestartInfoTest, SomeAgentsNegated)
 
     EXPECT_CALL(*stmt, valueString(1)).WillOnce(testing::Return("v4.12.0"));
 
-    EXPECT_CALL(*stmt, valueString(2)).WillOnce(testing::Return("disconnected"));
-
     EXPECT_CALL(*stmt, step()).InSequence(s).WillOnce(Return(SQLITE_ROW)).WillOnce(Return(SQLITE_DONE));
 
     TEndpointPostV1AgentsRestartInfo<MockSQLiteConnection, TrampolineSQLiteStatement>::call(db, req, res);
 
-    EXPECT_EQ(res.body, R"({"items":[{"id":2,"version":"v4.12.0","status":"disconnected"}]})");
+    EXPECT_EQ(res.body, R"({"items":[{"id":2,"version":"v4.12.0"}]})");
 
     ASSERT_EQ(queries->size(), 1);
 

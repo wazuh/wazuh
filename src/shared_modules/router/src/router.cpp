@@ -429,7 +429,6 @@ extern "C"
                     logMessage(modules_log_level_t::LOG_DEBUG,
                                "GET: " + endpointStr + " request processed in " + std::to_string(duration.count()) +
                                    " us");
-                    logMessage(modules_log_level_t::LOG_INFO, "GET: " + endpointStr + " response body: " + res.body);
                 });
         }
         else if (methodStr.compare("POST") == 0)
@@ -447,8 +446,6 @@ extern "C"
                     logMessage(modules_log_level_t::LOG_DEBUG,
                                "POST: " + endpointStr + " request processed in " + std::to_string(duration.count()) +
                                    " us");
-                    logMessage(modules_log_level_t::LOG_INFO, "POST: " + endpointStr + " request body: " + req.body);
-                    logMessage(modules_log_level_t::LOG_INFO, "POST: " + endpointStr + " response body: " + res.body);
                 });
         }
         else
