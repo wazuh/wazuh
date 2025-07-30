@@ -103,8 +103,6 @@ class AWSInspector(aws_service.AWSService):
 
         Parameters
         ----------
-        client : botocore.client.Inspector2
-            The Boto3 client used to interact with Inspector v2.
         finding_arns : list[str]
             The ARNs of the findings that should be requested to AWS and sent to analysisd.
         """

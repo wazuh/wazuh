@@ -124,7 +124,7 @@ def main(argv):
                         aws_tools.debug(
                             "+++ Warning: No regions were specified, trying to get events from supported regions", 1
                         )
-                        options.regions = services.inspector.SUPPORTED_REGIONS
+                        options.regions = services.inspector.INSPECTOR_V1_REGIONS + services.inspector.INSPECTOR_V2_REGIONS
                     else:
                         aws_tools.debug(
                             "+++ Warning: No regions were specified, trying to get events from all regions", 1
