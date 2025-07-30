@@ -17,6 +17,7 @@ All notable changes to this project will be documented in this file.
 - Fixed race condition in agent status synchronization between worker and master. ([#29624](https://github.com/wazuh/wazuh/pull/29624))
 - Fixed agent-group assignment for missing agents with improved error handling. ([#30534](https://github.com/wazuh/wazuh/pull/30534))
 - Fixed missing OS info updates in global inventory after first scan. ([#30818](https://github.com/wazuh/wazuh/pull/30818))
+- Fixed wazuh-db failure during agent restarts by updating the restart query to use HTTP. ([#31048](https://github.com/wazuh/wazuh/pull/31048))
 
 #### Changed
 
