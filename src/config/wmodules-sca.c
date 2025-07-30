@@ -89,7 +89,6 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
         sca->enabled = 1;
         sca->scan_on_start = 1;
         sched_scan_init(&(sca->scan_config));
-        sca->skip_nfs = 1;
         sca->alert_msg = NULL;
         sca->queue = -1;
         sca->policies = NULL;
@@ -318,17 +317,6 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
                 }
             }
             OS_ClearNode(children);
-        }
-        else if (!strcmp(nodes[i]->element, XML_SKIP_NFS))
-        {
-            int skip_nfs = eval_bool(nodes[i]->content);
-
-            if(skip_nfs == OS_INVALID){
-                merror("Invalid content for tag '%s'", XML_SKIP_NFS);
-                return OS_INVALID;
-            }
-
-            sca->skip_nfs = skip_nfs;
         }
         else if (is_sched_tag(nodes[i]->element)) {
             // Do nothing
