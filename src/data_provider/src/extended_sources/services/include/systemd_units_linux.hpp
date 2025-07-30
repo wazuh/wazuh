@@ -11,9 +11,37 @@
 
 #include <string>
 #include <vector>
-#include "isdbus_wrapper.hpp"
-#include "isystem_wrapper.hpp"
+#include "idbus_wrapper.hpp"
 #include "json.hpp"
+
+/// @brief Structure to hold information about a systemd unit.
+struct SystemdUnit
+{
+    std::string id;
+    std::string description;
+    std::string loadState;
+    std::string activeState;
+    std::string subState;
+    std::string following;
+    std::string objectPath;
+    uint32_t jobId;
+    std::string jobType;
+    std::string jobPath;
+
+    // Extra properties
+    std::string fragmentPath;
+    std::string sourcePath;
+    std::string user;
+    std::string unitFileState;
+};
+
+/// @brief Structure to describe a property query for D-Bus.
+struct PropertyQueryDesc
+{
+    std::string propertyName;
+    std::string columnName;
+    std::string interface;
+};
 
 /// @brief Class to collect systemd units information from the systemd service manager.
 /// This class uses D-Bus to query systemd for unit information and formats it into a
@@ -21,11 +49,9 @@
 class SystemdUnitsProvider
 {
     public:
-        /// @brief Constructor that initializes the SystemdUnitsProvider with D-Bus and system wrappers.
+        /// @brief Constructor that initializes the SystemdUnitsProvider with D-Bus wrapper.
         /// @param dbusWrapper Pointer to the D-Bus wrapper for system operations.
-        /// @param systemWrapper Pointer to the system wrapper for system calls.
-        explicit SystemdUnitsProvider(std::shared_ptr<ISDBusWrapper> dbusWrapper,
-                                      std::shared_ptr<ISystemWrapper> systemWrapper);
+        explicit SystemdUnitsProvider(std::shared_ptr<IDBusWrapper> dbusWrapper);
 
         /// @brief Default constructor.
         SystemdUnitsProvider();
@@ -36,18 +62,7 @@ class SystemdUnitsProvider
 
     private:
         /// @brief Pointer to the D-Bus wrapper for system operations.
-        std::shared_ptr<ISDBusWrapper> m_dbusWrapper;
-
-        /// @brief Pointer to the system wrapper for system calls.
-        std::shared_ptr<ISystemWrapper> m_systemWrapper;
-
-        /// @brief Structure to describe a property query for D-Bus.
-        struct PropertyQueryDesc
-        {
-            std::string propertyName;
-            std::string columnName;
-            std::string interface;
-        };
+        std::shared_ptr<IDBusWrapper> m_dbusWrapper;
 
         /// @brief List of property queries to be executed on D-Bus.
         /// Each entry specifies the property name, the column name to use in the output,
