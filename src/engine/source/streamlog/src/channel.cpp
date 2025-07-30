@@ -208,6 +208,18 @@ void ChannelHandler::updateOutputFileAndLink()
 
     // Create or update the latest link to the current file
     std::error_code ec;
+
+    // Remove existing hard link if it exists
+    if (std::filesystem::exists(m_stateData.latestLink, ec))
+    {
+        std::filesystem::remove(m_stateData.latestLink, ec);
+        if (ec)
+        {
+            LOG_WARNING("Failed to remove existing hard link {}: {}", m_stateData.latestLink.string(), ec.message());
+        }
+    }
+
+    // Create new hard link
     std::filesystem::create_hard_link(m_stateData.currentFile, m_stateData.latestLink, ec);
     if (ec)
     {
@@ -321,50 +333,74 @@ ChannelHandler::ChannelHandler(RotationConfig config, std::string channelName)
     , m_channelName(std::move(channelName))
     , m_stateData()
 {
-    // Validate the configuration
-    if (m_channelName.empty())
+    // Validate the name
     {
-        throw std::runtime_error("Channel name cannot be empty");
+        if (m_channelName.empty())
+        {
+            throw std::runtime_error("Channel name cannot be empty");
+        }
+        // Only allow alphanumeric characters, underscores, and dashes in channel names
+        if (!std::regex_match(m_channelName, std::regex("^[a-zA-Z0-9_-]+$")))
+        {
+            throw std::runtime_error("Channel name can only contain alphanumeric characters, underscores, and dashes");
+        }
     }
 
-    // Ensure the base path is absolute, exist and is a dir
-    if (!m_config.basePath.is_absolute() || m_config.basePath.empty())
+    // Validate the base path
     {
-        throw std::runtime_error("Base path must be an absolute path");
-    }
-    if (!std::filesystem::exists(m_config.basePath) || !std::filesystem::is_directory(m_config.basePath))
-    {
-        throw std::runtime_error("Base path must exist and be a directory: " + m_config.basePath.string());
+        if (!m_config.basePath.is_absolute() || m_config.basePath.empty())
+        {
+            throw std::runtime_error("Base path must be an absolute path");
+        }
+        if (!std::filesystem::exists(m_config.basePath) || !std::filesystem::is_directory(m_config.basePath))
+        {
+            throw std::runtime_error("Base path must exist and be a directory: " + m_config.basePath.string());
+        }
     }
 
-    if (m_config.pattern.empty())
+    // Validate the pattern
     {
-        throw std::runtime_error("Log pattern cannot be empty");
+        if (m_config.pattern.empty())
+        {
+            throw std::runtime_error("Log pattern cannot be empty");
+        }
+
+        // Add counter placeholder if maxSize is set and not already present
+        if (m_config.maxSize > 0 && m_config.pattern.find("${counter}") == std::string::npos)
+        {
+            auto lastDot = m_config.pattern.find_last_of('.');
+            if (lastDot != std::string::npos)
+            {
+                m_config.pattern.insert(lastDot, "-${counter}");
+            }
+            else
+            {
+                m_config.pattern += "-${counter}";
+            }
+        }
+
+        // Ensure the pattern contains at least one time placeholder or maxSize placeholder if maxSize is set
+        if (m_config.pattern.find("${YYYY}") == std::string::npos && m_config.pattern.find("${YY}") == std::string::npos
+            && m_config.pattern.find("${MM}") == std::string::npos
+            && m_config.pattern.find("${DD}") == std::string::npos
+            && m_config.pattern.find("${HH}") == std::string::npos
+            && m_config.maxSize == 0)
+        {
+            throw std::runtime_error("Log pattern must contain at least one time placeholder (${YYYY}, ${YY}, ${MM}, "
+                                     "${DD}, or ${HH}) or a counter placeholder if maxSize is set");
+        }
     }
+
     // Assign default maxSize if not set
     if (m_config.bufferSize == 0)
     {
         m_config.bufferSize = 1 << 20; // Default to 1 MiB events if not specified
     }
-    // Ajust the pattern if needed
-    if (m_config.maxSize > 0 && m_config.pattern.find("${counter}") == std::string::npos)
-    {
-        // Add the counter placeholder to the pattern if maxSize is set and counter is not already present
-        auto lastDot = m_config.pattern.find_last_of('.');
-        if (lastDot != std::string::npos)
-        {
-            m_config.pattern.insert(lastDot, "-${counter}");
-        }
-        else
-        {
-            m_config.pattern += "-${counter}";
-        }
 
-        if (m_config.maxSize < 0x1 << 20)
-        {
-            // Default to 1 MiB if maxSize is too small
-            m_config.maxSize = 0x1 << 20;
-        }
+    if (m_config.maxSize > 0 && m_config.maxSize < 0x1 << 20)
+    {
+        // Default to 1 MiB if maxSize is too small
+        m_config.maxSize = 0x1 << 20;
     }
 
     // Initial state data: File paths

@@ -111,8 +111,6 @@
 namespace streamlog
 {
 
-// Forward declaration
-class LogManagerImpl;
 
 /**
  * @brief Abstract base class for writer event handlers.
@@ -126,6 +124,8 @@ public:
     virtual ~WriterEvent() = default;
     virtual void operator()(std::string&& message) = 0;
 };
+
+class ChannelHandler; // Forward declaration of ChannelHandler
 
 /**
  * @brief Configuration structure for the streamlog logger.
@@ -154,18 +154,8 @@ class LogManager
 {
 
 private:
-    struct ChannelState
-    {
-        RotationConfig config;               ///< The configuration for the log channel.
-        std::filesystem::path currentFile;   ///< The current log file being written to.
-        size_t currentSize = 0;              ///< The current size of the log file in bytes.
-        size_t counter = 0;                  ///< A counter for the number of rotations performed.
-        std::shared_ptr<WriterEvent> writer; ///< A shared pointer to the writer event for this channel, only can
-                                             ///< destroy the channel if nobody has a writer for it.
-        std::filesystem::path latestLink;                   ///< The hard link to the latest log file
-    };
 
-    std::unordered_map<std::string, ChannelState> channels;
+    std::unordered_map<std::string, std::shared_ptr<ChannelHandler>> channels;
 
 public:
     /**
