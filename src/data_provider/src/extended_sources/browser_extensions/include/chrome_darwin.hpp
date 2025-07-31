@@ -71,19 +71,19 @@ namespace chrome
     using ChromeExtensionList = std::vector<ChromeExtension>;
     using ChromeUserProfileList = std::vector<std::filesystem::path>;
 
-    /// A list of path suffixes for each Chrome-based browser on Windows
-    const ChromePathSuffixMap kLinuxPathList =
-    {
-        {ChromeBrowserType::GoogleChrome, ".config/google-chrome"},
-        {ChromeBrowserType::GoogleChromeBeta, ".config/google-chrome-beta"},
-        {ChromeBrowserType::GoogleChromeDev, ".config/google-chrome-unstable"},
-        {ChromeBrowserType::Brave, ".config/BraveSoftware/Brave-Browser"},
-        {ChromeBrowserType::Chromium, ".config/chromium"},
-        {ChromeBrowserType::Chromium, "snap/chromium/common/chromium"},
-        {ChromeBrowserType::Yandex, ".config/yandex-browser-beta"},
-        {ChromeBrowserType::Opera, ".config/opera"},
-        {ChromeBrowserType::Vivaldi, ".config/vivaldi"},
-    };
+    const ChromePathSuffixMap kMacOsPathList = {
+    {ChromeBrowserType::GoogleChrome, "Library/Application Support/Google/Chrome"},
+    {ChromeBrowserType::GoogleChromeBeta, "Library/Application Support/Google/Chrome Beta"},
+    {ChromeBrowserType::GoogleChromeDev, "Library/Application Support/Google/Chrome Dev"},
+    {ChromeBrowserType::GoogleChromeCanary, "Library/Application Support/Google/Chrome Canary"},
+    {ChromeBrowserType::Brave, "Library/Application Support/BraveSoftware/Brave-Browser"},
+    {ChromeBrowserType::Chromium, "Library/Application Support/Chromium"},
+    {ChromeBrowserType::Yandex, "Library/Application Support/Yandex/YandexBrowser"},
+    {ChromeBrowserType::Edge, "Library/Application Support/Microsoft Edge"},
+    {ChromeBrowserType::EdgeBeta, "Library/Application Support/Microsoft Edge Beta"},
+    {ChromeBrowserType::Opera, "Library/Application Support/com.operasoftware.Opera"},
+    {ChromeBrowserType::Vivaldi, "Library/Application Support/Vivaldi"},
+    {ChromeBrowserType::Arc, "Library/Application Support/Arc/User Data"}};
 
     const std::string kPreferencesFile{"Preferences"};
     const std::string kSecurePreferencesFile{"Secure Preferences"};

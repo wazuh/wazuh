@@ -7,7 +7,7 @@
  * Foundation.
  */
 
-#include "chrome_linux.hpp"
+#include "chrome_darwin.hpp"
 #include <tuple>
 #include <iostream>
 #include <fstream>
@@ -42,7 +42,7 @@ namespace chrome
             }
 
             // TODO: Take into account other chrome-based browsers like Chromium, Brave, etc.
-            const std::filesystem::path profilePath = userHomePath / ".config/google-chrome";
+            const std::filesystem::path profilePath = userHomePath / "Library/Application Support/Google/Chrome";
 
             if (!std::filesystem::exists(profilePath))
             {
