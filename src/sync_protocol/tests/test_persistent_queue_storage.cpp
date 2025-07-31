@@ -10,74 +10,247 @@
 #include <gtest/gtest.h>
 #include "persistent_queue_storage.hpp"
 
-TEST(PersistentQueueStorageTest, SaveAndLoad)
+struct QueueScenario
 {
-    PersistentQueueStorage storage(":memory:");
+    std::vector<PersistedData> initial;
+    bool doFetchAndSync;
+    std::vector<PersistedData> eventsInSync;
+    bool removeSynced;
+    bool resetSyncing;
+    size_t expectedRows;
+    Operation expectedOp;
+};
 
-    PersistedData data
+class PersistentQueueFullParamTest :
+    public ::testing::TestWithParam<QueueScenario>
+{
+    protected:
+        std::unique_ptr<PersistentQueueStorage> storage;
+
+        void SetUp() override
+        {
+            storage = std::make_unique<PersistentQueueStorage>(":memory:");
+        }
+
+        void TearDown() override
+        {
+            storage.reset();
+        }
+};
+
+TEST_P(PersistentQueueFullParamTest, HandlesSubmitFetchRemoveResetCorrectly)
+{
+    auto param = GetParam();
+
+    // 1. Init DB
+    for (auto& ev : param.initial)
     {
-        .seq = 1,
-        .id = "test_id",
-        .index = "test_index",
-        .data = "{\"value\":42}",
-        .operation = Wazuh::SyncSchema::Operation::Upsert
-    };
+        storage->submitOrCoalesce(ev);
+    }
 
-    storage.save("FIM", data);
-    auto results = storage.loadAll("FIM");
+    // 2. Simulate fetchAndMarkForSync
+    if (param.doFetchAndSync)
+    {
+        storage->fetchAndMarkForSync(10);
 
-    ASSERT_EQ(results.size(), static_cast<size_t>(1));
-    EXPECT_EQ(results[0].seq, data.seq);
-    EXPECT_EQ(results[0].id, data.id);
-    EXPECT_EQ(results[0].index, data.index);
-    EXPECT_EQ(results[0].data, data.data);
-    EXPECT_EQ(results[0].operation, data.operation);
+        // 3. Events during a sincronization
+        for (auto& evs : param.eventsInSync)
+        {
+            storage->submitOrCoalesce(evs);
+        }
+    }
+
+    // 4. Simulate removeAllSynced
+    if (param.removeSynced)
+    {
+        storage->removeAllSynced();
+    }
+
+    // 5. Simulate resetAllSyncing
+    if (param.resetSyncing)
+    {
+        storage->resetAllSyncing();
+    }
+
+    // 6. Verify final status
+    auto rows = storage->loadAll();
+    EXPECT_EQ(rows.size(), param.expectedRows);
+
+    if (!rows.empty())
+    {
+        EXPECT_EQ(rows[0].operation, param.expectedOp);
+    }
 }
 
-TEST(PersistentQueueStorageTest, SaveException)
+INSTANTIATE_TEST_SUITE_P(
+    FullQueueCases,
+    PersistentQueueFullParamTest,
+    ::testing::Values(
+        // 1. CREATE
+        QueueScenario
 {
-    PersistentQueueStorage storage(":memory:");
-
-    PersistedData data
-    {
-        .seq = 1,
-        .id = "test_id",
-        .index = "test_index",
-        .data = "{\"value\":42}",
-        .operation = Wazuh::SyncSchema::Operation::Upsert
-    };
-
-    storage.save("FIM", data);
-    // An exception is expected because an attempt is made to insert a row with the same primary key twice.
-    EXPECT_ANY_THROW(storage.save("FIM", data));
-}
-
-TEST(PersistentQueueStorageTest, Save2AndRemoveAll)
+    { PersistedData{0, "id1", "idx", "{}", Operation::CREATE} },
+    false, {}, false, false,
+    1, Operation::CREATE
+},
+// 2. CREATE + MODIFY no sync -> MODIFY
+QueueScenario
 {
-    PersistentQueueStorage storage(":memory:");
-
-    PersistedData data
     {
-        .seq = 1,
-        .id = "test_id",
-        .index = "test_index",
-        .data = "{\"value\":42}",
-        .operation = Wazuh::SyncSchema::Operation::Upsert
-    };
-
-    PersistedData data2
+        PersistedData{0, "id1", "idx", "{}", Operation::CREATE},
+        PersistedData{0, "id1", "idx2", "{}", Operation::MODIFY}
+    },
+    false, {}, false, false,
+    1, Operation::MODIFY
+},
+// 3. CREATE + DELETE no sync -> row deleted
+QueueScenario
+{
     {
-        .seq = 2,
-        .id = "test_id_2",
-        .index = "test_index",
-        .data = "{\"value\":142}",
-        .operation = Wazuh::SyncSchema::Operation::Upsert
-    };
-
-    storage.save("FIM", data);
-    storage.save("FIM", data2);
-    storage.removeAll("FIM");
-    auto results = storage.loadAll("FIM");
-
-    ASSERT_EQ(results.size(), static_cast<size_t>(0));
+        PersistedData{0, "id1", "idx", "{}", Operation::CREATE},
+        PersistedData{0, "id1", "idx", "{}", Operation::DELETE}
+    },
+    false, {}, false, false,
+    0, Operation::CREATE
+},
+// 4. MODIFY + DELETE no sync -> DELETE
+QueueScenario
+{
+    {
+        PersistedData{0, "id1", "idx", "{}", Operation::MODIFY},
+        PersistedData{0, "id1", "idx", "{}", Operation::DELETE}
+    },
+    false, {}, false, false,
+    1, Operation::DELETE
+},
+// 5. DELETE
+QueueScenario
+{
+    { PersistedData{0, "id1", "idx", "{}", Operation::DELETE} },
+    false, {}, false, false,
+    1, Operation::DELETE
+},
+// 6. CREATE + Sync + MODIFY during  sync + sync success -> MODIFY
+QueueScenario
+{
+    { PersistedData{0, "id1", "idx", "{}", Operation::CREATE} },
+    true,
+    { PersistedData{0, "id1", "idx2", "{}", Operation::MODIFY} },
+    true, false,
+    1, Operation::MODIFY
+},
+// 7. CREATE + Sync + DELETE during  sync + sync success -> DELETE
+QueueScenario
+{
+    { PersistedData{0, "id1", "idx", "{}", Operation::CREATE} },
+    true,
+    { PersistedData{0, "id1", "idx", "{}", Operation::DELETE} },
+    true, false,
+    1, Operation::DELETE
+},
+// 8. CREATE + Sync + DELETE during  sync + sync fail -> row deleted
+QueueScenario
+{
+    { PersistedData{0, "id1", "idx", "{}", Operation::CREATE} },
+    true,
+    { PersistedData{0, "id1", "idx", "{}", Operation::DELETE} },
+    false, true,
+    0, Operation::DELETE
+},
+// 9. CREATE + Sync + MODIFY during  sync + fail -> MODIFY
+QueueScenario
+{
+    { PersistedData{0, "id1", "idx", "{}", Operation::CREATE} },
+    true,
+    { PersistedData{0, "id1", "idx2", "{}", Operation::MODIFY} },
+    false, true,
+    1, Operation::MODIFY
+},
+// 10. DELETE + MODIFY -> MODIFY
+QueueScenario
+{
+    {
+        PersistedData{0, "id1", "idx", "{}", Operation::DELETE},
+        PersistedData{0, "id1", "idx2", "{}", Operation::MODIFY}
+    },
+    false, {}, false, false,
+    1, Operation::MODIFY
+},
+// 11. Sync
+QueueScenario
+{
+    { PersistedData{0, "id1", "idx", "{}", Operation::CREATE} },
+    true, {}, true, false,
+    0, Operation::CREATE
+},
+// 12. Two MODIFY -> MODIFY
+QueueScenario
+{
+    {
+        PersistedData{0, "id1", "idx", "{}", Operation::MODIFY},
+        PersistedData{0, "id1", "idx2", "{}", Operation::MODIFY},
+    },
+    false, {}, false, false,
+    1, Operation::MODIFY
+},
+// 13. Two IDs
+QueueScenario
+{
+    {
+        PersistedData{0, "id1", "idx", "{}", Operation::CREATE},
+        PersistedData{0, "id2", "idx", "{}", Operation::MODIFY}
+    },
+    false, {}, false, false,
+    2, Operation::CREATE
+},
+// 14. MODIFY + Sync + DELETE + CREATE + DELETE during sync + sync fail -> DELETE
+QueueScenario
+{
+    { PersistedData{0, "id1", "idx", "{}", Operation::MODIFY} },
+    true,
+    {
+        PersistedData{0, "id1", "idx", "{}", Operation::DELETE},
+        PersistedData{0, "id1", "idx", "{}", Operation::CREATE},
+        PersistedData{0, "id1", "idx", "{}", Operation::DELETE}
+    },
+    false, true,
+    1, Operation::DELETE
+},
+// 15. CREATE -> DELETE -> CREATE -> CREATE
+QueueScenario
+{
+    {
+        PersistedData{0, "id1", "idx", "{}", Operation::CREATE},
+        PersistedData{0, "id1", "idx", "{}", Operation::DELETE},
+        PersistedData{0, "id1", "idx2", "{}", Operation::CREATE}
+    },
+    false, {}, false, false,
+    1, Operation::CREATE
+},
+// 16. CREATE + Sync + MODIFY + DELETE + MODIFY during sync + sync success -> MODIFY
+QueueScenario
+{
+    { PersistedData{0, "id1", "idx", "{}", Operation::CREATE} },
+    true,
+    {
+        PersistedData{0, "id1", "idx2", "{}", Operation::MODIFY},
+        PersistedData{0, "id1", "idx", "{}", Operation::DELETE},
+        PersistedData{0, "id1", "idx3", "{}", Operation::MODIFY}
+    },
+    true, false,
+    1, Operation::MODIFY
+},
+// 17. CREATE + Sync + DELETE + CREATE during sync + sync fail -> CREATE
+QueueScenario
+{
+    { PersistedData{0, "id1", "idx", "{}", Operation::CREATE} },
+    true,
+    {
+        PersistedData{0, "id1", "idx", "{}", Operation::DELETE},
+        PersistedData{0, "id1", "idx2", "{}", Operation::CREATE}
+    },
+    false, true,
+    1, Operation::CREATE
 }
+    )
+);
