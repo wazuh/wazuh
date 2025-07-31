@@ -32,7 +32,6 @@ typedef struct wm_sca_t {
     int msg_delay;
     unsigned int summary_delay;
     wm_sca_policy_t** policies;
-    char **alert_msg;
     int queue;
     int remote_commands:1;
     int commands_timeout;
