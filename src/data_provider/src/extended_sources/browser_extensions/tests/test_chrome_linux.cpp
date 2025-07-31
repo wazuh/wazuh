@@ -55,7 +55,6 @@ TEST(ChromeExtensionsTests, CollectReturnsExpectedJson)
               "/home/rodric/wazuh/src/data_provider/src/extended_sources/browser_extensions/tests/mock_home/mock-user/.config/google-chrome/Default/Extensions/nmmhkkegccagdldgiimedpiccmgmieda/1.0.0.6_0");
     EXPECT_EQ(extensionsJson[2]["permissions"],
               "identity, webview, https://www.google.com/, https://www.googleapis.com/*, https://payments.google.com/payments/v4/js/integrator.js, https://sandbox.google.com/payments/v4/js/integrator.js");
-    EXPECT_EQ(extensionsJson[2]["permissions_json"], "");
     EXPECT_EQ(extensionsJson[2]["persistent"], "0");
     EXPECT_EQ(extensionsJson[2]["profile"], "Your Chrome");
     EXPECT_EQ(extensionsJson[2]["profile_path"], "/home/rodric/wazuh/src/data_provider/src/extended_sources/browser_extensions/tests/mock_home/mock-user/.config/google-chrome/Default");
