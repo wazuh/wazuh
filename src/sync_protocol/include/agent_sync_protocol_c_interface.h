@@ -56,14 +56,12 @@ void asp_destroy(AgentSyncProtocolHandle* handle);
 /// @brief Persists a difference (diff) for synchronization.
 ///
 /// @param handle Pointer to the AgentSyncProtocol handle.
-/// @param module Module name associated with the diff.
 /// @param id Unique identifier for the diff (usually a hash).
 /// @param operation Type of operation (create, modify, delete).
 /// @param index Target index or destination for the diff.
 /// @param data JSON string representing the data to persist.
 /// @return The total number of pending differences for that module.
 size_t asp_persist_diff(AgentSyncProtocolHandle* handle,
-                        const char* module,
                         const char* id,
                         int operation,
                         const char* index,
@@ -77,13 +75,15 @@ size_t asp_persist_diff(AgentSyncProtocolHandle* handle,
 /// @param realtime Boolean flag (non-zero = realtime mode, zero = batch mode).
 /// @param sync_timeout The timeout for each attempt to receive a response, in seconds.
 /// @param sync_retries The maximum number of attempts for re-sending Start and End messages.
+/// @param max_amount The maximum number of messages to synchronize. Use 0 to synchronize all available messages.
 /// @return true if the sync was successfully processed; false otherwise.
 bool asp_sync_module(AgentSyncProtocolHandle* handle,
                      const char* module,
                      int mode,
                      int realtime,
                      unsigned int sync_timeout,
-                     unsigned int sync_retries);
+                     unsigned int sync_retries,
+                     size_t max_amount);
 
 /// @brief Parses a response buffer encoded in FlatBuffer format.
 /// @param handle Protocol handle.

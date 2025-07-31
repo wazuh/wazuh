@@ -39,56 +39,34 @@ class PersistentQueue : public IPersistentQueue
         ~PersistentQueue() override;
 
         /// @brief Adds a new message to the queue and returns its assigned sequence number.
-        /// @param module The module name the message belongs to.
         /// @param id The message ID.
         /// @param index The message grouping key.
         /// @param data The serialized payload of the message.
         /// @param operation The type of operation (e.g., Upsert, Delete).
         /// @return The total number of items for that module in the queue after submission.
-        size_t submit(const std::string& module, const std::string& id,
+        size_t submit(const std::string& id,
                       const std::string& index,
                       const std::string& data,
-                      Wazuh::SyncSchema::Operation operation) override;
-
-        /// @brief Returns all messages queued for a given module.
-        /// @param module The module name.
-        /// @return A vector of all queued messages.
-        std::vector<PersistedData> fetchAll(const std::string& module) override;
-
-        /// @brief Fetches messages whose sequence numbers fall within any of the provided ranges.
-        /// @param module The module name.
-        /// @param ranges A list of (start, end) inclusive ranges to filter messages.
-        /// @return A vector containing all matching messages.
-        std::vector<PersistedData> fetchRange(const std::string& module, const std::vector<std::pair<uint64_t, uint64_t>>& ranges) override;
+                      Operation operation) override;
 
         /// @brief Removes all messages queued for a given module.
-        /// @param module The module name.
-        void removeAll(const std::string& module) override;
+        void removeAll() override;
+
+        /// @brief Fetches a batch of pending messages and marks them for synchronization.
+        /// @param maxAmount The maximum number of messages to fetch. If 0, fetches all.
+        /// @return A vector of messages now marked as SYNCING.
+        std::vector<PersistedData> fetchAndMarkForSync(size_t maxAmount) override;
+
+        /// @brief Clears items that were successfully synchronized.
+        void clearSyncedItems() override;
+
+        /// @brief Resets items that failed to synchronize.
+        void resetSyncingItems() override;
 
     private:
         /// @brief Mutex to protect concurrent access to internal maps.
         std::mutex m_mutex;
 
-        /// @brief In-memory message queue for each module.
-        std::map<std::string, std::vector<PersistedData>> m_store;
-
-        /// @brief Sequence number counter per module.
-        std::map<std::string, std::atomic<uint64_t>> m_seqCounter;
-
         /// @brief Storage backend to persist and restore messages.
         std::shared_ptr<IPersistentQueueStorage> m_storage;
-
-        /// @brief Loads persisted messages from storage into memory.
-        /// @param module Module name.
-        void loadFromStorage(const std::string& module);
-
-        /// @brief Persists a message using the storage backend.
-        /// @param module Module name.
-        /// @param data Message to persist.
-        /// @return The total number of items for that module in the queue after submission.
-        size_t persistMessage(const std::string& module, const PersistedData& data);
-
-        /// @brief Deletes all messages for a module from storage.
-        /// @param module Module name.
-        void deleteAllMessages(const std::string& module);
 };

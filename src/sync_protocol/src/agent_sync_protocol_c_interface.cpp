@@ -49,17 +49,16 @@ extern "C" {
     }
 
     size_t asp_persist_diff(AgentSyncProtocolHandle* handle,
-                            const char* module,
                             const char* id,
                             int operation,
                             const char* index,
                             const char* data)
     {
-        if (!handle || !module || !id || !index || !data) return 0;
+        if (!handle || !id || !index || !data) return 0;
 
         auto* wrapper = reinterpret_cast<AgentSyncProtocolWrapper*>(handle);
-        return wrapper->impl->persistDifference(module, id,
-                                                static_cast<Wazuh::SyncSchema::Operation>(operation),
+        return wrapper->impl->persistDifference(id,
+                                                static_cast<Operation>(operation),
                                                 index, data);
     }
 
@@ -68,7 +67,8 @@ extern "C" {
                          int mode,
                          int realtime,
                          unsigned int sync_timeout,
-                         unsigned int retries)
+                         unsigned int retries,
+                         size_t max_amount)
     {
         if (!handle || !module) return false;
 
@@ -77,7 +77,8 @@ extern "C" {
                                                 static_cast<Wazuh::SyncSchema::Mode>(mode),
                                                 realtime != 0,
                                                 std::chrono::seconds(sync_timeout),
-                                                retries);
+                                                retries,
+                                                max_amount);
     }
 
     int asp_parse_response_buffer(AgentSyncProtocolHandle* handle, const uint8_t* data)

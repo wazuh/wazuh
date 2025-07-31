@@ -18,24 +18,29 @@
 
 constexpr char SYNC_MQ = 's';
 
-using namespace Wazuh::SyncSchema;
-
 AgentSyncProtocol::AgentSyncProtocol(MQ_Functions mqFuncs, std::shared_ptr<IPersistentQueue> queue)
     : m_mqFuncs(mqFuncs),
       m_persistentQueue(queue != nullptr ? std::move(queue) : std::make_shared<PersistentQueue>())
 {
 }
 
-size_t AgentSyncProtocol::persistDifference(const std::string& module,
-                                            const std::string& id,
+size_t AgentSyncProtocol::persistDifference(const std::string& id,
                                             Operation operation,
                                             const std::string& index,
                                             const std::string& data)
 {
-    return m_persistentQueue->submit(module, id, index, data, operation);
+    try
+    {
+        return m_persistentQueue->submit(id, index, data, operation);
+    }
+    catch (const std::exception& e)
+    {
+        std::cerr << "Failed to persist item: " << e.what() << std::endl;
+        return 0;
+    }
 }
 
-bool AgentSyncProtocol::synchronizeModule(const std::string& module, Mode mode, bool realtime, std::chrono::seconds timeout, unsigned int retries)
+bool AgentSyncProtocol::synchronizeModule(const std::string& module, Wazuh::SyncSchema::Mode mode, bool realtime, std::chrono::seconds timeout, unsigned int retries, size_t maxAmount)
 {
     if (!ensureQueueAvailable())
     {
@@ -45,34 +50,62 @@ bool AgentSyncProtocol::synchronizeModule(const std::string& module, Mode mode, 
 
     clearSyncState();
 
-    std::vector<PersistedData> data = m_persistentQueue->fetchAll(module);
+    std::vector<PersistedData> dataToSync;
 
-    if (!sendStartAndWaitAck(module, mode, realtime, data.size(), timeout, retries))
+    try
     {
-        std::cerr << "Failed to send start message or timed out.\n";
-        clearSyncState();
+        dataToSync = m_persistentQueue->fetchAndMarkForSync(maxAmount);
+    }
+    catch (const std::exception& e)
+    {
+        std::cerr << "Failed to fetch items for sync: " << e.what() << std::endl;
         return false;
     }
 
-    if (!sendDataMessages(module, m_syncState.session, data))
+    if (dataToSync.empty())
     {
-        std::cerr << "Failed to send data messages.\n";
-        clearSyncState();
-        return false;
+        std::cout << "[Sync] No pending items to synchronize for module '" << module << "'." << std::endl;
+        return true;
     }
 
-    if (!sendEndAndWaitAck(module, m_syncState.session, timeout, retries))
+    for (size_t i = 0; i < dataToSync.size(); ++i)
     {
-        std::cerr << "Failed to send end message or timed out.\n";
-        clearSyncState();
-        return false;
+        dataToSync[i].seq = i + 1;
     }
 
-    std::cout << "[Sync] Module '" << module << "' synchronized successfully.\n";
-    clearPersistedDifferences(module);
+    bool success = false;
+
+    if (sendStartAndWaitAck(module, mode, realtime, dataToSync.size(), timeout, retries))
+    {
+        if (sendDataMessages(module, m_syncState.session, dataToSync))
+        {
+            if (sendEndAndWaitAck(module, m_syncState.session, timeout, retries, dataToSync))
+            {
+                success = true;
+            }
+        }
+    }
+
+    try
+    {
+        if (success)
+        {
+            std::cout << "[Sync] Module '" << module << "' synchronized successfully. Clearing " << dataToSync.size() << " items." << std::endl;
+            m_persistentQueue->clearSyncedItems();
+        }
+        else
+        {
+            std::cerr << "[Sync] Synchronization failed for module '" << module << "'. Resetting " << dataToSync.size() << " items to pending state." << std::endl;
+            m_persistentQueue->resetSyncingItems();
+        }
+    }
+    catch (const std::exception& e)
+    {
+        std::cerr << "CRITICAL: Failed to finalize sync state in DB: " << e.what() << std::endl;
+    }
+
     clearSyncState();
-
-    return true;
+    return success;
 }
 
 bool AgentSyncProtocol::ensureQueueAvailable()
@@ -90,19 +123,19 @@ bool AgentSyncProtocol::ensureQueueAvailable()
     return true;
 }
 
-bool AgentSyncProtocol::sendStartAndWaitAck(const std::string& module, Mode mode, bool realtime, size_t dataSize, const std::chrono::seconds timeout, unsigned int retries)
+bool AgentSyncProtocol::sendStartAndWaitAck(const std::string& module, Wazuh::SyncSchema::Mode mode, bool realtime, size_t dataSize, const std::chrono::seconds timeout, unsigned int retries)
 {
     flatbuffers::FlatBufferBuilder builder;
     auto moduleStr = builder.CreateString(module);
 
-    StartBuilder startBuilder(builder);
+    Wazuh::SyncSchema::StartBuilder startBuilder(builder);
     startBuilder.add_mode(mode);
     startBuilder.add_size(static_cast<uint64_t>(dataSize));
     startBuilder.add_realtime(realtime);
     startBuilder.add_module_(moduleStr);
     auto startOffset = startBuilder.Finish();
 
-    auto message = CreateMessage(builder, MessageType::Start, startOffset.Union());
+    auto message = Wazuh::SyncSchema::CreateMessage(builder, Wazuh::SyncSchema::MessageType::Start, startOffset.Union());
     builder.Finish(message);
 
     const uint8_t* buffer_ptr = builder.GetBufferPointer();
@@ -155,16 +188,22 @@ bool AgentSyncProtocol::sendDataMessages(const std::string& module,
         auto idxStr = builder.CreateString(item.index);
         auto dataVec = builder.CreateVector(reinterpret_cast<const int8_t*>(item.data.data()), item.data.size());
 
-        DataBuilder dataBuilder(builder);
+        Wazuh::SyncSchema::DataBuilder dataBuilder(builder);
         dataBuilder.add_seq(item.seq);
         dataBuilder.add_session(session);
         dataBuilder.add_id(idStr);
         dataBuilder.add_index(idxStr);
-        dataBuilder.add_operation(item.operation);
+
+        // Translate DB operation to Schema operation
+        const auto protocolOperation = (item.operation == Operation::DELETE)
+                                       ? Wazuh::SyncSchema::Operation::Delete
+                                       : Wazuh::SyncSchema::Operation::Upsert;
+
+        dataBuilder.add_operation(protocolOperation);
         dataBuilder.add_data(dataVec);
         auto dataOffset = dataBuilder.Finish();
 
-        auto message = CreateMessage(builder, MessageType::Data, dataOffset.Union());
+        auto message = Wazuh::SyncSchema::CreateMessage(builder, Wazuh::SyncSchema::MessageType::Data, dataOffset.Union());
         builder.Finish(message);
 
         const uint8_t* buffer_ptr = builder.GetBufferPointer();
@@ -180,14 +219,14 @@ bool AgentSyncProtocol::sendDataMessages(const std::string& module,
     return true;
 }
 
-bool AgentSyncProtocol::sendEndAndWaitAck(const std::string& module, uint64_t session, const std::chrono::seconds timeout, unsigned int retries)
+bool AgentSyncProtocol::sendEndAndWaitAck(const std::string& module, uint64_t session, const std::chrono::seconds timeout, unsigned int retries, const std::vector<PersistedData>& dataToSync)
 {
     flatbuffers::FlatBufferBuilder builder;
-    EndBuilder endBuilder(builder);
+    Wazuh::SyncSchema::EndBuilder endBuilder(builder);
     endBuilder.add_session(session);
     auto endOffset = endBuilder.Finish();
 
-    auto message = CreateMessage(builder, MessageType::End, endOffset.Union());
+    auto message = Wazuh::SyncSchema::CreateMessage(builder, Wazuh::SyncSchema::MessageType::End, endOffset.Union());
     builder.Finish(message);
 
     const uint8_t* buffer_ptr = builder.GetBufferPointer();
@@ -237,7 +276,13 @@ bool AgentSyncProtocol::sendEndAndWaitAck(const std::string& module, uint64_t se
                 return false;
             }
 
-            std::vector<PersistedData> rangeData = m_persistentQueue->fetchRange(module, ranges);
+            std::vector<PersistedData> rangeData = filterDataByRanges(dataToSync, ranges);
+
+            if (rangeData.empty())
+            {
+                std::cerr << "[Sync] ReqRet asked for ranges that yield no data. Aborting." << std::endl;
+                return false;
+            }
 
             if (!sendDataMessages(module, session, rangeData))
             {
@@ -272,9 +317,9 @@ bool AgentSyncProtocol::receiveEndAck(std::chrono::seconds timeout)
     });
 }
 
-void AgentSyncProtocol::clearPersistedDifferences(const std::string& module)
+void AgentSyncProtocol::clearPersistedDifferences()
 {
-    m_persistentQueue->removeAll(module);
+    m_persistentQueue->removeAll();
 }
 
 bool AgentSyncProtocol::sendFlatBufferMessageAsString(const std::vector<uint8_t>& fbData, const std::string& module)
@@ -410,4 +455,30 @@ void AgentSyncProtocol::clearSyncState()
 {
     std::lock_guard<std::mutex> lock(m_syncState.mtx);
     m_syncState.reset();
+}
+
+std::vector<PersistedData> AgentSyncProtocol::filterDataByRanges(
+    const std::vector<PersistedData>& sourceData,
+    const std::vector<std::pair<uint64_t, uint64_t>>& ranges)
+{
+    std::vector<PersistedData> result;
+
+    if (ranges.empty() || sourceData.empty())
+    {
+        return result;
+    }
+
+    for (const auto& item : sourceData)
+    {
+        for (const auto& range : ranges)
+        {
+            if (item.seq >= range.first && item.seq <= range.second)
+            {
+                result.push_back(item);
+                break;
+            }
+        }
+    }
+
+    return result;
 }
