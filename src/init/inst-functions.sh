@@ -14,7 +14,7 @@
 # ./src/init/template-select.sh
 
 ## Templates
-# set -e
+set -e
 . ./src/init/template-select.sh
 
 HEADER_TEMPLATE="./etc/templates/config/generic/header-comments.template"
