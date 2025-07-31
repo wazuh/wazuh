@@ -443,6 +443,11 @@ class WazuhException(Exception):
         2015: {'message': 'Invalid request URL scheme'},
         2016: {'message': 'Invalid unix socket path'},
 
+        # Engine API client
+        2800: {'message': 'The engine client connection timeout has been exceeded'},
+        2801: {'message': 'Invalid request URL scheme'},
+        2802: {'message': 'Invalid unix socket path'},
+
         # External services
         2100: {'message': 'Error in CTI service request'},
 
@@ -812,6 +817,14 @@ class WazuhHAPHelperError(WazuhClusterError):
     """
     _default_type = "about:blank"
     _default_title = "HAProxy Helper Error"
+
+
+class WazuhEngineError(WazuhInternalError):
+    """
+    This type of exception is raised inside the engine client.
+    """
+    _default_type = "about:blank"
+    _default_title = "Wazuh Engine Error"
 
 
 class WazuhError(WazuhException):
