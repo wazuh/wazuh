@@ -14,6 +14,7 @@ set(TEST_SRC "main.cpp")
 if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
   list(APPEND TEST_SRC 
     test_safari_darwin.cpp
+    test_chrome_darwin.cpp
   )
 
   add_executable(extended_sources_browser_extensions_unit_test ${TEST_SRC})
