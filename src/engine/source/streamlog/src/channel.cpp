@@ -328,80 +328,109 @@ void ChannelHandler::writeMessage(const std::string& message)
     m_stateData.outputFile.flush();
 }
 
-ChannelHandler::ChannelHandler(RotationConfig config, std::string channelName)
-    : m_config(std::move(config))
-    , m_channelName(std::move(channelName))
-    , m_stateData()
+/**
+ * @brief Validates the channel name according to naming rules
+ * @param channelName The channel name to validate
+ * @throws std::runtime_error if the name is invalid
+ */
+void ChannelHandler::validateChannelName(const std::string& channelName)
 {
-    // Validate the name
+    // Validate length
+    if (channelName.empty())
     {
-        if (m_channelName.empty())
-        {
-            throw std::runtime_error("Channel name cannot be empty");
-        }
-        // Only allow alphanumeric characters, underscores, and dashes in channel names
-        if (!std::regex_match(m_channelName, std::regex("^[a-zA-Z0-9_-]+$")))
-        {
-            throw std::runtime_error("Channel name can only contain alphanumeric characters, underscores, and dashes");
-        }
+        throw std::runtime_error("Channel name cannot be empty");
+    }
+    else if (channelName.length() > 255)
+    {
+        throw std::runtime_error("Channel name cannot exceed 255 characters");
     }
 
-    // Validate the base path
+    // Only allow alphanumeric characters, underscores, and dashes in channel names
+    if (!std::regex_match(channelName, std::regex("^[a-zA-Z0-9_-]+$")))
     {
-        if (!m_config.basePath.is_absolute() || m_config.basePath.empty())
-        {
-            throw std::runtime_error("Base path must be an absolute path");
-        }
-        if (!std::filesystem::exists(m_config.basePath) || !std::filesystem::is_directory(m_config.basePath))
-        {
-            throw std::runtime_error("Base path must exist and be a directory: " + m_config.basePath.string());
-        }
+        throw std::runtime_error("Channel name can only contain alphanumeric characters, underscores, and dashes");
+    }
+}
+
+/**
+ * @brief Validates and normalizes the rotation configuration
+ * @param config The configuration to validate and modify
+ * @throws std::runtime_error if the configuration is invalid
+ */
+void ChannelHandler::validateAndNormalizeConfig(RotationConfig& config)
+{
+    // Validate the base path
+    if (!config.basePath.is_absolute() || config.basePath.empty())
+    {
+        throw std::runtime_error("Base path must be an absolute path");
+    }
+    if (!std::filesystem::exists(config.basePath) || !std::filesystem::is_directory(config.basePath))
+    {
+        throw std::runtime_error("Base path must exist and be a directory: " + config.basePath.string());
     }
 
     // Validate the pattern
+    if (config.pattern.empty())
     {
-        if (m_config.pattern.empty())
-        {
-            throw std::runtime_error("Log pattern cannot be empty");
-        }
+        throw std::runtime_error("Log pattern cannot be empty");
+    }
+    else if (config.pattern.size() > 255)
+    {
+        throw std::runtime_error("Log pattern cannot exceed 255 characters");
+    }
 
-        // Add counter placeholder if maxSize is set and not already present
-        if (m_config.maxSize > 0 && m_config.pattern.find("${counter}") == std::string::npos)
+    // Add counter placeholder if maxSize is set and not already present
+    if (config.maxSize > 0 && config.pattern.find("${counter}") == std::string::npos)
+    {
+        auto lastDot = config.pattern.find_last_of('.');
+        if (lastDot != std::string::npos)
         {
-            auto lastDot = m_config.pattern.find_last_of('.');
-            if (lastDot != std::string::npos)
-            {
-                m_config.pattern.insert(lastDot, "-${counter}");
-            }
-            else
-            {
-                m_config.pattern += "-${counter}";
-            }
+            config.pattern.insert(lastDot, "-${counter}");
         }
-
-        // Ensure the pattern contains at least one time placeholder or maxSize placeholder if maxSize is set
-        if (m_config.pattern.find("${YYYY}") == std::string::npos && m_config.pattern.find("${YY}") == std::string::npos
-            && m_config.pattern.find("${MM}") == std::string::npos
-            && m_config.pattern.find("${DD}") == std::string::npos
-            && m_config.pattern.find("${HH}") == std::string::npos
-            && m_config.maxSize == 0)
+        else
         {
-            throw std::runtime_error("Log pattern must contain at least one time placeholder (${YYYY}, ${YY}, ${MM}, "
-                                     "${DD}, or ${HH}) or a counter placeholder if maxSize is set");
+            config.pattern += "-${counter}";
         }
     }
 
-    // Assign default maxSize if not set
-    if (m_config.bufferSize == 0)
+    // Ensure the pattern contains at least one time placeholder or maxSize placeholder if maxSize is set
+    if (config.pattern.find("${YYYY}") == std::string::npos && config.pattern.find("${YY}") == std::string::npos
+        && config.pattern.find("${MM}") == std::string::npos && config.pattern.find("${DD}") == std::string::npos
+        && config.pattern.find("${HH}") == std::string::npos && config.maxSize == 0)
     {
-        m_config.bufferSize = 1 << 20; // Default to 1 MiB events if not specified
+        throw std::runtime_error("Log pattern must contain at least one time placeholder (${YYYY}, ${YY}, ${MM}, "
+                                 "${DD}, or ${HH}) or a counter placeholder if maxSize is set");
     }
 
-    if (m_config.maxSize > 0 && m_config.maxSize < 0x1 << 20)
+    // Assign default bufferSize if not set
+    if (config.bufferSize == 0)
+    {
+        config.bufferSize = 0x1 << 20; // Default to 1 MiB events if not specified
+    }
+
+    // Adjust maxSize if too small
+    if (config.maxSize > 0 && config.maxSize < 0x1 << 20)
     {
         // Default to 1 MiB if maxSize is too small
-        m_config.maxSize = 0x1 << 20;
+        config.maxSize = 0x1 << 20;
     }
+}
+
+ChannelHandler::ChannelHandler(RotationConfig config, std::string channelName)
+    : m_config(
+          [&config]()
+          {
+              validateAndNormalizeConfig(config);
+              return std::move(config);
+          }())
+    , m_channelName(
+          [&channelName]()
+          {
+              validateChannelName(channelName);
+              return std::move(channelName);
+          }())
+    , m_stateData()
+{
 
     // Initial state data: File paths
     m_stateData.latestLink = m_config.basePath / (m_channelName + ".json");

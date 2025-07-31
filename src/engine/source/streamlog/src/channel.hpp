@@ -68,7 +68,8 @@ public:
     {
         if (m_channelState->load(std::memory_order_relaxed) == ChannelState::Running)
         {
-            m_queue->push(std::move(message)); // TODO Handle error and print message for changing the buffer size, maybe trypush con &&
+            m_queue->push(std::move(
+                message)); // TODO Handle error and print message for changing the buffer size, maybe trypush con &&
         }
     }
 };
@@ -80,8 +81,8 @@ public:
 class ChannelHandler : public std::enable_shared_from_this<ChannelHandler>
 {
 private:
-    RotationConfig m_config;                 ///< The rotation configuration for the log channel.
-    std::string m_channelName;               ///< The name of the log channel.
+    const RotationConfig m_config;           ///< The rotation configuration for the log channel.
+    const std::string m_channelName;         ///< The name of the log channel.
     mutable std::mutex m_writersMutex;       ///< Mutex to protect the writers reference count
     std::atomic<size_t> m_activeWriters {0}; ///< Count of active ChannelWriter instances
 
@@ -151,6 +152,20 @@ private:
 
 public:
     /**
+     * @brief Validates the channel name according to naming rules
+     * @param channelName The channel name to validate
+     * @throws std::runtime_error if the name is invalid
+     */
+    static void validateChannelName(const std::string& channelName);
+
+    /**
+     * @brief Validates and normalizes the rotation configuration
+     * @param config The configuration to validate and modify
+     * @throws std::runtime_error if the configuration is invalid
+     */
+    static void validateAndNormalizeConfig(RotationConfig& config);
+
+    /**
      * @brief Factory method to create a ChannelHandler as a shared_ptr
      * @param config The rotation configuration for the log channel
      * @param channelName The name of the log channel
@@ -164,6 +179,12 @@ public:
      * @return A shared_ptr to a new ChannelWriter instance
      */
     std::shared_ptr<ChannelWriter> createWriter();
+
+    /**
+     * @brief Gets the current rotation configuration
+     * @return A const reference to the rotation configuration
+     */
+    const RotationConfig& getConfig() const { return m_config; }
 
     /**
      * @brief Destructor - ensures worker thread is properly stopped
