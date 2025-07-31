@@ -14,6 +14,7 @@
 # ./src/init/template-select.sh
 
 ## Templates
+# set -e
 . ./src/init/template-select.sh
 
 HEADER_TEMPLATE="./etc/templates/config/generic/header-comments.template"
@@ -240,7 +241,7 @@ GenerateAuthCert()
 WriteLogs()
 {
   LOCALFILES_TMP=`cat ${LOCALFILES_TEMPLATE}`
-  HAS_JOURNALD=`command -v journalctl`
+  HAS_JOURNALD=`command -v journalctl || true`
 
   # If has journald, add journald to the configuration file
   if [ "X$HAS_JOURNALD" != "X" ]; then
@@ -279,7 +280,7 @@ WriteLogs()
       fi
 
       # If journald is not available, change the log_format from '[!journald] ${log_type}' to '${log_type}'
-      NEGATE_JOURNALD=$(echo "$LOG_FORMAT" | grep "\[!journald\] ")
+      NEGATE_JOURNALD=$(echo "$LOG_FORMAT" | grep "\[!journald\] " || true)
       if [ "X$HAS_JOURNALD" = "X" ]; then
         if [ -n "$NEGATE_JOURNALD" ]; then
           LOG_FORMAT=$(echo "$LOG_FORMAT" | sed -e "s|\[!journald\] ||g")
@@ -748,7 +749,6 @@ WriteLocal()
 
 InstallCommon()
 {
-
     WAZUH_GROUP='wazuh'
     WAZUH_USER='wazuh'
     INSTALL="install"
@@ -967,6 +967,13 @@ InstallCommon()
             fi
         fi
     fi
+
+  rm wazuh-logcollector
+  rm syscheckd/build/bin/wazuh-syscheckd
+  rm wazuh-execd
+  rm manage_agents
+  rm wazuh-modulesd
+
 
   ${INSTALL} -m 0750 -o root -g 0 wazuh-logcollector ${INSTALLDIR}/bin
   ${INSTALL} -m 0750 -o root -g 0 syscheckd/build/bin/wazuh-syscheckd ${INSTALLDIR}/bin
