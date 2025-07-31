@@ -269,7 +269,7 @@ static int setup_whodata_callback_group(void ** state) {
         return -1;
     }
 
-    int options = CHECK_SIZE | CHECK_PERM | CHECK_OWNER | CHECK_GROUP | CHECK_MTIME | CHECK_INODE |
+    int options = CHECK_SIZE | CHECK_PERM | CHECK_OWNER | CHECK_GROUP | CHECK_MTIME | CHECK_INODE | CHECK_DEVICE |
                   CHECK_MD5SUM | CHECK_SHA1SUM | CHECK_SHA256SUM | CHECK_ATTRS | WHODATA_ACTIVE;
     directory_t *directory0 = fim_create_directory("c:\\windows", options, NULL, 50, NULL, -1, 0);
     directory0->dirs_status.status = WD_CHECK_WHODATA;
@@ -615,12 +615,12 @@ void test_set_winsacl_failed_security_descriptor(void **state) {
     expect_string(__wrap__mdebug2, formatted_msg, "(6268): The 'SeSecurityPrivilege' privilege has been added.");
 
     // GetNamedSecurity
-    expect_string(wrap_GetNamedSecurityInfo, pObjectName, ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0))->path);
-    expect_value(wrap_GetNamedSecurityInfo, ObjectType, SE_FILE_OBJECT);
-    expect_value(wrap_GetNamedSecurityInfo, SecurityInfo, SACL_SECURITY_INFORMATION);
-    will_return(wrap_GetNamedSecurityInfo, NULL);
-    will_return(wrap_GetNamedSecurityInfo, NULL);
-    will_return(wrap_GetNamedSecurityInfo, -1);
+    expect_string(__wrap_utf8_GetNamedSecurityInfo, utf8_path, ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0))->path);
+    expect_value(__wrap_utf8_GetNamedSecurityInfo, obj_type, SE_FILE_OBJECT);
+    expect_value(__wrap_utf8_GetNamedSecurityInfo, si, SACL_SECURITY_INFORMATION);
+    will_return(__wrap_utf8_GetNamedSecurityInfo, NULL);
+    will_return(__wrap_utf8_GetNamedSecurityInfo, NULL);
+    will_return(__wrap_utf8_GetNamedSecurityInfo, -1);
     expect_string(__wrap__merror, formatted_msg, "(6650): GetNamedSecurityInfo() failed. Error '-1'");
 
     // Reduce Privilege
@@ -671,12 +671,12 @@ void test_set_winsacl_no_need_to_configure_acl(void **state) {
     }
 
     // GetNamedSecurity
-    expect_string(wrap_GetNamedSecurityInfo, pObjectName, "C:\\a\\path");
-    expect_value(wrap_GetNamedSecurityInfo, ObjectType, SE_FILE_OBJECT);
-    expect_value(wrap_GetNamedSecurityInfo, SecurityInfo, SACL_SECURITY_INFORMATION);
-    will_return(wrap_GetNamedSecurityInfo, &old_sacl);
-    will_return(wrap_GetNamedSecurityInfo, &security_descriptor);
-    will_return(wrap_GetNamedSecurityInfo, ERROR_SUCCESS);
+    expect_string(__wrap_utf8_GetNamedSecurityInfo, utf8_path, "C:\\a\\path");
+    expect_value(__wrap_utf8_GetNamedSecurityInfo, obj_type, SE_FILE_OBJECT);
+    expect_value(__wrap_utf8_GetNamedSecurityInfo, si, SACL_SECURITY_INFORMATION);
+    will_return(__wrap_utf8_GetNamedSecurityInfo, &old_sacl);
+    will_return(__wrap_utf8_GetNamedSecurityInfo, &security_descriptor);
+    will_return(__wrap_utf8_GetNamedSecurityInfo, ERROR_SUCCESS);
 
     // Inside is_valid_sacl
     {
@@ -750,12 +750,12 @@ void test_set_winsacl_unable_to_get_acl_info(void **state) {
     }
 
     // GetNamedSecurity
-    expect_string(wrap_GetNamedSecurityInfo, pObjectName, "C:\\a\\path");
-    expect_value(wrap_GetNamedSecurityInfo, ObjectType, SE_FILE_OBJECT);
-    expect_value(wrap_GetNamedSecurityInfo, SecurityInfo, SACL_SECURITY_INFORMATION);
-    will_return(wrap_GetNamedSecurityInfo, &old_sacl);
-    will_return(wrap_GetNamedSecurityInfo, &security_descriptor);
-    will_return(wrap_GetNamedSecurityInfo, ERROR_SUCCESS);
+    expect_string(__wrap_utf8_GetNamedSecurityInfo, utf8_path, "C:\\a\\path");
+    expect_value(__wrap_utf8_GetNamedSecurityInfo, obj_type, SE_FILE_OBJECT);
+    expect_value(__wrap_utf8_GetNamedSecurityInfo, si, SACL_SECURITY_INFORMATION);
+    will_return(__wrap_utf8_GetNamedSecurityInfo, &old_sacl);
+    will_return(__wrap_utf8_GetNamedSecurityInfo, &security_descriptor);
+    will_return(__wrap_utf8_GetNamedSecurityInfo, ERROR_SUCCESS);
 
     // Inside is_valid_sacl
     {
@@ -833,12 +833,12 @@ void test_set_winsacl_fail_to_alloc_new_sacl(void **state) {
     }
 
     // GetNamedSecurity
-    expect_string(wrap_GetNamedSecurityInfo, pObjectName, "C:\\a\\path");
-    expect_value(wrap_GetNamedSecurityInfo, ObjectType, SE_FILE_OBJECT);
-    expect_value(wrap_GetNamedSecurityInfo, SecurityInfo, SACL_SECURITY_INFORMATION);
-    will_return(wrap_GetNamedSecurityInfo, &old_sacl);
-    will_return(wrap_GetNamedSecurityInfo, &security_descriptor);
-    will_return(wrap_GetNamedSecurityInfo, ERROR_SUCCESS);
+    expect_string(__wrap_utf8_GetNamedSecurityInfo, utf8_path, "C:\\a\\path");
+    expect_value(__wrap_utf8_GetNamedSecurityInfo, obj_type, SE_FILE_OBJECT);
+    expect_value(__wrap_utf8_GetNamedSecurityInfo, si, SACL_SECURITY_INFORMATION);
+    will_return(__wrap_utf8_GetNamedSecurityInfo, &old_sacl);
+    will_return(__wrap_utf8_GetNamedSecurityInfo, &security_descriptor);
+    will_return(__wrap_utf8_GetNamedSecurityInfo, ERROR_SUCCESS);
 
     // Inside is_valid_sacl
     {
@@ -919,12 +919,12 @@ void test_set_winsacl_fail_to_initialize_new_sacl(void **state) {
     }
 
     // GetNamedSecurity
-    expect_string(wrap_GetNamedSecurityInfo, pObjectName, "C:\\a\\path");
-    expect_value(wrap_GetNamedSecurityInfo, ObjectType, SE_FILE_OBJECT);
-    expect_value(wrap_GetNamedSecurityInfo, SecurityInfo, SACL_SECURITY_INFORMATION);
-    will_return(wrap_GetNamedSecurityInfo, &old_sacl);
-    will_return(wrap_GetNamedSecurityInfo, &security_descriptor);
-    will_return(wrap_GetNamedSecurityInfo, ERROR_SUCCESS);
+    expect_string(__wrap_utf8_GetNamedSecurityInfo, utf8_path, "C:\\a\\path");
+    expect_value(__wrap_utf8_GetNamedSecurityInfo, obj_type, SE_FILE_OBJECT);
+    expect_value(__wrap_utf8_GetNamedSecurityInfo, si, SACL_SECURITY_INFORMATION);
+    will_return(__wrap_utf8_GetNamedSecurityInfo, &old_sacl);
+    will_return(__wrap_utf8_GetNamedSecurityInfo, &security_descriptor);
+    will_return(__wrap_utf8_GetNamedSecurityInfo, ERROR_SUCCESS);
 
     // Inside is_valid_sacl
     {
@@ -1011,12 +1011,12 @@ void test_set_winsacl_fail_getting_ace_from_old_sacl(void **state) {
     }
 
     // GetNamedSecurity
-    expect_string(wrap_GetNamedSecurityInfo, pObjectName, "C:\\a\\path");
-    expect_value(wrap_GetNamedSecurityInfo, ObjectType, SE_FILE_OBJECT);
-    expect_value(wrap_GetNamedSecurityInfo, SecurityInfo, SACL_SECURITY_INFORMATION);
-    will_return(wrap_GetNamedSecurityInfo, &old_sacl);
-    will_return(wrap_GetNamedSecurityInfo, &security_descriptor);
-    will_return(wrap_GetNamedSecurityInfo, ERROR_SUCCESS);
+    expect_string(__wrap_utf8_GetNamedSecurityInfo, utf8_path, "C:\\a\\path");
+    expect_value(__wrap_utf8_GetNamedSecurityInfo, obj_type, SE_FILE_OBJECT);
+    expect_value(__wrap_utf8_GetNamedSecurityInfo, si, SACL_SECURITY_INFORMATION);
+    will_return(__wrap_utf8_GetNamedSecurityInfo, &old_sacl);
+    will_return(__wrap_utf8_GetNamedSecurityInfo, &security_descriptor);
+    will_return(__wrap_utf8_GetNamedSecurityInfo, ERROR_SUCCESS);
 
     // Inside is_valid_sacl
     {
@@ -1106,12 +1106,12 @@ void test_set_winsacl_fail_adding_old_ace_into_new_sacl(void **state) {
     }
 
     // GetNamedSecurity
-    expect_string(wrap_GetNamedSecurityInfo, pObjectName, "C:\\a\\path");
-    expect_value(wrap_GetNamedSecurityInfo, ObjectType, SE_FILE_OBJECT);
-    expect_value(wrap_GetNamedSecurityInfo, SecurityInfo, SACL_SECURITY_INFORMATION);
-    will_return(wrap_GetNamedSecurityInfo, &old_sacl);
-    will_return(wrap_GetNamedSecurityInfo, &security_descriptor);
-    will_return(wrap_GetNamedSecurityInfo, ERROR_SUCCESS);
+    expect_string(__wrap_utf8_GetNamedSecurityInfo, utf8_path, "C:\\a\\path");
+    expect_value(__wrap_utf8_GetNamedSecurityInfo, obj_type, SE_FILE_OBJECT);
+    expect_value(__wrap_utf8_GetNamedSecurityInfo, si, SACL_SECURITY_INFORMATION);
+    will_return(__wrap_utf8_GetNamedSecurityInfo, &old_sacl);
+    will_return(__wrap_utf8_GetNamedSecurityInfo, &security_descriptor);
+    will_return(__wrap_utf8_GetNamedSecurityInfo, ERROR_SUCCESS);
 
     // Inside is_valid_sacl
     {
@@ -1204,12 +1204,12 @@ void test_set_winsacl_fail_to_alloc_new_ace(void **state) {
     }
 
     // GetNamedSecurity
-    expect_string(wrap_GetNamedSecurityInfo, pObjectName, "C:\\a\\path");
-    expect_value(wrap_GetNamedSecurityInfo, ObjectType, SE_FILE_OBJECT);
-    expect_value(wrap_GetNamedSecurityInfo, SecurityInfo, SACL_SECURITY_INFORMATION);
-    will_return(wrap_GetNamedSecurityInfo, &old_sacl);
-    will_return(wrap_GetNamedSecurityInfo, &security_descriptor);
-    will_return(wrap_GetNamedSecurityInfo, ERROR_SUCCESS);
+    expect_string(__wrap_utf8_GetNamedSecurityInfo, utf8_path, "C:\\a\\path");
+    expect_value(__wrap_utf8_GetNamedSecurityInfo, obj_type, SE_FILE_OBJECT);
+    expect_value(__wrap_utf8_GetNamedSecurityInfo, si, SACL_SECURITY_INFORMATION);
+    will_return(__wrap_utf8_GetNamedSecurityInfo, &old_sacl);
+    will_return(__wrap_utf8_GetNamedSecurityInfo, &security_descriptor);
+    will_return(__wrap_utf8_GetNamedSecurityInfo, ERROR_SUCCESS);
 
     // Inside is_valid_sacl
     {
@@ -1308,12 +1308,12 @@ void test_set_winsacl_fail_to_copy_sid(void **state) {
     }
 
     // GetNamedSecurity
-    expect_string(wrap_GetNamedSecurityInfo, pObjectName, "C:\\a\\path");
-    expect_value(wrap_GetNamedSecurityInfo, ObjectType, SE_FILE_OBJECT);
-    expect_value(wrap_GetNamedSecurityInfo, SecurityInfo, SACL_SECURITY_INFORMATION);
-    will_return(wrap_GetNamedSecurityInfo, &old_sacl);
-    will_return(wrap_GetNamedSecurityInfo, &security_descriptor);
-    will_return(wrap_GetNamedSecurityInfo, ERROR_SUCCESS);
+    expect_string(__wrap_utf8_GetNamedSecurityInfo, utf8_path, "C:\\a\\path");
+    expect_value(__wrap_utf8_GetNamedSecurityInfo, obj_type, SE_FILE_OBJECT);
+    expect_value(__wrap_utf8_GetNamedSecurityInfo, si, SACL_SECURITY_INFORMATION);
+    will_return(__wrap_utf8_GetNamedSecurityInfo, &old_sacl);
+    will_return(__wrap_utf8_GetNamedSecurityInfo, &security_descriptor);
+    will_return(__wrap_utf8_GetNamedSecurityInfo, ERROR_SUCCESS);
 
     // Inside is_valid_sacl
     {
@@ -1415,12 +1415,12 @@ void test_set_winsacl_fail_to_add_ace(void **state) {
     }
 
     // GetNamedSecurity
-    expect_string(wrap_GetNamedSecurityInfo, pObjectName, "C:\\a\\path");
-    expect_value(wrap_GetNamedSecurityInfo, ObjectType, SE_FILE_OBJECT);
-    expect_value(wrap_GetNamedSecurityInfo, SecurityInfo, SACL_SECURITY_INFORMATION);
-    will_return(wrap_GetNamedSecurityInfo, &old_sacl);
-    will_return(wrap_GetNamedSecurityInfo, &security_descriptor);
-    will_return(wrap_GetNamedSecurityInfo, ERROR_SUCCESS);
+    expect_string(__wrap_utf8_GetNamedSecurityInfo, utf8_path, "C:\\a\\path");
+    expect_value(__wrap_utf8_GetNamedSecurityInfo, obj_type, SE_FILE_OBJECT);
+    expect_value(__wrap_utf8_GetNamedSecurityInfo, si, SACL_SECURITY_INFORMATION);
+    will_return(__wrap_utf8_GetNamedSecurityInfo, &old_sacl);
+    will_return(__wrap_utf8_GetNamedSecurityInfo, &security_descriptor);
+    will_return(__wrap_utf8_GetNamedSecurityInfo, ERROR_SUCCESS);
 
     // Inside is_valid_sacl
     {
@@ -1527,12 +1527,12 @@ void test_set_winsacl_fail_to_set_security_info(void **state) {
     }
 
     // GetNamedSecurity
-    expect_string(wrap_GetNamedSecurityInfo, pObjectName, "C:\\a\\path");
-    expect_value(wrap_GetNamedSecurityInfo, ObjectType, SE_FILE_OBJECT);
-    expect_value(wrap_GetNamedSecurityInfo, SecurityInfo, SACL_SECURITY_INFORMATION);
-    will_return(wrap_GetNamedSecurityInfo, &old_sacl);
-    will_return(wrap_GetNamedSecurityInfo, &security_descriptor);
-    will_return(wrap_GetNamedSecurityInfo, ERROR_SUCCESS);
+    expect_string(__wrap_utf8_GetNamedSecurityInfo, utf8_path, "C:\\a\\path");
+    expect_value(__wrap_utf8_GetNamedSecurityInfo, obj_type, SE_FILE_OBJECT);
+    expect_value(__wrap_utf8_GetNamedSecurityInfo, si, SACL_SECURITY_INFORMATION);
+    will_return(__wrap_utf8_GetNamedSecurityInfo, &old_sacl);
+    will_return(__wrap_utf8_GetNamedSecurityInfo, &security_descriptor);
+    will_return(__wrap_utf8_GetNamedSecurityInfo, ERROR_SUCCESS);
 
     // Inside is_valid_sacl
     {
@@ -1575,14 +1575,14 @@ void test_set_winsacl_fail_to_set_security_info(void **state) {
     expect_value(wrap_AddAce, pAcl, 1234);
     will_return(wrap_AddAce, 1);
 
-    expect_string(wrap_SetNamedSecurityInfo, pObjectName, "C:\\a\\path");
-    expect_value(wrap_SetNamedSecurityInfo, ObjectType, SE_FILE_OBJECT);
-    expect_value(wrap_SetNamedSecurityInfo, SecurityInfo, SACL_SECURITY_INFORMATION);
-    expect_value(wrap_SetNamedSecurityInfo, psidOwner, NULL);
-    expect_value(wrap_SetNamedSecurityInfo, psidGroup, NULL);
-    expect_value(wrap_SetNamedSecurityInfo, pDacl, NULL);
-    expect_value(wrap_SetNamedSecurityInfo, pSacl, 1234);
-    will_return(wrap_SetNamedSecurityInfo, ERROR_ACCESS_DENIED);
+    expect_string(__wrap_utf8_SetNamedSecurityInfo, utf8_path, "C:\\a\\path");
+    expect_value(__wrap_utf8_SetNamedSecurityInfo, obj_type, SE_FILE_OBJECT);
+    expect_value(__wrap_utf8_SetNamedSecurityInfo, si, SACL_SECURITY_INFORMATION);
+    expect_value(__wrap_utf8_SetNamedSecurityInfo, owner, NULL);
+    expect_value(__wrap_utf8_SetNamedSecurityInfo, group, NULL);
+    expect_value(__wrap_utf8_SetNamedSecurityInfo, dacl, NULL);
+    expect_value(__wrap_utf8_SetNamedSecurityInfo, sacl, 1234);
+    will_return(__wrap_utf8_SetNamedSecurityInfo, ERROR_ACCESS_DENIED);
 
     expect_string(__wrap__merror, formatted_msg, "(6658): SetNamedSecurityInfo() failed. Error: '5'.");
 
@@ -1648,12 +1648,12 @@ void test_set_winsacl_success(void **state) {
     }
 
     // GetNamedSecurity
-    expect_string(wrap_GetNamedSecurityInfo, pObjectName, "C:\\a\\path");
-    expect_value(wrap_GetNamedSecurityInfo, ObjectType, SE_FILE_OBJECT);
-    expect_value(wrap_GetNamedSecurityInfo, SecurityInfo, SACL_SECURITY_INFORMATION);
-    will_return(wrap_GetNamedSecurityInfo, &old_sacl);
-    will_return(wrap_GetNamedSecurityInfo, &security_descriptor);
-    will_return(wrap_GetNamedSecurityInfo, ERROR_SUCCESS);
+    expect_string(__wrap_utf8_GetNamedSecurityInfo, utf8_path, "C:\\a\\path");
+    expect_value(__wrap_utf8_GetNamedSecurityInfo, obj_type, SE_FILE_OBJECT);
+    expect_value(__wrap_utf8_GetNamedSecurityInfo, si, SACL_SECURITY_INFORMATION);
+    will_return(__wrap_utf8_GetNamedSecurityInfo, &old_sacl);
+    will_return(__wrap_utf8_GetNamedSecurityInfo, &security_descriptor);
+    will_return(__wrap_utf8_GetNamedSecurityInfo, ERROR_SUCCESS);
 
     // Inside is_valid_sacl
     {
@@ -1696,14 +1696,14 @@ void test_set_winsacl_success(void **state) {
     expect_value(wrap_AddAce, pAcl, 1234);
     will_return(wrap_AddAce, 1);
 
-    expect_string(wrap_SetNamedSecurityInfo, pObjectName, "C:\\a\\path");
-    expect_value(wrap_SetNamedSecurityInfo, ObjectType, SE_FILE_OBJECT);
-    expect_value(wrap_SetNamedSecurityInfo, SecurityInfo, SACL_SECURITY_INFORMATION);
-    expect_value(wrap_SetNamedSecurityInfo, psidOwner, NULL);
-    expect_value(wrap_SetNamedSecurityInfo, psidGroup, NULL);
-    expect_value(wrap_SetNamedSecurityInfo, pDacl, NULL);
-    expect_value(wrap_SetNamedSecurityInfo, pSacl, 1234);
-    will_return(wrap_SetNamedSecurityInfo, ERROR_SUCCESS);
+    expect_string(__wrap_utf8_SetNamedSecurityInfo, utf8_path, "C:\\a\\path");
+    expect_value(__wrap_utf8_SetNamedSecurityInfo, obj_type, SE_FILE_OBJECT);
+    expect_value(__wrap_utf8_SetNamedSecurityInfo, si, SACL_SECURITY_INFORMATION);
+    expect_value(__wrap_utf8_SetNamedSecurityInfo, owner, NULL);
+    expect_value(__wrap_utf8_SetNamedSecurityInfo, group, NULL);
+    expect_value(__wrap_utf8_SetNamedSecurityInfo, dacl, NULL);
+    expect_value(__wrap_utf8_SetNamedSecurityInfo, sacl, 1234);
+    will_return(__wrap_utf8_SetNamedSecurityInfo, ERROR_SUCCESS);
 
     // Inside set_privilege
     {
@@ -1916,12 +1916,12 @@ void test_w_update_sacl_GetNamedSecurityInfo_error(void **state) {
         expect_string(__wrap__mdebug2, formatted_msg, "(6268): The 'SeSecurityPrivilege' privilege has been added.");
     }
 
-    expect_string(wrap_GetNamedSecurityInfo, pObjectName, "C:\\a\\path");
-    expect_value(wrap_GetNamedSecurityInfo, ObjectType, SE_FILE_OBJECT);
-    expect_value(wrap_GetNamedSecurityInfo, SecurityInfo, SACL_SECURITY_INFORMATION);
-    will_return(wrap_GetNamedSecurityInfo, NULL);
-    will_return(wrap_GetNamedSecurityInfo, NULL);
-    will_return(wrap_GetNamedSecurityInfo, ERROR_FILE_NOT_FOUND);
+    expect_string(__wrap_utf8_GetNamedSecurityInfo, utf8_path, "C:\\a\\path");
+    expect_value(__wrap_utf8_GetNamedSecurityInfo, obj_type, SE_FILE_OBJECT);
+    expect_value(__wrap_utf8_GetNamedSecurityInfo, si, SACL_SECURITY_INFORMATION);
+    will_return(__wrap_utf8_GetNamedSecurityInfo, NULL);
+    will_return(__wrap_utf8_GetNamedSecurityInfo, NULL);
+    will_return(__wrap_utf8_GetNamedSecurityInfo, ERROR_FILE_NOT_FOUND);
 
     expect_string(__wrap__merror, formatted_msg, "(6686): GetNamedSecurityInfo() failed. Error '2'");
 
@@ -1976,12 +1976,12 @@ void test_w_update_sacl_GetAclInformation_error(void **state) {
         expect_string(__wrap__mdebug2, formatted_msg, "(6268): The 'SeSecurityPrivilege' privilege has been added.");
     }
 
-    expect_string(wrap_GetNamedSecurityInfo, pObjectName, "C:\\a\\path");
-    expect_value(wrap_GetNamedSecurityInfo, ObjectType, SE_FILE_OBJECT);
-    expect_value(wrap_GetNamedSecurityInfo, SecurityInfo, SACL_SECURITY_INFORMATION);
-    will_return(wrap_GetNamedSecurityInfo, &old_acl);
-    will_return(wrap_GetNamedSecurityInfo, (PSECURITY_DESCRIPTOR) 2345);
-    will_return(wrap_GetNamedSecurityInfo, ERROR_SUCCESS);
+    expect_string(__wrap_utf8_GetNamedSecurityInfo, utf8_path, "C:\\a\\path");
+    expect_value(__wrap_utf8_GetNamedSecurityInfo, obj_type, SE_FILE_OBJECT);
+    expect_value(__wrap_utf8_GetNamedSecurityInfo, si, SACL_SECURITY_INFORMATION);
+    will_return(__wrap_utf8_GetNamedSecurityInfo, &old_acl);
+    will_return(__wrap_utf8_GetNamedSecurityInfo, (PSECURITY_DESCRIPTOR) 2345);
+    will_return(__wrap_utf8_GetNamedSecurityInfo, ERROR_SUCCESS);
 
     will_return(wrap_GetAclInformation, NULL);
     will_return(wrap_GetAclInformation, 0);
@@ -2040,12 +2040,12 @@ void test_w_update_sacl_alloc_new_sacl_error(void **state) {
         expect_string(__wrap__mdebug2, formatted_msg, "(6268): The 'SeSecurityPrivilege' privilege has been added.");
     }
 
-    expect_string(wrap_GetNamedSecurityInfo, pObjectName, "C:\\a\\path");
-    expect_value(wrap_GetNamedSecurityInfo, ObjectType, SE_FILE_OBJECT);
-    expect_value(wrap_GetNamedSecurityInfo, SecurityInfo, SACL_SECURITY_INFORMATION);
-    will_return(wrap_GetNamedSecurityInfo, &old_acl);
-    will_return(wrap_GetNamedSecurityInfo, (PSECURITY_DESCRIPTOR) 2345);
-    will_return(wrap_GetNamedSecurityInfo, ERROR_SUCCESS);
+    expect_string(__wrap_utf8_GetNamedSecurityInfo, utf8_path, "C:\\a\\path");
+    expect_value(__wrap_utf8_GetNamedSecurityInfo, obj_type, SE_FILE_OBJECT);
+    expect_value(__wrap_utf8_GetNamedSecurityInfo, si, SACL_SECURITY_INFORMATION);
+    will_return(__wrap_utf8_GetNamedSecurityInfo, &old_acl);
+    will_return(__wrap_utf8_GetNamedSecurityInfo, (PSECURITY_DESCRIPTOR) 2345);
+    will_return(__wrap_utf8_GetNamedSecurityInfo, ERROR_SUCCESS);
 
     will_return(wrap_GetAclInformation, NULL);
     will_return(wrap_GetAclInformation, 1);
@@ -2107,12 +2107,12 @@ void test_w_update_sacl_InitializeAcl_error(void **state) {
         expect_string(__wrap__mdebug2, formatted_msg, "(6268): The 'SeSecurityPrivilege' privilege has been added.");
     }
 
-    expect_string(wrap_GetNamedSecurityInfo, pObjectName, "C:\\a\\path");
-    expect_value(wrap_GetNamedSecurityInfo, ObjectType, SE_FILE_OBJECT);
-    expect_value(wrap_GetNamedSecurityInfo, SecurityInfo, SACL_SECURITY_INFORMATION);
-    will_return(wrap_GetNamedSecurityInfo, &old_acl);
-    will_return(wrap_GetNamedSecurityInfo, (PSECURITY_DESCRIPTOR) 2345);
-    will_return(wrap_GetNamedSecurityInfo, ERROR_SUCCESS);
+    expect_string(__wrap_utf8_GetNamedSecurityInfo, utf8_path, "C:\\a\\path");
+    expect_value(__wrap_utf8_GetNamedSecurityInfo, obj_type, SE_FILE_OBJECT);
+    expect_value(__wrap_utf8_GetNamedSecurityInfo, si, SACL_SECURITY_INFORMATION);
+    will_return(__wrap_utf8_GetNamedSecurityInfo, &old_acl);
+    will_return(__wrap_utf8_GetNamedSecurityInfo, (PSECURITY_DESCRIPTOR) 2345);
+    will_return(__wrap_utf8_GetNamedSecurityInfo, ERROR_SUCCESS);
 
     will_return(wrap_GetAclInformation, NULL);
     will_return(wrap_GetAclInformation, 1);
@@ -2182,12 +2182,12 @@ void test_w_update_sacl_alloc_ace_error(void **state) {
         expect_string(__wrap__mdebug2, formatted_msg, "(6268): The 'SeSecurityPrivilege' privilege has been added.");
     }
 
-    expect_string(wrap_GetNamedSecurityInfo, pObjectName, "C:\\a\\path");
-    expect_value(wrap_GetNamedSecurityInfo, ObjectType, SE_FILE_OBJECT);
-    expect_value(wrap_GetNamedSecurityInfo, SecurityInfo, SACL_SECURITY_INFORMATION);
-    will_return(wrap_GetNamedSecurityInfo, &old_acl);
-    will_return(wrap_GetNamedSecurityInfo, (PSECURITY_DESCRIPTOR) 2345);
-    will_return(wrap_GetNamedSecurityInfo, ERROR_SUCCESS);
+    expect_string(__wrap_utf8_GetNamedSecurityInfo, utf8_path, "C:\\a\\path");
+    expect_value(__wrap_utf8_GetNamedSecurityInfo, obj_type, SE_FILE_OBJECT);
+    expect_value(__wrap_utf8_GetNamedSecurityInfo, si, SACL_SECURITY_INFORMATION);
+    will_return(__wrap_utf8_GetNamedSecurityInfo, &old_acl);
+    will_return(__wrap_utf8_GetNamedSecurityInfo, (PSECURITY_DESCRIPTOR) 2345);
+    will_return(__wrap_utf8_GetNamedSecurityInfo, ERROR_SUCCESS);
 
     will_return(wrap_GetAclInformation, NULL);
     will_return(wrap_GetAclInformation, 1);
@@ -2261,12 +2261,12 @@ void test_w_update_sacl_CopySid_error(void **state) {
         expect_string(__wrap__mdebug2, formatted_msg, "(6268): The 'SeSecurityPrivilege' privilege has been added.");
     }
 
-    expect_string(wrap_GetNamedSecurityInfo, pObjectName, "C:\\a\\path");
-    expect_value(wrap_GetNamedSecurityInfo, ObjectType, SE_FILE_OBJECT);
-    expect_value(wrap_GetNamedSecurityInfo, SecurityInfo, SACL_SECURITY_INFORMATION);
-    will_return(wrap_GetNamedSecurityInfo, &old_acl);
-    will_return(wrap_GetNamedSecurityInfo, (PSECURITY_DESCRIPTOR) 2345);
-    will_return(wrap_GetNamedSecurityInfo, ERROR_SUCCESS);
+    expect_string(__wrap_utf8_GetNamedSecurityInfo, utf8_path, "C:\\a\\path");
+    expect_value(__wrap_utf8_GetNamedSecurityInfo, obj_type, SE_FILE_OBJECT);
+    expect_value(__wrap_utf8_GetNamedSecurityInfo, si, SACL_SECURITY_INFORMATION);
+    will_return(__wrap_utf8_GetNamedSecurityInfo, &old_acl);
+    will_return(__wrap_utf8_GetNamedSecurityInfo, (PSECURITY_DESCRIPTOR) 2345);
+    will_return(__wrap_utf8_GetNamedSecurityInfo, ERROR_SUCCESS);
 
     will_return(wrap_GetAclInformation, NULL);
     will_return(wrap_GetAclInformation, 1);
@@ -2345,12 +2345,12 @@ void test_w_update_sacl_old_sacl_GetAce_error(void **state) {
         expect_string(__wrap__mdebug2, formatted_msg, "(6268): The 'SeSecurityPrivilege' privilege has been added.");
     }
 
-    expect_string(wrap_GetNamedSecurityInfo, pObjectName, "C:\\a\\path");
-    expect_value(wrap_GetNamedSecurityInfo, ObjectType, SE_FILE_OBJECT);
-    expect_value(wrap_GetNamedSecurityInfo, SecurityInfo, SACL_SECURITY_INFORMATION);
-    will_return(wrap_GetNamedSecurityInfo, &old_acl);
-    will_return(wrap_GetNamedSecurityInfo, (PSECURITY_DESCRIPTOR) 2345);
-    will_return(wrap_GetNamedSecurityInfo, ERROR_SUCCESS);
+    expect_string(__wrap_utf8_GetNamedSecurityInfo, utf8_path, "C:\\a\\path");
+    expect_value(__wrap_utf8_GetNamedSecurityInfo, obj_type, SE_FILE_OBJECT);
+    expect_value(__wrap_utf8_GetNamedSecurityInfo, si, SACL_SECURITY_INFORMATION);
+    will_return(__wrap_utf8_GetNamedSecurityInfo, &old_acl);
+    will_return(__wrap_utf8_GetNamedSecurityInfo, (PSECURITY_DESCRIPTOR) 2345);
+    will_return(__wrap_utf8_GetNamedSecurityInfo, ERROR_SUCCESS);
 
     will_return(wrap_GetAclInformation, &old_sacl_info);
     will_return(wrap_GetAclInformation, 1);
@@ -2430,12 +2430,12 @@ void test_w_update_sacl_old_sacl_AddAce_error(void **state) {
         expect_string(__wrap__mdebug2, formatted_msg, "(6268): The 'SeSecurityPrivilege' privilege has been added.");
     }
 
-    expect_string(wrap_GetNamedSecurityInfo, pObjectName, "C:\\a\\path");
-    expect_value(wrap_GetNamedSecurityInfo, ObjectType, SE_FILE_OBJECT);
-    expect_value(wrap_GetNamedSecurityInfo, SecurityInfo, SACL_SECURITY_INFORMATION);
-    will_return(wrap_GetNamedSecurityInfo, &old_acl);
-    will_return(wrap_GetNamedSecurityInfo, (PSECURITY_DESCRIPTOR) 2345);
-    will_return(wrap_GetNamedSecurityInfo, ERROR_SUCCESS);
+    expect_string(__wrap_utf8_GetNamedSecurityInfo, utf8_path, "C:\\a\\path");
+    expect_value(__wrap_utf8_GetNamedSecurityInfo, obj_type, SE_FILE_OBJECT);
+    expect_value(__wrap_utf8_GetNamedSecurityInfo, si, SACL_SECURITY_INFORMATION);
+    will_return(__wrap_utf8_GetNamedSecurityInfo, &old_acl);
+    will_return(__wrap_utf8_GetNamedSecurityInfo, (PSECURITY_DESCRIPTOR) 2345);
+    will_return(__wrap_utf8_GetNamedSecurityInfo, ERROR_SUCCESS);
 
     will_return(wrap_GetAclInformation, &old_sacl_info);
     will_return(wrap_GetAclInformation, 1);
@@ -2518,12 +2518,12 @@ void test_w_update_sacl_new_sacl_AddAce_error(void **state) {
         expect_string(__wrap__mdebug2, formatted_msg, "(6268): The 'SeSecurityPrivilege' privilege has been added.");
     }
 
-    expect_string(wrap_GetNamedSecurityInfo, pObjectName, "C:\\a\\path");
-    expect_value(wrap_GetNamedSecurityInfo, ObjectType, SE_FILE_OBJECT);
-    expect_value(wrap_GetNamedSecurityInfo, SecurityInfo, SACL_SECURITY_INFORMATION);
-    will_return(wrap_GetNamedSecurityInfo, &old_acl);
-    will_return(wrap_GetNamedSecurityInfo, (PSECURITY_DESCRIPTOR) 2345);
-    will_return(wrap_GetNamedSecurityInfo, ERROR_SUCCESS);
+    expect_string(__wrap_utf8_GetNamedSecurityInfo, utf8_path, "C:\\a\\path");
+    expect_value(__wrap_utf8_GetNamedSecurityInfo, obj_type, SE_FILE_OBJECT);
+    expect_value(__wrap_utf8_GetNamedSecurityInfo, si, SACL_SECURITY_INFORMATION);
+    will_return(__wrap_utf8_GetNamedSecurityInfo, &old_acl);
+    will_return(__wrap_utf8_GetNamedSecurityInfo, (PSECURITY_DESCRIPTOR) 2345);
+    will_return(__wrap_utf8_GetNamedSecurityInfo, ERROR_SUCCESS);
 
     will_return(wrap_GetAclInformation, &old_sacl_info);
     will_return(wrap_GetAclInformation, 1);
@@ -2611,12 +2611,12 @@ void test_w_update_sacl_SetNamedSecurityInfo_error(void **state) {
         expect_string(__wrap__mdebug2, formatted_msg, "(6268): The 'SeSecurityPrivilege' privilege has been added.");
     }
 
-    expect_string(wrap_GetNamedSecurityInfo, pObjectName, "C:\\a\\path");
-    expect_value(wrap_GetNamedSecurityInfo, ObjectType, SE_FILE_OBJECT);
-    expect_value(wrap_GetNamedSecurityInfo, SecurityInfo, SACL_SECURITY_INFORMATION);
-    will_return(wrap_GetNamedSecurityInfo, &old_acl);
-    will_return(wrap_GetNamedSecurityInfo, (PSECURITY_DESCRIPTOR) 2345);
-    will_return(wrap_GetNamedSecurityInfo, ERROR_SUCCESS);
+    expect_string(__wrap_utf8_GetNamedSecurityInfo, utf8_path, "C:\\a\\path");
+    expect_value(__wrap_utf8_GetNamedSecurityInfo, obj_type, SE_FILE_OBJECT);
+    expect_value(__wrap_utf8_GetNamedSecurityInfo, si, SACL_SECURITY_INFORMATION);
+    will_return(__wrap_utf8_GetNamedSecurityInfo, &old_acl);
+    will_return(__wrap_utf8_GetNamedSecurityInfo, (PSECURITY_DESCRIPTOR) 2345);
+    will_return(__wrap_utf8_GetNamedSecurityInfo, ERROR_SUCCESS);
 
     will_return(wrap_GetAclInformation, &old_sacl_info);
     will_return(wrap_GetAclInformation, 1);
@@ -2643,14 +2643,14 @@ void test_w_update_sacl_SetNamedSecurityInfo_error(void **state) {
     expect_value(wrap_AddAce, pAcl, 34567);
     will_return(wrap_AddAce, 1);
 
-    expect_string(wrap_SetNamedSecurityInfo, pObjectName, "C:\\a\\path");
-    expect_value(wrap_SetNamedSecurityInfo, ObjectType, SE_FILE_OBJECT);
-    expect_value(wrap_SetNamedSecurityInfo, SecurityInfo, SACL_SECURITY_INFORMATION);
-    expect_value(wrap_SetNamedSecurityInfo, psidOwner, NULL);
-    expect_value(wrap_SetNamedSecurityInfo, psidGroup, NULL);
-    expect_value(wrap_SetNamedSecurityInfo, pDacl, NULL);
-    expect_value(wrap_SetNamedSecurityInfo, pSacl, 34567);
-    will_return(wrap_SetNamedSecurityInfo, ERROR_PATH_NOT_FOUND);
+    expect_string(__wrap_utf8_SetNamedSecurityInfo, utf8_path, "C:\\a\\path");
+    expect_value(__wrap_utf8_SetNamedSecurityInfo, obj_type, SE_FILE_OBJECT);
+    expect_value(__wrap_utf8_SetNamedSecurityInfo, si, SACL_SECURITY_INFORMATION);
+    expect_value(__wrap_utf8_SetNamedSecurityInfo, owner, NULL);
+    expect_value(__wrap_utf8_SetNamedSecurityInfo, group, NULL);
+    expect_value(__wrap_utf8_SetNamedSecurityInfo, dacl, NULL);
+    expect_value(__wrap_utf8_SetNamedSecurityInfo, sacl, 34567);
+    will_return(__wrap_utf8_SetNamedSecurityInfo, ERROR_PATH_NOT_FOUND);
 
     expect_string(__wrap__merror, formatted_msg,
         "(6695): SetNamedSecurityInfo() failed. Error: '3'");
@@ -2711,12 +2711,12 @@ void test_w_update_sacl_remove_privilege_error(void **state) {
         expect_string(__wrap__mdebug2, formatted_msg, "(6268): The 'SeSecurityPrivilege' privilege has been added.");
     }
 
-    expect_string(wrap_GetNamedSecurityInfo, pObjectName, "C:\\a\\path");
-    expect_value(wrap_GetNamedSecurityInfo, ObjectType, SE_FILE_OBJECT);
-    expect_value(wrap_GetNamedSecurityInfo, SecurityInfo, SACL_SECURITY_INFORMATION);
-    will_return(wrap_GetNamedSecurityInfo, &old_acl);
-    will_return(wrap_GetNamedSecurityInfo, (PSECURITY_DESCRIPTOR) 2345);
-    will_return(wrap_GetNamedSecurityInfo, ERROR_SUCCESS);
+    expect_string(__wrap_utf8_GetNamedSecurityInfo, utf8_path, "C:\\a\\path");
+    expect_value(__wrap_utf8_GetNamedSecurityInfo, obj_type, SE_FILE_OBJECT);
+    expect_value(__wrap_utf8_GetNamedSecurityInfo, si, SACL_SECURITY_INFORMATION);
+    will_return(__wrap_utf8_GetNamedSecurityInfo, &old_acl);
+    will_return(__wrap_utf8_GetNamedSecurityInfo, (PSECURITY_DESCRIPTOR) 2345);
+    will_return(__wrap_utf8_GetNamedSecurityInfo, ERROR_SUCCESS);
 
     will_return(wrap_GetAclInformation, &old_sacl_info);
     will_return(wrap_GetAclInformation, 1);
@@ -2743,14 +2743,14 @@ void test_w_update_sacl_remove_privilege_error(void **state) {
     expect_value(wrap_AddAce, pAcl, 34567);
     will_return(wrap_AddAce, 1);
 
-    expect_string(wrap_SetNamedSecurityInfo, pObjectName, "C:\\a\\path");
-    expect_value(wrap_SetNamedSecurityInfo, ObjectType, SE_FILE_OBJECT);
-    expect_value(wrap_SetNamedSecurityInfo, SecurityInfo, SACL_SECURITY_INFORMATION);
-    expect_value(wrap_SetNamedSecurityInfo, psidOwner, NULL);
-    expect_value(wrap_SetNamedSecurityInfo, psidGroup, NULL);
-    expect_value(wrap_SetNamedSecurityInfo, pDacl, NULL);
-    expect_value(wrap_SetNamedSecurityInfo, pSacl, 34567);
-    will_return(wrap_SetNamedSecurityInfo, ERROR_SUCCESS);
+    expect_string(__wrap_utf8_SetNamedSecurityInfo, utf8_path, "C:\\a\\path");
+    expect_value(__wrap_utf8_SetNamedSecurityInfo, obj_type, SE_FILE_OBJECT);
+    expect_value(__wrap_utf8_SetNamedSecurityInfo, si, SACL_SECURITY_INFORMATION);
+    expect_value(__wrap_utf8_SetNamedSecurityInfo, owner, NULL);
+    expect_value(__wrap_utf8_SetNamedSecurityInfo, group, NULL);
+    expect_value(__wrap_utf8_SetNamedSecurityInfo, dacl, NULL);
+    expect_value(__wrap_utf8_SetNamedSecurityInfo, sacl, 34567);
+    will_return(__wrap_utf8_SetNamedSecurityInfo, ERROR_SUCCESS);
 
     /* goto end */
     /* Inside set_privilege */
@@ -2823,12 +2823,12 @@ void test_w_update_sacl_success(void **state) {
         expect_string(__wrap__mdebug2, formatted_msg, "(6268): The 'SeSecurityPrivilege' privilege has been added.");
     }
 
-    expect_string(wrap_GetNamedSecurityInfo, pObjectName, "C:\\a\\path");
-    expect_value(wrap_GetNamedSecurityInfo, ObjectType, SE_FILE_OBJECT);
-    expect_value(wrap_GetNamedSecurityInfo, SecurityInfo, SACL_SECURITY_INFORMATION);
-    will_return(wrap_GetNamedSecurityInfo, &old_acl);
-    will_return(wrap_GetNamedSecurityInfo, (PSECURITY_DESCRIPTOR) 2345);
-    will_return(wrap_GetNamedSecurityInfo, ERROR_SUCCESS);
+    expect_string(__wrap_utf8_GetNamedSecurityInfo, utf8_path, "C:\\a\\path");
+    expect_value(__wrap_utf8_GetNamedSecurityInfo, obj_type, SE_FILE_OBJECT);
+    expect_value(__wrap_utf8_GetNamedSecurityInfo, si, SACL_SECURITY_INFORMATION);
+    will_return(__wrap_utf8_GetNamedSecurityInfo, &old_acl);
+    will_return(__wrap_utf8_GetNamedSecurityInfo, (PSECURITY_DESCRIPTOR) 2345);
+    will_return(__wrap_utf8_GetNamedSecurityInfo, ERROR_SUCCESS);
 
     will_return(wrap_GetAclInformation, &old_sacl_info);
     will_return(wrap_GetAclInformation, 1);
@@ -2855,14 +2855,14 @@ void test_w_update_sacl_success(void **state) {
     expect_value(wrap_AddAce, pAcl, 34567);
     will_return(wrap_AddAce, 1);
 
-    expect_string(wrap_SetNamedSecurityInfo, pObjectName, "C:\\a\\path");
-    expect_value(wrap_SetNamedSecurityInfo, ObjectType, SE_FILE_OBJECT);
-    expect_value(wrap_SetNamedSecurityInfo, SecurityInfo, SACL_SECURITY_INFORMATION);
-    expect_value(wrap_SetNamedSecurityInfo, psidOwner, NULL);
-    expect_value(wrap_SetNamedSecurityInfo, psidGroup, NULL);
-    expect_value(wrap_SetNamedSecurityInfo, pDacl, NULL);
-    expect_value(wrap_SetNamedSecurityInfo, pSacl, 34567);
-    will_return(wrap_SetNamedSecurityInfo, ERROR_SUCCESS);
+    expect_string(__wrap_utf8_SetNamedSecurityInfo, utf8_path, "C:\\a\\path");
+    expect_value(__wrap_utf8_SetNamedSecurityInfo, obj_type, SE_FILE_OBJECT);
+    expect_value(__wrap_utf8_SetNamedSecurityInfo, si, SACL_SECURITY_INFORMATION);
+    expect_value(__wrap_utf8_SetNamedSecurityInfo, owner, NULL);
+    expect_value(__wrap_utf8_SetNamedSecurityInfo, group, NULL);
+    expect_value(__wrap_utf8_SetNamedSecurityInfo, dacl, NULL);
+    expect_value(__wrap_utf8_SetNamedSecurityInfo, sacl, 34567);
+    will_return(__wrap_utf8_SetNamedSecurityInfo, ERROR_SUCCESS);
 
     /* goto end */
     /* Inside set_privilege */
@@ -3667,12 +3667,12 @@ void test_restore_sacls_securityNameInfo_failed(void **state){
         expect_string(__wrap__mdebug2, formatted_msg, "(6268): The 'SeSecurityPrivilege' privilege has been added.");
     }
     // GetNamedSecurity
-    expect_string(wrap_GetNamedSecurityInfo, pObjectName, ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0))->path);
-    expect_value(wrap_GetNamedSecurityInfo, ObjectType, SE_FILE_OBJECT);
-    expect_value(wrap_GetNamedSecurityInfo, SecurityInfo, SACL_SECURITY_INFORMATION);
-    will_return(wrap_GetNamedSecurityInfo, NULL);
-    will_return(wrap_GetNamedSecurityInfo, NULL);
-    will_return(wrap_GetNamedSecurityInfo, ERROR_FILE_NOT_FOUND);
+    expect_string(__wrap_utf8_GetNamedSecurityInfo, utf8_path, ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0))->path);
+    expect_value(__wrap_utf8_GetNamedSecurityInfo, obj_type, SE_FILE_OBJECT);
+    expect_value(__wrap_utf8_GetNamedSecurityInfo, si, SACL_SECURITY_INFORMATION);
+    will_return(__wrap_utf8_GetNamedSecurityInfo, NULL);
+    will_return(__wrap_utf8_GetNamedSecurityInfo, NULL);
+    will_return(__wrap_utf8_GetNamedSecurityInfo, ERROR_FILE_NOT_FOUND);
     expect_string(__wrap__merror, formatted_msg, "(6650): GetNamedSecurityInfo() failed. Error '2'");
 
     /* Inside set_privilege */
@@ -3720,13 +3720,13 @@ void test_restore_sacls_deleteAce_failed(void **state){
         expect_string(__wrap__mdebug2, formatted_msg, "(6268): The 'SeSecurityPrivilege' privilege has been added.");
     }
     // GetNamedSecurity
-    expect_string(wrap_GetNamedSecurityInfo, pObjectName, ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0))->path);
+    expect_string(__wrap_utf8_GetNamedSecurityInfo, utf8_path, ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0))->path);
     ACL acl;
-    expect_value(wrap_GetNamedSecurityInfo, ObjectType, SE_FILE_OBJECT);
-    expect_value(wrap_GetNamedSecurityInfo, SecurityInfo, SACL_SECURITY_INFORMATION);
-    will_return(wrap_GetNamedSecurityInfo, &acl);
-    will_return(wrap_GetNamedSecurityInfo, (PSECURITY_DESCRIPTOR)2345);
-    will_return(wrap_GetNamedSecurityInfo, ERROR_SUCCESS);
+    expect_value(__wrap_utf8_GetNamedSecurityInfo, obj_type, SE_FILE_OBJECT);
+    expect_value(__wrap_utf8_GetNamedSecurityInfo, si, SACL_SECURITY_INFORMATION);
+    will_return(__wrap_utf8_GetNamedSecurityInfo, &acl);
+    will_return(__wrap_utf8_GetNamedSecurityInfo, (PSECURITY_DESCRIPTOR)2345);
+    will_return(__wrap_utf8_GetNamedSecurityInfo, ERROR_SUCCESS);
 
     expect_value(wrap_DeleteAce, pAcl, &acl);
     expect_value(wrap_DeleteAce, dwAceIndex, 0);
@@ -3778,26 +3778,26 @@ void test_restore_sacls_SetNamedSecurityInfo_failed(void **state){
         expect_string(__wrap__mdebug2, formatted_msg, "(6268): The 'SeSecurityPrivilege' privilege has been added.");
     }
     // GetNamedSecurity
-    expect_string(wrap_GetNamedSecurityInfo, pObjectName, ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0))->path);
+    expect_string(__wrap_utf8_GetNamedSecurityInfo, utf8_path, ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0))->path);
     ACL acl;
-    expect_value(wrap_GetNamedSecurityInfo, ObjectType, SE_FILE_OBJECT);
-    expect_value(wrap_GetNamedSecurityInfo, SecurityInfo, SACL_SECURITY_INFORMATION);
-    will_return(wrap_GetNamedSecurityInfo, &acl);
-    will_return(wrap_GetNamedSecurityInfo, (PSECURITY_DESCRIPTOR)2345);
-    will_return(wrap_GetNamedSecurityInfo, ERROR_SUCCESS);
+    expect_value(__wrap_utf8_GetNamedSecurityInfo, obj_type, SE_FILE_OBJECT);
+    expect_value(__wrap_utf8_GetNamedSecurityInfo, si, SACL_SECURITY_INFORMATION);
+    will_return(__wrap_utf8_GetNamedSecurityInfo, &acl);
+    will_return(__wrap_utf8_GetNamedSecurityInfo, (PSECURITY_DESCRIPTOR)2345);
+    will_return(__wrap_utf8_GetNamedSecurityInfo, ERROR_SUCCESS);
 
     expect_value(wrap_DeleteAce, pAcl, &acl);
     expect_value(wrap_DeleteAce, dwAceIndex, 0);
     will_return(wrap_DeleteAce, 1);
 
-    expect_string(wrap_SetNamedSecurityInfo, pObjectName, ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0))->path);
-    expect_value(wrap_SetNamedSecurityInfo, ObjectType, SE_FILE_OBJECT);
-    expect_value(wrap_SetNamedSecurityInfo, SecurityInfo, SACL_SECURITY_INFORMATION);
-    expect_value(wrap_SetNamedSecurityInfo, psidOwner, NULL);
-    expect_value(wrap_SetNamedSecurityInfo, psidGroup, NULL);
-    expect_value(wrap_SetNamedSecurityInfo, pDacl, NULL);
-    expect_value(wrap_SetNamedSecurityInfo, pSacl, &acl);
-    will_return(wrap_SetNamedSecurityInfo, ERROR_PATH_NOT_FOUND);
+    expect_string(__wrap_utf8_SetNamedSecurityInfo, utf8_path, ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0))->path);
+    expect_value(__wrap_utf8_SetNamedSecurityInfo, obj_type, SE_FILE_OBJECT);
+    expect_value(__wrap_utf8_SetNamedSecurityInfo, si, SACL_SECURITY_INFORMATION);
+    expect_value(__wrap_utf8_SetNamedSecurityInfo, owner, NULL);
+    expect_value(__wrap_utf8_SetNamedSecurityInfo, group, NULL);
+    expect_value(__wrap_utf8_SetNamedSecurityInfo, dacl, NULL);
+    expect_value(__wrap_utf8_SetNamedSecurityInfo, sacl, &acl);
+    will_return(__wrap_utf8_SetNamedSecurityInfo, ERROR_PATH_NOT_FOUND);
     expect_string(__wrap__merror, formatted_msg, "(6658): SetNamedSecurityInfo() failed. Error: '3'.");
 
     /* Inside set_privilege */
@@ -3845,26 +3845,26 @@ void test_restore_sacls_success(void **state){
         expect_string(__wrap__mdebug2, formatted_msg, "(6268): The 'SeSecurityPrivilege' privilege has been added.");
     }
     // GetNamedSecurity
-    expect_string(wrap_GetNamedSecurityInfo, pObjectName, ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0))->path);
+    expect_string(__wrap_utf8_GetNamedSecurityInfo, utf8_path, ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0))->path);
     ACL acl;
-    expect_value(wrap_GetNamedSecurityInfo, ObjectType, SE_FILE_OBJECT);
-    expect_value(wrap_GetNamedSecurityInfo, SecurityInfo, SACL_SECURITY_INFORMATION);
-    will_return(wrap_GetNamedSecurityInfo, &acl);
-    will_return(wrap_GetNamedSecurityInfo, (PSECURITY_DESCRIPTOR)2345);
-    will_return(wrap_GetNamedSecurityInfo, ERROR_SUCCESS);
+    expect_value(__wrap_utf8_GetNamedSecurityInfo, obj_type, SE_FILE_OBJECT);
+    expect_value(__wrap_utf8_GetNamedSecurityInfo, si, SACL_SECURITY_INFORMATION);
+    will_return(__wrap_utf8_GetNamedSecurityInfo, &acl);
+    will_return(__wrap_utf8_GetNamedSecurityInfo, (PSECURITY_DESCRIPTOR)2345);
+    will_return(__wrap_utf8_GetNamedSecurityInfo, ERROR_SUCCESS);
 
     expect_value(wrap_DeleteAce, pAcl, &acl);
     expect_value(wrap_DeleteAce, dwAceIndex, 0);
     will_return(wrap_DeleteAce, 1);
 
-    expect_string(wrap_SetNamedSecurityInfo, pObjectName, ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0))->path);
-    expect_value(wrap_SetNamedSecurityInfo, ObjectType, SE_FILE_OBJECT);
-    expect_value(wrap_SetNamedSecurityInfo, SecurityInfo, SACL_SECURITY_INFORMATION);
-    expect_value(wrap_SetNamedSecurityInfo, psidOwner, NULL);
-    expect_value(wrap_SetNamedSecurityInfo, psidGroup, NULL);
-    expect_value(wrap_SetNamedSecurityInfo, pDacl, NULL);
-    expect_value(wrap_SetNamedSecurityInfo, pSacl, &acl);
-    will_return(wrap_SetNamedSecurityInfo, ERROR_SUCCESS);
+    expect_string(__wrap_utf8_SetNamedSecurityInfo, utf8_path, ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0))->path);
+    expect_value(__wrap_utf8_SetNamedSecurityInfo, obj_type, SE_FILE_OBJECT);
+    expect_value(__wrap_utf8_SetNamedSecurityInfo, si, SACL_SECURITY_INFORMATION);
+    expect_value(__wrap_utf8_SetNamedSecurityInfo, owner, NULL);
+    expect_value(__wrap_utf8_SetNamedSecurityInfo, group, NULL);
+    expect_value(__wrap_utf8_SetNamedSecurityInfo, dacl, NULL);
+    expect_value(__wrap_utf8_SetNamedSecurityInfo, sacl, &acl);
+    will_return(__wrap_utf8_SetNamedSecurityInfo, ERROR_SUCCESS);
 
     char debug_msg[OS_MAXSTR];
 
@@ -4003,26 +4003,26 @@ void test_audit_restore(void **state) {
             expect_string(__wrap__mdebug2, formatted_msg, "(6268): The 'SeSecurityPrivilege' privilege has been added.");
         }
         // GetNamedSecurity
-        expect_string(wrap_GetNamedSecurityInfo, pObjectName, ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0))->path);
+        expect_string(__wrap_utf8_GetNamedSecurityInfo, utf8_path, ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0))->path);
         ACL acl;
-        expect_value(wrap_GetNamedSecurityInfo, ObjectType, SE_FILE_OBJECT);
-        expect_value(wrap_GetNamedSecurityInfo, SecurityInfo, SACL_SECURITY_INFORMATION);
-        will_return(wrap_GetNamedSecurityInfo, &acl);
-        will_return(wrap_GetNamedSecurityInfo, (PSECURITY_DESCRIPTOR)2345);
-        will_return(wrap_GetNamedSecurityInfo, ERROR_SUCCESS);
+        expect_value(__wrap_utf8_GetNamedSecurityInfo, obj_type, SE_FILE_OBJECT);
+        expect_value(__wrap_utf8_GetNamedSecurityInfo, si, SACL_SECURITY_INFORMATION);
+        will_return(__wrap_utf8_GetNamedSecurityInfo, &acl);
+        will_return(__wrap_utf8_GetNamedSecurityInfo, (PSECURITY_DESCRIPTOR)2345);
+        will_return(__wrap_utf8_GetNamedSecurityInfo, ERROR_SUCCESS);
 
         expect_value(wrap_DeleteAce, pAcl, &acl);
         expect_value(wrap_DeleteAce, dwAceIndex, 0);
         will_return(wrap_DeleteAce, 1);
 
-        expect_string(wrap_SetNamedSecurityInfo, pObjectName, ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0))->path);
-        expect_value(wrap_SetNamedSecurityInfo, ObjectType, SE_FILE_OBJECT);
-        expect_value(wrap_SetNamedSecurityInfo, SecurityInfo, SACL_SECURITY_INFORMATION);
-        expect_value(wrap_SetNamedSecurityInfo, psidOwner, NULL);
-        expect_value(wrap_SetNamedSecurityInfo, psidGroup, NULL);
-        expect_value(wrap_SetNamedSecurityInfo, pDacl, NULL);
-        expect_value(wrap_SetNamedSecurityInfo, pSacl, &acl);
-        will_return(wrap_SetNamedSecurityInfo, ERROR_SUCCESS);
+        expect_string(__wrap_utf8_SetNamedSecurityInfo, utf8_path, ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0))->path);
+        expect_value(__wrap_utf8_SetNamedSecurityInfo, obj_type, SE_FILE_OBJECT);
+        expect_value(__wrap_utf8_SetNamedSecurityInfo, si, SACL_SECURITY_INFORMATION);
+        expect_value(__wrap_utf8_SetNamedSecurityInfo, owner, NULL);
+        expect_value(__wrap_utf8_SetNamedSecurityInfo, group, NULL);
+        expect_value(__wrap_utf8_SetNamedSecurityInfo, dacl, NULL);
+        expect_value(__wrap_utf8_SetNamedSecurityInfo, sacl, &acl);
+        will_return(__wrap_utf8_SetNamedSecurityInfo, ERROR_SUCCESS);
 
         char debug_msg[OS_MAXSTR];
 
@@ -6087,12 +6087,12 @@ void test_check_object_sacl_unable_to_retrieve_security_info(void **state) {
         expect_string(__wrap__mdebug2, formatted_msg, "(6268): The 'SeSecurityPrivilege' privilege has been added.");
     }
 
-    expect_string(wrap_GetNamedSecurityInfo, pObjectName, "C:\\a\\path");
-    expect_value(wrap_GetNamedSecurityInfo, ObjectType, SE_FILE_OBJECT);
-    expect_value(wrap_GetNamedSecurityInfo, SecurityInfo, SACL_SECURITY_INFORMATION);
-    will_return(wrap_GetNamedSecurityInfo, NULL);
-    will_return(wrap_GetNamedSecurityInfo, NULL);
-    will_return(wrap_GetNamedSecurityInfo, ERROR_FILE_NOT_FOUND);
+    expect_string(__wrap_utf8_GetNamedSecurityInfo, utf8_path, "C:\\a\\path");
+    expect_value(__wrap_utf8_GetNamedSecurityInfo, obj_type, SE_FILE_OBJECT);
+    expect_value(__wrap_utf8_GetNamedSecurityInfo, si, SACL_SECURITY_INFORMATION);
+    will_return(__wrap_utf8_GetNamedSecurityInfo, NULL);
+    will_return(__wrap_utf8_GetNamedSecurityInfo, NULL);
+    will_return(__wrap_utf8_GetNamedSecurityInfo, ERROR_FILE_NOT_FOUND);
 
     expect_string(__wrap__merror, formatted_msg, "(6650): GetNamedSecurityInfo() failed. Error '2'");
 
@@ -6139,12 +6139,12 @@ void test_check_object_sacl_invalid_sacl(void **state) {
         expect_string(__wrap__mdebug2, formatted_msg, "(6268): The 'SeSecurityPrivilege' privilege has been added.");
     }
 
-    expect_string(wrap_GetNamedSecurityInfo, pObjectName, "C:\\a\\path");
-    expect_value(wrap_GetNamedSecurityInfo, ObjectType, SE_FILE_OBJECT);
-    expect_value(wrap_GetNamedSecurityInfo, SecurityInfo, SACL_SECURITY_INFORMATION);
-    will_return(wrap_GetNamedSecurityInfo, &acl);
-    will_return(wrap_GetNamedSecurityInfo, (PSECURITY_DESCRIPTOR)2345);
-    will_return(wrap_GetNamedSecurityInfo, ERROR_SUCCESS);
+    expect_string(__wrap_utf8_GetNamedSecurityInfo, utf8_path, "C:\\a\\path");
+    expect_value(__wrap_utf8_GetNamedSecurityInfo, obj_type, SE_FILE_OBJECT);
+    expect_value(__wrap_utf8_GetNamedSecurityInfo, si, SACL_SECURITY_INFORMATION);
+    will_return(__wrap_utf8_GetNamedSecurityInfo, &acl);
+    will_return(__wrap_utf8_GetNamedSecurityInfo, (PSECURITY_DESCRIPTOR)2345);
+    will_return(__wrap_utf8_GetNamedSecurityInfo, ERROR_SUCCESS);
 
     // is_valid_sacl
     {
@@ -6205,12 +6205,12 @@ void test_check_object_sacl_valid_sacl(void **state) {
         expect_string(__wrap__mdebug2, formatted_msg, "(6268): The 'SeSecurityPrivilege' privilege has been added.");
     }
 
-    expect_string(wrap_GetNamedSecurityInfo, pObjectName, "C:\\a\\path");
-    expect_value(wrap_GetNamedSecurityInfo, ObjectType, SE_FILE_OBJECT);
-    expect_value(wrap_GetNamedSecurityInfo, SecurityInfo, SACL_SECURITY_INFORMATION);
-    will_return(wrap_GetNamedSecurityInfo, &acl);
-    will_return(wrap_GetNamedSecurityInfo, (PSECURITY_DESCRIPTOR)2345);
-    will_return(wrap_GetNamedSecurityInfo, ERROR_SUCCESS);
+    expect_string(__wrap_utf8_GetNamedSecurityInfo, utf8_path, "C:\\a\\path");
+    expect_value(__wrap_utf8_GetNamedSecurityInfo, obj_type, SE_FILE_OBJECT);
+    expect_value(__wrap_utf8_GetNamedSecurityInfo, si, SACL_SECURITY_INFORMATION);
+    will_return(__wrap_utf8_GetNamedSecurityInfo, &acl);
+    will_return(__wrap_utf8_GetNamedSecurityInfo, (PSECURITY_DESCRIPTOR)2345);
+    will_return(__wrap_utf8_GetNamedSecurityInfo, ERROR_SUCCESS);
 
     // Inside is_valid_sacl
     {
@@ -7034,12 +7034,12 @@ void test_state_checker_file_with_invalid_sacl(void **state) {
             expect_string(__wrap__mdebug2, formatted_msg, "(6268): The 'SeSecurityPrivilege' privilege has been added.");
         }
 
-        expect_string(wrap_GetNamedSecurityInfo, pObjectName, "c:\\a\\path");
-        expect_value(wrap_GetNamedSecurityInfo, ObjectType, SE_FILE_OBJECT);
-        expect_value(wrap_GetNamedSecurityInfo, SecurityInfo, SACL_SECURITY_INFORMATION);
-        will_return(wrap_GetNamedSecurityInfo, &acl);
-        will_return(wrap_GetNamedSecurityInfo, (PSECURITY_DESCRIPTOR)2345);
-        will_return(wrap_GetNamedSecurityInfo, ERROR_SUCCESS);
+        expect_string(__wrap_utf8_GetNamedSecurityInfo, utf8_path, "c:\\a\\path");
+        expect_value(__wrap_utf8_GetNamedSecurityInfo, obj_type, SE_FILE_OBJECT);
+        expect_value(__wrap_utf8_GetNamedSecurityInfo, si, SACL_SECURITY_INFORMATION);
+        will_return(__wrap_utf8_GetNamedSecurityInfo, &acl);
+        will_return(__wrap_utf8_GetNamedSecurityInfo, (PSECURITY_DESCRIPTOR)2345);
+        will_return(__wrap_utf8_GetNamedSecurityInfo, ERROR_SUCCESS);
 
         // is_valid_sacl
         {
@@ -7166,12 +7166,12 @@ void test_state_checker_file_with_valid_sacl(void **state) {
             expect_string(__wrap__mdebug2, formatted_msg, "(6268): The 'SeSecurityPrivilege' privilege has been added.");
         }
 
-        expect_string(wrap_GetNamedSecurityInfo, pObjectName, "c:\\a\\path");
-        expect_value(wrap_GetNamedSecurityInfo, ObjectType, SE_FILE_OBJECT);
-        expect_value(wrap_GetNamedSecurityInfo, SecurityInfo, SACL_SECURITY_INFORMATION);
-        will_return(wrap_GetNamedSecurityInfo, &acl);
-        will_return(wrap_GetNamedSecurityInfo, (PSECURITY_DESCRIPTOR)2345);
-        will_return(wrap_GetNamedSecurityInfo, ERROR_SUCCESS);
+        expect_string(__wrap_utf8_GetNamedSecurityInfo, utf8_path, "c:\\a\\path");
+        expect_value(__wrap_utf8_GetNamedSecurityInfo, obj_type, SE_FILE_OBJECT);
+        expect_value(__wrap_utf8_GetNamedSecurityInfo, si, SACL_SECURITY_INFORMATION);
+        will_return(__wrap_utf8_GetNamedSecurityInfo, &acl);
+        will_return(__wrap_utf8_GetNamedSecurityInfo, (PSECURITY_DESCRIPTOR)2345);
+        will_return(__wrap_utf8_GetNamedSecurityInfo, ERROR_SUCCESS);
 
         // Inside is_valid_sacl
         {
@@ -7386,12 +7386,12 @@ void test_state_checker_dir_readded_succesful(void **state) {
         }
 
         // GetNamedSecurity
-        expect_string(wrap_GetNamedSecurityInfo, pObjectName, "c:\\a\\path");
-        expect_value(wrap_GetNamedSecurityInfo, ObjectType, SE_FILE_OBJECT);
-        expect_value(wrap_GetNamedSecurityInfo, SecurityInfo, SACL_SECURITY_INFORMATION);
-        will_return(wrap_GetNamedSecurityInfo, &acl);
-        will_return(wrap_GetNamedSecurityInfo, &security_descriptor);
-        will_return(wrap_GetNamedSecurityInfo, ERROR_SUCCESS);
+        expect_string(__wrap_utf8_GetNamedSecurityInfo, utf8_path, "c:\\a\\path");
+        expect_value(__wrap_utf8_GetNamedSecurityInfo, obj_type, SE_FILE_OBJECT);
+        expect_value(__wrap_utf8_GetNamedSecurityInfo, si, SACL_SECURITY_INFORMATION);
+        will_return(__wrap_utf8_GetNamedSecurityInfo, &acl);
+        will_return(__wrap_utf8_GetNamedSecurityInfo, &security_descriptor);
+        will_return(__wrap_utf8_GetNamedSecurityInfo, ERROR_SUCCESS);
 
         // Inside is_valid_sacl
         {
@@ -7434,14 +7434,14 @@ void test_state_checker_dir_readded_succesful(void **state) {
         expect_value(wrap_AddAce, pAcl, 1234);
         will_return(wrap_AddAce, 1);
 
-        expect_string(wrap_SetNamedSecurityInfo, pObjectName, "c:\\a\\path");
-        expect_value(wrap_SetNamedSecurityInfo, ObjectType, SE_FILE_OBJECT);
-        expect_value(wrap_SetNamedSecurityInfo, SecurityInfo, SACL_SECURITY_INFORMATION);
-        expect_value(wrap_SetNamedSecurityInfo, psidOwner, NULL);
-        expect_value(wrap_SetNamedSecurityInfo, psidGroup, NULL);
-        expect_value(wrap_SetNamedSecurityInfo, pDacl, NULL);
-        expect_value(wrap_SetNamedSecurityInfo, pSacl, 1234);
-        will_return(wrap_SetNamedSecurityInfo, ERROR_SUCCESS);
+        expect_string(__wrap_utf8_SetNamedSecurityInfo, utf8_path, "c:\\a\\path");
+        expect_value(__wrap_utf8_SetNamedSecurityInfo, obj_type, SE_FILE_OBJECT);
+        expect_value(__wrap_utf8_SetNamedSecurityInfo, si, SACL_SECURITY_INFORMATION);
+        expect_value(__wrap_utf8_SetNamedSecurityInfo, owner, NULL);
+        expect_value(__wrap_utf8_SetNamedSecurityInfo, group, NULL);
+        expect_value(__wrap_utf8_SetNamedSecurityInfo, dacl, NULL);
+        expect_value(__wrap_utf8_SetNamedSecurityInfo, sacl, 1234);
+        will_return(__wrap_utf8_SetNamedSecurityInfo, ERROR_SUCCESS);
 
         // Inside set_privilege
         {

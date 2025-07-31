@@ -160,9 +160,9 @@ def test_moving_file_to_whodata(test_configuration, test_metadata, set_wazuh_con
     assert callback_result
 
     event_data = get_fim_event_data(callback_result)
-    assert event_data.get('path') == os.path.join(dirsrc, filename), 'Event path not equal'
-    assert event_data.get('type') == 'deleted', 'Event type not equal'
-    assert event_data.get('mode') == mod_del_event, 'FIM mode not equal'
+    assert event_data['event']['type'] == 'deleted', 'Event type not equal'
+    assert event_data['file']['path'] == os.path.join(dirsrc, filename), 'Event path not equal'
+    assert event_data['file']['mode'] == mod_del_event, 'FIM mode not equal'
 
     # Check event 'add'
     wazuh_log_monitor.start(generate_callback(EVENT_TYPE_ADDED), timeout=60)
@@ -170,6 +170,6 @@ def test_moving_file_to_whodata(test_configuration, test_metadata, set_wazuh_con
     assert callback_result
 
     event_data = get_fim_event_data(callback_result)
-    assert event_data.get('path') == os.path.join(dirdst, filename), 'Event path not equal'
-    assert event_data.get('type') == 'added', 'Event type not equal'
-    assert event_data.get('mode') == mod_add_event, 'FIM mode not equal'
+    assert event_data['event']['type'] == 'added', 'Event type not equal'
+    assert event_data['file']['path'] == os.path.join(dirdst, filename), 'Event path not equal'
+    assert event_data['file']['mode'] == mod_add_event, 'FIM mode not equal'

@@ -10,6 +10,7 @@ else()
 endif()
 
 file(GLOB rootfiles ${SRC_FOLDER}/rootcheck/*.o)
+list(APPEND rootfiles ${SRC_FOLDER}/shared/fs_op.o)
 
 if(${TARGET} STREQUAL "winagent")
   # Exclude winagent file
@@ -114,7 +115,10 @@ add_subdirectory(whodata)
 # syscom.c tests
 list(APPEND syscheckd_tests_names "syscom")
 set(FIM_SYSCOM_BASE_FLAGS "-Wl,--wrap,getSyscheckConfig -Wl,--wrap,getRootcheckConfig -Wl,--wrap,getSyscheckInternalOptions \
-                           -Wl,--wrap,getpid -Wl,--wrap,fim_sync_push_msg ${DEBUG_OP_WRAPPERS}")
+                           -Wl,--wrap,getpid -Wl,--wrap,fim_sync_push_msg -Wl,--wrap,fim_db_init -Wl,--wrap,fim_db_transaction_sync_row \
+                           -Wl,--wrap,fim_db_file_pattern_search -Wl,--wrap,fim_db_transaction_deleted_rows \
+                           -Wl,--wrap,fim_db_get_count_file_entry -Wl,--wrap,fim_db_get_count_file_inode -Wl,--wrap,fim_db_file_inode_search \
+                           -Wl,--wrap,fim_db_file_update -Wl,--wrap,fim_db_get_path -Wl,--wrap,fim_db_transaction_start ${DEBUG_OP_WRAPPERS}")
 
 if(${TARGET} STREQUAL "winagent")
   list(APPEND syscheckd_tests_flags "${FIM_SYSCOM_BASE_FLAGS} -Wl,--wrap=Start_win32_Syscheck -Wl,--wrap=fim_db_init -Wl,--wrap,fim_sync_push_msg \
@@ -149,7 +153,7 @@ if(${TARGET} STREQUAL "winagent")
   list(APPEND syscheckd_tests_flags "${FIM_DIFF_CHANGES_BASE_FLAGS} -Wl,--wrap=FileSizeWin -Wl,--wrap,fim_sync_push_msg \
                                      -Wl,--wrap=fim_db_get_count_registry_data -Wl,--wrap=fim_db_get_count_registry_key -Wl,--wrap=syscom_dispatch \
                                      -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize \
-                                     -Wl,--wrap=_imp__rsync_initialize -Wl,--wrap=fim_db_teardown")
+                                     -Wl,--wrap=_imp__rsync_initialize -Wl,--wrap=fim_db_teardown -Wl,--wrap=utf8_GetShortPathName")
 else()
   list(APPEND syscheckd_tests_flags "${FIM_DIFF_CHANGES_BASE_FLAGS} -Wl,--wrap=unlink -Wl,--wrap=FileSize")
 endif()
@@ -180,7 +184,8 @@ if(${TARGET} STREQUAL "winagent")
                                            -Wl,--wrap,fim_sync_push_msg -Wl,--wrap=fim_db_get_count_registry_data \
                                            -Wl,--wrap=fim_db_get_count_registry_key -Wl,--wrap=syscom_dispatch
                                            -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize \
-                                           -Wl,--wrap=_imp__rsync_initialize -Wl,--wrap=fim_db_teardown")
+                                           -Wl,--wrap=_imp__rsync_initialize -Wl,--wrap=fim_db_teardown \
+                                           -Wl,--wrap=utf8_CreateFile")
 else()
   list(APPEND syscheckd_tests_flags "${RUN_REALTIME_BASE_FLAGS}")
 endif()
@@ -342,12 +347,12 @@ if(${TARGET} STREQUAL "winagent")
   endforeach()
 endif()
 
-# create_db.c tests
-add_executable(test_create_db test_create_db.c)
+# fim_scan.c tests
+add_executable(test_fim_scan test_fim_scan.c)
 
-target_compile_options(test_create_db PRIVATE "-Wall")
+target_compile_options(test_fim_scan PRIVATE "-Wall")
 
-set(CREATE_DB_BASE_FLAGS "-Wl,--wrap,fim_send_scan_info -Wl,--wrap,send_syscheck_msg \
+set(CREATE_DB_BASE_FLAGS "-Wl,--wrap,send_syscheck_msg -Wl,--wrap,persist_syscheck_msg \
                           -Wl,--wrap,readdir -Wl,--wrap,opendir -Wl,--wrap,closedir -Wl,--wrap,realtime_adddir \
                           -Wl,--wrap,HasFilesystem -Wl,--wrap,fim_db_get_path \
                           -Wl,--wrap,delete_target_file -Wl,--wrap,OS_MD5_SHA1_SHA256_File \
@@ -369,21 +374,22 @@ set(CREATE_DB_BASE_FLAGS "-Wl,--wrap,fim_send_scan_info -Wl,--wrap,send_syscheck
                           -Wl,--wrap=fim_db_transaction_sync_row -Wl,--wrap=fim_db_transaction_deleted_rows \
                           ${DEBUG_OP_WRAPPERS}")
 
-target_link_libraries(test_create_db SYSCHECK_O ${TEST_DEPS} fim_shared)
+target_link_libraries(test_fim_scan SYSCHECK_O ${TEST_DEPS} fim_shared)
 if(${TARGET} STREQUAL "winagent")
-    target_link_libraries(test_create_db "${CREATE_DB_BASE_FLAGS} -Wl,--wrap=w_get_file_permissions
+    target_link_libraries(test_fim_scan "${CREATE_DB_BASE_FLAGS} -Wl,--wrap=w_get_file_permissions
                                           -Wl,--wrap,getpid -Wl,--wrap=fim_db_get_count_registry_data \
                                           -Wl,--wrap=fim_db_get_count_registry_key -Wl,--wrap=syscom_dispatch \
                                           -Wl,--wrap=decode_win_acl_json,--wrap=w_get_file_attrs -Wl,--wrap=os_winreg_check \
                                           -Wl,--wrap,get_file_user -Wl,--wrap,fim_registry_scan \
                                           -Wl,--wrap,get_UTC_modification_time -Wl,--wrap,fim_sync_push_msg \
                                           -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize \
-                                          -Wl,--wrap=_imp__rsync_initialize -Wl,--wrap=fim_db_teardown"
+                                          -Wl,--wrap=_imp__rsync_initialize -Wl,--wrap=fim_db_teardown \
+                                          -Wl,--wrap=utf8_stat64"
                                           fimdb)
 else()
-    target_link_libraries(test_create_db "${CREATE_DB_BASE_FLAGS} -Wl,--wrap=lstat -Wl,--wrap=count_watches \
+    target_link_libraries(test_fim_scan "${CREATE_DB_BASE_FLAGS} -Wl,--wrap=lstat -Wl,--wrap=count_watches \
                                           -Wl,--wrap,get_user -Wl,--wrap,realpath -Wl,--wrap,add_whodata_directory \
                                           -Wl,--wrap,atexit -Wl,--wrap,remove_audit_rule_syscheck")
 endif()
 
-add_test(NAME test_create_db COMMAND test_create_db)
+add_test(NAME test_fim_scan COMMAND test_fim_scan)

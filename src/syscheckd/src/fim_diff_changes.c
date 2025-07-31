@@ -136,10 +136,11 @@ int fim_diff_compare(const diff_data *diff);
  * @brief Generates the diff file with the result of the diff/fc command (only if nodiff is not configured)
  *
  * @param diff Structure with all the data necessary to compute differences
+ * @param is_file True if the diff is for a file
  *
  * @return String with the changes to add to the alert
  */
-char *fim_diff_generate(const diff_data *diff);
+char *fim_diff_generate(const diff_data *diff, bool is_file);
 
 /**
  * @brief Reads the diff file and generates the string with the differences
@@ -278,7 +279,7 @@ char *fim_registry_value_diff(const char *key_name,
         goto cleanup;
     }
 
-    if (diff_changes = fim_diff_generate(diff), !diff_changes){
+    if (diff_changes = fim_diff_generate(diff, false), !diff_changes){
         syscheck.diff_folder_size += backup_file_size;
         goto cleanup;
     }
@@ -462,7 +463,7 @@ char *fim_file_diff(const char *filename, const directory_t *configuration) {
         goto cleanup;
     }
 
-    if (diff_changes = fim_diff_generate(diff), !diff_changes){
+    if (diff_changes = fim_diff_generate(diff, true), !diff_changes){
         syscheck.diff_folder_size += backup_file_size;
         goto cleanup;
     }
@@ -486,6 +487,16 @@ diff_data *initialize_file_diff_data(const char *filename, const directory_t *co
     char buffer[PATH_MAX];
     char abs_diff_dir_path[PATH_MAX];
     os_sha1 encoded_path;
+    char *path = NULL;
+
+#ifdef WIN32
+    path = auto_to_ansi(filename);
+    if (!path) {
+        return NULL;
+    }
+#else
+    os_strdup(filename, path);
+#endif
 
     os_calloc(1, sizeof(diff_data), diff);
 
@@ -497,10 +508,12 @@ diff_data *initialize_file_diff_data(const char *filename, const directory_t *co
     }
 
     // Get absolute path of filename:
-    if (abspath(filename, buffer, sizeof(buffer)) == NULL) {
+    if (abspath(path, buffer, sizeof(buffer)) == NULL) {
         merror(FIM_ERROR_GET_ABSOLUTE_PATH, filename, strerror(errno), errno);
+        os_free(path);
         goto error;
     }
+    os_free(path);
 
     os_strdup(buffer, diff->file_origin);
 
@@ -668,7 +681,7 @@ int fim_diff_compare(const diff_data *diff) {
     return 0;
 }
 
-char *fim_diff_generate(const diff_data *diff) {
+char *fim_diff_generate(const diff_data *diff, bool is_file) {
     char diff_cmd[PATH_MAX * 3 + OS_SIZE_1024];
     char *diff_str = NULL;
     char *uncompress_file_filtered = NULL;
@@ -677,7 +690,16 @@ char *fim_diff_generate(const diff_data *diff) {
     int status = -1;
 
     uncompress_file_filtered = filter(diff->uncompress_file);
+#ifdef WIN32
+    if (is_file) {
+        file_origin_filtered = utf8_GetShortPathName(diff->file_origin);
+    }
+    if (file_origin_filtered == NULL) {
+        file_origin_filtered = filter(diff->file_origin);
+    }
+#else
     file_origin_filtered = filter(diff->file_origin);
+#endif
     diff_file_filtered = filter(diff->diff_file);
 
     if (!(uncompress_file_filtered && file_origin_filtered && diff_file_filtered)) {
@@ -953,11 +975,23 @@ void fim_diff_process_delete_file(const char *filename){
     char buffer[PATH_MAX];
     int ret;
     os_sha1 encoded_path;
+    char *path = NULL;
 
-    if (abspath(filename, buffer, sizeof(buffer)) == NULL) {
-        merror(FIM_ERROR_GET_ABSOLUTE_PATH, filename, strerror(errno), errno);
+#ifdef WIN32
+    path = auto_to_ansi(filename);
+    if (!path) {
         return;
     }
+#else
+    os_strdup(filename, path);
+#endif
+
+    if (abspath(path, buffer, sizeof(buffer)) == NULL) {
+        merror(FIM_ERROR_GET_ABSOLUTE_PATH, filename, strerror(errno), errno);
+        os_free(path);
+        return;
+    }
+    os_free(path);
 
     OS_SHA1_Str(buffer, -1, encoded_path);
 
@@ -976,29 +1010,6 @@ void fim_diff_process_delete_file(const char *filename){
 }
 
 #ifdef WIN32
-void fim_diff_process_delete_registry(const char *key_name, int arch){
-    char full_path[PATH_MAX];
-    os_sha1 encoded_key;
-    int ret;
-
-    OS_SHA1_Str(key_name, strlen(key_name), encoded_key);
-
-    if (arch){
-        snprintf(full_path, PATH_MAX, "%s/registry/[x64] %s", DIFF_DIR, encoded_key);
-    } else {
-        snprintf(full_path, PATH_MAX, "%s/registry/[x32] %s", DIFF_DIR, encoded_key);
-    }
-
-    ret = fim_diff_delete_compress_folder(full_path);
-    if(ret == -1){
-        merror(FIM_DIFF_DELETE_DIFF_FOLDER_ERROR, full_path);
-    } else if (ret == -2){
-        mdebug2(FIM_DIFF_FOLDER_NOT_EXIST, full_path);
-    }
-
-    return;
-}
-
 void fim_diff_process_delete_value(const char *key_name, const char *value_name, int arch){
     char full_path[PATH_MAX];
     os_sha1 encoded_key;

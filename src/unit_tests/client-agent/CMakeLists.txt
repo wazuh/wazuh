@@ -86,7 +86,8 @@ list(APPEND client-agent_flags "-Wl,--wrap,pthread_mutex_lock -Wl,--wrap,pthread
                                 -Wl,--wrap=Start_win32_Syscheck -Wl,--wrap=is_fim_shutdown -Wl,--wrap=fim_db_teardown \
                                 -Wl,--wrap=_imp__dbsync_initialize -Wl,--wrap=_imp__rsync_initialize")
 else()
-list(APPEND client-agent_flags "-Wl,--wrap,pthread_mutex_lock -Wl,--wrap,pthread_mutex_unlock")
+list(APPEND client-agent_flags "-Wl,--wrap,pthread_mutex_lock -Wl,--wrap,pthread_mutex_unlock \
+                                -Wl,--wrap,getDefine_Int -Wl,--wrap,_minfo -Wl,--wrap,_mwarn")
 endif()
 
 if(${TARGET} STREQUAL "agent")

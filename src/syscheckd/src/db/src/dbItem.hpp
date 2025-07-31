@@ -11,23 +11,16 @@
 
 #ifndef _DBITEM_HPP
 #define _DBITEM_HPP
-#include "syscheck.h"
-#include "json.hpp"
 #include "fimDBSpecialization.h"
+#include "json.hpp"
+#include "syscheck.h"
 
 class DBItem
 {
     public:
-        DBItem(const std::string& identifier,
-               const unsigned int& scanned,
-               const time_t& lastEvent,
-               const std::string& checksum,
-               const fim_event_mode& mode)
-            : m_identifier( identifier )
-            , m_scanned( scanned )
-            , m_lastEvent( lastEvent )
-            , m_checksum( checksum )
-            , m_mode( mode )
+        DBItem(const std::string& identifier, const std::string& checksum)
+            : m_identifier(identifier)
+            , m_checksum(checksum)
         {
             FIMDBCreator<OS_TYPE>::encodeString(m_identifier);
             m_oldData = false;
@@ -38,17 +31,10 @@ class DBItem
         // LCOV_EXCL_STOP
         virtual fim_entry* toFimEntry() = 0;
         virtual const nlohmann::json* toJSON() const = 0;
-        bool state()
-        {
-            return m_scanned;
-        };
 
     protected:
-        std::string             m_identifier;
-        unsigned int            m_scanned;
-        time_t                  m_lastEvent;
-        std::string             m_checksum;
-        fim_event_mode          m_mode;
-        bool                    m_oldData;
+        std::string m_identifier;
+        std::string m_checksum;
+        bool m_oldData;
 };
 #endif //_DBITEM_HPP

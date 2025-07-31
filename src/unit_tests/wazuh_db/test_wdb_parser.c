@@ -2217,6 +2217,346 @@ void test_wdb_parse_dbsync_deleted_err(void ** state) {
     os_free(query);
 }
 
+/* wdb_parse_dbsync groups*/
+void test_wdb_parse_dbsync_groups_no_operation(void ** state) {
+
+    test_struct_t * data = (test_struct_t *) *state;
+    char * query = NULL;
+
+    os_strdup("groups ", query);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "DBSYNC query: groups");
+
+    const int ret = wdb_parse_dbsync(data->wdb, query, data->output);
+
+    assert_string_equal(data->output, "err Invalid dbsync query syntax, near 'groups'");
+    assert_int_equal(ret, OS_INVALID);
+
+    os_free(query);
+}
+
+void test_wdb_parse_dbsync_groups_no_delta_data(void ** state) {
+    test_struct_t * data = (test_struct_t *) *state;
+    char * query = NULL;
+
+    os_strdup("groups INSERTED ", query);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "DBSYNC query: groups");
+    const int ret = wdb_parse_dbsync(data->wdb, query, data->output);
+
+    assert_string_equal(data->output, "err Invalid dbsync query syntax, near 'groups'");
+    assert_int_equal(ret, OS_INVALID);
+
+    os_free(query);
+}
+
+void test_wdb_parse_dbsync_groups_delta_data_not_json(void ** state) {
+    test_struct_t * data = (test_struct_t *) *state;
+    char * query = NULL;
+
+    os_strdup("groups INSERTED {\"unclosed\":\"json", query);
+
+    expect_string(__wrap__mdebug1, formatted_msg, DB_DELTA_PARSING_ERR);
+    expect_string(__wrap__mdebug2, formatted_msg, "JSON error near: json");
+
+    const int ret = wdb_parse_dbsync(data->wdb, query, data->output);
+
+    assert_string_equal(data->output, "err");
+    assert_int_equal(ret, OS_INVALID);
+
+    os_free(query);
+}
+
+void test_wdb_parse_dbsync_groups_invalid_operation(void ** state) {
+    test_struct_t * data = (test_struct_t *) *state;
+    char * query = NULL;
+
+    os_strdup("groups NOOP {}", query);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Invalid operation type: NOOP");
+
+    const int ret = wdb_parse_dbsync(data->wdb, query, data->output);
+
+    assert_string_equal(data->output, "err");
+    assert_int_equal(ret, OS_INVALID);
+
+    os_free(query);
+}
+
+void test_wdb_parse_dbsync_groups_insert_ok(void ** state) {
+
+    test_struct_t * data = (test_struct_t *) *state;
+    char * query = NULL;
+
+    os_strdup("groups INSERTED {\"key\": \"value\"}", query);
+
+    expect_function_call(__wrap_wdb_upsert_dbsync);
+    will_return(__wrap_wdb_upsert_dbsync, true);
+
+    const int ret = wdb_parse_dbsync(data->wdb, query, data->output);
+
+    assert_string_equal(data->output, "ok ");
+    assert_int_equal(ret, OS_SUCCESS);
+
+    os_free(query);
+}
+
+void test_wdb_parse_dbsync_groups_insert_err(void ** state) {
+
+    test_struct_t * data = (test_struct_t *) *state;
+    char * query = NULL;
+
+    os_strdup("groups INSERTED {\"key\": \"value\"}", query);
+
+    expect_function_call(__wrap_wdb_upsert_dbsync);
+    will_return(__wrap_wdb_upsert_dbsync, false);
+
+    const int ret = wdb_parse_dbsync(data->wdb, query, data->output);
+
+    assert_string_equal(data->output, "err");
+    assert_int_equal(ret, OS_INVALID);
+
+    os_free(query);
+}
+
+void test_wdb_parse_dbsync_groups_modified_ok(void ** state) {
+    test_struct_t * data = (test_struct_t *) *state;
+    char * query = NULL;
+
+    os_strdup("groups MODIFIED {\"key\": \"value\"}", query);
+
+    expect_function_call(__wrap_wdb_upsert_dbsync);
+    will_return(__wrap_wdb_upsert_dbsync, true);
+
+    const int ret = wdb_parse_dbsync(data->wdb, query, data->output);
+
+    assert_string_equal(data->output, "ok ");
+    assert_int_equal(ret, OS_SUCCESS);
+
+    os_free(query);
+}
+
+void test_wdb_parse_dbsync_groups_modified_err(void ** state) {
+    test_struct_t * data = (test_struct_t *) *state;
+    char * query = NULL;
+
+    os_strdup("groups MODIFIED {\"key\": \"value\"}", query);
+
+    expect_function_call(__wrap_wdb_upsert_dbsync);
+    will_return(__wrap_wdb_upsert_dbsync, false);
+
+    const int ret = wdb_parse_dbsync(data->wdb, query, data->output);
+
+    assert_string_equal(data->output, "err");
+    assert_int_equal(ret, OS_INVALID);
+
+    os_free(query);
+}
+
+void test_wdb_parse_dbsync_groups_deleted_ok(void ** state) {
+    test_struct_t * data = (test_struct_t *) *state;
+    char * query = NULL;
+
+    os_strdup("groups DELETED {\"key\": \"value\"}", query);
+
+    expect_function_call(__wrap_wdb_delete_dbsync);
+    will_return(__wrap_wdb_delete_dbsync, true);
+
+    const int ret = wdb_parse_dbsync(data->wdb, query, data->output);
+
+    assert_string_equal(data->output, "ok ");
+    assert_int_equal(ret, OS_SUCCESS);
+
+    os_free(query);
+}
+
+void test_wdb_parse_dbsync_groups_deleted_err(void ** state) {
+    test_struct_t * data = (test_struct_t *) *state;
+    char * query = NULL;
+
+    os_strdup("groups DELETED {\"key\": \"value\"}", query);
+
+    expect_function_call(__wrap_wdb_delete_dbsync);
+    will_return(__wrap_wdb_delete_dbsync, false);
+
+    const int ret = wdb_parse_dbsync(data->wdb, query, data->output);
+
+    assert_string_equal(data->output, "ok ");
+    assert_int_equal(ret, OS_SUCCESS);
+
+    os_free(query);
+}
+
+/* wdb_parse_dbsync users*/
+void test_wdb_parse_dbsync_users_no_operation(void ** state) {
+
+    test_struct_t * data = (test_struct_t *) *state;
+    char * query = NULL;
+
+    os_strdup("users ", query);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "DBSYNC query: users");
+
+    const int ret = wdb_parse_dbsync(data->wdb, query, data->output);
+
+    assert_string_equal(data->output, "err Invalid dbsync query syntax, near 'users'");
+    assert_int_equal(ret, OS_INVALID);
+
+    os_free(query);
+}
+
+void test_wdb_parse_dbsync_users_no_delta_data(void ** state) {
+    test_struct_t * data = (test_struct_t *) *state;
+    char * query = NULL;
+
+    os_strdup("users INSERTED ", query);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "DBSYNC query: users");
+    const int ret = wdb_parse_dbsync(data->wdb, query, data->output);
+
+    assert_string_equal(data->output, "err Invalid dbsync query syntax, near 'users'");
+    assert_int_equal(ret, OS_INVALID);
+
+    os_free(query);
+}
+
+void test_wdb_parse_dbsync_users_delta_data_not_json(void ** state) {
+    test_struct_t * data = (test_struct_t *) *state;
+    char * query = NULL;
+
+    os_strdup("users INSERTED {\"unclosed\":\"json", query);
+
+    expect_string(__wrap__mdebug1, formatted_msg, DB_DELTA_PARSING_ERR);
+    expect_string(__wrap__mdebug2, formatted_msg, "JSON error near: json");
+
+    const int ret = wdb_parse_dbsync(data->wdb, query, data->output);
+
+    assert_string_equal(data->output, "err");
+    assert_int_equal(ret, OS_INVALID);
+
+    os_free(query);
+}
+
+void test_wdb_parse_dbsync_users_invalid_operation(void ** state) {
+    test_struct_t * data = (test_struct_t *) *state;
+    char * query = NULL;
+
+    os_strdup("users NOOP {}", query);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Invalid operation type: NOOP");
+
+    const int ret = wdb_parse_dbsync(data->wdb, query, data->output);
+
+    assert_string_equal(data->output, "err");
+    assert_int_equal(ret, OS_INVALID);
+
+    os_free(query);
+}
+
+void test_wdb_parse_dbsync_users_insert_ok(void ** state) {
+
+    test_struct_t * data = (test_struct_t *) *state;
+    char * query = NULL;
+
+    os_strdup("users INSERTED {\"key\": \"value\"}", query);
+
+    expect_function_call(__wrap_wdb_upsert_dbsync);
+    will_return(__wrap_wdb_upsert_dbsync, true);
+
+    const int ret = wdb_parse_dbsync(data->wdb, query, data->output);
+
+    assert_string_equal(data->output, "ok ");
+    assert_int_equal(ret, OS_SUCCESS);
+
+    os_free(query);
+}
+
+void test_wdb_parse_dbsync_users_insert_err(void ** state) {
+
+    test_struct_t * data = (test_struct_t *) *state;
+    char * query = NULL;
+
+    os_strdup("users INSERTED {\"key\": \"value\"}", query);
+
+    expect_function_call(__wrap_wdb_upsert_dbsync);
+    will_return(__wrap_wdb_upsert_dbsync, false);
+
+    const int ret = wdb_parse_dbsync(data->wdb, query, data->output);
+
+    assert_string_equal(data->output, "err");
+    assert_int_equal(ret, OS_INVALID);
+
+    os_free(query);
+}
+
+void test_wdb_parse_dbsync_users_modified_ok(void ** state) {
+    test_struct_t * data = (test_struct_t *) *state;
+    char * query = NULL;
+
+    os_strdup("users MODIFIED {\"key\": \"value\"}", query);
+
+    expect_function_call(__wrap_wdb_upsert_dbsync);
+    will_return(__wrap_wdb_upsert_dbsync, true);
+
+    const int ret = wdb_parse_dbsync(data->wdb, query, data->output);
+
+    assert_string_equal(data->output, "ok ");
+    assert_int_equal(ret, OS_SUCCESS);
+
+    os_free(query);
+}
+
+void test_wdb_parse_dbsync_users_modified_err(void ** state) {
+    test_struct_t * data = (test_struct_t *) *state;
+    char * query = NULL;
+
+    os_strdup("users MODIFIED {\"key\": \"value\"}", query);
+
+    expect_function_call(__wrap_wdb_upsert_dbsync);
+    will_return(__wrap_wdb_upsert_dbsync, false);
+
+    const int ret = wdb_parse_dbsync(data->wdb, query, data->output);
+
+    assert_string_equal(data->output, "err");
+    assert_int_equal(ret, OS_INVALID);
+
+    os_free(query);
+}
+
+void test_wdb_parse_dbsync_users_deleted_ok(void ** state) {
+    test_struct_t * data = (test_struct_t *) *state;
+    char * query = NULL;
+
+    os_strdup("users DELETED {\"key\": \"value\"}", query);
+
+    expect_function_call(__wrap_wdb_delete_dbsync);
+    will_return(__wrap_wdb_delete_dbsync, true);
+
+    const int ret = wdb_parse_dbsync(data->wdb, query, data->output);
+
+    assert_string_equal(data->output, "ok ");
+    assert_int_equal(ret, OS_SUCCESS);
+
+    os_free(query);
+}
+
+void test_wdb_parse_dbsync_users_deleted_err(void ** state) {
+    test_struct_t * data = (test_struct_t *) *state;
+    char * query = NULL;
+
+    os_strdup("users DELETED {\"key\": \"value\"}", query);
+
+    expect_function_call(__wrap_wdb_delete_dbsync);
+    will_return(__wrap_wdb_delete_dbsync, false);
+
+    const int ret = wdb_parse_dbsync(data->wdb, query, data->output);
+
+    assert_string_equal(data->output, "ok ");
+    assert_int_equal(ret, OS_SUCCESS);
+
+    os_free(query);
+}
+
 /* wdb_parse_global_backup */
 
 void test_wdb_parse_global_backup_invalid_syntax(void **state) {
@@ -2730,6 +3070,28 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_parse_dbsync_modified_err, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_dbsync_deleted_ok, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_dbsync_deleted_err, test_setup, test_teardown),
+        /* dbsync tests users */
+        cmocka_unit_test_setup_teardown(test_wdb_parse_dbsync_users_no_operation, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_dbsync_users_no_delta_data, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_dbsync_users_invalid_operation, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_dbsync_users_delta_data_not_json, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_dbsync_users_insert_ok, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_dbsync_users_insert_err, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_dbsync_users_modified_ok, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_dbsync_users_modified_err, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_dbsync_users_deleted_ok, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_dbsync_users_deleted_err, test_setup, test_teardown),
+        /* dbsync tests groups */
+        cmocka_unit_test_setup_teardown(test_wdb_parse_dbsync_groups_no_operation, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_dbsync_groups_no_delta_data, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_dbsync_groups_invalid_operation, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_dbsync_groups_delta_data_not_json, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_dbsync_groups_insert_ok, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_dbsync_groups_insert_err, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_dbsync_groups_modified_ok, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_dbsync_groups_modified_err, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_dbsync_groups_deleted_ok, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_dbsync_groups_deleted_err, test_setup, test_teardown),
         /* wdb_parse_global_backup */
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_backup_invalid_syntax, test_setup_global, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_backup_missing_action, test_setup_global, test_teardown),

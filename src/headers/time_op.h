@@ -16,7 +16,9 @@
 #ifndef TIME_OP_H
 #define TIME_OP_H
 
+#include <stdio.h>
 #include <time.h>
+#include <sys/time.h>
 
 /**
  * @brief Get the current calendar time
@@ -87,5 +89,13 @@ long long int get_windows_file_time_epoch(FILETIME ft);
  * @return Boolean indicating whether the year is leap.
  */
 bool is_leap_year(int year);
+
+/**
+ * @brief Function to get the current UTC time in ISO8601 format.
+ *
+ * @param buffer Buffer to store the time.
+ * @param size Size of the buffer.
+ */
+void get_iso8601_utc_time(char *buffer, size_t size);
 
 #endif // TIME_OP_H

@@ -1173,6 +1173,32 @@ components:
               description: "Items that successfully applied the API call action"
               items:
                 $ref: '#/components/schemas/SyscollectorNetwork'
+    
+    AllItemsResponseSyscollectorUsers:
+      allOf:
+        - $ref: '#/components/schemas/AllItemsResponse'
+        - type: object
+          required:
+            - affected_items
+          properties:
+            affected_items:
+              type: array
+              description: "Items that successfully applied the API call action"
+              items:
+                $ref: '#/components/schemas/SyscollectorUser'
+    
+    AllItemsResponseSyscollectorGroups:
+      allOf:
+        - $ref: '#/components/schemas/AllItemsResponse'
+        - type: object
+          required:
+            - affected_items
+          properties:
+            affected_items:
+              type: array
+              description: "Items that successfully applied the API call action"
+              items:
+                $ref: '#/components/schemas/SyscollectorGroup'
 
     AllItemsResponseUsers:
       allOf:
@@ -5286,6 +5312,158 @@ components:
         agent_id:
           $ref: '#/components/schemas/AgentID'
 
+    SyscollectorUser:
+      type: object
+      properties:
+        scan:
+          $ref: '#/components/schemas/ScanIdTime'
+        agent_id:
+          $ref: '#/components/schemas/AgentID'
+        user:
+          type: object
+          description: "User information"
+          properties:
+            name:
+              type: string
+              description: "User name"
+            full_name:
+              type: string
+              description: "User full name"
+            home:
+              type: string
+              description: "User home directory"
+            id:
+              type: integer
+              description: "User ID"
+            uid_signed:
+              type: integer
+              description: "User signed UID"
+            uuid:
+              type: string
+              description: "User UUID"
+            groups:
+              type: string
+              description: "User groups"
+            group_id:
+              type: integer
+              description: "User group ID"
+            group_id_signed:
+              type: integer
+              description: "User signed group ID"
+            created:
+              type: number
+              format: float
+              description: "User creation timestamp"
+            roles:
+              type: string
+              description: "User roles"
+            shell:
+              type: string
+              description: "User shell"
+            type:
+              type: string
+              description: "User type"
+            is_hidden:
+              type: integer
+              description: "User visibility"
+            is_remote:
+              type: integer
+              description: "User remote accessibility"
+            last_login:
+              type: integer
+              description: "User last login"
+            auth_failed_count:
+              type: number
+              format: float
+              description: "Number of authentication failures"
+            auth_failed_timestamp:
+              type: number
+              format: float
+              description: "Last authentication failure timestamp"
+            password_expiration_date:
+              type: string
+              description: "Password expiration date"
+            password_hash_algorithm:
+              type: string
+              description: "Password hash algorithm"
+            password_inactive_days:
+              type: integer
+              description: "Password inactive days"
+            password_last_change:
+              type: number
+              format: float
+              description: "Password last change"
+            password_max_days_between_changes:
+              type: integer
+              description: "Password maximum number of days between changes"
+            password_min_days_between_changes:
+              type: integer
+              description: "Password minimum number of days between changes"
+            password_status:
+              type: string
+              description: "Password status"
+            password_warning_days_before_expiration:
+              type: integer
+              description: "Password warnings before expiration"
+        process_pid:
+          type: integer
+          description: "Process ID"
+        host_ip:
+          type: string
+          description: "Host IP address"
+        login:
+          type: object
+          description: "User login details"
+          properties:
+            status:
+              type: integer
+              description: "Login status"
+            tty:
+              type: string
+              description: "Login TTY"
+            type:
+              type: string
+              description: "Login type"
+        checksum:
+          type: string
+          description: "User checksum"
+
+    SyscollectorGroup:
+      type: object
+      properties:
+        scan:
+          $ref: '#/components/schemas/ScanIdTime'
+        agent_id:
+          $ref: '#/components/schemas/AgentID'
+        group:
+          type: object
+          description: "Group information"
+          properties:
+            id:
+              type: integer
+              description: "Group ID"
+            name:
+              type: string
+              description: "Group name"
+            description:
+              type: string
+              description: "Group description"
+            id_signed:
+              type: integer
+              description: "Group signed ID"
+            uuid:
+              type: string
+              description: "Group UUID"
+            is_hidden:
+              type: integer
+              description: "Group visibility"
+            users:
+              type: string
+              description: "Group users"
+        checksum:
+          type: string
+          description: "Group checksum"
+
     # Lists models
     CDBList:
       allOf:
@@ -6115,7 +6293,7 @@ components:
       in: query
       name: purge
       description: |
-        Permanently delete an agent from the key store. The wazuh-authd `purge` configuration option has 
+        Permanently delete an agent from the key store. The wazuh-authd `purge` configuration option has
         precedence over this parameter, when enabled, agents will be permanently deleted regardless of this value.
       schema:
         type: boolean
@@ -9001,7 +9179,7 @@ paths:
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
-  
+
   /agents/summary:
     get:
       tags:
@@ -17130,6 +17308,151 @@ paths:
                       pid: "1"
                       fgroup: "root"
                       ruser: "root"
+                      agent_id: "001"
+                  total_affected_items: 1
+                  total_failed_items: 0
+                  failed_items: []
+                message: "All specified syscollector information was returned"
+                error: 0
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+  
+  /syscollector/{agent_id}/users:
+    get:
+      tags:
+        - Syscollector
+      summary: "Get agent users"
+      operationId: api.controllers.syscollector_controller.get_user_info
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/syscollector:read'
+      parameters:
+        - $ref: '#/components/parameters/agent_id'
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
+        - $ref: '#/components/parameters/select'
+        - $ref: '#/components/parameters/query'
+        - $ref: '#/components/parameters/distinct'
+      responses:
+        '200':
+          description: "Return an agent's user results"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponseSyscollectorUsers'
+              example:
+                data:
+                  affected_items:
+                    - login:
+                        status: 0
+                        tty: ""
+                        type: ""
+                      scan:
+                        id: 0
+                        time: "2025-07-16T08:23:57+00:00"
+                      user:
+                        auth_failed_count: 0
+                        full_name: root
+                        group_id: 0
+                        group_id_signed: 0
+                        groups: root
+                        home: "/root"
+                        id: 0
+                        is_hidden: 0
+                        is_remote: 1
+                        name: root
+                        password_last_change: 1752451200
+                        password_max_days_between_changes: 99999
+                        password_min_days_between_changes: 0
+                        password_status: locked
+                        password_warning_days_before_expiration: 7
+                        roles: ""
+                        shell: "/bin/bash"
+                        type: ""
+                        uid_signed: 0
+                        uuid: ""
+                      checksum: 062ab82fc0c2619847ce2d688ed1bda2d2813dcb
+                      process_pid: 0
+                      host_ip: ""
+                      agent_id: "001"
+                  total_affected_items: 1
+                  total_failed_items: 0
+                  failed_items: []
+                message: "All specified syscollector information was returned"
+                error: 0
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+  
+  /syscollector/{agent_id}/groups:
+    get:
+      tags:
+        - Syscollector
+      summary: "Get agent groups"
+      operationId: api.controllers.syscollector_controller.get_group_info
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/syscollector:read'
+      parameters:
+        - $ref: '#/components/parameters/agent_id'
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
+        - $ref: '#/components/parameters/select'
+        - $ref: '#/components/parameters/query'
+        - $ref: '#/components/parameters/distinct'
+      responses:
+        '200':
+          description: "Return an agent's group results"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponseSyscollectorGroups'
+              example:
+                data:
+                  affected_items:
+                    - group:
+                        description: ""
+                        id: 101
+                        id_signed: 101
+                        is_hidden: 0
+                        name: _ssh
+                        users: ""
+                        uuid: ""
+                      scan:
+                        id: 0
+                        time: "2025-07-16T07:52:59+00:00"
+                      checksum: 077252650e9f983e2f31b271c00e9050f7324756
                       agent_id: "001"
                   total_affected_items: 1
                   total_failed_items: 0

@@ -1,6 +1,27 @@
 [
     {
         "index_name": "wazuh-states-inventory-hotfixes-cluster01",
-        "data": []
+        "data": [
+            {
+                "agent": {
+                    "id": "001",
+                    "name": "DESKTOP-5RL9J34",
+                    "version": "v4.10.1"
+                },
+                "package": {
+                    "hotfix": {
+                        "name": "KB5034760"
+                    }
+                },
+                "wazuh": {
+                    "cluster": {
+                        "name": "cluster01"
+                    },
+                    "schema": {
+                        "version": "1.0"
+                    }
+                }
+            }
+        ]
     }
 ]

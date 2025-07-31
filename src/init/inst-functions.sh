@@ -944,7 +944,6 @@ InstallCommon()
   ${INSTALL} -m 0750 -o root -g 0 wazuh-logcollector ${INSTALLDIR}/bin
   ${INSTALL} -m 0750 -o root -g 0 syscheckd/build/bin/wazuh-syscheckd ${INSTALLDIR}/bin
   ${INSTALL} -m 0750 -o root -g 0 wazuh-execd ${INSTALLDIR}/bin
-  ${INSTALL} -m 0750 -o root -g 0 manage_agents ${INSTALLDIR}/bin
   ${INSTALL} -m 0750 -o root -g 0 ${OSSEC_CONTROL_SRC} ${INSTALLDIR}/bin/wazuh-control
   ${INSTALL} -m 0750 -o root -g 0 wazuh-modulesd ${INSTALLDIR}/bin/
 
@@ -1153,6 +1152,8 @@ InstallLocal()
     ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/wazuh-states-inventory-interfaces.json ${INSTALLDIR}/templates/wazuh-states-inventory-interfaces.json
     ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/wazuh-states-inventory-hotfixes.json ${INSTALLDIR}/templates/wazuh-states-inventory-hotfixes.json
     ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/wazuh-states-inventory-ports.json ${INSTALLDIR}/templates/wazuh-states-inventory-ports.json
+    ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/wazuh-states-inventory-users.json ${INSTALLDIR}/templates/wazuh-states-inventory-users.json
+    ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/wazuh-states-inventory-groups.json ${INSTALLDIR}/templates/wazuh-states-inventory-groups.json
 
     ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/vulnerability_scanner/indexer/template/update-mappings.json ${INSTALLDIR}/templates/vd_states_update_mappings.json
     ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/wazuh-states-fim-files-update.json ${INSTALLDIR}/templates/wazuh-states-fim-files-update.json
@@ -1166,6 +1167,8 @@ InstallLocal()
     ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/wazuh-states-inventory-interfaces-update.json ${INSTALLDIR}/templates/wazuh-states-inventory-interfaces-update.json
     ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/wazuh-states-inventory-hotfixes-update.json ${INSTALLDIR}/templates/wazuh-states-inventory-hotfixes-update.json
     ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/wazuh-states-inventory-ports-update.json ${INSTALLDIR}/templates/wazuh-states-inventory-ports-update.json
+    ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/wazuh-states-inventory-users-update.json ${INSTALLDIR}/templates/wazuh-states-inventory-users-update.json
+    ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/wazuh-states-inventory-groups-update.json ${INSTALLDIR}/templates/wazuh-states-inventory-groups-update.json
 
     # Install Task Manager files
     ${INSTALL} -d -m 0770 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/tasks
@@ -1389,6 +1392,7 @@ InstallAgent()
 
     InstallSecurityConfigurationAssessmentFiles "agent"
 
+    ${INSTALL} -m 0750 -o root -g 0 manage_agents ${INSTALLDIR}/bin
     ${INSTALL} -m 0750 -o root -g 0 wazuh-agentd ${INSTALLDIR}/bin
     ${INSTALL} -m 0750 -o root -g 0 agent-auth ${INSTALLDIR}/bin
 

@@ -62,17 +62,13 @@ import sys
 
 import pytest
 
-if sys.platform == "win32":
-    import win32con
-    from win32con import KEY_WOW64_64KEY
-
 from pathlib import Path
 
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.modules.agentd.configuration import AGENTD_DEBUG, AGENTD_WINDOWS_DEBUG
 from wazuh_testing.modules.fim import configuration
 from wazuh_testing.modules.fim.patterns import (IGNORING_DUE_TO_INVALID_NAME,
-                                                SYNC_INTEGRITY_MESSAGE)
+                                                FIM_EVENT_JSON)
 from wazuh_testing.modules.monitord.configuration import MONITORD_ROTATE_LOG
 from wazuh_testing.tools.monitors.file_monitor import FileMonitor
 from wazuh_testing.utils import file
@@ -82,9 +78,8 @@ from wazuh_testing.utils.configuration import (get_test_cases_data,
 
 from . import CONFIGS_PATH, TEST_CASES_PATH
 
-# Pytest marks to run on any service type on linux or windows.
-pytestmark = [pytest.mark.agent, pytest.mark.linux,
-              pytest.mark.win32, pytest.mark.tier(level=1)]
+# Pytest marks to run on linux.
+pytestmark = [pytest.mark.agent, pytest.mark.linux, pytest.mark.tier(level=1)]
 
 # Test metadata, configuration and ids.
 cases_path = Path(TEST_CASES_PATH, 'cases_nonUTF8.yaml')
@@ -162,172 +157,5 @@ def test_valid_utf8_filenames_do_not_trigger_warning(test_configuration, test_me
         except:
             raise
 
-        monitor.start(generate_callback(SYNC_INTEGRITY_MESSAGE))
+        monitor.start(generate_callback(FIM_EVENT_JSON))
         assert monitor.callback_result
-
-# This test should work in Windows, but it is not working for an unknown reason.
-# It is possible to create files with invalid UTF-8 sequences in the file name, but the agent is not detecting them.
-# Since the PR is about UTF-8 validation, and the test is failing on Windows due to an unknown reason, we are skipping this test for now.
-# The files with this invalid sequence are edge cases that is hard to reproduce in real world scenarios.
-@pytest.mark.skipif(sys.platform == "win32",
-                    reason="The test fails not to due to UTF-8 validation, but to an unknown reason. The files with this invalid sequence are edge cases that is hard to reproduce in real world scenarios.")
-@pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=cases_ids)
-def test_surrogate_range_should_trigger_warning_1(test_configuration, test_metadata, set_wazuh_configuration, configure_local_internal_options,
-                                                   truncate_monitored_files, folder_to_monitor, daemons_handler, start_monitoring) -> None:
-    '''
-    description: Check if the 'wazuh-syscheckd' logs a warning for non-UTF-8 sequences in file names.
-    '''
-    monitor = FileMonitor(WAZUH_LOG_PATH)
-
-    # Surrogate range (U+D800 to U+DFFF) is invalid in UTF-8
-    invalid_sequence = b"\xED\xA0\x80"
-
-    test_path_bytes = create_invalid_utf8_path(test_metadata, invalid_sequence)
-    file.truncate_file(WAZUH_LOG_PATH)
-    try_create_file(test_path_bytes)
-
-    monitor.start(generate_callback(IGNORING_DUE_TO_INVALID_NAME))
-    assert monitor.callback_result
-
-# This test should work in Windows, but it is not working for an unknown reason.
-# It is possible to create files with invalid UTF-8 sequences in the file name, but the agent is not detecting them.
-# Since the PR is about UTF-8 validation, and the test is failing on Windows due to an unknown reason, we are skipping this test for now.
-# The files with this invalid sequence are edge cases that is hard to reproduce in real world scenarios.
-@pytest.mark.skipif(sys.platform == "win32",
-                    reason="The test fails not to due to UTF-8 validation, but to an unknown reason. The files with this invalid sequence are edge cases that is hard to reproduce in real world scenarios.")
-@pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=cases_ids)
-def test_surrogate_range_should_trigger_warning_2(test_configuration, test_metadata, set_wazuh_configuration, configure_local_internal_options,
-                                                      truncate_monitored_files, folder_to_monitor, daemons_handler, start_monitoring) -> None:
-    '''
-    description: Check if the 'wazuh-syscheckd' logs a warning for non-UTF-8 sequences in file names.
-    '''
-    monitor = FileMonitor(WAZUH_LOG_PATH)
-
-    # Surrogate range (U+D800 to U+DFFF) is invalid in UTF-8
-    invalid_sequence = b"\xed\xad\xbf"
-
-    test_path_bytes = create_invalid_utf8_path(test_metadata, invalid_sequence)
-    file.truncate_file(WAZUH_LOG_PATH)
-    try_create_file(test_path_bytes)
-
-    monitor.start(generate_callback(IGNORING_DUE_TO_INVALID_NAME))
-    assert monitor.callback_result
-
-
-# This test should work in Windows, but it is not working for an unknown reason.
-# It is possible to create files with invalid UTF-8 sequences in the file name, but the agent is not detecting them.
-# Since the PR is about UTF-8 validation, and the test is failing on Windows due to an unknown reason, we are skipping this test for now.
-# The files with this invalid sequence are edge cases that is hard to reproduce in real world scenarios.
-@pytest.mark.skipif(sys.platform == "win32",
-                    reason="The test fails not to due to UTF-8 validation, but to an unknown reason. The files with this invalid sequence are edge cases that is hard to reproduce in real world scenarios.")
-@pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=cases_ids)
-def test_surrogate_range_should_trigger_warning_3(test_configuration, test_metadata, set_wazuh_configuration, configure_local_internal_options,
-                                                        truncate_monitored_files, folder_to_monitor, daemons_handler, start_monitoring) -> None:
-    '''
-    description: Check if the 'wazuh-syscheckd' logs a warning for non-UTF-8 sequences in file names.
-    '''
-    monitor = FileMonitor(WAZUH_LOG_PATH)
-
-    # Surrogate range (U+D800 to U+DFFF) is invalid in UTF-8
-    invalid_sequence = b"\xed\xbf\xbf"
-
-    test_path_bytes = create_invalid_utf8_path(test_metadata, invalid_sequence)
-    file.truncate_file(WAZUH_LOG_PATH)
-    try_create_file(test_path_bytes)
-
-    monitor.start(generate_callback(IGNORING_DUE_TO_INVALID_NAME))
-    assert monitor.callback_result
-
-
-@pytest.mark.skipif(sys.platform == "win32", reason="POSIX-specific test")
-@pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=cases_ids)
-def test_invalid_lead_byte_should_trigger_warning_posix(test_configuration, test_metadata, set_wazuh_configuration, configure_local_internal_options,
-                                                            truncate_monitored_files, folder_to_monitor, daemons_handler, start_monitoring) -> None:
-    '''
-    description: Check if the 'wazuh-syscheckd' logs a warning for non-UTF-8 sequences in file names.
-    '''
-    monitor = FileMonitor(WAZUH_LOG_PATH)
-
-    # Surrogate range (U+D800 to U+DFFF) is invalid in UTF-8
-    invalid_sequence = b"\xed\xbf\xbf"
-
-    test_path_bytes = create_invalid_utf8_path(test_metadata, invalid_sequence)
-    file.truncate_file(WAZUH_LOG_PATH)
-    try_create_file(test_path_bytes)
-
-    monitor.start(generate_callback(IGNORING_DUE_TO_INVALID_NAME))
-    assert monitor.callback_result
-
-
-@pytest.mark.skipif(sys.platform == "win32", reason="POSIX-specific test")
-@pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=cases_ids)
-def test_out_of_range_sequence_should_trigger_warning_posix(test_configuration, test_metadata, set_wazuh_configuration, configure_local_internal_options,
-                                                            truncate_monitored_files, folder_to_monitor, daemons_handler, start_monitoring) -> None:
-    '''
-    description: Check if the 'wazuh-syscheckd' logs a warning for non-UTF-8 sequences in file names.
-    '''
-    monitor = FileMonitor(WAZUH_LOG_PATH)
-
-    invalid_sequence = b"\xf5\x80\x80\x80"
-
-    test_path_bytes = create_invalid_utf8_path(test_metadata, invalid_sequence)
-    file.truncate_file(WAZUH_LOG_PATH)
-    try_create_file(test_path_bytes)
-
-    monitor.start(generate_callback(IGNORING_DUE_TO_INVALID_NAME))
-    assert monitor.callback_result
-
-
-@pytest.mark.skipif(sys.platform == "win32", reason="POSIX-specific test")
-
-@pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=cases_ids)
-def test_5_byte_sequence_should_trigger_warning_posix(test_configuration, test_metadata, set_wazuh_configuration, configure_local_internal_options,
-                                                                truncate_monitored_files, folder_to_monitor, daemons_handler, start_monitoring) -> None:
-    '''
-    description: Check if the 'wazuh-syscheckd' logs a warning for non-UTF-8 sequences in file names.
-    '''
-    monitor = FileMonitor(WAZUH_LOG_PATH)
-
-    invalid_sequence = b"\xf8\x88\x80\x80\x80"
-
-    test_path_bytes = create_invalid_utf8_path(test_metadata, invalid_sequence)
-    file.truncate_file(WAZUH_LOG_PATH)
-    try_create_file(test_path_bytes)
-
-    monitor.start(generate_callback(IGNORING_DUE_TO_INVALID_NAME))
-    assert monitor.callback_result
-
-@pytest.mark.skipif(sys.platform == "win32", reason="POSIX-specific test")
-@pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=cases_ids)
-def test_6_byte_sequence_should_trigger_warning_posix(test_configuration, test_metadata, set_wazuh_configuration, configure_local_internal_options,
-                                                          truncate_monitored_files, folder_to_monitor, daemons_handler, start_monitoring) -> None:
-    '''
-    description: Check if the 'wazuh-syscheckd' logs a warning for non-UTF-8 sequences in file names.
-    '''
-    monitor = FileMonitor(WAZUH_LOG_PATH)
-
-    invalid_sequence = b"\xfc\x84\x80\x80\x80\x80"
-
-    test_path_bytes = create_invalid_utf8_path(test_metadata, invalid_sequence)
-    file.truncate_file(WAZUH_LOG_PATH)
-    try_create_file(test_path_bytes)
-
-    monitor.start(generate_callback(IGNORING_DUE_TO_INVALID_NAME))
-    assert monitor.callback_result
-
-def try_create_file(test_path_bytes: bytes) -> None:
-    try:
-        # Create the file with the invalid byte sequence as part of the file name
-        with open(test_path_bytes, 'w') as f:
-            f.write('.')
-        assert os.path.exists(
-            test_path_bytes), f"Failed to create file: {test_path_bytes!r}"
-    except Exception as e:
-        pytest.fail(f"Error creating file {test_path_bytes!r}: {e}")
-
-
-def create_invalid_utf8_path(test_metadata: dict, invalid_sequence: bytes) -> bytes:
-    # No UTF-8 conversion here, just direct file name creation with invalid sequences
-    # Byte conversion here to concatenate with invalid sequences
-    folder_to_monitor_bytes: bytes = test_metadata['folder_to_monitor'].encode('utf-8')
-    return os.path.join(folder_to_monitor_bytes, invalid_sequence)

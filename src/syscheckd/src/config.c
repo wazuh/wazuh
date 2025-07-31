@@ -204,6 +204,9 @@ cJSON *getSyscheckConfig(void) {
             if (dir_it->options & CHECK_INODE) {
                 cJSON_AddItemToArray(opts, cJSON_CreateString("check_inode"));
             }
+            if (dir_it->options & CHECK_DEVICE) {
+                cJSON_AddItemToArray(opts, cJSON_CreateString("check_device"));
+            }
             if (dir_it->options & REALTIME_ACTIVE) {
                 cJSON_AddItemToArray(opts, cJSON_CreateString("realtime"));
             }
@@ -293,6 +296,8 @@ cJSON *getSyscheckConfig(void) {
         cJSON_AddStringToObject(whodata,"startup_healthcheck","no");
     }
     cJSON_AddNumberToObject(whodata, "queue_size", syscheck.queue_size);
+
+    cJSON_AddStringToObject(whodata, "provider", syscheck.whodata_provider == EBPF_PROVIDER ? "ebpf" : "audit");
 
     cJSON_AddItemToObject(syscfg,"whodata",whodata);
 #endif
@@ -478,25 +483,14 @@ cJSON *getSyscheckConfig(void) {
 
     cJSON * synchronization = cJSON_CreateObject();
     cJSON_AddStringToObject(synchronization, "enabled", syscheck.enable_synchronization ? "yes" : "no");
-#ifdef WIN32
-    cJSON_AddStringToObject(synchronization, "registry_enabled",
-                            syscheck.enable_registry_synchronization ? "yes" : "no");
-#endif
-    cJSON_AddNumberToObject(synchronization, "queue_size", syscheck.sync_queue_size);
     cJSON_AddNumberToObject(synchronization, "interval", syscheck.sync_interval);
     cJSON_AddNumberToObject(synchronization, "max_eps", syscheck.sync_max_eps);
     cJSON_AddNumberToObject(synchronization, "response_timeout", syscheck.sync_response_timeout);
-    cJSON_AddNumberToObject(synchronization, "max_interval", syscheck.sync_max_interval);
-    cJSON_AddNumberToObject(synchronization, "thread_pool", syscheck.sync_thread_pool);
 
     cJSON_AddItemToObject(syscfg, "synchronization", synchronization);
 
     cJSON_AddNumberToObject(syscfg, "max_eps", syscheck.max_eps);
     cJSON_AddNumberToObject(syscfg, "process_priority", syscheck.process_priority);
-
-    // Add sql database information
-    cJSON_AddStringToObject(syscfg, "database", syscheck.database_store ? "memory" : "disk");
-
 
     cJSON_AddItemToObject(root,"syscheck",syscfg);
 

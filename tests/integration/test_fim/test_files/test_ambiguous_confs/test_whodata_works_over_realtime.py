@@ -172,7 +172,7 @@ def test_whodata_works_over_realtime(test_configuration, test_metadata, set_wazu
     assert callback_result
 
     event_data = get_fim_event_data(callback_result)
-    assert event_data.get('mode') == 'whodata'
+    assert event_data['file']['mode'] == 'whodata'
 
     # Remove the file
     file.remove_file(file_to_monitor)
@@ -182,4 +182,4 @@ def test_whodata_works_over_realtime(test_configuration, test_metadata, set_wazu
     assert callback_result
 
     event_data = get_fim_event_data(callback_result)
-    assert event_data.get('mode') == 'whodata'
+    assert event_data['file']['mode'] == 'whodata'
