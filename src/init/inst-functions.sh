@@ -968,13 +968,6 @@ InstallCommon()
         fi
     fi
 
-  rm wazuh-logcollector
-  rm syscheckd/build/bin/wazuh-syscheckd
-  rm wazuh-execd
-  rm manage_agents
-  rm wazuh-modulesd
-
-
   ${INSTALL} -m 0750 -o root -g 0 wazuh-logcollector ${INSTALLDIR}/bin
   ${INSTALL} -m 0750 -o root -g 0 syscheckd/build/bin/wazuh-syscheckd ${INSTALLDIR}/bin
   ${INSTALL} -m 0750 -o root -g 0 wazuh-execd ${INSTALLDIR}/bin
