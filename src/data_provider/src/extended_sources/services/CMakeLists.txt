@@ -47,6 +47,6 @@ if(UNIT_TEST)
       target_link_libraries(services gcov)
   endif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 
-  # add_subdirectory(tests)
+  add_subdirectory(tests)
 endif(UNIT_TEST)
 

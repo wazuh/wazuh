@@ -98,7 +98,6 @@ bool SystemdUnitsProvider::getSystemdUnits(std::vector<SystemdUnit>& output)
         return false;
     }
 
-    // Array of structs
     if (DBUS_TYPE_ARRAY != m_dbusWrapper->message_iter_get_arg_type(&iter))
     {
         std::cerr << "Expected an array." << std::endl;
@@ -173,10 +172,6 @@ bool SystemdUnitsProvider::getSystemdUnits(std::vector<SystemdUnit>& output)
                 {
                     unit.unitFileState = value;
                 }
-            }
-            else if (query.propertyName != "User")
-            {
-                std::cerr << "Failed to get property " << query.propertyName << " for " << unit.objectPath << std::endl;
             }
         }
 
