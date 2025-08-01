@@ -1,6 +1,6 @@
 add_library(conf STATIC
     src/conf.cpp
-    src/apiLoader.cpp
+    src/fileLoader.cpp
 )
 target_include_directories(conf
     PUBLIC
@@ -27,11 +27,11 @@ add_executable(conf_utest
 target_link_libraries(conf_utest GTest::gtest_main GTest::gmock conf)
 gtest_discover_tests(conf_utest)
 
-add_executable(conf_ctest
-    ${COMPONENT_SRC_DIR}/apiLoader_test.cpp
-)
+# add_executable(conf_ctest
+#     ${COMPONENT_SRC_DIR}/apiLoader_test.cpp
+# )
 
-target_link_libraries(conf_ctest PRIVATE conf GTest::gtest_main httpsrv)
-gtest_discover_tests(conf_ctest)
+# target_link_libraries(conf_ctest PRIVATE conf GTest::gtest_main httpsrv)
+# gtest_discover_tests(conf_ctest)
 
 endif(ENGINE_BUILD_TEST)

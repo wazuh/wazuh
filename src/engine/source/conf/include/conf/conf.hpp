@@ -2,6 +2,7 @@
 #define _CONFIG_CONFIG_HPP
 
 #include <memory>
+#include <sstream>
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -11,7 +12,7 @@
 #include <base/json.hpp>
 #include <base/logging.hpp>
 
-#include <conf/apiLoader.hpp>
+#include <conf/fileLoader.hpp>
 #include <conf/unitconf.hpp>
 
 namespace conf
@@ -50,6 +51,56 @@ std::string toStr(const U& value)
 
     throw std::runtime_error("The type is not supported.");
 }
+
+template<typename T>
+T convert(const std::string& value);
+
+template<>
+inline int convert<int>(const std::string& value)
+{
+    return std::stoi(value);
+}
+
+template<>
+inline int64_t convert<int64_t>(const std::string& value)
+{
+    return std::stoll(value);
+}
+
+template<>
+inline bool convert<bool>(const std::string& value)
+{
+    return value == "true";
+}
+
+template<>
+inline std::string convert<std::string>(const std::string& value)
+{
+    return value;
+}
+
+template<>
+inline std::vector<std::string> convert<std::vector<std::string>>(const std::string& value)
+{
+    std::vector<std::string> result;
+    std::istringstream ss(value);
+    std::string item;
+    while (std::getline(ss, item, ','))
+    {
+        // Trim left
+        item.erase(item.begin(), std::find_if(item.begin(), item.end(), [](unsigned char ch) {
+            return !std::isspace(ch);
+        }));
+
+        // Trim right
+        item.erase(std::find_if(item.rbegin(), item.rend(), [](unsigned char ch) {
+            return !std::isspace(ch);
+        }).base(), item.end());
+
+        result.push_back(item);
+    }
+    return result;
+}
 } // namespace
 /**
  * @brief Engine configuration.
@@ -57,9 +108,9 @@ std::string toStr(const U& value)
 class Conf final
 {
 private:
-    json::Json m_apiConfig; ///< The configuration from the framework API.
+    OptionMap m_fileConfig; ///< The configuration from the framework API.
     std::unordered_map<std::string, std::shared_ptr<internal::BaseUnitConf>> m_units; ///< The configuration units.
-    std::shared_ptr<IApiLoader> m_apiLoader;                                          ///< The API loader.
+    std::shared_ptr<IFileLoader> m_fileLoader;                                          ///< The API loader.
 
     /**
      * @brief Validate the configuration
@@ -67,7 +118,7 @@ private:
      * Comparting the configuration types with the default value types.
      * @throw std::runtime_error If the configuration is invalid.
      */
-    void validate(const json::Json& config) const;
+    void validate(const OptionMap& config) const;
 
 public:
     Conf() = delete;
@@ -77,7 +128,7 @@ public:
      *
      * This object is used to load and validate the configuration.
      */
-    explicit Conf(std::shared_ptr<IApiLoader> apiLoader);
+    explicit Conf(std::shared_ptr<IFileLoader> fileLoader);
 
     /**
      * @brief Load the configuration from API and environment variables.
@@ -99,7 +150,7 @@ public:
     template<typename T>
     void addUnit(std::string_view key, std::string_view env, const T& defaultValue)
     {
-        if (!m_apiConfig.isNull())
+        if (!m_fileConfig.empty())
         {
             throw std::logic_error("The configuration is already loaded.");
         }
@@ -157,47 +208,27 @@ public:
             return envValue.value();
         }
 
-        // Search for the configuration API,if not found, return the default value
-        if constexpr (std::is_same_v<T, std::string>)
+        // Search for the configuration file
+        auto it = m_fileConfig.find(key.data());
+        if (it != m_fileConfig.end())
         {
-            const auto value = m_apiConfig.getString(key.data()).value_or(unit->template getDefaultValue<T>());
-            const auto org = m_apiConfig.getString(key.data()).has_value() ? "API" : "default";
-            LOG_DEBUG("Using configuration key '{}' from {}: '{}'", key, org, value);
-            return value;
-        }
-        else if constexpr (std::is_same_v<T, int> || std::is_same_v<T, int64_t>)
-        {
-            const auto value = m_apiConfig.getIntAsInt64(key.data()).value_or(unit->template getDefaultValue<T>());
-            const auto org = m_apiConfig.getIntAsInt64(key.data()).has_value() ? "API" : "default";
-            LOG_DEBUG("Using configuration key '{}' from {}: '{}'", key, org, value);
-            return value;
-        }
-        else if constexpr (std::is_same_v<T, std::vector<std::string>>)
-        {
-            auto jArr = m_apiConfig.getArray(key.data());
-            if (!jArr)
+            try
             {
-                auto value = unit->template getDefaultValue<T>();
-                LOG_DEBUG("Using configuration key '{}' from default: '{}'", key, toStr<T>(value));
+                auto value = convert<T>(it->second);
+                LOG_DEBUG("Using configuration key '{}' from File: '{}'", key, toStr<T>(value));
                 return value;
             }
-            std::vector<std::string> result;
-            for (const auto& item : jArr.value())
+            catch (const std::exception& e)
             {
-                result.push_back(item.getString().value_or("ERROR VALUE"));
+                throw std::runtime_error(
+                    fmt::format("Failed to convert value '{}' for key '{}': {}", it->second, key, e.what()));
             }
-            LOG_DEBUG("Using configuration key '{}' from API: '{}'", key, toStr<T>(result));
-            return result;
-        }
-        else if constexpr (std::is_same_v<T, bool>)
-        {
-            auto value = m_apiConfig.getBool(key.data()).value_or(unit->template getDefaultValue<T>());
-            const auto org = m_apiConfig.getBool(key.data()).has_value() ? "API" : "default";
-            LOG_DEBUG("Using configuration key '{}' from {}: '{}'", key, org, value);
-            return value;
         }
 
-        throw std::runtime_error("The type is not supported.");
+        // Default value
+        auto value = unit->template getDefaultValue<T>();
+        LOG_DEBUG("Using configuration key '{}' from default: '{}'", key, toStr<T>(value));
+        return value;
     }
 };
 
