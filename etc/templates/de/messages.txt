@@ -60,11 +60,6 @@ runrootcheck="Möchten Sie die rootkit detection engine benutzen?"
 norootcheck="Rootcheck (rootkit detection) wird nicht benutzt"
 yesrootcheck="Rootcheck (rootkit detection) wird gestartet"
 
-#Part 3.4
-runopenscap="Möchten Sie OpenSCAP benutzen?"
-norunopenscap="OpenSCAP wird nicht benutzt"
-yesrunopenscap="OpenSCAP wird gestartet"
-
 # Part 3.5/server/local
 enable_ar="Möchten Sie active response benutzen?"
 noactive="Active response wird nicht benutzt"

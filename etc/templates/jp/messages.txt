@@ -62,11 +62,6 @@ runrootcheck="rootkit 検知エンジンを実行させますか?"
 norootcheck="rootcheck (rootkit 検知) は実行させません"
 yesrootcheck="rootcheck (rootkit 検知) を実行させます"
 
-# Part 3.4
-runopenscap="OpenSCAP 検知エンジンを実行させますか??"
-norunopenscap="OpenSCAP は実行させません"
-yesrunopenscap="OpenSCAP を実行させます"
-
 # Part 3.5/server/local
 enable_ar="アクティブレスポンスを有効にしますか?"
 noactive="アクティブレスポンスを無効にしました"

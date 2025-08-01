@@ -59,11 +59,6 @@ runrootcheck="Θέλετε να εκτελέσετε την μηχανή ανί�
 norootcheck="Η μηχανή ανίχνευσης rootkit δεν εκτελέστηκε"
 yesrootcheck="Η μηχανή ανίχνευσης rootkit ξεκίνησε"
 
-# Part 3.4
-runopenscap="Do you want to run OpenSCAP?"
-norunopenscap="Not running OpenSCAP"
-yesrunopenscap="Running OpenSCAP"
-
 # Part 3.5/server/local
 enable_ar="Θέλετε να ενεργοποιήσετε την ενεργή αντίδραση (active response);"
 noactive="Η ενεργή αντίδραση (active response) απενεργοποιήθηκε"

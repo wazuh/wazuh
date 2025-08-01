@@ -59,11 +59,6 @@ runrootcheck="rootkit tespit etme motorunun çalışmasını ister misiniz?"
 norootcheck="rootcheck çalıştırılmıyor (rootkit tespit etme)"
 yesrootcheck="rootcheck çalıştırılıyor (rootkit tespit etme)"
 
-# Part 3.4
-runopenscap="Güvenilirlik/bütünlük OpenSCAP çalıştırılmasını ister misiniz?"
-norunopenscap="OpenSCAP çalıştırılmıyor"
-yesrunopenscap="OpenSCAP çalıştırılıyor"
-
 # Part 3.5/server/local
 enable_ar="Etkin yanıt üretmenin (Active response) etkin kılınmasını ister misiniz?"
 noactive="Etkin yanıt üretme(Active response) etkisiz kılındı"
