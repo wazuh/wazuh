@@ -11,7 +11,6 @@
 
 #include <string>
 #include <vector>
-#include <filesystem>
 #include "json.hpp"
 #include "chrome_extensions_wrapper.hpp"
 
@@ -69,7 +68,7 @@ namespace chrome
     /// A list of possible path suffixes for each browser type
     using ChromePathSuffixMap = std::vector<std::tuple<ChromeBrowserType, std::string>>;
     using ChromeExtensionList = std::vector<ChromeExtension>;
-    using ChromeUserProfileList = std::vector<std::filesystem::path>;
+    using ChromeUserProfileList = std::vector<std::string>;
 
     /// A list of path suffixes for each Chrome-based browser on Windows
     const ChromePathSuffixMap kLinuxPathList =
@@ -105,7 +104,7 @@ namespace chrome
             chrome::ChromeUserProfileList getProfileDirs();
             void getExtensionsFromProfiles(chrome::ChromeExtensionList& extensions, const chrome::ChromeUserProfileList& profilePaths);
             nlohmann::json toJson(const chrome::ChromeExtensionList& extensions);
-            bool isValidChromeProfile(const std::filesystem::path& profilePath);
+            bool isValidChromeProfile(const std::string& profilePath);
             std::string jsonArrayToString(const nlohmann::json& jsonArray);
             bool isSnakeCase(const std::string& s);
             void localizeParameters(chrome::ChromeExtension& extension);
@@ -113,15 +112,15 @@ namespace chrome
             std::string hashToHexString(const uint8_t* hash, size_t length);
             std::string webkitToUnixTime(std::string webkit_timestamp);
             std::string generateIdentifier(const std::string& key);
-            std::string sha256File(const std::filesystem::path& filepath);
-            std::string getProfileFromPreferences(const std::filesystem::path& preferencesFilePath, const std::filesystem::path& securePreferencesFilePath);
+            std::string sha256File(const std::string& filepath);
+            std::string getProfileFromPreferences(const std::string& preferencesFilePath, const std::string& securePreferencesFilePath);
             void parseManifest(nlohmann::json& manifestJson, chrome::ChromeExtension& extension);
             void parsePreferenceSettings(chrome::ChromeExtension& extension, const std::string& key, const nlohmann::json& value);
-            void getCommonSettings(chrome::ChromeExtension& extension, const std::filesystem::path& manifestPath);
-            chrome::ChromeExtensionList getExtensionsFromPreferences(const std::filesystem::path& profilePath, const std::filesystem::path& preferencesFilePath, const std::string& profileName);
-            chrome::ChromeExtensionList getReferencedExtensions(const std::filesystem::path& profilePath);
-            chrome::ChromeExtensionList getUnreferencedExtensions(const std::filesystem::path& profilePath);
-            void getExtensionsFromPath(chrome::ChromeExtensionList& extensions, const std::filesystem::path& path);
+            void getCommonSettings(chrome::ChromeExtension& extension, const std::string& manifestPath);
+            chrome::ChromeExtensionList getExtensionsFromPreferences(const std::string& profilePath, const std::string& preferencesFilePath, const std::string& profileName);
+            chrome::ChromeExtensionList getReferencedExtensions(const std::string& profilePath);
+            chrome::ChromeExtensionList getUnreferencedExtensions(const std::string& profilePath);
+            void getExtensionsFromPath(chrome::ChromeExtensionList& extensions, const std::string& path);
 
             std::shared_ptr<IChromeExtensionsWrapper> m_chromeExtensionsWrapper;
     };

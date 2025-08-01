@@ -9,14 +9,13 @@
 
 #pragma once
 
-#include <filesystem>
 #include "ichrome_extensions_wrapper.hpp"
 
 class ChromeExtensionsWrapper : public IChromeExtensionsWrapper
 {
     public:
-        std::filesystem::path getHomePath() override
+        std::string getHomePath() override
         {
-            return std::filesystem::path("/Users");
+            return std::string("/Users");
         }
 };
