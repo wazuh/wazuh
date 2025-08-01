@@ -635,9 +635,9 @@ inline parsec::Parser<HelperToken> OpToHelperTokenMonadic(const OperationToken& 
         {
             helperToken.name = "string";
         }
-        else if (value->value().isInt() || value->value().isInt64())
+        else if (value->value().isNumber())
         {
-            helperToken.name = "int";
+            helperToken.name = "number";
         }
         else
         {

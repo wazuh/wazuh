@@ -24,10 +24,6 @@ class RawIntegrationTester(BaseIntegrationTester):
         # Get the format of integration
         self.event_parser = DynamicMultilineSplitter()
 
-        # Client to API TEST
-        self.api_client = ApiConnector(args)
-        self.api_client.create_session()
-
     def run(self):
         events_parsed = []
         try:

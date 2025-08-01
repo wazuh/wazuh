@@ -30,10 +30,6 @@ class IntegrationTester(BaseIntegrationTester):
         # Get the format of integration
         self.event_parser = self.get_splitter(self.iconf)
 
-        # Client to API TEST
-        self.api_client = ApiConnector(args)
-        self.api_client.create_session()
-
     def run(self):
         '''
         Run the integration test
