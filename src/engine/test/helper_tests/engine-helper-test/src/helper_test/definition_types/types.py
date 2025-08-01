@@ -172,6 +172,7 @@ TYPE_MAPPING = {
 
 SUBSET_MAPPING = {
     "integer": int,
+    "number": Number,
     "string": str,
     "boolean": bool,
     "float": float,
@@ -184,6 +185,7 @@ SUBSET_MAPPING = {
 
 CORRESPONDENCE_BETWEEN_TYPE_SUBSET = {
     "number": [
+        "number",
         "integer",
         "double",
         "float"

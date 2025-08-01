@@ -130,6 +130,9 @@ class Argument:
             return random.uniform(0, 9)
         elif self.subset == Double:
             return float(format(random.uniform(0, 9), '.2f'))
+        elif self.subset == Number:
+            self.subset = random.choice([int, float, Double])
+            return self.generate_random_number()
 
     def generate_random_string(self):
         """

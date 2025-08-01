@@ -89,8 +89,9 @@ class Result:
                     for unit_result in result.results:
                         out += f"\n      {unit_result.index} -> {'Success' if unit_result.success else 'Failure'}"
                         if not unit_result.success:
-                            for key, value in unit_result.diff.items():
-                                out += f"\n        {key}: {value}"
+                            json_diff = json.dumps(unit_result.diff, indent=4, ensure_ascii=False)
+                            indented_diff = "\n".join("        " + line for line in json_diff.splitlines())
+                            out += f"\n{indented_diff}"
 
         return out
 
