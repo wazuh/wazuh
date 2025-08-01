@@ -15,7 +15,7 @@
 class MockChromeExtensionsWrapper : public IChromeExtensionsWrapper
 {
     public:
-        MOCK_METHOD(std::filesystem::path, getHomePath, (), (override));
+        MOCK_METHOD(std::string, getHomePath, (), (override));
 };
 
 TEST(ChromeExtensionsTests, NumberOfExtensions)
@@ -56,7 +56,8 @@ TEST(ChromeExtensionsTests, CollectReturnsExpectedJson)
               "identity, webview, https://www.google.com/, https://www.googleapis.com/*, https://payments.google.com/payments/v4/js/integrator.js, https://sandbox.google.com/payments/v4/js/integrator.js");
     EXPECT_EQ(extensionsJson[1]["persistent"], "0");
     EXPECT_EQ(extensionsJson[1]["profile"], "Your Chrome");
-    EXPECT_EQ(extensionsJson[1]["profile_path"], "/Users/rodric/wazuh/src/data_provider/src/extended_sources/browser_extensions/tests/darwin_mock_home/mock-user/Library/Application Support/Google/Chrome/Profile 1");
+    EXPECT_EQ(extensionsJson[1]["profile_path"],
+              "/Users/rodric/wazuh/src/data_provider/src/extended_sources/browser_extensions/tests/darwin_mock_home/mock-user/Library/Application Support/Google/Chrome/Profile 1");
     EXPECT_EQ(extensionsJson[1]["referenced"], "1");
     EXPECT_EQ(extensionsJson[1]["referenced_identifier"], "nmmhkkegccagdldgiimedpiccmgmieda");
     EXPECT_EQ(extensionsJson[1]["state"], "");
