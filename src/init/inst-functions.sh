@@ -1109,6 +1109,7 @@ InstallLocal()
     ${INSTALL} -m 0750 -o root -g 0 agent_control ${INSTALLDIR}/bin/
     ${INSTALL} -m 0750 -o root -g 0 wazuh-db ${INSTALLDIR}/bin/
     ${INSTALL} -m 0750 -o root -g 0 build/engine/wazuh-engine ${INSTALLDIR}/bin
+    ${INSTALL} -m 0750 -o root -g 0 alert_forwarder/main.py ${INSTALLDIR}/bin/wazuh-forwarder
 
     installEngineStore
     ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/tzdb
