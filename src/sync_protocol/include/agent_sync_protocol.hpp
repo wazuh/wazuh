@@ -19,28 +19,30 @@
 #include <unordered_map>
 #include <vector>
 #include <condition_variable>
+#include <chrono>
 
 class IAgentSyncProtocol
 {
     public:
         /// @brief Persist a difference in the buffer
-        /// @param module Module name
         /// @param id Difference id (hash ok PKs)
         /// @param operation Operation type
         /// @param index Index where to send the difference
         /// @param data Difference data
-        virtual void persistDifference(const std::string& module,
-                                       const std::string& id,
-                                       Wazuh::SyncSchema::Operation operation,
-                                       const std::string& index,
-                                       const std::string& data) = 0;
+        /// @return The total number of pending differences for that module.
+        virtual size_t persistDifference(const std::string& id,
+                                         Operation operation,
+                                         const std::string& index,
+                                         const std::string& data) = 0;
 
         /// @brief Synchronize a module with the server
         /// @param module Module name
         /// @param mode Sync mode
-        /// @param realtime Realtime sync
+        /// @param timeout The timeout for each response wait.
+        /// @param retries The maximum number of re-send attempts.
+        /// @param maxAmount The maximum number of messages to synchronize. Use 0 to synchronize all available messages.
         /// @return true if the sync was successfully processed; false otherwise.
-        virtual bool synchronizeModule(const std::string& module, Wazuh::SyncSchema::Mode mode, bool realtime) = 0;
+        virtual bool synchronizeModule(const std::string& module, Wazuh::SyncSchema::Mode mode, std::chrono::seconds timeout, unsigned int retries, size_t maxAmount) = 0;
 
         /// @brief Destructor
         virtual ~IAgentSyncProtocol() = default;
@@ -60,14 +62,13 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         explicit AgentSyncProtocol(MQ_Functions mqFuncs, std::shared_ptr<IPersistentQueue> queue = nullptr);
 
         /// @copydoc IAgentSyncProtocol::persistDifference
-        void persistDifference(const std::string& module,
-                               const std::string& id,
-                               Wazuh::SyncSchema::Operation operation,
-                               const std::string& index,
-                               const std::string& data) override;
+        size_t persistDifference(const std::string& id,
+                                 Operation operation,
+                                 const std::string& index,
+                                 const std::string& data) override;
 
         /// @copydoc IAgentSyncProtocol::synchronizeModule
-        bool synchronizeModule(const std::string& module, Wazuh::SyncSchema::Mode mode, bool realtime) override;
+        bool synchronizeModule(const std::string& module, Wazuh::SyncSchema::Mode mode, std::chrono::seconds timeout, unsigned int retries, size_t maxAmount) override;
 
         /// @brief Parses a FlatBuffer response message received from the manager.
         /// @param data Pointer to the FlatBuffer-encoded message buffer.
@@ -92,11 +93,11 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         /// @brief Sends a start message to the server
         /// @param module Module name
         /// @param mode Sync mode
-        /// @param realtime Realtime sync
         /// @param dataSize Size of data to send
-        /// @param deadLine The time point by which the operation must complete.
+        /// @param timeout The timeout for each response wait.
+        /// @param retries The maximum number of re-send attempts.
         /// @return True on success, false on failure or timeout
-        bool sendStartAndWaitAck(const std::string& module, Wazuh::SyncSchema::Mode mode, bool realtime, size_t dataSize, const std::chrono::steady_clock::time_point& deadLine);
+        bool sendStartAndWaitAck(const std::string& module, Wazuh::SyncSchema::Mode mode, size_t dataSize, const std::chrono::seconds timeout, unsigned int retries);
 
         /// @brief Receives a startack message from the server
         /// @param timeout Timeout to wait for Ack
@@ -115,9 +116,10 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         /// @brief Sends an end message to the server
         /// @param module Module name
         /// @param session Session id
-        /// @param deadLine The time point by which the operation must complete.
+        /// @param timeout The timeout for each response wait.
+        /// @param retries The maximum number of re-send attempts.
         /// @return True on success, false on failure or timeout
-        bool sendEndAndWaitAck(const std::string& module, uint64_t session, const std::chrono::steady_clock::time_point& deadLine);
+        bool sendEndAndWaitAck(const std::string& module, uint64_t session, const std::chrono::seconds timeout, unsigned int retries, const std::vector<PersistedData>& dataToSync);
 
         /// @brief Receives an endack message from the server
         /// @param timeout Timeout to wait for Ack
@@ -125,8 +127,7 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         bool receiveEndAck(std::chrono::seconds timeout);
 
         /// @brief Clears persisted differences for a module
-        /// @param module Module name
-        void clearPersistedDifferences(const std::string& module);
+        void clearPersistedDifferences();
 
         /// @brief Sends a flatbuffer message as a string to the server
         /// @param fbData Flatbuffer data
@@ -177,6 +178,9 @@ class AgentSyncProtocol : public IAgentSyncProtocol
             /// @brief Indicates that a ReqRet message has been received.
             bool reqRetReceived = false;
 
+            /// @brief Indicates that the manager reported a error, forcing the sync to fail.
+            bool syncFailed = false;
+
             /// @brief Ranges requested by the manager via ReqRet message.
             std::vector<std::pair<uint64_t, uint64_t>> reqRetRanges;
 
@@ -194,6 +198,7 @@ class AgentSyncProtocol : public IAgentSyncProtocol
                 startAckReceived = false;
                 endAckReceived = false;
                 reqRetReceived = false;
+                syncFailed = false;
                 reqRetRanges.clear();
                 phase = SyncPhase::Idle;
                 session = 0;
@@ -202,6 +207,10 @@ class AgentSyncProtocol : public IAgentSyncProtocol
 
         /// @brief Manages the state for the current synchronization operation.
         SyncState m_syncState;
+
+        std::vector<PersistedData> filterDataByRanges(
+            const std::vector<PersistedData>& sourceData,
+            const std::vector<std::pair<uint64_t, uint64_t>>& ranges);
 };
 
 #endif // AGENT_SYNC_PROTOCOL_HPP

@@ -1,6 +1,7 @@
 #include "agent_sync_protocol_c_interface.h"
 #include "agent_sync_protocol.hpp"
 #include "persistent_queue.hpp"
+#include <chrono>
 #include <memory>
 #include <string>
 
@@ -47,31 +48,35 @@ extern "C" {
         delete reinterpret_cast<AgentSyncProtocolWrapper*>(handle);
     }
 
-    void asp_persist_diff(AgentSyncProtocolHandle* handle,
-                          const char* module,
-                          const char* id,
-                          int operation,
-                          const char* index,
-                          const char* data)
+    size_t asp_persist_diff(AgentSyncProtocolHandle* handle,
+                            const char* id,
+                            int operation,
+                            const char* index,
+                            const char* data)
     {
-        if (!handle || !module || !id || !index || !data) return;
+        if (!handle || !id || !index || !data) return 0;
 
         auto* wrapper = reinterpret_cast<AgentSyncProtocolWrapper*>(handle);
-        wrapper->impl->persistDifference(module, id,
-                                         static_cast<Wazuh::SyncSchema::Operation>(operation),
-                                         index, data);
+        return wrapper->impl->persistDifference(id,
+                                                static_cast<Operation>(operation),
+                                                index, data);
     }
 
     bool asp_sync_module(AgentSyncProtocolHandle* handle,
                          const char* module,
                          int mode,
-                         int realtime)
+                         unsigned int sync_timeout,
+                         unsigned int retries,
+                         size_t max_amount)
     {
         if (!handle || !module) return false;
 
         auto* wrapper = reinterpret_cast<AgentSyncProtocolWrapper*>(handle);
         return wrapper->impl->synchronizeModule(module,
-                                                static_cast<Wazuh::SyncSchema::Mode>(mode), realtime != 0);
+                                                static_cast<Wazuh::SyncSchema::Mode>(mode),
+                                                std::chrono::seconds(sync_timeout),
+                                                retries,
+                                                max_amount);
     }
 
     int asp_parse_response_buffer(AgentSyncProtocolHandle* handle, const uint8_t* data)
