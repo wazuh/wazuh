@@ -11,17 +11,18 @@
 #include "chrome_darwin.hpp"
 #include "gtest/gtest.h"
 #include "gmock/gmock.h"
+#include "filesystemHelper.h"
 
 class MockChromeExtensionsWrapper : public IChromeExtensionsWrapper
 {
     public:
-        MOCK_METHOD(std::filesystem::path, getHomePath, (), (override));
+        MOCK_METHOD(std::string, getHomePath, (), (override));
 };
 
 TEST(ChromeExtensionsTests, NumberOfExtensions)
 {
     auto mockExtensionsWrapper = std::make_shared<MockChromeExtensionsWrapper>();
-    std::filesystem::path mockHomePath = std::filesystem::path(__FILE__).parent_path() / "darwin_mock_home";
+    std::string mockHomePath = Utils::joinPaths(Utils::getParentPath((__FILE__)), "darwin_mock_home");
     EXPECT_CALL(*mockExtensionsWrapper, getHomePath()).WillOnce(::testing::Return(mockHomePath));
 
     chrome::ChromeExtensionsProvider chromeExtensionsProvider(mockExtensionsWrapper);
@@ -32,7 +33,7 @@ TEST(ChromeExtensionsTests, NumberOfExtensions)
 TEST(ChromeExtensionsTests, CollectReturnsExpectedJson)
 {
     auto mockExtensionsWrapper = std::make_shared<MockChromeExtensionsWrapper>();
-    std::filesystem::path mockHomePath = std::filesystem::path(__FILE__).parent_path() / "darwin_mock_home";
+    std::string mockHomePath = Utils::joinPaths(Utils::getParentPath((__FILE__)), "darwin_mock_home");
     EXPECT_CALL(*mockExtensionsWrapper, getHomePath()).WillOnce(::testing::Return(mockHomePath));
 
     chrome::ChromeExtensionsProvider chromeExtensionsProvider(mockExtensionsWrapper);
@@ -50,13 +51,12 @@ TEST(ChromeExtensionsTests, CollectReturnsExpectedJson)
     EXPECT_EQ(extensionsJson[1]["manifest_hash"], "5dbdf0ed368be287abaff83d639b760fa5d7dc8a28e92387773b4fd3e1ba4f19");
     EXPECT_EQ(extensionsJson[1]["name"], "Chrome Web Store Payments");
     EXPECT_EQ(extensionsJson[1]["optional_permissions"], "");
-    EXPECT_EQ(extensionsJson[1]["path"],
-              "/Users/rodric/wazuh/src/data_provider/src/extended_sources/browser_extensions/tests/darwin_mock_home/mock-user/Library/Application Support/Google/Chrome/Profile 1/Extensions/nmmhkkegccagdldgiimedpiccmgmieda/1.0.0.6_0");
+    EXPECT_EQ(extensionsJson[1]["path"], Utils::joinPaths(mockHomePath, "mock-user/Library/Application Support/Google/Chrome/Profile 1/Extensions/nmmhkkegccagdldgiimedpiccmgmieda/1.0.0.6_0"));
     EXPECT_EQ(extensionsJson[1]["permissions"],
               "identity, webview, https://www.google.com/, https://www.googleapis.com/*, https://payments.google.com/payments/v4/js/integrator.js, https://sandbox.google.com/payments/v4/js/integrator.js");
     EXPECT_EQ(extensionsJson[1]["persistent"], "0");
     EXPECT_EQ(extensionsJson[1]["profile"], "Your Chrome");
-    EXPECT_EQ(extensionsJson[1]["profile_path"], "/Users/rodric/wazuh/src/data_provider/src/extended_sources/browser_extensions/tests/darwin_mock_home/mock-user/Library/Application Support/Google/Chrome/Profile 1");
+    EXPECT_EQ(extensionsJson[1]["profile_path"], Utils::joinPaths(mockHomePath, "mock-user/Library/Application Support/Google/Chrome/Profile 1"));
     EXPECT_EQ(extensionsJson[1]["referenced"], "1");
     EXPECT_EQ(extensionsJson[1]["referenced_identifier"], "nmmhkkegccagdldgiimedpiccmgmieda");
     EXPECT_EQ(extensionsJson[1]["state"], "");

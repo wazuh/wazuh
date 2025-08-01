@@ -160,6 +160,39 @@ namespace Utils
         std::string parentDir(dirname(baseCopy));
         return parentDir;
     }
+
+    static std::string joinPaths(const std::string& base, const std::string& relative)
+    {
+        if (base.empty()) return relative;
+        if (relative.empty()) return base;
+
+        if (base.back() == '/' && relative.front() == '/')
+        {
+            return base + relative.substr(1); // Remove extra slash
+        }
+        else if (base.back() != '/' && relative.front() != '/')
+        {
+            return base + "/" + relative; // Add missing slash
+        }
+        else
+        {
+            return base + relative; // Already properly separated
+        }
+    }
+
+    static bool isAbsolutePath(const std::string& path)
+    {
+        if (path.empty()) return false;
+
+    #ifdef _WIN32
+        // Absolute if starts with drive letter (e.g., C:\) or UNC path (\\server\share)
+        return (path.size() >= 2 && std::isalpha(path[0]) && path[1] == ':') ||
+              (path.size() >= 2 && path[0] == '\\' && path[1] == '\\');
+    #else
+        // Unix absolute path starts with '/'
+        return path[0] == '/';
+    #endif
+    }
 }
 
 #pragma GCC diagnostic pop
