@@ -13,22 +13,18 @@ set(TEST_SRC "main.cpp")
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     list(APPEND TEST_SRC test_services_windows.cpp)
+elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    list(APPEND TEST_SRC test_systemd_units_linux.cpp)
 endif()
 
 add_executable(extended_sources_services_unit_test ${TEST_SRC})
 
-if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
-    target_link_libraries(extended_sources_services_unit_test
-        services
-        debug gtestd
-        debug gmockd
-        debug gtest_maind
-        debug gmock_maind
-        optimized gtest
-        optimized gmock
-        optimized gtest_main
-        optimized gmock_main
-    )
-endif()
+target_link_libraries(extended_sources_services_unit_test
+    services
+    gtestd
+    gmockd
+    gtest_maind
+    gmock_maind
+)
 
 add_test(NAME ServicesTests COMMAND extended_sources_services_unit_test)
