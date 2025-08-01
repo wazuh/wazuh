@@ -180,6 +180,9 @@ class AgentSyncProtocol : public IAgentSyncProtocol
             /// @brief Indicates that a ReqRet message has been received.
             bool reqRetReceived = false;
 
+            /// @brief Indicates that the manager reported a error, forcing the sync to fail.
+            bool syncFailed = false;
+
             /// @brief Ranges requested by the manager via ReqRet message.
             std::vector<std::pair<uint64_t, uint64_t>> reqRetRanges;
 
@@ -197,6 +200,7 @@ class AgentSyncProtocol : public IAgentSyncProtocol
                 startAckReceived = false;
                 endAckReceived = false;
                 reqRetReceived = false;
+                syncFailed = false;
                 reqRetRanges.clear();
                 phase = SyncPhase::Idle;
                 session = 0;

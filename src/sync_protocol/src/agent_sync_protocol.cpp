@@ -158,6 +158,12 @@ bool AgentSyncProtocol::sendStartAndWaitAck(const std::string& module, Wazuh::Sy
         if (receiveStartAck(timeout))
         {
             std::lock_guard<std::mutex> lock(m_syncState.mtx);
+            if (m_syncState.syncFailed)
+            {
+                std::cerr << "[Sync] Synchronization failed due to manager error." << std::endl;
+                return false;
+            }
+
             std::cout << "[Sync] StartAck received. Session " << m_syncState.session << " established.\n";
             return true;
         }
@@ -173,7 +179,7 @@ bool AgentSyncProtocol::receiveStartAck(std::chrono::seconds timeout)
     std::unique_lock<std::mutex> lock(m_syncState.mtx);
     return m_syncState.cv.wait_for(lock, timeout, [&]
     {
-        return m_syncState.startAckReceived;
+        return m_syncState.startAckReceived || m_syncState.syncFailed;
     });
 }
 
@@ -254,6 +260,15 @@ bool AgentSyncProtocol::sendEndAndWaitAck(const std::string& module, uint64_t se
             continue;
         }
 
+        {
+            std::lock_guard<std::mutex> lock(m_syncState.mtx);
+            if (m_syncState.syncFailed)
+            {
+                std::cerr << "[Sync] Synchronization failed: Manager reported an error status." << std::endl;
+                return false;
+            }
+        }
+
         bool wasReqRet = false;
         std::vector<std::pair<uint64_t, uint64_t>> ranges;
         {
@@ -313,7 +328,7 @@ bool AgentSyncProtocol::receiveEndAck(std::chrono::seconds timeout)
     std::unique_lock<std::mutex> lock(m_syncState.mtx);
     return m_syncState.cv.wait_for(lock, timeout, [&]
     {
-        return m_syncState.endAckReceived || m_syncState.reqRetReceived;
+        return m_syncState.endAckReceived || m_syncState.reqRetReceived || m_syncState.syncFailed;
     });
 }
 
@@ -359,8 +374,17 @@ bool AgentSyncProtocol::parseResponseBuffer(const uint8_t* data)
                 if (m_syncState.phase == SyncPhase::WaitingStartAck)
                 {
                     const auto* startAck = message->content_as_StartAck();
-                    const uint64_t incomingSession = startAck->session();
 
+                    if (startAck->status() == Wazuh::SyncSchema::Status::Error ||
+                        startAck->status() == Wazuh::SyncSchema::Status::Offline)
+                    {
+                        std::cerr << "[Sync] Received StartAck with error status. Aborting synchronization." << std::endl;
+                        m_syncState.syncFailed = true;
+                        m_syncState.cv.notify_all();
+                        break;
+                    }
+
+                    const uint64_t incomingSession = startAck->session();
                     m_syncState.session = incomingSession;
                     m_syncState.startAckReceived = true;
                     m_syncState.cv.notify_all();
@@ -384,6 +408,15 @@ bool AgentSyncProtocol::parseResponseBuffer(const uint8_t* data)
                 if (!validatePhaseAndSession(SyncPhase::WaitingEndAck, incomingSession))
                 {
                     std::cout << "[EndAck] invalid phase or session. \n";
+                    break;
+                }
+
+                if (endAck->status() == Wazuh::SyncSchema::Status::Error ||
+                    endAck->status() == Wazuh::SyncSchema::Status::Offline)
+                {
+                    std::cerr << "[Sync] Received EndAck with error status. Aborting synchronization." << std::endl;
+                    m_syncState.syncFailed = true;
+                    m_syncState.cv.notify_all();
                     break;
                 }
 
