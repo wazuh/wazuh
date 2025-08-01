@@ -17,12 +17,10 @@ INSPECTOR_V1_REGIONS = (
     'eu-west-2', 'us-east-1', 'us-east-2', 'us-west-1', 'us-west-2'
 )
 
-INSPECTOR_V2_REGIONS = (
-    'af-south-1', 'ap-east-1', 'ap-northeast-3', 'ap-southeast-1', 'ap-southeast-3', 'ap-southeast-4',
-    'ap-southeast-5', 'ap-southeast-7', 'ap-south-2', 'ca-central-1', 'ca-west-1', 'eu-west-3', 'eu-central-2',
-    'eu-south-1', 'eu-south-2', 'il-central-1', 'me-central-1', 'sa-east-1', 'mx-central-1',
-    'ap-northeast-1', 'ap-northeast-2', 'ap-south-1', 'ap-southeast-2', 'eu-central-1', 'eu-north-1', 'eu-west-1',
-    'eu-west-2', 'us-east-1', 'us-east-2', 'us-west-1', 'us-west-2'
+INSPECTOR_V2_REGIONS = INSPECTOR_V1_REGIONS + (
+    'af-south-1', 'ap-east-1', 'ap-northeast-3', 'ap-southeast-1', 'ap-southeast-3', 'ap-southeast-4', 'ap-southeast-5',
+    'ap-southeast-7', 'ap-south-2', 'ca-central-1', 'ca-west-1', 'eu-west-3', 'eu-central-2', 'eu-south-1',
+    'eu-south-2', 'il-central-1', 'me-central-1', 'sa-east-1', 'mx-central-1'
 )
 
 
@@ -91,7 +89,7 @@ class AWSInspector(aws_service.AWSService):
             aws_tools.debug(f"+++ [v1] Processing {len(response)} events", 3)
             for elem in response:
                 if self.event_should_be_skipped(elem):
-                    aws_tools.debug(f'+++ The "{self.discard_regex.pattern}" regex found a match in the '
+                    aws_tools.debug(f'+++ [v1] The "{self.discard_regex.pattern}" regex found a match in the '
                                     f'"{self.discard_field}" field. The event will be skipped.', 2)
                     continue
                 self.send_msg(self.format_message(elem))
@@ -120,7 +118,7 @@ class AWSInspector(aws_service.AWSService):
 
                 for finding in findings:
                     if self.event_should_be_skipped(finding):
-                        aws_tools.debug(f'+++ The "{self.discard_regex.pattern}" regex found a match in the '
+                        aws_tools.debug(f'+++ [v2] The "{self.discard_regex.pattern}" regex found a match in the '
                                         f'"{self.discard_field}" field. The event will be skipped.', 2)
                         continue
                     formatted = self.format_message(finding)
@@ -252,4 +250,3 @@ class AWSInspector(aws_service.AWSService):
     def check_region(region: str) -> None:
         if region not in INSPECTOR_V1_REGIONS and region not in INSPECTOR_V2_REGIONS:
             raise ValueError(f"Unsupported region '{region}'")
-
