@@ -72,7 +72,6 @@ size_t asp_persist_diff(AgentSyncProtocolHandle* handle,
 /// @param handle Pointer to the AgentSyncProtocol handle.
 /// @param module The name of the module to synchronize.
 /// @param mode Synchronization mode (e.g., full, delta).
-/// @param realtime Boolean flag (non-zero = realtime mode, zero = batch mode).
 /// @param sync_timeout The timeout for each attempt to receive a response, in seconds.
 /// @param sync_retries The maximum number of attempts for re-sending Start and End messages.
 /// @param max_amount The maximum number of messages to synchronize. Use 0 to synchronize all available messages.
@@ -80,7 +79,6 @@ size_t asp_persist_diff(AgentSyncProtocolHandle* handle,
 bool asp_sync_module(AgentSyncProtocolHandle* handle,
                      const char* module,
                      int mode,
-                     int realtime,
                      unsigned int sync_timeout,
                      unsigned int sync_retries,
                      size_t max_amount);

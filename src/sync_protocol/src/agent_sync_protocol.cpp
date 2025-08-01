@@ -40,7 +40,7 @@ size_t AgentSyncProtocol::persistDifference(const std::string& id,
     }
 }
 
-bool AgentSyncProtocol::synchronizeModule(const std::string& module, Wazuh::SyncSchema::Mode mode, bool realtime, std::chrono::seconds timeout, unsigned int retries, size_t maxAmount)
+bool AgentSyncProtocol::synchronizeModule(const std::string& module, Wazuh::SyncSchema::Mode mode, std::chrono::seconds timeout, unsigned int retries, size_t maxAmount)
 {
     if (!ensureQueueAvailable())
     {
@@ -75,7 +75,7 @@ bool AgentSyncProtocol::synchronizeModule(const std::string& module, Wazuh::Sync
 
     bool success = false;
 
-    if (sendStartAndWaitAck(module, mode, realtime, dataToSync.size(), timeout, retries))
+    if (sendStartAndWaitAck(module, mode, dataToSync.size(), timeout, retries))
     {
         if (sendDataMessages(module, m_syncState.session, dataToSync))
         {
@@ -123,7 +123,7 @@ bool AgentSyncProtocol::ensureQueueAvailable()
     return true;
 }
 
-bool AgentSyncProtocol::sendStartAndWaitAck(const std::string& module, Wazuh::SyncSchema::Mode mode, bool realtime, size_t dataSize, const std::chrono::seconds timeout, unsigned int retries)
+bool AgentSyncProtocol::sendStartAndWaitAck(const std::string& module, Wazuh::SyncSchema::Mode mode, size_t dataSize, const std::chrono::seconds timeout, unsigned int retries)
 {
     flatbuffers::FlatBufferBuilder builder;
     auto moduleStr = builder.CreateString(module);
@@ -131,7 +131,6 @@ bool AgentSyncProtocol::sendStartAndWaitAck(const std::string& module, Wazuh::Sy
     Wazuh::SyncSchema::StartBuilder startBuilder(builder);
     startBuilder.add_mode(mode);
     startBuilder.add_size(static_cast<uint64_t>(dataSize));
-    startBuilder.add_realtime(realtime);
     startBuilder.add_module_(moduleStr);
     auto startOffset = startBuilder.Finish();
 

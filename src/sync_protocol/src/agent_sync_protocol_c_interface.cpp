@@ -65,7 +65,6 @@ extern "C" {
     bool asp_sync_module(AgentSyncProtocolHandle* handle,
                          const char* module,
                          int mode,
-                         int realtime,
                          unsigned int sync_timeout,
                          unsigned int retries,
                          size_t max_amount)
@@ -75,7 +74,6 @@ extern "C" {
         auto* wrapper = reinterpret_cast<AgentSyncProtocolWrapper*>(handle);
         return wrapper->impl->synchronizeModule(module,
                                                 static_cast<Wazuh::SyncSchema::Mode>(mode),
-                                                realtime != 0,
                                                 std::chrono::seconds(sync_timeout),
                                                 retries,
                                                 max_amount);
