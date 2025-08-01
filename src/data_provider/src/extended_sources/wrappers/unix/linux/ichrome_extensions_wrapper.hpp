@@ -9,12 +9,12 @@
 
 #pragma once
 
-#include <filesystem>
+#include <string>
 
 class IChromeExtensionsWrapper
 {
     public:
         /// Destructor
         virtual ~IChromeExtensionsWrapper() = default;
-        virtual std::filesystem::path getHomePath() = 0;
+        virtual std::string getHomePath() = 0;
 };
