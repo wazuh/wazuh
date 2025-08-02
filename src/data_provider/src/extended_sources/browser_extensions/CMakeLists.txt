@@ -9,7 +9,7 @@ set(SRC_FILES "")
 
 include_directories(
   include
-  ${CMAKE_SOURCE_DIR}/../external/nlohmann/
+  ${SRC_FOLDER}/external/nlohmann/
 )
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
@@ -19,15 +19,36 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
 
   list(APPEND SRC_FILES 
     src/safari_darwin.cpp
+    src/chrome_darwin.cpp
   )
 
   add_library(browser_extensions STATIC ${SRC_FILES})
   target_link_libraries(browser_extensions
     ${SRC_FOLDER}/external/libplist/bin/lib/libplist-2.0.a
+    ${SRC_FOLDER}/external/openssl/libcrypto.a
   )
 
   if(UNIT_TEST)
     target_link_libraries(browser_extensions -fprofile-arcs)
+    add_subdirectory(tests)
+  endif(UNIT_TEST)
+elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+  include_directories(
+    ${SRC_FOLDER}/external/openssl/include/
+    ${CMAKE_CURRENT_SOURCE_DIR}/../wrappers/unix/linux
+  )
+
+  list(APPEND SRC_FILES 
+    src/chrome_linux.cpp
+  )
+
+  add_library(chrome_extensions STATIC ${SRC_FILES})
+  target_link_libraries(chrome_extensions
+    ${SRC_FOLDER}/external/openssl/libcrypto.a
+  )
+
+  if(UNIT_TEST)
+    target_link_libraries(chrome_extensions gcov)
     add_subdirectory(tests)
   endif(UNIT_TEST)
 endif()
