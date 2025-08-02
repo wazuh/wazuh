@@ -189,7 +189,6 @@ constexpr auto HW_START_CONFIG_STATEMENT
         })"
 };
 
-
 constexpr auto HOTFIXES_SQL_STATEMENT
 {
     R"(CREATE TABLE dbsync_hotfixes(
@@ -941,7 +940,6 @@ constexpr auto USERS_SQL_STATEMENT
 };
 static const std::vector<std::string> USERS_ITEM_ID_FIELDS{"user_name"};
 
-
 constexpr auto GROUPS_START_CONFIG_STATEMENT
 {
     R"({"table":"dbsync_groups",
@@ -1028,6 +1026,107 @@ constexpr auto GROUPS_SQL_STATEMENT
     PRIMARY KEY (group_name)) WITHOUT ROWID;)"
 };
 
+constexpr auto SERVICES_START_CONFIG_STATEMENT
+{
+    R"({"table":"dbsync_services",
+        "first_query":
+            {
+                "column_list":["service_name"],
+                "row_filter":" ",
+                "distinct_opt":false,
+                "order_by_opt":"service_name DESC",
+                "count_opt":1
+            },
+        "last_query":
+            {
+                "column_list":["service_name"],
+                "row_filter":" ",
+                "distinct_opt":false,
+                "order_by_opt":"service_name ASC",
+                "count_opt":1
+            },
+        "component":"syscollector_services",
+        "index":"service_name",
+        "last_event":"last_event",
+        "checksum_field":"checksum",
+        "range_checksum_query_json":
+            {
+                "row_filter":"WHERE service_name BETWEEN '?' and '?' ORDER BY service_name",
+                "column_list":["service_name, checksum"],
+                "distinct_opt":false,
+                "order_by_opt":"",
+                "count_opt":100
+            }
+        })"
+};
+
+constexpr auto SERVICES_SYNC_CONFIG_STATEMENT
+{
+    R"(
+    {
+        "decoder_type":"JSON_RANGE",
+        "table":"dbsync_services",
+        "component":"syscollector_services",
+        "index":"service_name",
+        "checksum_field":"checksum",
+        "no_data_query_json": {
+                "row_filter":"WHERE service_name BETWEEN '?' and '?' ORDER BY service_name",
+                "column_list":["*"],
+                "distinct_opt":false,
+                "order_by_opt":""
+        },
+        "count_range_query_json": {
+                "row_filter":"WHERE service_name BETWEEN '?' and '?' ORDER BY service_name",
+                "count_field_name":"count",
+                "column_list":["count(*) AS count "],
+                "distinct_opt":false,
+                "order_by_opt":""
+        },
+        "row_data_query_json": {
+                "row_filter":"WHERE service_name ='?'",
+                "column_list":["*"],
+                "distinct_opt":false,
+                "order_by_opt":""
+        },
+        "range_checksum_query_json": {
+                "row_filter":"WHERE service_name BETWEEN '?' and '?' ORDER BY service_name",
+                "column_list":["*"],
+                "distinct_opt":false,
+                "order_by_opt":""
+        }
+    }
+    )"
+};
+
+constexpr auto SERVICES_SQL_STATEMENT
+{
+    R"(CREATE TABLE dbsync_services (
+    service_name TEXT,
+    service_display_name TEXT,
+    service_description TEXT,
+    service_state TEXT,
+    service_sub_state TEXT,
+    service_start_type TEXT,
+    service_type TEXT,
+    process_pid INTEGER,
+    service_exit_code INTEGER,
+    service_win32_exit_code INTEGER,
+    process_executable TEXT,
+    service_module_path TEXT,
+    service_user TEXT,
+    service_enabled TEXT,
+    service_following TEXT,
+    service_object_path TEXT,
+    service_job_id BIGINT,
+    service_job_type TEXT,
+    service_job_path TEXT,
+    service_source_path TEXT,
+    checksum TEXT,
+    PRIMARY KEY (service_name)) WITHOUT ROWID;)"
+};
+static const std::vector<std::string> SERVICES_ITEM_ID_FIELDS{"service_name"};
+
+
 constexpr auto NET_IFACE_TABLE    { "dbsync_network_iface"    };
 constexpr auto NET_PROTOCOL_TABLE { "dbsync_network_protocol" };
 constexpr auto NET_ADDRESS_TABLE  { "dbsync_network_address"  };
@@ -1039,3 +1138,4 @@ constexpr auto OS_TABLE           { "dbsync_osinfo"           };
 constexpr auto HW_TABLE           { "dbsync_hwinfo"           };
 constexpr auto USERS_TABLE        { "dbsync_users"            };
 constexpr auto GROUPS_TABLE       { "dbsync_groups"           };
+constexpr auto SERVICES_TABLE     { "dbsync_services"         };
