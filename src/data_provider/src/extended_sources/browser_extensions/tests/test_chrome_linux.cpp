@@ -52,13 +52,12 @@ TEST(ChromeExtensionsTests, CollectReturnsExpectedJson)
     EXPECT_EQ(extensionsJson[2]["manifest_hash"], "5dbdf0ed368be287abaff83d639b760fa5d7dc8a28e92387773b4fd3e1ba4f19");
     EXPECT_EQ(extensionsJson[2]["name"], "Chrome Web Store Payments");
     EXPECT_EQ(extensionsJson[2]["optional_permissions"], "");
-    EXPECT_EQ(extensionsJson[2]["path"],
-              "/home/rodric/wazuh/src/data_provider/src/extended_sources/browser_extensions/tests/mock_home/mock-user/.config/google-chrome/Default/Extensions/nmmhkkegccagdldgiimedpiccmgmieda/1.0.0.6_0");
+    EXPECT_EQ(extensionsJson[2]["path"], Utils::joinPaths(mockHomePath, "mock-user/.config/google-chrome/Default/Extensions/nmmhkkegccagdldgiimedpiccmgmieda/1.0.0.6_0"));
     EXPECT_EQ(extensionsJson[2]["permissions"],
               "identity, webview, https://www.google.com/, https://www.googleapis.com/*, https://payments.google.com/payments/v4/js/integrator.js, https://sandbox.google.com/payments/v4/js/integrator.js");
     EXPECT_EQ(extensionsJson[2]["persistent"], "0");
     EXPECT_EQ(extensionsJson[2]["profile"], "Your Chrome");
-    EXPECT_EQ(extensionsJson[2]["profile_path"], "/home/rodric/wazuh/src/data_provider/src/extended_sources/browser_extensions/tests/mock_home/mock-user/.config/google-chrome/Default");
+    EXPECT_EQ(extensionsJson[2]["profile_path"], Utils::joinPaths(mockHomePath, "mock-user/.config/google-chrome/Default"));
     EXPECT_EQ(extensionsJson[2]["referenced"], "1");
     EXPECT_EQ(extensionsJson[2]["referenced_identifier"], "nmmhkkegccagdldgiimedpiccmgmieda");
     EXPECT_EQ(extensionsJson[2]["state"], "");
