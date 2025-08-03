@@ -150,10 +150,10 @@
     <group>gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,pci_dss_10.6.1,service_availability,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
-  <rule id="11219" level="12">
+  <rule id="11219" level="2">
     <if_sid>11200</if_sid>
     <match>Reallocating sreaddir buffer</match>
-    <description>ProFTPD: FTP server Buffer overflow attempt.</description>
+    <description>ProFTPD: directory list buffer reallocation.</description>
     <mitre>
       <id>T1499</id>
     </mitre>
