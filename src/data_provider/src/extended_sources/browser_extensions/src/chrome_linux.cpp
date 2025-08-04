@@ -21,9 +21,15 @@
 namespace chrome
 {
 
-    ChromeExtensionsProvider::ChromeExtensionsProvider(std::shared_ptr<IChromeExtensionsWrapper> chromeExtensionsWrapper) : m_chromeExtensionsWrapper(std::move(chromeExtensionsWrapper)) {}
+    ChromeExtensionsProvider::ChromeExtensionsProvider(std::shared_ptr<IChromeExtensionsWrapper> chromeExtensionsWrapper) : m_chromeExtensionsWrapper(std::move(chromeExtensionsWrapper))
+    {
+        m_userIds = m_chromeExtensionsWrapper->getUserIdsMap();
+    }
 
-    ChromeExtensionsProvider::ChromeExtensionsProvider() : m_chromeExtensionsWrapper(std::make_shared<ChromeExtensionsWrapper>()) {}
+    ChromeExtensionsProvider::ChromeExtensionsProvider() : m_chromeExtensionsWrapper(std::make_shared<ChromeExtensionsWrapper>())
+    {
+        m_userIds = m_chromeExtensionsWrapper->getUserIdsMap();
+    }
 
     ChromeUserProfileList ChromeExtensionsProvider::getProfileDirs()
     {
@@ -32,18 +38,21 @@ namespace chrome
 
         for (const auto& user : Utils::enumerateDir(homePath))
         {
-            // TODO: Take into account other chrome-based browsers like Chromium, Brave, etc.
-
             const std::string userHomePath = Utils::joinPaths(homePath, user);
-            const std::string profilePath = Utils::joinPaths(userHomePath, ".config/google-chrome");
 
-            if (!Utils::existsDir(profilePath))
+            for (const auto& browser : kLinuxPathList)
             {
-                // std::cerr << "Chrome path does not exist\n";
-                continue;
-            }
+                std::string browserPath = std::get<1>(browser);
+                const std::string profilePath = Utils::joinPaths(userHomePath, browserPath);
 
-            userProfiles.emplace_back(profilePath);
+                if (!Utils::existsDir(profilePath))
+                {
+                    // std::cerr << "Chrome path does not exist\n";
+                    continue;
+                }
+
+                userProfiles.emplace_back(profilePath);
+            }
         }
 
         return userProfiles;
@@ -248,8 +257,26 @@ namespace chrome
 
     void ChromeExtensionsProvider::getCommonSettings(ChromeExtension& extension, const std::string& manifestPath)
     {
-        extension.browser_type = "chrome"; // TODO: Improve this for all chrome types
-        extension.uid = std::to_string(getuid()); // TODO: Make sure this is the correct way to get this property
+        std::string absoluteAppPath = Utils::joinPaths("/", Utils::removePrefix(manifestPath, Utils::getParentPath(m_chromeExtensionsWrapper->getHomePath())));
+
+        for (const auto& browser : kLinuxPathList)
+        {
+            if (absoluteAppPath.find(std::get<1>(browser)) != std::string::npos)
+            {
+                extension.browser_type = kChromeBrowserTypeToString.at(std::get<0>(browser));
+                break;
+            }
+        }
+
+        for (const auto& user : m_userIds)
+        {
+            if (Utils::startsWith(absoluteAppPath, user.first))
+            {
+                extension.uid = user.second;
+                break;
+            }
+        }
+
         extension.manifest_hash = sha256File(manifestPath);
     }
 
@@ -265,7 +292,6 @@ namespace chrome
         std::ifstream preferencesFile(preferencesFilePath);
         nlohmann::json preferencesJson = nlohmann::json::parse(preferencesFile);
 
-        // TODO: If extensions.settings doesn't exist, then try extensions.opsettings
         const nlohmann::json& settings = preferencesJson["extensions"]["settings"];
         ChromeExtensionList extensions;
 
@@ -288,9 +314,6 @@ namespace chrome
 
                     extension.profile = profileName;
                     extension.profile_path = profilePath;
-                    // extension.manifest_json // TODO: This is hidden
-                    // extension.permissions_json // TODO: this is hidden
-                    // extension.optional_permissions_json = "[]"; // TODO: this is hidden
                     extension.path = extensionPath;
                     extension.referenced = std::to_string(1);
 
@@ -398,7 +421,7 @@ namespace chrome
         if (!Utils::existsRegular(securePreferencesFilePath))
         {
             // TODO: Improve handling this error.
-            std::cerr << "Preferences file does not exist: " << securePreferencesFilePath << std::endl;
+            // std::cerr << "Preferences file does not exist: " << securePreferencesFilePath << std::endl;
             return ChromeExtensionList();
         }
 
