@@ -370,20 +370,20 @@ int w_agentd_buffer_resize(unsigned int current_capacity, unsigned int desired_c
     if (desired_capacity > current_capacity) {
         // We add +1 to the desired capacity for internal management of the circular buffer,
         // allowing it to distinguish between full and empty states.
-        os_calloc(desired_capacity + 1, sizeof(char *), temp_buffer);
+        os_calloc(desired_capacity + 1, sizeof(buffered_message), temp_buffer);
 
         // Copy data in logical ordecoder to the new buffer
         if (j < i) {
             mdebug2("Copying contiguous data to new buffer. Count: %u events, "
                     "tail: %d, head: %d\n", agent_msg_count, j, i);
-            memcpy(temp_buffer, &buffer[j], agent_msg_count * sizeof(char *));
+            memcpy(temp_buffer, &buffer[j], agent_msg_count * sizeof(buffered_message));
         } else {
             int first_part = (current_capacity - j) + 1;
             mdebug2("Wrapped buffer detected. Copying in two parts:\n");
             mdebug2("  Part 1: %d bytes from old[tail=%d] → new[0]\n", first_part, j);
             mdebug2("  Part 2: %d bytes from old[0] → new[%d]\n", i, first_part);
-            memcpy(temp_buffer, &buffer[j], first_part * sizeof(char *));
-            memcpy(temp_buffer + first_part, buffer, i * sizeof(char *));
+            memcpy(temp_buffer, &buffer[j], first_part * sizeof(buffered_message));
+            memcpy(temp_buffer + first_part, buffer, i * sizeof(buffered_message));
         }
 
     } else {
@@ -394,7 +394,7 @@ int w_agentd_buffer_resize(unsigned int current_capacity, unsigned int desired_c
         unsigned int retained_message_count = (agent_msg_count < desired_capacity) ? agent_msg_count : desired_capacity;
 
         // Allocate a new temporary buffer of the desired smaller size
-        os_calloc(desired_capacity + 1, sizeof(char *), temp_buffer);
+        os_calloc(desired_capacity + 1, sizeof(buffered_message), temp_buffer);
 
         // Copy the N oldest messages that will be preserved
         for (unsigned int k = 0; k < retained_message_count; k++) {
