@@ -179,7 +179,6 @@ class WazuhException(Exception):
                               f'{DOCU_VERSION}/user-manual/reference/ossec-conf/ruleset.html)'
                               ' to get more information about the rules'
                },
-        1212: {'message': 'Error sending Rules file update to Wazuh-Analysisd'},
 
         # Stats: 1300 - 1399
         1307: {'message': 'Invalid parameters',
@@ -261,7 +260,6 @@ class WazuhException(Exception):
                               f'{DOCU_VERSION}/user-manual/reference/ossec-conf/ruleset.html)'
                               ' to get more information about the decoders'
                },
-        1508: {'message': 'Error sending decoders files update to Wazuh-Analysisd'},
 
         # Syscheck/AR: 1600 - 1699
         1603: 'Invalid status. Valid statuses are: all, solved and outstanding',
@@ -388,7 +386,6 @@ class WazuhException(Exception):
                },
         1810: {'message': 'Upgrade module\'s reserved exception IDs (1810-1899). '
                           'The error message will be the output of upgrade module'},
-        1811: {'message': 'Error sending CDB list files update to Wazuh-Analysisd'},
 
         # Manager:
         1901: {'message': '\'execq\' socket has not been created'
