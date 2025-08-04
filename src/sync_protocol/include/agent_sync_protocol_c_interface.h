@@ -44,9 +44,10 @@ typedef struct MQ_Functions
 
 /// @brief Creates an instance of AgentSyncProtocol.
 ///
+/// @param module Name of the module associated with this instance.
 /// @param mq_funcs Pointer to a MQ_Functions struct containing the MQ callbacks.
 /// @return A pointer to an opaque AgentSyncProtocol handle, or NULL on failure.
-AgentSyncProtocolHandle* asp_create(const MQ_Functions* mq_funcs);
+AgentSyncProtocolHandle* asp_create(const char* module, const MQ_Functions* mq_funcs);
 
 /// @brief Destroys an AgentSyncProtocol instance.
 ///
@@ -70,14 +71,12 @@ size_t asp_persist_diff(AgentSyncProtocolHandle* handle,
 // @brief Triggers synchronization of a module.
 ///
 /// @param handle Pointer to the AgentSyncProtocol handle.
-/// @param module The name of the module to synchronize.
 /// @param mode Synchronization mode (e.g., full, delta).
 /// @param sync_timeout The timeout for each attempt to receive a response, in seconds.
 /// @param sync_retries The maximum number of attempts for re-sending Start and End messages.
 /// @param max_eps The maximum event reporting throughput. 0 means disabled.
 /// @return true if the sync was successfully processed; false otherwise.
 bool asp_sync_module(AgentSyncProtocolHandle* handle,
-                     const char* module,
                      int mode,
                      unsigned int sync_timeout,
                      unsigned int sync_retries,

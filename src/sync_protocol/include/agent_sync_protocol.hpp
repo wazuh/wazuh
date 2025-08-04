@@ -23,9 +23,10 @@ class AgentSyncProtocol : public IAgentSyncProtocol
 {
     public:
         /// @brief Constructs the synchronization protocol handler.
+        /// @param moduleName Name of the module associated with this instance.
         /// @param mqFuncs Functions used to interact with MQueue.
         /// @param queue Optional persistent queue to use for message storage and retrieval.
-        explicit AgentSyncProtocol(MQ_Functions mqFuncs, std::shared_ptr<IPersistentQueue> queue = nullptr);
+        explicit AgentSyncProtocol(const std::string& moduleName, MQ_Functions mqFuncs, std::shared_ptr<IPersistentQueue> queue = nullptr);
 
         /// @copydoc IAgentSyncProtocol::persistDifference
         size_t persistDifference(const std::string& id,
@@ -34,7 +35,7 @@ class AgentSyncProtocol : public IAgentSyncProtocol
                                  const std::string& data) override;
 
         /// @copydoc IAgentSyncProtocol::synchronizeModule
-        bool synchronizeModule(const std::string& module, Wazuh::SyncSchema::Mode mode, std::chrono::seconds timeout, unsigned int retries, size_t maxEps) override;
+        bool synchronizeModule(Wazuh::SyncSchema::Mode mode, std::chrono::seconds timeout, unsigned int retries, size_t maxEps) override;
 
         /// @brief Parses a FlatBuffer response message received from the manager.
         /// @param data Pointer to the FlatBuffer-encoded message buffer.
@@ -42,6 +43,9 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         bool parseResponseBuffer(const uint8_t* data) override;
 
     private:
+
+        /// @brief Name of the module associated with this instance.
+        std::string m_moduleName;
 
         /// @brief Functions used to interact with MQueue.
         MQ_Functions m_mqFuncs;
@@ -60,15 +64,13 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         bool ensureQueueAvailable();
 
         /// @brief Sends a start message to the server
-        /// @param module Module name
         /// @param mode Sync mode
         /// @param dataSize Size of data to send
         /// @param timeout The timeout for each response wait.
         /// @param retries The maximum number of re-send attempts.
         /// @param maxEps The maximum event reporting throughput. 0 means disabled.
         /// @return True on success, false on failure or timeout
-        bool sendStartAndWaitAck(const std::string& module,
-                                 Wazuh::SyncSchema::Mode mode,
+        bool sendStartAndWaitAck(Wazuh::SyncSchema::Mode mode,
                                  size_t dataSize,
                                  const std::chrono::seconds timeout,
                                  unsigned int retries,
@@ -80,26 +82,22 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         bool receiveStartAck(std::chrono::seconds timeout);
 
         /// @brief Sends data messages to the server
-        /// @param module Module name
         /// @param session Session id
         /// @param data Data to send
         /// @param maxEps The maximum event reporting throughput. 0 means disabled.
         /// @return True on success, false on failure
-        bool sendDataMessages(const std::string& module,
-                              uint64_t session,
+        bool sendDataMessages(uint64_t session,
                               const std::vector<PersistedData>& data,
                               size_t maxEps);
 
         /// @brief Sends an end message to the server
-        /// @param module Module name
         /// @param session Session id
         /// @param timeout The timeout for each response wait.
         /// @param retries The maximum number of re-send attempts.
         /// @param dataToSync The complete vector of data items being synchronized in the current session.
         /// @param maxEps The maximum event reporting throughput. 0 means disabled.
         /// @return True on success, false on failure or timeout
-        bool sendEndAndWaitAck(const std::string& module,
-                               uint64_t session,
+        bool sendEndAndWaitAck(uint64_t session,
                                const std::chrono::seconds timeout,
                                unsigned int retries,
                                const std::vector<PersistedData>& dataToSync,
@@ -112,10 +110,9 @@ class AgentSyncProtocol : public IAgentSyncProtocol
 
         /// @brief Sends a flatbuffer message as a string to the server
         /// @param fbData Flatbuffer data
-        /// @param module Module name
         /// @param maxEps The maximum event reporting throughput. 0 means disabled.
         /// @return True on success, false on failure
-        bool sendFlatBufferMessageAsString(const std::vector<uint8_t>& fbData, const std::string& module, size_t maxEps);
+        bool sendFlatBufferMessageAsString(const std::vector<uint8_t>& fbData, size_t maxEps);
 
         /// @brief Defines the possible phases of a synchronization process.
         enum class SyncPhase

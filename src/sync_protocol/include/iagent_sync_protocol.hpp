@@ -30,13 +30,12 @@ class IAgentSyncProtocol
                                          const std::string& data) = 0;
 
         /// @brief Synchronize a module with the server
-        /// @param module Module name
         /// @param mode Sync mode
         /// @param timeout The timeout for each response wait.
         /// @param retries The maximum number of re-send attempts.
         /// @param maxEps The maximum event reporting throughput. 0 means disabled.
         /// @return true if the sync was successfully processed; false otherwise.
-        virtual bool synchronizeModule(const std::string& module, Wazuh::SyncSchema::Mode mode, std::chrono::seconds timeout, unsigned int retries, size_t maxEps) = 0;
+        virtual bool synchronizeModule(Wazuh::SyncSchema::Mode mode, std::chrono::seconds timeout, unsigned int retries, size_t maxEps) = 0;
 
         /// @brief Destructor
         virtual ~IAgentSyncProtocol() = default;
