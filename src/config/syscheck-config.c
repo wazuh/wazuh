@@ -1853,10 +1853,6 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
                         mdebug2("Maximum value allowed for registry_limit is '%d'", MAX_FILE_LIMIT);
                         syscheck->db_entry_registry_limit = MAX_FILE_LIMIT;
                     }
-#else
-                    if (atoi(children[j]->content) < 0) {
-                        mdebug2("Maximum value allowed for registry_limit is '%d'", MAX_FILE_LIMIT);
-                    }
 #endif
                 }
             }
