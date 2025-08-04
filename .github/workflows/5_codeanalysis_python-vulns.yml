@@ -46,17 +46,20 @@ jobs:
           ref: ${{ matrix.ref }}
           fetch-depth: 0
 
-      - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@0.30.0
-        with:
-          scan-type: 'fs'
-          scanners: 'vuln'
-          format: 'sarif'
-          output: 'trivy-results.sarif'
+      - name: Download and decompress prebuilt embedded Python
+        run:
+          make -C src external/cpython.tar.gz && tar -xzf src/external/cpython.tar.gz -C src/external --one-top-level
 
-      - name: Upload Trivy scan results to GitHub Security tab
+      - name: Scan prebuilt embedded Python 
+        uses: anchore/scan-action@v6
+        id: scan
+        with:
+          path: "src/external/cpython"
+          fail-build: false
+
+      - name: Upload scan results to GitHub
         uses: github/codeql-action/upload-sarif@v3
         with:
           ref: refs/heads/${{ matrix.ref }}
           sha: ${{ matrix.sha }}
-          sarif_file: 'trivy-results.sarif'
+          sarif_file: ${{ steps.scan.outputs.sarif }}
