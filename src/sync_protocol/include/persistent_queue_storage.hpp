@@ -23,18 +23,9 @@ enum class SyncStatus : int
 /// @brief Tracks the creation state of a persisted message, particularly for newly created items.
 enum class CreateStatus : int
 {
-    NO_NEW_CREATED = 0,         ///< The message existed prior to the current session; it was not newly created.
-    NEW_CREATED = 1,            ///< The message was newly created during the current session.
-    DELETED_AFTER_CREATED = 2   ///< The message was newly created, but then deleted before it could be synchronized.
-};
-
-/// @brief Defines the type of modification operation that is being synchronized.
-enum class OperationSyncing : int
-{
-    CREATE = 0, ///< The operation is to create a new record.
-    MODIFY = 1, ///< The operation is to modify an existing record.
-    DELETE = 2, ///< The operation is to delete a record.
-    NO_OP = 3   ///< No specific operation is being synchronized. Represents a neutral state.
+    EXISTING = 0,     ///< The message existed prior to the current session; it was not newly created.
+    NEW = 1,          ///< The message was newly created during the current session.
+    NEW_DELETED = 2   ///< The message was newly created, but then deleted before it could be synchronized.
 };
 
 /// @brief SQLite-backed implementation of IPersistentQueueStorage.

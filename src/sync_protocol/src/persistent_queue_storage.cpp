@@ -61,12 +61,12 @@ void PersistentQueueStorage::submitOrCoalesce(const PersistedData& newData)
     try
     {
         bool oldDataFound = false;
-        CreateStatus oldCreateStatus = CreateStatus::NO_NEW_CREATED;
-        CreateStatus newCreateStatus = CreateStatus::NO_NEW_CREATED;
+        CreateStatus oldCreateStatus = CreateStatus::EXISTING;
+        CreateStatus newCreateStatus = CreateStatus::EXISTING;
         SyncStatus oldSyncStatus = SyncStatus::PENDING;
         SyncStatus newSyncStatus = SyncStatus::PENDING;
-        OperationSyncing oldOperationSyncing = OperationSyncing::NO_OP;
-        OperationSyncing newOperationSyncing = OperationSyncing::NO_OP;
+        Operation oldOperationSyncing = Operation::NO_OP;
+        Operation newOperationSyncing = Operation::NO_OP;
         int oldOperation = -1;
 
         const std::string findQuery = "SELECT operation, sync_status, create_status, operation_syncing FROM persistent_queue WHERE id = ?;";
@@ -78,14 +78,14 @@ void PersistentQueueStorage::submitOrCoalesce(const PersistedData& newData)
             oldOperation = findStmt.value<int>(0);
             oldSyncStatus = static_cast<SyncStatus>(findStmt.value<int>(1));
             oldCreateStatus = static_cast<CreateStatus>(findStmt.value<int>(2));
-            oldOperationSyncing = static_cast<OperationSyncing>(findStmt.value<int>(3));
+            oldOperationSyncing = static_cast<Operation>(findStmt.value<int>(3));
             oldDataFound = true;
         }
 
         if (oldSyncStatus != SyncStatus::PENDING)
         {
-            newOperationSyncing = (oldOperationSyncing == OperationSyncing::NO_OP)
-                                  ? static_cast<OperationSyncing>(oldOperation)
+            newOperationSyncing = (oldOperationSyncing == Operation::NO_OP)
+                                  ? static_cast<Operation>(oldOperation)
                                   : oldOperationSyncing;
         }
 
@@ -98,8 +98,8 @@ void PersistentQueueStorage::submitOrCoalesce(const PersistedData& newData)
             insertStmt.bind(3, newData.data);
             insertStmt.bind(4, static_cast<int>(newData.operation));
             insertStmt.bind(5, (newData.operation == Operation::CREATE)
-                            ? static_cast<int>(CreateStatus::NEW_CREATED)
-                            : static_cast<int>(CreateStatus::NO_NEW_CREATED));
+                            ? static_cast<int>(CreateStatus::NEW)
+                            : static_cast<int>(CreateStatus::EXISTING));
             insertStmt.step();
         }
         else
@@ -110,7 +110,7 @@ void PersistentQueueStorage::submitOrCoalesce(const PersistedData& newData)
 
             if (newData.operation == Operation::DELETE)
             {
-                if (oldCreateStatus == CreateStatus::NEW_CREATED && oldSyncStatus == SyncStatus::PENDING)
+                if (oldCreateStatus == CreateStatus::NEW && oldSyncStatus == SyncStatus::PENDING)
                 {
                     const std::string deleteQuery = "DELETE FROM persistent_queue WHERE id = ?;";
                     Statement deleteStmt(m_connection, deleteQuery);
@@ -119,8 +119,8 @@ void PersistentQueueStorage::submitOrCoalesce(const PersistedData& newData)
                 }
                 else
                 {
-                    newCreateStatus = (oldCreateStatus == CreateStatus::NEW_CREATED)
-                                      ? CreateStatus::DELETED_AFTER_CREATED
+                    newCreateStatus = (oldCreateStatus == CreateStatus::NEW)
+                                      ? CreateStatus::NEW_DELETED
                                       : oldCreateStatus;
 
                     const std::string updateQuery = "UPDATE persistent_queue SET idx = ?, data = ?, operation = ?, sync_status = ?, create_status = ?, operation_syncing = ? WHERE id = ?;";
@@ -137,8 +137,8 @@ void PersistentQueueStorage::submitOrCoalesce(const PersistedData& newData)
             }
             else
             {
-                newCreateStatus = (oldCreateStatus == CreateStatus::DELETED_AFTER_CREATED)
-                                  ? CreateStatus::NEW_CREATED
+                newCreateStatus = (oldCreateStatus == CreateStatus::NEW_DELETED)
+                                  ? CreateStatus::NEW
                                   : oldCreateStatus;
 
                 const std::string updateQuery = "UPDATE persistent_queue SET idx = ?, data = ?, operation = ?, sync_status = ?, create_status = ?, operation_syncing = ? WHERE id = ?;";
@@ -246,16 +246,16 @@ void PersistentQueueStorage::removeAllSynced()
 
         const std::string query2 = "DELETE FROM persistent_queue WHERE create_status = ? AND (operation_syncing = ? OR operation_syncing = ?);";
         Statement stmt2(m_connection, query2);
-        stmt2.bind(1, static_cast<int>(CreateStatus::DELETED_AFTER_CREATED));
-        stmt2.bind(2, static_cast<int>(OperationSyncing::NO_OP));
-        stmt2.bind(3, static_cast<int>(OperationSyncing::DELETE));
+        stmt2.bind(1, static_cast<int>(CreateStatus::NEW_DELETED));
+        stmt2.bind(2, static_cast<int>(Operation::NO_OP));
+        stmt2.bind(3, static_cast<int>(Operation::DELETE));
         stmt2.step();
 
         const std::string queryUpdate = "UPDATE persistent_queue SET sync_status = ?, create_status = ?, operation_syncing = ? WHERE (sync_status = ? OR sync_status = ?);";
         Statement stmtUpdate(m_connection, queryUpdate);
         stmtUpdate.bind(1, static_cast<int>(SyncStatus::PENDING));
-        stmtUpdate.bind(2, static_cast<int>(CreateStatus::NO_NEW_CREATED));
-        stmtUpdate.bind(3, static_cast<int>(OperationSyncing::NO_OP));
+        stmtUpdate.bind(2, static_cast<int>(CreateStatus::EXISTING));
+        stmtUpdate.bind(3, static_cast<int>(Operation::NO_OP));
         stmtUpdate.bind(4, static_cast<int>(SyncStatus::SYNCING));
         stmtUpdate.bind(5, static_cast<int>(SyncStatus::SYNCING_UPDATED));
         stmtUpdate.step();
@@ -279,7 +279,7 @@ void PersistentQueueStorage::resetAllSyncing()
         const std::string queryUpdate = "UPDATE persistent_queue SET sync_status = ?, operation_syncing = ? WHERE sync_status IN (?, ?);";
         Statement stmtUpdate(m_connection, queryUpdate);
         stmtUpdate.bind(1, static_cast<int>(SyncStatus::PENDING));
-        stmtUpdate.bind(2, static_cast<int>(OperationSyncing::NO_OP));
+        stmtUpdate.bind(2, static_cast<int>(Operation::NO_OP));
         stmtUpdate.bind(3, static_cast<int>(SyncStatus::SYNCING));
         stmtUpdate.bind(4, static_cast<int>(SyncStatus::SYNCING_UPDATED));
         stmtUpdate.step();
@@ -287,7 +287,7 @@ void PersistentQueueStorage::resetAllSyncing()
         const std::string queryDelete = "DELETE FROM persistent_queue WHERE operation = ? AND create_status = ?;";
         Statement stmtDelete(m_connection, queryDelete);
         stmtDelete.bind(1, static_cast<int>(Operation::DELETE));
-        stmtDelete.bind(2, static_cast<int>(CreateStatus::DELETED_AFTER_CREATED));
+        stmtDelete.bind(2, static_cast<int>(CreateStatus::NEW_DELETED));
         stmtDelete.step();
 
         m_connection.execute("COMMIT;");

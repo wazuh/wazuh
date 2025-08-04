@@ -19,7 +19,8 @@ enum class Operation : int
 {
     CREATE = 0, ///< The operation is to create a new record.
     MODIFY = 1, ///< The operation is to modify an existing record.
-    DELETE = 2 ///< The operation is to delete a record.
+    DELETE = 2, ///< The operation is to delete a record.
+    NO_OP = 3   ///< No specific operation is being synchronized. Represents a neutral state.
 };
 
 /// @brief Represents a persisted message used in module synchronization.
