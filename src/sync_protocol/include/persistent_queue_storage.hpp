@@ -63,13 +63,6 @@ class PersistentQueueStorage : public IPersistentQueueStorage
         /// @return The total number of messages in the queue after the operation.
         virtual size_t submitOrCoalesce(const PersistedData& data) override;
 
-        /// @brief Deletes all messages belonging to a specific module.
-        void removeAll() override;
-
-        /// @brief Loads all persisted messages for the given module.
-        /// @return A vector containing all messages found.
-        std::vector<PersistedData> loadAll() override;
-
         /// @brief Fetches a batch of pending messages and marks them as SYNCING.
         /// @param maxAmount The maximum number of messages to fetch. If 0, fetches all.
         /// @return A vector of messages now marked as SYNCING.

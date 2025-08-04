@@ -174,51 +174,6 @@ size_t PersistentQueueStorage::submitOrCoalesce(const PersistedData& newData)
     }
 }
 
-void PersistentQueueStorage::removeAll()
-{
-    try
-    {
-        const std::string query = "DELETE FROM persistent_queue;";
-        Statement stmt(m_connection, query);
-        stmt.step();
-    }
-    catch (const Sqlite3Error& ex)
-    {
-        std::cerr << "[PersistentQueueStorage] SQLite error: " << ex.what() << std::endl;
-        throw;
-    }
-}
-
-std::vector<PersistedData> PersistentQueueStorage::loadAll()
-{
-    std::vector<PersistedData> result;
-
-    try
-    {
-        const std::string query =
-            "SELECT id, idx, data, operation FROM persistent_queue ORDER BY rowid ASC;";
-
-        Statement stmt(m_connection, query);
-
-        while (stmt.step() == SQLITE_ROW)
-        {
-            PersistedData data;
-            data.id = stmt.value<std::string>(0);
-            data.index = stmt.value<std::string>(1);
-            data.data = stmt.value<std::string>(2);
-            data.operation = static_cast<Operation>(stmt.value<int>(3));
-            result.emplace_back(std::move(data));
-        }
-    }
-    catch (const Sqlite3Error& ex)
-    {
-        std::cerr << "[PersistentQueueStorage] SQLite error: " << ex.what() << std::endl;
-        throw;
-    }
-
-    return result;
-}
-
 std::vector<PersistedData> PersistentQueueStorage::fetchAndMarkForSync(size_t maxAmount)
 {
     std::vector<PersistedData> result;

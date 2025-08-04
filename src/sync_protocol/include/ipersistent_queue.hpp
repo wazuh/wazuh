@@ -66,9 +66,6 @@ class IPersistentQueue
                               const std::string& data,
                               Operation operation) = 0;
 
-        /// @brief Removes all messages queued for a given module.
-        virtual void removeAll() = 0;
-
         /// @brief Fetches a batch of pending messages and marks them for synchronization.
         /// @param maxAmount The maximum number of messages to fetch. If 0, fetches all.
         /// @return A vector of messages now marked as SYNCING.

@@ -51,12 +51,6 @@ size_t PersistentQueue::submit(const std::string& id,
     return messageCount;
 }
 
-void PersistentQueue::removeAll()
-{
-    std::lock_guard<std::mutex> lock(m_mutex);
-    m_storage->removeAll();
-}
-
 std::vector<PersistedData> PersistentQueue::fetchAndMarkForSync(size_t maxAmount)
 {
     std::lock_guard<std::mutex> lock(m_mutex);

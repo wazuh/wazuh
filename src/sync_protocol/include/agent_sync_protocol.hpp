@@ -91,9 +91,6 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         /// @return True on success, false on failure
         bool receiveEndAck(std::chrono::seconds timeout);
 
-        /// @brief Clears persisted differences for a module
-        void clearPersistedDifferences();
-
         /// @brief Sends a flatbuffer message as a string to the server
         /// @param fbData Flatbuffer data
         /// @param module Module name

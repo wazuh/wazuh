@@ -73,7 +73,7 @@ TEST_P(PersistentQueueFullParamTest, HandlesSubmitFetchRemoveResetCorrectly)
     }
 
     // 6. Verify final status
-    auto rows = storage->loadAll();
+    auto rows = storage->fetchAndMarkForSync(10);
     EXPECT_EQ(rows.size(), param.expectedRows);
 
     if (!rows.empty())

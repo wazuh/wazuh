@@ -21,8 +21,6 @@ class MockPersistentQueueStorage : public IPersistentQueueStorage
 {
     public:
         MOCK_METHOD(size_t, submitOrCoalesce, (const PersistedData& data), (override));
-        MOCK_METHOD(void, removeAll, (), (override));
-        MOCK_METHOD(std::vector<PersistedData>, loadAll, (), (override));
         MOCK_METHOD(std::vector<PersistedData>, fetchAndMarkForSync, (size_t maxAmount), (override));
         MOCK_METHOD(void, removeAllSynced, (), (override));
         MOCK_METHOD(void, resetAllSyncing, (), (override));
@@ -79,19 +77,4 @@ TEST(PersistentQueueTest, FetchAllReturnsAllMessages)
 
     auto all = queue.fetchAndMarkForSync(0);
     EXPECT_EQ(all.size(), static_cast<size_t>(2));
-}
-
-TEST(PersistentQueueTest, RemoveAllClearsMemoryAndStorage)
-{
-    auto mockStorage = std::make_shared<MockPersistentQueueStorage>();
-    EXPECT_CALL(*mockStorage, submitOrCoalesce).Times(2);
-
-    PersistentQueue queue(mockStorage);
-    queue.submit("id1", "idx", "{}", Operation::CREATE);
-    queue.submit("id2", "idx", "{}", Operation::MODIFY);
-
-    EXPECT_CALL(*mockStorage, removeAll()).Times(1);
-    queue.removeAll();
-
-    EXPECT_TRUE(queue.fetchAndMarkForSync(0).empty());
 }

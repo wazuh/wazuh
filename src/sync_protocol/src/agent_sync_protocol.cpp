@@ -157,6 +157,7 @@ bool AgentSyncProtocol::sendStartAndWaitAck(const std::string& module, Wazuh::Sy
         if (receiveStartAck(timeout))
         {
             std::lock_guard<std::mutex> lock(m_syncState.mtx);
+
             if (m_syncState.syncFailed)
             {
                 std::cerr << "[Sync] Synchronization failed due to manager error." << std::endl;
@@ -261,6 +262,7 @@ bool AgentSyncProtocol::sendEndAndWaitAck(const std::string& module, uint64_t se
 
         {
             std::lock_guard<std::mutex> lock(m_syncState.mtx);
+
             if (m_syncState.syncFailed)
             {
                 std::cerr << "[Sync] Synchronization failed: Manager reported an error status." << std::endl;
@@ -331,11 +333,6 @@ bool AgentSyncProtocol::receiveEndAck(std::chrono::seconds timeout)
     });
 }
 
-void AgentSyncProtocol::clearPersistedDifferences()
-{
-    m_persistentQueue->removeAll();
-}
-
 bool AgentSyncProtocol::sendFlatBufferMessageAsString(const std::vector<uint8_t>& fbData, const std::string& module)
 {
     if (m_mqFuncs.send_binary(m_queue, fbData.data(), fbData.size(), module.c_str(), SYNC_MQ) < 0)
@@ -375,7 +372,7 @@ bool AgentSyncProtocol::parseResponseBuffer(const uint8_t* data)
                     const auto* startAck = message->content_as_StartAck();
 
                     if (startAck->status() == Wazuh::SyncSchema::Status::Error ||
-                        startAck->status() == Wazuh::SyncSchema::Status::Offline)
+                            startAck->status() == Wazuh::SyncSchema::Status::Offline)
                     {
                         std::cerr << "[Sync] Received StartAck with error status. Aborting synchronization." << std::endl;
                         m_syncState.syncFailed = true;
@@ -411,7 +408,7 @@ bool AgentSyncProtocol::parseResponseBuffer(const uint8_t* data)
                 }
 
                 if (endAck->status() == Wazuh::SyncSchema::Status::Error ||
-                    endAck->status() == Wazuh::SyncSchema::Status::Offline)
+                        endAck->status() == Wazuh::SyncSchema::Status::Offline)
                 {
                     std::cerr << "[Sync] Received EndAck with error status. Aborting synchronization." << std::endl;
                     m_syncState.syncFailed = true;
