@@ -54,7 +54,7 @@ void PersistentQueueStorage::createTableIfNotExists()
     }
 }
 
-size_t PersistentQueueStorage::submitOrCoalesce(const PersistedData& newData)
+void PersistentQueueStorage::submitOrCoalesce(const PersistedData& newData)
 {
     m_connection.execute("BEGIN IMMEDIATE TRANSACTION;");
 
@@ -154,17 +154,7 @@ size_t PersistentQueueStorage::submitOrCoalesce(const PersistedData& newData)
             }
         }
 
-        size_t final_count = 0;
-        const std::string countQuery = "SELECT COUNT(*) FROM persistent_queue;";
-        Statement countStmt(m_connection, countQuery);
-
-        if (countStmt.step() == SQLITE_ROW)
-        {
-            final_count = countStmt.value<int64_t>(0);
-        }
-
         m_connection.execute("COMMIT;");
-        return final_count;
     }
     catch (const std::exception& e)
     {

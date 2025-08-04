@@ -23,11 +23,10 @@ class IAgentSyncProtocol
         /// @param operation Operation type
         /// @param index Index where to send the difference
         /// @param data Difference data
-        /// @return The total number of pending differences for that module.
-        virtual size_t persistDifference(const std::string& id,
-                                         Operation operation,
-                                         const std::string& index,
-                                         const std::string& data) = 0;
+        virtual void persistDifference(const std::string& id,
+                                       Operation operation,
+                                       const std::string& index,
+                                       const std::string& data) = 0;
 
         /// @brief Synchronize a module with the server
         /// @param mode Sync mode

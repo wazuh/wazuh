@@ -28,7 +28,7 @@ PersistentQueue::PersistentQueue(std::shared_ptr<IPersistentQueueStorage> storag
 
 PersistentQueue::~PersistentQueue() = default;
 
-size_t PersistentQueue::submit(const std::string& id,
+void PersistentQueue::submit(const std::string& id,
                                const std::string& index,
                                const std::string& data,
                                Operation operation)
@@ -36,19 +36,15 @@ size_t PersistentQueue::submit(const std::string& id,
     std::lock_guard<std::mutex> lock(m_mutex);
     PersistedData msg{0, id, index, data, operation};
 
-    size_t messageCount = 0;
-
     try
     {
-        messageCount = m_storage->submitOrCoalesce(msg);
+        m_storage->submitOrCoalesce(msg);
     }
     catch (const std::exception& ex)
     {
         std::cerr << "[PersistentQueue] Error persisting message: " << ex.what() << std::endl;
         throw;
     }
-
-    return messageCount;
 }
 
 std::vector<PersistedData> PersistentQueue::fetchAndMarkForSync()

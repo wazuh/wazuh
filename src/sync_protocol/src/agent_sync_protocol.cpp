@@ -25,19 +25,18 @@ AgentSyncProtocol::AgentSyncProtocol(const std::string& moduleName, MQ_Functions
 {
 }
 
-size_t AgentSyncProtocol::persistDifference(const std::string& id,
-                                            Operation operation,
-                                            const std::string& index,
-                                            const std::string& data)
+void AgentSyncProtocol::persistDifference(const std::string& id,
+                                          Operation operation,
+                                          const std::string& index,
+                                          const std::string& data)
 {
     try
     {
-        return m_persistentQueue->submit(id, index, data, operation);
+        m_persistentQueue->submit(id, index, data, operation);
     }
     catch (const std::exception& e)
     {
         std::cerr << "Failed to persist item: " << e.what() << std::endl;
-        return 0;
     }
 }
 

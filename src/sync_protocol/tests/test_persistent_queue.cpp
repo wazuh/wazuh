@@ -20,7 +20,7 @@ using ::testing::SaveArg;
 class MockPersistentQueueStorage : public IPersistentQueueStorage
 {
     public:
-        MOCK_METHOD(size_t, submitOrCoalesce, (const PersistedData& data), (override));
+        MOCK_METHOD(void, submitOrCoalesce, (const PersistedData& data), (override));
         MOCK_METHOD(std::vector<PersistedData>, fetchAndMarkForSync, (), (override));
         MOCK_METHOD(void, removeAllSynced, (), (override));
         MOCK_METHOD(void, resetAllSyncing, (), (override));
@@ -49,15 +49,13 @@ TEST(PersistentQueueTest, SubmitRollbackSequenceOnPersistError)
 
     EXPECT_CALL(*mockStorage, submitOrCoalesce(_))
     .WillOnce(testing::Throw(std::runtime_error("Simulated DB error")))
-    .WillOnce(testing::Return(1));
+    .WillOnce(testing::Return());
 
     PersistentQueue queue(mockStorage);
 
     EXPECT_THROW(queue.submit("id1", "idx1", "{}", Operation::CREATE), std::exception);
 
-    auto seq = queue.submit("id2", "idx2", "{}", Operation::CREATE);
-
-    EXPECT_EQ(seq, static_cast<uint64_t>(1));
+    EXPECT_NO_THROW(queue.submit("id2", "idx2", "{}", Operation::CREATE));
 }
 
 TEST(PersistentQueueTest, FetchAllReturnsAllMessages)

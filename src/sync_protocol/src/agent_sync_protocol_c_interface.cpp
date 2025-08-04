@@ -49,18 +49,18 @@ extern "C" {
         delete reinterpret_cast<AgentSyncProtocolWrapper*>(handle);
     }
 
-    size_t asp_persist_diff(AgentSyncProtocolHandle* handle,
+    void asp_persist_diff(AgentSyncProtocolHandle* handle,
                             const char* id,
                             int operation,
                             const char* index,
                             const char* data)
     {
-        if (!handle || !id || !index || !data) return 0;
+        if (!handle || !id || !index || !data) return;
 
         auto* wrapper = reinterpret_cast<AgentSyncProtocolWrapper*>(handle);
-        return wrapper->impl->persistDifference(id,
-                                                static_cast<Operation>(operation),
-                                                index, data);
+        wrapper->impl->persistDifference(id,
+                                         static_cast<Operation>(operation),
+                                         index, data);
     }
 
     bool asp_sync_module(AgentSyncProtocolHandle* handle,

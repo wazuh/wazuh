@@ -60,8 +60,7 @@ class PersistentQueueStorage : public IPersistentQueueStorage
         /// and applies coalescing rules before inserting, updating, or deleting.
         /// The entire operation is atomic.
         /// @param data The new message data to submit.
-        /// @return The total number of messages in the queue after the operation.
-        virtual size_t submitOrCoalesce(const PersistedData& data) override;
+        virtual void submitOrCoalesce(const PersistedData& data) override;
 
         /// @brief Fetches a batch of pending messages and marks them as SYNCING.
         /// @return A vector of messages now marked as SYNCING.

@@ -60,11 +60,10 @@ class IPersistentQueue
         /// @param index The message grouping key.
         /// @param data The serialized payload of the message.
         /// @param operation The type of operation (CREATE, MODIFY, DELETE).
-        /// @return The total number of items for that module in the queue after submission.
-        virtual size_t submit(const std::string& id,
-                              const std::string& index,
-                              const std::string& data,
-                              Operation operation) = 0;
+        virtual void submit(const std::string& id,
+                            const std::string& index,
+                            const std::string& data,
+                            Operation operation) = 0;
 
         /// @brief Fetches a batch of pending messages and marks them for synchronization.
         /// @return A vector of messages now marked as SYNCING.

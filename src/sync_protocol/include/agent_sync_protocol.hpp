@@ -29,10 +29,10 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         explicit AgentSyncProtocol(const std::string& moduleName, MQ_Functions mqFuncs, std::shared_ptr<IPersistentQueue> queue = nullptr);
 
         /// @copydoc IAgentSyncProtocol::persistDifference
-        size_t persistDifference(const std::string& id,
-                                 Operation operation,
-                                 const std::string& index,
-                                 const std::string& data) override;
+        void persistDifference(const std::string& id,
+                               Operation operation,
+                               const std::string& index,
+                               const std::string& data) override;
 
         /// @copydoc IAgentSyncProtocol::synchronizeModule
         bool synchronizeModule(Wazuh::SyncSchema::Mode mode, std::chrono::seconds timeout, unsigned int retries, size_t maxEps) override;

@@ -61,8 +61,7 @@ void asp_destroy(AgentSyncProtocolHandle* handle);
 /// @param operation Type of operation (create, modify, delete).
 /// @param index Target index or destination for the diff.
 /// @param data JSON string representing the data to persist.
-/// @return The total number of pending differences for that module.
-size_t asp_persist_diff(AgentSyncProtocolHandle* handle,
+void asp_persist_diff(AgentSyncProtocolHandle* handle,
                         const char* id,
                         int operation,
                         const char* index,
