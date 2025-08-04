@@ -86,6 +86,23 @@ namespace chrome
         {ChromeBrowserType::Arc, "Library/Application Support/Arc/User Data"}
     };
 
+    const std::unordered_map<ChromeBrowserType, std::string>
+    kChromeBrowserTypeToString =
+    {
+        {ChromeBrowserType::GoogleChrome, "chrome"},
+        {ChromeBrowserType::GoogleChromeBeta, "chrome_beta"},
+        {ChromeBrowserType::GoogleChromeDev, "chrome_dev"},
+        {ChromeBrowserType::GoogleChromeCanary, "chrome_canary"},
+        {ChromeBrowserType::Brave, "brave"},
+        {ChromeBrowserType::Chromium, "chromium"},
+        {ChromeBrowserType::Yandex, "yandex"},
+        {ChromeBrowserType::Opera, "opera"},
+        {ChromeBrowserType::Edge, "edge"},
+        {ChromeBrowserType::Edge, "edge_beta"},
+        {ChromeBrowserType::Vivaldi, "vivaldi"},
+        {ChromeBrowserType::Arc, "arc"},
+    };
+
     const std::string kPreferencesFile{"Preferences"};
     const std::string kSecurePreferencesFile{"Secure Preferences"};
     const std::string kExtensionsDir{"Extensions"};
@@ -103,8 +120,7 @@ namespace chrome
             nlohmann::json collect();
 
         private:
-            chrome::ChromeUserProfileList getProfileDirs();
-            void getExtensionsFromProfiles(chrome::ChromeExtensionList& extensions, const chrome::ChromeUserProfileList& profilePaths);
+            void getExtensionsFromProfiles(chrome::ChromeExtensionList& extensions);
             nlohmann::json toJson(const chrome::ChromeExtensionList& extensions);
             bool isValidChromeProfile(const std::string& profilePath);
             std::string jsonArrayToString(const nlohmann::json& jsonArray);
@@ -125,6 +141,8 @@ namespace chrome
             void getExtensionsFromPath(chrome::ChromeExtensionList& extensions, const std::string& path);
 
             std::shared_ptr<IChromeExtensionsWrapper> m_chromeExtensionsWrapper;
+            std::string m_currentBrowserType;
+            std::string m_currentUid;
     };
 
 } // namespace chrome
