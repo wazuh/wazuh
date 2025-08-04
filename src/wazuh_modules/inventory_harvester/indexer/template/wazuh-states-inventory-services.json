@@ -10,6 +10,11 @@
         "number_of_replicas": "0",
         "number_of_shards": "1",
         "query.default_field": [
+          "agent.host.architecture",
+          "agent.host.ip",
+          "agent.id",
+          "agent.name",
+          "agent.version",
           "service.id",
           "service.name",
           "service.state",
@@ -23,7 +28,10 @@
           "service.address",
           "user.name",
           "service.enabled",
-          "file.path"
+          "file.path",
+          "wazuh.cluster.name",
+          "wazuh.cluster.node",
+          "wazuh.schema.version"
         ],
         "refresh_interval": "5s"
       }
