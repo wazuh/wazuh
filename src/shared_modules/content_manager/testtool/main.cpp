@@ -157,13 +157,12 @@ int main()
     {
         const std::string topic_name = CONFIG_PARAMETERS.at("topicName").get<std::string>();
         // Client -> Vulnerability detector
-        ContentRegister registerer {
-            topic_name,
-            CONFIG_PARAMETERS,
-            [](const std::string& msg, std::shared_ptr<ConditionSync> shouldStop) -> FileProcessingResult
-            {
-                return {0, "", false};
-            }};
+        ContentRegister registerer {topic_name,
+                                    CONFIG_PARAMETERS,
+                                    [](const std::string& msg) -> FileProcessingResult
+                                    {
+                                        return {0, "", false};
+                                    }};
 
         std::this_thread::sleep_for(std::chrono::seconds(5));
 

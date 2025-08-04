@@ -22,7 +22,7 @@
 #include "syscheck.h"
 #include "../os_crypto/md5_sha1_sha256/md5_sha1_sha256_op.h"
 #include "../rootcheck/rootcheck.h"
-#include "db/include/db.h"
+#include "file/file.h"
 #include "ebpf/include/ebpf_whodata.h"
 
 #ifdef WAZUH_UNIT_TESTING
@@ -45,11 +45,11 @@ void audit_set_db_consistency(void);
 // Prototypes
 #ifdef WIN32
 DWORD WINAPI fim_run_realtime(__attribute__((unused)) void * args);
+DWORD WINAPI fim_run_integrity(__attribute__((unused)) void * args);
 #else
 void * fim_run_realtime(__attribute__((unused)) void * args);
+void * fim_run_integrity(__attribute__((unused)) void * args);
 #endif
-
-void fim_sync_check_eps();
 
 int fim_whodata_initialize();
 #ifdef WIN32
@@ -61,7 +61,6 @@ STATIC void set_whodata_mode_changes();
 static void *symlink_checker_thread(__attribute__((unused)) void * data);
 STATIC void fim_link_update(const char *new_path, directory_t *configuration);
 STATIC void fim_link_check_delete(directory_t *configuration);
-STATIC void fim_link_delete_range(directory_t *configuration);
 STATIC void fim_link_silent_scan(const char *path, directory_t *configuration);
 STATIC void fim_link_reload_broken_link(char *path, directory_t *configuration);
 #endif
@@ -91,33 +90,6 @@ STATIC void fim_send_msg(char mq, const char * location, const char * msg) {
     }
 }
 
-void fim_sync_check_eps() {
-    static long n_msg_sent = 0;
-
-    if (++n_msg_sent == syscheck.sync_max_eps) {
-        sleep(1);
-        n_msg_sent = 0;
-    }
-}
-// Send a state synchronization message
-void fim_send_sync_state(const char *location, const char* msg) {
-
-    if (syscheck.sync_max_eps == 0) {
-        fim_send_msg(DBSYNC_MQ, location, msg);
-        mdebug2(FIM_DBSYNC_SEND, msg);
-    } else {
-        static pthread_mutex_t sync_eps_mutex = PTHREAD_MUTEX_INITIALIZER;
-
-        w_mutex_lock(&sync_eps_mutex);
-
-        fim_send_msg(DBSYNC_MQ, location, msg);
-        mdebug2(FIM_DBSYNC_SEND, msg);
-        fim_sync_check_eps();
-
-        w_mutex_unlock(&sync_eps_mutex);
-    }
-}
-
 // Send a message related to syscheck change/addition
 void send_syscheck_msg(const cJSON *_msg) {
     char *msg = cJSON_PrintUnformatted(_msg);
@@ -139,14 +111,21 @@ void send_syscheck_msg(const cJSON *_msg) {
     }
 }
 
-// Send a scan info event
-void fim_send_scan_info(fim_scan_event event) {
-    cJSON * json = fim_scan_info_json(event, time(NULL));
+// Persist a syscheck message
+void persist_syscheck_msg(const cJSON* _msg) {
+    if (syscheck.enable_synchronization) {
+        char* msg = cJSON_PrintUnformatted(_msg);
 
-    send_syscheck_msg(json);
+        mdebug2(FIM_PERSIST, msg);
 
-    cJSON_Delete(json);
+        // fim_persist_stateful_event(msg);
+
+        os_free(msg);
+    } else {
+        mdebug2("FIM synchronization is disabled");
+    }
 }
+
 
 void check_max_fps() {
 #ifndef WAZUH_UNIT_TESTING
@@ -290,21 +269,31 @@ void start_daemon()
     minfo(FIM_FREQUENCY_TIME, syscheck.time);
     fim_scan();
 
-    // Launch inventory synchronization thread, if enabled
-    if (syscheck.enable_synchronization) {
-        fim_run_integrity();
-    }
-
 #ifndef WIN32
     // Launch Real-time thread
     w_create_thread(fim_run_realtime, &syscheck);
 
     // Launch symbolic links checker thread
     w_create_thread(symlink_checker_thread, NULL);
+
+    if (syscheck.enable_synchronization) {
+        // Launch inventory synchronization thread
+        w_create_thread(fim_run_integrity, NULL);
+    } else {
+        mdebug1("FIM inventory synchronization is disabled");
+    }
 #else
     if (CreateThread(NULL, 0, fim_run_realtime, &syscheck, 0, NULL) == NULL) {
 
         merror(THREAD_ERROR);
+    }
+
+    if (syscheck.enable_synchronization) {
+        if (CreateThread(NULL, 0, fim_run_integrity, NULL, 0, NULL) == NULL) {
+            merror(THREAD_ERROR);
+        }
+    } else {
+        mdebug1("FIM inventory synchronization is disabled");
     }
 #endif
 
@@ -526,6 +515,27 @@ void * fim_run_realtime(__attribute__((unused)) void * args) {
     return NULL;
 }
 #endif
+
+#ifdef WIN32
+DWORD WINAPI fim_run_integrity(__attribute__((unused)) void * args) {
+#else
+void * fim_run_integrity(__attribute__((unused)) void * args) {
+#endif
+    while (FOREVER()) {
+        mdebug1("Running inventory synchronization.");
+
+        // fim_synchronize(syscheck.sync_response_timeout, syscheck.sync_max_eps);
+
+        mdebug1("Inventory synchronization finished, waiting for %d seconds before next run.", syscheck.sync_interval);
+        sleep(syscheck.sync_interval);
+    }
+
+#ifdef WIN32
+    return 0;
+#else
+    return NULL;
+#endif
+}
 // LCOV_EXCL_STOP
 
 #ifdef WIN32
@@ -652,20 +662,6 @@ void log_realtime_status(int next) {
             minfo(FIM_REALTIME_RESUMED);
             status = next;
         }
-    }
-}
-
-//Callback
-void fim_db_remove_validated_path(void * data, void * ctx)
-{
-    char *path = (char *)data;
-    struct get_data_ctx *ctx_data = (struct get_data_ctx *)ctx;
-
-    directory_t *validated_configuration = fim_configuration_directory(path);
-
-    if (validated_configuration == ctx_data->config)
-    {
-        fim_generate_delete_event(path, ctx_data->event, ctx_data->config);
     }
 }
 
@@ -831,24 +827,6 @@ STATIC void fim_link_check_delete(directory_t *configuration) {
         os_free(configuration->symbolic_links);
         w_mutex_unlock(&syscheck.fim_symlink_mutex);
     }
-}
-
-STATIC void fim_link_delete_range(directory_t *configuration) {
-    event_data_t evt_data = { .mode = FIM_SCHEDULED, .report_event = false, .w_evt = NULL, .type = FIM_DELETE };
-    char pattern[PATH_MAX] = {0};
-
-    get_data_ctx ctx = {
-        .event = (event_data_t *)&evt_data,
-        .config = configuration,
-        .path = configuration->path
-    };
-    // Create the sqlite LIKE pattern.
-    snprintf(pattern, PATH_MAX, "%s%c%%", configuration->symbolic_links, PATH_SEP);
-    callback_context_t callback_data;
-    callback_data.callback = fim_db_remove_validated_path;
-    callback_data.context = &ctx;
-
-    fim_db_file_pattern_search(pattern, callback_data);
 }
 
 STATIC void fim_link_silent_scan(const char *path, directory_t *configuration) {

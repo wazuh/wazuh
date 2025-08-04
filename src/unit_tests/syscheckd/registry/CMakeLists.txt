@@ -15,7 +15,7 @@ target_compile_options(test_registry PRIVATE "-g")
 
 target_link_libraries(test_registry SYSCHECK_O ${TEST_DEPS} fim_shared)
 target_link_libraries(test_registry "${DEBUG_OP_WRAPPERS} \
-                                     -Wl,--wrap=send_syscheck_msg -Wl,--wrap=os_random -Wl,--wrap,getpid \
+                                     -Wl,--wrap=send_syscheck_msg  -Wl,--wrap,persist_syscheck_msg -Wl,--wrap=os_random -Wl,--wrap,getpid \
                                      -Wl,--wrap=fim_registry_value_diff -Wl,--wrap=get_registry_permissions \
                                      -Wl,--wrap=decode_win_acl_json -Wl,--wrap=pthread_mutex_lock -Wl,--wrap=pthread_mutex_unlock \
                                      -Wl,--wrap,fim_db_init -Wl,--wrap=fim_sync_push_msg -Wl,--wrap=syscom_dispatch \

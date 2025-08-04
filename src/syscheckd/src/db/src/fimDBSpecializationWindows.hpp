@@ -18,8 +18,8 @@ class WindowsSpecialization final
 {
     public:
         static const std::string registryTypeToText(const int type);
+        static bool isUTF8String(const std::string& str);
         static void encodeString(std::string& str);
 };
 
 #endif // _FIMDB_OS_WINDOWS_SPECIALIZATION_H
-

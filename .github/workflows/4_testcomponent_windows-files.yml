@@ -35,7 +35,7 @@ jobs:
           name: binaries
           path: src/bin_files
   check_binaries_details:
-    runs-on: windows-latest
+    runs-on: windows-2025
     needs: build
     steps:
       - name: Checkout Repo

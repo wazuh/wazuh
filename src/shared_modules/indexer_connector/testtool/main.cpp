@@ -125,6 +125,9 @@ int main(const int argc, const char* argv[])
         // Create indexer connector.
         IndexerConnector indexerConnector(
             configuration,
+            cmdArgParser.getTemplateFilePath(),
+            cmdArgParser.getUpdateMappingsFilePath(),
+            true, // Use seek for delete operation
             [&logFile](const int logLevel,
                        const std::string& tag,
                        const std::string& file,

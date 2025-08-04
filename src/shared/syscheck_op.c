@@ -966,7 +966,7 @@ int w_get_file_permissions(const char *file_path, cJSON **output_acl) {
     SECURITY_DESCRIPTOR *s_desc = NULL;
     unsigned long size = 0;
 
-    if (!GetFileSecurity(file_path, DACL_SECURITY_INFORMATION, 0, 0, &size)) {
+    if (!utf8_GetFileSecurity(file_path, DACL_SECURITY_INFORMATION, 0, 0, &size)) {
         retval = GetLastError();
 
         // We must have this error at this point
@@ -977,7 +977,7 @@ int w_get_file_permissions(const char *file_path, cJSON **output_acl) {
 
     os_calloc(size, 1, s_desc);
 
-    if (!GetFileSecurity(file_path, DACL_SECURITY_INFORMATION, s_desc, size, &size)) {
+    if (!utf8_GetFileSecurity(file_path, DACL_SECURITY_INFORMATION, s_desc, size, &size)) {
         retval = GetLastError();
         goto end;
     }
@@ -1028,7 +1028,7 @@ unsigned int w_directory_exists(const char *path){
 unsigned int w_get_file_attrs(const char *file_path) {
     unsigned int attrs;
 
-    if (attrs = GetFileAttributesA(file_path), attrs == INVALID_FILE_ATTRIBUTES) {
+    if (attrs = utf8_GetFileAttributes(file_path), attrs == INVALID_FILE_ATTRIBUTES) {
         attrs = 0;
         mdebug2("The attributes for '%s' could not be obtained. Error '%ld'.", file_path, GetLastError());
     }

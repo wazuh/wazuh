@@ -160,8 +160,8 @@ def test_ignore_subdirectory(test_configuration, test_metadata, configure_local_
         assert callback_result
 
         event_data = get_fim_event_data(callback_result)
-        assert event_data.get('path') == test_metadata['file_to_monitor'], 'Event path not equal'
-        assert event_data.get('mode') == test_metadata['fim_mode'], 'FIM mode not equal'
+        assert event_data['file']['path'] == test_metadata['file_to_monitor'], 'Event path not equal'
+        assert event_data['file']['mode'] == test_metadata['fim_mode'], 'FIM mode not equal'
     else:
         if test_metadata['is_pattern'] == False:
             wazuh_log_monitor.start(callback=generate_callback(IGNORING_DUE_TO_SREGEX))

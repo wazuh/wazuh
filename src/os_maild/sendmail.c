@@ -26,7 +26,7 @@
 #define RCPTTO              "Rcpt To: <%s>\r\n"
 #define DATAMSG             "DATA\r\n"
 #define FROM                "From: " __ossec_name " <%s>\r\n"
-#define TO                  "To: <%s>\r\n"
+#define TO                  "To: %s\r\n"
 #define REPLYTO             "Reply-To: " __ossec_name " <%s>\r\n"
 /*#define CC                "Cc: <%s>\r\n"*/
 #define SUBJECT             "Subject: %s\r\n"
@@ -47,6 +47,30 @@
 #define MAIL_DEBUG_FLAG     0
 #define MAIL_DEBUG(x,y,z) if(MAIL_DEBUG_FLAG) merror(x,y,z)
 
+static bool append_mailbox(char **pp, size_t *prem, bool *pfirst, const char *addr) {
+    char *p   = *pp;
+    size_t rem = *prem;
+    int n;
+
+    // If it is not the first, the comma and the space are placed in front.
+    if (!*pfirst) {
+        n = snprintf(p, rem, ", ");
+        if (n < 0 || (size_t)n >= rem) return false;
+        p   += n;
+        rem -= n;
+    }
+
+    // The address is added between <…>
+    n = snprintf(p, rem, "<%s>", addr);
+    if (n < 0 || (size_t)n >= rem) return false;
+    p   += n;
+    rem -= n;
+
+    *pp     = p;
+    *prem   = rem;
+    *pfirst = false;
+    return true;
+}
 
 int OS_Sendsms(MailConfig *mail, struct tm *p, MailMsg *sms_msg)
 {
@@ -153,36 +177,42 @@ int OS_Sendsms(MailConfig *mail, struct tm *p, MailMsg *sms_msg)
 
         if (mail->gran_to) {
             int i = 0;
+            bool first_sms = true;
+
             while (mail->gran_to[i] != NULL) {
                 if (mail->gran_set[i] != SMS_FORMAT) {
                     i++;
                     continue;
                 }
 
+                /* Send RCPT TO: and validate */
                 memset(snd_msg, '\0', 128);
                 snprintf(snd_msg, 127, RCPTTO, mail->gran_to[i]);
                 OS_SendTCP(socket, snd_msg);
                 msg = OS_RecvTCP(socket, OS_SIZE_1024);
-                if ((msg == NULL) || (!OS_Match(VALIDMAIL, msg))) {
+                if (!msg || !OS_Match(VALIDMAIL, msg)) {
                     merror(TO_ERROR, mail->gran_to[i]);
-                    if (msg) {
-                        free(msg);
-                    }
+                    free(msg);
                     close(socket);
-                    return (OS_INVALID);
+                    return OS_INVALID;
                 }
                 MAIL_DEBUG("DEBUG: Sent '%s', received: '%s'", snd_msg, msg);
                 free(msg);
 
-
-                /* Create header for to */
-                memset(snd_msg, '\0', 128);
-                snprintf(snd_msg, 127, TO, mail->gran_to[i]);
-                strncat(final_to, snd_msg, final_to_sz);
-                final_to_sz -= strlen(snd_msg) + 2;
+                /* Accumulate in final_to with snprintf */
+                size_t len = strlen(final_to);
+                if (!first_sms) {
+                    int n = snprintf(final_to + len, final_to_sz, ", <%s>", mail->gran_to[i]);
+                    if (n > 0) final_to_sz -= n;
+                } else {
+                    int n = snprintf(final_to + len, final_to_sz, "<%s>", mail->gran_to[i]);
+                    if (n > 0) {
+                        final_to_sz -= n;
+                        first_sms = false;
+                    }
+                }
 
                 i++;
-                continue;
             }
         }
 
@@ -202,8 +232,16 @@ int OS_Sendsms(MailConfig *mail, struct tm *p, MailMsg *sms_msg)
         MAIL_DEBUG("DEBUG: Sent '%s', received: '%s'", DATAMSG, msg);
         free(msg);
 
-        /* Build "From" and "To" in the e-mail header */
-        OS_SendTCP(socket, final_to);
+        /* Send a single To: with the entire list */
+        if (final_to[0]) {
+            memset(snd_msg, 0, sizeof(snd_msg));
+            int n = snprintf(snd_msg, sizeof(snd_msg) - 1, TO, final_to);
+            if (n < 0 || n >= (int)(sizeof(snd_msg)-1)) {
+                merror("Error formatting 'To' header: snprintf failed or output truncated.");
+                return OS_INVALID;
+            }
+            OS_SendTCP(socket, snd_msg);
+        }
     }
 
     memset(snd_msg, '\0', 128);
@@ -473,18 +511,6 @@ int OS_Sendmail(MailConfig *mail, struct tm *p)
         free(msg);
     }
 
-    if (mail->to) {
-        /* Building "From" and "To" in the e-mail header */
-        memset(snd_msg, '\0', 256);
-        snprintf(snd_msg, 256, TO, mail->to[0]);
-
-        if (sendmail) {
-            fprintf(sendmail->file_in, "%s", snd_msg);
-        } else {
-            OS_SendTCP(socket, snd_msg);
-        }
-    }
-
     memset(snd_msg, '\0', 256);
     snprintf(snd_msg, 255, FROM, mail->from);
 
@@ -505,49 +531,38 @@ int OS_Sendmail(MailConfig *mail, struct tm *p)
         }
     }
 
-    if (mail->to) {
-        /* Add CCs */
-        if (mail->to[1]) {
-            i = 1;
-            while (1) {
-                if (mail->to[i] == NULL) {
-                    break;
-                }
+    if (mail->to || mail->gran_to) {
+        char to_list[1024];
+        char *p      = to_list;
+        size_t rem   = sizeof(to_list);
+        bool first   = true;
 
-                memset(snd_msg, '\0', 256);
-                snprintf(snd_msg, 256, TO, mail->to[i]);
-
-                if (sendmail) {
-                    fprintf(sendmail->file_in, "%s", snd_msg);
-                } else {
-                    OS_SendTCP(socket, snd_msg);
-                }
-
-                i++;
+        if (mail->to) {
+            for (int i = 0; mail->to[i]; i++) {
+                if (!append_mailbox(&p, &rem, &first, mail->to[i])) break;
             }
         }
-    }
 
-    /* More CCs - from granular options */
-    if (mail->gran_to) {
-        i = 0;
-        while (mail->gran_to[i] != NULL) {
-            if (mail->gran_set[i] != FULL_FORMAT) {
-                i++;
-                continue;
+        if (mail->gran_to) {
+            for (int i = 0; mail->gran_to[i]; i++) {
+                if (mail->gran_set[i] != FULL_FORMAT) continue;
+                if (!append_mailbox(&p, &rem, &first, mail->gran_to[i])) break;
             }
+        }
 
-            memset(snd_msg, '\0', 256);
-            snprintf(snd_msg, 256, TO, mail->gran_to[i]);
-
+        /* Send single TO: if there is at least one */
+        if (p != to_list) {
             if (sendmail) {
-                fprintf(sendmail->file_in, "%s", snd_msg);
+                fprintf(sendmail->file_in, TO, to_list);
             } else {
-                OS_SendTCP(socket, snd_msg);
+                char hdr[ sizeof(to_list) + sizeof(TO) ];
+                int n = snprintf(hdr, sizeof(hdr) - 1, TO, to_list);
+                if (n < 0 || n >= (int)(sizeof(snd_msg) - 1)) {
+                    merror("Error formatting 'To' header: snprintf failed or output truncated.");
+                    return OS_INVALID;
+                }
+                OS_SendTCP(socket, hdr);
             }
-
-            i++;
-            continue;
         }
     }
 

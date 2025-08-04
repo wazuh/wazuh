@@ -27,8 +27,8 @@ fi
 
 AUTHOR="Wazuh Inc."
 USE_JSON=false
-DAEMONS="wazuh-clusterd wazuh-modulesd wazuh-monitord wazuh-logcollector wazuh-remoted wazuh-syscheckd wazuh-engine wazuh-maild wazuh-execd wazuh-db wazuh-authd wazuh-agentlessd wazuh-integratord wazuh-csyslogd wazuh-apid"
-OP_DAEMONS="wazuh-clusterd wazuh-maild wazuh-agentlessd wazuh-integratord wazuh-csyslogd"
+DAEMONS="wazuh-clusterd wazuh-modulesd wazuh-monitord wazuh-logcollector wazuh-remoted wazuh-syscheckd wazuh-engine wazuh-execd wazuh-db wazuh-authd wazuh-apid"
+OP_DAEMONS="wazuh-clusterd"
 DEPRECATED_DAEMONS="ossec-authd"
 
 # Reverse order of daemons
@@ -120,9 +120,6 @@ help()
 
 AUTHD_MSG="This option is deprecated because Authd is now enabled by default."
 DATABASE_MSG="This option is deprecated because the database output is now enabled by default."
-SYSLOG_MSG="This option is deprecated because Client Syslog is now enabled by default."
-AGENTLESS_MSG="This option is deprecated because Agentless is now enabled by default."
-INTEGRATOR_MSG="This option is deprecated because Integrator is now enabled by default."
 
 # Enables additional daemons
 enable()
@@ -136,12 +133,6 @@ enable()
 
     if [ "X$2" = "Xdatabase" ]; then
         echo "$DATABASE_MSG"
-    elif [ "X$2" = "Xclient-syslog" ]; then
-        echo "$SYSLOG_MSG"
-    elif [ "X$2" = "Xagentless" ]; then
-        echo "$AGENTLESS_MSG";
-    elif [ "X$2" = "Xintegrator" ]; then
-        echo "$INTEGRATOR_MSG";
     elif [ "X$2" = "Xauth" ]; then
         echo "$AUTHD_MSG"
     elif [ "X$2" = "Xdebug" ]; then
@@ -170,12 +161,6 @@ disable()
 
     if [ "X$2" = "Xdatabase" ]; then
         echo "$DATABASE_MSG"
-    elif [ "X$2" = "Xclient-syslog" ]; then
-        echo "$SYSLOG_MSG"
-    elif [ "X$2" = "Xagentless" ]; then
-        echo "$AGENTLESS_MSG";
-    elif [ "X$2" = "Xintegrator" ]; then
-        echo "$INTEGRATOR_MSG";
     elif [ "X$2" = "Xdebug" ]; then
         echo "DEBUG_CLI=\"\"" >> ${PLIST};
     else
@@ -342,13 +327,6 @@ start_service()
         echo -n '{"error":0,"data":['
     fi
     for i in ${SDAEMONS}; do
-        ## If wazuh-maild is disabled, don't try to start it.
-        if [ X"$i" = "Xwazuh-maild" ]; then
-             grep "<email_notification>no<" ${DIR}/etc/ossec.conf >/dev/null 2>&1
-             if [ $? = 0 ]; then
-                 continue
-             fi
-        fi
         ## If wazuh-clusterd is disabled, don't try to start it.
         if [ X"$i" = "Xwazuh-clusterd" ]; then
              start_config="$(grep -n "<cluster>" ${DIR}/etc/ossec.conf | cut -d':' -f 1)"

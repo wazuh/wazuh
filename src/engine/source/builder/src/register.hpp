@@ -82,6 +82,24 @@ void registerOpBuilders(const std::shared_ptr<Registry>& registry, const builder
         "int_not_equal",
         {schemf::JTypeToken::create(json::Json::Type::Number), builders::opfilter::opBuilderHelperIntNotEqual});
     registry->template add<builders::OpBuilderEntry>(
+        "number_equal",
+        {schemf::JTypeToken::create(json::Json::Type::Number), builders::opfilter::opBuilderHelperNumberEqual});
+    registry->template add<builders::OpBuilderEntry>(
+        "number_greater",
+        {schemf::JTypeToken::create(json::Json::Type::Number), builders::opfilter::opBuilderHelperNumberGreaterThan});
+    registry->template add<builders::OpBuilderEntry>("number_greater_or_equal",
+                                                     {schemf::JTypeToken::create(json::Json::Type::Number),
+                                                      builders::opfilter::opBuilderHelperNumberGreaterThanEqual});
+    registry->template add<builders::OpBuilderEntry>(
+        "number_less",
+        {schemf::JTypeToken::create(json::Json::Type::Number), builders::opfilter::opBuilderHelperNumberLessThan});
+    registry->template add<builders::OpBuilderEntry>(
+        "number_less_or_equal",
+        {schemf::JTypeToken::create(json::Json::Type::Number), builders::opfilter::opBuilderHelperNumberLessThanEqual});
+    registry->template add<builders::OpBuilderEntry>(
+        "number_not_equal",
+        {schemf::JTypeToken::create(json::Json::Type::Number), builders::opfilter::opBuilderHelperNumberNotEqual});
+    registry->template add<builders::OpBuilderEntry>(
         "ip_cidr_match", {schemf::STypeToken::create(schemf::Type::IP), builders::opfilter::opBuilderHelperIPCIDR});
     registry->template add<builders::OpBuilderEntry>(
         "is_public_ip", {schemf::STypeToken::create(schemf::Type::IP), builders::opfilter::opBuilderHelperPublicIP});

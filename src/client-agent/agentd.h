@@ -74,6 +74,37 @@ void buffer_init();
  */
 int buffer_append(const char *msg, ssize_t msg_len);
 
+/**
+ * @brief Resizes the internal circular buffer to a desired capacity.
+ *
+ * @param current_capacity The current allocated capacity of the buffer before resizing.
+ * @param desired_capacity The new capacity to which the buffer should be resized.
+ *
+ * @retval 0 on success.
+ * @retval -1 on failure (e.g., invalid capacity, memory allocation error).
+ *
+ * @note If the desired capacity is smaller than the current number of messages,
+ * the buffer will truncate the newest messages to preserve the oldest ones.
+ */
+int w_agentd_buffer_resize(unsigned int current_capacity, unsigned int desired_capacity);
+
+/**
+ * @brief Frees all dynamically allocated memory associated with the agent's message buffer.
+ *
+ * This function performs a complete cleanup of the circular message buffer.
+ * It iterates through all allocated slots up to the provided `current_capacity`,
+ * freeing individual messages first to prevent memory leaks. After clearing
+ * the contents, it deallocates the buffer array itself. Finally, it resets
+ * global buffer-related state variables (like `agt->buflength`, `i`, and `j`)
+ * to indicate an unallocated and empty state.
+ *
+ * This function is thread-safe, utilizing a mutex to protect access to shared buffer state.
+ *
+ * @param current_capacity The current allocated capacity of the buffer to be freed.
+ * This parameter is crucial for iterating over the correct number of slots.
+ */
+void w_agentd_buffer_free(unsigned int current_capacity);
+
 /* Thread to dispatch messages from the buffer */
 #ifdef WIN32
 DWORD WINAPI dispatch_buffer(LPVOID arg);
@@ -173,8 +204,8 @@ DWORD WINAPI req_receiver(LPVOID arg);
 void * req_receiver(void * arg);
 #endif
 
-// Restart agent
-void * restartAgent();
+// Reload agent
+void * reloadAgent();
 
 // Verify remote configuration. Return 0 on success or -1 on error.
 int verifyRemoteConf();

@@ -13,9 +13,6 @@
 #include <setjmp.h>
 #include <cmocka.h>
 #include <cJSON.h>
-void __wrap_fim_send_scan_info(__attribute__ ((__unused__)) fim_scan_event event) {
-    return;
-}
 
 int __wrap_send_log_msg(const char * msg) {
     check_expected(msg);
@@ -23,6 +20,11 @@ int __wrap_send_log_msg(const char * msg) {
 }
 
 void __wrap_send_syscheck_msg(__attribute__((unused)) char *msg) {
+    function_called();
+    return;
+}
+
+void __wrap_persist_syscheck_msg(__attribute__((unused)) char *msg) {
     function_called();
     return;
 }

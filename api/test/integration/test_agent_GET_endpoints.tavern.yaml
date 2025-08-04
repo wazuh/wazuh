@@ -287,6 +287,17 @@ stages:
       status_code: 400
       json:
         error: 1403
+  
+  - name: Try to sort agents by internal key
+    request:
+      verify: False
+      <<: *get_agents
+      params:
+        sort: internal_key
+    response:
+      status_code: 400
+      json:
+        error: 1403
 
   - name: Search
     request:
@@ -1186,6 +1197,17 @@ stages:
       <<: *get_agents
       params:
         q: group=default;lastKeepAe<1d
+    response:
+      status_code: 400
+      json:
+        error: 1408
+  
+  - name: Try to filter agents by internal key
+    request:
+      verify: False
+      <<: *get_agents
+      params:
+        q: internal_key=test
     response:
       status_code: 400
       json:

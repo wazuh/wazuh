@@ -66,7 +66,6 @@ int initialize_syscheck_configuration(syscheck_config *syscheck) {
 
     syscheck->rootcheck                       = 0;
     syscheck->disabled                        = SK_CONF_UNPARSED;
-    syscheck->database_store                  = FIM_DB_DISK;
     syscheck->skip_fs.nfs                     = 1;
     syscheck->skip_fs.dev                     = 1;
     syscheck->skip_fs.sys                     = 1;
@@ -112,17 +111,13 @@ int initialize_syscheck_configuration(syscheck_config *syscheck) {
     syscheck->max_fd_win_rt                   = 0;
     syscheck->registry_nodiff                 = NULL;
     syscheck->registry_nodiff_regex           = NULL;
-    syscheck->enable_registry_synchronization = 1;
 #else
     syscheck->queue_size                      = 16384;
 #endif
     syscheck->prefilter_cmd                   = NULL;
     syscheck->sync_interval                   = 300;
     syscheck->sync_response_timeout           = 30;
-    syscheck->sync_max_interval               = 3600;
-    syscheck->sync_thread_pool                = 1;
     syscheck->sync_max_eps                    = 10;
-    syscheck->sync_queue_size                 = 16384;
     syscheck->max_eps                         = 50;
     syscheck->max_files_per_second            = 0;
     syscheck->allow_remote_prefilter_cmd      = false;
@@ -759,6 +754,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
     const char *xml_check_perm = "check_perm";
     const char *xml_check_mtime = "check_mtime";
     const char *xml_check_inode = "check_inode";
+    const char *xml_check_device = "check_device";
     const char *xml_check_attrs = "check_attrs";
     const char *xml_follow_symbolic_link = "follow_symbolic_link";
     const char *xml_real_time = "realtime";
@@ -804,7 +800,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                 fim_set_check_all(&opts);
             } else if (strcmp(*values, "no") == 0) {
                 opts &= ~ ( CHECK_MD5SUM | CHECK_SHA1SUM | CHECK_PERM | CHECK_SHA256SUM | CHECK_SIZE
-                        | CHECK_OWNER | CHECK_GROUP | CHECK_MTIME | CHECK_INODE);
+                        | CHECK_OWNER | CHECK_GROUP | CHECK_MTIME | CHECK_INODE | CHECK_DEVICE);
 
 #ifdef WIN32
                 opts &= ~ CHECK_ATTRS;
@@ -933,6 +929,17 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                 opts |= CHECK_INODE;
             } else if (strcmp(*values, "no") == 0) {
                 opts &= ~ CHECK_INODE;
+            } else {
+                mwarn(FIM_INVALID_OPTION_SKIP, *values, *attrs, dirs);
+                goto out_free;
+            }
+        }
+        /* Check device */
+        else if (strcmp(*attrs, xml_check_device) == 0) {
+            if (strcmp(*values, "yes") == 0) {
+                opts |= CHECK_DEVICE;
+            } else if (strcmp(*values, "no") == 0) {
+                opts &= ~ CHECK_DEVICE;
             } else {
                 mwarn(FIM_INVALID_OPTION_SKIP, *values, *attrs, dirs);
                 goto out_free;
@@ -1200,99 +1207,50 @@ out_free:
 }
 
 static void parse_synchronization(syscheck_config * syscheck, XML_NODE node) {
-    const char *xml_enabled = "enabled";
-    const char *xml_sync_interval = "interval";
-    const char *xml_sync_max_interval = "max_interval";
-    const char *xml_response_timeout = "response_timeout";
-    const char *xml_sync_queue_size = "queue_size";
-    const char *xml_max_eps = "max_eps";
-    const char *xml_registry_enabled = "registry_enabled";
-    const char *xml_sync_thread_pool = "thread_pool";
+     const char *xml_enabled = "enabled";
+     const char *xml_sync_interval = "interval";
+     const char *xml_response_timeout = "response_timeout";
+     const char *xml_max_eps = "max_eps";
 
-    for (int i = 0; node[i]; i++) {
-        if (strcmp(node[i]->element, xml_enabled) == 0) {
-            int r = w_parse_bool(node[i]->content);
+     for (int i = 0; node[i]; i++) {
+         if (strcmp(node[i]->element, xml_enabled) == 0) {
+             int r = w_parse_bool(node[i]->content);
 
-            if (r < 0) {
-                mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
-            } else {
-                syscheck->enable_synchronization = r;
-            }
-        } else if (strcmp(node[i]->element, xml_sync_interval) == 0) {
-            long t = w_parse_time(node[i]->content);
+             if (r < 0) {
+                 mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
+             } else {
+                 syscheck->enable_synchronization = r;
+             }
+         } else if (strcmp(node[i]->element, xml_sync_interval) == 0) {
+             long t = w_parse_time(node[i]->content);
 
-            if (t <= 0) {
-                mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
-            } else {
-                syscheck->sync_interval = t;
-            }
-        } else if (strcmp(node[i]->element, xml_sync_max_interval) == 0) {
-            long max_interval = w_parse_time(node[i]->content);
+             if (t <= 0) {
+                 mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
+             } else {
+                 syscheck->sync_interval = t;
+             }
+         } else if (strcmp(node[i]->element, xml_response_timeout) == 0) {
+             long response_timeout = w_parse_time(node[i]->content);
 
-            if (max_interval < 0) {
-                mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
-            } else {
-                syscheck->sync_max_interval = (uint32_t) max_interval;
-            }
-        } else if (strcmp(node[i]->element, xml_response_timeout) == 0) {
-            long response_timeout = w_parse_time(node[i]->content);
+             if (response_timeout < 0) {
+                 mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
+             } else {
+                 syscheck->sync_response_timeout = (uint32_t) response_timeout;
+             }
+         } else if (strcmp(node[i]->element, xml_max_eps) == 0) {
+             char * end;
+             long value = strtol(node[i]->content, &end, 10);
 
-            if (response_timeout < 0) {
-                mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
-            } else {
-                syscheck->sync_response_timeout = (uint32_t) response_timeout;
-            }
-        } else if (strcmp(node[i]->element, xml_sync_queue_size) == 0) {
-            char * end;
-            long value = strtol(node[i]->content, &end, 10);
-
-            if (value < 2 || value > 1000000 || *end) {
-                mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
-            }
-            else {
-                syscheck->sync_queue_size = value;
-            }
-        } else if (strcmp(node[i]->element, xml_max_eps) == 0) {
-            char * end;
-            long value = strtol(node[i]->content, &end, 10);
-
-            if (value < 0 || value > 1000000 || *end) {
-                mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
-            } else {
-                syscheck->sync_max_eps = value;
-            }
-        } else if (strcmp(node[i]->element, xml_registry_enabled) == 0) {
-#ifdef WIN32
-            int r = w_parse_bool(node[i]->content);
-
-            if (r < 0) {
-                mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
-            } else {
-                syscheck->enable_registry_synchronization = r;
-            }
-#endif
-        } else if (strcmp(node[i]->element, xml_sync_thread_pool) == 0) {
-            if (!OS_StrIsNum(node[i]->content)) {
-                mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
-            } else {
-                int value = atoi(node[i]->content);
-
-                if (value < 1) {
-                    mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
-                } else {
-                    syscheck->sync_thread_pool = value;
-                }
-            }
-        } else {
-            mwarn(XML_INVELEM, node[i]->element);
-        }
-    }
-
-    if (syscheck->sync_max_interval < syscheck->sync_interval) {
-        syscheck->sync_max_interval = syscheck->sync_interval;
-        mwarn("'max_interval' cannot be less than 'interval'. New 'max_interval' value: '%d'", syscheck->sync_interval);
-    }
-}
+             if (value < 0 || value > 1000000 || *end) {
+                 mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
+             } else {
+                 syscheck->sync_max_eps = value;
+             }
+         } else {
+             mwarn(XML_INVELEM, node[i]->element);
+         }
+     }
+ }
 
 int read_data_unit(const char *content) {
     size_t len_value_str = strlen(content);
@@ -1628,7 +1586,6 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
     const char *xml_registry = "windows_registry";
     const char *xml_time = "frequency";
     const char *xml_scanday = "scan_day";
-    const char *xml_database = "database";
     const char *xml_scantime = "scan_time";
     const char *xml_file_limit = "file_limit";
     const char *xml_enabled = "enabled";
@@ -1735,18 +1692,6 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
 
             syscheck->wdata.interval_scan = atoi(node[i]->content);
 #endif
-        }
-
-        /*  Store database in memory or in disk.
-        *   By default disk.
-        */
-        else if (strcmp(node[i]->element, xml_database) == 0) {
-            if (strcmp(node[i]->content, "memory") == 0) {
-                syscheck->database_store = FIM_DB_MEMORY;
-            }
-            else if (strcmp(node[i]->content, "disk") == 0){
-                syscheck->database_store = FIM_DB_DISK;
-            }
         }
 
         /* Get frequency */
@@ -2276,6 +2221,7 @@ char *syscheck_opts2str(char *buf, int buflen, int opts) {
         CHECK_GROUP,
         CHECK_MTIME,
         CHECK_INODE,
+        CHECK_DEVICE,
         CHECK_MD5SUM,
         CHECK_SHA1SUM,
         CHECK_SHA256SUM,
@@ -2295,6 +2241,7 @@ char *syscheck_opts2str(char *buf, int buflen, int opts) {
         "group",
     	"mtime",
         "inode",
+        "device",
         "hash_md5",
         "hash_sha1",
         "hash_sha256",
@@ -2304,7 +2251,7 @@ char *syscheck_opts2str(char *buf, int buflen, int opts) {
         "realtime",
         "whodata",
         "scheduled",
-        "reg_value_type",
+        "type",
 	    NULL
 	};
 
@@ -2633,6 +2580,7 @@ static void fim_set_check_all(int *opt) {
     *opt |= CHECK_GROUP;
     *opt |= CHECK_MTIME;
     *opt |= CHECK_INODE;
+    *opt |= CHECK_DEVICE;
 #ifdef WIN32
     *opt |= CHECK_ATTRS;
 #endif

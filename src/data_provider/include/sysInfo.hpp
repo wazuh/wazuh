@@ -32,6 +32,10 @@ constexpr auto KByte
     1024
 };
 
+constexpr auto primaryArraySeparator { "," };
+
+constexpr auto secondaryArraySeparator { ":" };
+
 class EXPORTED SysInfo: public ISysInfo
 {
     public:
@@ -48,6 +52,8 @@ class EXPORTED SysInfo: public ISysInfo
         void packages(std::function<void(nlohmann::json&)>);
         void processes(std::function<void(nlohmann::json&)>);
         nlohmann::json hotfixes();
+        nlohmann::json groups();
+        nlohmann::json users();
     private:
         virtual nlohmann::json getHardware() const;
         virtual nlohmann::json getPackages() const;
@@ -56,6 +62,8 @@ class EXPORTED SysInfo: public ISysInfo
         virtual nlohmann::json getNetworks() const;
         virtual nlohmann::json getPorts() const;
         virtual nlohmann::json getHotfixes() const;
+        virtual nlohmann::json getGroups() const;
+        virtual nlohmann::json getUsers() const;
         virtual void getPackages(std::function<void(nlohmann::json&)>) const;
         virtual void getProcessesInfo(std::function<void(nlohmann::json&)>) const;
 };

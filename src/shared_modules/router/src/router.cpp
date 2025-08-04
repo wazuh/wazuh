@@ -281,6 +281,8 @@ extern "C"
 
                 flatbuffers::Parser parser;
                 parser.opts.skip_unexpected_fields_in_json = true;
+                parser.opts.zero_on_float_to_int =
+                    true; // Avoids issues with float to int conversion, custom option made for Wazuh.
 
                 if (!parser.Parse(schema))
                 {

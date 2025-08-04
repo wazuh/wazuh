@@ -944,7 +944,6 @@ InstallCommon()
   ${INSTALL} -m 0750 -o root -g 0 wazuh-logcollector ${INSTALLDIR}/bin
   ${INSTALL} -m 0750 -o root -g 0 syscheckd/build/bin/wazuh-syscheckd ${INSTALLDIR}/bin
   ${INSTALL} -m 0750 -o root -g 0 wazuh-execd ${INSTALLDIR}/bin
-  ${INSTALL} -m 0750 -o root -g 0 manage_agents ${INSTALLDIR}/bin
   ${INSTALL} -m 0750 -o root -g 0 ${OSSEC_CONTROL_SRC} ${INSTALLDIR}/bin/wazuh-control
   ${INSTALL} -m 0750 -o root -g 0 wazuh-modulesd ${INSTALLDIR}/bin/
 
@@ -1012,8 +1011,6 @@ InstallCommon()
   ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/etc/shared
   ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/active-response
   ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/active-response/bin
-  ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/agentless
-  ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} agentlessd/scripts/* ${INSTALLDIR}/agentless/
 
   ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/.ssh
 
@@ -1105,16 +1102,11 @@ InstallLocal()
     ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/logs/api
     ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/etc/rootcheck
 
-    ${INSTALL} -m 0750 -o root -g 0 wazuh-agentlessd ${INSTALLDIR}/bin
     ${INSTALL} -m 0750 -o root -g 0 wazuh-monitord ${INSTALLDIR}/bin
-    ${INSTALL} -m 0750 -o root -g 0 wazuh-reportd ${INSTALLDIR}/bin
-    ${INSTALL} -m 0750 -o root -g 0 wazuh-maild ${INSTALLDIR}/bin
-    ${INSTALL} -m 0750 -o root -g 0 wazuh-csyslogd ${INSTALLDIR}/bin
     ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} verify-agent-conf ${INSTALLDIR}/bin/
     ${INSTALL} -m 0750 -o root -g 0 clear_stats ${INSTALLDIR}/bin/
     ${INSTALL} -m 0750 -o root -g 0 wazuh-regex ${INSTALLDIR}/bin/
     ${INSTALL} -m 0750 -o root -g 0 agent_control ${INSTALLDIR}/bin/
-    ${INSTALL} -m 0750 -o root -g 0 wazuh-integratord ${INSTALLDIR}/bin/
     ${INSTALL} -m 0750 -o root -g 0 wazuh-db ${INSTALLDIR}/bin/
     ${INSTALL} -m 0750 -o root -g 0 build/engine/wazuh-engine ${INSTALLDIR}/bin
 
@@ -1126,7 +1118,6 @@ InstallLocal()
 
     InstallSecurityConfigurationAssessmentFiles "manager"
 
-    ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/agentless
     ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/db
 
     ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/integrations
@@ -1161,6 +1152,8 @@ InstallLocal()
     ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/wazuh-states-inventory-interfaces.json ${INSTALLDIR}/templates/wazuh-states-inventory-interfaces.json
     ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/wazuh-states-inventory-hotfixes.json ${INSTALLDIR}/templates/wazuh-states-inventory-hotfixes.json
     ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/wazuh-states-inventory-ports.json ${INSTALLDIR}/templates/wazuh-states-inventory-ports.json
+    ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/wazuh-states-inventory-users.json ${INSTALLDIR}/templates/wazuh-states-inventory-users.json
+    ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/wazuh-states-inventory-groups.json ${INSTALLDIR}/templates/wazuh-states-inventory-groups.json
 
     ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/vulnerability_scanner/indexer/template/update-mappings.json ${INSTALLDIR}/templates/vd_states_update_mappings.json
     ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/wazuh-states-fim-files-update.json ${INSTALLDIR}/templates/wazuh-states-fim-files-update.json
@@ -1174,6 +1167,8 @@ InstallLocal()
     ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/wazuh-states-inventory-interfaces-update.json ${INSTALLDIR}/templates/wazuh-states-inventory-interfaces-update.json
     ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/wazuh-states-inventory-hotfixes-update.json ${INSTALLDIR}/templates/wazuh-states-inventory-hotfixes-update.json
     ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/wazuh-states-inventory-ports-update.json ${INSTALLDIR}/templates/wazuh-states-inventory-ports-update.json
+    ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/wazuh-states-inventory-users-update.json ${INSTALLDIR}/templates/wazuh-states-inventory-users-update.json
+    ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/wazuh-states-inventory-groups-update.json ${INSTALLDIR}/templates/wazuh-states-inventory-groups-update.json
 
     # Install Task Manager files
     ${INSTALL} -d -m 0770 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/tasks
@@ -1382,6 +1377,7 @@ InstallAgent()
 
     InstallSecurityConfigurationAssessmentFiles "agent"
 
+    ${INSTALL} -m 0750 -o root -g 0 manage_agents ${INSTALLDIR}/bin
     ${INSTALL} -m 0750 -o root -g 0 wazuh-agentd ${INSTALLDIR}/bin
     ${INSTALL} -m 0750 -o root -g 0 agent-auth ${INSTALLDIR}/bin
 

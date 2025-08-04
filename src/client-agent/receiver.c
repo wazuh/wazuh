@@ -136,11 +136,7 @@ int receive_msg()
 
             /* Syscheck */
             else if (strncmp(tmp_msg, HC_SK, strlen(HC_SK)) == 0
-                    || strncmp(tmp_msg, HC_FIM_FILE, strlen(HC_FIM_FILE)) == 0
-                    || strncmp(tmp_msg, HC_FIM_REGISTRY, strlen(HC_FIM_REGISTRY)) == 0
-                    || strncmp(tmp_msg, HC_FIM_REGISTRY_KEY, strlen(HC_FIM_REGISTRY_KEY)) == 0
-                    || strncmp(tmp_msg, HC_FIM_REGISTRY_VALUE, strlen(HC_FIM_REGISTRY_VALUE)) == 0
-                    || strncmp(tmp_msg, FIM_SYNC_HEADER, strlen(FIM_SYNC_HEADER)) == 0) {
+                     || strncmp(tmp_msg, FIM_SYNC_HEADER, strlen(FIM_SYNC_HEADER)) == 0) {
                 ag_send_syscheck(tmp_msg);
                 continue;
             }
@@ -298,8 +294,8 @@ int receive_msg()
                                     clear_merged_hash_cache();
                                     if (agt->flags.remote_conf && !verifyRemoteConf()) {
                                         if (agt->flags.auto_restart) {
-                                            minfo("Agent is restarting due to shared configuration changes.");
-                                            restartAgent();
+                                            minfo("Agent is reloading due to shared configuration changes.");
+                                            reloadAgent();
                                         } else {
                                             minfo("Shared agent configuration has been updated.");
                                         }

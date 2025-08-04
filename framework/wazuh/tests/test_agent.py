@@ -244,9 +244,9 @@ def test_agent_reconnect_agents(socket_mock, send_mock, agents_info_mock, reconn
 ])
 @patch('wazuh.agent.send_restart_command')
 @patch('wazuh.agent.get_agents_info', return_value=set(short_agent_list))
-@patch('wazuh.core.wdb_http.WazuhDBHTTPClient._post', side_effect=send_msg_to_wdb_http_post_restartinfo)
+@patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
-async def test_agent_restart_agents(socket_mock, send_http_mock, agents_info_mock, send_restart_mock, agent_list,
+def test_agent_restart_agents(socket_mock, send_mock, agents_info_mock, send_restart_mock, agent_list,
                               expected_items, error_code):
     """Test `restart_agents` function from agent module.
 
@@ -259,7 +259,7 @@ async def test_agent_restart_agents(socket_mock, send_http_mock, agents_info_moc
     error_code : int
         The expected error code.
     """
-    result = await restart_agents(agent_list)
+    result = restart_agents(agent_list)
     assert isinstance(result, AffectedItemsWazuhResult), 'The returned object is not an "AffectedItemsWazuhResult".'
     assert result.affected_items == expected_items, f'"Affected_items" does not match. Should be "{expected_items}".'
     if result.failed_items:
@@ -273,9 +273,9 @@ async def test_agent_restart_agents(socket_mock, send_http_mock, agents_info_moc
 ])
 @patch('wazuh.agent.send_restart_command')
 @patch('wazuh.agent.get_agents_info', return_value=set(short_agent_list))
-@patch('wazuh.core.wdb_http.WazuhDBHTTPClient._post', side_effect=send_msg_to_wdb_http_post_restartinfo)
+@patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
-async def test_agent_restart_agents_by_node(socket_mock, send_http_mock, agents_info_mock, send_restart_mock, agent_list,
+def test_agent_restart_agents_by_node(socket_mock, send_mock, agents_info_mock, send_restart_mock, agent_list,
                                       expected_items, error_code):
     """Test `restart_agents_by_node` function from agent module.
 
@@ -288,7 +288,7 @@ async def test_agent_restart_agents_by_node(socket_mock, send_http_mock, agents_
     error_code : int
         The expected error code.
     """
-    result = await restart_agents_by_node(agent_list)
+    result = restart_agents_by_node(agent_list)
     assert isinstance(result, AffectedItemsWazuhResult), 'The returned object is not an "AffectedItemsWazuhResult".'
     assert result.affected_items == expected_items, f'"Affected_items" does not match. Should be "{expected_items}".'
     if result.failed_items:
