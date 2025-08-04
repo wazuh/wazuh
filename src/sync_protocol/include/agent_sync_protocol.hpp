@@ -11,48 +11,12 @@
 #define AGENT_SYNC_PROTOCOL_HPP
 
 #include "agent_sync_protocol_c_interface.h"
-#include "inventorySync_generated.h"
-#include "ipersistent_queue.hpp"
+#include "iagent_sync_protocol.hpp"
 
 #include <memory>
-#include <string>
 #include <unordered_map>
 #include <vector>
 #include <condition_variable>
-#include <chrono>
-
-class IAgentSyncProtocol
-{
-    public:
-        /// @brief Persist a difference in the buffer
-        /// @param id Difference id (hash ok PKs)
-        /// @param operation Operation type
-        /// @param index Index where to send the difference
-        /// @param data Difference data
-        /// @return The total number of pending differences for that module.
-        virtual size_t persistDifference(const std::string& id,
-                                         Operation operation,
-                                         const std::string& index,
-                                         const std::string& data) = 0;
-
-        /// @brief Synchronize a module with the server
-        /// @param module Module name
-        /// @param mode Sync mode
-        /// @param timeout The timeout for each response wait.
-        /// @param retries The maximum number of re-send attempts.
-        /// @param maxAmount The maximum number of messages to synchronize. Use 0 to synchronize all available messages.
-        /// @return true if the sync was successfully processed; false otherwise.
-        virtual bool synchronizeModule(const std::string& module, Wazuh::SyncSchema::Mode mode, std::chrono::seconds timeout, unsigned int retries, size_t maxAmount) = 0;
-
-        /// @brief Destructor
-        virtual ~IAgentSyncProtocol() = default;
-
-        /// @brief Parses a FlatBuffer response message received from the manager.
-        /// @param data Pointer to the FlatBuffer-encoded message buffer.
-        /// @return true if the message was successfully parsed and processed; false otherwise.
-        virtual bool parseResponseBuffer(const uint8_t* data) = 0;
-};
-
 class AgentSyncProtocol : public IAgentSyncProtocol
 {
     public:
@@ -118,6 +82,7 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         /// @param session Session id
         /// @param timeout The timeout for each response wait.
         /// @param retries The maximum number of re-send attempts.
+        /// @param dataToSync The complete vector of data items being synchronized in the current session.
         /// @return True on success, false on failure or timeout
         bool sendEndAndWaitAck(const std::string& module, uint64_t session, const std::chrono::seconds timeout, unsigned int retries, const std::vector<PersistedData>& dataToSync);
 
@@ -154,6 +119,14 @@ class AgentSyncProtocol : public IAgentSyncProtocol
 
         /// @brief Safely resets the synchronization state by acquiring a lock.
         void clearSyncState();
+
+        /// @brief Filters a vector of persisted data based on a list of sequence number ranges.
+        /// @param sourceData The complete vector of `PersistedData` items.
+        /// @param ranges A vector of pairs [begin, end] inclusive range of sequence numbers.
+        /// @return A new vector containing only the `PersistedData` items that match the requested ranges.
+        std::vector<PersistedData> filterDataByRanges(
+            const std::vector<PersistedData>& sourceData,
+            const std::vector<std::pair<uint64_t, uint64_t>>& ranges);
 
         /// @brief Synchronization state shared between threads during module sync.
         ///
@@ -207,10 +180,6 @@ class AgentSyncProtocol : public IAgentSyncProtocol
 
         /// @brief Manages the state for the current synchronization operation.
         SyncState m_syncState;
-
-        std::vector<PersistedData> filterDataByRanges(
-            const std::vector<PersistedData>& sourceData,
-            const std::vector<std::pair<uint64_t, uint64_t>>& ranges);
 };
 
 #endif // AGENT_SYNC_PROTOCOL_HPP
