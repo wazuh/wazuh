@@ -23,7 +23,6 @@
 #define SYSCHECK_MQ     '8'
 #define ROOTCHECK_MQ    '9'
 #define SYSCOLLECTOR_MQ 'd'
-#define CISCAT_MQ       'e'
 #define WIN_EVT_MQ      'f'
 #define SCA_MQ          'p'
 #define UPGRADE_MQ      'u'
