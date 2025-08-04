@@ -423,12 +423,15 @@ Public Function SetWazuhPermissions()
         grantAuthenticatedUsersPermFolder = "icacls """ & install_dir & """ /grant *S-1-5-11:RX"
         WshShell.run grantAuthenticatedUsersPermFolder, 0, True
 
-        ' Remove Authenticated Users group for ossec.conf, last-ossec.conf  and client.key
+        ' Remove Authenticated Users group for ossec.conf, last-ossec.conf, client.keys and authd.pass
         remAuthenticatedUsersPermsConf = "icacls """ & home_dir & "*ossec.conf" & """ /remove *S-1-5-11 /q"
         WshShell.run remAuthenticatedUsersPermsConf, 0, True
 
         remAuthenticatedUsersPermsKeys = "icacls """ & home_dir & "client.keys" & """ /remove *S-1-5-11 /q"
         WshShell.run remAuthenticatedUsersPermsKeys, 0, True
+
+        remAuthenticatedUsersPermsAuthd = "icacls """ & home_dir & "authd.pass" & """ /remove *S-1-5-11 /q"
+        WshShell.run remAuthenticatedUsersPermsAuthd, 0, True
 
         ' Remove the Authenticated Users group from the tmp directory to avoid
         ' inherited permissions on client.keys and ossec.conf when using win32ui.
