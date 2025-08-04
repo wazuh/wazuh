@@ -91,15 +91,6 @@
                 analysisd -> state: decoded->modules->upgrade++
             end
         end
-    else Is CISCAT event
-        analysisd -> analysisd: Enqueue event in event queue
-        alt Queue full
-            analysisd -> state: dropped->modules->ciscat++
-        else
-            alt Is decoded
-                analysisd -> state: decoded->modules->ciscat++
-            end
-        end
     else Is syslog event
         analysisd -> analysisd: Enqueue event in event queue
         alt Queue full
