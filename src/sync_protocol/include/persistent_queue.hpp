@@ -50,9 +50,8 @@ class PersistentQueue : public IPersistentQueue
                       Operation operation) override;
 
         /// @brief Fetches a batch of pending messages and marks them for synchronization.
-        /// @param maxAmount The maximum number of messages to fetch. If 0, fetches all.
         /// @return A vector of messages now marked as SYNCING.
-        std::vector<PersistedData> fetchAndMarkForSync(size_t maxAmount) override;
+        std::vector<PersistedData> fetchAndMarkForSync() override;
 
         /// @brief Clears items that were successfully synchronized.
         void clearSyncedItems() override;

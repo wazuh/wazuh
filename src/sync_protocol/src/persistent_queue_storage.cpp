@@ -174,34 +174,35 @@ size_t PersistentQueueStorage::submitOrCoalesce(const PersistedData& newData)
     }
 }
 
-std::vector<PersistedData> PersistentQueueStorage::fetchAndMarkForSync(size_t maxAmount)
+std::vector<PersistedData> PersistentQueueStorage::fetchAndMarkForSync()
 {
     std::vector<PersistedData> result;
-    std::vector<sqlite3_int64> idsToUpdate;
+    std::vector<int64_t> idsToUpdate;
 
     m_connection.execute("BEGIN IMMEDIATE TRANSACTION;");
 
     try
     {
         std::string selectQuery =
-            "SELECT rowid FROM persistent_queue WHERE sync_status = ? ORDER BY rowid ASC";
-
-        if (maxAmount > 0)
-        {
-            selectQuery += " LIMIT ?;";
-        }
+            "SELECT rowid, id, idx, data, operation "
+            "FROM persistent_queue "
+            "WHERE sync_status = ? "
+            "ORDER BY rowid ASC;";
 
         Statement selectStmt(m_connection, selectQuery);
         selectStmt.bind(1, static_cast<int>(SyncStatus::PENDING));
 
-        if (maxAmount > 0)
-        {
-            selectStmt.bind(2, static_cast<int64_t>(maxAmount));
-        }
-
         while (selectStmt.step() == SQLITE_ROW)
         {
-            idsToUpdate.push_back(selectStmt.value<int64_t>(0));
+            PersistedData data;
+            int64_t rowid = selectStmt.value<int64_t>(0);
+            data.id = selectStmt.value<std::string>(1);
+            data.index = selectStmt.value<std::string>(2);
+            data.data = selectStmt.value<std::string>(3);
+            data.operation = static_cast<Operation>(selectStmt.value<int>(4));
+
+            idsToUpdate.push_back(rowid);
+            result.emplace_back(std::move(data));
         }
 
         if (idsToUpdate.empty())
@@ -224,42 +225,17 @@ std::vector<PersistedData> PersistentQueueStorage::fetchAndMarkForSync(size_t ma
 
         for (size_t i = 0; i < idsToUpdate.size(); ++i)
         {
-            updateStmt.bind(i + 2, static_cast<int64_t>(idsToUpdate[i]));
+            updateStmt.bind(static_cast<int32_t>(i + 2), idsToUpdate[i]);
         }
 
         updateStmt.step();
-
-        std::string selectDataQuery = "SELECT id, idx, data, operation FROM persistent_queue WHERE rowid IN (";
-
-        for (size_t i = 0; i < idsToUpdate.size(); ++i)
-        {
-            selectDataQuery += (i == 0 ? "?" : ",?");
-        }
-
-        selectDataQuery += ") ORDER BY rowid ASC;";
-
-        Statement dataStmt(m_connection, selectDataQuery);
-
-        for (size_t i = 0; i < idsToUpdate.size(); ++i)
-        {
-            dataStmt.bind(i + 1, static_cast<int64_t>(idsToUpdate[i]));
-        }
-
-        while (dataStmt.step() == SQLITE_ROW)
-        {
-            PersistedData data;
-            data.id = dataStmt.value<std::string>(0);
-            data.index = dataStmt.value<std::string>(1);
-            data.data = dataStmt.value<std::string>(2);
-            data.operation = static_cast<Operation>(dataStmt.value<int>(3));
-            result.emplace_back(std::move(data));
-        }
 
         m_connection.execute("COMMIT;");
     }
     catch (const std::exception& e)
     {
-        std::cerr << "[PersistentQueueStorage] Transaction failed in fetchAndMarkForSync: " << e.what() << ". Rolling back." << std::endl;
+        std::cerr << "[PersistentQueueStorage] Transaction failed in fetchAndMarkForSync: "
+                  << e.what() << ". Rolling back." << std::endl;
         m_connection.execute("ROLLBACK;");
         throw;
     }
@@ -293,12 +269,6 @@ void PersistentQueueStorage::removeAllSynced()
         stmtUpdate.bind(4, static_cast<int>(SyncStatus::SYNCING));
         stmtUpdate.bind(5, static_cast<int>(SyncStatus::SYNCING_UPDATED));
         stmtUpdate.step();
-
-        const std::string queryUpdateIsNew = "UPDATE persistent_queue SET create_status = ? WHERE operation = ?;";
-        Statement stmtUpdateIsNew(m_connection, queryUpdateIsNew);
-        stmtUpdateIsNew.bind(1, static_cast<int>(CreateStatus::NEW_CREATED));
-        stmtUpdateIsNew.bind(2, static_cast<int>(Operation::CREATE));
-        stmtUpdateIsNew.step();
 
         m_connection.execute("COMMIT;");
     }

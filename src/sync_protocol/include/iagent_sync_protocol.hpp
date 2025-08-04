@@ -34,9 +34,9 @@ class IAgentSyncProtocol
         /// @param mode Sync mode
         /// @param timeout The timeout for each response wait.
         /// @param retries The maximum number of re-send attempts.
-        /// @param maxAmount The maximum number of messages to synchronize. Use 0 to synchronize all available messages.
+        /// @param maxEps The maximum event reporting throughput. 0 means disabled.
         /// @return true if the sync was successfully processed; false otherwise.
-        virtual bool synchronizeModule(const std::string& module, Wazuh::SyncSchema::Mode mode, std::chrono::seconds timeout, unsigned int retries, size_t maxAmount) = 0;
+        virtual bool synchronizeModule(const std::string& module, Wazuh::SyncSchema::Mode mode, std::chrono::seconds timeout, unsigned int retries, size_t maxEps) = 0;
 
         /// @brief Destructor
         virtual ~IAgentSyncProtocol() = default;

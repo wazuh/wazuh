@@ -64,9 +64,8 @@ class PersistentQueueStorage : public IPersistentQueueStorage
         virtual size_t submitOrCoalesce(const PersistedData& data) override;
 
         /// @brief Fetches a batch of pending messages and marks them as SYNCING.
-        /// @param maxAmount The maximum number of messages to fetch. If 0, fetches all.
         /// @return A vector of messages now marked as SYNCING.
-        std::vector<PersistedData> fetchAndMarkForSync(size_t maxAmount) override;
+        std::vector<PersistedData> fetchAndMarkForSync() override;
 
         /// @brief Deletes all messages for a module currently marked as SYNCING.
         void removeAllSynced() override;

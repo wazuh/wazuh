@@ -67,7 +67,7 @@ extern "C" {
                          int mode,
                          unsigned int sync_timeout,
                          unsigned int retries,
-                         size_t max_amount)
+                         size_t max_eps)
     {
         if (!handle || !module) return false;
 
@@ -76,7 +76,7 @@ extern "C" {
                                                 static_cast<Wazuh::SyncSchema::Mode>(mode),
                                                 std::chrono::seconds(sync_timeout),
                                                 retries,
-                                                max_amount);
+                                                max_eps);
     }
 
     int asp_parse_response_buffer(AgentSyncProtocolHandle* handle, const uint8_t* data)

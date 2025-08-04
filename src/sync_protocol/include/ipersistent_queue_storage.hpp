@@ -31,9 +31,8 @@ class IPersistentQueueStorage
         virtual size_t submitOrCoalesce(const PersistedData& data) = 0;
 
         /// @brief Fetches a batch of pending messages and marks them as SYNCING.
-        /// @param maxAmount The maximum number of messages to fetch. If 0, fetches all.
         /// @return A vector of messages now marked as SYNCING.
-        virtual std::vector<PersistedData> fetchAndMarkForSync(size_t maxAmount) = 0;
+        virtual std::vector<PersistedData> fetchAndMarkForSync() = 0;
 
         /// @brief Deletes all messages for a module currently marked as SYNCING.
         virtual void removeAllSynced() = 0;

@@ -74,14 +74,14 @@ size_t asp_persist_diff(AgentSyncProtocolHandle* handle,
 /// @param mode Synchronization mode (e.g., full, delta).
 /// @param sync_timeout The timeout for each attempt to receive a response, in seconds.
 /// @param sync_retries The maximum number of attempts for re-sending Start and End messages.
-/// @param max_amount The maximum number of messages to synchronize. Use 0 to synchronize all available messages.
+/// @param max_eps The maximum event reporting throughput. 0 means disabled.
 /// @return true if the sync was successfully processed; false otherwise.
 bool asp_sync_module(AgentSyncProtocolHandle* handle,
                      const char* module,
                      int mode,
                      unsigned int sync_timeout,
                      unsigned int sync_retries,
-                     size_t max_amount);
+                     size_t max_eps);
 
 /// @brief Parses a response buffer encoded in FlatBuffer format.
 /// @param handle Protocol handle.

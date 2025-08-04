@@ -13,6 +13,8 @@
 #include "agent_sync_protocol_c_interface.h"
 #include "iagent_sync_protocol.hpp"
 
+#include <atomic>
+#include <condition_variable>
 #include <memory>
 #include <unordered_map>
 #include <vector>
@@ -32,7 +34,7 @@ class AgentSyncProtocol : public IAgentSyncProtocol
                                  const std::string& data) override;
 
         /// @copydoc IAgentSyncProtocol::synchronizeModule
-        bool synchronizeModule(const std::string& module, Wazuh::SyncSchema::Mode mode, std::chrono::seconds timeout, unsigned int retries, size_t maxAmount) override;
+        bool synchronizeModule(const std::string& module, Wazuh::SyncSchema::Mode mode, std::chrono::seconds timeout, unsigned int retries, size_t maxEps) override;
 
         /// @brief Parses a FlatBuffer response message received from the manager.
         /// @param data Pointer to the FlatBuffer-encoded message buffer.
@@ -50,6 +52,9 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         /// @brief Queue
         int m_queue = -1;
 
+        /// @brief Sent message counter for eps control
+        std::atomic<size_t> m_msgSent{0};
+
         /// @brief Ensures that the queue is available
         /// @return True on success, false on failure
         bool ensureQueueAvailable();
@@ -60,8 +65,14 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         /// @param dataSize Size of data to send
         /// @param timeout The timeout for each response wait.
         /// @param retries The maximum number of re-send attempts.
+        /// @param maxEps The maximum event reporting throughput. 0 means disabled.
         /// @return True on success, false on failure or timeout
-        bool sendStartAndWaitAck(const std::string& module, Wazuh::SyncSchema::Mode mode, size_t dataSize, const std::chrono::seconds timeout, unsigned int retries);
+        bool sendStartAndWaitAck(const std::string& module,
+                                 Wazuh::SyncSchema::Mode mode,
+                                 size_t dataSize,
+                                 const std::chrono::seconds timeout,
+                                 unsigned int retries,
+                                 size_t maxEps);
 
         /// @brief Receives a startack message from the server
         /// @param timeout Timeout to wait for Ack
@@ -72,10 +83,12 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         /// @param module Module name
         /// @param session Session id
         /// @param data Data to send
+        /// @param maxEps The maximum event reporting throughput. 0 means disabled.
         /// @return True on success, false on failure
         bool sendDataMessages(const std::string& module,
                               uint64_t session,
-                              const std::vector<PersistedData>& data);
+                              const std::vector<PersistedData>& data,
+                              size_t maxEps);
 
         /// @brief Sends an end message to the server
         /// @param module Module name
@@ -83,8 +96,14 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         /// @param timeout The timeout for each response wait.
         /// @param retries The maximum number of re-send attempts.
         /// @param dataToSync The complete vector of data items being synchronized in the current session.
+        /// @param maxEps The maximum event reporting throughput. 0 means disabled.
         /// @return True on success, false on failure or timeout
-        bool sendEndAndWaitAck(const std::string& module, uint64_t session, const std::chrono::seconds timeout, unsigned int retries, const std::vector<PersistedData>& dataToSync);
+        bool sendEndAndWaitAck(const std::string& module,
+                               uint64_t session,
+                               const std::chrono::seconds timeout,
+                               unsigned int retries,
+                               const std::vector<PersistedData>& dataToSync,
+                               size_t maxEps);
 
         /// @brief Receives an endack message from the server
         /// @param timeout Timeout to wait for Ack
@@ -94,8 +113,9 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         /// @brief Sends a flatbuffer message as a string to the server
         /// @param fbData Flatbuffer data
         /// @param module Module name
+        /// @param maxEps The maximum event reporting throughput. 0 means disabled.
         /// @return True on success, false on failure
-        bool sendFlatBufferMessageAsString(const std::vector<uint8_t>& fbData, const std::string& module);
+        bool sendFlatBufferMessageAsString(const std::vector<uint8_t>& fbData, const std::string& module, size_t maxEps);
 
         /// @brief Defines the possible phases of a synchronization process.
         enum class SyncPhase

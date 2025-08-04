@@ -51,7 +51,7 @@ TEST_P(PersistentQueueFullParamTest, HandlesSubmitFetchRemoveResetCorrectly)
     // 2. Simulate fetchAndMarkForSync
     if (param.doFetchAndSync)
     {
-        storage->fetchAndMarkForSync(10);
+        storage->fetchAndMarkForSync();
 
         // 3. Events during a sincronization
         for (auto& evs : param.eventsInSync)
@@ -73,7 +73,7 @@ TEST_P(PersistentQueueFullParamTest, HandlesSubmitFetchRemoveResetCorrectly)
     }
 
     // 6. Verify final status
-    auto rows = storage->fetchAndMarkForSync(10);
+    auto rows = storage->fetchAndMarkForSync();
     EXPECT_EQ(rows.size(), param.expectedRows);
 
     if (!rows.empty())

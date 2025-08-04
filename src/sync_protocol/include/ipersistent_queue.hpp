@@ -40,7 +40,7 @@ struct PersistedData
     /// @brief Serialized content of the message.
     std::string data;
 
-    /// @brief Type of operation (CREATE, MODIFY, Delete).
+    /// @brief Type of operation (CREATE, MODIFY, DELETE).
     Operation operation;
 };
 
@@ -59,7 +59,7 @@ class IPersistentQueue
         /// @param id The message ID.
         /// @param index The message grouping key.
         /// @param data The serialized payload of the message.
-        /// @param operation The type of operation (CREATE, MODIFY, Delete).
+        /// @param operation The type of operation (CREATE, MODIFY, DELETE).
         /// @return The total number of items for that module in the queue after submission.
         virtual size_t submit(const std::string& id,
                               const std::string& index,
@@ -67,9 +67,8 @@ class IPersistentQueue
                               Operation operation) = 0;
 
         /// @brief Fetches a batch of pending messages and marks them for synchronization.
-        /// @param maxAmount The maximum number of messages to fetch. If 0, fetches all.
         /// @return A vector of messages now marked as SYNCING.
-        virtual std::vector<PersistedData> fetchAndMarkForSync(size_t maxAmount) = 0;
+        virtual std::vector<PersistedData> fetchAndMarkForSync() = 0;
 
         /// @brief Clears items that were successfully synchronized.
         virtual void clearSyncedItems() = 0;
