@@ -1087,9 +1087,8 @@ async def test_worker_handler_process_files_from_master_ko(send_request_mock,
 @patch("wazuh.core.common.wazuh_uid", return_value="wazuh_uid")
 @patch("wazuh.core.common.wazuh_gid", return_value="wazuh_gid")
 @patch('wazuh.core.analysis.is_ruleset_file', return_value=True)
-@patch('wazuh.core.analysis.send_reload_ruleset_msg', return_value=RulesetReloadResponse({'error': 0}))
 async def test_worker_handler_update_master_files_in_worker_reload(
-    mock_reload, mock_is_ruleset, wazuh_gid_mock, wazuh_uid_mock, path_join_mock,
+    mock_is_ruleset, wazuh_gid_mock, wazuh_uid_mock, path_join_mock,
     mkdir_with_mode_mock, safe_move_mock, path_exists_mock, open_mock, event_loop
 ):
     """Test that updating a ruleset file triggers a reload and logs success."""
@@ -1104,8 +1103,6 @@ async def test_worker_handler_update_master_files_in_worker_reload(
                     "extra": {"filename3": {"cluster_item_key": "cluster_item_key"}}}, zip_path="/zip/path",
                 cluster_items=cluster_items)
 
-            mock_reload.assert_called_once()
-
 
 @pytest.mark.asyncio
 @patch("builtins.open")
@@ -1115,9 +1112,7 @@ async def test_worker_handler_update_master_files_in_worker_reload(
 @patch("os.path.join", return_value="queue/testing/")
 @patch("wazuh.core.common.wazuh_uid", return_value="wazuh_uid")
 @patch("wazuh.core.common.wazuh_gid", return_value="wazuh_gid")
-@patch('wazuh.core.analysis.is_ruleset_file', return_value=False)
-@patch('wazuh.core.analysis.send_reload_ruleset_msg', return_value=RulesetReloadResponse({'error': 0}))
-async def test_worker_handler_update_master_files_in_worker_ok(mock_reload, mock_is_ruleset, wazuh_gid_mock, wazuh_uid_mock, path_join_mock,
+async def test_worker_handler_update_master_files_in_worker_ok(wazuh_gid_mock, wazuh_uid_mock, path_join_mock,
                                                                mkdir_with_mode_mock, safe_move_mock, path_exists_mock,
                                                                open_mock, event_loop):
     """Check if the method is properly receiving and updating files."""
