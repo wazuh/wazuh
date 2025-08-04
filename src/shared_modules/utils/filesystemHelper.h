@@ -193,6 +193,20 @@ namespace Utils
         return path[0] == '/';
     #endif
     }
+
+    static std::string removePrefix(const std::string& fullPath, const std::string& prefix)
+    {
+        if (fullPath.compare(0, prefix.size(), prefix) == 0)
+        {
+            std::string result = fullPath.substr(prefix.size());
+            if (!result.empty() && result[0] == '/')
+            {
+                result.erase(0, 1); // remove leading slash
+            }
+            return result;
+        }
+        return fullPath; // prefix not found, return original
+    }
 }
 
 #pragma GCC diagnostic pop
