@@ -1,6 +1,10 @@
 name: Engine Standalone
 
 on:
+  # Triggers the workflow on push to main branch
+  push:
+    branches:
+      - main
   # Triggers the workflow on pull request but only changes in the src/engine/ directory.
   pull_request:
     types: [synchronize, opened, reopened, ready_for_review]
@@ -95,31 +99,28 @@ jobs:
         name: wazuh-shared-libraries
         path: src/
 
-    - name: Set up Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: 3.12
-
-    - name: Create zip scaffolding and copy files
+    - name: Create tar scaffolding and copy files
       run: |
-        install -d \
+        install -d -m 770 \
           wazuh-engine-standalone/bin/lib \
           wazuh-engine-standalone/default-security-policy \
           wazuh-engine-standalone/data/store/schema \
+          wazuh-engine-standalone/data/store/schema/engine-schema \
+          wazuh-engine-standalone/data/store/schema/wazuh-logpar-overrides \
+          wazuh-engine-standalone/data/store/schema/allowed-fields \
           wazuh-engine-standalone/data/kvdb \
           wazuh-engine-standalone/data/tzdb \
           wazuh-engine-standalone/logs \
           wazuh-engine-standalone/sockets
         touch wazuh-engine-standalone/bin/lib/.keep
         touch wazuh-engine-standalone/default-security-policy/.keep
-        touch wazuh-engine-standalone/data/store/schema/.keep
         touch wazuh-engine-standalone/data/kvdb/.keep
         touch wazuh-engine-standalone/data/tzdb/.keep
         touch wazuh-engine-standalone/logs/.keep
         touch wazuh-engine-standalone/sockets/.keep
-        cp src/engine/ruleset/schemas/engine-schema.json wazuh-engine-standalone/data/store/schema/
-        cp src/engine/ruleset/schemas/wazuh-logpar-overrides.json  wazuh-engine-standalone/data/store/schema/
-        cp src/engine/ruleset/schemas/allowed-fields.json  wazuh-engine-standalone/data/store/schema/
+        cp src/engine/ruleset/schemas/engine-schema.json wazuh-engine-standalone/data/store/schema/engine-schema/0
+        cp src/engine/ruleset/schemas/wazuh-logpar-overrides.json  wazuh-engine-standalone/data/store/schema/wazuh-logpar-overrides/0
+        cp src/engine/ruleset/schemas/allowed-fields.json  wazuh-engine-standalone/data/store/schema/allowed-fields/0
         cp src/engine/standalone/run_engine.sh wazuh-engine-standalone/
         chmod +x wazuh-engine-standalone/run_engine.sh
         cp src/engine/standalone/README.md wazuh-engine-standalone/
@@ -128,20 +129,20 @@ jobs:
         cp src/build/engine/wazuh-engine wazuh-engine-standalone/bin/
         chmod +x wazuh-engine-standalone/bin/wazuh-engine
 
-    - name: Compress standalone directory
+    - name: Compress tar file
       run: |
-        zip -r wazuh-engine-standalone.zip wazuh-engine-standalone
+        tar -czf wazuh-engine-standalone.tar.gz wazuh-engine-standalone
 
     - name: Set version
       run: |
         VERSION="$(grep '"version"' $GITHUB_WORKSPACE/VERSION.json | sed -E 's/.*"version": *"([^"]+)".*/\1/')"
         echo "TAG=$VERSION" >> $GITHUB_ENV;
 
-    - name: Upload compressed zip file
+    - name: Upload compressed tar file
       uses: actions/upload-artifact@v4
       with:
         name: wazuh-engine-${{ env.TAG }}-standalone
-        path: wazuh-engine-standalone.zip
+        path: wazuh-engine-standalone.tar.gz
 
   check_standalone_engine:
     name: Test standalone engine
@@ -165,9 +166,53 @@ jobs:
         name: wazuh-engine-${{ env.TAG }}-standalone
         path: /tmp/standalone-test
 
-    - name: Unzip artifact
+    - name: Uncompress tar artifact
       run: |
-        unzip /tmp/standalone-test/wazuh-engine-standalone.zip -d /tmp/standalone-test/
+        cd /tmp/standalone-test
+        tar -xzvf wazuh-engine-standalone.tar.gz
+
+    - name: Verify artifact structure
+      run: |
+        echo "=== Artifact structure verification ==="
+        echo "Contents of /tmp/standalone-test:"
+        find /tmp/standalone-test -type f -o -type d | head -20
+        echo ""
+        echo "Looking for wazuh-engine-standalone directory..."
+        if [ -d "/tmp/standalone-test/wazuh-engine-standalone" ]; then
+          echo "✓ Found wazuh-engine-standalone directory"
+          echo "Contents of wazuh-engine-standalone:"
+          ls -la /tmp/standalone-test/wazuh-engine-standalone/
+          echo ""
+          echo "Checking for required files:"
+          [ -f "/tmp/standalone-test/wazuh-engine-standalone/run_engine.sh" ] && echo "✓ run_engine.sh found" || echo "✗ run_engine.sh missing"
+          [ -f "/tmp/standalone-test/wazuh-engine-standalone/bin/wazuh-engine" ] && echo "✓ wazuh-engine binary found" || echo "✗ wazuh-engine binary missing"
+          [ -d "/tmp/standalone-test/wazuh-engine-standalone/data" ] && echo "✓ data directory found" || echo "✗ data directory missing"
+          echo ""
+          echo "Checking directory permissions:"
+          if [ -d "/tmp/standalone-test/wazuh-engine-standalone/sockets" ]; then
+            echo "sockets directory permissions:"
+            ls -ld /tmp/standalone-test/wazuh-engine-standalone/sockets
+          else
+            echo "sockets directory not found (will be created at runtime)"
+          fi
+          if [ -d "/tmp/standalone-test/wazuh-engine-standalone/logs" ]; then
+            echo "logs directory permissions:"
+            ls -ld /tmp/standalone-test/wazuh-engine-standalone/logs
+          else
+            echo "logs directory not found (will be created at runtime)"
+          fi
+          if [ -d "/tmp/standalone-test/wazuh-engine-standalone/data/kvdb" ]; then
+            echo "kvdb directory permissions:"
+            ls -ld /tmp/standalone-test/wazuh-engine-standalone/data/kvdb
+          else
+            echo "kvdb directory not found (will be created at runtime)"
+          fi
+        else
+          echo "✗ wazuh-engine-standalone directory not found!"
+          echo "Available files and directories:"
+          find /tmp/standalone-test -type f -o -type d
+          exit 1
+        fi
 
     - name: Basic communication test
       run: |
@@ -186,6 +231,6 @@ jobs:
         else
             echo "Engine failed to start"
             kill $ENGINE_PID
-            exit 1;
+            exit 1
         fi
 
