@@ -125,7 +125,6 @@ MINGW_HOST=unknown
 USE_MSGPACK_OPT=yes
 DISABLE_JEMALLOC?=no
 DISABLE_SYSC?=no
-DISABLE_CISCAT?=no
 IMAGE_TRUST_CHECKS?=1
 CA_NAME?=DigiCert Assured ID Root CA
 HTTP_REQUEST_BRANCH?=75384783d339a817b8d8f13f778051a878d642a6
@@ -362,10 +361,6 @@ endif
 
 ifeq (,$(filter ${DISABLE_SYSC},YES yes y Y 1))
 	DEFINES+=-DENABLE_SYSC
-endif
-
-ifeq (,$(filter ${DISABLE_CISCAT},YES yes y Y 1))
-	DEFINES+=-DENABLE_CISCAT
 endif
 
 
@@ -621,7 +616,6 @@ help: failtarget
 	@echo "   make DISABLE_JEMALLOC=yes    						Not to build the JEMalloc library. Allowed values are 1, yes, YES, y, and Y, otherwise, the flag is ignored"
 	@echo "   make OFLAGS=-Ox              						Overrides optimization level"
 	@echo "   make DISABLE_SYSC=yes        						Not to build the Syscollector module (for unsupported systems). Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
-	@echo "   make DISABLE_CISCAT=yes      						Not to build the CIS-CAT module (for unsupported systems). Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make OPTIMIZE_CPYTHON=yes    						Enable this flag to optimize the python interpreter build, which is performed when used PYTHON_SOURCE. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make PYTHON_SOURCE=yes       						Used along the deps target. Downloads the sources needed to build the python interpreter. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make IMAGE_TRUST_CHECKS=1     					This flag controls the dll and exe files signature verification mechanism. Allowed values are 0 (disabled), 1 (warning only) and 2 (full enforce). The default value is 1."
@@ -658,7 +652,6 @@ settings:
 	@echo "    USE_SELINUX:        ${USE_SELINUX}"
 	@echo "    USE_AUDIT:          ${USE_AUDIT}"
 	@echo "    DISABLE_SYSC:       ${DISABLE_SYSC}"
-	@echo "    DISABLE_CISCAT:     ${DISABLE_CISCAT}"
 	@echo "    IMAGE_TRUST_CHECKS: ${IMAGE_TRUST_CHECKS}"
 	@echo "    CA_NAME:            ${CA_NAME}"
 	@echo "Mysql settings:"

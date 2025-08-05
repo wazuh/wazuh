@@ -36,8 +36,6 @@
                 analysisd -> state: dropped->modules->aws++
             else Is azure-logs OR Azure module
                 analysisd -> state: dropped->modules->azure++
-            else Is cis-cat OR wodle_cis-cat module
-                analysisd -> state: dropped->modules->ciscat++
             else Is command module
                 analysisd -> state: dropped->modules->command++
             else Is docker-listener OR Wazuh-docker module
@@ -89,8 +87,6 @@
                     analysisd -> state: decoded->modules->aws++
                 else Is azure-logs OR Azure module
                     analysisd -> state: decoded->modules->azure++
-                else Is cis-cat OR wodle_cis-cat module
-                    analysisd -> state: decoded->modules->ciscat++
                 else Is command module
                     analysisd -> state: decoded->modules->command++
                 else Is docker-listener OR Wazuh-docker module

@@ -1,9 +1,0 @@
-  <wodle name="cis-cat">
-    <disabled>yes</disabled>
-    <timeout>1800</timeout>
-    <interval>1d</interval>
-    <scan-on-start>yes</scan-on-start>
-
-    <java_path>wodles/java</java_path>
-    <ciscat_path>wodles/ciscat</ciscat_path>
-  </wodle>
