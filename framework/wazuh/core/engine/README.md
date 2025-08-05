@@ -8,7 +8,7 @@ The client class has 3 parameters: `socket_path`, `retries` and `timeout`. Here 
 
 - Socket path: `/var/ossec/queue/sockets/engine-api'`
 - Retries: 5 seconds
-- Timeout between retries: 1 second
+- Timeout between retries: 5 seconds
 
 This is, by default, the client will try to connect to the API a maximum of 5 times waiting 1 second between tries.
 
