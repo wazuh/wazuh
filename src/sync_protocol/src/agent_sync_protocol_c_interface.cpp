@@ -50,10 +50,10 @@ extern "C" {
     }
 
     void asp_persist_diff(AgentSyncProtocolHandle* handle,
-                            const char* id,
-                            int operation,
-                            const char* index,
-                            const char* data)
+                          const char* id,
+                          int operation,
+                          const char* index,
+                          const char* data)
     {
         if (!handle || !id || !index || !data) return;
 

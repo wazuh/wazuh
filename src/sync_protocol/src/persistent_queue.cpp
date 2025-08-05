@@ -29,9 +29,9 @@ PersistentQueue::PersistentQueue(std::shared_ptr<IPersistentQueueStorage> storag
 PersistentQueue::~PersistentQueue() = default;
 
 void PersistentQueue::submit(const std::string& id,
-                               const std::string& index,
-                               const std::string& data,
-                               Operation operation)
+                             const std::string& index,
+                             const std::string& data,
+                             Operation operation)
 {
     std::lock_guard<std::mutex> lock(m_mutex);
     PersistedData msg{0, id, index, data, operation};

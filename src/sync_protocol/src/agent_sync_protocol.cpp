@@ -518,6 +518,12 @@ std::vector<PersistedData> AgentSyncProtocol::filterDataByRanges(
     {
         for (const auto& range : ranges)
         {
+            if (range.second < range.first)
+            {
+                std::cerr << "[Sync] Requested set of ranks malformed. Aborting." << std::endl;
+                return {};
+            }
+
             if (item.seq >= range.first && item.seq <= range.second)
             {
                 result.push_back(item);
