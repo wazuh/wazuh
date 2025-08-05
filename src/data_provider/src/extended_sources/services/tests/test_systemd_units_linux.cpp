@@ -49,105 +49,141 @@ TEST(SystemdUnitsProviderTest, CollectsUnitsSuccessfully)
     EXPECT_CALL(*mockDbusWrapper, error_init(_));
 
     EXPECT_CALL(*mockDbusWrapper, bus_get(DBUS_BUS_SYSTEM, _))
-        .WillOnce(DoAll(
-            Invoke([](DBusBusType, DBusError* err) { *err = {}; }),
-            Return(conn)
-        ));
+    .WillOnce(DoAll(
+                  Invoke([](DBusBusType, DBusError * err)
+    {
+        *err = {};
+    }),
+    Return(conn)
+              ));
 
     EXPECT_CALL(*mockDbusWrapper, error_is_set(_)).WillRepeatedly(Return(false));
 
     EXPECT_CALL(*mockDbusWrapper,
-        message_new_method_call("org.freedesktop.systemd1",
-                                "/org/freedesktop/systemd1",
-                                "org.freedesktop.systemd1.Manager",
-                                "ListUnits"))
-        .WillOnce(Return(msg));
+                message_new_method_call("org.freedesktop.systemd1",
+                                        "/org/freedesktop/systemd1",
+                                        "org.freedesktop.systemd1.Manager",
+                                        "ListUnits"))
+    .WillOnce(Return(msg));
 
     EXPECT_CALL(*mockDbusWrapper,
-        connection_send_with_reply_and_block(conn, msg, -1, _))
-        .WillOnce(DoAll(
-            Invoke([](DBusConnection*, DBusMessage*, int, DBusError* err) { *err = {}; }),
-            Return(reply)
-        ));
+                connection_send_with_reply_and_block(conn, msg, -1, _))
+    .WillOnce(DoAll(
+                  Invoke([](DBusConnection*, DBusMessage*, int, DBusError * err)
+    {
+        *err = {};
+    }),
+    Return(reply)
+              ));
 
     EXPECT_CALL(*mockDbusWrapper, message_unref(msg));
 
     EXPECT_CALL(*mockDbusWrapper, message_iter_init(reply, _))
-        .WillOnce(DoAll(
-            Invoke([](DBusMessage*, DBusMessageIter*) {}),
-            Return(true)
-        ));
+    .WillOnce(DoAll(
+    Invoke([](DBusMessage*, DBusMessageIter*) {}),
+    Return(true)
+              ));
 
     EXPECT_CALL(*mockDbusWrapper, message_iter_get_arg_type(_))
-        .WillOnce(Return(DBUS_TYPE_ARRAY))
-        .WillOnce(Return(DBUS_TYPE_STRUCT))
-        .WillOnce(Return(DBUS_TYPE_INVALID));
+    .WillOnce(Return(DBUS_TYPE_ARRAY))
+    .WillOnce(Return(DBUS_TYPE_STRUCT))
+    .WillOnce(Return(DBUS_TYPE_INVALID));
 
     EXPECT_CALL(*mockDbusWrapper, message_iter_recurse(_, _))
-        .WillRepeatedly(DoAll(
-            Invoke([](DBusMessageIter*, DBusMessageIter*) {}),
-            Return()
-        ));
+    .WillRepeatedly(DoAll(
+    Invoke([](DBusMessageIter*, DBusMessageIter*) {}),
+    Return()
+                    ));
 
     EXPECT_CALL(*mockDbusWrapper, message_iter_get_basic(_, _))
-        .WillOnce(Invoke([](DBusMessageIter*, void* v){ *(const char**)v = "test.service"; }))
-        .WillOnce(Invoke([](DBusMessageIter*, void* v){ *(const char**)v = "Test service description"; }))
-        .WillOnce(Invoke([](DBusMessageIter*, void* v){ *(const char**)v = "loaded"; }))
-        .WillOnce(Invoke([](DBusMessageIter*, void* v){ *(const char**)v = "active"; }))
-        .WillOnce(Invoke([](DBusMessageIter*, void* v){ *(const char**)v = "running"; }))
-        .WillOnce(Invoke([](DBusMessageIter*, void* v){ *(const char**)v = ""; }))
-        .WillOnce(Invoke([objectPath](DBusMessageIter*, void* v){ *(const char**)v = objectPath; }))
-        .WillOnce(Invoke([](DBusMessageIter*, void* v){ *(uint32_t*)v = 0; }))
-        .WillOnce(Invoke([](DBusMessageIter*, void* v){ *(const char**)v = ""; }))
-        .WillOnce(Invoke([](DBusMessageIter*, void* v){ *(const char**)v = "/"; }));
+    .WillOnce(Invoke([](DBusMessageIter*, void* v)
+    {
+        *(const char**)v = "test.service";
+    }))
+    .WillOnce(Invoke([](DBusMessageIter*, void* v)
+    {
+        *(const char**)v = "Test service description";
+    }))
+    .WillOnce(Invoke([](DBusMessageIter*, void* v)
+    {
+        *(const char**)v = "loaded";
+    }))
+    .WillOnce(Invoke([](DBusMessageIter*, void* v)
+    {
+        *(const char**)v = "active";
+    }))
+    .WillOnce(Invoke([](DBusMessageIter*, void* v)
+    {
+        *(const char**)v = "running";
+    }))
+    .WillOnce(Invoke([](DBusMessageIter*, void* v)
+    {
+        *(const char**)v = "";
+    }))
+    .WillOnce(Invoke([objectPath](DBusMessageIter*, void* v)
+    {
+        *(const char**)v = objectPath;
+    }))
+    .WillOnce(Invoke([](DBusMessageIter*, void* v)
+    {
+        *(uint32_t*)v = 0;
+    }))
+    .WillOnce(Invoke([](DBusMessageIter*, void* v)
+    {
+        *(const char**)v = "";
+    }))
+    .WillOnce(Invoke([](DBusMessageIter*, void* v)
+    {
+        *(const char**)v = "/";
+    }));
 
     EXPECT_CALL(*mockDbusWrapper, message_iter_next(_))
-        .WillOnce(Return(true))
-        .WillOnce(Return(true))
-        .WillOnce(Return(true))
-        .WillOnce(Return(true))
-        .WillOnce(Return(true))
-        .WillOnce(Return(true))
-        .WillOnce(Return(true))
-        .WillOnce(Return(true))
-        .WillOnce(Return(true))
-        .WillOnce(Return(false));
+    .WillOnce(Return(true))
+    .WillOnce(Return(true))
+    .WillOnce(Return(true))
+    .WillOnce(Return(true))
+    .WillOnce(Return(true))
+    .WillOnce(Return(true))
+    .WillOnce(Return(true))
+    .WillOnce(Return(true))
+    .WillOnce(Return(true))
+    .WillOnce(Return(false));
 
     EXPECT_CALL(*mockDbusWrapper,
-        getProperty(conn,
-                    "org.freedesktop.systemd1",
-                    objectPath,
-                    "org.freedesktop.systemd1.Unit",
-                    "FragmentPath",
-                    _))
-        .WillOnce(DoAll(SetArgReferee<5>(std::string("/lib/systemd/system/test.service")), Return(true)));
+                getProperty(conn,
+                            "org.freedesktop.systemd1",
+                            objectPath,
+                            "org.freedesktop.systemd1.Unit",
+                            "FragmentPath",
+                            _))
+    .WillOnce(DoAll(SetArgReferee<5>(std::string("/lib/systemd/system/test.service")), Return(true)));
 
     EXPECT_CALL(*mockDbusWrapper,
-        getProperty(conn,
-                    "org.freedesktop.systemd1",
-                    objectPath,
-                    "org.freedesktop.systemd1.Unit",
-                    "SourcePath",
-                    _))
-        .WillOnce(DoAll(SetArgReferee<5>(std::string("/etc/systemd/system/test.service")), Return(true)));
+                getProperty(conn,
+                            "org.freedesktop.systemd1",
+                            objectPath,
+                            "org.freedesktop.systemd1.Unit",
+                            "SourcePath",
+                            _))
+    .WillOnce(DoAll(SetArgReferee<5>(std::string("/etc/systemd/system/test.service")), Return(true)));
 
     EXPECT_CALL(*mockDbusWrapper,
-        getProperty(conn,
-                    "org.freedesktop.systemd1",
-                    objectPath,
-                    "org.freedesktop.systemd1.Service",
-                    "User",
-                    _))
-        .WillOnce(DoAll(SetArgReferee<5>(std::string("root")), Return(true)));
+                getProperty(conn,
+                            "org.freedesktop.systemd1",
+                            objectPath,
+                            "org.freedesktop.systemd1.Service",
+                            "User",
+                            _))
+    .WillOnce(DoAll(SetArgReferee<5>(std::string("root")), Return(true)));
 
     EXPECT_CALL(*mockDbusWrapper,
-        getProperty(conn,
-                    "org.freedesktop.systemd1",
-                    objectPath,
-                    "org.freedesktop.systemd1.Unit",
-                    "UnitFileState",
-                    _))
-        .WillOnce(DoAll(SetArgReferee<5>(std::string("enabled")), Return(true)));
+                getProperty(conn,
+                            "org.freedesktop.systemd1",
+                            objectPath,
+                            "org.freedesktop.systemd1.Unit",
+                            "UnitFileState",
+                            _))
+    .WillOnce(DoAll(SetArgReferee<5>(std::string("enabled")), Return(true)));
 
     EXPECT_CALL(*mockDbusWrapper, message_unref(reply));
 
@@ -167,7 +203,7 @@ TEST(SystemdUnitsProviderTest, CollectsUnitsSuccessfully)
     EXPECT_EQ(unitsJson[0]["fragment_path"],  "/lib/systemd/system/test.service");
     EXPECT_EQ(unitsJson[0]["source_path"],    "/etc/systemd/system/test.service");
     EXPECT_EQ(unitsJson[0]["user"],           "root");
-    EXPECT_EQ(unitsJson[0]["unit_file_state"],"enabled");
+    EXPECT_EQ(unitsJson[0]["unit_file_state"], "enabled");
 }
 
 TEST(SystemdUnitsProviderTest, FailsWhenBusConnectionFails)
@@ -177,10 +213,13 @@ TEST(SystemdUnitsProviderTest, FailsWhenBusConnectionFails)
 
     EXPECT_CALL(*mockDbusWrapper, error_init(_));
     EXPECT_CALL(*mockDbusWrapper, bus_get(DBUS_BUS_SYSTEM, _))
-        .WillOnce(DoAll(
-            Invoke([](DBusBusType, DBusError* err) { *err = {}; }),
-            Return(nullptr)
-        ));
+    .WillOnce(DoAll(
+                  Invoke([](DBusBusType, DBusError * err)
+    {
+        *err = {};
+    }),
+    Return(nullptr)
+              ));
     EXPECT_CALL(*mockDbusWrapper, error_free(_));
 
     auto result = provider.collect();
@@ -196,13 +235,16 @@ TEST(SystemdUnitsProviderTest, FailsWhenMessageCreationFails)
 
     EXPECT_CALL(*mockDbusWrapper, error_init(_));
     EXPECT_CALL(*mockDbusWrapper, bus_get(DBUS_BUS_SYSTEM, _))
-        .WillOnce(DoAll(
-            Invoke([](DBusBusType, DBusError* err) { *err = {}; }),
-            Return(conn)
-        ));
+    .WillOnce(DoAll(
+                  Invoke([](DBusBusType, DBusError * err)
+    {
+        *err = {};
+    }),
+    Return(conn)
+              ));
     EXPECT_CALL(*mockDbusWrapper, error_is_set(_)).WillOnce(Return(false));
     EXPECT_CALL(*mockDbusWrapper, message_new_method_call(_, _, _, _))
-        .WillOnce(Return(nullptr));
+    .WillOnce(Return(nullptr));
 
     auto result = provider.collect();
     EXPECT_TRUE(result.empty());
@@ -219,15 +261,15 @@ TEST(SystemdUnitsProviderTest, FailsWhenReplyHasNoArguments)
 
     EXPECT_CALL(*mockDbusWrapper, error_init(_));
     EXPECT_CALL(*mockDbusWrapper, bus_get(DBUS_BUS_SYSTEM, _))
-        .WillOnce(Return(conn));
+    .WillOnce(Return(conn));
     EXPECT_CALL(*mockDbusWrapper, error_is_set(_)).WillRepeatedly(Return(false));
     EXPECT_CALL(*mockDbusWrapper, message_new_method_call(_, _, _, _))
-        .WillOnce(Return(msg));
+    .WillOnce(Return(msg));
     EXPECT_CALL(*mockDbusWrapper, connection_send_with_reply_and_block(_, _, _, _))
-        .WillOnce(Return(reply));
+    .WillOnce(Return(reply));
     EXPECT_CALL(*mockDbusWrapper, message_unref(msg));
     EXPECT_CALL(*mockDbusWrapper, message_iter_init(reply, _))
-        .WillOnce(Return(false));
+    .WillOnce(Return(false));
     EXPECT_CALL(*mockDbusWrapper, message_unref(reply));
 
     auto result = provider.collect();
@@ -245,17 +287,17 @@ TEST(SystemdUnitsProviderTest, FailsWhenReplyIsNotArray)
 
     EXPECT_CALL(*mockDbusWrapper, error_init(_));
     EXPECT_CALL(*mockDbusWrapper, bus_get(DBUS_BUS_SYSTEM, _))
-        .WillOnce(Return(conn));
+    .WillOnce(Return(conn));
     EXPECT_CALL(*mockDbusWrapper, error_is_set(_)).WillRepeatedly(Return(false));
     EXPECT_CALL(*mockDbusWrapper, message_new_method_call(_, _, _, _))
-        .WillOnce(Return(msg));
+    .WillOnce(Return(msg));
     EXPECT_CALL(*mockDbusWrapper, connection_send_with_reply_and_block(_, _, _, _))
-        .WillOnce(Return(reply));
+    .WillOnce(Return(reply));
     EXPECT_CALL(*mockDbusWrapper, message_unref(msg));
     EXPECT_CALL(*mockDbusWrapper, message_iter_init(reply, _))
-        .WillOnce(Return(true));
+    .WillOnce(Return(true));
     EXPECT_CALL(*mockDbusWrapper, message_iter_get_arg_type(_))
-        .WillOnce(Return(DBUS_TYPE_STRING));
+    .WillOnce(Return(DBUS_TYPE_STRING));
     EXPECT_CALL(*mockDbusWrapper, message_unref(reply));
 
     auto result = provider.collect();

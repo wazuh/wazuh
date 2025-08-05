@@ -86,6 +86,7 @@ ifeq (${uname_S},Linux)
 EXTERNAL_RPM=external/rpm/
 EXTERNAL_POPT=external/popt/
 EXTERNAL_LIBBPF=external/libbpf-bootstrap/
+EXTERNAL_DBUS=external/dbus/
 endif
 # XXX Becareful NO EXTRA Spaces here
 PG_CONFIG?=pg_config
@@ -950,6 +951,7 @@ FLATBUFFERS_LIB = $(EXTERNAL_FLATBUFFERS)build/libflatbuffers.a
 LZMA_LIB = $(EXTERNAL_LZMA)build/liblzma.a
 LUA_LIB = ${EXTERNAL_LUA}install/lib/liblua.a
 LIBBPF_LIB = $(EXTERNAL_LIBBPF)build/modern.bpf.o
+DBUS_LIB = $(EXTERNAL_DBUS)lib/libdbus-1.a
 
 EXTERNAL_LIBS := $(JSON_LIB) $(ZLIB_LIB) $(OPENSSL_LIB) $(CRYPTO_LIB) $(SQLITE_LIB) $(LIBYAML_LIB) $(LIBPCRE2_LIB)
 
@@ -974,6 +976,7 @@ ifneq (${TARGET},agent)
 EXTERNAL_LIBS += $(LIBFFI_LIB) $(BZIP2_LIB)
 endif
 ifeq (${uname_S},Linux)
+EXTERNAL_LIBS += ${DBUS_LIB}
 ifneq ($(CHECK_CENTOS5),YES)
 EXTERNAL_LIBS +=  ${LUA_LIB} ${RPM_LIB} ${POPT_LIB}
 endif
@@ -1375,6 +1378,22 @@ else
 endif
 endif
 
+### dbus lib ###
+
+DBUS_CONFIG_OPTS = --enable-static \
+					--disable-shared \
+					--disable-doxygen-docs \
+					--disable-xml-docs \
+					--disable-dependency-tracking \
+					--disable-systemd \
+					--prefix=${ROUTE_PATH}/${EXTERNAL_DBUS} \
+					--includedir=${ROUTE_PATH}/${EXTERNAL_DBUS}include \
+					--libdir=${ROUTE_PATH}/${EXTERNAL_DBUS}lib \
+					--with-system-socket=/run/dbus/system_bus_socket
+
+$(DBUS_LIB):
+	cd ${EXTERNAL_DBUS} && CFLAGS=-fPIC CXXFLAGS=-fPIC LDFLAGS=-fPIC ./configure ${DBUS_CONFIG_OPTS} && ${MAKE} && ${MAKE} install
+
 ################################
 #### External dependencies  ####
 ################################
@@ -1464,7 +1483,7 @@ PRECOMPILED_RES := $(PRECOMPILED_OS)$(PRECOMPILED_ARCH)
 endif
 
 # Agent dependencies
-EXTERNAL_RES := cJSON curl libdb libffi libyaml openssl procps sqlite zlib audit-userspace msgpack bzip2 nlohmann googletest libpcre2 libplist pacman libarchive popt lua rpm rocksdb lzma cpp-httplib benchmark libbpf-bootstrap
+EXTERNAL_RES := cJSON curl libdb libffi libyaml openssl procps sqlite zlib audit-userspace msgpack bzip2 nlohmann googletest libpcre2 libplist pacman libarchive popt lua rpm rocksdb lzma cpp-httplib benchmark libbpf-bootstrap dbus
 ifneq (${TARGET},agent)
 ifneq (${TARGET},winagent)
 	# Manager extra dependency
@@ -1472,12 +1491,12 @@ ifneq (${TARGET},winagent)
 endif
 endif
 
-# Check the target and remove libbpf-bootstrap if the target is winagent OR non-Linux OS
+# Remove libbpf-bootstrap and dbus if the target is winagent OR non-Linux OS
 ifeq (${TARGET}, winagent)
-	EXTERNAL_RES := $(filter-out libbpf-bootstrap, $(EXTERNAL_RES))
+	EXTERNAL_RES := $(filter-out libbpf-bootstrap dbus, $(EXTERNAL_RES))
 else
 ifneq (${uname_S}, Linux)
-	EXTERNAL_RES := $(filter-out libbpf-bootstrap, $(EXTERNAL_RES))
+	EXTERNAL_RES := $(filter-out libbpf-bootstrap dbus, $(EXTERNAL_RES))
 endif
 endif
 
@@ -2772,6 +2791,7 @@ ifneq ($(wildcard external/*/*),)
 	rm -rf ${POPT_BUILD_DIR}
 	rm -rf ${RPM_BUILD_DIR}
 	-cd ${EXTERNAL_LUA} && ${MAKE} clean && rm -rf install/*
+	rm -rf $(EXTERNAL_DBUS)lib $(EXTERNAL_DBUS)include
 
 ifneq ($(wildcard external/libdb/build_unix/*),)
 	cd ${EXTERNAL_LIBDB} && ${MAKE} realclean
