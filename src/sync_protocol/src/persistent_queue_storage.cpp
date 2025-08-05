@@ -239,17 +239,13 @@ void PersistentQueueStorage::removeAllSynced()
 
     try
     {
-        const std::string query = "DELETE FROM persistent_queue WHERE sync_status = ?;";
+        const std::string query = "DELETE FROM persistent_queue WHERE sync_status = ? OR (create_status = ? AND (operation_syncing = ? OR operation_syncing = ?));";
         Statement stmt(m_connection, query);
         stmt.bind(1, static_cast<int>(SyncStatus::SYNCING));
+        stmt.bind(2, static_cast<int>(CreateStatus::NEW_DELETED));
+        stmt.bind(3, static_cast<int>(Operation::NO_OP));
+        stmt.bind(4, static_cast<int>(Operation::DELETE));
         stmt.step();
-
-        const std::string query2 = "DELETE FROM persistent_queue WHERE create_status = ? AND (operation_syncing = ? OR operation_syncing = ?);";
-        Statement stmt2(m_connection, query2);
-        stmt2.bind(1, static_cast<int>(CreateStatus::NEW_DELETED));
-        stmt2.bind(2, static_cast<int>(Operation::NO_OP));
-        stmt2.bind(3, static_cast<int>(Operation::DELETE));
-        stmt2.step();
 
         const std::string queryUpdate = "UPDATE persistent_queue SET sync_status = ?, create_status = ?, operation_syncing = ? WHERE (sync_status = ? OR sync_status = ?);";
         Statement stmtUpdate(m_connection, queryUpdate);
