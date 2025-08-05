@@ -630,9 +630,9 @@ checks:
       - cis: ["2.3.8.1"]
     condition: all
     rules:
-      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanmanWorkstation\Parameters'
-      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanmanWorkstation\Parameters -> RequireSecuritySignature'
-      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanmanWorkstation\Parameters -> RequireSecuritySignature -> 1'
+      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanmanServer\Parameters'
+      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanmanServer\Parameters -> RequireSecuritySignature'
+      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanmanServer\Parameters -> RequireSecuritySignature -> 1'
 
   # 2.3.8.2 (L1) Ensure 'Microsoft network client: Digitally sign communications (if server agrees)' is set to 'Enabled'. (Automated)
   - id: 16027
@@ -645,9 +645,10 @@ checks:
       - cis: ["2.3.8.2"]
     condition: all
     rules:
-      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanmanWorkstation\Parameters'
-      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanmanWorkstation\Parameters -> EnableSecuritySignature'
-      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanmanWorkstation\Parameters -> EnableSecuritySignature -> 1'
+      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanmanServer\Parameters'
+      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanmanServer\Parameters -> EnableSecuritySignature'
+      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanmanServer\Parameters -> EnableSecuritySignature -> 1'
+
 
   # 2.3.8.3 (L1) Ensure 'Microsoft network client: Send unencrypted password to third-party SMB servers' is set to 'Disabled'. (Automated)
   - id: 16028
