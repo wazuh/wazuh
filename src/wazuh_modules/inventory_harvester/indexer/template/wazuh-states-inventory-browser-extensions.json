@@ -1,6 +1,6 @@
 {
   "index_patterns": [
-    "wazuh-states-browser-extensions*"
+    "wazuh-states-inventory-browser-extensions*"
   ],
   "priority": 1,
   "template": {
