@@ -351,20 +351,6 @@
       "data.os.display_version",
       "data.os.sysname",
       "data.os.version",
-      "data.oscap.check.description",
-      "data.oscap.check.id",
-      "data.oscap.check.identifiers",
-      "data.oscap.check.oval.id",
-      "data.oscap.check.rationale",
-      "data.oscap.check.references",
-      "data.oscap.check.result",
-      "data.oscap.check.severity",
-      "data.oscap.check.title",
-      "data.oscap.scan.benchmark.id",
-      "data.oscap.scan.content",
-      "data.oscap.scan.id",
-      "data.oscap.scan.profile.id",
-      "data.oscap.scan.profile.title",
       "data.osquery.columns.address",
       "data.osquery.columns.command",
       "data.osquery.columns.description",
@@ -1192,78 +1178,6 @@
           },
           "url": {
             "type": "keyword"
-          },
-          "oscap": {
-            "properties": {
-              "check": {
-                "properties": {
-                  "description": {
-                    "type": "text"
-                  },
-                  "id": {
-                    "type": "keyword"
-                  },
-                  "identifiers": {
-                    "type": "text"
-                  },
-                  "oval": {
-                    "properties": {
-                      "id": {
-                        "type": "keyword"
-                      }
-                    }
-                  },
-                  "rationale": {
-                    "type": "text"
-                  },
-                  "references": {
-                    "type": "text"
-                  },
-                  "result": {
-                    "type": "keyword"
-                  },
-                  "severity": {
-                    "type": "keyword"
-                  },
-                  "title": {
-                    "type": "keyword"
-                  }
-                }
-              },
-              "scan": {
-                "properties": {
-                  "benchmark": {
-                    "properties": {
-                      "id": {
-                        "type": "keyword"
-                      }
-                    }
-                  },
-                  "content": {
-                    "type": "keyword"
-                  },
-                  "id": {
-                    "type": "keyword"
-                  },
-                  "profile": {
-                    "properties": {
-                      "id": {
-                        "type": "keyword"
-                      },
-                      "title": {
-                        "type": "keyword"
-                      }
-                    }
-                  },
-                  "return_code": {
-                    "type": "long"
-                  },
-                  "score": {
-                    "type": "double"
-                  }
-                }
-              }
-            }
           },
           "office365": {
             "properties": {
