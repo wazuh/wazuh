@@ -447,6 +447,9 @@ class WazuhException(Exception):
         2800: {'message': 'The engine client connection timeout has been exceeded'},
         2801: {'message': 'Invalid request URL scheme'},
         2802: {'message': 'Invalid unix socket path'},
+        2803: {'message': 'Error sending request to the engine'},
+        2804: {'message': 'Unexpected error sending request to the engine'},
+        2805: {'message': 'Error parsing response from the engine'},
 
         # External services
         2100: {'message': 'Error in CTI service request'},
