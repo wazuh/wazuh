@@ -7,7 +7,7 @@ from wazuh.core.exception import WazuhEngineError
 
 logger = getLogger('wazuh')
 
-ENGINE_API_SOCKET_PATH = '/run/wazuh-server/engine-api.socket'
+ENGINE_API_SOCKET_PATH = '/var/ossec/queue/sockets/engine-api'
 DEFAULT_RETRIES = 5
 DEFAULT_TIMEOUT = 1
 
