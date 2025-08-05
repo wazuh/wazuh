@@ -6,7 +6,7 @@ This folder contains the client class used to communicate with the Engine API cl
 
 The client class has 3 parameters: `socket_path`, `retries` and `timeout`. Here are their default values:
 
-- Socket path: `/run/wazuh-server/engine-api.socket`
+- Socket path: `/var/ossec/queue/sockets/engine-api'`
 - Retries: 5 seconds
 - Timeout between retries: 1 second
 
@@ -17,7 +17,7 @@ These values can be tweaked during the class creation. For example:
 ```py
 from wazuh.core.engine import Engine
 
-engine = Engine(socket_path='/var/run/docker.sock', retries=10, timeout=3)
+engine = Engine(socket_path='/var/ossec/queue/sockets/engine-api'', retries=10, timeout=3)
 ```
 
 ### Modular design
@@ -31,11 +31,11 @@ All modules inherit from the `BaseModule` and have access to the underlying clie
 ```py
 from wazuh.core.engine import Engine
 
-engine = Engine(socket_path='/var/run/docker.sock')
+engine = Engine()
 response = await engine._client.get('http://docker/info')
 ```
 
-Right now, there are no modules because the engine is still under heavy development, but let's use `Events` as an example. The code would look like
+Right now, there are no modules because the engine is still under heavy development, but let's use `Catalog` as an example. The code would look like
 
 ```py
 class Engine:
@@ -50,18 +50,18 @@ class Engine:
         transport = AsyncHTTPTransport(uds=socket_path, retries=retries)
         self._client = AsyncClient(transport=transport, timeout=Timeout(timeout))
 
-        self.events = EventsModule(client=self._client)
+        self.catalog = CatalogModule(client=self._client)
 
-class EventsModule(BaseModule):
-    """Class to interact with Engine events module."""
+class CatalogModule(BaseModule):
+    """Class to interact with Engine catalog module."""
 
     def __init__(self, client: AsyncClient) -> None:
         self._client = client
     
-    async def post_stateless(self) -> dict:
+    async def get_resources(self) -> dict:
         return await self._client.post(
-            url='http://events/stateless',
-            data={'agent': {'id': '2887e1cf-9bf2-431a-b066-a46860080f56', 'name': 'sample', 'type': 'endpoint', 'version': '5.0.0'}
+            url='http://localhost/catalog/resource/get',
+            data={'name': 'decoder', 'format': 'yaml', 'namespaceid': 'system'}
         )
 ```
 
@@ -71,5 +71,5 @@ And using it would be simple as
 from wazuh.core.engine import Engine
 
 engine = Engine()
-response = await engine.events.post_stateless()
+response = await engine.catalog.get_resources()
 ```
