@@ -22,6 +22,7 @@ link_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../external/googletest/lib/)
 # Add the test executable
 add_executable(agent_sync_protocol_tests
     main.cpp
+    test_agent_sync_protocol.cpp
     test_persistent_queue_storage.cpp
     test_persistent_queue.cpp
 )
