@@ -81,8 +81,7 @@ t2_configurations = configuration.load_configuration_template(configurations_pat
 # Test daemons to restart.
 daemons_handler_configuration = {'all_daemons': True}
 
-# TODO: Fix test before re-enabling
-@pytest.mark.skip(reason="Needs to be fixed")
+
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(t1_configurations, t1_configuration_metadata), ids=t1_case_ids)
 def test_sca_enabled(test_configuration, test_metadata, prepare_cis_policies_file, truncate_monitored_files,
                      set_wazuh_configuration, configure_local_internal_options, daemons_handler):
@@ -147,8 +146,7 @@ def test_sca_enabled(test_configuration, test_metadata, prepare_cis_policies_fil
     log_monitor.start(callback=callbacks.generate_callback(patterns.CB_SCA_SCAN_ENDED), timeout=30)
     assert log_monitor.callback_result
 
-# TODO: Fix test before re-enabling
-@pytest.mark.skip(reason="Needs to be fixed")
+
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(t2_configurations, t2_configuration_metadata), ids=t2_case_ids)
 def test_sca_disabled(test_configuration, test_metadata, prepare_cis_policies_file, truncate_monitored_files,
                       set_wazuh_configuration, configure_local_internal_options, daemons_handler):
