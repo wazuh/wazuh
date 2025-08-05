@@ -1,6 +1,7 @@
 #include "agent_sync_protocol_c_interface.h"
 #include "agent_sync_protocol.hpp"
 #include "persistent_queue.hpp"
+#include <chrono>
 #include <memory>
 #include <string>
 
@@ -28,18 +29,19 @@ struct AgentSyncProtocolWrapper
 
     /// @brief Constructs the wrapper and initializes the AgentSyncProtocol instance.
     ///
+    /// @param module Name of the module associated with this instance.
     /// @param mq_funcs Structure containing the MQ callback functions provided from C.
-    AgentSyncProtocolWrapper(const MQ_Functions& mq_funcs)
-        : impl(std::make_unique<AgentSyncProtocol>(mq_funcs, sharedQueue())) {}
+    AgentSyncProtocolWrapper(const std::string& module, const MQ_Functions& mq_funcs)
+        : impl(std::make_unique<AgentSyncProtocol>(module, mq_funcs, sharedQueue())) {}
 };
 
 extern "C" {
 
-    AgentSyncProtocolHandle* asp_create(const MQ_Functions* mq_funcs)
+    AgentSyncProtocolHandle* asp_create(const char* module, const MQ_Functions* mq_funcs)
     {
         if (!mq_funcs) return nullptr;
 
-        return reinterpret_cast<AgentSyncProtocolHandle*>(new AgentSyncProtocolWrapper(*mq_funcs));
+        return reinterpret_cast<AgentSyncProtocolHandle*>(new AgentSyncProtocolWrapper(module, *mq_funcs));
     }
 
     void asp_destroy(AgentSyncProtocolHandle* handle)
@@ -48,30 +50,32 @@ extern "C" {
     }
 
     void asp_persist_diff(AgentSyncProtocolHandle* handle,
-                          const char* module,
                           const char* id,
                           int operation,
                           const char* index,
                           const char* data)
     {
-        if (!handle || !module || !id || !index || !data) return;
+        if (!handle || !id || !index || !data) return;
 
         auto* wrapper = reinterpret_cast<AgentSyncProtocolWrapper*>(handle);
-        wrapper->impl->persistDifference(module, id,
-                                         static_cast<Wazuh::SyncSchema::Operation>(operation),
+        wrapper->impl->persistDifference(id,
+                                         static_cast<Operation>(operation),
                                          index, data);
     }
 
     bool asp_sync_module(AgentSyncProtocolHandle* handle,
-                         const char* module,
                          int mode,
-                         int realtime)
+                         unsigned int sync_timeout,
+                         unsigned int retries,
+                         size_t max_eps)
     {
-        if (!handle || !module) return false;
+        if (!handle) return false;
 
         auto* wrapper = reinterpret_cast<AgentSyncProtocolWrapper*>(handle);
-        return wrapper->impl->synchronizeModule(module,
-                                                static_cast<Wazuh::SyncSchema::Mode>(mode), realtime != 0);
+        return wrapper->impl->synchronizeModule(static_cast<Wazuh::SyncSchema::Mode>(mode),
+                                                std::chrono::seconds(sync_timeout),
+                                                retries,
+                                                max_eps);
     }
 
     int asp_parse_response_buffer(AgentSyncProtocolHandle* handle, const uint8_t* data)

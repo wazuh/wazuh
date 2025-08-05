@@ -12,6 +12,22 @@
 #include "ipersistent_queue_storage.hpp"
 #include "sqlite3Wrapper.hpp"
 
+/// @brief Defines the synchronization status of a persisted message.
+enum class SyncStatus : int
+{
+    PENDING = 0,        ///< The message is waiting to be synchronized.
+    SYNCING = 1,        ///< The message is currently being synchronized.
+    SYNCING_UPDATED = 2 ///< The message is being synchronized and its contents have been updated.
+};
+
+/// @brief Tracks the creation state of a persisted message, particularly for newly created items.
+enum class CreateStatus : int
+{
+    EXISTING = 0,     ///< The message existed prior to the current session; it was not newly created.
+    NEW = 1,          ///< The message was newly created during the current session.
+    NEW_DELETED = 2   ///< The message was newly created, but then deleted before it could be synchronized.
+};
+
 /// @brief SQLite-backed implementation of IPersistentQueueStorage.
 ///
 /// Persists module messages into a local SQLite database file.
@@ -30,19 +46,22 @@ class PersistentQueueStorage : public IPersistentQueueStorage
         /// @brief Default destructor.
         ~PersistentQueueStorage() override = default;
 
-        /// @brief Saves a new message entry into the persistent storage.
-        /// @param module The module identifier.
-        /// @param data The message data to persist.
-        void save(const std::string& module, const PersistedData& data) override;
+        /// @brief Submits a new message, applying coalescing logic.
+        /// This method finds if a message with the same ID already exists
+        /// and applies coalescing rules before inserting, updating, or deleting.
+        /// The entire operation is atomic.
+        /// @param data The new message data to submit.
+        virtual void submitOrCoalesce(const PersistedData& data) override;
 
-        /// @brief Deletes all messages belonging to a specific module.
-        /// @param module The module whose messages will be removed.
-        void removeAll(const std::string& module) override;
+        /// @brief Fetches a batch of pending messages and marks them as SYNCING.
+        /// @return A vector of messages now marked as SYNCING.
+        std::vector<PersistedData> fetchAndMarkForSync() override;
 
-        /// @brief Loads all persisted messages for the given module.
-        /// @param module The module to load messages for.
-        /// @return A vector containing all messages found.
-        std::vector<PersistedData> loadAll(const std::string& module) override;
+        /// @brief Deletes all messages for a module currently marked as SYNCING.
+        void removeAllSynced() override;
+
+        /// @brief Resets the status of all SYNCING messages for a module back to PENDING.
+        void resetAllSyncing() override;
 
     private:
         /// @brief Active SQLite database connection.

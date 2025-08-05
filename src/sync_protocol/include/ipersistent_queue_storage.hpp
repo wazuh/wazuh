@@ -22,17 +22,20 @@ class IPersistentQueueStorage
         /// @brief Virtual destructor.
         virtual ~IPersistentQueueStorage() = default;
 
-        /// @brief Saves a new message entry into the persistent storage.
-        /// @param module The module identifier.
-        /// @param data The message data to persist.
-        virtual void save(const std::string& module, const PersistedData& data) = 0;
+        /// @brief Submits a new message, applying coalescing logic.
+        /// This method finds if a message with the same ID already exists
+        /// and applies coalescing rules before inserting, updating, or deleting.
+        /// The entire operation is atomic.
+        /// @param data The new message data to submit.
+        virtual void submitOrCoalesce(const PersistedData& data) = 0;
 
-        /// @brief Deletes all messages belonging to a specific module.
-        /// @param module The module whose messages will be removed.
-        virtual void removeAll(const std::string& module) = 0;
+        /// @brief Fetches a batch of pending messages and marks them as SYNCING.
+        /// @return A vector of messages now marked as SYNCING.
+        virtual std::vector<PersistedData> fetchAndMarkForSync() = 0;
 
-        /// @brief Loads all persisted messages for the given module.
-        /// @param module The module to load messages for.
-        /// @return A vector containing all messages found.
-        virtual std::vector<PersistedData> loadAll(const std::string& module) = 0;
+        /// @brief Deletes all messages for a module currently marked as SYNCING.
+        virtual void removeAllSynced() = 0;
+
+        /// @brief Resets the status of all SYNCING messages for a module back to PENDING.
+        virtual void resetAllSyncing() = 0;
 };

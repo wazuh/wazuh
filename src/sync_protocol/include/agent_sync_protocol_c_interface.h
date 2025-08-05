@@ -44,9 +44,10 @@ typedef struct MQ_Functions
 
 /// @brief Creates an instance of AgentSyncProtocol.
 ///
+/// @param module Name of the module associated with this instance.
 /// @param mq_funcs Pointer to a MQ_Functions struct containing the MQ callbacks.
 /// @return A pointer to an opaque AgentSyncProtocol handle, or NULL on failure.
-AgentSyncProtocolHandle* asp_create(const MQ_Functions* mq_funcs);
+AgentSyncProtocolHandle* asp_create(const char* module, const MQ_Functions* mq_funcs);
 
 /// @brief Destroys an AgentSyncProtocol instance.
 ///
@@ -56,29 +57,29 @@ void asp_destroy(AgentSyncProtocolHandle* handle);
 /// @brief Persists a difference (diff) for synchronization.
 ///
 /// @param handle Pointer to the AgentSyncProtocol handle.
-/// @param module Module name associated with the diff.
 /// @param id Unique identifier for the diff (usually a hash).
 /// @param operation Type of operation (create, modify, delete).
 /// @param index Target index or destination for the diff.
 /// @param data JSON string representing the data to persist.
 void asp_persist_diff(AgentSyncProtocolHandle* handle,
-                      const char* module,
-                      const char* id,
-                      int operation,
-                      const char* index,
-                      const char* data);
+                        const char* id,
+                        int operation,
+                        const char* index,
+                        const char* data);
 
 // @brief Triggers synchronization of a module.
 ///
 /// @param handle Pointer to the AgentSyncProtocol handle.
-/// @param module The name of the module to synchronize.
 /// @param mode Synchronization mode (e.g., full, delta).
-/// @param realtime Boolean flag (non-zero = realtime mode, zero = batch mode).
+/// @param sync_timeout The timeout for each attempt to receive a response, in seconds.
+/// @param sync_retries The maximum number of attempts for re-sending Start and End messages.
+/// @param max_eps The maximum event reporting throughput. 0 means disabled.
 /// @return true if the sync was successfully processed; false otherwise.
 bool asp_sync_module(AgentSyncProtocolHandle* handle,
-                     const char* module,
                      int mode,
-                     int realtime);
+                     unsigned int sync_timeout,
+                     unsigned int sync_retries,
+                     size_t max_eps);
 
 /// @brief Parses a response buffer encoded in FlatBuffer format.
 /// @param handle Protocol handle.

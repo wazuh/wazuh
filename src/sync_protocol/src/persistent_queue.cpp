@@ -17,141 +17,50 @@ PersistentQueue::PersistentQueue(std::shared_ptr<IPersistentQueueStorage> storag
 {
     try
     {
-        for (auto mod :
-                {
-                    "FIM", "SCA", "INV"
-                })
-        {
-            m_seqCounter[mod] = 0;
-            loadFromStorage(mod);
-        }
+        m_storage->resetAllSyncing();
     }
     catch (const std::exception& ex)
     {
-        std::cerr << "[PersistentQueue] Unexpected error: " << ex.what() << std::endl;
+        std::cerr << "[PersistentQueue] Error on DB: " << ex.what() << std::endl;
         throw;
     }
 }
 
 PersistentQueue::~PersistentQueue() = default;
 
-uint64_t PersistentQueue::submit(const std::string& module, const std::string& id,
-                                 const std::string& index,
-                                 const std::string& data,
-                                 Wazuh::SyncSchema::Operation operation)
+void PersistentQueue::submit(const std::string& id,
+                             const std::string& index,
+                             const std::string& data,
+                             Operation operation)
 {
     std::lock_guard<std::mutex> lock(m_mutex);
-    uint64_t seq = ++m_seqCounter[module];
-    PersistedData msg{seq, id, index, data, operation};
+    PersistedData msg{0, id, index, data, operation};
 
     try
     {
-        persistMessage(module, msg);
+        m_storage->submitOrCoalesce(msg);
     }
     catch (const std::exception& ex)
     {
-        --m_seqCounter[module];
         std::cerr << "[PersistentQueue] Error persisting message: " << ex.what() << std::endl;
         throw;
     }
-
-    m_store[module].push_back(msg);
-
-    return seq;
 }
 
-std::vector<PersistedData> PersistentQueue::fetchAll(const std::string& module)
+std::vector<PersistedData> PersistentQueue::fetchAndMarkForSync()
 {
     std::lock_guard<std::mutex> lock(m_mutex);
-
-    std::vector<PersistedData> result;
-
-    auto it = m_store.find(module);
-
-    if (it != m_store.end())
-    {
-        result = it->second;
-    }
-
-    return result;
+    return m_storage->fetchAndMarkForSync();
 }
 
-std::vector<PersistedData> PersistentQueue::fetchRange(
-    const std::string& module,
-    const std::vector<std::pair<uint64_t, uint64_t>>& ranges)
+void PersistentQueue::clearSyncedItems()
 {
     std::lock_guard<std::mutex> lock(m_mutex);
-
-    std::vector<PersistedData> result;
-
-    auto it = m_store.find(module);
-
-    if (it == m_store.end())
-    {
-        return result;
-    }
-
-    for (const auto& data : it->second)
-    {
-        for (const auto& range : ranges)
-        {
-            if (data.seq >= range.first && data.seq <= range.second)
-            {
-                result.push_back(data);
-                break;
-            }
-        }
-    }
-
-    return result;
+    m_storage->removeAllSynced();
 }
 
-void PersistentQueue::removeAll(const std::string& module)
+void PersistentQueue::resetSyncingItems()
 {
     std::lock_guard<std::mutex> lock(m_mutex);
-
-    try
-    {
-        deleteAllMessages(module);
-    }
-    catch (const std::exception& ex)
-    {
-        std::cerr << "[PersistentQueue] Error deleting all messages: " << ex.what() << std::endl;
-        throw;
-    }
-
-    m_store[module].clear();
-    m_seqCounter[module] = 0;
-}
-
-void PersistentQueue::loadFromStorage(const std::string& module)
-{
-    try
-    {
-        const auto data = m_storage->loadAll(module);
-        uint64_t maxSeq = 0;
-
-        for (const auto& item : data)
-        {
-            m_store[module].push_back(item);
-            maxSeq = std::max(maxSeq, item.seq);
-        }
-
-        m_seqCounter[module] = maxSeq;
-    }
-    catch (const std::exception& ex)
-    {
-        std::cerr << "[PersistentQueue] Error loading messages from database: " << ex.what() << std::endl;
-        throw;
-    }
-}
-
-void PersistentQueue::persistMessage(const std::string& module, const PersistedData& data)
-{
-    m_storage->save(module, data);
-}
-
-void PersistentQueue::deleteAllMessages(const std::string& module)
-{
-    m_storage->removeAll(module);
+    m_storage->resetAllSyncing();
 }

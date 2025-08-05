@@ -29,7 +29,6 @@ table Data {
 table Start {
     mode: Mode;
     size: ulong;
-    realtime: bool;
     module: string;
     agent_id: ulong;
 }

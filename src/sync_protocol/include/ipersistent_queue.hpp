@@ -9,10 +9,19 @@
 
 #pragma once
 
-#include "inventorySync_generated.h"
-
+#include <cstdint>
+#include <string>
 #include <optional>
 #include <vector>
+
+/// @brief Defines the type of modification operation.
+enum class Operation : int
+{
+    CREATE = 0, ///< The operation is to create a new record.
+    MODIFY = 1, ///< The operation is to modify an existing record.
+    DELETE = 2, ///< The operation is to delete a record.
+    NO_OP = 3   ///< No specific operation is being synchronized. Represents a neutral state.
+};
 
 /// @brief Represents a persisted message used in module synchronization.
 ///
@@ -32,8 +41,8 @@ struct PersistedData
     /// @brief Serialized content of the message.
     std::string data;
 
-    /// @brief Type of operation (e.g., Upsert, Delete) defined by the schema.
-    Wazuh::SyncSchema::Operation operation;
+    /// @brief Type of operation (CREATE, MODIFY, DELETE).
+    Operation operation;
 };
 
 /// @brief Interface for persistent message queues.
@@ -48,29 +57,22 @@ class IPersistentQueue
         virtual ~IPersistentQueue() = default;
 
         /// @brief Adds a new message to the queue and returns its assigned sequence number.
-        /// @param module The module name the message belongs to.
         /// @param id The message ID.
         /// @param index The message grouping key.
         /// @param data The serialized payload of the message.
-        /// @param operation The type of operation (e.g., Upsert, Delete).
-        /// @return Assigned sequence number of the inserted message.
-        virtual uint64_t submit(const std::string& module, const std::string& id,
-                                const std::string& index,
-                                const std::string& data,
-                                Wazuh::SyncSchema::Operation operation) = 0;
+        /// @param operation The type of operation (CREATE, MODIFY, DELETE).
+        virtual void submit(const std::string& id,
+                            const std::string& index,
+                            const std::string& data,
+                            Operation operation) = 0;
 
-        /// @brief Returns all messages queued for a given module.
-        /// @param module The module name.
-        /// @return A vector of all queued messages.
-        virtual std::vector<PersistedData> fetchAll(const std::string& module) = 0;
+        /// @brief Fetches a batch of pending messages and marks them for synchronization.
+        /// @return A vector of messages now marked as SYNCING.
+        virtual std::vector<PersistedData> fetchAndMarkForSync() = 0;
 
-        /// @brief Fetches messages whose sequence numbers fall within any of the provided ranges.
-        /// @param module The module name.
-        /// @param ranges A list of (start, end) inclusive ranges to filter messages.
-        /// @return A vector containing all matching messages.
-        virtual std::vector<PersistedData> fetchRange(const std::string& module, const std::vector<std::pair<uint64_t, uint64_t>>& ranges) = 0;
+        /// @brief Clears items that were successfully synchronized.
+        virtual void clearSyncedItems() = 0;
 
-        /// @brief Removes all messages queued for a given module.
-        /// @param module The module name.
-        virtual void removeAll(const std::string& module) = 0;
+        /// @brief Resets items that failed to synchronize.
+        virtual void resetSyncingItems() = 0;
 };
