@@ -11,7 +11,7 @@
     <processes>yes</processes>
     <users>yes</users>
     <groups>yes</groups>
-    <services>yes<services>
+    <services>yes</services>
 
     <!-- Database synchronization settings -->
     <synchronization>

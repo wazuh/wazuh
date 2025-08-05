@@ -28,7 +28,7 @@ nlohmann::json SystemdUnitsProvider::collect()
 
     if (!getSystemdUnits(units))
     {
-        std::cerr << "Error getting systemd units" << std::endl;
+        // std::cerr << "Error getting systemd units" << std::endl;
         return result;
     }
 
@@ -65,7 +65,7 @@ bool SystemdUnitsProvider::getSystemdUnits(std::vector<SystemdUnit>& output)
 
     if (!conn || m_dbusWrapper->error_is_set(&err))
     {
-        std::cerr << "Failed to connect to system bus: " << err.message << std::endl;
+        // std::cerr << "Failed to connect to system bus: " << err.message << std::endl;
         m_dbusWrapper->error_free(&err);
         return false;
     }
@@ -75,7 +75,8 @@ bool SystemdUnitsProvider::getSystemdUnits(std::vector<SystemdUnit>& output)
 
     if (!msg)
     {
-        std::cerr << "Failed to create message" << std::endl;
+        // std::cerr << "Failed to create message" << std::endl;
+        m_dbusWrapper->error_free(&err);
         return false;
     }
 
@@ -84,7 +85,7 @@ bool SystemdUnitsProvider::getSystemdUnits(std::vector<SystemdUnit>& output)
 
     if (!reply || m_dbusWrapper->error_is_set(&err))
     {
-        std::cerr << "Failed to send message: " << err.message << std::endl;
+        // std::cerr << "Failed to send message: " << err.message << std::endl;
         m_dbusWrapper->error_free(&err);
         return false;
     }
@@ -93,15 +94,17 @@ bool SystemdUnitsProvider::getSystemdUnits(std::vector<SystemdUnit>& output)
 
     if (!m_dbusWrapper->message_iter_init(reply, &iter))
     {
-        std::cerr << "Reply has no arguments." << std::endl;
+        // std::cerr << "Reply has no arguments." << std::endl;
         m_dbusWrapper->message_unref(reply);
+        m_dbusWrapper->error_free(&err);
         return false;
     }
 
     if (DBUS_TYPE_ARRAY != m_dbusWrapper->message_iter_get_arg_type(&iter))
     {
-        std::cerr << "Expected an array." << std::endl;
+        // std::cerr << "Expected an array." << std::endl;
         m_dbusWrapper->message_unref(reply);
+        m_dbusWrapper->error_free(&err);
         return false;
     }
 
@@ -180,5 +183,6 @@ bool SystemdUnitsProvider::getSystemdUnits(std::vector<SystemdUnit>& output)
     }
 
     m_dbusWrapper->message_unref(reply);
+    m_dbusWrapper->error_free(&err);
     return true;
 }
