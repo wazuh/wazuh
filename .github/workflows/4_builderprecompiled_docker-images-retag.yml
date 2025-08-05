@@ -33,7 +33,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     name: Package - Retag Docker images
-
+    permissions:
+      packages: write
     steps:
       - name: Cancel previous runs
         uses: fkirc/skip-duplicate-actions@master
