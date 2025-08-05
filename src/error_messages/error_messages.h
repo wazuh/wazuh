@@ -56,6 +56,7 @@
 #define NICE_ERROR      "(1142): Cannot set process priority: %s (%d)."
 #define RMDIR_ERROR     "(1143): Unable to delete folder '%s' due to [(%d)-(%s)]."
 #define ATEXIT_ERROR    "(1144): Unable to set exit function"
+#define REALPATH_ERROR    "(1145): Unable to resolve path '%s' -> '%s' due to [(%d)-(%s)]."
 
 /* COMMON ERRORS */
 #define CONN_ERROR      "(1201): No remote connection configured."
@@ -255,6 +256,9 @@
 #define WPOPENV_ERROR   "(1974): An error ocurred while calling wpopenv(): %s (%d)."
 #define LF_LOG_REGEX    "(1975): Syntax error on regex %s: '%s'"
 #define LF_MATCH_REGEX  "(1976): Ignoring the log line '%s' due to %s config: '%s'"
+#define NO_LONGER_ANALYZING_FILE     "(1977): No longer analyzing file '%s'."
+#define SKIP_REGULAR_FILE            "(1978): File %s is not a regular file. Skipping it."
+#define READING_SYMLINK    "(1950): Analyzing symlink: '%s' -> '%s.'"
 
 /* Encryption/auth errors */
 #define INVALID_KEY     "(1401): Error reading authentication key: '%s'."

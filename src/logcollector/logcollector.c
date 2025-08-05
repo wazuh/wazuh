@@ -8,9 +8,12 @@
  * Foundation
  */
 
+#include "debug_op.h"
+#include "error_messages/error_messages.h"
 #include "shared.h"
 #include "logcollector.h"
 #include "state.h"
+#include <fcntl.h>
 #include <math.h>
 #include <pthread.h>
 #include "sysinfo_utils.h"
@@ -89,6 +92,35 @@ STATIC int64_t w_set_to_pos(logreader *lf, int64_t pos, int mode);
  * @return 0 on success, otherwise -1
  */
 STATIC int w_update_hash_node(char * path, int64_t pos);
+
+/**
+ * @brief Updates the symlink state to reflect any changes to the symlink or it's pointed-to file.
+ * @param current logreader to modify.
+ * @param i current logreader index.
+ * @param j determines if the logreader is the result of a glob-expansion.
+ * @return NEXT_IT if the current logreader was removed, CONTINUE_IT otherwise.
+ */
+STATIC IT_control w_update_symlink_state(logreader* current, int i, int j);
+
+/**
+ * @brief Sets a logreader's symlink and sets its file to the resolved symlink.
+ * @param current logreader to modify.
+ */
+STATIC void w_init_logreader_symlink(logreader *current);
+
+/**
+ * @brief Frees a logreader's file. Removes it from the state and status structures.
+ * @param current logreader to use.
+ */
+STATIC void w_free_logreader_file(logreader* current);
+
+
+/**
+ * @brief Gets the symlink target for a symlink path.
+ * @param symlink_path path to check.
+ * @return string containing the target or NULL if the link is broken.
+ */
+STATIC char* w_get_symlink_target(char *symlink_path);
 
 /* Global variables */
 int loop_timeout;
@@ -292,7 +324,7 @@ void LogCollectorStart()
         }
 
         if (!current->file) {
-            /* Do nothing, duplicated entry */
+        /* Do nothing, duplicated entry */
         } else if (!strcmp(current->logformat, "eventlog")) {
 #ifdef WIN32
 
@@ -430,8 +462,12 @@ void LogCollectorStart()
         }
 
         else if (j < 0) {
-            set_read(current, i, j);
+            if (current->follow_symlink) {
+                w_init_logreader_symlink(current);
+            }
+
             if (current->file) {
+                set_read(current, i, j);
                 minfo(READING_FILE, current->file);
             }
             /* More tweaks for Windows. For some reason IIS places
@@ -612,6 +648,12 @@ void LogCollectorStart()
                         break;
                     }
                 }
+                if (current->follow_symlink) {
+                    if (w_update_symlink_state(current, i, j) == NEXT_IT){
+                        i--;
+                        continue;
+                    }
+                }
 
                 /* These are the windows logs or ignored files */
                 if (!current->file) {
@@ -659,7 +701,7 @@ void LogCollectorStart()
                             }
                             current->ign++;
 
-                            // Only expanded files that have been deleted will be forgotten
+                            // Glob-expanded files that have been deleted will be forgotten
                             if (j >= 0) {
                                 if (Remove_Localfile(&(globs[j].gfiles), i, 1, 0,&globs[j])) {
                                     merror(REM_ERROR, current->file);
@@ -938,7 +980,6 @@ void LogCollectorStart()
             /* Check for ASCII, UTF-8 */
             check_text_only();
 
-
             rwlock_unlock(&files_update_rwlock);
 
             if (f_reload >= reload_interval) {
@@ -1093,6 +1134,7 @@ int handle_file(int i, int j, __attribute__((unused)) int do_fseek, int do_log)
     /* Set ignore to zero */
     lf->ign = 0;
     lf->exists = 1;
+
     return (0);
 
 error:
@@ -1337,20 +1379,50 @@ int check_pattern_expand(int do_seek) {
 
                 struct stat statbuf;
                 if (lstat(g.gl_pathv[glob_offset], &statbuf) < 0) {
-                    merror("Error on lstat '%s' due to [(%d)-(%s)]", g.gl_pathv[glob_offset], errno, strerror(errno));
+                    merror(FSTAT_ERROR, g.gl_pathv[glob_offset], errno, strerror(errno));
                     glob_offset++;
                     continue;
                 }
 
+                char* symlink_realpath = NULL;
                 if ((statbuf.st_mode & S_IFMT) != S_IFREG) {
-                    mdebug1("File %s is not a regular file. Skipping it.", g.gl_pathv[glob_offset]);
-                    glob_offset++;
-                    continue;
+                    if ((statbuf.st_mode & S_IFMT) == S_IFLNK){
+                        if (globs[j].follow_symlink) {
+                            symlink_realpath = realpath(g.gl_pathv[glob_offset], NULL);
+                            if (!symlink_realpath) {
+                                char* symlink_target = w_get_symlink_target(g.gl_pathv[glob_offset]);
+                                mdebug1(REALPATH_ERROR, g.gl_pathv[glob_offset], symlink_target, errno, strerror(errno));
+                                os_free(symlink_target);
+                                glob_offset++;
+                                continue;
+                            }
+                            if (lstat(symlink_realpath , &statbuf) < 0) {
+                                merror(FSTAT_ERROR, symlink_realpath, errno, strerror(errno));
+                                glob_offset++;
+                                continue;
+                            }
+                            if ((statbuf.st_mode & S_IFMT) != S_IFREG) {
+                                mdebug1(SKIP_REGULAR_FILE, symlink_realpath);
+                                glob_offset++;
+                                continue;
+                            }
+                        }
+                    } else{
+                        mdebug1(SKIP_REGULAR_FILE, g.gl_pathv[glob_offset]);
+                        glob_offset++;
+                        continue;
+                    }
                 }
 
                 found = 0;
                 for (i = 0; globs[j].gfiles[i].file; i++) {
-                    if (!strcmp(globs[j].gfiles[i].file, g.gl_pathv[glob_offset])) {
+                    char* path;
+                    if (globs[j].gfiles[i].follow_symlink) {
+                        path = globs[j].gfiles[i].symlink;
+                    } else {
+                        path = globs[j].gfiles[i].file;
+                    }
+                    if (!strcmp(path, g.gl_pathv[glob_offset])) {
                         found = 1;
                         break;
                     }
@@ -1379,6 +1451,11 @@ int check_pattern_expand(int do_seek) {
                         current_files++;
                         globs[j].num_files++;
                         mdebug2(CURRENT_FILES, current_files, maximum_files);
+
+                        if (globs[j].gfiles[i].follow_symlink) {
+                            globs[j].gfiles[i].symlink = globs[j].gfiles[i].file;
+                            globs[j].gfiles[i].file = symlink_realpath;
+                        }
                         if  (!globs[j].gfiles[i].read) {
                             set_read(&globs[j].gfiles[i], i, j);
                         } else {
@@ -1617,6 +1694,7 @@ int check_pattern_expand(int do_seek) {
 }
 #endif
 
+
 static IT_control remove_duplicates(logreader *current, int i, int j) {
     IT_control d_control = CONTINUE_IT;
     IT_control f_control;
@@ -1767,6 +1845,141 @@ static void set_sockets() {
             }
         }
     }
+}
+
+static void w_init_logreader_symlink(logreader *current) {
+    if (current->file) {
+        current->symlink = current->file;
+        current->file = realpath(current->file, NULL);
+        if (!current->file) {
+            char* symlink_target = w_get_symlink_target(current->symlink);
+            mwarn(REALPATH_ERROR, current->symlink, symlink_target, errno, strerror(errno));
+            os_free(symlink_target);
+            return;
+        }
+        struct stat statbuf;
+        if (lstat(current->file, &statbuf) < 0) {
+            merror(FSTAT_ERROR, current->file, errno, strerror(errno));
+            os_free(current->file);
+            return;
+        } else if ((statbuf.st_mode & S_IFMT) != S_IFREG) {
+            mdebug1(SKIP_REGULAR_FILE, current->file);
+            os_free(current->file);
+            return;
+        } else {
+            minfo(READING_SYMLINK, current->symlink, current->file);
+        }
+    }
+}
+
+static void w_free_logreader_file(logreader* current){
+    os_file_status_t * old_file_status = OSHash_Delete_ex(files_status, current->file);
+    free_files_status_data(old_file_status);
+    w_logcollector_state_delete_file(current->file);
+    fclose(current->fp);
+    current->exists = 0;
+    current->fp = NULL;
+    os_free(current->file);
+}
+
+static char* w_get_symlink_target(char *symlink_path) {
+    int string_length;
+    int buffer_size = PATH_MAX;
+    char *buffer;
+    os_malloc(buffer_size, buffer);
+
+    string_length = readlink(symlink_path, buffer, buffer_size - 1);
+    if (string_length == -1) {
+        os_free(buffer);
+        return NULL;
+    }
+
+    buffer[string_length] = '\0'; // readlink does not null-terminate
+    return buffer;
+}
+
+static IT_control w_update_symlink_state(logreader* current, int i, int j){
+    // First check if the symlink itself exists.
+    struct stat statbuf;
+    if (current->exists) {
+        if (lstat(current->symlink, &statbuf) != 0){ // The symlink was deleted.
+            minfo(FORGET_FILE, current->file);
+            w_free_logreader_file(current);
+            if (j >= 0) { // If dealing with a glob-expanded file, remove it from the glob list.
+                if (Remove_Localfile(&(globs[j].gfiles), i, 1, 0, &globs[j])) {
+                    merror(REM_ERROR, current->file);
+                } else {
+                    mdebug1(CURRENT_FILES, current_files, maximum_files);
+                    return NEXT_IT;
+                }
+            }
+            return CONTINUE_IT;
+        }
+    } else if (current->ign <= open_file_attempts) {
+        if (lstat(current->symlink, &statbuf) == 0){
+            current->exists = 1;
+        } else {
+            current->ign++;
+            return CONTINUE_IT;
+        }
+    }
+
+    // Then check the resolved symlink.
+    char* resolved_symlink = realpath(current->symlink, NULL);
+    char* symlink_target = w_get_symlink_target(current->symlink);
+    bool is_resolved_symlink_a_regular_file = false;
+    if (resolved_symlink) {
+        struct stat resolved_statbuf;
+        if (lstat(resolved_symlink, &resolved_statbuf) < 0) {
+            merror(FSTAT_ERROR, resolved_symlink, errno, strerror(errno));
+            is_resolved_symlink_a_regular_file = false;
+        } else if ((resolved_statbuf.st_mode & S_IFMT) != S_IFREG) {
+            mdebug1(SKIP_REGULAR_FILE, resolved_symlink);
+            is_resolved_symlink_a_regular_file = false;
+        } else {
+            is_resolved_symlink_a_regular_file = true;
+        }
+    }
+
+    // Handle modification or deletion of either the symlink or it resolved file.
+    if (current->file) { // current->file contains the currently resolved symlink path.
+        if (resolved_symlink) {
+            if (strcmp(resolved_symlink, current->file) != 0) { // Symlink changed what it resolves to.
+                minfo(NO_LONGER_ANALYZING_FILE, current->file);
+                w_free_logreader_file(current);
+                if (!is_resolved_symlink_a_regular_file) {
+                    mwarn(REALPATH_ERROR, current->symlink, symlink_target, errno, strerror(errno));
+                    w_free_logreader_file(current);
+                    os_free(resolved_symlink);
+                    os_free(symlink_target);
+                } else {
+                    current->file = resolved_symlink;
+                    current->exists = 1;
+                    set_read(current, i, j);
+                    minfo(READING_SYMLINK, current->symlink, current->file);
+                }
+            }
+        } else{
+            mwarn(REALPATH_ERROR, current->symlink, symlink_target, errno, strerror(errno));
+            w_free_logreader_file(current);
+            os_free(resolved_symlink);
+            os_free(symlink_target);
+        }
+    } else {
+        if (resolved_symlink) {
+            if (!is_resolved_symlink_a_regular_file){ 
+                mwarn(REALPATH_ERROR, current->symlink, symlink_target, errno, strerror(errno));
+                os_free(resolved_symlink);
+                os_free(symlink_target);
+            } else { // Broken symlink is updated to resolve to a new file.
+                current->file = resolved_symlink;
+                current->exists = 1;
+                set_read(current, i, j);
+                minfo(READING_SYMLINK, current->symlink, current->file);
+            }
+        }
+    }
+    return CONTINUE_IT;
 }
 
 void w_set_file_mutexes(){

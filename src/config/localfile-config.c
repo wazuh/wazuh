@@ -66,6 +66,7 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
     const char *xml_localfile_restrict = "restrict";
     const char *xml_localfile_multiline_regex =  "multiline_regex";
     const char *xml_localfile_filter = "filter";
+    const char *xml_localfile_follow_symlink = "follow_symbolic_link";
 
     logreader *logf;
     logreader_config *log_config;
@@ -335,7 +336,7 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
         } else if (strcasecmp(node[i]->element, xml_localfile_logformat) == 0) {
             os_strdup(node[i]->content, logf[pl].logformat);
 
-            if (strcmp(logf[pl].logformat, "syslog") == 0) {
+            if (strcmp(logf[pl].logformat, SYS_LOG) == 0) {
             } else if (strcmp(logf[pl].logformat, "generic") == 0) {
             } else if (strcmp(logf[pl].logformat, "json") == 0) {
             } else if (strcmp(logf[pl].logformat, "snort-full") == 0) {
@@ -540,10 +541,26 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
                 w_clean_logreader(&logf[pl]);
                 return (0);
             }
-        } else {
-            merror(XML_INVELEM, node[i]->element);
-            return (OS_INVALID);
-        }
+        } else if (strcasecmp(node[i]->element, xml_localfile_follow_symlink) == 0) {
+            #ifdef WIN32
+                mwarn(LOGCOLLECTOR_INV_OPTION_WINDOWS, xml_localfile_follow_symlink);
+            #else
+                if (strcmp(logf[pl].logformat, SYS_LOG) != 0) {
+                    mwarn(LOGCOLLECTOR_OPTION_IGNORED, logf[pl].logformat, xml_localfile_follow_symlink);
+                }
+                if(strcmp(node[i]->content,"yes") == 0) {
+                    logf[pl].follow_symlink = true;
+                } else if (strcmp(node[i]->content,"no") == 0) {
+                    logf[pl].follow_symlink = false;
+                } else {
+                    merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                    return (OS_INVALID);
+                }
+            #endif
+    } else {
+        merror(XML_INVELEM, node[i]->element);
+        return (OS_INVALID);
+    }
 
         i++;
     }
@@ -760,6 +777,7 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
                 memcpy(log_config->globs[gl].gfiles, &logf[pl], sizeof(logreader));
                 logf[pl].multiline = NULL; // Prevent freeing the multiline config in Remove_Localfile
                 log_config->globs[gl].gfiles->file = NULL;
+                log_config->globs[gl].follow_symlink = logf[pl].follow_symlink;
             }
 
             /* Wildcard exclusion, check for date */
