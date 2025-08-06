@@ -12,63 +12,51 @@
 
 #include "logging_helper.hpp"
 
-SCAPolicyLoader::SCAPolicyLoader(const std::vector<std::string>& policies,
-                                 const std::vector<std::string>& disabledPolicies,
+SCAPolicyLoader::SCAPolicyLoader(const std::vector<sca::PolicyData>& policies,
                                  std::shared_ptr<IFileSystemWrapper> fileSystemWrapper,
                                  std::shared_ptr<IDBSync> dBSync)
     : m_fileSystemWrapper(fileSystemWrapper ? std::move(fileSystemWrapper)
                                             : std::make_shared<file_system::FileSystemWrapper>())
     , m_dBSync(std::move(dBSync))
 {
-    const auto loadPoliciesPathsFromConfig = [this](const std::vector<std::string>& policiesStrPaths)
+    const auto loadPoliciesPathsFromConfig = [this](const std::vector<sca::PolicyData>& policiesStrPaths)
     {
-        std::vector<std::filesystem::path> policiesPaths;
+        std::vector<sca::PolicyData> returnPolicies;
 
         for (const auto& policy : policiesStrPaths)
         {
-            if (m_fileSystemWrapper->exists(policy))
+            if (m_fileSystemWrapper->exists(policy.path))
             {
-                policiesPaths.emplace_back(policy);
+                returnPolicies.emplace_back(policy);
             }
             else
             {
-                LoggingHelper::getInstance().log(LOG_WARNING, "Policy file does not exist: " + policy);
+                LoggingHelper::getInstance().log(LOG_WARNING, "Policy file does not exist: " + policy.path);
             }
         }
-        return policiesPaths;
+        return returnPolicies;
     };
 
     m_customPoliciesPaths = loadPoliciesPathsFromConfig(policies);
-    m_disabledPoliciesPaths = loadPoliciesPathsFromConfig(disabledPolicies);
 }
 
-std::vector<std::unique_ptr<ISCAPolicy>> SCAPolicyLoader::LoadPolicies(const CreateEventsFunc& createEvents) const
+std::vector<std::unique_ptr<ISCAPolicy>> SCAPolicyLoader::LoadPolicies(const int commandsTimeout,
+                                 const bool remoteEnabled,const CreateEventsFunc& createEvents) const
 {
-    std::vector<std::filesystem::path> allPolicyPaths;
-
-    allPolicyPaths.insert(allPolicyPaths.end(), m_customPoliciesPaths.begin(), m_customPoliciesPaths.end());
-
-    const auto isDisabled = [this](const std::filesystem::path& path)
-    {
-        return std::any_of(m_disabledPoliciesPaths.begin(),
-                           m_disabledPoliciesPaths.end(),
-                           [&](const std::filesystem::path& disabledPath) { return path == disabledPath; });
-    };
-
     std::vector<std::unique_ptr<ISCAPolicy>> policies;
     nlohmann::json policiesAndChecks;
     policiesAndChecks["policies"] = nlohmann::json::array();
     policiesAndChecks["checks"] = nlohmann::json::array();
 
-    for (const auto& path : allPolicyPaths)
+    for (const auto& pol : m_customPoliciesPaths)
     {
-        if (!isDisabled(path))
+        if (pol.isEnabled)
         {
             try
             {
-                LoggingHelper::getInstance().log(LOG_DEBUG, "Loading policy from " + path.string());
+                LoggingHelper::getInstance().log(LOG_DEBUG, "Loading policy from " + pol.path);
 
-                PolicyParser parser(path);
+                PolicyParser parser(pol.path, commandsTimeout, remoteEnabled || !pol.isRemote);
 
                 if (auto policy = parser.ParsePolicy(policiesAndChecks); policy)
                 {
@@ -76,14 +64,17 @@ std::vector<std::unique_ptr<ISCAPolicy>> SCAPolicyLoader::LoadPolicies(const Cre
                 }
                 else
                 {
-                    LoggingHelper::getInstance().log(LOG_WARNING, "Failed to parse policy from  " + path.string());
+                    LoggingHelper::getInstance().log(LOG_WARNING, "Failed to parse policy from  " + pol.path);
                 }
             }
             catch (const std::exception& e)
             {
-                LoggingHelper::getInstance().log(LOG_WARNING,
-                                                 "Failed to parse policy from  " + path.string() + ": " + e.what());
+                LoggingHelper::getInstance().log(LOG_WARNING, "Failed to parse policy from  " + pol.path + ": " + e.what());
             }
+        }
+        else
+        {
+            LoggingHelper::getInstance().log(LOG_INFO, "Policy " + pol.path + " is disabled");
         }
     }
 

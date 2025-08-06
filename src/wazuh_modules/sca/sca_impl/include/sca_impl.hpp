@@ -4,6 +4,7 @@
 
 #include <idbsync.hpp>
 #include <ifilesystem_wrapper.hpp>
+#include <sca_utils.hpp>
 
 #include <json.hpp>
 
@@ -42,8 +43,9 @@ public:
     void Setup(bool enabled,
                bool scanOnStart,
                std::time_t scanInterval,
-               const std::vector<std::string>& policies,
-               const std::vector<std::string>& disabledPolicies);
+               const int commandsTimeout,
+               const bool remoteEnabled,
+               const std::vector<sca::PolicyData>& policies);
 
     /// @copydoc IModule::Stop
     void Stop() ;
