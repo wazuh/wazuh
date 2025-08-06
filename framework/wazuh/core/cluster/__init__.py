@@ -4,8 +4,8 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-__version__ = '4.10.3'
-__revision__ = '41030'
+__version__ = '4.10.4'
+__revision__ = '41040'
 __author__ = "Wazuh Inc"
 __wazuh_name__ = "Wazuh"
 __licence__ = "\
