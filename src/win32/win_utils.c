@@ -416,6 +416,11 @@ int StartMQ(__attribute__((unused)) const char *path, __attribute__((unused)) sh
     return (0);
 }
 
+/* StartMQPredicated for Windows */
+int StartMQPredicated(__attribute__((unused)) const char *path, __attribute__((unused)) short int type, __attribute__((unused)) short int n_tries, __attribute__((unused)) bool (*fn_ptr)()) {
+    return (0);
+}
+
 /* MQReconnectPredicated for Windows */
 int MQReconnectPredicated(__attribute__((unused)) const char *path, __attribute__((unused)) bool (fn_ptr)())
 {
