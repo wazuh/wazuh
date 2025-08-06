@@ -56,8 +56,7 @@ int StartMQWithSpecificOwnerAndPerms(const char *path, short int type, short int
 }
 
 /* Start a Message Queue with predicated. type: WRITE||READ */
-int StartMQPredicated(const char *path, short int type, short int n_attempts, bool (*fn_ptr)())
-{
+int StartMQPredicated(const char *path, short int type, short int n_attempts, bool (*fn_ptr)()) {
     if (type == READ) {
         return (OS_BindUnixDomainWithPerms(path, SOCK_DGRAM, OS_MAXSTR + 512, getuid(), getgid(), 0660));
     }
@@ -68,7 +67,7 @@ int StartMQPredicated(const char *path, short int type, short int n_attempts, bo
         short int attempt = 0;
 
         // If n_attempts is 0, trying to reconnect infinitely
-        while ((rc = OS_ConnectUnixDomain(path, SOCK_DGRAM, OS_MAXSTR + 256)), rc < 0){
+        while ((rc = OS_ConnectUnixDomain(path, SOCK_DGRAM, OS_MAXSTR + 256)), rc < 0) {
             if ((*fn_ptr)()) {
                 mdebug2(FIM_SHUTDOWN_DETECTED);
                 return OS_INVALID;
