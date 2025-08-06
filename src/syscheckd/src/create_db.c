@@ -1711,13 +1711,13 @@ int fim_check_ignore (const char *file_name, mode_t path_type) {
     }
 
     // Check in the regex entry
-    if (syscheck.ignore_regex) {   
+    if (syscheck.ignore_regex) {
         int i = 0;
         while (syscheck.ignore_regex[i] != NULL) {
             if (OSMatch_Execute(file_name, strlen(file_name), syscheck.ignore_regex[i])) {
-                if(path_type == FIM_DIRECTORY && syscheck.ignore_regex[i]->raw[0] == '!')
+                if (path_type == FIM_DIRECTORY && syscheck.ignore_regex[i]->raw[0] == '!') {
                     return 0;
-                else{
+                } else {
                     mdebug2(FIM_IGNORE_SREGEX, file_name, syscheck.ignore_regex[i]->raw);
                     return 1;
                 }

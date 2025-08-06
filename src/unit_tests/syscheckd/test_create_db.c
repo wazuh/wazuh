@@ -272,7 +272,7 @@ static int setup_group(void **state) {
 }
 
 static int setup_fim_regex_group(void **state) {
-    if(setup_fim_data(state) != 0)
+    if (setup_fim_data(state) != 0)
         return -1;
 
     test_mode = 0;
