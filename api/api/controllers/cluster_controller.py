@@ -796,6 +796,42 @@ async def put_restart(pretty: bool = False, wait_for_complete: bool = False,
     return json_response(data, pretty=pretty)
 
 
+async def put_reload_analysisd(pretty: bool = False, wait_for_complete: bool = False,
+                               nodes_list: str = '*') -> ConnexionResponse:
+    """Restart the analysisd process on all nodes in the cluster, or a list of them.
+
+    Parameters
+    ----------
+    pretty : bool
+        Show results in human-readable format.
+    wait_for_complete : bool
+        Disable timeout response.
+    nodes_list : str
+        List of node IDs.
+
+    Returns
+    -------
+    ConnexionResponse
+        API response.
+    """
+    f_kwargs = {'node_list': nodes_list}
+
+    nodes = raise_if_exc(await get_system_nodes())
+    dapi = DistributedAPI(f=manager.reload_ruleset,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='distributed_master',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          logger=logger,
+                          broadcasting=nodes_list == '*',
+                          rbac_permissions=request.context['token_info']['rbac_policies'],
+                          nodes=nodes
+                          )
+    data = raise_if_exc(await dapi.distribute_function())
+
+    return json_response(data, pretty=pretty)
+
+
 async def get_conf_validation(pretty: bool = False, wait_for_complete: bool = False,
                               nodes_list: str = '*') -> ConnexionResponse:
     """Check whether the Wazuh configuration in a list of cluster nodes is correct or not.
