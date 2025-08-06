@@ -108,7 +108,7 @@ void SCA::init(const std::function<void(const modules_log_level_t, const std::st
 
 void SCA::setup(const struct wm_sca_t* sca_config)
 {
-    if (m_sca && sca_config && !m_setupCalled) {
+    if (m_sca && sca_config) {
         // Extract configuration values from wm_sca_t
         bool enabled = sca_config->enabled != 0;
         bool scan_on_start = sca_config->scan_on_start != 0;
@@ -136,7 +136,6 @@ void SCA::setup(const struct wm_sca_t* sca_config)
 
         // Call Setup only once during initialization
         m_sca->Setup(enabled, scan_on_start, scanInterval, policies, disabledPolicies);
-        m_setupCalled = true;
     }
 }
 
@@ -153,7 +152,7 @@ void SCA::destroy()
         return;
     }
     m_sca->Stop();
-    // m_sca.reset();
+    m_sca.reset();
 }
 
 void SCA::push(const std::string& data)
