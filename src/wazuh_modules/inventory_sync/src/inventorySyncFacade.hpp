@@ -88,15 +88,14 @@ class InventorySyncFacadeImpl final
 
             // Check if session exists.
             std::shared_lock lock(m_agentSessionsMutex);
-            if (auto it = m_agentSessions.find(data->session()); it == m_agentSessions.end())
+            auto it = m_agentSessions.find(data->session());
+            if (it == m_agentSessions.end())
             {
                 throw InventorySyncException("Session not found");
             }
-            else
-            {
-                // Handle data.
-                it->second.handleData(data, dataRaw);
-            }
+
+            // Handle data.
+            it->second.handleData(data, dataRaw);
         }
         else if (message->content_type() == Wazuh::SyncSchema::MessageType_Start)
         {
@@ -130,16 +129,15 @@ class InventorySyncFacadeImpl final
             }
             // Check if session exists.
             std::shared_lock lock(m_agentSessionsMutex);
-            if (auto it = m_agentSessions.find(end->session()); it == m_agentSessions.end())
+            auto it = m_agentSessions.find(end->session());
+            if (it == m_agentSessions.end())
             {
                 throw InventorySyncException("Session not found");
             }
-            else
-            {
-                // Handle end.
-                std::cout << "Handling end for session: " << end->session() << std::endl;
-                it->second.handleEnd(*m_responseDispatcher);
-            }
+
+            // Handle end.
+            std::cout << "Handling end for session: " << end->session() << std::endl;
+            it->second.handleEnd(*m_responseDispatcher);
         }
     }
 
