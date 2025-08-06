@@ -60,6 +60,19 @@ int StartMQWithSpecificOwnerAndPerms(const char *key, short int type, short int 
 int StartMQ(const char *key, short int type, short int n_attempts) __attribute__((nonnull));
 
 /**
+ *  Starts a Message Queue with predicated.
+ *  @param key path where the message queue will be created
+ *  @param type WRITE||READ
+ *  @param n_attempts Number of attempts to connect to the queue (0 to attempt until a successful conection).
+ *  @param fn_ptr function pointer to the function that will check if the process is shutting down
+ *  @return
+ *  UNIX -> OS_INVALID if queue failed to start
+ *  UNIX -> int(rc) file descriptor of initialized queue
+ *  WIN32 -> 0
+ */
+int StartMQPredicated(const char *key, short int type, short int n_attempts, bool (*fn_ptr)()) __attribute__((nonnull));
+
+/**
  * Sends a message string through a message queue
  * @param queue file descriptor of the queue where the message will be sent (UNIX)
  * @param message string containing the message

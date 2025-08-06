@@ -55,6 +55,42 @@ int StartMQWithSpecificOwnerAndPerms(const char *path, short int type, short int
     }
 }
 
+/* Start a Message Queue with predicated. type: WRITE||READ */
+int StartMQPredicated(const char *path, short int type, short int n_attempts, bool (*fn_ptr)())
+{
+    if (type == READ) {
+        return (OS_BindUnixDomainWithPerms(path, SOCK_DGRAM, OS_MAXSTR + 512, getuid(), getgid(), 0660));
+    }
+
+    /* We give up to 21 seconds for the other end to start */
+    else {
+        int rc = 0, sleep_time = 5;
+        short int attempt = 0;
+
+        // If n_attempts is 0, trying to reconnect infinitely
+        while ((rc = OS_ConnectUnixDomain(path, SOCK_DGRAM, OS_MAXSTR + 256)), rc < 0){
+            if ((*fn_ptr)()) {
+                mdebug2(FIM_SHUTDOWN_DETECTED);
+                return OS_INVALID;
+            }
+            attempt++;
+            mdebug1("Can't connect to '%s': %s (%d). Attempt: %d", path, strerror(errno), errno, attempt);
+            if (n_attempts != INFINITE_OPENQ_ATTEMPTS && attempt == n_attempts) {
+                break;
+            }
+            sleep(sleep_time += 5);
+        }
+
+        if (rc < 0) {
+            return OS_INVALID;
+        }
+
+        mdebug1("Connected succesfully to '%s' after %d attempts", path, attempt);
+        mdebug1(MSG_SOCKET_SIZE, OS_getsocketsize(rc));
+        return (rc);
+    }
+}
+
 /* Start the Message Queue. type: WRITE||READ */
 int StartMQ(const char *path, short int type, short int n_attempts)
 {
