@@ -125,6 +125,8 @@ typedef struct {
     char * message; ///< Raw message received
     size_t length;  ///< Length of the message
     int agent_id;   ///< Agent ID
+    int is_startup; ///< Validation result: is startup message
+    int is_shutdown; ///< Validation result: is shutdown message
 } w_ctrl_msg_data_t;
 
 /**
@@ -819,8 +821,13 @@ STATIC void HandleSecureMessage(const message_t *message, w_queue_t * control_ms
             // The critical section for readers closes within this function
             rem_inc_recv_ctrl(key->id);
 
-            // Send the control message to the queue for processing in the control thread
-            {
+            // Validate control message before potentially queuing it
+            char *cleaned_msg = NULL;
+            int is_startup = 0, is_shutdown = 0;
+            int validation_result = pre_preprocess_control_msg(key, tmp_msg, msg_length, &cleaned_msg, &is_startup, &is_shutdown);
+
+            if (validation_result == 1) {
+                // Message should be queued for database processing
                 w_ctrl_msg_data_t * ctrl_msg_data;
                 os_calloc(sizeof(w_ctrl_msg_data_t), 1, ctrl_msg_data);
 
@@ -830,7 +837,12 @@ STATIC void HandleSecureMessage(const message_t *message, w_queue_t * control_ms
 
                 ctrl_msg_data->length = msg_length - 3;
                 os_calloc(msg_length, sizeof(char), ctrl_msg_data->message);
-                memcpy(ctrl_msg_data->message, tmp_msg, ctrl_msg_data->length);
+                // Use cleaned message from validation if available, otherwise use original
+                memcpy(ctrl_msg_data->message, cleaned_msg ? cleaned_msg : tmp_msg, ctrl_msg_data->length);
+
+                // Store validation results in the control message data structure
+                ctrl_msg_data->is_startup = is_startup;
+                ctrl_msg_data->is_shutdown = is_shutdown;
 
                 if (queue_push_ex(control_msg_queue, ctrl_msg_data) == 0) {
                     rem_inc_ctrl_msg_queue_usage();
@@ -839,7 +851,23 @@ STATIC void HandleSecureMessage(const message_t *message, w_queue_t * control_ms
                     mwarn("Control message queue is full. Discarding control message for agent ID '%s'.", ctrl_msg_data->key->id);
                     w_free_ctrl_msg_data(ctrl_msg_data);
                 }
+            } else if (validation_result == 0) {
+                // Message was handled directly (HC_REQUEST), don't queue it
+                mdebug2("Control message processed directly, not queued.");
+                if (key) {
+                    OS_FreeKey(key);
+                }
+            } else {
+                // Error in validation
+                mwarn("Error validating control message from agent ID '%s'.", key->id);
+                if (key) {
+                    OS_FreeKey(key);
+                }
+            }
 
+            // Free cleaned message if allocated
+            if (cleaned_msg) {
+                os_free(cleaned_msg);
             }
 
         } else {
@@ -1093,10 +1121,10 @@ void * save_control_thread(void * control_msg_queue)
 
             bool is_startup = ctrl_msg_data->key->is_startup;
 
-            // Process the control message
-            save_controlmsg(ctrl_msg_data->key, ctrl_msg_data->message, ctrl_msg_data->length, &wdb_sock, &is_startup);
+            // Process the control message with the validation results
+            save_controlmsg(ctrl_msg_data->key, ctrl_msg_data->message, ctrl_msg_data->length, 
+                          &wdb_sock, &is_startup, ctrl_msg_data->is_startup, ctrl_msg_data->is_shutdown);
 
-            // Update agent is_startup flag in case it changed
             if (ctrl_msg_data->key->is_startup != is_startup) {
                 key_lock_read();
                 keys.keyentries[ctrl_msg_data->agent_id]->is_startup = is_startup;
