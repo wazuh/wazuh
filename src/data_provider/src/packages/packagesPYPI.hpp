@@ -59,7 +59,7 @@ class PYPI final
             // The multiarch field won't have a default value
 
             m_fileIOUtils->readLineByLine(path,
-                                    [&packageInfo](const std::string & line) -> bool
+                                          [&packageInfo](const std::string & line) -> bool
             {
                 const auto it {
                     std::find_if(PYPI_FIELDS.begin(),
@@ -148,10 +148,10 @@ class PYPI final
 
     public:
         PYPI(std::unique_ptr<IFileIOUtils> fileIOUtils = nullptr,
-            std::unique_ptr<IFileSystemWrapper> fileSystemWrapper = nullptr)
+             std::unique_ptr<IFileSystemWrapper> fileSystemWrapper = nullptr)
             : m_fileIOUtils(fileIOUtils ? std::move(fileIOUtils) : std::make_unique<file_io::FileIOUtils>())
             , m_fileSystemWrapper(fileSystemWrapper ? std::move(fileSystemWrapper)
-                                                : std::make_unique<file_system::FileSystemWrapper>())
+                                  : std::make_unique<file_system::FileSystemWrapper>())
         {
         }
         ~PYPI() = default;
