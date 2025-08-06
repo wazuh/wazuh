@@ -96,7 +96,6 @@ def get_queue_from_module(module):
         'github': 00,           # TODO check queue
         'office_365': 00,       # TODO check queue
         'open-scap': 00,        # TODO check queue
-        'osquery': 00,          # TODO check queue
         'virustotal': 00,       # TODO check queue
         'dbsync': 53,
         'fim': 56,
