@@ -80,7 +80,7 @@ list(APPEND remoted_flags "-Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,accep
                             -Wl,--wrap,fclose -Wl,--wrap,fcntl -Wl,--wrap,fflush -Wl,--wrap,fgetc \
                             -Wl,--wrap,fgetpos -Wl,--wrap,fgets -Wl,--wrap,fopen -Wl,--wrap,popen -Wl,--wrap,fread \
                             -Wl,--wrap,fseek -Wl,--wrap,fwrite -Wl,--wrap,getpid -Wl,--wrap,remove \
-                            -Wl,--wrap,FOREVER -Wl,--wrap,linked_queue_push_ex  -Wl,--wrap,linked_queue_pop_ex \
+                            -Wl,--wrap,FOREVER -Wl,--wrap,queue_push_ex  -Wl,--wrap,queue_pop_ex \
                             -Wl,--wrap,save_controlmsg")
 
 list(APPEND remoted_names "test_netbuffer")

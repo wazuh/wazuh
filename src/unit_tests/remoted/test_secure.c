@@ -54,7 +54,7 @@ void tmp_HandleSecureMessage_invalid_family_address(sa_family_t sin_family);
 
 /* Forward declarations */
 void * close_fp_main(void * args);
-void HandleSecureMessage(const message_t *message, w_linked_queue_t * control_msg_queue);
+void HandleSecureMessage(const message_t *message, w_queue_t * control_msg_queue);
 
 /* Setup/teardown */
 
@@ -458,7 +458,7 @@ void tmp_HandleSecureMessage_invalid_family_address(sa_family_t sin_family)
     char buffer[OS_MAXSTR + 1] = "!1234!";
     message_t message = {.buffer = buffer, .size = 6, .sock = 1};
     struct sockaddr_in peer_info;
-    w_linked_queue_t * control_msg_queue = linked_queue_init();
+    w_queue_t * control_msg_queue = queue_init(10);
 
     keyentry** keyentries;
     os_calloc(1, sizeof(keyentry*), keyentries);
@@ -500,7 +500,7 @@ void tmp_HandleSecureMessage_invalid_family_address(sa_family_t sin_family)
     os_free(key->id);
     os_free(key);
     os_free(keyentries);
-    linked_queue_free(control_msg_queue);
+    queue_free(control_msg_queue);
 }
 
 void test_HandleSecureMessage_invalid_family_address_af_unspec(void** state)
@@ -533,7 +533,7 @@ void test_HandleSecureMessage_shutdown_message(void** state)
     char buffer[OS_MAXSTR + 1] = "#!-agent shutdown ";
     message_t message = {.buffer = buffer, .size = 18, .sock = 1, .counter = 10};
     struct sockaddr_in peer_info;
-    w_linked_queue_t * control_msg_queue = linked_queue_init();
+    w_queue_t * control_msg_queue = queue_init(10);
 
     keyentry** keyentries;
     os_calloc(1, sizeof(keyentry*), keyentries);
@@ -589,7 +589,7 @@ void test_HandleSecureMessage_shutdown_message(void** state)
     HandleSecureMessage(&message, control_msg_queue);
 
     // Expect the control message to be added to the queue
-    w_ctrl_msg_data_t * node = linked_queue_pop(control_msg_queue);
+    w_ctrl_msg_data_t * node = queue_pop(control_msg_queue);
     assert_non_null(node);
     assert_string_equal(node->message, "agent shutdown ");
     assert_int_equal(node->length, strlen("agent shutdown "));
@@ -604,7 +604,7 @@ void test_HandleSecureMessage_shutdown_message(void** state)
     os_free(key->id);
     os_free(key);
     os_free(keyentries);
-    linked_queue_free(control_msg_queue);
+    queue_free(control_msg_queue);
 }
 
 void test_HandleSecureMessage_NewMessage_NoShutdownMessage(void** state)
@@ -612,7 +612,7 @@ void test_HandleSecureMessage_NewMessage_NoShutdownMessage(void** state)
     char buffer[OS_MAXSTR + 1] = "#!-agent startup ";
     message_t message = {.buffer = buffer, .size = 17, .sock = 1, .counter = 11};
     struct sockaddr_in peer_info;
-    w_linked_queue_t * control_msg_queue = linked_queue_init();
+    w_queue_t * control_msg_queue = queue_init(10);
 
     keyentry** keyentries;
     os_calloc(1, sizeof(keyentry*), keyentries);
@@ -675,7 +675,7 @@ void test_HandleSecureMessage_NewMessage_NoShutdownMessage(void** state)
     HandleSecureMessage(&message, control_msg_queue);
 
     // Expect the control message to be added to the queue
-    w_ctrl_msg_data_t * node = linked_queue_pop(control_msg_queue);
+    w_ctrl_msg_data_t * node = queue_pop(control_msg_queue);
     assert_non_null(node);
     assert_string_equal(node->message, "agent startup ");
     assert_int_equal(node->length, strlen("agent startup "));
@@ -690,7 +690,7 @@ void test_HandleSecureMessage_NewMessage_NoShutdownMessage(void** state)
     os_free(key->id);
     os_free(key);
     os_free(keyentries);
-    linked_queue_free(control_msg_queue);
+    queue_free(control_msg_queue);
 }
 
 void test_HandleSecureMessage_OldMessage_NoShutdownMessage(void** state)
@@ -698,7 +698,7 @@ void test_HandleSecureMessage_OldMessage_NoShutdownMessage(void** state)
     char buffer[OS_MAXSTR + 1] = "#!-agent startup ";
     message_t message = {.buffer = buffer, .size = 17, .sock = 1, .counter = 5};
     struct sockaddr_in peer_info;
-    w_linked_queue_t * control_msg_queue = linked_queue_init();
+    w_queue_t * control_msg_queue = queue_init(10);
 
     keyentry** keyentries;
     os_calloc(1, sizeof(keyentry*), keyentries);
@@ -741,7 +741,7 @@ void test_HandleSecureMessage_OldMessage_NoShutdownMessage(void** state)
     os_free(key->id);
     os_free(key);
     os_free(keyentries);
-    linked_queue_free(control_msg_queue);
+    queue_free(control_msg_queue);
 }
 
 void test_HandleSecureMessage_invalid_message(void** state)
@@ -749,7 +749,7 @@ void test_HandleSecureMessage_invalid_message(void** state)
     char buffer[OS_MAXSTR + 1] = "!1234!";
     message_t message = {.buffer = buffer, .size = 6, .sock = 1};
     struct sockaddr_in peer_info;
-    w_linked_queue_t * control_msg_queue = linked_queue_init();
+    w_queue_t * control_msg_queue = queue_init(10);
 
     keyentry** keyentries;
     os_calloc(1, sizeof(keyentry*), keyentries);
@@ -809,7 +809,7 @@ void test_HandleSecureMessage_invalid_message(void** state)
     os_free(key->id);
     os_free(key);
     os_free(keyentries);
-    linked_queue_free(control_msg_queue);
+    queue_free(control_msg_queue);
 }
 
 void test_HandleSecureMessage_different_sock(void** state)
@@ -817,7 +817,7 @@ void test_HandleSecureMessage_different_sock(void** state)
     char buffer[OS_MAXSTR + 1] = "!12!";
     message_t message = {.buffer = buffer, .size = 4, .sock = 1};
     struct sockaddr_in peer_info;
-    w_linked_queue_t * control_msg_queue = linked_queue_init();
+    w_queue_t * control_msg_queue = queue_init(10);
 
     logr.connection_overtake_time = 60;
 
@@ -879,7 +879,7 @@ void test_HandleSecureMessage_different_sock(void** state)
     os_free(key->id);
     os_free(key);
     os_free(keyentries);
-    linked_queue_free(control_msg_queue);
+    queue_free(control_msg_queue);
 }
 
 void test_HandleSecureMessage_different_sock_2(void** state)
@@ -887,7 +887,7 @@ void test_HandleSecureMessage_different_sock_2(void** state)
     char buffer[OS_MAXSTR + 1] = "12!";
     message_t message = {.buffer = buffer, .size = 4, .sock = 1};
     struct sockaddr_in peer_info;
-    w_linked_queue_t * control_msg_queue = linked_queue_init();
+    w_queue_t * control_msg_queue = queue_init(10);
 
     logr.connection_overtake_time = 60;
 
@@ -948,7 +948,7 @@ void test_HandleSecureMessage_different_sock_2(void** state)
     os_free(key->id);
     os_free(key);
     os_free(keyentries);
-    linked_queue_free(control_msg_queue);
+    queue_free(control_msg_queue);
 }
 
 void test_HandleSecureMessage_close_idle_sock(void** state)
@@ -956,7 +956,7 @@ void test_HandleSecureMessage_close_idle_sock(void** state)
     char buffer[OS_MAXSTR + 1] = "12!";
     message_t message = {.buffer = buffer, .size = 4, .sock = 1};
     struct sockaddr_in peer_info;
-    w_linked_queue_t * control_msg_queue = linked_queue_init();
+    w_queue_t * control_msg_queue = queue_init(10);
 
     current_ts = 61;
 
@@ -1043,7 +1043,7 @@ void test_HandleSecureMessage_close_idle_sock(void** state)
     os_free(key->ip);
     os_free(key);
     os_free(keyentries);
-    linked_queue_free(control_msg_queue);
+    queue_free(control_msg_queue);
 }
 
 void test_HandleSecureMessage_close_idle_sock_2(void** state)
@@ -1051,7 +1051,7 @@ void test_HandleSecureMessage_close_idle_sock_2(void** state)
     char buffer[OS_MAXSTR + 1] = "!12!AAA";
     message_t message = {.buffer = buffer, .size = 7, .sock = 1};
     struct sockaddr_in peer_info;
-    w_linked_queue_t * control_msg_queue = linked_queue_init();
+    w_queue_t * control_msg_queue = queue_init(10);
 
     current_ts = 61;
 
@@ -1138,7 +1138,7 @@ void test_HandleSecureMessage_close_idle_sock_2(void** state)
     os_free(key->name);
     os_free(key);
     os_free(keyentries);
-    linked_queue_free(control_msg_queue);
+    queue_free(control_msg_queue);
 }
 
 void test_HandleSecureMessage_close_idle_sock_disabled(void** state)
@@ -1146,7 +1146,7 @@ void test_HandleSecureMessage_close_idle_sock_disabled(void** state)
     char buffer[OS_MAXSTR + 1] = "12!";
     message_t message = {.buffer = buffer, .size = 4, .sock = 1};
     struct sockaddr_in peer_info;
-    w_linked_queue_t * control_msg_queue = linked_queue_init();
+    w_queue_t * control_msg_queue = queue_init(10);
 
     current_ts = 61;
 
@@ -1212,7 +1212,7 @@ void test_HandleSecureMessage_close_idle_sock_disabled(void** state)
     os_free(key->name);
     os_free(key);
     os_free(keyentries);
-    linked_queue_free(control_msg_queue);
+    queue_free(control_msg_queue);
 }
 
 void test_HandleSecureMessage_close_idle_sock_disabled_2(void** state)
@@ -1220,7 +1220,7 @@ void test_HandleSecureMessage_close_idle_sock_disabled_2(void** state)
     char buffer[OS_MAXSTR + 1] = "!12!AAA";
     message_t message = {.buffer = buffer, .size = 7, .sock = 1};
     struct sockaddr_in peer_info;
-    w_linked_queue_t * control_msg_queue = linked_queue_init();
+    w_queue_t * control_msg_queue = queue_init(10);
 
     current_ts = 61;
 
@@ -1287,7 +1287,7 @@ void test_HandleSecureMessage_close_idle_sock_disabled_2(void** state)
     os_free(key->name);
     os_free(key);
     os_free(keyentries);
-    linked_queue_free(control_msg_queue);
+    queue_free(control_msg_queue);
 }
 
 void test_HandleSecureMessage_close_idle_sock_recv_fail(void** state)
@@ -1295,7 +1295,7 @@ void test_HandleSecureMessage_close_idle_sock_recv_fail(void** state)
     char buffer[OS_MAXSTR + 1] = "12!";
     message_t message = {.buffer = buffer, .size = 0, .sock = 1};
     struct sockaddr_in peer_info;
-    w_linked_queue_t * control_msg_queue = linked_queue_init();
+    w_queue_t * control_msg_queue = queue_init(10);
 
     current_ts = 61;
 
@@ -1388,7 +1388,7 @@ void test_HandleSecureMessage_close_idle_sock_recv_fail(void** state)
     os_free(key->ip);
     os_free(key);
     os_free(keyentries);
-    linked_queue_free(control_msg_queue);
+    queue_free(control_msg_queue);
 }
 
 void test_HandleSecureMessage_close_idle_sock_decrypt_fail(void** state)
@@ -1396,7 +1396,7 @@ void test_HandleSecureMessage_close_idle_sock_decrypt_fail(void** state)
     char buffer[OS_MAXSTR + 1] = "12!";
     message_t message = {.buffer = buffer, .size = 4, .sock = 1};
     struct sockaddr_in peer_info;
-    w_linked_queue_t * control_msg_queue = linked_queue_init();
+    w_queue_t * control_msg_queue = queue_init(10);
 
     current_ts = 61;
 
@@ -1498,7 +1498,7 @@ void test_HandleSecureMessage_close_idle_sock_decrypt_fail(void** state)
     os_free(key->ip);
     os_free(key);
     os_free(keyentries);
-    linked_queue_free(control_msg_queue);
+    queue_free(control_msg_queue);
 }
 
 void test_HandleSecureMessage_close_idle_sock_control_msg_succes(void** state)
@@ -1506,7 +1506,7 @@ void test_HandleSecureMessage_close_idle_sock_control_msg_succes(void** state)
     char buffer[OS_MAXSTR + 1] = "#!-12!";
     message_t message = {.buffer = buffer, .size = 7, .sock = 1, .counter = 11};
     struct sockaddr_in peer_info;
-    w_linked_queue_t * control_msg_queue = linked_queue_init();
+    w_queue_t * control_msg_queue = queue_init(10);
 
     current_ts = 61;
 
@@ -1601,7 +1601,7 @@ void test_HandleSecureMessage_close_idle_sock_control_msg_succes(void** state)
     HandleSecureMessage(&message, control_msg_queue);
 
     // Expect the control message to be added to the queue
-    w_ctrl_msg_data_t * node = linked_queue_pop(control_msg_queue);
+    w_ctrl_msg_data_t * node = queue_pop(control_msg_queue);
     assert_non_null(node);
     assert_string_equal(node->message, "12!");
     assert_int_equal(node->key->keyid, 1);
@@ -1616,7 +1616,7 @@ void test_HandleSecureMessage_close_idle_sock_control_msg_succes(void** state)
     os_free(key->ip);
     os_free(key);
     os_free(keyentries);
-    linked_queue_free(control_msg_queue);
+    queue_free(control_msg_queue);
 }
 
 void test_HandleSecureMessage_close_same_sock(void** state)
@@ -1624,7 +1624,7 @@ void test_HandleSecureMessage_close_same_sock(void** state)
     char buffer[OS_MAXSTR + 1] = "12!";
     message_t message = {.buffer = buffer, .size = 4, .sock = 1};
     struct sockaddr_in peer_info;
-    w_linked_queue_t * control_msg_queue = linked_queue_init();
+    w_queue_t * control_msg_queue = queue_init(10);
 
     current_ts = 61;
 
@@ -1688,7 +1688,7 @@ void test_HandleSecureMessage_close_same_sock(void** state)
     os_free(key->name);
     os_free(key);
     os_free(keyentries);
-    linked_queue_free(control_msg_queue);
+    queue_free(control_msg_queue);
 }
 
 void test_HandleSecureMessage_close_same_sock_2(void** state)
@@ -1696,7 +1696,7 @@ void test_HandleSecureMessage_close_same_sock_2(void** state)
     char buffer[OS_MAXSTR + 1] = "!12!AAA";
     message_t message = {.buffer = buffer, .size = 7, .sock = 1};
     struct sockaddr_in peer_info;
-    w_linked_queue_t * control_msg_queue = linked_queue_init();
+    w_queue_t * control_msg_queue = queue_init(10);
 
     current_ts = 61;
 
@@ -1761,7 +1761,7 @@ void test_HandleSecureMessage_close_same_sock_2(void** state)
     os_free(key->name);
     os_free(key);
     os_free(keyentries);
-    linked_queue_free(control_msg_queue);
+    queue_free(control_msg_queue);
 }
 
 void test_handle_new_tcp_connection_success(void** state)
