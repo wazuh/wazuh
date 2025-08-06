@@ -93,6 +93,7 @@ class FactoryPackagesCreator<LinuxType::STANDARD> final
         static void getPackages(std::function<void(nlohmann::json&)> callback)
         {
             const file_system::FileSystemWrapper fs;
+
             if (fs.is_directory(DPKG_PATH))
             {
                 getDpkgInfo(DPKG_STATUS_PATH, callback);
@@ -122,6 +123,7 @@ class FactoryPackagesCreator<LinuxType::STANDARD> final
         static void getPythonPackages(std::unordered_set<std::string>& pythonPackages)
         {
             const file_system::FileSystemWrapper fs;
+
             if (fs.is_directory(DPKG_PATH))
             {
                 getDpkgPythonPackages(pythonPackages);
@@ -142,6 +144,7 @@ class FactoryPackagesCreator<LinuxType::LEGACY> final
         static void getPackages(std::function<void(nlohmann::json&)> callback)
         {
             const file_system::FileSystemWrapper fs;
+
             if (fs.is_directory(RPM_PATH))
             {
                 getRpmInfoLegacy(callback);

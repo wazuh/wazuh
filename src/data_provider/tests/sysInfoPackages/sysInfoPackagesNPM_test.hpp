@@ -22,8 +22,8 @@
 
 class MockJsonIO
 {
-public:
-    MOCK_METHOD(nlohmann::json, readJson, (const std::filesystem::path&), ());
+    public:
+        MOCK_METHOD(nlohmann::json, readJson, (const std::filesystem::path&), ());
 };
 
 class NPMTest : public ::testing::Test
