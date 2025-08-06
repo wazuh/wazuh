@@ -4,6 +4,7 @@
 
 #include <idbsync.hpp>
 #include <ifilesystem_wrapper.hpp>
+#include <sca_utils.hpp>
 
 #include <filesystem>
 #include <functional>
@@ -27,12 +28,10 @@ class SCAPolicyLoader
 {
 public:
     /// @brief Constructor for SCAPolicyLoader
-    /// @param policies A vector of policy files paths to load
-    /// @param disabledPolicies A vector of disabled policy files paths
+    /// @param policies A vector of policies to load
     /// @param fileSystemWrapper A shared pointer to a file system wrapper
     /// @param dBSync A shared pointer to a DBSync object
-    SCAPolicyLoader(const std::vector<std::string>& policies,
-                    const std::vector<std::string>& disabledPolicies,
+    SCAPolicyLoader(const std::vector<sca::PolicyData>& policies,
                     std::shared_ptr<IFileSystemWrapper> fileSystemWrapper = nullptr,
                     std::shared_ptr<IDBSync> dBSync = nullptr);
 
@@ -45,7 +44,9 @@ public:
     /// maps:
     ///   - modifiedPoliciesMap: maps policy ID to the JSON data of the created, modified or deleted policy
     ///   - modifiedChecksMap: maps check ID to the JSON data of the created, modified or deleted check
-    std::vector<std::unique_ptr<ISCAPolicy>> LoadPolicies(const CreateEventsFunc& createEvents) const;
+    std::vector<std::unique_ptr<ISCAPolicy>> LoadPolicies( const int commandsTimeout,
+                                                           const bool remoteEnabled,
+                                                           const CreateEventsFunc& createEvents) const;
 
     /// @brief Saves SCA Policies into the database
     /// @param data All SCA policies and its checks
@@ -87,8 +88,7 @@ private:
 
     std::shared_ptr<IFileSystemWrapper> m_fileSystemWrapper;
 
-    std::vector<std::filesystem::path> m_customPoliciesPaths;
-    std::vector<std::filesystem::path> m_disabledPoliciesPaths;
+    std::vector<sca::PolicyData> m_customPoliciesPaths;
 
     std::shared_ptr<IDBSync> m_dBSync;
 };

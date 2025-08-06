@@ -116,6 +116,13 @@ void * wm_sca_main(wm_sca_t * data) {
         pthread_exit(NULL);
     }
 
+    data->commands_timeout = getDefine_Int("sca", "commands_timeout", 1, 300);
+#ifdef CLIENT
+    data->remote_commands = getDefine_Int("sca", "remote_commands", 0, 1);
+#else
+    data->remote_commands = 1;  // Only agents require this setting. For manager it's always enabled.
+#endif
+
     minfo("Starting SCA module...");
 
     wm_sca_start(data);
