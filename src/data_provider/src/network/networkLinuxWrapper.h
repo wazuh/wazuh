@@ -527,7 +527,8 @@ class NetworkLinuxInterface final : public INetworkInterfaceWrapper
         std::string state() const override
         {
             const file_io::FileIOUtils ioUtils;
-            const std::string operationalState {
+            const std::string operationalState
+            {
                 ioUtils.getFileContent(std::string(WM_SYS_IFDATA_DIR) + this->name() + "/operstate")};
 
             std::string state { UNKNOWN_VALUE };
@@ -543,8 +544,9 @@ class NetworkLinuxInterface final : public INetworkInterfaceWrapper
         std::string MAC() const override
         {
             const file_io::FileIOUtils ioUtils;
-            const std::string macContent {
-            ioUtils.getFileContent(std::string(WM_SYS_IFDATA_DIR) + this->name() + "/address")};
+            const std::string macContent
+            {
+                ioUtils.getFileContent(std::string(WM_SYS_IFDATA_DIR) + this->name() + "/address")};
 
             std::string mac { UNKNOWN_VALUE };
 
