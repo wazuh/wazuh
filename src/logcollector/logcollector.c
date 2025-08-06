@@ -452,12 +452,12 @@ void LogCollectorStart()
             w_mutex_init(&current->mutex, &win_el_mutex_attr);
 #endif
         } else {
-            /* On Windows we need to forward the seek for wildcard files */
-#ifdef WIN32
             if (current->file) {
                 minfo(READING_FILE, current->file);
             }
 
+        /* On Windows we need to forward the seek for wildcard files */
+#ifdef WIN32
             if (current->fp) {
                 if (current->future == 0) {
                     w_set_to_last_line_read(current);
@@ -1361,7 +1361,7 @@ int check_pattern_expand(int do_seek) {
                     int added = 0;
 
                     if(!ex_file) {
-                        mdebug1(NEW_GLOB_FILE, globs[j].gpath, g.gl_pathv[glob_offset]);
+                        minfo(NEW_GLOB_FILE, globs[j].gpath, g.gl_pathv[glob_offset]);
 
                         os_realloc(globs[j].gfiles, (i +2)*sizeof(logreader), globs[j].gfiles);
 
