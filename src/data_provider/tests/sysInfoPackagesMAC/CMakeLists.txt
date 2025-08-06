@@ -18,6 +18,8 @@ add_executable(sysInfoMacPackage_unit_test
     ${SYSINFO_SRC})
 
 target_link_libraries(sysInfoMacPackage_unit_test
+    FilesystemWrapper
+    FileIO
     debug gtestd
     debug gmockd
     debug gtest_maind
