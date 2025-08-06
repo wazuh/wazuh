@@ -466,6 +466,7 @@ ProcessInfo portProcessInfo(const std::string& procPath, const std::deque<int64_
     };
 
     const file_system::FileSystemWrapper fs;
+
     if (fs.is_directory(procPath))
     {
         auto procFiles = fs.list_directory(procPath);

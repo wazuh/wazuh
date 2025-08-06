@@ -161,6 +161,7 @@ void SudoersProvider::genSudoersFile(const std::string& fileName,
             }
 
             std::vector<std::filesystem::path> inc_files;
+
             try
             {
                 inc_files = file_system::FileSystemWrapper().list_directory(ruleDetails);
