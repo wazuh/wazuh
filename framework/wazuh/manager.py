@@ -207,6 +207,15 @@ def restart() -> AffectedItemsWazuhResult:
     return result
 
 
+@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read"],
+                  resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
+@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:restart"],
+                  resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'],
+                  post_proc_kwargs={'default_result_kwargs': _restart_default_result_kwargs})
+def reload_ruleset() -> AffectedItemsWazuhResult:
+    pass
+
+
 _validation_default_result_kwargs = {
     'all_msg': f"Validation was successfully checked{' in all nodes' if node_id != 'manager' else ''}",
     'some_msg': 'Could not check validation in some nodes',
