@@ -36,7 +36,7 @@ public:
     /// @brief Constructs a PolicyParser and loads the YAML file.
     /// @param filename Path to the YAML policy file.
     /// @param yamlDocument Optional pointer to an already loaded YAML document.
-    explicit PolicyParser(const std::filesystem::path& filename, std::unique_ptr<IYamlDocument> yamlDocument = nullptr);
+    explicit PolicyParser(const std::filesystem::path& filename, const int commandsTimeout, const bool commandsEnabled, std::unique_ptr<IYamlDocument> yamlDocument = nullptr);
 
     /// @brief Parses the loaded policy file and extracts a SCAPolicy object.
     ///
@@ -54,6 +54,12 @@ private:
 
     /// @brief Document loaded from the YAML file.
     std::unique_ptr<IYamlDocument> m_yamlDocument;
+
+    /// @brief Timeout for commands execution
+    int m_commandsTimeout;
+
+    /// @brief Flag indicating whether remote is enabled
+    bool m_commandsEnabled;
 
     /// @brief Map of variables found in the YAML file, used for substitution.
     PolicyVariables m_variablesMap;

@@ -87,7 +87,9 @@ namespace
 } // namespace
 
 // NOLINTNEXTLINE(performance-unnecessary-value-param)
-PolicyParser::PolicyParser(const std::filesystem::path& filename, std::unique_ptr<IYamlDocument> yamlDocument)
+PolicyParser::PolicyParser(const std::filesystem::path& filename, const int commandsTimeout, const bool commandsEnabled, std::unique_ptr<IYamlDocument> yamlDocument)
+: m_commandsTimeout(commandsTimeout)
+, m_commandsEnabled(commandsEnabled)
 {
     if (yamlDocument)
     {
@@ -167,7 +169,7 @@ std::unique_ptr<ISCAPolicy> PolicyParser::ParsePolicy(nlohmann::json& policiesAn
 
             for (const auto& rule : rules)
             {
-                std::unique_ptr<IRuleEvaluator> RuleEvaluator = RuleEvaluatorFactory::CreateEvaluator(rule.AsString());
+                std::unique_ptr<IRuleEvaluator> RuleEvaluator = RuleEvaluatorFactory::CreateEvaluator(rule.AsString(), m_commandsTimeout, m_commandsEnabled);
                 if (RuleEvaluator != nullptr)
                 {
                     requirements.rules.push_back(std::move(RuleEvaluator));
@@ -216,7 +218,7 @@ std::unique_ptr<ISCAPolicy> PolicyParser::ParsePolicy(nlohmann::json& policiesAn
                     {
                         const auto ruleStr = rule.AsString();
 
-                        if (auto ruleEvaluator = RuleEvaluatorFactory::CreateEvaluator(ruleStr))
+                        if (auto ruleEvaluator = RuleEvaluatorFactory::CreateEvaluator(ruleStr, m_commandsTimeout, m_commandsEnabled))
                         {
                             check.rules.push_back(std::move(ruleEvaluator));
                             checkWithValidRules["rules"].AppendToSequence(ruleStr);

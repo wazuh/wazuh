@@ -166,7 +166,7 @@ CommandRuleEvaluator::CommandRuleEvaluator(PolicyEvaluationContext ctx,
     }
     else
     {
-        m_commandExecFunc = [](const std::string& command) -> std::optional<ExecResult>
+        m_commandExecFunc = [timeout = ctx.commandsTimeout](const std::string& command) -> std::optional<ExecResult>
         {
             auto wmExecCallback = SecurityConfigurationAssessment::GetGlobalWmExecFunction();
 
@@ -177,9 +177,8 @@ CommandRuleEvaluator::CommandRuleEvaluator(PolicyEvaluationContext ctx,
 
             char *cmdOutput = nullptr;
             int resultCode = 0;
-            const int timeoutSeconds = 30;
 
-            const auto wmExecResult = wmExecCallback(const_cast<char*>(command.c_str()), &cmdOutput, &resultCode, timeoutSeconds, nullptr);
+            const auto wmExecResult = wmExecCallback(const_cast<char*>(command.c_str()), &cmdOutput, &resultCode, timeout, nullptr);
 
             ExecResult execResult;
             execResult.StdOut = cmdOutput ? std::string(cmdOutput) : "";
@@ -206,6 +205,12 @@ CommandRuleEvaluator::CommandRuleEvaluator(PolicyEvaluationContext ctx,
 RuleResult CommandRuleEvaluator::Evaluate()
 {
     LoggingHelper::getInstance().log(LOG_DEBUG, "Processing command rule: '" + m_ctx.rule + "'");
+
+    if(!m_ctx.commandsEnabled)
+    {
+        LoggingHelper::getInstance().log(LOG_DEBUG, "Policy is remote and remote commands are disabled. Skipping command rule.");
+        return RuleResult::Invalid;
+    }
 
     auto result = RuleResult::NotFound;
 
@@ -489,6 +494,8 @@ RuleResult ProcessRuleEvaluator::Evaluate()
 
 std::unique_ptr<IRuleEvaluator>
 RuleEvaluatorFactory::CreateEvaluator(const std::string& input,
+                                      const int commandsTimeout,
+                                      const bool commandsEnabled,
                                       std::unique_ptr<IFileSystemWrapper> fileSystemWrapper,
                                       std::unique_ptr<IFileIOUtils> fileUtils,
                                       std::unique_ptr<ISysInfo> sysInfo)
@@ -528,7 +535,7 @@ RuleEvaluatorFactory::CreateEvaluator(const std::string& input,
 
     const auto [ruleType, cleanedRule] = ruleTypeAndValue.value();
 
-    const PolicyEvaluationContext ctx {cleanedRule, pattern, isNegated};
+    const PolicyEvaluationContext ctx {cleanedRule, pattern, isNegated, commandsTimeout, commandsEnabled};
 
     switch (ruleType)
     {
