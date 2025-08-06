@@ -101,6 +101,8 @@ jobs:
 
     - name: Create tar scaffolding and copy files
       run: |
+        mkdir auxiliar_dir
+        cd auxiliar_dir
         install -d -m 770 \
           wazuh-engine-standalone/bin/lib \
           wazuh-engine-standalone/default-security-policy \
@@ -118,20 +120,17 @@ jobs:
         touch wazuh-engine-standalone/data/tzdb/.keep
         touch wazuh-engine-standalone/logs/.keep
         touch wazuh-engine-standalone/sockets/.keep
-        cp src/engine/ruleset/schemas/engine-schema.json wazuh-engine-standalone/data/store/schema/engine-schema/0
-        cp src/engine/ruleset/schemas/wazuh-logpar-overrides.json  wazuh-engine-standalone/data/store/schema/wazuh-logpar-overrides/0
-        cp src/engine/ruleset/schemas/allowed-fields.json  wazuh-engine-standalone/data/store/schema/allowed-fields/0
-        cp src/engine/standalone/run_engine.sh wazuh-engine-standalone/
+        cp -r ${{ env.ENGINE_DIR }}/ruleset/schemas/engine-schema.json wazuh-engine-standalone/data/store/schema/engine-schema/0
+        cp -r ${{ env.ENGINE_DIR }}/ruleset/schemas/wazuh-logpar-overrides.json  wazuh-engine-standalone/data/store/schema/wazuh-logpar-overrides/0
+        cp -r ${{ env.ENGINE_DIR }}/ruleset/schemas/allowed-fields.json  wazuh-engine-standalone/data/store/schema/allowed-fields/0
+        cp -r ${{ env.ENGINE_DIR }}/standalone/run_engine.sh wazuh-engine-standalone/
         chmod +x wazuh-engine-standalone/run_engine.sh
-        cp src/engine/standalone/README.md wazuh-engine-standalone/
-        cp src/external/rocksdb/build/librocksdb.so.8 wazuh-engine-standalone/bin/lib
-        cp src/libwazuhext.so wazuh-engine-standalone/bin/lib
-        cp src/build/engine/wazuh-engine wazuh-engine-standalone/bin/
+        cp ${{ env.ENGINE_DIR }}/standalone/README.md wazuh-engine-standalone/
+        cp ${{github.workspace}}/src/external/rocksdb/build/librocksdb.so.8 wazuh-engine-standalone/bin/lib
+        cp ${{github.workspace}}/src/libwazuhext.so wazuh-engine-standalone/bin/lib
+        cp ${{github.workspace}}/src/build/engine/wazuh-engine wazuh-engine-standalone/bin/
         chmod +x wazuh-engine-standalone/bin/wazuh-engine
-
-    - name: Compress tar file
-      run: |
-        tar -czf wazuh-engine-standalone.tar.gz wazuh-engine-standalone
+        cd ..
 
     - name: Set version
       run: |
@@ -142,7 +141,8 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: wazuh-engine-${{ env.TAG }}-standalone
-        path: wazuh-engine-standalone.tar.gz
+        path: auxiliar_dir
+        include-hidden-files: true
 
   check_standalone_engine:
     name: Test standalone engine
@@ -166,11 +166,6 @@ jobs:
         name: wazuh-engine-${{ env.TAG }}-standalone
         path: /tmp/standalone-test
 
-    - name: Uncompress tar artifact
-      run: |
-        cd /tmp/standalone-test
-        tar -xzvf wazuh-engine-standalone.tar.gz
-
     - name: Verify artifact structure
       run: |
         echo "=== Artifact structure verification ==="
@@ -193,19 +188,19 @@ jobs:
             echo "sockets directory permissions:"
             ls -ld /tmp/standalone-test/wazuh-engine-standalone/sockets
           else
-            echo "sockets directory not found (will be created at runtime)"
+            echo "sockets directory not found"
           fi
           if [ -d "/tmp/standalone-test/wazuh-engine-standalone/logs" ]; then
             echo "logs directory permissions:"
             ls -ld /tmp/standalone-test/wazuh-engine-standalone/logs
           else
-            echo "logs directory not found (will be created at runtime)"
+            echo "logs directory not found"
           fi
           if [ -d "/tmp/standalone-test/wazuh-engine-standalone/data/kvdb" ]; then
             echo "kvdb directory permissions:"
             ls -ld /tmp/standalone-test/wazuh-engine-standalone/data/kvdb
           else
-            echo "kvdb directory not found (will be created at runtime)"
+            echo "kvdb directory not found"
           fi
         else
           echo "✗ wazuh-engine-standalone directory not found!"
@@ -217,14 +212,17 @@ jobs:
     - name: Basic communication test
       run: |
         cd /tmp/standalone-test/wazuh-engine-standalone
+        chmod +x run_engine.sh
+        chmod +x bin/wazuh-engine
+        ls -la
         ./run_engine.sh > engine_stdout.log 2> engine_stderr.log &
         ENGINE_PID=$!
         sleep 5
+        cat engine_stderr.log
         curl --silent --unix-socket sockets/engine-api.sock \
             -X POST -H "Content-Type: application/json" \
             -d '{"name":"default"}' \
-            http://localhost/router/route/get \
-            > /dev/null 2>&1
+            http://localhost/router/route/get
         if [ $? -eq 0 ]; then
             echo "Engine started successfully"
             kill $ENGINE_PID
