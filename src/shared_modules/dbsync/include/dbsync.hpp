@@ -136,7 +136,7 @@ class EXPORTED DBSync : public IDBSync
          *
          */
         void updateWithSnapshot(const nlohmann::json& jsInput,
-                                        nlohmann::json&       jsResult) override;
+                                nlohmann::json&       jsResult) override;
 
         /**
          * @brief Update data table, based on json_raw_snapshot bulk data based on json string.
@@ -146,7 +146,7 @@ class EXPORTED DBSync : public IDBSync
          *
          */
         void updateWithSnapshot(const nlohmann::json& jsInput,
-                                        ResultCallbackData    callbackData) override;
+                                ResultCallbackData    callbackData) override;
 
         /**
          * @brief Turns off the services provided by the shared library.
