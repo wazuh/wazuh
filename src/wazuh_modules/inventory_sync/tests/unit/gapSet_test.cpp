@@ -163,7 +163,6 @@ TEST_F(GapSetTest, LastUpdateChangesOnlyOnValidObserve)
     gs.observe(2);
     auto after = gs.lastUpdate();
     EXPECT_GT(after, before);
-
     // Should NOT update lastUpdate
     auto checkpoint = gs.lastUpdate();
     gs.observe(2); // duplicate
