@@ -14,7 +14,6 @@
 #include "wmodules.h"
 #include "wm_azure.h"
 #include "expression.h"
-#include "wm_exec.h"
 
 static wm_azure_t *azure_config;                               // Pointer to Azure-logs configuration
 static w_expression_t *azure_script_log_regex;                 // Pointer to Azure script log regex
