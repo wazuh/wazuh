@@ -134,12 +134,6 @@ void * wm_sca_main(wm_sca_t * data) {
 #endif
 }
 
-#ifdef WIN32
-void wm_sca_push_request_win(char * msg){
-}
-
-#endif
-
 static int wm_sca_start(wm_sca_t *sca) {
     sca_start_ptr(sca_log_callback, sca);
     return 0;
@@ -159,10 +153,24 @@ cJSON *wm_sca_dump(const wm_sca_t * data) {
     cJSON *root = cJSON_CreateObject();
     cJSON *wm_wd = cJSON_CreateObject();
 
+    sched_scan_dump(&(data->scan_config), wm_wd);
+
     cJSON_AddStringToObject(wm_wd, "enabled", data->enabled ? "yes" : "no");
     cJSON_AddStringToObject(wm_wd, "scan_on_start", data->scan_on_start ? "yes" : "no");
-    cJSON_AddNumberToObject(wm_wd, "commands_timeout", data->commands_timeout);
+
+    if (data->policies && *data->policies) {
+        cJSON *policies = cJSON_CreateArray();
+        int i;
+        for (i=0;data->policies[i];i++) {
+            if(data->policies[i]->enabled == 1){
+                cJSON_AddStringToObject(policies, "policy", data->policies[i]->policy_path);
+            }
+        }
+        cJSON_AddItemToObject(wm_wd,"policies", policies);
+    }
+
     cJSON_AddItemToObject(root,"sca",wm_wd);
+
 
     return root;
 }
