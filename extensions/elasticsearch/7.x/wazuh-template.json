@@ -447,16 +447,6 @@
       "data.tty",
       "data.uid",
       "data.url",
-      "data.virustotal.description",
-      "data.virustotal.error",
-      "data.virustotal.found",
-      "data.virustotal.permalink",
-      "data.virustotal.scan_date",
-      "data.virustotal.sha1",
-      "data.virustotal.source.alert_id",
-      "data.virustotal.source.file",
-      "data.virustotal.source.md5",
-      "data.virustotal.source.sha1",
       "data.vulnerability.cve",
       "data.vulnerability.cvss.cvss2.base_score",
       "data.vulnerability.cvss.cvss2.exploitability_score",
@@ -2307,53 +2297,6 @@
           },
           "uid": {
             "type": "keyword"
-          },
-          "virustotal": {
-            "properties": {
-              "description": {
-                "type": "keyword"
-              },
-              "error": {
-                "type": "keyword"
-              },
-              "found": {
-                "type": "keyword"
-              },
-              "malicious": {
-                "type": "keyword"
-              },
-              "permalink": {
-                "type": "keyword"
-              },
-              "positives": {
-                "type": "keyword"
-              },
-              "scan_date": {
-                "type": "keyword"
-              },
-              "sha1": {
-                "type": "keyword"
-              },
-              "source": {
-                "properties": {
-                  "alert_id": {
-                    "type": "keyword"
-                  },
-                  "file": {
-                    "type": "keyword"
-                  },
-                  "md5": {
-                    "type": "keyword"
-                  },
-                  "sha1": {
-                    "type": "keyword"
-                  }
-                }
-              },
-              "total": {
-                "type": "keyword"
-              }
-            }
           },
           "vulnerability": {
             "properties": {
