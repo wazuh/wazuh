@@ -37,7 +37,6 @@ CONF_SECTIONS = MappingProxyType({
     'command': {'type': 'duplicate', 'list_options': []},
     'localfile': {'type': 'duplicate', 'list_options': ["filter", "ignore"]},
     'remote': {'type': 'duplicate', 'list_options': []},
-    'syslog_output': {'type': 'duplicate', 'list_options': []},
     'integration': {'type': 'duplicate', 'list_options': []},
 
     'alerts': {'type': 'merge', 'list_options': []},
@@ -1176,11 +1175,11 @@ def get_active_configuration(agent_id: str, component: str, configuration: str) 
     """
     sockets_json_protocol = {'remote', 'analysis', 'wdb'}
     component_socket_mapping = {'agent': 'analysis', 'analysis': 'analysis', 'auth': 'auth',
-                                'com': 'com', 'csyslog': 'csyslog', 'integrator': 'integrator',
+                                'com': 'com', 'integrator': 'integrator',
                                 'logcollector': 'logcollector', 'mail': 'mail', 'monitor': 'monitor',
                                 'request': 'remote', 'syscheck': 'syscheck', 'wazuh-db': 'wdb', 'wmodules': 'wmodules'}
     component_socket_dir_mapping = {'agent': 'sockets', 'analysis': 'sockets',
-                                    'auth': 'sockets', 'com': 'sockets', 'csyslog': 'sockets', 'integrator': 'sockets',
+                                    'auth': 'sockets', 'com': 'sockets', 'integrator': 'sockets',
                                     'logcollector': 'sockets', 'mail': 'sockets', 'monitor': 'sockets',
                                     'request': 'sockets', 'syscheck': 'sockets', 'wazuh-db': 'db',
                                     'wmodules': 'sockets'}

@@ -3802,8 +3802,6 @@ components:
           $ref: '#/components/schemas/DaemonStatus'
         wazuh-authd:
           $ref: '#/components/schemas/DaemonStatus'
-        wazuh-csyslogd:
-          $ref: '#/components/schemas/DaemonStatus'
         wazuh-dbd:
           $ref: '#/components/schemas/DaemonStatus'
         wazuh-execd:
@@ -3914,10 +3912,6 @@ components:
           type: object
         syscheck:
           type: object
-        syslog_output:
-          type: array
-          items:
-            type: object
 
         #Wodle sections inside WazuhConfiguration(ossec.conf)
         aws-s3:
@@ -4277,8 +4271,6 @@ components:
           wazuh-analysisd:
             $ref: '#/components/schemas/LogSummary'
           wazuh-authd:
-            $ref: '#/components/schemas/LogSummary'
-          wazuh-csyslogd:
             $ref: '#/components/schemas/LogSummary'
           wazuh-dbd:
             $ref: '#/components/schemas/LogSummary'
@@ -5598,7 +5590,6 @@ components:
         - analysis
         - auth
         - com
-        - csyslog
         - integrator
         - logcollector
         - mail
@@ -5711,11 +5702,6 @@ components:
         <td>com</td>
         <td>cluster</td>
         <td><code>&lt;cluster&gt;</code></td>
-        </tr>
-        <tr>
-        <td>csyslog</td>
-        <td>csyslog</td>
-        <td><code>&lt;csyslog_output&gt;</code></td>
         </tr>
         <tr>
         <td>integrator</td>
@@ -5834,7 +5820,6 @@ components:
         - reports
         - active-response
         - cluster
-        - csyslog
         - integration
         - localfile
         - socket
@@ -6673,7 +6658,6 @@ components:
         - sca
         - socket
         - syscheck
-        - syslog_output
         - vulnerability-detection
         - indexer
         # Wodle sections
@@ -10479,7 +10463,6 @@ paths:
                   affected_items:
                     - wazuh-analysisd: running
                       wazuh-authd: stopped
-                      wazuh-csyslogd: stopped
                       wazuh-dbd: stopped
                       wazuh-monitord: running
                       wazuh-execd: running
@@ -12190,7 +12173,6 @@ paths:
                   affected_items:
                     - wazuh-analysisd: "running"
                       wazuh-authd: "running"
-                      wazuh-csyslogd: "stopped"
                       wazuh-dbd: "stopped"
                       wazuh-monitor": "running"
                       wazuh-execd: "running"

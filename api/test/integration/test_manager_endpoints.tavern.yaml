@@ -19,7 +19,6 @@ stages:
           affected_items:
               wazuh-analysisd: !anystr
               wazuh-authd: !anystr
-              wazuh-csyslogd: !anystr
               wazuh-dbd: !anystr
               wazuh-execd: !anystr
               wazuh-integratord: !anystr

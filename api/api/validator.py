@@ -247,7 +247,6 @@ WAZUH_COMPONENT_CONFIGURATION_MAPPING = MappingProxyType(
         'analysis': {"global", "active_response", "alerts", "command", "rules", "decoders", "internal", "rule_test"},
         'auth': {"auth"},
         'com': {"active-response", "logging", "internal", "cluster"},
-        'csyslog': {"csyslog"},
         'integrator': {"integration"},
         'logcollector': {"localfile", "socket", "internal"},
         'mail': {"global", "alerts", "internal"},
