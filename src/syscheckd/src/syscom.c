@@ -116,7 +116,7 @@ size_t syscom_dispatch(char * command, char ** output){
             mdebug2("WMCOM Syncing module with data '%s'.", data);
 
             int ret = 0;
-            // ret fim_sync_push_msg(data);
+            ret = asp_parse_response_buffer(syscheck.sync_handle, (const uint8_t *)data);
 
             if (ret != 0) {
                 mdebug1("WMCOM Error syncing module");

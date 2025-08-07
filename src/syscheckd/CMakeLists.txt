@@ -25,6 +25,7 @@ include_directories(${SRC_FOLDER}/shared_modules/common/)
 include_directories(${CMAKE_SOURCE_DIR}/include)
 include_directories(${CMAKE_SOURCE_DIR}/src/db/include/)
 include_directories(${CMAKE_SOURCE_DIR}/src/ebpf/include/)
+include_directories(${SRC_FOLDER}/sync_protocol/include/)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "HP-UX")
   link_directories(${INSTALL_PREFIX}/lib)
@@ -33,6 +34,7 @@ endif(CMAKE_SYSTEM_NAME STREQUAL "HP-UX")
 link_directories(${SRC_FOLDER}/shared_modules/dbsync/build/lib/)
 link_directories(${SRC_FOLDER}/shared_modules/rsync/build/lib/)
 link_directories(${SRC_FOLDER}/)
+link_directories(${SRC_FOLDER}/sync_protocol/build/lib)
 
 add_definitions(-DARGV0="wazuh-syscheckd")
 
@@ -89,7 +91,7 @@ else()
     add_executable(wazuh-syscheckd ${SYSCHECKD_SRC})
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
-target_link_libraries(wazuh-syscheckd fimdb wazuhext pthread wazuh rootcheck)
+target_link_libraries(wazuh-syscheckd fimdb wazuhext pthread wazuh rootcheck agent_sync_protocol stdc++)
 
 if (UNIX)
     target_link_libraries(wazuh-syscheckd dl)
