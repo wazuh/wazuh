@@ -10452,7 +10452,7 @@ paths:
                         email_to: recipient@example.wazuh.com
                         email_maxperhour: 12
                         email_log_source: alerts.log
-                        agents_disconnection_time: "10m"
+                        agents_disconnection_time: "15m"
                         agents_disconnection_alert_time: 0
                         update_check: yes
                         white_list:
